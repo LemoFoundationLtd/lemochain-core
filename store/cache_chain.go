@@ -280,7 +280,7 @@ func (chain *CacheChain) GetBlock(hash common.Hash, height uint32) (*types.Block
 		return nil, err
 	} else {
 		if block.Height() != height {
-			return nil, nil
+			return nil, ErrNotExist
 		} else {
 			return block, nil
 		}
@@ -424,7 +424,7 @@ func (chain *CacheChain) getAccount(address common.Address) (*types.AccountData,
 // GetAccount loads account from cache or db
 func (chain *CacheChain) GetAccount(blockHash common.Hash, address common.Address) (*types.AccountData, error) {
 	if (blockHash == common.Hash{}) {
-		return nil, nil
+		return nil, ErrNotExist
 	}
 
 	if chain.Accounts != nil {
