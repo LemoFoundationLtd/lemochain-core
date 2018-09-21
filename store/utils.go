@@ -18,29 +18,13 @@ var (
 )
 
 var (
-	buckSize = 16
-	maxDepth = uint8(8)
-
-	// tagBlock    = uint8(0x01)
-	// tagHeader   = uint8(0x02)
-	// tagTx       = uint8(0x03)
-	// tagChangLog = uint8(0x04)
-	// tagAccount  = uint8(0x05)
-	// tagConfirm  = uint8(0x06)
-
+	maxDepth        = uint8(8)
 	maxFileSize     = uint32(1024 * 1024 * 1024 * 2)
-	maxBitCaskCount = uint32(2)
-	maxBucketsCount = uint32(999)
-
-	dataHeaderLen = uint32(binary.Size(RecordHeader{}))
-	maxKenLen     = uint32(256)
-	maxValLen     = uint32(1024 * 1024 * 100)
-
-	maxNodesCount = uint32(256 * 256 * 256)
-
-	keySize        = uint32(32)
-	itemHeaderSize = uint32(binary.Size(HItem{}))
-	nodeSize       = uint32(binary.Size(Node{}))
+	maxBucketsCount = uint32(256)
+	dataHeaderLen   = uint32(binary.Size(RecordHeader{}))
+	keySize         = uint32(32)
+	itemHeaderSize  = uint32(binary.Size(HItem{}))
+	nodeSize        = uint32(binary.Size(Node{}))
 )
 
 var MbTable = []uint16{

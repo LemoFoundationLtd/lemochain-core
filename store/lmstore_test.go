@@ -172,3 +172,49 @@ func TestLmDataBase_Has(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, isExist, false)
 }
+
+func TestLmDataBase_Commit(t *testing.T) {
+	ClearData()
+
+	db, err := NewLmDataBase(GetStorePath())
+	assert.NoError(t, err)
+
+	totalCnt := 4096
+	key1, _ := NewKey1()
+
+	keys, err := CreateBufWithNumberBatch(totalCnt, key1)
+	assert.NoError(t, err)
+
+	val, err := CreateBufWithNumber(37)
+	assert.NoError(t, err)
+
+	items := make([]*BatchItem, totalCnt)
+	for index := 0; index < totalCnt; index++ {
+		item := &BatchItem{
+			Key: make([]byte, 32),
+			Val: val,
+		}
+		copy(item.Key[0:32], keys[index][0:32])
+		items[index] = item
+	}
+
+	err = db.Commit(items)
+	assert.NoError(t, err)
+
+	keys, err = CreateBufWithNumberBatch(totalCnt, key1)
+	for index := 0; index < totalCnt; index++ {
+		result, err := db.Get(keys[index])
+		assert.NoError(t, err)
+		assert.Equal(t, val, result)
+	}
+
+	db, err = NewLmDataBase(GetStorePath())
+	assert.NoError(t, err)
+
+	keys, err = CreateBufWithNumberBatch(totalCnt, key1)
+	for index := 0; index < totalCnt; index++ {
+		result, err := db.Get(keys[index])
+		assert.NoError(t, err)
+		assert.Equal(t, val, result)
+	}
+}

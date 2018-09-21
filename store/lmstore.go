@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
-	"io"
 	"os"
 	"sync"
 	"time"
@@ -135,7 +134,7 @@ func (database *LmDataBase) loadHintFile(mFile *MFile) error {
 	for {
 		data, err := mFile.Read(offset, int64(binary.Size(HintItem{})))
 		if err != nil {
-			if err == io.EOF {
+			if err == ErrEOF {
 				return nil
 			} else {
 				return err
@@ -447,7 +446,6 @@ func (database *LmDataBase) Get(key []byte) ([]byte, error) {
 	defer database.rw.RUnlock()
 
 	key = key2hash(key).Bytes()
-
 	item, err := database.Tree.Get(key)
 	if err != nil {
 		return nil, err
@@ -662,14 +660,15 @@ type BatchItem struct {
 	Val []byte
 }
 
-func (database *LmDataBase) addTree(offsets []uint32, items []*BatchItem) error {
-	for index := 0; index < len(items); index++ {
-		if items[index] == nil {
+func (database *LmDataBase) addTree(offsets []uint32, keys [][]byte) error {
+	for index := 0; index < len(keys); index++ {
+		if keys[index] == nil {
 			break
 		}
 
 		offset := database.CurOffset + int64(offsets[index])
-		err := database.Tree.Add(items[index].Key, uint32(offset))
+		pos := int(offset) | database.CurIndex
+		err := database.Tree.Add(keys[index], uint32(pos))
 		if err != nil {
 			return err
 		}
@@ -689,6 +688,7 @@ func (database *LmDataBase) Commit(items []*BatchItem) error {
 	var wOffset uint32 = 0
 	buf := make([]byte, 0, 10*1024*1024)
 	sOffset := make([]uint32, len(items))
+	keys := make([][]byte, len(items))
 	for index := 0; index < len(items); index++ {
 		if items[index] == nil {
 			break
@@ -696,8 +696,9 @@ func (database *LmDataBase) Commit(items []*BatchItem) error {
 
 		sOffset[index] = wOffset
 
-		items[index].Key = key2hash(items[index].Key).Bytes()
-		dHeader.KLen = uint8(len(items[index].Key))
+		keys[index] = key2hash(items[index].Key).Bytes()
+
+		dHeader.KLen = uint8(len(keys[index]))
 		dHeader.VLen = uint32(len(items[index].Val))
 		dHeader.TimeStamp = uint64(time.Now().UnixNano())
 		dHeader.Crc = CheckSum(items[index].Val)
@@ -708,8 +709,8 @@ func (database *LmDataBase) Commit(items []*BatchItem) error {
 			return err
 		}
 
-		tLen := database.align(dataHeaderLen + uint32(len(items[index].Key)) + uint32(len(items[index].Val)))
-		pBuf := database.encode(database.Buf.Bytes(), items[index].Key, items[index].Val)
+		tLen := database.align(dataHeaderLen + uint32(len(keys[index])) + uint32(len(items[index].Val)))
+		pBuf := database.encode(database.Buf.Bytes(), keys[index], items[index].Val)
 
 		err = binary.Write(NewLmBuffer(buf[wOffset:wOffset+tLen]), binary.LittleEndian, pBuf)
 		if err != nil {
@@ -740,7 +741,7 @@ func (database *LmDataBase) Commit(items []*BatchItem) error {
 		return err
 	}
 
-	err = database.addTree(sOffset, items)
+	err = database.addTree(sOffset, keys)
 	if err != nil {
 		return err
 	}
