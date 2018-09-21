@@ -28,7 +28,22 @@ var ExtModules = map[string]string{
 	"txpool":   TxPool_JS,
 	"chain":    Chain_JS,
 	"mine":     Mine_JS,
+	"account":  Account_JS,
 }
+
+// sandy test
+const Account_JS = `
+lemojs._extend({
+	property: 'account',
+	methods: [
+		new lemojs._extend.Method({
+			name: 'newAccount',
+			call: 'account_newAccount',
+			params: 0
+		}),
+	]
+});
+`
 
 const Chain_JS = `
 lemojs._extend({
