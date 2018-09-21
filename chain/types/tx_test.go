@@ -13,12 +13,11 @@ import (
 )
 
 var (
-	chainId        uint16 = 200
-	testSigner            = MakeSigner(TxVersion, chainId)
-	testPrivate, _        = crypto.HexToECDSA("432a86ab8765d82415a803e29864dcfc1ed93dac949abf6f95a583179f27e4bb") // secp256k1.V = 1
-	testAddr              = crypto.PubkeyToAddress(testPrivate.PublicKey)
+	testSigner     = MakeSigner()
+	testPrivate, _ = crypto.HexToECDSA("432a86ab8765d82415a803e29864dcfc1ed93dac949abf6f95a583179f27e4bb") // secp256k1.V = 1
+	testAddr       = crypto.PubkeyToAddress(testPrivate.PublicKey)
 
-	testTx = NewTransaction(common.HexToAddress("0x1"), common.Big1, 100, common.Big2, []byte{12}, chainId, big.NewInt(1544584596), "aa", []byte{34})
+	testTx = NewTransaction(common.HexToAddress("0x1"), common.Big1, 100, common.Big2, []byte{12}, 200, big.NewInt(1544584596), "aa", []byte{34})
 )
 
 func ExpirationFromNow() *big.Int {
