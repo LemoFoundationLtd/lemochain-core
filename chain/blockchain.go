@@ -38,15 +38,17 @@ type BlockChain struct {
 
 	running int32 // 是否在运行
 
-	newMinedBlockCh chan *types.Block // 新挖到区块	//todo
-	quitCh          chan struct{}     // 退出chan
+	newBlockCh chan *types.Block // 收到新区块
+	quitCh     chan struct{}     // 退出chan
 }
 
-func NewBlockChain(chainID *big.Int, db db.ChainDB) (bc *BlockChain, err error) {
+func NewBlockChain(chainID *big.Int, db db.ChainDB, newBlockCh chan *types.Block) (bc *BlockChain, err error) {
 	bc = &BlockChain{
-		chainID: new(big.Int).Set(chainID),
-		dbOpe:   db,
-		quitCh:  make(chan struct{}),
+		chainID:        new(big.Int).Set(chainID),
+		dbOpe:          db,
+		newBlockCh:     newBlockCh,
+		chainForksHead: make(map[common.Hash]*types.Block, 128),
+		quitCh:         make(chan struct{}),
 	}
 	bc.genesisBlock = bc.GetBlockByHeight(0)
 	if bc.genesisBlock == nil {
@@ -146,7 +148,15 @@ func (bc *BlockChain) MineNewBlock(block *types.Block) error {
 		log.Error(fmt.Sprintf("can't insert block to cache. height:%d hash:%s", block.Height(), block.Hash().Hex()))
 		return err
 	}
+	bc.currentBlock.Store(block)
+	delete(bc.chainForksHead, block.ParentHash()) // 从分叉链集合中删除原记录
+	bc.chainForksHead[block.Hash()] = block       // 从分叉链集合中添加新记录
+	bc.chainForksHead[block.Hash()] = block       // 从分叉链集合中添加新记录
 	return nil
+}
+
+func (bc *BlockChain) newBlockNotify(block *types.Block) {
+	bc.newBlockCh <- block
 }
 
 // InsertChain 插入区块到到链上——非自己挖到的块
@@ -202,6 +212,7 @@ func (bc *BlockChain) InsertChain(block *types.Block) (err error) {
 		bc.currentBlock.Store(block)
 		delete(bc.chainForksHead, curHash) // 从分叉链集合中删除原记录
 		bc.chainForksHead[hash] = block    // 从分叉链集合中添加新记录
+		bc.newBlockNotify(block)
 		return nil
 	}
 	// 新块高度大于当前块高度 切换分叉
@@ -211,6 +222,7 @@ func (bc *BlockChain) InsertChain(block *types.Block) (err error) {
 		bc.currentBlock.Store(block)
 		delete(bc.chainForksHead, parHash) // 替换掉原分叉head
 		bc.chainForksHead[hash] = block    // 从分叉链集合中添加新记录
+		bc.newBlockNotify(block)
 		return nil
 	}
 	// 同一高度 两个区块 字典序更小的优先
@@ -221,6 +233,7 @@ func (bc *BlockChain) InsertChain(block *types.Block) (err error) {
 			delete(bc.chainForksHead, parHash) // 替换
 			bc.chainForksHead[hash] = block
 		}
+		bc.newBlockNotify(block)
 		return nil
 	}
 	if _, ok := bc.chainForksHead[parHash]; ok {
@@ -229,6 +242,7 @@ func (bc *BlockChain) InsertChain(block *types.Block) (err error) {
 	} else {
 		bc.chainForksHead[hash] = block // 从分叉链集合中添加新记录
 	}
+	bc.newBlockNotify(block)
 	return nil
 }
 
@@ -352,7 +366,7 @@ func (bc *BlockChain) ReceiveConfirm(info *protocol.BlockConfirmData) (err error
 func (bc *BlockChain) getSignerIndex(pubKey []byte, height uint32) int {
 	node := deputynode.Instance().GetNodeByNodeID(height, pubKey)
 	if node != nil {
-		return int(node.Ranking)
+		return int(node.Rank)
 	}
 	return -1
 }

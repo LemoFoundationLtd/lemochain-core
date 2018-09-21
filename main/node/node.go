@@ -99,7 +99,7 @@ func New(lemoConf *LemoConfig, conf *NodeConfig) (*Node, error) {
 	if err != nil {
 		return nil, fmt.Errorf("new db failed: %v", err)
 	}
-	path := filepath.Join(conf.DataDir, "config")
+	path := filepath.Join(conf.DataDir, "config.json")
 	genesisConfig, err := readConfigFile(path)
 	if err != nil {
 		log.Errorf("Can't read config file: %v", err)
@@ -115,8 +115,8 @@ func New(lemoConf *LemoConfig, conf *NodeConfig) (*Node, error) {
 	} else {
 		return nil, err
 	}
-
-	blockChain, err := chain.NewBlockChain(genesisConfig.ChainID, db)
+	recvBlockCh := make(chan *types.Block)
+	blockChain, err := chain.NewBlockChain(genesisConfig.ChainID, db, recvBlockCh)
 	if err != nil {
 		return nil, err
 	}
@@ -139,9 +139,10 @@ func New(lemoConf *LemoConfig, conf *NodeConfig) (*Node, error) {
 	}
 	n.genesisBlock, _ = db.GetBlockByHeight(0)
 	n.config.P2P.PrivateKey = deputynode.GetSelfNodeKey()
-	miner := miner.New(int64(genesisConfig.SleepTime), int64(genesisConfig.Timeout), blockChain, n.config.NodeKey(), newMinedBlockCh, n.recvBlockCh)
+	miner := miner.New(int64(genesisConfig.SleepTime), int64(genesisConfig.Timeout), blockChain, n.config.NodeKey(), newMinedBlockCh, recvBlockCh)
 	n.miner = miner
 	deputynode.Instance().Init()
+	//miner.SetLemoBase()
 	return n, nil
 }
 

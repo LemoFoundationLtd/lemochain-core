@@ -9,6 +9,7 @@ import (
 	"os"
 	"testing"
 
+	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 )
 
@@ -189,4 +190,15 @@ func TestPythonIntegration(t *testing.T) {
 
 	t.Logf("msg: %x, privkey: %s sig: %x\n", msg0, kh, sig0)
 	t.Logf("msg: %x, privkey: %s sig: %x\n", msg1, kh, sig1)
+}
+
+func TestCreateAddress(t *testing.T) {
+	priKey, _ := GenerateKey()
+	pubKey := priKey.PublicKey
+	addr := PubkeyToAddress(pubKey)
+	pribytes := FromECDSA(priKey)
+	pubbytes := FromECDSAPub(&pubKey)
+	fmt.Println(common.ToHex(pribytes))
+	fmt.Println(common.ToHex(pubbytes[1:]))
+	fmt.Println(addr.String())
 }

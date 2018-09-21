@@ -45,9 +45,10 @@ func New(blockInternal, timeout int64, chain *chain.BlockChain, privKey *ecdsa.P
 		chain:          chain,
 		currentBlock:   chain.CurrentBlock,
 		mineNewBlockCh: mineNewBlockCh,
-		recvNewBlockCh: make(chan *types.Block),
+		recvNewBlockCh: recvBlockCh,
+		timeToMineCh:   make(chan struct{}),
+		quitCh:         make(chan struct{}),
 	}
-	recvBlockCh = m.recvNewBlockCh
 	return m
 }
 
@@ -55,8 +56,8 @@ func (m *Miner) Start() {
 	if !atomic.CompareAndSwapInt32(&m.mining, 0, 1) {
 		log.Warn("have already start mining")
 	}
-	m.modifyTimer()
 	go m.loop()
+	m.modifyTimer()
 	log.Info("start mining...")
 }
 
@@ -70,6 +71,10 @@ func (m *Miner) Stop() {
 
 func (m *Miner) IsMining() bool {
 	return atomic.LoadInt32(&m.mining) == 1
+}
+
+func (m *Miner) SetLemoBase(address common.Address) {
+	m.lemoBase = address
 }
 
 // 获取最新区块的时间戳离当前时间的距离 单位：ms
@@ -101,8 +106,16 @@ func (m *Miner) modifyTimer() {
 		log.Debug(fmt.Sprintf("modifyTimer: waitTime:%d", waitTime))
 		return
 	}
-	timeDur := m.getTimespan()                                                                                          // 获取当前时间与最新块的时间差
-	slot := deputynode.Instance().GetSlot(m.currentBlock().Header.Height, m.currentBlock().Header.LemoBase, m.lemoBase) // 获取新块离本节点索引的距离
+	timeDur := m.getTimespan() // 获取当前时间与最新块的时间差
+	myself := deputynode.Instance().GetNodeByNodeID(m.currentBlock().Height(), deputynode.GetSelfNodeID())
+	if myself == nil {
+		return
+	}
+	curBlock := m.currentBlock().Header
+	slot := deputynode.Instance().GetSlot(curBlock.Height, curBlock.LemoBase, myself.LemoBase) // 获取新块离本节点索引的距离
+	if slot == -1 {
+		return
+	}
 	oneLoopTime := int64(nodeCount) * m.timeoutTime
 	log.Debug(fmt.Sprintf("modifyTimer: timeDur:%d slot:%d oneLoopTime:%d", timeDur, slot, oneLoopTime))
 	if slot == 0 { // 上一个块为自己出的块
@@ -217,12 +230,25 @@ func (m *Miner) sealBlock() {
 		return
 	}
 	m.chain.AccountManager().Save(header.Hash())
+	log.Infof("mine a block. height: %d hash: %s", block.Height(), block.Hash().String())
 	m.mineNewBlockCh <- block
+	nodeCount := deputynode.Instance().GetDeputyNodesCount()
+	var timeDur int64
+	if nodeCount == 1 {
+		timeDur = m.blockInternal
+	} else {
+		timeDur = int64(nodeCount-1) * m.timeoutTime
+	}
+	m.resetMinerTimer(timeDur)
 }
 
 // sealHead 生成区块头
 func (m *Miner) sealHead() *types.Header {
 	parent := m.currentBlock()
+	if parent.Height() == 0 || (parent.Height()+1)%1001000 == 1 {
+		n := deputynode.Instance().GetNodeByNodeID(parent.Height()+1, deputynode.GetSelfNodeID())
+		m.SetLemoBase(n.LemoBase)
+	}
 	return &types.Header{
 		ParentHash: parent.Hash(),
 		LemoBase:   m.lemoBase,

@@ -21,7 +21,7 @@ func GetSelfNodeKey() *ecdsa.PrivateKey {
 }
 
 func GetSelfNodeID() []byte {
-	return crypto.FromECDSAPub(&selfNodeKey.PublicKey)
+	return (crypto.FromECDSAPub(&selfNodeKey.PublicKey))[1:]
 }
 
 func SetSelfNodeKey(key *ecdsa.PrivateKey) {
@@ -36,17 +36,17 @@ type DeputyNode struct {
 	NodeID   []byte         `json:"nodeID"     gencodec:"required"`
 	IP       net.IP         `json:"ip"         gencodec:"required"` // ip
 	Port     uint           `json:"port"       gencodec:"required"` // 端口
-	Ranking  uint           `json:"ranking"    gencodec:"required"` // 排名 从0开始
+	Rank     uint           `json:"rank"       gencodec:"required"` // 排名 从0开始
 	Votes    uint64         `json:"votes"      gencodec:"required"` // 得票数
 }
 type DeputyNodes []DeputyNode
 
 type Marshaling struct {
-	NodeID  hexutil.Bytes
-	IP      hexutil.IP
-	Port    math.HexOrDecimal64
-	Ranking math.HexOrDecimal64
-	Votes   math.HexOrDecimal64
+	NodeID hexutil.Bytes
+	IP     hexutil.IP
+	Port   math.HexOrDecimal64
+	Rank   math.HexOrDecimal64
+	Votes  math.HexOrDecimal64
 }
 
 type DeputyNodesRecord struct {
@@ -136,6 +136,9 @@ func (d *Manager) GetNodeByNodeID(height uint32, nodeID []byte) *DeputyNode {
 func (d *Manager) GetSlot(height uint32, firstAddress, nextAddress common.Address) int {
 	firstNode := d.GetNodeByAddress(height, firstAddress)
 	nextNode := d.GetNodeByAddress(height, nextAddress)
+	if height == 0 && nextNode != nil {
+		return int(nextNode.Rank + 1)
+	}
 	if firstNode == nil || nextNode == nil {
 		return -1
 	}
@@ -143,7 +146,7 @@ func (d *Manager) GetSlot(height uint32, firstAddress, nextAddress common.Addres
 	var emptyAddr [20]byte
 	if bytes.Compare(firstAddress[:], emptyAddr[:]) == 0 {
 		log.Debug("getSlot: firstAddress is empty")
-		return int(nextNode.Ranking + 1)
+		return int(nextNode.Rank + 1)
 	}
 	nodeCount := d.GetDeputyNodesCount()
 	// 只有一个主节点
@@ -151,7 +154,7 @@ func (d *Manager) GetSlot(height uint32, firstAddress, nextAddress common.Addres
 		log.Debug("getSlot: only one star node")
 		return 1
 	}
-	return (int(nextNode.Ranking-firstNode.Ranking) + nodeCount) % nodeCount
+	return (int(nextNode.Rank-firstNode.Rank) + nodeCount) % nodeCount
 }
 
 // TimeToHandOutRewards 是否该发出块奖励了

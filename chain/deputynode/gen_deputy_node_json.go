@@ -21,7 +21,7 @@ func (d DeputyNode) MarshalJSON() ([]byte, error) {
 		NodeID   hexutil.Bytes       `json:"nodeID"     gencodec:"required"`
 		IP       hexutil.IP          `json:"ip"         gencodec:"required"`
 		Port     math.HexOrDecimal64 `json:"port"       gencodec:"required"`
-		Ranking  math.HexOrDecimal64 `json:"ranking"    gencodec:"required"`
+		Rank     math.HexOrDecimal64 `json:"rank"       gencodec:"required"`
 		Votes    math.HexOrDecimal64 `json:"votes"      gencodec:"required"`
 	}
 	var enc DeputyNode
@@ -29,7 +29,7 @@ func (d DeputyNode) MarshalJSON() ([]byte, error) {
 	enc.NodeID = d.NodeID
 	enc.IP = hexutil.IP(d.IP)
 	enc.Port = math.HexOrDecimal64(d.Port)
-	enc.Ranking = math.HexOrDecimal64(d.Ranking)
+	enc.Rank = math.HexOrDecimal64(d.Rank)
 	enc.Votes = math.HexOrDecimal64(d.Votes)
 	return json.Marshal(&enc)
 }
@@ -41,7 +41,7 @@ func (d *DeputyNode) UnmarshalJSON(input []byte) error {
 		NodeID   *hexutil.Bytes       `json:"nodeID"     gencodec:"required"`
 		IP       *hexutil.IP          `json:"ip"         gencodec:"required"`
 		Port     *math.HexOrDecimal64 `json:"port"       gencodec:"required"`
-		Ranking  *math.HexOrDecimal64 `json:"ranking"    gencodec:"required"`
+		Rank     *math.HexOrDecimal64 `json:"rank"       gencodec:"required"`
 		Votes    *math.HexOrDecimal64 `json:"votes"      gencodec:"required"`
 	}
 	var dec DeputyNode
@@ -64,10 +64,10 @@ func (d *DeputyNode) UnmarshalJSON(input []byte) error {
 		return errors.New("missing required field 'port' for DeputyNode")
 	}
 	d.Port = uint(*dec.Port)
-	if dec.Ranking == nil {
-		return errors.New("missing required field 'ranking' for DeputyNode")
+	if dec.Rank == nil {
+		return errors.New("missing required field 'rank' for DeputyNode")
 	}
-	d.Ranking = uint(*dec.Ranking)
+	d.Rank = uint(*dec.Rank)
 	if dec.Votes == nil {
 		return errors.New("missing required field 'votes' for DeputyNode")
 	}
