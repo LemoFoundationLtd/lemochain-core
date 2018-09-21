@@ -18,16 +18,9 @@
 package deps
 
 var ExtModules = map[string]string{
-	"admin":    Admin_JS,
-	"debug":    Debug_JS,
-	"lemo":     Lemo_JS,
-	"miner":    Miner_JS,
-	"net":      Net_JS,
-	"personal": Personal_JS,
-	"rpc":      RPC_JS,
-	"txpool":   TxPool_JS,
-	"chain":    Chain_JS,
-	"mine":     Mine_JS,
+	"net":   Net_JS,
+	"chain": Chain_JS,
+	"mine":  Mine_JS,
 }
 
 const Chain_JS = `
@@ -464,11 +457,17 @@ lemojs._extend({
 const Net_JS = `
 lemojs._extend({
 	property: 'net',
-	methods: [],
+	methods: [
+		new lemojs._extend.Method({
+			name: 'addPeer',
+			call: 'net_addStaticPeer',
+			params: 1
+		}),
+	],
 	properties: [
 		new lemojs._extend.Property({
-			name: 'version',
-			getter: 'net_version'
+			name: 'peers',
+			getter: 'net_peers'
 		}),
 	]
 });

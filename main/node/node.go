@@ -142,7 +142,6 @@ func New(lemoConf *LemoConfig, conf *NodeConfig) (*Node, error) {
 	miner := miner.New(int64(genesisConfig.SleepTime), int64(genesisConfig.Timeout), blockChain, n.config.NodeKey(), newMinedBlockCh, recvBlockCh)
 	n.miner = miner
 	deputynode.Instance().Init()
-	//miner.SetLemoBase()
 	return n, nil
 }
 
@@ -434,6 +433,11 @@ func (n *Node) apis() []rpc.API {
 			Namespace: "mine",
 			Version:   "1.0",
 			Service:   n.miner,
+		},
+		{
+			Namespace: "net",
+			Version:   "1.0",
+			Service:   n.server,
 		},
 	}
 }
