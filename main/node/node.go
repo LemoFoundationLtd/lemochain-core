@@ -11,6 +11,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/common/flock"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/network/p2p"
@@ -35,8 +36,7 @@ type Node struct {
 	accMan *account.Manager
 	txPool *chain.TxPool
 	chain  *chain.BlockChain
-
-	pm *synchronise.ProtocolManager
+	pm     *synchronise.ProtocolManager
 	// engine   *chain.Dpovp
 	miner    *miner.Miner
 	gasPrice *big.Int
@@ -435,5 +435,19 @@ func (n *Node) apis() []rpc.API {
 			Version:   "1.0",
 			Service:   n.miner,
 		},
+		{
+			Namespace: "account",
+			Version:   "1.0",
+			Service:   &AddressManagerAPI{},
+		},
 	}
+}
+
+type AddressManagerAPI struct {
+}
+
+// NewAccount get the address
+func (a *AddressManagerAPI) NewAccount() *crypto.AddressKeyPair {
+	account := crypto.GenerateAddress()
+	return account
 }
