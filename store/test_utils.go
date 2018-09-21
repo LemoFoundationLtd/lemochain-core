@@ -148,10 +148,12 @@ func CreateBufWithNumberBatch(cnt int, template []byte) ([][]byte, error) {
 		if err != nil {
 			return nil, err
 		} else {
-			copy(template[0:4], s1.Bytes()[0:4])
-			copy(template[14:18], s1.Bytes()[0:4])
-			copy(template[28:32], s1.Bytes()[0:4])
-			result[index] = crypto.Keccak256(template)
+			buf := make([]byte, len(template))
+			copy(buf[:], template[:])
+			copy(buf[0:4], s1.Bytes()[0:4])
+			copy(buf[14:18], s1.Bytes()[0:4])
+			copy(buf[28:32], s1.Bytes()[0:4])
+			result[index] = crypto.Keccak256(buf)
 		}
 	}
 

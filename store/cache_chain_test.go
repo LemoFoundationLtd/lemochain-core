@@ -28,6 +28,10 @@ func TestCacheChain_SetBlock(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, block.ParentHash(), result.ParentHash())
 
+	result, err = cacheChain.GetBlock(block.Hash(), 0)
+	assert.NoError(t, err)
+	assert.Equal(t, block.ParentHash(), result.ParentHash())
+
 	//
 	block = GetBlock1()
 	err = cacheChain.SetBlock(block.Hash(), block)
@@ -41,6 +45,10 @@ func TestCacheChain_SetBlock(t *testing.T) {
 	assert.Equal(t, block.ParentHash(), result.ParentHash())
 
 	result, err = cacheChain.GetBlockByHash(block.Hash())
+	assert.NoError(t, err)
+	assert.Equal(t, block.ParentHash(), result.ParentHash())
+
+	result, err = cacheChain.GetBlock(block.Hash(), 1)
 	assert.NoError(t, err)
 	assert.Equal(t, block.ParentHash(), result.ParentHash())
 }
@@ -210,6 +218,10 @@ func TestCacheChain_SetAccounts(t *testing.T) {
 
 	// block is not exist
 	accounts := GetAccounts()
+
+	_, err = cacheChain.GetAccount(common.Hash{}, accounts[0].Address)
+	assert.Equal(t, ErrNotExist, err)
+
 	err = cacheChain.SetAccounts(common.Hash{}, accounts)
 	assert.Equal(t, err, ErrNotExist)
 

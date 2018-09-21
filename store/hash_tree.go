@@ -1,6 +1,8 @@
 package store
 
-import "bytes"
+import (
+	"bytes"
+)
 
 var (
 	flgValid = uint8(0x01)
@@ -74,6 +76,8 @@ func (tree *Tree) getFamily(num uint32) (*familyNode, error) {
 				return nil, err
 			} else {
 				depth := family.Ancestor.Depth
+
+				// TODO:4 or 15
 				family.Index = (num >> (depth * 4)) & 0x0f
 				family.Parents = child
 			}
@@ -119,7 +123,7 @@ func (tree *Tree) split(family *familyNode) error {
 		item := oldItems[index]
 		num := item.Num
 		depth := family.Parents[family.Index].Depth
-		val := num >> (4 * (depth + 1))
+		val := num >> (4 * depth)
 		hash := val & 0x0f
 
 		if newItems[hash] == nil {

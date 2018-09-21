@@ -1,45 +1,85 @@
 package store
 
 import (
-	"io"
+	"github.com/stretchr/testify/assert"
+	"os"
 	"testing"
 )
 
-func TestMFile_Write(t *testing.T) {
-	mfile, err := OpenMFileForWrite("../../lmstore/test.hint")
-	if err != nil {
-		t.Errorf("OPEN FILE FOR WRITE FAIL.%s", err.Error())
+func PathIsExist(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
 	}
 
-	data := []byte{'x', 'g', 'g', 'y', 'x', 'g', 'g', 'y', 'x', 'g', 'g', 'y', 'x', 'g', 'g', 'y', 'x', 'g', 'g', 'y', 'x', 'g', 'g', 'y', 'x', 'g', 'g', 'y', 'x', 'g', 'g', 'y'}
-	for index := 0; index < 10000; index++ {
-		err = mfile.Write(data)
-		if err != nil {
-			t.Errorf(" MFILE WRITE FAIL.%s", err.Error())
-		} else {
-			//t.Logf("MFILE WRITE SUCCESS.")
-		}
+	if os.IsNotExist(err) {
+		return false, nil
+	} else {
+		return false, err
 	}
-	mfile.Flush()
+}
 
-	rfile, err := OpenMFileForRead("../../lmstore/test.hint")
-	if err != nil {
-		t.Errorf("OPEN FILE FOR READ FAIL.%s", err.Error())
+func TestMFile_Write2(t *testing.T) {
+	ClearData()
+
+	path := GetStorePath()
+	isExist, err := PathIsExist(path)
+	assert.NoError(t, err)
+
+	if !isExist {
+		err = os.MkdirAll(path, os.ModePerm)
+		assert.NoError(t, err)
 	}
 
-	offset := int64(0)
-	cnt := 0
+	path1 := path + "//test1_hint.hint"
+	file, err := OpenMFileForWrite(path1)
+	assert.NoError(t, err)
+
+	uintSize := 32
+	wBuf, err := CreateBufWithNumber(uintSize)
+	assert.NoError(t, err)
+
+	totalCnt := 256 * 256 * 16
+	for index := 0; index < totalCnt; index++ {
+		err = file.Write(wBuf)
+		assert.NoError(t, err)
+	}
+	file.Flush()
+
+	// test file size
+	info, err := os.Stat(path1)
+	assert.NoError(t, err)
+
+	totalSize := totalCnt * uintSize
+	assert.Equal(t, info.Size(), int64(totalSize))
+
+	path2 := path + "//test2_hint.hint"
+	file1, err := OpenMFileForRead(path1)
+	assert.NoError(t, err)
+
+	file2, err := OpenMFileForWrite(path2)
+	assert.NoError(t, err)
+
+	offset := 0
 	for {
-		_, err := rfile.Read(offset, 32)
-		if err != nil {
-			if err != io.EOF {
-				t.Errorf("MFILE READ FAIL.%s", err.Error())
-			}
+		if offset > totalSize {
+			break
+		}
 
+		rBuf, err := file1.Read(int64(offset), int64(uintSize))
+		if err == ErrEOF {
 			break
 		} else {
-			offset += 32
-			cnt += 1
+			assert.NoError(t, err)
 		}
+
+		err = file2.Write(rBuf)
+		assert.NoError(t, err)
+		offset = offset + uintSize
 	}
+	file2.Flush()
+
+	info, err = os.Stat(path2)
+	assert.NoError(t, err)
+	assert.Equal(t, info.Size(), int64(totalSize))
 }

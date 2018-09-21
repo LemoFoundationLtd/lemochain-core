@@ -3,7 +3,6 @@ package store
 import (
 	"bytes"
 	"encoding/binary"
-	"io"
 	"os"
 )
 
@@ -32,7 +31,7 @@ func (mFile *MFile) Read(offset int64, size int64) ([]byte, error) {
 	}
 
 	if (offset + size) > mFile.size {
-		return nil, io.EOF
+		return nil, ErrEOF
 	}
 
 	result := make([]byte, size)
@@ -235,7 +234,7 @@ func CompareFile(index int, dataMFile *MFile, hintMFile *MFile, after int64) err
 	for {
 		data, err := dataMFile.Read(offset, int64(dataHeaderLen))
 		if err != nil {
-			if err != io.EOF {
+			if err != ErrEOF {
 				return err
 			} else {
 				return nil
@@ -249,7 +248,7 @@ func CompareFile(index int, dataMFile *MFile, hintMFile *MFile, after int64) err
 
 		key, err := dataMFile.Read(offset+int64(dataHeaderLen), int64(header.KLen))
 		if err != nil {
-			if err != io.EOF {
+			if err != ErrEOF {
 				return err
 			} else {
 				return nil
