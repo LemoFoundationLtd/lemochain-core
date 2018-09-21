@@ -71,7 +71,9 @@ type Server struct {
 
 	listener net.Listener // TCP监听
 
-	nodeList []string // nodedatabase配置的节点列表
+	nodeList []string         // nodedatabase配置的节点列表
+	peers    map[NodeID]*Peer // 记录所有的节点连接
+	peersMux sync.Mutex
 
 	quit      chan struct{}
 	addPeerCh chan *Peer
@@ -122,6 +124,7 @@ func (srv *Server) Start() error {
 	if srv.addPeerCh == nil {
 		srv.addPeerCh = make(chan *Peer)
 	}
+	srv.peers = make(map[NodeID]*Peer)
 	if srv.delPeerCh == nil {
 		srv.delPeerCh = make(chan *Peer)
 	}
@@ -216,16 +219,18 @@ func (srv *Server) run() {
 	srv.loopWG.Add(1)
 	defer srv.loopWG.Done()
 
-	peers := make(map[NodeID]*Peer) // 记录所有的节点连接
-	go srv.runDialLoop()            // 启动主动连接调度
+	// peers := make(map[NodeID]*Peer) // 记录所有的节点连接
+	go srv.runDialLoop() // 启动主动连接调度
 	for {
 		select {
 		case p := <-srv.addPeerCh:
-			if _, ok := peers[p.nodeId]; ok {
+			if _, ok := srv.peers[p.nodeId]; ok {
 				p.Close()
 				break
 			}
-			peers[p.nodeId] = p
+			srv.peersMux.Lock()
+			srv.peers[p.nodeId] = p
+			srv.peersMux.Unlock()
 			go srv.runPeer(p)
 			if srv.PeerEvent != nil { // 通知外界收到新的节点
 				if err := srv.PeerEvent(p, AddPeerFlag); err != nil {
@@ -233,7 +238,9 @@ func (srv *Server) run() {
 				}
 			}
 		case p := <-srv.delPeerCh:
-			delete(peers, p.nodeId)
+			srv.peersMux.Lock()
+			delete(srv.peers, p.nodeId)
+			srv.peersMux.Unlock()
 			if srv.PeerEvent != nil { // 通知外界节点drop
 				if err := srv.PeerEvent(p, DropPeerFlag); err != nil {
 					log.Error("peer event error", "err", err)
@@ -334,5 +341,26 @@ func (srv *Server) runDialLoop() {
 }
 
 func (srv *Server) AddStaticPeer(node string) {
+	tmps := strings.Split(node, ":")
+	if len(tmps) != 2 {
+		return
+	}
+	if ip := net.ParseIP(tmps[0]); ip == nil {
+		return
+	}
+	port, err := strconv.Atoi(tmps[1])
+	if err != nil || port < 1024 || port > 65535 {
+		return
+	}
 	srv.needConnectNodeCh <- node
+}
+
+func (srv *Server) Peers() []string {
+	srv.peersMux.Lock()
+	defer srv.peersMux.Unlock()
+	result := make([]string, 0, len(srv.peers))
+	for _, v := range srv.peers {
+		result = append(result, v.rw.fd.LocalAddr().String())
+	}
+	return result
 }

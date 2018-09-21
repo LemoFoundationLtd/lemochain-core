@@ -48,3 +48,17 @@ func TestTree_Split(t *testing.T) {
 		assert.Equal(t, item.Pos, pos)
 	}
 }
+
+func BenchmarkTree_Add(b *testing.B) {
+	tree, _ := NewTree()
+
+	testCnt := 256
+	key1, _ := NewKey1()
+	keys, _ := CreateBufWithNumberBatch(testCnt, key1)
+	for index := 0; index < testCnt; index++ {
+		key := keys[index]
+		pos := uint32(index)
+		tree.Add(key, pos)
+		tree.Get(key)
+	}
+}
