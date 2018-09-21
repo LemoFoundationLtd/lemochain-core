@@ -1,0 +1,334 @@
+package account
+
+import (
+	"errors"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
+	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-go/common/log"
+	"github.com/LemoFoundationLtd/lemochain-go/store"
+	"github.com/LemoFoundationLtd/lemochain-go/store/protocol"
+	"github.com/LemoFoundationLtd/lemochain-go/store/trie"
+	"math/big"
+	"sort"
+)
+
+// Trie cache generation limit after which to evict trie nodes from memory.
+const MaxTrieCacheGen = uint16(120)
+
+var (
+	ErrRevisionNotExist = errors.New("revision cannot be reverted")
+)
+
+// Manager is used to maintain the newest and not confirmed account data. It will save all data to the db when finished a block's transactions processing.
+type Manager struct {
+	db     protocol.ChainDB
+	trieDb *store.TrieDatabase // used to access tire data in file
+	// Manager loads all data from the branch where the baseBlockHash is
+	baseBlockHash common.Hash
+
+	// This map holds 'live' accounts, which will get modified while processing a state transition.
+	accountCache map[common.Address]*SafeAccount
+
+	processor   *logProcessor
+	versionTrie *trie.SecureTrie
+}
+
+// NewManager creates a new Manager. it is used to maintain account changes based on the block environment which specified by blockHash
+func NewManager(blockHash common.Hash, db protocol.ChainDB) *Manager {
+	if db == nil {
+		panic("account.NewManager is called without a database")
+	}
+	manager := &Manager{
+		db:            db,
+		baseBlockHash: blockHash,
+		accountCache:  make(map[common.Address]*SafeAccount),
+		trieDb:        db.GetTrieDatabase(),
+	}
+	manager.processor = &logProcessor{
+		manager:    manager,
+		changeLogs: make([]*types.ChangeLog, 0),
+		events:     make([]*types.Event, 0),
+	}
+	return manager
+}
+
+// GetAccount loads account from cache or db, or creates a new one if it's not exist.
+func (am *Manager) GetAccount(address common.Address) (types.AccountAccessor, error) {
+	cached := am.accountCache[address]
+	if cached == nil {
+		data, err := am.db.GetAccount(am.baseBlockHash, address)
+		if err != nil && err != store.ErrNotExist {
+			return nil, err
+		}
+		account := NewAccount(am.db, address, data)
+		cached = NewSafeAccount(am.processor, account)
+		// cache it
+		am.accountCache[address] = cached
+	}
+	return cached, nil
+}
+
+// GetCanonicalAccount loads an account object from confirmed block in db, or creates a new one if it's not exist.
+func (am *Manager) GetCanonicalAccount(address common.Address) (types.AccountAccessor, error) {
+	cached := am.accountCache[address]
+	if cached == nil {
+		data, err := am.db.GetCanonicalAccount(address)
+		if err != nil && err != store.ErrNotExist {
+			return nil, err
+		}
+		account := NewAccount(am.db, address, data)
+		cached = NewSafeAccount(am.processor, account)
+		// cache it
+		am.accountCache[address] = cached
+	}
+	return cached, nil
+}
+
+// getRawAccount loads an account same as GetAccount, but editing the account of this method returned is not going to generate change logs.
+// This method is used for ChangeLog.Redo/Undo.
+func (am *Manager) getRawAccount(address common.Address) (types.AccountAccessor, error) {
+	safeAccount, err := am.GetAccount(address)
+	if err != nil {
+		return nil, err
+	}
+	// Change this account will change safeAccount. They are same pointers
+	account := safeAccount.(*SafeAccount).rawAccount
+	return account, nil
+}
+
+// AddEvent records the event add action when a transaction's execution finished
+func (am *Manager) AddEvent(address common.Address, txHash common.Hash, events []*types.Event) error {
+	account, err := am.getRawAccount(address)
+	if err != nil {
+		return err
+	}
+	am.processor.PushChangeLog(NewAddEventLog(account, txHash, events))
+	am.processor.AddEvent(events)
+	return nil
+}
+
+// GetEvents returns all events since last reset
+func (am *Manager) GetEvents() []*types.Event {
+	return am.processor.events[:]
+}
+
+// GetChangeLogs returns all change logs since last reset
+func (am *Manager) GetChangeLogs() []*types.ChangeLog {
+	return am.processor.changeLogs
+}
+
+// getVersionTrie loads version trie by the version root from baseBlockHash
+func (am *Manager) getVersionTrie() *trie.SecureTrie {
+	if am.versionTrie == nil {
+		var root common.Hash
+		// not genesis block
+		if (am.baseBlockHash != common.Hash{}) {
+			// load last version trie root
+			block, err := am.db.GetBlockByHash(am.baseBlockHash)
+			if err != nil {
+				panic(err)
+			}
+			root = block.Header.VersionRoot
+		}
+
+		var err error
+		am.versionTrie, err = trie.NewSecure(root, am.trieDb, MaxTrieCacheGen)
+		if err != nil {
+			panic(err)
+		}
+	}
+	return am.versionTrie
+}
+
+func (am *Manager) GetVersionRoot() common.Hash {
+	return am.getVersionTrie().Hash()
+}
+
+// clear clears all data from one block so that Manager can get ready to process another block's transactions
+func (am *Manager) clear() {
+	am.accountCache = make(map[common.Address]*SafeAccount)
+	am.processor.clear()
+	am.versionTrie = nil
+}
+
+// Reset clears out all data and switch state to the new block environment.
+func (am *Manager) Reset(blockHash common.Hash) {
+	am.baseBlockHash = blockHash
+	am.clear()
+}
+
+// Snapshot returns an identifier for the current revision of the state.
+func (am *Manager) Snapshot() int {
+	return am.processor.Snapshot()
+}
+
+// RevertToSnapshot reverts all state changes made since the given revision.
+func (am *Manager) RevertToSnapshot(revid int) {
+	am.processor.RevertToSnapshot(revid)
+}
+
+// Finalise finalises the state, clears the change caches and update tries.
+func (am *Manager) Finalise() error {
+	// current block height
+	var height uint32
+	if (am.baseBlockHash == common.Hash{}) {
+		height = 1
+	} else {
+		block, err := am.db.GetBlockByHash(am.baseBlockHash)
+		if err != nil {
+			panic(err)
+		}
+		height = block.Height() + 1
+	}
+	versionTrie := am.getVersionTrie()
+	for _, account := range am.accountCache {
+		if !account.IsDirty() {
+			continue
+		}
+		// update account and contract storage
+		if err := account.rawAccount.Finalise(height); err != nil {
+			return err
+		}
+		// update version trie
+		address := account.GetAddress().Bytes()
+		version := big.NewInt(int64(account.GetVersion())).Bytes()
+		if err := versionTrie.TryUpdate(address, version); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Save writes dirty data into db.
+func (am *Manager) Save(newBlockHash common.Hash) error {
+	dirtyAccounts := make([]*types.AccountData, 0, len(am.accountCache))
+	for _, account := range am.accountCache {
+		if !account.IsDirty() {
+			continue
+		}
+		if err := account.rawAccount.Save(); err != nil {
+			return err
+		}
+		dirtyAccounts = append(dirtyAccounts, &account.rawAccount.data)
+	}
+	// save accounts to db
+	if len(dirtyAccounts) != 0 {
+		if err := am.db.SetAccounts(newBlockHash, dirtyAccounts); err != nil {
+			log.Errorf("save accounts to db fail: %v", err)
+			return err
+		}
+	}
+	// update version trie nodes' hash
+	root, err := am.getVersionTrie().Commit(nil)
+	if err != nil {
+		return err
+	}
+	// save version trie
+	err = am.trieDb.Commit(root, false)
+	if err != nil {
+		log.Errorf("save version trie fail: %v", err)
+		return err
+	}
+	am.clear()
+	return nil
+}
+
+type revision struct {
+	id           int
+	journalIndex int
+}
+
+// logProcessor records change logs and contract events during block's transaction execution. It can access raw account data for undo/redo
+type logProcessor struct {
+	manager *Manager
+
+	// The change logs generated by transactions from the same block
+	changeLogs     []*types.ChangeLog
+	validRevisions []revision
+	nextRevisionId int
+
+	// This map holds contract events generated by every transactions
+	events []*types.Event
+}
+
+func (h *logProcessor) GetAccount(addr common.Address) (types.AccountAccessor, error) {
+	return h.manager.getRawAccount(addr)
+}
+
+func (h *logProcessor) AddEvent(events []*types.Event) {
+	h.events = append(h.events, events...)
+}
+
+func (h *logProcessor) RevertEvent(txHash common.Hash) {
+	result := h.events[:0]
+	for _, event := range h.events {
+		if event.TxHash != txHash {
+			result = append(result, event)
+		}
+	}
+	h.events = result
+}
+
+func (h *logProcessor) PushChangeLog(log *types.ChangeLog) {
+	h.changeLogs = append(h.changeLogs, log)
+}
+
+func (h *logProcessor) clear() {
+	h.changeLogs = make([]*types.ChangeLog, 0)
+	h.events = make([]*types.Event, 0)
+}
+
+// Snapshot returns an identifier for the current revision of the change log.
+func (h *logProcessor) Snapshot() int {
+	id := h.nextRevisionId
+	h.nextRevisionId++
+	h.validRevisions = append(h.validRevisions, revision{id, len(h.changeLogs)})
+	return id
+}
+
+// RevertToSnapshot reverts all changes made since the given revision.
+func (h *logProcessor) RevertToSnapshot(revid int) {
+	// Find the snapshot in the stack of valid snapshots.
+	idx := sort.Search(len(h.validRevisions), func(i int) bool {
+		return h.validRevisions[i].id >= revid
+	})
+	if idx == len(h.validRevisions) || h.validRevisions[idx].id != revid {
+		log.Errorf("revision id %v cannot be reverted", revid)
+		panic(ErrRevisionNotExist)
+	}
+	snapshot := h.validRevisions[idx].journalIndex
+
+	// Replay the change log to undo changes.
+	for i := len(h.changeLogs) - 1; i >= snapshot; i-- {
+		h.changeLogs[i].Undo(h)
+	}
+	h.changeLogs = h.changeLogs[:snapshot]
+
+	// Remove invalidated snapshots from the stack.
+	h.validRevisions = h.validRevisions[:idx]
+}
+
+// Rebuild loads and redo all change logs to update account to the newest state.
+//
+// TODO Changelog maybe retrieved from other node, so the account in local store is not contain the newest VersionRecords.
+// We'd better change this function to "Rebuild(address common.Address, logs []types.ChangeLog)" cause the Rebuild function is called by change log synchronization module
+func (am *Manager) Rebuild(address common.Address) error {
+	accountAccessor, err := am.getRawAccount(address)
+	if err != nil {
+		return err
+	}
+	account := accountAccessor.(*Account)
+	logs, err := account.LoadChangeLogs(account.GetVersion() + 1)
+	for _, log := range logs {
+		err = log.Redo(&logProcessor{manager: am})
+		if err != nil && err != types.ErrAlreadyRedo {
+			return err
+		}
+	}
+	// save account
+	return am.db.SetAccounts(am.baseBlockHash, []*types.AccountData{&account.data})
+}
+
+func (am *Manager) Stop(graceful bool) error {
+	return nil
+}

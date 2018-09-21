@@ -1,0 +1,35 @@
+# See http://help.github.com/ignore-files/ for more about ignoring files.
+
+*/**/*un~
+*/**/*.test
+*un~
+.DS_Store
+*/**/.DS_Store
+*/**/*tx_database*
+*/**/*dapps*
+build/_vendor/pkg
+
+#*
+.#*
+*#
+*~
+.project
+.settings
+
+# used by the Makefile
+/build/_workspace/
+/build/bin/
+
+# travis
+profile.tmp
+profile.cov
+
+# IdeaIDE
+.idea
+
+# VS Code
+.vscode
+
+**/yarn-error.log
+log.json
+/db

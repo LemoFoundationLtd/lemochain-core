@@ -1,0 +1,486 @@
+package synchronise
+
+import (
+	"errors"
+	"fmt"
+	"github.com/LemoFoundationLtd/lemochain-go/chain"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
+	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
+	"github.com/LemoFoundationLtd/lemochain-go/common/dpovp"
+	"github.com/LemoFoundationLtd/lemochain-go/common/log"
+	"github.com/LemoFoundationLtd/lemochain-go/network/p2p"
+	"github.com/LemoFoundationLtd/lemochain-go/network/synchronise/protocol"
+	"strings"
+	"sync"
+	"time"
+)
+
+type ProtocolManager struct {
+	networkId uint64
+	nodeID    []byte
+
+	blockchain *chain.BlockChain
+
+	downloader *Downloader
+	fetcher    *Fetcher
+
+	peers *peerSet
+
+	txPool *chain.TxPool
+
+	newPeerCh       chan *peer
+	txsCh           chan types.Transactions
+	newMinedBlockCh chan *types.Block //todo
+	quitSync        chan struct{}
+
+	wg sync.WaitGroup
+}
+
+func NewProtocolManager(networkId uint64, nodeID []byte, blockchain *chain.BlockChain, txpool *chain.TxPool, newBlockCh chan *types.Block, txsCh chan types.Transactions) *ProtocolManager {
+	manager := &ProtocolManager{
+		networkId:       networkId,
+		nodeID:          nodeID,
+		blockchain:      blockchain,
+		peers:           newPeerSet(),
+		txPool:          txpool,
+		newMinedBlockCh: newBlockCh,
+		txsCh:           txsCh,
+		newPeerCh:       make(chan *peer),
+		quitSync:        make(chan struct{}),
+	}
+	// 获取本地链高度
+	getLocalHeight := func() uint32 {
+		return blockchain.CurrentBlock().Height()
+	}
+	// 获取本地链已共识的高度
+	getConsensusHeight := func() uint32 {
+		return blockchain.StableBlock().Height()
+	}
+	// 将区块集合插入链
+	insertToChain := func(block *types.Block) error {
+		return blockchain.InsertChain(block)
+	}
+	manager.fetcher = NewFetcher(blockchain.GetBlock, blockchain.Verify, manager.broadcastCurrentBlock, getLocalHeight, getConsensusHeight, insertToChain, manager.dropPeer)
+	manager.downloader = NewDownloader(blockchain, manager.dropPeer)
+
+	blockchain.BroadcastConfirmInfo = manager.broadcastConfirmInfo // 广播区块的确认信息
+	blockchain.BroadcastStableBlock = manager.broadcastStableBlock // 广播稳定区块
+
+	return manager
+}
+
+// broadcastCurrentBlock 广播区块(只有hash|height:别人挖到的块，完整块：自己挖到的块)
+func (pm *ProtocolManager) broadcastCurrentBlock(block *types.Block, hasBody bool) {
+	if block == nil {
+		log.Warn("can't broadcast nil block")
+		return
+	}
+	var (
+		blocks      types.Blocks
+		blockHashes protocol.BlockHashesData
+	)
+	if hasBody {
+		blocks = types.Blocks{block}
+	} else {
+		blockHashes = protocol.BlockHashesData{{block.Hash(), block.Height()}}
+	}
+	// 分辨共识节点与普通节点 后期可以提到外部，每轮间隔只执行一次
+	witnessPeers := make(map[string]*peerConnection, len(pm.peers.peers))
+	delayPeers := make(map[string]*peerConnection, len(pm.peers.peers))
+	for id, p := range pm.peers.peers {
+		if pm.isSelfDeputyNode() { // 本节点为共识节点，
+			witnessPeers[id] = p
+		} else {
+			delayPeers[id] = p
+		}
+	}
+	// 判断本节点是共识节点否
+	if pm.isSelfDeputyNode() {
+		// 若是则广播给所有节点
+		for _, p := range pm.peers.peers {
+			if hasBody {
+				p.peer.send(protocol.BlockHashesMsg, &blocks)
+			} else {
+				p.peer.send(protocol.BlockHashesMsg, &blockHashes)
+			}
+		}
+	} else {
+		// 若否则不能向共识节点广播
+		for _, p := range delayPeers {
+			if hasBody {
+				p.peer.send(protocol.BlockHashesMsg, &blocks)
+			} else {
+				p.peer.send(protocol.BlockHashesMsg, &blockHashes)
+			}
+		}
+	}
+}
+
+// isPeerDeputyNode 判断节点是否为共识节点
+func (pm *ProtocolManager) isPeerDeputyNode(height uint32, id string) bool {
+	nodeID := common.FromHex(id)
+	node := deputynode.Instance().GetNodeByNodeID(height, nodeID)
+	if node == nil {
+		return false
+	}
+	return true
+}
+
+// isSelfDeputyNode 本节点是否为共识节点
+func (pm *ProtocolManager) isSelfDeputyNode() bool {
+	node := deputynode.Instance().GetNodeByNodeID(pm.blockchain.CurrentBlock().Height(), pm.nodeID)
+	if node == nil {
+		return false
+	}
+	return true
+}
+
+// broadcastConfirmInfo 广播自己对收到的区块确认签名信息
+func (pm *ProtocolManager) broadcastConfirmInfo(hash common.Hash, height uint32) {
+	data := protocol.BlockConfirmData{
+		Hash:   hash,
+		Height: height,
+	}
+	privKey := dpovp.GetPrivKey()
+	signInfo, err := crypto.Sign(hash[:], &privKey)
+	if err != nil {
+		log.Error("sign for confirm data error")
+		return
+	}
+	copy(data.SignInfo[:], signInfo)
+	// data.SignInfo = signInfo
+	for id, p := range pm.peers.peers {
+		if pm.isPeerDeputyNode(height, id) {
+			p.peer.send(protocol.NewConfirmMsg, &data)
+		}
+	}
+}
+
+// broadcastStableBlock 广播稳定区块给普通全节点
+func (pm *ProtocolManager) broadcastStableBlock(block *types.Block) {
+	if block == nil {
+		log.Warn("can't broadcast nil stable block ")
+		return
+	}
+	for id, p := range pm.peers.peers {
+		if !pm.isPeerDeputyNode(block.Height(), id) {
+			p.peer.send(protocol.NewConfirmMsg, &block)
+		}
+	}
+}
+
+// dropPeer 断开连接
+func (pm *ProtocolManager) dropPeer(id string) {
+	pm.peers.Unregister(id)
+	pm.downloader.UnRegisterPeer(id)
+}
+
+// PeerEvent 节点事件通知回调，主要有新增、删除节点
+func (pm *ProtocolManager) PeerEvent(peer *p2p.Peer, flag p2p.PeerEventFlag) error {
+	switch flag {
+	case p2p.AddPeerFlag:
+		p := newPeer(peer)
+		select {
+		case pm.newPeerCh <- p:
+			pm.wg.Add(1)
+			defer pm.wg.Done()
+			return pm.handle(p)
+		case <-pm.quitSync:
+			return errors.New("quit")
+		}
+	case p2p.DropPeerFlag:
+		pm.dropPeer(peer.NodeID().String())
+	default:
+
+	}
+	return nil
+}
+
+// handle 处理新的节点连接
+func (pm *ProtocolManager) handle(p *peer) error {
+	block := pm.blockchain.CurrentBlock()
+	if err := p.Handshake(pm.networkId, block.Height(), block.Hash(), pm.blockchain.Genesis().Hash()); err != nil {
+		log.Debug("lemochain handshake failed", "err", err)
+		return err
+	}
+	pm.syncTransactions(p.id)
+
+	pConn := &peerConnection{
+		id:   p.id,
+		peer: p,
+	}
+	pm.peers.Register(pConn)
+	pm.downloader.RegisterPeer(p.id, p)
+	// 死循环 处理收到的网络消息
+	for {
+		if err := pm.handleMsg(pConn); err != nil {
+			log.Debug("lemo chain message handled failed")
+			return err
+		}
+	}
+}
+
+// handleMsg 处理节点发送的消息
+func (pm *ProtocolManager) handleMsg(p *peerConnection) error {
+	msg := p.peer.ReadMsg()
+	if msg.Empty() {
+		return errors.New("read message error")
+	}
+	switch msg.Code {
+	case protocol.BlockHashesMsg: // 只有block的hash
+		if pm.isSelfDeputyNode() && !pm.isPeerDeputyNode(pm.blockchain.CurrentBlock().Height(), p.id) {
+			return errors.New("recv block hashes message broadcast by delay node")
+		}
+		var announces protocol.BlockHashesData
+		if err := msg.Decode(&announces); err != nil {
+			return errResp(protocol.ErrDecode, "%v: %v", msg, err)
+		}
+		for _, block := range announces {
+			p.peer.MarkBlock(block.Hash)
+		}
+		unknown := make(protocol.BlockHashesData, 0, len(announces))
+		for _, block := range announces {
+			if !pm.blockchain.HasBlock(block.Hash, block.Height) {
+				unknown = append(unknown, block)
+			}
+		}
+		for _, block := range unknown {
+			pm.fetcher.Notify(p.id, block.Hash, block.Height, p.peer.RequestOneBlock)
+		}
+	case protocol.TxMsg:
+		var txs types.Transactions
+		if err := msg.Decode(&txs); err != nil {
+			return errResp(protocol.ErrDecode, "msg %v: %v", msg, err)
+		}
+		for i, tx := range txs {
+			if tx == nil {
+				return errResp(protocol.ErrDecode, "transaction %d is nil", i)
+			}
+			p.peer.MarkTransaction(tx.Hash())
+		}
+		pm.txPool.AddTxs(txs)
+	case protocol.GetBlocksMsg:
+		var query protocol.GetBlocksData
+		if err := msg.Decode(&query); err != nil {
+			return errResp(protocol.ErrDecode, "%v: %v", msg, err)
+		}
+		if query.From > query.To {
+			return errResp(protocol.ErrInvalidMsg, "%v: %s", msg, "from > to")
+		}
+		total := query.To - query.From
+		var count uint32
+		if total%10 == 0 {
+			count = total / 10
+		} else {
+			count = total/10 + 1
+		}
+		height := query.From
+		var err error
+		for i := uint32(0); i < count; i++ {
+			blocks := make(types.Blocks, 10)
+			for j := 0; j < 10; j++ {
+				blocks = append(blocks, pm.blockchain.GetBlockByHeight(height))
+				height++
+				if height > query.To {
+					return nil
+				}
+			}
+			if err = p.peer.send(protocol.BlocksMsg, blocks); err != nil { // 一次发送10个区块
+				return errResp(protocol.ErrSendBlocks, "%v: %v", msg, err)
+			}
+		}
+	case protocol.BlocksMsg: // 远程节点应答的区块集消息
+		var blocks types.Blocks
+		if err := msg.Decode(&blocks); err != nil {
+			return errResp(protocol.ErrDecode, "%v: %v", msg, err)
+		}
+		if len(blocks) == 0 {
+			return errResp(protocol.ErrNoBlocks, "%v: %s", msg, "no blocks data")
+		}
+		filter := len(blocks) == 1 // len(blocks) == 1 不一定为fetcher，但len(blocks)>1肯定是downloader
+		if filter {
+			blocks = pm.fetcher.FilterBlocks(p.id, blocks)
+		}
+		if !filter || len(blocks) > 0 {
+			if err := pm.downloader.DeliverBlocks(p.id, blocks); err != nil {
+				log.Debug("failed to deliver blocks", "err", err)
+			}
+		}
+	case protocol.GetSingleBlockMsg: // 收到一个获取区块的消息
+		var query protocol.GetSingleBlockData
+		if err := msg.Decode(&query); err != nil {
+			return errResp(protocol.ErrDecode, "%v: %v", msg, err)
+		}
+		block := pm.blockchain.GetBlock(query.Hash, query.Height)
+		p.peer.send(protocol.SingleBlockMsg, block)
+	case protocol.SingleBlockMsg: // 收到一个获取区块返回
+		var block types.Block
+		if err := msg.Decode(&block); err != nil {
+			return errResp(protocol.ErrDecode, "%v: %v", msg, err)
+		}
+		pm.fetcher.Enqueue(p.id, &block)
+	case protocol.NewBlockMsg: // 远程节点主动推送的挖到的最新区块消息
+		if pm.isSelfDeputyNode() && !pm.isPeerDeputyNode(pm.blockchain.CurrentBlock().Height(), p.id) {
+			return errors.New("recv new block message broadcast by delay node")
+		}
+		var block *types.Block
+		if err := msg.Decode(&block); err != nil {
+			return errResp(protocol.ErrDecode, "%v: %v", msg, err)
+		}
+		p.peer.MarkBlock(block.Hash()) // 标记区块
+		pm.fetcher.Enqueue(p.id, block)
+		if block.Height() > p.peer.height {
+			p.peer.SetHead(p.peer.head, p.peer.height)
+			// 清理交易池
+			txs := make([]common.Hash, 0)
+			for _, tx := range block.Txs {
+				txs = append(txs, tx.Hash())
+			}
+			pm.txPool.RemoveTxs(txs)
+			currentHeight := pm.blockchain.CurrentBlock().Height()
+			if currentHeight+1 < block.Height() {
+				go pm.synchronise(p.id)
+			}
+		}
+	case protocol.NewConfirmMsg: // 被动收到远程节点推送的新区块确认信息
+		var confirmMsg protocol.BlockConfirmData
+		if err := msg.Decode(&confirmMsg); err != nil {
+			return errResp(protocol.ErrDecode, "%v: %v", msg, err)
+		}
+		pm.blockchain.ReceiveConfirm(&confirmMsg)
+	case protocol.GetConfirmInfoMsg: // 收到远程节点发来的请求
+		var query protocol.GetConfirmInfo
+		if err := msg.Decode(&query); err != nil {
+			return errResp(protocol.ErrDecode, "%v: %v", msg, err)
+		}
+		confirmInfo := pm.blockchain.GetConfirmPackage(&query)
+		if confirmInfo == nil {
+			log.Warn(fmt.Sprintf("can't get confirm package of block: height(%d) hash(%s)", query.Height, query.Hash.Hex()))
+			return nil
+		}
+		if err := p.peer.send(protocol.ConfirmInfoMsg, confirmInfo); err != nil {
+			log.Debug("send confirm info message failed.")
+		}
+	case protocol.ConfirmInfoMsg: // 收到远程节点的获取确信包答复
+		var pack protocol.BlockConfirmPackage
+		if err := msg.Decode(&pack); err != nil {
+			return errResp(protocol.ErrDecode, "%v: %v", msg, err)
+		}
+		pm.blockchain.ReceiveConfirmPackage(pack)
+	default:
+		return errors.New("can not math message type")
+	}
+	return nil
+}
+
+// errResp 根据code生成错误
+func errResp(code protocol.ErrCode, format string, v ...interface{}) error {
+	return fmt.Errorf("%v - %v", code, fmt.Sprintf(format, v...))
+}
+
+// Start 启动pm
+func (pm *ProtocolManager) Start() {
+	go pm.txBroadcastLoop()
+	go pm.minedBroadcastLoop()
+	go pm.syncer()
+}
+
+// Stop 停止pm
+func (pm *ProtocolManager) Stop() {
+	close(pm.quitSync)
+	pm.peers.Close()
+	pm.wg.Wait()
+	log.Info("ProtocolManager stop")
+}
+
+// txBroadcastLoop 交易广播
+func (pm *ProtocolManager) txBroadcastLoop() {
+	pm.wg.Add(1)
+	defer pm.wg.Done()
+	for {
+		select {
+		case txs := <-pm.txsCh:
+			pm.BroadcastTxs(txs)
+		case <-pm.quitSync:
+			return
+		}
+	}
+}
+
+// minedBroadcastLoop 出块广播
+func (pm *ProtocolManager) minedBroadcastLoop() {
+	pm.wg.Add(1)
+	defer pm.wg.Done()
+	for {
+		select {
+		case block := <-pm.newMinedBlockCh:
+			if block == nil {
+				log.Warn("can't broadcast nil block ")
+				return
+			}
+			pm.blockchain.MineNewBlock(block)
+			for id, p := range pm.peers.peers {
+				if pm.isPeerDeputyNode(block.Height(), id) {
+					go p.peer.send(protocol.NewBlockMsg, &block)
+				}
+			}
+		case <-pm.quitSync:
+			return
+		}
+	}
+}
+
+// syncer 同步区块
+func (pm *ProtocolManager) syncer() {
+	pm.wg.Add(1)
+	defer pm.wg.Done()
+
+	pm.fetcher.Start()
+	defer pm.fetcher.Stop()
+	defer pm.downloader.Terminate()
+
+	forceSync := time.NewTimer(10 * time.Second)
+	for {
+		select {
+		case <-pm.newPeerCh:
+			go pm.synchronise(pm.peers.BestPeer())
+		case <-forceSync.C:
+			go pm.synchronise(pm.peers.BestPeer())
+		case <-pm.quitSync:
+			return
+		}
+	}
+}
+
+// synchronise 同步区块
+func (pm *ProtocolManager) synchronise(p string) {
+	if strings.Compare(p, "") == 0 {
+		return
+	}
+	if err := pm.downloader.Synchronise(p); err != nil {
+		return
+	}
+	// 通知其他节点本节点当前高度
+	if block := pm.blockchain.CurrentBlock(); block.Height() > 0 {
+		go pm.broadcastCurrentBlock(block, false)
+	}
+}
+
+// syncTransactions 同步交易 发送本地所有交易到该节点
+func (pm *ProtocolManager) syncTransactions(id string) {
+	pending := pm.txPool.Pending()
+	p := pm.peers.Peer(id)
+	if p != nil {
+		go p.peer.SendTransactions(pending)
+	}
+}
+
+// BroadcastTx 广播交易
+func (pm *ProtocolManager) BroadcastTxs(txs types.Transactions) {
+	peers := pm.peers.PeersWithoutTx(txs[0].Hash())
+	for _, peer := range peers {
+		peer.SendTransactions(txs)
+	}
+}
