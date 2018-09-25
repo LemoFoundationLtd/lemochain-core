@@ -9,6 +9,7 @@ import (
 const logo = "Lemo"
 
 type AddressKeyPair struct {
+	FullPayload string
 	LemoAddress string
 	PublicKey   string
 	PrivateKet  string
@@ -51,8 +52,9 @@ func GenerateAddress() *AddressKeyPair {
 	// PrivateKey type is converted to bytes type
 	privateToBytes := FromECDSA(privKey)
 	return &AddressKeyPair{
+		FullPayload: common.ToHex(fullPayload),
 		LemoAddress: string(lemoAddress),
-		PublicKey:   common.ToHex(publicToBytes),
+		PublicKey:   common.ToHex(publicToBytes[1:]),
 		PrivateKet:  common.ToHex(privateToBytes),
 	}
 }
