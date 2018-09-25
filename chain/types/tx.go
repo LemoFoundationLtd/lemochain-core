@@ -169,7 +169,7 @@ func (tx *Transaction) From() (common.Address, error) {
 
 	// parse type and create signer by self
 	// now we have one signer only
-	addr, err := MakeSigner(tx.Version(), tx.ChainId()).GetSender(tx)
+	addr, err := MakeSigner().GetSender(tx)
 	if err != nil {
 		return common.Address{}, err
 	}

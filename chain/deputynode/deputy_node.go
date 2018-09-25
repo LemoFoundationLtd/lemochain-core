@@ -102,12 +102,12 @@ func (d *Manager) getNodesByHeight(height uint32) DeputyNodes {
 
 // getDeputyNodeCount 获取共识节点数量
 func (d *Manager) GetDeputyNodesCount() int {
-	return 2 // todo
+	return len(d.DeputyNodesList[0].nodes) // todo
 }
 
 // GetTotalNodeCount 获取代理节点及候选节点总数
 func (d *Manager) GetTotalNodesCount() int {
-	return 30 // todo
+	return len(d.DeputyNodesList[0].nodes)
 }
 
 // getNodeByAddress 获取address对应的节点

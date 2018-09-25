@@ -11,15 +11,12 @@ import (
 )
 
 var (
-	ErrInvalidChainId = errors.New("invalid chain id for signer")
+	ErrPublicKey = errors.New("invalid public key")
 )
 
 // MakeSigner returns a Signer based on the given version and chainId.
-func MakeSigner(version uint8, chainId uint16) DefaultSigner {
-	return DefaultSigner{
-		version: version,
-		chainId: chainId,
-	}
+func MakeSigner() Signer {
+	return DefaultSigner{}
 }
 
 // SignTx signs the transaction using the given signer and private key
@@ -41,26 +38,39 @@ type Signer interface {
 	ParseSignature(tx *Transaction, sig []byte) (r, s, v *big.Int, err error)
 	// Hash returns the hash to be signed.
 	Hash(tx *Transaction) common.Hash
-	// Equal returns true if the given signer is the same as the receiver.
-	Equal(Signer) bool
 }
 
 // DefaultSigner implements Signer.
 type DefaultSigner struct {
-	version uint8
-	chainId uint16
-}
-
-func (s DefaultSigner) Equal(s2 Signer) bool {
-	signer, ok := s2.(DefaultSigner)
-	return ok && signer.version == s.version && signer.chainId == s.chainId
 }
 
 func (s DefaultSigner) GetSender(tx *Transaction) (common.Address, error) {
-	if tx.Version() != s.version || tx.ChainId() != s.chainId {
-		return common.Address{}, ErrInvalidChainId
+	sigHash := s.Hash(tx)
+	V, R, S := tx.data.V, tx.data.R, tx.data.S
+
+	if V.BitLen() > 32 {
+		return common.Address{}, ErrInvalidSig
 	}
-	return recoverPlain(s.Hash(tx), tx.data.R, tx.data.S, tx.data.V)
+	_, _, v, _ := ParseV(V)
+	if !crypto.ValidateSignatureValues(v, R, S) {
+		return common.Address{}, ErrInvalidSig
+	}
+	// encode the signature in uncompressed format
+	rb, sb := R.Bytes(), S.Bytes()
+	sig := make([]byte, 65)
+	copy(sig[32-len(rb):32], rb)
+	copy(sig[64-len(sb):64], sb)
+	sig[64] = v
+	// recover the public key from the signature
+	pub, err := crypto.Ecrecover(sigHash[:], sig)
+	if err != nil {
+		return common.Address{}, err
+	}
+	if len(pub) == 0 || pub[0] != 4 {
+		return common.Address{}, ErrPublicKey
+	}
+	addr := crypto.PubToAddress(pub)
+	return addr, nil
 }
 
 // ParseSignature returns a new transaction with the given signature. This signature
@@ -91,30 +101,4 @@ func (s DefaultSigner) Hash(tx *Transaction) common.Hash {
 		tx.data.Expiration,
 		tx.data.Message,
 	})
-}
-
-func recoverPlain(sigHash common.Hash, R, S, V *big.Int) (common.Address, error) {
-	if V.BitLen() > 32 {
-		return common.Address{}, ErrInvalidSig
-	}
-	_, _, v, _ := ParseV(V)
-	if !crypto.ValidateSignatureValues(v, R, S) {
-		return common.Address{}, ErrInvalidSig
-	}
-	// encode the signature in uncompressed format
-	r, s := R.Bytes(), S.Bytes()
-	sig := make([]byte, 65)
-	copy(sig[32-len(r):32], r)
-	copy(sig[64-len(s):64], s)
-	sig[64] = v
-	// recover the public key from the signature
-	pub, err := crypto.Ecrecover(sigHash[:], sig)
-	if err != nil {
-		return common.Address{}, err
-	}
-	if len(pub) == 0 || pub[0] != 4 {
-		return common.Address{}, errors.New("invalid public key")
-	}
-	addr := crypto.PubToAddress(pub)
-	return addr, nil
 }
