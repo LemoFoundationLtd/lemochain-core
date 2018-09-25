@@ -20,7 +20,7 @@ func init() {
 	types.RegisterChangeLog(BalanceLog, "BalanceLog", decodeBigInt, decodeEmptyInterface, redoBalance, undoBalance)
 	types.RegisterChangeLog(StorageLog, "StorageLog", decodeBytes, decodeBytes, redoStorage, undoStorage)
 	types.RegisterChangeLog(CodeLog, "CodeLog", decodeBytes, decodeEmptyInterface, redoCode, undoCode)
-	types.RegisterChangeLog(AddEventLog, "AddEventLog", decodeEvents, decodeHash, redoAddEvent, undoAddEvent)
+	types.RegisterChangeLog(AddEventLog, "AddEventLog", decodeEvent, decodeHash, redoAddEvent, undoAddEvent)
 }
 
 // decodeEmptyInterface decode an interface which contains an empty interface{}. its encoded data is [192], same as rlp([])
@@ -56,11 +56,11 @@ func decodeBytes(s *rlp.Stream) (interface{}, error) {
 	return result, err
 }
 
-// decodeEvents decode an interface which contains an []*types.Event
-func decodeEvents(s *rlp.Stream) (interface{}, error) {
-	var result []*types.Event
+// decodeEvents decode an interface which contains an *types.Event
+func decodeEvent(s *rlp.Stream) (interface{}, error) {
+	var result types.Event
 	err := s.Decode(&result)
-	return result, err
+	return &result, err
 }
 
 //
@@ -201,7 +201,7 @@ func undoCode(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 }
 
 // NewAddEventLog records contract code change
-func NewAddEventLog(account types.AccountAccessor, txHash common.Hash, newEvent []*types.Event) *types.ChangeLog {
+func NewAddEventLog(account types.AccountAccessor, txHash common.Hash, newEvent *types.Event) *types.ChangeLog {
 	return &types.ChangeLog{
 		LogType: AddEventLog,
 		Address: account.GetAddress(),
@@ -212,12 +212,12 @@ func NewAddEventLog(account types.AccountAccessor, txHash common.Hash, newEvent 
 }
 
 func redoAddEvent(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
-	newEvents, ok := c.NewVal.([]*types.Event)
+	newEvent, ok := c.NewVal.(*types.Event)
 	if !ok {
 		log.Errorf("expected NewVal []types.Event, got %T", c.NewVal)
 		return types.ErrWrongChangeLogData
 	}
-	processor.AddEvent(newEvents)
+	processor.AddEvent(newEvent)
 	return nil
 }
 

@@ -68,7 +68,7 @@ func (e *Event) UnmarshalJSON(input []byte) error {
 	}
 	e.Data = *dec.Data
 	if dec.BlockNumber != nil {
-		e.BlockNumber = uint64(*dec.BlockNumber)
+		e.BlockNumber = uint32(*dec.BlockNumber)
 	}
 	if dec.TxHash == nil {
 		return errors.New("missing required field 'transactionHash' for Event")

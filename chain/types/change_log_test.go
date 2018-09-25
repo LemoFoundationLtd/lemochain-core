@@ -60,7 +60,7 @@ func (p *testProcessor) createAccount(version uint32) *testAccount {
 	return account
 }
 
-func (p *testProcessor) AddEvent(events []*Event)       {}
+func (p *testProcessor) AddEvent(event *Event)          {}
 func (p *testProcessor) RevertEvent(txHash common.Hash) {}
 
 type testCustomTypeConfig struct {

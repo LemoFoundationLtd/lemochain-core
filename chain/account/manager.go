@@ -97,13 +97,17 @@ func (am *Manager) getRawAccount(address common.Address) (types.AccountAccessor,
 }
 
 // AddEvent records the event add action when a transaction's execution finished
-func (am *Manager) AddEvent(address common.Address, txHash common.Hash, events []*types.Event) error {
-	account, err := am.getRawAccount(address)
+func (am *Manager) AddEvent(event *types.Event) error {
+	// TODO save TxHash in manager
+	if (event.Address == common.Address{} || event.TxHash == common.Hash{}) {
+		panic("account.Manager.AddEvent() is called without a Address or TxHash")
+	}
+	account, err := am.getRawAccount(event.Address)
 	if err != nil {
 		return err
 	}
-	am.processor.PushChangeLog(NewAddEventLog(account, txHash, events))
-	am.processor.AddEvent(events)
+	am.processor.PushChangeLog(NewAddEventLog(account, event.TxHash, event))
+	am.processor.AddEvent(event)
 	return nil
 }
 
@@ -255,8 +259,8 @@ func (h *logProcessor) GetAccount(addr common.Address) (types.AccountAccessor, e
 	return h.manager.getRawAccount(addr)
 }
 
-func (h *logProcessor) AddEvent(events []*types.Event) {
-	h.events = append(h.events, events...)
+func (h *logProcessor) AddEvent(event *types.Event) {
+	h.events = append(h.events, event)
 }
 
 func (h *logProcessor) RevertEvent(txHash common.Hash) {

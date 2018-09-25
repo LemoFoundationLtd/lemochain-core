@@ -26,7 +26,7 @@ type Event struct {
 	// Derived fields. These fields are filled in by the node
 	// but not secured by consensus.
 	// block in which the transaction was included
-	BlockNumber uint64 `json:"blockNumber"`
+	BlockNumber uint32 `json:"blockNumber"`
 	// hash of the transaction
 	TxHash common.Hash `json:"transactionHash" gencodec:"required"`
 	// index of the transaction in the block
@@ -58,7 +58,7 @@ type rlpStorageEvent struct {
 	Address     common.Address
 	Topics      []common.Hash
 	Data        []byte
-	BlockNumber uint64
+	BlockNumber uint32
 	TxHash      common.Hash
 	TxIndex     uint
 	BlockHash   common.Hash
