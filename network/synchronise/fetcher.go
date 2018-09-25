@@ -349,7 +349,7 @@ func (f *Fetcher) insert(peer string, block *types.Block) {
 			f.done <- hash
 		}()
 
-		if parent := f.getLocalBlock(block.ParentHash(), block.Height()); parent == nil {
+		if parent := f.getLocalBlock(block.ParentHash(), block.Height()-1); parent == nil {
 			log.Debug(fmt.Sprintf("Unknown parent of propagated block", "peer", peer, "number", block.Height(), "hash", hash, "parent", block.ParentHash()))
 			return
 		}

@@ -190,23 +190,29 @@ func (bc *BlockChain) InsertChain(block *types.Block) (err error) {
 	curHash := bc.currentBlock.Load().(*types.Block).Hash()
 	// 执行交易 生成changelog
 	res, err := bc.processor.Process(block)
-	block.SetChangeLog(bc.AccountManager().GetChangeLogs())
-	block.SetEvents(res.Events)
-	// 验证
-	newHeader := *(block.Header)
-	newHeader.EventRoot = types.DeriveEventsSha(res.Events)
-	newHeader.VersionRoot = bc.AccountManager().GetVersionRoot()
-	newHeader.LogsRoot = types.DeriveChangeLogsSha(block.ChangeLog)
-	newHeader.GasUsed = res.GasUsed
-	newHeader.Bloom = res.Bloom
-	newHash := newHeader.Hash()
-	if bytes.Compare(hash[:], newHash[:]) != 0 {
-		log.Warn(fmt.Sprintf("verify block error! hash:%s", block.Hash().Hex()))
-		return fmt.Errorf("verify block error! hash:%s", block.Hash().Hex())
+	if err != nil {
+		return err
 	}
-	bc.AccountManager().Save(newHash)
 	block.SetChangeLog(bc.AccountManager().GetChangeLogs())
-	block.SetEvents(res.Events)
+	// todo
+	if res == nil {
+
+	}
+	// block.SetEvents(res.Events)
+	// // 验证
+	// newHeader := *(block.Header)
+	// newHeader.EventRoot = types.DeriveEventsSha(res.Events)
+	// newHeader.VersionRoot = bc.AccountManager().GetVersionRoot()
+	// newHeader.LogsRoot = types.DeriveChangeLogsSha(block.ChangeLog)
+	// newHeader.GasUsed = res.GasUsed
+	// newHeader.Bloom = res.Bloom
+	// newHash := newHeader.Hash()
+	// if bytes.Compare(hash[:], newHash[:]) != 0 {
+	// 	log.Warn(fmt.Sprintf("verify block error! hash:%s", block.Hash().Hex()))
+	// 	return fmt.Errorf("verify block error! hash:%s", block.Hash().Hex())
+	// }
+	// bc.AccountManager().Save(newHash)
+	bc.AccountManager().Save(block.Hash())                        // todo
 	if err = bc.dbOpe.SetBlock(block.Hash(), block); err != nil { // 放入缓存中
 		log.Error(fmt.Sprintf("can't insert block to cache. height:%d hash:%s", block.Height(), block.Hash().Hex()))
 		return err
@@ -232,7 +238,7 @@ func (bc *BlockChain) InsertChain(block *types.Block) (err error) {
 
 	// 同一条链上 正常情况
 	if bytes.Compare(parHash[:], curHash[:]) == 0 {
-		needFork = true
+		needFork = false
 		bc.currentBlock.Store(block)
 		delete(bc.chainForksHead, curHash) // 从分叉链集合中删除原记录
 		bc.chainForksHead[hash] = block    // 从分叉链集合中添加新记录

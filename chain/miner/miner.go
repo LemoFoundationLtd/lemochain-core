@@ -49,6 +49,7 @@ func New(blockInternal, timeout int64, chain *chain.BlockChain, privKey *ecdsa.P
 		timeToMineCh:   make(chan struct{}),
 		quitCh:         make(chan struct{}),
 	}
+	go m.loop()
 	return m
 }
 
@@ -56,7 +57,7 @@ func (m *Miner) Start() {
 	if !atomic.CompareAndSwapInt32(&m.mining, 0, 1) {
 		log.Warn("have already start mining")
 	}
-	go m.loop()
+
 	m.modifyTimer()
 	log.Info("start mining...")
 }
@@ -187,13 +188,21 @@ func (m *Miner) resetMinerTimer(timeDur int64) {
 
 func (m *Miner) loop() {
 	for {
-		select {
-		case <-m.timeToMineCh:
-			m.sealBlock()
-		case <-m.recvNewBlockCh:
-			m.modifyTimer()
-		case <-m.quitCh:
-			return
+		if atomic.LoadInt32(&m.mining) == 0 {
+			select {
+			case <-m.recvNewBlockCh:
+			default:
+			}
+			time.Sleep(200 * time.Millisecond)
+		} else {
+			select {
+			case <-m.timeToMineCh:
+				m.sealBlock()
+			case <-m.recvNewBlockCh:
+				m.modifyTimer()
+			case <-m.quitCh:
+				return
+			}
 		}
 	}
 }
