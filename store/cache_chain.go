@@ -216,7 +216,7 @@ func (chain *CacheChain) mergeSign(src []types.SignData, dst []types.SignData) [
 
 func (chain *CacheChain) getBlock(hash common.Hash) (*types.Block, error) {
 	if (hash == common.Hash{}) {
-		return nil, nil
+		return nil, ErrNotExist
 	}
 
 	block := chain.Blocks[hash]
