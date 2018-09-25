@@ -180,6 +180,7 @@ func (n *Node) Start() error {
 	}
 	// n.serverConfig = n.config.P2P
 	server := &p2p.Server{Config: n.config.P2P}
+	server.PeerEvent = n.pm.PeerEvent
 	if err := server.Start(); err != nil {
 		log.Errorf("start p2p server failed: %v", err)
 		return err

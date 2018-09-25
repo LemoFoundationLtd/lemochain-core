@@ -114,9 +114,33 @@ func (bc *BlockChain) GetBlock(hash common.Hash, height uint32) *types.Block {
 }
 
 func (bc *BlockChain) GetBlockByHeight(height uint32) *types.Block {
-	block, err := bc.dbOpe.GetBlockByHeight(height)
-	if err != nil {
-		log.Warnf("can't get block. height:%d, err: %v", height, err)
+	if height == 0 {
+		block, err := bc.dbOpe.GetBlockByHeight(height)
+		if err != nil {
+			log.Warnf("can't get block. height:%d, err: %v", height, err)
+			return nil
+		}
+		return block
+	}
+	h_c := bc.currentBlock.Load().(*types.Block).Height()
+	h_s := bc.stableBlock.Load().(*types.Block).Height()
+	block := bc.currentBlock.Load().(*types.Block)
+	var err error
+	if h_s >= height {
+		block, err = bc.dbOpe.GetBlockByHeight(height)
+		if err != nil {
+			log.Warnf("can't get block. height:%d, err: %v", height, err)
+			return nil
+		}
+	} else if height <= h_c {
+		for i := h_c - height; i > 0; i-- {
+			block, err = bc.dbOpe.GetBlockByHash(block.ParentHash())
+			if err != nil {
+				log.Warnf("can't get block. height:%d, err: %v", height, err)
+				return nil
+			}
+		}
+	} else {
 		return nil
 	}
 	return block

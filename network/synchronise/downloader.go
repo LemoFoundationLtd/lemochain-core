@@ -56,7 +56,7 @@ func (ps *peerSet) BestPeer() string {
 	var p string
 	height := uint32(0)
 	for _, item := range ps.peers {
-		if item.peer.height > height {
+		if item.peer.height >= height {
 			p = item.id
 			height = item.peer.height
 		}
@@ -126,6 +126,7 @@ type Downloader struct {
 // New 创建一个Downloader对象
 func NewDownloader(chain blockchain.BlockChain, dropPeer peerDropFn) *Downloader {
 	d := &Downloader{
+		peers:       newPeerSet(),
 		blockChain:  chain,
 		dropPeer:    dropPeer,
 		newBlocksCh: make(chan *blockPack),
