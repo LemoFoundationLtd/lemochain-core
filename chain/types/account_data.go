@@ -43,4 +43,5 @@ type AccountAccessor interface {
 	SetStorageRoot(root common.Hash)
 	GetStorageState(key common.Hash) ([]byte, error)
 	SetStorageState(key common.Hash, value []byte) error
+	IsEmpty() bool
 }

@@ -26,6 +26,7 @@ func (f *testAccount) GetCodeHash() common.Hash                        { return 
 func (f *testAccount) SetCodeHash(codeHash common.Hash)                { f.AccountData.CodeHash = codeHash }
 func (f *testAccount) GetCode() (types.Code, error)                    { return f.Code, nil }
 func (f *testAccount) SetCode(code types.Code)                         { f.Code = code }
+func (f *testAccount) IsEmpty() bool                                   { return f.AccountData.Version == 0 }
 func (f *testAccount) GetStorageRoot() common.Hash                     { return f.AccountData.StorageRoot }
 func (f *testAccount) SetStorageRoot(root common.Hash)                 { f.AccountData.StorageRoot = root }
 func (f *testAccount) GetStorageState(key common.Hash) ([]byte, error) { return f.Storage[key], nil }

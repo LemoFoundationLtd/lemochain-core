@@ -28,6 +28,7 @@ func (f *testAccount) GetStorageRoot() common.Hash                         { ret
 func (f *testAccount) SetStorageRoot(root common.Hash)                     { f.AccountData.StorageRoot = root }
 func (f *testAccount) GetStorageState(key common.Hash) ([]byte, error)     { return nil, nil }
 func (f *testAccount) SetStorageState(key common.Hash, value []byte) error { return nil }
+func (f *testAccount) IsEmpty() bool                                       { return f.AccountData.Version == 0 }
 
 type testProcessor struct {
 	Accounts map[common.Address]*testAccount

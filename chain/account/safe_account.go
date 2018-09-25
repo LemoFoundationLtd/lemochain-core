@@ -27,6 +27,7 @@ func (a *SafeAccount) GetBalance() *big.Int         { return a.rawAccount.GetBal
 func (a *SafeAccount) GetVersion() uint32           { return a.rawAccount.GetVersion() }
 func (a *SafeAccount) GetCodeHash() common.Hash     { return a.rawAccount.GetCodeHash() }
 func (a *SafeAccount) GetCode() (types.Code, error) { return a.rawAccount.GetCode() }
+func (a *SafeAccount) IsEmpty() bool                { return a.rawAccount.IsEmpty() }
 func (a *SafeAccount) GetStorageRoot() common.Hash  { return a.rawAccount.GetStorageRoot() }
 func (a *SafeAccount) GetStorageState(key common.Hash) ([]byte, error) {
 	return a.rawAccount.GetStorageState(key)

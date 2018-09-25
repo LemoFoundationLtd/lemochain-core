@@ -159,6 +159,13 @@ func TestAccount_SetStorageState_GetStorageState(t *testing.T) {
 	assert.Empty(t, readValue) // []byte(nil)
 }
 
+func TestAccount_IsEmpty(t *testing.T) {
+	account := loadAccount(common.HexToAddress("0x1"))
+	assert.Equal(t, true, account.IsEmpty())
+	account.SetVersion(100)
+	assert.Equal(t, false, account.IsEmpty())
+}
+
 func TestAccount_Finalise_Save(t *testing.T) {
 	account := loadAccount(defaultAccounts[0].Address)
 

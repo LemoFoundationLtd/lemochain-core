@@ -26,12 +26,14 @@ func TestNewManager_GetAccount(t *testing.T) {
 	// exist in db
 	manager := NewManager(defaultBlock.hash, db)
 	account, err := manager.GetAccount(defaultAccounts[0].Address)
-	assert.Equal(t, uint32(100), account.GetVersion())
 	assert.NoError(t, err)
+	assert.Equal(t, uint32(100), account.GetVersion())
+	assert.Equal(t, false, account.IsEmpty())
 	// not exist in db
 	account, err = manager.GetAccount(common.HexToAddress("0xaaa"))
-	assert.Equal(t, common.HexToAddress("0xaaa"), account.GetAddress())
 	assert.NoError(t, err)
+	assert.Equal(t, common.HexToAddress("0xaaa"), account.GetAddress())
+	assert.Equal(t, true, account.IsEmpty())
 
 	// load from genesis' parent block
 	manager = NewManager(common.Hash{}, db)
@@ -47,12 +49,12 @@ func TestNewManager_GetCanonicalAccount(t *testing.T) {
 	// exist in db
 	manager := NewManager(defaultBlock.hash, db)
 	account, err := manager.GetCanonicalAccount(defaultAccounts[0].Address)
-	assert.Equal(t, uint32(100), account.GetVersion())
 	assert.NoError(t, err)
+	assert.Equal(t, uint32(100), account.GetVersion())
 	// not exist in db
 	account, err = manager.GetCanonicalAccount(common.HexToAddress("0xaaa"))
-	assert.Equal(t, common.HexToAddress("0xaaa"), account.GetAddress())
 	assert.NoError(t, err)
+	assert.Equal(t, common.HexToAddress("0xaaa"), account.GetAddress())
 
 	// load from genesis' parent block
 	manager = NewManager(common.Hash{}, db)
@@ -74,8 +76,8 @@ func TestChangeLogHelper_GetAccount(t *testing.T) {
 
 	// exist in db
 	rawAccount, err = manager.processor.GetAccount(defaultAccounts[0].Address)
-	assert.Equal(t, uint32(100), rawAccount.GetVersion())
 	assert.NoError(t, err)
+	assert.Equal(t, uint32(100), rawAccount.GetVersion())
 
 	// change rawAccount, account should change
 	account, err := manager.GetAccount(defaultAccounts[0].Address)

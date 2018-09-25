@@ -170,6 +170,11 @@ func (a *Account) SetStorageState(key common.Hash, value []byte) error {
 	return nil
 }
 
+// IsEmpty returns whether the state object is either non-existent or empty (version = 0)
+func (a *Account) IsEmpty() bool {
+	return a.data.Version == 0
+}
+
 func (a *Account) getTrie() (*trie.SecureTrie, error) {
 	if a.trie == nil {
 		if a.trieDb == nil {
