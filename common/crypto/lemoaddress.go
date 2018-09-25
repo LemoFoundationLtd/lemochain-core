@@ -9,10 +9,10 @@ import (
 const logo = "Lemo"
 
 type AddressKeyPair struct {
-	FullPayload string
-	LemoAddress string
-	PublicKey   string
-	PrivateKet  string
+	NativePubkey string
+	LemoAddress  string
+	PublicKey    string
+	PrivateKet   string
 }
 
 // getCheckSum get the check digit by doing an exclusive OR operation
@@ -52,10 +52,10 @@ func GenerateAddress() *AddressKeyPair {
 	// PrivateKey type is converted to bytes type
 	privateToBytes := FromECDSA(privKey)
 	return &AddressKeyPair{
-		FullPayload: common.ToHex(fullPayload),
-		LemoAddress: string(lemoAddress),
-		PublicKey:   common.ToHex(publicToBytes[1:]),
-		PrivateKet:  common.ToHex(privateToBytes),
+		NativePubkey: common.ToHex(address.Bytes()),
+		LemoAddress:  string(lemoAddress),
+		PublicKey:    common.ToHex(publicToBytes[1:]),
+		PrivateKet:   common.ToHex(privateToBytes),
 	}
 }
 

@@ -8,7 +8,6 @@ var ExtModules = map[string]string{
 	"account": Account_JS,
 }
 
-// sandy test
 const Account_JS = `
 lemojs._extend({
 	property: 'account',
