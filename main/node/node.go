@@ -140,7 +140,9 @@ func New(lemoConf *LemoConfig, conf *NodeConfig) (*Node, error) {
 	miner := miner.New(int64(genesisConfig.SleepTime), int64(genesisConfig.Timeout), blockChain, n.config.NodeKey(), newMinedBlockCh, recvBlockCh)
 	n.miner = miner
 	d_n := deputynode.Instance().GetNodeByNodeID(blockChain.CurrentBlock().Height()+1, deputynode.GetSelfNodeID())
-	miner.SetLemoBase(d_n.LemoBase)
+	if d_n != nil {
+		miner.SetLemoBase(d_n.LemoBase)
+	}
 	deputynode.Instance().Init()
 	return n, nil
 }
