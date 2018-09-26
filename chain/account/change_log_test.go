@@ -145,6 +145,15 @@ func getCustomTypeData(t *testing.T) []testCustomTypeConfig {
 		decoded: "AddEventLog: 0x0000000000000000000000000000000000000004 1 <nil> event: 0000000000000000000000000000000000000aaa [0000000000000000000000000000000000000000000000000000000000000bbb 0000000000000000000000000000000000000000000000000000000000000ccc] 8000 0000000000000000000000000000000000000000000000000000000000000000 0 0000000000000000000000000000000000000000000000000000000000000000 0 <nil>",
 	})
 
+	// 4 SuicideLog
+	tests = append(tests, testCustomTypeConfig{
+		input:   NewSuicideLog(processor.createAccount(0)),
+		str:     "SuicideLog: 0x0000000000000000000000000000000000000005 1 100 <nil> <nil>",
+		hash:    "0x6204ac1a4be1e52c77942259e094c499b263ad7176ae9060d5bae2b856c9743a",
+		rlp:     "0xd90594000000000000000000000000000000000000000501c0c0",
+		decoded: "SuicideLog: 0x0000000000000000000000000000000000000005 1 <nil> <nil> <nil>",
+	})
+
 	return tests
 }
 
@@ -259,6 +268,14 @@ func TestChangeLog_Undo(t *testing.T) {
 				assert.Empty(t, events)
 			},
 		},
+		// 7 NewSuicideLog
+		{
+			input: NewSuicideLog(processor.createAccount(1)),
+			afterCheck: func(accessor types.AccountAccessor) {
+				assert.Equal(t, big.NewInt(100), accessor.GetBalance())
+				assert.Equal(t, false, accessor.GetSuicide())
+			},
+		},
 	}
 
 	for i, test := range tests {
@@ -355,6 +372,14 @@ func TestChangeLog_Redo(t *testing.T) {
 		{
 			input:   &types.ChangeLog{LogType: AddEventLog, Address: processor.createAccount(0).GetAddress(), Version: 1},
 			redoErr: types.ErrWrongChangeLogData,
+		},
+		// 9 NewBalanceLog
+		{
+			input: decreaseVersion(NewSuicideLog(processor.createAccount(1))),
+			afterCheck: func(accessor types.AccountAccessor) {
+				assert.Equal(t, true, accessor.GetSuicide())
+				assert.Equal(t, big.NewInt(0), accessor.GetBalance())
+			},
 		},
 	}
 

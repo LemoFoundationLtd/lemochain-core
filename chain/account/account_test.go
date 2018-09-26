@@ -47,6 +47,14 @@ func TestAccount_SetVersion_GetVersion(t *testing.T) {
 	assert.Equal(t, uint32(200), account.GetVersion())
 }
 
+func TestAccount_SetSuicide_GetSuicide(t *testing.T) {
+	account := loadAccount(defaultAccounts[0].Address)
+	assert.Equal(t, false, account.GetSuicide())
+
+	account.SetSuicide(true)
+	assert.Equal(t, true, account.GetSuicide())
+}
+
 func TestAccount_SetCodeHash_GetCodeHash(t *testing.T) {
 	account := loadAccount(defaultAccounts[0].Address)
 	assert.Equal(t, defaultCodes[0].hash, account.GetCodeHash())

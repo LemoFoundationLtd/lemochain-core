@@ -46,3 +46,14 @@ func TestSafeAccount_SetStorageState_IsDirty(t *testing.T) {
 	assert.Equal(t, StorageLog, account.processor.changeLogs[0].LogType)
 	assert.Equal(t, []byte{11}, account.processor.changeLogs[0].NewVal.([]byte))
 }
+
+func TestSafeAccount_SetSuicide_GetSuicide(t *testing.T) {
+	account := loadSafeAccount(defaultAccounts[0].Address)
+	assert.Equal(t, false, account.GetSuicide())
+
+	account.SetSuicide(true)
+	assert.Equal(t, true, account.GetSuicide())
+	assert.Equal(t, 1, len(account.processor.changeLogs))
+	assert.Equal(t, SuicideLog, account.processor.changeLogs[0].LogType)
+	assert.Equal(t, *big.NewInt(100), account.processor.changeLogs[0].OldVal.(big.Int))
+}

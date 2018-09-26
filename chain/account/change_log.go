@@ -239,7 +239,7 @@ func NewSuicideLog(account types.AccountAccessor) *types.ChangeLog {
 		LogType: SuicideLog,
 		Address: account.GetAddress(),
 		Version: increaseVersion(account),
-		OldVal:  account.GetBalance(),
+		OldVal:  *(new(big.Int).Set(account.GetBalance())),
 	}
 }
 
