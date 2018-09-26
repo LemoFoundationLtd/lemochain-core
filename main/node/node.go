@@ -11,7 +11,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
-	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/common/flock"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/network/p2p"
@@ -437,7 +436,7 @@ func (n *Node) apis() []rpc.API {
 		{
 			Namespace: "account",
 			Version:   "1.0",
-			Service:   &AddressManagerAPI{},
+			Service:   NewAccountAPI(n.db, nil),
 		},
 		{
 			Namespace: "net",
@@ -445,13 +444,4 @@ func (n *Node) apis() []rpc.API {
 			Service:   n.server,
 		},
 	}
-}
-
-type AddressManagerAPI struct {
-}
-
-// NewAccount get the address
-func (a *AddressManagerAPI) NewAccount() *crypto.AddressKeyPair {
-	account := crypto.GenerateAddress()
-	return account
 }

@@ -17,6 +17,11 @@ lemojs._extend({
 			call: 'account_newAccount',
 			params: 0
 		}),
+		new lemojs._extend.Method({
+			name: 'getBalance',
+			call: 'account_getBalance',
+			params: 1
+		}),
 	]
 });
 `
