@@ -55,7 +55,7 @@ type Account struct {
 	dirtyStorage  Storage // Storage entries that need to be flushed to disk
 
 	codeIsDirty bool // true if the code was updated
-	suicided    bool // will be delete from the trie during the "commit" phase
+	suicided    bool // will be delete from the trie during the "save" phase
 }
 
 // NewAccount wrap an AccountData object, or creates a new one if it's nil.
@@ -82,6 +82,7 @@ func NewAccount(db protocol.ChainDB, address common.Address, data *types.Account
 func (a *Account) GetAddress() common.Address { return a.data.Address }
 func (a *Account) GetBalance() *big.Int       { return a.data.Balance }
 func (a *Account) GetVersion() uint32         { return a.data.Version }
+func (a *Account) GetSuicide() bool           { return a.suicided }
 func (a *Account) GetCodeHash() common.Hash   { return a.data.CodeHash }
 
 // StorageRoot wouldn't change until Account.updateTrie() is called
@@ -93,6 +94,10 @@ func (a *Account) SetBalance(balance *big.Int) {
 func (a *Account) SetVersion(version uint32) {
 	a.data.Version = version
 }
+func (a *Account) SetSuicide(suicided bool) {
+	a.suicided = suicided
+}
+
 func (a *Account) SetCodeHash(codeHash common.Hash) {
 	a.data.CodeHash = codeHash
 	if (a.data.CodeHash == common.Hash{}) {

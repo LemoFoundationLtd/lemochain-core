@@ -1,19 +1,3 @@
-// Copyright 2015 The lemochain-go Authors
-// This file is part of the lemochain-go library.
-//
-// The lemochain-go library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Lesser General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// The lemochain-go library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with the lemochain-go library. If not, see <http://www.gnu.org/licenses/>.
-
 package vm
 
 import (
@@ -24,7 +8,7 @@ import (
 
 // ContractRef is a reference to the contract's backing object
 type ContractRef interface {
-	Address() common.Address
+	GetAddress() common.Address
 }
 
 // AccountRef implements ContractRef.
@@ -36,8 +20,8 @@ type ContractRef interface {
 // is a ContractRef.
 type AccountRef common.Address
 
-// Address casts AccountRef to a Address
-func (ar AccountRef) Address() common.Address { return (common.Address)(ar) }
+// GetAddress casts AccountRef to a Address
+func (ar AccountRef) GetAddress() common.Address { return (common.Address)(ar) }
 
 // Contract represents an lemochain contract in the state database. It contains
 // the the contract code, calling arguments. Contract implements ContractRef
@@ -66,7 +50,7 @@ type Contract struct {
 
 // NewContract returns a new contract environment for the execution of EVM.
 func NewContract(caller ContractRef, object ContractRef, value *big.Int, gas uint64) *Contract {
-	c := &Contract{CallerAddress: caller.Address(), caller: caller, self: object, Args: nil}
+	c := &Contract{CallerAddress: caller.GetAddress(), caller: caller, self: object, Args: nil}
 
 	if parent, ok := caller.(*Contract); ok {
 		// Reuse JUMPDEST analysis from parent context if available.
@@ -128,9 +112,9 @@ func (c *Contract) UseGas(gas uint64) (ok bool) {
 	return true
 }
 
-// Address returns the contracts address
-func (c *Contract) Address() common.Address {
-	return c.self.Address()
+// GetAddress returns the contracts address
+func (c *Contract) GetAddress() common.Address {
+	return c.self.GetAddress()
 }
 
 // Value returns the contracts value (sent to it from it's caller)

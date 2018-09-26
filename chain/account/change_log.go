@@ -14,13 +14,15 @@ const (
 	StorageLog
 	CodeLog
 	AddEventLog
+	SuicideLog
 )
 
 func init() {
 	types.RegisterChangeLog(BalanceLog, "BalanceLog", decodeBigInt, decodeEmptyInterface, redoBalance, undoBalance)
 	types.RegisterChangeLog(StorageLog, "StorageLog", decodeBytes, decodeBytes, redoStorage, undoStorage)
 	types.RegisterChangeLog(CodeLog, "CodeLog", decodeBytes, decodeEmptyInterface, redoCode, undoCode)
-	types.RegisterChangeLog(AddEventLog, "AddEventLog", decodeEvent, decodeHash, redoAddEvent, undoAddEvent)
+	types.RegisterChangeLog(AddEventLog, "AddEventLog", decodeEvent, decodeEmptyInterface, redoAddEvent, undoAddEvent)
+	types.RegisterChangeLog(SuicideLog, "SuicideLog", decodeEmptyInterface, decodeEmptyInterface, redoSuicide, undoSuicide)
 }
 
 // decodeEmptyInterface decode an interface which contains an empty interface{}. its encoded data is [192], same as rlp([])
@@ -38,6 +40,13 @@ func decodeEmptyInterface(s *rlp.Stream) (interface{}, error) {
 // decodeBigInt decode an interface which contains an big.Int
 func decodeBigInt(s *rlp.Stream) (interface{}, error) {
 	var result big.Int
+	err := s.Decode(&result)
+	return result, err
+}
+
+// decodeUint64 decode an interface which contains an uint64
+func decodeUint64(s *rlp.Stream) (interface{}, error) {
+	var result uint64
 	err := s.Decode(&result)
 	return result, err
 }
@@ -102,7 +111,7 @@ func redoBalance(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 func undoBalance(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 	oldValue, ok := c.OldVal.(big.Int)
 	if !ok {
-		log.Errorf("expected NewVal big.Int, got %T", c.NewVal)
+		log.Errorf("expected OldVal big.Int, got %T", c.OldVal)
 		return types.ErrWrongChangeLogData
 	}
 	accessor, err := processor.GetAccount(c.Address)
@@ -201,32 +210,60 @@ func undoCode(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 }
 
 // NewAddEventLog records contract code change
-func NewAddEventLog(account types.AccountAccessor, txHash common.Hash, newEvent *types.Event) *types.ChangeLog {
+func NewAddEventLog(account types.AccountAccessor, newEvent *types.Event) *types.ChangeLog {
 	return &types.ChangeLog{
 		LogType: AddEventLog,
 		Address: account.GetAddress(),
 		Version: increaseVersion(account),
 		NewVal:  newEvent,
-		Extra:   txHash,
 	}
 }
 
 func redoAddEvent(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 	newEvent, ok := c.NewVal.(*types.Event)
 	if !ok {
-		log.Errorf("expected NewVal []types.Event, got %T", c.NewVal)
+		log.Errorf("expected NewVal types.Event, got %T", c.NewVal)
 		return types.ErrWrongChangeLogData
 	}
-	processor.AddEvent(newEvent)
+	processor.PushEvent(newEvent)
 	return nil
 }
 
 func undoAddEvent(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
-	txHash, ok := c.Extra.(common.Hash)
+	return processor.PopEvent()
+}
+
+// NewSuicideLog records balance change
+func NewSuicideLog(account types.AccountAccessor) *types.ChangeLog {
+	return &types.ChangeLog{
+		LogType: SuicideLog,
+		Address: account.GetAddress(),
+		Version: increaseVersion(account),
+		OldVal:  account.GetBalance(),
+	}
+}
+
+func redoSuicide(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
+	accessor, err := processor.GetAccount(c.Address)
+	if err != nil {
+		return err
+	}
+	accessor.SetBalance(new(big.Int))
+	accessor.SetSuicide(true)
+	return nil
+}
+
+func undoSuicide(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
+	oldValue, ok := c.OldVal.(big.Int)
 	if !ok {
-		log.Errorf("expected NewVal common.Hash, got %T", c.NewVal)
+		log.Errorf("expected OldVal big.Int, got %T", c.OldVal)
 		return types.ErrWrongChangeLogData
 	}
-	processor.RevertEvent(txHash)
+	accessor, err := processor.GetAccount(c.Address)
+	if err != nil {
+		return err
+	}
+	accessor.SetBalance(&oldValue)
+	accessor.SetSuicide(false)
 	return nil
 }

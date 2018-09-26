@@ -1,19 +1,3 @@
-// Copyright 2016 The lemochain-go Authors
-// This file is part of the lemochain-go library.
-//
-// The lemochain-go library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Lesser General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// The lemochain-go library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with the lemochain-go library. If not, see <http://www.gnu.org/licenses/>.
-
 package vm
 
 import (
@@ -29,7 +13,7 @@ type dummyContractRef struct {
 }
 
 func (dummyContractRef) ReturnGas(*big.Int)          {}
-func (dummyContractRef) Address() common.Address     { return common.Address{} }
+func (dummyContractRef) GetAddress() common.Address  { return common.Address{} }
 func (dummyContractRef) Value() *big.Int             { return new(big.Int) }
 func (dummyContractRef) SetCode(common.Hash, []byte) {}
 func (d *dummyContractRef) ForEachStorage(callback func(key, value common.Hash) bool) {
@@ -48,7 +32,7 @@ type dummyStateDB struct {
 
 func TestStoreCapture(t *testing.T) {
 	var (
-		env      = NewEVM(Context{}, nil, params.TestChainConfig, Config{})
+		env      = NewEVM(Context{}, nil, params.DefaultChainConfig(), Config{})
 		logger   = NewStructLogger(nil)
 		mem      = NewMemory()
 		stack    = newstack()
@@ -60,11 +44,11 @@ func TestStoreCapture(t *testing.T) {
 	var index common.Hash
 
 	logger.CaptureState(env, 0, SSTORE, 0, 0, mem, stack, contract, 0, nil)
-	if len(logger.changedValues[contract.Address()]) == 0 {
-		t.Fatalf("expected exactly 1 changed value on address %x, got %d", contract.Address(), len(logger.changedValues[contract.Address()]))
+	if len(logger.changedValues[contract.GetAddress()]) == 0 {
+		t.Fatalf("expected exactly 1 changed value on address %x, got %d", contract.GetAddress(), len(logger.changedValues[contract.GetAddress()]))
 	}
 	exp := common.BigToHash(big.NewInt(1))
-	if logger.changedValues[contract.Address()][index] != exp {
-		t.Errorf("expected %x, got %x", exp, logger.changedValues[contract.Address()][index])
+	if logger.changedValues[contract.GetAddress()][index] != exp {
+		t.Errorf("expected %x, got %x", exp, logger.changedValues[contract.GetAddress()][index])
 	}
 }

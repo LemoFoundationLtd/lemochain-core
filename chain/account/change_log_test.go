@@ -13,8 +13,9 @@ import (
 
 type testAccount struct {
 	types.AccountData
-	Code    types.Code
-	Storage map[common.Hash][]byte
+	Code     types.Code
+	Storage  map[common.Hash][]byte
+	suicided bool
 }
 
 func (f *testAccount) GetAddress() common.Address                      { return f.AccountData.Address }
@@ -22,6 +23,8 @@ func (f *testAccount) GetBalance() *big.Int                            { return 
 func (f *testAccount) SetBalance(balance *big.Int)                     { f.AccountData.Balance = balance }
 func (f *testAccount) GetVersion() uint32                              { return f.AccountData.Version }
 func (f *testAccount) SetVersion(version uint32)                       { f.AccountData.Version = version }
+func (f *testAccount) GetSuicide() bool                                { return f.suicided }
+func (f *testAccount) SetSuicide(suicided bool)                        { f.suicided = suicided }
 func (f *testAccount) GetCodeHash() common.Hash                        { return f.AccountData.CodeHash }
 func (f *testAccount) SetCodeHash(codeHash common.Hash)                { f.AccountData.CodeHash = codeHash }
 func (f *testAccount) GetCode() (types.Code, error)                    { return f.Code, nil }
@@ -50,21 +53,16 @@ func (p *testProcessor) GetAccount(addr common.Address) (types.AccountAccessor, 
 	return account, nil
 }
 
-func (p *testProcessor) AddEvent(event *types.Event) {
+func (p *testProcessor) PushEvent(event *types.Event) {
 	if p.Events == nil {
 		p.Events = make([]*types.Event, 0)
 	}
 	p.Events = append(p.Events, event)
 }
 
-func (p *testProcessor) RevertEvent(txHash common.Hash) {
-	result := p.Events[:0]
-	for _, event := range p.Events {
-		if event.TxHash != txHash {
-			result = append(result, event)
-		}
-	}
-	p.Events = result
+func (p *testProcessor) PopEvent() error {
+	p.Events = p.Events[:len(p.Events)-1]
+	return nil
 }
 
 func (p *testProcessor) createAccount(version uint32) *testAccount {
@@ -140,11 +138,11 @@ func getCustomTypeData(t *testing.T) []testCustomTypeConfig {
 		Data:    []byte{0x80, 0x0},
 	}
 	tests = append(tests, testCustomTypeConfig{
-		input:   NewAddEventLog(processor.createAccount(0), common.HexToHash("0xaaa"), newEvent),
-		str:     "AddEventLog: 0x0000000000000000000000000000000000000004 1 <nil> event: 0000000000000000000000000000000000000aaa [0000000000000000000000000000000000000000000000000000000000000bbb 0000000000000000000000000000000000000000000000000000000000000ccc] 8000 0000000000000000000000000000000000000000000000000000000000000000 0 0000000000000000000000000000000000000000000000000000000000000000 0 [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 10 170]",
-		hash:    "0x64978507f0f2391ea13d3f34fae8a922edbcb807e98a1835021e35fb46b24498",
-		rlp:     "0xf8960494000000000000000000000000000000000000000401f85c940000000000000000000000000000000000000aaaf842a00000000000000000000000000000000000000000000000000000000000000bbba00000000000000000000000000000000000000000000000000000000000000ccc828000a00000000000000000000000000000000000000000000000000000000000000aaa",
-		decoded: "AddEventLog: 0x0000000000000000000000000000000000000004 1 <nil> event: 0000000000000000000000000000000000000aaa [0000000000000000000000000000000000000000000000000000000000000bbb 0000000000000000000000000000000000000000000000000000000000000ccc] 8000 0000000000000000000000000000000000000000000000000000000000000000 0 0000000000000000000000000000000000000000000000000000000000000000 0 [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 10 170]",
+		input:   NewAddEventLog(processor.createAccount(0), newEvent),
+		str:     "AddEventLog: 0x0000000000000000000000000000000000000004 1 <nil> event: 0000000000000000000000000000000000000aaa [0000000000000000000000000000000000000000000000000000000000000bbb 0000000000000000000000000000000000000000000000000000000000000ccc] 8000 0000000000000000000000000000000000000000000000000000000000000000 0 0000000000000000000000000000000000000000000000000000000000000000 0 <nil>",
+		hash:    "0x89761d5f9ee931d7e514de58289cce64c8f89491305668bdabd3cf3be815282b",
+		rlp:     "0xf8760494000000000000000000000000000000000000000401f85c940000000000000000000000000000000000000aaaf842a00000000000000000000000000000000000000000000000000000000000000bbba00000000000000000000000000000000000000000000000000000000000000ccc828000c0",
+		decoded: "AddEventLog: 0x0000000000000000000000000000000000000004 1 <nil> event: 0000000000000000000000000000000000000aaa [0000000000000000000000000000000000000000000000000000000000000bbb 0000000000000000000000000000000000000000000000000000000000000ccc] 8000 0000000000000000000000000000000000000000000000000000000000000000 0 0000000000000000000000000000000000000000000000000000000000000000 0 <nil>",
 	})
 
 	return tests
@@ -204,6 +202,9 @@ func findEvent(processor *testProcessor, txHash common.Hash) []*types.Event {
 
 func TestChangeLog_Undo(t *testing.T) {
 	processor := &testProcessor{}
+	event1 := &types.Event{TxHash: common.HexToHash("0x666")}
+	processor.PushEvent(&types.Event{})
+	processor.PushEvent(event1)
 
 	tests := []struct {
 		input      *types.ChangeLog
@@ -252,16 +253,11 @@ func TestChangeLog_Undo(t *testing.T) {
 		},
 		// 6 NewAddEventLog
 		{
-			input: NewAddEventLog(processor.createAccount(1), common.HexToHash("0x666"), &types.Event{TxHash: common.HexToHash("0x666")}),
+			input: NewAddEventLog(processor.createAccount(1), event1),
 			afterCheck: func(accessor types.AccountAccessor) {
-				events := findEvent(processor, common.HexToHash("0x666"))
+				events := findEvent(processor, event1.TxHash)
 				assert.Empty(t, events)
 			},
-		},
-		// 7 NewAddEventLog no Extra
-		{
-			input:   &types.ChangeLog{LogType: AddEventLog, Address: processor.createAccount(1).GetAddress(), Version: 1},
-			undoErr: types.ErrWrongChangeLogData,
 		},
 	}
 
@@ -342,7 +338,7 @@ func TestChangeLog_Redo(t *testing.T) {
 		},
 		// 7 NewAddEventLog
 		{
-			input: decreaseVersion(NewAddEventLog(processor.createAccount(1), common.HexToHash("0x777"), &types.Event{
+			input: decreaseVersion(NewAddEventLog(processor.createAccount(1), &types.Event{
 				Address:   common.HexToAddress("0xaaa"),
 				Topics:    []common.Hash{common.HexToHash("bbb"), common.HexToHash("ccc")},
 				Data:      []byte{0x80, 0x0},
@@ -355,7 +351,7 @@ func TestChangeLog_Redo(t *testing.T) {
 				assert.Equal(t, []byte{0x80, 0x0}, events[0].Data)
 			},
 		},
-		// 8 NewAddEventLog no Extra
+		// 8 NewAddEventLog no NewVal
 		{
 			input:   &types.ChangeLog{LogType: AddEventLog, Address: processor.createAccount(0).GetAddress(), Version: 1},
 			redoErr: types.ErrWrongChangeLogData,

@@ -1,19 +1,3 @@
-// Copyright 2015 The lemochain-go Authors
-// This file is part of the lemochain-go library.
-//
-// The lemochain-go library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Lesser General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// The lemochain-go library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with the lemochain-go library. If not, see <http://www.gnu.org/licenses/>.
-
 package vm
 
 import (
@@ -376,9 +360,6 @@ func opSha3(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack *Sta
 	data := memory.Get(offset.Int64(), size.Int64())
 	hash := crypto.Keccak256(data)
 
-	if evm.vmConfig.EnablePreimageRecording {
-		evm.StateDB.AddPreimage(common.BytesToHash(hash), data)
-	}
 	stack.push(evm.interpreter.intPool.get().SetBytes(hash))
 
 	evm.interpreter.intPool.put(offset, size)
@@ -386,13 +367,17 @@ func opSha3(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack *Sta
 }
 
 func opAddress(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack *Stack) ([]byte, error) {
-	stack.push(contract.Address().Big())
+	stack.push(contract.GetAddress().Big())
 	return nil, nil
 }
 
 func opBalance(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack *Stack) ([]byte, error) {
 	slot := stack.peek()
-	slot.Set(evm.StateDB.GetBalance(common.BigToAddress(slot)))
+	acc, err := evm.am.GetAccount(common.BigToAddress(slot))
+	if err != nil {
+		return nil, err
+	}
+	slot.Set(acc.GetBalance())
 	return nil, nil
 }
 
@@ -458,7 +443,15 @@ func opReturnDataCopy(pc *uint64, evm *EVM, contract *Contract, memory *Memory, 
 
 func opExtCodeSize(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack *Stack) ([]byte, error) {
 	slot := stack.peek()
-	slot.SetUint64(uint64(evm.StateDB.GetCodeSize(common.BigToAddress(slot))))
+	acc, err := evm.am.GetAccount(common.BigToAddress(slot))
+	if err != nil {
+		return nil, err
+	}
+	code, err := acc.GetCode()
+	if err != nil {
+		return nil, err
+	}
+	slot.SetUint64(uint64(len(code)))
 
 	return nil, nil
 }
@@ -490,7 +483,15 @@ func opExtCodeCopy(pc *uint64, evm *EVM, contract *Contract, memory *Memory, sta
 		codeOffset = stack.pop()
 		length     = stack.pop()
 	)
-	codeCopy := getDataBig(evm.StateDB.GetCode(addr), codeOffset, length)
+	acc, err := evm.am.GetAccount(addr)
+	if err != nil {
+		return nil, err
+	}
+	code, err := acc.GetCode()
+	if err != nil {
+		return nil, err
+	}
+	codeCopy := getDataBig(code, codeOffset, length)
 	memory.Set(memOffset.Uint64(), length.Uint64(), codeCopy)
 
 	evm.interpreter.intPool.put(memOffset, codeOffset, length)
@@ -505,9 +506,10 @@ func opGasprice(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack 
 func opBlockhash(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack *Stack) ([]byte, error) {
 	num := stack.pop()
 
-	n := evm.interpreter.intPool.get().Sub(evm.BlockNumber, common.Big257)
-	if num.Cmp(n) > 0 && num.Cmp(evm.BlockNumber) < 0 {
-		stack.push(evm.GetHash(num.Uint64()).Big())
+	height := new(big.Int).SetUint64(uint64(evm.BlockHeight))
+	n := evm.interpreter.intPool.get().Sub(height, common.Big257)
+	if num.Cmp(n) > 0 && num.Cmp(height) < 0 {
+		stack.push(evm.GetHash(uint32(num.Uint64())).Big())
 	} else {
 		stack.push(evm.interpreter.intPool.getZero())
 	}
@@ -516,7 +518,7 @@ func opBlockhash(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack
 }
 
 func opCoinbase(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack *Stack) ([]byte, error) {
-	stack.push(evm.Coinbase.Big())
+	stack.push(evm.Lemobase.Big())
 	return nil, nil
 }
 
@@ -526,12 +528,13 @@ func opTimestamp(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack
 }
 
 func opNumber(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack *Stack) ([]byte, error) {
-	stack.push(math.U256(evm.interpreter.intPool.get().Set(evm.BlockNumber)))
+	stack.push(math.U256(evm.interpreter.intPool.get().SetUint64(uint64(evm.BlockHeight))))
 	return nil, nil
 }
 
+// This is not meaningful any more
 func opDifficulty(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack *Stack) ([]byte, error) {
-	stack.push(math.U256(evm.interpreter.intPool.get().Set(evm.Difficulty)))
+	stack.push(math.U256(evm.interpreter.intPool.get().SetUint64(0)))
 	return nil, nil
 }
 
@@ -571,16 +574,25 @@ func opMstore8(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack *
 }
 
 func opSload(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack *Stack) ([]byte, error) {
-	loc := common.BigToHash(stack.pop())
-	val := evm.StateDB.GetState(contract.Address(), loc).Big()
-	stack.push(val)
+	var (
+		loc                = common.BigToHash(stack.pop())
+		contractAccount, _ = evm.am.GetAccount(contract.GetAddress())
+		val, err           = contractAccount.GetStorageState(loc)
+	)
+	if err != nil {
+		return nil, err
+	}
+	stack.push(new(big.Int).SetBytes(val))
 	return nil, nil
 }
 
 func opSstore(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack *Stack) ([]byte, error) {
-	loc := common.BigToHash(stack.pop())
-	val := stack.pop()
-	evm.StateDB.SetState(contract.Address(), loc, common.BigToHash(val))
+	var (
+		loc                = common.BigToHash(stack.pop())
+		val                = stack.pop()
+		contractAccount, _ = evm.am.GetAccount(contract.GetAddress())
+	)
+	contractAccount.SetStorageState(loc, val.Bytes())
 
 	evm.interpreter.intPool.put(val)
 	return nil, nil
@@ -788,17 +800,25 @@ func opStop(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack *Sta
 }
 
 func opSuicide(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack *Stack) ([]byte, error) {
-	balance := evm.StateDB.GetBalance(contract.Address())
-	evm.StateDB.AddBalance(common.BigToAddress(stack.pop()), balance)
+	contractAccount, _ := evm.am.GetAccount(contract.GetAddress())
+	if contractAccount.GetSuicide() {
+		return nil, nil
+	}
+	balance := contractAccount.GetBalance()
+	receiverAccount, err := evm.am.GetAccount(common.BigToAddress(stack.pop()))
+	if err != nil {
+		return nil, err
+	}
+	receiverAccount.SetBalance(balance.Add(receiverAccount.GetBalance(), balance))
 
-	evm.StateDB.Suicide(contract.Address())
+	contractAccount.SetSuicide(true)
 	return nil, nil
 }
 
 // following functions are used by the instruction jump  table
 
 // make log instruction function
-func makeLog(size int) executionFunc {
+func makeEvent(size int) executionFunc {
 	return func(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack *Stack) ([]byte, error) {
 		topics := make([]common.Hash, size)
 		mStart, mSize := stack.pop(), stack.pop()
@@ -807,13 +827,14 @@ func makeLog(size int) executionFunc {
 		}
 
 		d := memory.Get(mStart.Int64(), mSize.Int64())
-		evm.StateDB.AddLog(&types.Event{
-			Address: contract.Address(),
+		evm.am.AddEvent(&types.Event{
+			Address: contract.GetAddress(),
 			Topics:  topics,
 			Data:    d,
 			// This is a non-consensus field, but assigned here because
-			// core/state doesn't know the current block number.
-			BlockNumber: evm.BlockNumber.Uint64(),
+			// chain/account doesn't know the current block number.
+			BlockNumber: evm.BlockHeight,
+			TxHash:      evm.TxHash,
 		})
 
 		evm.interpreter.intPool.put(mStart, mSize)

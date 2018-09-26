@@ -20,6 +20,8 @@ func (f *testAccount) GetBalance() *big.Int                                { ret
 func (f *testAccount) SetBalance(balance *big.Int)                         { f.AccountData.Balance = balance }
 func (f *testAccount) GetVersion() uint32                                  { return f.AccountData.Version }
 func (f *testAccount) SetVersion(version uint32)                           { f.AccountData.Version = version }
+func (f *testAccount) GetSuicide() bool                                    { return false }
+func (f *testAccount) SetSuicide(suicided bool)                            {}
 func (f *testAccount) GetCodeHash() common.Hash                            { return f.AccountData.CodeHash }
 func (f *testAccount) SetCodeHash(codeHash common.Hash)                    { f.AccountData.CodeHash = codeHash }
 func (f *testAccount) GetCode() (Code, error)                              { return nil, nil }
@@ -61,8 +63,8 @@ func (p *testProcessor) createAccount(version uint32) *testAccount {
 	return account
 }
 
-func (p *testProcessor) AddEvent(event *Event)          {}
-func (p *testProcessor) RevertEvent(txHash common.Hash) {}
+func (p *testProcessor) PushEvent(event *Event) {}
+func (p *testProcessor) PopEvent() error        { return nil }
 
 type testCustomTypeConfig struct {
 	input     *ChangeLog

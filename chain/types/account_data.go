@@ -44,4 +44,6 @@ type AccountAccessor interface {
 	GetStorageState(key common.Hash) ([]byte, error)
 	SetStorageState(key common.Hash, value []byte) error
 	IsEmpty() bool
+	GetSuicide() bool
+	SetSuicide(suicided bool)
 }

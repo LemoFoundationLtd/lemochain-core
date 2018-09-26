@@ -1,19 +1,3 @@
-// Copyright 2017 The lemochain-go Authors
-// This file is part of the lemochain-go library.
-//
-// The lemochain-go library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Lesser General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// The lemochain-go library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with the lemochain-go library. If not, see <http://www.gnu.org/licenses/>.
-
 package vm
 
 import (
@@ -32,7 +16,7 @@ type twoOperandTest struct {
 
 func testTwoOperandOp(t *testing.T, tests []twoOperandTest, opFn func(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack *Stack) ([]byte, error)) {
 	var (
-		env   = NewEVM(Context{}, nil, params.TestChainConfig, Config{})
+		env   = NewEVM(Context{}, nil, params.DefaultChainConfig(), Config{})
 		stack = newstack()
 		pc    = uint64(0)
 	)
@@ -68,7 +52,7 @@ func testTwoOperandOp(t *testing.T, tests []twoOperandTest, opFn func(pc *uint64
 
 func TestByteOp(t *testing.T) {
 	var (
-		env   = NewEVM(Context{}, nil, params.TestChainConfig, Config{})
+		env   = NewEVM(Context{}, nil, params.DefaultChainConfig(), Config{})
 		stack = newstack()
 	)
 	tests := []struct {
@@ -198,7 +182,7 @@ func TestSLT(t *testing.T) {
 
 func opBenchmark(bench *testing.B, op func(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack *Stack) ([]byte, error), args ...string) {
 	var (
-		env   = NewEVM(Context{}, nil, params.TestChainConfig, Config{})
+		env   = NewEVM(Context{}, nil, params.DefaultChainConfig(), Config{})
 		stack = newstack()
 	)
 	// convert args

@@ -1,19 +1,3 @@
-// Copyright 2015 The lemochain-go Authors
-// This file is part of the lemochain-go library.
-//
-// The lemochain-go library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Lesser General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// The lemochain-go library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with the lemochain-go library. If not, see <http://www.gnu.org/licenses/>.
-
 package vm
 
 import (
@@ -138,8 +122,8 @@ func (l *StructLogger) CaptureState(env *EVM, pc uint64, op OpCode, gas, cost ui
 
 	// initialise new changed values storage container for this contract
 	// if not present.
-	if l.changedValues[contract.Address()] == nil {
-		l.changedValues[contract.Address()] = make(Storage)
+	if l.changedValues[contract.GetAddress()] == nil {
+		l.changedValues[contract.GetAddress()] = make(Storage)
 	}
 
 	// capture SSTORE opcodes and determine the changed value and store
@@ -149,7 +133,7 @@ func (l *StructLogger) CaptureState(env *EVM, pc uint64, op OpCode, gas, cost ui
 			value   = common.BigToHash(stack.data[stack.len()-2])
 			address = common.BigToHash(stack.data[stack.len()-1])
 		)
-		l.changedValues[contract.Address()][address] = value
+		l.changedValues[contract.GetAddress()][address] = value
 	}
 	// Copy a snapstot of the current memory state to a new buffer
 	var mem []byte
@@ -168,7 +152,7 @@ func (l *StructLogger) CaptureState(env *EVM, pc uint64, op OpCode, gas, cost ui
 	// Copy a snapshot of the current storage to a new container
 	var storage Storage
 	if !l.cfg.DisableStorage {
-		storage = l.changedValues[contract.Address()].Copy()
+		storage = l.changedValues[contract.GetAddress()].Copy()
 	}
 	// create a new snaptshot of the EVM.
 	log := StructLog{pc, op, gas, cost, mem, memory.Len(), stck, storage, depth, err}

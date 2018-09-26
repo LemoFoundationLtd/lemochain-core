@@ -1,40 +1,21 @@
-// Copyright 2015 The lemochain-go Authors
-// This file is part of the lemochain-go library.
-//
-// The lemochain-go library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Lesser General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// The lemochain-go library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with the lemochain-go library. If not, see <http://www.gnu.org/licenses/>.
-
 package runtime
 
 import (
+	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
+	"github.com/LemoFoundationLtd/lemochain-go/store"
+	"github.com/stretchr/testify/assert"
 	"math/big"
 	"strings"
 	"testing"
 
 	"github.com/LemoFoundationLtd/lemochain-go/accounts/abi"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/vm"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
-	"github.com/LemoFoundationLtd/lemochain-go/core/state"
-	"github.com/LemoFoundationLtd/lemochain-go/core/vm"
-	"github.com/LemoFoundationLtd/lemochain-go/lemodb"
 )
 
 func TestDefaults(t *testing.T) {
 	cfg := new(Config)
 	setDefaults(cfg)
-
-	if cfg.Difficulty == nil {
-		t.Error("expected difficulty to be non nil")
-	}
 
 	if cfg.Time == nil {
 		t.Error("expected time to be non nil")
@@ -50,9 +31,6 @@ func TestDefaults(t *testing.T) {
 	}
 	if cfg.GetHashFn == nil {
 		t.Error("expected time to be non nil")
-	}
-	if cfg.BlockNumber == nil {
-		t.Error("expected block number to be non nil")
 	}
 }
 
@@ -75,7 +53,7 @@ func TestEVM(t *testing.T) {
 }
 
 func TestExecute(t *testing.T) {
-	ret, _, err := Execute([]byte{
+	ret, err := Execute([]byte{
 		byte(vm.PUSH1), 10,
 		byte(vm.PUSH1), 0,
 		byte(vm.MSTORE),
@@ -94,10 +72,12 @@ func TestExecute(t *testing.T) {
 }
 
 func TestCall(t *testing.T) {
-	db, _ := lemodb.NewMemDatabase()
-	state, _ := state.New(common.Hash{}, state.NewDatabase(db))
+	db, _ := store.NewCacheChain("../../../db")
+	am := account.NewManager(common.Hash{}, db)
 	address := common.HexToAddress("0x0a")
-	state.SetCode(address, []byte{
+	contractAccount, err := am.GetAccount(address)
+	assert.NoError(t, err)
+	contractAccount.SetCode([]byte{
 		byte(vm.PUSH1), 10,
 		byte(vm.PUSH1), 0,
 		byte(vm.MSTORE),
@@ -106,10 +86,8 @@ func TestCall(t *testing.T) {
 		byte(vm.RETURN),
 	})
 
-	ret, _, err := Call(address, nil, &Config{State: state})
-	if err != nil {
-		t.Fatal("didn't expect error", err)
-	}
+	ret, err := Call(address, nil, &Config{AccountManager: am})
+	assert.NoError(t, err)
 
 	num := new(big.Int).SetBytes(ret)
 	if num.Cmp(big.NewInt(10)) != 0 {

@@ -25,6 +25,7 @@ func NewSafeAccount(processor *logProcessor, account *Account) *SafeAccount {
 func (a *SafeAccount) GetAddress() common.Address   { return a.rawAccount.GetAddress() }
 func (a *SafeAccount) GetBalance() *big.Int         { return a.rawAccount.GetBalance() }
 func (a *SafeAccount) GetVersion() uint32           { return a.rawAccount.GetVersion() }
+func (a *SafeAccount) GetSuicide() bool             { return a.rawAccount.GetSuicide() }
 func (a *SafeAccount) GetCodeHash() common.Hash     { return a.rawAccount.GetCodeHash() }
 func (a *SafeAccount) GetCode() (types.Code, error) { return a.rawAccount.GetCode() }
 func (a *SafeAccount) IsEmpty() bool                { return a.rawAccount.IsEmpty() }
@@ -41,6 +42,11 @@ func (a *SafeAccount) SetBalance(balance *big.Int) {
 
 func (a *SafeAccount) SetVersion(version uint32) {
 	panic("SafeAccount.SetVersion should not be called")
+}
+
+func (a *SafeAccount) SetSuicide(suicided bool) {
+	a.processor.PushChangeLog(NewSuicideLog(a.rawAccount))
+	a.rawAccount.SetSuicide(suicided)
 }
 
 func (a *SafeAccount) SetCodeHash(codeHash common.Hash) {

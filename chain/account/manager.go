@@ -17,6 +17,7 @@ const MaxTrieCacheGen = uint16(120)
 
 var (
 	ErrRevisionNotExist = errors.New("revision cannot be reverted")
+	ErrNoEvents         = errors.New("the times of pop event is more than push")
 )
 
 // Manager is used to maintain the newest and not confirmed account data. It will save all data to the db when finished a block's transactions processing.
@@ -96,18 +97,24 @@ func (am *Manager) getRawAccount(address common.Address) (types.AccountAccessor,
 	return account, nil
 }
 
+// IsExist reports whether the given account address exists in the db.
+// Notably this also returns true for suicided accounts.
+func (am *Manager) IsExist(address common.Address) bool {
+	_, err := am.db.GetAccount(am.baseBlockHash, address)
+	return err == nil || err != store.ErrNotExist
+}
+
 // AddEvent records the event add action when a transaction's execution finished
 func (am *Manager) AddEvent(event *types.Event) error {
-	// TODO save TxHash in manager
-	if (event.Address == common.Address{} || event.TxHash == common.Hash{}) {
+	if (event.Address == common.Address{}) {
 		panic("account.Manager.AddEvent() is called without a Address or TxHash")
 	}
 	account, err := am.getRawAccount(event.Address)
 	if err != nil {
 		return err
 	}
-	am.processor.PushChangeLog(NewAddEventLog(account, event.TxHash, event))
-	am.processor.AddEvent(event)
+	am.processor.PushChangeLog(NewAddEventLog(account, event))
+	am.processor.PushEvent(event)
 	return nil
 }
 
@@ -259,18 +266,17 @@ func (h *logProcessor) GetAccount(addr common.Address) (types.AccountAccessor, e
 	return h.manager.getRawAccount(addr)
 }
 
-func (h *logProcessor) AddEvent(event *types.Event) {
+func (h *logProcessor) PushEvent(event *types.Event) {
 	h.events = append(h.events, event)
 }
 
-func (h *logProcessor) RevertEvent(txHash common.Hash) {
-	result := h.events[:0]
-	for _, event := range h.events {
-		if event.TxHash != txHash {
-			result = append(result, event)
-		}
+func (h *logProcessor) PopEvent() error {
+	size := len(h.events)
+	if size == 0 {
+		return ErrNoEvents
 	}
-	h.events = result
+	h.events = h.events[:size-1]
+	return nil
 }
 
 func (h *logProcessor) PushChangeLog(log *types.ChangeLog) {

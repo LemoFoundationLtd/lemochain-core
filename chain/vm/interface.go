@@ -1,19 +1,3 @@
-// Copyright 2016 The lemochain-go Authors
-// This file is part of the lemochain-go library.
-//
-// The lemochain-go library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Lesser General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// The lemochain-go library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with the lemochain-go library. If not, see <http://www.gnu.org/licenses/>.
-
 package vm
 
 import (
@@ -23,24 +7,20 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 )
 
-// StateDB is an EVM database for full state querying.
-type StateDB interface {
+// am is an EVM database for full state querying.
+type AccountManager interface {
+	GetAccount(common.Address) (types.AccountAccessor, error)
 	CreateAccount(common.Address)
+	IsExist(common.Address) bool
 
 	SubBalance(common.Address, *big.Int)
 	AddBalance(common.Address, *big.Int)
 	GetBalance(common.Address) *big.Int
 
-	GetNonce(common.Address) uint64
-	SetNonce(common.Address, uint64)
-
 	GetCodeHash(common.Address) common.Hash
 	GetCode(common.Address) []byte
 	SetCode(common.Address, []byte)
 	GetCodeSize(common.Address) int
-
-	AddRefund(uint64)
-	GetRefund() uint64
 
 	GetState(common.Address, common.Hash) common.Hash
 	SetState(common.Address, common.Hash, common.Hash)
@@ -48,19 +28,10 @@ type StateDB interface {
 	Suicide(common.Address) bool
 	HasSuicided(common.Address) bool
 
-	// Exist reports whether the given account exists in state.
-	// Notably this should also return true for suicided accounts.
-	Exist(common.Address) bool
-	// Empty returns whether the given account is empty. (balance = nonce = code = 0).
-	Empty(common.Address) bool
-
 	RevertToSnapshot(int)
 	Snapshot() int
 
-	AddLog(*types.Event)
-	AddPreimage(common.Hash, []byte)
-
-	ForEachStorage(common.Address, func(common.Hash, common.Hash) bool)
+	AddEvent(*types.Event)
 }
 
 // CallContext provides a basic interface for the EVM calling conventions. The EVM EVM

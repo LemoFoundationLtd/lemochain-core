@@ -64,7 +64,7 @@ func TestNewManager_GetCanonicalAccount(t *testing.T) {
 	assert.Equal(t, account, manager.accountCache[common.Address{}])
 }
 
-func TestChangeLogHelper_GetAccount(t *testing.T) {
+func TestChangeLogProcessor_GetAccount(t *testing.T) {
 	manager := NewManager(defaultBlock.hash, newDB())
 
 	// not exist in db
@@ -89,26 +89,29 @@ func TestChangeLogHelper_GetAccount(t *testing.T) {
 	assert.Equal(t, account.GetBalance(), rawAccount.GetBalance())
 }
 
-func TestChangeLogHelper_AddEvent_RevertEvent(t *testing.T) {
+func TestChangeLogProcessor_PushEvent_PopEvent(t *testing.T) {
 	manager := NewManager(defaultBlock.hash, newDB())
 
-	// add
-	manager.processor.AddEvent(&types.Event{Address: common.HexToAddress("0x1"), TxHash: th(1), BlockNumber: 11})
-	manager.processor.AddEvent(&types.Event{Address: common.HexToAddress("0x1"), TxHash: th(2), BlockNumber: 22})
-	manager.processor.AddEvent(&types.Event{Address: common.HexToAddress("0x1"), TxHash: th(3), BlockNumber: 33})
+	// push
+	manager.processor.PushEvent(&types.Event{Address: common.HexToAddress("0x1"), TxHash: th(1), BlockNumber: 11})
+	manager.processor.PushEvent(&types.Event{Address: common.HexToAddress("0x1"), BlockNumber: 22})
 	events := manager.GetEvents()
-	assert.Equal(t, 3, len(events))
-	assert.Equal(t, uint32(11), events[0].BlockNumber)
-	assert.Equal(t, uint32(33), events[2].BlockNumber)
-
-	// revert
-	manager.processor.RevertEvent(th(1))
-	events = manager.GetEvents()
 	assert.Equal(t, 2, len(events))
-	assert.Equal(t, uint32(22), events[0].BlockNumber)
+	assert.Equal(t, uint32(22), events[1].BlockNumber)
+
+	// pop
+	err := manager.processor.PopEvent()
+	assert.NoError(t, err)
+	events = manager.GetEvents()
+	assert.Equal(t, 1, len(events))
+	assert.Equal(t, uint32(11), events[0].BlockNumber)
+	err = manager.processor.PopEvent()
+	assert.NoError(t, err)
+	err = manager.processor.PopEvent()
+	assert.Equal(t, ErrNoEvents, err)
 }
 
-func TestChangeLogHelper_PushChangeLog_GetChangeLogs(t *testing.T) {
+func TestChangeLogProcessor_PushChangeLog_GetChangeLogs(t *testing.T) {
 	manager := NewManager(defaultBlock.hash, newDB())
 
 	manager.processor.PushChangeLog(&types.ChangeLog{

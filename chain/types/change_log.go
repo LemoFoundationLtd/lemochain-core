@@ -24,8 +24,8 @@ var (
 // It is implemented by account.Manager
 type ChangeLogProcessor interface {
 	GetAccount(addr common.Address) (AccountAccessor, error)
-	AddEvent(event *Event)
-	RevertEvent(txHash common.Hash)
+	PushEvent(event *Event)
+	PopEvent() error
 }
 
 type ChangeLogType uint

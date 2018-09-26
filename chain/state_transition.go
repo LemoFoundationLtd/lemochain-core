@@ -42,7 +42,7 @@ package chain
 // 	initialGas uint64
 // 	value      *big.Int
 // 	data       []byte
-// 	state      vm.StateDB
+// 	state      vm.AccountManager
 // 	evm        *vm.EVM
 // }
 //
@@ -100,7 +100,7 @@ package chain
 // 		gasPrice: msg.GasPrice(),
 // 		value:    msg.Value(),
 // 		data:     msg.Data(),
-// 		state:    evm.StateDB,
+// 		state:    evm.AccountManager,
 // 	}
 // }
 //
@@ -154,7 +154,7 @@ package chain
 // 		sender = st.from()
 // 	)
 // 	mgval := new(big.Int).Mul(new(big.Int).SetUint64(st.msg.Gas()), st.gasPrice)
-// 	if state.GetBalance(sender.Address()).Cmp(mgval) < 0 {
+// 	if state.GetBalance(sender.GetAddress()).Cmp(mgval) < 0 {
 // 		return errInsufficientBalanceForGas
 // 	}
 // 	if err := st.gp.SubGas(st.msg.Gas()); err != nil {
@@ -163,7 +163,7 @@ package chain
 // 	st.gas += st.msg.Gas()
 //
 // 	st.initialGas = st.msg.Gas()
-// 	state.SubBalance(sender.Address(), mgval)
+// 	state.SubBalance(sender.GetAddress(), mgval)
 // 	return nil
 // }
 //
@@ -203,8 +203,8 @@ package chain
 // 		ret, _, st.gas, vmerr = evm.Create(sender, st.data, st.gas, st.value)
 // 	} else {
 // 		// Increment the nonce for the next transaction
-// 		st.state.SetNonce(sender.Address(), st.state.GetNonce(sender.Address())+1)
-// 		ret, st.gas, vmerr = evm.Call(sender, st.to().Address(), st.data, st.gas, st.value)
+// 		st.state.SetNonce(sender.GetAddress(), st.state.GetNonce(sender.GetAddress())+1)
+// 		ret, st.gas, vmerr = evm.Call(sender, st.to().GetAddress(), st.data, st.gas, st.value)
 // 	}
 // 	if vmerr != nil {
 // 		log.Debug("VM returned with error", "err", vmerr)
@@ -216,7 +216,7 @@ package chain
 // 		}
 // 	}
 // 	st.refundGas()
-// 	st.state.AddBalance(st.evm.Coinbase, new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), st.gasPrice))
+// 	st.state.AddBalance(st.evm.Lemobase, new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), st.gasPrice))
 //
 // 	return ret, st.gasUsed(), vmerr != nil, err
 // }
@@ -233,7 +233,7 @@ package chain
 // 	sender := st.from()
 //
 // 	remaining := new(big.Int).Mul(new(big.Int).SetUint64(st.gas), st.gasPrice)
-// 	st.state.AddBalance(sender.Address(), remaining)
+// 	st.state.AddBalance(sender.GetAddress(), remaining)
 //
 // 	// Also return remaining gas to the block gas counter so it is
 // 	// available for the next transaction.
