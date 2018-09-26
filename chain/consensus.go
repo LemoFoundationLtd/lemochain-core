@@ -34,8 +34,9 @@ func (d *Dpovp) VerifyHeader(block *types.Block) error {
 	if header.Time.Cmp(big.NewInt(time.Now().Unix())) > 0 {
 		return errors.New("block in the future")
 	}
-	addrHash := crypto.Keccak256Hash(header.LemoBase[:])
-	pubKey, err := crypto.Ecrecover(addrHash[:], header.SignData)
+	// addrHash := crypto.Keccak256Hash(header.LemoBase[:])
+	hash := block.Hash()
+	pubKey, err := crypto.Ecrecover(hash[:], header.SignData)
 	if err != nil {
 		return err
 	}

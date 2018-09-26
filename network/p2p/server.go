@@ -360,7 +360,7 @@ func (srv *Server) Peers() []string {
 	defer srv.peersMux.Unlock()
 	result := make([]string, 0, len(srv.peers))
 	for _, v := range srv.peers {
-		result = append(result, v.rw.fd.LocalAddr().String())
+		result = append(result, v.rw.fd.RemoteAddr().String())
 	}
 	return result
 }

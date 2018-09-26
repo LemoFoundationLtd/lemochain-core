@@ -11,7 +11,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
-	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/common/flock"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/network/p2p"
@@ -32,12 +31,11 @@ type Node struct {
 	lemoConfig  *LemoConfig
 	chainConfig *params.ChainConfig
 
-	db     protocol.ChainDB
-	accMan *account.Manager
-	txPool *chain.TxPool
-	chain  *chain.BlockChain
-	pm     *synchronise.ProtocolManager
-	// engine   *chain.Dpovp
+	db       protocol.ChainDB
+	accMan   *account.Manager
+	txPool   *chain.TxPool
+	chain    *chain.BlockChain
+	pm       *synchronise.ProtocolManager
 	miner    *miner.Miner
 	gasPrice *big.Int
 
@@ -141,6 +139,10 @@ func New(lemoConf *LemoConfig, conf *NodeConfig) (*Node, error) {
 	n.config.P2P.PrivateKey = deputynode.GetSelfNodeKey()
 	miner := miner.New(int64(genesisConfig.SleepTime), int64(genesisConfig.Timeout), blockChain, n.config.NodeKey(), newMinedBlockCh, recvBlockCh)
 	n.miner = miner
+	d_n := deputynode.Instance().GetNodeByNodeID(blockChain.CurrentBlock().Height()+1, deputynode.GetSelfNodeID())
+	if d_n != nil {
+		miner.SetLemoBase(d_n.LemoBase)
+	}
 	deputynode.Instance().Init()
 	return n, nil
 }
@@ -180,6 +182,7 @@ func (n *Node) Start() error {
 	}
 	// n.serverConfig = n.config.P2P
 	server := &p2p.Server{Config: n.config.P2P}
+	server.PeerEvent = n.pm.PeerEvent
 	if err := server.Start(); err != nil {
 		log.Errorf("start p2p server failed: %v", err)
 		return err
@@ -437,7 +440,7 @@ func (n *Node) apis() []rpc.API {
 		{
 			Namespace: "account",
 			Version:   "1.0",
-			Service:   &AddressManagerAPI{},
+			Service:   NewAccountAPI(n.chain),
 		},
 		{
 			Namespace: "net",
@@ -445,13 +448,4 @@ func (n *Node) apis() []rpc.API {
 			Service:   n.server,
 		},
 	}
-}
-
-type AddressManagerAPI struct {
-}
-
-// NewAccount get the address
-func (a *AddressManagerAPI) NewAccount() *crypto.AddressKeyPair {
-	account := crypto.GenerateAddress()
-	return account
 }

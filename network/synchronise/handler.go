@@ -173,6 +173,7 @@ func (pm *ProtocolManager) broadcastStableBlock(block *types.Block) {
 
 // dropPeer 断开连接
 func (pm *ProtocolManager) dropPeer(id string) {
+	log.Infof("Drop peer: %s", id)
 	pm.peers.Unregister(id)
 	pm.downloader.UnRegisterPeer(id)
 }
@@ -182,14 +183,13 @@ func (pm *ProtocolManager) PeerEvent(peer *p2p.Peer, flag p2p.PeerEventFlag) err
 	switch flag {
 	case p2p.AddPeerFlag:
 		p := newPeer(peer)
-		select {
-		case pm.newPeerCh <- p:
-			pm.wg.Add(1)
-			defer pm.wg.Done()
-			return pm.handle(p)
-		case <-pm.quitSync:
-			return errors.New("quit")
-		}
+		pm.handle(p)
+		// select {
+		// case pm.newPeerCh <- p:
+		// 	go pm.handle(p)
+		// case <-pm.quitSync:
+		// 	return errors.New("quit")
+		// }
 	case p2p.DropPeerFlag:
 		pm.dropPeer(peer.NodeID().String())
 	default:
@@ -213,6 +213,8 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	}
 	pm.peers.Register(pConn)
 	pm.downloader.RegisterPeer(p.id, p)
+	pm.newPeerCh <- p
+
 	// 死循环 处理收到的网络消息
 	for {
 		if err := pm.handleMsg(pConn); err != nil {
@@ -279,12 +281,12 @@ func (pm *ProtocolManager) handleMsg(p *peerConnection) error {
 		height := query.From
 		var err error
 		for i := uint32(0); i < count; i++ {
-			blocks := make(types.Blocks, 10)
+			blocks := make(types.Blocks, 0, 10)
 			for j := 0; j < 10; j++ {
 				blocks = append(blocks, pm.blockchain.GetBlockByHeight(height))
 				height++
 				if height > query.To {
-					return nil
+					break
 				}
 			}
 			if err = p.peer.send(protocol.BlocksMsg, blocks); err != nil { // 一次发送10个区块
@@ -299,6 +301,7 @@ func (pm *ProtocolManager) handleMsg(p *peerConnection) error {
 		if len(blocks) == 0 {
 			return errResp(protocol.ErrNoBlocks, "%v: %s", msg, "no blocks data")
 		}
+		log.Infof("Receive blocks from: %s. from: %d -- to: %d", p.id, blocks[0].Height(), blocks[len(blocks)-1].Height())
 		filter := len(blocks) == 1 // len(blocks) == 1 不一定为fetcher，但len(blocks)>1肯定是downloader
 		if filter {
 			blocks = pm.fetcher.FilterBlocks(p.id, blocks)
@@ -320,9 +323,13 @@ func (pm *ProtocolManager) handleMsg(p *peerConnection) error {
 		if err := msg.Decode(&block); err != nil {
 			return errResp(protocol.ErrDecode, "%v: %v", msg, err)
 		}
+		log.Infof("Receive single block. height: %d", block.Height())
 		pm.fetcher.Enqueue(p.id, &block)
 	case protocol.NewBlockMsg: // 远程节点主动推送的挖到的最新区块消息
-		if pm.isSelfDeputyNode() && !pm.isPeerDeputyNode(pm.blockchain.CurrentBlock().Height(), p.id) {
+		if !pm.isSelfDeputyNode() {
+			return errors.New("self node isn't a deputy node")
+		}
+		if !pm.isPeerDeputyNode(pm.blockchain.CurrentBlock().Height(), p.id) {
 			return errors.New("recv new block message broadcast by delay node")
 		}
 		var block *types.Block
@@ -331,6 +338,7 @@ func (pm *ProtocolManager) handleMsg(p *peerConnection) error {
 		}
 		p.peer.MarkBlock(block.Hash()) // 标记区块
 		pm.fetcher.Enqueue(p.id, block)
+		log.Infof("Receive new block. height: %d. hash: %s", block.Height(), block.Hash().Hex())
 		if block.Height() > p.peer.height {
 			p.peer.SetHead(p.peer.head, p.peer.height)
 			// 清理交易池
@@ -417,7 +425,7 @@ func (pm *ProtocolManager) minedBroadcastLoop() {
 		select {
 		case block := <-pm.newMinedBlockCh:
 			if block == nil {
-				log.Warn("can't broadcast nil block ")
+				log.Warn("Can't broadcast nil block ")
 				return
 			}
 			pm.blockchain.MineNewBlock(block)
@@ -471,6 +479,9 @@ func (pm *ProtocolManager) synchronise(p string) {
 // syncTransactions 同步交易 发送本地所有交易到该节点
 func (pm *ProtocolManager) syncTransactions(id string) {
 	pending := pm.txPool.Pending()
+	if len(pending) == 0 {
+		return
+	}
 	p := pm.peers.Peer(id)
 	if p != nil {
 		go p.peer.SendTransactions(pending)

@@ -76,7 +76,7 @@ func (p *Peer) receiverHandshake(prv *ecdsa.PrivateKey) error {
 
 	// 发送自己的NodeID
 	nodeID := PubkeyID(&prv.PublicKey)
-	copy(buf[4:], nodeID[1:])
+	copy(buf[4:], nodeID[:])
 	if _, err := conn.Write(buf); err != nil {
 		return err
 	}

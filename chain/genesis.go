@@ -51,7 +51,7 @@ func DefaultGenesisBlock() *Genesis {
 		Time:      uint64(timeSpan.Unix()),
 		ExtraData: []byte(""),
 		GasLimit:  0x6422c40,
-		LemoBase:  common.StringToAddress("0x015780F8456F9c1532645087a19DcF9a7e0c7F97"),
+		LemoBase:  common.HexToAddress("0x015780F8456F9c1532645087a19DcF9a7e0c7F97"),
 	}
 }
 
