@@ -239,7 +239,7 @@ func (m *Miner) sealBlock() {
 		return
 	}
 	m.chain.AccountManager().Save(header.Hash())
-	log.Infof("mine a block. height: %d hash: %s", block.Height(), block.Hash().String())
+	log.Infof("Mine a new block. height: %d hash: %s", block.Height(), block.Hash().String())
 	m.mineNewBlockCh <- block
 	nodeCount := deputynode.Instance().GetDeputyNodesCount()
 	var timeDur int64
@@ -254,7 +254,7 @@ func (m *Miner) sealBlock() {
 // sealHead 生成区块头
 func (m *Miner) sealHead() *types.Header {
 	parent := m.currentBlock()
-	if parent.Height() == 0 || (parent.Height()+1)%1001000 == 1 {
+	if (parent.Height()+1)%1001000 == 1 {
 		n := deputynode.Instance().GetNodeByNodeID(parent.Height()+1, deputynode.GetSelfNodeID())
 		m.SetLemoBase(n.LemoBase)
 	}

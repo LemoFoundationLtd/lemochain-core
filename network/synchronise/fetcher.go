@@ -149,7 +149,7 @@ func (f *Fetcher) run() {
 			switch err {
 			case nil:
 			default:
-				log.Debug(fmt.Sprintf("block verification failed", "peer", op.origin, "number", op.block.Height(), "hash", hash, "err", err))
+				log.Infof("Block verify failed. height: %d. hash: %s. peer: %s. err: %v", op.block.Height(), hash.Hex(), op.origin, err)
 				if f.dropPeer != nil {
 					f.dropPeer(op.origin)
 				}
@@ -204,7 +204,7 @@ func (f *Fetcher) run() {
 			}
 			// 单个peer收到的通知减处理后的还剩下过多
 			if f.announces[notification.origin] >= hashLimit {
-				log.Debug(fmt.Sprintf("Peer receive announces over limit. origin:%s", notification.origin))
+				log.Infof("Peer receive announces over limit. origin:%s", notification.origin)
 				break
 			}
 			// 记录Hash对应的所有通知，场景为多个共识节点同时向该节点推送通知

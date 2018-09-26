@@ -231,9 +231,9 @@ func (bc *BlockChain) InsertChain(block *types.Block) (err error) {
 		bc.chainForksLock.Unlock()
 		if needFork {
 			curBlock := bc.currentBlock.Load().(*types.Block)
-			log.Info(fmt.Sprintf("chain forked! current block: height(%d), hash(%s)", curBlock.Height(), curBlock.Hash().Hex()))
+			log.Infof("chain forked! current block: height(%d), hash(%s)", curBlock.Height(), curBlock.Hash().Hex())
 		}
-		log.Info(fmt.Sprintf("insert a block to db. height:%d", block.Height()))
+		log.Debugf("Insert block to db success. height:%d", block.Height())
 	}()
 
 	// 同一条链上 正常情况
