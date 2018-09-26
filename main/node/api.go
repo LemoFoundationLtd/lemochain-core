@@ -1,11 +1,9 @@
 package node
 
 import (
-	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
-	"math/big"
-
 	"github.com/LemoFoundationLtd/lemochain-go/chain"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 )
 
 // AccountAPI API for access to account information
@@ -25,11 +23,11 @@ func (a *AccountAPI) NewAccount() *crypto.AddressKeyPair {
 }
 
 // GetBalance get balance api
-func (a *AccountAPI) GetBalance(address common.Address) *big.Int {
+func (a *AccountAPI) GetBalance(address common.Address) string {
 	// address := crypto.RestoreOriginalAddress(LemoAddress)
 	account, err := a.blockChain.AccountManager().GetAccount(address)
 	if err != nil {
-		return nil
+		return ""
 	}
-	return account.GetBalance()
+	return account.GetBalance().String()
 }
