@@ -1,22 +1,21 @@
 package node
 
 import (
-	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
-	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
-	"github.com/LemoFoundationLtd/lemochain-go/store/protocol"
 	"math/big"
+
+	"github.com/LemoFoundationLtd/lemochain-go/chain"
+	"github.com/LemoFoundationLtd/lemochain-go/common"
 )
 
 // AccountAPI API for access to account information
 type AccountAPI struct {
-	db   protocol.ChainDB
-	data *types.AccountData
+	blockChain *chain.BlockChain
 }
 
 //
-func NewAccountAPI(db protocol.ChainDB, data *types.AccountData) *AccountAPI {
-	return &AccountAPI{db, data}
+func NewAccountAPI(blockChain *chain.BlockChain) *AccountAPI {
+	return &AccountAPI{blockChain}
 }
 
 // NewAccount get lemo address api
@@ -26,8 +25,11 @@ func (a *AccountAPI) NewAccount() *crypto.AddressKeyPair {
 }
 
 // GetBalance get balance api
-func (a *AccountAPI) GetBalance(lemoAddress string) *big.Int {
-	accountPoint := account.NewAccount(a.db, crypto.RestoreOriginalAddress(lemoAddress), a.data)
-
-	return accountPoint.GetBalance()
+func (a *AccountAPI) GetBalance(address common.Address) *big.Int {
+	// address := crypto.RestoreOriginalAddress(LemoAddress)
+	account, err := a.blockChain.AccountManager().GetAccount(address)
+	if err != nil {
+		return nil
+	}
+	return account.GetBalance()
 }
