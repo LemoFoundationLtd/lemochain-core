@@ -440,7 +440,7 @@ func (n *Node) apis() []rpc.API {
 		{
 			Namespace: "account",
 			Version:   "1.0",
-			Service:   NewAccountAPI(n.chain),
+			Service:   NewAccountAPI(n.accMan),
 		},
 		{
 			Namespace: "net",

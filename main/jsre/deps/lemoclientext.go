@@ -13,8 +13,8 @@ lemojs._extend({
 	property: 'account',
 	methods: [
 		new lemojs._extend.Method({
-			name: 'newAccount',
-			call: 'account_newAccount',
+			name: 'newKeyPair',
+			call: 'account_newKeyPair',
 			params: 0
 		}),
 		new lemojs._extend.Method({

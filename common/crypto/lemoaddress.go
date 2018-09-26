@@ -45,10 +45,8 @@ func GenerateAddress() *AddressKeyPair {
 	bytesAddress := base26.Encode(fullPayload)
 	// Add logo at the top
 	lemoAddress := append([]byte(logo), bytesAddress...)
-	// Get PublicKey through the PrivateKey
-	public := privKey.PublicKey
 	// PublicKey type is converted to bytes type
-	publicToBytes := FromECDSAPub(&public)
+	publicToBytes := FromECDSAPub(&pubKey)
 	// PrivateKey type is converted to bytes type
 	privateToBytes := FromECDSA(privKey)
 	return &AddressKeyPair{
