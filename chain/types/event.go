@@ -26,7 +26,7 @@ type Event struct {
 	// Derived fields. These fields are filled in by the node
 	// but not secured by consensus.
 	// block in which the transaction was included
-	BlockNumber uint32 `json:"blockNumber"`
+	BlockHeight uint32 `json:"blockHeight"`
 	// hash of the transaction
 	TxHash common.Hash `json:"transactionHash" gencodec:"required"`
 	// index of the transaction in the block
@@ -43,7 +43,7 @@ type Event struct {
 
 type eventMarshaling struct {
 	Data        hexutil.Bytes
-	BlockNumber hexutil.Uint64
+	BlockHeight hexutil.Uint64
 	TxIndex     hexutil.Uint
 	Index       hexutil.Uint
 }
@@ -58,7 +58,7 @@ type rlpStorageEvent struct {
 	Address     common.Address
 	Topics      []common.Hash
 	Data        []byte
-	BlockNumber uint32
+	BlockHeight uint32
 	TxHash      common.Hash
 	TxIndex     uint
 	BlockHash   common.Hash
@@ -103,7 +103,7 @@ func (l *EventForStorage) EncodeRLP(w io.Writer) error {
 		Address:     l.Address,
 		Topics:      l.Topics,
 		Data:        l.Data,
-		BlockNumber: l.BlockNumber,
+		BlockHeight: l.BlockHeight,
 		TxHash:      l.TxHash,
 		TxIndex:     l.TxIndex,
 		BlockHash:   l.BlockHash,
@@ -120,7 +120,7 @@ func (l *EventForStorage) DecodeRLP(s *rlp.Stream) error {
 			Address:     dec.Address,
 			Topics:      dec.Topics,
 			Data:        dec.Data,
-			BlockNumber: dec.BlockNumber,
+			BlockHeight: dec.BlockHeight,
 			TxHash:      dec.TxHash,
 			TxIndex:     dec.TxIndex,
 			BlockHash:   dec.BlockHash,

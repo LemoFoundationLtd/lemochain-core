@@ -18,7 +18,7 @@ func (e Event) MarshalJSON() ([]byte, error) {
 		Address     common.Address `json:"address" gencodec:"required"`
 		Topics      []common.Hash  `json:"topics" gencodec:"required"`
 		Data        hexutil.Bytes  `json:"data" gencodec:"required"`
-		BlockNumber hexutil.Uint64 `json:"blockNumber"`
+		BlockHeight hexutil.Uint64 `json:"blockHeight"`
 		TxHash      common.Hash    `json:"transactionHash" gencodec:"required"`
 		TxIndex     hexutil.Uint   `json:"transactionIndex" gencodec:"required"`
 		BlockHash   common.Hash    `json:"blockHash"`
@@ -29,7 +29,7 @@ func (e Event) MarshalJSON() ([]byte, error) {
 	enc.Address = e.Address
 	enc.Topics = e.Topics
 	enc.Data = e.Data
-	enc.BlockNumber = hexutil.Uint64(e.BlockNumber)
+	enc.BlockHeight = hexutil.Uint64(e.BlockHeight)
 	enc.TxHash = e.TxHash
 	enc.TxIndex = hexutil.Uint(e.TxIndex)
 	enc.BlockHash = e.BlockHash
@@ -44,7 +44,7 @@ func (e *Event) UnmarshalJSON(input []byte) error {
 		Address     *common.Address `json:"address" gencodec:"required"`
 		Topics      []common.Hash   `json:"topics" gencodec:"required"`
 		Data        *hexutil.Bytes  `json:"data" gencodec:"required"`
-		BlockNumber *hexutil.Uint64 `json:"blockNumber"`
+		BlockHeight *hexutil.Uint64 `json:"blockHeight"`
 		TxHash      *common.Hash    `json:"transactionHash" gencodec:"required"`
 		TxIndex     *hexutil.Uint   `json:"transactionIndex" gencodec:"required"`
 		BlockHash   *common.Hash    `json:"blockHash"`
@@ -67,8 +67,8 @@ func (e *Event) UnmarshalJSON(input []byte) error {
 		return errors.New("missing required field 'data' for Event")
 	}
 	e.Data = *dec.Data
-	if dec.BlockNumber != nil {
-		e.BlockNumber = uint32(*dec.BlockNumber)
+	if dec.BlockHeight != nil {
+		e.BlockHeight = uint32(*dec.BlockHeight)
 	}
 	if dec.TxHash == nil {
 		return errors.New("missing required field 'transactionHash' for Event")

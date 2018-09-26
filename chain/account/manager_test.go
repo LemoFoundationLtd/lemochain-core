@@ -93,18 +93,18 @@ func TestChangeLogProcessor_PushEvent_PopEvent(t *testing.T) {
 	manager := NewManager(defaultBlock.hash, newDB())
 
 	// push
-	manager.processor.PushEvent(&types.Event{Address: common.HexToAddress("0x1"), TxHash: th(1), BlockNumber: 11})
-	manager.processor.PushEvent(&types.Event{Address: common.HexToAddress("0x1"), BlockNumber: 22})
+	manager.processor.PushEvent(&types.Event{Address: common.HexToAddress("0x1"), TxHash: th(1), BlockHeight: 11})
+	manager.processor.PushEvent(&types.Event{Address: common.HexToAddress("0x1"), BlockHeight: 22})
 	events := manager.GetEvents()
 	assert.Equal(t, 2, len(events))
-	assert.Equal(t, uint32(22), events[1].BlockNumber)
+	assert.Equal(t, uint32(22), events[1].BlockHeight)
 
 	// pop
 	err := manager.processor.PopEvent()
 	assert.NoError(t, err)
 	events = manager.GetEvents()
 	assert.Equal(t, 1, len(events))
-	assert.Equal(t, uint32(11), events[0].BlockNumber)
+	assert.Equal(t, uint32(11), events[0].BlockHeight)
 	err = manager.processor.PopEvent()
 	assert.NoError(t, err)
 	err = manager.processor.PopEvent()
@@ -169,15 +169,15 @@ func TestNewManager_Snapshot_RevertToSnapshot(t *testing.T) {
 func TestNewManager_AddEvent(t *testing.T) {
 	manager := NewManager(defaultBlock.hash, newDB())
 
-	event1 := &types.Event{Address: common.HexToAddress("0x1"), TxHash: th(1), BlockNumber: 11}
-	event2 := &types.Event{Address: common.HexToAddress("0x1"), TxHash: th(1), BlockNumber: 22}
+	event1 := &types.Event{Address: common.HexToAddress("0x1"), TxHash: th(1), BlockHeight: 11}
+	event2 := &types.Event{Address: common.HexToAddress("0x1"), TxHash: th(1), BlockHeight: 22}
 	err := manager.AddEvent(event1)
 	assert.NoError(t, err)
 	err = manager.AddEvent(event2)
 	assert.NoError(t, err)
 	events := manager.GetEvents()
 	assert.Equal(t, 2, len(events))
-	assert.Equal(t, uint32(11), events[0].BlockNumber)
+	assert.Equal(t, uint32(11), events[0].BlockHeight)
 	logs := manager.GetChangeLogs()
 	assert.Equal(t, 2, len(logs))
 	assert.Equal(t, AddEventLog, logs[0].LogType)

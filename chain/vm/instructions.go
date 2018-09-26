@@ -833,7 +833,7 @@ func makeEvent(size int) executionFunc {
 			Data:    d,
 			// This is a non-consensus field, but assigned here because
 			// chain/account doesn't know the current block number.
-			BlockNumber: evm.BlockHeight,
+			BlockHeight: evm.BlockHeight,
 			TxHash:      evm.TxHash,
 		})
 
