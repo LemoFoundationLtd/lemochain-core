@@ -23,7 +23,7 @@ type Miner struct {
 	lemoBase      common.Address
 	mining        int32
 	engine        *chain.Dpovp
-	//lemo Backend
+	// lemo Backend
 	chain        *chain.BlockChain
 	mux          sync.Mutex
 	currentBlock func() *types.Block
@@ -215,7 +215,11 @@ func (m *Miner) sealBlock() {
 	header := m.sealHead()
 	var txs []*types.Transaction // todo
 	// txs:=m.lemo.TxPool().Pending()
-	txsRes := chain.ApplyTxs(m.chain, header, txs)
+	txsRes, err := chain.NewTxProcessor(m.chain).ApplyTxs(header, txs)
+	if err != nil {
+		log.Error(fmt.Sprintf("apply transactions for block failed! %s", err))
+		return
+	}
 	header.Bloom = txsRes.Bloom
 	header.GasUsed = txsRes.GasUsed
 	header.TxRoot = types.DeriveTxsSha(txsRes.Txs)

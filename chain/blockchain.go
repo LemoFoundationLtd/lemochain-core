@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
-	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
@@ -58,7 +57,7 @@ func NewBlockChain(chainID *big.Int, db db.ChainDB, newBlockCh chan *types.Block
 		return nil, err
 	}
 	bc.loadConsensusEngine()
-	bc.processor = NewTxProcessor(&params.ChainConfig{}, bc, bc.engine)
+	bc.processor = NewTxProcessor(bc)
 	return bc, nil
 }
 
@@ -193,6 +192,8 @@ func (bc *BlockChain) InsertChain(block *types.Block) (err error) {
 	if err != nil {
 		return err
 	}
+	// Finalize the block, applying any consensus engine specific extras (e.g. block rewards)
+	bc.engine.Finalize(block.Header)
 	block.SetChangeLog(bc.AccountManager().GetChangeLogs())
 	// todo
 	if res == nil {

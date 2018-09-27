@@ -383,11 +383,11 @@ func (evm *EVM) Create(caller ContractRef, code []byte, gas uint64, value *big.I
 func (evm *EVM) Interpreter() *Interpreter { return evm.interpreter }
 
 // AddEvent records the event during transaction's execution.
-func (evm *EVM) AddEvent(address common.Address, Topics []common.Hash, Data []byte) {
+func (evm *EVM) AddEvent(address common.Address, topics []common.Hash, data []byte) {
 	evm.am.AddEvent(&types.Event{
 		Address: address,
-		Topics:  []common.Hash{types.TopicContractCreation},
-		Data:    make([]byte, 0),
+		Topics:  topics,
+		Data:    data,
 		// This is a non-consensus field, but assigned here because
 		// chain/account doesn't know the current block number.
 		BlockHeight: evm.BlockHeight,
