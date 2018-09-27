@@ -54,4 +54,5 @@ type AccountAccessor interface {
 	IsEmpty() bool
 	GetSuicide() bool
 	SetSuicide(suicided bool)
+	MarshalJSON() ([]byte, error)
 }
