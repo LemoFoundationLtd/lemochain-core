@@ -15,9 +15,10 @@ import (
 	"math/big"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
-type broadcastConfirmInfoFn func(hash common.Hash, num uint32)
+type broadcastConfirmInfoFn func(hash common.Hash, height uint32)
 type broadcastBlockFn func(block *types.Block)
 
 type BlockChain struct {
@@ -234,6 +235,11 @@ func (bc *BlockChain) InsertChain(block *types.Block) (err error) {
 			log.Infof("chain forked! current block: height(%d), hash(%s)", curBlock.Height(), curBlock.Hash().Hex())
 		}
 		log.Debugf("Insert block to db success. height:%d", block.Height())
+		// only broadcast confirm info within one hour
+		c_t := uint64(time.Now().Unix())
+		if c_t-block.Time().Uint64() < 60*60 {
+			bc.BroadcastConfirmInfo(block.Hash(), block.Height())
+		}
 	}()
 
 	// 同一条链上 正常情况
@@ -359,29 +365,29 @@ func (bc *BlockChain) ReceiveConfirm(info *protocol.BlockConfirmData) (err error
 	// 恢复公钥
 	pubKey, err := crypto.Ecrecover(info.Hash[:], info.SignInfo[:])
 	if err != nil {
-		log.Warn(fmt.Sprintf("can't recover signer. hash:%s SignInfo:%s", info.Hash.Hex(), common.ToHex(info.SignInfo[:])))
+		log.Warnf("can't recover signer. hash:%s SignInfo:%s", info.Hash.Hex(), common.ToHex(info.SignInfo[:]))
 		return err
 	}
 	// 是否有对应的区块 后续优化
 	if _, err = bc.dbOpe.GetBlock(info.Hash, info.Height); err != nil {
-		log.Warn(fmt.Sprintf("doesn't get block in local chain.hash:%s height:%d", info.Hash.Hex(), info.Height))
+		log.Warnf("doesn't get block in local chain.hash:%s height:%d", info.Hash.Hex(), info.Height)
 		return err
 	}
 	// 获取确认者在主节点列表索引
-	index := bc.getSignerIndex(pubKey, info.Height)
+	index := bc.getSignerIndex(pubKey[1:], info.Height)
 	if index < 0 {
-		log.Warn("unavailable confirm info. info:%v", info)
+		log.Warnf("unavailable confirm info. info:%v", info)
 		return fmt.Errorf("unavailable confirm info. info:%v", info)
 	}
 	// 将确认信息缓存起来
 	if err = bc.dbOpe.SetConfirmInfo(info.Hash, info.SignInfo); err != nil {
-		log.Error(fmt.Sprintf("can't SetConfirmInfo. hash:%s", info.Hash.Hex()))
+		log.Errorf("can't SetConfirmInfo. hash:%s", info.Hash.Hex())
 		return err
 	}
 	// 获取确认包集合
 	pack, err := bc.dbOpe.GetConfirmPackage(info.Hash)
 	if err != nil {
-		log.Error(fmt.Sprintf("can't GetConfirmInfo. hash:%s", info.Hash.Hex()))
+		log.Errorf("can't GetConfirmInfo. hash:%s", info.Hash.Hex())
 		return err
 	}
 	// 是否达成共识

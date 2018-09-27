@@ -18,7 +18,6 @@ import (
 const (
 	maxKnownTxs    = 65535
 	maxKnownBlocks = 1024
-	//handshakeTimeout = 3 * time.Second
 )
 
 type peer struct {
@@ -79,7 +78,7 @@ func (p *peer) MarkTransaction(hash common.Hash) {
 }
 
 // Handshake 当前状态握手
-func (p *peer) Handshake(network uint64, height uint32, head common.Hash, genesis common.Hash) error {
+func (p *peer) Handshake(network uint64, height uint32, head, genesis common.Hash) error {
 	errs := make(chan error, 2)
 	var status protocol.NodeStatusData
 	// 发送自己的节点状态

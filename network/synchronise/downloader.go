@@ -124,9 +124,9 @@ type Downloader struct {
 }
 
 // New 创建一个Downloader对象
-func NewDownloader(chain blockchain.BlockChain, dropPeer peerDropFn) *Downloader {
+func NewDownloader(peers *peerSet, chain blockchain.BlockChain, dropPeer peerDropFn) *Downloader {
 	d := &Downloader{
-		peers:       newPeerSet(),
+		peers:       peers,
 		blockChain:  chain,
 		dropPeer:    dropPeer,
 		newBlocksCh: make(chan *blockPack),
@@ -144,19 +144,19 @@ func (d *Downloader) IsSynchronising() bool {
 }
 
 // RegisterPeer 注册peer
-func (d *Downloader) RegisterPeer(id string, p *peer) {
-	peerConn := &peerConnection{
-		id:   id,
-		peer: p,
-	}
-	d.peers.Register(peerConn)
-}
-
-// UnRegisterPeer 取消注册
-func (d *Downloader) UnRegisterPeer(id string) {
-	d.peers.Unregister(id)
-	// todo 移除其他与该peer相关的任务
-}
+// func (d *Downloader) RegisterPeer(id string, p *peer) {
+// 	peerConn := &peerConnection{
+// 		id:   id,
+// 		peer: p,
+// 	}
+// 	d.peers.Register(peerConn)
+// }
+//
+// // UnRegisterPeer 取消注册
+// func (d *Downloader) UnRegisterPeer(id string) {
+// 	d.peers.Unregister(id)
+// 	// todo 移除其他与该peer相关的任务
+// }
 
 // Synchronise 同步启动函数，供外部调用
 func (d *Downloader) Synchronise(id string) error {

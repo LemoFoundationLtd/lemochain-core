@@ -42,6 +42,10 @@ lemojs._extend({
 			getter: 'chain_chainID'
 		}),
 		new lemojs._extend.Property({
+			name: 'genesis',
+			getter: 'chain_genesis'
+		}),
+		new lemojs._extend.Property({
 			name: 'currentBlock',
 			getter: 'chain_currentBlock'
 		}),

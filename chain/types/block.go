@@ -36,7 +36,7 @@ type headerMarshaling struct {
 }
 
 // 签名信息
-type SignData [64]byte
+type SignData [65]byte
 
 // Block
 type Block struct {
