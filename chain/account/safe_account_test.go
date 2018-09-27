@@ -72,5 +72,5 @@ func TestSafeAccount_MarshalJSON_UnmarshalJSON(t *testing.T) {
 	assert.Equal(t, account.GetVersion(), parsedAccount.GetVersion())
 	assert.Equal(t, account.GetCodeHash(), parsedAccount.GetCodeHash())
 	assert.Equal(t, account.GetStorageRoot(), parsedAccount.GetStorageRoot())
-	// assert.Equal(t, account.db, parsedAccount.db)
+	// assert.Equal(t, account.processor, parsedAccount.processor)
 }

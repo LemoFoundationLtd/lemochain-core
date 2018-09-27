@@ -89,7 +89,8 @@ func (a *Account) UnmarshalJSON(input []byte) error {
 	if err := dec.UnmarshalJSON(input); err != nil {
 		return err
 	}
-	*a = *NewAccount(a.db, a.GetAddress(), &dec)
+	// TODO a.db is nil
+	*a = *NewAccount(a.db, dec.Address, &dec)
 	return nil
 }
 
