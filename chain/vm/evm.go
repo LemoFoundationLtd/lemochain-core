@@ -42,7 +42,9 @@ type Context struct {
 	GetHash GetHashFunc
 
 	// Provides the current transaction hash which is used when EVM emits new contract events.
-	TxHash common.Hash
+	TxIndex   uint
+	TxHash    common.Hash
+	BlockHash common.Hash
 
 	// Message information
 	Origin   common.Address // Provides information for ORIGIN

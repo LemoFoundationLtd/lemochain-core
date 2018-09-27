@@ -173,8 +173,10 @@ func TestNewManager_AddEvent(t *testing.T) {
 	event2 := &types.Event{Address: common.HexToAddress("0x1"), TxHash: th(1), BlockHeight: 22}
 	err := manager.AddEvent(event1)
 	assert.NoError(t, err)
+	assert.Equal(t, uint(0), event1.Index)
 	err = manager.AddEvent(event2)
 	assert.NoError(t, err)
+	assert.Equal(t, uint(1), event2.Index)
 	events := manager.GetEvents()
 	assert.Equal(t, 2, len(events))
 	assert.Equal(t, uint32(11), events[0].BlockHeight)

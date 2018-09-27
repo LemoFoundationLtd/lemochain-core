@@ -113,6 +113,7 @@ func (am *Manager) AddEvent(event *types.Event) error {
 	if err != nil {
 		return err
 	}
+	event.Index = uint(len(am.processor.events))
 	am.processor.PushChangeLog(NewAddEventLog(account, event))
 	am.processor.PushEvent(event)
 	return nil

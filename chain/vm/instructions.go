@@ -834,7 +834,10 @@ func makeEvent(size int) executionFunc {
 			// This is a non-consensus field, but assigned here because
 			// chain/account doesn't know the current block number.
 			BlockHeight: evm.BlockHeight,
+			TxIndex:     evm.TxIndex,
 			TxHash:      evm.TxHash,
+			BlockHash:   evm.BlockHash,
+			// event.Index is set outside.
 		})
 
 		evm.interpreter.intPool.put(mStart, mSize)
