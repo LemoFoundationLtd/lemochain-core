@@ -129,10 +129,7 @@ func (d *Dpovp) handOutRewards(height uint32) {
 	if deputynode.Instance().TimeToHandOutRewards(height) {
 		rewards := deputynode.CalcReward(height)
 		for _, item := range rewards {
-			account, err := d.bc.AccountManager().GetAccount(item.Address)
-			if err != nil {
-				log.Errorf("can't getaccount: %s", item.Address.Hex())
-			}
+			account := d.bc.AccountManager().GetAccount(item.Address)
 			balance := account.GetBalance()
 			balance.Add(balance, item.Reward)
 			account.SetBalance(balance)
