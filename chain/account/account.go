@@ -78,6 +78,21 @@ func NewAccount(db protocol.ChainDB, address common.Address, data *types.Account
 	}
 }
 
+// MarshalJSON encodes the lemoClient RPC account format.
+func (a *Account) MarshalJSON() ([]byte, error) {
+	return a.data.MarshalJSON()
+}
+
+// UnmarshalJSON decodes the lemoClient RPC account format.
+func (a *Account) UnmarshalJSON(input []byte) error {
+	var dec types.AccountData
+	if err := dec.UnmarshalJSON(input); err != nil {
+		return err
+	}
+	*a = *NewAccount(a.db, a.GetAddress(), &dec)
+	return nil
+}
+
 // Implement AccountAccessor. Access Account without changelog
 func (a *Account) GetAddress() common.Address { return a.data.Address }
 func (a *Account) GetBalance() *big.Int       { return a.data.Balance }
