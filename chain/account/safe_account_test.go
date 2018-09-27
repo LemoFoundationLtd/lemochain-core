@@ -1,6 +1,7 @@
 package account
 
 import (
+	"encoding/json"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/stretchr/testify/assert"
@@ -56,4 +57,20 @@ func TestSafeAccount_SetSuicide_GetSuicide(t *testing.T) {
 	assert.Equal(t, 1, len(account.processor.changeLogs))
 	assert.Equal(t, SuicideLog, account.processor.changeLogs[0].LogType)
 	assert.Equal(t, *big.NewInt(100), account.processor.changeLogs[0].OldVal.(big.Int))
+}
+
+func TestSafeAccount_MarshalJSON_UnmarshalJSON(t *testing.T) {
+	account := loadSafeAccount(defaultAccounts[0].Address)
+	data, err := json.Marshal(account)
+	assert.NoError(t, err)
+	assert.Equal(t, `{"address":"0x0000000000000000000000000000000000010000","balance":"0x64","version":"0x64","codeHash":"0x1d5f11eaa13e02cdca886181dc38ab4cb8cf9092e86c000fb42d12c8b504500e","root":"0xcbeb7c7e36b846713bc99b8fa527e8d552e31bfaa1ac0f2b773958cda3aba3ed","VersionRecords":[]}`, string(data))
+	var parsedAccount *Account
+	err = json.Unmarshal(data, &parsedAccount)
+	assert.NoError(t, err)
+	assert.Equal(t, account.GetAddress(), parsedAccount.GetAddress())
+	assert.Equal(t, account.GetBalance(), parsedAccount.GetBalance())
+	assert.Equal(t, account.GetVersion(), parsedAccount.GetVersion())
+	assert.Equal(t, account.GetCodeHash(), parsedAccount.GetCodeHash())
+	assert.Equal(t, account.GetStorageRoot(), parsedAccount.GetStorageRoot())
+	// assert.Equal(t, account.db, parsedAccount.db)
 }
