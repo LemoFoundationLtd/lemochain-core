@@ -3,6 +3,7 @@ package log
 import (
 	"bytes"
 	"fmt"
+	"github.com/go-stack/stack"
 	"github.com/inconshreveable/log15"
 	"reflect"
 	"strconv"
@@ -76,7 +77,7 @@ func TerminalFormat(usecolor bool, showCodeLine bool) log15.Format {
 		lvl := getAlignedString(r.Lvl)
 		if showCodeLine {
 			// Log origin printing was requested, format the location path and line number
-			location := fmt.Sprintf("%+v", r.Call)
+			location := fmt.Sprintf("%+v", stack.Caller(14))
 			for _, prefix := range locationTrims {
 				location = strings.TrimPrefix(location, prefix)
 			}
