@@ -430,7 +430,7 @@ func (n *Node) apis() []rpc.API {
 		{
 			Namespace: "chain",
 			Version:   "1.0",
-			Service:   n.chain,
+			Service:   NewChainAPI(n.chain),
 		},
 		{
 			Namespace: "mine",

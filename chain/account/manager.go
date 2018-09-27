@@ -332,3 +332,6 @@ func (am *Manager) Rebuild(address common.Address) error {
 func (am *Manager) Stop(graceful bool) error {
 	return nil
 }
+func (am *Manager) DB() protocol.ChainDB {
+	return am.db
+}

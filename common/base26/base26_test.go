@@ -31,6 +31,7 @@ func TestEncode(t *testing.T) {
 		encode := Encode(test.data)
 		assert.Equal(t, results[Index].data, encode)
 	}
+
 }
 
 // TestDecode 解码功能测试
