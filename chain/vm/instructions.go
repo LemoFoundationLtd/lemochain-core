@@ -373,10 +373,7 @@ func opAddress(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack *
 
 func opBalance(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack *Stack) ([]byte, error) {
 	slot := stack.peek()
-	acc, err := evm.am.GetAccount(common.BigToAddress(slot))
-	if err != nil {
-		return nil, err
-	}
+	acc := evm.am.GetAccount(common.BigToAddress(slot))
 	slot.Set(acc.GetBalance())
 	return nil, nil
 }
@@ -443,10 +440,7 @@ func opReturnDataCopy(pc *uint64, evm *EVM, contract *Contract, memory *Memory, 
 
 func opExtCodeSize(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack *Stack) ([]byte, error) {
 	slot := stack.peek()
-	acc, err := evm.am.GetAccount(common.BigToAddress(slot))
-	if err != nil {
-		return nil, err
-	}
+	acc := evm.am.GetAccount(common.BigToAddress(slot))
 	code, err := acc.GetCode()
 	if err != nil {
 		return nil, err
@@ -483,10 +477,7 @@ func opExtCodeCopy(pc *uint64, evm *EVM, contract *Contract, memory *Memory, sta
 		codeOffset = stack.pop()
 		length     = stack.pop()
 	)
-	acc, err := evm.am.GetAccount(addr)
-	if err != nil {
-		return nil, err
-	}
+	acc := evm.am.GetAccount(addr)
 	code, err := acc.GetCode()
 	if err != nil {
 		return nil, err
@@ -575,9 +566,9 @@ func opMstore8(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack *
 
 func opSload(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack *Stack) ([]byte, error) {
 	var (
-		loc                = common.BigToHash(stack.pop())
-		contractAccount, _ = evm.am.GetAccount(contract.GetAddress())
-		val, err           = contractAccount.GetStorageState(loc)
+		loc             = common.BigToHash(stack.pop())
+		contractAccount = evm.am.GetAccount(contract.GetAddress())
+		val, err        = contractAccount.GetStorageState(loc)
 	)
 	if err != nil {
 		return nil, err
@@ -588,9 +579,9 @@ func opSload(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack *St
 
 func opSstore(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack *Stack) ([]byte, error) {
 	var (
-		loc                = common.BigToHash(stack.pop())
-		val                = stack.pop()
-		contractAccount, _ = evm.am.GetAccount(contract.GetAddress())
+		loc             = common.BigToHash(stack.pop())
+		val             = stack.pop()
+		contractAccount = evm.am.GetAccount(contract.GetAddress())
 	)
 	contractAccount.SetStorageState(loc, val.Bytes())
 
@@ -800,15 +791,12 @@ func opStop(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack *Sta
 }
 
 func opSuicide(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack *Stack) ([]byte, error) {
-	contractAccount, _ := evm.am.GetAccount(contract.GetAddress())
+	contractAccount := evm.am.GetAccount(contract.GetAddress())
 	if contractAccount.GetSuicide() {
 		return nil, nil
 	}
 	balance := contractAccount.GetBalance()
-	receiverAccount, err := evm.am.GetAccount(common.BigToAddress(stack.pop()))
-	if err != nil {
-		return nil, err
-	}
+	receiverAccount := evm.am.GetAccount(common.BigToAddress(stack.pop()))
 	receiverAccount.SetBalance(balance.Add(receiverAccount.GetBalance(), balance))
 
 	contractAccount.SetSuicide(true)

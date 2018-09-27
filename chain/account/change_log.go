@@ -100,10 +100,7 @@ func redoBalance(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 		log.Errorf("expected NewVal big.Int, got %T", c.NewVal)
 		return types.ErrWrongChangeLogData
 	}
-	accessor, err := processor.GetAccount(c.Address)
-	if err != nil {
-		return err
-	}
+	accessor := processor.GetAccount(c.Address)
 	accessor.SetBalance(&newValue)
 	return nil
 }
@@ -114,10 +111,7 @@ func undoBalance(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 		log.Errorf("expected OldVal big.Int, got %T", c.OldVal)
 		return types.ErrWrongChangeLogData
 	}
-	accessor, err := processor.GetAccount(c.Address)
-	if err != nil {
-		return err
-	}
+	accessor := processor.GetAccount(c.Address)
 	accessor.SetBalance(&oldValue)
 	return nil
 }
@@ -149,10 +143,7 @@ func redoStorage(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 		log.Errorf("expected Extra common.Hash, got %T", c.Extra)
 		return types.ErrWrongChangeLogData
 	}
-	accessor, err := processor.GetAccount(c.Address)
-	if err != nil {
-		return err
-	}
+	accessor := processor.GetAccount(c.Address)
 	accessor.SetStorageState(key, newVal)
 	return nil
 }
@@ -168,10 +159,7 @@ func undoStorage(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 		log.Errorf("expected Extra common.Hash, got %T", c.Extra)
 		return types.ErrWrongChangeLogData
 	}
-	accessor, err := processor.GetAccount(c.Address)
-	if err != nil {
-		return err
-	}
+	accessor := processor.GetAccount(c.Address)
 	accessor.SetStorageState(key, oldVal)
 	return nil
 }
@@ -192,19 +180,13 @@ func redoCode(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 		log.Errorf("expected NewVal Code, got %T", c.NewVal)
 		return types.ErrWrongChangeLogData
 	}
-	accessor, err := processor.GetAccount(c.Address)
-	if err != nil {
-		return err
-	}
+	accessor := processor.GetAccount(c.Address)
 	accessor.SetCode(code)
 	return nil
 }
 
 func undoCode(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
-	accessor, err := processor.GetAccount(c.Address)
-	if err != nil {
-		return err
-	}
+	accessor := processor.GetAccount(c.Address)
 	accessor.SetCode(nil)
 	return nil
 }
@@ -249,10 +231,7 @@ func NewSuicideLog(account types.AccountAccessor) *types.ChangeLog {
 }
 
 func redoSuicide(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
-	accessor, err := processor.GetAccount(c.Address)
-	if err != nil {
-		return err
-	}
+	accessor := processor.GetAccount(c.Address)
 	accessor.SetSuicide(true)
 	return nil
 }
@@ -263,10 +242,7 @@ func undoSuicide(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 		log.Errorf("expected OldVal big.Int, got %T", c.OldVal)
 		return types.ErrWrongChangeLogData
 	}
-	accessor, err := processor.GetAccount(c.Address)
-	if err != nil {
-		return err
-	}
+	accessor := processor.GetAccount(c.Address)
 	accessor.SetBalance(oldValue.Balance)
 	accessor.SetCodeHash(oldValue.CodeHash)
 	accessor.SetStorageRoot(oldValue.StorageRoot)

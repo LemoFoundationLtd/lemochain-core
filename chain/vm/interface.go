@@ -9,7 +9,7 @@ import (
 
 // am is an EVM database for full state querying.
 type AccountManager interface {
-	GetAccount(common.Address) (types.AccountAccessor, error)
+	GetAccount(common.Address) types.AccountAccessor
 	CreateAccount(common.Address)
 	IsExist(common.Address) bool
 

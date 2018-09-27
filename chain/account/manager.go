@@ -54,47 +54,43 @@ func NewManager(blockHash common.Hash, db protocol.ChainDB) *Manager {
 }
 
 // GetAccount loads account from cache or db, or creates a new one if it's not exist.
-func (am *Manager) GetAccount(address common.Address) (types.AccountAccessor, error) {
+func (am *Manager) GetAccount(address common.Address) types.AccountAccessor {
 	cached := am.accountCache[address]
 	if cached == nil {
 		data, err := am.db.GetAccount(am.baseBlockHash, address)
 		if err != nil && err != store.ErrNotExist {
-			return nil, err
+			panic(err)
 		}
 		account := NewAccount(am.db, address, data)
 		cached = NewSafeAccount(am.processor, account)
 		// cache it
 		am.accountCache[address] = cached
 	}
-	return cached, nil
+	return cached
 }
 
 // GetCanonicalAccount loads an account object from confirmed block in db, or creates a new one if it's not exist.
-func (am *Manager) GetCanonicalAccount(address common.Address) (types.AccountAccessor, error) {
+func (am *Manager) GetCanonicalAccount(address common.Address) types.AccountAccessor {
 	cached := am.accountCache[address]
 	if cached == nil {
 		data, err := am.db.GetCanonicalAccount(address)
 		if err != nil && err != store.ErrNotExist {
-			return nil, err
+			panic(err)
 		}
 		account := NewAccount(am.db, address, data)
 		cached = NewSafeAccount(am.processor, account)
 		// cache it
 		am.accountCache[address] = cached
 	}
-	return cached, nil
+	return cached
 }
 
 // getRawAccount loads an account same as GetAccount, but editing the account of this method returned is not going to generate change logs.
 // This method is used for ChangeLog.Redo/Undo.
-func (am *Manager) getRawAccount(address common.Address) (types.AccountAccessor, error) {
-	safeAccount, err := am.GetAccount(address)
-	if err != nil {
-		return nil, err
-	}
+func (am *Manager) getRawAccount(address common.Address) types.AccountAccessor {
+	safeAccount := am.GetAccount(address)
 	// Change this account will change safeAccount. They are same pointers
-	account := safeAccount.(*SafeAccount).rawAccount
-	return account, nil
+	return safeAccount.(*SafeAccount).rawAccount
 }
 
 // IsExist reports whether the given account address exists in the db.
@@ -105,18 +101,14 @@ func (am *Manager) IsExist(address common.Address) bool {
 }
 
 // AddEvent records the event add action when a transaction's execution finished
-func (am *Manager) AddEvent(event *types.Event) error {
+func (am *Manager) AddEvent(event *types.Event) {
 	if (event.Address == common.Address{}) {
 		panic("account.Manager.AddEvent() is called without a Address or TxHash")
 	}
-	account, err := am.getRawAccount(event.Address)
-	if err != nil {
-		return err
-	}
+	account := am.getRawAccount(event.Address)
 	event.Index = uint(len(am.processor.events))
 	am.processor.PushChangeLog(NewAddEventLog(account, event))
 	am.processor.PushEvent(event)
-	return nil
 }
 
 // GetEvents returns all events since last reset
@@ -263,7 +255,7 @@ type logProcessor struct {
 	events []*types.Event
 }
 
-func (h *logProcessor) GetAccount(addr common.Address) (types.AccountAccessor, error) {
+func (h *logProcessor) GetAccount(addr common.Address) types.AccountAccessor {
 	return h.manager.getRawAccount(addr)
 }
 
@@ -324,10 +316,7 @@ func (h *logProcessor) RevertToSnapshot(revid int) {
 // TODO Changelog maybe retrieved from other node, so the account in local store is not contain the newest VersionRecords.
 // We'd better change this function to "Rebuild(address common.Address, logs []types.ChangeLog)" cause the Rebuild function is called by change log synchronization module
 func (am *Manager) Rebuild(address common.Address) error {
-	accountAccessor, err := am.getRawAccount(address)
-	if err != nil {
-		return err
-	}
+	accountAccessor := am.getRawAccount(address)
 	account := accountAccessor.(*Account)
 	logs, err := account.LoadChangeLogs(account.GetVersion() + 1)
 	for _, log := range logs {

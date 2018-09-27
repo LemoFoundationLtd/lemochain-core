@@ -1,7 +1,6 @@
 package account
 
 import (
-	"errors"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
@@ -20,14 +19,19 @@ type testProcessor struct {
 	Events   []*types.Event
 }
 
-var ErrNoAccount = errors.New("no account from address")
-
-func (p *testProcessor) GetAccount(addr common.Address) (types.AccountAccessor, error) {
-	account, ok := p.Accounts[addr]
+func (p *testProcessor) GetAccount(address common.Address) types.AccountAccessor {
+	account, ok := p.Accounts[address]
 	if !ok {
-		return nil, ErrNoAccount
+		account = &testAccount{
+			Account: Account{
+				data: types.AccountData{
+					Address: address,
+				},
+			},
+		}
+		p.Accounts[address] = account
 	}
-	return account, nil
+	return account
 }
 
 func (p *testProcessor) PushEvent(event *types.Event) {
@@ -264,7 +268,7 @@ func TestChangeLog_Undo(t *testing.T) {
 		} else if test.undoErr != nil {
 			t.Errorf("test %d. want undoErr: %s, got: <nil>", i, test.undoErr)
 		} else if test.afterCheck != nil {
-			a, _ := processor.GetAccount(test.input.Address)
+			a := processor.GetAccount(test.input.Address)
 			test.afterCheck(a)
 		}
 	}
@@ -275,7 +279,7 @@ func TestChangeLog_Redo(t *testing.T) {
 
 	// decrease account version to make redo available
 	decreaseVersion := func(log *types.ChangeLog) *types.ChangeLog {
-		account, _ := processor.GetAccount(log.Address)
+		account := processor.GetAccount(log.Address)
 		account.SetVersion(account.GetVersion() - 1)
 		return log
 	}
@@ -369,7 +373,7 @@ func TestChangeLog_Redo(t *testing.T) {
 		} else if test.redoErr != nil {
 			t.Errorf("test %d. want redoErr: %s, got: <nil>", i, test.redoErr)
 		} else if test.afterCheck != nil {
-			a, _ := processor.GetAccount(test.input.Address)
+			a := processor.GetAccount(test.input.Address)
 			test.afterCheck(a)
 		}
 	}

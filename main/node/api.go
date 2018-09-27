@@ -33,10 +33,7 @@ func (a *AccountAPI) GetBalance(LemoAddress string) string {
 	} else {
 		address = common.HexToAddress(LemoAddress)
 	}
-	account, err := a.accMan.GetCanonicalAccount(address)
-	if err != nil {
-		return ""
-	}
+	account := a.accMan.GetCanonicalAccount(address)
 	balance := account.GetBalance().String()
 	lenth := len(balance)
 	var toBytes = []byte(balance)
