@@ -56,7 +56,7 @@ func TestSafeAccount_SetSuicide_GetSuicide(t *testing.T) {
 	assert.Equal(t, true, account.GetSuicide())
 	assert.Equal(t, 1, len(account.processor.changeLogs))
 	assert.Equal(t, SuicideLog, account.processor.changeLogs[0].LogType)
-	assert.Equal(t, *big.NewInt(100), account.processor.changeLogs[0].OldVal.(big.Int))
+	assert.Equal(t, big.NewInt(100), account.processor.changeLogs[0].OldVal.(*types.AccountData).Balance)
 }
 
 func TestSafeAccount_MarshalJSON_UnmarshalJSON(t *testing.T) {

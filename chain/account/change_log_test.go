@@ -18,13 +18,20 @@ type testAccount struct {
 	suicided bool
 }
 
-func (f *testAccount) GetAddress() common.Address                      { return f.AccountData.Address }
-func (f *testAccount) GetBalance() *big.Int                            { return f.AccountData.Balance }
-func (f *testAccount) SetBalance(balance *big.Int)                     { f.AccountData.Balance = balance }
-func (f *testAccount) GetVersion() uint32                              { return f.AccountData.Version }
-func (f *testAccount) SetVersion(version uint32)                       { f.AccountData.Version = version }
-func (f *testAccount) GetSuicide() bool                                { return f.suicided }
-func (f *testAccount) SetSuicide(suicided bool)                        { f.suicided = suicided }
+func (f *testAccount) GetAddress() common.Address  { return f.AccountData.Address }
+func (f *testAccount) GetBalance() *big.Int        { return f.AccountData.Balance }
+func (f *testAccount) SetBalance(balance *big.Int) { f.AccountData.Balance = balance }
+func (f *testAccount) GetVersion() uint32          { return f.AccountData.Version }
+func (f *testAccount) SetVersion(version uint32)   { f.AccountData.Version = version }
+func (f *testAccount) GetSuicide() bool            { return f.suicided }
+func (f *testAccount) SetSuicide(suicided bool) {
+	if suicided {
+		f.SetBalance(new(big.Int))
+		f.SetCodeHash(common.Hash{})
+		f.SetStorageRoot(common.Hash{})
+	}
+	f.suicided = suicided
+}
 func (f *testAccount) GetCodeHash() common.Hash                        { return f.AccountData.CodeHash }
 func (f *testAccount) SetCodeHash(codeHash common.Hash)                { f.AccountData.CodeHash = codeHash }
 func (f *testAccount) GetCode() (types.Code, error)                    { return f.Code, nil }
@@ -148,7 +155,7 @@ func getCustomTypeData(t *testing.T) []testCustomTypeConfig {
 	// 4 SuicideLog
 	tests = append(tests, testCustomTypeConfig{
 		input:   NewSuicideLog(processor.createAccount(0)),
-		str:     "SuicideLog: 0x0000000000000000000000000000000000000005 1 100 <nil> <nil>",
+		str:     "SuicideLog: 0x0000000000000000000000000000000000000005 1 &{[0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0] 100 0 [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0] [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0] []} <nil> <nil>",
 		hash:    "0x6204ac1a4be1e52c77942259e094c499b263ad7176ae9060d5bae2b856c9743a",
 		rlp:     "0xd90594000000000000000000000000000000000000000501c0c0",
 		decoded: "SuicideLog: 0x0000000000000000000000000000000000000005 1 <nil> <nil> <nil>",

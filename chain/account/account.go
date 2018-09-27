@@ -111,6 +111,11 @@ func (a *Account) SetVersion(version uint32) {
 	a.data.Version = version
 }
 func (a *Account) SetSuicide(suicided bool) {
+	if suicided {
+		a.SetBalance(new(big.Int))
+		a.SetCodeHash(common.Hash{})
+		a.SetStorageRoot(common.Hash{})
+	}
 	a.suicided = suicided
 }
 
@@ -289,7 +294,6 @@ func (a *Account) Save() error {
 		}
 		a.codeIsDirty = false
 	}
-	// TODO delete suicided account
 	return nil
 }
 

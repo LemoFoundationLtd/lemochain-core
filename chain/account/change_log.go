@@ -235,11 +235,16 @@ func undoAddEvent(c *types.ChangeLog, processor types.ChangeLogProcessor) error 
 
 // NewSuicideLog records balance change
 func NewSuicideLog(account types.AccountAccessor) *types.ChangeLog {
+	oldAccount := &types.AccountData{
+		Balance:     new(big.Int).Set(account.GetBalance()),
+		CodeHash:    account.GetCodeHash(),
+		StorageRoot: account.GetStorageRoot(),
+	}
 	return &types.ChangeLog{
 		LogType: SuicideLog,
 		Address: account.GetAddress(),
 		Version: increaseVersion(account),
-		OldVal:  *(new(big.Int).Set(account.GetBalance())),
+		OldVal:  oldAccount,
 	}
 }
 
@@ -248,13 +253,12 @@ func redoSuicide(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 	if err != nil {
 		return err
 	}
-	accessor.SetBalance(new(big.Int))
 	accessor.SetSuicide(true)
 	return nil
 }
 
 func undoSuicide(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
-	oldValue, ok := c.OldVal.(big.Int)
+	oldValue, ok := c.OldVal.(*types.AccountData)
 	if !ok {
 		log.Errorf("expected OldVal big.Int, got %T", c.OldVal)
 		return types.ErrWrongChangeLogData
@@ -263,7 +267,9 @@ func undoSuicide(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 	if err != nil {
 		return err
 	}
-	accessor.SetBalance(&oldValue)
+	accessor.SetBalance(oldValue.Balance)
+	accessor.SetCodeHash(oldValue.CodeHash)
+	accessor.SetStorageRoot(oldValue.StorageRoot)
 	accessor.SetSuicide(false)
 	return nil
 }
