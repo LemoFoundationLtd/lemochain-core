@@ -2,11 +2,17 @@ package account
 
 import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/vm"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/stretchr/testify/assert"
 	"math/big"
 	"testing"
 )
+
+func TestNewManager_Interface(t *testing.T) {
+	var _ vm.AccountManager = (*Manager)(nil)
+	var _ types.ChangeLogProcessor = (*logProcessor)(nil)
+}
 
 func TestNewManager_withoutDB(t *testing.T) {
 	defer func() {

@@ -9,6 +9,10 @@ import (
 	"testing"
 )
 
+func TestSafeAccount_Interface(t *testing.T) {
+	var _ types.AccountAccessor = (*SafeAccount)(nil)
+}
+
 func loadSafeAccount(address common.Address) *SafeAccount {
 	db := newDB()
 	data, _ := db.GetAccount(defaultBlock.hash, address)

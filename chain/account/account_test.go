@@ -10,6 +10,10 @@ import (
 	"testing"
 )
 
+func TestAccount_Interface(t *testing.T) {
+	var _ types.AccountAccessor = (*Account)(nil)
+}
+
 func loadAccount(address common.Address) *Account {
 	db := newDB()
 	data, _ := db.GetAccount(defaultBlock.hash, address)
