@@ -128,24 +128,25 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 	if !evm.Context.CanTransfer(evm.am, caller.GetAddress(), value) {
 		return nil, gas, ErrInsufficientBalance
 	}
+	contractAccount := evm.am.GetAccount(addr)
+	code, err := contractAccount.GetCode()
+	if err != nil {
+		return nil, gas, ErrContractCodeLoadFail
+	}
 
 	var (
 		to       = AccountRef(addr)
 		snapshot = evm.am.Snapshot()
 	)
-	if !evm.am.IsExist(addr) {
-		precompiles := PrecompiledContracts
-		if precompiles[addr] == nil && value.Sign() == 0 {
-			return nil, gas, nil
-		}
-		evm.am.CreateAccount(addr)
+	if len(code) == 0 && PrecompiledContracts[addr] == nil && value.Sign() == 0 {
+		return nil, gas, nil
 	}
 	evm.Transfer(evm.am, caller.GetAddress(), to.GetAddress(), value)
 
 	// Initialise a new contract and set the code that is to be used by the EVM.
 	// The contract is a scoped environment for this execution context only.
 	contract := NewContract(caller, to, value, gas)
-	contract.SetCallCode(&addr, evm.am.GetCodeHash(addr), evm.am.GetCode(addr))
+	contract.SetCallCode(&addr, contractAccount.GetCodeHash(), code)
 
 	start := time.Now()
 
@@ -191,6 +192,11 @@ func (evm *EVM) CallCode(caller ContractRef, addr common.Address, input []byte, 
 	if !evm.CanTransfer(evm.am, caller.GetAddress(), value) {
 		return nil, gas, ErrInsufficientBalance
 	}
+	contractAccount := evm.am.GetAccount(addr)
+	code, err := contractAccount.GetCode()
+	if err != nil {
+		return nil, gas, ErrContractCodeLoadFail
+	}
 
 	var (
 		snapshot = evm.am.Snapshot()
@@ -200,7 +206,7 @@ func (evm *EVM) CallCode(caller ContractRef, addr common.Address, input []byte, 
 	// EVM. The contract is a scoped environment for this execution context
 	// only.
 	contract := NewContract(caller, to, value, gas)
-	contract.SetCallCode(&addr, evm.am.GetCodeHash(addr), evm.am.GetCode(addr))
+	contract.SetCallCode(&addr, contractAccount.GetCodeHash(), code)
 
 	ret, err = run(evm, contract, input)
 	if err != nil {
@@ -225,6 +231,11 @@ func (evm *EVM) DelegateCall(caller ContractRef, addr common.Address, input []by
 	if evm.depth > int(params.CallCreateDepth) {
 		return nil, gas, ErrDepth
 	}
+	contractAccount := evm.am.GetAccount(addr)
+	code, err := contractAccount.GetCode()
+	if err != nil {
+		return nil, gas, ErrContractCodeLoadFail
+	}
 
 	var (
 		snapshot = evm.am.Snapshot()
@@ -233,7 +244,7 @@ func (evm *EVM) DelegateCall(caller ContractRef, addr common.Address, input []by
 
 	// Initialise a new contract and make initialise the delegate values
 	contract := NewContract(caller, to, nil, gas).AsDelegate()
-	contract.SetCallCode(&addr, evm.am.GetCodeHash(addr), evm.am.GetCode(addr))
+	contract.SetCallCode(&addr, contractAccount.GetCodeHash(), code)
 
 	ret, err = run(evm, contract, input)
 	if err != nil {
@@ -264,6 +275,11 @@ func (evm *EVM) StaticCall(caller ContractRef, addr common.Address, input []byte
 		evm.interpreter.readOnly = true
 		defer func() { evm.interpreter.readOnly = false }()
 	}
+	contractAccount := evm.am.GetAccount(addr)
+	code, err := contractAccount.GetCode()
+	if err != nil {
+		return nil, gas, ErrContractCodeLoadFail
+	}
 
 	var (
 		to       = AccountRef(addr)
@@ -273,7 +289,7 @@ func (evm *EVM) StaticCall(caller ContractRef, addr common.Address, input []byte
 	// EVM. The contract is a scoped environment for this execution context
 	// only.
 	contract := NewContract(caller, to, new(big.Int), gas)
-	contract.SetCallCode(&addr, evm.am.GetCodeHash(addr), evm.am.GetCode(addr))
+	contract.SetCallCode(&addr, contractAccount.GetCodeHash(), code)
 
 	// When an error was returned by the EVM or when setting the creation code
 	// above we revert to the snapshot and consume any gas remaining. Additionally

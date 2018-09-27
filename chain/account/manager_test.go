@@ -38,6 +38,13 @@ func TestNewManager_GetAccount(t *testing.T) {
 	account = manager.GetAccount(common.Address{})
 	assert.Equal(t, common.Address{}, account.GetAddress())
 	assert.Equal(t, account, manager.accountCache[common.Address{}])
+
+	// get twice
+	account2 := manager.GetAccount(common.Address{})
+	account.SetBalance(big.NewInt(200))
+	assert.Equal(t, big.NewInt(200), account.GetBalance())
+	account2.SetBalance(big.NewInt(100))
+	assert.Equal(t, big.NewInt(100), account2.GetBalance())
 }
 
 func TestNewManager_GetCanonicalAccount(t *testing.T) {
