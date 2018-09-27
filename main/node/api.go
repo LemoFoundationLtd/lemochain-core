@@ -21,9 +21,12 @@ func NewAccountAPI(m *account.Manager) *AccountAPI {
 }
 
 // NewAccount get lemo address api
-func (a *AccountAPI) NewKeyPair() *crypto.AddressKeyPair {
-	accounts := crypto.GenerateAddress()
-	return accounts
+func (a *AccountAPI) NewKeyPair() (*crypto.AddressKeyPair, error) {
+	accounts, err := crypto.GenerateAddress()
+	if err != nil {
+		return nil, err
+	}
+	return accounts, nil
 }
 
 // GetBalance get balance api
