@@ -100,7 +100,7 @@ func (am *Manager) IsExist(address common.Address) bool {
 	return err == nil || err != store.ErrNotExist
 }
 
-// AddEvent records the event add action when a transaction's execution finished
+// AddEvent records the event during transaction's execution.
 func (am *Manager) AddEvent(event *types.Event) {
 	if (event.Address == common.Address{}) {
 		panic("account.Manager.AddEvent() is called without a Address or TxHash")
@@ -114,6 +114,17 @@ func (am *Manager) AddEvent(event *types.Event) {
 // GetEvents returns all events since last reset
 func (am *Manager) GetEvents() []*types.Event {
 	return am.processor.events[:]
+}
+
+// GetEvents returns all events since last reset
+func (am *Manager) GetEventsByTx(txHash common.Hash) []*types.Event {
+	result := make([]*types.Event, 0)
+	for _, event := range am.processor.events {
+		if event.TxHash == txHash {
+			result = append(result, event)
+		}
+	}
+	return result
 }
 
 // GetChangeLogs returns all change logs since last reset

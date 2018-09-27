@@ -6,7 +6,6 @@ import (
 	"math/big"
 
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
-	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/common/math"
@@ -815,18 +814,7 @@ func makeEvent(size int) executionFunc {
 		}
 
 		d := memory.Get(mStart.Int64(), mSize.Int64())
-		evm.am.AddEvent(&types.Event{
-			Address: contract.GetAddress(),
-			Topics:  topics,
-			Data:    d,
-			// This is a non-consensus field, but assigned here because
-			// chain/account doesn't know the current block number.
-			BlockHeight: evm.BlockHeight,
-			TxIndex:     evm.TxIndex,
-			TxHash:      evm.TxHash,
-			BlockHash:   evm.BlockHash,
-			// event.Index is set outside.
-		})
+		evm.AddEvent(contract.GetAddress(), topics, d)
 
 		evm.interpreter.intPool.put(mStart, mSize)
 		return nil, nil

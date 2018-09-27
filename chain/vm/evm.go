@@ -74,8 +74,6 @@ type EVM struct {
 	// Depth is the current call stack
 	depth int
 
-	// chainConfig contains information about the current chain
-	chainConfig *params.ChainConfig
 	// virtual machine configuration options used to initialise the
 	// evm.
 	vmConfig Config
@@ -93,12 +91,11 @@ type EVM struct {
 
 // NewEVM returns a new EVM. The returned EVM is not thread safe and should
 // only ever be used *once*.
-func NewEVM(ctx Context, am AccountManager, chainConfig *params.ChainConfig, vmConfig Config) *EVM {
+func NewEVM(ctx Context, am AccountManager, vmConfig Config) *EVM {
 	evm := &EVM{
-		Context:     ctx,
-		am:          am,
-		vmConfig:    vmConfig,
-		chainConfig: chainConfig,
+		Context:  ctx,
+		am:       am,
+		vmConfig: vmConfig,
 	}
 
 	evm.interpreter = NewInterpreter(evm, vmConfig)
@@ -318,14 +315,13 @@ func (evm *EVM) Create(caller ContractRef, code []byte, gas uint64, value *big.I
 	// Ensure there's no existing contract already at the designated address
 	contractAddr = crypto.CreateAddress(caller.GetAddress(), evm.TxHash)
 	contractAccount := evm.am.GetAccount(contractAddr)
-	if err != nil {
-		return nil, common.Address{}, gas, err
-	}
 	if !contractAccount.IsEmpty() {
 		return nil, common.Address{}, 0, ErrContractAddressCollision
 	}
 	// Create a new account on the state
 	snapshot := evm.am.Snapshot()
+	// Add event to store the creation address.
+	evm.AddEvent(contractAddr, []common.Hash{types.TopicContractCreation}, []byte{})
 	evm.Transfer(evm.am, caller.GetAddress(), contractAddr, value)
 
 	// initialise a new contract and set the code that is to be used by the
@@ -373,14 +369,31 @@ func (evm *EVM) Create(caller ContractRef, code []byte, gas uint64, value *big.I
 	if maxCodeSizeExceeded && err == nil {
 		err = errMaxCodeSizeExceeded
 	}
+	if err != nil && err != ErrInsufficientBalance {
+		// Add event to record the error information.
+		evm.AddEvent(contractAddr, []common.Hash{types.TopicRunFail}, []byte{})
+	}
 	if evm.vmConfig.Debug && evm.depth == 0 {
 		evm.vmConfig.Tracer.CaptureEnd(ret, gas-contract.Gas, time.Since(start), err)
 	}
 	return ret, contractAddr, contract.Gas, err
 }
 
-// ChainConfig returns the environment's chain configuration
-func (evm *EVM) ChainConfig() *params.ChainConfig { return evm.chainConfig }
-
 // Interpreter returns the EVM interpreter
 func (evm *EVM) Interpreter() *Interpreter { return evm.interpreter }
+
+// AddEvent records the event during transaction's execution.
+func (evm *EVM) AddEvent(address common.Address, Topics []common.Hash, Data []byte) {
+	evm.am.AddEvent(&types.Event{
+		Address: address,
+		Topics:  []common.Hash{types.TopicContractCreation},
+		Data:    make([]byte, 0),
+		// This is a non-consensus field, but assigned here because
+		// chain/account doesn't know the current block number.
+		BlockHeight: evm.BlockHeight,
+		TxIndex:     evm.TxIndex,
+		TxHash:      evm.TxHash,
+		BlockHash:   evm.BlockHash,
+		// event.Index is set outside.
+	})
+}
