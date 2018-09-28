@@ -41,7 +41,7 @@ func TestTxPool_AddTx(t *testing.T) {
 }
 
 func TestTxPool_Pending(t *testing.T) {
-	pool := NewTxPool()
+	pool := NewTxPool(nil)
 
 	// is not exist
 	tx := CreateTx("0x1d5f11eaa13e02cdca886181dc38ab4cb8cf9092e86c000fb42d12c8b504500e", 1000, 2000, 3000)
