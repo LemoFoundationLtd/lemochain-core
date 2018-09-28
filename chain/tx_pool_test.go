@@ -91,6 +91,7 @@ func TestTxPool_Pending(t *testing.T) {
 	// err = pool.AddTx(tx)
 	// assert.NoError(t, err)
 
+	pool.Remove(10)
 	result = pool.Pending(10)
 	assert.Equal(t, 0, len(result))
 }

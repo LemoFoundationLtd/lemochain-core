@@ -129,8 +129,9 @@ type TxPool struct {
 	mux      sync.Mutex
 }
 
-func NewTxPool() *TxPool {
+func NewTxPool(am *account.Manager) *TxPool {
 	pool := &TxPool{
+		am:       am,
 		txsCache: NewTxsCache(),
 		recent:   NewRecent(),
 	}
