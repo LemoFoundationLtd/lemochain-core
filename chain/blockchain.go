@@ -295,51 +295,48 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32) error {
 		return errors.New("please sync latest block")
 	}
 	bc.stableBlock.Store(block)
+	defer log.Infof("block has consensus. height:%d hash:%s", block.Height(), block.Hash().Hex())
 	// 判断是否需要切换分叉
-	switchFork := false
 	parBlock := bc.currentBlock.Load().(*types.Block)
 	for parBlock.Height() > height {
 		parBlock = bc.GetBlockByHash(parBlock.ParentHash())
 	}
-	if parBlock.Hash() != hash {
-		switchFork = true
+	if parBlock.Hash() == hash {
+		return nil
 	}
 	// 切换分叉
-	if switchFork {
-		bc.chainForksLock.Lock()
-		defer bc.chainForksLock.Unlock()
-		delete(bc.chainForksHead, bc.currentBlock.Load().(*types.Block).Hash())
-		var curBlock *types.Block
-		var highest = uint32(0)
-		for fHash, fBlock := range bc.chainForksHead {
-			parBlock = fBlock
-			inForkChain := true
-			for parBlock.Height() <= height {
-				if parBlock.Hash() == hash {
-					inForkChain = false
-					if highest < fBlock.Height() { // 高度大的优先
-						curBlock = fBlock
-					}
-					break
-				} else {
-					parBlock = bc.GetBlockByHash(parBlock.ParentHash())
-				}
-			}
-			if inForkChain {
-				delete(bc.chainForksHead, fHash)
-			}
+	bc.chainForksLock.Lock()
+	defer bc.chainForksLock.Unlock()
+	delete(bc.chainForksHead, bc.currentBlock.Load().(*types.Block).Hash())
+	var curBlock *types.Block
+	var highest = uint32(0)
+	for fHash, fBlock := range bc.chainForksHead {
+		if fBlock.Height() < height {
+			delete(bc.chainForksHead, fHash)
+			continue
 		}
-		// 同一高度下字典序靠前的优先
-		for fHash, fBlock := range bc.chainForksHead {
-			curHash := curBlock.Hash()
-			if curBlock.Height() == fBlock.Height() && bytes.Compare(curHash[:], fHash[:]) > 0 {
+		parBlock = fBlock
+		for parBlock.Height() > height {
+			parBlock = bc.GetBlockByHash(parBlock.ParentHash())
+		}
+		if parBlock.Hash() == hash {
+			if highest < fBlock.Height() { // 高度大的优先
+				highest = fBlock.Height()
 				curBlock = fBlock
 			}
+		} else {
+			delete(bc.chainForksHead, fHash)
 		}
-		bc.currentBlock.Store(curBlock)
-		log.Infof("chain forked! current block: height(%d), hash(%s)", curBlock.Height(), curBlock.Hash().Hex())
 	}
-	log.Infof("block has consensus. height:%d hash:%s", block.Height(), block.Hash().Hex())
+	// 同一高度下字典序靠前的优先
+	for fHash, fBlock := range bc.chainForksHead {
+		curHash := curBlock.Hash()
+		if curBlock.Height() == fBlock.Height() && bytes.Compare(curHash[:], fHash[:]) > 0 {
+			curBlock = fBlock
+		}
+	}
+	bc.currentBlock.Store(curBlock)
+	log.Infof("chain forked! current block: height(%d), hash(%s)", curBlock.Height(), curBlock.Hash().Hex())
 	return nil
 }
 
@@ -369,12 +366,12 @@ func (bc *BlockChain) ReceiveConfirm(info *protocol.BlockConfirmData) (err error
 	// 恢复公钥
 	pubKey, err := crypto.Ecrecover(info.Hash[:], info.SignInfo[:])
 	if err != nil {
-		log.Warnf("can't recover signer. hash:%s SignInfo:%s", info.Hash.Hex(), common.ToHex(info.SignInfo[:]))
+		log.Warnf("Can't recover signer. hash:%s SignInfo:%s", info.Hash.Hex(), common.ToHex(info.SignInfo[:]))
 		return err
 	}
 	// 是否有对应的区块 后续优化
-	if _, err = bc.dbOpe.GetBlock(info.Hash, info.Height); err != nil {
-		log.Warnf("doesn't get block in local chain.hash:%s height:%d", info.Hash.Hex(), info.Height)
+	if _, err = bc.dbOpe.GetBlockByHash(info.Hash); err != nil {
+		log.Warnf("Can't get block in local chain.hash:%s height:%d", info.Hash.Hex(), info.Height)
 		return err
 	}
 	// 获取确认者在主节点列表索引
@@ -388,6 +385,7 @@ func (bc *BlockChain) ReceiveConfirm(info *protocol.BlockConfirmData) (err error
 		log.Errorf("can't SetConfirmInfo. hash:%s", info.Hash.Hex())
 		return err
 	}
+	log.Debugf("Receive confirm info. height: %d. hash: %s", info.Height, info.Hash.String())
 	// 获取确认包集合
 	pack, err := bc.dbOpe.GetConfirmPackage(info.Hash)
 	if err != nil {
