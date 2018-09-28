@@ -2,7 +2,6 @@ package synchronise
 
 import (
 	"errors"
-	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
@@ -51,34 +50,34 @@ type blockPack struct {
 	blocks types.Blocks
 }
 
-// BestPeer 根据节点区块高度获取最优节点
-func (ps *peerSet) BestPeer() string {
-	var p string
+// BestPeer get peer with highest block
+func (ps *peerSet) BestPeer() *peerConnection {
+	var p *peerConnection
 	height := uint32(0)
 	for _, item := range ps.peers {
 		if item.peer.height >= height {
-			p = item.id
+			p = item
 			height = item.peer.height
 		}
 	}
 	return p
 }
 
-// Peer 通过id获取peerConn
+// Peer get peer with id
 func (ps *peerSet) Peer(id string) *peerConnection {
 	ps.mux.Lock()
 	defer ps.mux.Unlock()
 	return ps.peers[id]
 }
 
-// Register 将peer注册到peerSet
+// Register register peer to peers
 func (ps *peerSet) Register(p *peerConnection) {
 	ps.mux.Lock()
 	defer ps.mux.Unlock()
 	ps.peers[p.id] = p
 }
 
-// Unregister 取消节点注册
+// Unregister unregister peer
 func (ps *peerSet) Unregister(id string) {
 	ps.mux.Lock()
 	defer ps.mux.Unlock()
@@ -87,7 +86,7 @@ func (ps *peerSet) Unregister(id string) {
 	}
 }
 
-// PeersWithoutTx 获取没有指定交易的Peers
+// PeersWithoutTx fetch peers which doesn't have special tx
 func (ps *peerSet) PeersWithoutTx(hash common.Hash) []*peer {
 	ps.mux.Lock()
 	defer ps.mux.Unlock()
@@ -123,7 +122,7 @@ type Downloader struct {
 	queue *prque.Prque // 存储下载的区块队列
 }
 
-// New 创建一个Downloader对象
+// New crete Downloader object
 func NewDownloader(peers *peerSet, chain blockchain.BlockChain, dropPeer peerDropFn) *Downloader {
 	d := &Downloader{
 		peers:       peers,
@@ -142,21 +141,6 @@ func NewDownloader(peers *peerSet, chain blockchain.BlockChain, dropPeer peerDro
 func (d *Downloader) IsSynchronising() bool {
 	return atomic.LoadInt32(&d.synchronising) > 0
 }
-
-// RegisterPeer 注册peer
-// func (d *Downloader) RegisterPeer(id string, p *peer) {
-// 	peerConn := &peerConnection{
-// 		id:   id,
-// 		peer: p,
-// 	}
-// 	d.peers.Register(peerConn)
-// }
-//
-// // UnRegisterPeer 取消注册
-// func (d *Downloader) UnRegisterPeer(id string) {
-// 	d.peers.Unregister(id)
-// 	// todo 移除其他与该peer相关的任务
-// }
 
 // Synchronise 同步启动函数，供外部调用
 func (d *Downloader) Synchronise(id string) error {
@@ -208,11 +192,13 @@ func (d *Downloader) syncWithPeer(p *peerConnection) error {
 				return nil
 			}
 		case <-timeout.C: // 接收超时
+			log.Infof("Sync with peer timeout, drop peer.")
 			if d.dropPeer != nil {
 				d.dropPeer(p.id)
 			}
 			return errBadPeer
 		case err := <-d.insertErrCh: // 插入链出错
+			log.Infof("Insert chain err. drop peer")
 			if d.dropPeer != nil {
 				d.dropPeer(p.id)
 			}
@@ -237,14 +223,14 @@ func (d *Downloader) insert(block *types.Block, peer string) {
 	go func() {
 		if parent := d.blockChain.GetBlock(block.ParentHash(), block.Height()-1); parent == nil {
 			d.insertErrCh <- errUnknownParent
-			log.Debug(fmt.Sprintf("Unknown parent block", "peer", peer, "height", block.Height(), "hash", hash, "parent", block.ParentHash()))
+			log.Debugf("Unknown parent block. peer id: %s. height: %d. hash: %s. parent: %s", peer, block.Height(), hash.Hex(), block.ParentHash())
 			return
 		}
 		if err := d.blockChain.InsertChain(block); err == nil {
 			d.blockDoneCh <- block
 		} else {
 			d.insertErrCh <- err
-			log.Debug("block import failed", "peer", peer, "number", block.Height(), "hash", hash, "err", err)
+			log.Debugf("block import failed. peer: %s. height: %d. hash: %s. err: %v", peer, block.Height(), hash.Hex(), err)
 		}
 	}()
 }
@@ -252,7 +238,7 @@ func (d *Downloader) insert(block *types.Block, peer string) {
 // DeliverBlocks 将收到的区块分发给loop
 func (d *Downloader) DeliverBlocks(id string, blocks types.Blocks) error {
 	if blocks == nil {
-		return errors.New("deliverblocks receive nil blocks")
+		return errors.New("deliver-blocks receive nil blocks")
 	}
 	blockPack := &blockPack{
 		peerID: id,

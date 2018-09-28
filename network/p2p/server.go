@@ -347,10 +347,12 @@ func (srv *Server) runDialLoop() {
 			}
 			retryTimer.Reset(retryConnTimeout)
 		case node := <-srv.needConnectNodeCh:
-			dialTask := newDialTask(node, srv)
-			if err := dialTask.Run(); err != nil {
-				failedNodes[node] = struct{}{}
-			}
+			go func() {
+				dialTask := newDialTask(node, srv)
+				if err := dialTask.Run(); err != nil {
+					failedNodes[node] = struct{}{}
+				}
+			}()
 		}
 	}
 }

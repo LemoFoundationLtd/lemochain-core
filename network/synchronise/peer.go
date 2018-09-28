@@ -84,7 +84,7 @@ func (p *peer) Handshake(network uint64, height uint32, head, genesis common.Has
 	var status protocol.NodeStatusData
 	// 发送自己的节点状态
 	go func() {
-		log.Infof("start send node status data. nodeid: %s", p.id[:16])
+		log.Debugf("start send node status data. nodeid: %s", p.id[:16])
 		errs <- p.send(protocol.StatusMsg, &protocol.NodeStatusData{
 			NetworkID:     network,
 			CurrentHeight: height,
@@ -94,7 +94,7 @@ func (p *peer) Handshake(network uint64, height uint32, head, genesis common.Has
 	}()
 	// 读取对方的远程节点状态
 	go func() {
-		log.Infof("start read remote node status data. nodeid: %s", p.id[:16])
+		log.Debugf("start read remote node status data. nodeid: %s", p.id[:16])
 		errs <- p.readRemoteStatus(network, &status, genesis)
 	}()
 	for i := 0; i < 2; i++ {

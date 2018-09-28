@@ -184,7 +184,7 @@ func (pm *ProtocolManager) PeerEvent(peer *p2p.Peer, flag p2p.PeerEventFlag) err
 		p := newPeer(peer)
 		go pm.handle(p)
 	case p2p.DropPeerFlag:
-		pm.dropPeer(peer.NodeID().String())
+		go pm.dropPeer(peer.NodeID().String())
 	default:
 
 	}
@@ -255,7 +255,7 @@ func (pm *ProtocolManager) handleMsg(p *peerConnection) error {
 			}
 			p.peer.MarkTransaction(tx.Hash())
 		}
-		pm.txPool.AddTxs(txs)
+		// pm.txPool.AddTxs(txs)
 	case protocol.GetBlocksMsg:
 		var query protocol.GetBlocksData
 		if err := msg.Decode(&query); err != nil {
@@ -333,13 +333,13 @@ func (pm *ProtocolManager) handleMsg(p *peerConnection) error {
 		pm.fetcher.Enqueue(p.id, block)
 		log.Infof("Receive new block. height: %d. hash: %s", block.Height(), block.Hash().Hex())
 		if block.Height() > p.peer.height {
-			p.peer.SetHead(p.peer.head, p.peer.height)
+			p.peer.SetHead(block.Hash(), block.Height())
 			// 清理交易池
 			txs := make([]common.Hash, 0)
 			for _, tx := range block.Txs {
 				txs = append(txs, tx.Hash())
 			}
-			pm.txPool.RemoveTxs(txs)
+			// pm.txPool.RemoveTxs(txs)
 			currentHeight := pm.blockchain.CurrentBlock().Height()
 			if currentHeight+1 < block.Height() {
 				go pm.synchronise(p.id)
@@ -445,10 +445,15 @@ func (pm *ProtocolManager) syncer() {
 	forceSync := time.NewTimer(10 * time.Second)
 	for {
 		select {
-		case <-pm.newPeerCh:
-			go pm.synchronise(pm.peers.BestPeer())
+		case p := <-pm.newPeerCh:
+			if p.height > pm.blockchain.CurrentBlock().Height() {
+				go pm.synchronise(p.id)
+			}
 		case <-forceSync.C:
-			go pm.synchronise(pm.peers.BestPeer())
+			p := pm.peers.BestPeer()
+			if p.peer.height > pm.blockchain.CurrentBlock().Height() {
+				go pm.synchronise(p.id)
+			}
 		case <-pm.quitSync:
 			return
 		}
@@ -471,14 +476,14 @@ func (pm *ProtocolManager) synchronise(p string) {
 
 // syncTransactions 同步交易 发送本地所有交易到该节点
 func (pm *ProtocolManager) syncTransactions(id string) {
-	pending := pm.txPool.Pending()
-	if len(pending) == 0 {
-		return
-	}
-	p := pm.peers.Peer(id)
-	if p != nil {
-		go p.peer.SendTransactions(pending)
-	}
+	// pending := pm.txPool.Pending()
+	// if len(pending) == 0 {
+	// 	return
+	// }
+	// p := pm.peers.Peer(id)
+	// if p != nil {
+	// 	go p.peer.SendTransactions(pending)
+	// }
 }
 
 // BroadcastTx 广播交易
