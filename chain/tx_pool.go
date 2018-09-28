@@ -5,6 +5,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"sync"
 	"time"
 )
@@ -25,15 +26,25 @@ type TransactionWithTime struct {
 	RecTime int64
 }
 
-type TxsCache struct {
+type TxsSort interface {
+	push(tx *types.Transaction)
+
+	pop(size int) []*types.Transaction
+
+	removeBatch(keys []common.Hash)
+
+	remove(key common.Hash)
+}
+
+type TxsSortByTime struct {
 	txs   []*TransactionWithTime
 	index map[common.Hash]int
 	cap   int
 	cnt   int
 }
 
-func NewTxsCache() *TxsCache {
-	cache := &TxsCache{}
+func NewTxsSortByTime() TxsSort {
+	cache := &TxsSortByTime{}
 	cache.cap = 2
 	cache.cnt = 0
 	cache.txs = make([]*TransactionWithTime, cache.cap)
@@ -41,7 +52,7 @@ func NewTxsCache() *TxsCache {
 	return cache
 }
 
-func (cache *TxsCache) push(tx *types.Transaction) {
+func (cache *TxsSortByTime) push(tx *types.Transaction) {
 
 	if cache.cap-cache.cnt < 1 {
 		cache.cap = 2 * cache.cap
@@ -60,36 +71,35 @@ func (cache *TxsCache) push(tx *types.Transaction) {
 	cache.cnt = cache.cnt + 1
 }
 
-func (cache *TxsCache) pop(size int) []*types.Transaction {
+func (cache *TxsSortByTime) pop(size int) []*types.Transaction {
 	if size <= 0 {
 		return make([]*types.Transaction, 0)
-	}
+	} else {
+		minCnt := size
+		if cache.cnt < minCnt {
+			minCnt = cache.cnt
+		}
 
-	minCnt := size
-	if cache.cnt < minCnt {
-		minCnt = cache.cnt
-	}
+		txs := make([]*types.Transaction, minCnt)
+		for index := 0; index < minCnt; index++ {
+			txs[index] = cache.txs[index].Tx
+		}
 
-	txs := make([]*types.Transaction, minCnt)
-	for index := 0; index < minCnt; index++ {
-		txs[index] = cache.txs[index].Tx
+		return txs
 	}
-
-	return txs
 }
 
-func (cache *TxsCache) removeBatch(keys []common.Hash) {
+func (cache *TxsSortByTime) removeBatch(keys []common.Hash) {
 	if len(keys) <= 0 {
 		return
+	} else {
+		for index := 0; index < len(keys); index++ {
+			cache.remove(keys[index])
+		}
 	}
-
-	for index := 0; index < len(keys); index++ {
-		cache.remove(keys[index])
-	}
-
 }
 
-func (cache *TxsCache) remove(key common.Hash) {
+func (cache *TxsSortByTime) remove(key common.Hash) {
 	pos := cache.index[key]
 	if pos >= 0 {
 		delete(cache.index, key)
@@ -100,19 +110,24 @@ func (cache *TxsCache) remove(key common.Hash) {
 
 type TxsRecent struct {
 	lastTime int64
-	recent   map[common.Hash]bool
+	index    store.Index
+	recent   []map[common.Hash]bool
 }
 
 func NewRecent() *TxsRecent {
 	t := time.Now()
-	return &TxsRecent{
-		lastTime: t.Unix(),
-		recent:   make(map[common.Hash]bool),
-	}
+	recent := &TxsRecent{lastTime: t.Unix()}
+
+	recent.index.Init()
+	recent.recent = make([]map[common.Hash]bool, 2)
+	recent.recent[0] = make(map[common.Hash]bool)
+	recent.recent[1] = make(map[common.Hash]bool)
+
+	return recent
 }
 
 func (recent *TxsRecent) isExist(hash common.Hash) bool {
-	if recent.recent[hash] {
+	if recent.recent[0][hash] || recent.recent[1][hash] {
 		return true
 	} else {
 		return false
@@ -124,17 +139,19 @@ func (recent *TxsRecent) put(hash common.Hash) {
 
 	if next-recent.lastTime > TransactionTimeOut {
 		recent.lastTime = next
-		recent.recent = make(map[common.Hash]bool)
+
+		recent.recent[recent.index.Bak()] = make(map[common.Hash]bool)
+		recent.index.Swap()
 	}
 
-	recent.recent[hash] = true
+	recent.recent[recent.index.Cur()][hash] = true
 }
 
 type TxPool struct {
 	am    *account.Manager
 	txsCh chan types.Transactions
 
-	txsCache *TxsCache
+	txsCache TxsSort
 
 	recent *TxsRecent
 	mux    sync.Mutex
@@ -142,11 +159,11 @@ type TxPool struct {
 
 func NewTxPool(am *account.Manager, txsCh chan types.Transactions) *TxPool {
 	pool := &TxPool{
-		am:       am,
-		txsCh:    txsCh,
-		txsCache: NewTxsCache(),
-		recent:   NewRecent(),
+		am:     am,
+		txsCh:  txsCh,
+		recent: NewRecent(),
 	}
+	pool.txsCache = NewTxsSortByTime()
 
 	return pool
 }
@@ -165,9 +182,9 @@ func (pool *TxPool) AddTx(tx *types.Transaction) error {
 		// if err != nil {
 		// 	return err
 		// }
-		pool.txsCh <- types.Transactions{tx}
 		pool.recent.put(hash)
 		pool.txsCache.push(tx)
+		pool.txsCh <- types.Transactions{tx}
 		return nil
 	}
 }
