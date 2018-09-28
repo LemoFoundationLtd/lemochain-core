@@ -5,7 +5,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
-	"sync"
+	"time"
 )
 
 var (
@@ -17,97 +17,155 @@ var (
 	ErrInsufficientFunds = errors.New("insufficient funds for gas * price + value")
 )
 
-type TxPool struct {
-	am       *account.Manager
-	all      map[common.Hash]*types.Transaction // 所有等待打包的交易
-	tmp      map[common.Hash]types.Transactions // 已被打包的交易，但块尚未确认
-	mux      sync.Mutex
-	newTxsCh chan types.Transactions
+var TransactionTimeOut = int64(10)
+
+type TransactionWithTime struct {
+	Tx      *types.Transaction
+	RecTime int64
 }
 
-func NewTxPool(am *account.Manager, txsCh chan types.Transactions) *TxPool {
+type TxsCache struct {
+	txs []*TransactionWithTime
+	cap int
+	cnt int
+}
+
+func NewTxsCache() *TxsCache {
+	cache := &TxsCache{}
+	cache.cap = 2
+	cache.cnt = 0
+	cache.txs = make([]*TransactionWithTime, cache.cap)
+
+	return cache
+}
+
+func (cache *TxsCache) Push(tx *types.Transaction) {
+	if cache.cap-cache.cnt < 1 {
+		cache.cap = 2 * cache.cap
+		tmp := make([]*TransactionWithTime, cache.cap)
+		copy(tmp, cache.txs)
+		cache.txs = tmp
+	}
+
+	t := time.Now()
+	cache.txs[cache.cnt] = &TransactionWithTime{
+		Tx:      tx,
+		RecTime: t.Unix(),
+	}
+
+	cache.cnt = cache.cnt + 1
+}
+
+func (cache *TxsCache) Pop(size int) []*types.Transaction {
+	if size <= 0 {
+		return make([]*types.Transaction, 0)
+	}
+
+	if cache.cnt <= size {
+		txs := make([]*types.Transaction, cache.cnt)
+		for index := 0; index < cache.cnt; index++ {
+			txs[index] = cache.txs[index].Tx
+		}
+
+		cache.txs = make([]*TransactionWithTime, 512)
+		cache.cap = 512
+		cache.cnt = 0
+		return txs
+	} else {
+		txs := make([]*types.Transaction, size)
+		for index := 0; index < size; index++ {
+			txs[index] = cache.txs[index].Tx
+		}
+
+		cache.txs = append(cache.txs[:size], cache.txs[size+1:]...)
+		cache.cnt = cache.cnt - size
+		return txs
+	}
+}
+
+type TxsRecent struct {
+	lastTime int64
+	recent   map[common.Hash]bool
+}
+
+func NewRecent() *TxsRecent {
+	t := time.Now()
+	return &TxsRecent{
+		lastTime: t.Unix(),
+		recent:   make(map[common.Hash]bool),
+	}
+}
+
+func (recent *TxsRecent) isExist(hash common.Hash) bool {
+	if recent.recent[hash] {
+		return true
+	} else {
+		return false
+	}
+}
+
+func (recent *TxsRecent) put(hash common.Hash) {
+	next := time.Now().Unix()
+
+	if next-recent.lastTime > TransactionTimeOut {
+		recent.lastTime = next
+		recent.recent = make(map[common.Hash]bool)
+	}
+
+	recent.recent[hash] = true
+}
+
+type TxPool struct {
+	am       *account.Manager
+	txsCache *TxsCache
+	recent   *TxsRecent
+}
+
+func NewTxPool() *TxPool {
 	pool := &TxPool{
-		am:       am,
-		all:      make(map[common.Hash]*types.Transaction),
-		newTxsCh: txsCh,
+		txsCache: NewTxsCache(),
+		recent:   NewRecent(),
 	}
 
 	return pool
 }
 
-// Pending 出块时用 获取等待打包的交易
-func (pool *TxPool) Pending() types.Transactions {
-	pool.mux.Lock()
-	defer pool.mux.Unlock()
-	pending := make(types.Transactions, 0, len(pool.all))
-	for _, v := range pool.all {
-		tx := *v
-		pending = append(pending, &tx)
+func (pool *TxPool) AddTx(tx *types.Transaction) error {
+	hash := tx.Hash()
+	isExist := pool.recent.isExist(hash)
+	if isExist {
+		return nil
+	} else {
+		// err := pool.validateTx(tx)
+		// if err != nil {
+		// 	return err
+		// }
+
+		pool.recent.put(hash)
+		pool.txsCache.Push(tx)
+		return nil
 	}
-	return pending
 }
 
-// validateTx 初级验证交易是否合法
+func (pool *TxPool) Pending(size int) []*types.Transaction {
+	return pool.txsCache.Pop(size)
+}
+
 func (pool *TxPool) validateTx(tx *types.Transaction) error {
 	from, err := tx.From()
 	if err != nil {
 		return ErrInvalidSender
 	}
+
 	fromAccount, err := pool.am.GetAccount(from)
 	if err != nil {
 		return err
 	}
+
 	balance := fromAccount.GetBalance()
 	if balance.Cmp(tx.Cost()) < 0 {
 		return ErrInsufficientFunds
+	} else {
+		return nil
 	}
-	// 其他 todo
-	return nil
-}
-
-func (pool *TxPool) addTx(tx *types.Transaction) error {
-	if err := pool.validateTx(tx); err != nil {
-		return err
-	}
-	pool.all[tx.Hash()] = tx
-	return nil
-}
-
-// AddTx 增加交易到交易池
-func (pool *TxPool) AddTx(tx *types.Transaction) error {
-	pool.mux.Lock()
-	defer pool.mux.Unlock()
-	err := pool.addTx(tx)
-	if err != nil {
-		pool.newTxsCh <- types.Transactions{tx}
-	}
-	return err
-}
-
-// AddTxs 批量增加交易到交易池
-func (pool *TxPool) AddTxs(txs types.Transactions) []error {
-	pool.mux.Lock()
-	defer pool.mux.Unlock()
-	errs := make([]error, len(txs))
-	for i, tx := range txs {
-		errs[i] = pool.addTx(tx)
-	}
-	pool.newTxsCh <- txs
-	return errs
-}
-
-// RemoveTxs 从交易池移除交易
-func (pool *TxPool) RemoveTxs(txs []common.Hash) {
-	pool.mux.Lock()
-	defer pool.mux.Unlock()
-	for _, hash := range txs {
-		if _, ok := pool.all[hash]; ok {
-			delete(pool.all, hash)
-		}
-	}
-}
-
-// Stop
-func (pool *TxPool) Stop() {
-
 }
