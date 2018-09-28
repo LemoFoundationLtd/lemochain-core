@@ -6,7 +6,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"math/big"
 	"testing"
-	"time"
 )
 
 func CreateTx(to string, amount int64, gasPrice int64, expiration int64) *types.Transaction {
@@ -27,7 +26,9 @@ func CreateTx(to string, amount int64, gasPrice int64, expiration int64) *types.
 }
 
 func TestTxPool_AddTx(t *testing.T) {
-	pool := NewTxPool(nil)
+
+	txCh := make(chan types.Transactions, 100)
+	pool := NewTxPool(nil, txCh)
 	tx := CreateTx("0x1d5f11eaa13e02cdca886181dc38ab4cb8cf9092e86c000fb42d12c8b504500e", 1000, 2000, 3000)
 
 	err := pool.AddTx(tx)
@@ -41,7 +42,8 @@ func TestTxPool_AddTx(t *testing.T) {
 }
 
 func TestTxPool_Pending(t *testing.T) {
-	pool := NewTxPool(nil)
+	txCh := make(chan types.Transactions, 100)
+	pool := NewTxPool(nil, txCh)
 
 	// is not exist
 	tx := CreateTx("0x1d5f11eaa13e02cdca886181dc38ab4cb8cf9092e86c000fb42d12c8b504500e", 1000, 2000, 3000)
@@ -53,7 +55,7 @@ func TestTxPool_Pending(t *testing.T) {
 	err = pool.AddTx(tx)
 	assert.NoError(t, err)
 
-	time.Sleep(time.Duration(10) * time.Second)
+	//time.Sleep(time.Duration(10) * time.Second)
 
 	// is not exist
 	tx = CreateTx("0x3d5f11eaa13e02cdca886181dc38ab4cb8cf9092e86c000fb42d12c8b504500e", 7000, 8000, 9000)
@@ -70,7 +72,7 @@ func TestTxPool_Pending(t *testing.T) {
 	err = pool.AddTx(tx)
 	assert.NoError(t, err)
 
-	time.Sleep(time.Duration(10) * time.Second)
+	//time.Sleep(time.Duration(10) * time.Second)
 
 	tx = CreateTx("0x3d5f11eaa13e02cdca886181dc38ab4cb8cf9092e86c000fb42d12c8b504500e", 7000, 8000, 9000)
 	err = pool.AddTx(tx)
@@ -91,7 +93,9 @@ func TestTxPool_Pending(t *testing.T) {
 	// err = pool.AddTx(tx)
 	// assert.NoError(t, err)
 
-	pool.Remove(10)
+	keys := []common.Hash{tx.Hash()}
+	pool.Remove(keys)
+
 	result = pool.Pending(10)
-	assert.Equal(t, 0, len(result))
+	assert.Equal(t, 2, len(result))
 }
