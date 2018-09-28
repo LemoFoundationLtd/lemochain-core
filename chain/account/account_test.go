@@ -10,6 +10,10 @@ import (
 	"testing"
 )
 
+func TestAccount_Interface(t *testing.T) {
+	var _ types.AccountAccessor = (*Account)(nil)
+}
+
 func loadAccount(address common.Address) *Account {
 	db := newDB()
 	data, _ := db.GetAccount(defaultBlock.hash, address)
@@ -54,6 +58,9 @@ func TestAccount_SetSuicide_GetSuicide(t *testing.T) {
 
 	account.SetSuicide(true)
 	assert.Equal(t, true, account.GetSuicide())
+	assert.Equal(t, big.NewInt(0), account.GetBalance())
+	assert.Equal(t, sha3Nil, account.GetCodeHash())
+	assert.Equal(t, common.Hash{}, account.GetStorageRoot())
 }
 
 func TestAccount_SetCodeHash_GetCodeHash(t *testing.T) {

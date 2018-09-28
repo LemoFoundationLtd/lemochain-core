@@ -101,9 +101,9 @@ func gasReturnDataCopy(gt params.GasTable, evm *EVM, contract *Contract, stack *
 
 func gasSStore(gt params.GasTable, evm *EVM, contract *Contract, stack *Stack, mem *Memory, memorySize uint64) (uint64, error) {
 	var (
-		y, x               = stack.Back(1), stack.Back(0)
-		contractAccount, _ = evm.am.GetAccount(contract.GetAddress())
-		val, err           = contractAccount.GetStorageState(common.BigToHash(x))
+		y, x            = stack.Back(1), stack.Back(0)
+		contractAccount = evm.am.GetAccount(contract.GetAddress())
+		val, err        = contractAccount.GetStorageState(common.BigToHash(x))
 	)
 	if err != nil {
 		return 0, err
@@ -301,10 +301,7 @@ func gasCall(gt params.GasTable, evm *EVM, contract *Contract, stack *Stack, mem
 		address        = common.BigToAddress(stack.Back(1))
 	)
 	if transfersValue {
-		contractAccount, err := evm.am.GetAccount(address)
-		if err != nil {
-			return 0, err
-		}
+		contractAccount := evm.am.GetAccount(address)
 		if contractAccount.IsEmpty() {
 			gas += params.CallNewAccountGas
 		} else {
@@ -369,11 +366,8 @@ func gasSuicide(gt params.GasTable, evm *EVM, contract *Contract, stack *Stack, 
 	)
 
 	// if empty and transfers value
-	receiverAccount, err := evm.am.GetAccount(address)
-	if err != nil {
-		return 0, err
-	}
-	contractAccount, _ := evm.am.GetAccount(contract.GetAddress())
+	receiverAccount := evm.am.GetAccount(address)
+	contractAccount := evm.am.GetAccount(contract.GetAddress())
 	if receiverAccount.IsEmpty() && contractAccount.GetBalance().Sign() != 0 {
 		gas += gt.CreateBySuicide
 	}

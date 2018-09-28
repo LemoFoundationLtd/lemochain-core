@@ -16,7 +16,7 @@ type ChainContext interface {
 }
 
 // NewEVMContext creates a new context for use in the EVM.
-func NewEVMContext(msg types.Transaction, header *types.Header, txHash common.Hash, chain ChainContext) vm.Context {
+func NewEVMContext(msg types.Transaction, header *types.Header, txIndex uint, txHash common.Hash, blockHash common.Hash, chain ChainContext) vm.Context {
 	if (header.LemoBase == common.Address{}) {
 		panic("NewEVMContext is called without author")
 	}
@@ -25,7 +25,9 @@ func NewEVMContext(msg types.Transaction, header *types.Header, txHash common.Ha
 		CanTransfer: CanTransfer,
 		Transfer:    Transfer,
 		GetHash:     GetHashFn(header, chain),
+		TxIndex:     txIndex,
 		TxHash:      txHash,
+		BlockHash:   blockHash,
 		Origin:      from,
 		Lemobase:    header.LemoBase,
 		BlockHeight: header.Height,
@@ -64,11 +66,13 @@ func GetHashFn(ref *types.Header, chain ChainContext) vm.GetHashFunc {
 // CanTransfer checks whether there are enough funds in the address' account to make a transfer.
 // This does not take the necessary gas in to account to make the transfer valid.
 func CanTransfer(am vm.AccountManager, addr common.Address, amount *big.Int) bool {
-	return am.GetBalance(addr).Cmp(amount) >= 0
+	return am.GetAccount(addr).GetBalance().Cmp(amount) >= 0
 }
 
 // Transfer subtracts amount from sender and adds amount to recipient using the given Db
 func Transfer(am vm.AccountManager, sender, recipient common.Address, amount *big.Int) {
-	am.SubBalance(sender, amount)
-	am.AddBalance(recipient, amount)
+	senderAccount := am.GetAccount(sender)
+	recipientAccount := am.GetAccount(recipient)
+	senderAccount.SetBalance(new(big.Int).Sub(senderAccount.GetBalance(), amount))
+	recipientAccount.SetBalance(new(big.Int).Add(recipientAccount.GetBalance(), amount))
 }

@@ -53,10 +53,7 @@ func (pool *TxPool) validateTx(tx *types.Transaction) error {
 	if err != nil {
 		return ErrInvalidSender
 	}
-	fromAccount, err := pool.am.GetAccount(from)
-	if err != nil {
-		return err
-	}
+	fromAccount := pool.am.GetAccount(from)
 	balance := fromAccount.GetBalance()
 	if balance.Cmp(tx.Cost()) < 0 {
 		return ErrInsufficientFunds

@@ -42,7 +42,9 @@ type Context struct {
 	GetHash GetHashFunc
 
 	// Provides the current transaction hash which is used when EVM emits new contract events.
-	TxHash common.Hash
+	TxIndex   uint
+	TxHash    common.Hash
+	BlockHash common.Hash
 
 	// Message information
 	Origin   common.Address // Provides information for ORIGIN
@@ -72,8 +74,6 @@ type EVM struct {
 	// Depth is the current call stack
 	depth int
 
-	// chainConfig contains information about the current chain
-	chainConfig *params.ChainConfig
 	// virtual machine configuration options used to initialise the
 	// evm.
 	vmConfig Config
@@ -91,12 +91,11 @@ type EVM struct {
 
 // NewEVM returns a new EVM. The returned EVM is not thread safe and should
 // only ever be used *once*.
-func NewEVM(ctx Context, am AccountManager, chainConfig *params.ChainConfig, vmConfig Config) *EVM {
+func NewEVM(ctx Context, am AccountManager, vmConfig Config) *EVM {
 	evm := &EVM{
-		Context:     ctx,
-		am:          am,
-		vmConfig:    vmConfig,
-		chainConfig: chainConfig,
+		Context:  ctx,
+		am:       am,
+		vmConfig: vmConfig,
 	}
 
 	evm.interpreter = NewInterpreter(evm, vmConfig)
@@ -126,24 +125,25 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 	if !evm.Context.CanTransfer(evm.am, caller.GetAddress(), value) {
 		return nil, gas, ErrInsufficientBalance
 	}
+	contractAccount := evm.am.GetAccount(addr)
+	code, err := contractAccount.GetCode()
+	if err != nil {
+		return nil, gas, ErrContractCodeLoadFail
+	}
 
 	var (
 		to       = AccountRef(addr)
 		snapshot = evm.am.Snapshot()
 	)
-	if !evm.am.IsExist(addr) {
-		precompiles := PrecompiledContracts
-		if precompiles[addr] == nil && value.Sign() == 0 {
-			return nil, gas, nil
-		}
-		evm.am.CreateAccount(addr)
+	if len(code) == 0 && PrecompiledContracts[addr] == nil && value.Sign() == 0 {
+		return nil, gas, nil
 	}
 	evm.Transfer(evm.am, caller.GetAddress(), to.GetAddress(), value)
 
 	// Initialise a new contract and set the code that is to be used by the EVM.
 	// The contract is a scoped environment for this execution context only.
 	contract := NewContract(caller, to, value, gas)
-	contract.SetCallCode(&addr, evm.am.GetCodeHash(addr), evm.am.GetCode(addr))
+	contract.SetCallCode(&addr, contractAccount.GetCodeHash(), code)
 
 	start := time.Now()
 
@@ -189,6 +189,11 @@ func (evm *EVM) CallCode(caller ContractRef, addr common.Address, input []byte, 
 	if !evm.CanTransfer(evm.am, caller.GetAddress(), value) {
 		return nil, gas, ErrInsufficientBalance
 	}
+	contractAccount := evm.am.GetAccount(addr)
+	code, err := contractAccount.GetCode()
+	if err != nil {
+		return nil, gas, ErrContractCodeLoadFail
+	}
 
 	var (
 		snapshot = evm.am.Snapshot()
@@ -198,7 +203,7 @@ func (evm *EVM) CallCode(caller ContractRef, addr common.Address, input []byte, 
 	// EVM. The contract is a scoped environment for this execution context
 	// only.
 	contract := NewContract(caller, to, value, gas)
-	contract.SetCallCode(&addr, evm.am.GetCodeHash(addr), evm.am.GetCode(addr))
+	contract.SetCallCode(&addr, contractAccount.GetCodeHash(), code)
 
 	ret, err = run(evm, contract, input)
 	if err != nil {
@@ -223,6 +228,11 @@ func (evm *EVM) DelegateCall(caller ContractRef, addr common.Address, input []by
 	if evm.depth > int(params.CallCreateDepth) {
 		return nil, gas, ErrDepth
 	}
+	contractAccount := evm.am.GetAccount(addr)
+	code, err := contractAccount.GetCode()
+	if err != nil {
+		return nil, gas, ErrContractCodeLoadFail
+	}
 
 	var (
 		snapshot = evm.am.Snapshot()
@@ -231,7 +241,7 @@ func (evm *EVM) DelegateCall(caller ContractRef, addr common.Address, input []by
 
 	// Initialise a new contract and make initialise the delegate values
 	contract := NewContract(caller, to, nil, gas).AsDelegate()
-	contract.SetCallCode(&addr, evm.am.GetCodeHash(addr), evm.am.GetCode(addr))
+	contract.SetCallCode(&addr, contractAccount.GetCodeHash(), code)
 
 	ret, err = run(evm, contract, input)
 	if err != nil {
@@ -262,6 +272,11 @@ func (evm *EVM) StaticCall(caller ContractRef, addr common.Address, input []byte
 		evm.interpreter.readOnly = true
 		defer func() { evm.interpreter.readOnly = false }()
 	}
+	contractAccount := evm.am.GetAccount(addr)
+	code, err := contractAccount.GetCode()
+	if err != nil {
+		return nil, gas, ErrContractCodeLoadFail
+	}
 
 	var (
 		to       = AccountRef(addr)
@@ -271,7 +286,7 @@ func (evm *EVM) StaticCall(caller ContractRef, addr common.Address, input []byte
 	// EVM. The contract is a scoped environment for this execution context
 	// only.
 	contract := NewContract(caller, to, new(big.Int), gas)
-	contract.SetCallCode(&addr, evm.am.GetCodeHash(addr), evm.am.GetCode(addr))
+	contract.SetCallCode(&addr, contractAccount.GetCodeHash(), code)
 
 	// When an error was returned by the EVM or when setting the creation code
 	// above we revert to the snapshot and consume any gas remaining. Additionally
@@ -299,15 +314,14 @@ func (evm *EVM) Create(caller ContractRef, code []byte, gas uint64, value *big.I
 	}
 	// Ensure there's no existing contract already at the designated address
 	contractAddr = crypto.CreateAddress(caller.GetAddress(), evm.TxHash)
-	contractAccount, err := evm.am.GetAccount(contractAddr)
-	if err != nil {
-		return nil, common.Address{}, gas, err
-	}
+	contractAccount := evm.am.GetAccount(contractAddr)
 	if !contractAccount.IsEmpty() {
 		return nil, common.Address{}, 0, ErrContractAddressCollision
 	}
 	// Create a new account on the state
 	snapshot := evm.am.Snapshot()
+	// Add event to store the creation address.
+	evm.AddEvent(contractAddr, []common.Hash{types.TopicContractCreation}, []byte{})
 	evm.Transfer(evm.am, caller.GetAddress(), contractAddr, value)
 
 	// initialise a new contract and set the code that is to be used by the
@@ -355,14 +369,31 @@ func (evm *EVM) Create(caller ContractRef, code []byte, gas uint64, value *big.I
 	if maxCodeSizeExceeded && err == nil {
 		err = errMaxCodeSizeExceeded
 	}
+	if err != nil && err != ErrInsufficientBalance {
+		// Add event to record the error information.
+		evm.AddEvent(contractAddr, []common.Hash{types.TopicRunFail}, []byte{})
+	}
 	if evm.vmConfig.Debug && evm.depth == 0 {
 		evm.vmConfig.Tracer.CaptureEnd(ret, gas-contract.Gas, time.Since(start), err)
 	}
 	return ret, contractAddr, contract.Gas, err
 }
 
-// ChainConfig returns the environment's chain configuration
-func (evm *EVM) ChainConfig() *params.ChainConfig { return evm.chainConfig }
-
 // Interpreter returns the EVM interpreter
 func (evm *EVM) Interpreter() *Interpreter { return evm.interpreter }
+
+// AddEvent records the event during transaction's execution.
+func (evm *EVM) AddEvent(address common.Address, topics []common.Hash, data []byte) {
+	evm.am.AddEvent(&types.Event{
+		Address: address,
+		Topics:  topics,
+		Data:    data,
+		// This is a non-consensus field, but assigned here because
+		// chain/account doesn't know the current block number.
+		BlockHeight: evm.BlockHeight,
+		TxIndex:     evm.TxIndex,
+		TxHash:      evm.TxHash,
+		BlockHash:   evm.BlockHash,
+		// event.Index is set outside.
+	})
+}

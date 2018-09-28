@@ -9,6 +9,10 @@ import (
 	"testing"
 )
 
+func TestSafeAccount_Interface(t *testing.T) {
+	var _ types.AccountAccessor = (*SafeAccount)(nil)
+}
+
 func loadSafeAccount(address common.Address) *SafeAccount {
 	db := newDB()
 	data, _ := db.GetAccount(defaultBlock.hash, address)
@@ -56,7 +60,7 @@ func TestSafeAccount_SetSuicide_GetSuicide(t *testing.T) {
 	assert.Equal(t, true, account.GetSuicide())
 	assert.Equal(t, 1, len(account.processor.changeLogs))
 	assert.Equal(t, SuicideLog, account.processor.changeLogs[0].LogType)
-	assert.Equal(t, *big.NewInt(100), account.processor.changeLogs[0].OldVal.(big.Int))
+	assert.Equal(t, big.NewInt(100), account.processor.changeLogs[0].OldVal.(*types.AccountData).Balance)
 }
 
 func TestSafeAccount_MarshalJSON_UnmarshalJSON(t *testing.T) {
@@ -72,5 +76,5 @@ func TestSafeAccount_MarshalJSON_UnmarshalJSON(t *testing.T) {
 	assert.Equal(t, account.GetVersion(), parsedAccount.GetVersion())
 	assert.Equal(t, account.GetCodeHash(), parsedAccount.GetCodeHash())
 	assert.Equal(t, account.GetStorageRoot(), parsedAccount.GetStorageRoot())
-	// assert.Equal(t, account.db, parsedAccount.db)
+	// assert.Equal(t, account.processor, parsedAccount.processor)
 }

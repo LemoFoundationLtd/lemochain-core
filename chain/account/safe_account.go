@@ -33,6 +33,7 @@ func (a *SafeAccount) UnmarshalJSON(input []byte) error {
 	if err := dec.UnmarshalJSON(input); err != nil {
 		return err
 	}
+	// TODO a.processor is nil
 	*a = *NewSafeAccount(a.processor, &dec)
 	return nil
 }

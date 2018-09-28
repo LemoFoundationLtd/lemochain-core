@@ -27,11 +27,11 @@ func getCheckSum(address common.Address) byte {
 }
 
 // GenerateAddress generate Lemo address
-func GenerateAddress() *AddressKeyPair {
+func GenerateAddress() (*AddressKeyPair, error) {
 	// Get privateKey
 	privKey, err := GenerateKey()
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	// Get the public key through the private key
 	pubKey := privKey.PublicKey
@@ -54,7 +54,7 @@ func GenerateAddress() *AddressKeyPair {
 		LemoAddress:  string(lemoAddress),
 		PublicKey:    common.ToHex(publicToBytes[1:]),
 		PrivateKet:   common.ToHex(privateToBytes),
-	}
+	}, nil
 }
 
 // RestoreOriginalAddress Restore original address the LemoAddress and return the Address type.

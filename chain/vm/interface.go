@@ -7,26 +7,10 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 )
 
-// am is an EVM database for full state querying.
+// AccountManager is an EVM database for full account querying.
 type AccountManager interface {
-	GetAccount(common.Address) (types.AccountAccessor, error)
-	CreateAccount(common.Address)
+	GetAccount(common.Address) types.AccountAccessor
 	IsExist(common.Address) bool
-
-	SubBalance(common.Address, *big.Int)
-	AddBalance(common.Address, *big.Int)
-	GetBalance(common.Address) *big.Int
-
-	GetCodeHash(common.Address) common.Hash
-	GetCode(common.Address) []byte
-	SetCode(common.Address, []byte)
-	GetCodeSize(common.Address) int
-
-	GetState(common.Address, common.Hash) common.Hash
-	SetState(common.Address, common.Hash, common.Hash)
-
-	Suicide(common.Address) bool
-	HasSuicided(common.Address) bool
 
 	RevertToSnapshot(int)
 	Snapshot() int
