@@ -6,7 +6,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
-	"math/big"
+	"reflect"
 	"strings"
 )
 
@@ -105,24 +105,26 @@ func NewChainAPI(chain *chain.BlockChain) *ChainAPI {
 	return &ChainAPI{chain}
 }
 
-// GetBlock get block by hash and height
-func (c *ChainAPI) GetBlock(hash common.Hash, height uint32) *types.Block {
-	return c.chain.GetBlock(hash, height)
-}
+// GetBlock get block information by height or hash
+func (c *ChainAPI) GetBlock(n interface{}) *types.Block {
+	t := reflect.TypeOf(n).String()
+	if f := "float64"; strings.EqualFold(t, f) {
+		h := n.(float64)
+		height := uint32(h)
+		return c.chain.GetBlockByHeight(height)
 
-// GetBlockByHeight get block by height
-func (c *ChainAPI) GetBlockByHeight(height uint32) *types.Block {
-	return c.chain.GetBlockByHeight(height)
-}
-
-// GetBlockByHash get block by hash
-func (c *ChainAPI) GetBlockByHash(hash common.Hash) *types.Block {
-	return c.chain.GetBlockByHash(hash)
+	} else if f := "string"; strings.EqualFold(f, t) {
+		h := n.(string)
+		hash := common.HexToHash(h)
+		return c.chain.GetBlockByHash(hash)
+	} else {
+		return nil
+	}
 }
 
 // GetChainID get chain id
-func (c *ChainAPI) GetChainID() *big.Int {
-	return c.chain.ChainID()
+func (c *ChainAPI) GetChainID() string {
+	return c.chain.ChainID().String()
 }
 
 // GetGenesis get the creation block
@@ -138,4 +140,11 @@ func (c *ChainAPI) GetCurrentBlock() *types.Block {
 // GetStableBlock get the latest currently agreed blocks
 func (c *ChainAPI) GetStableBlock() *types.Block {
 	return c.chain.StableBlock()
+}
+
+//
+func (c *ChainAPI) GetCurrentHeight() uint32 {
+	currentBlock := c.chain.CurrentBlock()
+	height := currentBlock.Height()
+	return height
 }

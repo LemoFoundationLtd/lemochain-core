@@ -41,39 +41,31 @@ lemojs._extend({
 	property: 'chain',
 	methods: [
 		new lemojs._extend.Method({
-			name: 'getBlockByHeight',
-			call: 'chain_getBlockByHeight',
-			params: 1
-		}),
-		new lemojs._extend.Method({
-			name: 'getBlockByHash',
-			call: 'chain_getBlockByHash',
-			params: 1
-		}), 
-		new lemojs._extend.Method({
 			name: 'getBlock',
 			call: 'chain_getBlock',
-			params: 2
+			params: 1
 		}),
-		new lemojs._extend.Method({
-			name: 'getChainID',
-			call: 'chain_getChainID',
-			params: 0
+	],
+	properties: [
+		new lemojs._extend.Property({
+			name: 'chainID',
+			getter: 'chain_getChainID'
 		}),
-		new lemojs._extend.Method({
-			name: 'getGenesis',
-			call: 'chain_getGenesis',
-			params: 0
+		new lemojs._extend.Property({
+			name: 'genesis',
+			getter: 'chain_getGenesis'
 		}),
-		new lemojs._extend.Method({
-			name: 'getCurrentBlock',
-			call: 'chain_getCurrentBlock',
-			params: 0
+		new lemojs._extend.Property({
+			name: 'currentBlock',
+			getter: 'chain_getCurrentBlock'
 		}),
-		new lemojs._extend.Method({
-			name: 'getStableBlock',
-			call: 'chain_getStableBlock',
-			params: 0
+		new lemojs._extend.Property({
+			name: 'stableBlock',
+			getter: 'chain_getStableBlock'
+		}),
+		new lemojs._extend.Property({
+			name: 'currentHeight',
+			getter: 'chain_getCurrentHeight'
 		}),
 	]
 });
