@@ -81,8 +81,8 @@ func (cache *TxsCache) pop(size int) []*types.Transaction {
 
 func (cache *TxsCache) remove(size int) {
 	if cache.cnt <= size {
-		cache.txs = make([]*TransactionWithTime, 512)
 		cache.cap = 512
+		cache.txs = make([]*TransactionWithTime, cache.cap)
 		cache.cnt = 0
 	} else {
 		cache.txs = append(cache.txs[:size], cache.txs[size+1:]...)
