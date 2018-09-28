@@ -451,8 +451,10 @@ func (pm *ProtocolManager) syncer() {
 			}
 		case <-forceSync.C:
 			p := pm.peers.BestPeer()
-			if p.peer.height > pm.blockchain.CurrentBlock().Height() {
-				go pm.synchronise(p.id)
+			if p != nil {
+				if p.peer.height > pm.blockchain.CurrentBlock().Height() {
+					go pm.synchronise(p.id)
+				}
 			}
 		case <-pm.quitSync:
 			return
