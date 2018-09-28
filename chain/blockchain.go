@@ -76,8 +76,7 @@ func (bc *BlockChain) loadLastState() error {
 	}
 	bc.currentBlock.Store(block)
 	bc.stableBlock.Store(block)
-	am := account.NewManager(block.Hash(), bc.dbOpe)
-	bc.am = am
+	bc.am = account.NewManager(block.Hash(), bc.dbOpe)
 	return nil
 }
 

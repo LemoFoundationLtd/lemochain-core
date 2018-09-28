@@ -16,11 +16,11 @@ type ChainContext interface {
 }
 
 // NewEVMContext creates a new context for use in the EVM.
-func NewEVMContext(msg types.Transaction, header *types.Header, txIndex uint, txHash common.Hash, blockHash common.Hash, chain ChainContext) vm.Context {
+func NewEVMContext(tx *types.Transaction, header *types.Header, txIndex uint, txHash common.Hash, blockHash common.Hash, chain ChainContext) vm.Context {
 	if (header.LemoBase == common.Address{}) {
 		panic("NewEVMContext is called without author")
 	}
-	from, _ := msg.From()
+	from, _ := tx.From()
 	return vm.Context{
 		CanTransfer: CanTransfer,
 		Transfer:    Transfer,
@@ -33,7 +33,7 @@ func NewEVMContext(msg types.Transaction, header *types.Header, txIndex uint, tx
 		BlockHeight: header.Height,
 		Time:        new(big.Int).Set(header.Time),
 		GasLimit:    header.GasLimit,
-		GasPrice:    new(big.Int).Set(msg.GasPrice()),
+		GasPrice:    new(big.Int).Set(tx.GasPrice()),
 	}
 }
 
