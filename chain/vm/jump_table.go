@@ -1,19 +1,3 @@
-// Copyright 2015 The lemochain-go Authors
-// This file is part of the lemochain-go library.
-//
-// The lemochain-go library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Lesser General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// The lemochain-go library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with the lemochain-go library. If not, see <http://www.gnu.org/licenses/>.
-
 package vm
 
 import (
@@ -780,42 +764,42 @@ func NewInstructionSet() [256]operation {
 			valid:         true,
 		},
 		LOG0: {
-			execute:       makeLog(0),
-			gasCost:       makeGasLog(0),
+			execute:       makeEvent(0),
+			gasCost:       makeGasEvent(0),
 			validateStack: makeStackFunc(2, 0),
-			memorySize:    memoryLog,
+			memorySize:    memoryEvent,
 			valid:         true,
 			writes:        true,
 		},
 		LOG1: {
-			execute:       makeLog(1),
-			gasCost:       makeGasLog(1),
+			execute:       makeEvent(1),
+			gasCost:       makeGasEvent(1),
 			validateStack: makeStackFunc(3, 0),
-			memorySize:    memoryLog,
+			memorySize:    memoryEvent,
 			valid:         true,
 			writes:        true,
 		},
 		LOG2: {
-			execute:       makeLog(2),
-			gasCost:       makeGasLog(2),
+			execute:       makeEvent(2),
+			gasCost:       makeGasEvent(2),
 			validateStack: makeStackFunc(4, 0),
-			memorySize:    memoryLog,
+			memorySize:    memoryEvent,
 			valid:         true,
 			writes:        true,
 		},
 		LOG3: {
-			execute:       makeLog(3),
-			gasCost:       makeGasLog(3),
+			execute:       makeEvent(3),
+			gasCost:       makeGasEvent(3),
 			validateStack: makeStackFunc(5, 0),
-			memorySize:    memoryLog,
+			memorySize:    memoryEvent,
 			valid:         true,
 			writes:        true,
 		},
 		LOG4: {
-			execute:       makeLog(4),
-			gasCost:       makeGasLog(4),
+			execute:       makeEvent(4),
+			gasCost:       makeGasEvent(4),
 			validateStack: makeStackFunc(6, 0),
-			memorySize:    memoryLog,
+			memorySize:    memoryEvent,
 			valid:         true,
 			writes:        true,
 		},

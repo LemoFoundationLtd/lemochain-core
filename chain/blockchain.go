@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
-	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
@@ -58,7 +57,7 @@ func NewBlockChain(chainID *big.Int, db db.ChainDB, newBlockCh chan *types.Block
 		return nil, err
 	}
 	bc.loadConsensusEngine()
-	bc.processor = NewTxProcessor(&params.ChainConfig{}, bc, bc.engine)
+	bc.processor = NewTxProcessor(bc)
 	return bc, nil
 }
 
@@ -114,9 +113,33 @@ func (bc *BlockChain) GetBlock(hash common.Hash, height uint32) *types.Block {
 }
 
 func (bc *BlockChain) GetBlockByHeight(height uint32) *types.Block {
-	block, err := bc.dbOpe.GetBlockByHeight(height)
-	if err != nil {
-		log.Warnf("can't get block. height:%d, err: %v", height, err)
+	if height == 0 {
+		block, err := bc.dbOpe.GetBlockByHeight(height)
+		if err != nil {
+			log.Warnf("can't get block. height:%d, err: %v", height, err)
+			return nil
+		}
+		return block
+	}
+	h_c := bc.currentBlock.Load().(*types.Block).Height()
+	h_s := bc.stableBlock.Load().(*types.Block).Height()
+	block := bc.currentBlock.Load().(*types.Block)
+	var err error
+	if h_s >= height {
+		block, err = bc.dbOpe.GetBlockByHeight(height)
+		if err != nil {
+			log.Warnf("can't get block. height:%d, err: %v", height, err)
+			return nil
+		}
+	} else if height <= h_c {
+		for i := h_c - height; i > 0; i-- {
+			block, err = bc.dbOpe.GetBlockByHash(block.ParentHash())
+			if err != nil {
+				log.Warnf("can't get block. height:%d, err: %v", height, err)
+				return nil
+			}
+		}
+	} else {
 		return nil
 	}
 	return block
@@ -166,23 +189,31 @@ func (bc *BlockChain) InsertChain(block *types.Block) (err error) {
 	curHash := bc.currentBlock.Load().(*types.Block).Hash()
 	// 执行交易 生成changelog
 	res, err := bc.processor.Process(block)
-	block.SetChangeLog(bc.AccountManager().GetChangeLogs())
-	block.SetEvents(res.Events)
-	// 验证
-	newHeader := *(block.Header)
-	newHeader.EventRoot = types.DeriveEventsSha(res.Events)
-	newHeader.VersionRoot = bc.AccountManager().GetVersionRoot()
-	newHeader.LogsRoot = types.DeriveChangeLogsSha(block.ChangeLog)
-	newHeader.GasUsed = res.GasUsed
-	newHeader.Bloom = res.Bloom
-	newHash := newHeader.Hash()
-	if bytes.Compare(hash[:], newHash[:]) != 0 {
-		log.Warn(fmt.Sprintf("verify block error! hash:%s", block.Hash().Hex()))
-		return fmt.Errorf("verify block error! hash:%s", block.Hash().Hex())
+	if err != nil {
+		return err
 	}
-	bc.AccountManager().Save(newHash)
+	// Finalize the block, applying any consensus engine specific extras (e.g. block rewards)
+	bc.engine.Finalize(block.Header)
 	block.SetChangeLog(bc.AccountManager().GetChangeLogs())
-	block.SetEvents(res.Events)
+	// todo
+	if res == nil {
+
+	}
+	// block.SetEvents(res.Events)
+	// // 验证
+	// newHeader := *(block.Header)
+	// newHeader.EventRoot = types.DeriveEventsSha(res.Events)
+	// newHeader.VersionRoot = bc.AccountManager().GetVersionRoot()
+	// newHeader.LogsRoot = types.DeriveChangeLogsSha(block.ChangeLog)
+	// newHeader.GasUsed = res.GasUsed
+	// newHeader.Bloom = res.Bloom
+	// newHash := newHeader.Hash()
+	// if bytes.Compare(hash[:], newHash[:]) != 0 {
+	// 	log.Warn(fmt.Sprintf("verify block error! hash:%s", block.Hash().Hex()))
+	// 	return fmt.Errorf("verify block error! hash:%s", block.Hash().Hex())
+	// }
+	// bc.AccountManager().Save(newHash)
+	bc.AccountManager().Save(block.Hash())                        // todo
 	if err = bc.dbOpe.SetBlock(block.Hash(), block); err != nil { // 放入缓存中
 		log.Error(fmt.Sprintf("can't insert block to cache. height:%d hash:%s", block.Height(), block.Hash().Hex()))
 		return err
@@ -201,14 +232,14 @@ func (bc *BlockChain) InsertChain(block *types.Block) (err error) {
 		bc.chainForksLock.Unlock()
 		if needFork {
 			curBlock := bc.currentBlock.Load().(*types.Block)
-			log.Info(fmt.Sprintf("chain forked! current block: height(%d), hash(%s)", curBlock.Height(), curBlock.Hash().Hex()))
+			log.Infof("chain forked! current block: height(%d), hash(%s)", curBlock.Height(), curBlock.Hash().Hex())
 		}
-		log.Info(fmt.Sprintf("insert a block to db. height:%d", block.Height()))
+		log.Debugf("Insert block to db success. height:%d", block.Height())
 	}()
 
 	// 同一条链上 正常情况
 	if bytes.Compare(parHash[:], curHash[:]) == 0 {
-		needFork = true
+		needFork = false
 		bc.currentBlock.Store(block)
 		delete(bc.chainForksHead, curHash) // 从分叉链集合中删除原记录
 		bc.chainForksHead[hash] = block    // 从分叉链集合中添加新记录

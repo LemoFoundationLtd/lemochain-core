@@ -1,6 +1,5 @@
 package chain
 
-//
 // import (
 // 	"errors"
 // 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
@@ -42,7 +41,7 @@ package chain
 // 	initialGas uint64
 // 	value      *big.Int
 // 	data       []byte
-// 	state      vm.StateDB
+// 	am         vm.AccountManager
 // 	evm        *vm.EVM
 // }
 //
@@ -100,7 +99,7 @@ package chain
 // 		gasPrice: msg.GasPrice(),
 // 		value:    msg.Value(),
 // 		data:     msg.Data(),
-// 		state:    evm.StateDB,
+// 		am:       evm.am,
 // 	}
 // }
 //
@@ -117,8 +116,8 @@ package chain
 //
 // func (st *StateTransition) from() vm.AccountRef {
 // 	f := st.msg.From()
-// 	if !st.state.Exist(f) {
-// 		st.state.CreateAccount(f)
+// 	if !st.am.Exist(f) {
+// 		st.am.CreateAccount(f)
 // 	}
 // 	return vm.AccountRef(f)
 // }
@@ -133,8 +132,8 @@ package chain
 // 	}
 //
 // 	reference := vm.AccountRef(*to)
-// 	if !st.state.Exist(*to) {
-// 		st.state.CreateAccount(*to)
+// 	if !st.am.Exist(*to) {
+// 		st.am.CreateAccount(*to)
 // 	}
 // 	return reference
 // }
@@ -150,11 +149,11 @@ package chain
 //
 // func (st *StateTransition) buyGas() error {
 // 	var (
-// 		state  = st.state
+// 		state  = st.am
 // 		sender = st.from()
 // 	)
 // 	mgval := new(big.Int).Mul(new(big.Int).SetUint64(st.msg.Gas()), st.gasPrice)
-// 	if state.GetBalance(sender.Address()).Cmp(mgval) < 0 {
+// 	if state.GetBalance(sender.GetAddress()).Cmp(mgval) < 0 {
 // 		return errInsufficientBalanceForGas
 // 	}
 // 	if err := st.gp.SubGas(st.msg.Gas()); err != nil {
@@ -163,7 +162,7 @@ package chain
 // 	st.gas += st.msg.Gas()
 //
 // 	st.initialGas = st.msg.Gas()
-// 	state.SubBalance(sender.Address(), mgval)
+// 	state.SubBalance(sender.GetAddress(), mgval)
 // 	return nil
 // }
 //
@@ -202,9 +201,7 @@ package chain
 // 	if contractCreation {
 // 		ret, _, st.gas, vmerr = evm.Create(sender, st.data, st.gas, st.value)
 // 	} else {
-// 		// Increment the nonce for the next transaction
-// 		st.state.SetNonce(sender.Address(), st.state.GetNonce(sender.Address())+1)
-// 		ret, st.gas, vmerr = evm.Call(sender, st.to().Address(), st.data, st.gas, st.value)
+// 		ret, st.gas, vmerr = evm.Call(sender, st.to().GetAddress(), st.data, st.gas, st.value)
 // 	}
 // 	if vmerr != nil {
 // 		log.Debug("VM returned with error", "err", vmerr)
@@ -216,24 +213,17 @@ package chain
 // 		}
 // 	}
 // 	st.refundGas()
-// 	st.state.AddBalance(st.evm.Coinbase, new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), st.gasPrice))
+// 	st.am.AddBalance(st.evm.Lemobase, new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), st.gasPrice))
 //
 // 	return ret, st.gasUsed(), vmerr != nil, err
 // }
 //
 // func (st *StateTransition) refundGas() {
-// 	// Apply refund counter, capped to half of the used gas.
-// 	refund := st.gasUsed() / 2
-// 	if refund > st.state.GetRefund() {
-// 		refund = st.state.GetRefund()
-// 	}
-// 	st.gas += refund
-//
 // 	// Return ETH for remaining gas, exchanged at the original rate.
 // 	sender := st.from()
 //
 // 	remaining := new(big.Int).Mul(new(big.Int).SetUint64(st.gas), st.gasPrice)
-// 	st.state.AddBalance(sender.Address(), remaining)
+// 	st.am.AddBalance(sender.GetAddress(), remaining)
 //
 // 	// Also return remaining gas to the block gas counter so it is
 // 	// available for the next transaction.

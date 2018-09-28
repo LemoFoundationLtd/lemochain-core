@@ -22,11 +22,29 @@ func NewSafeAccount(processor *logProcessor, account *Account) *SafeAccount {
 	}
 }
 
+// MarshalJSON encodes the lemoClient RPC safeAccount format.
+func (a *SafeAccount) MarshalJSON() ([]byte, error) {
+	return a.rawAccount.MarshalJSON()
+}
+
+// UnmarshalJSON decodes the lemoClient RPC safeAccount format.
+func (a *SafeAccount) UnmarshalJSON(input []byte) error {
+	var dec Account
+	if err := dec.UnmarshalJSON(input); err != nil {
+		return err
+	}
+	// TODO a.processor is nil
+	*a = *NewSafeAccount(a.processor, &dec)
+	return nil
+}
+
 func (a *SafeAccount) GetAddress() common.Address   { return a.rawAccount.GetAddress() }
 func (a *SafeAccount) GetBalance() *big.Int         { return a.rawAccount.GetBalance() }
 func (a *SafeAccount) GetVersion() uint32           { return a.rawAccount.GetVersion() }
+func (a *SafeAccount) GetSuicide() bool             { return a.rawAccount.GetSuicide() }
 func (a *SafeAccount) GetCodeHash() common.Hash     { return a.rawAccount.GetCodeHash() }
 func (a *SafeAccount) GetCode() (types.Code, error) { return a.rawAccount.GetCode() }
+func (a *SafeAccount) IsEmpty() bool                { return a.rawAccount.IsEmpty() }
 func (a *SafeAccount) GetStorageRoot() common.Hash  { return a.rawAccount.GetStorageRoot() }
 func (a *SafeAccount) GetStorageState(key common.Hash) ([]byte, error) {
 	return a.rawAccount.GetStorageState(key)
@@ -40,6 +58,11 @@ func (a *SafeAccount) SetBalance(balance *big.Int) {
 
 func (a *SafeAccount) SetVersion(version uint32) {
 	panic("SafeAccount.SetVersion should not be called")
+}
+
+func (a *SafeAccount) SetSuicide(suicided bool) {
+	a.processor.PushChangeLog(NewSuicideLog(a.rawAccount))
+	a.rawAccount.SetSuicide(suicided)
 }
 
 func (a *SafeAccount) SetCodeHash(codeHash common.Hash) {

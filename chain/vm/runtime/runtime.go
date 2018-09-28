@@ -1,22 +1,8 @@
-// Copyright 2015 The lemochain-go Authors
-// This file is part of the lemochain-go library.
-//
-// The lemochain-go library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Lesser General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// The lemochain-go library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with the lemochain-go library. If not, see <http://www.gnu.org/licenses/>.
-
 package runtime
 
 import (
+	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
+	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"math"
 	"math/big"
 	"time"
@@ -25,18 +11,15 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/vm"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
-	"github.com/LemoFoundationLtd/lemochain-go/core/state"
-	"github.com/LemoFoundationLtd/lemochain-go/lemodb"
 )
 
 // Config is a basic type specifying certain configuration flags for running
 // the EVM.
 type Config struct {
 	ChainConfig *params.ChainConfig
-	Difficulty  *big.Int
 	Origin      common.Address
 	Coinbase    common.Address
-	BlockNumber *big.Int
+	BlockHeight uint32
 	Time        *big.Int
 	GasLimit    uint64
 	GasPrice    *big.Int
@@ -44,21 +27,18 @@ type Config struct {
 	Debug       bool
 	EVMConfig   vm.Config
 
-	State     *state.StateDB
-	GetHashFn func(n uint64) common.Hash
+	AccountManager *account.Manager
+	GetHashFn      func(n uint64) common.Hash
 }
 
 // sets defaults on the config
 func setDefaults(cfg *Config) {
 	if cfg.ChainConfig == nil {
 		cfg.ChainConfig = &params.ChainConfig{
-			ChainId: big.NewInt(1),
+			ChainID: 1,
 		}
 	}
 
-	if cfg.Difficulty == nil {
-		cfg.Difficulty = new(big.Int)
-	}
 	if cfg.Time == nil {
 		cfg.Time = big.NewInt(time.Now().Unix())
 	}
@@ -70,9 +50,6 @@ func setDefaults(cfg *Config) {
 	}
 	if cfg.Value == nil {
 		cfg.Value = new(big.Int)
-	}
-	if cfg.BlockNumber == nil {
-		cfg.BlockNumber = new(big.Int)
 	}
 	if cfg.GetHashFn == nil {
 		cfg.GetHashFn = func(n uint64) common.Hash {
@@ -86,24 +63,27 @@ func setDefaults(cfg *Config) {
 //
 // Executes sets up a in memory, temporarily, environment for the execution of
 // the given code. It makes sure that it's restored to it's original state afterwards.
-func Execute(code, input []byte, cfg *Config) ([]byte, *state.StateDB, error) {
+func Execute(code, input []byte, cfg *Config) ([]byte, error) {
 	if cfg == nil {
 		cfg = new(Config)
 	}
 	setDefaults(cfg)
 
-	if cfg.State == nil {
-		db, _ := lemodb.NewMemDatabase()
-		cfg.State, _ = state.New(common.Hash{}, state.NewDatabase(db))
+	if cfg.AccountManager == nil {
+		db, _ := store.NewCacheChain("../../../db")
+		cfg.AccountManager = account.NewManager(common.Hash{}, db)
 	}
 	var (
 		address = common.StringToAddress("contract")
 		vmenv   = NewEnv(cfg)
 		sender  = vm.AccountRef(cfg.Origin)
 	)
-	cfg.State.CreateAccount(address)
+	contractAccount, err := cfg.AccountManager.GetAccount(address)
+	if err != nil {
+		return nil, err
+	}
 	// set the receiver's (the executing contract) code for execution.
-	cfg.State.SetCode(address, code)
+	contractAccount.SetCode(code)
 	// Call the code with the given configuration.
 	ret, _, err := vmenv.Call(
 		sender,
@@ -113,7 +93,7 @@ func Execute(code, input []byte, cfg *Config) ([]byte, *state.StateDB, error) {
 		cfg.Value,
 	)
 
-	return ret, cfg.State, err
+	return ret, err
 }
 
 // Create executes the code using the EVM create method
@@ -123,9 +103,9 @@ func Create(input []byte, cfg *Config) ([]byte, common.Address, uint64, error) {
 	}
 	setDefaults(cfg)
 
-	if cfg.State == nil {
-		db, _ := lemodb.NewMemDatabase()
-		cfg.State, _ = state.New(common.Hash{}, state.NewDatabase(db))
+	if cfg.AccountManager == nil {
+		db, _ := store.NewCacheChain("../../../db")
+		cfg.AccountManager = account.NewManager(common.Hash{}, db)
 	}
 	var (
 		vmenv  = NewEnv(cfg)
@@ -145,16 +125,19 @@ func Create(input []byte, cfg *Config) ([]byte, common.Address, uint64, error) {
 // Call executes the code given by the contract's address. It will return the
 // EVM's return value or an error if it failed.
 //
-// Call, unlike Execute, requires a config and also requires the State field to
+// Call, unlike Execute, requires a config and also requires the am field to
 // be set.
-func Call(address common.Address, input []byte, cfg *Config) ([]byte, uint64, error) {
+func Call(address common.Address, input []byte, cfg *Config) ([]byte, error) {
 	setDefaults(cfg)
 
 	vmenv := NewEnv(cfg)
 
-	sender := cfg.State.GetOrNewStateObject(cfg.Origin)
+	sender, err := cfg.AccountManager.GetAccount(cfg.Origin)
+	if err != nil {
+		return nil, err
+	}
 	// Call the code with the given configuration.
-	ret, leftOverGas, err := vmenv.Call(
+	ret, _, err := vmenv.Call(
 		sender,
 		address,
 		input,
@@ -162,5 +145,5 @@ func Call(address common.Address, input []byte, cfg *Config) ([]byte, uint64, er
 		cfg.Value,
 	)
 
-	return ret, leftOverGas, err
+	return ret, err
 }

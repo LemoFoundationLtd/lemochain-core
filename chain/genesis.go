@@ -51,7 +51,7 @@ func DefaultGenesisBlock() *Genesis {
 		Time:      uint64(timeSpan.Unix()),
 		ExtraData: []byte(""),
 		GasLimit:  0x6422c40,
-		LemoBase:  common.StringToAddress("0x015780F8456F9c1532645087a19DcF9a7e0c7F97"),
+		LemoBase:  common.HexToAddress("0x015780F8456F9c1532645087a19DcF9a7e0c7F97"),
 	}
 }
 
@@ -115,11 +115,8 @@ func (g *Genesis) ToBlock(am *account.Manager) *types.Block {
 		Extra:      g.ExtraData,
 		Time:       new(big.Int).SetUint64(g.Time),
 	}
-	lemoBase, err := am.GetAccount(g.LemoBase)
+	lemoBase := am.GetAccount(g.LemoBase)
 	log.Infof("%d %d", lemoBase.GetVersion(), lemoBase.GetBalance().Uint64())
-	if err != nil {
-		log.Crit("can't get account to create genesis block.")
-	}
 	oneLemo := new(big.Int).SetUint64(1000000000000000000) // 1 lemo
 	total := new(big.Int).SetUint64(1600000000)
 	total = total.Mul(total, oneLemo)

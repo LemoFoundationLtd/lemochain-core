@@ -13,9 +13,24 @@ lemojs._extend({
 	property: 'account',
 	methods: [
 		new lemojs._extend.Method({
-			name: 'newAccount',
-			call: 'account_newAccount',
+			name: 'newKeyPair',
+			call: 'account_newKeyPair',
 			params: 0
+		}),
+		new lemojs._extend.Method({
+			name: 'getBalance',
+			call: 'account_getBalance',
+			params: 1
+		}),
+		new lemojs._extend.Method({
+			name: 'getVersion',
+			call: 'account_getVersion',
+			params: 1
+		}),
+		new lemojs._extend.Method({
+			name: 'getAccount',
+			call: 'account_getAccount',
+			params: 1
 		}),
 	]
 });
@@ -30,19 +45,35 @@ lemojs._extend({
 			call: 'chain_getBlockByHeight',
 			params: 1
 		}),
-	],
-	properties: [
-		new lemojs._extend.Property({
-			name: 'chainID',
-			getter: 'chain_chainID'
+		new lemojs._extend.Method({
+			name: 'getBlockByHash',
+			call: 'chain_getBlockByHash',
+			params: 1
+		}), 
+		new lemojs._extend.Method({
+			name: 'getBlock',
+			call: 'chain_getBlock',
+			params: 2
 		}),
-		new lemojs._extend.Property({
-			name: 'currentBlock',
-			getter: 'chain_currentBlock'
+		new lemojs._extend.Method({
+			name: 'getChainID',
+			call: 'chain_getChainID',
+			params: 0
 		}),
-		new lemojs._extend.Property({
-			name: 'stableBlock',
-			getter: 'chain_stableBlock'
+		new lemojs._extend.Method({
+			name: 'getGenesis',
+			call: 'chain_getGenesis',
+			params: 0
+		}),
+		new lemojs._extend.Method({
+			name: 'getCurrentBlock',
+			call: 'chain_getCurrentBlock',
+			params: 0
+		}),
+		new lemojs._extend.Method({
+			name: 'getStableBlock',
+			call: 'chain_getStableBlock',
+			params: 0
 		}),
 	]
 });

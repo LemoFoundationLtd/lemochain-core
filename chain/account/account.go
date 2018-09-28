@@ -55,7 +55,7 @@ type Account struct {
 	dirtyStorage  Storage // Storage entries that need to be flushed to disk
 
 	codeIsDirty bool // true if the code was updated
-	suicided    bool // will be delete from the trie during the "commit" phase
+	suicided    bool // will be delete from the trie during the "save" phase
 }
 
 // NewAccount wrap an AccountData object, or creates a new one if it's nil.
@@ -78,10 +78,27 @@ func NewAccount(db protocol.ChainDB, address common.Address, data *types.Account
 	}
 }
 
+// MarshalJSON encodes the lemoClient RPC account format.
+func (a *Account) MarshalJSON() ([]byte, error) {
+	return a.data.MarshalJSON()
+}
+
+// UnmarshalJSON decodes the lemoClient RPC account format.
+func (a *Account) UnmarshalJSON(input []byte) error {
+	var dec types.AccountData
+	if err := dec.UnmarshalJSON(input); err != nil {
+		return err
+	}
+	// TODO a.db is nil
+	*a = *NewAccount(a.db, dec.Address, &dec)
+	return nil
+}
+
 // Implement AccountAccessor. Access Account without changelog
 func (a *Account) GetAddress() common.Address { return a.data.Address }
 func (a *Account) GetBalance() *big.Int       { return a.data.Balance }
 func (a *Account) GetVersion() uint32         { return a.data.Version }
+func (a *Account) GetSuicide() bool           { return a.suicided }
 func (a *Account) GetCodeHash() common.Hash   { return a.data.CodeHash }
 
 // StorageRoot wouldn't change until Account.updateTrie() is called
@@ -93,6 +110,15 @@ func (a *Account) SetBalance(balance *big.Int) {
 func (a *Account) SetVersion(version uint32) {
 	a.data.Version = version
 }
+func (a *Account) SetSuicide(suicided bool) {
+	if suicided {
+		a.SetBalance(new(big.Int))
+		a.SetCodeHash(common.Hash{})
+		a.SetStorageRoot(common.Hash{})
+	}
+	a.suicided = suicided
+}
+
 func (a *Account) SetCodeHash(codeHash common.Hash) {
 	a.data.CodeHash = codeHash
 	if (a.data.CodeHash == common.Hash{}) {
@@ -168,6 +194,11 @@ func (a *Account) SetStorageState(key common.Hash, value []byte) error {
 	a.cachedStorage[key] = value
 	a.dirtyStorage[key] = value
 	return nil
+}
+
+// IsEmpty returns whether the state object is either non-existent or empty (version = 0)
+func (a *Account) IsEmpty() bool {
+	return a.data.Version == 0
 }
 
 func (a *Account) getTrie() (*trie.SecureTrie, error) {
@@ -263,7 +294,6 @@ func (a *Account) Save() error {
 		}
 		a.codeIsDirty = false
 	}
-	// TODO delete suicided account
 	return nil
 }
 

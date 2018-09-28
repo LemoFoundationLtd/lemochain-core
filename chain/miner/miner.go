@@ -23,7 +23,7 @@ type Miner struct {
 	lemoBase      common.Address
 	mining        int32
 	engine        *chain.Dpovp
-	//lemo Backend
+	// lemo Backend
 	chain        *chain.BlockChain
 	mux          sync.Mutex
 	currentBlock func() *types.Block
@@ -49,6 +49,7 @@ func New(blockInternal, timeout int64, chain *chain.BlockChain, privKey *ecdsa.P
 		timeToMineCh:   make(chan struct{}),
 		quitCh:         make(chan struct{}),
 	}
+	go m.loop()
 	return m
 }
 
@@ -56,7 +57,7 @@ func (m *Miner) Start() {
 	if !atomic.CompareAndSwapInt32(&m.mining, 0, 1) {
 		log.Warn("have already start mining")
 	}
-	go m.loop()
+
 	m.modifyTimer()
 	log.Info("start mining...")
 }
@@ -187,13 +188,21 @@ func (m *Miner) resetMinerTimer(timeDur int64) {
 
 func (m *Miner) loop() {
 	for {
-		select {
-		case <-m.timeToMineCh:
-			m.sealBlock()
-		case <-m.recvNewBlockCh:
-			m.modifyTimer()
-		case <-m.quitCh:
-			return
+		if atomic.LoadInt32(&m.mining) == 0 {
+			select {
+			case <-m.recvNewBlockCh:
+			default:
+			}
+			time.Sleep(200 * time.Millisecond)
+		} else {
+			select {
+			case <-m.timeToMineCh:
+				m.sealBlock()
+			case <-m.recvNewBlockCh:
+				m.modifyTimer()
+			case <-m.quitCh:
+				return
+			}
 		}
 	}
 }
@@ -206,7 +215,11 @@ func (m *Miner) sealBlock() {
 	header := m.sealHead()
 	var txs []*types.Transaction // todo
 	// txs:=m.lemo.TxPool().Pending()
-	txsRes := chain.ApplyTxs(m.chain, header, txs)
+	txsRes, err := chain.NewTxProcessor(m.chain).ApplyTxs(header, txs)
+	if err != nil {
+		log.Error(fmt.Sprintf("apply transactions for block failed! %s", err))
+		return
+	}
 	header.Bloom = txsRes.Bloom
 	header.GasUsed = txsRes.GasUsed
 	header.TxRoot = types.DeriveTxsSha(txsRes.Txs)
@@ -230,7 +243,7 @@ func (m *Miner) sealBlock() {
 		return
 	}
 	m.chain.AccountManager().Save(header.Hash())
-	log.Infof("mine a block. height: %d hash: %s", block.Height(), block.Hash().String())
+	log.Infof("Mine a new block. height: %d hash: %s", block.Height(), block.Hash().String())
 	m.mineNewBlockCh <- block
 	nodeCount := deputynode.Instance().GetDeputyNodesCount()
 	var timeDur int64
@@ -245,7 +258,7 @@ func (m *Miner) sealBlock() {
 // sealHead 生成区块头
 func (m *Miner) sealHead() *types.Header {
 	parent := m.currentBlock()
-	if parent.Height() == 0 || (parent.Height()+1)%1001000 == 1 {
+	if (parent.Height()+1)%1001000 == 1 {
 		n := deputynode.Instance().GetNodeByNodeID(parent.Height()+1, deputynode.GetSelfNodeID())
 		m.SetLemoBase(n.LemoBase)
 	}

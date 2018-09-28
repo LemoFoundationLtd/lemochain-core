@@ -91,26 +91,17 @@ func (b *Bloom) UnmarshalText(input []byte) error {
 	return hexutil.UnmarshalFixedText("Bloom", input, b[:])
 }
 
-//func CreateBloom(receipts Receipts) Bloom {
-//	bin := new(big.Int)
-//	for _, receipt := range receipts {
-//		bin.Or(bin, LogsBloom(receipt.Logs))
-//	}
-//
-//	return BytesToBloom(bin.Bytes())
-//}
-//
-//func LogsBloom(logs []*Log) *big.Int {
-//	bin := new(big.Int)
-//	for _, log := range logs {
-//		bin.Or(bin, bloom9(log.Address.Bytes()))
-//		for _, b := range log.Topics {
-//			bin.Or(bin, bloom9(b[:]))
-//		}
-//	}
-//
-//	return bin
-//}
+func CreateBloom(events []*Event) Bloom {
+	bin := new(big.Int)
+	for _, event := range events {
+		bin.Or(bin, bloom9(event.Address.Bytes()))
+		for _, b := range event.Topics {
+			bin.Or(bin, bloom9(b[:]))
+		}
+	}
+
+	return BytesToBloom(bin.Bytes())
+}
 
 func bloom9(b []byte) *big.Int {
 	b = crypto.Keccak256(b[:])
@@ -125,8 +116,6 @@ func bloom9(b []byte) *big.Int {
 
 	return r
 }
-
-var Bloom9 = bloom9
 
 func BloomLookup(bin Bloom, topic bytesBacked) bool {
 	bloom := bin.Big()

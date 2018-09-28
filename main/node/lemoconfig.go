@@ -2,7 +2,7 @@ package node
 
 import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain"
-	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
 )
 
 var DefaultConfig = LemoConfig{

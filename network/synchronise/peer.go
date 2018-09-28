@@ -119,19 +119,19 @@ func (p *peer) send(msgCode uint32, data interface{}) error {
 }
 
 // readRemoteStatus 读取远程节点最新状态
-func (p *peer) readRemoteStatus(network uint64, status *protocol.NodeStatusData, genesis common.Hash) (err error) {
-	var newMsgCh chan p2p.Msg
+func (p *peer) readRemoteStatus(network uint64, status *protocol.NodeStatusData, genesis common.Hash) error {
+	newMsgCh := make(chan p2p.Msg)
+	msgCh := make(chan p2p.Msg)
 	// 读取
-	readStatusFn := func() (msgCh chan p2p.Msg) {
+	go func() {
 		msg := p.Peer.ReadMsg()
 		msgCh <- msg
-		return
-	}
+	}()
 	go func() {
 		select {
 		case <-time.After(5 * time.Second):
 			newMsgCh <- p2p.Msg{}
-		case msg := <-readStatusFn():
+		case msg := <-msgCh:
 			newMsgCh <- msg
 		}
 	}()
@@ -142,24 +142,20 @@ func (p *peer) readRemoteStatus(network uint64, status *protocol.NodeStatusData,
 			return errors.New("readMsg timeout")
 		}
 		if msg.Code != protocol.StatusMsg {
-			err = errors.New("code not match")
-			return
+			return errors.New("code not match")
 		}
-		if err = msg.Decode(status); err != nil {
-			return
+		if err := msg.Decode(status); err != nil {
+			return err
 		}
 		if status.NetworkID != network {
-			err = errors.New("networkid not match")
-			return
+			return errors.New("networkid not match")
 		}
 		if bytes.Compare(status.GenesisBlock[:], genesis[:]) != 0 {
-			err = errors.New("genesis block not match")
-			return
+			return errors.New("genesis block not match")
 		}
-		return
+		return nil
 	case <-time.After(5 * time.Second):
-		err = errors.New("readmsg timeout")
-		return
+		return errors.New("readmsg timeout")
 	}
 }
 

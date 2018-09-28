@@ -1,7 +1,6 @@
 package types
 
 import (
-	"errors"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
@@ -20,6 +19,8 @@ func (f *testAccount) GetBalance() *big.Int                                { ret
 func (f *testAccount) SetBalance(balance *big.Int)                         { f.AccountData.Balance = balance }
 func (f *testAccount) GetVersion() uint32                                  { return f.AccountData.Version }
 func (f *testAccount) SetVersion(version uint32)                           { f.AccountData.Version = version }
+func (f *testAccount) GetSuicide() bool                                    { return false }
+func (f *testAccount) SetSuicide(suicided bool)                            {}
 func (f *testAccount) GetCodeHash() common.Hash                            { return f.AccountData.CodeHash }
 func (f *testAccount) SetCodeHash(codeHash common.Hash)                    { f.AccountData.CodeHash = codeHash }
 func (f *testAccount) GetCode() (Code, error)                              { return nil, nil }
@@ -28,19 +29,23 @@ func (f *testAccount) GetStorageRoot() common.Hash                         { ret
 func (f *testAccount) SetStorageRoot(root common.Hash)                     { f.AccountData.StorageRoot = root }
 func (f *testAccount) GetStorageState(key common.Hash) ([]byte, error)     { return nil, nil }
 func (f *testAccount) SetStorageState(key common.Hash, value []byte) error { return nil }
+func (f *testAccount) IsEmpty() bool                                       { return f.AccountData.Version == 0 }
 
 type testProcessor struct {
 	Accounts map[common.Address]*testAccount
 }
 
-var ErrNoAccount = errors.New("no account from address")
-
-func (p *testProcessor) GetAccount(addr common.Address) (AccountAccessor, error) {
-	account, ok := p.Accounts[addr]
+func (p *testProcessor) GetAccount(address common.Address) AccountAccessor {
+	account, ok := p.Accounts[address]
 	if !ok {
-		return nil, ErrNoAccount
+		account = &testAccount{
+			AccountData: AccountData{
+				Address: address,
+			},
+		}
+		p.Accounts[address] = account
 	}
-	return account, nil
+	return account
 }
 
 func (p *testProcessor) createAccount(version uint32) *testAccount {
@@ -60,8 +65,8 @@ func (p *testProcessor) createAccount(version uint32) *testAccount {
 	return account
 }
 
-func (p *testProcessor) AddEvent(events []*Event)       {}
-func (p *testProcessor) RevertEvent(txHash common.Hash) {}
+func (p *testProcessor) PushEvent(event *Event) {}
+func (p *testProcessor) PopEvent() error        { return nil }
 
 type testCustomTypeConfig struct {
 	input     *ChangeLog
@@ -214,7 +219,7 @@ func TestChangeLog_Undo(t *testing.T) {
 		// 4 no account
 		{
 			input:   removeAddress(createChangeLog(processor, 2, ChangeLogType(10002), 1)),
-			undoErr: ErrNoAccount,
+			undoErr: ErrWrongChangeLogVersion,
 		},
 	}
 
@@ -227,7 +232,7 @@ func TestChangeLog_Undo(t *testing.T) {
 		} else if test.undoErr != nil {
 			t.Errorf("test %d. want undoErr: %s, got: <nil>", i, test.undoErr)
 		} else if test.afterCheck != nil {
-			a, _ := processor.GetAccount(test.input.Address)
+			a := processor.GetAccount(test.input.Address)
 			test.afterCheck(a)
 		}
 	}
@@ -271,8 +276,8 @@ func TestChangeLog_Redo(t *testing.T) {
 		},
 		// 4 no account
 		{
-			input:   removeAddress(createChangeLog(processor, 0, ChangeLogType(10003), 1)),
-			redoErr: ErrNoAccount,
+			input:   removeAddress(createChangeLog(processor, 1, ChangeLogType(10003), 2)),
+			redoErr: ErrWrongChangeLogVersion,
 		},
 	}
 
@@ -285,7 +290,7 @@ func TestChangeLog_Redo(t *testing.T) {
 		} else if test.redoErr != nil {
 			t.Errorf("test %d. want redoErr: %s, got: <nil>", i, test.redoErr)
 		} else if test.afterCheck != nil {
-			a, _ := processor.GetAccount(test.input.Address)
+			a := processor.GetAccount(test.input.Address)
 			test.afterCheck(a)
 		}
 	}

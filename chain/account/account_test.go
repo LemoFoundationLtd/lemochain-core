@@ -1,6 +1,7 @@
 package account
 
 import (
+	"encoding/json"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/store"
@@ -8,6 +9,10 @@ import (
 	"math/big"
 	"testing"
 )
+
+func TestAccount_Interface(t *testing.T) {
+	var _ types.AccountAccessor = (*Account)(nil)
+}
 
 func loadAccount(address common.Address) *Account {
 	db := newDB()
@@ -45,6 +50,17 @@ func TestAccount_SetVersion_GetVersion(t *testing.T) {
 
 	account.SetVersion(200)
 	assert.Equal(t, uint32(200), account.GetVersion())
+}
+
+func TestAccount_SetSuicide_GetSuicide(t *testing.T) {
+	account := loadAccount(defaultAccounts[0].Address)
+	assert.Equal(t, false, account.GetSuicide())
+
+	account.SetSuicide(true)
+	assert.Equal(t, true, account.GetSuicide())
+	assert.Equal(t, big.NewInt(0), account.GetBalance())
+	assert.Equal(t, sha3Nil, account.GetCodeHash())
+	assert.Equal(t, common.Hash{}, account.GetStorageRoot())
 }
 
 func TestAccount_SetCodeHash_GetCodeHash(t *testing.T) {
@@ -157,6 +173,29 @@ func TestAccount_SetStorageState_GetStorageState(t *testing.T) {
 	readValue, err = account.GetStorageState(k(6))
 	assert.Equal(t, ErrTrieFail, err)
 	assert.Empty(t, readValue) // []byte(nil)
+}
+
+func TestAccount_IsEmpty(t *testing.T) {
+	account := loadAccount(common.HexToAddress("0x1"))
+	assert.Equal(t, true, account.IsEmpty())
+	account.SetVersion(100)
+	assert.Equal(t, false, account.IsEmpty())
+}
+
+func TestAccount_MarshalJSON_UnmarshalJSON(t *testing.T) {
+	account := loadAccount(defaultAccounts[0].Address)
+	data, err := json.Marshal(account)
+	assert.NoError(t, err)
+	assert.Equal(t, `{"address":"0x0000000000000000000000000000000000010000","balance":"0x64","version":"0x64","codeHash":"0x1d5f11eaa13e02cdca886181dc38ab4cb8cf9092e86c000fb42d12c8b504500e","root":"0xcbeb7c7e36b846713bc99b8fa527e8d552e31bfaa1ac0f2b773958cda3aba3ed","VersionRecords":[]}`, string(data))
+	var parsedAccount *Account
+	err = json.Unmarshal(data, &parsedAccount)
+	assert.NoError(t, err)
+	assert.Equal(t, account.GetAddress(), parsedAccount.GetAddress())
+	assert.Equal(t, account.GetBalance(), parsedAccount.GetBalance())
+	assert.Equal(t, account.GetVersion(), parsedAccount.GetVersion())
+	assert.Equal(t, account.GetCodeHash(), parsedAccount.GetCodeHash())
+	assert.Equal(t, account.GetStorageRoot(), parsedAccount.GetStorageRoot())
+	// assert.Equal(t, account.db, parsedAccount.db)
 }
 
 func TestAccount_Finalise_Save(t *testing.T) {

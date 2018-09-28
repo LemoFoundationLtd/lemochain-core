@@ -14,13 +14,15 @@ const (
 	StorageLog
 	CodeLog
 	AddEventLog
+	SuicideLog
 )
 
 func init() {
 	types.RegisterChangeLog(BalanceLog, "BalanceLog", decodeBigInt, decodeEmptyInterface, redoBalance, undoBalance)
 	types.RegisterChangeLog(StorageLog, "StorageLog", decodeBytes, decodeBytes, redoStorage, undoStorage)
 	types.RegisterChangeLog(CodeLog, "CodeLog", decodeBytes, decodeEmptyInterface, redoCode, undoCode)
-	types.RegisterChangeLog(AddEventLog, "AddEventLog", decodeEvents, decodeHash, redoAddEvent, undoAddEvent)
+	types.RegisterChangeLog(AddEventLog, "AddEventLog", decodeEvent, decodeEmptyInterface, redoAddEvent, undoAddEvent)
+	types.RegisterChangeLog(SuicideLog, "SuicideLog", decodeEmptyInterface, decodeEmptyInterface, redoSuicide, undoSuicide)
 }
 
 // decodeEmptyInterface decode an interface which contains an empty interface{}. its encoded data is [192], same as rlp([])
@@ -42,6 +44,13 @@ func decodeBigInt(s *rlp.Stream) (interface{}, error) {
 	return result, err
 }
 
+// decodeUint64 decode an interface which contains an uint64
+func decodeUint64(s *rlp.Stream) (interface{}, error) {
+	var result uint64
+	err := s.Decode(&result)
+	return result, err
+}
+
 // decodeHash decode an interface which contains an common.Hash
 func decodeHash(s *rlp.Stream) (interface{}, error) {
 	var result common.Hash
@@ -56,11 +65,11 @@ func decodeBytes(s *rlp.Stream) (interface{}, error) {
 	return result, err
 }
 
-// decodeEvents decode an interface which contains an []*types.Event
-func decodeEvents(s *rlp.Stream) (interface{}, error) {
-	var result []*types.Event
+// decodeEvents decode an interface which contains an *types.Event
+func decodeEvent(s *rlp.Stream) (interface{}, error) {
+	var result types.Event
 	err := s.Decode(&result)
-	return result, err
+	return &result, err
 }
 
 //
@@ -91,10 +100,7 @@ func redoBalance(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 		log.Errorf("expected NewVal big.Int, got %T", c.NewVal)
 		return types.ErrWrongChangeLogData
 	}
-	accessor, err := processor.GetAccount(c.Address)
-	if err != nil {
-		return err
-	}
+	accessor := processor.GetAccount(c.Address)
 	accessor.SetBalance(&newValue)
 	return nil
 }
@@ -102,13 +108,10 @@ func redoBalance(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 func undoBalance(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 	oldValue, ok := c.OldVal.(big.Int)
 	if !ok {
-		log.Errorf("expected NewVal big.Int, got %T", c.NewVal)
+		log.Errorf("expected OldVal big.Int, got %T", c.OldVal)
 		return types.ErrWrongChangeLogData
 	}
-	accessor, err := processor.GetAccount(c.Address)
-	if err != nil {
-		return err
-	}
+	accessor := processor.GetAccount(c.Address)
 	accessor.SetBalance(&oldValue)
 	return nil
 }
@@ -140,10 +143,7 @@ func redoStorage(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 		log.Errorf("expected Extra common.Hash, got %T", c.Extra)
 		return types.ErrWrongChangeLogData
 	}
-	accessor, err := processor.GetAccount(c.Address)
-	if err != nil {
-		return err
-	}
+	accessor := processor.GetAccount(c.Address)
 	accessor.SetStorageState(key, newVal)
 	return nil
 }
@@ -159,10 +159,7 @@ func undoStorage(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 		log.Errorf("expected Extra common.Hash, got %T", c.Extra)
 		return types.ErrWrongChangeLogData
 	}
-	accessor, err := processor.GetAccount(c.Address)
-	if err != nil {
-		return err
-	}
+	accessor := processor.GetAccount(c.Address)
 	accessor.SetStorageState(key, oldVal)
 	return nil
 }
@@ -183,50 +180,72 @@ func redoCode(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 		log.Errorf("expected NewVal Code, got %T", c.NewVal)
 		return types.ErrWrongChangeLogData
 	}
-	accessor, err := processor.GetAccount(c.Address)
-	if err != nil {
-		return err
-	}
+	accessor := processor.GetAccount(c.Address)
 	accessor.SetCode(code)
 	return nil
 }
 
 func undoCode(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
-	accessor, err := processor.GetAccount(c.Address)
-	if err != nil {
-		return err
-	}
+	accessor := processor.GetAccount(c.Address)
 	accessor.SetCode(nil)
 	return nil
 }
 
 // NewAddEventLog records contract code change
-func NewAddEventLog(account types.AccountAccessor, txHash common.Hash, newEvent []*types.Event) *types.ChangeLog {
+func NewAddEventLog(account types.AccountAccessor, newEvent *types.Event) *types.ChangeLog {
 	return &types.ChangeLog{
 		LogType: AddEventLog,
 		Address: account.GetAddress(),
 		Version: increaseVersion(account),
 		NewVal:  newEvent,
-		Extra:   txHash,
 	}
 }
 
 func redoAddEvent(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
-	newEvents, ok := c.NewVal.([]*types.Event)
+	newEvent, ok := c.NewVal.(*types.Event)
 	if !ok {
-		log.Errorf("expected NewVal []types.Event, got %T", c.NewVal)
+		log.Errorf("expected NewVal types.Event, got %T", c.NewVal)
 		return types.ErrWrongChangeLogData
 	}
-	processor.AddEvent(newEvents)
+	processor.PushEvent(newEvent)
 	return nil
 }
 
 func undoAddEvent(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
-	txHash, ok := c.Extra.(common.Hash)
+	return processor.PopEvent()
+}
+
+// NewSuicideLog records balance change
+func NewSuicideLog(account types.AccountAccessor) *types.ChangeLog {
+	oldAccount := &types.AccountData{
+		Balance:     new(big.Int).Set(account.GetBalance()),
+		CodeHash:    account.GetCodeHash(),
+		StorageRoot: account.GetStorageRoot(),
+	}
+	return &types.ChangeLog{
+		LogType: SuicideLog,
+		Address: account.GetAddress(),
+		Version: increaseVersion(account),
+		OldVal:  oldAccount,
+	}
+}
+
+func redoSuicide(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
+	accessor := processor.GetAccount(c.Address)
+	accessor.SetSuicide(true)
+	return nil
+}
+
+func undoSuicide(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
+	oldValue, ok := c.OldVal.(*types.AccountData)
 	if !ok {
-		log.Errorf("expected NewVal common.Hash, got %T", c.NewVal)
+		log.Errorf("expected OldVal big.Int, got %T", c.OldVal)
 		return types.ErrWrongChangeLogData
 	}
-	processor.RevertEvent(txHash)
+	accessor := processor.GetAccount(c.Address)
+	accessor.SetBalance(oldValue.Balance)
+	accessor.SetCodeHash(oldValue.CodeHash)
+	accessor.SetStorageRoot(oldValue.StorageRoot)
+	accessor.SetSuicide(false)
 	return nil
 }

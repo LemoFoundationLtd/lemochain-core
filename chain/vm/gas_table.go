@@ -1,19 +1,3 @@
-// Copyright 2017 The lemochain-go Authors
-// This file is part of the lemochain-go library.
-//
-// The lemochain-go library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Lesser General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// The lemochain-go library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with the lemochain-go library. If not, see <http://www.gnu.org/licenses/>.
-
 package vm
 
 import (
@@ -117,27 +101,23 @@ func gasReturnDataCopy(gt params.GasTable, evm *EVM, contract *Contract, stack *
 
 func gasSStore(gt params.GasTable, evm *EVM, contract *Contract, stack *Stack, mem *Memory, memorySize uint64) (uint64, error) {
 	var (
-		y, x = stack.Back(1), stack.Back(0)
-		val  = evm.StateDB.GetState(contract.Address(), common.BigToHash(x))
+		y, x            = stack.Back(1), stack.Back(0)
+		contractAccount = evm.am.GetAccount(contract.GetAddress())
+		val, err        = contractAccount.GetStorageState(common.BigToHash(x))
 	)
-	// This checks for 3 scenario's and calculates gas accordingly
-	// 1. From a zero-value address to a non-zero value         (NEW VALUE)
-	// 2. From a non-zero value address to a zero-value address (DELETE)
-	// 3. From a non-zero to a non-zero                         (CHANGE)
-	if common.EmptyHash(val) && !common.EmptyHash(common.BigToHash(y)) {
-		// 0 => non 0
+	if err != nil {
+		return 0, err
+	}
+	if len(val) == 0 && !common.EmptyHash(common.BigToHash(y)) {
+		// NEW VALUE
 		return params.SstoreSetGas, nil
-	} else if !common.EmptyHash(val) && common.EmptyHash(common.BigToHash(y)) {
-		evm.StateDB.AddRefund(params.SstoreRefundGas)
-
-		return params.SstoreClearGas, nil
 	} else {
-		// non 0 => non 0 (or 0 => 0)
+		// CHANGE
 		return params.SstoreResetGas, nil
 	}
 }
 
-func makeGasLog(n uint64) gasFunc {
+func makeGasEvent(n uint64) gasFunc {
 	return func(gt params.GasTable, evm *EVM, contract *Contract, stack *Stack, mem *Memory, memorySize uint64) (uint64, error) {
 		requestedSize, overflow := bigUint64(stack.Back(1))
 		if overflow {
@@ -149,15 +129,15 @@ func makeGasLog(n uint64) gasFunc {
 			return 0, err
 		}
 
-		if gas, overflow = math.SafeAdd(gas, params.LogGas); overflow {
+		if gas, overflow = math.SafeAdd(gas, params.EventGas); overflow {
 			return 0, errGasUintOverflow
 		}
-		if gas, overflow = math.SafeAdd(gas, n*params.LogTopicGas); overflow {
+		if gas, overflow = math.SafeAdd(gas, n*params.EventTopicGas); overflow {
 			return 0, errGasUintOverflow
 		}
 
 		var memorySizeGas uint64
-		if memorySizeGas, overflow = math.SafeMul(requestedSize, params.LogDataGas); overflow {
+		if memorySizeGas, overflow = math.SafeMul(requestedSize, params.EventDataGas); overflow {
 			return 0, errGasUintOverflow
 		}
 		if gas, overflow = math.SafeAdd(gas, memorySizeGas); overflow {
@@ -320,11 +300,13 @@ func gasCall(gt params.GasTable, evm *EVM, contract *Contract, stack *Stack, mem
 		transfersValue = stack.Back(2).Sign() != 0
 		address        = common.BigToAddress(stack.Back(1))
 	)
-	if transfersValue && evm.StateDB.Empty(address) {
-		gas += params.CallNewAccountGas
-	}
 	if transfersValue {
-		gas += params.CallValueTransferGas
+		contractAccount := evm.am.GetAccount(address)
+		if contractAccount.IsEmpty() {
+			gas += params.CallNewAccountGas
+		} else {
+			gas += params.CallValueTransferGas
+		}
 	}
 	memoryGas, err := memoryGasCost(mem, memorySize)
 	if err != nil {
@@ -384,13 +366,12 @@ func gasSuicide(gt params.GasTable, evm *EVM, contract *Contract, stack *Stack, 
 	)
 
 	// if empty and transfers value
-	if evm.StateDB.Empty(address) && evm.StateDB.GetBalance(contract.Address()).Sign() != 0 {
+	receiverAccount := evm.am.GetAccount(address)
+	contractAccount := evm.am.GetAccount(contract.GetAddress())
+	if receiverAccount.IsEmpty() && contractAccount.GetBalance().Sign() != 0 {
 		gas += gt.CreateBySuicide
 	}
 
-	if !evm.StateDB.HasSuicided(contract.Address()) {
-		evm.StateDB.AddRefund(params.SuicideRefundGas)
-	}
 	return gas, nil
 }
 
