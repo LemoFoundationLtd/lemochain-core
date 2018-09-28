@@ -5,6 +5,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"sync"
 	"time"
 )
@@ -81,12 +82,11 @@ func (cache *TxsCache) pop(size int) []*types.Transaction {
 func (cache *TxsCache) removeBatch(keys []common.Hash) {
 	if len(keys) <= 0 {
 		return
+	} else {
+		for index := 0; index < len(keys); index++ {
+			cache.remove(keys[index])
+		}
 	}
-
-	for index := 0; index < len(keys); index++ {
-		cache.remove(keys[index])
-	}
-
 }
 
 func (cache *TxsCache) remove(key common.Hash) {
@@ -100,19 +100,24 @@ func (cache *TxsCache) remove(key common.Hash) {
 
 type TxsRecent struct {
 	lastTime int64
-	recent   map[common.Hash]bool
+	index    store.Index
+	recent   []map[common.Hash]bool
 }
 
 func NewRecent() *TxsRecent {
 	t := time.Now()
-	return &TxsRecent{
-		lastTime: t.Unix(),
-		recent:   make(map[common.Hash]bool),
-	}
+	recent := &TxsRecent{lastTime: t.Unix()}
+
+	recent.index.Init()
+	recent.recent = make([]map[common.Hash]bool, 2)
+	recent.recent[0] = make(map[common.Hash]bool)
+	recent.recent[1] = make(map[common.Hash]bool)
+
+	return recent
 }
 
 func (recent *TxsRecent) isExist(hash common.Hash) bool {
-	if recent.recent[hash] {
+	if recent.recent[0][hash] || recent.recent[1][hash] {
 		return true
 	} else {
 		return false
@@ -124,10 +129,14 @@ func (recent *TxsRecent) put(hash common.Hash) {
 
 	if next-recent.lastTime > TransactionTimeOut {
 		recent.lastTime = next
-		recent.recent = make(map[common.Hash]bool)
+
+		bak := recent.index.Bak()
+		recent.recent[bak] = make(map[common.Hash]bool)
+		recent.index.Swap()
 	}
 
-	recent.recent[hash] = true
+	cur := recent.index.Cur()
+	recent.recent[cur][hash] = true
 }
 
 type TxPool struct {
@@ -165,9 +174,9 @@ func (pool *TxPool) AddTx(tx *types.Transaction) error {
 		// if err != nil {
 		// 	return err
 		// }
-		pool.txsCh <- types.Transactions{tx}
 		pool.recent.put(hash)
 		pool.txsCache.push(tx)
+		pool.txsCh <- types.Transactions{tx}
 		return nil
 	}
 }
