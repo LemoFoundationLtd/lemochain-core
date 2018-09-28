@@ -68,9 +68,6 @@ func (cache *TxsCache) pop(size int) []*types.Transaction {
 			txs[index] = cache.txs[index].Tx
 		}
 
-		cache.txs = make([]*TransactionWithTime, 512)
-		cache.cap = 512
-		cache.cnt = 0
 		return txs
 	} else {
 		txs := make([]*types.Transaction, size)
@@ -78,9 +75,18 @@ func (cache *TxsCache) pop(size int) []*types.Transaction {
 			txs[index] = cache.txs[index].Tx
 		}
 
+		return txs
+	}
+}
+
+func (cache *TxsCache) remove(size int) {
+	if cache.cnt <= size {
+		cache.txs = make([]*TransactionWithTime, 512)
+		cache.cap = 512
+		cache.cnt = 0
+	} else {
 		cache.txs = append(cache.txs[:size], cache.txs[size+1:]...)
 		cache.cnt = cache.cnt - size
-		return txs
 	}
 }
 
@@ -155,6 +161,12 @@ func (pool *TxPool) Pending(size int) []*types.Transaction {
 	pool.mux.Lock()
 	defer pool.mux.Unlock()
 	return pool.txsCache.pop(size)
+}
+
+func (pool *TxPool) Remove(size int) {
+	pool.mux.Lock()
+	defer pool.mux.Unlock()
+	pool.txsCache.remove(size)
 }
 
 func (pool *TxPool) validateTx(tx *types.Transaction) error {
