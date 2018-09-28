@@ -182,7 +182,7 @@ func (pm *ProtocolManager) PeerEvent(peer *p2p.Peer, flag p2p.PeerEventFlag) err
 	switch flag {
 	case p2p.AddPeerFlag:
 		p := newPeer(peer)
-		pm.handle(p)
+		go pm.handle(p)
 	case p2p.DropPeerFlag:
 		pm.dropPeer(peer.NodeID().String())
 	default:

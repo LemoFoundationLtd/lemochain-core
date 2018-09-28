@@ -150,6 +150,7 @@ func (p *Peer) readLoop(errCh chan<- error) {
 			continue
 		}
 		// 处理数据
+		log.Debugf("receive message from: %s, msg: %v", common.ToHex(p.nodeId[:8]), msg)
 		p.newMsgCh <- msg
 	}
 }
@@ -216,9 +217,8 @@ func (p *Peer) readMsg() (msg Msg, err error) {
 }
 
 // 对外提供 供读取节点数据用
-func (p *Peer) ReadMsg() (msg Msg) {
-	msg = <-p.newMsgCh
-	return
+func (p *Peer) ReadMsg() Msg {
+	return <-p.newMsgCh
 }
 
 // 对外提供 提供写入数据到节点

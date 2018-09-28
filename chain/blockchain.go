@@ -2,6 +2,7 @@ package chain
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
@@ -108,7 +109,7 @@ func (bc *BlockChain) HasBlock(hash common.Hash, height uint32) bool {
 func (bc *BlockChain) GetBlock(hash common.Hash, height uint32) *types.Block {
 	block, err := bc.dbOpe.GetBlock(hash, height)
 	if err != nil {
-		log.Debug(fmt.Sprintf("can't get block height:%d", height))
+		log.Debugf("can't get block height:%d", height)
 		return nil
 	}
 	return block
@@ -289,16 +290,18 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32) error {
 		return err
 	}
 	block := bc.GetBlock(hash, height)
+	if block == nil {
+		return errors.New("please sync latest block")
+	}
 	bc.stableBlock.Store(block)
 	// 判断是否需要切换分叉
 	switchFork := false
 	parBlock := bc.currentBlock.Load().(*types.Block)
-	for parBlock.Height() <= height {
-		if parBlock.Hash() == hash {
-			switchFork = true
-			break
-		}
-		parBlock = bc.GetBlock(parBlock.ParentHash(), parBlock.Height()-1)
+	for parBlock.Height() > height {
+		parBlock = bc.GetBlockByHash(parBlock.ParentHash())
+	}
+	if parBlock.Hash() != hash {
+		switchFork = true
 	}
 	// 切换分叉
 	if switchFork {
@@ -318,7 +321,7 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32) error {
 					}
 					break
 				} else {
-					parBlock = bc.GetBlock(parBlock.ParentHash(), parBlock.Height()-1)
+					parBlock = bc.GetBlockByHash(parBlock.ParentHash())
 				}
 			}
 			if inForkChain {
@@ -333,9 +336,9 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32) error {
 			}
 		}
 		bc.currentBlock.Store(curBlock)
-		log.Info(fmt.Sprintf("chain forked! current block: height(%d), hash(%s)", curBlock.Height(), curBlock.Hash().Hex()))
+		log.Infof("chain forked! current block: height(%d), hash(%s)", curBlock.Height(), curBlock.Hash().Hex())
 	}
-	log.Info(fmt.Sprintf("block has consensus. height:%d hash:%s", block.Height(), block.Hash().Hex()))
+	log.Infof("block has consensus. height:%d hash:%s", block.Height(), block.Hash().Hex())
 	return nil
 }
 

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"github.com/LemoFoundationLtd/lemochain-go/network/p2p"
 	"github.com/LemoFoundationLtd/lemochain-go/network/synchronise/protocol"
@@ -83,6 +84,7 @@ func (p *peer) Handshake(network uint64, height uint32, head, genesis common.Has
 	var status protocol.NodeStatusData
 	// 发送自己的节点状态
 	go func() {
+		log.Infof("start send node status data. nodeid: %s", p.id[:16])
 		errs <- p.send(protocol.StatusMsg, &protocol.NodeStatusData{
 			NetworkID:     network,
 			CurrentHeight: height,
@@ -92,6 +94,7 @@ func (p *peer) Handshake(network uint64, height uint32, head, genesis common.Has
 	}()
 	// 读取对方的远程节点状态
 	go func() {
+		log.Infof("start read remote node status data. nodeid: %s", p.id[:16])
 		errs <- p.readRemoteStatus(network, &status, genesis)
 	}()
 	for i := 0; i < 2; i++ {
@@ -123,8 +126,7 @@ func (p *peer) readRemoteStatus(network uint64, status *protocol.NodeStatusData,
 	msgCh := make(chan p2p.Msg)
 	// 读取
 	go func() {
-		msg := p.Peer.ReadMsg()
-		msgCh <- msg
+		msgCh <- p.Peer.ReadMsg()
 	}()
 	go func() {
 		select {
@@ -134,28 +136,24 @@ func (p *peer) readRemoteStatus(network uint64, status *protocol.NodeStatusData,
 			newMsgCh <- msg
 		}
 	}()
-	select {
-	case msg := <-newMsgCh:
-		empMsg := p2p.Msg{}
-		if msg.Code == empMsg.Code && msg.Size == empMsg.Size && msg.ReceivedAt == empMsg.ReceivedAt {
-			return errors.New("readMsg timeout")
-		}
-		if msg.Code != protocol.StatusMsg {
-			return errors.New("code not match")
-		}
-		if err := msg.Decode(status); err != nil {
-			return err
-		}
-		if status.NetworkID != network {
-			return errors.New("networkid not match")
-		}
-		if bytes.Compare(status.GenesisBlock[:], genesis[:]) != 0 {
-			return errors.New("genesis block not match")
-		}
-		return nil
-	case <-time.After(5 * time.Second):
-		return errors.New("readmsg timeout")
+
+	msg := <-newMsgCh
+	if msg.Empty() {
+		return errors.New("read message timeout")
 	}
+	if msg.Code != protocol.StatusMsg {
+		return errors.New("code not match")
+	}
+	if err := msg.Decode(status); err != nil {
+		return err
+	}
+	if status.NetworkID != network {
+		return errors.New("networkid not match")
+	}
+	if bytes.Compare(status.GenesisBlock[:], genesis[:]) != 0 {
+		return errors.New("genesis block not match")
+	}
+	return nil
 }
 
 // RequestBlockFromAndTo 从高度为from同步区块到高度to
