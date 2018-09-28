@@ -2,6 +2,7 @@ package chain
 
 import (
 	"errors"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/vm"
@@ -16,8 +17,9 @@ var (
 )
 
 type TxProcessor struct {
-	bc  *BlockChain
-	cfg *vm.Config // configuration of vm
+	chain ChainContext
+	am    *account.Manager
+	cfg   *vm.Config // configuration of vm
 }
 
 type ApplyTxsResult struct {
@@ -29,8 +31,9 @@ type ApplyTxsResult struct {
 
 func NewTxProcessor(bc *BlockChain) *TxProcessor {
 	return &TxProcessor{
-		bc:  bc,
-		cfg: &vm.Config{},
+		chain: bc,
+		am:    bc.am,
+		cfg:   &vm.Config{},
 	}
 }
 
@@ -42,17 +45,17 @@ func (p *TxProcessor) Process(block *types.Block) (*ApplyTxsResult, error) {
 		gp      = new(types.GasPool).AddGas(block.GasLimit())
 		txs     = block.Txs
 	)
-	p.bc.am.Reset(block.Hash())
+	p.am.Reset(block.Hash())
 	// Iterate over and process the individual transactions
 	for i, tx := range txs {
-		gas, err := p.ApplyTx(gp, header, tx, uint(i), block.Hash())
+		gas, err := p.applyTx(gp, header, tx, uint(i), block.Hash())
 		if err != nil {
 			return nil, err
 		}
 		gasUsed = gasUsed + gas
 	}
 
-	events := p.bc.am.GetEvents()
+	events := p.am.GetEvents()
 	bloom := types.CreateBloom(events)
 
 	return &ApplyTxsResult{
@@ -69,7 +72,7 @@ func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions) (*A
 	gasUsed := uint64(0)
 	selectedTxs := make(types.Transactions, 0)
 
-	p.bc.am.Reset(header.ParentHash)
+	p.am.Reset(header.ParentHash)
 	for _, tx := range txs {
 		// If we don't have enough gas for any further transactions then we're done
 		if gp.Gas() < params.TxGas {
@@ -77,11 +80,11 @@ func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions) (*A
 			break
 		}
 		// Start executing the transaction
-		snap := p.bc.am.Snapshot()
+		snap := p.am.Snapshot()
 
-		gas, err := p.ApplyTx(gp, header, tx, uint(len(selectedTxs)), common.Hash{})
+		gas, err := p.applyTx(gp, header, tx, uint(len(selectedTxs)), common.Hash{})
 		if err != nil {
-			p.bc.am.RevertToSnapshot(snap)
+			p.am.RevertToSnapshot(snap)
 			return nil, err
 		}
 		selectedTxs = append(selectedTxs, tx)
@@ -98,7 +101,7 @@ func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions) (*A
 		gasUsed = gasUsed + gas
 	}
 
-	events := p.bc.am.GetEvents()
+	events := p.am.GetEvents()
 	bloom := types.CreateBloom(events)
 
 	return &ApplyTxsResult{
@@ -109,19 +112,19 @@ func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions) (*A
 	}, nil
 }
 
-// ApplyTx processes transaction. Change accounts' data and execute contract codes.
-func (p *TxProcessor) ApplyTx(gp *types.GasPool, header *types.Header, tx *types.Transaction, txIndex uint, blockHash common.Hash) (uint64, error) {
+// applyTx processes transaction. Change accounts' data and execute contract codes.
+func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types.Transaction, txIndex uint, blockHash common.Hash) (uint64, error) {
 	senderAddr, err := tx.From()
 	if err != nil {
 		return 0, err
 	}
 	var (
 		// Create a new context to be used in the EVM environment
-		context = NewEVMContext(tx, header, txIndex, tx.Hash(), blockHash, p.bc)
+		context = NewEVMContext(tx, header, txIndex, tx.Hash(), blockHash, p.chain)
 		// Create a new environment which holds all relevant information
 		// about the transaction and calling mechanisms.
-		vmEnv            = vm.NewEVM(context, p.bc.am, *p.cfg)
-		sender           = p.bc.am.GetAccount(senderAddr)
+		vmEnv            = vm.NewEVM(context, p.am, *p.cfg)
+		sender           = p.am.GetAccount(senderAddr)
 		contractCreation = tx.To() == nil
 		restGas          = tx.GasLimit()
 	)
@@ -129,42 +132,40 @@ func (p *TxProcessor) ApplyTx(gp *types.GasPool, header *types.Header, tx *types
 	if err != nil {
 		return 0, err
 	}
-
 	restGas, err = p.payIntrinsicGas(tx, restGas)
 	if err != nil {
 		return 0, err
 	}
 
-	// vm errors do not effect consensus and are therefor
-	// not assigned to err, except for insufficient balance
-	// error.
-	var vmerr error
+	// vm errors do not effect consensus and are therefor not assigned to err,
+	// except for insufficient balance error.
+	var vmErr error
 	if contractCreation {
-		_, _, restGas, vmerr = vmEnv.Create(sender, tx.Data(), restGas, tx.Value())
+		_, _, restGas, vmErr = vmEnv.Create(sender, tx.Data(), restGas, tx.Value())
 	} else {
-		_, restGas, vmerr = vmEnv.Call(sender, *tx.To(), tx.Data(), restGas, tx.Value())
+		_, restGas, vmErr = vmEnv.Call(sender, *tx.To(), tx.Data(), restGas, tx.Value())
 	}
-	if vmerr != nil {
-		log.Debug("VM returned with error", "err", vmerr)
+	if vmErr != nil {
+		log.Debug("VM returned with error", "err", vmErr)
 		// The only possible consensus-error would be if there wasn't
 		// sufficient balance to make the transfer happen. The first
 		// balance transfer may never fail.
-		if vmerr == vm.ErrInsufficientBalance {
-			return 0, vmerr
+		if vmErr == vm.ErrInsufficientBalance {
+			return 0, vmErr
 		}
 	}
 	p.refundGas(gp, tx, restGas, vmEnv.Lemobase)
 
 	// Update the state with pending changes
-	p.bc.am.Finalise()
+	p.am.Finalise()
 
 	return tx.GasLimit() - restGas, nil
 }
 
 func (p *TxProcessor) buyGas(gp *types.GasPool, tx *types.Transaction) error {
-	// ignore the error because it is checked in ApplyTx
+	// ignore the error because it is checked in applyTx
 	senderAddr, _ := tx.From()
-	sender := p.bc.am.GetAccount(senderAddr)
+	sender := p.am.GetAccount(senderAddr)
 
 	maxFee := new(big.Int).Mul(new(big.Int).SetUint64(tx.GasLimit()), tx.GasPrice())
 	if sender.GetBalance().Cmp(maxFee) < 0 {
@@ -222,9 +223,9 @@ func IntrinsicGas(data []byte, contractCreation bool) (uint64, error) {
 }
 
 func (p *TxProcessor) refundGas(gp *types.GasPool, tx *types.Transaction, restGas uint64, minerAddress common.Address) {
-	// ignore the error because it is checked in ApplyTx
+	// ignore the error because it is checked in applyTx
 	senderAddr, _ := tx.From()
-	sender := p.bc.am.GetAccount(senderAddr)
+	sender := p.am.GetAccount(senderAddr)
 
 	// Return ETH for remaining gas, exchanged at the original rate.
 	remaining := new(big.Int).Mul(new(big.Int).SetUint64(restGas), tx.GasPrice())
@@ -235,6 +236,6 @@ func (p *TxProcessor) refundGas(gp *types.GasPool, tx *types.Transaction, restGa
 	gp.AddGas(restGas)
 
 	usedFee := new(big.Int).Mul(new(big.Int).SetUint64(tx.GasLimit()-restGas), tx.GasPrice())
-	miner := p.bc.am.GetAccount(minerAddress)
+	miner := p.am.GetAccount(minerAddress)
 	miner.SetBalance(new(big.Int).Add(miner.GetBalance(), usedFee))
 }
