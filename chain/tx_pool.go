@@ -5,6 +5,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"sync"
 	"time"
 )
 
@@ -39,7 +40,7 @@ func NewTxsCache() *TxsCache {
 	return cache
 }
 
-func (cache *TxsCache) Push(tx *types.Transaction) {
+func (cache *TxsCache) push(tx *types.Transaction) {
 	if cache.cap-cache.cnt < 1 {
 		cache.cap = 2 * cache.cap
 		tmp := make([]*TransactionWithTime, cache.cap)
@@ -56,7 +57,7 @@ func (cache *TxsCache) Push(tx *types.Transaction) {
 	cache.cnt = cache.cnt + 1
 }
 
-func (cache *TxsCache) Pop(size int) []*types.Transaction {
+func (cache *TxsCache) pop(size int) []*types.Transaction {
 	if size <= 0 {
 		return make([]*types.Transaction, 0)
 	}
@@ -119,6 +120,7 @@ type TxPool struct {
 	am       *account.Manager
 	txsCache *TxsCache
 	recent   *TxsRecent
+	mux      sync.Mutex
 }
 
 func NewTxPool() *TxPool {
@@ -132,6 +134,8 @@ func NewTxPool() *TxPool {
 
 func (pool *TxPool) AddTx(tx *types.Transaction) error {
 	hash := tx.Hash()
+	pool.mux.Lock()
+	defer pool.mux.Unlock()
 	isExist := pool.recent.isExist(hash)
 	if isExist {
 		return nil
@@ -142,13 +146,15 @@ func (pool *TxPool) AddTx(tx *types.Transaction) error {
 		// }
 
 		pool.recent.put(hash)
-		pool.txsCache.Push(tx)
+		pool.txsCache.push(tx)
 		return nil
 	}
 }
 
 func (pool *TxPool) Pending(size int) []*types.Transaction {
-	return pool.txsCache.Pop(size)
+	pool.mux.Lock()
+	defer pool.mux.Unlock()
+	return pool.txsCache.pop(size)
 }
 
 func (pool *TxPool) validateTx(tx *types.Transaction) error {
@@ -157,11 +163,7 @@ func (pool *TxPool) validateTx(tx *types.Transaction) error {
 		return ErrInvalidSender
 	}
 
-	fromAccount, err := pool.am.GetAccount(from)
-	if err != nil {
-		return err
-	}
-
+	fromAccount := pool.am.GetAccount(from)
 	balance := fromAccount.GetBalance()
 	if balance.Cmp(tx.Cost()) < 0 {
 		return ErrInsufficientFunds
