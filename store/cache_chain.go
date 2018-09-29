@@ -267,6 +267,10 @@ func (chain *CacheChain) SetBlock(hash common.Hash, block *types.Block) error {
 			return err
 		}
 
+		accounts := chain.Accounts[parent]
+		if len(accounts) != 0 {
+			chain.Accounts[hash] = accounts
+		}
 		chain.Blocks[hash] = block
 	}
 
