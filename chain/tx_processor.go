@@ -17,7 +17,7 @@ var (
 )
 
 type TxProcessor struct {
-	chain ChainContext
+	chain *BlockChain
 	am    *account.Manager
 	cfg   *vm.Config // configuration of vm
 }
@@ -38,14 +38,13 @@ func NewTxProcessor(bc *BlockChain) *TxProcessor {
 }
 
 // Process processes all transactions in a block. Change accounts' data and execute contract codes.
-func (p *TxProcessor) Process(block *types.Block) (*ApplyTxsResult, error) {
+func (p *TxProcessor) Process(block *types.Block) (*types.Header, error) {
 	var (
 		gasUsed = uint64(0)
 		header  = block.Header
 		gp      = new(types.GasPool).AddGas(block.GasLimit())
 		txs     = block.Txs
 	)
-	p.am.Reset(block.Hash())
 	// Iterate over and process the individual transactions
 	for i, tx := range txs {
 		gas, err := p.applyTx(gp, header, tx, uint(i), block.Hash())
@@ -55,24 +54,15 @@ func (p *TxProcessor) Process(block *types.Block) (*ApplyTxsResult, error) {
 		gasUsed = gasUsed + gas
 	}
 
-	events := p.am.GetEvents()
-	bloom := types.CreateBloom(events)
-
-	return &ApplyTxsResult{
-		Txs:     txs,
-		Events:  events,
-		Bloom:   bloom,
-		GasUsed: gasUsed,
-	}, nil
+	return p.FillHeader(header.Copy(), txs, gasUsed)
 }
 
 // ApplyTxs picks and processes transactions from miner's tx pool.
-func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions) (*ApplyTxsResult, error) {
+func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions) (*types.Header, []*types.Transaction, error) {
 	gp := new(types.GasPool).AddGas(header.GasLimit)
 	gasUsed := uint64(0)
 	selectedTxs := make(types.Transactions, 0)
 
-	p.am.Reset(header.ParentHash)
 	for _, tx := range txs {
 		// If we don't have enough gas for any further transactions then we're done
 		if gp.Gas() < params.TxGas {
@@ -85,7 +75,7 @@ func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions) (*A
 		gas, err := p.applyTx(gp, header, tx, uint(len(selectedTxs)), common.Hash{})
 		if err != nil {
 			p.am.RevertToSnapshot(snap)
-			return nil, err
+			return nil, nil, err
 		}
 		selectedTxs = append(selectedTxs, tx)
 
@@ -101,15 +91,8 @@ func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions) (*A
 		gasUsed = gasUsed + gas
 	}
 
-	events := p.am.GetEvents()
-	bloom := types.CreateBloom(events)
-
-	return &ApplyTxsResult{
-		Txs:     txs,
-		Events:  events,
-		Bloom:   bloom,
-		GasUsed: gasUsed,
-	}, nil
+	newHeader, err := p.FillHeader(header.Copy(), txs, gasUsed)
+	return newHeader, txs, err
 }
 
 // applyTx processes transaction. Change accounts' data and execute contract codes.
@@ -155,9 +138,6 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 		}
 	}
 	p.refundGas(gp, tx, restGas, vmEnv.Lemobase)
-
-	// Update the state with pending changes
-	p.am.Finalise()
 
 	return tx.GasLimit() - restGas, nil
 }
@@ -238,4 +218,26 @@ func (p *TxProcessor) refundGas(gp *types.GasPool, tx *types.Transaction, restGa
 	usedFee := new(big.Int).Mul(new(big.Int).SetUint64(tx.GasLimit()-restGas), tx.GasPrice())
 	miner := p.am.GetAccount(minerAddress)
 	miner.SetBalance(new(big.Int).Add(miner.GetBalance(), usedFee))
+}
+
+// FillHeader creates a new header then fills it with the result of transactions process
+func (p *TxProcessor) FillHeader(header *types.Header, txs []*types.Transaction, gasUsed uint64) (*types.Header, error) {
+	events := p.am.GetEvents()
+	header.Bloom = types.CreateBloom(events)
+	header.EventRoot = types.DeriveEventsSha(events)
+	header.GasUsed = gasUsed
+	header.TxRoot = types.DeriveTxsSha(txs)
+	// Pay miners at the end of their tenure. This method increases miners' balance.
+	p.chain.engine.Finalize(header)
+	// Update version trie, storage trie.
+	err := p.chain.AccountManager().Finalise()
+	if err != nil {
+		// Access trie node fail.
+		return nil, err
+	}
+	verRoot := p.chain.AccountManager().GetVersionRoot()
+	header.VersionRoot = verRoot
+	changeLogs := p.chain.AccountManager().GetChangeLogs()
+	header.LogsRoot = types.DeriveChangeLogsSha(changeLogs)
+	return header, nil
 }
