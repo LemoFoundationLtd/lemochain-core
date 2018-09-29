@@ -6,6 +6,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/vm"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
+	"strconv"
 )
 
 type TxProcessor struct {
@@ -21,9 +22,13 @@ type ApplyTxsResult struct {
 }
 
 func NewTxProcessor(bc *BlockChain) *TxProcessor {
+	debug, _ := strconv.ParseBool(bc.Flags()[common.Debug])
+	cfg := &vm.Config{
+		Debug: debug,
+	}
 	return &TxProcessor{
 		bc:  bc,
-		cfg: &vm.Config{},
+		cfg: cfg,
 	}
 }
 

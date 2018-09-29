@@ -23,6 +23,7 @@ type broadcastBlockFn func(block *types.Block)
 
 type BlockChain struct {
 	chainID              *big.Int
+	flags                map[string]string
 	dbOpe                db.ChainDB // 数据库操作
 	am                   *account.Manager
 	currentBlock         atomic.Value           // 当前链最新区块
@@ -43,11 +44,12 @@ type BlockChain struct {
 	quitCh     chan struct{}     // 退出chan
 }
 
-func NewBlockChain(chainID *big.Int, db db.ChainDB, newBlockCh chan *types.Block) (bc *BlockChain, err error) {
+func NewBlockChain(chainID *big.Int, db db.ChainDB, newBlockCh chan *types.Block, flags map[string]string) (bc *BlockChain, err error) {
 	bc = &BlockChain{
 		chainID:        new(big.Int).Set(chainID),
 		dbOpe:          db,
 		newBlockCh:     newBlockCh,
+		flags:          flags,
 		chainForksHead: make(map[common.Hash]*types.Block, 128),
 		quitCh:         make(chan struct{}),
 	}
@@ -83,7 +85,7 @@ func (bc *BlockChain) loadLastState() error {
 
 // loadConsensusEngine 加载共识引擎
 func (bc *BlockChain) loadConsensusEngine() {
-	bc.engine = NewDpovp(bc) // todo
+	bc.engine = NewDpovp(bc)
 }
 
 // Genesis 获取创始块
@@ -94,6 +96,14 @@ func (bc *BlockChain) Genesis() *types.Block {
 // ChainID
 func (bc *BlockChain) ChainID() *big.Int {
 	return bc.chainID
+}
+
+func (bc *BlockChain) TxProcessor() *TxProcessor {
+	return bc.processor
+}
+
+func (bc *BlockChain) Flags() map[string]string {
+	return bc.flags
 }
 
 // HasBlock 本地链是否有某个块
