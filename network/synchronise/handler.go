@@ -478,14 +478,14 @@ func (pm *ProtocolManager) synchronise(p string) {
 
 // syncTransactions 同步交易 发送本地所有交易到该节点
 func (pm *ProtocolManager) syncTransactions(id string) {
-	// pending := pm.txPool.Pending()
-	// if len(pending) == 0 {
-	// 	return
-	// }
-	// p := pm.peers.Peer(id)
-	// if p != nil {
-	// 	go p.peer.SendTransactions(pending)
-	// }
+	pending := pm.txPool.Pending(1000000)
+	if len(pending) == 0 {
+		return
+	}
+	p := pm.peers.Peer(id)
+	if p != nil {
+		go p.peer.SendTransactions(pending)
+	}
 }
 
 // BroadcastTx 广播交易

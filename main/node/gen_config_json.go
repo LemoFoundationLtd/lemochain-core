@@ -5,7 +5,6 @@ package node
 import (
 	"encoding/json"
 	"errors"
-	"math/big"
 
 	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/common/math"
@@ -16,13 +15,13 @@ var _ = (*ChainConfigFileMarshaling)(nil)
 // MarshalJSON marshals as JSON.
 func (c ChainConfigFile) MarshalJSON() ([]byte, error) {
 	type ChainConfigFile struct {
-		ChainID     *math.HexOrDecimal256   `json:"chainID"     gencodec:"required"`
+		ChainID     math.HexOrDecimal64     `json:"chainID"     gencodec:"required"`
 		SleepTime   math.HexOrDecimal64     `json:"sleepTime"   gencodec:"required"`
 		Timeout     math.HexOrDecimal64     `json:"timeout"     gencodec:"required"`
 		DeputyNodes []deputynode.DeputyNode `json:"deputyNodes" gencodec:"required"`
 	}
 	var enc ChainConfigFile
-	enc.ChainID = (*math.HexOrDecimal256)(c.ChainID)
+	enc.ChainID = math.HexOrDecimal64(c.ChainID)
 	enc.SleepTime = math.HexOrDecimal64(c.SleepTime)
 	enc.Timeout = math.HexOrDecimal64(c.Timeout)
 	enc.DeputyNodes = c.DeputyNodes
@@ -32,7 +31,7 @@ func (c ChainConfigFile) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON unmarshals from JSON.
 func (c *ChainConfigFile) UnmarshalJSON(input []byte) error {
 	type ChainConfigFile struct {
-		ChainID     *math.HexOrDecimal256   `json:"chainID"     gencodec:"required"`
+		ChainID     *math.HexOrDecimal64    `json:"chainID"     gencodec:"required"`
 		SleepTime   *math.HexOrDecimal64    `json:"sleepTime"   gencodec:"required"`
 		Timeout     *math.HexOrDecimal64    `json:"timeout"     gencodec:"required"`
 		DeputyNodes []deputynode.DeputyNode `json:"deputyNodes" gencodec:"required"`
@@ -44,7 +43,7 @@ func (c *ChainConfigFile) UnmarshalJSON(input []byte) error {
 	if dec.ChainID == nil {
 		return errors.New("missing required field 'chainID' for ChainConfigFile")
 	}
-	c.ChainID = (*big.Int)(dec.ChainID)
+	c.ChainID = uint64(*dec.ChainID)
 	if dec.SleepTime == nil {
 		return errors.New("missing required field 'sleepTime' for ChainConfigFile")
 	}

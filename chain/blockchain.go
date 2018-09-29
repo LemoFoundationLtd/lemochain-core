@@ -12,7 +12,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/network/synchronise/protocol"
 	db "github.com/LemoFoundationLtd/lemochain-go/store/protocol"
-	"math/big"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -44,9 +43,9 @@ type BlockChain struct {
 	quitCh     chan struct{}     // 退出chan
 }
 
-func NewBlockChain(chainID *big.Int, db db.ChainDB, newBlockCh chan *types.Block, flags map[string]string) (bc *BlockChain, err error) {
+func NewBlockChain(chainID uint64, db db.ChainDB, newBlockCh chan *types.Block, flags map[string]string) (bc *BlockChain, err error) {
 	bc = &BlockChain{
-		chainID:        uint16(chainID.Uint64()),
+		chainID:        uint16(chainID),
 		dbOpe:          db,
 		newBlockCh:     newBlockCh,
 		flags:          flags,
@@ -93,7 +92,7 @@ func (bc *BlockChain) Genesis() *types.Block {
 }
 
 // ChainID
-func (bc *BlockChain) ChainID() *big.Int {
+func (bc *BlockChain) ChainID() uint16 {
 	return bc.chainID
 }
 

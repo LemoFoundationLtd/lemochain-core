@@ -157,7 +157,7 @@ func readConfigFile(path string) (*ChainConfigFile, error) {
 		return nil, err
 	}
 	msg := ""
-	if config.ChainID.Uint64() > 65535 {
+	if config.ChainID > 65535 {
 		msg += "chainID must be in [1, 65535]\r\n"
 	}
 	// todo
