@@ -8,7 +8,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
-	"math/big"
 	"time"
 )
 
@@ -31,7 +30,9 @@ func NewDpovp(bc *BlockChain) *Dpovp {
 // VerifyHeader 验证区块头
 func (d *Dpovp) VerifyHeader(block *types.Block) error {
 	header := block.Header
-	if header.Time.Cmp(big.NewInt(time.Now().Unix())) > 0 {
+	b_t := int64(header.Time.Uint64())
+	t_n := time.Now().Unix()
+	if b_t > t_n {
 		return errors.New("block in the future")
 	}
 	// addrHash := crypto.Keccak256Hash(header.LemoBase[:])
