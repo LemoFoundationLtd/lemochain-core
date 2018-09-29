@@ -189,7 +189,7 @@ func (bc *BlockChain) MineNewBlock(block *types.Block) error {
 }
 
 func (bc *BlockChain) newBlockNotify(block *types.Block) {
-	bc.newBlockCh <- block
+	go func() { bc.newBlockCh <- block }()
 }
 
 // InsertChain 插入区块到到链上——非自己挖到的块
@@ -246,7 +246,7 @@ func (bc *BlockChain) InsertChain(block *types.Block) (err error) {
 			curBlock := bc.currentBlock.Load().(*types.Block)
 			log.Infof("chain forked! current block: height(%d), hash(%s)", curBlock.Height(), curBlock.Hash().Hex())
 		}
-		log.Debugf("Insert block to db success. height:%d", block.Height())
+		log.Infof("Insert block to db success. height:%d", block.Height())
 		// only broadcast confirm info within one hour
 		c_t := uint64(time.Now().Unix())
 		if c_t-block.Time().Uint64() < 60*60 {
