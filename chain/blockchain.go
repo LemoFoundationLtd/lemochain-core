@@ -22,7 +22,7 @@ type broadcastConfirmInfoFn func(hash common.Hash, height uint32)
 type broadcastBlockFn func(block *types.Block)
 
 type BlockChain struct {
-	chainID              *big.Int
+	chainID              uint16
 	flags                map[string]string
 	dbOpe                db.ChainDB // 数据库操作
 	am                   *account.Manager
@@ -46,7 +46,7 @@ type BlockChain struct {
 
 func NewBlockChain(chainID *big.Int, db db.ChainDB, newBlockCh chan *types.Block, flags map[string]string) (bc *BlockChain, err error) {
 	bc = &BlockChain{
-		chainID:        new(big.Int).Set(chainID),
+		chainID:        uint16(chainID.Uint64()),
 		dbOpe:          db,
 		newBlockCh:     newBlockCh,
 		flags:          flags,
