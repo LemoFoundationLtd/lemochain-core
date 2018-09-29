@@ -129,7 +129,7 @@ func saveBlock(db protocol.ChainDB, blockIndex int, info blockInfo) {
 	if err != nil {
 		panic(err)
 	}
-	// block
+	// header
 	header := &types.Header{
 		VersionRoot: info.versionRoot,
 		Time:        info.time,
@@ -141,6 +141,7 @@ func saveBlock(db protocol.ChainDB, blockIndex int, info blockInfo) {
 	if blockHash != info.hash {
 		panic(fmt.Errorf("%d block hash error. except: %s, got: %s", blockIndex, info.hash.Hex(), blockHash.Hex()))
 	}
+	// block
 	block := &types.Block{}
 	block.SetHeader(header)
 	defaultBlocks = append(defaultBlocks, block)
