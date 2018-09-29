@@ -7,6 +7,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"reflect"
+	"strconv"
 	"strings"
 )
 
@@ -124,7 +125,7 @@ func (c *ChainAPI) GetBlock(n interface{}) *types.Block {
 
 // GetChainID get chain id
 func (c *ChainAPI) GetChainID() string {
-	return c.chain.ChainID().String()
+	return strconv.Itoa(int(c.chain.ChainID()))
 }
 
 // GetGenesis get the creation block

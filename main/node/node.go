@@ -156,6 +156,14 @@ func readConfigFile(path string) (*ChainConfigFile, error) {
 	if err = json.NewDecoder(file).Decode(&config); err != nil {
 		return nil, err
 	}
+	msg := ""
+	if config.ChainID > 65535 {
+		msg += "chainID must be in [1, 65535]\r\n"
+	}
+	// todo
+	if msg != "" {
+		panic("config.json error: " + msg)
+	}
 	return &config, nil
 }
 
