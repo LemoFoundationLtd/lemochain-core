@@ -74,7 +74,7 @@ type Node struct {
 	lock sync.RWMutex
 }
 
-func New(lemoConf *LemoConfig, conf *NodeConfig) (*Node, error) {
+func New(lemoConf *LemoConfig, conf *NodeConfig, flags map[string]string) (*Node, error) {
 	confCopy := *conf
 	conf = &confCopy
 	if conf.DataDir != "" {
@@ -114,7 +114,7 @@ func New(lemoConf *LemoConfig, conf *NodeConfig) (*Node, error) {
 		return nil, err
 	}
 	recvBlockCh := make(chan *types.Block)
-	blockChain, err := chain.NewBlockChain(genesisConfig.ChainID, db, recvBlockCh)
+	blockChain, err := chain.NewBlockChain(genesisConfig.ChainID, db, recvBlockCh, flags)
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +137,7 @@ func New(lemoConf *LemoConfig, conf *NodeConfig) (*Node, error) {
 	}
 	n.genesisBlock, _ = db.GetBlockByHeight(0)
 	n.config.P2P.PrivateKey = deputynode.GetSelfNodeKey()
-	miner := miner.New(int64(genesisConfig.SleepTime), int64(genesisConfig.Timeout), blockChain, n.config.NodeKey(), newMinedBlockCh, recvBlockCh)
+	miner := miner.New(int64(genesisConfig.SleepTime), int64(genesisConfig.Timeout), blockChain, txPool, n.config.NodeKey(), newMinedBlockCh, recvBlockCh)
 	n.miner = miner
 	d_n := deputynode.Instance().GetNodeByNodeID(blockChain.CurrentBlock().Height()+1, deputynode.GetSelfNodeID())
 	if d_n != nil {
@@ -155,6 +155,14 @@ func readConfigFile(path string) (*ChainConfigFile, error) {
 	var config ChainConfigFile
 	if err = json.NewDecoder(file).Decode(&config); err != nil {
 		return nil, err
+	}
+	msg := ""
+	if config.ChainID > 65535 {
+		msg += "chainID must be in [1, 65535]\r\n"
+	}
+	// todo
+	if msg != "" {
+		panic("config.json error: " + msg)
 	}
 	return &config, nil
 }
@@ -338,7 +346,7 @@ func (n *Node) Stop() error {
 func (n *Node) stopChain() error {
 	n.chain.Stop()
 	n.pm.Stop()
-	n.txPool.Stop()
+	// n.txPool.Stop()
 	n.miner.Stop()
 	if err := n.db.Close(); err != nil {
 		return err

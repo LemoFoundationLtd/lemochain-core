@@ -3,6 +3,7 @@ package node
 import (
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
+	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/network/p2p"
 	"gopkg.in/urfave/cli.v1"
@@ -22,102 +23,105 @@ func NewApp(usage string) *cli.App {
 
 var (
 	DataDirFlag = cli.StringFlag{
-		Name:  "datadir",
+		Name:  common.DataDir,
 		Usage: "Data directory for the databases",
 		Value: DefaultDataDir(),
 	}
 	NetworkIdFlag = cli.Uint64Flag{
-		Name:  "networkid",
+		Name:  common.NetworkID,
 		Usage: "Network identifier",
 		Value: DefaultConfig.NetworkId,
 	}
 	MaxPeersFlag = cli.IntFlag{
-		Name:  "maxpeers",
+		Name:  common.MaxPeers,
 		Usage: "Maximum number of network peers",
 		Value: DefaultConfig.MaxPeers,
 	}
 	ListenPortFlag = cli.IntFlag{
-		Name:  "port",
+		Name:  common.ListenPort,
 		Usage: "Network listening port",
 		Value: DefaultConfig.Port,
 	}
 	ExtraDataFlag = cli.StringFlag{
-		Name:  "extradata",
+		Name:  common.ExtraData,
 		Usage: "Block extra data set by the miner (default = client version)",
 	}
 	NodeKeyFileFlag = cli.StringFlag{
-		Name:  "nodekey",
+		Name:  common.NodeKeyFile,
 		Usage: "node's private key for sign and handshake",
 	}
 	MiningEnabledFlag = cli.BoolFlag{
-		Name:  "mine",
+		Name:  common.MiningEnabled,
 		Usage: "Enable mining",
 	}
 
 	RPCEnabledFlag = cli.BoolFlag{
-		Name:  "rpc",
+		Name:  common.RPCEnabled,
 		Usage: "Enable the HTTP-RPC server",
 	}
 	RPCListenAddrFlag = cli.StringFlag{
-		Name:  "rpcaddr",
+		Name:  common.RPCListenAddr,
 		Usage: "HTTP-RPC server listening interface",
 		Value: DefaultHTTPHost,
 	}
 	RPCPortFlag = cli.IntFlag{
-		Name:  "rpcport",
+		Name:  common.RPCPort,
 		Usage: "HTTP-RPC server listening port",
 		Value: DefaultHTTPPort,
 	}
 	RPCCORSDomainFlag = cli.StringFlag{
-		Name:  "rpccorsdomain",
+		Name:  common.RPCCORSDomain,
 		Usage: "Comma separated list of domains from which to accept cross origin requests (browser enforced)",
 		Value: "",
 	}
 	RPCVirtualHostsFlag = cli.StringFlag{
-		Name:  "rpcvhosts",
+		Name:  common.RPCVirtualHosts,
 		Usage: "Comma separated list of virtual hostnames from which to accept requests(server enforced). Accepts '*' wildcard",
 		Value: strings.Join(DefaultNodeConfig.HTTPVirtualHosts, ","),
 	}
 	RPCApiFlag = cli.StringFlag{
-		Name:  "rpcapi",
+		Name:  common.RPCApi,
 		Usage: "API's offered over the HTTP-RPC interface",
 		Value: "",
 	}
 	IPCDisabledFlag = cli.BoolFlag{
-		Name:  "ipcdisable",
+		Name:  common.IPCDisabled,
 		Usage: "Disable the IPC-RPC server",
 	}
 	IPCPathFlag = cli.StringFlag{
-		Name:  "ipcpath",
+		Name:  common.IPCPath,
 		Usage: "Filename for IPC socket/pipe within the datadir",
 	}
 	WSEnabledFlag = cli.BoolFlag{
-		Name:  "ws",
+		Name:  common.WSEnabled,
 		Usage: "Enable the WS-RPC server",
 	}
 	WSListenAddrFlag = cli.StringFlag{
-		Name:  "wsaddr",
+		Name:  common.WSListenAddr,
 		Usage: "WS-RPC server listening interface",
 		Value: DefaultWSHost,
 	}
 	WSPortFlag = cli.IntFlag{
-		Name:  "wsport",
+		Name:  common.WSPort,
 		Usage: "WS-RPC server listening port",
 		Value: DefaultWSPort,
 	}
 	WSApiFlag = cli.StringFlag{
-		Name:  "wsapi",
+		Name:  common.WSApi,
 		Usage: "API's offered over the WS-RPC interface",
 		Value: "",
 	}
 	WSAllowedOriginsFlag = cli.StringFlag{
-		Name:  "wsorigins",
+		Name:  common.WSAllowedOrigins,
 		Usage: "Origins from which to accept websockets request.",
 	}
-
+	DebugFlag = cli.BoolFlag{
+		Name:  common.Debug,
+		Usage: "Debug for runtime",
+	}
 	// from eth
 	JSpathFlag = cli.StringFlag{
-		Name:  "jspath",
+		Name:  common.JSpath,
 		Usage: "JavaScript root path for `loadScript`",
 		Value: ".",
 	}

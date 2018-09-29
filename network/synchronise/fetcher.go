@@ -338,7 +338,7 @@ func (f *Fetcher) enqueue(newBlock *newBlock) {
 	f.queueMp[peer]++
 	f.queuedMp[hash] = newBlock
 	f.queue.Push(newBlock, -float32(newBlock.block.Height()))
-	log.Debug(fmt.Sprintf("receive one block, height:%d hash:%s", newBlock.block.Height(), hash[:]))
+	log.Debugf("receive one block, height:%d hash:%s", newBlock.block.Height(), hash.String())
 }
 
 // insert 启动个协程插入块到链上

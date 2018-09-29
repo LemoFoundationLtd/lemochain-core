@@ -122,9 +122,11 @@ func (srv *Server) Start() error {
 		return err
 	}
 	if srv.addPeerCh == nil {
-		srv.addPeerCh = make(chan *Peer)
+		srv.addPeerCh = make(chan *Peer, 5)
 	}
-	srv.peers = make(map[NodeID]*Peer)
+	if srv.peers == nil {
+		srv.peers = make(map[NodeID]*Peer)
+	}
 	if srv.delPeerCh == nil {
 		srv.delPeerCh = make(chan *Peer)
 	}
@@ -154,6 +156,12 @@ func (srv *Server) Stop() {
 	srv.running = false
 	if srv.listener != nil {
 		srv.listener.Close()
+	}
+	if srv.peers != nil {
+		for _, p := range srv.peers {
+			p.Close()
+		}
+		srv.peers = nil
 	}
 	close(srv.quit)
 	srv.loopWG.Wait()
@@ -224,8 +232,10 @@ func (srv *Server) run() {
 	for {
 		select {
 		case p := <-srv.addPeerCh:
+			log.Debugf("receive srv.addPeerCh. node id: %s", common.ToHex(p.nodeId[:8]))
 			if _, ok := srv.peers[p.nodeId]; ok {
 				p.Close()
+				log.Debugf("Connection has already exist. Remote node id: %s", common.ToHex(p.nodeId[:8]))
 				break
 			}
 			srv.peersMux.Lock()
@@ -233,10 +243,12 @@ func (srv *Server) run() {
 			srv.peersMux.Unlock()
 			go srv.runPeer(p)
 			if srv.PeerEvent != nil { // 通知外界收到新的节点
+				log.Debugf("start execute peerEvent. node id: %s", common.ToHex(p.nodeId[:8]))
 				if err := srv.PeerEvent(p, AddPeerFlag); err != nil {
 					p.Close()
 				}
 			}
+			log.Debugf("handle addPeerCh success. node id: %s", common.ToHex(p.nodeId[:8]))
 		case p := <-srv.delPeerCh:
 			srv.peersMux.Lock()
 			delete(srv.peers, p.nodeId)
@@ -247,9 +259,11 @@ func (srv *Server) run() {
 				}
 			}
 			srv.needConnectNodeCh <- p.rw.fd.RemoteAddr().String() // 断线重连 todo
+			break
 		case <-srv.quit:
 			return
 		}
+		log.Debug("next turn to addPeerCh")
 	}
 }
 
@@ -279,7 +293,7 @@ func (srv *Server) listenLoop() {
 }
 
 // 处理接收到的连接 服务端客户端均走此函数
-// dialDest == nil ? server : client
+// isSelfServer == true ? server : client
 func (srv *Server) HandleConn(fd net.Conn, isSelfServer bool) error {
 	if !srv.running {
 		return errServerStopped
@@ -289,17 +303,18 @@ func (srv *Server) HandleConn(fd net.Conn, isSelfServer bool) error {
 	if err != nil {
 		return err
 	}
-	srv.addPeerCh <- peer.(*Peer)
+	p := peer.(*Peer)
+	srv.addPeerCh <- p
+	log.Debug("transfer new peer to srv.addPeerCh")
 	return nil
 }
 
 func (srv *Server) runPeer(p *Peer) {
 	srv.loopWG.Add(1)
 	defer srv.loopWG.Done()
-
+	log.Debugf("start run peer. node id: %s", common.ToHex(p.nodeId[:8]))
 	p.run() // 正常情况下会阻塞 除非节点drop
 	srv.delPeerCh <- p
-	log.Info(fmt.Sprintf("peer:%s droped", common.ToHex(p.nodeId[:8])))
 }
 
 // 启动主动连接调度
@@ -314,8 +329,8 @@ func (srv *Server) runDialLoop() {
 			failedNodes[node] = struct{}{}
 		}
 	}
-	retryTimer := time.NewTimer(0)
-	<-retryTimer.C
+	retryTimer := time.NewTimer(retryConnTimeout)
+	// <-retryTimer.C
 	defer retryTimer.Stop()
 	for {
 		select {
@@ -332,10 +347,12 @@ func (srv *Server) runDialLoop() {
 			}
 			retryTimer.Reset(retryConnTimeout)
 		case node := <-srv.needConnectNodeCh:
-			dialTask := newDialTask(node, srv)
-			if err := dialTask.Run(); err != nil {
-				failedNodes[node] = struct{}{}
-			}
+			go func() {
+				dialTask := newDialTask(node, srv)
+				if err := dialTask.Run(); err != nil {
+					failedNodes[node] = struct{}{}
+				}
+			}()
 		}
 	}
 }

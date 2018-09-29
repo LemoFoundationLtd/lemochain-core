@@ -8,7 +8,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
-	"github.com/LemoFoundationLtd/lemochain-go/common/dpovp"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/network/p2p"
 	"github.com/LemoFoundationLtd/lemochain-go/network/synchronise/protocol"
@@ -63,7 +62,7 @@ func NewProtocolManager(networkId uint64, nodeID []byte, blockchain *chain.Block
 		return blockchain.InsertChain(block)
 	}
 	manager.fetcher = NewFetcher(blockchain.GetBlock, blockchain.Verify, manager.broadcastCurrentBlock, getLocalHeight, getConsensusHeight, insertToChain, manager.dropPeer)
-	manager.downloader = NewDownloader(blockchain, manager.dropPeer)
+	manager.downloader = NewDownloader(manager.peers, blockchain, manager.dropPeer)
 
 	blockchain.BroadcastConfirmInfo = manager.broadcastConfirmInfo // 广播区块的确认信息
 	blockchain.BroadcastStableBlock = manager.broadcastStableBlock // 广播稳定区块
@@ -143,8 +142,8 @@ func (pm *ProtocolManager) broadcastConfirmInfo(hash common.Hash, height uint32)
 		Hash:   hash,
 		Height: height,
 	}
-	privKey := dpovp.GetPrivKey()
-	signInfo, err := crypto.Sign(hash[:], &privKey)
+	privKey := deputynode.GetSelfNodeKey()
+	signInfo, err := crypto.Sign(hash[:], privKey)
 	if err != nil {
 		log.Error("sign for confirm data error")
 		return
@@ -173,9 +172,9 @@ func (pm *ProtocolManager) broadcastStableBlock(block *types.Block) {
 
 // dropPeer 断开连接
 func (pm *ProtocolManager) dropPeer(id string) {
-	log.Infof("Drop peer: %s", id)
+	log.Infof("Drop peer: %s", id[:16])
 	pm.peers.Unregister(id)
-	pm.downloader.UnRegisterPeer(id)
+	// pm.downloader.UnRegisterPeer(id)
 }
 
 // PeerEvent 节点事件通知回调，主要有新增、删除节点
@@ -183,15 +182,9 @@ func (pm *ProtocolManager) PeerEvent(peer *p2p.Peer, flag p2p.PeerEventFlag) err
 	switch flag {
 	case p2p.AddPeerFlag:
 		p := newPeer(peer)
-		pm.handle(p)
-		// select {
-		// case pm.newPeerCh <- p:
-		// 	go pm.handle(p)
-		// case <-pm.quitSync:
-		// 	return errors.New("quit")
-		// }
+		go pm.handle(p)
 	case p2p.DropPeerFlag:
-		pm.dropPeer(peer.NodeID().String())
+		go pm.dropPeer(peer.NodeID().String())
 	default:
 
 	}
@@ -202,7 +195,7 @@ func (pm *ProtocolManager) PeerEvent(peer *p2p.Peer, flag p2p.PeerEventFlag) err
 func (pm *ProtocolManager) handle(p *peer) error {
 	block := pm.blockchain.CurrentBlock()
 	if err := p.Handshake(pm.networkId, block.Height(), block.Hash(), pm.blockchain.Genesis().Hash()); err != nil {
-		log.Debug("lemochain handshake failed", "err", err)
+		log.Infof("lemochain handshake failed: %v", err)
 		return err
 	}
 	pm.syncTransactions(p.id)
@@ -212,7 +205,7 @@ func (pm *ProtocolManager) handle(p *peer) error {
 		peer: p,
 	}
 	pm.peers.Register(pConn)
-	pm.downloader.RegisterPeer(p.id, p)
+	// pm.downloader.RegisterPeer(p.id, p)
 	pm.newPeerCh <- p
 
 	// 死循环 处理收到的网络消息
@@ -262,7 +255,7 @@ func (pm *ProtocolManager) handleMsg(p *peerConnection) error {
 			}
 			p.peer.MarkTransaction(tx.Hash())
 		}
-		pm.txPool.AddTxs(txs)
+		// pm.txPool.AddTxs(txs)
 	case protocol.GetBlocksMsg:
 		var query protocol.GetBlocksData
 		if err := msg.Decode(&query); err != nil {
@@ -301,7 +294,7 @@ func (pm *ProtocolManager) handleMsg(p *peerConnection) error {
 		if len(blocks) == 0 {
 			return errResp(protocol.ErrNoBlocks, "%v: %s", msg, "no blocks data")
 		}
-		log.Infof("Receive blocks from: %s. from: %d -- to: %d", p.id, blocks[0].Height(), blocks[len(blocks)-1].Height())
+		log.Infof("Receive blocks from: %s. from: %d -- to: %d", p.id[:16], blocks[0].Height(), blocks[len(blocks)-1].Height())
 		filter := len(blocks) == 1 // len(blocks) == 1 不一定为fetcher，但len(blocks)>1肯定是downloader
 		if filter {
 			blocks = pm.fetcher.FilterBlocks(p.id, blocks)
@@ -340,13 +333,13 @@ func (pm *ProtocolManager) handleMsg(p *peerConnection) error {
 		pm.fetcher.Enqueue(p.id, block)
 		log.Infof("Receive new block. height: %d. hash: %s", block.Height(), block.Hash().Hex())
 		if block.Height() > p.peer.height {
-			p.peer.SetHead(p.peer.head, p.peer.height)
+			p.peer.SetHead(block.Hash(), block.Height())
 			// 清理交易池
 			txs := make([]common.Hash, 0)
 			for _, tx := range block.Txs {
 				txs = append(txs, tx.Hash())
 			}
-			pm.txPool.RemoveTxs(txs)
+			// pm.txPool.RemoveTxs(txs)
 			currentHeight := pm.blockchain.CurrentBlock().Height()
 			if currentHeight+1 < block.Height() {
 				go pm.synchronise(p.id)
@@ -452,10 +445,17 @@ func (pm *ProtocolManager) syncer() {
 	forceSync := time.NewTimer(10 * time.Second)
 	for {
 		select {
-		case <-pm.newPeerCh:
-			go pm.synchronise(pm.peers.BestPeer())
+		case p := <-pm.newPeerCh:
+			if p.height > pm.blockchain.CurrentBlock().Height() {
+				go pm.synchronise(p.id)
+			}
 		case <-forceSync.C:
-			go pm.synchronise(pm.peers.BestPeer())
+			p := pm.peers.BestPeer()
+			if p != nil {
+				if p.peer.height > pm.blockchain.CurrentBlock().Height() {
+					go pm.synchronise(p.id)
+				}
+			}
 		case <-pm.quitSync:
 			return
 		}
@@ -478,7 +478,7 @@ func (pm *ProtocolManager) synchronise(p string) {
 
 // syncTransactions 同步交易 发送本地所有交易到该节点
 func (pm *ProtocolManager) syncTransactions(id string) {
-	pending := pm.txPool.Pending()
+	pending := pm.txPool.Pending(1000000)
 	if len(pending) == 0 {
 		return
 	}

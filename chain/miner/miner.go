@@ -21,10 +21,12 @@ type Miner struct {
 	timeoutTime   int64
 	privKey       *ecdsa.PrivateKey
 	lemoBase      common.Address
+	txPool        *chain.TxPool
 	mining        int32
 	engine        *chain.Dpovp
 	// lemo Backend
 	chain        *chain.BlockChain
+	txProcessor  *chain.TxProcessor
 	mux          sync.Mutex
 	currentBlock func() *types.Block
 	extra        []byte // 扩展数据 暂保留 最大256byte
@@ -37,13 +39,15 @@ type Miner struct {
 	quitCh         chan struct{}     // 退出
 }
 
-func New(blockInternal, timeout int64, chain *chain.BlockChain, privKey *ecdsa.PrivateKey, mineNewBlockCh, recvBlockCh chan *types.Block) *Miner {
+func New(blockInternal, timeout int64, chain *chain.BlockChain, txPool *chain.TxPool, privKey *ecdsa.PrivateKey, mineNewBlockCh, recvBlockCh chan *types.Block) *Miner {
 	m := &Miner{
 		blockInternal:  blockInternal,
 		timeoutTime:    timeout,
 		privKey:        privKey,
 		chain:          chain,
+		txPool:         txPool,
 		currentBlock:   chain.CurrentBlock,
+		txProcessor:    chain.TxProcessor(),
 		mineNewBlockCh: mineNewBlockCh,
 		recvNewBlockCh: recvBlockCh,
 		timeToMineCh:   make(chan struct{}),
@@ -213,9 +217,8 @@ func (m *Miner) sealBlock() {
 		return
 	}
 	header := m.sealHead()
-	var txs []*types.Transaction // todo
-	// txs:=m.lemo.TxPool().Pending()
-	txsRes, err := chain.NewTxProcessor(m.chain).ApplyTxs(header, txs)
+	txs := m.txPool.Pending(10000000)
+	txsRes, err := m.txProcessor.ApplyTxs(header, txs)
 	if err != nil {
 		log.Error(fmt.Sprintf("apply transactions for block failed! %s", err))
 		return
