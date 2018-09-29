@@ -4,7 +4,6 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 )
 
@@ -32,7 +31,7 @@ type dummyStateDB struct {
 
 func TestStoreCapture(t *testing.T) {
 	var (
-		env      = NewEVM(Context{}, nil, params.DefaultChainConfig(), Config{})
+		env      = NewEVM(Context{}, nil, Config{})
 		logger   = NewStructLogger(nil)
 		mem      = NewMemory()
 		stack    = newstack()

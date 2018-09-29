@@ -4,7 +4,6 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 )
 
@@ -16,7 +15,7 @@ type twoOperandTest struct {
 
 func testTwoOperandOp(t *testing.T, tests []twoOperandTest, opFn func(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack *Stack) ([]byte, error)) {
 	var (
-		env   = NewEVM(Context{}, nil, params.DefaultChainConfig(), Config{})
+		env   = NewEVM(Context{}, nil, Config{})
 		stack = newstack()
 		pc    = uint64(0)
 	)
@@ -52,7 +51,7 @@ func testTwoOperandOp(t *testing.T, tests []twoOperandTest, opFn func(pc *uint64
 
 func TestByteOp(t *testing.T) {
 	var (
-		env   = NewEVM(Context{}, nil, params.DefaultChainConfig(), Config{})
+		env   = NewEVM(Context{}, nil, Config{})
 		stack = newstack()
 	)
 	tests := []struct {
@@ -182,7 +181,7 @@ func TestSLT(t *testing.T) {
 
 func opBenchmark(bench *testing.B, op func(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack *Stack) ([]byte, error), args ...string) {
 	var (
-		env   = NewEVM(Context{}, nil, params.DefaultChainConfig(), Config{})
+		env   = NewEVM(Context{}, nil, Config{})
 		stack = newstack()
 	)
 	// convert args
