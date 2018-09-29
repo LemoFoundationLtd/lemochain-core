@@ -194,6 +194,7 @@ func (bc *BlockChain) newBlockNotify(block *types.Block) {
 
 // InsertChain 插入区块到到链上——非自己挖到的块
 func (bc *BlockChain) InsertChain(block *types.Block) (err error) {
+	log.Infof("start insert block to chain. height: %d", block.Height())
 	hash := block.Hash()
 	parHash := block.ParentHash()
 	curHash := bc.currentBlock.Load().(*types.Block).Hash()
@@ -228,6 +229,7 @@ func (bc *BlockChain) InsertChain(block *types.Block) (err error) {
 		log.Error(fmt.Sprintf("can't insert block to cache. height:%d hash:%s", block.Height(), block.Hash().Hex()))
 		return err
 	}
+	log.Infof("insert block to chain. height: %d", block.Height())
 	// 判断confirm package
 	if block.ConfirmPackage != nil {
 		nodeCount := deputynode.Instance().GetDeputyNodesCount()
