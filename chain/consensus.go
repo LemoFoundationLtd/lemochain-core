@@ -32,7 +32,7 @@ func (d *Dpovp) VerifyHeader(block *types.Block) error {
 	header := block.Header
 	b_t := int64(header.Time.Uint64())
 	t_n := time.Now().Unix()
-	if b_t > t_n {
+	if b_t-t_n > 1 { // Prevent validation failure due to time error
 		return errors.New("block in the future")
 	}
 	// addrHash := crypto.Keccak256Hash(header.LemoBase[:])
