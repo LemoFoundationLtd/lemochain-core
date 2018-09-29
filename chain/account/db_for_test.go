@@ -14,14 +14,36 @@ import (
 	"path/filepath"
 )
 
+type blockInfo struct {
+	hash        common.Hash
+	versionRoot common.Hash
+	time        *big.Int
+}
+
 var (
-	defaultBlock = struct {
-		hash        common.Hash
-		versionRoot common.Hash
-	}{
-		hash:        common.HexToHash("0x973d217e0e17173c9ee5b62c225b5caca70116169b9233fcb60686e0a67d9497"),
-		versionRoot: common.HexToHash("0x7f9f6d86f2653404d59d39099b5e39eec80cdbcaa263fee5456b87ebc13b37bc"),
+	defaultBlocks     = make([]*types.Block, 0)
+	newestBlock       = new(types.Block)
+	defaultBlockInfos = []blockInfo{
+		// genesis block
+		{
+			hash:        common.HexToHash("0xdc3a4b47a4b090e1040315c93659075ff70d43905eef62e1929703b0cf73e5f1"),
+			versionRoot: common.HexToHash("0x7f9f6d86f2653404d59d39099b5e39eec80cdbcaa263fee5456b87ebc13b37bc"),
+			time:        big.NewInt(1538209751),
+		},
+		// block 1 is stable block
+		{
+			hash:        common.HexToHash("0x8c182a2b82e9bdee1d4f6223ef8fb98e1f26546a110662eb2a84f94b9727986a"),
+			versionRoot: common.HexToHash("0x7f9f6d86f2653404d59d39099b5e39eec80cdbcaa263fee5456b87ebc13b37bc"),
+			time:        big.NewInt(1538209755),
+		},
+		// block 2 is not stable block
+		{
+			hash:        common.HexToHash("0x06879dd8a35e0942098a57bbfb28a654507a9b847fe5e0dfa8bbf4ea9400f64b"),
+			versionRoot: common.HexToHash("0x7f9f6d86f2653404d59d39099b5e39eec80cdbcaa263fee5456b87ebc13b37bc"),
+			time:        big.NewInt(1538209758),
+		},
 	}
+	// this account data is written with genesis block
 	defaultAccounts = []*types.AccountData{
 		{
 			Address:     common.HexToAddress("0x10000"),
@@ -70,9 +92,11 @@ func newDB() protocol.ChainDB {
 		panic(err)
 	}
 
-	saveBlock(db)
+	for i, blockInfo := range defaultBlockInfos {
+		saveBlock(db, i, blockInfo)
+	}
 	saveAccount(db)
-	err = db.SetStableBlock(defaultBlock.hash)
+	err = db.SetStableBlock(defaultBlockInfos[1].hash)
 	if err != nil {
 		panic(err)
 	}
@@ -80,49 +104,57 @@ func newDB() protocol.ChainDB {
 	return db
 }
 
-func saveBlock(db protocol.ChainDB) {
-	// block
-	block := &types.Block{}
-	block.SetHeader(&types.Header{VersionRoot: defaultBlock.versionRoot})
-	hash := block.Hash()
-	if hash != defaultBlock.hash {
-		panic(fmt.Errorf("block hash error. except: %s, got: %s", defaultBlock.hash.Hex(), hash.Hex()))
-	}
-	err := db.SetBlock(defaultBlock.hash, block)
-	if err != nil && err != store.ErrExist {
-		panic(err)
-	}
+func saveBlock(db protocol.ChainDB, blockIndex int, info blockInfo) {
 	// version trie
 	trieDB := db.GetTrieDatabase()
 	tr, err := trie.NewSecure(common.Hash{}, trieDB, MaxTrieCacheGen)
 	if err != nil {
 		panic(err)
-	} else {
-		for _, account := range defaultAccounts {
-			v := bytes.TrimLeft(account.Address.Bytes(), "\x00")
-			err = tr.TryUpdate(big.NewInt(int64(account.Version)).Bytes(), v)
-			if err != nil {
-				panic(err)
-			}
-		}
-		hash, err := tr.Commit(nil)
+	}
+	for _, account := range defaultAccounts {
+		v := bytes.TrimLeft(account.Address.Bytes(), "\x00")
+		err = tr.TryUpdate(big.NewInt(int64(account.Version)).Bytes(), v)
 		if err != nil {
 			panic(err)
 		}
-		if hash != defaultBlock.versionRoot {
-			panic(fmt.Errorf("version root error. except: %s, got: %s", defaultBlock.versionRoot.Hex(), hash.Hex()))
-		}
-		err = trieDB.Commit(hash, false)
-		if err != nil {
-			panic(err)
-		}
+	}
+	hash, err := tr.Commit(nil)
+	if err != nil {
+		panic(err)
+	}
+	if hash != info.versionRoot {
+		panic(fmt.Errorf("%d version root error. except: %s, got: %s", blockIndex, info.versionRoot.Hex(), hash.Hex()))
+	}
+	err = trieDB.Commit(hash, false)
+	if err != nil {
+		panic(err)
+	}
+	// block
+	header := &types.Header{
+		VersionRoot: info.versionRoot,
+		Time:        info.time,
+	}
+	if blockIndex > 0 {
+		header.ParentHash = defaultBlockInfos[blockIndex-1].hash
+	}
+	blockHash := header.Hash()
+	if blockHash != info.hash {
+		panic(fmt.Errorf("%d block hash error. except: %s, got: %s", blockIndex, info.hash.Hex(), blockHash.Hex()))
+	}
+	block := &types.Block{}
+	block.SetHeader(header)
+	defaultBlocks = append(defaultBlocks, block)
+	newestBlock = block
+	err = db.SetBlock(info.hash, block)
+	if err != nil && err != store.ErrExist {
+		panic(err)
 	}
 }
 
 func saveAccount(db protocol.ChainDB) {
 	trieDB := db.GetTrieDatabase()
 	// save account (to db cache, not to file)
-	err := db.SetAccounts(defaultBlock.hash, defaultAccounts)
+	err := db.SetAccounts(defaultBlockInfos[0].hash, defaultAccounts)
 	if err != nil {
 		panic(err)
 	}
@@ -168,13 +200,12 @@ func testStorageTrieGet(db protocol.ChainDB) {
 	tr, err := trie.NewSecure(defaultAccounts[0].StorageRoot, db.GetTrieDatabase(), MaxTrieCacheGen)
 	if err != nil {
 		panic(err)
-	} else {
-		value, err := tr.TryGet(defaultStorage[0].key[:])
-		if err != nil {
-			panic(err)
-		} else if bytes.Compare(value, defaultStorage[0].value) != 0 {
-			panic(fmt.Errorf("Data has changed! Expect %v, got %v\n", defaultStorage[0].value, value))
-		}
+	}
+	value, err := tr.TryGet(defaultStorage[0].key[:])
+	if err != nil {
+		panic(err)
+	} else if bytes.Compare(value, defaultStorage[0].value) != 0 {
+		panic(fmt.Errorf("Data has changed! Expect %v, got %v\n", defaultStorage[0].value, value))
 	}
 }
 

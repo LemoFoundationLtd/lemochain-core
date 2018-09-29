@@ -16,7 +16,7 @@ func TestAccount_Interface(t *testing.T) {
 
 func loadAccount(address common.Address) *Account {
 	db := newDB()
-	data, _ := db.GetAccount(defaultBlock.hash, address)
+	data, _ := db.GetAccount(newestBlock.Hash(), address)
 	return NewAccount(db, address, data)
 }
 

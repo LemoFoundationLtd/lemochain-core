@@ -30,7 +30,7 @@ func TestNewManager_GetAccount(t *testing.T) {
 	db := newDB()
 
 	// exist in db
-	manager := NewManager(defaultBlock.hash, db)
+	manager := NewManager(newestBlock.Hash(), db)
 	account := manager.GetAccount(defaultAccounts[0].Address)
 	assert.Equal(t, uint32(100), account.GetVersion())
 	assert.Equal(t, false, account.IsEmpty())
@@ -38,6 +38,12 @@ func TestNewManager_GetAccount(t *testing.T) {
 	account = manager.GetAccount(common.HexToAddress("0xaaa"))
 	assert.Equal(t, common.HexToAddress("0xaaa"), account.GetAddress())
 	assert.Equal(t, true, account.IsEmpty())
+
+	// load from older block
+	manager = NewManager(defaultBlockInfos[0].hash, db)
+	account = manager.GetAccount(defaultAccounts[0].Address)
+	assert.Equal(t, uint32(100), account.GetVersion())
+	assert.Equal(t, false, account.IsEmpty())
 
 	// load from genesis' parent block
 	manager = NewManager(common.Hash{}, db)
@@ -57,7 +63,7 @@ func TestNewManager_GetCanonicalAccount(t *testing.T) {
 	db := newDB()
 
 	// exist in db
-	manager := NewManager(defaultBlock.hash, db)
+	manager := NewManager(newestBlock.Hash(), db)
 	account := manager.GetCanonicalAccount(defaultAccounts[0].Address)
 	assert.Equal(t, uint32(100), account.GetVersion())
 	// not exist in db
@@ -72,7 +78,7 @@ func TestNewManager_GetCanonicalAccount(t *testing.T) {
 }
 
 func TestChangeLogProcessor_GetAccount(t *testing.T) {
-	manager := NewManager(defaultBlock.hash, newDB())
+	manager := NewManager(newestBlock.Hash(), newDB())
 
 	// not exist in db
 	address := common.HexToAddress("0xaaa")
@@ -95,7 +101,7 @@ func TestChangeLogProcessor_GetAccount(t *testing.T) {
 }
 
 func TestChangeLogProcessor_PushEvent_PopEvent(t *testing.T) {
-	manager := NewManager(defaultBlock.hash, newDB())
+	manager := NewManager(newestBlock.Hash(), newDB())
 
 	// push
 	manager.processor.PushEvent(&types.Event{Address: common.HexToAddress("0x1"), TxHash: th(1), BlockHeight: 11})
@@ -117,7 +123,7 @@ func TestChangeLogProcessor_PushEvent_PopEvent(t *testing.T) {
 }
 
 func TestChangeLogProcessor_PushChangeLog_GetChangeLogs(t *testing.T) {
-	manager := NewManager(defaultBlock.hash, newDB())
+	manager := NewManager(newestBlock.Hash(), newDB())
 
 	manager.processor.PushChangeLog(&types.ChangeLog{
 		LogType: types.ChangeLogType(101),
@@ -133,7 +139,7 @@ func TestChangeLogProcessor_PushChangeLog_GetChangeLogs(t *testing.T) {
 }
 
 func TestNewManager_Snapshot_RevertToSnapshot(t *testing.T) {
-	manager := NewManager(defaultBlock.hash, newDB())
+	manager := NewManager(newestBlock.Hash(), newDB())
 
 	// snapshot when empty
 	assert.Equal(t, 0, len(manager.processor.validRevisions))
@@ -172,7 +178,7 @@ func TestNewManager_Snapshot_RevertToSnapshot(t *testing.T) {
 }
 
 func TestNewManager_AddEvent(t *testing.T) {
-	manager := NewManager(defaultBlock.hash, newDB())
+	manager := NewManager(newestBlock.Hash(), newDB())
 
 	event1 := &types.Event{Address: common.HexToAddress("0x1"), TxHash: th(1), BlockHeight: 11}
 	event2 := &types.Event{Address: common.HexToAddress("0x1"), TxHash: th(1), BlockHeight: 22}
@@ -198,9 +204,9 @@ func TestNewManager_GetVersionRoot(t *testing.T) {
 	assert.Equal(t, emptyTrieRoot, root)
 
 	// empty version trie
-	manager = NewManager(defaultBlock.hash, db)
+	manager = NewManager(newestBlock.Hash(), db)
 	root = manager.GetVersionRoot()
-	assert.Equal(t, defaultBlock.versionRoot, root)
+	assert.Equal(t, newestBlock.VersionRoot(), root)
 }
 
 func TestNewManager_Reset(t *testing.T) {
@@ -212,8 +218,8 @@ func TestNewManager_Reset(t *testing.T) {
 	assert.NotEmpty(t, manager.accountCache)
 	assert.NotEmpty(t, manager.processor.changeLogs)
 	assert.NotEmpty(t, manager.versionTrie)
-	manager.Reset(defaultBlock.hash)
-	assert.Equal(t, defaultBlock.hash, manager.baseBlockHash)
+	manager.Reset(newestBlock.Hash())
+	assert.Equal(t, newestBlock.Hash(), manager.baseBlockHash)
 	assert.Empty(t, manager.accountCache)
 	assert.Empty(t, manager.processor.changeLogs)
 	assert.Empty(t, manager.processor.events)
@@ -222,7 +228,7 @@ func TestNewManager_Reset(t *testing.T) {
 
 func TestNewManager_Finalise_Save(t *testing.T) {
 	db := newDB()
-	manager := NewManager(defaultBlock.hash, db)
+	manager := NewManager(newestBlock.Hash(), db)
 
 	// nothing to finalise
 	account := manager.GetAccount(common.HexToAddress("0x1"))
@@ -244,11 +250,11 @@ func TestNewManager_Finalise_Save(t *testing.T) {
 	assert.Equal(t, true, account.(*SafeAccount).IsDirty())
 	assert.Equal(t, 2, len(manager.processor.changeLogs))
 	root := manager.GetVersionRoot()
-	assert.Equal(t, defaultBlock.versionRoot, root)
+	assert.Equal(t, newestBlock.VersionRoot(), root)
 	err = manager.Finalise()
 	assert.NoError(t, err)
 	root = manager.GetVersionRoot()
-	assert.NotEqual(t, defaultBlock.versionRoot, root)
+	assert.NotEqual(t, newestBlock.VersionRoot(), root)
 	// save
 	block := &types.Block{}
 	block.SetHeader(&types.Header{VersionRoot: root})
