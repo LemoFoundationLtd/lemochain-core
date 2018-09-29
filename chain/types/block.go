@@ -38,11 +38,16 @@ type headerMarshaling struct {
 // 签名信息
 type SignData [65]byte
 
+func (sd SignData) MarshalText() ([]byte, error) {
+	str := common.ToHex(sd[:])
+	return []byte(str), nil
+}
+
 // Block
 type Block struct {
 	Header         *Header
 	Txs            []*Transaction
-	ChangeLog      []*ChangeLog // todo
+	ChangeLog      []*ChangeLog
 	Events         []*Event
 	ConfirmPackage []SignData
 }
