@@ -258,7 +258,9 @@ func (srv *Server) run() {
 					log.Error("peer event error", "err", err)
 				}
 			}
-			srv.needConnectNodeCh <- p.rw.fd.RemoteAddr().String() // 断线重连 todo
+			time.AfterFunc(10*time.Second, func() {
+				srv.needConnectNodeCh <- p.rw.fd.RemoteAddr().String() // 断线重连 todo
+			})
 			break
 		case <-srv.quit:
 			return

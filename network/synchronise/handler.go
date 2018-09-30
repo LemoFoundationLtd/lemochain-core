@@ -467,6 +467,7 @@ func (pm *ProtocolManager) synchronise(p string) {
 	if strings.Compare(p, "") == 0 {
 		return
 	}
+	log.Infof("start synchronise from: %s", p[:16])
 	if err := pm.downloader.Synchronise(p); err != nil {
 		return
 	}
