@@ -444,3 +444,7 @@ func (bc *BlockChain) Stop() {
 	close(bc.quitCh)
 	log.Info("Blockchain stopped")
 }
+
+func (bc *BlockChain) Db() db.ChainDB {
+	return bc.dbOpe
+}
