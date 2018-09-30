@@ -365,7 +365,7 @@ func (f *Fetcher) insert(peer string, block *types.Block) {
 		log.Warnf("fetcher block insert failed. height: %d. hash: %s. error: %v", block.Height(), hash.Hex(), err)
 		return
 	}
-	f.done <- hash
+	go func() { f.done <- hash }()
 	// 将块hash广播出去
 	go f.broadcastBlock(block, false)
 }
