@@ -196,6 +196,7 @@ func (am *Manager) Finalise() error {
 		}
 		height = block.Height() + 1
 	}
+	MergeChangeLogs(am.GetChangeLogs(), am)
 	versionTrie := am.getVersionTrie()
 	for _, account := range am.accountCache {
 		if !account.IsDirty() {
