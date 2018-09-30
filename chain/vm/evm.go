@@ -51,7 +51,7 @@ type Context struct {
 	GasPrice *big.Int       // Provides information for GASPRICE
 
 	// Block information
-	Lemobase    common.Address // Provides information for LEMOBASE
+	LemoBase    common.Address // Provides information for LEMOBASE
 	GasLimit    uint64         // Provides information for GASLIMIT
 	BlockHeight uint32         // Provides information for HEIGHT
 	Time        *big.Int       // Provides information for TIME
