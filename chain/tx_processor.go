@@ -45,10 +45,11 @@ func NewTxProcessor(bc *BlockChain) *TxProcessor {
 // Process processes all transactions in a block. Change accounts' data and execute contract codes.
 func (p *TxProcessor) Process(block *types.Block) (*types.Header, error) {
 	var (
-		gasUsed = uint64(0)
-		header  = block.Header
-		gp      = new(types.GasPool).AddGas(block.GasLimit())
-		txs     = block.Txs
+		gp          = new(types.GasPool).AddGas(block.GasLimit())
+		gasUsed     = uint64(0)
+		minerSalary = new(big.Int)
+		header      = block.Header
+		txs         = block.Txs
 	)
 	// Iterate over and process the individual transactions
 	for i, tx := range txs {
@@ -57,7 +58,10 @@ func (p *TxProcessor) Process(block *types.Block) (*types.Header, error) {
 			return nil, err
 		}
 		gasUsed = gasUsed + gas
+		fee := new(big.Int).Mul(new(big.Int).SetUint64(gasUsed), tx.GasPrice())
+		minerSalary.Add(minerSalary, fee)
 	}
+	p.paySalary(minerSalary, header.LemoBase)
 
 	return p.FillHeader(header.Copy(), txs, gasUsed)
 }
@@ -66,6 +70,7 @@ func (p *TxProcessor) Process(block *types.Block) (*types.Header, error) {
 func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions) (*types.Header, []*types.Transaction, error) {
 	gp := new(types.GasPool).AddGas(header.GasLimit)
 	gasUsed := uint64(0)
+	minerSalary := new(big.Int)
 	selectedTxs := make(types.Transactions, 0)
 
 	for _, tx := range txs {
@@ -94,7 +99,10 @@ func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions) (*t
 			log.Debug("Transaction failed, account skipped", "hash", tx.Hash(), "err", err)
 		}
 		gasUsed = gasUsed + gas
+		fee := new(big.Int).Mul(new(big.Int).SetUint64(gasUsed), tx.GasPrice())
+		minerSalary.Add(minerSalary, fee)
 	}
+	p.paySalary(minerSalary, header.LemoBase)
 
 	newHeader, err := p.FillHeader(header.Copy(), txs, gasUsed)
 	return newHeader, txs, err
@@ -142,7 +150,7 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 			return 0, vmErr
 		}
 	}
-	p.refundGas(gp, tx, restGas, vmEnv.Lemobase)
+	p.refundGas(gp, tx, restGas)
 
 	return tx.GasLimit() - restGas, nil
 }
@@ -207,7 +215,7 @@ func IntrinsicGas(data []byte, contractCreation bool) (uint64, error) {
 	return gas, nil
 }
 
-func (p *TxProcessor) refundGas(gp *types.GasPool, tx *types.Transaction, restGas uint64, minerAddress common.Address) {
+func (p *TxProcessor) refundGas(gp *types.GasPool, tx *types.Transaction, restGas uint64) {
 	// ignore the error because it is checked in applyTx
 	senderAddr, _ := tx.From()
 	sender := p.am.GetAccount(senderAddr)
@@ -219,10 +227,12 @@ func (p *TxProcessor) refundGas(gp *types.GasPool, tx *types.Transaction, restGa
 	// Also return remaining gas to the block gas counter so it is
 	// available for the next transaction.
 	gp.AddGas(restGas)
+}
 
-	usedFee := new(big.Int).Mul(new(big.Int).SetUint64(tx.GasLimit()-restGas), tx.GasPrice())
+// paySalary pay the salary to miner
+func (p *TxProcessor) paySalary(salary *big.Int, minerAddress common.Address) {
 	miner := p.am.GetAccount(minerAddress)
-	miner.SetBalance(new(big.Int).Add(miner.GetBalance(), usedFee))
+	miner.SetBalance(new(big.Int).Add(miner.GetBalance(), salary))
 }
 
 // FillHeader creates a new header then fills it with the result of transactions process
