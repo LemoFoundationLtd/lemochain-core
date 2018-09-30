@@ -181,6 +181,10 @@ func (bc *BlockChain) MineNewBlock(block *types.Block) error {
 		log.Error(fmt.Sprintf("can't insert block to cache. height:%d hash:%s", block.Height(), block.Hash().Hex()))
 		return err
 	}
+	nodeCount := deputynode.Instance().GetDeputyNodesCount()
+	if nodeCount == 1 {
+		bc.SetStableBlock(block.Hash(), block.Height())
+	}
 	bc.currentBlock.Store(block)
 	delete(bc.chainForksHead, block.ParentHash()) // 从分叉链集合中删除原记录
 	bc.chainForksHead[block.Hash()] = block       // 从分叉链集合中添加新记录
@@ -230,11 +234,16 @@ func (bc *BlockChain) InsertChain(block *types.Block) (err error) {
 		return err
 	}
 	log.Infof("insert block to chain. height: %d", block.Height())
-	// 判断confirm package
-	if block.ConfirmPackage != nil {
-		nodeCount := deputynode.Instance().GetDeputyNodesCount()
-		if len(block.ConfirmPackage) >= nodeCount*2/3 {
-			defer bc.SetStableBlock(hash, block.Height())
+
+	nodeCount := deputynode.Instance().GetDeputyNodesCount()
+	if nodeCount < 3 {
+		defer bc.SetStableBlock(hash, block.Height())
+	} else {
+		// 判断confirm package
+		if block.ConfirmPackage != nil {
+			if len(block.ConfirmPackage)+1 >= nodeCount*2/3 { // 出块者默认已确认
+				defer bc.SetStableBlock(hash, block.Height())
+			}
 		}
 	}
 
@@ -404,7 +413,7 @@ func (bc *BlockChain) ReceiveConfirm(info *protocol.BlockConfirmData) (err error
 	}
 	// 是否达成共识
 	nodeCount := deputynode.Instance().GetDeputyNodesCount()
-	if len(pack) >= nodeCount*2/3 {
+	if len(pack)+1 >= nodeCount*2/3 { // 出块者默认有确认包
 		return bc.SetStableBlock(info.Hash, info.Height)
 	}
 	return nil
