@@ -24,6 +24,12 @@ func TestTxProcessor_Process(t *testing.T) {
 	p := NewTxProcessor(newChain())
 	newHeader, err := p.Process(newestBlock)
 	assert.NoError(t, err)
+	assert.Equal(t, newestBlock.Header.Bloom, newHeader.Bloom)
+	assert.Equal(t, newestBlock.Header.EventRoot, newHeader.EventRoot)
+	assert.Equal(t, newestBlock.Header.GasUsed, newHeader.GasUsed)
+	assert.Equal(t, newestBlock.Header.TxRoot, newHeader.TxRoot)
+	assert.Equal(t, newestBlock.Header.VersionRoot, newHeader.VersionRoot)
+	assert.Equal(t, newestBlock.Header.LogsRoot, newHeader.LogsRoot)
 	assert.Equal(t, newestBlock.Hash(), newHeader.Hash())
 }
 
