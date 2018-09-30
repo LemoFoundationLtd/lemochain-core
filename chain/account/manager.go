@@ -191,6 +191,7 @@ func (am *Manager) Finalise() error {
 	} else {
 		block, err := am.db.GetBlockByHash(am.baseBlockHash)
 		if err != nil {
+			log.Errorf("load block[%s] fail: %s\n", am.baseBlockHash.Hex(), err.Error())
 			panic(err)
 		}
 		height = block.Height() + 1
