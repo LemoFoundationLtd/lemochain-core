@@ -72,6 +72,7 @@ func (h *Header) Hash() common.Hash {
 		h.VersionRoot,
 		h.TxRoot,
 		h.LogsRoot,
+		h.EventRoot,
 		h.Bloom,
 		h.Height,
 		h.GasLimit,
