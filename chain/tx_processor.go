@@ -98,6 +98,7 @@ func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions) (*t
 			// Strange error, discard the transaction and get the next in line.
 			log.Debug("Transaction failed, account skipped", "hash", tx.Hash(), "err", err)
 		}
+		// TODO MergeChangeLogs here. Because merging change logs by transaction will save more transaction execution detail
 		gasUsed = gasUsed + gas
 		fee := new(big.Int).Mul(new(big.Int).SetUint64(gasUsed), tx.GasPrice())
 		minerSalary.Add(minerSalary, fee)

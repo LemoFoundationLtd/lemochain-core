@@ -147,6 +147,7 @@ func saveBlock(db protocol.ChainDB, blockIndex int, info *blockInfo) {
 		if err != nil {
 			panic(err)
 		}
+		// TODO the real change log is pay limit gas first, then refund the rest after contract execution
 		from := manager.GetAccount(fromAddr)
 		cost := new(big.Int).Add(tx.Value(), new(big.Int).SetUint64(gas))
 		from.SetBalance(new(big.Int).Sub(from.GetBalance(), cost))
