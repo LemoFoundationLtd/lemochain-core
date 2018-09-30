@@ -405,18 +405,25 @@ func (bc *BlockChain) ReceiveConfirm(info *protocol.BlockConfirmData) (err error
 		return err
 	}
 	log.Debugf("Receive confirm info. height: %d. hash: %s", info.Height, info.Hash.String())
-	// 获取确认包集合
-	pack, err := bc.dbOpe.GetConfirmPackage(info.Hash)
+	confirmCount, err := bc.getConfirmCount(info.Hash)
 	if err != nil {
-		log.Errorf("can't GetConfirmInfo. hash:%s", info.Hash.Hex())
+		log.Warnf("Can't GetConfirmInfo. hash:%s. error: %v", info.Hash.Hex(), err)
 		return err
 	}
-	// 是否达成共识
 	nodeCount := deputynode.Instance().GetDeputyNodesCount()
-	if len(pack)+1 >= nodeCount*2/3 { // 出块者默认有确认包
+	if confirmCount >= nodeCount*2/3 {
 		return bc.SetStableBlock(info.Hash, info.Height)
 	}
 	return nil
+}
+
+// getConfirmCount get confirm count by hash
+func (bc *BlockChain) getConfirmCount(hash common.Hash) (int, error) {
+	pack, err := bc.dbOpe.GetConfirmPackage(hash)
+	if err != nil {
+		return -1, err
+	}
+	return len(pack) + 1, nil // 出块者默认有确认包
 }
 
 // 获取签名者在代理节点列表中的索引
