@@ -73,6 +73,7 @@ func (m *Miner) Stop() {
 	case <-m.timeToMineCh:
 	default:
 	}
+	log.Info("stop mining success")
 }
 
 func (m *Miner) IsMining() bool {
