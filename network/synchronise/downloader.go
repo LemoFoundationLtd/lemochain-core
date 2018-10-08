@@ -7,6 +7,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/network/synchronise/blockchain"
+	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"gopkg.in/karalabe/cookiejar.v2/collections/prque"
 	"strings"
 	"sync"
@@ -246,7 +247,8 @@ func (d *Downloader) enqueue(blocks types.Blocks) {
 
 // insert 将块插入本地连
 func (d *Downloader) insert(block *types.Block, peer string) {
-	if err := d.blockChain.InsertChain(block); err == nil {
+	err := d.blockChain.InsertChain(block)
+	if err == nil || err == store.ErrExist {
 		go func() { d.blockDoneCh <- block }()
 	} else {
 		go func() { d.insertErrCh <- err }()

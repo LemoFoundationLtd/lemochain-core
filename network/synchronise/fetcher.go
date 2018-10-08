@@ -153,7 +153,7 @@ func (f *Fetcher) run() {
 				switch err {
 				case nil:
 				default:
-					log.Infof("Block verify failed. height: %d. hash: %s. peer: %s. err: %v", op.block.Height(), hash.Hex(), op.origin, err)
+					log.Infof("Block verify failed. height: %d. hash: %s. peer: %s. err: %v", op.block.Height(), hash.Hex(), op.origin[:16], err)
 					if f.dropPeer != nil {
 						f.dropPeer(op.origin)
 					}
@@ -276,11 +276,11 @@ func (f *Fetcher) Notify(peer string, hash common.Hash, height uint32, fetchBloc
 }
 
 // FilterBlock 过滤blocks是否为fetcher请求的，处理掉是fetcher请求的，将不是fetcher请求的返回
-func (f *Fetcher) FilterBlocks(id string, blocks types.Blocks) types.Blocks {
+func (f *Fetcher) FilterBlocks(id string, blocks types.Blocks, fetchBlock blockRequesterFn) types.Blocks {
 	unknown := types.Blocks{}
 	for _, block := range blocks {
 		if announce := f.fetching[block.Hash()]; announce != nil && strings.Compare(id, announce.origin) == 0 {
-			f.Enqueue(id, block)
+			f.Enqueue(id, block, fetchBlock)
 		} else {
 			unknown = append(unknown, block)
 		}
@@ -289,10 +289,22 @@ func (f *Fetcher) FilterBlocks(id string, blocks types.Blocks) types.Blocks {
 }
 
 // Enqueue 收到完整块时调用
-func (f *Fetcher) Enqueue(peer string, block *types.Block) error {
+func (f *Fetcher) Enqueue(peer string, block *types.Block, fetchBlock blockRequesterFn) error {
 	op := &newBlock{
 		origin: peer,
 		block:  block,
+	}
+
+	// if parent block not exist, fetch it
+	if f.getLocalBlock(block.ParentHash(), block.Height()-1) == nil && f.fetching[block.Hash()] == nil {
+		announce := &announce{
+			hash:       block.Hash(),
+			height:     block.Height(),
+			time:       time.Now(),
+			origin:     peer,
+			fetchBlock: fetchBlock,
+		}
+		f.fetching[block.Hash()] = announce
 	}
 	// 防止newBlockCh已有数据还没处理导致的长时间休眠态突然退出问题
 	select {

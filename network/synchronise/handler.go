@@ -300,7 +300,7 @@ func (pm *ProtocolManager) handleMsg(p *peerConnection) error {
 		log.Infof("Receive blocks from: %s. from: %d -- to: %d", p.id[:16], blocks[0].Height(), blocks[len(blocks)-1].Height())
 		filter := len(blocks) == 1 // len(blocks) == 1 不一定为fetcher，但len(blocks)>1肯定是downloader
 		if filter {
-			blocks = pm.fetcher.FilterBlocks(p.id, blocks)
+			blocks = pm.fetcher.FilterBlocks(p.id, blocks, p.peer.RequestOneBlock)
 		}
 		if !filter || len(blocks) > 0 {
 			if err := pm.downloader.DeliverBlocks(p.id, blocks); err != nil {
@@ -320,7 +320,7 @@ func (pm *ProtocolManager) handleMsg(p *peerConnection) error {
 			return errResp(protocol.ErrDecode, "%v: %v", msg, err)
 		}
 		log.Infof("Receive single block. height: %d", block.Height())
-		pm.fetcher.Enqueue(p.id, &block)
+		pm.fetcher.Enqueue(p.id, &block, p.peer.RequestOneBlock)
 	case protocol.NewBlockMsg: // 远程节点主动推送的挖到的最新区块消息
 		if !pm.isSelfDeputyNode() {
 			return errors.New("self node isn't a deputy node")
@@ -333,10 +333,11 @@ func (pm *ProtocolManager) handleMsg(p *peerConnection) error {
 			return errResp(protocol.ErrDecode, "%v: %v", msg, err)
 		}
 		p.peer.MarkBlock(block.Hash()) // 标记区块
-		pm.fetcher.Enqueue(p.id, block)
+		pm.fetcher.Enqueue(p.id, block, p.peer.RequestOneBlock)
 		log.Infof("Receive new block. height: %d. hash: %s", block.Height(), block.Hash().Hex())
 		if block.Height() > p.peer.height {
 			p.peer.SetHead(block.Hash(), block.Height())
+			log.Debugf("setHead to peer: %s. height: %d", p.peer.id[:16], block.Height())
 			// 清理交易池
 			txs := make([]common.Hash, 0)
 			for _, tx := range block.Txs {
