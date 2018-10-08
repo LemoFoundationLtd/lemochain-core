@@ -11,20 +11,30 @@ import (
 	"time"
 )
 
+type Engine interface {
+	VerifyHeader(block *types.Block) error
+
+	Seal(header *types.Header, txs []*types.Transaction, changeLog []*types.ChangeLog, events []*types.Event) (*types.Block, error)
+
+	Finalize(header *types.Header)
+}
+
 type Dpovp struct {
-	//dbOpe         db.DataBase
 	timeoutTime   int64
 	blockInternal int64
 	bc            *BlockChain
 }
 
-func NewDpovp(bc *BlockChain) *Dpovp {
+func NewDpovp(timeout, blockInternal int64) *Dpovp {
 	dpovp := &Dpovp{
-		timeoutTime:   10 * 1000, // 10s
-		blockInternal: 3 * 1000,  // 3s
-		bc:            bc,
+		timeoutTime:   timeout,
+		blockInternal: blockInternal,
 	}
 	return dpovp
+}
+
+func (d *Dpovp) SetBlockChain(bc *BlockChain) {
+	d.bc = bc
 }
 
 // VerifyHeader 验证区块头
