@@ -67,11 +67,12 @@ func (m *Miner) Start() {
 }
 
 func (m *Miner) Stop() {
+	atomic.StoreInt32(&m.mining, 0)
 	select {
 	case m.quitCh <- struct{}{}:
+	case <-m.timeToMineCh:
 	default:
 	}
-	atomic.StoreInt32(&m.mining, 0)
 }
 
 func (m *Miner) IsMining() bool {
