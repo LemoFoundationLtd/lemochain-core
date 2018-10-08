@@ -23,13 +23,12 @@ type Miner struct {
 	lemoBase      common.Address
 	txPool        *chain.TxPool
 	mining        int32
-	engine        *chain.Dpovp
-	// lemo Backend
-	chain        *chain.BlockChain
-	txProcessor  *chain.TxProcessor
-	mux          sync.Mutex
-	currentBlock func() *types.Block
-	extra        []byte // 扩展数据 暂保留 最大256byte
+	engine        chain.Engine
+	chain         *chain.BlockChain
+	txProcessor   *chain.TxProcessor
+	mux           sync.Mutex
+	currentBlock  func() *types.Block
+	extra         []byte // 扩展数据 暂保留 最大256byte
 
 	blockMineTimer *time.Timer // 出块timer
 
@@ -39,13 +38,14 @@ type Miner struct {
 	quitCh         chan struct{}     // 退出
 }
 
-func New(blockInternal, timeout int64, chain *chain.BlockChain, txPool *chain.TxPool, privKey *ecdsa.PrivateKey, mineNewBlockCh, recvBlockCh chan *types.Block) *Miner {
+func New(blockInternal, timeout int64, chain *chain.BlockChain, txPool *chain.TxPool, privKey *ecdsa.PrivateKey, mineNewBlockCh, recvBlockCh chan *types.Block, engine chain.Engine) *Miner {
 	m := &Miner{
 		blockInternal:  blockInternal,
 		timeoutTime:    timeout,
 		privKey:        privKey,
 		chain:          chain,
 		txPool:         txPool,
+		engine:         engine,
 		currentBlock:   chain.CurrentBlock,
 		txProcessor:    chain.TxProcessor(),
 		mineNewBlockCh: mineNewBlockCh,
