@@ -153,7 +153,7 @@ func (f *Fetcher) run() {
 				switch err {
 				case nil:
 				default:
-					log.Infof("Block verify failed. height: %d. hash: %s. peer: %s. err: %v", op.block.Height(), hash.Hex(), op.origin, err)
+					log.Infof("Block verify failed. height: %d. hash: %s. peer: %s. err: %v", op.block.Height(), hash.Hex(), op.origin[:16], err)
 					if f.dropPeer != nil {
 						f.dropPeer(op.origin)
 					}
