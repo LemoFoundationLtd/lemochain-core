@@ -149,7 +149,10 @@ func (pm *ProtocolManager) broadcastConfirmInfo(hash common.Hash, height uint32)
 		return
 	}
 	copy(data.SignInfo[:], signInfo)
-	// data.SignInfo = signInfo
+	// record to local db
+	if err := pm.blockchain.Db().SetConfirmInfo(hash, data.SignInfo); err != nil {
+		log.Warnf("record confirm info to local failed.error: %v", err)
+	}
 	for id, p := range pm.peers.peers {
 		if pm.isPeerDeputyNode(height, id) {
 			p.peer.send(protocol.NewConfirmMsg, &data)
@@ -467,6 +470,7 @@ func (pm *ProtocolManager) synchronise(p string) {
 	if strings.Compare(p, "") == 0 {
 		return
 	}
+	log.Infof("start synchronise from: %s", p[:16])
 	if err := pm.downloader.Synchronise(p); err != nil {
 		return
 	}
