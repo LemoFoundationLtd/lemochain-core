@@ -150,7 +150,7 @@ func (m *Miner) modifyTimer() {
 				log.Debug(fmt.Sprintf("ModifyTimer: slot:1 timeDur:%d>=self.timeoutTime:%d resetMinerTimer(waitTime:%d)", timeDur, m.timeoutTime, waitTime))
 			}
 		} else { // 间隔不到一轮
-			if timeDur > m.timeoutTime { // 过了本节点该出块的时机
+			if timeDur >= m.timeoutTime { // 过了本节点该出块的时机
 				waitTime := oneLoopTime - timeDur
 				m.resetMinerTimer(waitTime)
 				log.Debug(fmt.Sprintf("modifyTimer: slot:1 timeDur<oneLoopTime, timeDur>self.timeoutTime, resetMinerTimer(waitTime:%d)", waitTime))
@@ -221,7 +221,7 @@ func (m *Miner) sealBlock() {
 	txs := m.txPool.Pending(10000000)
 	txsRes, err := m.txProcessor.ApplyTxs(header, txs)
 	if err != nil {
-		log.Error(fmt.Sprintf("apply transactions for block failed! %s", err))
+		log.Errorf("apply transactions for block failed! %v", err)
 		return
 	}
 	header.Bloom = txsRes.Bloom
@@ -237,7 +237,7 @@ func (m *Miner) sealBlock() {
 	hash := header.Hash()
 	signData, err := crypto.Sign(hash[:], m.privKey)
 	if err != nil {
-		log.Error(fmt.Sprintf("sign for block failed! block hash:%s", hash.Hex()))
+		log.Errorf("sign for block failed! block hash:%s", hash.Hex())
 		return
 	}
 	header.SignData = signData
