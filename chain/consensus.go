@@ -11,6 +11,14 @@ import (
 	"time"
 )
 
+type Engine interface {
+	VerifyHeader(block *types.Block) error
+
+	Seal(header *types.Header, txs []*types.Transaction, changeLog []*types.ChangeLog, events []*types.Event) (*types.Block, error)
+
+	Finalize(header *types.Header)
+}
+
 type Dpovp struct {
 	//dbOpe         db.DataBase
 	timeoutTime   int64
