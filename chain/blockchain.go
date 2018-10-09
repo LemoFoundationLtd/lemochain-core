@@ -181,6 +181,11 @@ func (bc *BlockChain) MineNewBlock(block *types.Block) error {
 		log.Error(fmt.Sprintf("can't insert block to cache. height:%d hash:%s", block.Height(), block.Hash().Hex()))
 		return err
 	}
+	err := bc.AccountManager().Save(block.Hash())
+	if err != nil {
+		log.Error("save account error!", "hash", block.Hash().Hex(), "err", err)
+		return err
+	}
 	nodeCount := deputynode.Instance().GetDeputyNodesCount()
 	if nodeCount == 1 {
 		bc.SetStableBlock(block.Hash(), block.Height())
@@ -202,7 +207,6 @@ func (bc *BlockChain) InsertChain(block *types.Block) (err error) {
 	hash := block.Hash()
 	parHash := block.ParentHash()
 	curHash := bc.currentBlock.Load().(*types.Block).Hash()
-	bc.AccountManager().Reset(parHash)
 	// 执行交易 生成changelog
 	newHeader, err := bc.processor.Process(block)
 	if err != nil {
@@ -217,16 +221,16 @@ func (bc *BlockChain) InsertChain(block *types.Block) (err error) {
 	// save
 	block.SetEvents(bc.AccountManager().GetEvents())
 	block.SetChangeLog(bc.AccountManager().GetChangeLogs())
-	err = bc.AccountManager().Save(hash)
-	if err != nil {
-		log.Error("save account error!", "height", block.Height(), "hash", hash.Hex(), "err", err)
-		return err
-	}
 	if err = bc.dbOpe.SetBlock(hash, block); err != nil { // 放入缓存中
 		log.Error(fmt.Sprintf("can't insert block to cache. height:%d hash:%s", block.Height(), hash.Hex()))
 		return err
 	}
 	log.Infof("insert block to chain. height: %d", block.Height())
+	err = bc.AccountManager().Save(hash)
+	if err != nil {
+		log.Error("save account error!", "height", block.Height(), "hash", hash.Hex(), "err", err)
+		return err
+	}
 
 	nodeCount := deputynode.Instance().GetDeputyNodesCount()
 	if nodeCount < 3 {
