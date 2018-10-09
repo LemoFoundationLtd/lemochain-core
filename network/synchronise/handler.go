@@ -31,7 +31,7 @@ type ProtocolManager struct {
 
 	newPeerCh       chan *peer
 	txsCh           chan types.Transactions
-	newMinedBlockCh chan *types.Block //todo
+	newMinedBlockCh chan *types.Block
 	quitSync        chan struct{}
 
 	wg sync.WaitGroup
@@ -354,7 +354,14 @@ func (pm *ProtocolManager) handleMsg(p *peerConnection) error {
 		if err := msg.Decode(&confirmMsg); err != nil {
 			return errResp(protocol.ErrDecode, "%v: %v", msg, err)
 		}
-		pm.blockchain.ReceiveConfirm(&confirmMsg)
+		// 是否有对应的区块 后续优化
+		if block := pm.blockchain.GetBlockByHash(confirmMsg.Hash); block == nil {
+			// todo require block
+
+			log.Warnf("Receive confirm package, but block doesn't exist in local chain. hash:%s height:%d", confirmMsg.Hash.Hex(), confirmMsg.Height)
+		} else {
+			pm.blockchain.ReceiveConfirm(&confirmMsg)
+		}
 	case protocol.GetConfirmInfoMsg: // 收到远程节点发来的请求
 		var query protocol.GetConfirmInfo
 		if err := msg.Decode(&query); err != nil {

@@ -158,7 +158,7 @@ func (bc *BlockChain) GetBlockByHeight(height uint32) *types.Block {
 func (bc *BlockChain) GetBlockByHash(hash common.Hash) *types.Block {
 	block, err := bc.dbOpe.GetBlockByHash(hash)
 	if err != nil {
-		log.Debug(fmt.Sprintf("can't get block. hash:%s", hash.Hex()))
+		log.Debugf("can't get block. hash:%s", hash.Hex())
 		return nil
 	}
 	return block
@@ -388,23 +388,27 @@ func (bc *BlockChain) ReceiveConfirm(info *protocol.BlockConfirmData) (err error
 		log.Warnf("Can't recover signer. hash:%s SignInfo:%s", info.Hash.Hex(), common.ToHex(info.SignInfo[:]))
 		return err
 	}
-	// 是否有对应的区块 后续优化
-	if _, err = bc.dbOpe.GetBlockByHash(info.Hash); err != nil {
-		log.Warnf("Can't get block in local chain.hash:%s height:%d", info.Hash.Hex(), info.Height)
-		return err
-	}
 	// 获取确认者在主节点列表索引
 	index := bc.getSignerIndex(pubKey[1:], info.Height)
 	if index < 0 {
 		log.Warnf("unavailable confirm info. info:%v", info)
 		return fmt.Errorf("unavailable confirm info. info:%v", info)
 	}
+
+	// 查看是否已达成共识
+	stableBlock := bc.stableBlock.Load().(*types.Block)
+	if stableBlock.Height() >= info.Height { // stable block's confirm info
+		// todo append to block in future
+		return nil
+	}
+
 	// 将确认信息缓存起来
 	if err = bc.dbOpe.SetConfirmInfo(info.Hash, info.SignInfo); err != nil {
 		log.Errorf("can't SetConfirmInfo. hash:%s", info.Hash.Hex())
 		return err
 	}
 	log.Debugf("Receive confirm info. height: %d. hash: %s", info.Height, info.Hash.String())
+
 	confirmCount, err := bc.getConfirmCount(info.Hash)
 	if err != nil {
 		log.Warnf("Can't GetConfirmInfo. hash:%s. error: %v", info.Hash.Hex(), err)
