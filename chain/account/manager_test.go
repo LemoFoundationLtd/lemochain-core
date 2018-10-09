@@ -329,6 +329,7 @@ func TestManager_MergeChangeLogs(t *testing.T) {
 	account1.SetBalance(big.NewInt(333))
 	logs := manager.GetChangeLogs()
 	assert.Equal(t, 4, len(logs))
+	assert.Equal(t, *big.NewInt(111), manager.GetChangeLogs()[0].NewVal)
 	assert.Equal(t, uint32(2), account1.GetVersion())
 
 	// merge different account's change log
@@ -341,4 +342,6 @@ func TestManager_MergeChangeLogs(t *testing.T) {
 	logs = manager.GetChangeLogs()
 	assert.Equal(t, 3, len(logs))
 	assert.Equal(t, uint32(1), account1.GetVersion())
+	// the first change log has been sorted to the last one
+	assert.Equal(t, *big.NewInt(333), manager.GetChangeLogs()[2].NewVal)
 }

@@ -17,8 +17,8 @@ func MergeChangeLogs(logs types.ChangeLogSlice) (types.ChangeLogSlice, map[commo
 	// merge logs in account
 	for addr, accountLogs := range logsByAccount {
 		newAccountLogs := merge(accountLogs)
-		changed, lastVersion := resetVersion(newAccountLogs)
-		if changed {
+		lastVersion := resetVersion(newAccountLogs)
+		if len(accountLogs) != len(newAccountLogs) {
 			changedVersions[addr] = lastVersion
 		}
 		logsByAccount[addr] = newAccountLogs
@@ -38,29 +38,28 @@ func MergeChangeLogs(logs types.ChangeLogSlice) (types.ChangeLogSlice, map[commo
 
 // merge traverses change logs and merges change log into the same type one which in front of it
 func merge(logs types.ChangeLogSlice) types.ChangeLogSlice {
-	result := logs[:]
+	result := make(types.ChangeLogSlice, 0)
 	for _, log := range logs {
 		exist := result.FindByType(log)
-		if log.LogType == BalanceLog || log.LogType == StorageLog {
+		if exist != nil && (log.LogType == BalanceLog || log.LogType == StorageLog) {
 			// update the exist one
 			exist.NewVal = log.NewVal
 			exist.Extra = log.Extra
 		} else {
-			result = append(result, log)
+			result = append(result, log.Copy())
 		}
 	}
-	return logs
+	return result
 }
 
 // resetVersion reset change logs version, then return the last change log as account's version
-func resetVersion(logs types.ChangeLogSlice) (bool, uint32) {
-	if len(logs) == 0 {
-		return false, 0
+func resetVersion(logs types.ChangeLogSlice) uint32 {
+	count := len(logs)
+	if count == 0 {
+		return 0
 	}
-	oldVersion := logs[len(logs)-1].Version
-	for i := 1; i < len(logs); i++ {
+	for i := 1; i < count; i++ {
 		logs[i].Version = logs[i-1].Version + 1
 	}
-	newVersion := logs[len(logs)-1].Version
-	return oldVersion != newVersion, newVersion
+	return logs[count-1].Version
 }

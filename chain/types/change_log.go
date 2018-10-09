@@ -129,6 +129,11 @@ func (c *ChangeLog) DecodeRLP(s *rlp.Stream) (err error) {
 	return err
 }
 
+func (c *ChangeLog) Copy() *ChangeLog {
+	cpy := *c
+	return &cpy
+}
+
 var bigIntType = reflect.TypeOf(big.Int{})
 
 func formatIfIsBigInt(v interface{}) interface{} {
