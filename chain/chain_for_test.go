@@ -29,7 +29,7 @@ var (
 	chainID         uint16 = 200
 	testSigner             = types.DefaultSigner{}
 	testPrivate, _         = crypto.HexToECDSA("432a86ab8765d82415a803e29864dcfc1ed93dac949abf6f95a583179f27e4bb") // secp256k1.V = 1
-	testAddr               = crypto.PubkeyToAddress(testPrivate.PublicKey)
+	testAddr               = crypto.PubkeyToAddress(testPrivate.PublicKey)                                         // 0x0107134B9CdD7D89F83eFa6175F9b3552F29094c
 	defaultAccounts        = []common.Address{
 		common.HexToAddress("0x10000"), common.HexToAddress("0x20000"), testAddr,
 	}

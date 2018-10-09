@@ -6,8 +6,9 @@ import (
 	"sort"
 )
 
-// MergeChangeLogs merges the change logs for same account in block. Then update the version of change logs and account.
-func MergeChangeLogs(logs types.ChangeLogSlice, am *Manager) types.ChangeLogSlice {
+// MergeChangeLogs merges the change logs for same account in block. Then return the merged change logs and changed account versions.
+func MergeChangeLogs(logs types.ChangeLogSlice) (types.ChangeLogSlice, map[common.Address]uint32) {
+	changedVersions := make(map[common.Address]uint32)
 	logsByAccount := make(map[common.Address]types.ChangeLogSlice)
 	// classify
 	for _, log := range logs {
@@ -16,7 +17,10 @@ func MergeChangeLogs(logs types.ChangeLogSlice, am *Manager) types.ChangeLogSlic
 	// merge logs in account
 	for addr, accountLogs := range logsByAccount {
 		newAccountLogs := merge(accountLogs)
-		resetVersion(newAccountLogs, am)
+		changed, lastVersion := resetVersion(newAccountLogs)
+		if changed {
+			changedVersions[addr] = lastVersion
+		}
 		logsByAccount[addr] = newAccountLogs
 	}
 	// sort all logs by account
@@ -25,11 +29,11 @@ func MergeChangeLogs(logs types.ChangeLogSlice, am *Manager) types.ChangeLogSlic
 		accounts = append(accounts, addr)
 	}
 	sort.Sort(accounts)
-	result := make(types.ChangeLogSlice, 0)
+	mergedLogs := make(types.ChangeLogSlice, 0)
 	for _, addr := range accounts {
-		result = append(result, logsByAccount[addr]...)
+		mergedLogs = append(mergedLogs, logsByAccount[addr]...)
 	}
-	return result
+	return mergedLogs, changedVersions
 }
 
 // merge traverses change logs and merges change log into the same type one which in front of it
@@ -48,15 +52,15 @@ func merge(logs types.ChangeLogSlice) types.ChangeLogSlice {
 	return logs
 }
 
-// resetVersion reset change logs version, then update account's version by the last change log
-func resetVersion(logs types.ChangeLogSlice, am *Manager) {
+// resetVersion reset change logs version, then return the last change log as account's version
+func resetVersion(logs types.ChangeLogSlice) (bool, uint32) {
 	if len(logs) == 0 {
-		return
+		return false, 0
 	}
+	oldVersion := logs[len(logs)-1].Version
 	for i := 1; i < len(logs); i++ {
 		logs[i].Version = logs[i-1].Version + 1
 	}
-	lastVersion := logs[len(logs)-1].Version
-	account := am.getRawAccount(logs[0].Address)
-	account.SetVersion(lastVersion)
+	newVersion := logs[len(logs)-1].Version
+	return oldVersion != newVersion, newVersion
 }

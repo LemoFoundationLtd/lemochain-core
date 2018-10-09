@@ -73,6 +73,7 @@ func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions) (*t
 	gasUsed := uint64(0)
 	minerSalary := new(big.Int)
 	selectedTxs := make(types.Transactions, 0)
+	mergeFrom := len(p.am.GetChangeLogs())
 
 	p.am.Reset(header.ParentHash)
 
@@ -101,10 +102,12 @@ func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions) (*t
 			// Strange error, discard the transaction and get the next in line.
 			log.Debug("Transaction failed, account skipped", "hash", tx.Hash(), "err", err)
 		}
-		// TODO MergeChangeLogs here. Because merging change logs by transaction will save more transaction execution detail
 		gasUsed = gasUsed + gas
 		fee := new(big.Int).Mul(new(big.Int).SetUint64(gasUsed), tx.GasPrice())
 		minerSalary.Add(minerSalary, fee)
+		// Merge change logs by transaction will save more transaction execution detail than by block
+		p.am.MergeChangeLogs(mergeFrom)
+		mergeFrom = len(p.am.GetChangeLogs())
 	}
 	p.paySalary(minerSalary, header.LemoBase)
 
