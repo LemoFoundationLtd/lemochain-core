@@ -51,6 +51,7 @@ func (p *TxProcessor) Process(block *types.Block) (*types.Header, error) {
 		header      = block.Header
 		txs         = block.Txs
 	)
+	p.am.Reset(header.ParentHash)
 	// Iterate over and process the individual transactions
 	for i, tx := range txs {
 		gas, err := p.applyTx(gp, header, tx, uint(i), block.Hash())
@@ -72,6 +73,8 @@ func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions) (*t
 	gasUsed := uint64(0)
 	minerSalary := new(big.Int)
 	selectedTxs := make(types.Transactions, 0)
+
+	p.am.Reset(header.ParentHash)
 
 	for _, tx := range txs {
 		// If we don't have enough gas for any further transactions then we're done
