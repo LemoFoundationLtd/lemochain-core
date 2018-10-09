@@ -269,9 +269,8 @@ func (tx *Transaction) String() string {
 
 // SetSecp256k1V merge secp256k1.V into the result of CombineV function
 func SetSecp256k1V(V *big.Int, secp256k1V byte) *big.Int {
-	// V = ((sig[64] & 1) << 16) + V
-	v := uint64(secp256k1V&1) << 16
-	return new(big.Int).Add(new(big.Int).SetUint64(v), V)
+	// V = V & ((sig[64] & 1) << 16)
+	return new(big.Int).SetBit(V, 16, uint(secp256k1V&1))
 }
 
 // CombineV combines type, version, chainId together to get V (without secp256k1.V)
