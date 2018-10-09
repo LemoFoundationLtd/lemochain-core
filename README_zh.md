@@ -51,7 +51,7 @@ LemoChain可以通过创始块配置文件(`genesis.json`)实现定制。
   "extraData": "",
   "gasLimit": "0x2fefd8",
   "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
-  "timestamp": "0x00"
+  "timestamp": "1539051657"
 }
 ```
 - `lemobase`  16亿预挖LEMO的持有账户
