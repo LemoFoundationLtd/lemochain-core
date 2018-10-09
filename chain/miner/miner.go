@@ -23,13 +23,12 @@ type Miner struct {
 	lemoBase      common.Address
 	txPool        *chain.TxPool
 	mining        int32
-	engine        *chain.Dpovp
-	// lemo Backend
-	chain        *chain.BlockChain
-	txProcessor  *chain.TxProcessor
-	mux          sync.Mutex
-	currentBlock func() *types.Block
-	extra        []byte // 扩展数据 暂保留 最大256byte
+	engine        chain.Engine
+	chain         *chain.BlockChain
+	txProcessor   *chain.TxProcessor
+	mux           sync.Mutex
+	currentBlock  func() *types.Block
+	extra         []byte // 扩展数据 暂保留 最大256byte
 
 	blockMineTimer *time.Timer // 出块timer
 
@@ -39,13 +38,14 @@ type Miner struct {
 	quitCh         chan struct{}     // 退出
 }
 
-func New(blockInternal, timeout int64, chain *chain.BlockChain, txPool *chain.TxPool, privKey *ecdsa.PrivateKey, mineNewBlockCh, recvBlockCh chan *types.Block) *Miner {
+func New(blockInternal, timeout int64, chain *chain.BlockChain, txPool *chain.TxPool, privKey *ecdsa.PrivateKey, mineNewBlockCh, recvBlockCh chan *types.Block, engine chain.Engine) *Miner {
 	m := &Miner{
 		blockInternal:  blockInternal,
 		timeoutTime:    timeout,
 		privKey:        privKey,
 		chain:          chain,
 		txPool:         txPool,
+		engine:         engine,
 		currentBlock:   chain.CurrentBlock,
 		txProcessor:    chain.TxProcessor(),
 		mineNewBlockCh: mineNewBlockCh,
@@ -67,11 +67,12 @@ func (m *Miner) Start() {
 }
 
 func (m *Miner) Stop() {
+	atomic.StoreInt32(&m.mining, 0)
 	select {
 	case m.quitCh <- struct{}{}:
+	case <-m.timeToMineCh:
 	default:
 	}
-	atomic.StoreInt32(&m.mining, 0)
 }
 
 func (m *Miner) IsMining() bool {
@@ -149,7 +150,7 @@ func (m *Miner) modifyTimer() {
 				log.Debug(fmt.Sprintf("ModifyTimer: slot:1 timeDur:%d>=self.timeoutTime:%d resetMinerTimer(waitTime:%d)", timeDur, m.timeoutTime, waitTime))
 			}
 		} else { // 间隔不到一轮
-			if timeDur > m.timeoutTime { // 过了本节点该出块的时机
+			if timeDur >= m.timeoutTime { // 过了本节点该出块的时机
 				waitTime := oneLoopTime - timeDur
 				m.resetMinerTimer(waitTime)
 				log.Debug(fmt.Sprintf("modifyTimer: slot:1 timeDur<oneLoopTime, timeDur>self.timeoutTime, resetMinerTimer(waitTime:%d)", waitTime))
@@ -220,14 +221,14 @@ func (m *Miner) sealBlock() {
 	txs := m.txPool.Pending(10000000)
 	newHeader, packagedTxs, err := m.txProcessor.ApplyTxs(header, txs)
 	if err != nil {
-		log.Error(fmt.Sprintf("apply transactions for block failed! %s", err))
+		log.Errorf("apply transactions for block failed! %v", err)
 		return
 	}
 
 	hash := newHeader.Hash()
 	signData, err := crypto.Sign(hash[:], m.privKey)
 	if err != nil {
-		log.Error(fmt.Sprintf("sign for block failed! block hash:%s", hash.Hex()))
+		log.Errorf("sign for block failed! block hash:%s", hash.Hex())
 		return
 	}
 	newHeader.SignData = signData

@@ -34,7 +34,7 @@ type BlockChain struct {
 	chainForksHead map[common.Hash]*types.Block // 各分叉链最新头
 	chainForksLock sync.Mutex                   // 分叉锁
 
-	engine    *Dpovp       // 共识引擎
+	engine    Engine       // 共识引擎
 	processor *TxProcessor // 状态处理器
 
 	running int32 // 是否在运行
@@ -43,7 +43,7 @@ type BlockChain struct {
 	quitCh     chan struct{}     // 退出chan
 }
 
-func NewBlockChain(chainID uint64, db db.ChainDB, newBlockCh chan *types.Block, flags map[string]string) (bc *BlockChain, err error) {
+func NewBlockChain(chainID uint64, engine Engine, db db.ChainDB, newBlockCh chan *types.Block, flags map[string]string) (bc *BlockChain, err error) {
 	bc = &BlockChain{
 		chainID:        uint16(chainID),
 		dbOpe:          db,
@@ -59,7 +59,7 @@ func NewBlockChain(chainID uint64, db db.ChainDB, newBlockCh chan *types.Block, 
 	if err := bc.loadLastState(); err != nil {
 		return nil, err
 	}
-	bc.loadConsensusEngine()
+	bc.engine = engine
 	bc.processor = NewTxProcessor(bc)
 	return bc, nil
 }
@@ -82,9 +82,9 @@ func (bc *BlockChain) loadLastState() error {
 }
 
 // loadConsensusEngine 加载共识引擎
-func (bc *BlockChain) loadConsensusEngine() {
-	bc.engine = NewDpovp(bc)
-}
+// func (bc *BlockChain) loadConsensusEngine() {
+// 	bc.engine = NewDpovp(bc)
+// }
 
 // Genesis 获取创始块
 func (bc *BlockChain) Genesis() *types.Block {
