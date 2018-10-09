@@ -212,7 +212,7 @@ func (m *Miner) loop() {
 			case <-m.timeToMineCh:
 				m.sealBlock()
 			case <-m.recvNewBlockCh:
-				m.modifyTimer()
+				go m.modifyTimer()
 			case <-m.quitCh:
 				return
 			}
