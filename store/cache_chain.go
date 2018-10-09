@@ -354,6 +354,48 @@ func (chain *CacheChain) SetConfirmPackage(hash common.Hash, pack []types.SignDa
 	return nil
 }
 
+func (chain *CacheChain) AppendConfirmInfo(hash common.Hash, signData types.SignData) error {
+	val, err := chain.LmDataBase.Get(hash.Bytes())
+	if err != nil {
+		return err
+	} else {
+		var sb sBlock
+		err = rlp.DecodeBytes(val, &sb)
+		if err != nil {
+			return err
+		} else {
+			sb.Confirms = append(sb.Confirms, signData)
+			val, err := rlp.EncodeToBytes(sb)
+			if err != nil {
+				return err
+			} else {
+				return chain.LmDataBase.Put(hash.Bytes(), val)
+			}
+		}
+	}
+}
+
+func (chain *CacheChain) AppendConfirmPackage(hash common.Hash, pack []types.SignData) error {
+	val, err := chain.LmDataBase.Get(hash.Bytes())
+	if err != nil {
+		return err
+	} else {
+		var sb sBlock
+		err = rlp.DecodeBytes(val, &sb)
+		if err != nil {
+			return err
+		} else {
+			sb.Confirms = pack
+			val, err := rlp.EncodeToBytes(sb)
+			if err != nil {
+				return err
+			} else {
+				return chain.LmDataBase.Put(hash.Bytes(), val)
+			}
+		}
+	}
+}
+
 // 获取区块的确认包 获取不到返回：nil,原因
 func (chain *CacheChain) GetConfirmPackage(hash common.Hash) ([]types.SignData, error) {
 	block, err := chain.GetBlockByHash(hash)
