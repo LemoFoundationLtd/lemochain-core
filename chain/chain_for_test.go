@@ -84,17 +84,17 @@ var (
 		},
 		// block 3 is not store in db
 		{
-			hash:        common.HexToHash("0x6aaaca633568f061bc400f16e6f931e3320e42f10f969e91df4e748f35bf3fa1"),
+			hash:        common.HexToHash("0x9f063a452c809c2146fb1c1a154e0403a8130f0e56fdbfbff091f69a03cf1e6c"),
 			height:      3,
 			author:      defaultAccounts[0],
 			versionRoot: common.HexToHash("0x255a3d6044cc406bf4322568241a380c3ae18462362b292d89fb8d3dbce6a76d"),
-			txRoot:      common.HexToHash("0x0ebb001c987159ed0e4348e2dd3a33fa7c59b772954856f844ab9f26725e28b1"),
+			txRoot:      common.HexToHash("0x883e9542653e2ad8bae93fa5567d8f5833543057af94ea0ed59c97a7034acac8"),
 			logsRoot:    common.HexToHash("0x22dfa5385981b9628fd701145fff3eb161d9505d2a1d45f1cee4d9d786ee86de"),
 			txList: []*types.Transaction{
 				// testAddr -> defaultAccounts[0] 2
-				makeTransaction(testPrivate, defaultAccounts[0], common.Big2, common.Big2, big.NewInt(1538210398), 2000000),
+				makeTransaction(testPrivate, defaultAccounts[0], common.Big2, common.Big2, big.NewInt(1538210398), 30000),
 				// testAddr -> defaultAccounts[1] 2
-				makeTransaction(testPrivate, defaultAccounts[1], common.Big2, common.Big3, big.NewInt(1538210425), 2000000),
+				makeTransaction(testPrivate, defaultAccounts[1], common.Big2, common.Big3, big.NewInt(1538210425), 30000),
 			},
 			time:     big.NewInt(1538209761),
 			gasLimit: 20000000,

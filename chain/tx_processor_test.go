@@ -156,5 +156,92 @@ func createNewBlock() *types.Block {
 }
 
 func TestTxProcessor_ApplyTxs(t *testing.T) {
-	t.Error("not implemented")
+	p := NewTxProcessor(newChain())
+
+	// 1 txs
+	header := defaultBlocks[2].Header
+	txs := defaultBlocks[2].Txs
+	emptyHeader := &types.Header{
+		ParentHash: header.ParentHash,
+		LemoBase:   header.LemoBase,
+		Height:     header.Height,
+		GasLimit:   header.GasLimit,
+		GasUsed:    header.GasUsed,
+		Time:       header.Time,
+	}
+	newHeader, selectedTxs, err := p.ApplyTxs(emptyHeader, txs)
+	assert.NoError(t, err)
+	assert.Equal(t, header.Bloom, newHeader.Bloom)
+	assert.Equal(t, header.EventRoot, newHeader.EventRoot)
+	assert.Equal(t, header.GasUsed, newHeader.GasUsed)
+	assert.Equal(t, header.TxRoot, newHeader.TxRoot)
+	assert.Equal(t, header.VersionRoot, newHeader.VersionRoot)
+	assert.Equal(t, header.LogsRoot, newHeader.LogsRoot)
+	assert.Equal(t, header.Hash(), newHeader.Hash())
+	assert.Equal(t, len(txs), len(selectedTxs))
+
+	// 2 txs
+	header = defaultBlocks[3].Header
+	txs = defaultBlocks[3].Txs
+	emptyHeader = &types.Header{
+		ParentHash: header.ParentHash,
+		LemoBase:   header.LemoBase,
+		Height:     header.Height,
+		GasLimit:   header.GasLimit,
+		GasUsed:    header.GasUsed,
+		Time:       header.Time,
+	}
+	newHeader, selectedTxs, err = p.ApplyTxs(emptyHeader, txs)
+	assert.NoError(t, err)
+	assert.Equal(t, header.Bloom, newHeader.Bloom)
+	assert.Equal(t, header.EventRoot, newHeader.EventRoot)
+	assert.Equal(t, header.GasUsed, newHeader.GasUsed)
+	assert.Equal(t, header.TxRoot, newHeader.TxRoot)
+	assert.Equal(t, header.VersionRoot, newHeader.VersionRoot)
+	assert.Equal(t, header.LogsRoot, newHeader.LogsRoot)
+	assert.Equal(t, header.Hash(), newHeader.Hash())
+	assert.Equal(t, len(txs), len(selectedTxs))
+
+	// 0 txs
+	header = defaultBlocks[3].Header
+	emptyHeader = &types.Header{
+		ParentHash: header.ParentHash,
+		LemoBase:   header.LemoBase,
+		Height:     header.Height,
+		GasLimit:   header.GasLimit,
+		GasUsed:    header.GasUsed,
+		Time:       header.Time,
+	}
+	newHeader, selectedTxs, err = p.ApplyTxs(emptyHeader, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, types.Bloom{}, newHeader.Bloom)
+	emptyTrieHash := common.HexToHash("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470")
+	assert.Equal(t, emptyTrieHash, newHeader.EventRoot)
+	assert.Equal(t, emptyTrieHash, newHeader.TxRoot)
+	assert.NotEqual(t, emptyTrieHash, newHeader.LogsRoot)
+	assert.Equal(t, 0, len(selectedTxs))
+
+	// too many txs
+	header = defaultBlocks[3].Header
+	txs = defaultBlocks[3].Txs
+	emptyHeader = &types.Header{
+		ParentHash: header.ParentHash,
+		LemoBase:   header.LemoBase,
+		Height:     header.Height,
+		GasLimit:   45000, // Every transaction's gasLimit is 30000. So the block only contains one transaction.
+		GasUsed:    header.GasUsed,
+		Time:       header.Time,
+	}
+	newHeader, selectedTxs, err = p.ApplyTxs(emptyHeader, txs)
+	assert.NoError(t, err)
+	assert.Equal(t, header.Bloom, newHeader.Bloom)
+	assert.Equal(t, header.EventRoot, newHeader.EventRoot)
+	assert.NotEqual(t, header.GasUsed, newHeader.GasUsed)
+	assert.NotEqual(t, header.TxRoot, newHeader.TxRoot)
+	assert.NotEqual(t, header.VersionRoot, newHeader.VersionRoot)
+	assert.NotEqual(t, header.LogsRoot, newHeader.LogsRoot)
+	assert.NotEqual(t, header.Hash(), newHeader.Hash())
+	assert.NotEqual(t, len(txs), len(selectedTxs))
+
+	// TODO test apply error Tx and whether the am revert correctly
 }
