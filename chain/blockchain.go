@@ -398,7 +398,7 @@ func (bc *BlockChain) ReceiveConfirm(info *protocol.BlockConfirmData) (err error
 	// 查看是否已达成共识
 	stableBlock := bc.stableBlock.Load().(*types.Block)
 	if stableBlock.Height() >= info.Height { // stable block's confirm info
-		// todo append to block in future
+		bc.dbOpe.AppendConfirmInfo(info.Hash, info.SignInfo)
 		return nil
 	}
 
