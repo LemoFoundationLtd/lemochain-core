@@ -93,7 +93,7 @@ func CreateSign(cnt int) ([]types.SignData, error) {
 		if err != nil {
 			return nil, err
 		} else {
-			val := make([]byte, 64)
+			val := make([]byte, 65)
 			val1 := crypto.Keccak256(s1.Bytes())
 			copy(val[0:32], val1)
 			copy(val[32:64], val1)
