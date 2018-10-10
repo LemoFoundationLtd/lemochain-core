@@ -233,10 +233,10 @@ func (srv *Server) run() {
 		select {
 		case p := <-srv.addPeerCh:
 			log.Debugf("receive srv.addPeerCh. node id: %s", common.ToHex(p.nodeId[:8]))
-			if _, ok := srv.peers[p.nodeId]; ok {
-				p.Close()
+			if old_peer, ok := srv.peers[p.nodeId]; ok {
+				old_peer.Close()
 				log.Debugf("Connection has already exist. Remote node id: %s", common.ToHex(p.nodeId[:8]))
-				break
+				// break
 			}
 			srv.peersMux.Lock()
 			srv.peers[p.nodeId] = p
@@ -258,7 +258,9 @@ func (srv *Server) run() {
 					log.Error("peer event error", "err", err)
 				}
 			}
-			srv.needConnectNodeCh <- p.rw.fd.RemoteAddr().String() // 断线重连 todo
+			time.AfterFunc(10*time.Second, func() {
+				srv.needConnectNodeCh <- p.rw.fd.RemoteAddr().String() // 断线重连 todo
+			})
 			break
 		case <-srv.quit:
 			return

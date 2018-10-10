@@ -71,7 +71,7 @@ func init() {
 }
 
 func main() {
-	// log.Setup(log.LevelDebug, false, false)
+	log.Setup(log.LevelInfo, false, true)
 	if err := app.Run(os.Args); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

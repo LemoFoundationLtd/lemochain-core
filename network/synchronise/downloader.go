@@ -2,10 +2,12 @@ package synchronise
 
 import (
 	"errors"
+	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/network/synchronise/blockchain"
+	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"gopkg.in/karalabe/cookiejar.v2/collections/prque"
 	"strings"
 	"sync"
@@ -119,7 +121,8 @@ type Downloader struct {
 	insertErrCh chan error        // 区块入链出错
 	quitCh      chan struct{}     // 退出
 
-	queue *prque.Prque // 存储下载的区块队列
+	queueLock sync.Mutex
+	queue     *prque.Prque // 存储下载的区块队列
 }
 
 // New crete Downloader object
@@ -145,10 +148,14 @@ func (d *Downloader) IsSynchronising() bool {
 // Synchronise 同步启动函数，供外部调用
 func (d *Downloader) Synchronise(id string) error {
 	if !atomic.CompareAndSwapInt32(&d.synchronising, 0, 1) {
+		log.Warn("Current is synchronising.")
 		return errBusy
 	}
-	defer atomic.StoreInt32(&d.synchronising, 1)
+	defer atomic.StoreInt32(&d.synchronising, 0)
 	p := d.peers.Peer(id)
+	if p == nil {
+		return errors.New(fmt.Sprintf("can't get special peer. id: %s", id))
+	}
 	return d.syncWithPeer(p)
 }
 
@@ -164,23 +171,38 @@ func (d *Downloader) syncWithPeer(p *peerConnection) error {
 	// 请求超时定时器
 	timeout := time.NewTimer(requestTimeout)
 	defer timeout.Stop()
-	for {
-		// 处理已收到的区块
-		for !d.queue.Empty() {
-			block := d.queue.PopItem().(*types.Block)
-			localHeight := d.blockChain.CurrentBlock().Height()
-			if block.Height() > localHeight+1 {
-				d.queue.Push(block, -float32(block.Height()))
-				break
+	errMsgCh := make(chan string)
+	doneCh := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-doneCh:
+				return
+			default:
 			}
-			if err := d.blockChain.Verify(block); err != nil {
-				if d.dropPeer != nil {
-					d.dropPeer(p.id)
+			// 处理已收到的区块
+			for !d.queue.Empty() {
+				d.queueLock.Lock()
+				block := d.queue.PopItem().(*types.Block)
+				localHeight := d.blockChain.CurrentBlock().Height()
+				if block.Height() > localHeight+1 {
+					d.queue.Push(block, -float32(block.Height()))
+					break
 				}
-				return err
+				d.queueLock.Unlock()
+				if err := d.blockChain.Verify(block); err != nil {
+					if d.dropPeer != nil {
+						d.dropPeer(p.id)
+					}
+					errMsgCh <- fmt.Sprintf("verify block failed. height: %d. hash: %s", block.Height(), block.Hash().Hex())
+					return
+				}
+				d.insert(block, p.id)
 			}
-			d.insert(block, p.id)
 		}
+	}()
+
+	for {
 		select {
 		case blockPack := <-d.newBlocksCh: // 接收到网络新块
 			if strings.Compare(blockPack.peerID, p.id) == 0 {
@@ -189,6 +211,7 @@ func (d *Downloader) syncWithPeer(p *peerConnection) error {
 			}
 		case block := <-d.blockDoneCh: // 插入本地链成功
 			if block.Height() >= remoteHeight {
+				doneCh <- struct{}{}
 				return nil
 			}
 		case <-timeout.C: // 接收超时
@@ -203,6 +226,9 @@ func (d *Downloader) syncWithPeer(p *peerConnection) error {
 				d.dropPeer(p.id)
 			}
 			return err
+		case errMsg := <-errMsgCh:
+			log.Warn(errMsg)
+			return errors.New(errMsg)
 		case <-d.quitCh:
 			return errForceQuit
 		}
@@ -212,6 +238,8 @@ func (d *Downloader) syncWithPeer(p *peerConnection) error {
 
 // enqueue 经区块集合压入带处理队列中
 func (d *Downloader) enqueue(blocks types.Blocks) {
+	d.queueLock.Lock()
+	defer d.queueLock.Unlock()
 	for _, block := range blocks {
 		d.queue.Push(block, -float32(block.Height()))
 	}
@@ -219,20 +247,13 @@ func (d *Downloader) enqueue(blocks types.Blocks) {
 
 // insert 将块插入本地连
 func (d *Downloader) insert(block *types.Block, peer string) {
-	hash := block.Hash()
-	go func() {
-		if parent := d.blockChain.GetBlock(block.ParentHash(), block.Height()-1); parent == nil {
-			d.insertErrCh <- errUnknownParent
-			log.Debugf("Unknown parent block. peer id: %s. height: %d. hash: %s. parent: %s", peer, block.Height(), hash.Hex(), block.ParentHash())
-			return
-		}
-		if err := d.blockChain.InsertChain(block); err == nil {
-			d.blockDoneCh <- block
-		} else {
-			d.insertErrCh <- err
-			log.Debugf("block import failed. peer: %s. height: %d. hash: %s. err: %v", peer, block.Height(), hash.Hex(), err)
-		}
-	}()
+	err := d.blockChain.InsertChain(block)
+	if err == nil || err == store.ErrExist {
+		go func() { d.blockDoneCh <- block }()
+	} else {
+		go func() { d.insertErrCh <- err }()
+		log.Debugf("block import failed. peer: %s. height: %d. hash: %s. err: %v", peer, block.Height(), block.Hash().Hex(), err)
+	}
 }
 
 // DeliverBlocks 将收到的区块分发给loop

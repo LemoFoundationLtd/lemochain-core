@@ -31,7 +31,7 @@ type ProtocolManager struct {
 
 	newPeerCh       chan *peer
 	txsCh           chan types.Transactions
-	newMinedBlockCh chan *types.Block //todo
+	newMinedBlockCh chan *types.Block
 	quitSync        chan struct{}
 
 	wg sync.WaitGroup
@@ -149,7 +149,10 @@ func (pm *ProtocolManager) broadcastConfirmInfo(hash common.Hash, height uint32)
 		return
 	}
 	copy(data.SignInfo[:], signInfo)
-	// data.SignInfo = signInfo
+	// record to local db
+	if err := pm.blockchain.Db().SetConfirmInfo(hash, data.SignInfo); err != nil {
+		log.Warnf("record confirm info to local failed.error: %v", err)
+	}
 	for id, p := range pm.peers.peers {
 		if pm.isPeerDeputyNode(height, id) {
 			p.peer.send(protocol.NewConfirmMsg, &data)
@@ -297,7 +300,7 @@ func (pm *ProtocolManager) handleMsg(p *peerConnection) error {
 		log.Infof("Receive blocks from: %s. from: %d -- to: %d", p.id[:16], blocks[0].Height(), blocks[len(blocks)-1].Height())
 		filter := len(blocks) == 1 // len(blocks) == 1 不一定为fetcher，但len(blocks)>1肯定是downloader
 		if filter {
-			blocks = pm.fetcher.FilterBlocks(p.id, blocks)
+			blocks = pm.fetcher.FilterBlocks(p.id, blocks, p.peer.RequestOneBlock)
 		}
 		if !filter || len(blocks) > 0 {
 			if err := pm.downloader.DeliverBlocks(p.id, blocks); err != nil {
@@ -317,7 +320,7 @@ func (pm *ProtocolManager) handleMsg(p *peerConnection) error {
 			return errResp(protocol.ErrDecode, "%v: %v", msg, err)
 		}
 		log.Infof("Receive single block. height: %d", block.Height())
-		pm.fetcher.Enqueue(p.id, &block)
+		pm.fetcher.Enqueue(p.id, &block, p.peer.RequestOneBlock)
 	case protocol.NewBlockMsg: // 远程节点主动推送的挖到的最新区块消息
 		if !pm.isSelfDeputyNode() {
 			return errors.New("self node isn't a deputy node")
@@ -330,10 +333,11 @@ func (pm *ProtocolManager) handleMsg(p *peerConnection) error {
 			return errResp(protocol.ErrDecode, "%v: %v", msg, err)
 		}
 		p.peer.MarkBlock(block.Hash()) // 标记区块
-		pm.fetcher.Enqueue(p.id, block)
+		pm.fetcher.Enqueue(p.id, block, p.peer.RequestOneBlock)
 		log.Infof("Receive new block. height: %d. hash: %s", block.Height(), block.Hash().Hex())
 		if block.Height() > p.peer.height {
 			p.peer.SetHead(block.Hash(), block.Height())
+			log.Debugf("setHead to peer: %s. height: %d", p.peer.id[:16], block.Height())
 			// 清理交易池
 			txs := make([]common.Hash, 0)
 			for _, tx := range block.Txs {
@@ -350,7 +354,14 @@ func (pm *ProtocolManager) handleMsg(p *peerConnection) error {
 		if err := msg.Decode(&confirmMsg); err != nil {
 			return errResp(protocol.ErrDecode, "%v: %v", msg, err)
 		}
-		pm.blockchain.ReceiveConfirm(&confirmMsg)
+		// 是否有对应的区块 后续优化
+		if block := pm.blockchain.GetBlockByHash(confirmMsg.Hash); block == nil {
+			// todo require block
+
+			log.Warnf("Receive confirm package, but block doesn't exist in local chain. hash:%s height:%d", confirmMsg.Hash.Hex(), confirmMsg.Height)
+		} else {
+			pm.blockchain.ReceiveConfirm(&confirmMsg)
+		}
 	case protocol.GetConfirmInfoMsg: // 收到远程节点发来的请求
 		var query protocol.GetConfirmInfo
 		if err := msg.Decode(&query); err != nil {
@@ -467,6 +478,7 @@ func (pm *ProtocolManager) synchronise(p string) {
 	if strings.Compare(p, "") == 0 {
 		return
 	}
+	log.Infof("start synchronise from: %s", p[:16])
 	if err := pm.downloader.Synchronise(p); err != nil {
 		return
 	}

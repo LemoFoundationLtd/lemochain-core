@@ -113,11 +113,13 @@ func New(lemoConf *LemoConfig, conf *NodeConfig, flags map[string]string) (*Node
 	} else {
 		return nil, err
 	}
+	engine := chain.NewDpovp(int64(genesisConfig.Timeout), int64(genesisConfig.SleepTime))
 	recvBlockCh := make(chan *types.Block)
-	blockChain, err := chain.NewBlockChain(genesisConfig.ChainID, db, recvBlockCh, flags)
+	blockChain, err := chain.NewBlockChain(genesisConfig.ChainID, engine, db, recvBlockCh, flags)
 	if err != nil {
 		return nil, err
 	}
+	engine.SetBlockChain(blockChain)
 	newTxsCh := make(chan types.Transactions)
 	accMan := blockChain.AccountManager()
 	txPool := chain.NewTxPool(accMan, newTxsCh)
@@ -137,7 +139,7 @@ func New(lemoConf *LemoConfig, conf *NodeConfig, flags map[string]string) (*Node
 	}
 	n.genesisBlock, _ = db.GetBlockByHeight(0)
 	n.config.P2P.PrivateKey = deputynode.GetSelfNodeKey()
-	miner := miner.New(int64(genesisConfig.SleepTime), int64(genesisConfig.Timeout), blockChain, txPool, n.config.NodeKey(), newMinedBlockCh, recvBlockCh)
+	miner := miner.New(int64(genesisConfig.SleepTime), int64(genesisConfig.Timeout), blockChain, txPool, n.config.NodeKey(), newMinedBlockCh, recvBlockCh, engine)
 	n.miner = miner
 	d_n := deputynode.Instance().GetNodeByNodeID(blockChain.CurrentBlock().Height()+1, deputynode.GetSelfNodeID())
 	if d_n != nil {
@@ -347,7 +349,7 @@ func (n *Node) stopChain() error {
 	n.chain.Stop()
 	n.pm.Stop()
 	// n.txPool.Stop()
-	n.miner.Stop()
+	n.miner.Close()
 	if err := n.db.Close(); err != nil {
 		return err
 	}

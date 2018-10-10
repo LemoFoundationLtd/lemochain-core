@@ -2,13 +2,13 @@ package synchronise
 
 import (
 	"errors"
-	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"gopkg.in/karalabe/cookiejar.v2/collections/prque"
 	"math/rand"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -61,7 +61,7 @@ type Fetcher struct {
 	announced map[common.Hash][]*announce // 记录块对应的通知，用于fetching的调度
 	fetching  map[common.Hash]*announce   // 记录当前正在fetching对应的通知
 	//fetched   map[common.Hash]*announce // 记录获取完成的
-
+	lock sync.Mutex
 	// Block 缓存
 	queue    *prque.Prque              // 区块队列，已排序
 	queueMp  map[string]int            // 记录每个节点收到了多少个未处理的区块
@@ -120,42 +120,53 @@ func (f *Fetcher) Stop() {
 func (f *Fetcher) run() {
 	fetchTimer := time.NewTimer(0)
 	defer fetchTimer.Stop()
+	stopCh := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-stopCh:
+				return
+			default:
+
+			}
+			// 将队列中的区块导入本地链
+			for !f.queue.Empty() {
+				height := f.currentChainHeight()
+				f.lock.Lock()
+				op := f.queue.PopItem().(*newBlock)
+				if op.block.Height() > height+1 {
+					f.queue.Push(op, -float32(op.block.Height()))
+					break
+				}
+				// 判断是否为分叉 且分叉的父块没有收到
+				for f.getLocalBlock(op.block.ParentHash(), op.block.Height()-1) == nil {
+					f.queue.Push(op, -float32(op.block.Height()))
+					op = f.queue.PopItem().(*newBlock)
+				}
+				f.lock.Unlock()
+				hash := op.block.Hash()
+				if f.getLocalBlock(hash, op.block.Height()) != nil {
+					f.forgetBlock(hash)
+					continue
+				}
+				if err := f.verifyBlock(op.block); err != nil {
+					log.Infof("Block verify failed. height: %d. hash: %s. peer: %s. err: %v", op.block.Height(), hash.Hex(), op.origin[:16], err)
+					if f.dropPeer != nil {
+						f.dropPeer(op.origin)
+					}
+					return
+				}
+				f.insert(op.origin, op.block)
+			}
+		}
+	}()
+
 	for {
 		// 如果获取超时 则不获取了
 		for hash, announce := range f.fetching {
 			if time.Since(announce.time) > fetchTimeout {
 				f.forgetHash(hash)
 			}
-		}
-		// 将队列中的区块导入本地链
-		for !f.queue.Empty() {
-			height := f.currentChainHeight()
-			op := f.queue.PopItem().(*newBlock)
-			if op.block.Height() > height+1 {
-				f.queue.Push(op, -float32(op.block.Height()))
-				break
-			}
-			// 判断是否为分叉 且分叉的父块没有收到
-			for f.getLocalBlock(op.block.ParentHash(), op.block.Height()-1) == nil {
-				f.queue.Push(op, -float32(op.block.Height()))
-				op = f.queue.PopItem().(*newBlock)
-			}
-			hash := op.block.Hash()
-			if f.getLocalBlock(hash, op.block.Height()) != nil {
-				f.forgetBlock(hash)
-				continue
-			}
-			err := f.verifyBlock(op.block)
-			switch err {
-			case nil:
-			default:
-				log.Infof("Block verify failed. height: %d. hash: %s. peer: %s. err: %v", op.block.Height(), hash.Hex(), op.origin, err)
-				if f.dropPeer != nil {
-					f.dropPeer(op.origin)
-				}
-				return
-			}
-			f.insert(op.origin, op.block)
 		}
 
 		select {
@@ -196,6 +207,7 @@ func (f *Fetcher) run() {
 			f.forgetHash(hash)
 			f.forgetBlock(hash)
 		case <-f.quit:
+			stopCh <- struct{}{}
 			return
 		case notification := <-f.notifyCh:
 			// 接收到的区块高度小于已共识的高度，直接丢掉，后续将此判断逻辑移植到Handler里
@@ -261,11 +273,11 @@ func (f *Fetcher) Notify(peer string, hash common.Hash, height uint32, fetchBloc
 }
 
 // FilterBlock 过滤blocks是否为fetcher请求的，处理掉是fetcher请求的，将不是fetcher请求的返回
-func (f *Fetcher) FilterBlocks(id string, blocks types.Blocks) types.Blocks {
+func (f *Fetcher) FilterBlocks(id string, blocks types.Blocks, fetchBlock blockRequesterFn) types.Blocks {
 	unknown := types.Blocks{}
 	for _, block := range blocks {
 		if announce := f.fetching[block.Hash()]; announce != nil && strings.Compare(id, announce.origin) == 0 {
-			f.Enqueue(id, block)
+			f.Enqueue(id, block, fetchBlock)
 		} else {
 			unknown = append(unknown, block)
 		}
@@ -274,10 +286,22 @@ func (f *Fetcher) FilterBlocks(id string, blocks types.Blocks) types.Blocks {
 }
 
 // Enqueue 收到完整块时调用
-func (f *Fetcher) Enqueue(peer string, block *types.Block) error {
+func (f *Fetcher) Enqueue(peer string, block *types.Block, fetchBlock blockRequesterFn) error {
 	op := &newBlock{
 		origin: peer,
 		block:  block,
+	}
+
+	// if parent block not exist, fetch it
+	if f.getLocalBlock(block.ParentHash(), block.Height()-1) == nil && f.fetching[block.Hash()] == nil {
+		announce := &announce{
+			hash:       block.Hash(),
+			height:     block.Height(),
+			time:       time.Now(),
+			origin:     peer,
+			fetchBlock: fetchBlock,
+		}
+		f.fetching[block.Hash()] = announce
 	}
 	// 防止newBlockCh已有数据还没处理导致的长时间休眠态突然退出问题
 	select {
@@ -320,6 +344,8 @@ func (f *Fetcher) forgetBlock(hash common.Hash) {
 
 // enqueue 将收到的区块添加到队列中
 func (f *Fetcher) enqueue(newBlock *newBlock) {
+	f.lock.Lock()
+	defer f.lock.Unlock()
 	peer := newBlock.origin
 	hash := newBlock.block.Hash()
 	if f.queueMp[peer] >= blockLimit {
@@ -344,21 +370,11 @@ func (f *Fetcher) enqueue(newBlock *newBlock) {
 // insert 启动个协程插入块到链上
 func (f *Fetcher) insert(peer string, block *types.Block) {
 	hash := block.Hash()
-	go func() {
-		defer func() {
-			f.done <- hash
-		}()
-
-		if parent := f.getLocalBlock(block.ParentHash(), block.Height()-1); parent == nil {
-			log.Debug(fmt.Sprintf("Unknown parent of propagated block", "peer", peer, "number", block.Height(), "hash", hash, "parent", block.ParentHash()))
-			return
-		}
-
-		if err := f.insertChain(block); err != nil {
-			log.Debug("block import failed", "peer", peer, "number", block.Height(), "hash", hash, "err", err)
-			return
-		}
-		// 将块hash广播出去
-		go f.broadcastBlock(block, false)
-	}()
+	if err := f.insertChain(block); err != nil {
+		log.Warnf("fetcher block insert failed. height: %d. hash: %s. error: %v", block.Height(), hash.Hex(), err)
+		return
+	}
+	go func() { f.done <- hash }()
+	// 将块hash广播出去
+	go f.broadcastBlock(block, false)
 }

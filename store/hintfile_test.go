@@ -3,6 +3,7 @@ package store
 import (
 	"github.com/stretchr/testify/assert"
 	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -31,7 +32,7 @@ func TestMFile_Write2(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	path1 := path + "//test1_hint.hint"
+	path1 := filepath.Join(path, "test1_hint.hint")
 	file, err := OpenMFileForWrite(path1)
 	assert.NoError(t, err)
 
@@ -53,7 +54,7 @@ func TestMFile_Write2(t *testing.T) {
 	totalSize := totalCnt * uintSize
 	assert.Equal(t, info.Size(), int64(totalSize))
 
-	path2 := path + "//test2_hint.hint"
+	path2 := filepath.Join(path, "test2_hint.hint")
 	file1, err := OpenMFileForRead(path1)
 	assert.NoError(t, err)
 
