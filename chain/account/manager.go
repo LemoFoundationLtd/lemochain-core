@@ -196,7 +196,6 @@ func (am *Manager) Finalise() error {
 		}
 		height = block.Height() + 1
 	}
-	MergeChangeLogs(am.GetChangeLogs(), am)
 	versionTrie := am.getVersionTrie()
 	for _, account := range am.accountCache {
 		if !account.IsDirty() {
@@ -340,6 +339,16 @@ func (am *Manager) Rebuild(address common.Address) error {
 	}
 	// save account
 	return am.db.SetAccounts(am.baseBlockHash, []*types.AccountData{&account.data})
+}
+
+// MergeChangeLogs merges the change logs for same account in block. Then update the version of change logs and account.
+func (am *Manager) MergeChangeLogs(fromIndex int) {
+	needMerge := am.processor.changeLogs[fromIndex:]
+	mergedLogs, changedVersions := MergeChangeLogs(needMerge)
+	am.processor.changeLogs = append(am.processor.changeLogs[:fromIndex], mergedLogs...)
+	for addr, version := range changedVersions {
+		am.getRawAccount(addr).SetVersion(version)
+	}
 }
 
 func (am *Manager) Stop(graceful bool) error {

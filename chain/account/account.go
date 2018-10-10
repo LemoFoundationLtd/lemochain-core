@@ -16,10 +16,11 @@ import (
 )
 
 var (
-	sha3Nil         = crypto.Keccak256Hash(nil)
-	ErrLoadCodeFail = errors.New("can't load contract code")
-	ErrTrieFail     = errors.New("can't load contract storage trie")
-	ErrTrieChanged  = errors.New("the trie has changed after Finalise")
+	sha3Nil            = crypto.Keccak256Hash(nil)
+	ErrNegativeBalance = errors.New("balance can't be negative")
+	ErrLoadCodeFail    = errors.New("can't load contract code")
+	ErrTrieFail        = errors.New("can't load contract storage trie")
+	ErrTrieChanged     = errors.New("the trie has changed after Finalise")
 )
 
 type Storage map[common.Hash][]byte
@@ -105,6 +106,10 @@ func (a *Account) GetCodeHash() common.Hash   { return a.data.CodeHash }
 func (a *Account) GetStorageRoot() common.Hash { return a.data.StorageRoot }
 
 func (a *Account) SetBalance(balance *big.Int) {
+	if balance.Sign() < 0 {
+		log.Errorf("can't set negative balance %v to account %06x", balance, a.data.Address)
+		panic(ErrNegativeBalance)
+	}
 	a.data.Balance = balance
 }
 func (a *Account) SetVersion(version uint32) {

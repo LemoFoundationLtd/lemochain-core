@@ -6,8 +6,9 @@ import (
 	"sort"
 )
 
-// MergeChangeLogs merges the change logs for same account in block. Then update the version of change logs and account.
-func MergeChangeLogs(logs types.ChangeLogSlice, am *Manager) types.ChangeLogSlice {
+// MergeChangeLogs merges the change logs for same account in block. Then return the merged change logs and changed account versions.
+func MergeChangeLogs(logs types.ChangeLogSlice) (types.ChangeLogSlice, map[common.Address]uint32) {
+	changedVersions := make(map[common.Address]uint32)
 	logsByAccount := make(map[common.Address]types.ChangeLogSlice)
 	// classify
 	for _, log := range logs {
@@ -16,7 +17,10 @@ func MergeChangeLogs(logs types.ChangeLogSlice, am *Manager) types.ChangeLogSlic
 	// merge logs in account
 	for addr, accountLogs := range logsByAccount {
 		newAccountLogs := merge(accountLogs)
-		resetVersion(newAccountLogs, am)
+		lastVersion := resetVersion(newAccountLogs)
+		if len(accountLogs) != len(newAccountLogs) {
+			changedVersions[addr] = lastVersion
+		}
 		logsByAccount[addr] = newAccountLogs
 	}
 	// sort all logs by account
@@ -25,38 +29,37 @@ func MergeChangeLogs(logs types.ChangeLogSlice, am *Manager) types.ChangeLogSlic
 		accounts = append(accounts, addr)
 	}
 	sort.Sort(accounts)
-	result := make(types.ChangeLogSlice, 0)
+	mergedLogs := make(types.ChangeLogSlice, 0)
 	for _, addr := range accounts {
-		result = append(result, logsByAccount[addr]...)
+		mergedLogs = append(mergedLogs, logsByAccount[addr]...)
 	}
-	return result
+	return mergedLogs, changedVersions
 }
 
 // merge traverses change logs and merges change log into the same type one which in front of it
 func merge(logs types.ChangeLogSlice) types.ChangeLogSlice {
-	result := logs[:]
+	result := make(types.ChangeLogSlice, 0)
 	for _, log := range logs {
 		exist := result.FindByType(log)
-		if log.LogType == BalanceLog || log.LogType == StorageLog {
+		if exist != nil && (log.LogType == BalanceLog || log.LogType == StorageLog) {
 			// update the exist one
 			exist.NewVal = log.NewVal
 			exist.Extra = log.Extra
 		} else {
-			result = append(result, log)
+			result = append(result, log.Copy())
 		}
 	}
-	return logs
+	return result
 }
 
-// resetVersion reset change logs version, then update account's version by the last change log
-func resetVersion(logs types.ChangeLogSlice, am *Manager) {
-	if len(logs) == 0 {
-		return
+// resetVersion reset change logs version, then return the last change log as account's version
+func resetVersion(logs types.ChangeLogSlice) uint32 {
+	count := len(logs)
+	if count == 0 {
+		return 0
 	}
-	for i := 1; i < len(logs); i++ {
+	for i := 1; i < count; i++ {
 		logs[i].Version = logs[i-1].Version + 1
 	}
-	lastVersion := logs[len(logs)-1].Version
-	account := am.getRawAccount(logs[0].Address)
-	account.SetVersion(lastVersion)
+	return logs[count-1].Version
 }

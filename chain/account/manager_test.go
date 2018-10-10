@@ -310,3 +310,38 @@ func TestNewManager_Finalise_Save2(t *testing.T) {
 	manager = NewManager(b(12), db)
 	assert.Equal(t, root, manager.GetVersionRoot())
 }
+
+func TestManager_MergeChangeLogs(t *testing.T) {
+	manager := NewManager(common.Hash{}, newDB())
+
+	// merge nothing
+	manager.MergeChangeLogs(0)
+
+	account1 := manager.GetAccount(defaultAccounts[0].Address)
+	account2 := manager.GetAccount(common.HexToAddress("0x1"))
+
+	// balance log, custom log, balance log, balance log
+	account1.SetBalance(big.NewInt(111))
+	manager.processor.PushChangeLog(&types.ChangeLog{
+		LogType: types.ChangeLogType(101),
+	})
+	account2.SetBalance(big.NewInt(222))
+	account1.SetBalance(big.NewInt(333))
+	logs := manager.GetChangeLogs()
+	assert.Equal(t, 4, len(logs))
+	assert.Equal(t, *big.NewInt(111), manager.GetChangeLogs()[0].NewVal)
+	assert.Equal(t, uint32(2), account1.GetVersion())
+
+	// merge different account's change log
+	manager.MergeChangeLogs(1)
+	logs = manager.GetChangeLogs()
+	assert.Equal(t, 4, len(logs))
+
+	// successfully merge
+	manager.MergeChangeLogs(0)
+	logs = manager.GetChangeLogs()
+	assert.Equal(t, 3, len(logs))
+	assert.Equal(t, uint32(1), account1.GetVersion())
+	// the first change log has been sorted to the last one
+	assert.Equal(t, *big.NewInt(333), manager.GetChangeLogs()[2].NewVal)
+}
