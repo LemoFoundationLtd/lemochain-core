@@ -49,12 +49,12 @@ func key2hash(key []byte) common.Hash {
 }
 
 func (database *LmDataBase) getDataPath(index int) string {
-	dataPath := database.HomePath + "\\%03d.data"
+	dataPath := filepath.Join(database.HomePath, "%03d.data")
 	return fmt.Sprintf(dataPath, index)
 }
 
 func (database *LmDataBase) getHintPath(index int) string {
-	hintPath := database.HomePath + "\\%03d.hint"
+	hintPath := filepath.Join(database.HomePath, "%03d.hint")
 	return fmt.Sprintf(hintPath, index)
 }
 
