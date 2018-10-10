@@ -52,6 +52,11 @@ func (p *TxProcessor) Process(block *types.Block) (*types.Header, error) {
 		txs         = block.Txs
 	)
 	p.am.Reset(header.ParentHash)
+	// genesis
+	if header.Height == 0 {
+		log.Warn("It is not necessary to process genesis block.")
+		return header, nil
+	}
 	// Iterate over and process the individual transactions
 	for i, tx := range txs {
 		gas, err := p.applyTx(gp, header, tx, uint(i), block.Hash())
@@ -59,7 +64,7 @@ func (p *TxProcessor) Process(block *types.Block) (*types.Header, error) {
 			return nil, err
 		}
 		gasUsed = gasUsed + gas
-		fee := new(big.Int).Mul(new(big.Int).SetUint64(gasUsed), tx.GasPrice())
+		fee := new(big.Int).Mul(new(big.Int).SetUint64(gas), tx.GasPrice())
 		minerSalary.Add(minerSalary, fee)
 	}
 	p.paySalary(minerSalary, header.LemoBase)
@@ -73,7 +78,6 @@ func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions) (*t
 	gasUsed := uint64(0)
 	minerSalary := new(big.Int)
 	selectedTxs := make(types.Transactions, 0)
-	mergeFrom := len(p.am.GetChangeLogs())
 
 	p.am.Reset(header.ParentHash)
 
@@ -103,11 +107,8 @@ func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions) (*t
 			log.Debug("Transaction failed, account skipped", "hash", tx.Hash(), "err", err)
 		}
 		gasUsed = gasUsed + gas
-		fee := new(big.Int).Mul(new(big.Int).SetUint64(gasUsed), tx.GasPrice())
+		fee := new(big.Int).Mul(new(big.Int).SetUint64(gas), tx.GasPrice())
 		minerSalary.Add(minerSalary, fee)
-		// Merge change logs by transaction will save more transaction execution detail than by block
-		p.am.MergeChangeLogs(mergeFrom)
-		mergeFrom = len(p.am.GetChangeLogs())
 	}
 	p.paySalary(minerSalary, header.LemoBase)
 
@@ -130,6 +131,7 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 		sender           = p.am.GetAccount(senderAddr)
 		contractCreation = tx.To() == nil
 		restGas          = tx.GasLimit()
+		mergeFrom        = len(p.am.GetChangeLogs())
 	)
 	err = p.buyGas(gp, tx)
 	if err != nil {
@@ -158,6 +160,9 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 		}
 	}
 	p.refundGas(gp, tx, restGas)
+	// Merge change logs by transaction will save more transaction execution detail than by block
+	p.am.MergeChangeLogs(mergeFrom)
+	mergeFrom = len(p.am.GetChangeLogs())
 
 	return tx.GasLimit() - restGas, nil
 }

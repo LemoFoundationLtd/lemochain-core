@@ -47,11 +47,11 @@ var (
 		},
 		// block 1 is stable block
 		{
-			hash:        common.HexToHash("0x6e1adde19556f281f9406a6a249f389deccaab7ca208c8a96228d6bacec0aee1"),
+			hash:        common.HexToHash("0x16c0160ba55378547c0fc6fb892191adabe459b27d6314f44c54aa1e9f69e326"),
 			author:      common.HexToAddress("0x20000"),
 			versionRoot: common.HexToHash("0x695330e8317f42ae800b9c98096c698903fd3a9cc33e8228f42f67f30e5b23c8"),
 			txRoot:      common.HexToHash("0xf044cc436950ef7470aca61053eb3f1ed46b9dcd501a5210f3673dc657c4fc88"),
-			logsRoot:    common.HexToHash("0x520bb99fc1b8a23b60d8ded2a8b894d8c20364d25c544a0031b247d05f8c2997"),
+			logsRoot:    common.HexToHash("0x5a0783cc3ff00fb0c6a3ce34be8251ccaef6bb1f3acff09322e42c58c51be91c"),
 			txList: []*types.Transaction{
 				// testAddr -> defaultAccounts[0] 1
 				types.NewTransaction(defaultAccounts[0], common.Big1, 2000000, common.Big2, []byte{12}, chainID, big.NewInt(1538210391), "aa", []byte{34}),
@@ -63,16 +63,32 @@ var (
 		},
 		// block 2 is not stable block
 		{
-			hash:        common.HexToHash("0xc84ede6118f3ce622ccb5900dc7df6e872bfa9916acbb72f2b50dd67a6421e02"),
+			hash:        common.HexToHash("0x6de5576b743ac346c019793f24470aa82464cda92aad0509942158251a3035b0"),
 			author:      defaultAccounts[0],
 			versionRoot: common.HexToHash("0xb17f070e12aacafe07dabcae8b9333bb660cc55a3e06584a3f5a710b7f0a584a"),
 			txRoot:      common.HexToHash("0x4558f847f8314dbc7e9d7d6fc84a9e75286040aa527b2d981f924a2ad75bca81"),
-			logsRoot:    common.HexToHash("0x9e05a0471008bd9a617bf0679ef50b3ce92c8005c1883e1e48bebca33296e627"),
+			logsRoot:    common.HexToHash("0xec63d84a5f0e9fc43a05c49e76ff2d291686bfaca48d104b519b3a9984ed5398"),
 			txList: []*types.Transaction{
 				// testAddr -> defaultAccounts[0] 2
 				types.NewTransaction(defaultAccounts[0], common.Big2, 2000000, common.Big2, []byte{12}, chainID, big.NewInt(1538210395), "aa", []byte{34}),
 			},
 			time:     big.NewInt(1538209758),
+			gasLimit: 20000000,
+		},
+		// block 3 is not store in db
+		{
+			hash:        common.HexToHash("0x4b17abd7e65b34379d992a2e663b15d38e473126a8161c6e3f84568fb2474c0c"),
+			author:      defaultAccounts[0],
+			versionRoot: common.HexToHash("0xfa256aeabd9bc66361aec3e149af6372b725e9cfdcf81de147ceb0ffc8904ab1"),
+			txRoot:      common.HexToHash("0xef1ecb2eaa56f8719161d50e5a454b685c7079f686a58e65210be87a03c11bbf"),
+			logsRoot:    common.HexToHash("0x80e1dd928e158c40494b1f76595ece38a5790c5894e15f436c5e86bb12700bc8"),
+			txList: []*types.Transaction{
+				// testAddr -> defaultAccounts[0] 3
+				types.NewTransaction(defaultAccounts[0], common.Big2, 2000000, common.Big2, []byte{12}, chainID, big.NewInt(1538210398), "aa", []byte{34}),
+				// testAddr -> defaultAccounts[1] 3
+				types.NewTransaction(defaultAccounts[0], common.Big2, 3000000, common.Big3, []byte{}, chainID, big.NewInt(1538210425), "", []byte{}),
+			},
+			time:     big.NewInt(1538209761),
 			gasLimit: 20000000,
 		},
 	}
@@ -141,22 +157,30 @@ func saveBlock(db protocol.ChainDB, blockIndex int, info *blockInfo) {
 		owner.SetBalance(big.NewInt(1000000000))
 	}
 	// account
+	salary := new(big.Int)
 	for _, tx := range info.txList {
 		gas := params.TxGas + params.TxDataNonZeroGas*uint64(len(tx.Data()))
 		fromAddr, err := tx.From()
 		if err != nil {
 			panic(err)
 		}
-		// TODO the real change log is pay limit gas first, then refund the rest after contract execution
 		from := manager.GetAccount(fromAddr)
-		cost := new(big.Int).Add(tx.Value(), new(big.Int).SetUint64(gas))
-		from.SetBalance(new(big.Int).Sub(from.GetBalance(), cost))
+		fee := new(big.Int).Mul(new(big.Int).SetUint64(gas), tx.GasPrice())
+		cost := new(big.Int).Add(tx.Value(), fee)
 		to := manager.GetAccount(*tx.To())
-		to.SetBalance(new(big.Int).Add(to.GetBalance(), tx.Value()))
+		// make sure the change log has right order
+		if fromAddr.Hex() < tx.To().Hex() {
+			from.SetBalance(new(big.Int).Sub(from.GetBalance(), cost))
+			to.SetBalance(new(big.Int).Add(to.GetBalance(), tx.Value()))
+		} else {
+			to.SetBalance(new(big.Int).Add(to.GetBalance(), tx.Value()))
+			from.SetBalance(new(big.Int).Sub(from.GetBalance(), cost))
+		}
 		gasUsed += gas
+		salary.Add(salary, fee)
 	}
 	miner := manager.GetAccount(info.author)
-	miner.SetBalance(new(big.Int).Add(miner.GetBalance(), new(big.Int).SetUint64(gasUsed)))
+	miner.SetBalance(new(big.Int).Add(miner.GetBalance(), salary))
 	err = manager.Finalise()
 	if err != nil {
 		panic(err)
@@ -167,7 +191,7 @@ func saveBlock(db protocol.ChainDB, blockIndex int, info *blockInfo) {
 		info.versionRoot = manager.GetVersionRoot()
 	}
 	changeLogs := manager.GetChangeLogs()
-	fmt.Printf("%d changeLogs %v\n", blockIndex, changeLogs)
+	// fmt.Printf("%d changeLogs %v\n", blockIndex, changeLogs)
 	logsRoot := types.DeriveChangeLogsSha(changeLogs)
 	if logsRoot != info.logsRoot {
 		fmt.Printf("%d change logs root error. except: %s, got: %s\n", blockIndex, info.logsRoot.Hex(), logsRoot.Hex())
@@ -201,6 +225,10 @@ func saveBlock(db protocol.ChainDB, blockIndex int, info *blockInfo) {
 	block.SetHeader(header)
 	defaultBlocks = append(defaultBlocks, block)
 	newestBlock = block
+	// the last block is no need to store
+	if blockIndex == len(defaultBlockInfos)-1 {
+		return
+	}
 	err = db.SetBlock(blockHash, block)
 	if err != nil && err != store.ErrExist {
 		panic(err)
@@ -213,7 +241,7 @@ func saveBlock(db protocol.ChainDB, blockIndex int, info *blockInfo) {
 
 // testTxRecover load block to make sure the data is stored correctly
 func testTxRecover(bc *BlockChain) {
-	lastBlockInfo := defaultBlockInfos[len(defaultBlockInfos)-1]
+	lastBlockInfo := defaultBlockInfos[1]
 	block := bc.GetBlockByHash(lastBlockInfo.hash)
 	from, err := block.Txs[0].From()
 	if err != nil {
