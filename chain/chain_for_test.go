@@ -1,6 +1,7 @@
 package chain
 
 import (
+	"crypto/ecdsa"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
@@ -12,6 +13,7 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 type blockInfo struct {
@@ -58,41 +60,41 @@ var (
 			logsRoot:    common.HexToHash("0x5a0783cc3ff00fb0c6a3ce34be8251ccaef6bb1f3acff09322e42c58c51be91c"),
 			txList: []*types.Transaction{
 				// testAddr -> defaultAccounts[0] 1
-				types.NewTransaction(defaultAccounts[0], common.Big1, 2000000, common.Big2, []byte{12}, chainID, big.NewInt(1538210391), "aa", []byte{34}),
+				signTransaction(types.NewTransaction(defaultAccounts[0], common.Big1, 2000000, common.Big2, []byte{12}, chainID, big.NewInt(1538210391), "aa", []byte{34}), testPrivate),
 				// testAddr -> defaultAccounts[1] 1
-				types.NewTransaction(defaultAccounts[1], common.Big1, 2000000, common.Big2, []byte{}, chainID, big.NewInt(1538210491), "", []byte{}),
+				makeTransaction(testPrivate, defaultAccounts[1], common.Big1, common.Big2, big.NewInt(1538210491), 2000000),
 			},
 			gasLimit: 20000000,
 			time:     big.NewInt(1538209755),
 		},
 		// block 2 is not stable block
 		{
-			hash:        common.HexToHash("0x6de5576b743ac346c019793f24470aa82464cda92aad0509942158251a3035b0"),
+			hash:        common.HexToHash("0x6505364bb611f428a2d8722c3469057288c896d77659150ea6813464d9fbadd2"),
 			height:      2,
 			author:      defaultAccounts[0],
 			versionRoot: common.HexToHash("0xb17f070e12aacafe07dabcae8b9333bb660cc55a3e06584a3f5a710b7f0a584a"),
-			txRoot:      common.HexToHash("0x4558f847f8314dbc7e9d7d6fc84a9e75286040aa527b2d981f924a2ad75bca81"),
-			logsRoot:    common.HexToHash("0xec63d84a5f0e9fc43a05c49e76ff2d291686bfaca48d104b519b3a9984ed5398"),
+			txRoot:      common.HexToHash("0x85c8e888d358cc5232dfc62e340bfecb935c78471d943faf80c60822a437934f"),
+			logsRoot:    common.HexToHash("0x29cdc2cc137aaaefbe97e9d644f9e2d05bfcd13d649d1fd60bc25ca5d2d33362"),
 			txList: []*types.Transaction{
 				// testAddr -> defaultAccounts[0] 2
-				types.NewTransaction(defaultAccounts[0], common.Big2, 2000000, common.Big2, []byte{12}, chainID, big.NewInt(1538210395), "aa", []byte{34}),
+				makeTransaction(testPrivate, defaultAccounts[0], common.Big2, common.Big2, big.NewInt(1538210395), 2000000),
 			},
 			time:     big.NewInt(1538209758),
 			gasLimit: 20000000,
 		},
 		// block 3 is not store in db
 		{
-			hash:        common.HexToHash("0x4b17abd7e65b34379d992a2e663b15d38e473126a8161c6e3f84568fb2474c0c"),
+			hash:        common.HexToHash("0xc932e7673e96e7a28a28d7aded07f9bdf0b925b376dc8399873133965c7beb65"),
 			height:      3,
 			author:      defaultAccounts[0],
-			versionRoot: common.HexToHash("0xfa256aeabd9bc66361aec3e149af6372b725e9cfdcf81de147ceb0ffc8904ab1"),
-			txRoot:      common.HexToHash("0xef1ecb2eaa56f8719161d50e5a454b685c7079f686a58e65210be87a03c11bbf"),
-			logsRoot:    common.HexToHash("0x80e1dd928e158c40494b1f76595ece38a5790c5894e15f436c5e86bb12700bc8"),
+			versionRoot: common.HexToHash("0x255a3d6044cc406bf4322568241a380c3ae18462362b292d89fb8d3dbce6a76d"),
+			txRoot:      common.HexToHash("0x0ebb001c987159ed0e4348e2dd3a33fa7c59b772954856f844ab9f26725e28b1"),
+			logsRoot:    common.HexToHash("0x22dfa5385981b9628fd701145fff3eb161d9505d2a1d45f1cee4d9d786ee86de"),
 			txList: []*types.Transaction{
-				// testAddr -> defaultAccounts[0] 3
-				types.NewTransaction(defaultAccounts[0], common.Big2, 2000000, common.Big2, []byte{12}, chainID, big.NewInt(1538210398), "aa", []byte{34}),
-				// testAddr -> defaultAccounts[1] 3
-				types.NewTransaction(defaultAccounts[0], common.Big2, 3000000, common.Big3, []byte{}, chainID, big.NewInt(1538210425), "", []byte{}),
+				// testAddr -> defaultAccounts[0] 2
+				makeTransaction(testPrivate, defaultAccounts[0], common.Big2, common.Big2, big.NewInt(1538210398), 2000000),
+				// testAddr -> defaultAccounts[1] 2
+				makeTransaction(testPrivate, defaultAccounts[1], common.Big2, common.Big3, big.NewInt(1538210425), 2000000),
 			},
 			time:     big.NewInt(1538209761),
 			gasLimit: 20000000,
@@ -144,12 +146,6 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 	// sign transactions
 	var err error
 	var gasUsed uint64 = 0
-	for i, tx := range info.txList {
-		info.txList[i], err = types.SignTx(tx, testSigner, testPrivate)
-		if err != nil {
-			panic(err)
-		}
-	}
 	txRoot := types.DeriveTxsSha(info.txList)
 	if txRoot != info.txRoot {
 		if info.txRoot != (common.Hash{}) {
@@ -244,6 +240,23 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 		}
 	}
 	return block
+}
+
+func makeTx(fromPrivate *ecdsa.PrivateKey, to common.Address, amount *big.Int) *types.Transaction {
+	return makeTransaction(fromPrivate, to, amount, common.Big1, new(big.Int).SetUint64(uint64(time.Now().Unix()+300)), 1000000)
+}
+
+func makeTransaction(fromPrivate *ecdsa.PrivateKey, to common.Address, amount, gasPrice, expiration *big.Int, gasLimit uint64) *types.Transaction {
+	tx := types.NewTransaction(to, amount, gasLimit, gasPrice, []byte{}, chainID, expiration, "", []byte{})
+	return signTransaction(tx, fromPrivate)
+}
+
+func signTransaction(tx *types.Transaction, private *ecdsa.PrivateKey) *types.Transaction {
+	tx, err := types.SignTx(tx, testSigner, private)
+	if err != nil {
+		panic(err)
+	}
+	return tx
 }
 
 // h returns hash for test
