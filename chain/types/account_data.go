@@ -31,6 +31,12 @@ type accountDataMarshaling struct {
 	Version hexutil.Uint64
 }
 
+func (a *AccountData) Copy() *AccountData {
+	cpy := *a
+	cpy.Balance = new(big.Int).Set(a.Balance)
+	return &cpy
+}
+
 type Code []byte
 
 func (c Code) String() string {

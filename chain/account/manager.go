@@ -225,7 +225,7 @@ func (am *Manager) Save(newBlockHash common.Hash) error {
 		if err := account.rawAccount.Save(); err != nil {
 			return err
 		}
-		dirtyAccounts = append(dirtyAccounts, &account.rawAccount.data)
+		dirtyAccounts = append(dirtyAccounts, account.rawAccount.data)
 	}
 	// save accounts to db
 	if len(dirtyAccounts) != 0 {
@@ -338,7 +338,7 @@ func (am *Manager) Rebuild(address common.Address) error {
 		}
 	}
 	// save account
-	return am.db.SetAccounts(am.baseBlockHash, []*types.AccountData{&account.data})
+	return am.db.SetAccounts(am.baseBlockHash, []*types.AccountData{account.data})
 }
 
 // MergeChangeLogs merges the change logs for same account in block. Then update the version of change logs and account.

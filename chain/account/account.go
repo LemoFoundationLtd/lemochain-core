@@ -44,7 +44,7 @@ func (s Storage) Copy() Storage {
 
 // Account is used to read and write account data. the code and dirty storage K/V would be cached till they are flushing to db
 type Account struct {
-	data   types.AccountData
+	data   *types.AccountData
 	db     protocol.ChainDB    // used to access account data in cache or file
 	trie   *trie.SecureTrie    // contract storage trie
 	trieDb *store.TrieDatabase // used to access tire data in file
@@ -64,6 +64,8 @@ func NewAccount(db protocol.ChainDB, address common.Address, data *types.Account
 	if data == nil {
 		// create new one
 		data = &types.AccountData{Address: address}
+	} else {
+		data = data.Copy()
 	}
 	if data.Balance == nil {
 		data.Balance = new(big.Int)
@@ -72,7 +74,7 @@ func NewAccount(db protocol.ChainDB, address common.Address, data *types.Account
 		data.CodeHash = sha3Nil
 	}
 	return &Account{
-		data:          *data,
+		data:          data,
 		db:            db,
 		cachedStorage: make(Storage),
 		dirtyStorage:  make(Storage),
