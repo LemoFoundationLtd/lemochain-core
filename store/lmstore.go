@@ -49,12 +49,12 @@ func key2hash(key []byte) common.Hash {
 }
 
 func (database *LmDataBase) getDataPath(index int) string {
-	dataPath := database.HomePath + "\\%03d.data"
+	dataPath := filepath.Join(database.HomePath, "%03d.data")
 	return fmt.Sprintf(dataPath, index)
 }
 
 func (database *LmDataBase) getHintPath(index int) string {
-	hintPath := database.HomePath + "\\%03d.hint"
+	hintPath := filepath.Join(database.HomePath, "%03d.hint")
 	return fmt.Sprintf(hintPath, index)
 }
 
@@ -620,7 +620,7 @@ func (database *LmDataBase) Put(key []byte, val []byte) error {
 		}
 	}
 
-	file, err := os.OpenFile(database.getDataPath(database.CurIndex), os.O_APPEND, os.ModePerm)
+	file, err := os.OpenFile(database.getDataPath(database.CurIndex), os.O_APPEND|os.O_WRONLY, os.ModePerm)
 	defer file.Close()
 	if err != nil {
 		return err
@@ -721,7 +721,7 @@ func (database *LmDataBase) Commit(items []*BatchItem) error {
 		wOffset = wOffset + tLen
 	}
 
-	file, err := os.OpenFile(database.getDataPath(database.CurIndex), os.O_APPEND, os.ModePerm)
+	file, err := os.OpenFile(database.getDataPath(database.CurIndex), os.O_APPEND|os.O_WRONLY, os.ModePerm)
 	defer file.Close()
 	if err != nil {
 		return err

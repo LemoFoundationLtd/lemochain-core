@@ -75,7 +75,7 @@ type Server struct {
 	peers    map[NodeID]*Peer // 记录所有的节点连接
 	peersMux sync.Mutex
 
-	quit      chan struct{}
+	quitCh    chan struct{}
 	addPeerCh chan *Peer
 	delPeerCh chan *Peer
 
@@ -136,6 +136,9 @@ func (srv *Server) Start() error {
 	if srv.newTransport == nil {
 		srv.newTransport = newPeer
 	}
+	if srv.quitCh == nil {
+		srv.quitCh = make(chan struct{})
+	}
 	if srv.NodeDatabase != "" {
 		if err := srv.readNodeDatabaseFile(); err != nil {
 			log.Error(err.Error())
@@ -163,7 +166,7 @@ func (srv *Server) Stop() {
 		}
 		srv.peers = nil
 	}
-	close(srv.quit)
+	close(srv.quitCh)
 	srv.loopWG.Wait()
 }
 
@@ -262,7 +265,7 @@ func (srv *Server) run() {
 				srv.needConnectNodeCh <- p.rw.fd.RemoteAddr().String() // 断线重连 todo
 			})
 			break
-		case <-srv.quit:
+		case <-srv.quitCh:
 			return
 		}
 		log.Debug("next turn to addPeerCh")
@@ -273,7 +276,7 @@ func (srv *Server) run() {
 func (srv *Server) listenLoop() {
 	for {
 		select {
-		case <-srv.quit:
+		case <-srv.quitCh:
 			return
 		default:
 		}
@@ -336,7 +339,7 @@ func (srv *Server) runDialLoop() {
 	defer retryTimer.Stop()
 	for {
 		select {
-		case <-srv.quit:
+		case <-srv.quitCh:
 			return
 		case <-retryTimer.C:
 			if len(failedNodes) > 0 {
