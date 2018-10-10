@@ -16,6 +16,8 @@ import (
 
 type blockInfo struct {
 	hash        common.Hash
+	parentHash  common.Hash
+	height      uint32
 	author      common.Address
 	versionRoot common.Hash
 	txRoot      common.Hash
@@ -39,6 +41,7 @@ var (
 		// genesis block must no transactions
 		{
 			hash:        common.HexToHash("0xc9c3211bce591d47e4af4b598b1d35ddf552d8b34e569a791a484c1875c234cf"),
+			height:      0,
 			author:      defaultAccounts[0],
 			versionRoot: common.HexToHash("0x5a285bcfd4297d959e44cfc857e221695e12b088c5e01ad935e3eb2af62e3bcf"),
 			txRoot:      common.HexToHash("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"), // empty merkle
@@ -48,6 +51,7 @@ var (
 		// block 1 is stable block
 		{
 			hash:        common.HexToHash("0x16c0160ba55378547c0fc6fb892191adabe459b27d6314f44c54aa1e9f69e326"),
+			height:      1,
 			author:      common.HexToAddress("0x20000"),
 			versionRoot: common.HexToHash("0x695330e8317f42ae800b9c98096c698903fd3a9cc33e8228f42f67f30e5b23c8"),
 			txRoot:      common.HexToHash("0xf044cc436950ef7470aca61053eb3f1ed46b9dcd501a5210f3673dc657c4fc88"),
@@ -64,6 +68,7 @@ var (
 		// block 2 is not stable block
 		{
 			hash:        common.HexToHash("0x6de5576b743ac346c019793f24470aa82464cda92aad0509942158251a3035b0"),
+			height:      2,
 			author:      defaultAccounts[0],
 			versionRoot: common.HexToHash("0xb17f070e12aacafe07dabcae8b9333bb660cc55a3e06584a3f5a710b7f0a584a"),
 			txRoot:      common.HexToHash("0x4558f847f8314dbc7e9d7d6fc84a9e75286040aa527b2d981f924a2ad75bca81"),
@@ -78,6 +83,7 @@ var (
 		// block 3 is not store in db
 		{
 			hash:        common.HexToHash("0x4b17abd7e65b34379d992a2e663b15d38e473126a8161c6e3f84568fb2474c0c"),
+			height:      3,
 			author:      defaultAccounts[0],
 			versionRoot: common.HexToHash("0xfa256aeabd9bc66361aec3e149af6372b725e9cfdcf81de147ceb0ffc8904ab1"),
 			txRoot:      common.HexToHash("0xef1ecb2eaa56f8719161d50e5a454b685c7079f686a58e65210be87a03c11bbf"),
@@ -109,7 +115,6 @@ func newChain() *BlockChain {
 	if err != nil {
 		panic(err)
 	}
-	testTxRecover(bc)
 	return bc
 }
 
@@ -121,8 +126,11 @@ func newDB() protocol.ChainDB {
 	}
 
 	for i, _ := range defaultBlockInfos {
-		// use pointer for repairing incorrect hash
-		saveBlock(db, i, &defaultBlockInfos[i])
+		if i > 0 {
+			defaultBlockInfos[i].parentHash = defaultBlocks[i-1].Hash()
+		}
+		newestBlock = makeBlock(db, defaultBlockInfos[i], i < 3)
+		defaultBlocks = append(defaultBlocks, newestBlock)
 	}
 	err = db.SetStableBlock(defaultBlockInfos[1].hash)
 	if err != nil {
@@ -131,12 +139,8 @@ func newDB() protocol.ChainDB {
 	return db
 }
 
-func saveBlock(db protocol.ChainDB, blockIndex int, info *blockInfo) {
-	parentHash := common.Hash{}
-	if blockIndex > 0 {
-		parentHash = defaultBlockInfos[blockIndex-1].hash
-	}
-	manager := account.NewManager(parentHash, db)
+func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
+	manager := account.NewManager(info.parentHash, db)
 	// sign transactions
 	var err error
 	var gasUsed uint64 = 0
@@ -148,11 +152,13 @@ func saveBlock(db protocol.ChainDB, blockIndex int, info *blockInfo) {
 	}
 	txRoot := types.DeriveTxsSha(info.txList)
 	if txRoot != info.txRoot {
-		fmt.Printf("%d txRoot hash error. except: %s, got: %s\n", blockIndex, info.txRoot.Hex(), txRoot.Hex())
+		if info.txRoot != (common.Hash{}) {
+			fmt.Printf("%d txRoot hash error. except: %s, got: %s\n", info.height, info.txRoot.Hex(), txRoot.Hex())
+		}
 		info.txRoot = txRoot
 	}
 	// genesis coin
-	if blockIndex == 0 {
+	if info.height == 0 {
 		owner := manager.GetAccount(testAddr)
 		owner.SetBalance(big.NewInt(1000000000))
 	}
@@ -187,34 +193,38 @@ func saveBlock(db protocol.ChainDB, blockIndex int, info *blockInfo) {
 	}
 	// header
 	if manager.GetVersionRoot() != info.versionRoot {
-		fmt.Printf("%d version root error. except: %s, got: %s\n", blockIndex, info.versionRoot.Hex(), manager.GetVersionRoot().Hex())
+		if info.versionRoot != (common.Hash{}) {
+			fmt.Printf("%d version root error. except: %s, got: %s\n", info.height, info.versionRoot.Hex(), manager.GetVersionRoot().Hex())
+		}
 		info.versionRoot = manager.GetVersionRoot()
 	}
 	changeLogs := manager.GetChangeLogs()
-	// fmt.Printf("%d changeLogs %v\n", blockIndex, changeLogs)
+	// fmt.Printf("%d changeLogs %v\n", height, changeLogs)
 	logsRoot := types.DeriveChangeLogsSha(changeLogs)
 	if logsRoot != info.logsRoot {
-		fmt.Printf("%d change logs root error. except: %s, got: %s\n", blockIndex, info.logsRoot.Hex(), logsRoot.Hex())
+		if info.logsRoot != (common.Hash{}) {
+			fmt.Printf("%d change logs root error. except: %s, got: %s\n", info.height, info.logsRoot.Hex(), logsRoot.Hex())
+		}
 		info.logsRoot = logsRoot
 	}
 	header := &types.Header{
+		ParentHash:  info.parentHash,
 		LemoBase:    info.author,
 		VersionRoot: info.versionRoot,
 		TxRoot:      info.txRoot,
 		LogsRoot:    info.logsRoot,
 		EventRoot:   common.HexToHash("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"), // empty merkle
-		Height:      uint32(blockIndex),
+		Height:      info.height,
 		GasLimit:    info.gasLimit,
 		GasUsed:     gasUsed,
 		Time:        info.time,
 		Extra:       []byte{},
 	}
-	if blockIndex > 0 {
-		header.ParentHash = defaultBlockInfos[blockIndex-1].hash
-	}
 	blockHash := header.Hash()
 	if blockHash != info.hash {
-		fmt.Printf("%d block hash error. except: %s, got: %s\n", blockIndex, info.hash.Hex(), blockHash.Hex())
+		if info.hash != (common.Hash{}) {
+			fmt.Printf("%d block hash error. except: %s, got: %s\n", info.height, info.hash.Hex(), blockHash.Hex())
+		}
 		info.hash = blockHash
 	}
 	// block
@@ -223,36 +233,17 @@ func saveBlock(db protocol.ChainDB, blockIndex int, info *blockInfo) {
 		ChangeLog: changeLogs,
 	}
 	block.SetHeader(header)
-	defaultBlocks = append(defaultBlocks, block)
-	newestBlock = block
-	// the last block is no need to store
-	if blockIndex == len(defaultBlockInfos)-1 {
-		return
+	if save {
+		err = db.SetBlock(blockHash, block)
+		if err != nil && err != store.ErrExist {
+			panic(err)
+		}
+		err = manager.Save(blockHash)
+		if err != nil {
+			panic(err)
+		}
 	}
-	err = db.SetBlock(blockHash, block)
-	if err != nil && err != store.ErrExist {
-		panic(err)
-	}
-	err = manager.Save(blockHash)
-	if err != nil {
-		panic(err)
-	}
-}
-
-// testTxRecover load block to make sure the data is stored correctly
-func testTxRecover(bc *BlockChain) {
-	lastBlockInfo := defaultBlockInfos[1]
-	block := bc.GetBlockByHash(lastBlockInfo.hash)
-	from, err := block.Txs[0].From()
-	if err != nil {
-		panic(err)
-	}
-	if from != testAddr {
-		panic(fmt.Errorf("address recover fail! Expect %s, got %s\n", testAddr.Hex(), from.Hex()))
-	}
-	if block.Txs[0].Value().Cmp(lastBlockInfo.txList[0].Value()) != 0 {
-		panic(fmt.Errorf("tx value load fail! Expect %v, got %v\n", lastBlockInfo.txList[0].Value(), block.Txs[0].Value()))
-	}
+	return block
 }
 
 // h returns hash for test
