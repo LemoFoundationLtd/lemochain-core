@@ -7,6 +7,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 )
@@ -234,7 +235,7 @@ func NewLmDataBase(homePath string) (*LmDataBase, error) {
 }
 
 func (database *LmDataBase) loadCurrentBlock(homePath string) error {
-	dataPath := database.HomePath + "//data.context"
+	dataPath := filepath.Join(database.HomePath, "data.context")
 	isExit, err := database.fileIsExist(dataPath)
 	if err != nil {
 		return err
@@ -348,7 +349,7 @@ func (database *LmDataBase) SetCurrentBlock(block []byte) error {
 		totalCnt = totalCnt + 1
 	}
 
-	dataPath := database.HomePath + "//data.context"
+	dataPath := filepath.Join(database.HomePath, "data.context")
 	isExit, err := database.fileIsExist(dataPath)
 	if err != nil {
 		return err
