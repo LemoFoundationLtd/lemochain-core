@@ -349,7 +349,7 @@ func (n *Node) stopChain() error {
 	n.chain.Stop()
 	n.pm.Stop()
 	// n.txPool.Stop()
-	n.miner.Stop()
+	n.miner.Close()
 	if err := n.db.Close(); err != nil {
 		return err
 	}

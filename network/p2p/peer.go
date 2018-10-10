@@ -56,7 +56,6 @@ func (p *Peer) doHandshake(prv *ecdsa.PrivateKey, isSelfServer bool) (err error)
 }
 
 func (p *Peer) Close() {
-	p.rw.fd.Close()
 	close(p.closed)
 }
 
@@ -123,14 +122,14 @@ loop:
 	for {
 		select {
 		case err = <-readErr:
-			log.Info(fmt.Sprintf("%v", err))
+			log.Infof("read error: %v", err)
 			break loop
 		case <-p.closed:
 			break loop
 		}
 	}
 
-	p.Close()
+	p.rw.fd.Close()
 	p.wg.Wait()
 	return err
 }
