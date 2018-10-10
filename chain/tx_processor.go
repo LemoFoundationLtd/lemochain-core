@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	errInsufficientBalanceForGas = errors.New("insufficient balance to pay for gas")
+	ErrInsufficientBalanceForGas = errors.New("insufficient balance to pay for gas")
 )
 
 type TxProcessor struct {
@@ -174,7 +174,7 @@ func (p *TxProcessor) buyGas(gp *types.GasPool, tx *types.Transaction) error {
 
 	maxFee := new(big.Int).Mul(new(big.Int).SetUint64(tx.GasLimit()), tx.GasPrice())
 	if sender.GetBalance().Cmp(maxFee) < 0 {
-		return errInsufficientBalanceForGas
+		return ErrInsufficientBalanceForGas
 	}
 	if err := gp.SubGas(tx.GasLimit()); err != nil {
 		return err

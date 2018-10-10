@@ -4,6 +4,9 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/vm"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
+	"github.com/LemoFoundationLtd/lemochain-go/common/crypto/secp256k1"
+	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"github.com/stretchr/testify/assert"
 	"math/big"
@@ -23,7 +26,9 @@ func TestNewTxProcessor(t *testing.T) {
 	assert.Equal(t, true, p.cfg.Debug)
 }
 
+// test valid block processing
 func TestTxProcessor_Process(t *testing.T) {
+	clearDB()
 	p := NewTxProcessor(newChain())
 
 	// last not stable block
@@ -62,15 +67,8 @@ func TestTxProcessor_Process(t *testing.T) {
 	assert.Equal(t, block.Header.LogsRoot, newHeader.LogsRoot)
 	assert.Equal(t, block.Hash(), newHeader.Hash())
 
-	//
-	db, err := store.NewCacheChain("../../db")
-	block = makeBlock(db, blockInfo{
-		height:     2,
-		parentHash: defaultBlocks[1].Hash(),
-		author:     testAddr,
-		txList: []*types.Transaction{
-			makeTx(testPrivate, defaultAccounts[1], big.NewInt(100)),
-		}}, false)
+	// block on fork branch
+	block = createNewBlock()
 	newHeader, err = p.Process(block)
 	assert.NoError(t, err)
 	assert.Equal(t, block.Header.Bloom, newHeader.Bloom)
@@ -80,6 +78,81 @@ func TestTxProcessor_Process(t *testing.T) {
 	assert.Equal(t, block.Header.VersionRoot, newHeader.VersionRoot)
 	assert.Equal(t, block.Header.LogsRoot, newHeader.LogsRoot)
 	assert.Equal(t, block.Hash(), newHeader.Hash())
+}
+
+// test invalid block processing
+func TestTxProcessor_Process2(t *testing.T) {
+	p := NewTxProcessor(newChain())
+
+	// tamper with amount
+	block := createNewBlock()
+	rawTx, _ := rlp.EncodeToBytes(block.Txs[0])
+	rawTx[25]++ // amount++
+	cpy := new(types.Transaction)
+	err := rlp.DecodeBytes(rawTx, cpy)
+	assert.NoError(t, err)
+	assert.Equal(t, new(big.Int).Add(block.Txs[0].Value(), big.NewInt(1)), cpy.Value())
+	block.Txs[0] = cpy
+	_, err = p.Process(block)
+	// recover to another from address
+	assert.Equal(t, ErrInsufficientBalanceForGas, err)
+
+	// invalid signature
+	block = createNewBlock()
+	rawTx, _ = rlp.EncodeToBytes(block.Txs[0])
+	rawTx[42] = ^rawTx[42] // invalid S
+	cpy = new(types.Transaction)
+	err = rlp.DecodeBytes(rawTx, cpy)
+	assert.NoError(t, err)
+	block.Txs[0] = cpy
+	_, err = p.Process(block)
+	// sometimes the err is this one
+	// assert.Equal(t, ErrInsufficientBalanceForGas, err)
+	assert.Equal(t, secp256k1.ErrRecoverFailed, err)
+
+	// not enough gas (resign by another address)
+	block = createNewBlock()
+	private, _ := crypto.GenerateKey()
+	origFrom, _ := block.Txs[0].From()
+	block.Txs[0] = signTransaction(block.Txs[0], private)
+	newFrom, _ := block.Txs[0].From()
+	assert.NotEqual(t, origFrom, newFrom)
+	block.Header.TxRoot = types.DeriveTxsSha(block.Txs)
+	_, err = p.Process(block)
+	assert.Equal(t, ErrInsufficientBalanceForGas, err)
+
+	// reach block gas limit
+	block = createNewBlock()
+	block.Header.GasLimit = 1
+	_, err = p.Process(block)
+	assert.Equal(t, types.ErrGasLimitReached, err)
+
+	// used gas reach limit
+	block = createNewBlock()
+	block.Txs[0] = makeTransaction(testPrivate, defaultAccounts[1], big.NewInt(100), common.Big1, big.NewInt(0), 1)
+	block.Header.TxRoot = types.DeriveTxsSha(block.Txs)
+	_, err = p.Process(block)
+	assert.Equal(t, vm.ErrOutOfGas, err)
+
+	// balance not enough
+	block = createNewBlock()
+	block.Txs[0] = makeTx(testPrivate, defaultAccounts[1], big.NewInt(10000000000000))
+	block.Header.TxRoot = types.DeriveTxsSha(block.Txs)
+	_, err = p.Process(block)
+	assert.Equal(t, vm.ErrInsufficientBalance, err)
+
+	// TODO test create or call contract fail
+}
+
+func createNewBlock() *types.Block {
+	db, _ := store.NewCacheChain("../../db")
+	return makeBlock(db, blockInfo{
+		height:     2,
+		parentHash: defaultBlocks[1].Hash(),
+		author:     testAddr,
+		txList: []*types.Transaction{
+			makeTx(testPrivate, defaultAccounts[1], big.NewInt(100)),
+		}}, false)
 }
 
 func TestTxProcessor_ApplyTxs(t *testing.T) {
