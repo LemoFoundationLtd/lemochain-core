@@ -18,6 +18,7 @@ const MaxTrieCacheGen = uint16(120)
 var (
 	ErrRevisionNotExist = errors.New("revision cannot be reverted")
 	ErrNoEvents         = errors.New("the times of pop event is more than push")
+	ErrSnapshotIsBroken = errors.New("the snapshot is broken")
 )
 
 // Manager is used to maintain the newest and not confirmed account data. It will save all data to the db when finished a block's transactions processing.
@@ -301,6 +302,15 @@ func (h *logProcessor) Snapshot() int {
 	return id
 }
 
+// checkRevisionAvailable check if the newest revision is accessible
+func (h *logProcessor) checkRevisionAvailable() bool {
+	if len(h.validRevisions) == 0 {
+		return true
+	}
+	last := h.validRevisions[len(h.validRevisions)-1]
+	return last.journalIndex <= len(h.changeLogs)
+}
+
 // RevertToSnapshot reverts all changes made since the given revision.
 func (h *logProcessor) RevertToSnapshot(revid int) {
 	// Find the snapshot in the stack of valid snapshots.
@@ -348,6 +358,10 @@ func (am *Manager) MergeChangeLogs(fromIndex int) {
 	am.processor.changeLogs = append(am.processor.changeLogs[:fromIndex], mergedLogs...)
 	for addr, version := range changedVersions {
 		am.getRawAccount(addr).SetVersion(version)
+	}
+	// make sure the snapshot still work
+	if !am.processor.checkRevisionAvailable() {
+		panic(ErrSnapshotIsBroken)
 	}
 }
 

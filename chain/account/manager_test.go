@@ -386,4 +386,11 @@ func TestManager_MergeChangeLogs(t *testing.T) {
 	assert.Equal(t, uint32(1), account1.GetVersion())
 	// the first change log has been sorted to the last one
 	assert.Equal(t, *big.NewInt(333), manager.GetChangeLogs()[2].NewVal)
+
+	// broke snapshot
+	account1.SetBalance(big.NewInt(444))
+	manager.Snapshot()
+	assert.PanicsWithValue(t, ErrSnapshotIsBroken, func() {
+		manager.MergeChangeLogs(0)
+	})
 }
