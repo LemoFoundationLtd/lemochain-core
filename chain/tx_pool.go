@@ -204,6 +204,10 @@ func (pool *TxPool) AddTxs(txs []*types.Transaction) error {
 	}
 }
 
+func (pool *TxPool) AddKey(hash common.Hash) {
+	pool.recent.put(hash)
+}
+
 func (pool *TxPool) Pending(size int) []*types.Transaction {
 	pool.mux.Lock()
 	defer pool.mux.Unlock()
