@@ -35,8 +35,9 @@ type Miner struct {
 	mineNewBlockCh chan *types.Block // 挖到区块后传入通道通知外界
 	recvNewBlockCh chan *types.Block // 收到新块通知
 	timeToMineCh   chan struct{}     // 到出块时间了
-	stopCh         chan struct{}     // 停止挖矿
-	quitCh         chan struct{}     // 退出
+	startCh        chan struct{}
+	stopCh         chan struct{} // 停止挖矿
+	quitCh         chan struct{} // 退出
 }
 
 func New(blockInternal, timeout int64, chain *chain.BlockChain, txPool *chain.TxPool, privKey *ecdsa.PrivateKey, mineNewBlockCh, recvBlockCh chan *types.Block, engine chain.Engine) *Miner {
@@ -52,6 +53,7 @@ func New(blockInternal, timeout int64, chain *chain.BlockChain, txPool *chain.Tx
 		mineNewBlockCh: mineNewBlockCh,
 		recvNewBlockCh: recvBlockCh,
 		timeToMineCh:   make(chan struct{}),
+		startCh:        make(chan struct{}),
 		stopCh:         make(chan struct{}),
 		quitCh:         make(chan struct{}),
 	}
@@ -68,7 +70,7 @@ func (m *Miner) Start() {
 	case <-m.timeToMineCh:
 	default:
 	}
-	// m.stopCh = make(chan struct{})
+	m.startCh <- struct{}{}
 	go m.loopMiner()
 	m.modifyTimer()
 	log.Info("start mining...")
@@ -230,6 +232,7 @@ func (m *Miner) loopRecvBlock() {
 				log.Debugf("receive new block. but not start mining")
 			case <-m.quitCh:
 				return
+			case <-m.startCh:
 			}
 		} else {
 			time.Sleep(200 * time.Millisecond)
