@@ -35,6 +35,7 @@ type Miner struct {
 	mineNewBlockCh chan *types.Block // 挖到区块后传入通道通知外界
 	recvNewBlockCh chan *types.Block // 收到新块通知
 	timeToMineCh   chan struct{}     // 到出块时间了
+	stopCh         chan struct{}     // 停止挖矿
 	quitCh         chan struct{}     // 退出
 }
 
@@ -51,8 +52,10 @@ func New(blockInternal, timeout int64, chain *chain.BlockChain, txPool *chain.Tx
 		mineNewBlockCh: mineNewBlockCh,
 		recvNewBlockCh: recvBlockCh,
 		timeToMineCh:   make(chan struct{}),
+		stopCh:         make(chan struct{}),
 		quitCh:         make(chan struct{}),
 	}
+	go m.loopRecvBlock()
 	return m
 }
 
@@ -65,21 +68,26 @@ func (m *Miner) Start() {
 	case <-m.timeToMineCh:
 	default:
 	}
-	go m.loop()
+	// m.stopCh = make(chan struct{})
+	go m.loopMiner()
 	m.modifyTimer()
 	log.Info("start mining...")
 }
 
 func (m *Miner) Stop() {
-	atomic.StoreInt32(&m.mining, 0)
+	if !atomic.CompareAndSwapInt32(&m.mining, 1, 0) {
+		log.Warn("doesn't start mining")
+		return
+	}
 	if m.blockMineTimer != nil {
 		m.blockMineTimer.Stop()
 	}
-	select {
-	case m.quitCh <- struct{}{}:
-	default:
-	}
+	m.stopCh <- struct{}{}
 	log.Info("stop mining success")
+}
+
+func (m *Miner) Close() {
+	close(m.quitCh)
 }
 
 func (m *Miner) IsMining() bool {
@@ -213,24 +221,36 @@ func (m *Miner) resetMinerTimer(timeDur int64) {
 	})
 }
 
-func (m *Miner) loop() {
-	defer log.Debug("stop miner's loop")
+// loopRecvBlock drop no use block
+func (m *Miner) loopRecvBlock() {
 	for {
 		if atomic.LoadInt32(&m.mining) == 0 {
 			select {
 			case <-m.recvNewBlockCh:
-			default:
-			}
-			time.Sleep(200 * time.Millisecond)
-		} else {
-			select {
-			case <-m.timeToMineCh:
-				m.sealBlock()
-			case <-m.recvNewBlockCh:
-				go m.modifyTimer()
+				log.Debugf("receive new block. but not start mining")
 			case <-m.quitCh:
 				return
 			}
+		} else {
+			time.Sleep(200 * time.Millisecond)
+		}
+	}
+}
+
+// loopMiner
+func (m *Miner) loopMiner() {
+	defer log.Debug("stop miner's loop")
+	for {
+		select {
+		case <-m.timeToMineCh:
+			m.sealBlock()
+		case block := <-m.recvNewBlockCh:
+			log.Debugf("receive new block. hash: %s. height: %d. start modify timer", block.Hash().Hex(), block.Height())
+			go m.modifyTimer()
+		case <-m.stopCh:
+			return
+		case <-m.quitCh:
+			return
 		}
 	}
 }
