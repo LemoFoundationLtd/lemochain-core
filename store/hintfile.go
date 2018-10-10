@@ -104,7 +104,7 @@ func OpenMFileForRead(path string) (*MFile, error) {
 }
 
 func OpenMFileForWrite(path string) (*MFile, error) {
-	file, err := os.OpenFile(path, os.O_APPEND, os.ModePerm)
+	file, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, os.ModePerm)
 	defer file.Close()
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -141,7 +141,7 @@ func (mFile *MFile) Write(data []byte) error {
 }
 
 func (mFile *MFile) Flush() error {
-	file, err := os.OpenFile(mFile.path, os.O_APPEND, os.ModePerm)
+	file, err := os.OpenFile(mFile.path, os.O_APPEND|os.O_WRONLY, os.ModePerm)
 	defer file.Close()
 
 	if err != nil {

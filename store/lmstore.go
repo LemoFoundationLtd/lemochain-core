@@ -620,7 +620,7 @@ func (database *LmDataBase) Put(key []byte, val []byte) error {
 		}
 	}
 
-	file, err := os.OpenFile(database.getDataPath(database.CurIndex), os.O_APPEND, os.ModePerm)
+	file, err := os.OpenFile(database.getDataPath(database.CurIndex), os.O_APPEND|os.O_WRONLY, os.ModePerm)
 	defer file.Close()
 	if err != nil {
 		return err
@@ -721,7 +721,7 @@ func (database *LmDataBase) Commit(items []*BatchItem) error {
 		wOffset = wOffset + tLen
 	}
 
-	file, err := os.OpenFile(database.getDataPath(database.CurIndex), os.O_APPEND, os.ModePerm)
+	file, err := os.OpenFile(database.getDataPath(database.CurIndex), os.O_APPEND|os.O_WRONLY, os.ModePerm)
 	defer file.Close()
 	if err != nil {
 		return err
