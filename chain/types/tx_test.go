@@ -134,6 +134,9 @@ func TestSetSecp256k1V(t *testing.T) {
 	V := big.NewInt(0)
 	assert.Equal(t, big.NewInt(0x10000), SetSecp256k1V(V, 1))
 	assert.Equal(t, big.NewInt(0x00000), SetSecp256k1V(V, 0))
+	V.SetUint64(0xffffffff)
+	assert.Equal(t, big.NewInt(0xffffffff), SetSecp256k1V(V, 1))
+	assert.Equal(t, big.NewInt(0xfffeffff), SetSecp256k1V(V, 0))
 }
 
 func TestCombineV(t *testing.T) {

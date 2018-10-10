@@ -265,7 +265,6 @@ func (m *Miner) sealBlock() {
 	}
 	header := m.sealHead()
 	txs := m.txPool.Pending(10000000)
-	m.chain.AccountManager().Reset(header.ParentHash)
 	newHeader, packagedTxs, err := m.txProcessor.ApplyTxs(header, txs)
 	if err != nil {
 		log.Errorf("apply transactions for block failed! %v", err)
@@ -282,11 +281,6 @@ func (m *Miner) sealBlock() {
 	block, err := m.engine.Seal(newHeader, packagedTxs, m.chain.AccountManager().GetChangeLogs(), m.chain.AccountManager().GetEvents())
 	if err != nil {
 		log.Error("seal block error!!")
-		return
-	}
-	err = m.chain.AccountManager().Save(newHeader.Hash())
-	if err != nil {
-		log.Error("save account error!", "hash", hash.Hex(), "err", err)
 		return
 	}
 	log.Infof("Mine a new block. height: %d hash: %s", block.Height(), block.Hash().String())

@@ -18,6 +18,7 @@ const MaxTrieCacheGen = uint16(120)
 var (
 	ErrRevisionNotExist = errors.New("revision cannot be reverted")
 	ErrNoEvents         = errors.New("the times of pop event is more than push")
+	ErrSnapshotIsBroken = errors.New("the snapshot is broken")
 )
 
 // Manager is used to maintain the newest and not confirmed account data. It will save all data to the db when finished a block's transactions processing.
@@ -191,6 +192,7 @@ func (am *Manager) Finalise() error {
 	} else {
 		block, err := am.db.GetBlockByHash(am.baseBlockHash)
 		if err != nil {
+			log.Errorf("load block[%s] fail: %s\n", am.baseBlockHash.Hex(), err.Error())
 			panic(err)
 		}
 		height = block.Height() + 1
@@ -224,7 +226,7 @@ func (am *Manager) Save(newBlockHash common.Hash) error {
 		if err := account.rawAccount.Save(); err != nil {
 			return err
 		}
-		dirtyAccounts = append(dirtyAccounts, &account.rawAccount.data)
+		dirtyAccounts = append(dirtyAccounts, account.rawAccount.data)
 	}
 	// save accounts to db
 	if len(dirtyAccounts) != 0 {
@@ -300,6 +302,15 @@ func (h *logProcessor) Snapshot() int {
 	return id
 }
 
+// checkRevisionAvailable check if the newest revision is accessible
+func (h *logProcessor) checkRevisionAvailable() bool {
+	if len(h.validRevisions) == 0 {
+		return true
+	}
+	last := h.validRevisions[len(h.validRevisions)-1]
+	return last.journalIndex <= len(h.changeLogs)
+}
+
 // RevertToSnapshot reverts all changes made since the given revision.
 func (h *logProcessor) RevertToSnapshot(revid int) {
 	// Find the snapshot in the stack of valid snapshots.
@@ -337,12 +348,23 @@ func (am *Manager) Rebuild(address common.Address) error {
 		}
 	}
 	// save account
-	return am.db.SetAccounts(am.baseBlockHash, []*types.AccountData{&account.data})
+	return am.db.SetAccounts(am.baseBlockHash, []*types.AccountData{account.data})
+}
+
+// MergeChangeLogs merges the change logs for same account in block. Then update the version of change logs and account.
+func (am *Manager) MergeChangeLogs(fromIndex int) {
+	needMerge := am.processor.changeLogs[fromIndex:]
+	mergedLogs, changedVersions := MergeChangeLogs(needMerge)
+	am.processor.changeLogs = append(am.processor.changeLogs[:fromIndex], mergedLogs...)
+	for addr, version := range changedVersions {
+		am.getRawAccount(addr).SetVersion(version)
+	}
+	// make sure the snapshot still work
+	if !am.processor.checkRevisionAvailable() {
+		panic(ErrSnapshotIsBroken)
+	}
 }
 
 func (am *Manager) Stop(graceful bool) error {
 	return nil
-}
-func (am *Manager) DB() protocol.ChainDB {
-	return am.db
 }

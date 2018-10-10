@@ -29,7 +29,7 @@ func NewEVMContext(tx *types.Transaction, header *types.Header, txIndex uint, tx
 		TxHash:      txHash,
 		BlockHash:   blockHash,
 		Origin:      from,
-		Lemobase:    header.LemoBase,
+		LemoBase:    header.LemoBase,
 		BlockHeight: header.Height,
 		Time:        new(big.Int).Set(header.Time),
 		GasLimit:    header.GasLimit,

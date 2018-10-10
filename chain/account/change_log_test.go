@@ -24,7 +24,7 @@ func (p *testProcessor) GetAccount(address common.Address) types.AccountAccessor
 	if !ok {
 		account = &testAccount{
 			Account: Account{
-				data: types.AccountData{
+				data: &types.AccountData{
 					Address: address,
 				},
 			},

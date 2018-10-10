@@ -79,7 +79,7 @@ func (a *AccountAPI) GetVersion(LemoAddress string) uint32 {
 }
 
 // GetAccount return the struct of the &AccountData{}
-func (a *AccountAPI) GetAccount(LemoAddress string) (*types.AccountData, error) {
+func (a *AccountAPI) GetAccount(LemoAddress string) types.AccountAccessor {
 	var address common.Address
 	// Determine whether the input address is a Lemo address or a native address.
 	if strings.HasPrefix(LemoAddress, "Lemo") {
@@ -87,13 +87,9 @@ func (a *AccountAPI) GetAccount(LemoAddress string) (*types.AccountData, error) 
 	} else {
 		address = common.HexToAddress(LemoAddress)
 	}
-	chainDB := a.manager.DB()
-	accountData, err := chainDB.GetCanonicalAccount(address)
-	if err != nil {
-		return nil, err
-	}
+	accountData := a.manager.GetCanonicalAccount(address)
 
-	return accountData, nil
+	return accountData
 }
 
 // ChainAPI
@@ -114,7 +110,7 @@ func (c *ChainAPI) GetBlock(n interface{}) *types.Block {
 		height := uint32(h)
 		return c.chain.GetBlockByHeight(height)
 
-	} else if f := "string"; strings.EqualFold(f, t) {
+	} else if f := "string"; strings.EqualFold(t, f) {
 		h := n.(string)
 		hash := common.HexToHash(h)
 		return c.chain.GetBlockByHash(hash)

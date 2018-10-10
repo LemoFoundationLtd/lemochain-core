@@ -129,6 +129,11 @@ func (c *ChangeLog) DecodeRLP(s *rlp.Stream) (err error) {
 	return err
 }
 
+func (c *ChangeLog) Copy() *ChangeLog {
+	cpy := *c
+	return &cpy
+}
+
 var bigIntType = reflect.TypeOf(big.Int{})
 
 func formatIfIsBigInt(v interface{}) interface{} {
@@ -164,6 +169,16 @@ func (c ChangeLogSlice) Search(version uint32) int {
 		}
 	}
 	return -1
+}
+
+// FindByType find the first same type change log.
+func (c ChangeLogSlice) FindByType(target *ChangeLog) *ChangeLog {
+	for _, item := range c {
+		if item.LogType == target.LogType {
+			return item
+		}
+	}
+	return nil
 }
 
 // Undo reverts the change. Its behavior depends on ChangeLog.ChangeLogType
