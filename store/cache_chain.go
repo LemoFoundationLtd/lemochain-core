@@ -355,6 +355,8 @@ func (chain *CacheChain) SetConfirmPackage(hash common.Hash, pack []types.SignDa
 }
 
 func (chain *CacheChain) AppendConfirmInfo(hash common.Hash, signData types.SignData) error {
+	delete(chain.Blocks, hash)
+
 	val, err := chain.LmDataBase.Get(hash.Bytes())
 	if err != nil {
 		return err
@@ -376,6 +378,8 @@ func (chain *CacheChain) AppendConfirmInfo(hash common.Hash, signData types.Sign
 }
 
 func (chain *CacheChain) AppendConfirmPackage(hash common.Hash, pack []types.SignData) error {
+	delete(chain.Blocks, hash)
+
 	val, err := chain.LmDataBase.Get(hash.Bytes())
 	if err != nil {
 		return err
