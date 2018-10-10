@@ -42,7 +42,7 @@ var (
 	defaultBlockInfos = []blockInfo{
 		// genesis block must no transactions
 		{
-			hash:        common.HexToHash("0xc9c3211bce591d47e4af4b598b1d35ddf552d8b34e569a791a484c1875c234cf"),
+			hash:        common.HexToHash("0x0318a0d35ec6c8254f2ff1ea3aa0b712820d9f5727c7f4a62b8cabc07eb7499b"),
 			height:      0,
 			author:      defaultAccounts[0],
 			versionRoot: common.HexToHash("0x5a285bcfd4297d959e44cfc857e221695e12b088c5e01ad935e3eb2af62e3bcf"),
@@ -52,7 +52,7 @@ var (
 		},
 		// block 1 is stable block
 		{
-			hash:        common.HexToHash("0x16c0160ba55378547c0fc6fb892191adabe459b27d6314f44c54aa1e9f69e326"),
+			hash:        common.HexToHash("0x68e42b582d006d5900e275d3d3dfccf1af7828616d73ac282f16fcb274292326"),
 			height:      1,
 			author:      common.HexToAddress("0x20000"),
 			versionRoot: common.HexToHash("0x695330e8317f42ae800b9c98096c698903fd3a9cc33e8228f42f67f30e5b23c8"),
@@ -69,7 +69,7 @@ var (
 		},
 		// block 2 is not stable block
 		{
-			hash:        common.HexToHash("0x6505364bb611f428a2d8722c3469057288c896d77659150ea6813464d9fbadd2"),
+			hash:        common.HexToHash("0x9eb1db9fdcfb61f9aa74e857c3cbebdd682a1b6b7ae21488f61bbf43e98474d1"),
 			height:      2,
 			author:      defaultAccounts[0],
 			versionRoot: common.HexToHash("0xb17f070e12aacafe07dabcae8b9333bb660cc55a3e06584a3f5a710b7f0a584a"),
@@ -84,7 +84,7 @@ var (
 		},
 		// block 3 is not store in db
 		{
-			hash:        common.HexToHash("0xc932e7673e96e7a28a28d7aded07f9bdf0b925b376dc8399873133965c7beb65"),
+			hash:        common.HexToHash("0x6aaaca633568f061bc400f16e6f931e3320e42f10f969e91df4e748f35bf3fa1"),
 			height:      3,
 			author:      defaultAccounts[0],
 			versionRoot: common.HexToHash("0x255a3d6044cc406bf4322568241a380c3ae18462362b292d89fb8d3dbce6a76d"),
@@ -203,12 +203,19 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 		}
 		info.logsRoot = logsRoot
 	}
+	if info.time == nil {
+		info.time = new(big.Int).SetUint64(uint64(time.Now().Unix()))
+	}
+	if info.gasLimit == 0 {
+		info.gasLimit = 1000000
+	}
 	header := &types.Header{
 		ParentHash:  info.parentHash,
 		LemoBase:    info.author,
 		VersionRoot: info.versionRoot,
 		TxRoot:      info.txRoot,
 		LogsRoot:    info.logsRoot,
+		Bloom:       types.CreateBloom(nil),
 		EventRoot:   common.HexToHash("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"), // empty merkle
 		Height:      info.height,
 		GasLimit:    info.gasLimit,

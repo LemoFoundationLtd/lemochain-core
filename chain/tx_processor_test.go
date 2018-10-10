@@ -1,9 +1,12 @@
 package chain
 
 import (
+	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/vm"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"github.com/stretchr/testify/assert"
+	"math/big"
 	"testing"
 )
 
@@ -49,6 +52,25 @@ func TestTxProcessor_Process(t *testing.T) {
 
 	// genesis block
 	block = defaultBlocks[0]
+	newHeader, err = p.Process(block)
+	assert.NoError(t, err)
+	assert.Equal(t, block.Header.Bloom, newHeader.Bloom)
+	assert.Equal(t, block.Header.EventRoot, newHeader.EventRoot)
+	assert.Equal(t, block.Header.GasUsed, newHeader.GasUsed)
+	assert.Equal(t, block.Header.TxRoot, newHeader.TxRoot)
+	assert.Equal(t, block.Header.VersionRoot, newHeader.VersionRoot)
+	assert.Equal(t, block.Header.LogsRoot, newHeader.LogsRoot)
+	assert.Equal(t, block.Hash(), newHeader.Hash())
+
+	//
+	db, err := store.NewCacheChain("../../db")
+	block = makeBlock(db, blockInfo{
+		height:     2,
+		parentHash: defaultBlocks[1].Hash(),
+		author:     testAddr,
+		txList: []*types.Transaction{
+			makeTx(testPrivate, defaultAccounts[1], big.NewInt(100)),
+		}}, false)
 	newHeader, err = p.Process(block)
 	assert.NoError(t, err)
 	assert.Equal(t, block.Header.Bloom, newHeader.Bloom)
