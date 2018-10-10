@@ -108,8 +108,8 @@ func (g *Genesis) ToBlock(am *account.Manager) *types.Block {
 	head := &types.Header{
 		ParentHash: common.Hash{},
 		LemoBase:   g.LemoBase,
-		TxRoot:     common.Hash{},
-		EventRoot:  common.Hash{},
+		TxRoot:     common.HexToHash("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"), // empty merkle
+		EventRoot:  common.HexToHash("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"), // empty merkle
 		Height:     0,
 		GasLimit:   g.GasLimit,
 		Extra:      g.ExtraData,
