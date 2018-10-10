@@ -16,10 +16,11 @@ import (
 )
 
 var (
-	sha3Nil         = crypto.Keccak256Hash(nil)
-	ErrLoadCodeFail = errors.New("can't load contract code")
-	ErrTrieFail     = errors.New("can't load contract storage trie")
-	ErrTrieChanged  = errors.New("the trie has changed after Finalise")
+	sha3Nil            = crypto.Keccak256Hash(nil)
+	ErrNegativeBalance = errors.New("balance can't be negative")
+	ErrLoadCodeFail    = errors.New("can't load contract code")
+	ErrTrieFail        = errors.New("can't load contract storage trie")
+	ErrTrieChanged     = errors.New("the trie has changed after Finalise")
 )
 
 type Storage map[common.Hash][]byte
@@ -43,7 +44,7 @@ func (s Storage) Copy() Storage {
 
 // Account is used to read and write account data. the code and dirty storage K/V would be cached till they are flushing to db
 type Account struct {
-	data   types.AccountData
+	data   *types.AccountData
 	db     protocol.ChainDB    // used to access account data in cache or file
 	trie   *trie.SecureTrie    // contract storage trie
 	trieDb *store.TrieDatabase // used to access tire data in file
@@ -63,6 +64,8 @@ func NewAccount(db protocol.ChainDB, address common.Address, data *types.Account
 	if data == nil {
 		// create new one
 		data = &types.AccountData{Address: address}
+	} else {
+		data = data.Copy()
 	}
 	if data.Balance == nil {
 		data.Balance = new(big.Int)
@@ -71,7 +74,7 @@ func NewAccount(db protocol.ChainDB, address common.Address, data *types.Account
 		data.CodeHash = sha3Nil
 	}
 	return &Account{
-		data:          *data,
+		data:          data,
 		db:            db,
 		cachedStorage: make(Storage),
 		dirtyStorage:  make(Storage),
@@ -105,6 +108,10 @@ func (a *Account) GetCodeHash() common.Hash   { return a.data.CodeHash }
 func (a *Account) GetStorageRoot() common.Hash { return a.data.StorageRoot }
 
 func (a *Account) SetBalance(balance *big.Int) {
+	if balance.Sign() < 0 {
+		log.Errorf("can't set negative balance %v to account %06x", balance, a.data.Address)
+		panic(ErrNegativeBalance)
+	}
 	a.data.Balance = balance
 }
 func (a *Account) SetVersion(version uint32) {

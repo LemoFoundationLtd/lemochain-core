@@ -7,8 +7,8 @@ import (
 	"math/rand"
 	"reflect"
 
-	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto/sha3"
+	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
 )
 
 const (
@@ -223,4 +223,18 @@ func (a *UnprefixedAddress) UnmarshalText(input []byte) error {
 // MarshalText encodes the address as hex.
 func (a UnprefixedAddress) MarshalText() ([]byte, error) {
 	return []byte(hex.EncodeToString(a[:])), nil
+}
+
+type AddressSlice []Address
+
+func (a AddressSlice) Len() int {
+	return len(a)
+}
+
+func (a AddressSlice) Less(i, j int) bool {
+	return a[i].Hex() < a[j].Hex()
+}
+
+func (a AddressSlice) Swap(i, j int) {
+	a[i], a[j] = a[j], a[i]
 }

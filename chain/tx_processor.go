@@ -18,7 +18,7 @@ var (
 )
 
 type TxProcessor struct {
-	chain ChainContext
+	chain *BlockChain
 	am    *account.Manager
 	cfg   *vm.Config // configuration of vm
 }
@@ -43,14 +43,20 @@ func NewTxProcessor(bc *BlockChain) *TxProcessor {
 }
 
 // Process processes all transactions in a block. Change accounts' data and execute contract codes.
-func (p *TxProcessor) Process(block *types.Block) (*ApplyTxsResult, error) {
+func (p *TxProcessor) Process(block *types.Block) (*types.Header, error) {
 	var (
-		gasUsed = uint64(0)
-		header  = block.Header
-		gp      = new(types.GasPool).AddGas(block.GasLimit())
-		txs     = block.Txs
+		gp          = new(types.GasPool).AddGas(block.GasLimit())
+		gasUsed     = uint64(0)
+		minerSalary = new(big.Int)
+		header      = block.Header
+		txs         = block.Txs
 	)
-	p.am.Reset(block.Hash())
+	p.am.Reset(header.ParentHash)
+	// genesis
+	if header.Height == 0 {
+		log.Warn("It is not necessary to process genesis block.")
+		return header, nil
+	}
 	// Iterate over and process the individual transactions
 	for i, tx := range txs {
 		gas, err := p.applyTx(gp, header, tx, uint(i), block.Hash())
@@ -58,26 +64,23 @@ func (p *TxProcessor) Process(block *types.Block) (*ApplyTxsResult, error) {
 			return nil, err
 		}
 		gasUsed = gasUsed + gas
+		fee := new(big.Int).Mul(new(big.Int).SetUint64(gas), tx.GasPrice())
+		minerSalary.Add(minerSalary, fee)
 	}
+	p.paySalary(minerSalary, header.LemoBase)
 
-	events := p.am.GetEvents()
-	bloom := types.CreateBloom(events)
-
-	return &ApplyTxsResult{
-		Txs:     txs,
-		Events:  events,
-		Bloom:   bloom,
-		GasUsed: gasUsed,
-	}, nil
+	return p.FillHeader(header.Copy(), txs, gasUsed)
 }
 
 // ApplyTxs picks and processes transactions from miner's tx pool.
-func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions) (*ApplyTxsResult, error) {
+func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions) (*types.Header, []*types.Transaction, error) {
 	gp := new(types.GasPool).AddGas(header.GasLimit)
 	gasUsed := uint64(0)
+	minerSalary := new(big.Int)
 	selectedTxs := make(types.Transactions, 0)
 
 	p.am.Reset(header.ParentHash)
+
 	for _, tx := range txs {
 		// If we don't have enough gas for any further transactions then we're done
 		if gp.Gas() < params.TxGas {
@@ -90,7 +93,7 @@ func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions) (*A
 		gas, err := p.applyTx(gp, header, tx, uint(len(selectedTxs)), common.Hash{})
 		if err != nil {
 			p.am.RevertToSnapshot(snap)
-			return nil, err
+			return nil, nil, err
 		}
 		selectedTxs = append(selectedTxs, tx)
 
@@ -104,17 +107,13 @@ func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions) (*A
 			log.Debug("Transaction failed, account skipped", "hash", tx.Hash(), "err", err)
 		}
 		gasUsed = gasUsed + gas
+		fee := new(big.Int).Mul(new(big.Int).SetUint64(gas), tx.GasPrice())
+		minerSalary.Add(minerSalary, fee)
 	}
+	p.paySalary(minerSalary, header.LemoBase)
 
-	events := p.am.GetEvents()
-	bloom := types.CreateBloom(events)
-
-	return &ApplyTxsResult{
-		Txs:     txs,
-		Events:  events,
-		Bloom:   bloom,
-		GasUsed: gasUsed,
-	}, nil
+	newHeader, err := p.FillHeader(header.Copy(), txs, gasUsed)
+	return newHeader, txs, err
 }
 
 // applyTx processes transaction. Change accounts' data and execute contract codes.
@@ -132,6 +131,7 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 		sender           = p.am.GetAccount(senderAddr)
 		contractCreation = tx.To() == nil
 		restGas          = tx.GasLimit()
+		mergeFrom        = len(p.am.GetChangeLogs())
 	)
 	err = p.buyGas(gp, tx)
 	if err != nil {
@@ -159,10 +159,10 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 			return 0, vmErr
 		}
 	}
-	p.refundGas(gp, tx, restGas, vmEnv.Lemobase)
-
-	// Update the state with pending changes
-	p.am.Finalise()
+	p.refundGas(gp, tx, restGas)
+	// Merge change logs by transaction will save more transaction execution detail than by block
+	p.am.MergeChangeLogs(mergeFrom)
+	mergeFrom = len(p.am.GetChangeLogs())
 
 	return tx.GasLimit() - restGas, nil
 }
@@ -227,7 +227,7 @@ func IntrinsicGas(data []byte, contractCreation bool) (uint64, error) {
 	return gas, nil
 }
 
-func (p *TxProcessor) refundGas(gp *types.GasPool, tx *types.Transaction, restGas uint64, minerAddress common.Address) {
+func (p *TxProcessor) refundGas(gp *types.GasPool, tx *types.Transaction, restGas uint64) {
 	// ignore the error because it is checked in applyTx
 	senderAddr, _ := tx.From()
 	sender := p.am.GetAccount(senderAddr)
@@ -239,8 +239,32 @@ func (p *TxProcessor) refundGas(gp *types.GasPool, tx *types.Transaction, restGa
 	// Also return remaining gas to the block gas counter so it is
 	// available for the next transaction.
 	gp.AddGas(restGas)
+}
 
-	usedFee := new(big.Int).Mul(new(big.Int).SetUint64(tx.GasLimit()-restGas), tx.GasPrice())
+// paySalary pay the salary to miner
+func (p *TxProcessor) paySalary(salary *big.Int, minerAddress common.Address) {
 	miner := p.am.GetAccount(minerAddress)
-	miner.SetBalance(new(big.Int).Add(miner.GetBalance(), usedFee))
+	miner.SetBalance(new(big.Int).Add(miner.GetBalance(), salary))
+}
+
+// FillHeader creates a new header then fills it with the result of transactions process
+func (p *TxProcessor) FillHeader(header *types.Header, txs []*types.Transaction, gasUsed uint64) (*types.Header, error) {
+	events := p.am.GetEvents()
+	header.Bloom = types.CreateBloom(events)
+	header.EventRoot = types.DeriveEventsSha(events)
+	header.GasUsed = gasUsed
+	header.TxRoot = types.DeriveTxsSha(txs)
+	// Pay miners at the end of their tenure. This method increases miners' balance.
+	p.chain.engine.Finalize(header)
+	// Update version trie, storage trie.
+	err := p.chain.AccountManager().Finalise()
+	if err != nil {
+		// Access trie node fail.
+		return nil, err
+	}
+	verRoot := p.chain.AccountManager().GetVersionRoot()
+	header.VersionRoot = verRoot
+	changeLogs := p.chain.AccountManager().GetChangeLogs()
+	header.LogsRoot = types.DeriveChangeLogsSha(changeLogs)
+	return header, nil
 }

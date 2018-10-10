@@ -181,6 +181,11 @@ func (bc *BlockChain) MineNewBlock(block *types.Block) error {
 		log.Error(fmt.Sprintf("can't insert block to cache. height:%d hash:%s", block.Height(), block.Hash().Hex()))
 		return err
 	}
+	err := bc.AccountManager().Save(block.Hash())
+	if err != nil {
+		log.Error("save account error!", "hash", block.Hash().Hex(), "err", err)
+		return err
+	}
 	nodeCount := deputynode.Instance().GetDeputyNodesCount()
 	if nodeCount == 1 {
 		bc.SetStableBlock(block.Hash(), block.Height())
@@ -203,37 +208,29 @@ func (bc *BlockChain) InsertChain(block *types.Block) (err error) {
 	parHash := block.ParentHash()
 	curHash := bc.currentBlock.Load().(*types.Block).Hash()
 	// 执行交易 生成changelog
-	res, err := bc.processor.Process(block)
+	newHeader, err := bc.processor.Process(block)
 	if err != nil {
+		log.Warn("process block error!", "hash", hash.Hex(), "err", err)
 		return err
 	}
-	// Finalize the block, applying any consensus engine specific extras (e.g. block rewards)
-	bc.engine.Finalize(block.Header)
-	block.SetChangeLog(bc.AccountManager().GetChangeLogs())
-	// todo
-	if res == nil {
-
+	// 验证
+	if newHeader.Hash() != hash {
+		log.Warn(fmt.Sprintf("verify block error! hash:%s", hash.Hex()))
+		return fmt.Errorf("verify block error! hash:%s", hash.Hex())
 	}
-	// block.SetEvents(res.Events)
-	// // 验证
-	// newHeader := *(block.Header)
-	// newHeader.EventRoot = types.DeriveEventsSha(res.Events)
-	// newHeader.VersionRoot = bc.AccountManager().GetVersionRoot()
-	// newHeader.LogsRoot = types.DeriveChangeLogsSha(block.ChangeLog)
-	// newHeader.GasUsed = res.GasUsed
-	// newHeader.Bloom = res.Bloom
-	// newHash := newHeader.Hash()
-	// if bytes.Compare(hash[:], newHash[:]) != 0 {
-	// 	log.Warn(fmt.Sprintf("verify block error! hash:%s", block.Hash().Hex()))
-	// 	return fmt.Errorf("verify block error! hash:%s", block.Hash().Hex())
-	// }
-	// bc.AccountManager().Save(newHash)
-	bc.AccountManager().Save(block.Hash())                        // todo
-	if err = bc.dbOpe.SetBlock(block.Hash(), block); err != nil { // 放入缓存中
-		log.Error(fmt.Sprintf("can't insert block to cache. height:%d hash:%s", block.Height(), block.Hash().Hex()))
+	// save
+	block.SetEvents(bc.AccountManager().GetEvents())
+	block.SetChangeLog(bc.AccountManager().GetChangeLogs())
+	if err = bc.dbOpe.SetBlock(hash, block); err != nil { // 放入缓存中
+		log.Error(fmt.Sprintf("can't insert block to cache. height:%d hash:%s", block.Height(), hash.Hex()))
 		return err
 	}
 	log.Infof("insert block to chain. height: %d", block.Height())
+	err = bc.AccountManager().Save(hash)
+	if err != nil {
+		log.Error("save account error!", "height", block.Height(), "hash", hash.Hex(), "err", err)
+		return err
+	}
 
 	nodeCount := deputynode.Instance().GetDeputyNodesCount()
 	if nodeCount < 3 {
@@ -259,7 +256,7 @@ func (bc *BlockChain) InsertChain(block *types.Block) (err error) {
 		// only broadcast confirm info within one hour
 		c_t := uint64(time.Now().Unix())
 		if c_t-block.Time().Uint64() < 60*60 {
-			bc.BroadcastConfirmInfo(block.Hash(), block.Height())
+			bc.BroadcastConfirmInfo(hash, block.Height())
 		}
 	}()
 

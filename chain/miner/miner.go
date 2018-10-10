@@ -265,34 +265,24 @@ func (m *Miner) sealBlock() {
 	}
 	header := m.sealHead()
 	txs := m.txPool.Pending(10000000)
-	txsRes, err := m.txProcessor.ApplyTxs(header, txs)
+	newHeader, packagedTxs, err := m.txProcessor.ApplyTxs(header, txs)
 	if err != nil {
 		log.Errorf("apply transactions for block failed! %v", err)
 		return
 	}
-	header.Bloom = txsRes.Bloom
-	header.GasUsed = txsRes.GasUsed
-	header.TxRoot = types.DeriveTxsSha(txsRes.Txs)
-	header.EventRoot = types.DeriveEventsSha(txsRes.Events)
-	m.engine.Finalize(header)
-	m.chain.AccountManager().Finalise()
-	verRoot := m.chain.AccountManager().GetVersionRoot()
-	header.VersionRoot = verRoot
-	changeLogs := m.chain.AccountManager().GetChangeLogs()
-	header.LogsRoot = types.DeriveChangeLogsSha(changeLogs)
-	hash := header.Hash()
+
+	hash := newHeader.Hash()
 	signData, err := crypto.Sign(hash[:], m.privKey)
 	if err != nil {
 		log.Errorf("sign for block failed! block hash:%s", hash.Hex())
 		return
 	}
-	header.SignData = signData
-	block, err := m.engine.Seal(header, txsRes.Txs, changeLogs, txsRes.Events)
+	newHeader.SignData = signData
+	block, err := m.engine.Seal(newHeader, packagedTxs, m.chain.AccountManager().GetChangeLogs(), m.chain.AccountManager().GetEvents())
 	if err != nil {
 		log.Error("seal block error!!")
 		return
 	}
-	m.chain.AccountManager().Save(header.Hash())
 	log.Infof("Mine a new block. height: %d hash: %s", block.Height(), block.Hash().String())
 	m.mineNewBlockCh <- block
 	nodeCount := deputynode.Instance().GetDeputyNodesCount()

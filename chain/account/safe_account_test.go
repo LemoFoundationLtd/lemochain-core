@@ -15,8 +15,8 @@ func TestSafeAccount_Interface(t *testing.T) {
 
 func loadSafeAccount(address common.Address) *SafeAccount {
 	db := newDB()
-	data, _ := db.GetAccount(defaultBlock.hash, address)
-	return NewSafeAccount(NewManager(defaultBlock.hash, db).processor, NewAccount(db, address, data))
+	data, _ := db.GetAccount(newestBlock.Hash(), address)
+	return NewSafeAccount(NewManager(newestBlock.Hash(), db).processor, NewAccount(db, address, data))
 }
 
 func TestSafeAccount_SetBalance_IsDirty(t *testing.T) {

@@ -508,7 +508,7 @@ func opBlockhash(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack
 }
 
 func opCoinbase(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack *Stack) ([]byte, error) {
-	stack.push(evm.Lemobase.Big())
+	stack.push(evm.LemoBase.Big())
 	return nil, nil
 }
 
