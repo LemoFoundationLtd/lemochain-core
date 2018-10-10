@@ -226,6 +226,7 @@ func TestNewManager_Reset(t *testing.T) {
 	assert.Empty(t, manager.versionTrie)
 }
 
+// saving from the newest block
 func TestNewManager_Finalise_Save(t *testing.T) {
 	db := newDB()
 	manager := NewManager(newestBlock.Hash(), db)
@@ -268,6 +269,7 @@ func TestNewManager_Finalise_Save(t *testing.T) {
 	assert.Equal(t, root, manager.GetVersionRoot())
 }
 
+// saving genesis block and first block
 func TestNewManager_Finalise_Save2(t *testing.T) {
 	db := newDB()
 	// load from genesis' parent block
@@ -309,6 +311,46 @@ func TestNewManager_Finalise_Save2(t *testing.T) {
 	assert.Equal(t, 0, len(manager.processor.changeLogs))
 	manager = NewManager(b(12), db)
 	assert.Equal(t, root, manager.GetVersionRoot())
+}
+
+func TestManager_Save_Reset(t *testing.T) {
+	db := newDB()
+	// load from genesis' parent block
+	manager := NewManager(common.Hash{}, db)
+
+	// save balance to 1 in block1
+	account := manager.GetAccount(common.HexToAddress("0x1"))
+	account.SetBalance(big.NewInt(1))
+	assert.Equal(t, uint32(1), account.GetVersion())
+	err := manager.Finalise()
+	assert.NoError(t, err)
+	block := &types.Block{}
+	block.SetHeader(&types.Header{Height: 0, VersionRoot: manager.GetVersionRoot()})
+	err = db.SetBlock(block.Hash(), block)
+	assert.NoError(t, err)
+	err = manager.Save(block.Hash())
+	assert.NoError(t, err)
+
+	// save balance to 2 in block2
+	block1Hash := block.Hash()
+	manager.Reset(block1Hash)
+	account = manager.GetAccount(common.HexToAddress("0x1"))
+	account.SetBalance(big.NewInt(2))
+	assert.Equal(t, uint32(2), account.GetVersion())
+	err = manager.Finalise()
+	assert.NoError(t, err)
+	block = &types.Block{}
+	block.SetHeader(&types.Header{Height: 1, ParentHash: block1Hash, VersionRoot: manager.GetVersionRoot()})
+	err = db.SetBlock(block.Hash(), block)
+	assert.NoError(t, err)
+	err = manager.Save(block.Hash())
+	assert.NoError(t, err)
+
+	// load state from block1
+	manager.Reset(block1Hash)
+	account = manager.GetAccount(common.HexToAddress("0x1"))
+	assert.Equal(t, big.NewInt(1), account.GetBalance())
+	assert.Equal(t, uint32(1), account.GetVersion())
 }
 
 func TestManager_MergeChangeLogs(t *testing.T) {
