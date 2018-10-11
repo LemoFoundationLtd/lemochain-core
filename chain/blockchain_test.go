@@ -34,11 +34,20 @@ func initDeputyNodes() error {
 
 	}
 
-	nodes := make([]deputynode.DeputyNode, 1)
+	nodes := make([]deputynode.DeputyNode, 2)
 	nodes[0] = deputynode.DeputyNode{
 		LemoBase: common.HexToAddress("0x10000"),
 		NodeID:   crypto.FromECDSAPub(&privateKey.PublicKey)[1:],
 		IP:       []byte{'e', 'e', 'e', 'e'},
+		Port:     60000,
+		Rank:     0,
+		Votes:    100000,
+	}
+
+	nodes[1] = deputynode.DeputyNode{
+		LemoBase: common.HexToAddress("0x20000"),
+		NodeID:   crypto.FromECDSAPub(&privateKey.PublicKey)[1:],
+		IP:       []byte{'f', 'f', 'f', 'f'},
 		Port:     60000,
 		Rank:     0,
 		Votes:    100000,
