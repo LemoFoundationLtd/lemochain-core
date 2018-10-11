@@ -5,7 +5,9 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
+	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/network/p2p"
+	"github.com/inconshreveable/log15"
 	"gopkg.in/urfave/cli.v1"
 	"os"
 	"path/filepath"
@@ -125,6 +127,11 @@ var (
 		Usage: "JavaScript root path for `loadScript`",
 		Value: ".",
 	}
+	LogLevelFlag = cli.IntFlag{
+		Name:  common.LogLevel,
+		Usage: "output log level",
+		Value: 2,
+	}
 )
 
 // setNodeKey 设置NodeKey私钥
@@ -236,6 +243,12 @@ func checkExclusive(ctx *cli.Context, args ...interface{}) {
 
 func SetNodeConfig(ctx *cli.Context, cfg *NodeConfig) {
 	cfg.DataDir = ctx.GlobalString(DataDirFlag.Name)
+	logLevel := ctx.GlobalInt(LogLevelFlag.Name)
+	logLevel += 1
+	if logLevel < 1 || logLevel > 5 {
+		logLevel = 2
+	}
+	log.Setup(log15.Lvl(logLevel), false, true) // log init
 
 	setP2PConfig(ctx, &cfg.P2P)
 	setHttp(ctx, cfg)

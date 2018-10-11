@@ -26,6 +26,7 @@ var (
 		node.MiningEnabledFlag,
 		node.JSpathFlag,
 		node.DebugFlag,
+		node.LogLevelFlag,
 	}
 
 	rpcFlags = []cli.Flag{
@@ -71,7 +72,6 @@ func init() {
 }
 
 func main() {
-	log.Setup(log.LevelInfo, false, true)
 	if err := app.Run(os.Args); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

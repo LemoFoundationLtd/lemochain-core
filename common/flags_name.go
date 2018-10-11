@@ -23,4 +23,5 @@ const (
 	WSAllowedOrigins = "wsorigins"
 	Debug            = "debug"
 	JSpath           = "jspath"
+	LogLevel         = "loglevel"
 )
