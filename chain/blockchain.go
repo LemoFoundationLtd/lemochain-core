@@ -285,8 +285,8 @@ func (bc *BlockChain) InsertChain(block *types.Block) (err error) {
 			needFork = true
 			bc.currentBlock.Store(block)
 			delete(bc.chainForksHead, parHash) // 替换
-			bc.chainForksHead[hash] = block
 		}
+		bc.chainForksHead[hash] = block
 		bc.newBlockNotify(block)
 		return nil
 	}
