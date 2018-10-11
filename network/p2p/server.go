@@ -275,14 +275,11 @@ func (srv *Server) run() {
 // 接受TCP请求
 func (srv *Server) listenLoop() {
 	for {
-		select {
-		case <-srv.quitCh:
-			return
-		default:
-		}
-
 		fd, err := srv.listener.Accept()
 		if err != nil {
+			if srv.running == false {
+				return
+			}
 			log.Debug("TCP Accept error", "err", err)
 			continue
 		}
