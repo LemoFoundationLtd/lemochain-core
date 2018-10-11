@@ -176,7 +176,6 @@ func (bc *BlockChain) StableBlock() *types.Block {
 
 // MineNewBlock 挖到新块
 func (bc *BlockChain) MineNewBlock(block *types.Block) error {
-	// 插入链
 	if err := bc.dbOpe.SetBlock(block.Hash(), block); err != nil { // 放入缓存中
 		log.Error(fmt.Sprintf("can't insert block to cache. height:%d hash:%s", block.Height(), block.Hash().Hex()))
 		return err
@@ -191,9 +190,8 @@ func (bc *BlockChain) MineNewBlock(block *types.Block) error {
 		bc.SetStableBlock(block.Hash(), block.Height())
 	}
 	bc.currentBlock.Store(block)
-	delete(bc.chainForksHead, block.ParentHash()) // 从分叉链集合中删除原记录
-	bc.chainForksHead[block.Hash()] = block       // 从分叉链集合中添加新记录
-	bc.chainForksHead[block.Hash()] = block       // 从分叉链集合中添加新记录
+	delete(bc.chainForksHead, block.ParentHash())
+	bc.chainForksHead[block.Hash()] = block
 	return nil
 }
 
@@ -201,19 +199,19 @@ func (bc *BlockChain) newBlockNotify(block *types.Block) {
 	go func() { bc.newBlockCh <- block }()
 }
 
-// InsertChain 插入区块到到链上——非自己挖到的块
+// InsertChain insert block of non-self to chain
 func (bc *BlockChain) InsertChain(block *types.Block) (err error) {
 	log.Debugf("start insert block to chain. height: %d", block.Height())
 	hash := block.Hash()
 	parHash := block.ParentHash()
 	curHash := bc.currentBlock.Load().(*types.Block).Hash()
-	// 执行交易 生成changelog
+	// execute tx
 	newHeader, err := bc.processor.Process(block)
 	if err != nil {
 		log.Warn("process block error!", "hash", hash.Hex(), "err", err)
 		return err
 	}
-	// 验证
+	// verify
 	if newHeader.Hash() != hash {
 		log.Warn(fmt.Sprintf("verify block error! hash:%s", hash.Hex()))
 		return fmt.Errorf("verify block error! hash:%s", hash.Hex())
@@ -236,9 +234,8 @@ func (bc *BlockChain) InsertChain(block *types.Block) (err error) {
 	if nodeCount < 3 {
 		defer bc.SetStableBlock(hash, block.Height())
 	} else {
-		// 判断confirm package
 		if block.ConfirmPackage != nil {
-			if len(block.ConfirmPackage)+1 >= nodeCount*2/3 { // 出块者默认已确认
+			if len(block.ConfirmPackage)+1 >= nodeCount*2/3 { // default, we think the miner has confirm this block
 				defer bc.SetStableBlock(hash, block.Height())
 			}
 		}
@@ -260,42 +257,33 @@ func (bc *BlockChain) InsertChain(block *types.Block) (err error) {
 		}
 	}()
 
-	// 同一条链上 正常情况
+	// normal, in same chain
 	if bytes.Compare(parHash[:], curHash[:]) == 0 {
 		needFork = false
 		bc.currentBlock.Store(block)
-		delete(bc.chainForksHead, curHash) // 从分叉链集合中删除原记录
-		bc.chainForksHead[hash] = block    // 从分叉链集合中添加新记录
+		delete(bc.chainForksHead, curHash) // remove old record from fork container
+		bc.chainForksHead[hash] = block    // record new fork
 		bc.newBlockNotify(block)
 		return nil
 	}
-	// 新块高度大于当前块高度 切换分叉
+	// new block height higher than current block, switch fork.
 	curHeight := bc.currentBlock.Load().(*types.Block).Height()
-	if block.Height() > curHeight { // current block 切换分叉到长链上去
+	if block.Height() > curHeight {
 		needFork = true
 		bc.currentBlock.Store(block)
-		delete(bc.chainForksHead, parHash) // 替换掉原分叉head
-		bc.chainForksHead[hash] = block    // 从分叉链集合中添加新记录
-		bc.newBlockNotify(block)
-		return nil
-	}
-	// 同一高度 两个区块 字典序更小的优先
-	if curHeight == block.Height() {
+		delete(bc.chainForksHead, parHash)
+	} else if curHeight == block.Height() { // two block with same height, priority of lower alphabet order
 		if hash.Big().Cmp(curHash.Big()) < 0 {
 			needFork = true
 			bc.currentBlock.Store(block)
-			delete(bc.chainForksHead, parHash) // 替换
+			delete(bc.chainForksHead, parHash)
 		}
-		bc.chainForksHead[hash] = block
-		bc.newBlockNotify(block)
-		return nil
-	}
-	if _, ok := bc.chainForksHead[parHash]; ok {
-		delete(bc.chainForksHead, parHash) // 从分叉链集合中删除原记录
-		bc.chainForksHead[hash] = block    // 从分叉链集合中添加新记录
 	} else {
-		bc.chainForksHead[hash] = block // 从分叉链集合中添加新记录
+		if _, ok := bc.chainForksHead[parHash]; ok {
+			delete(bc.chainForksHead, parHash)
+		}
 	}
+	bc.chainForksHead[hash] = block
 	bc.newBlockNotify(block)
 	return nil
 }
