@@ -273,7 +273,6 @@ func (m *Miner) sealBlock() {
 		log.Errorf("apply transactions for block failed! %v", err)
 		return
 	}
-	_ := invalidTxs // TODO remove these transactions from txPool
 
 	hash := newHeader.Hash()
 	signData, err := crypto.Sign(hash[:], m.privKey)
@@ -290,9 +289,12 @@ func (m *Miner) sealBlock() {
 	log.Infof("Mine a new block. height: %d hash: %s", block.Height(), block.Hash().String())
 	m.mineNewBlockCh <- block
 	// remove txs from pool
-	txsKeys := make([]common.Hash, len(packagedTxs))
+	txsKeys := make([]common.Hash, len(packagedTxs)+len(invalidTxs))
 	for i, tx := range packagedTxs {
 		txsKeys[i] = tx.Hash()
+	}
+	for i, tx := range invalidTxs {
+		txsKeys[i+len(packagedTxs)] = tx.Hash()
 	}
 	m.txPool.Remove(txsKeys)
 	nodeCount := deputynode.Instance().GetDeputyNodesCount()
