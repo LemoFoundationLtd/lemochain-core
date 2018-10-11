@@ -82,6 +82,7 @@ func TestTxProcessor_Process(t *testing.T) {
 
 // test invalid block processing
 func TestTxProcessor_Process2(t *testing.T) {
+	clearDB()
 	p := NewTxProcessor(newChain())
 
 	// tamper with amount
@@ -156,6 +157,7 @@ func createNewBlock() *types.Block {
 }
 
 func TestTxProcessor_ApplyTxs(t *testing.T) {
+	clearDB()
 	p := NewTxProcessor(newChain())
 
 	// 1 txs
@@ -169,7 +171,7 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 		GasUsed:    header.GasUsed,
 		Time:       header.Time,
 	}
-	newHeader, selectedTxs, err := p.ApplyTxs(emptyHeader, txs)
+	newHeader, selectedTxs, invalidTxs, err := p.ApplyTxs(emptyHeader, txs)
 	assert.NoError(t, err)
 	assert.Equal(t, header.Bloom, newHeader.Bloom)
 	assert.Equal(t, header.EventRoot, newHeader.EventRoot)
@@ -179,6 +181,7 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 	assert.Equal(t, header.LogsRoot, newHeader.LogsRoot)
 	assert.Equal(t, header.Hash(), newHeader.Hash())
 	assert.Equal(t, len(txs), len(selectedTxs))
+	assert.Equal(t, 0, len(invalidTxs))
 
 	// 2 txs
 	header = defaultBlocks[3].Header
@@ -191,7 +194,7 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 		GasUsed:    header.GasUsed,
 		Time:       header.Time,
 	}
-	newHeader, selectedTxs, err = p.ApplyTxs(emptyHeader, txs)
+	newHeader, selectedTxs, invalidTxs, err = p.ApplyTxs(emptyHeader, txs)
 	assert.NoError(t, err)
 	assert.Equal(t, header.Bloom, newHeader.Bloom)
 	assert.Equal(t, header.EventRoot, newHeader.EventRoot)
@@ -201,6 +204,7 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 	assert.Equal(t, header.LogsRoot, newHeader.LogsRoot)
 	assert.Equal(t, header.Hash(), newHeader.Hash())
 	assert.Equal(t, len(txs), len(selectedTxs))
+	assert.Equal(t, 0, len(invalidTxs))
 
 	// 0 txs
 	header = defaultBlocks[3].Header
@@ -212,7 +216,7 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 		GasUsed:    header.GasUsed,
 		Time:       header.Time,
 	}
-	newHeader, selectedTxs, err = p.ApplyTxs(emptyHeader, nil)
+	newHeader, selectedTxs, invalidTxs, err = p.ApplyTxs(emptyHeader, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, types.Bloom{}, newHeader.Bloom)
 	emptyTrieHash := common.HexToHash("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470")
@@ -232,7 +236,7 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 		GasUsed:    header.GasUsed,
 		Time:       header.Time,
 	}
-	newHeader, selectedTxs, err = p.ApplyTxs(emptyHeader, txs)
+	newHeader, selectedTxs, invalidTxs, err = p.ApplyTxs(emptyHeader, txs)
 	assert.NoError(t, err)
 	assert.Equal(t, header.Bloom, newHeader.Bloom)
 	assert.Equal(t, header.EventRoot, newHeader.EventRoot)
@@ -242,6 +246,33 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 	assert.NotEqual(t, header.LogsRoot, newHeader.LogsRoot)
 	assert.NotEqual(t, header.Hash(), newHeader.Hash())
 	assert.NotEqual(t, len(txs), len(selectedTxs))
+	assert.Equal(t, 0, len(invalidTxs))
 
-	// TODO test apply error Tx and whether the am revert correctly
+	// balance not enough
+	header = defaultBlocks[3].Header
+	txs = defaultBlocks[3].Txs
+	emptyHeader = &types.Header{
+		ParentHash: header.ParentHash,
+		LemoBase:   header.LemoBase,
+		Height:     header.Height,
+		GasLimit:   header.GasLimit,
+		GasUsed:    header.GasUsed,
+		Time:       header.Time,
+	}
+	txs = types.Transactions{
+		txs[0],
+		makeTx(testPrivate, defaultAccounts[1], big.NewInt(10000000000000)),
+		txs[1],
+	}
+	newHeader, selectedTxs, invalidTxs, err = p.ApplyTxs(emptyHeader, txs)
+	assert.NoError(t, err)
+	assert.Equal(t, header.Bloom, newHeader.Bloom)
+	assert.Equal(t, header.EventRoot, newHeader.EventRoot)
+	assert.Equal(t, header.GasUsed, newHeader.GasUsed)
+	assert.Equal(t, header.TxRoot, newHeader.TxRoot)
+	assert.Equal(t, header.VersionRoot, newHeader.VersionRoot)
+	assert.Equal(t, header.LogsRoot, newHeader.LogsRoot)
+	assert.Equal(t, header.Hash(), newHeader.Hash())
+	assert.Equal(t, len(txs)-1, len(selectedTxs))
+	assert.Equal(t, 1, len(invalidTxs))
 }
