@@ -266,6 +266,7 @@ func (srv *Server) run() {
 			})
 			break
 		case <-srv.quitCh:
+			log.Debug("server.run stop")
 			return
 		}
 		log.Debug("next turn to addPeerCh")
@@ -316,7 +317,10 @@ func (srv *Server) runPeer(p *Peer) {
 	defer srv.loopWG.Done()
 	log.Debugf("start run peer. node id: %s", common.ToHex(p.nodeId[:8]))
 	p.run() // 正常情况下会阻塞 除非节点drop
-	srv.delPeerCh <- p
+	if srv.running == true {
+		srv.delPeerCh <- p
+	}
+	log.Debug("server.runPeer stop")
 }
 
 // 启动主动连接调度
@@ -337,6 +341,7 @@ func (srv *Server) runDialLoop() {
 	for {
 		select {
 		case <-srv.quitCh:
+			log.Debug("server.runDialLoop stop")
 			return
 		case <-retryTimer.C:
 			if len(failedNodes) > 0 {
@@ -350,8 +355,10 @@ func (srv *Server) runDialLoop() {
 			retryTimer.Reset(retryConnTimeout)
 		case node := <-srv.needConnectNodeCh:
 			go func() {
+				log.Debugf("start dial target: %s", node)
 				dialTask := newDialTask(node, srv)
 				if err := dialTask.Run(); err != nil {
+					log.Debugf("dial target failed. err: %v", err)
 					failedNodes[node] = struct{}{}
 				}
 			}()
@@ -371,6 +378,7 @@ func (srv *Server) AddStaticPeer(node string) {
 	if err != nil || port < 1024 || port > 65535 {
 		return
 	}
+	log.Infof("start add static peer: %s", node)
 	srv.needConnectNodeCh <- node
 }
 

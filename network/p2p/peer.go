@@ -21,7 +21,8 @@ type Peer struct {
 	rw      *conn
 	created mclock.AbsTime
 	wg      sync.WaitGroup
-	closed  chan struct{}
+	closeCh chan struct{}
+	closed  bool
 	nodeId  NodeID // sman 远程节点公钥
 
 	rmu sync.Mutex // 读锁
@@ -35,7 +36,8 @@ func newPeer(fd net.Conn) transport {
 	return &Peer{
 		rw:       c,
 		created:  mclock.Now(),
-		closed:   make(chan struct{}),
+		closeCh:  make(chan struct{}),
+		closed:   false,
 		newMsgCh: make(chan Msg),
 	}
 }
@@ -56,7 +58,8 @@ func (p *Peer) doHandshake(prv *ecdsa.PrivateKey, isSelfServer bool) (err error)
 }
 
 func (p *Peer) Close() {
-	close(p.closed)
+	p.closed = true
+	close(p.closeCh)
 }
 
 // 作为服务端处理流程
@@ -124,7 +127,7 @@ loop:
 		case err = <-readErr:
 			log.Infof("read error: %v", err)
 			break loop
-		case <-p.closed:
+		case <-p.closeCh:
 			break loop
 		}
 	}
@@ -141,8 +144,10 @@ func (p *Peer) readLoop(errCh chan<- error) {
 		// 读取数据
 		msg, err := p.readMsg()
 		if err != nil {
-			errCh <- err
-			p.newMsgCh <- Msg{}
+			if p.closed == false {
+				errCh <- err
+				p.newMsgCh <- Msg{}
+			}
 			return
 		}
 		if msg.Code == 0x01 { // 心跳包
@@ -164,10 +169,11 @@ type frameHeader struct {
 
 // 发送心跳循环
 func (p *Peer) heartbeatLoop() {
-	defer p.wg.Done()
-
 	heartbeatTimer := time.NewTimer(heartbeatInterval)
-	defer heartbeatTimer.Stop()
+	defer func() {
+		heartbeatTimer.Stop()
+		p.wg.Done()
+	}()
 
 	for {
 		select {
@@ -176,7 +182,7 @@ func (p *Peer) heartbeatLoop() {
 				return
 			}
 			heartbeatTimer.Reset(heartbeatInterval)
-		case <-p.closed:
+		case <-p.closeCh:
 			return
 		}
 	}

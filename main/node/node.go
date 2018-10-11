@@ -322,26 +322,32 @@ func (n *Node) stopRPC() {
 func (n *Node) Stop() error {
 	n.lock.Lock()
 	defer n.lock.Unlock()
-
+	log.Debug("start stopping node...")
 	if n.server == nil {
-		return errors.New("node not started")
+		log.Warn("p2p server not started")
+	} else {
+		n.server.Stop()
 	}
+	log.Debug("stop p2p server ok...")
 	if err := n.accMan.Stop(true); err != nil {
 		log.Errorf("stop account manager failed: %v", err)
 		return err
 	}
+	log.Debug("stop account manager ok...")
 	n.stopRPC()
-	n.server.Stop()
 	if n.instanceDirLock != nil {
 		if err := n.instanceDirLock.Release(); err != nil {
 			log.Errorf("Can't release datadir lock: %v", err)
 		}
 		n.instanceDirLock = nil
 	}
-	close(n.stop)
 	if err := n.stopChain(); err != nil {
+		log.Errorf("stop chain failed: %v", err)
 		return err
 	}
+	log.Debug("stop chain ok...")
+	close(n.stop)
+	log.Info("stop command execute success.")
 	return nil
 }
 

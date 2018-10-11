@@ -402,7 +402,6 @@ func (pm *ProtocolManager) Start() {
 // Stop 停止pm
 func (pm *ProtocolManager) Stop() {
 	close(pm.quitSync)
-	pm.peers.Close()
 	pm.wg.Wait()
 	log.Info("ProtocolManager stop")
 }

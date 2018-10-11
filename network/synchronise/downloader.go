@@ -23,7 +23,7 @@ var (
 	errBusy          = errors.New("is synchronising")
 	errUnknownPeer   = errors.New("peer is unknown")
 	errBadPeer       = errors.New("bad peer ignored")
-	errForceQuit     = errors.New("force quit")
+	errForceQuit     = errors.New("force quitCh")
 	errUnknownParent = errors.New("Unknown Parent")
 )
 
@@ -100,12 +100,6 @@ func (ps *peerSet) PeersWithoutTx(hash common.Hash) []*peer {
 		}
 	}
 	return list
-}
-
-func (ps *peerSet) Close() {
-	for _, p := range ps.peers {
-		p.peer.Close()
-	}
 }
 
 // Downloader 区块同步工人
