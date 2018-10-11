@@ -268,11 +268,12 @@ func (m *Miner) sealBlock() {
 	}
 	header := m.sealHead()
 	txs := m.txPool.Pending(10000000)
-	newHeader, packagedTxs, err := m.txProcessor.ApplyTxs(header, txs)
+	newHeader, packagedTxs, invalidTxs, err := m.txProcessor.ApplyTxs(header, txs)
 	if err != nil {
 		log.Errorf("apply transactions for block failed! %v", err)
 		return
 	}
+	_ := invalidTxs // TODO remove these transactions from txPool
 
 	hash := newHeader.Hash()
 	signData, err := crypto.Sign(hash[:], m.privKey)

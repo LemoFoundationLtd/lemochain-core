@@ -73,11 +73,12 @@ func (p *TxProcessor) Process(block *types.Block) (*types.Header, error) {
 }
 
 // ApplyTxs picks and processes transactions from miner's tx pool.
-func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions) (*types.Header, types.Transactions, error) {
+func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions) (*types.Header, types.Transactions, types.Transactions, error) {
 	gp := new(types.GasPool).AddGas(header.GasLimit)
 	gasUsed := uint64(0)
 	minerSalary := new(big.Int)
 	selectedTxs := make(types.Transactions, 0)
+	invalidTxs := make(types.Transactions, 0)
 
 	p.am.Reset(header.ParentHash)
 
@@ -96,11 +97,12 @@ func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions) (*t
 			if err == types.ErrGasLimitReached {
 				// block is full
 				log.Info("Not enough gas for further transactions", "gp", gp, "lastTxGasLimit", tx.GasLimit())
-				break
+			} else {
+				// Strange error, discard the transaction and get the next in line.
+				log.Debug("Transaction failed, tx skipped", "hash", tx.Hash(), "err", err)
+				invalidTxs = append(invalidTxs, tx)
 			}
-			// Strange error, discard the transaction and get the next in line.
-			log.Debug("Transaction failed, account skipped", "hash", tx.Hash(), "err", err)
-			return nil, nil, err
+			continue
 		}
 		selectedTxs = append(selectedTxs, tx)
 
@@ -111,7 +113,7 @@ func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions) (*t
 	p.paySalary(minerSalary, header.LemoBase)
 
 	newHeader, err := p.FillHeader(header.Copy(), selectedTxs, gasUsed)
-	return newHeader, selectedTxs, err
+	return newHeader, selectedTxs, invalidTxs, err
 }
 
 // applyTx processes transaction. Change accounts' data and execute contract codes.
