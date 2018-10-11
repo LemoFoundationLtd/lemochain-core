@@ -76,8 +76,8 @@ type Fetcher struct {
 	insertChain          chainInsertFn      // 批量插入块到链
 	dropPeer             peerDropFn         // 丢掉节点连接
 
-	done chan common.Hash // hash对应的区块获取成功
-	quit chan struct{}    // 退出
+	done   chan common.Hash // hash对应的区块获取成功
+	quitCh chan struct{}    // 退出
 }
 
 // NewFetcher 实例化fetcher
@@ -102,6 +102,7 @@ func NewFetcher(getLocalBlock blockRetrieveFn, verifyBlock blockVerifierFn, broa
 		consensusChainHeight: consensusChainHeight,
 		insertChain:          insertChain,
 		dropPeer:             dropPeer,
+		quitCh:               make(chan struct{}),
 	}
 	return f
 }
@@ -113,7 +114,7 @@ func (f *Fetcher) Start() {
 
 // Stop stop fetcher
 func (f *Fetcher) Stop() {
-	close(f.quit)
+	close(f.quitCh)
 }
 
 // run 死循环，用来调度获取区块
@@ -206,7 +207,7 @@ func (f *Fetcher) run() {
 		case hash := <-f.done: // 导入链成功
 			f.forgetHash(hash)
 			f.forgetBlock(hash)
-		case <-f.quit:
+		case <-f.quitCh:
 			stopCh <- struct{}{}
 			return
 		case notification := <-f.notifyCh:
@@ -267,7 +268,7 @@ func (f *Fetcher) Notify(peer string, hash common.Hash, height uint32, fetchBloc
 	select {
 	case f.notifyCh <- block:
 		return nil
-	case <-f.quit:
+	case <-f.quitCh:
 		return errTerminated
 	}
 }
@@ -307,7 +308,7 @@ func (f *Fetcher) Enqueue(peer string, block *types.Block, fetchBlock blockReque
 	select {
 	case f.newBlockCh <- op:
 		return nil
-	case <-f.quit:
+	case <-f.quitCh:
 		return errTerminated
 	}
 }
