@@ -338,12 +338,12 @@ func (pm *ProtocolManager) handleMsg(p *peerConnection) error {
 		if block.Height() > p.peer.height {
 			p.peer.SetHead(block.Hash(), block.Height())
 			log.Debugf("setHead to peer: %s. height: %d", p.peer.id[:16], block.Height())
-			// 清理交易池
-			txs := make([]common.Hash, 0)
-			for _, tx := range block.Txs {
-				txs = append(txs, tx.Hash())
+			// remove tx from pool
+			txs := make([]common.Hash, len(block.Txs))
+			for i, tx := range block.Txs {
+				txs[i] = tx.Hash()
 			}
-			// pm.txPool.RemoveTxs(txs)
+			pm.txPool.Remove(txs)
 			currentHeight := pm.blockchain.CurrentBlock().Height()
 			if currentHeight+1 < block.Height() {
 				go pm.synchronise(p.id)

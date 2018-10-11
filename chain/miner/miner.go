@@ -288,6 +288,12 @@ func (m *Miner) sealBlock() {
 	}
 	log.Infof("Mine a new block. height: %d hash: %s", block.Height(), block.Hash().String())
 	m.mineNewBlockCh <- block
+	// remove txs from pool
+	txsKeys := make([]common.Hash, len(packagedTxs))
+	for i, tx := range packagedTxs {
+		txsKeys[i] = tx.Hash()
+	}
+	m.txPool.Remove(txsKeys)
 	nodeCount := deputynode.Instance().GetDeputyNodesCount()
 	var timeDur int64
 	if nodeCount == 1 {
