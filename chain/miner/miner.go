@@ -119,10 +119,12 @@ func (m *Miner) isSelfDeputyNode() bool {
 // 修改定时器
 func (m *Miner) modifyTimer() {
 	if !m.isSelfDeputyNode() {
+		log.Debugf("self not deputy node. mining forbidden")
 		return
 	}
 	nodeCount := deputynode.Instance().GetDeputyNodesCount()
 	if nodeCount == 0 {
+		log.Debugf("nodes count is 0")
 		return
 	} else if nodeCount == 1 { // 只有一个主节点
 		waitTime := m.blockInternal
@@ -139,6 +141,7 @@ func (m *Miner) modifyTimer() {
 	curBlock := m.currentBlock().Header
 	slot := deputynode.Instance().GetSlot(curBlock.Height, curBlock.LemoBase, myself.LemoBase) // 获取新块离本节点索引的距离
 	if slot == -1 {
+		log.Debugf("slot = -1")
 		return
 	}
 	oneLoopTime := int64(nodeCount) * m.timeoutTime

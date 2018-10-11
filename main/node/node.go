@@ -104,6 +104,7 @@ func New(lemoConf *LemoConfig, conf *NodeConfig, flags map[string]string) (*Node
 		return nil, err
 	}
 	deputynode.Instance().Add(0, genesisConfig.DeputyNodes)
+	log.Debugf("genesis deputy node length: %d. self node id: %s", len(genesisConfig.DeputyNodes), common.ToHex(deputynode.GetSelfNodeID()))
 	_, err = db.GetBlockByHeight(0)
 	if err == store.ErrNotExist {
 		genesis := chain.DefaultGenesisBlock()
