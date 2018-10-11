@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	errInsufficientBalanceForGas = errors.New("insufficient balance to pay for gas")
+	ErrInsufficientBalanceForGas = errors.New("insufficient balance to pay for gas")
 )
 
 type TxProcessor struct {
@@ -73,7 +73,7 @@ func (p *TxProcessor) Process(block *types.Block) (*types.Header, error) {
 }
 
 // ApplyTxs picks and processes transactions from miner's tx pool.
-func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions) (*types.Header, []*types.Transaction, error) {
+func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions) (*types.Header, types.Transactions, error) {
 	gp := new(types.GasPool).AddGas(header.GasLimit)
 	gasUsed := uint64(0)
 	minerSalary := new(big.Int)
@@ -93,27 +93,25 @@ func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions) (*t
 		gas, err := p.applyTx(gp, header, tx, uint(len(selectedTxs)), common.Hash{})
 		if err != nil {
 			p.am.RevertToSnapshot(snap)
+			if err == types.ErrGasLimitReached {
+				// block is full
+				log.Info("Not enough gas for further transactions", "gp", gp, "lastTxGasLimit", tx.GasLimit())
+				break
+			}
+			// Strange error, discard the transaction and get the next in line.
+			log.Debug("Transaction failed, account skipped", "hash", tx.Hash(), "err", err)
 			return nil, nil, err
 		}
 		selectedTxs = append(selectedTxs, tx)
 
-		if err == types.ErrGasLimitReached {
-			// Error may be ignored here. The error has already been checked
-			// during transaction acceptance is the transaction pool.
-			from, _ := tx.From()
-			log.Info("Gas limit exceeded for current block", "sender", from)
-		} else if err != nil {
-			// Strange error, discard the transaction and get the next in line.
-			log.Debug("Transaction failed, account skipped", "hash", tx.Hash(), "err", err)
-		}
 		gasUsed = gasUsed + gas
 		fee := new(big.Int).Mul(new(big.Int).SetUint64(gas), tx.GasPrice())
 		minerSalary.Add(minerSalary, fee)
 	}
 	p.paySalary(minerSalary, header.LemoBase)
 
-	newHeader, err := p.FillHeader(header.Copy(), txs, gasUsed)
-	return newHeader, txs, err
+	newHeader, err := p.FillHeader(header.Copy(), selectedTxs, gasUsed)
+	return newHeader, selectedTxs, err
 }
 
 // applyTx processes transaction. Change accounts' data and execute contract codes.
@@ -174,7 +172,7 @@ func (p *TxProcessor) buyGas(gp *types.GasPool, tx *types.Transaction) error {
 
 	maxFee := new(big.Int).Mul(new(big.Int).SetUint64(tx.GasLimit()), tx.GasPrice())
 	if sender.GetBalance().Cmp(maxFee) < 0 {
-		return errInsufficientBalanceForGas
+		return ErrInsufficientBalanceForGas
 	}
 	if err := gp.SubGas(tx.GasLimit()); err != nil {
 		return err
@@ -248,7 +246,7 @@ func (p *TxProcessor) paySalary(salary *big.Int, minerAddress common.Address) {
 }
 
 // FillHeader creates a new header then fills it with the result of transactions process
-func (p *TxProcessor) FillHeader(header *types.Header, txs []*types.Transaction, gasUsed uint64) (*types.Header, error) {
+func (p *TxProcessor) FillHeader(header *types.Header, txs types.Transactions, gasUsed uint64) (*types.Header, error) {
 	events := p.am.GetEvents()
 	header.Bloom = types.CreateBloom(events)
 	header.EventRoot = types.DeriveEventsSha(events)
