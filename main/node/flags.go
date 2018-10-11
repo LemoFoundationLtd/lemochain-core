@@ -130,7 +130,7 @@ var (
 	LogLevelFlag = cli.IntFlag{
 		Name:  common.LogLevel,
 		Usage: "output log level",
-		Value: 2,
+		Value: 4,
 	}
 )
 
