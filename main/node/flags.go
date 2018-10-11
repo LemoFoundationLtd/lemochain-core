@@ -244,8 +244,8 @@ func checkExclusive(ctx *cli.Context, args ...interface{}) {
 func SetNodeConfig(ctx *cli.Context, cfg *NodeConfig) {
 	cfg.DataDir = ctx.GlobalString(DataDirFlag.Name)
 	logLevel := ctx.GlobalInt(LogLevelFlag.Name)
-	logLevel += 1
-	if logLevel < 1 || logLevel > 5 {
+	logLevel -= 1
+	if logLevel < 0 || logLevel > 4 {
 		logLevel = 2
 	}
 	log.Setup(log15.Lvl(logLevel), false, true) // log init
