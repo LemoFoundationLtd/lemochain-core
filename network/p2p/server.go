@@ -168,6 +168,7 @@ func (srv *Server) Stop() {
 	}
 	close(srv.quitCh)
 	srv.loopWG.Wait()
+	log.Debug("server stop success")
 }
 
 // 从本地读取节点列表
@@ -315,16 +316,12 @@ func (srv *Server) HandleConn(fd net.Conn, isSelfServer bool) error {
 }
 
 func (srv *Server) runPeer(p *Peer) {
-	srv.loopWG.Add(1)
-	defer func() {
-		srv.loopWG.Done()
-		log.Debug("server.runPeer stop")
-	}()
 	log.Debugf("start run peer. node id: %s", common.ToHex(p.nodeId[:8]))
 	p.run() // 正常情况下会阻塞 除非节点drop
 	if srv.running == true {
 		srv.delPeerCh <- p
 	}
+	log.Debugf("peer: %s stopped", p.rw.fd.RemoteAddr().String())
 }
 
 // 启动主动连接调度

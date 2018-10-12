@@ -328,7 +328,6 @@ func (n *Node) Stop() error {
 	} else {
 		n.server.Stop()
 	}
-	log.Debug("stop p2p server ok...")
 	if err := n.accMan.Stop(true); err != nil {
 		log.Errorf("stop account manager failed: %v", err)
 		return err
@@ -345,7 +344,6 @@ func (n *Node) Stop() error {
 		log.Errorf("stop chain failed: %v", err)
 		return err
 	}
-	log.Debug("stop chain ok...")
 	close(n.stop)
 	log.Info("stop command execute success.")
 	return nil
@@ -360,6 +358,7 @@ func (n *Node) stopChain() error {
 	if err := n.db.Close(); err != nil {
 		return err
 	}
+	log.Debug("stop chain ok...")
 	return nil
 }
 

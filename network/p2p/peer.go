@@ -82,7 +82,7 @@ func (p *Peer) receiverHandshake(prv *ecdsa.PrivateKey) error {
 	if _, err := conn.Write(buf); err != nil {
 		return err
 	}
-	log.Infof("Receive peer: %s conn", common.ToHex(p.nodeId[:8]))
+	log.Infof("Receive peer: %s conn", p.rw.fd.RemoteAddr().String())
 	return nil
 }
 
