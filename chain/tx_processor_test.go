@@ -44,7 +44,7 @@ func TestTxProcessor_Process(t *testing.T) {
 	assert.Equal(t, block.Hash(), newHeader.Hash())
 
 	// block not in db
-	block = newestBlock
+	block = defaultBlocks[3]
 	newHeader, err = p.Process(block)
 	assert.NoError(t, err)
 	assert.Equal(t, block.Header.Bloom, newHeader.Bloom)

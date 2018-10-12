@@ -86,7 +86,7 @@ func (g *Genesis) ToBlock(am *account.Manager) *types.Block {
 		Time:       new(big.Int).SetUint64(g.Time),
 	}
 	lemoBase := am.GetAccount(g.LemoBase)
-	log.Infof("%d %d", lemoBase.GetVersion(), lemoBase.GetBalance().Uint64())
+	log.Infof("%d %d", lemoBase.GetVersion(account.BalanceLog), lemoBase.GetBalance().Uint64())
 	oneLemo := new(big.Int).SetUint64(1000000000000000000) // 1 lemo
 	total := new(big.Int).SetUint64(1600000000)
 	total = total.Mul(total, oneLemo)
