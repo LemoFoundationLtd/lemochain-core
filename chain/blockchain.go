@@ -12,6 +12,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/network/synchronise/protocol"
 	db "github.com/LemoFoundationLtd/lemochain-go/store/protocol"
+	"math"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -235,7 +236,8 @@ func (bc *BlockChain) InsertChain(block *types.Block) (err error) {
 		defer bc.SetStableBlock(hash, block.Height())
 	} else {
 		if block.ConfirmPackage != nil {
-			if len(block.ConfirmPackage)+1 >= nodeCount*2/3 { // default, we think the miner has confirm this block
+			minCount := int(math.Ceil(float64(nodeCount) * 2.0 / 3.0))
+			if len(block.ConfirmPackage)+1 >= minCount { // default, we think the miner has confirm this block
 				defer bc.SetStableBlock(hash, block.Height())
 			}
 		}
@@ -400,7 +402,8 @@ func (bc *BlockChain) ReceiveConfirm(info *protocol.BlockConfirmData) (err error
 		return err
 	}
 	nodeCount := deputynode.Instance().GetDeputyNodesCount()
-	if confirmCount >= nodeCount*2/3 {
+	minCount := int(math.Ceil(float64(nodeCount) * 2.0 / 3.0))
+	if confirmCount > minCount {
 		return bc.SetStableBlock(info.Hash, info.Height)
 	}
 	return nil
