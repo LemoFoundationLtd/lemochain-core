@@ -6,7 +6,21 @@ var ExtModules = map[string]string{
 	"chain":   Chain_JS,
 	"mine":    Mine_JS,
 	"account": Account_JS,
+	"tx":      Tx_JS,
 }
+
+const Tx_JS = `
+lemojs._extend({
+	property: 'tx',
+	methods: [
+		new lemojs._extend.Method({
+			name: 'sendTx',
+			call: 'tx_sendTx',
+			params: 1
+		}),
+	]
+});
+`
 
 const Account_JS = `
 lemojs._extend({
