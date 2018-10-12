@@ -84,6 +84,7 @@ func (ps *peerSet) Unregister(id string) {
 	ps.mux.Lock()
 	defer ps.mux.Unlock()
 	if _, ok := ps.peers[id]; ok {
+		log.Infof("Drop peer. id: %s", id[:16])
 		delete(ps.peers, id)
 	}
 }

@@ -175,9 +175,7 @@ func (pm *ProtocolManager) broadcastStableBlock(block *types.Block) {
 
 // dropPeer 断开连接
 func (pm *ProtocolManager) dropPeer(id string) {
-	log.Infof("Drop peer: %s", id[:16])
 	pm.peers.Unregister(id)
-	// pm.downloader.UnRegisterPeer(id)
 }
 
 // PeerEvent 节点事件通知回调，主要有新增、删除节点

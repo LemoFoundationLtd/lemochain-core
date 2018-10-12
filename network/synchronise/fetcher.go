@@ -151,10 +151,10 @@ func (f *Fetcher) run() {
 					continue
 				}
 				if err := f.verifyBlock(op.block); err != nil {
-					log.Infof("Block verify failed. height: %d. hash: %s. peer: %s. err: %v", op.block.Height(), hash.Hex(), op.origin[:16], err)
-					if f.dropPeer != nil {
-						f.dropPeer(op.origin)
-					}
+					log.Warnf("Block verify failed. height: %d. hash: %s. peer: %s. err: %v", op.block.Height(), hash.Hex(), op.origin[:16], err)
+					// if f.dropPeer != nil {
+					// 	f.dropPeer(op.origin)
+					// }
 					return
 				}
 				f.insert(op.origin, op.block)
