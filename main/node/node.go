@@ -463,5 +463,10 @@ func (n *Node) apis() []rpc.API {
 			Version:   "1.0",
 			Service:   n.server,
 		},
+		{
+			Namespace: "tx",
+			Version:   "1.0",
+			Service:   NewTxAPI(n.txPool),
+		},
 	}
 }

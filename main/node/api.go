@@ -6,6 +6,8 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
+	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
+	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"reflect"
 	"strconv"
 	"strings"
@@ -144,4 +146,25 @@ func (c *ChainAPI) GetCurrentHeight() uint32 {
 	currentBlock := c.chain.CurrentBlock()
 	height := currentBlock.Height()
 	return height
+}
+
+// TXAPI
+type TxAPI struct {
+	txpool *chain.TxPool
+}
+
+// NewTxAPI API for send a transaction
+func NewTxAPI(txpool *chain.TxPool) *TxAPI {
+	return &TxAPI{txpool}
+}
+
+// Send send a transaction
+func (t *TxAPI) SendTx(encodedTx hexutil.Bytes) (common.Hash, error) {
+	tx := new(types.Transaction)
+	if err := rlp.DecodeBytes(encodedTx, tx); err != nil {
+		return common.Hash{}, err
+	}
+	txHash := tx.Hash()
+	err := t.txpool.AddTx(tx)
+	return txHash, err
 }
