@@ -14,11 +14,13 @@ type testAccount struct {
 	AccountData
 }
 
-func (f *testAccount) GetAddress() common.Address                          { return f.AccountData.Address }
-func (f *testAccount) GetBalance() *big.Int                                { return f.AccountData.Balance }
-func (f *testAccount) SetBalance(balance *big.Int)                         { f.AccountData.Balance = balance }
-func (f *testAccount) GetVersion() uint32                                  { return f.AccountData.Version }
-func (f *testAccount) SetVersion(version uint32)                           { f.AccountData.Version = version }
+func (f *testAccount) GetAddress() common.Address              { return f.AccountData.Address }
+func (f *testAccount) GetBalance() *big.Int                    { return f.AccountData.Balance }
+func (f *testAccount) SetBalance(balance *big.Int)             { f.AccountData.Balance = balance }
+func (f *testAccount) GetVersion(logType ChangeLogType) uint32 { return f.AccountData.Versions[logType] }
+func (f *testAccount) SetVersion(logType ChangeLogType, version uint32) {
+	f.AccountData.Versions[logType] = version
+}
 func (f *testAccount) GetSuicide() bool                                    { return false }
 func (f *testAccount) SetSuicide(suicided bool)                            {}
 func (f *testAccount) GetCodeHash() common.Hash                            { return f.AccountData.CodeHash }
@@ -29,7 +31,14 @@ func (f *testAccount) GetStorageRoot() common.Hash                         { ret
 func (f *testAccount) SetStorageRoot(root common.Hash)                     { f.AccountData.StorageRoot = root }
 func (f *testAccount) GetStorageState(key common.Hash) ([]byte, error)     { return nil, nil }
 func (f *testAccount) SetStorageState(key common.Hash, value []byte) error { return nil }
-func (f *testAccount) IsEmpty() bool                                       { return f.AccountData.Version == 0 }
+func (f *testAccount) IsEmpty() bool {
+	for _, v := range f.AccountData.Versions {
+		if v != 0 {
+			return false
+		}
+	}
+	return true
+}
 
 type testProcessor struct {
 	Accounts map[common.Address]*testAccount
@@ -48,7 +57,7 @@ func (p *testProcessor) GetAccount(address common.Address) AccountAccessor {
 	return account
 }
 
-func (p *testProcessor) createAccount(version uint32) *testAccount {
+func (p *testProcessor) createAccount(logType ChangeLogType, version uint32) *testAccount {
 	if p.Accounts == nil {
 		p.Accounts = make(map[common.Address]*testAccount)
 	}
@@ -56,9 +65,9 @@ func (p *testProcessor) createAccount(version uint32) *testAccount {
 	address := common.BigToAddress(big.NewInt(int64(index)))
 	account := &testAccount{
 		AccountData: AccountData{
-			Address: address,
-			Balance: big.NewInt(100),
-			Version: version,
+			Address:  address,
+			Balance:  big.NewInt(100),
+			Versions: map[ChangeLogType]uint32{logType: version},
 		},
 	}
 	p.Accounts[address] = account
@@ -176,7 +185,7 @@ func TestChangeLog_EncodeRLP_DecodeRLP(t *testing.T) {
 }
 
 func createChangeLog(processor *testProcessor, accountVersion uint32, logType ChangeLogType, logVersion uint32) *ChangeLog {
-	account := processor.createAccount(accountVersion)
+	account := processor.createAccount(logType, accountVersion)
 	return &ChangeLog{LogType: logType, Address: account.GetAddress(), Version: logVersion}
 }
 
@@ -208,7 +217,7 @@ func TestChangeLog_Undo(t *testing.T) {
 		{
 			input: createChangeLog(processor, 1, ChangeLogType(10002), 1),
 			afterCheck: func(accessor AccountAccessor) {
-				assert.Equal(t, uint32(0), accessor.GetVersion())
+				assert.Equal(t, uint32(0), accessor.GetVersion(ChangeLogType(10002)))
 			},
 		},
 		// 3 higher version
@@ -266,7 +275,7 @@ func TestChangeLog_Redo(t *testing.T) {
 		{
 			input: createChangeLog(processor, 0, ChangeLogType(10003), 1),
 			afterCheck: func(accessor AccountAccessor) {
-				assert.Equal(t, uint32(1), accessor.GetVersion())
+				assert.Equal(t, uint32(1), accessor.GetVersion(ChangeLogType(10003)))
 			},
 		},
 		// 3 higher version

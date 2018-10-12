@@ -207,13 +207,19 @@ func (am *Manager) Finalise() error {
 			return err
 		}
 		// update version trie
-		address := account.GetAddress().Bytes()
-		version := big.NewInt(int64(account.GetVersion())).Bytes()
-		if err := versionTrie.TryUpdate(address, version); err != nil {
-			return err
+		for logType, version := range account.rawAccount.data.Versions {
+			k := versionTrieKey(account.GetAddress(), logType)
+			version := big.NewInt(int64(version)).Bytes()
+			if err := versionTrie.TryUpdate(k, version); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
+}
+
+func versionTrieKey(address common.Address, logType types.ChangeLogType) []byte {
+	return append(address.Bytes(), big.NewInt(int64(logType)).Bytes()...)
 }
 
 // Save writes dirty data into db.
@@ -335,12 +341,12 @@ func (h *logProcessor) RevertToSnapshot(revid int) {
 
 // Rebuild loads and redo all change logs to update account to the newest state.
 //
-// TODO Changelog maybe retrieved from other node, so the account in local store is not contain the newest VersionRecords.
+// TODO Changelog maybe retrieved from other node, so the account in local store is not contain the newest NewestRecords.
 // We'd better change this function to "Rebuild(address common.Address, logs []types.ChangeLog)" cause the Rebuild function is called by change log synchronization module
 func (am *Manager) Rebuild(address common.Address) error {
 	accountAccessor := am.getRawAccount(address)
 	account := accountAccessor.(*Account)
-	logs, err := account.LoadChangeLogs(account.GetVersion() + 1)
+	logs, err := account.LoadNewestChangeLogs()
 	for _, log := range logs {
 		err = log.Redo(&logProcessor{manager: am})
 		if err != nil && err != types.ErrAlreadyRedo {
@@ -353,12 +359,13 @@ func (am *Manager) Rebuild(address common.Address) error {
 
 // MergeChangeLogs merges the change logs for same account in block. Then update the version of change logs and account.
 func (am *Manager) MergeChangeLogs(fromIndex int) {
-	needMerge := am.processor.changeLogs[fromIndex:]
-	mergedLogs, changedVersions := MergeChangeLogs(needMerge)
-	am.processor.changeLogs = append(am.processor.changeLogs[:fromIndex], mergedLogs...)
-	for addr, version := range changedVersions {
-		am.getRawAccount(addr).SetVersion(version)
-	}
+	// TODO
+	// needMerge := am.processor.changeLogs[fromIndex:]
+	// mergedLogs, changedVersions := MergeChangeLogs(needMerge)
+	// am.processor.changeLogs = append(am.processor.changeLogs[:fromIndex], mergedLogs...)
+	// for addr, version := range changedVersions {
+	// 	am.getRawAccount(addr).SetVersion(version)
+	// }
 	// make sure the snapshot still work
 	if !am.processor.checkRevisionAvailable() {
 		panic(ErrSnapshotIsBroken)

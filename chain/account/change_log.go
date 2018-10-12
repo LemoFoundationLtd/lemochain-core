@@ -77,9 +77,9 @@ func decodeEvent(s *rlp.Stream) (interface{}, error) {
 //
 
 // increaseVersion increases account version by one
-func increaseVersion(account types.AccountAccessor) uint32 {
-	newVersion := account.GetVersion() + 1
-	account.SetVersion(newVersion)
+func increaseVersion(logType types.ChangeLogType, account types.AccountAccessor) uint32 {
+	newVersion := account.GetVersion(logType) + 1
+	account.SetVersion(logType, newVersion)
 	return newVersion
 }
 
@@ -88,7 +88,7 @@ func NewBalanceLog(account types.AccountAccessor, newBalance *big.Int) *types.Ch
 	return &types.ChangeLog{
 		LogType: BalanceLog,
 		Address: account.GetAddress(),
-		Version: increaseVersion(account),
+		Version: increaseVersion(BalanceLog, account),
 		OldVal:  *(new(big.Int).Set(account.GetBalance())),
 		NewVal:  *(new(big.Int).Set(newBalance)),
 	}
@@ -125,7 +125,7 @@ func NewStorageLog(account types.AccountAccessor, key common.Hash, newVal []byte
 	return &types.ChangeLog{
 		LogType: StorageLog,
 		Address: account.GetAddress(),
-		Version: increaseVersion(account),
+		Version: increaseVersion(StorageLog, account),
 		OldVal:  oldValue,
 		NewVal:  newVal,
 		Extra:   key,
@@ -169,7 +169,7 @@ func NewCodeLog(account types.AccountAccessor, code types.Code) *types.ChangeLog
 	return &types.ChangeLog{
 		LogType: CodeLog,
 		Address: account.GetAddress(),
-		Version: increaseVersion(account),
+		Version: increaseVersion(CodeLog, account),
 		NewVal:  code,
 	}
 }
@@ -196,7 +196,7 @@ func NewAddEventLog(account types.AccountAccessor, newEvent *types.Event) *types
 	return &types.ChangeLog{
 		LogType: AddEventLog,
 		Address: account.GetAddress(),
-		Version: increaseVersion(account),
+		Version: increaseVersion(AddEventLog, account),
 		NewVal:  newEvent,
 	}
 }
@@ -225,7 +225,7 @@ func NewSuicideLog(account types.AccountAccessor) *types.ChangeLog {
 	return &types.ChangeLog{
 		LogType: SuicideLog,
 		Address: account.GetAddress(),
-		Version: increaseVersion(account),
+		Version: increaseVersion(SuicideLog, account),
 		OldVal:  oldAccount,
 	}
 }

@@ -46,7 +46,7 @@ func (p *testProcessor) PopEvent() error {
 	return nil
 }
 
-func (p *testProcessor) createAccount(version uint32) *testAccount {
+func (p *testProcessor) createAccount(logType types.ChangeLogType, version uint32) *testAccount {
 	if p.Accounts == nil {
 		p.Accounts = make(map[common.Address]*testAccount)
 	}
@@ -54,9 +54,9 @@ func (p *testProcessor) createAccount(version uint32) *testAccount {
 	address := common.BigToAddress(big.NewInt(int64(index)))
 	account := &testAccount{
 		Account: *NewAccount(nil, address, &types.AccountData{
-			Address: address,
-			Balance: big.NewInt(100),
-			Version: version,
+			Address:  address,
+			Balance:  big.NewInt(100),
+			Versions: map[types.ChangeLogType]uint32{logType: version},
 		}),
 	}
 	account.cachedStorage = map[common.Hash][]byte{
@@ -87,7 +87,7 @@ func getCustomTypeData(t *testing.T) []testCustomTypeConfig {
 
 	// 0 BalanceLog
 	tests = append(tests, testCustomTypeConfig{
-		input:   NewBalanceLog(processor.createAccount(0), big.NewInt(0)),
+		input:   NewBalanceLog(processor.createAccount(BalanceLog, 0), big.NewInt(0)),
 		str:     "BalanceLog: 0x0000000000000000000000000000000000000001 1 100 0 <nil>",
 		hash:    "0x9532d32f3b2253bb6fb438cb8ac394882b15a1a2883e6619398d50f059ea2692",
 		rlp:     "0xd9019400000000000000000000000000000000000000010180c0",
@@ -96,7 +96,7 @@ func getCustomTypeData(t *testing.T) []testCustomTypeConfig {
 
 	// 1 StorageLog
 	tests = append(tests, testCustomTypeConfig{
-		input:   NewStorageLogWithoutError(t, processor.createAccount(0), common.HexToHash("0xaaa"), []byte{67, 89}),
+		input:   NewStorageLogWithoutError(t, processor.createAccount(StorageLog, 0), common.HexToHash("0xaaa"), []byte{67, 89}),
 		str:     "StorageLog: 0x0000000000000000000000000000000000000002 1 [45 67] [67 89] [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 10 170]",
 		hash:    "0x47c7805a8377ab0140d96e092a045a03e8e41c6d0b3bb00307d6123d62c59dba",
 		rlp:     "0xf83b0294000000000000000000000000000000000000000201824359a00000000000000000000000000000000000000000000000000000000000000aaa",
@@ -105,7 +105,7 @@ func getCustomTypeData(t *testing.T) []testCustomTypeConfig {
 
 	// 2 CodeLog
 	tests = append(tests, testCustomTypeConfig{
-		input:   NewCodeLog(processor.createAccount(0), []byte{0x12, 0x34}),
+		input:   NewCodeLog(processor.createAccount(CodeLog, 0), []byte{0x12, 0x34}),
 		str:     "CodeLog: 0x0000000000000000000000000000000000000003 1 <nil> [18 52] <nil>",
 		hash:    "0xcec04ee7ea02f669bfee54633269673d706b59ab821127b5c5491d4dc1c4076a",
 		rlp:     "0xdb0394000000000000000000000000000000000000000301821234c0",
@@ -119,7 +119,7 @@ func getCustomTypeData(t *testing.T) []testCustomTypeConfig {
 		Data:    []byte{0x80, 0x0},
 	}
 	tests = append(tests, testCustomTypeConfig{
-		input:   NewAddEventLog(processor.createAccount(0), newEvent),
+		input:   NewAddEventLog(processor.createAccount(AddEventLog, 0), newEvent),
 		str:     "AddEventLog: 0x0000000000000000000000000000000000000004 1 <nil> event: 0000000000000000000000000000000000000aaa [0000000000000000000000000000000000000000000000000000000000000bbb 0000000000000000000000000000000000000000000000000000000000000ccc] 8000 0000000000000000000000000000000000000000000000000000000000000000 0 0000000000000000000000000000000000000000000000000000000000000000 0 <nil>",
 		hash:    "0x89761d5f9ee931d7e514de58289cce64c8f89491305668bdabd3cf3be815282b",
 		rlp:     "0xf8760494000000000000000000000000000000000000000401f85c940000000000000000000000000000000000000aaaf842a00000000000000000000000000000000000000000000000000000000000000bbba00000000000000000000000000000000000000000000000000000000000000ccc828000c0",
@@ -128,8 +128,8 @@ func getCustomTypeData(t *testing.T) []testCustomTypeConfig {
 
 	// 4 SuicideLog
 	tests = append(tests, testCustomTypeConfig{
-		input:   NewSuicideLog(processor.createAccount(0)),
-		str:     "SuicideLog: 0x0000000000000000000000000000000000000005 1 &{[0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0] 100 0 [197 210 70 1 134 247 35 60 146 126 125 178 220 199 3 192 229 0 182 83 202 130 39 59 123 250 216 4 93 133 164 112] [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0] []} <nil> <nil>",
+		input:   NewSuicideLog(processor.createAccount(SuicideLog, 0)),
+		str:     "SuicideLog: 0x0000000000000000000000000000000000000005 1 &{[0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0] 100 map[] [197 210 70 1 134 247 35 60 146 126 125 178 220 199 3 192 229 0 182 83 202 130 39 59 123 250 216 4 93 133 164 112] [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0] map[]} <nil> <nil>",
 		hash:    "0x6204ac1a4be1e52c77942259e094c499b263ad7176ae9060d5bae2b856c9743a",
 		rlp:     "0xd90594000000000000000000000000000000000000000501c0c0",
 		decoded: "SuicideLog: 0x0000000000000000000000000000000000000005 1 <nil> <nil> <nil>",
@@ -203,19 +203,19 @@ func TestChangeLog_Undo(t *testing.T) {
 	}{
 		// 0 NewBalanceLog
 		{
-			input: NewBalanceLog(processor.createAccount(1), big.NewInt(120)),
+			input: NewBalanceLog(processor.createAccount(BalanceLog, 1), big.NewInt(120)),
 			afterCheck: func(accessor types.AccountAccessor) {
 				assert.Equal(t, big.NewInt(100), accessor.GetBalance())
 			},
 		},
 		// 1 NewBalanceLog no OldVal
 		{
-			input:   &types.ChangeLog{LogType: BalanceLog, Address: processor.createAccount(1).GetAddress(), Version: 1},
+			input:   &types.ChangeLog{LogType: BalanceLog, Address: processor.createAccount(BalanceLog, 1).GetAddress(), Version: 1},
 			undoErr: types.ErrWrongChangeLogData,
 		},
 		// 2 NewStorageLog
 		{
-			input: NewStorageLogWithoutError(t, processor.createAccount(1), common.HexToHash("0xaaa"), []byte{12}),
+			input: NewStorageLogWithoutError(t, processor.createAccount(StorageLog, 1), common.HexToHash("0xaaa"), []byte{12}),
 			afterCheck: func(accessor types.AccountAccessor) {
 				currentVal, err := accessor.GetStorageState(common.HexToHash("0xaaa"))
 				assert.Equal(t, []byte{45, 67}, currentVal)
@@ -224,17 +224,17 @@ func TestChangeLog_Undo(t *testing.T) {
 		},
 		// 3 NewStorageLog no OldVal
 		{
-			input:   &types.ChangeLog{LogType: StorageLog, Address: processor.createAccount(1).GetAddress(), Version: 1},
+			input:   &types.ChangeLog{LogType: StorageLog, Address: processor.createAccount(StorageLog, 1).GetAddress(), Version: 1},
 			undoErr: types.ErrWrongChangeLogData,
 		},
 		// 4 NewStorageLog no Extra
 		{
-			input:   &types.ChangeLog{LogType: StorageLog, Address: processor.createAccount(1).GetAddress(), Version: 1, OldVal: []byte{45, 67}},
+			input:   &types.ChangeLog{LogType: StorageLog, Address: processor.createAccount(StorageLog, 1).GetAddress(), Version: 1, OldVal: []byte{45, 67}},
 			undoErr: types.ErrWrongChangeLogData,
 		},
 		// 5 NewCodeLog
 		{
-			input: NewCodeLog(processor.createAccount(1), []byte{12}),
+			input: NewCodeLog(processor.createAccount(CodeLog, 1), []byte{12}),
 			afterCheck: func(accessor types.AccountAccessor) {
 				code, err := accessor.GetCode()
 				assert.Empty(t, code)
@@ -243,7 +243,7 @@ func TestChangeLog_Undo(t *testing.T) {
 		},
 		// 6 NewAddEventLog
 		{
-			input: NewAddEventLog(processor.createAccount(1), event1),
+			input: NewAddEventLog(processor.createAccount(AddEventLog, 1), event1),
 			afterCheck: func(accessor types.AccountAccessor) {
 				events := findEvent(processor, event1.TxHash)
 				assert.Empty(t, events)
@@ -251,7 +251,7 @@ func TestChangeLog_Undo(t *testing.T) {
 		},
 		// 7 NewSuicideLog
 		{
-			input: NewSuicideLog(processor.createAccount(1)),
+			input: NewSuicideLog(processor.createAccount(SuicideLog, 1)),
 			afterCheck: func(accessor types.AccountAccessor) {
 				assert.Equal(t, big.NewInt(100), accessor.GetBalance())
 				assert.Equal(t, false, accessor.GetSuicide())
@@ -280,7 +280,7 @@ func TestChangeLog_Redo(t *testing.T) {
 	// decrease account version to make redo available
 	decreaseVersion := func(log *types.ChangeLog) *types.ChangeLog {
 		account := processor.GetAccount(log.Address)
-		account.SetVersion(account.GetVersion() - 1)
+		account.SetVersion(log.LogType, account.GetVersion(log.LogType)-1)
 		return log
 	}
 
@@ -291,19 +291,19 @@ func TestChangeLog_Redo(t *testing.T) {
 	}{
 		// 0 NewBalanceLog
 		{
-			input: decreaseVersion(NewBalanceLog(processor.createAccount(1), big.NewInt(120))),
+			input: decreaseVersion(NewBalanceLog(processor.createAccount(BalanceLog, 1), big.NewInt(120))),
 			afterCheck: func(accessor types.AccountAccessor) {
 				assert.Equal(t, big.NewInt(120), accessor.GetBalance())
 			},
 		},
 		// 1 NewBalanceLog no NewVal
 		{
-			input:   &types.ChangeLog{LogType: BalanceLog, Address: processor.createAccount(0).GetAddress(), Version: 1},
+			input:   &types.ChangeLog{LogType: BalanceLog, Address: processor.createAccount(BalanceLog, 0).GetAddress(), Version: 1},
 			redoErr: types.ErrWrongChangeLogData,
 		},
 		// 2 NewStorageLog
 		{
-			input: decreaseVersion(NewStorageLogWithoutError(t, processor.createAccount(1), common.HexToHash("0xaaa"), []byte{12})),
+			input: decreaseVersion(NewStorageLogWithoutError(t, processor.createAccount(StorageLog, 1), common.HexToHash("0xaaa"), []byte{12})),
 			afterCheck: func(accessor types.AccountAccessor) {
 				currentVal, err := accessor.GetStorageState(common.HexToHash("0xaaa"))
 				assert.Equal(t, []byte{12}, currentVal)
@@ -312,17 +312,17 @@ func TestChangeLog_Redo(t *testing.T) {
 		},
 		// 3 NewStorageLog no NewVal
 		{
-			input:   &types.ChangeLog{LogType: StorageLog, Address: processor.createAccount(0).GetAddress(), Version: 1},
+			input:   &types.ChangeLog{LogType: StorageLog, Address: processor.createAccount(StorageLog, 0).GetAddress(), Version: 1},
 			redoErr: types.ErrWrongChangeLogData,
 		},
 		// 4 NewStorageLog no Extra
 		{
-			input:   &types.ChangeLog{LogType: StorageLog, Address: processor.createAccount(0).GetAddress(), Version: 1, OldVal: []byte{45, 67}},
+			input:   &types.ChangeLog{LogType: StorageLog, Address: processor.createAccount(StorageLog, 0).GetAddress(), Version: 1, OldVal: []byte{45, 67}},
 			redoErr: types.ErrWrongChangeLogData,
 		},
 		// 5 NewCodeLog
 		{
-			input: decreaseVersion(NewCodeLog(processor.createAccount(1), []byte{12})),
+			input: decreaseVersion(NewCodeLog(processor.createAccount(CodeLog, 1), []byte{12})),
 			afterCheck: func(accessor types.AccountAccessor) {
 				code, err := accessor.GetCode()
 				assert.Equal(t, types.Code{12}, code)
@@ -331,12 +331,12 @@ func TestChangeLog_Redo(t *testing.T) {
 		},
 		// 6 NewCodeLog no NewVal
 		{
-			input:   &types.ChangeLog{LogType: CodeLog, Address: processor.createAccount(0).GetAddress(), Version: 1},
+			input:   &types.ChangeLog{LogType: CodeLog, Address: processor.createAccount(CodeLog, 0).GetAddress(), Version: 1},
 			redoErr: types.ErrWrongChangeLogData,
 		},
 		// 7 NewAddEventLog
 		{
-			input: decreaseVersion(NewAddEventLog(processor.createAccount(1), &types.Event{
+			input: decreaseVersion(NewAddEventLog(processor.createAccount(AddEventLog, 1), &types.Event{
 				Address:   common.HexToAddress("0xaaa"),
 				Topics:    []common.Hash{common.HexToHash("bbb"), common.HexToHash("ccc")},
 				Data:      []byte{0x80, 0x0},
@@ -351,12 +351,12 @@ func TestChangeLog_Redo(t *testing.T) {
 		},
 		// 8 NewAddEventLog no NewVal
 		{
-			input:   &types.ChangeLog{LogType: AddEventLog, Address: processor.createAccount(0).GetAddress(), Version: 1},
+			input:   &types.ChangeLog{LogType: AddEventLog, Address: processor.createAccount(AddEventLog, 0).GetAddress(), Version: 1},
 			redoErr: types.ErrWrongChangeLogData,
 		},
 		// 9 NewBalanceLog
 		{
-			input: decreaseVersion(NewSuicideLog(processor.createAccount(1))),
+			input: decreaseVersion(NewSuicideLog(processor.createAccount(BalanceLog, 1))),
 			afterCheck: func(accessor types.AccountAccessor) {
 				assert.Equal(t, true, accessor.GetSuicide())
 				assert.Equal(t, big.NewInt(0), accessor.GetBalance())

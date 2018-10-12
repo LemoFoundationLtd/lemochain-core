@@ -26,20 +26,20 @@ var (
 	defaultBlockInfos = []blockInfo{
 		// genesis block
 		{
-			hash:        common.HexToHash("0xbccd55b99bf82e6a62390139553a0545b366c4c53ce5a6d93abcfd116cb69f62"),
-			versionRoot: common.HexToHash("0x7f9f6d86f2653404d59d39099b5e39eec80cdbcaa263fee5456b87ebc13b37bc"),
+			hash:        common.HexToHash("0xac6efe56783d22fa7542abc82202e7c0b7bcaaf611b3bcdb217e23a9366f6677"),
+			versionRoot: common.HexToHash("0xac5efb21e3de5900ef965fcfca8bd43c4e84e22d1b66bb5bf3d8418c976a853c"),
 			time:        big.NewInt(1538209751),
 		},
 		// block 1 is stable block
 		{
-			hash:        common.HexToHash("0xf92a2e23cb97c9305c7dc2267fb429746090bef0a55a1580ef6870a4bdd4f913"),
-			versionRoot: common.HexToHash("0x7f9f6d86f2653404d59d39099b5e39eec80cdbcaa263fee5456b87ebc13b37bc"),
+			hash:        common.HexToHash("0x0c38287d372f3f580f1f8b019433ff8070552af423e0fdbb93de8332430cc941"),
+			versionRoot: common.HexToHash("0xac5efb21e3de5900ef965fcfca8bd43c4e84e22d1b66bb5bf3d8418c976a853c"),
 			time:        big.NewInt(1538209755),
 		},
 		// block 2 is not stable block
 		{
-			hash:        common.HexToHash("0x29a4154f1ef63b1a30180e1dc548de55e2db5d4e6f9e44c8638653df9585a116"),
-			versionRoot: common.HexToHash("0x7f9f6d86f2653404d59d39099b5e39eec80cdbcaa263fee5456b87ebc13b37bc"),
+			hash:        common.HexToHash("0x5337bafc55b9f0e8deefb6d4b1061af787aba6e7a9b2f1bad9c4e31d39d16ca2"),
+			versionRoot: common.HexToHash("0xac5efb21e3de5900ef965fcfca8bd43c4e84e22d1b66bb5bf3d8418c976a853c"),
 			time:        big.NewInt(1538209758),
 		},
 	}
@@ -48,9 +48,13 @@ var (
 		{
 			Address:     common.HexToAddress("0x10000"),
 			Balance:     big.NewInt(100),
-			Version:     100,
+			Versions:    map[types.ChangeLogType]uint32{BalanceLog: 100, CodeLog: 101},
 			CodeHash:    common.HexToHash("0x1d5f11eaa13e02cdca886181dc38ab4cb8cf9092e86c000fb42d12c8b504500e"),
 			StorageRoot: common.HexToHash("0xcbeb7c7e36b846713bc99b8fa527e8d552e31bfaa1ac0f2b773958cda3aba3ed"),
+			NewestRecords: map[types.ChangeLogType]types.VersionRecord{
+				BalanceLog: {Version: 100, Height: 1},
+				CodeLog:    {Version: 101, Height: 2},
+			},
 		},
 	}
 	defaultCodes = []struct {
@@ -113,10 +117,13 @@ func saveBlock(db protocol.ChainDB, blockIndex int, info *blockInfo) {
 		panic(err)
 	}
 	for _, account := range defaultAccounts {
-		v := bytes.TrimLeft(account.Address.Bytes(), "\x00")
-		err = tr.TryUpdate(big.NewInt(int64(account.Version)).Bytes(), v)
-		if err != nil {
-			panic(err)
+		addr := account.Address.Bytes()
+		for logType, version := range account.Versions {
+			k := append(addr, big.NewInt(int64(logType)).Bytes()...)
+			err = tr.TryUpdate(k, big.NewInt(int64(version)).Bytes())
+			if err != nil {
+				panic(err)
+			}
 		}
 	}
 	hash, err := tr.Commit(nil)

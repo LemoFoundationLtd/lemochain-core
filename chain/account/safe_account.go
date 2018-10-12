@@ -8,17 +8,21 @@ import (
 
 // SafeAccount is used to record modifications with changelog. So that the modifications can be reverted
 type SafeAccount struct {
-	rawAccount  *Account
-	processor   *logProcessor
-	origVersion uint32 // the version in Account from beginning
+	rawAccount   *Account
+	processor    *logProcessor
+	origVersions map[types.ChangeLogType]uint32 // the versions in Account from beginning
 }
 
 // NewSafeAccount creates an account object.
 func NewSafeAccount(processor *logProcessor, account *Account) *SafeAccount {
+	origVersions := make(map[types.ChangeLogType]uint32)
+	for logType, version := range account.data.Versions {
+		origVersions[logType] = version
+	}
 	return &SafeAccount{
-		rawAccount:  account,
-		processor:   processor,
-		origVersion: account.GetVersion(),
+		rawAccount:   account,
+		processor:    processor,
+		origVersions: origVersions,
 	}
 }
 
@@ -38,9 +42,11 @@ func (a *SafeAccount) UnmarshalJSON(input []byte) error {
 	return nil
 }
 
-func (a *SafeAccount) GetAddress() common.Address   { return a.rawAccount.GetAddress() }
-func (a *SafeAccount) GetBalance() *big.Int         { return a.rawAccount.GetBalance() }
-func (a *SafeAccount) GetVersion() uint32           { return a.rawAccount.GetVersion() }
+func (a *SafeAccount) GetAddress() common.Address { return a.rawAccount.GetAddress() }
+func (a *SafeAccount) GetBalance() *big.Int       { return a.rawAccount.GetBalance() }
+func (a *SafeAccount) GetVersion(logType types.ChangeLogType) uint32 {
+	return a.rawAccount.GetVersion(logType)
+}
 func (a *SafeAccount) GetSuicide() bool             { return a.rawAccount.GetSuicide() }
 func (a *SafeAccount) GetCodeHash() common.Hash     { return a.rawAccount.GetCodeHash() }
 func (a *SafeAccount) GetCode() (types.Code, error) { return a.rawAccount.GetCode() }
@@ -56,7 +62,7 @@ func (a *SafeAccount) SetBalance(balance *big.Int) {
 	a.rawAccount.SetBalance(balance)
 }
 
-func (a *SafeAccount) SetVersion(version uint32) {
+func (a *SafeAccount) SetVersion(logType types.ChangeLogType, version uint32) {
 	panic("SafeAccount.SetVersion should not be called")
 }
 
@@ -90,5 +96,13 @@ func (a *SafeAccount) SetStorageState(key common.Hash, value []byte) error {
 
 func (a *SafeAccount) IsDirty() bool {
 	// the version in a.rawAccount has been changed in NewXXXLog()
-	return a.rawAccount.GetVersion() != a.origVersion
+	if len(a.origVersions) != len(a.rawAccount.data.Versions) {
+		return true
+	}
+	for logType, version := range a.origVersions {
+		if version != a.rawAccount.GetVersion(logType) {
+			return true
+		}
+	}
+	return false
 }
