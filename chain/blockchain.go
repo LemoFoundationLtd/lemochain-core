@@ -117,7 +117,7 @@ func (bc *BlockChain) HasBlock(hash common.Hash, height uint32) bool {
 func (bc *BlockChain) GetBlock(hash common.Hash, height uint32) *types.Block {
 	block, err := bc.dbOpe.GetBlock(hash, height)
 	if err != nil {
-		log.Debugf("can't get block height:%d", height)
+		// log.Debugf("can't get block height:%d", height)
 		return nil
 	}
 	return block
@@ -244,13 +244,13 @@ func (bc *BlockChain) InsertChain(block *types.Block) (err error) {
 	}
 
 	bc.chainForksLock.Lock()
-	needFork := false
+	// needFork := false
 	defer func() {
 		bc.chainForksLock.Unlock()
-		if needFork {
-			curBlock := bc.currentBlock.Load().(*types.Block)
-			log.Infof("chain forked! current block: height(%d), hash(%s)", curBlock.Height(), curBlock.Hash().Hex())
-		}
+		// if needFork {
+		// 	curBlock := bc.currentBlock.Load().(*types.Block)
+		// 	log.Infof("chain forked! current block: height(%d), hash(%s)", curBlock.Height(), curBlock.Hash().Hex())
+		// }
 		log.Debugf("Insert block to db success. height:%d", block.Height())
 		// only broadcast confirm info within one hour
 		c_t := uint64(time.Now().Unix())
@@ -261,24 +261,27 @@ func (bc *BlockChain) InsertChain(block *types.Block) (err error) {
 
 	// normal, in same chain
 	if bytes.Compare(parHash[:], curHash[:]) == 0 {
-		needFork = false
+		// needFork = false
 		bc.currentBlock.Store(block)
 		delete(bc.chainForksHead, curHash) // remove old record from fork container
 		bc.chainForksHead[hash] = block    // record new fork
 		bc.newBlockNotify(block)
+		log.Infof("chain forked! current block: height(%d), hash(%s)", block.Height(), block.Hash().Hex())
 		return nil
 	}
 	// new block height higher than current block, switch fork.
 	curHeight := bc.currentBlock.Load().(*types.Block).Height()
 	if block.Height() > curHeight {
-		needFork = true
+		// needFork = true
 		bc.currentBlock.Store(block)
 		delete(bc.chainForksHead, parHash)
+		log.Infof("chain forked! current block: height(%d), hash(%s)", block.Height(), block.Hash().Hex())
 	} else if curHeight == block.Height() { // two block with same height, priority of lower alphabet order
 		if hash.Big().Cmp(curHash.Big()) < 0 {
-			needFork = true
+			// needFork = true
 			bc.currentBlock.Store(block)
 			delete(bc.chainForksHead, parHash)
+			log.Infof("chain forked! current block: height(%d), hash(%s)", block.Height(), block.Hash().Hex())
 		}
 	} else {
 		if _, ok := bc.chainForksHead[parHash]; ok {

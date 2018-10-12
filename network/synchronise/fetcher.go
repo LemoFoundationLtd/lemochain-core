@@ -305,7 +305,7 @@ func (f *Fetcher) Enqueue(peer string, block *types.Block, fetchBlock blockReque
 	// 防止newBlockCh已有数据还没处理导致的长时间休眠态突然退出问题
 	select {
 	case f.newBlockCh <- op:
-		log.Debugf("enqueue block ok. height: %d", block.Height())
+		log.Debugf("Enqueue: f.newBlockCh <- op ok. height: %d", block.Height())
 		return nil
 	case <-f.quitCh:
 		return errTerminated
@@ -355,7 +355,7 @@ func (f *Fetcher) enqueue(newBlock *newBlock) {
 	// 新收到的块高度过大 丢掉
 	if dist := newBlock.block.Height() - f.currentChainHeight(); dist > maxQueueDist {
 		f.forgetHash(hash)
-		log.Debugf("new block's height is too higher. height: %d", newBlock.block.Height())
+		log.Debugf("enqueue: new block's height is too higher. height: %d", newBlock.block.Height())
 		return
 	}
 	// 已经存在了 直接返回
@@ -366,7 +366,7 @@ func (f *Fetcher) enqueue(newBlock *newBlock) {
 	f.queueMp[peer]++
 	f.queuedMp[hash] = newBlock
 	f.queue.Push(newBlock, -float32(newBlock.block.Height()))
-	log.Debugf("enqueue one block, height:%d hash:%s", newBlock.block.Height(), hash.String())
+	log.Debugf("enqueue: height:%d hash:%s", newBlock.block.Height(), hash.String())
 }
 
 // insert 启动个协程插入块到链上

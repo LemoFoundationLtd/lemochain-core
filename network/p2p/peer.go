@@ -154,7 +154,7 @@ func (p *Peer) readLoop(errCh chan<- error) {
 			continue
 		}
 		// 处理数据
-		log.Debugf("receive message from: %s, msg: %v", common.ToHex(p.nodeId[:8]), msg)
+		// log.Debugf("receive message from: %s, msg: %v", common.ToHex(p.nodeId[:8]), msg)
 		p.newMsgCh <- msg
 	}
 }

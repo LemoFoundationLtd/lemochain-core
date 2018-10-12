@@ -335,7 +335,7 @@ func (pm *ProtocolManager) handleMsg(p *peerConnection) error {
 		log.Infof("Receive new block. height: %d. hash: %s", block.Height(), block.Hash().Hex())
 		if block.Height() > p.peer.height {
 			p.peer.SetHead(block.Hash(), block.Height())
-			log.Debugf("setHead to peer: %s. height: %d", p.peer.id[:16], block.Height())
+			// log.Debugf("setHead to peer: %s. height: %d", p.peer.id[:16], block.Height())
 			// remove tx from pool
 			txs := make([]common.Hash, len(block.Txs))
 			for i, tx := range block.Txs {
