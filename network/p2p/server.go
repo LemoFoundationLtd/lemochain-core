@@ -228,7 +228,10 @@ func (srv *Server) startListening() error {
 //
 func (srv *Server) run() {
 	srv.loopWG.Add(1)
-	defer srv.loopWG.Done()
+	defer func() {
+		srv.loopWG.Done()
+		log.Debug("server.run stop")
+	}()
 
 	// peers := make(map[NodeID]*Peer) // 记录所有的节点连接
 	go srv.runDialLoop() // 启动主动连接调度
@@ -266,7 +269,6 @@ func (srv *Server) run() {
 			})
 			break
 		case <-srv.quitCh:
-			log.Debug("server.run stop")
 			return
 		}
 		log.Debug("next turn to addPeerCh")
@@ -314,19 +316,24 @@ func (srv *Server) HandleConn(fd net.Conn, isSelfServer bool) error {
 
 func (srv *Server) runPeer(p *Peer) {
 	srv.loopWG.Add(1)
-	defer srv.loopWG.Done()
+	defer func() {
+		srv.loopWG.Done()
+		log.Debug("server.runPeer stop")
+	}()
 	log.Debugf("start run peer. node id: %s", common.ToHex(p.nodeId[:8]))
 	p.run() // 正常情况下会阻塞 除非节点drop
 	if srv.running == true {
 		srv.delPeerCh <- p
 	}
-	log.Debug("server.runPeer stop")
 }
 
 // 启动主动连接调度
 func (srv *Server) runDialLoop() {
 	srv.loopWG.Add(1)
-	defer srv.loopWG.Done()
+	defer func() {
+		srv.loopWG.Done()
+		log.Debug("server.runDialLoop stop")
+	}()
 
 	failedNodes := make(map[string]struct{}, 0)
 	for _, node := range srv.nodeList {
@@ -341,7 +348,6 @@ func (srv *Server) runDialLoop() {
 	for {
 		select {
 		case <-srv.quitCh:
-			log.Debug("server.runDialLoop stop")
 			return
 		case <-retryTimer.C:
 			if len(failedNodes) > 0 {

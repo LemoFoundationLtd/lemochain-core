@@ -378,8 +378,8 @@ func (bc *BlockChain) ReceiveConfirm(info *protocol.BlockConfirmData) (err error
 	// 获取确认者在主节点列表索引
 	index := bc.getSignerIndex(pubKey[1:], info.Height)
 	if index < 0 {
-		log.Warnf("unavailable confirm info. info:%v", info)
-		return fmt.Errorf("unavailable confirm info. info:%v", info)
+		log.Warnf("unavailable confirm info. from: %s", common.ToHex(pubKey[1:]))
+		return fmt.Errorf("unavailable confirm info. from: %s", common.ToHex(pubKey[1:]))
 	}
 
 	// 查看是否已达成共识
