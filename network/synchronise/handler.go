@@ -356,9 +356,8 @@ func (pm *ProtocolManager) handleMsg(p *peerConnection) error {
 		}
 		// 是否有对应的区块 后续优化
 		if block := pm.blockchain.GetBlockByHash(confirmMsg.Hash); block == nil {
-			// todo require block
-
-			log.Warnf("Receive confirm package, but block doesn't exist in local chain. hash:%s height:%d", confirmMsg.Hash.Hex(), confirmMsg.Height)
+			go p.peer.RequestOneBlock(confirmMsg.Hash, confirmMsg.Height)
+			log.Debugf("Receive confirm package, but block doesn't exist in local chain. hash:%s height:%d", confirmMsg.Hash.Hex(), confirmMsg.Height)
 		} else {
 			pm.blockchain.ReceiveConfirm(&confirmMsg)
 		}
