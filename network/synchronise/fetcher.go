@@ -89,7 +89,6 @@ func NewFetcher(getLocalBlock blockRetrieveFn, verifyBlock blockVerifierFn, broa
 		announces: make(map[string]int),
 		announced: make(map[common.Hash][]*announce),
 		fetching:  make(map[common.Hash]*announce),
-		//fetched:   make(map[common.Hash]*announce),
 
 		queue:    prque.New(),
 		queueMp:  make(map[string]int),
@@ -128,7 +127,6 @@ func (f *Fetcher) run() {
 			case <-stopCh:
 				return
 			default:
-
 			}
 			// 将队列中的区块导入本地链
 			for !f.queue.Empty() {
@@ -234,7 +232,7 @@ func (f *Fetcher) run() {
 			if f.getLocalBlock(op.block.Hash(), op.block.Height()) != nil {
 				continue
 			}
-			f.enqueue(op)
+			go f.enqueue(op)
 		}
 	}
 
@@ -307,6 +305,7 @@ func (f *Fetcher) Enqueue(peer string, block *types.Block, fetchBlock blockReque
 	// 防止newBlockCh已有数据还没处理导致的长时间休眠态突然退出问题
 	select {
 	case f.newBlockCh <- op:
+		log.Debugf("enqueue block ok. height: %d", block.Height())
 		return nil
 	case <-f.quitCh:
 		return errTerminated
@@ -356,16 +355,18 @@ func (f *Fetcher) enqueue(newBlock *newBlock) {
 	// 新收到的块高度过大 丢掉
 	if dist := newBlock.block.Height() - f.currentChainHeight(); dist > maxQueueDist {
 		f.forgetHash(hash)
+		log.Debugf("new block's height is too higher. height: %d", newBlock.block.Height())
 		return
 	}
 	// 已经存在了 直接返回
 	if _, ok := f.queuedMp[hash]; ok {
+		log.Debugf("enqueue: block is exist.height: %d", newBlock.block.Height())
 		return
 	}
 	f.queueMp[peer]++
 	f.queuedMp[hash] = newBlock
 	f.queue.Push(newBlock, -float32(newBlock.block.Height()))
-	log.Debugf("receive one block, height:%d hash:%s", newBlock.block.Height(), hash.String())
+	log.Debugf("enqueue one block, height:%d hash:%s", newBlock.block.Height(), hash.String())
 }
 
 // insert 启动个协程插入块到链上
