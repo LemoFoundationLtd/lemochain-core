@@ -361,6 +361,7 @@ func TestManager_MergeChangeLogs(t *testing.T) {
 
 	account1 := manager.GetAccount(defaultAccounts[0].Address)
 	account2 := manager.GetAccount(common.HexToAddress("0x1"))
+	account3 := manager.GetAccount(common.HexToAddress("0x2"))
 
 	// balance log, custom log, balance log, balance log
 	account1.SetBalance(big.NewInt(111))
@@ -368,24 +369,27 @@ func TestManager_MergeChangeLogs(t *testing.T) {
 		LogType: types.ChangeLogType(101),
 	})
 	account2.SetBalance(big.NewInt(222))
+	account3.SetBalance(big.NewInt(444))
 	account1.SetBalance(big.NewInt(333))
+	account3.SetBalance(big.NewInt(0))
 	logs := manager.GetChangeLogs()
-	assert.Equal(t, 4, len(logs))
+	assert.Equal(t, 6, len(logs))
 	assert.Equal(t, *big.NewInt(111), manager.GetChangeLogs()[0].NewVal)
 	assert.Equal(t, uint32(2), account1.GetVersion(BalanceLog))
 
 	// merge different account's change log
-	manager.MergeChangeLogs(1)
+	manager.MergeChangeLogs(4)
 	logs = manager.GetChangeLogs()
-	assert.Equal(t, 4, len(logs))
+	assert.Equal(t, 6, len(logs))
 
 	// successfully merge
 	manager.MergeChangeLogs(0)
 	logs = manager.GetChangeLogs()
-	assert.Equal(t, 3, len(logs))
+	assert.Equal(t, 2, len(logs))
 	assert.Equal(t, uint32(1), account1.GetVersion(BalanceLog))
+	assert.Equal(t, uint32(0), account3.GetVersion(BalanceLog))
 	// the first change log has been sorted to the last one
-	assert.Equal(t, *big.NewInt(333), manager.GetChangeLogs()[2].NewVal)
+	assert.Equal(t, *big.NewInt(333), manager.GetChangeLogs()[1].NewVal)
 
 	// broke snapshot
 	account1.SetBalance(big.NewInt(444))

@@ -6,9 +6,10 @@ import (
 	"sort"
 )
 
-// MergeChangeLogs merges the change logs for same account in block. Then return the merged change logs and changed account versions.
-func MergeChangeLogs(logs types.ChangeLogSlice) types.ChangeLogSlice {
+// MergeChangeLogs merges the change logs for same account in block. Then return the merged change logs and the versions need to be revert.
+func MergeChangeLogs(logs types.ChangeLogSlice) (types.ChangeLogSlice, types.ChangeLogSlice) {
 	logsByAccount := make(map[common.Address]types.ChangeLogSlice)
+	versionRevertLogs := make(types.ChangeLogSlice, 0)
 	// classify
 	for _, log := range logs {
 		logsByAccount[log.Address] = append(logsByAccount[log.Address], log)
@@ -16,8 +17,16 @@ func MergeChangeLogs(logs types.ChangeLogSlice) types.ChangeLogSlice {
 	// merge logs in account
 	for addr, accountLogs := range logsByAccount {
 		newAccountLogs := merge(accountLogs)
+		newAccountLogs = removeUnchanged(newAccountLogs)
 		resetVersion(newAccountLogs)
 		logsByAccount[addr] = newAccountLogs
+		if len(newAccountLogs) == 0 {
+			versionRevertLogs = append(versionRevertLogs, &types.ChangeLog{
+				Address: accountLogs[0].Address,
+				LogType: accountLogs[0].LogType,
+				Version: accountLogs[0].Version - 1,
+			})
+		}
 	}
 	// sort all logs by account
 	accounts := make(common.AddressSlice, 0, len(logsByAccount))
@@ -29,7 +38,7 @@ func MergeChangeLogs(logs types.ChangeLogSlice) types.ChangeLogSlice {
 	for _, addr := range accounts {
 		mergedLogs = append(mergedLogs, logsByAccount[addr]...)
 	}
-	return mergedLogs
+	return mergedLogs, versionRevertLogs
 }
 
 // merge traverses change logs and merges change log into the same type one which in front of it
@@ -43,6 +52,17 @@ func merge(logs types.ChangeLogSlice) types.ChangeLogSlice {
 			exist.Extra = log.Extra
 		} else {
 			result = append(result, log.Copy())
+		}
+	}
+	return result
+}
+
+// removeUnchanged removes the unchanged log
+func removeUnchanged(logs types.ChangeLogSlice) types.ChangeLogSlice {
+	result := make(types.ChangeLogSlice, 0)
+	for _, log := range logs {
+		if IsValuable(log) {
+			result = append(result, log)
 		}
 	}
 	return result

@@ -141,18 +141,14 @@ func getCustomTypeData(t *testing.T) []testCustomTypeConfig {
 func TestChangeLog_String(t *testing.T) {
 	tests := getCustomTypeData(t)
 	for i, test := range tests {
-		if test.input.String() != test.str {
-			t.Errorf("test %d. want str: %s, got: %s", i, test.str, test.input.String())
-		}
+		assert.Equal(t, test.str, test.input.String(), "index=%d %s", i, test.input)
 	}
 }
 
 func TestChangeLog_Hash(t *testing.T) {
 	tests := getCustomTypeData(t)
 	for i, test := range tests {
-		if test.input.Hash().Hex() != test.hash {
-			t.Errorf("test %d. want hash: %s, got: %s", i, test.hash, test.input.Hash().Hex())
-		}
+		assert.Equal(t, test.hash, test.input.Hash().Hex(), "index=%d %s", i, test.input)
 	}
 }
 
@@ -160,23 +156,22 @@ func TestChangeLog_EncodeRLP_DecodeRLP(t *testing.T) {
 	tests := getCustomTypeData(t)
 	for i, test := range tests {
 		enc, err := rlp.EncodeToBytes(test.input)
-		if err != nil {
-			t.Errorf("test %d. rlp encode error: %s", i, err)
-		} else if hexutil.Encode(enc) != test.rlp {
-			t.Errorf("test %d. want rlp: %s, got: %s", i, test.rlp, hexutil.Encode(enc))
-		} else {
-			decodeResult := new(types.ChangeLog)
-			err = rlp.DecodeBytes(enc, decodeResult)
-			if err != nil {
-				if test.decodeErr != err {
-					t.Errorf("test %d. want decodeErr: %s, got: %s", i, test.decodeErr, err.Error())
-				}
-			} else if test.decodeErr != nil {
-				t.Errorf("test %d. want decodeErr: %s, got: <nil>", i, test.decodeErr)
-			} else if decodeResult.String() != test.decoded {
-				t.Errorf("test %d. want decoded: %s, got: %s", i, test.decoded, decodeResult.String())
-			}
+		assert.NoError(t, err, "index=%d %s", i, test.input)
+		assert.Equal(t, test.rlp, hexutil.Encode(enc), "index=%d %s", i, test.input)
+
+		decodeResult := new(types.ChangeLog)
+		err = rlp.DecodeBytes(enc, decodeResult)
+		assert.Equal(t, test.decodeErr, err, "index=%d %s", i, test.input)
+		if test.decodeErr == nil && decodeResult.String() != test.decoded {
+			assert.Equal(t, test.decoded, decodeResult.String(), "index=%d %s", i, test.input)
 		}
+	}
+}
+
+func TestIsValuable(t *testing.T) {
+	tests := getCustomTypeData(t)
+	for i, test := range tests {
+		assert.Equal(t, true, IsValuable(test.input), "index=%d %s", i, test.input)
 	}
 }
 
@@ -261,13 +256,8 @@ func TestChangeLog_Undo(t *testing.T) {
 
 	for i, test := range tests {
 		err := test.input.Undo(processor)
-		if err != nil {
-			if test.undoErr != err {
-				t.Errorf("test %d. undo error: %s", i, err)
-			}
-		} else if test.undoErr != nil {
-			t.Errorf("test %d. want undoErr: %s, got: <nil>", i, test.undoErr)
-		} else if test.afterCheck != nil {
+		assert.Equal(t, test.undoErr, err, "index=%d %s", i, test.input)
+		if test.undoErr == nil && test.afterCheck != nil {
 			a := processor.GetAccount(test.input.Address)
 			test.afterCheck(a)
 		}
@@ -366,13 +356,8 @@ func TestChangeLog_Redo(t *testing.T) {
 
 	for i, test := range tests {
 		err := test.input.Redo(processor)
-		if err != nil {
-			if test.redoErr != err {
-				t.Errorf("test %d. redo error: %s", i, err)
-			}
-		} else if test.redoErr != nil {
-			t.Errorf("test %d. want redoErr: %s, got: <nil>", i, test.redoErr)
-		} else if test.afterCheck != nil {
+		assert.Equal(t, test.redoErr, err, "index=%d %s", i, test.input)
+		if test.redoErr == nil && test.afterCheck != nil {
 			a := processor.GetAccount(test.input.Address)
 			test.afterCheck(a)
 		}

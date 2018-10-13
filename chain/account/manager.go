@@ -360,9 +360,12 @@ func (am *Manager) Rebuild(address common.Address) error {
 // MergeChangeLogs merges the change logs for same account in block. Then update the version of change logs and account.
 func (am *Manager) MergeChangeLogs(fromIndex int) {
 	needMerge := am.processor.changeLogs[fromIndex:]
-	mergedLogs := MergeChangeLogs(needMerge)
+	mergedLogs, versionLogs := MergeChangeLogs(needMerge)
 	am.processor.changeLogs = append(am.processor.changeLogs[:fromIndex], mergedLogs...)
 	for _, changeLog := range mergedLogs {
+		am.getRawAccount(changeLog.Address).SetVersion(changeLog.LogType, changeLog.Version)
+	}
+	for _, changeLog := range versionLogs {
 		am.getRawAccount(changeLog.Address).SetVersion(changeLog.LogType, changeLog.Version)
 	}
 	// make sure the snapshot still work
