@@ -1,6 +1,7 @@
 package node
 
 import (
+	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
@@ -46,13 +47,7 @@ func (a *AccountAPI) GetBalance(LemoAddress string) string {
 	lenth := len(balance)
 	var toBytes = []byte(balance)
 	if lenth <= 18 {
-		var head = make([]byte, 18-lenth)
-		for i := 0; i < 18-lenth; i++ {
-			head[i] = '0'
-		}
-		// append head to make it 18 bytes
-		fullbytes := append(head, toBytes...)
-		Balance := "0." + string(fullbytes)
+		Balance := fmt.Sprintf("0.%018s", balance)
 		return Balance
 	} else {
 		point := lenth % 18
