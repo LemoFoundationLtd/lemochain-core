@@ -70,20 +70,13 @@ func (am *Manager) GetAccount(address common.Address) types.AccountAccessor {
 	return cached
 }
 
-// GetCanonicalAccount loads an account object from confirmed block in db, or creates a new one if it's not exist.
+// GetCanonicalAccount loads an readonly account object from confirmed block in db, or creates a new one if it's not exist. The Modification of the account will not be recorded to store.
 func (am *Manager) GetCanonicalAccount(address common.Address) types.AccountAccessor {
-	cached := am.accountCache[address]
-	if cached == nil {
-		data, err := am.db.GetCanonicalAccount(address)
-		if err != nil && err != store.ErrNotExist {
-			panic(err)
-		}
-		account := NewAccount(am.db, address, data)
-		cached = NewSafeAccount(am.processor, account)
-		// cache it
-		am.accountCache[address] = cached
+	data, err := am.db.GetCanonicalAccount(address)
+	if err != nil && err != store.ErrNotExist {
+		panic(err)
 	}
-	return cached
+	return NewAccount(am.db, address, data)
 }
 
 // getRawAccount loads an account same as GetAccount, but editing the account of this method returned is not going to generate change logs.

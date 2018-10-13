@@ -74,7 +74,7 @@ func TestNewManager_GetCanonicalAccount(t *testing.T) {
 	manager = NewManager(common.Hash{}, db)
 	account = manager.GetCanonicalAccount(common.Address{})
 	assert.Equal(t, common.Address{}, account.GetAddress())
-	assert.Equal(t, account, manager.accountCache[common.Address{}])
+	assert.Empty(t, manager.accountCache[common.Address{}])
 }
 
 func TestChangeLogProcessor_GetAccount(t *testing.T) {
