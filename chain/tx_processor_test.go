@@ -137,7 +137,8 @@ func TestTxProcessor_Process2(t *testing.T) {
 
 	// balance not enough
 	block = createNewBlock()
-	block.Txs[0] = makeTx(testPrivate, defaultAccounts[1], big.NewInt(10000000000000))
+	balance := p.am.GetAccount(testAddr).GetBalance()
+	block.Txs[0] = makeTx(testPrivate, defaultAccounts[1], new(big.Int).Add(balance, big.NewInt(1)))
 	block.Header.TxRoot = types.DeriveTxsSha(block.Txs)
 	_, err = p.Process(block)
 	assert.Equal(t, vm.ErrInsufficientBalance, err)
@@ -259,9 +260,10 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 		GasUsed:    header.GasUsed,
 		Time:       header.Time,
 	}
+	balance := p.am.GetAccount(testAddr).GetBalance()
 	txs = types.Transactions{
 		txs[0],
-		makeTx(testPrivate, defaultAccounts[1], big.NewInt(10000000000000)),
+		makeTx(testPrivate, defaultAccounts[1], new(big.Int).Add(balance, big.NewInt(1))),
 		txs[1],
 	}
 	newHeader, selectedTxs, invalidTxs, err = p.ApplyTxs(emptyHeader, txs)
