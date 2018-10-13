@@ -63,7 +63,7 @@ func (a *AccountAPI) GetBalance(LemoAddress string) string {
 }
 
 // GetVersion get version
-func (a *AccountAPI) GetVersion(LemoAddress string) uint32 {
+func (a *AccountAPI) GetVersion(LemoAddress string, logType uint32) uint32 {
 	var address common.Address
 	// Determine whether the input address is a Lemo address or a native address.
 	if strings.HasPrefix(LemoAddress, "Lemo") {
@@ -71,8 +71,8 @@ func (a *AccountAPI) GetVersion(LemoAddress string) uint32 {
 	} else {
 		address = common.HexToAddress(LemoAddress)
 	}
-	accounts := a.manager.GetCanonicalAccount(address)
-	return accounts.GetVersion()
+	accountObj := a.manager.GetCanonicalAccount(address)
+	return accountObj.GetVersion(types.ChangeLogType(logType))
 }
 
 // GetAccount return the struct of the &AccountData{}

@@ -38,24 +38,23 @@ var (
 		common.HexToAddress("0x10000"), common.HexToAddress("0x20000"), testAddr,
 	}
 	defaultBlocks     = make([]*types.Block, 0)
-	newestBlock       = new(types.Block)
 	defaultBlockInfos = []blockInfo{
 		// genesis block must no transactions
 		{
-			hash:        common.HexToHash("0x0318a0d35ec6c8254f2ff1ea3aa0b712820d9f5727c7f4a62b8cabc07eb7499b"),
+			hash:        common.HexToHash("0x5d92b6a4e89e9e4d88a6721aab9b8598bebe12cc7f4b1ad211604f9e9a47d50f"),
 			height:      0,
 			author:      defaultAccounts[0],
-			versionRoot: common.HexToHash("0x5a285bcfd4297d959e44cfc857e221695e12b088c5e01ad935e3eb2af62e3bcf"),
+			versionRoot: common.HexToHash("0xaa4c649637a466c2879495969aac0403716ad1e8b62a9865bead851d99c6f895"),
 			txRoot:      common.HexToHash("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"), // empty merkle
 			logsRoot:    common.HexToHash("0x74450829ca5c4673011dd95266fbd78de05ec7d4a6bf9a22bc9f98c37823d1de"),
 			time:        big.NewInt(1538209751),
 		},
 		// block 1 is stable block
 		{
-			hash:        common.HexToHash("0x68e42b582d006d5900e275d3d3dfccf1af7828616d73ac282f16fcb274292326"),
+			hash:        common.HexToHash("0x76b0904916cf755ffd6c44061896e117119ddc53e1a38490e0f176d22ca73148"),
 			height:      1,
 			author:      common.HexToAddress("0x20000"),
-			versionRoot: common.HexToHash("0x695330e8317f42ae800b9c98096c698903fd3a9cc33e8228f42f67f30e5b23c8"),
+			versionRoot: common.HexToHash("0xc4fa99a20b2db7026f80366e34213861457e240bf0411d57f7a22cbf5b7f2346"),
 			txRoot:      common.HexToHash("0xf044cc436950ef7470aca61053eb3f1ed46b9dcd501a5210f3673dc657c4fc88"),
 			logsRoot:    common.HexToHash("0x5a0783cc3ff00fb0c6a3ce34be8251ccaef6bb1f3acff09322e42c58c51be91c"),
 			txList: []*types.Transaction{
@@ -69,10 +68,10 @@ var (
 		},
 		// block 2 is not stable block
 		{
-			hash:        common.HexToHash("0x9eb1db9fdcfb61f9aa74e857c3cbebdd682a1b6b7ae21488f61bbf43e98474d1"),
+			hash:        common.HexToHash("0xcd014cc0b279714dcdbb5424eb4fdfda3aa868b87c4dab889049cb8d1a047b4d"),
 			height:      2,
 			author:      defaultAccounts[0],
-			versionRoot: common.HexToHash("0xb17f070e12aacafe07dabcae8b9333bb660cc55a3e06584a3f5a710b7f0a584a"),
+			versionRoot: common.HexToHash("0xb169fb0304ad3c989589b044afbfe6257d125222e5023004e418b4bdb5f154f9"),
 			txRoot:      common.HexToHash("0x85c8e888d358cc5232dfc62e340bfecb935c78471d943faf80c60822a437934f"),
 			logsRoot:    common.HexToHash("0x29cdc2cc137aaaefbe97e9d644f9e2d05bfcd13d649d1fd60bc25ca5d2d33362"),
 			txList: []*types.Transaction{
@@ -84,10 +83,10 @@ var (
 		},
 		// block 3 is not store in db
 		{
-			hash:        common.HexToHash("0x9f063a452c809c2146fb1c1a154e0403a8130f0e56fdbfbff091f69a03cf1e6c"),
+			hash:        common.HexToHash("0x551315da880a63e08a87d0eae13ace87ec34f88a93f18901d9808ec0f46b0b37"),
 			height:      3,
 			author:      defaultAccounts[0],
-			versionRoot: common.HexToHash("0x255a3d6044cc406bf4322568241a380c3ae18462362b292d89fb8d3dbce6a76d"),
+			versionRoot: common.HexToHash("0xfe833c7d3aa89fc1031198374e6eda37425de579e02430e46cc2273ee7f94162"),
 			txRoot:      common.HexToHash("0x883e9542653e2ad8bae93fa5567d8f5833543057af94ea0ed59c97a7034acac8"),
 			logsRoot:    common.HexToHash("0x22dfa5385981b9628fd701145fff3eb161d9505d2a1d45f1cee4d9d786ee86de"),
 			txList: []*types.Transaction{
@@ -134,8 +133,8 @@ func newDB() protocol.ChainDB {
 		if i > 0 {
 			defaultBlockInfos[i].parentHash = defaultBlocks[i-1].Hash()
 		}
-		newestBlock = makeBlock(db, defaultBlockInfos[i], i < 3)
-		defaultBlocks = append(defaultBlocks, newestBlock)
+		newBlock := makeBlock(db, defaultBlockInfos[i], i < 3)
+		defaultBlocks = append(defaultBlocks, newBlock)
 	}
 	err = db.SetStableBlock(defaultBlockInfos[1].hash)
 	if err != nil {
@@ -198,7 +197,7 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 		info.versionRoot = manager.GetVersionRoot()
 	}
 	changeLogs := manager.GetChangeLogs()
-	// fmt.Printf("%d changeLogs %v\n", height, changeLogs)
+	// fmt.Printf("%d changeLogs %v\n", info.height, changeLogs)
 	logsRoot := types.DeriveChangeLogsSha(changeLogs)
 	if logsRoot != info.logsRoot {
 		if info.logsRoot != (common.Hash{}) {

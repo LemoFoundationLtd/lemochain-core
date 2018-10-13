@@ -212,6 +212,7 @@ func TestCacheChain_ContractCode(t *testing.T) {
 }
 
 func TestCacheChain_SetAccounts(t *testing.T) {
+
 	ClearData()
 
 	cacheChain, err := NewCacheChain(GetStorePath())
@@ -223,15 +224,10 @@ func TestCacheChain_SetAccounts(t *testing.T) {
 	_, err = cacheChain.GetAccount(common.Hash{}, accounts[0].Address)
 	assert.Equal(t, ErrNotExist, err)
 
-	err = cacheChain.SetAccounts(common.Hash{}, accounts)
-	assert.Equal(t, err, ErrNotExist)
-
 	// the block's parent is nil
 	parentBlock := GetBlock0()
-	childBlock := GetBlock1()
+
 	err = cacheChain.SetBlock(parentBlock.Hash(), parentBlock)
-	assert.NoError(t, err)
-	err = cacheChain.SetBlock(childBlock.Hash(), childBlock)
 	assert.NoError(t, err)
 
 	// TODO:the child block have no this accounts
@@ -240,11 +236,11 @@ func TestCacheChain_SetAccounts(t *testing.T) {
 
 	account, err := cacheChain.GetAccount(parentBlock.Hash(), accounts[0].Address)
 	assert.NoError(t, err)
-	assert.Equal(t, account.Version, accounts[0].Version)
+	assert.Equal(t, account.Versions[0], accounts[0].Versions[0])
 
-	account, err = cacheChain.GetAccount(childBlock.Hash(), accounts[0].Address)
-	assert.Equal(t, err, ErrNotExist)
-	assert.Nil(t, account)
+	childBlock := GetBlock1()
+	err = cacheChain.SetBlock(childBlock.Hash(), childBlock)
+	assert.NoError(t, err)
 
 	account, err = cacheChain.GetCanonicalAccount(accounts[0].Address)
 	assert.Equal(t, err, ErrNotExist)
@@ -255,11 +251,11 @@ func TestCacheChain_SetAccounts(t *testing.T) {
 
 	account, err = cacheChain.GetCanonicalAccount(accounts[0].Address)
 	assert.NoError(t, err)
-	assert.Equal(t, account.Version, accounts[0].Version)
+	assert.Equal(t, account.Versions[0], accounts[0].Versions[0])
 
 	account, err = cacheChain.GetCanonicalAccount(accounts[1].Address)
 	assert.NoError(t, err)
-	assert.Equal(t, account.Version, accounts[1].Version)
+	assert.Equal(t, account.Versions[0], accounts[1].Versions[0])
 }
 
 func TestCacheChain_ChildBlockAccount(t *testing.T) {

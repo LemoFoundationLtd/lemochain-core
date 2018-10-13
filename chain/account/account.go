@@ -73,6 +73,9 @@ func NewAccount(db protocol.ChainDB, address common.Address, data *types.Account
 	if (data.CodeHash == common.Hash{}) {
 		data.CodeHash = sha3Nil
 	}
+	if data.Versions == nil {
+		data.Versions = make(map[types.ChangeLogType]uint32)
+	}
 	return &Account{
 		data:          data,
 		db:            db,
@@ -98,11 +101,11 @@ func (a *Account) UnmarshalJSON(input []byte) error {
 }
 
 // Implement AccountAccessor. Access Account without changelog
-func (a *Account) GetAddress() common.Address { return a.data.Address }
-func (a *Account) GetBalance() *big.Int       { return a.data.Balance }
-func (a *Account) GetVersion() uint32         { return a.data.Version }
-func (a *Account) GetSuicide() bool           { return a.suicided }
-func (a *Account) GetCodeHash() common.Hash   { return a.data.CodeHash }
+func (a *Account) GetAddress() common.Address                    { return a.data.Address }
+func (a *Account) GetBalance() *big.Int                          { return a.data.Balance }
+func (a *Account) GetVersion(logType types.ChangeLogType) uint32 { return a.data.Versions[logType] }
+func (a *Account) GetSuicide() bool                              { return a.suicided }
+func (a *Account) GetCodeHash() common.Hash                      { return a.data.CodeHash }
 
 // StorageRoot wouldn't change until Account.updateTrie() is called
 func (a *Account) GetStorageRoot() common.Hash { return a.data.StorageRoot }
@@ -114,8 +117,8 @@ func (a *Account) SetBalance(balance *big.Int) {
 	}
 	a.data.Balance = balance
 }
-func (a *Account) SetVersion(version uint32) {
-	a.data.Version = version
+func (a *Account) SetVersion(logType types.ChangeLogType, version uint32) {
+	a.data.Versions[logType] = version
 }
 func (a *Account) SetSuicide(suicided bool) {
 	if suicided {
@@ -205,7 +208,12 @@ func (a *Account) SetStorageState(key common.Hash, value []byte) error {
 
 // IsEmpty returns whether the state object is either non-existent or empty (version = 0)
 func (a *Account) IsEmpty() bool {
-	return a.data.Version == 0
+	for _, v := range a.data.Versions {
+		if v != 0 {
+			return false
+		}
+	}
+	return true
 }
 
 func (a *Account) getTrie() (*trie.SecureTrie, error) {
@@ -256,20 +264,8 @@ func (a *Account) Finalise(blockHeight uint32) error {
 	if err != nil {
 		return err
 	}
-	// save the newest version
-	if a.data.VersionRecords == nil {
-		a.data.VersionRecords = make([]types.VersionRecord, 0)
-	}
-	newRelation := types.VersionRecord{Height: blockHeight, Version: a.data.Version}
-	// Find the existed version record information
-	index := sort.Search(len(a.data.VersionRecords), func(i int) bool {
-		return a.data.VersionRecords[i].Height >= blockHeight
-	})
-	if index == len(a.data.VersionRecords) {
-		a.data.VersionRecords = append(a.data.VersionRecords, newRelation)
-	} else {
-		a.data.VersionRecords[index].Version = a.data.Version
-	}
+	// save the newest record
+	a.data.UpdateRecords(blockHeight)
 	return nil
 }
 
@@ -304,11 +300,11 @@ func (a *Account) Save() error {
 	return nil
 }
 
-// LoadChangeLogs loads change logs from specified version
-func (a *Account) LoadChangeLogs(fromVersion uint32) ([]*types.ChangeLog, error) {
+// LoadNewestChangeLogs loads newest change logs
+func (a *Account) LoadNewestChangeLogs() ([]*types.ChangeLog, error) {
 	var logs types.ChangeLogSlice
 	// TODO the db interface has not been implemented
-	// for height, version := range a.data.VersionRecords {
+	// for height, version := range a.data.NewestRecords {
 	// 	if version >= fromVersion {
 	// 		oneBlockLogs, err := a.db.LoadChangeLog(a.data.Address, height)
 	// 		if err != nil {
@@ -318,10 +314,5 @@ func (a *Account) LoadChangeLogs(fromVersion uint32) ([]*types.ChangeLog, error)
 	// 	}
 	// }
 	sort.Sort(logs)
-	// Some blocks contain lots of change logs. So we need filter by the correct version
-	firstIndex := logs.Search(fromVersion)
-	if firstIndex < 0 {
-		firstIndex = 0
-	}
-	return logs[firstIndex:], nil
+	return logs, nil
 }

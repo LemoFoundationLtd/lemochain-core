@@ -28,7 +28,7 @@ type ChangeLogProcessor interface {
 	PopEvent() error
 }
 
-type ChangeLogType uint
+type ChangeLogType uint32
 type changeLogDecoder func(*rlp.Stream) (interface{}, error)
 type changeLogDoFunc func(*ChangeLog, ChangeLogProcessor) error
 
@@ -190,7 +190,7 @@ func (c *ChangeLog) Undo(processor ChangeLogProcessor) error {
 	}
 
 	accessor := processor.GetAccount(c.Address)
-	currentVersion := accessor.GetVersion()
+	currentVersion := accessor.GetVersion(c.LogType)
 	// make sure the sequence of changelog is correct
 	if currentVersion != c.Version {
 		log.Errorf("expected undo version %d, got %d", c.Version, currentVersion)
@@ -201,7 +201,7 @@ func (c *ChangeLog) Undo(processor ChangeLogProcessor) error {
 		return err
 	}
 	// increase version immediately so that next redo can check its version
-	accessor.SetVersion(c.Version - 1)
+	accessor.SetVersion(c.LogType, c.Version-1)
 	return nil
 }
 
@@ -214,7 +214,7 @@ func (c *ChangeLog) Redo(processor ChangeLogProcessor) error {
 	}
 
 	accessor := processor.GetAccount(c.Address)
-	currentVersion := accessor.GetVersion()
+	currentVersion := accessor.GetVersion(c.LogType)
 	// make sure the sequence of changelog is correct
 	if c.Version < currentVersion+1 {
 		log.Errorf("expected redo version %d, got %d", c.Version-1, currentVersion)
@@ -228,6 +228,6 @@ func (c *ChangeLog) Redo(processor ChangeLogProcessor) error {
 		return err
 	}
 	// increase version immediately so that next redo can check its version
-	accessor.SetVersion(c.Version)
+	accessor.SetVersion(c.LogType, c.Version)
 	return nil
 }
