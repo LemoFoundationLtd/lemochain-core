@@ -265,15 +265,7 @@ func (a *Account) Finalise(blockHeight uint32) error {
 		return err
 	}
 	// save the newest record
-	if a.data.NewestRecords == nil {
-		a.data.NewestRecords = make(map[types.ChangeLogType]types.VersionRecord)
-	}
-	for logType, version := range a.data.Versions {
-		record, ok := a.data.NewestRecords[logType]
-		if !ok || record.Version != version {
-			a.data.NewestRecords[logType] = types.VersionRecord{Height: blockHeight, Version: version}
-		}
-	}
+	a.data.UpdateRecords(blockHeight)
 	return nil
 }
 
