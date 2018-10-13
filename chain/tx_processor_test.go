@@ -101,7 +101,7 @@ func TestTxProcessor_Process2(t *testing.T) {
 	// invalid signature
 	block = createNewBlock()
 	rawTx, _ = rlp.EncodeToBytes(block.Txs[0])
-	rawTx[42] = ^rawTx[42] // invalid S
+	rawTx[43] = 0 // invalid S
 	cpy = new(types.Transaction)
 	err = rlp.DecodeBytes(rawTx, cpy)
 	assert.NoError(t, err)
