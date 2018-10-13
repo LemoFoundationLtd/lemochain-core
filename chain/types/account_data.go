@@ -94,6 +94,18 @@ func (a *AccountData) DecodeRLP(s *rlp.Stream) error {
 func (a *AccountData) Copy() *AccountData {
 	cpy := *a
 	cpy.Balance = new(big.Int).Set(a.Balance)
+	if len(a.Versions) > 0 {
+		cpy.Versions = make(map[ChangeLogType]uint32)
+		for logType, version := range a.Versions {
+			cpy.Versions[logType] = version
+		}
+	}
+	if len(a.NewestRecords) > 0 {
+		cpy.NewestRecords = make(map[ChangeLogType]VersionRecord)
+		for logType, record := range a.NewestRecords {
+			cpy.NewestRecords[logType] = record
+		}
+	}
 	return &cpy
 }
 
