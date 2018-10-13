@@ -203,10 +203,16 @@ func TestNewManager_GetVersionRoot(t *testing.T) {
 	root := manager.GetVersionRoot()
 	assert.Equal(t, emptyTrieRoot, root)
 
-	// empty version trie
+	// not empty version trie
 	manager = NewManager(newestBlock.Hash(), db)
 	root = manager.GetVersionRoot()
 	assert.Equal(t, newestBlock.VersionRoot(), root)
+	// read version from trie
+	key := append(defaultAccounts[0].Address.Bytes(), big.NewInt(int64(BalanceLog)).Bytes()...)
+	value, err := ReadTrie(db, root, key)
+	assert.NoError(t, err)
+	assert.Equal(t, uint32(100), manager.GetAccount(defaultAccounts[0].Address).GetVersion(BalanceLog))
+	assert.Equal(t, big.NewInt(100), new(big.Int).SetBytes(value))
 }
 
 func TestNewManager_Reset(t *testing.T) {

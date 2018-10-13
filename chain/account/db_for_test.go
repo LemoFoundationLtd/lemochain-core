@@ -209,11 +209,7 @@ func saveAccount(db protocol.ChainDB) {
 
 // testStorageTrieGet creates a new trie to make sure the data is accessible
 func testStorageTrieGet(db protocol.ChainDB) {
-	tr, err := trie.NewSecure(defaultAccounts[0].StorageRoot, db.GetTrieDatabase(), MaxTrieCacheGen)
-	if err != nil {
-		panic(err)
-	}
-	value, err := tr.TryGet(defaultStorage[0].key[:])
+	value, err := ReadTrie(db, defaultAccounts[0].StorageRoot, defaultStorage[0].key[:])
 	if err != nil {
 		panic(err)
 	} else if bytes.Compare(value, defaultStorage[0].value) != 0 {
@@ -235,3 +231,12 @@ func k(i int64) common.Hash { return common.HexToHash(fmt.Sprintf("0xd%x", i)) }
 
 // t returns transaction hash for test
 func th(i int64) common.Hash { return common.HexToHash(fmt.Sprintf("0xe%x", i)) }
+
+func ReadTrie(db protocol.ChainDB, root common.Hash, key []byte) (value []byte, err error) {
+	var tr *trie.SecureTrie
+	tr, err = trie.NewSecure(root, db.GetTrieDatabase(), MaxTrieCacheGen)
+	if err == nil {
+		value, err = tr.TryGet(key)
+	}
+	return
+}
