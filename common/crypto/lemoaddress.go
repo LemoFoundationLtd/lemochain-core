@@ -12,7 +12,7 @@ type AddressKeyPair struct {
 	NativePubkey string
 	LemoAddress  string
 	PublicKey    string
-	PrivateKet   string
+	PrivateKey   string
 }
 
 // getCheckSum get the check digit by doing an exclusive OR operation
@@ -53,7 +53,7 @@ func GenerateAddress() (*AddressKeyPair, error) {
 		NativePubkey: common.ToHex(address.Bytes()),
 		LemoAddress:  string(lemoAddress),
 		PublicKey:    common.ToHex(publicToBytes[1:]),
-		PrivateKet:   common.ToHex(privateToBytes),
+		PrivateKey:   common.ToHex(privateToBytes),
 	}, nil
 }
 
