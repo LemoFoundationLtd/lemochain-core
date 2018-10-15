@@ -405,7 +405,7 @@ func (bc *BlockChain) ReceiveConfirm(info *protocol.BlockConfirmData) (err error
 	}
 	nodeCount := deputynode.Instance().GetDeputyNodesCount()
 	minCount := int(math.Ceil(float64(nodeCount) * 2.0 / 3.0))
-	if confirmCount > minCount {
+	if confirmCount >= minCount {
 		return bc.SetStableBlock(info.Hash, info.Height)
 	}
 	return nil
