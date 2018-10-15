@@ -1,6 +1,7 @@
 package account
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
@@ -23,6 +24,35 @@ func init() {
 	types.RegisterChangeLog(CodeLog, "CodeLog", decodeBytes, decodeEmptyInterface, redoCode, undoCode)
 	types.RegisterChangeLog(AddEventLog, "AddEventLog", decodeEvent, decodeEmptyInterface, redoAddEvent, undoAddEvent)
 	types.RegisterChangeLog(SuicideLog, "SuicideLog", decodeEmptyInterface, decodeEmptyInterface, redoSuicide, undoSuicide)
+}
+
+// IsValuable returns true if the change log contains some data change
+func IsValuable(log *types.ChangeLog) bool {
+	valuable := true
+	switch log.LogType {
+	case BalanceLog:
+		oldVal := log.OldVal.(big.Int)
+		newVal := log.NewVal.(big.Int)
+		valuable = oldVal.Cmp(&newVal) != 0
+	case StorageLog:
+		oldVal := log.OldVal.([]byte)
+		newVal := log.NewVal.([]byte)
+		valuable = bytes.Compare(oldVal, newVal) != 0
+	case CodeLog:
+		valuable = log.NewVal != nil && len(log.NewVal.(types.Code)) > 0
+	case AddEventLog:
+		valuable = log.NewVal != nil
+	case SuicideLog:
+		oldAccount := log.OldVal.(*types.AccountData)
+		valuable = oldAccount != nil && (oldAccount.Balance != big.NewInt(0) || !isEmptyHash(oldAccount.CodeHash) || !isEmptyHash(oldAccount.StorageRoot))
+	default:
+		valuable = log.OldVal != log.NewVal
+	}
+	return valuable
+}
+
+func isEmptyHash(hash common.Hash) bool {
+	return hash == (common.Hash{}) || hash == sha3Nil
 }
 
 // decodeEmptyInterface decode an interface which contains an empty interface{}. its encoded data is [192], same as rlp([])
@@ -77,9 +107,9 @@ func decodeEvent(s *rlp.Stream) (interface{}, error) {
 //
 
 // increaseVersion increases account version by one
-func increaseVersion(account types.AccountAccessor) uint32 {
-	newVersion := account.GetVersion() + 1
-	account.SetVersion(newVersion)
+func increaseVersion(logType types.ChangeLogType, account types.AccountAccessor) uint32 {
+	newVersion := account.GetVersion(logType) + 1
+	account.SetVersion(logType, newVersion)
 	return newVersion
 }
 
@@ -88,7 +118,7 @@ func NewBalanceLog(account types.AccountAccessor, newBalance *big.Int) *types.Ch
 	return &types.ChangeLog{
 		LogType: BalanceLog,
 		Address: account.GetAddress(),
-		Version: increaseVersion(account),
+		Version: increaseVersion(BalanceLog, account),
 		OldVal:  *(new(big.Int).Set(account.GetBalance())),
 		NewVal:  *(new(big.Int).Set(newBalance)),
 	}
@@ -125,7 +155,7 @@ func NewStorageLog(account types.AccountAccessor, key common.Hash, newVal []byte
 	return &types.ChangeLog{
 		LogType: StorageLog,
 		Address: account.GetAddress(),
-		Version: increaseVersion(account),
+		Version: increaseVersion(StorageLog, account),
 		OldVal:  oldValue,
 		NewVal:  newVal,
 		Extra:   key,
@@ -169,7 +199,7 @@ func NewCodeLog(account types.AccountAccessor, code types.Code) *types.ChangeLog
 	return &types.ChangeLog{
 		LogType: CodeLog,
 		Address: account.GetAddress(),
-		Version: increaseVersion(account),
+		Version: increaseVersion(CodeLog, account),
 		NewVal:  code,
 	}
 }
@@ -196,7 +226,7 @@ func NewAddEventLog(account types.AccountAccessor, newEvent *types.Event) *types
 	return &types.ChangeLog{
 		LogType: AddEventLog,
 		Address: account.GetAddress(),
-		Version: increaseVersion(account),
+		Version: increaseVersion(AddEventLog, account),
 		NewVal:  newEvent,
 	}
 }
@@ -225,7 +255,7 @@ func NewSuicideLog(account types.AccountAccessor) *types.ChangeLog {
 	return &types.ChangeLog{
 		LogType: SuicideLog,
 		Address: account.GetAddress(),
-		Version: increaseVersion(account),
+		Version: increaseVersion(SuicideLog, account),
 		OldVal:  oldAccount,
 	}
 }

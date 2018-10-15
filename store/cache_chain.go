@@ -157,6 +157,11 @@ func (chain *CacheChain) writeChain(hash common.Hash) error {
 		if err != nil {
 			return err
 		} else {
+			var act types.AccountData
+			err = rlp.DecodeBytes(val, &act)
+			if err != nil {
+				//
+			}
 			item.Val = val
 		}
 		items[index] = item

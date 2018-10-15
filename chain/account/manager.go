@@ -70,20 +70,13 @@ func (am *Manager) GetAccount(address common.Address) types.AccountAccessor {
 	return cached
 }
 
-// GetCanonicalAccount loads an account object from confirmed block in db, or creates a new one if it's not exist.
+// GetCanonicalAccount loads an readonly account object from confirmed block in db, or creates a new one if it's not exist. The Modification of the account will not be recorded to store.
 func (am *Manager) GetCanonicalAccount(address common.Address) types.AccountAccessor {
-	cached := am.accountCache[address]
-	if cached == nil {
-		data, err := am.db.GetCanonicalAccount(address)
-		if err != nil && err != store.ErrNotExist {
-			panic(err)
-		}
-		account := NewAccount(am.db, address, data)
-		cached = NewSafeAccount(am.processor, account)
-		// cache it
-		am.accountCache[address] = cached
+	data, err := am.db.GetCanonicalAccount(address)
+	if err != nil && err != store.ErrNotExist {
+		panic(err)
 	}
-	return cached
+	return NewAccount(am.db, address, data)
 }
 
 // getRawAccount loads an account same as GetAccount, but editing the account of this method returned is not going to generate change logs.
@@ -207,13 +200,19 @@ func (am *Manager) Finalise() error {
 			return err
 		}
 		// update version trie
-		address := account.GetAddress().Bytes()
-		version := big.NewInt(int64(account.GetVersion())).Bytes()
-		if err := versionTrie.TryUpdate(address, version); err != nil {
-			return err
+		for logType, version := range account.rawAccount.data.Versions {
+			k := versionTrieKey(account.GetAddress(), logType)
+			version := big.NewInt(int64(version)).Bytes()
+			if err := versionTrie.TryUpdate(k, version); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
+}
+
+func versionTrieKey(address common.Address, logType types.ChangeLogType) []byte {
+	return append(address.Bytes(), big.NewInt(int64(logType)).Bytes()...)
 }
 
 // Save writes dirty data into db.
@@ -335,12 +334,12 @@ func (h *logProcessor) RevertToSnapshot(revid int) {
 
 // Rebuild loads and redo all change logs to update account to the newest state.
 //
-// TODO Changelog maybe retrieved from other node, so the account in local store is not contain the newest VersionRecords.
+// TODO Changelog maybe retrieved from other node, so the account in local store is not contain the newest NewestRecords.
 // We'd better change this function to "Rebuild(address common.Address, logs []types.ChangeLog)" cause the Rebuild function is called by change log synchronization module
 func (am *Manager) Rebuild(address common.Address) error {
 	accountAccessor := am.getRawAccount(address)
 	account := accountAccessor.(*Account)
-	logs, err := account.LoadChangeLogs(account.GetVersion() + 1)
+	logs, err := account.LoadNewestChangeLogs()
 	for _, log := range logs {
 		err = log.Redo(&logProcessor{manager: am})
 		if err != nil && err != types.ErrAlreadyRedo {
@@ -354,10 +353,13 @@ func (am *Manager) Rebuild(address common.Address) error {
 // MergeChangeLogs merges the change logs for same account in block. Then update the version of change logs and account.
 func (am *Manager) MergeChangeLogs(fromIndex int) {
 	needMerge := am.processor.changeLogs[fromIndex:]
-	mergedLogs, changedVersions := MergeChangeLogs(needMerge)
+	mergedLogs, versionLogs := MergeChangeLogs(needMerge)
 	am.processor.changeLogs = append(am.processor.changeLogs[:fromIndex], mergedLogs...)
-	for addr, version := range changedVersions {
-		am.getRawAccount(addr).SetVersion(version)
+	for _, changeLog := range mergedLogs {
+		am.getRawAccount(changeLog.Address).SetVersion(changeLog.LogType, changeLog.Version)
+	}
+	for _, changeLog := range versionLogs {
+		am.getRawAccount(changeLog.Address).SetVersion(changeLog.LogType, changeLog.Version)
 	}
 	// make sure the snapshot still work
 	if !am.processor.checkRevisionAvailable() {

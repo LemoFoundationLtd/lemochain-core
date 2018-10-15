@@ -1,6 +1,7 @@
 package node
 
 import (
+	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
@@ -46,13 +47,7 @@ func (a *AccountAPI) GetBalance(LemoAddress string) string {
 	lenth := len(balance)
 	var toBytes = []byte(balance)
 	if lenth <= 18 {
-		var head = make([]byte, 18-lenth)
-		for i := 0; i < 18-lenth; i++ {
-			head[i] = '0'
-		}
-		// append head to make it 18 bytes
-		fullbytes := append(head, toBytes...)
-		Balance := "0." + string(fullbytes)
+		Balance := fmt.Sprintf("0.%018s", balance)
 		return Balance
 	} else {
 		point := lenth % 18
@@ -68,7 +63,7 @@ func (a *AccountAPI) GetBalance(LemoAddress string) string {
 }
 
 // GetVersion get version
-func (a *AccountAPI) GetVersion(LemoAddress string) uint32 {
+func (a *AccountAPI) GetVersion(LemoAddress string, logType uint32) uint32 {
 	var address common.Address
 	// Determine whether the input address is a Lemo address or a native address.
 	if strings.HasPrefix(LemoAddress, "Lemo") {
@@ -76,8 +71,8 @@ func (a *AccountAPI) GetVersion(LemoAddress string) uint32 {
 	} else {
 		address = common.HexToAddress(LemoAddress)
 	}
-	accounts := a.manager.GetCanonicalAccount(address)
-	return accounts.GetVersion()
+	accountObj := a.manager.GetCanonicalAccount(address)
+	return accountObj.GetVersion(types.ChangeLogType(logType))
 }
 
 // GetAccount return the struct of the &AccountData{}

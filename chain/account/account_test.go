@@ -25,7 +25,7 @@ func TestAccount_GetAddress(t *testing.T) {
 
 	// load default account
 	account := loadAccount(defaultAccounts[0].Address)
-	assert.Equal(t, uint32(100), account.GetVersion())
+	assert.Equal(t, uint32(100), account.GetVersion(BalanceLog))
 
 	// load not exist account
 	account = loadAccount(common.HexToAddress("0xaaa"))
@@ -46,10 +46,10 @@ func TestAccount_SetBalance_GetBalance(t *testing.T) {
 
 func TestAccount_SetVersion_GetVersion(t *testing.T) {
 	account := loadAccount(defaultAccounts[0].Address)
-	assert.Equal(t, uint32(100), account.GetVersion())
+	assert.Equal(t, uint32(100), account.GetVersion(BalanceLog))
 
-	account.SetVersion(200)
-	assert.Equal(t, uint32(200), account.GetVersion())
+	account.SetVersion(BalanceLog, 200)
+	assert.Equal(t, uint32(200), account.GetVersion(BalanceLog))
 }
 
 func TestAccount_SetSuicide_GetSuicide(t *testing.T) {
@@ -178,7 +178,7 @@ func TestAccount_SetStorageState_GetStorageState(t *testing.T) {
 func TestAccount_IsEmpty(t *testing.T) {
 	account := loadAccount(common.HexToAddress("0x1"))
 	assert.Equal(t, true, account.IsEmpty())
-	account.SetVersion(100)
+	account.SetVersion(BalanceLog, 100)
 	assert.Equal(t, false, account.IsEmpty())
 }
 
@@ -186,13 +186,13 @@ func TestAccount_MarshalJSON_UnmarshalJSON(t *testing.T) {
 	account := loadAccount(defaultAccounts[0].Address)
 	data, err := json.Marshal(account)
 	assert.NoError(t, err)
-	assert.Equal(t, `{"address":"0x0000000000000000000000000000000000010000","balance":"0x64","version":"0x64","codeHash":"0x1d5f11eaa13e02cdca886181dc38ab4cb8cf9092e86c000fb42d12c8b504500e","root":"0xcbeb7c7e36b846713bc99b8fa527e8d552e31bfaa1ac0f2b773958cda3aba3ed","VersionRecords":[]}`, string(data))
+	assert.Equal(t, `{"address":"0x0000000000000000000000000000000000010000","balance":"0x64","versions":{"1":100,"3":101},"codeHash":"0x1d5f11eaa13e02cdca886181dc38ab4cb8cf9092e86c000fb42d12c8b504500e","root":"0xcbeb7c7e36b846713bc99b8fa527e8d552e31bfaa1ac0f2b773958cda3aba3ed","NewestRecords":{"1":{"Version":100,"Height":1},"3":{"Version":101,"Height":2}}}`, string(data))
 	var parsedAccount *Account
 	err = json.Unmarshal(data, &parsedAccount)
 	assert.NoError(t, err)
 	assert.Equal(t, account.GetAddress(), parsedAccount.GetAddress())
 	assert.Equal(t, account.GetBalance(), parsedAccount.GetBalance())
-	assert.Equal(t, account.GetVersion(), parsedAccount.GetVersion())
+	assert.Equal(t, account.GetVersion(BalanceLog), parsedAccount.GetVersion(BalanceLog))
 	assert.Equal(t, account.GetCodeHash(), parsedAccount.GetCodeHash())
 	assert.Equal(t, account.GetStorageRoot(), parsedAccount.GetStorageRoot())
 	// assert.Equal(t, account.db, parsedAccount.db)
@@ -207,6 +207,7 @@ func TestAccount_Finalise_Save(t *testing.T) {
 	assert.Equal(t, defaultStorage[0].value, value)
 	assert.Equal(t, 1, len(account.cachedStorage))
 	assert.Equal(t, 0, len(account.dirtyStorage))
+	assert.Equal(t, 2, len(account.data.NewestRecords))
 	err = account.Finalise(1)
 	assert.NoError(t, err)
 	assert.Equal(t, defaultAccounts[0].StorageRoot, account.GetStorageRoot())
@@ -223,24 +224,14 @@ func TestAccount_Finalise_Save(t *testing.T) {
 	assert.Equal(t, 2, len(account.cachedStorage))
 	assert.Equal(t, 1, len(account.dirtyStorage))
 	assert.Equal(t, value, account.dirtyStorage[key])
-	account.SetVersion(10)
+	account.SetVersion(StorageLog, 10)
 	err = account.Finalise(blockHeight)
 	assert.NoError(t, err)
 	assert.Equal(t, "0xfb4fbcae2c19f15b34c53b059a4af53d8d793607bd8ca5868eeb9c817c4e5bc7", account.GetStorageRoot().Hex())
-	assert.Equal(t, 1, len(account.data.VersionRecords))
-	assert.Equal(t, blockHeight, account.data.VersionRecords[0].Height)
-	assert.Equal(t, uint32(10), account.data.VersionRecords[0].Version)
+	assert.Equal(t, 3, len(account.data.NewestRecords))
+	assert.Equal(t, blockHeight, account.data.NewestRecords[StorageLog].Height)
+	assert.Equal(t, uint32(10), account.data.NewestRecords[StorageLog].Version)
 	assert.Equal(t, 0, len(account.dirtyStorage))
-	account.SetVersion(11)
-	err = account.Finalise(blockHeight)
-	assert.Equal(t, 1, len(account.data.VersionRecords))
-	assert.Equal(t, blockHeight, account.data.VersionRecords[0].Height)
-	assert.Equal(t, uint32(11), account.data.VersionRecords[0].Version)
-	account.SetVersion(12)
-	err = account.Finalise(blockHeight + 1)
-	assert.Equal(t, 2, len(account.data.VersionRecords))
-	assert.Equal(t, blockHeight+1, account.data.VersionRecords[1].Height)
-	assert.Equal(t, uint32(12), account.data.VersionRecords[1].Version)
 	// save
 	err = account.Save()
 	assert.NoError(t, err)
