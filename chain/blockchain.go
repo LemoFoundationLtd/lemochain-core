@@ -266,7 +266,6 @@ func (bc *BlockChain) InsertChain(block *types.Block) (err error) {
 		delete(bc.chainForksHead, curHash) // remove old record from fork container
 		bc.chainForksHead[hash] = block    // record new fork
 		bc.newBlockNotify(block)
-		log.Infof("chain forked! current block: height(%d), hash(%s)", block.Height(), block.Hash().Hex())
 		return nil
 	}
 	// new block height higher than current block, switch fork.

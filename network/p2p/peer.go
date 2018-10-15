@@ -23,7 +23,7 @@ type Peer struct {
 	wg      sync.WaitGroup
 	closeCh chan struct{}
 	closed  bool
-	nodeId  NodeID // sman 远程节点公钥
+	nodeID  NodeID // sman 远程节点公钥
 
 	rmu sync.Mutex // 读锁
 	wmu sync.Mutex // 写锁
@@ -74,7 +74,7 @@ func (p *Peer) receiverHandshake(prv *ecdsa.PrivateKey) error {
 	if v != 1 {
 		return errors.New("version not match")
 	}
-	copy(p.nodeId[:], buf[4:])
+	copy(p.nodeID[:], buf[4:])
 
 	// 发送自己的NodeID
 	nodeID := PubkeyID(&prv.PublicKey)
@@ -82,7 +82,7 @@ func (p *Peer) receiverHandshake(prv *ecdsa.PrivateKey) error {
 	if _, err := conn.Write(buf); err != nil {
 		return err
 	}
-	log.Infof("Receive new connection. IP: %s. ID: %s ", p.rw.fd.RemoteAddr().String(), common.ToHex(p.nodeId[:8]))
+	log.Infof("Receive new connection. IP: %s. ID: %s ", p.rw.fd.RemoteAddr().String(), common.ToHex(p.nodeID[:8]))
 	return nil
 }
 
@@ -106,8 +106,8 @@ func (p *Peer) initiatorEncHandshake(prv *ecdsa.PrivateKey) error {
 	if version != 1 {
 		return errors.New("version not match")
 	}
-	copy(p.nodeId[:], buf[4:])
-	log.Infof("client: connect to peer: %s. id: %s", p.rw.fd.RemoteAddr(), common.ToHex(p.nodeId[:8]))
+	copy(p.nodeID[:], buf[4:])
+	log.Infof("client: connect to peer: %s. id: %s", p.rw.fd.RemoteAddr(), common.ToHex(p.nodeID[:8]))
 	return nil
 }
 
@@ -121,25 +121,27 @@ func (p *Peer) run() (err error) {
 	go p.readLoop(readErr)
 	go p.heartbeatLoop()
 
-loop:
-	for {
-		select {
-		case err = <-readErr:
-			log.Infof("read error: %v", err)
-			break loop
-		case <-p.closeCh:
-			break loop
-		}
+	select {
+	case err = <-readErr:
+		log.Infof("read error: %v", err)
+		break
+	case <-p.closeCh:
+		break
 	}
 
 	p.rw.fd.Close()
+	p.Close()
 	p.wg.Wait()
+	log.Debug("peer.run finished")
 	return err
 }
 
 // 节点读取循环
 func (p *Peer) readLoop(errCh chan<- error) {
-	defer p.wg.Done()
+	defer func() {
+		p.wg.Done()
+		log.Debug("peer.readLoop finished.")
+	}()
 	for {
 		// 读取数据
 		msg, err := p.readMsg()
@@ -154,7 +156,7 @@ func (p *Peer) readLoop(errCh chan<- error) {
 			continue
 		}
 		// 处理数据
-		// log.Debugf("receive message from: %s, msg: %v", common.ToHex(p.nodeId[:8]), msg)
+		// log.Debugf("receive message from: %s, msg: %v", common.ToHex(p.nodeID[:8]), msg)
 		p.newMsgCh <- msg
 	}
 }
@@ -173,6 +175,7 @@ func (p *Peer) heartbeatLoop() {
 	defer func() {
 		heartbeatTimer.Stop()
 		p.wg.Done()
+		log.Debug("peer.heartbeatLoop finished.")
 	}()
 
 	for {
@@ -199,7 +202,7 @@ func (p *Peer) readMsg() (msg Msg, err error) {
 		return msg, err
 	}
 	if binary.BigEndian.Uint32(headBuf[:4]) != uint32(baseFrameVersion) {
-		str := fmt.Sprintf("remote node's frame version not match. nodeid:%s", common.ToHex(p.nodeId[:]))
+		str := fmt.Sprintf("remote node's frame version not match. nodeid:%s", common.ToHex(p.nodeID[:]))
 		err = errors.New(str)
 		log.Warn(str)
 		return msg, err
@@ -267,5 +270,5 @@ func (p *Peer) sealFrameHead(code, size uint32) []byte {
 
 // 获取Peer ID
 func (p *Peer) NodeID() NodeID {
-	return p.nodeId
+	return p.nodeID
 }
