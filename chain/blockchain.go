@@ -396,7 +396,7 @@ func (bc *BlockChain) ReceiveConfirm(info *protocol.BlockConfirmData) (err error
 		log.Errorf("can't SetConfirmInfo. hash:%s", info.Hash.Hex())
 		return err
 	}
-	log.Debugf("Receive confirm info. height: %d. hash: %s", info.Height, info.Hash.String())
+	// log.Debugf("Receive confirm info. height: %d. hash: %s", info.Height, info.Hash.String())
 
 	confirmCount, err := bc.getConfirmCount(info.Hash)
 	if err != nil {

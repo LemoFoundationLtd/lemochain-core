@@ -135,6 +135,7 @@ func (f *Fetcher) run() {
 				op := f.queue.PopItem().(*newBlock)
 				if op.block.Height() > height+1 {
 					f.queue.Push(op, -float32(op.block.Height()))
+					f.lock.Unlock()
 					break
 				}
 				// 判断是否为分叉 且分叉的父块没有收到
@@ -227,11 +228,14 @@ func (f *Fetcher) run() {
 			}
 		case op := <-f.newBlockCh:
 			if op.origin == "" {
+				log.Warn("receive block but can't identify node id")
 				continue
 			}
 			if f.getLocalBlock(op.block.Hash(), op.block.Height()) != nil {
+				log.Debug("block is already in local chain")
 				continue
 			}
+			log.Debugf("start enqueue block to queue. height: %d", op.block.Height())
 			go f.enqueue(op)
 		}
 	}
