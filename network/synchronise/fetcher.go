@@ -291,16 +291,16 @@ func (f *Fetcher) Enqueue(peer string, block *types.Block, fetchBlock blockReque
 		block:  block,
 	}
 
-	// if parent block not exist, fetch it
-	if f.getLocalBlock(block.ParentHash(), block.Height()-1) == nil && f.fetching[block.Hash()] == nil {
+	// if parent block not exist, fetch parent block
+	if f.getLocalBlock(block.ParentHash(), block.Height()-1) == nil && f.fetching[block.ParentHash()] == nil {
 		announce := &announce{
-			hash:       block.Hash(),
-			height:     block.Height(),
+			hash:       block.ParentHash(),
+			height:     block.Height() - 1,
 			time:       time.Now(),
 			origin:     peer,
 			fetchBlock: fetchBlock,
 		}
-		f.fetching[block.Hash()] = announce
+		f.fetching[block.ParentHash()] = announce
 	}
 	// 防止newBlockCh已有数据还没处理导致的长时间休眠态突然退出问题
 	select {
@@ -350,6 +350,7 @@ func (f *Fetcher) enqueue(newBlock *newBlock) {
 	hash := newBlock.block.Hash()
 	if f.queueMp[peer] >= blockLimit {
 		f.forgetHash(hash)
+		log.Debug("fetcher's queue map is full")
 		return
 	}
 	// 新收到的块高度过大 丢掉
