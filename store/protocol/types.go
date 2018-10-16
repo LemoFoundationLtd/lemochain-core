@@ -14,6 +14,7 @@ type ChainDB interface {
 	GetBlock(hash common.Hash, height uint32) (*types.Block, error)
 	GetBlockByHeight(height uint32) (*types.Block, error)
 	GetBlockByHash(hash common.Hash) (*types.Block, error)
+	IsExistByHash(hash common.Hash) (bool, error)
 
 	// 设置区块的确认信息 每次收到一个
 	SetConfirmInfo(hash common.Hash, signData types.SignData) error

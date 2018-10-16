@@ -320,6 +320,40 @@ func (chain *CacheChain) GetBlockByHash(hash common.Hash) (*types.Block, error) 
 	return chain.getBlock(hash)
 }
 
+func (chain *CacheChain) IsExistByHash(hash common.Hash) (bool, error) {
+	if (hash == common.Hash{}) {
+		return false, nil
+	}
+
+	block := chain.Blocks[hash]
+	if block != nil {
+		return true, nil
+	}
+
+	val, err := chain.LmDataBase.Get(hash.Bytes())
+	if err == ErrNotExist {
+		return false, nil
+	}
+
+	if err != nil {
+		return false, err
+	}
+
+	var sb sBlock
+	err = rlp.DecodeBytes(val, &sb)
+	if err != nil {
+		return false, err
+	} else {
+		block, err := sBtoB(&sb)
+		if err != nil {
+			return false, err
+		} else {
+			chain.Blocks[hash] = block
+			return true, nil
+		}
+	}
+}
+
 // 设置区块的确认信息 每次收到一个
 func (chain *CacheChain) SetConfirmInfo(hash common.Hash, signData types.SignData) error {
 	block := chain.Blocks[hash]
