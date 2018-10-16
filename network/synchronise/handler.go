@@ -434,6 +434,9 @@ func (pm *ProtocolManager) minedBroadcastLoop() {
 					go p.peer.send(protocol.NewBlockMsg, &block)
 				}
 			}
+			time.AfterFunc(1*time.Second, func() {
+				go pm.broadcastConfirmInfo(block.Hash(), block.Height())
+			})
 		case <-pm.quitSync:
 			return
 		}

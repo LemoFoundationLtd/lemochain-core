@@ -224,7 +224,7 @@ func (bc *BlockChain) InsertChain(block *types.Block) (err error) {
 		log.Error(fmt.Sprintf("can't insert block to cache. height:%d hash:%s", block.Height(), hash.Hex()))
 		return err
 	}
-	log.Infof("insert block to chain. height: %d", block.Height())
+	log.Infof("insert block to chain. height: %d. hash: %s", block.Height(), block.Hash().String())
 	err = bc.AccountManager().Save(hash)
 	if err != nil {
 		log.Error("save account error!", "height", block.Height(), "hash", hash.Hex(), "err", err)
@@ -244,7 +244,6 @@ func (bc *BlockChain) InsertChain(block *types.Block) (err error) {
 	}
 
 	bc.chainForksLock.Lock()
-	// needFork := false
 	defer func() {
 		bc.chainForksLock.Unlock()
 		// log.Debugf("Insert block to db success. height:%d", block.Height())
@@ -275,7 +274,6 @@ func (bc *BlockChain) InsertChain(block *types.Block) (err error) {
 		log.Infof("chain forked! current block: height(%d), hash(%s)", block.Height(), block.Hash().Hex())
 	} else if curHeight == block.Height() { // two block with same height, priority of lower alphabet order
 		if hash.Big().Cmp(curHash.Big()) < 0 {
-			// needFork = true
 			bc.currentBlock.Store(block)
 			delete(bc.chainForksHead, parHash)
 			log.Infof("chain forked! current block: height(%d), hash(%s)", block.Height(), block.Hash().Hex())
