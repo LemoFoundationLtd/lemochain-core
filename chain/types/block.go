@@ -47,7 +47,7 @@ func (sd SignData) MarshalText() ([]byte, error) {
 type Block struct {
 	Header         *Header
 	Txs            []*Transaction
-	ChangeLog      []*ChangeLog
+	ChangeLogs     []*ChangeLog
 	Events         []*Event
 	ConfirmPackage []SignData
 }
@@ -56,7 +56,7 @@ func NewBlock(header *Header, txs []*Transaction, changeLog []*ChangeLog, events
 	return &Block{
 		Header:         header,
 		Txs:            txs,
-		ChangeLog:      changeLog,
+		ChangeLogs:     changeLog,
 		Events:         events,
 		ConfirmPackage: confirmPackage,
 	}
@@ -117,11 +117,11 @@ func (b *Block) SignData() []byte         { return b.Header.SignData }
 func (b *Block) Extra() []byte            { return b.Header.Extra }
 
 // func (b *Block) Txs() []*Transaction               { return b.Txs }
-// func (b *Block) ChangeLog() []*ChangeLog           { return b.ChangeLog }
+// func (b *Block) ChangeLogs() []*ChangeLog          { return b.ChangeLogs }
 // func (b *Block) Events() []*Event                  { return b.Events }
 // func (b *Block) ConfirmPackage() []SignData        { return b.ConfirmPackage }
 func (b *Block) SetHeader(header *Header)          { b.Header = header }
 func (b *Block) SetTxs(txs []*Transaction)         { b.Txs = txs }
 func (b *Block) SetConfirmPackage(pack []SignData) { b.ConfirmPackage = pack }
-func (b *Block) SetChangeLog(log []*ChangeLog)     { b.ChangeLog = log }
+func (b *Block) SetChangeLogs(logs []*ChangeLog)   { b.ChangeLogs = logs }
 func (b *Block) SetEvents(events []*Event)         { b.Events = events }

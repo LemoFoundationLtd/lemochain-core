@@ -33,7 +33,7 @@ func btoSb(block *types.Block) (*sBlock, error) {
 	return &sBlock{
 		Header:     block.Header,
 		Txs:        block.Txs,
-		ChangeLogs: block.ChangeLog,
+		ChangeLogs: block.ChangeLogs,
 		Events:     block.Events,
 		Confirms:   block.ConfirmPackage,
 	}, nil
@@ -47,7 +47,7 @@ func sBtoB(sb *sBlock) (*types.Block, error) {
 	block := &types.Block{}
 	block.SetHeader(sb.Header)
 	block.SetTxs(sb.Txs)
-	block.SetChangeLog(sb.ChangeLogs)
+	block.SetChangeLogs(sb.ChangeLogs)
 	block.SetEvents(sb.Events)
 	block.SetConfirmPackage(sb.Confirms)
 

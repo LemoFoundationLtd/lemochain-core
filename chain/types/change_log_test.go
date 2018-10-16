@@ -185,6 +185,7 @@ func TestChangeLog_EncodeRLP_DecodeRLP(t *testing.T) {
 			} else if decodeResult.String() != test.decoded {
 				t.Errorf("test %d. want decoded: %s, got: %s", i, test.decoded, decodeResult.String())
 			}
+			fmt.Println(decodeResult)
 		}
 	}
 	// TODO build some rlp codes to test the decode error

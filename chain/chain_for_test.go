@@ -241,8 +241,8 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 	}
 	// block
 	block := &types.Block{
-		Txs:       info.txList,
-		ChangeLog: changeLogs,
+		Txs:        info.txList,
+		ChangeLogs: changeLogs,
 	}
 	block.SetHeader(header)
 	if save {

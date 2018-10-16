@@ -219,7 +219,7 @@ func (bc *BlockChain) InsertChain(block *types.Block) (err error) {
 	}
 	// save
 	block.SetEvents(bc.AccountManager().GetEvents())
-	block.SetChangeLog(bc.AccountManager().GetChangeLogs())
+	block.SetChangeLogs(bc.AccountManager().GetChangeLogs())
 	if err = bc.dbOpe.SetBlock(hash, block); err != nil { // 放入缓存中
 		log.Error(fmt.Sprintf("can't insert block to cache. height:%d hash:%s", block.Height(), hash.Hex()))
 		return err
