@@ -142,8 +142,8 @@ func (pm *ProtocolManager) broadcastConfirmInfo(hash common.Hash, height uint32)
 		Hash:   hash,
 		Height: height,
 	}
-	privKey := deputynode.GetSelfNodeKey()
-	signInfo, err := crypto.Sign(hash[:], privKey)
+	privateKey := deputynode.GetSelfNodeKey()
+	signInfo, err := crypto.Sign(hash[:], privateKey)
 	if err != nil {
 		log.Error("sign for confirm data error")
 		return
