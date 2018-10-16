@@ -114,7 +114,7 @@ func (a *SafeAccount) IsDirty() bool {
 	return false
 }
 
-func (a *SafeAccount) appendTx(hash common.Hash) {
+func (a *SafeAccount) AppendTx(hash common.Hash) {
 	for _, exist := range a.rawAccount.data.TxHashList {
 		if exist == hash {
 			return

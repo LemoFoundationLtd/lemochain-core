@@ -59,7 +59,7 @@ func TestTxProcessor_Process(t *testing.T) {
 	assert.Equal(t, block.Hash(), newHeader.Hash())
 	sender = p.am.GetAccount(testAddr)
 	assert.Equal(t, 5, len(sender.GetTxHashList()))
-	assert.Equal(t, block.Txs[0].Hash(), sender.GetTxHashList()[4])
+	assert.Equal(t, block.Txs[0].Hash(), sender.GetTxHashList()[3])
 
 	// genesis block
 	block = defaultBlocks[0]

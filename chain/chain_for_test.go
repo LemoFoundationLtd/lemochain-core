@@ -42,22 +42,22 @@ var (
 	defaultBlockInfos = []blockInfo{
 		// genesis block must no transactions
 		{
-			hash:        common.HexToHash("0x16019ad7c4d4ecf5163906339048ac73a7aa7131b1154fefeb865c0d523d23f5"),
+			hash:        common.HexToHash("0x5e4422f96fe47b4463d98de8e22d40cd7b9cfc0e2df931c7c0e0a9e0cadaf309"),
 			height:      0,
 			author:      defaultAccounts[0],
-			versionRoot: common.HexToHash("0xaa4c649637a466c2879495969aac0403716ad1e8b62a9865bead851d99c6f895"),
+			versionRoot: common.HexToHash("0x6eea9449a171035539c71d2895830afc061d0777da6e86735d9899c888d953c1"),
 			txRoot:      common.HexToHash("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"), // empty merkle
-			logsRoot:    common.HexToHash("0x189fc4c478582b56997a1808456a32285672109334e9f03654d3e4f181eb83a2"),
+			logsRoot:    common.HexToHash("0xb0d3749ecc3a7a0db6368284320863a3d2fa963b2c33b41c6ebf8632cd84bda9"),
 			time:        big.NewInt(1538209751),
 		},
 		// block 1 is stable block
 		{
-			hash:        common.HexToHash("0xd67857de0f447554c94712d9c0016a8d9e4974d6c3b14b9b062226637d968449"),
+			hash:        common.HexToHash("0x8d3423e2e4869ea521c03b9cb45873a6e731ea6dce68baeb89482606d8140286"),
 			height:      1,
 			author:      common.HexToAddress("0x20000"),
-			versionRoot: common.HexToHash("0xc4fa99a20b2db7026f80366e34213861457e240bf0411d57f7a22cbf5b7f2346"),
+			versionRoot: common.HexToHash("0xfa470f96f703f04ba85d39bf7f64aa43e8b352e541fe36ea9f053336dfd1b22a"),
 			txRoot:      common.HexToHash("0xf044cc436950ef7470aca61053eb3f1ed46b9dcd501a5210f3673dc657c4fc88"),
-			logsRoot:    common.HexToHash("0xc287a6c955f3d6d4d240413a585f48009106a6ff5886b194cb506e87323786d7"),
+			logsRoot:    common.HexToHash("0xb6062a94cf5ce70ec3910072da83eca56ba584aba8273e4d0837eb03c090e473"),
 			txList: []*types.Transaction{
 				// testAddr -> defaultAccounts[0] 1
 				signTransaction(types.NewTransaction(defaultAccounts[0], common.Big1, 2000000, common.Big2, []byte{12}, chainID, big.NewInt(1538210391), "aa", []byte{34}), testPrivate),
@@ -69,12 +69,12 @@ var (
 		},
 		// block 2 is not stable block
 		{
-			hash:        common.HexToHash("0x5afb6907e01a243325ce7c6e56e463f777080f6e5277ba2ec83928329c8dce61"),
+			hash:        common.HexToHash("0x2cf427ebeee479645a4c31a6003c4c98c753324a4967911a201d77f1e23fa922"),
 			height:      2,
 			author:      defaultAccounts[0],
-			versionRoot: common.HexToHash("0xb169fb0304ad3c989589b044afbfe6257d125222e5023004e418b4bdb5f154f9"),
+			versionRoot: common.HexToHash("0x407e1d64578f852d97ab3b5a655ece80ca1422ef68ba0145756f35a4b7fb141b"),
 			txRoot:      common.HexToHash("0x2501f471d13f0383a9a09ef7776dc94c6ccdc19ebd36127ac8a39cfef85dc412"),
-			logsRoot:    common.HexToHash("0x6c24ab2c37e6bdd12c276361ba7aa1300ab389b4861ca364e1fdd480197803da"),
+			logsRoot:    common.HexToHash("0x40ab1668ecddd288ded6cec4135dadb071beee4e2826640e96c416894aaa6469"),
 			txList: []*types.Transaction{
 				// testAddr -> defaultAccounts[0] 2
 				makeTransaction(testPrivate, defaultAccounts[0], bigNumber, common.Big2, big.NewInt(1538210395), 2000000),
@@ -84,12 +84,12 @@ var (
 		},
 		// block 3 is not store in db
 		{
-			hash:        common.HexToHash("0x1889ca33d2ea9bfe68b171258e19f3034e9518c47d15b1d484797458e96cfb96"),
+			hash:        common.HexToHash("0x44969192526ebbe6a63796dee0514706ce723b6e4b14f0b3d6b99526d1efe2a4"),
 			height:      3,
 			author:      defaultAccounts[0],
-			versionRoot: common.HexToHash("0xfe833c7d3aa89fc1031198374e6eda37425de579e02430e46cc2273ee7f94162"),
+			versionRoot: common.HexToHash("0x26a8540cd0e07e18d08ad484cfb44b0fd40dc5f197678897fc80076dbfa942b4"),
 			txRoot:      common.HexToHash("0x883e9542653e2ad8bae93fa5567d8f5833543057af94ea0ed59c97a7034acac8"),
-			logsRoot:    common.HexToHash("0xeff8eb5827967fe372182d8173b8be788c8367e7c04823c09bf49d40bf070982"),
+			logsRoot:    common.HexToHash("0xa92582c4c7627d130a38c94e568b8c671817fe742930636c7b0190b7f7344064"),
 			txList: []*types.Transaction{
 				// testAddr -> defaultAccounts[0] 2
 				makeTransaction(testPrivate, defaultAccounts[0], common.Big2, common.Big2, big.NewInt(1538210398), 30000),
@@ -185,9 +185,13 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 		}
 		gasUsed += gas
 		salary.Add(salary, fee)
+		from.(*account.SafeAccount).AppendTx(tx.Hash())
+		to.(*account.SafeAccount).AppendTx(tx.Hash())
 	}
-	miner := manager.GetAccount(info.author)
-	miner.SetBalance(new(big.Int).Add(miner.GetBalance(), salary))
+	if salary.Cmp(new(big.Int)) != 0 {
+		miner := manager.GetAccount(info.author)
+		miner.SetBalance(new(big.Int).Add(miner.GetBalance(), salary))
+	}
 	err = manager.Finalise()
 	if err != nil {
 		panic(err)

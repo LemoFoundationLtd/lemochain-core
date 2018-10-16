@@ -328,6 +328,8 @@ func TestManager_Save_Reset(t *testing.T) {
 	account := manager.GetAccount(common.HexToAddress("0x1"))
 	account.SetBalance(big.NewInt(1))
 	assert.Equal(t, uint32(1), account.GetVersion(BalanceLog))
+	account.(*SafeAccount).AppendTx(th(12))
+	assert.Equal(t, 1, len(account.GetTxHashList()))
 	err := manager.Finalise()
 	assert.NoError(t, err)
 	block := &types.Block{}
@@ -343,8 +345,6 @@ func TestManager_Save_Reset(t *testing.T) {
 	account = manager.GetAccount(common.HexToAddress("0x1"))
 	account.SetBalance(big.NewInt(2))
 	assert.Equal(t, uint32(2), account.GetVersion(BalanceLog))
-	account.(*SafeAccount).appendTx(th(12))
-	assert.Equal(t, 1, len(account.GetTxHashList()))
 	err = manager.Finalise()
 	assert.NoError(t, err)
 	block = &types.Block{}

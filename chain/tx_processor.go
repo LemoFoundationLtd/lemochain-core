@@ -259,14 +259,13 @@ func (p *TxProcessor) FillHeader(header *types.Header, txs types.Transactions, g
 	// Pay miners at the end of their tenure. This method increases miners' balance.
 	p.chain.engine.Finalize(header)
 	// Update version trie, storage trie.
-	err := p.chain.AccountManager().Finalise()
+	err := p.am.Finalise()
 	if err != nil {
 		// Access trie node fail.
 		return nil, err
 	}
-	verRoot := p.chain.AccountManager().GetVersionRoot()
-	header.VersionRoot = verRoot
-	changeLogs := p.chain.AccountManager().GetChangeLogs()
+	header.VersionRoot = p.am.GetVersionRoot()
+	changeLogs := p.am.GetChangeLogs()
 	header.LogsRoot = types.DeriveChangeLogsSha(changeLogs)
 	return header, nil
 }

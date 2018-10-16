@@ -1,7 +1,6 @@
 package types
 
 import (
-	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"github.com/stretchr/testify/assert"
@@ -24,7 +23,6 @@ func TestAccountData_EncodeRLP_DecodeRLP(t *testing.T) {
 	data, err := rlp.EncodeToBytes(account)
 	assert.NoError(t, err)
 
-	fmt.Println(common.Bytes2Hex(data))
 	// decode correct data
 	decoded := new(AccountData)
 	err = rlp.DecodeBytes(data, decoded)

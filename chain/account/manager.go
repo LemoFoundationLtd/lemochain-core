@@ -253,9 +253,9 @@ func (am *Manager) Save(newBlockHash common.Hash) error {
 
 func (am *Manager) SaveTxInAccount(fromAddr, toAddr common.Address, txHash common.Hash) {
 	from := am.GetAccount(fromAddr).(*SafeAccount)
-	from.appendTx(txHash)
+	from.AppendTx(txHash)
 	to := am.GetAccount(toAddr).(*SafeAccount)
-	to.appendTx(txHash)
+	to.AppendTx(txHash)
 }
 
 type revision struct {
