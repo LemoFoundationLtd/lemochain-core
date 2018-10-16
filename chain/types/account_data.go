@@ -89,6 +89,12 @@ func (a *AccountData) Copy() *AccountData {
 			cpy.NewestRecords[logType] = record
 		}
 	}
+	if len(a.TxHashList) > 0 {
+		cpy.TxHashList = make([]common.Hash, 0, len(a.TxHashList))
+		for _, hash := range a.TxHashList {
+			cpy.TxHashList = append(cpy.TxHashList, hash)
+		}
+	}
 	return &cpy
 }
 
@@ -113,6 +119,7 @@ type AccountAccessor interface {
 	GetStorageState(key common.Hash) ([]byte, error)
 	SetStorageState(key common.Hash, value []byte) error
 	GetBaseHeight() uint32
+	GetTxHashList() []common.Hash
 	IsEmpty() bool
 	GetSuicide() bool
 	SetSuicide(suicided bool)

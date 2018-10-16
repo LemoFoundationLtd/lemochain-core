@@ -343,6 +343,8 @@ func TestManager_Save_Reset(t *testing.T) {
 	account = manager.GetAccount(common.HexToAddress("0x1"))
 	account.SetBalance(big.NewInt(2))
 	assert.Equal(t, uint32(2), account.GetVersion(BalanceLog))
+	account.(*SafeAccount).appendTx(th(12))
+	assert.Equal(t, 1, len(account.GetTxHashList()))
 	err = manager.Finalise()
 	assert.NoError(t, err)
 	block = &types.Block{}
@@ -357,6 +359,8 @@ func TestManager_Save_Reset(t *testing.T) {
 	account = manager.GetAccount(common.HexToAddress("0x1"))
 	assert.Equal(t, big.NewInt(1), account.GetBalance())
 	assert.Equal(t, uint32(1), account.GetVersion(BalanceLog))
+	assert.Equal(t, 1, len(account.GetTxHashList()))
+	assert.Equal(t, th(12), account.GetTxHashList()[0])
 }
 
 func TestManager_MergeChangeLogs(t *testing.T) {
@@ -403,4 +407,21 @@ func TestManager_MergeChangeLogs(t *testing.T) {
 	assert.PanicsWithValue(t, ErrSnapshotIsBroken, func() {
 		manager.MergeChangeLogs(0)
 	})
+}
+
+func TestManager_SaveTxInAccount(t *testing.T) {
+	manager := NewManager(common.Hash{}, newDB())
+
+	account1 := manager.GetAccount(defaultAccounts[0].Address)
+	account2 := manager.GetAccount(common.HexToAddress("0x1"))
+	assert.Equal(t, 0, len(account1.GetTxHashList()))
+	assert.Equal(t, 0, len(account2.GetTxHashList()))
+	manager.SaveTxInAccount(account1.GetAddress(), account2.GetAddress(), common.HexToHash("0x111"))
+	assert.Equal(t, 1, len(account1.GetTxHashList()))
+	assert.Equal(t, common.HexToHash("0x111"), account1.GetTxHashList()[0])
+	assert.Equal(t, 1, len(account2.GetTxHashList()))
+
+	// from is to
+	manager.SaveTxInAccount(account1.GetAddress(), account1.GetAddress(), common.HexToHash("0x222"))
+	assert.Equal(t, 2, len(account1.GetTxHashList()))
 }

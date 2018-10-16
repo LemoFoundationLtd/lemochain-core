@@ -251,6 +251,13 @@ func (am *Manager) Save(newBlockHash common.Hash) error {
 	return nil
 }
 
+func (am *Manager) SaveTxInAccount(fromAddr, toAddr common.Address, txHash common.Hash) {
+	from := am.GetAccount(fromAddr).(*SafeAccount)
+	from.appendTx(txHash)
+	to := am.GetAccount(toAddr).(*SafeAccount)
+	to.appendTx(txHash)
+}
+
 type revision struct {
 	id           int
 	journalIndex int

@@ -129,6 +129,7 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 		// about the transaction and calling mechanisms.
 		vmEnv            = vm.NewEVM(context, p.am, *p.cfg)
 		sender           = p.am.GetAccount(senderAddr)
+		recipientAddr    = *tx.To()
 		contractCreation = tx.To() == nil
 		restGas          = tx.GasLimit()
 		mergeFrom        = len(p.am.GetChangeLogs())
@@ -146,7 +147,7 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 	// except for insufficient balance error.
 	var vmErr error
 	if contractCreation {
-		_, _, restGas, vmErr = vmEnv.Create(sender, tx.Data(), restGas, tx.Value())
+		_, recipientAddr, restGas, vmErr = vmEnv.Create(sender, tx.Data(), restGas, tx.Value())
 	} else {
 		_, restGas, vmErr = vmEnv.Call(sender, *tx.To(), tx.Data(), restGas, tx.Value())
 	}
@@ -160,6 +161,7 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 		}
 	}
 	p.refundGas(gp, tx, restGas)
+	p.am.SaveTxInAccount(senderAddr, recipientAddr, tx.Hash())
 	// Merge change logs by transaction will save more transaction execution detail than by block
 	p.am.MergeChangeLogs(mergeFrom)
 	mergeFrom = len(p.am.GetChangeLogs())

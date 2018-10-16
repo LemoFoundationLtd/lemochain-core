@@ -11,6 +11,7 @@ type SafeAccount struct {
 	rawAccount   *Account
 	processor    *logProcessor
 	origVersions map[types.ChangeLogType]uint32 // the versions in Account from beginning
+	origTxCount  int
 }
 
 // NewSafeAccount creates an account object.
@@ -23,6 +24,7 @@ func NewSafeAccount(processor *logProcessor, account *Account) *SafeAccount {
 		rawAccount:   account,
 		processor:    processor,
 		origVersions: origVersions,
+		origTxCount:  len(account.GetTxHashList()),
 	}
 }
 
@@ -55,7 +57,8 @@ func (a *SafeAccount) GetStorageRoot() common.Hash  { return a.rawAccount.GetSto
 func (a *SafeAccount) GetStorageState(key common.Hash) ([]byte, error) {
 	return a.rawAccount.GetStorageState(key)
 }
-func (a *SafeAccount) GetBaseHeight() uint32 { return a.rawAccount.baseHeight }
+func (a *SafeAccount) GetBaseHeight() uint32        { return a.rawAccount.baseHeight }
+func (a *SafeAccount) GetTxHashList() []common.Hash { return a.rawAccount.GetTxHashList() }
 
 // overwrite Account.SetXXX. Access Account with changelog
 func (a *SafeAccount) SetBalance(balance *big.Int) {
@@ -96,6 +99,9 @@ func (a *SafeAccount) SetStorageState(key common.Hash, value []byte) error {
 }
 
 func (a *SafeAccount) IsDirty() bool {
+	if a.origTxCount != len(a.GetTxHashList()) {
+		return true
+	}
 	// the version in a.rawAccount has been changed in NewXXXLog()
 	if len(a.origVersions) != len(a.rawAccount.data.NewestRecords) {
 		return true
@@ -106,4 +112,13 @@ func (a *SafeAccount) IsDirty() bool {
 		}
 	}
 	return false
+}
+
+func (a *SafeAccount) appendTx(hash common.Hash) {
+	for _, exist := range a.rawAccount.data.TxHashList {
+		if exist == hash {
+			return
+		}
+	}
+	a.rawAccount.data.TxHashList = append(a.rawAccount.data.TxHashList, hash)
 }

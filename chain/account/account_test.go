@@ -17,7 +17,7 @@ func TestAccount_Interface(t *testing.T) {
 func loadAccount(address common.Address) *Account {
 	db := newDB()
 	data, _ := db.GetAccount(newestBlock.Hash(), address)
-	return NewAccount(db, address, data, 10)
+	return NewAccount(db, address, data, 2)
 }
 
 func TestAccount_GetAddress(t *testing.T) {
@@ -47,9 +47,11 @@ func TestAccount_SetBalance_GetBalance(t *testing.T) {
 func TestAccount_SetVersion_GetVersion(t *testing.T) {
 	account := loadAccount(defaultAccounts[0].Address)
 	assert.Equal(t, uint32(100), account.GetVersion(BalanceLog))
+	assert.Equal(t, defaultAccounts[0].NewestRecords[BalanceLog].Height, account.data.NewestRecords[BalanceLog].Height)
 
 	account.SetVersion(BalanceLog, 200)
 	assert.Equal(t, uint32(200), account.GetVersion(BalanceLog))
+	assert.Equal(t, uint32(3), account.data.NewestRecords[BalanceLog].Height)
 }
 
 func TestAccount_SetSuicide_GetSuicide(t *testing.T) {
@@ -107,6 +109,13 @@ func TestAccount_SetCode_GetCode(t *testing.T) {
 	assert.Empty(t, readCode)
 	assert.Equal(t, sha3Nil, account.GetCodeHash())
 	assert.Equal(t, false, account.codeIsDirty)
+}
+
+func TestAccount_GetBaseHeight_GetTxHashList(t *testing.T) {
+	account := loadAccount(defaultAccounts[0].Address)
+	assert.Equal(t, uint32(2), account.GetBaseHeight())
+	assert.Equal(t, 2, len(account.GetTxHashList()))
+	assert.Equal(t, common.HexToHash("0x11"), account.GetTxHashList()[0])
 }
 
 func TestAccount_SetStorageRoot_GetStorageRoot(t *testing.T) {
@@ -228,7 +237,7 @@ func TestAccount_Finalise_Save(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "0xfb4fbcae2c19f15b34c53b059a4af53d8d793607bd8ca5868eeb9c817c4e5bc7", account.GetStorageRoot().Hex())
 	assert.Equal(t, 3, len(account.data.NewestRecords))
-	assert.Equal(t, uint32(11), account.data.NewestRecords[StorageLog].Height)
+	assert.Equal(t, uint32(3), account.data.NewestRecords[StorageLog].Height)
 	assert.Equal(t, uint32(10), account.data.NewestRecords[StorageLog].Version)
 	assert.Equal(t, 0, len(account.dirtyStorage))
 	// save
