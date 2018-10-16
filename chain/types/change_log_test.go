@@ -35,6 +35,7 @@ func (f *testAccount) SetStorageRoot(root common.Hash)                     { f.A
 func (f *testAccount) GetStorageState(key common.Hash) ([]byte, error)     { return nil, nil }
 func (f *testAccount) SetStorageState(key common.Hash, value []byte) error { return nil }
 func (f *testAccount) GetBaseHeight() uint32                               { return f.baseHeight }
+func (f *testAccount) GetTxHashList() []common.Hash                        { return f.AccountData.TxHashList }
 func (f *testAccount) IsEmpty() bool {
 	for _, record := range f.AccountData.NewestRecords {
 		if record.Version != 0 {

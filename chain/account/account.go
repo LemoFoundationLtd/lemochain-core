@@ -97,7 +97,7 @@ func (a *Account) UnmarshalJSON(input []byte) error {
 	if err := dec.UnmarshalJSON(input); err != nil {
 		return err
 	}
-	// TODO a.db is nil
+	// TODO a.db and a.baseHeight are nil
 	*a = *NewAccount(a.db, dec.Address, &dec, a.baseHeight)
 	return nil
 }
@@ -108,9 +108,10 @@ func (a *Account) GetBalance() *big.Int       { return a.data.Balance }
 func (a *Account) GetVersion(logType types.ChangeLogType) uint32 {
 	return a.data.NewestRecords[logType].Version
 }
-func (a *Account) GetSuicide() bool         { return a.suicided }
-func (a *Account) GetCodeHash() common.Hash { return a.data.CodeHash }
-func (a *Account) GetBaseHeight() uint32    { return a.baseHeight }
+func (a *Account) GetSuicide() bool             { return a.suicided }
+func (a *Account) GetCodeHash() common.Hash     { return a.data.CodeHash }
+func (a *Account) GetBaseHeight() uint32        { return a.baseHeight }
+func (a *Account) GetTxHashList() []common.Hash { return a.data.TxHashList }
 
 // StorageRoot wouldn't change until Account.updateTrie() is called
 func (a *Account) GetStorageRoot() common.Hash { return a.data.StorageRoot }
