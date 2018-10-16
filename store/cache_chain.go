@@ -3,6 +3,7 @@ package store
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
@@ -221,6 +222,7 @@ func (chain *CacheChain) mergeSign(src []types.SignData, dst []types.SignData) [
 
 func (chain *CacheChain) getBlock(hash common.Hash) (*types.Block, error) {
 	if (hash == common.Hash{}) {
+		fmt.Println("[store]GET BLOCK FROM CACHE ERROR.", fmt.Sprintf("[%s]", hash.Hex()))
 		return nil, ErrNotExist
 	}
 
@@ -231,15 +233,18 @@ func (chain *CacheChain) getBlock(hash common.Hash) (*types.Block, error) {
 
 	val, err := chain.LmDataBase.Get(hash.Bytes())
 	if err != nil {
+		fmt.Println("[store]GET BLOCK FROM CACHE ERROR.HASH：", fmt.Sprintf("[%s][%s]", hash.Hex(), err.Error()))
 		return nil, err
 	} else {
 		var sb sBlock
 		err = rlp.DecodeBytes(val, &sb)
 		if err != nil {
+			fmt.Println("[store]GET BLOCK FROM CACHE ERROR.HASH：", fmt.Sprintf("[%s][%s]", hash.Hex(), err.Error()))
 			return nil, err
 		} else {
 			block, err := sBtoB(&sb)
 			if err != nil {
+				fmt.Println("[store]GET BLOCK FROM CACHE ERROR.HASH：", fmt.Sprintf("[%s][%s]", hash.Hex(), err.Error()))
 				return nil, err
 			} else {
 				chain.Blocks[hash] = block
@@ -262,6 +267,7 @@ func (chain *CacheChain) SetBlock(hash common.Hash, block *types.Block) error {
 
 	parent := header.ParentHash
 	if (parent == common.Hash{}) {
+		fmt.Println("[store]INSERT BLOCK TO CACHE.HASH：", fmt.Sprintf("[%s]", hash.Hex()))
 		chain.Blocks[hash] = block
 	} else {
 		_, err = chain.getBlock(parent)
@@ -269,6 +275,7 @@ func (chain *CacheChain) SetBlock(hash common.Hash, block *types.Block) error {
 			log.Errorf("the block's parent is not exist.")
 			return ErrAncestorsNotExist
 		} else if err != nil {
+			log.Errorf("get block's parent error.%s", err.Error())
 			return err
 		}
 
@@ -276,6 +283,8 @@ func (chain *CacheChain) SetBlock(hash common.Hash, block *types.Block) error {
 		if len(accounts) != 0 {
 			chain.Accounts[hash] = chain.cloneAccounts(accounts)
 		}
+
+		fmt.Println("[store]INSERT BLOCK TO CACHE.HASH：", fmt.Sprintf("[%s]", hash.Hex()))
 		chain.Blocks[hash] = block
 	}
 
