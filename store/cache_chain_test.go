@@ -54,6 +54,29 @@ func TestCacheChain_SetBlock(t *testing.T) {
 	assert.Equal(t, block.ParentHash(), result.ParentHash())
 }
 
+func TestCacheChain_IsExistByHash(t *testing.T) {
+	ClearData()
+
+	cacheChain, err := NewCacheChain(GetStorePath())
+	assert.NoError(t, err)
+
+	isExist, err := cacheChain.IsExistByHash(common.Hash{})
+	assert.NoError(t, err)
+	assert.Equal(t, false, isExist)
+
+	parentBlock := GetBlock0()
+	err = cacheChain.SetBlock(parentBlock.Hash(), parentBlock)
+	assert.NoError(t, err)
+
+	isExist, err = cacheChain.IsExistByHash(parentBlock.Hash())
+	assert.NoError(t, err)
+	assert.Equal(t, true, isExist)
+
+	err = cacheChain.SetStableBlock(parentBlock.Hash())
+	assert.NoError(t, err)
+	assert.Equal(t, true, isExist)
+}
+
 func TestCacheChain_WriteChain1(t *testing.T) {
 	ClearData()
 
