@@ -44,10 +44,11 @@ func (s Storage) Copy() Storage {
 
 // Account is used to read and write account data. the code and dirty storage K/V would be cached till they are flushing to db
 type Account struct {
-	data   *types.AccountData
-	db     protocol.ChainDB    // used to access account data in cache or file
-	trie   *trie.SecureTrie    // contract storage trie
-	trieDb *store.TrieDatabase // used to access tire data in file
+	data       *types.AccountData
+	db         protocol.ChainDB    // used to access account data in cache or file
+	trie       *trie.SecureTrie    // contract storage trie
+	trieDb     *store.TrieDatabase // used to access tire data in file
+	baseHeight uint32              // height of the block which load this account data from
 
 	// trie Trie // storage trie
 	code types.Code // contract byte code
@@ -60,7 +61,7 @@ type Account struct {
 }
 
 // NewAccount wrap an AccountData object, or creates a new one if it's nil.
-func NewAccount(db protocol.ChainDB, address common.Address, data *types.AccountData) *Account {
+func NewAccount(db protocol.ChainDB, address common.Address, data *types.AccountData, baseHeight uint32) *Account {
 	if data == nil {
 		// create new one
 		data = &types.AccountData{Address: address}
@@ -73,14 +74,15 @@ func NewAccount(db protocol.ChainDB, address common.Address, data *types.Account
 	if (data.CodeHash == common.Hash{}) {
 		data.CodeHash = sha3Nil
 	}
-	if data.Versions == nil {
-		data.Versions = make(map[types.ChangeLogType]uint32)
+	if data.NewestRecords == nil {
+		data.NewestRecords = make(map[types.ChangeLogType]types.VersionRecord)
 	}
 	return &Account{
 		data:          data,
 		db:            db,
 		cachedStorage: make(Storage),
 		dirtyStorage:  make(Storage),
+		baseHeight:    baseHeight,
 	}
 }
 
@@ -96,16 +98,19 @@ func (a *Account) UnmarshalJSON(input []byte) error {
 		return err
 	}
 	// TODO a.db is nil
-	*a = *NewAccount(a.db, dec.Address, &dec)
+	*a = *NewAccount(a.db, dec.Address, &dec, a.baseHeight)
 	return nil
 }
 
 // Implement AccountAccessor. Access Account without changelog
-func (a *Account) GetAddress() common.Address                    { return a.data.Address }
-func (a *Account) GetBalance() *big.Int                          { return a.data.Balance }
-func (a *Account) GetVersion(logType types.ChangeLogType) uint32 { return a.data.Versions[logType] }
-func (a *Account) GetSuicide() bool                              { return a.suicided }
-func (a *Account) GetCodeHash() common.Hash                      { return a.data.CodeHash }
+func (a *Account) GetAddress() common.Address { return a.data.Address }
+func (a *Account) GetBalance() *big.Int       { return a.data.Balance }
+func (a *Account) GetVersion(logType types.ChangeLogType) uint32 {
+	return a.data.NewestRecords[logType].Version
+}
+func (a *Account) GetSuicide() bool         { return a.suicided }
+func (a *Account) GetCodeHash() common.Hash { return a.data.CodeHash }
+func (a *Account) GetBaseHeight() uint32    { return a.baseHeight }
 
 // StorageRoot wouldn't change until Account.updateTrie() is called
 func (a *Account) GetStorageRoot() common.Hash { return a.data.StorageRoot }
@@ -118,7 +123,7 @@ func (a *Account) SetBalance(balance *big.Int) {
 	a.data.Balance = balance
 }
 func (a *Account) SetVersion(logType types.ChangeLogType, version uint32) {
-	a.data.Versions[logType] = version
+	a.data.NewestRecords[logType] = types.VersionRecord{Version: version, Height: a.baseHeight + 1}
 }
 func (a *Account) SetSuicide(suicided bool) {
 	if suicided {
@@ -208,8 +213,8 @@ func (a *Account) SetStorageState(key common.Hash, value []byte) error {
 
 // IsEmpty returns whether the state object is either non-existent or empty (version = 0)
 func (a *Account) IsEmpty() bool {
-	for _, v := range a.data.Versions {
-		if v != 0 {
+	for _, record := range a.data.NewestRecords {
+		if record.Version != 0 {
 			return false
 		}
 	}
@@ -258,15 +263,9 @@ func (a *Account) updateTrie() error {
 }
 
 // Finalise finalises the state, clears the change caches and update tries.
-func (a *Account) Finalise(blockHeight uint32) error {
+func (a *Account) Finalise() error {
 	// update storage trie
-	err := a.updateTrie()
-	if err != nil {
-		return err
-	}
-	// save the newest record
-	a.data.UpdateRecords(blockHeight)
-	return nil
+	return a.updateTrie()
 }
 
 // Save writes dirty data into db.

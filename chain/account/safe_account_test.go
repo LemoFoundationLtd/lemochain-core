@@ -16,7 +16,7 @@ func TestSafeAccount_Interface(t *testing.T) {
 func loadSafeAccount(address common.Address) *SafeAccount {
 	db := newDB()
 	data, _ := db.GetAccount(newestBlock.Hash(), address)
-	return NewSafeAccount(NewManager(newestBlock.Hash(), db).processor, NewAccount(db, address, data))
+	return NewSafeAccount(NewManager(newestBlock.Hash(), db).processor, NewAccount(db, address, data, 10))
 }
 
 func TestSafeAccount_SetBalance_IsDirty(t *testing.T) {
@@ -67,7 +67,7 @@ func TestSafeAccount_MarshalJSON_UnmarshalJSON(t *testing.T) {
 	account := loadSafeAccount(defaultAccounts[0].Address)
 	data, err := json.Marshal(account)
 	assert.NoError(t, err)
-	assert.Equal(t, `{"address":"0x0000000000000000000000000000000000010000","balance":"0x64","versions":{"1":100,"3":101},"codeHash":"0x1d5f11eaa13e02cdca886181dc38ab4cb8cf9092e86c000fb42d12c8b504500e","root":"0xcbeb7c7e36b846713bc99b8fa527e8d552e31bfaa1ac0f2b773958cda3aba3ed","NewestRecords":{"1":{"Version":100,"Height":1},"3":{"Version":101,"Height":2}}}`, string(data))
+	assert.Equal(t, `{"address":"0x0000000000000000000000000000000000010000","balance":"0x64","codeHash":"0x1d5f11eaa13e02cdca886181dc38ab4cb8cf9092e86c000fb42d12c8b504500e","root":"0xcbeb7c7e36b846713bc99b8fa527e8d552e31bfaa1ac0f2b773958cda3aba3ed","records":{"1":{"Version":100,"Height":1},"3":{"Version":101,"Height":2}},"TxHashList":["0x0000000000000000000000000000000000000000000000000000000000000011","0x0000000000000000000000000000000000000000000000000000000000000022"]}`, string(data))
 	var parsedAccount *Account
 	err = json.Unmarshal(data, &parsedAccount)
 	assert.NoError(t, err)

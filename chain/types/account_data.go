@@ -1,17 +1,13 @@
 package types
 
 import (
-	"errors"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
-	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"io"
 	"math/big"
 )
-
-var ErrInvalidRecord = errors.New("invalid version records")
 
 type VersionRecord struct {
 	Version uint32
@@ -23,17 +19,24 @@ type VersionRecord struct {
 // AccountData is the Lemochain consensus representation of accounts.
 // These objects are stored in the store.
 type AccountData struct {
-	Address     common.Address           `json:"address" gencodec:"required"`
-	Balance     *big.Int                 `json:"balance" gencodec:"required"`
-	Versions    map[ChangeLogType]uint32 `json:"versions" gencodec:"required"`
-	CodeHash    common.Hash              `json:"codeHash" gencodec:"required"`
-	StorageRoot common.Hash              `json:"root" gencodec:"required"` // MPT root of the storage trie
+	Address     common.Address `json:"address" gencodec:"required"`
+	Balance     *big.Int       `json:"balance" gencodec:"required"`
+	CodeHash    common.Hash    `json:"codeHash" gencodec:"required"`
+	StorageRoot common.Hash    `json:"root" gencodec:"required"` // MPT root of the storage trie
 	// It records the block height which contains any type of newest change log.
-	NewestRecords map[ChangeLogType]VersionRecord
+	NewestRecords map[ChangeLogType]VersionRecord `json:"records" gencodec:"required"`
+	// related transactions include income and outcome
+	TxHashList []common.Hash
 }
 
 type accountDataMarshaling struct {
 	Balance *hexutil.Big
+}
+
+type rlpVersionRecord struct {
+	LogType ChangeLogType
+	Version uint32
+	Height  uint32
 }
 
 type rlpAccountData struct {
@@ -41,32 +44,24 @@ type rlpAccountData struct {
 	Balance     *big.Int
 	CodeHash    common.Hash
 	StorageRoot common.Hash
+	TxHashList  []common.Hash
 
-	LogTypes      []uint32
-	Versions      []uint32
-	RalatedBlocks []uint32
+	NewestRecords []rlpVersionRecord
 }
 
 // EncodeRLP implements rlp.Encoder.
 func (a *AccountData) EncodeRLP(w io.Writer) error {
-	var LogTypes, Versions, RalatedBlocks []uint32
-	if len(a.Versions) != len(a.NewestRecords) {
-		log.Error("unmatched array length for encoding AccountData. UpdateRecords should be called before encode", "Versions", len(a.Versions), "NewestRecords", len(a.NewestRecords))
-		return ErrInvalidRecord
-	}
+	var NewestRecords []rlpVersionRecord
 	for logType, record := range a.NewestRecords {
-		LogTypes = append(LogTypes, uint32(logType))
-		Versions = append(Versions, record.Version)
-		RalatedBlocks = append(RalatedBlocks, record.Height)
+		NewestRecords = append(NewestRecords, rlpVersionRecord{logType, record.Version, record.Height})
 	}
 	return rlp.Encode(w, rlpAccountData{
 		Address:       a.Address,
 		Balance:       a.Balance,
 		CodeHash:      a.CodeHash,
 		StorageRoot:   a.StorageRoot,
-		LogTypes:      LogTypes,
-		Versions:      Versions,
-		RalatedBlocks: RalatedBlocks,
+		TxHashList:    a.TxHashList,
+		NewestRecords: NewestRecords,
 	})
 }
 
@@ -75,17 +70,11 @@ func (a *AccountData) DecodeRLP(s *rlp.Stream) error {
 	var dec rlpAccountData
 	err := s.Decode(&dec)
 	if err == nil {
-		a.Address, a.Balance, a.CodeHash, a.StorageRoot = dec.Address, dec.Balance, dec.CodeHash, dec.StorageRoot
-		if len(dec.LogTypes) != len(dec.Versions) || len(dec.LogTypes) != len(dec.RalatedBlocks) {
-			log.Error("unmatched array length for decoding AccountData", "LogTypes", len(dec.LogTypes), "Versions", len(dec.Versions), "RalatedBlocks", len(dec.RalatedBlocks))
-			return ErrInvalidRecord
-		}
-		a.Versions = make(map[ChangeLogType]uint32)
+		a.Address, a.Balance, a.CodeHash, a.StorageRoot, a.TxHashList = dec.Address, dec.Balance, dec.CodeHash, dec.StorageRoot, dec.TxHashList
 		a.NewestRecords = make(map[ChangeLogType]VersionRecord)
 
-		for i, logType := range dec.LogTypes {
-			a.Versions[ChangeLogType(logType)] = dec.Versions[i]
-			a.NewestRecords[ChangeLogType(logType)] = VersionRecord{Version: dec.Versions[i], Height: dec.RalatedBlocks[i]}
+		for _, record := range dec.NewestRecords {
+			a.NewestRecords[ChangeLogType(record.LogType)] = VersionRecord{Version: record.Version, Height: record.Height}
 		}
 	}
 	return err
@@ -94,12 +83,6 @@ func (a *AccountData) DecodeRLP(s *rlp.Stream) error {
 func (a *AccountData) Copy() *AccountData {
 	cpy := *a
 	cpy.Balance = new(big.Int).Set(a.Balance)
-	if len(a.Versions) > 0 {
-		cpy.Versions = make(map[ChangeLogType]uint32)
-		for logType, version := range a.Versions {
-			cpy.Versions[logType] = version
-		}
-	}
 	if len(a.NewestRecords) > 0 {
 		cpy.NewestRecords = make(map[ChangeLogType]VersionRecord)
 		for logType, record := range a.NewestRecords {
@@ -113,21 +96,6 @@ type Code []byte
 
 func (c Code) String() string {
 	return fmt.Sprintf("%v", []byte(c)) // strings.Join(asm.Disassemble(c), " ")
-}
-
-// UpdateRecords records the newest version's position in block chain
-func (a *AccountData) UpdateRecords(blockHeight uint32) error {
-	// save the newest record
-	if a.NewestRecords == nil {
-		a.NewestRecords = make(map[ChangeLogType]VersionRecord)
-	}
-	for logType, version := range a.Versions {
-		record, ok := a.NewestRecords[logType]
-		if !ok || record.Version != version {
-			a.NewestRecords[logType] = VersionRecord{Height: blockHeight, Version: version}
-		}
-	}
-	return nil
 }
 
 type AccountAccessor interface {
@@ -144,6 +112,7 @@ type AccountAccessor interface {
 	SetStorageRoot(root common.Hash)
 	GetStorageState(key common.Hash) ([]byte, error)
 	SetStorageState(key common.Hash, value []byte) error
+	GetBaseHeight() uint32
 	IsEmpty() bool
 	GetSuicide() bool
 	SetSuicide(suicided bool)

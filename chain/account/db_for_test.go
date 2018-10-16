@@ -48,13 +48,13 @@ var (
 		{
 			Address:     common.HexToAddress("0x10000"),
 			Balance:     big.NewInt(100),
-			Versions:    map[types.ChangeLogType]uint32{BalanceLog: 100, CodeLog: 101},
 			CodeHash:    common.HexToHash("0x1d5f11eaa13e02cdca886181dc38ab4cb8cf9092e86c000fb42d12c8b504500e"),
 			StorageRoot: common.HexToHash("0xcbeb7c7e36b846713bc99b8fa527e8d552e31bfaa1ac0f2b773958cda3aba3ed"),
 			NewestRecords: map[types.ChangeLogType]types.VersionRecord{
 				BalanceLog: {Version: 100, Height: 1},
 				CodeLog:    {Version: 101, Height: 2},
 			},
+			TxHashList: []common.Hash{common.HexToHash("0x11"), common.HexToHash("0x22")},
 		},
 	}
 	defaultCodes = []struct {
@@ -118,9 +118,9 @@ func saveBlock(db protocol.ChainDB, blockIndex int, info *blockInfo) {
 	}
 	for _, account := range defaultAccounts {
 		addr := account.Address.Bytes()
-		for logType, version := range account.Versions {
+		for logType, record := range account.NewestRecords {
 			k := append(addr, big.NewInt(int64(logType)).Bytes()...)
-			err = tr.TryUpdate(k, big.NewInt(int64(version)).Bytes())
+			err = tr.TryUpdate(k, big.NewInt(int64(record.Version)).Bytes())
 			if err != nil {
 				panic(err)
 			}

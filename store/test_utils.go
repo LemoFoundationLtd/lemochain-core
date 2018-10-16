@@ -50,18 +50,18 @@ func GetBlock2() *types.Block {
 }
 
 func GetAccount(address string, balance int64, version uint32) *types.AccountData {
-	versions := make(map[types.ChangeLogType]uint32)
-	versions[0] = version
-
 	newestRecords := make(map[types.ChangeLogType]types.VersionRecord)
 	newestRecords[0] = types.VersionRecord{Version: version, Height: 100}
 	return &types.AccountData{
 		Address:       common.HexToAddress(address),
 		Balance:       big.NewInt(balance),
-		Versions:      versions,
 		NewestRecords: newestRecords,
 		CodeHash:      common.HexToHash("0x1d5f11eaa13e02cdca886181dc38ab4cb8cf9092e86c000fb42d12c8b504500e"),
 		StorageRoot:   common.HexToHash("0xcbeb7c7e36b846713bc99b8fa527e8d552e31bfaa1ac0f2b773958cda3aba3ed"),
+		TxHashList: []common.Hash{
+			common.HexToHash("0x11"),
+			common.HexToHash("0x22"),
+		},
 	}
 }
 

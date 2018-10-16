@@ -12,14 +12,17 @@ import (
 
 type testAccount struct {
 	AccountData
+	baseHeight uint32
 }
 
-func (f *testAccount) GetAddress() common.Address              { return f.AccountData.Address }
-func (f *testAccount) GetBalance() *big.Int                    { return f.AccountData.Balance }
-func (f *testAccount) SetBalance(balance *big.Int)             { f.AccountData.Balance = balance }
-func (f *testAccount) GetVersion(logType ChangeLogType) uint32 { return f.AccountData.Versions[logType] }
+func (f *testAccount) GetAddress() common.Address  { return f.AccountData.Address }
+func (f *testAccount) GetBalance() *big.Int        { return f.AccountData.Balance }
+func (f *testAccount) SetBalance(balance *big.Int) { f.AccountData.Balance = balance }
+func (f *testAccount) GetVersion(logType ChangeLogType) uint32 {
+	return f.AccountData.NewestRecords[logType].Version
+}
 func (f *testAccount) SetVersion(logType ChangeLogType, version uint32) {
-	f.AccountData.Versions[logType] = version
+	f.AccountData.NewestRecords[logType] = VersionRecord{Version: version, Height: f.baseHeight + 1}
 }
 func (f *testAccount) GetSuicide() bool                                    { return false }
 func (f *testAccount) SetSuicide(suicided bool)                            {}
@@ -31,9 +34,10 @@ func (f *testAccount) GetStorageRoot() common.Hash                         { ret
 func (f *testAccount) SetStorageRoot(root common.Hash)                     { f.AccountData.StorageRoot = root }
 func (f *testAccount) GetStorageState(key common.Hash) ([]byte, error)     { return nil, nil }
 func (f *testAccount) SetStorageState(key common.Hash, value []byte) error { return nil }
+func (f *testAccount) GetBaseHeight() uint32                               { return f.baseHeight }
 func (f *testAccount) IsEmpty() bool {
-	for _, v := range f.AccountData.Versions {
-		if v != 0 {
+	for _, record := range f.AccountData.NewestRecords {
+		if record.Version != 0 {
 			return false
 		}
 	}
@@ -65,10 +69,11 @@ func (p *testProcessor) createAccount(logType ChangeLogType, version uint32) *te
 	address := common.BigToAddress(big.NewInt(int64(index)))
 	account := &testAccount{
 		AccountData: AccountData{
-			Address:  address,
-			Balance:  big.NewInt(100),
-			Versions: map[ChangeLogType]uint32{logType: version},
+			Address:       address,
+			Balance:       big.NewInt(100),
+			NewestRecords: map[ChangeLogType]VersionRecord{logType: {Version: version, Height: 10}},
 		},
+		baseHeight: 10,
 	}
 	p.Accounts[address] = account
 	return account

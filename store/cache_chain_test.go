@@ -236,7 +236,7 @@ func TestCacheChain_SetAccounts(t *testing.T) {
 
 	account, err := cacheChain.GetAccount(parentBlock.Hash(), accounts[0].Address)
 	assert.NoError(t, err)
-	assert.Equal(t, account.Versions[0], accounts[0].Versions[0])
+	assert.Equal(t, account.NewestRecords[0], accounts[0].NewestRecords[0])
 
 	childBlock := GetBlock1()
 	err = cacheChain.SetBlock(childBlock.Hash(), childBlock)
@@ -251,11 +251,11 @@ func TestCacheChain_SetAccounts(t *testing.T) {
 
 	account, err = cacheChain.GetCanonicalAccount(accounts[0].Address)
 	assert.NoError(t, err)
-	assert.Equal(t, account.Versions[0], accounts[0].Versions[0])
+	assert.Equal(t, account.NewestRecords[0], accounts[0].NewestRecords[0])
 
 	account, err = cacheChain.GetCanonicalAccount(accounts[1].Address)
 	assert.NoError(t, err)
-	assert.Equal(t, account.Versions[0], accounts[1].Versions[0])
+	assert.Equal(t, account.NewestRecords[0], accounts[1].NewestRecords[0])
 }
 
 func TestCacheChain_ChildBlockAccount(t *testing.T) {

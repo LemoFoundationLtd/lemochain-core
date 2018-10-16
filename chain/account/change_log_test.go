@@ -54,10 +54,10 @@ func (p *testProcessor) createAccount(logType types.ChangeLogType, version uint3
 	address := common.BigToAddress(big.NewInt(int64(index)))
 	account := &testAccount{
 		Account: *NewAccount(nil, address, &types.AccountData{
-			Address:  address,
-			Balance:  big.NewInt(100),
-			Versions: map[types.ChangeLogType]uint32{logType: version},
-		}),
+			Address:       address,
+			Balance:       big.NewInt(100),
+			NewestRecords: map[types.ChangeLogType]types.VersionRecord{logType: {Version: version, Height: 10}},
+		}, 10),
 	}
 	account.cachedStorage = map[common.Hash][]byte{
 		common.HexToHash("0xaaa"): {45, 67},
@@ -129,7 +129,7 @@ func getCustomTypeData(t *testing.T) []testCustomTypeConfig {
 	// 4 SuicideLog
 	tests = append(tests, testCustomTypeConfig{
 		input:   NewSuicideLog(processor.createAccount(SuicideLog, 0)),
-		str:     "SuicideLog: 0x0000000000000000000000000000000000000005 1 &{[0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0] 100 map[] [197 210 70 1 134 247 35 60 146 126 125 178 220 199 3 192 229 0 182 83 202 130 39 59 123 250 216 4 93 133 164 112] [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0] map[]} <nil> <nil>",
+		str:     "SuicideLog: 0x0000000000000000000000000000000000000005 1 &{[0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0] 100 [197 210 70 1 134 247 35 60 146 126 125 178 220 199 3 192 229 0 182 83 202 130 39 59 123 250 216 4 93 133 164 112] [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0] map[] []} <nil> <nil>",
 		hash:    "0x6204ac1a4be1e52c77942259e094c499b263ad7176ae9060d5bae2b856c9743a",
 		rlp:     "0xd90594000000000000000000000000000000000000000501c0c0",
 		decoded: "SuicideLog: 0x0000000000000000000000000000000000000005 1 <nil> <nil> <nil>",

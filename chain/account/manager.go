@@ -25,7 +25,8 @@ var (
 type Manager struct {
 	db     protocol.ChainDB
 	trieDb *store.TrieDatabase // used to access tire data in file
-	// Manager loads all data from the branch where the baseBlockHash is
+	// Manager loads all data from the branch where the baseBlock is
+	baseBlock     *types.Block
 	baseBlockHash common.Hash
 
 	// This map holds 'live' accounts, which will get modified while processing a state transition.
@@ -46,6 +47,10 @@ func NewManager(blockHash common.Hash, db protocol.ChainDB) *Manager {
 		accountCache:  make(map[common.Address]*SafeAccount),
 		trieDb:        db.GetTrieDatabase(),
 	}
+	if err := manager.loadBaseBlock(); err != nil {
+		log.Errorf("load block[%s] fail: %s\n", manager.baseBlockHash.Hex(), err.Error())
+		panic(err)
+	}
 	manager.processor = &logProcessor{
 		manager:    manager,
 		changeLogs: make([]*types.ChangeLog, 0),
@@ -62,7 +67,7 @@ func (am *Manager) GetAccount(address common.Address) types.AccountAccessor {
 		if err != nil && err != store.ErrNotExist {
 			panic(err)
 		}
-		account := NewAccount(am.db, address, data)
+		account := NewAccount(am.db, address, data, am.baseBlockHeight())
 		cached = NewSafeAccount(am.processor, account)
 		// cache it
 		am.accountCache[address] = cached
@@ -76,7 +81,7 @@ func (am *Manager) GetCanonicalAccount(address common.Address) types.AccountAcce
 	if err != nil && err != store.ErrNotExist {
 		panic(err)
 	}
-	return NewAccount(am.db, address, data)
+	return NewAccount(am.db, address, data, am.baseBlockHeight())
 }
 
 // getRawAccount loads an account same as GetAccount, but editing the account of this method returned is not going to generate change logs.
@@ -133,11 +138,7 @@ func (am *Manager) getVersionTrie() *trie.SecureTrie {
 		// not genesis block
 		if (am.baseBlockHash != common.Hash{}) {
 			// load last version trie root
-			block, err := am.db.GetBlockByHash(am.baseBlockHash)
-			if err != nil {
-				panic(err)
-			}
-			root = block.Header.VersionRoot
+			root = am.baseBlock.Header.VersionRoot
 		}
 
 		var err error
@@ -163,7 +164,20 @@ func (am *Manager) clear() {
 // Reset clears out all data and switch state to the new block environment.
 func (am *Manager) Reset(blockHash common.Hash) {
 	am.baseBlockHash = blockHash
+	if err := am.loadBaseBlock(); err != nil {
+		log.Errorf("Reset to block[%s] fail: %s\n", am.baseBlockHash.Hex(), err.Error())
+		panic(err)
+	}
 	am.clear()
+}
+
+func (am *Manager) loadBaseBlock() (err error) {
+	var block *types.Block
+	if (am.baseBlockHash != common.Hash{}) {
+		block, err = am.db.GetBlockByHash(am.baseBlockHash)
+	}
+	am.baseBlock = block
+	return err
 }
 
 // Snapshot returns an identifier for the current revision of the state.
@@ -178,31 +192,19 @@ func (am *Manager) RevertToSnapshot(revid int) {
 
 // Finalise finalises the state, clears the change caches and update tries.
 func (am *Manager) Finalise() error {
-	// current block height
-	var height uint32
-	if (am.baseBlockHash == common.Hash{}) {
-		height = 1
-	} else {
-		block, err := am.db.GetBlockByHash(am.baseBlockHash)
-		if err != nil {
-			log.Errorf("load block[%s] fail: %s\n", am.baseBlockHash.Hex(), err.Error())
-			panic(err)
-		}
-		height = block.Height() + 1
-	}
 	versionTrie := am.getVersionTrie()
 	for _, account := range am.accountCache {
 		if !account.IsDirty() {
 			continue
 		}
 		// update account and contract storage
-		if err := account.rawAccount.Finalise(height); err != nil {
+		if err := account.rawAccount.Finalise(); err != nil {
 			return err
 		}
 		// update version trie
-		for logType, version := range account.rawAccount.data.Versions {
+		for logType, record := range account.rawAccount.data.NewestRecords {
 			k := versionTrieKey(account.GetAddress(), logType)
-			version := big.NewInt(int64(version)).Bytes()
+			version := big.NewInt(int64(record.Version)).Bytes()
 			if err := versionTrie.TryUpdate(k, version); err != nil {
 				return err
 			}
@@ -369,4 +371,11 @@ func (am *Manager) MergeChangeLogs(fromIndex int) {
 
 func (am *Manager) Stop(graceful bool) error {
 	return nil
+}
+
+func (am *Manager) baseBlockHeight() uint32 {
+	if am.baseBlock == nil {
+		return 0
+	}
+	return am.baseBlock.Height()
 }
