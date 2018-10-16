@@ -348,7 +348,7 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32) error {
 	return nil
 }
 
-// Verify 验证区块是否合法
+// Verify verify block
 func (bc *BlockChain) Verify(block *types.Block) error {
 	err := bc.engine.VerifyHeader(block)
 	if err != nil {
@@ -360,7 +360,7 @@ func (bc *BlockChain) Verify(block *types.Block) error {
 	return nil
 }
 
-// verifyBody 验证包体
+// verifyBody verify block body
 func (bc *BlockChain) verifyBody(block *types.Block) error {
 	header := block.Header
 	if hash := types.DeriveTxsSha(block.Txs); hash == header.TxRoot {
@@ -369,46 +369,63 @@ func (bc *BlockChain) verifyBody(block *types.Block) error {
 	return fmt.Errorf("verify body failed. hash:%s height:%d", block.Hash(), block.Height())
 }
 
-// ReceiveConfirm 收到确认消息
+// ReceiveConfirm
 func (bc *BlockChain) ReceiveConfirm(info *protocol.BlockConfirmData) (err error) {
-	// 恢复公钥
+	// recover public key
 	pubKey, err := crypto.Ecrecover(info.Hash[:], info.SignInfo[:])
 	if err != nil {
 		log.Warnf("Can't recover signer. hash:%s SignInfo:%s", info.Hash.Hex(), common.ToHex(info.SignInfo[:]))
 		return err
 	}
-	// 获取确认者在主节点列表索引
+	// get index of node
 	index := bc.getSignerIndex(pubKey[1:], info.Height)
 	if index < 0 {
-		log.Warnf("unavailable confirm info. from: %s", common.ToHex(pubKey[1:]))
+		log.Warnf("Unavailable confirm info. from: %s", common.ToHex(pubKey[1:]))
 		return fmt.Errorf("unavailable confirm info. from: %s", common.ToHex(pubKey[1:]))
 	}
 
-	// 查看是否已达成共识
+	// has consensus?
 	stableBlock := bc.stableBlock.Load().(*types.Block)
 	if stableBlock.Height() >= info.Height { // stable block's confirm info
-		bc.dbOpe.AppendConfirmInfo(info.Hash, info.SignInfo)
+		ok, err := bc.hasEnoughConfirmInfo(info.Hash)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			bc.dbOpe.AppendConfirmInfo(info.Hash, info.SignInfo)
+		}
 		return nil
 	}
 
-	// 将确认信息缓存起来
+	// cache confirm info
 	if err = bc.dbOpe.SetConfirmInfo(info.Hash, info.SignInfo); err != nil {
 		log.Errorf("can't SetConfirmInfo. hash:%s", info.Hash.Hex())
 		return err
 	}
 	// log.Debugf("Receive confirm info. height: %d. hash: %s", info.Height, info.Hash.String())
 
-	confirmCount, err := bc.getConfirmCount(info.Hash)
+	ok, err := bc.hasEnoughConfirmInfo(info.Hash)
 	if err != nil {
-		log.Warnf("Can't GetConfirmInfo. hash:%s. error: %v", info.Hash.Hex(), err)
 		return err
+	}
+	if ok {
+		return bc.SetStableBlock(info.Hash, info.Height)
+	}
+	return nil
+}
+
+func (bc *BlockChain) hasEnoughConfirmInfo(hash common.Hash) (bool, error) {
+	confirmCount, err := bc.getConfirmCount(hash)
+	if err != nil {
+		log.Warnf("Can't GetConfirmInfo. hash:%s. error: %v", hash.Hex(), err)
+		return false, err
 	}
 	nodeCount := deputynode.Instance().GetDeputyNodesCount()
 	minCount := int(math.Ceil(float64(nodeCount) * 2.0 / 3.0))
 	if confirmCount >= minCount {
-		return bc.SetStableBlock(info.Hash, info.Height)
+		return true, nil
 	}
-	return nil
+	return false, nil
 }
 
 // getConfirmCount get confirm count by hash
