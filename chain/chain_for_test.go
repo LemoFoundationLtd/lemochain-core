@@ -116,7 +116,7 @@ func clearDB() {
 func newChain() *BlockChain {
 	db := newDB()
 	newBlockCh := make(chan *types.Block)
-	bc, err := NewBlockChain(uint64(chainID), NewDpovp(10, 3), db, newBlockCh, map[string]string{})
+	bc, err := NewBlockChain(uint64(chainID), NewDpovp(10*1000, 3*1000), db, newBlockCh, map[string]string{})
 	if err != nil {
 		panic(err)
 	}

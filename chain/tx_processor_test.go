@@ -19,7 +19,7 @@ func TestNewTxProcessor(t *testing.T) {
 	assert.NotEqual(t, (*vm.Config)(nil), p.cfg)
 	assert.Equal(t, false, p.cfg.Debug)
 
-	chain, _ = NewBlockChain(uint64(chainID), NewDpovp(10, 3), chain.dbOpe, chain.newBlockCh, map[string]string{
+	chain, _ = NewBlockChain(uint64(chainID), NewDpovp(10*1000, 3*1000), chain.dbOpe, chain.newBlockCh, map[string]string{
 		common.Debug: "1",
 	})
 	p = NewTxProcessor(chain)
