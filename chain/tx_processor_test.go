@@ -223,14 +223,18 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 		GasUsed:    header.GasUsed,
 		Time:       header.Time,
 	}
+	auther := p.am.GetAccount(header.LemoBase)
+	origBalance := auther.GetBalance()
 	newHeader, selectedTxs, invalidTxs, err = p.ApplyTxs(emptyHeader, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, types.Bloom{}, newHeader.Bloom)
 	emptyTrieHash := common.HexToHash("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470")
 	assert.Equal(t, emptyTrieHash, newHeader.EventRoot)
 	assert.Equal(t, emptyTrieHash, newHeader.TxRoot)
-	assert.NotEqual(t, emptyTrieHash, newHeader.LogsRoot)
+	assert.Equal(t, emptyTrieHash, newHeader.LogsRoot)
 	assert.Equal(t, 0, len(selectedTxs))
+	assert.Equal(t, *origBalance, *auther.GetBalance())
+	assert.Equal(t, 0, len(p.am.GetChangeLogs()))
 
 	// too many txs
 	header = defaultBlocks[3].Header

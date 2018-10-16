@@ -1,6 +1,7 @@
 package account
 
 import (
+	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/vm"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
@@ -364,7 +365,8 @@ func TestManager_Save_Reset(t *testing.T) {
 }
 
 func TestManager_MergeChangeLogs(t *testing.T) {
-	manager := NewManager(common.Hash{}, newDB())
+	db := newDB()
+	manager := NewManager(newestBlock.Hash(), db)
 
 	// merge nothing
 	manager.MergeChangeLogs(0)
@@ -373,36 +375,37 @@ func TestManager_MergeChangeLogs(t *testing.T) {
 	account2 := manager.GetAccount(common.HexToAddress("0x1"))
 	account3 := manager.GetAccount(common.HexToAddress("0x2"))
 
-	// balance log, custom log, balance log, balance log
-	account1.SetBalance(big.NewInt(111))
-	manager.processor.PushChangeLog(&types.ChangeLog{
+	// balance log, balance log, custom log, balance log, balance log
+	account1.SetBalance(big.NewInt(111))              // 0
+	manager.processor.PushChangeLog(&types.ChangeLog{ // 1
 		LogType: types.ChangeLogType(101),
 	})
-	account2.SetBalance(big.NewInt(222))
-	account3.SetBalance(big.NewInt(444))
-	account1.SetBalance(big.NewInt(333))
-	account3.SetBalance(big.NewInt(0))
+	account2.SetBalance(big.NewInt(222)) // 2
+	account3.SetBalance(big.NewInt(444)) // 3
+	account1.SetBalance(big.NewInt(333)) // 4
+	account3.SetBalance(big.NewInt(0))   // 5
+	account1.SetBalance(big.NewInt(100)) // 6
 	logs := manager.GetChangeLogs()
-	assert.Equal(t, 6, len(logs))
+	assert.Equal(t, 7, len(logs))
 	assert.Equal(t, *big.NewInt(111), manager.GetChangeLogs()[0].NewVal)
-	assert.Equal(t, uint32(2), account1.GetVersion(BalanceLog))
+	assert.Equal(t, uint32(defaultAccounts[0].NewestRecords[BalanceLog].Version+3), account1.GetVersion(BalanceLog))
 
 	// merge different account's change log
-	manager.MergeChangeLogs(4)
+	manager.MergeChangeLogs(5)
 	logs = manager.GetChangeLogs()
-	assert.Equal(t, 6, len(logs))
+	assert.Equal(t, 7, len(logs))
 
 	// successfully merge
 	manager.MergeChangeLogs(0)
 	logs = manager.GetChangeLogs()
-	assert.Equal(t, 2, len(logs))
-	assert.Equal(t, uint32(1), account1.GetVersion(BalanceLog))
+	fmt.Println(logs)
+	assert.Equal(t, 1, len(logs))
 	assert.Equal(t, uint32(0), account3.GetVersion(BalanceLog))
 	// the first change log has been sorted to the last one
-	assert.Equal(t, *big.NewInt(333), manager.GetChangeLogs()[1].NewVal)
+	assert.Equal(t, *big.NewInt(222), manager.GetChangeLogs()[0].NewVal)
 
 	// broke snapshot
-	account1.SetBalance(big.NewInt(444))
+	account2.SetBalance(big.NewInt(444))
 	manager.Snapshot()
 	assert.PanicsWithValue(t, ErrSnapshotIsBroken, func() {
 		manager.MergeChangeLogs(0)

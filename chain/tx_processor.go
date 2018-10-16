@@ -245,8 +245,10 @@ func (p *TxProcessor) refundGas(gp *types.GasPool, tx *types.Transaction, restGa
 
 // paySalary pay the salary to miner
 func (p *TxProcessor) paySalary(salary *big.Int, minerAddress common.Address) {
-	miner := p.am.GetAccount(minerAddress)
-	miner.SetBalance(new(big.Int).Add(miner.GetBalance(), salary))
+	if salary.Cmp(new(big.Int)) != 0 {
+		miner := p.am.GetAccount(minerAddress)
+		miner.SetBalance(new(big.Int).Add(miner.GetBalance(), salary))
+	}
 }
 
 // FillHeader creates a new header then fills it with the result of transactions process
