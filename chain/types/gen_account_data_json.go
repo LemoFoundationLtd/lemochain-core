@@ -16,32 +16,32 @@ var _ = (*accountDataMarshaling)(nil)
 // MarshalJSON marshals as JSON.
 func (a AccountData) MarshalJSON() ([]byte, error) {
 	type AccountData struct {
-		Address       common.Address           `json:"address" gencodec:"required"`
-		Balance       *hexutil.Big             `json:"balance" gencodec:"required"`
-		Versions      map[ChangeLogType]uint32 `json:"versions" gencodec:"required"`
-		CodeHash      common.Hash              `json:"codeHash" gencodec:"required"`
-		StorageRoot   common.Hash              `json:"root" gencodec:"required"`
-		NewestRecords map[ChangeLogType]VersionRecord
+		Address       common.Address                  `json:"address" gencodec:"required"`
+		Balance       *hexutil.Big                    `json:"balance" gencodec:"required"`
+		CodeHash      common.Hash                     `json:"codeHash" gencodec:"required"`
+		StorageRoot   common.Hash                     `json:"root" gencodec:"required"`
+		NewestRecords map[ChangeLogType]VersionRecord `json:"records" gencodec:"required"`
+		TxHashList    []common.Hash
 	}
 	var enc AccountData
 	enc.Address = a.Address
 	enc.Balance = (*hexutil.Big)(a.Balance)
-	enc.Versions = a.Versions
 	enc.CodeHash = a.CodeHash
 	enc.StorageRoot = a.StorageRoot
 	enc.NewestRecords = a.NewestRecords
+	enc.TxHashList = a.TxHashList
 	return json.Marshal(&enc)
 }
 
 // UnmarshalJSON unmarshals from JSON.
 func (a *AccountData) UnmarshalJSON(input []byte) error {
 	type AccountData struct {
-		Address       *common.Address          `json:"address" gencodec:"required"`
-		Balance       *hexutil.Big             `json:"balance" gencodec:"required"`
-		Versions      map[ChangeLogType]uint32 `json:"versions" gencodec:"required"`
-		CodeHash      *common.Hash             `json:"codeHash" gencodec:"required"`
-		StorageRoot   *common.Hash             `json:"root" gencodec:"required"`
-		NewestRecords map[ChangeLogType]VersionRecord
+		Address       *common.Address                 `json:"address" gencodec:"required"`
+		Balance       *hexutil.Big                    `json:"balance" gencodec:"required"`
+		CodeHash      *common.Hash                    `json:"codeHash" gencodec:"required"`
+		StorageRoot   *common.Hash                    `json:"root" gencodec:"required"`
+		NewestRecords map[ChangeLogType]VersionRecord `json:"records" gencodec:"required"`
+		TxHashList    []common.Hash
 	}
 	var dec AccountData
 	if err := json.Unmarshal(input, &dec); err != nil {
@@ -55,10 +55,6 @@ func (a *AccountData) UnmarshalJSON(input []byte) error {
 		return errors.New("missing required field 'balance' for AccountData")
 	}
 	a.Balance = (*big.Int)(dec.Balance)
-	if dec.Versions == nil {
-		return errors.New("missing required field 'versions' for AccountData")
-	}
-	a.Versions = dec.Versions
 	if dec.CodeHash == nil {
 		return errors.New("missing required field 'codeHash' for AccountData")
 	}
@@ -67,8 +63,12 @@ func (a *AccountData) UnmarshalJSON(input []byte) error {
 		return errors.New("missing required field 'root' for AccountData")
 	}
 	a.StorageRoot = *dec.StorageRoot
-	if dec.NewestRecords != nil {
-		a.NewestRecords = dec.NewestRecords
+	if dec.NewestRecords == nil {
+		return errors.New("missing required field 'records' for AccountData")
+	}
+	a.NewestRecords = dec.NewestRecords
+	if dec.TxHashList != nil {
+		a.TxHashList = dec.TxHashList
 	}
 	return nil
 }

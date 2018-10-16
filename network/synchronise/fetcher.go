@@ -135,6 +135,7 @@ func (f *Fetcher) run() {
 				op := f.queue.PopItem().(*newBlock)
 				if op.block.Height() > height+1 {
 					f.queue.Push(op, -float32(op.block.Height()))
+					f.lock.Unlock()
 					break
 				}
 				// 判断是否为分叉 且分叉的父块没有收到
@@ -227,11 +228,14 @@ func (f *Fetcher) run() {
 			}
 		case op := <-f.newBlockCh:
 			if op.origin == "" {
+				log.Warn("receive block but can't identify node id")
 				continue
 			}
 			if f.getLocalBlock(op.block.Hash(), op.block.Height()) != nil {
+				log.Debug("block is already in local chain")
 				continue
 			}
+			log.Debugf("start enqueue block to queue. height: %d", op.block.Height())
 			go f.enqueue(op)
 		}
 	}
@@ -291,16 +295,16 @@ func (f *Fetcher) Enqueue(peer string, block *types.Block, fetchBlock blockReque
 		block:  block,
 	}
 
-	// if parent block not exist, fetch it
-	if f.getLocalBlock(block.ParentHash(), block.Height()-1) == nil && f.fetching[block.Hash()] == nil {
+	// if parent block not exist, fetch parent block
+	if f.getLocalBlock(block.ParentHash(), block.Height()-1) == nil && f.fetching[block.ParentHash()] == nil {
 		announce := &announce{
-			hash:       block.Hash(),
-			height:     block.Height(),
+			hash:       block.ParentHash(),
+			height:     block.Height() - 1,
 			time:       time.Now(),
 			origin:     peer,
 			fetchBlock: fetchBlock,
 		}
-		f.fetching[block.Hash()] = announce
+		f.fetching[block.ParentHash()] = announce
 	}
 	// 防止newBlockCh已有数据还没处理导致的长时间休眠态突然退出问题
 	select {
@@ -350,6 +354,7 @@ func (f *Fetcher) enqueue(newBlock *newBlock) {
 	hash := newBlock.block.Hash()
 	if f.queueMp[peer] >= blockLimit {
 		f.forgetHash(hash)
+		log.Debug("fetcher's queue map is full")
 		return
 	}
 	// 新收到的块高度过大 丢掉

@@ -16,8 +16,8 @@ type SafeAccount struct {
 // NewSafeAccount creates an account object.
 func NewSafeAccount(processor *logProcessor, account *Account) *SafeAccount {
 	origVersions := make(map[types.ChangeLogType]uint32)
-	for logType, version := range account.data.Versions {
-		origVersions[logType] = version
+	for logType, record := range account.data.NewestRecords {
+		origVersions[logType] = record.Version
 	}
 	return &SafeAccount{
 		rawAccount:   account,
@@ -55,6 +55,7 @@ func (a *SafeAccount) GetStorageRoot() common.Hash  { return a.rawAccount.GetSto
 func (a *SafeAccount) GetStorageState(key common.Hash) ([]byte, error) {
 	return a.rawAccount.GetStorageState(key)
 }
+func (a *SafeAccount) GetBaseHeight() uint32 { return a.rawAccount.baseHeight }
 
 // overwrite Account.SetXXX. Access Account with changelog
 func (a *SafeAccount) SetBalance(balance *big.Int) {
@@ -96,7 +97,7 @@ func (a *SafeAccount) SetStorageState(key common.Hash, value []byte) error {
 
 func (a *SafeAccount) IsDirty() bool {
 	// the version in a.rawAccount has been changed in NewXXXLog()
-	if len(a.origVersions) != len(a.rawAccount.data.Versions) {
+	if len(a.origVersions) != len(a.rawAccount.data.NewestRecords) {
 		return true
 	}
 	for logType, version := range a.origVersions {

@@ -1,19 +1,21 @@
-package chain
+package node
 
 import (
 	"crypto/ecdsa"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
-	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
-	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"github.com/LemoFoundationLtd/lemochain-go/store/protocol"
 	"math/big"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/LemoFoundationLtd/lemochain-go/chain"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
+	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 )
 
 type blockInfo struct {
@@ -113,10 +115,10 @@ func clearDB() {
 }
 
 // newChain creates chain for test
-func newChain() *BlockChain {
+func newChain() *chain.BlockChain {
 	db := newDB()
 	newBlockCh := make(chan *types.Block)
-	bc, err := NewBlockChain(uint64(chainID), NewDpovp(10, 3), db, newBlockCh, map[string]string{})
+	bc, err := chain.NewBlockChain(uint64(chainID), chain.NewDpovp(10, 3), db, newBlockCh, map[string]string{})
 	if err != nil {
 		panic(err)
 	}

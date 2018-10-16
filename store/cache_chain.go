@@ -324,7 +324,7 @@ func (chain *CacheChain) GetBlockByHash(hash common.Hash) (*types.Block, error) 
 func (chain *CacheChain) SetConfirmInfo(hash common.Hash, signData types.SignData) error {
 	block := chain.Blocks[hash]
 	if block == nil {
-		log.Errorf("set confirm error:the block is not exist")
+		log.Errorf("set confirm error:the block is not exist. hash: %s", hash.String())
 		return ErrNotExist
 	}
 
@@ -452,7 +452,7 @@ func (chain *CacheChain) LoadLatestBlock() (*types.Block, error) {
 func (chain *CacheChain) SetStableBlock(hash common.Hash) error {
 	block := chain.Blocks[hash]
 	if block == nil {
-		log.Errorf("set stable block error:the block is not exist")
+		log.Errorf("set stable block error:the block is not exist. hash: %s", hash.String())
 		return ErrNotExist
 	}
 

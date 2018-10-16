@@ -9,6 +9,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"io"
+	"math/rand"
 	"net"
 	"os"
 	"path/filepath"
@@ -72,7 +73,7 @@ type Server struct {
 	listener net.Listener // TCP监听
 
 	nodeList []string         // nodedatabase配置的节点列表
-	peers    map[NodeID]*Peer // 记录所有的节点连接
+	peers    map[string]*Peer // 记录所有的节点连接
 	peersMux sync.Mutex
 
 	quitCh    chan struct{}
@@ -125,7 +126,7 @@ func (srv *Server) Start() error {
 		srv.addPeerCh = make(chan *Peer, 5)
 	}
 	if srv.peers == nil {
-		srv.peers = make(map[NodeID]*Peer)
+		srv.peers = make(map[string]*Peer)
 	}
 	if srv.delPeerCh == nil {
 		srv.delPeerCh = make(chan *Peer)
@@ -239,34 +240,34 @@ func (srv *Server) run() {
 	for {
 		select {
 		case p := <-srv.addPeerCh:
-			log.Debugf("receive srv.addPeerCh. node id: %s", common.ToHex(p.nodeId[:8]))
-			if old_peer, ok := srv.peers[p.nodeId]; ok {
-				old_peer.Close()
-				log.Debugf("Connection has already exist. Remote node id: %s", common.ToHex(p.nodeId[:8]))
-				// break
+			log.Debugf("receive srv.addPeerCh. node id: %s", common.ToHex(p.nodeID[:8]))
+			if oldPeer, ok := srv.peers[p.nodeID.String()]; ok {
+				oldPeer.Close()
+				log.Debugf("Connection has already exist. Close old and receive new. Remote node id: %s", common.ToHex(p.nodeID[:8]))
 			}
 			srv.peersMux.Lock()
-			srv.peers[p.nodeId] = p
+			srv.peers[p.nodeID.String()] = p
 			srv.peersMux.Unlock()
 			go srv.runPeer(p)
 			if srv.PeerEvent != nil { // 通知外界收到新的节点
-				log.Debugf("start execute peerEvent. node id: %s", common.ToHex(p.nodeId[:8]))
+				log.Debugf("start execute peerEvent. node id: %s", common.ToHex(p.nodeID[:8]))
 				if err := srv.PeerEvent(p, AddPeerFlag); err != nil {
 					p.Close()
 				}
 			}
-			log.Debugf("handle addPeerCh success. node id: %s", common.ToHex(p.nodeId[:8]))
+			log.Debugf("handle addPeerCh success. node id: %s", common.ToHex(p.nodeID[:8]))
 		case p := <-srv.delPeerCh:
 			srv.peersMux.Lock()
-			delete(srv.peers, p.nodeId)
+			delete(srv.peers, p.nodeID.String())
 			srv.peersMux.Unlock()
 			if srv.PeerEvent != nil { // 通知外界节点drop
 				if err := srv.PeerEvent(p, DropPeerFlag); err != nil {
 					log.Error("peer event error", "err", err)
 				}
 			}
-			time.AfterFunc(10*time.Second, func() {
-				srv.needConnectNodeCh <- p.rw.fd.RemoteAddr().String() // 断线重连 todo
+			random := time.Duration(rand.Int()%10 + 10)
+			time.AfterFunc(random*time.Second, func() {
+				srv.needConnectNodeCh <- p.nodeID.String() + "+" + p.rw.fd.RemoteAddr().String() // 断线重连 todo
 			})
 			break
 		case <-srv.quitCh:
@@ -316,7 +317,7 @@ func (srv *Server) HandleConn(fd net.Conn, isSelfServer bool) error {
 }
 
 func (srv *Server) runPeer(p *Peer) {
-	log.Debugf("start run peer. node id: %s", common.ToHex(p.nodeId[:8]))
+	log.Debugf("start run peer. node id: %s", common.ToHex(p.nodeID[:8]))
 	p.run() // 正常情况下会阻塞 除非节点drop
 	if srv.running == true {
 		srv.delPeerCh <- p
@@ -356,13 +357,20 @@ func (srv *Server) runDialLoop() {
 				}
 			}
 			retryTimer.Reset(retryConnTimeout)
-		case node := <-srv.needConnectNodeCh:
+		case target := <-srv.needConnectNodeCh:
+			parts := strings.Split(target, "+")
+			if len(parts) == 2 {
+				if _, ok := srv.peers[parts[0]]; ok {
+					break
+				}
+				target = parts[1]
+			}
 			go func() {
-				log.Debugf("start dial target: %s", node)
-				dialTask := newDialTask(node, srv)
+				log.Debugf("start dial target: %s", target)
+				dialTask := newDialTask(target, srv)
 				if err := dialTask.Run(); err != nil {
 					log.Debugf("dial target failed. err: %v", err)
-					failedNodes[node] = struct{}{}
+					failedNodes[target] = struct{}{}
 				}
 			}()
 		}
@@ -379,18 +387,25 @@ func (srv *Server) AddStaticPeer(node string) {
 	}
 	port, err := strconv.Atoi(tmps[1])
 	if err != nil || port < 1024 || port > 65535 {
-		return
+		// return
 	}
 	log.Infof("start add static peer: %s", node)
 	srv.needConnectNodeCh <- node
 }
 
-func (srv *Server) Peers() []string {
+type PeerConnInfo struct {
+	LocalAddr  string `json:localAddress`
+	RemoteAddr string `json:remoteAddress`
+	NodeID     string `json:nodeID`
+}
+
+func (srv *Server) Peers() []PeerConnInfo {
 	srv.peersMux.Lock()
 	defer srv.peersMux.Unlock()
-	result := make([]string, 0, len(srv.peers))
+	result := make([]PeerConnInfo, 0, len(srv.peers))
 	for _, v := range srv.peers {
-		result = append(result, v.rw.fd.RemoteAddr().String())
+		info := PeerConnInfo{v.rw.fd.LocalAddr().String(), v.rw.fd.RemoteAddr().String(), v.nodeID.String()}
+		result = append(result, info)
 	}
 	return result
 }

@@ -41,9 +41,8 @@ func TestDefaultSigner_GetSender(t *testing.T) {
 
 	// invalid R
 	tx = &Transaction{data: txV.data}
-	tx.data.R = new(big.Int).Div(txV.data.R, big.NewInt(100))
+	tx.data.R = big.NewInt(0)
 	addr, err = testSigner.GetSender(tx)
-	// TODO Invalid R should fail Ecrecovering But not ???
 	assert.Equal(t, ErrInvalidSig, err)
 	assert.NotEqual(t, testAddr, addr)
 }
