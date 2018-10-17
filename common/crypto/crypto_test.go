@@ -87,12 +87,13 @@ func TestNewContractAddress(t *testing.T) {
 	// sanity check before using addr to create contract address
 	assert.Equal(t, genAddr, addr)
 
-	caddr0 := CreateAddress(addr, 0)
-	caddr1 := CreateAddress(addr, 1)
-	caddr2 := CreateAddress(addr, 2)
-	assert.Equal(t, common.HexToAddress("06Aa2054053eb21C9685cdb2d6b1e59749f78625"), caddr0)
-	assert.Equal(t, common.HexToAddress("FE7d93f5cDbC8F29C268842754AE966fca34ac19"), caddr1)
-	assert.Equal(t, common.HexToAddress("71F2459FE2b94BB262625010DB53774CA5f3Aa42"), caddr2)
+	caddr0 := CreateAddress(addr, common.HexToHash("0"))
+	caddr1 := CreateAddress(addr, common.HexToHash("1"))
+	caddr2 := CreateAddress(addr, common.HexToHash("2"))
+
+	assert.Equal(t, common.HexToAddress("0x01208Cc79767dD9559EE43A673daA13f0eaE2737"), caddr0)
+	assert.Equal(t, common.HexToAddress("0x012A6a88F9cfa542A805d2F6941a4c9faf793957"), caddr1)
+	assert.Equal(t, common.HexToAddress("0x018CadC3967854c060268084256A9c8A7C1B7c20"), caddr2)
 }
 
 func TestLoadECDSAFile(t *testing.T) {

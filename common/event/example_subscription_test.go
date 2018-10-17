@@ -18,14 +18,12 @@ package event
 
 import (
 	"fmt"
-
-	"github.com/LemoFoundationLtd/lemochain-go/common/event"
 )
 
 func ExampleNewSubscription() {
 	// Create a subscription that sends 10 integers on ch.
 	ch := make(chan int)
-	sub := event.NewSubscription(func(quit <-chan struct{}) error {
+	sub := NewSubscription(func(quit <-chan struct{}) error {
 		for i := 0; i < 10; i++ {
 			select {
 			case ch <- i:
