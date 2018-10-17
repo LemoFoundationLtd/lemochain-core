@@ -63,8 +63,8 @@ type Fetcher struct {
 	//fetched   map[common.Hash]*announce // 记录获取完成的
 	lock sync.Mutex
 	// Block 缓存
-	queue    *prque.Prque              // 区块队列，已排序
-	queueMp  map[string]int            // 记录每个节点收到了多少个未处理的区块
+	queue *prque.Prque // 区块队列，已排序
+	// queueMp  map[string]int            // 记录每个节点收到了多少个未处理的区块
 	queuedMp map[common.Hash]*newBlock // 记录每个区块hash对应的区块
 
 	// 各种回调
@@ -90,8 +90,8 @@ func NewFetcher(getLocalBlock blockExistFn, verifyBlock blockVerifierFn, broadca
 		announced: make(map[common.Hash][]*announce),
 		fetching:  make(map[common.Hash]*announce),
 
-		queue:    prque.New(),
-		queueMp:  make(map[string]int),
+		queue: prque.New(),
+		// queueMp:  make(map[string]int),
 		queuedMp: make(map[common.Hash]*newBlock),
 
 		isBlockExist:         getLocalBlock,
@@ -235,8 +235,8 @@ func (f *Fetcher) run() {
 				log.Debug("block is already in local chain")
 				continue
 			}
-			log.Debugf("start enqueue block to queue. height: %d", op.block.Height())
 			go f.enqueue(op)
+			log.Debugf("enqueue block to queue. height: %d", op.block.Height())
 		}
 	}
 
@@ -337,11 +337,11 @@ func (f *Fetcher) forgetHash(hash common.Hash) {
 
 // forgetBlock 从相关容器中移除有关hash的记录
 func (f *Fetcher) forgetBlock(hash common.Hash) {
-	if op := f.queuedMp[hash]; op != nil {
-		f.queueMp[op.origin]--
-		if f.queueMp[op.origin] == 0 {
-			delete(f.queueMp, op.origin)
-		}
+	if _, ok := f.queuedMp[hash]; ok {
+		// f.queueMp[op.origin]--
+		// if f.queueMp[op.origin] == 0 {
+		// 	delete(f.queueMp, op.origin)
+		// }
 		delete(f.queuedMp, hash)
 	}
 }
@@ -350,13 +350,13 @@ func (f *Fetcher) forgetBlock(hash common.Hash) {
 func (f *Fetcher) enqueue(newBlock *newBlock) {
 	f.lock.Lock()
 	defer f.lock.Unlock()
-	peer := newBlock.origin
+	// peer := newBlock.origin
 	hash := newBlock.block.Hash()
-	if f.queueMp[peer] >= blockLimit {
-		f.forgetHash(hash)
-		log.Debug("fetcher's queue map is full")
-		return
-	}
+	// if f.queueMp[peer] >= blockLimit {
+	// 	f.forgetHash(hash)
+	// 	log.Debug("fetcher's queue map is full")
+	// 	return
+	// }
 	// 新收到的块高度过大 丢掉
 	if dist := newBlock.block.Height() - f.currentChainHeight(); dist > maxQueueDist {
 		f.forgetHash(hash)
@@ -368,7 +368,7 @@ func (f *Fetcher) enqueue(newBlock *newBlock) {
 		log.Debugf("enqueue: block is exist.height: %d", newBlock.block.Height())
 		return
 	}
-	f.queueMp[peer]++
+	// f.queueMp[peer]++
 	f.queuedMp[hash] = newBlock
 	f.queue.Push(newBlock, -float32(newBlock.block.Height()))
 	log.Debugf("enqueue: height:%d hash:%s", newBlock.block.Height(), hash.String())
@@ -381,7 +381,8 @@ func (f *Fetcher) insert(peer string, block *types.Block) {
 		log.Warnf("fetcher block insert failed. height: %d. hash: %s. error: %v", block.Height(), hash.Hex(), err)
 		return
 	}
-	go func() { f.done <- hash }()
-	// 将块hash广播出去
-	go f.broadcastBlock(block, false)
+	go func() {
+		f.done <- hash
+		f.broadcastBlock(block, false)
+	}()
 }
