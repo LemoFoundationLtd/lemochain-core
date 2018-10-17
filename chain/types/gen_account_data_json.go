@@ -21,7 +21,7 @@ func (a AccountData) MarshalJSON() ([]byte, error) {
 		CodeHash      common.Hash                     `json:"codeHash" gencodec:"required"`
 		StorageRoot   common.Hash                     `json:"root" gencodec:"required"`
 		NewestRecords map[ChangeLogType]VersionRecord `json:"records" gencodec:"required"`
-		TxHashList    []common.Hash
+		TxHashList    []common.Hash                   `json:"-"`
 	}
 	var enc AccountData
 	enc.Address = a.Address
@@ -41,7 +41,7 @@ func (a *AccountData) UnmarshalJSON(input []byte) error {
 		CodeHash      *common.Hash                    `json:"codeHash" gencodec:"required"`
 		StorageRoot   *common.Hash                    `json:"root" gencodec:"required"`
 		NewestRecords map[ChangeLogType]VersionRecord `json:"records" gencodec:"required"`
-		TxHashList    []common.Hash
+		TxHashList    []common.Hash                   `json:"-"`
 	}
 	var dec AccountData
 	if err := json.Unmarshal(input, &dec); err != nil {

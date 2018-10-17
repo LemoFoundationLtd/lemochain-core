@@ -86,6 +86,7 @@ func (p *testProcessor) PopEvent() error        { return nil }
 type testCustomTypeConfig struct {
 	input     *ChangeLog
 	str       string
+	json      string
 	hash      string
 	rlp       string
 	decoded   string
@@ -120,6 +121,7 @@ func getCustomTypeData() []testCustomTypeConfig {
 	tests = append(tests, testCustomTypeConfig{
 		input:     &ChangeLog{LogType: ChangeLogType(0), Address: common.Address{}, Version: 1888, OldVal: "str", NewVal: []byte{128, 0xff}},
 		str:       "ChangeLogType(0): 0x0000000000000000000000000000000000000000 1888 str [128 255] <nil>",
+		json:      `{"type":0,"address":"0x0000000000000000000000000000000000000000","version":1888,"newValue":"0x8280ff","extra":""}`,
 		hash:      "0xafee1464750a367208437ec1061ddbf793b2120588445389610d8143ad5d1035",
 		rlp:       "0xdd809400000000000000000000000000000000000000008207608280ffc0",
 		decodeErr: ErrUnknownChangeLogType,
@@ -131,6 +133,7 @@ func getCustomTypeData() []testCustomTypeConfig {
 	tests = append(tests, testCustomTypeConfig{
 		input:   &ChangeLog{LogType: ChangeLogType(10001), Extra: structData},
 		str:     "ChangeLogType(10001): 0x0000000000000000000000000000000000000000 0 <nil> <nil> {11 abc}",
+		json:    `{"type":10001,"address":"0x0000000000000000000000000000000000000000","version":0,"newValue":"","extra":"0xc50b83616263"}`,
 		hash:    "0xc2f5e2f55f2d6be2ef0e6b2f826bd2c1d9fcb4c2cd88a5b39677eb7564ff5629",
 		rlp:     "0xe082271194000000000000000000000000000000000000000080c0c50b83616263",
 		decoded: "ChangeLogType(10001): 0x0000000000000000000000000000000000000000 0 <nil> <nil> {11 abc}",
@@ -140,6 +143,7 @@ func getCustomTypeData() []testCustomTypeConfig {
 	tests = append(tests, testCustomTypeConfig{
 		input:     &ChangeLog{},
 		str:       "ChangeLogType(0): 0x0000000000000000000000000000000000000000 0 <nil> <nil> <nil>",
+		json:      `{"type":0,"address":"0x0000000000000000000000000000000000000000","version":0,"newValue":"","extra":""}`,
 		hash:      "0xae191db75787cf40e7a29c1287c1e65ab4b24e8a9bc7c7037e49575241943f65",
 		rlp:       "0xd98094000000000000000000000000000000000000000080c0c0",
 		decodeErr: ErrUnknownChangeLogType,
@@ -150,18 +154,14 @@ func getCustomTypeData() []testCustomTypeConfig {
 func TestChangeLog_String(t *testing.T) {
 	tests := getCustomTypeData()
 	for i, test := range tests {
-		if test.input.String() != test.str {
-			t.Errorf("test %d. want str: %s, got: %s", i, test.str, test.input.String())
-		}
+		assert.Equal(t, test.str, test.input.String(), "index=%d %s", i, test.input)
 	}
 }
 
 func TestChangeLog_Hash(t *testing.T) {
 	tests := getCustomTypeData()
 	for i, test := range tests {
-		if test.input.Hash().Hex() != test.hash {
-			t.Errorf("test %d. want hash: %s, got: %s", i, test.hash, test.input.Hash().Hex())
-		}
+		assert.Equal(t, test.hash, test.input.Hash().Hex(), "index=%d %s", i, test.input)
 	}
 }
 
@@ -169,26 +169,35 @@ func TestChangeLog_EncodeRLP_DecodeRLP(t *testing.T) {
 	tests := getCustomTypeData()
 	for i, test := range tests {
 		enc, err := rlp.EncodeToBytes(test.input)
-		if err != nil {
-			t.Errorf("test %d. rlp encode error: %s", i, err)
-		} else if hexutil.Encode(enc) != test.rlp {
-			t.Errorf("test %d. want rlp: %s, got: %s", i, test.rlp, hexutil.Encode(enc))
-		} else {
-			decodeResult := new(ChangeLog)
-			err = rlp.DecodeBytes(enc, decodeResult)
-			if err != nil {
-				if test.decodeErr != err {
-					t.Errorf("test %d. want decodeErr: %s, got: %s", i, test.decodeErr, err.Error())
-				}
-			} else if test.decodeErr != nil {
-				t.Errorf("test %d. want decodeErr: %s, got: <nil>", i, test.decodeErr)
-			} else if decodeResult.String() != test.decoded {
-				t.Errorf("test %d. want decoded: %s, got: %s", i, test.decoded, decodeResult.String())
-			}
-			fmt.Println(decodeResult)
+		assert.NoError(t, err, "index=%d %s", i, test.input)
+		assert.Equal(t, test.rlp, hexutil.Encode(enc), "index=%d %s", i, test.input)
+
+		decodeResult := new(ChangeLog)
+		err = rlp.DecodeBytes(enc, decodeResult)
+		assert.Equal(t, test.decodeErr, err, "index=%d %s", i, test.input)
+		if test.decodeErr == nil {
+			assert.NoError(t, err, "index=%d %s", i, test.input)
+			assert.Equal(t, test.decoded, decodeResult.String(), "index=%d %s", i, test.input)
 		}
 	}
 	// TODO build some rlp codes to test the decode error
+}
+
+func TestChangeLog_MarshalJSON_UnmarshalJSON(t *testing.T) {
+	tests := getCustomTypeData()
+	for i, test := range tests {
+		json, err := test.input.MarshalJSON()
+		assert.NoError(t, err, "index=%d %s", i, test.input)
+		assert.Equal(t, test.json, string(json), "index=%d %s", i, test.input)
+
+		decodeResult := new(ChangeLog)
+		err = decodeResult.UnmarshalJSON(json)
+		assert.Equal(t, test.decodeErr, err, "index=%d %s", i, test.input)
+		if test.decodeErr == nil {
+			test.input.OldVal = nil
+			assert.Equal(t, test.input, decodeResult, "index=%d %s", i, test.input)
+		}
+	}
 }
 
 func createChangeLog(processor *testProcessor, accountVersion uint32, logType ChangeLogType, logVersion uint32) *ChangeLog {
@@ -241,13 +250,8 @@ func TestChangeLog_Undo(t *testing.T) {
 
 	for i, test := range tests {
 		err := test.input.Undo(processor)
-		if err != nil {
-			if test.undoErr != err {
-				t.Errorf("test %d. undo error: %s", i, err)
-			}
-		} else if test.undoErr != nil {
-			t.Errorf("test %d. want undoErr: %s, got: <nil>", i, test.undoErr)
-		} else if test.afterCheck != nil {
+		assert.Equal(t, test.undoErr, err, "index=%d %s", i, test.input)
+		if test.undoErr == nil && test.afterCheck != nil {
 			a := processor.GetAccount(test.input.Address)
 			test.afterCheck(a)
 		}
@@ -299,13 +303,8 @@ func TestChangeLog_Redo(t *testing.T) {
 
 	for i, test := range tests {
 		err := test.input.Redo(processor)
-		if err != nil {
-			if test.redoErr != err {
-				t.Errorf("test %d. redo error: %s", i, err)
-			}
-		} else if test.redoErr != nil {
-			t.Errorf("test %d. want redoErr: %s, got: <nil>", i, test.redoErr)
-		} else if test.afterCheck != nil {
+		assert.Equal(t, test.redoErr, err, "index=%d %s", i, test.input)
+		if test.redoErr == nil && test.afterCheck != nil {
 			a := processor.GetAccount(test.input.Address)
 			test.afterCheck(a)
 		}

@@ -8,10 +8,13 @@ import (
 	"testing"
 )
 
-func TestAccountData_EncodeRLP_DecodeRLP(t *testing.T) {
-	logType1 := ChangeLogType(1)
-	logType2 := ChangeLogType(2)
-	account := &AccountData{
+var (
+	logType1 = ChangeLogType(1)
+	logType2 = ChangeLogType(2)
+)
+
+func getAccountData() *AccountData {
+	return &AccountData{
 		Address:       common.HexToAddress("0x10000"),
 		Balance:       big.NewInt(100),
 		CodeHash:      common.HexToHash("0x1d5f11eaa13e02cdca886181dc38ab4cb8cf9092e86c000fb42d12c8b504500e"),
@@ -19,6 +22,10 @@ func TestAccountData_EncodeRLP_DecodeRLP(t *testing.T) {
 		NewestRecords: map[ChangeLogType]VersionRecord{logType1: {100, 10}, logType2: {101, 11}},
 		TxHashList:    []common.Hash{common.HexToHash("0x11"), common.HexToHash("0x22")},
 	}
+}
+
+func TestAccountData_EncodeRLP_DecodeRLP(t *testing.T) {
+	account := getAccountData()
 
 	data, err := rlp.EncodeToBytes(account)
 	assert.NoError(t, err)
@@ -40,16 +47,7 @@ func TestAccountData_EncodeRLP_DecodeRLP(t *testing.T) {
 }
 
 func TestAccountData_Copy(t *testing.T) {
-	logType1 := ChangeLogType(1)
-	logType2 := ChangeLogType(2)
-	account := &AccountData{
-		Address:       common.HexToAddress("0x10000"),
-		Balance:       big.NewInt(100),
-		CodeHash:      common.HexToHash("0x1d5f11eaa13e02cdca886181dc38ab4cb8cf9092e86c000fb42d12c8b504500e"),
-		StorageRoot:   common.HexToHash("0xcbeb7c7e36b846713bc99b8fa527e8d552e31bfaa1ac0f2b773958cda3aba3ed"),
-		NewestRecords: map[ChangeLogType]VersionRecord{logType1: {100, 10}, logType2: {101, 11}},
-		TxHashList:    []common.Hash{common.HexToHash("0x11"), common.HexToHash("0x22")},
-	}
+	account := getAccountData()
 
 	cpy := account.Copy()
 	assert.Equal(t, account, cpy)
@@ -59,4 +57,18 @@ func TestAccountData_Copy(t *testing.T) {
 	assert.NotEqual(t, account.NewestRecords[logType1].Version, cpy.NewestRecords[logType1].Version)
 	account.TxHashList[0] = common.HexToHash("0x10")
 	assert.NotEqual(t, account.TxHashList[0], cpy.TxHashList[0])
+}
+
+func TestAccountData_MarshalJSON_UnmarshalJSON(t *testing.T) {
+	account := getAccountData()
+
+	data, err := account.MarshalJSON()
+	assert.NoError(t, err)
+	assert.Equal(t, `{"address":"0x0000000000000000000000000000000000010000","balance":"0x64","codeHash":"0x1d5f11eaa13e02cdca886181dc38ab4cb8cf9092e86c000fb42d12c8b504500e","root":"0xcbeb7c7e36b846713bc99b8fa527e8d552e31bfaa1ac0f2b773958cda3aba3ed","records":{"1":{"Version":100,"Height":10},"2":{"Version":101,"Height":11}}}`, string(data))
+
+	decode := new(AccountData)
+	err = decode.UnmarshalJSON(data)
+	assert.NoError(t, err)
+	account.TxHashList = nil
+	assert.Equal(t, account, decode)
 }

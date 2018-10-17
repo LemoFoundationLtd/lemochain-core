@@ -1,6 +1,8 @@
 package types
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
@@ -55,8 +57,6 @@ func (t ChangeLogType) String() string {
 	return fmt.Sprintf("ChangeLogType(%d)", t)
 }
 
-//go:generate gencodec -type ChangeLog -out gen_change_log_json.go
-
 type ChangeLog struct {
 	LogType ChangeLogType  `json:"type"       gencodec:"required"`
 	Address common.Address `json:"address"    gencodec:"required"`
@@ -64,8 +64,8 @@ type ChangeLog struct {
 	Version uint32 `json:"version"    gencodec:"required"`
 
 	// data pointer. Their content type depend on specific NewXXXLog function
-	OldVal interface{} // It's used for undo. So no need to save or send to others
-	NewVal interface{} `json:"newValue"   gencodec:"required"`
+	OldVal interface{} `json:"-"` // It's used for undo. So no need to save or send to others
+	NewVal interface{} `json:"newValue"`
 	Extra  interface{} `json:"extra"`
 }
 
@@ -127,6 +127,85 @@ func (c *ChangeLog) DecodeRLP(s *rlp.Stream) (err error) {
 	// This error means there are some data need to be decoded
 	err = s.ListEnd()
 	return err
+}
+
+// MarshalJSON marshals as JSON.
+func (c ChangeLog) MarshalJSON() ([]byte, error) {
+	type jsonChangeLog struct {
+		LogType ChangeLogType  `json:"type"       gencodec:"required"`
+		Address common.Address `json:"address"    gencodec:"required"`
+		Version uint32         `json:"version"    gencodec:"required"`
+		NewVal  string         `json:"newValue"`
+		Extra   string         `json:"extra"`
+	}
+	var enc jsonChangeLog
+	enc.LogType = c.LogType
+	enc.Address = c.Address
+	enc.Version = c.Version
+	if c.NewVal != nil {
+		NewVal, err := rlp.EncodeToBytes(c.NewVal)
+		if err != nil {
+			return nil, err
+		}
+		enc.NewVal = common.ToHex(NewVal)
+	}
+	if c.Extra != nil {
+		Extra, err := rlp.EncodeToBytes(c.Extra)
+		if err != nil {
+			return nil, err
+		}
+		enc.Extra = common.ToHex(Extra)
+	}
+	return json.Marshal(&enc)
+}
+
+// UnmarshalJSON unmarshals from JSON.
+func (c *ChangeLog) UnmarshalJSON(input []byte) error {
+	type jsonChangeLog struct {
+		LogType *ChangeLogType  `json:"type"       gencodec:"required"`
+		Address *common.Address `json:"address"    gencodec:"required"`
+		Version *uint32         `json:"version"    gencodec:"required"`
+		NewVal  string          `json:"newValue"`
+		Extra   string          `json:"extra"`
+	}
+	var dec jsonChangeLog
+	if err := json.Unmarshal(input, &dec); err != nil {
+		return err
+	}
+	if dec.LogType == nil {
+		return errors.New("missing required field 'type' for ChangeLog")
+	}
+	c.LogType = *dec.LogType
+	if dec.Address == nil {
+		return errors.New("missing required field 'address' for ChangeLog")
+	}
+	c.Address = *dec.Address
+	if dec.Version == nil {
+		return errors.New("missing required field 'version' for ChangeLog")
+	}
+	c.Version = *dec.Version
+	// decode the interface{}
+	config, ok := logConfigs[c.LogType]
+	if !ok {
+		log.Errorf("unexpected LogType %T", c.LogType)
+		return ErrUnknownChangeLogType
+	}
+	var err error
+	if dec.NewVal != "" {
+		r := bytes.NewReader(common.FromHex(dec.NewVal))
+		s := rlp.NewStream(r, uint64(len(dec.NewVal)))
+		if c.NewVal, err = config.NewValDecoder(s); err != nil {
+			return err
+		}
+	}
+	if dec.Extra != "" {
+		r := bytes.NewReader(common.FromHex(dec.Extra))
+		s := rlp.NewStream(r, uint64(len(dec.Extra)))
+		if c.Extra, err = config.ExtraDecoder(s); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (c *ChangeLog) Copy() *ChangeLog {

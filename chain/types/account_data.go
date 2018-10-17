@@ -26,7 +26,7 @@ type AccountData struct {
 	// It records the block height which contains any type of newest change log.
 	NewestRecords map[ChangeLogType]VersionRecord `json:"records" gencodec:"required"`
 	// related transactions include income and outcome
-	TxHashList []common.Hash
+	TxHashList []common.Hash `json:"-"`
 }
 
 type accountDataMarshaling struct {
