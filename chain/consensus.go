@@ -97,10 +97,10 @@ func (d *Dpovp) VerifyHeader(block *types.Block) error {
 	log.Debug(fmt.Sprintf("verifyHeader: timeSpan:%d nodeCount:%d slot:%d oneLoopTime:%d", timeSpan, nodeCount, slot, oneLoopTime))
 	// There's only one out block node
 	if nodeCount == 1 {
-		if timeSpan < d.blockInternal { // The time interval between blocks should be at least blockInternal
-			log.Debug("verifyHeader: Only one node, but not sleep enough time -1")
-			return fmt.Errorf("verifyHeader: Only one node, but not sleep enough time -1")
-		}
+		// if timeSpan < d.blockInternal { // The time interval between blocks should be at least blockInternal
+		// 	log.Debug("verifyHeader: Only one node, but not sleep enough time -1")
+		// 	return fmt.Errorf("verifyHeader: Only one node, but not sleep enough time -1")
+		// }
 		log.Debug("verifyHeader: nodeCount == 1")
 		return nil
 	}
