@@ -82,7 +82,6 @@ func (p *Peer) receiverHandshake(prv *ecdsa.PrivateKey) error {
 	if _, err := conn.Write(buf); err != nil {
 		return err
 	}
-	log.Infof("Receive new connection. IP: %s. ID: %s ", p.rw.fd.RemoteAddr().String(), common.ToHex(p.nodeID[:8]))
 	return nil
 }
 
@@ -107,7 +106,6 @@ func (p *Peer) initiatorEncHandshake(prv *ecdsa.PrivateKey) error {
 		return errors.New("version not match")
 	}
 	copy(p.nodeID[:], buf[4:])
-	log.Infof("client: connect to peer: %s. id: %s", p.rw.fd.RemoteAddr(), common.ToHex(p.nodeID[:8]))
 	return nil
 }
 

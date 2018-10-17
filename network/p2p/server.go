@@ -3,9 +3,11 @@ package p2p
 
 import (
 	"bufio"
+	"bytes"
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"io"
@@ -308,9 +310,19 @@ func (srv *Server) HandleConn(fd net.Conn, isSelfServer bool) error {
 	peer := srv.newTransport(fd)
 	err := peer.doHandshake(srv.PrivateKey, isSelfServer)
 	if err != nil {
+		fd.Close()
 		return err
 	}
 	p := peer.(*Peer)
+	if bytes.Compare(p.nodeID[:], deputynode.GetSelfNodeID()) == 0 {
+		fd.Close()
+		return ErrConnectSelf
+	}
+	if isSelfServer {
+		log.Infof("Receive new connection. IP: %s. ID: %s ", p.rw.fd.RemoteAddr().String(), common.ToHex(p.nodeID[:8]))
+	} else {
+		log.Infof("client: connect to peer: %s. id: %s", p.rw.fd.RemoteAddr(), common.ToHex(p.nodeID[:8]))
+	}
 	srv.addPeerCh <- p
 	log.Debug("transfer new peer to srv.addPeerCh")
 	return nil
@@ -369,8 +381,10 @@ func (srv *Server) runDialLoop() {
 				log.Debugf("start dial target: %s", target)
 				dialTask := newDialTask(target, srv)
 				if err := dialTask.Run(); err != nil {
-					log.Debugf("dial target failed. err: %v", err)
-					failedNodes[target] = struct{}{}
+					if err != ErrConnectSelf {
+						log.Debugf("dial target failed. err: %v", err)
+						failedNodes[target] = struct{}{}
+					}
 				}
 			}()
 		}
