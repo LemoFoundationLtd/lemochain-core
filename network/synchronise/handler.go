@@ -196,10 +196,12 @@ func (pm *ProtocolManager) PeerEvent(peer *p2p.Peer, flag p2p.PeerEventFlag) err
 func (pm *ProtocolManager) handle(p *peer) error {
 	block := pm.blockchain.CurrentBlock()
 	if err := p.Handshake(pm.networkId, block.Height(), block.Hash(), pm.blockchain.Genesis().Hash()); err != nil {
+		p.DisableReConnect()
 		p.Close()
 		log.Infof("lemochain handshake failed: %v", err)
 		return err
 	}
+	log.Infof("A new peer has connected. peer: %s", p.id[:16])
 	pm.syncTransactions(p.id)
 
 	pConn := &peerConnection{
