@@ -106,11 +106,11 @@ func (bc *BlockChain) Flags() map[string]string {
 }
 
 // HasBlock 本地链是否有某个块
-func (bc *BlockChain) HasBlock(hash common.Hash, height uint32) bool {
-	if _, err := bc.dbOpe.GetBlock(hash, height); err != nil {
-		return false
+func (bc *BlockChain) HasBlock(hash common.Hash) bool {
+	if ok, _ := bc.dbOpe.IsExistByHash(hash); ok {
+		return true
 	}
-	return true
+	return false
 }
 
 // GetBlock
@@ -224,7 +224,7 @@ func (bc *BlockChain) InsertChain(block *types.Block) (err error) {
 		log.Error(fmt.Sprintf("can't insert block to cache. height:%d hash:%s", block.Height(), hash.Hex()))
 		return err
 	}
-	log.Infof("insert block to chain. height: %d. hash: %s", block.Height(), block.Hash().String())
+	log.Infof("Insert block to chain. height: %d. hash: %s", block.Height(), block.Hash().String())
 	err = bc.AccountManager().Save(hash)
 	if err != nil {
 		log.Error("save account error!", "height", block.Height(), "hash", hash.Hex(), "err", err)
@@ -271,12 +271,12 @@ func (bc *BlockChain) InsertChain(block *types.Block) (err error) {
 		// needFork = true
 		bc.currentBlock.Store(block)
 		delete(bc.chainForksHead, parHash)
-		log.Infof("chain forked! current block: height(%d), hash(%s)", block.Height(), block.Hash().Hex())
+		log.Warnf("chain forked! current block: height(%d), hash(%s)", block.Height(), block.Hash().Hex())
 	} else if curHeight == block.Height() { // two block with same height, priority of lower alphabet order
 		if hash.Big().Cmp(curHash.Big()) < 0 {
 			bc.currentBlock.Store(block)
 			delete(bc.chainForksHead, parHash)
-			log.Infof("chain forked! current block: height(%d), hash(%s)", block.Height(), block.Hash().Hex())
+			log.Warnf("chain forked! current block: height(%d), hash(%s)", block.Height(), block.Hash().Hex())
 		}
 	} else {
 		if _, ok := bc.chainForksHead[parHash]; ok {
