@@ -23,7 +23,9 @@ type Peer struct {
 	wg      sync.WaitGroup
 	closeCh chan struct{}
 	closed  bool
-	nodeID  NodeID // sman 远程节点公钥
+	nodeID  NodeID // 远程节点公钥
+
+	needReConnect bool
 
 	rmu sync.Mutex // 读锁
 	wmu sync.Mutex // 写锁
@@ -34,11 +36,12 @@ type Peer struct {
 func newPeer(fd net.Conn) transport {
 	c := &conn{fd: fd, cont: make(chan error)}
 	return &Peer{
-		rw:       c,
-		created:  mclock.Now(),
-		closeCh:  make(chan struct{}),
-		closed:   false,
-		newMsgCh: make(chan Msg),
+		rw:            c,
+		created:       mclock.Now(),
+		closeCh:       make(chan struct{}),
+		closed:        false,
+		needReConnect: true,
+		newMsgCh:      make(chan Msg),
 	}
 }
 
@@ -58,8 +61,17 @@ func (p *Peer) doHandshake(prv *ecdsa.PrivateKey, isSelfServer bool) (err error)
 }
 
 func (p *Peer) Close() {
+	p.rw.fd.Close()
 	p.closed = true
 	close(p.closeCh)
+}
+
+func (p *Peer) DisableReConnect() {
+	p.needReConnect = false
+}
+
+func (p *Peer) NeedReConnect() bool {
+	return p.needReConnect
 }
 
 // 作为服务端处理流程
@@ -127,8 +139,6 @@ func (p *Peer) run() (err error) {
 		break
 	}
 
-	p.rw.fd.Close()
-	p.Close()
 	p.wg.Wait()
 	log.Debug("peer.run finished")
 	return err
