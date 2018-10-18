@@ -9,19 +9,6 @@ var ExtModules = map[string]string{
 	"tx":      Tx_JS,
 }
 
-const Tx_JS = `
-lemojs._extend({
-	property: 'tx',
-	methods: [
-		new lemojs._extend.Method({
-			name: 'sendTx',
-			call: 'tx_sendTx',
-			params: 1
-		}),
-	]
-});
-`
-
 const Account_JS = `
 lemojs._extend({
 	property: 'account',
@@ -34,11 +21,6 @@ lemojs._extend({
 		new lemojs._extend.Method({
 			name: 'getBalance',
 			call: 'account_getBalance',
-			params: 1
-		}),
-		new lemojs._extend.Method({
-			name: 'getVersion',
-			call: 'account_getVersion',
 			params: 1
 		}),
 		new lemojs._extend.Method({
@@ -55,8 +37,13 @@ lemojs._extend({
 	property: 'chain',
 	methods: [
 		new lemojs._extend.Method({
-			name: 'getBlock',
-			call: 'chain_getBlock',
+			name: 'getBlockByNumber',
+			call: 'chain_getBlockByNumber',
+			params: 1
+		}),
+		new lemojs._extend.Method({
+			name: 'getBlockByHash',
+			call: 'chain_getBlockByHash',
 			params: 1
 		}),
 	],
@@ -70,16 +57,33 @@ lemojs._extend({
 			getter: 'chain_getGenesis'
 		}),
 		new lemojs._extend.Property({
-			name: 'currentBlock',
+			name: 'getCurrentBlock',
 			getter: 'chain_getCurrentBlock'
 		}),
 		new lemojs._extend.Property({
-			name: 'stableBlock',
-			getter: 'chain_getStableBlock'
+			name: 'getLatestStableBlock',
+			getter: 'chain_getLatestStableBlock'
 		}),
 		new lemojs._extend.Property({
 			name: 'currentHeight',
 			getter: 'chain_getCurrentHeight'
+		}),
+		new lemojs._extend.Property({
+			name: 'latestStableHeight',
+			getter: 'chain_getLatestStableHeight'
+		}),
+	]
+});
+`
+
+const Tx_JS = `
+lemojs._extend({
+	property: 'tx',
+	methods: [
+		new lemojs._extend.Method({
+			name: 'sendTx',
+			call: 'tx_sendTx',
+			params: 1
 		}),
 	]
 });
@@ -91,12 +95,12 @@ lemojs._extend({
 	methods: [
 		new lemojs._extend.Method({
 			name: 'start',
-			call: 'mine_start',
+			call: 'mine_mineStart',
 			params: 0
 		}),
 		new lemojs._extend.Method({
 			name: 'stop',
-			call: 'mine_stop',
+			call: 'mine_mineStop',
 			params: 0
 		}),
 	],
@@ -104,6 +108,10 @@ lemojs._extend({
 		new lemojs._extend.Property({
 			name: 'mining',
 			getter: 'mine_isMining'
+		}),
+		new lemojs._extend.Property({
+			name: 'getLemoBase',
+			getter: 'mine_getLemoBase'
 		}),
 	]
 });
@@ -122,7 +130,11 @@ lemojs._extend({
 	properties: [
 		new lemojs._extend.Property({
 			name: 'peers',
-			getter: 'net_peers'
+			getter: 'net_getPeers'
+		}),
+		new lemojs._extend.Property({
+			name: 'getNodeVersion',
+			getter: 'net_getNodeVersion'
 		}),
 	]
 });

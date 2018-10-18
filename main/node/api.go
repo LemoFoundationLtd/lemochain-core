@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/miner"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
-	"reflect"
+	"github.com/LemoFoundationLtd/lemochain-go/network/p2p"
 	"strconv"
 	"strings"
 )
@@ -62,19 +63,6 @@ func (a *AccountAPI) GetBalance(LemoAddress string) string {
 	}
 }
 
-// GetVersion get version
-func (a *AccountAPI) GetVersion(LemoAddress string, logType uint32) uint32 {
-	var address common.Address
-	// Determine whether the input address is a Lemo address or a native address.
-	if strings.HasPrefix(LemoAddress, "Lemo") {
-		address = crypto.RestoreOriginalAddress(LemoAddress)
-	} else {
-		address = common.HexToAddress(LemoAddress)
-	}
-	accountObj := a.manager.GetCanonicalAccount(address)
-	return accountObj.GetVersion(types.ChangeLogType(logType))
-}
-
 // GetAccount return the struct of the &AccountData{}
 func (a *AccountAPI) GetAccount(LemoAddress string) types.AccountAccessor {
 	var address common.Address
@@ -99,21 +87,14 @@ func NewChainAPI(chain *chain.BlockChain) *ChainAPI {
 	return &ChainAPI{chain}
 }
 
-// GetBlock get block information by height or hash
-func (c *ChainAPI) GetBlock(n interface{}) *types.Block {
-	t := reflect.TypeOf(n).String()
-	if f := "float64"; strings.EqualFold(t, f) {
-		h := n.(float64)
-		height := uint32(h)
-		return c.chain.GetBlockByHeight(height)
+// GetBlockByNumber get block information by height
+func (c *ChainAPI) GetBlockByNumber(height uint32) *types.Block {
+	return c.chain.GetBlockByHeight(height)
+}
 
-	} else if f := "string"; strings.EqualFold(t, f) {
-		h := n.(string)
-		hash := common.HexToHash(h)
-		return c.chain.GetBlockByHash(hash)
-	} else {
-		return nil
-	}
+// GetBlockByHash get block information by hash
+func (c *ChainAPI) GetBlockByHash(hash string) *types.Block {
+	return c.chain.GetBlockByHash(common.HexToHash(hash))
 }
 
 // GetChainID get chain id
@@ -131,16 +112,21 @@ func (c *ChainAPI) GetCurrentBlock() *types.Block {
 	return c.chain.CurrentBlock()
 }
 
-// GetStableBlock get the latest currently agreed blocks
-func (c *ChainAPI) GetStableBlock() *types.Block {
+// GetLatestStableBlock get the latest currently agreed blocks
+func (c *ChainAPI) GetLatestStableBlock() *types.Block {
 	return c.chain.StableBlock()
 }
 
-//
+// GetCurrentHeight
 func (c *ChainAPI) GetCurrentHeight() uint32 {
 	currentBlock := c.chain.CurrentBlock()
 	height := currentBlock.Height()
 	return height
+}
+
+// LatestStableHeight
+func (c *ChainAPI) GetLatestStableHeight() uint32 {
+	return c.chain.StableBlock().Height()
 }
 
 // TXAPI
@@ -162,4 +148,61 @@ func (t *TxAPI) SendTx(encodedTx hexutil.Bytes) (common.Hash, error) {
 	txHash := tx.Hash()
 	err := t.txpool.AddTx(tx)
 	return txHash, err
+}
+
+// MineAPI
+type MineAPI struct {
+	miner *miner.Miner
+}
+
+// NewMineAPI
+func NewMineAPI(miner *miner.Miner) *MineAPI {
+	return &MineAPI{miner}
+}
+
+// MineStart
+func (m *MineAPI) MineStart() {
+	m.miner.Start()
+}
+
+// MineStop
+func (m *MineAPI) MineStop() {
+	m.miner.Stop()
+}
+
+// IsMining
+func (m *MineAPI) IsMining() bool {
+	return m.miner.IsMining()
+}
+
+// GetLemoBase
+func (m *MineAPI) GetLemoBase() string {
+	lemoBase := m.miner.GetLemoBase()
+	return lemoBase.Hex()
+}
+
+// NetAPI
+type NetAPI struct {
+	server *p2p.Server
+}
+
+// NewNetAPI
+func NewNetAPI(server *p2p.Server) *NetAPI {
+	return &NetAPI{server}
+}
+
+// AddStaticPeer
+func (n *NetAPI) AddStaticPeer(node string) {
+	n.server.AddStaticPeer(node)
+}
+
+// GetPeers
+func (n *NetAPI) GetPeers() []p2p.PeerConnInfo {
+	return n.server.Peers()
+}
+
+// GetNodeVersion
+func (n *NetAPI) GetNodeVersion() string {
+	// todo
+	return "1.0"
 }

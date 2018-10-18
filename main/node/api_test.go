@@ -54,7 +54,7 @@ func TestChainAPI_api(t *testing.T) {
 	// get current block api
 	t.Log(c.GetCurrentBlock())
 	// get stable block api
-	t.Log(c.GetStableBlock())
+	t.Log(c.GetLatestStableBlock())
 	// get current chain height api
 	t.Log(c.GetCurrentHeight())
 
