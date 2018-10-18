@@ -3,9 +3,11 @@ package p2p
 
 import (
 	"bufio"
+	"bytes"
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"io"
@@ -241,9 +243,10 @@ func (srv *Server) run() {
 		select {
 		case p := <-srv.addPeerCh:
 			log.Debugf("receive srv.addPeerCh. node id: %s", common.ToHex(p.nodeID[:8]))
-			if oldPeer, ok := srv.peers[p.nodeID.String()]; ok {
-				oldPeer.Close()
-				log.Debugf("Connection has already exist. Close old and receive new. Remote node id: %s", common.ToHex(p.nodeID[:8]))
+			if _, ok := srv.peers[p.nodeID.String()]; ok {
+				log.Warnf("Connection has already exist. Remote node id: %s", common.ToHex(p.nodeID[:8]))
+				p.Close()
+				break
 			}
 			srv.peersMux.Lock()
 			srv.peers[p.nodeID.String()] = p
@@ -265,15 +268,17 @@ func (srv *Server) run() {
 					log.Error("peer event error", "err", err)
 				}
 			}
-			random := time.Duration(rand.Int()%10 + 10)
-			time.AfterFunc(random*time.Second, func() {
-				srv.needConnectNodeCh <- p.nodeID.String() + "+" + p.rw.fd.RemoteAddr().String() // 断线重连 todo
-			})
-			break
+			if p.NeedReConnect() {
+				random := time.Duration(rand.Int()%10 + 10)
+				time.AfterFunc(random*time.Second, func() {
+					srv.needConnectNodeCh <- p.nodeID.String() + "+" + p.rw.fd.RemoteAddr().String() // 断线重连 todo
+				})
+
+			}
 		case <-srv.quitCh:
 			return
 		}
-		log.Debug("next turn to addPeerCh")
+		// log.Debug("next turn to addPeerCh")
 	}
 }
 
@@ -308,9 +313,19 @@ func (srv *Server) HandleConn(fd net.Conn, isSelfServer bool) error {
 	peer := srv.newTransport(fd)
 	err := peer.doHandshake(srv.PrivateKey, isSelfServer)
 	if err != nil {
+		fd.Close()
 		return err
 	}
 	p := peer.(*Peer)
+	if bytes.Compare(p.nodeID[:], deputynode.GetSelfNodeID()) == 0 {
+		fd.Close()
+		return ErrConnectSelf
+	}
+	if isSelfServer {
+		log.Debugf("Receive new connect, IP: %s. ID: %s ", p.rw.fd.RemoteAddr().String(), common.ToHex(p.nodeID[:8]))
+	} else {
+		log.Debugf("Connect to server: %s. id: %s", p.rw.fd.RemoteAddr(), common.ToHex(p.nodeID[:8]))
+	}
 	srv.addPeerCh <- p
 	log.Debug("transfer new peer to srv.addPeerCh")
 	return nil
@@ -369,8 +384,10 @@ func (srv *Server) runDialLoop() {
 				log.Debugf("start dial target: %s", target)
 				dialTask := newDialTask(target, srv)
 				if err := dialTask.Run(); err != nil {
-					log.Debugf("dial target failed. err: %v", err)
-					failedNodes[target] = struct{}{}
+					if err != ErrConnectSelf {
+						log.Debugf("dial target failed. err: %v", err)
+						failedNodes[target] = struct{}{}
+					}
 				}
 			}()
 		}
@@ -378,14 +395,14 @@ func (srv *Server) runDialLoop() {
 }
 
 func (srv *Server) AddStaticPeer(node string) {
-	tmps := strings.Split(node, ":")
-	if len(tmps) != 2 {
+	nodeParts := strings.Split(node, ":")
+	if len(nodeParts) != 2 {
 		return
 	}
-	if ip := net.ParseIP(tmps[0]); ip == nil {
+	if ip := net.ParseIP(nodeParts[0]); ip == nil {
 		return
 	}
-	port, err := strconv.Atoi(tmps[1])
+	port, err := strconv.Atoi(nodeParts[1])
 	if err != nil || port < 1024 || port > 65535 {
 		// return
 	}

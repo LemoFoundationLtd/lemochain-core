@@ -18,14 +18,12 @@ package event
 
 import (
 	"fmt"
-
-	"github.com/LemoFoundationLtd/lemochain-go/common/event"
 )
 
 func ExampleFeed_acknowledgedEvents() {
 	// This example shows how the return value of Send can be used for request/reply
 	// interaction between event consumers and producers.
-	var feed event.Feed
+	var feed Feed
 	type ackedEvent struct {
 		i   int
 		ack chan<- struct{}

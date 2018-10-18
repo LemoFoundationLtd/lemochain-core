@@ -61,7 +61,7 @@ func NewProtocolManager(networkId uint64, nodeID []byte, blockchain *chain.Block
 	insertToChain := func(block *types.Block) error {
 		return blockchain.InsertChain(block)
 	}
-	manager.fetcher = NewFetcher(blockchain.GetBlock, blockchain.Verify, manager.broadcastCurrentBlock, getLocalHeight, getConsensusHeight, insertToChain, manager.dropPeer)
+	manager.fetcher = NewFetcher(blockchain.HasBlock, blockchain.Verify, manager.broadcastCurrentBlock, getLocalHeight, getConsensusHeight, insertToChain, manager.dropPeer)
 	manager.downloader = NewDownloader(manager.peers, blockchain, manager.dropPeer)
 
 	blockchain.BroadcastConfirmInfo = manager.broadcastConfirmInfo // 广播区块的确认信息
@@ -196,9 +196,12 @@ func (pm *ProtocolManager) PeerEvent(peer *p2p.Peer, flag p2p.PeerEventFlag) err
 func (pm *ProtocolManager) handle(p *peer) error {
 	block := pm.blockchain.CurrentBlock()
 	if err := p.Handshake(pm.networkId, block.Height(), block.Hash(), pm.blockchain.Genesis().Hash()); err != nil {
+		p.DisableReConnect()
+		p.Close()
 		log.Infof("lemochain handshake failed: %v", err)
 		return err
 	}
+	log.Infof("A new peer has connected. peer: %s", p.id[:16])
 	pm.syncTransactions(p.id)
 
 	pConn := &peerConnection{
@@ -238,7 +241,7 @@ func (pm *ProtocolManager) handleMsg(p *peerConnection) error {
 		}
 		unknown := make(protocol.BlockHashesData, 0, len(announces))
 		for _, block := range announces {
-			if !pm.blockchain.HasBlock(block.Hash, block.Height) {
+			if !pm.blockchain.HasBlock(block.Hash) {
 				unknown = append(unknown, block)
 			}
 		}
@@ -434,7 +437,7 @@ func (pm *ProtocolManager) minedBroadcastLoop() {
 					go p.peer.send(protocol.NewBlockMsg, &block)
 				}
 			}
-			time.AfterFunc(1*time.Second, func() {
+			time.AfterFunc(2*time.Second, func() {
 				go pm.broadcastConfirmInfo(block.Hash(), block.Height())
 			})
 		case <-pm.quitSync:

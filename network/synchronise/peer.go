@@ -151,7 +151,7 @@ func (p *peer) readRemoteStatus(network uint64, status *protocol.NodeStatusData,
 		return errors.New("networkid not match")
 	}
 	if bytes.Compare(status.GenesisBlock[:], genesis[:]) != 0 {
-		return errors.New("genesis block not match")
+		return p2p.ErrGenesisNotMatch
 	}
 	return nil
 }

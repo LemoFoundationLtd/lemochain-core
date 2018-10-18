@@ -161,8 +161,8 @@ func (d *Manager) GetSlot(height uint32, firstAddress, nextAddress common.Addres
 func (d *Manager) TimeToHandOutRewards(height uint32) bool {
 	// d.lock.Lock()
 	// defer d.lock.Unlock()
-	for i := 0; i < len(d.DeputyNodesList); i++ {
-		if d.DeputyNodesList[i].height == height+1 {
+	for i := 1; i < len(d.DeputyNodesList); i++ {
+		if d.DeputyNodesList[i].height+1000+1 == height {
 			return true
 		}
 	}
