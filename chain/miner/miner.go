@@ -100,6 +100,10 @@ func (m *Miner) SetLemoBase(address common.Address) {
 	m.lemoBase = address
 }
 
+func (m *Miner) GetLemoBase() common.Address {
+	return m.lemoBase
+}
+
 // 获取最新区块的时间戳离当前时间的距离 单位：ms
 func (m *Miner) getTimespan() int64 {
 	lstSpan := m.currentBlock().Header.Time.Int64()
