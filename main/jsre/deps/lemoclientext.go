@@ -145,6 +145,11 @@ lemojs._extend({
 			call: 'net_getNodeVersion',
 			params: 0
 		}),
+		new lemojs._extend.Method({
+			name: 'getListening',
+			call: 'net_getListening',
+			params: 0
+		}),
 	]
 });
 `

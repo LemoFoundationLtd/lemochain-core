@@ -213,3 +213,8 @@ func (n *NetAPI) GetNodeVersion() string {
 	// todo
 	return "1.0"
 }
+
+//
+func (n *NetAPI) GetListening() string {
+	return n.server.ListenAddr
+}
