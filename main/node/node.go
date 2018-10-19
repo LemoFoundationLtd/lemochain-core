@@ -215,13 +215,13 @@ func (n *Node) startRPC() error {
 	if err := n.startInProc(apis); err != nil {
 		return err
 	}
-	// if err := n.startIPC(apis); err != nil {
-	// 	return err
-	// }
-	// if err := n.startHTTP(apis); err != nil {
-	// 	return err
-	// }
-	// if err := n.startHTTP(apis); err != nil {
+	if err := n.startIPC(apis); err != nil {
+		return err
+	}
+	if err := n.startHTTP(apis); err != nil {
+		return err
+	}
+	// if err := n.startWS(apis); err != nil {
 	// 	return err
 	// }
 	n.rpcAPIs = apis

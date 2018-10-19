@@ -51,7 +51,7 @@ func init() {
 	app.Commands = []cli.Command{
 		initCommand,
 		consoleCommand,
-		// attachCommand,
+		attachCommand,
 	}
 	sort.Sort(cli.CommandsByName(app.Commands))
 	app.Flags = append(app.Flags, nodeFlags...)

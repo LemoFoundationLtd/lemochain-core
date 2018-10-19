@@ -191,11 +191,12 @@ func splitAndTrim(input string) []string {
 // setIPC 设置IPC
 func setIPC(ctx *cli.Context, cfg *NodeConfig) {
 	checkExclusive(ctx, IPCDisabledFlag, IPCPathFlag)
-	switch {
-	case ctx.GlobalBool(IPCDisabledFlag.Name):
+	if ctx.GlobalBool(IPCDisabledFlag.Name) {
 		cfg.IPCPath = ""
-	case ctx.GlobalIsSet(IPCPathFlag.Name):
+	} else if ctx.GlobalIsSet(IPCPathFlag.Name) {
 		cfg.IPCPath = ctx.GlobalString(IPCPathFlag.Name)
+	} else {
+		cfg.IPCPath = DefaultIPCPath()
 	}
 }
 

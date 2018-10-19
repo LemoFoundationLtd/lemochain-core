@@ -41,36 +41,16 @@ type NodeConfig struct {
 
 // IPCEndpoint
 func (c *NodeConfig) IPCEndpoint() string {
-	if c.IPCPath == "" {
-		return ""
-	}
+	// On windows we can only use plain top-level pipes
 	if runtime.GOOS == "windows" {
-		if strings.HasPrefix(c.IPCPath, `\\.\pipe\`) {
-			return c.IPCPath
-		}
 		return `\\.\pipe\` + c.IPCPath
 	}
-	if filepath.Base(c.IPCPath) == c.IPCPath {
-		if c.DataDir == "" {
-			return filepath.Join(os.TempDir(), c.IPCPath)
-		}
-		return filepath.Join(c.DataDir, c.IPCPath)
-	}
-	return c.IPCPath
+	// Resolve names into the data directory full paths otherwise
+	return filepath.Join(c.DataDir, c.IPCPath)
 }
 
-func DefaultIPCEndpoint(clientIdentifier string) string {
-	if clientIdentifier == "" {
-		clientIdentifier = strings.TrimSuffix(filepath.Base(os.Args[0]), ".exe")
-		if clientIdentifier == "" {
-			panic("empty executable name")
-		}
-	}
-	config := &NodeConfig{
-		DataDir: DefaultDataDir(),
-		IPCPath: clientIdentifier + ".ipc",
-	}
-	return config.IPCEndpoint()
+func DefaultIPCPath() string {
+	return strings.TrimSuffix(filepath.Base(os.Args[0]), ".exe") + ".ipc"
 }
 
 func (c *NodeConfig) HTTPEndpoint() string {
