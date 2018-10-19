@@ -9,19 +9,6 @@ var ExtModules = map[string]string{
 	"tx":      Tx_JS,
 }
 
-const Tx_JS = `
-lemojs._extend({
-	property: 'tx',
-	methods: [
-		new lemojs._extend.Method({
-			name: 'sendTx',
-			call: 'tx_sendTx',
-			params: 1
-		}),
-	]
-});
-`
-
 const Account_JS = `
 lemojs._extend({
 	property: 'account',
@@ -34,11 +21,6 @@ lemojs._extend({
 		new lemojs._extend.Method({
 			name: 'getBalance',
 			call: 'account_getBalance',
-			params: 1
-		}),
-		new lemojs._extend.Method({
-			name: 'getVersion',
-			call: 'account_getVersion',
 			params: 1
 		}),
 		new lemojs._extend.Method({
@@ -55,31 +37,62 @@ lemojs._extend({
 	property: 'chain',
 	methods: [
 		new lemojs._extend.Method({
-			name: 'getBlock',
-			call: 'chain_getBlock',
+			name: 'getBlockByNumber',
+			call: 'chain_getBlockByNumber',
 			params: 1
 		}),
-	],
-	properties: [
-		new lemojs._extend.Property({
+		new lemojs._extend.Method({
+			name: 'getBlockByHash',
+			call: 'chain_getBlockByHash',
+			params: 1
+		}),
+		new lemojs._extend.Method({
 			name: 'chainID',
-			getter: 'chain_getChainID'
+			call: 'chain_getChainID',
+			params: 0
 		}),
-		new lemojs._extend.Property({
+		new lemojs._extend.Method({
 			name: 'genesis',
-			getter: 'chain_getGenesis'
+			call: 'chain_getGenesis',
+			params: 0
 		}),
-		new lemojs._extend.Property({
-			name: 'currentBlock',
-			getter: 'chain_getCurrentBlock'
+		new lemojs._extend.Method({
+			name: 'getCurrentBlock',
+			call: 'chain_getCurrentBlock',
+			params: 0
 		}),
-		new lemojs._extend.Property({
-			name: 'stableBlock',
-			getter: 'chain_getStableBlock'
+		new lemojs._extend.Method({
+			name: 'getLatestStableBlock',
+			call: 'chain_getLatestStableBlock',
+			params: 0
 		}),
-		new lemojs._extend.Property({
+		new lemojs._extend.Method({
 			name: 'currentHeight',
-			getter: 'chain_getCurrentHeight'
+			call: 'chain_getCurrentHeight',
+			params: 0
+		}),
+		new lemojs._extend.Method({
+			name: 'latestStableHeight',
+			call: 'chain_getLatestStableHeight',
+			params: 0
+		}),
+		new lemojs._extend.Method({
+			name: 'gasPrice',
+			call: 'chain_getSuggestGasPrice',
+			params: 0
+		}),
+	]
+});
+`
+
+const Tx_JS = `
+lemojs._extend({
+	property: 'tx',
+	methods: [
+		new lemojs._extend.Method({
+			name: 'sendTx',
+			call: 'tx_sendTx',
+			params: 1
 		}),
 	]
 });
@@ -91,19 +104,23 @@ lemojs._extend({
 	methods: [
 		new lemojs._extend.Method({
 			name: 'start',
-			call: 'mine_start',
+			call: 'mine_mineStart',
 			params: 0
 		}),
 		new lemojs._extend.Method({
 			name: 'stop',
-			call: 'mine_stop',
+			call: 'mine_mineStop',
 			params: 0
 		}),
-	],
-	properties: [
-		new lemojs._extend.Property({
+		new lemojs._extend.Method({
 			name: 'mining',
-			getter: 'mine_isMining'
+			call: 'mine_isMining',
+			params: 0
+		}),
+		new lemojs._extend.Method({
+			name: 'getLemoBase',
+			call: 'mine_getLemoBase',
+			params: 0
 		}),
 	]
 });
@@ -118,11 +135,20 @@ lemojs._extend({
 			call: 'net_addStaticPeer',
 			params: 1
 		}),
-	],
-	properties: [
-		new lemojs._extend.Property({
+		new lemojs._extend.Method({
 			name: 'peers',
-			getter: 'net_peers'
+			call: 'net_getPeers',
+			params: 0
+		}),
+		new lemojs._extend.Method({
+			name: 'getNodeVersion',
+			call: 'net_getNodeVersion',
+			params: 0
+		}),
+		new lemojs._extend.Method({
+			name: 'getListening',
+			call: 'net_getListening',
+			params: 0
 		}),
 	]
 });

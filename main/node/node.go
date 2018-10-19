@@ -451,7 +451,7 @@ func (n *Node) apis() []rpc.API {
 		{
 			Namespace: "mine",
 			Version:   "1.0",
-			Service:   n.miner,
+			Service:   NewMineAPI(n.miner),
 		},
 		{
 			Namespace: "account",
@@ -461,7 +461,7 @@ func (n *Node) apis() []rpc.API {
 		{
 			Namespace: "net",
 			Version:   "1.0",
-			Service:   n.server,
+			Service:   NewNetAPI(n.server),
 		},
 		{
 			Namespace: "tx",
