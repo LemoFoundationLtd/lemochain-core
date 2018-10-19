@@ -11,6 +11,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"github.com/LemoFoundationLtd/lemochain-go/network/p2p"
+	"math/big"
 	"strconv"
 	"strings"
 )
@@ -127,6 +128,12 @@ func (c *ChainAPI) GetCurrentHeight() uint32 {
 // LatestStableHeight
 func (c *ChainAPI) GetLatestStableHeight() uint32 {
 	return c.chain.StableBlock().Height()
+}
+
+// GetGasPrice get suggest gas price
+func (c *ChainAPI) GetSuggestGasPrice() *big.Int {
+	// todo
+	return big.NewInt(100000000)
 }
 
 // TXAPI

@@ -46,31 +46,40 @@ lemojs._extend({
 			call: 'chain_getBlockByHash',
 			params: 1
 		}),
-	],
-	properties: [
-		new lemojs._extend.Property({
+		new lemojs._extend.Method({
 			name: 'chainID',
-			getter: 'chain_getChainID'
+			call: 'chain_getChainID',
+			params: 0
 		}),
-		new lemojs._extend.Property({
+		new lemojs._extend.Method({
 			name: 'genesis',
-			getter: 'chain_getGenesis'
+			call: 'chain_getGenesis',
+			params: 0
 		}),
-		new lemojs._extend.Property({
+		new lemojs._extend.Method({
 			name: 'getCurrentBlock',
-			getter: 'chain_getCurrentBlock'
+			call: 'chain_getCurrentBlock',
+			params: 0
 		}),
-		new lemojs._extend.Property({
+		new lemojs._extend.Method({
 			name: 'getLatestStableBlock',
-			getter: 'chain_getLatestStableBlock'
+			call: 'chain_getLatestStableBlock',
+			params: 0
 		}),
-		new lemojs._extend.Property({
+		new lemojs._extend.Method({
 			name: 'currentHeight',
-			getter: 'chain_getCurrentHeight'
+			call: 'chain_getCurrentHeight',
+			params: 0
 		}),
-		new lemojs._extend.Property({
+		new lemojs._extend.Method({
 			name: 'latestStableHeight',
-			getter: 'chain_getLatestStableHeight'
+			call: 'chain_getLatestStableHeight',
+			params: 0
+		}),
+		new lemojs._extend.Method({
+			name: 'gasPrice',
+			call: 'chain_getSuggestGasPrice',
+			params: 0
 		}),
 	]
 });
@@ -103,15 +112,15 @@ lemojs._extend({
 			call: 'mine_mineStop',
 			params: 0
 		}),
-	],
-	properties: [
-		new lemojs._extend.Property({
+		new lemojs._extend.Method({
 			name: 'mining',
-			getter: 'mine_isMining'
+			call: 'mine_isMining',
+			params: 0
 		}),
-		new lemojs._extend.Property({
+		new lemojs._extend.Method({
 			name: 'getLemoBase',
-			getter: 'mine_getLemoBase'
+			call: 'mine_getLemoBase',
+			params: 0
 		}),
 	]
 });
@@ -126,15 +135,15 @@ lemojs._extend({
 			call: 'net_addStaticPeer',
 			params: 1
 		}),
-	],
-	properties: [
-		new lemojs._extend.Property({
+		new lemojs._extend.Method({
 			name: 'peers',
-			getter: 'net_getPeers'
+			call: 'net_getPeers',
+			params: 0
 		}),
-		new lemojs._extend.Property({
+		new lemojs._extend.Method({
 			name: 'getNodeVersion',
-			getter: 'net_getNodeVersion'
+			call: 'net_getNodeVersion',
+			params: 0
 		}),
 	]
 });
