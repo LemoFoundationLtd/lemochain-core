@@ -9,6 +9,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
+	"github.com/LemoFoundationLtd/lemochain-go/common/flag"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/network/synchronise/protocol"
 	db "github.com/LemoFoundationLtd/lemochain-go/store/protocol"
@@ -23,7 +24,7 @@ type broadcastBlockFn func(block *types.Block)
 
 type BlockChain struct {
 	chainID              uint16
-	flags                map[string]string
+	flags                flag.CmdFlags
 	dbOpe                db.ChainDB // 数据库操作
 	am                   *account.Manager
 	currentBlock         atomic.Value           // 当前链最新区块
@@ -44,7 +45,7 @@ type BlockChain struct {
 	quitCh     chan struct{}     // 退出chan
 }
 
-func NewBlockChain(chainID uint64, engine Engine, db db.ChainDB, newBlockCh chan *types.Block, flags map[string]string) (bc *BlockChain, err error) {
+func NewBlockChain(chainID uint64, engine Engine, db db.ChainDB, newBlockCh chan *types.Block, flags flag.CmdFlags) (bc *BlockChain, err error) {
 	bc = &BlockChain{
 		chainID:        uint16(chainID),
 		dbOpe:          db,
@@ -101,7 +102,7 @@ func (bc *BlockChain) TxProcessor() *TxProcessor {
 	return bc.processor
 }
 
-func (bc *BlockChain) Flags() map[string]string {
+func (bc *BlockChain) Flags() flag.CmdFlags {
 	return bc.flags
 }
 

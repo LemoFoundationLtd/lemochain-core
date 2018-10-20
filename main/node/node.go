@@ -11,6 +11,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-go/common/flag"
 	"github.com/LemoFoundationLtd/lemochain-go/common/flock"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/network/p2p"
@@ -58,7 +59,7 @@ type Node struct {
 	httpEndpoint  string
 	httpWhitelist []string
 	httpListener  net.Listener
-	httpHander    *rpc.Server
+	httpHandler   *rpc.Server
 
 	wsEndpoint string
 	wsListener net.Listener
@@ -74,7 +75,7 @@ type Node struct {
 	lock sync.RWMutex
 }
 
-func New(lemoConf *LemoConfig, conf *NodeConfig, flags map[string]string) (*Node, error) {
+func New(lemoConf *LemoConfig, conf *NodeConfig, flags flag.CmdFlags) (*Node, error) {
 	confCopy := *conf
 	conf = &confCopy
 	if conf.DataDir != "" {
@@ -218,7 +219,7 @@ func (n *Node) startRPC() error {
 	if err := n.startIPC(apis); err != nil {
 		return err
 	}
-	if err := n.startHTTP(apis); err != nil {
+	if err := n.startHTTP(n.httpEndpoint, apis, n.config.HTTPCors, n.config.HTTPVirtualHosts); err != nil {
 		return err
 	}
 	// if err := n.startWS(apis); err != nil {
@@ -234,7 +235,7 @@ func (n *Node) startInProc(apis []rpc.API) error {
 		if err := handler.RegisterName(api.Namespace, api.Service); err != nil {
 			return err
 		}
-		log.Infof("InProc registered. service: %v. namespace: %s", api.Service, api.Namespace)
+		log.Info("InProc registered", "service", api.Service, "namespace", api.Namespace)
 	}
 	n.inprocHandler = handler
 	return nil
@@ -256,7 +257,7 @@ func (n *Node) startIPC(apis []rpc.API) error {
 		if err := handler.RegisterName(api.Namespace, api.Service); err != nil {
 			return err
 		}
-		log.Infof("InProc registered. service: %v. namespace: %s", api.Service, api.Namespace)
+		log.Info("InProc registered", "service", api.Service, "namespace", api.Namespace)
 	}
 	var (
 		listener net.Listener
@@ -266,7 +267,7 @@ func (n *Node) startIPC(apis []rpc.API) error {
 		return err
 	}
 	go func() {
-		log.Infof("IPC endpoint opened. url: %v", n.ipcEndpoint)
+		log.Info("IPC endpoint opened", "url", n.ipcEndpoint)
 		for {
 			conn, err := listener.Accept()
 			if err != nil {
@@ -290,7 +291,7 @@ func (n *Node) stopIPC() {
 	if n.ipcListener != nil {
 		n.ipcListener.Close()
 		n.ipcListener = nil
-		log.Infof("IPC endpoint closed. endpoint: %v", n.ipcEndpoint)
+		log.Info("IPC endpoint closed", "endpoint", n.ipcEndpoint)
 	}
 	if n.ipcHandler != nil {
 		n.ipcHandler.Stop()
@@ -298,12 +299,50 @@ func (n *Node) stopIPC() {
 	}
 }
 
-func (n *Node) startHTTP(apis []rpc.API) error {
+func (n *Node) startHTTP(endpoint string, apis []rpc.API, cors []string, vhosts []string) error {
+	// Short circuit if the HTTP endpoint isn't being exposed
+	if endpoint == "" {
+		return nil
+	}
+	// Register all the APIs exposed by the services
+	handler := rpc.NewServer()
+	for _, api := range apis {
+		if api.Public {
+			if err := handler.RegisterName(api.Namespace, api.Service); err != nil {
+				return err
+			}
+			log.Debug("HTTP registered", "service", api.Service, "namespace", api.Namespace)
+		}
+	}
+	// All APIs registered, start the HTTP listener
+	var (
+		listener net.Listener
+		err      error
+	)
+	if listener, err = net.Listen("tcp", endpoint); err != nil {
+		return err
+	}
+	go rpc.NewHTTPServer(cors, vhosts, handler).Serve(listener)
+	log.Info("HTTP endpoint opened", "url", fmt.Sprintf("http://%s", endpoint), "cors", strings.Join(cors, ","), "vhosts", strings.Join(vhosts, ","))
+	// All listeners booted successfully
+	n.httpEndpoint = endpoint
+	n.httpListener = listener
+	n.httpHandler = handler
+
 	return nil
 }
 
 func (n *Node) stopHTTP() {
+	if n.httpListener != nil {
+		n.httpListener.Close()
+		n.httpListener = nil
 
+		log.Info("HTTP endpoint closed", "url", fmt.Sprintf("http://%s", n.httpEndpoint))
+	}
+	if n.httpHandler != nil {
+		n.httpHandler.Stop()
+		n.httpHandler = nil
+	}
 }
 
 func (n *Node) startWS(apis []rpc.API) error {
@@ -315,7 +354,11 @@ func (n *Node) stopWS() {
 }
 
 func (n *Node) stopRPC() {
-
+	// Terminate the API, services and the p2p server.
+	n.stopWS()
+	n.stopHTTP()
+	n.stopIPC()
+	n.rpcAPIs = nil
 }
 
 // Stop
@@ -327,6 +370,7 @@ func (n *Node) Stop() error {
 		log.Warn("p2p server not started")
 	} else {
 		n.server.Stop()
+		n.server = nil
 	}
 	if err := n.accMan.Stop(true); err != nil {
 		log.Errorf("stop account manager failed: %v", err)
@@ -447,6 +491,7 @@ func (n *Node) apis() []rpc.API {
 			Namespace: "chain",
 			Version:   "1.0",
 			Service:   NewChainAPI(n.chain),
+			Public:    true,
 		},
 		{
 			Namespace: "mine",
@@ -457,16 +502,19 @@ func (n *Node) apis() []rpc.API {
 			Namespace: "account",
 			Version:   "1.0",
 			Service:   NewAccountAPI(n.accMan),
+			Public:    true,
 		},
 		{
 			Namespace: "net",
 			Version:   "1.0",
 			Service:   NewNetAPI(n.server),
+			Public:    true,
 		},
 		{
 			Namespace: "tx",
 			Version:   "1.0",
 			Service:   NewTxAPI(n.txPool),
+			Public:    true,
 		},
 	}
 }

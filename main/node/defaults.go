@@ -16,6 +16,9 @@ const (
 var DefaultNodeConfig = NodeConfig{
 	DataDir: DefaultDataDir(),
 
+	HTTPPort:         DefaultHTTPPort,
+	HTTPVirtualHosts: []string{"localhost"},
+	WSPort:           DefaultWSPort,
 	P2P: p2p.Config{
 		ListenAddr: ":60001",
 		MaxPeerNum: 1000,

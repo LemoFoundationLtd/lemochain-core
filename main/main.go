@@ -33,11 +33,9 @@ var (
 		node.RPCEnabledFlag,
 		node.RPCListenAddrFlag,
 		node.RPCPortFlag,
-		node.RPCApiFlag,
 		node.WSEnabledFlag,
 		node.WSListenAddrFlag,
 		node.WSPortFlag,
-		node.WSApiFlag,
 		node.WSAllowedOriginsFlag,
 		node.IPCDisabledFlag,
 		node.IPCPathFlag,
@@ -55,6 +53,7 @@ func init() {
 	}
 	sort.Sort(cli.CommandsByName(app.Commands))
 	app.Flags = append(app.Flags, nodeFlags...)
+	app.Flags = append(app.Flags, rpcFlags...)
 
 	app.Before = func(ctx *cli.Context) error {
 		runtime.GOMAXPROCS(runtime.NumCPU())

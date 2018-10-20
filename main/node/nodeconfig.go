@@ -31,11 +31,9 @@ type NodeConfig struct {
 	HTTPPort         int      `toml:",omitempty"`
 	HTTPCors         []string `toml:",omitempty"`
 	HTTPVirtualHosts []string `toml:",omitempty"`
-	HTTPModules      []string `toml:",omitempty"`
 	WSHost           string   `toml:",omitempty"`
 	WSPort           int      `toml:",omitempty"`
 	WSOrigins        []string `toml:",omitempty"`
-	WSModules        []string `toml:",omitempty"`
 	WSExposeAll      bool     `toml:",omitempty"`
 }
 
@@ -47,10 +45,6 @@ func (c *NodeConfig) IPCEndpoint() string {
 	}
 	// Resolve names into the data directory full paths otherwise
 	return filepath.Join(c.DataDir, c.IPCPath)
-}
-
-func DefaultIPCPath() string {
-	return strings.TrimSuffix(filepath.Base(os.Args[0]), ".exe") + ".ipc"
 }
 
 func (c *NodeConfig) HTTPEndpoint() string {

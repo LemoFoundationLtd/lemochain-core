@@ -13,7 +13,7 @@ import (
 
 var (
 	initCommand = cli.Command{
-		Action:    node.MigrateFlags(initGenesis),
+		Action:    initGenesis,
 		Name:      "init",
 		Usage:     "Bootstrap and initialize a new genesis block",
 		ArgsUsage: "<genesisPath>",

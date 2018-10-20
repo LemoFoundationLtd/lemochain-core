@@ -5,6 +5,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
+	"github.com/LemoFoundationLtd/lemochain-go/common/flag"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/network/p2p"
 	"github.com/inconshreveable/log15"
@@ -81,11 +82,6 @@ var (
 		Usage: "Comma separated list of virtual hostnames from which to accept requests(server enforced). Accepts '*' wildcard",
 		Value: strings.Join(DefaultNodeConfig.HTTPVirtualHosts, ","),
 	}
-	RPCApiFlag = cli.StringFlag{
-		Name:  common.RPCApi,
-		Usage: "API's offered over the HTTP-RPC interface",
-		Value: "",
-	}
 	IPCDisabledFlag = cli.BoolFlag{
 		Name:  common.IPCDisabled,
 		Usage: "Disable the IPC-RPC server",
@@ -107,11 +103,6 @@ var (
 		Name:  common.WSPort,
 		Usage: "WS-RPC server listening port",
 		Value: DefaultWSPort,
-	}
-	WSApiFlag = cli.StringFlag{
-		Name:  common.WSApi,
-		Usage: "API's offered over the WS-RPC interface",
-		Value: "",
 	}
 	WSAllowedOriginsFlag = cli.StringFlag{
 		Name:  common.WSAllowedOrigins,
@@ -135,9 +126,9 @@ var (
 )
 
 // setNodeKey 设置NodeKey私钥
-func setNodeKey(ctx *cli.Context, cfg *p2p.Config) {
-	if ctx.GlobalIsSet(NodeKeyFileFlag.Name) {
-		nodeKeyFile := ctx.GlobalString(NodeKeyFileFlag.Name)
+func setNodeKey(flags flag.CmdFlags, cfg *p2p.Config) {
+	if flags.IsSet(NodeKeyFileFlag.Name) {
+		nodeKeyFile := flags.String(NodeKeyFileFlag.Name)
 		if nodeKeyFile == "" {
 			return
 		}
@@ -150,34 +141,33 @@ func setNodeKey(ctx *cli.Context, cfg *p2p.Config) {
 }
 
 // setListenAddress 设置监听端口
-func setListenAddress(ctx *cli.Context, cfg *p2p.Config) {
-	cfg.ListenAddr = fmt.Sprintf(":%d", ctx.GlobalInt(ListenPortFlag.Name))
+func setListenAddress(flags flag.CmdFlags, cfg *p2p.Config) {
+	cfg.ListenAddr = fmt.Sprintf(":%d", flags.Int(ListenPortFlag.Name))
 }
 
 // setMaxPeers 设置最大连接数
-func setMaxPeers(ctx *cli.Context, cfg *p2p.Config) {
-	cfg.MaxPeerNum = ctx.Int(MaxPeersFlag.Name)
+func setMaxPeers(flags flag.CmdFlags, cfg *p2p.Config) {
+	cfg.MaxPeerNum = flags.Int(MaxPeersFlag.Name)
 }
 
 // setP2PConfig 设置P2P
-func setP2PConfig(ctx *cli.Context, cfg *p2p.Config) {
-	setNodeKey(ctx, cfg)
-	setListenAddress(ctx, cfg)
-	setMaxPeers(ctx, cfg)
+func setP2PConfig(flags flag.CmdFlags, cfg *p2p.Config) {
+	setNodeKey(flags, cfg)
+	setListenAddress(flags, cfg)
+	setMaxPeers(flags, cfg)
 }
 
 // setHttp 设置http-rpc
-func setHttp(ctx *cli.Context, cfg *NodeConfig) {
-	if ctx.GlobalBool(RPCEnabledFlag.Name) && cfg.HTTPHost == "" {
+func setHttp(flags flag.CmdFlags, cfg *NodeConfig) {
+	if flags.Bool(RPCEnabledFlag.Name) && cfg.HTTPHost == "" {
 		cfg.HTTPHost = "127.0.0.1"
-		if ctx.GlobalIsSet(RPCListenAddrFlag.Name) {
-			cfg.HTTPHost = ctx.GlobalString(RPCListenAddrFlag.Name)
+		if flags.IsSet(RPCListenAddrFlag.Name) {
+			cfg.HTTPHost = flags.String(RPCListenAddrFlag.Name)
 		}
 	}
-	cfg.HTTPPort = ctx.GlobalInt(RPCPortFlag.Name)
-	cfg.HTTPCors = splitAndTrim(ctx.GlobalString(RPCCORSDomainFlag.Name))
-	cfg.HTTPModules = splitAndTrim(ctx.GlobalString(RPCApiFlag.Name))
-	cfg.HTTPVirtualHosts = splitAndTrim(ctx.GlobalString(RPCVirtualHostsFlag.Name))
+	cfg.HTTPPort = flags.Int(RPCPortFlag.Name)
+	cfg.HTTPCors = splitAndTrim(flags.String(RPCCORSDomainFlag.Name))
+	cfg.HTTPVirtualHosts = splitAndTrim(flags.String(RPCVirtualHostsFlag.Name))
 }
 
 func splitAndTrim(input string) []string {
@@ -189,42 +179,41 @@ func splitAndTrim(input string) []string {
 }
 
 // setIPC 设置IPC
-func setIPC(ctx *cli.Context, cfg *NodeConfig) {
-	checkExclusive(ctx, IPCDisabledFlag, IPCPathFlag)
-	if ctx.GlobalBool(IPCDisabledFlag.Name) {
+func setIPC(flags flag.CmdFlags, cfg *NodeConfig) {
+	checkExclusive(flags, IPCDisabledFlag, IPCPathFlag)
+	if flags.Bool(IPCDisabledFlag.Name) {
 		cfg.IPCPath = ""
-	} else if ctx.GlobalIsSet(IPCPathFlag.Name) {
-		cfg.IPCPath = ctx.GlobalString(IPCPathFlag.Name)
+	} else if flags.IsSet(IPCPathFlag.Name) {
+		cfg.IPCPath = flags.String(IPCPathFlag.Name)
 	} else {
-		cfg.IPCPath = DefaultIPCPath()
+		cfg.IPCPath = strings.TrimSuffix(filepath.Base(os.Args[0]), ".exe") + ".ipc"
 	}
 }
 
 // setWS 设置websocket
-func setWS(ctx *cli.Context, cfg *NodeConfig) {
-	if ctx.GlobalBool(WSEnabledFlag.Name) && cfg.WSHost == "" {
+func setWS(flags flag.CmdFlags, cfg *NodeConfig) {
+	if flags.Bool(WSEnabledFlag.Name) && cfg.WSHost == "" {
 		cfg.WSHost = "127.0.0.1"
-		if ctx.GlobalIsSet(WSListenAddrFlag.Name) {
-			cfg.WSHost = ctx.GlobalString(WSListenAddrFlag.Name)
+		if flags.IsSet(WSListenAddrFlag.Name) {
+			cfg.WSHost = flags.String(WSListenAddrFlag.Name)
 		}
-		cfg.WSPort = ctx.GlobalInt(WSPortFlag.Name)
-		cfg.WSOrigins = splitAndTrim(ctx.GlobalString(WSAllowedOriginsFlag.Name))
-		cfg.WSModules = splitAndTrim(ctx.GlobalString(WSApiFlag.Name))
+		cfg.WSPort = flags.Int(WSPortFlag.Name)
+		cfg.WSOrigins = splitAndTrim(flags.String(WSAllowedOriginsFlag.Name))
 	}
 }
 
-func checkExclusive(ctx *cli.Context, args ...interface{}) {
+func checkExclusive(flags flag.CmdFlags, args ...interface{}) {
 	set := make([]string, 0, 1)
 	for i := 0; i < len(args); i++ {
-		flag, ok := args[i].(cli.Flag)
+		cliFlag, ok := args[i].(cli.Flag)
 		if !ok {
 			panic(fmt.Sprintf("invalid argument, not cli.Flag type: %T", args[i]))
 		}
-		name := flag.GetName()
+		name := cliFlag.GetName()
 		if i+1 < len(args) {
 			switch option := args[i+1].(type) {
 			case string:
-				if ctx.String(name) == option {
+				if flags.String(name) == option {
 					name += "=" + option
 				}
 				i++
@@ -233,7 +222,7 @@ func checkExclusive(ctx *cli.Context, args ...interface{}) {
 				panic(fmt.Sprintf("invalid arguments, not cli.Flag or string extension: %T", args[i+1]))
 			}
 		}
-		if ctx.IsSet(name) {
+		if flags.IsSet(name) {
 			set = append(set, "--"+name)
 		}
 	}
@@ -242,30 +231,24 @@ func checkExclusive(ctx *cli.Context, args ...interface{}) {
 	}
 }
 
-func SetNodeConfig(ctx *cli.Context, cfg *NodeConfig) {
-	cfg.DataDir = ctx.GlobalString(DataDirFlag.Name)
-	logLevel := ctx.GlobalInt(LogLevelFlag.Name)
+func SetNodeConfig(flags flag.CmdFlags, cfg *NodeConfig) {
+	cfg.DataDir = flags.String(DataDirFlag.Name)
+	logLevel := flags.Int(LogLevelFlag.Name)
 	logLevel -= 1
 	if logLevel < 0 || logLevel > 4 {
 		logLevel = 2
 	}
 	log.Setup(log15.Lvl(logLevel), false, true) // log init
 
-	setP2PConfig(ctx, &cfg.P2P)
-	setHttp(ctx, cfg)
-	setIPC(ctx, cfg)
-	setWS(ctx, cfg)
+	setP2PConfig(flags, &cfg.P2P)
+	setIPC(flags, cfg)
+	setHttp(flags, cfg)
+	setWS(flags, cfg)
 }
 
-func SetLemoConfig(ctx *cli.Context, cfg *LemoConfig) {
-	cfg.NetworkId = ctx.GlobalUint64(NetworkIdFlag.Name)
-	if ctx.GlobalIsSet(ExtraDataFlag.Name) {
-		cfg.ExtraData = []byte(ctx.GlobalString(ExtraDataFlag.Name))
-	}
-}
-
-func MigrateFlags(action func(ctx *cli.Context) error) func(ctx *cli.Context) error {
-	return func(ctx *cli.Context) error {
-		return action(ctx)
+func SetLemoConfig(flags flag.CmdFlags, cfg *LemoConfig) {
+	cfg.NetworkId = flags.Uint64(NetworkIdFlag.Name)
+	if flags.IsSet(ExtraDataFlag.Name) {
+		cfg.ExtraData = []byte(flags.String(ExtraDataFlag.Name))
 	}
 }
