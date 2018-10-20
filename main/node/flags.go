@@ -238,7 +238,7 @@ func SetNodeConfig(flags flag.CmdFlags, cfg *NodeConfig) {
 	if logLevel < 0 || logLevel > 4 {
 		logLevel = 2
 	}
-	log.Setup(log15.Lvl(logLevel), false, true) // log init
+	log.Setup(log15.Lvl(logLevel), true, true) // log init
 
 	setP2PConfig(flags, &cfg.P2P)
 	setIPC(flags, cfg)
