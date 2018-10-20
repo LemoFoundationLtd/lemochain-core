@@ -193,19 +193,26 @@ func setIPC(ctx *cli.Context, cfg *NodeConfig) {
 	checkExclusive(ctx, IPCDisabledFlag, IPCPathFlag)
 	if ctx.GlobalBool(IPCDisabledFlag.Name) {
 		cfg.IPCPath = ""
-	} else if ctx.GlobalIsSet(IPCPathFlag.Name) {
-		cfg.IPCPath = ctx.GlobalString(IPCPathFlag.Name)
 	} else {
-		cfg.IPCPath = DefaultIPCPath()
+		if ctx.GlobalIsSet(IPCPathFlag.Name) {
+			cfg.IPCPath = ctx.GlobalString(IPCPathFlag.Name)
+		} else if ctx.IsSet(IPCPathFlag.Name) {
+			cfg.IPCPath = ctx.String(IPCPathFlag.Name)
+		} else {
+			cfg.IPCPath = DefaultIPCPath()
+		}
 	}
 }
 
 // setWS 设置websocket
 func setWS(ctx *cli.Context, cfg *NodeConfig) {
-	if ctx.GlobalBool(WSEnabledFlag.Name) && cfg.WSHost == "" {
-		cfg.WSHost = "127.0.0.1"
+	if (ctx.Bool(WSEnabledFlag.Name) || ctx.GlobalBool(WSEnabledFlag.Name)) && cfg.WSHost == "" {
 		if ctx.GlobalIsSet(WSListenAddrFlag.Name) {
 			cfg.WSHost = ctx.GlobalString(WSListenAddrFlag.Name)
+		} else if ctx.IsSet(WSListenAddrFlag.Name) {
+			cfg.WSHost = ctx.String(WSListenAddrFlag.Name)
+		} else {
+			cfg.WSHost = "127.0.0.1"
 		}
 		cfg.WSPort = ctx.GlobalInt(WSPortFlag.Name)
 		cfg.WSOrigins = splitAndTrim(ctx.GlobalString(WSAllowedOriginsFlag.Name))
@@ -249,7 +256,7 @@ func SetNodeConfig(ctx *cli.Context, cfg *NodeConfig) {
 	if logLevel < 0 || logLevel > 4 {
 		logLevel = 2
 	}
-	log.Setup(log15.Lvl(logLevel), false, true) // log init
+	log.Setup(log15.Lvl(logLevel), true, true) // log init
 
 	setP2PConfig(ctx, &cfg.P2P)
 	setHttp(ctx, cfg)

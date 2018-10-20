@@ -38,7 +38,7 @@ func Setup(lv Level, toFile bool, showCodeLine bool) {
 	if toFile {
 		handler = log15.MultiHandler(
 			handler,
-			log15.Must.FileHandler("log.json", log15.JsonFormat()),
+			log15.Must.FileHandler("log.txt", log15.JsonFormat()),
 		)
 	}
 	handler = log15.LvlFilterHandler(outputLv, handler)
