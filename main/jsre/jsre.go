@@ -20,6 +20,7 @@ package jsre
 import (
 	crand "crypto/rand"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -32,8 +33,9 @@ import (
 )
 
 var (
-	BigNumber_JS  = deps.MustAsset("bignumber.js")
-	LemoClient_JS = deps.MustAsset("lemo-client.js")
+	BigNumberJS     = deps.MustAsset("bignumber.js")
+	LemoClientJS    = deps.MustAsset("lemo-client.js")
+	LemoNodeAdminJS = deps.MustAsset("lemo-node-admin.js")
 )
 
 /*
@@ -313,11 +315,36 @@ func (self *JSRE) Evaluate(code string, w io.Writer) error {
 		if err != nil {
 			prettyError(vm, err, w)
 		} else {
-			prettyPrint(vm, val, w)
+			err = self.printPromise(vm, val, w)
+			if err != nil {
+				prettyPrint(vm, val, w)
+			}
 		}
 		fmt.Fprintln(w)
 	})
 	return fail
+}
+
+func (self *JSRE) printPromise(vm *otto.Otto, promise otto.Value, writer io.Writer) error {
+	if !promise.IsObject() {
+		return errors.New("not promise")
+	}
+	then, err := promise.Object().Get("then")
+	if err != nil || !then.IsFunction() {
+		return errors.New("not promise")
+	}
+	// vm.Set("prettyPrintByOtto",func(call otto.FunctionCall)otto.Value {
+	// 	fmt.Println("111")
+	// 	prettyPrint(vm, call.Argument(0), writer)
+	// 	return otto.UndefinedValue()
+	// })
+	// _, err = then.Call(promise, "prettyPrintByOtto")
+	_, err = then.Call(promise, func(call otto.FunctionCall) otto.Value {
+		fmt.Println("111")
+		prettyPrint(vm, call.Argument(0), writer)
+		return otto.UndefinedValue()
+	})
+	return err
 }
 
 // Compile compiles and then runs a piece of JS code.
