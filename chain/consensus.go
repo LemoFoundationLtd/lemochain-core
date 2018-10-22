@@ -40,9 +40,9 @@ func (d *Dpovp) SetBlockChain(bc *BlockChain) {
 // verifyHeaderTime verify that the block timestamp is less than the current time
 func verifyHeaderTime(block *types.Block) error {
 	header := block.Header
-	b_t := int64(header.Time.Uint64())
-	t_n := time.Now().Unix()
-	if b_t-t_n > 1 { // Prevent validation failure due to time error
+	blockTime := int64(header.Time.Uint64())
+	timeNow := time.Now().Unix()
+	if blockTime-timeNow > 1 { // Prevent validation failure due to time error
 		return errors.New("block in the future")
 	}
 	return nil
@@ -88,30 +88,29 @@ func (d *Dpovp) VerifyHeader(block *types.Block) error {
 	timeSpan := int64(header.Time.Uint64()-parent.Header.Time.Uint64()) * 1000
 	// The time interval between the current block and the parent block should be at least greater than the block internal
 	if timeSpan < d.blockInternal {
-		log.Debug(fmt.Sprintf("verifyHeader: timeSpan:%d is smaller than blockInternal:%d", timeSpan, d.blockInternal))
-		return fmt.Errorf("verifyHeader: block is not enough newer than it's parent")
+		log.Debugf("verifyHeader: verify failed. timeSpan:%d is smaller than blockInternal:%d -1", timeSpan, d.blockInternal)
+		return fmt.Errorf("verifyHeader: block internal need to large than %d millsecond -1", d.blockInternal)
 	}
 	nodeCount := deputynode.Instance().GetDeputyNodesCount() // The total number of nodes
 	slot := deputynode.Instance().GetSlot(header.Height, parent.Header.LemoBase, header.LemoBase)
 	oneLoopTime := int64(nodeCount) * d.timeoutTime // All timeout times for a round of deputy nodes
-	log.Debug(fmt.Sprintf("verifyHeader: timeSpan:%d nodeCount:%d slot:%d oneLoopTime:%d", timeSpan, nodeCount, slot, oneLoopTime))
+	oldTimeSpan := timeSpan
 	// There's only one out block node
 	if nodeCount == 1 {
 		// if timeSpan < d.blockInternal { // The time interval between blocks should be at least blockInternal
 		// 	log.Debug("verifyHeader: Only one node, but not sleep enough time -1")
 		// 	return fmt.Errorf("verifyHeader: Only one node, but not sleep enough time -1")
 		// }
-		log.Debug("verifyHeader: nodeCount == 1")
+		// log.Debug("verifyHeader: nodeCount == 1")
 		return nil
 	}
 
 	if slot == 0 { // The last block was made for itself
 		timeSpan = timeSpan % oneLoopTime
-		log.Debug(fmt.Sprintf("verifyHeader: slot:0 timeSpan:%d", timeSpan))
 		if timeSpan >= oneLoopTime-d.timeoutTime {
 			// normal situation
 		} else {
-			log.Debug(fmt.Sprintf("verifyHeader: slot:0 verify failed"))
+			log.Debugf("verifyHeader: verify failed. oldTimeSpan: %d timeSpan:%d nodeCount:%d slot:%d oneLoopTime:%d -2", oldTimeSpan, timeSpan, nodeCount, slot, oneLoopTime)
 			return fmt.Errorf("verifyHeader: Not turn to produce block -2")
 		}
 		return nil
@@ -120,7 +119,7 @@ func (d *Dpovp) VerifyHeader(block *types.Block) error {
 			if timeSpan >= d.blockInternal && timeSpan < d.timeoutTime {
 				// normal situation
 			} else {
-				log.Debug(fmt.Sprintf("verifyHeader: slot:1, timeSpan<oneLoopTime, verify failed"))
+				log.Debugf("verifyHeader: verify failed.timeSpan< oneLoopTime. timeSpan:%d nodeCount:%d slot:%d oneLoopTime:%d -3", timeSpan, nodeCount, slot, oneLoopTime)
 				return fmt.Errorf("verifyHeader: Not turn to produce block -3")
 			}
 		} else { // The interval is more than one cycle
@@ -128,17 +127,16 @@ func (d *Dpovp) VerifyHeader(block *types.Block) error {
 			if timeSpan < d.timeoutTime {
 				// normal situation
 			} else {
-				log.Debug(fmt.Sprintf("verifyHeader: slot:1,timeSpan>=oneLoopTime, verify failed"))
+				log.Debugf("verifyHeader: verify failed. timeSpan>=oneLoopTime. oldTimeSpan: %d timeSpan:%d nodeCount:%d slot:%d oneLoopTime:%d -4", oldTimeSpan, timeSpan, nodeCount, slot, oneLoopTime)
 				return fmt.Errorf("verifyHeader: Not turn to produce block -4")
 			}
 		}
 	} else {
 		timeSpan = timeSpan % oneLoopTime
-		log.Debug(fmt.Sprintf("verifyHeader: slot:%d timeSpan:%d", slot, timeSpan))
 		if timeSpan/d.timeoutTime == int64(slot-1) {
 			// normal situation
 		} else {
-			log.Debug(fmt.Sprintf("verifyHeader: slot>1, verify failed"))
+			log.Debugf("verifyHeader: verify failed. oldTimeSpan: %d timeSpan:%d nodeCount:%d slot:%d oneLoopTime:%d -5", oldTimeSpan, timeSpan, nodeCount, slot, oneLoopTime)
 			return fmt.Errorf("verifyHeader: Not turn to produce block -5")
 		}
 	}
