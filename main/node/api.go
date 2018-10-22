@@ -89,13 +89,27 @@ func NewChainAPI(chain *chain.BlockChain) *ChainAPI {
 }
 
 // GetBlockByNumber get block information by height
-func (c *ChainAPI) GetBlockByHeight(height uint32) *types.Block {
-	return c.chain.GetBlockByHeight(height)
+func (c *ChainAPI) GetBlockByHeight(height uint32, withTxs bool) *types.Block {
+	if withTxs {
+		return c.chain.GetBlockByHeight(height)
+	} else {
+		block := c.chain.GetBlockByHeight(height)
+		// set the Txs field to null
+		block.SetTxs([]*types.Transaction{})
+		return block
+	}
 }
 
 // GetBlockByHash get block information by hash
-func (c *ChainAPI) GetBlockByHash(hash string) *types.Block {
-	return c.chain.GetBlockByHash(common.HexToHash(hash))
+func (c *ChainAPI) GetBlockByHash(hash string, withTxs bool) *types.Block {
+	if withTxs {
+		return c.chain.GetBlockByHash(common.HexToHash(hash))
+	} else {
+		block := c.chain.GetBlockByHash(common.HexToHash(hash))
+		block.SetTxs([]*types.Transaction{})
+		return block
+	}
+
 }
 
 // GetChainID get chain id
@@ -109,13 +123,29 @@ func (c *ChainAPI) GetGenesis() *types.Block {
 }
 
 // GetCurrentBlock get the current latest block
-func (c *ChainAPI) GetCurrentBlock() *types.Block {
-	return c.chain.CurrentBlock()
+func (c *ChainAPI) GetCurrentBlock(withTxs bool) *types.Block {
+	if withTxs {
+		return c.chain.CurrentBlock()
+	} else {
+		currentBlock := c.chain.CurrentBlock()
+		// set the Txs field to null
+		currentBlock.SetTxs([]*types.Transaction{})
+		return currentBlock
+	}
+
 }
 
 // GetLatestStableBlock get the latest currently agreed blocks
-func (c *ChainAPI) GetLatestStableBlock() *types.Block {
-	return c.chain.StableBlock()
+func (c *ChainAPI) GetLatestStableBlock(withTxs bool) *types.Block {
+	if withTxs == true {
+		return c.chain.StableBlock()
+	} else {
+		stableBlock := c.chain.StableBlock()
+		// set the Txs field to null
+		stableBlock.SetTxs([]*types.Transaction{})
+		return stableBlock
+	}
+
 }
 
 // GetCurrentHeight
@@ -218,7 +248,7 @@ func (n *NetAPI) GetNodeVersion() string {
 	return "1.0"
 }
 
-//
-func (n *NetAPI) GetListening() string {
+// GetNetInfo
+func (n *NetAPI) GetNetInfo() string {
 	return n.server.ListenAddr
 }
