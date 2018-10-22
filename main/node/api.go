@@ -203,6 +203,10 @@ func (n *NetAPI) AddStaticPeer(node string) {
 	n.server.AddStaticPeer(node)
 }
 
+func (n *NetAPI) DisconnectPeer(node string) {
+	n.server.DisconnectPeer(node)
+}
+
 // GetPeers
 func (n *NetAPI) GetPeers() []p2p.PeerConnInfo {
 	return n.server.Peers()

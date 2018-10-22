@@ -404,7 +404,7 @@ func (srv *Server) AddStaticPeer(node string) {
 	}
 	port, err := strconv.Atoi(nodeParts[1])
 	if err != nil || port < 1024 || port > 65535 {
-		// return
+		return
 	}
 	log.Infof("start add static peer: %s", node)
 	srv.needConnectNodeCh <- node
@@ -425,4 +425,20 @@ func (srv *Server) Peers() []PeerConnInfo {
 		result = append(result, info)
 	}
 	return result
+}
+
+func (srv *Server) DisconnectPeer(node string) {
+	for id, v := range srv.peers {
+		if strings.Compare(node, v.rw.fd.RemoteAddr().String()) == 0 {
+			v.needReConnect = false
+			v.Close()
+			delete(srv.peers, id)
+			if srv.PeerEvent != nil { // 通知外界节点drop
+				if err := srv.PeerEvent(v, DropPeerFlag); err != nil {
+					log.Error("peer event error", "err", err)
+				}
+			}
+			break
+		}
+	}
 }
