@@ -20,9 +20,9 @@ type BlockChain interface {
 	// StableBlock 获取当前最新被共识的区块
 	StableBlock() *types.Block
 	// InsertChain 插入一个区块到链上
-	InsertChain(block *types.Block) error
+	InsertChain(block *types.Block, isSyncing bool) error
 	// SetStableBlock 设置最新的稳定区块
-	SetStableBlock(hash common.Hash, height uint32) error
+	SetStableBlock(hash common.Hash, height uint32, isSyncing bool) error
 	// Verify 验证区块是否合法
 	Verify(block *types.Block) error
 }
