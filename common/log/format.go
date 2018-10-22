@@ -77,7 +77,7 @@ func TerminalFormat(usecolor bool, showCodeLine bool) log15.Format {
 		lvl := getAlignedString(r.Lvl)
 		if showCodeLine {
 			// Log origin printing was requested, format the location path and line number
-			location := fmt.Sprintf("%+v", stack.Caller(14))
+			location := fmt.Sprintf("%+v", stack.Caller(16))
 			for _, prefix := range locationTrims {
 				location = strings.TrimPrefix(location, prefix)
 			}
