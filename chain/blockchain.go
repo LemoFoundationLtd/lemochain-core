@@ -298,7 +298,7 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSyncing bool) (err error
 // SetStableBlock 设置最新的稳定区块
 func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32, isSyncing bool) error {
 	if err := bc.dbOpe.SetStableBlock(hash); err != nil {
-		log.Error(fmt.Sprintf("SetStableBlock error. height:%d hash:%s", height, common.ToHex(hash[:])))
+		log.Errorf("SetStableBlock error. height:%d hash:%s", height, common.ToHex(hash[:]))
 		return err
 	}
 	block := bc.GetBlock(hash, height)

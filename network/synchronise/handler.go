@@ -261,6 +261,7 @@ func (pm *ProtocolManager) handleMsg(p *peerConnection) error {
 		}
 		// pm.txPool.AddTxs(txs)
 	case protocol.GetBlocksMsg:
+		const eachSize = 50
 		var query protocol.GetBlocksData
 		if err := msg.Decode(&query); err != nil {
 			return errResp(protocol.ErrDecode, "%v: %v", msg, err)
@@ -270,16 +271,16 @@ func (pm *ProtocolManager) handleMsg(p *peerConnection) error {
 		}
 		total := query.To - query.From
 		var count uint32
-		if total%10 == 0 {
-			count = total / 10
+		if total%eachSize == 0 {
+			count = total / eachSize
 		} else {
-			count = total/10 + 1
+			count = total/eachSize + 1
 		}
 		height := query.From
 		var err error
 		for i := uint32(0); i < count; i++ {
-			blocks := make(types.Blocks, 0, 10)
-			for j := 0; j < 10; j++ {
+			blocks := make(types.Blocks, 0, eachSize)
+			for j := 0; j < eachSize; j++ {
 				blocks = append(blocks, pm.blockchain.GetBlockByHeight(height))
 				height++
 				if height > query.To {
