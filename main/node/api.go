@@ -89,7 +89,7 @@ func NewChainAPI(chain *chain.BlockChain) *ChainAPI {
 }
 
 // GetBlockByNumber get block information by height
-func (c *ChainAPI) GetBlockByNumber(height uint32) *types.Block {
+func (c *ChainAPI) GetBlockByHeight(height uint32) *types.Block {
 	return c.chain.GetBlockByHeight(height)
 }
 
@@ -131,7 +131,7 @@ func (c *ChainAPI) GetLatestStableHeight() uint32 {
 }
 
 // GetGasPrice get suggest gas price
-func (c *ChainAPI) GetSuggestGasPrice() *big.Int {
+func (c *ChainAPI) GasPriceAdvice() *big.Int {
 	// todo
 	return big.NewInt(100000000)
 }

@@ -37,8 +37,8 @@ lemojs._extend({
 	property: 'chain',
 	methods: [
 		new lemojs._extend.Method({
-			name: 'getBlockByNumber',
-			call: 'chain_getBlockByNumber',
+			name: 'getBlockByHeight',
+			call: 'chain_getBlockByHeight',
 			params: 1
 		}),
 		new lemojs._extend.Method({
@@ -77,8 +77,8 @@ lemojs._extend({
 			params: 0
 		}),
 		new lemojs._extend.Method({
-			name: 'gasPrice',
-			call: 'chain_getSuggestGasPrice',
+			name: 'gasPriceAdvice',
+			call: 'chain_gasPriceAdvice',
 			params: 0
 		}),
 	]
