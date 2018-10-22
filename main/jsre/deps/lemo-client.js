@@ -71,11 +71,18 @@
         throw TypeError("Can't convert object to primitive value");
     };
 
+    var _toPrimitive$1 = /*#__PURE__*/Object.freeze({
+        default: _toPrimitive,
+        __moduleExports: _toPrimitive
+    });
+
+    var toPrimitive = ( _toPrimitive$1 && _toPrimitive ) || _toPrimitive$1;
+
     var dP = Object.defineProperty;
 
     var f = _descriptors ? Object.defineProperty : function defineProperty(O, P, Attributes) {
         _anObject(O);
-        P = _toPrimitive(P, true);
+        P = toPrimitive(P, true);
         _anObject(Attributes);
         if (_ie8DomDefine) try {
             return dP(O, P, Attributes);
@@ -219,11 +226,18 @@
         return isNaN(it = +it) ? 0 : (it > 0 ? floor : ceil)(it);
     };
 
+    var _toInteger$1 = /*#__PURE__*/Object.freeze({
+        default: _toInteger,
+        __moduleExports: _toInteger
+    });
+
+    var toInteger = ( _toInteger$1 && _toInteger ) || _toInteger$1;
+
     // 7.1.15 ToLength
 
     var min = Math.min;
     var _toLength = function (it) {
-        return it > 0 ? min(_toInteger(it), 0x1fffffffffffff) : 0; // pow(2, 53) - 1 == 9007199254740991
+        return it > 0 ? min(toInteger(it), 0x1fffffffffffff) : 0; // pow(2, 53) - 1 == 9007199254740991
     };
 
     var toString = {}.toString;
@@ -346,21 +360,14 @@
 
     var iterableToArrayLimit = _iterableToArrayLimit;
 
-    var iterableToArrayLimit$1 = /*#__PURE__*/Object.freeze({
-        default: iterableToArrayLimit,
-        __moduleExports: iterableToArrayLimit
-    });
-
     function _nonIterableRest() {
         throw new TypeError("Invalid attempt to destructure non-iterable instance");
     }
 
     var nonIterableRest = _nonIterableRest;
 
-    var iterableToArrayLimit$2 = ( iterableToArrayLimit$1 && iterableToArrayLimit ) || iterableToArrayLimit$1;
-
     function _slicedToArray(arr, i) {
-        return arrayWithHoles(arr) || iterableToArrayLimit$2(arr, i) || nonIterableRest();
+        return arrayWithHoles(arr) || iterableToArrayLimit(arr, i) || nonIterableRest();
     }
 
     var slicedToArray = _slicedToArray;
@@ -379,11 +386,6 @@
 
     var _iterators = {};
 
-    var _iterators$1 = /*#__PURE__*/Object.freeze({
-        default: _iterators,
-        __moduleExports: _iterators
-    });
-
     // fallback for non-array-like ES3 and non-enumerable old V8 strings
 
     // eslint-disable-next-line no-prototype-builtins
@@ -401,7 +403,7 @@
     var max = Math.max;
     var min$1 = Math.min;
     var _toAbsoluteIndex = function (index, length) {
-        index = _toInteger(index);
+        index = toInteger(index);
         return index < 0 ? max(index + length, 0) : min$1(index, length);
     };
 
@@ -456,12 +458,19 @@
         'constructor,hasOwnProperty,isPrototypeOf,propertyIsEnumerable,toLocaleString,toString,valueOf'
     ).split(',');
 
+    var _enumBugKeys$1 = /*#__PURE__*/Object.freeze({
+        default: _enumBugKeys,
+        __moduleExports: _enumBugKeys
+    });
+
+    var enumBugKeys = ( _enumBugKeys$1 && _enumBugKeys ) || _enumBugKeys$1;
+
     // 19.1.2.14 / 15.2.3.14 Object.keys(O)
 
 
 
     var _objectKeys = Object.keys || function keys(O) {
-        return _objectKeysInternal(O, _enumBugKeys);
+        return _objectKeysInternal(O, enumBugKeys);
     };
 
     var _objectDps = _descriptors ? Object.defineProperties : function defineProperties(O, Properties) {
@@ -489,7 +498,7 @@
     var createDict = function () {
         // Thrash, waste and sodomy: IE GC bug
         var iframe = _domCreate('iframe');
-        var i = _enumBugKeys.length;
+        var i = enumBugKeys.length;
         var lt = '<';
         var gt = '>';
         var iframeDocument;
@@ -503,7 +512,7 @@
         iframeDocument.write(lt + 'script' + gt + 'document.F=Object' + lt + '/script' + gt);
         iframeDocument.close();
         createDict = iframeDocument.F;
-        while (i--) delete createDict[PROTOTYPE$1][_enumBugKeys[i]];
+        while (i--) delete createDict[PROTOTYPE$1][enumBugKeys[i]];
         return createDict();
     };
 
@@ -519,11 +528,6 @@
         return Properties === undefined ? result : _objectDps(result, Properties);
     };
 
-    var _objectCreate$1 = /*#__PURE__*/Object.freeze({
-        default: _objectCreate,
-        __moduleExports: _objectCreate
-    });
-
     var def = _objectDp.f;
 
     var TAG = _wks('toStringTag');
@@ -532,15 +536,13 @@
         if (it && !_has(it = stat ? it : it.prototype, TAG)) def(it, TAG, { configurable: true, value: tag });
     };
 
-    var create = ( _objectCreate$1 && _objectCreate ) || _objectCreate$1;
-
     var IteratorPrototype = {};
 
     // 25.1.2.1.1 %IteratorPrototype%[@@iterator]()
     _hide(IteratorPrototype, _wks('iterator'), function () { return this; });
 
     var _iterCreate = function (Constructor, NAME, next) {
-        Constructor.prototype = create(IteratorPrototype, { next: _propertyDesc(1, next) });
+        Constructor.prototype = _objectCreate(IteratorPrototype, { next: _propertyDesc(1, next) });
         _setToStringTag(Constructor, NAME + ' Iterator');
     };
 
@@ -550,6 +552,13 @@
         return Object(_defined(it));
     };
 
+    var _toObject$1 = /*#__PURE__*/Object.freeze({
+        default: _toObject,
+        __moduleExports: _toObject
+    });
+
+    var toObject = ( _toObject$1 && _toObject ) || _toObject$1;
+
     // 19.1.2.9 / 15.2.3.2 Object.getPrototypeOf(O)
 
 
@@ -557,14 +566,12 @@
     var ObjectProto = Object.prototype;
 
     var _objectGpo = Object.getPrototypeOf || function (O) {
-        O = _toObject(O);
+        O = toObject(O);
         if (_has(O, IE_PROTO$2)) return O[IE_PROTO$2];
         if (typeof O.constructor == 'function' && O instanceof O.constructor) {
             return O.constructor.prototype;
         } return O instanceof Object ? ObjectProto : null;
     };
-
-    var Iterators = ( _iterators$1 && _iterators ) || _iterators$1;
 
     var ITERATOR = _wks('iterator');
     var BUGGY = !([].keys && 'next' in [].keys()); // Safari has buggy iterators w/o `next`
@@ -612,8 +619,8 @@
             _hide(proto, ITERATOR, $default);
         }
         // Plug for library
-        Iterators[NAME] = $default;
-        Iterators[TAG] = returnThis;
+        _iterators[NAME] = $default;
+        _iterators[TAG] = returnThis;
         if (DEFAULT) {
             methods = {
                 values: DEF_VALUES ? $default : getMethod(VALUES),
@@ -650,7 +657,7 @@
     }, 'values');
 
     // argumentsList[@@iterator] is %ArrayProto_values% (9.4.4.6, 9.4.4.7)
-    Iterators.Arguments = Iterators.Array;
+    _iterators.Arguments = _iterators.Array;
 
     _addToUnscopables('keys');
     _addToUnscopables('values');
@@ -689,7 +696,7 @@
 
     var ITERATOR$1 = _wks('iterator');
     var TO_STRING_TAG = _wks('toStringTag');
-    var ArrayValues = Iterators.Array;
+    var ArrayValues = _iterators.Array;
 
     var DOMIterables = {
         CSSRuleList: true, // TODO: Not spec compliant, should be false.
@@ -734,7 +741,7 @@
         if (proto) {
             if (!proto[ITERATOR$1]) _hide(proto, ITERATOR$1, ArrayValues);
             if (!proto[TO_STRING_TAG]) _hide(proto, TO_STRING_TAG, NAME);
-            Iterators[NAME] = ArrayValues;
+            _iterators[NAME] = ArrayValues;
             if (explicit) for (key in es6_array_iterator) if (!proto[key]) _redefine(proto, key, es6_array_iterator[key], true);
         }
     }
@@ -814,7 +821,7 @@
     var ArrayProto$1 = Array.prototype;
 
     var _isArrayIter = function (it) {
-        return it !== undefined && (Iterators.Array === it || ArrayProto$1[ITERATOR$2] === it);
+        return it !== undefined && (_iterators.Array === it || ArrayProto$1[ITERATOR$2] === it);
     };
 
     var ITERATOR$3 = _wks('iterator');
@@ -822,7 +829,7 @@
     var core_getIteratorMethod = _core.getIteratorMethod = function (it) {
         if (it != undefined) return it[ITERATOR$3]
             || it['@@iterator']
-            || Iterators[_classof(it)];
+            || _iterators[_classof(it)];
     };
 
     var _forOf = createCommonjsModule(function (module) {
@@ -2099,6 +2106,13 @@
         );
     });
 
+    var runtime$1 = /*#__PURE__*/Object.freeze({
+        default: runtime,
+        __moduleExports: runtime
+    });
+
+    var require$$0 = ( runtime$1 && runtime ) || runtime$1;
+
     /**
      * Copyright (c) 2014-present, Facebook, Inc.
      *
@@ -2123,7 +2137,7 @@
     // Force reevalutation of runtime.js.
     g.regeneratorRuntime = undefined;
 
-    var runtimeModule = runtime;
+    var runtimeModule = require$$0;
 
     if (hadRuntime) {
         // Restore the original runtime.
@@ -2139,7 +2153,7 @@
 
     var regenerator = runtimeModule;
 
-    var runtime$1 = createCommonjsModule(function (module) {
+    var runtime$2 = createCommonjsModule(function (module) {
         /**
          * Copyright (c) 2014-present, Facebook, Inc.
          *
@@ -3309,13 +3323,6 @@
         return error;
     };
 
-    var enhanceError$1 = /*#__PURE__*/Object.freeze({
-        default: enhanceError,
-        __moduleExports: enhanceError
-    });
-
-    var enhanceError$2 = ( enhanceError$1 && enhanceError ) || enhanceError$1;
-
     /**
      * Create an Error with the specified message, config, error code, request and response.
      *
@@ -3328,15 +3335,8 @@
      */
     var createError = function createError(message, config, code, request, response) {
         var error = new Error(message);
-        return enhanceError$2(error, config, code, request, response);
+        return enhanceError(error, config, code, request, response);
     };
-
-    var createError$1 = /*#__PURE__*/Object.freeze({
-        default: createError,
-        __moduleExports: createError
-    });
-
-    var createError$2 = ( createError$1 && createError ) || createError$1;
 
     /**
      * Resolve or reject a Promise based on response status.
@@ -3351,7 +3351,7 @@
         if (!response.status || !validateStatus || validateStatus(response.status)) {
             resolve(response);
         } else {
-            reject(createError$2(
+            reject(createError(
                 'Request failed with status code ' + response.status,
                 response.config,
                 null,
@@ -3701,7 +3701,7 @@
             request.onerror = function handleError() {
                 // Real errors are hidden from us by the browser
                 // onerror should only fire if it's a network error
-                reject(createError$2('Network Error', config, null, request));
+                reject(createError('Network Error', config, null, request));
 
                 // Clean up request
                 request = null;
@@ -3709,7 +3709,7 @@
 
             // Handle timeout
             request.ontimeout = function handleTimeout() {
-                reject(createError$2('timeout of ' + config.timeout + 'ms exceeded', config, 'ECONNABORTED',
+                reject(createError('timeout of ' + config.timeout + 'ms exceeded', config, 'ECONNABORTED',
                     request));
 
                 // Clean up request
@@ -3971,6 +3971,11 @@
         return /^([a-z][a-z\d\+\-\.]*:)?\/\//i.test(url);
     };
 
+    var isAbsoluteURL$1 = /*#__PURE__*/Object.freeze({
+        default: isAbsoluteURL,
+        __moduleExports: isAbsoluteURL
+    });
+
     /**
      * Creates a new URL by combining the specified URLs
      *
@@ -3983,6 +3988,8 @@
             ? baseURL.replace(/\/+$/, '') + '/' + relativeURL.replace(/^\/+/, '')
             : baseURL;
     };
+
+    var isAbsoluteURL$2 = ( isAbsoluteURL$1 && isAbsoluteURL ) || isAbsoluteURL$1;
 
     /**
      * Throws a `Cancel` if cancellation has been requested.
@@ -4003,7 +4010,7 @@
         throwIfCancellationRequested(config);
 
         // Support baseURL config
-        if (config.baseURL && !isAbsoluteURL(config.url)) {
+        if (config.baseURL && !isAbsoluteURL$2(config.url)) {
             config.url = combineURLs(config.baseURL, config.url);
         }
 
@@ -4062,13 +4069,6 @@
         });
     };
 
-    var dispatchRequest$1 = /*#__PURE__*/Object.freeze({
-        default: dispatchRequest,
-        __moduleExports: dispatchRequest
-    });
-
-    var dispatchRequest$2 = ( dispatchRequest$1 && dispatchRequest ) || dispatchRequest$1;
-
     /**
      * Create a new instance of Axios
      *
@@ -4100,7 +4100,7 @@
         config.method = config.method.toLowerCase();
 
         // Hook up interceptors middleware
-        var chain = [dispatchRequest$2, undefined];
+        var chain = [dispatchRequest, undefined];
         var promise = Promise.resolve(config);
 
         this.interceptors.request.forEach(function unshiftRequestInterceptors(interceptor) {
@@ -4160,13 +4160,6 @@
 
     var Cancel_1 = Cancel;
 
-    var Cancel$1 = /*#__PURE__*/Object.freeze({
-        default: Cancel_1,
-        __moduleExports: Cancel_1
-    });
-
-    var Cancel$2 = ( Cancel$1 && Cancel_1 ) || Cancel$1;
-
     /**
      * A `CancelToken` is an object that can be used to request cancellation of an operation.
      *
@@ -4190,7 +4183,7 @@
                 return;
             }
 
-            token.reason = new Cancel$2(message);
+            token.reason = new Cancel_1(message);
             resolvePromise(token.reason);
         });
     }
@@ -4278,7 +4271,7 @@
     };
 
     // Expose Cancel & CancelToken
-    axios.Cancel = Cancel$2;
+    axios.Cancel = Cancel_1;
     axios.CancelToken = CancelToken_1;
     axios.isCancel = isCancel;
 
@@ -4294,7 +4287,14 @@
     var default_1 = axios;
     axios_1.default = default_1;
 
-    var axios$1 = axios_1;
+    var axios$1 = /*#__PURE__*/Object.freeze({
+        default: axios_1,
+        __moduleExports: axios_1
+    });
+
+    var require$$0$1 = ( axios$1 && axios_1 ) || axios$1;
+
+    var axios$2 = require$$0$1;
 
     var errors = {
         InvalidNumberOfSolidityArgs: function InvalidNumberOfSolidityArgs() {
@@ -4351,7 +4351,7 @@
                     config.headers = objectSpread({}, config.headers, headers);
                 }
 
-                this.axiosInstance = axios$1.create(config);
+                this.axiosInstance = axios$2.create(config);
             }
 
             createClass(HttpProvider, [{
@@ -4699,13 +4699,13 @@
 
     var MODULE_NAME$1 = 'chain';
     var apiList$1 = {
-        getCurrentBlock: function getCurrentBlock(requester, stable) {
+        getCurrentBlock: function getCurrentBlock(requester, stable, withTxList) {
             var apiName = stable ? 'currentBlock' : 'latestStableBlock';
-            return requester.send("".concat(MODULE_NAME$1, "_").concat(apiName)).then(parseBlock);
+            return requester.send("".concat(MODULE_NAME$1, "_").concat(apiName), [withTxList]).then(parseBlock);
         },
-        getBlock: function getBlock(requester, hashOrHeight) {
+        getBlock: function getBlock(requester, hashOrHeight, withTxList) {
             var apiName = isHash(hashOrHeight) ? 'getBlockByHash' : 'getBlockByHeight';
-            return requester.send("".concat(MODULE_NAME$1, "_").concat(apiName), [hashOrHeight]).then(parseBlock);
+            return requester.send("".concat(MODULE_NAME$1, "_").concat(apiName), [hashOrHeight, withTxList]).then(parseBlock);
         },
         getCurrentHeight: function getCurrentHeight(requester, stable) {
             var apiName = stable ? 'currentHeight' : 'latestStableHeight';
@@ -4726,7 +4726,7 @@
         },
         // not necessary to write requester parameter
         getSdkVersion: function getSdkVersion() {
-            return "0.9.0";
+            return Promise.resolve("0.9.0");
         },
         watchBlock: function watchBlock(requester, callback) {
             return requester.watch("".concat(MODULE_NAME$1, "_getLatestStableBlock"), callback);

@@ -22,14 +22,13 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-go/main/jsre/deps"
+	"github.com/robertkrimen/otto"
 	"io"
 	"io/ioutil"
 	"math/rand"
 	"time"
-
-	"github.com/LemoFoundationLtd/lemochain-go/common"
-	"github.com/LemoFoundationLtd/lemochain-go/main/jsre/deps"
-	"github.com/robertkrimen/otto"
 )
 
 var (
@@ -315,7 +314,7 @@ func (self *JSRE) Evaluate(code string, w io.Writer) error {
 		if err != nil {
 			prettyError(vm, err, w)
 		} else {
-			err = self.printPromise(vm, val, w)
+			err = self.printPromiseResolve(vm, val, w)
 			if err != nil {
 				prettyPrint(vm, val, w)
 			}
@@ -325,22 +324,12 @@ func (self *JSRE) Evaluate(code string, w io.Writer) error {
 	return fail
 }
 
-func (self *JSRE) printPromise(vm *otto.Otto, promise otto.Value, writer io.Writer) error {
+// printPromiseResolve calls the "then" function from the javascript promise object, then prints the result
+func (self *JSRE) printPromiseResolve(vm *otto.Otto, promise otto.Value, writer io.Writer) error {
 	if !promise.IsObject() {
-		return errors.New("not promise")
+		return errors.New("not a promise")
 	}
-	then, err := promise.Object().Get("then")
-	if err != nil || !then.IsFunction() {
-		return errors.New("not promise")
-	}
-	// vm.Set("prettyPrintByOtto",func(call otto.FunctionCall)otto.Value {
-	// 	fmt.Println("111")
-	// 	prettyPrint(vm, call.Argument(0), writer)
-	// 	return otto.UndefinedValue()
-	// })
-	// _, err = then.Call(promise, "prettyPrintByOtto")
-	_, err = then.Call(promise, func(call otto.FunctionCall) otto.Value {
-		fmt.Println("111")
+	_, err := promise.Object().Call("then", func(call otto.FunctionCall) otto.Value {
 		prettyPrint(vm, call.Argument(0), writer)
 		return otto.UndefinedValue()
 	})
