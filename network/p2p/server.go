@@ -131,10 +131,10 @@ func (srv *Server) Start() error {
 		srv.peers = make(map[string]*Peer)
 	}
 	if srv.delPeerCh == nil {
-		srv.delPeerCh = make(chan *Peer)
+		srv.delPeerCh = make(chan *Peer, 5)
 	}
 	if srv.needConnectNodeCh == nil {
-		srv.needConnectNodeCh = make(chan string)
+		srv.needConnectNodeCh = make(chan string, 5)
 	}
 	if srv.newTransport == nil {
 		srv.newTransport = newPeer
@@ -427,12 +427,14 @@ func (srv *Server) Peers() []PeerConnInfo {
 	return result
 }
 
-func (srv *Server) DisconnectPeer(node string) {
+func (srv *Server) DropPeer(node string) {
 	for id, v := range srv.peers {
 		if strings.Compare(node, v.rw.fd.RemoteAddr().String()) == 0 {
 			v.needReConnect = false
 			v.Close()
+			srv.peersMux.Lock()
 			delete(srv.peers, id)
+			srv.peersMux.Unlock()
 			if srv.PeerEvent != nil { // 通知外界节点drop
 				if err := srv.PeerEvent(v, DropPeerFlag); err != nil {
 					log.Error("peer event error", "err", err)

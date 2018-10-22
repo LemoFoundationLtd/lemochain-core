@@ -136,8 +136,8 @@ lemojs._extend({
 			params: 1
 		}),
 		new lemojs._extend.Method({
-			name: 'disconnectPeer',
-			call: 'net_disconnectPeer',
+			name: 'dropPeer',
+			call: 'net_dropPeer',
 			params: 1
 		}),
 		new lemojs._extend.Method({

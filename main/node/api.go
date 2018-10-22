@@ -203,8 +203,8 @@ func (n *NetAPI) AddStaticPeer(node string) {
 	n.server.AddStaticPeer(node)
 }
 
-func (n *NetAPI) DisconnectPeer(node string) {
-	n.server.DisconnectPeer(node)
+func (n *NetAPI) DropPeer(node string) {
+	n.server.DropPeer(node)
 }
 
 // GetPeers
