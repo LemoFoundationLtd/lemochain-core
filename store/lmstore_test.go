@@ -37,7 +37,7 @@ func TestLmDataBase_Batch_Put1(t *testing.T) {
 	keys, err := CreateBufWithNumberBatch(totalCnt, key1)
 	assert.NoError(t, err)
 
-	val, err := CreateBufWithNumber(65536)
+	val, err := CreateBufWithNumber(512)
 	assert.NoError(t, err)
 
 	for index := 0; index < totalCnt; index++ {
@@ -173,7 +173,7 @@ func TestLmDataBase_Has(t *testing.T) {
 	assert.Equal(t, isExist, false)
 }
 
-func TestLmDataBase_Commit(t *testing.T) {
+func TestLmDataBase_Commit1(t *testing.T) {
 	ClearData()
 
 	db, err := NewLmDataBase(GetStorePath())
@@ -185,7 +185,53 @@ func TestLmDataBase_Commit(t *testing.T) {
 	keys, err := CreateBufWithNumberBatch(totalCnt, key1)
 	assert.NoError(t, err)
 
-	val, err := CreateBufWithNumber(37)
+	val, err := CreateBufWithNumber(6553)
+	assert.NoError(t, err)
+
+	items := make([]*BatchItem, totalCnt)
+	for index := 0; index < totalCnt; index++ {
+		item := &BatchItem{
+			Key: make([]byte, 32),
+			Val: val,
+		}
+		copy(item.Key[0:32], keys[index][0:32])
+		items[index] = item
+	}
+
+	err = db.Commit(items)
+	assert.NoError(t, err)
+
+	keys, err = CreateBufWithNumberBatch(totalCnt, key1)
+	for index := 0; index < totalCnt; index++ {
+		result, err := db.Get(keys[index])
+		assert.NoError(t, err)
+		assert.Equal(t, val, result)
+	}
+
+	db, err = NewLmDataBase(GetStorePath())
+	assert.NoError(t, err)
+
+	keys, err = CreateBufWithNumberBatch(totalCnt, key1)
+	for index := 0; index < totalCnt; index++ {
+		result, err := db.Get(keys[index])
+		assert.NoError(t, err)
+		assert.Equal(t, val, result)
+	}
+}
+
+func TestLmDataBase_Commit2(t *testing.T) {
+	ClearData()
+
+	db, err := NewLmDataBase(GetStorePath())
+	assert.NoError(t, err)
+
+	totalCnt := 2
+	key1, _ := NewKey1()
+
+	keys, err := CreateBufWithNumberBatch(totalCnt, key1)
+	assert.NoError(t, err)
+
+	val, err := CreateBufWithNumber(6553)
 	assert.NoError(t, err)
 
 	items := make([]*BatchItem, totalCnt)

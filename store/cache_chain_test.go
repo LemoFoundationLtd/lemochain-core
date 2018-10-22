@@ -314,6 +314,27 @@ func TestCacheChain_ChildBlockAccount(t *testing.T) {
 	assert.Equal(t, big.NewInt(500), account.Balance)
 }
 
+func TestCacheChain_Data(t *testing.T) {
+	_, err := NewCacheChain(GetStorePath())
+	assert.NoError(t, err)
+
+	// _, err = cacheChain.LoadLatestBlock()
+	// assert.NoError(t, err)
+
+	//height := result.Height() - 20000
+	// for index := 1; index < 27179; index++{
+	// 	_, err = cacheChain.GetBlockByHeight(uint32(index))
+	// 	if err != nil {
+	// 		log.Errorf("index:%d", index)
+	// 		break
+	// 	}
+	// 	//assert.NoError(t, err)
+	// }
+
+	// _, err = cacheChain.GetBlockByHash(result.Hash())
+	// assert.NoError(t, err)
+}
+
 func TestCacheChain_LoadLatestBlock1(t *testing.T) {
 	ClearData()
 

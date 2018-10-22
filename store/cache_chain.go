@@ -30,13 +30,19 @@ func btoSb(block *types.Block) (*sBlock, error) {
 		return nil, ErrArgInvalid
 	}
 
-	return &sBlock{
+	sb := &sBlock{
 		Header:     block.Header,
 		Txs:        block.Txs,
 		ChangeLogs: block.ChangeLogs,
 		Events:     block.Events,
 		Confirms:   block.ConfirmPackage,
-	}, nil
+	}
+
+	if block.ConfirmPackage == nil {
+		sb.Confirms = make([]types.SignData, 0)
+	}
+
+	return sb, nil
 }
 
 func sBtoB(sb *sBlock) (*types.Block, error) {
@@ -112,10 +118,13 @@ func (chain *CacheChain) writeChain(hash common.Hash) error {
 	if err != nil {
 		return err
 	}
+
 	buf, err := rlp.EncodeToBytes(sb)
 	if err != nil {
 		return err
 	}
+
+	err = rlp.DecodeBytes(buf, sb)
 
 	err = chain.LmDataBase.SetCurrentBlock(buf)
 	if err != nil {
