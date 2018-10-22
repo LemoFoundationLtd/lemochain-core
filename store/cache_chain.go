@@ -266,10 +266,12 @@ func (chain *CacheChain) getBlock(hash common.Hash) (*types.Block, error) {
 // 设置区块
 func (chain *CacheChain) SetBlock(hash common.Hash, block *types.Block) error {
 	header := block.Header
+	isExist, err := chain.IsExistByHash(hash)
+	if err != nil {
+		return err
+	}
 
-	// height := header.Height
-	_, err := chain.getBlock(hash)
-	if err == nil {
+	if isExist {
 		log.Errorf("set block error:the block is exist.")
 		return ErrExist
 	}
