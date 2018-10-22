@@ -685,9 +685,19 @@ func (database *LmDataBase) Commit(items []*BatchItem) error {
 		return nil
 	}
 
+	file, err := os.OpenFile(database.getDataPath(database.CurIndex), os.O_APPEND|os.O_WRONLY, os.ModePerm)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
 	var dHeader RecordHeader
 	var wOffset uint32 = 0
-	buf := make([]byte, 0, 10*1024*1024)
+
+	bufLen := 256 * 1024 * 1024
+	buf := make([]byte, 0, bufLen)
+
+	wIndex := 0
 	sOffset := make([]uint32, len(items))
 	keys := make([][]byte, len(items))
 	for index := 0; index < len(items); index++ {
@@ -695,15 +705,11 @@ func (database *LmDataBase) Commit(items []*BatchItem) error {
 			break
 		}
 
-		sOffset[index] = wOffset
-
 		keys[index] = key2hash(items[index].Key).Bytes()
-
 		dHeader.KLen = uint8(len(keys[index]))
 		dHeader.VLen = uint32(len(items[index].Val))
 		dHeader.TimeStamp = uint64(time.Now().UnixNano())
 		dHeader.Crc = CheckSum(items[index].Val)
-
 		database.Buf.Reset()
 		err := binary.Write(database.Buf, binary.LittleEndian, &dHeader)
 		if err != nil {
@@ -711,42 +717,76 @@ func (database *LmDataBase) Commit(items []*BatchItem) error {
 		}
 
 		tLen := database.align(dataHeaderLen + uint32(len(keys[index])) + uint32(len(items[index].Val)))
-		pBuf := database.encode(database.Buf.Bytes(), keys[index], items[index].Val)
+		if (uint32(bufLen) - uint32(wOffset)) >= uint32(tLen) {
+			sOffset[index] = wOffset
 
-		err = binary.Write(NewLmBuffer(buf[wOffset:wOffset+tLen]), binary.LittleEndian, pBuf)
+			pBuf := database.encode(database.Buf.Bytes(), keys[index], items[index].Val)
+			err = binary.Write(NewLmBuffer(buf[wOffset:wOffset+tLen]), binary.LittleEndian, pBuf)
+			if err != nil {
+				return err
+			}
+
+			wOffset = wOffset + tLen
+		} else {
+			_, err = file.Seek(int64(database.CurOffset), 0)
+			if err != nil {
+				return err
+			}
+
+			n, err := file.Write(buf[0:wOffset])
+			if err != nil || n < len(buf) {
+				return err
+			}
+
+			err = file.Sync()
+			if err != nil {
+				return err
+			}
+
+			err = database.addTree(sOffset[wIndex:index], keys[wIndex:index])
+			if err != nil {
+				return err
+			}
+
+			database.CurOffset = database.CurOffset + int64(wOffset)
+
+			wOffset = 0
+			sOffset[index] = wOffset
+
+			pBuf := database.encode(database.Buf.Bytes(), keys[index], items[index].Val)
+			err = binary.Write(NewLmBuffer(buf[wOffset:wOffset+tLen]), binary.LittleEndian, pBuf)
+			if err != nil {
+				return err
+			}
+
+			wIndex = index
+			wOffset = wOffset + tLen
+		}
+	}
+
+	if wOffset > 0 {
+		_, err = file.Seek(int64(database.CurOffset), 0)
 		if err != nil {
 			return err
 		}
 
-		wOffset = wOffset + tLen
+		n, err := file.Write(buf[0:wOffset])
+		if err != nil || n < len(buf) {
+			return err
+		}
+
+		err = file.Sync()
+		if err != nil {
+			return err
+		}
+
+		err = database.addTree(sOffset[wIndex:], keys[wIndex:])
+		if err != nil {
+			return err
+		}
+
+		database.CurOffset = database.CurOffset + int64(wOffset)
 	}
 
-	file, err := os.OpenFile(database.getDataPath(database.CurIndex), os.O_APPEND|os.O_WRONLY, os.ModePerm)
-	defer file.Close()
-	if err != nil {
-		return err
-	}
-
-	_, err = file.Seek(int64(database.CurOffset), 0)
-	if err != nil {
-		return err
-	}
-
-	n, err := file.Write(buf[0:wOffset])
-	if err != nil || n < len(buf) {
-		return err
-	}
-
-	err = file.Sync()
-	if err != nil {
-		return err
-	}
-
-	err = database.addTree(sOffset, keys)
-	if err != nil {
-		return err
-	}
-
-	database.CurOffset = database.CurOffset + int64(wOffset)
 	return nil
 }
