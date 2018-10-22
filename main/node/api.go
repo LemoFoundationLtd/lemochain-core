@@ -89,7 +89,7 @@ func NewChainAPI(chain *chain.BlockChain) *ChainAPI {
 }
 
 // GetBlockByNumber get block information by height
-func (c *ChainAPI) GetBlockByNumber(height uint32) *types.Block {
+func (c *ChainAPI) GetBlockByHeight(height uint32) *types.Block {
 	return c.chain.GetBlockByHeight(height)
 }
 
@@ -131,7 +131,7 @@ func (c *ChainAPI) GetLatestStableHeight() uint32 {
 }
 
 // GetGasPrice get suggest gas price
-func (c *ChainAPI) GetSuggestGasPrice() *big.Int {
+func (c *ChainAPI) GasPriceAdvice() *big.Int {
 	// todo
 	return big.NewInt(100000000)
 }
@@ -201,6 +201,10 @@ func NewNetAPI(server *p2p.Server) *NetAPI {
 // AddStaticPeer
 func (n *NetAPI) AddStaticPeer(node string) {
 	n.server.AddStaticPeer(node)
+}
+
+func (n *NetAPI) DropPeer(node string) {
+	n.server.DropPeer(node)
 }
 
 // GetPeers

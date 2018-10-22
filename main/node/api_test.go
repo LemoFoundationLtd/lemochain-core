@@ -5,8 +5,10 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-go/common/flag"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"github.com/testify/assert"
+	"gopkg.in/urfave/cli.v1"
 	"math/big"
 	"testing"
 )
@@ -26,8 +28,6 @@ func TestAccountAPI_api(t *testing.T) {
 	t.Log(acc.GetBalance("0x10000"))
 	t.Log(acc.GetBalance("0x20000"))
 	t.Log(acc.GetBalance(testAddr.String()))
-	// get version api
-	t.Log(acc.GetVersion(testAddr.String(), 0))
 	// get account api
 	t.Log(acc.GetAccount("0x10000"))
 	t.Log(acc.GetAccount("0x20000"))
@@ -39,14 +39,14 @@ func TestChainAPI_api(t *testing.T) {
 	bc := newChain()
 	c := NewChainAPI(bc)
 	// getBlock (via block height or block hash)
-	t.Log(c.GetBlock("0x16019ad7c4d4ecf5163906339048ac73a7aa7131b1154fefeb865c0d523d23f5"))
-	t.Log(c.GetBlock(0.0)) // input type must float64,this is a bug.// todo
-	t.Log(c.GetBlock("0xd67857de0f447554c94712d9c0016a8d9e4974d6c3b14b9b062226637d968449"))
-	t.Log(c.GetBlock(1.0))
-	t.Log(c.GetBlock("0x5afb6907e01a243325ce7c6e56e463f777080f6e5277ba2ec83928329c8dce61"))
-	t.Log(c.GetBlock(2.0))
-	t.Log(c.GetBlock("0x1889ca33d2ea9bfe68b171258e19f3034e9518c47d15b1d484797458e96cfb96")) // block03 did not insert db
-	t.Log(c.GetBlock(3.0))
+	t.Log(c.GetBlockByHash("0x16019ad7c4d4ecf5163906339048ac73a7aa7131b1154fefeb865c0d523d23f5"))
+	t.Log(c.GetBlockByHeight(0))
+	t.Log(c.GetBlockByHash("0xd67857de0f447554c94712d9c0016a8d9e4974d6c3b14b9b062226637d968449"))
+	t.Log(c.GetBlockByHeight(1))
+	t.Log(c.GetBlockByHash("0x5afb6907e01a243325ce7c6e56e463f777080f6e5277ba2ec83928329c8dce61"))
+	t.Log(c.GetBlockByHeight(2))
+	t.Log(c.GetBlockByHash("0x1889ca33d2ea9bfe68b171258e19f3034e9518c47d15b1d484797458e96cfb96")) // block03 did not insert db
+	t.Log(c.GetBlockByHeight(3))
 	// get chain ID api
 	t.Log(c.GetChainID())
 	// get genesis block api
@@ -57,11 +57,13 @@ func TestChainAPI_api(t *testing.T) {
 	t.Log(c.GetLatestStableBlock())
 	// get current chain height api
 	t.Log(c.GetCurrentHeight())
+	// get latest stable block height
+	t.Log(c.GetLatestStableHeight())
 
 }
 
-// TestTxAPI_SendTx send tx api test
-func TestTxAPI_SendTx(t *testing.T) {
+// TestTxAPI_api send tx api test
+func TestTxAPI_api(t *testing.T) {
 	testTx := types.NewTransaction(common.HexToAddress("0x1"), common.Big1, 100, common.Big2, []byte{12}, 200, big.NewInt(1544584596), "aa", []byte{34})
 	txCh := make(chan types.Transactions, 100)
 	pool := chain.NewTxPool(nil, txCh)
@@ -76,4 +78,31 @@ func TestTxAPI_SendTx(t *testing.T) {
 	}
 
 	assert.Equal(t, testTx.Hash(), byteTx)
+}
+
+// TestMineAPI_api miner api test
+func TestMineAPI_api(t *testing.T) {
+	lemoConf := &LemoConfig{
+		Genesis:   chain.DefaultGenesisBlock(),
+		NetworkId: 1,
+		MaxPeers:  1000,
+		Port:      7001,
+		NodeKey:   "0xc21b6b2fbf230f665b936194d14da67187732bf9d28768aef1a3cbb26608f8aa",
+		ExtraData: []byte{},
+	}
+	testNode, err := New(lemoConf, &DefaultNodeConfig, flag.NewCmdFlags(&cli.Context{}, []cli.Flag{}))
+	if err != nil {
+		t.Error(err)
+	}
+	miner := (*testNode).miner
+	m := NewMineAPI(miner)
+	t.Log("after:", m.IsMining())
+	m.MineStart()
+	t.Log("then:", m.IsMining())
+	// todo
+	m.MineStop()
+	t.Log("last:", m.IsMining())
+
+	assert.Equal(t, "0x015780F8456F9c1532645087a19DcF9a7e0c7F97", m.GetLemoBase())
+
 }
