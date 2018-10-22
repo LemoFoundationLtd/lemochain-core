@@ -30,7 +30,7 @@ type genesisSpecMarshaling struct {
 
 // DefaultGenesisBlock 默认创始区块配置
 func DefaultGenesisBlock() *Genesis {
-	timeSpan, err := time.ParseInLocation("2006-01-02 15:04:05", "2018-08-30 12:00:00", time.Local)
+	timeSpan, err := time.ParseInLocation("2006-01-02 15:04:05", "2018-08-30 12:00:00", time.UTC)
 	if err != nil {
 		timeSpan = time.Now()
 	}

@@ -189,7 +189,7 @@ func (bc *BlockChain) MineNewBlock(block *types.Block) error {
 	}
 	nodeCount := deputynode.Instance().GetDeputyNodesCount()
 	if nodeCount == 1 {
-		bc.SetStableBlock(block.Hash(), block.Height())
+		bc.SetStableBlock(block.Hash(), block.Height(), false)
 	}
 	bc.currentBlock.Store(block)
 	delete(bc.chainForksHead, block.ParentHash())
@@ -202,7 +202,7 @@ func (bc *BlockChain) newBlockNotify(block *types.Block) {
 }
 
 // InsertChain insert block of non-self to chain
-func (bc *BlockChain) InsertChain(block *types.Block) (err error) {
+func (bc *BlockChain) InsertChain(block *types.Block, isSyncing bool) (err error) {
 	// log.Debugf("start insert block to chain. height: %d", block.Height())
 	hash := block.Hash()
 	parHash := block.ParentHash()
@@ -225,7 +225,9 @@ func (bc *BlockChain) InsertChain(block *types.Block) (err error) {
 		log.Error(fmt.Sprintf("can't insert block to cache. height:%d hash:%s", block.Height(), hash.Hex()))
 		return err
 	}
-	log.Infof("Insert block to chain. height: %d. hash: %s", block.Height(), block.Hash().String())
+	if !isSyncing {
+		log.Infof("Insert block to chain. height: %d. hash: %s", block.Height(), block.Hash().String())
+	}
 	err = bc.AccountManager().Save(hash)
 	if err != nil {
 		log.Error("save account error!", "height", block.Height(), "hash", hash.Hex(), "err", err)
@@ -234,12 +236,12 @@ func (bc *BlockChain) InsertChain(block *types.Block) (err error) {
 
 	nodeCount := deputynode.Instance().GetDeputyNodesCount()
 	if nodeCount < 3 {
-		defer bc.SetStableBlock(hash, block.Height())
+		defer bc.SetStableBlock(hash, block.Height(), isSyncing)
 	} else {
 		if block.ConfirmPackage != nil {
 			minCount := int(math.Ceil(float64(nodeCount) * 2.0 / 3.0))
 			if len(block.ConfirmPackage) >= minCount {
-				defer bc.SetStableBlock(hash, block.Height())
+				defer bc.SetStableBlock(hash, block.Height(), isSyncing)
 			}
 		}
 	}
@@ -263,7 +265,9 @@ func (bc *BlockChain) InsertChain(block *types.Block) (err error) {
 		bc.currentBlock.Store(block)
 		delete(bc.chainForksHead, curHash) // remove old record from fork container
 		bc.chainForksHead[hash] = block    // record new fork
-		bc.newBlockNotify(block)
+		if !isSyncing {
+			bc.newBlockNotify(block)
+		}
 		return nil
 	}
 	// new block height higher than current block, switch fork.
@@ -285,12 +289,14 @@ func (bc *BlockChain) InsertChain(block *types.Block) (err error) {
 		}
 	}
 	bc.chainForksHead[hash] = block
-	bc.newBlockNotify(block)
+	if !isSyncing {
+		bc.newBlockNotify(block)
+	}
 	return nil
 }
 
 // SetStableBlock 设置最新的稳定区块
-func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32) error {
+func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32, isSyncing bool) error {
 	if err := bc.dbOpe.SetStableBlock(hash); err != nil {
 		log.Error(fmt.Sprintf("SetStableBlock error. height:%d hash:%s", height, common.ToHex(hash[:])))
 		return err
@@ -300,7 +306,11 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32) error {
 		return errors.New("please sync latest block")
 	}
 	bc.stableBlock.Store(block)
-	defer log.Infof("block has consensus. height:%d hash:%s", block.Height(), block.Hash().Hex())
+	defer func() {
+		if !isSyncing {
+			log.Infof("block has consensus. height:%d hash:%s", block.Height(), block.Hash().Hex())
+		}
+	}()
 	// 判断是否需要切换分叉
 	parBlock := bc.currentBlock.Load().(*types.Block)
 	for parBlock.Height() > height {
@@ -341,7 +351,9 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32) error {
 		}
 	}
 	bc.currentBlock.Store(curBlock)
-	log.Infof("chain forked! current block: height(%d), hash(%s)", curBlock.Height(), curBlock.Hash().Hex())
+	if !isSyncing {
+		log.Infof("chain forked! current block: height(%d), hash(%s)", curBlock.Height(), curBlock.Hash().Hex())
+	}
 	return nil
 }
 
@@ -406,7 +418,7 @@ func (bc *BlockChain) ReceiveConfirm(info *protocol.BlockConfirmData) (err error
 		return err
 	}
 	if ok {
-		return bc.SetStableBlock(info.Hash, info.Height)
+		return bc.SetStableBlock(info.Hash, info.Height, false)
 	}
 	return nil
 }

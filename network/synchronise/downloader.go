@@ -189,7 +189,7 @@ func (d *Downloader) syncWithPeer(p *peerConnection) error {
 					if d.dropPeer != nil {
 						d.dropPeer(p.id)
 					}
-					errMsgCh <- fmt.Sprintf("verify block failed. height: %d. hash: %s", block.Height(), block.Hash().Hex())
+					errMsgCh <- fmt.Sprintf("verify block failed. height: %d. err: %v", block.Height(), err)
 					return
 				}
 				d.insert(block, p.id)
@@ -242,7 +242,7 @@ func (d *Downloader) enqueue(blocks types.Blocks) {
 
 // insert 将块插入本地连
 func (d *Downloader) insert(block *types.Block, peer string) {
-	err := d.blockChain.InsertChain(block)
+	err := d.blockChain.InsertChain(block, true)
 	if err == nil || err == store.ErrExist {
 		go func() { d.blockDoneCh <- block }()
 	} else {
