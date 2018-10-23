@@ -219,11 +219,18 @@
         return isNaN(it = +it) ? 0 : (it > 0 ? floor : ceil)(it);
     };
 
+    var _toInteger$1 = /*#__PURE__*/Object.freeze({
+        default: _toInteger,
+        __moduleExports: _toInteger
+    });
+
+    var toInteger = ( _toInteger$1 && _toInteger ) || _toInteger$1;
+
     // 7.1.15 ToLength
 
     var min = Math.min;
     var _toLength = function (it) {
-        return it > 0 ? min(_toInteger(it), 0x1fffffffffffff) : 0; // pow(2, 53) - 1 == 9007199254740991
+        return it > 0 ? min(toInteger(it), 0x1fffffffffffff) : 0; // pow(2, 53) - 1 == 9007199254740991
     };
 
     var toString = {}.toString;
@@ -231,6 +238,11 @@
     var _cof = function (it) {
         return toString.call(it).slice(8, -1);
     };
+
+    var _cof$1 = /*#__PURE__*/Object.freeze({
+        default: _cof,
+        __moduleExports: _cof
+    });
 
     var _library = false;
 
@@ -261,13 +273,15 @@
         $exports.store = store;
     });
 
+    var cof = ( _cof$1 && _cof ) || _cof$1;
+
     // 7.2.8 IsRegExp(argument)
 
 
     var MATCH = _wks('match');
     var _isRegexp = function (it) {
         var isRegExp;
-        return _isObject(it) && ((isRegExp = it[MATCH]) !== undefined ? !!isRegExp : _cof(it) == 'RegExp');
+        return _isObject(it) && ((isRegExp = it[MATCH]) !== undefined ? !!isRegExp : cof(it) == 'RegExp');
     };
 
     var _isRegexp$1 = /*#__PURE__*/Object.freeze({
@@ -281,7 +295,14 @@
         return it;
     };
 
+    var _defined$1 = /*#__PURE__*/Object.freeze({
+        default: _defined,
+        __moduleExports: _defined
+    });
+
     var isRegExp = ( _isRegexp$1 && _isRegexp ) || _isRegexp$1;
+
+    var defined = ( _defined$1 && _defined ) || _defined$1;
 
     // helper for String#{startsWith, endsWith, includes}
 
@@ -289,7 +310,7 @@
 
     var _stringContext = function (that, searchString, NAME) {
         if (isRegExp(searchString)) throw TypeError('String#' + NAME + " doesn't accept regex!");
-        return String(_defined(that));
+        return String(defined(that));
     };
 
     var MATCH$1 = _wks('match');
@@ -319,52 +340,6 @@
         }
     });
 
-    function _arrayWithHoles(arr) {
-        if (Array.isArray(arr)) return arr;
-    }
-
-    var arrayWithHoles = _arrayWithHoles;
-
-    function _iterableToArrayLimit(arr, i) {
-        var _arr = [];
-        var _n = true;
-        var _d = false;
-        var _e = undefined;
-
-        try {
-            for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) {
-                _arr.push(_s.value);
-
-                if (i && _arr.length === i) break;
-            }
-        } catch (err) {
-            _d = true;
-            _e = err;
-        } finally {
-            try {
-                if (!_n && _i["return"] != null) _i["return"]();
-            } finally {
-                if (_d) throw _e;
-            }
-        }
-
-        return _arr;
-    }
-
-    var iterableToArrayLimit = _iterableToArrayLimit;
-
-    function _nonIterableRest() {
-        throw new TypeError("Invalid attempt to destructure non-iterable instance");
-    }
-
-    var nonIterableRest = _nonIterableRest;
-
-    function _slicedToArray(arr, i) {
-        return arrayWithHoles(arr) || iterableToArrayLimit(arr, i) || nonIterableRest();
-    }
-
-    var slicedToArray = _slicedToArray;
-
     // 22.1.3.31 Array.prototype[@@unscopables]
     var UNSCOPABLES = _wks('unscopables');
     var ArrayProto = Array.prototype;
@@ -383,20 +358,27 @@
 
     // eslint-disable-next-line no-prototype-builtins
     var _iobject = Object('z').propertyIsEnumerable(0) ? Object : function (it) {
-        return _cof(it) == 'String' ? it.split('') : Object(it);
+        return cof(it) == 'String' ? it.split('') : Object(it);
     };
+
+    var _iobject$1 = /*#__PURE__*/Object.freeze({
+        default: _iobject,
+        __moduleExports: _iobject
+    });
+
+    var IObject = ( _iobject$1 && _iobject ) || _iobject$1;
 
     // to indexed object, toObject with fallback for non-array-like ES3 strings
 
 
     var _toIobject = function (it) {
-        return _iobject(_defined(it));
+        return IObject(defined(it));
     };
 
     var max = Math.max;
     var min$1 = Math.min;
     var _toAbsoluteIndex = function (index, length) {
-        index = _toInteger(index);
+        index = toInteger(index);
         return index < 0 ? max(index + length, 0) : min$1(index, length);
     };
 
@@ -446,17 +428,24 @@
         return result;
     };
 
+    var _objectKeysInternal$1 = /*#__PURE__*/Object.freeze({
+        default: _objectKeysInternal,
+        __moduleExports: _objectKeysInternal
+    });
+
     // IE 8- don't enum bug keys
     var _enumBugKeys = (
         'constructor,hasOwnProperty,isPrototypeOf,propertyIsEnumerable,toLocaleString,toString,valueOf'
     ).split(',');
+
+    var $keys = ( _objectKeysInternal$1 && _objectKeysInternal ) || _objectKeysInternal$1;
 
     // 19.1.2.14 / 15.2.3.14 Object.keys(O)
 
 
 
     var _objectKeys = Object.keys || function keys(O) {
-        return _objectKeysInternal(O, _enumBugKeys);
+        return $keys(O, _enumBugKeys);
     };
 
     var _objectDps = _descriptors ? Object.defineProperties : function defineProperties(O, Properties) {
@@ -514,11 +503,6 @@
         return Properties === undefined ? result : _objectDps(result, Properties);
     };
 
-    var _objectCreate$1 = /*#__PURE__*/Object.freeze({
-        default: _objectCreate,
-        __moduleExports: _objectCreate
-    });
-
     var def = _objectDp.f;
 
     var TAG = _wks('toStringTag');
@@ -527,22 +511,20 @@
         if (it && !_has(it = stat ? it : it.prototype, TAG)) def(it, TAG, { configurable: true, value: tag });
     };
 
-    var create = ( _objectCreate$1 && _objectCreate ) || _objectCreate$1;
-
     var IteratorPrototype = {};
 
     // 25.1.2.1.1 %IteratorPrototype%[@@iterator]()
     _hide(IteratorPrototype, _wks('iterator'), function () { return this; });
 
     var _iterCreate = function (Constructor, NAME, next) {
-        Constructor.prototype = create(IteratorPrototype, { next: _propertyDesc(1, next) });
+        Constructor.prototype = _objectCreate(IteratorPrototype, { next: _propertyDesc(1, next) });
         _setToStringTag(Constructor, NAME + ' Iterator');
     };
 
     // 7.1.13 ToObject(argument)
 
     var _toObject = function (it) {
-        return Object(_defined(it));
+        return Object(defined(it));
     };
 
     // 19.1.2.9 / 15.2.3.2 Object.getPrototypeOf(O)
@@ -592,7 +574,7 @@
                 // Set @@toStringTag to native iterators
                 _setToStringTag(IteratorPrototype, TAG, true);
                 // fix for some old engines
-                if (!_library && typeof IteratorPrototype[ITERATOR] != 'function') _hide(IteratorPrototype, ITERATOR, returnThis);
+                if (typeof IteratorPrototype[ITERATOR] != 'function') _hide(IteratorPrototype, ITERATOR, returnThis);
             }
         }
         // fix Array#{values, @@iterator}.name in V8 / FF
@@ -601,7 +583,7 @@
             $default = function values() { return $native.call(this); };
         }
         // Define iterator
-        if ((!_library || FORCED) && (BUGGY || VALUES_BUG || !proto[ITERATOR])) {
+        if (BUGGY || VALUES_BUG || !proto[ITERATOR]) {
             _hide(proto, ITERATOR, $default);
         }
         // Plug for library
@@ -648,37 +630,6 @@
     _addToUnscopables('keys');
     _addToUnscopables('values');
     _addToUnscopables('entries');
-
-    var f$1 = {}.propertyIsEnumerable;
-
-    var _objectPie = {
-        f: f$1
-    };
-
-    var isEnum = _objectPie.f;
-    var _objectToArray = function (isEntries) {
-        return function (it) {
-            var O = _toIobject(it);
-            var keys = _objectKeys(O);
-            var length = keys.length;
-            var i = 0;
-            var result = [];
-            var key;
-            while (length > i) if (isEnum.call(O, key = keys[i++])) {
-                result.push(isEntries ? [key, O[key]] : O[key]);
-            } return result;
-        };
-    };
-
-    // https://github.com/tc39/proposal-object-values-entries
-
-    var $entries = _objectToArray(true);
-
-    _export(_export.S, 'Object', {
-        entries: function entries(it) {
-            return $entries(it);
-        }
-    });
 
     var ITERATOR$1 = _wks('iterator');
     var TO_STRING_TAG = _wks('toStringTag');
@@ -762,7 +713,7 @@
 
     var TAG$1 = _wks('toStringTag');
     // ES3 wrong here
-    var ARG = _cof(function () { return arguments; }()) == 'Arguments';
+    var ARG = cof(function () { return arguments; }()) == 'Arguments';
 
     // fallback for IE11 Script Access Denied error
     var tryGet = function (it, key) {
@@ -777,9 +728,9 @@
             // @@toStringTag case
             : typeof (T = tryGet(O = Object(it), TAG$1)) == 'string' ? T
                 // builtinTag case
-                : ARG ? _cof(O)
+                : ARG ? cof(O)
                     // ES3 arguments fallback
-                    : (B = _cof(O)) == 'Object' && typeof O.callee == 'function' ? 'Arguments' : B;
+                    : (B = cof(O)) == 'Object' && typeof O.callee == 'function' ? 'Arguments' : B;
     };
 
     var _anInstance = function (it, Constructor, name, forbiddenField) {
@@ -905,7 +856,7 @@
             delete queue[id];
         };
         // Node.js 0.8-
-        if (_cof(process$1) == 'process') {
+        if (cof(process$1) == 'process') {
             defer = function (id) {
                 process$1.nextTick(_ctx(run, id, 1));
             };
@@ -951,7 +902,7 @@
     var Observer = _global.MutationObserver || _global.WebKitMutationObserver;
     var process$2 = _global.process;
     var Promise$1 = _global.Promise;
-    var isNode = _cof(process$2) == 'process';
+    var isNode = cof(process$2) == 'process';
 
     var _microtask = function () {
         var head, last, notify;
@@ -1030,12 +981,12 @@
         this.reject = _aFunction(reject);
     }
 
-    var f$2 = function (C) {
+    var f$1 = function (C) {
         return new PromiseCapability(C);
     };
 
     var _newPromiseCapability = {
-        f: f$2
+        f: f$1
     };
 
     var _perform = function (exec) {
@@ -2092,6 +2043,13 @@
         );
     });
 
+    var runtime$1 = /*#__PURE__*/Object.freeze({
+        default: runtime,
+        __moduleExports: runtime
+    });
+
+    var require$$0 = ( runtime$1 && runtime ) || runtime$1;
+
     /**
      * Copyright (c) 2014-present, Facebook, Inc.
      *
@@ -2116,7 +2074,7 @@
     // Force reevalutation of runtime.js.
     g.regeneratorRuntime = undefined;
 
-    var runtimeModule = runtime;
+    var runtimeModule = require$$0;
 
     if (hadRuntime) {
         // Restore the original runtime.
@@ -2132,7 +2090,7 @@
 
     var regenerator = runtimeModule;
 
-    var runtime$1 = createCommonjsModule(function (module) {
+    var runtime$2 = createCommonjsModule(function (module) {
         /**
          * Copyright (c) 2014-present, Facebook, Inc.
          *
@@ -3453,11 +3411,6 @@
         return parsed;
     };
 
-    var parseHeaders$1 = /*#__PURE__*/Object.freeze({
-        default: parseHeaders,
-        __moduleExports: parseHeaders
-    });
-
     var isURLSameOrigin = (
         utils.isStandardBrowserEnv() ?
 
@@ -3522,11 +3475,6 @@
                 };
             })()
     );
-
-    var isURLSameOrigin$1 = /*#__PURE__*/Object.freeze({
-        default: isURLSameOrigin,
-        __moduleExports: isURLSameOrigin
-    });
 
     // btoa polyfill for IE<10 courtesy https://github.com/davidchambers/Base64.js
 
@@ -3613,10 +3561,6 @@
             })()
     );
 
-    var parseHeaders$2 = ( parseHeaders$1 && parseHeaders ) || parseHeaders$1;
-
-    var isURLSameOrigin$2 = ( isURLSameOrigin$1 && isURLSameOrigin ) || isURLSameOrigin$1;
-
     var btoa$1 = (typeof window !== 'undefined' && window.btoa && window.btoa.bind(window)) || btoa_1;
 
     var xhr = function xhrAdapter(config) {
@@ -3637,7 +3581,7 @@
             // DON'T do this for testing b/c XMLHttpRequest is mocked, not XDomainRequest.
             if (typeof window !== 'undefined' &&
                 window.XDomainRequest && !('withCredentials' in request) &&
-                !isURLSameOrigin$2(config.url)) {
+                !isURLSameOrigin(config.url)) {
                 request = new window.XDomainRequest();
                 loadEvent = 'onload';
                 xDomain = true;
@@ -3672,7 +3616,7 @@
                 }
 
                 // Prepare the response
-                var responseHeaders = 'getAllResponseHeaders' in request ? parseHeaders$2(request.getAllResponseHeaders()) : null;
+                var responseHeaders = 'getAllResponseHeaders' in request ? parseHeaders(request.getAllResponseHeaders()) : null;
                 var responseData = !config.responseType || config.responseType === 'text' ? request.responseText : request.response;
                 var response = {
                     data: responseData,
@@ -3716,7 +3660,7 @@
                 var cookies$$1 = cookies;
 
                 // Add xsrf header
-                var xsrfValue = (config.withCredentials || isURLSameOrigin$2(config.url)) && config.xsrfCookieName ?
+                var xsrfValue = (config.withCredentials || isURLSameOrigin(config.url)) && config.xsrfCookieName ?
                     cookies$$1.read(config.xsrfCookieName) :
                     undefined;
 
@@ -4301,6 +4245,7 @@
 
     var DEFAULT_HTTP_HOST = 'http://127.0.0.1:8001';
     var POLL_DURATION = 3000;
+    var MAX_POLL_RETRY = 5;
 
     var HttpProvider =
         /*#__PURE__*/
@@ -4378,6 +4323,37 @@
             return HttpProvider;
         }();
 
+    var f$2 = {}.propertyIsEnumerable;
+
+    var _objectPie = {
+        f: f$2
+    };
+
+    var isEnum = _objectPie.f;
+    var _objectToArray = function (isEntries) {
+        return function (it) {
+            var O = _toIobject(it);
+            var keys = _objectKeys(O);
+            var length = keys.length;
+            var i = 0;
+            var result = [];
+            var key;
+            while (length > i) if (isEnum.call(O, key = keys[i++])) {
+                result.push(isEntries ? [key, O[key]] : O[key]);
+            } return result;
+        };
+    };
+
+    // https://github.com/tc39/proposal-object-values-entries
+
+    var $values = _objectToArray(false);
+
+    _export(_export.S, 'Object', {
+        values: function values(it) {
+            return $values(it);
+        }
+    });
+
     var messageId = 0;
     /**
      * Create jsonrpc payload object
@@ -4453,6 +4429,9 @@
                 classCallCheck(this, Requester);
 
                 this.provider = provider;
+                this.idGenerator = 0; // used for generate watchId
+
+                this.watchers = {}; // key is watchId, value is timer
             }
             /**
              * Send request to lemo node asynchronously over RPC
@@ -4593,9 +4572,9 @@
                  * poll till the response changed
                  *
                  * @param {string} method
-                 * @param {Array?} params an array of method params
-                 * @param {Function} callback an array of method params
-                 * @return {Function} the function to stop watching
+                 * @param {Array?} params An array of method params
+                 * @param {Function} callback The function to receive result. it must be like function(result, error)
+                 * @return {number} The watchId which is used to stop watching
                  */
 
             }, {
@@ -4604,35 +4583,159 @@
                     var _this = this;
 
                     if (typeof params === 'function' && typeof callback === 'undefined') {
+                        // no params
                         callback = params;
                         params = undefined;
                     }
 
-                    var lastResult;
+                    var lastSig;
                     var errCount = 0;
-                    var timer = setInterval(function () {
-                        _this.send(method, params).then(function (result) {
-                            if (JSON.stringify(result) !== JSON.stringify(lastResult)) {
-                                callback(result);
-                            }
+                    var newWatchId = this.idGenerator++;
+                    this.watchers[newWatchId] = setInterval(
+                        /*#__PURE__*/
+                        asyncToGenerator(
+                            /*#__PURE__*/
+                            regenerator.mark(function _callee3() {
+                                var result, error, sig;
+                                return regenerator.wrap(function _callee3$(_context3) {
+                                    while (1) {
+                                        switch (_context3.prev = _context3.next) {
+                                            case 0:
+                                                _context3.prev = 0;
+                                                _context3.next = 3;
+                                                return _this.send(method, params);
 
-                            lastResult = result;
-                        }).catch(function (e) {
-                            console.error('watch fail:', e);
+                                            case 3:
+                                                result = _context3.sent;
+                                                errCount = 0;
+                                                sig = getSig(result);
 
-                            if (++errCount > 5) {
-                                clearInterval(timer);
-                            }
-                        });
-                    }, POLL_DURATION);
-                    return function () {
-                        return clearInterval(timer);
-                    };
+                                                if (!(sig === lastSig)) {
+                                                    _context3.next = 8;
+                                                    break;
+                                                }
+
+                                                return _context3.abrupt("return");
+
+                                            case 8:
+                                                lastSig = sig;
+                                                _context3.next = 18;
+                                                break;
+
+                                            case 11:
+                                                _context3.prev = 11;
+                                                _context3.t0 = _context3["catch"](0);
+                                                console.error('watch fail:', _context3.t0);
+
+                                                if (!(++errCount <= MAX_POLL_RETRY)) {
+                                                    _context3.next = 16;
+                                                    break;
+                                                }
+
+                                                return _context3.abrupt("return");
+
+                                            case 16:
+                                                error = _context3.t0;
+
+                                                _this.stopWatch(newWatchId);
+
+                                            case 18:
+                                                // put callback out of try block to expose user's error
+                                                callback(result, error);
+
+                                            case 19:
+                                            case "end":
+                                                return _context3.stop();
+                                        }
+                                    }
+                                }, _callee3, this, [[0, 11]]);
+                            })), POLL_DURATION);
+                    return newWatchId;
+                }
+            }, {
+                key: "stopWatch",
+                value: function stopWatch(watchId) {
+                    if (this.watchers[watchId] > 0) {
+                        clearInterval(this.watchers[watchId]);
+                        delete this.watchers[watchId];
+                    }
+                }
+                /**
+                 * stop all watching
+                 */
+
+            }, {
+                key: "reset",
+                value: function reset() {
+                    var timers = this.watchers;
+                    this.watchers = {};
+                    Object.values(timers).forEach(clearInterval);
                 }
             }]);
 
             return Requester;
-        }();
+        }(); // get the signature of data
+
+
+    function getSig(data) {
+        return JSON.stringify(data);
+    }
+
+    function _arrayWithHoles(arr) {
+        if (Array.isArray(arr)) return arr;
+    }
+
+    var arrayWithHoles = _arrayWithHoles;
+
+    function _iterableToArrayLimit(arr, i) {
+        var _arr = [];
+        var _n = true;
+        var _d = false;
+        var _e = undefined;
+
+        try {
+            for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) {
+                _arr.push(_s.value);
+
+                if (i && _arr.length === i) break;
+            }
+        } catch (err) {
+            _d = true;
+            _e = err;
+        } finally {
+            try {
+                if (!_n && _i["return"] != null) _i["return"]();
+            } finally {
+                if (_d) throw _e;
+            }
+        }
+
+        return _arr;
+    }
+
+    var iterableToArrayLimit = _iterableToArrayLimit;
+
+    function _nonIterableRest() {
+        throw new TypeError("Invalid attempt to destructure non-iterable instance");
+    }
+
+    var nonIterableRest = _nonIterableRest;
+
+    function _slicedToArray(arr, i) {
+        return arrayWithHoles(arr) || iterableToArrayLimit(arr, i) || nonIterableRest();
+    }
+
+    var slicedToArray = _slicedToArray;
+
+    // https://github.com/tc39/proposal-object-values-entries
+
+    var $entries = _objectToArray(true);
+
+    _export(_export.S, 'Object', {
+        entries: function entries(it) {
+            return $entries(it);
+        }
+    });
 
     function isHash(hashOrHeight) {
         return typeof hashOrHeight === 'string' && hashOrHeight.toLowerCase().startsWith('0x');
@@ -4706,8 +4809,8 @@
         getSdkVersion: function getSdkVersion() {
             return Promise.resolve("0.9.0");
         },
-        watchBlock: function watchBlock(requester, callback) {
-            return requester.watch("".concat(MODULE_NAME$1, "_getLatestStableBlock"), callback);
+        watchBlock: function watchBlock(requester, withTxList, callback) {
+            return requester.watch("".concat(MODULE_NAME$1, "_latestStableBlock"), [withTxList], callback);
         }
     };
     var methods$1 = Object.entries(apiList$1).map(function (_ref) {
@@ -4913,42 +5016,41 @@
         );
     }
 
+    var requester;
+
     var LemoClient =
         /*#__PURE__*/
         function () {
             function LemoClient(config) {
-                var _this = this;
-
                 classCallCheck(this, LemoClient);
 
-                this.requester = new Requester(newProvider(config));
+                // do not let requester be a property of this, so that it is not enumerable. P.S. the Object.defineProperties is not work in otto
+                requester = new Requester(newProvider(config));
                 this.createAPI(account.moduleName, account.methods);
-                this.createAPI(chain.moduleName, chain.methods);
+                this.createAPI('', chain.methods); // attach the methods from chain to this object
+
                 this.createAPI(mine.moduleName, mine.methods);
                 this.createAPI(net.moduleName, net.methods);
-                this.createAPI(tx.moduleName, tx.methods); // attach the methods from chain to this object
-
-                Object.entries(this.chain).forEach(function (_ref) {
-                    var _ref2 = slicedToArray(_ref, 2),
-                        methodName = _ref2[0],
-                        func = _ref2[1];
-
-                    _this[methodName] = func;
-                });
+                this.createAPI(tx.moduleName, tx.methods);
             }
 
             createClass(LemoClient, [{
                 key: "createAPI",
                 value: function createAPI(moduleName, methods) {
-                    var _this2 = this;
+                    var _this = this;
 
-                    if (!this[moduleName]) {
+                    if (moduleName && !this[moduleName]) {
                         this[moduleName] = {};
                     }
 
                     methods.forEach(function (method) {
-                        new Method(method, _this2.requester).attachTo(_this2[moduleName]);
+                        new Method(method, requester).attachTo(moduleName ? _this[moduleName] : _this);
                     });
+                }
+            }, {
+                key: "stopWatch",
+                value: function stopWatch(watchId) {
+                    return requester.stopWatch(watchId);
                 }
             }]);
 
