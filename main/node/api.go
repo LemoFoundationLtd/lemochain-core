@@ -112,17 +112,17 @@ func (c *ChainAPI) GetBlockByHash(hash string, withTxs bool) *types.Block {
 
 }
 
-// GetChainID get chain id
+// ChainID get chain id
 func (c *ChainAPI) ChainID() string {
 	return strconv.Itoa(int(c.chain.ChainID()))
 }
 
-// GetGenesis get the creation block
+// Genesis get the creation block
 func (c *ChainAPI) Genesis() *types.Block {
 	return c.chain.Genesis()
 }
 
-// GetCurrentBlock get the current latest block
+// CurrentBlock get the current latest block
 func (c *ChainAPI) CurrentBlock(withTxs bool) *types.Block {
 	if withTxs {
 		return c.chain.CurrentBlock()
@@ -135,7 +135,7 @@ func (c *ChainAPI) CurrentBlock(withTxs bool) *types.Block {
 
 }
 
-// GetLatestStableBlock get the latest currently agreed blocks
+// LatestStableBlock get the latest currently agreed blocks
 func (c *ChainAPI) LatestStableBlock(withTxs bool) *types.Block {
 	if withTxs == true {
 		return c.chain.StableBlock()
@@ -148,15 +148,15 @@ func (c *ChainAPI) LatestStableBlock(withTxs bool) *types.Block {
 
 }
 
-// GetCurrentHeight
-func (c *ChainAPI) currentHeight() uint32 {
+// CurrentHeight
+func (c *ChainAPI) CurrentHeight() uint32 {
 	currentBlock := c.chain.CurrentBlock()
 	height := currentBlock.Height()
 	return height
 }
 
 // LatestStableHeight
-func (c *ChainAPI) latestStableHeight() uint32 {
+func (c *ChainAPI) LatestStableHeight() uint32 {
 	return c.chain.StableBlock().Height()
 }
 
@@ -164,6 +164,12 @@ func (c *ChainAPI) latestStableHeight() uint32 {
 func (c *ChainAPI) GasPriceAdvice() *big.Int {
 	// todo
 	return big.NewInt(100000000)
+}
+
+// NodeVersion
+func (n *ChainAPI) NodeVersion() string {
+	// todo
+	return "1.0"
 }
 
 // TXAPI
@@ -212,7 +218,7 @@ func (m *MineAPI) IsMining() bool {
 	return m.miner.IsMining()
 }
 
-// GetLemoBase
+// LemoBase
 func (m *MineAPI) LemoBase() string {
 	lemoBase := m.miner.GetLemoBase()
 	return lemoBase.Hex()
@@ -237,18 +243,12 @@ func (n *NetAPI) DropPeer(node string) {
 	n.server.DropPeer(node)
 }
 
-// GetPeers
+// Peers
 func (n *NetAPI) Peers() []p2p.PeerConnInfo {
 	return n.server.Peers()
 }
 
-// GetNodeVersion
-func (n *NetAPI) NodeVersion() string {
-	// todo
-	return "1.0"
-}
-
-// GetNetInfo
-func (n *NetAPI) Info() string {
+// NetInfo
+func (n *NetAPI) NetInfo() string {
 	return n.server.ListenAddr
 }

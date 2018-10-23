@@ -65,10 +65,10 @@ type RPCService struct {
 }
 
 // Modules returns the list of RPC services with their version number
-func (s *RPCService) Modules() map[string]string {
-	modules := make(map[string]string)
+func (s *RPCService) Modules() []string {
+	modules := make([]string, 0)
 	for name := range s.server.services {
-		modules[name] = "1.0"
+		modules = append(modules, name)
 	}
 	return modules
 }

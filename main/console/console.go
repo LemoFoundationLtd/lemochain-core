@@ -27,7 +27,6 @@ import (
 	"syscall"
 
 	"github.com/LemoFoundationLtd/lemochain-go/main/jsre"
-	"github.com/LemoFoundationLtd/lemochain-go/main/jsre/deps"
 	"github.com/LemoFoundationLtd/lemochain-go/network/rpc"
 	"github.com/mattn/go-colorable"
 	"github.com/peterh/liner"
@@ -35,7 +34,7 @@ import (
 )
 
 var (
-	passwordRegexp = regexp.MustCompile(`personal.[nus]`)
+	passwordRegexp = regexp.MustCompile(`account.[nus]`)
 	exit           = regexp.MustCompile(`^\s*exit\s*;*\s*$`)
 )
 
@@ -90,57 +89,37 @@ func (c *Console) init() error {
 
 	providerObj, _ := c.jsre.Get("provider")
 	providerObj.Object().Set("send", bridge.Send)
-	providerObj.Object().Set("sendAsync", bridge.Send)
 
 	consoleObj, _ := c.jsre.Get("console")
 	consoleObj.Object().Set("log", c.consoleOutput)
 	consoleObj.Object().Set("error", c.consoleOutput)
 
 	// Load all the internal utility JavaScript libraries
-	if err := c.jsre.Compile("bignumber.js", jsre.BigNumber_JS); err != nil {
+	if err := c.jsre.Compile("bignumber.js", jsre.BigNumberJS); err != nil {
 		return fmt.Errorf("bignumber.js: %v", err)
 	}
-	if err := c.jsre.Compile("lemo-client.js", jsre.LemoClient_JS); err != nil {
+	if err := c.jsre.Compile("lemo-client.js", jsre.LemoClientJS); err != nil {
 		return fmt.Errorf("lemo-client.js: %v", err)
 	}
-	if _, err := c.jsre.Run("var LemoClient = require('lemo-client');"); err != nil {
-		return fmt.Errorf("LemoClient require: %v", err)
+	if _, err := c.jsre.Run("var lemo = new LemoClient(provider);"); err != nil {
+		return fmt.Errorf("lemo provider: %v", err)
 	}
-	if _, err := c.jsre.Run("var lemojs = new LemoClient(provider);"); err != nil {
-		return fmt.Errorf("lemojs provider: %v", err)
+	// Load our extension for the module.
+	if err := c.jsre.Compile("lemo-node-admin.js", jsre.LemoNodeAdminJS); err != nil {
+		return fmt.Errorf("lemo-node-admin.js: %v", err)
 	}
-	for api, file := range deps.ExtModules {
-		// Load our extension for the module.
-		if err := c.jsre.Compile(fmt.Sprintf("%s.js", api), file); err != nil {
-			return fmt.Errorf("%s.js: %v", api, err)
-		}
-	}
-	// Initialize the global name register (disabled for now)
-	// c.jsre.Run(`var GlobalRegistrar = lemo.lemo.contract(` + registrar.GlobalRegistrarAbi + `);   registrar = GlobalRegistrar.at("` + registrar.GlobalRegistrarAddr + `");`)
 
 	// If the console is in interactive mode, instrument password related methods to query the user
 	if c.prompter != nil {
-		personal, err := c.getFromJsre("lemojs.personal")
+		account, err := c.getFromJsre("lemo.account")
 		if err != nil {
 			return err
 		}
-		// Override the openWallet, unlockAccount, newAccount and sign methods since
-		// these require user interaction. Assign these method in the Console the
-		// original lemo callbacks. These will be called by the provider.* methods after
-		// they got the password from the user and send the original lemo request to
-		// the backend.
-		if _, err = c.jsre.Run(`provider.unlockAccount = lemojs.personal.unlockAccount;`); err != nil {
-			return fmt.Errorf("personal.unlockAccount: %v", err)
+		// Override methods since these require user interaction.
+		if _, err = c.jsre.Run(`provider.sign = lemo.account.sign;`); err != nil {
+			return fmt.Errorf("account.sign: %v", err)
 		}
-		if _, err = c.jsre.Run(`provider.newAccount = lemojs.personal.newAccount;`); err != nil {
-			return fmt.Errorf("personal.newAccount: %v", err)
-		}
-		if _, err = c.jsre.Run(`provider.sign = lemojs.personal.sign;`); err != nil {
-			return fmt.Errorf("personal.sign: %v", err)
-		}
-		personal.Set("unlockAccount", bridge.UnlockAccount)
-		personal.Set("newAccount", bridge.NewAccount)
-		personal.Set("sign", bridge.Sign)
+		account.Set("sign", bridge.Sign)
 	}
 	return nil
 }
@@ -180,21 +159,25 @@ func (c *Console) consoleOutput(call otto.FunctionCall) otto.Value {
 // console's available modules.
 func (c *Console) Welcome() {
 	// Print some generic Glemo metadata
-	fmt.Fprintf(c.printer, "Welcome to the lemo JavaScript console!\n\n")
-	c.jsre.Run(`
-		console.log("instance: " + lemojs.version.node);
-		console.log("coinbase: " + lemojs.lemo.coinbase);
-		console.log("at block: " + lemojs.lemo.blockNumber + " (" + new Date(1000 * lemojs.lemo.getBlock(lemojs.lemo.blockNumber).timestamp) + ")");
-		console.log(" datadir: " + admin.datadir);
-	`)
+	fmt.Fprintf(c.printer, "Welcome to the lemo JavaScript console!\n")
+	c.jsre.Run(`Promise.all([
+		lemo.getNodeVersion(),
+		lemo.getSdkVersion(),
+		lemo.mine.getLemoBase(),
+		lemo.getCurrentBlock(false, false),
+		lemo.getCurrentBlock(true, false)
+	]).then(function(results) {
+		console.log("node: v" + results[0]);
+		console.log("sdk: v" + results[1]);
+		console.log("lemobase: " + results[2]);
+		console.log("current block: " + results[3].Header.height + " " + results[3].Header.hash + " (" + new Date(1000 * parseInt(results[3].Header.timestamp, 16)).toLocaleString() + ")");
+		console.log("latest stable block: " + results[4].Header.height + " " + results[4].Header.hash + " (" + new Date(1000 * parseInt(results[4].Header.timestamp, 16)).toLocaleString() + ")");
+		console.log("\n")
+	});`)
 	// List all the supported modules for the user to call
-	if apis, err := c.client.SupportedModules(); err == nil {
-		modules := make([]string, 0, len(apis))
-		for api, version := range apis {
-			modules = append(modules, fmt.Sprintf("%s:%s", api, version))
-		}
+	if modules, err := c.client.SupportedModules(); err == nil {
 		sort.Strings(modules)
-		fmt.Fprintln(c.printer, "lemojs modules:", strings.Join(modules, " "))
+		fmt.Fprintln(c.printer, "lemo modules:", strings.Join(modules, ", "))
 	}
 	fmt.Fprintln(c.printer)
 }
