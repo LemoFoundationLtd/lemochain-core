@@ -222,14 +222,20 @@ func (n *Node) startRPC() error {
 		return err
 	}
 	if err := n.startIPC(apis); err != nil {
+		n.stopInProc()
 		return err
 	}
 	if err := n.startHTTP(n.httpEndpoint, apis, n.config.HTTPCors, n.config.HTTPVirtualHosts); err != nil {
+		n.stopIPC()
+		n.stopInProc()
 		return err
 	}
-	// if err := n.startWS(apis); err != nil {
-	// 	return err
-	// }
+	if err := n.startWS(apis); err != nil {
+		n.stopHTTP()
+		n.stopIPC()
+		n.stopInProc()
+		return err
+	}
 	n.rpcAPIs = apis
 	return nil
 }
@@ -363,6 +369,7 @@ func (n *Node) stopRPC() {
 	n.stopWS()
 	n.stopHTTP()
 	n.stopIPC()
+	n.stopInProc()
 	n.rpcAPIs = nil
 }
 
@@ -371,6 +378,7 @@ func (n *Node) Stop() error {
 	n.lock.Lock()
 	defer n.lock.Unlock()
 	log.Debug("start stopping node...")
+	n.stopRPC()
 	if n.server == nil {
 		log.Warn("p2p server not started")
 	} else {
@@ -382,7 +390,6 @@ func (n *Node) Stop() error {
 		return err
 	}
 	log.Debug("stop account manager ok...")
-	n.stopRPC()
 	if n.instanceDirLock != nil {
 		if err := n.instanceDirLock.Release(); err != nil {
 			log.Errorf("Can't release datadir lock: %v", err)
