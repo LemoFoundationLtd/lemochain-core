@@ -9,6 +9,3 @@ lemo.createAPI('net', [
 	{name: 'addPeer', api: 'net_addStaticPeer'},
 	{name: 'getPeerCount', api: 'net_peers'},
 ]);
-lemo.createAPI('tx', [
-    {name: 'sendTx', api: 'tx_sendTx'},
-]);

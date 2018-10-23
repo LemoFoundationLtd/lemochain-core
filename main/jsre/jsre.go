@@ -329,7 +329,12 @@ func (self *JSRE) printPromiseResolve(vm *otto.Otto, promise otto.Value, writer 
 	if !promise.IsObject() {
 		return errors.New("not a promise")
 	}
-	_, err := promise.Object().Call("then", func(call otto.FunctionCall) otto.Value {
+	then, err := promise.Object().Get("then")
+	if err != nil || !then.IsFunction() {
+		return errors.New("not a promise")
+	}
+
+	_, err = then.Call(promise, func(call otto.FunctionCall) otto.Value {
 		prettyPrint(vm, call.Argument(0), writer)
 		return otto.UndefinedValue()
 	})
