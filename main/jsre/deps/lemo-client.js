@@ -270,18 +270,25 @@
         return _isObject(it) && ((isRegExp = it[MATCH]) !== undefined ? !!isRegExp : _cof(it) == 'RegExp');
     };
 
+    var _isRegexp$1 = /*#__PURE__*/Object.freeze({
+        default: _isRegexp,
+        __moduleExports: _isRegexp
+    });
+
     // 7.2.1 RequireObjectCoercible(argument)
     var _defined = function (it) {
         if (it == undefined) throw TypeError("Can't call method on  " + it);
         return it;
     };
 
+    var isRegExp = ( _isRegexp$1 && _isRegexp ) || _isRegexp$1;
+
     // helper for String#{startsWith, endsWith, includes}
 
 
 
     var _stringContext = function (that, searchString, NAME) {
-        if (_isRegexp(searchString)) throw TypeError('String#' + NAME + " doesn't accept regex!");
+        if (isRegExp(searchString)) throw TypeError('String#' + NAME + " doesn't accept regex!");
         return String(_defined(that));
     };
 
@@ -386,19 +393,12 @@
         return _iobject(_defined(it));
     };
 
-    var _toIobject$1 = /*#__PURE__*/Object.freeze({
-        default: _toIobject,
-        __moduleExports: _toIobject
-    });
-
     var max = Math.max;
     var min$1 = Math.min;
     var _toAbsoluteIndex = function (index, length) {
         index = _toInteger(index);
         return index < 0 ? max(index + length, 0) : min$1(index, length);
     };
-
-    var toIObject = ( _toIobject$1 && _toIobject ) || _toIobject$1;
 
     // false -> Array#indexOf
     // true  -> Array#includes
@@ -407,7 +407,7 @@
 
     var _arrayIncludes = function (IS_INCLUDES) {
         return function ($this, el, fromIndex) {
-            var O = toIObject($this);
+            var O = _toIobject($this);
             var length = _toLength(O.length);
             var index = _toAbsoluteIndex(fromIndex, length);
             var value;
@@ -434,7 +434,7 @@
     var IE_PROTO = _sharedKey('IE_PROTO');
 
     var _objectKeysInternal = function (object, names) {
-        var O = toIObject(object);
+        var O = _toIobject(object);
         var i = 0;
         var result = [];
         var key;
@@ -514,6 +514,11 @@
         return Properties === undefined ? result : _objectDps(result, Properties);
     };
 
+    var _objectCreate$1 = /*#__PURE__*/Object.freeze({
+        default: _objectCreate,
+        __moduleExports: _objectCreate
+    });
+
     var def = _objectDp.f;
 
     var TAG = _wks('toStringTag');
@@ -522,13 +527,15 @@
         if (it && !_has(it = stat ? it : it.prototype, TAG)) def(it, TAG, { configurable: true, value: tag });
     };
 
+    var create = ( _objectCreate$1 && _objectCreate ) || _objectCreate$1;
+
     var IteratorPrototype = {};
 
     // 25.1.2.1.1 %IteratorPrototype%[@@iterator]()
     _hide(IteratorPrototype, _wks('iterator'), function () { return this; });
 
     var _iterCreate = function (Constructor, NAME, next) {
-        Constructor.prototype = _objectCreate(IteratorPrototype, { next: _propertyDesc(1, next) });
+        Constructor.prototype = create(IteratorPrototype, { next: _propertyDesc(1, next) });
         _setToStringTag(Constructor, NAME + ' Iterator');
     };
 
@@ -618,7 +625,7 @@
     // 22.1.3.29 Array.prototype.values()
     // 22.1.3.30 Array.prototype[@@iterator]()
     var es6_array_iterator = _iterDefine(Array, 'Array', function (iterated, kind) {
-        this._t = toIObject(iterated); // target
+        this._t = _toIobject(iterated); // target
         this._i = 0;                   // next index
         this._k = kind;                // kind
         // 22.1.5.2.1 %ArrayIteratorPrototype%.next()
@@ -651,7 +658,7 @@
     var isEnum = _objectPie.f;
     var _objectToArray = function (isEntries) {
         return function (it) {
-            var O = toIObject(it);
+            var O = _toIobject(it);
             var keys = _objectKeys(O);
             var length = keys.length;
             var i = 0;
@@ -663,16 +670,9 @@
         };
     };
 
-    var _objectToArray$1 = /*#__PURE__*/Object.freeze({
-        default: _objectToArray,
-        __moduleExports: _objectToArray
-    });
-
-    var require$$0 = ( _objectToArray$1 && _objectToArray ) || _objectToArray$1;
-
     // https://github.com/tc39/proposal-object-values-entries
 
-    var $entries = require$$0(true);
+    var $entries = _objectToArray(true);
 
     _export(_export.S, 'Object', {
         entries: function entries(it) {
@@ -2130,14 +2130,7 @@
         }
     }
 
-    var runtimeModule$1 = /*#__PURE__*/Object.freeze({
-        default: runtimeModule,
-        __moduleExports: runtimeModule
-    });
-
-    var require$$0$1 = ( runtimeModule$1 && runtimeModule ) || runtimeModule$1;
-
-    var regenerator = require$$0$1;
+    var regenerator = runtimeModule;
 
     var runtime$1 = createCommonjsModule(function (module) {
         /**
@@ -2974,6 +2967,13 @@
         return typeof obj.readFloatLE === 'function' && typeof obj.slice === 'function' && isBuffer(obj.slice(0, 0))
     }
 
+    var isBuffer$1 = /*#__PURE__*/Object.freeze({
+        default: isBuffer_1,
+        __moduleExports: isBuffer_1
+    });
+
+    var isBuffer$2 = ( isBuffer$1 && isBuffer_1 ) || isBuffer$1;
+
     /*global toString:true*/
 
     // utils is a library of generic helper functions non-specific to axios
@@ -3253,7 +3253,7 @@
     var utils = {
         isArray: isArray,
         isArrayBuffer: isArrayBuffer,
-        isBuffer: isBuffer_1,
+        isBuffer: isBuffer$2,
         isFormData: isFormData,
         isArrayBufferView: isArrayBufferView,
         isString: isString,
@@ -3453,6 +3453,11 @@
         return parsed;
     };
 
+    var parseHeaders$1 = /*#__PURE__*/Object.freeze({
+        default: parseHeaders,
+        __moduleExports: parseHeaders
+    });
+
     var isURLSameOrigin = (
         utils.isStandardBrowserEnv() ?
 
@@ -3517,6 +3522,11 @@
                 };
             })()
     );
+
+    var isURLSameOrigin$1 = /*#__PURE__*/Object.freeze({
+        default: isURLSameOrigin,
+        __moduleExports: isURLSameOrigin
+    });
 
     // btoa polyfill for IE<10 courtesy https://github.com/davidchambers/Base64.js
 
@@ -3603,6 +3613,10 @@
             })()
     );
 
+    var parseHeaders$2 = ( parseHeaders$1 && parseHeaders ) || parseHeaders$1;
+
+    var isURLSameOrigin$2 = ( isURLSameOrigin$1 && isURLSameOrigin ) || isURLSameOrigin$1;
+
     var btoa$1 = (typeof window !== 'undefined' && window.btoa && window.btoa.bind(window)) || btoa_1;
 
     var xhr = function xhrAdapter(config) {
@@ -3623,7 +3637,7 @@
             // DON'T do this for testing b/c XMLHttpRequest is mocked, not XDomainRequest.
             if (typeof window !== 'undefined' &&
                 window.XDomainRequest && !('withCredentials' in request) &&
-                !isURLSameOrigin(config.url)) {
+                !isURLSameOrigin$2(config.url)) {
                 request = new window.XDomainRequest();
                 loadEvent = 'onload';
                 xDomain = true;
@@ -3658,7 +3672,7 @@
                 }
 
                 // Prepare the response
-                var responseHeaders = 'getAllResponseHeaders' in request ? parseHeaders(request.getAllResponseHeaders()) : null;
+                var responseHeaders = 'getAllResponseHeaders' in request ? parseHeaders$2(request.getAllResponseHeaders()) : null;
                 var responseData = !config.responseType || config.responseType === 'text' ? request.responseText : request.response;
                 var response = {
                     data: responseData,
@@ -3702,7 +3716,7 @@
                 var cookies$$1 = cookies;
 
                 // Add xsrf header
-                var xsrfValue = (config.withCredentials || isURLSameOrigin(config.url)) && config.xsrfCookieName ?
+                var xsrfValue = (config.withCredentials || isURLSameOrigin$2(config.url)) && config.xsrfCookieName ?
                     cookies$$1.read(config.xsrfCookieName) :
                     undefined;
 
@@ -4301,8 +4315,7 @@
                     timeout: this.timeout,
                     headers: {
                         'Content-Type': 'application/json'
-                    },
-                    withCredentials: true
+                    }
                 };
 
                 if (username && password) {
@@ -4778,6 +4791,33 @@
         methods: methods$3
     };
 
+    var MODULE_NAME$4 = 'tx';
+    var apiList$4 = {
+        sendTx: {
+            api: "".concat(MODULE_NAME$4, "_sendTx")
+        }
+    };
+    var methods$4 = Object.entries(apiList$4).map(function (_ref) {
+        var _ref2 = slicedToArray(_ref, 2),
+            key = _ref2[0],
+            value = _ref2[1];
+
+        if (typeof value === 'function') {
+            return {
+                name: key,
+                call: value
+            };
+        }
+
+        return objectSpread({
+            name: key
+        }, value);
+    });
+    var tx = {
+        moduleName: MODULE_NAME$4,
+        methods: methods$4
+    };
+
     var dP$1 = _objectDp.f;
     var FProto = Function.prototype;
     var nameRE = /^\s*function ([^ (]*)/;
@@ -4881,12 +4921,12 @@
 
                 classCallCheck(this, LemoClient);
 
-                this.currentProvider = newProvider(config);
-                this.requester = new Requester(this.currentProvider);
+                this.requester = new Requester(newProvider(config));
                 this.createAPI(account.moduleName, account.methods);
                 this.createAPI(chain.moduleName, chain.methods);
                 this.createAPI(mine.moduleName, mine.methods);
-                this.createAPI(net.moduleName, net.methods); // attach the methods from chain to this object
+                this.createAPI(net.moduleName, net.methods);
+                this.createAPI(tx.moduleName, tx.methods); // attach the methods from chain to this object
 
                 Object.entries(this.chain).forEach(function (_ref) {
                     var _ref2 = slicedToArray(_ref, 2),
