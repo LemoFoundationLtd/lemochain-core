@@ -94,6 +94,9 @@ func (c *ChainAPI) GetBlockByHeight(height uint32, withTxs bool) *types.Block {
 		return c.chain.GetBlockByHeight(height)
 	} else {
 		block := c.chain.GetBlockByHeight(height)
+		if block == nil {
+			return nil
+		}
 		// set the Txs field to null
 		block.SetTxs([]*types.Transaction{})
 		return block
@@ -106,6 +109,10 @@ func (c *ChainAPI) GetBlockByHash(hash string, withTxs bool) *types.Block {
 		return c.chain.GetBlockByHash(common.HexToHash(hash))
 	} else {
 		block := c.chain.GetBlockByHash(common.HexToHash(hash))
+		if block == nil {
+			return nil
+		}
+		// set the Txs field to null
 		block.SetTxs([]*types.Transaction{})
 		return block
 	}
@@ -128,6 +135,9 @@ func (c *ChainAPI) CurrentBlock(withTxs bool) *types.Block {
 		return c.chain.CurrentBlock()
 	} else {
 		currentBlock := c.chain.CurrentBlock()
+		if currentBlock == nil {
+			return nil
+		}
 		// set the Txs field to null
 		currentBlock.SetTxs([]*types.Transaction{})
 		return currentBlock
@@ -141,6 +151,9 @@ func (c *ChainAPI) LatestStableBlock(withTxs bool) *types.Block {
 		return c.chain.StableBlock()
 	} else {
 		stableBlock := c.chain.StableBlock()
+		if stableBlock == nil {
+			return nil
+		}
 		// set the Txs field to null
 		stableBlock.SetTxs([]*types.Transaction{})
 		return stableBlock
@@ -160,7 +173,7 @@ func (c *ChainAPI) LatestStableHeight() uint32 {
 	return c.chain.StableBlock().Height()
 }
 
-// GetGasPrice get suggest gas price
+// GasPriceAdvice get suggest gas price
 func (c *ChainAPI) GasPriceAdvice() *big.Int {
 	// todo
 	return big.NewInt(100000000)
