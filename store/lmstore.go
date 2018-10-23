@@ -694,7 +694,7 @@ func (database *LmDataBase) Commit(items []*BatchItem) error {
 	var dHeader RecordHeader
 	var wOffset uint32 = 0
 
-	bufLen := 256 * 1024 * 1024
+	bufLen := 10 * 1024 * 1024
 	buf := make([]byte, 0, bufLen)
 
 	wIndex := 0
