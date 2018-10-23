@@ -27,31 +27,11 @@ import (
 	"sync"
 )
 
-var ErrConfig = errors.New(`file "config.json" format must be like:
-			{
-				"chainID": "1",	// must between 1 and 65535
-				"sleepTime": "3000", // 3 second
-				"timeout": "10000",	// 10 second
-				"deputyNodes":[
-					{
-						"lemoBase": "0x015780F8456F9c1532645087a19DcF9a7e0c7F97",
-						"nodeID": "0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0",
-						"ip": "127.0.0.1",
-						"port": "7001",
-						"rank":"0",	// must start at 0 and increase 1 when add a node
-						"votes":"17"
-					},
-					{
-						"lemoBase": "0x016ad4Fc7e1608685Bf5fe5573973BF2B1Ef9B8A",
-						"nodeID": "0xddb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0",
-						"ip": "127.0.0.1",
-						"port": "7002",
-						"rank":"1",
-						"votes":"16"
-					}
-				]
-			}
-		`)
+const ConfigGuideUrl = "Please visit https://github.com/LemoFoundationLtd/lemochain-go#configuration-file for detail"
+
+var (
+	ErrConfig = errors.New(`file "config.json" format error.` + ConfigGuideUrl)
+)
 
 type Node struct {
 	config      *NodeConfig
@@ -179,7 +159,7 @@ func New(lemoConf *LemoConfig, conf *NodeConfig, flags flag.CmdFlags) (*Node, er
 func readConfigFile(path string) (*ChainConfigFile, error) {
 	file, err := os.Open(path)
 	if err != nil {
-		return nil, err
+		return nil, errors.New(err.Error() + "\r\n" + ConfigGuideUrl)
 	}
 	var config ChainConfigFile
 	if err = json.NewDecoder(file).Decode(&config); err != nil {
@@ -191,7 +171,7 @@ func readConfigFile(path string) (*ChainConfigFile, error) {
 	}
 	// todo
 	if msg != "" {
-		panic("config.json error: " + msg)
+		panic(ErrConfig.Error())
 	}
 	return &config, nil
 }
