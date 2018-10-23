@@ -113,17 +113,17 @@ func (c *ChainAPI) GetBlockByHash(hash string, withTxs bool) *types.Block {
 }
 
 // GetChainID get chain id
-func (c *ChainAPI) GetChainID() string {
+func (c *ChainAPI) ChainID() string {
 	return strconv.Itoa(int(c.chain.ChainID()))
 }
 
 // GetGenesis get the creation block
-func (c *ChainAPI) GetGenesis() *types.Block {
+func (c *ChainAPI) Genesis() *types.Block {
 	return c.chain.Genesis()
 }
 
 // GetCurrentBlock get the current latest block
-func (c *ChainAPI) GetCurrentBlock(withTxs bool) *types.Block {
+func (c *ChainAPI) CurrentBlock(withTxs bool) *types.Block {
 	if withTxs {
 		return c.chain.CurrentBlock()
 	} else {
@@ -136,7 +136,7 @@ func (c *ChainAPI) GetCurrentBlock(withTxs bool) *types.Block {
 }
 
 // GetLatestStableBlock get the latest currently agreed blocks
-func (c *ChainAPI) GetLatestStableBlock(withTxs bool) *types.Block {
+func (c *ChainAPI) LatestStableBlock(withTxs bool) *types.Block {
 	if withTxs == true {
 		return c.chain.StableBlock()
 	} else {
@@ -149,14 +149,14 @@ func (c *ChainAPI) GetLatestStableBlock(withTxs bool) *types.Block {
 }
 
 // GetCurrentHeight
-func (c *ChainAPI) GetCurrentHeight() uint32 {
+func (c *ChainAPI) currentHeight() uint32 {
 	currentBlock := c.chain.CurrentBlock()
 	height := currentBlock.Height()
 	return height
 }
 
 // LatestStableHeight
-func (c *ChainAPI) GetLatestStableHeight() uint32 {
+func (c *ChainAPI) latestStableHeight() uint32 {
 	return c.chain.StableBlock().Height()
 }
 
@@ -213,7 +213,7 @@ func (m *MineAPI) IsMining() bool {
 }
 
 // GetLemoBase
-func (m *MineAPI) GetLemoBase() string {
+func (m *MineAPI) LemoBase() string {
 	lemoBase := m.miner.GetLemoBase()
 	return lemoBase.Hex()
 }
@@ -238,17 +238,17 @@ func (n *NetAPI) DropPeer(node string) {
 }
 
 // GetPeers
-func (n *NetAPI) GetPeers() []p2p.PeerConnInfo {
+func (n *NetAPI) Peers() []p2p.PeerConnInfo {
 	return n.server.Peers()
 }
 
 // GetNodeVersion
-func (n *NetAPI) GetNodeVersion() string {
+func (n *NetAPI) NodeVersion() string {
 	// todo
 	return "1.0"
 }
 
 // GetNetInfo
-func (n *NetAPI) GetNetInfo() string {
+func (n *NetAPI) Info() string {
 	return n.server.ListenAddr
 }

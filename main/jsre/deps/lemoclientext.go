@@ -48,32 +48,32 @@ lemojs._extend({
 		}),
 		new lemojs._extend.Method({
 			name: 'chainID',
-			call: 'chain_getChainID',
+			call: 'chain_chainID',
 			params: 0
 		}),
 		new lemojs._extend.Method({
 			name: 'genesis',
-			call: 'chain_getGenesis',
+			call: 'chain_genesis',
 			params: 0
 		}),
 		new lemojs._extend.Method({
 			name: 'currentBlock',
-			call: 'chain_getCurrentBlock',
+			call: 'chain_currentBlock',
 			params: 1
 		}),
 		new lemojs._extend.Method({
 			name: 'latestStableBlock',
-			call: 'chain_getLatestStableBlock',
+			call: 'chain_latestStableBlock',
 			params: 1
 		}),
 		new lemojs._extend.Method({
 			name: 'currentHeight',
-			call: 'chain_getCurrentHeight',
+			call: 'chain_currentHeight',
 			params: 0
 		}),
 		new lemojs._extend.Method({
 			name: 'latestStableHeight',
-			call: 'chain_getLatestStableHeight',
+			call: 'chain_latestStableHeight',
 			params: 0
 		}),
 		new lemojs._extend.Method({
@@ -119,7 +119,7 @@ lemojs._extend({
 		}),
 		new lemojs._extend.Method({
 			name: 'lemoBase',
-			call: 'mine_getLemoBase',
+			call: 'mine_lemoBase',
 			params: 0
 		}),
 	]
@@ -142,17 +142,17 @@ lemojs._extend({
 		}),
 		new lemojs._extend.Method({
 			name: 'peers',
-			call: 'net_getPeers',
+			call: 'net_peers',
 			params: 0
 		}),
 		new lemojs._extend.Method({
 			name: 'nodeVersion',
-			call: 'net_getNodeVersion',
+			call: 'net_nodeVersion',
 			params: 0
 		}),
 		new lemojs._extend.Method({
 			name: 'info',
-			call: 'net_getNetInfo',
+			call: 'net_info',
 			params: 0
 		}),
 	]
