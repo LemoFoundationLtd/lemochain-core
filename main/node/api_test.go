@@ -39,26 +39,30 @@ func TestChainAPI_api(t *testing.T) {
 	bc := newChain()
 	c := NewChainAPI(bc)
 	// getBlock (via block height or block hash)
-	t.Log(c.GetBlockByHash("0x16019ad7c4d4ecf5163906339048ac73a7aa7131b1154fefeb865c0d523d23f5"))
-	t.Log(c.GetBlockByHeight(0))
-	t.Log(c.GetBlockByHash("0xd67857de0f447554c94712d9c0016a8d9e4974d6c3b14b9b062226637d968449"))
-	t.Log(c.GetBlockByHeight(1))
-	t.Log(c.GetBlockByHash("0x5afb6907e01a243325ce7c6e56e463f777080f6e5277ba2ec83928329c8dce61"))
-	t.Log(c.GetBlockByHeight(2))
-	t.Log(c.GetBlockByHash("0x1889ca33d2ea9bfe68b171258e19f3034e9518c47d15b1d484797458e96cfb96")) // block03 did not insert db
-	t.Log(c.GetBlockByHeight(3))
+	t.Log(c.GetBlockByHash("0x16019ad7c4d4ecf5163906339048ac73a7aa7131b1154fefeb865c0d523d23f5", false))
+	t.Log(c.GetBlockByHeight(0, true))
+	t.Log(c.GetBlockByHash("0xd67857de0f447554c94712d9c0016a8d9e4974d6c3b14b9b062226637d968449", true))
+	t.Log(c.GetBlockByHeight(1, false))
+	t.Log(c.GetBlockByHash("0x5afb6907e01a243325ce7c6e56e463f777080f6e5277ba2ec83928329c8dce61", false))
+	t.Log(c.GetBlockByHeight(2, false))
+	t.Log(c.GetBlockByHash("0x1889ca33d2ea9bfe68b171258e19f3034e9518c47d15b1d484797458e96cfb96", false)) // block03 did not insert db
+	t.Log(c.GetBlockByHeight(3, true))
 	// get chain ID api
-	t.Log(c.GetChainID())
+	t.Log(c.ChainID())
 	// get genesis block api
-	t.Log(c.GetGenesis())
+	t.Log(c.Genesis())
 	// get current block api
-	t.Log(c.GetCurrentBlock())
+	t.Log(c.CurrentBlock(false))
 	// get stable block api
-	t.Log(c.GetLatestStableBlock())
+	t.Log(c.LatestStableBlock(true))
 	// get current chain height api
-	t.Log(c.GetCurrentHeight())
+	t.Log(c.CurrentHeight())
 	// get latest stable block height
-	t.Log(c.GetLatestStableHeight())
+	t.Log(c.LatestStableHeight())
+	// get suggest gas price
+	t.Log(c.GasPriceAdvice())
+	// get nodeVersion
+	t.Log(c.NodeVersion())
 
 }
 
@@ -80,7 +84,7 @@ func TestTxAPI_api(t *testing.T) {
 	assert.Equal(t, testTx.Hash(), byteTx)
 }
 
-// TestMineAPI_api miner api test
+// TestMineAPI_api miner api test // todo
 func TestMineAPI_api(t *testing.T) {
 	lemoConf := &LemoConfig{
 		Genesis:   chain.DefaultGenesisBlock(),
@@ -103,6 +107,6 @@ func TestMineAPI_api(t *testing.T) {
 	m.MineStop()
 	t.Log("last:", m.IsMining())
 
-	assert.Equal(t, "0x015780F8456F9c1532645087a19DcF9a7e0c7F97", m.GetLemoBase())
+	assert.Equal(t, "0x015780F8456F9c1532645087a19DcF9a7e0c7F97", m.LemoBase())
 
 }

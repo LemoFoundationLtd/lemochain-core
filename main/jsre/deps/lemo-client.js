@@ -71,18 +71,11 @@
         throw TypeError("Can't convert object to primitive value");
     };
 
-    var _toPrimitive$1 = /*#__PURE__*/Object.freeze({
-        default: _toPrimitive,
-        __moduleExports: _toPrimitive
-    });
-
-    var toPrimitive = ( _toPrimitive$1 && _toPrimitive ) || _toPrimitive$1;
-
     var dP = Object.defineProperty;
 
     var f = _descriptors ? Object.defineProperty : function defineProperty(O, P, Attributes) {
         _anObject(O);
-        P = toPrimitive(P, true);
+        P = _toPrimitive(P, true);
         _anObject(Attributes);
         if (_ie8DomDefine) try {
             return dP(O, P, Attributes);
@@ -226,18 +219,11 @@
         return isNaN(it = +it) ? 0 : (it > 0 ? floor : ceil)(it);
     };
 
-    var _toInteger$1 = /*#__PURE__*/Object.freeze({
-        default: _toInteger,
-        __moduleExports: _toInteger
-    });
-
-    var toInteger = ( _toInteger$1 && _toInteger ) || _toInteger$1;
-
     // 7.1.15 ToLength
 
     var min = Math.min;
     var _toLength = function (it) {
-        return it > 0 ? min(toInteger(it), 0x1fffffffffffff) : 0; // pow(2, 53) - 1 == 9007199254740991
+        return it > 0 ? min(_toInteger(it), 0x1fffffffffffff) : 0; // pow(2, 53) - 1 == 9007199254740991
     };
 
     var toString = {}.toString;
@@ -400,12 +386,19 @@
         return _iobject(_defined(it));
     };
 
+    var _toIobject$1 = /*#__PURE__*/Object.freeze({
+        default: _toIobject,
+        __moduleExports: _toIobject
+    });
+
     var max = Math.max;
     var min$1 = Math.min;
     var _toAbsoluteIndex = function (index, length) {
-        index = toInteger(index);
+        index = _toInteger(index);
         return index < 0 ? max(index + length, 0) : min$1(index, length);
     };
+
+    var toIObject = ( _toIobject$1 && _toIobject ) || _toIobject$1;
 
     // false -> Array#indexOf
     // true  -> Array#includes
@@ -414,7 +407,7 @@
 
     var _arrayIncludes = function (IS_INCLUDES) {
         return function ($this, el, fromIndex) {
-            var O = _toIobject($this);
+            var O = toIObject($this);
             var length = _toLength(O.length);
             var index = _toAbsoluteIndex(fromIndex, length);
             var value;
@@ -441,7 +434,7 @@
     var IE_PROTO = _sharedKey('IE_PROTO');
 
     var _objectKeysInternal = function (object, names) {
-        var O = _toIobject(object);
+        var O = toIObject(object);
         var i = 0;
         var result = [];
         var key;
@@ -458,19 +451,12 @@
         'constructor,hasOwnProperty,isPrototypeOf,propertyIsEnumerable,toLocaleString,toString,valueOf'
     ).split(',');
 
-    var _enumBugKeys$1 = /*#__PURE__*/Object.freeze({
-        default: _enumBugKeys,
-        __moduleExports: _enumBugKeys
-    });
-
-    var enumBugKeys = ( _enumBugKeys$1 && _enumBugKeys ) || _enumBugKeys$1;
-
     // 19.1.2.14 / 15.2.3.14 Object.keys(O)
 
 
 
     var _objectKeys = Object.keys || function keys(O) {
-        return _objectKeysInternal(O, enumBugKeys);
+        return _objectKeysInternal(O, _enumBugKeys);
     };
 
     var _objectDps = _descriptors ? Object.defineProperties : function defineProperties(O, Properties) {
@@ -498,7 +484,7 @@
     var createDict = function () {
         // Thrash, waste and sodomy: IE GC bug
         var iframe = _domCreate('iframe');
-        var i = enumBugKeys.length;
+        var i = _enumBugKeys.length;
         var lt = '<';
         var gt = '>';
         var iframeDocument;
@@ -512,7 +498,7 @@
         iframeDocument.write(lt + 'script' + gt + 'document.F=Object' + lt + '/script' + gt);
         iframeDocument.close();
         createDict = iframeDocument.F;
-        while (i--) delete createDict[PROTOTYPE$1][enumBugKeys[i]];
+        while (i--) delete createDict[PROTOTYPE$1][_enumBugKeys[i]];
         return createDict();
     };
 
@@ -552,13 +538,6 @@
         return Object(_defined(it));
     };
 
-    var _toObject$1 = /*#__PURE__*/Object.freeze({
-        default: _toObject,
-        __moduleExports: _toObject
-    });
-
-    var toObject = ( _toObject$1 && _toObject ) || _toObject$1;
-
     // 19.1.2.9 / 15.2.3.2 Object.getPrototypeOf(O)
 
 
@@ -566,7 +545,7 @@
     var ObjectProto = Object.prototype;
 
     var _objectGpo = Object.getPrototypeOf || function (O) {
-        O = toObject(O);
+        O = _toObject(O);
         if (_has(O, IE_PROTO$2)) return O[IE_PROTO$2];
         if (typeof O.constructor == 'function' && O instanceof O.constructor) {
             return O.constructor.prototype;
@@ -639,7 +618,7 @@
     // 22.1.3.29 Array.prototype.values()
     // 22.1.3.30 Array.prototype[@@iterator]()
     var es6_array_iterator = _iterDefine(Array, 'Array', function (iterated, kind) {
-        this._t = _toIobject(iterated); // target
+        this._t = toIObject(iterated); // target
         this._i = 0;                   // next index
         this._k = kind;                // kind
         // 22.1.5.2.1 %ArrayIteratorPrototype%.next()
@@ -672,7 +651,7 @@
     var isEnum = _objectPie.f;
     var _objectToArray = function (isEntries) {
         return function (it) {
-            var O = _toIobject(it);
+            var O = toIObject(it);
             var keys = _objectKeys(O);
             var length = keys.length;
             var i = 0;
@@ -684,9 +663,16 @@
         };
     };
 
+    var _objectToArray$1 = /*#__PURE__*/Object.freeze({
+        default: _objectToArray,
+        __moduleExports: _objectToArray
+    });
+
+    var require$$0 = ( _objectToArray$1 && _objectToArray ) || _objectToArray$1;
+
     // https://github.com/tc39/proposal-object-values-entries
 
-    var $entries = _objectToArray(true);
+    var $entries = require$$0(true);
 
     _export(_export.S, 'Object', {
         entries: function entries(it) {
@@ -2106,13 +2092,6 @@
         );
     });
 
-    var runtime$1 = /*#__PURE__*/Object.freeze({
-        default: runtime,
-        __moduleExports: runtime
-    });
-
-    var require$$0 = ( runtime$1 && runtime ) || runtime$1;
-
     /**
      * Copyright (c) 2014-present, Facebook, Inc.
      *
@@ -2137,7 +2116,7 @@
     // Force reevalutation of runtime.js.
     g.regeneratorRuntime = undefined;
 
-    var runtimeModule = require$$0;
+    var runtimeModule = runtime;
 
     if (hadRuntime) {
         // Restore the original runtime.
@@ -2151,9 +2130,16 @@
         }
     }
 
-    var regenerator = runtimeModule;
+    var runtimeModule$1 = /*#__PURE__*/Object.freeze({
+        default: runtimeModule,
+        __moduleExports: runtimeModule
+    });
 
-    var runtime$2 = createCommonjsModule(function (module) {
+    var require$$0$1 = ( runtimeModule$1 && runtimeModule ) || runtimeModule$1;
+
+    var regenerator = require$$0$1;
+
+    var runtime$1 = createCommonjsModule(function (module) {
         /**
          * Copyright (c) 2014-present, Facebook, Inc.
          *
@@ -2988,13 +2974,6 @@
         return typeof obj.readFloatLE === 'function' && typeof obj.slice === 'function' && isBuffer(obj.slice(0, 0))
     }
 
-    var isBuffer$1 = /*#__PURE__*/Object.freeze({
-        default: isBuffer_1,
-        __moduleExports: isBuffer_1
-    });
-
-    var isBuffer$2 = ( isBuffer$1 && isBuffer_1 ) || isBuffer$1;
-
     /*global toString:true*/
 
     // utils is a library of generic helper functions non-specific to axios
@@ -3274,7 +3253,7 @@
     var utils = {
         isArray: isArray,
         isArrayBuffer: isArrayBuffer,
-        isBuffer: isBuffer$2,
+        isBuffer: isBuffer_1,
         isFormData: isFormData,
         isArrayBufferView: isArrayBufferView,
         isString: isString,
@@ -3971,11 +3950,6 @@
         return /^([a-z][a-z\d\+\-\.]*:)?\/\//i.test(url);
     };
 
-    var isAbsoluteURL$1 = /*#__PURE__*/Object.freeze({
-        default: isAbsoluteURL,
-        __moduleExports: isAbsoluteURL
-    });
-
     /**
      * Creates a new URL by combining the specified URLs
      *
@@ -3988,8 +3962,6 @@
             ? baseURL.replace(/\/+$/, '') + '/' + relativeURL.replace(/^\/+/, '')
             : baseURL;
     };
-
-    var isAbsoluteURL$2 = ( isAbsoluteURL$1 && isAbsoluteURL ) || isAbsoluteURL$1;
 
     /**
      * Throws a `Cancel` if cancellation has been requested.
@@ -4010,7 +3982,7 @@
         throwIfCancellationRequested(config);
 
         // Support baseURL config
-        if (config.baseURL && !isAbsoluteURL$2(config.url)) {
+        if (config.baseURL && !isAbsoluteURL(config.url)) {
             config.url = combineURLs(config.baseURL, config.url);
         }
 
@@ -4287,14 +4259,7 @@
     var default_1 = axios;
     axios_1.default = default_1;
 
-    var axios$1 = /*#__PURE__*/Object.freeze({
-        default: axios_1,
-        __moduleExports: axios_1
-    });
-
-    var require$$0$1 = ( axios$1 && axios_1 ) || axios$1;
-
-    var axios$2 = require$$0$1;
+    var axios$1 = axios_1;
 
     var errors = {
         InvalidNumberOfSolidityArgs: function InvalidNumberOfSolidityArgs() {
@@ -4351,7 +4316,7 @@
                     config.headers = objectSpread({}, config.headers, headers);
                 }
 
-                this.axiosInstance = axios$2.create(config);
+                this.axiosInstance = axios$1.create(config);
             }
 
             createClass(HttpProvider, [{
