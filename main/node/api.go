@@ -89,44 +89,74 @@ func NewChainAPI(chain *chain.BlockChain) *ChainAPI {
 }
 
 // GetBlockByNumber get block information by height
-func (c *ChainAPI) GetBlockByHeight(height uint32) *types.Block {
-	return c.chain.GetBlockByHeight(height)
+func (c *ChainAPI) GetBlockByHeight(height uint32, withTxs bool) *types.Block {
+	if withTxs {
+		return c.chain.GetBlockByHeight(height)
+	} else {
+		block := c.chain.GetBlockByHeight(height)
+		// set the Txs field to null
+		block.SetTxs([]*types.Transaction{})
+		return block
+	}
 }
 
 // GetBlockByHash get block information by hash
-func (c *ChainAPI) GetBlockByHash(hash string) *types.Block {
-	return c.chain.GetBlockByHash(common.HexToHash(hash))
+func (c *ChainAPI) GetBlockByHash(hash string, withTxs bool) *types.Block {
+	if withTxs {
+		return c.chain.GetBlockByHash(common.HexToHash(hash))
+	} else {
+		block := c.chain.GetBlockByHash(common.HexToHash(hash))
+		block.SetTxs([]*types.Transaction{})
+		return block
+	}
+
 }
 
-// GetChainID get chain id
-func (c *ChainAPI) GetChainID() string {
+// ChainID get chain id
+func (c *ChainAPI) ChainID() string {
 	return strconv.Itoa(int(c.chain.ChainID()))
 }
 
-// GetGenesis get the creation block
-func (c *ChainAPI) GetGenesis() *types.Block {
+// Genesis get the creation block
+func (c *ChainAPI) Genesis() *types.Block {
 	return c.chain.Genesis()
 }
 
-// GetCurrentBlock get the current latest block
-func (c *ChainAPI) GetCurrentBlock() *types.Block {
-	return c.chain.CurrentBlock()
+// CurrentBlock get the current latest block
+func (c *ChainAPI) CurrentBlock(withTxs bool) *types.Block {
+	if withTxs {
+		return c.chain.CurrentBlock()
+	} else {
+		currentBlock := c.chain.CurrentBlock()
+		// set the Txs field to null
+		currentBlock.SetTxs([]*types.Transaction{})
+		return currentBlock
+	}
+
 }
 
-// GetLatestStableBlock get the latest currently agreed blocks
-func (c *ChainAPI) GetLatestStableBlock() *types.Block {
-	return c.chain.StableBlock()
+// LatestStableBlock get the latest currently agreed blocks
+func (c *ChainAPI) LatestStableBlock(withTxs bool) *types.Block {
+	if withTxs == true {
+		return c.chain.StableBlock()
+	} else {
+		stableBlock := c.chain.StableBlock()
+		// set the Txs field to null
+		stableBlock.SetTxs([]*types.Transaction{})
+		return stableBlock
+	}
+
 }
 
-// GetCurrentHeight
-func (c *ChainAPI) GetCurrentHeight() uint32 {
+// CurrentHeight
+func (c *ChainAPI) CurrentHeight() uint32 {
 	currentBlock := c.chain.CurrentBlock()
 	height := currentBlock.Height()
 	return height
 }
 
 // LatestStableHeight
-func (c *ChainAPI) GetLatestStableHeight() uint32 {
+func (c *ChainAPI) LatestStableHeight() uint32 {
 	return c.chain.StableBlock().Height()
 }
 
@@ -134,6 +164,12 @@ func (c *ChainAPI) GetLatestStableHeight() uint32 {
 func (c *ChainAPI) GasPriceAdvice() *big.Int {
 	// todo
 	return big.NewInt(100000000)
+}
+
+// NodeVersion
+func (n *ChainAPI) NodeVersion() string {
+	// todo
+	return "1.0"
 }
 
 // TXAPI
@@ -182,8 +218,8 @@ func (m *MineAPI) IsMining() bool {
 	return m.miner.IsMining()
 }
 
-// GetLemoBase
-func (m *MineAPI) GetLemoBase() string {
+// LemoBase
+func (m *MineAPI) LemoBase() string {
 	lemoBase := m.miner.GetLemoBase()
 	return lemoBase.Hex()
 }
@@ -207,18 +243,12 @@ func (n *NetAPI) DropPeer(node string) {
 	n.server.DropPeer(node)
 }
 
-// GetPeers
-func (n *NetAPI) GetPeers() []p2p.PeerConnInfo {
+// Peers
+func (n *NetAPI) Peers() []p2p.PeerConnInfo {
 	return n.server.Peers()
 }
 
-// GetNodeVersion
-func (n *NetAPI) GetNodeVersion() string {
-	// todo
-	return "1.0"
-}
-
-//
-func (n *NetAPI) GetListening() string {
+// NetInfo
+func (n *NetAPI) NetInfo() string {
 	return n.server.ListenAddr
 }

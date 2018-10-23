@@ -33,6 +33,8 @@ var (
 		node.RPCEnabledFlag,
 		node.RPCListenAddrFlag,
 		node.RPCPortFlag,
+		node.RPCCORSDomainFlag,
+		node.RPCVirtualHostsFlag,
 		node.WSEnabledFlag,
 		node.WSListenAddrFlag,
 		node.WSPortFlag,

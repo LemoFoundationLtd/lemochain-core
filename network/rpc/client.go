@@ -212,8 +212,8 @@ func (c *Client) nextID() json.RawMessage {
 
 // SupportedModules calls the rpc_modules method, retrieving the list of
 // APIs that are available on the server.
-func (c *Client) SupportedModules() (map[string]string, error) {
-	var result map[string]string
+func (c *Client) SupportedModules() ([]string, error) {
+	var result []string
 	ctx, cancel := context.WithTimeout(context.Background(), subscribeTimeout)
 	defer cancel()
 	err := c.CallContext(ctx, &result, "rpc_modules")
