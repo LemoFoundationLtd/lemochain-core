@@ -7,5 +7,5 @@ lemo.createAPI('mine', [
 ]);
 lemo.createAPI('net', [
 	{name: 'addPeer', api: 'net_addStaticPeer'},
-	{name: 'getPeerCount', api: 'net_peers'},
+	{name: 'getPeers', api: 'net_peers'},
 ]);
