@@ -1,11 +1,11 @@
-lemo.createAPI('account', [
-	{name: 'newKeyPair', api: 'account_newKeyPair'},
+lemo._createAPI('account', [
+	{name: 'newKeyPair', method: 'account_newKeyPair'},
 ]);
-lemo.createAPI('mine', [
-	{name: 'start', api: 'mine_mineStart'},
-	{name: 'stop', api: 'mine_mineStop'},
+lemo._createAPI('mine', [
+	{name: 'start', method: 'mine_mineStart'},
+	{name: 'stop', method: 'mine_mineStop'},
 ]);
-lemo.createAPI('net', [
-	{name: 'addPeer', api: 'net_addStaticPeer'},
-	{name: 'getPeers', api: 'net_peers'},
+lemo._createAPI('net', [
+	{name: 'addPeer', method: 'net_addStaticPeer'},
+	{name: 'getPeers', method: 'net_peers'},
 ]);

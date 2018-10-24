@@ -98,8 +98,15 @@
         };
     };
 
+    var _propertyDesc$1 = /*#__PURE__*/Object.freeze({
+        default: _propertyDesc,
+        __moduleExports: _propertyDesc
+    });
+
+    var descriptor = ( _propertyDesc$1 && _propertyDesc ) || _propertyDesc$1;
+
     var _hide = _descriptors ? function (object, key, value) {
-        return _objectDp.f(object, key, _propertyDesc(1, value));
+        return _objectDp.f(object, key, descriptor(1, value));
     } : function (object, key, value) {
         object[key] = value;
         return object;
@@ -116,8 +123,15 @@
         return 'Symbol('.concat(key === undefined ? '' : key, ')_', (++id + px).toString(36));
     };
 
+    var _uid$1 = /*#__PURE__*/Object.freeze({
+        default: _uid,
+        __moduleExports: _uid
+    });
+
+    var uid = ( _uid$1 && _uid ) || _uid$1;
+
     var _redefine = createCommonjsModule(function (module) {
-        var SRC = _uid('src');
+        var SRC = uid('src');
         var TO_STRING = 'toString';
         var $toString = Function[TO_STRING];
         var TPL = ('' + $toString).split(TO_STRING);
@@ -239,11 +253,6 @@
         return toString.call(it).slice(8, -1);
     };
 
-    var _cof$1 = /*#__PURE__*/Object.freeze({
-        default: _cof,
-        __moduleExports: _cof
-    });
-
     var _library = false;
 
     var _shared = createCommonjsModule(function (module) {
@@ -267,13 +276,11 @@
 
         var $exports = module.exports = function (name) {
             return store[name] || (store[name] =
-                USE_SYMBOL && Symbol[name] || (USE_SYMBOL ? Symbol : _uid)('Symbol.' + name));
+                USE_SYMBOL && Symbol[name] || (USE_SYMBOL ? Symbol : uid)('Symbol.' + name));
         };
 
         $exports.store = store;
     });
-
-    var cof = ( _cof$1 && _cof ) || _cof$1;
 
     // 7.2.8 IsRegExp(argument)
 
@@ -281,13 +288,8 @@
     var MATCH = _wks('match');
     var _isRegexp = function (it) {
         var isRegExp;
-        return _isObject(it) && ((isRegExp = it[MATCH]) !== undefined ? !!isRegExp : cof(it) == 'RegExp');
+        return _isObject(it) && ((isRegExp = it[MATCH]) !== undefined ? !!isRegExp : _cof(it) == 'RegExp');
     };
-
-    var _isRegexp$1 = /*#__PURE__*/Object.freeze({
-        default: _isRegexp,
-        __moduleExports: _isRegexp
-    });
 
     // 7.2.1 RequireObjectCoercible(argument)
     var _defined = function (it) {
@@ -295,22 +297,13 @@
         return it;
     };
 
-    var _defined$1 = /*#__PURE__*/Object.freeze({
-        default: _defined,
-        __moduleExports: _defined
-    });
-
-    var isRegExp = ( _isRegexp$1 && _isRegexp ) || _isRegexp$1;
-
-    var defined = ( _defined$1 && _defined ) || _defined$1;
-
     // helper for String#{startsWith, endsWith, includes}
 
 
 
     var _stringContext = function (that, searchString, NAME) {
-        if (isRegExp(searchString)) throw TypeError('String#' + NAME + " doesn't accept regex!");
-        return String(defined(that));
+        if (_isRegexp(searchString)) throw TypeError('String#' + NAME + " doesn't accept regex!");
+        return String(_defined(that));
     };
 
     var MATCH$1 = _wks('match');
@@ -348,6 +341,11 @@
         ArrayProto[UNSCOPABLES][key] = true;
     };
 
+    var _addToUnscopables$1 = /*#__PURE__*/Object.freeze({
+        default: _addToUnscopables,
+        __moduleExports: _addToUnscopables
+    });
+
     var _iterStep = function (done, value) {
         return { value: value, done: !!done };
     };
@@ -358,21 +356,14 @@
 
     // eslint-disable-next-line no-prototype-builtins
     var _iobject = Object('z').propertyIsEnumerable(0) ? Object : function (it) {
-        return cof(it) == 'String' ? it.split('') : Object(it);
+        return _cof(it) == 'String' ? it.split('') : Object(it);
     };
-
-    var _iobject$1 = /*#__PURE__*/Object.freeze({
-        default: _iobject,
-        __moduleExports: _iobject
-    });
-
-    var IObject = ( _iobject$1 && _iobject ) || _iobject$1;
 
     // to indexed object, toObject with fallback for non-array-like ES3 strings
 
 
     var _toIobject = function (it) {
-        return IObject(defined(it));
+        return _iobject(_defined(it));
     };
 
     var max = Math.max;
@@ -409,7 +400,7 @@
     var shared = _shared('keys');
 
     var _sharedKey = function (key) {
-        return shared[key] || (shared[key] = _uid(key));
+        return shared[key] || (shared[key] = uid(key));
     };
 
     var arrayIndexOf = _arrayIncludes(false);
@@ -438,14 +429,21 @@
         'constructor,hasOwnProperty,isPrototypeOf,propertyIsEnumerable,toLocaleString,toString,valueOf'
     ).split(',');
 
+    var _enumBugKeys$1 = /*#__PURE__*/Object.freeze({
+        default: _enumBugKeys,
+        __moduleExports: _enumBugKeys
+    });
+
     var $keys = ( _objectKeysInternal$1 && _objectKeysInternal ) || _objectKeysInternal$1;
+
+    var enumBugKeys = ( _enumBugKeys$1 && _enumBugKeys ) || _enumBugKeys$1;
 
     // 19.1.2.14 / 15.2.3.14 Object.keys(O)
 
 
 
     var _objectKeys = Object.keys || function keys(O) {
-        return $keys(O, _enumBugKeys);
+        return $keys(O, enumBugKeys);
     };
 
     var _objectDps = _descriptors ? Object.defineProperties : function defineProperties(O, Properties) {
@@ -473,7 +471,7 @@
     var createDict = function () {
         // Thrash, waste and sodomy: IE GC bug
         var iframe = _domCreate('iframe');
-        var i = _enumBugKeys.length;
+        var i = enumBugKeys.length;
         var lt = '<';
         var gt = '>';
         var iframeDocument;
@@ -487,7 +485,7 @@
         iframeDocument.write(lt + 'script' + gt + 'document.F=Object' + lt + '/script' + gt);
         iframeDocument.close();
         createDict = iframeDocument.F;
-        while (i--) delete createDict[PROTOTYPE$1][_enumBugKeys[i]];
+        while (i--) delete createDict[PROTOTYPE$1][enumBugKeys[i]];
         return createDict();
     };
 
@@ -517,14 +515,14 @@
     _hide(IteratorPrototype, _wks('iterator'), function () { return this; });
 
     var _iterCreate = function (Constructor, NAME, next) {
-        Constructor.prototype = _objectCreate(IteratorPrototype, { next: _propertyDesc(1, next) });
+        Constructor.prototype = _objectCreate(IteratorPrototype, { next: descriptor(1, next) });
         _setToStringTag(Constructor, NAME + ' Iterator');
     };
 
     // 7.1.13 ToObject(argument)
 
     var _toObject = function (it) {
-        return Object(defined(it));
+        return Object(_defined(it));
     };
 
     // 19.1.2.9 / 15.2.3.2 Object.getPrototypeOf(O)
@@ -602,6 +600,8 @@
         return methods;
     };
 
+    var addToUnscopables = ( _addToUnscopables$1 && _addToUnscopables ) || _addToUnscopables$1;
+
     // 22.1.3.4 Array.prototype.entries()
     // 22.1.3.13 Array.prototype.keys()
     // 22.1.3.29 Array.prototype.values()
@@ -627,9 +627,9 @@
     // argumentsList[@@iterator] is %ArrayProto_values% (9.4.4.6, 9.4.4.7)
     _iterators.Arguments = _iterators.Array;
 
-    _addToUnscopables('keys');
-    _addToUnscopables('values');
-    _addToUnscopables('entries');
+    addToUnscopables('keys');
+    addToUnscopables('values');
+    addToUnscopables('entries');
 
     var ITERATOR$1 = _wks('iterator');
     var TO_STRING_TAG = _wks('toStringTag');
@@ -713,7 +713,7 @@
 
     var TAG$1 = _wks('toStringTag');
     // ES3 wrong here
-    var ARG = cof(function () { return arguments; }()) == 'Arguments';
+    var ARG = _cof(function () { return arguments; }()) == 'Arguments';
 
     // fallback for IE11 Script Access Denied error
     var tryGet = function (it, key) {
@@ -728,9 +728,9 @@
             // @@toStringTag case
             : typeof (T = tryGet(O = Object(it), TAG$1)) == 'string' ? T
                 // builtinTag case
-                : ARG ? cof(O)
+                : ARG ? _cof(O)
                     // ES3 arguments fallback
-                    : (B = cof(O)) == 'Object' && typeof O.callee == 'function' ? 'Arguments' : B;
+                    : (B = _cof(O)) == 'Object' && typeof O.callee == 'function' ? 'Arguments' : B;
     };
 
     var _anInstance = function (it, Constructor, name, forbiddenField) {
@@ -856,7 +856,7 @@
             delete queue[id];
         };
         // Node.js 0.8-
-        if (cof(process$1) == 'process') {
+        if (_cof(process$1) == 'process') {
             defer = function (id) {
                 process$1.nextTick(_ctx(run, id, 1));
             };
@@ -902,7 +902,7 @@
     var Observer = _global.MutationObserver || _global.WebKitMutationObserver;
     var process$2 = _global.process;
     var Promise$1 = _global.Promise;
-    var isNode = cof(process$2) == 'process';
+    var isNode = _cof(process$2) == 'process';
 
     var _microtask = function () {
         var head, last, notify;
@@ -3240,6 +3240,11 @@
         });
     };
 
+    var normalizeHeaderName$1 = /*#__PURE__*/Object.freeze({
+        default: normalizeHeaderName,
+        __moduleExports: normalizeHeaderName
+    });
+
     /**
      * Update an Error with the specified config, error code, and response.
      *
@@ -3260,6 +3265,13 @@
         return error;
     };
 
+    var enhanceError$1 = /*#__PURE__*/Object.freeze({
+        default: enhanceError,
+        __moduleExports: enhanceError
+    });
+
+    var enhanceError$2 = ( enhanceError$1 && enhanceError ) || enhanceError$1;
+
     /**
      * Create an Error with the specified message, config, error code, request and response.
      *
@@ -3272,7 +3284,7 @@
      */
     var createError = function createError(message, config, code, request, response) {
         var error = new Error(message);
-        return enhanceError(error, config, code, request, response);
+        return enhanceError$2(error, config, code, request, response);
     };
 
     /**
@@ -3733,6 +3745,8 @@
         });
     };
 
+    var normalizeHeaderName$2 = ( normalizeHeaderName$1 && normalizeHeaderName ) || normalizeHeaderName$1;
+
     var DEFAULT_CONTENT_TYPE = {
         'Content-Type': 'application/x-www-form-urlencoded'
     };
@@ -3759,7 +3773,7 @@
         adapter: getDefaultAdapter(),
 
         transformRequest: [function transformRequest(data, headers) {
-            normalizeHeaderName(headers, 'Content-Type');
+            normalizeHeaderName$2(headers, 'Content-Type');
             if (utils.isFormData(data) ||
                 utils.isArrayBuffer(data) ||
                 utils.isBuffer(data) ||
@@ -4232,8 +4246,8 @@
         InvalidConnection: function InvalidConnection(host) {
             return "CONNECTION ERROR: Couldn't connect to node ".concat(host);
         },
-        InvalidProvider: function InvalidProvider() {
-            return 'Provider not set or invalid';
+        InvalidConn: function InvalidConn() {
+            return 'Conn not set or invalid';
         },
         InvalidResponse: function InvalidResponse(result) {
             return !!result && !!result.error && !!result.error.message ? result.error.message : "Invalid JSON RPC response: ".concat(JSON.stringify(result));
@@ -4247,11 +4261,11 @@
     var POLL_DURATION = 3000;
     var MAX_POLL_RETRY = 5;
 
-    var HttpProvider =
+    var HttpConn =
         /*#__PURE__*/
         function () {
-            function HttpProvider(host, timeout, username, password, headers) {
-                classCallCheck(this, HttpProvider);
+            function HttpConn(host, timeout, username, password, headers) {
+                classCallCheck(this, HttpConn);
 
                 this.host = host || DEFAULT_HTTP_HOST;
                 this.timeout = timeout || 0;
@@ -4277,7 +4291,7 @@
                 this.axiosInstance = axios$1.create(config);
             }
 
-            createClass(HttpProvider, [{
+            createClass(HttpConn, [{
                 key: "send",
                 value: function () {
                     var _send = asyncToGenerator(
@@ -4320,7 +4334,7 @@
                 }()
             }]);
 
-            return HttpProvider;
+            return HttpConn;
         }();
 
     var f$2 = {}.propertyIsEnumerable;
@@ -4419,16 +4433,16 @@
     };
 
     /**
-     * It's responsible for passing messages to providers
+     * It's responsible for passing messages to conn
      */
 
     var Requester =
         /*#__PURE__*/
         function () {
-            function Requester(provider) {
+            function Requester(conn) {
                 classCallCheck(this, Requester);
 
-                this.provider = provider;
+                this.conn = conn;
                 this.idGenerator = 0; // used for generate watchId
 
                 this.watchers = {}; // key is watchId, value is timer
@@ -4453,16 +4467,16 @@
                                 while (1) {
                                     switch (_context.prev = _context.next) {
                                         case 0:
-                                            if (this.provider) {
+                                            if (this.conn) {
                                                 _context.next = 2;
                                                 break;
                                             }
 
-                                            throw new Error(errors.InvalidProvider());
+                                            throw new Error(errors.InvalidConn());
 
                                         case 2:
                                             payload = jsonrpc.toPayload(method, params);
-                                            response = this.provider.send(payload);
+                                            response = this.conn.send(payload);
 
                                             if (!(response && typeof response.then === 'function')) {
                                                 _context.next = 8;
@@ -4518,16 +4532,16 @@
                                 while (1) {
                                     switch (_context2.prev = _context2.next) {
                                         case 0:
-                                            if (this.provider) {
+                                            if (this.conn) {
                                                 _context2.next = 2;
                                                 break;
                                             }
 
-                                            throw new Error(errors.InvalidProvider());
+                                            throw new Error(errors.InvalidConn());
 
                                         case 2:
                                             payload = jsonrpc.toBatchPayload(data);
-                                            response = this.provider.send(payload);
+                                            response = this.conn.send(payload);
 
                                             if (!(response && typeof response.then === 'function')) {
                                                 _context2.next = 8;
@@ -4750,14 +4764,14 @@
     var MODULE_NAME = 'account';
     var apiList = {
         getAccount: {
-            api: "".concat(MODULE_NAME, "_getAccount")
+            method: "".concat(MODULE_NAME, "_getAccount")
         },
         getBalance: {
-            api: "".concat(MODULE_NAME, "_getBalance"),
+            method: "".concat(MODULE_NAME, "_getBalance"),
             outputFormatter: strToBigNumber
         }
     };
-    var methods = Object.entries(apiList).map(function (_ref) {
+    var apis = Object.entries(apiList).map(function (_ref) {
         var _ref2 = slicedToArray(_ref, 2),
             key = _ref2[0],
             value = _ref2[1];
@@ -4775,7 +4789,7 @@
     });
     var account = {
         moduleName: MODULE_NAME,
-        methods: methods
+        apis: apis
     };
 
     var MODULE_NAME$1 = 'chain';
@@ -4793,17 +4807,17 @@
             return requester.send("".concat(MODULE_NAME$1, "_").concat(apiName));
         },
         getGenesis: {
-            api: "".concat(MODULE_NAME$1, "_genesis")
+            method: "".concat(MODULE_NAME$1, "_genesis")
         },
         getChainID: {
-            api: "".concat(MODULE_NAME$1, "_chainID")
+            method: "".concat(MODULE_NAME$1, "_chainID")
         },
         getGasPriceAdvice: {
-            api: "".concat(MODULE_NAME$1, "_gasPriceAdvice"),
+            method: "".concat(MODULE_NAME$1, "_gasPriceAdvice"),
             outputFormatter: strToBigNumber
         },
         getNodeVersion: {
-            api: "".concat(MODULE_NAME$1, "_nodeVersion")
+            method: "".concat(MODULE_NAME$1, "_nodeVersion")
         },
         // not necessary to write requester parameter
         getSdkVersion: function getSdkVersion() {
@@ -4813,7 +4827,7 @@
             return requester.watch("".concat(MODULE_NAME$1, "_latestStableBlock"), [withTxList], callback);
         }
     };
-    var methods$1 = Object.entries(apiList$1).map(function (_ref) {
+    var apis$1 = Object.entries(apiList$1).map(function (_ref) {
         var _ref2 = slicedToArray(_ref, 2),
             key = _ref2[0],
             value = _ref2[1];
@@ -4831,19 +4845,19 @@
     });
     var chain = {
         moduleName: MODULE_NAME$1,
-        methods: methods$1
+        apis: apis$1
     };
 
     var MODULE_NAME$2 = 'mine';
     var apiList$2 = {
         getMining: {
-            api: "".concat(MODULE_NAME$2, "_isMining")
+            method: "".concat(MODULE_NAME$2, "_isMining")
         },
         getLemoBase: {
-            api: "".concat(MODULE_NAME$2, "_lemoBase")
+            method: "".concat(MODULE_NAME$2, "_lemoBase")
         }
     };
-    var methods$2 = Object.entries(apiList$2).map(function (_ref) {
+    var apis$2 = Object.entries(apiList$2).map(function (_ref) {
         var _ref2 = slicedToArray(_ref, 2),
             key = _ref2[0],
             value = _ref2[1];
@@ -4861,19 +4875,19 @@
     });
     var mine = {
         moduleName: MODULE_NAME$2,
-        methods: methods$2
+        apis: apis$2
     };
 
     var MODULE_NAME$3 = 'net';
     var apiList$3 = {
         getPeerCount: {
-            api: "".concat(MODULE_NAME$3, "_getPeerCount")
+            method: "".concat(MODULE_NAME$3, "_getPeerCount")
         },
         getInfo: {
-            api: "".concat(MODULE_NAME$3, "_info")
+            method: "".concat(MODULE_NAME$3, "_info")
         }
     };
-    var methods$3 = Object.entries(apiList$3).map(function (_ref) {
+    var apis$3 = Object.entries(apiList$3).map(function (_ref) {
         var _ref2 = slicedToArray(_ref, 2),
             key = _ref2[0],
             value = _ref2[1];
@@ -4891,16 +4905,16 @@
     });
     var net = {
         moduleName: MODULE_NAME$3,
-        methods: methods$3
+        apis: apis$3
     };
 
     var MODULE_NAME$4 = 'tx';
     var apiList$4 = {
         sendTx: {
-            api: "".concat(MODULE_NAME$4, "_sendTx")
+            method: "".concat(MODULE_NAME$4, "_sendTx")
         }
     };
-    var methods$4 = Object.entries(apiList$4).map(function (_ref) {
+    var apis$4 = Object.entries(apiList$4).map(function (_ref) {
         var _ref2 = slicedToArray(_ref, 2),
             key = _ref2[0],
             value = _ref2[1];
@@ -4918,7 +4932,7 @@
     });
     var tx = {
         moduleName: MODULE_NAME$4,
-        methods: methods$4
+        apis: apis$4
     };
 
     var dP$1 = _objectDp.f;
@@ -4938,33 +4952,33 @@
         }
     });
 
-    var Method =
+    var Api =
         /*#__PURE__*/
         function () {
-            function Method(config, requester) {
-                classCallCheck(this, Method);
+            function Api(config, requester) {
+                classCallCheck(this, Api);
 
                 this.name = config.name;
                 this.inputFormatter = config.inputFormatter;
                 this.outputFormatter = config.outputFormatter;
                 this.call = config.call;
-                this.api = config.api;
+                this.method = config.method;
                 this.requester = requester;
             }
 
-            createClass(Method, [{
+            createClass(Api, [{
                 key: "attachTo",
                 value: function attachTo(obj) {
                     obj[this.name] = buildCall(this);
                 }
             }]);
 
-            return Method;
+            return Api;
         }();
 
-    function buildCall(method) {
-        if (typeof method.call === 'function') {
-            return method.call.bind(null, method.requester);
+    function buildCall(api) {
+        if (typeof api.call === 'function') {
+            return api.call.bind(null, api.requester);
         }
 
         return (
@@ -4986,22 +5000,22 @@
                                         args[_key] = _args[_key];
                                     }
 
-                                    if (method.inputFormatter) {
-                                        args = method.inputFormatter(args);
+                                    if (api.inputFormatter) {
+                                        args = api.inputFormatter(args);
                                     }
 
                                     _context.next = 4;
-                                    return method.requester.send(method.api, args);
+                                    return api.requester.send(api.method, args);
 
                                 case 4:
                                     result = _context.sent;
 
-                                    if (!method.outputFormatter) {
+                                    if (!api.outputFormatter) {
                                         _context.next = 7;
                                         break;
                                     }
 
-                                    return _context.abrupt("return", method.outputFormatter(result));
+                                    return _context.abrupt("return", api.outputFormatter(result));
 
                                 case 7:
                                     return _context.abrupt("return", result);
@@ -5016,70 +5030,69 @@
         );
     }
 
-    var requester;
-
     var LemoClient =
         /*#__PURE__*/
         function () {
             function LemoClient(config) {
                 classCallCheck(this, LemoClient);
 
-                // do not let requester be a property of this, so that it is not enumerable. P.S. the Object.defineProperties is not work in otto
-                requester = new Requester(newProvider(config));
-                this.createAPI(account.moduleName, account.methods);
-                this.createAPI('', chain.methods); // attach the methods from chain to this object
+                // The Object.defineProperty is not work in otto. but we can name fields with first letter '_' to make it invisible
+                this._requester = new Requester(newConn(config));
 
-                this.createAPI(mine.moduleName, mine.methods);
-                this.createAPI(net.moduleName, net.methods);
-                this.createAPI(tx.moduleName, tx.methods);
+                this._createAPI(account.moduleName, account.apis);
+
+                this._createAPI('', chain.apis); // attach the apis from chain to 'this'
+
+
+                this._createAPI(mine.moduleName, mine.apis);
+
+                this._createAPI(net.moduleName, net.apis);
+
+                this._createAPI(tx.moduleName, tx.apis);
             }
 
             createClass(LemoClient, [{
-                key: "createAPI",
-                value: function createAPI(moduleName, methods) {
+                key: "_createAPI",
+                value: function _createAPI(moduleName, apis) {
                     var _this = this;
 
                     if (moduleName && !this[moduleName]) {
                         this[moduleName] = {};
                     }
 
-                    methods.forEach(function (method) {
-                        new Method(method, requester).attachTo(moduleName ? _this[moduleName] : _this);
+                    apis.forEach(function (api) {
+                        new Api(api, _this._requester).attachTo(moduleName ? _this[moduleName] : _this);
                     });
                 }
             }, {
                 key: "stopWatch",
                 value: function stopWatch(watchId) {
-                    return requester.stopWatch(watchId);
+                    return this._requester.stopWatch(watchId);
                 }
             }]);
 
             return LemoClient;
         }();
 
-    function newProvider(config) {
+    function newConn(config) {
         if (!config) {
-            return new HttpProvider();
+            return new HttpConn();
         }
 
         if (config) {
-            // provider object
+            // conn object
             if (typeof config.send === 'function') {
                 return config;
-            } // http provider config
+            } // http conn config
 
 
             if (typeof config.host === 'string' && config.host.toLowerCase().startsWith('http')) {
-                return new HttpProvider(config.host);
+                return new HttpConn(config.host, config.timeout, config.username, config.password, config.headers);
             }
         }
 
-        throw new Error("unknown provider config: ".concat(config));
+        throw new Error("unknown conn config: ".concat(config));
     }
-
-    LemoClient.newMethod = function (config) {
-        return new Method(config);
-    };
 
     return LemoClient;
 
