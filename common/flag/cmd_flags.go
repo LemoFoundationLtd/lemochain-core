@@ -1,8 +1,10 @@
 package flag
 
 import (
+	"fmt"
 	"gopkg.in/urfave/cli.v1"
 	"strconv"
+	"strings"
 )
 
 type flagInfo struct {
@@ -104,4 +106,18 @@ func (c CmdFlags) String(name string) string {
 		return info.Value
 	}
 	return ""
+}
+
+// checkExclusive verifies that only a single instance of the provided flags was set by the user.
+func (c CmdFlags) CheckExclusive(args ...cli.Flag) {
+	set := make([]string, 0, 1)
+	for i := 0; i < len(args); i++ {
+		name := args[i].GetName()
+		if c.IsSet(name) {
+			set = append(set, "--"+name)
+		}
+	}
+	if len(set) > 1 {
+		panic(fmt.Sprintf("flags %v can't be used at the same time", strings.Join(set, ", ")))
+	}
 }

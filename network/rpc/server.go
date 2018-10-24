@@ -258,6 +258,9 @@ func (s *Server) handle(ctx context.Context, codec ServerCodec, req *serverReque
 	if req.err != nil {
 		return codec.CreateErrorResponse(&req.id, req.err), nil
 	}
+	log.Debug("rpc", "req", log.Lazy{Fn: func() string {
+		return fmt.Sprintf("id: %v, args %v", req.id, req.args)
+	}})
 
 	if req.isUnsubscribe { // cancel subscription, first param must be the subscription id
 		if len(req.args) >= 1 && req.args[0].Kind() == reflect.String {

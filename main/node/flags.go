@@ -1,7 +1,6 @@
 package node
 
 import (
-	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/flag"
@@ -152,7 +151,7 @@ func splitAndTrim(input string) []string {
 
 // setIPC set ipc
 func setIPC(flags flag.CmdFlags, cfg *NodeConfig) {
-	checkExclusive(flags, IPCDisabledFlag, IPCPathFlag)
+	flags.CheckExclusive(IPCDisabledFlag, IPCPathFlag)
 	if flags.Bool(IPCDisabledFlag.Name) {
 		cfg.IPCPath = ""
 	} else if flags.IsSet(IPCPathFlag.Name) {
@@ -171,35 +170,6 @@ func setWS(flags flag.CmdFlags, cfg *NodeConfig) {
 		}
 		cfg.WSPort = flags.Int(WSPortFlag.Name)
 		cfg.WSOrigins = splitAndTrim(flags.String(WSAllowedOriginsFlag.Name))
-	}
-}
-
-func checkExclusive(flags flag.CmdFlags, args ...interface{}) {
-	set := make([]string, 0, 1)
-	for i := 0; i < len(args); i++ {
-		cliFlag, ok := args[i].(cli.Flag)
-		if !ok {
-			panic(fmt.Sprintf("invalid argument, not cli.Flag type: %T", args[i]))
-		}
-		name := cliFlag.GetName()
-		if i+1 < len(args) {
-			switch option := args[i+1].(type) {
-			case string:
-				if flags.String(name) == option {
-					name += "=" + option
-				}
-				i++
-			case cli.Flag:
-			default:
-				panic(fmt.Sprintf("invalid arguments, not cli.Flag or string extension: %T", args[i+1]))
-			}
-		}
-		if flags.IsSet(name) {
-			set = append(set, "--"+name)
-		}
-	}
-	if len(set) > 1 {
-		Fatalf("Flags %v can't be used at the same time.", strings.Join(set, ", "))
 	}
 }
 
