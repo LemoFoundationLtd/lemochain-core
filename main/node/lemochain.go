@@ -13,7 +13,6 @@ import (
 )
 
 type Lemochain struct {
-	lemoConfig  *LemoConfig
 	chainConfig *params.ChainConfig
 
 	txPool *chain.TxPool
@@ -30,7 +29,7 @@ type Lemochain struct {
 
 	lemoBase common.Address
 
-	networkId uint64
+	// networkId uint64
 
 	lock sync.RWMutex
 }

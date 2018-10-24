@@ -18,12 +18,10 @@ var (
 	// flags to configure the node
 	nodeFlags = []cli.Flag{
 		node.DataDirFlag,
-		node.NetworkIdFlag,
 		node.MaxPeersFlag,
 		node.ListenPortFlag,
 		node.ExtraDataFlag,
-		node.NodeKeyFileFlag,
-		node.MiningEnabledFlag,
+		node.AutoMineFlag,
 		node.JSpathFlag,
 		node.DebugFlag,
 		node.LogLevelFlag,
@@ -96,19 +94,17 @@ func startNode(ctx *cli.Context, n *node.Node) {
 		defer signal.Stop(sigCh)
 		<-sigCh
 		log.Info("Got interrupt, shutting down...")
+		go n.Stop()
 		for i := 5; i > 0; i-- {
 			<-sigCh
 			if i > 1 {
-				log.Warnf("Already shutting down, interupt more to panic. times: %d", i-1)
+				log.Warnf("Already shutting down, interrupt more to panic. times: %d", i-1)
 			}
 		}
+		panic("boom")
 	}()
 
-	go func() {
-		// todo api处理
-	}()
-
-	if ctx.IsSet(node.MiningEnabledFlag.Name) {
+	if ctx.IsSet(node.AutoMineFlag.Name) {
 		if err := n.StartMining(); err != nil {
 			log.Errorf("start mining failed: %v", err)
 		}

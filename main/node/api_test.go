@@ -7,7 +7,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/flag"
-	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"github.com/testify/assert"
 	"gopkg.in/urfave/cli.v1"
 	"math/big"
@@ -88,11 +87,11 @@ func TestTxAPI_api(t *testing.T) {
 // TestMineAPI_api miner api test // todo
 func TestMineAPI_api(t *testing.T) {
 	lemoConf := &LemoConfig{
-		Genesis:   chain.DefaultGenesisBlock(),
-		NetworkId: 1,
-		MaxPeers:  1000,
-		Port:      7001,
-		NodeKey:   "0xc21b6b2fbf230f665b936194d14da67187732bf9d28768aef1a3cbb26608f8aa",
+		Genesis: chain.DefaultGenesisBlock(),
+		// NetworkId: 1,
+		MaxPeers: 1000,
+		Port:     7001,
+		// NodeKey:   "0xc21b6b2fbf230f665b936194d14da67187732bf9d28768aef1a3cbb26608f8aa",
 		ExtraData: []byte{},
 	}
 	testNode, err := New(lemoConf, &DefaultNodeConfig, flag.NewCmdFlags(&cli.Context{}, []cli.Flag{}))

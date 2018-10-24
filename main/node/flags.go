@@ -4,11 +4,8 @@ import (
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
-	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/common/flag"
-	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/network/p2p"
-	"github.com/inconshreveable/log15"
 	"gopkg.in/urfave/cli.v1"
 	"os"
 	"path/filepath"
@@ -30,30 +27,21 @@ var (
 		Usage: "Data directory for the databases",
 		Value: DefaultDataDir(),
 	}
-	NetworkIdFlag = cli.Uint64Flag{
-		Name:  common.NetworkID,
-		Usage: "Network identifier",
-		Value: DefaultConfig.NetworkId,
-	}
 	MaxPeersFlag = cli.IntFlag{
 		Name:  common.MaxPeers,
 		Usage: "Maximum number of network peers",
-		Value: DefaultConfig.MaxPeers,
+		Value: DefaultNodeConfig.P2P.MaxPeerNum,
 	}
 	ListenPortFlag = cli.IntFlag{
 		Name:  common.ListenPort,
 		Usage: "Network listening port",
-		Value: DefaultConfig.Port,
+		Value: DefaultNodeConfig.P2P.Port,
 	}
 	ExtraDataFlag = cli.StringFlag{
 		Name:  common.ExtraData,
 		Usage: "Block extra data set by the miner (default = client version)",
 	}
-	NodeKeyFileFlag = cli.StringFlag{
-		Name:  common.NodeKeyFile,
-		Usage: "node's private key for sign and handshake",
-	}
-	MiningEnabledFlag = cli.BoolFlag{
+	AutoMineFlag = cli.BoolFlag{
 		Name:  common.MiningEnabled,
 		Usage: "Enable mining",
 	}
@@ -125,39 +113,23 @@ var (
 	}
 )
 
-// setNodeKey 设置NodeKey私钥
-func setNodeKey(flags flag.CmdFlags, cfg *p2p.Config) {
-	if flags.IsSet(NodeKeyFileFlag.Name) {
-		nodeKeyFile := flags.String(NodeKeyFileFlag.Name)
-		if nodeKeyFile == "" {
-			return
-		}
-		key, err := crypto.LoadECDSA(nodeKeyFile)
-		if err != nil {
-			Fatalf("Option %q: %v", NodeKeyFileFlag.Name, err)
-		}
-		cfg.PrivateKey = key
-	}
+// setListenPort set listen port
+func setListenPort(flags flag.CmdFlags, cfg *p2p.Config) {
+	cfg.Port = flags.Int(ListenPortFlag.Name)
 }
 
-// setListenAddress 设置监听端口
-func setListenAddress(flags flag.CmdFlags, cfg *p2p.Config) {
-	cfg.ListenAddr = fmt.Sprintf(":%d", flags.Int(ListenPortFlag.Name))
-}
-
-// setMaxPeers 设置最大连接数
+// setMaxPeers set max connection number
 func setMaxPeers(flags flag.CmdFlags, cfg *p2p.Config) {
 	cfg.MaxPeerNum = flags.Int(MaxPeersFlag.Name)
 }
 
-// setP2PConfig 设置P2P
+// setP2PConfig set p2p config
 func setP2PConfig(flags flag.CmdFlags, cfg *p2p.Config) {
-	setNodeKey(flags, cfg)
-	setListenAddress(flags, cfg)
+	setListenPort(flags, cfg)
 	setMaxPeers(flags, cfg)
 }
 
-// setHttp 设置http-rpc
+// setHttp set http-rpc
 func setHttp(flags flag.CmdFlags, cfg *NodeConfig) {
 	if flags.Bool(RPCEnabledFlag.Name) && cfg.HTTPHost == "" {
 		cfg.HTTPHost = "127.0.0.1"
@@ -178,7 +150,7 @@ func splitAndTrim(input string) []string {
 	return result
 }
 
-// setIPC 设置IPC
+// setIPC set ipc
 func setIPC(flags flag.CmdFlags, cfg *NodeConfig) {
 	checkExclusive(flags, IPCDisabledFlag, IPCPathFlag)
 	if flags.Bool(IPCDisabledFlag.Name) {
@@ -190,7 +162,7 @@ func setIPC(flags flag.CmdFlags, cfg *NodeConfig) {
 	}
 }
 
-// setWS 设置websocket
+// setWS set web socket
 func setWS(flags flag.CmdFlags, cfg *NodeConfig) {
 	if flags.Bool(WSEnabledFlag.Name) && cfg.WSHost == "" {
 		cfg.WSHost = "127.0.0.1"
@@ -231,24 +203,10 @@ func checkExclusive(flags flag.CmdFlags, args ...interface{}) {
 	}
 }
 
-func SetNodeConfig(flags flag.CmdFlags, cfg *NodeConfig) {
+func setNodeConfig(flags flag.CmdFlags, cfg *NodeConfig) {
 	cfg.DataDir = flags.String(DataDirFlag.Name)
-	logLevel := flags.Int(LogLevelFlag.Name)
-	logLevel -= 1
-	if logLevel < 0 || logLevel > 4 {
-		logLevel = 2
-	}
-	log.Setup(log15.Lvl(logLevel), true, true) // log init
-
 	setP2PConfig(flags, &cfg.P2P)
 	setIPC(flags, cfg)
 	setHttp(flags, cfg)
 	setWS(flags, cfg)
-}
-
-func SetLemoConfig(flags flag.CmdFlags, cfg *LemoConfig) {
-	cfg.NetworkId = flags.Uint64(NetworkIdFlag.Name)
-	if flags.IsSet(ExtraDataFlag.Name) {
-		cfg.ExtraData = []byte(flags.String(ExtraDataFlag.Name))
-	}
 }

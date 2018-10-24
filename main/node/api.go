@@ -262,5 +262,5 @@ func (n *NetAPI) Peers() []p2p.PeerConnInfo {
 
 // NetInfo
 func (n *NetAPI) NetInfo() string {
-	return n.server.ListenAddr
+	return n.server.ListenAddr()
 }

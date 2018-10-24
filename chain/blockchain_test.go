@@ -60,8 +60,8 @@ func initDeputyNodes() error {
 
 func newGenesis(db *store.CacheChain) *types.Block {
 	genesis := DefaultGenesisBlock()
-	am := account.NewManager(common.Hash{}, db)
-	return genesis.ToBlock(am)
+	// am := account.NewManager(common.Hash{}, db)
+	return genesis.ToBlock()
 }
 
 func broadcastStableBlock(block *types.Block) {

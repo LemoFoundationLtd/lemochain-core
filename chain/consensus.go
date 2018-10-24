@@ -11,6 +11,8 @@ import (
 	"time"
 )
 
+const MaxExtraDataLen = 256
+
 type Engine interface {
 	VerifyHeader(block *types.Block) error
 
@@ -72,6 +74,11 @@ func (d *Dpovp) VerifyHeader(block *types.Block) error {
 	// Verify the block signature data
 	if err := verifyHeaderSignData(block); err != nil {
 		return err
+	}
+
+	// verify extra data
+	if len(block.Header.Extra) > MaxExtraDataLen {
+		return fmt.Errorf("extra data's max len is %d bytes, this block's length is %d", MaxExtraDataLen, len(block.Header.Extra))
 	}
 
 	// Verify that the node is out of the block ?
