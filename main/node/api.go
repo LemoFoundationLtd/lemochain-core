@@ -34,6 +34,29 @@ func (a *AccountAPI) NewKeyPair() (*crypto.AddressKeyPair, error) {
 	return accounts, nil
 }
 
+// AddPoint
+func AddPoint(balance string) string {
+	lenth := len(balance)
+	var toBytes = []byte(balance)
+	if lenth <= 18 {
+		Balance := fmt.Sprintf("0.%018s", balance)
+		return Balance
+	} else if lenth > 18 && lenth < 36 {
+		point := lenth % 18
+		// Extended section length
+		ToBytes := append(toBytes, '0')
+		for i := lenth; i > point; i-- {
+			ToBytes[i] = ToBytes[i-1]
+		}
+		ToBytes[point] = '.'
+
+		return string(ToBytes)
+	} else {
+
+		return "Warning : Your account balance is abnormal. Please stop any operation."
+	}
+}
+
 // GetBalance get balance api
 func (a *AccountAPI) GetBalance(LemoAddress string) string {
 	var address common.Address
@@ -45,22 +68,8 @@ func (a *AccountAPI) GetBalance(LemoAddress string) string {
 	}
 	accounts := a.manager.GetCanonicalAccount(address)
 	balance := accounts.GetBalance().String()
-	lenth := len(balance)
-	var toBytes = []byte(balance)
-	if lenth <= 18 {
-		Balance := fmt.Sprintf("0.%018s", balance)
-		return Balance
-	} else {
-		point := lenth % 18
-		// Extended section length
-		ToBytes := append(toBytes, '0')
-		for i := lenth; i > point; i-- {
-			ToBytes[i] = ToBytes[i-1]
-		}
-		ToBytes[point] = '.'
 
-		return string(ToBytes)
-	}
+	return AddPoint(balance)
 }
 
 // GetAccount return the struct of the &AccountData{}
