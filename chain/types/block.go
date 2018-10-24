@@ -1,11 +1,13 @@
 package types
 
 import (
+	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto/sha3"
 	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"math/big"
+	"strings"
 )
 
 //go:generate gencodec -type Header -field-override headerMarshaling -out gen_header_json.go
@@ -41,6 +43,10 @@ type SignData [65]byte
 func (sd SignData) MarshalText() ([]byte, error) {
 	str := common.ToHex(sd[:])
 	return []byte(str), nil
+}
+
+func (sd SignData) String() string {
+	return common.ToHex(sd[:])
 }
 
 // Block
@@ -99,6 +105,28 @@ func rlpHash(data interface{}) (h common.Hash) {
 	return h
 }
 
+func (h *Header) String() string {
+	set := []string{
+		fmt.Sprintf("ParentHash: %s", h.ParentHash.Hex()),
+		fmt.Sprintf("LemoBase: %s", h.LemoBase.Hex()),
+		fmt.Sprintf("VersionRoot: %s", h.VersionRoot.Hex()),
+		fmt.Sprintf("TxRoot: %s", h.TxRoot.Hex()),
+		fmt.Sprintf("LogsRoot: %s", h.LogsRoot.Hex()),
+		fmt.Sprintf("EventRoot: %s", h.EventRoot.Hex()),
+		fmt.Sprintf("Bloom: %s", common.ToHex(h.Bloom[:])),
+		fmt.Sprintf("Height: %d", h.Height),
+		fmt.Sprintf("GasLimit: %d", h.GasLimit),
+		fmt.Sprintf("GasUsed: %d", h.GasUsed),
+		fmt.Sprintf("Time: %v", h.Time),
+		fmt.Sprintf("SignData: %s", common.ToHex(h.SignData[:])),
+	}
+	if len(h.Extra) >= 0 {
+		set = append(set, fmt.Sprintf("Extra: %s", common.ToHex(h.Extra[:])))
+	}
+
+	return fmt.Sprintf("{%s}", strings.Join(set, ", "))
+}
+
 // func (b *Block) Header() *Header { return b.Header }
 
 func (b *Block) Hash() common.Hash        { return b.Header.Hash() }
@@ -125,3 +153,15 @@ func (b *Block) SetTxs(txs []*Transaction)         { b.Txs = txs }
 func (b *Block) SetConfirmPackage(pack []SignData) { b.ConfirmPackage = pack }
 func (b *Block) SetChangeLogs(logs []*ChangeLog)   { b.ChangeLogs = logs }
 func (b *Block) SetEvents(events []*Event)         { b.Events = events }
+
+func (b *Block) String() string {
+	set := []string{
+		fmt.Sprintf("Header: %v", b.Header),
+		fmt.Sprintf("Txs: %v", b.Txs),
+		fmt.Sprintf("ChangeLogs: %v", b.ChangeLogs),
+		fmt.Sprintf("Events: %v", b.Events),
+		fmt.Sprintf("ConfirmPackage: %v", b.ConfirmPackage),
+	}
+
+	return fmt.Sprintf("{%s}", strings.Join(set, ", "))
+}

@@ -12,6 +12,7 @@ import (
 	"io"
 	"math/big"
 	"reflect"
+	"strings"
 )
 
 var (
@@ -223,8 +224,23 @@ func formatIfIsBigInt(v interface{}) interface{} {
 	}
 	return result
 }
+
 func (c *ChangeLog) String() string {
-	return fmt.Sprintf("%s: 0x%x %d %v %v %v", c.LogType, c.Address, c.Version, formatIfIsBigInt(c.OldVal), formatIfIsBigInt(c.NewVal), formatIfIsBigInt(c.Extra))
+	set := []string{
+		fmt.Sprintf("Account: %s", c.Address.Hex()),
+		fmt.Sprintf("Version: %d", c.Version),
+	}
+	if c.OldVal != nil {
+		set = append(set, fmt.Sprintf("OldVal: %v", formatIfIsBigInt(c.OldVal)))
+	}
+	if c.NewVal != nil {
+		set = append(set, fmt.Sprintf("NewVal: %v", formatIfIsBigInt(c.NewVal)))
+	}
+	if c.Extra != nil {
+		set = append(set, fmt.Sprintf("Extra: %v", formatIfIsBigInt(c.Extra)))
+	}
+
+	return fmt.Sprintf("%s{%s}", c.LogType, strings.Join(set, ", "))
 }
 
 type ChangeLogSlice []*ChangeLog

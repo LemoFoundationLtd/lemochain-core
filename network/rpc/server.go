@@ -164,7 +164,7 @@ func (s *Server) serveRequest(codec ServerCodec, singleShot bool, options CodecO
 			// If a parsing error occurred, send an error
 			if err.Error() != "EOF" {
 				log.Debug(fmt.Sprintf("read error %v\n", err))
-				codec.Write(codec.CreateErrorResponse(nil, err))
+				codec.Write(codec.CreateErrorResponse(20180830120000, err))
 			}
 			// Error or end of stream, wait for requests and tear down
 			pend.Wait()
@@ -178,11 +178,11 @@ func (s *Server) serveRequest(codec ServerCodec, singleShot bool, options CodecO
 			if batch {
 				resps := make([]interface{}, len(reqs))
 				for i, r := range reqs {
-					resps[i] = codec.CreateErrorResponse(&r.id, err)
+					resps[i] = codec.CreateErrorResponse(r.id, err)
 				}
 				codec.Write(resps)
 			} else {
-				codec.Write(codec.CreateErrorResponse(&reqs[0].id, err))
+				codec.Write(codec.CreateErrorResponse(reqs[0].id, err))
 			}
 			return nil
 		}
@@ -256,33 +256,37 @@ func (s *Server) createSubscription(ctx context.Context, c ServerCodec, req *ser
 // handle executes a request and returns the response from the callback.
 func (s *Server) handle(ctx context.Context, codec ServerCodec, req *serverRequest) (interface{}, func()) {
 	if req.err != nil {
-		return codec.CreateErrorResponse(&req.id, req.err), nil
+		return codec.CreateErrorResponse(req.id, req.err), nil
 	}
 	log.Debug("rpc", "req", log.Lazy{Fn: func() string {
-		return fmt.Sprintf("id: %v, args %v", req.id, req.args)
+		msg := make([]string, 0, len(req.args))
+		for i := 0; i < len(req.args); i++ {
+			msg = append(msg, fmt.Sprintf("%v", req.args[i]))
+		}
+		return fmt.Sprintf("id: %d, args: [%s]", req.id, strings.Join(msg, ", "))
 	}})
 
 	if req.isUnsubscribe { // cancel subscription, first param must be the subscription id
 		if len(req.args) >= 1 && req.args[0].Kind() == reflect.String {
 			notifier, supported := NotifierFromContext(ctx)
 			if !supported { // interface doesn't support subscriptions (e.g. http)
-				return codec.CreateErrorResponse(&req.id, &callbackError{ErrNotificationsUnsupported.Error()}), nil
+				return codec.CreateErrorResponse(req.id, &callbackError{ErrNotificationsUnsupported.Error()}), nil
 			}
 
 			subid := ID(req.args[0].String())
 			if err := notifier.unsubscribe(subid); err != nil {
-				return codec.CreateErrorResponse(&req.id, &callbackError{err.Error()}), nil
+				return codec.CreateErrorResponse(req.id, &callbackError{err.Error()}), nil
 			}
 
 			return codec.CreateResponse(req.id, true), nil
 		}
-		return codec.CreateErrorResponse(&req.id, &invalidParamsError{"Expected subscription id as first argument"}), nil
+		return codec.CreateErrorResponse(req.id, &invalidParamsError{"Expected subscription id as first argument"}), nil
 	}
 
 	if req.callb.isSubscribe {
 		subid, err := s.createSubscription(ctx, codec, req)
 		if err != nil {
-			return codec.CreateErrorResponse(&req.id, &callbackError{err.Error()}), nil
+			return codec.CreateErrorResponse(req.id, &callbackError{err.Error()}), nil
 		}
 
 		// active the subscription after the sub id was successfully sent to the client
@@ -299,7 +303,7 @@ func (s *Server) handle(ctx context.Context, codec ServerCodec, req *serverReque
 		rpcErr := &invalidParamsError{fmt.Sprintf("%s%s%s expects %d parameters, got %d",
 			req.svcname, serviceMethodSeparator, req.callb.method.Name,
 			len(req.callb.argTypes), len(req.args))}
-		return codec.CreateErrorResponse(&req.id, rpcErr), nil
+		return codec.CreateErrorResponse(req.id, rpcErr), nil
 	}
 
 	arguments := []reflect.Value{req.callb.rcvr}
@@ -319,7 +323,7 @@ func (s *Server) handle(ctx context.Context, codec ServerCodec, req *serverReque
 	if req.callb.errPos >= 0 { // test if method returned an error
 		if !reply[req.callb.errPos].IsNil() {
 			e := reply[req.callb.errPos].Interface().(error)
-			res := codec.CreateErrorResponse(&req.id, &callbackError{e.Error()})
+			res := codec.CreateErrorResponse(req.id, &callbackError{e.Error()})
 			return res, nil
 		}
 	}
@@ -331,7 +335,7 @@ func (s *Server) exec(ctx context.Context, codec ServerCodec, req *serverRequest
 	var response interface{}
 	var callback func()
 	if req.err != nil {
-		response = codec.CreateErrorResponse(&req.id, req.err)
+		response = codec.CreateErrorResponse(req.id, req.err)
 	} else {
 		response, callback = s.handle(ctx, codec, req)
 	}
@@ -354,7 +358,7 @@ func (s *Server) execBatch(ctx context.Context, codec ServerCodec, requests []*s
 	var callbacks []func()
 	for i, req := range requests {
 		if req.err != nil {
-			responses[i] = codec.CreateErrorResponse(&req.id, req.err)
+			responses[i] = codec.CreateErrorResponse(req.id, req.err)
 		} else {
 			var callback func()
 			if responses[i], callback = s.handle(ctx, codec, req); callback != nil {

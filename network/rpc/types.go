@@ -55,7 +55,7 @@ type service struct {
 
 // serverRequest is an incoming request
 type serverRequest struct {
-	id            interface{}
+	id            uint64
 	svcname       string
 	callb         *callback
 	args          []reflect.Value
@@ -80,7 +80,7 @@ type Server struct {
 type rpcRequest struct {
 	service  string
 	method   string
-	id       interface{}
+	id       uint64
 	isPubSub bool
 	params   interface{}
 	err      Error // invalid batch element
@@ -101,11 +101,11 @@ type ServerCodec interface {
 	// Parse request argument to the given types
 	ParseRequestArguments(argTypes []reflect.Type, params interface{}) ([]reflect.Value, Error)
 	// Assemble success response, expects response id and payload
-	CreateResponse(id interface{}, reply interface{}) interface{}
+	CreateResponse(id uint64, reply interface{}) interface{}
 	// Assemble error response, expects response id and error
-	CreateErrorResponse(id interface{}, err Error) interface{}
+	CreateErrorResponse(id uint64, err Error) interface{}
 	// Assemble error response with extra information about the error through info
-	CreateErrorResponseWithInfo(id interface{}, err Error, info interface{}) interface{}
+	CreateErrorResponseWithInfo(id uint64, err Error, info interface{}) interface{}
 	// Create notification response
 	CreateNotification(id, namespace string, event interface{}) interface{}
 	// Write msg to client.

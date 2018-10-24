@@ -252,6 +252,9 @@ func (p *TxProcessor) paySalary(salary *big.Int, minerAddress common.Address) {
 
 // FillHeader creates a new header then fills it with the result of transactions process
 func (p *TxProcessor) FillHeader(header *types.Header, txs types.Transactions, gasUsed uint64) (*types.Header, error) {
+	if len(txs) > 0 {
+		log.Infof("process %d transactions", len(txs))
+	}
 	events := p.am.GetEvents()
 	header.Bloom = types.CreateBloom(events)
 	header.EventRoot = types.DeriveEventsSha(events)
