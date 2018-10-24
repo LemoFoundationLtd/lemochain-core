@@ -1,6 +1,7 @@
 package node
 
 import (
+	"encoding/json"
 	"github.com/LemoFoundationLtd/lemochain-go/chain"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
@@ -72,11 +73,11 @@ func TestTxAPI_api(t *testing.T) {
 	txCh := make(chan types.Transactions, 100)
 	pool := chain.NewTxPool(nil, txCh)
 	txAPI := NewTxAPI(pool)
-	encodeTx, err := rlp.EncodeToBytes(testTx)
+	encodeTx, err := json.Marshal(testTx)
 	if err != nil {
 		t.Error(t, err)
 	}
-	byteTx, err := txAPI.SendTx(encodeTx)
+	byteTx, err := txAPI.SendTx(string(encodeTx))
 	if err != nil {
 		t.Error(t, err)
 	}

@@ -1,6 +1,7 @@
 package node
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
@@ -8,8 +9,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
-	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
-	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"github.com/LemoFoundationLtd/lemochain-go/network/p2p"
 	"math/big"
 	"strconv"
@@ -196,9 +195,9 @@ func NewTxAPI(txpool *chain.TxPool) *TxAPI {
 }
 
 // Send send a transaction
-func (t *TxAPI) SendTx(encodedTx hexutil.Bytes) (common.Hash, error) {
+func (t *TxAPI) SendTx(encodedTx string) (common.Hash, error) {
 	tx := new(types.Transaction)
-	if err := rlp.DecodeBytes(encodedTx, tx); err != nil {
+	if err := json.Unmarshal([]byte(encodedTx), tx); err != nil {
 		return common.Hash{}, err
 	}
 	txHash := tx.Hash()
