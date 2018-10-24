@@ -45,21 +45,30 @@ func (a *AccountAPI) GetBalance(LemoAddress string) string {
 	}
 	accounts := a.manager.GetCanonicalAccount(address)
 	balance := accounts.GetBalance().String()
+	return AddPoint(balance)
+}
+
+// AddPoint digital processing
+func AddPoint(balance string) string {
 	lenth := len(balance)
 	var toBytes = []byte(balance)
 	if lenth <= 18 {
 		Balance := fmt.Sprintf("0.%018s", balance)
 		return Balance
 	} else {
-		point := lenth % 18
-		// Extended section length
-		ToBytes := append(toBytes, '0')
-		for i := lenth; i > point; i-- {
-			ToBytes[i] = ToBytes[i-1]
-		}
-		ToBytes[point] = '.'
+		if lenth >= 36 {
+			return "Warning : Account balance exceeds maximum"
+		} else {
+			point := lenth % 18
+			// Extended section length
+			ToBytes := append(toBytes, '0')
+			for i := lenth; i > point; i-- {
+				ToBytes[i] = ToBytes[i-1]
+			}
+			ToBytes[point] = '.'
 
-		return string(ToBytes)
+			return string(ToBytes)
+		}
 	}
 }
 
