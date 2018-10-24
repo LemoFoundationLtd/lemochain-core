@@ -21,8 +21,6 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"reflect"
 	"runtime"
@@ -99,9 +97,7 @@ func TestClientBatchRequest(t *testing.T) {
 }
 
 // func TestClientCancelInproc(t *testing.T) { testClientCancel("inproc", t) }
-func TestClientCancelWebsocket(t *testing.T) { testClientCancel("ws", t) }
-func TestClientCancelHTTP(t *testing.T)      { testClientCancel("http", t) }
-func TestClientCancelIPC(t *testing.T)       { testClientCancel("ipc", t) }
+func TestClientCancelIPC(t *testing.T) { testClientCancel("ipc", t) }
 
 // This test checks that requests made through CallContext can be canceled by canceling
 // the context.
@@ -130,10 +126,6 @@ func testClientCancel(transport string, t *testing.T) {
 
 	var client *Client
 	switch transport {
-	case "ws", "http":
-		c, hs := httpTestClient(server, transport, fl)
-		defer hs.Close()
-		client = c
 	case "ipc":
 		c, l := ipcTestClient(server, fl)
 		defer l.Close()
@@ -374,59 +366,27 @@ func TestClientNotificationStorm(t *testing.T) {
 	doTest(10000, true)
 }
 
-func TestClientHTTP(t *testing.T) {
-	server := newTestServer("service", new(Service))
-	defer server.Stop()
-
-	client, hs := httpTestClient(server, "http", nil)
-	defer hs.Close()
-	defer client.Close()
-
-	// Launch concurrent requests.
-	var (
-		results    = make([]Result, 100)
-		errc       = make(chan error)
-		wantResult = Result{"a", 1, new(Args)}
-	)
-	defer client.Close()
-	for i := range results {
-		i := i
-		go func() {
-			errc <- client.Call(&results[i], "service_echo",
-				wantResult.String, wantResult.Int, wantResult.Args)
-		}()
-	}
-
-	// Wait for all of them to complete.
-	timeout := time.NewTimer(5 * time.Second)
-	defer timeout.Stop()
-	for i := range results {
-		select {
-		case err := <-errc:
-			if err != nil {
-				t.Fatal(err)
-			}
-		case <-timeout.C:
-			t.Fatalf("timeout (got %d/%d) results)", i+1, len(results))
-		}
-	}
-
-	// Check results.
-	for i := range results {
-		if !reflect.DeepEqual(results[i], wantResult) {
-			t.Errorf("result %d mismatch: got %#v, want %#v", i, results[i], wantResult)
-		}
-	}
-}
-
 func TestClientReconnect(t *testing.T) {
-	startServer := func(addr string) (*Server, net.Listener) {
+	// Listen on a random endpoint.
+	endpoint := fmt.Sprintf("lemochain-go-test-ipc-%d-%d", os.Getpid(), rand.Int63())
+	if runtime.GOOS == "windows" {
+		endpoint = `\\.\pipe\` + endpoint
+	} else {
+		endpoint = os.TempDir() + "/" + endpoint
+	}
+	startServer := func() (*Server, net.Listener) {
 		srv := newTestServer("service", new(Service))
-		l, err := net.Listen("tcp", addr)
+
+		l, err := ipcListen(endpoint)
 		if err != nil {
-			t.Fatal(err)
+			panic(err)
 		}
-		go http.Serve(l, srv.WebsocketHandler([]string{"*"}))
+		l = &flakeyListener{
+			maxAcceptDelay: 1 * time.Second,
+			maxKillTimeout: 600 * time.Millisecond,
+			Listener:       l,
+		}
+		go srv.ServeListener(l)
 		return srv, l
 	}
 
@@ -434,8 +394,8 @@ func TestClientReconnect(t *testing.T) {
 	defer cancel()
 
 	// Start a server and corresponding client.
-	s1, l1 := startServer("127.0.0.1:0")
-	client, err := DialContext(ctx, "ws://"+l1.Addr().String())
+	s1, l1 := startServer()
+	client, err := DialIPC(ctx, l1.Addr().String())
 	if err != nil {
 		t.Fatal("can't dial", err)
 	}
@@ -459,7 +419,7 @@ func TestClientReconnect(t *testing.T) {
 
 	// Start it up again and call again. The connection should be reestablished.
 	// We spawn multiple calls here to check whether this hangs somehow.
-	s2, l2 := startServer(l1.Addr().String())
+	s2, l2 := startServer()
 	defer l2.Close()
 	defer s2.Stop()
 
@@ -493,31 +453,6 @@ func newTestServer(serviceName string, service interface{}) *Server {
 	return server
 }
 
-func httpTestClient(srv *Server, transport string, fl *flakeyListener) (*Client, *httptest.Server) {
-	// Create the HTTP server.
-	var hs *httptest.Server
-	switch transport {
-	case "ws":
-		hs = httptest.NewUnstartedServer(srv.WebsocketHandler([]string{"*"}))
-	case "http":
-		hs = httptest.NewUnstartedServer(srv)
-	default:
-		panic("unknown HTTP transport: " + transport)
-	}
-	// Wrap the listener if required.
-	if fl != nil {
-		fl.Listener = hs.Listener
-		hs.Listener = fl
-	}
-	// Connect the client.
-	hs.Start()
-	client, err := Dial(transport + "://" + hs.Listener.Addr().String())
-	if err != nil {
-		panic(err)
-	}
-	return client, hs
-}
-
 func ipcTestClient(srv *Server, fl *flakeyListener) (*Client, net.Listener) {
 	// Listen on a random endpoint.
 	endpoint := fmt.Sprintf("lemochain-go-test-ipc-%d-%d", os.Getpid(), rand.Int63())
@@ -537,7 +472,7 @@ func ipcTestClient(srv *Server, fl *flakeyListener) (*Client, net.Listener) {
 	}
 	go srv.ServeListener(l)
 	// Connect the client.
-	client, err := Dial(endpoint)
+	client, err := DialIPC(context.Background(), endpoint)
 	if err != nil {
 		panic(err)
 	}

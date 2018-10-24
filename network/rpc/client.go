@@ -24,7 +24,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"net/url"
 	"reflect"
 	"strconv"
 	"strings"
@@ -44,7 +43,6 @@ var (
 const (
 	// Timeouts
 	tcpKeepAliveInterval = 30 * time.Second
-	defaultDialTimeout   = 10 * time.Second // used when dialing if the context has no deadline
 	defaultWriteTimeout  = 10 * time.Second // used for calls if the context has no deadline
 	subscribeTimeout     = 5 * time.Second  // overall timeout lemo_subscribe, rpc_modules calls
 )
@@ -108,7 +106,6 @@ func (msg *jsonrpcMessage) String() string {
 type Client struct {
 	idCounter   uint32
 	connectFunc func(ctx context.Context) (net.Conn, error)
-	isHTTP      bool
 
 	// writeConn is only safe to access outside dispatch, with the
 	// write lock held. The write lock is taken by sending on
@@ -145,37 +142,11 @@ func (op *requestOp) wait(ctx context.Context) (*jsonrpcMessage, error) {
 
 // Dial creates a new client for the given URL.
 //
-// The currently supported URL schemes are "http", "https", "ws" and "wss". If rawurl is a
-// file name with no URL scheme, a local socket connection is established using UNIX
-// domain sockets on supported platforms and named pipes on Windows. If you want to
-// configure transport options, use DialHTTP, DialWebsocket or DialIPC instead.
-//
-// For websocket connections, the origin is set to the local host name.
+// The currently supported URL schemes is a file name with no URL scheme, a local socket connection is established using UNIX domain sockets on supported platforms and named pipes on Windows. If you want to configure transport options, use DialIPC instead.
 //
 // The client reconnects automatically if the connection is lost.
 func Dial(rawurl string) (*Client, error) {
-	return DialContext(context.Background(), rawurl)
-}
-
-// DialContext creates a new RPC client, just like Dial.
-//
-// The context is used to cancel or time out the initial connection establishment. It does
-// not affect subsequent interactions with the client.
-func DialContext(ctx context.Context, rawurl string) (*Client, error) {
-	u, err := url.Parse(rawurl)
-	if err != nil {
-		return nil, err
-	}
-	switch u.Scheme {
-	case "http", "https":
-		return DialHTTP(rawurl)
-	case "ws", "wss":
-		return DialWebsocket(ctx, rawurl, "")
-	case "":
-		return DialIPC(ctx, rawurl)
-	default:
-		return nil, fmt.Errorf("no known transport for URL scheme %q", u.Scheme)
-	}
+	return DialIPC(context.Background(), rawurl)
 }
 
 func newClient(initctx context.Context, connectFunc func(context.Context) (net.Conn, error)) (*Client, error) {
@@ -183,11 +154,9 @@ func newClient(initctx context.Context, connectFunc func(context.Context) (net.C
 	if err != nil {
 		return nil, err
 	}
-	_, isHTTP := conn.(*httpConn)
 
 	c := &Client{
 		writeConn:   conn,
-		isHTTP:      isHTTP,
 		connectFunc: connectFunc,
 		close:       make(chan struct{}),
 		didQuit:     make(chan struct{}),
@@ -199,9 +168,7 @@ func newClient(initctx context.Context, connectFunc func(context.Context) (net.C
 		respWait:    make(map[string]*requestOp),
 		subs:        make(map[string]*ClientSubscription),
 	}
-	if !isHTTP {
-		go c.dispatch(conn)
-	}
+	go c.dispatch(conn)
 	return c, nil
 }
 
@@ -222,9 +189,6 @@ func (c *Client) SupportedModules() ([]string, error) {
 
 // Close closes the client, aborting any in-flight requests.
 func (c *Client) Close() {
-	if c.isHTTP {
-		return
-	}
 	select {
 	case c.close <- struct{}{}:
 		<-c.didQuit
@@ -254,11 +218,7 @@ func (c *Client) CallContext(ctx context.Context, result interface{}, method str
 	}
 	op := &requestOp{ids: []json.RawMessage{msg.ID}, resp: make(chan *jsonrpcMessage, 1)}
 
-	if c.isHTTP {
-		err = c.sendHTTP(ctx, op, msg)
-	} else {
-		err = c.send(ctx, op, msg)
-	}
+	err = c.send(ctx, op, msg)
 	if err != nil {
 		return err
 	}
@@ -313,11 +273,7 @@ func (c *Client) BatchCallContext(ctx context.Context, b []BatchElem) error {
 	}
 
 	var err error
-	if c.isHTTP {
-		err = c.sendBatchHTTP(ctx, op, msgs)
-	} else {
-		err = c.send(ctx, op, msgs)
-	}
+	err = c.send(ctx, op, msgs)
 
 	// Wait for all responses to come back.
 	for n := 0; n < len(b) && err == nil; n++ {
@@ -354,11 +310,6 @@ func (c *Client) LemoSubscribe(ctx context.Context, channel interface{}, args ..
 	return c.Subscribe(ctx, "lemo", channel, args...)
 }
 
-// ShhSubscribe registers a subscripion under the "shh" namespace.
-func (c *Client) ShhSubscribe(ctx context.Context, channel interface{}, args ...interface{}) (*ClientSubscription, error) {
-	return c.Subscribe(ctx, "shh", channel, args...)
-}
-
 // Subscribe calls the "<namespace>_subscribe" method with the given arguments,
 // registering a subscription. Server notifications for the subscription are
 // sent to the given channel. The element type of the channel must match the
@@ -379,9 +330,6 @@ func (c *Client) Subscribe(ctx context.Context, namespace string, channel interf
 	}
 	if chanVal.IsNil() {
 		panic("channel given to Subscribe must not be nil")
-	}
-	if c.isHTTP {
-		return nil, ErrNotificationsUnsupported
 	}
 
 	msg, err := c.newMessage(namespace+subscribeMethodSuffix, args...)
@@ -501,7 +449,7 @@ func (c *Client) dispatch(conn net.Conn) {
 		case <-c.close:
 			return
 
-		// Read path.
+			// Read path.
 		case batch := <-c.readResp:
 			for _, msg := range batch {
 				switch {
@@ -540,7 +488,7 @@ func (c *Client) dispatch(conn net.Conn) {
 			reading = true
 			conn = newconn
 
-		// Send path.
+			// Send path.
 		case op := <-requestOpLock:
 			// Stop listening for further send ops until the current one is done.
 			requestOpLock = nil

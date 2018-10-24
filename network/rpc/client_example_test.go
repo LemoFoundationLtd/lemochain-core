@@ -20,6 +20,8 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/LemoFoundationLtd/lemochain-go/network/rpc"
@@ -28,7 +30,7 @@ import (
 // In this example, our client whishes to track the latest 'block number'
 // known to the server. The server supports two methods:
 //
-// lemo_getBlockByNumber("latest", {})
+// lemo_getCurrentBlock(true, false)
 //    returns the latest block object.
 //
 // lemo_subscribe("newBlocks")
@@ -40,7 +42,16 @@ type Block struct {
 
 func ExampleClientSubscription() {
 	// Connect the client.
-	client, _ := rpc.Dial("ws://127.0.0.1:8485")
+	ipcPath := "glemo.ipc"
+	if runtime.GOOS == "windows" {
+		ipcPath = `\\.\pipe\` + ipcPath
+	} else {
+		dataDir := "data"
+		ipcPath = filepath.Join(dataDir, ipcPath)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	client, _ := rpc.DialIPC(ctx, ipcPath)
 	subch := make(chan Block)
 
 	// Ensure that subch receives the latest block.
@@ -75,7 +86,7 @@ func subscribeBlocks(client *rpc.Client, subch chan Block) {
 	// The connection is established now.
 	// Update the channel with the current block.
 	var lastBlock Block
-	if err := client.CallContext(ctx, &lastBlock, "lemo_getBlockByNumber", "latest"); err != nil {
+	if err := client.CallContext(ctx, &lastBlock, "lemo_getCurrentBlock", true, false); err != nil {
 		fmt.Println("can't get latest block:", err)
 		return
 	}
