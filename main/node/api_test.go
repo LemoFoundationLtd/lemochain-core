@@ -1,12 +1,12 @@
 package node
 
 import (
+	"encoding/json"
 	"github.com/LemoFoundationLtd/lemochain-go/chain"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
-	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"github.com/stretchr/testify/assert"
 	"math/big"
 	"strconv"
@@ -20,7 +20,7 @@ func Test_AddPoint(t *testing.T) {
 	test03 := "111111111111111111111111111111111111111111111111"
 	assert.Equal(t, "11.111111111111111111", AddPoint(test01))
 	assert.Equal(t, "0.000000111111111111", AddPoint(test02))
-	assert.Equal(t, "Warning : Account balance exceeds maximum", AddPoint(test03))
+	assert.Equal(t, "Warning : Your account balance is abnormal. Please stop any operation.", AddPoint(test03))
 }
 
 // TestAccountAPI_api account api test
@@ -102,15 +102,17 @@ func TestChainAPI_api(t *testing.T) {
 // TestTxAPI_api send tx api test
 func TestTxAPI_api(t *testing.T) {
 	testTx := types.NewTransaction(common.HexToAddress("0x1"), common.Big1, 100, common.Big2, []byte{12}, 200, big.NewInt(1544584596), "aa", []byte{34})
+	signTx := signTransaction(testTx, testPrivate)
 	txCh := make(chan types.Transactions, 100)
 	pool := chain.NewTxPool(nil, txCh)
 	txAPI := NewTxAPI(pool)
-	encodeTx, err := rlp.EncodeToBytes(testTx)
+
+	byteTx, err := json.Marshal(signTx)
 	assert.Nil(t, err)
 
-	byteTx, err := txAPI.SendTx(encodeTx)
+	sendTxHash, err := txAPI.SendTx(string(byteTx))
 	assert.Nil(t, err)
-	assert.Equal(t, testTx.Hash(), byteTx)
+	assert.Equal(t, signTx.Hash(), sendTxHash)
 }
 
 // // TestMineAPI_api miner api test // todo
