@@ -28,31 +28,32 @@ type genesisSpecMarshaling struct {
 	GasLimit  math.HexOrDecimal64
 }
 
-// DefaultGenesisBlock 默认创始区块配置
+// DefaultGenesisBlock default genesis block
 func DefaultGenesisBlock() *Genesis {
-	timeSpan, err := time.ParseInLocation("2006-01-02 15:04:05", "2018-08-30 12:00:00", time.UTC)
-	if err != nil {
-		timeSpan = time.Now()
-	}
+	timeSpan, _ := time.ParseInLocation("2006-01-02 15:04:05", "2018-08-30 12:00:00", time.UTC)
 	return &Genesis{
 		Time:      uint64(timeSpan.Unix()),
 		ExtraData: []byte(""),
-		GasLimit:  0x6422c40,
+		GasLimit:  105000000,
 		LemoBase:  common.HexToAddress("0x015780F8456F9c1532645087a19DcF9a7e0c7F97"),
 	}
 }
 
-// SetupGenesisBlock 设置创始区块
+// SetupGenesisBlock setup genesis block
 func SetupGenesisBlock(db protocol.ChainDB, genesis *Genesis) (common.Hash, error) {
-	// if genesis != nil && genesis.Config == nil {
-	// 	return nil, common.Hash{}, fmt.Errorf("setup genesis block failed. not set config")
-	// }
 	if genesis == nil {
 		log.Info("Writing default genesis block.")
 		genesis = DefaultGenesisBlock()
 	}
+
+	// check genesis block's time
+	if genesis.Time > uint64(time.Now().Unix()) {
+		panic("Genesis block's time can't be larger than current time.")
+	}
+
 	am := account.NewManager(common.Hash{}, db)
-	block := genesis.ToBlock(am)
+	block := genesis.ToBlock()
+	genesis.setBalance(am)
 	if err := am.Finalise(); err != nil {
 		return common.Hash{}, fmt.Errorf("setup genesis block failed: %v", err)
 	}
@@ -73,8 +74,8 @@ func SetupGenesisBlock(db protocol.ChainDB, genesis *Genesis) (common.Hash, erro
 	return block.Hash(), nil
 }
 
-// ToBlock 生成创始区块
-func (g *Genesis) ToBlock(am *account.Manager) *types.Block {
+// ToBlock
+func (g *Genesis) ToBlock() *types.Block {
 	head := &types.Header{
 		ParentHash: common.Hash{},
 		LemoBase:   g.LemoBase,
@@ -85,12 +86,14 @@ func (g *Genesis) ToBlock(am *account.Manager) *types.Block {
 		Extra:      g.ExtraData,
 		Time:       new(big.Int).SetUint64(g.Time),
 	}
+	block := types.NewBlock(head, nil, nil, nil, nil)
+	return block
+}
+
+func (g *Genesis) setBalance(am *account.Manager) {
 	lemoBase := am.GetAccount(g.LemoBase)
-	log.Infof("%d %d", lemoBase.GetVersion(account.BalanceLog), lemoBase.GetBalance().Uint64())
 	oneLemo := new(big.Int).SetUint64(1000000000000000000) // 1 lemo
 	total := new(big.Int).SetUint64(1600000000)
 	total = total.Mul(total, oneLemo)
 	lemoBase.SetBalance(total)
-	block := types.NewBlock(head, nil, nil, nil, nil)
-	return block
 }

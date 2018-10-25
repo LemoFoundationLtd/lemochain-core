@@ -79,14 +79,14 @@ func (p *peer) MarkTransaction(hash common.Hash) {
 }
 
 // Handshake 当前状态握手
-func (p *peer) Handshake(network uint64, height uint32, head, genesis common.Hash) error {
+func (p *peer) Handshake(chainID uint64, height uint32, head, genesis common.Hash) error {
 	errs := make(chan error, 2)
 	var status protocol.NodeStatusData
 	// 发送自己的节点状态
 	go func() {
 		log.Debugf("start send node status data. nodeid: %s", p.id[:16])
 		errs <- p.send(protocol.StatusMsg, &protocol.NodeStatusData{
-			NetworkID:     network,
+			ChainID:       chainID,
 			CurrentHeight: height,
 			CurrentBlock:  head,
 			GenesisBlock:  genesis,
@@ -95,7 +95,7 @@ func (p *peer) Handshake(network uint64, height uint32, head, genesis common.Has
 	// 读取对方的远程节点状态
 	go func() {
 		log.Debugf("start read remote node status data. nodeid: %s", p.id[:16])
-		errs <- p.readRemoteStatus(network, &status, genesis)
+		errs <- p.readRemoteStatus(chainID, &status, genesis)
 	}()
 	for i := 0; i < 2; i++ {
 		if err := <-errs; err != nil {
@@ -147,7 +147,7 @@ func (p *peer) readRemoteStatus(network uint64, status *protocol.NodeStatusData,
 	if err := msg.Decode(status); err != nil {
 		return err
 	}
-	if status.NetworkID != network {
+	if status.ChainID != network {
 		return errors.New("networkid not match")
 	}
 	if bytes.Compare(status.GenesisBlock[:], genesis[:]) != 0 {

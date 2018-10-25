@@ -23,6 +23,9 @@ const (
 type NodeConfig struct {
 	Name    string `toml:"-"`
 	Version string `toml:"-"`
+
+	ExtraData []byte `toml:",omitempty"`
+
 	DataDir string
 	P2P     p2p.Config
 
@@ -91,16 +94,6 @@ func (c *NodeConfig) instanceDir() string {
 	}
 	return filepath.Join(c.DataDir, c.name())
 }
-
-// func (c *NodeConfig) resolvePath(path string) string {
-// 	if filepath.IsAbs(path) {
-// 		return path
-// 	}
-// 	if c.DataDir == "" {
-// 		return ""
-// 	}
-// 	return filepath.Join(c.instanceDir(), path)
-// }
 
 func (c *NodeConfig) NodeKey() *ecdsa.PrivateKey {
 	if c.P2P.PrivateKey != nil {

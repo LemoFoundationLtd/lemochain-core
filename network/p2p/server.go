@@ -33,16 +33,16 @@ const (
 
 // Config holds Server options.
 type Config struct {
-	// 私钥
+	// private key
 	PrivateKey *ecdsa.PrivateKey
 
-	// 最大可连接节点数 须大于0
+	// max accept connection count
 	MaxPeerNum int
 
 	// 最大连接中的节点数
 	MaxPendingPeerNum int // reserve
 
-	// server的Name
+	// server's Name
 	Name string
 
 	// 黑名单
@@ -51,8 +51,12 @@ type Config struct {
 	// 节点数据库路径
 	NodeDatabase string
 
-	// 监听地址与端口
-	ListenAddr string
+	// listen port
+	Port int
+}
+
+func (config *Config) ListenAddr() string {
+	return fmt.Sprintf(":%d", config.Port)
 }
 
 // 对外节点通知类型
@@ -118,9 +122,9 @@ func (srv *Server) Start() error {
 	if srv.PrivateKey == nil {
 		return fmt.Errorf("server.PrivateKey can't be nil")
 	}
-	if srv.ListenAddr == "" { // 默认强制开始服务器，前期防止搭建都不启动服务
-		return fmt.Errorf("server.ListenAddr can't be empty")
-	}
+	// if srv.ListenAddr == "" { // 默认强制开始服务器，前期防止搭建都不启动服务
+	// 	return fmt.Errorf("server.ListenAddr can't be empty")
+	// }
 	if err := srv.startListening(); err != nil {
 		return err
 	}
@@ -220,7 +224,7 @@ func (srv *Server) readNodeDatabaseFile() error {
 
 // 启动TCP监听
 func (srv *Server) startListening() error {
-	listener, err := net.Listen("tcp", srv.ListenAddr)
+	listener, err := net.Listen("tcp", srv.ListenAddr())
 	if err != nil {
 		return err
 	}

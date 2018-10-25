@@ -2,11 +2,9 @@ package common
 
 const (
 	DataDir          = "datadir"
-	NetworkID        = "networkid"
 	MaxPeers         = "maxpeers"
 	ListenPort       = "port"
 	ExtraData        = "extradata"
-	NodeKeyFile      = "nodekey"
 	MiningEnabled    = "mine"
 	RPCEnabled       = "rpc"
 	RPCListenAddr    = "rpcaddr"

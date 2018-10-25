@@ -17,8 +17,8 @@ import (
 )
 
 type ProtocolManager struct {
-	networkId uint64
-	nodeID    []byte
+	chainID uint64
+	nodeID  []byte
 
 	blockchain *chain.BlockChain
 
@@ -37,9 +37,9 @@ type ProtocolManager struct {
 	wg sync.WaitGroup
 }
 
-func NewProtocolManager(networkId uint64, nodeID []byte, blockchain *chain.BlockChain, txpool *chain.TxPool, newBlockCh chan *types.Block, txsCh chan types.Transactions) *ProtocolManager {
+func NewProtocolManager(chainID uint64, nodeID []byte, blockchain *chain.BlockChain, txpool *chain.TxPool, newBlockCh chan *types.Block, txsCh chan types.Transactions) *ProtocolManager {
 	manager := &ProtocolManager{
-		networkId:       networkId,
+		chainID:         chainID,
 		nodeID:          nodeID,
 		blockchain:      blockchain,
 		peers:           newPeerSet(),
@@ -195,7 +195,7 @@ func (pm *ProtocolManager) PeerEvent(peer *p2p.Peer, flag p2p.PeerEventFlag) err
 // handle 处理新的节点连接
 func (pm *ProtocolManager) handle(p *peer) error {
 	block := pm.blockchain.CurrentBlock()
-	if err := p.Handshake(pm.networkId, block.Height(), block.Hash(), pm.blockchain.Genesis().Hash()); err != nil {
+	if err := p.Handshake(pm.chainID, block.Height(), block.Hash(), pm.blockchain.Genesis().Hash()); err != nil {
 		p.DisableReConnect()
 		p.Close()
 		log.Infof("lemochain handshake failed: %v", err)

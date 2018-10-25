@@ -35,7 +35,6 @@ var (
 
 type Node struct {
 	config      *NodeConfig
-	lemoConfig  *LemoConfig
 	chainConfig *params.ChainConfig
 
 	db       protocol.ChainDB
@@ -47,8 +46,6 @@ type Node struct {
 	gasPrice *big.Int
 
 	lemoBase common.Address
-
-	networkId uint64
 
 	instanceDirLock flock.Releaser
 
@@ -81,9 +78,9 @@ type Node struct {
 	lock sync.RWMutex
 }
 
-func New(lemoConf *LemoConfig, conf *NodeConfig, flags flag.CmdFlags) (*Node, error) {
-	confCopy := *conf
-	conf = &confCopy
+func New(flags flag.CmdFlags) (*Node, error) {
+	conf := new(NodeConfig)
+	setNodeConfig(flags, conf)
 	if conf.DataDir != "" {
 		absDataDir, err := filepath.Abs(conf.DataDir)
 		if err != nil {
@@ -131,7 +128,7 @@ func New(lemoConf *LemoConfig, conf *NodeConfig, flags flag.CmdFlags) (*Node, er
 	accMan := blockChain.AccountManager()
 	txPool := chain.NewTxPool(accMan, newTxsCh)
 	newMinedBlockCh := make(chan *types.Block)
-	pm := synchronise.NewProtocolManager(lemoConf.NetworkId, deputynode.GetSelfNodeID(), blockChain, txPool, newMinedBlockCh, newTxsCh)
+	pm := synchronise.NewProtocolManager(genesisConfig.ChainID, deputynode.GetSelfNodeID(), blockChain, txPool, newMinedBlockCh, newTxsCh)
 	n := &Node{
 		config:       conf,
 		ipcEndpoint:  conf.IPCEndpoint(),

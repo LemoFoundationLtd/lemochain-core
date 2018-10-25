@@ -34,7 +34,7 @@ const (
 	ErrSendBlocks     // 发送区块到远程出错
 	ErrNoBlocks       // 消息内没有区块数据
 	ErrProtocolVersionMismatch
-	ErrNetworkIdMismatch
+	// ErrNetworkIdMismatch
 	ErrGenesisBlockMismatch
 	ErrNoStatusMsg
 	ErrExtraStatusMsg
@@ -51,16 +51,16 @@ var ErrorToString = map[int]string{
 	ErrDecode:                  "Invalid message",
 	ErrInvalidMsgCode:          "Invalid message code",
 	ErrProtocolVersionMismatch: "Protocol version mismatch",
-	ErrNetworkIdMismatch:       "NetworkId mismatch",
-	ErrGenesisBlockMismatch:    "Genesis block mismatch",
-	ErrNoStatusMsg:             "No status message",
-	ErrExtraStatusMsg:          "Extra status message",
-	ErrSuspendedPeer:           "Suspended peer",
+	// ErrNetworkIdMismatch:       "NetworkId mismatch",
+	ErrGenesisBlockMismatch: "Genesis block mismatch",
+	ErrNoStatusMsg:          "No status message",
+	ErrExtraStatusMsg:       "Extra status message",
+	ErrSuspendedPeer:        "Suspended peer",
 }
 
 // 节点当前状态信息
 type NodeStatusData struct {
-	NetworkID     uint64
+	ChainID       uint64
 	CurrentHeight uint32
 	CurrentBlock  common.Hash
 	GenesisBlock  common.Hash
