@@ -73,7 +73,7 @@ func initFlags() []cli.Flag {
 	return flags
 }
 
-func TestNewCmdFlags_Set(t *testing.T) {
+func initCmdFlags() *flag.FlagSet {
 	flagSet := new(flag.FlagSet)
 	StringFlag.Apply(flagSet)
 	IntFlag.Apply(flagSet)
@@ -82,7 +82,11 @@ func TestNewCmdFlags_Set(t *testing.T) {
 	UInt64Flag.Apply(flagSet)
 	FloatFlag.Apply(flagSet)
 	BoolFlag.Apply(flagSet)
+	return flagSet
+}
 
+func TestNewCmdFlags_Set(t *testing.T) {
+	flagSet := initCmdFlags()
 	context := cli.NewContext(nil, flagSet, nil)
 	context.Set(StringFlag.Name, StringNew)
 	context.Set(IntFlag.Name, strconv.FormatInt(int64(IntNew), 10))
@@ -215,4 +219,13 @@ func TestCmdFlags_CheckExclusive(t *testing.T) {
 	cmdFlags.CheckExclusive(FloatFlag, BoolFlag)
 	cmdFlags.CheckExclusive(StringFlag, BoolFlag)
 	cmdFlags.CheckExclusive(StringFlag, Int64SliceFlag)
+	cmdFlags.CheckExclusive(StringFlag)
+
+	assert.PanicsWithValue(t, "flags --STRING, --INT can't be used at the same time", func() {
+		cmdFlags.CheckExclusive(StringFlag, Int64SliceFlag, IntFlag)
+	})
+
+	assert.PanicsWithValue(t, "flags --STRING, --INT, --UInt64 can't be used at the same time", func() {
+		cmdFlags.CheckExclusive(StringFlag, IntFlag, UInt64Flag)
+	})
 }
