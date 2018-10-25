@@ -84,8 +84,8 @@ func (bc *BlockChain) loadLastState() error {
 }
 
 // loadConsensusEngine 加载共识引擎
-// func (bc *BlockChain) loadConsensusEngine() {
-// 	bc.engine = NewDpovp(bc)
+// func (db *BlockChain) loadConsensusEngine() {
+// 	db.engine = NewDpovp(db)
 // }
 
 // Genesis 获取创始块
@@ -187,7 +187,7 @@ func (bc *BlockChain) MineNewBlock(block *types.Block) error {
 		log.Error("save account error!", "hash", block.Hash().Hex(), "err", err)
 		return err
 	}
-	nodeCount := deputynode.Instance().GetDeputyNodesCount()
+	nodeCount := deputynode.Instance().GetDeputiesCount()
 	if nodeCount == 1 {
 		bc.SetStableBlock(block.Hash(), block.Height(), false)
 	}
@@ -234,7 +234,7 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSyncing bool) (err error
 		return err
 	}
 
-	nodeCount := deputynode.Instance().GetDeputyNodesCount()
+	nodeCount := deputynode.Instance().GetDeputiesCount()
 	if nodeCount < 3 {
 		defer bc.SetStableBlock(hash, block.Height(), isSyncing)
 	} else {
@@ -429,7 +429,7 @@ func (bc *BlockChain) hasEnoughConfirmInfo(hash common.Hash) (bool, error) {
 		log.Warnf("Can't GetConfirmInfo. hash:%s. error: %v", hash.Hex(), err)
 		return false, err
 	}
-	nodeCount := deputynode.Instance().GetDeputyNodesCount()
+	nodeCount := deputynode.Instance().GetDeputiesCount()
 	minCount := int(math.Ceil(float64(nodeCount) * 2.0 / 3.0))
 	if confirmCount >= minCount {
 		return true, nil
@@ -448,7 +448,7 @@ func (bc *BlockChain) getConfirmCount(hash common.Hash) (int, error) {
 
 // 获取签名者在代理节点列表中的索引
 func (bc *BlockChain) getSignerIndex(pubKey []byte, height uint32) int {
-	node := deputynode.Instance().GetNodeByNodeID(height, pubKey)
+	node := deputynode.Instance().GetDeputyByNodeID(height, pubKey)
 	if node != nil {
 		return int(node.Rank)
 	}

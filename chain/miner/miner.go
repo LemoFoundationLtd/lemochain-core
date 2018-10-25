@@ -16,6 +16,11 @@ import (
 	"time"
 )
 
+type MineConfig struct {
+	SleepTime uint64
+	Timeout   uint64
+}
+
 type Miner struct {
 	blockInternal int64
 	timeoutTime   int64
@@ -40,11 +45,11 @@ type Miner struct {
 	quitCh         chan struct{} // 退出
 }
 
-func New(blockInternal, timeout int64, chain *chain.BlockChain, txPool *chain.TxPool, privKey *ecdsa.PrivateKey, mineNewBlockCh, recvBlockCh chan *types.Block, engine chain.Engine) *Miner {
+func New(cfg *MineConfig, chain *chain.BlockChain, txPool *chain.TxPool, mineNewBlockCh, recvBlockCh chan *types.Block, engine chain.Engine) *Miner {
 	m := &Miner{
-		blockInternal:  blockInternal,
-		timeoutTime:    timeout,
-		privKey:        privKey,
+		blockInternal:  int64(cfg.SleepTime),
+		timeoutTime:    int64(cfg.Timeout),
+		privKey:        deputynode.GetSelfNodeKey(),
 		chain:          chain,
 		txPool:         txPool,
 		engine:         engine,
@@ -126,7 +131,7 @@ func (m *Miner) modifyTimer() {
 		log.Debugf("self not deputy node. mining forbidden")
 		return
 	}
-	nodeCount := deputynode.Instance().GetDeputyNodesCount()
+	nodeCount := deputynode.Instance().GetDeputiesCount()
 	if nodeCount == 0 {
 		log.Debugf("nodes count is 0")
 		return
@@ -137,7 +142,7 @@ func (m *Miner) modifyTimer() {
 		return
 	}
 	timeDur := m.getTimespan() // 获取当前时间与最新块的时间差
-	myself := deputynode.Instance().GetNodeByNodeID(m.currentBlock().Height(), deputynode.GetSelfNodeID())
+	myself := deputynode.Instance().GetDeputyByNodeID(m.currentBlock().Height(), deputynode.GetSelfNodeID())
 	if myself == nil {
 		log.Warn("Self node isn't deputy node. Can't mine block.")
 		return
@@ -301,7 +306,7 @@ func (m *Miner) sealBlock() {
 		txsKeys[i+len(packagedTxs)] = tx.Hash()
 	}
 	m.txPool.Remove(txsKeys)
-	nodeCount := deputynode.Instance().GetDeputyNodesCount()
+	nodeCount := deputynode.Instance().GetDeputiesCount()
 	var timeDur int64
 	if nodeCount == 1 {
 		timeDur = m.blockInternal
@@ -315,7 +320,7 @@ func (m *Miner) sealBlock() {
 func (m *Miner) sealHead() *types.Header {
 	parent := m.currentBlock()
 	if (parent.Height()+1)%1001000 == 1 {
-		n := deputynode.Instance().GetNodeByNodeID(parent.Height()+1, deputynode.GetSelfNodeID())
+		n := deputynode.Instance().GetDeputyByNodeID(parent.Height()+1, deputynode.GetSelfNodeID())
 		m.SetLemoBase(n.LemoBase)
 	}
 	return &types.Header{

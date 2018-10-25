@@ -1,14 +1,12 @@
 package node
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/miner"
-	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/flag"
@@ -28,14 +26,15 @@ import (
 )
 
 const ConfigGuideUrl = "Please visit https://github.com/LemoFoundationLtd/lemochain-go#configuration-file for detail"
+const SnapshotBlockInternal = 100000
 
 var (
 	ErrConfig = errors.New(`file "config.json" format error.` + ConfigGuideUrl)
 )
 
 type Node struct {
-	config      *NodeConfig
-	chainConfig *params.ChainConfig
+	config *Config
+	// chainConfig *params.ChainConfig
 
 	db       protocol.ChainDB
 	accMan   *account.Manager
@@ -49,8 +48,8 @@ type Node struct {
 
 	instanceDirLock flock.Releaser
 
-	serverConfig *p2p.Config
-	server       *p2p.Server
+	// serverConfig *p2p.Config
+	server *p2p.Server
 
 	rpcAPIs       []rpc.API
 	inprocHandler *rpc.Server
@@ -78,99 +77,101 @@ type Node struct {
 	lock sync.RWMutex
 }
 
-func New(flags flag.CmdFlags) (*Node, error) {
-	conf := new(NodeConfig)
-	setNodeConfig(flags, conf)
-	if conf.DataDir != "" {
-		absDataDir, err := filepath.Abs(conf.DataDir)
-		if err != nil {
-			return nil, err
-		}
-		conf.DataDir = absDataDir
+func initConfig(flags flag.CmdFlags) (*Config, *ConfigFromFile, *miner.MineConfig) {
+	cfg := getNodeConfig(flags)
+	deputynode.SetSelfNodeKey(cfg.NodeKey())
+	cfg.P2P.PrivateKey = deputynode.GetSelfNodeKey()
+	log.Infof("Local nodeID: %s", common.ToHex(deputynode.GetSelfNodeID()))
+
+	filePath := filepath.Join(cfg.DataDir, "config.json")
+	configFromFile, err := readConfigFile(filePath)
+	if err != nil {
+		panic(fmt.Sprintf("read config.json error: %v", err))
 	}
-	deputynode.SetSelfNodeKey(conf.NodeKey())
-	log.Infof("NodeID: %s", common.ToHex(deputynode.GetSelfNodeID()))
-	if strings.ContainsAny(conf.Name, `/\`) {
-		return nil, errors.New(`Config.Name must not contain '/' or '\'`)
+	configFromFile.Check()
+
+	mineCfg := &miner.MineConfig{
+		SleepTime: configFromFile.SleepTime,
+		Timeout:   configFromFile.Timeout,
 	}
-	if strings.HasSuffix(conf.Name, ".ipc") {
-		return nil, errors.New(`Config.Name must not end in ".ipc"`)
-	}
-	dir := filepath.Join(conf.DataDir, "chaindata")
+	return cfg, configFromFile, mineCfg
+}
+
+func initDb(dataDir string) protocol.ChainDB {
+	dir := filepath.Join(dataDir, "chaindata")
 	db, err := store.NewCacheChain(dir)
 	if err != nil {
-		return nil, fmt.Errorf("new db failed: %v", err)
+		panic("new cacheChain failed!!!")
 	}
-	path := filepath.Join(conf.DataDir, "config.json")
-	genesisConfig, err := readConfigFile(path)
-	if err != nil {
-		return nil, err
-	}
-	deputynode.Instance().Add(0, genesisConfig.DeputyNodes)
-	log.Debugf("genesis deputy node length: %d. self node id: %s", len(genesisConfig.DeputyNodes), common.ToHex(deputynode.GetSelfNodeID()))
-	_, err = db.GetBlockByHeight(0)
+	return db
+}
+
+func getGenesis(db protocol.ChainDB) *types.Block {
+	block, err := db.GetBlockByHeight(0)
 	if err == store.ErrNotExist {
 		genesis := chain.DefaultGenesisBlock()
 		chain.SetupGenesisBlock(db, genesis)
 	} else if err == nil {
 		// normal
 	} else {
-		return nil, err
+		panic(fmt.Sprintf("can't get genesis block. err: %v", err))
 	}
-	engine := chain.NewDpovp(int64(genesisConfig.Timeout), int64(genesisConfig.SleepTime))
+	return block
+}
+
+func (n *Node) setLemoBase() {
+	nextHeight := n.chain.CurrentBlock().Height() + 1
+	deputyNode := deputynode.Instance().GetDeputyByNodeID(nextHeight, deputynode.GetSelfNodeID())
+	if deputyNode != nil {
+		n.miner.SetLemoBase(deputyNode.LemoBase)
+	}
+}
+
+// initDeputyNodes init deputy nodes information
+func initDeputyNodes(db protocol.ChainDB) {
+	block, _ := db.GetBlockByHeight(0)
+	for block != nil {
+		deputynode.Instance().Add(block.Height(), block.DeputyNodes)
+		block, _ = db.GetBlockByHeight(block.Height() + SnapshotBlockInternal)
+	}
+}
+
+func New(flags flag.CmdFlags) *Node {
+	cfg, configFromFile, mineCfg := initConfig(flags)
+	db := initDb(cfg.DataDir)
+	// read genesis block
+	genesisBlock := getGenesis(db)
+	// read all deputy nodes from snapshot block
+	initDeputyNodes(db)
+	// new dpovp consensus engine
+	engine := chain.NewDpovp(int64(configFromFile.Timeout), db)
 	recvBlockCh := make(chan *types.Block)
-	blockChain, err := chain.NewBlockChain(genesisConfig.ChainID, engine, db, recvBlockCh, flags)
+	blockChain, err := chain.NewBlockChain(configFromFile.ChainID, engine, db, recvBlockCh, flags)
 	if err != nil {
-		return nil, err
+		panic("new block chain failed!!!")
 	}
-	engine.SetBlockChain(blockChain)
+
 	newTxsCh := make(chan types.Transactions)
 	accMan := blockChain.AccountManager()
 	txPool := chain.NewTxPool(accMan, newTxsCh)
 	newMinedBlockCh := make(chan *types.Block)
-	pm := synchronise.NewProtocolManager(genesisConfig.ChainID, deputynode.GetSelfNodeID(), blockChain, txPool, newMinedBlockCh, newTxsCh)
 	n := &Node{
-		config:       conf,
-		ipcEndpoint:  conf.IPCEndpoint(),
-		httpEndpoint: conf.HTTPEndpoint(),
-		wsEndpoint:   conf.WSEndpoint(),
+		config:       cfg,
+		ipcEndpoint:  cfg.IPCEndpoint(),
+		httpEndpoint: cfg.HTTPEndpoint(),
+		wsEndpoint:   cfg.WSEndpoint(),
 		db:           db,
 		accMan:       accMan,
 		chain:        blockChain,
 		txPool:       txPool,
 		newTxsCh:     newTxsCh,
-		pm:           pm,
+		miner:        miner.New(mineCfg, blockChain, txPool, newMinedBlockCh, recvBlockCh, engine),
+		pm:           synchronise.NewProtocolManager(configFromFile.ChainID, deputynode.GetSelfNodeID(), blockChain, txPool, newMinedBlockCh, newTxsCh),
+		genesisBlock: genesisBlock,
 	}
-	n.genesisBlock, _ = db.GetBlockByHeight(0)
-	n.config.P2P.PrivateKey = deputynode.GetSelfNodeKey()
-	miner := miner.New(int64(genesisConfig.SleepTime), int64(genesisConfig.Timeout), blockChain, txPool, n.config.NodeKey(), newMinedBlockCh, recvBlockCh, engine)
-	n.miner = miner
-	d_n := deputynode.Instance().GetNodeByNodeID(blockChain.CurrentBlock().Height()+1, deputynode.GetSelfNodeID())
-	if d_n != nil {
-		miner.SetLemoBase(d_n.LemoBase)
-	}
-	deputynode.Instance().Init()
-	return n, nil
-}
-
-func readConfigFile(path string) (*ChainConfigFile, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, errors.New(err.Error() + "\r\n" + ConfigGuideUrl)
-	}
-	var config ChainConfigFile
-	if err = json.NewDecoder(file).Decode(&config); err != nil {
-		return nil, ErrConfig
-	}
-	msg := ""
-	if config.ChainID > 65535 {
-		msg += "chainID must be in [1, 65535]\r\n"
-	}
-	// todo
-	if msg != "" {
-		panic(ErrConfig.Error())
-	}
-	return &config, nil
+	// set lemobase for next block
+	n.setLemoBase()
+	return n
 }
 
 func (n *Node) DataDir() string {
@@ -194,9 +195,7 @@ func (n *Node) Start() error {
 	if err := n.openDataDir(); err != nil {
 		return err
 	}
-	// n.serverConfig = n.config.P2P
-	server := &p2p.Server{Config: n.config.P2P}
-	server.PeerEvent = n.pm.PeerEvent
+	server := &p2p.Server{Config: n.config.P2P, PeerEvent: n.pm.PeerEvent}
 	if err := server.Start(); err != nil {
 		log.Errorf("start p2p server failed: %v", err)
 		return err
@@ -427,15 +426,15 @@ func (n *Node) Wait() {
 	<-stop
 }
 
-func (n *Node) Restart() error {
-	if err := n.Stop(); err != nil {
-		return err
-	}
-	if err := n.Start(); err != nil {
-		return err
-	}
-	return nil
-}
+// func (n *Node) Restart() error {
+// 	if err := n.Stop(); err != nil {
+// 		return err
+// 	}
+// 	if err := n.Start(); err != nil {
+// 		return err
+// 	}
+// 	return nil
+// }
 
 func (n *Node) openDataDir() error {
 	if n.config.DataDir == "" {
@@ -465,33 +464,6 @@ func (n *Node) Attach() (*rpc.Client, error) {
 		return nil, errors.New("node not started")
 	}
 	return rpc.DialInProc(n.inprocHandler), nil
-}
-
-func (n *Node) RPCHandler() (*rpc.Server, error) {
-	n.lock.RLock()
-	defer n.lock.RUnlock()
-	if n.inprocHandler == nil {
-		return nil, errors.New("node not started")
-	}
-	return n.inprocHandler, nil
-}
-
-func (n *Node) Server() *p2p.Server {
-	n.lock.RLock()
-	defer n.lock.RUnlock()
-	return n.server
-}
-
-func (n *Node) IPCEndpoint() string {
-	return n.ipcEndpoint
-}
-
-func (n *Node) HTTPEndpoint() string {
-	return n.httpEndpoint
-}
-
-func (n *Node) WSEndpoint() string {
-	return n.wsEndpoint
 }
 
 func (n *Node) apis() []rpc.API {

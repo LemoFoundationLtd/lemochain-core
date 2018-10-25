@@ -2,6 +2,7 @@ package types
 
 import (
 	"fmt"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto/sha3"
 	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
@@ -25,16 +26,18 @@ type Header struct {
 	GasUsed     uint64         `json:"gasUsed"          gencodec:"required"`
 	Time        *big.Int       `json:"timestamp"        gencodec:"required"`
 	SignData    []byte         `json:"signData"         gencodec:"required"`
+	DeputyRoot  []byte         `json:"deputyRoot"       gencodec:"required"`
 	Extra       []byte         `json:"extraData"        gencodec:"required"` // 最大256byte
 }
 
 type headerMarshaling struct {
-	GasLimit hexutil.Uint64
-	GasUsed  hexutil.Uint64
-	Time     *hexutil.Big
-	SignData hexutil.Bytes
-	Extra    hexutil.Bytes
-	Hash     common.Hash `json:"hash"`
+	GasLimit   hexutil.Uint64
+	GasUsed    hexutil.Uint64
+	Time       *hexutil.Big
+	SignData   hexutil.Bytes
+	DeputyRoot hexutil.Bytes
+	Extra      hexutil.Bytes
+	Hash       common.Hash `json:"hash"`
 }
 
 // 签名信息
@@ -56,15 +59,17 @@ type Block struct {
 	ChangeLogs     []*ChangeLog
 	Events         []*Event
 	ConfirmPackage []SignData
+	DeputyNodes    deputynode.DeputyNodes
 }
 
-func NewBlock(header *Header, txs []*Transaction, changeLog []*ChangeLog, events []*Event, confirmPackage []SignData) *Block {
+func NewBlock(header *Header, txs []*Transaction, changeLog []*ChangeLog, events []*Event, confirmPackage []SignData, deputyNodes deputynode.DeputyNodes) *Block {
 	return &Block{
 		Header:         header,
 		Txs:            txs,
 		ChangeLogs:     changeLog,
 		Events:         events,
 		ConfirmPackage: confirmPackage,
+		DeputyNodes:    deputyNodes,
 	}
 }
 
@@ -84,6 +89,7 @@ func (h *Header) Hash() common.Hash {
 		h.GasLimit,
 		h.GasUsed,
 		h.Time,
+		h.DeputyRoot,
 		h.Extra,
 	})
 }

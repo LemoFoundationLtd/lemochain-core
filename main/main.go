@@ -2,9 +2,12 @@ package main
 
 import (
 	"fmt"
+	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-go/common/flag"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/main/console"
 	"github.com/LemoFoundationLtd/lemochain-go/main/node"
+	"github.com/inconshreveable/log15"
 	"gopkg.in/urfave/cli.v1"
 	"os"
 	"os/signal"
@@ -77,6 +80,30 @@ func main() {
 	}
 }
 
+// initLog init log config
+func initLog(ctx *cli.Context) {
+	var logLevel = 2
+	if ctx.GlobalIsSet(common.LogLevel) {
+		logLevel = ctx.GlobalInt(common.LogLevel)
+	} else if ctx.IsSet(common.LogLevel) {
+		logLevel = ctx.Int(common.LogLevel)
+	}
+	logLevel -= 1
+	if logLevel < 0 || logLevel > 4 {
+		logLevel = 2
+	}
+	log.Setup(log15.Lvl(logLevel), true, true)
+}
+
+func makeFullNode(ctx *cli.Context) *node.Node {
+	initLog(ctx)
+	// process flags
+	totalFlags := append(nodeFlags, rpcFlags...)
+	flags := flag.NewCmdFlags(ctx, totalFlags)
+	// new node
+	return node.New(flags)
+}
+
 func glemo(ctx *cli.Context) error {
 	n := makeFullNode(ctx)
 	startNode(ctx, n)
@@ -86,7 +113,7 @@ func glemo(ctx *cli.Context) error {
 
 func startNode(ctx *cli.Context, n *node.Node) {
 	if err := n.Start(); err != nil {
-		node.Fatalf("Error tarting node: %v", err)
+		log.Critf("Error tarting node: %v", err)
 	}
 	go func() {
 		sigCh := make(chan os.Signal, 1)
