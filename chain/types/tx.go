@@ -33,9 +33,9 @@ type Transaction struct {
 type txdata struct {
 	Recipient     *common.Address `json:"to" rlp:"nil"` // nil means contract creation
 	RecipientName string          `json:"toName"`
-	Price         *big.Int        `json:"gasPrice" gencodec:"required"`
-	Amount        *big.Int        `json:"value" gencodec:"required"`
-	GasLimit      uint64          `json:"gas" gencodec:"required"`
+	GasPrice      *big.Int        `json:"gasPrice" gencodec:"required"`
+	GasLimit      uint64          `json:"gasLimit" gencodec:"required"`
+	Amount        *big.Int        `json:"amount" gencodec:"required"`
 	Data          []byte          `json:"data" gencodec:"required"`
 	Expiration    *big.Int        `json:"expirationTime" gencodec:"required"`
 	Message       []byte          `json:"message"`
@@ -53,9 +53,9 @@ type txdata struct {
 
 type txdataMarshaling struct {
 	RecipientName hexutil.Bytes
-	Price         *hexutil.Big
-	Amount        *hexutil.Big
+	GasPrice      *hexutil.Big
 	GasLimit      hexutil.Uint64
+	Amount        *hexutil.Big
 	Data          hexutil.Bytes
 	Expiration    *hexutil.Big
 	Message       hexutil.Bytes
@@ -79,7 +79,7 @@ func newTransaction(txType uint8, version uint8, chainId uint16, to *common.Addr
 	d := txdata{
 		Recipient:     to,
 		RecipientName: toName,
-		Price:         new(big.Int),
+		GasPrice:      new(big.Int),
 		Amount:        new(big.Int),
 		GasLimit:      gasLimit,
 		Data:          data,
@@ -93,7 +93,7 @@ func newTransaction(txType uint8, version uint8, chainId uint16, to *common.Addr
 		d.Amount.Set(amount)
 	}
 	if gasPrice != nil {
-		d.Price.Set(gasPrice)
+		d.GasPrice.Set(gasPrice)
 	}
 	if expiration != nil {
 		d.Expiration.Set(expiration)
@@ -148,7 +148,7 @@ func (tx *Transaction) Version() uint8       { _, version, _, _ := ParseV(tx.dat
 func (tx *Transaction) ChainId() uint16      { _, _, _, chainId := ParseV(tx.data.V); return chainId }
 func (tx *Transaction) Data() []byte         { return common.CopyBytes(tx.data.Data) }
 func (tx *Transaction) GasLimit() uint64     { return tx.data.GasLimit }
-func (tx *Transaction) GasPrice() *big.Int   { return new(big.Int).Set(tx.data.Price) }
+func (tx *Transaction) GasPrice() *big.Int   { return new(big.Int).Set(tx.data.GasPrice) }
 func (tx *Transaction) Value() *big.Int      { return new(big.Int).Set(tx.data.Amount) }
 func (tx *Transaction) Expiration() *big.Int { return new(big.Int).Set(tx.data.Expiration) }
 func (tx *Transaction) ToName() string       { return tx.data.RecipientName }
@@ -199,7 +199,7 @@ func (tx *Transaction) WithSignature(signer Signer, sig []byte) (*Transaction, e
 
 // Cost returns amount + gasprice * gaslimit.
 func (tx *Transaction) Cost() *big.Int {
-	total := new(big.Int).Mul(tx.data.Price, new(big.Int).SetUint64(tx.data.GasLimit))
+	total := new(big.Int).Mul(tx.data.GasPrice, new(big.Int).SetUint64(tx.data.GasLimit))
 	total.Add(total, tx.data.Amount)
 	return total
 }
@@ -254,7 +254,7 @@ func (tx *Transaction) String() string {
 		from,
 		to,
 		tx.data.RecipientName,
-		tx.data.Price,
+		tx.data.GasPrice,
 		tx.data.GasLimit,
 		tx.data.Amount,
 		tx.data.Data,

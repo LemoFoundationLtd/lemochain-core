@@ -18,9 +18,9 @@ func (t txdata) MarshalJSON() ([]byte, error) {
 	type txdata struct {
 		Recipient     *common.Address `json:"to" rlp:"nil"`
 		RecipientName hexutil.Bytes   `json:"toName"`
-		Price         *hexutil.Big    `json:"gasPrice" gencodec:"required"`
-		Amount        *hexutil.Big    `json:"value" gencodec:"required"`
-		GasLimit      hexutil.Uint64  `json:"gas" gencodec:"required"`
+		GasPrice      *hexutil.Big    `json:"gasPrice" gencodec:"required"`
+		GasLimit      hexutil.Uint64  `json:"gasLimit" gencodec:"required"`
+		Amount        *hexutil.Big    `json:"amount" gencodec:"required"`
 		Data          hexutil.Bytes   `json:"data" gencodec:"required"`
 		Expiration    *hexutil.Big    `json:"expirationTime" gencodec:"required"`
 		Message       hexutil.Bytes   `json:"message"`
@@ -32,9 +32,9 @@ func (t txdata) MarshalJSON() ([]byte, error) {
 	var enc txdata
 	enc.Recipient = t.Recipient
 	enc.RecipientName = hexutil.Bytes(t.RecipientName)
-	enc.Price = (*hexutil.Big)(t.Price)
-	enc.Amount = (*hexutil.Big)(t.Amount)
+	enc.GasPrice = (*hexutil.Big)(t.GasPrice)
 	enc.GasLimit = hexutil.Uint64(t.GasLimit)
+	enc.Amount = (*hexutil.Big)(t.Amount)
 	enc.Data = t.Data
 	enc.Expiration = (*hexutil.Big)(t.Expiration)
 	enc.Message = t.Message
@@ -50,9 +50,9 @@ func (t *txdata) UnmarshalJSON(input []byte) error {
 	type txdata struct {
 		Recipient     *common.Address `json:"to" rlp:"nil"`
 		RecipientName *hexutil.Bytes  `json:"toName"`
-		Price         *hexutil.Big    `json:"gasPrice" gencodec:"required"`
-		Amount        *hexutil.Big    `json:"value" gencodec:"required"`
-		GasLimit      *hexutil.Uint64 `json:"gas" gencodec:"required"`
+		GasPrice      *hexutil.Big    `json:"gasPrice" gencodec:"required"`
+		GasLimit      *hexutil.Uint64 `json:"gasLimit" gencodec:"required"`
+		Amount        *hexutil.Big    `json:"amount" gencodec:"required"`
 		Data          *hexutil.Bytes  `json:"data" gencodec:"required"`
 		Expiration    *hexutil.Big    `json:"expirationTime" gencodec:"required"`
 		Message       *hexutil.Bytes  `json:"message"`
@@ -71,18 +71,18 @@ func (t *txdata) UnmarshalJSON(input []byte) error {
 	if dec.RecipientName != nil {
 		t.RecipientName = string(*dec.RecipientName)
 	}
-	if dec.Price == nil {
+	if dec.GasPrice == nil {
 		return errors.New("missing required field 'gasPrice' for txdata")
 	}
-	t.Price = (*big.Int)(dec.Price)
-	if dec.Amount == nil {
-		return errors.New("missing required field 'value' for txdata")
-	}
-	t.Amount = (*big.Int)(dec.Amount)
+	t.GasPrice = (*big.Int)(dec.GasPrice)
 	if dec.GasLimit == nil {
-		return errors.New("missing required field 'gas' for txdata")
+		return errors.New("missing required field 'gasLimit' for txdata")
 	}
 	t.GasLimit = uint64(*dec.GasLimit)
+	if dec.Amount == nil {
+		return errors.New("missing required field 'amount' for txdata")
+	}
+	t.Amount = (*big.Int)(dec.Amount)
 	if dec.Data == nil {
 		return errors.New("missing required field 'data' for txdata")
 	}

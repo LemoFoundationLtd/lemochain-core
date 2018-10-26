@@ -94,7 +94,7 @@ func (s DefaultSigner) Hash(tx *Transaction) common.Hash {
 		tx.ChainId(),
 		tx.data.Recipient,
 		tx.data.RecipientName,
-		tx.data.Price,
+		tx.data.GasPrice,
 		tx.data.Amount,
 		tx.data.GasLimit,
 		tx.data.Data,
