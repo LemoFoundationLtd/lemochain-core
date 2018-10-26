@@ -2,6 +2,7 @@ package node
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/LemoFoundationLtd/lemochain-go/chain"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
@@ -18,9 +19,18 @@ func Test_AddPoint(t *testing.T) {
 	test01 := "11111111111111111111"
 	test02 := "111111111111"
 	test03 := "111111111111111111111111111111111111111111111111"
-	assert.Equal(t, "11.111111111111111111", AddPoint(test01))
-	assert.Equal(t, "0.000000111111111111", AddPoint(test02))
-	assert.Equal(t, "Warning : Your account balance is abnormal. Please stop any operation.", AddPoint(test03))
+
+	B01, err := addPoint(test01)
+	assert.Equal(t, "11.111111111111111111", B01)
+	assert.Nil(t, err)
+
+	B02, err := addPoint(test02)
+	assert.Equal(t, "0.000000111111111111", B02)
+	assert.Nil(t, err)
+
+	B03, err := addPoint(test03)
+	assert.Equal(t, "", B03)
+	assert.Equal(t, errors.New("Warning : Your account balance is abnormal. Please stop any operation."), err)
 }
 
 // TestAccountAPI_api account api test
@@ -34,19 +44,39 @@ func TestAccountAPI_api(t *testing.T) {
 	t.Log(addressKeyPair)
 
 	// getBalance api
-	B01 := acc.manager.GetCanonicalAccount(common.HexToAddress("0x10000")).GetBalance().String()
-	assert.Equal(t, AddPoint(B01), acc.GetBalance("0x10000"))
+	B01 := acc.manager.GetCanonicalAccount(common.HexToAddress("0x1000000000000000000000000000000000000000")).GetBalance().String()
+	b01, err := addPoint(B01)
+	assert.Nil(t, err)
+	bb01, err := acc.GetBalance("0x1000000000000000000000000000000000000000")
+	assert.Nil(t, err)
+	assert.Equal(t, b01, bb01)
 
-	B02 := acc.manager.GetCanonicalAccount(crypto.RestoreOriginalAddress("Lemo20000")).GetBalance().String()
-	assert.Equal(t, AddPoint(B02), acc.GetBalance("Lemo20000"))
+	B02 := acc.manager.GetCanonicalAccount(crypto.RestoreOriginalAddress("Lemo20000000000000000000000000000000000")).GetBalance().String()
+	b02, err := addPoint(B02)
+	assert.Nil(t, err)
+	bb02, err := acc.GetBalance("Lemo20000000000000000000000000000000000")
+	assert.Nil(t, err)
+	assert.Equal(t, b02, bb02)
 
 	B03 := acc.manager.GetCanonicalAccount(testAddr).GetBalance().String()
-	assert.Equal(t, AddPoint(B03), acc.GetBalance(testAddr.String()))
+	b03, err := addPoint(B03)
+	assert.Nil(t, err)
+	bb03, err := acc.GetBalance(testAddr.String())
+	assert.Nil(t, err)
+	assert.Equal(t, b03, bb03)
 
 	// get account api
-	assert.Equal(t, acc.manager.GetCanonicalAccount(common.HexToAddress("0x10000")), acc.GetAccount("0x10000"))
-	assert.Equal(t, acc.manager.GetCanonicalAccount(common.HexToAddress("0x20000")), acc.GetAccount("0x20000"))
-	assert.Equal(t, acc.manager.GetCanonicalAccount(common.HexToAddress(testAddr.String())), acc.GetAccount(testAddr.String()))
+	account01, err := acc.GetAccount("0x1000000000000000000000000000000000000000")
+	assert.Nil(t, err)
+	assert.Equal(t, acc.manager.GetCanonicalAccount(common.HexToAddress("0x1000000000000000000000000000000000000000")), account01)
+
+	account02, err := acc.GetAccount("0x20000")
+	assert.Equal(t, nil, account02)
+	assert.Equal(t, errors.New("Input address length is incorrect"), err)
+
+	account03, err := acc.GetAccount(testAddr.String())
+	assert.Nil(t, err)
+	assert.Equal(t, acc.manager.GetCanonicalAccount(common.HexToAddress(testAddr.String())), account03)
 
 }
 

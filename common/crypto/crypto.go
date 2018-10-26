@@ -59,6 +59,11 @@ func Keccak512(data ...[]byte) []byte {
 func CreateAddress(b common.Address, hash common.Hash) common.Address {
 	// TODO If we deploy contract A many times in contract B function. We will get same contract addresses. So we need another verifiable address seed, such as new address counter for transaction execution?
 	data, _ := rlp.EncodeToBytes([]interface{}{b, hash})
+	return encodeAddress(data)
+}
+
+// encodeAddress encodes a data to lemo address
+func encodeAddress(data []byte) common.Address {
 	// Get the first 19 bits of the hash
 	hashData := Keccak256(data)[:19]
 	// Add version number
@@ -190,9 +195,7 @@ func PubkeyToAddress(p ecdsa.PublicKey) common.Address {
 }
 
 func PubToAddress(pub []byte) common.Address {
-	hashPubBytes := Keccak256(pub[1:])[:19]
-	versionPubBytes := append([]byte{addressVersion}, hashPubBytes...)
-	return common.BytesToAddress(versionPubBytes)
+	return encodeAddress(pub[1:])
 }
 
 func zeroBytes(bytes []byte) {

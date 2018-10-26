@@ -28,6 +28,13 @@ func NewCmdFlags(ctx *cli.Context, totalFlags []cli.Flag) CmdFlags {
 	return flags
 }
 
+func (c CmdFlags) Set(name, value string) {
+	c[name] = flagInfo{
+		IsSet: true,
+		Value: value,
+	}
+}
+
 func (c CmdFlags) IsSet(name string) bool {
 	info, ok := c[name]
 	return ok && info.IsSet
@@ -110,6 +117,10 @@ func (c CmdFlags) String(name string) string {
 
 // checkExclusive verifies that only a single instance of the provided flags was set by the user.
 func (c CmdFlags) CheckExclusive(args ...cli.Flag) {
+	if len(args) <= 1 {
+		return
+	}
+
 	set := make([]string, 0, 1)
 	for i := 0; i < len(args); i++ {
 		name := args[i].GetName()
