@@ -150,15 +150,12 @@ func (b *Block) Time() *big.Int           { return new(big.Int).Set(b.Header.Tim
 func (b *Block) SignData() []byte         { return b.Header.SignData }
 func (b *Block) Extra() []byte            { return b.Header.Extra }
 
-// func (b *Block) Txs() []*Transaction               { return b.Txs }
-// func (b *Block) ChangeLogs() []*ChangeLog          { return b.ChangeLogs }
-// func (b *Block) Events() []*Event                  { return b.Events }
-// func (b *Block) ConfirmPackage() []SignData        { return b.ConfirmPackage }
-func (b *Block) SetHeader(header *Header)          { b.Header = header }
-func (b *Block) SetTxs(txs []*Transaction)         { b.Txs = txs }
-func (b *Block) SetConfirmPackage(pack []SignData) { b.ConfirmPackage = pack }
-func (b *Block) SetChangeLogs(logs []*ChangeLog)   { b.ChangeLogs = logs }
-func (b *Block) SetEvents(events []*Event)         { b.Events = events }
+func (b *Block) SetHeader(header *Header)                          { b.Header = header }
+func (b *Block) SetTxs(txs []*Transaction)                         { b.Txs = txs }
+func (b *Block) SetConfirmPackage(pack []SignData)                 { b.ConfirmPackage = pack }
+func (b *Block) SetChangeLogs(logs []*ChangeLog)                   { b.ChangeLogs = logs }
+func (b *Block) SetEvents(events []*Event)                         { b.Events = events }
+func (b *Block) SetDeputyNodes(deputyNodes deputynode.DeputyNodes) { b.DeputyNodes = deputyNodes }
 
 func (b *Block) String() string {
 	set := []string{
