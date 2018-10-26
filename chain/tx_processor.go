@@ -14,7 +14,7 @@ import (
 
 var (
 	ErrInsufficientBalanceForGas = errors.New("insufficient balance to pay for gas")
-	ErrInvalidTx                 = errors.New("block contains invalid transaction")
+	ErrInvalidTxInBlock          = errors.New("block contains invalid transaction")
 )
 
 type TxProcessor struct {
@@ -62,7 +62,7 @@ func (p *TxProcessor) Process(block *types.Block) (*types.Header, error) {
 		gas, err := p.applyTx(gp, header, tx, uint(i), block.Hash())
 		if err != nil {
 			log.Debug("Invalid transaction", "hash", tx.Hash(), "err", err)
-			return nil, ErrInvalidTx
+			return nil, ErrInvalidTxInBlock
 		}
 		gasUsed = gasUsed + gas
 		fee := new(big.Int).Mul(new(big.Int).SetUint64(gas), tx.GasPrice())
