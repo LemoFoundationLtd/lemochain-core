@@ -36,25 +36,18 @@ func (a *AccountAPI) NewKeyPair() (*crypto.AddressKeyPair, error) {
 }
 
 // addPoint digital processing
-func addPoint(balance string) (string, error) {
-	lenth := len(balance)
+func addPoint(balance string) string {
+	length := len(balance)
 	var toBytes = []byte(balance)
-	if lenth <= 18 {
+	if length <= 18 {
 		Balance := fmt.Sprintf("0.%018s", balance)
-		return Balance, nil
-	} else if lenth > 18 && lenth < 36 {
-		point := lenth % 18
-		// Extended section length
-		ToBytes := append(toBytes, '0')
-		for i := lenth; i > point; i-- {
-			ToBytes[i] = ToBytes[i-1]
-		}
-		ToBytes[point] = '.'
-
-		return string(ToBytes), nil
+		return Balance
 	} else {
+		point := length - 18
+		// Extended section length
+		Balance := string(toBytes[:point]) + "." + string(toBytes[point:])
 
-		return "", errors.New("Warning : Your account balance is abnormal. Please stop any operation.")
+		return Balance
 	}
 }
 
@@ -65,10 +58,7 @@ func (a *AccountAPI) GetBalance(LemoAddress string) (string, error) {
 		return "", err
 	}
 	balance := accounts.GetBalance().String()
-	lastBalance, err := addPoint(balance)
-	if err != nil {
-		return "", err
-	}
+	lastBalance := addPoint(balance)
 
 	return lastBalance, nil
 }
@@ -78,7 +68,7 @@ func (a *AccountAPI) GetAccount(LemoAddress string) (types.AccountAccessor, erro
 	// Determine if the input address length is valid
 	addressLen := len(LemoAddress)
 	if addressLen != 39 && addressLen != 42 {
-		return nil, errors.New("Input address length is incorrect")
+		return nil, errors.New("address length is incorrect")
 	}
 	var address common.Address
 	// Determine whether the input address is a Lemo address or a native address.
