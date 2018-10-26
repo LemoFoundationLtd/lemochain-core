@@ -147,9 +147,6 @@ func (g *Genesis) ToBlock() *types.Block {
 }
 
 func (g *Genesis) setBalance(am *account.Manager) {
-	total, _ := new(big.Int).SetString("1600000000000000000000000000", 10)
-	// oneLemo := new(big.Int).SetUint64(1000000000000000000) // 1 lemo
-	// total := new(big.Int).SetUint64(1600000000)
-	// total = total.Mul(total, oneLemo)
+	total, _ := new(big.Int).SetString("1600000000000000000000000000", 10) // 1.6 billion
 	am.GetAccount(g.LemoBase).SetBalance(total)
 }
