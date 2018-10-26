@@ -28,6 +28,13 @@ func NewCmdFlags(ctx *cli.Context, totalFlags []cli.Flag) CmdFlags {
 	return flags
 }
 
+func (c CmdFlags) Set(name, value string) {
+	c[name] = flagInfo{
+		IsSet: true,
+		Value: value,
+	}
+}
+
 func (c CmdFlags) IsSet(name string) bool {
 	info, ok := c[name]
 	return ok && info.IsSet
