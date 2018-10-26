@@ -109,15 +109,18 @@ func (bc *BlockChain) HasBlock(hash common.Hash) bool {
 	return false
 }
 
+func (bc *BlockChain) getGenesisFromDb() *types.Block {
+	block, err := bc.db.GetBlockByHeight(0)
+	if err != nil {
+		panic("can't get genesis block")
+	}
+	return block
+}
+
 func (bc *BlockChain) GetBlockByHeight(height uint32) *types.Block {
 	// genesis block
 	if height == 0 {
-		block, err := bc.db.GetBlockByHeight(0)
-		if err != nil {
-			log.Warnf("can't get block. height: 0, err: %v", err)
-			return nil
-		}
-		return block
+		return bc.getGenesisFromDb()
 	}
 
 	// not genesis block
@@ -128,15 +131,13 @@ func (bc *BlockChain) GetBlockByHeight(height uint32) *types.Block {
 	if stableBlockHeight >= height {
 		block, err = bc.db.GetBlockByHeight(height)
 		if err != nil {
-			log.Warnf("can't get block. height:%d, err: %v", height, err)
-			return nil
+			panic(fmt.Sprintf("can't get block. height:%d, err: %v", height, err))
 		}
 	} else if height <= currentBlockHeight {
 		for i := currentBlockHeight - height; i > 0; i-- {
 			block, err = bc.db.GetBlockByHash(block.ParentHash())
 			if err != nil {
-				log.Warnf("can't get block. height:%d, err: %v", height, err)
-				return nil
+				panic(fmt.Sprintf("can't get block. height:%d, err: %v", height, err))
 			}
 		}
 	} else {
@@ -191,6 +192,10 @@ func (bc *BlockChain) newBlockNotify(block *types.Block) {
 
 // InsertChain insert block of non-self to chain
 func (bc *BlockChain) InsertChain(block *types.Block, logLess bool) (err error) {
+	if err := bc.Verify(block); err != nil {
+		return err
+	}
+
 	// log.Debugf("start insert block to chain. height: %d", block.Height())
 	hash := block.Hash()
 	parHash := block.ParentHash()

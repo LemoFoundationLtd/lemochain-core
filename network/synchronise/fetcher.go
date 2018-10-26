@@ -68,8 +68,8 @@ type Fetcher struct {
 	queuedMp map[common.Hash]*newBlock // 记录每个区块hash对应的区块
 
 	// 各种回调
-	isBlockExist         blockExistFn       // 从本地链上获取块
-	verifyBlock          blockVerifierFn    // 校验块头
+	isBlockExist blockExistFn // 从本地链上获取块
+	// verifyBlock          blockVerifierFn    // 校验块头
 	broadcastBlock       blockBroadcasterFn // 广播区块
 	currentChainHeight   chainHeightFn      // 本地当前链高度
 	consensusChainHeight chainHeightFn      // 本地当前经过共识的链高度
@@ -81,7 +81,7 @@ type Fetcher struct {
 }
 
 // NewFetcher 实例化fetcher
-func NewFetcher(getLocalBlock blockExistFn, verifyBlock blockVerifierFn, broadcastBlock blockBroadcasterFn, currentChainHeight chainHeightFn, consensusChainHeight chainHeightFn, insertChain chainInsertFn, dropPeer peerDropFn) *Fetcher {
+func NewFetcher(getLocalBlock blockExistFn, broadcastBlock blockBroadcasterFn, currentChainHeight chainHeightFn, consensusChainHeight chainHeightFn, insertChain chainInsertFn, dropPeer peerDropFn) *Fetcher {
 	f := &Fetcher{
 		notifyCh:   make(chan *announce),
 		newBlockCh: make(chan *newBlock),
@@ -95,7 +95,6 @@ func NewFetcher(getLocalBlock blockExistFn, verifyBlock blockVerifierFn, broadca
 		queuedMp: make(map[common.Hash]*newBlock),
 
 		isBlockExist:         getLocalBlock,
-		verifyBlock:          verifyBlock,
 		broadcastBlock:       broadcastBlock,
 		currentChainHeight:   currentChainHeight,
 		consensusChainHeight: consensusChainHeight,
@@ -133,7 +132,7 @@ func (f *Fetcher) run() {
 				height := f.currentChainHeight()
 				f.lock.Lock()
 				op := f.queue.PopItem().(*newBlock)
-				if op.block.Height() > height+1 {
+				if op.block.Height() > height+1 || f.isBlockExist(op.block.ParentHash()) {
 					f.queue.Push(op, -float32(op.block.Height()))
 					f.lock.Unlock()
 					break
@@ -148,13 +147,6 @@ func (f *Fetcher) run() {
 				if f.isBlockExist(hash) {
 					f.forgetBlock(hash)
 					continue
-				}
-				if err := f.verifyBlock(op.block); err != nil {
-					log.Warnf("Block verify failed. height: %d. hash: %s. peer: %s. err: %v", op.block.Height(), hash.Hex(), op.origin[:16], err)
-					// if f.dropPeer != nil {
-					// 	f.dropPeer(op.origin)
-					// }
-					return
 				}
 				f.insert(op.origin, op.block)
 			}
@@ -377,12 +369,16 @@ func (f *Fetcher) enqueue(newBlock *newBlock) {
 // insert 启动个协程插入块到链上
 func (f *Fetcher) insert(peer string, block *types.Block) {
 	hash := block.Hash()
+	needBroadcast := true
 	if err := f.insertChain(block); err != nil {
+		needBroadcast = false
 		log.Warnf("fetcher block insert failed. height: %d. hash: %s. error: %v", block.Height(), hash.Hex(), err)
 		return
 	}
 	go func() {
 		f.done <- hash
-		f.broadcastBlock(block, false)
+		if needBroadcast {
+			f.broadcastBlock(block, false)
+		}
 	}()
 }
