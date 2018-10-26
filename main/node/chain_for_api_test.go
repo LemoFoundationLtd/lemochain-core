@@ -17,7 +17,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/common/flag"
-	"gopkg.in/urfave/cli.v1"
 )
 
 type blockInfo struct {
@@ -120,7 +119,7 @@ func clearDB() {
 func newChain() *chain.BlockChain {
 	db := newDB()
 	newBlockCh := make(chan *types.Block)
-	bc, err := chain.NewBlockChain(uint64(chainID), chain.NewDpovp(10*1000, 3*1000), db, newBlockCh, flag.NewCmdFlags(&cli.Context{}, []cli.Flag{}))
+	bc, err := chain.NewBlockChain(chainID, chain.NewDpovp(10*1000, db), db, newBlockCh, flag.CmdFlags{})
 	if err != nil {
 		panic(err)
 	}
