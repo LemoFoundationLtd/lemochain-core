@@ -7,7 +7,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
-	"github.com/testify/assert"
+	"github.com/stretchr/testify/assert"
 	"math/big"
 	"testing"
 	"time"

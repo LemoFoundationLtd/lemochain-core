@@ -1,7 +1,7 @@
 package base26
 
 import (
-	"github.com/testify/assert"
+	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
