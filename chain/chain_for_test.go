@@ -138,7 +138,8 @@ func newDB() protocol.ChainDB {
 		newBlock := makeBlock(db, defaultBlockInfos[i], i < 3)
 		defaultBlocks = append(defaultBlocks, newBlock)
 	}
-	err = db.SetStableBlock(defaultBlockInfos[1].hash)
+	// err = db.SetStableBlock(defaultBlockInfos[1].hash)
+	err = db.SetStableBlock(defaultBlocks[1].Hash())
 	if err != nil {
 		panic(err)
 	}
