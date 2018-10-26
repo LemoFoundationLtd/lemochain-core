@@ -2,6 +2,7 @@ package types
 
 import (
 	"fmt"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto/sha3"
 	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
@@ -25,16 +26,18 @@ type Header struct {
 	GasUsed     uint64         `json:"gasUsed"          gencodec:"required"`
 	Time        *big.Int       `json:"timestamp"        gencodec:"required"`
 	SignData    []byte         `json:"signData"         gencodec:"required"`
+	DeputyRoot  []byte         `json:"deputyRoot"       gencodec:"required"`
 	Extra       []byte         `json:"extraData"        gencodec:"required"` // 最大256byte
 }
 
 type headerMarshaling struct {
-	GasLimit hexutil.Uint64
-	GasUsed  hexutil.Uint64
-	Time     *hexutil.Big
-	SignData hexutil.Bytes
-	Extra    hexutil.Bytes
-	Hash     common.Hash `json:"hash"`
+	GasLimit   hexutil.Uint64
+	GasUsed    hexutil.Uint64
+	Time       *hexutil.Big
+	SignData   hexutil.Bytes
+	DeputyRoot hexutil.Bytes
+	Extra      hexutil.Bytes
+	Hash       common.Hash `json:"hash"`
 }
 
 // 签名信息
@@ -56,15 +59,17 @@ type Block struct {
 	ChangeLogs     []*ChangeLog
 	Events         []*Event
 	ConfirmPackage []SignData
+	DeputyNodes    deputynode.DeputyNodes
 }
 
-func NewBlock(header *Header, txs []*Transaction, changeLog []*ChangeLog, events []*Event, confirmPackage []SignData) *Block {
+func NewBlock(header *Header, txs []*Transaction, changeLog []*ChangeLog, events []*Event, confirmPackage []SignData, deputyNodes deputynode.DeputyNodes) *Block {
 	return &Block{
 		Header:         header,
 		Txs:            txs,
 		ChangeLogs:     changeLog,
 		Events:         events,
 		ConfirmPackage: confirmPackage,
+		DeputyNodes:    deputyNodes,
 	}
 }
 
@@ -84,6 +89,7 @@ func (h *Header) Hash() common.Hash {
 		h.GasLimit,
 		h.GasUsed,
 		h.Time,
+		h.DeputyRoot,
 		h.Extra,
 	})
 }
@@ -119,6 +125,7 @@ func (h *Header) String() string {
 		fmt.Sprintf("GasUsed: %d", h.GasUsed),
 		fmt.Sprintf("Time: %v", h.Time),
 		fmt.Sprintf("SignData: %s", common.ToHex(h.SignData[:])),
+		fmt.Sprintf("DeputyNodes: %s", common.ToHex(h.DeputyRoot)),
 	}
 	if len(h.Extra) >= 0 {
 		set = append(set, fmt.Sprintf("Extra: %s", common.ToHex(h.Extra[:])))
@@ -126,8 +133,6 @@ func (h *Header) String() string {
 
 	return fmt.Sprintf("{%s}", strings.Join(set, ", "))
 }
-
-// func (b *Block) Header() *Header { return b.Header }
 
 func (b *Block) Hash() common.Hash        { return b.Header.Hash() }
 func (b *Block) Height() uint32           { return b.Header.Height }
@@ -144,15 +149,12 @@ func (b *Block) Time() *big.Int           { return new(big.Int).Set(b.Header.Tim
 func (b *Block) SignData() []byte         { return b.Header.SignData }
 func (b *Block) Extra() []byte            { return b.Header.Extra }
 
-// func (b *Block) Txs() []*Transaction               { return b.Txs }
-// func (b *Block) ChangeLogs() []*ChangeLog          { return b.ChangeLogs }
-// func (b *Block) Events() []*Event                  { return b.Events }
-// func (b *Block) ConfirmPackage() []SignData        { return b.ConfirmPackage }
-func (b *Block) SetHeader(header *Header)          { b.Header = header }
-func (b *Block) SetTxs(txs []*Transaction)         { b.Txs = txs }
-func (b *Block) SetConfirmPackage(pack []SignData) { b.ConfirmPackage = pack }
-func (b *Block) SetChangeLogs(logs []*ChangeLog)   { b.ChangeLogs = logs }
-func (b *Block) SetEvents(events []*Event)         { b.Events = events }
+func (b *Block) SetHeader(header *Header)                          { b.Header = header }
+func (b *Block) SetTxs(txs []*Transaction)                         { b.Txs = txs }
+func (b *Block) SetConfirmPackage(pack []SignData)                 { b.ConfirmPackage = pack }
+func (b *Block) SetChangeLogs(logs []*ChangeLog)                   { b.ChangeLogs = logs }
+func (b *Block) SetEvents(events []*Event)                         { b.Events = events }
+func (b *Block) SetDeputyNodes(deputyNodes deputynode.DeputyNodes) { b.DeputyNodes = deputyNodes }
 
 func (b *Block) String() string {
 	set := []string{

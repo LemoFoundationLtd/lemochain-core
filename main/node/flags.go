@@ -29,12 +29,12 @@ var (
 	MaxPeersFlag = cli.IntFlag{
 		Name:  common.MaxPeers,
 		Usage: "Maximum number of network peers",
-		Value: DefaultNodeConfig.P2P.MaxPeerNum,
+		Value: DefaultP2pMaxPeerNum,
 	}
 	ListenPortFlag = cli.IntFlag{
 		Name:  common.ListenPort,
 		Usage: "Network listening port",
-		Value: DefaultNodeConfig.P2P.Port,
+		Value: DefaultP2PPort,
 	}
 	ExtraDataFlag = cli.StringFlag{
 		Name:  common.ExtraData,
@@ -67,7 +67,7 @@ var (
 	RPCVirtualHostsFlag = cli.StringFlag{
 		Name:  common.RPCVirtualHosts,
 		Usage: "Comma separated list of virtual hostnames from which to accept requests(server enforced). Accepts '*' wildcard",
-		Value: strings.Join(DefaultNodeConfig.HTTPVirtualHosts, ","),
+		Value: strings.Join(DefaultHTTPVirtualHosts, ","),
 	}
 	IPCDisabledFlag = cli.BoolFlag{
 		Name:  common.IPCDisabled,
@@ -129,7 +129,7 @@ func setP2PConfig(flags flag.CmdFlags, cfg *p2p.Config) {
 }
 
 // setHttp set http-rpc
-func setHttp(flags flag.CmdFlags, cfg *NodeConfig) {
+func setHttp(flags flag.CmdFlags, cfg *Config) {
 	if flags.Bool(RPCEnabledFlag.Name) && cfg.HTTPHost == "" {
 		cfg.HTTPHost = "127.0.0.1"
 		if flags.IsSet(RPCListenAddrFlag.Name) {
@@ -150,7 +150,7 @@ func splitAndTrim(input string) []string {
 }
 
 // setIPC set ipc
-func setIPC(flags flag.CmdFlags, cfg *NodeConfig) {
+func setIPC(flags flag.CmdFlags, cfg *Config) {
 	flags.CheckExclusive(IPCDisabledFlag, IPCPathFlag)
 	if flags.Bool(IPCDisabledFlag.Name) {
 		cfg.IPCPath = ""
@@ -162,7 +162,7 @@ func setIPC(flags flag.CmdFlags, cfg *NodeConfig) {
 }
 
 // setWS set web socket
-func setWS(flags flag.CmdFlags, cfg *NodeConfig) {
+func setWS(flags flag.CmdFlags, cfg *Config) {
 	if flags.Bool(WSEnabledFlag.Name) && cfg.WSHost == "" {
 		cfg.WSHost = "127.0.0.1"
 		if flags.IsSet(WSListenAddrFlag.Name) {
@@ -173,10 +173,18 @@ func setWS(flags flag.CmdFlags, cfg *NodeConfig) {
 	}
 }
 
-func setNodeConfig(flags flag.CmdFlags, cfg *NodeConfig) {
+func getNodeConfig(flags flag.CmdFlags) *Config {
+	cfg := new(Config)
 	cfg.DataDir = flags.String(DataDirFlag.Name)
+	if cfg.DataDir != "" {
+		absDataDir, err := filepath.Abs(cfg.DataDir)
+		if err == nil {
+			cfg.DataDir = absDataDir
+		}
+	}
 	setP2PConfig(flags, &cfg.P2P)
 	setIPC(flags, cfg)
 	setHttp(flags, cfg)
 	setWS(flags, cfg)
+	return cfg
 }

@@ -261,7 +261,7 @@ func (p *TxProcessor) FillHeader(header *types.Header, txs types.Transactions, g
 	header.GasUsed = gasUsed
 	header.TxRoot = types.DeriveTxsSha(txs)
 	// Pay miners at the end of their tenure. This method increases miners' balance.
-	p.chain.engine.Finalize(header)
+	p.chain.engine.Finalize(header, p.am)
 	// Update version trie, storage trie.
 	err := p.am.Finalise()
 	if err != nil {

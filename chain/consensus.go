@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
+	"github.com/LemoFoundationLtd/lemochain-go/store/protocol"
 	"time"
 )
 
@@ -18,25 +20,22 @@ type Engine interface {
 
 	Seal(header *types.Header, txs []*types.Transaction, changeLog []*types.ChangeLog, events []*types.Event) (*types.Block, error)
 
-	Finalize(header *types.Header)
+	Finalize(header *types.Header, am *account.Manager)
 }
 
 type Dpovp struct {
 	timeoutTime   int64
 	blockInternal int64
-	bc            *BlockChain
+	db            protocol.ChainDB
 }
 
-func NewDpovp(timeout, blockInternal int64) *Dpovp {
+func NewDpovp(timeout int64, db protocol.ChainDB) *Dpovp {
 	dpovp := &Dpovp{
 		timeoutTime:   timeout,
-		blockInternal: blockInternal,
+		blockInternal: 3000, // todo
+		db:            db,
 	}
 	return dpovp
-}
-
-func (d *Dpovp) SetBlockChain(bc *BlockChain) {
-	d.bc = bc
 }
 
 // verifyHeaderTime verify that the block timestamp is less than the current time
@@ -58,7 +57,7 @@ func verifyHeaderSignData(block *types.Block) error {
 	if err != nil {
 		return err
 	}
-	node := deputynode.Instance().GetNodeByAddress(block.Height(), header.LemoBase)
+	node := deputynode.Instance().GetDeputyByAddress(block.Height(), header.LemoBase)
 	if node == nil || bytes.Compare(pubKey[1:], node.NodeID) != 0 {
 		return fmt.Errorf("illegal block. height:%d, hash:%s", header.Height, header.Hash().Hex())
 	}
@@ -78,12 +77,12 @@ func (d *Dpovp) VerifyHeader(block *types.Block) error {
 
 	// verify extra data
 	if len(block.Header.Extra) > MaxExtraDataLen {
-		return fmt.Errorf("extra data's max len is %d bytes, this block's length is %d", MaxExtraDataLen, len(block.Header.Extra))
+		return fmt.Errorf("extra data's max len is %d bytes, current length is %d", MaxExtraDataLen, len(block.Header.Extra))
 	}
 
 	// Verify that the node is out of the block ?
 	header := block.Header
-	parent := d.bc.GetBlock(header.ParentHash, header.Height-1)
+	parent, _ := d.db.GetBlock(header.ParentHash, header.Height-1)
 	if parent == nil {
 		return fmt.Errorf("can't get parent block. height:%d, hash:%s", header.Height-1, header.ParentHash)
 	}
@@ -98,17 +97,12 @@ func (d *Dpovp) VerifyHeader(block *types.Block) error {
 		log.Debugf("verifyHeader: verify failed. timeSpan:%d is smaller than blockInternal:%d -1", timeSpan, d.blockInternal)
 		return fmt.Errorf("verifyHeader: block internal need to large than %d millsecond -1", d.blockInternal)
 	}
-	nodeCount := deputynode.Instance().GetDeputyNodesCount() // The total number of nodes
+	nodeCount := deputynode.Instance().GetDeputiesCount() // The total number of nodes
 	slot := deputynode.Instance().GetSlot(header.Height, parent.Header.LemoBase, header.LemoBase)
 	oneLoopTime := int64(nodeCount) * d.timeoutTime // All timeout times for a round of deputy nodes
 	oldTimeSpan := timeSpan
 	// There's only one out block node
 	if nodeCount == 1 {
-		// if timeSpan < d.blockInternal { // The time interval between blocks should be at least blockInternal
-		// 	log.Debug("verifyHeader: Only one node, but not sleep enough time -1")
-		// 	return fmt.Errorf("verifyHeader: Only one node, but not sleep enough time -1")
-		// }
-		// log.Debug("verifyHeader: nodeCount == 1")
 		return nil
 	}
 
@@ -152,21 +146,17 @@ func (d *Dpovp) VerifyHeader(block *types.Block) error {
 
 // Seal packaged into a block
 func (d *Dpovp) Seal(header *types.Header, txs []*types.Transaction, changeLog []*types.ChangeLog, events []*types.Event) (*types.Block, error) {
-	block := types.NewBlock(header, txs, changeLog, events, nil)
+	block := types.NewBlock(header, txs, changeLog, events, nil, nil)
 	return block, nil
 }
 
 // Finalize
-func (d *Dpovp) Finalize(header *types.Header) {
-	d.handOutRewards(header.Height)
-}
-
-// handOutRewards issue rewards
-func (d *Dpovp) handOutRewards(height uint32) {
-	if deputynode.Instance().TimeToHandOutRewards(height) {
-		rewards := deputynode.CalcReward(height)
+func (d *Dpovp) Finalize(header *types.Header, am *account.Manager) {
+	// handout rewards
+	if deputynode.Instance().TimeToHandOutRewards(header.Height) {
+		rewards := deputynode.CalcReward(header.Height)
 		for _, item := range rewards {
-			account := d.bc.AccountManager().GetAccount(item.Address)
+			account := am.GetAccount(item.Address)
 			balance := account.GetBalance()
 			balance.Add(balance, item.Reward)
 			account.SetBalance(balance)

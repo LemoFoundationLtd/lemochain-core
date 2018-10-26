@@ -7,7 +7,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
-	"github.com/testify/assert"
+	"github.com/stretchr/testify/assert"
 	"math/big"
 	"testing"
 	"time"
@@ -125,7 +125,7 @@ func signTestBlock(deputyPrivate string, block *types.Block) ([]byte, error) {
 
 // newTestBlock 创建一个函数，专门用来生成符合测试用例所用的区块
 func newTestBlock(dpovp *Dpovp, parentHash common.Hash, height uint32, lemoBase common.Address, timeStamp *big.Int, signPrivate string, save bool) (*types.Block, error) {
-	testBlock := makeBlock(dpovp.bc.dbOpe, blockInfo{
+	testBlock := makeBlock(dpovp.db.dbOpe, blockInfo{
 		hash:        common.Hash{},
 		parentHash:  parentHash,
 		height:      height,
@@ -298,7 +298,7 @@ func TestDpovp_VerifyHeader02(t *testing.T) {
 		t.Error(err)
 	}
 	// 获取当前的共识节点数
-	// nodeCount := deputynode.Instance().GetDeputyNodesCount()
+	// nodeCount := deputynode.Instance().GetDeputiesCount()
 	// t.Log("deputy node number is ", nodeCount) // 打印当前代理节点数,结果应该为1
 	// t.Log(dpovp.VerifyHeader(block02))
 
@@ -449,9 +449,9 @@ func TestDpovp_Finalize(t *testing.T) {
 	// 测试挖出的块高度不满足发放奖励高度的时候
 	dpovp.handOutRewards(9999)
 	dpovp.handOutRewards(19998)
-	account01 := dpovp.bc.AccountManager().GetAccount(common.HexToAddress(block01LemoBase))
+	account01 := dpovp.db.AccountManager().GetAccount(common.HexToAddress(block01LemoBase))
 	t.Log("When there is no reward,node01Balance = ", account01.GetBalance())
-	account02 := dpovp.bc.AccountManager().GetAccount(common.HexToAddress(block02LemoBase))
+	account02 := dpovp.db.AccountManager().GetAccount(common.HexToAddress(block02LemoBase))
 	t.Log("When there is no reward,node01Balance = ", account02.GetBalance())
 	// 测试挖出的块高度满足发放奖励高度的时候
 	dpovp.handOutRewards(11001)

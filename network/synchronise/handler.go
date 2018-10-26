@@ -120,7 +120,7 @@ func (pm *ProtocolManager) broadcastCurrentBlock(block *types.Block, hasBody boo
 // isPeerDeputyNode 判断节点是否为共识节点
 func (pm *ProtocolManager) isPeerDeputyNode(height uint32, id string) bool {
 	nodeID := common.FromHex(id)
-	node := deputynode.Instance().GetNodeByNodeID(height, nodeID)
+	node := deputynode.Instance().GetDeputyByNodeID(height, nodeID)
 	if node == nil {
 		return false
 	}
@@ -129,7 +129,7 @@ func (pm *ProtocolManager) isPeerDeputyNode(height uint32, id string) bool {
 
 // isSelfDeputyNode 本节点是否为共识节点
 func (pm *ProtocolManager) isSelfDeputyNode() bool {
-	node := deputynode.Instance().GetNodeByNodeID(pm.blockchain.CurrentBlock().Height(), pm.nodeID)
+	node := deputynode.Instance().GetDeputyByNodeID(pm.blockchain.CurrentBlock().Height(), pm.nodeID)
 	if node == nil {
 		return false
 	}
@@ -314,7 +314,7 @@ func (pm *ProtocolManager) handleMsg(p *peerConnection) error {
 		if err := msg.Decode(&query); err != nil {
 			return errResp(protocol.ErrDecode, "%v: %v", msg, err)
 		}
-		block := pm.blockchain.GetBlock(query.Hash, query.Height)
+		block := pm.blockchain.GetBlockByHash(query.Hash)
 		p.peer.send(protocol.SingleBlockMsg, block)
 	case protocol.SingleBlockMsg: // 收到一个获取区块返回
 		var block types.Block
@@ -432,7 +432,7 @@ func (pm *ProtocolManager) minedBroadcastLoop() {
 				log.Warn("Can't broadcast nil block ")
 				return
 			}
-			pm.blockchain.MineNewBlock(block)
+			pm.blockchain.SaveMinedBlock(block)
 			for id, p := range pm.peers.peers {
 				if pm.isPeerDeputyNode(block.Height(), id) {
 					go p.peer.send(protocol.NewBlockMsg, &block)

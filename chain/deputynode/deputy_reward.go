@@ -17,7 +17,7 @@ type DeputyReward struct {
 // CalcReward 计算收益
 func CalcReward(height uint32) []*DeputyReward {
 	rewards := make([]*DeputyReward, 0)
-	nodes := Instance().getNodesByHeight(height)
+	nodes := Instance().getDeputiesByHeight(height)
 	totalVotes := new(big.Int)
 	for _, node := range nodes {
 		totalVotes.Add(totalVotes, new(big.Int).SetUint64(node.Votes))

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/main/console"
 	"github.com/LemoFoundationLtd/lemochain-go/main/node"
 	"github.com/LemoFoundationLtd/lemochain-go/network/rpc"
@@ -40,7 +41,7 @@ func localConsole(ctx *cli.Context) error {
 
 	client, err := n.Attach()
 	if err != nil {
-		node.Fatalf("Failed to attach to the inproc glemo: %v", err)
+		log.Critf("Failed to attach to the inproc glemo: %v", err)
 	}
 	startConsole(client)
 	return nil
@@ -50,11 +51,11 @@ func remoteConsole(ctx *cli.Context) error {
 	// Attach to a remotely running glemo instance and start the JavaScript console
 	endpoint := ctx.Args().First()
 	if endpoint == "" {
-		node.Fatalf("Unable to attach to remote glemo: no ipc path")
+		log.Critf("Unable to attach to remote glemo: no ipc path")
 	}
 	client, err := rpc.Dial(endpoint)
 	if err != nil {
-		node.Fatalf("Unable to attach to remote glemo: %v", err)
+		log.Critf("Unable to attach to remote glemo: %v", err)
 	}
 	startConsole(client)
 	return nil
@@ -68,7 +69,7 @@ func startConsole(client *rpc.Client) {
 
 	consoleObj, err := console.New(config)
 	if err != nil {
-		node.Fatalf("Failed to start the JavaScript console: %v", err)
+		log.Critf("Failed to start the JavaScript console: %v", err)
 	}
 	defer consoleObj.Stop(false)
 	// Otherwise print the welcome screen and enter interactive mode
