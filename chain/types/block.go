@@ -62,14 +62,13 @@ type Block struct {
 	DeputyNodes    deputynode.DeputyNodes
 }
 
-func NewBlock(header *Header, txs []*Transaction, changeLog []*ChangeLog, events []*Event, confirmPackage []SignData, deputyNodes deputynode.DeputyNodes) *Block {
+func NewBlock(header *Header, txs []*Transaction, changeLog []*ChangeLog, events []*Event, confirmPackage []SignData) *Block {
 	return &Block{
 		Header:         header,
 		Txs:            txs,
 		ChangeLogs:     changeLog,
 		Events:         events,
 		ConfirmPackage: confirmPackage,
-		DeputyNodes:    deputyNodes,
 	}
 }
 

@@ -146,7 +146,7 @@ func (d *Dpovp) VerifyHeader(block *types.Block) error {
 
 // Seal packaged into a block
 func (d *Dpovp) Seal(header *types.Header, txs []*types.Transaction, changeLog []*types.ChangeLog, events []*types.Event) (*types.Block, error) {
-	block := types.NewBlock(header, txs, changeLog, events, nil, nil)
+	block := types.NewBlock(header, txs, changeLog, events, nil)
 	return block, nil
 }
 
