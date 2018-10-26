@@ -8,6 +8,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
+	"github.com/LemoFoundationLtd/lemochain-go/common/flag"
 	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"github.com/LemoFoundationLtd/lemochain-go/store/protocol"
 	"math/big"
@@ -116,7 +117,7 @@ func clearDB() {
 func newChain() *BlockChain {
 	db := newDB()
 	newBlockCh := make(chan *types.Block)
-	bc, err := NewBlockChain(uint64(chainID), NewDpovp(10*1000, 3*1000), db, newBlockCh, map[string]string{})
+	bc, err := NewBlockChain(chainID, NewDpovp(10*1000, db), db, newBlockCh, flag.CmdFlags{})
 	if err != nil {
 		panic(err)
 	}
@@ -137,7 +138,8 @@ func newDB() protocol.ChainDB {
 		newBlock := makeBlock(db, defaultBlockInfos[i], i < 3)
 		defaultBlocks = append(defaultBlocks, newBlock)
 	}
-	err = db.SetStableBlock(defaultBlockInfos[1].hash)
+	// err = db.SetStableBlock(defaultBlockInfos[1].hash)
+	err = db.SetStableBlock(defaultBlocks[1].Hash())
 	if err != nil {
 		panic(err)
 	}

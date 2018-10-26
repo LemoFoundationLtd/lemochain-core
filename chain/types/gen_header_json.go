@@ -28,6 +28,7 @@ func (h Header) MarshalJSON() ([]byte, error) {
 		GasUsed     hexutil.Uint64 `json:"gasUsed"          gencodec:"required"`
 		Time        *hexutil.Big   `json:"timestamp"        gencodec:"required"`
 		SignData    hexutil.Bytes  `json:"signData"         gencodec:"required"`
+		DeputyRoot  hexutil.Bytes  `json:"deputyRoot"       gencodec:"required"`
 		Extra       hexutil.Bytes  `json:"extraData"        gencodec:"required"`
 		Hash        common.Hash    `json:"hash"`
 	}
@@ -44,6 +45,7 @@ func (h Header) MarshalJSON() ([]byte, error) {
 	enc.GasUsed = hexutil.Uint64(h.GasUsed)
 	enc.Time = (*hexutil.Big)(h.Time)
 	enc.SignData = h.SignData
+	enc.DeputyRoot = h.DeputyRoot
 	enc.Extra = h.Extra
 	enc.Hash = h.Hash()
 	return json.Marshal(&enc)
@@ -64,6 +66,7 @@ func (h *Header) UnmarshalJSON(input []byte) error {
 		GasUsed     *hexutil.Uint64 `json:"gasUsed"          gencodec:"required"`
 		Time        *hexutil.Big    `json:"timestamp"        gencodec:"required"`
 		SignData    *hexutil.Bytes  `json:"signData"         gencodec:"required"`
+		DeputyRoot  *hexutil.Bytes  `json:"deputyRoot"       gencodec:"required"`
 		Extra       *hexutil.Bytes  `json:"extraData"        gencodec:"required"`
 	}
 	var dec Header
@@ -118,6 +121,10 @@ func (h *Header) UnmarshalJSON(input []byte) error {
 		return errors.New("missing required field 'signData' for Header")
 	}
 	h.SignData = *dec.SignData
+	if dec.DeputyRoot == nil {
+		return errors.New("missing required field 'deputyRoot' for Header")
+	}
+	h.DeputyRoot = *dec.DeputyRoot
 	if dec.Extra == nil {
 		return errors.New("missing required field 'extraData' for Header")
 	}

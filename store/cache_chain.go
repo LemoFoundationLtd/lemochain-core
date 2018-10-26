@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
@@ -11,11 +12,12 @@ import (
 )
 
 type sBlock struct {
-	Header     *types.Header
-	Txs        []*types.Transaction
-	ChangeLogs []*types.ChangeLog
-	Events     []*types.Event
-	Confirms   []types.SignData
+	Header      *types.Header
+	Txs         []*types.Transaction
+	ChangeLogs  []*types.ChangeLog
+	Events      []*types.Event
+	Confirms    []types.SignData
+	DeputyNodes deputynode.DeputyNodes
 }
 
 type CacheChain struct {
@@ -31,11 +33,12 @@ func btoSb(block *types.Block) (*sBlock, error) {
 	}
 
 	sb := &sBlock{
-		Header:     block.Header,
-		Txs:        block.Txs,
-		ChangeLogs: block.ChangeLogs,
-		Events:     block.Events,
-		Confirms:   block.ConfirmPackage,
+		Header:      block.Header,
+		Txs:         block.Txs,
+		ChangeLogs:  block.ChangeLogs,
+		Events:      block.Events,
+		Confirms:    block.ConfirmPackage,
+		DeputyNodes: block.DeputyNodes,
 	}
 
 	if block.ConfirmPackage == nil {
@@ -56,6 +59,7 @@ func sBtoB(sb *sBlock) (*types.Block, error) {
 	block.SetChangeLogs(sb.ChangeLogs)
 	block.SetEvents(sb.Events)
 	block.SetConfirmPackage(sb.Confirms)
+	block.SetDeputyNodes(sb.DeputyNodes)
 
 	return block, nil
 }
@@ -295,7 +299,7 @@ func (chain *CacheChain) SetBlock(hash common.Hash, block *types.Block) error {
 			chain.Accounts[hash] = chain.cloneAccounts(accounts)
 		}
 
-		fmt.Println("[store]INSERT BLOCK TO CACHE.HASH：", fmt.Sprintf("[%s]", hash.Hex()))
+		log.Infof("[store]INSERT BLOCK TO CACHE.HASH：", fmt.Sprintf("[%s]", hash.Hex()))
 		chain.Blocks[hash] = block
 	}
 

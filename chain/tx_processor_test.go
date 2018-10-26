@@ -6,6 +6,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto/secp256k1"
+	"github.com/LemoFoundationLtd/lemochain-go/common/flag"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"github.com/stretchr/testify/assert"
@@ -19,11 +20,10 @@ func TestNewTxProcessor(t *testing.T) {
 	assert.NotEqual(t, (*vm.Config)(nil), p.cfg)
 	assert.Equal(t, false, p.cfg.Debug)
 
-	chain, _ = NewBlockChain(uint64(chainID), NewDpovp(10*1000, 3*1000), chain.dbOpe, chain.newBlockCh, map[string]string{
-		common.Debug: "1",
-	})
+	flags := flag.CmdFlags{}
+	flags.Set(common.Debug, "1")
+	chain, _ = NewBlockChain(chainID, NewDpovp(10*1000, chain.db), chain.db, chain.newBlockCh, flags)
 	p = NewTxProcessor(chain)
-	assert.Equal(t, true, p.cfg.Debug)
 }
 
 // test valid block processing

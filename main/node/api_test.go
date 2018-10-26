@@ -2,6 +2,7 @@ package node
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/LemoFoundationLtd/lemochain-go/chain"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
@@ -18,9 +19,15 @@ func Test_AddPoint(t *testing.T) {
 	test01 := "11111111111111111111"
 	test02 := "111111111111"
 	test03 := "111111111111111111111111111111111111111111111111"
-	assert.Equal(t, "11.111111111111111111", AddPoint(test01))
-	assert.Equal(t, "0.000000111111111111", AddPoint(test02))
-	assert.Equal(t, "Warning : Your account balance is abnormal. Please stop any operation.", AddPoint(test03))
+
+	B01 := addPoint(test01)
+	assert.Equal(t, "11.111111111111111111", B01)
+
+	B02 := addPoint(test02)
+	assert.Equal(t, "0.000000111111111111", B02)
+
+	B03 := addPoint(test03)
+	assert.Equal(t, "111111111111111111111111111111.111111111111111111", B03)
 }
 
 // TestAccountAPI_api account api test
@@ -34,19 +41,36 @@ func TestAccountAPI_api(t *testing.T) {
 	t.Log(addressKeyPair)
 
 	// getBalance api
-	B01 := acc.manager.GetCanonicalAccount(common.HexToAddress("0x10000")).GetBalance().String()
-	assert.Equal(t, AddPoint(B01), acc.GetBalance("0x10000"))
+	B01 := acc.manager.GetCanonicalAccount(common.HexToAddress("0x1000000000000000000000000000000000000000")).GetBalance().String()
+	b01 := addPoint(B01)
+	bb01, err := acc.GetBalance("0x1000000000000000000000000000000000000000")
+	assert.Nil(t, err)
+	assert.Equal(t, b01, bb01)
 
-	B02 := acc.manager.GetCanonicalAccount(crypto.RestoreOriginalAddress("Lemo20000")).GetBalance().String()
-	assert.Equal(t, AddPoint(B02), acc.GetBalance("Lemo20000"))
+	B02 := acc.manager.GetCanonicalAccount(crypto.RestoreOriginalAddress("Lemo20000000000000000000000000000000000")).GetBalance().String()
+	b02 := addPoint(B02)
+	bb02, err := acc.GetBalance("Lemo20000000000000000000000000000000000")
+	assert.Nil(t, err)
+	assert.Equal(t, b02, bb02)
 
 	B03 := acc.manager.GetCanonicalAccount(testAddr).GetBalance().String()
-	assert.Equal(t, AddPoint(B03), acc.GetBalance(testAddr.String()))
+	b03 := addPoint(B03)
+	bb03, err := acc.GetBalance(testAddr.String())
+	assert.Nil(t, err)
+	assert.Equal(t, b03, bb03)
 
 	// get account api
-	assert.Equal(t, acc.manager.GetCanonicalAccount(common.HexToAddress("0x10000")), acc.GetAccount("0x10000"))
-	assert.Equal(t, acc.manager.GetCanonicalAccount(common.HexToAddress("0x20000")), acc.GetAccount("0x20000"))
-	assert.Equal(t, acc.manager.GetCanonicalAccount(common.HexToAddress(testAddr.String())), acc.GetAccount(testAddr.String()))
+	account01, err := acc.GetAccount("0x1000000000000000000000000000000000000000")
+	assert.Nil(t, err)
+	assert.Equal(t, acc.manager.GetCanonicalAccount(common.HexToAddress("0x1000000000000000000000000000000000000000")), account01)
+
+	account02, err := acc.GetAccount("0x20000")
+	assert.Equal(t, nil, account02)
+	assert.Equal(t, errors.New("address length is incorrect"), err)
+
+	account03, err := acc.GetAccount(testAddr.String())
+	assert.Nil(t, err)
+	assert.Equal(t, acc.manager.GetCanonicalAccount(common.HexToAddress(testAddr.String())), account03)
 
 }
 
@@ -56,10 +80,10 @@ func TestChainAPI_api(t *testing.T) {
 	c := NewChainAPI(bc)
 
 	// getBlockByHash
-	exBlock1 := c.chain.GetBlockByHash(common.HexToHash("0x5afb6907e01a243325ce7c6e56e463f777080f6e5277ba2ec83928329c8dce61"))
-	assert.Equal(t, exBlock1, c.GetBlockByHash("0x5afb6907e01a243325ce7c6e56e463f777080f6e5277ba2ec83928329c8dce61", true))
+	exBlock1 := c.chain.GetBlockByHash(common.HexToHash("0x4bbd2e3445844f122be9c77a8d85f1f547cba64f535f9f42ad864048644e853b"))
+	assert.Equal(t, exBlock1, c.GetBlockByHash("0x4bbd2e3445844f122be9c77a8d85f1f547cba64f535f9f42ad864048644e853b", true))
 	exBlock1.Txs = []*types.Transaction{} // set block txs to null
-	assert.Equal(t, exBlock1, c.GetBlockByHash("0x5afb6907e01a243325ce7c6e56e463f777080f6e5277ba2ec83928329c8dce61", false))
+	assert.Equal(t, exBlock1, c.GetBlockByHash("0x4bbd2e3445844f122be9c77a8d85f1f547cba64f535f9f42ad864048644e853b", false))
 
 	// getBlockByHeight
 	exBlock2 := c.chain.GetBlockByHeight(1)
@@ -140,3 +164,4 @@ func TestTxAPI_api(t *testing.T) {
 // 	assert.Equal(t, "0x015780F8456F9c1532645087a19DcF9a7e0c7F97", m.LemoBase())
 //
 // }
+//

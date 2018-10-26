@@ -36,18 +36,22 @@ func initGenesis(ctx *cli.Context) error {
 	// open special genesis config file
 	genesisFile := ctx.Args().First()
 	if len(genesisFile) == 0 {
-		node.Fatalf("Must supply genesis json file path")
+		log.Crit("Must supply genesis json file path")
 	}
 	file, err := os.Open(genesisFile)
 	if err != nil {
-		node.Fatalf("Failed to open genesis file:%v ", err)
+		log.Critf("Failed to open genesis file:%v ", err)
 	}
 	defer file.Close()
 
 	// decode genesis config file string
 	genesis := new(chain.Genesis)
 	if err := json.NewDecoder(file).Decode(genesis); err != nil {
-		node.Fatalf("invalid genesis file: %v", err)
+		log.Critf("invalid genesis file: %v", err)
+	}
+	// check deputy nodes
+	if len(genesis.DeputyNodes) == 0 {
+		panic("default deputy nodes can't be empty")
 	}
 
 	// setup genesis block
@@ -56,7 +60,7 @@ func initGenesis(ctx *cli.Context) error {
 	db, err := store.NewCacheChain(dir)
 	hash, err := chain.SetupGenesisBlock(db, genesis)
 	if err != nil {
-		node.Fatalf(err.Error())
+		log.Crit(err.Error())
 	}
 	db.Close()
 	log.Infof("init genesis succeed. hash: %s", hash.Hex())

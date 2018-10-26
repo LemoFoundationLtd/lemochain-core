@@ -23,7 +23,7 @@ func (engine *EngineTest) Seal(header *types.Header, txs []*types.Transaction, c
 	return nil, nil
 }
 
-func (engine *EngineTest) Finalize(header *types.Header) {
+func (engine *EngineTest) Finalize(header *types.Header, am *account.Manager) {
 	//
 }
 
@@ -34,8 +34,8 @@ func initDeputyNodes() error {
 
 	}
 
-	nodes := make([]deputynode.DeputyNode, 2)
-	nodes[0] = deputynode.DeputyNode{
+	nodes := make([]*deputynode.DeputyNode, 2)
+	nodes[0] = &deputynode.DeputyNode{
 		LemoBase: common.HexToAddress("0x10000"),
 		NodeID:   crypto.FromECDSAPub(&privateKey.PublicKey)[1:],
 		IP:       []byte{'e', 'e', 'e', 'e'},
@@ -44,7 +44,7 @@ func initDeputyNodes() error {
 		Votes:    100000,
 	}
 
-	nodes[1] = deputynode.DeputyNode{
+	nodes[1] = &deputynode.DeputyNode{
 		LemoBase: common.HexToAddress("0x20000"),
 		NodeID:   crypto.FromECDSAPub(&privateKey.PublicKey)[1:],
 		IP:       []byte{'f', 'f', 'f', 'f'},
@@ -75,7 +75,7 @@ func broadcastConfirmInfo(hash common.Hash, height uint32) {
 func newBlockChain() (*BlockChain, chan *types.Block, error) {
 	store.ClearData()
 
-	chainId := uint64(99)
+	chainId := uint16(99)
 	db, err := store.NewCacheChain(store.GetStorePath())
 	if err != nil {
 		return nil, nil, err
@@ -125,34 +125,34 @@ func TestBlockChain_Genesis(t *testing.T) {
 		parentHash: genesis.Hash(),
 		height:     1,
 	}
-	block := makeBlock(blockChain.dbOpe, info, false)
-	err = blockChain.InsertChain(block)
+	block := makeBlock(blockChain.db, info, false)
+	err = blockChain.InsertChain(block, true)
 	assert.NoError(t, err)
 
 	info.parentHash = block.Hash()
 	info.height = 2
-	block = makeBlock(blockChain.dbOpe, info, false)
-	err = blockChain.InsertChain(block)
+	block = makeBlock(blockChain.db, info, false)
+	err = blockChain.InsertChain(block, true)
 	assert.NoError(t, err)
 
 	hash := block.Hash()
 
 	info.parentHash = hash
 	info.height = 3
-	block = makeBlock(blockChain.dbOpe, info, false)
-	err = blockChain.InsertChain(block)
+	block = makeBlock(blockChain.db, info, false)
+	err = blockChain.InsertChain(block, true)
 	assert.NoError(t, err)
 
 	info.parentHash = hash
 	info.height = 3
 	info.gasLimit = 1000
-	block = makeBlock(blockChain.dbOpe, info, false)
-	err = blockChain.InsertChain(block)
+	block = makeBlock(blockChain.db, info, false)
+	err = blockChain.InsertChain(block, true)
 	assert.NoError(t, err)
 
 	info.parentHash = block.Hash()
 	info.height = 4
-	block = makeBlock(blockChain.dbOpe, info, false)
-	err = blockChain.InsertChain(block)
+	block = makeBlock(blockChain.db, info, false)
+	err = blockChain.InsertChain(block, true)
 	assert.NoError(t, err)
 }

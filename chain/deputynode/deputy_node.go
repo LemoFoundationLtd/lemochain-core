@@ -5,9 +5,11 @@ import (
 	"crypto/ecdsa"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
+	"github.com/LemoFoundationLtd/lemochain-go/common/crypto/sha3"
 	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/common/math"
+	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"net"
 	"sync"
 )
@@ -39,7 +41,23 @@ type DeputyNode struct {
 	Rank     uint           `json:"rank"       gencodec:"required"` // 排名 从0开始
 	Votes    uint64         `json:"votes"      gencodec:"required"` // 得票数
 }
-type DeputyNodes []DeputyNode
+
+func (d *DeputyNode) Hash() (h common.Hash) {
+	data := []interface{}{
+		d.LemoBase,
+		d.NodeID,
+		d.IP,
+		d.Port,
+		d.Rank,
+		d.Votes,
+	}
+	hw := sha3.NewKeccak256()
+	rlp.Encode(hw, data)
+	hw.Sum(h[:0])
+	return h
+}
+
+type DeputyNodes []*DeputyNode
 
 type Marshaling struct {
 	NodeID hexutil.Bytes
@@ -58,10 +76,6 @@ type DeputyNodesRecord struct {
 type Manager struct {
 	DeputyNodesList []*DeputyNodesRecord // key：节点列表生效开始高度 value：节点列表
 	lock            sync.Mutex
-}
-
-func (d *Manager) Init() {
-	// todo
 }
 
 // Add 投票结束 统计结果通过add函数缓存起来
@@ -83,8 +97,8 @@ func Instance() *Manager {
 	return deputyNodeManger
 }
 
-// getNodesByHeight 通过height获取对应的节点列表
-func (d *Manager) getNodesByHeight(height uint32) DeputyNodes {
+// getDeputiesByHeight 通过height获取对应的节点列表
+func (d *Manager) getDeputiesByHeight(height uint32) DeputyNodes {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 	var nodes DeputyNodes
@@ -101,32 +115,32 @@ func (d *Manager) getNodesByHeight(height uint32) DeputyNodes {
 }
 
 // getDeputyNodeCount 获取共识节点数量
-func (d *Manager) GetDeputyNodesCount() int {
+func (d *Manager) GetDeputiesCount() int {
 	return len(d.DeputyNodesList[0].nodes) // todo
 }
 
 // GetTotalNodeCount 获取代理节点及候选节点总数
-func (d *Manager) GetTotalNodesCount() int {
+func (d *Manager) GetTotalDeputiesCount() int {
 	return len(d.DeputyNodesList[0].nodes)
 }
 
 // getNodeByAddress 获取address对应的节点
-func (d *Manager) GetNodeByAddress(height uint32, addr common.Address) *DeputyNode {
-	nodes := d.getNodesByHeight(height)
+func (d *Manager) GetDeputyByAddress(height uint32, addr common.Address) *DeputyNode {
+	nodes := d.getDeputiesByHeight(height)
 	for _, node := range nodes {
 		if node.LemoBase == addr {
-			return &node
+			return node
 		}
 	}
 	return nil
 }
 
 // getNodeByNodeID 根据nodeid获取对应的节点
-func (d *Manager) GetNodeByNodeID(height uint32, nodeID []byte) *DeputyNode {
-	nodes := d.getNodesByHeight(height)
+func (d *Manager) GetDeputyByNodeID(height uint32, nodeID []byte) *DeputyNode {
+	nodes := d.getDeputiesByHeight(height)
 	for _, node := range nodes {
 		if bytes.Compare(node.NodeID, nodeID) == 0 {
-			return &node
+			return node
 		}
 	}
 	return nil
@@ -134,8 +148,8 @@ func (d *Manager) GetNodeByNodeID(height uint32, nodeID []byte) *DeputyNode {
 
 // 获取最新块的出块者序号与本节点序号差
 func (d *Manager) GetSlot(height uint32, firstAddress, nextAddress common.Address) int {
-	firstNode := d.GetNodeByAddress(height, firstAddress)
-	nextNode := d.GetNodeByAddress(height, nextAddress)
+	firstNode := d.GetDeputyByAddress(height, firstAddress)
+	nextNode := d.GetDeputyByAddress(height, nextAddress)
 	if height == 0 && nextNode != nil {
 		return int(nextNode.Rank + 1)
 	}
@@ -148,7 +162,7 @@ func (d *Manager) GetSlot(height uint32, firstAddress, nextAddress common.Addres
 		log.Debug("getSlot: firstAddress is empty")
 		return int(nextNode.Rank + 1)
 	}
-	nodeCount := d.GetDeputyNodesCount()
+	nodeCount := d.GetDeputiesCount()
 	// 只有一个主节点
 	if nodeCount == 1 {
 		log.Debug("getSlot: only one star node")
@@ -171,6 +185,6 @@ func (d *Manager) TimeToHandOutRewards(height uint32) bool {
 
 // IsSelfDeputyNode
 func (d *Manager) IsSelfDeputyNode(height uint32) bool {
-	node := d.GetNodeByNodeID(height, GetSelfNodeID())
+	node := d.GetDeputyByNodeID(height, GetSelfNodeID())
 	return node != nil
 }

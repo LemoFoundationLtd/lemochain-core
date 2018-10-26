@@ -61,7 +61,7 @@ func TestAccount_SetSuicide_GetSuicide(t *testing.T) {
 	account.SetSuicide(true)
 	assert.Equal(t, true, account.GetSuicide())
 	assert.Equal(t, big.NewInt(0), account.GetBalance())
-	assert.Equal(t, sha3Nil, account.GetCodeHash())
+	assert.Equal(t, common.Hash{}, account.GetCodeHash())
 	assert.Equal(t, common.Hash{}, account.GetStorageRoot())
 }
 
@@ -76,7 +76,7 @@ func TestAccount_SetCodeHash_GetCodeHash(t *testing.T) {
 
 	// set to empty
 	account.SetCodeHash(common.Hash{})
-	assert.Equal(t, sha3Nil, account.GetCodeHash())
+	assert.Equal(t, common.Hash{}, account.GetCodeHash())
 }
 
 func TestAccount_SetCode_GetCode(t *testing.T) {
@@ -107,7 +107,7 @@ func TestAccount_SetCode_GetCode(t *testing.T) {
 	readCode, err = account.GetCode()
 	assert.NoError(t, err)
 	assert.Empty(t, readCode)
-	assert.Equal(t, sha3Nil, account.GetCodeHash())
+	assert.Equal(t, common.Hash{}, account.GetCodeHash())
 	assert.Equal(t, false, account.codeIsDirty)
 }
 
@@ -327,8 +327,6 @@ func TestAccount_Finalise_Save(t *testing.T) {
 	err = account.SetStorageState(key, value)
 	assert.NoError(t, err)
 	err = account.Finalise()
-	assert.Equal(t, ErrTrieFail, err)
-	err = account.Save()
 	assert.Equal(t, ErrTrieFail, err)
 }
 

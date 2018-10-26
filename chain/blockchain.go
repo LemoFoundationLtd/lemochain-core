@@ -25,7 +25,7 @@ type broadcastBlockFn func(block *types.Block)
 type BlockChain struct {
 	chainID              uint16
 	flags                flag.CmdFlags
-	dbOpe                db.ChainDB // 数据库操作
+	db                   db.ChainDB // 数据库操作
 	am                   *account.Manager
 	currentBlock         atomic.Value           // 当前链最新区块
 	stableBlock          atomic.Value           // 当前链最新的稳定区块
@@ -45,13 +45,14 @@ type BlockChain struct {
 	quitCh     chan struct{}     // 退出chan
 }
 
-func NewBlockChain(chainID uint64, engine Engine, db db.ChainDB, newBlockCh chan *types.Block, flags flag.CmdFlags) (bc *BlockChain, err error) {
+func NewBlockChain(chainID uint16, engine Engine, db db.ChainDB, newBlockCh chan *types.Block, flags flag.CmdFlags) (bc *BlockChain, err error) {
 	bc = &BlockChain{
-		chainID:        uint16(chainID),
-		dbOpe:          db,
+		chainID:        chainID,
+		db:             db,
 		newBlockCh:     newBlockCh,
 		flags:          flags,
-		chainForksHead: make(map[common.Hash]*types.Block, 128),
+		engine:         engine,
+		chainForksHead: make(map[common.Hash]*types.Block, 16),
 		quitCh:         make(chan struct{}),
 	}
 	bc.genesisBlock = bc.GetBlockByHeight(0)
@@ -61,7 +62,6 @@ func NewBlockChain(chainID uint64, engine Engine, db db.ChainDB, newBlockCh chan
 	if err := bc.loadLastState(); err != nil {
 		return nil, err
 	}
-	bc.engine = engine
 	bc.processor = NewTxProcessor(bc)
 	return bc, nil
 }
@@ -72,21 +72,16 @@ func (bc *BlockChain) AccountManager() *account.Manager {
 
 // loadLastState 程序启动后初始化加载最新状态
 func (bc *BlockChain) loadLastState() error {
-	block, err := bc.dbOpe.LoadLatestBlock()
+	block, err := bc.db.LoadLatestBlock()
 	if err != nil {
 		log.Errorf("Can't load last state: %v", err)
 		return err
 	}
 	bc.currentBlock.Store(block)
 	bc.stableBlock.Store(block)
-	bc.am = account.NewManager(block.Hash(), bc.dbOpe)
+	bc.am = account.NewManager(block.Hash(), bc.db)
 	return nil
 }
-
-// loadConsensusEngine 加载共识引擎
-// func (bc *BlockChain) loadConsensusEngine() {
-// 	bc.engine = NewDpovp(bc)
-// }
 
 // Genesis 获取创始块
 func (bc *BlockChain) Genesis() *types.Block {
@@ -106,46 +101,39 @@ func (bc *BlockChain) Flags() flag.CmdFlags {
 	return bc.flags
 }
 
-// HasBlock 本地链是否有某个块
+// HasBlock 本地是否有某个块
 func (bc *BlockChain) HasBlock(hash common.Hash) bool {
-	if ok, _ := bc.dbOpe.IsExistByHash(hash); ok {
+	if ok, _ := bc.db.IsExistByHash(hash); ok {
 		return true
 	}
 	return false
 }
 
-// GetBlock
-func (bc *BlockChain) GetBlock(hash common.Hash, height uint32) *types.Block {
-	block, err := bc.dbOpe.GetBlock(hash, height)
-	if err != nil {
-		// log.Debugf("can't get block height:%d", height)
-		return nil
-	}
-	return block
-}
-
 func (bc *BlockChain) GetBlockByHeight(height uint32) *types.Block {
+	// genesis block
 	if height == 0 {
-		block, err := bc.dbOpe.GetBlockByHeight(height)
+		block, err := bc.db.GetBlockByHeight(0)
 		if err != nil {
-			log.Warnf("can't get block. height:%d, err: %v", height, err)
+			log.Warnf("can't get block. height: 0, err: %v", err)
 			return nil
 		}
 		return block
 	}
-	currentBlockHeight := bc.currentBlock.Load().(*types.Block).Height()
-	stableBlockHeight := bc.stableBlock.Load().(*types.Block).Height()
+
+	// not genesis block
 	block := bc.currentBlock.Load().(*types.Block)
+	currentBlockHeight := block.Height()
+	stableBlockHeight := bc.stableBlock.Load().(*types.Block).Height()
 	var err error
 	if stableBlockHeight >= height {
-		block, err = bc.dbOpe.GetBlockByHeight(height)
+		block, err = bc.db.GetBlockByHeight(height)
 		if err != nil {
 			log.Warnf("can't get block. height:%d, err: %v", height, err)
 			return nil
 		}
 	} else if height <= currentBlockHeight {
 		for i := currentBlockHeight - height; i > 0; i-- {
-			block, err = bc.dbOpe.GetBlockByHash(block.ParentHash())
+			block, err = bc.db.GetBlockByHash(block.ParentHash())
 			if err != nil {
 				log.Warnf("can't get block. height:%d, err: %v", height, err)
 				return nil
@@ -158,7 +146,7 @@ func (bc *BlockChain) GetBlockByHeight(height uint32) *types.Block {
 }
 
 func (bc *BlockChain) GetBlockByHash(hash common.Hash) *types.Block {
-	block, err := bc.dbOpe.GetBlockByHash(hash)
+	block, err := bc.db.GetBlockByHash(hash)
 	if err != nil {
 		log.Debugf("can't get block. hash:%s", hash.Hex())
 		return nil
@@ -176,9 +164,9 @@ func (bc *BlockChain) StableBlock() *types.Block {
 	return bc.stableBlock.Load().(*types.Block)
 }
 
-// MineNewBlock 挖到新块
-func (bc *BlockChain) MineNewBlock(block *types.Block) error {
-	if err := bc.dbOpe.SetBlock(block.Hash(), block); err != nil { // 放入缓存中
+// SaveMinedBlock 挖到新块
+func (bc *BlockChain) SaveMinedBlock(block *types.Block) error {
+	if err := bc.db.SetBlock(block.Hash(), block); err != nil { // 放入缓存中
 		log.Error(fmt.Sprintf("can't insert block to cache. height:%d hash:%s", block.Height(), block.Hash().Hex()))
 		return err
 	}
@@ -187,7 +175,7 @@ func (bc *BlockChain) MineNewBlock(block *types.Block) error {
 		log.Error("save account error!", "hash", block.Hash().Hex(), "err", err)
 		return err
 	}
-	nodeCount := deputynode.Instance().GetDeputyNodesCount()
+	nodeCount := deputynode.Instance().GetDeputiesCount()
 	if nodeCount == 1 {
 		bc.SetStableBlock(block.Hash(), block.Height(), false)
 	}
@@ -202,7 +190,7 @@ func (bc *BlockChain) newBlockNotify(block *types.Block) {
 }
 
 // InsertChain insert block of non-self to chain
-func (bc *BlockChain) InsertChain(block *types.Block, isSyncing bool) (err error) {
+func (bc *BlockChain) InsertChain(block *types.Block, logLess bool) (err error) {
 	// log.Debugf("start insert block to chain. height: %d", block.Height())
 	hash := block.Hash()
 	parHash := block.ParentHash()
@@ -221,11 +209,11 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSyncing bool) (err error
 	// save
 	block.SetEvents(bc.AccountManager().GetEvents())
 	block.SetChangeLogs(bc.AccountManager().GetChangeLogs())
-	if err = bc.dbOpe.SetBlock(hash, block); err != nil { // 放入缓存中
+	if err = bc.db.SetBlock(hash, block); err != nil { // 放入缓存中
 		log.Error(fmt.Sprintf("can't insert block to cache. height:%d hash:%s", block.Height(), hash.Hex()))
 		return err
 	}
-	if !isSyncing {
+	if !logLess {
 		log.Infof("Insert block to chain. height: %d. hash: %s", block.Height(), block.Hash().String())
 	}
 	err = bc.AccountManager().Save(hash)
@@ -234,15 +222,13 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSyncing bool) (err error
 		return err
 	}
 
-	nodeCount := deputynode.Instance().GetDeputyNodesCount()
+	nodeCount := deputynode.Instance().GetDeputiesCount()
 	if nodeCount < 3 {
-		defer bc.SetStableBlock(hash, block.Height(), isSyncing)
+		defer bc.SetStableBlock(hash, block.Height(), logLess)
 	} else {
-		if block.ConfirmPackage != nil {
-			minCount := int(math.Ceil(float64(nodeCount) * 2.0 / 3.0))
-			if len(block.ConfirmPackage) >= minCount {
-				defer bc.SetStableBlock(hash, block.Height(), isSyncing)
-			}
+		minCount := int(math.Ceil(float64(nodeCount) * 2.0 / 3.0))
+		if len(block.ConfirmPackage) >= minCount {
+			defer bc.SetStableBlock(hash, block.Height(), logLess)
 		}
 	}
 
@@ -265,7 +251,7 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSyncing bool) (err error
 		bc.currentBlock.Store(block)
 		delete(bc.chainForksHead, curHash) // remove old record from fork container
 		bc.chainForksHead[hash] = block    // record new fork
-		if !isSyncing {
+		if !logLess {
 			bc.newBlockNotify(block)
 		}
 		return nil
@@ -289,25 +275,25 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSyncing bool) (err error
 		}
 	}
 	bc.chainForksHead[hash] = block
-	if !isSyncing {
+	if !logLess {
 		bc.newBlockNotify(block)
 	}
 	return nil
 }
 
 // SetStableBlock 设置最新的稳定区块
-func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32, isSyncing bool) error {
-	if err := bc.dbOpe.SetStableBlock(hash); err != nil {
+func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32, logLess bool) error {
+	if err := bc.db.SetStableBlock(hash); err != nil {
 		log.Errorf("SetStableBlock error. height:%d hash:%s", height, common.ToHex(hash[:]))
 		return err
 	}
-	block := bc.GetBlock(hash, height)
+	block := bc.GetBlockByHash(hash)
 	if block == nil {
 		return errors.New("please sync latest block")
 	}
 	bc.stableBlock.Store(block)
 	defer func() {
-		if !isSyncing {
+		if !logLess {
 			log.Infof("block has consensus. height:%d hash:%s", block.Height(), block.Hash().Hex())
 		}
 	}()
@@ -351,7 +337,7 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32, isSyncing 
 		}
 	}
 	bc.currentBlock.Store(curBlock)
-	if !isSyncing {
+	if !logLess {
 		log.Infof("chain forked! current block: height(%d), hash(%s)", curBlock.Height(), curBlock.Hash().Hex())
 	}
 	return nil
@@ -375,6 +361,7 @@ func (bc *BlockChain) verifyBody(block *types.Block) error {
 	if hash := types.DeriveTxsSha(block.Txs); hash == header.TxRoot {
 		return nil
 	}
+	// todo verify deputy root
 	return fmt.Errorf("verify body failed. hash:%s height:%d", block.Hash(), block.Height())
 }
 
@@ -401,13 +388,13 @@ func (bc *BlockChain) ReceiveConfirm(info *protocol.BlockConfirmData) (err error
 			return err
 		}
 		if !ok {
-			bc.dbOpe.AppendConfirmInfo(info.Hash, info.SignInfo)
+			bc.db.AppendConfirmInfo(info.Hash, info.SignInfo)
 		}
 		return nil
 	}
 
 	// cache confirm info
-	if err = bc.dbOpe.SetConfirmInfo(info.Hash, info.SignInfo); err != nil {
+	if err = bc.db.SetConfirmInfo(info.Hash, info.SignInfo); err != nil {
 		log.Errorf("can't SetConfirmInfo. hash:%s", info.Hash.Hex())
 		return err
 	}
@@ -429,7 +416,7 @@ func (bc *BlockChain) hasEnoughConfirmInfo(hash common.Hash) (bool, error) {
 		log.Warnf("Can't GetConfirmInfo. hash:%s. error: %v", hash.Hex(), err)
 		return false, err
 	}
-	nodeCount := deputynode.Instance().GetDeputyNodesCount()
+	nodeCount := deputynode.Instance().GetDeputiesCount()
 	minCount := int(math.Ceil(float64(nodeCount) * 2.0 / 3.0))
 	if confirmCount >= minCount {
 		return true, nil
@@ -439,7 +426,7 @@ func (bc *BlockChain) hasEnoughConfirmInfo(hash common.Hash) (bool, error) {
 
 // getConfirmCount get confirm count by hash
 func (bc *BlockChain) getConfirmCount(hash common.Hash) (int, error) {
-	pack, err := bc.dbOpe.GetConfirmPackage(hash)
+	pack, err := bc.db.GetConfirmPackage(hash)
 	if err != nil {
 		return -1, err
 	}
@@ -448,7 +435,7 @@ func (bc *BlockChain) getConfirmCount(hash common.Hash) (int, error) {
 
 // 获取签名者在代理节点列表中的索引
 func (bc *BlockChain) getSignerIndex(pubKey []byte, height uint32) int {
-	node := deputynode.Instance().GetNodeByNodeID(height, pubKey)
+	node := deputynode.Instance().GetDeputyByNodeID(height, pubKey)
 	if node != nil {
 		return int(node.Rank)
 	}
@@ -457,7 +444,7 @@ func (bc *BlockChain) getSignerIndex(pubKey []byte, height uint32) int {
 
 // GetConfirmPackage 获取指定区块的确认包
 func (bc *BlockChain) GetConfirmPackage(query *protocol.GetConfirmInfo) []types.SignData {
-	res, err := bc.dbOpe.GetConfirmPackage(query.Hash)
+	res, err := bc.db.GetConfirmPackage(query.Hash)
 	if err != nil {
 		log.Warn(fmt.Sprintf("can't GetConfirmPackage. hash:%s height:%d", query.Hash.Hex(), query.Height))
 		return nil
@@ -468,7 +455,7 @@ func (bc *BlockChain) GetConfirmPackage(query *protocol.GetConfirmInfo) []types.
 // ReceiveConfirmPackage 接收到区块确认包
 func (bc *BlockChain) ReceiveConfirmPackage(pack protocol.BlockConfirmPackage) {
 	if pack.Hash != (common.Hash{}) && pack.Pack != nil && len(pack.Pack) > 0 {
-		bc.dbOpe.SetConfirmPackage(pack.Hash, pack.Pack)
+		bc.db.SetConfirmPackage(pack.Hash, pack.Pack)
 	}
 }
 
@@ -482,5 +469,5 @@ func (bc *BlockChain) Stop() {
 }
 
 func (bc *BlockChain) Db() db.ChainDB {
-	return bc.dbOpe
+	return bc.db
 }

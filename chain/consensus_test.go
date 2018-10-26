@@ -3,11 +3,12 @@ package chain
 import (
 	"errors"
 	"fmt"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
-	"github.com/testify/assert"
+	"github.com/stretchr/testify/assert"
 	"math/big"
 	"testing"
 	"time"
@@ -28,9 +29,8 @@ const (
 
 // loadDpovp 加载一个Dpovp实例
 func loadDpovp() *Dpovp {
-	bc := newChain()
-	d := NewDpovp(10*1000, 3*1000)
-	d.SetBlockChain(bc)
+	db := newDB()
+	d := NewDpovp(10*1000, db)
 	return d
 }
 
@@ -59,8 +59,8 @@ func initDeputyNode(numNode int, height uint32) error {
 		return err
 	}
 
-	var nodes = make([]deputynode.DeputyNode, 5)
-	nodes[0] = deputynode.DeputyNode{
+	var nodes = make([]*deputynode.DeputyNode, 5)
+	nodes[0] = &deputynode.DeputyNode{
 		LemoBase: common.HexToAddress(block01LemoBase),
 		NodeID:   (crypto.FromECDSAPub(&privarte01.PublicKey))[1:],
 		IP:       nil,
@@ -68,7 +68,7 @@ func initDeputyNode(numNode int, height uint32) error {
 		Rank:     1,
 		Votes:    120,
 	}
-	nodes[1] = deputynode.DeputyNode{
+	nodes[1] = &deputynode.DeputyNode{
 		LemoBase: common.HexToAddress(block02LemoBase),
 		NodeID:   (crypto.FromECDSAPub(&privarte02.PublicKey))[1:],
 		IP:       nil,
@@ -76,7 +76,7 @@ func initDeputyNode(numNode int, height uint32) error {
 		Rank:     2,
 		Votes:    110,
 	}
-	nodes[2] = deputynode.DeputyNode{
+	nodes[2] = &deputynode.DeputyNode{
 		LemoBase: common.HexToAddress(block03LemoBase),
 		NodeID:   (crypto.FromECDSAPub(&privarte03.PublicKey))[1:],
 		IP:       nil,
@@ -84,7 +84,7 @@ func initDeputyNode(numNode int, height uint32) error {
 		Rank:     3,
 		Votes:    100,
 	}
-	nodes[3] = deputynode.DeputyNode{
+	nodes[3] = &deputynode.DeputyNode{
 		LemoBase: common.HexToAddress(block04LemoBase),
 		NodeID:   (crypto.FromECDSAPub(&privarte04.PublicKey))[1:],
 		IP:       nil,
@@ -92,7 +92,7 @@ func initDeputyNode(numNode int, height uint32) error {
 		Rank:     4,
 		Votes:    90,
 	}
-	nodes[4] = deputynode.DeputyNode{
+	nodes[4] = &deputynode.DeputyNode{
 		LemoBase: common.HexToAddress(block05LemoBase),
 		NodeID:   (crypto.FromECDSAPub(&privarte05.PublicKey))[1:],
 		IP:       nil,
@@ -125,7 +125,7 @@ func signTestBlock(deputyPrivate string, block *types.Block) ([]byte, error) {
 
 // newTestBlock 创建一个函数，专门用来生成符合测试用例所用的区块
 func newTestBlock(dpovp *Dpovp, parentHash common.Hash, height uint32, lemoBase common.Address, timeStamp *big.Int, signPrivate string, save bool) (*types.Block, error) {
-	testBlock := makeBlock(dpovp.bc.dbOpe, blockInfo{
+	testBlock := makeBlock(dpovp.db, blockInfo{
 		hash:        common.Hash{},
 		parentHash:  parentHash,
 		height:      height,
@@ -298,7 +298,7 @@ func TestDpovp_VerifyHeader02(t *testing.T) {
 		t.Error(err)
 	}
 	// 获取当前的共识节点数
-	// nodeCount := deputynode.Instance().GetDeputyNodesCount()
+	// nodeCount := deputynode.Instance().GetDeputiesCount()
 	// t.Log("deputy node number is ", nodeCount) // 打印当前代理节点数,结果应该为1
 	// t.Log(dpovp.VerifyHeader(block02))
 
@@ -447,19 +447,25 @@ func TestDpovp_Finalize(t *testing.T) {
 
 	dpovp := loadDpovp()
 	// 测试挖出的块高度不满足发放奖励高度的时候
-	dpovp.handOutRewards(9999)
-	dpovp.handOutRewards(19998)
-	account01 := dpovp.bc.AccountManager().GetAccount(common.HexToAddress(block01LemoBase))
-	t.Log("When there is no reward,node01Balance = ", account01.GetBalance())
-	account02 := dpovp.bc.AccountManager().GetAccount(common.HexToAddress(block02LemoBase))
-	t.Log("When there is no reward,node01Balance = ", account02.GetBalance())
+	dpovp.Finalize(&types.Header{Height: 9999}, account.NewManager(common.Hash{}, dpovp.db))
+	// dpovp.handOutRewards(9999)
+	dpovp.Finalize(&types.Header{Height: 19998}, account.NewManager(common.Hash{}, dpovp.db))
+	// dpovp.handOutRewards(19998)
+	account01, err := dpovp.db.GetAccount(common.Hash{}, common.HexToAddress(block01LemoBase))
+	assert.Nil(t, nil)
+	t.Log("When there is no reward,node01Balance = ", account01.Balance)
+	account02, err := dpovp.db.GetAccount(common.Hash{}, common.HexToAddress(block02LemoBase))
+	assert.Nil(t, nil)
+	t.Log("When there is no reward,node01Balance = ", account02.Balance)
 	// 测试挖出的块高度满足发放奖励高度的时候
-	dpovp.handOutRewards(11001)
-	t.Log("When it comes to giving out rewards,node01Balance = ", account01.GetBalance())
-	t.Log("When it comes to giving out rewards,node01Balance = ", account02.GetBalance())
+	// dpovp.handOutRewards(11001)
+	dpovp.Finalize(&types.Header{Height: 11001}, account.NewManager(common.Hash{}, dpovp.db))
+	t.Log("When it comes to giving out rewards,node01Balance = ", account01.Balance)
+	t.Log("When it comes to giving out rewards,node01Balance = ", account02.Balance)
 	// 第二轮发放奖励
-	dpovp.handOutRewards(21001)
-	t.Log("When it comes to giving out rewards,node01Balance = ", account01.GetBalance())
-	t.Log("When it comes to giving out rewards,node01Balance = ", account02.GetBalance())
+	// dpovp.handOutRewards(21001)
+	dpovp.Finalize(&types.Header{Height: 21001}, account.NewManager(common.Hash{}, dpovp.db))
+	t.Log("When it comes to giving out rewards,node01Balance = ", account01.Balance)
+	t.Log("When it comes to giving out rewards,node01Balance = ", account02.Balance)
 
 }

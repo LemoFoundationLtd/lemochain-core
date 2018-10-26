@@ -17,7 +17,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/common/flag"
-	"gopkg.in/urfave/cli.v1"
 )
 
 type blockInfo struct {
@@ -46,7 +45,7 @@ var (
 	defaultBlockInfos = []blockInfo{
 		// genesis block must no transactions
 		{
-			hash:        common.HexToHash("0x16019ad7c4d4ecf5163906339048ac73a7aa7131b1154fefeb865c0d523d23f5"),
+			hash:        common.HexToHash("0x610dcbc5fb5db1d226fd1590be96def6da141a869ace47a41195618f06db098c"),
 			height:      0,
 			author:      defaultAccounts[0],
 			versionRoot: common.HexToHash("0xaa4c649637a466c2879495969aac0403716ad1e8b62a9865bead851d99c6f895"),
@@ -56,7 +55,7 @@ var (
 		},
 		// block 1 is stable block
 		{
-			hash:        common.HexToHash("0xd67857de0f447554c94712d9c0016a8d9e4974d6c3b14b9b062226637d968449"),
+			hash:        common.HexToHash("0x4bbd2e3445844f122be9c77a8d85f1f547cba64f535f9f42ad864048644e853b"),
 			height:      1,
 			author:      common.HexToAddress("0x20000"),
 			versionRoot: common.HexToHash("0xc4fa99a20b2db7026f80366e34213861457e240bf0411d57f7a22cbf5b7f2346"),
@@ -73,7 +72,7 @@ var (
 		},
 		// block 2 is not stable block
 		{
-			hash:        common.HexToHash("0x5afb6907e01a243325ce7c6e56e463f777080f6e5277ba2ec83928329c8dce61"),
+			hash:        common.HexToHash("0x7b6a13247ddd9bd464e7680a9c14e6588f11bcd44a94cdf1e948045a17370375"),
 			height:      2,
 			author:      defaultAccounts[0],
 			versionRoot: common.HexToHash("0xb169fb0304ad3c989589b044afbfe6257d125222e5023004e418b4bdb5f154f9"),
@@ -88,7 +87,7 @@ var (
 		},
 		// block 3 is not store in db
 		{
-			hash:        common.HexToHash("0x1889ca33d2ea9bfe68b171258e19f3034e9518c47d15b1d484797458e96cfb96"),
+			hash:        common.HexToHash("0xef552a79f1f4460552641c0dd9733f0d11ad56b44bde30c1fbeefa5e2699995d"),
 			height:      3,
 			author:      defaultAccounts[0],
 			versionRoot: common.HexToHash("0xfe833c7d3aa89fc1031198374e6eda37425de579e02430e46cc2273ee7f94162"),
@@ -120,7 +119,7 @@ func clearDB() {
 func newChain() *chain.BlockChain {
 	db := newDB()
 	newBlockCh := make(chan *types.Block)
-	bc, err := chain.NewBlockChain(uint64(chainID), chain.NewDpovp(10*1000, 3*1000), db, newBlockCh, flag.NewCmdFlags(&cli.Context{}, []cli.Flag{}))
+	bc, err := chain.NewBlockChain(chainID, chain.NewDpovp(10*1000, db), db, newBlockCh, flag.CmdFlags{})
 	if err != nil {
 		panic(err)
 	}
@@ -141,7 +140,8 @@ func newDB() protocol.ChainDB {
 		newBlock := makeBlock(db, defaultBlockInfos[i], i < 3)
 		defaultBlocks = append(defaultBlocks, newBlock)
 	}
-	err = db.SetStableBlock(defaultBlockInfos[1].hash)
+	// err = db.SetStableBlock(defaultBlockInfos[1].hash)
+	err = db.SetStableBlock(defaultBlocks[1].Hash())
 	if err != nil {
 		panic(err)
 	}
