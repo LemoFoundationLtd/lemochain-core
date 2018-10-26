@@ -3,17 +3,17 @@ package common
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/LemoFoundationLtd/lemochain-go/common/base26"
+	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
 	"math/big"
 	"math/rand"
 	"reflect"
-
-	"github.com/LemoFoundationLtd/lemochain-go/common/crypto/sha3"
-	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
 )
 
 const (
 	HashLength    = 32
 	AddressLength = 20
+	logo          = "Lemo"
 )
 
 var (
@@ -117,7 +117,7 @@ func (h UnprefixedHash) MarshalText() ([]byte, error) {
 	return []byte(hex.EncodeToString(h[:])), nil
 }
 
-/////////// Address
+// Address
 
 // Address represents the 20 byte address of an Lemochain account.
 type Address [AddressLength]byte
@@ -148,29 +148,33 @@ func (a Address) Hash() Hash    { return BytesToHash(a[:]) }
 
 // Hex returns an EIP55-compliant hex string representation of the address.
 func (a Address) Hex() string {
-	unchecksummed := hex.EncodeToString(a[:])
-	sha := sha3.NewKeccak256()
-	sha.Write([]byte(unchecksummed))
-	hash := sha.Sum(nil)
-
-	result := []byte(unchecksummed)
-	for i := 0; i < len(result); i++ {
-		hashByte := hash[i/2]
-		if i%2 == 0 {
-			hashByte = hashByte >> 4
-		} else {
-			hashByte &= 0xf
-		}
-		if result[i] > '9' && hashByte > 7 {
-			result[i] -= 32
-		}
-	}
-	return "0x" + string(result)
+	address := hex.EncodeToString(a[:])
+	return "0x" + string(address)
 }
 
-// String implements the stringer interface and is used also by the logger.
+// String implements the stringer interface and native address is converted to LemoAddress.
 func (a Address) String() string {
-	return a.Hex()
+	// Get check digit
+	checkSum := a.getCheckSum()
+	// Stitching the check digit at the end
+	fullPayload := append(a.Bytes(), checkSum)
+	// base26 encoding
+	bytesAddress := base26.Encode(fullPayload)
+	// Add logo at the top
+	lemoAddress := append([]byte(logo), bytesAddress...)
+
+	return string(lemoAddress)
+}
+
+// getCheckSum get the check digit by doing an exclusive OR operation
+func (a Address) getCheckSum() byte {
+	// Conversion Address type
+	addressToBytes := a.Bytes()
+	var temp = addressToBytes[0]
+	for _, c := range addressToBytes {
+		temp ^= c
+	}
+	return temp
 }
 
 // Format implements fmt.Formatter, forcing the byte slice to be formatted as is,
