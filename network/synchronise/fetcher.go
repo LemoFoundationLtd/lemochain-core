@@ -138,7 +138,7 @@ func (f *Fetcher) run() {
 					f.lock.Unlock()
 					break
 				}
-				// 判断是否为分叉 且分叉的父块没有收到
+				// 判断是否为分叉 且分叉的父块没有收到 todo
 				for f.isBlockExist(op.block.ParentHash()) == false {
 					f.queue.Push(op, -float32(op.block.Height()))
 					op = f.queue.PopItem().(*newBlock)

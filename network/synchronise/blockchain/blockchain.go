@@ -9,8 +9,6 @@ import (
 type BlockChain interface {
 	// HasBlock 链上是否有此块
 	HasBlock(hash common.Hash) bool
-	// GetBlock 通过区块hash、高度获取区块
-	GetBlock(hash common.Hash, height uint32) *types.Block
 	// GetBlockByHeight 通过区块高度获取区块
 	GetBlockByHeight(height uint32) *types.Block
 	// GetBlockByHash 通过区块HASH获取区块

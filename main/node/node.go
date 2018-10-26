@@ -91,8 +91,8 @@ func initConfig(flags flag.CmdFlags) (*Config, *ConfigFromFile, *miner.MineConfi
 	configFromFile.Check()
 
 	mineCfg := &miner.MineConfig{
-		SleepTime: configFromFile.SleepTime,
-		Timeout:   configFromFile.Timeout,
+		SleepTime: int64(configFromFile.SleepTime),
+		Timeout:   int64(configFromFile.Timeout),
 	}
 	return cfg, configFromFile, mineCfg
 }
@@ -130,9 +130,17 @@ func (n *Node) setLemoBase() {
 // initDeputyNodes init deputy nodes information
 func initDeputyNodes(db protocol.ChainDB) {
 	block, _ := db.GetBlockByHeight(0)
+	var err error
 	for block != nil {
 		deputynode.Instance().Add(block.Height(), block.DeputyNodes)
-		block, _ = db.GetBlockByHeight(block.Height() + SnapshotBlockInternal)
+		block, err = db.GetBlockByHeight(block.Height() + SnapshotBlockInternal)
+		if err == store.ErrNotExist {
+			break
+		} else if err == nil {
+			// normal
+		} else {
+			panic(fmt.Sprintf("block get error: %v", err))
+		}
 	}
 }
 
@@ -146,7 +154,7 @@ func New(flags flag.CmdFlags) *Node {
 	// new dpovp consensus engine
 	engine := chain.NewDpovp(int64(configFromFile.Timeout), db)
 	recvBlockCh := make(chan *types.Block)
-	blockChain, err := chain.NewBlockChain(configFromFile.ChainID, engine, db, recvBlockCh, flags)
+	blockChain, err := chain.NewBlockChain(uint16(configFromFile.ChainID), engine, db, recvBlockCh, flags)
 	if err != nil {
 		panic("new block chain failed!!!")
 	}

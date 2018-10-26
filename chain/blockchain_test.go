@@ -125,13 +125,13 @@ func TestBlockChain_Genesis(t *testing.T) {
 		parentHash: genesis.Hash(),
 		height:     1,
 	}
-	block := makeBlock(blockChain.dbOpe, info, false)
+	block := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block)
 	assert.NoError(t, err)
 
 	info.parentHash = block.Hash()
 	info.height = 2
-	block = makeBlock(blockChain.dbOpe, info, false)
+	block = makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block)
 	assert.NoError(t, err)
 
@@ -139,20 +139,20 @@ func TestBlockChain_Genesis(t *testing.T) {
 
 	info.parentHash = hash
 	info.height = 3
-	block = makeBlock(blockChain.dbOpe, info, false)
+	block = makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block)
 	assert.NoError(t, err)
 
 	info.parentHash = hash
 	info.height = 3
 	info.gasLimit = 1000
-	block = makeBlock(blockChain.dbOpe, info, false)
+	block = makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block)
 	assert.NoError(t, err)
 
 	info.parentHash = block.Hash()
 	info.height = 4
-	block = makeBlock(blockChain.dbOpe, info, false)
+	block = makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block)
 	assert.NoError(t, err)
 }

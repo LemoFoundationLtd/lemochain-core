@@ -314,7 +314,7 @@ func (pm *ProtocolManager) handleMsg(p *peerConnection) error {
 		if err := msg.Decode(&query); err != nil {
 			return errResp(protocol.ErrDecode, "%v: %v", msg, err)
 		}
-		block := pm.blockchain.GetBlock(query.Hash, query.Height)
+		block := pm.blockchain.GetBlockByHash(query.Hash)
 		p.peer.send(protocol.SingleBlockMsg, block)
 	case protocol.SingleBlockMsg: // 收到一个获取区块返回
 		var block types.Block
@@ -432,7 +432,7 @@ func (pm *ProtocolManager) minedBroadcastLoop() {
 				log.Warn("Can't broadcast nil block ")
 				return
 			}
-			pm.blockchain.MineNewBlock(block)
+			pm.blockchain.SaveMinedBlock(block)
 			for id, p := range pm.peers.peers {
 				if pm.isPeerDeputyNode(block.Height(), id) {
 					go p.peer.send(protocol.NewBlockMsg, &block)

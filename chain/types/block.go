@@ -125,6 +125,7 @@ func (h *Header) String() string {
 		fmt.Sprintf("GasUsed: %d", h.GasUsed),
 		fmt.Sprintf("Time: %v", h.Time),
 		fmt.Sprintf("SignData: %s", common.ToHex(h.SignData[:])),
+		fmt.Sprintf("DeputyNodes: %s", common.ToHex(h.DeputyRoot)),
 	}
 	if len(h.Extra) >= 0 {
 		set = append(set, fmt.Sprintf("Extra: %s", common.ToHex(h.Extra[:])))
@@ -132,8 +133,6 @@ func (h *Header) String() string {
 
 	return fmt.Sprintf("{%s}", strings.Join(set, ", "))
 }
-
-// func (b *Block) Header() *Header { return b.Header }
 
 func (b *Block) Hash() common.Hash        { return b.Header.Hash() }
 func (b *Block) Height() uint32           { return b.Header.Height }

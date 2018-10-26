@@ -17,8 +17,8 @@ import (
 )
 
 type MineConfig struct {
-	SleepTime uint64
-	Timeout   uint64
+	SleepTime int64
+	Timeout   int64
 }
 
 type Miner struct {
@@ -47,8 +47,8 @@ type Miner struct {
 
 func New(cfg *MineConfig, chain *chain.BlockChain, txPool *chain.TxPool, mineNewBlockCh, recvBlockCh chan *types.Block, engine chain.Engine) *Miner {
 	m := &Miner{
-		blockInternal:  int64(cfg.SleepTime),
-		timeoutTime:    int64(cfg.Timeout),
+		blockInternal:  cfg.SleepTime,
+		timeoutTime:    cfg.Timeout,
 		privKey:        deputynode.GetSelfNodeKey(),
 		chain:          chain,
 		txPool:         txPool,
