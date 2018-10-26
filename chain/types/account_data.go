@@ -7,6 +7,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"io"
 	"math/big"
+	"strings"
 )
 
 type VersionRecord struct {
@@ -96,6 +97,31 @@ func (a *AccountData) Copy() *AccountData {
 		}
 	}
 	return &cpy
+}
+
+func (a *AccountData) String() string {
+	set := []string{
+		fmt.Sprintf("Address: %s", a.Address.String()),
+		fmt.Sprintf("Balance: %s", a.Balance.String()),
+	}
+	if a.CodeHash != (common.Hash{}) {
+		set = append(set, fmt.Sprintf("CodeHash: %s", a.CodeHash.Hex()))
+	}
+	if a.StorageRoot != (common.Hash{}) {
+		set = append(set, fmt.Sprintf("StorageRoot: %s", a.StorageRoot.Hex()))
+	}
+	if len(a.TxHashList) > 0 {
+		set = append(set, fmt.Sprintf("TxHashList: %v", a.TxHashList))
+	}
+	if len(a.NewestRecords) > 0 {
+		records := make([]string, 0, len(a.NewestRecords))
+		for logType, record := range a.NewestRecords {
+			records = append(records, fmt.Sprintf("%s: {v: %d, h: %d}", logType, record.Version, record.Height))
+		}
+		set = append(set, fmt.Sprintf("NewestRecords: {%s}", strings.Join(records, ", ")))
+	}
+
+	return fmt.Sprintf("{%s}", strings.Join(set, ", "))
 }
 
 type Code []byte

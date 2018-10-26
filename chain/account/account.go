@@ -71,9 +71,6 @@ func NewAccount(db protocol.ChainDB, address common.Address, data *types.Account
 	if data.Balance == nil {
 		data.Balance = new(big.Int)
 	}
-	if (data.CodeHash == common.Hash{}) {
-		data.CodeHash = sha3Nil
-	}
 	if data.NewestRecords == nil {
 		data.NewestRecords = make(map[types.ChangeLogType]types.VersionRecord)
 	}
@@ -100,6 +97,10 @@ func (a *Account) UnmarshalJSON(input []byte) error {
 	// TODO a.db and a.baseHeight are nil
 	*a = *NewAccount(a.db, dec.Address, &dec, a.baseHeight)
 	return nil
+}
+
+func (a *Account) String() string {
+	return a.data.String()
 }
 
 // Implement AccountAccessor. Access Account without changelog
@@ -137,9 +138,6 @@ func (a *Account) SetSuicide(suicided bool) {
 
 func (a *Account) SetCodeHash(codeHash common.Hash) {
 	a.data.CodeHash = codeHash
-	if (a.data.CodeHash == common.Hash{}) {
-		a.data.CodeHash = sha3Nil
-	}
 	a.code = nil
 }
 func (a *Account) SetStorageRoot(root common.Hash) {
@@ -154,7 +152,7 @@ func (a *Account) GetCode() (types.Code, error) {
 		return a.code, nil
 	}
 	codeHash := a.data.CodeHash
-	if codeHash == sha3Nil {
+	if codeHash == sha3Nil || codeHash == (common.Hash{}) {
 		return nil, nil
 	}
 	code, err := a.db.GetContractCode(codeHash)
@@ -239,6 +237,9 @@ func (a *Account) getTrie() (*trie.SecureTrie, error) {
 
 // updateTrie writes cached storage modifications into storage trie.
 func (a *Account) updateTrie() error {
+	if a.data.StorageRoot == (common.Hash{}) && len(a.dirtyStorage) == 0 {
+		return nil
+	}
 	tr, err := a.getTrie()
 	if err != nil {
 		log.Errorf("load trie by root 0x%x fail: %v", a.data.StorageRoot, err)
@@ -271,24 +272,29 @@ func (a *Account) Finalise() error {
 
 // Save writes dirty data into db.
 func (a *Account) Save() error {
-	tr, err := a.getTrie()
-	if err != nil {
-		log.Errorf("load trie by root 0x%x fail: %v", a.data.StorageRoot, err)
-		return ErrTrieFail
-	}
-	// update contract storage trie nodes' hash
-	root, err := tr.Commit(nil)
-	if err != nil {
-		return err
-	}
-	if root != a.data.StorageRoot {
+	if len(a.dirtyStorage) > 0 {
 		return ErrTrieChanged
 	}
-	// save contract storage trie
-	err = a.trieDb.Commit(root, false)
-	if err != nil {
-		log.Error("save contract storage fail", "address", a.data.Address)
-		return err
+	if a.data.StorageRoot != (common.Hash{}) {
+		tr, err := a.getTrie()
+		if err != nil {
+			log.Errorf("load trie by root 0x%x fail: %v", a.data.StorageRoot, err)
+			return ErrTrieFail
+		}
+		// update contract storage trie nodes' hash
+		root, err := tr.Commit(nil)
+		if err != nil {
+			return err
+		}
+		if root != a.data.StorageRoot {
+			return ErrTrieChanged
+		}
+		// save contract storage trie
+		err = a.trieDb.Commit(root, false)
+		if err != nil {
+			log.Error("save contract storage fail", "address", a.data.Address)
+			return err
+		}
 	}
 	// save code
 	if a.codeIsDirty {

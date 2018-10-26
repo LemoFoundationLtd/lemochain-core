@@ -44,6 +44,10 @@ func (a *SafeAccount) UnmarshalJSON(input []byte) error {
 	return nil
 }
 
+func (a *SafeAccount) String() string {
+	return a.rawAccount.String()
+}
+
 func (a *SafeAccount) GetAddress() common.Address { return a.rawAccount.GetAddress() }
 func (a *SafeAccount) GetBalance() *big.Int       { return a.rawAccount.GetBalance() }
 func (a *SafeAccount) GetVersion(logType types.ChangeLogType) uint32 {
