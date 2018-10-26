@@ -2,6 +2,7 @@ package node
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
@@ -34,55 +35,52 @@ func (a *AccountAPI) NewKeyPair() (*crypto.AddressKeyPair, error) {
 	return accounts, nil
 }
 
-// AddPoint digital processing
-func AddPoint(balance string) string {
-	lenth := len(balance)
+// addPoint digital processing
+func addPoint(balance string) string {
+	length := len(balance)
 	var toBytes = []byte(balance)
-	if lenth <= 18 {
+	if length <= 18 {
 		Balance := fmt.Sprintf("0.%018s", balance)
 		return Balance
-	} else if lenth > 18 && lenth < 36 {
-		point := lenth % 18
-		// Extended section length
-		ToBytes := append(toBytes, '0')
-		for i := lenth; i > point; i-- {
-			ToBytes[i] = ToBytes[i-1]
-		}
-		ToBytes[point] = '.'
-
-		return string(ToBytes)
 	} else {
+		point := length - 18
+		// Extended section length
+		Balance := string(toBytes[:point]) + "." + string(toBytes[point:])
 
-		return "Warning : Your account balance is abnormal. Please stop any operation."
+		return Balance
 	}
 }
 
 // GetBalance get balance api
-func (a *AccountAPI) GetBalance(LemoAddress string) string {
-	var address common.Address
-	// Determine whether the input address is a Lemo address or a native address.
-	if strings.HasPrefix(LemoAddress, "Lemo") {
-		address = crypto.RestoreOriginalAddress(LemoAddress)
-	} else {
-		address = common.HexToAddress(LemoAddress)
+func (a *AccountAPI) GetBalance(LemoAddress string) (string, error) {
+	accounts, err := a.GetAccount(LemoAddress)
+	if err != nil {
+		return "", err
 	}
-	accounts := a.manager.GetCanonicalAccount(address)
 	balance := accounts.GetBalance().String()
-	return AddPoint(balance)
+	lastBalance := addPoint(balance)
+
+	return lastBalance, nil
 }
 
 // GetAccount return the struct of the &AccountData{}
-func (a *AccountAPI) GetAccount(LemoAddress string) types.AccountAccessor {
+func (a *AccountAPI) GetAccount(LemoAddress string) (types.AccountAccessor, error) {
+	// Determine if the input address length is valid
+	addressLen := len(LemoAddress)
+	if addressLen != 39 && addressLen != 42 {
+		return nil, errors.New("address length is incorrect")
+	}
 	var address common.Address
 	// Determine whether the input address is a Lemo address or a native address.
 	if strings.HasPrefix(LemoAddress, "Lemo") {
+
 		address = crypto.RestoreOriginalAddress(LemoAddress)
 	} else {
 		address = common.HexToAddress(LemoAddress)
 	}
 	accountData := a.manager.GetCanonicalAccount(address)
 
-	return accountData
+	return accountData, nil
 }
 
 // ChainAPI
