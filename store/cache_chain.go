@@ -59,6 +59,7 @@ func sBtoB(sb *sBlock) (*types.Block, error) {
 	block.SetChangeLogs(sb.ChangeLogs)
 	block.SetEvents(sb.Events)
 	block.SetConfirmPackage(sb.Confirms)
+	block.SetDeputyNodes(sb.DeputyNodes)
 
 	return block, nil
 }
