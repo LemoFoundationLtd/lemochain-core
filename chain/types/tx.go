@@ -15,7 +15,7 @@ import (
 //go:generate gencodec -type txdata --field-override txdataMarshaling -out gen_tx_json.go
 
 var (
-	DefaultTTTL   uint64 = 2 * 60 * 60 * 1000 // Transaction Time To Live, 2hours
+	DefaultTTTL   uint64 = 2 * 60 * 60 // Transaction Time To Live, 2hours
 	ErrInvalidSig        = errors.New("invalid transaction v, r, s values")
 	TxVersion     uint8  = 1 // current transaction version. should between 0 and 128
 )
