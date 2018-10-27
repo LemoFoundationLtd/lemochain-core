@@ -37,7 +37,7 @@ func (c *ConfigFromFile) Check() {
 	if c.SleepTime > c.Timeout {
 		panic("config.json content error: sleepTime can't be larger than timeout")
 	}
-	if c.ChainID > 65535 {
+	if c.ChainID > 65535 || c.ChainID < 1 {
 		panic("config.json content error: chainID must be in [1, 65535]")
 	}
 }
