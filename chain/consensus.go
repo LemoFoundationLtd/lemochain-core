@@ -24,16 +24,14 @@ type Engine interface {
 }
 
 type Dpovp struct {
-	timeoutTime   int64
-	blockInternal int64
-	db            protocol.ChainDB
+	timeoutTime int64
+	db          protocol.ChainDB
 }
 
 func NewDpovp(timeout int64, db protocol.ChainDB) *Dpovp {
 	dpovp := &Dpovp{
-		timeoutTime:   timeout,
-		blockInternal: 3000, // todo
-		db:            db,
+		timeoutTime: timeout,
+		db:          db,
 	}
 	return dpovp
 }
@@ -44,7 +42,7 @@ func verifyHeaderTime(block *types.Block) error {
 	blockTime := int64(header.Time.Uint64())
 	timeNow := time.Now().Unix()
 	if blockTime-timeNow > 1 { // Prevent validation failure due to time error
-		return errors.New("block in the future")
+		return errors.New("verifyHeader: block in the future")
 	}
 	return nil
 }
@@ -59,13 +57,19 @@ func verifyHeaderSignData(block *types.Block) error {
 	}
 	node := deputynode.Instance().GetDeputyByAddress(block.Height(), header.LemoBase)
 	if node == nil || bytes.Compare(pubKey[1:], node.NodeID) != 0 {
-		return fmt.Errorf("illegal block. height:%d, hash:%s", header.Height, header.Hash().Hex())
+		return fmt.Errorf("verifyHeader: illegal block. height:%d, hash:%s", header.Height, header.Hash().Hex())
 	}
 	return nil
 }
 
 // VerifyHeader verify block header
 func (d *Dpovp) VerifyHeader(block *types.Block) error {
+	nodeCount := deputynode.Instance().GetDeputiesCount() // The total number of nodes
+	// There's only one out block node
+	if nodeCount == 1 {
+		return nil
+	}
+
 	// Verify that the block timestamp is less than the current time
 	if err := verifyHeaderTime(block); err != nil {
 		return err
@@ -75,70 +79,41 @@ func (d *Dpovp) VerifyHeader(block *types.Block) error {
 		return err
 	}
 
+	header := block.Header
 	// verify extra data
-	if len(block.Header.Extra) > MaxExtraDataLen {
-		return fmt.Errorf("extra data's max len is %d bytes, current length is %d", MaxExtraDataLen, len(block.Header.Extra))
+	if len(header.Extra) > MaxExtraDataLen {
+		return fmt.Errorf("verifyHeader: extra data's max len is %d bytes, current length is %d", MaxExtraDataLen, len(block.Header.Extra))
 	}
 
-	// Verify that the node is out of the block ?
-	header := block.Header
 	parent, _ := d.db.GetBlock(header.ParentHash, header.Height-1)
 	if parent == nil {
-		return fmt.Errorf("can't get parent block. height:%d, hash:%s", header.Height-1, header.ParentHash)
+		return fmt.Errorf("verifyHeader: can't get parent block. height:%d, hash:%s", header.Height-1, header.ParentHash)
 	}
-	if parent.Header.Height == 0 { // parentBlock is genesisBlock
-		log.Debug("verifyHeader: parent is genesis block")
+	if parent.Header.Height == 0 {
+		log.Debug("verifyHeader: parent block is genesis block")
 		return nil
 	}
 	// The time interval between the current block and the parent block. unit：ms
 	timeSpan := int64(header.Time.Uint64()-parent.Header.Time.Uint64()) * 1000
-	// The time interval between the current block and the parent block should be at least greater than the block internal
-	if timeSpan < d.blockInternal {
-		log.Debugf("verifyHeader: verify failed. timeSpan:%d is smaller than blockInternal:%d -1", timeSpan, d.blockInternal)
-		return fmt.Errorf("verifyHeader: block internal need to large than %d millsecond -1", d.blockInternal)
-	}
-	nodeCount := deputynode.Instance().GetDeputiesCount() // The total number of nodes
+	oldTimeSpan := timeSpan
 	slot := deputynode.Instance().GetSlot(header.Height, parent.Header.LemoBase, header.LemoBase)
 	oneLoopTime := int64(nodeCount) * d.timeoutTime // All timeout times for a round of deputy nodes
-	oldTimeSpan := timeSpan
-	// There's only one out block node
-	if nodeCount == 1 {
-		return nil
-	}
 
+	timeSpan %= oneLoopTime
 	if slot == 0 { // The last block was made for itself
-		timeSpan = timeSpan % oneLoopTime
-		if timeSpan >= oneLoopTime-d.timeoutTime {
-			// normal situation
-		} else {
+		if timeSpan < oneLoopTime-d.timeoutTime {
 			log.Debugf("verifyHeader: verify failed. oldTimeSpan: %d timeSpan:%d nodeCount:%d slot:%d oneLoopTime:%d -2", oldTimeSpan, timeSpan, nodeCount, slot, oneLoopTime)
 			return fmt.Errorf("verifyHeader: Not turn to produce block -2")
 		}
-		return nil
 	} else if slot == 1 {
-		if timeSpan < oneLoopTime { // The interval is less than one cycle
-			if timeSpan >= d.blockInternal && timeSpan < d.timeoutTime {
-				// normal situation
-			} else {
-				log.Debugf("verifyHeader: verify failed.timeSpan< oneLoopTime. timeSpan:%d nodeCount:%d slot:%d oneLoopTime:%d -3", timeSpan, nodeCount, slot, oneLoopTime)
-				return fmt.Errorf("verifyHeader: Not turn to produce block -3")
-			}
-		} else { // The interval is more than one cycle
-			timeSpan = timeSpan % oneLoopTime
-			if timeSpan < d.timeoutTime {
-				// normal situation
-			} else {
-				log.Debugf("verifyHeader: verify failed. timeSpan>=oneLoopTime. oldTimeSpan: %d timeSpan:%d nodeCount:%d slot:%d oneLoopTime:%d -4", oldTimeSpan, timeSpan, nodeCount, slot, oneLoopTime)
-				return fmt.Errorf("verifyHeader: Not turn to produce block -4")
-			}
+		if timeSpan >= d.timeoutTime {
+			log.Debugf("verifyHeader: verify failed.timeSpan< oneLoopTime. timeSpan:%d nodeCount:%d slot:%d oneLoopTime:%d -3", timeSpan, nodeCount, slot, oneLoopTime)
+			return fmt.Errorf("verifyHeader: Not turn to produce block -3")
 		}
 	} else {
-		timeSpan = timeSpan % oneLoopTime
-		if timeSpan/d.timeoutTime == int64(slot-1) {
-			// normal situation
-		} else {
-			log.Debugf("verifyHeader: verify failed. oldTimeSpan: %d timeSpan:%d nodeCount:%d slot:%d oneLoopTime:%d -5", oldTimeSpan, timeSpan, nodeCount, slot, oneLoopTime)
-			return fmt.Errorf("verifyHeader: Not turn to produce block -5")
+		if timeSpan/d.timeoutTime != int64(slot-1) {
+			log.Debugf("verifyHeader: verify failed. oldTimeSpan: %d timeSpan:%d nodeCount:%d slot:%d oneLoopTime:%d -4", oldTimeSpan, timeSpan, nodeCount, slot, oneLoopTime)
+			return fmt.Errorf("verifyHeader: Not turn to produce block -4")
 		}
 	}
 	return nil
