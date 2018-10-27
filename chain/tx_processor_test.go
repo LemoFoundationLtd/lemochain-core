@@ -98,7 +98,7 @@ func TestTxProcessor_Process2(t *testing.T) {
 	cpy := new(types.Transaction)
 	err := rlp.DecodeBytes(rawTx, cpy)
 	assert.NoError(t, err)
-	assert.Equal(t, new(big.Int).Add(block.Txs[0].Value(), big.NewInt(1)), cpy.Value())
+	assert.Equal(t, new(big.Int).Add(block.Txs[0].Amount(), big.NewInt(1)), cpy.Amount())
 	block.Txs[0] = cpy
 	_, err = p.Process(block)
 	// recover to another from address
@@ -136,7 +136,7 @@ func TestTxProcessor_Process2(t *testing.T) {
 
 	// used gas reach limit
 	block = createNewBlock()
-	block.Txs[0] = makeTransaction(testPrivate, defaultAccounts[1], big.NewInt(100), common.Big1, big.NewInt(0), 1)
+	block.Txs[0] = makeTransaction(testPrivate, defaultAccounts[1], big.NewInt(100), common.Big1, 0, 1)
 	block.Header.TxRoot = types.DeriveTxsSha(block.Txs)
 	_, err = p.Process(block)
 	assert.Equal(t, vm.ErrOutOfGas, err)

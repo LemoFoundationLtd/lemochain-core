@@ -61,9 +61,9 @@ var (
 			logsRoot:    common.HexToHash("0xb6062a94cf5ce70ec3910072da83eca56ba584aba8273e4d0837eb03c090e473"),
 			txList: []*types.Transaction{
 				// testAddr -> defaultAccounts[0] 1
-				signTransaction(types.NewTransaction(defaultAccounts[0], common.Big1, 2000000, common.Big2, []byte{12}, chainID, big.NewInt(1538210391), "aa", []byte{34}), testPrivate),
+				signTransaction(types.NewTransaction(defaultAccounts[0], common.Big1, 2000000, common.Big2, []byte{12}, chainID, 1538210391, "aa", []byte{34}), testPrivate),
 				// testAddr -> defaultAccounts[1] 1
-				makeTransaction(testPrivate, defaultAccounts[1], common.Big1, common.Big2, big.NewInt(1538210491), 2000000),
+				makeTransaction(testPrivate, defaultAccounts[1], common.Big1, common.Big2, 1538210491, 2000000),
 			},
 			gasLimit: 20000000,
 			time:     big.NewInt(1538209755),
@@ -78,7 +78,7 @@ var (
 			logsRoot:    common.HexToHash("0x40ab1668ecddd288ded6cec4135dadb071beee4e2826640e96c416894aaa6469"),
 			txList: []*types.Transaction{
 				// testAddr -> defaultAccounts[0] 2
-				makeTransaction(testPrivate, defaultAccounts[0], bigNumber, common.Big2, big.NewInt(1538210395), 2000000),
+				makeTransaction(testPrivate, defaultAccounts[0], bigNumber, common.Big2, 1538210395, 2000000),
 			},
 			time:     big.NewInt(1538209758),
 			gasLimit: 20000000,
@@ -93,9 +93,9 @@ var (
 			logsRoot:    common.HexToHash("0xa92582c4c7627d130a38c94e568b8c671817fe742930636c7b0190b7f7344064"),
 			txList: []*types.Transaction{
 				// testAddr -> defaultAccounts[0] 2
-				makeTransaction(testPrivate, defaultAccounts[0], common.Big2, common.Big2, big.NewInt(1538210398), 30000),
+				makeTransaction(testPrivate, defaultAccounts[0], common.Big2, common.Big2, 1538210398, 30000),
 				// testAddr -> defaultAccounts[1] 2
-				makeTransaction(testPrivate, defaultAccounts[1], common.Big2, common.Big3, big.NewInt(1538210425), 30000),
+				makeTransaction(testPrivate, defaultAccounts[1], common.Big2, common.Big3, 1538210425, 30000),
 			},
 			time:     big.NewInt(1538209761),
 			gasLimit: 20000000,
@@ -175,14 +175,14 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 		}
 		from := manager.GetAccount(fromAddr)
 		fee := new(big.Int).Mul(new(big.Int).SetUint64(gas), tx.GasPrice())
-		cost := new(big.Int).Add(tx.Value(), fee)
+		cost := new(big.Int).Add(tx.Amount(), fee)
 		to := manager.GetAccount(*tx.To())
 		// make sure the change log has right order
 		if fromAddr.Hex() < tx.To().Hex() {
 			from.SetBalance(new(big.Int).Sub(from.GetBalance(), cost))
-			to.SetBalance(new(big.Int).Add(to.GetBalance(), tx.Value()))
+			to.SetBalance(new(big.Int).Add(to.GetBalance(), tx.Amount()))
 		} else {
-			to.SetBalance(new(big.Int).Add(to.GetBalance(), tx.Value()))
+			to.SetBalance(new(big.Int).Add(to.GetBalance(), tx.Amount()))
 			from.SetBalance(new(big.Int).Sub(from.GetBalance(), cost))
 		}
 		gasUsed += gas
@@ -261,10 +261,10 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 }
 
 func makeTx(fromPrivate *ecdsa.PrivateKey, to common.Address, amount *big.Int) *types.Transaction {
-	return makeTransaction(fromPrivate, to, amount, common.Big1, new(big.Int).SetUint64(uint64(time.Now().Unix()+300)), 1000000)
+	return makeTransaction(fromPrivate, to, amount, common.Big1, uint64(time.Now().Unix()+300), 1000000)
 }
 
-func makeTransaction(fromPrivate *ecdsa.PrivateKey, to common.Address, amount, gasPrice, expiration *big.Int, gasLimit uint64) *types.Transaction {
+func makeTransaction(fromPrivate *ecdsa.PrivateKey, to common.Address, amount, gasPrice *big.Int, expiration uint64, gasLimit uint64) *types.Transaction {
 	tx := types.NewTransaction(to, amount, gasLimit, gasPrice, []byte{}, chainID, expiration, "", []byte{})
 	return signTransaction(tx, fromPrivate)
 }

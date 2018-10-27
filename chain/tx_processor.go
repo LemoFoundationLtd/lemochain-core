@@ -148,9 +148,9 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 	// except for insufficient balance error.
 	var vmErr error
 	if contractCreation {
-		_, recipientAddr, restGas, vmErr = vmEnv.Create(sender, tx.Data(), restGas, tx.Value())
+		_, recipientAddr, restGas, vmErr = vmEnv.Create(sender, tx.Data(), restGas, tx.Amount())
 	} else {
-		_, restGas, vmErr = vmEnv.Call(sender, *tx.To(), tx.Data(), restGas, tx.Value())
+		_, restGas, vmErr = vmEnv.Call(sender, *tx.To(), tx.Data(), restGas, tx.Amount())
 	}
 	if vmErr != nil {
 		log.Debug("VM returned with error", "err", vmErr)

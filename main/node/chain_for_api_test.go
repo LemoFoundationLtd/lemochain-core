@@ -177,14 +177,14 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 		}
 		from := manager.GetAccount(fromAddr)
 		fee := new(big.Int).Mul(new(big.Int).SetUint64(gas), tx.GasPrice())
-		cost := new(big.Int).Add(tx.Value(), fee)
+		cost := new(big.Int).Add(tx.Amount(), fee)
 		to := manager.GetAccount(*tx.To())
 		// make sure the change log has right order
 		if fromAddr.Hex() < tx.To().Hex() {
 			from.SetBalance(new(big.Int).Sub(from.GetBalance(), cost))
-			to.SetBalance(new(big.Int).Add(to.GetBalance(), tx.Value()))
+			to.SetBalance(new(big.Int).Add(to.GetBalance(), tx.Amount()))
 		} else {
-			to.SetBalance(new(big.Int).Add(to.GetBalance(), tx.Value()))
+			to.SetBalance(new(big.Int).Add(to.GetBalance(), tx.Amount()))
 			from.SetBalance(new(big.Int).Sub(from.GetBalance(), cost))
 		}
 		gasUsed += gas

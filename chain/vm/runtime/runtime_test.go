@@ -24,13 +24,13 @@ func TestDefaults(t *testing.T) {
 		t.Error("didn't expect gaslimit to be zero")
 	}
 	if cfg.GasPrice == nil {
-		t.Error("expected time to be non nil")
+		t.Error("expected gasPrice to be non nil")
 	}
 	if cfg.Value == nil {
-		t.Error("expected time to be non nil")
+		t.Error("expected value to be non nil")
 	}
 	if cfg.GetHashFn == nil {
-		t.Error("expected time to be non nil")
+		t.Error("expected getHashFn to be non nil")
 	}
 }
 

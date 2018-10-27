@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func CreateTx(to string, amount int64, gasPrice int64, expiration int64) *types.Transaction {
+func CreateTx(to string, amount int64, gasPrice int64, expiration uint64) *types.Transaction {
 	address := common.HexToAddress(to)
 
 	bigAmount := new(big.Int)
@@ -19,10 +19,7 @@ func CreateTx(to string, amount int64, gasPrice int64, expiration int64) *types.
 	bigGasPrice := new(big.Int)
 	bigGasPrice.SetInt64(gasPrice)
 
-	bigExpiration := new(big.Int)
-	bigExpiration.SetInt64(expiration)
-
-	return types.NewTransaction(address, bigAmount, gasLimit, bigGasPrice, nil, 0, bigExpiration, "paul xie", nil)
+	return types.NewTransaction(address, bigAmount, gasLimit, bigGasPrice, nil, 0, expiration, "paul xie", nil)
 }
 
 func TestTxPool_AddTx(t *testing.T) {

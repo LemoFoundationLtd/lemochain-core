@@ -50,7 +50,7 @@ func TestDefaultSigner_GetSender(t *testing.T) {
 func TestDefaultSigner_ParseSignature(t *testing.T) {
 	txV, err := SignTx(testTx, testSigner, testPrivate)
 	assert.NoError(t, err)
-	r, s, v, err := testSigner.ParseSignature(testTx, common.FromHex("0x3de7cbaaff085cfc1db7d1f31bea6819413d2391d9c5f81684faaeb9835df8774727d43924a0eb18621076607211edd7062c413d1663f29eadda0b0ee3c467fe01"))
+	r, s, v, err := testSigner.ParseSignature(testTx, common.FromHex("0x158b80d695e7d543ddb3ae09ed89b0fdd0c9f72b95a96e5f2b5e67a4d6d71a882b893b663e36f997df1e3f489b98d001cf615ee1e32b3c28ce6364f5cc681d5c01"))
 	assert.NoError(t, err)
 	assert.Equal(t, txV.data.R, r)
 	assert.Equal(t, txV.data.S, s)
@@ -63,5 +63,5 @@ func TestDefaultSigner_ParseSignature(t *testing.T) {
 }
 
 func TestDefaultSigner_Hash(t *testing.T) {
-	assert.Equal(t, "0x7fcf879493a5026b781cb6a2aa9158ccfb6cae0feb77fddf0a08d7f229e3c607", testSigner.Hash(testTx).Hex())
+	assert.Equal(t, "0x9f79748da47a0c32d2d268a5cfbe3a2a7d6c29d1a2f0534f416f3d2157933808", testSigner.Hash(testTx).Hex())
 }
