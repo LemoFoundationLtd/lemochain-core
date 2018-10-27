@@ -180,18 +180,11 @@ func (d *Downloader) syncWithPeer(p *peerConnection) error {
 				d.queueLock.Lock()
 				block := d.queue.PopItem().(*types.Block)
 				localHeight := d.blockChain.CurrentBlock().Height()
-				if block.Height() > localHeight+1 {
+				if block.Height() > localHeight+1 || !d.blockChain.HasBlock(block.ParentHash()) {
 					d.queue.Push(block, -float32(block.Height()))
 					break
 				}
 				d.queueLock.Unlock()
-				if err := d.blockChain.Verify(block); err != nil {
-					if d.dropPeer != nil {
-						d.dropPeer(p.id)
-					}
-					errMsgCh <- fmt.Sprintf("verify block failed. height: %d. err: %v", block.Height(), err)
-					return
-				}
 				d.insert(block, p.id)
 			}
 		}
