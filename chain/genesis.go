@@ -9,7 +9,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/common/math"
-	"github.com/LemoFoundationLtd/lemochain-go/common/merkle"
 	"github.com/LemoFoundationLtd/lemochain-go/store/protocol"
 	"math/big"
 	"net"
@@ -126,12 +125,6 @@ func SetupGenesisBlock(db protocol.ChainDB, genesis *Genesis) (common.Hash, erro
 
 // ToBlock
 func (g *Genesis) ToBlock() *types.Block {
-	leafHashes := make([]common.Hash, len(g.DeputyNodes))
-	for i, n := range g.DeputyNodes {
-		leafHashes[i] = n.Hash()
-	}
-	deputyTree := merkle.New(leafHashes)
-
 	head := &types.Header{
 		ParentHash: common.Hash{},
 		LemoBase:   g.LemoBase,
@@ -141,9 +134,11 @@ func (g *Genesis) ToBlock() *types.Block {
 		GasLimit:   g.GasLimit,
 		Extra:      g.ExtraData,
 		Time:       new(big.Int).SetUint64(g.Time),
-		DeputyRoot: deputyTree.Root().Bytes(),
+		DeputyRoot: types.DeriveDeputyRootSha(g.DeputyNodes).Bytes(),
 	}
-	return types.NewBlock(head, nil, nil, nil, nil, g.DeputyNodes)
+	block := types.NewBlock(head, nil, nil, nil, nil)
+	block.SetDeputyNodes(g.DeputyNodes)
+	return block
 }
 
 func (g *Genesis) setBalance(am *account.Manager) {

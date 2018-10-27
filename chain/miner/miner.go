@@ -318,17 +318,27 @@ func (m *Miner) sealBlock() {
 
 // sealHead 生成区块头
 func (m *Miner) sealHead() *types.Header {
+	// check is need to change lemoBase
 	parent := m.currentBlock()
-	if (parent.Height()+1)%1001000 == 1 {
+	if (parent.Height()+1)%101000 == 1 {
 		n := deputynode.Instance().GetDeputyByNodeID(parent.Height()+1, deputynode.GetSelfNodeID())
 		m.SetLemoBase(n.LemoBase)
 	}
+
+	// allowable 1 second time error
+	// but next block's time can't be small than parent block
+	parTime := parent.Time()
+	blockTime := big.NewInt(time.Now().Unix())
+	if parTime.Cmp(blockTime) > 0 {
+		blockTime = parTime
+	}
+
 	return &types.Header{
 		ParentHash: parent.Hash(),
 		LemoBase:   m.lemoBase,
 		Height:     parent.Height() + 1,
 		GasLimit:   calcGasLimit(parent),
-		Time:       big.NewInt(time.Now().Unix()),
+		Time:       blockTime,
 		Extra:      m.extra,
 	}
 }

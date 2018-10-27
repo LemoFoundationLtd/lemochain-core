@@ -61,7 +61,7 @@ func NewProtocolManager(chainID uint64, nodeID []byte, blockchain *chain.BlockCh
 	insertToChain := func(block *types.Block) error {
 		return blockchain.InsertChain(block, false)
 	}
-	manager.fetcher = NewFetcher(blockchain.HasBlock, blockchain.Verify, manager.broadcastCurrentBlock, getLocalHeight, getConsensusHeight, insertToChain, manager.dropPeer)
+	manager.fetcher = NewFetcher(blockchain.HasBlock, manager.broadcastCurrentBlock, getLocalHeight, getConsensusHeight, insertToChain, manager.dropPeer)
 	manager.downloader = NewDownloader(manager.peers, blockchain, manager.dropPeer)
 
 	blockchain.BroadcastConfirmInfo = manager.broadcastConfirmInfo // 广播区块的确认信息
