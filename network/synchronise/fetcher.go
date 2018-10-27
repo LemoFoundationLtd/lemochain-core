@@ -132,15 +132,10 @@ func (f *Fetcher) run() {
 				height := f.currentChainHeight()
 				f.lock.Lock()
 				op := f.queue.PopItem().(*newBlock)
-				if op.block.Height() > height+1 || f.isBlockExist(op.block.ParentHash()) {
+				if op.block.Height() > height+1 || !f.isBlockExist(op.block.ParentHash()) {
 					f.queue.Push(op, -float32(op.block.Height()))
 					f.lock.Unlock()
 					break
-				}
-				// 判断是否为分叉 且分叉的父块没有收到 todo
-				for f.isBlockExist(op.block.ParentHash()) == false {
-					f.queue.Push(op, -float32(op.block.Height()))
-					op = f.queue.PopItem().(*newBlock)
 				}
 				f.lock.Unlock()
 				hash := op.block.Hash()
@@ -330,10 +325,6 @@ func (f *Fetcher) forgetHash(hash common.Hash) {
 // forgetBlock 从相关容器中移除有关hash的记录
 func (f *Fetcher) forgetBlock(hash common.Hash) {
 	if _, ok := f.queuedMp[hash]; ok {
-		// f.queueMp[op.origin]--
-		// if f.queueMp[op.origin] == 0 {
-		// 	delete(f.queueMp, op.origin)
-		// }
 		delete(f.queuedMp, hash)
 	}
 }
@@ -344,11 +335,6 @@ func (f *Fetcher) enqueue(newBlock *newBlock) {
 	defer f.lock.Unlock()
 	// peer := newBlock.origin
 	hash := newBlock.block.Hash()
-	// if f.queueMp[peer] >= blockLimit {
-	// 	f.forgetHash(hash)
-	// 	log.Debug("fetcher's queue map is full")
-	// 	return
-	// }
 	// 新收到的块高度过大 丢掉
 	if dist := newBlock.block.Height() - f.currentChainHeight(); dist > maxQueueDist {
 		f.forgetHash(hash)
