@@ -120,7 +120,7 @@ func getCustomTypeData() []testCustomTypeConfig {
 	// 0 custom type
 	tests = append(tests, testCustomTypeConfig{
 		input:     &ChangeLog{LogType: ChangeLogType(0), Address: common.Address{}, Version: 1888, OldVal: "str", NewVal: []byte{128, 0xff}},
-		str:       "ChangeLogType(0){Account: 0x0000000000000000000000000000000000000000, Version: 1888, OldVal: str, NewVal: [128 255]}",
+		str:       "ChangeLogType(0){Account: Lemo222222222222222222222, Version: 1888, OldVal: str, NewVal: [128 255]}",
 		json:      `{"type":0,"address":"0x0000000000000000000000000000000000000000","version":1888,"newValue":"0x8280ff","extra":""}`,
 		hash:      "0xafee1464750a367208437ec1061ddbf793b2120588445389610d8143ad5d1035",
 		rlp:       "0xdd809400000000000000000000000000000000000000008207608280ffc0",
@@ -132,17 +132,17 @@ func getCustomTypeData() []testCustomTypeConfig {
 	structData := testStruct{11, "abc"}
 	tests = append(tests, testCustomTypeConfig{
 		input:   &ChangeLog{LogType: ChangeLogType(10001), Extra: structData},
-		str:     "ChangeLogType(10001){Account: 0x0000000000000000000000000000000000000000, Version: 0, Extra: {11 abc}}",
+		str:     "ChangeLogType(10001){Account: Lemo222222222222222222222, Version: 0, Extra: {11 abc}}",
 		json:    `{"type":10001,"address":"0x0000000000000000000000000000000000000000","version":0,"newValue":"","extra":"0xc50b83616263"}`,
 		hash:    "0xc2f5e2f55f2d6be2ef0e6b2f826bd2c1d9fcb4c2cd88a5b39677eb7564ff5629",
 		rlp:     "0xe082271194000000000000000000000000000000000000000080c0c50b83616263",
-		decoded: "ChangeLogType(10001){Account: 0x0000000000000000000000000000000000000000, Version: 0, Extra: {11 abc}}",
+		decoded: "ChangeLogType(10001){Account: Lemo222222222222222222222, Version: 0, Extra: {11 abc}}",
 	})
 
 	// 2 empty ChangeLog
 	tests = append(tests, testCustomTypeConfig{
 		input:     &ChangeLog{},
-		str:       "ChangeLogType(0){Account: 0x0000000000000000000000000000000000000000, Version: 0}",
+		str:       "ChangeLogType(0){Account: Lemo222222222222222222222, Version: 0}",
 		json:      `{"type":0,"address":"0x0000000000000000000000000000000000000000","version":0,"newValue":"","extra":""}`,
 		hash:      "0xae191db75787cf40e7a29c1287c1e65ab4b24e8a9bc7c7037e49575241943f65",
 		rlp:       "0xd98094000000000000000000000000000000000000000080c0c0",

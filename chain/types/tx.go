@@ -38,7 +38,7 @@ type txdata struct {
 	Amount        *big.Int        `json:"amount" gencodec:"required"`
 	Data          []byte          `json:"data" gencodec:"required"`
 	Expiration    uint64          `json:"expirationTime" gencodec:"required"`
-	Message       []byte          `json:"message"`
+	Message       string          `json:"message"`
 
 	// V is combined by these properties:
 	//     type    version secp256k1.V  chainId
@@ -52,27 +52,25 @@ type txdata struct {
 }
 
 type txdataMarshaling struct {
-	RecipientName hexutil.Bytes
-	GasPrice      *hexutil.Big
-	GasLimit      hexutil.Uint64
-	Amount        *hexutil.Big
-	Data          hexutil.Bytes
-	Expiration    hexutil.Uint64
-	Message       hexutil.Bytes
-	V             *hexutil.Big
-	R             *hexutil.Big
-	S             *hexutil.Big
+	GasPrice   *hexutil.Big
+	GasLimit   hexutil.Uint64
+	Amount     *hexutil.Big
+	Data       hexutil.Bytes
+	Expiration hexutil.Uint64
+	V          *hexutil.Big
+	R          *hexutil.Big
+	S          *hexutil.Big
 }
 
-func NewTransaction(to common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte, chainId uint16, expiration uint64, toName string, message []byte) *Transaction {
+func NewTransaction(to common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte, chainId uint16, expiration uint64, toName string, message string) *Transaction {
 	return newTransaction(0, TxVersion, chainId, &to, amount, gasLimit, gasPrice, data, expiration, toName, message)
 }
 
-func NewContractCreation(amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte, chainId uint16, expiration uint64, toName string, message []byte) *Transaction {
+func NewContractCreation(amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte, chainId uint16, expiration uint64, toName string, message string) *Transaction {
 	return newTransaction(0, TxVersion, chainId, nil, amount, gasLimit, gasPrice, data, expiration, toName, message)
 }
 
-func newTransaction(txType uint8, version uint8, chainId uint16, to *common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte, expiration uint64, toName string, message []byte) *Transaction {
+func newTransaction(txType uint8, version uint8, chainId uint16, to *common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte, expiration uint64, toName string, message string) *Transaction {
 	if version >= 128 {
 		panic(fmt.Sprintf("invalid transaction version %d, should < 128", version))
 	}
@@ -149,7 +147,7 @@ func (tx *Transaction) GasPrice() *big.Int { return new(big.Int).Set(tx.data.Gas
 func (tx *Transaction) Amount() *big.Int   { return new(big.Int).Set(tx.data.Amount) }
 func (tx *Transaction) Expiration() uint64 { return tx.data.Expiration }
 func (tx *Transaction) ToName() string     { return tx.data.RecipientName }
-func (tx *Transaction) Message() []byte    { return common.CopyBytes(tx.data.Message) }
+func (tx *Transaction) Message() string    { return tx.data.Message }
 func (tx *Transaction) To() *common.Address {
 	if tx.data.Recipient == nil {
 		return nil

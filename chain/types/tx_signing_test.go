@@ -11,6 +11,7 @@ func TestSignTx(t *testing.T) {
 	V := testTx.data.V
 	assert.Empty(t, testTx.data.R)
 	assert.Empty(t, testTx.data.S)
+	// the specific testTx and testPrivate makes recovery == 1
 	txV, err := SignTx(testTx, testSigner, testPrivate)
 	assert.NoError(t, err)
 	assert.NotEqual(t, V, txV.data.V)
@@ -50,7 +51,7 @@ func TestDefaultSigner_GetSender(t *testing.T) {
 func TestDefaultSigner_ParseSignature(t *testing.T) {
 	txV, err := SignTx(testTx, testSigner, testPrivate)
 	assert.NoError(t, err)
-	r, s, v, err := testSigner.ParseSignature(testTx, common.FromHex("0x158b80d695e7d543ddb3ae09ed89b0fdd0c9f72b95a96e5f2b5e67a4d6d71a882b893b663e36f997df1e3f489b98d001cf615ee1e32b3c28ce6364f5cc681d5c01"))
+	r, s, v, err := testSigner.ParseSignature(testTx, common.FromHex("0x8c0499083cb3d27bead4f21994aeebf8e75fa11df6bfe01c71cad583fc9a3c70778a437607d072540719a866adb630001fabbfb6b032d1a8dfbffac7daed8f0201"))
 	assert.NoError(t, err)
 	assert.Equal(t, txV.data.R, r)
 	assert.Equal(t, txV.data.S, s)
@@ -63,5 +64,5 @@ func TestDefaultSigner_ParseSignature(t *testing.T) {
 }
 
 func TestDefaultSigner_Hash(t *testing.T) {
-	assert.Equal(t, "0x9f79748da47a0c32d2d268a5cfbe3a2a7d6c29d1a2f0534f416f3d2157933808", testSigner.Hash(testTx).Hex())
+	assert.Equal(t, "0x81f8b8f725a9342a9ad85f31d2a6009afd52e43c5f86199a2089a32ea81913e6", testSigner.Hash(testTx).Hex())
 }
