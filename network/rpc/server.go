@@ -440,6 +440,7 @@ func (s *Server) readRequest(codec ServerCodec) ([]*serverRequest, bool, Error) 
 				if args, err := codec.ParseRequestArguments(callb.argTypes, r.params); err == nil {
 					requests[i].args = args
 				} else {
+					log.Debugf("parse req payload fail:\n0x%x\n%s\n", r.params, r.params)
 					requests[i].err = &invalidParamsError{err.Error()}
 				}
 			}

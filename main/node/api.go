@@ -1,7 +1,6 @@
 package node
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain"
@@ -201,14 +200,9 @@ func NewTxAPI(txpool *chain.TxPool) *TxAPI {
 }
 
 // Send send a transaction
-func (t *TxAPI) SendTx(encodedTx string) (common.Hash, error) {
-	tx := new(types.Transaction)
-	if err := json.Unmarshal([]byte(encodedTx), tx); err != nil {
-		return common.Hash{}, err
-	}
-	txHash := tx.Hash()
+func (t *TxAPI) SendTx(tx *types.Transaction) (common.Hash, error) {
 	err := t.txpool.AddTx(tx)
-	return txHash, err
+	return tx.Hash(), err
 }
 
 // MineAPI
