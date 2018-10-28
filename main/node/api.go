@@ -239,7 +239,7 @@ func (m *MineAPI) IsMining() bool {
 // LemoBase
 func (m *MineAPI) LemoBase() string {
 	lemoBase := m.miner.GetLemoBase()
-	return lemoBase.Hex()
+	return lemoBase.String()
 }
 
 // NetAPI

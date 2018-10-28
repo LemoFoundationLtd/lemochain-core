@@ -227,7 +227,7 @@ func formatIfIsBigInt(v interface{}) interface{} {
 
 func (c *ChangeLog) String() string {
 	set := []string{
-		fmt.Sprintf("Account: %s", c.Address.Hex()),
+		fmt.Sprintf("Account: %s", c.Address.String()),
 		fmt.Sprintf("Version: %d", c.Version),
 	}
 	if c.OldVal != nil {

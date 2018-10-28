@@ -113,7 +113,7 @@ func rlpHash(data interface{}) (h common.Hash) {
 func (h *Header) String() string {
 	set := []string{
 		fmt.Sprintf("ParentHash: %s", h.ParentHash.Hex()),
-		fmt.Sprintf("LemoBase: %s", h.LemoBase.Hex()),
+		fmt.Sprintf("LemoBase: %s", h.LemoBase.String()),
 		fmt.Sprintf("VersionRoot: %s", h.VersionRoot.Hex()),
 		fmt.Sprintf("TxRoot: %s", h.TxRoot.Hex()),
 		fmt.Sprintf("LogsRoot: %s", h.LogsRoot.Hex()),
