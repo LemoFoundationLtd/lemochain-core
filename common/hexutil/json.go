@@ -324,6 +324,16 @@ func errNonString(typ reflect.Type) error {
 
 type IP net.IP
 
+func (ip *IP) String() string {
+	t := net.IP(*ip)
+	return t.String()
+}
+
+func (ip *IP) MarshalJSON() ([]byte, error) {
+	t := "\"" + ip.String() + "\""
+	return []byte(t), nil
+}
+
 func (ip *IP) UnmarshalJSON(input []byte) error {
 	str := string(input)
 	str = strings.Trim(str, "\"")

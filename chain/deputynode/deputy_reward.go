@@ -20,14 +20,14 @@ func CalcReward(height uint32) []*DeputyReward {
 	nodes := Instance().getDeputiesByHeight(height)
 	totalVotes := new(big.Int)
 	for _, node := range nodes {
-		totalVotes.Add(totalVotes, new(big.Int).SetUint64(node.Votes))
+		totalVotes.Add(totalVotes, new(big.Int).SetUint64(uint64(node.Votes)))
 	}
 	totalRewards := getTotalReward(height)
 	// realRewards := new(big.Int)
 	for _, node := range nodes {
 		// n_v := new(big.Int).SetUint64(node.Votes)
 		r := new(big.Int)
-		r.Mul(new(big.Int).SetUint64(node.Votes), totalRewards)
+		r.Mul(new(big.Int).SetUint64(uint64(node.Votes)), totalRewards)
 		r.Div(r, totalVotes) // reward = vote * totalRewards / totalVotes
 		r.Div(r, minReward)  // reward = reward / minReward * reward
 		r.Mul(r, minReward)

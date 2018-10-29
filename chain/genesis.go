@@ -77,9 +77,9 @@ type Genesis struct {
 }
 
 type genesisSpecMarshaling struct {
-	Time        math.HexOrDecimal64
+	Time        math.Decimal64
 	ExtraData   hexutil.Bytes
-	GasLimit    math.HexOrDecimal64
+	GasLimit    math.Decimal64
 	DeputyNodes []*deputynode.DeputyNode
 }
 
