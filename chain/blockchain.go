@@ -298,13 +298,16 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32, logLess bo
 	delete(bc.chainForksHead, bc.currentBlock.Load().(*types.Block).Hash())
 	var curBlock *types.Block
 	var highest = uint32(0)
+	// prune forks and choose current block by height
 	for fHash, fBlock := range bc.chainForksHead {
 		parBlock = fBlock
+		// get the same height block on current fork
 		for parBlock.Height() > height {
 			parBlock = bc.GetBlockByHash(parBlock.ParentHash())
 		}
 		if parBlock.Hash() == hash {
-			if highest < fBlock.Height() { // height priority
+			// find the longest fork
+			if highest < fBlock.Height() {
 				highest = fBlock.Height()
 				curBlock = fBlock
 			}
@@ -313,9 +316,10 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32, logLess bo
 		}
 	}
 	if curBlock == nil {
+		log.Errorf("SetStableBlock with a block which not recorded in chainForksHead")
 		return nil
 	}
-	// same height: Sort in dictionary order
+	// if any fork has same height with current block, choose the smaller one by dictionary order
 	for fHash, fBlock := range bc.chainForksHead {
 		curHash := curBlock.Hash()
 		if curBlock.Height() == fBlock.Height() && bytes.Compare(curHash[:], fHash[:]) > 0 {
