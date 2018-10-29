@@ -97,3 +97,27 @@ func SafeMul(x, y uint64) (uint64, bool) {
 	}
 	return x * y, y > MaxUint64/x
 }
+
+type Decimal32 uint
+
+func (i *Decimal32) UnmarshalJSON(input []byte) error {
+	res, err := strconv.ParseInt(string(input), 10, 32)
+	*i = Decimal32(res)
+	return err
+}
+
+func (i Decimal32) MarshalJSON() ([]byte, error) {
+	return []byte(fmt.Sprintf("%d", uint(i))), nil
+}
+
+type Decimal64 uint64
+
+func (i *Decimal64) UnmarshalJSON(input []byte) error {
+	res, err := strconv.ParseInt(string(input), 10, 64)
+	*i = Decimal64(res)
+	return err
+}
+
+func (i Decimal64) MarshalJSON() ([]byte, error) {
+	return []byte(fmt.Sprintf("%d", uint64(i))), nil
+}

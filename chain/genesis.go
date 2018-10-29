@@ -18,7 +18,7 @@ import (
 // DefaultDeputyNodes
 var DefaultDeputyNodes = deputynode.DeputyNodes{
 	&deputynode.DeputyNode{
-		LemoBase: common.HexToAddress("0x015780F8456F9c1532645087a19DcF9a7e0c7F97"),
+		LemoBase: getLemoBase("Lemo3GN78GYH8NZ2BA789Z9TCT7KQ5FC3CR6DJG"),
 		NodeID:   common.FromHex("0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0"),
 		IP:       net.ParseIP("127.0.0.1"),
 		Port:     7001,
@@ -26,7 +26,7 @@ var DefaultDeputyNodes = deputynode.DeputyNodes{
 		Votes:    50000,
 	},
 	&deputynode.DeputyNode{
-		LemoBase: common.HexToAddress("0x016ad4Fc7e1608685Bf5fe5573973BF2B1Ef9B8A"),
+		LemoBase: getLemoBase("Lemo3JW7TBPA7P8P6AR9ZC8WCQJYRNHZ4NJD4CY"),
 		NodeID:   common.FromHex("0xddb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0"),
 		IP:       net.ParseIP("127.0.0.1"),
 		Port:     7002,
@@ -34,7 +34,7 @@ var DefaultDeputyNodes = deputynode.DeputyNodes{
 		Votes:    40000,
 	},
 	&deputynode.DeputyNode{
-		LemoBase: common.HexToAddress("0x01f98855Be9ecc5c23A28Ce345D2Cc04686f2c61"),
+		LemoBase: getLemoBase("Lemo48BJZ4DKCC764C63Y6A943775JH6NQ3Z33Y"),
 		NodeID:   common.FromHex("0x7739f34055d3c0808683dbd77a937f8e28f707d5b1e873bbe61f6f2d0347692f36ef736f342fb5ce4710f7e337f062cc2110d134b63a9575f78cb167bfae2f43"),
 		IP:       net.ParseIP("127.0.0.1"),
 		Port:     7003,
@@ -42,7 +42,7 @@ var DefaultDeputyNodes = deputynode.DeputyNodes{
 		Votes:    30000,
 	},
 	&deputynode.DeputyNode{
-		LemoBase: common.HexToAddress("0x0112fDDcF0C08132A5dcd9ED77e1a3348ff378D2"),
+		LemoBase: getLemoBase("Lemo37QGPS3YNTYNF53CD22WA5DR3ABNA95W8DG"),
 		NodeID:   common.FromHex("0x34f0df789b46e9bc09f23d5315b951bc77bbfeda653ae6f5aab564c9b4619322fddb3b1f28d1c434250e9d4dd8f51aa8334573d7281e4d63baba913e9fa6908f"),
 		IP:       net.ParseIP("127.0.0.1"),
 		Port:     7004,
@@ -50,13 +50,20 @@ var DefaultDeputyNodes = deputynode.DeputyNodes{
 		Votes:    20000,
 	},
 	&deputynode.DeputyNode{
-		LemoBase: common.HexToAddress("0x016017aF50F4bB67101CE79298ACBdA1A3c12C15"),
+		LemoBase: getLemoBase("Lemo3HKZK62JQZDRGS5PWT8ZBSKR5CRADCSJB9B"),
 		NodeID:   common.FromHex("0x5b980ffb1b463fce4773a22ebf376c07c6207023b016b36ccfaba7be1cd1ab4a91737741cd43b7fcb10879e0fcf314d69fa953daec0f02be0f8f9cedb0cb3797"),
 		IP:       net.ParseIP("127.0.0.1"),
 		Port:     7005,
 		Rank:     4,
 		Votes:    10000,
 	},
+}
+
+func getLemoBase(input string) common.Address {
+	if lemoBase, err := common.RestoreOriginalAddress(input); err == nil {
+		return lemoBase
+	}
+	panic(fmt.Sprintf("deputy nodes have invalid lemobase: %s", input))
 }
 
 //go:generate gencodec -type Genesis -field-override genesisSpecMarshaling -out gen_genesis.go
@@ -70,20 +77,24 @@ type Genesis struct {
 }
 
 type genesisSpecMarshaling struct {
-	Time        math.HexOrDecimal64
+	Time        math.Decimal64
 	ExtraData   hexutil.Bytes
-	GasLimit    math.HexOrDecimal64
+	GasLimit    math.Decimal64
 	DeputyNodes []*deputynode.DeputyNode
 }
 
 // DefaultGenesisBlock default genesis block
 func DefaultGenesisBlock() *Genesis {
 	timeSpan, _ := time.ParseInLocation("2006-01-02 15:04:05", "2018-08-30 12:00:00", time.UTC)
+	lemoBase, err := common.RestoreOriginalAddress("Lemo3GN78GYH8NZ2BA789Z9TCT7KQ5FC3CR6DJG")
+	if err != nil {
+		panic("LemoBase is invalid.")
+	}
 	return &Genesis{
 		Time:        uint64(timeSpan.Unix()),
 		ExtraData:   []byte(""),
 		GasLimit:    105000000,
-		LemoBase:    common.HexToAddress("0x015780F8456F9c1532645087a19DcF9a7e0c7F97"),
+		LemoBase:    lemoBase,
 		DeputyNodes: DefaultDeputyNodes,
 	}
 }

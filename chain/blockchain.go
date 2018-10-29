@@ -288,11 +288,9 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32, logLess bo
 
 	// get parent block
 	parBlock := bc.currentBlock.Load().(*types.Block)
-	for parBlock.Height() > height {
-		parBlock = bc.GetBlockByHash(parBlock.ParentHash())
-	}
-	if parBlock.Hash() == hash {
-		return nil
+	if parBlock.Height() < height {
+		log.Error("stable block's height is larger than current block")
+		return fmt.Errorf("stable block's height is larger than current block")
 	}
 	// fork
 	bc.chainForksLock.Lock()
@@ -300,17 +298,16 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32, logLess bo
 	delete(bc.chainForksHead, bc.currentBlock.Load().(*types.Block).Hash())
 	var curBlock *types.Block
 	var highest = uint32(0)
+	// prune forks and choose current block by height
 	for fHash, fBlock := range bc.chainForksHead {
-		if fBlock.Height() < height {
-			delete(bc.chainForksHead, fHash)
-			continue
-		}
 		parBlock = fBlock
+		// get the same height block on current fork
 		for parBlock.Height() > height {
 			parBlock = bc.GetBlockByHash(parBlock.ParentHash())
 		}
 		if parBlock.Hash() == hash {
-			if highest < fBlock.Height() { // height priority
+			// find the longest fork
+			if highest < fBlock.Height() {
 				highest = fBlock.Height()
 				curBlock = fBlock
 			}
@@ -318,7 +315,11 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32, logLess bo
 			delete(bc.chainForksHead, fHash)
 		}
 	}
-	// same height: Sort in dictionary order
+	if curBlock == nil {
+		log.Errorf("SetStableBlock with a block which not recorded in chainForksHead")
+		return nil
+	}
+	// if any fork has same height with current block, choose the smaller one by dictionary order
 	for fHash, fBlock := range bc.chainForksHead {
 		curHash := curBlock.Hash()
 		if curBlock.Height() == fBlock.Height() && bytes.Compare(curHash[:], fHash[:]) > 0 {
@@ -355,7 +356,6 @@ func (bc *BlockChain) Verify(block *types.Block) error {
 
 	// verify block hash
 	if newHeader.Hash() != hash {
-		log.Errorf("verify block error! hash:%s", hash.Hex())
 		return fmt.Errorf("verify block error! hash:%s", hash.Hex())
 	}
 	return nil

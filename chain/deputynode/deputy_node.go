@@ -39,7 +39,7 @@ type DeputyNode struct {
 	IP       net.IP         `json:"ip"         gencodec:"required"` // ip
 	Port     uint           `json:"port"       gencodec:"required"` // 端口
 	Rank     uint           `json:"rank"       gencodec:"required"` // 排名 从0开始
-	Votes    uint64         `json:"votes"      gencodec:"required"` // 得票数
+	Votes    uint           `json:"votes"      gencodec:"required"` // 得票数
 }
 
 func (d *DeputyNode) Hash() (h common.Hash) {
@@ -62,9 +62,9 @@ type DeputyNodes []*DeputyNode
 type Marshaling struct {
 	NodeID hexutil.Bytes
 	IP     hexutil.IP
-	Port   math.HexOrDecimal64
-	Rank   math.HexOrDecimal64
-	Votes  math.HexOrDecimal64
+	Port   math.Decimal32
+	Rank   math.Decimal32
+	Votes  math.Decimal32
 }
 
 type DeputyNodesRecord struct {

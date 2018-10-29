@@ -24,9 +24,9 @@ func (h Header) MarshalJSON() ([]byte, error) {
 		EventRoot   common.Hash    `json:"eventRoot"        gencodec:"required"`
 		Bloom       Bloom          `json:"logsBloom"        gencodec:"required"`
 		Height      uint32         `json:"height"           gencodec:"required"`
-		GasLimit    hexutil.Uint64 `json:"gasLimit"         gencodec:"required"`
-		GasUsed     hexutil.Uint64 `json:"gasUsed"          gencodec:"required"`
-		Time        *hexutil.Big   `json:"timestamp"        gencodec:"required"`
+		GasLimit    uint64         `json:"gasLimit"         gencodec:"required"`
+		GasUsed     uint64         `json:"gasUsed"          gencodec:"required"`
+		Time        *big.Int       `json:"timestamp"        gencodec:"required"`
 		SignData    hexutil.Bytes  `json:"signData"         gencodec:"required"`
 		DeputyRoot  hexutil.Bytes  `json:"deputyRoot"       gencodec:"required"`
 		Extra       hexutil.Bytes  `json:"extraData"        gencodec:"required"`
@@ -41,9 +41,9 @@ func (h Header) MarshalJSON() ([]byte, error) {
 	enc.EventRoot = h.EventRoot
 	enc.Bloom = h.Bloom
 	enc.Height = h.Height
-	enc.GasLimit = hexutil.Uint64(h.GasLimit)
-	enc.GasUsed = hexutil.Uint64(h.GasUsed)
-	enc.Time = (*hexutil.Big)(h.Time)
+	enc.GasLimit = h.GasLimit
+	enc.GasUsed = h.GasUsed
+	enc.Time = h.Time
 	enc.SignData = h.SignData
 	enc.DeputyRoot = h.DeputyRoot
 	enc.Extra = h.Extra
@@ -62,9 +62,9 @@ func (h *Header) UnmarshalJSON(input []byte) error {
 		EventRoot   *common.Hash    `json:"eventRoot"        gencodec:"required"`
 		Bloom       *Bloom          `json:"logsBloom"        gencodec:"required"`
 		Height      *uint32         `json:"height"           gencodec:"required"`
-		GasLimit    *hexutil.Uint64 `json:"gasLimit"         gencodec:"required"`
-		GasUsed     *hexutil.Uint64 `json:"gasUsed"          gencodec:"required"`
-		Time        *hexutil.Big    `json:"timestamp"        gencodec:"required"`
+		GasLimit    *uint64         `json:"gasLimit"         gencodec:"required"`
+		GasUsed     *uint64         `json:"gasUsed"          gencodec:"required"`
+		Time        *big.Int        `json:"timestamp"        gencodec:"required"`
 		SignData    *hexutil.Bytes  `json:"signData"         gencodec:"required"`
 		DeputyRoot  *hexutil.Bytes  `json:"deputyRoot"       gencodec:"required"`
 		Extra       *hexutil.Bytes  `json:"extraData"        gencodec:"required"`
@@ -108,15 +108,15 @@ func (h *Header) UnmarshalJSON(input []byte) error {
 	if dec.GasLimit == nil {
 		return errors.New("missing required field 'gasLimit' for Header")
 	}
-	h.GasLimit = uint64(*dec.GasLimit)
+	h.GasLimit = *dec.GasLimit
 	if dec.GasUsed == nil {
 		return errors.New("missing required field 'gasUsed' for Header")
 	}
-	h.GasUsed = uint64(*dec.GasUsed)
+	h.GasUsed = *dec.GasUsed
 	if dec.Time == nil {
 		return errors.New("missing required field 'timestamp' for Header")
 	}
-	h.Time = (*big.Int)(dec.Time)
+	h.Time = dec.Time
 	if dec.SignData == nil {
 		return errors.New("missing required field 'signData' for Header")
 	}
