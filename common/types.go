@@ -155,7 +155,7 @@ func (a Address) Hex() string {
 // String implements the stringer interface and native address is converted to LemoAddress.
 func (a Address) String() string {
 	// Get check digit
-	checkSum := a.getCheckSum()
+	checkSum := GetCheckSum(a.Bytes())
 	// Stitching the check digit at the end
 	fullPayload := append(a.Bytes(), checkSum)
 	// base26 encoding
@@ -166,11 +166,9 @@ func (a Address) String() string {
 	return string(lemoAddress)
 }
 
-// getCheckSum get the check digit by doing an exclusive OR operation
-func (a Address) getCheckSum() byte {
-	// Conversion Address type
-	addressToBytes := a.Bytes()
-	var temp = addressToBytes[0]
+// GetCheckSum get the check digit by doing an exclusive OR operation
+func GetCheckSum(addressToBytes []byte) byte {
+	var temp = byte(0)
 	for _, c := range addressToBytes {
 		temp ^= c
 	}
