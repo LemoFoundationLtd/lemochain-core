@@ -19,7 +19,7 @@ func CreateTx(to string, amount int64, gasPrice int64, expiration uint64) *types
 	bigGasPrice := new(big.Int)
 	bigGasPrice.SetInt64(gasPrice)
 
-	return types.NewTransaction(address, bigAmount, gasLimit, bigGasPrice, nil, 0, expiration, "paul xie", nil)
+	return types.NewTransaction(address, bigAmount, gasLimit, bigGasPrice, nil, 0, expiration, "paul xie", "")
 }
 
 func TestTxPool_AddTx(t *testing.T) {
