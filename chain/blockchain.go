@@ -355,7 +355,6 @@ func (bc *BlockChain) Verify(block *types.Block) error {
 
 	// verify block hash
 	if newHeader.Hash() != hash {
-		log.Errorf("verify block error! hash:%s", hash.Hex())
 		return fmt.Errorf("verify block error! hash:%s", hash.Hex())
 	}
 	return nil
