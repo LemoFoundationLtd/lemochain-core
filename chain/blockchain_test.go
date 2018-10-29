@@ -235,7 +235,8 @@ func TestBlockChain_GetBlockByHeight(t *testing.T) {
 	assert.Equal(t, genesis.Hash(), result.ParentHash())
 }
 
-func TestBlockChain_SetStableBlock(t *testing.T) {
+// 1、2、31、32{4、5}，set stable #4
+func TestBlockChain_SetStableBlockCurBranch1(t *testing.T) {
 
 	store.ClearData()
 
@@ -288,4 +289,193 @@ func TestBlockChain_SetStableBlock(t *testing.T) {
 
 	assert.Equal(t, 1, len(blockChain.chainForksHead))
 	assert.NotNil(t, blockChain.chainForksHead[block5.Hash()])
+	assert.Equal(t, blockChain.CurrentBlock().Hash(), block5.Hash())
+}
+
+// 1、2、31、32{4、5}，set stable #2
+func TestBlockChain_SetStableBlockCurBranch2(t *testing.T) {
+	store.ClearData()
+
+	blockChain, _, err := newBlockChain()
+	assert.NoError(t, err)
+
+	genesis := blockChain.GetBlockByHeight(0)
+	assert.NotNil(t, genesis)
+
+	var info blockInfo
+	info.parentHash = genesis.Hash()
+	info.height = uint32(1)
+	block1 := makeBlock(blockChain.db, info, false)
+	err = blockChain.InsertChain(block1, true)
+	assert.NoError(t, err)
+
+	info.parentHash = block1.Hash()
+	info.height = uint32(2)
+	block2 := makeBlock(blockChain.db, info, false)
+	err = blockChain.InsertChain(block2, true)
+	assert.NoError(t, err)
+
+	info.parentHash = block2.Hash()
+	info.height = uint32(3)
+	block31 := makeBlock(blockChain.db, info, false)
+	err = blockChain.InsertChain(block31, true)
+	assert.NoError(t, err)
+
+	info.parentHash = block2.Hash()
+	info.height = uint32(3)
+	info.gasLimit = 1000
+	block32 := makeBlock(blockChain.db, info, false)
+	err = blockChain.InsertChain(block32, true)
+	assert.NoError(t, err)
+
+	info.parentHash = block32.Hash()
+	info.height = uint32(4)
+	block4 := makeBlock(blockChain.db, info, false)
+	err = blockChain.InsertChain(block4, true)
+	assert.NoError(t, err)
+
+	info.parentHash = block4.Hash()
+	info.height = uint32(5)
+	block5 := makeBlock(blockChain.db, info, false)
+	err = blockChain.InsertChain(block5, true)
+	assert.NoError(t, err)
+
+	err = blockChain.SetStableBlock(block2.Hash(), 2, false)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 2, len(blockChain.chainForksHead))
+	assert.NotNil(t, blockChain.chainForksHead[block5.Hash()])
+	assert.NotNil(t, blockChain.chainForksHead[block31.Hash()])
+	assert.Equal(t, blockChain.CurrentBlock().Hash(), block5.Hash())
+}
+
+// 1、2、31{41、51}、32{42、52} set stable #42
+func TestBlockChain_SetStableBlockCurBranch3(t *testing.T) {
+
+	store.ClearData()
+
+	blockChain, _, err := newBlockChain()
+	assert.NoError(t, err)
+
+	genesis := blockChain.GetBlockByHeight(0)
+	assert.NotNil(t, genesis)
+
+	var info blockInfo
+	info.parentHash = genesis.Hash()
+	info.height = uint32(1)
+	block1 := makeBlock(blockChain.db, info, false)
+	err = blockChain.InsertChain(block1, true)
+	assert.NoError(t, err)
+
+	info.parentHash = block1.Hash()
+	info.height = uint32(2)
+	block2 := makeBlock(blockChain.db, info, false)
+	err = blockChain.InsertChain(block2, true)
+	assert.NoError(t, err)
+
+	info.parentHash = block2.Hash()
+	info.height = uint32(3)
+	block31 := makeBlock(blockChain.db, info, false)
+	err = blockChain.InsertChain(block31, true)
+	assert.NoError(t, err)
+
+	info.parentHash = block31.Hash()
+	info.height = uint32(4)
+	block41 := makeBlock(blockChain.db, info, false)
+	err = blockChain.InsertChain(block41, true)
+	assert.NoError(t, err)
+
+	info.parentHash = block41.Hash()
+	info.height = uint32(5)
+	block51 := makeBlock(blockChain.db, info, false)
+	err = blockChain.InsertChain(block51, true)
+	assert.NoError(t, err)
+
+	info.parentHash = block2.Hash()
+	info.height = uint32(3)
+	info.gasLimit = 1000
+	block32 := makeBlock(blockChain.db, info, false)
+	err = blockChain.InsertChain(block32, true)
+	assert.NoError(t, err)
+
+	info.parentHash = block32.Hash()
+	info.height = uint32(4)
+	block42 := makeBlock(blockChain.db, info, false)
+	err = blockChain.InsertChain(block42, true)
+	assert.NoError(t, err)
+
+	info.parentHash = block42.Hash()
+	info.height = uint32(5)
+	block52 := makeBlock(blockChain.db, info, false)
+	err = blockChain.InsertChain(block52, true)
+	assert.NoError(t, err)
+
+	err = blockChain.SetStableBlock(block42.Hash(), 4, false)
+	assert.NoError(t, err)
+
+	assert.Equal(t, blockChain.CurrentBlock().Hash(), block52.Hash())
+
+	assert.Equal(t, 1, len(blockChain.chainForksHead))
+	assert.NotNil(t, blockChain.chainForksHead[block52.Hash()])
+}
+
+func TestBlockChain_SetStableBlockCurBranch4(t *testing.T) {
+
+	store.ClearData()
+
+	blockChain, _, err := newBlockChain()
+	assert.NoError(t, err)
+
+	genesis := blockChain.GetBlockByHeight(0)
+	assert.NotNil(t, genesis)
+
+	var info blockInfo
+	info.parentHash = genesis.Hash()
+	info.height = uint32(1)
+	block1 := makeBlock(blockChain.db, info, false)
+	err = blockChain.InsertChain(block1, true)
+	assert.NoError(t, err)
+
+	info.parentHash = block1.Hash()
+	info.height = uint32(2)
+	block2 := makeBlock(blockChain.db, info, false)
+	err = blockChain.InsertChain(block2, true)
+	assert.NoError(t, err)
+
+	info.parentHash = block2.Hash()
+	info.height = uint32(3)
+	block31 := makeBlock(blockChain.db, info, false)
+	err = blockChain.InsertChain(block31, true)
+	assert.NoError(t, err)
+
+	info.parentHash = block31.Hash()
+	info.height = uint32(4)
+	block41 := makeBlock(blockChain.db, info, false)
+	err = blockChain.InsertChain(block41, true)
+	assert.NoError(t, err)
+
+	info.parentHash = block41.Hash()
+	info.height = uint32(4)
+	block51 := makeBlock(blockChain.db, info, false)
+	err = blockChain.InsertChain(block51, true)
+	assert.NoError(t, err)
+
+	info.parentHash = block2.Hash()
+	info.height = uint32(3)
+	info.gasLimit = 1000
+	block32 := makeBlock(blockChain.db, info, false)
+	err = blockChain.InsertChain(block32, true)
+	assert.NoError(t, err)
+
+	info.parentHash = block32.Hash()
+	info.height = uint32(4)
+	block42 := makeBlock(blockChain.db, info, false)
+	err = blockChain.InsertChain(block42, true)
+	assert.NoError(t, err)
+
+	err = blockChain.SetStableBlock(block42.Hash(), 4, false)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 1, len(blockChain.chainForksHead))
+	assert.NotNil(t, blockChain.chainForksHead[block42.Hash()])
 }
