@@ -277,7 +277,7 @@ func TestBlockChain_SetStableBlock(t *testing.T) {
 	err = blockChain.InsertChain(block4, true)
 	assert.NoError(t, err)
 
-	info.parentHash = block2.Hash()
+	info.parentHash = block4.Hash()
 	info.height = uint32(5)
 	block5 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block5, true)
