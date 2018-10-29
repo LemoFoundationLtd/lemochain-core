@@ -23,13 +23,32 @@ func TestRestoreOriginalAddress(t *testing.T) {
 		LemoAddress string
 		Native      string
 	}{
-		{"Lemo44HKF7J49KY3ZDGG8YA2DWKKJJA73WFK997", "0x01d88fa5d7b95e3749891097f58990faff42840a"},
-		{"Lemo46RGWZPB2R4N85K4Y6T4JDHGT3BPWRHF6JR", "0x01ebd94fee207ab64c99c0212276a832c3f936a3"},
-		{"Lemo35ZFT9ZPZB9QCNNJ285B3HSJ8AJD4A8A8CH", "0x0103a851dfe5ec1a649ecb87eb2b391f5cb9b9b0"},
+		{"Lemo3W3BPY6WQYY679PFNCA8RTCJ3DQ422PYBP2", "0x01a8d70aab17d3befeb865c9763f6d1287f56d1e"},
+		{"Lemo392JP6H7WAFPYGK7AT38H5KK4BTGSKKSAP3", "0x011e0274e6c17f6763fe80c50c55eefe27786287"},
+		{"Lemo35KT5PY5BRNQN58GCTFJJPB22Z7JB7JHDJP", "0x0100c749f8ca92f758bdd1b0b7a415df42cfaa06"},
 	}
 	for _, test := range tests {
-		nativeAddress := RestoreOriginalAddress(test.LemoAddress)
+		nativeAddress, err := RestoreOriginalAddress(test.LemoAddress)
+		assert.Nil(t, err)
 		LowerNativeAddress := strings.ToLower(nativeAddress.Hex())
 		assert.Equal(t, test.Native, LowerNativeAddress)
 	}
+
+	// addpair, _ := GenerateAddress()
+	// a := addpair.NativePubkey
+	// t.Log(a)
+	// t.Log(addpair.LemoAddress)
+	// addressByte := common.FromHex(a)
+	// t.Log(len(addressByte))
+	//
+	// address := common.BytesToAddress(addressByte)
+	// lemo := address.String()
+	// t.Log(len(lemo))
+	//
+	// fullPayload := append(addressByte, '1')
+	// t.Log(len(fullPayload))
+	// t.Log(fullPayload)
+	// lemoAddress := append([]byte("logo"), fullPayload...)
+	// t.Log(string(lemoAddress))
+
 }

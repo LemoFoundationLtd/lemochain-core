@@ -72,11 +72,15 @@ func (a *AccountAPI) GetAccount(LemoAddress string) (types.AccountAccessor, erro
 	var address common.Address
 	// Determine whether the input address is a Lemo address or a native address.
 	if strings.HasPrefix(LemoAddress, "Lemo") {
-
-		address = crypto.RestoreOriginalAddress(LemoAddress)
+		var err error
+		address, err = crypto.RestoreOriginalAddress(LemoAddress)
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		address = common.HexToAddress(LemoAddress)
 	}
+
 	accountData := a.manager.GetCanonicalAccount(address)
 
 	return accountData, nil
