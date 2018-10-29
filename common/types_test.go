@@ -126,10 +126,10 @@ func TestAddressEncode(t *testing.T) {
 		Output string
 	}{
 		// Test cases from https://github.com/lemochain/EIPs/blob/master/EIPS/eip-55.md#specification
-		{"0x0107134b9cdd7d89f83efa6175f9b3552f29094c", "Lemo36BQKCBZ2Z7B7N4G4N4SNGBT84ZZSJQD84C"},
-		{"0xfb6916095ca1df60bb79ce92ce3ea74c37c5d359", "LemoCZS8N395GG95BGD7AKQNZP773YK9656WD3F7"},
-		{"0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6fb", "LemoBK2ZW83YD7SQ4NZB3S6TY4CN6J4JJ76JJG9T"},
-		{"0xd1220a0cf47c7b9be7a2e6ba89f429762e7b9adb", "LemoB5QJQKRNT2WG4ZKTB25KW938PTKG3A68F3YJ"},
+		{"0x01c96d852165a10915ffa9c2281ef430784840f0", "Lemo42S799HQ3KPTNSYGDF5TARS3Z2Z8ZCAH5S3"},
+		{"0x01818e82ba1e28b9a104e4ae972f0a42d20941ea", "Lemo3PGDHYY8Y6TDKZN6DG9N2ZJ2FHRN2KBK5W6"},
+		{"0x01ba688be96e0680cfa3310a88c87a8c2eb0547d", "Lemo3Z44ZFDJK5GPC4DBRABJSNBST7G83K44KD3"},
+		{"0x019fce0c15a9ad419d3e36cc56c631906180145e", "Lemo3T28GCAT5QNKSR7284KD2F7ZTW6RRBDTG97"},
 		// Ensure that non-standard length input values are handled correctly
 		{"0xa", "Lemo22222222222222222225RT"},
 		{"0x0a", "Lemo22222222222222222225RT"},
@@ -146,5 +146,24 @@ func BenchmarkAddressHex(b *testing.B) {
 	testAddr := HexToAddress("0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed")
 	for n := 0; n < b.N; n++ {
 		testAddr.Hex()
+	}
+}
+
+// RestoreOriginalAddress function test
+func TestRestoreOriginalAddress(t *testing.T) {
+	tests := []struct {
+		LemoAddress string
+		Native      string
+	}{
+		{"Lemo37QGPS3YNTYNF53CD22WA5DR3ABNA95W8DG", "0x0112fDDcF0C08132A5dcd9ED77e1a3348ff378D2"},
+		{"Lemo48BJZ4DKCC764C63Y6A943775JH6NQ3Z33Y", "0x01f98855Be9ecc5c23A28Ce345D2Cc04686f2c61"},
+		{"Lemo3JW7TBPA7P8P6AR9ZC8WCQJYRNHZ4NJD4CY", "0x016ad4Fc7e1608685Bf5fe5573973BF2B1Ef9B8A"},
+		{"Lemo3GN78GYH8NZ2BA789Z9TCT7KQ5FC3CR6DJG", "0x015780F8456F9c1532645087a19DcF9a7e0c7F97"},
+	}
+	for _, test := range tests {
+		nativeAddress, err := RestoreOriginalAddress(test.LemoAddress)
+		assert.Nil(t, err)
+		NativeAddress := nativeAddress.Hex()
+		assert.Equal(t, strings.ToLower(test.Native), NativeAddress)
 	}
 }

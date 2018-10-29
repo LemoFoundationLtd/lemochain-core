@@ -1,7 +1,6 @@
 package node
 
 import (
-	"errors"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
@@ -64,11 +63,6 @@ func (a *AccountAPI) GetBalance(LemoAddress string) (string, error) {
 
 // GetAccount return the struct of the &AccountData{}
 func (a *AccountAPI) GetAccount(LemoAddress string) (types.AccountAccessor, error) {
-	// Determine if the input address length is valid
-	addressLen := len(LemoAddress)
-	if addressLen != 39 && addressLen != 42 {
-		return nil, errors.New("address length is incorrect")
-	}
 	var address common.Address
 	// Determine whether the input address is a Lemo address or a native address.
 	if strings.HasPrefix(LemoAddress, "Lemo") {
@@ -82,7 +76,6 @@ func (a *AccountAPI) GetAccount(LemoAddress string) (types.AccountAccessor, erro
 	}
 
 	accountData := a.manager.GetCanonicalAccount(address)
-
 	return accountData, nil
 }
 
