@@ -295,7 +295,6 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32, logLess bo
 	// fork
 	bc.chainForksLock.Lock()
 	defer bc.chainForksLock.Unlock()
-	delete(bc.chainForksHead, bc.currentBlock.Load().(*types.Block).Hash())
 	var curBlock *types.Block
 	var highest = uint32(0)
 	// prune forks and choose current block by height
