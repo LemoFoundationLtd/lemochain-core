@@ -1,6 +1,7 @@
 package crypto
 
 import (
+	"errors"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/base26"
 )
@@ -39,14 +40,25 @@ func GenerateAddress() (*AddressKeyPair, error) {
 }
 
 // RestoreOriginalAddress Restore original address the LemoAddress and return the Address type.
-func RestoreOriginalAddress(LemoAddress string) common.Address {
+func RestoreOriginalAddress(LemoAddress string) (common.Address, error) {
 	// Remove logo
 	address := []byte(LemoAddress)[4:]
 	// Base26 decoding
 	fullPayload := base26.Decode(address)
-	// Get the native address
-	BytesAddress := fullPayload[:len(fullPayload)-1]
-	nativeAddress := common.BytesToAddress(BytesAddress)
+	// get the length of the address bytes type
+	length := len(fullPayload)
+	// get check bit
+	checkSum := fullPayload[length-1]
+	// get the native address
+	BytesAddress := fullPayload[:length-1]
+	// calculate the check bit by BytesAddress
+	trueCheck := common.GetCheckSum(BytesAddress)
+	// compare check
+	if checkSum == trueCheck {
+		nativeAddress := common.BytesToAddress(BytesAddress)
+		return nativeAddress, nil
+	} else {
+		return common.Address{}, errors.New("address check does not pass")
+	}
 
-	return nativeAddress
 }
