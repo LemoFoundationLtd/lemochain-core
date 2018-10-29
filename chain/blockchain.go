@@ -288,11 +288,9 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32, logLess bo
 
 	// get parent block
 	parBlock := bc.currentBlock.Load().(*types.Block)
-	for parBlock.Height() > height {
-		parBlock = bc.GetBlockByHash(parBlock.ParentHash())
-	}
-	if parBlock.Hash() == hash {
-		return nil
+	if parBlock.Height() < height {
+		log.Error("stable block's height is larger than current block")
+		return fmt.Errorf("stable block's height is larger than current block")
 	}
 	// fork
 	bc.chainForksLock.Lock()
@@ -301,10 +299,6 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32, logLess bo
 	var curBlock *types.Block
 	var highest = uint32(0)
 	for fHash, fBlock := range bc.chainForksHead {
-		if fBlock.Height() < height {
-			delete(bc.chainForksHead, fHash)
-			continue
-		}
 		parBlock = fBlock
 		for parBlock.Height() > height {
 			parBlock = bc.GetBlockByHash(parBlock.ParentHash())
@@ -317,6 +311,9 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32, logLess bo
 		} else {
 			delete(bc.chainForksHead, fHash)
 		}
+	}
+	if curBlock == nil {
+		return nil
 	}
 	// same height: Sort in dictionary order
 	for fHash, fBlock := range bc.chainForksHead {
