@@ -47,11 +47,37 @@ $ glemo console --datadir=path/to/custom/data/folder
 LemoChain可以通过创始块配置文件(`genesis.json`)实现定制。
 ```json
 {
-  "lemobase": "0x0000000000000000000000000000000000000000",
+  "lemobase": "Lemo3GN78GYH8NZ2BA789Z9TCT7KQ5FC3CR6DJG",
   "extraData": "",
-  "gasLimit": "0x2fefd8",
   "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
-  "timestamp": "1539051657"
+  "gasLimit": 105000000,
+  "timestamp": 1539051657,
+  "deputyNodes":[
+		{
+			"lemoBase": "Lemo3GN78GYH8NZ2BA789Z9TCT7KQ5FC3CR6DJG",
+			"nodeID": "0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0",
+			"ip": "127.0.0.1",
+			"port": 7001,
+			"rank": 0,
+			"votes": 17
+		},
+		{
+			"lemoBase": "Lemo3JW7TBPA7P8P6AR9ZC8WCQJYRNHZ4NJD4CY",
+			"nodeID": "0xddb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0",
+			"ip": "127.0.0.1",
+			"port": 7002,
+			"rank": 1,
+			"votes": 16
+		},
+		{
+			"lemoBase": "Lemo48BJZ4DKCC764C63Y6A943775JH6NQ3Z33Y",
+			"nodeID": "0x7739f34055d3c0808683dbd77a937f8e28f707d5b1e873bbe61f6f2d0347692f36ef736f342fb5ce4710f7e337f062cc2110d134b63a9575f78cb167bfae2f43",
+			"ip": "127.0.0.1",
+			"port": 7003,
+			"rank": 2,
+			"votes": 15
+		}
+	]
 }
 ```
 - `lemobase`  16亿预挖LEMO的持有账户
@@ -59,6 +85,13 @@ LemoChain可以通过创始块配置文件(`genesis.json`)实现定制。
 - `gasLimit` 创始块交易费用上限，用来限制块大小
 - `parentHash` 创始块的父块hash
 - `timestamp` 创始块建立时间，精确到秒
+- `deputyNodes` 初始的出块节点列表
+- `lemoBase` 挖矿收益地址
+- `nodeID` 节点NodeID
+- `ip` 节点IP地址
+- `port` 节点端口号
+- `rank` 出块节点排名
+- `votes` 出块节点得票数
 
 填好上面这个JSON文件中的配置，我们需要在启动每个Lemo节点前对其进行初始化
 ```
@@ -72,37 +105,12 @@ glemo init path/to/genesis.json
 {
 	"chainID": "1203",
 	"sleepTime": "3000",
-	"timeout": "10000",
-	"deputyNodes":[
-		{
-			"lemoBase": "0x4412441244124412441244124412441244124412",
-			"nodeID": "0x04595e0e74b214824247d4ed71b826e887b6934aa1191e098d6188e0b097c433d5d9a21f2ffcbae790cc88c942db5c08df6cf4b3b67a2fb6ad0b952f19030446d4",
-			"ip": "127.0.0.1",
-			"port": "1234",
-			"rank":"1",
-			"votes":"123456"
-		},
-		{
-			"lemoBase": "0x4412441244124412441244124412441244124413",
-			"nodeID": "0x4689",
-			"ip": "10.0.0.1",
-			"port": "1234",
-			"rank":"2",
-			"votes":"3412"
-		}
-	]
+	"timeout": "10000"
 }
 ```
 - `chainID` 链id
 - `sleepTime` 块最小间隔
 - `timeout` 出块超时时间
-- `deputyNodes` 初始的出块节点列表
-- `lemoBase` 挖矿收益地址
-- `nodeID` 节点NodeID
-- `ip` 节点IP地址
-- `port` 节点端口号
-- `rank` 出块节点排名
-- `votes` 出块节点得票数
 
 
 ### 启动共识节点
