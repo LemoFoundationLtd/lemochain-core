@@ -248,18 +248,15 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 	curHeight := bc.currentBlock.Load().(*types.Block).Height()
 	if block.Height() > curHeight {
 		bc.currentBlock.Store(block)
-		delete(bc.chainForksHead, parentHash)
 		log.Warnf("chain forked! current block: height(%d), hash(%s)", block.Height(), block.Hash().Hex())
 	} else if curHeight == block.Height() { // two block with same height, priority of lower alphabet order
 		if hash.Big().Cmp(currentHash.Big()) < 0 {
 			bc.currentBlock.Store(block)
-			delete(bc.chainForksHead, parentHash)
 			log.Warnf("chain forked! current block: height(%d), hash(%s)", block.Height(), block.Hash().Hex())
 		}
-	} else {
-		if _, ok := bc.chainForksHead[parentHash]; ok {
-			delete(bc.chainForksHead, parentHash)
-		}
+	}
+	if _, ok := bc.chainForksHead[parentHash]; ok {
+		delete(bc.chainForksHead, parentHash)
 	}
 	bc.chainForksHead[hash] = block
 	if !isSynchronising {
