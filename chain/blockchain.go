@@ -379,6 +379,12 @@ func (bc *BlockChain) verifyBody(block *types.Block) error {
 
 // ReceiveConfirm
 func (bc *BlockChain) ReceiveConfirm(info *protocol.BlockConfirmData) (err error) {
+	block, err := bc.db.GetBlockByHash(info.Hash)
+	if err != nil {
+		return ErrBlockNotExist
+	}
+	height := block.Height()
+
 	// recover public key
 	pubKey, err := crypto.Ecrecover(info.Hash[:], info.SignInfo[:])
 	if err != nil {
@@ -386,15 +392,14 @@ func (bc *BlockChain) ReceiveConfirm(info *protocol.BlockConfirmData) (err error
 		return ErrInvalidSignedConfirmInfo
 	}
 	// get index of signer
-	index := bc.getSignerIndex(pubKey[1:], info.Height)
+	index := bc.getSignerIndex(pubKey[1:], height)
 	if index < 0 {
 		log.Warnf("Unavailable confirm info. from: %s", common.ToHex(pubKey[1:]))
 		return ErrInvalidConfirmInfo
 	}
-
 	// has block consensus
 	stableBlock := bc.stableBlock.Load().(*types.Block)
-	if stableBlock.Height() >= info.Height { // stable block's confirm info
+	if stableBlock.Height() >= height { // stable block's confirm info
 		if ok, err := bc.hasEnoughConfirmInfo(info.Hash); err == nil && !ok {
 			bc.db.AppendConfirmInfo(info.Hash, info.SignInfo)
 		}
@@ -408,7 +413,7 @@ func (bc *BlockChain) ReceiveConfirm(info *protocol.BlockConfirmData) (err error
 	}
 
 	if ok, _ := bc.hasEnoughConfirmInfo(info.Hash); ok {
-		return bc.SetStableBlock(info.Hash, info.Height, false)
+		return bc.SetStableBlock(info.Hash, height, false)
 	}
 	return nil
 }
