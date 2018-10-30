@@ -95,8 +95,8 @@ func (c *Console) init() error {
 	consoleObj.Object().Set("error", c.consoleOutput)
 
 	// Load all the internal utility JavaScript libraries
-	if err := c.jsre.Compile("bignumber.js", jsre.BigNumberJS); err != nil {
-		return fmt.Errorf("bignumber.js: %v", err)
+	if err := c.jsre.Compile("babel-polyfill.js", jsre.BabelPolyfillJS); err != nil {
+		return fmt.Errorf("babel-polyfill.js: %v", err)
 	}
 	if err := c.jsre.Compile("lemo-client.js", jsre.LemoClientJS); err != nil {
 		return fmt.Errorf("lemo-client.js: %v", err)
