@@ -39,18 +39,15 @@ func TestDecode(t *testing.T) {
 	tests := []struct {
 		data []byte
 	}{
-		{[]byte{'0', '2', '2'}},
-		{[]byte{'5', 'Q', 'A', 'G'}},
-		{[]byte{'9', 'G', '2', 'Y'}},
-		{[]byte{'P', 'Q', '2', 'D'}},
-		{[]byte{0x08, 0x09, 0x10}},
-		{[]byte{'3', '5', 'Z', '2', '6'}},
-		{[]byte{0x06, 0x03, 0x04}},
+		{[]byte("0x01fffffffffffffffffff")},
+		{[]byte("0x0ffffffffffffffffffff")},
+		{[]byte("0x011111111111111111111")},
+		{[]byte("0x010000000000000000000")},
+		{[]byte("0x000000000000000000000")},
 	}
-
 	for _, test := range tests {
 		encode := Encode(test.data)
-		Decode := Decode(encode)
-		assert.Equal(t, test.data, Decode)
+		decode := Decode(encode)
+		assert.Equal(t, test.data, decode)
 	}
 }
