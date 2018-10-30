@@ -198,23 +198,24 @@ func (n *Node) Start() error {
 	n.lock.Lock()
 	defer n.lock.Unlock()
 	if n.server != nil {
-		return errors.New("node already running")
+		return ErrAlreadyRunning
 	}
 	if err := n.openDataDir(); err != nil {
-		return err
+		log.Errorf("%v", err)
+		return ErrOpenFileFailed
 	}
 	server := &p2p.Server{Config: n.config.P2P, PeerEvent: n.pm.PeerEvent}
 	if err := server.Start(); err != nil {
-		log.Errorf("start p2p server failed: %v", err)
-		return err
+		log.Errorf("%v", err)
+		return ErrServerStartFailed
 	}
 	n.pm.Start()
 	n.server = server
 	n.stop = make(chan struct{})
 
 	if err := n.startRPC(); err != nil {
-		log.Errorf("start rpc failed: %v", err)
-		return err
+		log.Errorf("%v", err)
+		return ErrRpcStartFailed
 	}
 	return nil
 }

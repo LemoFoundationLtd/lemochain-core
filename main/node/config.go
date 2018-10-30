@@ -109,16 +109,16 @@ func (c *Config) NodeKey() *ecdsa.PrivateKey {
 
 	key, err := crypto.GenerateKey()
 	if err != nil {
-		log.Crit(fmt.Sprintf("Failed to generate node key: %v", err))
+		log.Critf("Failed to generate node key: %v", err)
 	}
 	instanceDir, _ := filepath.Abs(c.DataDir)
 	if err := os.MkdirAll(instanceDir, 0700); err != nil {
-		log.Error(fmt.Sprintf("Failed to persist node key: %v", err))
+		log.Errorf("Failed to persist node key: %v", err)
 		return key
 	}
 	keyFile = filepath.Join(instanceDir, datadirPrivateKey)
 	if err := crypto.SaveECDSA(keyFile, key); err != nil {
-		log.Error(fmt.Sprintf("Failed to persist node key: %v", err))
+		log.Errorf("Failed to persist node key: %v", err)
 	}
 	return key
 }
@@ -126,7 +126,7 @@ func (c *Config) NodeKey() *ecdsa.PrivateKey {
 func parseNodes(path string) []string {
 	content, err := ioutil.ReadFile(path)
 	if err != nil {
-		log.Error(fmt.Sprintf("can't read file. file name: %s, err: %v", path, err))
+		log.Errorf("can't read file. file name: %s, err: %v", path, err)
 	}
 	text := string(content)
 	lines := strings.Split(text, "\n")

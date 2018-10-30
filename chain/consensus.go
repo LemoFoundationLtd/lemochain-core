@@ -2,8 +2,6 @@ package chain
 
 import (
 	"bytes"
-	"errors"
-	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
@@ -42,7 +40,8 @@ func verifyHeaderTime(block *types.Block) error {
 	blockTime := int64(header.Time.Uint64())
 	timeNow := time.Now().Unix()
 	if blockTime-timeNow > 1 { // Prevent validation failure due to time error
-		return errors.New("verifyHeader: block in the future")
+		log.Error("verifyHeader: block in the future")
+		return ErrVerifyHeaderFailed
 	}
 	return nil
 }
@@ -53,11 +52,13 @@ func verifyHeaderSignData(block *types.Block) error {
 	hash := block.Hash()
 	pubKey, err := crypto.Ecrecover(hash[:], header.SignData)
 	if err != nil {
-		return err
+		log.Errorf("verifyHeader: illegal signData. %s", err)
+		return ErrVerifyHeaderFailed
 	}
 	node := deputynode.Instance().GetDeputyByAddress(block.Height(), header.LemoBase)
 	if node == nil || bytes.Compare(pubKey[1:], node.NodeID) != 0 {
-		return fmt.Errorf("verifyHeader: illegal block. height:%d, hash:%s", header.Height, header.Hash().Hex())
+		log.Errorf("verifyHeader: illegal block. height:%d, hash:%s", header.Height, header.Hash().Hex())
+		return ErrVerifyHeaderFailed
 	}
 	return nil
 }
@@ -82,12 +83,14 @@ func (d *Dpovp) VerifyHeader(block *types.Block) error {
 	header := block.Header
 	// verify extra data
 	if len(header.Extra) > MaxExtraDataLen {
-		return fmt.Errorf("verifyHeader: extra data's max len is %d bytes, current length is %d", MaxExtraDataLen, len(block.Header.Extra))
+		log.Errorf("verifyHeader: extra data's max len is %d bytes, current length is %d", MaxExtraDataLen, len(block.Header.Extra))
+		return ErrVerifyHeaderFailed
 	}
 
 	parent, _ := d.db.GetBlock(header.ParentHash, header.Height-1)
 	if parent == nil {
-		return fmt.Errorf("verifyHeader: can't get parent block. height:%d, hash:%s", header.Height-1, header.ParentHash)
+		log.Errorf("verifyHeader: can't get parent block. height:%d, hash:%s", header.Height-1, header.ParentHash)
+		return ErrVerifyHeaderFailed
 	}
 	if parent.Header.Height == 0 {
 		log.Debug("verifyHeader: parent block is genesis block")
@@ -103,17 +106,17 @@ func (d *Dpovp) VerifyHeader(block *types.Block) error {
 	if slot == 0 { // The last block was made for itself
 		if timeSpan < oneLoopTime-d.timeoutTime {
 			log.Debugf("verifyHeader: verify failed. oldTimeSpan: %d timeSpan:%d nodeCount:%d slot:%d oneLoopTime:%d -2", oldTimeSpan, timeSpan, nodeCount, slot, oneLoopTime)
-			return fmt.Errorf("verifyHeader: Not turn to produce block -2")
+			return ErrVerifyHeaderFailed
 		}
 	} else if slot == 1 {
 		if timeSpan >= d.timeoutTime {
 			log.Debugf("verifyHeader: verify failed.timeSpan< oneLoopTime. timeSpan:%d nodeCount:%d slot:%d oneLoopTime:%d -3", timeSpan, nodeCount, slot, oneLoopTime)
-			return fmt.Errorf("verifyHeader: Not turn to produce block -3")
+			return ErrVerifyHeaderFailed
 		}
 	} else {
 		if timeSpan/d.timeoutTime != int64(slot-1) {
 			log.Debugf("verifyHeader: verify failed. oldTimeSpan: %d timeSpan:%d nodeCount:%d slot:%d oneLoopTime:%d -4", oldTimeSpan, timeSpan, nodeCount, slot, oneLoopTime)
-			return fmt.Errorf("verifyHeader: Not turn to produce block -4")
+			return ErrVerifyHeaderFailed
 		}
 	}
 	return nil
