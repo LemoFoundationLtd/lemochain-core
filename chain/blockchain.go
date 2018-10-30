@@ -286,6 +286,7 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32, logLess bo
 
 	// get parent block
 	parBlock := bc.currentBlock.Load().(*types.Block)
+	oldCurHash := parBlock.Hash()
 	if parBlock.Height() < height {
 		log.Error("stable block's height is larger than current block")
 		return ErrStableHeightLargerThanCurrent
@@ -324,7 +325,7 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32, logLess bo
 		}
 	}
 	bc.currentBlock.Store(curBlock)
-	if !logLess {
+	if !logLess && oldCurHash != curBlock.ParentHash() {
 		log.Infof("chain forked! current block: height(%d), hash(%s)", curBlock.Height(), curBlock.Hash().Hex())
 	}
 	return nil
