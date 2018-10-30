@@ -7,6 +7,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"github.com/stretchr/testify/assert"
+	"math/big"
 	"testing"
 )
 
@@ -363,49 +364,64 @@ func TestBlockChain_SetStableBlockCurBranch3(t *testing.T) {
 	var info blockInfo
 	info.parentHash = genesis.Hash()
 	info.height = uint32(1)
+	info.gasLimit = 10000
+	info.time = big.NewInt(1540864589)
 	block1 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block1, true)
 	assert.NoError(t, err)
 
 	info.parentHash = block1.Hash()
 	info.height = uint32(2)
+	info.gasLimit = 20000
+	info.time = big.NewInt(1540864590)
 	block2 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block2, true)
 	assert.NoError(t, err)
 
 	info.parentHash = block2.Hash()
 	info.height = uint32(3)
+	info.gasLimit = 30000
+	info.time = big.NewInt(1540864591)
 	block31 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block31, true)
 	assert.NoError(t, err)
 
 	info.parentHash = block31.Hash()
 	info.height = uint32(4)
+	info.gasLimit = 40000
+	info.time = big.NewInt(1540864592)
 	block41 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block41, true)
 	assert.NoError(t, err)
 
 	info.parentHash = block41.Hash()
 	info.height = uint32(5)
+	info.gasLimit = 50000
+	info.time = big.NewInt(1540864593)
 	block51 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block51, true)
 	assert.NoError(t, err)
 
 	info.parentHash = block2.Hash()
 	info.height = uint32(3)
-	info.gasLimit = 1000
+	info.gasLimit = 6000
+	info.time = big.NewInt(1540864594)
 	block32 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block32, true)
 	assert.NoError(t, err)
 
 	info.parentHash = block32.Hash()
 	info.height = uint32(4)
+	info.gasLimit = 70000
+	info.time = big.NewInt(1540864595)
 	block42 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block42, true)
 	assert.NoError(t, err)
 
 	info.parentHash = block42.Hash()
 	info.height = uint32(5)
+	info.gasLimit = 80000
+	info.time = big.NewInt(1540864596)
 	block52 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block52, true)
 	assert.NoError(t, err)
@@ -419,6 +435,7 @@ func TestBlockChain_SetStableBlockCurBranch3(t *testing.T) {
 	assert.NotNil(t, blockChain.chainForksHead[block52.Hash()])
 }
 
+// 1、2、31{41、51}、32{42} set stable #42
 func TestBlockChain_SetStableBlockCurBranch4(t *testing.T) {
 
 	store.ClearData()
