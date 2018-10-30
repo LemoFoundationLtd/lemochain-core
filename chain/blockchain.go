@@ -165,13 +165,13 @@ func (bc *BlockChain) StableBlock() *types.Block {
 // SaveMinedBlock 挖到新块
 func (bc *BlockChain) SaveMinedBlock(block *types.Block) error {
 	if err := bc.db.SetBlock(block.Hash(), block); err != nil {
-		log.Error(fmt.Sprintf("can't insert block to cache. height:%d hash:%s", block.Height(), block.Hash().Hex()))
-		return err
+		log.Errorf("can't insert block to cache. height:%d hash:%s", block.Height(), block.Hash().Hex())
+		return ErrSaveBlock
 	}
 	err := bc.AccountManager().Save(block.Hash())
 	if err != nil {
 		log.Error("save account error!", "hash", block.Hash().Hex(), "err", err)
-		return err
+		return ErrSaveAccount
 	}
 	nodeCount := deputynode.Instance().GetDeputiesCount()
 	if nodeCount == 1 {
@@ -191,7 +191,7 @@ func (bc *BlockChain) newBlockNotify(block *types.Block) {
 func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err error) {
 	if err := bc.Verify(block); err != nil {
 		log.Errorf("block verify failed: %v", err)
-		return err
+		return ErrVerifyBlockFailed
 	}
 
 	hash := block.Hash()
@@ -202,7 +202,7 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 	block.SetChangeLogs(bc.AccountManager().GetChangeLogs())
 	if err = bc.db.SetBlock(hash, block); err != nil {
 		log.Errorf("can't insert block to cache. height:%d hash:%s", block.Height(), hash.Hex())
-		return err
+		return ErrSaveBlock
 	}
 	if !isSynchronising {
 		log.Infof("Insert block to chain. height: %d. hash: %s", block.Height(), block.Hash().String())
@@ -269,12 +269,13 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32, logLess bool) error {
 	block := bc.GetBlockByHash(hash)
 	if block == nil {
-		return fmt.Errorf("block not exist. height: %d hash: %s", height, hash.String())
+		log.Warnf("setStableBlock: block not exist. height: %d hash: %s", height, hash.String())
+		return ErrBlockNotExist
 	}
 	// set stable
 	if err := bc.db.SetStableBlock(hash); err != nil {
 		log.Errorf("SetStableBlock error. height:%d hash:%s", height, common.ToHex(hash[:]))
-		return err
+		return ErrSetStableBlockToDB
 	}
 	bc.stableBlock.Store(block)
 	defer func() {
@@ -287,7 +288,7 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32, logLess bo
 	parBlock := bc.currentBlock.Load().(*types.Block)
 	if parBlock.Height() < height {
 		log.Error("stable block's height is larger than current block")
-		return fmt.Errorf("stable block's height is larger than current block")
+		return ErrStableHeightLargerThanCurrent
 	}
 	// fork
 	bc.chainForksLock.Lock()
@@ -381,13 +382,13 @@ func (bc *BlockChain) ReceiveConfirm(info *protocol.BlockConfirmData) (err error
 	pubKey, err := crypto.Ecrecover(info.Hash[:], info.SignInfo[:])
 	if err != nil {
 		log.Warnf("Unavailable confirm info. Can't recover signer. hash:%s SignInfo:%s", info.Hash.Hex(), common.ToHex(info.SignInfo[:]))
-		return err
+		return ErrInvalidSignedConfirmInfo
 	}
 	// get index of signer
 	index := bc.getSignerIndex(pubKey[1:], info.Height)
 	if index < 0 {
 		log.Warnf("Unavailable confirm info. from: %s", common.ToHex(pubKey[1:]))
-		return fmt.Errorf("unavailable confirm info. from: %s", common.ToHex(pubKey[1:]))
+		return ErrInvalidConfirmInfo
 	}
 
 	// has block consensus
@@ -402,7 +403,7 @@ func (bc *BlockChain) ReceiveConfirm(info *protocol.BlockConfirmData) (err error
 	// cache confirm info
 	if err = bc.db.SetConfirmInfo(info.Hash, info.SignInfo); err != nil {
 		log.Errorf("can't SetConfirmInfo. hash:%s", info.Hash.Hex())
-		return err
+		return ErrSetConfirmInfoToDB
 	}
 
 	if ok, _ := bc.hasEnoughConfirmInfo(info.Hash); ok {
