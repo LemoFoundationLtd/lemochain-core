@@ -433,10 +433,16 @@ func TestBlockChain_SetStableBlockCurBranch3(t *testing.T) {
 
 	assert.Equal(t, 1, len(blockChain.chainForksHead))
 	assert.NotNil(t, blockChain.chainForksHead[block52.Hash()])
+	//assert.NotNil(t, blockChain.chainForksHead[block42.Hash()])
+}
+
+// 1、2、31{41、51}、32{42、52} set stable #2
+func TestBlockChain_SetStableBlockCurBranch4(t *testing.T) {
+
 }
 
 // 1、2、31{41、51}、32{42} set stable #42
-func TestBlockChain_SetStableBlockCurBranch4(t *testing.T) {
+func TestBlockChain_SetStableBlockCurBranch5(t *testing.T) {
 
 	store.ClearData()
 
