@@ -126,7 +126,7 @@ func newChain() *BlockChain {
 
 // newDB creates db for test chain module
 func newDB() protocol.ChainDB {
-	db, err := store.NewCacheChain("../../db")
+	db, err := store.NewCacheChain(store.GetStorePath())
 	if err != nil {
 		panic(err)
 	}

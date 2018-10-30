@@ -29,7 +29,6 @@ const (
 
 // loadDpovp 加载一个Dpovp实例
 func loadDpovp() *Dpovp {
-	// clearDB()
 	store.ClearData()
 	db := newDB()
 	d := NewDpovp(10*1000, db)
@@ -273,7 +272,7 @@ func TestDpovp_VerifyHeader01(t *testing.T) {
 	// }
 	//
 	// assert.Equal(t, fmt.Errorf("verifyHeader: block is not enough newer than it's parent"), dpovp.VerifyHeader(testBlock02))
-	store.ClearData()
+
 }
 
 // 对共识中代理节点各种情况共识的测试
@@ -307,7 +306,6 @@ func TestDpovp_VerifyHeader02(t *testing.T) {
 
 	// 通过调试打断点的方式来验证测试结果的正确性
 	assert.Equal(t, nil, dpovp.VerifyHeader(block02))
-	store.ClearData()
 }
 
 // TestDpovp_VerifyHeader03 测试slot == 0,slot == 1,slot > 1的情况
@@ -398,7 +396,7 @@ func TestDpovp_VerifyHeader03(t *testing.T) {
 		t.Error(err)
 	}
 	assert.Equal(t, fmt.Errorf("verifyHeader: Not turn to produce block -4"), dpovp.VerifyHeader(block11))
-	store.ClearData()
+
 }
 
 // TestDpovp_Seal
@@ -429,7 +427,6 @@ func TestDpovp_Seal(t *testing.T) {
 	}
 	assert.Equal(t, block01.Hash(), TestBlock.Hash())
 
-	store.ClearData()
 }
 
 // // TestDpovp_Finalize todo

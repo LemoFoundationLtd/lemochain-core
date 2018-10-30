@@ -140,8 +140,8 @@ func TestAddressEncode(t *testing.T) {
 		output := HexToAddress(test.Input).String()
 		assert.Equal(t, test.Output, output, "index=%d", i)
 	}
-	// StringAddress := "0x01818e82ba1e28b9a104e4ae972f0a42d20941ea"
-	// address := HexToAddress("0x01ffffffffffffffffffffffffffffffffffffff")
+
+	// address := HexToAddress("0x019fce0c15a9ad419d3e36cc56c631906180145e")
 	// sum := GetCheckSum(address.Bytes())
 	// fullBytes := append(address.Bytes(), sum)
 	// t.Log(fullBytes)
