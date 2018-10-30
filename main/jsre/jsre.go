@@ -32,7 +32,7 @@ import (
 )
 
 var (
-	BigNumberJS     = deps.MustAsset("bignumber.js")
+	BabelPolyfillJS = deps.MustAsset("babel-polyfill.js")
 	LemoClientJS    = deps.MustAsset("lemo-client.js")
 	LemoNodeAdminJS = deps.MustAsset("lemo-node-admin.js")
 )
