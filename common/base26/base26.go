@@ -8,7 +8,7 @@ import (
 	"math/big"
 )
 
-var b26AIphabet = []byte("23456789ABCDFGHJKNPQRSTWYZ")
+var b26AIphabet = []byte("83456729ABCDFGHJKNPQRSTWYZ")
 
 // Encode 将字节数组编码为Base26
 func Encode(input []byte) []byte {
@@ -22,11 +22,10 @@ func Encode(input []byte) []byte {
 		result = append(result, b26AIphabet[mod.Int64()])
 	}
 	ReverseBytes(result) // 反转字节数组
-	for _, b := range input {
-		if b == 0x00 {
+
+	if len(result) < 36 {
+		for len(result) != 36 {
 			result = append([]byte{b26AIphabet[0]}, result...)
-		} else {
-			break
 		}
 	}
 	return result
@@ -37,18 +36,19 @@ func Decode(input []byte) []byte {
 	result := big.NewInt(0)
 	zeroBytes := 0
 	for _, b := range input {
-		if b == 0x00 {
+		if b == b26AIphabet[0] {
 			zeroBytes++
+		} else {
+			break
 		}
 	}
 	payload := input[zeroBytes:]
 	for _, b := range payload {
 		charIndex := bytes.IndexByte(b26AIphabet, b)
-		result.Mul(result, big.NewInt(26))
+		result.Mul(result, big.NewInt(int64(len(b26AIphabet))))
 		result.Add(result, big.NewInt(int64(charIndex)))
 	}
 	decoded := result.Bytes()
-	decoded = append(bytes.Repeat([]byte{byte(0x00)}, zeroBytes), decoded...)
 
 	return decoded
 }
