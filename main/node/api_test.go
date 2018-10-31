@@ -29,6 +29,7 @@ func Test_AddPoint(t *testing.T) {
 // TestAccountAPI_api account api test
 func TestAccountAPI_api(t *testing.T) {
 	db := newDB()
+	defer clearDB()
 	am := account.NewManager(common.Hash{}, db)
 	acc := NewAccountAPI(am)
 	// Create key pair
@@ -67,6 +68,7 @@ func TestAccountAPI_api(t *testing.T) {
 // TestChainAPI_api chain api test
 func TestChainAPI_api(t *testing.T) {
 	bc := newChain()
+	defer clearDB()
 	c := NewChainAPI(bc)
 
 	// getBlockByHash

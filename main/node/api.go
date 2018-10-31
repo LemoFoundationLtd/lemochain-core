@@ -257,7 +257,14 @@ func (n *NetAPI) Peers() []p2p.PeerConnInfo {
 	return n.server.Peers()
 }
 
+// todo
+type netInfo struct {
+	port string
+}
+
 // NetInfo
-func (n *NetAPI) Info() string {
-	return n.server.ListenAddr()
+func (n *NetAPI) Info() *netInfo {
+	return &netInfo{
+		port: n.server.ListenAddr(),
+	}
 }
