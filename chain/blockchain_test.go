@@ -1252,8 +1252,70 @@ func TestBlockChain_VerifyBodyNormal(t *testing.T) {
 	genesis := blockChain.GetBlockByHeight(0)
 	assert.NotNil(t, genesis)
 
-	// tmp, err := crypto.HexToECDSA("b1960f67176431d708684e243fc2a6474f3924194290c6b10ea4734f2a150894")
 	tmp, err := crypto.HexToECDSA("c21b6b2fbf230f665b936194d14da67187732bf9d28768aef1a3cbb26608f8aa")
+	assert.NoError(t, err)
+
+	accounts := store.GetAccounts()
+	info := blockInfo{
+		parentHash:  genesis.Hash(),
+		height:      1,
+		gasLimit:    1000,
+		deputyNodes: genesis.DeputyNodes,
+		txList: []*types.Transaction{
+			signTransaction(makeTransaction(tmp, accounts[0].Address, common.Big2, common.Big2, 1538210398, 30000), tmp),
+			signTransaction(makeTransaction(tmp, accounts[1].Address, common.Big2, common.Big3, 1538210425, 30000), tmp),
+		},
+		time: big.NewInt(1540893799),
+	}
+	block := makeBlock(blockChain.db, info, false)
+	err = blockChain.verifyBody(block)
+	assert.NoError(t, err)
+}
+
+func TestBlockChain_VerifyBlockBalanceNotEnough(t *testing.T) {
+	store.ClearData()
+	defer store.ClearData()
+
+	blockChain, _, err := newBlockChain()
+	assert.NoError(t, err)
+
+	genesis := blockChain.GetBlockByHeight(0)
+	assert.NotNil(t, genesis)
+
+	tmp, err := crypto.HexToECDSA("b1960f67176431d708684e243fc2a6474f3924194290c6b10ea4734f2a150894")
+	assert.NoError(t, err)
+
+	accounts := store.GetAccounts()
+	info := blockInfo{
+		parentHash:  genesis.Hash(),
+		height:      1,
+		gasLimit:    1000,
+		deputyNodes: genesis.DeputyNodes,
+		txList: []*types.Transaction{
+			signTransaction(makeTransaction(tmp, accounts[0].Address, common.Big2, common.Big2, 1538210398, 30000), tmp),
+			signTransaction(makeTransaction(tmp, accounts[1].Address, common.Big2, common.Big3, 1538210425, 30000), tmp),
+			// makeTransaction(tmp, accounts[0].Address, common.Big2, common.Big2, 1538210398, 30000),
+			// makeTransaction(tmp, accounts[1].Address, common.Big2, common.Big3, 1538210425, 30000),
+		},
+		time: big.NewInt(1540893799),
+	}
+	block := makeBlock(blockChain.db, info, false)
+
+	err = blockChain.verifyBody(block)
+	assert.NoError(t, err)
+}
+
+func TestBlockChain_VerifyBlockBalanceNotSign(t *testing.T) {
+	store.ClearData()
+	defer store.ClearData()
+
+	blockChain, _, err := newBlockChain()
+	assert.NoError(t, err)
+
+	genesis := blockChain.GetBlockByHeight(0)
+	assert.NotNil(t, genesis)
+
+	tmp, err := crypto.HexToECDSA("b1960f67176431d708684e243fc2a6474f3924194290c6b10ea4734f2a150894")
 	assert.NoError(t, err)
 
 	accounts := store.GetAccounts()
@@ -1269,31 +1331,7 @@ func TestBlockChain_VerifyBodyNormal(t *testing.T) {
 		time: big.NewInt(1540893799),
 	}
 	block := makeBlock(blockChain.db, info, false)
+
 	err = blockChain.verifyBody(block)
 	assert.NoError(t, err)
-}
-
-func TestBlockChain_VerifyBlockValidTx(t *testing.T) {
-	store.ClearData()
-	defer store.ClearData()
-
-	blockChain, _, err := newBlockChain()
-	assert.NoError(t, err)
-
-	genesis := blockChain.GetBlockByHeight(0)
-	assert.NotNil(t, genesis)
-
-	// info := blockInfo{
-	// 	parentHash: genesis.Hash(),
-	// 	height:     1,
-	// 	gasLimit:   1000,
-	// 	time:       big.NewInt(1540893799),
-	// }
-	// block := makeBlock(blockChain.db, info, false)
-	//
-	// tmp, err := crypto.HexToECDSA("b1960f67176431d708684e243fc2a6474f3924194290c6b10ea4734f2a150894")
-	// assert.NoError(t, err)
-	// block.Txs = append(block.Txs, makeTransaction(tmp, defaultAccounts[1], common.Big1, common.Big2, 1538210491, 2000000))
-	// err = blockChain.verifyBody(block)
-	// assert.NoError(t, err)
 }
