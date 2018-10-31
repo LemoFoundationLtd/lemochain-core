@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// TestEncode 编码功能测试
+// TestEncode
 func TestEncode(t *testing.T) {
 	tests := []struct {
 		data []byte
@@ -17,15 +17,15 @@ func TestEncode(t *testing.T) {
 		{[]byte{0x05, 0x06, 0x07}},
 		{[]byte{0x08, 0x09, 0x10}},
 	}
-	// 期望值
+	// expect
 	results := []struct {
-		data []byte
+		data string
 	}{
-		{[]byte{0x32, 0x32, 0x32}},
-		{[]byte{'5', 'Q', 'A', 'G'}},
-		{[]byte{'9', 'G', '2', 'Y'}},
-		{[]byte{'P', 'Q', '2', 'D'}},
-		{[]byte{'3', '5', 'Z', '2', '6'}},
+		{string("888888888888888888888888888888888888")},
+		{string("888888888888888888888888888888885QAG")},
+		{string("888888888888888888888888888888889G8Y")},
+		{string("88888888888888888888888888888888PQ8D")},
+		{string("888888888888888888888888888888835Z86")},
 	}
 
 	for Index, test := range tests {
@@ -43,12 +43,12 @@ func TestEncode(t *testing.T) {
 	t.Log(big.NewInt(0).SetBytes(inputs))
 	t.Log(inputs)
 	enc := Encode(inputs)
-	t.Log(string(enc))
-	t.Log(Decode(enc))
+	t.Log(enc)
+	t.Log(Decode([]byte(enc)))
 
 }
 
-// TestDecode 解码功能测试
+// TestDecode
 func TestDecode(t *testing.T) {
 	tests := []struct {
 		data []byte
@@ -56,14 +56,14 @@ func TestDecode(t *testing.T) {
 		{[]byte("0x01fffffffffffffffffff")},
 		{[]byte("0x0ffffffffffffffffffff")},
 		{[]byte("0x011111111111111111111")},
-		{[]byte("0x010000000000000000000")},
+		{[]byte("0x01000000000")},
 		{[]byte{' ', 0x02, 0x03, 'a'}},
 	}
 	for _, test := range tests {
 		encode := Encode(test.data)
-		t.Log(string(encode))
+		t.Log(encode)
 		t.Log(len(encode))
-		decode := Decode(encode)
+		decode := Decode([]byte(encode))
 		assert.Equal(t, test.data, decode)
 	}
 }

@@ -164,9 +164,9 @@ func (a Address) String() string {
 	// base26 encoding
 	bytesAddress := base26.Encode(fullPayload)
 	// Add logo at the top
-	lemoAddress := append([]byte(logo), bytesAddress...)
+	lemoAddress := strings.Join([]string{logo, bytesAddress}, "")
 
-	return string(lemoAddress)
+	return lemoAddress
 }
 
 // GetCheckSum get the check digit by doing an exclusive OR operation
