@@ -6,7 +6,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/stretchr/testify/assert"
-	"strconv"
 	"testing"
 )
 
@@ -84,7 +83,7 @@ func TestChainAPI_api(t *testing.T) {
 	assert.Equal(t, exBlock2, c.GetBlockByHeight(1, false))
 
 	// get chain ID api
-	assert.Equal(t, strconv.Itoa(int(c.chain.ChainID())), c.ChainID())
+	assert.Equal(t, c.chain.ChainID(), c.ChainID())
 
 	// get genesis block api
 	assert.Equal(t, c.chain.Genesis(), c.Genesis())
