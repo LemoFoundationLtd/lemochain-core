@@ -354,7 +354,8 @@ func (bc *BlockChain) Verify(block *types.Block) error {
 
 	// verify block hash
 	if newHeader.Hash() != hash {
-		return fmt.Errorf("verify block error! hash:%s", hash.Hex())
+		log.Errorf("verify block error! hash:%s", hash.Hex())
+		return ErrVerifyBlockFailed
 	}
 	return nil
 }
@@ -364,14 +365,16 @@ func (bc *BlockChain) verifyBody(block *types.Block) error {
 	header := block.Header
 	// verify txRoot
 	if hash := types.DeriveTxsSha(block.Txs); hash != header.TxRoot {
-		return fmt.Errorf("verify block failed. hash:%s height:%d", block.Hash(), block.Height())
+		log.Errorf("verify block failed. hash:%s height:%d", block.Hash(), block.Height())
+		return ErrVerifyBlockFailed
 	}
 	// verify deputyRoot
 	if len(block.DeputyNodes) > 0 {
 		hash := types.DeriveDeputyRootSha(block.DeputyNodes)
 		root := block.Header.DeputyRoot
 		if bytes.Compare(hash[:], root) != 0 {
-			return fmt.Errorf("verify block failed. deputyRoot not match. header's root: %s, check root: %s", common.ToHex(root), hash.String())
+			log.Errorf("verify block failed. deputyRoot not match. header's root: %s, check root: %s", common.ToHex(root), hash.String())
+			return ErrVerifyBlockFailed
 		}
 	}
 	return nil
