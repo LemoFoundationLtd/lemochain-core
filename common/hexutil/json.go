@@ -19,6 +19,7 @@ package hexutil
 import (
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"net"
@@ -338,5 +339,8 @@ func (ip *IP) UnmarshalJSON(input []byte) error {
 	str := string(input)
 	str = strings.Trim(str, "\"")
 	*ip = IP(net.ParseIP(str))
+	if len(*ip) == 0 {
+		return errors.New("invalid ip address")
+	}
 	return nil
 }
