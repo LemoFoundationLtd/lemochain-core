@@ -86,7 +86,7 @@ type genesisSpecMarshaling struct {
 // DefaultGenesisBlock default genesis block
 func DefaultGenesisBlock() *Genesis {
 	timeSpan, _ := time.ParseInLocation("2006-01-02 15:04:05", "2018-08-30 12:00:00", time.UTC)
-	lemoBase, err := common.RestoreOriginalAddress("Lemo3GN78GYH8NZ2BA789Z9TCT7KQ5FC3CR6DJG")
+	lemoBase, err := common.RestoreOriginalAddress("Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG")
 	if err != nil {
 		panic("LemoBase is invalid.")
 	}

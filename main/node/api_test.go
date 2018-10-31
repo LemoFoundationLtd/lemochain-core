@@ -43,11 +43,11 @@ func TestAccountAPI_api(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, b01, bb01)
 
-	address, err := common.RestoreOriginalAddress("Lemo3GN78GYH8NZ2BA789Z9TCT7KQ5FC3CR6DJG")
+	address, err := common.RestoreOriginalAddress("Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG")
 	assert.Nil(t, err)
 	B02 := acc.manager.GetCanonicalAccount(address).GetBalance().String()
 	b02 := addPoint(B02)
-	bb02, err := acc.GetBalance("Lemo3GN78GYH8NZ2BA789Z9TCT7KQ5FC3CR6DJG")
+	bb02, err := acc.GetBalance("Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG")
 	assert.Nil(t, err)
 	assert.Equal(t, b02, bb02)
 
