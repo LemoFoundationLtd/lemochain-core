@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
@@ -28,6 +29,8 @@ type blockInfo struct {
 	txList      []*types.Transaction
 	gasLimit    uint64
 	time        *big.Int
+	deputyRoot  common.Hash
+	deputyNodes deputynode.DeputyNodes
 }
 
 var (
@@ -158,6 +161,14 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 		}
 		info.txRoot = txRoot
 	}
+
+	if len(info.deputyNodes) > 0 {
+		deputyRoot := types.DeriveDeputyRootSha(info.deputyNodes)
+		if deputyRoot != (common.Hash{}) {
+			info.deputyRoot = deputyRoot
+		}
+	}
+
 	// genesis coin
 	if info.height == 0 {
 		owner := manager.GetAccount(testAddr)
@@ -234,6 +245,11 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 		Time:        info.time,
 		Extra:       []byte{},
 	}
+	if len(info.deputyRoot) > 0 {
+		header.DeputyRoot = make([]byte, len(info.deputyRoot))
+		copy(header.DeputyRoot[:], info.deputyRoot[:])
+	}
+
 	blockHash := header.Hash()
 	if blockHash != info.hash {
 		if info.hash != (common.Hash{}) {
@@ -243,8 +259,9 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 	}
 	// block
 	block := &types.Block{
-		Txs:        info.txList,
-		ChangeLogs: changeLogs,
+		Txs:         info.txList,
+		ChangeLogs:  changeLogs,
+		DeputyNodes: info.deputyNodes,
 	}
 	block.SetHeader(header)
 	if save {

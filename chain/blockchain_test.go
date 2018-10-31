@@ -1283,17 +1283,17 @@ func TestBlockChain_VerifyBlockValidTx(t *testing.T) {
 	genesis := blockChain.GetBlockByHeight(0)
 	assert.NotNil(t, genesis)
 
-	info := blockInfo{
-		parentHash: genesis.Hash(),
-		height:     1,
-		gasLimit:   1000,
-		time:       big.NewInt(1540893799),
-	}
-	block := makeBlock(blockChain.db, info, false)
-
-	tmp, err := crypto.HexToECDSA("b1960f67176431d708684e243fc2a6474f3924194290c6b10ea4734f2a150894")
-	assert.NoError(t, err)
-	block.Txs = append(block.Txs, makeTransaction(tmp, defaultAccounts[1], common.Big1, common.Big2, 1538210491, 2000000))
-	err = blockChain.verifyBody(block)
-	assert.NoError(t, err)
+	// info := blockInfo{
+	// 	parentHash: genesis.Hash(),
+	// 	height:     1,
+	// 	gasLimit:   1000,
+	// 	time:       big.NewInt(1540893799),
+	// }
+	// block := makeBlock(blockChain.db, info, false)
+	//
+	// tmp, err := crypto.HexToECDSA("b1960f67176431d708684e243fc2a6474f3924194290c6b10ea4734f2a150894")
+	// assert.NoError(t, err)
+	// block.Txs = append(block.Txs, makeTransaction(tmp, defaultAccounts[1], common.Big1, common.Big2, 1538210491, 2000000))
+	// err = blockChain.verifyBody(block)
+	// assert.NoError(t, err)
 }
