@@ -349,7 +349,8 @@ func (bc *BlockChain) Verify(block *types.Block) error {
 		return err
 	} else if err == nil {
 	} else {
-		panic(fmt.Sprintf("internal error: %v", err))
+		log.Errorf("processor internal error: %v", err)
+		panic("processor internal error")
 	}
 
 	// verify block hash

@@ -122,7 +122,7 @@ func (m *Miner) getTimespan() int64 {
 
 // isSelfDeputyNode 本节点是否为代理节点
 func (m *Miner) isSelfDeputyNode() bool {
-	return deputynode.Instance().IsSelfDeputyNode(m.currentBlock().Height())
+	return deputynode.Instance().IsSelfDeputyNode(m.currentBlock().Height() + 1)
 }
 
 // 修改定时器

@@ -30,7 +30,10 @@ const (
 // loadDpovp 加载一个Dpovp实例
 func loadDpovp() *Dpovp {
 	store.ClearData()
-	db := newDB()
+	db, err := store.NewCacheChain(store.GetStorePath())
+	if err != nil {
+		panic(err)
+	}
 	d := NewDpovp(10*1000, db)
 	return d
 }
@@ -280,7 +283,7 @@ func TestDpovp_VerifyHeader01(t *testing.T) {
 func TestDpovp_VerifyHeader02(t *testing.T) {
 	err := initDeputyNode(1, 0) // 更改为一个代理节点参加共识
 	if err != nil {
-		t.Error(err)
+		assert.Nil(t, err)
 	}
 
 	dpovp := loadDpovp()
