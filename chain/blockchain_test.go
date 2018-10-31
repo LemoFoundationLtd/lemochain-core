@@ -1173,6 +1173,7 @@ func TestBlockChain_ReceiveConfirm(t *testing.T) {
 		parentHash: genesis.Hash(),
 		height:     1,
 		gasLimit:   1000,
+		time:       big.NewInt(1540893799),
 	}
 	block1 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block1, true)
@@ -1181,6 +1182,7 @@ func TestBlockChain_ReceiveConfirm(t *testing.T) {
 	info.parentHash = block1.Hash()
 	info.height = 2
 	info.gasLimit = 2000
+	info.time = big.NewInt(1540893798)
 	block2 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block2, true)
 	assert.NoError(t, err)
@@ -1188,6 +1190,7 @@ func TestBlockChain_ReceiveConfirm(t *testing.T) {
 	info.parentHash = block2.Hash()
 	info.height = 3
 	info.gasLimit = 3000
+	info.time = big.NewInt(1540893799)
 	block3 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block3, true)
 	assert.NoError(t, err)
@@ -1236,5 +1239,5 @@ func TestBlockChain_ReceiveConfirm(t *testing.T) {
 	assert.NoError(t, err)
 
 	result := blockChain.GetBlockByHash(block2.Hash())
-	assert.Nil(t, result)
+	assert.NotNil(t, result)
 }
