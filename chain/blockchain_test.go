@@ -1201,7 +1201,7 @@ func TestBlockChain_ReceiveConfirm(t *testing.T) {
 
 	confirm.SignInfo[2] = '1'
 	err = blockChain.ReceiveConfirm(confirm)
-	assert.Equal(t, ErrInvalidSignedConfirmInfo, err)
+	assert.Equal(t, ErrInvalidConfirmInfo, err)
 
 	// unavailable confirm info.
 	confirm, err = buildConfirm(block1.Hash(), "cbe9fa7c8721b8103e5af1ee5a40ac60c0c2b8c3c762e4e2c6ee0965917b1d86")
@@ -1240,4 +1240,60 @@ func TestBlockChain_ReceiveConfirm(t *testing.T) {
 
 	result := blockChain.GetBlockByHash(block2.Hash())
 	assert.NotNil(t, result)
+}
+
+func TestBlockChain_VerifyBodyNormal(t *testing.T) {
+	store.ClearData()
+	defer store.ClearData()
+
+	blockChain, _, err := newBlockChain()
+	assert.NoError(t, err)
+
+	genesis := blockChain.GetBlockByHeight(0)
+	assert.NotNil(t, genesis)
+
+	// tmp, err := crypto.HexToECDSA("b1960f67176431d708684e243fc2a6474f3924194290c6b10ea4734f2a150894")
+	tmp, err := crypto.HexToECDSA("c21b6b2fbf230f665b936194d14da67187732bf9d28768aef1a3cbb26608f8aa")
+	assert.NoError(t, err)
+
+	accounts := store.GetAccounts()
+	info := blockInfo{
+		parentHash:  genesis.Hash(),
+		height:      1,
+		gasLimit:    1000,
+		deputyNodes: genesis.DeputyNodes,
+		txList: []*types.Transaction{
+			makeTransaction(tmp, accounts[0].Address, common.Big2, common.Big2, 1538210398, 30000),
+			makeTransaction(tmp, accounts[1].Address, common.Big2, common.Big3, 1538210425, 30000),
+		},
+		time: big.NewInt(1540893799),
+	}
+	block := makeBlock(blockChain.db, info, false)
+	err = blockChain.verifyBody(block)
+	assert.NoError(t, err)
+}
+
+func TestBlockChain_VerifyBlockValidTx(t *testing.T) {
+	store.ClearData()
+	defer store.ClearData()
+
+	blockChain, _, err := newBlockChain()
+	assert.NoError(t, err)
+
+	genesis := blockChain.GetBlockByHeight(0)
+	assert.NotNil(t, genesis)
+
+	info := blockInfo{
+		parentHash: genesis.Hash(),
+		height:     1,
+		gasLimit:   1000,
+		time:       big.NewInt(1540893799),
+	}
+	block := makeBlock(blockChain.db, info, false)
+
+	tmp, err := crypto.HexToECDSA("b1960f67176431d708684e243fc2a6474f3924194290c6b10ea4734f2a150894")
+	assert.NoError(t, err)
+	block.Txs = append(block.Txs, makeTransaction(tmp, defaultAccounts[1], common.Big1, common.Big2, 1538210491, 2000000))
+	err = blockChain.verifyBody(block)
+	assert.NoError(t, err)
 }
