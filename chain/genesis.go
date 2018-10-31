@@ -109,9 +109,19 @@ func SetupGenesisBlock(db protocol.ChainDB, genesis *Genesis) (common.Hash, erro
 		panic("default deputy nodes can't be empty")
 	}
 
+	if len(genesis.ExtraData) > 256 {
+		panic("genesis block's extraData length larger than 256")
+	}
+
 	// check genesis block's time
 	if genesis.Time > uint64(time.Now().Unix()) {
 		panic("Genesis block's time can't be larger than current time.")
+	}
+	// check deputy nodes
+	for _, deputy := range genesis.DeputyNodes {
+		if err := deputy.Check(); err != nil {
+			panic("genesis deputy nodes check error")
+		}
 	}
 
 	am := account.NewManager(common.Hash{}, db)

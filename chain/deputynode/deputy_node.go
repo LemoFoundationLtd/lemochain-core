@@ -3,6 +3,7 @@ package deputynode
 import (
 	"bytes"
 	"crypto/ecdsa"
+	"errors"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto/sha3"
@@ -32,7 +33,7 @@ func SetSelfNodeKey(key *ecdsa.PrivateKey) {
 
 //go:generate gencodec -type DeputyNode -field-override Marshaling -out gen_deputy_node_json.go
 
-// 代理者节点
+// DeputyNode
 type DeputyNode struct {
 	LemoBase common.Address `json:"lemoBase"   gencodec:"required"`
 	NodeID   []byte         `json:"nodeID"     gencodec:"required"`
@@ -55,6 +56,18 @@ func (d *DeputyNode) Hash() (h common.Hash) {
 	rlp.Encode(hw, data)
 	hw.Sum(h[:0])
 	return h
+}
+
+func (d *DeputyNode) Check() error {
+	if len(d.NodeID) != 64 {
+		log.Errorf("incorrect field: 'NodeID'.value: %s", common.ToHex(d.NodeID))
+		return errors.New("incorrect field: 'NodeID'")
+	}
+	if d.Port > 65535 {
+		log.Errorf("incorrect field: 'port'. value: %d", d.Port)
+		return errors.New("max deputy node's port is 65535")
+	}
+	return nil
 }
 
 type DeputyNodes []*DeputyNode
