@@ -220,7 +220,7 @@ func Test_verifyHeaderTime(t *testing.T) {
 	err02 := verifyHeaderTime(&blocks[1])
 	assert.Equal(t, nil, err02)
 	err03 := verifyHeaderTime(&blocks[2])
-	assert.Equal(t, errors.New("verifyHeader: block in the future"), err03)
+	assert.Equal(t, errors.New("verify block's header error"), err03)
 
 }
 
@@ -236,8 +236,8 @@ func Test_verifyHeaderSignData(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	header := block01.Header
-	assert.Equal(t, fmt.Errorf("verifyHeader: illegal block. height:%d, hash:%s", header.Height, header.Hash().Hex()), verifyHeaderSignData(block01))
+	// header := block01.Header
+	assert.Equal(t, ErrVerifyHeaderFailed, verifyHeaderSignData(block01))
 	store.ClearData()
 }
 
@@ -254,8 +254,8 @@ func TestDpovp_VerifyHeader01(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	header := testBlock00.Header
-	assert.Equal(t, fmt.Errorf("verifyHeader: can't get parent block. height:%d, hash:%s", header.Height-1, header.ParentHash), dpovp.VerifyHeader(testBlock00))
+	// header := testBlock00.Header
+	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyHeader(testBlock00))
 
 	// 验证父区块的高度为0，也就是父区块为创世区块情况
 	testBlock01, err := newTestBlock(dpovp, testBlock00.Hash(), 1, common.HexToAddress(block02LemoBase), big.NewInt(time.Now().Unix()-5), deputy02Privkey, true)
@@ -338,7 +338,7 @@ func TestDpovp_VerifyHeader03(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	assert.Equal(t, fmt.Errorf("verifyHeader: Not turn to produce block -2"), dpovp.VerifyHeader(block03))
+	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyHeader(block03))
 	// 测试一个临界值，与block01时间差等于40s的情况
 	block04, err := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block01LemoBase), big.NewInt(2040), deputy01Privkey, false)
 	if err != nil {
@@ -359,7 +359,7 @@ func TestDpovp_VerifyHeader03(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	assert.Equal(t, fmt.Errorf("verifyHeader: Not turn to produce block -3"), dpovp.VerifyHeader(block06))
+	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyHeader(block06))
 	// if slot == 1 else 的情况，此情况是timeSpan >= oneLoopTime,时间间隔超过一轮
 	// 首先测试 timeSpan % oneLoopTime < timeoutTime 的正常情况
 	block07, err := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block02LemoBase), big.NewInt(2051), deputy02Privkey, false)
@@ -372,7 +372,7 @@ func TestDpovp_VerifyHeader03(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	assert.Equal(t, fmt.Errorf("verifyHeader: Not turn to produce block -3"), dpovp.VerifyHeader(block08))
+	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyHeader(block08))
 
 	// else :
 	// slot > 1的情况分析
@@ -389,13 +389,13 @@ func TestDpovp_VerifyHeader03(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	assert.Equal(t, fmt.Errorf("verifyHeader: Not turn to produce block -4"), dpovp.VerifyHeader(block10))
+	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyHeader(block10))
 	// timeSpan < 20 情况
 	block11, err := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block04LemoBase), big.NewInt(2019), deputy04Privkey, false)
 	if err != nil {
 		t.Error(err)
 	}
-	assert.Equal(t, fmt.Errorf("verifyHeader: Not turn to produce block -4"), dpovp.VerifyHeader(block11))
+	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyHeader(block11))
 
 }
 
