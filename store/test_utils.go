@@ -9,6 +9,7 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 func GetStorePath() string {
@@ -16,6 +17,7 @@ func GetStorePath() string {
 }
 
 func ClearData() error {
+	time.Sleep(time.Duration(1) * time.Second)
 	return filepath.Walk(GetStorePath(),
 		func(path string, f os.FileInfo, err error) error {
 			return os.RemoveAll(path)
