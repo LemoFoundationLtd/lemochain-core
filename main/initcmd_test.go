@@ -1,12 +1,10 @@
 package main
 
 import (
-	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"testing"
 )
 
@@ -488,21 +486,4 @@ func Test_setupGenesisBlock_error_extraData(t *testing.T) {
 	})
 	deleteTmpFile(fileName)
 	deleteDir(datadir)
-}
-
-func Test_tt(t *testing.T) {
-	path := "G:\\test\\"
-	target := "G:\\res.mjpg"
-	fd, _ := os.OpenFile(target, os.O_CREATE|os.O_WRONLY, 744)
-	dir, _ := ioutil.ReadDir(path)
-	for _, file := range dir {
-		filePath := filepath.Join(path, file.Name())
-		buf, err := ioutil.ReadFile(filePath)
-		if err != nil {
-			fmt.Println(err)
-		} else {
-			fd.Write(buf)
-		}
-	}
-	fd.Close()
 }

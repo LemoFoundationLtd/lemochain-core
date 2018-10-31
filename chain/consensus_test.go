@@ -234,6 +234,7 @@ func Test_verifyHeaderSignData(t *testing.T) {
 		assert.Error(t, err)
 	}
 	dpovp := loadDpovp()
+	defer store.ClearData()
 	// 创建一个块并用另一个节点来对此区块进行签名
 	block01, err := newTestBlock(dpovp, common.Hash{}, 1, common.HexToAddress(block01LemoBase), big.NewInt(time.Now().Unix()), deputy02Privkey, false)
 	if err != nil {
@@ -241,7 +242,6 @@ func Test_verifyHeaderSignData(t *testing.T) {
 	}
 	// header := block01.Header
 	assert.Equal(t, ErrVerifyHeaderFailed, verifyHeaderSignData(block01))
-	store.ClearData()
 }
 
 // TestDpovp_VerifyHeader01 对共识中共识区块与父块关联情况共识的测试
@@ -251,7 +251,7 @@ func TestDpovp_VerifyHeader01(t *testing.T) {
 		t.Error(err)
 	}
 	dpovp := loadDpovp()
-
+	defer store.ClearData()
 	// 验证不存在父区块的情况
 	testBlock00, err := newTestBlock(dpovp, common.Hash{}, 0, common.HexToAddress(block01LemoBase), big.NewInt(time.Now().Unix()-10), deputy01Privkey, true)
 	if err != nil {
@@ -287,6 +287,7 @@ func TestDpovp_VerifyHeader02(t *testing.T) {
 	}
 
 	dpovp := loadDpovp()
+	defer store.ClearData()
 	// 创世块
 	block00, err := newTestBlock(dpovp, common.Hash{}, 0, common.HexToAddress(block01LemoBase), big.NewInt(995), deputy01Privkey, true)
 	if err != nil {
@@ -319,6 +320,7 @@ func TestDpovp_VerifyHeader03(t *testing.T) {
 		t.Error(err)
 	}
 	dpovp := loadDpovp()
+	defer clearDB()
 	// 创世块,随便哪个节点出块在这里没有影响
 	block00, err := newTestBlock(dpovp, common.Hash{}, 0, common.HexToAddress(block01LemoBase), big.NewInt(1995), deputy01Privkey, true)
 	if err != nil {
@@ -405,6 +407,7 @@ func TestDpovp_VerifyHeader03(t *testing.T) {
 // TestDpovp_Seal
 func TestDpovp_Seal(t *testing.T) {
 	dpovp := loadDpovp()
+	defer store.ClearData()
 	// 创世块
 	block00, err := newTestBlock(dpovp, common.Hash{}, 0, common.HexToAddress(block01LemoBase), big.NewInt(995), deputy01Privkey, true)
 	if err != nil {
