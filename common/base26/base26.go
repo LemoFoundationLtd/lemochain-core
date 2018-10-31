@@ -21,13 +21,11 @@ func Encode(input []byte) []byte {
 		x.DivMod(x, base, mod)
 		result = append(result, b26AIphabet[mod.Int64()])
 	}
-	ReverseBytes(result) // 反转字节数组
-
-	if len(result) < 36 {
-		for len(result) != 36 {
-			result = append([]byte{b26AIphabet[0]}, result...)
-		}
+	// padding 0
+	for len(result) < 36 {
+		result = append(result, b26AIphabet[0])
 	}
+	ReverseBytes(result)
 	return result
 }
 
