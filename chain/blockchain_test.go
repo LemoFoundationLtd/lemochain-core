@@ -1268,7 +1268,7 @@ func TestBlockChain_VerifyBodyNormal(t *testing.T) {
 		time: big.NewInt(1540893799),
 	}
 	block := makeBlock(blockChain.db, info, false)
-	err = blockChain.verifyBody(block)
+	err = blockChain.Verify(block)
 	assert.NoError(t, err)
 }
 
@@ -1301,7 +1301,7 @@ func TestBlockChain_VerifyBlockBalanceNotEnough(t *testing.T) {
 	}
 	block := makeBlock(blockChain.db, info, false)
 
-	err = blockChain.verifyBody(block)
+	err = blockChain.Verify(block)
 	assert.NoError(t, err)
 }
 
@@ -1332,6 +1332,6 @@ func TestBlockChain_VerifyBlockBalanceNotSign(t *testing.T) {
 	}
 	block := makeBlock(blockChain.db, info, false)
 
-	err = blockChain.verifyBody(block)
+	err = blockChain.Verify(block)
 	assert.NoError(t, err)
 }
