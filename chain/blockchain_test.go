@@ -1259,13 +1259,14 @@ func TestBlockChain_VerifyBodyNormal(t *testing.T) {
 	info := blockInfo{
 		parentHash:  genesis.Hash(),
 		height:      1,
-		gasLimit:    1000,
+		gasLimit:    1000000000,
 		deputyNodes: genesis.DeputyNodes,
 		txList: []*types.Transaction{
-			signTransaction(makeTransaction(tmp, accounts[0].Address, common.Big2, common.Big2, 1538210398, 30000), tmp),
-			signTransaction(makeTransaction(tmp, accounts[1].Address, common.Big2, common.Big3, 1538210425, 30000), tmp),
+			makeTx(tmp, accounts[0].Address, big.NewInt(30000)),
+			makeTx(tmp, accounts[1].Address, big.NewInt(40000)),
 		},
-		time: big.NewInt(1540893799),
+		time:   big.NewInt(1540893799),
+		author: genesis.LemoBase(),
 	}
 	block := makeBlock(blockChain.db, info, false)
 	err = blockChain.Verify(block)
@@ -1282,25 +1283,23 @@ func TestBlockChain_VerifyBlockBalanceNotEnough(t *testing.T) {
 	genesis := blockChain.GetBlockByHeight(0)
 	assert.NotNil(t, genesis)
 
-	tmp, err := crypto.HexToECDSA("b1960f67176431d708684e243fc2a6474f3924194290c6b10ea4734f2a150894")
+	tmp, err := crypto.HexToECDSA("9c3c4a327ce214f0a1bf9cfa756fbf74f1c7322399ffff925efd8c15c49953eb")
 	assert.NoError(t, err)
 
 	accounts := store.GetAccounts()
 	info := blockInfo{
 		parentHash:  genesis.Hash(),
 		height:      1,
-		gasLimit:    1000,
+		gasLimit:    1000000000,
 		deputyNodes: genesis.DeputyNodes,
 		txList: []*types.Transaction{
-			signTransaction(makeTransaction(tmp, accounts[0].Address, common.Big2, common.Big2, 1538210398, 30000), tmp),
-			signTransaction(makeTransaction(tmp, accounts[1].Address, common.Big2, common.Big3, 1538210425, 30000), tmp),
-			// makeTransaction(tmp, accounts[0].Address, common.Big2, common.Big2, 1538210398, 30000),
-			// makeTransaction(tmp, accounts[1].Address, common.Big2, common.Big3, 1538210425, 30000),
+			makeTx(tmp, accounts[0].Address, big.NewInt(30000)),
+			makeTx(tmp, accounts[1].Address, big.NewInt(40000)),
 		},
-		time: big.NewInt(1540893799),
+		time:   big.NewInt(1540893799),
+		author: genesis.LemoBase(),
 	}
 	block := makeBlock(blockChain.db, info, false)
-
 	err = blockChain.Verify(block)
 	assert.NoError(t, err)
 }
@@ -1315,23 +1314,19 @@ func TestBlockChain_VerifyBlockBalanceNotSign(t *testing.T) {
 	genesis := blockChain.GetBlockByHeight(0)
 	assert.NotNil(t, genesis)
 
-	tmp, err := crypto.HexToECDSA("b1960f67176431d708684e243fc2a6474f3924194290c6b10ea4734f2a150894")
-	assert.NoError(t, err)
-
 	accounts := store.GetAccounts()
 	info := blockInfo{
 		parentHash:  genesis.Hash(),
 		height:      1,
-		gasLimit:    1000,
+		gasLimit:    1000000000,
 		deputyNodes: genesis.DeputyNodes,
 		txList: []*types.Transaction{
-			makeTransaction(tmp, accounts[0].Address, common.Big2, common.Big2, 1538210398, 30000),
-			makeTransaction(tmp, accounts[1].Address, common.Big2, common.Big3, 1538210425, 30000),
+			types.NewTransaction(accounts[0].Address, common.Big2, 30000, common.Big2, []byte{}, 200, 1538210398, "", ""),
 		},
-		time: big.NewInt(1540893799),
+		time:   big.NewInt(1540893799),
+		author: genesis.LemoBase(),
 	}
 	block := makeBlock(blockChain.db, info, false)
-
 	err = blockChain.Verify(block)
 	assert.NoError(t, err)
 }
