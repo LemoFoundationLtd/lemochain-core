@@ -1201,7 +1201,7 @@ func TestBlockChain_ReceiveConfirm(t *testing.T) {
 
 	confirm.SignInfo[2] = '1'
 	err = blockChain.ReceiveConfirm(confirm)
-	assert.Equal(t, ErrInvalidSignedConfirmInfo, err)
+	assert.Equal(t, ErrInvalidConfirmInfo, err)
 
 	// unavailable confirm info.
 	confirm, err = buildConfirm(block1.Hash(), "cbe9fa7c8721b8103e5af1ee5a40ac60c0c2b8c3c762e4e2c6ee0965917b1d86")
@@ -1240,4 +1240,93 @@ func TestBlockChain_ReceiveConfirm(t *testing.T) {
 
 	result := blockChain.GetBlockByHash(block2.Hash())
 	assert.NotNil(t, result)
+}
+
+func TestBlockChain_VerifyBodyNormal(t *testing.T) {
+	store.ClearData()
+	defer store.ClearData()
+
+	blockChain, _, err := newBlockChain()
+	assert.NoError(t, err)
+
+	genesis := blockChain.GetBlockByHeight(0)
+	assert.NotNil(t, genesis)
+
+	tmp, err := crypto.HexToECDSA("c21b6b2fbf230f665b936194d14da67187732bf9d28768aef1a3cbb26608f8aa")
+	assert.NoError(t, err)
+
+	accounts := store.GetAccounts()
+	info := blockInfo{
+		parentHash:  genesis.Hash(),
+		height:      1,
+		gasLimit:    1000000000,
+		deputyNodes: genesis.DeputyNodes,
+		txList: []*types.Transaction{
+			makeTx(tmp, accounts[0].Address, big.NewInt(30000)),
+			makeTx(tmp, accounts[1].Address, big.NewInt(40000)),
+		},
+		time:   big.NewInt(1540893799),
+		author: genesis.LemoBase(),
+	}
+	block := makeBlock(blockChain.db, info, false)
+	err = blockChain.Verify(block)
+	assert.NoError(t, err)
+}
+
+func TestBlockChain_VerifyBlockBalanceNotEnough(t *testing.T) {
+	store.ClearData()
+	defer store.ClearData()
+
+	blockChain, _, err := newBlockChain()
+	assert.NoError(t, err)
+
+	genesis := blockChain.GetBlockByHeight(0)
+	assert.NotNil(t, genesis)
+
+	tmp, err := crypto.HexToECDSA("9c3c4a327ce214f0a1bf9cfa756fbf74f1c7322399ffff925efd8c15c49953eb")
+	assert.NoError(t, err)
+
+	accounts := store.GetAccounts()
+	info := blockInfo{
+		parentHash:  genesis.Hash(),
+		height:      1,
+		gasLimit:    1000000000,
+		deputyNodes: genesis.DeputyNodes,
+		txList: []*types.Transaction{
+			makeTx(tmp, accounts[0].Address, big.NewInt(30000)),
+			makeTx(tmp, accounts[1].Address, big.NewInt(40000)),
+		},
+		time:   big.NewInt(1540893799),
+		author: genesis.LemoBase(),
+	}
+	block := makeBlock(blockChain.db, info, false)
+	err = blockChain.Verify(block)
+	assert.NoError(t, err)
+}
+
+func TestBlockChain_VerifyBlockBalanceNotSign(t *testing.T) {
+	store.ClearData()
+	defer store.ClearData()
+
+	blockChain, _, err := newBlockChain()
+	assert.NoError(t, err)
+
+	genesis := blockChain.GetBlockByHeight(0)
+	assert.NotNil(t, genesis)
+
+	accounts := store.GetAccounts()
+	info := blockInfo{
+		parentHash:  genesis.Hash(),
+		height:      1,
+		gasLimit:    1000000000,
+		deputyNodes: genesis.DeputyNodes,
+		txList: []*types.Transaction{
+			types.NewTransaction(accounts[0].Address, common.Big2, 30000, common.Big2, []byte{}, 200, 1538210398, "", ""),
+		},
+		time:   big.NewInt(1540893799),
+		author: genesis.LemoBase(),
+	}
+	block := makeBlock(blockChain.db, info, false)
+	err = blockChain.Verify(block)
+	assert.NoError(t, err)
 }

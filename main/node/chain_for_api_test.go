@@ -110,7 +110,7 @@ func init() {
 }
 
 func clearDB() {
-	filepath.Walk("../../db", func(path string, f os.FileInfo, err error) error {
+	filepath.Walk(store.GetStorePath(), func(path string, f os.FileInfo, err error) error {
 		return os.RemoveAll(path)
 	})
 }
@@ -128,7 +128,7 @@ func newChain() *chain.BlockChain {
 
 // newDB creates db for test chain module
 func newDB() protocol.ChainDB {
-	db, err := store.NewCacheChain("../../db")
+	db, err := store.NewCacheChain(store.GetStorePath())
 	if err != nil {
 		panic(err)
 	}

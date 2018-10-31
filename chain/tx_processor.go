@@ -61,7 +61,7 @@ func (p *TxProcessor) Process(block *types.Block) (*types.Header, error) {
 	for i, tx := range txs {
 		gas, err := p.applyTx(gp, header, tx, uint(i), block.Hash())
 		if err != nil {
-			log.Debug("Invalid transaction", "hash", tx.Hash(), "err", err)
+			log.Info("Invalid transaction", "hash", tx.Hash(), "err", err)
 			return nil, ErrInvalidTxInBlock
 		}
 		gasUsed = gasUsed + gas
@@ -100,7 +100,7 @@ func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions) (*t
 				log.Info("Not enough gas for further transactions", "gp", gp, "lastTxGasLimit", tx.GasLimit())
 			} else {
 				// Strange error, discard the transaction and get the next in line.
-				log.Debug("Skipped invalid transaction", "hash", tx.Hash(), "err", err)
+				log.Info("Skipped invalid transaction", "hash", tx.Hash(), "err", err)
 				invalidTxs = append(invalidTxs, tx)
 			}
 			continue
@@ -153,7 +153,7 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 		_, restGas, vmErr = vmEnv.Call(sender, *tx.To(), tx.Data(), restGas, tx.Amount())
 	}
 	if vmErr != nil {
-		log.Debug("VM returned with error", "err", vmErr)
+		log.Info("VM returned with error", "err", vmErr)
 		// The only possible consensus-error would be if there wasn't
 		// sufficient balance to make the transfer happen. The first
 		// balance transfer may never fail.

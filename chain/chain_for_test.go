@@ -1,14 +1,17 @@
 package chain
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/common/flag"
+	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"github.com/LemoFoundationLtd/lemochain-go/store/protocol"
 	"math/big"
@@ -28,6 +31,8 @@ type blockInfo struct {
 	txList      []*types.Transaction
 	gasLimit    uint64
 	time        *big.Int
+	deputyRoot  []byte
+	deputyNodes deputynode.DeputyNodes
 }
 
 var (
@@ -43,7 +48,7 @@ var (
 	defaultBlockInfos = []blockInfo{
 		// genesis block must no transactions
 		{
-			hash:        common.HexToHash("0x5e4422f96fe47b4463d98de8e22d40cd7b9cfc0e2df931c7c0e0a9e0cadaf309"),
+			hash:        common.HexToHash("0xfceb0a339a5be9689a3db2b7df2a05feba5b1f6e1ce385f14764d139556b9426"),
 			height:      0,
 			author:      defaultAccounts[0],
 			versionRoot: common.HexToHash("0x6eea9449a171035539c71d2895830afc061d0777da6e86735d9899c888d953c1"),
@@ -53,11 +58,11 @@ var (
 		},
 		// block 1 is stable block
 		{
-			hash:        common.HexToHash("0x8d3423e2e4869ea521c03b9cb45873a6e731ea6dce68baeb89482606d8140286"),
+			hash:        common.HexToHash("0xfabb0fff8f44b829f937070de3d8625972900867a6dce77b24c0b5ccd1d591ca"),
 			height:      1,
 			author:      common.HexToAddress("0x20000"),
 			versionRoot: common.HexToHash("0xfa470f96f703f04ba85d39bf7f64aa43e8b352e541fe36ea9f053336dfd1b22a"),
-			txRoot:      common.HexToHash("0xf044cc436950ef7470aca61053eb3f1ed46b9dcd501a5210f3673dc657c4fc88"),
+			txRoot:      common.HexToHash("0x44bb706ae39d4e24df62fee83d9daa0e0a8e422e9b3f6d48243e2511cb055479"),
 			logsRoot:    common.HexToHash("0xb6062a94cf5ce70ec3910072da83eca56ba584aba8273e4d0837eb03c090e473"),
 			txList: []*types.Transaction{
 				// testAddr -> defaultAccounts[0] 1
@@ -70,11 +75,11 @@ var (
 		},
 		// block 2 is not stable block
 		{
-			hash:        common.HexToHash("0x2cf427ebeee479645a4c31a6003c4c98c753324a4967911a201d77f1e23fa922"),
+			hash:        common.HexToHash("0x18229ab6caf0a9f2972eaa97ff4ede9189e0f6d96bbef3a972795313d92319b2"),
 			height:      2,
 			author:      defaultAccounts[0],
 			versionRoot: common.HexToHash("0x407e1d64578f852d97ab3b5a655ece80ca1422ef68ba0145756f35a4b7fb141b"),
-			txRoot:      common.HexToHash("0x2501f471d13f0383a9a09ef7776dc94c6ccdc19ebd36127ac8a39cfef85dc412"),
+			txRoot:      common.HexToHash("0xf499c76d7f3693700d1cab1618d7c62c619686578ce982375161747927117a8f"),
 			logsRoot:    common.HexToHash("0x40ab1668ecddd288ded6cec4135dadb071beee4e2826640e96c416894aaa6469"),
 			txList: []*types.Transaction{
 				// testAddr -> defaultAccounts[0] 2
@@ -85,11 +90,11 @@ var (
 		},
 		// block 3 is not store in db
 		{
-			hash:        common.HexToHash("0x44969192526ebbe6a63796dee0514706ce723b6e4b14f0b3d6b99526d1efe2a4"),
+			hash:        common.HexToHash("0xfd283c1db324237dcf224ccae7e68bca17f1f806d68a0208458188cca5f20d23"),
 			height:      3,
 			author:      defaultAccounts[0],
 			versionRoot: common.HexToHash("0x26a8540cd0e07e18d08ad484cfb44b0fd40dc5f197678897fc80076dbfa942b4"),
-			txRoot:      common.HexToHash("0x883e9542653e2ad8bae93fa5567d8f5833543057af94ea0ed59c97a7034acac8"),
+			txRoot:      common.HexToHash("0x3f4519bff066109e8b47621fc8fa8bc791abec347478cc8f0d084012fc83f76d"),
 			logsRoot:    common.HexToHash("0xa92582c4c7627d130a38c94e568b8c671817fe742930636c7b0190b7f7344064"),
 			txList: []*types.Transaction{
 				// testAddr -> defaultAccounts[0] 2
@@ -105,10 +110,11 @@ var (
 
 func init() {
 	clearDB()
+	log.Setup(log.LevelInfo, false, false)
 }
 
 func clearDB() {
-	filepath.Walk("../../db", func(path string, f os.FileInfo, err error) error {
+	filepath.Walk(store.GetStorePath(), func(path string, f os.FileInfo, err error) error {
 		return os.RemoveAll(path)
 	})
 }
@@ -158,6 +164,18 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 		}
 		info.txRoot = txRoot
 	}
+
+	var deputyRoot []byte
+	if len(info.deputyNodes) > 0 {
+		deputyRoot = types.DeriveDeputyRootSha(info.deputyNodes).Bytes()
+	}
+	if bytes.Compare(deputyRoot, info.deputyRoot) != 0 {
+		if len(info.deputyNodes) > 0 || len(info.deputyRoot) != 0 {
+			fmt.Printf("%d deputyRoot error. except: %s, got: %s\n", info.height, common.ToHex(info.deputyRoot), common.ToHex(deputyRoot))
+		}
+		info.deputyRoot = deputyRoot
+	}
+
 	// genesis coin
 	if info.height == 0 {
 		owner := manager.GetAccount(testAddr)
@@ -234,6 +252,11 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 		Time:        info.time,
 		Extra:       []byte{},
 	}
+	if len(info.deputyRoot) > 0 {
+		header.DeputyRoot = make([]byte, len(info.deputyRoot))
+		copy(header.DeputyRoot[:], info.deputyRoot[:])
+	}
+
 	blockHash := header.Hash()
 	if blockHash != info.hash {
 		if info.hash != (common.Hash{}) {
@@ -243,8 +266,9 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 	}
 	// block
 	block := &types.Block{
-		Txs:        info.txList,
-		ChangeLogs: changeLogs,
+		Txs:         info.txList,
+		ChangeLogs:  changeLogs,
+		DeputyNodes: info.deputyNodes,
 	}
 	block.SetHeader(header)
 	if save {
