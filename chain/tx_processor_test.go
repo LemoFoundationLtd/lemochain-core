@@ -5,7 +5,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/vm"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
-	"github.com/LemoFoundationLtd/lemochain-go/common/crypto/secp256k1"
 	"github.com/LemoFoundationLtd/lemochain-go/common/flag"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"github.com/LemoFoundationLtd/lemochain-go/store"
@@ -94,15 +93,14 @@ func TestTxProcessor_Process2(t *testing.T) {
 	// tamper with amount
 	block := createNewBlock()
 	rawTx, _ := rlp.EncodeToBytes(block.Txs[0])
-	rawTx[25]++ // amount++
+	rawTx[29]++ // amount++
 	cpy := new(types.Transaction)
 	err := rlp.DecodeBytes(rawTx, cpy)
 	assert.NoError(t, err)
 	assert.Equal(t, new(big.Int).Add(block.Txs[0].Amount(), big.NewInt(1)), cpy.Amount())
 	block.Txs[0] = cpy
 	_, err = p.Process(block)
-	// recover to another from address
-	assert.Equal(t, ErrInsufficientBalanceForGas, err)
+	assert.Equal(t, ErrInvalidTxInBlock, err)
 
 	// invalid signature
 	block = createNewBlock()
@@ -113,9 +111,7 @@ func TestTxProcessor_Process2(t *testing.T) {
 	assert.NoError(t, err)
 	block.Txs[0] = cpy
 	_, err = p.Process(block)
-	// sometimes the err is this one
-	// assert.Equal(t, ErrInsufficientBalanceForGas, err)
-	assert.Equal(t, secp256k1.ErrRecoverFailed, err)
+	assert.Equal(t, ErrInvalidTxInBlock, err)
 
 	// not enough gas (resign by another address)
 	block = createNewBlock()
@@ -126,20 +122,20 @@ func TestTxProcessor_Process2(t *testing.T) {
 	assert.NotEqual(t, origFrom, newFrom)
 	block.Header.TxRoot = types.DeriveTxsSha(block.Txs)
 	_, err = p.Process(block)
-	assert.Equal(t, ErrInsufficientBalanceForGas, err)
+	assert.Equal(t, ErrInvalidTxInBlock, err)
 
-	// reach block gas limit
+	// exceed block gas limit
 	block = createNewBlock()
 	block.Header.GasLimit = 1
 	_, err = p.Process(block)
-	assert.Equal(t, types.ErrGasLimitReached, err)
+	assert.Equal(t, ErrInvalidTxInBlock, err)
 
-	// used gas reach limit
+	// used gas reach limit in some tx
 	block = createNewBlock()
 	block.Txs[0] = makeTransaction(testPrivate, defaultAccounts[1], big.NewInt(100), common.Big1, 0, 1)
 	block.Header.TxRoot = types.DeriveTxsSha(block.Txs)
 	_, err = p.Process(block)
-	assert.Equal(t, vm.ErrOutOfGas, err)
+	assert.Equal(t, ErrInvalidTxInBlock, err)
 
 	// balance not enough
 	block = createNewBlock()
@@ -147,7 +143,7 @@ func TestTxProcessor_Process2(t *testing.T) {
 	block.Txs[0] = makeTx(testPrivate, defaultAccounts[1], new(big.Int).Add(balance, big.NewInt(1)))
 	block.Header.TxRoot = types.DeriveTxsSha(block.Txs)
 	_, err = p.Process(block)
-	assert.Equal(t, vm.ErrInsufficientBalance, err)
+	assert.Equal(t, ErrInvalidTxInBlock, err)
 
 	// TODO test create or call contract fail
 }
@@ -186,6 +182,7 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 	assert.Equal(t, header.TxRoot, newHeader.TxRoot)
 	assert.Equal(t, header.VersionRoot, newHeader.VersionRoot)
 	assert.Equal(t, header.LogsRoot, newHeader.LogsRoot)
+	assert.Empty(t, newHeader.DeputyRoot)
 	assert.Equal(t, header.Hash(), newHeader.Hash())
 	assert.Equal(t, len(txs), len(selectedTxs))
 	assert.Equal(t, 0, len(invalidTxs))
