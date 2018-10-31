@@ -13,7 +13,7 @@ import (
 )
 
 func GetStorePath() string {
-	return "../../lmstore/"
+	return "../../db"
 }
 
 func ClearData() error {

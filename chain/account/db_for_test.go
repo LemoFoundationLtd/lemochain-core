@@ -84,14 +84,14 @@ var (
 
 func init() {
 	// clear db
-	filepath.Walk("../../db", func(path string, f os.FileInfo, err error) error {
+	filepath.Walk(store.GetStorePath(), func(path string, f os.FileInfo, err error) error {
 		return os.RemoveAll(path)
 	})
 }
 
 // newDB creates db for test account module
 func newDB() protocol.ChainDB {
-	db, err := store.NewCacheChain("../../db")
+	db, err := store.NewCacheChain(store.GetStorePath())
 	if err != nil {
 		panic(err)
 	}

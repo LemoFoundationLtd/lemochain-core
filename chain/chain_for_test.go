@@ -108,7 +108,7 @@ func init() {
 }
 
 func clearDB() {
-	filepath.Walk("../../db", func(path string, f os.FileInfo, err error) error {
+	filepath.Walk(store.GetStorePath(), func(path string, f os.FileInfo, err error) error {
 		return os.RemoveAll(path)
 	})
 }

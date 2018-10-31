@@ -153,7 +153,7 @@ func TestTxProcessor_Process2(t *testing.T) {
 }
 
 func createNewBlock() *types.Block {
-	db, _ := store.NewCacheChain("../../db")
+	db, _ := store.NewCacheChain(store.GetStorePath())
 	return makeBlock(db, blockInfo{
 		height:     2,
 		parentHash: defaultBlocks[1].Hash(),
