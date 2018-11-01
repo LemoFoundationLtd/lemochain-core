@@ -1,6 +1,7 @@
 package node
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
@@ -263,13 +264,23 @@ func (n *NetAPI) Peers() []p2p.PeerConnInfo {
 }
 
 // todo
-type netInfo struct {
-	Port string
+type NetInfo struct {
+	Port string `json:"port" gencodec:"required"`
+}
+
+// MarshalJSON marshals as JSON
+func (n NetInfo) MarshalJSON() ([]byte, error) {
+	type netInfo struct {
+		Port string `json:"port" gencodec:"required"`
+	}
+	var enc netInfo
+	enc.Port = n.Port
+	return json.Marshal(&enc)
 }
 
 // NetInfo
-func (n *NetAPI) Info() *netInfo {
-	return &netInfo{
+func (n *NetAPI) Info() *NetInfo {
+	return &NetInfo{
 		Port: n.server.ListenAddr(),
 	}
 }

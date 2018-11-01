@@ -33,33 +33,33 @@ func TestAccountAPI_api(t *testing.T) {
 	acc := NewAccountAPI(am)
 	// Create key pair
 	addressKeyPair, err := acc.NewKeyPair()
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	t.Log(addressKeyPair)
 
 	// getBalance api
 	B01 := acc.manager.GetCanonicalAccount(common.HexToAddress("0x015780F8456F9c1532645087a19DcF9a7e0c7F97")).GetBalance().String()
 	b01 := addPoint(B01)
 	bb01, err := acc.GetBalance("0x015780F8456F9c1532645087a19DcF9a7e0c7F97")
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, b01, bb01)
 
 	address, err := common.RestoreOriginalAddress("Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG")
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	B02 := acc.manager.GetCanonicalAccount(address).GetBalance().String()
 	b02 := addPoint(B02)
 	bb02, err := acc.GetBalance("Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG")
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, b02, bb02)
 
 	B03 := acc.manager.GetCanonicalAccount(testAddr).GetBalance().String()
 	b03 := addPoint(B03)
 	bb03, err := acc.GetBalance(testAddr.String())
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, b03, bb03)
 
 	// get account api
 	account01, err := acc.GetAccount("0x016ad4Fc7e1608685Bf5fe5573973BF2B1Ef9B8A")
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, acc.manager.GetCanonicalAccount(common.HexToAddress("0x016ad4Fc7e1608685Bf5fe5573973BF2B1Ef9B8A")), account01)
 
 }
