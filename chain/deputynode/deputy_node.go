@@ -15,6 +15,11 @@ import (
 	"sync"
 )
 
+const (
+	SnapshotBlockInterval = 100000
+	TransitionPeriod      = 1000
+)
+
 var (
 	selfNodeKey *ecdsa.PrivateKey
 )
@@ -129,11 +134,6 @@ func (d *Manager) getDeputiesByHeight(height uint32) DeputyNodes {
 
 // getDeputyNodeCount 获取共识节点数量
 func (d *Manager) GetDeputiesCount() int {
-	return len(d.DeputyNodesList[0].nodes) // todo
-}
-
-// GetTotalNodeCount 获取代理节点及候选节点总数
-func (d *Manager) GetTotalDeputiesCount() int {
 	return len(d.DeputyNodesList[0].nodes)
 }
 
@@ -168,12 +168,6 @@ func (d *Manager) GetSlot(height uint32, firstAddress, nextAddress common.Addres
 	}
 	if firstNode == nil || nextNode == nil {
 		return -1
-	}
-	// 与创世块比较
-	var emptyAddr [20]byte
-	if bytes.Compare(firstAddress[:], emptyAddr[:]) == 0 {
-		log.Debug("getSlot: firstAddress is empty")
-		return int(nextNode.Rank + 1)
 	}
 	nodeCount := d.GetDeputiesCount()
 	// 只有一个主节点

@@ -1,6 +1,7 @@
 package node
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
@@ -239,8 +240,14 @@ func (n *NetAPI) AddStaticPeer(node string) {
 	n.server.AddStaticPeer(node)
 }
 
-func (n *NetAPI) DropPeer(node string) {
-	n.server.DropPeer(node)
+// DropPeer
+func (n *NetAPI) DropPeer(node string) string {
+	if n.server.DropPeer(node) {
+		return fmt.Sprintf("drop a peer success. id %v", node)
+	} else {
+		return fmt.Sprintf("drop a peer fail. id %v", node)
+	}
+
 }
 
 // Peers
@@ -249,13 +256,23 @@ func (n *NetAPI) Peers() []p2p.PeerConnInfo {
 }
 
 // todo
-type netInfo struct {
-	port string
+type NetInfo struct {
+	Port string `json:"port" gencodec:"required"`
+}
+
+// MarshalJSON marshals as JSON
+func (n NetInfo) MarshalJSON() ([]byte, error) {
+	type netInfo struct {
+		Port string `json:"port" gencodec:"required"`
+	}
+	var enc netInfo
+	enc.Port = n.Port
+	return json.Marshal(&enc)
 }
 
 // NetInfo
-func (n *NetAPI) Info() *netInfo {
-	return &netInfo{
-		port: n.server.ListenAddr(),
+func (n *NetAPI) Info() *NetInfo {
+	return &NetInfo{
+		Port: n.server.ListenAddr(),
 	}
 }
