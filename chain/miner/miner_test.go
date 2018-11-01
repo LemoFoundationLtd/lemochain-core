@@ -87,6 +87,6 @@ func TestMiner_modifyTimer(t *testing.T) {
 	miner, _, _, err := newMiner(me)
 	assert.NoError(t, err)
 
-	reset := miner.modifyTimer()
+	reset := miner.getSleepTime()
 	assert.Equal(t, 0, reset)
 }
