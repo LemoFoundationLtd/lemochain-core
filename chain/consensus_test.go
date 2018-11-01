@@ -268,7 +268,7 @@ func TestDpovp_VerifyHeader01(t *testing.T) {
 
 	t.Log("parent block is genesis block, return ", dpovp.VerifyHeader(testBlock01))
 
-	// // 与父块的时间间隔小于blockInternal(3000ms) // 设置与父区块出块时间相差1000ms
+	// // 与父块的时间间隔小于blockInterval(3000ms) // 设置与父区块出块时间相差1000ms
 	// testBlock02, err := newTestBlock(dpovp, testBlock01.Hash(), 2, common.HexToAddress(block03LemoBase), testBlock01.Time().Add(testBlock01.Time(), big.NewInt(1)), deputy03Privkey, false)
 	// if err != nil {
 	// 	t.Error(err)
@@ -353,13 +353,13 @@ func TestDpovp_VerifyHeader03(t *testing.T) {
 
 	// else if slot == 1 :
 	// 都与block01作为父块, 设置出块代理节点为第二个节点，满足slot == 1,时间差设为第一种小于一轮(50s)的情况,
-	// block05时间满足(timeSpan >= d.blockInternal && timeSpan < d.timeoutTime)的正常情况
+	// block05时间满足(timeSpan >= d.blockInterval && timeSpan < d.timeoutTime)的正常情况
 	block05, err := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block02LemoBase), big.NewInt(2005), deputy02Privkey, false)
 	if err != nil {
 		t.Error(err)
 	}
-	t.Log("solt == 1 && timeSpan < oneLoopTime && timeSpan >= d.blockInternal && timeSpan < d.timeoutTime ,return nil", dpovp.VerifyHeader(block05))
-	// block06 不满足(timeSpan >= d.blockInternal && timeSpan < d.timeoutTime)的情况,timeSpan == 11 > 10
+	t.Log("solt == 1 && timeSpan < oneLoopTime && timeSpan >= d.blockInterval && timeSpan < d.timeoutTime ,return nil", dpovp.VerifyHeader(block05))
+	// block06 不满足(timeSpan >= d.blockInterval && timeSpan < d.timeoutTime)的情况,timeSpan == 11 > 10
 	block06, err := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block02LemoBase), big.NewInt(2011), deputy02Privkey, false)
 	if err != nil {
 		t.Error(err)

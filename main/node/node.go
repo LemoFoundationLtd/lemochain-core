@@ -26,7 +26,6 @@ import (
 )
 
 const ConfigGuideUrl = "Please visit https://github.com/LemoFoundationLtd/lemochain-go#configuration-file for detail"
-const SnapshotBlockInternal = 100000
 
 var (
 	ErrConfig = errors.New(`file "config.json" format error.` + ConfigGuideUrl)
@@ -133,7 +132,7 @@ func initDeputyNodes(db protocol.ChainDB) {
 	var err error
 	for block != nil {
 		deputynode.Instance().Add(block.Height(), block.DeputyNodes)
-		block, err = db.GetBlockByHeight(block.Height() + SnapshotBlockInternal)
+		block, err = db.GetBlockByHeight(block.Height() + deputynode.SnapshotBlockInterval)
 		if err == store.ErrNotExist {
 			break
 		} else if err == nil {

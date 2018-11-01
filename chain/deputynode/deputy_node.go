@@ -15,6 +15,11 @@ import (
 	"sync"
 )
 
+const (
+	SnapshotBlockInterval = 100000
+	TransitionPeriod      = 1000
+)
+
 var (
 	selfNodeKey *ecdsa.PrivateKey
 )

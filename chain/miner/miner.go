@@ -22,7 +22,7 @@ type MineConfig struct {
 }
 
 type Miner struct {
-	blockInternal int64
+	blockInterval int64
 	timeoutTime   int64
 	privKey       *ecdsa.PrivateKey
 	lemoBase      common.Address
@@ -47,7 +47,7 @@ type Miner struct {
 
 func New(cfg *MineConfig, chain *chain.BlockChain, txPool *chain.TxPool, mineNewBlockCh, recvBlockCh chan *types.Block, engine chain.Engine) *Miner {
 	m := &Miner{
-		blockInternal:  cfg.SleepTime,
+		blockInterval:  cfg.SleepTime,
 		timeoutTime:    cfg.Timeout,
 		privKey:        deputynode.GetSelfNodeKey(),
 		chain:          chain,
@@ -77,7 +77,17 @@ func (m *Miner) Start() {
 	}
 	m.startCh <- struct{}{}
 	go m.loopMiner()
-	m.modifyTimer()
+	waitTime := m.modifyTimer()
+	if waitTime == 0 {
+		m.sealBlock()
+	} else if waitTime > 0 {
+		m.resetMinerTimer(int64(waitTime))
+	} else {
+		log.Error("internal error. start mining failed")
+		atomic.CompareAndSwapInt32(&m.mining, 1, 0)
+		m.stopCh <- struct{}{}
+		return
+	}
 	log.Info("start mining...")
 }
 
@@ -114,7 +124,7 @@ func (m *Miner) getTimespan() int64 {
 	lstSpan := m.currentBlock().Header.Time.Int64()
 	if lstSpan == int64(0) {
 		log.Debug("getTimespan: current block's time is 0")
-		return int64(m.blockInternal)
+		return int64(m.blockInterval)
 	}
 	now := time.Now().Unix()
 	return (now - lstSpan) * 1000
@@ -133,7 +143,7 @@ func (m *Miner) modifyTimer() int {
 	}
 	nodeCount := deputynode.Instance().GetDeputiesCount()
 	if nodeCount == 1 { // 只有一个主节点
-		waitTime := m.blockInternal
+		waitTime := m.blockInterval
 		m.resetMinerTimer(waitTime)
 		log.Debugf("modifyTimer: waitTime:%d", waitTime)
 		return int(waitTime)
@@ -145,7 +155,7 @@ func (m *Miner) modifyTimer() int {
 		return -1
 	}
 	curHeader := m.currentBlock().Header
-	slot := deputynode.Instance().GetSlot(curHeader.Height, curHeader.LemoBase, myself.LemoBase) // 获取新块离本节点索引的距离
+	slot := deputynode.Instance().GetSlot(curHeader.Height+1, curHeader.LemoBase, myself.LemoBase) // 获取新块离本节点索引的距离
 	if slot == -1 {
 		log.Debugf("slot = -1")
 		return -1
@@ -172,14 +182,12 @@ func (m *Miner) modifyTimer() int {
 			return int(waitTime)
 		} else if timeDur < oneLoopTime {
 			log.Debugf("modifyTimer: timeDur: %d. isTurn=true --1", timeDur)
-			m.timeToMineCh <- struct{}{}
 			return 0
 		} else { // 间隔大于一轮
 			timeDur = timeDur % oneLoopTime // 求余
 			waitTime := int64(nodeCount-1)*m.timeoutTime - timeDur
 			if waitTime <= 0 {
 				log.Debugf("modifyTimer: waitTime: %d. isTurn=true --2", waitTime)
-				m.timeToMineCh <- struct{}{}
 				return 0
 			} else {
 				m.resetMinerTimer(waitTime)
@@ -193,7 +201,6 @@ func (m *Miner) modifyTimer() int {
 			log.Debugf("modifyTimer: slot:1 timeDur:%d>oneLoopTime:%d ", timeDur, oneLoopTime)
 			if timeDur < m.timeoutTime { //
 				log.Debugf("modifyTimer: timeDur: %d. isTurn=true --3", timeDur)
-				m.timeToMineCh <- struct{}{}
 				return 0
 			} else {
 				waitTime := oneLoopTime - timeDur
@@ -207,12 +214,11 @@ func (m *Miner) modifyTimer() int {
 				m.resetMinerTimer(waitTime)
 				log.Debugf("modifyTimer: slot:1 timeDur<oneLoopTime, timeDur>self.timeoutTime, resetMinerTimer(waitTime:%d)", waitTime)
 				return int(waitTime)
-			} else if timeDur >= m.blockInternal { // 如果上一个区块的时间与当前时间差大或等于3s（区块间的最小间隔为3s），则直接出块无需休眠
+			} else if timeDur >= m.blockInterval { // 如果上一个区块的时间与当前时间差大或等于3s（区块间的最小间隔为3s），则直接出块无需休眠
 				log.Debugf("modifyTimer: timeDur: %d. isTurn=true. --4", timeDur)
-				m.timeToMineCh <- struct{}{}
 				return 0
 			} else {
-				waitTime := m.blockInternal - timeDur // 如果上一个块时间与当前时间非常近（小于3s），则设置休眠
+				waitTime := m.blockInterval - timeDur // 如果上一个块时间与当前时间非常近（小于3s），则设置休眠
 				if waitTime <= 0 {
 					log.Warnf("modifyTimer: waitTime: %d", waitTime)
 					return -1
@@ -226,7 +232,6 @@ func (m *Miner) modifyTimer() int {
 		timeDur = timeDur % oneLoopTime
 		if timeDur >= int64(slot-1)*m.timeoutTime && timeDur < int64(slot)*m.timeoutTime {
 			log.Debugf("modifyTimer: timeDur:%d. isTurn=true. --5", timeDur)
-			m.timeToMineCh <- struct{}{}
 			return 0
 		} else {
 			waitTime := (int64(slot-1)*m.timeoutTime - timeDur + oneLoopTime) % oneLoopTime
@@ -282,7 +287,14 @@ func (m *Miner) loopMiner() {
 			m.sealBlock()
 		case block := <-m.recvNewBlockCh:
 			log.Debugf("receive new block. hash: %s. height: %d. start modify timer", block.Hash().Hex(), block.Height())
-			go m.modifyTimer()
+			waitTime := m.modifyTimer()
+			if waitTime == 0 {
+				m.sealBlock()
+			} else if waitTime > 0 {
+				m.resetMinerTimer(int64(waitTime))
+			} else {
+				log.Error("modifyTimer internal error.")
+			}
 		case <-m.stopCh:
 			return
 		case <-m.quitCh:
@@ -330,7 +342,7 @@ func (m *Miner) sealBlock() {
 	nodeCount := deputynode.Instance().GetDeputiesCount()
 	var timeDur int64
 	if nodeCount == 1 {
-		timeDur = m.blockInternal
+		timeDur = m.blockInterval
 	} else {
 		timeDur = int64(nodeCount-1) * m.timeoutTime
 	}

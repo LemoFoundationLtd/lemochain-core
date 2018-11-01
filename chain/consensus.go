@@ -87,7 +87,7 @@ func (d *Dpovp) VerifyHeader(block *types.Block) error {
 		return ErrVerifyHeaderFailed
 	}
 
-	parent, _ := d.db.GetBlock(header.ParentHash, header.Height-1)
+	parent, _ := d.db.GetBlockByHash(header.ParentHash)
 	if parent == nil {
 		log.Errorf("verifyHeader: can't get parent block. height:%d, hash:%s", header.Height-1, header.ParentHash)
 		return ErrVerifyHeaderFailed
