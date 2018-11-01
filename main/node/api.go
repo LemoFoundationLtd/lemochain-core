@@ -6,6 +6,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/miner"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
@@ -174,8 +175,7 @@ func (c *ChainAPI) GasPriceAdvice() *big.Int {
 
 // NodeVersion
 func (n *ChainAPI) NodeVersion() string {
-	// todo
-	return "1.0"
+	return params.Version
 }
 
 // TXAPI
