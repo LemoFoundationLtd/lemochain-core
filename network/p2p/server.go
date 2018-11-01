@@ -431,7 +431,7 @@ func (srv *Server) Peers() []PeerConnInfo {
 	return result
 }
 
-func (srv *Server) DropPeer(node string) {
+func (srv *Server) DropPeer(node string) bool {
 	for id, v := range srv.peers {
 		if strings.Compare(node, v.rw.fd.RemoteAddr().String()) == 0 {
 			v.needReConnect = false
@@ -442,9 +442,11 @@ func (srv *Server) DropPeer(node string) {
 			if srv.PeerEvent != nil { // 通知外界节点drop
 				if err := srv.PeerEvent(v, DropPeerFlag); err != nil {
 					log.Error("peer event error", "err", err)
+					return false
 				}
 			}
 			break
 		}
 	}
+	return true
 }
