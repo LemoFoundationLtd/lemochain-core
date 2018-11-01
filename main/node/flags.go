@@ -186,5 +186,7 @@ func getNodeConfig(flags flag.CmdFlags) *Config {
 	setIPC(flags, cfg)
 	setHttp(flags, cfg)
 	setWS(flags, cfg)
+	// set node version
+	cfg.Version = params.Version
 	return cfg
 }
