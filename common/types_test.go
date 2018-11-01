@@ -160,7 +160,7 @@ func BenchmarkAddressHex(b *testing.B) {
 	}
 }
 
-// RestoreOriginalAddress function test
+// DecodeLemoAddress function test
 func TestRestoreOriginalAddress(t *testing.T) {
 	tests := []struct {
 		LemoAddress string
@@ -172,7 +172,7 @@ func TestRestoreOriginalAddress(t *testing.T) {
 		{"Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG", "0x015780F8456F9c1532645087a19DcF9a7e0c7F97"},
 	}
 	for _, test := range tests {
-		nativeAddress, err := RestoreOriginalAddress(test.LemoAddress)
+		nativeAddress, err := StringToAddress(test.LemoAddress)
 		assert.Nil(t, err)
 		NativeAddress := nativeAddress.Hex()
 		assert.Equal(t, strings.ToLower(test.Native), NativeAddress)

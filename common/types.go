@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/LemoFoundationLtd/lemochain-dev/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/base26"
 	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
 	"math/big"
@@ -130,9 +129,16 @@ func BytesToAddress(b []byte) Address {
 	a.SetBytes(b)
 	return a
 }
-func StringToAddress(s string) Address { return BytesToAddress([]byte(s)) }
-func BigToAddress(b *big.Int) Address  { return BytesToAddress(b.Bytes()) }
-func HexToAddress(s string) Address    { return BytesToAddress(FromHex(s)) }
+func StringToAddress(s string) (Address, error) {
+	if isLemoAddress(s) {
+		var a Address
+		err := a.Decode(s)
+		return a, err
+	}
+	return BytesToAddress([]byte(s)), nil
+}
+func BigToAddress(b *big.Int) Address { return BytesToAddress(b.Bytes()) }
+func HexToAddress(s string) Address   { return BytesToAddress(FromHex(s)) }
 
 // IsHexAddress verifies whether a string can represent a valid hex-encoded
 // Lemochain address or not.
@@ -167,6 +173,37 @@ func (a Address) String() string {
 	lemoAddress := strings.Join([]string{logo, bytesAddress}, "")
 
 	return lemoAddress
+}
+
+// Decode decodes original address by the LemoAddress format.
+func (a *Address) Decode(lemoAddress string) error {
+	if !isLemoAddress(lemoAddress) {
+		return errors.New("address decode fail")
+	}
+	lemoAddress = strings.ToUpper(lemoAddress)
+	// Remove logo
+	address := []byte(lemoAddress)[len(logo):]
+	// Base26 decoding
+	fullPayload := base26.Decode(address)
+	// get the length of the address bytes type
+	length := len(fullPayload)
+	// get check bit
+	checkSum := fullPayload[length-1]
+	// get the native address
+	bytesAddress := fullPayload[:length-1]
+	// calculate the check bit by bytesAddress
+	trueCheck := GetCheckSum(bytesAddress)
+	// compare check
+	if checkSum != trueCheck {
+		return errors.New("lemo address check fail")
+	}
+	a.SetBytes(bytesAddress)
+	return nil
+}
+
+func isLemoAddress(str string) bool {
+	str = strings.ToUpper(str)
+	return strings.HasPrefix(str, strings.ToUpper(logo))
 }
 
 // GetCheckSum get the check digit by doing an exclusive OR operation
@@ -204,19 +241,13 @@ func (a *Address) Set(other Address) {
 
 // MarshalText returns the hex representation of a.
 func (a Address) MarshalText() ([]byte, error) {
-	return hexutil.Bytes(a[:]).MarshalText()
+	return []byte(a.String()), nil
 }
 
 // UnmarshalText parses a hash in hex syntax.
 func (a *Address) UnmarshalText(input []byte) error {
-	originUpper := strings.ToUpper(string(input))
-	if strings.HasPrefix(originUpper, "LEMO") {
-		addrBytes, err := lemoAddrToCommonAddr(originUpper)
-		if err != nil {
-			return fmt.Errorf("lemo address check failed: %v", err)
-		}
-		addrStr := common.ToHex(addrBytes)
-		input = []byte(addrStr)
+	if isLemoAddress(string(input)) {
+		return a.Decode(string(input))
 	}
 	return hexutil.UnmarshalFixedText("Address", input, a[:])
 }
@@ -224,28 +255,10 @@ func (a *Address) UnmarshalText(input []byte) error {
 // UnmarshalJSON parses a hash in hex syntax.
 func (a *Address) UnmarshalJSON(input []byte) error {
 	originUpper := strings.Trim(strings.ToUpper(string(input)), "\"")
-	if strings.HasPrefix(originUpper, "LEMO") {
-		addrBytes, err := lemoAddrToCommonAddr(originUpper)
-		if err != nil {
-			return fmt.Errorf("lemo address check failed: %v", err)
-		}
-		addrStr := "\"" + common.ToHex(addrBytes) + "\""
-		input = []byte(addrStr)
+	if isLemoAddress(originUpper) {
+		return a.Decode(originUpper)
 	}
 	return hexutil.UnmarshalFixedJSON(addressT, input, a[:])
-}
-
-// UnprefixedHash allows marshaling an Address without 0x prefix.
-type UnprefixedAddress Address
-
-// UnmarshalText decodes the address from hex. The 0x prefix is optional.
-func (a *UnprefixedAddress) UnmarshalText(input []byte) error {
-	return hexutil.UnmarshalFixedUnprefixedText("UnprefixedAddress", input, a[:])
-}
-
-// MarshalText encodes the address as hex.
-func (a UnprefixedAddress) MarshalText() ([]byte, error) {
-	return []byte(hex.EncodeToString(a[:])), nil
 }
 
 type AddressSlice []Address
@@ -260,50 +273,4 @@ func (a AddressSlice) Less(i, j int) bool {
 
 func (a AddressSlice) Swap(i, j int) {
 	a[i], a[j] = a[j], a[i]
-}
-
-// RestoreOriginalAddress Restore original address the LemoAddress and return the Address type.
-func RestoreOriginalAddress(LemoAddress string) (Address, error) {
-	LemoAddress = strings.ToUpper(LemoAddress)
-	// Remove logo
-	address := []byte(LemoAddress)[4:]
-	// Base26 decoding
-	fullPayload := base26.Decode(address)
-	// get the length of the address bytes type
-	length := len(fullPayload)
-	// get check bit
-	checkSum := fullPayload[length-1]
-	// get the native address
-	BytesAddress := fullPayload[:length-1]
-	// calculate the check bit by BytesAddress
-	trueCheck := GetCheckSum(BytesAddress)
-	// compare check
-	if checkSum == trueCheck {
-		nativeAddress := BytesToAddress(BytesAddress)
-		return nativeAddress, nil
-	} else {
-		return Address{}, errors.New("address check does not pass")
-	}
-}
-
-func lemoAddrToCommonAddr(LemoAddress string) ([]byte, error) {
-	LemoAddress = strings.ToUpper(LemoAddress)
-	// Remove logo
-	address := []byte(LemoAddress)[4:]
-	// Base26 decoding
-	fullPayload := base26.Decode(address)
-	// get the length of the address bytes type
-	length := len(fullPayload)
-	// get check bit
-	checkSum := fullPayload[length-1]
-	// get the native address
-	BytesAddress := fullPayload[:length-1]
-	// calculate the check bit by BytesAddress
-	trueCheck := GetCheckSum(BytesAddress)
-	// compare check
-	if checkSum == trueCheck {
-		return BytesAddress, nil
-	} else {
-		return nil, errors.New("address check does not pass")
-	}
 }

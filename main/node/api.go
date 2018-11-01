@@ -1,6 +1,7 @@
 package node
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
@@ -10,7 +11,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/network/p2p"
 	"math/big"
-	"strings"
 )
 
 // AccountAPI API for access to account information
@@ -62,16 +62,9 @@ func (a *AccountAPI) GetBalance(LemoAddress string) (string, error) {
 
 // GetAccount return the struct of the &AccountData{}
 func (a *AccountAPI) GetAccount(LemoAddress string) (types.AccountAccessor, error) {
-	var address common.Address
-	// Determine whether the input address is a Lemo address or a native address.
-	if strings.HasPrefix(LemoAddress, "Lemo") {
-		var err error
-		address, err = common.RestoreOriginalAddress(LemoAddress)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		address = common.HexToAddress(LemoAddress)
+	address, err := common.StringToAddress(LemoAddress)
+	if err != nil {
+		return nil, err
 	}
 
 	accountData := a.manager.GetCanonicalAccount(address)
@@ -263,13 +256,23 @@ func (n *NetAPI) Peers() []p2p.PeerConnInfo {
 }
 
 // todo
-type netInfo struct {
-	Port string
+type NetInfo struct {
+	Port string `json:"port" gencodec:"required"`
+}
+
+// MarshalJSON marshals as JSON
+func (n NetInfo) MarshalJSON() ([]byte, error) {
+	type netInfo struct {
+		Port string `json:"port" gencodec:"required"`
+	}
+	var enc netInfo
+	enc.Port = n.Port
+	return json.Marshal(&enc)
 }
 
 // NetInfo
-func (n *NetAPI) Info() *netInfo {
-	return &netInfo{
+func (n *NetAPI) Info() *NetInfo {
+	return &NetInfo{
 		Port: n.server.ListenAddr(),
 	}
 }
