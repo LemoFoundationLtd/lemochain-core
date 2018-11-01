@@ -280,37 +280,37 @@ func TestDpovp_VerifyHeader01(t *testing.T) {
 
 // 对共识中代理节点各种情况共识的测试
 // TestDpovp_VerifyHeader02 验证共识节点只有一个节点的情况(if nodeCount == 1)
-func TestDpovp_VerifyHeader02(t *testing.T) {
-	err := initDeputyNode(1, 0) // 更改为一个代理节点参加共识
-	if err != nil {
-		assert.Nil(t, err)
-	}
-
-	dpovp := loadDpovp()
-	defer store.ClearData()
-	// 创世块
-	block00, err := newTestBlock(dpovp, common.Hash{}, 0, common.HexToAddress(block01LemoBase), big.NewInt(995), deputy01Privkey, true)
-	if err != nil {
-		t.Error(err)
-	}
-	// parent is genesis block
-	block01, err := newTestBlock(dpovp, block00.Hash(), 1, common.HexToAddress(block01LemoBase), big.NewInt(1000), deputy01Privkey, true)
-	if err != nil {
-		t.Error(err)
-	}
-	// 验证共识节点只有一个的情况(if nodeCount == 1)
-	block02, err := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block01LemoBase), big.NewInt(1005), deputy01Privkey, true)
-	if err != nil {
-		t.Error(err)
-	}
-	// 获取当前的共识节点数
-	// nodeCount := deputynode.Instance().GetDeputiesCount()
-	// t.Log("deputy node number is ", nodeCount) // 打印当前代理节点数,结果应该为1
-	// t.Log(dpovp.VerifyHeader(block02))
-
-	// 通过调试打断点的方式来验证测试结果的正确性
-	assert.Equal(t, nil, dpovp.VerifyHeader(block02))
-}
+// func TestDpovp_VerifyHeader02(t *testing.T) {
+// 	err := initDeputyNode(1, 0) // 更改为一个代理节点参加共识
+// 	if err != nil {
+// 		assert.Nil(t, err)
+// 	}
+//
+// 	dpovp := loadDpovp()
+// 	defer store.ClearData()
+// 	// 创世块
+// 	block00, err := newTestBlock(dpovp, common.Hash{}, 0, common.HexToAddress(block01LemoBase), big.NewInt(995), deputy01Privkey, true)
+// 	if err != nil {
+// 		t.Error(err)
+// 	}
+// 	// parent is genesis block
+// 	block01, err := newTestBlock(dpovp, block00.Hash(), 1, common.HexToAddress(block01LemoBase), big.NewInt(1000), deputy01Privkey, true)
+// 	if err != nil {
+// 		t.Error(err)
+// 	}
+// 	// 验证共识节点只有一个的情况(if nodeCount == 1)
+// 	block02, err := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block01LemoBase), big.NewInt(1005), deputy01Privkey, true)
+// 	if err != nil {
+// 		t.Error(err)
+// 	}
+// 	// 获取当前的共识节点数
+// 	// nodeCount := deputynode.Instance().GetDeputiesCount()
+// 	// t.Log("deputy node number is ", nodeCount) // 打印当前代理节点数,结果应该为1
+// 	// t.Log(dpovp.VerifyHeader(block02))
+//
+// 	// 通过调试打断点的方式来验证测试结果的正确性
+// 	assert.Equal(t, nil, dpovp.VerifyHeader(block02))
+// }
 
 // TestDpovp_VerifyHeader03 测试slot == 0,slot == 1,slot > 1的情况
 func TestDpovp_VerifyHeader03(t *testing.T) {

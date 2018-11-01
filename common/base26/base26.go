@@ -1,5 +1,5 @@
 /*
-base26的字符集为 23456789ABCDFGHJKNPQRSTWYZ
+base26 character set are 83456729ABCDFGHJKNPQRSTWYZ
 */
 package base26
 
@@ -10,8 +10,8 @@ import (
 
 var b26AIphabet = []byte("83456729ABCDFGHJKNPQRSTWYZ")
 
-// Encode 将字节数组编码为Base26
-func Encode(input []byte) []byte {
+// Encode
+func Encode(input []byte) string {
 	var result []byte
 	x := big.NewInt(0).SetBytes(input)
 	base := big.NewInt(int64(len(b26AIphabet)))
@@ -21,17 +21,16 @@ func Encode(input []byte) []byte {
 		x.DivMod(x, base, mod)
 		result = append(result, b26AIphabet[mod.Int64()])
 	}
-	ReverseBytes(result) // 反转字节数组
 
-	if len(result) < 36 {
-		for len(result) != 36 {
-			result = append([]byte{b26AIphabet[0]}, result...)
-		}
+	for len(result) < 36 {
+		result = append(result, b26AIphabet[0])
 	}
-	return result
+	ReverseBytes(result)
+
+	return string(result)
 }
 
-// Decode 解码Base26所编码的数据
+// Decode
 func Decode(input []byte) []byte {
 	result := big.NewInt(0)
 	zeroBytes := 0
@@ -53,7 +52,7 @@ func Decode(input []byte) []byte {
 	return decoded
 }
 
-// ReverseBytes 反转字节数组
+// ReverseBytes
 func ReverseBytes(data []byte) {
 	for i, j := 0, len(data)-1; i < j; i, j = i+1, j-1 {
 		data[i], data[j] = data[j], data[i]
