@@ -336,6 +336,7 @@ func (self *JSRE) printPromiseResolve(vm *otto.Otto, promise otto.Value, writer 
 
 	_, err = then.Call(promise, func(call otto.FunctionCall) otto.Value {
 		prettyPrint(vm, call.Argument(0), writer)
+		fmt.Fprintln(writer)
 		return otto.UndefinedValue()
 	})
 	return err

@@ -10,7 +10,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/network/p2p"
 	"math/big"
-	"strconv"
 	"strings"
 )
 
@@ -121,8 +120,8 @@ func (c *ChainAPI) GetBlockByHash(hash string, withTxs bool) *types.Block {
 }
 
 // ChainID get chain id
-func (c *ChainAPI) ChainID() string {
-	return strconv.Itoa(int(c.chain.ChainID()))
+func (c *ChainAPI) ChainID() uint16 {
+	return c.chain.ChainID()
 }
 
 // Genesis get the creation block

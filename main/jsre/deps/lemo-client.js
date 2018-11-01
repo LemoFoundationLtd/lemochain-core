@@ -1,6 +1,6 @@
 (function (global, factory) {
-    typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('core-js/modules/es6.array.iterator'), require('core-js/modules/es7.object.values'), require('core-js/modules/web.dom.iterable'), require('core-js/modules/es6.array.fill'), require('core-js/modules/es6.regexp.match'), require('core-js/modules/es6.regexp.replace'), require('core-js/modules/es6.regexp.to-string'), require('core-js/modules/es7.object.entries'), require('core-js/modules/es6.string.starts-with'), require('core-js/modules/es6.promise'), require('core-js/modules/es6.function.name')) :
-        typeof define === 'function' && define.amd ? define(['core-js/modules/es6.array.iterator', 'core-js/modules/es7.object.values', 'core-js/modules/web.dom.iterable', 'core-js/modules/es6.array.fill', 'core-js/modules/es6.regexp.match', 'core-js/modules/es6.regexp.replace', 'core-js/modules/es6.regexp.to-string', 'core-js/modules/es7.object.entries', 'core-js/modules/es6.string.starts-with', 'core-js/modules/es6.promise', 'core-js/modules/es6.function.name'], factory) :
+    typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('core-js/modules/es6.object.keys'), require('core-js/modules/es6.array.iterator'), require('core-js/modules/es7.object.values'), require('core-js/modules/web.dom.iterable'), require('core-js/modules/es6.array.fill'), require('core-js/modules/es6.regexp.match'), require('core-js/modules/es6.regexp.replace'), require('core-js/modules/es6.regexp.to-string'), require('core-js/modules/es7.object.entries'), require('core-js/modules/es6.string.starts-with'), require('core-js/modules/es6.promise'), require('core-js/modules/es6.function.name')) :
+        typeof define === 'function' && define.amd ? define(['core-js/modules/es6.object.keys', 'core-js/modules/es6.array.iterator', 'core-js/modules/es7.object.values', 'core-js/modules/web.dom.iterable', 'core-js/modules/es6.array.fill', 'core-js/modules/es6.regexp.match', 'core-js/modules/es6.regexp.replace', 'core-js/modules/es6.regexp.to-string', 'core-js/modules/es7.object.entries', 'core-js/modules/es6.string.starts-with', 'core-js/modules/es6.promise', 'core-js/modules/es6.function.name'], factory) :
             (global.LemoClient = factory());
 }(this, (function () { 'use strict';
 
@@ -4299,6 +4299,13 @@
         return error;
     };
 
+    var enhanceError$1 = /*#__PURE__*/Object.freeze({
+        default: enhanceError,
+        __moduleExports: enhanceError
+    });
+
+    var enhanceError$2 = ( enhanceError$1 && enhanceError ) || enhanceError$1;
+
     /**
      * Create an Error with the specified message, config, error code, request and response.
      *
@@ -4311,7 +4318,7 @@
      */
     var createError = function createError(message, config, code, request, response) {
         var error = new Error(message);
-        return enhanceError(error, config, code, request, response);
+        return enhanceError$2(error, config, code, request, response);
     };
 
     /**
@@ -4930,11 +4937,6 @@
         return data;
     };
 
-    var transformData$1 = /*#__PURE__*/Object.freeze({
-        default: transformData,
-        __moduleExports: transformData
-    });
-
     var isCancel = function isCancel(value) {
         return !!(value && value.__CANCEL__);
     };
@@ -4952,11 +4954,6 @@
         return /^([a-z][a-z\d\+\-\.]*:)?\/\//i.test(url);
     };
 
-    var isAbsoluteURL$1 = /*#__PURE__*/Object.freeze({
-        default: isAbsoluteURL,
-        __moduleExports: isAbsoluteURL
-    });
-
     /**
      * Creates a new URL by combining the specified URLs
      *
@@ -4969,10 +4966,6 @@
             ? baseURL.replace(/\/+$/, '') + '/' + relativeURL.replace(/^\/+/, '')
             : baseURL;
     };
-
-    var transformData$2 = ( transformData$1 && transformData ) || transformData$1;
-
-    var isAbsoluteURL$2 = ( isAbsoluteURL$1 && isAbsoluteURL ) || isAbsoluteURL$1;
 
     /**
      * Throws a `Cancel` if cancellation has been requested.
@@ -4993,7 +4986,7 @@
         throwIfCancellationRequested(config);
 
         // Support baseURL config
-        if (config.baseURL && !isAbsoluteURL$2(config.url)) {
+        if (config.baseURL && !isAbsoluteURL(config.url)) {
             config.url = combineURLs(config.baseURL, config.url);
         }
 
@@ -5001,7 +4994,7 @@
         config.headers = config.headers || {};
 
         // Transform request data
-        config.data = transformData$2(
+        config.data = transformData(
             config.data,
             config.headers,
             config.transformRequest
@@ -5027,7 +5020,7 @@
             throwIfCancellationRequested(config);
 
             // Transform response data
-            response.data = transformData$2(
+            response.data = transformData(
                 response.data,
                 response.headers,
                 config.transformResponse
@@ -5040,7 +5033,7 @@
 
                 // Transform response data
                 if (reason && reason.response) {
-                    reason.response.data = transformData$2(
+                    reason.response.data = transformData(
                         reason.response.data,
                         reason.response.headers,
                         config.transformResponse
@@ -5275,6 +5268,9 @@
     var errors = {
         InvalidAPIDefinition: function InvalidAPIDefinition(config) {
             return "invalid api config ".concat(JSON.stringify(config));
+        },
+        InvalidAPIMethod: function InvalidAPIMethod(config) {
+            return "should set only one property of 'method' or 'call' in api config: ".concat(JSON.stringify(config));
         },
         UnavailableAPIModule: function UnavailableAPIModule(moduleName) {
             return "can not create api into module: ".concat(moduleName, ", because this property is exist");
@@ -5604,7 +5600,7 @@
                     };
                 }()
                 /**
-                 * poll till the response changed
+                 * Poll till the response changed
                  *
                  * @param {string} method
                  * @param {Array?} params An array of method params
@@ -5687,29 +5683,54 @@
                             })), POLL_DURATION);
                     return newWatchId;
                 }
+                /**
+                 * Stop a watching by watchId. If no watchId specified, stop all
+                 * @param {number|undefined} watchId
+                 */
+
             }, {
                 key: "stopWatch",
                 value: function stopWatch(watchId) {
+                    if (!watchId) {
+                        this.reset();
+                        return;
+                    }
+
                     if (this.watchers[watchId] > 0) {
                         clearInterval(this.watchers[watchId]);
                         delete this.watchers[watchId];
                     }
                 }
                 /**
-                 * stop all watching
+                 * Stop all watching
                  */
 
             }, {
                 key: "reset",
                 value: function reset() {
-                    var timers = this.watchers;
+                    var watchers = this.watchers;
                     this.watchers = {};
-                    Object.values(timers).forEach(clearInterval);
+                    Object.values(watchers).forEach(clearInterval);
+                }
+                /**
+                 * Return true if watching new data
+                 * @return {boolean}
+                 */
+
+            }, {
+                key: "isWatching",
+                value: function isWatching() {
+                    return !!Object.keys(this.watchers).length;
                 }
             }]);
 
             return Requester;
-        }(); // get the signature of data
+        }();
+    /**
+     * Get the signature of data
+     * @param {object} data
+     * @return {string}
+     */
 
 
     function getSig(data) {
@@ -7925,10 +7946,21 @@
 
     var MODULE_NAME = 'account';
     var apiList = {
+        /**
+         * Get account information
+         * @param {string} address
+         * @return {Promise<object>}
+         */
         getAccount: {
             method: "".concat(MODULE_NAME, "_getAccount"),
             outputFormatter: parseAccount
         },
+
+        /**
+         * Get balance from account
+         * @param {string} address
+         * @return {Promise<BigNumber>}
+         */
         getBalance: {
             method: "".concat(MODULE_NAME, "_getBalance"),
             outputFormatter: parseBigNumber
@@ -7957,35 +7989,90 @@
 
     var MODULE_NAME$1 = 'chain';
     var apiList$1 = {
+        /**
+         * Get current block information
+         * @param {Requester} requester
+         * @param {boolean} stable Get stable block or the newest block without consensus
+         * @param {boolean} withTxList Get the transactions detail if true
+         * @return {Promise<object>}
+         */
         getCurrentBlock: function getCurrentBlock(requester, stable, withTxList) {
             var apiName = stable ? 'currentBlock' : 'latestStableBlock';
             return requester.send("".concat(MODULE_NAME$1, "_").concat(apiName), [withTxList]).then(parseBlock);
         },
+
+        /**
+         * Get the specific block information
+         * @param {Requester} requester
+         * @param {string|number} hashOrHeight Hash or height which used to find the block
+         * @param {boolean} withTxList Get the transactions detail if true
+         * @return {Promise<object>}
+         */
         getBlock: function getBlock(requester, hashOrHeight, withTxList) {
             var apiName = isHash(hashOrHeight) ? 'getBlockByHash' : 'getBlockByHeight';
             return requester.send("".concat(MODULE_NAME$1, "_").concat(apiName), [hashOrHeight, withTxList]).then(parseBlock);
         },
+
+        /**
+         * Get the current height of chain head block
+         * @param {Requester} requester
+         * @param {boolean} stable Get stable block or the newest block without consensus
+         * @return {Promise<number>}
+         */
         getCurrentHeight: function getCurrentHeight(requester, stable) {
             var apiName = stable ? 'currentHeight' : 'latestStableHeight';
             return requester.send("".concat(MODULE_NAME$1, "_").concat(apiName));
         },
+
+        /**
+         * Get the information of genesis block, whose height is 0
+         * @return {Promise<object>}
+         */
         getGenesis: {
             method: "".concat(MODULE_NAME$1, "_genesis")
         },
+
+        /**
+         * Get the chainID of current connected blockchain
+         * @return {Promise<number>}
+         */
         getChainID: {
             method: "".concat(MODULE_NAME$1, "_chainID")
         },
+
+        /**
+         * Get the gas price advice. It is used to make sure the transaction will be packaged in a few seconds
+         * @return {Promise<BigNumber>}
+         */
         getGasPriceAdvice: {
             method: "".concat(MODULE_NAME$1, "_gasPriceAdvice"),
             outputFormatter: parseBigNumber
         },
+
+        /**
+         * Get the version of lemochain node
+         * @return {Promise<number>}
+         */
         getNodeVersion: {
             method: "".concat(MODULE_NAME$1, "_nodeVersion")
         },
-        // not necessary to write requester parameter
+
+        /**
+         * Get the version of sdk
+         * @return {Promise<number>}
+         */
         getSdkVersion: function getSdkVersion() {
+
             return Promise.resolve("0.9.0");
         },
+
+        /**
+         * Get new blocks from now on
+         * @param {Requester} requester
+         * @param {boolean} withTxList Get the transactions detail if true
+         * @param {Function} callback It is used to deliver the block object
+         * @return {number} watch id which used to stop watch
+         */
         watchBlock: function watchBlock(requester, withTxList, callback) {
             return requester.watch("".concat(MODULE_NAME$1, "_latestStableBlock"), [withTxList], callback);
         }
@@ -8013,9 +8100,18 @@
 
     var MODULE_NAME$2 = 'mine';
     var apiList$2 = {
+        /**
+         * Return true if the lemochain node is mining
+         * @return {Promise<boolean>}
+         */
         getMining: {
             method: "".concat(MODULE_NAME$2, "_isMining")
         },
+
+        /**
+         * Get miner address of the lemochain node
+         * @return {Promise<string>}
+         */
         getLemoBase: {
             method: "".concat(MODULE_NAME$2, "_lemoBase")
         }
@@ -8043,9 +8139,18 @@
 
     var MODULE_NAME$3 = 'net';
     var apiList$3 = {
+        /**
+         * Get connected peer count from the lemochain node
+         * @return {Promise<number>}
+         */
         getPeerCount: {
             method: "".concat(MODULE_NAME$3, "_getPeerCount")
         },
+
+        /**
+         * Get the lemochain node information
+         * @return {Promise<object>}
+         */
         getInfo: {
             method: "".concat(MODULE_NAME$3, "_info")
         }
@@ -15512,6 +15617,12 @@
     }
     brorand.Rand = Rand_1;
 
+    var brorand$1 = /*#__PURE__*/Object.freeze({
+        default: brorand,
+        __moduleExports: brorand,
+        Rand: Rand_1
+    });
+
     var getNAF = utils_1$2.getNAF;
     var getJSF = utils_1$2.getJSF;
     var assert$2 = utils_1$2.assert;
@@ -17698,39 +17809,6 @@
         shr64_lo: shr64_lo_1
     };
 
-    var utils$3 = /*#__PURE__*/Object.freeze({
-        default: utils$2,
-        __moduleExports: utils$2,
-        inherits: inherits_1,
-        toArray: toArray_1,
-        toHex: toHex_1,
-        htonl: htonl_1,
-        toHex32: toHex32_1,
-        zero2: zero2_1,
-        zero8: zero8_1,
-        join32: join32_1,
-        split32: split32_1,
-        rotr32: rotr32_1,
-        rotl32: rotl32_1,
-        sum32: sum32_1,
-        sum32_3: sum32_3_1,
-        sum32_4: sum32_4_1,
-        sum32_5: sum32_5_1,
-        sum64: sum64_1,
-        sum64_hi: sum64_hi_1,
-        sum64_lo: sum64_lo_1,
-        sum64_4_hi: sum64_4_hi_1,
-        sum64_4_lo: sum64_4_lo_1,
-        sum64_5_hi: sum64_5_hi_1,
-        sum64_5_lo: sum64_5_lo_1,
-        rotr64_hi: rotr64_hi_1,
-        rotr64_lo: rotr64_lo_1,
-        shr64_hi: shr64_hi_1,
-        shr64_lo: shr64_lo_1
-    });
-
-    var utils$4 = ( utils$3 && utils$2 ) || utils$3;
-
     function BlockHash() {
         this.pending = null;
         this.pendingTotal = 0;
@@ -17747,7 +17825,7 @@
 
     BlockHash.prototype.update = function update(msg, enc) {
         // Convert message to array, pad it, and join into 32bit blocks
-        msg = utils$4.toArray(msg, enc);
+        msg = utils$2.toArray(msg, enc);
         if (!this.pending)
             this.pending = msg;
         else
@@ -17764,7 +17842,7 @@
             if (this.pending.length === 0)
                 this.pending = null;
 
-            msg = utils$4.join32(msg, 0, msg.length - r, this.endian);
+            msg = utils$2.join32(msg, 0, msg.length - r, this.endian);
             for (var i = 0; i < msg.length; i += this._delta32)
                 this._update(msg, i, i + this._delta32);
         }
@@ -17823,13 +17901,7 @@
         BlockHash: BlockHash_1
     };
 
-    var common$1 = /*#__PURE__*/Object.freeze({
-        default: common,
-        __moduleExports: common,
-        BlockHash: BlockHash_1
-    });
-
-    var rotr32$1 = utils$4.rotr32;
+    var rotr32$1 = utils$2.rotr32;
 
     function ft_1(s, x, y, z) {
         if (s === 0)
@@ -17876,7 +17948,7 @@
     }
     var g1_256_1 = g1_256;
 
-    var common$2 = {
+    var common$1 = {
         ft_1: ft_1_1,
         ch32: ch32_1,
         maj32: maj32_1,
@@ -17887,13 +17959,11 @@
         g1_256: g1_256_1
     };
 
-    var common$3 = ( common$1 && common ) || common$1;
-
-    var rotl32$1 = utils$4.rotl32;
-    var sum32$1 = utils$4.sum32;
-    var sum32_5$1 = utils$4.sum32_5;
-    var ft_1$1 = common$2.ft_1;
-    var BlockHash$1 = common$3.BlockHash;
+    var rotl32$1 = utils$2.rotl32;
+    var sum32$1 = utils$2.sum32;
+    var sum32_5$1 = utils$2.sum32_5;
+    var ft_1$1 = common$1.ft_1;
+    var BlockHash$1 = common.BlockHash;
 
     var sha1_K = [
         0x5A827999, 0x6ED9EBA1,
@@ -17911,7 +17981,7 @@
         this.W = new Array(80);
     }
 
-    utils$4.inherits(SHA1, BlockHash$1);
+    utils$2.inherits(SHA1, BlockHash$1);
     var _1 = SHA1;
 
     SHA1.blockSize = 512;
@@ -17953,22 +18023,22 @@
 
     SHA1.prototype._digest = function digest(enc) {
         if (enc === 'hex')
-            return utils$4.toHex32(this.h, 'big');
+            return utils$2.toHex32(this.h, 'big');
         else
-            return utils$4.split32(this.h, 'big');
+            return utils$2.split32(this.h, 'big');
     };
 
-    var sum32$2 = utils$4.sum32;
-    var sum32_4$1 = utils$4.sum32_4;
-    var sum32_5$2 = utils$4.sum32_5;
-    var ch32$1 = common$2.ch32;
-    var maj32$1 = common$2.maj32;
-    var s0_256$1 = common$2.s0_256;
-    var s1_256$1 = common$2.s1_256;
-    var g0_256$1 = common$2.g0_256;
-    var g1_256$1 = common$2.g1_256;
+    var sum32$2 = utils$2.sum32;
+    var sum32_4$1 = utils$2.sum32_4;
+    var sum32_5$2 = utils$2.sum32_5;
+    var ch32$1 = common$1.ch32;
+    var maj32$1 = common$1.maj32;
+    var s0_256$1 = common$1.s0_256;
+    var s1_256$1 = common$1.s1_256;
+    var g0_256$1 = common$1.g0_256;
+    var g1_256$1 = common$1.g1_256;
 
-    var BlockHash$2 = common$3.BlockHash;
+    var BlockHash$2 = common.BlockHash;
 
     var sha256_K = [
         0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5,
@@ -18001,7 +18071,7 @@
         this.k = sha256_K;
         this.W = new Array(64);
     }
-    utils$4.inherits(SHA256, BlockHash$2);
+    utils$2.inherits(SHA256, BlockHash$2);
     var _256 = SHA256;
 
     SHA256.blockSize = 512;
@@ -18052,28 +18122,21 @@
 
     SHA256.prototype._digest = function digest(enc) {
         if (enc === 'hex')
-            return utils$4.toHex32(this.h, 'big');
+            return utils$2.toHex32(this.h, 'big');
         else
-            return utils$4.split32(this.h, 'big');
+            return utils$2.split32(this.h, 'big');
     };
-
-    var _256$1 = /*#__PURE__*/Object.freeze({
-        default: _256,
-        __moduleExports: _256
-    });
-
-    var SHA256$1 = ( _256$1 && _256 ) || _256$1;
 
     function SHA224() {
         if (!(this instanceof SHA224))
             return new SHA224();
 
-        SHA256$1.call(this);
+        _256.call(this);
         this.h = [
             0xc1059ed8, 0x367cd507, 0x3070dd17, 0xf70e5939,
             0xffc00b31, 0x68581511, 0x64f98fa7, 0xbefa4fa4 ];
     }
-    utils$4.inherits(SHA224, SHA256$1);
+    utils$2.inherits(SHA224, _256);
     var _224 = SHA224;
 
     SHA224.blockSize = 512;
@@ -18084,29 +18147,24 @@
     SHA224.prototype._digest = function digest(enc) {
         // Just truncate output
         if (enc === 'hex')
-            return utils$4.toHex32(this.h.slice(0, 7), 'big');
+            return utils$2.toHex32(this.h.slice(0, 7), 'big');
         else
-            return utils$4.split32(this.h.slice(0, 7), 'big');
+            return utils$2.split32(this.h.slice(0, 7), 'big');
     };
 
-    var _224$1 = /*#__PURE__*/Object.freeze({
-        default: _224,
-        __moduleExports: _224
-    });
+    var rotr64_hi$1 = utils$2.rotr64_hi;
+    var rotr64_lo$1 = utils$2.rotr64_lo;
+    var shr64_hi$1 = utils$2.shr64_hi;
+    var shr64_lo$1 = utils$2.shr64_lo;
+    var sum64$1 = utils$2.sum64;
+    var sum64_hi$1 = utils$2.sum64_hi;
+    var sum64_lo$1 = utils$2.sum64_lo;
+    var sum64_4_hi$1 = utils$2.sum64_4_hi;
+    var sum64_4_lo$1 = utils$2.sum64_4_lo;
+    var sum64_5_hi$1 = utils$2.sum64_5_hi;
+    var sum64_5_lo$1 = utils$2.sum64_5_lo;
 
-    var rotr64_hi$1 = utils$4.rotr64_hi;
-    var rotr64_lo$1 = utils$4.rotr64_lo;
-    var shr64_hi$1 = utils$4.shr64_hi;
-    var shr64_lo$1 = utils$4.shr64_lo;
-    var sum64$1 = utils$4.sum64;
-    var sum64_hi$1 = utils$4.sum64_hi;
-    var sum64_lo$1 = utils$4.sum64_lo;
-    var sum64_4_hi$1 = utils$4.sum64_4_hi;
-    var sum64_4_lo$1 = utils$4.sum64_4_lo;
-    var sum64_5_hi$1 = utils$4.sum64_5_hi;
-    var sum64_5_lo$1 = utils$4.sum64_5_lo;
-
-    var BlockHash$3 = common$3.BlockHash;
+    var BlockHash$3 = common.BlockHash;
 
     var sha512_K = [
         0x428a2f98, 0xd728ae22, 0x71374491, 0x23ef65cd,
@@ -18168,7 +18226,7 @@
         this.k = sha512_K;
         this.W = new Array(160);
     }
-    utils$4.inherits(SHA512, BlockHash$3);
+    utils$2.inherits(SHA512, BlockHash$3);
     var _512 = SHA512;
 
     SHA512.blockSize = 1024;
@@ -18298,9 +18356,9 @@
 
     SHA512.prototype._digest = function digest(enc) {
         if (enc === 'hex')
-            return utils$4.toHex32(this.h, 'big');
+            return utils$2.toHex32(this.h, 'big');
         else
-            return utils$4.split32(this.h, 'big');
+            return utils$2.split32(this.h, 'big');
     };
 
     function ch64_hi(xh, xl, yh, yl, zh) {
@@ -18419,18 +18477,11 @@
         return r;
     }
 
-    var _512$1 = /*#__PURE__*/Object.freeze({
-        default: _512,
-        __moduleExports: _512
-    });
-
-    var SHA512$1 = ( _512$1 && _512 ) || _512$1;
-
     function SHA384() {
         if (!(this instanceof SHA384))
             return new SHA384();
 
-        SHA512$1.call(this);
+        _512.call(this);
         this.h = [
             0xcbbb9d5d, 0xc1059ed8,
             0x629a292a, 0x367cd507,
@@ -18441,7 +18492,7 @@
             0xdb0c2e0d, 0x64f98fa7,
             0x47b5481d, 0xbefa4fa4 ];
     }
-    utils$4.inherits(SHA384, SHA512$1);
+    utils$2.inherits(SHA384, _512);
     var _384 = SHA384;
 
     SHA384.blockSize = 1024;
@@ -18451,18 +18502,16 @@
 
     SHA384.prototype._digest = function digest(enc) {
         if (enc === 'hex')
-            return utils$4.toHex32(this.h.slice(0, 12), 'big');
+            return utils$2.toHex32(this.h.slice(0, 12), 'big');
         else
-            return utils$4.split32(this.h.slice(0, 12), 'big');
+            return utils$2.split32(this.h.slice(0, 12), 'big');
     };
 
-    var require$$1$1 = ( _224$1 && _224 ) || _224$1;
-
     var sha1 = _1;
-    var sha224 = require$$1$1;
-    var sha256 = SHA256$1;
+    var sha224 = _224;
+    var sha256 = _256;
     var sha384 = _384;
-    var sha512 = SHA512$1;
+    var sha512 = _512;
 
     var sha = {
         sha1: sha1,
@@ -18472,11 +18521,11 @@
         sha512: sha512
     };
 
-    var rotl32$2 = utils$4.rotl32;
-    var sum32$3 = utils$4.sum32;
-    var sum32_3$1 = utils$4.sum32_3;
-    var sum32_4$2 = utils$4.sum32_4;
-    var BlockHash$4 = common$3.BlockHash;
+    var rotl32$2 = utils$2.rotl32;
+    var sum32$3 = utils$2.sum32;
+    var sum32_3$1 = utils$2.sum32_3;
+    var sum32_4$2 = utils$2.sum32_4;
+    var BlockHash$4 = common.BlockHash;
 
     function RIPEMD160() {
         if (!(this instanceof RIPEMD160))
@@ -18487,7 +18536,7 @@
         this.h = [ 0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476, 0xc3d2e1f0 ];
         this.endian = 'little';
     }
-    utils$4.inherits(RIPEMD160, BlockHash$4);
+    utils$2.inherits(RIPEMD160, BlockHash$4);
     var ripemd160 = RIPEMD160;
 
     RIPEMD160.blockSize = 512;
@@ -18538,9 +18587,9 @@
 
     RIPEMD160.prototype._digest = function digest(enc) {
         if (enc === 'hex')
-            return utils$4.toHex32(this.h, 'little');
+            return utils$2.toHex32(this.h, 'little');
         else
-            return utils$4.split32(this.h, 'little');
+            return utils$2.split32(this.h, 'little');
     };
 
     function f(j, x, y, z) {
@@ -18627,7 +18676,7 @@
         this.inner = null;
         this.outer = null;
 
-        this._init(utils$4.toArray(key, enc));
+        this._init(utils$2.toArray(key, enc));
     }
     var hmac = Hmac;
 
@@ -18664,8 +18713,8 @@
     var hash_1 = createCommonjsModule(function (module, exports) {
         var hash = exports;
 
-        hash.utils = utils$4;
-        hash.common = common$3;
+        hash.utils = utils$2;
+        hash.common = common;
         hash.sha = sha;
         hash.ripemd = ripemd;
         hash.hmac = hmac;
@@ -18677,11 +18726,6 @@
         hash.sha384 = hash.sha.sha384;
         hash.sha512 = hash.sha.sha512;
         hash.ripemd160 = hash.ripemd.ripemd160;
-    });
-
-    var hash = /*#__PURE__*/Object.freeze({
-        default: hash_1,
-        __moduleExports: hash_1
     });
 
     var secp256k1 = {
@@ -19464,19 +19508,6 @@
             ]
         }
     };
-    var secp256k1_1 = secp256k1.doubles;
-    var secp256k1_2 = secp256k1.naf;
-
-    var secp256k1$1 = /*#__PURE__*/Object.freeze({
-        default: secp256k1,
-        __moduleExports: secp256k1,
-        doubles: secp256k1_1,
-        naf: secp256k1_2
-    });
-
-    var hash$1 = ( hash && hash_1 ) || hash;
-
-    var require$$0$2 = ( secp256k1$1 && secp256k1 ) || secp256k1$1;
 
     var curves_1 = createCommonjsModule(function (module, exports) {
 
@@ -19527,7 +19558,7 @@
             a: 'ffffffff ffffffff ffffffff fffffffe ffffffff fffffffc',
             b: '64210519 e59c80e7 0fa7e9ab 72243049 feb8deec c146b9b1',
             n: 'ffffffff ffffffff ffffffff 99def836 146bc9b1 b4d22831',
-            hash: hash$1.sha256,
+            hash: hash_1.sha256,
             gRed: false,
             g: [
                 '188da80e b03090f6 7cbf20eb 43a18800 f4ff0afd 82ff1012',
@@ -19542,7 +19573,7 @@
             a: 'ffffffff ffffffff ffffffff fffffffe ffffffff ffffffff fffffffe',
             b: 'b4050a85 0c04b3ab f5413256 5044b0b7 d7bfd8ba 270b3943 2355ffb4',
             n: 'ffffffff ffffffff ffffffff ffff16a2 e0b8f03e 13dd2945 5c5c2a3d',
-            hash: hash$1.sha256,
+            hash: hash_1.sha256,
             gRed: false,
             g: [
                 'b70e0cbd 6bb4bf7f 321390b9 4a03c1d3 56c21122 343280d6 115c1d21',
@@ -19557,7 +19588,7 @@
             a: 'ffffffff 00000001 00000000 00000000 00000000 ffffffff ffffffff fffffffc',
             b: '5ac635d8 aa3a93e7 b3ebbd55 769886bc 651d06b0 cc53b0f6 3bce3c3e 27d2604b',
             n: 'ffffffff 00000000 ffffffff ffffffff bce6faad a7179e84 f3b9cac2 fc632551',
-            hash: hash$1.sha256,
+            hash: hash_1.sha256,
             gRed: false,
             g: [
                 '6b17d1f2 e12c4247 f8bce6e5 63a440f2 77037d81 2deb33a0 f4a13945 d898c296',
@@ -19576,7 +19607,7 @@
                 '5013875a c656398d 8a2ed19d 2a85c8ed d3ec2aef',
             n: 'ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff c7634d81 ' +
                 'f4372ddf 581a0db2 48b0a77a ecec196a ccc52973',
-            hash: hash$1.sha384,
+            hash: hash_1.sha384,
             gRed: false,
             g: [
                 'aa87ca22 be8b0537 8eb1c71e f320ad74 6e1d3b62 8ba79b98 59f741e0 82542a38 ' +
@@ -19601,7 +19632,7 @@
             n: '000001ff ffffffff ffffffff ffffffff ffffffff ffffffff ' +
                 'ffffffff ffffffff fffffffa 51868783 bf2f966b 7fcc0148 ' +
                 'f709a5d0 3bb5c9b8 899c47ae bb6fb71e 91386409',
-            hash: hash$1.sha512,
+            hash: hash_1.sha512,
             gRed: false,
             g: [
                 '000000c6 858e06b7 0404e9cd 9e3ecb66 2395b442 9c648139 ' +
@@ -19620,7 +19651,7 @@
             a: '76d06',
             b: '1',
             n: '1000000000000000 0000000000000000 14def9dea2f79cd6 5812631a5cf5d3ed',
-            hash: hash$1.sha256,
+            hash: hash_1.sha256,
             gRed: false,
             g: [
                 '9'
@@ -19636,7 +19667,7 @@
             // -121665 * (121666^(-1)) (mod P)
             d: '52036cee2b6ffe73 8cc740797779e898 00700a4d4141d8ab 75eb4dca135978a3',
             n: '1000000000000000 0000000000000000 14def9dea2f79cd6 5812631a5cf5d3ed',
-            hash: hash$1.sha256,
+            hash: hash_1.sha256,
             gRed: false,
             g: [
                 '216936d3cd6e53fec0a4e231fdd6dc5c692cc7609525a7b2c9562d608f25d51a',
@@ -19648,7 +19679,7 @@
 
         var pre;
         try {
-            pre = require$$0$2;
+            pre = secp256k1;
         } catch (e) {
             pre = undefined;
         }
@@ -19661,7 +19692,7 @@
             b: '7',
             n: 'ffffffff ffffffff ffffffff fffffffe baaedce6 af48a03b bfd25e8c d0364141',
             h: '1',
-            hash: hash$1.sha256,
+            hash: hash_1.sha256,
 
             // Precomputed endomorphism
             beta: '7ae96a2b657c07106e64479eac3434e99cf0497512f58995c1396c28719501ee',
@@ -19725,7 +19756,7 @@
     };
 
     HmacDRBG.prototype._hmac = function hmac() {
-        return new hash$1.hmac(this.hash, this.K);
+        return new hash_1.hmac(this.hash, this.K);
     };
 
     HmacDRBG.prototype._update = function update(seed) {
@@ -20039,6 +20070,8 @@
         return utils_1$2.encode(res, enc);
     };
 
+    var rand = ( brorand$1 && brorand ) || brorand$1;
+
     var assert$7 = utils_1$2.assert;
 
 
@@ -20094,7 +20127,7 @@
             hash: this.hash,
             pers: options.pers,
             persEnc: options.persEnc || 'utf8',
-            entropy: options.entropy || brorand(this.hash.hmacStrength),
+            entropy: options.entropy || rand(this.hash.hmacStrength),
             entropyEnc: options.entropy && options.entropyEnc || 'utf8',
             nonce: this.n.toArray()
         });
@@ -20447,7 +20480,7 @@
 
         this.pointClass = curve.point().constructor;
         this.encodingLength = Math.ceil(curve.n.bitLength() / 8);
-        this.hash = hash$1.sha512;
+        this.hash = hash_1.sha512;
     }
 
     var eddsa = EDDSA;
@@ -20543,15 +20576,15 @@
         return val instanceof this.pointClass;
     };
 
-    var require$$0$3 = ( _package$1 && _package ) || _package$1;
+    var require$$0$2 = ( _package$1 && _package ) || _package$1;
 
     var elliptic_1 = createCommonjsModule(function (module, exports) {
 
         var elliptic = exports;
 
-        elliptic.version = require$$0$3.version;
+        elliptic.version = require$$0$2.version;
         elliptic.utils = utils_1$2;
-        elliptic.rand = brorand;
+        elliptic.rand = rand;
         elliptic.curve = curve_1;
         elliptic.curves = curves_1;
 
@@ -20606,7 +20639,7 @@
         return new bignumber(bn.toString(16), 16);
     }
 
-    var secp256k1$2 = {
+    var secp256k1$1 = {
         sign: sign,
         recover: recover
     };
@@ -20617,7 +20650,7 @@
         assert.isBufferLength(message, 32, messages.MSG32_LENGTH_INVALID);
         assert.isBuffer(privateKey, messages.EC_PRIVATE_KEY_TYPE_INVALID);
         assert.isBufferLength(privateKey, 32, messages.EC_PRIVATE_KEY_LENGTH_INVALID);
-        return secp256k1$2.sign(message, privateKey);
+        return secp256k1$1.sign(message, privateKey);
     }
     function recover$1(message, signature, recovery, compressed) {
         assert.isBuffer(message, messages.MSG32_TYPE_INVALID);
@@ -20627,9 +20660,9 @@
         assert.isNumber(recovery, messages.RECOVERY_ID_TYPE_INVALID);
         assert.isNumberInInterval(recovery, -1, 4, messages.RECOVERY_ID_VALUE_INVALID);
         assert.isBoolean(compressed, messages.COMPRESSED_TYPE_INVALID);
-        return secp256k1$2.recover(message, signature, recovery, compressed);
+        return secp256k1$1.recover(message, signature, recovery, compressed);
     }
-    var secp256k1$3 = {
+    var secp256k1$2 = {
         sign: sign$1,
         recover: recover$1
     };
@@ -20644,7 +20677,7 @@
      */
 
     function sign$2(privateKey, hash) {
-        var sig = secp256k1$3.sign(hash, privateKey);
+        var sig = secp256k1$2.sign(hash, privateKey);
         return {
             recovery: sig.recovery,
             r: sig.signature.slice(0, 32),
@@ -20664,7 +20697,7 @@
 
         try {
             var signature = safeBuffer_1.concat([setBufferLength(r, 32), setBufferLength(s, 32)], 64);
-            return secp256k1$3.recover(hash, signature, recovery, false);
+            return secp256k1$2.recover(hash, signature, recovery, false);
         } catch (e) {
             return null;
         }
@@ -20698,6 +20731,24 @@
     var Tx =
         /*#__PURE__*/
         function () {
+            /**
+             * Create transaction object
+             * @param {object} txConfig
+             * @param {number?} txConfig.type The type of transaction. 0: normal
+             * @param {number?} txConfig.version The version of transaction protocol
+             * @param {number?} txConfig.chainId Chain id from LemoChain
+             * @param {string} txConfig.to The transaction recipient address
+             * @param {string?} txConfig.toName The transaction recipient name
+             * @param {number|string?} txConfig.gasPrice=3000000000 Gas price for smart contract
+             * @param {number|string?} txConfig.gasLimit=2000000 Max gas limit for smart contract
+             * @param {number|string?} txConfig.amount Unit is wei
+             * @param {Buffer|string?} txConfig.data Extra data or smart contract calling parameters
+             * @param {number?} txConfig.expirationTime Default value is half hour from now
+             * @param {string?} txConfig.message Extra value data
+             * @param {Buffer|string?} txConfig.r Signature data
+             * @param {Buffer|string?} txConfig.s Signature data
+             * @param {Buffer|string?} txConfig.v Signature data, it also contains type, version, and chainId for transaction
+             */
             function Tx(txConfig) {
                 classCallCheck(this, Tx);
 
@@ -20726,7 +20777,11 @@
                 this.r = txConfig.r || '';
                 this.s = txConfig.s || '';
                 this.from = '';
-            } // rlp encode for hash
+            }
+            /**
+             * rlp encode for hash
+             * @return {Buffer}
+             */
 
 
             createClass(Tx, [{
@@ -20739,7 +20794,11 @@
                 key: "hash",
                 value: function hash() {
                     return keccak256(this.serialize());
-                } // format for rpc
+                }
+                /**
+                 * format for rpc
+                 * @return {object}
+                 */
 
             }, {
                 key: "toJson",
@@ -20758,6 +20817,11 @@
                         s: toHexStr(this, 's', 0, true)
                     };
                 }
+                /**
+                 * @param {string|Buffer} privateKey
+                 * @return {Buffer} The signed transaction's hash
+                 */
+
             }, {
                 key: "sign",
                 value: function sign$$1(privateKey) {
@@ -20765,6 +20829,11 @@
                     new Signer().sign(this, privateKey);
                     return this.hash();
                 }
+                /**
+                 * Recover from address from a signed transaction
+                 * @return {string}
+                 */
+
             }, {
                 key: "recover",
                 value: function recover$$1() {
@@ -20870,29 +20939,56 @@
 
     var MODULE_NAME$4 = 'tx';
     var apiList$4 = {
-        // sign and send tx
+        /**
+         * Sign and send transaction
+         * @param {string} privateKey The private key from sender account
+         * @param {object} txConfig Transaction config
+         * @return {Promise<object>}
+         */
         sendTx: {
             method: "".concat(MODULE_NAME$4, "_sendTx"),
             inputFormatter: buildAndSignTx
         },
-        // send a signed tx
+
+        /**
+         * Send a signed transaction
+         * @param {object} txConfig Transaction config
+         * @return {Promise<object>}
+         */
         send: {
             method: "".concat(MODULE_NAME$4, "_sendTx"),
             inputFormatter: buildSignedTx
         },
-        // sign tx then print json code
+
+        /**
+         * Sign transaction and return the config which used to call lemo.tx.send
+         * @param {Requester} requester
+         * @param {string} privateKey The private key from sender account
+         * @param {object} txConfig Transaction config
+         * @return {Promise<string>}
+         */
         sign: function sign(requester, privateKey, txConfig) {
             var tx = new Tx(txConfig);
             tx.sign(privateKey);
             return Promise.resolve(JSON.stringify(tx.toJson()));
         }
     };
+    /**
+     * @param {string} privateKey The private key from sender account
+     * @param {object} txConfig Transaction config
+     * @return {Array} parameters for api
+     */
 
     function buildAndSignTx(privateKey, txConfig) {
         var tx = new Tx(txConfig);
         tx.sign(privateKey);
         return [tx.toJson()];
     }
+    /**
+     * @param {object} txConfig Signed transaction config returned by lemo.tx.sign
+     * @return {Array} parameters for api
+     */
+
 
     function buildSignedTx(txConfig) {
         var tx = new Tx(txConfig);
@@ -20937,21 +21033,11 @@
 
     var arrayWithoutHoles = _arrayWithoutHoles;
 
-    var arrayWithoutHoles$1 = /*#__PURE__*/Object.freeze({
-        default: arrayWithoutHoles,
-        __moduleExports: arrayWithoutHoles
-    });
-
     function _iterableToArray(iter) {
         if (Symbol.iterator in Object(iter) || Object.prototype.toString.call(iter) === "[object Arguments]") return Array.from(iter);
     }
 
     var iterableToArray = _iterableToArray;
-
-    var iterableToArray$1 = /*#__PURE__*/Object.freeze({
-        default: iterableToArray,
-        __moduleExports: iterableToArray
-    });
 
     function _nonIterableSpread() {
         throw new TypeError("Invalid attempt to spread non-iterable instance");
@@ -20959,12 +21045,8 @@
 
     var nonIterableSpread = _nonIterableSpread;
 
-    var arrayWithoutHoles$2 = ( arrayWithoutHoles$1 && arrayWithoutHoles ) || arrayWithoutHoles$1;
-
-    var iterableToArray$2 = ( iterableToArray$1 && iterableToArray ) || iterableToArray$1;
-
     function _toConsumableArray(arr) {
-        return arrayWithoutHoles$2(arr) || iterableToArray$2(arr) || nonIterableSpread();
+        return arrayWithoutHoles(arr) || iterableToArray(arr) || nonIterableSpread();
     }
 
     var toConsumableArray = _toConsumableArray;
@@ -20972,11 +21054,25 @@
     var Api =
         /*#__PURE__*/
         function () {
+            /**
+             * Create api method and attach to lemo object
+             * @param {object} config
+             * @param {string} config.name The method name which attached to lemo object
+             * @param {Function?} config.call The custom api function call. It should return a Promise for keeping same interface
+             * @param {string?} config.method The remote api name
+             * @param {Function?} config.inputFormatter Convert input data before send request
+             * @param {Function?} config.outputFormatter Convert received data from request before return
+             * @param {Requester} requester
+             */
             function Api(config, requester) {
                 classCallCheck(this, Api);
 
-                if (!config || !config.name || !!config.call === !!config.method) {
+                if (!config || !config.name) {
                     throw new Error(errors.InvalidAPIDefinition(config));
+                }
+
+                if (!!config.call === !!config.method) {
+                    throw new Error(errors.InvalidAPIMethod(config));
                 }
 
                 this.name = config.name;
@@ -21073,13 +21169,13 @@
                 classCallCheck(this, LemoClient);
 
                 // The Object.defineProperty is not work in otto. but we can name fields with first letter '_' to make it invisible
+                this._requester = new Requester(newConn(config));
                 Object.defineProperty(this, '_requester', {
-                    enumerable: false,
-                    value: new Requester(newConn(config))
+                    enumerable: false
                 });
                 Object.defineProperty(this, '_createAPI', {
                     enumerable: false,
-                    value: createAPI.bind(this)
+                    value: createAPI.bind(null, this)
                 }); // modules
 
                 this._createAPI(account.moduleName, account.apis);
@@ -21096,32 +21192,58 @@
 
                 this.BigNumber = bignumber;
             }
+            /**
+             * Stop a watching by watchId. If no watchId specified, stop all
+             * @param {number|undefined} watchId
+             */
+
 
             createClass(LemoClient, [{
                 key: "stopWatch",
                 value: function stopWatch(watchId) {
                     return this._requester.stopWatch(watchId);
                 }
+                /**
+                 * Return true if watching new data
+                 * @return {boolean}
+                 */
+
+            }, {
+                key: "isWatching",
+                value: function isWatching() {
+                    return this._requester.isWatching();
+                }
             }]);
 
             return LemoClient;
         }();
+    /**
+     * Create an API and attach to lemo object
+     * @param {LemoClient} lemo
+     * @param {string} moduleName Attach api methods to the sub module object of lemo. If moduleName is empty, then attach to lemo object
+     * @param {Array} apis Api constructor config list
+     */
 
-    function createAPI(moduleName, apis) {
-        var _this = this;
 
+    function createAPI(lemo, moduleName, apis) {
         if (moduleName) {
-            if (!this[moduleName]) {
-                this[moduleName] = {};
-            } else if (_typeof_1(this[moduleName]) !== 'object') {
+            if (!lemo[moduleName]) {
+                lemo[moduleName] = {};
+            } else if (_typeof_1(lemo[moduleName]) !== 'object') {
                 throw new Error(errors.UnavailableAPIModule(moduleName));
             }
         }
 
         apis.forEach(function (api) {
-            new Api(api, _this._requester).attachTo(moduleName ? _this[moduleName] : _this);
+            new Api(api, lemo._requester).attachTo(moduleName ? lemo[moduleName] : lemo);
         });
     }
+    /**
+     * Create conn object by config
+     * @param {object?} config The conn constructor config
+     * @return {object} Conn object
+     */
+
 
     function newConn(config) {
         if (!config) {
@@ -21129,7 +21251,7 @@
         }
 
         if (config) {
-            // conn object
+            // conn object. It will be implemented by go environment
             if (typeof config.send === 'function') {
                 return config;
             } // http conn config
