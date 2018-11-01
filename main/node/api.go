@@ -227,22 +227,23 @@ func (m *MineAPI) LemoBase() string {
 
 // NetAPI
 type NetAPI struct {
-	server *p2p.Server
+	node *Node
+	// server *p2p.Server
 }
 
 // NewNetAPI
-func NewNetAPI(server *p2p.Server) *NetAPI {
-	return &NetAPI{server}
+func NewNetAPI(node *Node) *NetAPI {
+	return &NetAPI{node}
 }
 
 // AddStaticPeer
 func (n *NetAPI) AddStaticPeer(node string) {
-	n.server.AddStaticPeer(node)
+	n.node.server.AddStaticPeer(node)
 }
 
 // DropPeer
 func (n *NetAPI) DropPeer(node string) string {
-	if n.server.DropPeer(node) {
+	if n.node.server.DropPeer(node) {
 		return fmt.Sprintf("drop a peer success. id %v", node)
 	} else {
 		return fmt.Sprintf("drop a peer fail. id %v", node)
@@ -252,27 +253,35 @@ func (n *NetAPI) DropPeer(node string) string {
 
 // Peers
 func (n *NetAPI) Peers() []p2p.PeerConnInfo {
-	return n.server.Peers()
+	return n.node.server.Peers()
 }
 
 // todo
 type NetInfo struct {
-	Port string `json:"port" gencodec:"required"`
+	Port     string `json:"port" gencodec:"required"`
+	NodeName string `json:"nodeName" gencodec:"required"`
+	Version  string `json:"nodeVersion" gencodec:"required"`
 }
 
 // MarshalJSON marshals as JSON
-func (n NetInfo) MarshalJSON() ([]byte, error) {
-	type netInfo struct {
-		Port string `json:"port" gencodec:"required"`
+func (net NetInfo) MarshalJSON() ([]byte, error) {
+	type NetInfo struct {
+		Port     string `json:"port" gencodec:"required"`
+		NodeName string `json:"nodeName" gencodec:"required"`
+		Version  string `json:"nodeVersion" gencodec:"required"`
 	}
-	var enc netInfo
-	enc.Port = n.Port
+	var enc NetInfo
+	enc.Port = net.Port
+	enc.NodeName = net.NodeName
+	enc.Version = net.Version
 	return json.Marshal(&enc)
 }
 
 // NetInfo
 func (n *NetAPI) Info() *NetInfo {
 	return &NetInfo{
-		Port: n.server.ListenAddr(),
+		Port:     n.node.server.ListenAddr(),
+		NodeName: n.node.config.NodeName(),
+		Version:  n.node.config.Version,
 	}
 }
