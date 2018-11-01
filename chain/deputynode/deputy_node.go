@@ -163,7 +163,7 @@ func (d *Manager) GetDeputyByNodeID(height uint32, nodeID []byte) *DeputyNode {
 func (d *Manager) GetSlot(height uint32, firstAddress, nextAddress common.Address) int {
 	firstNode := d.GetDeputyByAddress(height, firstAddress)
 	nextNode := d.GetDeputyByAddress(height, nextAddress)
-	if height == 0 && nextNode != nil {
+	if ((height == 1) || (height > SnapshotBlockInterval && height%SnapshotBlockInterval == TransitionPeriod+1)) && nextNode != nil {
 		return int(nextNode.Rank + 1)
 	}
 	if firstNode == nil || nextNode == nil {
