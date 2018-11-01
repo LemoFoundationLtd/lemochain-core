@@ -445,8 +445,8 @@ func (srv *Server) DropPeer(node string) bool {
 					return false
 				}
 			}
-			break
+			return true
 		}
 	}
-	return true
+	return false
 }
