@@ -10,7 +10,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/network/p2p"
 	"math/big"
-	"strings"
 )
 
 // AccountAPI API for access to account information
@@ -62,16 +61,9 @@ func (a *AccountAPI) GetBalance(LemoAddress string) (string, error) {
 
 // GetAccount return the struct of the &AccountData{}
 func (a *AccountAPI) GetAccount(LemoAddress string) (types.AccountAccessor, error) {
-	var address common.Address
-	// Determine whether the input address is a Lemo address or a native address.
-	if strings.HasPrefix(LemoAddress, "Lemo") {
-		var err error
-		address, err = common.RestoreOriginalAddress(LemoAddress)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		address = common.HexToAddress(LemoAddress)
+	address, err := common.StringToAddress(LemoAddress)
+	if err != nil {
+		return nil, err
 	}
 
 	accountData := a.manager.GetCanonicalAccount(address)
