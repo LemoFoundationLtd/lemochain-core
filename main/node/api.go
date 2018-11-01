@@ -247,8 +247,14 @@ func (n *NetAPI) AddStaticPeer(node string) {
 	n.server.AddStaticPeer(node)
 }
 
-func (n *NetAPI) DropPeer(node string) {
-	n.server.DropPeer(node)
+// DropPeer
+func (n *NetAPI) DropPeer(node string) string {
+	if n.server.DropPeer(node) {
+		return fmt.Sprintf("drop a peer success. id %v", node)
+	} else {
+		return fmt.Sprintf("drop a peer fail. id %v", node)
+	}
+
 }
 
 // Peers
@@ -258,12 +264,12 @@ func (n *NetAPI) Peers() []p2p.PeerConnInfo {
 
 // todo
 type netInfo struct {
-	port string
+	Port string
 }
 
 // NetInfo
 func (n *NetAPI) Info() *netInfo {
 	return &netInfo{
-		port: n.server.ListenAddr(),
+		Port: n.server.ListenAddr(),
 	}
 }
