@@ -195,3 +195,7 @@ func (d *Manager) IsSelfDeputyNode(height uint32) bool {
 	node := d.GetDeputyByNodeID(height, GetSelfNodeID())
 	return node != nil
 }
+
+func (d *Manager) Clear() {
+	d.DeputyNodesList = make([]*DeputyNodesRecord, 0, 1)
+}
