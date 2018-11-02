@@ -6,6 +6,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
+	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -17,11 +18,22 @@ func GetStorePath() string {
 }
 
 func ClearData() error {
-	time.Sleep(time.Duration(1) * time.Second)
-	return filepath.Walk(GetStorePath(),
+	err := filepath.Walk(GetStorePath(),
 		func(path string, f os.FileInfo, err error) error {
 			return os.RemoveAll(path)
 		})
+	failCnt := 1
+	for err != nil {
+		log.Errorf("CLEAR DATA BASE FAIL.%s, SLEEP(%ds) AND CONTINUE", err.Error(), failCnt)
+		time.Sleep(time.Duration(failCnt) * time.Second)
+		err = filepath.Walk(GetStorePath(),
+			func(path string, f os.FileInfo, err error) error {
+				return os.RemoveAll(path)
+			})
+		failCnt = failCnt + 1
+	}
+
+	return nil
 }
 
 func CreateBlock(hash common.Hash, parent common.Hash, height uint32) *types.Block {
