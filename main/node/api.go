@@ -256,6 +256,11 @@ func (n *NetAPI) Peers() []p2p.PeerConnInfo {
 	return n.node.server.Peers()
 }
 
+// PeersCount return peers number
+func (n *NetAPI) PeersCount() int {
+	return len(n.node.server.Peers())
+}
+
 // todo
 type NetInfo struct {
 	Port     string `json:"port" gencodec:"required"`
