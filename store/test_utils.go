@@ -15,7 +15,9 @@ func GetStorePath() string {
 }
 
 func ClearData() error {
-	return os.RemoveAll(GetStorePath())
+	err := os.RemoveAll(GetStorePath())
+	return err
+
 }
 
 func CreateBlock(hash common.Hash, parent common.Hash, height uint32) *types.Block {

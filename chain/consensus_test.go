@@ -41,6 +41,8 @@ func loadDpovp() *Dpovp {
 // 初始化代理节点,numNode为选择共识节点数量，取值为[1,5],height为发放奖励高度
 func initDeputyNode(numNode int, height uint32) error {
 	manager := deputynode.Instance()
+	// 清理之前设置的共识节点列表
+	manager.Clear()
 
 	privarte01, err := crypto.ToECDSA(common.FromHex(deputy01Privkey))
 	if err != nil {
@@ -241,15 +243,16 @@ func Test_verifyHeaderSignData(t *testing.T) {
 }
 
 // // TestDpovp_nodeCount1 nodeCount = 1 的情况下直接返回nil
-// func TestDpovp_nodeCount1(t *testing.T) {
-// 	err := initDeputyNode(1, 0)
-// 	assert.NoError(t, err)
-// 	dpovp := loadDpovp()
-// 	defer store.ClearData()
-//
-// 	t.Log(deputynode.Instance().GetDeputiesCount())
-// 	assert.Equal(t, nil, dpovp.VerifyHeader(&types.Block{}))
-// }
+func TestDpovp_nodeCount1(t *testing.T) {
+
+	err := initDeputyNode(1, 0)
+	assert.NoError(t, err)
+	dpovp := loadDpovp()
+	defer store.ClearData()
+
+	t.Log(deputynode.Instance().GetDeputiesCount())
+	assert.Equal(t, nil, dpovp.VerifyHeader(&types.Block{}))
+}
 
 // 验证区块头Extra字段长度是否正确
 func Test_headerExtra(t *testing.T) {
@@ -278,6 +281,7 @@ func Test_headerExtra(t *testing.T) {
 func TestDpovp_VerifyHeader01(t *testing.T) {
 	err := initDeputyNode(3, 0)
 	assert.NoError(t, err)
+	t.Log(deputynode.Instance().GetDeputiesCount())
 	dpovp := loadDpovp()
 	defer store.ClearData()
 	// 验证不存在父区块的情况
