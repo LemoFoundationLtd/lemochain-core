@@ -34,7 +34,7 @@ func readConfigFile(path string) (*ConfigFromFile, error) {
 }
 
 func (c *ConfigFromFile) Check() {
-	if c.SleepTime > c.Timeout {
+	if c.SleepTime >= c.Timeout {
 		panic("config.json content error: sleepTime can't be larger than timeout")
 	}
 	if c.ChainID > 65535 || c.ChainID < 1 {
