@@ -361,7 +361,7 @@ func TestMine_GetSleepNotSelf(t *testing.T) {
 	assert.Equal(t, -1, reset)
 }
 
-func TestMiner_TestMine_GetSleep1Deputy(t *testing.T) {
+func TestMiner_GetSleep1Deputy(t *testing.T) {
 	store.ClearData()
 	deputynode.Instance().Clear()
 	deputynode.Instance().Add(0, deputynode.DeputyNodes{chain.DefaultDeputyNodes[0]})
@@ -370,21 +370,32 @@ func TestMiner_TestMine_GetSleep1Deputy(t *testing.T) {
 	miner, _, _, err := newMiner(Nodes[0].privateKey)
 	assert.NoError(t, err)
 
-	genesis := miner.chain.GetBlockByHeight(0)
-	info := blockInfo{parentHash: genesis.Hash(), height: 1, author: common.HexToAddress(Nodes[0].address)}
-	block, err := makeSignBlock(Nodes[0].privateKey, miner.chain.Db(), info, false)
+	reset := miner.getSleepTime()
+	assert.Equal(t, 3000, reset)
+}
+
+func TestMine_GetSleepNotInSlot(t *testing.T) {
+	store.ClearData()
+	deputynode.Instance().Clear()
+
+	deputynode.Instance().Add(0, deputynode.DeputyNodes{chain.DefaultDeputyNodes[0]})
+	miner, _, _, err := newMiner(Nodes[0].privateKey)
 	assert.NoError(t, err)
 
+	genesis := miner.chain.GetBlockByHeight(0)
+	info := blockInfo{parentHash: genesis.Hash(), height: 1, author: common.HexToAddress(Nodes[5].address)}
+	block, err := makeSignBlock(Nodes[5].privateKey, miner.chain.Db(), info, false)
+	assert.NoError(t, err)
 	err = miner.chain.InsertChain(block, true)
 	assert.NoError(t, err)
 	miner.chain.SetStableBlock(block.Hash(), block.Height(), false)
 	assert.NoError(t, err)
 
 	reset := miner.getSleepTime()
-	assert.Equal(t, 3000, reset)
+	assert.Equal(t, -1, reset)
 }
 
-func TestMiner_GetSleep(t *testing.T) {
+func TestMiner_GetSleepNormal(t *testing.T) {
 	store.ClearData()
 	deputynode.Instance().Clear()
 	deputynode.Instance().Add(0, chain.DefaultDeputyNodes)
