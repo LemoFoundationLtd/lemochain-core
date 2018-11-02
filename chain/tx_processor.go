@@ -272,6 +272,6 @@ func (p *TxProcessor) FillHeader(header *types.Header, txs types.Transactions, g
 	}
 	header.VersionRoot = p.am.GetVersionRoot()
 	changeLogs := p.am.GetChangeLogs()
-	header.LogsRoot = types.DeriveChangeLogsSha(changeLogs)
+	header.LogRoot = types.DeriveChangeLogsSha(changeLogs)
 	return header, nil
 }

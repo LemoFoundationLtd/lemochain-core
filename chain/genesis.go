@@ -130,7 +130,7 @@ func SetupGenesisBlock(db protocol.ChainDB, genesis *Genesis) (common.Hash, erro
 	block.Header.VersionRoot = am.GetVersionRoot()
 	logs := am.GetChangeLogs()
 	block.SetChangeLogs(logs)
-	block.Header.LogsRoot = types.DeriveChangeLogsSha(logs)
+	block.Header.LogRoot = types.DeriveChangeLogsSha(logs)
 	hash := block.Hash()
 	if err := db.SetBlock(hash, block); err != nil {
 		return common.Hash{}, fmt.Errorf("setup genesis block failed: %v", err)

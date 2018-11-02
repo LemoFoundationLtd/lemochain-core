@@ -19,8 +19,8 @@ func (h Header) MarshalJSON() ([]byte, error) {
 		ParentHash  common.Hash    `json:"parentHash"       gencodec:"required"`
 		LemoBase    common.Address `json:"miner"            gencodec:"required"`
 		VersionRoot common.Hash    `json:"versionRoot"      gencodec:"required"`
-		TxRoot      common.Hash    `json:"transactionsRoot" gencodec:"required"`
-		LogsRoot    common.Hash    `json:"changeLogRoot"    gencodec:"required"`
+		TxRoot      common.Hash    `json:"transactionRoot"  gencodec:"required"`
+		LogRoot     common.Hash    `json:"changeLogRoot"    gencodec:"required"`
 		EventRoot   common.Hash    `json:"eventRoot"        gencodec:"required"`
 		Bloom       Bloom          `json:"logsBloom"        gencodec:"required"`
 		Height      uint32         `json:"height"           gencodec:"required"`
@@ -37,7 +37,7 @@ func (h Header) MarshalJSON() ([]byte, error) {
 	enc.LemoBase = h.LemoBase
 	enc.VersionRoot = h.VersionRoot
 	enc.TxRoot = h.TxRoot
-	enc.LogsRoot = h.LogsRoot
+	enc.LogRoot = h.LogRoot
 	enc.EventRoot = h.EventRoot
 	enc.Bloom = h.Bloom
 	enc.Height = h.Height
@@ -57,8 +57,8 @@ func (h *Header) UnmarshalJSON(input []byte) error {
 		ParentHash  *common.Hash    `json:"parentHash"       gencodec:"required"`
 		LemoBase    *common.Address `json:"miner"            gencodec:"required"`
 		VersionRoot *common.Hash    `json:"versionRoot"      gencodec:"required"`
-		TxRoot      *common.Hash    `json:"transactionsRoot" gencodec:"required"`
-		LogsRoot    *common.Hash    `json:"changeLogRoot"    gencodec:"required"`
+		TxRoot      *common.Hash    `json:"transactionRoot"  gencodec:"required"`
+		LogRoot     *common.Hash    `json:"changeLogRoot"    gencodec:"required"`
 		EventRoot   *common.Hash    `json:"eventRoot"        gencodec:"required"`
 		Bloom       *Bloom          `json:"logsBloom"        gencodec:"required"`
 		Height      *uint32         `json:"height"           gencodec:"required"`
@@ -86,13 +86,13 @@ func (h *Header) UnmarshalJSON(input []byte) error {
 	}
 	h.VersionRoot = *dec.VersionRoot
 	if dec.TxRoot == nil {
-		return errors.New("missing required field 'transactionsRoot' for Header")
+		return errors.New("missing required field 'transactionRoot' for Header")
 	}
 	h.TxRoot = *dec.TxRoot
-	if dec.LogsRoot == nil {
+	if dec.LogRoot == nil {
 		return errors.New("missing required field 'changeLogRoot' for Header")
 	}
-	h.LogsRoot = *dec.LogsRoot
+	h.LogRoot = *dec.LogRoot
 	if dec.EventRoot == nil {
 		return errors.New("missing required field 'eventRoot' for Header")
 	}

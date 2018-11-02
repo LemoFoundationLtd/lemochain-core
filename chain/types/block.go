@@ -17,8 +17,8 @@ type Header struct {
 	ParentHash  common.Hash    `json:"parentHash"       gencodec:"required"`
 	LemoBase    common.Address `json:"miner"            gencodec:"required"`
 	VersionRoot common.Hash    `json:"versionRoot"      gencodec:"required"`
-	TxRoot      common.Hash    `json:"transactionsRoot" gencodec:"required"`
-	LogsRoot    common.Hash    `json:"changeLogRoot"    gencodec:"required"`
+	TxRoot      common.Hash    `json:"transactionRoot"  gencodec:"required"`
+	LogRoot     common.Hash    `json:"changeLogRoot"    gencodec:"required"`
 	EventRoot   common.Hash    `json:"eventRoot"        gencodec:"required"`
 	Bloom       Bloom          `json:"logsBloom"        gencodec:"required"`
 	Height      uint32         `json:"height"           gencodec:"required"`
@@ -78,7 +78,7 @@ func (h *Header) Hash() common.Hash {
 		h.LemoBase,
 		h.VersionRoot,
 		h.TxRoot,
-		h.LogsRoot,
+		h.LogRoot,
 		h.EventRoot,
 		h.Bloom,
 		h.Height,
@@ -113,7 +113,7 @@ func (h *Header) String() string {
 		fmt.Sprintf("LemoBase: %s", h.LemoBase.String()),
 		fmt.Sprintf("VersionRoot: %s", h.VersionRoot.Hex()),
 		fmt.Sprintf("TxRoot: %s", h.TxRoot.Hex()),
-		fmt.Sprintf("LogsRoot: %s", h.LogsRoot.Hex()),
+		fmt.Sprintf("LogRoot: %s", h.LogRoot.Hex()),
 		fmt.Sprintf("EventRoot: %s", h.EventRoot.Hex()),
 		fmt.Sprintf("Bloom: %s", common.ToHex(h.Bloom[:])),
 		fmt.Sprintf("Height: %d", h.Height),
@@ -136,7 +136,7 @@ func (b *Block) ParentHash() common.Hash  { return b.Header.ParentHash }
 func (b *Block) LemoBase() common.Address { return b.Header.LemoBase }
 func (b *Block) VersionRoot() common.Hash { return b.Header.VersionRoot }
 func (b *Block) TxHash() common.Hash      { return b.Header.TxRoot }
-func (b *Block) LogsHash() common.Hash    { return b.Header.LogsRoot }
+func (b *Block) LogsHash() common.Hash    { return b.Header.LogRoot }
 func (b *Block) EventRoot() common.Hash   { return b.Header.EventRoot }
 func (b *Block) Bloom() Bloom             { return b.Header.Bloom }
 func (b *Block) GasLimit() uint64         { return b.Header.GasLimit }

@@ -33,7 +33,7 @@ func (a *AccountAPI) NewKeyPair() (*crypto.AddressKeyPair, error) {
 	return accounts, nil
 }
 
-// GetBalance get balance api
+// GetBalance get balance in mo
 func (a *AccountAPI) GetBalance(LemoAddress string) (string, error) {
 	accounts, err := a.GetAccount(LemoAddress)
 	if err != nil {
