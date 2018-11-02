@@ -9,6 +9,7 @@ import (
 
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
+	"github.com/LemoFoundationLtd/lemochain-go/common/math"
 )
 
 var _ = (*headerMarshaling)(nil)
@@ -16,21 +17,21 @@ var _ = (*headerMarshaling)(nil)
 // MarshalJSON marshals as JSON.
 func (h Header) MarshalJSON() ([]byte, error) {
 	type Header struct {
-		ParentHash  common.Hash    `json:"parentHash"       gencodec:"required"`
-		LemoBase    common.Address `json:"miner"            gencodec:"required"`
-		VersionRoot common.Hash    `json:"versionRoot"      gencodec:"required"`
-		TxRoot      common.Hash    `json:"transactionRoot"  gencodec:"required"`
-		LogRoot     common.Hash    `json:"changeLogRoot"    gencodec:"required"`
-		EventRoot   common.Hash    `json:"eventRoot"        gencodec:"required"`
-		Bloom       Bloom          `json:"logsBloom"        gencodec:"required"`
-		Height      uint32         `json:"height"           gencodec:"required"`
-		GasLimit    uint64         `json:"gasLimit"         gencodec:"required"`
-		GasUsed     uint64         `json:"gasUsed"          gencodec:"required"`
-		Time        *big.Int       `json:"timestamp"        gencodec:"required"`
-		SignData    hexutil.Bytes  `json:"signData"         gencodec:"required"`
-		DeputyRoot  hexutil.Bytes  `json:"deputyRoot"       gencodec:"required"`
-		Extra       hexutil.Bytes  `json:"extraData"        gencodec:"required"`
-		Hash        common.Hash    `json:"hash"`
+		ParentHash  common.Hash         `json:"parentHash"       gencodec:"required"`
+		LemoBase    common.Address      `json:"miner"            gencodec:"required"`
+		VersionRoot common.Hash         `json:"versionRoot"      gencodec:"required"`
+		TxRoot      common.Hash         `json:"transactionRoot"  gencodec:"required"`
+		LogRoot     common.Hash         `json:"changeLogRoot"    gencodec:"required"`
+		EventRoot   common.Hash         `json:"eventRoot"        gencodec:"required"`
+		Bloom       Bloom               `json:"logsBloom"        gencodec:"required"`
+		Height      math.Decimal32      `json:"height"           gencodec:"required"`
+		GasLimit    math.HexOrDecimal64 `json:"gasLimit"         gencodec:"required"`
+		GasUsed     math.HexOrDecimal64 `json:"gasUsed"          gencodec:"required"`
+		Time        *hexutil.Big10      `json:"timestamp"        gencodec:"required"`
+		SignData    hexutil.Bytes       `json:"signData"         gencodec:"required"`
+		DeputyRoot  hexutil.Bytes       `json:"deputyRoot"       gencodec:"required"`
+		Extra       hexutil.Bytes       `json:"extraData"        gencodec:"required"`
+		Hash        common.Hash         `json:"hash"`
 	}
 	var enc Header
 	enc.ParentHash = h.ParentHash
@@ -40,10 +41,10 @@ func (h Header) MarshalJSON() ([]byte, error) {
 	enc.LogRoot = h.LogRoot
 	enc.EventRoot = h.EventRoot
 	enc.Bloom = h.Bloom
-	enc.Height = h.Height
-	enc.GasLimit = h.GasLimit
-	enc.GasUsed = h.GasUsed
-	enc.Time = h.Time
+	enc.Height = math.Decimal32(h.Height)
+	enc.GasLimit = math.HexOrDecimal64(h.GasLimit)
+	enc.GasUsed = math.HexOrDecimal64(h.GasUsed)
+	enc.Time = (*hexutil.Big10)(h.Time)
 	enc.SignData = h.SignData
 	enc.DeputyRoot = h.DeputyRoot
 	enc.Extra = h.Extra
@@ -54,20 +55,20 @@ func (h Header) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON unmarshals from JSON.
 func (h *Header) UnmarshalJSON(input []byte) error {
 	type Header struct {
-		ParentHash  *common.Hash    `json:"parentHash"       gencodec:"required"`
-		LemoBase    *common.Address `json:"miner"            gencodec:"required"`
-		VersionRoot *common.Hash    `json:"versionRoot"      gencodec:"required"`
-		TxRoot      *common.Hash    `json:"transactionRoot"  gencodec:"required"`
-		LogRoot     *common.Hash    `json:"changeLogRoot"    gencodec:"required"`
-		EventRoot   *common.Hash    `json:"eventRoot"        gencodec:"required"`
-		Bloom       *Bloom          `json:"logsBloom"        gencodec:"required"`
-		Height      *uint32         `json:"height"           gencodec:"required"`
-		GasLimit    *uint64         `json:"gasLimit"         gencodec:"required"`
-		GasUsed     *uint64         `json:"gasUsed"          gencodec:"required"`
-		Time        *big.Int        `json:"timestamp"        gencodec:"required"`
-		SignData    *hexutil.Bytes  `json:"signData"         gencodec:"required"`
-		DeputyRoot  *hexutil.Bytes  `json:"deputyRoot"       gencodec:"required"`
-		Extra       *hexutil.Bytes  `json:"extraData"        gencodec:"required"`
+		ParentHash  *common.Hash         `json:"parentHash"       gencodec:"required"`
+		LemoBase    *common.Address      `json:"miner"            gencodec:"required"`
+		VersionRoot *common.Hash         `json:"versionRoot"      gencodec:"required"`
+		TxRoot      *common.Hash         `json:"transactionRoot"  gencodec:"required"`
+		LogRoot     *common.Hash         `json:"changeLogRoot"    gencodec:"required"`
+		EventRoot   *common.Hash         `json:"eventRoot"        gencodec:"required"`
+		Bloom       *Bloom               `json:"logsBloom"        gencodec:"required"`
+		Height      *math.Decimal32      `json:"height"           gencodec:"required"`
+		GasLimit    *math.HexOrDecimal64 `json:"gasLimit"         gencodec:"required"`
+		GasUsed     *math.HexOrDecimal64 `json:"gasUsed"          gencodec:"required"`
+		Time        *hexutil.Big10       `json:"timestamp"        gencodec:"required"`
+		SignData    *hexutil.Bytes       `json:"signData"         gencodec:"required"`
+		DeputyRoot  *hexutil.Bytes       `json:"deputyRoot"       gencodec:"required"`
+		Extra       *hexutil.Bytes       `json:"extraData"        gencodec:"required"`
 	}
 	var dec Header
 	if err := json.Unmarshal(input, &dec); err != nil {
@@ -104,19 +105,19 @@ func (h *Header) UnmarshalJSON(input []byte) error {
 	if dec.Height == nil {
 		return errors.New("missing required field 'height' for Header")
 	}
-	h.Height = *dec.Height
+	h.Height = uint32(*dec.Height)
 	if dec.GasLimit == nil {
 		return errors.New("missing required field 'gasLimit' for Header")
 	}
-	h.GasLimit = *dec.GasLimit
+	h.GasLimit = uint64(*dec.GasLimit)
 	if dec.GasUsed == nil {
 		return errors.New("missing required field 'gasUsed' for Header")
 	}
-	h.GasUsed = *dec.GasUsed
+	h.GasUsed = uint64(*dec.GasUsed)
 	if dec.Time == nil {
 		return errors.New("missing required field 'timestamp' for Header")
 	}
-	h.Time = dec.Time
+	h.Time = (*big.Int)(dec.Time)
 	if dec.SignData == nil {
 		return errors.New("missing required field 'signData' for Header")
 	}

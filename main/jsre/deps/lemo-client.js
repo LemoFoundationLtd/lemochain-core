@@ -3635,7 +3635,14 @@
         }
     }
 
-    var regenerator = runtimeModule;
+    var runtimeModule$1 = /*#__PURE__*/Object.freeze({
+        default: runtimeModule,
+        __moduleExports: runtimeModule
+    });
+
+    var require$$0 = ( runtimeModule$1 && runtimeModule ) || runtimeModule$1;
+
+    var regenerator = require$$0;
 
     function asyncGeneratorStep(gen, resolve, reject, _next, _throw, key, arg) {
         try {
@@ -4279,6 +4286,11 @@
         });
     };
 
+    var normalizeHeaderName$1 = /*#__PURE__*/Object.freeze({
+        default: normalizeHeaderName,
+        __moduleExports: normalizeHeaderName
+    });
+
     /**
      * Update an Error with the specified config, error code, and response.
      *
@@ -4299,13 +4311,6 @@
         return error;
     };
 
-    var enhanceError$1 = /*#__PURE__*/Object.freeze({
-        default: enhanceError,
-        __moduleExports: enhanceError
-    });
-
-    var enhanceError$2 = ( enhanceError$1 && enhanceError ) || enhanceError$1;
-
     /**
      * Create an Error with the specified message, config, error code, request and response.
      *
@@ -4318,7 +4323,7 @@
      */
     var createError = function createError(message, config, code, request, response) {
         var error = new Error(message);
-        return enhanceError$2(error, config, code, request, response);
+        return enhanceError(error, config, code, request, response);
     };
 
     /**
@@ -4779,6 +4784,8 @@
         });
     };
 
+    var normalizeHeaderName$2 = ( normalizeHeaderName$1 && normalizeHeaderName ) || normalizeHeaderName$1;
+
     var DEFAULT_CONTENT_TYPE = {
         'Content-Type': 'application/x-www-form-urlencoded'
     };
@@ -4805,7 +4812,7 @@
         adapter: getDefaultAdapter(),
 
         transformRequest: [function transformRequest(data, headers) {
-            normalizeHeaderName(headers, 'Content-Type');
+            normalizeHeaderName$2(headers, 'Content-Type');
             if (utils.isFormData(data) ||
                 utils.isArrayBuffer(data) ||
                 utils.isBuffer(data) ||
@@ -4967,6 +4974,13 @@
             : baseURL;
     };
 
+    var combineURLs$1 = /*#__PURE__*/Object.freeze({
+        default: combineURLs,
+        __moduleExports: combineURLs
+    });
+
+    var combineURLs$2 = ( combineURLs$1 && combineURLs ) || combineURLs$1;
+
     /**
      * Throws a `Cancel` if cancellation has been requested.
      */
@@ -4987,7 +5001,7 @@
 
         // Support baseURL config
         if (config.baseURL && !isAbsoluteURL(config.url)) {
-            config.url = combineURLs(config.baseURL, config.url);
+            config.url = combineURLs$2(config.baseURL, config.url);
         }
 
         // Ensure headers exist
@@ -5045,6 +5059,13 @@
         });
     };
 
+    var dispatchRequest$1 = /*#__PURE__*/Object.freeze({
+        default: dispatchRequest,
+        __moduleExports: dispatchRequest
+    });
+
+    var dispatchRequest$2 = ( dispatchRequest$1 && dispatchRequest ) || dispatchRequest$1;
+
     /**
      * Create a new instance of Axios
      *
@@ -5076,7 +5097,7 @@
         config.method = config.method.toLowerCase();
 
         // Hook up interceptors middleware
-        var chain = [dispatchRequest, undefined];
+        var chain = [dispatchRequest$2, undefined];
         var promise = Promise.resolve(config);
 
         this.interceptors.request.forEach(function unshiftRequestInterceptors(interceptor) {
@@ -5743,6 +5764,11 @@
 
     var arrayWithHoles = _arrayWithHoles;
 
+    var arrayWithHoles$1 = /*#__PURE__*/Object.freeze({
+        default: arrayWithHoles,
+        __moduleExports: arrayWithHoles
+    });
+
     function _iterableToArrayLimit(arr, i) {
         var _arr = [];
         var _n = true;
@@ -5777,8 +5803,10 @@
 
     var nonIterableRest = _nonIterableRest;
 
+    var arrayWithHoles$2 = ( arrayWithHoles$1 && arrayWithHoles ) || arrayWithHoles$1;
+
     function _slicedToArray(arr, i) {
-        return arrayWithHoles(arr) || iterableToArrayLimit(arr, i) || nonIterableRest();
+        return arrayWithHoles$2(arr) || iterableToArrayLimit(arr, i) || nonIterableRest();
     }
 
     var slicedToArray = _slicedToArray;
@@ -7761,7 +7789,7 @@
         return typeof obj.readFloatLE === 'function' && typeof obj.slice === 'function' && isFastBuffer(obj.slice(0, 0))
     }
 
-    var require$$0 = /*#__PURE__*/Object.freeze({
+    var require$$0$1 = /*#__PURE__*/Object.freeze({
         INSPECT_MAX_BYTES: INSPECT_MAX_BYTES,
         kMaxLength: _kMaxLength,
         Buffer: Buffer,
@@ -7772,7 +7800,7 @@
     var safeBuffer = createCommonjsModule(function (module, exports) {
         /* eslint-disable node/no-deprecated-api */
 
-        var Buffer = require$$0.Buffer;
+        var Buffer = require$$0$1.Buffer;
 
         // alternative to using Object.keys for old browsers
         function copyProps (src, dst) {
@@ -7781,10 +7809,10 @@
             }
         }
         if (Buffer.from && Buffer.alloc && Buffer.allocUnsafe && Buffer.allocUnsafeSlow) {
-            module.exports = require$$0;
+            module.exports = require$$0$1;
         } else {
             // Copy properties from require('buffer')
-            copyProps(require$$0, exports);
+            copyProps(require$$0$1, exports);
             exports.Buffer = SafeBuffer;
         }
 
@@ -7830,13 +7858,16 @@
             if (typeof size !== 'number') {
                 throw new TypeError('Argument must be a number')
             }
-            return require$$0.SlowBuffer(size)
+            return require$$0$1.SlowBuffer(size)
         };
     });
     var safeBuffer_1 = safeBuffer.Buffer;
 
     function isHash(hashOrHeight) {
         return typeof hashOrHeight === 'string' && hashOrHeight.toLowerCase().startsWith('0x');
+    }
+    function has0xPrefix(str) {
+        return typeof str === 'string' && str.slice(0, 2).toLowerCase() === '0x';
     }
     function parseBlock(block) {
         return block;
@@ -7864,7 +7895,8 @@
         return dict[logType];
     }
     function parseBigNumber(str) {
-        return new bignumber(str, 16);
+        var base = str.slice(0, 2).toLowerCase() === '0x' ? 16 : 10;
+        return new bignumber(str, base);
     }
     function toBuffer(v) {
         if (safeBuffer_1.isBuffer(v)) {
@@ -8062,7 +8094,6 @@
          * @return {Promise<number>}
          */
         getSdkVersion: function getSdkVersion() {
-
             return Promise.resolve("0.9.0");
         },
 
@@ -8140,11 +8171,11 @@
     var MODULE_NAME$3 = 'net';
     var apiList$3 = {
         /**
-         * Get connected peer count from the lemochain node
+         * Get connected peers count from the lemochain node
          * @return {Promise<number>}
          */
-        getPeerCount: {
-            method: "".concat(MODULE_NAME$3, "_getPeerCount")
+        getPeersCount: {
+            method: "".concat(MODULE_NAME$3, "_getPeersCount")
         },
 
         /**
@@ -9322,7 +9353,7 @@
         // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
         // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-        var Buffer = require$$0.Buffer;
+        var Buffer = require$$0$1.Buffer;
 
         var isBufferEncoding = Buffer.isEncoding
             || function(encoding) {
@@ -11198,14 +11229,7 @@
         }
     });
 
-    var inherits_browser$1 = /*#__PURE__*/Object.freeze({
-        default: inherits_browser,
-        __moduleExports: inherits_browser
-    });
-
     var require$$1 = ( stream && Stream ) || stream;
-
-    var inherits$2 = ( inherits_browser$1 && inherits_browser ) || inherits_browser$1;
 
     var Buffer$1 = safeBuffer.Buffer;
     var Transform$1 = require$$1.Transform;
@@ -11226,7 +11250,7 @@
             this._finalized = false;
         }
 
-        inherits$2(Keccak, Transform$1);
+        inherits_browser(Keccak, Transform$1);
 
         Keccak.prototype._transform = function (chunk, encoding, callback) {
             var error = null;
@@ -11309,7 +11333,7 @@
             this._finalized = false;
         }
 
-        inherits$2(Shake, Transform$2);
+        inherits_browser(Shake, Transform$2);
 
         Shake.prototype._transform = function (chunk, encoding, callback) {
             var error = null;
@@ -11390,6 +11414,11 @@
             }
         }
     };
+
+    var api$1 = /*#__PURE__*/Object.freeze({
+        default: api,
+        __moduleExports: api
+    });
 
     var P1600_ROUND_CONSTANTS = [1, 0, 32898, 0, 32906, 2147483648, 2147516416, 2147483648, 32907, 0, 2147483649, 0, 2147516545, 2147483648, 32777, 2147483648, 138, 0, 136, 0, 2147516425, 0, 2147483658, 0, 2147516555, 0, 139, 2147483648, 32905, 2147483648, 32771, 2147483648, 32770, 2147483648, 128, 2147483648, 32778, 0, 2147483658, 2147483648, 2147516545, 2147483648, 32896, 2147483648, 2147483649, 0, 2147516424, 2147483648];
 
@@ -11582,6 +11611,14 @@
         p1600: p1600
     };
 
+    var keccakStateUnroll$1 = /*#__PURE__*/Object.freeze({
+        default: keccakStateUnroll,
+        __moduleExports: keccakStateUnroll,
+        p1600: p1600
+    });
+
+    var keccakState = ( keccakStateUnroll$1 && keccakStateUnroll ) || keccakStateUnroll$1;
+
     var Buffer$3 = safeBuffer.Buffer;
 
 
@@ -11612,7 +11649,7 @@
             this.state[~~(this.count / 4)] ^= data[i] << (8 * (this.count % 4));
             this.count += 1;
             if (this.count === this.blockSize) {
-                keccakStateUnroll.p1600(this.state);
+                keccakState.p1600(this.state);
                 this.count = 0;
             }
         }
@@ -11620,9 +11657,9 @@
 
     Keccak.prototype.absorbLastFewBits = function (bits) {
         this.state[~~(this.count / 4)] ^= bits << (8 * (this.count % 4));
-        if ((bits & 0x80) !== 0 && this.count === (this.blockSize - 1)) keccakStateUnroll.p1600(this.state);
+        if ((bits & 0x80) !== 0 && this.count === (this.blockSize - 1)) keccakState.p1600(this.state);
         this.state[~~((this.blockSize - 1) / 4)] ^= 0x80 << (8 * ((this.blockSize - 1) % 4));
-        keccakStateUnroll.p1600(this.state);
+        keccakState.p1600(this.state);
         this.count = 0;
         this.squeezing = true;
     };
@@ -11635,7 +11672,7 @@
             output[i] = (this.state[~~(this.count / 4)] >>> (8 * (this.count % 4))) & 0xff;
             this.count += 1;
             if (this.count === this.blockSize) {
-                keccakStateUnroll.p1600(this.state);
+                keccakState.p1600(this.state);
                 this.count = 0;
             }
         }
@@ -11652,7 +11689,9 @@
 
     var keccak$1 = Keccak;
 
-    var js = api(keccak$1);
+    var require$$0$2 = ( api$1 && api ) || api$1;
+
+    var js = require$$0$2(keccak$1);
 
     // base-x encoding
     // Forked from https://github.com/cryptocoinjs/bs58
@@ -11928,7 +11967,7 @@
         default: empty
     });
 
-    var require$$0$1 = ( empty$1 && empty ) || empty$1;
+    var require$$0$3 = ( empty$1 && empty ) || empty$1;
 
     var bn = createCommonjsModule(function (module) {
         (function (module, exports) {
@@ -11982,7 +12021,7 @@
 
             var Buffer;
             try {
-                Buffer = require$$0$1.Buffer;
+                Buffer = require$$0$3.Buffer;
             } catch (e) {
             }
 
@@ -15369,6 +15408,11 @@
             throw new Error(msg || ('Assertion failed: ' + l + ' != ' + r));
     };
 
+    var minimalisticAssert$1 = /*#__PURE__*/Object.freeze({
+        default: minimalisticAssert,
+        __moduleExports: minimalisticAssert
+    });
+
     var utils_1$1 = createCommonjsModule(function (module, exports) {
 
         var utils = exports;
@@ -15429,6 +15473,15 @@
         };
     });
 
+    var utils$2 = /*#__PURE__*/Object.freeze({
+        default: utils_1$1,
+        __moduleExports: utils_1$1
+    });
+
+    var assert$2 = ( minimalisticAssert$1 && minimalisticAssert ) || minimalisticAssert$1;
+
+    var utils$3 = ( utils$2 && utils_1$1 ) || utils$2;
+
     var utils_1$2 = createCommonjsModule(function (module, exports) {
 
         var utils = exports;
@@ -15436,11 +15489,11 @@
 
 
 
-        utils.assert = minimalisticAssert;
-        utils.toArray = utils_1$1.toArray;
-        utils.zero2 = utils_1$1.zero2;
-        utils.toHex = utils_1$1.toHex;
-        utils.encode = utils_1$1.encode;
+        utils.assert = assert$2;
+        utils.toArray = utils$3.toArray;
+        utils.zero2 = utils$3.zero2;
+        utils.toHex = utils$3.toHex;
+        utils.encode = utils$3.encode;
 
         // Represent num in a w-NAF form
         function getNAF(num, w) {
@@ -15605,7 +15658,7 @@
     } else {
         // Node.js or Web worker with no crypto support
         try {
-            var crypto$1 = require$$0$1;
+            var crypto$1 = require$$0$3;
             if (typeof crypto$1.randomBytes !== 'function')
                 throw new Error('Not supported');
 
@@ -15617,15 +15670,9 @@
     }
     brorand.Rand = Rand_1;
 
-    var brorand$1 = /*#__PURE__*/Object.freeze({
-        default: brorand,
-        __moduleExports: brorand,
-        Rand: Rand_1
-    });
-
     var getNAF = utils_1$2.getNAF;
     var getJSF = utils_1$2.getJSF;
-    var assert$2 = utils_1$2.assert;
+    var assert$3 = utils_1$2.assert;
 
     function BaseCurve(type, conf) {
         this.type = type;
@@ -15669,7 +15716,7 @@
     };
 
     BaseCurve.prototype._fixedNafMul = function _fixedNafMul(p, k) {
-        assert$2(p.precomputed);
+        assert$3(p.precomputed);
         var doubles = p._getDoubles();
 
         var naf = getNAF(k, 1);
@@ -15724,7 +15771,7 @@
             if (i < 0)
                 break;
             var z = naf[i];
-            assert$2(z !== 0);
+            assert$3(z !== 0);
             if (p.type === 'affine') {
                 // J +- P
                 if (z > 0)
@@ -15890,9 +15937,9 @@
         if ((bytes[0] === 0x04 || bytes[0] === 0x06 || bytes[0] === 0x07) &&
             bytes.length - 1 === 2 * len) {
             if (bytes[0] === 0x06)
-                assert$2(bytes[bytes.length - 1] % 2 === 0);
+                assert$3(bytes[bytes.length - 1] % 2 === 0);
             else if (bytes[0] === 0x07)
-                assert$2(bytes[bytes.length - 1] % 2 === 1);
+                assert$3(bytes[bytes.length - 1] % 2 === 1);
 
             var res =  this.point(bytes.slice(1, 1 + len),
                 bytes.slice(1 + len, 1 + 2 * len));
@@ -15994,7 +16041,7 @@
         return r;
     };
 
-    var assert$3 = utils_1$2.assert;
+    var assert$4 = utils_1$2.assert;
 
     function ShortCurve(conf) {
         base.call(this, 'short', conf);
@@ -16011,7 +16058,7 @@
         this._endoWnafT1 = new Array(4);
         this._endoWnafT2 = new Array(4);
     }
-    inherits$2(ShortCurve, base);
+    inherits_browser(ShortCurve, base);
     var short_1 = ShortCurve;
 
     ShortCurve.prototype._getEndomorphism = function _getEndomorphism(conf) {
@@ -16039,7 +16086,7 @@
                 lambda = lambdas[0];
             } else {
                 lambda = lambdas[1];
-                assert$3(this.g.mul(lambda).x.cmp(this.g.x.redMul(beta)) === 0);
+                assert$4(this.g.mul(lambda).x.cmp(this.g.x.redMul(beta)) === 0);
             }
         }
 
@@ -16258,7 +16305,7 @@
             this.inf = false;
         }
     }
-    inherits$2(Point, base.BasePoint);
+    inherits_browser(Point, base.BasePoint);
 
     ShortCurve.prototype.point = function point(x, y, isRed) {
         return new Point(this, x, y, isRed);
@@ -16495,7 +16542,7 @@
 
         this.zOne = this.z === this.curve.one;
     }
-    inherits$2(JPoint, base.BasePoint);
+    inherits_browser(JPoint, base.BasePoint);
 
     ShortCurve.prototype.jpoint = function jpoint(x, y, z) {
         return new JPoint(this, x, y, z);
@@ -16933,7 +16980,7 @@
         this.two = new bn(2).toRed(this.red);
         this.a24 = this.i4.redMul(this.a.redAdd(this.two));
     }
-    inherits$2(MontCurve, base);
+    inherits_browser(MontCurve, base);
     var mont = MontCurve;
 
     MontCurve.prototype.validate = function validate(point) {
@@ -16959,7 +17006,7 @@
                 this.z = this.z.toRed(this.curve.red);
         }
     }
-    inherits$2(Point$1, base.BasePoint);
+    inherits_browser(Point$1, base.BasePoint);
 
     MontCurve.prototype.decodePoint = function decodePoint(bytes, enc) {
         return this.point(utils_1$2.toArray(bytes, enc), 1);
@@ -17095,7 +17142,12 @@
         return this.x.fromRed();
     };
 
-    var assert$4 = utils_1$2.assert;
+    var mont$1 = /*#__PURE__*/Object.freeze({
+        default: mont,
+        __moduleExports: mont
+    });
+
+    var assert$5 = utils_1$2.assert;
 
     function EdwardsCurve(conf) {
         // NOTE: Important as we are creating point in Base.call()
@@ -17112,10 +17164,10 @@
         this.d = new bn(conf.d, 16).toRed(this.red);
         this.dd = this.d.redAdd(this.d);
 
-        assert$4(!this.twisted || this.c.fromRed().cmpn(1) === 0);
+        assert$5(!this.twisted || this.c.fromRed().cmpn(1) === 0);
         this.oneC = (conf.c | 0) === 1;
     }
-    inherits$2(EdwardsCurve, base);
+    inherits_browser(EdwardsCurve, base);
     var edwards = EdwardsCurve;
 
     EdwardsCurve.prototype._mulA = function _mulA(num) {
@@ -17232,7 +17284,7 @@
             }
         }
     }
-    inherits$2(Point$2, base.BasePoint);
+    inherits_browser(Point$2, base.BasePoint);
 
     EdwardsCurve.prototype.pointFromJSON = function pointFromJSON(obj) {
         return Point$2.fromJSON(this, obj);
@@ -17521,17 +17573,24 @@
     Point$2.prototype.toP = Point$2.prototype.normalize;
     Point$2.prototype.mixedAdd = Point$2.prototype.add;
 
+    var require$$2 = ( mont$1 && mont ) || mont$1;
+
     var curve_1 = createCommonjsModule(function (module, exports) {
 
         var curve = exports;
 
         curve.base = base;
         curve.short = short_1;
-        curve.mont = mont;
+        curve.mont = require$$2;
         curve.edwards = edwards;
     });
 
-    var inherits_1 = inherits$2;
+    var curve = /*#__PURE__*/Object.freeze({
+        default: curve_1,
+        __moduleExports: curve_1
+    });
+
+    var inherits_1 = inherits_browser;
 
     function toArray(msg, enc) {
         if (Array.isArray(msg))
@@ -17624,7 +17683,7 @@
 
     function join32(msg, start, end, endian) {
         var len = end - start;
-        minimalisticAssert(len % 4 === 0);
+        assert$2(len % 4 === 0);
         var res = new Array(len / 4);
         for (var i = 0, k = start; i < res.length; i++, k += 4) {
             var w;
@@ -17780,7 +17839,7 @@
     }
     var shr64_lo_1 = shr64_lo;
 
-    var utils$2 = {
+    var utils$4 = {
         inherits: inherits_1,
         toArray: toArray_1,
         toHex: toHex_1,
@@ -17825,7 +17884,7 @@
 
     BlockHash.prototype.update = function update(msg, enc) {
         // Convert message to array, pad it, and join into 32bit blocks
-        msg = utils$2.toArray(msg, enc);
+        msg = utils$4.toArray(msg, enc);
         if (!this.pending)
             this.pending = msg;
         else
@@ -17842,7 +17901,7 @@
             if (this.pending.length === 0)
                 this.pending = null;
 
-            msg = utils$2.join32(msg, 0, msg.length - r, this.endian);
+            msg = utils$4.join32(msg, 0, msg.length - r, this.endian);
             for (var i = 0; i < msg.length; i += this._delta32)
                 this._update(msg, i, i + this._delta32);
         }
@@ -17852,7 +17911,7 @@
 
     BlockHash.prototype.digest = function digest(enc) {
         this.update(this._pad());
-        minimalisticAssert(this.pending === null);
+        assert$2(this.pending === null);
 
         return this._digest(enc);
     };
@@ -17901,7 +17960,7 @@
         BlockHash: BlockHash_1
     };
 
-    var rotr32$1 = utils$2.rotr32;
+    var rotr32$1 = utils$4.rotr32;
 
     function ft_1(s, x, y, z) {
         if (s === 0)
@@ -17959,10 +18018,25 @@
         g1_256: g1_256_1
     };
 
-    var rotl32$1 = utils$2.rotl32;
-    var sum32$1 = utils$2.sum32;
-    var sum32_5$1 = utils$2.sum32_5;
-    var ft_1$1 = common$1.ft_1;
+    var common$2 = /*#__PURE__*/Object.freeze({
+        default: common$1,
+        __moduleExports: common$1,
+        ft_1: ft_1_1,
+        ch32: ch32_1,
+        maj32: maj32_1,
+        p32: p32_1,
+        s0_256: s0_256_1,
+        s1_256: s1_256_1,
+        g0_256: g0_256_1,
+        g1_256: g1_256_1
+    });
+
+    var shaCommon = ( common$2 && common$1 ) || common$2;
+
+    var rotl32$1 = utils$4.rotl32;
+    var sum32$1 = utils$4.sum32;
+    var sum32_5$1 = utils$4.sum32_5;
+    var ft_1$1 = shaCommon.ft_1;
     var BlockHash$1 = common.BlockHash;
 
     var sha1_K = [
@@ -17981,7 +18055,7 @@
         this.W = new Array(80);
     }
 
-    utils$2.inherits(SHA1, BlockHash$1);
+    utils$4.inherits(SHA1, BlockHash$1);
     var _1 = SHA1;
 
     SHA1.blockSize = 512;
@@ -18023,20 +18097,20 @@
 
     SHA1.prototype._digest = function digest(enc) {
         if (enc === 'hex')
-            return utils$2.toHex32(this.h, 'big');
+            return utils$4.toHex32(this.h, 'big');
         else
-            return utils$2.split32(this.h, 'big');
+            return utils$4.split32(this.h, 'big');
     };
 
-    var sum32$2 = utils$2.sum32;
-    var sum32_4$1 = utils$2.sum32_4;
-    var sum32_5$2 = utils$2.sum32_5;
-    var ch32$1 = common$1.ch32;
-    var maj32$1 = common$1.maj32;
-    var s0_256$1 = common$1.s0_256;
-    var s1_256$1 = common$1.s1_256;
-    var g0_256$1 = common$1.g0_256;
-    var g1_256$1 = common$1.g1_256;
+    var sum32$2 = utils$4.sum32;
+    var sum32_4$1 = utils$4.sum32_4;
+    var sum32_5$2 = utils$4.sum32_5;
+    var ch32$1 = shaCommon.ch32;
+    var maj32$1 = shaCommon.maj32;
+    var s0_256$1 = shaCommon.s0_256;
+    var s1_256$1 = shaCommon.s1_256;
+    var g0_256$1 = shaCommon.g0_256;
+    var g1_256$1 = shaCommon.g1_256;
 
     var BlockHash$2 = common.BlockHash;
 
@@ -18071,7 +18145,7 @@
         this.k = sha256_K;
         this.W = new Array(64);
     }
-    utils$2.inherits(SHA256, BlockHash$2);
+    utils$4.inherits(SHA256, BlockHash$2);
     var _256 = SHA256;
 
     SHA256.blockSize = 512;
@@ -18096,7 +18170,7 @@
         var g = this.h[6];
         var h = this.h[7];
 
-        minimalisticAssert(this.k.length === W.length);
+        assert$2(this.k.length === W.length);
         for (i = 0; i < W.length; i++) {
             var T1 = sum32_5$2(h, s1_256$1(e), ch32$1(e, f, g), this.k[i], W[i]);
             var T2 = sum32$2(s0_256$1(a), maj32$1(a, b, c));
@@ -18122,9 +18196,9 @@
 
     SHA256.prototype._digest = function digest(enc) {
         if (enc === 'hex')
-            return utils$2.toHex32(this.h, 'big');
+            return utils$4.toHex32(this.h, 'big');
         else
-            return utils$2.split32(this.h, 'big');
+            return utils$4.split32(this.h, 'big');
     };
 
     function SHA224() {
@@ -18136,7 +18210,7 @@
             0xc1059ed8, 0x367cd507, 0x3070dd17, 0xf70e5939,
             0xffc00b31, 0x68581511, 0x64f98fa7, 0xbefa4fa4 ];
     }
-    utils$2.inherits(SHA224, _256);
+    utils$4.inherits(SHA224, _256);
     var _224 = SHA224;
 
     SHA224.blockSize = 512;
@@ -18147,22 +18221,22 @@
     SHA224.prototype._digest = function digest(enc) {
         // Just truncate output
         if (enc === 'hex')
-            return utils$2.toHex32(this.h.slice(0, 7), 'big');
+            return utils$4.toHex32(this.h.slice(0, 7), 'big');
         else
-            return utils$2.split32(this.h.slice(0, 7), 'big');
+            return utils$4.split32(this.h.slice(0, 7), 'big');
     };
 
-    var rotr64_hi$1 = utils$2.rotr64_hi;
-    var rotr64_lo$1 = utils$2.rotr64_lo;
-    var shr64_hi$1 = utils$2.shr64_hi;
-    var shr64_lo$1 = utils$2.shr64_lo;
-    var sum64$1 = utils$2.sum64;
-    var sum64_hi$1 = utils$2.sum64_hi;
-    var sum64_lo$1 = utils$2.sum64_lo;
-    var sum64_4_hi$1 = utils$2.sum64_4_hi;
-    var sum64_4_lo$1 = utils$2.sum64_4_lo;
-    var sum64_5_hi$1 = utils$2.sum64_5_hi;
-    var sum64_5_lo$1 = utils$2.sum64_5_lo;
+    var rotr64_hi$1 = utils$4.rotr64_hi;
+    var rotr64_lo$1 = utils$4.rotr64_lo;
+    var shr64_hi$1 = utils$4.shr64_hi;
+    var shr64_lo$1 = utils$4.shr64_lo;
+    var sum64$1 = utils$4.sum64;
+    var sum64_hi$1 = utils$4.sum64_hi;
+    var sum64_lo$1 = utils$4.sum64_lo;
+    var sum64_4_hi$1 = utils$4.sum64_4_hi;
+    var sum64_4_lo$1 = utils$4.sum64_4_lo;
+    var sum64_5_hi$1 = utils$4.sum64_5_hi;
+    var sum64_5_lo$1 = utils$4.sum64_5_lo;
 
     var BlockHash$3 = common.BlockHash;
 
@@ -18226,7 +18300,7 @@
         this.k = sha512_K;
         this.W = new Array(160);
     }
-    utils$2.inherits(SHA512, BlockHash$3);
+    utils$4.inherits(SHA512, BlockHash$3);
     var _512 = SHA512;
 
     SHA512.blockSize = 1024;
@@ -18285,7 +18359,7 @@
         var hh = this.h[14];
         var hl = this.h[15];
 
-        minimalisticAssert(this.k.length === W.length);
+        assert$2(this.k.length === W.length);
         for (var i = 0; i < W.length; i += 2) {
             var c0_hi = hh;
             var c0_lo = hl;
@@ -18356,9 +18430,9 @@
 
     SHA512.prototype._digest = function digest(enc) {
         if (enc === 'hex')
-            return utils$2.toHex32(this.h, 'big');
+            return utils$4.toHex32(this.h, 'big');
         else
-            return utils$2.split32(this.h, 'big');
+            return utils$4.split32(this.h, 'big');
     };
 
     function ch64_hi(xh, xl, yh, yl, zh) {
@@ -18477,11 +18551,18 @@
         return r;
     }
 
+    var _512$1 = /*#__PURE__*/Object.freeze({
+        default: _512,
+        __moduleExports: _512
+    });
+
+    var SHA512$1 = ( _512$1 && _512 ) || _512$1;
+
     function SHA384() {
         if (!(this instanceof SHA384))
             return new SHA384();
 
-        _512.call(this);
+        SHA512$1.call(this);
         this.h = [
             0xcbbb9d5d, 0xc1059ed8,
             0x629a292a, 0x367cd507,
@@ -18492,7 +18573,7 @@
             0xdb0c2e0d, 0x64f98fa7,
             0x47b5481d, 0xbefa4fa4 ];
     }
-    utils$2.inherits(SHA384, _512);
+    utils$4.inherits(SHA384, SHA512$1);
     var _384 = SHA384;
 
     SHA384.blockSize = 1024;
@@ -18502,16 +18583,16 @@
 
     SHA384.prototype._digest = function digest(enc) {
         if (enc === 'hex')
-            return utils$2.toHex32(this.h.slice(0, 12), 'big');
+            return utils$4.toHex32(this.h.slice(0, 12), 'big');
         else
-            return utils$2.split32(this.h.slice(0, 12), 'big');
+            return utils$4.split32(this.h.slice(0, 12), 'big');
     };
 
     var sha1 = _1;
     var sha224 = _224;
     var sha256 = _256;
     var sha384 = _384;
-    var sha512 = _512;
+    var sha512 = SHA512$1;
 
     var sha = {
         sha1: sha1,
@@ -18521,10 +18602,10 @@
         sha512: sha512
     };
 
-    var rotl32$2 = utils$2.rotl32;
-    var sum32$3 = utils$2.sum32;
-    var sum32_3$1 = utils$2.sum32_3;
-    var sum32_4$2 = utils$2.sum32_4;
+    var rotl32$2 = utils$4.rotl32;
+    var sum32$3 = utils$4.sum32;
+    var sum32_3$1 = utils$4.sum32_3;
+    var sum32_4$2 = utils$4.sum32_4;
     var BlockHash$4 = common.BlockHash;
 
     function RIPEMD160() {
@@ -18536,7 +18617,7 @@
         this.h = [ 0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476, 0xc3d2e1f0 ];
         this.endian = 'little';
     }
-    utils$2.inherits(RIPEMD160, BlockHash$4);
+    utils$4.inherits(RIPEMD160, BlockHash$4);
     var ripemd160 = RIPEMD160;
 
     RIPEMD160.blockSize = 512;
@@ -18587,9 +18668,9 @@
 
     RIPEMD160.prototype._digest = function digest(enc) {
         if (enc === 'hex')
-            return utils$2.toHex32(this.h, 'little');
+            return utils$4.toHex32(this.h, 'little');
         else
-            return utils$2.split32(this.h, 'little');
+            return utils$4.split32(this.h, 'little');
     };
 
     function f(j, x, y, z) {
@@ -18676,7 +18757,7 @@
         this.inner = null;
         this.outer = null;
 
-        this._init(utils$2.toArray(key, enc));
+        this._init(utils$4.toArray(key, enc));
     }
     var hmac = Hmac;
 
@@ -18684,7 +18765,7 @@
         // Shorten key, if needed
         if (key.length > this.blockSize)
             key = new this.Hash().update(key).digest();
-        minimalisticAssert(key.length <= this.blockSize);
+        assert$2(key.length <= this.blockSize);
 
         // Add padding to key
         for (var i = key.length; i < this.blockSize; i++)
@@ -18713,7 +18794,7 @@
     var hash_1 = createCommonjsModule(function (module, exports) {
         var hash = exports;
 
-        hash.utils = utils$2;
+        hash.utils = utils$4;
         hash.common = common;
         hash.sha = sha;
         hash.ripemd = ripemd;
@@ -18726,6 +18807,11 @@
         hash.sha384 = hash.sha.sha384;
         hash.sha512 = hash.sha.sha512;
         hash.ripemd160 = hash.ripemd.ripemd160;
+    });
+
+    var hash = /*#__PURE__*/Object.freeze({
+        default: hash_1,
+        __moduleExports: hash_1
     });
 
     var secp256k1 = {
@@ -19509,6 +19595,10 @@
         }
     };
 
+    var hash$1 = ( hash && hash_1 ) || hash;
+
+    var curve$1 = ( curve && curve_1 ) || curve;
+
     var curves_1 = createCommonjsModule(function (module, exports) {
 
         var curves = exports;
@@ -19521,11 +19611,11 @@
 
         function PresetCurve(options) {
             if (options.type === 'short')
-                this.curve = new curve_1.short(options);
+                this.curve = new curve$1.short(options);
             else if (options.type === 'edwards')
-                this.curve = new curve_1.edwards(options);
+                this.curve = new curve$1.edwards(options);
             else
-                this.curve = new curve_1.mont(options);
+                this.curve = new curve$1.mont(options);
             this.g = this.curve.g;
             this.n = this.curve.n;
             this.hash = options.hash;
@@ -19558,7 +19648,7 @@
             a: 'ffffffff ffffffff ffffffff fffffffe ffffffff fffffffc',
             b: '64210519 e59c80e7 0fa7e9ab 72243049 feb8deec c146b9b1',
             n: 'ffffffff ffffffff ffffffff 99def836 146bc9b1 b4d22831',
-            hash: hash_1.sha256,
+            hash: hash$1.sha256,
             gRed: false,
             g: [
                 '188da80e b03090f6 7cbf20eb 43a18800 f4ff0afd 82ff1012',
@@ -19573,7 +19663,7 @@
             a: 'ffffffff ffffffff ffffffff fffffffe ffffffff ffffffff fffffffe',
             b: 'b4050a85 0c04b3ab f5413256 5044b0b7 d7bfd8ba 270b3943 2355ffb4',
             n: 'ffffffff ffffffff ffffffff ffff16a2 e0b8f03e 13dd2945 5c5c2a3d',
-            hash: hash_1.sha256,
+            hash: hash$1.sha256,
             gRed: false,
             g: [
                 'b70e0cbd 6bb4bf7f 321390b9 4a03c1d3 56c21122 343280d6 115c1d21',
@@ -19588,7 +19678,7 @@
             a: 'ffffffff 00000001 00000000 00000000 00000000 ffffffff ffffffff fffffffc',
             b: '5ac635d8 aa3a93e7 b3ebbd55 769886bc 651d06b0 cc53b0f6 3bce3c3e 27d2604b',
             n: 'ffffffff 00000000 ffffffff ffffffff bce6faad a7179e84 f3b9cac2 fc632551',
-            hash: hash_1.sha256,
+            hash: hash$1.sha256,
             gRed: false,
             g: [
                 '6b17d1f2 e12c4247 f8bce6e5 63a440f2 77037d81 2deb33a0 f4a13945 d898c296',
@@ -19607,7 +19697,7 @@
                 '5013875a c656398d 8a2ed19d 2a85c8ed d3ec2aef',
             n: 'ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff c7634d81 ' +
                 'f4372ddf 581a0db2 48b0a77a ecec196a ccc52973',
-            hash: hash_1.sha384,
+            hash: hash$1.sha384,
             gRed: false,
             g: [
                 'aa87ca22 be8b0537 8eb1c71e f320ad74 6e1d3b62 8ba79b98 59f741e0 82542a38 ' +
@@ -19632,7 +19722,7 @@
             n: '000001ff ffffffff ffffffff ffffffff ffffffff ffffffff ' +
                 'ffffffff ffffffff fffffffa 51868783 bf2f966b 7fcc0148 ' +
                 'f709a5d0 3bb5c9b8 899c47ae bb6fb71e 91386409',
-            hash: hash_1.sha512,
+            hash: hash$1.sha512,
             gRed: false,
             g: [
                 '000000c6 858e06b7 0404e9cd 9e3ecb66 2395b442 9c648139 ' +
@@ -19651,7 +19741,7 @@
             a: '76d06',
             b: '1',
             n: '1000000000000000 0000000000000000 14def9dea2f79cd6 5812631a5cf5d3ed',
-            hash: hash_1.sha256,
+            hash: hash$1.sha256,
             gRed: false,
             g: [
                 '9'
@@ -19667,7 +19757,7 @@
             // -121665 * (121666^(-1)) (mod P)
             d: '52036cee2b6ffe73 8cc740797779e898 00700a4d4141d8ab 75eb4dca135978a3',
             n: '1000000000000000 0000000000000000 14def9dea2f79cd6 5812631a5cf5d3ed',
-            hash: hash_1.sha256,
+            hash: hash$1.sha256,
             gRed: false,
             g: [
                 '216936d3cd6e53fec0a4e231fdd6dc5c692cc7609525a7b2c9562d608f25d51a',
@@ -19692,7 +19782,7 @@
             b: '7',
             n: 'ffffffff ffffffff ffffffff fffffffe baaedce6 af48a03b bfd25e8c d0364141',
             h: '1',
-            hash: hash_1.sha256,
+            hash: hash$1.sha256,
 
             // Precomputed endomorphism
             beta: '7ae96a2b657c07106e64479eac3434e99cf0497512f58995c1396c28719501ee',
@@ -19731,10 +19821,10 @@
         this.K = null;
         this.V = null;
 
-        var entropy = utils_1$1.toArray(options.entropy, options.entropyEnc || 'hex');
-        var nonce = utils_1$1.toArray(options.nonce, options.nonceEnc || 'hex');
-        var pers = utils_1$1.toArray(options.pers, options.persEnc || 'hex');
-        minimalisticAssert(entropy.length >= (this.minEntropy / 8),
+        var entropy = utils$3.toArray(options.entropy, options.entropyEnc || 'hex');
+        var nonce = utils$3.toArray(options.nonce, options.nonceEnc || 'hex');
+        var pers = utils$3.toArray(options.pers, options.persEnc || 'hex');
+        assert$2(entropy.length >= (this.minEntropy / 8),
             'Not enough entropy. Minimum is: ' + this.minEntropy + ' bits');
         this._init(entropy, nonce, pers);
     }
@@ -19756,7 +19846,7 @@
     };
 
     HmacDRBG.prototype._hmac = function hmac() {
-        return new hash_1.hmac(this.hash, this.K);
+        return new hash$1.hmac(this.hash, this.K);
     };
 
     HmacDRBG.prototype._update = function update(seed) {
@@ -19786,10 +19876,10 @@
             entropyEnc = null;
         }
 
-        entropy = utils_1$1.toArray(entropy, entropyEnc);
-        add = utils_1$1.toArray(add, addEnc);
+        entropy = utils$3.toArray(entropy, entropyEnc);
+        add = utils$3.toArray(add, addEnc);
 
-        minimalisticAssert(entropy.length >= (this.minEntropy / 8),
+        assert$2(entropy.length >= (this.minEntropy / 8),
             'Not enough entropy. Minimum is: ' + this.minEntropy + ' bits');
 
         this._update(entropy.concat(add || []));
@@ -19809,7 +19899,7 @@
 
         // Optional additional data
         if (add) {
-            add = utils_1$1.toArray(add, addEnc || 'hex');
+            add = utils$3.toArray(add, addEnc || 'hex');
             this._update(add);
         }
 
@@ -19822,10 +19912,15 @@
         var res = temp.slice(0, len);
         this._update(add);
         this._reseed++;
-        return utils_1$1.encode(res, enc);
+        return utils$3.encode(res, enc);
     };
 
-    var assert$5 = utils_1$2.assert;
+    var hmacDrbg$1 = /*#__PURE__*/Object.freeze({
+        default: hmacDrbg,
+        __moduleExports: hmacDrbg
+    });
+
+    var assert$6 = utils_1$2.assert;
 
     function KeyPair(ec, options) {
         this.ec = ec;
@@ -19910,10 +20005,10 @@
             // Weierstrass/Edwards points on the other hand have both `x` and
             // `y` coordinates.
             if (this.ec.curve.type === 'mont') {
-                assert$5(key.x, 'Need x coordinate');
+                assert$6(key.x, 'Need x coordinate');
             } else if (this.ec.curve.type === 'short' ||
                 this.ec.curve.type === 'edwards') {
-                assert$5(key.x && key.y, 'Need both x and y coordinate');
+                assert$6(key.x && key.y, 'Need both x and y coordinate');
             }
             this.pub = this.ec.curve.point(key.x, key.y);
             return;
@@ -19940,7 +20035,7 @@
             ' pub: ' + (this.pub && this.pub.inspect()) + ' >';
     };
 
-    var assert$6 = utils_1$2.assert;
+    var assert$7 = utils_1$2.assert;
 
     function Signature(options, enc) {
         if (options instanceof Signature)
@@ -19949,7 +20044,7 @@
         if (this._importDER(options, enc))
             return;
 
-        assert$6(options.r && options.s, 'Signature without r or s');
+        assert$7(options.r && options.s, 'Signature without r or s');
         this.r = new bn(options.r, 16);
         this.s = new bn(options.s, 16);
         if (options.recoveryParam === undefined)
@@ -20070,9 +20165,9 @@
         return utils_1$2.encode(res, enc);
     };
 
-    var rand = ( brorand$1 && brorand ) || brorand$1;
+    var HmacDRBG$1 = ( hmacDrbg$1 && hmacDrbg ) || hmacDrbg$1;
 
-    var assert$7 = utils_1$2.assert;
+    var assert$8 = utils_1$2.assert;
 
 
 
@@ -20083,7 +20178,7 @@
 
         // Shortcut `elliptic.ec(curve-name)`
         if (typeof options === 'string') {
-            assert$7(curves_1.hasOwnProperty(options), 'Unknown curve ' + options);
+            assert$8(curves_1.hasOwnProperty(options), 'Unknown curve ' + options);
 
             options = curves_1[options];
         }
@@ -20123,11 +20218,11 @@
             options = {};
 
         // Instantiate Hmac_DRBG
-        var drbg = new hmacDrbg({
+        var drbg = new HmacDRBG$1({
             hash: this.hash,
             pers: options.pers,
             persEnc: options.persEnc || 'utf8',
-            entropy: options.entropy || rand(this.hash.hmacStrength),
+            entropy: options.entropy || brorand(this.hash.hmacStrength),
             entropyEnc: options.entropy && options.entropyEnc || 'utf8',
             nonce: this.n.toArray()
         });
@@ -20173,7 +20268,7 @@
         var nonce = msg.toArray('be', bytes);
 
         // Instantiate Hmac_DRBG
-        var drbg = new hmacDrbg({
+        var drbg = new HmacDRBG$1({
             hash: this.hash,
             entropy: bkey,
             nonce: nonce,
@@ -20259,7 +20354,7 @@
     };
 
     EC.prototype.recoverPubKey = function(msg, signature$$1, j, enc) {
-        assert$7((3 & j) === j, 'The recovery param is more than two bits');
+        assert$8((3 & j) === j, 'The recovery param is more than two bits');
         signature$$1 = new signature(signature$$1, enc);
 
         var n = this.n;
@@ -20307,7 +20402,7 @@
         throw new Error('Unable to find valid recovery factor');
     };
 
-    var assert$8 = utils_1$2.assert;
+    var assert$9 = utils_1$2.assert;
     var parseBytes = utils_1$2.parseBytes;
     var cachedProperty = utils_1$2.cachedProperty;
 
@@ -20381,7 +20476,7 @@
     });
 
     KeyPair$1.prototype.sign = function sign(message) {
-        assert$8(this._secret, 'KeyPair can only verify');
+        assert$9(this._secret, 'KeyPair can only verify');
         return this.eddsa.sign(message, this);
     };
 
@@ -20390,7 +20485,7 @@
     };
 
     KeyPair$1.prototype.getSecret = function getSecret(enc) {
-        assert$8(this._secret, 'KeyPair is public only');
+        assert$9(this._secret, 'KeyPair is public only');
         return utils_1$2.encode(this.secret(), enc);
     };
 
@@ -20400,7 +20495,12 @@
 
     var key$1 = KeyPair$1;
 
-    var assert$9 = utils_1$2.assert;
+    var key$2 = /*#__PURE__*/Object.freeze({
+        default: key$1,
+        __moduleExports: key$1
+    });
+
+    var assert$a = utils_1$2.assert;
     var cachedProperty$1 = utils_1$2.cachedProperty;
     var parseBytes$1 = utils_1$2.parseBytes;
 
@@ -20425,7 +20525,7 @@
             };
         }
 
-        assert$9(sig.R && sig.S, 'Signature without R or S');
+        assert$a(sig.R && sig.S, 'Signature without R or S');
 
         if (eddsa.isPoint(sig.R))
             this._R = sig.R;
@@ -20462,13 +20562,15 @@
 
     var signature$1 = Signature$1;
 
-    var assert$a = utils_1$2.assert;
+    var KeyPair$2 = ( key$2 && key$1 ) || key$2;
+
+    var assert$b = utils_1$2.assert;
     var parseBytes$2 = utils_1$2.parseBytes;
 
 
 
     function EDDSA(curve) {
-        assert$a(curve === 'ed25519', 'only tested with ed25519 so far');
+        assert$b(curve === 'ed25519', 'only tested with ed25519 so far');
 
         if (!(this instanceof EDDSA))
             return new EDDSA(curve);
@@ -20480,7 +20582,7 @@
 
         this.pointClass = curve.point().constructor;
         this.encodingLength = Math.ceil(curve.n.bitLength() / 8);
-        this.hash = hash_1.sha512;
+        this.hash = hash$1.sha512;
     }
 
     var eddsa = EDDSA;
@@ -20526,11 +20628,11 @@
     };
 
     EDDSA.prototype.keyFromPublic = function keyFromPublic(pub) {
-        return key$1.fromPublic(this, pub);
+        return KeyPair$2.fromPublic(this, pub);
     };
 
     EDDSA.prototype.keyFromSecret = function keyFromSecret(secret) {
-        return key$1.fromSecret(this, secret);
+        return KeyPair$2.fromSecret(this, secret);
     };
 
     EDDSA.prototype.makeSignature = function makeSignature(sig) {
@@ -20576,21 +20678,28 @@
         return val instanceof this.pointClass;
     };
 
-    var require$$0$2 = ( _package$1 && _package ) || _package$1;
+    var eddsa$1 = /*#__PURE__*/Object.freeze({
+        default: eddsa,
+        __moduleExports: eddsa
+    });
+
+    var require$$0$4 = ( _package$1 && _package ) || _package$1;
+
+    var require$$6 = ( eddsa$1 && eddsa ) || eddsa$1;
 
     var elliptic_1 = createCommonjsModule(function (module, exports) {
 
         var elliptic = exports;
 
-        elliptic.version = require$$0$2.version;
+        elliptic.version = require$$0$4.version;
         elliptic.utils = utils_1$2;
-        elliptic.rand = rand;
-        elliptic.curve = curve_1;
+        elliptic.rand = brorand;
+        elliptic.curve = curve$1;
         elliptic.curves = curves_1;
 
         // Protocols
         elliptic.ec = ec;
-        elliptic.eddsa = eddsa;
+        elliptic.eddsa = require$$6;
     });
 
     var ec$1 = new elliptic_1.ec('secp256k1');
@@ -20803,14 +20912,15 @@
             }, {
                 key: "toJson",
                 value: function toJson() {
+                    var to = has0xPrefix(this.to) ? toHexStr(this, 'to', 20, false) : this.to;
                     return {
-                        to: toHexStr(this, 'to', 20, false),
+                        to: to,
                         toName: this.toName,
-                        gasPrice: toHexStr(this, 'gasPrice', 0, true),
-                        gasLimit: toHexStr(this, 'gasLimit', 0, true),
-                        amount: toHexStr(this, 'amount', 0, true),
+                        gasPrice: new bignumber(this.gasPrice).toString(10),
+                        gasLimit: new bignumber(this.gasLimit).toString(10),
+                        amount: new bignumber(this.amount).toString(10),
                         data: toHexStr(this, 'data', 0, false),
-                        expirationTime: toHexStr(this, 'expirationTime', 0, true),
+                        expirationTime: new bignumber(this.expirationTime).toString(10),
                         message: this.message,
                         v: toHexStr(this, 'v', 0, true),
                         r: toHexStr(this, 'r', 0, true),
@@ -21033,6 +21143,11 @@
 
     var arrayWithoutHoles = _arrayWithoutHoles;
 
+    var arrayWithoutHoles$1 = /*#__PURE__*/Object.freeze({
+        default: arrayWithoutHoles,
+        __moduleExports: arrayWithoutHoles
+    });
+
     function _iterableToArray(iter) {
         if (Symbol.iterator in Object(iter) || Object.prototype.toString.call(iter) === "[object Arguments]") return Array.from(iter);
     }
@@ -21045,8 +21160,10 @@
 
     var nonIterableSpread = _nonIterableSpread;
 
+    var arrayWithoutHoles$2 = ( arrayWithoutHoles$1 && arrayWithoutHoles ) || arrayWithoutHoles$1;
+
     function _toConsumableArray(arr) {
-        return arrayWithoutHoles(arr) || iterableToArray(arr) || nonIterableSpread();
+        return arrayWithoutHoles$2(arr) || iterableToArray(arr) || nonIterableSpread();
     }
 
     var toConsumableArray = _toConsumableArray;

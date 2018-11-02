@@ -17,7 +17,7 @@ var _ = (*accountDataMarshaling)(nil)
 func (a AccountData) MarshalJSON() ([]byte, error) {
 	type AccountData struct {
 		Address       common.Address                  `json:"address" gencodec:"required"`
-		Balance       *hexutil.Big                    `json:"balance" gencodec:"required"`
+		Balance       *hexutil.Big10                  `json:"balance" gencodec:"required"`
 		CodeHash      common.Hash                     `json:"codeHash" gencodec:"required"`
 		StorageRoot   common.Hash                     `json:"root" gencodec:"required"`
 		NewestRecords map[ChangeLogType]VersionRecord `json:"records" gencodec:"required"`
@@ -25,7 +25,7 @@ func (a AccountData) MarshalJSON() ([]byte, error) {
 	}
 	var enc AccountData
 	enc.Address = a.Address
-	enc.Balance = (*hexutil.Big)(a.Balance)
+	enc.Balance = (*hexutil.Big10)(a.Balance)
 	enc.CodeHash = a.CodeHash
 	enc.StorageRoot = a.StorageRoot
 	enc.NewestRecords = a.NewestRecords
@@ -37,7 +37,7 @@ func (a AccountData) MarshalJSON() ([]byte, error) {
 func (a *AccountData) UnmarshalJSON(input []byte) error {
 	type AccountData struct {
 		Address       *common.Address                 `json:"address" gencodec:"required"`
-		Balance       *hexutil.Big                    `json:"balance" gencodec:"required"`
+		Balance       *hexutil.Big10                  `json:"balance" gencodec:"required"`
 		CodeHash      *common.Hash                    `json:"codeHash" gencodec:"required"`
 		StorageRoot   *common.Hash                    `json:"root" gencodec:"required"`
 		NewestRecords map[ChangeLogType]VersionRecord `json:"records" gencodec:"required"`

@@ -6,6 +6,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto/sha3"
 	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
+	"github.com/LemoFoundationLtd/lemochain-go/common/math"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"math/big"
 	"strings"
@@ -31,6 +32,10 @@ type Header struct {
 }
 
 type headerMarshaling struct {
+	Height     math.Decimal32
+	GasLimit   math.HexOrDecimal64
+	GasUsed    math.HexOrDecimal64
+	Time       *hexutil.Big10
 	SignData   hexutil.Bytes
 	DeputyRoot hexutil.Bytes
 	Extra      hexutil.Bytes
@@ -123,7 +128,7 @@ func (h *Header) String() string {
 		fmt.Sprintf("SignData: %s", common.ToHex(h.SignData[:])),
 		fmt.Sprintf("DeputyNodes: %s", common.ToHex(h.DeputyRoot)),
 	}
-	if len(h.Extra) >= 0 {
+	if len(h.Extra) > 0 {
 		set = append(set, fmt.Sprintf("Extra: %s", common.ToHex(h.Extra[:])))
 	}
 

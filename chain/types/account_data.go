@@ -31,7 +31,7 @@ type AccountData struct {
 }
 
 type accountDataMarshaling struct {
-	Balance *hexutil.Big
+	Balance *hexutil.Big10
 }
 
 type rlpVersionRecord struct {

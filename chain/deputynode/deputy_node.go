@@ -80,9 +80,9 @@ type DeputyNodes []*DeputyNode
 type Marshaling struct {
 	NodeID hexutil.Bytes
 	IP     hexutil.IP
-	Port   math.Decimal32
-	Rank   math.Decimal32
-	Votes  math.Decimal32
+	Port   math.DecimalUint
+	Rank   math.DecimalUint
+	Votes  math.DecimalUint
 }
 
 type DeputyNodesRecord struct {

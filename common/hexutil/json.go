@@ -190,6 +190,43 @@ func (b *Big) String() string {
 	return EncodeBig(b.ToInt())
 }
 
+type Big10 big.Int
+
+// MarshalText implements encoding.TextMarshaler
+func (b Big10) MarshalText() ([]byte, error) {
+	return []byte((*big.Int)(&b).String()), nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (b *Big10) UnmarshalJSON(input []byte) error {
+	if !isString(input) {
+		return errNonString(bigT)
+	}
+	return wrapTypeError(b.UnmarshalText(input[1:len(input)-1]), bigT)
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler
+func (b *Big10) UnmarshalText(input []byte) error {
+	raw, err := checkDecimalNumberText(input)
+	if err != nil {
+		return err
+	}
+	var dec big.Int
+	dec.SetString(string(raw), 10)
+	*b = (Big10)(dec)
+	return nil
+}
+
+// ToInt converts b to a big.Int.
+func (b *Big10) ToInt() *big.Int {
+	return (*big.Int)(b)
+}
+
+// String returns the hex encoding of b.
+func (b *Big10) String() string {
+	return b.ToInt().String()
+}
+
 // Uint64 marshals/unmarshals as a JSON string with 0x prefix.
 // The zero value marshals as "0x0".
 type Uint64 uint64
@@ -303,6 +340,19 @@ func checkNumberText(input []byte) (raw []byte, err error) {
 		return nil, ErrMissingPrefix
 	}
 	input = input[2:]
+	if len(input) == 0 {
+		return nil, ErrEmptyNumber
+	}
+	if len(input) > 1 && input[0] == '0' {
+		return nil, ErrLeadingZero
+	}
+	return input, nil
+}
+
+func checkDecimalNumberText(input []byte) (raw []byte, err error) {
+	if len(input) == 0 {
+		return nil, nil // empty strings are allowed
+	}
 	if len(input) == 0 {
 		return nil, ErrEmptyNumber
 	}
