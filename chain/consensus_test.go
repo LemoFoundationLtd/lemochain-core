@@ -2,6 +2,7 @@ package chain
 
 import (
 	"fmt"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
@@ -40,6 +41,8 @@ func loadDpovp() *Dpovp {
 // 初始化代理节点,numNode为选择共识节点数量，取值为[1,5],height为发放奖励高度
 func initDeputyNode(numNode int, height uint32) error {
 	manager := deputynode.Instance()
+	// 清理之前设置的共识节点列表
+	manager.Clear()
 
 	privarte01, err := crypto.ToECDSA(common.FromHex(deputy01Privkey))
 	if err != nil {
@@ -239,6 +242,18 @@ func Test_verifyHeaderSignData(t *testing.T) {
 	assert.Equal(t, ErrVerifyHeaderFailed, verifyHeaderSignData(block01))
 }
 
+// // TestDpovp_nodeCount1 nodeCount = 1 的情况下直接返回nil
+func TestDpovp_nodeCount1(t *testing.T) {
+
+	err := initDeputyNode(1, 0)
+	assert.NoError(t, err)
+	dpovp := loadDpovp()
+	defer store.ClearData()
+
+	t.Log(deputynode.Instance().GetDeputiesCount())
+	assert.Equal(t, nil, dpovp.VerifyHeader(&types.Block{}))
+}
+
 // 验证区块头Extra字段长度是否正确
 func Test_headerExtra(t *testing.T) {
 	err := initDeputyNode(3, 0)
@@ -266,6 +281,7 @@ func Test_headerExtra(t *testing.T) {
 func TestDpovp_VerifyHeader01(t *testing.T) {
 	err := initDeputyNode(3, 0)
 	assert.NoError(t, err)
+	t.Log(deputynode.Instance().GetDeputiesCount())
 	dpovp := loadDpovp()
 	defer store.ClearData()
 	// 验证不存在父区块的情况
@@ -279,54 +295,10 @@ func TestDpovp_VerifyHeader01(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, nil, dpovp.VerifyHeader(testBlock01))
-
-	// // 与父块的时间间隔小于blockInterval(3000ms) // 设置与父区块出块时间相差1000ms
-	// testBlock02, err := newTestBlock(dpovp, testBlock01.Hash(), 2, common.HexToAddress(block03LemoBase), testBlock01.Time().Add(testBlock01.Time(), big.NewInt(1)), deputy03Privkey, false)
-	// if err != nil {
-	// 	t.Error(err)
-	// }
-	//
-	// assert.Equal(t, fmt.Errorf("verifyHeader: block is not enough newer than it's parent"), dpovp.VerifyHeader(testBlock02))
 }
 
-// // 对共识中代理节点为一个情况共识的测试
-// // TestDpovp_VerifyHeader02 验证共识节点只有一个节点的情况(if nodeCount == 1)
-// func TestDpovp_VerifyHeader02(t *testing.T) {
-// 	err := initDeputyNode(1, 0) // 更改为一个代理节点参加共识
-// 	if err != nil {
-// 		assert.Nil(t, err)
-// 	}
-//
-// 	dpovp := loadDpovp()
-// 	defer store.ClearData()
-// 	// 创世块
-// 	block00, err := newTestBlock(dpovp, common.Hash{}, 0, common.HexToAddress(block01LemoBase), big.NewInt(995), deputy01Privkey, true)
-// 	if err != nil {
-// 		t.Error(err)
-// 	}
-//
-// 	// parent is genesis block
-// 	block01, err := newTestBlock(dpovp, block00.Hash(), 1, common.HexToAddress(block01LemoBase), big.NewInt(1000), deputy01Privkey, true)
-// 	// 	if err != nil {
-// 	// 		t.Error(err)
-// 	// 	}
-// 	// 验证共识节点只有一个的情况(if nodeCount == 1)
-// 	block02, err := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block01LemoBase), big.NewInt(1005), deputy01Privkey, true)
-// 	if err != nil {
-// 		t.Error(err)
-// 	}
-//
-// 	// 获取当前的共识节点数
-// 	// nodeCount := deputynode.Instance().GetDeputiesCount()
-// 	// t.Log("deputy node number is ", nodeCount) // 打印当前代理节点数,结果应该为1
-// 	// t.Log(dpovp.VerifyHeader(block02))
-//
-// 	// 通过调试打断点的方式来验证测试结果的正确性
-// 	assert.Equal(t, nil, dpovp.VerifyHeader(block02))
-// }
-
 // TestDpovp_VerifyHeader03 测试slot == 0,slot == 1,slot > 1的情况
-func TestDpovp_VerifyHeader03(t *testing.T) {
+func TestDpovp_VerifyHeader02(t *testing.T) {
 	// 创建5个代理节点
 	err := initDeputyNode(5, 0)
 	assert.NoError(t, err)
@@ -416,54 +388,44 @@ func TestDpovp_Seal(t *testing.T) {
 	assert.Equal(t, block01.Hash(), TestBlock.Hash())
 }
 
-func TestDpovp_nodeCount1(t *testing.T) {
-	err := initDeputyNode(1, 0)
-	assert.NoError(t, err)
-	dpovp := loadDpovp()
-	defer store.ClearData()
-	dpovp.VerifyHeader(&types.Block{})
-}
+// TestDpovp_Finalize todo
+func TestDpovp_Finalize(t *testing.T) {
 
-// // TestDpovp_Finalize todo
-// func TestDpovp_Finalize(t *testing.T) {
-//
-// 	// 添加第一个共识节点列表,设置共识的节点为前两个节点
-// 	err := initDeputyNode(2, 0)
-// 	if err != nil {
-// 		t.Error(err)
-// 	}
-// 	// 添加第二个共识节点列表,设置共识的节点为前三个节点,并设置发放奖励高度为10000,在挖出高度为10000+1000+1的区块的时候为上一轮共识节点发放奖励
-// 	err = initDeputyNode(3, 10000)
-// 	if err != nil {
-// 		t.Error(err)
-// 	}
-// 	// 添加第三个共识节点列表,并设置发放奖励高度为20000,在挖出高度为20000+1000+1的区块的时候为上一轮共识节点发放奖励
-// 	err = initDeputyNode(5, 20000)
-// 	if err != nil {
-// 		t.Error(err)
-// 	}
-//
-// 	dpovp := loadDpovp()
-// 	// 测试挖出的块高度不满足发放奖励高度的时候
-// 	dpovp.Finalize(&types.Header{Height: 9999}, account.NewManager(common.Hash{}, dpovp.db))
-// 	// dpovp.handOutRewards(9999)
-// 	dpovp.Finalize(&types.Header{Height: 19998}, account.NewManager(common.Hash{}, dpovp.db))
-// 	// dpovp.handOutRewards(19998)
-// 	account01, err := dpovp.db.GetAccount(common.Hash{}, common.HexToAddress(block01LemoBase))
-// 	assert.Nil(t, nil)
-// 	t.Log("When there is no reward,node01Balance = ", account01.Balance)
-// 	account02, err := dpovp.db.GetAccount(common.Hash{}, common.HexToAddress(block02LemoBase))
-// 	assert.Nil(t, nil)
-// 	t.Log("When there is no reward,node01Balance = ", account02.Balance)
-// 	// 测试挖出的块高度满足发放奖励高度的时候
-// 	// dpovp.handOutRewards(11001)
-// 	dpovp.Finalize(&types.Header{Height: 11001}, account.NewManager(common.Hash{}, dpovp.db))
-// 	t.Log("When it comes to giving out rewards,node01Balance = ", account01.Balance)
-// 	t.Log("When it comes to giving out rewards,node01Balance = ", account02.Balance)
-// 	// 第二轮发放奖励
-// 	// dpovp.handOutRewards(21001)
-// 	dpovp.Finalize(&types.Header{Height: 21001}, account.NewManager(common.Hash{}, dpovp.db))
-// 	t.Log("When it comes to giving out rewards,node01Balance = ", account01.Balance)
-// 	t.Log("When it comes to giving out rewards,node01Balance = ", account02.Balance)
-//
-// }
+	// 添加第一个共识节点列表,设置共识的节点为前两个节点
+	err := initDeputyNode(2, 0)
+	assert.NoError(t, err)
+	// 添加第二个共识节点列表,设置共识的节点为前三个节点,并设置发放奖励高度为10000,在挖出高度为10000+1000+1的区块的时候为上一轮共识节点发放奖励
+	err = initDeputyNode(3, 10000)
+	assert.NoError(t, err)
+	// 添加第三个共识节点列表,并设置发放奖励高度为20000,在挖出高度为20000+1000+1的区块的时候为上一轮共识节点发放奖励
+	err = initDeputyNode(5, 20000)
+	assert.NoError(t, err)
+
+	dpovp := loadDpovp()
+	am := account.NewManager(common.Hash{}, dpovp.db)
+	// 测试挖出的块高度不满足发放奖励高度的时候
+	dpovp.Finalize(&types.Header{Height: 9999}, am)
+	// dpovp.handOutRewards(9999)
+	dpovp.Finalize(&types.Header{Height: 19998}, am)
+	// dpovp.handOutRewards(19998)
+	addr1, err := common.StringToAddress(block01LemoBase)
+	assert.NoError(t, err)
+	account01 := am.GetAccount(addr1)
+	t.Log("When there is no reward,node01Balance = ", account01.GetBalance())
+
+	addr2, err := common.StringToAddress(block02LemoBase)
+	assert.NoError(t, err)
+	account02 := am.GetAccount(addr2)
+	t.Log("When there is no reward,node01Balance = ", account02.GetBalance())
+	// 测试挖出的块高度满足发放奖励高度的时候
+	// dpovp.handOutRewards(11001)
+	dpovp.Finalize(&types.Header{Height: 11001}, account.NewManager(common.Hash{}, dpovp.db))
+	t.Log("When it comes to giving out rewards,node01Balance = ", account01.GetBalance())
+	t.Log("When it comes to giving out rewards,node01Balance = ", account02.GetBalance())
+	// 第二轮发放奖励
+	// dpovp.handOutRewards(21001)
+	dpovp.Finalize(&types.Header{Height: 21001}, account.NewManager(common.Hash{}, dpovp.db))
+	t.Log("When it comes to giving out rewards,node01Balance = ", account01.GetBalance())
+	t.Log("When it comes to giving out rewards,node01Balance = ", account02.GetBalance())
+
+}

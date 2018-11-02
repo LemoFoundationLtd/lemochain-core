@@ -126,8 +126,8 @@ func (m *Miner) getTimespan() int64 {
 		log.Debug("getTimespan: current block's time is 0")
 		return int64(m.blockInterval)
 	}
-	now := time.Now().Unix()
-	return (now - lstSpan) * 1000
+	now := time.Now().UnixNano() / 1e6
+	return now - lstSpan*1000
 }
 
 // isSelfDeputyNode 本节点是否为代理节点
@@ -149,10 +149,6 @@ func (m *Miner) getSleepTime() int {
 	}
 	timeDur := m.getTimespan() // 获取当前时间与最新块的时间差
 	myself := deputynode.Instance().GetDeputyByNodeID(m.currentBlock().Height(), deputynode.GetSelfNodeID())
-	if myself == nil {
-		log.Warn("Self node isn't deputy node. Can't mine block.")
-		return -1
-	}
 	curHeader := m.currentBlock().Header
 	slot := deputynode.Instance().GetSlot(curHeader.Height+1, curHeader.LemoBase, myself.LemoBase) // 获取新块离本节点索引的距离
 	if slot == -1 {
