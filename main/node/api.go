@@ -33,22 +33,6 @@ func (a *AccountAPI) NewKeyPair() (*crypto.AddressKeyPair, error) {
 	return accounts, nil
 }
 
-// addPoint digital processing
-func addPoint(balance string) string {
-	length := len(balance)
-	var toBytes = []byte(balance)
-	if length <= 18 {
-		Balance := fmt.Sprintf("0.%018s", balance)
-		return Balance
-	} else {
-		point := length - 18
-		// Extended section length
-		Balance := string(toBytes[:point]) + "." + string(toBytes[point:])
-
-		return Balance
-	}
-}
-
 // GetBalance get balance api
 func (a *AccountAPI) GetBalance(LemoAddress string) (string, error) {
 	accounts, err := a.GetAccount(LemoAddress)
@@ -56,9 +40,8 @@ func (a *AccountAPI) GetBalance(LemoAddress string) (string, error) {
 		return "", err
 	}
 	balance := accounts.GetBalance().String()
-	lastBalance := addPoint(balance)
 
-	return lastBalance, nil
+	return balance, nil
 }
 
 // GetAccount return the struct of the &AccountData{}
@@ -254,6 +237,11 @@ func (n *NetAPI) DropPeer(node string) string {
 // Peers
 func (n *NetAPI) Peers() []p2p.PeerConnInfo {
 	return n.node.server.Peers()
+}
+
+// PeersCount return peers number
+func (n *NetAPI) PeersCount() int {
+	return len(n.node.server.Peers())
 }
 
 // todo

@@ -9,22 +9,6 @@ import (
 	"testing"
 )
 
-// Test_AddPoint test AddPoint function
-func Test_AddPoint(t *testing.T) {
-	test01 := "11111111111111111111"
-	test02 := "111111111111"
-	test03 := "111111111111111111111111111111111111111111111111"
-
-	B01 := addPoint(test01)
-	assert.Equal(t, "11.111111111111111111", B01)
-
-	B02 := addPoint(test02)
-	assert.Equal(t, "0.000000111111111111", B02)
-
-	B03 := addPoint(test03)
-	assert.Equal(t, "111111111111111111111111111111.111111111111111111", B03)
-}
-
 // TestAccountAPI_api account api test
 func TestAccountAPI_api(t *testing.T) {
 	db := newDB()
@@ -37,30 +21,29 @@ func TestAccountAPI_api(t *testing.T) {
 	t.Log(addressKeyPair)
 
 	// getBalance api
-	B01 := acc.manager.GetCanonicalAccount(common.HexToAddress("0x015780F8456F9c1532645087a19DcF9a7e0c7F97")).GetBalance().String()
-	b01 := addPoint(B01)
+	b01 := acc.manager.GetCanonicalAccount(common.HexToAddress("0x015780F8456F9c1532645087a19DcF9a7e0c7F97")).GetBalance().String()
 	bb01, err := acc.GetBalance("0x015780F8456F9c1532645087a19DcF9a7e0c7F97")
 	assert.NoError(t, err)
 	assert.Equal(t, b01, bb01)
 
 	address, err := common.StringToAddress("Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG")
 	assert.NoError(t, err)
-	B02 := acc.manager.GetCanonicalAccount(address).GetBalance().String()
-	b02 := addPoint(B02)
+	b02 := acc.manager.GetCanonicalAccount(address).GetBalance().String()
 	bb02, err := acc.GetBalance("Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG")
 	assert.NoError(t, err)
 	assert.Equal(t, b02, bb02)
 
-	B03 := acc.manager.GetCanonicalAccount(testAddr).GetBalance().String()
-	b03 := addPoint(B03)
+	b03 := acc.manager.GetCanonicalAccount(testAddr).GetBalance().String()
 	bb03, err := acc.GetBalance(testAddr.String())
 	assert.NoError(t, err)
 	assert.Equal(t, b03, bb03)
 
 	// get account api
-	account01, err := acc.GetAccount("0x016ad4Fc7e1608685Bf5fe5573973BF2B1Ef9B8A")
+	account01, err := acc.GetAccount("0x015780F8456F9c1532645087a19DcF9a7e0c7F97")
 	assert.NoError(t, err)
-	assert.Equal(t, acc.manager.GetCanonicalAccount(common.HexToAddress("0x016ad4Fc7e1608685Bf5fe5573973BF2B1Ef9B8A")), account01)
+	addr, err := common.StringToAddress("0x015780F8456F9c1532645087a19DcF9a7e0c7F97")
+	assert.NoError(t, err)
+	assert.Equal(t, acc.manager.GetCanonicalAccount(addr), account01)
 
 }
 

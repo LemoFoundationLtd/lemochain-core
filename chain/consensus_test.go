@@ -1,7 +1,6 @@
 package chain
 
 import (
-	"errors"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
@@ -223,50 +222,63 @@ func Test_verifyHeaderTime(t *testing.T) {
 	err02 := verifyHeaderTime(&blocks[1])
 	assert.Equal(t, nil, err02)
 	err03 := verifyHeaderTime(&blocks[2])
-	assert.Equal(t, errors.New("verify block's header error"), err03)
+	assert.Equal(t, ErrVerifyHeaderFailed, err03)
 
 }
 
 // Test_verifyHeaderSignData 测试验证区块签名数据函数是否正确
 func Test_verifyHeaderSignData(t *testing.T) {
 	err := initDeputyNode(3, 0) // 选择前三个共识节点
-	if err != nil {
-		assert.Error(t, err)
-	}
+	assert.NoError(t, err)
 	dpovp := loadDpovp()
 	defer store.ClearData()
 	// 创建一个块并用另一个节点来对此区块进行签名
 	block01, err := newTestBlock(dpovp, common.Hash{}, 1, common.HexToAddress(block01LemoBase), big.NewInt(time.Now().Unix()), deputy02Privkey, false)
-	if err != nil {
-		t.Error(err)
-	}
+	assert.NoError(t, err)
 	// header := block01.Header
 	assert.Equal(t, ErrVerifyHeaderFailed, verifyHeaderSignData(block01))
+}
+
+// 验证区块头Extra字段长度是否正确
+func Test_headerExtra(t *testing.T) {
+	err := initDeputyNode(3, 0)
+	assert.NoError(t, err)
+	dpovp := loadDpovp()
+	defer store.ClearData()
+	// 创建一个标准的区块
+	testBlcok, err := newTestBlock(dpovp, common.Hash{}, 1, common.HexToAddress(block01LemoBase), big.NewInt(time.Now().Unix()-10), deputy01Privkey, false)
+	assert.NoError(t, err)
+	// 设置区块头中的extra字段长度大于标准长度
+	extra := make([]byte, 257)
+	testBlcok.Header.Extra = extra
+	// 把区块之前的签名置空
+	testBlcok.Header.SignData = []byte{}
+	// 重新对区块进行签名
+	signData, err := signTestBlock(deputy01Privkey, testBlcok)
+	assert.NoError(t, err)
+	testBlcok.Header.SignData = signData
+	// 验证
+	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyHeader(testBlcok))
+
 }
 
 // TestDpovp_VerifyHeader01 对共识中共识区块与父块关联情况共识的测试
 func TestDpovp_VerifyHeader01(t *testing.T) {
 	err := initDeputyNode(3, 0)
-	if err != nil {
-		t.Error(err)
-	}
+	assert.NoError(t, err)
 	dpovp := loadDpovp()
 	defer store.ClearData()
 	// 验证不存在父区块的情况
 	testBlock00, err := newTestBlock(dpovp, common.Hash{}, 0, common.HexToAddress(block01LemoBase), big.NewInt(time.Now().Unix()-10), deputy01Privkey, true)
-	if err != nil {
-		t.Error(err)
-	}
+	assert.NoError(t, err)
 	// header := testBlock00.Header
 	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyHeader(testBlock00))
 
 	// 验证父区块的高度为0，也就是父区块为创世区块情况
 	testBlock01, err := newTestBlock(dpovp, testBlock00.Hash(), 1, common.HexToAddress(block02LemoBase), big.NewInt(time.Now().Unix()-5), deputy02Privkey, true)
-	if err != nil {
-		t.Error(err)
-	}
+	assert.NoError(t, err)
 
-	t.Log("parent block is genesis block, return ", dpovp.VerifyHeader(testBlock01))
+	assert.Equal(t, nil, dpovp.VerifyHeader(testBlock01))
 
 	// // 与父块的时间间隔小于blockInterval(3000ms) // 设置与父区块出块时间相差1000ms
 	// testBlock02, err := newTestBlock(dpovp, testBlock01.Hash(), 2, common.HexToAddress(block03LemoBase), testBlock01.Time().Add(testBlock01.Time(), big.NewInt(1)), deputy03Privkey, false)
@@ -275,11 +287,10 @@ func TestDpovp_VerifyHeader01(t *testing.T) {
 	// }
 	//
 	// assert.Equal(t, fmt.Errorf("verifyHeader: block is not enough newer than it's parent"), dpovp.VerifyHeader(testBlock02))
-
 }
 
-// 对共识中代理节点各种情况共识的测试
-// TestDpovp_VerifyHeader02 验证共识节点只有一个节点的情况(if nodeCount == 1)
+// // 对共识中代理节点为一个情况共识的测试
+// // TestDpovp_VerifyHeader02 验证共识节点只有一个节点的情况(if nodeCount == 1)
 // func TestDpovp_VerifyHeader02(t *testing.T) {
 // 	err := initDeputyNode(1, 0) // 更改为一个代理节点参加共识
 // 	if err != nil {
@@ -293,16 +304,18 @@ func TestDpovp_VerifyHeader01(t *testing.T) {
 // 	if err != nil {
 // 		t.Error(err)
 // 	}
+//
 // 	// parent is genesis block
 // 	block01, err := newTestBlock(dpovp, block00.Hash(), 1, common.HexToAddress(block01LemoBase), big.NewInt(1000), deputy01Privkey, true)
-// 	if err != nil {
-// 		t.Error(err)
-// 	}
+// 	// 	if err != nil {
+// 	// 		t.Error(err)
+// 	// 	}
 // 	// 验证共识节点只有一个的情况(if nodeCount == 1)
 // 	block02, err := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block01LemoBase), big.NewInt(1005), deputy01Privkey, true)
 // 	if err != nil {
 // 		t.Error(err)
 // 	}
+//
 // 	// 获取当前的共识节点数
 // 	// nodeCount := deputynode.Instance().GetDeputiesCount()
 // 	// t.Log("deputy node number is ", nodeCount) // 打印当前代理节点数,结果应该为1
@@ -316,90 +329,65 @@ func TestDpovp_VerifyHeader01(t *testing.T) {
 func TestDpovp_VerifyHeader03(t *testing.T) {
 	// 创建5个代理节点
 	err := initDeputyNode(5, 0)
-	if err != nil {
-		t.Error(err)
-	}
+	assert.NoError(t, err)
 	dpovp := loadDpovp()
 	defer clearDB()
 	// 创世块,随便哪个节点出块在这里没有影响
 	block00, err := newTestBlock(dpovp, common.Hash{}, 0, common.HexToAddress(block01LemoBase), big.NewInt(1995), deputy01Privkey, true)
-	if err != nil {
-		t.Error(err)
-	}
+	assert.NoError(t, err)
 	// parent is genesis block,由第一个节点出块,此区块是作为测试区块的参照区块
 	block01, err := newTestBlock(dpovp, block00.Hash(), 1, common.HexToAddress(block01LemoBase), big.NewInt(2000), deputy01Privkey, true)
-	if err != nil {
-		t.Error(err)
-	}
+	assert.NoError(t, err)
+
 	// if slot == 0 :
 	// 还是由第一个节点出块,模拟 (if slot == 0 ) 的情况 ,与block01时间差为44s,满足条件(if timeSpan >= oneLoopTime-d.timeoutTime),此区块共识验证通过会返回nil
 	block02, err := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block01LemoBase), big.NewInt(2044), deputy01Privkey, false)
-	if err != nil {
-		t.Error(err)
-	}
-	t.Log("if slot == 0 && timeSpan >= oneLoopTime-d.timeoutTime , return nil", dpovp.VerifyHeader(block02))
-	// 同上 else 情况, 与block01时间差为33s,小于40s
+	assert.NoError(t, err)
+	assert.Equal(t, nil, dpovp.VerifyHeader(block02))
+	// 与block01时间差为33s,小于40s,验证不通过的情况
 	block03, err := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block01LemoBase), big.NewInt(2033), deputy01Privkey, false)
-	if err != nil {
-		t.Error(err)
-	}
+	assert.NoError(t, err)
 	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyHeader(block03))
 	// 测试一个临界值，与block01时间差等于40s的情况
 	block04, err := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block01LemoBase), big.NewInt(2040), deputy01Privkey, false)
-	if err != nil {
-		t.Error(err)
-	}
-	t.Log("if slot == 0 && timeSpan == 40s, return nil", dpovp.VerifyHeader(block04))
+	assert.NoError(t, err)
+	assert.Equal(t, nil, dpovp.VerifyHeader(block04))
 
 	// else if slot == 1 :
 	// 都与block01作为父块, 设置出块代理节点为第二个节点，满足slot == 1,时间差设为第一种小于一轮(50s)的情况,
 	// block05时间满足(timeSpan >= d.blockInterval && timeSpan < d.timeoutTime)的正常情况
 	block05, err := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block02LemoBase), big.NewInt(2005), deputy02Privkey, false)
-	if err != nil {
-		t.Error(err)
-	}
-	t.Log("solt == 1 && timeSpan < oneLoopTime && timeSpan >= d.blockInterval && timeSpan < d.timeoutTime ,return nil", dpovp.VerifyHeader(block05))
+	assert.NoError(t, err)
+	assert.Equal(t, nil, dpovp.VerifyHeader(block05))
 	// block06 不满足(timeSpan >= d.blockInterval && timeSpan < d.timeoutTime)的情况,timeSpan == 11 > 10
 	block06, err := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block02LemoBase), big.NewInt(2011), deputy02Privkey, false)
-	if err != nil {
-		t.Error(err)
-	}
+	assert.NoError(t, err)
 	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyHeader(block06))
 	// if slot == 1 else 的情况，此情况是timeSpan >= oneLoopTime,时间间隔超过一轮
 	// 首先测试 timeSpan % oneLoopTime < timeoutTime 的正常情况
 	block07, err := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block02LemoBase), big.NewInt(2051), deputy02Privkey, false)
-	if err != nil {
-		t.Error(err)
-	}
-	t.Log("timeSpan % oneLoopTime < timeoutTime is normal,return nil", dpovp.VerifyHeader(block07))
+	assert.NoError(t, err)
+	assert.Equal(t, nil, dpovp.VerifyHeader(block07))
 	// 异常情况,timeSpan % oneLoopTime = 20 > timeoutTime
 	block08, err := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block02LemoBase), big.NewInt(2070), deputy02Privkey, false)
-	if err != nil {
-		t.Error(err)
-	}
+	assert.NoError(t, err)
 	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyHeader(block08))
 
 	// else :
 	// slot > 1的情况分析
 	// timeSpan/d.timeoutTime == int64(slot-1) , timeSpan与timeoutTime的除数正好是间隔的代理节点数，为正常情况
-	// 设置block09为第四个节点出块，与block01出块节点中间相隔2个节点,设置时间timeSpan == 20-29都是符合出块的时间
+	// 设置block09为第四个节点出块，与block01出块节点中间相隔2个节点,设置时间timeSpan == 20--29都是符合出块的时间
 	block09, err := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block04LemoBase), big.NewInt(2025), deputy04Privkey, false)
-	if err != nil {
-		t.Error(err)
-	}
-	t.Log("else: slot > 1 ,timeSpan/d.timeoutTime == int64(slot-1), return nil ", dpovp.VerifyHeader(block09))
+	assert.NoError(t, err)
+	assert.Equal(t, nil, dpovp.VerifyHeader(block09))
 	// 不符合情况,设置timeSpan >=30 || timeSpan < 20
-	// timeSpan >=30 情况
+	// timeSpan >=30 情况， 满足条件 timeSpan/d.timeoutTime != int64(slot-1)
 	block10, err := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block04LemoBase), big.NewInt(2030), deputy04Privkey, false)
-	if err != nil {
-		t.Error(err)
-	}
+	assert.NoError(t, err)
 	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyHeader(block10))
-	// timeSpan < 20 情况
+	// timeSpan < 20 情况， 满足条件 timeSpan/d.timeoutTime != int64(slot-1)
 	block11, err := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block04LemoBase), big.NewInt(2019), deputy04Privkey, false)
-	if err != nil {
-		t.Error(err)
-	}
+	assert.NoError(t, err)
 	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyHeader(block11))
 
 }
@@ -410,14 +398,10 @@ func TestDpovp_Seal(t *testing.T) {
 	defer store.ClearData()
 	// 创世块
 	block00, err := newTestBlock(dpovp, common.Hash{}, 0, common.HexToAddress(block01LemoBase), big.NewInt(995), deputy01Privkey, true)
-	if err != nil {
-		t.Error(err)
-	}
+	assert.NoError(t, err)
 	// parent is genesis block,此区块是作为测试区块的参照区块
 	block01, err := newTestBlock(dpovp, block00.Hash(), 1, common.HexToAddress(block01LemoBase), big.NewInt(1000), deputy01Privkey, true)
-	if err != nil {
-		t.Error(err)
-	}
+	assert.NoError(t, err)
 
 	TestBlockHeader := block01.Header // 得到block01头，为生成TestBlock所用
 	txs := []*types.Transaction{
@@ -428,11 +412,16 @@ func TestDpovp_Seal(t *testing.T) {
 	TestBlockChangeLog := block01.ChangeLogs
 	TestBlockEvents := block01.Events
 	TestBlock, err := dpovp.Seal(TestBlockHeader, txs, TestBlockChangeLog, TestBlockEvents)
-	if err != nil {
-		t.Error(err)
-	}
+	assert.NoError(t, err)
 	assert.Equal(t, block01.Hash(), TestBlock.Hash())
+}
 
+func TestDpovp_nodeCount1(t *testing.T) {
+	err := initDeputyNode(1, 0)
+	assert.NoError(t, err)
+	dpovp := loadDpovp()
+	defer store.ClearData()
+	dpovp.VerifyHeader(&types.Block{})
 }
 
 // // TestDpovp_Finalize todo
