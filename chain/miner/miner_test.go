@@ -278,7 +278,6 @@ func setSelfNodeKey(key string) {
 
 func newMiner(key string) (*Miner, chan *types.Block, chan *types.Block, error) {
 	store.ClearData()
-
 	setSelfNodeKey(key)
 
 	blockChain, _, err := newBlockChain()
@@ -314,13 +313,14 @@ func calDeviation(ex int, src int) bool {
 }
 
 func TestMiner_GetSleepGenesis(t *testing.T) {
-	defer store.ClearData()
+	store.ClearData()
 	deputynode.Instance().Clear()
 	deputynode.Instance().Add(0, chain.DefaultDeputyNodes)
 
 	me := Nodes[0].privateKey
 	miner, _, _, err := newMiner(me)
 	assert.NoError(t, err)
+
 	reset0 := miner.getSleepTime()
 
 	setSelfNodeKey(Nodes[1].privateKey)
@@ -343,7 +343,7 @@ func TestMiner_GetSleepGenesis(t *testing.T) {
 }
 
 func TestMine_GetSleepNotSelf(t *testing.T) {
-	defer store.ClearData()
+	store.ClearData()
 	deputynode.Instance().Clear()
 	deputynode.Instance().Add(0, chain.DefaultDeputyNodes)
 
@@ -366,7 +366,7 @@ func TestMine_GetSleepNotSelf(t *testing.T) {
 }
 
 func TestMiner_GetSleep1Deputy(t *testing.T) {
-	defer store.ClearData()
+	store.ClearData()
 	deputynode.Instance().Clear()
 	deputynode.Instance().Add(0, deputynode.DeputyNodes{chain.DefaultDeputyNodes[0]})
 	setSelfNodeKey(Nodes[0].privateKey)
@@ -400,7 +400,7 @@ func TestMiner_GetSleepValidAuthor(t *testing.T) {
 }
 
 func TestMiner_GetSleepSlot0_1(t *testing.T) {
-	defer store.ClearData()
+	store.ClearData()
 	deputynode.Instance().Clear()
 	deputynode.Instance().Add(0, chain.DefaultDeputyNodes)
 
@@ -424,32 +424,32 @@ func TestMiner_GetSleepSlot0_1(t *testing.T) {
 	assert.NoError(t, err)
 
 	reset := miner.getSleepTime()
-	//fmt.Println("NODE0:", reset)
+	fmt.Println("NODE[0]:", reset)
 	assert.Equal(t, calDeviation(40000-wait*1000, reset), true)
 
 	setSelfNodeKey(Nodes[1].privateKey)
 	reset = miner.getSleepTime()
-	//fmt.Println("NODE1:", reset)
+	fmt.Println("NODE[1]:", reset)
 	assert.Equal(t, calDeviation(int(Cnf.SleepTime)-wait*1000, reset), true)
 
 	setSelfNodeKey(Nodes[2].privateKey)
 	reset = miner.getSleepTime()
-	//fmt.Println("NODE2:", reset)
+	fmt.Println("NODE[2]:", reset)
 	assert.Equal(t, calDeviation(10000-wait*1000, reset), true)
 
 	setSelfNodeKey(Nodes[3].privateKey)
 	reset = miner.getSleepTime()
-	//fmt.Println("NODE3:", reset)
+	fmt.Println("NODE[3]:", reset)
 	assert.Equal(t, calDeviation(20000-wait*1000, reset), true)
 
 	setSelfNodeKey(Nodes[4].privateKey)
 	reset = miner.getSleepTime()
-	//fmt.Println("NODE4:", reset)
+	fmt.Println("NODE[4]:", reset)
 	assert.Equal(t, calDeviation(30000-wait*1000, reset), true)
 }
 
 func TestMiner_GetSleepNormal(t *testing.T) {
-	defer store.ClearData()
+	store.ClearData()
 	deputynode.Instance().Clear()
 	deputynode.Instance().Add(0, chain.DefaultDeputyNodes)
 
