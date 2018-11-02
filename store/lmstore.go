@@ -75,16 +75,17 @@ func (database *LmDataBase) createFile(index int) error {
 	dataPath := database.getDataPath(index)
 	hintPath := database.getHintPath(index)
 
-	_, err := os.Create(dataPath)
+	f, err := os.Create(dataPath)
 	if err != nil {
 		return err
 	}
+	f.Close()
 
-	_, err = os.Create(hintPath)
+	f, err = os.Create(hintPath)
 	if err != nil {
 		return err
 	}
-
+	f.Close()
 	return nil
 }
 
@@ -242,10 +243,11 @@ func (database *LmDataBase) loadCurrentBlock(homePath string) error {
 	}
 
 	if !isExit {
-		_, err := os.Create(dataPath)
+		f, err := os.Create(dataPath)
 		if err != nil {
 			return err
 		}
+		f.Close()
 	}
 
 	file, err := os.OpenFile(dataPath, os.O_RDONLY, os.ModePerm)
@@ -356,10 +358,11 @@ func (database *LmDataBase) SetCurrentBlock(block []byte) error {
 	}
 
 	if !isExit {
-		_, err := os.Create(dataPath)
+		f, err := os.Create(dataPath)
 		if err != nil {
 			return err
 		}
+		f.Close()
 	}
 
 	file, err := os.OpenFile(dataPath, os.O_RDWR, os.ModePerm)
