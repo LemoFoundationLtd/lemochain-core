@@ -73,28 +73,11 @@ func (c *Config) WSEndpoint() string {
 	return fmt.Sprintf("%s:%d", c.WSHost, c.WSPort)
 }
 
-func (c *Config) name() string {
+func (c *Config) NodeName() string {
 	if c.Name == "" {
-		progname := strings.TrimSuffix(filepath.Base(os.Args[0]), ".exe")
-		if progname == "" {
-			panic("empty executable name, set Config.Name")
-		}
-		return progname
+		return "Lemo"
 	}
 	return c.Name
-}
-
-func (c *Config) NodeName() string {
-	name := c.name()
-	if name == "glemo" || name == "glemo-testnet" {
-		name = "Glemo"
-	}
-	if c.Version != "" {
-		name += "/v" + c.Version
-	}
-	name += "/" + runtime.GOOS + "-" + runtime.GOARCH
-	name += "/" + runtime.Version()
-	return name
 }
 
 func (c *Config) NodeKey() *ecdsa.PrivateKey {
