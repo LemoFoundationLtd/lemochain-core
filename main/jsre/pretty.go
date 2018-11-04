@@ -134,6 +134,10 @@ func (ctx ppctx) printObject(obj *otto.Object, level int, inArray bool) {
 	case "Object":
 		// Print values from bignumber.js as regular numbers.
 		if ctx.isBigNumber(obj) {
+			if isMoney(obj) {
+				fmt.Fprint(ctx.w, NumberColor("%s", toMoney(obj)))
+				return
+			}
 			fmt.Fprint(ctx.w, NumberColor("%s", toString(obj)))
 			return
 		}
@@ -269,4 +273,14 @@ func constructorPrototype(obj *otto.Object) *otto.Object {
 		}
 	}
 	return nil
+}
+
+func isMoney(obj *otto.Object) bool {
+	v, _ := obj.Get("toMoney")
+	return v.Object() != nil
+}
+
+func toMoney(obj *otto.Object) string {
+	s, _ := obj.Call("toMoney")
+	return s.String()
 }

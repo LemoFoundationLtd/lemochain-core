@@ -45,7 +45,6 @@ var (
 	ErrMissingPrefix = &decError{"hex string without 0x prefix"}
 	ErrOddLength     = &decError{"hex string of odd length"}
 	ErrEmptyNumber   = &decError{"hex string \"0x\""}
-	ErrLeadingZero   = &decError{"hex number with leading zero digits"}
 	ErrUint64Range   = &decError{"hex number > 64 bits"}
 	ErrUintRange     = &decError{fmt.Sprintf("hex number > %d bits", uintBits)}
 	ErrBig256Range   = &decError{"hex number > 256 bits"}
@@ -198,9 +197,6 @@ func checkNumber(input string) (raw string, err error) {
 	input = input[2:]
 	if len(input) == 0 {
 		return "", ErrEmptyNumber
-	}
-	if len(input) > 1 && input[0] == '0' {
-		return "", ErrLeadingZero
 	}
 	return input, nil
 }

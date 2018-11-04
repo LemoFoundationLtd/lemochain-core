@@ -343,9 +343,6 @@ func checkNumberText(input []byte) (raw []byte, err error) {
 	if len(input) == 0 {
 		return nil, ErrEmptyNumber
 	}
-	if len(input) > 1 && input[0] == '0' {
-		return nil, ErrLeadingZero
-	}
 	return input, nil
 }
 
@@ -355,9 +352,6 @@ func checkDecimalNumberText(input []byte) (raw []byte, err error) {
 	}
 	if len(input) == 0 {
 		return nil, ErrEmptyNumber
-	}
-	if len(input) > 1 && input[0] == '0' {
-		return nil, ErrLeadingZero
 	}
 	return input, nil
 }
