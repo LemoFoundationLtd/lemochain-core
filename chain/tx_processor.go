@@ -130,7 +130,6 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 		// about the transaction and calling mechanisms.
 		vmEnv            = vm.NewEVM(context, p.am, *p.cfg)
 		sender           = p.am.GetAccount(senderAddr)
-		recipientAddr    = *tx.To()
 		contractCreation = tx.To() == nil
 		restGas          = tx.GasLimit()
 		mergeFrom        = len(p.am.GetChangeLogs())
@@ -146,11 +145,15 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 
 	// vm errors do not effect consensus and are therefor not assigned to err,
 	// except for insufficient balance error.
-	var vmErr error
+	var (
+		vmErr         error
+		recipientAddr common.Address
+	)
 	if contractCreation {
 		_, recipientAddr, restGas, vmErr = vmEnv.Create(sender, tx.Data(), restGas, tx.Amount())
 	} else {
-		_, restGas, vmErr = vmEnv.Call(sender, *tx.To(), tx.Data(), restGas, tx.Amount())
+		recipientAddr = *tx.To()
+		_, restGas, vmErr = vmEnv.Call(sender, recipientAddr, tx.Data(), restGas, tx.Amount())
 	}
 	if vmErr != nil {
 		log.Info("VM returned with error", "err", vmErr)

@@ -38,7 +38,7 @@ type txdata struct {
 	GasPrice      *big.Int        `json:"gasPrice" gencodec:"required"`
 	GasLimit      uint64          `json:"gasLimit" gencodec:"required"`
 	Amount        *big.Int        `json:"amount" gencodec:"required"`
-	Data          []byte          `json:"data" gencodec:"required"`
+	Data          []byte          `json:"data"`
 	Expiration    uint64          `json:"expirationTime" gencodec:"required"`
 	Message       string          `json:"message"`
 

@@ -27,8 +27,8 @@ type Header struct {
 	GasUsed     uint64         `json:"gasUsed"          gencodec:"required"`
 	Time        *big.Int       `json:"timestamp"        gencodec:"required"`
 	SignData    []byte         `json:"signData"         gencodec:"required"`
-	DeputyRoot  []byte         `json:"deputyRoot"       gencodec:"required"`
-	Extra       []byte         `json:"extraData"        gencodec:"required"` // max length is 256 bytes
+	DeputyRoot  []byte         `json:"deputyRoot"`
+	Extra       []byte         `json:"extraData"` // max length is 256 bytes
 }
 
 type headerMarshaling struct {
