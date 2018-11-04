@@ -118,7 +118,8 @@ func (i *Decimal32) UnmarshalJSON(input []byte) error {
 	return err
 }
 
-func (i Decimal32) MarshalJSON() ([]byte, error) {
+// MarshalText implements encoding.TextMarshaler.
+func (i Decimal32) MarshalText() ([]byte, error) {
 	return []byte(fmt.Sprintf("%d", uint32(i))), nil
 }
 
@@ -130,6 +131,7 @@ func (i *Decimal64) UnmarshalJSON(input []byte) error {
 	return err
 }
 
-func (i Decimal64) MarshalJSON() ([]byte, error) {
+// MarshalText implements encoding.TextMarshaler.
+func (i Decimal64) MarshalText() ([]byte, error) {
 	return []byte(fmt.Sprintf("%d", uint64(i))), nil
 }

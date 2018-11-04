@@ -4,15 +4,23 @@ import (
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
+	"github.com/LemoFoundationLtd/lemochain-go/common/math"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"io"
 	"math/big"
 	"strings"
 )
 
+//go:generate gencodec -type VersionRecord --field-override versionRecordMarshaling -out gen_version_record_json.go
+
 type VersionRecord struct {
-	Version uint32
-	Height  uint32
+	Version uint32 `json:"version" gencodec:"required"`
+	Height  uint32 `json:"height" gencodec:"required"`
+}
+
+type versionRecordMarshaling struct {
+	Version math.Decimal32
+	Height  math.Decimal32
 }
 
 //go:generate gencodec -type AccountData --field-override accountDataMarshaling -out gen_account_data_json.go
