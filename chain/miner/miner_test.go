@@ -76,7 +76,7 @@ type blockInfo struct {
 	author      common.Address
 	versionRoot common.Hash
 	txRoot      common.Hash
-	logsRoot    common.Hash
+	logRoot     common.Hash
 	txList      []*types.Transaction
 	gasLimit    uint64
 	time        *big.Int
@@ -154,12 +154,12 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 	}
 	changeLogs := manager.GetChangeLogs()
 	// fmt.Printf("%d changeLogs %v\n", info.height, changeLogs)
-	logsRoot := types.DeriveChangeLogsSha(changeLogs)
-	if logsRoot != info.logsRoot {
-		if info.logsRoot != (common.Hash{}) {
-			fmt.Printf("%d change logs root error. except: %s, got: %s\n", info.height, info.logsRoot.Hex(), logsRoot.Hex())
+	logRoot := types.DeriveChangeLogsSha(changeLogs)
+	if logRoot != info.logRoot {
+		if info.logRoot != (common.Hash{}) {
+			fmt.Printf("%d change logs root error. except: %s, got: %s\n", info.height, info.logRoot.Hex(), logRoot.Hex())
 		}
-		info.logsRoot = logsRoot
+		info.logRoot = logRoot
 	}
 	if info.time == nil {
 		info.time = new(big.Int).SetUint64(uint64(time.Now().Unix()))
@@ -172,7 +172,7 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 		LemoBase:    info.author,
 		VersionRoot: info.versionRoot,
 		TxRoot:      info.txRoot,
-		LogsRoot:    info.logsRoot,
+		LogRoot:     info.logRoot,
 		Bloom:       types.CreateBloom(nil),
 		EventRoot:   common.HexToHash("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"), // empty merkle
 		Height:      info.height,

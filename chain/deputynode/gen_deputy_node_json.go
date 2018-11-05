@@ -12,7 +12,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/math"
 )
 
-var _ = (*Marshaling)(nil)
+var _ = (*deputyNodeMarshaling)(nil)
 
 // MarshalJSON marshals as JSON.
 func (d DeputyNode) MarshalJSON() ([]byte, error) {
@@ -63,14 +63,14 @@ func (d *DeputyNode) UnmarshalJSON(input []byte) error {
 	if dec.Port == nil {
 		return errors.New("missing required field 'port' for DeputyNode")
 	}
-	d.Port = uint(*dec.Port)
+	d.Port = uint32(*dec.Port)
 	if dec.Rank == nil {
 		return errors.New("missing required field 'rank' for DeputyNode")
 	}
-	d.Rank = uint(*dec.Rank)
+	d.Rank = uint32(*dec.Rank)
 	if dec.Votes == nil {
 		return errors.New("missing required field 'votes' for DeputyNode")
 	}
-	d.Votes = uint(*dec.Votes)
+	d.Votes = uint32(*dec.Votes)
 	return nil
 }

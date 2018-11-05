@@ -52,7 +52,7 @@ func (i *HexOrDecimal64) UnmarshalText(input []byte) error {
 
 // MarshalText implements encoding.TextMarshaler.
 func (i HexOrDecimal64) MarshalText() ([]byte, error) {
-	return []byte(fmt.Sprintf("%#x", uint64(i))), nil
+	return []byte(fmt.Sprintf("%d", uint64(i))), nil
 }
 
 // ParseUint64 parses s as an integer in decimal or hexadecimal syntax.
@@ -98,7 +98,19 @@ func SafeMul(x, y uint64) (uint64, bool) {
 	return x * y, y > MaxUint64/x
 }
 
-type Decimal32 uint
+type DecimalUint uint
+
+func (i *DecimalUint) UnmarshalJSON(input []byte) error {
+	res, err := strconv.ParseInt(string(input), 10, 32)
+	*i = DecimalUint(res)
+	return err
+}
+
+func (i DecimalUint) MarshalJSON() ([]byte, error) {
+	return []byte(fmt.Sprintf("%d", uint(i))), nil
+}
+
+type Decimal32 uint32
 
 func (i *Decimal32) UnmarshalJSON(input []byte) error {
 	res, err := strconv.ParseInt(string(input), 10, 32)
@@ -106,8 +118,9 @@ func (i *Decimal32) UnmarshalJSON(input []byte) error {
 	return err
 }
 
-func (i Decimal32) MarshalJSON() ([]byte, error) {
-	return []byte(fmt.Sprintf("%d", uint(i))), nil
+// MarshalText implements encoding.TextMarshaler.
+func (i Decimal32) MarshalText() ([]byte, error) {
+	return []byte(fmt.Sprintf("%d", uint32(i))), nil
 }
 
 type Decimal64 uint64
@@ -118,6 +131,7 @@ func (i *Decimal64) UnmarshalJSON(input []byte) error {
 	return err
 }
 
-func (i Decimal64) MarshalJSON() ([]byte, error) {
+// MarshalText implements encoding.TextMarshaler.
+func (i Decimal64) MarshalText() ([]byte, error) {
 	return []byte(fmt.Sprintf("%d", uint64(i))), nil
 }

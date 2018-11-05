@@ -6,9 +6,11 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
+	"github.com/LemoFoundationLtd/lemochain-go/common/math"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"io"
 	"math/big"
+	"strings"
 	"sync/atomic"
 )
 
@@ -36,13 +38,13 @@ type txdata struct {
 	GasPrice      *big.Int        `json:"gasPrice" gencodec:"required"`
 	GasLimit      uint64          `json:"gasLimit" gencodec:"required"`
 	Amount        *big.Int        `json:"amount" gencodec:"required"`
-	Data          []byte          `json:"data" gencodec:"required"`
+	Data          []byte          `json:"data"`
 	Expiration    uint64          `json:"expirationTime" gencodec:"required"`
 	Message       string          `json:"message"`
 
 	// V is combined by these properties:
-	//     type    version secp256k1.V  chainId
-	// |----8----|----7----|----1----|----16----|
+	//     type    version secp256k1.recovery  chainId
+	// |----8----|----7----|--------1--------|----16----|
 	V *big.Int `json:"v" gencodec:"required"`
 	R *big.Int `json:"r" gencodec:"required"`
 	S *big.Int `json:"s" gencodec:"required"`
@@ -52,11 +54,11 @@ type txdata struct {
 }
 
 type txdataMarshaling struct {
-	GasPrice   *hexutil.Big
-	GasLimit   hexutil.Uint64
-	Amount     *hexutil.Big
+	GasPrice   *hexutil.Big10
+	GasLimit   math.HexOrDecimal64
+	Amount     *hexutil.Big10
 	Data       hexutil.Bytes
-	Expiration hexutil.Uint64
+	Expiration math.HexOrDecimal64
 	V          *hexutil.Big
 	R          *hexutil.Big
 	S          *hexutil.Big
@@ -205,61 +207,49 @@ func (tx *Transaction) Raw() (*big.Int, *big.Int, *big.Int) {
 
 func (tx *Transaction) String() string {
 	var from, to string
-	if tx.data.V != nil {
+	if tx.data.R != nil {
 		if f, err := tx.From(); err != nil { // derive but don't cache
 			from = "[invalid sender: invalid sig]"
 		} else {
-			from = fmt.Sprintf("%x", f[:])
+			from = f.String()
 		}
 	} else {
-		from = "[invalid sender: nil V field]"
+		from = "[invalid sender: nil R field]"
 	}
 
 	if tx.data.Recipient == nil {
 		to = "[contract creation]"
 	} else {
-		to = fmt.Sprintf("%x", tx.data.Recipient[:])
+		to = tx.data.Recipient.String()
 	}
-	enc, _ := rlp.EncodeToBytes(&tx.data)
-	return fmt.Sprintf(`
-	TX(%x)
-	Contract:   %v
-	Type:       %d
-	Version:    %d
-	ChainId:    %d
-	From:       %s
-	To:         %s
-	ToName:     %s
-	GasPrice:   %#x
-	GasLimit    %#x
-	Amount:     %#x
-	Data:       0x%x
-	Expiration: %#x
-	Message:    0x%x
-	V:          %#x
-	R:          %#x
-	S:          %#x
-	Hex:        %x
-`,
-		tx.Hash(),
-		tx.data.Recipient == nil,
-		tx.Type(),
-		tx.Version(),
-		tx.ChainId(),
-		from,
-		to,
-		tx.data.RecipientName,
-		tx.data.GasPrice,
-		tx.data.GasLimit,
-		tx.data.Amount,
-		tx.data.Data,
-		tx.data.Expiration,
-		tx.data.Message,
-		tx.data.V,
-		tx.data.R,
-		tx.data.S,
-		enc,
-	)
+
+	set := []string{
+		fmt.Sprintf("Hash: %s", tx.Hash().Hex()),
+		fmt.Sprintf("CreateContract: %v", tx.data.Recipient == nil),
+		fmt.Sprintf("Type: %d", tx.Type()),
+		fmt.Sprintf("Version: %d", tx.Version()),
+		fmt.Sprintf("ChainId: %d", tx.ChainId()),
+		fmt.Sprintf("From: %s", from),
+		fmt.Sprintf("To: %s", to),
+	}
+	if len(tx.data.RecipientName) > 0 {
+		set = append(set, fmt.Sprintf("ToName: %s", tx.data.RecipientName))
+	}
+	set = append(set, fmt.Sprintf("GasPrice: %v", tx.data.GasPrice))
+	set = append(set, fmt.Sprintf("GasLimit: %v", tx.data.GasLimit))
+	set = append(set, fmt.Sprintf("Amount: %v", tx.data.Amount))
+	if len(tx.data.Data) > 0 {
+		set = append(set, fmt.Sprintf("Data: %#x", tx.data.Data))
+	}
+	set = append(set, fmt.Sprintf("Expiration: %v", tx.data.Expiration))
+	if len(tx.data.Message) > 0 {
+		set = append(set, fmt.Sprintf("Message: %s", tx.data.Message))
+	}
+	set = append(set, fmt.Sprintf("V: %#x", tx.data.V))
+	set = append(set, fmt.Sprintf("R: %#x", tx.data.R))
+	set = append(set, fmt.Sprintf("S: %#x", tx.data.S))
+
+	return fmt.Sprintf("{%s}", strings.Join(set, ", "))
 }
 
 // SetSecp256k1V merge secp256k1.V into the result of CombineV function

@@ -104,6 +104,9 @@ func (c *Console) init() error {
 	if _, err := c.jsre.Run("var lemo = new LemoClient(provider);"); err != nil {
 		return fmt.Errorf("lemo provider: %v", err)
 	}
+	if _, err := c.jsre.Run("BigNumber = lemo.BigNumber;"); err != nil {
+		return fmt.Errorf("expose BigNumber: %v", err)
+	}
 	// Load our extension for the module.
 	if err := c.jsre.Compile("lemo-node-admin.js", jsre.LemoNodeAdminJS); err != nil {
 		return fmt.Errorf("lemo-node-admin.js: %v", err)

@@ -1,6 +1,6 @@
 (function (global, factory) {
-    typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('core-js/modules/es6.object.keys'), require('core-js/modules/es6.array.iterator'), require('core-js/modules/es7.object.values'), require('core-js/modules/web.dom.iterable'), require('core-js/modules/es6.array.fill'), require('core-js/modules/es6.regexp.match'), require('core-js/modules/es6.regexp.replace'), require('core-js/modules/es6.regexp.to-string'), require('core-js/modules/es7.object.entries'), require('core-js/modules/es6.string.starts-with'), require('core-js/modules/es6.promise'), require('core-js/modules/es6.function.name')) :
-        typeof define === 'function' && define.amd ? define(['core-js/modules/es6.object.keys', 'core-js/modules/es6.array.iterator', 'core-js/modules/es7.object.values', 'core-js/modules/web.dom.iterable', 'core-js/modules/es6.array.fill', 'core-js/modules/es6.regexp.match', 'core-js/modules/es6.regexp.replace', 'core-js/modules/es6.regexp.to-string', 'core-js/modules/es7.object.entries', 'core-js/modules/es6.string.starts-with', 'core-js/modules/es6.promise', 'core-js/modules/es6.function.name'], factory) :
+    typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('core-js/modules/es6.object.keys'), require('core-js/modules/es6.array.iterator'), require('core-js/modules/es7.object.values'), require('core-js/modules/web.dom.iterable'), require('core-js/modules/es6.array.fill'), require('core-js/modules/es6.regexp.match'), require('core-js/modules/es7.string.pad-start'), require('core-js/modules/es6.regexp.replace'), require('core-js/modules/es7.object.entries'), require('core-js/modules/es6.regexp.to-string'), require('core-js/modules/es6.string.starts-with'), require('core-js/modules/es6.promise'), require('core-js/modules/es6.function.name')) :
+        typeof define === 'function' && define.amd ? define(['core-js/modules/es6.object.keys', 'core-js/modules/es6.array.iterator', 'core-js/modules/es7.object.values', 'core-js/modules/web.dom.iterable', 'core-js/modules/es6.array.fill', 'core-js/modules/es6.regexp.match', 'core-js/modules/es7.string.pad-start', 'core-js/modules/es6.regexp.replace', 'core-js/modules/es7.object.entries', 'core-js/modules/es6.regexp.to-string', 'core-js/modules/es6.string.starts-with', 'core-js/modules/es6.promise', 'core-js/modules/es6.function.name'], factory) :
             (global.LemoClient = factory());
 }(this, (function () { 'use strict';
 
@@ -3635,7 +3635,14 @@
         }
     }
 
-    var regenerator = runtimeModule;
+    var runtimeModule$1 = /*#__PURE__*/Object.freeze({
+        default: runtimeModule,
+        __moduleExports: runtimeModule
+    });
+
+    var require$$0 = ( runtimeModule$1 && runtimeModule ) || runtimeModule$1;
+
+    var regenerator = require$$0;
 
     function asyncGeneratorStep(gen, resolve, reject, _next, _throw, key, arg) {
         try {
@@ -3744,6 +3751,13 @@
     function isSlowBuffer (obj) {
         return typeof obj.readFloatLE === 'function' && typeof obj.slice === 'function' && isBuffer(obj.slice(0, 0))
     }
+
+    var isBuffer$1 = /*#__PURE__*/Object.freeze({
+        default: isBuffer_1,
+        __moduleExports: isBuffer_1
+    });
+
+    var isBuffer$2 = ( isBuffer$1 && isBuffer_1 ) || isBuffer$1;
 
     /*global toString:true*/
 
@@ -4024,7 +4038,7 @@
     var utils = {
         isArray: isArray,
         isArrayBuffer: isArrayBuffer,
-        isBuffer: isBuffer_1,
+        isBuffer: isBuffer$2,
         isFormData: isFormData,
         isArrayBufferView: isArrayBufferView,
         isString: isString,
@@ -4299,13 +4313,6 @@
         return error;
     };
 
-    var enhanceError$1 = /*#__PURE__*/Object.freeze({
-        default: enhanceError,
-        __moduleExports: enhanceError
-    });
-
-    var enhanceError$2 = ( enhanceError$1 && enhanceError ) || enhanceError$1;
-
     /**
      * Create an Error with the specified message, config, error code, request and response.
      *
@@ -4318,7 +4325,7 @@
      */
     var createError = function createError(message, config, code, request, response) {
         var error = new Error(message);
-        return enhanceError$2(error, config, code, request, response);
+        return enhanceError(error, config, code, request, response);
     };
 
     /**
@@ -5292,6 +5299,12 @@
         },
         InvalidResponse: function InvalidResponse(result) {
             return !!result && !!result.error && !!result.error.message ? result.error.message : "Invalid JSON RPC response: ".concat(JSON.stringify(result));
+        },
+        InvalidAddress: function InvalidAddress(address) {
+            return "Invalid address ".concat(address);
+        },
+        InvalidAddressCheckSum: function InvalidAddressCheckSum(address) {
+            return "Invalid address checksum ".concat(address);
         },
         ConnectionTimeout: function ConnectionTimeout(ms) {
             return "CONNECTION TIMEOUT: timeout of ".concat(ms, " ms achived");
@@ -6282,7 +6295,7 @@
         }
         return Buffer.alloc(+length)
     }
-    Buffer.isBuffer = isBuffer$1;
+    Buffer.isBuffer = isBuffer$3;
     function internalIsBuffer (b) {
         return !!(b != null && b._isBuffer)
     }
@@ -7748,7 +7761,7 @@
     // the following is from is-buffer, also by Feross Aboukhadijeh and with same lisence
     // The _isBuffer check is for Safari 5-7 support, because it's missing
     // Object.prototype.constructor. Remove this eventually
-    function isBuffer$1(obj) {
+    function isBuffer$3(obj) {
         return obj != null && (!!obj._isBuffer || isFastBuffer(obj) || isSlowBuffer$1(obj))
     }
 
@@ -7761,18 +7774,18 @@
         return typeof obj.readFloatLE === 'function' && typeof obj.slice === 'function' && isFastBuffer(obj.slice(0, 0))
     }
 
-    var require$$0 = /*#__PURE__*/Object.freeze({
+    var require$$0$1 = /*#__PURE__*/Object.freeze({
         INSPECT_MAX_BYTES: INSPECT_MAX_BYTES,
         kMaxLength: _kMaxLength,
         Buffer: Buffer,
         SlowBuffer: SlowBuffer,
-        isBuffer: isBuffer$1
+        isBuffer: isBuffer$3
     });
 
     var safeBuffer = createCommonjsModule(function (module, exports) {
         /* eslint-disable node/no-deprecated-api */
 
-        var Buffer = require$$0.Buffer;
+        var Buffer = require$$0$1.Buffer;
 
         // alternative to using Object.keys for old browsers
         function copyProps (src, dst) {
@@ -7781,10 +7794,10 @@
             }
         }
         if (Buffer.from && Buffer.alloc && Buffer.allocUnsafe && Buffer.allocUnsafeSlow) {
-            module.exports = require$$0;
+            module.exports = require$$0$1;
         } else {
             // Copy properties from require('buffer')
-            copyProps(require$$0, exports);
+            copyProps(require$$0$1, exports);
             exports.Buffer = SafeBuffer;
         }
 
@@ -7830,7 +7843,7 @@
             if (typeof size !== 'number') {
                 throw new TypeError('Argument must be a number')
             }
-            return require$$0.SlowBuffer(size)
+            return require$$0$1.SlowBuffer(size)
         };
     });
     var safeBuffer_1 = safeBuffer.Buffer;
@@ -7838,11 +7851,18 @@
     function isHash(hashOrHeight) {
         return typeof hashOrHeight === 'string' && hashOrHeight.toLowerCase().startsWith('0x');
     }
+    function has0xPrefix(str) {
+        return typeof str === 'string' && str.slice(0, 2).toLowerCase() === '0x';
+    }
     function parseBlock(block) {
+        block.ChangeLogs[0].type = parseString(block.ChangeLogs[0].type);
         return block;
     }
+    function parseString(str) {
+        return str.toString();
+    }
     function parseAccount(account) {
-        account.balance = parseBigNumber(account.balance);
+        account.balance = parseMoney(account.balance);
         var oldRecords = account.records || {};
         account.records = {};
         Object.entries(oldRecords).forEach(function (_ref) {
@@ -7863,8 +7883,36 @@
 
         return dict[logType];
     }
-    function parseBigNumber(str) {
-        return new bignumber(str, 16);
+    function parseMoney(str) {
+        var result = new bignumber(str);
+        Object.defineProperty(result, 'toMoney', {
+            enumerable: false,
+            value: formatMoney.bind(null, result)
+        });
+        return result;
+    }
+    function formatMoney(mo) {
+        mo = new bignumber(mo).toString(10);
+
+        if (/0{18}$/.test(mo)) {
+            return "".concat(mo.slice(0, mo.length - 18), "LEMO");
+        } else if (/0{12}$/.test(mo)) {
+            if (mo.length <= 18) {
+                mo = mo.padStart(19, '0');
+            }
+
+            var int = mo.slice(0, mo.length - 18);
+            var rest = mo.slice(mo.length - 18).replace(/0+$/, '');
+            return "".concat(int, ".").concat(rest, "LEMO");
+        } else if (/0{9}$/.test(mo)) {
+            return "".concat(mo.slice(0, mo.length - 9), "GMo");
+        } else if (/0{6}$/.test(mo)) {
+            return "".concat(mo.slice(0, mo.length - 6), "MMo");
+        } else if (/0{3}$/.test(mo)) {
+            return "".concat(mo.slice(0, mo.length - 3), "KMo");
+        } else {
+            return "".concat(mo, "Mo");
+        }
     }
     function toBuffer(v) {
         if (safeBuffer_1.isBuffer(v)) {
@@ -7963,7 +8011,7 @@
          */
         getBalance: {
             method: "".concat(MODULE_NAME, "_getBalance"),
-            outputFormatter: parseBigNumber
+            outputFormatter: parseMoney
         }
     };
     var apis = Object.entries(apiList).map(function (_ref) {
@@ -7997,7 +8045,7 @@
          * @return {Promise<object>}
          */
         getCurrentBlock: function getCurrentBlock(requester, stable, withTxList) {
-            var apiName = stable ? 'currentBlock' : 'latestStableBlock';
+            var apiName = stable ? 'latestStableBlock' : 'currentBlock';
             return requester.send("".concat(MODULE_NAME$1, "_").concat(apiName), [withTxList]).then(parseBlock);
         },
 
@@ -8020,7 +8068,7 @@
          * @return {Promise<number>}
          */
         getCurrentHeight: function getCurrentHeight(requester, stable) {
-            var apiName = stable ? 'currentHeight' : 'latestStableHeight';
+            var apiName = stable ? 'latestStableHeight' : 'currentHeight';
             return requester.send("".concat(MODULE_NAME$1, "_").concat(apiName));
         },
 
@@ -8046,7 +8094,7 @@
          */
         getGasPriceAdvice: {
             method: "".concat(MODULE_NAME$1, "_gasPriceAdvice"),
-            outputFormatter: parseBigNumber
+            outputFormatter: parseMoney
         },
 
         /**
@@ -8140,11 +8188,11 @@
     var MODULE_NAME$3 = 'net';
     var apiList$3 = {
         /**
-         * Get connected peer count from the lemochain node
+         * Get connected peers count from the lemochain node
          * @return {Promise<number>}
          */
-        getPeerCount: {
-            method: "".concat(MODULE_NAME$3, "_getPeerCount")
+        getPeersCount: {
+            method: "".concat(MODULE_NAME$3, "_getPeersCount")
         },
 
         /**
@@ -9322,7 +9370,7 @@
         // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
         // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-        var Buffer = require$$0.Buffer;
+        var Buffer = require$$0$1.Buffer;
 
         var isBufferEncoding = Buffer.isEncoding
             || function(encoding) {
@@ -9867,7 +9915,7 @@
 
     function chunkInvalid(state, chunk) {
         var er = null;
-        if (!isBuffer$1(chunk) && typeof chunk !== 'string' && chunk !== null && chunk !== undefined && !state.objectMode) {
+        if (!isBuffer$3(chunk) && typeof chunk !== 'string' && chunk !== null && chunk !== undefined && !state.objectMode) {
             er = new TypeError('Invalid non-string/buffer chunk');
         }
         return er;
@@ -11582,6 +11630,14 @@
         p1600: p1600
     };
 
+    var keccakStateUnroll$1 = /*#__PURE__*/Object.freeze({
+        default: keccakStateUnroll,
+        __moduleExports: keccakStateUnroll,
+        p1600: p1600
+    });
+
+    var keccakState = ( keccakStateUnroll$1 && keccakStateUnroll ) || keccakStateUnroll$1;
+
     var Buffer$3 = safeBuffer.Buffer;
 
 
@@ -11612,7 +11668,7 @@
             this.state[~~(this.count / 4)] ^= data[i] << (8 * (this.count % 4));
             this.count += 1;
             if (this.count === this.blockSize) {
-                keccakStateUnroll.p1600(this.state);
+                keccakState.p1600(this.state);
                 this.count = 0;
             }
         }
@@ -11620,9 +11676,9 @@
 
     Keccak.prototype.absorbLastFewBits = function (bits) {
         this.state[~~(this.count / 4)] ^= bits << (8 * (this.count % 4));
-        if ((bits & 0x80) !== 0 && this.count === (this.blockSize - 1)) keccakStateUnroll.p1600(this.state);
+        if ((bits & 0x80) !== 0 && this.count === (this.blockSize - 1)) keccakState.p1600(this.state);
         this.state[~~((this.blockSize - 1) / 4)] ^= 0x80 << (8 * ((this.blockSize - 1) % 4));
-        keccakStateUnroll.p1600(this.state);
+        keccakState.p1600(this.state);
         this.count = 0;
         this.squeezing = true;
     };
@@ -11635,7 +11691,7 @@
             output[i] = (this.state[~~(this.count / 4)] >>> (8 * (this.count % 4))) & 0xff;
             this.count += 1;
             if (this.count === this.blockSize) {
-                keccakStateUnroll.p1600(this.state);
+                keccakState.p1600(this.state);
                 this.count = 0;
             }
         }
@@ -11755,8 +11811,8 @@
     function isBoolean$1(value, message) {
         if (toString$2.call(value) !== '[object Boolean]') throw TypeError(message);
     }
-    function isBuffer$3(value, message) {
-        if (!isBuffer$1(value)) throw TypeError(message);
+    function isBuffer$5(value, message) {
+        if (!isBuffer$3(value)) throw TypeError(message);
     }
     function isFunction$2(value, message) {
         if (toString$2.call(value) !== '[object Function]') throw TypeError(message);
@@ -11783,7 +11839,7 @@
     var assert = {
         isArray: isArray$3,
         isBoolean: isBoolean$1,
-        isBuffer: isBuffer$3,
+        isBuffer: isBuffer$5,
         isFunction: isFunction$2,
         isNumber: isNumber$2,
         isObject: isObject$2,
@@ -11928,7 +11984,7 @@
         default: empty
     });
 
-    var require$$0$1 = ( empty$1 && empty ) || empty$1;
+    var require$$0$2 = ( empty$1 && empty ) || empty$1;
 
     var bn = createCommonjsModule(function (module) {
         (function (module, exports) {
@@ -11982,7 +12038,7 @@
 
             var Buffer;
             try {
-                Buffer = require$$0$1.Buffer;
+                Buffer = require$$0$2.Buffer;
             } catch (e) {
             }
 
@@ -15369,6 +15425,11 @@
             throw new Error(msg || ('Assertion failed: ' + l + ' != ' + r));
     };
 
+    var minimalisticAssert$1 = /*#__PURE__*/Object.freeze({
+        default: minimalisticAssert,
+        __moduleExports: minimalisticAssert
+    });
+
     var utils_1$1 = createCommonjsModule(function (module, exports) {
 
         var utils = exports;
@@ -15429,6 +15490,8 @@
         };
     });
 
+    var assert$2 = ( minimalisticAssert$1 && minimalisticAssert ) || minimalisticAssert$1;
+
     var utils_1$2 = createCommonjsModule(function (module, exports) {
 
         var utils = exports;
@@ -15436,7 +15499,7 @@
 
 
 
-        utils.assert = minimalisticAssert;
+        utils.assert = assert$2;
         utils.toArray = utils_1$1.toArray;
         utils.zero2 = utils_1$1.zero2;
         utils.toHex = utils_1$1.toHex;
@@ -15605,7 +15668,7 @@
     } else {
         // Node.js or Web worker with no crypto support
         try {
-            var crypto$1 = require$$0$1;
+            var crypto$1 = require$$0$2;
             if (typeof crypto$1.randomBytes !== 'function')
                 throw new Error('Not supported');
 
@@ -15617,15 +15680,9 @@
     }
     brorand.Rand = Rand_1;
 
-    var brorand$1 = /*#__PURE__*/Object.freeze({
-        default: brorand,
-        __moduleExports: brorand,
-        Rand: Rand_1
-    });
-
     var getNAF = utils_1$2.getNAF;
     var getJSF = utils_1$2.getJSF;
-    var assert$2 = utils_1$2.assert;
+    var assert$3 = utils_1$2.assert;
 
     function BaseCurve(type, conf) {
         this.type = type;
@@ -15669,7 +15726,7 @@
     };
 
     BaseCurve.prototype._fixedNafMul = function _fixedNafMul(p, k) {
-        assert$2(p.precomputed);
+        assert$3(p.precomputed);
         var doubles = p._getDoubles();
 
         var naf = getNAF(k, 1);
@@ -15724,7 +15781,7 @@
             if (i < 0)
                 break;
             var z = naf[i];
-            assert$2(z !== 0);
+            assert$3(z !== 0);
             if (p.type === 'affine') {
                 // J +- P
                 if (z > 0)
@@ -15890,9 +15947,9 @@
         if ((bytes[0] === 0x04 || bytes[0] === 0x06 || bytes[0] === 0x07) &&
             bytes.length - 1 === 2 * len) {
             if (bytes[0] === 0x06)
-                assert$2(bytes[bytes.length - 1] % 2 === 0);
+                assert$3(bytes[bytes.length - 1] % 2 === 0);
             else if (bytes[0] === 0x07)
-                assert$2(bytes[bytes.length - 1] % 2 === 1);
+                assert$3(bytes[bytes.length - 1] % 2 === 1);
 
             var res =  this.point(bytes.slice(1, 1 + len),
                 bytes.slice(1 + len, 1 + 2 * len));
@@ -15994,7 +16051,7 @@
         return r;
     };
 
-    var assert$3 = utils_1$2.assert;
+    var assert$4 = utils_1$2.assert;
 
     function ShortCurve(conf) {
         base.call(this, 'short', conf);
@@ -16039,7 +16096,7 @@
                 lambda = lambdas[0];
             } else {
                 lambda = lambdas[1];
-                assert$3(this.g.mul(lambda).x.cmp(this.g.x.redMul(beta)) === 0);
+                assert$4(this.g.mul(lambda).x.cmp(this.g.x.redMul(beta)) === 0);
             }
         }
 
@@ -17095,7 +17152,7 @@
         return this.x.fromRed();
     };
 
-    var assert$4 = utils_1$2.assert;
+    var assert$5 = utils_1$2.assert;
 
     function EdwardsCurve(conf) {
         // NOTE: Important as we are creating point in Base.call()
@@ -17112,7 +17169,7 @@
         this.d = new bn(conf.d, 16).toRed(this.red);
         this.dd = this.d.redAdd(this.d);
 
-        assert$4(!this.twisted || this.c.fromRed().cmpn(1) === 0);
+        assert$5(!this.twisted || this.c.fromRed().cmpn(1) === 0);
         this.oneC = (conf.c | 0) === 1;
     }
     inherits$2(EdwardsCurve, base);
@@ -17624,7 +17681,7 @@
 
     function join32(msg, start, end, endian) {
         var len = end - start;
-        minimalisticAssert(len % 4 === 0);
+        assert$2(len % 4 === 0);
         var res = new Array(len / 4);
         for (var i = 0, k = start; i < res.length; i++, k += 4) {
             var w;
@@ -17852,7 +17909,7 @@
 
     BlockHash.prototype.digest = function digest(enc) {
         this.update(this._pad());
-        minimalisticAssert(this.pending === null);
+        assert$2(this.pending === null);
 
         return this._digest(enc);
     };
@@ -18096,7 +18153,7 @@
         var g = this.h[6];
         var h = this.h[7];
 
-        minimalisticAssert(this.k.length === W.length);
+        assert$2(this.k.length === W.length);
         for (i = 0; i < W.length; i++) {
             var T1 = sum32_5$2(h, s1_256$1(e), ch32$1(e, f, g), this.k[i], W[i]);
             var T2 = sum32$2(s0_256$1(a), maj32$1(a, b, c));
@@ -18285,7 +18342,7 @@
         var hh = this.h[14];
         var hl = this.h[15];
 
-        minimalisticAssert(this.k.length === W.length);
+        assert$2(this.k.length === W.length);
         for (var i = 0; i < W.length; i += 2) {
             var c0_hi = hh;
             var c0_lo = hl;
@@ -18684,7 +18741,7 @@
         // Shorten key, if needed
         if (key.length > this.blockSize)
             key = new this.Hash().update(key).digest();
-        minimalisticAssert(key.length <= this.blockSize);
+        assert$2(key.length <= this.blockSize);
 
         // Add padding to key
         for (var i = key.length; i < this.blockSize; i++)
@@ -19734,7 +19791,7 @@
         var entropy = utils_1$1.toArray(options.entropy, options.entropyEnc || 'hex');
         var nonce = utils_1$1.toArray(options.nonce, options.nonceEnc || 'hex');
         var pers = utils_1$1.toArray(options.pers, options.persEnc || 'hex');
-        minimalisticAssert(entropy.length >= (this.minEntropy / 8),
+        assert$2(entropy.length >= (this.minEntropy / 8),
             'Not enough entropy. Minimum is: ' + this.minEntropy + ' bits');
         this._init(entropy, nonce, pers);
     }
@@ -19789,7 +19846,7 @@
         entropy = utils_1$1.toArray(entropy, entropyEnc);
         add = utils_1$1.toArray(add, addEnc);
 
-        minimalisticAssert(entropy.length >= (this.minEntropy / 8),
+        assert$2(entropy.length >= (this.minEntropy / 8),
             'Not enough entropy. Minimum is: ' + this.minEntropy + ' bits');
 
         this._update(entropy.concat(add || []));
@@ -19825,7 +19882,7 @@
         return utils_1$1.encode(res, enc);
     };
 
-    var assert$5 = utils_1$2.assert;
+    var assert$6 = utils_1$2.assert;
 
     function KeyPair(ec, options) {
         this.ec = ec;
@@ -19910,10 +19967,10 @@
             // Weierstrass/Edwards points on the other hand have both `x` and
             // `y` coordinates.
             if (this.ec.curve.type === 'mont') {
-                assert$5(key.x, 'Need x coordinate');
+                assert$6(key.x, 'Need x coordinate');
             } else if (this.ec.curve.type === 'short' ||
                 this.ec.curve.type === 'edwards') {
-                assert$5(key.x && key.y, 'Need both x and y coordinate');
+                assert$6(key.x && key.y, 'Need both x and y coordinate');
             }
             this.pub = this.ec.curve.point(key.x, key.y);
             return;
@@ -19940,7 +19997,7 @@
             ' pub: ' + (this.pub && this.pub.inspect()) + ' >';
     };
 
-    var assert$6 = utils_1$2.assert;
+    var assert$7 = utils_1$2.assert;
 
     function Signature(options, enc) {
         if (options instanceof Signature)
@@ -19949,7 +20006,7 @@
         if (this._importDER(options, enc))
             return;
 
-        assert$6(options.r && options.s, 'Signature without r or s');
+        assert$7(options.r && options.s, 'Signature without r or s');
         this.r = new bn(options.r, 16);
         this.s = new bn(options.s, 16);
         if (options.recoveryParam === undefined)
@@ -20070,9 +20127,7 @@
         return utils_1$2.encode(res, enc);
     };
 
-    var rand = ( brorand$1 && brorand ) || brorand$1;
-
-    var assert$7 = utils_1$2.assert;
+    var assert$8 = utils_1$2.assert;
 
 
 
@@ -20083,7 +20138,7 @@
 
         // Shortcut `elliptic.ec(curve-name)`
         if (typeof options === 'string') {
-            assert$7(curves_1.hasOwnProperty(options), 'Unknown curve ' + options);
+            assert$8(curves_1.hasOwnProperty(options), 'Unknown curve ' + options);
 
             options = curves_1[options];
         }
@@ -20127,7 +20182,7 @@
             hash: this.hash,
             pers: options.pers,
             persEnc: options.persEnc || 'utf8',
-            entropy: options.entropy || rand(this.hash.hmacStrength),
+            entropy: options.entropy || brorand(this.hash.hmacStrength),
             entropyEnc: options.entropy && options.entropyEnc || 'utf8',
             nonce: this.n.toArray()
         });
@@ -20259,7 +20314,7 @@
     };
 
     EC.prototype.recoverPubKey = function(msg, signature$$1, j, enc) {
-        assert$7((3 & j) === j, 'The recovery param is more than two bits');
+        assert$8((3 & j) === j, 'The recovery param is more than two bits');
         signature$$1 = new signature(signature$$1, enc);
 
         var n = this.n;
@@ -20307,7 +20362,7 @@
         throw new Error('Unable to find valid recovery factor');
     };
 
-    var assert$8 = utils_1$2.assert;
+    var assert$9 = utils_1$2.assert;
     var parseBytes = utils_1$2.parseBytes;
     var cachedProperty = utils_1$2.cachedProperty;
 
@@ -20381,7 +20436,7 @@
     });
 
     KeyPair$1.prototype.sign = function sign(message) {
-        assert$8(this._secret, 'KeyPair can only verify');
+        assert$9(this._secret, 'KeyPair can only verify');
         return this.eddsa.sign(message, this);
     };
 
@@ -20390,7 +20445,7 @@
     };
 
     KeyPair$1.prototype.getSecret = function getSecret(enc) {
-        assert$8(this._secret, 'KeyPair is public only');
+        assert$9(this._secret, 'KeyPair is public only');
         return utils_1$2.encode(this.secret(), enc);
     };
 
@@ -20400,7 +20455,7 @@
 
     var key$1 = KeyPair$1;
 
-    var assert$9 = utils_1$2.assert;
+    var assert$a = utils_1$2.assert;
     var cachedProperty$1 = utils_1$2.cachedProperty;
     var parseBytes$1 = utils_1$2.parseBytes;
 
@@ -20425,7 +20480,7 @@
             };
         }
 
-        assert$9(sig.R && sig.S, 'Signature without R or S');
+        assert$a(sig.R && sig.S, 'Signature without R or S');
 
         if (eddsa.isPoint(sig.R))
             this._R = sig.R;
@@ -20462,13 +20517,13 @@
 
     var signature$1 = Signature$1;
 
-    var assert$a = utils_1$2.assert;
+    var assert$b = utils_1$2.assert;
     var parseBytes$2 = utils_1$2.parseBytes;
 
 
 
     function EDDSA(curve) {
-        assert$a(curve === 'ed25519', 'only tested with ed25519 so far');
+        assert$b(curve === 'ed25519', 'only tested with ed25519 so far');
 
         if (!(this instanceof EDDSA))
             return new EDDSA(curve);
@@ -20576,15 +20631,15 @@
         return val instanceof this.pointClass;
     };
 
-    var require$$0$2 = ( _package$1 && _package ) || _package$1;
+    var require$$0$3 = ( _package$1 && _package ) || _package$1;
 
     var elliptic_1 = createCommonjsModule(function (module, exports) {
 
         var elliptic = exports;
 
-        elliptic.version = require$$0$2.version;
+        elliptic.version = require$$0$3.version;
         elliptic.utils = utils_1$2;
-        elliptic.rand = rand;
+        elliptic.rand = brorand;
         elliptic.curve = curve_1;
         elliptic.curves = curves_1;
 
@@ -20668,7 +20723,8 @@
     };
 
     var N_DIV_2 = new bignumber('7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a0', 16);
-    var base26 = baseX('23456789ABCDFGHJKNPQRSTWYZ');
+    var base26 = baseX('83456729ABCDFGHJKNPQRSTWYZ');
+    var ADDRESS_LOGO = 'Lemo';
     /**
      * sign hash
      * @param {Buffer} privateKey length must be 32
@@ -20725,7 +20781,39 @@
 
         var fullPayload = safeBuffer_1.concat([data, safeBuffer_1.from([checkSum])]);
         var encoded = base26.encode(fullPayload);
-        return "Lemo".concat(encoded);
+        return ADDRESS_LOGO + encoded;
+    }
+    function decodeAddress(address) {
+        if (!address || has0xPrefix(address)) {
+            return address;
+        }
+
+        if (typeof address !== 'string') {
+            throw new Error(errors.InvalidAddress(address));
+        }
+
+        address = address.toUpperCase();
+
+        if (address.slice(0, 4) !== ADDRESS_LOGO.toUpperCase()) {
+            throw new Error(errors.InvalidAddress(address));
+        }
+
+        var fullPayload = base26.decode(address.slice(4));
+        var data = fullPayload.slice(0, fullPayload.length - 1);
+        var checkSum = fullPayload[fullPayload.length - 1];
+        var realCheckSum = 0;
+
+        for (var i = 0; i < data.length; i++) {
+            realCheckSum ^= data[i];
+        }
+
+        if (realCheckSum !== checkSum) {
+            throw new Error(errors.InvalidAddressCheckSum(address));
+        } // trim left 00
+
+
+        var hex = data.toString('hex').replace(/^(00)+/, '');
+        return "0x".concat(hex);
     }
 
     var Tx =
@@ -20787,7 +20875,7 @@
             createClass(Tx, [{
                 key: "serialize",
                 value: function serialize() {
-                    var raw = [toRaw(this, 'to', 20), toRaw(this, 'toName', 0), toRaw(this, 'gasPrice', 0), toRaw(this, 'gasLimit', 0), toRaw(this, 'amount', 0), toRaw(this, 'data', 0), toRaw(this, 'expirationTime', 0), toRaw(this, 'message', 0), toRaw(this, 'v', 0), toRaw(this, 'r', 0), toRaw(this, 's', 0)];
+                    var raw = [toRaw(this, 'to', 20), toRaw(this, 'toName'), toRaw(this, 'gasPrice'), toRaw(this, 'gasLimit'), toRaw(this, 'amount'), toRaw(this, 'data'), toRaw(this, 'expirationTime'), toRaw(this, 'message'), toRaw(this, 'v'), toRaw(this, 'r'), toRaw(this, 's')];
                     return encode$1(raw);
                 }
             }, {
@@ -20803,19 +20891,34 @@
             }, {
                 key: "toJson",
                 value: function toJson() {
-                    return {
-                        to: toHexStr(this, 'to', 20, false),
-                        toName: this.toName,
-                        gasPrice: toHexStr(this, 'gasPrice', 0, true),
-                        gasLimit: toHexStr(this, 'gasLimit', 0, true),
-                        amount: toHexStr(this, 'amount', 0, true),
-                        data: toHexStr(this, 'data', 0, false),
-                        expirationTime: toHexStr(this, 'expirationTime', 0, true),
-                        message: this.message,
-                        v: toHexStr(this, 'v', 0, true),
-                        r: toHexStr(this, 'r', 0, true),
-                        s: toHexStr(this, 's', 0, true)
+                    var to = has0xPrefix(this.to) ? toHexStr(this, 'to', 20) : this.to;
+                    var result = {
+                        gasPrice: new bignumber(this.gasPrice).toString(10),
+                        gasLimit: new bignumber(this.gasLimit).toString(10),
+                        amount: new bignumber(this.amount).toString(10),
+                        expirationTime: new bignumber(this.expirationTime).toString(10),
+                        v: toHexStr(this, 'v'),
+                        r: toHexStr(this, 'r'),
+                        s: toHexStr(this, 's')
                     };
+
+                    if (to) {
+                        result.to = to;
+                    }
+
+                    if (this.toName) {
+                        result.toName = this.toName;
+                    }
+
+                    if (this.data && this.data.length) {
+                        result.data = toHexStr(this, 'data');
+                    }
+
+                    if (this.message) {
+                        result.message = this.message;
+                    }
+
+                    return result;
                 }
                 /**
                  * @param {string|Buffer} privateKey
@@ -20877,7 +20980,7 @@
             }, {
                 key: "hashForSign",
                 value: function hashForSign(tx) {
-                    var raw = [toRaw(tx, 'type', 0), toRaw(tx, 'version', 0), toRaw(tx, 'chainId', 0), toRaw(tx, 'to', 20), toRaw(tx, 'toName', 0), toRaw(tx, 'gasPrice', 0), toRaw(tx, 'gasLimit', 0), toRaw(tx, 'amount', 0), toRaw(tx, 'data', 0), toRaw(tx, 'expirationTime', 0), toRaw(tx, 'message', 0)];
+                    var raw = [toRaw(tx, 'type'), toRaw(tx, 'version'), toRaw(tx, 'chainId'), toRaw(tx, 'to', 20), toRaw(tx, 'toName'), toRaw(tx, 'gasPrice'), toRaw(tx, 'gasLimit'), toRaw(tx, 'amount'), toRaw(tx, 'data'), toRaw(tx, 'expirationTime'), toRaw(tx, 'message')];
                     return keccak256(encode$1(raw));
                 }
             }]);
@@ -20912,7 +21015,13 @@
     }
 
     function toRaw(tx, fieldName, length) {
-        var data = toBuffer(tx[fieldName]);
+        var data = tx[fieldName];
+
+        if (fieldName === 'to') {
+            data = decodeAddress(data);
+        }
+
+        data = toBuffer(data);
 
         if (length) {
             if (data.length > length) {
@@ -20927,13 +21036,8 @@
         return data;
     }
 
-    function toHexStr(tx, fieldName, length, isNumber) {
-        var str = toRaw(tx, fieldName, length).toString('hex'); // the server cannot parse big number which starts with 0x0
-
-        if (isNumber) {
-            str = str.replace(/^0+/i, '');
-        }
-
+    function toHexStr(tx, fieldName, length) {
+        var str = toRaw(tx, fieldName, length).toString('hex');
         return str ? "0x".concat(str) : '';
     }
 

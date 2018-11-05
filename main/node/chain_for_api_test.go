@@ -26,7 +26,7 @@ type blockInfo struct {
 	author      common.Address
 	versionRoot common.Hash
 	txRoot      common.Hash
-	logsRoot    common.Hash
+	logRoot     common.Hash
 	txList      []*types.Transaction
 	gasLimit    uint64
 	time        *big.Int
@@ -50,7 +50,7 @@ var (
 			author:      defaultAccounts[0],
 			versionRoot: common.HexToHash("0xaa4c649637a466c2879495969aac0403716ad1e8b62a9865bead851d99c6f895"),
 			txRoot:      common.HexToHash("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"), // empty merkle
-			logsRoot:    common.HexToHash("0x189fc4c478582b56997a1808456a32285672109334e9f03654d3e4f181eb83a2"),
+			logRoot:     common.HexToHash("0x189fc4c478582b56997a1808456a32285672109334e9f03654d3e4f181eb83a2"),
 			time:        big.NewInt(1538209751),
 		},
 		// block 1 is stable block
@@ -60,7 +60,7 @@ var (
 			author:      common.HexToAddress("0x20000"),
 			versionRoot: common.HexToHash("0xc4fa99a20b2db7026f80366e34213861457e240bf0411d57f7a22cbf5b7f2346"),
 			txRoot:      common.HexToHash("0xf044cc436950ef7470aca61053eb3f1ed46b9dcd501a5210f3673dc657c4fc88"),
-			logsRoot:    common.HexToHash("0xc287a6c955f3d6d4d240413a585f48009106a6ff5886b194cb506e87323786d7"),
+			logRoot:     common.HexToHash("0xc287a6c955f3d6d4d240413a585f48009106a6ff5886b194cb506e87323786d7"),
 			txList: []*types.Transaction{
 				// testAddr -> defaultAccounts[0] 1
 				signTransaction(types.NewTransaction(defaultAccounts[0], common.Big1, 2000000, common.Big2, []byte{12}, chainID, uint64(1538210391), "aa", string("aaa")), testPrivate),
@@ -77,7 +77,7 @@ var (
 			author:      defaultAccounts[0],
 			versionRoot: common.HexToHash("0xb169fb0304ad3c989589b044afbfe6257d125222e5023004e418b4bdb5f154f9"),
 			txRoot:      common.HexToHash("0x2501f471d13f0383a9a09ef7776dc94c6ccdc19ebd36127ac8a39cfef85dc412"),
-			logsRoot:    common.HexToHash("0x6c24ab2c37e6bdd12c276361ba7aa1300ab389b4861ca364e1fdd480197803da"),
+			logRoot:     common.HexToHash("0x6c24ab2c37e6bdd12c276361ba7aa1300ab389b4861ca364e1fdd480197803da"),
 			txList: []*types.Transaction{
 				// testAddr -> defaultAccounts[0] 2
 				makeTransaction(testPrivate, defaultAccounts[0], bigNumber, common.Big2, uint64(1538210395), 2000000),
@@ -92,7 +92,7 @@ var (
 			author:      defaultAccounts[0],
 			versionRoot: common.HexToHash("0xfe833c7d3aa89fc1031198374e6eda37425de579e02430e46cc2273ee7f94162"),
 			txRoot:      common.HexToHash("0x883e9542653e2ad8bae93fa5567d8f5833543057af94ea0ed59c97a7034acac8"),
-			logsRoot:    common.HexToHash("0xeff8eb5827967fe372182d8173b8be788c8367e7c04823c09bf49d40bf070982"),
+			logRoot:     common.HexToHash("0xeff8eb5827967fe372182d8173b8be788c8367e7c04823c09bf49d40bf070982"),
 			txList: []*types.Transaction{
 				// testAddr -> defaultAccounts[0] 2
 				makeTransaction(testPrivate, defaultAccounts[0], common.Big2, common.Big2, uint64(1538210398), 30000),
@@ -205,12 +205,12 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 	}
 	changeLogs := manager.GetChangeLogs()
 	// fmt.Printf("%d changeLogs %v\n", info.height, changeLogs)
-	logsRoot := types.DeriveChangeLogsSha(changeLogs)
-	if logsRoot != info.logsRoot {
-		if info.logsRoot != (common.Hash{}) {
-			fmt.Printf("%d change logs root error. except: %s, got: %s\n", info.height, info.logsRoot.Hex(), logsRoot.Hex())
+	logRoot := types.DeriveChangeLogsSha(changeLogs)
+	if logRoot != info.logRoot {
+		if info.logRoot != (common.Hash{}) {
+			fmt.Printf("%d change logs root error. except: %s, got: %s\n", info.height, info.logRoot.Hex(), logRoot.Hex())
 		}
-		info.logsRoot = logsRoot
+		info.logRoot = logRoot
 	}
 	if info.time == nil {
 		info.time = new(big.Int).SetUint64(uint64(time.Now().Unix()))
@@ -223,7 +223,7 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 		LemoBase:    info.author,
 		VersionRoot: info.versionRoot,
 		TxRoot:      info.txRoot,
-		LogsRoot:    info.logsRoot,
+		LogRoot:     info.logRoot,
 		Bloom:       types.CreateBloom(nil),
 		EventRoot:   common.HexToHash("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"), // empty merkle
 		Height:      info.height,

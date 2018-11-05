@@ -1,7 +1,6 @@
 package node
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
@@ -10,8 +9,10 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
+	"github.com/LemoFoundationLtd/lemochain-go/common/math"
 	"github.com/LemoFoundationLtd/lemochain-go/network/p2p"
 	"math/big"
+	"runtime"
 )
 
 // AccountAPI API for access to account information
@@ -33,7 +34,7 @@ func (a *AccountAPI) NewKeyPair() (*crypto.AddressKeyPair, error) {
 	return accounts, nil
 }
 
-// GetBalance get balance api
+// GetBalance get balance in mo
 func (a *AccountAPI) GetBalance(LemoAddress string) (string, error) {
 	accounts, err := a.GetAccount(LemoAddress)
 	if err != nil {
@@ -244,32 +245,27 @@ func (n *NetAPI) PeersCount() int {
 	return len(n.node.server.Peers())
 }
 
-// todo
+//go:generate gencodec -type NetInfo --field-override netInfoMarshaling -out gen_net_info_json.go
+
 type NetInfo struct {
-	Port     string `json:"port" gencodec:"required"`
-	NodeName string `json:"nodeName" gencodec:"required"`
+	Port     uint32 `json:"port"        gencodec:"required"`
+	NodeName string `json:"nodeName"    gencodec:"required"`
 	Version  string `json:"nodeVersion" gencodec:"required"`
+	OS       string `json:"os"          gencodec:"required"`
+	Go       string `json:"runtime"     gencodec:"required"`
 }
 
-// MarshalJSON marshals as JSON
-func (net NetInfo) MarshalJSON() ([]byte, error) {
-	type NetInfo struct {
-		Port     string `json:"port" gencodec:"required"`
-		NodeName string `json:"nodeName" gencodec:"required"`
-		Version  string `json:"nodeVersion" gencodec:"required"`
-	}
-	var enc NetInfo
-	enc.Port = net.Port
-	enc.NodeName = net.NodeName
-	enc.Version = net.Version
-	return json.Marshal(&enc)
+type netInfoMarshaling struct {
+	Port math.Decimal32
 }
 
-// NetInfo
+// Info
 func (n *NetAPI) Info() *NetInfo {
 	return &NetInfo{
-		Port:     n.node.server.ListenAddr(),
+		Port:     uint32(n.node.server.Port),
 		NodeName: n.node.config.NodeName(),
 		Version:  n.node.config.Version,
+		OS:       runtime.GOOS + "-" + runtime.GOARCH,
+		Go:       runtime.Version(),
 	}
 }

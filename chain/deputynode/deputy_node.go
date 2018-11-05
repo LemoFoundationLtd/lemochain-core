@@ -36,16 +36,16 @@ func SetSelfNodeKey(key *ecdsa.PrivateKey) {
 	selfNodeKey = key
 }
 
-//go:generate gencodec -type DeputyNode -field-override Marshaling -out gen_deputy_node_json.go
+//go:generate gencodec -type DeputyNode --field-override deputyNodeMarshaling -out gen_deputy_node_json.go
 
 // DeputyNode
 type DeputyNode struct {
 	LemoBase common.Address `json:"lemoBase"   gencodec:"required"`
 	NodeID   []byte         `json:"nodeID"     gencodec:"required"`
 	IP       net.IP         `json:"ip"         gencodec:"required"` // ip
-	Port     uint           `json:"port"       gencodec:"required"` // 端口
-	Rank     uint           `json:"rank"       gencodec:"required"` // 排名 从0开始
-	Votes    uint           `json:"votes"      gencodec:"required"` // 得票数
+	Port     uint32         `json:"port"       gencodec:"required"` // 端口
+	Rank     uint32         `json:"rank"       gencodec:"required"` // 排名 从0开始
+	Votes    uint32         `json:"votes"      gencodec:"required"` // 得票数
 }
 
 func (d *DeputyNode) Hash() (h common.Hash) {
@@ -77,7 +77,7 @@ func (d *DeputyNode) Check() error {
 
 type DeputyNodes []*DeputyNode
 
-type Marshaling struct {
+type deputyNodeMarshaling struct {
 	NodeID hexutil.Bytes
 	IP     hexutil.IP
 	Port   math.Decimal32

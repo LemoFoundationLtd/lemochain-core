@@ -486,6 +486,7 @@ func (n *Node) apis() []rpc.API {
 			Namespace: "mine",
 			Version:   "1.0",
 			Service:   NewMineAPI(n.miner),
+			Public:    true,
 		},
 		{
 			Namespace: "account",

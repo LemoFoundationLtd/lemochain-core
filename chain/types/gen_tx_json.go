@@ -9,6 +9,7 @@ import (
 
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
+	"github.com/LemoFoundationLtd/lemochain-go/common/math"
 )
 
 var _ = (*txdataMarshaling)(nil)
@@ -16,27 +17,27 @@ var _ = (*txdataMarshaling)(nil)
 // MarshalJSON marshals as JSON.
 func (t txdata) MarshalJSON() ([]byte, error) {
 	type txdata struct {
-		Recipient     *common.Address `json:"to" rlp:"nil"`
-		RecipientName string          `json:"toName"`
-		GasPrice      *hexutil.Big    `json:"gasPrice" gencodec:"required"`
-		GasLimit      hexutil.Uint64  `json:"gasLimit" gencodec:"required"`
-		Amount        *hexutil.Big    `json:"amount" gencodec:"required"`
-		Data          hexutil.Bytes   `json:"data" gencodec:"required"`
-		Expiration    hexutil.Uint64  `json:"expirationTime" gencodec:"required"`
-		Message       string          `json:"message"`
-		V             *hexutil.Big    `json:"v" gencodec:"required"`
-		R             *hexutil.Big    `json:"r" gencodec:"required"`
-		S             *hexutil.Big    `json:"s" gencodec:"required"`
-		Hash          *common.Hash    `json:"hash" rlp:"-"`
+		Recipient     *common.Address     `json:"to" rlp:"nil"`
+		RecipientName string              `json:"toName"`
+		GasPrice      *hexutil.Big10      `json:"gasPrice" gencodec:"required"`
+		GasLimit      math.HexOrDecimal64 `json:"gasLimit" gencodec:"required"`
+		Amount        *hexutil.Big10      `json:"amount" gencodec:"required"`
+		Data          hexutil.Bytes       `json:"data"`
+		Expiration    math.HexOrDecimal64 `json:"expirationTime" gencodec:"required"`
+		Message       string              `json:"message"`
+		V             *hexutil.Big        `json:"v" gencodec:"required"`
+		R             *hexutil.Big        `json:"r" gencodec:"required"`
+		S             *hexutil.Big        `json:"s" gencodec:"required"`
+		Hash          *common.Hash        `json:"hash" rlp:"-"`
 	}
 	var enc txdata
 	enc.Recipient = t.Recipient
 	enc.RecipientName = t.RecipientName
-	enc.GasPrice = (*hexutil.Big)(t.GasPrice)
-	enc.GasLimit = hexutil.Uint64(t.GasLimit)
-	enc.Amount = (*hexutil.Big)(t.Amount)
+	enc.GasPrice = (*hexutil.Big10)(t.GasPrice)
+	enc.GasLimit = math.HexOrDecimal64(t.GasLimit)
+	enc.Amount = (*hexutil.Big10)(t.Amount)
 	enc.Data = t.Data
-	enc.Expiration = hexutil.Uint64(t.Expiration)
+	enc.Expiration = math.HexOrDecimal64(t.Expiration)
 	enc.Message = t.Message
 	enc.V = (*hexutil.Big)(t.V)
 	enc.R = (*hexutil.Big)(t.R)
@@ -48,18 +49,18 @@ func (t txdata) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON unmarshals from JSON.
 func (t *txdata) UnmarshalJSON(input []byte) error {
 	type txdata struct {
-		Recipient     *common.Address `json:"to" rlp:"nil"`
-		RecipientName *string         `json:"toName"`
-		GasPrice      *hexutil.Big    `json:"gasPrice" gencodec:"required"`
-		GasLimit      *hexutil.Uint64 `json:"gasLimit" gencodec:"required"`
-		Amount        *hexutil.Big    `json:"amount" gencodec:"required"`
-		Data          *hexutil.Bytes  `json:"data" gencodec:"required"`
-		Expiration    *hexutil.Uint64 `json:"expirationTime" gencodec:"required"`
-		Message       *string         `json:"message"`
-		V             *hexutil.Big    `json:"v" gencodec:"required"`
-		R             *hexutil.Big    `json:"r" gencodec:"required"`
-		S             *hexutil.Big    `json:"s" gencodec:"required"`
-		Hash          *common.Hash    `json:"hash" rlp:"-"`
+		Recipient     *common.Address      `json:"to" rlp:"nil"`
+		RecipientName *string              `json:"toName"`
+		GasPrice      *hexutil.Big10       `json:"gasPrice" gencodec:"required"`
+		GasLimit      *math.HexOrDecimal64 `json:"gasLimit" gencodec:"required"`
+		Amount        *hexutil.Big10       `json:"amount" gencodec:"required"`
+		Data          *hexutil.Bytes       `json:"data"`
+		Expiration    *math.HexOrDecimal64 `json:"expirationTime" gencodec:"required"`
+		Message       *string              `json:"message"`
+		V             *hexutil.Big         `json:"v" gencodec:"required"`
+		R             *hexutil.Big         `json:"r" gencodec:"required"`
+		S             *hexutil.Big         `json:"s" gencodec:"required"`
+		Hash          *common.Hash         `json:"hash" rlp:"-"`
 	}
 	var dec txdata
 	if err := json.Unmarshal(input, &dec); err != nil {
@@ -83,10 +84,9 @@ func (t *txdata) UnmarshalJSON(input []byte) error {
 		return errors.New("missing required field 'amount' for txdata")
 	}
 	t.Amount = (*big.Int)(dec.Amount)
-	if dec.Data == nil {
-		return errors.New("missing required field 'data' for txdata")
+	if dec.Data != nil {
+		t.Data = *dec.Data
 	}
-	t.Data = *dec.Data
 	if dec.Expiration == nil {
 		return errors.New("missing required field 'expirationTime' for txdata")
 	}

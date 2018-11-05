@@ -8,6 +8,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto/sha3"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
+	"github.com/LemoFoundationLtd/lemochain-go/common/math"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"io"
 	"math/big"
@@ -133,16 +134,16 @@ func (c *ChangeLog) DecodeRLP(s *rlp.Stream) (err error) {
 // MarshalJSON marshals as JSON.
 func (c ChangeLog) MarshalJSON() ([]byte, error) {
 	type jsonChangeLog struct {
-		LogType ChangeLogType  `json:"type"       gencodec:"required"`
+		LogType math.Decimal32 `json:"type"       gencodec:"required"`
 		Address common.Address `json:"address"    gencodec:"required"`
-		Version uint32         `json:"version"    gencodec:"required"`
+		Version math.Decimal32 `json:"version"    gencodec:"required"`
 		NewVal  string         `json:"newValue"`
 		Extra   string         `json:"extra"`
 	}
 	var enc jsonChangeLog
-	enc.LogType = c.LogType
+	enc.LogType = math.Decimal32(c.LogType)
 	enc.Address = c.Address
-	enc.Version = c.Version
+	enc.Version = math.Decimal32(c.Version)
 	if c.NewVal != nil {
 		NewVal, err := rlp.EncodeToBytes(c.NewVal)
 		if err != nil {
@@ -163,9 +164,9 @@ func (c ChangeLog) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON unmarshals from JSON.
 func (c *ChangeLog) UnmarshalJSON(input []byte) error {
 	type jsonChangeLog struct {
-		LogType *ChangeLogType  `json:"type"       gencodec:"required"`
+		LogType *math.Decimal32 `json:"type"       gencodec:"required"`
 		Address *common.Address `json:"address"    gencodec:"required"`
-		Version *uint32         `json:"version"    gencodec:"required"`
+		Version *math.Decimal32 `json:"version"    gencodec:"required"`
 		NewVal  string          `json:"newValue"`
 		Extra   string          `json:"extra"`
 	}
@@ -176,7 +177,7 @@ func (c *ChangeLog) UnmarshalJSON(input []byte) error {
 	if dec.LogType == nil {
 		return errors.New("missing required field 'type' for ChangeLog")
 	}
-	c.LogType = *dec.LogType
+	c.LogType = ChangeLogType(*dec.LogType)
 	if dec.Address == nil {
 		return errors.New("missing required field 'address' for ChangeLog")
 	}
@@ -184,7 +185,7 @@ func (c *ChangeLog) UnmarshalJSON(input []byte) error {
 	if dec.Version == nil {
 		return errors.New("missing required field 'version' for ChangeLog")
 	}
-	c.Version = *dec.Version
+	c.Version = uint32(*dec.Version)
 	// decode the interface{}
 	config, ok := logConfigs[c.LogType]
 	if !ok {
