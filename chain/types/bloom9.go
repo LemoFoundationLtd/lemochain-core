@@ -88,7 +88,7 @@ func (b Bloom) MarshalText() ([]byte, error) {
 
 // UnmarshalText b as a hex string with 0x prefix.
 func (b *Bloom) UnmarshalText(input []byte) error {
-	return hexutil.UnmarshalFixedText("Bloom", input, b[:])
+	return hexutil.UnmarshalFixedText("Bloom", input, b[:], true)
 }
 
 func CreateBloom(events []*Event) Bloom {

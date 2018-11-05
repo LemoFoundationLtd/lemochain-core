@@ -131,17 +131,17 @@ var unmarshalBigTests = []unmarshalTest{
 	{input: "10", wantErr: errNonString(bigT)},
 	{input: `"0"`, wantErr: wrapTypeError(ErrMissingPrefix, bigT)},
 	{input: `"0x"`, wantErr: wrapTypeError(ErrEmptyNumber, bigT)},
-	{input: `"0x01"`, wantErr: wrapTypeError(ErrLeadingZero, bigT)},
 	{input: `"0xx"`, wantErr: wrapTypeError(ErrSyntax, bigT)},
 	{input: `"0x1zz01"`, wantErr: wrapTypeError(ErrSyntax, bigT)},
 	{
 		input:   `"0x10000000000000000000000000000000000000000000000000000000000000000"`,
-		wantErr: wrapTypeError(ErrBig256Range, bigT),
+		wantErr: wrapTypeError(Err256Range, bigT),
 	},
 
 	// valid encoding
 	{input: `""`, want: big.NewInt(0)},
 	{input: `"0x0"`, want: big.NewInt(0)},
+	{input: `"0x01"`, want: big.NewInt(0x1)},
 	{input: `"0x2"`, want: big.NewInt(0x2)},
 	{input: `"0x2F2"`, want: big.NewInt(0x2f2)},
 	{input: `"0X2F2"`, want: big.NewInt(0x2f2)},
@@ -208,18 +208,18 @@ func TestMarshalBig(t *testing.T) {
 var unmarshalUint64Tests = []unmarshalTest{
 	// invalid encoding
 	{input: "", wantErr: errJSONEOF},
-	{input: "null", wantErr: errNonString(uint64HexT)},
-	{input: "10", wantErr: errNonString(uint64HexT)},
-	{input: `"0"`, wantErr: wrapTypeError(ErrMissingPrefix, uint64HexT)},
-	{input: `"0x"`, wantErr: wrapTypeError(ErrEmptyNumber, uint64HexT)},
-	{input: `"0x01"`, wantErr: wrapTypeError(ErrLeadingZero, uint64HexT)},
-	{input: `"0xfffffffffffffffff"`, wantErr: wrapTypeError(ErrUint64Range, uint64HexT)},
-	{input: `"0xx"`, wantErr: wrapTypeError(ErrSyntax, uint64HexT)},
-	{input: `"0x1zz01"`, wantErr: wrapTypeError(ErrSyntax, uint64HexT)},
+	{input: "null", wantErr: errNonString(uint64T)},
+	{input: "10", wantErr: errNonString(uint64T)},
+	{input: `"0"`, wantErr: wrapTypeError(ErrMissingPrefix, uint64T)},
+	{input: `"0x"`, wantErr: wrapTypeError(ErrEmptyNumber, uint64T)},
+	{input: `"0xfffffffffffffffff"`, wantErr: wrapTypeError(Err256Range, uint64T)},
+	{input: `"0xx"`, wantErr: wrapTypeError(ErrSyntax, uint64T)},
+	{input: `"0x1zz01"`, wantErr: wrapTypeError(ErrSyntax, uint64T)},
 
 	// valid encoding
 	{input: `""`, want: uint64(0)},
 	{input: `"0x0"`, want: uint64(0)},
+	{input: `0x01`, want: uint64(0x1)},
 	{input: `"0x2"`, want: uint64(0x2)},
 	{input: `"0x2F2"`, want: uint64(0x2f2)},
 	{input: `"0X2F2"`, want: uint64(0x2f2)},
@@ -230,7 +230,7 @@ var unmarshalUint64Tests = []unmarshalTest{
 
 func TestUnmarshalUint64(t *testing.T) {
 	for _, test := range unmarshalUint64Tests {
-		var v Uint64Hex
+		var v Uint64
 		err := json.Unmarshal([]byte(test.input), &v)
 		if !checkError(t, test.input, err, test.wantErr) {
 			continue
@@ -245,7 +245,7 @@ func TestUnmarshalUint64(t *testing.T) {
 func BenchmarkUnmarshalUint64(b *testing.B) {
 	input := []byte(`"0x123456789abcdf"`)
 	for i := 0; i < b.N; i++ {
-		var v Uint64Hex
+		var v Uint64
 		v.UnmarshalJSON(input)
 	}
 }
@@ -253,7 +253,7 @@ func BenchmarkUnmarshalUint64(b *testing.B) {
 func TestMarshalUint64(t *testing.T) {
 	for _, test := range encodeUint64Tests {
 		in := test.input.(uint64)
-		out, err := json.Marshal(Uint64Hex(in))
+		out, err := json.Marshal(Uint64(in))
 		if err != nil {
 			t.Errorf("%d: %v", in, err)
 			continue
@@ -262,7 +262,7 @@ func TestMarshalUint64(t *testing.T) {
 			t.Errorf("%d: MarshalJSON output mismatch: got %q, want %q", in, out, want)
 			continue
 		}
-		if out := (Uint64Hex)(in).String(); out != test.want {
+		if out := (Uint64)(in).String(); out != test.want {
 			t.Errorf("%x: String mismatch: got %q, want %q", in, out, test.want)
 			continue
 		}
@@ -272,7 +272,7 @@ func TestMarshalUint64(t *testing.T) {
 func TestMarshalUint(t *testing.T) {
 	for _, test := range encodeUintTests {
 		in := test.input.(uint)
-		out, err := json.Marshal(Uint(in))
+		out, err := json.Marshal(Uint64(in))
 		if err != nil {
 			t.Errorf("%d: %v", in, err)
 			continue
@@ -281,58 +281,8 @@ func TestMarshalUint(t *testing.T) {
 			t.Errorf("%d: MarshalJSON output mismatch: got %q, want %q", in, out, want)
 			continue
 		}
-		if out := (Uint)(in).String(); out != test.want {
+		if out := (Uint64)(in).String(); out != test.want {
 			t.Errorf("%x: String mismatch: got %q, want %q", in, out, test.want)
-			continue
-		}
-	}
-}
-
-var (
-	// These are variables (not constants) to avoid constant overflow
-	// checks in the compiler on 32bit platforms.
-	maxUint33bits = uint64(^uint32(0)) + 1
-	maxUint64bits = ^uint64(0)
-)
-
-var unmarshalUintTests = []unmarshalTest{
-	// invalid encoding
-	{input: "", wantErr: errJSONEOF},
-	{input: "null", wantErr: errNonString(uintT)},
-	{input: "10", wantErr: errNonString(uintT)},
-	{input: `"0"`, wantErr: wrapTypeError(ErrMissingPrefix, uintT)},
-	{input: `"0x"`, wantErr: wrapTypeError(ErrEmptyNumber, uintT)},
-	{input: `"0x01"`, wantErr: wrapTypeError(ErrLeadingZero, uintT)},
-	{input: `"0x100000000"`, want: uint(maxUint33bits), wantErr32bit: wrapTypeError(ErrUintRange, uintT)},
-	{input: `"0xfffffffffffffffff"`, wantErr: wrapTypeError(ErrUintRange, uintT)},
-	{input: `"0xx"`, wantErr: wrapTypeError(ErrSyntax, uintT)},
-	{input: `"0x1zz01"`, wantErr: wrapTypeError(ErrSyntax, uintT)},
-
-	// valid encoding
-	{input: `""`, want: uint(0)},
-	{input: `"0x0"`, want: uint(0)},
-	{input: `"0x2"`, want: uint(0x2)},
-	{input: `"0x2F2"`, want: uint(0x2f2)},
-	{input: `"0X2F2"`, want: uint(0x2f2)},
-	{input: `"0x1122aaff"`, want: uint(0x1122aaff)},
-	{input: `"0xbbb"`, want: uint(0xbbb)},
-	{input: `"0xffffffff"`, want: uint(0xffffffff)},
-	{input: `"0xffffffffffffffff"`, want: uint(maxUint64bits), wantErr32bit: wrapTypeError(ErrUintRange, uintT)},
-}
-
-func TestUnmarshalUint(t *testing.T) {
-	for _, test := range unmarshalUintTests {
-		var v Uint
-		err := json.Unmarshal([]byte(test.input), &v)
-		if uintBits == 32 && test.wantErr32bit != nil {
-			checkError(t, test.input, err, test.wantErr32bit)
-			continue
-		}
-		if !checkError(t, test.input, err, test.wantErr) {
-			continue
-		}
-		if uint(v) != test.want.(uint) {
-			t.Errorf("input %s: value mismatch: got %d, want %d", test.input, v, test.want)
 			continue
 		}
 	}
@@ -358,7 +308,7 @@ func TestUnmarshalFixedUnprefixedText(t *testing.T) {
 
 	for _, test := range tests {
 		out := make([]byte, 4)
-		err := UnmarshalFixedUnprefixedText("x", []byte(test.input), out)
+		err := UnmarshalFixedText("x", []byte(test.input), out, false)
 		switch {
 		case err == nil && test.wantErr != nil:
 			t.Errorf("%q: got no error, expected %q", test.input, test.wantErr)

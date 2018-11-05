@@ -48,9 +48,9 @@ type Event struct {
 
 type eventMarshaling struct {
 	Data        hexutil.Bytes
-	BlockHeight hexutil.Uint64Hex
-	TxIndex     hexutil.Uint64Hex
-	Index       hexutil.Uint64Hex
+	BlockHeight hexutil.Uint64
+	TxIndex     hexutil.Uint64
+	Index       hexutil.Uint64
 }
 
 type rlpEvent struct {

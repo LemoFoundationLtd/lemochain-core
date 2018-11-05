@@ -88,15 +88,15 @@ var (
 		// invalid
 		{input: `0`, wantErr: ErrMissingPrefix},
 		{input: `0x`, wantErr: ErrEmptyNumber},
-		{input: `0x01`, wantErr: ErrLeadingZero},
 		{input: `0xx`, wantErr: ErrSyntax},
 		{input: `0x1zz01`, wantErr: ErrSyntax},
 		{
 			input:   `0x10000000000000000000000000000000000000000000000000000000000000000`,
-			wantErr: ErrBig256Range,
+			wantErr: Err256Range,
 		},
 		// valid
 		{input: `0x0`, want: big.NewInt(0)},
+		{input: `0x01`, want: big.NewInt(0x1)},
 		{input: `0x2`, want: big.NewInt(0x2)},
 		{input: `0x2F2`, want: big.NewInt(0x2f2)},
 		{input: `0X2F2`, want: big.NewInt(0x2f2)},
@@ -121,12 +121,12 @@ var (
 		// invalid
 		{input: `0`, wantErr: ErrMissingPrefix},
 		{input: `0x`, wantErr: ErrEmptyNumber},
-		{input: `0x01`, wantErr: ErrLeadingZero},
-		{input: `0xfffffffffffffffff`, wantErr: ErrUint64Range},
+		{input: `0xfffffffffffffffff`, wantErr: Err256Range},
 		{input: `0xx`, wantErr: ErrSyntax},
 		{input: `0x1zz01`, wantErr: ErrSyntax},
 		// valid
 		{input: `0x0`, want: uint64(0)},
+		{input: `0x01`, want: uint64(0x1)},
 		{input: `0x2`, want: uint64(0x2)},
 		{input: `0x2F2`, want: uint64(0x2f2)},
 		{input: `0X2F2`, want: uint64(0x2f2)},
@@ -158,46 +158,52 @@ func TestDecode(t *testing.T) {
 	}
 }
 
-func TestEncodeBig(t *testing.T) {
-	for _, test := range encodeBigTests {
-		enc := EncodeBig(test.input.(*big.Int))
-		if enc != test.want {
-			t.Errorf("input %x: wrong encoding %s", test.input, enc)
+func TestHexOrDecimal64(t *testing.T) {
+	tests := []struct {
+		input string
+		num   uint64
+		ok    bool
+	}{
+		{"", 0, true},
+		{"0", 0, true},
+		{"0x0", 0, true},
+		{"12345678", 12345678, true},
+		{"0x12345678", 0x12345678, true},
+		{"0X12345678", 0x12345678, true},
+		// Tests for leading zero behaviour:
+		{"0123456789", 123456789, true}, // note: not octal
+		{"0x00", 0, true},
+		{"0x012345678abc", 0x12345678abc, true},
+		// Invalid syntax:
+		{"abcdef", 0, false},
+		{"0xgg", 0, false},
+		// Doesn't fit into 64 bits:
+		{"18446744073709551617", 0, false},
+	}
+	for _, test := range tests {
+		var num Uint64
+		err := num.UnmarshalText([]byte(test.input))
+		if (err == nil) != test.ok {
+			t.Errorf("ParseUint64(%q) -> (err == nil) = %t, want %t", test.input, err == nil, test.ok)
+			continue
+		}
+		if err == nil && uint64(num) != test.num {
+			t.Errorf("ParseUint64(%q) -> %d, want %d", test.input, num, test.num)
 		}
 	}
 }
 
-func TestDecodeBig(t *testing.T) {
-	for _, test := range decodeBigTests {
-		dec, err := DecodeBig(test.input)
-		if !checkError(t, test.input, err, test.wantErr) {
-			continue
-		}
-		if dec.Cmp(test.want.(*big.Int)) != 0 {
-			t.Errorf("input %s: value mismatch: got %x, want %x", test.input, dec, test.want)
-			continue
-		}
+func TestMustParseUint64(t *testing.T) {
+	if v := MustParseUint64("12345"); v != 12345 {
+		t.Errorf(`MustParseUint64("12345") = %d, want 12345`, v)
 	}
 }
 
-func TestEncodeUint64(t *testing.T) {
-	for _, test := range encodeUint64Tests {
-		enc := EncodeUint64(test.input.(uint64))
-		if enc != test.want {
-			t.Errorf("input %x: wrong encoding %s", test.input, enc)
+func TestMustParseUint64Panic(t *testing.T) {
+	defer func() {
+		if recover() == nil {
+			t.Error("MustParseBig should've panicked")
 		}
-	}
-}
-
-func TestDecodeUint64(t *testing.T) {
-	for _, test := range decodeUint64Tests {
-		dec, err := DecodeUint64(test.input)
-		if !checkError(t, test.input, err, test.wantErr) {
-			continue
-		}
-		if dec != test.want.(uint64) {
-			t.Errorf("input %s: value mismatch: got %x, want %x", test.input, dec, test.want)
-			continue
-		}
-	}
+	}()
+	MustParseUint64("ggg")
 }

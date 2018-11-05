@@ -25,17 +25,15 @@ import (
 	"math/big"
 	"net"
 	"reflect"
-	"strconv"
 	"strings"
 )
 
 var (
-	bytesT     = reflect.TypeOf(Bytes(nil))
-	bigT       = reflect.TypeOf((*Big)(nil))
-	big10T     = reflect.TypeOf((*Big10)(nil))
-	uint64HexT = reflect.TypeOf(Uint64Hex(0))
-	uint64T    = reflect.TypeOf(Uint64(0))
-	uint32T    = reflect.TypeOf(Uint32(0))
+	bytesT  = reflect.TypeOf(Bytes(nil))
+	bigT    = reflect.TypeOf((*Big)(nil))
+	big10T  = reflect.TypeOf((*Big10)(nil))
+	uint64T = reflect.TypeOf(Uint64(0))
+	uint32T = reflect.TypeOf(Uint32(0))
 )
 
 // Bytes marshals/unmarshals as a JSON string with 0x prefix.
@@ -78,58 +76,6 @@ func (b Bytes) String() string {
 	return Encode(b)
 }
 
-// UnmarshalFixedJSON decodes the input as a string with 0x prefix. The length of out
-// determines the required input length. This function is commonly used to implement the
-// UnmarshalJSON method for fixed-size types.
-func UnmarshalFixedJSON(typ reflect.Type, input, out []byte) error {
-	if !isString(input) {
-		return errNonString(typ)
-	}
-	return wrapTypeError(UnmarshalFixedText(typ.String(), input[1:len(input)-1], out), typ)
-}
-
-// UnmarshalFixedText decodes the input as a string with 0x prefix. The length of out
-// determines the required input length. This function is commonly used to implement the
-// UnmarshalText method for fixed-size types.
-func UnmarshalFixedText(typname string, input, out []byte) error {
-	raw, err := checkText(input, true)
-	if err != nil {
-		return err
-	}
-	if len(raw)/2 != len(out) {
-		return fmt.Errorf("hex string has length %d, want %d for %s", len(raw), len(out)*2, typname)
-	}
-	// Pre-verify syntax before modifying out.
-	for _, b := range raw {
-		if decodeNibble(b) == badNibble {
-			return ErrSyntax
-		}
-	}
-	hex.Decode(out, raw)
-	return nil
-}
-
-// UnmarshalFixedUnprefixedText decodes the input as a string with optional 0x prefix. The
-// length of out determines the required input length. This function is commonly used to
-// implement the UnmarshalText method for fixed-size types.
-func UnmarshalFixedUnprefixedText(typname string, input, out []byte) error {
-	raw, err := checkText(input, false)
-	if err != nil {
-		return err
-	}
-	if len(raw)/2 != len(out) {
-		return fmt.Errorf("hex string has length %d, want %d for %s", len(raw), len(out)*2, typname)
-	}
-	// Pre-verify syntax before modifying out.
-	for _, b := range raw {
-		if decodeNibble(b) == badNibble {
-			return ErrSyntax
-		}
-	}
-	hex.Decode(out, raw)
-	return nil
-}
-
 // Big marshals/unmarshals as a JSON string with 0x prefix.
 // The zero value marshals as "0x0".
 //
@@ -140,7 +86,7 @@ type Big big.Int
 
 // MarshalText implements encoding.TextMarshaler
 func (b Big) MarshalText() ([]byte, error) {
-	return []byte(EncodeBig((*big.Int)(&b))), nil
+	return []byte(b.String()), nil
 }
 
 // UnmarshalJSON implements json.Unmarshaler.
@@ -153,34 +99,11 @@ func (b *Big) UnmarshalJSON(input []byte) error {
 
 // UnmarshalText implements encoding.TextUnmarshaler
 func (b *Big) UnmarshalText(input []byte) error {
-	raw, err := checkNumberText(input)
-	if err != nil {
-		return err
+	dec, err := decodeBig(input, 16)
+	if err == nil {
+		*b = (Big)(*dec)
 	}
-	if len(raw) > 64 {
-		return ErrBig256Range
-	}
-	words := make([]big.Word, len(raw)/bigWordNibbles+1)
-	end := len(raw)
-	for i := range words {
-		start := end - bigWordNibbles
-		if start < 0 {
-			start = 0
-		}
-		for ri := start; ri < end; ri++ {
-			nib := decodeNibble(raw[ri])
-			if nib == badNibble {
-				return ErrSyntax
-			}
-			words[i] *= 16
-			words[i] += big.Word(nib)
-		}
-		end = start
-	}
-	var dec big.Int
-	dec.SetBits(words)
-	*b = (Big)(dec)
-	return nil
+	return err
 }
 
 // ToInt converts b to a big.Int.
@@ -190,14 +113,23 @@ func (b *Big) ToInt() *big.Int {
 
 // String returns the hex encoding of b.
 func (b *Big) String() string {
-	return EncodeBig(b.ToInt())
+	if b.ToInt().BitLen() == 0 {
+		return "0x0"
+	}
+	return fmt.Sprintf("%#x", b.ToInt())
 }
 
+// Big10 marshals/unmarshals as a JSON decimal string.
+// The zero value marshals as "0".
+//
+// Negative integers are not supported at this time. Attempting to marshal them will
+// return an error. Values larger than 256bits are rejected by Unmarshal but will be
+// marshaled without error.
 type Big10 big.Int
 
 // MarshalText implements encoding.TextMarshaler
 func (b Big10) MarshalText() ([]byte, error) {
-	return []byte((*big.Int)(&b).String()), nil
+	return []byte(b.String()), nil
 }
 
 // UnmarshalJSON implements json.Unmarshaler.
@@ -210,17 +142,11 @@ func (b *Big10) UnmarshalJSON(input []byte) error {
 
 // UnmarshalText implements encoding.TextUnmarshaler
 func (b *Big10) UnmarshalText(input []byte) error {
-	raw, err := checkDecimalNumberText(input)
-	if err != nil {
-		return err
+	dec, err := decodeBig(input, 10)
+	if err == nil {
+		*b = (Big10)(*dec)
 	}
-	var dec big.Int
-	_, ok := dec.SetString(string(raw), 10)
-	if !ok {
-		return ErrSyntax
-	}
-	*b = (Big10)(dec)
-	return nil
+	return err
 }
 
 // ToInt converts b to a big.Int.
@@ -231,68 +157,6 @@ func (b *Big10) ToInt() *big.Int {
 // String returns the hex encoding of b.
 func (b *Big10) String() string {
 	return b.ToInt().String()
-}
-
-// Uint64Hex marshals/unmarshals as a JSON string with 0x prefix.
-// The zero value marshals as "0x0".
-type Uint64Hex uint64
-
-// MarshalText implements encoding.TextMarshaler.
-func (b Uint64Hex) MarshalText() ([]byte, error) {
-	return []byte(b.String()), nil
-}
-
-// UnmarshalText implements encoding.TextUnmarshaler
-func (b *Uint64Hex) UnmarshalText(input []byte) error {
-	dec, err := ParseUint(string(input), 64)
-	if err != nil {
-		log.Warnf("invalid hex or decimal integer %q", input)
-		return err
-	}
-	*b = Uint64Hex(dec)
-	return nil
-}
-
-// UnmarshalJSON implements json.Unmarshaler.
-func (b *Uint64Hex) UnmarshalJSON(input []byte) error {
-	if isString(input) {
-		input = input[1 : len(input)-1]
-	}
-	return wrapTypeError(b.UnmarshalText(input), uint64HexT)
-}
-
-// String returns the hex encoding of b.
-func (b Uint64Hex) String() string {
-	return EncodeUint64(uint64(b))
-}
-
-// ParseUint64 parses s as an integer in decimal or hexadecimal syntax.
-// Leading zeros are accepted. The empty string parses as zero.
-func ParseUint(s string, bitSize int) (uint64, error) {
-	if s == "" {
-		return 0, nil
-	}
-	base := 10
-	if len(s) >= 2 && (s[:2] == "0x" || s[:2] == "0X") {
-		s = s[2:]
-		if len(s) == 0 {
-			return 0, nil
-		}
-		if len(s) > 16 {
-			return 0, ErrRange
-		}
-		base = 16
-	}
-	return strconv.ParseUint(s, base, bitSize)
-}
-
-// MustParseUint64 parses s as an integer and panics if the string is invalid.
-func MustParseUint64(s string) uint64 {
-	v, err := ParseUint(s, 64)
-	if err != nil {
-		panic("invalid unsigned 64 bit integer: " + s)
-	}
-	return v
 }
 
 // Uint64 marshals uint64 as decimal, and unmarshals string and number as decimal or hex.
@@ -321,6 +185,11 @@ func (i *Uint64) UnmarshalJSON(input []byte) error {
 		input = input[1 : len(input)-1]
 	}
 	return wrapTypeError(i.UnmarshalText(input), uint64T)
+}
+
+// String returns the decimal encoding of i.
+func (i Uint64) String() string {
+	return fmt.Sprintf("%d", uint64(i))
 }
 
 // Uint32 marshals uint32 as decimal, and unmarshals string and number as decimal or hex.
@@ -359,13 +228,13 @@ func bytesHave0xPrefix(input []byte) bool {
 	return len(input) >= 2 && input[0] == '0' && (input[1] == 'x' || input[1] == 'X')
 }
 
-func checkText(input []byte, wantPrefix bool) ([]byte, error) {
+func checkText(input []byte, want0xPrefix bool) ([]byte, error) {
 	if len(input) == 0 {
 		return nil, nil // empty strings are allowed
 	}
 	if bytesHave0xPrefix(input) {
 		input = input[2:]
-	} else if wantPrefix {
+	} else if want0xPrefix {
 		return nil, ErrMissingPrefix
 	}
 	if len(input)%2 != 0 {
@@ -374,28 +243,37 @@ func checkText(input []byte, wantPrefix bool) ([]byte, error) {
 	return input, nil
 }
 
-func checkNumberText(input []byte) (raw []byte, err error) {
+func checkNumberText(input []byte, want0xPrefix bool) (raw []byte, err error) {
 	if len(input) == 0 {
 		return nil, nil // empty strings are allowed
 	}
-	if !bytesHave0xPrefix(input) {
+	if bytesHave0xPrefix(input) {
+		input = input[2:]
+	} else if want0xPrefix {
 		return nil, ErrMissingPrefix
 	}
-	input = input[2:]
 	if len(input) == 0 {
 		return nil, ErrEmptyNumber
 	}
 	return input, nil
 }
 
-func checkDecimalNumberText(input []byte) (raw []byte, err error) {
-	if len(input) == 0 {
-		return nil, nil // empty strings are allowed
+// decodeBig decodes a decimal string as a quantity.
+// Numbers larger than 256 bits are not accepted.
+func decodeBig(input []byte, base int) (*big.Int, error) {
+	raw, err := checkNumberText(input, base == 16)
+	if err != nil {
+		return nil, err
 	}
-	if len(input) == 0 {
-		return nil, ErrEmptyNumber
+	if base == 16 && len(raw) > 64 {
+		return nil, Err256Range
 	}
-	return input, nil
+	dec := new(big.Int)
+	_, ok := dec.SetString(string(raw), base)
+	if !ok {
+		return nil, ErrSyntax
+	}
+	return dec, nil
 }
 
 func wrapTypeError(err error, typ reflect.Type) error {

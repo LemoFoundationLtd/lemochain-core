@@ -61,7 +61,7 @@ func (h Hash) Format(s fmt.State, c rune) {
 
 // UnmarshalText parses a hash in hex syntax.
 func (h *Hash) UnmarshalText(input []byte) error {
-	return hexutil.UnmarshalFixedText("Hash", input, h[:])
+	return hexutil.UnmarshalFixedText("Hash", input, h[:], true)
 }
 
 // UnmarshalJSON parses a hash in hex syntax.
@@ -104,19 +104,6 @@ func (h Hash) Generate(rand *rand.Rand, size int) reflect.Value {
 
 func EmptyHash(h Hash) bool {
 	return h == Hash{}
-}
-
-// UnprefixedHash allows marshaling a Hash without 0x prefix.
-type UnprefixedHash Hash
-
-// UnmarshalText decodes the hash from hex. The 0x prefix is optional.
-func (h *UnprefixedHash) UnmarshalText(input []byte) error {
-	return hexutil.UnmarshalFixedUnprefixedText("UnprefixedHash", input, h[:])
-}
-
-// MarshalText encodes the hash as hex.
-func (h UnprefixedHash) MarshalText() ([]byte, error) {
-	return []byte(hex.EncodeToString(h[:])), nil
 }
 
 // Address
@@ -254,7 +241,7 @@ func (a *Address) UnmarshalText(input []byte) error {
 	if isLemoAddress(string(input)) {
 		return a.Decode(string(input))
 	}
-	return hexutil.UnmarshalFixedText("Address", input, a[:])
+	return hexutil.UnmarshalFixedText("Address", input, a[:], true)
 }
 
 // UnmarshalJSON parses a hash in hex syntax.

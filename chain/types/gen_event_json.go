@@ -15,25 +15,25 @@ var _ = (*eventMarshaling)(nil)
 // MarshalJSON marshals as JSON.
 func (e Event) MarshalJSON() ([]byte, error) {
 	type Event struct {
-		Address     common.Address    `json:"address" gencodec:"required"`
-		Topics      []common.Hash     `json:"topics" gencodec:"required"`
-		Data        hexutil.Bytes     `json:"data" gencodec:"required"`
-		BlockHeight hexutil.Uint64Hex `json:"blockHeight"`
-		TxHash      common.Hash       `json:"transactionHash" gencodec:"required"`
-		TxIndex     hexutil.Uint64Hex `json:"transactionIndex" gencodec:"required"`
-		BlockHash   common.Hash       `json:"blockHash"`
-		Index       hexutil.Uint64Hex `json:"eventIndex" gencodec:"required"`
-		Removed     bool              `json:"removed"`
+		Address     common.Address `json:"address" gencodec:"required"`
+		Topics      []common.Hash  `json:"topics" gencodec:"required"`
+		Data        hexutil.Bytes  `json:"data" gencodec:"required"`
+		BlockHeight hexutil.Uint64 `json:"blockHeight"`
+		TxHash      common.Hash    `json:"transactionHash" gencodec:"required"`
+		TxIndex     hexutil.Uint64 `json:"transactionIndex" gencodec:"required"`
+		BlockHash   common.Hash    `json:"blockHash"`
+		Index       hexutil.Uint64 `json:"eventIndex" gencodec:"required"`
+		Removed     bool           `json:"removed"`
 	}
 	var enc Event
 	enc.Address = e.Address
 	enc.Topics = e.Topics
 	enc.Data = e.Data
-	enc.BlockHeight = hexutil.Uint64Hex(e.BlockHeight)
+	enc.BlockHeight = hexutil.Uint64(e.BlockHeight)
 	enc.TxHash = e.TxHash
-	enc.TxIndex = hexutil.Uint64Hex(e.TxIndex)
+	enc.TxIndex = hexutil.Uint64(e.TxIndex)
 	enc.BlockHash = e.BlockHash
-	enc.Index = hexutil.Uint64Hex(e.Index)
+	enc.Index = hexutil.Uint64(e.Index)
 	enc.Removed = e.Removed
 	return json.Marshal(&enc)
 }
@@ -41,15 +41,15 @@ func (e Event) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON unmarshals from JSON.
 func (e *Event) UnmarshalJSON(input []byte) error {
 	type Event struct {
-		Address     *common.Address    `json:"address" gencodec:"required"`
-		Topics      []common.Hash      `json:"topics" gencodec:"required"`
-		Data        *hexutil.Bytes     `json:"data" gencodec:"required"`
-		BlockHeight *hexutil.Uint64Hex `json:"blockHeight"`
-		TxHash      *common.Hash       `json:"transactionHash" gencodec:"required"`
-		TxIndex     *hexutil.Uint64Hex `json:"transactionIndex" gencodec:"required"`
-		BlockHash   *common.Hash       `json:"blockHash"`
-		Index       *hexutil.Uint64Hex `json:"eventIndex" gencodec:"required"`
-		Removed     *bool              `json:"removed"`
+		Address     *common.Address `json:"address" gencodec:"required"`
+		Topics      []common.Hash   `json:"topics" gencodec:"required"`
+		Data        *hexutil.Bytes  `json:"data" gencodec:"required"`
+		BlockHeight *hexutil.Uint64 `json:"blockHeight"`
+		TxHash      *common.Hash    `json:"transactionHash" gencodec:"required"`
+		TxIndex     *hexutil.Uint64 `json:"transactionIndex" gencodec:"required"`
+		BlockHash   *common.Hash    `json:"blockHash"`
+		Index       *hexutil.Uint64 `json:"eventIndex" gencodec:"required"`
+		Removed     *bool           `json:"removed"`
 	}
 	var dec Event
 	if err := json.Unmarshal(input, &dec); err != nil {

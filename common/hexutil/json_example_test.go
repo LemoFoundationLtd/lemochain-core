@@ -26,7 +26,7 @@ import (
 type MyType [5]byte
 
 func (v *MyType) UnmarshalText(input []byte) error {
-	return hexutil.UnmarshalFixedText("MyType", input, v[:])
+	return hexutil.UnmarshalFixedText("MyType", input, v[:], true)
 }
 
 func (v MyType) String() string {
