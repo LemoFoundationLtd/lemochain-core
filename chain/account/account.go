@@ -105,7 +105,7 @@ func (a *Account) String() string {
 
 // Implement AccountAccessor. Access Account without changelog
 func (a *Account) GetAddress() common.Address { return a.data.Address }
-func (a *Account) GetBalance() *big.Int       { return a.data.Balance }
+func (a *Account) GetBalance() *big.Int       { return new(big.Int).Set(a.data.Balance) }
 func (a *Account) GetVersion(logType types.ChangeLogType) uint32 {
 	return a.data.NewestRecords[logType].Version
 }
@@ -122,7 +122,7 @@ func (a *Account) SetBalance(balance *big.Int) {
 		log.Errorf("can't set negative balance %v to account %06x", balance, a.data.Address)
 		panic(ErrNegativeBalance)
 	}
-	a.data.Balance = balance
+	a.data.Balance.Set(balance)
 }
 func (a *Account) SetVersion(logType types.ChangeLogType, version uint32) {
 	a.data.NewestRecords[logType] = types.VersionRecord{Version: version, Height: a.baseHeight + 1}

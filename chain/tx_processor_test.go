@@ -1,6 +1,7 @@
 package chain
 
 import (
+	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/vm"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
@@ -159,6 +160,7 @@ func createNewBlock() *types.Block {
 		}}, false)
 }
 
+// test tx picking logic
 func TestTxProcessor_ApplyTxs(t *testing.T) {
 	clearDB()
 	p := NewTxProcessor(newChain())
@@ -220,8 +222,9 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 		GasUsed:    header.GasUsed,
 		Time:       header.Time,
 	}
-	auther := p.am.GetAccount(header.LemoBase)
-	origBalance := auther.GetBalance()
+	p.am.Reset(emptyHeader.ParentHash)
+	author := p.am.GetAccount(header.LemoBase)
+	origBalance := author.GetBalance()
 	newHeader, selectedTxs, invalidTxs, err = p.ApplyTxs(emptyHeader, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, types.Bloom{}, newHeader.Bloom)
@@ -230,7 +233,7 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 	assert.Equal(t, emptyTrieHash, newHeader.TxRoot)
 	assert.Equal(t, emptyTrieHash, newHeader.LogRoot)
 	assert.Equal(t, 0, len(selectedTxs))
-	assert.Equal(t, *origBalance, *auther.GetBalance())
+	assert.Equal(t, *origBalance, *author.GetBalance())
 	assert.Equal(t, 0, len(p.am.GetChangeLogs()))
 
 	// too many txs
@@ -267,6 +270,7 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 		GasUsed:    header.GasUsed,
 		Time:       header.Time,
 	}
+	p.am.Reset(emptyHeader.ParentHash)
 	balance := p.am.GetAccount(testAddr).GetBalance()
 	txs = types.Transactions{
 		txs[0],
@@ -284,4 +288,63 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 	assert.Equal(t, header.Hash(), newHeader.Hash())
 	assert.Equal(t, len(txs)-1, len(selectedTxs))
 	assert.Equal(t, 1, len(invalidTxs))
+}
+
+// TODO move these cases to evm
+// test different transactions
+func TestTxProcessor_ApplyTxs2(t *testing.T) {
+	clearDB()
+	p := NewTxProcessor(newChain())
+
+	// transfer to other
+	header := defaultBlocks[3].Header
+	emptyHeader := &types.Header{
+		ParentHash: header.ParentHash,
+		LemoBase:   header.LemoBase,
+		Height:     header.Height,
+		GasLimit:   header.GasLimit,
+		GasUsed:    header.GasUsed,
+		Time:       header.Time,
+	}
+	p.am.Reset(emptyHeader.ParentHash)
+	senderBalance := p.am.GetAccount(testAddr).GetBalance()
+	minerBalance := p.am.GetAccount(defaultAccounts[0]).GetBalance()
+	recipientBalance := p.am.GetAccount(defaultAccounts[1]).GetBalance()
+	txs := types.Transactions{
+		makeTx(testPrivate, defaultAccounts[1], common.Big1),
+	}
+	newHeader, _, _, err := p.ApplyTxs(emptyHeader, txs)
+	assert.NoError(t, err)
+	assert.Equal(t, params.TxGas, newHeader.GasUsed)
+	newSenderBalance := p.am.GetAccount(testAddr).GetBalance()
+	newMinerBalance := p.am.GetAccount(defaultAccounts[0]).GetBalance()
+	newRecipientBalance := p.am.GetAccount(defaultAccounts[1]).GetBalance()
+	cost := txs[0].GasPrice().Mul(txs[0].GasPrice(), big.NewInt(int64(params.TxGas)))
+	senderBalance.Sub(senderBalance, cost)
+	senderBalance.Sub(senderBalance, common.Big1)
+	assert.Equal(t, senderBalance, newSenderBalance)
+	assert.Equal(t, minerBalance.Add(minerBalance, cost), newMinerBalance)
+	assert.Equal(t, recipientBalance.Add(recipientBalance, common.Big1), newRecipientBalance)
+
+	// transfer to self, only cost gas
+	header = defaultBlocks[3].Header
+	emptyHeader = &types.Header{
+		ParentHash: header.ParentHash,
+		LemoBase:   header.LemoBase,
+		Height:     header.Height,
+		GasLimit:   header.GasLimit,
+		GasUsed:    header.GasUsed,
+		Time:       header.Time,
+	}
+	p.am.Reset(emptyHeader.ParentHash)
+	senderBalance = p.am.GetAccount(testAddr).GetBalance()
+	txs = types.Transactions{
+		makeTx(testPrivate, testAddr, common.Big1),
+	}
+	newHeader, _, _, err = p.ApplyTxs(emptyHeader, txs)
+	assert.NoError(t, err)
+	assert.Equal(t, params.TxGas, newHeader.GasUsed)
+	newSenderBalance = p.am.GetAccount(testAddr).GetBalance()
+	cost = txs[0].GasPrice().Mul(txs[0].GasPrice(), big.NewInt(int64(params.TxGas)))
+	assert.Equal(t, senderBalance.Sub(senderBalance, cost), newSenderBalance)
 }
