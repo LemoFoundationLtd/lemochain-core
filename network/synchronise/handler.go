@@ -9,6 +9,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
+	"github.com/LemoFoundationLtd/lemochain-go/common/subscribe"
 	"github.com/LemoFoundationLtd/lemochain-go/network/p2p"
 	"github.com/LemoFoundationLtd/lemochain-go/network/synchronise/protocol"
 	"strings"
@@ -32,21 +33,27 @@ type ProtocolManager struct {
 	newPeerCh       chan *peer
 	txsCh           chan types.Transactions
 	newMinedBlockCh chan *types.Block
-	quitSync        chan struct{}
+	stableBlockCh   chan *types.Block
+	txsSub          subscribe.Subscription
+	minedBlockSub   subscribe.Subscription
+	stableBlockSub  subscribe.Subscription
+
+	quitSync chan struct{}
 
 	wg sync.WaitGroup
 }
 
-func NewProtocolManager(chainID uint64, nodeID []byte, blockchain *chain.BlockChain, txpool *chain.TxPool, newBlockCh chan *types.Block, txsCh chan types.Transactions) *ProtocolManager {
+func NewProtocolManager(chainID uint64, nodeID []byte, blockchain *chain.BlockChain, txpool *chain.TxPool) *ProtocolManager {
 	manager := &ProtocolManager{
 		chainID:         chainID,
 		nodeID:          nodeID,
 		blockchain:      blockchain,
 		peers:           newPeerSet(),
 		txPool:          txpool,
-		newMinedBlockCh: newBlockCh,
-		txsCh:           txsCh,
 		newPeerCh:       make(chan *peer),
+		txsCh:           make(chan types.Transactions, 10),
+		newMinedBlockCh: make(chan *types.Block, 1),
+		stableBlockCh:   make(chan *types.Block, 1),
 		quitSync:        make(chan struct{}),
 	}
 	// 获取本地链高度
@@ -65,7 +72,7 @@ func NewProtocolManager(chainID uint64, nodeID []byte, blockchain *chain.BlockCh
 	manager.downloader = NewDownloader(manager.peers, blockchain, manager.dropPeer)
 
 	blockchain.BroadcastConfirmInfo = manager.broadcastConfirmInfo // 广播区块的确认信息
-	blockchain.BroadcastStableBlock = manager.broadcastStableBlock // 广播稳定区块
+	// blockchain.BroadcastStableBlock = manager.broadcastStableBlock // 广播稳定区块
 
 	return manager
 }
@@ -395,13 +402,20 @@ func errResp(code protocol.ErrCode, format string, v ...interface{}) error {
 
 // Start 启动pm
 func (pm *ProtocolManager) Start() {
+	pm.txsSub = pm.txPool.NewTxsFeed.Subscribe(pm.txsCh)
+	pm.minedBlockSub = pm.blockchain.MinedBlockFeed.Subscribe(pm.newMinedBlockCh)
+	pm.stableBlockSub = pm.blockchain.StableBlockFeed.Subscribe(pm.stableBlockCh)
+
 	go pm.txBroadcastLoop()
-	go pm.minedBroadcastLoop()
+	go pm.blockBroadcastLoop()
 	go pm.syncer()
 }
 
 // Stop 停止pm
 func (pm *ProtocolManager) Stop() {
+	pm.txsSub.Unsubscribe()
+	pm.minedBlockSub.Unsubscribe()
+	pm.stableBlockSub.Unsubscribe()
 	close(pm.quitSync)
 	pm.wg.Wait()
 	log.Info("ProtocolManager stop")
@@ -421,8 +435,8 @@ func (pm *ProtocolManager) txBroadcastLoop() {
 	}
 }
 
-// minedBroadcastLoop 出块广播
-func (pm *ProtocolManager) minedBroadcastLoop() {
+// blockBroadcastLoop 出块广播
+func (pm *ProtocolManager) blockBroadcastLoop() {
 	pm.wg.Add(1)
 	defer pm.wg.Done()
 	for {
@@ -432,7 +446,6 @@ func (pm *ProtocolManager) minedBroadcastLoop() {
 				log.Warn("Can't broadcast nil block ")
 				return
 			}
-			pm.blockchain.SaveMinedBlock(block)
 			for id, p := range pm.peers.peers {
 				if pm.isPeerDeputyNode(block.Height(), id) {
 					go p.peer.send(protocol.NewBlockMsg, &block)
@@ -441,6 +454,8 @@ func (pm *ProtocolManager) minedBroadcastLoop() {
 			time.AfterFunc(2*time.Second, func() {
 				go pm.broadcastConfirmInfo(block.Hash(), block.Height())
 			})
+		case block := <-pm.stableBlockCh:
+			pm.broadcastStableBlock(block)
 		case <-pm.quitSync:
 			return
 		}

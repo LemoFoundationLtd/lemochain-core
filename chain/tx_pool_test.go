@@ -24,8 +24,8 @@ func CreateTx(to string, amount int64, gasPrice int64, expiration uint64) *types
 
 func TestTxPool_AddTx(t *testing.T) {
 
-	txCh := make(chan types.Transactions, 100)
-	pool := NewTxPool(nil, txCh)
+	// txCh := make(chan types.Transactions, 100)
+	pool := NewTxPool(nil)
 	tx := CreateTx("0x1d5f11eaa13e02cdca886181dc38ab4cb8cf9092e86c000fb42d12c8b504500e", 1000, 2000, 3000)
 
 	err := pool.AddTx(tx)
@@ -39,8 +39,8 @@ func TestTxPool_AddTx(t *testing.T) {
 }
 
 func TestTxPool_Pending(t *testing.T) {
-	txCh := make(chan types.Transactions, 100)
-	pool := NewTxPool(nil, txCh)
+	// txCh := make(chan types.Transactions, 100)
+	pool := NewTxPool(nil)
 
 	// is not exist
 	tx := CreateTx("0x1d5f11eaa13e02cdca886181dc38ab4cb8cf9092e86c000fb42d12c8b504500e", 1000, 2000, 3000)

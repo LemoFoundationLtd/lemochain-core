@@ -5,6 +5,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-go/common/subscribe"
 	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"sync"
 	"time"
@@ -148,19 +149,19 @@ func (recent *TxsRecent) put(hash common.Hash) {
 }
 
 type TxPool struct {
-	am    *account.Manager
-	txsCh chan types.Transactions
+	am *account.Manager
 
 	txsCache TxsSort
 
 	recent *TxsRecent
 	mux    sync.Mutex
+
+	NewTxsFeed subscribe.Feed
 }
 
-func NewTxPool(am *account.Manager, txsCh chan types.Transactions) *TxPool {
+func NewTxPool(am *account.Manager) *TxPool {
 	pool := &TxPool{
 		am:     am,
-		txsCh:  txsCh,
 		recent: NewRecent(),
 	}
 	pool.txsCache = NewTxsSortByTime()
@@ -184,7 +185,7 @@ func (pool *TxPool) AddTx(tx *types.Transaction) error {
 		// }
 		pool.recent.put(hash)
 		pool.txsCache.push(tx)
-		pool.txsCh <- types.Transactions{tx}
+		pool.NewTxsFeed.Send(types.Transactions{tx})
 		return nil
 	}
 }

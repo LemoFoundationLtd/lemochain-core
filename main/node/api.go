@@ -13,6 +13,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/network/p2p"
 	"math/big"
 	"runtime"
+	"strconv"
 )
 
 // AccountAPI API for access to account information
@@ -241,8 +242,9 @@ func (n *NetAPI) Peers() []p2p.PeerConnInfo {
 }
 
 // PeersCount return peers number
-func (n *NetAPI) PeersCount() int {
-	return len(n.node.server.Peers())
+func (n *NetAPI) PeersCount() string {
+	count := strconv.Itoa(len(n.node.server.Peers()))
+	return count
 }
 
 //go:generate gencodec -type NetInfo --field-override netInfoMarshaling -out gen_net_info_json.go

@@ -44,7 +44,7 @@ func newBlockChain() (*BlockChain, chan *types.Block, error) {
 
 	var engine EngineTest
 	ch := make(chan *types.Block)
-	blockChain, err := NewBlockChain(chainId, &engine, db, ch, nil)
+	blockChain, err := NewBlockChain(chainId, &engine, db, nil)
 	if err != nil {
 		return nil, nil, err
 	}
