@@ -10,6 +10,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/common/flag"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
+	"github.com/LemoFoundationLtd/lemochain-go/common/subscribe"
 	"github.com/LemoFoundationLtd/lemochain-go/network/synchronise/protocol"
 	db "github.com/LemoFoundationLtd/lemochain-go/store/protocol"
 	"math"
@@ -19,6 +20,7 @@ import (
 )
 
 type broadcastConfirmInfoFn func(hash common.Hash, height uint32)
+
 type broadcastBlockFn func(block *types.Block)
 
 type BlockChain struct {
@@ -35,18 +37,22 @@ type BlockChain struct {
 	chainForksHead map[common.Hash]*types.Block // total latest header of different fork chain
 	chainForksLock sync.Mutex
 
-	engine     Engine       // consensus engine
-	processor  *TxProcessor // state processor
-	running    int32
-	newBlockCh chan *types.Block // receive new block channel
-	quitCh     chan struct{}
+	engine    Engine       // consensus engine
+	processor *TxProcessor // state processor
+	running   int32
+
+	MinedBlockFeed  subscribe.Feed
+	RecvBlockFeed   subscribe.Feed
+	StableBlockFeed subscribe.Feed
+
+	quitCh chan struct{}
 }
 
-func NewBlockChain(chainID uint16, engine Engine, db db.ChainDB, newBlockCh chan *types.Block, flags flag.CmdFlags) (bc *BlockChain, err error) {
+func NewBlockChain(chainID uint16, engine Engine, db db.ChainDB, flags flag.CmdFlags) (bc *BlockChain, err error) {
 	bc = &BlockChain{
-		chainID:        chainID,
-		db:             db,
-		newBlockCh:     newBlockCh,
+		chainID: chainID,
+		db:      db,
+		// newBlockCh:     newBlockCh,
 		flags:          flags,
 		engine:         engine,
 		chainForksHead: make(map[common.Hash]*types.Block, 16),
@@ -162,8 +168,8 @@ func (bc *BlockChain) StableBlock() *types.Block {
 	return bc.stableBlock.Load().(*types.Block)
 }
 
-// SaveMinedBlock 挖到新块
-func (bc *BlockChain) SaveMinedBlock(block *types.Block) error {
+// SetMinedBlock 挖到新块
+func (bc *BlockChain) SetMinedBlock(block *types.Block) error {
 	if err := bc.db.SetBlock(block.Hash(), block); err != nil {
 		log.Errorf("can't insert block to cache. height:%d hash:%s", block.Height(), block.Hash().Hex())
 		return ErrSaveBlock
@@ -180,11 +186,14 @@ func (bc *BlockChain) SaveMinedBlock(block *types.Block) error {
 	bc.currentBlock.Store(block)
 	delete(bc.chainForksHead, block.ParentHash())
 	bc.chainForksHead[block.Hash()] = block
+
+	bc.MinedBlockFeed.Send(block)
+
 	return nil
 }
 
 func (bc *BlockChain) newBlockNotify(block *types.Block) {
-	go func() { bc.newBlockCh <- block }()
+	bc.RecvBlockFeed.Send(block)
 }
 
 // InsertChain insert block of non-self to chain

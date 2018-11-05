@@ -10,6 +10,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
+	"github.com/LemoFoundationLtd/lemochain-go/common/subscribe"
 	"math/big"
 	"sync"
 	"sync/atomic"
@@ -37,15 +38,15 @@ type Miner struct {
 
 	blockMineTimer *time.Timer // 出块timer
 
-	mineNewBlockCh chan *types.Block // 挖到区块后传入通道通知外界
 	recvNewBlockCh chan *types.Block // 收到新块通知
-	timeToMineCh   chan struct{}     // 到出块时间了
+	recvBlockSub   subscribe.Subscription
+	timeToMineCh   chan struct{} // 到出块时间了
 	startCh        chan struct{}
 	stopCh         chan struct{} // 停止挖矿
 	quitCh         chan struct{} // 退出
 }
 
-func New(cfg *MineConfig, chain *chain.BlockChain, txPool *chain.TxPool, mineNewBlockCh, recvBlockCh chan *types.Block, engine chain.Engine) *Miner {
+func New(cfg *MineConfig, chain *chain.BlockChain, txPool *chain.TxPool, engine chain.Engine) *Miner {
 	m := &Miner{
 		blockInterval:  cfg.SleepTime,
 		timeoutTime:    cfg.Timeout,
@@ -55,8 +56,7 @@ func New(cfg *MineConfig, chain *chain.BlockChain, txPool *chain.TxPool, mineNew
 		engine:         engine,
 		currentBlock:   chain.CurrentBlock,
 		txProcessor:    chain.TxProcessor(),
-		mineNewBlockCh: mineNewBlockCh,
-		recvNewBlockCh: recvBlockCh,
+		recvNewBlockCh: make(chan *types.Block, 1),
 		timeToMineCh:   make(chan struct{}),
 		startCh:        make(chan struct{}),
 		stopCh:         make(chan struct{}),
@@ -88,6 +88,7 @@ func (m *Miner) Start() {
 		m.stopCh <- struct{}{}
 		return
 	}
+	m.recvBlockSub = m.chain.RecvBlockFeed.Subscribe(m.recvNewBlockCh)
 	log.Info("start mining...")
 }
 
@@ -100,6 +101,7 @@ func (m *Miner) Stop() {
 		m.blockMineTimer.Stop()
 	}
 	m.stopCh <- struct{}{}
+	m.recvBlockSub.Unsubscribe()
 	log.Info("stop mining success")
 }
 
@@ -127,6 +129,7 @@ func (m *Miner) getTimespan() int64 {
 		return int64(m.blockInterval)
 	}
 	now := time.Now().UnixNano() / 1e6
+	fmt.Printf("getTimespan: blocktime: %d, now: %d\r\n", lstSpan, now)
 	return now - lstSpan*1000
 }
 
@@ -318,7 +321,7 @@ func (m *Miner) sealBlock() {
 		return
 	}
 	log.Infof("Mine a new block. height: %d hash: %s", block.Height(), block.Hash().String())
-	m.mineNewBlockCh <- block
+	m.chain.SetMinedBlock(block)
 	// remove txs from pool
 	txsKeys := make([]common.Hash, len(packagedTxs)+len(invalidTxs))
 	for i, tx := range packagedTxs {

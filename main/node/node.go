@@ -68,7 +68,7 @@ type Node struct {
 
 	genesisBlock *types.Block
 
-	newTxsCh chan types.Transactions
+	// newTxsCh chan types.Transactions
 	// newMinedBlockCh chan *types.Block
 	recvBlockCh chan *types.Block
 
@@ -152,16 +152,15 @@ func New(flags flag.CmdFlags) *Node {
 	initDeputyNodes(db)
 	// new dpovp consensus engine
 	engine := chain.NewDpovp(int64(configFromFile.Timeout), db)
-	recvBlockCh := make(chan *types.Block)
-	blockChain, err := chain.NewBlockChain(uint16(configFromFile.ChainID), engine, db, recvBlockCh, flags)
+	// recvBlockCh := make(chan *types.Block)
+	blockChain, err := chain.NewBlockChain(uint16(configFromFile.ChainID), engine, db, flags)
 	if err != nil {
 		panic("new block chain failed!!!")
 	}
 
-	newTxsCh := make(chan types.Transactions)
+	// newTxsCh := make(chan types.Transactions)
 	accMan := blockChain.AccountManager()
-	txPool := chain.NewTxPool(accMan, newTxsCh)
-	newMinedBlockCh := make(chan *types.Block)
+	txPool := chain.NewTxPool(accMan)
 	n := &Node{
 		config:       cfg,
 		ipcEndpoint:  cfg.IPCEndpoint(),
@@ -171,9 +170,8 @@ func New(flags flag.CmdFlags) *Node {
 		accMan:       accMan,
 		chain:        blockChain,
 		txPool:       txPool,
-		newTxsCh:     newTxsCh,
-		miner:        miner.New(mineCfg, blockChain, txPool, newMinedBlockCh, recvBlockCh, engine),
-		pm:           synchronise.NewProtocolManager(configFromFile.ChainID, deputynode.GetSelfNodeID(), blockChain, txPool, newMinedBlockCh, newTxsCh),
+		miner:        miner.New(mineCfg, blockChain, txPool, engine),
+		pm:           synchronise.NewProtocolManager(configFromFile.ChainID, deputynode.GetSelfNodeID(), blockChain, txPool),
 		genesisBlock: genesisBlock,
 	}
 	// set lemobase for next block

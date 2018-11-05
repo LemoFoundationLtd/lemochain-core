@@ -10,6 +10,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
+	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"github.com/LemoFoundationLtd/lemochain-go/store/protocol"
 	"github.com/stretchr/testify/assert"
@@ -260,7 +261,7 @@ func newBlockChain() (*chain.BlockChain, chan *types.Block, error) {
 
 	var engine EngineTestForMiner
 	ch := make(chan *types.Block)
-	blockChain, err := chain.NewBlockChain(chainId, &engine, db, ch, nil)
+	blockChain, err := chain.NewBlockChain(chainId, &engine, db, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -276,24 +277,17 @@ func setSelfNodeKey(key string) {
 	deputynode.SetSelfNodeKey(tmp)
 }
 
-func newMiner(key string) (*Miner, chan *types.Block, chan *types.Block, error) {
+func newMiner(key string) (*Miner, error) {
 	store.ClearData()
 	setSelfNodeKey(key)
 
 	blockChain, _, err := newBlockChain()
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, err
 	}
 
-	txPool := chain.NewTxPool(blockChain.AccountManager(), nil)
-	mineNewBlockCh := make(chan *types.Block)
-	recvBlockCh := make(chan *types.Block)
-
-	return New(Cnf,
-		blockChain,
-		txPool,
-		mineNewBlockCh, recvBlockCh,
-		new(EngineTestForMiner)), mineNewBlockCh, recvBlockCh, nil
+	txPool := chain.NewTxPool(blockChain.AccountManager())
+	return New(Cnf, blockChain, txPool, new(EngineTestForMiner)), nil
 }
 
 func calDeviation(ex int, src int) bool {
@@ -312,13 +306,17 @@ func calDeviation(ex int, src int) bool {
 	}
 }
 
+func init() {
+	log.Setup(log.LevelDebug, false, true)
+}
+
 func TestMiner_GetSleepGenesis(t *testing.T) {
 	store.ClearData()
 	deputynode.Instance().Clear()
 	deputynode.Instance().Add(0, chain.DefaultDeputyNodes)
 
 	me := Nodes[0].privateKey
-	miner, _, _, err := newMiner(me)
+	miner, err := newMiner(me)
 	assert.NoError(t, err)
 
 	reset0 := miner.getSleepTime()
@@ -347,7 +345,7 @@ func TestMine_GetSleepNotSelf(t *testing.T) {
 	deputynode.Instance().Clear()
 	deputynode.Instance().Add(0, chain.DefaultDeputyNodes)
 
-	miner, _, _, err := newMiner(Nodes[0].privateKey)
+	miner, err := newMiner(Nodes[0].privateKey)
 	assert.NoError(t, err)
 
 	genesis := miner.chain.GetBlockByHeight(0)
@@ -371,7 +369,7 @@ func TestMiner_GetSleep1Deputy(t *testing.T) {
 	deputynode.Instance().Add(0, deputynode.DeputyNodes{chain.DefaultDeputyNodes[0]})
 	setSelfNodeKey(Nodes[0].privateKey)
 
-	miner, _, _, err := newMiner(Nodes[0].privateKey)
+	miner, err := newMiner(Nodes[0].privateKey)
 	assert.NoError(t, err)
 
 	reset := miner.getSleepTime()
@@ -383,7 +381,7 @@ func TestMiner_GetSleepValidAuthor(t *testing.T) {
 	deputynode.Instance().Clear()
 
 	deputynode.Instance().Add(0, chain.DefaultDeputyNodes)
-	miner, _, _, err := newMiner(Nodes[0].privateKey)
+	miner, err := newMiner(Nodes[0].privateKey)
 	assert.NoError(t, err)
 
 	genesis := miner.chain.GetBlockByHeight(0)
@@ -404,7 +402,7 @@ func TestMiner_GetSleepSlot0_1(t *testing.T) {
 	deputynode.Instance().Clear()
 	deputynode.Instance().Add(0, chain.DefaultDeputyNodes)
 
-	miner, _, _, err := newMiner(Nodes[0].privateKey)
+	miner, err := newMiner(Nodes[0].privateKey)
 	assert.NoError(t, err)
 
 	genesis := miner.chain.GetBlockByHeight(0)
@@ -424,7 +422,7 @@ func TestMiner_GetSleepSlot0_1(t *testing.T) {
 	assert.NoError(t, err)
 
 	reset := miner.getSleepTime()
-	fmt.Println("NODE[0]:", reset)
+	fmt.Printf("NODE[0]: %d, blocktime: %d, currenttime: %d\r\n", reset, block.Time(), time.Now().Unix())
 	assert.Equal(t, calDeviation(40000-wait*1000, reset), true)
 
 	setSelfNodeKey(Nodes[1].privateKey)
@@ -454,7 +452,7 @@ func TestMiner_GetSleepNormal(t *testing.T) {
 	deputynode.Instance().Add(0, chain.DefaultDeputyNodes)
 
 	me := Nodes[0].privateKey
-	miner, _, _, err := newMiner(me)
+	miner, err := newMiner(me)
 	assert.NoError(t, err)
 
 	genesis := miner.chain.GetBlockByHeight(0)

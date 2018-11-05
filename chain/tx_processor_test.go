@@ -21,7 +21,7 @@ func TestNewTxProcessor(t *testing.T) {
 
 	flags := flag.CmdFlags{}
 	flags.Set(common.Debug, "1")
-	chain, _ = NewBlockChain(chainID, NewDpovp(10*1000, chain.db), chain.db, chain.newBlockCh, flags)
+	chain, _ = NewBlockChain(chainID, NewDpovp(10*1000, chain.db), chain.db, flags)
 	p = NewTxProcessor(chain)
 }
 

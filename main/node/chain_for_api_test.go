@@ -118,8 +118,7 @@ func clearDB() {
 // newChain creates chain for test
 func newChain() *chain.BlockChain {
 	db := newDB()
-	newBlockCh := make(chan *types.Block)
-	bc, err := chain.NewBlockChain(chainID, chain.NewDpovp(10*1000, db), db, newBlockCh, flag.CmdFlags{})
+	bc, err := chain.NewBlockChain(chainID, chain.NewDpovp(10*1000, db), db, flag.CmdFlags{})
 	if err != nil {
 		panic(err)
 	}
