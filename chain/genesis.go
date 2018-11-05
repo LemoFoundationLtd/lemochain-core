@@ -8,7 +8,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
-	"github.com/LemoFoundationLtd/lemochain-go/common/math"
 	"github.com/LemoFoundationLtd/lemochain-go/store/protocol"
 	"math/big"
 	"net"
@@ -66,7 +65,7 @@ func decodeLemobase(input string) common.Address {
 	panic(fmt.Sprintf("deputy nodes have invalid lemobase: %s", input))
 }
 
-//go:generate gencodec -type Genesis -field-override genesisSpecMarshaling -out gen_genesis.go
+//go:generate gencodec -type Genesis -field-override genesisSpecMarshaling -out gen_genesis_json.go
 
 type Genesis struct {
 	Time        uint32                 `json:"timestamp"   gencodec:"required"`
@@ -77,9 +76,9 @@ type Genesis struct {
 }
 
 type genesisSpecMarshaling struct {
-	Time        math.Decimal32
+	Time        hexutil.Uint32
 	ExtraData   hexutil.Bytes
-	GasLimit    math.Decimal64
+	GasLimit    hexutil.Uint64
 	DeputyNodes []*deputynode.DeputyNode
 }
 

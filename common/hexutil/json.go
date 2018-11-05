@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"math/big"
 	"net"
 	"reflect"
@@ -29,11 +30,12 @@ import (
 )
 
 var (
-	bytesT  = reflect.TypeOf(Bytes(nil))
-	bigT    = reflect.TypeOf((*Big)(nil))
-	big10T  = reflect.TypeOf((*Big10)(nil))
-	uintT   = reflect.TypeOf(Uint(0))
-	uint64T = reflect.TypeOf(Uint64(0))
+	bytesT     = reflect.TypeOf(Bytes(nil))
+	bigT       = reflect.TypeOf((*Big)(nil))
+	big10T     = reflect.TypeOf((*Big10)(nil))
+	uint64HexT = reflect.TypeOf(Uint64Hex(0))
+	uint64T    = reflect.TypeOf(Uint64(0))
+	uint32T    = reflect.TypeOf(Uint32(0))
 )
 
 // Bytes marshals/unmarshals as a JSON string with 0x prefix.
@@ -213,7 +215,10 @@ func (b *Big10) UnmarshalText(input []byte) error {
 		return err
 	}
 	var dec big.Int
-	dec.SetString(string(raw), 10)
+	_, ok := dec.SetString(string(raw), 10)
+	if !ok {
+		return ErrSyntax
+	}
 	*b = (Big10)(dec)
 	return nil
 }
@@ -228,86 +233,122 @@ func (b *Big10) String() string {
 	return b.ToInt().String()
 }
 
-// Uint64 marshals/unmarshals as a JSON string with 0x prefix.
+// Uint64Hex marshals/unmarshals as a JSON string with 0x prefix.
 // The zero value marshals as "0x0".
-type Uint64 uint64
+type Uint64Hex uint64
 
 // MarshalText implements encoding.TextMarshaler.
-func (b Uint64) MarshalText() ([]byte, error) {
-	buf := make([]byte, 2, 10)
-	copy(buf, `0x`)
-	buf = strconv.AppendUint(buf, uint64(b), 16)
-	return buf, nil
-}
-
-// UnmarshalJSON implements json.Unmarshaler.
-func (b *Uint64) UnmarshalJSON(input []byte) error {
-	if !isString(input) {
-		return errNonString(uint64T)
-	}
-	return wrapTypeError(b.UnmarshalText(input[1:len(input)-1]), uint64T)
+func (b Uint64Hex) MarshalText() ([]byte, error) {
+	return []byte(b.String()), nil
 }
 
 // UnmarshalText implements encoding.TextUnmarshaler
-func (b *Uint64) UnmarshalText(input []byte) error {
-	raw, err := checkNumberText(input)
+func (b *Uint64Hex) UnmarshalText(input []byte) error {
+	dec, err := ParseUint(string(input), 64)
 	if err != nil {
+		log.Warnf("invalid hex or decimal integer %q", input)
 		return err
 	}
-	if len(raw) > 16 {
-		return ErrUint64Range
-	}
-	var dec uint64
-	for _, byte := range raw {
-		nib := decodeNibble(byte)
-		if nib == badNibble {
-			return ErrSyntax
-		}
-		dec *= 16
-		dec += nib
-	}
-	*b = Uint64(dec)
+	*b = Uint64Hex(dec)
 	return nil
-}
-
-// String returns the hex encoding of b.
-func (b Uint64) String() string {
-	return EncodeUint64(uint64(b))
-}
-
-// Uint marshals/unmarshals as a JSON string with 0x prefix.
-// The zero value marshals as "0x0".
-type Uint uint
-
-// MarshalText implements encoding.TextMarshaler.
-func (b Uint) MarshalText() ([]byte, error) {
-	return Uint64(b).MarshalText()
 }
 
 // UnmarshalJSON implements json.Unmarshaler.
-func (b *Uint) UnmarshalJSON(input []byte) error {
-	if !isString(input) {
-		return errNonString(uintT)
+func (b *Uint64Hex) UnmarshalJSON(input []byte) error {
+	if isString(input) {
+		input = input[1 : len(input)-1]
 	}
-	return wrapTypeError(b.UnmarshalText(input[1:len(input)-1]), uintT)
-}
-
-// UnmarshalText implements encoding.TextUnmarshaler.
-func (b *Uint) UnmarshalText(input []byte) error {
-	var u64 Uint64
-	err := u64.UnmarshalText(input)
-	if u64 > Uint64(^uint(0)) || err == ErrUint64Range {
-		return ErrUintRange
-	} else if err != nil {
-		return err
-	}
-	*b = Uint(u64)
-	return nil
+	return wrapTypeError(b.UnmarshalText(input), uint64HexT)
 }
 
 // String returns the hex encoding of b.
-func (b Uint) String() string {
+func (b Uint64Hex) String() string {
 	return EncodeUint64(uint64(b))
+}
+
+// ParseUint64 parses s as an integer in decimal or hexadecimal syntax.
+// Leading zeros are accepted. The empty string parses as zero.
+func ParseUint(s string, bitSize int) (uint64, error) {
+	if s == "" {
+		return 0, nil
+	}
+	base := 10
+	if len(s) >= 2 && (s[:2] == "0x" || s[:2] == "0X") {
+		s = s[2:]
+		if len(s) == 0 {
+			return 0, nil
+		}
+		if len(s) > 16 {
+			return 0, ErrRange
+		}
+		base = 16
+	}
+	return strconv.ParseUint(s, base, bitSize)
+}
+
+// MustParseUint64 parses s as an integer and panics if the string is invalid.
+func MustParseUint64(s string) uint64 {
+	v, err := ParseUint(s, 64)
+	if err != nil {
+		panic("invalid unsigned 64 bit integer: " + s)
+	}
+	return v
+}
+
+// Uint64 marshals uint64 as decimal, and unmarshals string and number as decimal or hex.
+type Uint64 uint64
+
+// MarshalText implements encoding.TextMarshaler.
+func (i Uint64) MarshalText() ([]byte, error) {
+	buf := fmt.Sprintf("%d", uint64(i))
+	return []byte(buf), nil
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (i *Uint64) UnmarshalText(input []byte) error {
+	dec, err := ParseUint(string(input), 64)
+	if err != nil {
+		log.Warnf("invalid hex or decimal integer %q", input)
+		return err
+	}
+	*i = Uint64(dec)
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (i *Uint64) UnmarshalJSON(input []byte) error {
+	if isString(input) {
+		input = input[1 : len(input)-1]
+	}
+	return wrapTypeError(i.UnmarshalText(input), uint64T)
+}
+
+// Uint32 marshals uint32 as decimal, and unmarshals string and number as decimal or hex.
+type Uint32 uint32
+
+// MarshalText implements encoding.TextMarshaler.
+func (i Uint32) MarshalText() ([]byte, error) {
+	buf := fmt.Sprintf("%d", uint32(i))
+	return []byte(buf), nil
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (i *Uint32) UnmarshalText(input []byte) error {
+	dec, err := ParseUint(string(input), 32)
+	if err != nil {
+		log.Warnf("invalid hex or decimal integer %q", input)
+		return err
+	}
+	*i = Uint32(dec)
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (i *Uint32) UnmarshalJSON(input []byte) error {
+	if isString(input) {
+		input = input[1 : len(input)-1]
+	}
+	return wrapTypeError(i.UnmarshalText(input), uint32T)
 }
 
 func isString(input []byte) bool {

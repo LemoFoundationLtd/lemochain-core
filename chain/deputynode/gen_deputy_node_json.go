@@ -9,7 +9,6 @@ import (
 
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
-	"github.com/LemoFoundationLtd/lemochain-go/common/math"
 )
 
 var _ = (*deputyNodeMarshaling)(nil)
@@ -20,17 +19,17 @@ func (d DeputyNode) MarshalJSON() ([]byte, error) {
 		LemoBase common.Address `json:"lemoBase"   gencodec:"required"`
 		NodeID   hexutil.Bytes  `json:"nodeID"     gencodec:"required"`
 		IP       hexutil.IP     `json:"ip"         gencodec:"required"`
-		Port     math.Decimal32 `json:"port"       gencodec:"required"`
-		Rank     math.Decimal32 `json:"rank"       gencodec:"required"`
-		Votes    math.Decimal32 `json:"votes"      gencodec:"required"`
+		Port     hexutil.Uint32 `json:"port"       gencodec:"required"`
+		Rank     hexutil.Uint32 `json:"rank"       gencodec:"required"`
+		Votes    hexutil.Uint32 `json:"votes"      gencodec:"required"`
 	}
 	var enc DeputyNode
 	enc.LemoBase = d.LemoBase
 	enc.NodeID = d.NodeID
 	enc.IP = hexutil.IP(d.IP)
-	enc.Port = math.Decimal32(d.Port)
-	enc.Rank = math.Decimal32(d.Rank)
-	enc.Votes = math.Decimal32(d.Votes)
+	enc.Port = hexutil.Uint32(d.Port)
+	enc.Rank = hexutil.Uint32(d.Rank)
+	enc.Votes = hexutil.Uint32(d.Votes)
 	return json.Marshal(&enc)
 }
 
@@ -40,9 +39,9 @@ func (d *DeputyNode) UnmarshalJSON(input []byte) error {
 		LemoBase *common.Address `json:"lemoBase"   gencodec:"required"`
 		NodeID   *hexutil.Bytes  `json:"nodeID"     gencodec:"required"`
 		IP       *hexutil.IP     `json:"ip"         gencodec:"required"`
-		Port     *math.Decimal32 `json:"port"       gencodec:"required"`
-		Rank     *math.Decimal32 `json:"rank"       gencodec:"required"`
-		Votes    *math.Decimal32 `json:"votes"      gencodec:"required"`
+		Port     *hexutil.Uint32 `json:"port"       gencodec:"required"`
+		Rank     *hexutil.Uint32 `json:"rank"       gencodec:"required"`
+		Votes    *hexutil.Uint32 `json:"votes"      gencodec:"required"`
 	}
 	var dec DeputyNode
 	if err := json.Unmarshal(input, &dec); err != nil {

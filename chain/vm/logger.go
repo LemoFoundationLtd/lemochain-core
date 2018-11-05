@@ -32,7 +32,7 @@ type LogConfig struct {
 	Limit          int  // maximum length of output, but zero means unlimited
 }
 
-//go:generate gencodec -type StructLog -field-override structLogMarshaling -out gen_structlog.go
+//go:generate gencodec -type StructLog -field-override structLogMarshaling -out gen_structlog_json.go
 
 // StructLog is emitted to the EVM each cycle and lists information about the current internal state
 // prior to the execution of the statement.
@@ -52,8 +52,8 @@ type StructLog struct {
 // overrides for gencodec
 type structLogMarshaling struct {
 	Stack       []*math.HexOrDecimal256
-	Gas         math.HexOrDecimal64
-	GasCost     math.HexOrDecimal64
+	Gas         hexutil.Uint64
+	GasCost     hexutil.Uint64
 	Memory      hexutil.Bytes
 	OpName      string `json:"opName"` // adds call to OpName() in MarshalJSON
 	ErrorString string `json:"error"`  // adds call to ErrorString() in MarshalJSON

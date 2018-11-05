@@ -45,7 +45,7 @@ var (
 	ErrMissingPrefix = &decError{"hex string without 0x prefix"}
 	ErrOddLength     = &decError{"hex string of odd length"}
 	ErrEmptyNumber   = &decError{"hex string \"0x\""}
-	ErrUint64Range   = &decError{"hex number > 64 bits"}
+	ErrRange         = &decError{"number is out of range"}
 	ErrUintRange     = &decError{fmt.Sprintf("hex number > %d bits", uintBits)}
 	ErrBig256Range   = &decError{"hex number > 256 bits"}
 )
@@ -220,7 +220,7 @@ func mapError(err error) error {
 	if err, ok := err.(*strconv.NumError); ok {
 		switch err.Err {
 		case strconv.ErrRange:
-			return ErrUint64Range
+			return ErrRange
 		case strconv.ErrSyntax:
 			return ErrSyntax
 		}

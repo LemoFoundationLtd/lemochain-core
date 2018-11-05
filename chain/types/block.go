@@ -6,7 +6,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto/sha3"
 	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
-	"github.com/LemoFoundationLtd/lemochain-go/common/math"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"strings"
 )
@@ -31,10 +30,10 @@ type Header struct {
 }
 
 type headerMarshaling struct {
-	Height     math.Decimal32
-	GasLimit   math.HexOrDecimal64
-	GasUsed    math.HexOrDecimal64
-	Time       math.Decimal32
+	Height     hexutil.Uint32
+	GasLimit   hexutil.Uint64
+	GasUsed    hexutil.Uint64
+	Time       hexutil.Uint32
 	SignData   hexutil.Bytes
 	DeputyRoot hexutil.Bytes
 	Extra      hexutil.Bytes

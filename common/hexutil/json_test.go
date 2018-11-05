@@ -208,14 +208,14 @@ func TestMarshalBig(t *testing.T) {
 var unmarshalUint64Tests = []unmarshalTest{
 	// invalid encoding
 	{input: "", wantErr: errJSONEOF},
-	{input: "null", wantErr: errNonString(uint64T)},
-	{input: "10", wantErr: errNonString(uint64T)},
-	{input: `"0"`, wantErr: wrapTypeError(ErrMissingPrefix, uint64T)},
-	{input: `"0x"`, wantErr: wrapTypeError(ErrEmptyNumber, uint64T)},
-	{input: `"0x01"`, wantErr: wrapTypeError(ErrLeadingZero, uint64T)},
-	{input: `"0xfffffffffffffffff"`, wantErr: wrapTypeError(ErrUint64Range, uint64T)},
-	{input: `"0xx"`, wantErr: wrapTypeError(ErrSyntax, uint64T)},
-	{input: `"0x1zz01"`, wantErr: wrapTypeError(ErrSyntax, uint64T)},
+	{input: "null", wantErr: errNonString(uint64HexT)},
+	{input: "10", wantErr: errNonString(uint64HexT)},
+	{input: `"0"`, wantErr: wrapTypeError(ErrMissingPrefix, uint64HexT)},
+	{input: `"0x"`, wantErr: wrapTypeError(ErrEmptyNumber, uint64HexT)},
+	{input: `"0x01"`, wantErr: wrapTypeError(ErrLeadingZero, uint64HexT)},
+	{input: `"0xfffffffffffffffff"`, wantErr: wrapTypeError(ErrUint64Range, uint64HexT)},
+	{input: `"0xx"`, wantErr: wrapTypeError(ErrSyntax, uint64HexT)},
+	{input: `"0x1zz01"`, wantErr: wrapTypeError(ErrSyntax, uint64HexT)},
 
 	// valid encoding
 	{input: `""`, want: uint64(0)},
@@ -230,7 +230,7 @@ var unmarshalUint64Tests = []unmarshalTest{
 
 func TestUnmarshalUint64(t *testing.T) {
 	for _, test := range unmarshalUint64Tests {
-		var v Uint64
+		var v Uint64Hex
 		err := json.Unmarshal([]byte(test.input), &v)
 		if !checkError(t, test.input, err, test.wantErr) {
 			continue
@@ -245,7 +245,7 @@ func TestUnmarshalUint64(t *testing.T) {
 func BenchmarkUnmarshalUint64(b *testing.B) {
 	input := []byte(`"0x123456789abcdf"`)
 	for i := 0; i < b.N; i++ {
-		var v Uint64
+		var v Uint64Hex
 		v.UnmarshalJSON(input)
 	}
 }
@@ -253,7 +253,7 @@ func BenchmarkUnmarshalUint64(b *testing.B) {
 func TestMarshalUint64(t *testing.T) {
 	for _, test := range encodeUint64Tests {
 		in := test.input.(uint64)
-		out, err := json.Marshal(Uint64(in))
+		out, err := json.Marshal(Uint64Hex(in))
 		if err != nil {
 			t.Errorf("%d: %v", in, err)
 			continue
@@ -262,7 +262,7 @@ func TestMarshalUint64(t *testing.T) {
 			t.Errorf("%d: MarshalJSON output mismatch: got %q, want %q", in, out, want)
 			continue
 		}
-		if out := (Uint64)(in).String(); out != test.want {
+		if out := (Uint64Hex)(in).String(); out != test.want {
 			t.Errorf("%x: String mismatch: got %q, want %q", in, out, test.want)
 			continue
 		}

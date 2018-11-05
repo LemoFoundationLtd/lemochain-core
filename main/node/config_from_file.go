@@ -3,7 +3,7 @@ package node
 import (
 	"encoding/json"
 	"errors"
-	"github.com/LemoFoundationLtd/lemochain-go/common/math"
+	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
 	"os"
 )
 
@@ -16,9 +16,9 @@ type ConfigFromFile struct {
 }
 
 type ConfigFromFileMarshaling struct {
-	ChainID   math.HexOrDecimal64
-	SleepTime math.HexOrDecimal64
-	Timeout   math.HexOrDecimal64
+	ChainID   hexutil.Uint64
+	SleepTime hexutil.Uint64
+	Timeout   hexutil.Uint64
 }
 
 func readConfigFile(path string) (*ConfigFromFile, error) {

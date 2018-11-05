@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/LemoFoundationLtd/lemochain-go/common/math"
+	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
 )
 
 var _ = (*ConfigFromFileMarshaling)(nil)
@@ -14,23 +14,23 @@ var _ = (*ConfigFromFileMarshaling)(nil)
 // MarshalJSON marshals as JSON.
 func (c ConfigFromFile) MarshalJSON() ([]byte, error) {
 	type ConfigFromFile struct {
-		ChainID   math.HexOrDecimal64 `json:"chainID"     gencodec:"required"`
-		SleepTime math.HexOrDecimal64 `json:"sleepTime"   gencodec:"required"`
-		Timeout   math.HexOrDecimal64 `json:"timeout"     gencodec:"required"`
+		ChainID   hexutil.Uint64 `json:"chainID"     gencodec:"required"`
+		SleepTime hexutil.Uint64 `json:"sleepTime"   gencodec:"required"`
+		Timeout   hexutil.Uint64 `json:"timeout"     gencodec:"required"`
 	}
 	var enc ConfigFromFile
-	enc.ChainID = math.HexOrDecimal64(c.ChainID)
-	enc.SleepTime = math.HexOrDecimal64(c.SleepTime)
-	enc.Timeout = math.HexOrDecimal64(c.Timeout)
+	enc.ChainID = hexutil.Uint64(c.ChainID)
+	enc.SleepTime = hexutil.Uint64(c.SleepTime)
+	enc.Timeout = hexutil.Uint64(c.Timeout)
 	return json.Marshal(&enc)
 }
 
 // UnmarshalJSON unmarshals from JSON.
 func (c *ConfigFromFile) UnmarshalJSON(input []byte) error {
 	type ConfigFromFile struct {
-		ChainID   *math.HexOrDecimal64 `json:"chainID"     gencodec:"required"`
-		SleepTime *math.HexOrDecimal64 `json:"sleepTime"   gencodec:"required"`
-		Timeout   *math.HexOrDecimal64 `json:"timeout"     gencodec:"required"`
+		ChainID   *hexutil.Uint64 `json:"chainID"     gencodec:"required"`
+		SleepTime *hexutil.Uint64 `json:"sleepTime"   gencodec:"required"`
+		Timeout   *hexutil.Uint64 `json:"timeout"     gencodec:"required"`
 	}
 	var dec ConfigFromFile
 	if err := json.Unmarshal(input, &dec); err != nil {

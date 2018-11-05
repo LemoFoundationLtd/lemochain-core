@@ -6,7 +6,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
-	"github.com/LemoFoundationLtd/lemochain-go/common/math"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"io"
 	"math/big"
@@ -55,10 +54,10 @@ type txdata struct {
 
 type txdataMarshaling struct {
 	GasPrice   *hexutil.Big10
-	GasLimit   math.HexOrDecimal64
+	GasLimit   hexutil.Uint64
 	Amount     *hexutil.Big10
 	Data       hexutil.Bytes
-	Expiration math.HexOrDecimal64
+	Expiration hexutil.Uint64
 	V          *hexutil.Big
 	R          *hexutil.Big
 	S          *hexutil.Big

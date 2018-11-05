@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
-	"github.com/LemoFoundationLtd/lemochain-go/common/math"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"io"
 	"math/big"
@@ -19,8 +18,8 @@ type VersionRecord struct {
 }
 
 type versionRecordMarshaling struct {
-	Version math.Decimal32
-	Height  math.Decimal32
+	Version hexutil.Uint32
+	Height  hexutil.Uint32
 }
 
 //go:generate gencodec -type AccountData --field-override accountDataMarshaling -out gen_account_data_json.go
@@ -42,12 +41,14 @@ type accountDataMarshaling struct {
 	Balance *hexutil.Big10
 }
 
+// rlpVersionRecord defines the fields which would be encode/decode by rlp
 type rlpVersionRecord struct {
 	LogType ChangeLogType
 	Version uint32
 	Height  uint32
 }
 
+// rlpAccountData defines the fields which would be encode/decode by rlp
 type rlpAccountData struct {
 	Address     common.Address
 	Balance     *big.Int

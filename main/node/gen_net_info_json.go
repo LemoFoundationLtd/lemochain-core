@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/LemoFoundationLtd/lemochain-go/common/math"
+	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
 )
 
 var _ = (*netInfoMarshaling)(nil)
@@ -14,14 +14,14 @@ var _ = (*netInfoMarshaling)(nil)
 // MarshalJSON marshals as JSON.
 func (n NetInfo) MarshalJSON() ([]byte, error) {
 	type NetInfo struct {
-		Port     math.Decimal32 `json:"port" gencodec:"required"`
-		NodeName string         `json:"nodeName" gencodec:"required"`
+		Port     hexutil.Uint32 `json:"port"        gencodec:"required"`
+		NodeName string         `json:"nodeName"    gencodec:"required"`
 		Version  string         `json:"nodeVersion" gencodec:"required"`
-		OS       string         `json:"nodeOS" gencodec:"required"`
-		Go       string         `json:"goVersion" gencodec:"required"`
+		OS       string         `json:"os"          gencodec:"required"`
+		Go       string         `json:"runtime"     gencodec:"required"`
 	}
 	var enc NetInfo
-	enc.Port = math.Decimal32(n.Port)
+	enc.Port = hexutil.Uint32(n.Port)
 	enc.NodeName = n.NodeName
 	enc.Version = n.Version
 	enc.OS = n.OS
@@ -32,11 +32,11 @@ func (n NetInfo) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON unmarshals from JSON.
 func (n *NetInfo) UnmarshalJSON(input []byte) error {
 	type NetInfo struct {
-		Port     *math.Decimal32 `json:"port" gencodec:"required"`
-		NodeName *string         `json:"nodeName" gencodec:"required"`
+		Port     *hexutil.Uint32 `json:"port"        gencodec:"required"`
+		NodeName *string         `json:"nodeName"    gencodec:"required"`
 		Version  *string         `json:"nodeVersion" gencodec:"required"`
-		OS       *string         `json:"nodeOS" gencodec:"required"`
-		Go       *string         `json:"goVersion" gencodec:"required"`
+		OS       *string         `json:"os"          gencodec:"required"`
+		Go       *string         `json:"runtime"     gencodec:"required"`
 	}
 	var dec NetInfo
 	if err := json.Unmarshal(input, &dec); err != nil {
@@ -55,11 +55,11 @@ func (n *NetInfo) UnmarshalJSON(input []byte) error {
 	}
 	n.Version = *dec.Version
 	if dec.OS == nil {
-		return errors.New("missing required field 'nodeOS' for NetInfo")
+		return errors.New("missing required field 'os' for NetInfo")
 	}
 	n.OS = *dec.OS
 	if dec.Go == nil {
-		return errors.New("missing required field 'goVersion' for NetInfo")
+		return errors.New("missing required field 'runtime' for NetInfo")
 	}
 	n.Go = *dec.Go
 	return nil

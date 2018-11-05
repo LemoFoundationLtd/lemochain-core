@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto/sha3"
+	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
-	"github.com/LemoFoundationLtd/lemochain-go/common/math"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"io"
 	"math/big"
@@ -134,16 +134,16 @@ func (c *ChangeLog) DecodeRLP(s *rlp.Stream) (err error) {
 // MarshalJSON marshals as JSON.
 func (c ChangeLog) MarshalJSON() ([]byte, error) {
 	type jsonChangeLog struct {
-		LogType math.Decimal32 `json:"type"       gencodec:"required"`
+		LogType hexutil.Uint32 `json:"type"       gencodec:"required"`
 		Address common.Address `json:"address"    gencodec:"required"`
-		Version math.Decimal32 `json:"version"    gencodec:"required"`
+		Version hexutil.Uint32 `json:"version"    gencodec:"required"`
 		NewVal  string         `json:"newValue"`
 		Extra   string         `json:"extra"`
 	}
 	var enc jsonChangeLog
-	enc.LogType = math.Decimal32(c.LogType)
+	enc.LogType = hexutil.Uint32(c.LogType)
 	enc.Address = c.Address
-	enc.Version = math.Decimal32(c.Version)
+	enc.Version = hexutil.Uint32(c.Version)
 	if c.NewVal != nil {
 		NewVal, err := rlp.EncodeToBytes(c.NewVal)
 		if err != nil {
@@ -164,9 +164,9 @@ func (c ChangeLog) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON unmarshals from JSON.
 func (c *ChangeLog) UnmarshalJSON(input []byte) error {
 	type jsonChangeLog struct {
-		LogType *math.Decimal32 `json:"type"       gencodec:"required"`
+		LogType *hexutil.Uint32 `json:"type"       gencodec:"required"`
 		Address *common.Address `json:"address"    gencodec:"required"`
-		Version *math.Decimal32 `json:"version"    gencodec:"required"`
+		Version *hexutil.Uint32 `json:"version"    gencodec:"required"`
 		NewVal  string          `json:"newValue"`
 		Extra   string          `json:"extra"`
 	}

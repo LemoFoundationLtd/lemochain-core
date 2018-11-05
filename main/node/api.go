@@ -9,7 +9,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
-	"github.com/LemoFoundationLtd/lemochain-go/common/math"
+	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
 	"github.com/LemoFoundationLtd/lemochain-go/network/p2p"
 	"math/big"
 	"runtime"
@@ -258,7 +258,7 @@ type NetInfo struct {
 }
 
 type netInfoMarshaling struct {
-	Port math.Decimal32
+	Port hexutil.Uint32
 }
 
 // Info

@@ -8,7 +8,6 @@ import (
 
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
-	"github.com/LemoFoundationLtd/lemochain-go/common/math"
 )
 
 var _ = (*headerMarshaling)(nil)
@@ -16,21 +15,21 @@ var _ = (*headerMarshaling)(nil)
 // MarshalJSON marshals as JSON.
 func (h Header) MarshalJSON() ([]byte, error) {
 	type Header struct {
-		ParentHash  common.Hash         `json:"parentHash"       gencodec:"required"`
-		LemoBase    common.Address      `json:"miner"            gencodec:"required"`
-		VersionRoot common.Hash         `json:"versionRoot"      gencodec:"required"`
-		TxRoot      common.Hash         `json:"transactionRoot"  gencodec:"required"`
-		LogRoot     common.Hash         `json:"changeLogRoot"    gencodec:"required"`
-		EventRoot   common.Hash         `json:"eventRoot"        gencodec:"required"`
-		Bloom       Bloom               `json:"logsBloom"        gencodec:"required"`
-		Height      math.Decimal32      `json:"height"           gencodec:"required"`
-		GasLimit    math.HexOrDecimal64 `json:"gasLimit"         gencodec:"required"`
-		GasUsed     math.HexOrDecimal64 `json:"gasUsed"          gencodec:"required"`
-		Time        math.Decimal32      `json:"timestamp"        gencodec:"required"`
-		SignData    hexutil.Bytes       `json:"signData"         gencodec:"required"`
-		DeputyRoot  hexutil.Bytes       `json:"deputyRoot"`
-		Extra       hexutil.Bytes       `json:"extraData"`
-		Hash        common.Hash         `json:"hash"`
+		ParentHash  common.Hash    `json:"parentHash"       gencodec:"required"`
+		LemoBase    common.Address `json:"miner"            gencodec:"required"`
+		VersionRoot common.Hash    `json:"versionRoot"      gencodec:"required"`
+		TxRoot      common.Hash    `json:"transactionRoot"  gencodec:"required"`
+		LogRoot     common.Hash    `json:"changeLogRoot"    gencodec:"required"`
+		EventRoot   common.Hash    `json:"eventRoot"        gencodec:"required"`
+		Bloom       Bloom          `json:"logsBloom"        gencodec:"required"`
+		Height      hexutil.Uint32 `json:"height"           gencodec:"required"`
+		GasLimit    hexutil.Uint64 `json:"gasLimit"         gencodec:"required"`
+		GasUsed     hexutil.Uint64 `json:"gasUsed"          gencodec:"required"`
+		Time        hexutil.Uint32 `json:"timestamp"        gencodec:"required"`
+		SignData    hexutil.Bytes  `json:"signData"         gencodec:"required"`
+		DeputyRoot  hexutil.Bytes  `json:"deputyRoot"`
+		Extra       hexutil.Bytes  `json:"extraData"`
+		Hash        common.Hash    `json:"hash"`
 	}
 	var enc Header
 	enc.ParentHash = h.ParentHash
@@ -40,10 +39,10 @@ func (h Header) MarshalJSON() ([]byte, error) {
 	enc.LogRoot = h.LogRoot
 	enc.EventRoot = h.EventRoot
 	enc.Bloom = h.Bloom
-	enc.Height = math.Decimal32(h.Height)
-	enc.GasLimit = math.HexOrDecimal64(h.GasLimit)
-	enc.GasUsed = math.HexOrDecimal64(h.GasUsed)
-	enc.Time = math.Decimal32(h.Time)
+	enc.Height = hexutil.Uint32(h.Height)
+	enc.GasLimit = hexutil.Uint64(h.GasLimit)
+	enc.GasUsed = hexutil.Uint64(h.GasUsed)
+	enc.Time = hexutil.Uint32(h.Time)
 	enc.SignData = h.SignData
 	enc.DeputyRoot = h.DeputyRoot
 	enc.Extra = h.Extra
@@ -54,20 +53,20 @@ func (h Header) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON unmarshals from JSON.
 func (h *Header) UnmarshalJSON(input []byte) error {
 	type Header struct {
-		ParentHash  *common.Hash         `json:"parentHash"       gencodec:"required"`
-		LemoBase    *common.Address      `json:"miner"            gencodec:"required"`
-		VersionRoot *common.Hash         `json:"versionRoot"      gencodec:"required"`
-		TxRoot      *common.Hash         `json:"transactionRoot"  gencodec:"required"`
-		LogRoot     *common.Hash         `json:"changeLogRoot"    gencodec:"required"`
-		EventRoot   *common.Hash         `json:"eventRoot"        gencodec:"required"`
-		Bloom       *Bloom               `json:"logsBloom"        gencodec:"required"`
-		Height      *math.Decimal32      `json:"height"           gencodec:"required"`
-		GasLimit    *math.HexOrDecimal64 `json:"gasLimit"         gencodec:"required"`
-		GasUsed     *math.HexOrDecimal64 `json:"gasUsed"          gencodec:"required"`
-		Time        *math.Decimal32      `json:"timestamp"        gencodec:"required"`
-		SignData    *hexutil.Bytes       `json:"signData"         gencodec:"required"`
-		DeputyRoot  *hexutil.Bytes       `json:"deputyRoot"`
-		Extra       *hexutil.Bytes       `json:"extraData"`
+		ParentHash  *common.Hash    `json:"parentHash"       gencodec:"required"`
+		LemoBase    *common.Address `json:"miner"            gencodec:"required"`
+		VersionRoot *common.Hash    `json:"versionRoot"      gencodec:"required"`
+		TxRoot      *common.Hash    `json:"transactionRoot"  gencodec:"required"`
+		LogRoot     *common.Hash    `json:"changeLogRoot"    gencodec:"required"`
+		EventRoot   *common.Hash    `json:"eventRoot"        gencodec:"required"`
+		Bloom       *Bloom          `json:"logsBloom"        gencodec:"required"`
+		Height      *hexutil.Uint32 `json:"height"           gencodec:"required"`
+		GasLimit    *hexutil.Uint64 `json:"gasLimit"         gencodec:"required"`
+		GasUsed     *hexutil.Uint64 `json:"gasUsed"          gencodec:"required"`
+		Time        *hexutil.Uint32 `json:"timestamp"        gencodec:"required"`
+		SignData    *hexutil.Bytes  `json:"signData"         gencodec:"required"`
+		DeputyRoot  *hexutil.Bytes  `json:"deputyRoot"`
+		Extra       *hexutil.Bytes  `json:"extraData"`
 	}
 	var dec Header
 	if err := json.Unmarshal(input, &dec); err != nil {

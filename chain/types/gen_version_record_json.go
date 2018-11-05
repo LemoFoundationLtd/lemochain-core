@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/LemoFoundationLtd/lemochain-go/common/math"
+	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
 )
 
 var _ = (*versionRecordMarshaling)(nil)
@@ -14,20 +14,20 @@ var _ = (*versionRecordMarshaling)(nil)
 // MarshalJSON marshals as JSON.
 func (v VersionRecord) MarshalJSON() ([]byte, error) {
 	type VersionRecord struct {
-		Version math.Decimal32 `json:"version" gencodec:"required"`
-		Height  math.Decimal32 `json:"height" gencodec:"required"`
+		Version hexutil.Uint32 `json:"version" gencodec:"required"`
+		Height  hexutil.Uint32 `json:"height" gencodec:"required"`
 	}
 	var enc VersionRecord
-	enc.Version = math.Decimal32(v.Version)
-	enc.Height = math.Decimal32(v.Height)
+	enc.Version = hexutil.Uint32(v.Version)
+	enc.Height = hexutil.Uint32(v.Height)
 	return json.Marshal(&enc)
 }
 
 // UnmarshalJSON unmarshals from JSON.
 func (v *VersionRecord) UnmarshalJSON(input []byte) error {
 	type VersionRecord struct {
-		Version *math.Decimal32 `json:"version" gencodec:"required"`
-		Height  *math.Decimal32 `json:"height" gencodec:"required"`
+		Version *hexutil.Uint32 `json:"version" gencodec:"required"`
+		Height  *hexutil.Uint32 `json:"height" gencodec:"required"`
 	}
 	var dec VersionRecord
 	if err := json.Unmarshal(input, &dec); err != nil {

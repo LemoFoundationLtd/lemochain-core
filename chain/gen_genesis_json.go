@@ -9,7 +9,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
-	"github.com/LemoFoundationLtd/lemochain-go/common/math"
 )
 
 var _ = (*genesisSpecMarshaling)(nil)
@@ -17,16 +16,16 @@ var _ = (*genesisSpecMarshaling)(nil)
 // MarshalJSON marshals as JSON.
 func (g Genesis) MarshalJSON() ([]byte, error) {
 	type Genesis struct {
-		Time        math.Decimal32           `json:"timestamp"   gencodec:"required"`
+		Time        hexutil.Uint32           `json:"timestamp"   gencodec:"required"`
 		ExtraData   hexutil.Bytes            `json:"extraData"`
-		GasLimit    math.Decimal64           `json:"gasLimit"    gencodec:"required"`
+		GasLimit    hexutil.Uint64           `json:"gasLimit"    gencodec:"required"`
 		LemoBase    common.Address           `json:"lemoBase"    gencodec:"required"`
 		DeputyNodes []*deputynode.DeputyNode `json:"deputyNodes" gencodec:"required"`
 	}
 	var enc Genesis
-	enc.Time = math.Decimal32(g.Time)
+	enc.Time = hexutil.Uint32(g.Time)
 	enc.ExtraData = g.ExtraData
-	enc.GasLimit = math.Decimal64(g.GasLimit)
+	enc.GasLimit = hexutil.Uint64(g.GasLimit)
 	enc.LemoBase = g.LemoBase
 	enc.DeputyNodes = g.DeputyNodes
 	return json.Marshal(&enc)
@@ -35,9 +34,9 @@ func (g Genesis) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON unmarshals from JSON.
 func (g *Genesis) UnmarshalJSON(input []byte) error {
 	type Genesis struct {
-		Time        *math.Decimal32          `json:"timestamp"   gencodec:"required"`
+		Time        *hexutil.Uint32          `json:"timestamp"   gencodec:"required"`
 		ExtraData   *hexutil.Bytes           `json:"extraData"`
-		GasLimit    *math.Decimal64          `json:"gasLimit"    gencodec:"required"`
+		GasLimit    *hexutil.Uint64          `json:"gasLimit"    gencodec:"required"`
 		LemoBase    *common.Address          `json:"lemoBase"    gencodec:"required"`
 		DeputyNodes []*deputynode.DeputyNode `json:"deputyNodes" gencodec:"required"`
 	}

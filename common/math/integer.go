@@ -16,12 +16,6 @@
 
 package math
 
-import (
-	"fmt"
-	"strconv"
-	"strings"
-)
-
 const (
 	// Integer limit values.
 	MaxInt8   = 1<<7 - 1
@@ -37,47 +31,6 @@ const (
 	MaxUint32 = 1<<32 - 1
 	MaxUint64 = 1<<64 - 1
 )
-
-// HexOrDecimal64 marshals uint64 as hex or decimal.
-type HexOrDecimal64 uint64
-
-// UnmarshalText implements encoding.TextUnmarshaler.
-func (i *HexOrDecimal64) UnmarshalText(input []byte) error {
-	int, ok := ParseUint64(string(input))
-	if !ok {
-		return fmt.Errorf("invalid hex or decimal integer %q", input)
-	}
-	*i = HexOrDecimal64(int)
-	return nil
-}
-
-// MarshalText implements encoding.TextMarshaler.
-func (i HexOrDecimal64) MarshalText() ([]byte, error) {
-	return []byte(fmt.Sprintf("%d", uint64(i))), nil
-}
-
-// ParseUint64 parses s as an integer in decimal or hexadecimal syntax.
-// Leading zeros are accepted. The empty string parses as zero.
-func ParseUint64(s string) (uint64, bool) {
-	if s == "" {
-		return 0, true
-	}
-	if len(s) >= 2 && (s[:2] == "0x" || s[:2] == "0X") {
-		v, err := strconv.ParseUint(s[2:], 16, 64)
-		return v, err == nil
-	}
-	v, err := strconv.ParseUint(s, 10, 64)
-	return v, err == nil
-}
-
-// MustParseUint64 parses s as an integer and panics if the string is invalid.
-func MustParseUint64(s string) uint64 {
-	v, ok := ParseUint64(s)
-	if !ok {
-		panic("invalid unsigned 64 bit integer: " + s)
-	}
-	return v
-}
 
 // NOTE: The following methods need to be optimised using either bit checking or asm
 
@@ -97,46 +50,4 @@ func SafeMul(x, y uint64) (uint64, bool) {
 		return 0, false
 	}
 	return x * y, y > MaxUint64/x
-}
-
-type Decimal32 uint32
-
-func (i *Decimal32) UnmarshalText(input []byte) error {
-	res, err := strconv.ParseInt(string(input), 10, 32)
-	if err != nil {
-		return err
-	}
-	*i = Decimal32(res)
-	return nil
-}
-
-func (i *Decimal32) UnmarshalJSON(input []byte) error {
-	raw := strings.Trim(string(input), "\"")
-	return i.UnmarshalText([]byte(raw))
-}
-
-// MarshalText implements encoding.TextMarshaler.
-func (i Decimal32) MarshalText() ([]byte, error) {
-	return []byte(fmt.Sprintf("%d", uint32(i))), nil
-}
-
-type Decimal64 uint64
-
-func (i *Decimal64) UnmarshalText(input []byte) error {
-	res, err := strconv.ParseInt(string(input), 10, 64)
-	if err != nil {
-		return err
-	}
-	*i = Decimal64(res)
-	return nil
-}
-
-// MarshalText implements encoding.TextMarshaler.
-func (i Decimal64) MarshalText() ([]byte, error) {
-	return []byte(fmt.Sprintf("%d", uint64(i))), nil
-}
-
-func (i *Decimal64) UnmarshalJSON(input []byte) error {
-	raw := strings.Trim(string(input), "\"")
-	return i.UnmarshalText([]byte(raw))
 }

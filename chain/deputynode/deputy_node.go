@@ -9,7 +9,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto/sha3"
 	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
-	"github.com/LemoFoundationLtd/lemochain-go/common/math"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"net"
 	"sync"
@@ -80,9 +79,9 @@ type DeputyNodes []*DeputyNode
 type deputyNodeMarshaling struct {
 	NodeID hexutil.Bytes
 	IP     hexutil.IP
-	Port   math.Decimal32
-	Rank   math.Decimal32
-	Votes  math.Decimal32
+	Port   hexutil.Uint32
+	Rank   hexutil.Uint32
+	Votes  hexutil.Uint32
 }
 
 type DeputyNodesRecord struct {
