@@ -15,8 +15,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"github.com/LemoFoundationLtd/lemochain-go/store/protocol"
 	"math/big"
-	"os"
-	"path/filepath"
 	"time"
 )
 
@@ -109,14 +107,8 @@ var (
 )
 
 func init() {
-	clearDB()
+	store.ClearData()
 	log.Setup(log.LevelInfo, false, false)
-}
-
-func clearDB() {
-	filepath.Walk(store.GetStorePath(), func(path string, f os.FileInfo, err error) error {
-		return os.RemoveAll(path)
-	})
 }
 
 // newChain creates chain for test

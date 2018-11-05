@@ -10,8 +10,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/store/protocol"
 	"github.com/LemoFoundationLtd/lemochain-go/store/trie"
 	"math/big"
-	"os"
-	"path/filepath"
 )
 
 type blockInfo struct {
@@ -84,9 +82,7 @@ var (
 
 func init() {
 	// clear db
-	filepath.Walk(store.GetStorePath(), func(path string, f os.FileInfo, err error) error {
-		return os.RemoveAll(path)
-	})
+	store.ClearData()
 }
 
 // newDB creates db for test account module
