@@ -1,8 +1,6 @@
 package chain
 
 import (
-	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
-	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
@@ -13,56 +11,12 @@ import (
 	"testing"
 )
 
-type EngineTest struct{}
-
-func (engine *EngineTest) VerifyHeader(block *types.Block) error { return nil }
-
-func (engine *EngineTest) Seal(header *types.Header, txs []*types.Transaction, changeLog []*types.ChangeLog, events []*types.Event) (*types.Block, error) {
-	return nil, nil
-}
-
-func (engine *EngineTest) Finalize(header *types.Header, am *account.Manager) {}
-
-func broadcastStableBlock(block *types.Block) {}
-
-func broadcastConfirmInfo(hash common.Hash, height uint32) {}
-
-func newBlockChain() (*BlockChain, chan *types.Block, error) {
-	// store.ClearData()
-
-	chainId := uint16(99)
-	db, err := store.NewCacheChain(store.GetStorePath())
-	if err != nil {
-		return nil, nil, err
-	}
-
-	genesis := DefaultGenesisBlock()
-	_, err = SetupGenesisBlock(db, genesis)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	var engine EngineTest
-	ch := make(chan *types.Block)
-	blockChain, err := NewBlockChain(chainId, &engine, db, nil)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	blockChain.BroadcastStableBlock = broadcastStableBlock
-	blockChain.BroadcastConfirmInfo = broadcastConfirmInfo
-
-	deputynode.Instance().Add(0, genesis.DeputyNodes)
-	return blockChain, ch, nil
-}
-
 func TestBlockChain_Reorg8ABC(t *testing.T) {
 	store.ClearData()
-	defer store.ClearData()
 
 	var info blockInfo
 
-	blockChain, _, err := newBlockChain()
+	blockChain, _, err := NewBlockChainForTest()
 	assert.NoError(t, err)
 
 	genesis := blockChain.GetBlockByHeight(0)
@@ -142,11 +96,10 @@ func TestBlockChain_Reorg8ABC(t *testing.T) {
 
 func TestBlockChain_Reorg8Len(t *testing.T) {
 	store.ClearData()
-	defer store.ClearData()
 
 	var info blockInfo
 
-	blockChain, _, err := newBlockChain()
+	blockChain, _, err := NewBlockChainForTest()
 	assert.NoError(t, err)
 
 	genesis := blockChain.GetBlockByHeight(0)
@@ -214,9 +167,8 @@ func TestBlockChain_Reorg8Len(t *testing.T) {
 
 func TestBlockChain_GetBlockByHeight(t *testing.T) {
 	store.ClearData()
-	defer store.ClearData()
 
-	blockChain, _, err := newBlockChain()
+	blockChain, _, err := NewBlockChainForTest()
 	assert.NoError(t, err)
 
 	genesis := blockChain.GetBlockByHeight(0)
@@ -244,9 +196,8 @@ func TestBlockChain_GetBlockByHeight(t *testing.T) {
 // 1、2、31、32{42、52}，set stable #2
 func TestBlockChain_SetStableBlockCurBranch11(t *testing.T) {
 	store.ClearData()
-	defer store.ClearData()
 
-	blockChain, _, err := newBlockChain()
+	blockChain, _, err := NewBlockChainForTest()
 	assert.NoError(t, err)
 
 	genesis := blockChain.GetBlockByHeight(0)
@@ -302,9 +253,8 @@ func TestBlockChain_SetStableBlockCurBranch11(t *testing.T) {
 // 1、2、31、32{42、52}，set stable #42
 func TestBlockChain_SetStableBlockCurBranch12(t *testing.T) {
 	store.ClearData()
-	defer store.ClearData()
 
-	blockChain, _, err := newBlockChain()
+	blockChain, _, err := NewBlockChainForTest()
 	assert.NoError(t, err)
 
 	genesis := blockChain.GetBlockByHeight(0)
@@ -359,9 +309,8 @@ func TestBlockChain_SetStableBlockCurBranch12(t *testing.T) {
 // 1、2、31、32{42、52}，set stable #52
 func TestBlockChain_SetStableBlockCurBranch13(t *testing.T) {
 	store.ClearData()
-	defer store.ClearData()
 
-	blockChain, _, err := newBlockChain()
+	blockChain, _, err := NewBlockChainForTest()
 	assert.NoError(t, err)
 
 	genesis := blockChain.GetBlockByHeight(0)
@@ -416,9 +365,8 @@ func TestBlockChain_SetStableBlockCurBranch13(t *testing.T) {
 // 1、2、31{41、51}、32{42、52} set stable #42
 func TestBlockChain_SetStableBlockCurBranch21(t *testing.T) {
 	store.ClearData()
-	defer store.ClearData()
 
-	blockChain, _, err := newBlockChain()
+	blockChain, _, err := NewBlockChainForTest()
 	assert.NoError(t, err)
 
 	genesis := blockChain.GetBlockByHeight(0)
@@ -501,9 +449,8 @@ func TestBlockChain_SetStableBlockCurBranch21(t *testing.T) {
 // 1、2、31{41、51}、32{42、52} set stable #2
 func TestBlockChain_SetStableBlockCurBranch22(t *testing.T) {
 	store.ClearData()
-	defer store.ClearData()
 
-	blockChain, _, err := newBlockChain()
+	blockChain, _, err := NewBlockChainForTest()
 	assert.NoError(t, err)
 
 	genesis := blockChain.GetBlockByHeight(0)
@@ -583,9 +530,8 @@ func TestBlockChain_SetStableBlockCurBranch22(t *testing.T) {
 // 1、2、31{41、51}、32{42、52} set stable #52
 func TestBlockChain_SetStableBlockCurBranch23(t *testing.T) {
 	store.ClearData()
-	defer store.ClearData()
 
-	blockChain, _, err := newBlockChain()
+	blockChain, _, err := NewBlockChainForTest()
 	assert.NoError(t, err)
 
 	genesis := blockChain.GetBlockByHeight(0)
@@ -658,9 +604,8 @@ func TestBlockChain_SetStableBlockCurBranch23(t *testing.T) {
 // 1、2、31{41、51}、32{42} set stable #42
 func TestBlockChain_SetStableBlockCurBranch31(t *testing.T) {
 	store.ClearData()
-	defer store.ClearData()
 
-	blockChain, _, err := newBlockChain()
+	blockChain, _, err := NewBlockChainForTest()
 	assert.NoError(t, err)
 
 	genesis := blockChain.GetBlockByHeight(0)
@@ -720,9 +665,8 @@ func TestBlockChain_SetStableBlockCurBranch31(t *testing.T) {
 // 1、2、31{41、51、61}、32{42、52} set stable #42
 func TestBlockChain_SetStableBlockCurBranch32(t *testing.T) {
 	store.ClearData()
-	defer store.ClearData()
 
-	blockChain, _, err := newBlockChain()
+	blockChain, _, err := NewBlockChainForTest()
 	assert.NoError(t, err)
 
 	genesis := blockChain.GetBlockByHeight(0)
@@ -794,9 +738,8 @@ func TestBlockChain_SetStableBlockCurBranch32(t *testing.T) {
 // 1、2{213、214、215、216}、{3{{314、315、316}、{324、325, 326}}}， set stable #3
 func TestBlockChain_SetStableBlockCurBranch41(t *testing.T) {
 	store.ClearData()
-	defer store.ClearData()
 
-	blockChain, _, err := newBlockChain()
+	blockChain, _, err := NewBlockChainForTest()
 	assert.NoError(t, err)
 
 	genesis := blockChain.GetBlockByHeight(0)
@@ -910,9 +853,8 @@ func TestBlockChain_SetStableBlockCurBranch41(t *testing.T) {
 // 1、2{213、214、215、216}、{3{{314、315、316}、{324、325, 326}}}， set stable #2
 func TestBlockChain_SetStableBlockCurBranch42(t *testing.T) {
 	store.ClearData()
-	defer store.ClearData()
 
-	blockChain, _, err := newBlockChain()
+	blockChain, _, err := NewBlockChainForTest()
 	assert.NoError(t, err)
 
 	genesis := blockChain.GetBlockByHeight(0)
@@ -1027,9 +969,8 @@ func TestBlockChain_SetStableBlockCurBranch42(t *testing.T) {
 // 1、2{213、214、215、216}、{3{{314、315、316}、{324、325, 326}}}， set stable #316
 func TestBlockChain_SetStableBlockCurBranch43(t *testing.T) {
 	store.ClearData()
-	defer store.ClearData()
 
-	blockChain, _, err := newBlockChain()
+	blockChain, _, err := NewBlockChainForTest()
 	assert.NoError(t, err)
 
 	genesis := blockChain.GetBlockByHeight(0)
@@ -1161,9 +1102,8 @@ func buildConfirm(hash common.Hash, privateKey string) (*protocol.BlockConfirmDa
 
 func TestBlockChain_ReceiveConfirm(t *testing.T) {
 	store.ClearData()
-	defer store.ClearData()
 
-	blockChain, _, err := newBlockChain()
+	blockChain, _, err := NewBlockChainForTest()
 	assert.NoError(t, err)
 
 	genesis := blockChain.GetBlockByHeight(0)
@@ -1244,9 +1184,8 @@ func TestBlockChain_ReceiveConfirm(t *testing.T) {
 
 func TestBlockChain_VerifyBodyNormal(t *testing.T) {
 	store.ClearData()
-	defer store.ClearData()
 
-	blockChain, _, err := newBlockChain()
+	blockChain, _, err := NewBlockChainForTest()
 	assert.NoError(t, err)
 
 	genesis := blockChain.GetBlockByHeight(0)
@@ -1275,9 +1214,8 @@ func TestBlockChain_VerifyBodyNormal(t *testing.T) {
 
 func TestBlockChain_VerifyBlockBalanceNotEnough(t *testing.T) {
 	store.ClearData()
-	defer store.ClearData()
 
-	blockChain, _, err := newBlockChain()
+	blockChain, _, err := NewBlockChainForTest()
 	assert.NoError(t, err)
 
 	genesis := blockChain.GetBlockByHeight(0)
@@ -1307,9 +1245,8 @@ func TestBlockChain_VerifyBlockBalanceNotEnough(t *testing.T) {
 
 func TestBlockChain_VerifyBlockBalanceNotSign(t *testing.T) {
 	store.ClearData()
-	defer store.ClearData()
 
-	blockChain, _, err := newBlockChain()
+	blockChain, _, err := NewBlockChainForTest()
 	assert.NoError(t, err)
 
 	genesis := blockChain.GetBlockByHeight(0)
@@ -1335,9 +1272,8 @@ func TestBlockChain_VerifyBlockBalanceNotSign(t *testing.T) {
 
 func TestBlockChain_VerifyBlockBalanceValidDeputy(t *testing.T) {
 	store.ClearData()
-	defer store.ClearData()
 
-	blockChain, _, err := newBlockChain()
+	blockChain, _, err := NewBlockChainForTest()
 	assert.NoError(t, err)
 
 	genesis := blockChain.GetBlockByHeight(0)
@@ -1367,9 +1303,8 @@ func TestBlockChain_VerifyBlockBalanceValidDeputy(t *testing.T) {
 
 func TestBlockChain_VerifyBlockBalanceValidTx(t *testing.T) {
 	store.ClearData()
-	defer store.ClearData()
 
-	blockChain, _, err := newBlockChain()
+	blockChain, _, err := NewBlockChainForTest()
 	assert.NoError(t, err)
 
 	genesis := blockChain.GetBlockByHeight(0)
