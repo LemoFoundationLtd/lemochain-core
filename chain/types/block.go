@@ -8,7 +8,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
 	"github.com/LemoFoundationLtd/lemochain-go/common/math"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
-	"math/big"
 	"strings"
 )
 
@@ -25,7 +24,7 @@ type Header struct {
 	Height      uint32         `json:"height"           gencodec:"required"`
 	GasLimit    uint64         `json:"gasLimit"         gencodec:"required"`
 	GasUsed     uint64         `json:"gasUsed"          gencodec:"required"`
-	Time        *big.Int       `json:"timestamp"        gencodec:"required"`
+	Time        uint32         `json:"timestamp"        gencodec:"required"`
 	SignData    []byte         `json:"signData"         gencodec:"required"`
 	DeputyRoot  []byte         `json:"deputyRoot"`
 	Extra       []byte         `json:"extraData"` // max length is 256 bytes
@@ -35,7 +34,7 @@ type headerMarshaling struct {
 	Height     math.Decimal32
 	GasLimit   math.HexOrDecimal64
 	GasUsed    math.HexOrDecimal64
-	Time       *hexutil.Big10
+	Time       math.Decimal32
 	SignData   hexutil.Bytes
 	DeputyRoot hexutil.Bytes
 	Extra      hexutil.Bytes
@@ -98,8 +97,17 @@ func (h *Header) Hash() common.Hash {
 // Copy 拷贝一份头
 func (h *Header) Copy() *Header {
 	cpy := *h
-	if cpy.Time = new(big.Int); h.Time != nil {
-		cpy.Time.Set(h.Time)
+	if len(h.SignData) > 0 {
+		cpy.SignData = make([]byte, len(h.SignData))
+		copy(cpy.SignData, h.SignData)
+	}
+	if len(h.DeputyRoot) > 0 {
+		cpy.DeputyRoot = make([]byte, len(h.DeputyRoot))
+		copy(cpy.DeputyRoot, h.DeputyRoot)
+	}
+	if len(h.Extra) > 0 {
+		cpy.Extra = make([]byte, len(h.Extra))
+		copy(cpy.Extra, h.Extra)
 	}
 	return &cpy
 }
@@ -124,7 +132,7 @@ func (h *Header) String() string {
 		fmt.Sprintf("Height: %d", h.Height),
 		fmt.Sprintf("GasLimit: %d", h.GasLimit),
 		fmt.Sprintf("GasUsed: %d", h.GasUsed),
-		fmt.Sprintf("Time: %v", h.Time),
+		fmt.Sprintf("Time: %d", h.Time),
 		fmt.Sprintf("SignData: %s", common.ToHex(h.SignData[:])),
 		fmt.Sprintf("DeputyNodes: %s", common.ToHex(h.DeputyRoot)),
 	}
@@ -146,7 +154,7 @@ func (b *Block) EventRoot() common.Hash   { return b.Header.EventRoot }
 func (b *Block) Bloom() Bloom             { return b.Header.Bloom }
 func (b *Block) GasLimit() uint64         { return b.Header.GasLimit }
 func (b *Block) GasUsed() uint64          { return b.Header.GasUsed }
-func (b *Block) Time() *big.Int           { return new(big.Int).Set(b.Header.Time) }
+func (b *Block) Time() uint32             { return b.Header.Time }
 func (b *Block) SignData() []byte         { return b.Header.SignData }
 func (b *Block) Extra() []byte            { return b.Header.Extra }
 

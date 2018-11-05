@@ -30,7 +30,7 @@ type blockInfo struct {
 	logRoot     common.Hash
 	txList      []*types.Transaction
 	gasLimit    uint64
-	time        *big.Int
+	time        uint32
 	deputyRoot  []byte
 	deputyNodes deputynode.DeputyNodes
 }
@@ -54,7 +54,7 @@ var (
 			versionRoot: common.HexToHash("0x6eea9449a171035539c71d2895830afc061d0777da6e86735d9899c888d953c1"),
 			txRoot:      common.HexToHash("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"), // empty merkle
 			logRoot:     common.HexToHash("0xb0d3749ecc3a7a0db6368284320863a3d2fa963b2c33b41c6ebf8632cd84bda9"),
-			time:        big.NewInt(1538209751),
+			time:        1538209751,
 		},
 		// block 1 is stable block
 		{
@@ -71,7 +71,7 @@ var (
 				makeTransaction(testPrivate, defaultAccounts[1], common.Big1, common.Big2, 1538210491, 2000000),
 			},
 			gasLimit: 20000000,
-			time:     big.NewInt(1538209755),
+			time:     1538209755,
 		},
 		// block 2 is not stable block
 		{
@@ -85,7 +85,7 @@ var (
 				// testAddr -> defaultAccounts[0] 2
 				makeTransaction(testPrivate, defaultAccounts[0], bigNumber, common.Big2, 1538210395, 2000000),
 			},
-			time:     big.NewInt(1538209758),
+			time:     1538209758,
 			gasLimit: 20000000,
 		},
 		// block 3 is not store in db
@@ -102,7 +102,7 @@ var (
 				// testAddr -> defaultAccounts[1] 2
 				makeTransaction(testPrivate, defaultAccounts[1], common.Big2, common.Big3, 1538210425, 30000),
 			},
-			time:     big.NewInt(1538209761),
+			time:     1538209761,
 			gasLimit: 20000000,
 		},
 	}
@@ -232,8 +232,8 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 		}
 		info.logRoot = logRoot
 	}
-	if info.time == nil {
-		info.time = new(big.Int).SetUint64(uint64(time.Now().Unix()))
+	if info.time == 0 {
+		info.time = uint32(time.Now().Unix())
 	}
 	if info.gasLimit == 0 {
 		info.gasLimit = 1000000

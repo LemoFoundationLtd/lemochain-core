@@ -31,7 +31,7 @@ func NewEVMContext(tx *types.Transaction, header *types.Header, txIndex uint, tx
 		Origin:      from,
 		LemoBase:    header.LemoBase,
 		BlockHeight: header.Height,
-		Time:        new(big.Int).Set(header.Time),
+		Time:        header.Time,
 		GasLimit:    header.GasLimit,
 		GasPrice:    new(big.Int).Set(tx.GasPrice()),
 	}

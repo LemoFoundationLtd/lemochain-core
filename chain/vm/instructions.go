@@ -513,7 +513,7 @@ func opCoinbase(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack 
 }
 
 func opTimestamp(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack *Stack) ([]byte, error) {
-	stack.push(math.U256(evm.interpreter.intPool.get().Set(evm.Time)))
+	stack.push(math.U256(evm.interpreter.intPool.get().SetUint64(uint64(evm.Time))))
 	return nil, nil
 }
 

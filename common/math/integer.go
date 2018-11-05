@@ -19,6 +19,7 @@ package math
 import (
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -98,21 +99,6 @@ func SafeMul(x, y uint64) (uint64, bool) {
 	return x * y, y > MaxUint64/x
 }
 
-type DecimalUint uint
-
-func (i *DecimalUint) UnmarshalText(input []byte) error {
-	res, err := strconv.ParseInt(string(input), 10, 32)
-	if err != nil {
-		return err
-	}
-	*i = DecimalUint(res)
-	return nil
-}
-
-func (i DecimalUint) MarshalJSON() ([]byte, error) {
-	return []byte(fmt.Sprintf("%d", uint(i))), nil
-}
-
 type Decimal32 uint32
 
 func (i *Decimal32) UnmarshalText(input []byte) error {
@@ -122,6 +108,11 @@ func (i *Decimal32) UnmarshalText(input []byte) error {
 	}
 	*i = Decimal32(res)
 	return nil
+}
+
+func (i *Decimal32) UnmarshalJSON(input []byte) error {
+	raw := strings.Trim(string(input), "\"")
+	return i.UnmarshalText([]byte(raw))
 }
 
 // MarshalText implements encoding.TextMarshaler.
@@ -143,4 +134,9 @@ func (i *Decimal64) UnmarshalText(input []byte) error {
 // MarshalText implements encoding.TextMarshaler.
 func (i Decimal64) MarshalText() ([]byte, error) {
 	return []byte(fmt.Sprintf("%d", uint64(i))), nil
+}
+
+func (i *Decimal64) UnmarshalJSON(input []byte) error {
+	raw := strings.Trim(string(input), "\"")
+	return i.UnmarshalText([]byte(raw))
 }

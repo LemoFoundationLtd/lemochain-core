@@ -37,9 +37,9 @@ func NewDpovp(timeout int64, db protocol.ChainDB) *Dpovp {
 // verifyHeaderTime verify that the block timestamp is less than the current time
 func verifyHeaderTime(block *types.Block) error {
 	header := block.Header
-	blockTime := int64(header.Time.Uint64())
+	blockTime := header.Time
 	timeNow := time.Now().Unix()
-	if blockTime-timeNow > 1 { // Prevent validation failure due to time error
+	if int64(blockTime)-timeNow > 1 { // Prevent validation failure due to time error
 		log.Error("verifyHeader: block in the future")
 		return ErrVerifyHeaderFailed
 	}
@@ -97,7 +97,7 @@ func (d *Dpovp) VerifyHeader(block *types.Block) error {
 		return nil
 	}
 	// The time interval between the current block and the parent block. unit：ms
-	timeSpan := int64(header.Time.Uint64()-parent.Header.Time.Uint64()) * 1000
+	timeSpan := int64(header.Time-parent.Header.Time) * 1000
 	oldTimeSpan := timeSpan
 	slot := deputynode.Instance().GetSlot(header.Height, parent.Header.LemoBase, header.LemoBase)
 	oneLoopTime := int64(nodeCount) * d.timeoutTime // All timeout times for a round of deputy nodes

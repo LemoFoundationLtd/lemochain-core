@@ -10,7 +10,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
-	"math/big"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -121,13 +120,13 @@ func (m *Miner) GetLemoBase() common.Address {
 
 // 获取最新区块的时间戳离当前时间的距离 单位：ms
 func (m *Miner) getTimespan() int64 {
-	lstSpan := m.currentBlock().Header.Time.Int64()
-	if lstSpan == int64(0) {
+	lstSpan := m.currentBlock().Header.Time
+	if lstSpan == 0 {
 		log.Debug("getTimespan: current block's time is 0")
 		return int64(m.blockInterval)
 	}
 	now := time.Now().UnixNano() / 1e6
-	return now - lstSpan*1000
+	return now - int64(lstSpan)*1000
 }
 
 // isSelfDeputyNode 本节点是否为代理节点
@@ -350,8 +349,8 @@ func (m *Miner) sealHead() *types.Header {
 	// allowable 1 second time error
 	// but next block's time can't be small than parent block
 	parTime := parent.Time()
-	blockTime := big.NewInt(time.Now().Unix())
-	if parTime.Cmp(blockTime) > 0 {
+	blockTime := uint32(time.Now().Unix())
+	if parTime > blockTime {
 		blockTime = parTime
 	}
 

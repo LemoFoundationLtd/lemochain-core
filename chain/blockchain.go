@@ -226,8 +226,8 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 	defer func() {
 		bc.chainForksLock.Unlock()
 		// only broadcast confirm info within one hour
-		currentTime := uint64(time.Now().Unix())
-		if currentTime-block.Time().Uint64() < 60*60 {
+		currentTime := time.Now().Unix()
+		if currentTime-int64(block.Time()) < 60*60 {
 			time.AfterFunc(2*time.Second, func() { // todo
 				bc.BroadcastConfirmInfo(hash, block.Height())
 			})

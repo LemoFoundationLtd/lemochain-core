@@ -20,7 +20,7 @@ type Config struct {
 	Origin      common.Address
 	Coinbase    common.Address
 	BlockHeight uint32
-	Time        *big.Int
+	Time        uint32
 	GasLimit    uint64
 	GasPrice    *big.Int
 	Value       *big.Int
@@ -39,8 +39,8 @@ func setDefaults(cfg *Config) {
 		}
 	}
 
-	if cfg.Time == nil {
-		cfg.Time = big.NewInt(time.Now().Unix())
+	if cfg.Time == 0 {
+		cfg.Time = uint32(time.Now().Unix())
 	}
 	if cfg.GasLimit == 0 {
 		cfg.GasLimit = math.MaxUint64

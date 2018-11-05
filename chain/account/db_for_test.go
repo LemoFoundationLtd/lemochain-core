@@ -17,7 +17,7 @@ import (
 type blockInfo struct {
 	hash        common.Hash
 	versionRoot common.Hash
-	time        *big.Int
+	time        uint32
 }
 
 var (
@@ -28,19 +28,19 @@ var (
 		{
 			hash:        common.HexToHash("0xac6efe56783d22fa7542abc82202e7c0b7bcaaf611b3bcdb217e23a9366f6677"),
 			versionRoot: common.HexToHash("0xac5efb21e3de5900ef965fcfca8bd43c4e84e22d1b66bb5bf3d8418c976a853c"),
-			time:        big.NewInt(1538209751),
+			time:        1538209751,
 		},
 		// block 1 is stable block
 		{
 			hash:        common.HexToHash("0x0c38287d372f3f580f1f8b019433ff8070552af423e0fdbb93de8332430cc941"),
 			versionRoot: common.HexToHash("0xac5efb21e3de5900ef965fcfca8bd43c4e84e22d1b66bb5bf3d8418c976a853c"),
-			time:        big.NewInt(1538209755),
+			time:        1538209755,
 		},
 		// block 2 is not stable block
 		{
 			hash:        common.HexToHash("0x5337bafc55b9f0e8deefb6d4b1061af787aba6e7a9b2f1bad9c4e31d39d16ca2"),
 			versionRoot: common.HexToHash("0xac5efb21e3de5900ef965fcfca8bd43c4e84e22d1b66bb5bf3d8418c976a853c"),
-			time:        big.NewInt(1538209758),
+			time:        1538209758,
 		},
 	}
 	// this account data is written with genesis block

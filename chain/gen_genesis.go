@@ -17,14 +17,14 @@ var _ = (*genesisSpecMarshaling)(nil)
 // MarshalJSON marshals as JSON.
 func (g Genesis) MarshalJSON() ([]byte, error) {
 	type Genesis struct {
-		Time        math.Decimal64           `json:"timestamp"   gencodec:"required"`
+		Time        math.Decimal32           `json:"timestamp"   gencodec:"required"`
 		ExtraData   hexutil.Bytes            `json:"extraData"`
 		GasLimit    math.Decimal64           `json:"gasLimit"    gencodec:"required"`
 		LemoBase    common.Address           `json:"lemoBase"    gencodec:"required"`
 		DeputyNodes []*deputynode.DeputyNode `json:"deputyNodes" gencodec:"required"`
 	}
 	var enc Genesis
-	enc.Time = math.Decimal64(g.Time)
+	enc.Time = math.Decimal32(g.Time)
 	enc.ExtraData = g.ExtraData
 	enc.GasLimit = math.Decimal64(g.GasLimit)
 	enc.LemoBase = g.LemoBase
@@ -35,7 +35,7 @@ func (g Genesis) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON unmarshals from JSON.
 func (g *Genesis) UnmarshalJSON(input []byte) error {
 	type Genesis struct {
-		Time        *math.Decimal64          `json:"timestamp"   gencodec:"required"`
+		Time        *math.Decimal32          `json:"timestamp"   gencodec:"required"`
 		ExtraData   *hexutil.Bytes           `json:"extraData"`
 		GasLimit    *math.Decimal64          `json:"gasLimit"    gencodec:"required"`
 		LemoBase    *common.Address          `json:"lemoBase"    gencodec:"required"`
@@ -48,7 +48,7 @@ func (g *Genesis) UnmarshalJSON(input []byte) error {
 	if dec.Time == nil {
 		return errors.New("missing required field 'timestamp' for Genesis")
 	}
-	g.Time = uint64(*dec.Time)
+	g.Time = uint32(*dec.Time)
 	if dec.ExtraData != nil {
 		g.ExtraData = *dec.ExtraData
 	}

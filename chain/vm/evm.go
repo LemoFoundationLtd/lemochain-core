@@ -54,7 +54,7 @@ type Context struct {
 	LemoBase    common.Address // Provides information for LEMOBASE
 	GasLimit    uint64         // Provides information for GASLIMIT
 	BlockHeight uint32         // Provides information for HEIGHT
-	Time        *big.Int       // Provides information for TIME
+	Time        uint32         // Provides information for TIME
 }
 
 // EVM is the Lemochain Virtual Machine base object and provides

@@ -79,7 +79,7 @@ type blockInfo struct {
 	logRoot     common.Hash
 	txList      []*types.Transaction
 	gasLimit    uint64
-	time        *big.Int
+	time        uint32
 	deputyRoot  []byte
 	deputyNodes deputynode.DeputyNodes
 }
@@ -161,8 +161,8 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 		}
 		info.logRoot = logRoot
 	}
-	if info.time == nil {
-		info.time = new(big.Int).SetUint64(uint64(time.Now().Unix()))
+	if info.time == 0 {
+		info.time = uint32(time.Now().Unix())
 	}
 	if info.gasLimit == 0 {
 		info.gasLimit = 1000000
@@ -413,7 +413,7 @@ func TestMiner_GetSleepSlot0_1(t *testing.T) {
 		parentHash: genesis.Hash(),
 		height:     1,
 		author:     common.HexToAddress(Nodes[0].address),
-		time:       new(big.Int).SetUint64(uint64(time.Now().Unix()) - uint64(wait)),
+		time:       uint32(time.Now().Unix()) - uint32(wait),
 	}
 	block, err := makeSignBlock(Nodes[0].privateKey, miner.chain.Db(), info, false)
 	assert.NoError(t, err)

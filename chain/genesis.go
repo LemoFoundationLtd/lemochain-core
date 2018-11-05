@@ -69,7 +69,7 @@ func decodeLemobase(input string) common.Address {
 //go:generate gencodec -type Genesis -field-override genesisSpecMarshaling -out gen_genesis.go
 
 type Genesis struct {
-	Time        uint64                 `json:"timestamp"   gencodec:"required"`
+	Time        uint32                 `json:"timestamp"   gencodec:"required"`
 	ExtraData   []byte                 `json:"extraData"`
 	GasLimit    uint64                 `json:"gasLimit"    gencodec:"required"`
 	LemoBase    common.Address         `json:"lemoBase"    gencodec:"required"`
@@ -77,7 +77,7 @@ type Genesis struct {
 }
 
 type genesisSpecMarshaling struct {
-	Time        math.Decimal64
+	Time        math.Decimal32
 	ExtraData   hexutil.Bytes
 	GasLimit    math.Decimal64
 	DeputyNodes []*deputynode.DeputyNode
@@ -88,7 +88,7 @@ func DefaultGenesisBlock() *Genesis {
 	timeSpan, _ := time.ParseInLocation("2006-01-02 15:04:05", "2018-08-30 12:00:00", time.UTC)
 	lemoBase := decodeLemobase("Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG")
 	return &Genesis{
-		Time:        uint64(timeSpan.Unix()),
+		Time:        uint32(timeSpan.Unix()),
 		ExtraData:   []byte(""),
 		GasLimit:    105000000,
 		LemoBase:    lemoBase,
@@ -111,7 +111,7 @@ func SetupGenesisBlock(db protocol.ChainDB, genesis *Genesis) (common.Hash, erro
 	}
 
 	// check genesis block's time
-	if genesis.Time > uint64(time.Now().Unix()) {
+	if int64(genesis.Time) > time.Now().Unix() {
 		panic("Genesis block's time can't be larger than current time.")
 	}
 	// check deputy nodes
@@ -154,7 +154,7 @@ func (g *Genesis) ToBlock() *types.Block {
 		Height:     0,
 		GasLimit:   g.GasLimit,
 		Extra:      g.ExtraData,
-		Time:       new(big.Int).SetUint64(g.Time),
+		Time:       g.Time,
 		DeputyRoot: types.DeriveDeputyRootSha(g.DeputyNodes).Bytes(),
 	}
 	block := types.NewBlock(head, nil, nil, nil, nil)

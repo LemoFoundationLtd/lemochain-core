@@ -5,7 +5,6 @@ package types
 import (
 	"encoding/json"
 	"errors"
-	"math/big"
 
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
@@ -27,7 +26,7 @@ func (h Header) MarshalJSON() ([]byte, error) {
 		Height      math.Decimal32      `json:"height"           gencodec:"required"`
 		GasLimit    math.HexOrDecimal64 `json:"gasLimit"         gencodec:"required"`
 		GasUsed     math.HexOrDecimal64 `json:"gasUsed"          gencodec:"required"`
-		Time        *hexutil.Big10      `json:"timestamp"        gencodec:"required"`
+		Time        math.Decimal32      `json:"timestamp"        gencodec:"required"`
 		SignData    hexutil.Bytes       `json:"signData"         gencodec:"required"`
 		DeputyRoot  hexutil.Bytes       `json:"deputyRoot"`
 		Extra       hexutil.Bytes       `json:"extraData"`
@@ -44,7 +43,7 @@ func (h Header) MarshalJSON() ([]byte, error) {
 	enc.Height = math.Decimal32(h.Height)
 	enc.GasLimit = math.HexOrDecimal64(h.GasLimit)
 	enc.GasUsed = math.HexOrDecimal64(h.GasUsed)
-	enc.Time = (*hexutil.Big10)(h.Time)
+	enc.Time = math.Decimal32(h.Time)
 	enc.SignData = h.SignData
 	enc.DeputyRoot = h.DeputyRoot
 	enc.Extra = h.Extra
@@ -65,7 +64,7 @@ func (h *Header) UnmarshalJSON(input []byte) error {
 		Height      *math.Decimal32      `json:"height"           gencodec:"required"`
 		GasLimit    *math.HexOrDecimal64 `json:"gasLimit"         gencodec:"required"`
 		GasUsed     *math.HexOrDecimal64 `json:"gasUsed"          gencodec:"required"`
-		Time        *hexutil.Big10       `json:"timestamp"        gencodec:"required"`
+		Time        *math.Decimal32      `json:"timestamp"        gencodec:"required"`
 		SignData    *hexutil.Bytes       `json:"signData"         gencodec:"required"`
 		DeputyRoot  *hexutil.Bytes       `json:"deputyRoot"`
 		Extra       *hexutil.Bytes       `json:"extraData"`
@@ -117,7 +116,7 @@ func (h *Header) UnmarshalJSON(input []byte) error {
 	if dec.Time == nil {
 		return errors.New("missing required field 'timestamp' for Header")
 	}
-	h.Time = (*big.Int)(dec.Time)
+	h.Time = uint32(*dec.Time)
 	if dec.SignData == nil {
 		return errors.New("missing required field 'signData' for Header")
 	}
