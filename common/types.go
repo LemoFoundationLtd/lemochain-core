@@ -187,17 +187,22 @@ func (a *Address) Decode(lemoAddress string) error {
 	fullPayload := base26.Decode(address)
 	// get the length of the address bytes type
 	length := len(fullPayload)
-	// get check bit
-	checkSum := fullPayload[length-1]
-	// get the native address
-	bytesAddress := fullPayload[:length-1]
-	// calculate the check bit by bytesAddress
-	trueCheck := GetCheckSum(bytesAddress)
-	// compare check
-	if checkSum != trueCheck {
-		return errors.New("lemo address check fail")
+	if length == 0 {
+		// 0x0000000000000000000000000000000000000000
+		a.SetBytes(nil)
+	} else {
+		// get check bit
+		checkSum := fullPayload[length-1]
+		// get the native address
+		bytesAddress := fullPayload[:length-1]
+		// calculate the check bit by bytesAddress
+		trueCheck := GetCheckSum(bytesAddress)
+		// compare check
+		if checkSum != trueCheck {
+			return errors.New("lemo address check fail")
+		}
+		a.SetBytes(bytesAddress)
 	}
-	a.SetBytes(bytesAddress)
 	return nil
 }
 

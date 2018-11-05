@@ -31,6 +31,7 @@ import (
 var (
 	bytesT  = reflect.TypeOf(Bytes(nil))
 	bigT    = reflect.TypeOf((*Big)(nil))
+	big10T  = reflect.TypeOf((*Big10)(nil))
 	uintT   = reflect.TypeOf(Uint(0))
 	uint64T = reflect.TypeOf(Uint64(0))
 )
@@ -200,9 +201,9 @@ func (b Big10) MarshalText() ([]byte, error) {
 // UnmarshalJSON implements json.Unmarshaler.
 func (b *Big10) UnmarshalJSON(input []byte) error {
 	if !isString(input) {
-		return errNonString(bigT)
+		return errNonString(big10T)
 	}
-	return wrapTypeError(b.UnmarshalText(input[1:len(input)-1]), bigT)
+	return wrapTypeError(b.UnmarshalText(input[1:len(input)-1]), big10T)
 }
 
 // UnmarshalText implements encoding.TextUnmarshaler

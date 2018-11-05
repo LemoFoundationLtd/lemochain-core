@@ -100,10 +100,13 @@ func SafeMul(x, y uint64) (uint64, bool) {
 
 type DecimalUint uint
 
-func (i *DecimalUint) UnmarshalJSON(input []byte) error {
+func (i *DecimalUint) UnmarshalText(input []byte) error {
 	res, err := strconv.ParseInt(string(input), 10, 32)
+	if err != nil {
+		return err
+	}
 	*i = DecimalUint(res)
-	return err
+	return nil
 }
 
 func (i DecimalUint) MarshalJSON() ([]byte, error) {
@@ -112,10 +115,13 @@ func (i DecimalUint) MarshalJSON() ([]byte, error) {
 
 type Decimal32 uint32
 
-func (i *Decimal32) UnmarshalJSON(input []byte) error {
+func (i *Decimal32) UnmarshalText(input []byte) error {
 	res, err := strconv.ParseInt(string(input), 10, 32)
+	if err != nil {
+		return err
+	}
 	*i = Decimal32(res)
-	return err
+	return nil
 }
 
 // MarshalText implements encoding.TextMarshaler.
@@ -125,10 +131,13 @@ func (i Decimal32) MarshalText() ([]byte, error) {
 
 type Decimal64 uint64
 
-func (i *Decimal64) UnmarshalJSON(input []byte) error {
+func (i *Decimal64) UnmarshalText(input []byte) error {
 	res, err := strconv.ParseInt(string(input), 10, 64)
+	if err != nil {
+		return err
+	}
 	*i = Decimal64(res)
-	return err
+	return nil
 }
 
 // MarshalText implements encoding.TextMarshaler.

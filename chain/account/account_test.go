@@ -195,7 +195,7 @@ func TestAccount_MarshalJSON_UnmarshalJSON(t *testing.T) {
 	account := loadAccount(defaultAccounts[0].Address)
 	data, err := json.Marshal(account)
 	assert.NoError(t, err)
-	assert.Equal(t, `{"address":"Lemo8888888888888888888888888888883CPHBJ","balance":"0x64","codeHash":"0x1d5f11eaa13e02cdca886181dc38ab4cb8cf9092e86c000fb42d12c8b504500e","root":"0xcbeb7c7e36b846713bc99b8fa527e8d552e31bfaa1ac0f2b773958cda3aba3ed","records":{"1":{"Version":100,"Height":1},"3":{"Version":101,"Height":2}}}`, string(data))
+	assert.Equal(t, `{"address":"Lemo8888888888888888888888888888883CPHBJ","balance":"100","codeHash":"0x1d5f11eaa13e02cdca886181dc38ab4cb8cf9092e86c000fb42d12c8b504500e","root":"0xcbeb7c7e36b846713bc99b8fa527e8d552e31bfaa1ac0f2b773958cda3aba3ed","records":{"1":{"version":"100","height":"1"},"3":{"version":"101","height":"2"}}}`, string(data))
 	var parsedAccount *Account
 	err = json.Unmarshal(data, &parsedAccount)
 	assert.NoError(t, err)
