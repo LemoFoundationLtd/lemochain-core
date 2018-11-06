@@ -260,12 +260,13 @@ func CompareFile(index int, dataMFile *MFile, hintMFile *MFile, after int64) err
 			totalLen += 256 - totalLen%256
 		}
 
-		if int64(header.TimeStamp) <= after {
+		if int64(header.TimeStamp) < after {
 			offset += totalLen
 			continue
 		}
 
 		if header.Flg&0x01 == 1 {
+			offset += totalLen
 			continue
 		}
 
