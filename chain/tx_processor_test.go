@@ -28,7 +28,7 @@ func TestNewTxProcessor(t *testing.T) {
 
 // test valid block processing
 func TestTxProcessor_Process(t *testing.T) {
-	clearDB()
+	store.ClearData()
 	p := NewTxProcessor(newChain())
 
 	// last not stable block
@@ -88,7 +88,7 @@ func TestTxProcessor_Process(t *testing.T) {
 
 // test invalid block processing
 func TestTxProcessor_Process2(t *testing.T) {
-	clearDB()
+	store.ClearData()
 	p := NewTxProcessor(newChain())
 
 	// tamper with amount
@@ -162,7 +162,7 @@ func createNewBlock() *types.Block {
 
 // test tx picking logic
 func TestTxProcessor_ApplyTxs(t *testing.T) {
-	clearDB()
+	store.ClearData()
 	p := NewTxProcessor(newChain())
 
 	// 1 txs
@@ -293,7 +293,7 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 // TODO move these cases to evm
 // test different transactions
 func TestTxProcessor_ApplyTxs2(t *testing.T) {
-	clearDB()
+	store.ClearData()
 	p := NewTxProcessor(newChain())
 
 	// transfer to other

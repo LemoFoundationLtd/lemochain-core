@@ -302,7 +302,7 @@ func TestDpovp_VerifyHeader02(t *testing.T) {
 	err := initDeputyNode(5, 0)
 	assert.NoError(t, err)
 	dpovp := loadDpovp()
-	defer clearDB()
+	defer store.ClearData()
 	// 创世块,随便哪个节点出块在这里没有影响
 	block00, err := newTestBlock(dpovp, common.Hash{}, 0, common.HexToAddress(block01LemoBase), 1995, deputy01Privkey, true)
 	assert.NoError(t, err)
