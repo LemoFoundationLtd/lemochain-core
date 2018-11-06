@@ -21,7 +21,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"reflect"
-	"strconv"
 	"testing"
 )
 
@@ -69,14 +68,8 @@ func TestJSONRequestParsing(t *testing.T) {
 		t.Fatalf("Expected method 'Add' but got '%s'", requests[0].method)
 	}
 
-	if rawId, ok := requests[0].id.(*json.RawMessage); ok {
-		id, e := strconv.ParseInt(string(*rawId), 0, 64)
-		if e != nil {
-			t.Fatalf("%v", e)
-		}
-		if id != 1234 {
-			t.Fatalf("Expected id 1234 but got %d", id)
-		}
+	if requests[0].id != 1234 {
+		t.Fatalf("Expected id 1234 but got %d", requests[0].id)
 	} else {
 		t.Fatalf("invalid request, expected *json.RawMesage got %T", requests[0].id)
 	}
