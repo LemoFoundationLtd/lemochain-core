@@ -106,7 +106,7 @@ func getCustomTypeData(t *testing.T) []testCustomTypeConfig {
 	// 2 CodeLog
 	tests = append(tests, testCustomTypeConfig{
 		input: NewCodeLog(processor.createAccount(CodeLog, 0), []byte{0x12, 0x34}),
-		str:   "CodeLog{Account: Lemo88888888888888888888888888888888835N, Version: 1, NewVal: [18 52]}",
+		str:   "CodeLog{Account: Lemo88888888888888888888888888888888835N, Version: 1, NewVal: 0x1234}",
 		hash:  "0xcec04ee7ea02f669bfee54633269673d706b59ab821127b5c5491d4dc1c4076a",
 		rlp:   "0xdb0394000000000000000000000000000000000000000301821234c0",
 	})

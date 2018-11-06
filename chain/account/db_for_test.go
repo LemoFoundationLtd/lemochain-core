@@ -57,11 +57,11 @@ var (
 	}
 	defaultCodes = []struct {
 		hash common.Hash
-		code *types.Code
+		code types.Code
 	}{
 		{
 			hash: common.HexToHash("0x1d5f11eaa13e02cdca886181dc38ab4cb8cf9092e86c000fb42d12c8b504500e"),
-			code: &types.Code{12, 34},
+			code: types.Code{12, 34},
 		},
 	}
 	defaultStorage = []struct {
@@ -168,7 +168,7 @@ func saveAccount(db protocol.ChainDB) {
 	}
 	// save code
 	for _, codeInfo := range defaultCodes {
-		hash := crypto.Keccak256Hash(*codeInfo.code)
+		hash := crypto.Keccak256Hash(codeInfo.code)
 		if hash != codeInfo.hash {
 			panic(fmt.Errorf("code hash error. except: %s, got: %s", codeInfo.hash.Hex(), hash.Hex()))
 		}

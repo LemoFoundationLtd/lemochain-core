@@ -38,9 +38,9 @@ type ChainDB interface {
 	// GetTrieDatabase returns the db required by storage trie.
 	GetTrieDatabase() *store.TrieDatabase
 	// GetContractCode loads contract's code from db.
-	GetContractCode(codeHash common.Hash) (*types.Code, error)
+	GetContractCode(codeHash common.Hash) (types.Code, error)
 	// SetContractCode saves contract's code
-	SetContractCode(codeHash common.Hash, code *types.Code) error
+	SetContractCode(codeHash common.Hash, code types.Code) error
 
 	// LoadLatestBlock 程序启动时加载本地最新块
 	LoadLatestBlock() (*types.Block, error)

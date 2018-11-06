@@ -90,12 +90,12 @@ func (a *Account) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON decodes the lemoClient RPC account format.
 func (a *Account) UnmarshalJSON(input []byte) error {
-	var dec types.AccountData
+	dec := new(types.AccountData)
 	if err := dec.UnmarshalJSON(input); err != nil {
 		return err
 	}
 	// TODO a.db and a.baseHeight are nil
-	*a = *NewAccount(a.db, dec.Address, &dec, a.baseHeight)
+	*a = *NewAccount(a.db, dec.Address, dec, a.baseHeight)
 	return nil
 }
 
@@ -163,7 +163,7 @@ func (a *Account) GetCode() (types.Code, error) {
 		log.Errorf("can't load code hash %x", a.data.CodeHash)
 		return nil, ErrLoadCodeFail
 	} else {
-		a.code = *code
+		a.code = code
 	}
 	return a.code, nil
 }
@@ -298,7 +298,7 @@ func (a *Account) Save() error {
 	}
 	// save code
 	if a.codeIsDirty {
-		if err := a.db.SetContractCode(a.data.CodeHash, &a.code); err != nil {
+		if err := a.db.SetContractCode(a.data.CodeHash, a.code); err != nil {
 			return err
 		}
 		a.codeIsDirty = false

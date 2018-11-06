@@ -226,12 +226,12 @@ func TestCacheChain_ContractCode(t *testing.T) {
 	code := types.Code("this  is code")
 	hash := common.HexToHash("this is code")
 
-	err = cacheChain.SetContractCode(hash, &code)
+	err = cacheChain.SetContractCode(hash, code)
 	assert.NoError(t, err)
 
 	result, err := cacheChain.GetContractCode(hash)
 	assert.NoError(t, err)
-	assert.Equal(t, &code, result)
+	assert.Equal(t, code, result)
 }
 
 func TestCacheChain_SetAccounts(t *testing.T) {
