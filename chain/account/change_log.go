@@ -21,7 +21,7 @@ const (
 func init() {
 	types.RegisterChangeLog(BalanceLog, "BalanceLog", decodeBigInt, decodeEmptyInterface, redoBalance, undoBalance)
 	types.RegisterChangeLog(StorageLog, "StorageLog", decodeBytes, decodeBytes, redoStorage, undoStorage)
-	types.RegisterChangeLog(CodeLog, "CodeLog", decodeBytes, decodeEmptyInterface, redoCode, undoCode)
+	types.RegisterChangeLog(CodeLog, "CodeLog", decodeCode, decodeEmptyInterface, redoCode, undoCode)
 	types.RegisterChangeLog(AddEventLog, "AddEventLog", decodeEvent, decodeEmptyInterface, redoAddEvent, undoAddEvent)
 	types.RegisterChangeLog(SuicideLog, "SuicideLog", decodeEmptyInterface, decodeEmptyInterface, redoSuicide, undoSuicide)
 }
@@ -93,6 +93,13 @@ func decodeBytes(s *rlp.Stream) (interface{}, error) {
 	var result []byte
 	err := s.Decode(&result)
 	return result, err
+}
+
+// decodeCode decode an interface which contains an types.Code
+func decodeCode(s *rlp.Stream) (interface{}, error) {
+	var result []byte
+	err := s.Decode(&result)
+	return types.Code(result), err
 }
 
 // decodeEvents decode an interface which contains an *types.Event

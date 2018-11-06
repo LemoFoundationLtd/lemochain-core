@@ -633,19 +633,19 @@ func (chain *CacheChain) GetTrieDatabase() *TrieDatabase {
 }
 
 // GetContractCode loads contract's code from db.
-func (chain *CacheChain) GetContractCode(codeHash common.Hash) (*types.Code, error) {
+func (chain *CacheChain) GetContractCode(codeHash common.Hash) (types.Code, error) {
 	val, err := chain.LmDataBase.Get(codeHash.Bytes())
 	if err != nil {
 		return nil, err
 	} else {
 		var code types.Code = val
-		return &code, nil
+		return code, nil
 	}
 }
 
 // SetContractCode saves contract's code
-func (chain *CacheChain) SetContractCode(codeHash common.Hash, code *types.Code) error {
-	return chain.LmDataBase.Put(codeHash.Bytes(), (*code)[:])
+func (chain *CacheChain) SetContractCode(codeHash common.Hash, code types.Code) error {
+	return chain.LmDataBase.Put(codeHash.Bytes(), code[:])
 }
 
 func (chain *CacheChain) Close() error {

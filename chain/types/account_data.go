@@ -136,7 +136,7 @@ func (a *AccountData) String() string {
 type Code []byte
 
 func (c Code) String() string {
-	return fmt.Sprintf("%v", []byte(c)) // strings.Join(asm.Disassemble(c), " ")
+	return fmt.Sprintf("%#x", []byte(c)) // strings.Join(asm.Disassemble(c), " ")
 }
 
 type AccountAccessor interface {

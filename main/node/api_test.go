@@ -5,6 +5,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -12,11 +13,12 @@ import (
 // TestAccountAPI_api account api test
 func TestAccountAPI_api(t *testing.T) {
 	db := newDB()
-	defer clearDB()
+	defer store.ClearData()
 	am := account.NewManager(common.Hash{}, db)
-	acc := NewAccountAPI(am)
+	acc := NewPublicAccountAPI(am)
+	priAcc := NewPrivateAccountAPI(am)
 	// Create key pair
-	addressKeyPair, err := acc.NewKeyPair()
+	addressKeyPair, err := priAcc.NewKeyPair()
 	assert.NoError(t, err)
 	t.Log(addressKeyPair)
 
@@ -50,8 +52,8 @@ func TestAccountAPI_api(t *testing.T) {
 // TestChainAPI_api chain api test
 func TestChainAPI_api(t *testing.T) {
 	bc := newChain()
-	defer clearDB()
-	c := NewChainAPI(bc)
+	defer store.ClearData()
+	c := NewPublicChainAPI(bc)
 
 	// getBlockByHash
 	exBlock1 := c.chain.GetBlockByHash(common.HexToHash("0x3f4c3152fb02a7673bf804b1ddeb75542b6ef9a5a87501d9cfbbcf6c3632a211"))
@@ -103,7 +105,7 @@ func TestTxAPI_api(t *testing.T) {
 	signTx := signTransaction(testTx, testPrivate)
 	// txCh := make(chan types.Transactions, 100)
 	pool := chain.NewTxPool(nil)
-	txAPI := NewTxAPI(pool)
+	txAPI := NewPublicTxAPI(pool)
 
 	sendTxHash, err := txAPI.SendTx(signTx)
 	assert.Nil(t, err)

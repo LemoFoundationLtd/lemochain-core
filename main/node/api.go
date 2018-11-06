@@ -16,18 +16,18 @@ import (
 	"strconv"
 )
 
-// AccountAPI API for access to account information
-type AccountAPI struct {
+// Private
+type PrivateAccountAPI struct {
 	manager *account.Manager
 }
 
-// NewAccountAPI
-func NewAccountAPI(m *account.Manager) *AccountAPI {
-	return &AccountAPI{m}
+// NewPrivateAccountAPI
+func NewPrivateAccountAPI(m *account.Manager) *PrivateAccountAPI {
+	return &PrivateAccountAPI{m}
 }
 
 // NewAccount get lemo address api
-func (a *AccountAPI) NewKeyPair() (*crypto.AddressKeyPair, error) {
+func (a *PrivateAccountAPI) NewKeyPair() (*crypto.AddressKeyPair, error) {
 	accounts, err := crypto.GenerateAddress()
 	if err != nil {
 		return nil, err
@@ -35,8 +35,18 @@ func (a *AccountAPI) NewKeyPair() (*crypto.AddressKeyPair, error) {
 	return accounts, nil
 }
 
+// PublicAccountAPI API for access to account information
+type PublicAccountAPI struct {
+	manager *account.Manager
+}
+
+// NewPublicAccountAPI
+func NewPublicAccountAPI(m *account.Manager) *PublicAccountAPI {
+	return &PublicAccountAPI{m}
+}
+
 // GetBalance get balance in mo
-func (a *AccountAPI) GetBalance(LemoAddress string) (string, error) {
+func (a *PublicAccountAPI) GetBalance(LemoAddress string) (string, error) {
 	accounts, err := a.GetAccount(LemoAddress)
 	if err != nil {
 		return "", err
@@ -47,7 +57,7 @@ func (a *AccountAPI) GetBalance(LemoAddress string) (string, error) {
 }
 
 // GetAccount return the struct of the &AccountData{}
-func (a *AccountAPI) GetAccount(LemoAddress string) (types.AccountAccessor, error) {
+func (a *PublicAccountAPI) GetAccount(LemoAddress string) (types.AccountAccessor, error) {
 	address, err := common.StringToAddress(LemoAddress)
 	if err != nil {
 		return nil, err
@@ -58,17 +68,17 @@ func (a *AccountAPI) GetAccount(LemoAddress string) (types.AccountAccessor, erro
 }
 
 // ChainAPI
-type ChainAPI struct {
+type PublicChainAPI struct {
 	chain *chain.BlockChain
 }
 
 // NewChainAPI API for access to chain information
-func NewChainAPI(chain *chain.BlockChain) *ChainAPI {
-	return &ChainAPI{chain}
+func NewPublicChainAPI(chain *chain.BlockChain) *PublicChainAPI {
+	return &PublicChainAPI{chain}
 }
 
 // GetBlockByNumber get block information by height
-func (c *ChainAPI) GetBlockByHeight(height uint32, withTxs bool) *types.Block {
+func (c *PublicChainAPI) GetBlockByHeight(height uint32, withTxs bool) *types.Block {
 	if withTxs {
 		return c.chain.GetBlockByHeight(height)
 	} else {
@@ -83,7 +93,7 @@ func (c *ChainAPI) GetBlockByHeight(height uint32, withTxs bool) *types.Block {
 }
 
 // GetBlockByHash get block information by hash
-func (c *ChainAPI) GetBlockByHash(hash string, withTxs bool) *types.Block {
+func (c *PublicChainAPI) GetBlockByHash(hash string, withTxs bool) *types.Block {
 	if withTxs {
 		return c.chain.GetBlockByHash(common.HexToHash(hash))
 	} else {
@@ -99,17 +109,17 @@ func (c *ChainAPI) GetBlockByHash(hash string, withTxs bool) *types.Block {
 }
 
 // ChainID get chain id
-func (c *ChainAPI) ChainID() uint16 {
+func (c *PublicChainAPI) ChainID() uint16 {
 	return c.chain.ChainID()
 }
 
 // Genesis get the creation block
-func (c *ChainAPI) Genesis() *types.Block {
+func (c *PublicChainAPI) Genesis() *types.Block {
 	return c.chain.Genesis()
 }
 
 // CurrentBlock get the current latest block
-func (c *ChainAPI) CurrentBlock(withTxs bool) *types.Block {
+func (c *PublicChainAPI) CurrentBlock(withTxs bool) *types.Block {
 	if withTxs {
 		return c.chain.CurrentBlock()
 	} else {
@@ -121,11 +131,10 @@ func (c *ChainAPI) CurrentBlock(withTxs bool) *types.Block {
 		currentBlock.SetTxs([]*types.Transaction{})
 		return currentBlock
 	}
-
 }
 
 // LatestStableBlock get the latest currently agreed blocks
-func (c *ChainAPI) LatestStableBlock(withTxs bool) *types.Block {
+func (c *PublicChainAPI) LatestStableBlock(withTxs bool) *types.Block {
 	if withTxs == true {
 		return c.chain.StableBlock()
 	} else {
@@ -141,93 +150,107 @@ func (c *ChainAPI) LatestStableBlock(withTxs bool) *types.Block {
 }
 
 // CurrentHeight
-func (c *ChainAPI) CurrentHeight() uint32 {
+func (c *PublicChainAPI) CurrentHeight() uint32 {
 	currentBlock := c.chain.CurrentBlock()
 	height := currentBlock.Height()
 	return height
 }
 
 // LatestStableHeight
-func (c *ChainAPI) LatestStableHeight() uint32 {
+func (c *PublicChainAPI) LatestStableHeight() uint32 {
 	return c.chain.StableBlock().Height()
 }
 
 // GasPriceAdvice get suggest gas price
-func (c *ChainAPI) GasPriceAdvice() *big.Int {
+func (c *PublicChainAPI) GasPriceAdvice() *big.Int {
 	// todo
 	return big.NewInt(100000000)
 }
 
 // NodeVersion
-func (n *ChainAPI) NodeVersion() string {
+func (n *PublicChainAPI) NodeVersion() string {
 	return params.Version
 }
 
 // TXAPI
-type TxAPI struct {
+type PublicTxAPI struct {
 	txpool *chain.TxPool
 }
 
 // NewTxAPI API for send a transaction
-func NewTxAPI(txpool *chain.TxPool) *TxAPI {
-	return &TxAPI{txpool}
+func NewPublicTxAPI(txpool *chain.TxPool) *PublicTxAPI {
+	return &PublicTxAPI{txpool}
 }
 
 // Send send a transaction
-func (t *TxAPI) SendTx(tx *types.Transaction) (common.Hash, error) {
+func (t *PublicTxAPI) SendTx(tx *types.Transaction) (common.Hash, error) {
 	err := t.txpool.AddTx(tx)
 	return tx.Hash(), err
 }
 
-// MineAPI
-type MineAPI struct {
+// PendingTx
+func (t *PublicTxAPI) PendingTx(size int) []*types.Transaction {
+	return t.txpool.Pending(size)
+}
+
+// PrivateMineAPI
+type PrivateMineAPI struct {
 	miner *miner.Miner
 }
 
-// NewMineAPI
-func NewMineAPI(miner *miner.Miner) *MineAPI {
-	return &MineAPI{miner}
+// NewPrivateMinerAPI
+func NewPrivateMinerAPI(miner *miner.Miner) *PrivateMineAPI {
+	return &PrivateMineAPI{miner}
 }
 
 // MineStart
-func (m *MineAPI) MineStart() {
+func (m *PrivateMineAPI) MineStart() {
 	m.miner.Start()
 }
 
 // MineStop
-func (m *MineAPI) MineStop() {
+func (m *PrivateMineAPI) MineStop() {
 	m.miner.Stop()
 }
 
+// PublicMineAPI
+type PublicMineAPI struct {
+	miner *miner.Miner
+}
+
+// NewPublicMineAPI
+func NewPublicMineAPI(miner *miner.Miner) *PublicMineAPI {
+	return &PublicMineAPI{miner}
+}
+
 // IsMining
-func (m *MineAPI) IsMining() bool {
+func (m *PublicMineAPI) IsMining() bool {
 	return m.miner.IsMining()
 }
 
 // LemoBase
-func (m *MineAPI) LemoBase() string {
+func (m *PublicMineAPI) LemoBase() string {
 	lemoBase := m.miner.GetLemoBase()
 	return lemoBase.String()
 }
 
-// NetAPI
-type NetAPI struct {
+// PrivateNetAPI
+type PrivateNetAPI struct {
 	node *Node
-	// server *p2p.Server
 }
 
-// NewNetAPI
-func NewNetAPI(node *Node) *NetAPI {
-	return &NetAPI{node}
+// NewPrivateNetAPI
+func NewPrivateNetAPI(node *Node) *PrivateNetAPI {
+	return &PrivateNetAPI{node}
 }
 
 // AddStaticPeer
-func (n *NetAPI) AddStaticPeer(node string) {
+func (n *PrivateNetAPI) AddStaticPeer(node string) {
 	n.node.server.AddStaticPeer(node)
 }
 
 // DropPeer
-func (n *NetAPI) DropPeer(node string) string {
+func (n *PrivateNetAPI) DropPeer(node string) string {
 	if n.node.server.DropPeer(node) {
 		return fmt.Sprintf("drop a peer success. id %v", node)
 	} else {
@@ -237,12 +260,22 @@ func (n *NetAPI) DropPeer(node string) string {
 }
 
 // Peers
-func (n *NetAPI) Peers() []p2p.PeerConnInfo {
+func (n *PrivateNetAPI) Peers() []p2p.PeerConnInfo {
 	return n.node.server.Peers()
 }
 
+// PublicNetAPI
+type PublicNetAPI struct {
+	node *Node
+}
+
+// NewPublicNetAPI
+func NewPublicNetAPI(node *Node) *PublicNetAPI {
+	return &PublicNetAPI{node}
+}
+
 // PeersCount return peers number
-func (n *NetAPI) PeersCount() string {
+func (n *PublicNetAPI) PeersCount() string {
 	count := strconv.Itoa(len(n.node.server.Peers()))
 	return count
 }
@@ -262,7 +295,7 @@ type netInfoMarshaling struct {
 }
 
 // Info
-func (n *NetAPI) Info() *NetInfo {
+func (n *PublicNetAPI) Info() *NetInfo {
 	return &NetInfo{
 		Port:     uint32(n.node.server.Port),
 		NodeName: n.node.config.NodeName(),
