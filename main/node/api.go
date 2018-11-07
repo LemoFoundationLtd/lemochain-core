@@ -127,9 +127,11 @@ func (c *PublicChainAPI) CurrentBlock(withTxs bool) *types.Block {
 		if currentBlock == nil {
 			return nil
 		}
-		// set the Txs field to null
-		currentBlock.SetTxs([]*types.Transaction{})
-		return currentBlock
+		// copy only header
+		onlyHeaderBlock := &types.Block{
+			Header: currentBlock.Header,
+		}
+		return onlyHeaderBlock
 	}
 }
 
@@ -142,11 +144,12 @@ func (c *PublicChainAPI) LatestStableBlock(withTxs bool) *types.Block {
 		if stableBlock == nil {
 			return nil
 		}
-		// set the Txs field to null
-		stableBlock.SetTxs([]*types.Transaction{})
-		return stableBlock
+		// copy only header
+		onlyHeaderBlock := &types.Block{
+			Header: stableBlock.Header,
+		}
+		return onlyHeaderBlock
 	}
-
 }
 
 // CurrentHeight
