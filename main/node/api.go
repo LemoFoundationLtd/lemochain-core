@@ -78,8 +78,8 @@ func NewPublicChainAPI(chain *chain.BlockChain) *PublicChainAPI {
 }
 
 // GetBlockByNumber get block information by height
-func (c *PublicChainAPI) GetBlockByHeight(height uint32, withTxs bool) *types.Block {
-	if withTxs {
+func (c *PublicChainAPI) GetBlockByHeight(height uint32, withBody bool) *types.Block {
+	if withBody {
 		return c.chain.GetBlockByHeight(height)
 	} else {
 		block := c.chain.GetBlockByHeight(height)
@@ -95,8 +95,8 @@ func (c *PublicChainAPI) GetBlockByHeight(height uint32, withTxs bool) *types.Bl
 }
 
 // GetBlockByHash get block information by hash
-func (c *PublicChainAPI) GetBlockByHash(hash string, withTxs bool) *types.Block {
-	if withTxs {
+func (c *PublicChainAPI) GetBlockByHash(hash string, withBody bool) *types.Block {
+	if withBody {
 		return c.chain.GetBlockByHash(common.HexToHash(hash))
 	} else {
 		block := c.chain.GetBlockByHash(common.HexToHash(hash))
@@ -123,8 +123,8 @@ func (c *PublicChainAPI) Genesis() *types.Block {
 }
 
 // CurrentBlock get the current latest block
-func (c *PublicChainAPI) CurrentBlock(withTxs bool) *types.Block {
-	if withTxs {
+func (c *PublicChainAPI) CurrentBlock(withBody bool) *types.Block {
+	if withBody {
 		return c.chain.CurrentBlock()
 	} else {
 		currentBlock := c.chain.CurrentBlock()
@@ -140,8 +140,8 @@ func (c *PublicChainAPI) CurrentBlock(withTxs bool) *types.Block {
 }
 
 // LatestStableBlock get the latest currently agreed blocks
-func (c *PublicChainAPI) LatestStableBlock(withTxs bool) *types.Block {
-	if withTxs == true {
+func (c *PublicChainAPI) LatestStableBlock(withBody bool) *types.Block {
+	if withBody {
 		return c.chain.StableBlock()
 	} else {
 		stableBlock := c.chain.StableBlock()
