@@ -86,9 +86,11 @@ func (c *PublicChainAPI) GetBlockByHeight(height uint32, withTxs bool) *types.Bl
 		if block == nil {
 			return nil
 		}
-		// set the Txs field to null
-		block.SetTxs([]*types.Transaction{})
-		return block
+		// copy only header
+		onlyHeaderBlock := &types.Block{
+			Header: block.Header,
+		}
+		return onlyHeaderBlock
 	}
 }
 
@@ -101,9 +103,11 @@ func (c *PublicChainAPI) GetBlockByHash(hash string, withTxs bool) *types.Block 
 		if block == nil {
 			return nil
 		}
-		// set the Txs field to null
-		block.SetTxs([]*types.Transaction{})
-		return block
+		// copy only header
+		onlyHeaderBlock := &types.Block{
+			Header: block.Header,
+		}
+		return onlyHeaderBlock
 	}
 
 }
