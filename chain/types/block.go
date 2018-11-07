@@ -11,6 +11,7 @@ import (
 )
 
 //go:generate gencodec -type Header -field-override headerMarshaling -out gen_header_json.go
+//go:generate gencodec -type Block -out gen_block_json.go
 
 type Header struct {
 	ParentHash  common.Hash    `json:"parentHash"       gencodec:"required"`
@@ -54,12 +55,12 @@ func (sd SignData) String() string {
 
 // Block
 type Block struct {
-	Header      *Header
-	Txs         []*Transaction
-	ChangeLogs  []*ChangeLog
-	Events      []*Event
-	Confirms    []SignData
-	DeputyNodes deputynode.DeputyNodes
+	Header      *Header                `json:"header"        gencodec:"required"`
+	Txs         []*Transaction         `json:"transactions"  gencodec:"required"`
+	ChangeLogs  []*ChangeLog           `json:"changeLogs"    gencodec:"required"`
+	Events      []*Event               `json:"events"        gencodec:"required"`
+	Confirms    []SignData             `json:"confirms"`
+	DeputyNodes deputynode.DeputyNodes `json:"deputyNodes"`
 }
 
 func NewBlock(header *Header, txs []*Transaction, changeLog []*ChangeLog, events []*Event, confirms []SignData) *Block {

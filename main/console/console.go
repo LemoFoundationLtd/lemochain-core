@@ -173,8 +173,8 @@ func (c *Console) Welcome() {
 		console.log("node: v" + results[0]);
 		console.log("sdk: v" + results[1]);
 		console.log("lemobase: " + results[2]);
-		console.log("current block: " + results[3].Header.height + " " + results[3].Header.hash + " (" + new Date(1000 * results[3].Header.timestamp).toLocaleString() + ")");
-		console.log("latest stable block: " + results[4].Header.height + " " + results[4].Header.hash + " (" + new Date(1000 * results[4].Header.timestamp).toLocaleString() + ")");
+		console.log("current block: " + results[3].header.height + " " + results[3].header.hash + " (" + new Date(1000 * results[3].header.timestamp).toLocaleString() + ")");
+		console.log("latest stable block: " + results[4].header.height + " " + results[4].header.hash + " (" + new Date(1000 * results[4].header.timestamp).toLocaleString() + ")");
 		console.log("\n")
 	});`)
 	// List all the supported modules for the user to call
