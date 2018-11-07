@@ -54,21 +54,21 @@ func (sd SignData) String() string {
 
 // Block
 type Block struct {
-	Header         *Header
-	Txs            []*Transaction
-	ChangeLogs     []*ChangeLog
-	Events         []*Event
-	ConfirmPackage []SignData
-	DeputyNodes    deputynode.DeputyNodes
+	Header      *Header
+	Txs         []*Transaction
+	ChangeLogs  []*ChangeLog
+	Events      []*Event
+	Confirms    []SignData
+	DeputyNodes deputynode.DeputyNodes
 }
 
-func NewBlock(header *Header, txs []*Transaction, changeLog []*ChangeLog, events []*Event, confirmPackage []SignData) *Block {
+func NewBlock(header *Header, txs []*Transaction, changeLog []*ChangeLog, events []*Event, confirms []SignData) *Block {
 	return &Block{
-		Header:         header,
-		Txs:            txs,
-		ChangeLogs:     changeLog,
-		Events:         events,
-		ConfirmPackage: confirmPackage,
+		Header:     header,
+		Txs:        txs,
+		ChangeLogs: changeLog,
+		Events:     events,
+		Confirms:   confirms,
 	}
 }
 
@@ -159,7 +159,7 @@ func (b *Block) Extra() []byte            { return b.Header.Extra }
 
 func (b *Block) SetHeader(header *Header)                          { b.Header = header }
 func (b *Block) SetTxs(txs []*Transaction)                         { b.Txs = txs }
-func (b *Block) SetConfirmPackage(pack []SignData)                 { b.ConfirmPackage = pack }
+func (b *Block) SetConfirms(confirms []SignData)                   { b.Confirms = confirms }
 func (b *Block) SetChangeLogs(logs []*ChangeLog)                   { b.ChangeLogs = logs }
 func (b *Block) SetEvents(events []*Event)                         { b.Events = events }
 func (b *Block) SetDeputyNodes(deputyNodes deputynode.DeputyNodes) { b.DeputyNodes = deputyNodes }
@@ -170,7 +170,7 @@ func (b *Block) String() string {
 		fmt.Sprintf("Txs: %v", b.Txs),
 		fmt.Sprintf("ChangeLogs: %v", b.ChangeLogs),
 		fmt.Sprintf("Events: %v", b.Events),
-		fmt.Sprintf("ConfirmPackage: %v", b.ConfirmPackage),
+		fmt.Sprintf("Confirms: %v", b.Confirms),
 	}
 
 	return fmt.Sprintf("{%s}", strings.Join(set, ", "))

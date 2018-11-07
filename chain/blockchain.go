@@ -226,7 +226,7 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 		defer bc.SetStableBlock(hash, block.Height(), isSynchronising)
 	} else {
 		minCount := int(math.Ceil(float64(nodeCount) * 2.0 / 3.0))
-		if len(block.ConfirmPackage) >= minCount {
+		if len(block.Confirms) >= minCount {
 			defer bc.SetStableBlock(hash, block.Height(), isSynchronising)
 		}
 	}
@@ -446,7 +446,7 @@ func (bc *BlockChain) hasEnoughConfirmInfo(hash common.Hash) (bool, error) {
 
 // getConfirmCount get confirm count by hash
 func (bc *BlockChain) getConfirmCount(hash common.Hash) (int, error) {
-	pack, err := bc.db.GetConfirmPackage(hash)
+	pack, err := bc.db.GetConfirms(hash)
 	if err != nil {
 		log.Errorf("Can't GetConfirmInfo. hash:%s. error: %v", hash.Hex(), err)
 		return -1, err
@@ -463,20 +463,20 @@ func (bc *BlockChain) getSignerIndex(pubKey []byte, height uint32) int {
 	return -1
 }
 
-// GetConfirmPackage get all confirm info of special block
-func (bc *BlockChain) GetConfirmPackage(query *protocol.GetConfirmInfo) []types.SignData {
-	res, err := bc.db.GetConfirmPackage(query.Hash)
+// GetConfirms get all confirm info of special block
+func (bc *BlockChain) GetConfirms(query *protocol.GetConfirmInfo) []types.SignData {
+	res, err := bc.db.GetConfirms(query.Hash)
 	if err != nil {
-		log.Warnf("Can't GetConfirmPackage. hash:%s height:%d. error: %v", query.Hash.Hex(), query.Height, err)
+		log.Warnf("Can't GetConfirms. hash:%s height:%d. error: %v", query.Hash.Hex(), query.Height, err)
 		return nil
 	}
 	return res
 }
 
-// ReceiveConfirmPackage receive confirm package from net connection
-func (bc *BlockChain) ReceiveConfirmPackage(pack protocol.BlockConfirmPackage) {
+// ReceiveConfirms receive confirm package from net connection
+func (bc *BlockChain) ReceiveConfirms(pack protocol.BlockConfirms) {
 	if pack.Hash != (common.Hash{}) && pack.Pack != nil && len(pack.Pack) > 0 {
-		bc.db.SetConfirmPackage(pack.Hash, pack.Pack)
+		bc.db.SetConfirms(pack.Hash, pack.Pack)
 	}
 }
 
