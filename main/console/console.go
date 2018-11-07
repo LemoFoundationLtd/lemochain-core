@@ -168,15 +168,13 @@ func (c *Console) Welcome() {
 		lemo.getSdkVersion(),
 		lemo.mine.getLemoBase(),
 		lemo.getCurrentBlock(false, false),
-		lemo.getCurrentBlock(true, false),
-		lemo.net.getInfo()
+		lemo.getCurrentBlock(true, false)
 	]).then(function(results) {
 		console.log("node: v" + results[0]);
 		console.log("sdk: v" + results[1]);
 		console.log("lemobase: " + results[2]);
 		console.log("current block: " + results[3].Header.height + " " + results[3].Header.hash + " (" + new Date(1000 * results[3].Header.timestamp).toLocaleString() + ")");
 		console.log("latest stable block: " + results[4].Header.height + " " + results[4].Header.hash + " (" + new Date(1000 * results[4].Header.timestamp).toLocaleString() + ")");
-		console.log("rpc port: " + results[5].port);
 		console.log("\n")
 	});`)
 	// List all the supported modules for the user to call
