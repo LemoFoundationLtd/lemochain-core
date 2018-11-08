@@ -32,14 +32,14 @@ func Test_setupGenesisBlock_correct(t *testing.T) {
 		Output  error
 	}{
 		`{
-  "lemobase": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
+  "minerAddress": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
   "extraData": "",
   "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
   "gasLimit": 105000000,
   "timestamp": 1539051657,
   "deputyNodes":[
 		{
-			"lemoBase": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
+			"minerAddress": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
 			"nodeID": "0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0",
 			"ip": "127.0.0.1",
 			"port": 65535,
@@ -47,7 +47,7 @@ func Test_setupGenesisBlock_correct(t *testing.T) {
 			"votes": 17
 		},
 		{
-			"lemoBase": "Lemo83JW7TBPA7P2P6AR9ZC2WCQJYRNHZ4NJD4CY",
+			"minerAddress": "Lemo83JW7TBPA7P2P6AR9ZC2WCQJYRNHZ4NJD4CY",
 			"nodeID": "0xddb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0",
 			"ip": "127.0.0.1",
 			"port": 7002,
@@ -100,14 +100,14 @@ func Test_setupGenesisBlock_error_format(t *testing.T) {
 		Output  error
 	}{
 		`{
-  "lemobase": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
+  "minerAddress": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
   "extraData": "",
   "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
   "gasLimit": 105000000,
   "timestamp": 1539051657,
   "deputyNodes":[
 		{
-			"lemoBase": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
+			"minerAddress": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
 			"nodeID": "0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0",
 			"ip": "127.0.0.1",
 			"port": 65535,
@@ -115,7 +115,7 @@ func Test_setupGenesisBlock_error_format(t *testing.T) {
 			"votes": 17
 		},
 		{
-			"lemoBase": "Lemo83JW7TBPA7P2P6AR9ZC2WCQJYRNHZ4NJD4CY",
+			"minerAddress": "Lemo83JW7TBPA7P2P6AR9ZC2WCQJYRNHZ4NJD4CY",
 			"nodeID": "0xddb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0",
 			"ip": "127.0.0.1",
 			"port": 7002,
@@ -141,7 +141,7 @@ func Test_setupGenesisBlock_no_deputy(t *testing.T) {
 		Output  error
 	}{
 		`{
-  "lemobase": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
+  "minerAddress": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
   "extraData": "",
   "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
   "gasLimit": 105000000,
@@ -166,13 +166,13 @@ func Test_setupGenesisBlock_lack_required(t *testing.T) {
 		Output  error
 	}{
 		`{
-  "lemobase": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
+  "minerAddress": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
   "extraData": "",
   "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
   "timestamp": 1539051657,
   "deputyNodes":[
 		{
-			"lemoBase": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
+			"minerAddress": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
 			"nodeID": "0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0",
 			"ip": "127.0.0.1",
 			"port": 7001,
@@ -180,7 +180,7 @@ func Test_setupGenesisBlock_lack_required(t *testing.T) {
 			"votes": 17
 		},
 		{
-			"lemoBase": "Lemo83JW7TBPA7P2P6AR9ZC2WCQJYRNHZ4NJD4CY",
+			"minerAddress": "Lemo83JW7TBPA7P2P6AR9ZC2WCQJYRNHZ4NJD4CY",
 			"nodeID": "0xddb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0",
 			"ip": "127.0.0.1",
 			"port": 7002,
@@ -206,14 +206,14 @@ func Test_setupGenesisBlock_error_field(t *testing.T) {
 		Output  error
 	}{
 		`{
-  "lemobase": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
+  "minerAddress": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
   "extraData": "",
   "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
   "gasLimit": 105000000,
   "timestamp": 1539051657aaa,
   "deputyNodes":[
 		{
-			"lemoBase": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
+			"minerAddress": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
 			"nodeID": "0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0",
 			"ip": "127.0.0.1",
 			"port": 7001,
@@ -221,7 +221,7 @@ func Test_setupGenesisBlock_error_field(t *testing.T) {
 			"votes": 17
 		},
 		{
-			"lemoBase": "Lemo83JW7TBPA7P2P6AR9ZC2WCQJYRNHZ4NJD4CY",
+			"minerAddress": "Lemo83JW7TBPA7P2P6AR9ZC2WCQJYRNHZ4NJD4CY",
 			"nodeID": "0xddb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0",
 			"ip": "127.0.0.1",
 			"port": 7002,
@@ -239,22 +239,22 @@ func Test_setupGenesisBlock_error_field(t *testing.T) {
 	deleteDir(datadir)
 }
 
-// test error lemobase: {"lemobase": "Lemo84GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG"} ==> correct: Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG
-func Test_setupGenesisBlock_error_lemobase(t *testing.T) {
+// test error minerAddress: {"minerAddress": "Lemo84GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG"} ==> correct: Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG
+func Test_setupGenesisBlock_error_minerAddress(t *testing.T) {
 	test := struct {
 		Content string
 		Hash    common.Hash
 		Output  error
 	}{
 		`{
-  "lemobase": "Lemo84GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
+  "minerAddress": "Lemo84GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
   "extraData": "",
   "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
   "gasLimit": 105000000,
   "timestamp": 1539051657,
   "deputyNodes":[
 		{
-			"lemoBase": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
+			"minerAddress": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
 			"nodeID": "0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0",
 			"ip": "127.0.0.1",
 			"port": 7001,
@@ -262,7 +262,7 @@ func Test_setupGenesisBlock_error_lemobase(t *testing.T) {
 			"votes": 17
 		},
 		{
-			"lemoBase": "Lemo83JW7TBPA7P2P6AR9ZC2WCQJYRNHZ4NJD4CY",
+			"minerAddress": "Lemo83JW7TBPA7P2P6AR9ZC2WCQJYRNHZ4NJD4CY",
 			"nodeID": "0xddb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0",
 			"ip": "127.0.0.1",
 			"port": 7002,
@@ -288,14 +288,14 @@ func Test_setupGenesisBlock_error_ip(t *testing.T) {
 		Output  error
 	}{
 		`{
-  "lemobase": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
+  "minerAddress": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
   "extraData": "",
   "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
   "gasLimit": 105000000,
   "timestamp": 1539051657,
   "deputyNodes":[
 		{
-			"lemoBase": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
+			"minerAddress": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
 			"nodeID": "0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0",
 			"ip": "432.0.0.1",
 			"port": 7001,
@@ -303,7 +303,7 @@ func Test_setupGenesisBlock_error_ip(t *testing.T) {
 			"votes": 17
 		},
 		{
-			"lemoBase": "Lemo83JW7TBPA7P2P6AR9ZC2WCQJYRNHZ4NJD4CY",
+			"minerAddress": "Lemo83JW7TBPA7P2P6AR9ZC2WCQJYRNHZ4NJD4CY",
 			"nodeID": "0xddb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0",
 			"ip": "127.0.0.1",
 			"port": 7002,
@@ -329,14 +329,14 @@ func Test_setupGenesisBlock_error_port(t *testing.T) {
 		Output  error
 	}{
 		`{
-  "lemobase": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
+  "minerAddress": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
   "extraData": "",
   "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
   "gasLimit": 105000000,
   "timestamp": 1539051657,
   "deputyNodes":[
 		{
-			"lemoBase": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
+			"minerAddress": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
 			"nodeID": "0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0",
 			"ip": "127.0.0.1",
 			"port": 65536,
@@ -344,7 +344,7 @@ func Test_setupGenesisBlock_error_port(t *testing.T) {
 			"votes": 17
 		},
 		{
-			"lemoBase": "Lemo83JW7TBPA7P2P6AR9ZC2WCQJYRNHZ4NJD4CY",
+			"minerAddress": "Lemo83JW7TBPA7P2P6AR9ZC2WCQJYRNHZ4NJD4CY",
 			"nodeID": "0xddb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0",
 			"ip": "127.0.0.1",
 			"port": 7002,
@@ -371,14 +371,14 @@ func Test_setupGenesisBlock_error_NodeID(t *testing.T) {
 		Output  error
 	}{
 		`{
-  "lemobase": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
+  "minerAddress": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
   "extraData": "",
   "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
   "gasLimit": 105000000,
   "timestamp": 1539051657,
   "deputyNodes":[
 		{
-			"lemoBase": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
+			"minerAddress": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
 			"nodeID": "0x5e360073cd9a3c02",
 			"ip": "127.0.0.1",
 			"port": 7001,
@@ -386,7 +386,7 @@ func Test_setupGenesisBlock_error_NodeID(t *testing.T) {
 			"votes": 17
 		},
 		{
-			"lemoBase": "Lemo83JW7TBPA7P2P6AR9ZC2WCQJYRNHZ4NJD4CY",
+			"minerAddress": "Lemo83JW7TBPA7P2P6AR9ZC2WCQJYRNHZ4NJD4CY",
 			"nodeID": "0xddb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0",
 			"ip": "127.0.0.1",
 			"port": 7002,
@@ -413,14 +413,14 @@ func Test_setupGenesisBlock_error_votes(t *testing.T) {
 		Output  error
 	}{
 		`{
-  "lemobase": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
+  "minerAddress": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
   "extraData": "",
   "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
   "gasLimit": 105000000,
   "timestamp": 1539051657,
   "deputyNodes":[
 		{
-			"lemoBase": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
+			"minerAddress": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
 			"nodeID": "0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0",
 			"ip": "127.0.0.1",
 			"port": 7001,
@@ -428,7 +428,7 @@ func Test_setupGenesisBlock_error_votes(t *testing.T) {
 			"votes": 1234567890123456
 		},
 		{
-			"lemoBase": "Lemo83JW7TBPA7P2P6AR9ZC2WCQJYRNHZ4NJD4CY",
+			"minerAddress": "Lemo83JW7TBPA7P2P6AR9ZC2WCQJYRNHZ4NJD4CY",
 			"nodeID": "0xddb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0",
 			"ip": "127.0.0.1",
 			"port": 7002,
@@ -454,14 +454,14 @@ func Test_setupGenesisBlock_error_extraData(t *testing.T) {
 		Output  error
 	}{
 		`{
-  "lemobase": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
+  "minerAddress": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
   "extraData": "0x123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890",
   "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
   "gasLimit": 105000000,
   "timestamp": 1539051657,
   "deputyNodes":[
 		{
-			"lemoBase": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
+			"minerAddress": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
 			"nodeID": "0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0",
 			"ip": "127.0.0.1",
 			"port": 7001,
@@ -469,7 +469,7 @@ func Test_setupGenesisBlock_error_extraData(t *testing.T) {
 			"votes": 123456789
 		},
 		{
-			"lemoBase": "Lemo83JW7TBPA7P2P6AR9ZC2WCQJYRNHZ4NJD4CY",
+			"minerAddress": "Lemo83JW7TBPA7P2P6AR9ZC2WCQJYRNHZ4NJD4CY",
 			"nodeID": "0xddb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0",
 			"ip": "127.0.0.1",
 			"port": 7002,

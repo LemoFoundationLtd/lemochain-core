@@ -235,10 +235,10 @@ func (m *PublicMineAPI) IsMining() bool {
 	return m.miner.IsMining()
 }
 
-// LemoBase
-func (m *PublicMineAPI) LemoBase() string {
-	lemoBase := m.miner.GetLemoBase()
-	return lemoBase.String()
+// MinerAddress
+func (m *PublicMineAPI) MinerAddress() string {
+	address := m.miner.GetMinerAddress()
+	return address.String()
 }
 
 // PrivateNetAPI

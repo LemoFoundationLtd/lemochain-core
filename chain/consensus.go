@@ -55,7 +55,7 @@ func verifyHeaderSignData(block *types.Block) error {
 		log.Errorf("verifyHeader: illegal signData. %s", err)
 		return ErrVerifyHeaderFailed
 	}
-	node := deputynode.Instance().GetDeputyByAddress(block.Height(), header.LemoBase)
+	node := deputynode.Instance().GetDeputyByAddress(block.Height(), header.MinerAddress)
 	if node == nil || bytes.Compare(pubKey[1:], node.NodeID) != 0 {
 		log.Errorf("verifyHeader: illegal block. height:%d, hash:%s", header.Height, header.Hash().Hex())
 		return ErrVerifyHeaderFailed
@@ -99,7 +99,7 @@ func (d *Dpovp) VerifyHeader(block *types.Block) error {
 	// The time interval between the current block and the parent block. unit：ms
 	timeSpan := int64(header.Time-parent.Header.Time) * 1000
 	oldTimeSpan := timeSpan
-	slot := deputynode.Instance().GetSlot(header.Height, parent.Header.LemoBase, header.LemoBase)
+	slot := deputynode.Instance().GetSlot(header.Height, parent.Header.MinerAddress, header.MinerAddress)
 	oneLoopTime := int64(nodeCount) * d.timeoutTime // All timeout times for a round of deputy nodes
 
 	timeSpan %= oneLoopTime

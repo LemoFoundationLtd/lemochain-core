@@ -12,12 +12,12 @@ func NewEnv(cfg *Config) *vm.EVM {
 		Transfer:    chain.Transfer,
 		GetHash:     func(uint32) common.Hash { return common.Hash{} },
 
-		Origin:      cfg.Origin,
-		LemoBase:    cfg.Coinbase,
-		BlockHeight: cfg.BlockHeight,
-		Time:        cfg.Time,
-		GasLimit:    cfg.GasLimit,
-		GasPrice:    cfg.GasPrice,
+		Origin:       cfg.Origin,
+		MinerAddress: cfg.Coinbase,
+		BlockHeight:  cfg.BlockHeight,
+		Time:         cfg.Time,
+		GasLimit:     cfg.GasLimit,
+		GasPrice:     cfg.GasPrice,
 	}
 
 	return vm.NewEVM(context, cfg.AccountManager, cfg.EVMConfig)

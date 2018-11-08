@@ -134,7 +134,7 @@ func TestTxAPI_api(t *testing.T) {
 // 	m.MineStop()
 // 	t.Log("last:", m.IsMining())
 //
-// 	assert.Equal(t, "0x015780F8456F9c1532645087a19DcF9a7e0c7F97", m.LemoBase())
+// 	assert.Equal(t, "0x015780F8456F9c1532645087a19DcF9a7e0c7F97", m.MinerAddress())
 //
 // }
 //

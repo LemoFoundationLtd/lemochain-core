@@ -112,7 +112,7 @@ func (am *Manager) AddEvent(event *types.Event) {
 
 // GetEvents returns all events since last reset
 func (am *Manager) GetEvents() []*types.Event {
-	return am.processor.events[:]
+	return am.processor.events
 }
 
 // GetEvents returns all events since last reset

@@ -12,16 +12,16 @@ import (
 )
 
 const (
-	block01LemoBase = "0x015780F8456F9c1532645087a19DcF9a7e0c7F97"
-	deputy01Privkey = "0xc21b6b2fbf230f665b936194d14da67187732bf9d28768aef1a3cbb26608f8aa"
-	block02LemoBase = "0x016ad4Fc7e1608685Bf5fe5573973BF2B1Ef9B8A"
-	deputy02Privkey = "0x9c3c4a327ce214f0a1bf9cfa756fbf74f1c7322399ffff925efd8c15c49953eb"
-	block03LemoBase = "0x01f98855Be9ecc5c23A28Ce345D2Cc04686f2c61"
-	deputy03Privkey = "0xba9b51e59ec57d66b30b9b868c76d6f4d386ce148d9c6c1520360d92ef0f27ae"
-	block04LemoBase = "0x0112fDDcF0C08132A5dcd9ED77e1a3348ff378D2"
-	deputy04Privkey = "0xb381bad69ad4b200462a0cc08fcb8ba64d26efd4f49933c2c2448cb23f2cd9d0"
-	block05LemoBase = "0x016017aF50F4bB67101CE79298ACBdA1A3c12C15"
-	deputy05Privkey = "0x56b5fe1b8c40f0dec29b621a16ffcbc7a1bb5c0b0f910c5529f991273cd0569c"
+	block01MinerAddress = "0x015780F8456F9c1532645087a19DcF9a7e0c7F97"
+	deputy01Privkey     = "0xc21b6b2fbf230f665b936194d14da67187732bf9d28768aef1a3cbb26608f8aa"
+	block02MinerAddress = "0x016ad4Fc7e1608685Bf5fe5573973BF2B1Ef9B8A"
+	deputy02Privkey     = "0x9c3c4a327ce214f0a1bf9cfa756fbf74f1c7322399ffff925efd8c15c49953eb"
+	block03MinerAddress = "0x01f98855Be9ecc5c23A28Ce345D2Cc04686f2c61"
+	deputy03Privkey     = "0xba9b51e59ec57d66b30b9b868c76d6f4d386ce148d9c6c1520360d92ef0f27ae"
+	block04MinerAddress = "0x0112fDDcF0C08132A5dcd9ED77e1a3348ff378D2"
+	deputy04Privkey     = "0xb381bad69ad4b200462a0cc08fcb8ba64d26efd4f49933c2c2448cb23f2cd9d0"
+	block05MinerAddress = "0x016017aF50F4bB67101CE79298ACBdA1A3c12C15"
+	deputy05Privkey     = "0x56b5fe1b8c40f0dec29b621a16ffcbc7a1bb5c0b0f910c5529f991273cd0569c"
 )
 
 // Test_SelfNodeKey 测试GetSelfNodeKey、GetSelfNodeID、SetSelfNodeKey
@@ -37,14 +37,14 @@ func Test_SelfNodeKey(t *testing.T) {
 }
 
 // NewDeputyNode 创建一个代理节点
-func NewDeputyNode(LemoBase common.Address, nodeID []byte, port uint32) *DeputyNode {
+func NewDeputyNode(MinerAddress common.Address, nodeID []byte, port uint32) *DeputyNode {
 	return &DeputyNode{
-		LemoBase: LemoBase,
-		NodeID:   nodeID,
-		IP:       nil,
-		Port:     port,
-		Rank:     0,
-		Votes:    0,
+		MinerAddress: MinerAddress,
+		NodeID:       nodeID,
+		IP:           nil,
+		Port:         port,
+		Rank:         0,
+		Votes:        0,
 	}
 }
 
@@ -93,44 +93,44 @@ func deputyNodes(nodeNum int) (DeputyNodes, error) {
 
 	var nodes = make([]*DeputyNode, 5)
 	nodes[0] = &DeputyNode{
-		LemoBase: common.HexToAddress(block01LemoBase),
-		NodeID:   (crypto.FromECDSAPub(&privarte01.PublicKey))[1:],
-		IP:       nil,
-		Port:     7001,
-		Rank:     0,
-		Votes:    120,
+		MinerAddress: common.HexToAddress(block01MinerAddress),
+		NodeID:       (crypto.FromECDSAPub(&privarte01.PublicKey))[1:],
+		IP:           nil,
+		Port:         7001,
+		Rank:         0,
+		Votes:        120,
 	}
 	nodes[1] = &DeputyNode{
-		LemoBase: common.HexToAddress(block02LemoBase),
-		NodeID:   (crypto.FromECDSAPub(&privarte02.PublicKey))[1:],
-		IP:       nil,
-		Port:     7002,
-		Rank:     1,
-		Votes:    110,
+		MinerAddress: common.HexToAddress(block02MinerAddress),
+		NodeID:       (crypto.FromECDSAPub(&privarte02.PublicKey))[1:],
+		IP:           nil,
+		Port:         7002,
+		Rank:         1,
+		Votes:        110,
 	}
 	nodes[2] = &DeputyNode{
-		LemoBase: common.HexToAddress(block03LemoBase),
-		NodeID:   (crypto.FromECDSAPub(&privarte03.PublicKey))[1:],
-		IP:       nil,
-		Port:     7003,
-		Rank:     2,
-		Votes:    100,
+		MinerAddress: common.HexToAddress(block03MinerAddress),
+		NodeID:       (crypto.FromECDSAPub(&privarte03.PublicKey))[1:],
+		IP:           nil,
+		Port:         7003,
+		Rank:         2,
+		Votes:        100,
 	}
 	nodes[3] = &DeputyNode{
-		LemoBase: common.HexToAddress(block04LemoBase),
-		NodeID:   (crypto.FromECDSAPub(&privarte04.PublicKey))[1:],
-		IP:       nil,
-		Port:     7004,
-		Rank:     3,
-		Votes:    90,
+		MinerAddress: common.HexToAddress(block04MinerAddress),
+		NodeID:       (crypto.FromECDSAPub(&privarte04.PublicKey))[1:],
+		IP:           nil,
+		Port:         7004,
+		Rank:         3,
+		Votes:        90,
 	}
 	nodes[4] = &DeputyNode{
-		LemoBase: common.HexToAddress(block05LemoBase),
-		NodeID:   (crypto.FromECDSAPub(&privarte05.PublicKey))[1:],
-		IP:       nil,
-		Port:     7005,
-		Rank:     4,
-		Votes:    80,
+		MinerAddress: common.HexToAddress(block05MinerAddress),
+		NodeID:       (crypto.FromECDSAPub(&privarte05.PublicKey))[1:],
+		IP:           nil,
+		Port:         7005,
+		Rank:         4,
+		Votes:        80,
 	}
 
 	return nodes[:nodeNum], nil
@@ -183,9 +183,9 @@ func TestManager_GetDeputyByAddress(t *testing.T) {
 	nodes00, err := deputyNodes(5)
 	assert.NoError(t, err)
 	ma.Add(0, nodes00)
-	assert.Equal(t, nodes00[0], ma.GetDeputyByAddress(0, common.HexToAddress(block01LemoBase)))
-	assert.Equal(t, nodes00[1], ma.GetDeputyByAddress(0, common.HexToAddress(block02LemoBase)))
-	assert.Equal(t, nodes00[2], ma.GetDeputyByAddress(0, common.HexToAddress(block03LemoBase)))
+	assert.Equal(t, nodes00[0], ma.GetDeputyByAddress(0, common.HexToAddress(block01MinerAddress)))
+	assert.Equal(t, nodes00[1], ma.GetDeputyByAddress(0, common.HexToAddress(block02MinerAddress)))
+	assert.Equal(t, nodes00[2], ma.GetDeputyByAddress(0, common.HexToAddress(block03MinerAddress)))
 
 }
 
@@ -217,14 +217,14 @@ func TestManager_GetSlot(t *testing.T) {
 	ma.Add(SnapshotBlockInterval, nodes01) // 创建5个代理节点的节点列表，高度为100000
 
 	// 测试height==1的情况，此情况为上一个块为创世块
-	assert.Equal(t, 1, ma.GetSlot(1, common.Address{}, common.HexToAddress(block01LemoBase)))
-	assert.Equal(t, 2, ma.GetSlot(1, common.Address{}, common.HexToAddress(block02LemoBase)))
-	assert.Equal(t, 3, ma.GetSlot(1, common.Address{}, common.HexToAddress(block03LemoBase)))
+	assert.Equal(t, 1, ma.GetSlot(1, common.Address{}, common.HexToAddress(block01MinerAddress)))
+	assert.Equal(t, 2, ma.GetSlot(1, common.Address{}, common.HexToAddress(block02MinerAddress)))
+	assert.Equal(t, 3, ma.GetSlot(1, common.Address{}, common.HexToAddress(block03MinerAddress)))
 
 	// 测试换届的情况
-	assert.Equal(t, 1, ma.GetSlot(SnapshotBlockInterval+TransitionPeriod+1, common.Address{}, common.HexToAddress(block01LemoBase)))
-	assert.Equal(t, 2, ma.GetSlot(SnapshotBlockInterval+TransitionPeriod+1, common.Address{}, common.HexToAddress(block02LemoBase)))
-	assert.Equal(t, 3, ma.GetSlot(SnapshotBlockInterval+TransitionPeriod+1, common.Address{}, common.HexToAddress(block03LemoBase)))
+	assert.Equal(t, 1, ma.GetSlot(SnapshotBlockInterval+TransitionPeriod+1, common.Address{}, common.HexToAddress(block01MinerAddress)))
+	assert.Equal(t, 2, ma.GetSlot(SnapshotBlockInterval+TransitionPeriod+1, common.Address{}, common.HexToAddress(block02MinerAddress)))
+	assert.Equal(t, 3, ma.GetSlot(SnapshotBlockInterval+TransitionPeriod+1, common.Address{}, common.HexToAddress(block03MinerAddress)))
 
 	// 测试firstNode和NextNode为空的情况
 	assert.Equal(t, -1, ma.GetSlot(22, common.Address{}, common.Address{}))
@@ -234,16 +234,16 @@ func TestManager_GetSlot(t *testing.T) {
 	nodes03, err := deputyNodes(1) // 生成只有一个共识节点的节点列表
 	assert.NoError(t, err)
 	ma.Add(1, nodes03)
-	assert.Equal(t, 1, ma.GetSlot(1, common.HexToAddress(block01LemoBase), common.HexToAddress(block01LemoBase)))
+	assert.Equal(t, 1, ma.GetSlot(1, common.HexToAddress(block01MinerAddress), common.HexToAddress(block01MinerAddress)))
 
 	// 正常情况下、
 	ma.Clear()
 	nodes04, err := deputyNodes(5)
 	ma.Add(1, nodes04)
-	assert.Equal(t, 4, ma.GetSlot(11, common.HexToAddress(block01LemoBase), common.HexToAddress(block05LemoBase)))
-	assert.Equal(t, 3, ma.GetSlot(11, common.HexToAddress(block02LemoBase), common.HexToAddress(block05LemoBase)))
-	assert.Equal(t, 2, ma.GetSlot(11, common.HexToAddress(block02LemoBase), common.HexToAddress(block04LemoBase)))
-	assert.Equal(t, 0, ma.GetSlot(11, common.HexToAddress(block01LemoBase), common.HexToAddress(block01LemoBase)))
+	assert.Equal(t, 4, ma.GetSlot(11, common.HexToAddress(block01MinerAddress), common.HexToAddress(block05MinerAddress)))
+	assert.Equal(t, 3, ma.GetSlot(11, common.HexToAddress(block02MinerAddress), common.HexToAddress(block05MinerAddress)))
+	assert.Equal(t, 2, ma.GetSlot(11, common.HexToAddress(block02MinerAddress), common.HexToAddress(block04MinerAddress)))
+	assert.Equal(t, 0, ma.GetSlot(11, common.HexToAddress(block01MinerAddress), common.HexToAddress(block01MinerAddress)))
 }
 
 // TestManager_TimeToHandOutRewards

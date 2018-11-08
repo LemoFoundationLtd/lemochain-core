@@ -1205,7 +1205,7 @@ func TestBlockChain_VerifyBodyNormal(t *testing.T) {
 			makeTx(tmp, accounts[1].Address, big.NewInt(40000)),
 		},
 		time:   1540893799,
-		author: genesis.LemoBase(),
+		author: genesis.MinerAddress(),
 	}
 	block := makeBlock(blockChain.db, info, false)
 	err = blockChain.Verify(block)
@@ -1231,7 +1231,7 @@ func TestBlockChain_VerifyBlockBalanceNotEnough(t *testing.T) {
 		gasLimit:    1000000000,
 		deputyNodes: genesis.DeputyNodes,
 		time:        1540893799,
-		author:      genesis.LemoBase(),
+		author:      genesis.MinerAddress(),
 	}
 	block := makeBlock(blockChain.db, info, false)
 	block.Txs = []*types.Transaction{
@@ -1259,7 +1259,7 @@ func TestBlockChain_VerifyBlockBalanceNotSign(t *testing.T) {
 		gasLimit:    1000000000,
 		deputyNodes: genesis.DeputyNodes,
 		time:        1540893799,
-		author:      genesis.LemoBase(),
+		author:      genesis.MinerAddress(),
 	}
 	block := makeBlock(blockChain.db, info, false)
 	block.Txs = []*types.Transaction{
@@ -1293,7 +1293,7 @@ func TestBlockChain_VerifyBlockBalanceValidDeputy(t *testing.T) {
 			makeTx(tmp, accounts[1].Address, big.NewInt(40000)),
 		},
 		time:   1540893799,
-		author: genesis.LemoBase(),
+		author: genesis.MinerAddress(),
 	}
 	block := makeBlock(blockChain.db, info, false)
 	block.DeputyNodes = append(block.DeputyNodes[:1], block.DeputyNodes[2:]...)
@@ -1324,7 +1324,7 @@ func TestBlockChain_VerifyBlockBalanceValidTx(t *testing.T) {
 			makeTx(tmp, accounts[1].Address, big.NewInt(40000)),
 		},
 		time:   1540893799,
-		author: genesis.LemoBase(),
+		author: genesis.MinerAddress(),
 	}
 	block := makeBlock(blockChain.db, info, false)
 	block.Txs = append(block.Txs[:1], block.Txs[2:]...)

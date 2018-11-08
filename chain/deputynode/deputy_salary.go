@@ -32,7 +32,7 @@ func CalcSalary(height uint32) []*DeputySalary {
 		r.Div(r, minSalary)  // reward = reward / minSalary * reward
 		r.Mul(r, minSalary)
 		reward := &DeputySalary{
-			Address: node.LemoBase,
+			Address: node.MinerAddress,
 			Salary:  r,
 		}
 		salaries = append(salaries, reward)

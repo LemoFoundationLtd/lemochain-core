@@ -133,7 +133,7 @@ func TestNew(t *testing.T) {
 // 		MaxPeers:  1000,
 // 		Port:      60001,
 // 	}
-// 	lemoConf.Genesis.LemoBase = common.HexToAddress(testAddress)
+// 	lemoConf.Genesis.MinerAddress = common.HexToAddress(testAddress)
 // 	if confOverride != nil {
 // 		confOverride(lemoConf)
 // 	}

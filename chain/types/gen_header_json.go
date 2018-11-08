@@ -15,25 +15,25 @@ var _ = (*headerMarshaling)(nil)
 // MarshalJSON marshals as JSON.
 func (h Header) MarshalJSON() ([]byte, error) {
 	type Header struct {
-		ParentHash  common.Hash    `json:"parentHash"       gencodec:"required"`
-		LemoBase    common.Address `json:"miner"            gencodec:"required"`
-		VersionRoot common.Hash    `json:"versionRoot"      gencodec:"required"`
-		TxRoot      common.Hash    `json:"transactionRoot"  gencodec:"required"`
-		LogRoot     common.Hash    `json:"changeLogRoot"    gencodec:"required"`
-		EventRoot   common.Hash    `json:"eventRoot"        gencodec:"required"`
-		Bloom       Bloom          `json:"eventBloom"       gencodec:"required"`
-		Height      hexutil.Uint32 `json:"height"           gencodec:"required"`
-		GasLimit    hexutil.Uint64 `json:"gasLimit"         gencodec:"required"`
-		GasUsed     hexutil.Uint64 `json:"gasUsed"          gencodec:"required"`
-		Time        hexutil.Uint32 `json:"timestamp"        gencodec:"required"`
-		SignData    hexutil.Bytes  `json:"signData"         gencodec:"required"`
-		DeputyRoot  hexutil.Bytes  `json:"deputyRoot"`
-		Extra       hexutil.Bytes  `json:"extraData"`
-		Hash        common.Hash    `json:"hash"`
+		ParentHash   common.Hash    `json:"parentHash"       gencodec:"required"`
+		MinerAddress common.Address `json:"miner"            gencodec:"required"`
+		VersionRoot  common.Hash    `json:"versionRoot"      gencodec:"required"`
+		TxRoot       common.Hash    `json:"transactionRoot"  gencodec:"required"`
+		LogRoot      common.Hash    `json:"changeLogRoot"    gencodec:"required"`
+		EventRoot    common.Hash    `json:"eventRoot"        gencodec:"required"`
+		Bloom        Bloom          `json:"eventBloom"       gencodec:"required"`
+		Height       hexutil.Uint32 `json:"height"           gencodec:"required"`
+		GasLimit     hexutil.Uint64 `json:"gasLimit"         gencodec:"required"`
+		GasUsed      hexutil.Uint64 `json:"gasUsed"          gencodec:"required"`
+		Time         hexutil.Uint32 `json:"timestamp"        gencodec:"required"`
+		SignData     hexutil.Bytes  `json:"signData"         gencodec:"required"`
+		DeputyRoot   hexutil.Bytes  `json:"deputyRoot"`
+		Extra        hexutil.Bytes  `json:"extraData"`
+		Hash         common.Hash    `json:"hash"`
 	}
 	var enc Header
 	enc.ParentHash = h.ParentHash
-	enc.LemoBase = h.LemoBase
+	enc.MinerAddress = h.MinerAddress
 	enc.VersionRoot = h.VersionRoot
 	enc.TxRoot = h.TxRoot
 	enc.LogRoot = h.LogRoot
@@ -53,20 +53,20 @@ func (h Header) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON unmarshals from JSON.
 func (h *Header) UnmarshalJSON(input []byte) error {
 	type Header struct {
-		ParentHash  *common.Hash    `json:"parentHash"       gencodec:"required"`
-		LemoBase    *common.Address `json:"miner"            gencodec:"required"`
-		VersionRoot *common.Hash    `json:"versionRoot"      gencodec:"required"`
-		TxRoot      *common.Hash    `json:"transactionRoot"  gencodec:"required"`
-		LogRoot     *common.Hash    `json:"changeLogRoot"    gencodec:"required"`
-		EventRoot   *common.Hash    `json:"eventRoot"        gencodec:"required"`
-		Bloom       *Bloom          `json:"eventBloom"       gencodec:"required"`
-		Height      *hexutil.Uint32 `json:"height"           gencodec:"required"`
-		GasLimit    *hexutil.Uint64 `json:"gasLimit"         gencodec:"required"`
-		GasUsed     *hexutil.Uint64 `json:"gasUsed"          gencodec:"required"`
-		Time        *hexutil.Uint32 `json:"timestamp"        gencodec:"required"`
-		SignData    *hexutil.Bytes  `json:"signData"         gencodec:"required"`
-		DeputyRoot  *hexutil.Bytes  `json:"deputyRoot"`
-		Extra       *hexutil.Bytes  `json:"extraData"`
+		ParentHash   *common.Hash    `json:"parentHash"       gencodec:"required"`
+		MinerAddress *common.Address `json:"miner"            gencodec:"required"`
+		VersionRoot  *common.Hash    `json:"versionRoot"      gencodec:"required"`
+		TxRoot       *common.Hash    `json:"transactionRoot"  gencodec:"required"`
+		LogRoot      *common.Hash    `json:"changeLogRoot"    gencodec:"required"`
+		EventRoot    *common.Hash    `json:"eventRoot"        gencodec:"required"`
+		Bloom        *Bloom          `json:"eventBloom"       gencodec:"required"`
+		Height       *hexutil.Uint32 `json:"height"           gencodec:"required"`
+		GasLimit     *hexutil.Uint64 `json:"gasLimit"         gencodec:"required"`
+		GasUsed      *hexutil.Uint64 `json:"gasUsed"          gencodec:"required"`
+		Time         *hexutil.Uint32 `json:"timestamp"        gencodec:"required"`
+		SignData     *hexutil.Bytes  `json:"signData"         gencodec:"required"`
+		DeputyRoot   *hexutil.Bytes  `json:"deputyRoot"`
+		Extra        *hexutil.Bytes  `json:"extraData"`
 	}
 	var dec Header
 	if err := json.Unmarshal(input, &dec); err != nil {
@@ -76,10 +76,10 @@ func (h *Header) UnmarshalJSON(input []byte) error {
 		return errors.New("missing required field 'parentHash' for Header")
 	}
 	h.ParentHash = *dec.ParentHash
-	if dec.LemoBase == nil {
+	if dec.MinerAddress == nil {
 		return errors.New("missing required field 'miner' for Header")
 	}
-	h.LemoBase = *dec.LemoBase
+	h.MinerAddress = *dec.MinerAddress
 	if dec.VersionRoot == nil {
 		return errors.New("missing required field 'versionRoot' for Header")
 	}

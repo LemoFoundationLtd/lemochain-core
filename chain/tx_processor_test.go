@@ -169,12 +169,12 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 	header := defaultBlocks[2].Header
 	txs := defaultBlocks[2].Txs
 	emptyHeader := &types.Header{
-		ParentHash: header.ParentHash,
-		LemoBase:   header.LemoBase,
-		Height:     header.Height,
-		GasLimit:   header.GasLimit,
-		GasUsed:    header.GasUsed,
-		Time:       header.Time,
+		ParentHash:   header.ParentHash,
+		MinerAddress: header.MinerAddress,
+		Height:       header.Height,
+		GasLimit:     header.GasLimit,
+		GasUsed:      header.GasUsed,
+		Time:         header.Time,
 	}
 	newHeader, selectedTxs, invalidTxs, err := p.ApplyTxs(emptyHeader, txs)
 	assert.NoError(t, err)
@@ -193,12 +193,12 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 	header = defaultBlocks[3].Header
 	txs = defaultBlocks[3].Txs
 	emptyHeader = &types.Header{
-		ParentHash: header.ParentHash,
-		LemoBase:   header.LemoBase,
-		Height:     header.Height,
-		GasLimit:   header.GasLimit,
-		GasUsed:    header.GasUsed,
-		Time:       header.Time,
+		ParentHash:   header.ParentHash,
+		MinerAddress: header.MinerAddress,
+		Height:       header.Height,
+		GasLimit:     header.GasLimit,
+		GasUsed:      header.GasUsed,
+		Time:         header.Time,
 	}
 	newHeader, selectedTxs, invalidTxs, err = p.ApplyTxs(emptyHeader, txs)
 	assert.NoError(t, err)
@@ -215,15 +215,15 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 	// 0 txs
 	header = defaultBlocks[3].Header
 	emptyHeader = &types.Header{
-		ParentHash: header.ParentHash,
-		LemoBase:   header.LemoBase,
-		Height:     header.Height,
-		GasLimit:   header.GasLimit,
-		GasUsed:    header.GasUsed,
-		Time:       header.Time,
+		ParentHash:   header.ParentHash,
+		MinerAddress: header.MinerAddress,
+		Height:       header.Height,
+		GasLimit:     header.GasLimit,
+		GasUsed:      header.GasUsed,
+		Time:         header.Time,
 	}
 	p.am.Reset(emptyHeader.ParentHash)
-	author := p.am.GetAccount(header.LemoBase)
+	author := p.am.GetAccount(header.MinerAddress)
 	origBalance := author.GetBalance()
 	newHeader, selectedTxs, invalidTxs, err = p.ApplyTxs(emptyHeader, nil)
 	assert.NoError(t, err)
@@ -240,12 +240,12 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 	header = defaultBlocks[3].Header
 	txs = defaultBlocks[3].Txs
 	emptyHeader = &types.Header{
-		ParentHash: header.ParentHash,
-		LemoBase:   header.LemoBase,
-		Height:     header.Height,
-		GasLimit:   45000, // Every transaction's gasLimit is 30000. So the block only contains one transaction.
-		GasUsed:    header.GasUsed,
-		Time:       header.Time,
+		ParentHash:   header.ParentHash,
+		MinerAddress: header.MinerAddress,
+		Height:       header.Height,
+		GasLimit:     45000, // Every transaction's gasLimit is 30000. So the block only contains one transaction.
+		GasUsed:      header.GasUsed,
+		Time:         header.Time,
 	}
 	newHeader, selectedTxs, invalidTxs, err = p.ApplyTxs(emptyHeader, txs)
 	assert.NoError(t, err)
@@ -263,12 +263,12 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 	header = defaultBlocks[3].Header
 	txs = defaultBlocks[3].Txs
 	emptyHeader = &types.Header{
-		ParentHash: header.ParentHash,
-		LemoBase:   header.LemoBase,
-		Height:     header.Height,
-		GasLimit:   header.GasLimit,
-		GasUsed:    header.GasUsed,
-		Time:       header.Time,
+		ParentHash:   header.ParentHash,
+		MinerAddress: header.MinerAddress,
+		Height:       header.Height,
+		GasLimit:     header.GasLimit,
+		GasUsed:      header.GasUsed,
+		Time:         header.Time,
 	}
 	p.am.Reset(emptyHeader.ParentHash)
 	balance := p.am.GetAccount(testAddr).GetBalance()
@@ -299,12 +299,12 @@ func TestTxProcessor_ApplyTxs2(t *testing.T) {
 	// transfer to other
 	header := defaultBlocks[3].Header
 	emptyHeader := &types.Header{
-		ParentHash: header.ParentHash,
-		LemoBase:   header.LemoBase,
-		Height:     header.Height,
-		GasLimit:   header.GasLimit,
-		GasUsed:    header.GasUsed,
-		Time:       header.Time,
+		ParentHash:   header.ParentHash,
+		MinerAddress: header.MinerAddress,
+		Height:       header.Height,
+		GasLimit:     header.GasLimit,
+		GasUsed:      header.GasUsed,
+		Time:         header.Time,
 	}
 	p.am.Reset(emptyHeader.ParentHash)
 	senderBalance := p.am.GetAccount(testAddr).GetBalance()
@@ -329,12 +329,12 @@ func TestTxProcessor_ApplyTxs2(t *testing.T) {
 	// transfer to self, only cost gas
 	header = defaultBlocks[3].Header
 	emptyHeader = &types.Header{
-		ParentHash: header.ParentHash,
-		LemoBase:   header.LemoBase,
-		Height:     header.Height,
-		GasLimit:   header.GasLimit,
-		GasUsed:    header.GasUsed,
-		Time:       header.Time,
+		ParentHash:   header.ParentHash,
+		MinerAddress: header.MinerAddress,
+		Height:       header.Height,
+		GasLimit:     header.GasLimit,
+		GasUsed:      header.GasUsed,
+		Time:         header.Time,
 	}
 	p.am.Reset(emptyHeader.ParentHash)
 	senderBalance = p.am.GetAccount(testAddr).GetBalance()

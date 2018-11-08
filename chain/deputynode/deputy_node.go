@@ -39,17 +39,17 @@ func SetSelfNodeKey(key *ecdsa.PrivateKey) {
 
 // DeputyNode
 type DeputyNode struct {
-	LemoBase common.Address `json:"lemoBase"   gencodec:"required"`
-	NodeID   []byte         `json:"nodeID"     gencodec:"required"`
-	IP       net.IP         `json:"ip"         gencodec:"required"` // ip
-	Port     uint32         `json:"port"       gencodec:"required"` // 端口
-	Rank     uint32         `json:"rank"       gencodec:"required"` // 排名 从0开始
-	Votes    uint32         `json:"votes"      gencodec:"required"` // 得票数
+	MinerAddress common.Address `json:"minerAddress"   gencodec:"required"`
+	NodeID       []byte         `json:"nodeID"         gencodec:"required"`
+	IP           net.IP         `json:"ip"             gencodec:"required"` // ip
+	Port         uint32         `json:"port"           gencodec:"required"` // 端口
+	Rank         uint32         `json:"rank"           gencodec:"required"` // 排名 从0开始
+	Votes        uint32         `json:"votes"          gencodec:"required"` // 得票数
 }
 
 func (d *DeputyNode) Hash() (h common.Hash) {
 	data := []interface{}{
-		d.LemoBase,
+		d.MinerAddress,
 		d.NodeID,
 		d.IP,
 		d.Port,
@@ -140,7 +140,7 @@ func (d *Manager) GetDeputiesCount() int {
 func (d *Manager) GetDeputyByAddress(height uint32, addr common.Address) *DeputyNode {
 	nodes := d.getDeputiesByHeight(height)
 	for _, node := range nodes {
-		if node.LemoBase == addr {
+		if node.MinerAddress == addr {
 			return node
 		}
 	}
