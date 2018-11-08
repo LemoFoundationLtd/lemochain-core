@@ -10,6 +10,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"math"
 	"math/big"
+	"sync"
 )
 
 var (
@@ -21,6 +22,8 @@ type TxProcessor struct {
 	chain *BlockChain
 	am    *account.Manager
 	cfg   *vm.Config // configuration of vm
+
+	lock sync.Mutex
 }
 
 type ApplyTxsResult struct {
@@ -44,6 +47,8 @@ func NewTxProcessor(bc *BlockChain) *TxProcessor {
 
 // Process processes all transactions in a block. Change accounts' data and execute contract codes.
 func (p *TxProcessor) Process(block *types.Block) (*types.Header, error) {
+	p.lock.Lock()
+	p.lock.Unlock()
 	var (
 		gp          = new(types.GasPool).AddGas(block.GasLimit())
 		gasUsed     = uint64(0)
@@ -68,13 +73,15 @@ func (p *TxProcessor) Process(block *types.Block) (*types.Header, error) {
 		fee := new(big.Int).Mul(new(big.Int).SetUint64(gas), tx.GasPrice())
 		totalGasFee.Add(totalGasFee, fee)
 	}
-	p.chargeForGas(totalGasFee, header.LemoBase)
+	p.chargeForGas(totalGasFee, header.MinerAddress)
 
 	return p.FillHeader(header.Copy(), txs, gasUsed)
 }
 
 // ApplyTxs picks and processes transactions from miner's tx pool.
 func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions) (*types.Header, types.Transactions, types.Transactions, error) {
+	p.lock.Lock()
+	p.lock.Unlock()
 	gp := new(types.GasPool).AddGas(header.GasLimit)
 	gasUsed := uint64(0)
 	totalGasFee := new(big.Int)
@@ -111,7 +118,7 @@ func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions) (*t
 		fee := new(big.Int).Mul(new(big.Int).SetUint64(gas), tx.GasPrice())
 		totalGasFee.Add(totalGasFee, fee)
 	}
-	p.chargeForGas(totalGasFee, header.LemoBase)
+	p.chargeForGas(totalGasFee, header.MinerAddress)
 
 	newHeader, err := p.FillHeader(header.Copy(), selectedTxs, gasUsed)
 	return newHeader, selectedTxs, invalidTxs, err
