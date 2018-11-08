@@ -132,11 +132,11 @@ func (d *Dpovp) Seal(header *types.Header, txs []*types.Transaction, changeLog [
 func (d *Dpovp) Finalize(header *types.Header, am *account.Manager) {
 	// handout rewards
 	if deputynode.Instance().TimeToHandOutRewards(header.Height) {
-		rewards := deputynode.CalcReward(header.Height)
+		rewards := deputynode.CalcSalary(header.Height)
 		for _, item := range rewards {
 			account := am.GetAccount(item.Address)
 			balance := account.GetBalance()
-			balance.Add(balance, item.Reward)
+			balance.Add(balance, item.Salary)
 			account.SetBalance(balance)
 		}
 	}
