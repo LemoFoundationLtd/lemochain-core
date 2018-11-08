@@ -1,7 +1,6 @@
 package node
 
 import (
-	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/miner"
@@ -27,12 +26,12 @@ func NewPrivateAccountAPI(m *account.Manager) *PrivateAccountAPI {
 }
 
 // NewAccount get lemo address api
-func (a *PrivateAccountAPI) NewKeyPair() (*crypto.AddressKeyPair, error) {
-	accounts, err := crypto.GenerateAddress()
+func (a *PrivateAccountAPI) NewKeyPair() (*crypto.AccountKey, error) {
+	accountKey, err := crypto.GenerateAddress()
 	if err != nil {
 		return nil, err
 	}
-	return accounts, nil
+	return accountKey, nil
 }
 
 // PublicAccountAPI API for access to account information
@@ -251,24 +250,19 @@ func NewPrivateNetAPI(node *Node) *PrivateNetAPI {
 	return &PrivateNetAPI{node}
 }
 
-// AddStaticPeer
-func (n *PrivateNetAPI) AddStaticPeer(node string) {
-	n.node.server.AddStaticPeer(node)
+// Connect
+func (n *PrivateNetAPI) Connect(node string) {
+	n.node.server.Connect(node)
 }
 
-// DropPeer
-func (n *PrivateNetAPI) DropPeer(node string) string {
-	if n.node.server.DropPeer(node) {
-		return fmt.Sprintf("drop a peer success. id %v", node)
-	} else {
-		return fmt.Sprintf("drop a peer fail. id %v", node)
-	}
-
+// Disconnect
+func (n *PrivateNetAPI) Disconnect(node string) bool {
+	return n.node.server.Disconnect(node)
 }
 
-// Peers
-func (n *PrivateNetAPI) Peers() []p2p.PeerConnInfo {
-	return n.node.server.Peers()
+// Connections
+func (n *PrivateNetAPI) Connections() []p2p.PeerConnInfo {
+	return n.node.server.Connections()
 }
 
 // PublicNetAPI
@@ -283,7 +277,7 @@ func NewPublicNetAPI(node *Node) *PublicNetAPI {
 
 // PeersCount return peers number
 func (n *PublicNetAPI) PeersCount() string {
-	count := strconv.Itoa(len(n.node.server.Peers()))
+	count := strconv.Itoa(len(n.node.server.Connections()))
 	return count
 }
 

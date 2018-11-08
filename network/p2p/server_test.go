@@ -96,7 +96,7 @@ func TestDial(t *testing.T) {
 		connected <- peer
 		return nil
 	}
-	srv.AddStaticPeer("127.0.0.1:6001")
+	srv.Connect("127.0.0.1:6001")
 	select {
 	case conn := <-accepted:
 		defer conn.Close()

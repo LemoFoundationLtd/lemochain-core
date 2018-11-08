@@ -398,7 +398,7 @@ func (srv *Server) runDialLoop() {
 	}
 }
 
-func (srv *Server) AddStaticPeer(node string) {
+func (srv *Server) Connect(node string) {
 	nodeParts := strings.Split(node, ":")
 	if len(nodeParts) != 2 {
 		return
@@ -414,13 +414,15 @@ func (srv *Server) AddStaticPeer(node string) {
 	srv.needConnectNodeCh <- node
 }
 
+//go:generate gencodec -type PeerConnInfo -out gen_peer_conn_info_json.go
+
 type PeerConnInfo struct {
-	LocalAddr  string `json:localAddress`
-	RemoteAddr string `json:remoteAddress`
-	NodeID     string `json:nodeID`
+	LocalAddr  string `json:"localAddress"`
+	RemoteAddr string `json:"remoteAddress"`
+	NodeID     string `json:"nodeID"`
 }
 
-func (srv *Server) Peers() []PeerConnInfo {
+func (srv *Server) Connections() []PeerConnInfo {
 	srv.peersMux.Lock()
 	defer srv.peersMux.Unlock()
 	result := make([]PeerConnInfo, 0, len(srv.peers))
@@ -431,7 +433,7 @@ func (srv *Server) Peers() []PeerConnInfo {
 	return result
 }
 
-func (srv *Server) DropPeer(node string) bool {
+func (srv *Server) Disconnect(node string) bool {
 	for id, v := range srv.peers {
 		if strings.Compare(node, v.rw.fd.RemoteAddr().String()) == 0 {
 			v.needReConnect = false

@@ -4,15 +4,16 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 )
 
-type AddressKeyPair struct {
-	// NativePubkey string
-	LemoAddress string
-	PublicKey   string
-	PrivateKey  string
+//go:generate gencodec -type AccountKey -out gen_account_keys_json.go
+
+type AccountKey struct {
+	Private string `json:"private"`
+	// Public  string `json:"public"`
+	Address string `json:"address"`
 }
 
 // GenerateAddress generate Lemo address
-func GenerateAddress() (*AddressKeyPair, error) {
+func GenerateAddress() (*AccountKey, error) {
 	// Get privateKey
 	privKey, err := GenerateKey()
 	if err != nil {
@@ -26,13 +27,12 @@ func GenerateAddress() (*AddressKeyPair, error) {
 	lemoAddress := address.String()
 
 	// PublicKey type is converted to bytes type
-	publicToBytes := FromECDSAPub(&pubKey)
+	// publicToBytes := FromECDSAPub(&pubKey)
 	// PrivateKey type is converted to bytes type
 	privateToBytes := FromECDSA(privKey)
-	return &AddressKeyPair{
-		// NativePubkey: common.ToHex(address.Bytes()),
-		LemoAddress: lemoAddress,
-		PublicKey:   common.ToHex(publicToBytes[1:]),
-		PrivateKey:  common.ToHex(privateToBytes),
+	return &AccountKey{
+		Private: common.ToHex(privateToBytes),
+		// Public:   common.ToHex(publicToBytes[1:]),
+		Address: lemoAddress,
 	}, nil
 }
