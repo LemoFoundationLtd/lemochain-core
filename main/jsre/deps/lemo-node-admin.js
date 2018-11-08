@@ -6,7 +6,7 @@ lemo._createAPI('mine', [
     {name: 'stop', method: 'mine_mineStop'},
 ]);
 lemo._createAPI('net', [
-    {name: 'addPeer', method: 'net_addStaticPeer'},
-    {name: 'dropPeer', method: 'net_dropPeer'},
-    {name: 'getPeers', method: 'net_peers'},
+    {name: 'connect', method: 'net_connect'},
+    {name: 'disconnect', method: 'net_disconnect'},
+    {name: 'getConnections', method: 'net_connections'},
 ]);
