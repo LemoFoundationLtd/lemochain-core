@@ -21,7 +21,7 @@ func (h Header) MarshalJSON() ([]byte, error) {
 		TxRoot      common.Hash    `json:"transactionRoot"  gencodec:"required"`
 		LogRoot     common.Hash    `json:"changeLogRoot"    gencodec:"required"`
 		EventRoot   common.Hash    `json:"eventRoot"        gencodec:"required"`
-		Bloom       Bloom          `json:"logsBloom"        gencodec:"required"`
+		Bloom       Bloom          `json:"eventBloom"       gencodec:"required"`
 		Height      hexutil.Uint32 `json:"height"           gencodec:"required"`
 		GasLimit    hexutil.Uint64 `json:"gasLimit"         gencodec:"required"`
 		GasUsed     hexutil.Uint64 `json:"gasUsed"          gencodec:"required"`
@@ -59,7 +59,7 @@ func (h *Header) UnmarshalJSON(input []byte) error {
 		TxRoot      *common.Hash    `json:"transactionRoot"  gencodec:"required"`
 		LogRoot     *common.Hash    `json:"changeLogRoot"    gencodec:"required"`
 		EventRoot   *common.Hash    `json:"eventRoot"        gencodec:"required"`
-		Bloom       *Bloom          `json:"logsBloom"        gencodec:"required"`
+		Bloom       *Bloom          `json:"eventBloom"       gencodec:"required"`
 		Height      *hexutil.Uint32 `json:"height"           gencodec:"required"`
 		GasLimit    *hexutil.Uint64 `json:"gasLimit"         gencodec:"required"`
 		GasUsed     *hexutil.Uint64 `json:"gasUsed"          gencodec:"required"`
@@ -97,7 +97,7 @@ func (h *Header) UnmarshalJSON(input []byte) error {
 	}
 	h.EventRoot = *dec.EventRoot
 	if dec.Bloom == nil {
-		return errors.New("missing required field 'logsBloom' for Header")
+		return errors.New("missing required field 'eventBloom' for Header")
 	}
 	h.Bloom = *dec.Bloom
 	if dec.Height == nil {

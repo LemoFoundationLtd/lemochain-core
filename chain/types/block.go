@@ -20,7 +20,7 @@ type Header struct {
 	TxRoot      common.Hash    `json:"transactionRoot"  gencodec:"required"`
 	LogRoot     common.Hash    `json:"changeLogRoot"    gencodec:"required"`
 	EventRoot   common.Hash    `json:"eventRoot"        gencodec:"required"`
-	Bloom       Bloom          `json:"logsBloom"        gencodec:"required"`
+	Bloom       Bloom          `json:"eventBloom"       gencodec:"required"`
 	Height      uint32         `json:"height"           gencodec:"required"`
 	GasLimit    uint64         `json:"gasLimit"         gencodec:"required"`
 	GasUsed     uint64         `json:"gasUsed"          gencodec:"required"`
