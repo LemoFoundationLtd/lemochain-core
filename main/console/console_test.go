@@ -53,7 +53,7 @@ func TestNew(t *testing.T) {
 // 	"testing"
 // 	"time"
 //
-// 	"github.com/LemoFoundationLtd/lemochain-dev/lemo"
+// 	"github.com/LemoFoundationLtd/lemochain-go/lemo"
 // 	"github.com/LemoFoundationLtd/lemochain-go/chain"
 // 	"github.com/LemoFoundationLtd/lemochain-go/common"
 // 	"github.com/LemoFoundationLtd/lemochain-go/main/jsre"

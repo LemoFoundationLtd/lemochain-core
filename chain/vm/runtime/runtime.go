@@ -74,20 +74,17 @@ func Execute(code, input []byte, cfg *Config) ([]byte, error) {
 		cfg.AccountManager = account.NewManager(common.Hash{}, db)
 	}
 	var (
-		address = common.StringToAddress("contract")
+		address = common.BytesToAddress([]byte("contract"))
 		vmenv   = NewEnv(cfg)
 		sender  = vm.AccountRef(cfg.Origin)
 	)
-	contractAccount, err := cfg.AccountManager.GetAccount(address)
-	if err != nil {
-		return nil, err
-	}
+	contractAccount := cfg.AccountManager.GetAccount(address)
 	// set the receiver's (the executing contract) code for execution.
 	contractAccount.SetCode(code)
 	// Call the code with the given configuration.
 	ret, _, err := vmenv.Call(
 		sender,
-		common.StringToAddress("contract"),
+		address,
 		input,
 		cfg.GasLimit,
 		cfg.Value,
@@ -132,10 +129,7 @@ func Call(address common.Address, input []byte, cfg *Config) ([]byte, error) {
 
 	vmenv := NewEnv(cfg)
 
-	sender, err := cfg.AccountManager.GetAccount(cfg.Origin)
-	if err != nil {
-		return nil, err
-	}
+	sender := cfg.AccountManager.GetAccount(cfg.Origin)
 	// Call the code with the given configuration.
 	ret, _, err := vmenv.Call(
 		sender,

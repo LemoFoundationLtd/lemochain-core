@@ -115,7 +115,7 @@ func TestNotifications(t *testing.T) {
 
 	clientConn, serverConn := net.Pipe()
 
-	go server.ServeCodec(NewJSONCodec(serverConn), OptionMethodInvocation|OptionSubscriptions)
+	go server.ServeCodec(NewJSONCodec(serverConn))
 
 	out := json.NewEncoder(clientConn)
 	in := json.NewDecoder(clientConn)
@@ -195,7 +195,7 @@ func waitForMessages(t *testing.T, in *json.Decoder, successes chan<- jsonSucces
 			if _, found := msg["result"]; found {
 				successes <- jsonSuccessResponse{
 					Version: msg["jsonrpc"].(string),
-					Id:      msg["id"],
+					Id:      uint64(msg["id"].(float64)),
 					Result:  msg["result"],
 				}
 				continue
@@ -204,7 +204,7 @@ func waitForMessages(t *testing.T, in *json.Decoder, successes chan<- jsonSucces
 				params := msg["params"].(map[string]interface{})
 				failures <- jsonErrResponse{
 					Version: msg["jsonrpc"].(string),
-					Id:      msg["id"],
+					Id:      uint64(msg["id"].(float64)),
 					Error:   jsonError{int(params["subscription"].(float64)), params["message"].(string), params["data"]},
 				}
 				continue
@@ -248,7 +248,7 @@ func TestSubscriptionMultipleNamespaces(t *testing.T) {
 		}
 	}
 
-	go server.ServeCodec(NewJSONCodec(serverConn), OptionMethodInvocation|OptionSubscriptions)
+	go server.ServeCodec(NewJSONCodec(serverConn))
 	defer server.Stop()
 
 	// wait for message and write them to the given channels
@@ -304,7 +304,7 @@ func TestSubscriptionMultipleNamespaces(t *testing.T) {
 		case err := <-errors:
 			t.Fatal(err)
 		case suc := <-successes: // subscription created
-			subids[namespaces[int(suc.Id.(float64))]] = suc.Result.(string)
+			subids[namespaces[int(suc.Id)]] = suc.Result.(string)
 		case failure := <-failures:
 			t.Errorf("received error: %v", failure.Error)
 		case notification := <-notifications:

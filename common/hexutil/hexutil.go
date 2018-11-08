@@ -125,7 +125,7 @@ func ParseUint(s string, bitSize int) (uint64, error) {
 	if len(s) >= 2 && (s[:2] == "0x" || s[:2] == "0X") {
 		s = s[2:]
 		if len(s) == 0 {
-			return 0, nil
+			return 0, ErrEmptyNumber
 		}
 		if len(s) > 16 {
 			return 0, Err256Range

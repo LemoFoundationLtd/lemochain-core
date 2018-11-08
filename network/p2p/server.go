@@ -298,7 +298,7 @@ func (srv *Server) listenLoop() {
 			continue
 		}
 		if srv.NetRestrict != nil { // 黑名单处理
-			if tcp, ok := fd.RemoteAddr().(*net.TCPAddr); ok && !srv.NetRestrict.Contains(tcp.IP) {
+			if tcp, ok := fd.RemoteAddr().(*net.TCPAddr); ok && srv.NetRestrict.Contains(tcp.IP) {
 				log.Debug("Rejected conn (in NetRestrict)", "addr", fd.RemoteAddr())
 				fd.Close()
 				continue

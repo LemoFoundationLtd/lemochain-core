@@ -74,20 +74,6 @@ func decodeBigInt(s *rlp.Stream) (interface{}, error) {
 	return result, err
 }
 
-// decodeUint64 decode an interface which contains an uint64
-func decodeUint64(s *rlp.Stream) (interface{}, error) {
-	var result uint64
-	err := s.Decode(&result)
-	return result, err
-}
-
-// decodeHash decode an interface which contains an common.Hash
-func decodeHash(s *rlp.Stream) (interface{}, error) {
-	var result common.Hash
-	err := s.Decode(&result)
-	return result, err
-}
-
 // decodeBytes decode an interface which contains an []byte
 func decodeBytes(s *rlp.Stream) (interface{}, error) {
 	var result []byte

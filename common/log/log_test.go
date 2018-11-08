@@ -19,5 +19,5 @@ func TestWarn(t *testing.T) {
 	Debug("show code line")
 	Info("show code line")
 
-	Crit("critical error")
+	// Crit("critical error")
 }

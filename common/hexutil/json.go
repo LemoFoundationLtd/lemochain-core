@@ -19,13 +19,11 @@ package hexutil
 import (
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"math/big"
 	"net"
 	"reflect"
-	"strings"
 )
 
 var (
@@ -34,6 +32,7 @@ var (
 	big10T  = reflect.TypeOf((*Big10)(nil))
 	uint64T = reflect.TypeOf(Uint64(0))
 	uint32T = reflect.TypeOf(Uint32(0))
+	IPT     = reflect.TypeOf(IP(nil))
 )
 
 // Bytes marshals/unmarshals as a JSON string with 0x prefix.
@@ -187,11 +186,6 @@ func (i *Uint64) UnmarshalJSON(input []byte) error {
 	return wrapTypeError(i.UnmarshalText(input), uint64T)
 }
 
-// String returns the decimal encoding of i.
-func (i Uint64) String() string {
-	return fmt.Sprintf("%d", uint64(i))
-}
-
 // Uint32 marshals uint32 as decimal, and unmarshals string and number as decimal or hex.
 type Uint32 uint32
 
@@ -265,6 +259,9 @@ func decodeBig(input []byte, base int) (*big.Int, error) {
 	if err != nil {
 		return nil, err
 	}
+	if len(raw) == 0 {
+		return big.NewInt(0), nil
+	}
 	if base == 16 && len(raw) > 64 {
 		return nil, Err256Range
 	}
@@ -294,17 +291,26 @@ func (ip *IP) String() string {
 	return t.String()
 }
 
-func (ip *IP) MarshalJSON() ([]byte, error) {
-	t := "\"" + ip.String() + "\""
-	return []byte(t), nil
+// MarshalText implements encoding.TextMarshaler.
+func (ip *IP) MarshalText() ([]byte, error) {
+	return []byte(ip.String()), nil
 }
 
-func (ip *IP) UnmarshalJSON(input []byte) error {
-	str := string(input)
-	str = strings.Trim(str, "\"")
-	*ip = IP(net.ParseIP(str))
-	if len(*ip) == 0 {
-		return errors.New("invalid ip address")
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (ip *IP) UnmarshalText(input []byte) error {
+	dec := net.ParseIP(string(input))
+	if dec == nil {
+		log.Warnf("invalid hex or decimal integer %q", input)
+		return ErrSyntax
 	}
+	*ip = IP(dec)
 	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (ip *IP) UnmarshalJSON(input []byte) error {
+	if !isString(input) {
+		return errNonString(IPT)
+	}
+	return wrapTypeError(ip.UnmarshalText(input[1:len(input)-1]), IPT)
 }

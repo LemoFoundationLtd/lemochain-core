@@ -170,10 +170,10 @@ func Test_verifyHeaderTime(t *testing.T) {
 				SignData:    nil,
 				Extra:       nil,
 			},
-			Txs:            nil,
-			ChangeLogs:     nil,
-			Events:         nil,
-			ConfirmPackage: nil,
+			Txs:        nil,
+			ChangeLogs: nil,
+			Events:     nil,
+			Confirms:   nil,
 		},
 		{
 			Header: &types.Header{
@@ -191,10 +191,10 @@ func Test_verifyHeaderTime(t *testing.T) {
 				SignData:    nil,
 				Extra:       nil,
 			},
-			Txs:            nil,
-			ChangeLogs:     nil,
-			Events:         nil,
-			ConfirmPackage: nil,
+			Txs:        nil,
+			ChangeLogs: nil,
+			Events:     nil,
+			Confirms:   nil,
 		},
 		{
 			Header: &types.Header{
@@ -212,10 +212,10 @@ func Test_verifyHeaderTime(t *testing.T) {
 				SignData:    nil,
 				Extra:       nil,
 			},
-			Txs:            nil,
-			ChangeLogs:     nil,
-			Events:         nil,
-			ConfirmPackage: nil,
+			Txs:        nil,
+			ChangeLogs: nil,
+			Events:     nil,
+			Confirms:   nil,
 		},
 	}
 

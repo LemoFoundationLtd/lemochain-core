@@ -31,17 +31,6 @@ import (
 
 const MetadataApi = "rpc"
 
-// CodecOption specifies which type of messages this codec supports
-type CodecOption int
-
-const (
-	// OptionMethodInvocation is an indication that the codec supports RPC method calls
-	OptionMethodInvocation CodecOption = 1 << iota
-
-	// OptionSubscriptions is an indication that the codec suports RPC notifications
-	OptionSubscriptions = 1 << iota // support pub sub
-)
-
 // NewServer will create a new server instance with no registered handlers.
 func NewServer() *Server {
 	server := &Server{
@@ -125,7 +114,7 @@ func (s *Server) RegisterName(name string, rcvr interface{}) error {
 // If singleShot is true it will process a single request, otherwise it will handle
 // requests until the codec returns an error when reading a request (in most cases
 // an EOF). It executes requests in parallel when singleShot is false.
-func (s *Server) serveRequest(codec ServerCodec, singleShot bool, options CodecOption) error {
+func (s *Server) serveRequest(codec ServerCodec, singleShot bool) error {
 	var pend sync.WaitGroup
 
 	defer func() {
@@ -146,7 +135,7 @@ func (s *Server) serveRequest(codec ServerCodec, singleShot bool, options CodecO
 	// if the codec supports notification include a notifier that callbacks can use
 	// to send notification to clients. It is thight to the codec/connection. If the
 	// connection is closed the notifier will stop and cancels all active subscriptions.
-	if options&OptionSubscriptions == OptionSubscriptions {
+	if !singleShot {
 		ctx = context.WithValue(ctx, notifierKey{}, newNotifier(codec))
 	}
 	s.codecsMu.Lock()
@@ -213,16 +202,16 @@ func (s *Server) serveRequest(codec ServerCodec, singleShot bool, options CodecO
 // ServeCodec reads incoming requests from codec, calls the appropriate callback and writes the
 // response back using the given codec. It will block until the codec is closed or the server is
 // stopped. In either case the codec is closed.
-func (s *Server) ServeCodec(codec ServerCodec, options CodecOption) {
+func (s *Server) ServeCodec(codec ServerCodec) {
 	defer codec.Close()
-	s.serveRequest(codec, false, options)
+	s.serveRequest(codec, false)
 }
 
 // ServeSingleRequest reads and processes a single RPC request from the given codec. It will not
 // close the codec unless a non-recoverable error has occurred. Note, this method will return after
 // a single request has been processed!
-func (s *Server) ServeSingleRequest(codec ServerCodec, options CodecOption) {
-	s.serveRequest(codec, true, options)
+func (s *Server) ServeSingleRequest(codec ServerCodec) {
+	s.serveRequest(codec, true)
 }
 
 // Stop will stop reading new requests, wait for stopPendingRequestTimeout to allow pending requests to finish,

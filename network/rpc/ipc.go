@@ -38,7 +38,7 @@ func (srv *Server) ServeListener(l net.Listener) error {
 			return err
 		}
 		log.Debug(fmt.Sprint("accepted conn", conn.RemoteAddr()))
-		go srv.ServeCodec(NewJSONCodec(conn), OptionMethodInvocation|OptionSubscriptions)
+		go srv.ServeCodec(NewJSONCodec(conn))
 	}
 }
 

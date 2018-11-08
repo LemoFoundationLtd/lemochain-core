@@ -1,4 +1,4 @@
-// Copyright 2016 The lemochain-go Authors
+// Copyright 2015 The lemochain-go Authors
 // This file is part of the lemochain-go library.
 //
 // The lemochain-go library is free software: you can redistribute it and/or modify
@@ -14,20 +14,13 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the lemochain-go library. If not, see <http://www.gnu.org/licenses/>.
 
-package rpc
-
-import (
-	"context"
-	"net"
-)
-
-// NewInProcClient attaches an in-process connection to the given RPC server.
-func DialInProc(handler *Server) *Client {
-	initctx := context.Background()
-	c, _ := newClient(initctx, func(context.Context) (net.Conn, error) {
-		p1, p2 := net.Pipe()
-		go handler.ServeCodec(NewJSONCodec(p1))
-		return p2, nil
-	})
-	return c
-}
+// Package abi implements the Lemochain ABI (Application Binary
+// Interface).
+//
+// The Lemochain ABI is strongly typed, known at compile time
+// and static. This ABI will handle basic type casting; unsigned
+// to signed and visa versa. It does not handle slice casting such
+// as unsigned slice to signed slice. Bit size type casting is also
+// handled. ints with a bit size of 32 will be properly cast to int256,
+// etc.
+package abi

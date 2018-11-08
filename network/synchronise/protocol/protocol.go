@@ -97,8 +97,8 @@ type GetConfirmInfo struct {
 	Height uint32
 }
 
-// BlockConfirmPackage 某个区块的所有确认信息
-type BlockConfirmPackage struct {
+// BlockConfirms 某个区块的所有确认信息
+type BlockConfirms struct {
 	Hash   common.Hash // 区块Hash
 	Height uint32      //区块高度
 	Pack   []types.SignData

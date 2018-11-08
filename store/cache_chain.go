@@ -37,11 +37,11 @@ func btoSb(block *types.Block) (*sBlock, error) {
 		Txs:         block.Txs,
 		ChangeLogs:  block.ChangeLogs,
 		Events:      block.Events,
-		Confirms:    block.ConfirmPackage,
+		Confirms:    block.Confirms,
 		DeputyNodes: block.DeputyNodes,
 	}
 
-	if block.ConfirmPackage == nil {
+	if block.Confirms == nil {
 		sb.Confirms = make([]types.SignData, 0)
 	}
 
@@ -58,7 +58,7 @@ func sBtoB(sb *sBlock) (*types.Block, error) {
 	block.SetTxs(sb.Txs)
 	block.SetChangeLogs(sb.ChangeLogs)
 	block.SetEvents(sb.Events)
-	block.SetConfirmPackage(sb.Confirms)
+	block.SetConfirms(sb.Confirms)
 	block.SetDeputyNodes(sb.DeputyNodes)
 
 	return block, nil
@@ -377,7 +377,7 @@ func (chain *CacheChain) SetConfirmInfo(hash common.Hash, signData types.SignDat
 		return ErrNotExist
 	}
 
-	confirms := block.ConfirmPackage
+	confirms := block.Confirms
 	if confirms == nil {
 		confirms = make([]types.SignData, 0)
 	}
@@ -389,18 +389,18 @@ func (chain *CacheChain) SetConfirmInfo(hash common.Hash, signData types.SignDat
 	}
 
 	confirms = append(confirms, signData)
-	block.SetConfirmPackage(confirms)
+	block.SetConfirms(confirms)
 	return nil
 }
 
-func (chain *CacheChain) SetConfirmPackage(hash common.Hash, pack []types.SignData) error {
+func (chain *CacheChain) SetConfirms(hash common.Hash, pack []types.SignData) error {
 	block, err := chain.GetBlockByHash(hash)
 	if err != nil {
 		return err
 	}
 
 	if block != nil {
-		block.SetConfirmPackage(pack)
+		block.SetConfirms(pack)
 		err = chain.setBlock(hash, block)
 		if err != nil {
 			return err
@@ -410,7 +410,7 @@ func (chain *CacheChain) SetConfirmPackage(hash common.Hash, pack []types.SignDa
 	if err == ErrNotExist {
 		block = chain.Blocks[hash]
 		if block != nil {
-			block.SetConfirmPackage(pack)
+			block.SetConfirms(pack)
 		}
 	}
 
@@ -440,7 +440,7 @@ func (chain *CacheChain) AppendConfirmInfo(hash common.Hash, signData types.Sign
 	}
 }
 
-func (chain *CacheChain) AppendConfirmPackage(hash common.Hash, pack []types.SignData) error {
+func (chain *CacheChain) AppendConfirms(hash common.Hash, pack []types.SignData) error {
 	delete(chain.Blocks, hash)
 
 	val, err := chain.LmDataBase.Get(hash.Bytes())
@@ -464,12 +464,12 @@ func (chain *CacheChain) AppendConfirmPackage(hash common.Hash, pack []types.Sig
 }
 
 // 获取区块的确认包 获取不到返回：nil,原因
-func (chain *CacheChain) GetConfirmPackage(hash common.Hash) ([]types.SignData, error) {
+func (chain *CacheChain) GetConfirms(hash common.Hash) ([]types.SignData, error) {
 	block, err := chain.GetBlockByHash(hash)
 	if err != nil {
 		return nil, err
 	} else {
-		return block.ConfirmPackage, nil
+		return block.Confirms, nil
 	}
 }
 
