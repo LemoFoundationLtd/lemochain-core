@@ -84,14 +84,20 @@ func (cache *TxsSortByTime) pop(size int) []*types.Transaction {
 		cnt := 0
 		for index := 0; (index < cache.cnt) && (cnt < size); index++ {
 			if cache.txs[index].DelFlg {
-				delete(cache.index, cache.txs[index].Tx.Hash())
-				cache.txs = append(cache.txs[:index], cache.txs[index+1:]...)
-				cache.cnt = cache.cnt - 1
-				index = index - 1
+				// delete(cache.index, cache.txs[index].Tx.Hash())
+				// cache.txs = append(cache.txs[:index], cache.txs[index+1:]...)
+				// cache.cnt = cache.cnt - 1
+				// index = index - 1
 			} else {
 				txs = append(txs, cache.txs[index].Tx)
 				cnt = cnt + 1
 			}
+		}
+
+		if len(txs) <= 0 {
+			cache.txs = make([]*TransactionWithTime, cache.cap)
+			cache.index = make(map[common.Hash]int)
+			cache.cnt = 0
 		}
 
 		return txs

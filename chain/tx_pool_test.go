@@ -136,13 +136,21 @@ func TestTxPool_Remove(t *testing.T) {
 
 	result := pool.Pending(3)
 	assert.Equal(t, 3, len(result))
-	assert.Equal(t, 7, pool.txsCache.len())
+	assert.Equal(t, 8, pool.txsCache.len())
 
 	keys = []common.Hash{tx1.Hash(), tx3.Hash(), tx4.Hash()}
 	pool.Remove(keys)
-	assert.Equal(t, 7, pool.txsCache.len())
+	assert.Equal(t, 8, pool.txsCache.len())
 
 	result = pool.Pending(10)
 	assert.Equal(t, 4, len(result))
-	assert.Equal(t, 4, pool.txsCache.len())
+	assert.Equal(t, 8, pool.txsCache.len())
+
+	keys = []common.Hash{tx1.Hash(), tx2.Hash(), tx3.Hash(), tx4.Hash(), tx5.Hash(), tx6.Hash(), tx7.Hash(), tx8.Hash()}
+	pool.Remove(keys)
+	assert.Equal(t, 8, pool.txsCache.len())
+
+	result = pool.Pending(10)
+	assert.Equal(t, 0, len(result))
+	assert.Equal(t, 0, pool.txsCache.len())
 }
