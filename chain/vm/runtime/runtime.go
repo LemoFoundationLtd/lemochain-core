@@ -70,7 +70,7 @@ func Execute(code, input []byte, cfg *Config) ([]byte, error) {
 	setDefaults(cfg)
 
 	if cfg.AccountManager == nil {
-		db, _ := store.NewCacheChain("../../../db")
+		db, _ := store.NewCacheChain("../../../testdata/vm_runtime")
 		cfg.AccountManager = account.NewManager(common.Hash{}, db)
 	}
 	var (
@@ -101,7 +101,7 @@ func Create(input []byte, cfg *Config) ([]byte, common.Address, uint64, error) {
 	setDefaults(cfg)
 
 	if cfg.AccountManager == nil {
-		db, _ := store.NewCacheChain("../../../db")
+		db, _ := store.NewCacheChain("../../../testdata/vm_runtime")
 		cfg.AccountManager = account.NewManager(common.Hash{}, db)
 	}
 	var (

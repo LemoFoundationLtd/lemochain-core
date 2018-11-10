@@ -13,10 +13,10 @@ import (
 )
 
 func GetStorePath() string {
-	return "../../db"
+	return "../testdata/db"
 }
 
-func ClearData() error {
+func ClearData() {
 	err := os.RemoveAll(GetStorePath())
 	failCnt := 1
 	for err != nil {
@@ -25,7 +25,6 @@ func ClearData() error {
 		err = os.RemoveAll(GetStorePath())
 		failCnt = failCnt + 1
 	}
-	return nil
 }
 
 func CreateBlock(hash common.Hash, parent common.Hash, height uint32) *types.Block {
