@@ -8,7 +8,7 @@ import (
 
 type AccountKey struct {
 	Private string `json:"private"`
-	// Public  string `json:"public"`
+	Public  string `json:"public"`
 	Address string `json:"address"`
 }
 
@@ -27,12 +27,12 @@ func GenerateAddress() (*AccountKey, error) {
 	lemoAddress := address.String()
 
 	// PublicKey type is converted to bytes type
-	// publicToBytes := FromECDSAPub(&pubKey)
+	publicToBytes := FromECDSAPub(&pubKey)
 	// PrivateKey type is converted to bytes type
 	privateToBytes := FromECDSA(privKey)
 	return &AccountKey{
 		Private: common.ToHex(privateToBytes),
-		// Public:   common.ToHex(publicToBytes[1:]),
+		Public:  common.ToHex(publicToBytes[1:]),
 		Address: lemoAddress,
 	}, nil
 }

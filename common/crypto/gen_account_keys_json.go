@@ -10,10 +10,12 @@ import (
 func (a AccountKey) MarshalJSON() ([]byte, error) {
 	type AccountKey struct {
 		Private string `json:"private"`
+		Public  string `json:"public"`
 		Address string `json:"address"`
 	}
 	var enc AccountKey
 	enc.Private = a.Private
+	enc.Public = a.Public
 	enc.Address = a.Address
 	return json.Marshal(&enc)
 }
@@ -22,6 +24,7 @@ func (a AccountKey) MarshalJSON() ([]byte, error) {
 func (a *AccountKey) UnmarshalJSON(input []byte) error {
 	type AccountKey struct {
 		Private *string `json:"private"`
+		Public  *string `json:"public"`
 		Address *string `json:"address"`
 	}
 	var dec AccountKey
@@ -30,6 +33,9 @@ func (a *AccountKey) UnmarshalJSON(input []byte) error {
 	}
 	if dec.Private != nil {
 		a.Private = *dec.Private
+	}
+	if dec.Public != nil {
+		a.Public = *dec.Public
 	}
 	if dec.Address != nil {
 		a.Address = *dec.Address
