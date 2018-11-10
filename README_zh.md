@@ -1,7 +1,6 @@
 ![Logo of the project](./logo.png)
 
 # LemoChain
-[![npm](https://img.shields.io/npm/v/lemochain-go.svg?style=flat-square)](https://www.npmjs.com/package/lemochain-go)
 [![Build Status](https://img.shields.io/travis/lemochain-go/lemochain-go.svg?style=flat-square)](https://travis-ci.org/lemochain-go/lemochain-go)
 [![code coverage](https://img.shields.io/coveralls/LemoFoundationLtd/lemochain-go.svg?style=flat-square)](https://coveralls.io/r/LemoFoundationLtd/lemochain-go)
 [![gitter chat](https://img.shields.io/gitter/room/LemoFoundationLtd/lemochain-go.svg?style=flat-square)](https://gitter.im/LemoFoundationLtd/lemochain-go)
@@ -30,10 +29,10 @@ lemochain-go项目旨在展示这种共识机制的原理，验证其吞吐量�
 - 因为`ECDSA`算法代码是由C语言编写，所以编译时会用到`GCC`，建议`windows`下安装`mingw`，其他系统请点击[GCC文档](https://gcc.gnu.org/install)
 
 ### 编译
-    ```
-    cd src\github.com\LemoFoundationLtd\lemochain-go\main
-    go build
-    ```
+```
+cd src\github.com\LemoFoundationLtd\lemochain-go\main
+go build
+```
 > 注意: 编译目标程序需为64位
 
 ---

@@ -1,7 +1,6 @@
 ![Logo of the project](./logo.png)
 
 # LemoChain
-[![npm](https://img.shields.io/npm/v/lemochain-go.svg?style=flat-square)](https://www.npmjs.com/package/lemochain-go)
 [![Build Status](https://img.shields.io/travis/lemochain-go/lemochain-go.svg?style=flat-square)](https://travis-ci.org/lemochain-go/lemochain-go)
 [![code coverage](https://img.shields.io/coveralls/LemoFoundationLtd/lemochain-go.svg?style=flat-square)](https://coveralls.io/r/LemoFoundationLtd/lemochain-go)
 [![gitter chat](https://img.shields.io/gitter/room/LemoFoundationLtd/lemochain-go.svg?style=flat-square)](https://gitter.im/LemoFoundationLtd/lemochain-go)
@@ -30,10 +29,10 @@ The lemochain-go project aims to demonstrate the principle of this consensus mec
 - Install `GCC`, cause ECDSA is required. Install `mingw` if you use windows, otherwise click [here](https://gcc.gnu.org/install) to read the GCC documentation.
 
 ### Compiling
-    ```
-    cd src\github.com\LemoFoundationLtd\lemochain-go\main
-    go build
-    ```
+```
+cd src\github.com\LemoFoundationLtd\lemochain-go\main
+go build
+```
 > NOTE: Target platform should be x64
 
 ---
