@@ -23,8 +23,6 @@ func CreateTx(to string, amount int64, gasPrice int64, expiration uint64) *types
 }
 
 func TestTxPool_AddTx(t *testing.T) {
-
-	// txCh := make(chan types.Transactions, 100)
 	pool := NewTxPool(nil)
 	tx := CreateTx("0x1d5f11eaa13e02cdca886181dc38ab4cb8cf9092e86c000fb42d12c8b504500e", 1000, 2000, 3000)
 
@@ -95,4 +93,56 @@ func TestTxPool_Pending(t *testing.T) {
 
 	result = pool.Pending(10)
 	assert.Equal(t, 2, len(result))
+}
+
+func TestTxPool_Remove(t *testing.T) {
+	pool := NewTxPool(nil)
+
+	tx1 := CreateTx("0x1d5f11eaa13e02cdca886181dc38ab4cb8cf9092e86c000fb42d12c8b504500e", 1000, 2000, 3000)
+	err := pool.AddTx(tx1)
+	assert.NoError(t, err)
+
+	tx2 := CreateTx("0x2d5f11eaa13e02cdca886181dc38ab4cb8cf9092e86c000fb42d12c8b504500e", 2000, 5000, 6000)
+	err = pool.AddTx(tx2)
+	assert.NoError(t, err)
+
+	tx3 := CreateTx("0x3d5f11eaa13e02cdca886181dc38ab4cb8cf9092e86c000fb42d12c8b504500e", 3000, 8000, 9000)
+	err = pool.AddTx(tx3)
+	assert.NoError(t, err)
+
+	tx4 := CreateTx("0x1d5f11eaa13e02cdca886181dc38ab4cb8cf9092e86c000fb42d12c8b504500e", 4000, 2000, 3000)
+	err = pool.AddTx(tx4)
+	assert.NoError(t, err)
+
+	tx5 := CreateTx("0x2d5f11eaa13e02cdca886181dc38ab4cb8cf9092e86c000fb42d12c8b504500e", 5000, 5000, 6000)
+	err = pool.AddTx(tx5)
+	assert.NoError(t, err)
+
+	tx6 := CreateTx("0x3d5f11eaa13e02cdca886181dc38ab4cb8cf9092e86c000fb42d12c8b504500e", 6001, 8000, 9000)
+	err = pool.AddTx(tx6)
+	assert.NoError(t, err)
+
+	tx7 := CreateTx("0x1d5f11eaa13e02cdca886181dc38ab4cb8cf9092e86c000fb42d12c8b504500e", 7002, 2000, 3000)
+	err = pool.AddTx(tx7)
+	assert.NoError(t, err)
+
+	tx8 := CreateTx("0x2d5f11eaa13e02cdca886181dc38ab4cb8cf9092e86c000fb42d12c8b504500e", 8003, 5000, 6000)
+	err = pool.AddTx(tx8)
+	assert.NoError(t, err)
+
+	keys := []common.Hash{tx2.Hash()}
+	pool.Remove(keys)
+	assert.Equal(t, 8, pool.txsCache.len())
+
+	result := pool.Pending(3)
+	assert.Equal(t, 3, len(result))
+	assert.Equal(t, 7, pool.txsCache.len())
+
+	keys = []common.Hash{tx1.Hash(), tx3.Hash(), tx4.Hash()}
+	pool.Remove(keys)
+	assert.Equal(t, 7, pool.txsCache.len())
+
+	result = pool.Pending(10)
+	assert.Equal(t, 4, len(result))
+	assert.Equal(t, 4, pool.txsCache.len())
 }
