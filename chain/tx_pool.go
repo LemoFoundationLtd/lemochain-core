@@ -109,8 +109,8 @@ func (cache *TxsSortByTime) removeBatch(keys []common.Hash) {
 }
 
 func (cache *TxsSortByTime) remove(key common.Hash) {
-	pos := cache.index[key]
-	if pos >= 0 {
+	pos, ok := cache.index[key]
+	if ok && pos >= 0 {
 		cache.txs[pos].DelFlg = true
 	}
 }
@@ -180,10 +180,8 @@ func NewTxPool(am *account.Manager) *TxPool {
 }
 
 func (pool *TxPool) AddTx(tx *types.Transaction) error {
-
 	pool.mux.Lock()
 	defer pool.mux.Unlock()
-
 	hash := tx.Hash()
 	isExist := pool.recent.isExist(hash)
 	if isExist {
@@ -216,6 +214,8 @@ func (pool *TxPool) AddTxs(txs []*types.Transaction) error {
 }
 
 func (pool *TxPool) AddKey(hash common.Hash) {
+	pool.mux.Lock()
+	defer pool.mux.Unlock()
 	pool.recent.put(hash)
 }
 
