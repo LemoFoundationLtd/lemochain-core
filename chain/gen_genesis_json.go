@@ -16,17 +16,17 @@ var _ = (*genesisSpecMarshaling)(nil)
 // MarshalJSON marshals as JSON.
 func (g Genesis) MarshalJSON() ([]byte, error) {
 	type Genesis struct {
-		Time         hexutil.Uint32           `json:"timestamp"     gencodec:"required"`
-		ExtraData    hexutil.Bytes            `json:"extraData"`
-		GasLimit     hexutil.Uint64           `json:"gasLimit"      gencodec:"required"`
-		MinerAddress common.Address           `json:"minerAddress"  gencodec:"required"`
-		DeputyNodes  []*deputynode.DeputyNode `json:"deputyNodes"   gencodec:"required"`
+		Time        hexutil.Uint32           `json:"timestamp"     gencodec:"required"`
+		ExtraData   hexutil.Bytes            `json:"extraData"`
+		GasLimit    hexutil.Uint64           `json:"gasLimit"      gencodec:"required"`
+		Founder     common.Address           `json:"founder"       gencodec:"required"`
+		DeputyNodes []*deputynode.DeputyNode `json:"deputyNodes"   gencodec:"required"`
 	}
 	var enc Genesis
 	enc.Time = hexutil.Uint32(g.Time)
 	enc.ExtraData = g.ExtraData
 	enc.GasLimit = hexutil.Uint64(g.GasLimit)
-	enc.MinerAddress = g.MinerAddress
+	enc.Founder = g.Founder
 	enc.DeputyNodes = g.DeputyNodes
 	return json.Marshal(&enc)
 }
@@ -34,11 +34,11 @@ func (g Genesis) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON unmarshals from JSON.
 func (g *Genesis) UnmarshalJSON(input []byte) error {
 	type Genesis struct {
-		Time         *hexutil.Uint32          `json:"timestamp"     gencodec:"required"`
-		ExtraData    *hexutil.Bytes           `json:"extraData"`
-		GasLimit     *hexutil.Uint64          `json:"gasLimit"      gencodec:"required"`
-		MinerAddress *common.Address          `json:"minerAddress"  gencodec:"required"`
-		DeputyNodes  []*deputynode.DeputyNode `json:"deputyNodes"   gencodec:"required"`
+		Time        *hexutil.Uint32          `json:"timestamp"     gencodec:"required"`
+		ExtraData   *hexutil.Bytes           `json:"extraData"`
+		GasLimit    *hexutil.Uint64          `json:"gasLimit"      gencodec:"required"`
+		Founder     *common.Address          `json:"founder"       gencodec:"required"`
+		DeputyNodes []*deputynode.DeputyNode `json:"deputyNodes"   gencodec:"required"`
 	}
 	var dec Genesis
 	if err := json.Unmarshal(input, &dec); err != nil {
@@ -55,10 +55,10 @@ func (g *Genesis) UnmarshalJSON(input []byte) error {
 		return errors.New("missing required field 'gasLimit' for Genesis")
 	}
 	g.GasLimit = uint64(*dec.GasLimit)
-	if dec.MinerAddress == nil {
-		return errors.New("missing required field 'minerAddress' for Genesis")
+	if dec.Founder == nil {
+		return errors.New("missing required field 'founder' for Genesis")
 	}
-	g.MinerAddress = *dec.MinerAddress
+	g.Founder = *dec.Founder
 	if dec.DeputyNodes == nil {
 		return errors.New("missing required field 'deputyNodes' for Genesis")
 	}

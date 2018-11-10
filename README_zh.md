@@ -47,7 +47,7 @@ $ glemo console --datadir=path/to/custom/data/folder
 LemoChain可以通过创始块配置文件(`genesis.json`)实现定制。
 ```json
 {
-  "minerAddress": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
+  "founder": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
   "extraData": "",
   "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
   "gasLimit": 105000000,
@@ -80,7 +80,7 @@ LemoChain可以通过创始块配置文件(`genesis.json`)实现定制。
 	]
 }
 ```
-- 外层`minerAddress`  16亿预挖LEMO的持有账户
+- `founder`  16亿预挖LEMO的持有账户
 - `extraData` 创始块header中的一个字段，用来对链进行一些说明
 - `gasLimit` 创始块交易费用上限，用来限制块大小
 - `parentHash` 创始块的父块hash

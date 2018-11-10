@@ -68,11 +68,11 @@ func decodeMinerAddress(input string) common.Address {
 //go:generate gencodec -type Genesis -field-override genesisSpecMarshaling -out gen_genesis_json.go
 
 type Genesis struct {
-	Time         uint32                 `json:"timestamp"     gencodec:"required"`
-	ExtraData    []byte                 `json:"extraData"`
-	GasLimit     uint64                 `json:"gasLimit"      gencodec:"required"`
-	MinerAddress common.Address         `json:"minerAddress"  gencodec:"required"`
-	DeputyNodes  deputynode.DeputyNodes `json:"deputyNodes"   gencodec:"required"`
+	Time        uint32                 `json:"timestamp"     gencodec:"required"`
+	ExtraData   []byte                 `json:"extraData"`
+	GasLimit    uint64                 `json:"gasLimit"      gencodec:"required"`
+	Founder     common.Address         `json:"founder"       gencodec:"required"`
+	DeputyNodes deputynode.DeputyNodes `json:"deputyNodes"   gencodec:"required"`
 }
 
 type genesisSpecMarshaling struct {
@@ -87,11 +87,11 @@ func DefaultGenesisBlock() *Genesis {
 	timeSpan, _ := time.ParseInLocation("2006-01-02 15:04:05", "2018-08-30 12:00:00", time.UTC)
 	address := decodeMinerAddress("Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG")
 	return &Genesis{
-		Time:         uint32(timeSpan.Unix()),
-		ExtraData:    []byte(""),
-		GasLimit:     105000000,
-		MinerAddress: address,
-		DeputyNodes:  DefaultDeputyNodes,
+		Time:        uint32(timeSpan.Unix()),
+		ExtraData:   []byte(""),
+		GasLimit:    105000000,
+		Founder:     address,
+		DeputyNodes: DefaultDeputyNodes,
 	}
 }
 
@@ -147,7 +147,7 @@ func SetupGenesisBlock(db protocol.ChainDB, genesis *Genesis) (common.Hash, erro
 func (g *Genesis) ToBlock() *types.Block {
 	head := &types.Header{
 		ParentHash:   common.Hash{},
-		MinerAddress: g.MinerAddress,
+		MinerAddress: g.Founder,
 		TxRoot:       common.HexToHash("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"), // empty merkle
 		EventRoot:    common.HexToHash("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"), // empty merkle
 		Height:       0,
@@ -163,5 +163,5 @@ func (g *Genesis) ToBlock() *types.Block {
 
 func (g *Genesis) setBalance(am *account.Manager) {
 	total, _ := new(big.Int).SetString("1600000000000000000000000000", 10) // 1.6 billion
-	am.GetAccount(g.MinerAddress).SetBalance(total)
+	am.GetAccount(g.Founder).SetBalance(total)
 }
