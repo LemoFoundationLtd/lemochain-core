@@ -11,21 +11,22 @@ lemochain-go项目旨在展示这种共识机制的原理，验证其吞吐量�
 
 ## 安装步骤
 配置编译环境
-- 安装`golang`，1.10版以上
-- 安装`git`
-- windows环境下的话还需要安装`mingw`，因为编译时会用到GCC
+- 安装`golang`，1.10版及以上
 - 在环境变量中配置工作目录`GOPATH`
+- 安装`git`
 - 在`GOPATH`工作目录下创建源码目录并拉取代码
     ```
     mkdir src\github.com\LemoFoundationLtd
     git clone https://github.com/LemoFoundationLtd/lemochain-go src\github.com\LemoFoundationLtd\lemochain-go
     ```
+- 因为`ECDSA`算法代码是由C语言编写，所以编译时会用到`GCC`，建议`windows`下安装`mingw`，其他系统请点击[参考](http://gcc.gnu.org/)
+
 - 编译glemo
     ```
-    cd src\github.com\LemoFoundationLtd\lemochain-go
-    go install -v ./glemo
+    cd src\github.com\LemoFoundationLtd\lemochain-go\main
+    go build
     ```
-
+- Note: 编译目标程序需为64位
 
 
 ## 运行节点
