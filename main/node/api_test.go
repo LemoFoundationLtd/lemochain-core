@@ -58,14 +58,18 @@ func TestChainAPI_api(t *testing.T) {
 	// getBlockByHash
 	exBlock1 := c.chain.GetBlockByHash(common.HexToHash("0x3f4c3152fb02a7673bf804b1ddeb75542b6ef9a5a87501d9cfbbcf6c3632a211"))
 	assert.Equal(t, exBlock1, c.GetBlockByHash("0x3f4c3152fb02a7673bf804b1ddeb75542b6ef9a5a87501d9cfbbcf6c3632a211", true))
-	exBlock1.SetTxs([]*types.Transaction{}) // set block txs to null
-	assert.Equal(t, exBlock1, c.GetBlockByHash("0x3f4c3152fb02a7673bf804b1ddeb75542b6ef9a5a87501d9cfbbcf6c3632a211", false))
+	Block1 := &types.Block{
+		Header: exBlock1.Header,
+	}
+	assert.Equal(t, Block1, c.GetBlockByHash("0x3f4c3152fb02a7673bf804b1ddeb75542b6ef9a5a87501d9cfbbcf6c3632a211", false))
 
 	// getBlockByHeight
 	exBlock2 := c.chain.GetBlockByHeight(1)
 	assert.Equal(t, exBlock2, c.GetBlockByHeight(1, true))
-	exBlock2.SetTxs([]*types.Transaction{}) // set block txs to null
-	assert.Equal(t, exBlock2, c.GetBlockByHeight(1, false))
+	Block2 := &types.Block{
+		Header: exBlock2.Header,
+	}
+	assert.Equal(t, Block2, c.GetBlockByHeight(1, false))
 
 	// get chain ID api
 	assert.Equal(t, c.chain.ChainID(), c.ChainID())
@@ -76,14 +80,18 @@ func TestChainAPI_api(t *testing.T) {
 	// get current block api
 	curBlock := c.chain.CurrentBlock()
 	assert.Equal(t, curBlock, c.CurrentBlock(true))
-	curBlock.SetTxs([]*types.Transaction{}) // set block txs to null
-	assert.Equal(t, curBlock, c.CurrentBlock(false))
+	cBlock := &types.Block{
+		Header: curBlock.Header,
+	}
+	assert.Equal(t, cBlock, c.CurrentBlock(false))
 
 	// get stable block api
 	StaBlock := c.chain.StableBlock()
 	assert.Equal(t, StaBlock, c.LatestStableBlock(true))
-	StaBlock.SetTxs([]*types.Transaction{}) // set block txs to null
-	assert.Equal(t, StaBlock, c.LatestStableBlock(false))
+	sBlock := &types.Block{
+		Header: StaBlock.Header,
+	}
+	assert.Equal(t, sBlock, c.LatestStableBlock(false))
 
 	// get current chain height api
 	assert.Equal(t, c.chain.CurrentBlock().Height(), c.CurrentHeight())

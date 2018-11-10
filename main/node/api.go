@@ -108,7 +108,6 @@ func (c *PublicChainAPI) GetBlockByHash(hash string, withBody bool) *types.Block
 		}
 		return onlyHeaderBlock
 	}
-
 }
 
 // ChainID get chain id
