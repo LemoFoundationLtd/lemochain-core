@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 )
 
 const ConfigGuideUrl = "Please visit https://github.com/LemoFoundationLtd/lemochain-go#configuration-file for detail"
@@ -72,8 +73,9 @@ type Node struct {
 	// newMinedBlockCh chan *types.Block
 	recvBlockCh chan *types.Block
 
-	stop chan struct{}
-	lock sync.RWMutex
+	stop     chan struct{}
+	stopping uint32
+	lock     sync.RWMutex
 }
 
 func initConfig(flags flag.CmdFlags) (*Config, *ConfigFromFile, *miner.MineConfig) {
@@ -174,7 +176,7 @@ func New(flags flag.CmdFlags) *Node {
 		pm:           synchronise.NewProtocolManager(configFromFile.ChainID, deputynode.GetSelfNodeID(), blockChain, txPool),
 		genesisBlock: genesisBlock,
 	}
-	// set MinerAddress for next block
+	// set Founder for next block
 	n.setMinerAddress()
 	return n
 }
@@ -377,6 +379,9 @@ func (n *Node) stopRPC() {
 
 // Stop
 func (n *Node) Stop() error {
+	if !atomic.CompareAndSwapUint32(&n.stopping, 0, 1) {
+		return nil
+	}
 	n.lock.Lock()
 	defer n.lock.Unlock()
 	log.Debug("start stopping node...")
