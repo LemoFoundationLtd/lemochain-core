@@ -245,7 +245,7 @@ func (p *TxProcessor) refundGas(gp *types.GasPool, tx *types.Transaction, restGa
 	senderAddr, _ := tx.From()
 	sender := p.am.GetAccount(senderAddr)
 
-	// Return ETH for remaining gas, exchanged at the original rate.
+	// Return LEMO for remaining gas, exchanged at the original rate.
 	remaining := new(big.Int).Mul(new(big.Int).SetUint64(restGas), tx.GasPrice())
 	sender.SetBalance(new(big.Int).Add(sender.GetBalance(), remaining))
 

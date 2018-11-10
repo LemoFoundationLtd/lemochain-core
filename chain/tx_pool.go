@@ -25,6 +25,7 @@ var TransactionTimeOut = int64(10)
 type TransactionWithTime struct {
 	Tx      *types.Transaction
 	RecTime int64
+	DelFlg  bool
 }
 
 type TxsSort interface {
@@ -35,6 +36,8 @@ type TxsSort interface {
 	removeBatch(keys []common.Hash)
 
 	remove(key common.Hash)
+
+	len() int
 }
 
 type TxsSortByTime struct {
@@ -66,6 +69,7 @@ func (cache *TxsSortByTime) push(tx *types.Transaction) {
 	cache.txs[cache.cnt] = &TransactionWithTime{
 		Tx:      tx,
 		RecTime: t.Unix(),
+		DelFlg:  false,
 	}
 	cache.index[tx.Hash()] = cache.cnt
 
@@ -73,17 +77,27 @@ func (cache *TxsSortByTime) push(tx *types.Transaction) {
 }
 
 func (cache *TxsSortByTime) pop(size int) []*types.Transaction {
-	if size <= 0 {
-		return make([]*types.Transaction, 0)
+	txs := make([]*types.Transaction, 0)
+	if (size <= 0) || (len(cache.txs) <= 0) {
+		return txs
 	} else {
-		minCnt := size
-		if cache.cnt < minCnt {
-			minCnt = cache.cnt
+		cnt := 0
+		for index := 0; (index < cache.cnt) && (cnt < size); index++ {
+			if cache.txs[index].DelFlg {
+				// delete(cache.index, cache.txs[index].Tx.Hash())
+				// cache.txs = append(cache.txs[:index], cache.txs[index+1:]...)
+				// cache.cnt = cache.cnt - 1
+				// index = index - 1
+			} else {
+				txs = append(txs, cache.txs[index].Tx)
+				cnt = cnt + 1
+			}
 		}
 
-		txs := make([]*types.Transaction, minCnt)
-		for index := 0; index < minCnt; index++ {
-			txs[index] = cache.txs[index].Tx
+		if len(txs) <= 0 {
+			cache.txs = make([]*TransactionWithTime, cache.cap)
+			cache.index = make(map[common.Hash]int)
+			cache.cnt = 0
 		}
 
 		return txs
@@ -101,12 +115,14 @@ func (cache *TxsSortByTime) removeBatch(keys []common.Hash) {
 }
 
 func (cache *TxsSortByTime) remove(key common.Hash) {
-	pos := cache.index[key]
-	if pos >= 0 {
-		delete(cache.index, key)
-		cache.txs = append(cache.txs[:pos], cache.txs[pos+1:]...)
-		cache.cnt = cache.cnt - 1
+	pos, ok := cache.index[key]
+	if ok && pos >= 0 {
+		cache.txs[pos].DelFlg = true
 	}
+}
+
+func (cache *TxsSortByTime) len() int {
+	return cache.cnt
 }
 
 type TxsRecent struct {
@@ -170,10 +186,8 @@ func NewTxPool(am *account.Manager) *TxPool {
 }
 
 func (pool *TxPool) AddTx(tx *types.Transaction) error {
-
 	pool.mux.Lock()
 	defer pool.mux.Unlock()
-
 	hash := tx.Hash()
 	isExist := pool.recent.isExist(hash)
 	if isExist {
@@ -206,6 +220,8 @@ func (pool *TxPool) AddTxs(txs []*types.Transaction) error {
 }
 
 func (pool *TxPool) AddKey(hash common.Hash) {
+	pool.mux.Lock()
+	defer pool.mux.Unlock()
 	pool.recent.put(hash)
 }
 
