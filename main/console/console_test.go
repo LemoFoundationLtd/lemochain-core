@@ -53,7 +53,7 @@ func TestNew(t *testing.T) {
 // 	"testing"
 // 	"time"
 //
-// 	"github.com/LemoFoundationLtd/lemochain-dev/lemo"
+// 	"github.com/LemoFoundationLtd/lemochain-go/lemo"
 // 	"github.com/LemoFoundationLtd/lemochain-go/chain"
 // 	"github.com/LemoFoundationLtd/lemochain-go/common"
 // 	"github.com/LemoFoundationLtd/lemochain-go/main/jsre"
@@ -133,7 +133,7 @@ func TestNew(t *testing.T) {
 // 		MaxPeers:  1000,
 // 		Port:      60001,
 // 	}
-// 	lemoConf.Genesis.LemoBase = common.HexToAddress(testAddress)
+// 	lemoConf.Genesis.MinerAddress = common.HexToAddress(testAddress)
 // 	if confOverride != nil {
 // 		confOverride(lemoConf)
 // 	}

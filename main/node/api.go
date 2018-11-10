@@ -1,7 +1,6 @@
 package node
 
 import (
-	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/miner"
@@ -27,12 +26,12 @@ func NewPrivateAccountAPI(m *account.Manager) *PrivateAccountAPI {
 }
 
 // NewAccount get lemo address api
-func (a *PrivateAccountAPI) NewKeyPair() (*crypto.AddressKeyPair, error) {
-	accounts, err := crypto.GenerateAddress()
+func (a *PrivateAccountAPI) NewKeyPair() (*crypto.AccountKey, error) {
+	accountKey, err := crypto.GenerateAddress()
 	if err != nil {
 		return nil, err
 	}
-	return accounts, nil
+	return accountKey, nil
 }
 
 // PublicAccountAPI API for access to account information
@@ -78,34 +77,37 @@ func NewPublicChainAPI(chain *chain.BlockChain) *PublicChainAPI {
 }
 
 // GetBlockByNumber get block information by height
-func (c *PublicChainAPI) GetBlockByHeight(height uint32, withTxs bool) *types.Block {
-	if withTxs {
+func (c *PublicChainAPI) GetBlockByHeight(height uint32, withBody bool) *types.Block {
+	if withBody {
 		return c.chain.GetBlockByHeight(height)
 	} else {
 		block := c.chain.GetBlockByHeight(height)
 		if block == nil {
 			return nil
 		}
-		// set the Txs field to null
-		block.SetTxs([]*types.Transaction{})
-		return block
+		// copy only header
+		onlyHeaderBlock := &types.Block{
+			Header: block.Header,
+		}
+		return onlyHeaderBlock
 	}
 }
 
 // GetBlockByHash get block information by hash
-func (c *PublicChainAPI) GetBlockByHash(hash string, withTxs bool) *types.Block {
-	if withTxs {
+func (c *PublicChainAPI) GetBlockByHash(hash string, withBody bool) *types.Block {
+	if withBody {
 		return c.chain.GetBlockByHash(common.HexToHash(hash))
 	} else {
 		block := c.chain.GetBlockByHash(common.HexToHash(hash))
 		if block == nil {
 			return nil
 		}
-		// set the Txs field to null
-		block.SetTxs([]*types.Transaction{})
-		return block
+		// copy only header
+		onlyHeaderBlock := &types.Block{
+			Header: block.Header,
+		}
+		return onlyHeaderBlock
 	}
-
 }
 
 // ChainID get chain id
@@ -119,34 +121,37 @@ func (c *PublicChainAPI) Genesis() *types.Block {
 }
 
 // CurrentBlock get the current latest block
-func (c *PublicChainAPI) CurrentBlock(withTxs bool) *types.Block {
-	if withTxs {
+func (c *PublicChainAPI) CurrentBlock(withBody bool) *types.Block {
+	if withBody {
 		return c.chain.CurrentBlock()
 	} else {
 		currentBlock := c.chain.CurrentBlock()
 		if currentBlock == nil {
 			return nil
 		}
-		// set the Txs field to null
-		currentBlock.SetTxs([]*types.Transaction{})
-		return currentBlock
+		// copy only header
+		onlyHeaderBlock := &types.Block{
+			Header: currentBlock.Header,
+		}
+		return onlyHeaderBlock
 	}
 }
 
 // LatestStableBlock get the latest currently agreed blocks
-func (c *PublicChainAPI) LatestStableBlock(withTxs bool) *types.Block {
-	if withTxs == true {
+func (c *PublicChainAPI) LatestStableBlock(withBody bool) *types.Block {
+	if withBody {
 		return c.chain.StableBlock()
 	} else {
 		stableBlock := c.chain.StableBlock()
 		if stableBlock == nil {
 			return nil
 		}
-		// set the Txs field to null
-		stableBlock.SetTxs([]*types.Transaction{})
-		return stableBlock
+		// copy only header
+		onlyHeaderBlock := &types.Block{
+			Header: stableBlock.Header,
+		}
+		return onlyHeaderBlock
 	}
-
 }
 
 // CurrentHeight
@@ -228,10 +233,10 @@ func (m *PublicMineAPI) IsMining() bool {
 	return m.miner.IsMining()
 }
 
-// LemoBase
-func (m *PublicMineAPI) LemoBase() string {
-	lemoBase := m.miner.GetLemoBase()
-	return lemoBase.String()
+// MinerAddress
+func (m *PublicMineAPI) MinerAddress() string {
+	address := m.miner.GetMinerAddress()
+	return address.String()
 }
 
 // PrivateNetAPI
@@ -244,24 +249,19 @@ func NewPrivateNetAPI(node *Node) *PrivateNetAPI {
 	return &PrivateNetAPI{node}
 }
 
-// AddStaticPeer
-func (n *PrivateNetAPI) AddStaticPeer(node string) {
-	n.node.server.AddStaticPeer(node)
+// Connect
+func (n *PrivateNetAPI) Connect(node string) {
+	n.node.server.Connect(node)
 }
 
-// DropPeer
-func (n *PrivateNetAPI) DropPeer(node string) string {
-	if n.node.server.DropPeer(node) {
-		return fmt.Sprintf("drop a peer success. id %v", node)
-	} else {
-		return fmt.Sprintf("drop a peer fail. id %v", node)
-	}
-
+// Disconnect
+func (n *PrivateNetAPI) Disconnect(node string) bool {
+	return n.node.server.Disconnect(node)
 }
 
-// Peers
-func (n *PrivateNetAPI) Peers() []p2p.PeerConnInfo {
-	return n.node.server.Peers()
+// Connections
+func (n *PrivateNetAPI) Connections() []p2p.PeerConnInfo {
+	return n.node.server.Connections()
 }
 
 // PublicNetAPI
@@ -276,7 +276,7 @@ func NewPublicNetAPI(node *Node) *PublicNetAPI {
 
 // PeersCount return peers number
 func (n *PublicNetAPI) PeersCount() string {
-	count := strconv.Itoa(len(n.node.server.Peers()))
+	count := strconv.Itoa(len(n.node.server.Connections()))
 	return count
 }
 

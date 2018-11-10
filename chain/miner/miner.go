@@ -25,7 +25,7 @@ type Miner struct {
 	blockInterval int64
 	timeoutTime   int64
 	privKey       *ecdsa.PrivateKey
-	lemoBase      common.Address
+	minerAddress  common.Address
 	txPool        *chain.TxPool
 	mining        int32
 	engine        chain.Engine
@@ -112,12 +112,12 @@ func (m *Miner) IsMining() bool {
 	return atomic.LoadInt32(&m.mining) == 1
 }
 
-func (m *Miner) SetLemoBase(address common.Address) {
-	m.lemoBase = address
+func (m *Miner) SetMinerAddress(address common.Address) {
+	m.minerAddress = address
 }
 
-func (m *Miner) GetLemoBase() common.Address {
-	return m.lemoBase
+func (m *Miner) GetMinerAddress() common.Address {
+	return m.minerAddress
 }
 
 // 获取最新区块的时间戳离当前时间的距离 单位：ms
@@ -128,7 +128,6 @@ func (m *Miner) getTimespan() int64 {
 		return int64(m.blockInterval)
 	}
 	now := time.Now().UnixNano() / 1e6
-	fmt.Printf("getTimespan: blocktime: %d, now: %d\r\n", lstSpan, now)
 	return now - int64(lstSpan)*1000
 }
 
@@ -152,7 +151,7 @@ func (m *Miner) getSleepTime() int {
 	timeDur := m.getTimespan() // 获取当前时间与最新块的时间差
 	myself := deputynode.Instance().GetDeputyByNodeID(m.currentBlock().Height(), deputynode.GetSelfNodeID())
 	curHeader := m.currentBlock().Header
-	slot := deputynode.Instance().GetSlot(curHeader.Height+1, curHeader.LemoBase, myself.LemoBase) // 获取新块离本节点索引的距离
+	slot := deputynode.Instance().GetSlot(curHeader.Height+1, curHeader.MinerAddress, myself.MinerAddress) // 获取新块离本节点索引的距离
 	if slot == -1 {
 		log.Debugf("slot = -1")
 		return -1
@@ -342,11 +341,11 @@ func (m *Miner) sealBlock() {
 
 // sealHead 生成区块头
 func (m *Miner) sealHead() *types.Header {
-	// check is need to change lemoBase
+	// check is need to change minerAddress
 	parent := m.currentBlock()
 	if (parent.Height()+1)%101000 == 1 {
 		n := deputynode.Instance().GetDeputyByNodeID(parent.Height()+1, deputynode.GetSelfNodeID())
-		m.SetLemoBase(n.LemoBase)
+		m.SetMinerAddress(n.MinerAddress)
 	}
 
 	// allowable 1 second time error
@@ -358,12 +357,12 @@ func (m *Miner) sealHead() *types.Header {
 	}
 
 	return &types.Header{
-		ParentHash: parent.Hash(),
-		LemoBase:   m.lemoBase,
-		Height:     parent.Height() + 1,
-		GasLimit:   calcGasLimit(parent),
-		Time:       blockTime,
-		Extra:      m.extra,
+		ParentHash:   parent.Hash(),
+		MinerAddress: m.minerAddress,
+		Height:       parent.Height() + 1,
+		GasLimit:     calcGasLimit(parent),
+		Time:         blockTime,
+		Extra:        m.extra,
 	}
 }
 

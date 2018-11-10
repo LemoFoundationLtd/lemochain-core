@@ -11,21 +11,22 @@ lemochain-go项目旨在展示这种共识机制的原理，验证其吞吐量�
 
 ## 安装步骤
 配置编译环境
-- 安装`golang`，1.10版以上
-- 安装`git`
-- windows环境下的话还需要安装`mingw`，因为编译时会用到GCC
+- 安装`golang`，1.10版及以上
 - 在环境变量中配置工作目录`GOPATH`
+- 安装`git`
 - 在`GOPATH`工作目录下创建源码目录并拉取代码
     ```
     mkdir src\github.com\LemoFoundationLtd
     git clone https://github.com/LemoFoundationLtd/lemochain-go src\github.com\LemoFoundationLtd\lemochain-go
     ```
+- 因为`ECDSA`算法代码是由C语言编写，所以编译时会用到`GCC`，建议`windows`下安装`mingw`，其他系统请点击[参考](http://gcc.gnu.org/)
+
 - 编译glemo
     ```
-    cd src\github.com\LemoFoundationLtd\lemochain-go
-    go install -v ./glemo
+    cd src\github.com\LemoFoundationLtd\lemochain-go\main
+    go build
     ```
-
+- Note: 编译目标程序需为64位
 
 
 ## 运行节点
@@ -47,14 +48,14 @@ $ glemo console --datadir=path/to/custom/data/folder
 LemoChain可以通过创始块配置文件(`genesis.json`)实现定制。
 ```json
 {
-  "lemobase": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
+  "founder": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
   "extraData": "",
   "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
   "gasLimit": 105000000,
   "timestamp": 1539051657,
   "deputyNodes":[
 		{
-			"lemoBase": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
+			"minerAddress": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
 			"nodeID": "0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0",
 			"ip": "127.0.0.1",
 			"port": 7001,
@@ -62,7 +63,7 @@ LemoChain可以通过创始块配置文件(`genesis.json`)实现定制。
 			"votes": 17
 		},
 		{
-			"lemoBase": "Lemo83JW7TBPA7P2P6AR9ZC2WCQJYRNHZ4NJD4CY",
+			"minerAddress": "Lemo83JW7TBPA7P2P6AR9ZC2WCQJYRNHZ4NJD4CY",
 			"nodeID": "0xddb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0",
 			"ip": "127.0.0.1",
 			"port": 7002,
@@ -70,7 +71,7 @@ LemoChain可以通过创始块配置文件(`genesis.json`)实现定制。
 			"votes": 16
 		},
 		{
-			"lemoBase": "Lemo842BJZ4DKCC764C63Y6A943775JH6NQ3Z33Y",
+			"minerAddress": "Lemo842BJZ4DKCC764C63Y6A943775JH6NQ3Z33Y",
 			"nodeID": "0x7739f34055d3c0808683dbd77a937f8e28f707d5b1e873bbe61f6f2d0347692f36ef736f342fb5ce4710f7e337f062cc2110d134b63a9575f78cb167bfae2f43",
 			"ip": "127.0.0.1",
 			"port": 7003,
@@ -80,13 +81,13 @@ LemoChain可以通过创始块配置文件(`genesis.json`)实现定制。
 	]
 }
 ```
-- `lemobase`  16亿预挖LEMO的持有账户
+- `founder`  16亿预挖LEMO的持有账户
 - `extraData` 创始块header中的一个字段，用来对链进行一些说明
 - `gasLimit` 创始块交易费用上限，用来限制块大小
 - `parentHash` 创始块的父块hash
 - `timestamp` 创始块建立时间，精确到秒
 - `deputyNodes` 初始的出块节点列表
-- `lemoBase` 挖矿收益地址
+- `minerAddress` 挖矿收益地址
 - `nodeID` 节点NodeID
 - `ip` 节点IP地址
 - `port` 节点端口号

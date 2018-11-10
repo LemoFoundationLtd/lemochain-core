@@ -43,7 +43,7 @@ type Node struct {
 	miner    *miner.Miner
 	gasPrice *big.Int
 
-	lemoBase common.Address
+	minerAddress common.Address
 
 	instanceDirLock flock.Releaser
 
@@ -118,11 +118,11 @@ func getGenesis(db protocol.ChainDB) *types.Block {
 	return block
 }
 
-func (n *Node) setLemoBase() {
+func (n *Node) setMinerAddress() {
 	nextHeight := n.chain.CurrentBlock().Height() + 1
 	deputyNode := deputynode.Instance().GetDeputyByNodeID(nextHeight, deputynode.GetSelfNodeID())
 	if deputyNode != nil {
-		n.miner.SetLemoBase(deputyNode.LemoBase)
+		n.miner.SetMinerAddress(deputyNode.MinerAddress)
 	}
 }
 
@@ -174,8 +174,8 @@ func New(flags flag.CmdFlags) *Node {
 		pm:           synchronise.NewProtocolManager(configFromFile.ChainID, deputynode.GetSelfNodeID(), blockChain, txPool),
 		genesisBlock: genesisBlock,
 	}
-	// set lemobase for next block
-	n.setLemoBase()
+	// set MinerAddress for next block
+	n.setMinerAddress()
 	return n
 }
 
@@ -248,7 +248,7 @@ func (n *Node) startInProc(apis []rpc.API) error {
 		if err := handler.RegisterName(api.Namespace, api.Service); err != nil {
 			return err
 		}
-		log.Info("InProc registered", "service", api.Service, "namespace", api.Namespace)
+		// log.Debug("InProc registered", "namespace", api.Namespace)
 	}
 	n.inprocHandler = handler
 	return nil
@@ -270,7 +270,7 @@ func (n *Node) startIPC(apis []rpc.API) error {
 		if err := handler.RegisterName(api.Namespace, api.Service); err != nil {
 			return err
 		}
-		log.Info("InProc registered", "service", api.Service, "namespace", api.Namespace)
+		// log.Debug("IPC registered", "namespace", api.Namespace)
 	}
 	var (
 		listener net.Listener
@@ -292,7 +292,7 @@ func (n *Node) startIPC(apis []rpc.API) error {
 				}
 				log.Errorf("IPC accept failed: % v", err)
 			}
-			go handler.ServeCodec(rpc.NewJSONCodec(conn), rpc.OptionMethodInvocation|rpc.OptionSubscriptions)
+			go handler.ServeCodec(rpc.NewJSONCodec(conn))
 		}
 	}()
 	n.ipcListener = listener
@@ -324,7 +324,7 @@ func (n *Node) startHTTP(endpoint string, apis []rpc.API, cors []string, vhosts 
 			if err := handler.RegisterName(api.Namespace, api.Service); err != nil {
 				return err
 			}
-			log.Debug("HTTP registered", "service", api.Service, "namespace", api.Namespace)
+			// log.Debug("HTTP registered", "namespace", api.Namespace)
 		}
 	}
 	// All APIs registered, start the HTTP listener

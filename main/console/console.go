@@ -166,15 +166,15 @@ func (c *Console) Welcome() {
 	c.jsre.Run(`Promise.all([
 		lemo.getNodeVersion(),
 		lemo.getSdkVersion(),
-		lemo.mine.getLemoBase(),
+		lemo.mine.getMinerAddress(),
 		lemo.getCurrentBlock(false, false),
 		lemo.getCurrentBlock(true, false)
 	]).then(function(results) {
 		console.log("node: v" + results[0]);
 		console.log("sdk: v" + results[1]);
-		console.log("lemobase: " + results[2]);
-		console.log("current block: " + results[3].Header.height + " " + results[3].Header.hash + " (" + new Date(1000 * parseInt(results[3].Header.timestamp, 16)).toLocaleString() + ")");
-		console.log("latest stable block: " + results[4].Header.height + " " + results[4].Header.hash + " (" + new Date(1000 * parseInt(results[4].Header.timestamp, 16)).toLocaleString() + ")");
+		console.log("minerAddress: " + results[2]);
+		console.log("current block: " + results[3].header.height + " " + results[3].header.hash + " (" + new Date(1000 * results[3].header.timestamp).toLocaleString() + ")");
+		console.log("latest stable block: " + results[4].header.height + " " + results[4].header.hash + " (" + new Date(1000 * results[4].header.timestamp).toLocaleString() + ")");
 		console.log("\n")
 	});`)
 	// List all the supported modules for the user to call

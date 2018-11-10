@@ -16,15 +16,15 @@ var _ = (*deputyNodeMarshaling)(nil)
 // MarshalJSON marshals as JSON.
 func (d DeputyNode) MarshalJSON() ([]byte, error) {
 	type DeputyNode struct {
-		LemoBase common.Address `json:"lemoBase"   gencodec:"required"`
-		NodeID   hexutil.Bytes  `json:"nodeID"     gencodec:"required"`
-		IP       hexutil.IP     `json:"ip"         gencodec:"required"`
-		Port     hexutil.Uint32 `json:"port"       gencodec:"required"`
-		Rank     hexutil.Uint32 `json:"rank"       gencodec:"required"`
-		Votes    hexutil.Uint32 `json:"votes"      gencodec:"required"`
+		MinerAddress common.Address `json:"minerAddress"   gencodec:"required"`
+		NodeID       hexutil.Bytes  `json:"nodeID"         gencodec:"required"`
+		IP           hexutil.IP     `json:"ip"             gencodec:"required"`
+		Port         hexutil.Uint32 `json:"port"           gencodec:"required"`
+		Rank         hexutil.Uint32 `json:"rank"           gencodec:"required"`
+		Votes        hexutil.Uint32 `json:"votes"          gencodec:"required"`
 	}
 	var enc DeputyNode
-	enc.LemoBase = d.LemoBase
+	enc.MinerAddress = d.MinerAddress
 	enc.NodeID = d.NodeID
 	enc.IP = hexutil.IP(d.IP)
 	enc.Port = hexutil.Uint32(d.Port)
@@ -36,21 +36,21 @@ func (d DeputyNode) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON unmarshals from JSON.
 func (d *DeputyNode) UnmarshalJSON(input []byte) error {
 	type DeputyNode struct {
-		LemoBase *common.Address `json:"lemoBase"   gencodec:"required"`
-		NodeID   *hexutil.Bytes  `json:"nodeID"     gencodec:"required"`
-		IP       *hexutil.IP     `json:"ip"         gencodec:"required"`
-		Port     *hexutil.Uint32 `json:"port"       gencodec:"required"`
-		Rank     *hexutil.Uint32 `json:"rank"       gencodec:"required"`
-		Votes    *hexutil.Uint32 `json:"votes"      gencodec:"required"`
+		MinerAddress *common.Address `json:"minerAddress"   gencodec:"required"`
+		NodeID       *hexutil.Bytes  `json:"nodeID"         gencodec:"required"`
+		IP           *hexutil.IP     `json:"ip"             gencodec:"required"`
+		Port         *hexutil.Uint32 `json:"port"           gencodec:"required"`
+		Rank         *hexutil.Uint32 `json:"rank"           gencodec:"required"`
+		Votes        *hexutil.Uint32 `json:"votes"          gencodec:"required"`
 	}
 	var dec DeputyNode
 	if err := json.Unmarshal(input, &dec); err != nil {
 		return err
 	}
-	if dec.LemoBase == nil {
-		return errors.New("missing required field 'lemoBase' for DeputyNode")
+	if dec.MinerAddress == nil {
+		return errors.New("missing required field 'minerAddress' for DeputyNode")
 	}
-	d.LemoBase = *dec.LemoBase
+	d.MinerAddress = *dec.MinerAddress
 	if dec.NodeID == nil {
 		return errors.New("missing required field 'nodeID' for DeputyNode")
 	}

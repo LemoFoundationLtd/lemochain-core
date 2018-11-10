@@ -11,22 +11,23 @@ import (
 )
 
 //go:generate gencodec -type Header -field-override headerMarshaling -out gen_header_json.go
+//go:generate gencodec -type Block -out gen_block_json.go
 
 type Header struct {
-	ParentHash  common.Hash    `json:"parentHash"       gencodec:"required"`
-	LemoBase    common.Address `json:"miner"            gencodec:"required"`
-	VersionRoot common.Hash    `json:"versionRoot"      gencodec:"required"`
-	TxRoot      common.Hash    `json:"transactionRoot"  gencodec:"required"`
-	LogRoot     common.Hash    `json:"changeLogRoot"    gencodec:"required"`
-	EventRoot   common.Hash    `json:"eventRoot"        gencodec:"required"`
-	Bloom       Bloom          `json:"logsBloom"        gencodec:"required"`
-	Height      uint32         `json:"height"           gencodec:"required"`
-	GasLimit    uint64         `json:"gasLimit"         gencodec:"required"`
-	GasUsed     uint64         `json:"gasUsed"          gencodec:"required"`
-	Time        uint32         `json:"timestamp"        gencodec:"required"`
-	SignData    []byte         `json:"signData"         gencodec:"required"`
-	DeputyRoot  []byte         `json:"deputyRoot"`
-	Extra       []byte         `json:"extraData"` // max length is 256 bytes
+	ParentHash   common.Hash    `json:"parentHash"       gencodec:"required"`
+	MinerAddress common.Address `json:"miner"            gencodec:"required"`
+	VersionRoot  common.Hash    `json:"versionRoot"      gencodec:"required"`
+	TxRoot       common.Hash    `json:"transactionRoot"  gencodec:"required"`
+	LogRoot      common.Hash    `json:"changeLogRoot"    gencodec:"required"`
+	EventRoot    common.Hash    `json:"eventRoot"        gencodec:"required"`
+	Bloom        Bloom          `json:"eventBloom"       gencodec:"required"`
+	Height       uint32         `json:"height"           gencodec:"required"`
+	GasLimit     uint64         `json:"gasLimit"         gencodec:"required"`
+	GasUsed      uint64         `json:"gasUsed"          gencodec:"required"`
+	Time         uint32         `json:"timestamp"        gencodec:"required"`
+	SignData     []byte         `json:"signData"         gencodec:"required"`
+	DeputyRoot   []byte         `json:"deputyRoot"`
+	Extra        []byte         `json:"extraData"` // max length is 256 bytes
 }
 
 type headerMarshaling struct {
@@ -54,21 +55,21 @@ func (sd SignData) String() string {
 
 // Block
 type Block struct {
-	Header         *Header
-	Txs            []*Transaction
-	ChangeLogs     []*ChangeLog
-	Events         []*Event
-	ConfirmPackage []SignData
-	DeputyNodes    deputynode.DeputyNodes
+	Header      *Header                `json:"header"        gencodec:"required"`
+	Txs         []*Transaction         `json:"transactions"  gencodec:"required"`
+	ChangeLogs  []*ChangeLog           `json:"changeLogs"    gencodec:"required"`
+	Events      []*Event               `json:"events"        gencodec:"required"`
+	Confirms    []SignData             `json:"confirms"`
+	DeputyNodes deputynode.DeputyNodes `json:"deputyNodes"`
 }
 
-func NewBlock(header *Header, txs []*Transaction, changeLog []*ChangeLog, events []*Event, confirmPackage []SignData) *Block {
+func NewBlock(header *Header, txs []*Transaction, changeLog []*ChangeLog, events []*Event, confirms []SignData) *Block {
 	return &Block{
-		Header:         header,
-		Txs:            txs,
-		ChangeLogs:     changeLog,
-		Events:         events,
-		ConfirmPackage: confirmPackage,
+		Header:     header,
+		Txs:        txs,
+		ChangeLogs: changeLog,
+		Events:     events,
+		Confirms:   confirms,
 	}
 }
 
@@ -78,7 +79,7 @@ type Blocks []*Block
 func (h *Header) Hash() common.Hash {
 	return rlpHash([]interface{}{
 		h.ParentHash,
-		h.LemoBase,
+		h.MinerAddress,
 		h.VersionRoot,
 		h.TxRoot,
 		h.LogRoot,
@@ -122,7 +123,7 @@ func rlpHash(data interface{}) (h common.Hash) {
 func (h *Header) String() string {
 	set := []string{
 		fmt.Sprintf("ParentHash: %s", h.ParentHash.Hex()),
-		fmt.Sprintf("LemoBase: %s", h.LemoBase.String()),
+		fmt.Sprintf("MinerAddress: %s", h.MinerAddress.String()),
 		fmt.Sprintf("VersionRoot: %s", h.VersionRoot.Hex()),
 		fmt.Sprintf("TxRoot: %s", h.TxRoot.Hex()),
 		fmt.Sprintf("LogRoot: %s", h.LogRoot.Hex()),
@@ -142,24 +143,24 @@ func (h *Header) String() string {
 	return fmt.Sprintf("{%s}", strings.Join(set, ", "))
 }
 
-func (b *Block) Hash() common.Hash        { return b.Header.Hash() }
-func (b *Block) Height() uint32           { return b.Header.Height }
-func (b *Block) ParentHash() common.Hash  { return b.Header.ParentHash }
-func (b *Block) LemoBase() common.Address { return b.Header.LemoBase }
-func (b *Block) VersionRoot() common.Hash { return b.Header.VersionRoot }
-func (b *Block) TxHash() common.Hash      { return b.Header.TxRoot }
-func (b *Block) LogsHash() common.Hash    { return b.Header.LogRoot }
-func (b *Block) EventRoot() common.Hash   { return b.Header.EventRoot }
-func (b *Block) Bloom() Bloom             { return b.Header.Bloom }
-func (b *Block) GasLimit() uint64         { return b.Header.GasLimit }
-func (b *Block) GasUsed() uint64          { return b.Header.GasUsed }
-func (b *Block) Time() uint32             { return b.Header.Time }
-func (b *Block) SignData() []byte         { return b.Header.SignData }
-func (b *Block) Extra() []byte            { return b.Header.Extra }
+func (b *Block) Hash() common.Hash            { return b.Header.Hash() }
+func (b *Block) Height() uint32               { return b.Header.Height }
+func (b *Block) ParentHash() common.Hash      { return b.Header.ParentHash }
+func (b *Block) MinerAddress() common.Address { return b.Header.MinerAddress }
+func (b *Block) VersionRoot() common.Hash     { return b.Header.VersionRoot }
+func (b *Block) TxHash() common.Hash          { return b.Header.TxRoot }
+func (b *Block) LogsHash() common.Hash        { return b.Header.LogRoot }
+func (b *Block) EventRoot() common.Hash       { return b.Header.EventRoot }
+func (b *Block) Bloom() Bloom                 { return b.Header.Bloom }
+func (b *Block) GasLimit() uint64             { return b.Header.GasLimit }
+func (b *Block) GasUsed() uint64              { return b.Header.GasUsed }
+func (b *Block) Time() uint32                 { return b.Header.Time }
+func (b *Block) SignData() []byte             { return b.Header.SignData }
+func (b *Block) Extra() []byte                { return b.Header.Extra }
 
 func (b *Block) SetHeader(header *Header)                          { b.Header = header }
 func (b *Block) SetTxs(txs []*Transaction)                         { b.Txs = txs }
-func (b *Block) SetConfirmPackage(pack []SignData)                 { b.ConfirmPackage = pack }
+func (b *Block) SetConfirms(confirms []SignData)                   { b.Confirms = confirms }
 func (b *Block) SetChangeLogs(logs []*ChangeLog)                   { b.ChangeLogs = logs }
 func (b *Block) SetEvents(events []*Event)                         { b.Events = events }
 func (b *Block) SetDeputyNodes(deputyNodes deputynode.DeputyNodes) { b.DeputyNodes = deputyNodes }
@@ -170,7 +171,7 @@ func (b *Block) String() string {
 		fmt.Sprintf("Txs: %v", b.Txs),
 		fmt.Sprintf("ChangeLogs: %v", b.ChangeLogs),
 		fmt.Sprintf("Events: %v", b.Events),
-		fmt.Sprintf("ConfirmPackage: %v", b.ConfirmPackage),
+		fmt.Sprintf("Confirms: %v", b.Confirms),
 	}
 
 	return fmt.Sprintf("{%s}", strings.Join(set, ", "))

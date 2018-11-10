@@ -124,7 +124,7 @@ func testServerMethodExecution(t *testing.T, method string) {
 	clientConn, serverConn := net.Pipe()
 	defer clientConn.Close()
 
-	go server.ServeCodec(NewJSONCodec(serverConn), OptionMethodInvocation)
+	go server.ServeCodec(NewJSONCodec(serverConn))
 
 	out := json.NewEncoder(clientConn)
 	in := json.NewDecoder(clientConn)

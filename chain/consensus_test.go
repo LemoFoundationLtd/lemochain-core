@@ -14,16 +14,16 @@ import (
 )
 
 const (
-	block01LemoBase = "0x015780F8456F9c1532645087a19DcF9a7e0c7F97"
-	deputy01Privkey = "0xc21b6b2fbf230f665b936194d14da67187732bf9d28768aef1a3cbb26608f8aa"
-	block02LemoBase = "0x016ad4Fc7e1608685Bf5fe5573973BF2B1Ef9B8A"
-	deputy02Privkey = "0x9c3c4a327ce214f0a1bf9cfa756fbf74f1c7322399ffff925efd8c15c49953eb"
-	block03LemoBase = "0x01f98855Be9ecc5c23A28Ce345D2Cc04686f2c61"
-	deputy03Privkey = "0xba9b51e59ec57d66b30b9b868c76d6f4d386ce148d9c6c1520360d92ef0f27ae"
-	block04LemoBase = "0x0112fDDcF0C08132A5dcd9ED77e1a3348ff378D2"
-	deputy04Privkey = "0xb381bad69ad4b200462a0cc08fcb8ba64d26efd4f49933c2c2448cb23f2cd9d0"
-	block05LemoBase = "0x016017aF50F4bB67101CE79298ACBdA1A3c12C15"
-	deputy05Privkey = "0x56b5fe1b8c40f0dec29b621a16ffcbc7a1bb5c0b0f910c5529f991273cd0569c"
+	block01MinerAddress = "0x015780F8456F9c1532645087a19DcF9a7e0c7F97"
+	deputy01Privkey     = "0xc21b6b2fbf230f665b936194d14da67187732bf9d28768aef1a3cbb26608f8aa"
+	block02MinerAddress = "0x016ad4Fc7e1608685Bf5fe5573973BF2B1Ef9B8A"
+	deputy02Privkey     = "0x9c3c4a327ce214f0a1bf9cfa756fbf74f1c7322399ffff925efd8c15c49953eb"
+	block03MinerAddress = "0x01f98855Be9ecc5c23A28Ce345D2Cc04686f2c61"
+	deputy03Privkey     = "0xba9b51e59ec57d66b30b9b868c76d6f4d386ce148d9c6c1520360d92ef0f27ae"
+	block04MinerAddress = "0x0112fDDcF0C08132A5dcd9ED77e1a3348ff378D2"
+	deputy04Privkey     = "0xb381bad69ad4b200462a0cc08fcb8ba64d26efd4f49933c2c2448cb23f2cd9d0"
+	block05MinerAddress = "0x016017aF50F4bB67101CE79298ACBdA1A3c12C15"
+	deputy05Privkey     = "0x56b5fe1b8c40f0dec29b621a16ffcbc7a1bb5c0b0f910c5529f991273cd0569c"
 )
 
 // loadDpovp 加载一个Dpovp实例
@@ -66,44 +66,44 @@ func initDeputyNode(numNode int, height uint32) error {
 
 	var nodes = make([]*deputynode.DeputyNode, 5)
 	nodes[0] = &deputynode.DeputyNode{
-		LemoBase: common.HexToAddress(block01LemoBase),
-		NodeID:   (crypto.FromECDSAPub(&privarte01.PublicKey))[1:],
-		IP:       nil,
-		Port:     7001,
-		Rank:     1,
-		Votes:    120,
+		MinerAddress: common.HexToAddress(block01MinerAddress),
+		NodeID:       (crypto.FromECDSAPub(&privarte01.PublicKey))[1:],
+		IP:           nil,
+		Port:         7001,
+		Rank:         1,
+		Votes:        120,
 	}
 	nodes[1] = &deputynode.DeputyNode{
-		LemoBase: common.HexToAddress(block02LemoBase),
-		NodeID:   (crypto.FromECDSAPub(&privarte02.PublicKey))[1:],
-		IP:       nil,
-		Port:     7002,
-		Rank:     2,
-		Votes:    110,
+		MinerAddress: common.HexToAddress(block02MinerAddress),
+		NodeID:       (crypto.FromECDSAPub(&privarte02.PublicKey))[1:],
+		IP:           nil,
+		Port:         7002,
+		Rank:         2,
+		Votes:        110,
 	}
 	nodes[2] = &deputynode.DeputyNode{
-		LemoBase: common.HexToAddress(block03LemoBase),
-		NodeID:   (crypto.FromECDSAPub(&privarte03.PublicKey))[1:],
-		IP:       nil,
-		Port:     7003,
-		Rank:     3,
-		Votes:    100,
+		MinerAddress: common.HexToAddress(block03MinerAddress),
+		NodeID:       (crypto.FromECDSAPub(&privarte03.PublicKey))[1:],
+		IP:           nil,
+		Port:         7003,
+		Rank:         3,
+		Votes:        100,
 	}
 	nodes[3] = &deputynode.DeputyNode{
-		LemoBase: common.HexToAddress(block04LemoBase),
-		NodeID:   (crypto.FromECDSAPub(&privarte04.PublicKey))[1:],
-		IP:       nil,
-		Port:     7004,
-		Rank:     4,
-		Votes:    90,
+		MinerAddress: common.HexToAddress(block04MinerAddress),
+		NodeID:       (crypto.FromECDSAPub(&privarte04.PublicKey))[1:],
+		IP:           nil,
+		Port:         7004,
+		Rank:         4,
+		Votes:        90,
 	}
 	nodes[4] = &deputynode.DeputyNode{
-		LemoBase: common.HexToAddress(block05LemoBase),
-		NodeID:   (crypto.FromECDSAPub(&privarte05.PublicKey))[1:],
-		IP:       nil,
-		Port:     7005,
-		Rank:     5,
-		Votes:    80,
+		MinerAddress: common.HexToAddress(block05MinerAddress),
+		NodeID:       (crypto.FromECDSAPub(&privarte05.PublicKey))[1:],
+		IP:           nil,
+		Port:         7005,
+		Rank:         5,
+		Votes:        80,
 	}
 
 	if numNode > 5 || numNode == 0 {
@@ -129,12 +129,12 @@ func signTestBlock(deputyPrivate string, block *types.Block) ([]byte, error) {
 }
 
 // newTestBlock 创建一个函数，专门用来生成符合测试用例所用的区块
-func newTestBlock(dpovp *Dpovp, parentHash common.Hash, height uint32, lemoBase common.Address, timeStamp uint32, signPrivate string, save bool) (*types.Block, error) {
+func newTestBlock(dpovp *Dpovp, parentHash common.Hash, height uint32, address common.Address, timeStamp uint32, signPrivate string, save bool) (*types.Block, error) {
 	testBlock := makeBlock(dpovp.db, blockInfo{
 		hash:        common.Hash{},
 		parentHash:  parentHash,
 		height:      height,
-		author:      lemoBase,
+		author:      address,
 		versionRoot: common.Hash{},
 		txRoot:      common.Hash{},
 		logRoot:     common.Hash{},
@@ -156,66 +156,66 @@ func Test_verifyHeaderTime(t *testing.T) {
 	blocks := []types.Block{
 		{
 			Header: &types.Header{
-				ParentHash:  common.Hash{},
-				LemoBase:    common.Address{},
-				VersionRoot: common.Hash{},
-				TxRoot:      common.Hash{},
-				LogRoot:     common.Hash{},
-				EventRoot:   common.Hash{},
-				Bloom:       types.Bloom{},
-				Height:      0,
-				GasLimit:    0,
-				GasUsed:     0,
-				Time:        uint32(time.Now().Unix() - 2), // 正确时间
-				SignData:    nil,
-				Extra:       nil,
+				ParentHash:   common.Hash{},
+				MinerAddress: common.Address{},
+				VersionRoot:  common.Hash{},
+				TxRoot:       common.Hash{},
+				LogRoot:      common.Hash{},
+				EventRoot:    common.Hash{},
+				Bloom:        types.Bloom{},
+				Height:       0,
+				GasLimit:     0,
+				GasUsed:      0,
+				Time:         uint32(time.Now().Unix() - 2), // 正确时间
+				SignData:     nil,
+				Extra:        nil,
 			},
-			Txs:            nil,
-			ChangeLogs:     nil,
-			Events:         nil,
-			ConfirmPackage: nil,
+			Txs:        nil,
+			ChangeLogs: nil,
+			Events:     nil,
+			Confirms:   nil,
 		},
 		{
 			Header: &types.Header{
-				ParentHash:  common.Hash{},
-				LemoBase:    common.Address{},
-				VersionRoot: common.Hash{},
-				TxRoot:      common.Hash{},
-				LogRoot:     common.Hash{},
-				EventRoot:   common.Hash{},
-				Bloom:       types.Bloom{},
-				Height:      0,
-				GasLimit:    0,
-				GasUsed:     0,
-				Time:        uint32(time.Now().Unix() - 1), // 临界点时间
-				SignData:    nil,
-				Extra:       nil,
+				ParentHash:   common.Hash{},
+				MinerAddress: common.Address{},
+				VersionRoot:  common.Hash{},
+				TxRoot:       common.Hash{},
+				LogRoot:      common.Hash{},
+				EventRoot:    common.Hash{},
+				Bloom:        types.Bloom{},
+				Height:       0,
+				GasLimit:     0,
+				GasUsed:      0,
+				Time:         uint32(time.Now().Unix() - 1), // 临界点时间
+				SignData:     nil,
+				Extra:        nil,
 			},
-			Txs:            nil,
-			ChangeLogs:     nil,
-			Events:         nil,
-			ConfirmPackage: nil,
+			Txs:        nil,
+			ChangeLogs: nil,
+			Events:     nil,
+			Confirms:   nil,
 		},
 		{
 			Header: &types.Header{
-				ParentHash:  common.Hash{},
-				LemoBase:    common.Address{},
-				VersionRoot: common.Hash{},
-				TxRoot:      common.Hash{},
-				LogRoot:     common.Hash{},
-				EventRoot:   common.Hash{},
-				Bloom:       types.Bloom{},
-				Height:      0,
-				GasLimit:    0,
-				GasUsed:     0,
-				Time:        uint32(time.Now().Unix() + 2), // 不正确时间
-				SignData:    nil,
-				Extra:       nil,
+				ParentHash:   common.Hash{},
+				MinerAddress: common.Address{},
+				VersionRoot:  common.Hash{},
+				TxRoot:       common.Hash{},
+				LogRoot:      common.Hash{},
+				EventRoot:    common.Hash{},
+				Bloom:        types.Bloom{},
+				Height:       0,
+				GasLimit:     0,
+				GasUsed:      0,
+				Time:         uint32(time.Now().Unix() + 2), // 不正确时间
+				SignData:     nil,
+				Extra:        nil,
 			},
-			Txs:            nil,
-			ChangeLogs:     nil,
-			Events:         nil,
-			ConfirmPackage: nil,
+			Txs:        nil,
+			ChangeLogs: nil,
+			Events:     nil,
+			Confirms:   nil,
 		},
 	}
 
@@ -235,7 +235,7 @@ func Test_verifyHeaderSignData(t *testing.T) {
 	dpovp := loadDpovp()
 	defer store.ClearData()
 	// 创建一个块并用另一个节点来对此区块进行签名
-	block01, err := newTestBlock(dpovp, common.Hash{}, 1, common.HexToAddress(block01LemoBase), uint32(time.Now().Unix()), deputy02Privkey, false)
+	block01, err := newTestBlock(dpovp, common.Hash{}, 1, common.HexToAddress(block01MinerAddress), uint32(time.Now().Unix()), deputy02Privkey, false)
 	assert.NoError(t, err)
 	// header := block01.Header
 	assert.Equal(t, ErrVerifyHeaderFailed, verifyHeaderSignData(block01))
@@ -260,7 +260,7 @@ func Test_headerExtra(t *testing.T) {
 	dpovp := loadDpovp()
 	defer store.ClearData()
 	// 创建一个标准的区块
-	testBlcok, err := newTestBlock(dpovp, common.Hash{}, 1, common.HexToAddress(block01LemoBase), uint32(time.Now().Unix()-10), deputy01Privkey, false)
+	testBlcok, err := newTestBlock(dpovp, common.Hash{}, 1, common.HexToAddress(block01MinerAddress), uint32(time.Now().Unix()-10), deputy01Privkey, false)
 	assert.NoError(t, err)
 	// 设置区块头中的extra字段长度大于标准长度
 	extra := make([]byte, 257)
@@ -284,13 +284,13 @@ func TestDpovp_VerifyHeader01(t *testing.T) {
 	dpovp := loadDpovp()
 	defer store.ClearData()
 	// 验证不存在父区块的情况
-	testBlock00, err := newTestBlock(dpovp, common.Hash{}, 0, common.HexToAddress(block01LemoBase), uint32(time.Now().Unix()-10), deputy01Privkey, true)
+	testBlock00, err := newTestBlock(dpovp, common.Hash{}, 0, common.HexToAddress(block01MinerAddress), uint32(time.Now().Unix()-10), deputy01Privkey, true)
 	assert.NoError(t, err)
 	// header := testBlock00.Header
 	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyHeader(testBlock00))
 
 	// 验证父区块的高度为0，也就是父区块为创世区块情况
-	testBlock01, err := newTestBlock(dpovp, testBlock00.Hash(), 1, common.HexToAddress(block02LemoBase), uint32(time.Now().Unix()-5), deputy02Privkey, true)
+	testBlock01, err := newTestBlock(dpovp, testBlock00.Hash(), 1, common.HexToAddress(block02MinerAddress), uint32(time.Now().Unix()-5), deputy02Privkey, true)
 	assert.NoError(t, err)
 
 	assert.Equal(t, nil, dpovp.VerifyHeader(testBlock01))
@@ -304,43 +304,43 @@ func TestDpovp_VerifyHeader02(t *testing.T) {
 	dpovp := loadDpovp()
 	defer store.ClearData()
 	// 创世块,随便哪个节点出块在这里没有影响
-	block00, err := newTestBlock(dpovp, common.Hash{}, 0, common.HexToAddress(block01LemoBase), 1995, deputy01Privkey, true)
+	block00, err := newTestBlock(dpovp, common.Hash{}, 0, common.HexToAddress(block01MinerAddress), 1995, deputy01Privkey, true)
 	assert.NoError(t, err)
 	// parent is genesis block,由第一个节点出块,此区块是作为测试区块的参照区块
-	block01, err := newTestBlock(dpovp, block00.Hash(), 1, common.HexToAddress(block01LemoBase), 2000, deputy01Privkey, true)
+	block01, err := newTestBlock(dpovp, block00.Hash(), 1, common.HexToAddress(block01MinerAddress), 2000, deputy01Privkey, true)
 	assert.NoError(t, err)
 
 	// if slot == 0 :
 	// 还是由第一个节点出块,模拟 (if slot == 0 ) 的情况 ,与block01时间差为44s,满足条件(if timeSpan >= oneLoopTime-d.timeoutTime),此区块共识验证通过会返回nil
-	block02, err := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block01LemoBase), 2044, deputy01Privkey, false)
+	block02, err := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block01MinerAddress), 2044, deputy01Privkey, false)
 	assert.NoError(t, err)
 	assert.Equal(t, nil, dpovp.VerifyHeader(block02))
 	// 与block01时间差为33s,小于40s,验证不通过的情况
-	block03, err := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block01LemoBase), 2033, deputy01Privkey, false)
+	block03, err := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block01MinerAddress), 2033, deputy01Privkey, false)
 	assert.NoError(t, err)
 	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyHeader(block03))
 	// 测试一个临界值，与block01时间差等于40s的情况
-	block04, err := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block01LemoBase), 2040, deputy01Privkey, false)
+	block04, err := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block01MinerAddress), 2040, deputy01Privkey, false)
 	assert.NoError(t, err)
 	assert.Equal(t, nil, dpovp.VerifyHeader(block04))
 
 	// else if slot == 1 :
 	// 都与block01作为父块, 设置出块代理节点为第二个节点，满足slot == 1,时间差设为第一种小于一轮(50s)的情况,
 	// block05时间满足(timeSpan >= d.blockInterval && timeSpan < d.timeoutTime)的正常情况
-	block05, err := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block02LemoBase), 2005, deputy02Privkey, false)
+	block05, err := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block02MinerAddress), 2005, deputy02Privkey, false)
 	assert.NoError(t, err)
 	assert.Equal(t, nil, dpovp.VerifyHeader(block05))
 	// block06 不满足(timeSpan >= d.blockInterval && timeSpan < d.timeoutTime)的情况,timeSpan == 11 > 10
-	block06, err := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block02LemoBase), 2011, deputy02Privkey, false)
+	block06, err := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block02MinerAddress), 2011, deputy02Privkey, false)
 	assert.NoError(t, err)
 	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyHeader(block06))
 	// if slot == 1 else 的情况，此情况是timeSpan >= oneLoopTime,时间间隔超过一轮
 	// 首先测试 timeSpan % oneLoopTime < timeoutTime 的正常情况
-	block07, err := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block02LemoBase), 2051, deputy02Privkey, false)
+	block07, err := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block02MinerAddress), 2051, deputy02Privkey, false)
 	assert.NoError(t, err)
 	assert.Equal(t, nil, dpovp.VerifyHeader(block07))
 	// 异常情况,timeSpan % oneLoopTime = 20 > timeoutTime
-	block08, err := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block02LemoBase), 2070, deputy02Privkey, false)
+	block08, err := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block02MinerAddress), 2070, deputy02Privkey, false)
 	assert.NoError(t, err)
 	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyHeader(block08))
 
@@ -348,16 +348,16 @@ func TestDpovp_VerifyHeader02(t *testing.T) {
 	// slot > 1的情况分析
 	// timeSpan/d.timeoutTime == int64(slot-1) , timeSpan与timeoutTime的除数正好是间隔的代理节点数，为正常情况
 	// 设置block09为第四个节点出块，与block01出块节点中间相隔2个节点,设置时间timeSpan == 20--29都是符合出块的时间
-	block09, err := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block04LemoBase), 2025, deputy04Privkey, false)
+	block09, err := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block04MinerAddress), 2025, deputy04Privkey, false)
 	assert.NoError(t, err)
 	assert.Equal(t, nil, dpovp.VerifyHeader(block09))
 	// 不符合情况,设置timeSpan >=30 || timeSpan < 20
 	// timeSpan >=30 情况， 满足条件 timeSpan/d.timeoutTime != int64(slot-1)
-	block10, err := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block04LemoBase), 2030, deputy04Privkey, false)
+	block10, err := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block04MinerAddress), 2030, deputy04Privkey, false)
 	assert.NoError(t, err)
 	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyHeader(block10))
 	// timeSpan < 20 情况， 满足条件 timeSpan/d.timeoutTime != int64(slot-1)
-	block11, err := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block04LemoBase), 2019, deputy04Privkey, false)
+	block11, err := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block04MinerAddress), 2019, deputy04Privkey, false)
 	assert.NoError(t, err)
 	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyHeader(block11))
 
@@ -368,10 +368,10 @@ func TestDpovp_Seal(t *testing.T) {
 	dpovp := loadDpovp()
 	defer store.ClearData()
 	// 创世块
-	block00, err := newTestBlock(dpovp, common.Hash{}, 0, common.HexToAddress(block01LemoBase), 995, deputy01Privkey, true)
+	block00, err := newTestBlock(dpovp, common.Hash{}, 0, common.HexToAddress(block01MinerAddress), 995, deputy01Privkey, true)
 	assert.NoError(t, err)
 	// parent is genesis block,此区块是作为测试区块的参照区块
-	block01, err := newTestBlock(dpovp, block00.Hash(), 1, common.HexToAddress(block01LemoBase), 1000, deputy01Privkey, true)
+	block01, err := newTestBlock(dpovp, block00.Hash(), 1, common.HexToAddress(block01MinerAddress), 1000, deputy01Privkey, true)
 	assert.NoError(t, err)
 
 	TestBlockHeader := block01.Header // 得到block01头，为生成TestBlock所用
@@ -407,12 +407,12 @@ func TestDpovp_Finalize(t *testing.T) {
 	// dpovp.handOutRewards(9999)
 	dpovp.Finalize(&types.Header{Height: 19998}, am)
 	// dpovp.handOutRewards(19998)
-	addr1, err := common.StringToAddress(block01LemoBase)
+	addr1, err := common.StringToAddress(block01MinerAddress)
 	assert.NoError(t, err)
 	account01 := am.GetAccount(addr1)
 	t.Log("When there is no reward,node01Balance = ", account01.GetBalance())
 
-	addr2, err := common.StringToAddress(block02LemoBase)
+	addr2, err := common.StringToAddress(block02MinerAddress)
 	assert.NoError(t, err)
 	account02 := am.GetAccount(addr2)
 	t.Log("When there is no reward,node01Balance = ", account02.GetBalance())

@@ -2,13 +2,13 @@ package runtime
 
 import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/vm/abi"
 	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"github.com/stretchr/testify/assert"
 	"math/big"
 	"strings"
 	"testing"
 
-	"github.com/LemoFoundationLtd/lemochain-go/accounts/abi"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/vm"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 )
@@ -17,8 +17,8 @@ func TestDefaults(t *testing.T) {
 	cfg := new(Config)
 	setDefaults(cfg)
 
-	if cfg.Time == nil {
-		t.Error("expected time to be non nil")
+	if cfg.Time == 0 {
+		t.Error("expected time to be not 0")
 	}
 	if cfg.GasLimit == 0 {
 		t.Error("didn't expect gaslimit to be zero")
@@ -75,8 +75,7 @@ func TestCall(t *testing.T) {
 	db, _ := store.NewCacheChain("../../../db")
 	am := account.NewManager(common.Hash{}, db)
 	address := common.HexToAddress("0x0a")
-	contractAccount, err := am.GetAccount(address)
-	assert.NoError(t, err)
+	contractAccount := am.GetAccount(address)
 	contractAccount.SetCode([]byte{
 		byte(vm.PUSH1), 10,
 		byte(vm.PUSH1), 0,

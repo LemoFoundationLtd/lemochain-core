@@ -375,7 +375,7 @@ func (pm *ProtocolManager) handleMsg(p *peerConnection) error {
 		if err := msg.Decode(&query); err != nil {
 			return errResp(protocol.ErrDecode, "%v: %v", msg, err)
 		}
-		confirmInfo := pm.blockchain.GetConfirmPackage(&query)
+		confirmInfo := pm.blockchain.GetConfirms(&query)
 		if confirmInfo == nil {
 			log.Warn(fmt.Sprintf("can't get confirm package of block: height(%d) hash(%s)", query.Height, query.Hash.Hex()))
 			return nil
@@ -384,11 +384,11 @@ func (pm *ProtocolManager) handleMsg(p *peerConnection) error {
 			log.Debug("send confirm info message failed.")
 		}
 	case protocol.ConfirmInfoMsg: // 收到远程节点的获取确信包答复
-		var pack protocol.BlockConfirmPackage
+		var pack protocol.BlockConfirms
 		if err := msg.Decode(&pack); err != nil {
 			return errResp(protocol.ErrDecode, "%v: %v", msg, err)
 		}
-		pm.blockchain.ReceiveConfirmPackage(pack)
+		pm.blockchain.ReceiveConfirms(pack)
 	default:
 		return errors.New("can not math message type")
 	}

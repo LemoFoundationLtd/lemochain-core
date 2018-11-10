@@ -19,11 +19,11 @@ type ChainDB interface {
 	// 设置区块的确认信息 每次收到一个
 	SetConfirmInfo(hash common.Hash, signData types.SignData) error
 	AppendConfirmInfo(hash common.Hash, signData types.SignData) error
-	SetConfirmPackage(hash common.Hash, pack []types.SignData) error
-	AppendConfirmPackage(hash common.Hash, pack []types.SignData) error
+	SetConfirms(hash common.Hash, pack []types.SignData) error
+	AppendConfirms(hash common.Hash, pack []types.SignData) error
 
 	// 获取区块的确认包 获取不到返回：nil,原因
-	GetConfirmPackage(hash common.Hash) ([]types.SignData, error)
+	GetConfirms(hash common.Hash) ([]types.SignData, error)
 
 	// 区块得到共识
 	SetStableBlock(hash common.Hash) error
