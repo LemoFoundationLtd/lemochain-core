@@ -5688,7 +5688,7 @@
                 classCallCheck(this, Requester);
 
                 this.conn = conn;
-                this.idGenerator = 0; // used for generate watchId
+                this.idGenerator = 1; // used for generate watchId
 
                 this.watchers = {}; // key is watchId, value is timer
             }
@@ -8291,35 +8291,35 @@
         /**
          * Get current block information
          * @param {Requester} requester
-         * @param {boolean} stable Get stable block or the newest block without consensus
-         * @param {boolean} withTxList Get the transactions detail if true
+         * @param {boolean?} stable=true Get stable block or the newest block without consensus
+         * @param {boolean?} withBody Get the body detail if true
          * @return {Promise<object>}
          */
-        getCurrentBlock: function getCurrentBlock(requester, stable, withTxList) {
-            var apiName = stable ? 'latestStableBlock' : 'currentBlock';
-            return requester.send("".concat(MODULE_NAME$1, "_").concat(apiName), [withTxList]).then(parseBlock);
+        getCurrentBlock: function getCurrentBlock(requester, stable, withBody) {
+            var apiName = typeof stable === 'undefined' || stable ? 'latestStableBlock' : 'currentBlock';
+            return requester.send("".concat(MODULE_NAME$1, "_").concat(apiName), [withBody]).then(parseBlock);
         },
 
         /**
          * Get the specific block information
          * @param {Requester} requester
          * @param {string|number} hashOrHeight Hash or height which used to find the block
-         * @param {boolean} withTxList Get the transactions detail if true
+         * @param {boolean?} withBody Get the body detail if true
          * @return {Promise<object>}
          */
-        getBlock: function getBlock(requester, hashOrHeight, withTxList) {
+        getBlock: function getBlock(requester, hashOrHeight, withBody) {
             var apiName = isHash(hashOrHeight) ? 'getBlockByHash' : 'getBlockByHeight';
-            return requester.send("".concat(MODULE_NAME$1, "_").concat(apiName), [hashOrHeight, withTxList]).then(parseBlock);
+            return requester.send("".concat(MODULE_NAME$1, "_").concat(apiName), [hashOrHeight, withBody]).then(parseBlock);
         },
 
         /**
          * Get the current height of chain head block
          * @param {Requester} requester
-         * @param {boolean} stable Get stable block or the newest block without consensus
+         * @param {boolean?} stable=true Get stable block or the newest block without consensus
          * @return {Promise<number>}
          */
         getCurrentHeight: function getCurrentHeight(requester, stable) {
-            var apiName = stable ? 'latestStableHeight' : 'currentHeight';
+            var apiName = typeof stable === 'undefined' || stable ? 'latestStableHeight' : 'currentHeight';
             return requester.send("".concat(MODULE_NAME$1, "_").concat(apiName));
         },
 
@@ -8369,12 +8369,12 @@
         /**
          * Get new blocks from now on
          * @param {Requester} requester
-         * @param {boolean} withTxList Get the transactions detail if true
+         * @param {boolean} withBody Get the body detail if true
          * @param {Function} callback It is used to deliver the block object
          * @return {number} watch id which used to stop watch
          */
-        watchBlock: function watchBlock(requester, withTxList, callback) {
-            return requester.watch("".concat(MODULE_NAME$1, "_latestStableBlock"), [withTxList], callback);
+        watchBlock: function watchBlock(requester, withBody, callback) {
+            return requester.watch("".concat(MODULE_NAME$1, "_latestStableBlock"), [withBody], callback);
         }
     };
     var apis$1 = Object.entries(apiList$1).map(function (_ref) {
@@ -8412,8 +8412,8 @@
          * Get miner address of the lemochain node
          * @return {Promise<string>}
          */
-        getLemoBase: {
-            method: "".concat(MODULE_NAME$2, "_lemoBase")
+        getMiner: {
+            method: "".concat(MODULE_NAME$2, "_miner")
         }
     };
     var apis$2 = Object.entries(apiList$2).map(function (_ref) {
@@ -12130,41 +12130,41 @@
     };
 
     var messages = {
-        'COMPRESSED_TYPE_INVALID': 'compressed should be a boolean',
-        'EC_PRIVATE_KEY_TYPE_INVALID': 'private key should be a Buffer',
-        'EC_PRIVATE_KEY_LENGTH_INVALID': 'private key length is invalid',
-        'EC_PRIVATE_KEY_RANGE_INVALID': 'private key range is invalid',
-        'EC_PRIVATE_KEY_TWEAK_ADD_FAIL': 'tweak out of range or resulting private key is invalid',
-        'EC_PRIVATE_KEY_TWEAK_MUL_FAIL': 'tweak out of range',
-        'EC_PRIVATE_KEY_EXPORT_DER_FAIL': "couldn't export to DER format",
-        'EC_PRIVATE_KEY_IMPORT_DER_FAIL': "couldn't import from DER format",
-        'EC_PUBLIC_KEYS_TYPE_INVALID': 'public keys should be an Array',
-        'EC_PUBLIC_KEYS_LENGTH_INVALID': 'public keys Array should have at least 1 element',
-        'EC_PUBLIC_KEY_TYPE_INVALID': 'public key should be a Buffer',
-        'EC_PUBLIC_KEY_LENGTH_INVALID': 'public key length is invalid',
-        'EC_PUBLIC_KEY_PARSE_FAIL': 'the public key could not be parsed or is invalid',
-        'EC_PUBLIC_KEY_CREATE_FAIL': 'private was invalid, try again',
-        'EC_PUBLIC_KEY_TWEAK_ADD_FAIL': 'tweak out of range or resulting public key is invalid',
-        'EC_PUBLIC_KEY_TWEAK_MUL_FAIL': 'tweak out of range',
-        'EC_PUBLIC_KEY_COMBINE_FAIL': 'the sum of the public keys is not valid',
-        'ECDH_FAIL': 'scalar was invalid (zero or overflow)',
-        'ECDSA_SIGNATURE_TYPE_INVALID': 'signature should be a Buffer',
-        'ECDSA_SIGNATURE_LENGTH_INVALID': 'signature length is invalid',
-        'ECDSA_SIGNATURE_PARSE_FAIL': "couldn't parse signature",
-        'ECDSA_SIGNATURE_PARSE_DER_FAIL': "couldn't parse DER signature",
-        'ECDSA_SIGNATURE_SERIALIZE_DER_FAIL': "couldn't serialize signature to DER format",
-        'ECDSA_SIGN_FAIL': 'nonce generation function failed or private key is invalid',
-        'ECDSA_RECOVER_FAIL': "couldn't recover public key from signature",
-        'MSG32_TYPE_INVALID': 'message should be a Buffer',
-        'MSG32_LENGTH_INVALID': 'message length is invalid',
-        'OPTIONS_TYPE_INVALID': 'options should be an Object',
-        'OPTIONS_DATA_TYPE_INVALID': 'options.data should be a Buffer',
-        'OPTIONS_DATA_LENGTH_INVALID': 'options.data length is invalid',
-        'OPTIONS_NONCEFN_TYPE_INVALID': 'options.noncefn should be a Function',
-        'RECOVERY_ID_TYPE_INVALID': 'recovery should be a Number',
-        'RECOVERY_ID_VALUE_INVALID': 'recovery should have value between -1 and 4',
-        'TWEAK_TYPE_INVALID': 'tweak should be a Buffer',
-        'TWEAK_LENGTH_INVALID': 'tweak length is invalid'
+        COMPRESSED_TYPE_INVALID: 'compressed should be a boolean',
+        EC_PRIVATE_KEY_TYPE_INVALID: 'private key should be a Buffer',
+        EC_PRIVATE_KEY_LENGTH_INVALID: 'private key length is invalid',
+        EC_PRIVATE_KEY_RANGE_INVALID: 'private key range is invalid',
+        EC_PRIVATE_KEY_TWEAK_ADD_FAIL: 'tweak out of range or resulting private key is invalid',
+        EC_PRIVATE_KEY_TWEAK_MUL_FAIL: 'tweak out of range',
+        EC_PRIVATE_KEY_EXPORT_DER_FAIL: "couldn't export to DER format",
+        EC_PRIVATE_KEY_IMPORT_DER_FAIL: "couldn't import from DER format",
+        EC_PUBLIC_KEYS_TYPE_INVALID: 'public keys should be an Array',
+        EC_PUBLIC_KEYS_LENGTH_INVALID: 'public keys Array should have at least 1 element',
+        EC_PUBLIC_KEY_TYPE_INVALID: 'public key should be a Buffer',
+        EC_PUBLIC_KEY_LENGTH_INVALID: 'public key length is invalid',
+        EC_PUBLIC_KEY_PARSE_FAIL: 'the public key could not be parsed or is invalid',
+        EC_PUBLIC_KEY_CREATE_FAIL: 'private was invalid, try again',
+        EC_PUBLIC_KEY_TWEAK_ADD_FAIL: 'tweak out of range or resulting public key is invalid',
+        EC_PUBLIC_KEY_TWEAK_MUL_FAIL: 'tweak out of range',
+        EC_PUBLIC_KEY_COMBINE_FAIL: 'the sum of the public keys is not valid',
+        ECDH_FAIL: 'scalar was invalid (zero or overflow)',
+        ECDSA_SIGNATURE_TYPE_INVALID: 'signature should be a Buffer',
+        ECDSA_SIGNATURE_LENGTH_INVALID: 'signature length is invalid',
+        ECDSA_SIGNATURE_PARSE_FAIL: "couldn't parse signature",
+        ECDSA_SIGNATURE_PARSE_DER_FAIL: "couldn't parse DER signature",
+        ECDSA_SIGNATURE_SERIALIZE_DER_FAIL: "couldn't serialize signature to DER format",
+        ECDSA_SIGN_FAIL: 'nonce generation function failed or private key is invalid',
+        ECDSA_RECOVER_FAIL: "couldn't recover public key from signature",
+        MSG32_TYPE_INVALID: 'message should be a Buffer',
+        MSG32_LENGTH_INVALID: 'message length is invalid',
+        OPTIONS_TYPE_INVALID: 'options should be an Object',
+        OPTIONS_DATA_TYPE_INVALID: 'options.data should be a Buffer',
+        OPTIONS_DATA_LENGTH_INVALID: 'options.data length is invalid',
+        OPTIONS_NONCEFN_TYPE_INVALID: 'options.noncefn should be a Function',
+        RECOVERY_ID_TYPE_INVALID: 'recovery should be a Number',
+        RECOVERY_ID_VALUE_INVALID: 'recovery should have value between -1 and 4',
+        TWEAK_TYPE_INVALID: 'tweak should be a Buffer',
+        TWEAK_LENGTH_INVALID: 'tweak length is invalid'
     };
 
     var name = "elliptic";
@@ -21636,10 +21636,14 @@
 
 
     function buildSignedTx(txConfig) {
+        if (typeof txConfig === 'string') {
+            txConfig = JSON.parse(txConfig);
+        }
+
         var tx = new Tx(txConfig);
 
         if (!tx.r || !tx.s) {
-            throw new Error('can\'t send an unsigned transaction');
+            throw new Error("can't send an unsigned transaction");
         }
 
         return [tx.toJson()];
