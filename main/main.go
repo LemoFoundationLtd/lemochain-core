@@ -113,7 +113,7 @@ func glemo(ctx *cli.Context) error {
 
 func startNode(ctx *cli.Context, n *node.Node) {
 	if err := n.Start(); err != nil {
-		log.Critf("Error tarting node: %v", err)
+		log.Critf("Error starting node: %v", err)
 	}
 	go func() {
 		sigCh := make(chan os.Signal, 1)
