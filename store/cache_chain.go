@@ -282,7 +282,7 @@ func (chain *CacheChain) SetBlock(hash common.Hash, block *types.Block) error {
 
 	parent := header.ParentHash
 	if (parent == common.Hash{}) {
-		log.Errorf("[store]INSERT BLOCK TO CACHE.HASH：%s", hash.String())
+		//log.Errorf("[store]INSERT BLOCK TO CACHE.HASH：%s", hash.String())
 		chain.Blocks[hash] = block
 	} else {
 		_, err = chain.getBlock(parent)
@@ -299,7 +299,7 @@ func (chain *CacheChain) SetBlock(hash common.Hash, block *types.Block) error {
 			chain.Accounts[hash] = chain.cloneAccounts(accounts)
 		}
 
-		log.Infof("[store]INSERT BLOCK TO CACHE.HASH：%s", hash.String())
+		//log.Infof("[store]INSERT BLOCK TO CACHE.HASH：%s", hash.String())
 		chain.Blocks[hash] = block
 	}
 
@@ -649,5 +649,5 @@ func (chain *CacheChain) SetContractCode(codeHash common.Hash, code types.Code) 
 }
 
 func (chain *CacheChain) Close() error {
-	return nil
+	return chain.LmDataBase.Close()
 }
