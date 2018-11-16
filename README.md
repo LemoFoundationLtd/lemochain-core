@@ -1,7 +1,7 @@
 ![Logo of the project](./logo.png)
 
 # LemoChain
-[![Build Status](https://img.shields.io/travis/lemochain-go/lemochain-go.svg?style=flat-square)](https://travis-ci.org/lemochain-go/lemochain-go)
+[![Build Status](https://travis-ci.org/LemoFoundationLtd/lemochain-go.svg?branch=master)](https://travis-ci.org/LemoFoundationLtd/lemochain-go)
 [![code coverage](https://img.shields.io/coveralls/LemoFoundationLtd/lemochain-go.svg?style=flat-square)](https://coveralls.io/r/LemoFoundationLtd/lemochain-go)
 [![gitter chat](https://img.shields.io/gitter/room/LemoFoundationLtd/lemochain-go.svg?style=flat-square)](https://gitter.im/LemoFoundationLtd/lemochain-go)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com)
