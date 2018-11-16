@@ -1,27 +1,10 @@
 language: go
-go_import_path: github.com/LemoFoundationLtd/lemochain-go
-sudo: false
-matrix:
-  include:
-    - os: linux
-    dist: trusty
-    sudo: required
-    go: 1.10.x
-    script:
-    - sudo modprobe fuse
-    - sudo chmod 666 /dev/fuse.conf
-    - sudo chown root:$USER /etc/fuse.conf
-    - go run build/ci.go install
-    - go run build/ci.go test -coverage $TEST_PACKAGES
+install: true
+go:
+  -1.10.x
+  -1.11.x
 
-    #these are the latest Go version.
-    - os: linux
-    dist: trusty
-    sudo: required
-    go: 1.11.x
-    script:
-      - sudo modprobe fuse
-      - sudo chmod 666 /dev/fuse.conf
-      - sudo chown root:$USER /etc/fuse.conf
-      - go run build/ci.go install
-      - go run build/ci.go test -coverage $TEST_PACKAGES
+before_install:
+  - go get -v github.com/LemoFoundationLtd/lemochain-go
+
+
