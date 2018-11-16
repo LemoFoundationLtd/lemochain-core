@@ -123,7 +123,7 @@ func (srv *Server) Start() error {
 		return fmt.Errorf("server.PrivateKey can't be nil")
 	}
 	// if srv.ListenAddr == "" { // 默认强制开始服务器，前期防止搭建都不启动服务
-	// 	return fmt.Errorf("server.ListenAddr can't be empty")
+	// return fmt.Errorf("server.ListenAddr can't be empty")
 	// }
 	if err := srv.startListening(); err != nil {
 		return err
@@ -180,10 +180,7 @@ func (srv *Server) Stop() {
 
 // 从本地读取节点列表
 func (srv *Server) readNodeDatabaseFile() error {
-	exePath, err := os.Executable()
-	if err != nil {
-		return errors.New("can't get executable")
-	}
+	exePath := os.Args[0]
 	dir := filepath.Dir(exePath)
 	filename := filepath.Join(dir, srv.NodeDatabase)
 	fmt.Println(filename)
@@ -247,6 +244,7 @@ func (srv *Server) run() {
 		select {
 		case p := <-srv.addPeerCh:
 			log.Debugf("receive srv.addPeerCh. node id: %s", common.ToHex(p.nodeID[:8]))
+			// 判断此节点是否在peers中
 			if _, ok := srv.peers[p.nodeID.String()]; ok {
 				log.Warnf("Connection has already exist. Remote node id: %s", common.ToHex(p.nodeID[:8]))
 				p.Close()
