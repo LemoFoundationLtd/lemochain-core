@@ -11,7 +11,7 @@ import (
 
 var srvLog = log15.New()
 
-type Level = log15.Lvl
+// type Level log15.Lvl
 
 const (
 	LevelCrit  = log15.LvlCrit
@@ -27,8 +27,8 @@ func init() {
 
 // Setup change the log config immediately
 // The lv is higher the more logs would be visible
-func Setup(lv Level, toFile bool, showCodeLine bool) {
-	outputLv := log15.Lvl(lv)
+func Setup(lv log15.Lvl, toFile bool, showCodeLine bool) {
+	outputLv := lv
 	useColor := term.IsTty(os.Stdout.Fd()) && os.Getenv("TERM") != "dumb"
 	output := io.Writer(os.Stderr)
 	if useColor {
@@ -101,4 +101,4 @@ func Critf(format string, values ...interface{}) {
 //
 // You may wrap any function which takes no arguments to Lazy. It may return any
 // number of values of any type.
-type Lazy = log15.Lazy
+type Lazy log15.Lazy
