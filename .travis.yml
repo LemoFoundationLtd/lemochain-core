@@ -5,6 +5,6 @@ go:
   -1.10.x
 
 before_install:
-  - go get github.com/LemoFoundationLtd/lemochain-go
+  - go get github.com/LemoFoundationLtd/lemochain-go.git
 
 
