@@ -1,10 +1,8 @@
 language: go
-install: true
 go:
   -1.9.x
   -1.10.x
 
-before_install:
-  - go get github.com/LemoFoundationLtd/lemochain-go.git
-
+script:
+  go test
 
