@@ -10,6 +10,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/store/protocol"
 	"github.com/LemoFoundationLtd/lemochain-go/store/trie"
 	"math/big"
+	"os"
 )
 
 type blockInfo struct {
@@ -82,12 +83,15 @@ var (
 
 func init() {
 	// clear db
-	store.ClearData()
+	// store.ClearData()
+	if err := os.RemoveAll("../../testdata/db_account"); err != nil {
+		panic(err)
+	}
 }
 
 // newDB creates db for test account module
 func newDB() protocol.ChainDB {
-	db, err := store.NewCacheChain(store.GetStorePath())
+	db, err := store.NewCacheChain("../../testdata/db_account")
 	if err != nil {
 		panic(err)
 	}
