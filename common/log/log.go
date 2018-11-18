@@ -11,8 +11,6 @@ import (
 
 var srvLog = log15.New()
 
-// type Level log15.Lvl
-
 const (
 	LevelCrit  = log15.LvlCrit
 	LevelError = log15.LvlError
@@ -101,4 +99,4 @@ func Critf(format string, values ...interface{}) {
 //
 // You may wrap any function which takes no arguments to Lazy. It may return any
 // number of values of any type.
-type Lazy log15.Lazy
+type Lazy = log15.Lazy
