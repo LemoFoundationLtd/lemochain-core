@@ -12,7 +12,6 @@ install:
   - go get -d -v $(go list ./...)
 
 script:
-  - go build
 
 after_success:
   - bash .generate_coverage.sh
