@@ -12,7 +12,7 @@ install:
   - go get -d -v $(go list ./...)
 
 script:
-  - go test -v $(go list ./...)
+  - go test -v $(go list ./... | grep -v chain)
 
 after_success:
   - bash .generate_coverage.sh
