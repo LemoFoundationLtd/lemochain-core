@@ -7,7 +7,7 @@ rm -rf ./cov
 mkdir cov
 
 i=0
-for dir in $(find . -maxdepth 10  -not -path './vendor' -type d);
+for dir in $(find . -maxdepth 10  -not -path './vendor' -not -path './chain/miner' -not -path './chain/vm' -type d);
 do
     if ls ${dir}/*.go &> /dev/null; then
         go test -v -covermode=atomic -coverprofile=./cov/$i.out ./${dir}
