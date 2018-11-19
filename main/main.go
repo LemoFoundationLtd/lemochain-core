@@ -82,17 +82,21 @@ func main() {
 
 // initLog init log config
 func initLog(ctx *cli.Context) {
-	var logLevel = 2
+	// flag in command is in range 1~5
+	logFlag := -1
 	if ctx.GlobalIsSet(common.LogLevel) {
-		logLevel = ctx.GlobalInt(common.LogLevel)
+		logFlag = ctx.GlobalInt(common.LogLevel) - 1
 	} else if ctx.IsSet(common.LogLevel) {
-		logLevel = ctx.Int(common.LogLevel)
+		logFlag = ctx.Int(common.LogLevel) - 1
 	}
-	logLevel -= 1
+	// logLevel is in range 0~4
+	logLevel := log15.Lvl(logFlag)
+	// default level
 	if logLevel < 0 || logLevel > 4 {
-		logLevel = 2
+		logLevel = log.LevelError // 1
 	}
-	log.Setup(log15.Lvl(logLevel), true, true)
+	showCodeLine := logLevel >= 3 // LevelInfo, LevelDebug
+	log.Setup(logLevel, true, showCodeLine)
 }
 
 func makeFullNode(ctx *cli.Context) *node.Node {

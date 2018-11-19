@@ -11,8 +11,6 @@ import (
 
 var srvLog = log15.New()
 
-type Level = log15.Lvl
-
 const (
 	LevelCrit  = log15.LvlCrit
 	LevelError = log15.LvlError
@@ -27,8 +25,8 @@ func init() {
 
 // Setup change the log config immediately
 // The lv is higher the more logs would be visible
-func Setup(lv Level, toFile bool, showCodeLine bool) {
-	outputLv := log15.Lvl(lv)
+func Setup(lv log15.Lvl, toFile bool, showCodeLine bool) {
+	outputLv := lv
 	useColor := term.IsTty(os.Stdout.Fd()) && os.Getenv("TERM") != "dumb"
 	output := io.Writer(os.Stderr)
 	if useColor {

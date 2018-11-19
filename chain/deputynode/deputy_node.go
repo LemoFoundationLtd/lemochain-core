@@ -174,7 +174,7 @@ func (d *Manager) GetSlot(height uint32, firstAddress, nextAddress common.Addres
 		log.Debug("getSlot: only one star node")
 		return 1
 	}
-	return (int(nextNode.Rank-firstNode.Rank) + nodeCount) % nodeCount
+	return (int(nextNode.Rank) - int(firstNode.Rank) + nodeCount) % nodeCount
 }
 
 // TimeToHandOutRewards 是否该发出块奖励了

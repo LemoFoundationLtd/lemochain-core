@@ -233,8 +233,8 @@ func (m *PublicMineAPI) IsMining() bool {
 	return m.miner.IsMining()
 }
 
-// MinerAddress
-func (m *PublicMineAPI) MinerAddress() string {
+// Miner
+func (m *PublicMineAPI) Miner() string {
 	address := m.miner.GetMinerAddress()
 	return address.String()
 }

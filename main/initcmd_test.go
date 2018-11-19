@@ -9,7 +9,7 @@ import (
 )
 
 func writeContentToFile(content, file string) {
-	ioutil.WriteFile(file, []byte(content), 744)
+	ioutil.WriteFile(file, []byte(content), 777)
 }
 
 func deleteTmpFile(file string) {
