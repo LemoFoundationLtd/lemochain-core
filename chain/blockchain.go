@@ -206,6 +206,9 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 	hash := block.Hash()
 	parentHash := block.ParentHash()
 	currentHash := bc.currentBlock.Load().(*types.Block).Hash()
+	if has, _ := bc.db.IsExistByHash(hash); has {
+		return nil
+	}
 	// save
 	block.SetEvents(bc.AccountManager().GetEvents())
 	block.SetChangeLogs(bc.AccountManager().GetChangeLogs())
@@ -255,7 +258,7 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 	}
 	// new block height higher than current block, switch fork.
 	curHeight := bc.currentBlock.Load().(*types.Block).Height()
-	if block.Height() > curHeight {
+	if block.Height() == curHeight+1 {
 		bc.currentBlock.Store(block)
 		log.Warnf("chain forked! current block: height(%d), hash(%s)", block.Height(), block.Hash().Hex())
 	} else if curHeight == block.Height() { // two block with same height, priority of lower alphabet order
