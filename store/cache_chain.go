@@ -3,7 +3,6 @@ package store
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
@@ -237,7 +236,7 @@ func (chain *CacheChain) mergeSign(src []types.SignData, dst []types.SignData) [
 
 func (chain *CacheChain) getBlock(hash common.Hash) (*types.Block, error) {
 	if (hash == common.Hash{}) {
-		log.Errorf("[store]GET BLOCK FROM CACHE ERROR.%s", hash.String())
+		log.Debug("[store]GET BLOCK FROM CACHE ERROR.%s", hash.String())
 		return nil, ErrNotExist
 	}
 
@@ -248,18 +247,18 @@ func (chain *CacheChain) getBlock(hash common.Hash) (*types.Block, error) {
 
 	val, err := chain.LmDataBase.Get(hash.Bytes())
 	if err != nil {
-		log.Errorf("[store]GET BLOCK FROM CACHE ERROR.HASH：%s, ERR:%s", hash.String(), err.Error())
+		log.Debug("[store]GET BLOCK FROM CACHE ERROR.HASH：%s, ERR:%s", hash.String(), err.Error())
 		return nil, err
 	} else {
 		var sb sBlock
 		err = rlp.DecodeBytes(val, &sb)
 		if err != nil {
-			fmt.Println("[store]GET BLOCK FROM CACHE ERROR.HASH：", fmt.Sprintf("[%s][%s]", hash.Hex(), err.Error()))
+			//fmt.Println("[store]GET BLOCK FROM CACHE ERROR.HASH：", fmt.Sprintf("[%s][%s]", hash.Hex(), err.Error()))
 			return nil, err
 		} else {
 			block, err := sBtoB(&sb)
 			if err != nil {
-				fmt.Println("[store]GET BLOCK FROM CACHE ERROR.HASH：", fmt.Sprintf("[%s][%s]", hash.Hex(), err.Error()))
+				//fmt.Println("[store]GET BLOCK FROM CACHE ERROR.HASH：", fmt.Sprintf("[%s][%s]", hash.Hex(), err.Error()))
 				return nil, err
 			} else {
 				chain.Blocks[hash] = block
@@ -278,7 +277,7 @@ func (chain *CacheChain) SetBlock(hash common.Hash, block *types.Block) error {
 	}
 
 	if isExist {
-		log.Errorf("[store]set block error:the block is exist.hash:%s", hash.String())
+		log.Debug("[store]set block error:the block is exist.hash:%s", hash.String())
 		return ErrExist
 	}
 
