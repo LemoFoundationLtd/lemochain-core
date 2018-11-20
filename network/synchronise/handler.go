@@ -266,7 +266,7 @@ func (pm *ProtocolManager) handleMsg(p *peerConnection) error {
 			}
 			p.peer.MarkTransaction(tx.Hash())
 		}
-		// pm.txPool.AddTxs(txs)
+		pm.txPool.AddTxs(txs)
 	case protocol.GetBlocksMsg:
 		const eachSize = 50
 		var query protocol.GetBlocksData
