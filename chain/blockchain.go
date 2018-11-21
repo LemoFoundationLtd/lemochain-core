@@ -180,13 +180,12 @@ func (bc *BlockChain) SetMinedBlock(block *types.Block) error {
 		return ErrSaveAccount
 	}
 	nodeCount := deputynode.Instance().GetDeputiesCount()
-	if nodeCount == 1 {
-		bc.SetStableBlock(block.Hash(), block.Height(), false)
-	}
 	bc.currentBlock.Store(block)
 	delete(bc.chainForksHead, block.ParentHash())
 	bc.chainForksHead[block.Hash()] = block
-
+	if nodeCount == 1 {
+		bc.SetStableBlock(block.Hash(), block.Height(), false)
+	}
 	bc.MinedBlockFeed.Send(block)
 
 	return nil
