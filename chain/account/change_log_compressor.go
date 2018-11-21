@@ -29,13 +29,13 @@ func MergeChangeLogs(logs types.ChangeLogSlice) (types.ChangeLogSlice, types.Cha
 		}
 	}
 	// sort all logs by account
-	accounts := make(common.AddressSlice, 0, len(logsByAccount))
+	addressList := make(common.AddressSlice, 0, len(logsByAccount))
 	for addr := range logsByAccount {
-		accounts = append(accounts, addr)
+		addressList = append(addressList, addr)
 	}
-	sort.Sort(accounts)
+	sort.Sort(addressList)
 	mergedLogs := make(types.ChangeLogSlice, 0)
-	for _, addr := range accounts {
+	for _, addr := range addressList {
 		mergedLogs = append(mergedLogs, logsByAccount[addr]...)
 	}
 	return mergedLogs, versionRevertLogs

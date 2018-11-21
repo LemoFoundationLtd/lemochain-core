@@ -247,6 +247,7 @@ func (am *Manager) Save(newBlockHash common.Hash) error {
 		log.Errorf("save version trie fail: %v", err)
 		return err
 	}
+	log.Debugf("save version trie success: %#x", root)
 	am.clear()
 	return nil
 }
