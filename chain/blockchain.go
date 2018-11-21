@@ -260,11 +260,11 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 	curHeight := bc.currentBlock.Load().(*types.Block).Height()
 	if block.Height() == curHeight+1 {
 		bc.currentBlock.Store(block)
-		log.Warnf("chain forked! current block: height(%d), hash(%s)", block.Height(), block.Hash().Hex())
+		log.Warnf("chain forked-1! current block: height(%d), hash(%s)", block.Height(), block.Hash().Hex())
 	} else if curHeight == block.Height() { // two block with same height, priority of lower alphabet order
 		if hash.Big().Cmp(currentHash.Big()) < 0 {
 			bc.currentBlock.Store(block)
-			log.Warnf("chain forked! current block: height(%d), hash(%s)", block.Height(), block.Hash().Hex())
+			log.Warnf("chain forked-2! current block: height(%d), hash(%s)", block.Height(), block.Hash().Hex())
 		}
 	}
 	if _, ok := bc.chainForksHead[parentHash]; ok {
@@ -283,6 +283,11 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32, logLess bo
 	if block == nil {
 		log.Warnf("setStableBlock: block not exist. height: %d hash: %s", height, hash.String())
 		return ErrBlockNotExist
+	}
+	height = block.Height()
+	oldStableBlock := bc.stableBlock.Load().(*types.Block)
+	if block.Height() <= oldStableBlock.Height() {
+		return nil
 	}
 	// set stable
 	if err := bc.db.SetStableBlock(hash); err != nil {
@@ -337,8 +342,8 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32, logLess bo
 		}
 	}
 	bc.currentBlock.Store(curBlock)
-	if !logLess && oldCurHash != curBlock.ParentHash() {
-		log.Infof("chain forked! current block: height(%d), hash(%s)", curBlock.Height(), curBlock.Hash().Hex())
+	if !logLess && oldCurHash != curBlock.Hash() {
+		log.Infof("chain forked-3! current block: height(%d), hash(%s)", curBlock.Height(), curBlock.Hash().Hex())
 	}
 	return nil
 }
