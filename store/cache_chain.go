@@ -270,8 +270,11 @@ func (chain *CacheChain) getBlock(hash common.Hash) (*types.Block, error) {
 
 // 设置区块
 func (chain *CacheChain) SetBlock(hash common.Hash, block *types.Block) error {
+	chain.rw.Lock()
+	defer chain.rw.Unlock()
+
 	header := block.Header
-	isExist, err := chain.IsExistByHash(hash)
+	isExist, err := chain.isExistByHash(hash)
 	if err != nil {
 		return err
 	}
@@ -280,9 +283,6 @@ func (chain *CacheChain) SetBlock(hash common.Hash, block *types.Block) error {
 		log.Debug("[store]set block error:the block is exist.hash:%s", hash.String())
 		return ErrExist
 	}
-
-	chain.rw.Lock()
-	defer chain.rw.Unlock()
 
 	parent := header.ParentHash
 	if (parent == common.Hash{}) {
@@ -312,8 +312,8 @@ func (chain *CacheChain) SetBlock(hash common.Hash, block *types.Block) error {
 
 // 获取区块 优先根据hash与height同时获取，若hash为空则根据Height获取 获取不到返回：nil,原因
 func (chain *CacheChain) GetBlock(hash common.Hash, height uint32) (*types.Block, error) {
-	chain.rw.RLock()
-	defer chain.rw.RUnlock()
+	chain.rw.Lock()
+	defer chain.rw.Unlock()
 
 	block, err := chain.getBlock(hash)
 	if err != nil {
@@ -328,27 +328,27 @@ func (chain *CacheChain) GetBlock(hash common.Hash, height uint32) (*types.Block
 }
 
 func (chain *CacheChain) GetBlockByHeight(height uint32) (*types.Block, error) {
+	chain.rw.Lock()
+	defer chain.rw.Unlock()
+
 	indexHash := encodeBlockNumber2Hash(height)
 
 	val, err := chain.LmDataBase.Get(indexHash.Bytes())
 	if err != nil {
 		return nil, err
 	} else {
-		return chain.GetBlockByHash(common.BytesToHash(val))
+		return chain.getBlock(common.BytesToHash(val))
 	}
 }
 
 func (chain *CacheChain) GetBlockByHash(hash common.Hash) (*types.Block, error) {
-	chain.rw.RLock()
-	defer chain.rw.RUnlock()
+	chain.rw.Lock()
+	defer chain.rw.Unlock()
 
 	return chain.getBlock(hash)
 }
 
-func (chain *CacheChain) IsExistByHash(hash common.Hash) (bool, error) {
-	chain.rw.RLock()
-	defer chain.rw.RUnlock()
-
+func (chain *CacheChain) isExistByHash(hash common.Hash) (bool, error) {
 	if (hash == common.Hash{}) {
 		return false, nil
 	}
@@ -382,6 +382,13 @@ func (chain *CacheChain) IsExistByHash(hash common.Hash) (bool, error) {
 	}
 }
 
+func (chain *CacheChain) IsExistByHash(hash common.Hash) (bool, error) {
+	chain.rw.Lock()
+	defer chain.rw.Unlock()
+
+	return chain.isExistByHash(hash)
+}
+
 // 设置区块的确认信息 每次收到一个
 func (chain *CacheChain) SetConfirmInfo(hash common.Hash, signData types.SignData) error {
 	chain.rw.Lock()
@@ -410,13 +417,13 @@ func (chain *CacheChain) SetConfirmInfo(hash common.Hash, signData types.SignDat
 }
 
 func (chain *CacheChain) SetConfirms(hash common.Hash, pack []types.SignData) error {
-	block, err := chain.GetBlockByHash(hash)
+	chain.rw.Lock()
+	defer chain.rw.Unlock()
+
+	block, err := chain.getBlock(hash)
 	if err != nil {
 		return err
 	}
-
-	chain.rw.Lock()
-	defer chain.rw.Unlock()
 
 	if block != nil {
 		block.SetConfirms(pack)
@@ -490,7 +497,10 @@ func (chain *CacheChain) AppendConfirms(hash common.Hash, pack []types.SignData)
 
 // 获取区块的确认包 获取不到返回：nil,原因
 func (chain *CacheChain) GetConfirms(hash common.Hash) ([]types.SignData, error) {
-	block, err := chain.GetBlockByHash(hash)
+	chain.rw.Lock()
+	defer chain.rw.Unlock()
+
+	block, err := chain.getBlock(hash)
 	if err != nil {
 		return nil, err
 	} else {
@@ -564,8 +574,8 @@ func (chain *CacheChain) getAccount(address common.Address) (*types.AccountData,
 
 // GetAccount loads account from cache or db
 func (chain *CacheChain) GetAccount(blockHash common.Hash, address common.Address) (*types.AccountData, error) {
-	chain.rw.RLock()
-	defer chain.rw.RUnlock()
+	chain.rw.Lock()
+	defer chain.rw.Unlock()
 
 	if (blockHash == common.Hash{}) {
 		return nil, ErrNotExist
@@ -585,6 +595,9 @@ func (chain *CacheChain) GetAccount(blockHash common.Hash, address common.Addres
 }
 
 func (chain *CacheChain) GetCanonicalAccount(address common.Address) (*types.AccountData, error) {
+	chain.rw.Lock()
+	defer chain.rw.Unlock()
+
 	return chain.getAccount(address)
 }
 
