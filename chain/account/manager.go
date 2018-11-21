@@ -373,6 +373,7 @@ func (am *Manager) MergeChangeLogs(fromIndex int) {
 	}
 	// make sure the snapshot still work
 	if !am.processor.checkRevisionAvailable() {
+		log.Error("invalid revision", "last revision", am.processor.validRevisions[len(am.processor.validRevisions)-1], "new logs count", len(am.processor.changeLogs), "from index", fromIndex, "merged logs count", len(mergedLogs))
 		panic(ErrSnapshotIsBroken)
 	}
 }
