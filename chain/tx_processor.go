@@ -48,7 +48,7 @@ func NewTxProcessor(bc *BlockChain) *TxProcessor {
 // Process processes all transactions in a block. Change accounts' data and execute contract codes.
 func (p *TxProcessor) Process(block *types.Block) (*types.Header, error) {
 	p.lock.Lock()
-	p.lock.Unlock()
+	defer p.lock.Unlock()
 	var (
 		gp          = new(types.GasPool).AddGas(block.GasLimit())
 		gasUsed     = uint64(0)
@@ -81,7 +81,7 @@ func (p *TxProcessor) Process(block *types.Block) (*types.Header, error) {
 // ApplyTxs picks and processes transactions from miner's tx pool.
 func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions) (*types.Header, types.Transactions, types.Transactions, error) {
 	p.lock.Lock()
-	p.lock.Unlock()
+	defer p.lock.Unlock()
 	gp := new(types.GasPool).AddGas(header.GasLimit)
 	gasUsed := uint64(0)
 	totalGasFee := new(big.Int)
