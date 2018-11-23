@@ -25,19 +25,19 @@ var (
 	defaultBlockInfos = []blockInfo{
 		// genesis block
 		{
-			hash:        common.HexToHash("0xac6efe56783d22fa7542abc82202e7c0b7bcaaf611b3bcdb217e23a9366f6677"),
+			hash:        common.HexToHash("0x1c36d1e8f1dff93ae0a2b24018c6a8cc7db8e5774446b4bd29054a51917d64b8"),
 			versionRoot: common.HexToHash("0xac5efb21e3de5900ef965fcfca8bd43c4e84e22d1b66bb5bf3d8418c976a853c"),
 			time:        1538209751,
 		},
 		// block 1 is stable block
 		{
-			hash:        common.HexToHash("0x0c38287d372f3f580f1f8b019433ff8070552af423e0fdbb93de8332430cc941"),
+			hash:        common.HexToHash("0xab333c34b70f9a4cf0f945b09abe9f10a8684b8ce5d5d42ee66635eb13ca204a"),
 			versionRoot: common.HexToHash("0xac5efb21e3de5900ef965fcfca8bd43c4e84e22d1b66bb5bf3d8418c976a853c"),
 			time:        1538209755,
 		},
 		// block 2 is not stable block
 		{
-			hash:        common.HexToHash("0x5337bafc55b9f0e8deefb6d4b1061af787aba6e7a9b2f1bad9c4e31d39d16ca2"),
+			hash:        common.HexToHash("0xeda54f97291c9e78215a2dc3db2c083e872434405c12b8ebafcda411d9138978"),
 			versionRoot: common.HexToHash("0xac5efb21e3de5900ef965fcfca8bd43c4e84e22d1b66bb5bf3d8418c976a853c"),
 			time:        1538209758,
 		},
