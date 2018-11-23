@@ -79,7 +79,8 @@ func TestNewManager_GetCanonicalAccount(t *testing.T) {
 }
 
 func TestChangeLogProcessor_GetAccount(t *testing.T) {
-	manager := NewManager(newestBlock.Hash(), newDB())
+	db := newDB()
+	manager := NewManager(newestBlock.Hash(), db)
 
 	// not exist in db
 	address := common.HexToAddress("0xaaa")
@@ -102,7 +103,8 @@ func TestChangeLogProcessor_GetAccount(t *testing.T) {
 }
 
 func TestChangeLogProcessor_PushEvent_PopEvent(t *testing.T) {
-	manager := NewManager(newestBlock.Hash(), newDB())
+	db := newDB()
+	manager := NewManager(newestBlock.Hash(), db)
 
 	// push
 	manager.processor.PushEvent(&types.Event{Address: common.HexToAddress("0x1"), TxHash: th(1), BlockHeight: 11})
@@ -124,7 +126,8 @@ func TestChangeLogProcessor_PushEvent_PopEvent(t *testing.T) {
 }
 
 func TestChangeLogProcessor_PushChangeLog_GetChangeLogs(t *testing.T) {
-	manager := NewManager(newestBlock.Hash(), newDB())
+	db := newDB()
+	manager := NewManager(newestBlock.Hash(), db)
 
 	manager.processor.PushChangeLog(&types.ChangeLog{
 		LogType: types.ChangeLogType(101),
@@ -140,7 +143,8 @@ func TestChangeLogProcessor_PushChangeLog_GetChangeLogs(t *testing.T) {
 }
 
 func TestNewManager_Snapshot_RevertToSnapshot(t *testing.T) {
-	manager := NewManager(newestBlock.Hash(), newDB())
+	db := newDB()
+	manager := NewManager(newestBlock.Hash(), db)
 
 	// snapshot when empty
 	assert.Equal(t, 0, len(manager.processor.validRevisions))
@@ -176,10 +180,22 @@ func TestNewManager_Snapshot_RevertToSnapshot(t *testing.T) {
 	manager.RevertToSnapshot(newId)
 	assert.Equal(t, 1, len(manager.processor.validRevisions))
 	assert.Equal(t, big.NewInt(999), account.GetBalance())
+
+	// snapshot twice
+	account = manager.GetAccount(common.HexToAddress("0x2"))
+	account.SetBalance(big.NewInt(999))
+	newId = manager.Snapshot()
+	newId2 := manager.Snapshot()
+	account.SetBalance(big.NewInt(1))
+	manager.RevertToSnapshot(newId2)
+	manager.RevertToSnapshot(newId)
+	assert.Equal(t, 1, len(manager.processor.validRevisions))
+	assert.Equal(t, big.NewInt(999), account.GetBalance())
 }
 
 func TestNewManager_AddEvent(t *testing.T) {
-	manager := NewManager(newestBlock.Hash(), newDB())
+	db := newDB()
+	manager := NewManager(newestBlock.Hash(), db)
 
 	event1 := &types.Event{Address: common.HexToAddress("0x1"), TxHash: th(1), BlockHeight: 11}
 	event2 := &types.Event{Address: common.HexToAddress("0x1"), TxHash: th(1), BlockHeight: 22}
@@ -217,7 +233,8 @@ func TestNewManager_GetVersionRoot(t *testing.T) {
 }
 
 func TestNewManager_Reset(t *testing.T) {
-	manager := NewManager(common.Hash{}, newDB())
+	db := newDB()
+	manager := NewManager(common.Hash{}, db)
 
 	account := manager.GetAccount(common.HexToAddress("0x1"))
 	account.SetBalance(big.NewInt(2))
@@ -413,7 +430,8 @@ func TestManager_MergeChangeLogs(t *testing.T) {
 }
 
 func TestManager_SaveTxInAccount(t *testing.T) {
-	manager := NewManager(common.Hash{}, newDB())
+	db := newDB()
+	manager := NewManager(common.Hash{}, db)
 
 	account1 := manager.GetAccount(defaultAccounts[0].Address)
 	account2 := manager.GetAccount(common.HexToAddress("0x1"))
