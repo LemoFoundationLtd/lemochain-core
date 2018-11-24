@@ -180,7 +180,7 @@ func (d *Downloader) syncWithPeer(p *peerConnection) error {
 				d.queueLock.Lock()
 				block := d.queue.PopItem().(*types.Block)
 
-				if (block.Height() == stableBlock.Height()+1) && (block.Hash() != stableBlock.Hash()) {
+				if (block.Height() == stableBlock.Height()+1) && (block.ParentHash() != stableBlock.Hash()) {
 					errMas := fmt.Sprintf("sync blocks failed and dishonest peer: %v ", p.id)
 					errMsgCh <- errMas
 					return
