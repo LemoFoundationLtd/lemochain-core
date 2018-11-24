@@ -89,7 +89,7 @@ func (ps *peerSet) Unregister(id string) {
 	}
 }
 
-// PeersWithoutTx fetch peers which doesn't have special tx
+// PeersWithoutTx fetch peers which doesn't have specific tx
 func (ps *peerSet) PeersWithoutTx(hash common.Hash) []*peer {
 	ps.mux.Lock()
 	defer ps.mux.Unlock()
@@ -120,7 +120,7 @@ type Downloader struct {
 	queue     *prque.Prque // 存储下载的区块队列
 }
 
-// New crete Downloader object
+// New create Downloader object
 func NewDownloader(peers *peerSet, chain blockchain.BlockChain, dropPeer peerDropFn) *Downloader {
 	d := &Downloader{
 		peers:       peers,
@@ -179,6 +179,13 @@ func (d *Downloader) syncWithPeer(p *peerConnection) error {
 			for !d.queue.Empty() {
 				d.queueLock.Lock()
 				block := d.queue.PopItem().(*types.Block)
+
+				if (block.Height() == stableBlock.Height()+1) && (block.Hash() != stableBlock.Hash()) {
+					errMas := fmt.Sprintf("sync blocks failed and dishonest peer: %v ", p.id)
+					errMsgCh <- errMas
+					return
+				}
+
 				localHeight := d.blockChain.CurrentBlock().Height()
 				if block.Height() > localHeight+1 || !d.blockChain.HasBlock(block.ParentHash()) {
 					d.queue.Push(block, -float32(block.Height()))
