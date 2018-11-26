@@ -5,6 +5,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/common/subscribe"
 	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"sync"
@@ -20,7 +21,7 @@ var (
 	ErrInsufficientFunds = errors.New("insufficient funds for gas * price + value")
 )
 
-var TransactionTimeOut = int64(10)
+var TransactionTimeOut = int64(3600)
 
 type TransactionWithTime struct {
 	Tx      *types.Transaction
@@ -116,8 +117,12 @@ func (cache *TxsSortByTime) removeBatch(keys []common.Hash) {
 
 func (cache *TxsSortByTime) remove(key common.Hash) {
 	pos, ok := cache.index[key]
-	if ok && pos >= 0 {
+	if ok && pos >= 0 && !cache.txs[pos].DelFlg {
 		cache.txs[pos].DelFlg = true
+	} else if !ok {
+		log.Debug("Txs are not synchronized to local tx_pool")
+	} else {
+		log.Error("delete Txs again!")
 	}
 }
 
