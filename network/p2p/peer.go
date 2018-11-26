@@ -280,3 +280,7 @@ func (p *Peer) sealFrameHead(code, size uint32) []byte {
 func (p *Peer) NodeID() NodeID {
 	return p.nodeID
 }
+
+func (p *Peer) RemoteAddr() string {
+	return p.rw.fd.RemoteAddr().String()
+}

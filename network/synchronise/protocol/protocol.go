@@ -21,7 +21,9 @@ const (
 	NewConfirmMsg     = 0x0a // 新区块确认消息
 	GetConfirmInfoMsg = 0x0b // 获取确认包信息
 	ConfirmInfoMsg    = 0x0c // 收到确信包信息
-
+	// for find node
+	FindNodeReqMsg = 0x0d // find node request message
+	FindNodeResMsg = 0x0e // find node response message
 )
 
 type ErrCode int
@@ -102,4 +104,15 @@ type BlockConfirms struct {
 	Hash   common.Hash // 区块Hash
 	Height uint32      //区块高度
 	Pack   []types.SignData
+}
+
+// for find node
+type FindNodeResData struct {
+	Sequence int32
+	Nodes    []string
+}
+
+// for find node
+type FindNodeReqData struct {
+	Sequence int32
 }

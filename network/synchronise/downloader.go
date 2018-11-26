@@ -29,9 +29,11 @@ var (
 
 // peerConnection 一个网络连接对象
 type peerConnection struct {
-	id    string
-	peer  *peer
-	rwMux sync.RWMutex
+	id          string
+	peer        *peer
+	sequence    int32
+	hasDiscover bool
+	rwMux       sync.RWMutex
 }
 
 // peerSet 网络连接节点集
@@ -61,6 +63,26 @@ func (ps *peerSet) BestPeer() *peerConnection {
 			p = item
 			height = item.peer.height
 		}
+	}
+	return p
+}
+
+func (ps *peerSet) ToDiscover() *peerConnection {
+	var p, lst *peerConnection
+	height := uint32(0)
+	for _, item := range ps.peers {
+		lst = item
+		if item.peer.height >= height && !item.hasDiscover {
+			p = item
+			height = item.peer.height
+		}
+	}
+	if p == nil {
+		p = lst
+	}
+	if p != nil {
+		p.hasDiscover = true
+		p.sequence++
 	}
 	return p
 }

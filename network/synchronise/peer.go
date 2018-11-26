@@ -175,3 +175,8 @@ func (p *peer) SendTransactions(txs types.Transactions) error {
 	}
 	return p.send(protocol.TxMsg, txs)
 }
+
+func (p *peer) RemoteNetInfo() string {
+	// todo
+	return p.Peer.RemoteAddr()
+}
