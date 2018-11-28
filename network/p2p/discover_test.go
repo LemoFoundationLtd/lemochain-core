@@ -264,7 +264,7 @@ func Test_getAvailableNodes(t *testing.T) {
 		}
 	}
 
-	for i := 1; i < 201; i++ {
+	for i := 1; i < 101; i++ {
 		v := fmt.Sprintf("180.0.0.1:70%d", i)
 		k := crypto.Keccak256Hash([]byte(v))
 		dis.foundNodes[k] = newRawNode(v)
@@ -284,10 +284,9 @@ func Test_getAvailableNodes(t *testing.T) {
 	assert.Contains(t, list, "180.0.0.1:701")
 	assert.Contains(t, list, "180.0.0.1:7010")
 	assert.Contains(t, list, "180.0.0.1:70100")
-	assert.Contains(t, list, "180.0.0.1:70182")
 }
 
-func Test_setWhiteList(t *testing.T) {
+func Test_setWhiteList_ok(t *testing.T) {
 	list := []string{
 		"127.0.0.1:12343",
 		"127.0.0.1:12344",
@@ -309,6 +308,13 @@ func Test_setWhiteList(t *testing.T) {
 	for _, v := range dis.whiteNodes {
 		assert.Contains(t, list, v.Endpoint)
 	}
+}
+
+func Test_setWhiteList_err(t *testing.T) {
+	dis := newDiscover()
+	dis.setWhiteList()
+
+	assert.Len(t, dis.whiteNodes, 0)
 }
 
 func Test_writeFindFile(t *testing.T) {
@@ -348,16 +354,212 @@ func Test_writeFindFile(t *testing.T) {
 
 	list := dis.getAvailableNodes()
 	assert.Len(t, list, 200)
+	removeFile(FindFile)
 }
 
-func Test_readFile(t *testing.T) {
+func Test_SetDeputyNodes(t *testing.T) {
+	list := []string{
+		"127.0.0.1:12343",
+		"127.0.0.1:12344",
+		"127.0.0.1:12345",
+		"127.0.0.1:12346",
+		"127.0.0.1:12346",
+		"127.0.0.1:12347",
+	}
+
+	dis := newDiscover()
+	dis.SetDeputyNodes(list)
+
+	assert.Len(t, dis.deputyNodes, len(list)-1)
+
+	for _, v := range dis.deputyNodes {
+		assert.Contains(t, list, v.Endpoint)
+	}
+}
+
+func Test_SetReconnect(t *testing.T) {
+	dis := newDiscover()
+
+	dis.foundNodes[table[0].k] = newRawNode(table[0].v)
+	dis.foundNodes[table[0].k].Sequence = -1
+
+	dis.foundNodes[table[1].k] = newRawNode(table[1].v)
+	dis.foundNodes[table[1].k].Sequence = 1
+
+	dis.foundNodes[table[2].k] = newRawNode(table[2].v)
+	dis.foundNodes[table[2].k].Sequence = -1
+
+	dis.foundNodes[table[3].k] = newRawNode(table[3].v)
+	dis.foundNodes[table[3].k].Sequence = 0
+
+	assert.Equal(t, dis.foundNodes[table[0].k].IsReconnect, false)
+	assert.NoError(t, dis.SetReconnect(table[0].v))
+	assert.Equal(t, dis.foundNodes[table[0].k].Sequence, int32(0))
+	assert.Equal(t, dis.foundNodes[table[0].k].IsReconnect, true)
+	assert.NoError(t, dis.SetReconnect(table[0].v))
+	assert.Equal(t, dis.foundNodes[table[0].k].ConnCounter, int8(2))
+	assert.Equal(t, dis.foundNodes[table[0].k].Sequence, int32(0))
+	assert.Equal(t, dis.foundNodes[table[0].k].IsReconnect, true)
+
+	for i := 0; i < 3; i++ {
+		assert.NoError(t, dis.SetReconnect(table[0].v))
+	}
+	assert.Equal(t, dis.SetReconnect(table[0].v), ErrMaxReconnect)
+
+	assert.Error(t, dis.SetReconnect("123.123.123.123"), ErrNoSpecialNode)
+}
+
+func Test_GetNodesForDiscover(t *testing.T) {
+	dis := newDiscover()
+
+	for i := 1; i < 18; i++ {
+		v := fmt.Sprintf("160.0.0.1:70%d", i)
+		k := crypto.Keccak256Hash([]byte(v))
+		dis.deputyNodes[k] = newRawNode(v)
+		if i%3 == 0 {
+			dis.deputyNodes[k].Sequence = -1
+		} else if i%3 == 1 {
+			dis.deputyNodes[k].Sequence = 1
+		}
+	}
+
+	for i := 1; i < 117; i++ {
+		v := fmt.Sprintf("170.0.0.1:70%d", i)
+		k := crypto.Keccak256Hash([]byte(v))
+		dis.whiteNodes[k] = newRawNode(v)
+		if i%3 == 0 {
+			dis.whiteNodes[k].Sequence = -1
+		} else if i%3 == 1 {
+			dis.whiteNodes[k].Sequence = 1
+		}
+	}
+
+	for i := 1; i < 101; i++ {
+		v := fmt.Sprintf("180.0.0.1:70%d", i)
+		k := crypto.Keccak256Hash([]byte(v))
+		dis.foundNodes[k] = newRawNode(v)
+		if i%3 == 0 {
+			dis.foundNodes[k].Sequence = -1
+		} else if i%3 == 1 {
+			dis.foundNodes[k].Sequence = 1
+		}
+	}
+
+	nodes := dis.GetNodesForDiscover(1)
+
+	assert.Len(t, nodes, 200)
+	assert.Contains(t, nodes, "160.0.0.1:701")
+	assert.Contains(t, nodes, "160.0.0.1:702")
+	assert.Contains(t, nodes, "160.0.0.1:703")
+	assert.Contains(t, nodes, "160.0.0.1:7010")
+	assert.Contains(t, nodes, "160.0.0.1:7011")
+	assert.Contains(t, nodes, "160.0.0.1:7012")
+	assert.Contains(t, nodes, "160.0.0.1:7017")
+
+	assert.Contains(t, nodes, "170.0.0.1:701")
+	assert.Contains(t, nodes, "170.0.0.1:702")
+	assert.Contains(t, nodes, "170.0.0.1:703")
+	assert.Contains(t, nodes, "170.0.0.1:70114")
+	assert.Contains(t, nodes, "170.0.0.1:70115")
+	assert.Contains(t, nodes, "170.0.0.1:70116")
+
+	assert.Contains(t, nodes, "180.0.0.1:701")
+	assert.Contains(t, nodes, "180.0.0.1:702")
+	assert.Contains(t, nodes, "180.0.0.1:7098")
+	assert.Contains(t, nodes, "180.0.0.1:70100")
 
 }
 
-func Test_initDiscoverList(t *testing.T) {
+func Test_AddNewList(t *testing.T) {
+	dis := newDiscover()
+	assert.NoError(t, dis.Start())
 
+	dis.foundNodes[table[0].k] = newRawNode(table[0].v)
+	dis.foundNodes[table[0].k].Sequence = -1
+
+	dis.foundNodes[table[1].k] = newRawNode(table[1].v)
+	dis.foundNodes[table[1].k].Sequence = 1
+
+	dis.whiteNodes[table[2].k] = newRawNode(table[2].v)
+	dis.whiteNodes[table[2].k].Sequence = -1
+
+	dis.whiteNodes[table[3].k] = newRawNode(table[3].v)
+	dis.whiteNodes[table[3].k].Sequence = -1
+
+	dis.deputyNodes[table[4].k] = newRawNode(table[4].v)
+	dis.deputyNodes[table[4].k].Sequence = 0
+
+	dis.deputyNodes[table[5].k] = newRawNode(table[5].v)
+	dis.deputyNodes[table[5].k].Sequence = -1
+
+	list := []string{
+		"127.0.0.1:7001",
+		"127.0.0.1:7002",
+		"127.0.0.1:7003",
+		"127.0.0.1:7004",
+		"127.0.0.1:7005",
+		"127.0.0.1:7006",
+		"127.0.0.1:7007",
+		"127.0.0.1:7008",
+		"127.0.0.1:7009",
+	}
+	dis.AddNewList(list)
+
+	// assert.Len(t, dis.foundNodes, len(list))
+
+	for _, v := range dis.foundNodes {
+		assert.Contains(t, list, v.Endpoint)
+	}
+	assert.NoError(t, dis.Stop())
+
+	removeFile(FindFile)
 }
 
-func Test_addDiscoverNodes(t *testing.T) {
+func Test_Start_err(t *testing.T) {
+	dis := newDiscover()
+	assert.NoError(t, dis.Start())
+	assert.Error(t, dis.Start(), ErrHasStared)
+}
 
+func Test_Stop_err(t *testing.T) {
+	dis := newDiscover()
+	assert.Error(t, dis.Stop(), ErrNotStart)
+	removeFile(FindFile)
+}
+
+func Test_Start_restart(t *testing.T) {
+	dis := newDiscover()
+	assert.NoError(t, dis.Start())
+	assert.NoError(t, dis.Stop())
+	assert.NoError(t, dis.Start())
+
+	removeFile(FindFile)
+}
+
+func Test_SetConnectResult(t *testing.T) {
+	dis := newDiscover()
+
+	dis.foundNodes[table[0].k] = newRawNode(table[0].v)
+	dis.foundNodes[table[0].k].Sequence = -1
+
+	dis.foundNodes[table[1].k] = newRawNode(table[1].v)
+	dis.foundNodes[table[1].k].Sequence = 1
+
+	dis.foundNodes[table[2].k] = newRawNode(table[2].v)
+	dis.foundNodes[table[2].k].Sequence = 0
+
+	dis.foundNodes[table[3].k] = newRawNode(table[3].v)
+	dis.foundNodes[table[3].k].Sequence = 0
+
+	assert.NoError(t, dis.SetConnectResult(dis.foundNodes[table[2].k].Endpoint, true))
+	assert.Equal(t, dis.foundNodes[table[2].k].Sequence, int32(1))
+
+	assert.NoError(t, dis.SetConnectResult(dis.foundNodes[table[3].k].Endpoint, false))
+	assert.Equal(t, dis.foundNodes[table[3].k].Sequence, int32(-1))
+
+	dis.SetReconnect(table[3].v)
+	assert.NoError(t, dis.SetConnectResult(dis.foundNodes[table[3].k].Endpoint, false))
+	assert.Equal(t, dis.foundNodes[table[3].k].Sequence, int32(0))
+
+	assert.Error(t, dis.SetConnectResult("123.123.123", false), ErrNoSpecialNode)
 }

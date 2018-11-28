@@ -24,6 +24,8 @@ const (
 var (
 	ErrMaxReconnect  = errors.New("reconnect has reached max count")
 	ErrNoSpecialNode = errors.New("doesn't have this special node")
+	ErrHasStared     = errors.New("has been started")
+	ErrNotStart      = errors.New("not start")
 )
 
 type RawNode struct {
@@ -79,22 +81,25 @@ func NewDiscoverManager(datadir string) *DiscoverManager {
 	return m
 }
 
-func (m *DiscoverManager) Start() {
+func (m *DiscoverManager) Start() error {
 	if atomic.CompareAndSwapInt32(&m.status, 0, 1) {
 		m.setWhiteList()
 		m.initDiscoverList()
+		return nil
 	} else {
 		log.Warn("DiscoverManager has been started.")
+		return ErrHasStared
 	}
 }
 
 func (m *DiscoverManager) Stop() error {
 	if atomic.CompareAndSwapInt32(&m.status, 1, 0) {
 		m.writeFindFile()
+		return nil
 	} else {
 		log.Warn("DiscoverManager has not been start.")
+		return ErrNotStart
 	}
-	return nil
 }
 
 // connectedNodes get connected nodes ever
@@ -193,13 +198,13 @@ func (m *DiscoverManager) addDiscoverNodes(nodes []string) {
 			}
 			continue
 		}
-		if _, ok := m.deputyNodes[key]; ok {
+		if n, ok := m.deputyNodes[key]; ok {
 			if n.Sequence < 0 {
 				m.resetState(n)
 			}
 			continue
 		}
-		if _, ok := m.foundNodes[key]; ok {
+		if n, ok := m.foundNodes[key]; ok {
 			if n.Sequence < 0 {
 				m.resetState(n)
 			}
@@ -268,7 +273,7 @@ func (m *DiscoverManager) SetConnectResult(node string, success bool) error {
 }
 
 // SetReconnect start reconnect
-func (m *DiscoverManager) SetReconnect(node string) {
+func (m *DiscoverManager) SetReconnect(node string) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -281,18 +286,19 @@ func (m *DiscoverManager) SetReconnect(node string) {
 		n, ok = m.foundNodes[key]
 	}
 	if !ok {
-		return
+		return ErrNoSpecialNode
 	}
 	if n.IsReconnect {
 		if n.ConnCounter == MaxReconnectCount {
 			log.Infof("node: %s has reconnect %d, but not success", node, MaxReconnectCount)
-			return
+			return ErrMaxReconnect
 		}
-		n.ConnCounter++
 	} else {
 		n.IsReconnect = true
 		n.Sequence = 0
 	}
+	n.ConnCounter++
+	return nil
 }
 
 func (m *DiscoverManager) getAvailableNodes() []string {

@@ -27,21 +27,23 @@ func NewDialManager(handleConn HandleConnFunc, discover *DiscoverManager) *DialM
 	}
 }
 
-func (m *DialManager) Start() {
+func (m *DialManager) Start() error {
 	if atomic.LoadInt32(&m.state) == 1 {
 		log.Info("dial manager has started")
-		return
+		return ErrHasStared
 	}
 	atomic.StoreInt32(&m.state, 1)
 	go m.loop()
+	return nil
 }
 
-func (m *DialManager) Stop() {
+func (m *DialManager) Stop() error {
 	if atomic.LoadInt32(&m.state) < 1 {
 		log.Info("dial manager not start")
-		return
+		return ErrNotStart
 	}
 	atomic.StoreInt32(&m.state, -1)
+	return nil
 }
 
 func (m *DialManager) runDialTask(node string) int {
