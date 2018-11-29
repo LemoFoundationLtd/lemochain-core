@@ -108,11 +108,11 @@ type BlockConfirms struct {
 
 // for find node
 type FindNodeResData struct {
-	Sequence int32
+	Sequence uint
 	Nodes    []string
 }
 
 // for find node
 type FindNodeReqData struct {
-	Sequence int32
+	Sequence uint
 }

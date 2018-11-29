@@ -271,6 +271,7 @@ func (srv *Server) run() {
 			if _, ok := srv.peers[p.nodeID.String()]; ok {
 				log.Warnf("Connection has already exist. Remote node id: %s", common.ToHex(p.nodeID[:8]))
 				p.Close()
+				srv.discover.SetConnectResult(p.RemoteAddr(), false) // todo
 				break
 			}
 			srv.peersMux.Lock()
@@ -278,22 +279,11 @@ func (srv *Server) run() {
 			srv.peersMux.Unlock()
 			go srv.runPeer(p)
 			subscribe.Send(subscribe.AddNewPeer, p)
-			// if srv.PeerEvent != nil { // 通知外界收到新的节点
-			// 	log.Debugf("start execute peerEvent. node id: %s", common.ToHex(p.nodeID[:8]))
-			// 	if err := srv.PeerEvent(p, AddPeerFlag); err != nil {
-			// 		p.Close()
-			// 	}
-			// }
-			// log.Debugf("handle addPeerCh success. node id: %s", common.ToHex(p.nodeID[:8]))
 		case p := <-srv.delPeerCh:
+			log.Debug("server: recv delete peer event")
 			srv.peersMux.Lock()
 			delete(srv.peers, p.nodeID.String())
 			srv.peersMux.Unlock()
-			// if srv.PeerEvent != nil { // 通知外界节点drop
-			// 	if err := srv.PeerEvent(p, DropPeerFlag); err != nil {
-			// 		log.Error("peer event error", "err", err)
-			// 	}
-			// }
 			subscribe.Send(subscribe.DeletePeer, p)
 			if p.NeedReConnect() {
 				n := p.rw.fd.RemoteAddr().String() // todo
@@ -302,7 +292,6 @@ func (srv *Server) run() {
 		case <-srv.quitCh:
 			return
 		}
-		// log.Debug("next turn to addPeerCh")
 	}
 }
 

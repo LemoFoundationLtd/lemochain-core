@@ -85,21 +85,23 @@ func (m *DiscoverManager) Start() error {
 	if atomic.CompareAndSwapInt32(&m.status, 0, 1) {
 		m.setWhiteList()
 		m.initDiscoverList()
-		return nil
 	} else {
 		log.Warn("DiscoverManager has been started.")
 		return ErrHasStared
 	}
+	log.Info("discover start ok")
+	return nil
 }
 
 func (m *DiscoverManager) Stop() error {
 	if atomic.CompareAndSwapInt32(&m.status, 1, 0) {
 		m.writeFindFile()
-		return nil
 	} else {
 		log.Warn("DiscoverManager has not been start.")
 		return ErrNotStart
 	}
+	log.Info("discover stop ok")
+	return nil
 }
 
 // connectedNodes get connected nodes ever
@@ -189,7 +191,6 @@ func (m *DiscoverManager) addDiscoverNodes(nodes []string) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
-	var n *RawNode
 	for _, node := range nodes {
 		key := crypto.Keccak256Hash([]byte(node))
 		if n, ok := m.whiteNodes[key]; ok {
@@ -210,7 +211,7 @@ func (m *DiscoverManager) addDiscoverNodes(nodes []string) {
 			}
 			continue
 		}
-		if n = newRawNode(node); n != nil {
+		if n := newRawNode(node); n != nil {
 			m.foundNodes[key] = n
 		}
 	}
@@ -251,6 +252,8 @@ func (m *DiscoverManager) SetConnectResult(node string, success bool) error {
 		n, ok = m.foundNodes[key]
 	}
 	if !ok {
+		// m.foundNodes[key] = newRawNode(node)
+		// n = m.foundNodes[key]
 		return ErrNoSpecialNode
 	}
 	if success {
@@ -263,10 +266,11 @@ func (m *DiscoverManager) SetConnectResult(node string, success bool) error {
 			n.Sequence = -1
 		} else {
 			n.Sequence = 0
-			// n.ConnCounter++
-			// if n.ConnCounter == MaxReconnectCount {
-			// 	return ErrMaxReconnect
-			// }
+			n.ConnCounter++
+			if n.ConnCounter == MaxReconnectCount {
+				n.IsReconnect = false
+				return ErrMaxReconnect
+			}
 		}
 	}
 	return nil
@@ -274,6 +278,7 @@ func (m *DiscoverManager) SetConnectResult(node string, success bool) error {
 
 // SetReconnect start reconnect
 func (m *DiscoverManager) SetReconnect(node string) error {
+	log.Debugf("discover: set reconnect: %s", node)
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -288,16 +293,19 @@ func (m *DiscoverManager) SetReconnect(node string) error {
 	if !ok {
 		return ErrNoSpecialNode
 	}
-	if n.IsReconnect {
-		if n.ConnCounter == MaxReconnectCount {
-			log.Infof("node: %s has reconnect %d, but not success", node, MaxReconnectCount)
-			return ErrMaxReconnect
-		}
-	} else {
-		n.IsReconnect = true
-		n.Sequence = 0
-	}
-	n.ConnCounter++
+	// if n.IsReconnect {
+	// 	if n.ConnCounter == MaxReconnectCount {
+	// 		log.Infof("node: %s has reconnect %d, but not success", node, MaxReconnectCount)
+	// 		return ErrMaxReconnect
+	// 	}
+	// } else {
+	// 	n.IsReconnect = true
+	// 	n.Sequence = 0
+	// }
+	// n.ConnCounter++
+	n.IsReconnect = true
+	n.Sequence = 0
+	n.ConnCounter = 1
 	return nil
 }
 
@@ -306,16 +314,16 @@ func (m *DiscoverManager) getAvailableNodes() []string {
 	if len(list) < MaxNodeCount {
 		list = append(list, m.connectingNodes()...)
 	}
-	if len(list) < MaxNodeCount {
-		list = append(list, m.staleNodes()...)
-	}
+	// if len(list) < MaxNodeCount {
+	// 	list = append(list, m.staleNodes()...)
+	// }
 	if len(list) > MaxNodeCount {
 		list = list[:MaxNodeCount]
 	}
 	return list
 }
 
-func (m *DiscoverManager) GetNodesForDiscover(sequence int32) []string {
+func (m *DiscoverManager) GetNodesForDiscover(sequence uint) []string {
 	// sequence for revert
 	return m.getAvailableNodes()
 }
@@ -382,7 +390,7 @@ func (m *DiscoverManager) writeFindFile() {
 
 	path := filepath.Join(m.dataDir, FindFile)
 	// open file
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 777) // todo
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 666) // read and write
 	if err != nil {
 		return
 	}

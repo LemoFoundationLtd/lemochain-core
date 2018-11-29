@@ -34,6 +34,7 @@ func (m *DialManager) Start() error {
 	}
 	atomic.StoreInt32(&m.state, 1)
 	go m.loop()
+	log.Infof("dial manager start")
 	return nil
 }
 
@@ -43,6 +44,7 @@ func (m *DialManager) Stop() error {
 		return ErrNotStart
 	}
 	atomic.StoreInt32(&m.state, -1)
+	log.Infof("dial manager stop")
 	return nil
 }
 
@@ -50,7 +52,7 @@ func (m *DialManager) runDialTask(node string) int {
 	conn, err := net.DialTimeout("tcp", node, dialTimeout)
 	if err != nil {
 		m.discover.SetConnectResult(node, false)
-		log.Warnf("node first dial error: %s", err.Error())
+		log.Warnf("dial node error: %s", err.Error())
 		return -1
 	}
 	if err = m.handleConn(conn, false); err != nil {
@@ -64,6 +66,7 @@ func (m *DialManager) loop() {
 	for {
 		list := m.discover.connectingNodes()
 		for _, n := range list {
+			log.Debugf("dial:%s", n)
 			if atomic.LoadInt32(&m.state) == -1 {
 				return
 			}

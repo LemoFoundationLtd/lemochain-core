@@ -393,6 +393,7 @@ func (pm *ProtocolManager) handleMsg(p *peerConnection) error {
 		}
 		pm.blockchain.ReceiveConfirms(pack)
 	case protocol.FindNodeReqMsg: // for discover
+		log.Debug("recv node discovery request....")
 		var req protocol.FindNodeReqData
 		if err := msg.Decode(&req); err != nil {
 			return errResp(protocol.ErrDecode, "%v: %v", msg, err)
@@ -400,7 +401,7 @@ func (pm *ProtocolManager) handleMsg(p *peerConnection) error {
 		res := new(protocol.FindNodeResData)
 		res.Sequence = req.Sequence
 		res.Nodes = pm.discover.GetNodesForDiscover(req.Sequence)
-		if err := p.peer.send(protocol.FindNodeResMsg, res); err != nil {
+		if err := p.peer.send(protocol.FindNodeResMsg, &res); err != nil {
 			log.Debug("send confirm info message failed.")
 		}
 	case protocol.FindNodeResMsg: // for discover
@@ -516,7 +517,7 @@ func (pm *ProtocolManager) syncAndDiscover() {
 	defer pm.fetcher.Stop()
 	defer pm.downloader.Terminate()
 
-	forceSync := time.NewTimer(10 * time.Second)
+	forceSync := time.NewTicker(10 * time.Second)
 	for {
 		select {
 		case p := <-pm.newPeerCh:
@@ -532,9 +533,14 @@ func (pm *ProtocolManager) syncAndDiscover() {
 				req := &protocol.FindNodeReqData{
 					Sequence: p.sequence,
 				}
-				p.peer.send(protocol.FindNodeReqMsg, req)
+				if err := p.peer.send(protocol.FindNodeReqMsg, req); err == nil {
+					log.Debugf("send discovery request to: %s", p.peer.RemoteAddr())
+				} else {
+					log.Debugf("send discovery request to: %s failed!!!!", p.peer.RemoteAddr())
+				}
 			}
 		case <-pm.quitSync:
+			forceSync.Stop()
 			return
 		}
 	}

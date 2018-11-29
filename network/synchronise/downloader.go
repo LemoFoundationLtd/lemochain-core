@@ -31,7 +31,7 @@ var (
 type peerConnection struct {
 	id          string
 	peer        *peer
-	sequence    int32
+	sequence    uint
 	hasDiscover bool
 	rwMux       sync.RWMutex
 }

@@ -126,7 +126,7 @@ func (p *Peer) run() (err error) {
 	var (
 		readErr = make(chan error)
 	)
-	p.wg.Add(2)
+	p.wg.Add(1)
 
 	go p.readLoop(readErr)
 	go p.heartbeatLoop()
@@ -158,6 +158,17 @@ func (p *Peer) readLoop(errCh chan<- error) {
 				errCh <- err
 				p.newMsgCh <- Msg{}
 			}
+			select {
+			case _, ok := <-p.closeCh:
+				if ok && err == io.EOF {
+					p.closeCh <- struct{}{}
+				}
+			default:
+
+			}
+			// if err == io.EOF {
+			// 	p.closeCh <- struct{}{}
+			// }
 			return
 		}
 		if msg.Code == 0x01 { // 心跳包
