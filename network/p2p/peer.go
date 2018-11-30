@@ -126,7 +126,6 @@ func (p *Peer) run() (err error) {
 	var (
 		readErr = make(chan error)
 	)
-	p.wg.Add(1)
 
 	go p.readLoop(readErr)
 	go p.heartbeatLoop()
@@ -146,6 +145,7 @@ func (p *Peer) run() (err error) {
 
 // 节点读取循环
 func (p *Peer) readLoop(errCh chan<- error) {
+	p.wg.Add(1)
 	defer func() {
 		p.wg.Done()
 		log.Debug("peer.readLoop finished.")
@@ -190,6 +190,7 @@ type frameHeader struct {
 
 // 发送心跳循环
 func (p *Peer) heartbeatLoop() {
+	p.wg.Add(1)
 	heartbeatTimer := time.NewTimer(heartbeatInterval)
 	defer func() {
 		heartbeatTimer.Stop()

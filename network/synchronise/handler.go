@@ -517,15 +517,17 @@ func (pm *ProtocolManager) syncAndDiscover() {
 	defer pm.fetcher.Stop()
 	defer pm.downloader.Terminate()
 
-	forceSync := time.NewTicker(10 * time.Second)
+	duration := 10 * time.Second
+	disTimer := time.NewTimer(duration)
 	for {
 		select {
 		case p := <-pm.newPeerCh:
 			if p.height > pm.blockchain.CurrentBlock().Height() {
 				go pm.synchronise(p.id)
 			}
-		case <-forceSync.C: // for discover
+		case <-disTimer.C: // for discover
 			if len(pm.peers.peers) > 5 {
+				disTimer.Reset(duration)
 				break
 			}
 			p := pm.peers.ToDiscover()
@@ -539,8 +541,9 @@ func (pm *ProtocolManager) syncAndDiscover() {
 					log.Debugf("send discovery request to: %s failed!!!!", p.peer.RemoteAddr())
 				}
 			}
+			disTimer.Reset(duration)
 		case <-pm.quitSync:
-			forceSync.Stop()
+			disTimer.Stop()
 			return
 		}
 	}

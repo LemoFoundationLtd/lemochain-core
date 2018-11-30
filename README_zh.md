@@ -124,7 +124,8 @@ glemo init path/to/genesis.json
 
 chainID | 说明
 ---|---
-1 | LemoChain主网
+1   | LemoChain主网
+100 | LemoChain测试网
 
 
 ### 启动共识节点
@@ -164,3 +165,12 @@ glemo console
 lemo.mine.start()
 ```
 6. 可以查看或发送账户中的LEMO了。具体命令请查看JS SDK[文档](https://github.com/LemoFoundationLtd/lemo-client)
+
+7. 白名单配置
+在`datadir`目录下新建文本文件`whitelist`，内容格式如下：
+```
+45.77.121.107:7003
+149.28.25.8:7003
+149.28.68.93:7003
+```
+Note：每个节点占据一行，目前仅需配置节点IP与端口号，后续将调整格式为：`NodeID@IP:Port`
