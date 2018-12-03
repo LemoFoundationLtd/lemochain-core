@@ -36,10 +36,10 @@ type BlockChain struct {
 
 	chainForksHead map[common.Hash]*types.Block // total latest header of different fork chain
 	chainForksLock sync.Mutex
-
-	engine    Engine       // consensus engine
-	processor *TxProcessor // state processor
-	running   int32
+	mux            sync.Mutex
+	engine         Engine       // consensus engine
+	processor      *TxProcessor // state processor
+	running        int32
 
 	MinedBlockFeed  subscribe.Feed
 	RecvBlockFeed   subscribe.Feed
@@ -197,6 +197,9 @@ func (bc *BlockChain) newBlockNotify(block *types.Block) {
 
 // InsertChain insert block of non-self to chain
 func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err error) {
+	bc.mux.Lock()
+	defer bc.mux.Unlock()
+
 	if err := bc.Verify(block); err != nil {
 		log.Errorf("block verify failed: %v", err)
 		return ErrVerifyBlockFailed
