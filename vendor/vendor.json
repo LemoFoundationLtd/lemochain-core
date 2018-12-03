@@ -45,6 +45,12 @@
 			"revisionTime": "2018-05-18T05:39:59Z"
 		},
 		{
+			"checksumSHA1": "fRlSR3Lolnu2PJoK3JDS9M7TbvQ=",
+			"path": "github.com/golang/sys",
+			"revision": "4ed8d59d0b35e1e29334a206d1b3f38b1e5dfb31",
+			"revisionTime": "2018-11-19T12:01:13Z"
+		},
+		{
 			"checksumSHA1": "AeS2ns+zXdtwvkUqqlpmOWViYVA=",
 			"path": "github.com/huin/goupnp",
 			"revision": "1395d1447324cbea88d249fbfcfd70ea878fdfca",
@@ -385,6 +391,14 @@
 			"path": "golang.org/x/sync/syncmap",
 			"revision": "f52d1811a62927559de87708c8913c1650ce4f26",
 			"revisionTime": "2017-05-17T20:25:26Z"
+		},
+		{
+			"path": "golang.org/x/sys",
+			"revision": ""
+		},
+		{
+			"path": "golang.org/x/sys/cpu",
+			"revision": ""
 		},
 		{
 			"checksumSHA1": "r1jWq0V3AI5DLN0aCnXXMH/is9Q=",
