@@ -11,7 +11,7 @@ const (
 	dialTimeout = 3 * time.Second
 )
 
-type HandleConnFunc func(fd net.Conn, isSelfServer bool) error
+type HandleConnFunc func(fd net.Conn, nodeID *NodeID) error
 
 type DialManager struct {
 	handleConn HandleConnFunc
@@ -49,13 +49,21 @@ func (m *DialManager) Stop() error {
 }
 
 func (m *DialManager) runDialTask(node string) int {
-	conn, err := net.DialTimeout("tcp", node, dialTimeout)
+	// check
+	nodeID, endpoint := checkNodeString(node)
+	if nodeID == nil {
+		log.Warnf("dial: invalid node. node: %s", node)
+		return -3
+	}
+	// dial
+	conn, err := net.DialTimeout("tcp", endpoint, dialTimeout)
 	if err != nil {
-		m.discover.SetConnectResult(node, false)
+		m.discover.SetConnectResult(nodeID, false)
 		log.Warnf("dial node error: %s", err.Error())
 		return -1
 	}
-	if err = m.handleConn(conn, false); err != nil {
+	// handle connection
+	if err = m.handleConn(conn, nodeID); err != nil {
 		log.Warnf("node first connect error: %s", err.Error())
 		return -2
 	}

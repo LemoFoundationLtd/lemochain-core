@@ -57,7 +57,7 @@ func (id NodeID) PubKey() (*ecdsa.PublicKey, error) {
 	p.X.SetBytes(id[:half])
 	p.Y.SetBytes(id[half:])
 	if !p.Curve.IsOnCurve(p.X, p.Y) {
-		return nil, errors.New("id is invalid secp256k1 curve point")
+		return nil, errors.New("invalid secp256k1 curve point")
 	}
 	return p, nil
 }
@@ -65,4 +65,13 @@ func (id NodeID) PubKey() (*ecdsa.PublicKey, error) {
 // String 获取nodeid的string形式
 func (id NodeID) String() string {
 	return fmt.Sprintf("%x", id[:])
+}
+
+func ToNodeID(input []byte) *NodeID {
+	if len(input) != 64 {
+		return nil
+	}
+	r := NodeID{}
+	copy(r[:], input)
+	return &r
 }

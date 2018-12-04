@@ -9,6 +9,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/mclock"
 	//"github.com/LemoFoundationLtd/lemochain-go/sync"
+	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"io"
 	"net"
@@ -31,6 +32,10 @@ type Peer struct {
 	wmu sync.Mutex // 写锁
 
 	newMsgCh chan Msg // 新消息
+
+	heartbeatTimer *time.Timer
+
+	aes []byte
 }
 
 func newPeer(fd net.Conn) transport {
@@ -45,17 +50,23 @@ func newPeer(fd net.Conn) transport {
 	}
 }
 
-// 发送NodeID格式，不直接使用
-type authMsg struct {
-	Version uint32 // 版本
-	NodeID  NodeID // nodeid
-}
-
-func (p *Peer) doHandshake(prv *ecdsa.PrivateKey, isSelfServer bool) (err error) {
-	if isSelfServer { // 本地为服务端
-		err = p.receiverHandshake(prv)
+func (p *Peer) doHandshake(prv *ecdsa.PrivateKey, nodeID *NodeID) (err error) {
+	if nodeID == nil { // 本地为服务端
+		s, err := serverEncHandshake(p.rw.fd, prv)
+		if err != nil {
+			return err
+		}
+		p.aes = make([]byte, len(s.Aes))
+		copy(p.aes, s.Aes)
+		p.nodeID = s.RemoteID
 	} else { // 本地为客户端
-		err = p.initiatorEncHandshake(prv)
+		s, err := clientEncHandshake(p.rw.fd, prv, *nodeID)
+		if err != nil {
+			return err
+		}
+		p.aes = make([]byte, len(s.Aes))
+		copy(p.aes, s.Aes)
+		p.nodeID = s.RemoteID
 	}
 	return err
 }
@@ -74,59 +85,12 @@ func (p *Peer) NeedReConnect() bool {
 	return p.needReConnect
 }
 
-// 作为服务端处理流程
-func (p *Peer) receiverHandshake(prv *ecdsa.PrivateKey) error {
-	conn := p.rw.fd
-	// 读取对方的NodeID
-	buf := make([]byte, 4+64) // 4个字节的版本，64个字节的公钥
-	if _, err := io.ReadFull(conn, buf); err != nil {
-		return err
-	}
-	v := binary.BigEndian.Uint32(buf[:4])
-	if v != 1 {
-		return errors.New("version not match")
-	}
-	copy(p.nodeID[:], buf[4:])
-
-	// 发送自己的NodeID
-	nodeID := PubkeyID(&prv.PublicKey)
-	copy(buf[4:], nodeID[:])
-	if _, err := conn.Write(buf); err != nil {
-		return err
-	}
-	return nil
-}
-
-// 作为客户端处理流程
-func (p *Peer) initiatorEncHandshake(prv *ecdsa.PrivateKey) error {
-	buf := make([]byte, 4+64)
-	// 发送自己的NodeID
-	v := make([]byte, 4)
-	binary.BigEndian.PutUint32(v, uint32(1))
-	copy(buf[:4], v)
-	nodeID := PubkeyID(&prv.PublicKey)
-	copy(buf[4:], nodeID[:])
-	conn := p.rw.fd
-	conn.Write(buf)
-
-	// 读取对方的NodeID
-	if _, err := io.ReadFull(conn, buf); err != nil {
-		return err
-	}
-	version := binary.BigEndian.Uint32(buf[:4])
-	if version != 1 {
-		return errors.New("version not match")
-	}
-	copy(p.nodeID[:], buf[4:])
-	return nil
-}
-
 // 节点运行起来 读取
 func (p *Peer) run() (err error) {
 	var (
 		readErr = make(chan error)
 	)
-
+	p.heartbeatTimer = time.NewTimer(heartbeatInterval)
 	go p.readLoop(readErr)
 	go p.heartbeatLoop()
 
@@ -191,20 +155,20 @@ type frameHeader struct {
 // 发送心跳循环
 func (p *Peer) heartbeatLoop() {
 	p.wg.Add(1)
-	heartbeatTimer := time.NewTimer(heartbeatInterval)
 	defer func() {
-		heartbeatTimer.Stop()
+		p.heartbeatTimer.Stop()
+		p.heartbeatTimer = nil
 		p.wg.Done()
 		log.Debug("peer.heartbeatLoop finished.")
 	}()
 
 	for {
 		select {
-		case <-heartbeatTimer.C:
+		case <-p.heartbeatTimer.C:
 			if err := p.sendHeartbeatMsg(); err != nil {
 				return
 			}
-			heartbeatTimer.Reset(heartbeatInterval)
+			p.heartbeatTimer.Reset(heartbeatInterval)
 		case <-p.closeCh:
 			return
 		}
@@ -250,16 +214,17 @@ func (p *Peer) ReadMsg() Msg {
 }
 
 // 对外提供 提供写入数据到节点
-func (p *Peer) WriteMsg(code uint32, content []byte) error {
+func (p *Peer) WriteMsg(code uint32, msg []byte) (err error) {
 	p.wmu.Lock()
 	defer p.wmu.Unlock()
 
-	buf := make([]byte, len(content)+12)
-	headBuf := p.sealFrameHead(code, uint32(len(content)))
-	copy(buf[:12], headBuf)
-	copy(buf[12:], content)
+	buf, err := p.packFrame(code, msg)
+	if err != nil {
+		return err
+	}
+	_, err = p.rw.fd.Write(buf)
 
-	_, err := p.rw.fd.Write(buf)
+	p.heartbeatTimer.Reset(heartbeatInterval)
 	return err
 }
 
@@ -268,31 +233,48 @@ func (p *Peer) sendHeartbeatMsg() error {
 	p.wmu.Lock()
 	defer p.wmu.Unlock()
 
-	buf := p.sealFrameHead(0x01, 0)
-	_, err := p.rw.fd.Write(buf)
+	buf, err := p.packFrame(0x01, nil)
+	if err != nil {
+		return err
+	}
+	_, err = p.rw.fd.Write(buf)
 	return err
 }
 
-// 封装帧头
-func (p *Peer) sealFrameHead(code, size uint32) []byte {
-	var (
-		buf = make([]byte, 12)
-		tmp = make([]byte, 4)
-	)
-	binary.BigEndian.PutUint32(tmp, uint32(baseFrameVersion))
-	copy(buf[:4], tmp)
-	binary.BigEndian.PutUint32(tmp, code)
-	copy(buf[4:8], tmp)
-	binary.BigEndian.PutUint32(tmp, size) // size: 0
-	copy(buf[8:], tmp)
-	return buf
-}
-
 // 获取Peer ID
-func (p *Peer) NodeID() NodeID {
-	return p.nodeID
+func (p *Peer) NodeID() *NodeID {
+	return &p.nodeID
 }
 
 func (p *Peer) RemoteAddr() string {
 	return p.rw.fd.RemoteAddr().String()
+}
+
+func (p *Peer) packFrame(code uint32, msg []byte) ([]byte, error) {
+	buf := make([]byte, 4)
+	binary.BigEndian.PutUint32(buf, code)
+	if msg != nil {
+		buf = append(buf, msg...)
+	}
+	content, err := crypto.AesEncrypt(buf, p.aes)
+	if err != nil {
+		return nil, err
+	}
+	length := make([]byte, PackageLength)
+	binary.BigEndian.PutUint32(length, uint32(len(content)))
+	buf = append(PackagePrefix, length...)
+	buf = append(buf, content...)
+	return buf, nil
+}
+
+func (p *Peer) unpackFrame(content []byte) (uint32, []byte, error) {
+	originData, err := crypto.AesDecrypt(content, p.aes)
+	if err != nil {
+		return 0, nil, err
+	}
+	code := binary.BigEndian.Uint32(originData[:4])
+	if len(originData) == 4 {
+		return code, nil, nil
+	}
+	return code, originData[4:], nil
 }

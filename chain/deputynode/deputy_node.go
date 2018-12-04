@@ -205,8 +205,8 @@ func (d *Manager) GetLatestDeputies() []string {
 	res := make([]string, 0)
 	for _, n := range d.DeputyNodesList[len(d.DeputyNodesList)-1].nodes {
 		builder := &strings.Builder{}
-		// builder.WriteString(common.ToHex(n.NodeID)[2:])	// todo
-		// builder.WriteString("@")
+		builder.WriteString(common.ToHex(n.NodeID)[2:])
+		builder.WriteString("@")
 		builder.WriteString(n.IP.String())
 		builder.WriteString(":")
 		builder.WriteString(strconv.Itoa(int(n.Port)))

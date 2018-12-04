@@ -201,8 +201,7 @@ func (pm *ProtocolManager) handle(p *peer) error {
 		log.Infof("lemochain handshake failed: %v", err)
 
 		// for discover
-		n := p.RemoteNetInfo() // todo
-		pm.discover.SetConnectResult(n, false)
+		pm.discover.SetConnectResult(p.NodeID(), false)
 
 		return err
 	}
@@ -217,8 +216,7 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	// pm.downloader.RegisterPeer(p.id, p)
 
 	// for discover
-	n := p.RemoteNetInfo() // todo
-	pm.discover.SetConnectResult(n, true)
+	pm.discover.SetConnectResult(p.NodeID(), true)
 
 	pm.newPeerCh <- p
 

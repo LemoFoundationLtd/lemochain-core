@@ -26,7 +26,7 @@ const (
 
 	baseFrameVersion = 1
 
-	heartbeatInterval = 15 * time.Second
+	heartbeatInterval = 10 * time.Second
 	frameReadTimeout  = 30 * time.Second
 	retryConnTimeout  = 30 * time.Second
 )
@@ -110,8 +110,9 @@ func NewServer(config Config /*, peerEvent PeerEventFn*/, discover *DiscoverMana
 }
 
 type transport interface {
-	doHandshake(prv *ecdsa.PrivateKey, isSelfServer bool) error
+	doHandshake(prv *ecdsa.PrivateKey, nodeID *NodeID) error
 	Close()
+	NodeID() *NodeID
 }
 
 var errServerStopped = errors.New("server has stopped")
@@ -271,7 +272,7 @@ func (srv *Server) run() {
 			if _, ok := srv.peers[p.nodeID.String()]; ok {
 				log.Warnf("Connection has already exist. Remote node id: %s", common.ToHex(p.nodeID[:8]))
 				p.Close()
-				srv.discover.SetConnectResult(p.RemoteAddr(), false) // todo
+				srv.discover.SetConnectResult(p.NodeID(), false) // todo
 				break
 			}
 			srv.peersMux.Lock()
@@ -286,8 +287,7 @@ func (srv *Server) run() {
 			srv.peersMux.Unlock()
 			subscribe.Send(subscribe.DeletePeer, p)
 			if p.NeedReConnect() {
-				n := p.rw.fd.RemoteAddr().String() // todo
-				srv.discover.SetReconnect(n)
+				srv.discover.SetReconnect(p.NodeID())
 			}
 		case <-srv.quitCh:
 			return
@@ -313,24 +313,23 @@ func (srv *Server) listenLoop() {
 				continue
 			}
 		}
-		go srv.HandleConn(fd, true)
+		go srv.HandleConn(fd, nil)
 	}
 }
 
 // 处理接收到的连接 服务端客户端均走此函数
 // isSelfServer == true ? server : client
-func (srv *Server) HandleConn(fd net.Conn, isSelfServer bool) error {
+func (srv *Server) HandleConn(fd net.Conn, nodeID *NodeID) error {
 	if !srv.running {
 		return errServerStopped
 	}
 	peer := srv.newTransport(fd)
-	err := peer.doHandshake(srv.PrivateKey, isSelfServer)
+	err := peer.doHandshake(srv.PrivateKey, nodeID)
 	if err != nil {
 		fd.Close()
 
 		// for discover
-		n := fd.RemoteAddr().String()
-		srv.discover.SetConnectResult(n, false)
+		srv.discover.SetConnectResult(peer.NodeID(), false)
 
 		return err
 	}
@@ -339,12 +338,11 @@ func (srv *Server) HandleConn(fd net.Conn, isSelfServer bool) error {
 		fd.Close()
 
 		// for discover
-		n := fd.RemoteAddr().String()
-		srv.discover.SetConnectResult(n, false)
+		srv.discover.SetConnectResult(peer.NodeID(), false)
 
 		return ErrConnectSelf
 	}
-	if isSelfServer {
+	if nodeID == nil {
 		log.Debugf("Receive new connect, IP: %s. ID: %s ", p.rw.fd.RemoteAddr().String(), common.ToHex(p.nodeID[:8]))
 	} else {
 		log.Debugf("Connect to server: %s. id: %s", p.rw.fd.RemoteAddr(), common.ToHex(p.nodeID[:8]))
@@ -363,21 +361,13 @@ func (srv *Server) runPeer(p *Peer) {
 	log.Debugf("peer: %s stopped", p.rw.fd.RemoteAddr().String())
 }
 
-func (srv *Server) Connect(node string) {
-	nodeParts := strings.Split(node, ":")
-	if len(nodeParts) != 2 {
-		return
-	}
-	if ip := net.ParseIP(nodeParts[0]); ip == nil {
-		return
-	}
-	port, err := strconv.Atoi(nodeParts[1])
-	if err != nil || port < 1024 || port > 65535 {
-		return
-	}
+func (srv *Server) Connect(node string) string {
 	log.Infof("start add static peer: %s", node)
 	srv.discover.AddNewList([]string{node})
-	srv.dialManager.runDialTask(node)
+	if res := srv.dialManager.runDialTask(node); res < 0 {
+		return "connect failed"
+	}
+	return ""
 }
 
 //go:generate gencodec -type PeerConnInfo -out gen_peer_conn_info_json.go
