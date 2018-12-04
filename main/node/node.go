@@ -163,7 +163,7 @@ func New(flags flag.CmdFlags) *Node {
 
 	// newTxsCh := make(chan types.Transactions)
 	accMan := blockChain.AccountManager()
-	txPool := chain.NewTxPool(accMan)
+	txPool := chain.NewTxPool(uint16(configFromFile.ChainID), accMan)
 	discover := p2p.NewDiscoverManager(cfg.DataDir)
 	pm := synchronise.NewProtocolManager(configFromFile.ChainID, deputynode.GetSelfNodeID(), blockChain, txPool, discover)
 	server := p2p.NewServer(cfg.P2P, discover)

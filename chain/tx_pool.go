@@ -15,6 +15,7 @@ import (
 var (
 	// ErrInvalidSender is returned if the transaction contains an invalid signature.
 	ErrInvalidSender = errors.New("invalid sender")
+	ErrTxChainID     = errors.New("Tx chainID unequal to node chainID ")
 
 	// ErrInsufficientFunds is returned if the total cost of executing a transaction
 	// is higher than the balance of the user's account.
@@ -170,7 +171,8 @@ func (recent *TxsRecent) put(hash common.Hash) {
 }
 
 type TxPool struct {
-	am *account.Manager
+	am      *account.Manager
+	chainID uint16
 
 	txsCache TxsSort
 
@@ -180,10 +182,11 @@ type TxPool struct {
 	NewTxsFeed subscribe.Feed
 }
 
-func NewTxPool(am *account.Manager) *TxPool {
+func NewTxPool(chainID uint16, am *account.Manager) *TxPool {
 	pool := &TxPool{
-		am:     am,
-		recent: NewRecent(),
+		am:      am,
+		chainID: chainID,
+		recent:  NewRecent(),
 	}
 	pool.txsCache = NewTxsSortByTime()
 
@@ -198,10 +201,10 @@ func (pool *TxPool) AddTx(tx *types.Transaction) error {
 	if isExist {
 		return nil
 	} else {
-		// err := pool.validateTx(tx)
-		// if err != nil {
-		// 	return err
-		// }
+		err := pool.validateTx(tx)
+		if err != nil {
+			return err
+		}
 		pool.recent.put(hash)
 		pool.txsCache.push(tx)
 		pool.NewTxsFeed.Send(types.Transactions{tx})
@@ -248,6 +251,9 @@ func (pool *TxPool) validateTx(tx *types.Transaction) error {
 	from, err := tx.From()
 	if err != nil {
 		return ErrInvalidSender
+	}
+	if tx.ChainId() != pool.chainID {
+		return ErrTxChainID
 	}
 
 	fromAccount := pool.am.GetAccount(from)
