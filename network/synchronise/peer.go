@@ -34,7 +34,7 @@ type peer struct {
 }
 
 func newPeer(p *p2p.Peer) *peer {
-	id := p.NodeID()
+	id := p.RNodeID()
 	return &peer{
 		id:          fmt.Sprintf("%x", id[:]),
 		Peer:        p,
@@ -126,7 +126,12 @@ func (p *peer) readRemoteStatus(network uint64, status *protocol.NodeStatusData,
 	msgCh := make(chan p2p.Msg)
 	// 读取
 	go func() {
-		msgCh <- p.Peer.ReadMsg()
+		msg, err := p.Peer.ReadMsg()
+		if err != nil {
+			log.Debugf("readRemoteStatus: failed. %v", err)
+			msgCh <- p2p.Msg{}
+		}
+		msgCh <- msg
 	}()
 	go func() {
 		select {
@@ -178,5 +183,5 @@ func (p *peer) SendTransactions(txs types.Transactions) error {
 
 func (p *peer) RemoteNetInfo() string {
 	// todo
-	return p.Peer.RemoteAddr()
+	return p.Peer.RAddress()
 }

@@ -2,33 +2,23 @@
 package p2p
 
 import (
-	"bufio"
 	"bytes"
 	"crypto/ecdsa"
-	"errors"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/common/subscribe"
-	"io"
 	"net"
-	"os"
-	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
 )
 
 const (
-	baseProtocolVersion = 1
-
-	baseFrameVersion = 1
-
-	heartbeatInterval = 10 * time.Second
+	heartbeatInterval = 5 * time.Second
 	frameReadTimeout  = 30 * time.Second
-	retryConnTimeout  = 30 * time.Second
+	frameWriteTimeout = 20 * time.Second
 )
 
 // Config holds Server options.
@@ -39,17 +29,14 @@ type Config struct {
 	// max accept connection count
 	MaxPeerNum int
 
-	// 最大连接中的节点数
-	MaxPendingPeerNum int // reserve
+	// max light peer limit
+	MaxLightPeerNum int
 
 	// server's Name
 	Name string
 
-	// 黑名单
-	NetRestrict *Netlist
-
-	// 节点数据库路径
-	NodeDatabase string
+	// black list
+	NetRestrict *Netlist // revert
 
 	// listen port
 	Port int
@@ -58,16 +45,6 @@ type Config struct {
 func (config *Config) ListenAddr() string {
 	return fmt.Sprintf(":%d", config.Port)
 }
-
-// 对外节点通知类型
-type PeerEventFlag int
-
-const (
-	AddPeerFlag PeerEventFlag = iota
-	DropPeerFlag
-)
-
-type PeerEventFn func(peer *Peer, flag PeerEventFlag) error
 
 // Server manages all peer connections.
 type Server struct {
@@ -78,94 +55,60 @@ type Server struct {
 
 	listener net.Listener // TCP监听
 
-	nodeList []string         // nodedatabase配置的节点列表
-	peers    map[string]*Peer // 记录所有的节点连接
+	connectedNodes map[*NodeID]IPeer
+
 	peersMux sync.Mutex
 
 	quitCh    chan struct{}
-	addPeerCh chan *Peer
-	delPeerCh chan *Peer
+	addPeerCh chan IPeer
+	delPeerCh chan IPeer
 
 	loopWG sync.WaitGroup
 
-	// needConnectNodeCh chan string // 需要立即拨号通道
-
-	newTransport func(net.Conn) transport // 目前只有Peer使用到
+	newIPeer func(net.Conn) IPeer
 
 	// for discover
 	discover    *DiscoverManager
 	dialManager *DialManager
-
-	// PeerEvent PeerEventFn // 外界注册使用
 }
 
-func NewServer(config Config /*, peerEvent PeerEventFn*/, discover *DiscoverManager) *Server {
+func NewServer(config Config, discover *DiscoverManager) *Server {
 	srv := &Server{
 		Config:   config,
 		discover: discover,
-		// PeerEvent: peerEvent,
+
+		newIPeer: newPeer,
+
+		addPeerCh: make(chan IPeer, 1),
+		delPeerCh: make(chan IPeer, 1),
+
+		connectedNodes: make(map[*NodeID]IPeer),
+		quitCh:         make(chan struct{}),
 	}
 	srv.dialManager = NewDialManager(srv.HandleConn, srv.discover)
 	return srv
-}
-
-type transport interface {
-	doHandshake(prv *ecdsa.PrivateKey, nodeID *NodeID) error
-	Close()
-	NodeID() *NodeID
-}
-
-var errServerStopped = errors.New("server has stopped")
-
-// conn wraps a network connection with information gathered
-// during the two handshakes.
-type conn struct {
-	fd net.Conn
-	transport
-	cont chan error // The run loop uses cont to signal errors to SetupConn.
-	id   NodeID     // valid after the encryption handshake
-	name string     // valid after the protocol handshake
 }
 
 // 启动服务器
 func (srv *Server) Start() error {
 	srv.lock.Lock()
 	defer srv.lock.Unlock()
+
 	if srv.running {
-		return fmt.Errorf("server already running")
+		return ErrAlreadyRunning
 	}
 	if srv.PrivateKey == nil {
-		return fmt.Errorf("server.PrivateKey can't be nil")
+		return ErrNilPrvKey
 	}
 	if err := srv.startListening(); err != nil {
 		return err
 	}
-	if srv.addPeerCh == nil {
-		srv.addPeerCh = make(chan *Peer, 5)
-	}
-	if srv.peers == nil {
-		srv.peers = make(map[string]*Peer)
-	}
-	if srv.delPeerCh == nil {
-		srv.delPeerCh = make(chan *Peer, 5)
-	}
-	if srv.newTransport == nil {
-		srv.newTransport = newPeer
-	}
-	if srv.quitCh == nil {
-		srv.quitCh = make(chan struct{})
-	}
-	if srv.NodeDatabase != "" {
-		if err := srv.readNodeDatabaseFile(); err != nil {
-			log.Error(err.Error())
-		}
-	}
+
 	// discover
-	if srv.discover != nil { // todo
-		nodes := deputynode.Instance().GetLatestDeputies()
-		srv.discover.SetDeputyNodes(nodes)
-		srv.discover.Start()
-	}
+	nodes := deputynode.Instance().GetLatestDeputies()
+	srv.discover.SetDeputyNodes(nodes)
+	srv.discover.Start()
+
 	go srv.run()
 	srv.running = true
 	return nil
@@ -179,68 +122,23 @@ func (srv *Server) Stop() {
 		return
 	}
 	srv.running = false
-	if srv.listener != nil {
-		srv.listener.Close()
+
+	srv.listener.Close()
+
+	for _, p := range srv.connectedNodes {
+		p.Close()
 	}
-	if srv.peers != nil {
-		for _, p := range srv.peers {
-			p.Close()
-		}
-		srv.peers = nil
-	}
+
 	// stop discover
-	if srv.discover != nil {
-		if err := srv.discover.Stop(); err != nil {
-			log.Errorf("stop discover error: %v", err)
-		} else {
-			// srv.discover = nil
-			log.Debug("stop discover ok.")
-		}
+	if err := srv.discover.Stop(); err != nil {
+		log.Errorf("stop discover error: %v", err)
+	} else {
+		log.Debug("stop discover ok.")
 	}
+
 	close(srv.quitCh)
 	srv.loopWG.Wait()
 	log.Debug("server stop success")
-}
-
-// 从本地读取节点列表
-func (srv *Server) readNodeDatabaseFile() error {
-	exePath := os.Args[0]
-	dir := filepath.Dir(exePath)
-	filename := filepath.Join(dir, srv.NodeDatabase)
-	fmt.Println(filename)
-	if _, err := os.Stat(filename); err != nil {
-		if os.IsNotExist(err) {
-			return errors.New("nodedatabase file not exist")
-		}
-	}
-	f, err := os.Open(filename)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	rd := bufio.NewReader(f)
-	srv.nodeList = make([]string, 0)
-	for {
-		line, err := rd.ReadString('\n')
-		if err != nil {
-			if io.EOF == err && strings.Compare(line, "") != 0 {
-			} else {
-				break
-			}
-		}
-		tmp := strings.Split(line, ":")
-		if len(tmp) != 2 {
-			continue
-		}
-		ip := net.ParseIP(tmp[0])
-		tcpPort, err := strconv.Atoi(strings.TrimSpace(tmp[1]))
-		if ip == nil || err != nil || tcpPort < 1 || tcpPort > 65535 {
-			continue
-		}
-
-		srv.nodeList = append(srv.nodeList, strings.TrimSpace(line))
-	}
-	return nil
 }
 
 // 启动TCP监听
@@ -262,33 +160,30 @@ func (srv *Server) run() {
 		log.Debug("server.run stop")
 	}()
 
-	// peers := make(map[NodeID]*Peer) // 记录所有的节点连接
+	// peers := make(map[RNodeID]*Peer) // 记录所有的节点连接
 	go srv.dialManager.Start() // 启动主动连接调度
 	for {
 		select {
 		case p := <-srv.addPeerCh:
-			log.Debugf("receive srv.addPeerCh. node id: %s", common.ToHex(p.nodeID[:8]))
+			log.Debugf("receive srv.addPeerCh. node id: %s", common.ToHex(p.RNodeID()[:8]))
 			// 判断此节点是否在peers中
-			if _, ok := srv.peers[p.nodeID.String()]; ok {
-				log.Warnf("Connection has already exist. Remote node id: %s", common.ToHex(p.nodeID[:8]))
+			if _, ok := srv.connectedNodes[p.RNodeID()]; ok {
+				log.Warnf("Connection has already exist. Remote node id: %s", common.ToHex(p.RNodeID()[:8]))
 				p.Close()
-				srv.discover.SetConnectResult(p.NodeID(), false) // todo
+				srv.discover.SetConnectResult(p.RNodeID(), false) // todo
 				break
 			}
 			srv.peersMux.Lock()
-			srv.peers[p.nodeID.String()] = p
+			srv.connectedNodes[p.RNodeID()] = p
 			srv.peersMux.Unlock()
 			go srv.runPeer(p)
 			subscribe.Send(subscribe.AddNewPeer, p)
 		case p := <-srv.delPeerCh:
 			log.Debug("server: recv delete peer event")
 			srv.peersMux.Lock()
-			delete(srv.peers, p.nodeID.String())
+			delete(srv.peers, p.rNodeID.String())
 			srv.peersMux.Unlock()
 			subscribe.Send(subscribe.DeletePeer, p)
-			if p.NeedReConnect() {
-				srv.discover.SetReconnect(p.NodeID())
-			}
 		case <-srv.quitCh:
 			return
 		}
@@ -321,44 +216,44 @@ func (srv *Server) listenLoop() {
 // isSelfServer == true ? server : client
 func (srv *Server) HandleConn(fd net.Conn, nodeID *NodeID) error {
 	if !srv.running {
-		return errServerStopped
+		return ErrSrvHasStopped
 	}
-	peer := srv.newTransport(fd)
+	peer := srv.newIPeer(fd)
 	err := peer.doHandshake(srv.PrivateKey, nodeID)
 	if err != nil {
 		fd.Close()
 
 		// for discover
-		srv.discover.SetConnectResult(peer.NodeID(), false)
+		srv.discover.SetConnectResult(peer.RNodeID(), false)
 
 		return err
 	}
-	p := peer.(*Peer)
-	if bytes.Compare(p.nodeID[:], deputynode.GetSelfNodeID()) == 0 {
+	// p := peer.(*Peer)
+	if bytes.Compare(peer.RNodeID()[:], deputynode.GetSelfNodeID()) == 0 {
 		fd.Close()
 
 		// for discover
-		srv.discover.SetConnectResult(peer.NodeID(), false)
+		srv.discover.SetConnectResult(peer.RNodeID(), false)
 
 		return ErrConnectSelf
 	}
 	if nodeID == nil {
-		log.Debugf("Receive new connect, IP: %s. ID: %s ", p.rw.fd.RemoteAddr().String(), common.ToHex(p.nodeID[:8]))
+		log.Debugf("Receive new connect, IP: %s. ID: %s ", peer.RAddress(), common.ToHex(p.rNodeID[:8]))
 	} else {
-		log.Debugf("Connect to server: %s. id: %s", p.rw.fd.RemoteAddr(), common.ToHex(p.nodeID[:8]))
+		log.Debugf("Connect to server: %s. id: %s", peer.RAddress(), common.ToHex(p.rNodeID[:8]))
 	}
-	srv.addPeerCh <- p
+	srv.addPeerCh <- peer
 	log.Debug("transfer new peer to srv.addPeerCh")
 	return nil
 }
 
-func (srv *Server) runPeer(p *Peer) {
-	log.Debugf("start run peer. node id: %s", common.ToHex(p.nodeID[:8]))
-	p.run() // 正常情况下会阻塞 除非节点drop
+func (srv *Server) runPeer(p IPeer) {
+	log.Debugf("start run peer. node id: %s", common.ToHex(p.RNodeID()[:8]))
+	p.run() // block this
 	if srv.running == true {
 		srv.delPeerCh <- p
 	}
-	log.Debugf("peer: %s stopped", p.rw.fd.RemoteAddr().String())
+	log.Debugf("peer: %s stopped", p.RAddress())
 }
 
 func (srv *Server) Connect(node string) string {
@@ -375,7 +270,7 @@ func (srv *Server) Connect(node string) string {
 type PeerConnInfo struct {
 	LocalAddr  string `json:"localAddress"`
 	RemoteAddr string `json:"remoteAddress"`
-	NodeID     string `json:"nodeID"`
+	NodeID     string `json:"rNodeID"`
 }
 
 func (srv *Server) Connections() []PeerConnInfo {
@@ -383,7 +278,7 @@ func (srv *Server) Connections() []PeerConnInfo {
 	defer srv.peersMux.Unlock()
 	result := make([]PeerConnInfo, 0, len(srv.peers))
 	for _, v := range srv.peers {
-		info := PeerConnInfo{v.rw.fd.LocalAddr().String(), v.rw.fd.RemoteAddr().String(), v.nodeID.String()}
+		info := PeerConnInfo{v.conn.LocalAddr().String(), v.conn.RemoteAddr().String(), v.rNodeID.String()}
 		result = append(result, info)
 	}
 	return result
@@ -391,18 +286,11 @@ func (srv *Server) Connections() []PeerConnInfo {
 
 func (srv *Server) Disconnect(node string) bool {
 	for id, v := range srv.peers {
-		if strings.Compare(node, v.rw.fd.RemoteAddr().String()) == 0 {
-			v.needReConnect = false
+		if strings.Compare(node, v.conn.RemoteAddr().String()) == 0 {
 			v.Close()
 			srv.peersMux.Lock()
 			delete(srv.peers, id)
 			srv.peersMux.Unlock()
-			// if srv.PeerEvent != nil { // 通知外界节点drop
-			// 	if err := srv.PeerEvent(v, DropPeerFlag); err != nil {
-			// 		log.Error("peer event error", "err", err)
-			// 		return false
-			// 	}
-			// }
 			subscribe.Send(subscribe.DeletePeer, v)
 			return true
 		}

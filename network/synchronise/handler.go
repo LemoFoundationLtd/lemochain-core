@@ -12,6 +12,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/subscribe"
 	"github.com/LemoFoundationLtd/lemochain-go/network/p2p"
 	"github.com/LemoFoundationLtd/lemochain-go/network/synchronise/protocol"
+	"io"
 	"strings"
 	"sync"
 	"time"
@@ -196,12 +197,11 @@ func (pm *ProtocolManager) dropPeer(id string) {
 func (pm *ProtocolManager) handle(p *peer) error {
 	block := pm.blockchain.CurrentBlock()
 	if err := p.Handshake(pm.chainID, block.Height(), block.Hash(), pm.blockchain.Genesis().Hash()); err != nil {
-		p.DisableReConnect()
 		p.Close()
 		log.Infof("lemochain handshake failed: %v", err)
 
 		// for discover
-		pm.discover.SetConnectResult(p.NodeID(), false)
+		pm.discover.SetConnectResult(p.RNodeID(), false)
 
 		return err
 	}
@@ -216,7 +216,7 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	// pm.downloader.RegisterPeer(p.id, p)
 
 	// for discover
-	pm.discover.SetConnectResult(p.NodeID(), true)
+	pm.discover.SetConnectResult(p.RNodeID(), true)
 
 	pm.newPeerCh <- p
 
@@ -231,7 +231,14 @@ func (pm *ProtocolManager) handle(p *peer) error {
 
 // handleMsg 处理节点发送的消息
 func (pm *ProtocolManager) handleMsg(p *peerConnection) error {
-	msg := p.peer.ReadMsg()
+	msg, err := p.peer.ReadMsg()
+	if err != nil {
+		p.peer.Close()
+		if err == io.EOF {
+			pm.discover.SetReconnect(p.peer.RNodeID())
+		}
+		return err
+	}
 	if msg.Empty() {
 		return errors.New("read message error")
 	}
@@ -458,7 +465,7 @@ func (pm *ProtocolManager) peerEventLoop() {
 			peer := newPeer(p)
 			go pm.handle(peer)
 		case p := <-pm.removePeerCh:
-			go pm.dropPeer(p.NodeID().String())
+			go pm.dropPeer(p.RNodeID().String())
 		case <-pm.quitSync:
 			return
 		}
@@ -534,9 +541,9 @@ func (pm *ProtocolManager) syncAndDiscover() {
 					Sequence: p.sequence,
 				}
 				if err := p.peer.send(protocol.FindNodeReqMsg, req); err == nil {
-					log.Debugf("send discovery request to: %s", p.peer.RemoteAddr())
+					log.Debugf("send discovery request to: %s", p.peer.RAddress())
 				} else {
-					log.Debugf("send discovery request to: %s failed!!!!", p.peer.RemoteAddr())
+					log.Debugf("send discovery request to: %s failed!!!!", p.peer.RAddress())
 				}
 			}
 			disTimer.Reset(duration)

@@ -13,7 +13,7 @@ import (
 
 const NodeIDBits = 512
 
-// NodeID 节点唯一编码
+// RNodeID 节点唯一编码
 type NodeID [NodeIDBits / 8]byte
 
 // Node 一个网络节点

@@ -5,6 +5,8 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"encoding/binary"
+	"fmt"
+	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto/ecies"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto/rand"
@@ -22,13 +24,13 @@ const (
 )
 
 var (
-	PackagePrefix = []byte{0x5a, 0x48}
-	PackageLength = 4
-	PackageMaxLen = 4 * 1024 * 1024 * 1024 // 4 Gb
+	PackagePrefix = []byte{0x5a, 0x48}     // package flag
+	PackageLength = 4                      // package length bytes
+	PackageMaxLen = 1 * 1024 * 1024 * 1024 // 1 Gb
 )
 
+// encHandshake object for handshake
 type encHandshake struct {
-	// initiator bool
 	remoteID NodeID
 
 	remotePub            *ecies.PublicKey
@@ -37,9 +39,18 @@ type encHandshake struct {
 	remoteRandomPubKey   *ecies.PublicKey
 }
 
-func newCliEncHandshake(remoteID NodeID) (*encHandshake, error) {
-	h := &encHandshake{remoteID: remoteID}
-	// generate initNonce
+// String
+func (e *encHandshake) String() string {
+	return fmt.Sprintf("remoteID: %s; initNonce: %s; respNonce: %s; randomPrvKey: %s; remoteRandomPubKey: %s",
+		common.ToHex(e.remoteID[:]), common.ToHex(e.initNonce), common.ToHex(e.respNonce),
+		common.ToHex(crypto.FromECDSA(e.randomPrvKey.ExportECDSA())),
+		common.ToHex(exportPubKey(e.remoteRandomPubKey)))
+}
+
+// newCliEncHandshake new instance for client
+func newCliEncHandshake(remoteID *NodeID) (*encHandshake, error) {
+	h := &encHandshake{remoteID: *remoteID}
+	// generate InitNonce
 	h.initNonce = make([]byte, shaLen)
 	if _, err := rand.Read(h.initNonce); err != nil {
 		return nil, err
@@ -58,10 +69,11 @@ func newCliEncHandshake(remoteID NodeID) (*encHandshake, error) {
 	return h, nil
 }
 
+// newSrvEncHandshake new instance for server
 func newSrvEncHandshake(reqMsg *authReqMsg, prv *ecdsa.PrivateKey) (h *encHandshake, err error) {
 	h = new(encHandshake)
-	h.initNonce = reqMsg.initNonce[:]
-	copy(h.remoteID[:], reqMsg.clientPubKey[:])
+	h.initNonce = reqMsg.InitNonce[:]
+	copy(h.remoteID[:], reqMsg.ClientPubKey[:])
 	rPub, err := h.remoteID.PubKey()
 	if err != nil {
 		return nil, ErrBadRemoteID
@@ -74,7 +86,7 @@ func newSrvEncHandshake(reqMsg *authReqMsg, prv *ecdsa.PrivateKey) (h *encHandsh
 	// shared token
 	token, err := ecies.ImportECDSA(prv).GenerateShared(h.remotePub, 16, 16)
 	signed := xor(token, h.initNonce)
-	randomRemotePubKey, err := secp256k1.RecoverPubkey(signed, reqMsg.signature[:])
+	randomRemotePubKey, err := secp256k1.RecoverPubkey(signed, reqMsg.Signature[:])
 	if err != nil {
 		return h, err
 	}
@@ -82,7 +94,7 @@ func newSrvEncHandshake(reqMsg *authReqMsg, prv *ecdsa.PrivateKey) (h *encHandsh
 	if err != nil {
 		return h, err
 	}
-	// respNonce
+	// RespNonce
 	h.respNonce = make([]byte, shaLen)
 	if _, err := rand.Read(h.respNonce); err != nil {
 		return h, err
@@ -90,22 +102,26 @@ func newSrvEncHandshake(reqMsg *authReqMsg, prv *ecdsa.PrivateKey) (h *encHandsh
 	return h, nil
 }
 
+// authReqMsg client request object
 type authReqMsg struct {
-	signature    [sigLen]byte
-	clientPubKey [pubLen]byte
-	initNonce    [shaLen]byte
+	Signature    [sigLen]byte
+	ClientPubKey [pubLen]byte
+	InitNonce    [shaLen]byte
 }
 
+// authRespMsg server response object
 type authRespMsg struct {
-	randomPubKey [pubLen]byte
-	respNonce    [shaLen]byte
+	RandomPubKey [pubLen]byte
+	RespNonce    [shaLen]byte
 }
 
+// secrets mark aes for node
 type secrets struct {
 	RemoteID NodeID
 	Aes      []byte
 }
 
+// xor bits operation
 func xor(a, b []byte) []byte {
 	res := make([]byte, len(a))
 	for i := 0; i < len(a); i++ {
@@ -114,6 +130,7 @@ func xor(a, b []byte) []byte {
 	return res
 }
 
+// makeAuthReqMsg generate request message
 func (h *encHandshake) makeAuthReqMsg(prv *ecdsa.PrivateKey) ([]byte, error) {
 	// token
 	token, err := ecies.ImportECDSA(prv).GenerateShared(h.remotePub, sskLen, sskLen)
@@ -128,27 +145,27 @@ func (h *encHandshake) makeAuthReqMsg(prv *ecdsa.PrivateKey) ([]byte, error) {
 	}
 	// msg
 	msg := new(authReqMsg)
-	copy(msg.initNonce[:], h.initNonce)
-	copy(msg.clientPubKey[:], crypto.FromECDSAPub(&prv.PublicKey)[1:])
-	copy(msg.signature[:], signature)
-	// rlp encode
-	buf := new(bytes.Buffer)
-	if err := rlp.Encode(buf, msg); err != nil {
+	copy(msg.InitNonce[:], h.initNonce)
+	copy(msg.ClientPubKey[:], crypto.FromECDSAPub(&prv.PublicKey)[1:])
+	copy(msg.Signature[:], signature)
+	buf, err := rlp.EncodeToBytes(&msg)
+	if err != nil {
 		return nil, err
 	}
 	// ecies
-	res, err := ecies.Encrypt(rand.Reader, h.remotePub, buf.Bytes(), nil, nil)
+	res, err := ecies.Encrypt(rand.Reader, h.remotePub, buf, nil, nil)
 	if err != nil {
 		return nil, err
 	}
 	return res, nil
 }
 
+// makeAuthRespMsg generate response message
 func (h *encHandshake) makeAuthRespMsg(prv *ecdsa.PrivateKey) ([]byte, error) {
 	// generate response message
 	respMsg := new(authRespMsg)
-	copy(respMsg.randomPubKey[:], exportPubKey(&h.randomPrvKey.PublicKey))
-	copy(respMsg.respNonce[:], h.respNonce)
+	copy(respMsg.RandomPubKey[:], exportPubKey(&h.randomPrvKey.PublicKey))
+	copy(respMsg.RespNonce[:], h.respNonce)
 
 	// rlp encode
 	buf := new(bytes.Buffer)
@@ -164,7 +181,8 @@ func (h *encHandshake) makeAuthRespMsg(prv *ecdsa.PrivateKey) ([]byte, error) {
 	return encBuf, nil
 }
 
-func clientEncHandshake(conn io.ReadWriter, prv *ecdsa.PrivateKey, remoteID NodeID) (s *secrets, err error) {
+// clientEncHandshake initiate a network request as client
+func clientEncHandshake(conn io.ReadWriter, prv *ecdsa.PrivateKey, remoteID *NodeID) (s *secrets, err error) {
 	// generate init object
 	h, err := newCliEncHandshake(remoteID)
 	if err != nil {
@@ -187,8 +205,10 @@ func clientEncHandshake(conn io.ReadWriter, prv *ecdsa.PrivateKey, remoteID Node
 	if err != nil {
 		return s, err
 	}
-	copy(h.respNonce, respMsg.respNonce[:])
-	h.remoteRandomPubKey, err = importPubKey(respMsg.randomPubKey[:])
+	h.respNonce = make([]byte, shaLen)
+	copy(h.respNonce, respMsg.RespNonce[:])
+	h.remoteRandomPubKey, err = importPubKey(respMsg.RandomPubKey[:])
+	log.Debugf("client encHandshake obj: %s", h.String())
 	if err != nil {
 		return nil, err
 	}
@@ -196,12 +216,13 @@ func clientEncHandshake(conn io.ReadWriter, prv *ecdsa.PrivateKey, remoteID Node
 	token, err := h.randomPrvKey.GenerateShared(h.remoteRandomPubKey, sskLen, sskLen)
 	hash := crypto.Keccak256(token, crypto.Keccak256(h.respNonce, h.initNonce))
 	s = &secrets{
-		RemoteID: remoteID,
+		RemoteID: *remoteID,
 		Aes:      hash[:8],
 	}
 	return s, nil
 }
 
+// readHandshakeBuf read net stream
 func readHandshakeBuf(conn io.ReadWriter, prv *ecdsa.PrivateKey) ([]byte, error) {
 	// prefix
 	buf := make([]byte, 2)
@@ -233,6 +254,7 @@ func readHandshakeBuf(conn io.ReadWriter, prv *ecdsa.PrivateKey) ([]byte, error)
 	return buf, nil
 }
 
+// readHandshakeRespMsg read server's response message
 func readHandshakeRespMsg(conn io.ReadWriter, prv *ecdsa.PrivateKey) (*authRespMsg, error) {
 	// read handshake data
 	buf, err := readHandshakeBuf(conn, prv)
@@ -247,6 +269,7 @@ func readHandshakeRespMsg(conn io.ReadWriter, prv *ecdsa.PrivateKey) (*authRespM
 	return resp, nil
 }
 
+// readHandshakeReqMsg read client's request message
 func readHandshakeReqMsg(conn io.ReadWriter, prv *ecdsa.PrivateKey) (*authReqMsg, error) {
 	buf, err := readHandshakeBuf(conn, prv)
 	if err != nil {
@@ -260,6 +283,7 @@ func readHandshakeReqMsg(conn io.ReadWriter, prv *ecdsa.PrivateKey) (*authReqMsg
 	return req, nil
 }
 
+// serverEncHandshake accept a network request as server
 func serverEncHandshake(conn io.ReadWriter, prv *ecdsa.PrivateKey) (s *secrets, err error) {
 	// read request data
 	reqMsg, err := readHandshakeReqMsg(conn, prv)
@@ -280,6 +304,7 @@ func serverEncHandshake(conn io.ReadWriter, prv *ecdsa.PrivateKey) (s *secrets, 
 	if err = write(conn, encBuf); err != nil {
 		return nil, err
 	}
+	log.Debugf("server encHandshake obj: %s", h.String())
 	// aes
 	token, err := h.randomPrvKey.GenerateShared(h.remoteRandomPubKey, 16, 16)
 	if err != nil {
@@ -293,6 +318,7 @@ func serverEncHandshake(conn io.ReadWriter, prv *ecdsa.PrivateKey) (s *secrets, 
 	return s, nil
 }
 
+// importPubKey convert bytes to public key
 func importPubKey(input []byte) (*ecies.PublicKey, error) {
 	var pubKey65 []byte
 	if len(input) == 64 {
@@ -309,6 +335,7 @@ func importPubKey(input []byte) (*ecies.PublicKey, error) {
 	return ecies.ImportECDSAPublic(pub), nil
 }
 
+// exportPubKey export public key to bytes
 func exportPubKey(pub *ecies.PublicKey) []byte {
 	if pub == nil {
 		panic("nil public key")
@@ -316,7 +343,7 @@ func exportPubKey(pub *ecies.PublicKey) []byte {
 	return elliptic.Marshal(pub.Curve, pub.X, pub.Y)[1:]
 }
 
-// send to remote
+// write send message to remote
 func write(conn io.ReadWriter, encBuf []byte) error {
 	// length
 	length := make([]byte, PackageLength)

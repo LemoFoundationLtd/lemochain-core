@@ -4,216 +4,135 @@ import (
 	"bytes"
 	"crypto/ecdsa"
 	"encoding/binary"
-	"errors"
-	"fmt"
-	"github.com/LemoFoundationLtd/lemochain-go/common"
-	"github.com/LemoFoundationLtd/lemochain-go/common/mclock"
-	//"github.com/LemoFoundationLtd/lemochain-go/sync"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
+	"github.com/LemoFoundationLtd/lemochain-go/common/mclock"
 	"io"
 	"net"
 	"sync"
 	"time"
 )
 
+const CodeHeartbeat = uint32(0x01)
+
+type IPeer interface {
+	ReadMsg() (msg Msg, err error)
+	WriteMsg(code uint32, msg []byte) (err error)
+	RNodeID() *NodeID
+	RAddress() string
+	doHandshake(prv *ecdsa.PrivateKey, nodeID *NodeID) error
+	run() (err error)
+	Close()
+}
+
 // Peer represents a connected remote node.
 type Peer struct {
-	rw      *conn
+	conn    net.Conn
+	rNodeID NodeID // remote NodeID
+	aes     []byte // AES key
 	created mclock.AbsTime
-	wg      sync.WaitGroup
-	closeCh chan struct{}
-	closed  bool
-	nodeID  NodeID // 远程节点公钥
-
-	needReConnect bool
-
-	rmu sync.Mutex // 读锁
-	wmu sync.Mutex // 写锁
-
-	newMsgCh chan Msg // 新消息
 
 	heartbeatTimer *time.Timer
-
-	aes []byte
+	wmu            sync.Mutex
+	stopCh         chan struct{}
 }
 
-func newPeer(fd net.Conn) transport {
-	c := &conn{fd: fd, cont: make(chan error)}
+// newPeer
+func newPeer(fd net.Conn) IPeer {
 	return &Peer{
-		rw:            c,
-		created:       mclock.Now(),
-		closeCh:       make(chan struct{}),
-		closed:        false,
-		needReConnect: true,
-		newMsgCh:      make(chan Msg),
+		conn:    fd,
+		created: mclock.Now(),
+		stopCh:  make(chan struct{}),
 	}
 }
 
+// doHandshake do handshake when connection
 func (p *Peer) doHandshake(prv *ecdsa.PrivateKey, nodeID *NodeID) (err error) {
-	if nodeID == nil { // 本地为服务端
-		s, err := serverEncHandshake(p.rw.fd, prv)
+	if nodeID == nil {
+		s, err := serverEncHandshake(p.conn, prv)
 		if err != nil {
+			log.Debugf("doHandshake failed: %v", err)
 			return err
 		}
-		p.aes = make([]byte, len(s.Aes))
-		copy(p.aes, s.Aes)
-		p.nodeID = s.RemoteID
-	} else { // 本地为客户端
-		s, err := clientEncHandshake(p.rw.fd, prv, *nodeID)
+		p.aes = s.Aes
+		p.rNodeID = s.RemoteID
+	} else {
+		s, err := clientEncHandshake(p.conn, prv, nodeID)
 		if err != nil {
+			log.Debugf("doHandshake failed: %v", err)
 			return err
 		}
-		p.aes = make([]byte, len(s.Aes))
-		copy(p.aes, s.Aes)
-		p.nodeID = s.RemoteID
+		p.aes = s.Aes
+		p.rNodeID = s.RemoteID
 	}
 	return err
 }
 
+// Close close peer
 func (p *Peer) Close() {
-	p.rw.fd.Close()
-	p.closed = true
-	close(p.closeCh)
+	p.conn.Close()
+	close(p.stopCh)
 }
 
-func (p *Peer) DisableReConnect() {
-	p.needReConnect = false
-}
-
-func (p *Peer) NeedReConnect() bool {
-	return p.needReConnect
-}
-
-// 节点运行起来 读取
+// run  run peer and block this
 func (p *Peer) run() (err error) {
-	var (
-		readErr = make(chan error)
-	)
-	p.heartbeatTimer = time.NewTimer(heartbeatInterval)
-	go p.readLoop(readErr)
 	go p.heartbeatLoop()
+	p.heartbeatTimer = time.NewTimer(heartbeatInterval)
 
-	select {
-	case err = <-readErr:
-		log.Infof("read error: %v", err)
-		break
-	case <-p.closeCh:
-		break
-	}
-
-	p.wg.Wait()
-	log.Debug("peer.run finished")
+	// block this and wait for stop signal
+	<-p.stopCh
+	log.Debugf("peer.run finished.p: %s", p.RAddress())
 	return err
 }
 
-// 节点读取循环
-func (p *Peer) readLoop(errCh chan<- error) {
-	p.wg.Add(1)
-	defer func() {
-		p.wg.Done()
-		log.Debug("peer.readLoop finished.")
-	}()
-	for {
-		// 读取数据
-		msg, err := p.readMsg()
-		if err != nil {
-			if p.closed == false {
-				errCh <- err
-				p.newMsgCh <- Msg{}
-			}
-			select {
-			case _, ok := <-p.closeCh:
-				if ok && err == io.EOF {
-					p.closeCh <- struct{}{}
-				}
-			default:
-
-			}
-			// if err == io.EOF {
-			// 	p.closeCh <- struct{}{}
-			// }
-			return
-		}
-		if msg.Code == 0x01 { // 心跳包
-			continue
-		}
-		// 处理数据
-		// log.Debugf("receive message from: %s, msg: %v", common.ToHex(p.nodeID[:8]), msg)
-		p.newMsgCh <- msg
-	}
-}
-
-// 数据帧结构 数据解析格式 结构体不直接使用
-type frameHeader struct {
-	version uint32 // 版本，标识数据是否可用
-	code    uint32 // code
-	size    uint32 // size
-	content []byte
-}
-
-// 发送心跳循环
+// heartbeatLoop send heartbeat info when after special internal of no data sending
 func (p *Peer) heartbeatLoop() {
-	p.wg.Add(1)
-	defer func() {
-		p.heartbeatTimer.Stop()
-		p.heartbeatTimer = nil
-		p.wg.Done()
-		log.Debug("peer.heartbeatLoop finished.")
-	}()
-
 	for {
 		select {
 		case <-p.heartbeatTimer.C:
-			if err := p.sendHeartbeatMsg(); err != nil {
+			if err := p.WriteMsg(CodeHeartbeat, nil); err != nil {
+				log.Debugf("heartbeatLoop: send heartbeat data failed and stopped: %v", err)
 				return
 			}
 			p.heartbeatTimer.Reset(heartbeatInterval)
-		case <-p.closeCh:
+		case <-p.stopCh:
+			log.Debug("heartbeatLoop: stopped. p: %s", p.RAddress())
 			return
 		}
 	}
 }
 
-func (p *Peer) readMsg() (msg Msg, err error) {
-	p.rmu.Lock()
-	defer p.rmu.Unlock()
+// ReadMsg read message from net stream
+func (p *Peer) ReadMsg() (msg Msg, err error) {
+	p.conn.SetReadDeadline(time.Now().Add(frameReadTimeout))
 
-	p.rw.fd.SetReadDeadline(time.Now().Add(frameReadTimeout))
-
-	headBuf := make([]byte, 12) // 帧头12个字节
-	if _, err := io.ReadFull(p.rw.fd, headBuf); err != nil {
+	headBuf := make([]byte, len(PackagePrefix)+PackageLength) // 6 bytes
+	if _, err := io.ReadFull(p.conn, headBuf); err != nil {
 		return msg, err
 	}
-	if binary.BigEndian.Uint32(headBuf[:4]) != uint32(baseFrameVersion) {
-		str := fmt.Sprintf("remote node's frame version not match. nodeid:%s", common.ToHex(p.nodeID[:]))
-		err = errors.New(str)
-		log.Warn(str)
+	if bytes.Compare(PackagePrefix[:], headBuf[:2]) != 0 {
+		log.Debug("readMsg: recv invalid stream data")
+		return msg, ErrUnavailablePackage
+	}
+	length := binary.BigEndian.Uint32(headBuf[2:])
+	if length == 0 {
+		return msg, ErrUnavailablePackage
+	}
+	content := make([]byte, length)
+	if _, err := io.ReadFull(p.conn, content); err != nil {
 		return msg, err
 	}
-	msg.Code = binary.BigEndian.Uint32(headBuf[4:8])
+
+	msg.Code = binary.BigEndian.Uint32(content[:4])
 	if msg.CheckCode() == false {
-		return Msg{}, errors.New("recv unavaliable message")
+		return msg, ErrUnavailablePackage
 	}
-	msg.Size = binary.BigEndian.Uint32(headBuf[8:])
+	msg.Content = content[4:]
 	msg.ReceivedAt = time.Now()
-	// 非心跳数据
-	if msg.Size > 0 {
-		frameBuf := make([]byte, msg.Size)
-		if _, err := io.ReadFull(p.rw.fd, frameBuf); err != nil {
-			return msg, err
-		}
-		msg.Payload = bytes.NewReader(frameBuf)
-	}
 	return msg, nil
 }
 
-// 对外提供 供读取节点数据用
-func (p *Peer) ReadMsg() Msg {
-	return <-p.newMsgCh
-}
-
-// 对外提供 提供写入数据到节点
+// WriteMsg send message to net stream
 func (p *Peer) WriteMsg(code uint32, msg []byte) (err error) {
 	p.wmu.Lock()
 	defer p.wmu.Unlock()
@@ -222,34 +141,26 @@ func (p *Peer) WriteMsg(code uint32, msg []byte) (err error) {
 	if err != nil {
 		return err
 	}
-	_, err = p.rw.fd.Write(buf)
+	p.conn.SetWriteDeadline(time.Now().Add(frameWriteTimeout))
+	_, err = p.conn.Write(buf)
 
-	p.heartbeatTimer.Reset(heartbeatInterval)
-	return err
-}
-
-// 发送心跳数据
-func (p *Peer) sendHeartbeatMsg() error {
-	p.wmu.Lock()
-	defer p.wmu.Unlock()
-
-	buf, err := p.packFrame(0x01, nil)
-	if err != nil {
-		return err
+	if code != CodeHeartbeat {
+		p.heartbeatTimer.Reset(heartbeatInterval)
 	}
-	_, err = p.rw.fd.Write(buf)
 	return err
 }
 
-// 获取Peer ID
-func (p *Peer) NodeID() *NodeID {
-	return &p.nodeID
+// RNodeID
+func (p *Peer) RNodeID() *NodeID {
+	return &p.rNodeID
 }
 
-func (p *Peer) RemoteAddr() string {
-	return p.rw.fd.RemoteAddr().String()
+// RAddress remote address (ipv4:port)
+func (p *Peer) RAddress() string {
+	return p.conn.RemoteAddr().String()
 }
 
+// packFrame pack message to net stream
 func (p *Peer) packFrame(code uint32, msg []byte) ([]byte, error) {
 	buf := make([]byte, 4)
 	binary.BigEndian.PutUint32(buf, code)
@@ -267,6 +178,7 @@ func (p *Peer) packFrame(code uint32, msg []byte) ([]byte, error) {
 	return buf, nil
 }
 
+// unpackFrame unpack net stream
 func (p *Peer) unpackFrame(content []byte) (uint32, []byte, error) {
 	originData, err := crypto.AesDecrypt(content, p.aes)
 	if err != nil {
