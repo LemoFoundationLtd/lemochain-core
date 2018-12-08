@@ -247,7 +247,7 @@ func broadcastStableBlock(block *types.Block) {}
 func broadcastConfirmInfo(hash common.Hash, height uint32) {}
 
 func newBlockChain() (*chain.BlockChain, chan *types.Block, error) {
-	chainId := uint16(99)
+	chainID := uint16(99)
 	db, err := store.NewCacheChain(store.GetStorePath())
 	if err != nil {
 		return nil, nil, err
@@ -261,7 +261,7 @@ func newBlockChain() (*chain.BlockChain, chan *types.Block, error) {
 
 	var engine EngineTestForMiner
 	ch := make(chan *types.Block)
-	blockChain, err := chain.NewBlockChain(chainId, &engine, db, nil)
+	blockChain, err := chain.NewBlockChain(chainID, &engine, db, nil)
 	if err != nil {
 		return nil, nil, err
 	}
