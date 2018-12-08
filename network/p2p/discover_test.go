@@ -34,12 +34,12 @@ func newDiscover() *DiscoverManager {
 }
 
 var nodeIDs = []*NodeID{
-	ToNodeID(common.Hex2Bytes("adb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0")),
-	ToNodeID(common.Hex2Bytes("bdb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0")),
-	ToNodeID(common.Hex2Bytes("cdb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0")),
-	ToNodeID(common.Hex2Bytes("ddb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0")),
-	ToNodeID(common.Hex2Bytes("edb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0")),
-	ToNodeID(common.Hex2Bytes("fdb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0")),
+	BytesToNodeID(common.Hex2Bytes("adb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0")),
+	BytesToNodeID(common.Hex2Bytes("bdb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0")),
+	BytesToNodeID(common.Hex2Bytes("cdb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0")),
+	BytesToNodeID(common.Hex2Bytes("ddb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0")),
+	BytesToNodeID(common.Hex2Bytes("edb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0")),
+	BytesToNodeID(common.Hex2Bytes("fdb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0")),
 }
 
 var table = []struct {
@@ -271,7 +271,7 @@ func Test_getAvailableNodes(t *testing.T) {
 			s = "adb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74af" + strconv.Itoa(i)
 		}
 
-		n := ToNodeID(common.Hex2Bytes(s))
+		n := BytesToNodeID(common.Hex2Bytes(s))
 		v := fmt.Sprintf("160.0.0.1:70%d", i)
 		k := crypto.Keccak256Hash(n[:])
 
@@ -291,7 +291,7 @@ func Test_getAvailableNodes(t *testing.T) {
 			s = "bdb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74a" + strconv.Itoa(i)
 		}
 
-		n := ToNodeID(common.Hex2Bytes(s))
+		n := BytesToNodeID(common.Hex2Bytes(s))
 		v := fmt.Sprintf("170.0.0.1:70%d", i)
 		k := crypto.Keccak256Hash(n[:])
 
@@ -311,7 +311,7 @@ func Test_getAvailableNodes(t *testing.T) {
 			s = "cdb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74a" + strconv.Itoa(i)
 		}
 
-		n := ToNodeID(common.Hex2Bytes(s))
+		n := BytesToNodeID(common.Hex2Bytes(s))
 		v := fmt.Sprintf("180.0.0.1:70%d", i)
 		k := crypto.Keccak256Hash(n[:])
 
@@ -338,7 +338,7 @@ func Test_setWhiteList_ok(t *testing.T) {
 
 	for i := 0; i < 5; i++ {
 		prv, _ := crypto.GenerateKey()
-		nodeid := PubkeyID(&prv.PublicKey)
+		nodeid := PubKeyToNodeID(&prv.PublicKey)
 		hex := common.Bytes2Hex(nodeid[:])
 		list = append(list, hex+"@127.0.0.1:1234"+strconv.Itoa(i))
 	}
@@ -369,7 +369,7 @@ func Test_writeFindFile(t *testing.T) {
 
 	for i := 1; i < 18; i++ {
 		prv, _ := crypto.GenerateKey()
-		n := PubkeyID(&prv.PublicKey)
+		n := PubKeyToNodeID(&prv.PublicKey)
 		v := fmt.Sprintf("160.0.0.1:110%d", i)
 		k := crypto.Keccak256Hash(n[:])
 
@@ -382,7 +382,7 @@ func Test_writeFindFile(t *testing.T) {
 
 	for i := 1; i < 100; i++ {
 		prv, _ := crypto.GenerateKey()
-		n := PubkeyID(&prv.PublicKey)
+		n := PubKeyToNodeID(&prv.PublicKey)
 		v := fmt.Sprintf("170.0.0.1:110%d", i)
 		k := crypto.Keccak256Hash(n[:])
 
@@ -394,7 +394,7 @@ func Test_writeFindFile(t *testing.T) {
 
 	for i := 1; i < 200; i++ {
 		prv, _ := crypto.GenerateKey()
-		n := PubkeyID(&prv.PublicKey)
+		n := PubKeyToNodeID(&prv.PublicKey)
 		v := fmt.Sprintf("180.0.0.1:110%d", i%100)
 		k := crypto.Keccak256Hash(n[:])
 
@@ -419,7 +419,7 @@ func Test_SetDeputyNodes(t *testing.T) {
 
 	for i := 0; i < 5; i++ {
 		prv, _ := crypto.GenerateKey()
-		nodeid := PubkeyID(&prv.PublicKey)
+		nodeid := PubKeyToNodeID(&prv.PublicKey)
 		hex := common.Bytes2Hex(nodeid[:])
 		list = append(list, hex+"@127.0.0.1:1234"+strconv.Itoa(i))
 	}
@@ -471,7 +471,7 @@ func Test_GetNodesForDiscover(t *testing.T) {
 
 	for i := 1; i < 18; i++ {
 		prv, _ := crypto.GenerateKey()
-		n := PubkeyID(&prv.PublicKey)
+		n := PubKeyToNodeID(&prv.PublicKey)
 		v := fmt.Sprintf("160.0.0.1:110%d", i)
 		k := crypto.Keccak256Hash(n[:])
 
@@ -486,7 +486,7 @@ func Test_GetNodesForDiscover(t *testing.T) {
 
 	for i := 1; i < 100; i++ {
 		prv, _ := crypto.GenerateKey()
-		n := PubkeyID(&prv.PublicKey)
+		n := PubKeyToNodeID(&prv.PublicKey)
 		v := fmt.Sprintf("170.0.0.1:110%d", i%100)
 		k := crypto.Keccak256Hash(n[:])
 
@@ -500,7 +500,7 @@ func Test_GetNodesForDiscover(t *testing.T) {
 
 	for i := 1; i < 200; i++ {
 		prv, _ := crypto.GenerateKey()
-		n := PubkeyID(&prv.PublicKey)
+		n := PubKeyToNodeID(&prv.PublicKey)
 		v := fmt.Sprintf("180.0.0.1:110%d", i%100)
 		k := crypto.Keccak256Hash(n[:])
 
@@ -537,7 +537,7 @@ func Test_AddNewList(t *testing.T) {
 
 	for i := 0; i < 5; i++ {
 		prv, _ := crypto.GenerateKey()
-		nodeid := PubkeyID(&prv.PublicKey)
+		nodeid := PubKeyToNodeID(&prv.PublicKey)
 		hex := common.Bytes2Hex(nodeid[:])
 		list = append(list, hex+"@127.0.0.1:123"+strconv.Itoa(i))
 	}

@@ -30,6 +30,7 @@ var (
 	ErrNotStart      = errors.New("not start")
 )
 
+// RawNode wrap node connection info for discovery
 type RawNode struct {
 	NodeID      *NodeID
 	Endpoint    string
@@ -63,9 +64,9 @@ type DiscoverManager struct {
 	lock sync.RWMutex
 }
 
-func NewDiscoverManager(datadir string) *DiscoverManager {
+func NewDiscoverManager(dataDir string) *DiscoverManager {
 	m := &DiscoverManager{
-		dataDir:     datadir,
+		dataDir:     dataDir,
 		sequence:    0,
 		foundNodes:  make(map[common.Hash]*RawNode, 100),
 		whiteNodes:  make(map[common.Hash]*RawNode, 20),
@@ -425,7 +426,7 @@ func checkNodeString(node string) (*NodeID, string) {
 	if len(tmp[0]) != 128 {
 		return nil, ""
 	}
-	nodeID := ToNodeID(common.FromHex(tmp[0]))
+	nodeID := BytesToNodeID(common.FromHex(tmp[0]))
 	_, err := nodeID.PubKey()
 	if err != nil {
 		return nil, ""

@@ -24,13 +24,13 @@ const (
 
 // Config holds Server options.
 type Config struct {
-	Name        string            // server's Name
-	PrivateKey  *ecdsa.PrivateKey // private key
-	MaxPeerNum  int               // max accept connection count
-	Port        int               // listen port
-	NetRestrict *Netlist          // black list. revert
+	Name       string            // server's Name
+	PrivateKey *ecdsa.PrivateKey // private key
+	MaxPeerNum int               // max accept connection count
+	Port       int               // listen port
 }
 
+// listenAddr fetch listen address
 func (config *Config) listenAddr() string {
 	return fmt.Sprintf(":%d", config.Port)
 }
@@ -78,20 +78,21 @@ func (srv *Server) Start() error {
 	if !atomic.CompareAndSwapInt32(&srv.running, 0, 1) {
 		return ErrAlreadyRunning
 	}
-
 	if srv.PrivateKey == nil {
 		panic("node key is empty")
 	}
+	// start listen
 	if err := srv.startListening(); err != nil {
 		panic("start server's listen failed")
 	}
-
+	// will be deleted later
 	nodes := deputynode.Instance().GetLatestDeputies()
 	srv.discover.SetDeputyNodes(nodes)
+	// start discover
 	if err := srv.discover.Start(); err != nil {
 		log.Warnf("discover.start: %v", err)
 	}
-
+	// run receive logic code
 	go srv.run()
 	return nil
 }
@@ -102,18 +103,18 @@ func (srv *Server) Stop() {
 		log.Debug("server not start, but exec stop command")
 		return
 	}
-
+	// close listener
 	srv.listener.Close()
 	close(srv.quitCh)
-
+	// close connected nodes
 	for _, p := range srv.connectedNodes {
 		p.Close()
 	}
-
+	// stop discover
 	if err := srv.discover.Stop(); err != nil {
 		log.Errorf("discover stop failed: %v", err)
 	}
-
+	// wait for stop
 	srv.wg.Wait()
 	log.Debug("server stop success")
 }
@@ -130,22 +131,28 @@ func (srv *Server) run() {
 		select {
 		case p := <-srv.addPeerCh:
 			log.Debugf("receive receive add peer event. nodeID: %s", common.ToHex(p.RNodeID()[:8]))
+			// is already exist
 			if _, ok := srv.connectedNodes[*p.RNodeID()]; ok {
 				log.Warnf("receive receive add peer event. But connection has already exist. nodeID: %s", common.ToHex(p.RNodeID()[:8]))
 				p.Close()
 				srv.discover.SetConnectResult(p.RNodeID(), false)
 				break
 			}
+			// record
 			srv.peersMux.Lock()
 			srv.connectedNodes[*p.RNodeID()] = p
 			srv.peersMux.Unlock()
+			// run peer
 			go srv.runPeer(p)
+			// notice
 			subscribe.Send(subscribe.AddNewPeer, p)
 		case p := <-srv.delPeerCh:
 			log.Debug("receive delete peer event. nodeID: %s", common.ToHex(p.RNodeID()[:8]))
+			// remove
 			srv.peersMux.Lock()
 			delete(srv.connectedNodes, *p.RNodeID())
 			srv.peersMux.Unlock()
+			// notice
 			subscribe.Send(subscribe.DeletePeer, p)
 		case <-srv.quitCh:
 			log.Debug("receive server stop signal")
@@ -173,10 +180,12 @@ func (srv *Server) listenLoop() {
 	for {
 		fd, err := srv.listener.Accept()
 		if err != nil {
+			// server has stopped
 			if atomic.LoadInt32(&srv.running) == 0 {
 				log.Debug("listenLoop finished")
 				return
 			}
+			// server not stopped, but has something else error
 			log.Debug("TCP Accept error", "err", err)
 			continue
 		}
@@ -189,7 +198,7 @@ func (srv *Server) HandleConn(fd net.Conn, nodeID *NodeID) error {
 	if atomic.LoadInt32(&srv.running) == 0 {
 		return ErrSrvHasStopped
 	}
-
+	// handshake
 	peer := srv.newIPeer(fd)
 	err := peer.doHandshake(srv.PrivateKey, nodeID)
 	if err != nil {
@@ -198,19 +207,19 @@ func (srv *Server) HandleConn(fd net.Conn, nodeID *NodeID) error {
 		srv.discover.SetConnectResult(peer.RNodeID(), false)
 		return err
 	}
-
+	// is itself
 	if bytes.Compare(peer.RNodeID()[:], deputynode.GetSelfNodeID()) == 0 {
 		fd.Close()
 		srv.discover.SetConnectResult(peer.RNodeID(), false)
 		return ErrConnectSelf
 	}
-
+	// output log
 	if nodeID == nil {
 		log.Debugf("Receive new connect, IP: %s. ID: %s ", peer.RAddress(), common.ToHex(peer.RNodeID()[:8]))
 	} else {
 		log.Debugf("Connect to server: %s. id: %s", peer.RAddress(), common.ToHex(peer.RNodeID()[:8]))
 	}
-
+	// notice other goroutine
 	srv.addPeerCh <- peer
 	return nil
 }
@@ -220,6 +229,7 @@ func (srv *Server) runPeer(p IPeer) {
 	log.Debugf("peer start running: %s", common.ToHex(p.RNodeID()[:8]))
 	p.run() // block this
 
+	// peer has stopped
 	if atomic.LoadInt32(&srv.running) == 1 {
 		srv.delPeerCh <- p
 	}
@@ -248,7 +258,7 @@ func (srv *Server) Connections() []PeerConnInfo {
 }
 
 // Connect add new connection for api
-// format: "NodeID@ip:port"
+// format must be: "NodeID@ip:port"
 func (srv *Server) Connect(node string) string {
 	log.Infof("start add static peer: %s", node)
 	srv.discover.AddNewList([]string{node})
@@ -259,6 +269,7 @@ func (srv *Server) Connect(node string) string {
 }
 
 // Disconnect disconnect a connection for api
+// only support address
 func (srv *Server) Disconnect(rAddr string) bool {
 	for k, v := range srv.connectedNodes {
 		if strings.Compare(rAddr, v.RAddress()) == 0 {

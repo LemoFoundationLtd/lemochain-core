@@ -47,7 +47,7 @@ func newClient(t *testing.T, cliPeerCh chan *Peer) {
 		t.Fatalf("dial failed")
 	}
 	peer := newPeer(conn)
-	srvNodeID := PubkeyID(pubSrv)
+	srvNodeID := PubKeyToNodeID(pubSrv)
 	if err = peer.doHandshake(prvCli, &srvNodeID); err != nil {
 		t.Fatalf("client handshake failed: %v", err)
 	}

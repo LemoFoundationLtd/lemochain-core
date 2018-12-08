@@ -27,6 +27,7 @@ func NewDialManager(handleConn HandleConnFunc, discover *DiscoverManager) *DialM
 	}
 }
 
+// Start
 func (m *DialManager) Start() error {
 	if atomic.LoadInt32(&m.state) == 1 {
 		log.Info("dial manager has already started")
@@ -38,6 +39,7 @@ func (m *DialManager) Start() error {
 	return nil
 }
 
+// Stop
 func (m *DialManager) Stop() error {
 	if atomic.LoadInt32(&m.state) < 1 {
 		log.Info("dial manager not start")
@@ -48,6 +50,7 @@ func (m *DialManager) Stop() error {
 	return nil
 }
 
+// runDialTask run dial task
 func (m *DialManager) runDialTask(node string) int {
 	// check
 	nodeID, endpoint := checkNodeString(node)
@@ -70,6 +73,7 @@ func (m *DialManager) runDialTask(node string) int {
 	return 0
 }
 
+// loop
 func (m *DialManager) loop() {
 	for {
 		list := m.discover.connectingNodes()
