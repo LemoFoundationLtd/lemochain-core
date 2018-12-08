@@ -186,13 +186,11 @@ func clientEncHandshake(conn io.ReadWriter, prv *ecdsa.PrivateKey, remoteID *Nod
 	// generate init object
 	h, err := newCliEncHandshake(remoteID)
 	if err != nil {
-		log.Errorf("initiatorEncHandshake failed: %v", err)
 		return s, err
 	}
 	// generate encrypt data
 	encBuf, err := h.makeAuthReqMsg(prv)
 	if err != nil {
-		log.Errorf("initiatorEncHandshake failed: %v", err)
 		return s, err
 	}
 	// send data to server

@@ -52,7 +52,6 @@ func (p *Peer) doHandshake(prv *ecdsa.PrivateKey, nodeID *NodeID) (err error) {
 	if nodeID == nil {
 		s, err := serverEncHandshake(p.conn, prv)
 		if err != nil {
-			log.Debugf("doHandshake failed: %v", err)
 			return err
 		}
 		p.aes = s.Aes
@@ -60,7 +59,6 @@ func (p *Peer) doHandshake(prv *ecdsa.PrivateKey, nodeID *NodeID) (err error) {
 	} else {
 		s, err := clientEncHandshake(p.conn, prv, nodeID)
 		if err != nil {
-			log.Debugf("doHandshake failed: %v", err)
 			return err
 		}
 		p.aes = s.Aes

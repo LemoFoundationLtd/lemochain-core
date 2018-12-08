@@ -45,6 +45,7 @@ func newRawNode(nodeID *NodeID, endpoint string) *RawNode {
 	}
 }
 
+// String string formatter
 func (n *RawNode) String() string {
 	idStr := common.Bytes2Hex(n.NodeID[:])
 	return idStr + "@" + n.Endpoint
@@ -75,23 +76,23 @@ func NewDiscoverManager(datadir string) *DiscoverManager {
 	return m
 }
 
+// Start
 func (m *DiscoverManager) Start() error {
 	if atomic.CompareAndSwapInt32(&m.status, 0, 1) {
 		m.setWhiteList()
 		m.initDiscoverList()
 	} else {
-		log.Warn("DiscoverManager has been started.")
 		return ErrHasStared
 	}
 	log.Info("discover start ok")
 	return nil
 }
 
+// Stop
 func (m *DiscoverManager) Stop() error {
 	if atomic.CompareAndSwapInt32(&m.status, 1, 0) {
 		m.writeFindFile()
 	} else {
-		log.Warn("DiscoverManager has not been start.")
 		return ErrNotStart
 	}
 	log.Info("discover stop ok")
@@ -170,6 +171,7 @@ func (m *DiscoverManager) staleNodes() []string {
 	return res
 }
 
+// resetState reset state
 func (m *DiscoverManager) resetState(n *RawNode) {
 	n.IsReconnect = false
 	n.Sequence = 0
@@ -254,8 +256,6 @@ func (m *DiscoverManager) SetConnectResult(nodeID *NodeID, success bool) error {
 		n, ok = m.foundNodes[key]
 	}
 	if !ok {
-		// m.foundNodes[key] = newRawNode(node)
-		// n = m.foundNodes[key]
 		return ErrNoSpecialNode
 	}
 	if success {
@@ -311,6 +311,7 @@ func (m *DiscoverManager) SetReconnect(nodeID *NodeID) error {
 	return nil
 }
 
+// getAvailableNodes get available nodes
 func (m *DiscoverManager) getAvailableNodes() []string {
 	list := m.connectedNodes()
 	if len(list) < MaxNodeCount {
@@ -325,11 +326,13 @@ func (m *DiscoverManager) getAvailableNodes() []string {
 	return list
 }
 
+// GetNodesForDiscover get available nodes for node discovery
 func (m *DiscoverManager) GetNodesForDiscover(sequence uint) []string {
 	// sequence for revert
 	return m.getAvailableNodes()
 }
 
+// readFile read file function
 func readFile(path string) []string {
 	f, err := os.OpenFile(path, os.O_RDONLY, 666)
 	if err != nil {
@@ -352,6 +355,7 @@ func readFile(path string) []string {
 	return list
 }
 
+// setWhiteList set white list nodes
 func (m *DiscoverManager) setWhiteList() {
 	path := filepath.Join(m.dataDir, WhiteFile)
 	nodes := readFile(path)
@@ -378,16 +382,19 @@ func (m *DiscoverManager) setWhiteList() {
 	}
 }
 
+// initDiscoverList read initial node from file
 func (m *DiscoverManager) initDiscoverList() {
 	path := filepath.Join(m.dataDir, FindFile)
 	list := readFile(path)
 	m.addDiscoverNodes(list)
 }
 
+// AddNewList for discovery
 func (m *DiscoverManager) AddNewList(nodes []string) {
 	m.addDiscoverNodes(nodes)
 }
 
+// writeFindFile write invalid node to file
 func (m *DiscoverManager) writeFindFile() {
 	// create list
 	list := m.getAvailableNodes()
@@ -408,6 +415,7 @@ func (m *DiscoverManager) writeFindFile() {
 	buf.Flush()
 }
 
+// checkNodeString verify invalid
 func checkNodeString(node string) (*NodeID, string) {
 	tmp := strings.Split(node, "@")
 	if len(tmp) != 2 {
@@ -427,7 +435,7 @@ func checkNodeString(node string) (*NodeID, string) {
 	return nodeID, tmp[1]
 }
 
-// verify ipv4
+// verifyIP  verify ipv4
 func verifyIP(input string) bool {
 	tmp := strings.Split(input, ":")
 	if len(tmp) != 2 {

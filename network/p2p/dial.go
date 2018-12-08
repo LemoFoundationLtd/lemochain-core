@@ -29,7 +29,7 @@ func NewDialManager(handleConn HandleConnFunc, discover *DiscoverManager) *DialM
 
 func (m *DialManager) Start() error {
 	if atomic.LoadInt32(&m.state) == 1 {
-		log.Info("dial manager has started")
+		log.Info("dial manager has already started")
 		return ErrHasStared
 	}
 	atomic.StoreInt32(&m.state, 1)

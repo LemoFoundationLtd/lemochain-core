@@ -44,8 +44,8 @@ type ProtocolManager struct {
 
 	wg sync.WaitGroup
 
-	addPeerCh    chan *p2p.Peer
-	removePeerCh chan *p2p.Peer
+	addPeerCh    chan p2p.IPeer
+	removePeerCh chan p2p.IPeer
 }
 
 func NewProtocolManager(chainID uint64, nodeID []byte, blockchain *chain.BlockChain, txpool *chain.TxPool, discover *p2p.DiscoverManager) *ProtocolManager {
@@ -56,8 +56,8 @@ func NewProtocolManager(chainID uint64, nodeID []byte, blockchain *chain.BlockCh
 		peers:           newPeerSet(),
 		txPool:          txpool,
 		newPeerCh:       make(chan *peer),
-		addPeerCh:       make(chan *p2p.Peer),
-		removePeerCh:    make(chan *p2p.Peer),
+		addPeerCh:       make(chan p2p.IPeer),
+		removePeerCh:    make(chan p2p.IPeer),
 		txsCh:           make(chan types.Transactions, 10),
 		newMinedBlockCh: make(chan *types.Block, 1),
 		stableBlockCh:   make(chan *types.Block, 1),

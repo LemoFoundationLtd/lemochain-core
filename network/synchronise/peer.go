@@ -23,7 +23,7 @@ const (
 
 type peer struct {
 	id string
-	*p2p.Peer
+	p2p.IPeer
 
 	head   common.Hash
 	height uint32
@@ -33,11 +33,11 @@ type peer struct {
 	knownBlocks set.Interface
 }
 
-func newPeer(p *p2p.Peer) *peer {
+func newPeer(p p2p.IPeer) *peer {
 	id := p.RNodeID()
 	return &peer{
 		id:          fmt.Sprintf("%x", id[:]),
-		Peer:        p,
+		IPeer:       p,
 		knownTxs:    set.New(set.ThreadSafe),
 		knownBlocks: set.New(set.ThreadSafe),
 	}
@@ -117,7 +117,7 @@ func (p *peer) send(msgCode uint32, data interface{}) error {
 	if err != nil {
 		return err
 	}
-	return p.Peer.WriteMsg(msgCode, buf)
+	return p.IPeer.WriteMsg(msgCode, buf)
 }
 
 // readRemoteStatus 读取远程节点最新状态
@@ -126,7 +126,7 @@ func (p *peer) readRemoteStatus(network uint64, status *protocol.NodeStatusData,
 	msgCh := make(chan p2p.Msg)
 	// 读取
 	go func() {
-		msg, err := p.Peer.ReadMsg()
+		msg, err := p.IPeer.ReadMsg()
 		if err != nil {
 			log.Debugf("readRemoteStatus: failed. %v", err)
 			msgCh <- p2p.Msg{}
@@ -183,5 +183,5 @@ func (p *peer) SendTransactions(txs types.Transactions) error {
 
 func (p *peer) RemoteNetInfo() string {
 	// todo
-	return p.Peer.RAddress()
+	return p.IPeer.RAddress()
 }
