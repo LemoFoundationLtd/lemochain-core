@@ -33,8 +33,8 @@ var (
 )
 
 type Node struct {
-	config *Config
-	// chainConfig *params.ChainConfig
+	config  *Config
+	chainID uint16
 
 	db     protocol.ChainDB
 	accMan *account.Manager
@@ -169,6 +169,7 @@ func New(flags flag.CmdFlags) *Node {
 	server := p2p.NewServer(cfg.P2P, discover)
 	n := &Node{
 		config:       cfg,
+		chainID:      uint16(configFromFile.ChainID),
 		ipcEndpoint:  cfg.IPCEndpoint(),
 		httpEndpoint: cfg.HTTPEndpoint(),
 		wsEndpoint:   cfg.WSEndpoint(),
@@ -193,6 +194,10 @@ func (n *Node) DataDir() string {
 
 func (n *Node) Db() protocol.ChainDB {
 	return n.db
+}
+
+func (n *Node) ChainID() uint16 {
+	return n.chainID
 }
 
 func (n *Node) AccountManager() *account.Manager {
