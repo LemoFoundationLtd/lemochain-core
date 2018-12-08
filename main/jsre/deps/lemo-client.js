@@ -20954,13 +20954,15 @@
     };
 
     var N_DIV_2 = new bignumber('7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a0', 16);
-    var base26 = baseX('83456729ABCDFGHJKNPQRSTWYZ');
+    var BASE26_ALPHABET = '83456729ABCDFGHJKNPQRSTWYZ';
+    var BASE26_0 = BASE26_ALPHABET[0];
+    var base26 = baseX(BASE26_ALPHABET);
     var ADDRESS_LOGO = 'Lemo';
     /**
      * sign hash
      * @param {Buffer} privateKey length must be 32
      * @param {Buffer} hash length must be 32
-     * @return {{recovery: number, r: string, s: string}}
+     * @return {{recovery: number, r: Buffer, s: Buffer}}
      */
 
     function sign$2(privateKey, hash) {
@@ -20971,6 +20973,15 @@
             s: sig.signature.slice(32, 64)
         };
     }
+    /**
+     * Recover public key from hash and sign data
+     * @param {Buffer} hash
+     * @param {number} recovery
+     * @param {Buffer} r
+     * @param {Buffer} s
+     * @return {Buffer|null}
+     */
+
     function recover$2(hash, recovery, r, s) {
         // All transaction signatures whose s-value is greater than secp256k1n/2 are considered invalid.
         if (new bignumber(s).gt(N_DIV_2)) {
@@ -20989,12 +21000,18 @@
             return null;
         }
     }
+    /**
+     * Decode public key to LemoChain address
+     * @param {Buffer} pubKey
+     * @return {string}
+     */
+
     function pubKeyToAddress(pubKey) {
         var addressBin = safeBuffer_1.concat([safeBuffer_1.from([ADDRESS_VERSION]), keccak256(pubKey.slice(1)).slice(0, 19)]);
         return encodeAddress(addressBin);
     }
     /**
-     *
+     * sha3
      * @param {Buffer} data
      * @return {Buffer}
      */
@@ -21002,6 +21019,12 @@
     function keccak256(data) {
         return js('keccak256').update(data).digest();
     }
+    /**
+     * Decode hex address to LemoChain address
+     * @param {Buffer} data
+     * @return {string}
+     */
+
     function encodeAddress(data) {
         data = toBuffer(data);
         var checkSum = 0;
@@ -21012,8 +21035,19 @@
 
         var fullPayload = safeBuffer_1.concat([data, safeBuffer_1.from([checkSum])]);
         var encoded = base26.encode(fullPayload);
+
+        while (encoded.length < 36) {
+            encoded = BASE26_0 + encoded;
+        }
+
         return ADDRESS_LOGO + encoded;
     }
+    /**
+     * Decode LemoChain address to hex address
+     * @param {string} address
+     * @return {string}
+     */
+
     function decodeAddress(address) {
         if (!address || has0xPrefix(address)) {
             return address;
@@ -21400,7 +21434,7 @@
             }, {
                 key: "hashForSign",
                 value: function hashForSign(tx) {
-                    var raw = [toRaw(tx, 'type', true), toRaw(tx, 'version', true), toBuffer(this.chainID), toRaw(tx, 'to', false, 20), toRaw(tx, 'toName', false), toRaw(tx, 'gasPrice', true), toRaw(tx, 'gasLimit', true), toRaw(tx, 'amount', true), toRaw(tx, 'data', true), toRaw(tx, 'expirationTime', true), toRaw(tx, 'message', false)];
+                    var raw = [toRaw(tx, 'type', true), toRaw(tx, 'version', true), toBuffer(this.chainID), tx.to ? toRaw(tx, 'to', false, 20) : '', toRaw(tx, 'toName', false), toRaw(tx, 'gasPrice', true), toRaw(tx, 'gasLimit', true), toRaw(tx, 'amount', true), toRaw(tx, 'data', true), toRaw(tx, 'expirationTime', true), toRaw(tx, 'message', false)];
                     return keccak256(encode$1(raw));
                 }
             }]);
@@ -21525,7 +21559,7 @@
         getSdkVersion: {
             call: function call() {
 
-                return Promise.resolve("0.9.1");
+                return Promise.resolve("0.9.2");
             }
         },
 
@@ -21679,7 +21713,7 @@
             createClass(Tx, [{
                 key: "serialize",
                 value: function serialize() {
-                    var raw = [toRaw(this, 'to', false, 20), toRaw(this, 'toName', false), toRaw(this, 'gasPrice', true), toRaw(this, 'gasLimit', true), toRaw(this, 'amount', true), toRaw(this, 'data', true), toRaw(this, 'expirationTime', true), toRaw(this, 'message', false), toRaw(this, 'v', true), toRaw(this, 'r', true), toRaw(this, 's', true)];
+                    var raw = [this.to ? toRaw(this, 'to', false, 20) : '', toRaw(this, 'toName', false), toRaw(this, 'gasPrice', true), toRaw(this, 'gasLimit', true), toRaw(this, 'amount', true), toRaw(this, 'data', true), toRaw(this, 'expirationTime', true), toRaw(this, 'message', false), toRaw(this, 'v', true), toRaw(this, 'r', true), toRaw(this, 's', true)];
                     return encode$1(raw);
                 }
             }, {
