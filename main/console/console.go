@@ -111,19 +111,6 @@ func (c *Console) init() error {
 	if err := c.jsre.Compile("lemo-node-admin.js", jsre.LemoNodeAdminJS); err != nil {
 		return fmt.Errorf("lemo-node-admin.js: %v", err)
 	}
-
-	// If the console is in interactive mode, instrument password related methods to query the user
-	if c.prompter != nil {
-		account, err := c.getFromJsre("lemo.account")
-		if err != nil {
-			return err
-		}
-		// Override methods since these require user interaction.
-		if _, err = c.jsre.Run(`provider.sign = lemo.account.sign;`); err != nil {
-			return fmt.Errorf("account.sign: %v", err)
-		}
-		account.Set("sign", bridge.Sign)
-	}
 	return nil
 }
 
