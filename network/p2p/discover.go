@@ -270,6 +270,7 @@ func (m *DiscoverManager) SetConnectResult(nodeID *NodeID, success bool) error {
 			n.Sequence = 0
 			n.ConnCounter++
 			if n.ConnCounter == MaxReconnectCount {
+				n.Sequence = -1
 				n.IsReconnect = false
 				return ErrMaxReconnect
 			}

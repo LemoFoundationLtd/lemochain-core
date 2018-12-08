@@ -40,11 +40,11 @@ type encHandshake struct {
 }
 
 // String
-func (e *encHandshake) String() string {
+func (h *encHandshake) String() string {
 	return fmt.Sprintf("remoteID: %s; initNonce: %s; respNonce: %s; randomPrvKey: %s; remoteRandomPubKey: %s",
-		common.ToHex(e.remoteID[:]), common.ToHex(e.initNonce), common.ToHex(e.respNonce),
-		common.ToHex(crypto.FromECDSA(e.randomPrvKey.ExportECDSA())),
-		common.ToHex(exportPubKey(e.remoteRandomPubKey)))
+		common.ToHex(h.remoteID[:]), common.ToHex(h.initNonce), common.ToHex(h.respNonce),
+		common.ToHex(crypto.FromECDSA(h.randomPrvKey.ExportECDSA())),
+		common.ToHex(exportPubKey(h.remoteRandomPubKey)))
 }
 
 // newCliEncHandshake new instance for client
