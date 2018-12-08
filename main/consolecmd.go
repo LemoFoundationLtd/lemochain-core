@@ -25,7 +25,7 @@ which exposes a node admin interface as well as the Dapp JavaScript API.`,
 		Name:      "attach",
 		Usage:     "attach",
 		ArgsUsage: "[endpoint]",
-		Flags:     []cli.Flag{node.DataDirFlag},
+		Flags:     attachFlags,
 		Category:  "CONSOLE COMMANDS",
 		Description: `
 The Glemo console is an interactive shell for the JavaScript runtime environment
@@ -43,7 +43,7 @@ func localConsole(ctx *cli.Context) error {
 	if err != nil {
 		log.Critf("Failed to attach to the inproc glemo: %v", err)
 	}
-	startConsole(client)
+	startConsole(client, n.ChainID())
 	return nil
 }
 
@@ -57,14 +57,16 @@ func remoteConsole(ctx *cli.Context) error {
 	if err != nil {
 		log.Critf("Unable to attach to remote glemo: %v", err)
 	}
-	startConsole(client)
+	chainID := uint16(ctx.GlobalUint(node.ChainIDFlag.Name))
+	startConsole(client, chainID)
 	return nil
 }
 
-func startConsole(client *rpc.Client) {
+func startConsole(client *rpc.Client, chainID uint16) {
 	config := console.Config{
 		DocRoot: "scripts", // consoleObj.Execute("exec.js") will execute the file "js/exec.js"
 		Client:  client,
+		ChainID: chainID,
 	}
 
 	consoleObj, err := console.New(config)
