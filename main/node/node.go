@@ -33,8 +33,8 @@ var (
 )
 
 type Node struct {
-	config *Config
-	// chainConfig *params.ChainConfig
+	config  *Config
+	chainID uint16
 
 	db     protocol.ChainDB
 	accMan *account.Manager
@@ -163,12 +163,13 @@ func New(flags flag.CmdFlags) *Node {
 
 	// newTxsCh := make(chan types.Transactions)
 	accMan := blockChain.AccountManager()
-	txPool := chain.NewTxPool(accMan)
+	txPool := chain.NewTxPool(uint16(configFromFile.ChainID), accMan)
 	discover := p2p.NewDiscoverManager(cfg.DataDir)
 	pm := synchronise.NewProtocolManager(configFromFile.ChainID, deputynode.GetSelfNodeID(), blockChain, txPool, discover)
 	server := p2p.NewServer(cfg.P2P, discover)
 	n := &Node{
 		config:       cfg,
+		chainID:      uint16(configFromFile.ChainID),
 		ipcEndpoint:  cfg.IPCEndpoint(),
 		httpEndpoint: cfg.HTTPEndpoint(),
 		wsEndpoint:   cfg.WSEndpoint(),
@@ -193,6 +194,10 @@ func (n *Node) DataDir() string {
 
 func (n *Node) Db() protocol.ChainDB {
 	return n.db
+}
+
+func (n *Node) ChainID() uint16 {
+	return n.chainID
 }
 
 func (n *Node) AccountManager() *account.Manager {

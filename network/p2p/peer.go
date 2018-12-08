@@ -20,6 +20,7 @@ type IPeer interface {
 	WriteMsg(code uint32, msg []byte) (err error)
 	RNodeID() *NodeID
 	RAddress() string
+	LAddress() string
 	doHandshake(prv *ecdsa.PrivateKey, nodeID *NodeID) error
 	run() (err error)
 	Close()
@@ -158,6 +159,11 @@ func (p *Peer) RNodeID() *NodeID {
 // RAddress remote address (ipv4:port)
 func (p *Peer) RAddress() string {
 	return p.conn.RemoteAddr().String()
+}
+
+// LAddress local address (ipv4:port)
+func (p *Peer) LAddress() string {
+	return p.conn.LocalAddr().String()
 }
 
 // packFrame pack message to net stream

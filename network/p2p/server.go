@@ -55,7 +55,7 @@ type Server struct {
 
 	listener net.Listener // TCP监听
 
-	connectedNodes map[*NodeID]IPeer
+	connectedNodes map[NodeID]IPeer
 
 	peersMux sync.Mutex
 
@@ -82,7 +82,7 @@ func NewServer(config Config, discover *DiscoverManager) *Server {
 		addPeerCh: make(chan IPeer, 1),
 		delPeerCh: make(chan IPeer, 1),
 
-		connectedNodes: make(map[*NodeID]IPeer),
+		connectedNodes: make(map[NodeID]IPeer),
 		quitCh:         make(chan struct{}),
 	}
 	srv.dialManager = NewDialManager(srv.HandleConn, srv.discover)
@@ -167,21 +167,21 @@ func (srv *Server) run() {
 		case p := <-srv.addPeerCh:
 			log.Debugf("receive srv.addPeerCh. node id: %s", common.ToHex(p.RNodeID()[:8]))
 			// 判断此节点是否在peers中
-			if _, ok := srv.connectedNodes[p.RNodeID()]; ok {
+			if _, ok := srv.connectedNodes[*p.RNodeID()]; ok {
 				log.Warnf("Connection has already exist. Remote node id: %s", common.ToHex(p.RNodeID()[:8]))
 				p.Close()
 				srv.discover.SetConnectResult(p.RNodeID(), false) // todo
 				break
 			}
 			srv.peersMux.Lock()
-			srv.connectedNodes[p.RNodeID()] = p
+			srv.connectedNodes[*p.RNodeID()] = p
 			srv.peersMux.Unlock()
 			go srv.runPeer(p)
 			subscribe.Send(subscribe.AddNewPeer, p)
 		case p := <-srv.delPeerCh:
 			log.Debug("server: recv delete peer event")
 			srv.peersMux.Lock()
-			delete(srv.peers, p.rNodeID.String())
+			delete(srv.connectedNodes, *p.RNodeID())
 			srv.peersMux.Unlock()
 			subscribe.Send(subscribe.DeletePeer, p)
 		case <-srv.quitCh:
@@ -238,9 +238,9 @@ func (srv *Server) HandleConn(fd net.Conn, nodeID *NodeID) error {
 		return ErrConnectSelf
 	}
 	if nodeID == nil {
-		log.Debugf("Receive new connect, IP: %s. ID: %s ", peer.RAddress(), common.ToHex(p.rNodeID[:8]))
+		log.Debugf("Receive new connect, IP: %s. ID: %s ", peer.RAddress(), common.ToHex(peer.RNodeID()[:8]))
 	} else {
-		log.Debugf("Connect to server: %s. id: %s", peer.RAddress(), common.ToHex(p.rNodeID[:8]))
+		log.Debugf("Connect to server: %s. id: %s", peer.RAddress(), common.ToHex(peer.RNodeID()[:8]))
 	}
 	srv.addPeerCh <- peer
 	log.Debug("transfer new peer to srv.addPeerCh")
@@ -256,6 +256,25 @@ func (srv *Server) runPeer(p IPeer) {
 	log.Debugf("peer: %s stopped", p.RAddress())
 }
 
+//go:generate gencodec -type PeerConnInfo -out gen_peer_conn_info_json.go
+
+type PeerConnInfo struct {
+	LocalAddr  string `json:"localAddress"`
+	RemoteAddr string `json:"remoteAddress"`
+	NodeID     string `json:"remoteNodeID"`
+}
+
+func (srv *Server) Connections() []PeerConnInfo {
+	srv.peersMux.Lock()
+	defer srv.peersMux.Unlock()
+	result := make([]PeerConnInfo, 0, len(srv.connectedNodes))
+	for _, v := range srv.connectedNodes {
+		info := PeerConnInfo{v.LAddress(), v.RAddress(), v.RNodeID().String()}
+		result = append(result, info)
+	}
+	return result
+}
+
 func (srv *Server) Connect(node string) string {
 	log.Infof("start add static peer: %s", node)
 	srv.discover.AddNewList([]string{node})
@@ -265,31 +284,12 @@ func (srv *Server) Connect(node string) string {
 	return ""
 }
 
-//go:generate gencodec -type PeerConnInfo -out gen_peer_conn_info_json.go
-
-type PeerConnInfo struct {
-	LocalAddr  string `json:"localAddress"`
-	RemoteAddr string `json:"remoteAddress"`
-	NodeID     string `json:"rNodeID"`
-}
-
-func (srv *Server) Connections() []PeerConnInfo {
-	srv.peersMux.Lock()
-	defer srv.peersMux.Unlock()
-	result := make([]PeerConnInfo, 0, len(srv.peers))
-	for _, v := range srv.peers {
-		info := PeerConnInfo{v.conn.LocalAddr().String(), v.conn.RemoteAddr().String(), v.rNodeID.String()}
-		result = append(result, info)
-	}
-	return result
-}
-
 func (srv *Server) Disconnect(node string) bool {
-	for id, v := range srv.peers {
-		if strings.Compare(node, v.conn.RemoteAddr().String()) == 0 {
+	for id, v := range srv.connectedNodes {
+		if strings.Compare(node, v.RAddress()) == 0 {
 			v.Close()
 			srv.peersMux.Lock()
-			delete(srv.peers, id)
+			delete(srv.connectedNodes, id)
 			srv.peersMux.Unlock()
 			subscribe.Send(subscribe.DeletePeer, v)
 			return true
