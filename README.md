@@ -7,9 +7,10 @@
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com)
 [![GitHub license](https://img.shields.io/badge/license-LGPL3.0-blue.svg?style=flat-square)](https://github.com/LemoFoundationLtd/lemochain-go/blob/master/LICENSE)
 
-LemoChain is a data exchange blockchain, where companies of all sizes can monetize their structured business data and trade within the platform. By strengthening the relevance of the blockchain and daily business, LemoChain will accelerate the integration of blockchain technology into our daily lives.
-The original DPoVP consensus mechanism of LemoChain has the characteristic of high scalability, which solves the problem of the slow response of the existing distributed networks and the difficulties they face in complying with various application scenarios.
-The lemochain-go project aims to demonstrate the principle of this consensus mechanism, verifying its improved throughput and transaction confirmation speed.
+LemoChain is a data exchange blockchain, where companies of all sizes can monetize their structured business data and trade within the platform. By strengthening the relevance of the blockchain and daily business, LemoChain will accelerate the integration of blockchain technology into our daily lives.  
+The original DPoVP consensus mechanism of LemoChain has the characteristic of high scalability, which solves the problem of the slow response of the existing distributed networks and the difficulties they face in complying with various application scenarios.  
+The lemochain-go project aims to demonstrate the principle of this consensus mechanism, verifying its improved throughput and transaction confirmation speed.  
+The lemochain-go project is the Golang implement of this consensus mechanism. [lemo-client](https://github.com/LemoFoundationLtd/lemo-client) is document of the command in lemochain-go console.  
 
 [中文版](https://github.com/LemoFoundationLtd/lemochain-go/blob/master/README_zh.md)  
 [English](https://github.com/LemoFoundationLtd/lemochain-go/blob/master/README.md)
@@ -124,6 +125,7 @@ It defines initial deputy node list and some running configuration about this no
 chainID | description
 ---|---
 1 | LemoChain main net
+100 | LemoChain develop net
 
 ### Running nodes
 Deputy nodes confirm transactions and produce blocks.
@@ -161,4 +163,12 @@ Start mining
 ```
 lemo.mine.start()
 ```
-6. You can check or transfer LEMO in your account. More commond is in JS SDK[Documentation](https://github.com/LemoFoundationLtd/lemo-client)
+6. You can check or transfer LEMO in your account. More command is in JS SDK[Documentation](https://github.com/LemoFoundationLtd/lemo-client)
+7. Make a whitelist file. The node will connect all nodes in this file automatically.  
+Make a file named `whitelist` in datadir, write each node address in a row:
+```
+45.77.121.107:7003
+149.28.25.8:7003
+149.28.68.93:7003
+```
+Note：Now we need set node IP and port only, but the format will be changed to `NodeID@IP:Port` in next versions
