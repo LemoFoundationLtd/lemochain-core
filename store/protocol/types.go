@@ -9,6 +9,7 @@ import (
 type ChainDB interface {
 	// 设置区块
 	SetBlock(hash common.Hash, block *types.Block) error
+	SizeOf(hash common.Hash) (int, error)
 
 	// 获取区块 优先根据hash与height同时获取，若hash为空则根据Height获取 获取不到返回：nil,原因
 	GetBlock(hash common.Hash, height uint32) (*types.Block, error)

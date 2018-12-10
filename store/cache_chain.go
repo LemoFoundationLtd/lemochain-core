@@ -310,6 +310,15 @@ func (chain *CacheChain) SetBlock(hash common.Hash, block *types.Block) error {
 	return nil
 }
 
+func (chain *CacheChain) SizeOf(hash common.Hash) (int, error) {
+	val, err := chain.LmDataBase.Get(hash.Bytes())
+	if err != nil {
+		return -1, err
+	} else {
+		return len(val), nil
+	}
+}
+
 // 获取区块 优先根据hash与height同时获取，若hash为空则根据Height获取 获取不到返回：nil,原因
 func (chain *CacheChain) GetBlock(hash common.Hash, height uint32) (*types.Block, error) {
 	chain.rw.Lock()
