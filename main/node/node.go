@@ -33,13 +33,14 @@ var (
 )
 
 type Node struct {
-	config *Config
-	// chainConfig *params.ChainConfig
+	config  *Config
+	chainID uint16
 
-	db       protocol.ChainDB
-	accMan   *account.Manager
-	txPool   *chain.TxPool
-	chain    *chain.BlockChain
+	db     protocol.ChainDB
+	accMan *account.Manager
+	txPool *chain.TxPool
+	chain  *chain.BlockChain
+	// discover *p2p.DiscoverManager
 	pm       *synchronise.ProtocolManager
 	miner    *miner.Miner
 	gasPrice *big.Int
@@ -162,9 +163,13 @@ func New(flags flag.CmdFlags) *Node {
 
 	// newTxsCh := make(chan types.Transactions)
 	accMan := blockChain.AccountManager()
-	txPool := chain.NewTxPool(accMan)
+	txPool := chain.NewTxPool(uint16(configFromFile.ChainID), accMan)
+	discover := p2p.NewDiscoverManager(cfg.DataDir)
+	pm := synchronise.NewProtocolManager(configFromFile.ChainID, deputynode.GetSelfNodeID(), blockChain, txPool, discover)
+	server := p2p.NewServer(cfg.P2P, discover)
 	n := &Node{
 		config:       cfg,
+		chainID:      uint16(configFromFile.ChainID),
 		ipcEndpoint:  cfg.IPCEndpoint(),
 		httpEndpoint: cfg.HTTPEndpoint(),
 		wsEndpoint:   cfg.WSEndpoint(),
@@ -172,8 +177,10 @@ func New(flags flag.CmdFlags) *Node {
 		accMan:       accMan,
 		chain:        blockChain,
 		txPool:       txPool,
+		// discover:     discover,
 		miner:        miner.New(mineCfg, blockChain, txPool, engine),
-		pm:           synchronise.NewProtocolManager(configFromFile.ChainID, deputynode.GetSelfNodeID(), blockChain, txPool),
+		pm:           pm,
+		server:       server,
 		genesisBlock: genesisBlock,
 	}
 	// set Founder for next block
@@ -189,6 +196,10 @@ func (n *Node) Db() protocol.ChainDB {
 	return n.db
 }
 
+func (n *Node) ChainID() uint16 {
+	return n.chainID
+}
+
 func (n *Node) AccountManager() *account.Manager {
 	return n.accMan
 }
@@ -196,20 +207,18 @@ func (n *Node) AccountManager() *account.Manager {
 func (n *Node) Start() error {
 	n.lock.Lock()
 	defer n.lock.Unlock()
-	if n.server != nil {
-		return ErrAlreadyRunning
-	}
+	// if n.server != nil {
+	// 	return ErrAlreadyRunning
+	// }
 	if err := n.openDataDir(); err != nil {
 		log.Errorf("%v", err)
 		return ErrOpenFileFailed
 	}
-	server := &p2p.Server{Config: n.config.P2P, PeerEvent: n.pm.PeerEvent}
-	if err := server.Start(); err != nil {
+	if err := n.server.Start(); err != nil {
 		log.Errorf("%v", err)
 		return ErrServerStartFailed
 	}
 	n.pm.Start()
-	n.server = server
 	n.stop = make(chan struct{})
 
 	if err := n.startRPC(); err != nil {

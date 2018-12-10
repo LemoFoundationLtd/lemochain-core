@@ -10,8 +10,8 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
+	"github.com/LemoFoundationLtd/lemochain-go/common/subscribe"
 	"io"
-	"math/rand"
 	"net"
 	"os"
 	"path/filepath"
@@ -88,11 +88,25 @@ type Server struct {
 
 	loopWG sync.WaitGroup
 
-	needConnectNodeCh chan string // 需要立即拨号通道
+	// needConnectNodeCh chan string // 需要立即拨号通道
 
 	newTransport func(net.Conn) transport // 目前只有Peer使用到
 
-	PeerEvent PeerEventFn // 外界注册使用
+	// for discover
+	discover    *DiscoverManager
+	dialManager *DialManager
+
+	// PeerEvent PeerEventFn // 外界注册使用
+}
+
+func NewServer(config Config /*, peerEvent PeerEventFn*/, discover *DiscoverManager) *Server {
+	srv := &Server{
+		Config:   config,
+		discover: discover,
+		// PeerEvent: peerEvent,
+	}
+	srv.dialManager = NewDialManager(srv.HandleConn, srv.discover)
+	return srv
 }
 
 type transport interface {
@@ -122,9 +136,6 @@ func (srv *Server) Start() error {
 	if srv.PrivateKey == nil {
 		return fmt.Errorf("server.PrivateKey can't be nil")
 	}
-	// if srv.ListenAddr == "" { // 默认强制开始服务器，前期防止搭建都不启动服务
-	// return fmt.Errorf("server.ListenAddr can't be empty")
-	// }
 	if err := srv.startListening(); err != nil {
 		return err
 	}
@@ -137,9 +148,6 @@ func (srv *Server) Start() error {
 	if srv.delPeerCh == nil {
 		srv.delPeerCh = make(chan *Peer, 5)
 	}
-	if srv.needConnectNodeCh == nil {
-		srv.needConnectNodeCh = make(chan string, 5)
-	}
 	if srv.newTransport == nil {
 		srv.newTransport = newPeer
 	}
@@ -150,6 +158,12 @@ func (srv *Server) Start() error {
 		if err := srv.readNodeDatabaseFile(); err != nil {
 			log.Error(err.Error())
 		}
+	}
+	// discover
+	if srv.discover != nil { // todo
+		nodes := deputynode.Instance().GetLatestDeputies()
+		srv.discover.SetDeputyNodes(nodes)
+		srv.discover.Start()
 	}
 	go srv.run()
 	srv.running = true
@@ -172,6 +186,15 @@ func (srv *Server) Stop() {
 			p.Close()
 		}
 		srv.peers = nil
+	}
+	// stop discover
+	if srv.discover != nil {
+		if err := srv.discover.Stop(); err != nil {
+			log.Errorf("stop discover error: %v", err)
+		} else {
+			// srv.discover = nil
+			log.Debug("stop discover ok.")
+		}
 	}
 	close(srv.quitCh)
 	srv.loopWG.Wait()
@@ -239,7 +262,7 @@ func (srv *Server) run() {
 	}()
 
 	// peers := make(map[NodeID]*Peer) // 记录所有的节点连接
-	go srv.runDialLoop() // 启动主动连接调度
+	go srv.dialManager.Start() // 启动主动连接调度
 	for {
 		select {
 		case p := <-srv.addPeerCh:
@@ -248,39 +271,27 @@ func (srv *Server) run() {
 			if _, ok := srv.peers[p.nodeID.String()]; ok {
 				log.Warnf("Connection has already exist. Remote node id: %s", common.ToHex(p.nodeID[:8]))
 				p.Close()
+				srv.discover.SetConnectResult(p.RemoteAddr(), false) // todo
 				break
 			}
 			srv.peersMux.Lock()
 			srv.peers[p.nodeID.String()] = p
 			srv.peersMux.Unlock()
 			go srv.runPeer(p)
-			if srv.PeerEvent != nil { // 通知外界收到新的节点
-				log.Debugf("start execute peerEvent. node id: %s", common.ToHex(p.nodeID[:8]))
-				if err := srv.PeerEvent(p, AddPeerFlag); err != nil {
-					p.Close()
-				}
-			}
-			log.Debugf("handle addPeerCh success. node id: %s", common.ToHex(p.nodeID[:8]))
+			subscribe.Send(subscribe.AddNewPeer, p)
 		case p := <-srv.delPeerCh:
+			log.Debug("server: recv delete peer event")
 			srv.peersMux.Lock()
 			delete(srv.peers, p.nodeID.String())
 			srv.peersMux.Unlock()
-			if srv.PeerEvent != nil { // 通知外界节点drop
-				if err := srv.PeerEvent(p, DropPeerFlag); err != nil {
-					log.Error("peer event error", "err", err)
-				}
-			}
+			subscribe.Send(subscribe.DeletePeer, p)
 			if p.NeedReConnect() {
-				random := time.Duration(rand.Int()%10 + 10)
-				time.AfterFunc(random*time.Second, func() {
-					srv.needConnectNodeCh <- p.nodeID.String() + "+" + p.rw.fd.RemoteAddr().String() // 断线重连 todo
-				})
-
+				n := p.rw.fd.RemoteAddr().String() // todo
+				srv.discover.SetReconnect(n)
 			}
 		case <-srv.quitCh:
 			return
 		}
-		// log.Debug("next turn to addPeerCh")
 	}
 }
 
@@ -316,11 +327,21 @@ func (srv *Server) HandleConn(fd net.Conn, isSelfServer bool) error {
 	err := peer.doHandshake(srv.PrivateKey, isSelfServer)
 	if err != nil {
 		fd.Close()
+
+		// for discover
+		n := fd.RemoteAddr().String()
+		srv.discover.SetConnectResult(n, false)
+
 		return err
 	}
 	p := peer.(*Peer)
 	if bytes.Compare(p.nodeID[:], deputynode.GetSelfNodeID()) == 0 {
 		fd.Close()
+
+		// for discover
+		n := fd.RemoteAddr().String()
+		srv.discover.SetConnectResult(n, false)
+
 		return ErrConnectSelf
 	}
 	if isSelfServer {
@@ -342,60 +363,6 @@ func (srv *Server) runPeer(p *Peer) {
 	log.Debugf("peer: %s stopped", p.rw.fd.RemoteAddr().String())
 }
 
-// 启动主动连接调度
-func (srv *Server) runDialLoop() {
-	srv.loopWG.Add(1)
-	defer func() {
-		srv.loopWG.Done()
-		log.Debug("server.runDialLoop stop")
-	}()
-
-	failedNodes := make(map[string]struct{}, 0)
-	for _, node := range srv.nodeList {
-		dialTask := newDialTask(node, srv)
-		if err := dialTask.Run(); err != nil {
-			failedNodes[node] = struct{}{}
-		}
-	}
-	retryTimer := time.NewTimer(retryConnTimeout)
-	// <-retryTimer.C
-	defer retryTimer.Stop()
-	for {
-		select {
-		case <-srv.quitCh:
-			return
-		case <-retryTimer.C:
-			if len(failedNodes) > 0 {
-				for node, _ := range failedNodes {
-					dialTask := newDialTask(node, srv)
-					if err := dialTask.Run(); err == nil {
-						delete(failedNodes, node)
-					}
-				}
-			}
-			retryTimer.Reset(retryConnTimeout)
-		case target := <-srv.needConnectNodeCh:
-			parts := strings.Split(target, "+")
-			if len(parts) == 2 {
-				if _, ok := srv.peers[parts[0]]; ok {
-					break
-				}
-				target = parts[1]
-			}
-			go func() {
-				log.Debugf("start dial target: %s", target)
-				dialTask := newDialTask(target, srv)
-				if err := dialTask.Run(); err != nil {
-					if err != ErrConnectSelf {
-						log.Debugf("dial target failed. err: %v", err)
-						failedNodes[target] = struct{}{}
-					}
-				}
-			}()
-		}
-	}
-}
-
 func (srv *Server) Connect(node string) {
 	nodeParts := strings.Split(node, ":")
 	if len(nodeParts) != 2 {
@@ -409,7 +376,8 @@ func (srv *Server) Connect(node string) {
 		return
 	}
 	log.Infof("start add static peer: %s", node)
-	srv.needConnectNodeCh <- node
+	srv.discover.AddNewList([]string{node})
+	srv.dialManager.runDialTask(node)
 }
 
 //go:generate gencodec -type PeerConnInfo -out gen_peer_conn_info_json.go
@@ -439,12 +407,13 @@ func (srv *Server) Disconnect(node string) bool {
 			srv.peersMux.Lock()
 			delete(srv.peers, id)
 			srv.peersMux.Unlock()
-			if srv.PeerEvent != nil { // 通知外界节点drop
-				if err := srv.PeerEvent(v, DropPeerFlag); err != nil {
-					log.Error("peer event error", "err", err)
-					return false
-				}
-			}
+			// if srv.PeerEvent != nil { // 通知外界节点drop
+			// 	if err := srv.PeerEvent(v, DropPeerFlag); err != nil {
+			// 		log.Error("peer event error", "err", err)
+			// 		return false
+			// 	}
+			// }
+			subscribe.Send(subscribe.DeletePeer, v)
 			return true
 		}
 	}

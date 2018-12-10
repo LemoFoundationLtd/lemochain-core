@@ -126,7 +126,6 @@ func (p *Peer) run() (err error) {
 	var (
 		readErr = make(chan error)
 	)
-	p.wg.Add(2)
 
 	go p.readLoop(readErr)
 	go p.heartbeatLoop()
@@ -146,6 +145,7 @@ func (p *Peer) run() (err error) {
 
 // 节点读取循环
 func (p *Peer) readLoop(errCh chan<- error) {
+	p.wg.Add(1)
 	defer func() {
 		p.wg.Done()
 		log.Debug("peer.readLoop finished.")
@@ -158,6 +158,17 @@ func (p *Peer) readLoop(errCh chan<- error) {
 				errCh <- err
 				p.newMsgCh <- Msg{}
 			}
+			select {
+			case _, ok := <-p.closeCh:
+				if ok && err == io.EOF {
+					p.closeCh <- struct{}{}
+				}
+			default:
+
+			}
+			// if err == io.EOF {
+			// 	p.closeCh <- struct{}{}
+			// }
 			return
 		}
 		if msg.Code == 0x01 { // 心跳包
@@ -179,6 +190,7 @@ type frameHeader struct {
 
 // 发送心跳循环
 func (p *Peer) heartbeatLoop() {
+	p.wg.Add(1)
 	heartbeatTimer := time.NewTimer(heartbeatInterval)
 	defer func() {
 		heartbeatTimer.Stop()
@@ -279,4 +291,8 @@ func (p *Peer) sealFrameHead(code, size uint32) []byte {
 // 获取Peer ID
 func (p *Peer) NodeID() NodeID {
 	return p.nodeID
+}
+
+func (p *Peer) RemoteAddr() string {
+	return p.rw.fd.RemoteAddr().String()
 }

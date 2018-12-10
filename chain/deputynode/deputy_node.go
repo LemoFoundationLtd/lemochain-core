@@ -11,6 +11,8 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"net"
+	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -197,4 +199,18 @@ func (d *Manager) IsSelfDeputyNode(height uint32) bool {
 
 func (d *Manager) Clear() {
 	d.DeputyNodesList = make([]*DeputyNodesRecord, 0, 1)
+}
+
+func (d *Manager) GetLatestDeputies() []string {
+	res := make([]string, 0)
+	for _, n := range d.DeputyNodesList[len(d.DeputyNodesList)-1].nodes {
+		builder := &strings.Builder{}
+		// builder.WriteString(common.ToHex(n.NodeID)[2:])	// todo
+		// builder.WriteString("@")
+		builder.WriteString(n.IP.String())
+		builder.WriteString(":")
+		builder.WriteString(strconv.Itoa(int(n.Port)))
+		res = append(res, builder.String())
+	}
+	return res
 }

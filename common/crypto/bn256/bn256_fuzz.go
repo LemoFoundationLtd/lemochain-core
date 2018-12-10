@@ -1,18 +1,6 @@
-// Copyright 2018 The lemochain-go Authors
-// This file is part of the lemochain-go library.
-//
-// The lemochain-go library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Lesser General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// The lemochain-go library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with the lemochain-go library. If not, see <http://www.gnu.org/licenses/>.
+// Copyright 2018 Péter Szilágyi. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be found
+// in the LICENSE file.
 
 // +build gofuzz
 
@@ -22,8 +10,8 @@ import (
 	"bytes"
 	"math/big"
 
-	cloudflare "github.com/LemoFoundationLtd/lemochain-go/common/crypto/bn256/cloudflare"
-	google "github.com/LemoFoundationLtd/lemochain-go/common/crypto/bn256/google"
+	cloudflare "github.com/LemoFoundationLtd/lemochain-go/crypto/bn256/cloudflare"
+	google "github.com/LemoFoundationLtd/lemochain-go/crypto/bn256/google"
 )
 
 // FuzzAdd fuzzez bn256 addition between the Google and Cloudflare libraries.

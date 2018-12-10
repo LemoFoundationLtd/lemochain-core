@@ -45,6 +45,7 @@ type Config struct {
 	Client   *rpc.Client  // RPC client to execute Lemochain requests through
 	Prompter UserPrompter // Input prompter to allow interactive user feedback (defaults to TerminalPrompter)
 	Printer  io.Writer    // Output writer to serialize any display strings to (defaults to os.Stdout)
+	ChainID  uint16       // Id of LemoChain network
 }
 
 // Console is a JavaScript interpreted runtime environment. It is a fully fleged
@@ -74,7 +75,7 @@ func New(config Config) (*Console, error) {
 		prompter: config.Prompter,
 		printer:  config.Printer,
 	}
-	if err := console.init(); err != nil {
+	if err := console.init(config.ChainID); err != nil {
 		return nil, err
 	}
 	return console, nil
@@ -82,13 +83,14 @@ func New(config Config) (*Console, error) {
 
 // init retrieves the available APIs from the remote RPC provider and initializes
 // the console's JavaScript namespaces based on the exposed modules.
-func (c *Console) init() error {
+func (c *Console) init(chainID uint16) error {
 	// Initialize the JavaScript <-> Go RPC bridge
 	bridge := newBridge(c.client, c.prompter, c.printer)
-	c.jsre.Set("provider", struct{}{})
+	c.jsre.Set("lemoConfig", struct{}{})
 
-	providerObj, _ := c.jsre.Get("provider")
-	providerObj.Object().Set("send", bridge.Send)
+	lemoConfigObj, _ := c.jsre.Get("lemoConfig")
+	lemoConfigObj.Object().Set("send", bridge.Send)
+	lemoConfigObj.Object().Set("chainID", chainID)
 
 	consoleObj, _ := c.jsre.Get("console")
 	consoleObj.Object().Set("log", c.consoleOutput)
@@ -101,8 +103,8 @@ func (c *Console) init() error {
 	if err := c.jsre.Compile("lemo-client.js", jsre.LemoClientJS); err != nil {
 		return fmt.Errorf("lemo-client.js: %v", err)
 	}
-	if _, err := c.jsre.Run("var lemo = new LemoClient(provider);"); err != nil {
-		return fmt.Errorf("lemo provider: %v", err)
+	if _, err := c.jsre.Run("var lemo = new LemoClient(lemoConfig);"); err != nil {
+		return fmt.Errorf("lemo lemoConfig: %v", err)
 	}
 	if _, err := c.jsre.Run("BigNumber = lemo.BigNumber;"); err != nil {
 		return fmt.Errorf("expose BigNumber: %v", err)
@@ -110,19 +112,6 @@ func (c *Console) init() error {
 	// Load our extension for the module.
 	if err := c.jsre.Compile("lemo-node-admin.js", jsre.LemoNodeAdminJS); err != nil {
 		return fmt.Errorf("lemo-node-admin.js: %v", err)
-	}
-
-	// If the console is in interactive mode, instrument password related methods to query the user
-	if c.prompter != nil {
-		account, err := c.getFromJsre("lemo.account")
-		if err != nil {
-			return err
-		}
-		// Override methods since these require user interaction.
-		if _, err = c.jsre.Run(`provider.sign = lemo.account.sign;`); err != nil {
-			return fmt.Errorf("account.sign: %v", err)
-		}
-		account.Set("sign", bridge.Sign)
 	}
 	return nil
 }
@@ -166,16 +155,18 @@ func (c *Console) Welcome() {
 	c.jsre.Run(`Promise.all([
 		lemo.getNodeVersion(),
 		lemo.getSdkVersion(),
-		lemo.mine.getMinerAddress(),
+		lemo.mine.getMiner(),
 		lemo.getCurrentBlock(false, false),
 		lemo.getCurrentBlock(true, false)
 	]).then(function(results) {
-		console.log("node: v" + results[0]);
-		console.log("sdk: v" + results[1]);
-		console.log("minerAddress: " + results[2]);
-		console.log("current block: " + results[3].header.height + " " + results[3].header.hash + " (" + new Date(1000 * results[3].header.timestamp).toLocaleString() + ")");
-		console.log("latest stable block: " + results[4].header.height + " " + results[4].header.hash + " (" + new Date(1000 * results[4].header.timestamp).toLocaleString() + ")");
-		console.log("\n")
+		var msg = [
+			"node: v" + results[0],
+			"sdk: v" + results[1],
+			"minerAddress: " + results[2],
+			"current block: " + results[3].header.height + " " + results[3].header.hash + " (" + new Date(1000 * results[3].header.timestamp).toLocaleString() + ")",
+			"latest stable block: " + results[4].header.height + " " + results[4].header.hash + " (" + new Date(1000 * results[4].header.timestamp).toLocaleString() + ")"
+		].join("\n") + "\n";
+		console.log(msg)
 	});`)
 	// List all the supported modules for the user to call
 	if modules, err := c.client.SupportedModules(); err == nil {

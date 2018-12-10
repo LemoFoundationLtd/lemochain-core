@@ -43,6 +43,10 @@ var (
 		node.IPCDisabledFlag,
 		node.IPCPathFlag,
 	}
+
+	attachFlags = []cli.Flag{
+		node.ChainIDFlag,
+	}
 )
 
 func init() {

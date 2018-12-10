@@ -9,7 +9,7 @@
 
 LemoChain是一个通用的数据交易区块链，各种规模的公司可以将其结构化的商业数据货币化，在这个平台上进行交易。通过加强区块链与日常商业的相关性，LemoChain将加速区块链技术融入我们的日常生活。  
 LemoChain独创的DPoVP共识机制具有高响应速度的特性，解决了区块链分布式网络响应速度慢，难以在各种应用场景落地的难题。  
-lemochain-go项目旨在展示这种共识机制的原理，验证其吞吐量和交易确认速度的提升。
+lemochain-go项目是这种共识机制的Go语言实现，其控制台命令文档见[lemo-client](https://github.com/LemoFoundationLtd/lemo-client)。  
 
 [中文版](https://github.com/LemoFoundationLtd/lemochain-go/blob/master/README_zh.md)  
 [English](https://github.com/LemoFoundationLtd/lemochain-go/blob/master/README.md)
@@ -124,7 +124,8 @@ glemo init path/to/genesis.json
 
 chainID | 说明
 ---|---
-1 | LemoChain主网
+1   | LemoChain主网
+100 | LemoChain测试网
 
 
 ### 启动共识节点
@@ -164,3 +165,12 @@ glemo console
 lemo.mine.start()
 ```
 6. 可以查看或发送账户中的LEMO了。具体命令请查看JS SDK[文档](https://github.com/LemoFoundationLtd/lemo-client)
+
+7. 配置白名单。节点启动后会自动连接白名单中的节点  
+在`datadir`目录下新建文本文件`whitelist`，每个节点占据一行，格式如下：
+```
+45.77.121.107:7003
+149.28.25.8:7003
+149.28.68.93:7003
+```
+> 注意：目前仅需配置节点IP与端口号，后续将调整格式为：`NodeID@IP:Port`

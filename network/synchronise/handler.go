@@ -25,6 +25,7 @@ type ProtocolManager struct {
 
 	downloader *Downloader
 	fetcher    *Fetcher
+	discover   *p2p.DiscoverManager
 
 	peers *peerSet
 
@@ -41,9 +42,12 @@ type ProtocolManager struct {
 	quitSync chan struct{}
 
 	wg sync.WaitGroup
+
+	addPeerCh    chan *p2p.Peer
+	removePeerCh chan *p2p.Peer
 }
 
-func NewProtocolManager(chainID uint64, nodeID []byte, blockchain *chain.BlockChain, txpool *chain.TxPool) *ProtocolManager {
+func NewProtocolManager(chainID uint64, nodeID []byte, blockchain *chain.BlockChain, txpool *chain.TxPool, discover *p2p.DiscoverManager) *ProtocolManager {
 	manager := &ProtocolManager{
 		chainID:         chainID,
 		nodeID:          nodeID,
@@ -51,10 +55,13 @@ func NewProtocolManager(chainID uint64, nodeID []byte, blockchain *chain.BlockCh
 		peers:           newPeerSet(),
 		txPool:          txpool,
 		newPeerCh:       make(chan *peer),
+		addPeerCh:       make(chan *p2p.Peer),
+		removePeerCh:    make(chan *p2p.Peer),
 		txsCh:           make(chan types.Transactions, 10),
 		newMinedBlockCh: make(chan *types.Block, 1),
 		stableBlockCh:   make(chan *types.Block, 1),
 		quitSync:        make(chan struct{}),
+		discover:        discover,
 	}
 	// 获取本地链高度
 	getLocalHeight := func() uint32 {
@@ -185,20 +192,6 @@ func (pm *ProtocolManager) dropPeer(id string) {
 	pm.peers.Unregister(id)
 }
 
-// PeerEvent 节点事件通知回调，主要有新增、删除节点
-func (pm *ProtocolManager) PeerEvent(peer *p2p.Peer, flag p2p.PeerEventFlag) error {
-	switch flag {
-	case p2p.AddPeerFlag:
-		p := newPeer(peer)
-		go pm.handle(p)
-	case p2p.DropPeerFlag:
-		go pm.dropPeer(peer.NodeID().String())
-	default:
-
-	}
-	return nil
-}
-
 // handle 处理新的节点连接
 func (pm *ProtocolManager) handle(p *peer) error {
 	block := pm.blockchain.CurrentBlock()
@@ -206,6 +199,11 @@ func (pm *ProtocolManager) handle(p *peer) error {
 		p.DisableReConnect()
 		p.Close()
 		log.Infof("lemochain handshake failed: %v", err)
+
+		// for discover
+		n := p.RemoteNetInfo() // todo
+		pm.discover.SetConnectResult(n, false)
+
 		return err
 	}
 	log.Infof("A new peer has connected. peer: %s", p.id[:16])
@@ -217,6 +215,11 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	}
 	pm.peers.Register(pConn)
 	// pm.downloader.RegisterPeer(p.id, p)
+
+	// for discover
+	n := p.RemoteNetInfo() // todo
+	pm.discover.SetConnectResult(n, true)
+
 	pm.newPeerCh <- p
 
 	// 死循环 处理收到的网络消息
@@ -389,6 +392,24 @@ func (pm *ProtocolManager) handleMsg(p *peerConnection) error {
 			return errResp(protocol.ErrDecode, "%v: %v", msg, err)
 		}
 		pm.blockchain.ReceiveConfirms(pack)
+	case protocol.FindNodeReqMsg: // for discover
+		log.Debug("recv node discovery request....")
+		var req protocol.FindNodeReqData
+		if err := msg.Decode(&req); err != nil {
+			return errResp(protocol.ErrDecode, "%v: %v", msg, err)
+		}
+		res := new(protocol.FindNodeResData)
+		res.Sequence = req.Sequence
+		res.Nodes = pm.discover.GetNodesForDiscover(req.Sequence)
+		if err := p.peer.send(protocol.FindNodeResMsg, &res); err != nil {
+			log.Debug("send confirm info message failed.")
+		}
+	case protocol.FindNodeResMsg: // for discover
+		var data protocol.FindNodeResData
+		if err := msg.Decode(&data); err != nil {
+			return errResp(protocol.ErrDecode, "%v: %v", msg, err)
+		}
+		pm.discover.AddNewList(data.Nodes)
 	default:
 		return errors.New("can not math message type")
 	}
@@ -406,9 +427,13 @@ func (pm *ProtocolManager) Start() {
 	pm.minedBlockSub = pm.blockchain.MinedBlockFeed.Subscribe(pm.newMinedBlockCh)
 	pm.stableBlockSub = pm.blockchain.StableBlockFeed.Subscribe(pm.stableBlockCh)
 
+	subscribe.Sub(subscribe.AddNewPeer, pm.addPeerCh)
+	subscribe.Sub(subscribe.DeletePeer, pm.removePeerCh)
+
 	go pm.txBroadcastLoop()
 	go pm.blockBroadcastLoop()
-	go pm.syncer()
+	go pm.syncAndDiscover()
+	go pm.peerEventLoop()
 }
 
 // Stop 停止pm
@@ -416,9 +441,30 @@ func (pm *ProtocolManager) Stop() {
 	pm.txsSub.Unsubscribe()
 	pm.minedBlockSub.Unsubscribe()
 	pm.stableBlockSub.Unsubscribe()
+
+	subscribe.UnSub(subscribe.AddNewPeer, pm.addPeerCh)
+	subscribe.UnSub(subscribe.DeletePeer, pm.removePeerCh)
+
 	close(pm.quitSync)
 	pm.wg.Wait()
 	log.Info("ProtocolManager stop")
+}
+
+func (pm *ProtocolManager) peerEventLoop() {
+	pm.wg.Add(1)
+	defer pm.wg.Done()
+
+	for {
+		select {
+		case p := <-pm.addPeerCh:
+			peer := newPeer(p)
+			go pm.handle(peer)
+		case p := <-pm.removePeerCh:
+			go pm.dropPeer(p.NodeID().String())
+		case <-pm.quitSync:
+			return
+		}
+	}
 }
 
 // txBroadcastLoop 交易广播
@@ -462,8 +508,8 @@ func (pm *ProtocolManager) blockBroadcastLoop() {
 	}
 }
 
-// syncer 同步区块
-func (pm *ProtocolManager) syncer() {
+// syncAndDiscover 同步区块/发现节点
+func (pm *ProtocolManager) syncAndDiscover() {
 	pm.wg.Add(1)
 	defer pm.wg.Done()
 
@@ -471,21 +517,33 @@ func (pm *ProtocolManager) syncer() {
 	defer pm.fetcher.Stop()
 	defer pm.downloader.Terminate()
 
-	forceSync := time.NewTimer(10 * time.Second)
+	duration := 10 * time.Second
+	disTimer := time.NewTimer(duration)
 	for {
 		select {
 		case p := <-pm.newPeerCh:
 			if p.height > pm.blockchain.CurrentBlock().Height() {
 				go pm.synchronise(p.id)
 			}
-		case <-forceSync.C:
-			p := pm.peers.BestPeer()
+		case <-disTimer.C: // for discover
+			if len(pm.peers.peers) > 5 {
+				disTimer.Reset(duration)
+				break
+			}
+			p := pm.peers.ToDiscover()
 			if p != nil {
-				if p.peer.height > pm.blockchain.CurrentBlock().Height() {
-					go pm.synchronise(p.id)
+				req := &protocol.FindNodeReqData{
+					Sequence: p.sequence,
+				}
+				if err := p.peer.send(protocol.FindNodeReqMsg, req); err == nil {
+					log.Debugf("send discovery request to: %s", p.peer.RemoteAddr())
+				} else {
+					log.Debugf("send discovery request to: %s failed!!!!", p.peer.RemoteAddr())
 				}
 			}
+			disTimer.Reset(duration)
 		case <-pm.quitSync:
+			disTimer.Stop()
 			return
 		}
 	}
