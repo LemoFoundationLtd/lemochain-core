@@ -533,7 +533,7 @@ func (n *Node) apis() []rpc.API {
 		{
 			Namespace: "tx",
 			Version:   "1.0",
-			Service:   NewPublicTxAPI(n.txPool),
+			Service:   NewPublicTxAPI(n),
 			Public:    true,
 		},
 	}

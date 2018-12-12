@@ -1,6 +1,7 @@
 package node
 
 import (
+	"context"
 	"github.com/LemoFoundationLtd/lemochain-go/chain"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/miner"
@@ -9,10 +10,12 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
+	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/network/p2p"
 	"math/big"
 	"runtime"
 	"strconv"
+	"time"
 )
 
 // Private
@@ -179,23 +182,24 @@ func (n *PublicChainAPI) NodeVersion() string {
 
 // TXAPI
 type PublicTxAPI struct {
-	txpool *chain.TxPool
+	// txpool *chain.TxPool
+	node *Node
 }
 
 // NewTxAPI API for send a transaction
-func NewPublicTxAPI(txpool *chain.TxPool) *PublicTxAPI {
-	return &PublicTxAPI{txpool}
+func NewPublicTxAPI(node *Node) *PublicTxAPI {
+	return &PublicTxAPI{node}
 }
 
 // Send send a transaction
 func (t *PublicTxAPI) SendTx(tx *types.Transaction) (common.Hash, error) {
-	err := t.txpool.AddTx(tx)
+	err := t.node.txPool.AddTx(tx)
 	return tx.Hash(), err
 }
 
 // PendingTx
 func (t *PublicTxAPI) PendingTx(size int) []*types.Transaction {
-	return t.txpool.Pending(size)
+	return t.node.txPool.Pending(size)
 }
 
 // PrivateMineAPI
@@ -303,4 +307,46 @@ func (n *PublicNetAPI) Info() *NetInfo {
 		OS:       runtime.GOOS + "-" + runtime.GOARCH,
 		Go:       runtime.Version(),
 	}
+}
+
+// // PublicContractAPI
+// type PublicContractAPI struct {
+// 	node *Node
+// }
+//
+// // NewPublicContractAPI
+// func NewPublicContractAPI(node *Node) *PublicContractAPI {
+// 	return &PublicContractAPI{node}
+// }
+
+// Call
+func (t *PublicTxAPI) Call(ctx context.Context, tx *types.Transaction) (hexutil.Bytes, error) {
+	result, _, _, err := t.doCall(ctx, tx, 5*time.Second)
+	return (hexutil.Bytes)(result), err
+}
+
+// doCall
+func (t *PublicTxAPI) doCall(ctx context.Context, tx *types.Transaction, timeout time.Duration) ([]byte, uint64, bool, error) {
+	t.node.lock.Lock()
+	defer t.node.lock.Unlock()
+
+	defer func(start time.Time) { log.Debug("Executing EVM call finished", "runtime", time.Since(start)) }(time.Now())
+	// 得到最新块
+	latestBlock, err := t.node.db.LoadLatestBlock()
+	if err != nil || latestBlock.Height() == 0 {
+		return nil, 0, false, err
+	}
+	latestHeader := latestBlock.Header
+	gp := new(types.GasPool).AddGas(latestHeader.GasLimit)
+	// gasUsed := uint64(0)
+	t.node.AccountManager().Reset(latestHeader.ParentHash)
+
+	if gp.Gas() < params.TxGas {
+		log.Info("Not enough gas for further transactions", "gp", gp)
+		return nil, 0, false, err
+	}
+	p := t.node.chain.TxProcessor()
+	ret, restGas, failed, err := p.CallContract(gp, latestHeader, tx, common.Hash{})
+
+	return ret, restGas, failed, err
 }

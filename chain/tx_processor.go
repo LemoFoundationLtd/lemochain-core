@@ -13,6 +13,10 @@ import (
 	"sync"
 )
 
+const (
+	defaultGasPrice = 1e9
+)
+
 var (
 	ErrInsufficientBalanceForGas = errors.New("insufficient balance to pay for gas")
 	ErrInvalidTxInBlock          = errors.New("block contains invalid transaction")
@@ -284,4 +288,44 @@ func (p *TxProcessor) FillHeader(header *types.Header, txs types.Transactions, g
 	changeLogs := p.am.GetChangeLogs()
 	header.LogRoot = types.DeriveChangeLogsSha(changeLogs)
 	return header, nil
+}
+
+func (p *TxProcessor) CallContract(gp *types.GasPool, header *types.Header, tx *types.Transaction, blockHash common.Hash) ([]byte, uint64, bool, error) {
+	// 获得接收者地址
+	to := tx.To()
+	if to == nil {
+		err := errors.New("the 'To' can not be empty")
+		return nil, 0, false, err
+	}
+
+	// 得到调用者地址
+	caller, err := tx.From()
+	if caller == (common.Address{}) || err != nil {
+		caller = header.MinerAddress
+	}
+	// 如果传入的参数没有设置则设置默认的gas和gasPrice
+	restGas, gasPrice := tx.GasLimit(), tx.GasPrice()
+	if restGas == 0 {
+		restGas = math.MaxUint64 / 2
+	}
+	if gasPrice.Sign() == 0 {
+		gasPrice = new(big.Int).SetUint64(defaultGasPrice)
+	}
+	var (
+		context = NewEVMContext(tx, header, 1, tx.Hash(), blockHash, p.chain)
+		vmEnv   = vm.NewEVM(context, p.am, *p.cfg)
+		sender  = p.am.GetCanonicalAccount(caller)
+	)
+	err = p.buyGas(gp, tx)
+	if err != nil {
+		return nil, 0, false, err
+	}
+	restGas, err = p.payIntrinsicGas(tx, restGas)
+	if err != nil {
+		return nil, 0, false, err
+	}
+
+	var recipientAddr = *to
+	ret, restGas, vmErr := vmEnv.Call(sender, recipientAddr, tx.Data(), restGas, big.NewInt(0))
+	return ret, restGas, vmErr != nil, nil
 }
