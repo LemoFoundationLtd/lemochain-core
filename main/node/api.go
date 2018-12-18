@@ -180,28 +180,6 @@ func (n *PublicChainAPI) NodeVersion() string {
 	return params.Version
 }
 
-// TXAPI
-type PublicTxAPI struct {
-	// txpool *chain.TxPool
-	node *Node
-}
-
-// NewTxAPI API for send a transaction
-func NewPublicTxAPI(node *Node) *PublicTxAPI {
-	return &PublicTxAPI{node}
-}
-
-// Send send a transaction
-func (t *PublicTxAPI) SendTx(tx *types.Transaction) (common.Hash, error) {
-	err := t.node.txPool.AddTx(tx)
-	return tx.Hash(), err
-}
-
-// PendingTx
-func (t *PublicTxAPI) PendingTx(size int) []*types.Transaction {
-	return t.node.txPool.Pending(size)
-}
-
 // PrivateMineAPI
 type PrivateMineAPI struct {
 	miner *miner.Miner
@@ -309,44 +287,55 @@ func (n *PublicNetAPI) Info() *NetInfo {
 	}
 }
 
-// // PublicContractAPI
-// type PublicContractAPI struct {
-// 	node *Node
-// }
-//
-// // NewPublicContractAPI
-// func NewPublicContractAPI(node *Node) *PublicContractAPI {
-// 	return &PublicContractAPI{node}
-// }
+// TXAPI
+type PublicTxAPI struct {
+	// txpool *chain.TxPool
+	node *Node
+}
 
-// Call
-func (t *PublicTxAPI) Call(ctx context.Context, tx *types.Transaction) (hexutil.Bytes, error) {
-	result, _, _, err := t.doCall(ctx, tx, 5*time.Second)
-	return (hexutil.Bytes)(result), err
+// NewTxAPI API for send a transaction
+func NewPublicTxAPI(node *Node) *PublicTxAPI {
+	return &PublicTxAPI{node}
+}
+
+// Send send a transaction
+func (t *PublicTxAPI) SendTx(tx *types.Transaction) (common.Hash, error) {
+	err := t.node.txPool.AddTx(tx)
+	return tx.Hash(), err
+}
+
+// PendingTx
+func (t *PublicTxAPI) PendingTx(size int) []*types.Transaction {
+	return t.node.txPool.Pending(size)
+}
+
+// Call 读取智能合约中的数据
+func (t *PublicTxAPI) ReadContract(to *common.Address, data hexutil.Bytes) (string, error) {
+	ctx := context.Background()
+	result, _, err := t.doCall(ctx, to, data, 5*time.Second)
+	return common.ToHex(result), err
+}
+
+// EstimateGas 估算一笔交易所需gas
+func (t *PublicTxAPI) EstimateGas(to *common.Address, data hexutil.Bytes) (uint64, error) {
+	ctx := context.Background()
+	_, costGas, err := t.doCall(ctx, to, data, 5*time.Second)
+	return costGas, err
 }
 
 // doCall
-func (t *PublicTxAPI) doCall(ctx context.Context, tx *types.Transaction, timeout time.Duration) ([]byte, uint64, bool, error) {
+func (t *PublicTxAPI) doCall(ctx context.Context, to *common.Address, data hexutil.Bytes, timeout time.Duration) ([]byte, uint64, error) {
 	t.node.lock.Lock()
 	defer t.node.lock.Unlock()
 
 	defer func(start time.Time) { log.Debug("Executing EVM call finished", "runtime", time.Since(start)) }(time.Now())
-	// 得到最新块
-	latestBlock, err := t.node.db.LoadLatestBlock()
-	if err != nil || latestBlock.Height() == 0 {
-		return nil, 0, false, err
-	}
-	latestHeader := latestBlock.Header
-	gp := new(types.GasPool).AddGas(latestHeader.GasLimit)
-	// gasUsed := uint64(0)
-	t.node.AccountManager().Reset(latestHeader.ParentHash)
+	// 得到最新稳定块
+	stableBlock := t.node.chain.StableBlock()
+	log.Infof("stable block height = %v", stableBlock.Height())
+	stableHeader := stableBlock.Header
 
-	if gp.Gas() < params.TxGas {
-		log.Info("Not enough gas for further transactions", "gp", gp)
-		return nil, 0, false, err
-	}
 	p := t.node.chain.TxProcessor()
-	ret, restGas, failed, err := p.CallContract(gp, latestHeader, tx, common.Hash{})
+	ret, costGas, err := p.CallTx(ctx, stableHeader, to, data, common.Hash{}, timeout)
 
-	return ret, restGas, failed, err
+	return ret, costGas, err
 }

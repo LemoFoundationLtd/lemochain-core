@@ -1,16 +1,19 @@
 package chain
 
 import (
+	"context"
 	"errors"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/vm"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
-	"math"
+	"github.com/LemoFoundationLtd/lemochain-go/common/math"
 	"math/big"
 	"sync"
+	"time"
 )
 
 const (
@@ -290,42 +293,86 @@ func (p *TxProcessor) FillHeader(header *types.Header, txs types.Transactions, g
 	return header, nil
 }
 
-func (p *TxProcessor) CallContract(gp *types.GasPool, header *types.Header, tx *types.Transaction, blockHash common.Hash) ([]byte, uint64, bool, error) {
-	// 获得接收者地址
-	to := tx.To()
+// 调用交易包括智能合约或者是创建智能合约，返回所需的gas数和返回的结果，注意此函数只能用于估算消耗的gas和访问智能合约上的数据
+func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *common.Address, data hexutil.Bytes, blockHash common.Hash, timeout time.Duration) ([]byte, uint64, error) {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	accM := account.OnlyReadManager(header.Hash(), p.chain.db)
+	accM.Reset(header.ParentHash)
+
+	// // 获得接收者地址
+	// to := tx.To()
+	// if to == nil {
+	// 	err := errors.New("the 'To' can not be empty")
+	// 	return nil, 0, err
+	// }
+
+	// 随机找的一个地址作为我们的调用者地址
+	caller, err := common.StringToAddress("Lemo8392TWFWFF6PD6A93N2PBC6CJFQRSZSHN95H")
+	if err != nil {
+		return nil, 0, err
+	}
+	// 赋给足够大
+	gasLimit := uint64(math.MaxUint64 / 2)
+	gasPrice := new(big.Int).SetUint64(defaultGasPrice) // todo 可以考虑删除
+
+	var tx *types.Transaction
 	if to == nil {
-		err := errors.New("the 'To' can not be empty")
-		return nil, 0, false, err
+		tx = types.NewContractCreation(big.NewInt(0), gasLimit, gasPrice, data, p.chain.chainID, 0, "", "")
+	} else {
+		tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, p.chain.chainID, 0, "", "")
 	}
 
-	// 得到调用者地址
-	caller, err := tx.From()
-	if caller == (common.Address{}) || err != nil {
-		caller = header.MinerAddress
+	// 判断超时时间
+	var cancel context.CancelFunc
+	if timeout > 0 {
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+	} else {
+		ctx, cancel = context.WithCancel(ctx)
 	}
-	// 如果传入的参数没有设置则设置默认的gas和gasPrice
-	restGas, gasPrice := tx.GasLimit(), tx.GasPrice()
-	if restGas == 0 {
-		restGas = math.MaxUint64 / 2
-	}
-	if gasPrice.Sign() == 0 {
-		gasPrice = new(big.Int).SetUint64(defaultGasPrice)
-	}
-	var (
-		context = NewEVMContext(tx, header, 1, tx.Hash(), blockHash, p.chain)
-		vmEnv   = vm.NewEVM(context, p.am, *p.cfg)
-		sender  = p.am.GetCanonicalAccount(caller)
-	)
-	err = p.buyGas(gp, tx)
-	if err != nil {
-		return nil, 0, false, err
-	}
+	defer cancel()
+
+	Evm, vmError, sender := getEVM(ctx, caller, tx, header, 0, tx.Hash(), blockHash, p.chain, *p.cfg, accM)
+
+	go func() {
+		<-ctx.Done()
+		Evm.Cancel()
+	}()
+	// // 设置gas池足够大，以满足执行此call交易够用
+	// gp := new(types.GasPool).AddGas(math.MaxUint64)
+	// err = p.buyGas(gp, tx)
+	// if err != nil {
+	// 	return nil, 0, err
+	// }
+	restGas := gasLimit
+
 	restGas, err = p.payIntrinsicGas(tx, restGas)
 	if err != nil {
-		return nil, 0, false, err
+		return nil, 0, err
+	}
+	IsContractCreate := tx.To() == nil
+	var ret []byte
+	if IsContractCreate {
+		ret, _, restGas, err = Evm.Create(sender, tx.Data(), restGas, big.NewInt(0))
+	} else {
+		recipientAddr := *tx.To()
+		ret, restGas, err = Evm.Call(sender, recipientAddr, tx.Data(), restGas, big.NewInt(0))
 	}
 
-	var recipientAddr = *to
-	ret, restGas, vmErr := vmEnv.Call(sender, recipientAddr, tx.Data(), restGas, big.NewInt(0))
-	return ret, restGas, vmErr != nil, nil
+	if err := vmError(); err != nil {
+		return nil, 0, err
+	}
+
+	return ret, gasLimit - restGas, err
+}
+
+// getEVM
+func getEVM(ctx context.Context, caller common.Address, tx *types.Transaction, header *types.Header, txIndex uint, txHash common.Hash, blockHash common.Hash, chain ChainContext, cfg vm.Config, accM *account.Manager) (*vm.EVM, func() error, types.AccountAccessor) {
+	sender := accM.GetCanonicalAccount(caller)
+
+	vmError := func() error { return nil }
+	evmContext := NewEVMContext(tx, header, txIndex, txHash, blockHash, chain)
+	vmEnv := vm.NewEVM(evmContext, accM, cfg)
+	return vmEnv, vmError, sender
 }
