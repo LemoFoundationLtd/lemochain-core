@@ -273,7 +273,7 @@ func (n *Node) stopInProc() {
 }
 
 func (n *Node) startIPC(apis []rpc.API) error {
-	if n.ipcEndpoint == "" {
+	if n.config.IPCPath == "" || n.ipcEndpoint == "" {
 		return nil
 	}
 	handler := rpc.NewServer()
@@ -288,6 +288,7 @@ func (n *Node) startIPC(apis []rpc.API) error {
 		err      error
 	)
 	if listener, err = rpc.CreateIPCListener(n.ipcEndpoint); err != nil {
+		log.Error("IPC listen failed.")
 		return err
 	}
 	go func() {
