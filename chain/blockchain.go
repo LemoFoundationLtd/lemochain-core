@@ -11,7 +11,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/flag"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/common/subscribe"
-	"github.com/LemoFoundationLtd/lemochain-go/network/synchronise/protocol"
+	"github.com/LemoFoundationLtd/lemochain-go/network"
 	db "github.com/LemoFoundationLtd/lemochain-go/store/protocol"
 	"math"
 	"sync"
@@ -41,9 +41,9 @@ type BlockChain struct {
 	processor      *TxProcessor // state processor
 	running        int32
 
-	MinedBlockFeed  subscribe.Feed
-	RecvBlockFeed   subscribe.Feed
-	StableBlockFeed subscribe.Feed
+	// MinedBlockFeed  subscribe.Feed
+	RecvBlockFeed subscribe.Feed
+	// StableBlockFeed subscribe.Feed
 
 	quitCh chan struct{}
 }
@@ -186,8 +186,8 @@ func (bc *BlockChain) SetMinedBlock(block *types.Block) error {
 	if nodeCount == 1 {
 		bc.SetStableBlock(block.Hash(), block.Height(), false)
 	}
-	bc.MinedBlockFeed.Send(block)
-
+	// notify
+	subscribe.Send(subscribe.NewMinedBlock, block)
 	return nil
 }
 
@@ -347,6 +347,8 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32, logLess bo
 	if !logLess && oldCurHash != curBlock.Hash() {
 		log.Infof("chain forked-3! current block: height(%d), hash(%s)", curBlock.Height(), curBlock.Hash().Hex())
 	}
+	// notify
+	subscribe.Send(subscribe.NewStableBlock, block)
 	return nil
 }
 
@@ -401,7 +403,7 @@ func (bc *BlockChain) verifyBody(block *types.Block) error {
 }
 
 // ReceiveConfirm
-func (bc *BlockChain) ReceiveConfirm(info *protocol.BlockConfirmData) (err error) {
+func (bc *BlockChain) ReceiveConfirm(info *network.BlockConfirmData) (err error) {
 	block, err := bc.db.GetBlockByHash(info.Hash)
 	if err != nil {
 		return ErrBlockNotExist
@@ -474,7 +476,7 @@ func (bc *BlockChain) getSignerIndex(pubKey []byte, height uint32) int {
 }
 
 // GetConfirms get all confirm info of special block
-func (bc *BlockChain) GetConfirms(query *protocol.GetConfirmInfo) []types.SignData {
+func (bc *BlockChain) GetConfirms(query *network.GetConfirmInfo) []types.SignData {
 	res, err := bc.db.GetConfirms(query.Hash)
 	if err != nil {
 		log.Warnf("Can't GetConfirms. hash:%s height:%d. error: %v", query.Hash.Hex(), query.Height, err)
@@ -484,10 +486,11 @@ func (bc *BlockChain) GetConfirms(query *protocol.GetConfirmInfo) []types.SignDa
 }
 
 // ReceiveConfirms receive confirm package from net connection
-func (bc *BlockChain) ReceiveConfirms(pack protocol.BlockConfirms) {
+func (bc *BlockChain) ReceiveConfirms(pack network.BlockConfirms) error {
 	if pack.Hash != (common.Hash{}) && pack.Pack != nil && len(pack.Pack) > 0 {
 		bc.db.SetConfirms(pack.Hash, pack.Pack)
 	}
+	return nil
 }
 
 // Stop stop block chain

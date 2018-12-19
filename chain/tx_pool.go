@@ -221,6 +221,7 @@ func (pool *TxPool) AddTxs(txs []*types.Transaction) error {
 			if err != nil {
 				return err
 			}
+			subscribe.Send(subscribe.NewTxs, []*types.Transaction{txs[index]})
 		}
 
 		return nil

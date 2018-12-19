@@ -74,3 +74,29 @@ func Test_doHandshake(t *testing.T) {
 		t.Fatalf("aes not match")
 	}
 }
+
+type MyStruct struct {
+	C int32
+	S string
+	B []byte
+}
+
+type Tar struct {
+	Str MyStruct
+	// Arr []*MyStruct
+}
+
+func Test_size(t *testing.T) {
+	contains := make([]string, 0, 10)
+	contains = append(contains, "11111111")
+	contains = append(contains, "22222222")
+	contains = append(contains, "33333333")
+	contains = append(contains, "44444444")
+	contains = append(contains, "55555555")
+	for i, _ := range contains {
+		if i > 2 {
+			contains = append(contains[0:i], contains[i+1:]...)
+		}
+	}
+	fmt.Println(contains)
+}

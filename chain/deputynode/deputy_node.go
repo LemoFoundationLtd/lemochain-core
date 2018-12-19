@@ -197,6 +197,12 @@ func (d *Manager) IsSelfDeputyNode(height uint32) bool {
 	return node != nil
 }
 
+// IsNodeDeputy
+func (d *Manager) IsNodeDeputy(height uint32, nodeID []byte) bool {
+	node := d.GetDeputyByNodeID(height, nodeID)
+	return node != nil
+}
+
 func (d *Manager) Clear() {
 	d.DeputyNodesList = make([]*DeputyNodesRecord, 0, 1)
 }

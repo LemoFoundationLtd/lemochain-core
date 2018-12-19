@@ -1,4 +1,4 @@
-package blockchain
+package network
 
 import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
@@ -7,6 +7,7 @@ import (
 
 // BlockChain 同步用 需要被外界实现
 type BlockChain interface {
+	Genesis() *types.Block
 	// HasBlock 链上是否有此块
 	HasBlock(hash common.Hash) bool
 	// GetBlockByHeight 通过区块高度获取区块
@@ -23,4 +24,17 @@ type BlockChain interface {
 	SetStableBlock(hash common.Hash, height uint32, isSyncing bool) error
 	// Verify 验证区块是否合法
 	Verify(block *types.Block) error
+
+	ReceiveConfirm(info *BlockConfirmData) (err error)
+
+	GetConfirms(query *GetConfirmInfo) []types.SignData
+
+	ReceiveConfirms(pack BlockConfirms) error
+}
+
+type TxPool interface {
+	// AddTxs add transaction
+	AddTxs(txs []*types.Transaction) error
+	// Remove remove transaction
+	Remove(keys []common.Hash)
 }

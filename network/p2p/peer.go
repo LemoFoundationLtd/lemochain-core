@@ -16,7 +16,7 @@ import (
 const CodeHeartbeat = uint32(0x01)
 
 type IPeer interface {
-	ReadMsg() (msg Msg, err error)
+	ReadMsg() (msg *Msg, err error)
 	WriteMsg(code uint32, msg []byte) (err error)
 	RNodeID() *NodeID
 	RAddress() string
@@ -85,27 +85,8 @@ func (p *Peer) run() (err error) {
 	return err
 }
 
-// heartbeatLoop send heartbeat info when after special internal of no data sending
-func (p *Peer) heartbeatLoop() {
-	for {
-		select {
-		case <-p.heartbeatTimer.C:
-			// send heartbeat data
-			if err := p.WriteMsg(CodeHeartbeat, nil); err != nil {
-				log.Debugf("heartbeatLoop: send heartbeat data failed and stopped: %v", err)
-				return
-			}
-			// reset heartbeatTimer
-			p.heartbeatTimer.Reset(heartbeatInterval)
-		case <-p.stopCh:
-			log.Debug("heartbeatLoop: stopped. p: %s", p.RAddress())
-			return
-		}
-	}
-}
-
 // ReadMsg read message from net stream
-func (p *Peer) ReadMsg() (msg Msg, err error) {
+func (p *Peer) ReadMsg() (msg *Msg, err error) {
 	p.conn.SetReadDeadline(time.Now().Add(frameReadTimeout))
 	// read PackagePrefix and package length
 	headBuf := make([]byte, len(PackagePrefix)+PackageLength) // 6 bytes
@@ -127,6 +108,8 @@ func (p *Peer) ReadMsg() (msg Msg, err error) {
 	if _, err := io.ReadFull(p.conn, content); err != nil {
 		return msg, err
 	}
+
+	msg = new(Msg)
 	// recognise message code
 	msg.Code = binary.BigEndian.Uint32(content[:4])
 	if msg.CheckCode() == false {
@@ -168,6 +151,25 @@ func (p *Peer) RAddress() string {
 // LAddress local address (ipv4:port)
 func (p *Peer) LAddress() string {
 	return p.conn.LocalAddr().String()
+}
+
+// heartbeatLoop send heartbeat info when after special internal of no data sending
+func (p *Peer) heartbeatLoop() {
+	for {
+		select {
+		case <-p.heartbeatTimer.C:
+			// send heartbeat data
+			if err := p.WriteMsg(CodeHeartbeat, nil); err != nil {
+				log.Debugf("heartbeatLoop: send heartbeat data failed and stopped: %v", err)
+				return
+			}
+			// reset heartbeatTimer
+			p.heartbeatTimer.Reset(heartbeatInterval)
+		case <-p.stopCh:
+			log.Debug("heartbeatLoop: stopped. p: %s", p.RAddress())
+			return
+		}
+	}
 }
 
 // packFrame pack message to net stream

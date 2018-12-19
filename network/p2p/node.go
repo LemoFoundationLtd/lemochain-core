@@ -14,17 +14,6 @@ const NodeIDBits = 512
 // NodeID
 type NodeID [NodeIDBits / 8]byte
 
-// PubKeyToNodeID returns a marshaled representation of the given public key.
-func PubKeyToNodeID(pub *ecdsa.PublicKey) NodeID {
-	var id NodeID
-	pBytes := elliptic.Marshal(pub.Curve, pub.X, pub.Y)
-	if len(pBytes)-1 != len(id) {
-		panic(fmt.Errorf("need %d bit pubkey, got %d bits", (len(id)+1)*8, len(pBytes)))
-	}
-	copy(id[:], pBytes[1:])
-	return id
-}
-
 // PubKey convert to public key
 func (id NodeID) PubKey() (*ecdsa.PublicKey, error) {
 	p := &ecdsa.PublicKey{Curve: crypto.S256(), X: new(big.Int), Y: new(big.Int)}
@@ -40,6 +29,17 @@ func (id NodeID) PubKey() (*ecdsa.PublicKey, error) {
 // String
 func (id NodeID) String() string {
 	return fmt.Sprintf("%x", id[:])
+}
+
+// PubKeyToNodeID returns a marshaled representation of the given public key.
+func PubKeyToNodeID(pub *ecdsa.PublicKey) NodeID {
+	var id NodeID
+	pBytes := elliptic.Marshal(pub.Curve, pub.X, pub.Y)
+	if len(pBytes)-1 != len(id) {
+		panic(fmt.Errorf("need %d bit pubkey, got %d bits", (len(id)+1)*8, len(pBytes)))
+	}
+	copy(id[:], pBytes[1:])
+	return id
 }
 
 // BytesToNodeID convert bytes to NodeID

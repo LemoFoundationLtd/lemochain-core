@@ -49,7 +49,7 @@ type Server struct {
 	addPeerCh chan IPeer
 	delPeerCh chan IPeer
 
-	newIPeer func(net.Conn) IPeer
+	newPeer func(net.Conn) IPeer
 
 	discover    *DiscoverManager // node discovery
 	dialManager *DialManager     // node dial
@@ -61,7 +61,7 @@ func NewServer(config Config, discover *DiscoverManager) *Server {
 		Config:   config,
 		discover: discover,
 
-		newIPeer: newPeer,
+		newPeer: newPeer,
 
 		addPeerCh: make(chan IPeer, 1),
 		delPeerCh: make(chan IPeer, 1),
@@ -86,8 +86,8 @@ func (srv *Server) Start() error {
 		panic("start server's listen failed")
 	}
 	// will be deleted later
-	nodes := deputynode.Instance().GetLatestDeputies()
-	srv.discover.SetDeputyNodes(nodes)
+	// nodes := deputynode.Instance().GetLatestDeputies()
+	// srv.discover.SetDeputyNodes(nodes)
 	// start discover
 	if err := srv.discover.Start(); err != nil {
 		log.Warnf("discover.start: %v", err)
@@ -199,7 +199,7 @@ func (srv *Server) HandleConn(fd net.Conn, nodeID *NodeID) error {
 		return ErrSrvHasStopped
 	}
 	// handshake
-	peer := srv.newIPeer(fd)
+	peer := srv.newPeer(fd)
 	err := peer.doHandshake(srv.PrivateKey, nodeID)
 	if err != nil {
 		log.Debugf("peer handshake failed: %v", err)

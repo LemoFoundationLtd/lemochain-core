@@ -7,8 +7,11 @@ import (
 )
 
 const (
-	AddNewPeer = "addNewPeer"
-	DeletePeer = "deletePeer"
+	AddNewPeer     = "addNewPeer"
+	DeletePeer     = "deletePeer"
+	NewMinedBlock  = "newMinedBlock"
+	NewStableBlock = "newStableBlock"
+	NewTxs         = "newTxs"
 )
 
 var (
