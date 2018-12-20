@@ -15,7 +15,7 @@ const (
 	DiscoverInternal  = 10 * time.Second
 	ReqStatusTimeout  = 5 * time.Second // must less than ForceSyncInternal
 
-	SyncTimeout = 20 * time.Second
+	SyncTimeout = int64(20)
 )
 
 type rcvBlockObj struct {
@@ -72,7 +72,7 @@ func NewProtocolManager(chainID uint16, nodeID p2p.NodeID, chain BlockChain, txP
 
 		quitCh: make(chan struct{}),
 	}
-
+	pm.sub()
 	return pm
 }
 
@@ -96,8 +96,6 @@ func (pm *ProtocolManager) unSub() {
 
 // Start
 func (pm *ProtocolManager) Start() {
-	pm.sub()
-
 	go pm.txLoop()
 	go pm.blockLoop()
 	go pm.peerLoop()
@@ -228,7 +226,7 @@ func (pm *ProtocolManager) peerLoop() {
 			p := newPeer(rPeer)
 			pm.peers.UnRegister(p)
 		case <-forceSyncTimer.C: // time to synchronise block
-			now := time.Duration(time.Now().Second())
+			now := time.Now().Unix()
 			if !pm.blockSyncFlag.running || (now-pm.blockSyncFlag.lastUpdate) > SyncTimeout {
 				p := pm.peers.BestToSync()
 				if p != nil {
@@ -284,6 +282,8 @@ func (pm *ProtocolManager) handlePeer(p *peer) {
 		p.Close()
 		return
 	}
+	// register peer to set
+	pm.peers.Register(p)
 	// synchronise block
 	if pm.chain.CurrentBlock().Height() < rStatus.LatestStatus.CurHeight {
 		from, err := pm.findSyncFrom(&rStatus.LatestStatus)
@@ -293,8 +293,8 @@ func (pm *ProtocolManager) handlePeer(p *peer) {
 			p.Close()
 			return
 		}
-		now := time.Duration(time.Now().Second())
-		if !pm.blockSyncFlag.running || (now-pm.blockSyncFlag.lastUpdate) >= SyncTimeout {
+		now := time.Now().Unix()
+		if !pm.blockSyncFlag.running || now-pm.blockSyncFlag.lastUpdate >= SyncTimeout {
 			pm.blockSyncFlag.Init(p)
 			p.RequestBlocks(from, rStatus.LatestStatus.CurHeight)
 		}
@@ -305,7 +305,8 @@ func (pm *ProtocolManager) handlePeer(p *peer) {
 	for {
 		// handle peer net message
 		if err := pm.handleMsg(p); err != nil {
-			log.Debug("handle message failed: %v", err)
+			log.Debugf("handle message failed: %v", err)
+			pm.peers.UnRegister(p)
 			return
 		}
 	}
@@ -390,27 +391,43 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		return err
 	}
 	switch msg.Code {
+	case HeartbeatMsg:
+		return nil
 	case LstStatusMsg:
+		log.Debug("handleMsg: receive LstStatusMsg")
 		return pm.handleLstStatusMsg(msg)
+	case GetLstStatusMsg:
+		log.Debug("handleMsg: receive GetLstStatusMsg")
+		return pm.handleGetLstStatusMsg(msg, p)
 	case BlockHashMsg:
+		log.Debug("handleMsg: receive BlockHashMsg")
 		return pm.handleBlockHashMsg(msg, p)
 	case TxsMsg:
+		log.Debug("handleMsg: receive TxsMsg")
 		return pm.handleTxsMsg(msg)
 	case BlocksMsg:
+		log.Debug("handleMsg: receive BlocksMsg")
 		return pm.handleBlocksMsg(msg, p)
 	case GetBlocksMsg:
+		log.Debug("handleMsg: receive GetBlocksMsg")
 		return pm.handleGetBlocksMsg(msg, p)
 	case GetConfirmsMsg:
+		log.Debug("handleMsg: receive GetConfirmsMsg")
 		return pm.handleGetConfirmsMsg(msg, p)
 	case ConfirmsMsg:
+		log.Debug("handleMsg: receive ConfirmsMsg")
 		return pm.handleConfirmsMsg(msg)
 	case ConfirmMsg:
+		log.Debug("handleMsg: receive ConfirmMsg")
 		return pm.handleConfirmMsg(msg)
 	case DiscoverReqMsg:
+		log.Debug("handleMsg: receive DiscoverReqMsg")
 		return pm.handleDiscoverReqMsg(msg, p)
 	case DiscoverResMsg:
+		log.Debug("handleMsg: receive DiscoverResMsg")
 		return pm.handleDiscoverResMsg(msg)
 	default:
+		log.Debugf("invalid code: %d", msg.Code)
 		return ErrInvalidCode
 	}
 	return nil
@@ -424,6 +441,21 @@ func (pm *ProtocolManager) handleLstStatusMsg(msg *p2p.Msg) error {
 	}
 	pm.lstStatusCh <- &status
 	return nil
+}
+
+// handleGetLstStatusMsg handle request of latest status
+func (pm *ProtocolManager) handleGetLstStatusMsg(msg *p2p.Msg, p *peer) error {
+	var req GetLatestStatus
+	if err := msg.Decode(&req); err != nil {
+		return err
+	}
+	status := &LatestStatus{
+		CurHeight: pm.chain.CurrentBlock().Height(),
+		CurHash:   pm.chain.CurrentBlock().Hash(),
+		StaHeight: pm.chain.StableBlock().Height(),
+		StaHash:   pm.chain.StableBlock().Hash(),
+	}
+	return p.SendLstStatus(status)
 }
 
 // handleBlockHashMsg handle receiving block's hash message

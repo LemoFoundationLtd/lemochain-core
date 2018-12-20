@@ -2,7 +2,9 @@ package p2p
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
@@ -430,6 +432,9 @@ func checkNodeString(node string) (*NodeID, string) {
 	nodeID := BytesToNodeID(common.FromHex(tmp[0]))
 	_, err := nodeID.PubKey()
 	if err != nil {
+		return nil, ""
+	}
+	if bytes.Compare(nodeID[:], deputynode.GetSelfNodeID()) == 0 {
 		return nil, ""
 	}
 	if !verifyIP(tmp[1]) {

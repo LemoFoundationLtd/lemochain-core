@@ -45,6 +45,9 @@ func (p *peer) Close() {
 
 // RequestBlocks request blocks from remote
 func (p *peer) RequestBlocks(from, to uint32) error {
+	if from > to {
+		return errors.New("request blocks's param error: from > to")
+	}
 	msg := &GetBlocksData{From: from, To: to}
 	buf, err := rlp.EncodeToBytes(&msg)
 	if err != nil {
@@ -73,6 +76,9 @@ func (p *peer) Handshake(content []byte) (*ProtocolHandshake, error) {
 	case <-timeout.C:
 		return nil, errors.New("protocol handshake timeout")
 	case msg := <-msgCh:
+		if msg == nil {
+			return nil, errors.New("protocol handshake failed: read remote message failed")
+		}
 		var phs ProtocolHandshake
 		if err := msg.Decode(&phs); err != nil {
 			return nil, err
@@ -89,6 +95,15 @@ func (p *peer) NodeID() *p2p.NodeID {
 // ReadMsg read message from net stream
 func (p *peer) ReadMsg() (*p2p.Msg, error) {
 	return p.conn.ReadMsg()
+}
+
+// SendLstStatus send node's status to remote
+func (p *peer) SendLstStatus(status *LatestStatus) error {
+	buf, err := rlp.EncodeToBytes(status)
+	if err != nil {
+		return err
+	}
+	return p.conn.WriteMsg(LstStatusMsg, buf)
 }
 
 // SendTxs send txs to remote

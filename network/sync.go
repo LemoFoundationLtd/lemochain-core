@@ -7,7 +7,7 @@ type BlockSyncFlag struct {
 	peer       *peer
 	from       uint32
 	to         uint32
-	lastUpdate time.Duration
+	lastUpdate int64
 }
 
 // NewBlockSync
@@ -19,7 +19,7 @@ func NewBlockSync() *BlockSyncFlag {
 func (s *BlockSyncFlag) Init(p *peer) {
 	s.running = true
 	s.peer = p
-	s.lastUpdate = time.Duration(time.Now().Second())
+	s.lastUpdate = time.Now().Unix()
 }
 
 // Finish

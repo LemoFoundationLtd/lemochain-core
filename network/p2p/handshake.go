@@ -215,7 +215,7 @@ func clientEncHandshake(conn io.ReadWriter, prv *ecdsa.PrivateKey, remoteID *Nod
 	hash := crypto.Keccak256(token, crypto.Keccak256(h.respNonce, h.initNonce))
 	s = &secrets{
 		RemoteID: *remoteID,
-		Aes:      hash[:8],
+		Aes:      hash[:16],
 	}
 	return s, nil
 }
@@ -302,7 +302,6 @@ func serverEncHandshake(conn io.ReadWriter, prv *ecdsa.PrivateKey) (s *secrets, 
 	if err = write(conn, encBuf); err != nil {
 		return nil, err
 	}
-	log.Debugf("server encHandshake obj: %s", h.String())
 	// aes
 	token, err := h.randomPrvKey.GenerateShared(h.remoteRandomPubKey, 16, 16)
 	if err != nil {
@@ -310,7 +309,7 @@ func serverEncHandshake(conn io.ReadWriter, prv *ecdsa.PrivateKey) (s *secrets, 
 	}
 	hash := crypto.Keccak256(token, crypto.Keccak256(h.respNonce, h.initNonce))
 	s = &secrets{
-		Aes:      hash[:8],
+		Aes:      hash[:16],
 		RemoteID: h.remoteID,
 	}
 	return s, nil

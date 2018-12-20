@@ -130,7 +130,7 @@ func (srv *Server) run() {
 	for {
 		select {
 		case p := <-srv.addPeerCh:
-			log.Debugf("receive receive add peer event. nodeID: %s", common.ToHex(p.RNodeID()[:8]))
+			// log.Debugf("receive receive add peer event. nodeID: %s", common.ToHex(p.RNodeID()[:8]))
 			// is already exist
 			if _, ok := srv.connectedNodes[*p.RNodeID()]; ok {
 				log.Warnf("receive receive add peer event. But connection has already exist. nodeID: %s", common.ToHex(p.RNodeID()[:8]))
@@ -147,7 +147,7 @@ func (srv *Server) run() {
 			// notice
 			subscribe.Send(subscribe.AddNewPeer, p)
 		case p := <-srv.delPeerCh:
-			log.Debug("receive delete peer event. nodeID: %s", common.ToHex(p.RNodeID()[:8]))
+			log.Debugf("receive delete peer event. nodeID: %s", common.ToHex(p.RNodeID()[:8]))
 			// remove
 			srv.peersMux.Lock()
 			delete(srv.connectedNodes, *p.RNodeID())
@@ -215,9 +215,9 @@ func (srv *Server) HandleConn(fd net.Conn, nodeID *NodeID) error {
 	}
 	// output log
 	if nodeID == nil {
-		log.Debugf("Receive new connect, IP: %s. ID: %s ", peer.RAddress(), common.ToHex(peer.RNodeID()[:8]))
+		log.Debugf("First handshake as server ok, IP: %s. ID: %s ", peer.RAddress(), common.ToHex(peer.RNodeID()[:8]))
 	} else {
-		log.Debugf("Connect to server: %s. id: %s", peer.RAddress(), common.ToHex(peer.RNodeID()[:8]))
+		log.Debugf("First handshake as client ok: %s. id: %s", peer.RAddress(), common.ToHex(peer.RNodeID()[:8]))
 	}
 	// notice other goroutine
 	srv.addPeerCh <- peer
@@ -226,7 +226,7 @@ func (srv *Server) HandleConn(fd net.Conn, nodeID *NodeID) error {
 
 // runPeer run peer
 func (srv *Server) runPeer(p IPeer) {
-	log.Debugf("peer start running: %s", common.ToHex(p.RNodeID()[:8]))
+	log.Debugf("peer(nodeID: %s) start running", common.ToHex(p.RNodeID()[:8]))
 	p.run() // block this
 
 	// peer has stopped

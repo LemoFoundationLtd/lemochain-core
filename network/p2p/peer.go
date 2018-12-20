@@ -33,8 +33,11 @@ type Peer struct {
 	aes     []byte // AES key
 	created mclock.AbsTime
 
+	// closed         bool
 	heartbeatTimer *time.Timer
 	wmu            sync.Mutex
+	newMsgCh       chan *Msg
+	wg             sync.WaitGroup
 	stopCh         chan struct{}
 }
 
@@ -43,7 +46,9 @@ func newPeer(fd net.Conn) IPeer {
 	return &Peer{
 		conn:    fd,
 		created: mclock.Now(),
-		stopCh:  make(chan struct{}),
+		// closed:   false,
+		newMsgCh: make(chan *Msg),
+		stopCh:   make(chan struct{}),
 	}
 }
 
@@ -76,17 +81,42 @@ func (p *Peer) Close() {
 
 // run  run peer and block this
 func (p *Peer) run() (err error) {
-	go p.heartbeatLoop()
+	p.wg.Add(2)
 	p.heartbeatTimer = time.NewTimer(heartbeatInterval)
-
-	// block this and wait for stop signal
-	<-p.stopCh
+	go p.heartbeatLoop()
+	go p.readLoop()
+	// block this and wait for stop
+	p.wg.Wait()
 	log.Debugf("peer.run finished.p: %s", p.RAddress())
 	return err
 }
 
-// ReadMsg read message from net stream
+func (p *Peer) readLoop() {
+	defer p.wg.Done()
+
+	for {
+		msg, err := p.readMsg()
+		if err != nil {
+			log.Debugf("read message error: %v", err)
+			close(p.stopCh)
+			return
+		}
+		p.newMsgCh <- msg
+	}
+}
+
 func (p *Peer) ReadMsg() (msg *Msg, err error) {
+	select {
+	case <-p.stopCh:
+		err = io.EOF
+	case msg = <-p.newMsgCh:
+		err = nil
+	}
+	return msg, err
+}
+
+// ReadMsg read message from net stream
+func (p *Peer) readMsg() (msg *Msg, err error) {
 	p.conn.SetReadDeadline(time.Now().Add(frameReadTimeout))
 	// read PackagePrefix and package length
 	headBuf := make([]byte, len(PackagePrefix)+PackageLength) // 6 bytes
@@ -108,15 +138,20 @@ func (p *Peer) ReadMsg() (msg *Msg, err error) {
 	if _, err := io.ReadFull(p.conn, content); err != nil {
 		return msg, err
 	}
-
-	msg = new(Msg)
-	// recognise message code
-	msg.Code = binary.BigEndian.Uint32(content[:4])
+	// unpack frame
+	code, buf, err := p.unpackFrame(content)
+	if err != nil {
+		return nil, err
+	}
+	msg = &Msg{
+		Code:       code,
+		Content:    buf,
+		ReceivedAt: time.Now(),
+	}
+	// check code
 	if msg.CheckCode() == false {
 		return msg, ErrUnavailablePackage
 	}
-	msg.Content = content[4:]
-	msg.ReceivedAt = time.Now()
 	return msg, nil
 }
 
@@ -132,7 +167,7 @@ func (p *Peer) WriteMsg(code uint32, msg []byte) (err error) {
 	p.conn.SetWriteDeadline(time.Now().Add(frameWriteTimeout))
 	_, err = p.conn.Write(buf)
 	// reset heartbeatTimer
-	if code != CodeHeartbeat {
+	if code != CodeHeartbeat && p.heartbeatTimer != nil {
 		p.heartbeatTimer.Reset(heartbeatInterval)
 	}
 	return err
@@ -155,6 +190,8 @@ func (p *Peer) LAddress() string {
 
 // heartbeatLoop send heartbeat info when after special internal of no data sending
 func (p *Peer) heartbeatLoop() {
+	defer p.wg.Done()
+
 	for {
 		select {
 		case <-p.heartbeatTimer.C:

@@ -38,7 +38,7 @@ func (ps *peerSet) UnRegister(p *peer) {
 
 	if _, ok := ps.peers[*p.NodeID()]; ok {
 		delete(ps.peers, *p.NodeID())
-		p.Close() // todo
+		// p.Close() // todo
 	}
 }
 
@@ -56,7 +56,7 @@ func (ps *peerSet) BestToSync() *peer {
 	for res == nil {
 		height := uint32(0)
 		for _, p := range ps.peers {
-			if p.lstStatus.CurHeight > height && p.badSyncCounter == badSync {
+			if p.lstStatus.CurHeight >= height && p.badSyncCounter == badSync {
 				height = p.lstStatus.CurHeight
 				res = p
 			}
