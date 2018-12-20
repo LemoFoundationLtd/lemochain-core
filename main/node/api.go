@@ -309,17 +309,24 @@ func (t *PublicTxAPI) PendingTx(size int) []*types.Transaction {
 	return t.node.txPool.Pending(size)
 }
 
-// Call 读取智能合约中的数据
+// ReadContract read variables in a contract includes the return value of a function.
 func (t *PublicTxAPI) ReadContract(to *common.Address, data hexutil.Bytes) (string, error) {
 	ctx := context.Background()
 	result, _, err := t.doCall(ctx, to, data, 5*time.Second)
 	return common.ToHex(result), err
 }
 
-// EstimateGas 估算一笔交易所需gas
+// EstimateGas returns an estimate of the amount of gas needed to execute the given transaction.
 func (t *PublicTxAPI) EstimateGas(to *common.Address, data hexutil.Bytes) (uint64, error) {
 	ctx := context.Background()
 	_, costGas, err := t.doCall(ctx, to, data, 5*time.Second)
+	return costGas, err
+}
+
+// EstimateContractGas returns an estimate of the amount of gas needed to create a smart contract.
+func (t *PublicTxAPI) EstimateCreateContractGas(data hexutil.Bytes) (uint64, error) {
+	ctx := context.Background()
+	_, costGas, err := t.doCall(ctx, nil, data, 5*time.Second)
 	return costGas, err
 }
 
@@ -329,7 +336,7 @@ func (t *PublicTxAPI) doCall(ctx context.Context, to *common.Address, data hexut
 	defer t.node.lock.Unlock()
 
 	defer func(start time.Time) { log.Debug("Executing EVM call finished", "runtime", time.Since(start)) }(time.Now())
-	// 得到最新稳定块
+	// get latest stableBlock
 	stableBlock := t.node.chain.StableBlock()
 	log.Infof("stable block height = %v", stableBlock.Height())
 	stableHeader := stableBlock.Header

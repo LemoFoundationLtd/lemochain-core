@@ -293,7 +293,7 @@ func (p *TxProcessor) FillHeader(header *types.Header, txs types.Transactions, g
 	return header, nil
 }
 
-// 调用交易包括智能合约或者是创建智能合约，返回所需的gas数和返回的结果，注意此函数只能用于估算消耗的gas和访问智能合约上的数据
+// CallTx pre-execute transactions and contracts.
 func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *common.Address, data hexutil.Bytes, blockHash common.Hash, timeout time.Duration) ([]byte, uint64, error) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
@@ -301,30 +301,23 @@ func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *comm
 	accM := account.OnlyReadManager(header.Hash(), p.chain.db)
 	accM.Reset(header.ParentHash)
 
-	// // 获得接收者地址
-	// to := tx.To()
-	// if to == nil {
-	// 	err := errors.New("the 'To' can not be empty")
-	// 	return nil, 0, err
-	// }
-
-	// 随机找的一个地址作为我们的调用者地址
-	caller, err := common.StringToAddress("Lemo8392TWFWFF6PD6A93N2PBC6CJFQRSZSHN95H")
+	// A random address is found as our caller address.
+	caller, err := common.StringToAddress("Lemo8392TWFWFF6PD6A93N2PBC6CJFQRSZSHN95H") // todo Consider letting users pass in their own addresses
 	if err != nil {
 		return nil, 0, err
 	}
-	// 赋给足够大
+	// enough gasLimit
 	gasLimit := uint64(math.MaxUint64 / 2)
-	gasPrice := new(big.Int).SetUint64(defaultGasPrice) // todo 可以考虑删除
+	gasPrice := new(big.Int).SetUint64(defaultGasPrice)
 
 	var tx *types.Transaction
-	if to == nil {
+	if to == nil { // avoid null pointer references
 		tx = types.NewContractCreation(big.NewInt(0), gasLimit, gasPrice, data, p.chain.chainID, 0, "", "")
 	} else {
 		tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, p.chain.chainID, 0, "", "")
 	}
 
-	// 判断超时时间
+	// Timeout limit
 	var cancel context.CancelFunc
 	if timeout > 0 {
 		ctx, cancel = context.WithTimeout(ctx, timeout)
@@ -339,14 +332,9 @@ func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *comm
 		<-ctx.Done()
 		Evm.Cancel()
 	}()
-	// // 设置gas池足够大，以满足执行此call交易够用
-	// gp := new(types.GasPool).AddGas(math.MaxUint64)
-	// err = p.buyGas(gp, tx)
-	// if err != nil {
-	// 	return nil, 0, err
-	// }
-	restGas := gasLimit
 
+	restGas := gasLimit
+	// Fixed cost
 	restGas, err = p.payIntrinsicGas(tx, restGas)
 	if err != nil {
 		return nil, 0, err
