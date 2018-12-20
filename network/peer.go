@@ -115,6 +115,15 @@ func (p *peer) SendTxs(txs types.Transactions) error {
 	return p.conn.WriteMsg(TxsMsg, buf)
 }
 
+// SendConfirmInfo send confirm message to deputy nodes
+func (p *peer) SendConfirmInfo(confirmInfo *BlockConfirmData) error {
+	buf, err := rlp.EncodeToBytes(confirmInfo)
+	if err != nil {
+		return err
+	}
+	return p.conn.WriteMsg(ConfirmMsg, buf)
+}
+
 // SendBlockHash send block hash to remote
 func (p *peer) SendBlockHash(height uint32, hash common.Hash) error {
 	msg := &BlockHashData{Height: height, Hash: hash}

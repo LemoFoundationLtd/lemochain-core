@@ -13,6 +13,7 @@ const (
 	NewMinedBlock  = "newMinedBlock"
 	NewStableBlock = "newStableBlock"
 	NewTxs         = "newTxs"
+	NewConfirm     = "newConfirm"
 )
 
 var (

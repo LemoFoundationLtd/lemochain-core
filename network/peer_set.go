@@ -38,12 +38,11 @@ func (ps *peerSet) UnRegister(p *peer) {
 
 	if _, ok := ps.peers[*p.NodeID()]; ok {
 		delete(ps.peers, *p.NodeID())
-		// p.Close() // todo
 	}
 }
 
 // BestToSync best peer to synchronise
-func (ps *peerSet) BestToSync() *peer {
+func (ps *peerSet) BestToSync(height uint32) (p *peer) {
 	ps.lock.Lock()
 	defer ps.lock.Unlock()
 
@@ -51,19 +50,14 @@ func (ps *peerSet) BestToSync() *peer {
 		return nil
 	}
 
-	var res *peer
-	badSync := uint32(0)
-	for res == nil {
-		height := uint32(0)
-		for _, p := range ps.peers {
-			if p.lstStatus.CurHeight >= height && p.badSyncCounter == badSync {
-				height = p.lstStatus.CurHeight
-				res = p
-			}
+	maxBadSync := uint32(100)
+	for _, peer := range ps.peers {
+		if peer.lstStatus.CurHeight > height && peer.badSyncCounter < maxBadSync {
+			height = peer.lstStatus.CurHeight
+			p = peer
 		}
-		badSync++
 	}
-	return res
+	return p
 }
 
 // BestToDiscover best peer to discovery

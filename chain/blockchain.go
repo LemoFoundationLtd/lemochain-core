@@ -24,15 +24,15 @@ type broadcastConfirmInfoFn func(hash common.Hash, height uint32)
 type broadcastBlockFn func(block *types.Block)
 
 type BlockChain struct {
-	chainID              uint16
-	flags                flag.CmdFlags
-	db                   db.ChainDB
-	am                   *account.Manager
-	currentBlock         atomic.Value           // latest block in current chain
-	stableBlock          atomic.Value           // latest stable block in current chain
-	genesisBlock         *types.Block           // genesis block
-	BroadcastConfirmInfo broadcastConfirmInfoFn // callback of broadcast confirm info
-	BroadcastStableBlock broadcastBlockFn       // callback of broadcast stable block
+	chainID      uint16
+	flags        flag.CmdFlags
+	db           db.ChainDB
+	am           *account.Manager
+	currentBlock atomic.Value // latest block in current chain
+	stableBlock  atomic.Value // latest stable block in current chain
+	genesisBlock *types.Block // genesis block
+	// BroadcastConfirmInfo broadcastConfirmInfoFn // callback of broadcast confirm info
+	// BroadcastStableBlock broadcastBlockFn       // callback of broadcast stable block
 
 	chainForksHead map[common.Hash]*types.Block // total latest header of different fork chain
 	chainForksLock sync.Mutex
@@ -243,7 +243,8 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 		currentTime := time.Now().Unix()
 		if currentTime-int64(block.Time()) < 60*60 {
 			time.AfterFunc(2*time.Second, func() { // todo
-				bc.BroadcastConfirmInfo(hash, block.Height())
+				msg := bc.createSignInfo(block.Hash(), block.Height())
+				subscribe.Send(subscribe.NewConfirm, msg)
 			})
 		}
 	}()
@@ -400,6 +401,22 @@ func (bc *BlockChain) verifyBody(block *types.Block) error {
 		}
 	}
 	return nil
+}
+
+func (bc *BlockChain) createSignInfo(hash common.Hash, height uint32) *network.BlockConfirmData {
+	data := &network.BlockConfirmData{
+		Hash:   hash,
+		Height: height,
+	}
+	privateKey := deputynode.GetSelfNodeKey()
+	signInfo, err := crypto.Sign(hash[:], privateKey)
+	if err != nil {
+		log.Error("sign for confirm data error")
+		return nil
+	}
+	copy(data.SignInfo[:], signInfo)
+	bc.db.SetConfirmInfo(hash, data.SignInfo)
+	return data
 }
 
 // ReceiveConfirm
