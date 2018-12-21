@@ -38,9 +38,30 @@ func newPeer(p p2p.IPeer) *peer {
 	}
 }
 
-// Close
-func (p *peer) Close() {
+// NormalClose
+func (p *peer) NormalClose() {
 	p.conn.Close()
+	p.conn.SetStatus(p2p.StatusNormal)
+}
+
+func (p *peer) ManualClose() {
+	p.conn.Close()
+	p.conn.SetStatus(p2p.StatusManualDisconnect)
+}
+
+func (p *peer) FailedHandshakeClose() {
+	p.conn.Close()
+	p.conn.SetStatus(p2p.StatusFailedHandshake)
+}
+
+func (p *peer) RcvBadDataClose() {
+	p.conn.Close()
+	p.conn.SetStatus(p2p.StatusBadData)
+}
+
+func (p *peer) HardForkClose() {
+	p.conn.Close()
+	p.conn.SetStatus(p2p.StatusHardFork)
 }
 
 // RequestBlocks request blocks from remote

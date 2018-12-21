@@ -15,6 +15,14 @@ import (
 
 const CodeHeartbeat = uint32(0x01)
 
+const (
+	StatusNormal int32 = iota
+	StatusHardFork
+	StatusManualDisconnect
+	StatusFailedHandshake
+	StatusBadData
+)
+
 type IPeer interface {
 	ReadMsg() (msg *Msg, err error)
 	WriteMsg(code uint32, msg []byte) (err error)
@@ -23,6 +31,8 @@ type IPeer interface {
 	LAddress() string
 	doHandshake(prv *ecdsa.PrivateKey, nodeID *NodeID) error
 	run() (err error)
+	NeedReConnect() bool
+	SetStatus(status int32)
 	Close()
 }
 
@@ -33,7 +43,7 @@ type Peer struct {
 	aes     []byte // AES key
 	created mclock.AbsTime
 
-	// closed         bool
+	status         int32
 	heartbeatTimer *time.Timer
 	wmu            sync.Mutex
 	newMsgCh       chan *Msg
@@ -75,8 +85,8 @@ func (p *Peer) doHandshake(prv *ecdsa.PrivateKey, nodeID *NodeID) (err error) {
 
 // Close close peer
 func (p *Peer) Close() {
-	p.conn.Close()
 	close(p.stopCh)
+	p.conn.Close()
 }
 
 // run  run peer and block this
@@ -91,6 +101,7 @@ func (p *Peer) run() (err error) {
 	return err
 }
 
+// readLoop
 func (p *Peer) readLoop() {
 	defer p.wg.Done()
 
@@ -98,13 +109,24 @@ func (p *Peer) readLoop() {
 		msg, err := p.readMsg()
 		if err != nil {
 			log.Debugf("read message error: %v", err)
-			close(p.stopCh)
+			select {
+			case _, ok := <-p.stopCh:
+				if ok {
+					close(p.stopCh)
+				}
+			default:
+				break
+			}
 			return
+		}
+		if msg.Code == CodeHeartbeat {
+			continue
 		}
 		p.newMsgCh <- msg
 	}
 }
 
+// ReadMsg read message for call of outside
 func (p *Peer) ReadMsg() (msg *Msg, err error) {
 	select {
 	case <-p.stopCh:
@@ -115,7 +137,7 @@ func (p *Peer) ReadMsg() (msg *Msg, err error) {
 	return msg, err
 }
 
-// ReadMsg read message from net stream
+// readMsg read message from net stream
 func (p *Peer) readMsg() (msg *Msg, err error) {
 	p.conn.SetReadDeadline(time.Now().Add(frameReadTimeout))
 	// read PackagePrefix and package length
@@ -245,4 +267,17 @@ func (p *Peer) unpackFrame(content []byte) (uint32, []byte, error) {
 		return code, nil, nil
 	}
 	return code, originData[4:], nil
+}
+
+// SetStatus set peer's status
+func (p *Peer) SetStatus(status int32) {
+	p.status = status
+}
+
+// NeedReConnect
+func (p *Peer) NeedReConnect() bool {
+	if p.status == StatusHardFork || p.status == StatusManualDisconnect || p.status == StatusFailedHandshake || p.status == StatusBadData {
+		return false
+	}
+	return true
 }

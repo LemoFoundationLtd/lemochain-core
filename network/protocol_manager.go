@@ -59,7 +59,7 @@ func NewProtocolManager(chainID uint16, nodeID p2p.NodeID, chain BlockChain, txP
 		chain:         chain,
 		txPool:        txPool,
 		discover:      discover,
-		peers:         NewPeerSet(),
+		peers:         NewPeerSet(discover),
 		confirmsCache: NewConfirmCache(),
 		blockSyncFlag: NewBlockSync(),
 
@@ -287,7 +287,6 @@ func (pm *ProtocolManager) broadcastBlock(peers []*peer, block *types.Block, wit
 			}
 		}
 	}
-
 }
 
 // handlePeer handle about peer
@@ -297,7 +296,7 @@ func (pm *ProtocolManager) handlePeer(p *peer) {
 	if err != nil {
 		log.Warnf("protocol handshake failed: %v", err)
 		pm.discover.SetConnectResult(p.NodeID(), false)
-		p.Close()
+		p.FailedHandshakeClose()
 		return
 	}
 	// register peer to set
@@ -308,7 +307,7 @@ func (pm *ProtocolManager) handlePeer(p *peer) {
 		if err != nil {
 			log.Warnf("find sync from error: %v", err)
 			pm.discover.SetConnectResult(p.NodeID(), false)
-			p.Close()
+			p.HardForkClose()
 			return
 		}
 		now := time.Now().Unix()
@@ -366,6 +365,7 @@ func (pm *ProtocolManager) forceSyncBlock(p *peer) {
 		if err != nil {
 			log.Warnf("find sync from error: %v", err)
 			pm.blockSyncFlag.Finish()
+			p.HardForkClose()
 			pm.peers.UnRegister(p)
 			return
 		}
@@ -409,41 +409,33 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if msg.Code < 0x0c {
+			log.Debugf("handleMsg: receive %d from: %s", msg.Code, common.ToHex(p.NodeID()[:8]))
+		}
+	}()
 	switch msg.Code {
-	case HeartbeatMsg:
-		return nil
 	case LstStatusMsg:
-		log.Debugf("handleMsg: receive LstStatusMsg from: %s", common.ToHex(p.NodeID()[:8]))
 		return pm.handleLstStatusMsg(msg)
 	case GetLstStatusMsg:
-		log.Debugf("handleMsg: receive GetLstStatusMsg", common.ToHex(p.NodeID()[:8]))
 		return pm.handleGetLstStatusMsg(msg, p)
 	case BlockHashMsg:
-		log.Debugf("handleMsg: receive BlockHashMsg from: %s", common.ToHex(p.NodeID()[:8]))
 		return pm.handleBlockHashMsg(msg, p)
 	case TxsMsg:
-		log.Debugf("handleMsg: receive TxsMsg from: %s", common.ToHex(p.NodeID()[:8]))
 		return pm.handleTxsMsg(msg)
 	case BlocksMsg:
-		log.Debugf("handleMsg: receive BlocksMsg from: %s", common.ToHex(p.NodeID()[:8]))
 		return pm.handleBlocksMsg(msg, p)
 	case GetBlocksMsg:
-		log.Debugf("handleMsg: receive GetBlocksMsg from: %s", common.ToHex(p.NodeID()[:8]))
 		return pm.handleGetBlocksMsg(msg, p)
 	case GetConfirmsMsg:
-		log.Debugf("handleMsg: receive GetConfirmsMsg from: %s", common.ToHex(p.NodeID()[:8]))
 		return pm.handleGetConfirmsMsg(msg, p)
 	case ConfirmsMsg:
-		log.Debugf("handleMsg: receive ConfirmsMsg from: %s", common.ToHex(p.NodeID()[:8]))
 		return pm.handleConfirmsMsg(msg)
 	case ConfirmMsg:
-		log.Debugf("handleMsg: receive ConfirmMsg from: %s", common.ToHex(p.NodeID()[:8]))
 		return pm.handleConfirmMsg(msg)
 	case DiscoverReqMsg:
-		log.Debugf("handleMsg: receive DiscoverReqMsg from: %s", common.ToHex(p.NodeID()[:8]))
 		return pm.handleDiscoverReqMsg(msg, p)
 	case DiscoverResMsg:
-		log.Debugf("handleMsg: receive DiscoverResMsg from: %s", common.ToHex(p.NodeID()[:8]))
 		return pm.handleDiscoverResMsg(msg)
 	default:
 		log.Debugf("invalid code: %d, from: %s", msg.Code, common.ToHex(p.NodeID()[:8]))

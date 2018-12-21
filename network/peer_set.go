@@ -7,14 +7,16 @@ import (
 )
 
 type peerSet struct {
-	peers map[p2p.NodeID]*peer
-	lock  sync.RWMutex
+	peers    map[p2p.NodeID]*peer
+	discover *p2p.DiscoverManager
+	lock     sync.RWMutex
 }
 
 // NewPeerSet
-func NewPeerSet() *peerSet {
+func NewPeerSet(discover *p2p.DiscoverManager) *peerSet {
 	return &peerSet{
-		peers: make(map[p2p.NodeID]*peer),
+		peers:    make(map[p2p.NodeID]*peer),
+		discover: discover,
 	}
 }
 
@@ -38,6 +40,9 @@ func (ps *peerSet) UnRegister(p *peer) {
 
 	if _, ok := ps.peers[*p.NodeID()]; ok {
 		delete(ps.peers, *p.NodeID())
+	}
+	if p.conn.NeedReConnect() {
+		ps.discover.SetReconnect(p.NodeID())
 	}
 }
 

@@ -135,7 +135,7 @@ func (srv *Server) run() {
 			if _, ok := srv.connectedNodes[*p.RNodeID()]; ok {
 				log.Warnf("receive receive add peer event. But connection has already exist. nodeID: %s", common.ToHex(p.RNodeID()[:8]))
 				p.Close()
-				srv.discover.SetConnectResult(p.RNodeID(), false)
+				srv.discover.SetConnectResult(p.RNodeID(), true)
 				break
 			}
 			// record
@@ -227,7 +227,9 @@ func (srv *Server) HandleConn(fd net.Conn, nodeID *NodeID) error {
 // runPeer run peer
 func (srv *Server) runPeer(p IPeer) {
 	log.Debugf("peer(nodeID: %s) start running", common.ToHex(p.RNodeID()[:8]))
-	p.run() // block this
+	if err := p.run(); err != nil { // block this
+		log.Debugf("runPeer: %v", err)
+	}
 
 	// peer has stopped
 	if atomic.LoadInt32(&srv.running) == 1 {
