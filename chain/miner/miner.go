@@ -2,7 +2,6 @@ package miner
 
 import (
 	"crypto/ecdsa"
-	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
@@ -157,7 +156,7 @@ func (m *Miner) getSleepTime() int {
 		return -1
 	}
 	oneLoopTime := int64(nodeCount) * m.timeoutTime
-	log.Debugf("getSleepTime: timeDur:%d slot:%d oneLoopTime:%d", timeDur, slot, oneLoopTime)
+	// log.Debugf("getSleepTime: timeDur:%d slot:%d oneLoopTime:%d", timeDur, slot, oneLoopTime)
 	if slot == 0 { // 上一个块为自己出的块
 		minInterval := int64(nodeCount-1) * m.timeoutTime
 		// timeDur = timeDur % oneLoopTime // 求余
@@ -192,22 +191,22 @@ func (m *Miner) getSleepTime() int {
 	} else if slot == 1 { // 说明下一个区块就该本节点产生了
 		if timeDur > oneLoopTime { // 间隔大于一轮
 			timeDur = timeDur % oneLoopTime // 求余
-			log.Debugf("getSleepTime: slot:1 timeDur:%d>oneLoopTime:%d ", timeDur, oneLoopTime)
+			// log.Debugf("getSleepTime: slot:1 timeDur:%d>oneLoopTime:%d ", timeDur, oneLoopTime)
 			if timeDur < m.timeoutTime { //
 				log.Debugf("getSleepTime: timeDur: %d. isTurn=true --3", timeDur)
 				return 0
 			} else {
 				waitTime := oneLoopTime - timeDur
-				log.Debugf("ModifyTimer: slot:1 timeDur:%d>=self.timeoutTime:%d resetMinerTimer(waitTime:%d)", timeDur, m.timeoutTime, waitTime)
+				// log.Debugf("ModifyTimer: slot:1 timeDur:%d>=self.timeoutTime:%d resetMinerTimer(waitTime:%d)", timeDur, m.timeoutTime, waitTime)
 				return int(waitTime)
 			}
 		} else { // 间隔不到一轮
 			if timeDur >= m.timeoutTime { // 过了本节点该出块的时机
 				waitTime := oneLoopTime - timeDur
-				log.Debugf("getSleepTime: slot:1 timeDur<oneLoopTime, timeDur>self.timeoutTime, resetMinerTimer(waitTime:%d)", waitTime)
+				// log.Debugf("getSleepTime: slot:1 timeDur<oneLoopTime, timeDur>self.timeoutTime, resetMinerTimer(waitTime:%d)", waitTime)
 				return int(waitTime)
 			} else if timeDur >= m.blockInterval { // 如果上一个区块的时间与当前时间差大或等于3s（区块间的最小间隔为3s），则直接出块无需休眠
-				log.Debugf("getSleepTime: timeDur: %d. isTurn=true. --4", timeDur)
+				// log.Debugf("getSleepTime: timeDur: %d. isTurn=true. --4", timeDur)
 				return 0
 			} else {
 				waitTime := m.blockInterval - timeDur // 如果上一个块时间与当前时间非常近（小于3s），则设置休眠
@@ -215,14 +214,14 @@ func (m *Miner) getSleepTime() int {
 					log.Warnf("getSleepTime: waitTime: %d", waitTime)
 					return -1
 				}
-				log.Debugf("getSleepTime: slot:1, else, resetMinerTimer(waitTime:%d)", waitTime)
+				// log.Debugf("getSleepTime: slot:1, else, resetMinerTimer(waitTime:%d)", waitTime)
 				return int(waitTime)
 			}
 		}
 	} else { // 说明还不该自己出块，但是需要修改超时时间了
 		timeDur = timeDur % oneLoopTime
 		if timeDur >= int64(slot-1)*m.timeoutTime && timeDur < int64(slot)*m.timeoutTime {
-			log.Debugf("getSleepTime: timeDur:%d. isTurn=true. --5", timeDur)
+			// log.Debugf("getSleepTime: timeDur:%d. isTurn=true. --5", timeDur)
 			return 0
 		} else {
 			waitTime := (int64(slot-1)*m.timeoutTime - timeDur + oneLoopTime) % oneLoopTime
@@ -230,7 +229,7 @@ func (m *Miner) getSleepTime() int {
 				log.Warnf("getSleepTime: waitTime: %d", waitTime)
 				return -1
 			}
-			log.Debug(fmt.Sprintf("getSleepTime: slot:>1, timeDur:%d, resetMinerTimer(waitTime:%d)", timeDur, waitTime))
+			// log.Debug(fmt.Sprintf("getSleepTime: slot:>1, timeDur:%d, resetMinerTimer(waitTime:%d)", timeDur, waitTime))
 			return int(waitTime)
 		}
 	}
@@ -257,7 +256,7 @@ func (m *Miner) loopRecvBlock() {
 		if atomic.LoadInt32(&m.mining) == 0 {
 			select {
 			case <-m.recvNewBlockCh:
-				log.Debugf("receive new block. but not start mining")
+				log.Debugf("Receive new block. but not start mining")
 			case <-m.quitCh:
 				return
 			case <-m.startCh:
@@ -276,7 +275,7 @@ func (m *Miner) loopMiner() {
 		case <-m.timeToMineCh:
 			m.sealBlock()
 		case block := <-m.recvNewBlockCh:
-			log.Debugf("receive new block. hash: %s. height: %d. start modify timer", block.Hash().Hex(), block.Height())
+			log.Infof("Receive new block. height: %d. hash: %s. Reset timer.", block.Height(), block.Hash().Hex())
 			waitTime := m.getSleepTime()
 			if waitTime == 0 {
 				m.sealBlock()

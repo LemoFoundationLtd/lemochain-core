@@ -111,7 +111,7 @@ func (pm *ProtocolManager) Stop() {
 	pm.unSub()
 	close(pm.quitCh)
 	pm.wg.Wait()
-	log.Debug("ProtocolManager has stopped")
+	log.Info("ProtocolManager has stopped")
 }
 
 // txConfirmLoop receive transactions and confirm and then broadcast them
@@ -122,7 +122,7 @@ func (pm *ProtocolManager) txConfirmLoop() {
 	for {
 		select {
 		case <-pm.quitCh:
-			log.Debug("txLoop finished")
+			log.Info("txLoop finished")
 			return
 		case txs := <-pm.txsCh:
 			curHeight := pm.chain.CurrentBlock().Height()
@@ -153,7 +153,7 @@ func (pm *ProtocolManager) blockLoop() {
 	for {
 		select {
 		case <-pm.quitCh:
-			log.Debug("blockLoop finished")
+			log.Info("blockLoop finished")
 			return
 		case block := <-pm.newMinedBlockCh:
 			peers := pm.peers.DeputyNodes(block.Height())
@@ -199,7 +199,7 @@ func (pm *ProtocolManager) blockLoop() {
 				rcvMsg.p.UpdateStatus(fBlock.Height(), fBlock.Hash())
 				curBlock := pm.chain.CurrentBlock()
 				if curBlock.Hash() == fBlock.ParentHash() {
-					pm.chain.InsertChain(fBlock, true)
+					pm.chain.InsertChain(fBlock, false)
 				} else {
 					container.Add(fBlock)
 				}
@@ -228,7 +228,7 @@ func (pm *ProtocolManager) peerLoop() {
 	for {
 		select {
 		case <-pm.quitCh:
-			log.Debug("peerLoop finished")
+			log.Info("peerLoop finished")
 			return
 		case rPeer := <-pm.addPeerCh: // new peer added
 			p := newPeer(rPeer)
@@ -409,11 +409,11 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if msg.Code < 0x0c {
-			log.Debugf("handleMsg: receive %d from: %s", msg.Code, common.ToHex(p.NodeID()[:8]))
-		}
-	}()
+	// defer func() {
+	// 	if msg.Code < 0x0c {
+	// 		log.Debugf("handleMsg: receive %d from: %s", msg.Code, common.ToHex(p.NodeID()[:8]))
+	// 	}
+	// }()
 	switch msg.Code {
 	case LstStatusMsg:
 		return pm.handleLstStatusMsg(msg)
