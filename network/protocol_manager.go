@@ -35,6 +35,8 @@ type ProtocolManager struct {
 
 	peers         *peerSet      // connected peers
 	confirmsCache *ConfirmCache // received confirm info before block, cache them
+	blockCache    *BlockCache
+	blockCacheMux sync.Mutex
 	blockSyncFlag *BlockSyncFlag
 
 	addPeerCh    chan p2p.IPeer
@@ -61,6 +63,7 @@ func NewProtocolManager(chainID uint16, nodeID p2p.NodeID, chain BlockChain, txP
 		discover:      discover,
 		peers:         NewPeerSet(discover),
 		confirmsCache: NewConfirmCache(),
+		blockCache:    NewBlockCache(),
 		blockSyncFlag: NewBlockSync(),
 
 		addPeerCh:    make(chan p2p.IPeer),
@@ -102,7 +105,8 @@ func (pm *ProtocolManager) unSub() {
 // Start
 func (pm *ProtocolManager) Start() {
 	go pm.txConfirmLoop()
-	go pm.blockLoop()
+	go pm.rcvBlockLoop()
+	go pm.stableBlockLoop()
 	go pm.peerLoop()
 }
 
@@ -142,13 +146,13 @@ func (pm *ProtocolManager) txConfirmLoop() {
 }
 
 // blockLoop receive special type block event
-func (pm *ProtocolManager) blockLoop() {
+func (pm *ProtocolManager) rcvBlockLoop() {
 	pm.wg.Add(1)
 	defer pm.wg.Done()
 
 	proInterval := 3 * time.Second
 	queueTimer := time.NewTimer(proInterval)
-	container := NewBlockCache()
+	// blockCache := NewBlockCache()
 
 	for {
 		select {
@@ -160,13 +164,6 @@ func (pm *ProtocolManager) blockLoop() {
 			if len(peers) > 0 {
 				pm.broadcastBlock(peers, block, true)
 			}
-		case block := <-pm.stableBlockCh:
-			peers := pm.peers.DelayNodes(block.Height())
-			if len(peers) > 0 {
-				pm.broadcastBlock(peers, block, false)
-			}
-			pm.confirmsCache.Clear(block.Height())
-			container.Clear(block.Height())
 		case rcvMsg := <-pm.rcvBlocksCh:
 			// peer's latest height
 			pLstHeight := rcvMsg.p.LatestStatus().CurHeight
@@ -179,7 +176,9 @@ func (pm *ProtocolManager) blockLoop() {
 					// broadcast
 					if len(rcvMsg.blocks) == 1 && fBlock.Height() > pLstHeight {
 						rcvMsg.p.UpdateStatus(fBlock.Height(), fBlock.Hash())
-						container.Add(fBlock)
+						pm.blockCacheMux.Lock()
+						pm.blockCache.Add(fBlock)
+						pm.blockCacheMux.Unlock()
 						break
 					}
 					// sync
@@ -190,31 +189,72 @@ func (pm *ProtocolManager) blockLoop() {
 							break
 						}
 						pm.chain.InsertChain(block, true)
+						pm.setConfirmsFromCache(block.Height(), block.Hash())
 					}
 				} else if len(rcvMsg.blocks) == 1 && fBlock.Height() > pLstHeight {
 					rcvMsg.p.UpdateStatus(fBlock.Height(), fBlock.Hash())
-					container.Add(fBlock)
+					pm.blockCacheMux.Lock()
+					pm.blockCache.Add(fBlock)
+					pm.blockCacheMux.Unlock()
 				}
 			} else if len(rcvMsg.blocks) == 1 && fBlock.Height() > pLstHeight {
 				rcvMsg.p.UpdateStatus(fBlock.Height(), fBlock.Hash())
 				curBlock := pm.chain.CurrentBlock()
 				if curBlock.Hash() == fBlock.ParentHash() {
 					pm.chain.InsertChain(fBlock, false)
+					pm.setConfirmsFromCache(fBlock.Height(), fBlock.Hash())
 				} else {
-					container.Add(fBlock)
+					pm.blockCacheMux.Lock()
+					pm.blockCache.Add(fBlock)
+					pm.blockCacheMux.Unlock()
 				}
 			}
 		case <-queueTimer.C:
 			processBlock := func(block *types.Block) bool {
 				if pm.chain.HasBlock(block.ParentHash()) {
 					pm.chain.InsertChain(block, false)
+					pm.setConfirmsFromCache(block.Height(), block.Hash())
 					return true
 				}
 				return false
 			}
-			container.Iterate(processBlock)
+			pm.blockCacheMux.Lock()
+			pm.blockCache.Iterate(processBlock)
+			pm.blockCacheMux.Unlock()
 			queueTimer.Reset(proInterval)
 		}
+	}
+}
+
+// stableBlockLoop block has been stable
+func (pm *ProtocolManager) stableBlockLoop() {
+	pm.wg.Add(1)
+	defer pm.wg.Done()
+
+	for {
+		select {
+		case <-pm.quitCh:
+			return
+		case block := <-pm.stableBlockCh:
+			peers := pm.peers.DelayNodes(block.Height())
+			if len(peers) > 0 {
+				pm.broadcastBlock(peers, block, false)
+			}
+			pm.confirmsCache.Clear(block.Height())
+			pm.blockCacheMux.Lock()
+			pm.blockCache.Clear(block.Height())
+			pm.blockCacheMux.Unlock()
+		}
+	}
+}
+
+func (pm *ProtocolManager) setConfirmsFromCache(height uint32, hash common.Hash) {
+	confirms := pm.confirmsCache.Pop(height, hash)
+	if confirms == nil {
+		return
+	}
+	for _, confirm := range confirms {
+		pm.chain.ReceiveConfirm(confirm)
 	}
 }
 
@@ -574,7 +614,7 @@ func (pm *ProtocolManager) handleConfirmMsg(msg *p2p.Msg) error {
 	if confirm.Height < pm.chain.StableBlock().Height() {
 		return nil
 	}
-
+	log.Warnf("Recv confirm message: height: %d, hash: %s", confirm.Height, confirm.Hash.Hex()[:16])
 	if pm.chain.HasBlock(confirm.Hash) {
 		return pm.chain.ReceiveConfirm(confirm)
 	} else {

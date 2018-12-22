@@ -239,9 +239,9 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 	bc.chainForksLock.Lock()
 	defer func() {
 		bc.chainForksLock.Unlock()
-		// only broadcast confirm info within one hour
+		// only broadcast confirm info within 3 minutes
 		currentTime := time.Now().Unix()
-		if currentTime-int64(block.Time()) < 60*60 {
+		if currentTime-int64(block.Time()) < 3*60 {
 			time.AfterFunc(2*time.Second, func() { // todo
 				msg := bc.createSignInfo(block.Hash(), block.Height())
 				subscribe.Send(subscribe.NewConfirm, msg)
@@ -415,7 +415,9 @@ func (bc *BlockChain) createSignInfo(hash common.Hash, height uint32) *network.B
 		return nil
 	}
 	copy(data.SignInfo[:], signInfo)
-	bc.db.SetConfirmInfo(hash, data.SignInfo)
+	if bc.HasBlock(hash) {
+		bc.db.SetConfirmInfo(hash, data.SignInfo)
+	}
 	return data
 }
 
