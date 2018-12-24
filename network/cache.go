@@ -50,9 +50,6 @@ func (c *ConfirmCache) Pop(height uint32, hash common.Hash) []*BlockConfirmData 
 		res = append(res, v)
 	}
 	delete(c.cache[height], hash)
-	// if len(c.cache[height]) == 0{
-	// 	delete(c.cache, height)
-	// }
 	return res
 }
 

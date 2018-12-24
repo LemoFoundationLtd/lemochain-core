@@ -8,6 +8,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/subscribe"
 	"github.com/LemoFoundationLtd/lemochain-go/network/p2p"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -38,6 +39,8 @@ type ProtocolManager struct {
 	blockCache    *BlockCache
 	blockCacheMux sync.Mutex
 	blockSyncFlag *BlockSyncFlag
+
+	oldStableBlock atomic.Value
 
 	addPeerCh    chan p2p.IPeer
 	removePeerCh chan p2p.IPeer
@@ -152,7 +155,6 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 
 	proInterval := 3 * time.Second
 	queueTimer := time.NewTimer(proInterval)
-	// blockCache := NewBlockCache()
 
 	for {
 		select {
@@ -236,6 +238,14 @@ func (pm *ProtocolManager) stableBlockLoop() {
 		case <-pm.quitCh:
 			return
 		case block := <-pm.stableBlockCh:
+			var oldStableBlock *types.Block
+			if pm.oldStableBlock.Load() != nil {
+				oldStableBlock = pm.oldStableBlock.Load().(*types.Block)
+				if oldStableBlock != nil && oldStableBlock.Height()+1 < block.Height() {
+					pm.fetchConfirmsFromRemote(oldStableBlock.Height()+1, block.Height()-1)
+				}
+			}
+			pm.oldStableBlock.Store(block)
 			peers := pm.peers.DelayNodes(block.Height())
 			if len(peers) > 0 {
 				pm.broadcastBlock(peers, block, false)
@@ -248,6 +258,24 @@ func (pm *ProtocolManager) stableBlockLoop() {
 	}
 }
 
+// fetchConfirmsFromRemote fetch confirms from remote
+func (pm *ProtocolManager) fetchConfirmsFromRemote(start, end uint32) {
+	p := pm.peers.BestToFetchConfirms(end)
+	if p == nil {
+		return
+	}
+	for h := start; h < end; h++ {
+		b := pm.chain.GetBlockByHeight(h)
+		if b == nil {
+			continue
+		}
+		if err := p.SendGetConfirms(b.Height(), b.Hash()); err != nil {
+			log.Warnf("send get confirms message failed: %v", err)
+		}
+	}
+}
+
+// setConfirmsFromCache set confirms from cache
 func (pm *ProtocolManager) setConfirmsFromCache(height uint32, hash common.Hash) {
 	confirms := pm.confirmsCache.Pop(height, hash)
 	if confirms == nil {
@@ -276,6 +304,7 @@ func (pm *ProtocolManager) peerLoop() {
 		case rPeer := <-pm.removePeerCh:
 			p := newPeer(rPeer)
 			pm.peers.UnRegister(p)
+			log.Infof("Connection has dropped, nodeID: %s", p.NodeID().String()[:16])
 		case <-forceSyncTimer.C: // time to synchronise block
 			now := time.Now().Unix()
 			if !pm.blockSyncFlag.running || (now-pm.blockSyncFlag.lastUpdate) > SyncTimeout {
@@ -307,6 +336,7 @@ func (pm *ProtocolManager) broadcastTxs(peers []*peer, txs types.Transactions) {
 
 // broadcastConfirm broadcast confirm info to deputy nodes
 func (pm *ProtocolManager) broadcastConfirm(peers []*peer, confirmInfo *BlockConfirmData) {
+	log.Debugf("broadcast confirm, len(peers)=%d, height: %d", len(peers), confirmInfo.Height)
 	for _, p := range peers {
 		p.SendConfirmInfo(confirmInfo)
 	}
@@ -614,7 +644,6 @@ func (pm *ProtocolManager) handleConfirmMsg(msg *p2p.Msg) error {
 	if confirm.Height < pm.chain.StableBlock().Height() {
 		return nil
 	}
-	log.Warnf("Recv confirm message: height: %d, hash: %s", confirm.Height, confirm.Hash.Hex()[:16])
 	if pm.chain.HasBlock(confirm.Hash) {
 		return pm.chain.ReceiveConfirm(confirm)
 	} else {

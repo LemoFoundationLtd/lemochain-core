@@ -19,10 +19,6 @@ import (
 	"time"
 )
 
-type broadcastConfirmInfoFn func(hash common.Hash, height uint32)
-
-type broadcastBlockFn func(block *types.Block)
-
 type BlockChain struct {
 	chainID      uint16
 	flags        flag.CmdFlags
@@ -188,6 +184,8 @@ func (bc *BlockChain) SetMinedBlock(block *types.Block) error {
 	}
 	// notify
 	subscribe.Send(subscribe.NewMinedBlock, block)
+	msg := bc.createSignInfo(block.Hash(), block.Height())
+	subscribe.Send(subscribe.NewConfirm, msg)
 	return nil
 }
 
@@ -350,6 +348,7 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32, logLess bo
 	}
 	// notify
 	subscribe.Send(subscribe.NewStableBlock, block)
+	log.Infof("stable height reach to: %d", height)
 	return nil
 }
 
@@ -403,6 +402,7 @@ func (bc *BlockChain) verifyBody(block *types.Block) error {
 	return nil
 }
 
+// createSignInfo create sign info for a block
 func (bc *BlockChain) createSignInfo(hash common.Hash, height uint32) *network.BlockConfirmData {
 	data := &network.BlockConfirmData{
 		Hash:   hash,

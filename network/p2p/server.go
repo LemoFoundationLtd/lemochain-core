@@ -130,7 +130,6 @@ func (srv *Server) run() {
 	for {
 		select {
 		case p := <-srv.addPeerCh:
-			// log.Debugf("receive receive add peer event. nodeID: %s", common.ToHex(p.RNodeID()[:8]))
 			// is already exist
 			if _, ok := srv.connectedNodes[*p.RNodeID()]; ok {
 				log.Warnf("receive receive add peer event. But connection has already exist. nodeID: %s", common.ToHex(p.RNodeID()[:8]))

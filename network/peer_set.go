@@ -57,7 +57,7 @@ func (ps *peerSet) BestToSync(height uint32) (p *peer) {
 
 	maxBadSync := uint32(100)
 	for _, peer := range ps.peers {
-		if peer.lstStatus.CurHeight > height && peer.badSyncCounter < maxBadSync {
+		if peer.lstStatus.CurHeight > height && peer.BadSyncCounter() < maxBadSync {
 			height = peer.lstStatus.CurHeight
 			p = peer
 		}
@@ -91,6 +91,33 @@ func (ps *peerSet) BestToDiscover() *peer {
 		}
 	}
 	return res
+}
+
+// BestToFetchConfirms best peer to fetch confirms package
+func (ps *peerSet) BestToFetchConfirms(height uint32) (p *peer) {
+	ps.lock.Lock()
+	defer ps.lock.Unlock()
+
+	if len(ps.peers) == 0 {
+		return nil
+	}
+	for _, peer := range ps.peers {
+		if peer.lstStatus.StaHeight >= height {
+			p = peer
+			height = peer.lstStatus.StaHeight
+			break
+		}
+	}
+	if p == nil {
+		for _, peer := range ps.peers {
+			if peer.lstStatus.CurHeight >= height {
+				p = peer
+				height = peer.lstStatus.CurHeight
+				break
+			}
+		}
+	}
+	return p
 }
 
 // DeputyNodes filter deputy node

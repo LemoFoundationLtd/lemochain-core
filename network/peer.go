@@ -173,6 +173,16 @@ func (p *peer) SendConfirms(confirms *BlockConfirms) error {
 	return p.conn.WriteMsg(ConfirmsMsg, buf)
 }
 
+// SendGetConfirms send request of getting confirms
+func (p *peer) SendGetConfirms(height uint32, hash common.Hash) error {
+	msg := &GetConfirmInfo{Height: height, Hash: hash}
+	buf, err := rlp.EncodeToBytes(msg)
+	if err != nil {
+		return err
+	}
+	return p.conn.WriteMsg(GetConfirmsMsg, buf)
+}
+
 // SendDiscover send discover request
 func (p *peer) SendDiscover() error {
 	msg := &DiscoverReqData{Sequence: 1}
