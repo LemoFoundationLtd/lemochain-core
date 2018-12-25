@@ -132,7 +132,7 @@ func (srv *Server) run() {
 		case p := <-srv.addPeerCh:
 			// is already exist
 			if _, ok := srv.connectedNodes[*p.RNodeID()]; ok {
-				log.Warnf("receive receive add peer event. But connection has already exist. nodeID: %s", common.ToHex(p.RNodeID()[:8]))
+				log.Debugf("receive add peer event. But connection has already exist. nodeID: %s", common.ToHex(p.RNodeID()[:8]))
 				p.Close()
 				srv.discover.SetConnectResult(p.RNodeID(), true)
 				break

@@ -299,16 +299,6 @@ func (m *DiscoverManager) SetReconnect(nodeID *NodeID) error {
 	if !ok {
 		return ErrNoSpecialNode
 	}
-	// if n.IsReconnect {
-	// 	if n.ConnCounter == MaxReconnectCount {
-	// 		log.Infof("node: %s has reconnect %d, but not success", node, MaxReconnectCount)
-	// 		return ErrMaxReconnect
-	// 	}
-	// } else {
-	// 	n.IsReconnect = true
-	// 	n.Sequence = 0
-	// }
-	// n.ConnCounter++
 	n.IsReconnect = true
 	n.Sequence = 0
 	n.ConnCounter = 1

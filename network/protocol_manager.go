@@ -129,7 +129,7 @@ func (pm *ProtocolManager) txConfirmLoop() {
 	for {
 		select {
 		case <-pm.quitCh:
-			log.Info("txLoop finished")
+			log.Info("txConfirmLoop finished")
 			return
 		case txs := <-pm.txsCh:
 			curHeight := pm.chain.CurrentBlock().Height()
@@ -144,6 +144,7 @@ func (pm *ProtocolManager) txConfirmLoop() {
 			if len(peers) > 0 {
 				pm.broadcastConfirm(peers, info)
 			}
+			log.Debugf("broadcast confirm, len(peers)=%d, height: %d", len(peers), info.Height)
 		}
 	}
 }
@@ -336,7 +337,6 @@ func (pm *ProtocolManager) broadcastTxs(peers []*peer, txs types.Transactions) {
 
 // broadcastConfirm broadcast confirm info to deputy nodes
 func (pm *ProtocolManager) broadcastConfirm(peers []*peer, confirmInfo *BlockConfirmData) {
-	log.Debugf("broadcast confirm, len(peers)=%d, height: %d", len(peers), confirmInfo.Height)
 	for _, p := range peers {
 		p.SendConfirmInfo(confirmInfo)
 	}

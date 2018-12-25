@@ -30,7 +30,9 @@ func (s *BlockSyncFlag) Finish() {
 
 // Error
 func (s *BlockSyncFlag) Error() {
-	s.peer.SyncFailed()
+	if s.peer != nil {
+		s.peer.SyncFailed()
+		s.peer = nil
+	}
 	s.running = false
-	s.peer = nil
 }

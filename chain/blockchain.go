@@ -240,9 +240,10 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 		// only broadcast confirm info within 3 minutes
 		currentTime := time.Now().Unix()
 		if currentTime-int64(block.Time()) < 3*60 {
-			time.AfterFunc(2*time.Second, func() { // todo
+			time.AfterFunc(1*time.Second, func() {
 				msg := bc.createSignInfo(block.Hash(), block.Height())
 				subscribe.Send(subscribe.NewConfirm, msg)
+				log.Debugf("subscribe.NewConfirm.Send(%d)", msg.Height)
 			})
 		}
 	}()

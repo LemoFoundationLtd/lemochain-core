@@ -92,7 +92,7 @@ func (p *peer) Handshake(content []byte) (*ProtocolHandshake, error) {
 			msgCh <- nil
 		}
 	}()
-	timeout := time.NewTimer(5 * time.Second)
+	timeout := time.NewTimer(8 * time.Second)
 	select {
 	case <-timeout.C:
 		return nil, errors.New("protocol handshake timeout")
@@ -118,7 +118,7 @@ func (p *peer) ReadMsg() (*p2p.Msg, error) {
 	return p.conn.ReadMsg()
 }
 
-// SendLstStatus send node's status to remote
+// SendLstStatus send SyncFailednode's status to remote
 func (p *peer) SendLstStatus(status *LatestStatus) error {
 	buf, err := rlp.EncodeToBytes(status)
 	if err != nil {
