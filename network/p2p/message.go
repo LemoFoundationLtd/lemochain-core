@@ -2,8 +2,6 @@ package p2p
 
 import (
 	"bytes"
-	"errors"
-	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"time"
 )
@@ -26,15 +24,15 @@ func (msg *Msg) Decode(data interface{}) error {
 	length := len(msg.Content)
 	s := rlp.NewStream(reader, uint64(length))
 	if err := s.Decode(data); err != nil {
-		return errors.New(fmt.Sprintf("rlp decode error, code:%d size:%d err:%v", msg.Code, length, err))
+		return ErrRlpDecode
 	}
 	return nil
 }
 
 // CheckCode is code invalid
 func (msg *Msg) CheckCode() bool {
-	if msg.Code > 0x1F { // todo
-		return true
+	if msg.Code > 0x1F {
+		return false
 	}
 	return true
 }

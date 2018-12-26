@@ -11,7 +11,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto/ecies"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto/secp256k1"
-	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"io"
 )
@@ -49,6 +48,9 @@ func (h *encHandshake) String() string {
 
 // newCliEncHandshake new instance for client
 func newCliEncHandshake(remoteID *NodeID) (*encHandshake, error) {
+	if remoteID == nil {
+		return nil, ErrNilRemoteID
+	}
 	h := &encHandshake{remoteID: *remoteID}
 	// generate InitNonce
 	h.initNonce = make([]byte, shaLen)
@@ -88,7 +90,7 @@ func newSrvEncHandshake(reqMsg *authReqMsg, prv *ecdsa.PrivateKey) (h *encHandsh
 	signed := xor(token, h.initNonce)
 	randomRemotePubKey, err := secp256k1.RecoverPubkey(signed, reqMsg.Signature[:])
 	if err != nil {
-		return h, err
+		return h, ErrRecoveryFailed
 	}
 	h.remoteRandomPubKey, err = importPubKey(randomRemotePubKey)
 	if err != nil {
@@ -206,7 +208,7 @@ func clientEncHandshake(conn io.ReadWriter, prv *ecdsa.PrivateKey, remoteID *Nod
 	h.respNonce = make([]byte, shaLen)
 	copy(h.respNonce, respMsg.RespNonce[:])
 	h.remoteRandomPubKey, err = importPubKey(respMsg.RandomPubKey[:])
-	log.Debugf("client encHandshake obj: %s", h.String())
+	// log.Debugf("client encHandshake obj: %s", h.String())
 	if err != nil {
 		return nil, err
 	}
@@ -282,7 +284,7 @@ func readHandshakeReqMsg(conn io.ReadWriter, prv *ecdsa.PrivateKey) (*authReqMsg
 }
 
 // serverEncHandshake accept a network request as server
-func serverEncHandshake(conn io.ReadWriter, prv *ecdsa.PrivateKey) (s *secrets, err error) {
+func serverEncHandshake(conn io.ReadWriter, prv *ecdsa.PrivateKey, callback func()) (s *secrets, err error) {
 	// read request data
 	reqMsg, err := readHandshakeReqMsg(conn, prv)
 	if err != nil {
@@ -297,6 +299,10 @@ func serverEncHandshake(conn io.ReadWriter, prv *ecdsa.PrivateKey) (s *secrets, 
 	encBuf, err := h.makeAuthRespMsg(prv)
 	if err != nil {
 		return nil, err
+	}
+	// just for test
+	if callback != nil {
+		callback()
 	}
 	// send data to client
 	if err = write(conn, encBuf); err != nil {

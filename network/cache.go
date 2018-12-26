@@ -32,6 +32,10 @@ func (c *ConfirmCache) Push(data *BlockConfirmData) {
 		c.cache[data.Height][data.Hash] = make([]*BlockConfirmData, 0, 2)
 	}
 	c.cache[data.Height][data.Hash] = append(c.cache[data.Height][data.Hash], data)
+
+	if len(c.cache) > 10240 {
+		c.Clear(^uint32(0))
+	}
 }
 
 // Pop get special confirm data by height and hash and then delete from cache
@@ -107,6 +111,10 @@ func (c *BlockCache) Add(block *types.Block) {
 			}
 		}
 	}
+
+	if len(c.cache) > 10240 {
+		c.Clear(^uint32(0))
+	}
 }
 
 func (c *BlockCache) Iterate(callback func(*types.Block) bool) {
@@ -137,4 +145,14 @@ func (c *BlockCache) Clear(height uint32) {
 		}
 	}
 	c.cache = c.cache[index+1:]
+}
+
+func (c *BlockCache) Size() int {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	count := 0
+	for _, blocks := range c.cache {
+		count += len(blocks.Blocks)
+	}
+	return count
 }

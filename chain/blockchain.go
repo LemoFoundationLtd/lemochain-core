@@ -453,7 +453,7 @@ func (bc *BlockChain) ReceiveConfirm(info *network.BlockConfirmData) (err error)
 
 	// cache confirm info
 	if err = bc.db.SetConfirmInfo(info.Hash, info.SignInfo); err != nil {
-		log.Errorf("can't SetConfirmInfo. hash:%s", info.Hash.Hex())
+		log.Errorf("can't SetConfirmInfo. height: %d, hash:%s, err: %v", info.Height, info.Hash.Hex()[:16], err)
 		return ErrSetConfirmInfoToDB
 	}
 

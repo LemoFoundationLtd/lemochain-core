@@ -3,12 +3,20 @@ package p2p
 import (
 	"errors"
 	"fmt"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
+	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/stretchr/testify/assert"
 	"net"
 	"testing"
 	"time"
 )
+
+func init() {
+	prvCli, _ = crypto.ToECDSA(common.FromHex("0xc21b6b2fbf230f665b936194d14da67187732bf9d28768aef1a3cbb26608f8aa"))
+	deputynode.SetSelfNodeKey(prvCli)
+}
 
 func newDial() *DialManager {
 	handleConn := func(fd net.Conn, nodeID *NodeID) error {
@@ -29,8 +37,8 @@ func newDialWithErrHandle() *DialManager {
 	return NewDialManager(handleConn, discover)
 }
 
-func startListen(startCh chan struct{}) {
-	listener, err := net.Listen("tcp", "127.0.0.1:7002")
+func startListen(startCh chan struct{}, port string) {
+	listener, err := net.Listen("tcp", "127.0.0.1:"+port)
 	if err != nil {
 		return
 	}
@@ -46,12 +54,12 @@ func Test_runDialTask_ok(t *testing.T) {
 	m := newDial()
 	startCh := make(chan struct{})
 	go func() {
-		startListen(startCh)
+		startListen(startCh, "7003")
 	}()
 
 	<-startCh
 	log.Info("start dial")
-	res := m.runDialTask("ddb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0@127.0.0.1:7002")
+	res := m.runDialTask("ddb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0@127.0.0.1:7003")
 	log.Info("dial complete")
 	assert.Equal(t, 0, res)
 }
@@ -66,18 +74,18 @@ func Test_runDialTask_err_handle(t *testing.T) {
 	m := newDialWithErrHandle()
 	startCh := make(chan struct{})
 	go func() {
-		startListen(startCh)
+		startListen(startCh, "7007")
 	}()
 
 	<-startCh
-	res := m.runDialTask("ddb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0@127.0.0.1:7002")
+	res := m.runDialTask("ddb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0@127.0.0.1:7007")
 	assert.Equal(t, -2, res)
 }
 
 func Test_loop(t *testing.T) {
 	startCh := make(chan struct{})
 	go func() {
-		startListen(startCh)
+		startListen(startCh, "7002")
 	}()
 	<-startCh
 

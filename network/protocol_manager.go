@@ -154,7 +154,7 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 	pm.wg.Add(1)
 	defer pm.wg.Done()
 
-	proInterval := 3 * time.Second
+	proInterval := 1 * time.Second
 	queueTimer := time.NewTimer(proInterval)
 
 	for {
@@ -225,6 +225,7 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 			pm.blockCache.Iterate(processBlock)
 			pm.blockCacheMux.Unlock()
 			queueTimer.Reset(proInterval)
+			log.Debugf("blockCache's size: %d", pm.blockCache.Size())
 		}
 	}
 }

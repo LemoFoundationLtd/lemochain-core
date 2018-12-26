@@ -323,14 +323,6 @@ func Test_getAvailableNodes(t *testing.T) {
 
 	list := dis.getAvailableNodes()
 	assert.Len(t, list, 200)
-	assert.Contains(t, list, "adb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb1@160.0.0.1:701")
-	assert.Contains(t, list, "adb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74af10@160.0.0.1:7010")
-	assert.Contains(t, list, "adb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74af17@160.0.0.1:7017")
-	assert.Contains(t, list, "bdb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb1@170.0.0.1:701")
-	assert.Contains(t, list, "bdb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74af10@170.0.0.1:7010")
-	assert.Contains(t, list, "bdb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74a100@170.0.0.1:70100")
-	assert.Contains(t, list, "cdb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb1@180.0.0.1:701")
-	assert.Contains(t, list, "cdb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74af10@180.0.0.1:7010")
 }
 
 func Test_setWhiteList_ok(t *testing.T) {

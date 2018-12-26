@@ -6,25 +6,30 @@ import (
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
+	"github.com/stretchr/testify/assert"
 	"net"
 	"testing"
 	"time"
 )
 
 var (
-	prvCli *ecdsa.PrivateKey
-	pubCli *ecdsa.PublicKey
+	prvCli    *ecdsa.PrivateKey
+	pubCli    *ecdsa.PublicKey
+	nodeIDCli NodeID
 
-	prvSrv *ecdsa.PrivateKey
-	pubSrv *ecdsa.PublicKey
+	prvSrv    *ecdsa.PrivateKey
+	pubSrv    *ecdsa.PublicKey
+	nodeIDSrv NodeID
 )
 
 func init() {
 	prvCli, _ = crypto.ToECDSA(common.FromHex("0xc21b6b2fbf230f665b936194d14da67187732bf9d28768aef1a3cbb26608f8aa"))
 	pubCli = &prvCli.PublicKey
+	nodeIDCli = PubKeyToNodeID(pubCli)
 
 	prvSrv, _ = crypto.ToECDSA(common.FromHex("0x9c3c4a327ce214f0a1bf9cfa756fbf74f1c7322399ffff925efd8c15c49953eb"))
 	pubSrv = &prvSrv.PublicKey
+	nodeIDSrv = PubKeyToNodeID(pubSrv)
 }
 
 func newListener() *net.Conn {
@@ -73,4 +78,48 @@ func Test_doHandshake(t *testing.T) {
 	if bytes.Compare(cliPeer.aes, p.aes) != 0 {
 		t.Fatalf("aes not match")
 	}
+}
+
+func newPeers(t *testing.T) (pCli, pSrv IPeer) {
+	connCli, connSrv := net.Pipe()
+	pCli = newPeer(connCli)
+	pSrv = newPeer(connSrv)
+	errSrvCh := make(chan error)
+	go func() {
+		errSrvCh <- pSrv.doHandshake(prvSrv, nil)
+	}()
+	err := pCli.doHandshake(prvCli, &nodeIDSrv)
+	errSrv := <-errSrvCh
+	assert.Nil(t, err)
+	assert.Nil(t, errSrv)
+
+	pC := pCli.(*Peer)
+	pS := pSrv.(*Peer)
+	if bytes.Compare(pC.aes, pS.aes) != 0 {
+		t.Error("AES not match")
+	}
+	go pCli.run()
+	go pSrv.run()
+	return
+}
+
+func Test_totalLogic(t *testing.T) {
+	pCli, pSrv := newPeers(t)
+
+	buf := []byte{0x01, 0x02, 0x03, 0x04, 0x05}
+	// client
+	go func() {
+		err := pCli.WriteMsg(uint32(2), buf)
+		assert.Nil(t, err)
+	}()
+
+	// server
+	msg, err := pSrv.ReadMsg()
+	assert.Nil(t, err)
+	if bytes.Compare(buf, msg.Content) != 0 {
+		t.Error("message not match")
+	}
+
+	pCli.Close()
+	pSrv.Close()
 }

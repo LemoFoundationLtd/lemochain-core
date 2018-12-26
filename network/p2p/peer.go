@@ -66,7 +66,7 @@ func newPeer(fd net.Conn) IPeer {
 func (p *Peer) doHandshake(prv *ecdsa.PrivateKey, nodeID *NodeID) (err error) {
 	// as server
 	if nodeID == nil {
-		s, err := serverEncHandshake(p.conn, prv)
+		s, err := serverEncHandshake(p.conn, prv, nil)
 		if err != nil {
 			return err
 		}
