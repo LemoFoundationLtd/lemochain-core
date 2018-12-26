@@ -16,6 +16,7 @@ var (
 	// ErrInvalidSender is returned if the transaction contains an invalid signature.
 	ErrInvalidSender = errors.New("invalid sender")
 	ErrTxChainID     = errors.New("Tx chainID unequal to node chainID ")
+	ErrNegativeValue = errors.New("negative value")
 
 	// ErrInsufficientFunds is returned if the total cost of executing a transaction
 	// is higher than the balance of the user's account.
@@ -248,14 +249,19 @@ func (pool *TxPool) Remove(keys []common.Hash) {
 }
 
 func (pool *TxPool) validateTx(tx *types.Transaction) error {
-	from, err := tx.From()
-	if err != nil {
-		return ErrInvalidSender
-	}
+	// from, err := tx.From()
+
 	if tx.ChainID() != pool.chainID {
 		return ErrTxChainID
 	}
-
+	if tx.Amount().Sign() < 0 {
+		return ErrNegativeValue
+	}
+	// Make sure the transaction is signed properly
+	from, err := types.MakeSigner().GetSender(tx)
+	if err != nil {
+		return ErrInvalidSender
+	}
 	fromAccount := pool.am.GetAccount(from)
 	balance := fromAccount.GetBalance()
 	if balance.Cmp(tx.Cost()) < 0 {
