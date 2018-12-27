@@ -20,6 +20,8 @@ const (
 	SyncTimeout = int64(20)
 )
 
+var testRcvFlag = false
+
 type rcvBlockObj struct {
 	p      *peer
 	blocks types.Blocks
@@ -157,6 +159,9 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 	proInterval := 1 * time.Second
 	queueTimer := time.NewTimer(proInterval)
 
+	// just for test
+	testRcvTimer := time.NewTimer(8 * time.Second)
+
 	for {
 		select {
 		case <-pm.quitCh:
@@ -168,6 +173,10 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 				pm.broadcastBlock(peers, block, true)
 			}
 		case rcvMsg := <-pm.rcvBlocksCh:
+			// for test
+			testRcvFlag = false
+			testRcvTimer.Reset(8 * time.Second)
+
 			// peer's latest height
 			pLstHeight := rcvMsg.p.LatestStatus().CurHeight
 			// first block of blocks
@@ -176,12 +185,16 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 			// synchronising
 			if pm.blockSyncFlag.running {
 				if pm.blockSyncFlag.peer.NodeID() == rcvMsg.p.NodeID() {
-					// broadcast
-					if len(rcvMsg.blocks) == 1 && fBlock.Height() > pLstHeight {
-						rcvMsg.p.UpdateStatus(fBlock.Height(), fBlock.Hash())
+					// broadcast or request single block
+					if len(rcvMsg.blocks) == 1 {
 						pm.blockCacheMux.Lock()
 						pm.blockCache.Add(fBlock)
 						pm.blockCacheMux.Unlock()
+						if fBlock.Height() > pLstHeight {
+							rcvMsg.p.UpdateStatus(fBlock.Height(), fBlock.Hash())
+						}
+						// request parent block
+						rcvMsg.p.RequestBlocks(fBlock.Height()-1, fBlock.Height()-1)
 						break
 					}
 					// sync
@@ -199,17 +212,25 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 					pm.blockCacheMux.Lock()
 					pm.blockCache.Add(fBlock)
 					pm.blockCacheMux.Unlock()
+					// request parent block
+					rcvMsg.p.RequestBlocks(fBlock.Height()-1, fBlock.Height()-1)
 				}
-			} else if len(rcvMsg.blocks) == 1 && fBlock.Height() > pLstHeight {
-				rcvMsg.p.UpdateStatus(fBlock.Height(), fBlock.Hash())
-				curBlock := pm.chain.CurrentBlock()
-				if curBlock.Hash() == fBlock.ParentHash() {
+			} else if len(rcvMsg.blocks) == 1 {
+				if pm.chain.StableBlock().Height() >= fBlock.Height() {
+					break
+				}
+				if fBlock.Height() > pLstHeight {
+					rcvMsg.p.UpdateStatus(fBlock.Height(), fBlock.Hash())
+				}
+				if pm.chain.HasBlock(fBlock.ParentHash()) {
 					pm.chain.InsertChain(fBlock, false)
 					pm.setConfirmsFromCache(fBlock.Height(), fBlock.Hash())
 				} else {
 					pm.blockCacheMux.Lock()
 					pm.blockCache.Add(fBlock)
 					pm.blockCacheMux.Unlock()
+					// request parent block
+					rcvMsg.p.RequestBlocks(fBlock.Height()-1, fBlock.Height()-1)
 				}
 			}
 		case <-queueTimer.C:
@@ -226,6 +247,8 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 			pm.blockCacheMux.Unlock()
 			queueTimer.Reset(proInterval)
 			log.Debugf("blockCache's size: %d", pm.blockCache.Size())
+		case <-testRcvTimer.C: // just for test
+			testRcvFlag = true
 		}
 	}
 }
@@ -480,11 +503,11 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 	if err != nil {
 		return err
 	}
-	// defer func() {
-	// 	if msg.Code < 0x0c {
-	// 		log.Debugf("handleMsg: receive %d from: %s", msg.Code, common.ToHex(p.NodeID()[:8]))
-	// 	}
-	// }()
+
+	if testRcvFlag {
+		log.Debug("not receive block, but receive other types of message.")
+	}
+
 	switch msg.Code {
 	case LstStatusMsg:
 		return pm.handleLstStatusMsg(msg)

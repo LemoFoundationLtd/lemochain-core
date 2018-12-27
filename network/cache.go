@@ -71,7 +71,7 @@ func (c *ConfirmCache) Clear(height uint32) {
 
 type blocksSameHeight struct {
 	Height uint32
-	Blocks types.Blocks
+	Blocks map[common.Hash]*types.Block
 }
 
 type BlockCache struct {
@@ -89,10 +89,12 @@ func (c *BlockCache) Add(block *types.Block) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
+	blocks := make(map[common.Hash]*types.Block)
+	blocks[block.Hash()] = block
 	height := block.Height()
 	bsh := &blocksSameHeight{
 		Height: block.Height(),
-		Blocks: []*types.Block{block},
+		Blocks: blocks,
 	}
 	length := len(c.cache)
 	if length == 0 || height < c.cache[0].Height { // not exist or at first position
@@ -102,7 +104,7 @@ func (c *BlockCache) Add(block *types.Block) {
 	} else {
 		for i := 0; i < len(c.cache)-1; i++ {
 			if c.cache[i].Height == height || i == len(c.cache)-1 { // already exist
-				c.cache[i].Blocks = append(c.cache[i].Blocks, block)
+				c.cache[i].Blocks[block.Hash()] = block
 				break
 			} else if c.cache[i].Height > height && height < c.cache[i+1].Height { // not exist
 				tmp := append(c.cache[:i+1], bsh)
@@ -122,11 +124,9 @@ func (c *BlockCache) Iterate(callback func(*types.Block) bool) {
 	defer c.lock.Unlock()
 
 	for _, blocks := range c.cache {
-		for j := 0; j < len(blocks.Blocks); {
-			if callback(blocks.Blocks[j]) {
-				blocks.Blocks = append(blocks.Blocks[:j], blocks.Blocks[j+1:]...)
-			} else {
-				j++
+		for _, v := range blocks.Blocks {
+			if callback(v) {
+				delete(blocks.Blocks, v.Hash())
 			}
 		}
 	}
