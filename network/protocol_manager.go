@@ -40,7 +40,6 @@ type ProtocolManager struct {
 	confirmsCache *ConfirmCache // received confirm info before block, cache them
 	blockCache    *BlockCache
 	blockCacheMux sync.Mutex
-	blockSyncFlag *BlockSyncFlag
 
 	oldStableBlock atomic.Value
 
@@ -51,7 +50,6 @@ type ProtocolManager struct {
 	newMinedBlockCh chan *types.Block
 	stableBlockCh   chan *types.Block
 	rcvBlocksCh     chan *rcvBlockObj
-	lstStatusCh     chan *LatestStatus // peer's latest status channel
 	confirmCh       chan *BlockConfirmData
 
 	wg     sync.WaitGroup
@@ -69,7 +67,6 @@ func NewProtocolManager(chainID uint16, nodeID p2p.NodeID, chain BlockChain, txP
 		peers:         NewPeerSet(discover),
 		confirmsCache: NewConfirmCache(),
 		blockCache:    NewBlockCache(),
-		blockSyncFlag: NewBlockSync(),
 
 		addPeerCh:    make(chan p2p.IPeer),
 		removePeerCh: make(chan p2p.IPeer),
@@ -78,7 +75,6 @@ func NewProtocolManager(chainID uint16, nodeID p2p.NodeID, chain BlockChain, txP
 		newMinedBlockCh: make(chan *types.Block),
 		stableBlockCh:   make(chan *types.Block),
 		rcvBlocksCh:     make(chan *rcvBlockObj),
-		lstStatusCh:     make(chan *LatestStatus),
 		confirmCh:       make(chan *BlockConfirmData),
 
 		quitCh: make(chan struct{}),
@@ -179,58 +175,26 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 
 			// peer's latest height
 			pLstHeight := rcvMsg.p.LatestStatus().CurHeight
-			// first block of blocks
-			fBlock := rcvMsg.blocks[0]
 
-			// synchronising
-			if pm.blockSyncFlag.running {
-				if pm.blockSyncFlag.peer.NodeID() == rcvMsg.p.NodeID() {
-					// broadcast or request single block
-					if len(rcvMsg.blocks) == 1 {
-						pm.blockCacheMux.Lock()
-						pm.blockCache.Add(fBlock)
-						pm.blockCacheMux.Unlock()
-						if fBlock.Height() > pLstHeight {
-							rcvMsg.p.UpdateStatus(fBlock.Height(), fBlock.Hash())
-						}
-						// request parent block
-						rcvMsg.p.RequestBlocks(fBlock.Height()-1, fBlock.Height()-1)
-						break
-					}
-					// sync
-					for _, block := range rcvMsg.blocks {
-						curBlock := pm.chain.CurrentBlock()
-						if curBlock.Hash() != block.ParentHash() {
-							pm.blockSyncFlag.Finish()
-							break
-						}
-						pm.chain.InsertChain(block, true)
-						pm.setConfirmsFromCache(block.Height(), block.Hash())
-					}
-				} else if len(rcvMsg.blocks) == 1 && fBlock.Height() > pLstHeight {
-					rcvMsg.p.UpdateStatus(fBlock.Height(), fBlock.Hash())
-					pm.blockCacheMux.Lock()
-					pm.blockCache.Add(fBlock)
-					pm.blockCacheMux.Unlock()
-					// request parent block
-					rcvMsg.p.RequestBlocks(fBlock.Height()-1, fBlock.Height()-1)
+			for _, b := range rcvMsg.blocks {
+				// update latest status
+				if b.Height() > pLstHeight {
+					rcvMsg.p.UpdateStatus(b.Height(), b.Hash())
 				}
-			} else if len(rcvMsg.blocks) == 1 {
-				if pm.chain.StableBlock().Height() >= fBlock.Height() {
-					break
+				// block is stale
+				if b.Height() <= pm.chain.StableBlock().Height() || pm.chain.HasBlock(b.Hash()) {
+					continue
 				}
-				if fBlock.Height() > pLstHeight {
-					rcvMsg.p.UpdateStatus(fBlock.Height(), fBlock.Hash())
-				}
-				if pm.chain.HasBlock(fBlock.ParentHash()) {
-					pm.chain.InsertChain(fBlock, false)
-					pm.setConfirmsFromCache(fBlock.Height(), fBlock.Hash())
+				// local chain has this block
+				if pm.chain.HasBlock(b.ParentHash()) {
+					pm.chain.InsertChain(b, true)
+					pm.setConfirmsFromCache(b.Height(), b.Hash())
 				} else {
 					pm.blockCacheMux.Lock()
-					pm.blockCache.Add(fBlock)
+					pm.blockCache.Add(b)
 					pm.blockCacheMux.Unlock()
 					// request parent block
-					rcvMsg.p.RequestBlocks(fBlock.Height()-1, fBlock.Height()-1)
+					rcvMsg.p.RequestBlocks(b.Height()-1, b.Height()-1)
 				}
 			}
 		case <-queueTimer.C:
@@ -331,13 +295,9 @@ func (pm *ProtocolManager) peerLoop() {
 			pm.peers.UnRegister(p)
 			log.Infof("Connection has dropped, nodeID: %s", p.NodeID().String()[:16])
 		case <-forceSyncTimer.C: // time to synchronise block
-			now := time.Now().Unix()
-			if !pm.blockSyncFlag.running || (now-pm.blockSyncFlag.lastUpdate) > SyncTimeout {
-				p := pm.peers.BestToSync(pm.chain.CurrentBlock().Height())
-				if p != nil {
-					pm.blockSyncFlag.Init(p)
-					go pm.forceSyncBlock(p)
-				}
+			p := pm.peers.BestToSync(pm.chain.CurrentBlock().Height())
+			if p != nil {
+				p.SendReqLatestStatus()
 			}
 			forceSyncTimer.Reset(ForceSyncInternal)
 		case <-discoverTimer.C: // time to discover
@@ -404,11 +364,7 @@ func (pm *ProtocolManager) handlePeer(p *peer) {
 			p.HardForkClose()
 			return
 		}
-		now := time.Now().Unix()
-		if !pm.blockSyncFlag.running || now-pm.blockSyncFlag.lastUpdate >= SyncTimeout {
-			pm.blockSyncFlag.Init(p)
-			p.RequestBlocks(from, rStatus.LatestStatus.CurHeight)
-		}
+		p.RequestBlocks(from, rStatus.LatestStatus.CurHeight)
 	}
 	// set connect result
 	pm.discover.SetConnectResult(p.NodeID(), true)
@@ -448,27 +404,19 @@ func (pm *ProtocolManager) handshake(p *peer) (*ProtocolHandshake, error) {
 }
 
 // forceSyncBlock force to sync block
-func (pm *ProtocolManager) forceSyncBlock(p *peer) {
-	// request remote latest status
-	p.SendReqLatestStatus()
-	// set timeout
-	timeoutTimer := time.NewTimer(ReqStatusTimeout)
-	select {
-	case status := <-pm.lstStatusCh:
-		from, err := pm.findSyncFrom(status)
-		if err != nil {
-			log.Warnf("find sync from error: %v", err)
-			pm.blockSyncFlag.Finish()
-			p.HardForkClose()
-			pm.peers.UnRegister(p)
-			return
-		}
-		p.RequestBlocks(from, status.CurHeight)
-	case <-timeoutTimer.C:
-		pm.blockSyncFlag.Error()
-	case <-pm.quitCh:
-		pm.blockSyncFlag.Finish()
+func (pm *ProtocolManager) forceSyncBlock(status *LatestStatus, p *peer) {
+	if status.CurHeight <= pm.chain.CurrentBlock().Height() {
+		return
 	}
+
+	from, err := pm.findSyncFrom(status)
+	if err != nil {
+		log.Warnf("find sync from error: %v", err)
+		p.HardForkClose()
+		pm.peers.UnRegister(p)
+		return
+	}
+	p.RequestBlocks(from, status.CurHeight)
 }
 
 // findSyncFrom find height of which sync from
@@ -510,7 +458,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 
 	switch msg.Code {
 	case LstStatusMsg:
-		return pm.handleLstStatusMsg(msg)
+		return pm.handleLstStatusMsg(msg, p)
 	case GetLstStatusMsg:
 		return pm.handleGetLstStatusMsg(msg, p)
 	case BlockHashMsg:
@@ -539,12 +487,12 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 }
 
 // handleLstStatusMsg handle latest remote status message
-func (pm *ProtocolManager) handleLstStatusMsg(msg *p2p.Msg) error {
+func (pm *ProtocolManager) handleLstStatusMsg(msg *p2p.Msg, p *peer) error {
 	var status LatestStatus
 	if err := msg.Decode(&status); err != nil {
 		return err
 	}
-	pm.lstStatusCh <- &status
+	go pm.forceSyncBlock(&status, p)
 	return nil
 }
 

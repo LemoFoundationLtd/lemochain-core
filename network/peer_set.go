@@ -1,8 +1,11 @@
 package network
 
 import (
+	"crypto/rand"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
+	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/network/p2p"
+	"math/big"
 	"sync"
 )
 
@@ -54,14 +57,22 @@ func (ps *peerSet) BestToSync(height uint32) (p *peer) {
 	if len(ps.peers) == 0 {
 		return nil
 	}
-
-	maxBadSync := uint32(100)
+	peers := make([]*peer, 0)
 	for _, peer := range ps.peers {
-		if peer.lstStatus.CurHeight > height && peer.BadSyncCounter() < maxBadSync {
-			height = peer.lstStatus.CurHeight
-			p = peer
+		if peer.lstStatus.CurHeight > height {
+			peers = append(peers, peer)
 		}
 	}
+	if len(peers) == 0 {
+		return nil
+	}
+	v, err := rand.Int(rand.Reader, new(big.Int).SetInt64(int64(len(peers))))
+	if err != nil {
+		log.Error("Rand a int value failed, use default value: 0")
+		v = new(big.Int)
+	}
+	index := int(v.Int64())
+	p = peers[index]
 	return p
 }
 

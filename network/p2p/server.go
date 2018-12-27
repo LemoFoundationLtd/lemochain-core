@@ -85,10 +85,6 @@ func (srv *Server) Start() error {
 	if err := srv.startListening(); err != nil {
 		panic("start server's listen failed")
 	}
-	// will be deleted later
-	// nodes := deputynode.Instance().GetLatestDeputies()
-	// srv.discover.SetDeputyNodes(nodes)
-	// start discover
 	if err := srv.discover.Start(); err != nil {
 		log.Warnf("discover.start: %v", err)
 	}

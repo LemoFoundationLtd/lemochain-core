@@ -299,9 +299,10 @@ func (c *jsonCodec) CreateResponse(id uint64, reply interface{}) interface{} {
 	if isHexNum(reflect.TypeOf(reply)) {
 		result = fmt.Sprintf(`%#x`, reply)
 	}
-	log.Debug("rpc", "res", log.Lazy{Fn: func() string {
-		return fmt.Sprintf("id: %v, result: %v", id, reply)
-	}})
+	// annotate for debug
+	// log.Debug("rpc", "res", log.Lazy{Fn: func() string {
+	// 	return fmt.Sprintf("id: %v, result: %v", id, reply)
+	// }})
 	return &jsonSuccessResponse{Version: jsonrpcVersion, Id: id, Result: result}
 }
 
