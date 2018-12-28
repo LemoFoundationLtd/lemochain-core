@@ -1,6 +1,7 @@
 package node
 
 import (
+	"context"
 	"github.com/LemoFoundationLtd/lemochain-go/chain"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/miner"
@@ -9,10 +10,12 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
+	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/network/p2p"
 	"math/big"
 	"runtime"
 	"strconv"
+	"time"
 )
 
 // Private
@@ -177,27 +180,6 @@ func (n *PublicChainAPI) NodeVersion() string {
 	return params.Version
 }
 
-// TXAPI
-type PublicTxAPI struct {
-	txpool *chain.TxPool
-}
-
-// NewTxAPI API for send a transaction
-func NewPublicTxAPI(txpool *chain.TxPool) *PublicTxAPI {
-	return &PublicTxAPI{txpool}
-}
-
-// Send send a transaction
-func (t *PublicTxAPI) SendTx(tx *types.Transaction) (common.Hash, error) {
-	err := t.txpool.AddTx(tx)
-	return tx.Hash(), err
-}
-
-// PendingTx
-func (t *PublicTxAPI) PendingTx(size int) []*types.Transaction {
-	return t.txpool.Pending(size)
-}
-
 // PrivateMineAPI
 type PrivateMineAPI struct {
 	miner *miner.Miner
@@ -303,4 +285,64 @@ func (n *PublicNetAPI) Info() *NetInfo {
 		OS:       runtime.GOOS + "-" + runtime.GOARCH,
 		Go:       runtime.Version(),
 	}
+}
+
+// TXAPI
+type PublicTxAPI struct {
+	// txpool *chain.TxPool
+	node *Node
+}
+
+// NewTxAPI API for send a transaction
+func NewPublicTxAPI(node *Node) *PublicTxAPI {
+	return &PublicTxAPI{node}
+}
+
+// Send send a transaction
+func (t *PublicTxAPI) SendTx(tx *types.Transaction) (common.Hash, error) {
+	err := t.node.txPool.AddTx(tx)
+	return tx.Hash(), err
+}
+
+// PendingTx
+func (t *PublicTxAPI) PendingTx(size int) []*types.Transaction {
+	return t.node.txPool.Pending(size)
+}
+
+// ReadContract read variables in a contract includes the return value of a function.
+func (t *PublicTxAPI) ReadContract(to *common.Address, data hexutil.Bytes) (string, error) {
+	ctx := context.Background()
+	result, _, err := t.doCall(ctx, to, data, 5*time.Second)
+	return common.ToHex(result), err
+}
+
+// EstimateGas returns an estimate of the amount of gas needed to execute the given transaction.
+func (t *PublicTxAPI) EstimateGas(to *common.Address, data hexutil.Bytes) (uint64, error) {
+	ctx := context.Background()
+	_, costGas, err := t.doCall(ctx, to, data, 5*time.Second)
+	return costGas, err
+}
+
+// EstimateContractGas returns an estimate of the amount of gas needed to create a smart contract.
+func (t *PublicTxAPI) EstimateCreateContractGas(data hexutil.Bytes) (uint64, error) {
+	ctx := context.Background()
+	_, costGas, err := t.doCall(ctx, nil, data, 5*time.Second)
+	return costGas, err
+}
+
+// doCall
+func (t *PublicTxAPI) doCall(ctx context.Context, to *common.Address, data hexutil.Bytes, timeout time.Duration) ([]byte, uint64, error) {
+	t.node.lock.Lock()
+	defer t.node.lock.Unlock()
+
+	defer func(start time.Time) { log.Debug("Executing EVM call finished", "runtime", time.Since(start)) }(time.Now())
+	// get latest stableBlock
+	stableBlock := t.node.chain.StableBlock()
+	log.Infof("stable block height = %v", stableBlock.Height())
+	stableHeader := stableBlock.Header
+
+	p := t.node.chain.TxProcessor()
+	ret, costGas, err := p.CallTx(ctx, stableHeader, to, data, common.Hash{}, timeout)
+
+	return ret, costGas, err
 }

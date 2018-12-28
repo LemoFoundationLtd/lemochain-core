@@ -1,16 +1,23 @@
 package chain
 
 import (
+	"context"
 	"errors"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/vm"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
-	"math"
+	"github.com/LemoFoundationLtd/lemochain-go/common/math"
 	"math/big"
 	"sync"
+	"time"
+)
+
+const (
+	defaultGasPrice = 1e9
 )
 
 var (
@@ -284,4 +291,76 @@ func (p *TxProcessor) FillHeader(header *types.Header, txs types.Transactions, g
 	changeLogs := p.am.GetChangeLogs()
 	header.LogRoot = types.DeriveChangeLogsSha(changeLogs)
 	return header, nil
+}
+
+// CallTx pre-execute transactions and contracts.
+func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *common.Address, data hexutil.Bytes, blockHash common.Hash, timeout time.Duration) ([]byte, uint64, error) {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	accM := account.OnlyReadManager(header.Hash(), p.chain.db)
+	accM.Reset(header.ParentHash)
+
+	// A random address is found as our caller address.
+	caller, err := common.StringToAddress("Lemo8392TWFWFF6PD6A93N2PBC6CJFQRSZSHN95H") // todo Consider letting users pass in their own addresses
+	if err != nil {
+		return nil, 0, err
+	}
+	// enough gasLimit
+	gasLimit := uint64(math.MaxUint64 / 2)
+	gasPrice := new(big.Int).SetUint64(defaultGasPrice)
+
+	var tx *types.Transaction
+	if to == nil { // avoid null pointer references
+		tx = types.NewContractCreation(big.NewInt(0), gasLimit, gasPrice, data, p.chain.chainID, 0, "", "")
+	} else {
+		tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, p.chain.chainID, 0, "", "")
+	}
+
+	// Timeout limit
+	var cancel context.CancelFunc
+	if timeout > 0 {
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+	} else {
+		ctx, cancel = context.WithCancel(ctx)
+	}
+	defer cancel()
+
+	Evm, vmError, sender := getEVM(ctx, caller, tx, header, 0, tx.Hash(), blockHash, p.chain, *p.cfg, accM)
+
+	go func() {
+		<-ctx.Done()
+		Evm.Cancel()
+	}()
+
+	restGas := gasLimit
+	// Fixed cost
+	restGas, err = p.payIntrinsicGas(tx, restGas)
+	if err != nil {
+		return nil, 0, err
+	}
+	IsContractCreate := tx.To() == nil
+	var ret []byte
+	if IsContractCreate {
+		ret, _, restGas, err = Evm.Create(sender, tx.Data(), restGas, big.NewInt(0))
+	} else {
+		recipientAddr := *tx.To()
+		ret, restGas, err = Evm.Call(sender, recipientAddr, tx.Data(), restGas, big.NewInt(0))
+	}
+
+	if err := vmError(); err != nil {
+		return nil, 0, err
+	}
+
+	return ret, gasLimit - restGas, err
+}
+
+// getEVM
+func getEVM(ctx context.Context, caller common.Address, tx *types.Transaction, header *types.Header, txIndex uint, txHash common.Hash, blockHash common.Hash, chain ChainContext, cfg vm.Config, accM *account.Manager) (*vm.EVM, func() error, types.AccountAccessor) {
+	sender := accM.GetCanonicalAccount(caller)
+
+	vmError := func() error { return nil }
+	evmContext := NewEVMContext(tx, header, txIndex, txHash, blockHash, chain)
+	vmEnv := vm.NewEVM(evmContext, accM, cfg)
+	return vmEnv, vmError, sender
 }

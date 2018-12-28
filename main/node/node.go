@@ -275,7 +275,7 @@ func (n *Node) stopInProc() {
 }
 
 func (n *Node) startIPC(apis []rpc.API) error {
-	if n.ipcEndpoint == "" {
+	if n.config.IPCPath == "" || n.ipcEndpoint == "" {
 		return nil
 	}
 	handler := rpc.NewServer()
@@ -290,6 +290,7 @@ func (n *Node) startIPC(apis []rpc.API) error {
 		err      error
 	)
 	if listener, err = rpc.CreateIPCListener(n.ipcEndpoint); err != nil {
+		log.Error("IPC listen failed.")
 		return err
 	}
 	go func() {
@@ -535,7 +536,7 @@ func (n *Node) apis() []rpc.API {
 		{
 			Namespace: "tx",
 			Version:   "1.0",
-			Service:   NewPublicTxAPI(n.txPool),
+			Service:   NewPublicTxAPI(n),
 			Public:    true,
 		},
 	}

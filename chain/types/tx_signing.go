@@ -14,7 +14,7 @@ var (
 	ErrPublicKey = errors.New("invalid public key")
 )
 
-// MakeSigner returns a Signer based on the given version and chainId.
+// MakeSigner returns a Signer based on the given version and chainID.
 func MakeSigner() Signer {
 	return DefaultSigner{}
 }
@@ -91,7 +91,7 @@ func (s DefaultSigner) Hash(tx *Transaction) common.Hash {
 	return rlpHash([]interface{}{
 		tx.Type(),
 		tx.Version(),
-		tx.ChainId(),
+		tx.ChainID(),
 		tx.data.Recipient,
 		tx.data.RecipientName,
 		tx.data.GasPrice,

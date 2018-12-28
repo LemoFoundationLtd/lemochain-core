@@ -253,7 +253,7 @@ func (pool *TxPool) validateTx(tx *types.Transaction) error {
 	if err != nil {
 		return ErrInvalidSender
 	}
-	if tx.ChainId() != pool.chainID {
+	if tx.ChainID() != pool.chainID {
 		return ErrTxChainID
 	}
 

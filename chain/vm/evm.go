@@ -9,6 +9,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
+	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 )
 
 type (
@@ -139,7 +140,6 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		return nil, gas, nil
 	}
 	evm.Transfer(evm.am, caller.GetAddress(), to.GetAddress(), value)
-
 	// Initialise a new contract and set the code that is to be used by the EVM.
 	// The contract is a scoped environment for this execution context only.
 	contract := NewContract(caller, to, value, gas)
@@ -314,6 +314,8 @@ func (evm *EVM) Create(caller ContractRef, code []byte, gas uint64, value *big.I
 	}
 	// Ensure there's no existing contract already at the designated address
 	contractAddr = crypto.CreateAddress(caller.GetAddress(), evm.TxHash)
+	// print out the contract address
+	log.Infof("Created the contract address = %v", contractAddr.String())
 	contractAccount := evm.am.GetAccount(contractAddr)
 	if !contractAccount.IsEmpty() {
 		return nil, common.Address{}, 0, ErrContractAddressCollision
@@ -355,7 +357,6 @@ func (evm *EVM) Create(caller ContractRef, code []byte, gas uint64, value *big.I
 			err = ErrCodeStoreOutOfGas
 		}
 	}
-
 	// When an error was returned by the EVM or when setting the creation code
 	// above we revert to the snapshot and consume any gas remaining. Additionally
 	// when we're in homestead this also counts for code storage gas errors.

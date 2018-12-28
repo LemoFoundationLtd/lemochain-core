@@ -42,7 +42,7 @@ type txdata struct {
 	Message       string          `json:"message"`
 
 	// V is combined by these properties:
-	//     type    version secp256k1.recovery  chainId
+	//     type    version secp256k1.recovery  chainID
 	// |----8----|----7----|--------1--------|----16----|
 	V *big.Int `json:"v" gencodec:"required"`
 	R *big.Int `json:"r" gencodec:"required"`
@@ -63,15 +63,15 @@ type txdataMarshaling struct {
 	S          *hexutil.Big
 }
 
-func NewTransaction(to common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte, chainId uint16, expiration uint64, toName string, message string) *Transaction {
-	return newTransaction(0, TxVersion, chainId, &to, amount, gasLimit, gasPrice, data, expiration, toName, message)
+func NewTransaction(to common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte, chainID uint16, expiration uint64, toName string, message string) *Transaction {
+	return newTransaction(0, TxVersion, chainID, &to, amount, gasLimit, gasPrice, data, expiration, toName, message)
 }
 
-func NewContractCreation(amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte, chainId uint16, expiration uint64, toName string, message string) *Transaction {
-	return newTransaction(0, TxVersion, chainId, nil, amount, gasLimit, gasPrice, data, expiration, toName, message)
+func NewContractCreation(amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte, chainID uint16, expiration uint64, toName string, message string) *Transaction {
+	return newTransaction(0, TxVersion, chainID, nil, amount, gasLimit, gasPrice, data, expiration, toName, message)
 }
 
-func newTransaction(txType uint8, version uint8, chainId uint16, to *common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte, expiration uint64, toName string, message string) *Transaction {
+func newTransaction(txType uint8, version uint8, chainID uint16, to *common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte, expiration uint64, toName string, message string) *Transaction {
 	if version >= 128 {
 		panic(fmt.Sprintf("invalid transaction version %d, should < 128", version))
 	}
@@ -84,7 +84,7 @@ func newTransaction(txType uint8, version uint8, chainId uint16, to *common.Addr
 		Data:          data,
 		Expiration:    expiration,
 		Message:       message,
-		V:             CombineV(txType, version, chainId),
+		V:             CombineV(txType, version, chainID),
 		R:             new(big.Int),
 		S:             new(big.Int),
 	}
@@ -141,7 +141,7 @@ func (tx *Transaction) UnmarshalJSON(input []byte) error {
 
 func (tx *Transaction) Type() uint8        { txType, _, _, _ := ParseV(tx.data.V); return txType }
 func (tx *Transaction) Version() uint8     { _, version, _, _ := ParseV(tx.data.V); return version }
-func (tx *Transaction) ChainId() uint16    { _, _, _, chainId := ParseV(tx.data.V); return chainId }
+func (tx *Transaction) ChainID() uint16    { _, _, _, chainID := ParseV(tx.data.V); return chainID }
 func (tx *Transaction) Data() []byte       { return common.CopyBytes(tx.data.Data) }
 func (tx *Transaction) GasLimit() uint64   { return tx.data.GasLimit }
 func (tx *Transaction) GasPrice() *big.Int { return new(big.Int).Set(tx.data.GasPrice) }
@@ -227,7 +227,7 @@ func (tx *Transaction) String() string {
 		fmt.Sprintf("CreateContract: %v", tx.data.Recipient == nil),
 		fmt.Sprintf("Type: %d", tx.Type()),
 		fmt.Sprintf("Version: %d", tx.Version()),
-		fmt.Sprintf("ChainId: %d", tx.ChainId()),
+		fmt.Sprintf("ChainID: %d", tx.ChainID()),
 		fmt.Sprintf("From: %s", from),
 		fmt.Sprintf("To: %s", to),
 	}
@@ -257,17 +257,17 @@ func SetSecp256k1V(V *big.Int, secp256k1V byte) *big.Int {
 	return new(big.Int).SetBit(V, 16, uint(secp256k1V&1))
 }
 
-// CombineV combines type, version, chainId together to get V (without secp256k1.V)
-func CombineV(txType uint8, version uint8, chainId uint16) *big.Int {
-	return new(big.Int).SetUint64((uint64(txType) << 24) + (uint64(version&0x7f) << 17) + uint64(chainId))
+// CombineV combines type, version, chainID together to get V (without secp256k1.V)
+func CombineV(txType uint8, version uint8, chainID uint16) *big.Int {
+	return new(big.Int).SetUint64((uint64(txType) << 24) + (uint64(version&0x7f) << 17) + uint64(chainID))
 }
 
 // ParseV split V to 4 parts
-func ParseV(V *big.Int) (txType uint8, version uint8, secp256k1V uint8, chainId uint16) {
+func ParseV(V *big.Int) (txType uint8, version uint8, secp256k1V uint8, chainID uint16) {
 	uint64V := V.Uint64()
 	txType = uint8((uint64V >> 24) & 0xff)
 	version = uint8((uint64V >> 17) & 0x7f)
 	secp256k1V = uint8((uint64V >> 16) & 1)
-	chainId = uint16(uint64V & 0xffff)
+	chainID = uint16(uint64V & 0xffff)
 	return
 }

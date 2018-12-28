@@ -1,6 +1,6 @@
 (function (global, factory) {
-    typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('core-js/modules/es6.object.keys'), require('core-js/modules/es6.array.iterator'), require('core-js/modules/es7.object.values'), require('core-js/modules/web.dom.iterable'), require('core-js/modules/es6.array.fill'), require('core-js/modules/es6.regexp.match'), require('core-js/modules/es7.string.pad-start'), require('core-js/modules/es6.regexp.replace'), require('core-js/modules/es6.regexp.to-string'), require('core-js/modules/es7.object.entries'), require('core-js/modules/es6.string.starts-with'), require('core-js/modules/es6.promise'), require('core-js/modules/es6.function.name')) :
-        typeof define === 'function' && define.amd ? define(['core-js/modules/es6.object.keys', 'core-js/modules/es6.array.iterator', 'core-js/modules/es7.object.values', 'core-js/modules/web.dom.iterable', 'core-js/modules/es6.array.fill', 'core-js/modules/es6.regexp.match', 'core-js/modules/es7.string.pad-start', 'core-js/modules/es6.regexp.replace', 'core-js/modules/es6.regexp.to-string', 'core-js/modules/es7.object.entries', 'core-js/modules/es6.string.starts-with', 'core-js/modules/es6.promise', 'core-js/modules/es6.function.name'], factory) :
+    typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('core-js/modules/es6.regexp.to-string'), require('core-js/modules/es6.function.name'), require('core-js/modules/es6.object.keys'), require('core-js/modules/es6.array.iterator'), require('core-js/modules/es7.object.values'), require('core-js/modules/web.dom.iterable'), require('core-js/modules/es6.promise'), require('core-js/modules/es6.array.fill'), require('core-js/modules/es6.regexp.match'), require('core-js/modules/es7.string.pad-start'), require('core-js/modules/es6.regexp.replace'), require('core-js/modules/es7.object.entries'), require('core-js/modules/es6.string.starts-with')) :
+        typeof define === 'function' && define.amd ? define(['core-js/modules/es6.regexp.to-string', 'core-js/modules/es6.function.name', 'core-js/modules/es6.object.keys', 'core-js/modules/es6.array.iterator', 'core-js/modules/es7.object.values', 'core-js/modules/web.dom.iterable', 'core-js/modules/es6.promise', 'core-js/modules/es6.array.fill', 'core-js/modules/es6.regexp.match', 'core-js/modules/es7.string.pad-start', 'core-js/modules/es6.regexp.replace', 'core-js/modules/es7.object.entries', 'core-js/modules/es6.string.starts-with'], factory) :
             (global.LemoClient = factory());
 }(this, (function () { 'use strict';
 
@@ -2876,6 +2876,21 @@
         })(commonjsGlobal);
     });
 
+    // current transaction version. should between 0 to 128
+    var TX_VERSION = 1; // Transaction Time To Live, 2hours. It is set on chain
+
+    var TTTL = 2 * 60 * 60; // Gas price for smart contract. Unit is mo/gas
+
+    var TX_DEFAULT_GAS_PRICE = 3000000000; // Max gas limit for smart contract. Unit is gas
+
+    var TX_DEFAULT_GAS_LIMIT = 2000000; // The interval time of watching poll. It is in milliseconds
+
+    var DEFAULT_POLL_DURATION = 3000; // The max retry times when poll failed
+
+    var MAX_POLL_RETRY = 5; // 1: secp256k1 public key
+
+    var ADDRESS_VERSION = 1;
+
     var runtime = createCommonjsModule(function (module) {
         /**
          * Copyright (c) 2014-present, Facebook, Inc.
@@ -5512,6 +5527,9 @@
         invalidConnConfig: function invalidConnConfig(config) {
             return "unknown conn config: ".concat(JSON.stringify(config));
         },
+        InvalidHTTPHost: function InvalidHTTPHost() {
+            return 'Http host not set or invalid';
+        },
         InvalidResponse: function InvalidResponse(result) {
             return !!result && !!result.error && !!result.error.message ? result.error.message : "Invalid JSON RPC response: ".concat(JSON.stringify(result));
         },
@@ -5523,20 +5541,34 @@
         },
         ConnectionTimeout: function ConnectionTimeout(ms) {
             return "CONNECTION TIMEOUT: timeout of ".concat(ms, " ms achived");
+        },
+        TXFieldToLong: function TXFieldToLong(fieldName, length) {
+            return "The field ".concat(fieldName, " must less than ").concat(length, " bytes");
+        },
+        TXVTypeConflict: function TXVTypeConflict(tx) {
+            return "'v' ".concat(tx.v, " and 'type' ").concat(tx.type, " cannot be set at same time");
+        },
+        TXVVersionConflict: function TXVVersionConflict(tx) {
+            return "'v' ".concat(tx.v, " and 'version' ").concat(tx.version, " cannot be set at same time");
+        },
+        TXMustBeNumber: function TXMustBeNumber(key, value) {
+            return "'".concat(key, "' ").concat(value, " should be a number");
+        },
+        TXInvalidType: function TXInvalidType(key, value, types) {
+            // Get class name if any type is class
+            types = types.map(function (item) {
+                return item.name || item;
+            });
+            var typePhrase = types.length === 1 ? types[0] : "one of [".concat(types, "]");
+            return "The type of '".concat(key, "' ").concat(value, " should be ").concat(typePhrase, ", but we got ").concat(_typeof_1(value));
+        },
+        TXCanNotTestRange: function TXCanNotTestRange(key, value) {
+            return "The type of '".concat(key, "' ").concat(value, " is invalid: ").concat(_typeof_1(value));
+        },
+        TXInvalidRange: function TXInvalidRange(key, value, from, to) {
+            return "'".concat(key, "' ").concat(value, " is not in range [0x").concat(from.toString(16), ", 0x").concat(to.toString(16), "]");
         }
     };
-
-    // 1: LemoChain main net
-    var CHAIN_ID = 1; // current transaction version. should between 0 to 128
-
-    var TX_VERSION = 1; // Transaction Time To Live, 2hours. It is set on chain
-
-    var TTTL = 2 * 60 * 60; // 1: secp256k1 public key
-
-    var ADDRESS_VERSION = 1;
-    var DEFAULT_HTTP_HOST = 'http://127.0.0.1:8001';
-    var POLL_DURATION = 3000;
-    var MAX_POLL_RETRY = 5;
 
     var HttpConn =
         /*#__PURE__*/
@@ -5544,7 +5576,11 @@
             function HttpConn(host, timeout, username, password, headers) {
                 classCallCheck(this, HttpConn);
 
-                this.host = host || DEFAULT_HTTP_HOST;
+                if (!host) {
+                    throw new Error(errors.InvalidHTTPHost());
+                }
+
+                this.host = host;
                 this.timeout = timeout || 0;
                 var config = {
                     baseURL: this.host,
@@ -5585,19 +5621,20 @@
 
                                         case 3:
                                             response = _context.sent;
-                                            _context.next = 10;
+                                            _context.next = 11;
                                             break;
 
                                         case 6:
                                             _context.prev = 6;
                                             _context.t0 = _context["catch"](0);
-                                            console.error('send fail:', _context.t0.message);
+                                            console.error('send fail!');
+                                            console.error(_context.t0);
                                             throw new Error(errors.InvalidConnection(this.host));
 
-                                        case 10:
+                                        case 11:
                                             return _context.abrupt("return", response.data);
 
-                                        case 11:
+                                        case 12:
                                         case "end":
                                             return _context.stop();
                                     }
@@ -5651,10 +5688,10 @@
 
     function isValidResponse(response) {
         return Array.isArray(response) ? response.every(validateSingleMessage) : validateSingleMessage(response);
+    }
 
-        function validateSingleMessage(message) {
-            return !!message && !message.error && message.jsonrpc === '2.0' && (typeof message.id === 'number' || typeof message.id === 'string') && message.result !== undefined; // undefined is not valid json object
-        }
+    function validateSingleMessage(message) {
+        return !!message && !message.error && message.jsonrpc === '2.0' && (typeof message.id === 'number' || typeof message.id === 'string') && message.result !== undefined; // undefined is not valid json object
     }
     /**
      * Create jsonrpc batch payload object
@@ -5685,9 +5722,17 @@
         /*#__PURE__*/
         function () {
             function Requester(conn) {
+                var config = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+
                 classCallCheck(this, Requester);
 
+                if (!conn) {
+                    throw new Error(errors.InvalidConn());
+                }
+
                 this.conn = conn;
+                this.pollDuration = config.pollDuration || DEFAULT_POLL_DURATION;
+                this.maxPollRetry = config.maxPollRetry || MAX_POLL_RETRY;
                 this.idGenerator = 1; // used for generate watchId
 
                 this.watchers = {}; // key is watchId, value is timer
@@ -5712,40 +5757,32 @@
                                 while (1) {
                                     switch (_context.prev = _context.next) {
                                         case 0:
-                                            if (this.conn) {
-                                                _context.next = 2;
-                                                break;
-                                            }
-
-                                            throw new Error(errors.InvalidConn());
-
-                                        case 2:
                                             payload = jsonrpc.toPayload(method, params);
                                             response = this.conn.send(payload);
 
                                             if (!(response && typeof response.then === 'function')) {
-                                                _context.next = 8;
+                                                _context.next = 6;
                                                 break;
                                             }
 
-                                            _context.next = 7;
+                                            _context.next = 5;
                                             return response;
 
-                                        case 7:
+                                        case 5:
                                             response = _context.sent;
 
-                                        case 8:
+                                        case 6:
                                             if (jsonrpc.isValidResponse(response)) {
-                                                _context.next = 10;
+                                                _context.next = 8;
                                                 break;
                                             }
 
                                             throw new Error(errors.InvalidResponse(response));
 
-                                        case 10:
+                                        case 8:
                                             return _context.abrupt("return", response.result);
 
-                                        case 11:
+                                        case 9:
                                         case "end":
                                             return _context.stop();
                                     }
@@ -5777,37 +5814,29 @@
                                 while (1) {
                                     switch (_context2.prev = _context2.next) {
                                         case 0:
-                                            if (this.conn) {
-                                                _context2.next = 2;
-                                                break;
-                                            }
-
-                                            throw new Error(errors.InvalidConn());
-
-                                        case 2:
                                             payload = jsonrpc.toBatchPayload(data);
                                             response = this.conn.send(payload);
 
                                             if (!(response && typeof response.then === 'function')) {
-                                                _context2.next = 8;
+                                                _context2.next = 6;
                                                 break;
                                             }
 
-                                            _context2.next = 7;
+                                            _context2.next = 5;
                                             return response;
 
-                                        case 7:
+                                        case 5:
                                             response = _context2.sent;
 
-                                        case 8:
+                                        case 6:
                                             if (Array.isArray(response)) {
-                                                _context2.next = 10;
+                                                _context2.next = 8;
                                                 break;
                                             }
 
                                             throw new Error(errors.InvalidResponse(response));
 
-                                        case 10:
+                                        case 8:
                                             response.forEach(function (result) {
                                                 if (!jsonrpc.isValidResponse(result)) {
                                                     throw new Error(errors.InvalidResponse(result));
@@ -5815,7 +5844,7 @@
                                             });
                                             return _context2.abrupt("return", response);
 
-                                        case 12:
+                                        case 10:
                                         case "end":
                                             return _context2.stop();
                                     }
@@ -5886,7 +5915,7 @@
                                                 _context3.t0 = _context3["catch"](0);
                                                 console.error('watch fail:', _context3.t0);
 
-                                                if (!(++errCount <= MAX_POLL_RETRY)) {
+                                                if (!(++errCount <= _this.maxPollRetry)) {
                                                     _context3.next = 16;
                                                     break;
                                                 }
@@ -5908,12 +5937,12 @@
                                         }
                                     }
                                 }, _callee3, this, [[0, 11]]);
-                            })), POLL_DURATION);
+                            })), this.pollDuration);
                     return newWatchId;
                 }
                 /**
                  * Stop a watching by watchId. If no watchId specified, stop all
-                 * @param {number|undefined} watchId
+                 * @param {number?} watchId
                  */
 
             }, {
@@ -5924,7 +5953,7 @@
                         return;
                     }
 
-                    if (this.watchers[watchId] > 0) {
+                    if (this.watchers[watchId]) {
                         clearInterval(this.watchers[watchId]);
                         delete this.watchers[watchId];
                     }
@@ -5936,9 +5965,8 @@
             }, {
                 key: "reset",
                 value: function reset() {
-                    var watchers = this.watchers;
+                    Object.values(this.watchers).forEach(clearInterval);
                     this.watchers = {};
-                    Object.values(watchers).forEach(clearInterval);
                 }
                 /**
                  * Return true if watching new data
@@ -5964,73 +5992,6 @@
     function getSig(data) {
         return JSON.stringify(data);
     }
-
-    function _arrayWithHoles(arr) {
-        if (Array.isArray(arr)) return arr;
-    }
-
-    var arrayWithHoles = _arrayWithHoles;
-
-    var arrayWithHoles$1 = /*#__PURE__*/Object.freeze({
-        default: arrayWithHoles,
-        __moduleExports: arrayWithHoles
-    });
-
-    function _iterableToArrayLimit(arr, i) {
-        var _arr = [];
-        var _n = true;
-        var _d = false;
-        var _e = undefined;
-
-        try {
-            for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) {
-                _arr.push(_s.value);
-
-                if (i && _arr.length === i) break;
-            }
-        } catch (err) {
-            _d = true;
-            _e = err;
-        } finally {
-            try {
-                if (!_n && _i["return"] != null) _i["return"]();
-            } finally {
-                if (_d) throw _e;
-            }
-        }
-
-        return _arr;
-    }
-
-    var iterableToArrayLimit = _iterableToArrayLimit;
-
-    var iterableToArrayLimit$1 = /*#__PURE__*/Object.freeze({
-        default: iterableToArrayLimit,
-        __moduleExports: iterableToArrayLimit
-    });
-
-    function _nonIterableRest() {
-        throw new TypeError("Invalid attempt to destructure non-iterable instance");
-    }
-
-    var nonIterableRest = _nonIterableRest;
-
-    var nonIterableRest$1 = /*#__PURE__*/Object.freeze({
-        default: nonIterableRest,
-        __moduleExports: nonIterableRest
-    });
-
-    var arrayWithHoles$2 = ( arrayWithHoles$1 && arrayWithHoles ) || arrayWithHoles$1;
-
-    var iterableToArrayLimit$2 = ( iterableToArrayLimit$1 && iterableToArrayLimit ) || iterableToArrayLimit$1;
-
-    var nonIterableRest$2 = ( nonIterableRest$1 && nonIterableRest ) || nonIterableRest$1;
-
-    function _slicedToArray(arr, i) {
-        return arrayWithHoles$2(arr) || iterableToArrayLimit$2(arr, i) || nonIterableRest$2();
-    }
-
-    var slicedToArray = _slicedToArray;
 
     var lookup = [];
     var revLookup = [];
@@ -8083,498 +8044,6 @@
         };
     });
     var safeBuffer_1 = safeBuffer.Buffer;
-
-    function isHash(hashOrHeight) {
-        return typeof hashOrHeight === 'string' && hashOrHeight.toLowerCase().startsWith('0x');
-    }
-    function has0xPrefix(str) {
-        return typeof str === 'string' && str.slice(0, 2).toLowerCase() === '0x';
-    }
-    function parseBlock(block) {
-        if (block && block.ChangeLogs) {
-            block.ChangeLogs.forEach(function (item) {
-                item.type = parseChangeLogType(item.type);
-            });
-        }
-
-        return block;
-    }
-    function parseAccount(account) {
-        account.balance = parseMoney(account.balance);
-        var oldRecords = account.records || {};
-        account.records = {};
-        Object.entries(oldRecords).forEach(function (_ref) {
-            var _ref2 = slicedToArray(_ref, 2),
-                logType = _ref2[0],
-                record = _ref2[1];
-
-            account.records[parseChangeLogType(logType)] = record;
-        });
-        return account;
-    }
-    function parseChangeLogType(logType) {
-        var dict = ['', 'BalanceLog', 'StorageLog', 'CodeLog', 'AddEventLog', 'SuicideLog'];
-
-        if (logType <= 0 || logType >= dict.length) {
-            return "UnknonwType(".concat(logType, ")");
-        }
-
-        return dict[logType];
-    }
-    function parseMoney(str) {
-        var result = new bignumber(str);
-        Object.defineProperty(result, 'toMoney', {
-            enumerable: false,
-            value: formatMoney.bind(null, result)
-        });
-        return result;
-    }
-    function formatMoney(mo) {
-        mo = new bignumber(mo).toString(10);
-
-        if (/0{18}$/.test(mo)) {
-            return "".concat(mo.slice(0, mo.length - 18), " LEMO");
-        } else if (/0{12}$/.test(mo)) {
-            if (mo.length <= 18) {
-                mo = mo.padStart(19, '0');
-            }
-
-            var int = mo.slice(0, mo.length - 18);
-            var rest = mo.slice(mo.length - 18).replace(/0+$/, '');
-            return "".concat(int, ".").concat(rest, " LEMO");
-        } else if (/0{9}$/.test(mo)) {
-            return "".concat(mo.slice(0, mo.length - 9), "G mo");
-        } else if (/0{6}$/.test(mo)) {
-            return "".concat(mo.slice(0, mo.length - 6), "M mo");
-        } else if (/0{3}$/.test(mo)) {
-            return "".concat(mo.slice(0, mo.length - 3), "K mo");
-        } else {
-            return "".concat(mo, " mo");
-        }
-    }
-    function toBuffer(v) {
-        if (safeBuffer_1.isBuffer(v)) {
-            return v;
-        }
-
-        if (v === null || v === undefined) {
-            return safeBuffer_1.allocUnsafe(0);
-        }
-
-        if (Array.isArray(v)) {
-            return safeBuffer_1.from(v);
-        }
-
-        if (typeof v === 'string') {
-            // is Hex String
-            if (v.match(/^0x[0-9A-Fa-f]*$/)) {
-                return hexStringToBuffer(v);
-            } else {
-                // encode string as utf8
-                return safeBuffer_1.from(v);
-            }
-        }
-
-        if (typeof v === 'number') {
-            v = v.toString(16);
-            return hexStringToBuffer(v);
-        } // BigNumber object
-
-
-        if (bignumber.isBigNumber(v)) {
-            v = v.toString(16);
-            return hexStringToBuffer(v);
-        } // BN object
-
-
-        if (v.toArray) {
-            return safeBuffer_1.from(v.toArray());
-        }
-
-        throw new Error('invalid type');
-    }
-
-    function hexStringToBuffer(hex) {
-        if (hex.slice(0, 2).toLowerCase() === '0x') {
-            hex = hex.slice(2);
-        }
-
-        if (hex.length % 2) {
-            hex = "0".concat(hex);
-        }
-
-        return safeBuffer_1.from(hex, 'hex');
-    }
-
-    function bufferTrimLeft(buffer) {
-        var i = 0;
-
-        for (; i < buffer.length; i++) {
-            if (buffer[i].toString() !== '0') {
-                buffer = buffer.slice(i);
-                break;
-            }
-        }
-
-        if (i === buffer.length) {
-            buffer = safeBuffer_1.allocUnsafe(0);
-        }
-
-        return buffer;
-    }
-    function setBufferLength(buffer, length, right) {
-        if (right) {
-            if (buffer.length < length) {
-                var buf = safeBuffer_1.allocUnsafe(length).fill(0);
-                buffer.copy(buf);
-                return buf;
-            }
-
-            return buffer.slice(0, length);
-        } else {
-            if (buffer.length < length) {
-                var _buf = safeBuffer_1.allocUnsafe(length).fill(0);
-
-                buffer.copy(_buf, length - buffer.length);
-                return _buf;
-            }
-
-            return buffer.slice(-length);
-        }
-    }
-
-    var MODULE_NAME = 'account';
-    var apiList = {
-        /**
-         * Get account information
-         * @param {string} address
-         * @return {Promise<object>}
-         */
-        getAccount: {
-            method: "".concat(MODULE_NAME, "_getAccount"),
-            outputFormatter: parseAccount
-        },
-
-        /**
-         * Get balance from account
-         * @param {string} address
-         * @return {Promise<BigNumber>}
-         */
-        getBalance: {
-            method: "".concat(MODULE_NAME, "_getBalance"),
-            outputFormatter: parseMoney
-        }
-    };
-    var apis = Object.entries(apiList).map(function (_ref) {
-        var _ref2 = slicedToArray(_ref, 2),
-            key = _ref2[0],
-            value = _ref2[1];
-
-        if (typeof value === 'function') {
-            return {
-                name: key,
-                call: value
-            };
-        }
-
-        return objectSpread({
-            name: key
-        }, value);
-    });
-    var account = {
-        moduleName: MODULE_NAME,
-        apis: apis
-    };
-
-    var MODULE_NAME$1 = 'chain';
-    var apiList$1 = {
-        /**
-         * Get current block information
-         * @param {Requester} requester
-         * @param {boolean?} stable=true Get stable block or the newest block without consensus
-         * @param {boolean?} withBody Get the body detail if true
-         * @return {Promise<object>}
-         */
-        getCurrentBlock: function getCurrentBlock(requester, stable, withBody) {
-            var apiName = typeof stable === 'undefined' || stable ? 'latestStableBlock' : 'currentBlock';
-            return requester.send("".concat(MODULE_NAME$1, "_").concat(apiName), [withBody]).then(parseBlock);
-        },
-
-        /**
-         * Get the specific block information
-         * @param {Requester} requester
-         * @param {string|number} hashOrHeight Hash or height which used to find the block
-         * @param {boolean?} withBody Get the body detail if true
-         * @return {Promise<object>}
-         */
-        getBlock: function getBlock(requester, hashOrHeight, withBody) {
-            var apiName = isHash(hashOrHeight) ? 'getBlockByHash' : 'getBlockByHeight';
-            return requester.send("".concat(MODULE_NAME$1, "_").concat(apiName), [hashOrHeight, withBody]).then(parseBlock);
-        },
-
-        /**
-         * Get the current height of chain head block
-         * @param {Requester} requester
-         * @param {boolean?} stable=true Get stable block or the newest block without consensus
-         * @return {Promise<number>}
-         */
-        getCurrentHeight: function getCurrentHeight(requester, stable) {
-            var apiName = typeof stable === 'undefined' || stable ? 'latestStableHeight' : 'currentHeight';
-            return requester.send("".concat(MODULE_NAME$1, "_").concat(apiName));
-        },
-
-        /**
-         * Get the information of genesis block, whose height is 0
-         * @return {Promise<object>}
-         */
-        getGenesis: {
-            method: "".concat(MODULE_NAME$1, "_genesis"),
-            outputFormatter: parseBlock
-        },
-
-        /**
-         * Get the chainID of current connected blockchain
-         * @return {Promise<number>}
-         */
-        getChainID: {
-            method: "".concat(MODULE_NAME$1, "_chainID")
-        },
-
-        /**
-         * Get the gas price advice. It is used to make sure the transaction will be packaged in a few seconds
-         * @return {Promise<BigNumber>}
-         */
-        getGasPriceAdvice: {
-            method: "".concat(MODULE_NAME$1, "_gasPriceAdvice"),
-            outputFormatter: parseMoney
-        },
-
-        /**
-         * Get the version of lemochain node
-         * @return {Promise<number>}
-         */
-        getNodeVersion: {
-            method: "".concat(MODULE_NAME$1, "_nodeVersion")
-        },
-
-        /**
-         * Get the version of sdk
-         * @return {Promise<number>}
-         */
-        getSdkVersion: function getSdkVersion() {
-
-            return Promise.resolve("0.9.0");
-        },
-
-        /**
-         * Get new blocks from now on
-         * @param {Requester} requester
-         * @param {boolean} withBody Get the body detail if true
-         * @param {Function} callback It is used to deliver the block object
-         * @return {number} watch id which used to stop watch
-         */
-        watchBlock: function watchBlock(requester, withBody, callback) {
-            return requester.watch("".concat(MODULE_NAME$1, "_latestStableBlock"), [withBody], callback);
-        }
-    };
-    var apis$1 = Object.entries(apiList$1).map(function (_ref) {
-        var _ref2 = slicedToArray(_ref, 2),
-            key = _ref2[0],
-            value = _ref2[1];
-
-        if (typeof value === 'function') {
-            return {
-                name: key,
-                call: value
-            };
-        }
-
-        return objectSpread({
-            name: key
-        }, value);
-    });
-    var chain = {
-        moduleName: MODULE_NAME$1,
-        apis: apis$1
-    };
-
-    var MODULE_NAME$2 = 'mine';
-    var apiList$2 = {
-        /**
-         * Return true if the lemochain node is mining
-         * @return {Promise<boolean>}
-         */
-        getMining: {
-            method: "".concat(MODULE_NAME$2, "_isMining")
-        },
-
-        /**
-         * Get miner address of the lemochain node
-         * @return {Promise<string>}
-         */
-        getMiner: {
-            method: "".concat(MODULE_NAME$2, "_miner")
-        }
-    };
-    var apis$2 = Object.entries(apiList$2).map(function (_ref) {
-        var _ref2 = slicedToArray(_ref, 2),
-            key = _ref2[0],
-            value = _ref2[1];
-
-        if (typeof value === 'function') {
-            return {
-                name: key,
-                call: value
-            };
-        }
-
-        return objectSpread({
-            name: key
-        }, value);
-    });
-    var mine = {
-        moduleName: MODULE_NAME$2,
-        apis: apis$2
-    };
-
-    var MODULE_NAME$3 = 'net';
-    var apiList$3 = {
-        /**
-         * Get connected peers count from the lemochain node
-         * @return {Promise<number>}
-         */
-        getPeersCount: {
-            method: "".concat(MODULE_NAME$3, "_peersCount")
-        },
-
-        /**
-         * Get the lemochain node information
-         * @return {Promise<object>}
-         */
-        getInfo: {
-            method: "".concat(MODULE_NAME$3, "_info")
-        }
-    };
-    var apis$3 = Object.entries(apiList$3).map(function (_ref) {
-        var _ref2 = slicedToArray(_ref, 2),
-            key = _ref2[0],
-            value = _ref2[1];
-
-        if (typeof value === 'function') {
-            return {
-                name: key,
-                call: value
-            };
-        }
-
-        return objectSpread({
-            name: key
-        }, value);
-    });
-    var net = {
-        moduleName: MODULE_NAME$3,
-        apis: apis$3
-    };
-
-    /**
-     * RLP Encoding based on: https://github.com/ethereum/wiki/wiki/%5BEnglish%5D-RLP
-     * This function takes in a data, convert it to buffer if not, and a length for recursion
-     *
-     * @param {Buffer,String,Integer,Array} data - will be converted to buffer
-     * @returns {Buffer} - returns buffer of encoded data
-     * */
-
-    function encode$1(input) {
-        if (input instanceof Array) {
-            var output = [];
-
-            for (var i = 0; i < input.length; i++) {
-                output.push(encode$1(input[i]));
-            }
-
-            var buf = safeBuffer_1.concat(output);
-            return safeBuffer_1.concat([encodeLength(buf.length, 192), buf]);
-        } else {
-            input = toBuffer$1(input);
-
-            if (input.length === 1 && input[0] < 128) {
-                return input;
-            } else {
-                return safeBuffer_1.concat([encodeLength(input.length, 128), input]);
-            }
-        }
-    }
-
-    function encodeLength(len, offset) {
-        if (len < 56) {
-            return safeBuffer_1.from([len + offset]);
-        } else {
-            var hexLength = intToHex(len);
-            var lLength = hexLength.length / 2;
-            var firstByte = intToHex(offset + 55 + lLength);
-            return safeBuffer_1.from(firstByte + hexLength, 'hex');
-        }
-    }
-
-    function isHexPrefixed(str) {
-        return str.slice(0, 2) === '0x';
-    } // Removes 0x from a given String
-
-
-    function stripHexPrefix(str) {
-        if (typeof str !== 'string') {
-            return str;
-        }
-
-        return isHexPrefixed(str) ? str.slice(2) : str;
-    }
-
-    function intToHex(i) {
-        var hex = i.toString(16);
-
-        if (hex.length % 2) {
-            hex = "0".concat(hex);
-        }
-
-        return hex;
-    }
-
-    function padToEven(a) {
-        if (a.length % 2) a = "0".concat(a);
-        return a;
-    }
-
-    function intToBuffer(i) {
-        var hex = intToHex(i);
-        return safeBuffer_1.from(hex, 'hex');
-    }
-
-    function toBuffer$1(v) {
-        if (!safeBuffer_1.isBuffer(v)) {
-            if (typeof v === 'string') {
-                if (isHexPrefixed(v)) {
-                    v = safeBuffer_1.from(padToEven(stripHexPrefix(v)), 'hex');
-                } else {
-                    v = safeBuffer_1.from(v);
-                }
-            } else if (typeof v === 'number') {
-                if (!v) {
-                    v = safeBuffer_1.from([]);
-                } else {
-                    v = intToBuffer(v);
-                }
-            } else if (v === null || v === undefined) {
-                v = safeBuffer_1.from([]);
-            } else if (v.toArray) {
-                // converts a BN to a Buffer
-                v = safeBuffer_1.from(v.toArray());
-            } else {
-                throw new Error('invalid type');
-            }
-        }
-
-        return v;
-    }
 
     var domain;
 
@@ -12082,6 +11551,232 @@
             decode: decode
         }
     };
+
+    function _arrayWithHoles(arr) {
+        if (Array.isArray(arr)) return arr;
+    }
+
+    var arrayWithHoles = _arrayWithHoles;
+
+    var arrayWithHoles$1 = /*#__PURE__*/Object.freeze({
+        default: arrayWithHoles,
+        __moduleExports: arrayWithHoles
+    });
+
+    function _iterableToArrayLimit(arr, i) {
+        var _arr = [];
+        var _n = true;
+        var _d = false;
+        var _e = undefined;
+
+        try {
+            for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) {
+                _arr.push(_s.value);
+
+                if (i && _arr.length === i) break;
+            }
+        } catch (err) {
+            _d = true;
+            _e = err;
+        } finally {
+            try {
+                if (!_n && _i["return"] != null) _i["return"]();
+            } finally {
+                if (_d) throw _e;
+            }
+        }
+
+        return _arr;
+    }
+
+    var iterableToArrayLimit = _iterableToArrayLimit;
+
+    var iterableToArrayLimit$1 = /*#__PURE__*/Object.freeze({
+        default: iterableToArrayLimit,
+        __moduleExports: iterableToArrayLimit
+    });
+
+    function _nonIterableRest() {
+        throw new TypeError("Invalid attempt to destructure non-iterable instance");
+    }
+
+    var nonIterableRest = _nonIterableRest;
+
+    var nonIterableRest$1 = /*#__PURE__*/Object.freeze({
+        default: nonIterableRest,
+        __moduleExports: nonIterableRest
+    });
+
+    var arrayWithHoles$2 = ( arrayWithHoles$1 && arrayWithHoles ) || arrayWithHoles$1;
+
+    var iterableToArrayLimit$2 = ( iterableToArrayLimit$1 && iterableToArrayLimit ) || iterableToArrayLimit$1;
+
+    var nonIterableRest$2 = ( nonIterableRest$1 && nonIterableRest ) || nonIterableRest$1;
+
+    function _slicedToArray(arr, i) {
+        return arrayWithHoles$2(arr) || iterableToArrayLimit$2(arr, i) || nonIterableRest$2();
+    }
+
+    var slicedToArray = _slicedToArray;
+
+    function isHash(hashOrHeight) {
+        return typeof hashOrHeight === 'string' && hashOrHeight.toLowerCase().startsWith('0x');
+    }
+    function has0xPrefix(str) {
+        return typeof str === 'string' && str.slice(0, 2).toLowerCase() === '0x';
+    }
+    function parseBlock(block) {
+        if (block && block.ChangeLogs) {
+            block.ChangeLogs.forEach(function (item) {
+                item.type = parseChangeLogType(item.type);
+            });
+        }
+
+        return block;
+    }
+    function parseAccount(account) {
+        account.balance = parseMoney(account.balance);
+        var oldRecords = account.records || {};
+        account.records = {};
+        Object.entries(oldRecords).forEach(function (_ref) {
+            var _ref2 = slicedToArray(_ref, 2),
+                logType = _ref2[0],
+                record = _ref2[1];
+
+            account.records[parseChangeLogType(logType)] = record;
+        });
+        return account;
+    }
+    function parseChangeLogType(logType) {
+        var dict = ['', 'BalanceLog', 'StorageLog', 'CodeLog', 'AddEventLog', 'SuicideLog'];
+
+        if (logType <= 0 || logType >= dict.length) {
+            return "UnknonwType(".concat(logType, ")");
+        }
+
+        return dict[logType];
+    }
+    function parseMoney(str) {
+        var result = new bignumber(str);
+        Object.defineProperty(result, 'toMoney', {
+            enumerable: false,
+            value: formatMoney.bind(null, result)
+        });
+        return result;
+    }
+    function formatMoney(mo) {
+        mo = new bignumber(mo).toString(10);
+
+        if (/0{18}$/.test(mo)) {
+            return "".concat(mo.slice(0, mo.length - 18), " LEMO");
+        } else if (/0{12}$/.test(mo)) {
+            if (mo.length <= 18) {
+                mo = mo.padStart(19, '0');
+            }
+
+            var int = mo.slice(0, mo.length - 18);
+            var rest = mo.slice(mo.length - 18).replace(/0+$/, '');
+            return "".concat(int, ".").concat(rest, " LEMO");
+        } else if (/0{9}$/.test(mo)) {
+            return "".concat(mo.slice(0, mo.length - 9), "G mo");
+        } else if (/0{6}$/.test(mo)) {
+            return "".concat(mo.slice(0, mo.length - 6), "M mo");
+        } else if (/0{3}$/.test(mo)) {
+            return "".concat(mo.slice(0, mo.length - 3), "K mo");
+        } else {
+            return "".concat(mo, " mo");
+        }
+    }
+    function toBuffer(v) {
+        if (safeBuffer_1.isBuffer(v)) {
+            return v;
+        }
+
+        if (v === null || v === undefined) {
+            return safeBuffer_1.allocUnsafe(0);
+        }
+
+        if (Array.isArray(v)) {
+            return safeBuffer_1.from(v);
+        }
+
+        if (typeof v === 'string') {
+            // is Hex String
+            if (v.match(/^0x[0-9A-Fa-f]*$/)) {
+                return hexStringToBuffer(v);
+            } else {
+                // encode string as utf8
+                return safeBuffer_1.from(v);
+            }
+        }
+
+        if (typeof v === 'number') {
+            v = v.toString(16);
+            return hexStringToBuffer(v);
+        } // BigNumber object
+
+
+        if (bignumber.isBigNumber(v)) {
+            v = v.toString(16);
+            return hexStringToBuffer(v);
+        } // BN object
+
+
+        if (v.toArray) {
+            return safeBuffer_1.from(v.toArray());
+        }
+
+        throw new Error('invalid type');
+    }
+
+    function hexStringToBuffer(hex) {
+        if (hex.slice(0, 2).toLowerCase() === '0x') {
+            hex = hex.slice(2);
+        }
+
+        if (hex.length % 2) {
+            hex = "0".concat(hex);
+        }
+
+        return safeBuffer_1.from(hex, 'hex');
+    }
+
+    function bufferTrimLeft(buffer) {
+        var i = 0;
+
+        for (; i < buffer.length; i++) {
+            if (buffer[i].toString() !== '0') {
+                buffer = buffer.slice(i);
+                break;
+            }
+        }
+
+        if (i === buffer.length) {
+            buffer = safeBuffer_1.allocUnsafe(0);
+        }
+
+        return buffer;
+    }
+    function setBufferLength(buffer, length, right) {
+        if (right) {
+            if (buffer.length < length) {
+                var buf = safeBuffer_1.allocUnsafe(length).fill(0);
+                buffer.copy(buf);
+                return buf;
+            }
+
+            return buffer.slice(0, length);
+        } else {
+            if (buffer.length < length) {
+                var _buf = safeBuffer_1.allocUnsafe(length).fill(0);
+
+                buffer.copy(_buf, length - buffer.length);
+                return _buf;
+            }
+
+            return buffer.slice(-length);
+        }
+    }
 
     var toString$2 = Object.prototype.toString; // TypeError
 
@@ -20513,7 +20208,7 @@
         this.place = 0;
     }
 
-    function getLength$1(buf, p) {
+    function getLength(buf, p) {
         var initial = buf[p.place++];
         if (!(initial & 0x80)) {
             return initial;
@@ -20546,20 +20241,20 @@
         if (data[p.place++] !== 0x30) {
             return false;
         }
-        var len = getLength$1(data, p);
+        var len = getLength(data, p);
         if ((len + p.place) !== data.length) {
             return false;
         }
         if (data[p.place++] !== 0x02) {
             return false;
         }
-        var rlen = getLength$1(data, p);
+        var rlen = getLength(data, p);
         var r = data.slice(p.place, rlen + p.place);
         p.place += rlen;
         if (data[p.place++] !== 0x02) {
             return false;
         }
-        var slen = getLength$1(data, p);
+        var slen = getLength(data, p);
         if (data.length !== slen + p.place) {
             return false;
         }
@@ -21259,13 +20954,15 @@
     };
 
     var N_DIV_2 = new bignumber('7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a0', 16);
-    var base26 = baseX('83456729ABCDFGHJKNPQRSTWYZ');
+    var BASE26_ALPHABET = '83456729ABCDFGHJKNPQRSTWYZ';
+    var BASE26_0 = BASE26_ALPHABET[0];
+    var base26 = baseX(BASE26_ALPHABET);
     var ADDRESS_LOGO = 'Lemo';
     /**
      * sign hash
      * @param {Buffer} privateKey length must be 32
      * @param {Buffer} hash length must be 32
-     * @return {{recovery: number, r: string, s: string}}
+     * @return {{recovery: number, r: Buffer, s: Buffer}}
      */
 
     function sign$2(privateKey, hash) {
@@ -21276,6 +20973,15 @@
             s: sig.signature.slice(32, 64)
         };
     }
+    /**
+     * Recover public key from hash and sign data
+     * @param {Buffer} hash
+     * @param {number} recovery
+     * @param {Buffer} r
+     * @param {Buffer} s
+     * @return {Buffer|null}
+     */
+
     function recover$2(hash, recovery, r, s) {
         // All transaction signatures whose s-value is greater than secp256k1n/2 are considered invalid.
         if (new bignumber(s).gt(N_DIV_2)) {
@@ -21294,12 +21000,18 @@
             return null;
         }
     }
+    /**
+     * Decode public key to LemoChain address
+     * @param {Buffer} pubKey
+     * @return {string}
+     */
+
     function pubKeyToAddress(pubKey) {
         var addressBin = safeBuffer_1.concat([safeBuffer_1.from([ADDRESS_VERSION]), keccak256(pubKey.slice(1)).slice(0, 19)]);
         return encodeAddress(addressBin);
     }
     /**
-     *
+     * sha3
      * @param {Buffer} data
      * @return {Buffer}
      */
@@ -21307,6 +21019,12 @@
     function keccak256(data) {
         return js('keccak256').update(data).digest();
     }
+    /**
+     * Decode hex address to LemoChain address
+     * @param {Buffer} data
+     * @return {string}
+     */
+
     function encodeAddress(data) {
         data = toBuffer(data);
         var checkSum = 0;
@@ -21317,8 +21035,19 @@
 
         var fullPayload = safeBuffer_1.concat([data, safeBuffer_1.from([checkSum])]);
         var encoded = base26.encode(fullPayload);
+
+        while (encoded.length < 36) {
+            encoded = BASE26_0 + encoded;
+        }
+
         return ADDRESS_LOGO + encoded;
     }
+    /**
+     * Decode LemoChain address to hex address
+     * @param {string} address
+     * @return {string}
+     */
+
     function decodeAddress(address) {
         if (!address || has0xPrefix(address)) {
             return address;
@@ -21352,6 +21081,578 @@
         return "0x".concat(hex);
     }
 
+    /**
+     * RLP Encoding based on: https://github.com/ethereum/wiki/wiki/%5BEnglish%5D-RLP
+     * This function takes in a data, convert it to buffer if not, and a length for recursion
+     *
+     * @param {Buffer,String,Integer,Array} data - will be converted to buffer
+     * @returns {Buffer} - returns buffer of encoded data
+     * */
+
+    function encode$1(input) {
+        if (input instanceof Array) {
+            var output = [];
+
+            for (var i = 0; i < input.length; i++) {
+                output.push(encode$1(input[i]));
+            }
+
+            var buf = safeBuffer_1.concat(output);
+            return safeBuffer_1.concat([encodeLength(buf.length, 192), buf]);
+        } else {
+            input = toBuffer$1(input);
+
+            if (input.length === 1 && input[0] < 128) {
+                return input;
+            } else {
+                return safeBuffer_1.concat([encodeLength(input.length, 128), input]);
+            }
+        }
+    }
+
+    function encodeLength(len, offset) {
+        if (len < 56) {
+            return safeBuffer_1.from([len + offset]);
+        } else {
+            var hexLength = intToHex(len);
+            var lLength = hexLength.length / 2;
+            var firstByte = intToHex(offset + 55 + lLength);
+            return safeBuffer_1.from(firstByte + hexLength, 'hex');
+        }
+    }
+
+    function isHexPrefixed(str) {
+        return str.slice(0, 2) === '0x';
+    } // Removes 0x from a given String
+
+
+    function stripHexPrefix(str) {
+        if (typeof str !== 'string') {
+            return str;
+        }
+
+        return isHexPrefixed(str) ? str.slice(2) : str;
+    }
+
+    function intToHex(i) {
+        var hex = i.toString(16);
+
+        if (hex.length % 2) {
+            hex = "0".concat(hex);
+        }
+
+        return hex;
+    }
+
+    function padToEven(a) {
+        if (a.length % 2) a = "0".concat(a);
+        return a;
+    }
+
+    function intToBuffer(i) {
+        var hex = intToHex(i);
+        return safeBuffer_1.from(hex, 'hex');
+    }
+
+    function toBuffer$1(v) {
+        if (!safeBuffer_1.isBuffer(v)) {
+            if (typeof v === 'string') {
+                if (isHexPrefixed(v)) {
+                    v = safeBuffer_1.from(padToEven(stripHexPrefix(v)), 'hex');
+                } else {
+                    v = safeBuffer_1.from(v);
+                }
+            } else if (typeof v === 'number') {
+                if (!v) {
+                    v = safeBuffer_1.from([]);
+                } else {
+                    v = intToBuffer(v);
+                }
+            } else if (v === null || v === undefined) {
+                v = safeBuffer_1.from([]);
+            } else if (v.toArray) {
+                // converts a BN to a Buffer
+                v = safeBuffer_1.from(v.toArray());
+            } else {
+                throw new Error('invalid type');
+            }
+        }
+
+        return v;
+    }
+
+    //     type    version  secp256k1.recovery  chainID
+    // |----8----|----7----|--------1--------|----16----|
+    // CombineV combines type, version, chainID together to generate V
+
+    function combineV(type, version, recovery, chainID) {
+        type = type % (1 << 8) << 24;
+        version = version % (1 << 7) << 17;
+        recovery = recovery % (1 << 1) << 16;
+        chainID %= 1 << 16;
+        return type | version | recovery | chainID;
+    } // ParseV split v to 4 parts
+
+    function parseV(v) {
+        var type = (v >> 24) % (1 << 8);
+        var version = (v >> 17) % (1 << 7);
+        var recovery = (v >> 16) % (1 << 1);
+        var chainID = v % (1 << 16);
+        return {
+            type: type,
+            version: version,
+            recovery: recovery,
+            chainID: chainID
+        };
+    }
+    function toRaw(tx, fieldName, isNumber, length) {
+        var data = tx[fieldName];
+
+        if (fieldName === 'to') {
+            data = decodeAddress(data);
+        }
+
+        if (isNumber && !safeBuffer_1.isBuffer(data)) {
+            // parse number in string (e.g. "0x10" or "16") to real number. or else it will be encode by ascii
+            data = new bignumber(data);
+        }
+
+        data = toBuffer(data);
+
+        if (length) {
+            if (data.length > length) {
+                throw new Error(errors.TXFieldToLong(fieldName, length));
+            }
+
+            data = setBufferLength(data, length, false);
+        } else {
+            data = bufferTrimLeft(data);
+        }
+
+        return data;
+    }
+    function toHexStr(tx, fieldName, length) {
+        var str = toRaw(tx, fieldName, true, length).toString('hex');
+        return str ? "0x".concat(str) : '';
+    }
+    function validateTxConfig(config) {
+        // v, type, version
+        if (config.v) {
+            checkType(config, 'v', ['string', safeBuffer_1], true);
+            checkRange(config, 'v', 0, 0xffffffff);
+            checkRange(config, 'v', 0, 0xffffffff);
+
+            if (config.type) {
+                throw new Error(errors.TXVTypeConflict(config));
+            }
+
+            if (config.version) {
+                throw new Error(errors.TXVVersionConflict(config));
+            }
+        } else {
+            if (config.type) {
+                checkType(config, 'type', ['number'], true);
+                checkRange(config, 'type', 0, 0xff);
+            }
+
+            if (config.version) {
+                checkType(config, 'version', ['number'], true);
+                checkRange(config, 'version', 0, 0x7f);
+            }
+        }
+
+        if (config.to) {
+            // TODO validate address
+            checkType(config, 'to', ['string'], false);
+        }
+
+        if (config.toName) {
+            checkType(config, 'toName', ['string'], false);
+        }
+
+        if (config.gasPrice) {
+            checkType(config, 'gasPrice', ['number', 'string'], true);
+        }
+
+        if (config.gasLimit) {
+            checkType(config, 'gasLimit', ['number', 'string'], true);
+        }
+
+        if (config.amount) {
+            checkType(config, 'amount', ['number', 'string'], true);
+        }
+
+        if (config.data) {
+            checkType(config, 'data', ['string', safeBuffer_1], true);
+        }
+
+        if (config.expirationTime) {
+            checkType(config, 'expirationTime', ['number', 'string'], true);
+        }
+
+        if (config.message) {
+            checkType(config, 'message', ['string'], false);
+        }
+
+        if (config.r) {
+            checkType(config, 'r', ['string', safeBuffer_1], true);
+        }
+
+        if (config.s) {
+            checkType(config, 's', ['string', safeBuffer_1], true);
+        }
+    }
+    /**
+     * @param {object} obj
+     * @param {string} fieldName
+     * @param {Array} types
+     * @param {boolean} isNumber If the type is string, then it must be a number string
+     */
+
+    function checkType(obj, fieldName, types, isNumber) {
+        var data = obj[fieldName];
+
+        var typeStr = _typeof_1(data);
+
+        for (var i = 0; i < types.length; i++) {
+            if (typeStr === types[i]) {
+                // Type is correct now. Check number characters before we leave
+                if (typeStr === 'string' && isNumber) {
+                    var isHex = has0xPrefix(data);
+
+                    if (isHex && !/^0x[0-9a-f]*$/i.test(data)) {
+                        throw new Error(errors.TXMustBeNumber(fieldName, data));
+                    }
+
+                    if (!isHex && !/^\d+$/.test(data)) {
+                        throw new Error(errors.TXMustBeNumber(fieldName, data));
+                    }
+                }
+
+                return;
+            }
+
+            var isClassType = _typeof_1(types[i]) === 'object' || typeof types[i] === 'function';
+
+            if (isClassType && data instanceof types[i]) {
+                return;
+            }
+        }
+
+        throw new Error(errors.TXInvalidType(fieldName, data, types));
+    }
+    /**
+     * @param {object} obj
+     * @param {string} fieldName
+     * @param {number} from
+     * @param {number} to
+     */
+
+
+    function checkRange(obj, fieldName, from, to) {
+        var data = obj[fieldName]; // convert all Buffer to string
+
+        if (data instanceof safeBuffer_1) {
+            data = "0x".concat(data.toString('hex'));
+        } // convert all string to number
+
+
+        if (typeof data === 'string') {
+            data = parseInt(data, has0xPrefix(data) ? 16 : 10);
+        }
+
+        if (typeof data !== 'number') {
+            throw new Error(errors.TXCanNotTestRange(fieldName, obj[fieldName]));
+        }
+
+        if (data < from || data > to) {
+            throw new Error(errors.TXInvalidRange(fieldName, obj[fieldName], from, to));
+        }
+    }
+
+    var Signer =
+        /*#__PURE__*/
+        function () {
+            /**
+             * @param {number} chainID The LemoChain id
+             */
+            function Signer(chainID) {
+                classCallCheck(this, Signer);
+
+                if (!chainID) {
+                    throw new Error('ChainID should not be empty');
+                }
+
+                this.chainID = chainID;
+            }
+            /**
+             * Sign a transaction with private key
+             * @param {Tx} tx
+             * @param {string|Buffer} privateKey
+             * @return {Buffer} The signed transaction's hash
+             */
+
+
+            createClass(Signer, [{
+                key: "sign",
+                value: function sign$$1(tx, privateKey) {
+                    privateKey = toBuffer(privateKey);
+
+                    var sig = sign$2(privateKey, this.hashForSign(tx));
+
+                    tx.v = combineV(tx.type, tx.version, sig.recovery, this.chainID);
+                    tx.r = sig.r;
+                    tx.s = sig.s;
+                    return tx.hash();
+                }
+                /**
+                 * Recover from address from a signed transaction
+                 * @param {Tx} tx
+                 * @return {string}
+                 */
+
+            }, {
+                key: "recover",
+                value: function recover$$1(tx) {
+                    var parsed = parseV(tx.v);
+
+                    if (parsed.chainID !== this.chainID) {
+                        console.warn("The chainID ".concat(parsed.chainID, " from transaction is different with ").concat(this.chainID, " from SDK"));
+                    }
+
+                    var recovery = parsed.recovery;
+
+                    var pubKey = recover$2(this.hashForSign(tx), recovery, tx.r, tx.s);
+
+                    if (!pubKey) {
+                        throw new Error('invalid signature');
+                    }
+
+                    tx.from = pubKeyToAddress(pubKey);
+                    return tx.from;
+                }
+            }, {
+                key: "hashForSign",
+                value: function hashForSign(tx) {
+                    var raw = [toRaw(tx, 'type', true), toRaw(tx, 'version', true), toBuffer(this.chainID), tx.to ? toRaw(tx, 'to', false, 20) : '', toRaw(tx, 'toName', false), toRaw(tx, 'gasPrice', true), toRaw(tx, 'gasLimit', true), toRaw(tx, 'amount', true), toRaw(tx, 'data', true), toRaw(tx, 'expirationTime', true), toRaw(tx, 'message', false)];
+                    return keccak256(encode$1(raw));
+                }
+            }]);
+
+            return Signer;
+        }();
+
+    var MODULE_NAME = 'account';
+    var apiList = {
+        /**
+         * Get account information
+         * @param {string} address
+         * @return {Promise<object>}
+         */
+        getAccount: {
+            method: "".concat(MODULE_NAME, "_getAccount"),
+            outputFormatter: parseAccount
+        },
+
+        /**
+         * Get balance from account
+         * @param {string} address
+         * @return {Promise<BigNumber>}
+         */
+        getBalance: {
+            method: "".concat(MODULE_NAME, "_getBalance"),
+            outputFormatter: parseMoney
+        }
+    };
+    var apis = Object.entries(apiList).map(function (_ref) {
+        var _ref2 = slicedToArray(_ref, 2),
+            key = _ref2[0],
+            value = _ref2[1];
+
+        return objectSpread({
+            name: key
+        }, value);
+    });
+    var account = {
+        moduleName: MODULE_NAME,
+        apis: apis
+    };
+
+    var MODULE_NAME$1 = 'chain';
+    var apiList$1 = {
+        /**
+         * Get current block information
+         * @param {boolean?} stable=true Get stable block or the newest block without consensus
+         * @param {boolean?} withBody Get the body detail if true
+         * @return {Promise<object>}
+         */
+        getCurrentBlock: {
+            call: function call(stable, withBody) {
+                var apiName = typeof stable === 'undefined' || stable ? 'latestStableBlock' : 'currentBlock';
+                return this.requester.send("".concat(MODULE_NAME$1, "_").concat(apiName), [withBody]).then(parseBlock);
+            }
+        },
+
+        /**
+         * Get the specific block information
+         * @param {string|number} hashOrHeight Hash or height which used to find the block
+         * @param {boolean?} withBody Get the body detail if true
+         * @return {Promise<object>}
+         */
+        getBlock: {
+            call: function call(hashOrHeight, withBody) {
+                var apiName = isHash(hashOrHeight) ? 'getBlockByHash' : 'getBlockByHeight';
+                return this.requester.send("".concat(MODULE_NAME$1, "_").concat(apiName), [hashOrHeight, withBody]).then(parseBlock);
+            }
+        },
+
+        /**
+         * Get the current height of chain head block
+         * @param {boolean?} stable=true Get stable block or the newest block without consensus
+         * @return {Promise<number>}
+         */
+        getCurrentHeight: {
+            call: function call(stable) {
+                var apiName = typeof stable === 'undefined' || stable ? 'latestStableHeight' : 'currentHeight';
+                return this.requester.send("".concat(MODULE_NAME$1, "_").concat(apiName));
+            }
+        },
+
+        /**
+         * Get the information of genesis block, whose height is 0
+         * @return {Promise<object>}
+         */
+        getGenesis: {
+            method: "".concat(MODULE_NAME$1, "_genesis"),
+            outputFormatter: parseBlock
+        },
+
+        /**
+         * Get the chainID of current connected blockchain
+         * @return {Promise<number>}
+         */
+        getChainID: {
+            method: "".concat(MODULE_NAME$1, "_chainID")
+        },
+
+        /**
+         * Get the gas price advice. It is used to make sure the transaction will be packaged in a few seconds
+         * @return {Promise<BigNumber>}
+         */
+        getGasPriceAdvice: {
+            method: "".concat(MODULE_NAME$1, "_gasPriceAdvice"),
+            outputFormatter: parseMoney
+        },
+
+        /**
+         * Get the version of lemochain node
+         * @return {Promise<number>}
+         */
+        getNodeVersion: {
+            method: "".concat(MODULE_NAME$1, "_nodeVersion")
+        },
+
+        /**
+         * Get the version of sdk
+         * @return {Promise<number>}
+         */
+        getSdkVersion: {
+            call: function call() {
+
+                return Promise.resolve("0.9.2");
+            }
+        },
+
+        /**
+         * Get new blocks from now on
+         * @param {boolean} withBody Get the body detail if true
+         * @param {Function} callback It is used to deliver the block object
+         * @return {number} watch id which used to stop watch
+         */
+        watchBlock: {
+            call: function call(withBody, callback) {
+                return this.requester.watch("".concat(MODULE_NAME$1, "_latestStableBlock"), [withBody], callback);
+            }
+        }
+    };
+    var apis$1 = Object.entries(apiList$1).map(function (_ref) {
+        var _ref2 = slicedToArray(_ref, 2),
+            key = _ref2[0],
+            value = _ref2[1];
+
+        return objectSpread({
+            name: key
+        }, value);
+    });
+    var chain = {
+        moduleName: MODULE_NAME$1,
+        apis: apis$1
+    };
+
+    var MODULE_NAME$2 = 'mine';
+    var apiList$2 = {
+        /**
+         * Return true if the lemochain node is mining
+         * @return {Promise<boolean>}
+         */
+        getMining: {
+            method: "".concat(MODULE_NAME$2, "_isMining")
+        },
+
+        /**
+         * Get miner address of the lemochain node
+         * @return {Promise<string>}
+         */
+        getMiner: {
+            method: "".concat(MODULE_NAME$2, "_miner")
+        }
+    };
+    var apis$2 = Object.entries(apiList$2).map(function (_ref) {
+        var _ref2 = slicedToArray(_ref, 2),
+            key = _ref2[0],
+            value = _ref2[1];
+
+        return objectSpread({
+            name: key
+        }, value);
+    });
+    var mine = {
+        moduleName: MODULE_NAME$2,
+        apis: apis$2
+    };
+
+    var MODULE_NAME$3 = 'net';
+    var apiList$3 = {
+        /**
+         * Get connected peers count from the lemochain node
+         * @return {Promise<number>}
+         */
+        getPeersCount: {
+            method: "".concat(MODULE_NAME$3, "_peersCount")
+        },
+
+        /**
+         * Get the lemochain node information
+         * @return {Promise<object>}
+         */
+        getInfo: {
+            method: "".concat(MODULE_NAME$3, "_info")
+        }
+    };
+    var apis$3 = Object.entries(apiList$3).map(function (_ref) {
+        var _ref2 = slicedToArray(_ref, 2),
+            key = _ref2[0],
+            value = _ref2[1];
+
+        return objectSpread({
+            name: key
+        }, value);
+    });
+    var net = {
+        moduleName: MODULE_NAME$3,
+        apis: apis$3
+    };
+
     var Tx =
         /*#__PURE__*/
         function () {
@@ -21360,46 +21661,47 @@
              * @param {object} txConfig
              * @param {number?} txConfig.type The type of transaction. 0: normal
              * @param {number?} txConfig.version The version of transaction protocol
-             * @param {number?} txConfig.chainId Chain id from LemoChain
-             * @param {string} txConfig.to The transaction recipient address
+             * @param {string?} txConfig.to The transaction recipient address
              * @param {string?} txConfig.toName The transaction recipient name
-             * @param {number|string?} txConfig.gasPrice=3000000000 Gas price for smart contract
-             * @param {number|string?} txConfig.gasLimit=2000000 Max gas limit for smart contract
-             * @param {number|string?} txConfig.amount Unit is wei
+             * @param {number|string?} txConfig.gasPrice Gas price for smart contract. Unit is mo/gas
+             * @param {number|string?} txConfig.gasLimit Max gas limit for smart contract. Unit is gas
+             * @param {number|string?} txConfig.amount Unit is mo
              * @param {Buffer|string?} txConfig.data Extra data or smart contract calling parameters
-             * @param {number?} txConfig.expirationTime Default value is half hour from now
+             * @param {number|string?} txConfig.expirationTime Default value is half hour from now
              * @param {string?} txConfig.message Extra value data
              * @param {Buffer|string?} txConfig.r Signature data
              * @param {Buffer|string?} txConfig.s Signature data
-             * @param {Buffer|string?} txConfig.v Signature data, it also contains type, version, and chainId for transaction
+             * @param {Buffer|string?} txConfig.v Signature data, it also contains type, version, and chainID for transaction
              */
             function Tx(txConfig) {
                 classCallCheck(this, Tx);
+
+                validateTxConfig(txConfig);
 
                 if (txConfig.v) {
                     this.v = txConfig.v;
                     var parsedV = parseV(txConfig.v);
                     this.type = parsedV.type;
                     this.version = parsedV.version;
-                    this.chainId = parsedV.chainId;
                 } else {
+                    // no v before sign
+                    this.v = '';
                     this.type = txConfig.type || 0;
                     this.version = txConfig.version || TX_VERSION;
-                    this.chainId = txConfig.chainId || CHAIN_ID;
-                    this.v = combineV(this.type, this.version, 0, this.chainId);
                 }
 
                 this.to = txConfig.to || '';
                 this.toName = txConfig.toName || '';
-                this.gasPrice = txConfig.gasPrice || 3000000000;
-                this.gasLimit = txConfig.gasLimit || 2000000;
+                this.gasPrice = txConfig.gasPrice || TX_DEFAULT_GAS_PRICE;
+                this.gasLimit = txConfig.gasLimit || TX_DEFAULT_GAS_LIMIT;
                 this.amount = txConfig.amount || 0;
                 this.data = txConfig.data || ''; // seconds
 
                 this.expirationTime = txConfig.expirationTime || Math.floor(Date.now() / 1000) + TTTL;
                 this.message = txConfig.message || '';
                 this.r = txConfig.r || '';
-                this.s = txConfig.s || '';
+                this.s = txConfig.s || ''; // this will be filled after Signer.recover
+
                 this.from = '';
             }
             /**
@@ -21411,7 +21713,7 @@
             createClass(Tx, [{
                 key: "serialize",
                 value: function serialize() {
-                    var raw = [toRaw(this, 'to', false, 20), toRaw(this, 'toName', false), toRaw(this, 'gasPrice', true), toRaw(this, 'gasLimit', true), toRaw(this, 'amount', true), toRaw(this, 'data', true), toRaw(this, 'expirationTime', true), toRaw(this, 'message', false), toRaw(this, 'v', true), toRaw(this, 'r', true), toRaw(this, 's', true)];
+                    var raw = [this.to ? toRaw(this, 'to', false, 20) : '', toRaw(this, 'toName', false), toRaw(this, 'gasPrice', true), toRaw(this, 'gasLimit', true), toRaw(this, 'amount', true), toRaw(this, 'data', true), toRaw(this, 'expirationTime', true), toRaw(this, 'message', false), toRaw(this, 'v', true), toRaw(this, 'r', true), toRaw(this, 's', true)];
                     return encode$1(raw);
                 }
             }, {
@@ -21456,131 +21758,10 @@
 
                     return result;
                 }
-                /**
-                 * @param {string|Buffer} privateKey
-                 * @return {Buffer} The signed transaction's hash
-                 */
-
-            }, {
-                key: "sign",
-                value: function sign$$1(privateKey) {
-                    privateKey = toBuffer(privateKey);
-                    new Signer().sign(this, privateKey);
-                    return this.hash();
-                }
-                /**
-                 * Recover from address from a signed transaction
-                 * @return {string}
-                 */
-
-            }, {
-                key: "recover",
-                value: function recover$$1() {
-                    new Signer().recover(this);
-                    return this.from;
-                }
             }]);
 
             return Tx;
         }();
-
-    var Signer =
-        /*#__PURE__*/
-        function () {
-            function Signer() {
-                classCallCheck(this, Signer);
-            }
-
-            createClass(Signer, [{
-                key: "sign",
-                value: function sign$$1(tx, privateKey) {
-                    var sig = sign$2(privateKey, this.hashForSign(tx));
-
-                    tx.v = combineV(tx.type, tx.version, sig.recovery, tx.chainId);
-                    tx.r = sig.r;
-                    tx.s = sig.s;
-                }
-            }, {
-                key: "recover",
-                value: function recover$$1(tx) {
-                    var recovery = parseV(tx.v).recovery;
-
-                    var pubKey = recover$2(this.hashForSign(tx), recovery, tx.r, tx.s);
-
-                    if (!pubKey) {
-                        throw new Error('invalid signature');
-                    }
-
-                    tx.from = pubKeyToAddress(pubKey);
-                }
-            }, {
-                key: "hashForSign",
-                value: function hashForSign(tx) {
-                    var raw = [toRaw(tx, 'type', true), toRaw(tx, 'version', true), toRaw(tx, 'chainId', true), toRaw(tx, 'to', false, 20), toRaw(tx, 'toName', false), toRaw(tx, 'gasPrice', true), toRaw(tx, 'gasLimit', true), toRaw(tx, 'amount', true), toRaw(tx, 'data', true), toRaw(tx, 'expirationTime', true), toRaw(tx, 'message', false)];
-                    return keccak256(encode$1(raw));
-                }
-            }]);
-
-            return Signer;
-        }(); // v is combined by these properties:
-    //     type    version  secp256k1.recovery  chainId
-    // |----8----|----7----|--------1--------|----16----|
-    // CombineV combines type, version, chainId together to generate V
-
-
-    function combineV(type, version, recovery, chainId) {
-        type = type % (1 << 8) << 24;
-        version = version % (1 << 7) << 17;
-        recovery = recovery % (1 << 1) << 16;
-        chainId %= 1 << 16;
-        return type | version | recovery | chainId;
-    } // ParseV split v to 4 parts
-
-
-    function parseV(v) {
-        var type = (v >> 24) % (1 << 8);
-        var version = (v >> 17) % (1 << 7);
-        var recovery = (v >> 16) % (1 << 1);
-        var chainId = v % (1 << 16);
-        return {
-            type: type,
-            version: version,
-            recovery: recovery,
-            chainId: chainId
-        };
-    }
-
-    function toRaw(tx, fieldName, isNumber, length) {
-        var data = tx[fieldName];
-
-        if (fieldName === 'to') {
-            data = decodeAddress(data);
-        }
-
-        if (isNumber && !safeBuffer_1.isBuffer(data)) {
-            // parse number in string (e.g. "0x10" or "16") to real number. or else it will be encode by ascii
-            data = new bignumber(data);
-        }
-
-        data = toBuffer(data);
-
-        if (length) {
-            if (data.length > length) {
-                throw new Error("The field ".concat(fieldName, " must less than ").concat(length, " bytes"));
-            }
-
-            data = setBufferLength(data, length, false);
-        } else {
-            data = bufferTrimLeft(data);
-        }
-
-        return data;
-    }
-
-    function toHexStr(tx, fieldName, length) {
-        var str = toRaw(tx, fieldName, true, length).toString('hex');
-        return str ? "0x".concat(str) : '';
-    }
 
     var MODULE_NAME$4 = 'tx';
     var apiList$4 = {
@@ -21592,74 +21773,53 @@
          */
         sendTx: {
             method: "".concat(MODULE_NAME$4, "_sendTx"),
-            inputFormatter: buildAndSignTx
+            inputFormatter: function inputFormatter(privateKey, txConfig) {
+                var tx = new Tx(txConfig);
+                this.signer.sign(tx, privateKey);
+                return [tx.toJson()];
+            }
         },
 
         /**
          * Send a signed transaction
-         * @param {object} txConfig Transaction config
+         * @param {object} txConfig Transaction config returned by lemo.tx.sign
          * @return {Promise<object>}
          */
         send: {
             method: "".concat(MODULE_NAME$4, "_sendTx"),
-            inputFormatter: buildSignedTx
+            inputFormatter: function inputFormatter(txConfig) {
+                if (typeof txConfig === 'string') {
+                    txConfig = JSON.parse(txConfig);
+                }
+
+                var tx = new Tx(txConfig);
+
+                if (!tx.r || !tx.s) {
+                    throw new Error("can't send an unsigned transaction");
+                }
+
+                return [tx.toJson()];
+            }
         },
 
         /**
          * Sign transaction and return the config which used to call lemo.tx.send
-         * @param {Requester} requester
          * @param {string} privateKey The private key from sender account
          * @param {object} txConfig Transaction config
          * @return {Promise<string>}
          */
-        sign: function sign(requester, privateKey, txConfig) {
-            var tx = new Tx(txConfig);
-            tx.sign(privateKey);
-            return Promise.resolve(JSON.stringify(tx.toJson()));
+        sign: {
+            call: function call(privateKey, txConfig) {
+                var tx = new Tx(txConfig);
+                this.signer.sign(tx, privateKey);
+                return Promise.resolve(JSON.stringify(tx.toJson()));
+            }
         }
     };
-    /**
-     * @param {string} privateKey The private key from sender account
-     * @param {object} txConfig Transaction config
-     * @return {Array} parameters for api
-     */
-
-    function buildAndSignTx(privateKey, txConfig) {
-        var tx = new Tx(txConfig);
-        tx.sign(privateKey);
-        return [tx.toJson()];
-    }
-    /**
-     * @param {object} txConfig Signed transaction config returned by lemo.tx.sign
-     * @return {Array} parameters for api
-     */
-
-
-    function buildSignedTx(txConfig) {
-        if (typeof txConfig === 'string') {
-            txConfig = JSON.parse(txConfig);
-        }
-
-        var tx = new Tx(txConfig);
-
-        if (!tx.r || !tx.s) {
-            throw new Error("can't send an unsigned transaction");
-        }
-
-        return [tx.toJson()];
-    }
-
     var apis$4 = Object.entries(apiList$4).map(function (_ref) {
         var _ref2 = slicedToArray(_ref, 2),
             key = _ref2[0],
             value = _ref2[1];
-
-        if (typeof value === 'function') {
-            return {
-                name: key,
-                call: value
-            };
-        }
 
         return objectSpread({
             name: key
@@ -21733,8 +21893,9 @@
              * @param {Function?} config.inputFormatter Convert input data before send request
              * @param {Function?} config.outputFormatter Convert received data from request before return
              * @param {Requester} requester
+             * @param {Signer} signer
              */
-            function Api(config, requester) {
+            function Api(config, requester, signer) {
                 classCallCheck(this, Api);
 
                 if (!config || !config.name) {
@@ -21751,6 +21912,7 @@
                 this.call = config.call;
                 this.method = config.method;
                 this.requester = requester;
+                this.signer = signer;
             }
 
             createClass(Api, [{
@@ -21760,92 +21922,125 @@
                         throw new Error(errors.UnavailableAPIName(this.name));
                     }
 
-                    obj[this.name] = buildCall(this);
+                    obj[this.name] = this.buildCall();
+                }
+            }, {
+                key: "buildCall",
+                value: function buildCall() {
+                    var _this = this;
+
+                    // bind 'this' of call, inputFormatter and outputFormatter to api instance
+                    if (typeof this.call === 'function') {
+                        return this.call.bind(this);
+                    }
+
+                    return (
+                        /*#__PURE__*/
+                        asyncToGenerator(
+                            /*#__PURE__*/
+                            regenerator.mark(function _callee() {
+                                var _len,
+                                    args,
+                                    _key,
+                                    result,
+                                    _args = arguments;
+
+                                return regenerator.wrap(function _callee$(_context) {
+                                    while (1) {
+                                        switch (_context.prev = _context.next) {
+                                            case 0:
+                                                for (_len = _args.length, args = new Array(_len), _key = 0; _key < _len; _key++) {
+                                                    args[_key] = _args[_key];
+                                                }
+
+                                                if (!_this.inputFormatter) {
+                                                    _context.next = 5;
+                                                    break;
+                                                }
+
+                                                args = _this.inputFormatter.apply(_this, toConsumableArray(args));
+
+                                                if (Array.isArray(args)) {
+                                                    _context.next = 5;
+                                                    break;
+                                                }
+
+                                                throw new Error('inputFormatter must return array');
+
+                                            case 5:
+                                                _context.next = 7;
+                                                return _this.requester.send(_this.method, args);
+
+                                            case 7:
+                                                result = _context.sent;
+
+                                                if (!_this.outputFormatter) {
+                                                    _context.next = 10;
+                                                    break;
+                                                }
+
+                                                return _context.abrupt("return", _this.outputFormatter(result));
+
+                                            case 10:
+                                                return _context.abrupt("return", result);
+
+                                            case 11:
+                                            case "end":
+                                                return _context.stop();
+                                        }
+                                    }
+                                }, _callee, this);
+                            }))
+                    );
                 }
             }]);
 
             return Api;
         }();
 
-    function buildCall(api) {
-        if (typeof api.call === 'function') {
-            return api.call.bind(null, api.requester);
-        }
-
-        return (
-            /*#__PURE__*/
-            asyncToGenerator(
-                /*#__PURE__*/
-                regenerator.mark(function _callee() {
-                    var _len,
-                        args,
-                        _key,
-                        result,
-                        _args = arguments;
-
-                    return regenerator.wrap(function _callee$(_context) {
-                        while (1) {
-                            switch (_context.prev = _context.next) {
-                                case 0:
-                                    for (_len = _args.length, args = new Array(_len), _key = 0; _key < _len; _key++) {
-                                        args[_key] = _args[_key];
-                                    }
-
-                                    if (!api.inputFormatter) {
-                                        _context.next = 5;
-                                        break;
-                                    }
-
-                                    args = api.inputFormatter.apply(api, toConsumableArray(args));
-
-                                    if (Array.isArray(args)) {
-                                        _context.next = 5;
-                                        break;
-                                    }
-
-                                    throw new Error('inputFormatter must return array');
-
-                                case 5:
-                                    _context.next = 7;
-                                    return api.requester.send(api.method, args);
-
-                                case 7:
-                                    result = _context.sent;
-
-                                    if (!api.outputFormatter) {
-                                        _context.next = 10;
-                                        break;
-                                    }
-
-                                    return _context.abrupt("return", api.outputFormatter(result));
-
-                                case 10:
-                                    return _context.abrupt("return", result);
-
-                                case 11:
-                                case "end":
-                                    return _context.stop();
-                            }
-                        }
-                    }, _callee, this);
-                }))
-        );
-    }
-
     var LemoClient =
         /*#__PURE__*/
         function () {
-            function LemoClient(config) {
+            function LemoClient() {
+                var config = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+
                 classCallCheck(this, LemoClient);
 
-                // The Object.defineProperty is not work in otto. but we can name fields with first letter '_' to make it invisible
-                this._requester = new Requester(newConn(config));
+                this.config = {
+                    chainID: config.chainID || 1,
+                    // 1: LemoChain main net, 100 LemoChain test net
+                    conn: {
+                        send: config.send,
+                        // Custom requester. If this property is set, other conn config below will be ignored
+                        host: config.host || 'http://127.0.0.1:8001',
+                        // LemoChain node HTTP RPC address
+                        timeout: config.timeout,
+                        // LemoChain node HTTP RPC timeout
+                        username: config.username,
+                        // LemoChain node HTTP RPC authorise
+                        password: config.password,
+                        // LemoChain node HTTP RPC authorise
+                        headers: config.headers // LemoChain node HTTP RPC Headers
+
+                    },
+                    requester: {
+                        pollDuration: config.pollDuration || DEFAULT_POLL_DURATION,
+                        // The interval time of watching poll. It is in milliseconds
+                        maxPollRetry: config.maxPollRetry || MAX_POLL_RETRY
+                    } // The Object.defineProperty is not work in otto. but we can name fields with first letter '_' to make it invisible
+
+                };
+                this._requester = new Requester(newConn(this.config.conn), this.config.requester);
                 Object.defineProperty(this, '_requester', {
                     enumerable: false
                 });
                 Object.defineProperty(this, '_createAPI', {
                     enumerable: false,
                     value: createAPI.bind(null, this)
+                });
+                this._signer = new Signer(this.config.chainID);
+                Object.defineProperty(this, '_signer', {
+                    enumerable: false
                 }); // modules
 
                 this._createAPI(account.moduleName, account.apis);
@@ -21864,7 +22059,7 @@
             }
             /**
              * Stop a watching by watchId. If no watchId specified, stop all
-             * @param {number|undefined} watchId
+             * @param {number?} watchId
              */
 
 
@@ -21905,31 +22100,25 @@
         }
 
         apis.forEach(function (api) {
-            new Api(api, lemo._requester).attachTo(moduleName ? lemo[moduleName] : lemo);
+            new Api(api, lemo._requester, lemo._signer).attachTo(moduleName ? lemo[moduleName] : lemo);
         });
     }
     /**
      * Create conn object by config
-     * @param {object?} config The conn constructor config
+     * @param {object} config The conn constructor config
      * @return {object} Conn object
      */
 
 
     function newConn(config) {
-        if (!config) {
-            return new HttpConn();
-        }
-
-        if (config) {
-            // conn object. It will be implemented by go environment
-            if (typeof config.send === 'function') {
-                return config;
-            } // http conn config
+        // conn object. It will be implemented by go environment
+        if (typeof config.send === 'function') {
+            return config;
+        } // http conn config
 
 
-            if (typeof config.host === 'string' && config.host.toLowerCase().startsWith('http')) {
-                return new HttpConn(config.host, config.timeout, config.username, config.password, config.headers);
-            }
+        if (typeof config.host === 'string' && config.host.toLowerCase().startsWith('http')) {
+            return new HttpConn(config.host, config.timeout, config.username, config.password, config.headers);
         }
 
         throw new Error(errors.invalidConnConfig(config));
