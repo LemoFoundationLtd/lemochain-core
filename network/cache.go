@@ -69,6 +69,20 @@ func (c *ConfirmCache) Clear(height uint32) {
 	}
 }
 
+// Size calculate cache's size
+func (c *ConfirmCache) Size() int {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	count := 0
+	for _, blockConfirms := range c.cache {
+		for _, confirms := range blockConfirms {
+			count += len(confirms)
+		}
+	}
+	return count
+}
+
 type blocksSameHeight struct {
 	Height uint32
 	Blocks map[common.Hash]*types.Block

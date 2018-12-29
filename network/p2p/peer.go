@@ -26,6 +26,7 @@ const (
 type IPeer interface {
 	ReadMsg() (msg *Msg, err error)
 	WriteMsg(code uint32, msg []byte) (err error)
+	SetWriteDeadline(duration time.Duration)
 	RNodeID() *NodeID
 	RAddress() string
 	LAddress() string
@@ -38,10 +39,11 @@ type IPeer interface {
 
 // Peer represents a connected remote node.
 type Peer struct {
-	conn    net.Conn
-	rNodeID NodeID // remote NodeID
-	aes     []byte // AES key
-	created mclock.AbsTime
+	conn          net.Conn
+	rNodeID       NodeID // remote NodeID
+	aes           []byte // AES key
+	created       mclock.AbsTime
+	writeDeadline time.Duration
 
 	status         int32
 	heartbeatTimer *time.Timer
@@ -54,8 +56,9 @@ type Peer struct {
 // newPeer
 func newPeer(fd net.Conn) IPeer {
 	return &Peer{
-		conn:    fd,
-		created: mclock.Now(),
+		conn:          fd,
+		created:       mclock.Now(),
+		writeDeadline: frameWriteTimeout,
 		// closed:   false,
 		newMsgCh: make(chan *Msg),
 		stopCh:   make(chan struct{}),
@@ -85,8 +88,21 @@ func (p *Peer) doHandshake(prv *ecdsa.PrivateKey, nodeID *NodeID) (err error) {
 
 // Close close peer
 func (p *Peer) Close() {
-	close(p.stopCh)
-	p.conn.Close()
+	p.safeClose()
+}
+
+// safeClose
+func (p *Peer) safeClose() {
+	needClose := false
+	select {
+	case _, needClose = <-p.stopCh:
+	default:
+		needClose = true
+	}
+	if needClose {
+		close(p.stopCh)
+		p.conn.Close()
+	}
 }
 
 // run  run peer and block this
@@ -109,14 +125,7 @@ func (p *Peer) readLoop() {
 		msg, err := p.readMsg()
 		if err != nil {
 			log.Debugf("read message error: %v", err)
-			select {
-			case _, ok := <-p.stopCh:
-				if ok {
-					close(p.stopCh)
-				}
-			default:
-				break
-			}
+			p.safeClose()
 			return
 		}
 		if msg.Code == CodeHeartbeat {
@@ -186,13 +195,21 @@ func (p *Peer) WriteMsg(code uint32, msg []byte) (err error) {
 	if err != nil {
 		return err
 	}
-	p.conn.SetWriteDeadline(time.Now().Add(frameWriteTimeout))
+	p.conn.SetWriteDeadline(time.Now().Add(p.writeDeadline))
 	_, err = p.conn.Write(buf)
 	// reset heartbeatTimer
 	if code != CodeHeartbeat && p.heartbeatTimer != nil {
 		p.heartbeatTimer.Reset(heartbeatInterval)
 	}
+	p.writeDeadline = frameWriteTimeout
 	return err
+}
+
+// SetWriteDeadline
+func (p *Peer) SetWriteDeadline(duration time.Duration) {
+	p.wmu.Lock()
+	defer p.wmu.Unlock()
+	p.writeDeadline = duration
 }
 
 // RNodeID

@@ -180,7 +180,7 @@ func (bc *BlockChain) SetMinedBlock(block *types.Block) error {
 	delete(bc.chainForksHead, block.ParentHash())
 	bc.chainForksHead[block.Hash()] = block
 	if nodeCount == 1 {
-		bc.SetStableBlock(block.Hash(), block.Height(), false)
+		bc.SetStableBlock(block.Hash(), block.Height())
 	}
 	// notify
 	subscribe.Send(subscribe.NewMinedBlock, block)
@@ -216,9 +216,7 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 		log.Errorf("can't insert block to cache. height:%d hash:%s", block.Height(), hash.Hex())
 		return ErrSaveBlock
 	}
-	if !isSynchronising {
-		log.Infof("Insert block to chain. height: %d. hash: %s", block.Height(), block.Hash().String())
-	}
+	log.Infof("Insert block to chain. height: %d. hash: %s", block.Height(), block.Hash().String())
 	if err := bc.AccountManager().Save(hash); err != nil {
 		log.Error("save account error!", "height", block.Height(), "hash", hash.Hex(), "err", err)
 		return err
@@ -226,11 +224,11 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 	// is synchronise from net or deputy nodes less than 3
 	nodeCount := deputynode.Instance().GetDeputiesCount()
 	if nodeCount < 3 {
-		defer bc.SetStableBlock(hash, block.Height(), isSynchronising)
+		defer bc.SetStableBlock(hash, block.Height())
 	} else {
 		minCount := int(math.Ceil(float64(nodeCount) * 2.0 / 3.0))
 		if len(block.Confirms) >= minCount {
-			defer bc.SetStableBlock(hash, block.Height(), isSynchronising)
+			defer bc.SetStableBlock(hash, block.Height())
 		}
 	}
 
@@ -253,9 +251,7 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 		bc.currentBlock.Store(block)
 		delete(bc.chainForksHead, currentHash) // remove old record from fork container
 		bc.chainForksHead[hash] = block        // record new fork
-		if !isSynchronising {                  // if synchronising, don't notify
-			bc.newBlockNotify(block)
-		}
+		bc.newBlockNotify(block)
 		return nil
 	}
 	// new block height higher than current block, switch fork.
@@ -273,17 +269,15 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 		delete(bc.chainForksHead, parentHash)
 	}
 	bc.chainForksHead[hash] = block
-	if !isSynchronising {
-		bc.newBlockNotify(block)
-	}
+	bc.newBlockNotify(block)
 	return nil
 }
 
 // SetStableBlock
-func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32, logLess bool) error {
+func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32) error {
 	block := bc.GetBlockByHash(hash)
 	if block == nil {
-		log.Warnf("setStableBlock: block not exist. height: %d hash: %s", height, hash.String())
+		log.Warnf("SetStableBlock: block not exist. height: %d hash: %s", height, hash.String())
 		return ErrBlockNotExist
 	}
 	height = block.Height()
@@ -298,9 +292,7 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32, logLess bo
 	}
 	bc.stableBlock.Store(block)
 	defer func() {
-		if !logLess {
-			log.Infof("block has consensus. height:%d hash:%s", block.Height(), block.Hash().Hex())
-		}
+		log.Infof("Consensus. height:%d hash:%s", block.Height(), block.Hash().Hex())
 	}()
 
 	// get parent block
@@ -333,7 +325,7 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32, logLess bo
 		}
 	}
 	if curBlock == nil {
-		log.Errorf("SetStableBlock with a block which not recorded in chainForksHead")
+		log.Error("SetStableBlock with a block which not recorded in chainForksHead")
 		return nil
 	}
 	// if any fork has same height with current block, choose the smaller one by dictionary order
@@ -344,7 +336,7 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32, logLess bo
 		}
 	}
 	bc.currentBlock.Store(curBlock)
-	if !logLess && oldCurHash != curBlock.Hash() {
+	if oldCurHash != curBlock.Hash() {
 		log.Infof("chain forked-3! current block: height(%d), hash(%s)", curBlock.Height(), curBlock.Hash().Hex())
 	}
 	// notify
@@ -458,7 +450,7 @@ func (bc *BlockChain) ReceiveConfirm(info *network.BlockConfirmData) (err error)
 	}
 
 	if ok, _ := bc.hasEnoughConfirmInfo(info.Hash); ok {
-		return bc.SetStableBlock(info.Hash, height, false)
+		return bc.SetStableBlock(info.Hash, height)
 	}
 	return nil
 }

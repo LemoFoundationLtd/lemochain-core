@@ -71,11 +71,11 @@ func NewProtocolManager(chainID uint16, nodeID p2p.NodeID, chain BlockChain, txP
 		addPeerCh:    make(chan p2p.IPeer),
 		removePeerCh: make(chan p2p.IPeer),
 
-		txsCh:           make(chan types.Transactions),
+		txsCh:           make(chan types.Transactions, 10),
 		newMinedBlockCh: make(chan *types.Block),
-		stableBlockCh:   make(chan *types.Block),
-		rcvBlocksCh:     make(chan *rcvBlockObj),
-		confirmCh:       make(chan *BlockConfirmData),
+		stableBlockCh:   make(chan *types.Block, 10),
+		rcvBlocksCh:     make(chan *rcvBlockObj, 10),
+		confirmCh:       make(chan *BlockConfirmData, 10),
 
 		quitCh: make(chan struct{}),
 	}
@@ -135,12 +135,15 @@ func (pm *ProtocolManager) txConfirmLoop() {
 			if len(peers) == 0 {
 				peers = pm.peers.DelayNodes(curHeight)
 			}
-			pm.broadcastTxs(peers, txs)
+			go pm.broadcastTxs(peers, txs)
 		case info := <-pm.confirmCh:
+			if pm.peers.LatestStableHeight() > info.Height {
+				continue
+			}
 			curHeight := pm.chain.CurrentBlock().Height()
 			peers := pm.peers.DeputyNodes(curHeight)
 			if len(peers) > 0 {
-				pm.broadcastConfirm(peers, info)
+				go pm.broadcastConfirm(peers, info)
 			}
 			log.Debugf("broadcast confirm, len(peers)=%d, height: %d", len(peers), info.Height)
 		}
@@ -166,7 +169,7 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 		case block := <-pm.newMinedBlockCh:
 			peers := pm.peers.DeputyNodes(block.Height())
 			if len(peers) > 0 {
-				pm.broadcastBlock(peers, block, true)
+				go pm.broadcastBlock(peers, block, true)
 			}
 		case rcvMsg := <-pm.rcvBlocksCh:
 			// for test
@@ -210,7 +213,11 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 			pm.blockCache.Iterate(processBlock)
 			pm.blockCacheMux.Unlock()
 			queueTimer.Reset(proInterval)
-			log.Debugf("blockCache's size: %d", pm.blockCache.Size())
+			// output cache size
+			cacheSize := pm.blockCache.Size()
+			if cacheSize > 0 {
+				log.Debugf("blockCache's size: %d", cacheSize)
+			}
 		case <-testRcvTimer.C: // just for test
 			testRcvFlag = true
 		}
@@ -237,7 +244,7 @@ func (pm *ProtocolManager) stableBlockLoop() {
 			pm.oldStableBlock.Store(block)
 			peers := pm.peers.DelayNodes(block.Height())
 			if len(peers) > 0 {
-				pm.broadcastBlock(peers, block, false)
+				go pm.broadcastBlock(peers, block, false)
 			}
 			pm.confirmsCache.Clear(block.Height())
 			pm.blockCacheMux.Lock()
@@ -258,9 +265,7 @@ func (pm *ProtocolManager) fetchConfirmsFromRemote(start, end uint32) {
 		if b == nil {
 			continue
 		}
-		if err := p.SendGetConfirms(b.Height(), b.Hash()); err != nil {
-			log.Warnf("send get confirms message failed: %v", err)
-		}
+		p.SendGetConfirms(b.Height(), b.Hash())
 	}
 }
 
@@ -272,6 +277,9 @@ func (pm *ProtocolManager) setConfirmsFromCache(height uint32, hash common.Hash)
 	}
 	for _, confirm := range confirms {
 		pm.chain.ReceiveConfirm(confirm)
+	}
+	if pm.confirmsCache.Size() > 100 {
+		log.Debugf("confirmsCache's size: %d", pm.confirmsCache.Size())
 	}
 }
 
@@ -330,15 +338,9 @@ func (pm *ProtocolManager) broadcastConfirm(peers []*peer, confirmInfo *BlockCon
 func (pm *ProtocolManager) broadcastBlock(peers []*peer, block *types.Block, withBody bool) {
 	for _, p := range peers {
 		if withBody {
-			err := p.SendBlocks([]*types.Block{block})
-			if err != nil {
-				log.Warnf("broadcast block failed: %v", err)
-			}
+			p.SendBlocks([]*types.Block{block})
 		} else {
-			err := p.SendBlockHash(block.Height(), block.Hash())
-			if err != nil {
-				log.Warnf("broadcast block failed: %v", err)
-			}
+			p.SendBlockHash(block.Height(), block.Hash())
 		}
 	}
 }
@@ -566,7 +568,6 @@ func (pm *ProtocolManager) handleGetBlocksMsg(msg *p2p.Msg, p *peer) error {
 		count = total/eachSize + 1
 	}
 	height := query.From
-	var err error
 	for i := uint32(0); i < count; i++ {
 		blocks := make(types.Blocks, 0, eachSize)
 		for j := 0; j < eachSize; j++ {
@@ -576,9 +577,7 @@ func (pm *ProtocolManager) handleGetBlocksMsg(msg *p2p.Msg, p *peer) error {
 				break
 			}
 		}
-		if err = p.SendBlocks(blocks); err != nil {
-			return err
-		}
+		p.SendBlocks(blocks)
 	}
 	return nil
 }
@@ -604,7 +603,8 @@ func (pm *ProtocolManager) handleGetConfirmsMsg(msg *p2p.Msg, p *peer) error {
 		Hash:   condition.Hash,
 		Pack:   confirmInfo,
 	}
-	return p.SendConfirms(resMsg)
+	p.SendConfirms(resMsg)
+	return nil
 }
 
 // handleConfirmMsg handle confirm broadcast info
@@ -633,7 +633,8 @@ func (pm *ProtocolManager) handleDiscoverReqMsg(msg *p2p.Msg, p *peer) error {
 	res := new(DiscoverResData)
 	res.Sequence = condition.Sequence
 	res.Nodes = pm.discover.GetNodesForDiscover(res.Sequence)
-	return p.SendDiscoverResp(res)
+	p.SendDiscoverResp(res)
+	return nil
 }
 
 // handleDiscoverResMsg handle discover nodes response

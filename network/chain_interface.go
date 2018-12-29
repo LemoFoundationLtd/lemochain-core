@@ -21,7 +21,7 @@ type BlockChain interface {
 	// InsertChain 插入一个区块到链上
 	InsertChain(block *types.Block, isSyncing bool) error
 	// SetStableBlock 设置最新的稳定区块
-	SetStableBlock(hash common.Hash, height uint32, isSyncing bool) error
+	SetStableBlock(hash common.Hash, height uint32) error
 	// Verify 验证区块是否合法
 	Verify(block *types.Block) error
 

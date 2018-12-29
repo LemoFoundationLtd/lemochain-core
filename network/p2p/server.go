@@ -142,7 +142,7 @@ func (srv *Server) run() {
 			// notice
 			subscribe.Send(subscribe.AddNewPeer, p)
 		case p := <-srv.delPeerCh:
-			log.Debugf("receive delete peer event. nodeID: %s", common.ToHex(p.RNodeID()[:8]))
+			log.Infof("Remove peer. nodeID: %s", common.ToHex(p.RNodeID()[:8]))
 			// remove
 			srv.peersMux.Lock()
 			delete(srv.connectedNodes, *p.RNodeID())
@@ -223,7 +223,7 @@ func (srv *Server) HandleConn(fd net.Conn, nodeID *NodeID) error {
 func (srv *Server) runPeer(p IPeer) {
 	log.Debugf("peer(nodeID: %s) start running", common.ToHex(p.RNodeID()[:8]))
 	if err := p.run(); err != nil { // block this
-		log.Debugf("runPeer: %v", err)
+		log.Debugf("runPeer error: %v", err)
 	}
 
 	// peer has stopped

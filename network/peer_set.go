@@ -152,3 +152,14 @@ func (ps *peerSet) DelayNodes(height uint32) []*peer {
 	}
 	return peers
 }
+
+// LatestStableHeight get peer's latest stable block's height
+func (ps *peerSet) LatestStableHeight() uint32 {
+	height := uint32(0)
+	for _, p := range ps.peers {
+		if p.lstStatus.StaHeight > height {
+			height = p.lstStatus.StaHeight
+		}
+	}
+	return height
+}

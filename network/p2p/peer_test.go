@@ -123,3 +123,25 @@ func Test_totalLogic(t *testing.T) {
 	pCli.Close()
 	pSrv.Close()
 }
+
+func Test_Chan(t *testing.T) {
+	c := make(chan struct{})
+	// go func() {
+	// 	// c <- struct{}{}
+	// 	close(c)
+	// }()
+
+	select {
+	case _, ok := <-c:
+		if ok {
+			close(c)
+			fmt.Println("ok")
+		} else {
+			fmt.Println("not ok")
+		}
+		break
+	default:
+		close(c)
+		fmt.Println("ok")
+	}
+}
