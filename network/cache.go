@@ -170,3 +170,12 @@ func (c *BlockCache) Size() int {
 	}
 	return count
 }
+
+func (c *BlockCache) FirstHeight() uint32 {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	if c.cache == nil || len(c.cache) == 0 {
+		return 0
+	}
+	return c.cache[0].Height
+}

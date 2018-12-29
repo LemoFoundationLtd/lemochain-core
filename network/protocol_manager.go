@@ -216,6 +216,8 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 			// output cache size
 			cacheSize := pm.blockCache.Size()
 			if cacheSize > 0 {
+				p := pm.peers.BestToSync(pm.blockCache.FirstHeight())
+				p.RequestBlocks(pm.blockCache.FirstHeight()-1, pm.blockCache.FirstHeight()-1)
 				log.Debugf("blockCache's size: %d", cacheSize)
 			}
 		case <-testRcvTimer.C: // just for test
@@ -455,7 +457,11 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 	}
 
 	if testRcvFlag {
-		log.Debug("not receive block, but receive other types of message.")
+		if msg.Code == BlocksMsg {
+			log.Debug("handleMsg receive blocks, but not process.")
+		} else {
+			log.Debug("not receive block, but receive other types of message.")
+		}
 	}
 
 	switch msg.Code {
