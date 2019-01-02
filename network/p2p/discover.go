@@ -384,9 +384,8 @@ func (m *DiscoverManager) initDiscoverList() {
 }
 
 // AddNewList for discovery
-func (m *DiscoverManager) AddNewList(nodes []string) error {
+func (m *DiscoverManager) AddNewList(nodes []string) {
 	m.addDiscoverNodes(nodes)
-	return nil
 }
 
 // writeFindFile write invalid node to file

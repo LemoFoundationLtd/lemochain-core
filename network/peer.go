@@ -76,17 +76,21 @@ func (p *peer) HardForkClose() {
 }
 
 // RequestBlocks request blocks from remote
-func (p *peer) RequestBlocks(from, to uint32) error {
+func (p *peer) RequestBlocks(from, to uint32) {
 	if from > to {
-		return errors.New("request blocks's param error: from > to")
+		log.Warnf("RequestBlocks: from: %d can't be larger than to:%d", from, to)
+		return
 	}
 	msg := &GetBlocksData{From: from, To: to}
 	buf, err := rlp.EncodeToBytes(&msg)
 	if err != nil {
-		return err
+		log.Warnf("RequestBlocks: rlp encode failed: %v", err)
+		return
 	}
 	p.conn.SetWriteDeadline(DurShort)
-	return p.conn.WriteMsg(GetBlocksMsg, buf)
+	if err = p.conn.WriteMsg(GetBlocksMsg, buf); err != nil {
+		log.Warnf("RequestBlocks: write message failed: %v", err)
+	}
 }
 
 // Handshake protocol handshake
@@ -131,13 +135,16 @@ func (p *peer) ReadMsg() (*p2p.Msg, error) {
 }
 
 // SendLstStatus send SyncFailednode's status to remote
-func (p *peer) SendLstStatus(status *LatestStatus) error {
+func (p *peer) SendLstStatus(status *LatestStatus) {
 	buf, err := rlp.EncodeToBytes(status)
 	if err != nil {
-		return err
+		log.Warnf("SendLstStatus: rlp encode failed: %v", err)
+		return
 	}
 	p.conn.SetWriteDeadline(DurShort)
-	return p.conn.WriteMsg(LstStatusMsg, buf)
+	if err = p.conn.WriteMsg(LstStatusMsg, buf); err != nil {
+		log.Warnf("send latest status failed: %v", err)
+	}
 }
 
 // SendTxs send txs to remote

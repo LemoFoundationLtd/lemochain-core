@@ -29,7 +29,7 @@ type BlockChain interface {
 
 	GetConfirms(query *GetConfirmInfo) []types.SignData
 
-	ReceiveConfirms(pack BlockConfirms) error
+	ReceiveConfirms(pack BlockConfirms)
 }
 
 type TxPool interface {

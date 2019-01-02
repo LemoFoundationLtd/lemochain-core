@@ -446,11 +446,13 @@ func (bc *BlockChain) ReceiveConfirm(info *network.BlockConfirmData) (err error)
 	// cache confirm info
 	if err = bc.db.SetConfirmInfo(info.Hash, info.SignInfo); err != nil {
 		log.Errorf("can't SetConfirmInfo. height: %d, hash:%s, err: %v", info.Height, info.Hash.Hex()[:16], err)
-		return ErrSetConfirmInfoToDB
+		return nil
 	}
 
 	if ok, _ := bc.hasEnoughConfirmInfo(info.Hash); ok {
-		return bc.SetStableBlock(info.Hash, height)
+		if err = bc.SetStableBlock(info.Hash, height); err != nil {
+			log.Errorf("ReceiveConfirm: setStableBlock failed. height: %d, hash:%s, err: %v", info.Height, info.Hash.Hex()[:16], err)
+		}
 	}
 	return nil
 }
@@ -498,11 +500,10 @@ func (bc *BlockChain) GetConfirms(query *network.GetConfirmInfo) []types.SignDat
 }
 
 // ReceiveConfirms receive confirm package from net connection
-func (bc *BlockChain) ReceiveConfirms(pack network.BlockConfirms) error {
+func (bc *BlockChain) ReceiveConfirms(pack network.BlockConfirms) {
 	if pack.Hash != (common.Hash{}) && pack.Pack != nil && len(pack.Pack) > 0 {
 		bc.db.SetConfirms(pack.Hash, pack.Pack)
 	}
-	return nil
 }
 
 // Stop stop block chain

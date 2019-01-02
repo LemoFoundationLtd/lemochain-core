@@ -39,7 +39,6 @@ type ProtocolManager struct {
 	peers         *peerSet      // connected peers
 	confirmsCache *ConfirmCache // received confirm info before block, cache them
 	blockCache    *BlockCache
-	blockCacheMux sync.Mutex
 
 	oldStableBlock atomic.Value
 
@@ -155,7 +154,7 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 	pm.wg.Add(1)
 	defer pm.wg.Done()
 
-	proInterval := 1 * time.Second
+	proInterval := 500 * time.Millisecond
 	queueTimer := time.NewTimer(proInterval)
 
 	// just for test
@@ -167,6 +166,7 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 			log.Info("blockLoop finished")
 			return
 		case block := <-pm.newMinedBlockCh:
+			log.Debugf("current's peers count: %d", len(pm.peers.peers))
 			peers := pm.peers.DeputyNodes(block.Height())
 			if len(peers) > 0 {
 				go pm.broadcastBlock(peers, block, true)
@@ -181,7 +181,7 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 
 			for _, b := range rcvMsg.blocks {
 				// update latest status
-				if b.Height() > pLstHeight {
+				if b.Height() > pLstHeight && rcvMsg.p != nil {
 					rcvMsg.p.UpdateStatus(b.Height(), b.Hash())
 				}
 				// block is stale
@@ -191,34 +191,34 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 				// local chain has this block
 				if pm.chain.HasBlock(b.ParentHash()) {
 					pm.chain.InsertChain(b, true)
-					pm.setConfirmsFromCache(b.Height(), b.Hash())
+					go pm.setConfirmsFromCache(b.Height(), b.Hash())
 				} else {
-					pm.blockCacheMux.Lock()
 					pm.blockCache.Add(b)
-					pm.blockCacheMux.Unlock()
-					// request parent block
-					rcvMsg.p.RequestBlocks(b.Height()-1, b.Height()-1)
+					if rcvMsg.p != nil {
+						// request parent block
+						go rcvMsg.p.RequestBlocks(b.Height()-1, b.Height()-1)
+					}
 				}
 			}
 		case <-queueTimer.C:
 			processBlock := func(block *types.Block) bool {
 				if pm.chain.HasBlock(block.ParentHash()) {
 					pm.chain.InsertChain(block, false)
-					pm.setConfirmsFromCache(block.Height(), block.Hash())
+					go pm.setConfirmsFromCache(block.Height(), block.Hash())
 					return true
 				}
 				return false
 			}
-			pm.blockCacheMux.Lock()
 			pm.blockCache.Iterate(processBlock)
-			pm.blockCacheMux.Unlock()
 			queueTimer.Reset(proInterval)
 			// output cache size
 			cacheSize := pm.blockCache.Size()
 			if cacheSize > 0 {
 				p := pm.peers.BestToSync(pm.blockCache.FirstHeight())
-				p.RequestBlocks(pm.blockCache.FirstHeight()-1, pm.blockCache.FirstHeight()-1)
-				log.Debugf("blockCache's size: %d", cacheSize)
+				if p != nil {
+					go p.RequestBlocks(pm.blockCache.FirstHeight()-1, pm.blockCache.FirstHeight()-1)
+					log.Debugf("blockCache's size: %d", cacheSize)
+				}
 			}
 		case <-testRcvTimer.C: // just for test
 			testRcvFlag = true
@@ -240,7 +240,7 @@ func (pm *ProtocolManager) stableBlockLoop() {
 			if pm.oldStableBlock.Load() != nil {
 				oldStableBlock = pm.oldStableBlock.Load().(*types.Block)
 				if oldStableBlock != nil && oldStableBlock.Height()+1 < block.Height() {
-					pm.fetchConfirmsFromRemote(oldStableBlock.Height()+1, block.Height()-1)
+					go pm.fetchConfirmsFromRemote(oldStableBlock.Height()+1, block.Height()-1)
 				}
 			}
 			pm.oldStableBlock.Store(block)
@@ -248,10 +248,10 @@ func (pm *ProtocolManager) stableBlockLoop() {
 			if len(peers) > 0 {
 				go pm.broadcastBlock(peers, block, false)
 			}
-			pm.confirmsCache.Clear(block.Height())
-			pm.blockCacheMux.Lock()
-			pm.blockCache.Clear(block.Height())
-			pm.blockCacheMux.Unlock()
+			go func() {
+				pm.confirmsCache.Clear(block.Height())
+				pm.blockCache.Clear(block.Height())
+			}()
 		}
 	}
 }
@@ -307,14 +307,14 @@ func (pm *ProtocolManager) peerLoop() {
 		case <-forceSyncTimer.C: // time to synchronise block
 			p := pm.peers.BestToSync(pm.chain.CurrentBlock().Height())
 			if p != nil {
-				p.SendReqLatestStatus()
+				go p.SendReqLatestStatus()
 			}
 			forceSyncTimer.Reset(ForceSyncInternal)
 		case <-discoverTimer.C: // time to discover
 			if len(pm.peers.peers) < 5 {
 				p := pm.peers.BestToDiscover()
 				if p != nil {
-					p.SendDiscover()
+					go p.SendDiscover()
 				}
 			}
 			discoverTimer.Reset(DiscoverInternal)
@@ -516,7 +516,8 @@ func (pm *ProtocolManager) handleGetLstStatusMsg(msg *p2p.Msg, p *peer) error {
 		StaHeight: pm.chain.StableBlock().Height(),
 		StaHash:   pm.chain.StableBlock().Hash(),
 	}
-	return p.SendLstStatus(status)
+	go p.SendLstStatus(status)
+	return nil
 }
 
 // handleBlockHashMsg handle receiving block's hash message
@@ -528,7 +529,7 @@ func (pm *ProtocolManager) handleBlockHashMsg(msg *p2p.Msg, p *peer) error {
 	if pm.chain.HasBlock(hashMsg.Hash) {
 		return nil
 	}
-	p.RequestBlocks(hashMsg.Height, hashMsg.Height)
+	go p.RequestBlocks(hashMsg.Height, hashMsg.Height)
 	return nil
 }
 
@@ -538,7 +539,7 @@ func (pm *ProtocolManager) handleTxsMsg(msg *p2p.Msg) error {
 	if err := msg.Decode(&txs); err != nil {
 		return err
 	}
-	pm.txPool.AddTxs(txs)
+	go pm.txPool.AddTxs(txs)
 	return nil
 }
 
@@ -562,30 +563,38 @@ func (pm *ProtocolManager) handleGetBlocksMsg(msg *p2p.Msg, p *peer) error {
 	if err := msg.Decode(&query); err != nil {
 		return err
 	}
-	const eachSize = 10
 	if query.From > query.To {
 		return errors.New("invalid request blocks' param")
 	}
-	total := query.To - query.From
+	go pm.respBlocks(query.From, query.To, p)
+	return nil
+}
+
+// respBlocks response blocks to remote peer
+func (pm *ProtocolManager) respBlocks(from, to uint32, p *peer) {
+	const eachSize = 10
+
+	total := to - from
 	var count uint32
 	if total%eachSize == 0 {
 		count = total / eachSize
 	} else {
 		count = total/eachSize + 1
 	}
-	height := query.From
+	height := from
 	for i := uint32(0); i < count; i++ {
 		blocks := make(types.Blocks, 0, eachSize)
 		for j := 0; j < eachSize; j++ {
 			blocks = append(blocks, pm.chain.GetBlockByHeight(height))
 			height++
-			if height > query.To {
+			if height > to {
 				break
 			}
 		}
-		p.SendBlocks(blocks)
+		if p != nil {
+			p.SendBlocks(blocks)
+		}
 	}
-	return nil
 }
 
 // handleConfirmsMsg handle received block's confirm package message
@@ -594,7 +603,8 @@ func (pm *ProtocolManager) handleConfirmsMsg(msg *p2p.Msg) error {
 	if err := msg.Decode(&confirms); err != nil {
 		return err
 	}
-	return pm.chain.ReceiveConfirms(confirms)
+	go pm.chain.ReceiveConfirms(confirms)
+	return nil
 }
 
 // handleGetConfirmsMsg handle remote request of block's confirm package message
@@ -609,7 +619,7 @@ func (pm *ProtocolManager) handleGetConfirmsMsg(msg *p2p.Msg, p *peer) error {
 		Hash:   condition.Hash,
 		Pack:   confirmInfo,
 	}
-	p.SendConfirms(resMsg)
+	go p.SendConfirms(resMsg)
 	return nil
 }
 
@@ -623,7 +633,7 @@ func (pm *ProtocolManager) handleConfirmMsg(msg *p2p.Msg) error {
 		return nil
 	}
 	if pm.chain.HasBlock(confirm.Hash) {
-		return pm.chain.ReceiveConfirm(confirm)
+		go pm.chain.ReceiveConfirm(confirm)
 	} else {
 		pm.confirmsCache.Push(confirm)
 	}
@@ -639,7 +649,7 @@ func (pm *ProtocolManager) handleDiscoverReqMsg(msg *p2p.Msg, p *peer) error {
 	res := new(DiscoverResData)
 	res.Sequence = condition.Sequence
 	res.Nodes = pm.discover.GetNodesForDiscover(res.Sequence)
-	p.SendDiscoverResp(res)
+	go p.SendDiscoverResp(res)
 	return nil
 }
 
@@ -649,5 +659,6 @@ func (pm *ProtocolManager) handleDiscoverResMsg(msg *p2p.Msg) error {
 	if err := msg.Decode(&disRes); err != nil {
 		return err
 	}
-	return pm.discover.AddNewList(disRes.Nodes)
+	pm.discover.AddNewList(disRes.Nodes)
+	return nil
 }
