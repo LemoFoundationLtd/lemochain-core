@@ -52,7 +52,7 @@ type Server struct {
 	newPeer func(net.Conn) IPeer
 
 	discover    *DiscoverManager // node discovery
-	dialManager *DialManager     // node dial
+	dialManager IDialManager     // node dial
 	wg          sync.WaitGroup
 }
 
@@ -128,10 +128,12 @@ func (srv *Server) run() {
 		case p := <-srv.addPeerCh:
 			// is already exist
 			if _, ok := srv.connectedNodes[*p.RNodeID()]; ok {
-				log.Debugf("receive add peer event. But connection has already exist. nodeID: %s", common.ToHex(p.RNodeID()[:8]))
+				log.Debugf("Add peer event. But connection has already exist. nodeID: %s", p.RNodeID().String()[:16])
 				p.Close()
 				srv.discover.SetConnectResult(p.RNodeID(), true)
 				break
+			} else {
+				log.Debugf("Add peer event. nodeID: %s", p.RNodeID().String()[:16])
 			}
 			// record
 			srv.peersMux.Lock()
@@ -142,7 +144,7 @@ func (srv *Server) run() {
 			// notice
 			subscribe.Send(subscribe.AddNewPeer, p)
 		case p := <-srv.delPeerCh:
-			log.Infof("Remove peer. nodeID: %s", common.ToHex(p.RNodeID()[:8]))
+			log.Infof("Remove peer event. nodeID: %s", p.RNodeID().String()[:16])
 			// remove
 			srv.peersMux.Lock()
 			delete(srv.connectedNodes, *p.RNodeID())

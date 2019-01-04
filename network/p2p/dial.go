@@ -13,6 +13,12 @@ const (
 
 type HandleConnFunc func(fd net.Conn, nodeID *NodeID) error
 
+type IDialManager interface {
+	Start() error
+	Stop() error
+	runDialTask(node string) int
+}
+
 type DialManager struct {
 	handleConn HandleConnFunc
 	discover   *DiscoverManager

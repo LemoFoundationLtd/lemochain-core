@@ -182,10 +182,12 @@ func (bc *BlockChain) SetMinedBlock(block *types.Block) error {
 	if nodeCount == 1 {
 		bc.SetStableBlock(block.Hash(), block.Height())
 	}
-	// notify
-	subscribe.Send(subscribe.NewMinedBlock, block)
-	msg := bc.createSignInfo(block.Hash(), block.Height())
-	subscribe.Send(subscribe.NewConfirm, msg)
+	go func() {
+		// notify
+		subscribe.Send(subscribe.NewMinedBlock, block)
+		msg := bc.createSignInfo(block.Hash(), block.Height())
+		subscribe.Send(subscribe.NewConfirm, msg)
+	}()
 	return nil
 }
 

@@ -119,7 +119,10 @@ func (p *Peer) run() (err error) {
 
 // readLoop
 func (p *Peer) readLoop() {
-	defer p.wg.Done()
+	defer func() {
+		p.wg.Done()
+		log.Debugf("readLoop finished: %s", p.RNodeID().String()[:16])
+	}()
 
 	for {
 		msg, err := p.readMsg()
@@ -229,20 +232,22 @@ func (p *Peer) LAddress() string {
 
 // heartbeatLoop send heartbeat info when after special internal of no data sending
 func (p *Peer) heartbeatLoop() {
-	defer p.wg.Done()
+	defer func() {
+		p.wg.Done()
+		log.Debugf("heartbeatLoop finished: %s", p.RNodeID().String()[:16])
+	}()
 
 	for {
 		select {
 		case <-p.heartbeatTimer.C:
 			// send heartbeat data
 			if err := p.WriteMsg(CodeHeartbeat, nil); err != nil {
-				log.Debugf("heartbeatLoop: send heartbeat data failed and stopped: %v", err)
+				log.Debugf("heartbeatLoop: nodeID: %s, : %v", p.RNodeID().String()[:16], err)
 				return
 			}
 			// reset heartbeatTimer
 			p.heartbeatTimer.Reset(heartbeatInterval)
 		case <-p.stopCh:
-			log.Debug("heartbeatLoop: stopped. p: %s", p.RAddress())
 			return
 		}
 	}

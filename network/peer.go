@@ -155,7 +155,7 @@ func (p *peer) SendTxs(txs types.Transactions) {
 		return
 	}
 	if err := p.conn.WriteMsg(TxsMsg, buf); err != nil {
-		log.Warnf("SendTxs to peer: %s failed. disconnect.", p.NodeID().String()[:16])
+		log.Warnf("SendTxs to peer: %s failed. disconnect. %v", p.NodeID().String()[:16], err)
 		p.conn.Close()
 	}
 }
@@ -169,7 +169,7 @@ func (p *peer) SendConfirmInfo(confirmInfo *BlockConfirmData) {
 	}
 	p.conn.SetWriteDeadline(DurShort)
 	if err := p.conn.WriteMsg(ConfirmMsg, buf); err != nil {
-		log.Warnf("SendConfirmInfo to peer: %s failed. disconnect.", p.NodeID().String()[:16])
+		log.Warnf("SendConfirmInfo to peer: %s failed. disconnect. %v", p.NodeID().String()[:16], err)
 		p.conn.Close()
 	}
 }
@@ -184,7 +184,7 @@ func (p *peer) SendBlockHash(height uint32, hash common.Hash) {
 	}
 	p.conn.SetWriteDeadline(DurShort)
 	if err := p.conn.WriteMsg(BlockHashMsg, buf); err != nil {
-		log.Warnf("SendBlockHash to peer: %s failed. disconnect.", p.NodeID().String()[:16])
+		log.Warnf("SendBlockHash to peer: %s failed. disconnect. %v", p.NodeID().String()[:16], err)
 		p.conn.Close()
 	}
 }
@@ -197,7 +197,7 @@ func (p *peer) SendBlocks(blocks types.Blocks) {
 		return
 	}
 	if err := p.conn.WriteMsg(BlocksMsg, buf); err != nil {
-		log.Warnf("SendBlocks to peer: %s failed. disconnect.", p.NodeID().String()[:16])
+		log.Warnf("SendBlocks to peer: %s failed. disconnect. %v", p.NodeID().String()[:16], err)
 		p.conn.Close()
 	}
 }
@@ -211,7 +211,7 @@ func (p *peer) SendConfirms(confirms *BlockConfirms) {
 	}
 	p.conn.SetWriteDeadline(DurLong)
 	if err := p.conn.WriteMsg(ConfirmsMsg, buf); err != nil {
-		log.Warnf("SendConfirms to peer: %s failed. disconnect.", p.NodeID().String()[:16])
+		log.Warnf("SendConfirms to peer: %s failed. disconnect. %v", p.NodeID().String()[:16], err)
 		p.conn.Close()
 	}
 }
@@ -226,7 +226,7 @@ func (p *peer) SendGetConfirms(height uint32, hash common.Hash) {
 	}
 	p.conn.SetWriteDeadline(DurShort)
 	if err := p.conn.WriteMsg(GetConfirmsMsg, buf); err != nil {
-		log.Warnf("SendGetConfirms to peer: %s failed. disconnect.", p.NodeID().String()[:16])
+		log.Warnf("SendGetConfirms to peer: %s failed. disconnect. %v", p.NodeID().String()[:16], err)
 		p.conn.Close()
 	}
 }
@@ -242,7 +242,7 @@ func (p *peer) SendDiscover() {
 	p.discoverCounter++
 	p.conn.SetWriteDeadline(DurShort)
 	if err := p.conn.WriteMsg(DiscoverReqMsg, buf); err != nil {
-		log.Warnf("SendDiscover to peer: %s failed. disconnect.", p.NodeID().String()[:16])
+		log.Warnf("SendDiscover to peer: %s failed. disconnect. %v", p.NodeID().String()[:16], err)
 		p.conn.Close()
 	}
 }
@@ -255,7 +255,7 @@ func (p *peer) SendDiscoverResp(resp *DiscoverResData) {
 		return
 	}
 	if err := p.conn.WriteMsg(DiscoverResMsg, buf); err != nil {
-		log.Warnf("SendDiscoverResp to peer: %s failed. disconnect.", p.NodeID().String()[:16])
+		log.Warnf("SendDiscoverResp to peer: %s failed. disconnect. %v", p.NodeID().String()[:16], err)
 		p.conn.Close()
 	}
 }
@@ -270,7 +270,7 @@ func (p *peer) SendReqLatestStatus() {
 	}
 	p.conn.SetWriteDeadline(DurShort)
 	if err := p.conn.WriteMsg(GetLstStatusMsg, buf); err != nil {
-		log.Warnf("SendReqLatestStatus to peer: %s failed. disconnect.", p.NodeID().String()[:16])
+		log.Warnf("SendReqLatestStatus to peer: %s failed. disconnect. %v", p.NodeID().String()[:16], err)
 		p.conn.Close()
 	}
 }

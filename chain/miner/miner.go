@@ -278,6 +278,8 @@ func (m *Miner) loopMiner() {
 			log.Infof("Receive new block. height: %d. hash: %s. Reset timer.", block.Height(), block.Hash().Hex())
 			waitTime := m.getSleepTime()
 			if waitTime == 0 {
+				log.Debug("time to mine direct")
+				m.resetMinerTimer(int64(10 * time.Second))
 				m.sealBlock()
 			} else if waitTime > 0 {
 				m.resetMinerTimer(int64(waitTime))
@@ -297,6 +299,7 @@ func (m *Miner) sealBlock() {
 	if !m.isSelfDeputyNode() {
 		return
 	}
+	log.Debug("start seal")
 	header := m.sealHead()
 	txs := m.txPool.Pending(10000000)
 	newHeader, packagedTxs, invalidTxs, err := m.txProcessor.ApplyTxs(header, txs)
@@ -304,7 +307,7 @@ func (m *Miner) sealBlock() {
 		log.Errorf("apply transactions for block failed! %v", err)
 		return
 	}
-
+	log.Debug("ApplyTxs ok")
 	hash := newHeader.Hash()
 	signData, err := crypto.Sign(hash[:], m.privKey)
 	if err != nil {
@@ -317,7 +320,6 @@ func (m *Miner) sealBlock() {
 		log.Error("seal block error!!")
 		return
 	}
-	log.Infof("Mine a new block. height: %d hash: %s", block.Height(), block.Hash().String())
 	m.chain.SetMinedBlock(block)
 	// remove txs from pool
 	txsKeys := make([]common.Hash, len(packagedTxs)+len(invalidTxs))
@@ -336,6 +338,7 @@ func (m *Miner) sealBlock() {
 		timeDur = int64(nodeCount-1) * m.timeoutTime
 	}
 	m.resetMinerTimer(timeDur)
+	log.Infof("Mine a new block. height: %d hash: %s", block.Height(), block.Hash().String())
 }
 
 // sealHead 生成区块头

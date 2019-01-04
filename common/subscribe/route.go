@@ -131,12 +131,20 @@ func (r *CentralRouteSub) unSub(name string, ch interface{}) error {
 	return nil
 }
 
+func (r *CentralRouteSub) clearSub() {
+	r.names = make(map[string]*CaseListItem)
+}
+
 func Sub(name string, ch interface{}) {
 	centralRoute.sub(name, ch)
 }
 
 func UnSub(name string, ch interface{}) {
 	centralRoute.unSub(name, ch)
+}
+
+func ClearSub() {
+	centralRoute.clearSub()
 }
 
 func Send(name string, value interface{}) {

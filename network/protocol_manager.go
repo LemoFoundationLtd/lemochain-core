@@ -121,7 +121,10 @@ func (pm *ProtocolManager) Stop() {
 // txConfirmLoop receive transactions and confirm and then broadcast them
 func (pm *ProtocolManager) txConfirmLoop() {
 	pm.wg.Add(1)
-	defer pm.wg.Done()
+	defer func() {
+		pm.wg.Done()
+		log.Debugf("txConfirmLoop finished")
+	}()
 
 	for {
 		select {
@@ -152,7 +155,10 @@ func (pm *ProtocolManager) txConfirmLoop() {
 // blockLoop receive special type block event
 func (pm *ProtocolManager) rcvBlockLoop() {
 	pm.wg.Add(1)
-	defer pm.wg.Done()
+	defer func() {
+		pm.wg.Done()
+		log.Debugf("rcvBlockLoop finished")
+	}()
 
 	proInterval := 500 * time.Millisecond
 	queueTimer := time.NewTimer(proInterval)
@@ -229,7 +235,10 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 // stableBlockLoop block has been stable
 func (pm *ProtocolManager) stableBlockLoop() {
 	pm.wg.Add(1)
-	defer pm.wg.Done()
+	defer func() {
+		pm.wg.Done()
+		log.Debugf("stableBlockLoop finished")
+	}()
 
 	for {
 		select {
@@ -288,7 +297,10 @@ func (pm *ProtocolManager) setConfirmsFromCache(height uint32, hash common.Hash)
 // peerLoop something about peer event
 func (pm *ProtocolManager) peerLoop() {
 	pm.wg.Add(1)
-	defer pm.wg.Done()
+	defer func() {
+		pm.wg.Done()
+		log.Debugf("peerLoop finished")
+	}()
 
 	forceSyncTimer := time.NewTimer(ForceSyncInternal)
 	discoverTimer := time.NewTimer(DiscoverInternal)

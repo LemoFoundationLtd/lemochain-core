@@ -59,14 +59,14 @@ func Test_runDialTask_ok(t *testing.T) {
 
 	<-startCh
 	log.Info("start dial")
-	res := m.runDialTask("ddb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0@127.0.0.1:7003")
+	res := m.runDialTask("fe6c44dc5e2f690e6b087ed094875d8f3e49ce03cab9782b1ea25fe676abf3fa81b508929cb13f4cf412ee7150c6a92dc65b86adb5a2e40ad8fe25efbdd12312@127.0.0.1:7003")
 	log.Info("dial complete")
 	assert.Equal(t, 0, res)
 }
 
 func Test_runDialTask_no_server(t *testing.T) {
 	m := newDial()
-	res := m.runDialTask("ddb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0@127.0.0.1:7002")
+	res := m.runDialTask("fe6c44dc5e2f690e6b087ed094875d8f3e49ce03cab9782b1ea25fe676abf3fa81b508929cb13f4cf412ee7150c6a92dc65b86adb5a2e40ad8fe25efbdd12312@127.0.0.1:7002")
 	assert.Equal(t, -1, res)
 }
 
@@ -78,7 +78,7 @@ func Test_runDialTask_err_handle(t *testing.T) {
 	}()
 
 	<-startCh
-	res := m.runDialTask("ddb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0@127.0.0.1:7007")
+	res := m.runDialTask("fe6c44dc5e2f690e6b087ed094875d8f3e49ce03cab9782b1ea25fe676abf3fa81b508929cb13f4cf412ee7150c6a92dc65b86adb5a2e40ad8fe25efbdd12312@127.0.0.1:7007")
 	assert.Equal(t, -2, res)
 }
 
@@ -101,7 +101,7 @@ func Test_loop(t *testing.T) {
 	assert.Error(t, dial.Start(), ErrHasStared)
 
 	list := []string{
-		"ddb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0@127.0.0.1:7002",
+		"fe6c44dc5e2f690e6b087ed094875d8f3e49ce03cab9782b1ea25fe676abf3fa81b508929cb13f4cf412ee7150c6a92dc65b86adb5a2e40ad8fe25efbdd12312@127.0.0.1:7002",
 	}
 	dis.AddNewList(list)
 
