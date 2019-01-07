@@ -4,6 +4,7 @@ package p2p
 import (
 	"bytes"
 	"crypto/ecdsa"
+	"errors"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
@@ -88,7 +89,7 @@ func (srv *Server) Start() error {
 	if err := srv.discover.Start(); err != nil {
 		log.Warnf("discover.start: %v", err)
 	}
-	// run receive logic code
+	// Run receive logic code
 	go srv.run()
 	return nil
 }
@@ -115,7 +116,7 @@ func (srv *Server) Stop() {
 	log.Debug("server stop success")
 }
 
-// run
+// Run
 func (srv *Server) run() {
 	srv.wg.Add(1)
 	defer srv.wg.Done()
@@ -139,7 +140,7 @@ func (srv *Server) run() {
 			srv.peersMux.Lock()
 			srv.connectedNodes[*p.RNodeID()] = p
 			srv.peersMux.Unlock()
-			// run peer
+			// Run peer
 			go srv.runPeer(p)
 			// notice
 			subscribe.Send(subscribe.AddNewPeer, p)
@@ -160,6 +161,9 @@ func (srv *Server) run() {
 
 // startListening start tcp listening
 func (srv *Server) startListening() error {
+	if srv.Config.Port < 1024 {
+		return errors.New("p2p listening port can't be less than 1024")
+	}
 	listener, err := net.Listen("tcp", srv.listenAddr())
 	if err != nil {
 		return err
@@ -197,7 +201,7 @@ func (srv *Server) HandleConn(fd net.Conn, nodeID *NodeID) error {
 	}
 	// handshake
 	peer := srv.newPeer(fd)
-	err := peer.doHandshake(srv.PrivateKey, nodeID)
+	err := peer.DoHandshake(srv.PrivateKey, nodeID)
 	if err != nil {
 		log.Debugf("peer handshake failed: %v", err)
 		fd.Close()
@@ -221,10 +225,10 @@ func (srv *Server) HandleConn(fd net.Conn, nodeID *NodeID) error {
 	return nil
 }
 
-// runPeer run peer
+// runPeer Run peer
 func (srv *Server) runPeer(p IPeer) {
 	log.Debugf("peer(nodeID: %s) start running", common.ToHex(p.RNodeID()[:8]))
-	if err := p.run(); err != nil { // block this
+	if err := p.Run(); err != nil { // block this
 		log.Debugf("runPeer error: %v", err)
 	}
 
@@ -232,7 +236,7 @@ func (srv *Server) runPeer(p IPeer) {
 	if atomic.LoadInt32(&srv.running) == 1 {
 		srv.delPeerCh <- p
 	}
-	log.Debugf("peer run finished: %s", common.ToHex(p.RNodeID()[:8]))
+	log.Debugf("peer Run finished: %s", common.ToHex(p.RNodeID()[:8]))
 }
 
 //go:generate gencodec -type PeerConnInfo -out gen_peer_conn_info_json.go

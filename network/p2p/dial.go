@@ -56,7 +56,7 @@ func (m *DialManager) Stop() error {
 	return nil
 }
 
-// runDialTask run dial task
+// runDialTask Run dial task
 func (m *DialManager) runDialTask(node string) int {
 	// check
 	nodeID, endpoint := checkNodeString(node)

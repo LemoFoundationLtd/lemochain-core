@@ -30,8 +30,8 @@ type IPeer interface {
 	RNodeID() *NodeID
 	RAddress() string
 	LAddress() string
-	doHandshake(prv *ecdsa.PrivateKey, nodeID *NodeID) error
-	run() (err error)
+	DoHandshake(prv *ecdsa.PrivateKey, nodeID *NodeID) error
+	Run() (err error)
 	NeedReConnect() bool
 	SetStatus(status int32)
 	Close()
@@ -65,8 +65,8 @@ func newPeer(fd net.Conn) IPeer {
 	}
 }
 
-// doHandshake do handshake when connection
-func (p *Peer) doHandshake(prv *ecdsa.PrivateKey, nodeID *NodeID) (err error) {
+// DoHandshake do handshake when connection
+func (p *Peer) DoHandshake(prv *ecdsa.PrivateKey, nodeID *NodeID) (err error) {
 	// as server
 	if nodeID == nil {
 		s, err := serverEncHandshake(p.conn, prv, nil)
@@ -105,15 +105,15 @@ func (p *Peer) safeClose() {
 	}
 }
 
-// run  run peer and block this
-func (p *Peer) run() (err error) {
+// Run  Run peer and block this
+func (p *Peer) Run() (err error) {
 	p.wg.Add(2)
 	p.heartbeatTimer = time.NewTimer(heartbeatInterval)
 	go p.heartbeatLoop()
 	go p.readLoop()
 	// block this and wait for stop
 	p.wg.Wait()
-	log.Debugf("peer.run finished.p: %s", p.RAddress())
+	log.Debugf("peer.Run finished.p: %s", p.RAddress())
 	return err
 }
 

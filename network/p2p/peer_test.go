@@ -53,7 +53,7 @@ func newClient(t *testing.T, cliPeerCh chan *Peer) {
 	}
 	peer := newPeer(conn)
 	srvNodeID := PubKeyToNodeID(pubSrv)
-	if err = peer.doHandshake(prvCli, &srvNodeID); err != nil {
+	if err = peer.DoHandshake(prvCli, &srvNodeID); err != nil {
 		t.Fatalf("client handshake failed: %v", err)
 	}
 	p := peer.(*Peer)
@@ -69,7 +69,7 @@ func Test_doHandshake(t *testing.T) {
 		t.Fatalf("new server failed")
 	}
 	peer := newPeer(*conn)
-	if err := peer.doHandshake(prvSrv, nil); err != nil {
+	if err := peer.DoHandshake(prvSrv, nil); err != nil {
 		t.Fatalf("server handshake failed: %v", err)
 	}
 	p := peer.(*Peer)
@@ -86,9 +86,9 @@ func newPeers(t *testing.T) (pCli, pSrv IPeer) {
 	pSrv = newPeer(connSrv)
 	errSrvCh := make(chan error)
 	go func() {
-		errSrvCh <- pSrv.doHandshake(prvSrv, nil)
+		errSrvCh <- pSrv.DoHandshake(prvSrv, nil)
 	}()
-	err := pCli.doHandshake(prvCli, &nodeIDSrv)
+	err := pCli.DoHandshake(prvCli, &nodeIDSrv)
 	errSrv := <-errSrvCh
 	assert.Nil(t, err)
 	assert.Nil(t, errSrv)
@@ -98,8 +98,8 @@ func newPeers(t *testing.T) (pCli, pSrv IPeer) {
 	if bytes.Compare(pC.aes, pS.aes) != 0 {
 		t.Error("AES not match")
 	}
-	go pCli.run()
-	go pSrv.run()
+	go pCli.Run()
+	go pSrv.Run()
 	return
 }
 

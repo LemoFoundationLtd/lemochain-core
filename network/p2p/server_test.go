@@ -58,13 +58,13 @@ func (p *testPeer) RAddress() string {
 func (p *testPeer) LAddress() string {
 	return p.conn.LocalAddr().String()
 }
-func (p *testPeer) doHandshake(prv *ecdsa.PrivateKey, nodeID *NodeID) error {
+func (p *testPeer) DoHandshake(prv *ecdsa.PrivateKey, nodeID *NodeID) error {
 	if p.errHandshake {
 		return errors.New("halt ha ha")
 	}
 	return nil
 }
-func (p *testPeer) run() (err error) {
+func (p *testPeer) Run() (err error) {
 	time.Sleep(3 * time.Second)
 	return nil
 }
@@ -221,4 +221,18 @@ func Test_server_run(t *testing.T) {
 	case <-deleteTimer.C:
 		t.Fatal("not recv delete event")
 	}
+}
+
+func Test_Start_error(t *testing.T) {
+	srv := initServer(100)
+	srv.running = 1
+	assert.Equal(t, ErrAlreadyRunning, srv.Start())
+
+	srv.running = 0
+	srv.PrivateKey = nil
+	assert.Panics(t, func() { srv.Start() })
+
+	srv.running = 0
+	srv.PrivateKey = prvSrv
+	assert.Panics(t, func() { srv.Start() })
 }
