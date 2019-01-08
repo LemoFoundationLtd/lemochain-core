@@ -7,17 +7,17 @@ import (
 
 // protocol code
 const (
-	HeartbeatMsg    = 0x01 // 心跳
-	ProHandshakeMsg = 0x02
-	LstStatusMsg    = 0x03
-	GetLstStatusMsg = 0x04
-	BlockHashMsg    = 0x05 // block的hash集消息
-	TxsMsg          = 0x06
-	GetBlocksMsg    = 0x07 // 获取区块集合消息
-	BlocksMsg       = 0x08 // 区块集消息
-	ConfirmMsg      = 0x09 // 新区块确认消息
-	GetConfirmsMsg  = 0x0a // 获取确认包信息
-	ConfirmsMsg     = 0x0b // 收到确信包信息
+	HeartbeatMsg    = 0x01 // heartbeat message
+	ProHandshakeMsg = 0x02 // protocol handshake message
+	LstStatusMsg    = 0x03 // latest status message
+	GetLstStatusMsg = 0x04 // get latest status message
+	BlockHashMsg    = 0x05 // block's hash message
+	TxsMsg          = 0x06 // transactions message
+	GetBlocksMsg    = 0x07 // get blocks message
+	BlocksMsg       = 0x08 // blocks message
+	ConfirmMsg      = 0x09 // a confirm of one block message
+	GetConfirmsMsg  = 0x0a // get confirms of one block message
+	ConfirmsMsg     = 0x0b // confirms of one block message
 	// for find node
 	DiscoverReqMsg = 0x0c // find node request message
 	DiscoverResMsg = 0x0d // find node response message
@@ -28,41 +28,41 @@ type GetLatestStatus struct {
 	Revert uint32
 }
 
-// BlockHashData 新区块Hash数据
+// BlockHashData
 type BlockHashData struct {
 	Height uint32
 	Hash   common.Hash
 }
 
-// getBlocksData 获取区块集
+// getBlocksData
 type GetBlocksData struct {
 	From uint32
 	To   uint32
 }
 
-// GetSingleBlockData 单独获取一个区块
+// GetSingleBlockData
 type GetSingleBlockData struct {
 	Hash   common.Hash
 	Height uint32
 }
 
-// blockConfirmData 区块确认信息
+// blockConfirmData
 type BlockConfirmData struct {
-	Hash     common.Hash    // 区块Hash
-	Height   uint32         //区块高度
-	SignInfo types.SignData // 签名信息
+	Hash     common.Hash    // block Hash
+	Height   uint32         // block height
+	SignInfo types.SignData // block sign info
 }
 
-// getConfirmInfo 主动拉取确认包
+// getConfirmInfo
 type GetConfirmInfo struct {
 	Height uint32
 	Hash   common.Hash
 }
 
-// BlockConfirms 某个区块的所有确认信息
+// BlockConfirms confirms of a block
 type BlockConfirms struct {
-	Height uint32      //区块高度
-	Hash   common.Hash // 区块Hash
+	Height uint32      // block height
+	Hash   common.Hash // block hash
 	Pack   []types.SignData
 }
 

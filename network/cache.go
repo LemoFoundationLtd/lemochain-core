@@ -111,16 +111,16 @@ func (c *BlockCache) Add(block *types.Block) {
 		Blocks: blocks,
 	}
 	length := len(c.cache)
-	if length == 0 || height < c.cache[0].Height { // not exist or at first position
+	if length == 0 || height < c.cache[0].Height { // not exist or less than min height
 		c.cache = append([]*blocksSameHeight{bsh}, c.cache...)
-	} else if height > c.cache[length-1].Height { // at last position
+	} else if height > c.cache[length-1].Height { // larger than max height
 		c.cache = append(c.cache, bsh)
 	} else {
-		for i := 0; i < len(c.cache)-1; i++ {
-			if c.cache[i].Height == height || i == len(c.cache)-1 { // already exist
+		for i := 0; i < len(c.cache); i++ {
+			if c.cache[i].Height == height { // already exist
 				c.cache[i].Blocks[block.Hash()] = block
 				break
-			} else if c.cache[i].Height > height && height < c.cache[i+1].Height { // not exist
+			} else if c.cache[i].Height > height { // not exist
 				tmp := append(c.cache[:i+1], bsh)
 				c.cache = append(tmp, c.cache[i+1:]...)
 				break

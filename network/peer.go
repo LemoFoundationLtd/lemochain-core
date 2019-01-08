@@ -16,6 +16,23 @@ const (
 	DurLong   = 10 * time.Second
 )
 
+// ProtocolHandshake protocol handshake
+type ProtocolHandshake struct {
+	ChainID      uint16
+	GenesisHash  common.Hash
+	NodeVersion  uint32
+	LatestStatus LatestStatus
+}
+
+// Bytes object to bytes
+func (phs *ProtocolHandshake) Bytes() []byte {
+	buf, err := rlp.EncodeToBytes(phs)
+	if err != nil {
+		return nil
+	}
+	return buf
+}
+
 // LatestStatus latest peer's status
 type LatestStatus struct {
 	CurHeight uint32

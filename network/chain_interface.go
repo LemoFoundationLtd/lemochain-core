@@ -5,30 +5,30 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 )
 
-// BlockChain 同步用 需要被外界实现
+// BlockChain
 type BlockChain interface {
 	Genesis() *types.Block
-	// HasBlock 链上是否有此块
+	// HasBlock if block exist in local chain
 	HasBlock(hash common.Hash) bool
-	// GetBlockByHeight 通过区块高度获取区块
+	// GetBlockByHeight get block by  height from local chain
 	GetBlockByHeight(height uint32) *types.Block
-	// GetBlockByHash 通过区块HASH获取区块
+	// GetBlockByHash get block by hash from local chain
 	GetBlockByHash(hash common.Hash) *types.Block
-	// CurrentBlock 获取当前最新区块
+	// CurrentBlock local chain's current block
 	CurrentBlock() *types.Block
-	// StableBlock 获取当前最新被共识的区块
+	// StableBlock local chain's latest stable block
 	StableBlock() *types.Block
-	// InsertChain 插入一个区块到链上
+	// InsertChain insert a block to local chain
 	InsertChain(block *types.Block, isSyncing bool) error
-	// SetStableBlock 设置最新的稳定区块
+	// SetStableBlock set local chain's latest stable block
 	SetStableBlock(hash common.Hash, height uint32) error
-	// Verify 验证区块是否合法
+	// Verify verify block
 	Verify(block *types.Block) error
-
+	// ReceiveConfirm received a confirm message from remote peer
 	ReceiveConfirm(info *BlockConfirmData) (err error)
-
+	// GetConfirms get a block's confirms from local chain
 	GetConfirms(query *GetConfirmInfo) []types.SignData
-
+	// ReceiveConfirms received a block's confirm info
 	ReceiveConfirms(pack BlockConfirms)
 }
 

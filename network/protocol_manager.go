@@ -20,6 +20,21 @@ const (
 	SyncTimeout = int64(20)
 )
 
+// just for test
+const (
+	testBroadcastTxs int = 1 + iota
+	testBroadcastBlock
+	testBroadcastConfirm
+	testRcvBlocks
+	testQueueTimer
+	testStableBlock
+	testSetConfirmFromCache
+	testAddPeer
+	testRemovePeer
+	testForceSync
+	testDiscover
+)
+
 var testRcvFlag = false
 
 type rcvBlockObj struct {
@@ -53,6 +68,9 @@ type ProtocolManager struct {
 
 	wg     sync.WaitGroup
 	quitCh chan struct{}
+
+	test       bool
+	testOutput chan int
 }
 
 func NewProtocolManager(chainID uint16, nodeID p2p.NodeID, chain BlockChain, txPool TxPool, discover *p2p.DiscoverManager, nodeVersion uint32) *ProtocolManager {
@@ -80,6 +98,11 @@ func NewProtocolManager(chainID uint16, nodeID p2p.NodeID, chain BlockChain, txP
 	}
 	pm.sub()
 	return pm
+}
+
+func (pm *ProtocolManager) setTest() {
+	pm.test = true
+	pm.testOutput = make(chan int)
 }
 
 // sub subscribe channel
@@ -144,9 +167,7 @@ func (pm *ProtocolManager) txConfirmLoop() {
 			}
 			curHeight := pm.chain.CurrentBlock().Height()
 			peers := pm.peers.DeputyNodes(curHeight)
-			if len(peers) > 0 {
-				go pm.broadcastConfirm(peers, info)
-			}
+			go pm.broadcastConfirm(peers, info)
 			log.Debugf("broadcast confirm, len(peers)=%d, height: %d", len(peers), info.Height)
 		}
 	}
@@ -174,9 +195,7 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 		case block := <-pm.newMinedBlockCh:
 			log.Debugf("current's peers count: %d", len(pm.peers.peers))
 			peers := pm.peers.DeputyNodes(block.Height())
-			if len(peers) > 0 {
-				go pm.broadcastBlock(peers, block, true)
-			}
+			go pm.broadcastBlock(peers, block, true)
 		case rcvMsg := <-pm.rcvBlocksCh:
 			// for test
 			testRcvFlag = false
@@ -206,6 +225,10 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 					}
 				}
 			}
+			// for test
+			if pm.test {
+				pm.testOutput <- testRcvBlocks
+			}
 		case <-queueTimer.C:
 			processBlock := func(block *types.Block) bool {
 				if pm.chain.HasBlock(block.ParentHash()) {
@@ -225,6 +248,10 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 					go p.RequestBlocks(pm.blockCache.FirstHeight()-1, pm.blockCache.FirstHeight()-1)
 					log.Debugf("blockCache's size: %d", cacheSize)
 				}
+			}
+			// for test
+			if pm.test {
+				pm.testOutput <- testQueueTimer
 			}
 		case <-testRcvTimer.C: // just for test
 			testRcvFlag = true
@@ -261,6 +288,10 @@ func (pm *ProtocolManager) stableBlockLoop() {
 				pm.confirmsCache.Clear(block.Height())
 				pm.blockCache.Clear(block.Height())
 			}()
+			// for test
+			if pm.test {
+				pm.testOutput <- testStableBlock
+			}
 		}
 	}
 }
@@ -292,6 +323,10 @@ func (pm *ProtocolManager) setConfirmsFromCache(height uint32, hash common.Hash)
 	if pm.confirmsCache.Size() > 100 {
 		log.Debugf("confirmsCache's size: %d", pm.confirmsCache.Size())
 	}
+	// for test
+	if pm.test {
+		pm.testOutput <- testSetConfirmFromCache
+	}
 }
 
 // peerLoop something about peer event
@@ -312,16 +347,28 @@ func (pm *ProtocolManager) peerLoop() {
 		case rPeer := <-pm.addPeerCh: // new peer added
 			p := newPeer(rPeer)
 			go pm.handlePeer(p)
+			// for test
+			if pm.test {
+				pm.testOutput <- testAddPeer
+			}
 		case rPeer := <-pm.removePeerCh:
 			p := newPeer(rPeer)
 			pm.peers.UnRegister(p)
 			log.Infof("Connection has dropped, nodeID: %s", p.NodeID().String()[:16])
+			// for test
+			if pm.test {
+				pm.testOutput <- testRemovePeer
+			}
 		case <-forceSyncTimer.C: // time to synchronise block
 			p := pm.peers.BestToSync(pm.chain.CurrentBlock().Height())
 			if p != nil {
 				go p.SendReqLatestStatus()
 			}
 			forceSyncTimer.Reset(ForceSyncInternal)
+			// for test
+			if pm.test {
+				pm.testOutput <- testForceSync
+			}
 		case <-discoverTimer.C: // time to discover
 			if len(pm.peers.peers) < 5 {
 				p := pm.peers.BestToDiscover()
@@ -330,6 +377,10 @@ func (pm *ProtocolManager) peerLoop() {
 				}
 			}
 			discoverTimer.Reset(DiscoverInternal)
+			// for test
+			if pm.test {
+				pm.testOutput <- testDiscover
+			}
 		}
 	}
 }
@@ -339,12 +390,18 @@ func (pm *ProtocolManager) broadcastTxs(peers []*peer, txs types.Transactions) {
 	for _, p := range peers {
 		p.SendTxs(txs)
 	}
+	if pm.test {
+		pm.testOutput <- testBroadcastTxs
+	}
 }
 
 // broadcastConfirm broadcast confirm info to deputy nodes
 func (pm *ProtocolManager) broadcastConfirm(peers []*peer, confirmInfo *BlockConfirmData) {
 	for _, p := range peers {
 		p.SendConfirmInfo(confirmInfo)
+	}
+	if pm.test {
+		pm.testOutput <- testBroadcastConfirm
 	}
 }
 
@@ -356,6 +413,9 @@ func (pm *ProtocolManager) broadcastBlock(peers []*peer, block *types.Block, wit
 		} else {
 			p.SendBlockHash(block.Height(), block.Hash())
 		}
+	}
+	if pm.test {
+		pm.testOutput <- testBroadcastBlock
 	}
 }
 
