@@ -151,7 +151,10 @@ func NewRecent() *TxsRecent {
 }
 
 func (recent *TxsRecent) isExist(hash common.Hash) bool {
-	if recent.recent[0][hash] || recent.recent[1][hash] {
+	_, isExist1 := recent.recent[0][hash]
+	_, isExist2 := recent.recent[1][hash]
+
+	if isExist1 || isExist2 {
 		return true
 	} else {
 		return false

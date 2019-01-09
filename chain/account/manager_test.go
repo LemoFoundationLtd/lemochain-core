@@ -5,6 +5,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/vm"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"github.com/stretchr/testify/assert"
 	"math/big"
 	"testing"
@@ -24,10 +25,12 @@ func TestNewManager_withoutDB(t *testing.T) {
 }
 
 func TestNewManager(t *testing.T) {
+	store.ClearData()
 	NewManager(common.Hash{}, newDB())
 }
 
 func TestNewManager_GetAccount(t *testing.T) {
+	store.ClearData()
 	db := newDB()
 
 	// exist in db
@@ -61,6 +64,7 @@ func TestNewManager_GetAccount(t *testing.T) {
 }
 
 func TestNewManager_GetCanonicalAccount(t *testing.T) {
+	store.ClearData()
 	db := newDB()
 
 	// exist in db
@@ -79,6 +83,7 @@ func TestNewManager_GetCanonicalAccount(t *testing.T) {
 }
 
 func TestChangeLogProcessor_GetAccount(t *testing.T) {
+	store.ClearData()
 	db := newDB()
 	manager := NewManager(newestBlock.Hash(), db)
 
@@ -103,7 +108,9 @@ func TestChangeLogProcessor_GetAccount(t *testing.T) {
 }
 
 func TestChangeLogProcessor_PushEvent_PopEvent(t *testing.T) {
+	store.ClearData()
 	db := newDB()
+
 	manager := NewManager(newestBlock.Hash(), db)
 
 	// push
@@ -126,7 +133,9 @@ func TestChangeLogProcessor_PushEvent_PopEvent(t *testing.T) {
 }
 
 func TestChangeLogProcessor_PushChangeLog_GetChangeLogs(t *testing.T) {
+	store.ClearData()
 	db := newDB()
+
 	manager := NewManager(newestBlock.Hash(), db)
 
 	manager.processor.PushChangeLog(&types.ChangeLog{
@@ -143,7 +152,9 @@ func TestChangeLogProcessor_PushChangeLog_GetChangeLogs(t *testing.T) {
 }
 
 func TestNewManager_Snapshot_RevertToSnapshot(t *testing.T) {
+	store.ClearData()
 	db := newDB()
+
 	manager := NewManager(newestBlock.Hash(), db)
 
 	// snapshot when empty
@@ -194,6 +205,7 @@ func TestNewManager_Snapshot_RevertToSnapshot(t *testing.T) {
 }
 
 func TestNewManager_AddEvent(t *testing.T) {
+	store.ClearData()
 	db := newDB()
 	manager := NewManager(newestBlock.Hash(), db)
 
@@ -213,6 +225,7 @@ func TestNewManager_AddEvent(t *testing.T) {
 }
 
 func TestNewManager_GetVersionRoot(t *testing.T) {
+	store.ClearData()
 	db := newDB()
 
 	// empty version trie
@@ -233,6 +246,7 @@ func TestNewManager_GetVersionRoot(t *testing.T) {
 }
 
 func TestNewManager_Reset(t *testing.T) {
+	store.ClearData()
 	db := newDB()
 	manager := NewManager(common.Hash{}, db)
 
@@ -252,6 +266,7 @@ func TestNewManager_Reset(t *testing.T) {
 
 // saving from the newest block
 func TestNewManager_Finalise_Save(t *testing.T) {
+	store.ClearData()
 	db := newDB()
 	manager := NewManager(newestBlock.Hash(), db)
 
@@ -295,6 +310,7 @@ func TestNewManager_Finalise_Save(t *testing.T) {
 
 // saving genesis block and first block
 func TestNewManager_Finalise_Save2(t *testing.T) {
+	store.ClearData()
 	db := newDB()
 	// load from genesis' parent block
 	manager := NewManager(common.Hash{}, db)
@@ -338,6 +354,7 @@ func TestNewManager_Finalise_Save2(t *testing.T) {
 }
 
 func TestManager_Save_Reset(t *testing.T) {
+	store.ClearData()
 	db := newDB()
 	// load from genesis' parent block
 	manager := NewManager(common.Hash{}, db)
@@ -350,6 +367,7 @@ func TestManager_Save_Reset(t *testing.T) {
 	assert.Equal(t, 1, len(account.GetTxHashList()))
 	err := manager.Finalise()
 	assert.NoError(t, err)
+
 	block := &types.Block{}
 	block.SetHeader(&types.Header{Height: 0, VersionRoot: manager.GetVersionRoot()})
 	err = db.SetBlock(block.Hash(), block)
@@ -360,6 +378,7 @@ func TestManager_Save_Reset(t *testing.T) {
 	// save balance to 2 in block2
 	block1Hash := block.Hash()
 	manager.Reset(block1Hash)
+	//manager = NewManager(block1Hash, db)
 	account = manager.GetAccount(common.HexToAddress("0x1"))
 	account.SetBalance(big.NewInt(2))
 	assert.Equal(t, uint32(2), account.GetVersion(BalanceLog))
@@ -382,6 +401,7 @@ func TestManager_Save_Reset(t *testing.T) {
 }
 
 func TestManager_MergeChangeLogs(t *testing.T) {
+	store.ClearData()
 	db := newDB()
 	manager := NewManager(newestBlock.Hash(), db)
 
@@ -430,19 +450,20 @@ func TestManager_MergeChangeLogs(t *testing.T) {
 }
 
 func TestManager_SaveTxInAccount(t *testing.T) {
+	store.ClearData()
 	db := newDB()
 	manager := NewManager(common.Hash{}, db)
 
 	account1 := manager.GetAccount(defaultAccounts[0].Address)
 	account2 := manager.GetAccount(common.HexToAddress("0x1"))
-	assert.Equal(t, 0, len(account1.GetTxHashList()))
+	assert.Equal(t, 2, len(account1.GetTxHashList()))
 	assert.Equal(t, 0, len(account2.GetTxHashList()))
 	manager.SaveTxInAccount(account1.GetAddress(), account2.GetAddress(), common.HexToHash("0x111"))
-	assert.Equal(t, 1, len(account1.GetTxHashList()))
-	assert.Equal(t, common.HexToHash("0x111"), account1.GetTxHashList()[0])
+	assert.Equal(t, 3, len(account1.GetTxHashList()))
+	assert.Equal(t, common.HexToHash("0x11"), account1.GetTxHashList()[0])
 	assert.Equal(t, 1, len(account2.GetTxHashList()))
 
 	// from is to
 	manager.SaveTxInAccount(account1.GetAddress(), account1.GetAddress(), common.HexToHash("0x222"))
-	assert.Equal(t, 2, len(account1.GetTxHashList()))
+	assert.Equal(t, 4, len(account1.GetTxHashList()))
 }

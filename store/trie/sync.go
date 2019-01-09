@@ -213,19 +213,19 @@ func (s *TrieSync) Process(results []SyncResult) (bool, int, error) {
 
 // Commit flushes the data stored in the internal membatch out to persistent
 // storage, returning th enumber of items written and any occurred error.
-func (s *TrieSync) Commit(dbw store.Putter) (int, error) {
-	// Dump the membatch into a database dbw
-	for i, key := range s.membatch.order {
-		if err := dbw.Put(key[:], s.membatch.batch[key]); err != nil {
-			return i, err
-		}
-	}
-	written := len(s.membatch.order)
-
-	// Drop the membatch data and return
-	s.membatch = newSyncMemBatch()
-	return written, nil
-}
+// func (s *TrieSync) Commit(dbw store.Putter) (int, error) {
+// 	// Dump the membatch into a database dbw
+// 	for i, key := range s.membatch.order {
+// 		if err := dbw.Put(key[:], s.membatch.batch[key]); err != nil {
+// 			return i, err
+// 		}
+// 	}
+// 	written := len(s.membatch.order)
+//
+// 	// Drop the membatch data and return
+// 	s.membatch = newSyncMemBatch()
+// 	return written, nil
+// }
 
 // Pending returns the number of state entries currently pending for download.
 func (s *TrieSync) Pending() int {

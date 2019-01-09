@@ -33,6 +33,12 @@
 			"revisionTime": "2018-05-16T10:03:07Z"
 		},
 		{
+			"checksumSHA1": "4rhtWm02v19WqginMlddNpQlVA0=",
+			"path": "github.com/go-sql-driver/mysql",
+			"revision": "6be42e0ff99645d7d9626d779001a46e39c5f280",
+			"revisionTime": "2018-11-16T10:20:33Z"
+		},
+		{
 			"checksumSHA1": "4i12mddRzVhGXRyTJ1x9KAX4RGM=",
 			"path": "github.com/go-stack/stack",
 			"revision": "259ab82a6cad3992b4e21ff5cac294ccb06474bc",
@@ -265,6 +271,12 @@
 			"path": "github.com/syndtr/goleveldb/leveldb/util",
 			"revision": "c4c61651e9e37fa117f53c5a906d3b63090d8445",
 			"revisionTime": "2018-07-08T03:05:51Z"
+		},
+		{
+			"checksumSHA1": "c258xilm9x4bmuzv3s6L87Hj32c=",
+			"path": "github.com/tchap/go-patricia/patricia",
+			"revision": "5ad6cdb7538b0097d5598c7e57f0a24072adf7dc",
+			"revisionTime": "2017-09-01T15:15:52Z"
 		},
 		{
 			"checksumSHA1": "TT1rac6kpQp2vz24m5yDGUNQ/QQ=",
@@ -513,6 +525,10 @@
 			"path": "golang.org/x/tools/imports",
 			"revision": "be0fcc31ae2332374e800dfff29b721c585b35df",
 			"revisionTime": "2016-11-04T18:56:24Z"
+		},
+		{
+			"path": "google.golang.org/appengine/cloudsql",
+			"revision": ""
 		},
 		{
 			"checksumSHA1": "UIMpKvnf7bXeWEVq977FqaXpqzc=",

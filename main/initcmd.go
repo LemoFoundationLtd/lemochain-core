@@ -67,7 +67,7 @@ func setupGenesisBlock(genesisFile, datadir string) (common.Hash, error) {
 // saveBlock save block to db
 func saveBlock(datadir string, genesis *chain.Genesis) (common.Hash, error) {
 	chaindata := filepath.Join(datadir, "chaindata")
-	db, err := store.NewCacheChain(chaindata)
+	db, err := store.NewChainDataBase(chaindata)
 	if err != nil {
 		log.Errorf("%v", err)
 		return common.Hash{}, err

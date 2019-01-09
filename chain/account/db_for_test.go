@@ -10,13 +10,13 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/store/protocol"
 	"github.com/LemoFoundationLtd/lemochain-go/store/trie"
 	"math/big"
-	"os"
 )
 
 type blockInfo struct {
 	hash        common.Hash
 	versionRoot common.Hash
 	time        uint32
+	height      uint32
 }
 
 var (
@@ -28,18 +28,21 @@ var (
 			hash:        common.HexToHash("0x1c36d1e8f1dff93ae0a2b24018c6a8cc7db8e5774446b4bd29054a51917d64b8"),
 			versionRoot: common.HexToHash("0xac5efb21e3de5900ef965fcfca8bd43c4e84e22d1b66bb5bf3d8418c976a853c"),
 			time:        1538209751,
+			height:      0,
 		},
 		// block 1 is stable block
 		{
 			hash:        common.HexToHash("0xab333c34b70f9a4cf0f945b09abe9f10a8684b8ce5d5d42ee66635eb13ca204a"),
 			versionRoot: common.HexToHash("0xac5efb21e3de5900ef965fcfca8bd43c4e84e22d1b66bb5bf3d8418c976a853c"),
 			time:        1538209755,
+			height:      1,
 		},
 		// block 2 is not stable block
 		{
 			hash:        common.HexToHash("0xeda54f97291c9e78215a2dc3db2c083e872434405c12b8ebafcda411d9138978"),
 			versionRoot: common.HexToHash("0xac5efb21e3de5900ef965fcfca8bd43c4e84e22d1b66bb5bf3d8418c976a853c"),
 			time:        1538209758,
+			height:      2,
 		},
 	}
 	// this account data is written with genesis block
@@ -81,27 +84,24 @@ var (
 	emptyTrieRoot = common.HexToHash("0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
 )
 
-func init() {
-	// clear db
-	// store.ClearData()
-	if err := os.RemoveAll("../../testdata/db_account"); err != nil {
-		panic(err)
-	}
-}
+// func init() {
+// 	// clear db
+// 	// store.ClearData()
+// 	if err := os.RemoveAll("../../testdata/db_account"); err != nil {
+// 		panic(err)
+// 	}
+// }
 
 // newDB creates db for test account module
 func newDB() protocol.ChainDB {
-	db, err := store.NewCacheChain("../../testdata/db_account")
-	if err != nil {
-		panic(err)
-	}
+	db := store.NewChainDataBase(store.GetStorePath())
 
 	for i, _ := range defaultBlockInfos {
 		// use pointer for repairing incorrect hash
 		saveBlock(db, i, &defaultBlockInfos[i])
 	}
 	saveAccount(db)
-	err = db.SetStableBlock(defaultBlockInfos[1].hash)
+	err := db.SetStableBlock(defaultBlockInfos[1].hash)
 	if err != nil {
 		panic(err)
 	}
@@ -166,17 +166,28 @@ func saveBlock(db protocol.ChainDB, blockIndex int, info *blockInfo) {
 func saveAccount(db protocol.ChainDB) {
 	trieDB := db.GetTrieDatabase()
 	// save account (to db cache, not to file)
-	err := db.SetAccounts(defaultBlockInfos[0].hash, defaultAccounts)
-	if err != nil {
-		panic(err)
+	acctDb := db.GetActDatabase(defaultBlockInfos[0].hash)
+
+	for index := 0; index < len(defaultAccounts); index++ {
+		err := acctDb.Insert(defaultAccounts[index].Address[:], defaultAccounts[index])
+		if err != nil {
+			panic(err)
+		}
+
+		acctDb.Put(defaultAccounts[index], 0)
+		//acctDb.Dye(string(defaultAccounts[index].Address[:]), am.baseBlock.Height())
+		//dirtyAccounts = append(dirtyAccounts, account.rawAccount.data)
 	}
+
+	//err := db.SetAccounts(defaultBlockInfos[0].hash, defaultAccounts)
+
 	// save code
 	for _, codeInfo := range defaultCodes {
 		hash := crypto.Keccak256Hash(codeInfo.code)
 		if hash != codeInfo.hash {
 			panic(fmt.Errorf("code hash error. except: %s, got: %s", codeInfo.hash.Hex(), hash.Hex()))
 		}
-		err = db.SetContractCode(codeInfo.hash, codeInfo.code)
+		err := db.SetContractCode(codeInfo.hash, codeInfo.code)
 		if err != nil {
 			panic(err)
 		}

@@ -5,6 +5,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/store"
+	"github.com/LemoFoundationLtd/lemochain-go/store/protocol"
 	"github.com/stretchr/testify/assert"
 	"math/big"
 	"testing"
@@ -14,30 +15,36 @@ func TestAccount_Interface(t *testing.T) {
 	var _ types.AccountAccessor = (*Account)(nil)
 }
 
-func loadAccount(address common.Address) *Account {
-	db := newDB()
-	data, _ := db.GetAccount(newestBlock.Hash(), address)
+func loadAccount(db protocol.ChainDB, address common.Address) *Account {
+	acctDb := db.GetActDatabase(newestBlock.Hash())
+	data := acctDb.Find(address[:])
 	return NewAccount(db, address, data, 2)
 }
 
 func TestAccount_GetAddress(t *testing.T) {
+	store.ClearData()
+
 	db := newDB()
 
 	// load default account
-	account := loadAccount(defaultAccounts[0].Address)
+	account := loadAccount(db, defaultAccounts[0].Address)
 	assert.Equal(t, uint32(100), account.GetVersion(BalanceLog))
 
-	// load not exist account
-	account = loadAccount(common.HexToAddress("0xaaa"))
+	//load not exist account
+	account = loadAccount(db, common.HexToAddress("0xaaa"))
 	assert.Equal(t, common.HexToAddress("0xaaa"), account.GetAddress())
 
-	// load from genesis' parent block
-	_, err := db.GetAccount(common.Hash{}, common.HexToAddress("0xaaa"))
+	//load from genesis' parent block
+	db.GetActDatabase(common.Hash{})
+	_, err := db.GetAccount(common.HexToAddress("0xaaa"))
 	assert.Equal(t, store.ErrNotExist, err)
 }
 
 func TestAccount_SetBalance_GetBalance(t *testing.T) {
-	account := loadAccount(defaultAccounts[0].Address)
+	store.ClearData()
+	db := newDB()
+
+	account := loadAccount(db, defaultAccounts[0].Address)
 	assert.Equal(t, big.NewInt(100), account.GetBalance())
 
 	account.SetBalance(big.NewInt(200))
@@ -45,7 +52,10 @@ func TestAccount_SetBalance_GetBalance(t *testing.T) {
 }
 
 func TestAccount_SetVersion_GetVersion(t *testing.T) {
-	account := loadAccount(defaultAccounts[0].Address)
+	store.ClearData()
+	db := newDB()
+
+	account := loadAccount(db, defaultAccounts[0].Address)
 	assert.Equal(t, uint32(100), account.GetVersion(BalanceLog))
 	assert.Equal(t, defaultAccounts[0].NewestRecords[BalanceLog].Height, account.data.NewestRecords[BalanceLog].Height)
 
@@ -55,7 +65,10 @@ func TestAccount_SetVersion_GetVersion(t *testing.T) {
 }
 
 func TestAccount_SetSuicide_GetSuicide(t *testing.T) {
-	account := loadAccount(defaultAccounts[0].Address)
+	store.ClearData()
+	db := newDB()
+
+	account := loadAccount(db, defaultAccounts[0].Address)
 	assert.Equal(t, false, account.GetSuicide())
 
 	account.SetSuicide(true)
@@ -66,7 +79,10 @@ func TestAccount_SetSuicide_GetSuicide(t *testing.T) {
 }
 
 func TestAccount_SetCodeHash_GetCodeHash(t *testing.T) {
-	account := loadAccount(defaultAccounts[0].Address)
+	store.ClearData()
+	db := newDB()
+
+	account := loadAccount(db, defaultAccounts[0].Address)
 	assert.Equal(t, defaultCodes[0].hash, account.GetCodeHash())
 
 	account.code = types.Code{0x12}
@@ -80,7 +96,10 @@ func TestAccount_SetCodeHash_GetCodeHash(t *testing.T) {
 }
 
 func TestAccount_SetCode_GetCode(t *testing.T) {
-	account := loadAccount(defaultAccounts[0].Address)
+	store.ClearData()
+	db := newDB()
+
+	account := loadAccount(db, defaultAccounts[0].Address)
 	readCode, err := account.GetCode()
 	assert.NoError(t, err)
 	assert.Equal(t, types.Code{12, 34}, readCode)
@@ -102,7 +121,7 @@ func TestAccount_SetCode_GetCode(t *testing.T) {
 	assert.Equal(t, true, account.codeIsDirty)
 
 	// set nil to new account
-	account = loadAccount(common.HexToAddress("0xaaa"))
+	account = loadAccount(db, common.HexToAddress("0xaaa"))
 	account.SetCode(nil)
 	readCode, err = account.GetCode()
 	assert.NoError(t, err)
@@ -112,14 +131,20 @@ func TestAccount_SetCode_GetCode(t *testing.T) {
 }
 
 func TestAccount_GetBaseHeight_GetTxHashList(t *testing.T) {
-	account := loadAccount(defaultAccounts[0].Address)
+	store.ClearData()
+	db := newDB()
+
+	account := loadAccount(db, defaultAccounts[0].Address)
 	assert.Equal(t, uint32(2), account.GetBaseHeight())
 	assert.Equal(t, 2, len(account.GetTxHashList()))
 	assert.Equal(t, common.HexToHash("0x11"), account.GetTxHashList()[0])
 }
 
 func TestAccount_SetStorageRoot_GetStorageRoot(t *testing.T) {
-	account := loadAccount(defaultAccounts[0].Address)
+	store.ClearData()
+	db := newDB()
+
+	account := loadAccount(db, defaultAccounts[0].Address)
 	assert.Equal(t, defaultAccounts[0].StorageRoot, account.GetStorageRoot())
 
 	account.dirtyStorage[k(1)] = []byte{12}
@@ -129,7 +154,10 @@ func TestAccount_SetStorageRoot_GetStorageRoot(t *testing.T) {
 }
 
 func TestAccount_SetStorageState_GetStorageState(t *testing.T) {
-	account := loadAccount(defaultAccounts[0].Address)
+	store.ClearData()
+	db := newDB()
+
+	account := loadAccount(db, defaultAccounts[0].Address)
 
 	// exist in db
 	readValue, err := account.GetStorageState(defaultStorage[0].key)
@@ -185,14 +213,20 @@ func TestAccount_SetStorageState_GetStorageState(t *testing.T) {
 }
 
 func TestAccount_IsEmpty(t *testing.T) {
-	account := loadAccount(common.HexToAddress("0x1"))
+	store.ClearData()
+	db := newDB()
+
+	account := loadAccount(db, common.HexToAddress("0x1"))
 	assert.Equal(t, true, account.IsEmpty())
 	account.SetVersion(BalanceLog, 100)
 	assert.Equal(t, false, account.IsEmpty())
 }
 
 func TestAccount_MarshalJSON_UnmarshalJSON(t *testing.T) {
-	account := loadAccount(defaultAccounts[0].Address)
+	store.ClearData()
+	db := newDB()
+
+	account := loadAccount(db, defaultAccounts[0].Address)
 	data, err := json.Marshal(account)
 	assert.NoError(t, err)
 	assert.Equal(t, `{"address":"Lemo8888888888888888888888888888883CPHBJ","balance":"100","codeHash":"0x1d5f11eaa13e02cdca886181dc38ab4cb8cf9092e86c000fb42d12c8b504500e","root":"0xcbeb7c7e36b846713bc99b8fa527e8d552e31bfaa1ac0f2b773958cda3aba3ed","records":{"1":{"version":"100","height":"1"},"3":{"version":"101","height":"2"}}}`, string(data))
@@ -208,7 +242,10 @@ func TestAccount_MarshalJSON_UnmarshalJSON(t *testing.T) {
 }
 
 func TestAccount_Finalise_Save(t *testing.T) {
-	account := loadAccount(defaultAccounts[0].Address)
+	store.ClearData()
+	db := newDB()
+
+	account := loadAccount(db, defaultAccounts[0].Address)
 
 	// nothing to finalise
 	value, err := account.GetStorageState(defaultStorage[0].key)
@@ -243,7 +280,7 @@ func TestAccount_Finalise_Save(t *testing.T) {
 	// save
 	err = account.Save()
 	assert.NoError(t, err)
-	account2 := loadAccount(defaultAccounts[0].Address)
+	account2 := loadAccount(db, defaultAccounts[0].Address)
 	account2.SetStorageRoot(account.GetStorageRoot())
 	readValue, err := account2.GetStorageState(key)
 	assert.NoError(t, err)
@@ -260,7 +297,7 @@ func TestAccount_Finalise_Save(t *testing.T) {
 	// save
 	err = account.Save()
 	assert.NoError(t, err)
-	account2 = loadAccount(defaultAccounts[0].Address)
+	account2 = loadAccount(db, defaultAccounts[0].Address)
 	account2.SetStorageRoot(account.GetStorageRoot())
 	readValue, err = account2.GetStorageState(key)
 	assert.NoError(t, err)
@@ -276,7 +313,7 @@ func TestAccount_Finalise_Save(t *testing.T) {
 	// save
 	err = account.Save()
 	assert.NoError(t, err)
-	account2 = loadAccount(defaultAccounts[0].Address)
+	account2 = loadAccount(db, defaultAccounts[0].Address)
 	account2.SetStorageRoot(account.GetStorageRoot())
 	readValue, err = account2.GetStorageState(key)
 	assert.NoError(t, err)
@@ -293,7 +330,7 @@ func TestAccount_Finalise_Save(t *testing.T) {
 	// save
 	err = account.Save()
 	assert.NoError(t, err)
-	account2 = loadAccount(defaultAccounts[0].Address)
+	account2 = loadAccount(db, defaultAccounts[0].Address)
 	account2.SetStorageRoot(account.GetStorageRoot())
 	readValue, err = account2.GetStorageState(key)
 	assert.NoError(t, err)
@@ -304,7 +341,7 @@ func TestAccount_Finalise_Save(t *testing.T) {
 	err = account.Save()
 	assert.NoError(t, err)
 	assert.Equal(t, false, account.codeIsDirty)
-	account2 = loadAccount(defaultAccounts[0].Address)
+	account2 = loadAccount(db, defaultAccounts[0].Address)
 	account2.SetCodeHash(common.HexToHash("0x5fa2358263196dbbf23d1ca7a509451f7a2f64c15837bfbb81298b1e3e24e4fa"))
 	readCode, err := account2.GetCode()
 	assert.NoError(t, err)
@@ -331,5 +368,6 @@ func TestAccount_Finalise_Save(t *testing.T) {
 }
 
 func TestAccount_LoadChangeLogs(t *testing.T) {
+	// db := newDB()
 	// TODO
 }
