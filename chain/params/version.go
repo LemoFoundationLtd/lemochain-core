@@ -11,3 +11,7 @@ const (
 var Version = func() string {
 	return fmt.Sprintf("%d.%d.%d", VersionMajor, VersionMinor, VersionPatch)
 }()
+
+var VersionUint = func() uint32 {
+	return VersionMajor*1000000 + VersionMinor*1000 + VersionPatch
+}

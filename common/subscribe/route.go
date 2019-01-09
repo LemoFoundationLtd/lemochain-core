@@ -2,13 +2,18 @@ package subscribe
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"sync"
 )
 
 const (
-	AddNewPeer = "addNewPeer"
-	DeletePeer = "deletePeer"
+	AddNewPeer     = "addNewPeer"
+	DeletePeer     = "deletePeer"
+	NewMinedBlock  = "newMinedBlock"
+	NewStableBlock = "newStableBlock"
+	NewTxs         = "newTxs"
+	NewConfirm     = "newConfirm"
 )
 
 var (
@@ -45,7 +50,8 @@ func (r *CentralRouteSub) sub(name string, ch interface{}) error {
 	if chType.Kind() != reflect.Chan || chType.ChanDir()&reflect.RecvDir == 0 {
 		return ErrChType
 	}
-
+	eleType := chType.Elem().Kind()
+	fmt.Println(eleType)
 	if item, ok := r.names[name]; ok {
 		if item.eType != chType {
 			return ErrChType
@@ -73,8 +79,7 @@ func (r *CentralRouteSub) send(name string, value interface{}) error {
 	cases := item.caseList
 	vValue := reflect.ValueOf(value)
 	vType := vValue.Type()
-
-	if vType != item.eType {
+	if vType != item.eType && !vType.Implements(item.eType) {
 		return ErrChType
 	}
 
@@ -126,12 +131,20 @@ func (r *CentralRouteSub) unSub(name string, ch interface{}) error {
 	return nil
 }
 
+func (r *CentralRouteSub) clearSub() {
+	r.names = make(map[string]*CaseListItem)
+}
+
 func Sub(name string, ch interface{}) {
 	centralRoute.sub(name, ch)
 }
 
 func UnSub(name string, ch interface{}) {
 	centralRoute.unSub(name, ch)
+}
+
+func ClearSub() {
+	centralRoute.clearSub()
 }
 
 func Send(name string, value interface{}) {

@@ -11,7 +11,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/flag"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/common/subscribe"
-	"github.com/LemoFoundationLtd/lemochain-go/network/synchronise/protocol"
+	"github.com/LemoFoundationLtd/lemochain-go/network"
 	db "github.com/LemoFoundationLtd/lemochain-go/store/protocol"
 	"math"
 	"sync"
@@ -19,20 +19,16 @@ import (
 	"time"
 )
 
-type broadcastConfirmInfoFn func(hash common.Hash, height uint32)
-
-type broadcastBlockFn func(block *types.Block)
-
 type BlockChain struct {
-	chainID              uint16
-	flags                flag.CmdFlags
-	db                   db.ChainDB
-	am                   *account.Manager
-	currentBlock         atomic.Value           // latest block in current chain
-	stableBlock          atomic.Value           // latest stable block in current chain
-	genesisBlock         *types.Block           // genesis block
-	BroadcastConfirmInfo broadcastConfirmInfoFn // callback of broadcast confirm info
-	BroadcastStableBlock broadcastBlockFn       // callback of broadcast stable block
+	chainID      uint16
+	flags        flag.CmdFlags
+	db           db.ChainDB
+	am           *account.Manager
+	currentBlock atomic.Value // latest block in current chain
+	stableBlock  atomic.Value // latest stable block in current chain
+	genesisBlock *types.Block // genesis block
+	// BroadcastConfirmInfo broadcastConfirmInfoFn // callback of broadcast confirm info
+	// BroadcastStableBlock broadcastBlockFn       // callback of broadcast stable block
 
 	chainForksHead map[common.Hash]*types.Block // total latest header of different fork chain
 	chainForksLock sync.Mutex
@@ -41,9 +37,9 @@ type BlockChain struct {
 	processor      *TxProcessor // state processor
 	running        int32
 
-	MinedBlockFeed  subscribe.Feed
-	RecvBlockFeed   subscribe.Feed
-	StableBlockFeed subscribe.Feed
+	// MinedBlockFeed  subscribe.Feed
+	RecvBlockFeed subscribe.Feed
+	// StableBlockFeed subscribe.Feed
 
 	quitCh chan struct{}
 }
@@ -184,10 +180,14 @@ func (bc *BlockChain) SetMinedBlock(block *types.Block) error {
 	delete(bc.chainForksHead, block.ParentHash())
 	bc.chainForksHead[block.Hash()] = block
 	if nodeCount == 1 {
-		bc.SetStableBlock(block.Hash(), block.Height(), false)
+		bc.SetStableBlock(block.Hash(), block.Height())
 	}
-	bc.MinedBlockFeed.Send(block)
-
+	go func() {
+		// notify
+		subscribe.Send(subscribe.NewMinedBlock, block)
+		msg := bc.createSignInfo(block.Hash(), block.Height())
+		subscribe.Send(subscribe.NewConfirm, msg)
+	}()
 	return nil
 }
 
@@ -218,9 +218,7 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 		log.Errorf("can't insert block to cache. height:%d hash:%s", block.Height(), hash.Hex())
 		return ErrSaveBlock
 	}
-	if !isSynchronising {
-		log.Infof("Insert block to chain. height: %d. hash: %s", block.Height(), block.Hash().String())
-	}
+	log.Infof("Insert block to chain. height: %d. hash: %s", block.Height(), block.Hash().String())
 	if err := bc.AccountManager().Save(hash); err != nil {
 		log.Error("save account error!", "height", block.Height(), "hash", hash.Hex(), "err", err)
 		return err
@@ -228,22 +226,24 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 	// is synchronise from net or deputy nodes less than 3
 	nodeCount := deputynode.Instance().GetDeputiesCount()
 	if nodeCount < 3 {
-		defer bc.SetStableBlock(hash, block.Height(), isSynchronising)
+		defer bc.SetStableBlock(hash, block.Height())
 	} else {
 		minCount := int(math.Ceil(float64(nodeCount) * 2.0 / 3.0))
 		if len(block.Confirms) >= minCount {
-			defer bc.SetStableBlock(hash, block.Height(), isSynchronising)
+			defer bc.SetStableBlock(hash, block.Height())
 		}
 	}
 
 	bc.chainForksLock.Lock()
 	defer func() {
 		bc.chainForksLock.Unlock()
-		// only broadcast confirm info within one hour
+		// only broadcast confirm info within 3 minutes
 		currentTime := time.Now().Unix()
-		if currentTime-int64(block.Time()) < 60*60 {
-			time.AfterFunc(2*time.Second, func() { // todo
-				bc.BroadcastConfirmInfo(hash, block.Height())
+		if currentTime-int64(block.Time()) < 3*60 {
+			time.AfterFunc(500*time.Millisecond, func() {
+				msg := bc.createSignInfo(block.Hash(), block.Height())
+				subscribe.Send(subscribe.NewConfirm, msg)
+				log.Debugf("subscribe.NewConfirm.Send(%d)", msg.Height)
 			})
 		}
 	}()
@@ -253,9 +253,7 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 		bc.currentBlock.Store(block)
 		delete(bc.chainForksHead, currentHash) // remove old record from fork container
 		bc.chainForksHead[hash] = block        // record new fork
-		if !isSynchronising {                  // if synchronising, don't notify
-			bc.newBlockNotify(block)
-		}
+		bc.newBlockNotify(block)
 		return nil
 	}
 	// new block height higher than current block, switch fork.
@@ -273,17 +271,15 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 		delete(bc.chainForksHead, parentHash)
 	}
 	bc.chainForksHead[hash] = block
-	if !isSynchronising {
-		bc.newBlockNotify(block)
-	}
+	bc.newBlockNotify(block)
 	return nil
 }
 
 // SetStableBlock
-func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32, logLess bool) error {
+func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32) error {
 	block := bc.GetBlockByHash(hash)
 	if block == nil {
-		log.Warnf("setStableBlock: block not exist. height: %d hash: %s", height, hash.String())
+		log.Warnf("SetStableBlock: block not exist. height: %d hash: %s", height, hash.String())
 		return ErrBlockNotExist
 	}
 	height = block.Height()
@@ -298,9 +294,7 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32, logLess bo
 	}
 	bc.stableBlock.Store(block)
 	defer func() {
-		if !logLess {
-			log.Infof("block has consensus. height:%d hash:%s", block.Height(), block.Hash().Hex())
-		}
+		log.Infof("Consensus. height:%d hash:%s", block.Height(), block.Hash().Hex())
 	}()
 
 	// get parent block
@@ -333,7 +327,7 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32, logLess bo
 		}
 	}
 	if curBlock == nil {
-		log.Errorf("SetStableBlock with a block which not recorded in chainForksHead")
+		log.Error("SetStableBlock with a block which not recorded in chainForksHead")
 		return nil
 	}
 	// if any fork has same height with current block, choose the smaller one by dictionary order
@@ -344,9 +338,12 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32, logLess bo
 		}
 	}
 	bc.currentBlock.Store(curBlock)
-	if !logLess && oldCurHash != curBlock.Hash() {
+	if oldCurHash != curBlock.Hash() {
 		log.Infof("chain forked-3! current block: height(%d), hash(%s)", curBlock.Height(), curBlock.Hash().Hex())
 	}
+	// notify
+	subscribe.Send(subscribe.NewStableBlock, block)
+	log.Infof("stable height reach to: %d", height)
 	return nil
 }
 
@@ -400,8 +397,27 @@ func (bc *BlockChain) verifyBody(block *types.Block) error {
 	return nil
 }
 
+// createSignInfo create sign info for a block
+func (bc *BlockChain) createSignInfo(hash common.Hash, height uint32) *network.BlockConfirmData {
+	data := &network.BlockConfirmData{
+		Hash:   hash,
+		Height: height,
+	}
+	privateKey := deputynode.GetSelfNodeKey()
+	signInfo, err := crypto.Sign(hash[:], privateKey)
+	if err != nil {
+		log.Error("sign for confirm data error")
+		return nil
+	}
+	copy(data.SignInfo[:], signInfo)
+	if bc.HasBlock(hash) {
+		bc.db.SetConfirmInfo(hash, data.SignInfo)
+	}
+	return data
+}
+
 // ReceiveConfirm
-func (bc *BlockChain) ReceiveConfirm(info *protocol.BlockConfirmData) (err error) {
+func (bc *BlockChain) ReceiveConfirm(info *network.BlockConfirmData) (err error) {
 	block, err := bc.db.GetBlockByHash(info.Hash)
 	if err != nil {
 		return ErrBlockNotExist
@@ -431,12 +447,14 @@ func (bc *BlockChain) ReceiveConfirm(info *protocol.BlockConfirmData) (err error
 
 	// cache confirm info
 	if err = bc.db.SetConfirmInfo(info.Hash, info.SignInfo); err != nil {
-		log.Errorf("can't SetConfirmInfo. hash:%s", info.Hash.Hex())
-		return ErrSetConfirmInfoToDB
+		log.Errorf("can't SetConfirmInfo. height: %d, hash:%s, err: %v", info.Height, info.Hash.Hex()[:16], err)
+		return nil
 	}
 
 	if ok, _ := bc.hasEnoughConfirmInfo(info.Hash); ok {
-		return bc.SetStableBlock(info.Hash, height, false)
+		if err = bc.SetStableBlock(info.Hash, height); err != nil {
+			log.Errorf("ReceiveConfirm: setStableBlock failed. height: %d, hash:%s, err: %v", info.Height, info.Hash.Hex()[:16], err)
+		}
 	}
 	return nil
 }
@@ -474,7 +492,7 @@ func (bc *BlockChain) getSignerIndex(pubKey []byte, height uint32) int {
 }
 
 // GetConfirms get all confirm info of special block
-func (bc *BlockChain) GetConfirms(query *protocol.GetConfirmInfo) []types.SignData {
+func (bc *BlockChain) GetConfirms(query *network.GetConfirmInfo) []types.SignData {
 	res, err := bc.db.GetConfirms(query.Hash)
 	if err != nil {
 		log.Warnf("Can't GetConfirms. hash:%s height:%d. error: %v", query.Hash.Hex(), query.Height, err)
@@ -484,7 +502,7 @@ func (bc *BlockChain) GetConfirms(query *protocol.GetConfirmInfo) []types.SignDa
 }
 
 // ReceiveConfirms receive confirm package from net connection
-func (bc *BlockChain) ReceiveConfirms(pack protocol.BlockConfirms) {
+func (bc *BlockChain) ReceiveConfirms(pack network.BlockConfirms) {
 	if pack.Hash != (common.Hash{}) && pack.Pack != nil && len(pack.Pack) > 0 {
 		bc.db.SetConfirms(pack.Hash, pack.Pack)
 	}

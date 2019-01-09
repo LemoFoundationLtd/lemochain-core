@@ -11,7 +11,7 @@ func (p PeerConnInfo) MarshalJSON() ([]byte, error) {
 	type PeerConnInfo struct {
 		LocalAddr  string `json:"localAddress"`
 		RemoteAddr string `json:"remoteAddress"`
-		NodeID     string `json:"nodeID"`
+		NodeID     string `json:"remoteNodeID"`
 	}
 	var enc PeerConnInfo
 	enc.LocalAddr = p.LocalAddr
@@ -25,7 +25,7 @@ func (p *PeerConnInfo) UnmarshalJSON(input []byte) error {
 	type PeerConnInfo struct {
 		LocalAddr  *string `json:"localAddress"`
 		RemoteAddr *string `json:"remoteAddress"`
-		NodeID     *string `json:"nodeID"`
+		NodeID     *string `json:"remoteNodeID"`
 	}
 	var dec PeerConnInfo
 	if err := json.Unmarshal(input, &dec); err != nil {

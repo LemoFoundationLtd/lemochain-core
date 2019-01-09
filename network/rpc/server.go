@@ -247,13 +247,14 @@ func (s *Server) handle(ctx context.Context, codec ServerCodec, req *serverReque
 	if req.err != nil {
 		return codec.CreateErrorResponse(req.id, req.err), nil
 	}
-	log.Debug("rpc", "req", log.Lazy{Fn: func() string {
-		msg := make([]string, 0, len(req.args))
-		for i := 0; i < len(req.args); i++ {
-			msg = append(msg, fmt.Sprintf("%v", req.args[i]))
-		}
-		return fmt.Sprintf("id: %d, args: [%s]", req.id, strings.Join(msg, ", "))
-	}})
+	// tmp
+	// log.Debug("rpc", "req", log.Lazy{Fn: func() string {
+	// 	msg := make([]string, 0, len(req.args))
+	// 	for i := 0; i < len(req.args); i++ {
+	// 		msg = append(msg, fmt.Sprintf("%v", req.args[i]))
+	// 	}
+	// 	return fmt.Sprintf("id: %d, args: [%s]", req.id, strings.Join(msg, ", "))
+	// }})
 
 	if req.isUnsubscribe { // cancel subscription, first param must be the subscription id
 		if len(req.args) >= 1 && req.args[0].Kind() == reflect.String {
@@ -382,7 +383,8 @@ func (s *Server) readRequest(codec ServerCodec) ([]*serverRequest, bool, Error) 
 	for i, r := range reqs {
 		var ok bool
 		var svc *service
-		log.Info("HTTP RPC Request", "service", r.service, "method", r.method)
+		// annotate for debug
+		// log.Info("HTTP RPC Request", "service", r.service, "method", r.method)
 
 		if r.err != nil {
 			requests[i] = &serverRequest{id: r.id, err: r.err}

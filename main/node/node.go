@@ -7,14 +7,15 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/miner"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/flag"
 	"github.com/LemoFoundationLtd/lemochain-go/common/flock"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
+	"github.com/LemoFoundationLtd/lemochain-go/network"
 	"github.com/LemoFoundationLtd/lemochain-go/network/p2p"
 	"github.com/LemoFoundationLtd/lemochain-go/network/rpc"
-	"github.com/LemoFoundationLtd/lemochain-go/network/synchronise"
 	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"github.com/LemoFoundationLtd/lemochain-go/store/protocol"
 	"math/big"
@@ -36,12 +37,11 @@ type Node struct {
 	config  *Config
 	chainID uint16
 
-	db     protocol.ChainDB
-	accMan *account.Manager
-	txPool *chain.TxPool
-	chain  *chain.BlockChain
-	// discover *p2p.DiscoverManager
-	pm       *synchronise.ProtocolManager
+	db       protocol.ChainDB
+	accMan   *account.Manager
+	txPool   *chain.TxPool
+	chain    *chain.BlockChain
+	pm       *network.ProtocolManager
 	miner    *miner.Miner
 	gasPrice *big.Int
 
@@ -49,7 +49,6 @@ type Node struct {
 
 	instanceDirLock flock.Releaser
 
-	// serverConfig *p2p.Config
 	server *p2p.Server
 
 	rpcAPIs       []rpc.API
@@ -155,17 +154,21 @@ func New(flags flag.CmdFlags) *Node {
 	initDeputyNodes(db)
 	// new dpovp consensus engine
 	engine := chain.NewDpovp(int64(configFromFile.Timeout), db)
-	// recvBlockCh := make(chan *types.Block)
 	blockChain, err := chain.NewBlockChain(uint16(configFromFile.ChainID), engine, db, flags)
 	if err != nil {
 		panic("new block chain failed!!!")
 	}
-
-	// newTxsCh := make(chan types.Transactions)
+	// account manager
 	accMan := blockChain.AccountManager()
+	// tx pool
 	txPool := chain.NewTxPool(uint16(configFromFile.ChainID), accMan)
+	// discover manager
 	discover := p2p.NewDiscoverManager(cfg.DataDir)
-	pm := synchronise.NewProtocolManager(configFromFile.ChainID, deputynode.GetSelfNodeID(), blockChain, txPool, discover)
+	selfNodeID := p2p.NodeID{}
+	copy(selfNodeID[:], deputynode.GetSelfNodeID())
+	// protocol manager
+	pm := network.NewProtocolManager(uint16(configFromFile.ChainID), selfNodeID, blockChain, txPool, discover, params.VersionUint())
+	// p2p server
 	server := p2p.NewServer(cfg.P2P, discover)
 	n := &Node{
 		config:       cfg,
@@ -177,7 +180,6 @@ func New(flags flag.CmdFlags) *Node {
 		accMan:       accMan,
 		chain:        blockChain,
 		txPool:       txPool,
-		// discover:     discover,
 		miner:        miner.New(mineCfg, blockChain, txPool, engine),
 		pm:           pm,
 		server:       server,

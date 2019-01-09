@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/binary"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
@@ -164,6 +165,10 @@ func (b *Block) SetConfirms(confirms []SignData)                   { b.Confirms 
 func (b *Block) SetChangeLogs(logs []*ChangeLog)                   { b.ChangeLogs = logs }
 func (b *Block) SetEvents(events []*Event)                         { b.Events = events }
 func (b *Block) SetDeputyNodes(deputyNodes deputynode.DeputyNodes) { b.DeputyNodes = deputyNodes }
+
+func (b *Block) Size() int {
+	return binary.Size(b)
+}
 
 func (b *Block) String() string {
 	set := []string{
