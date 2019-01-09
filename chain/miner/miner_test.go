@@ -242,10 +242,6 @@ func (engine *EngineTestForMiner) Seal(header *types.Header, txs []*types.Transa
 
 func (engine *EngineTestForMiner) Finalize(header *types.Header, am *account.Manager) {}
 
-func broadcastStableBlock(block *types.Block) {}
-
-func broadcastConfirmInfo(hash common.Hash, height uint32) {}
-
 func newBlockChain() (*chain.BlockChain, chan *types.Block, error) {
 	chainID := uint16(99)
 	db, err := store.NewCacheChain(store.GetStorePath())
@@ -265,9 +261,6 @@ func newBlockChain() (*chain.BlockChain, chan *types.Block, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-
-	blockChain.BroadcastStableBlock = broadcastStableBlock
-	blockChain.BroadcastConfirmInfo = broadcastConfirmInfo
 
 	return blockChain, ch, nil
 }
@@ -355,7 +348,7 @@ func TestMine_GetSleepNotSelf(t *testing.T) {
 
 	err = miner.chain.InsertChain(block, true)
 	assert.NoError(t, err)
-	miner.chain.SetStableBlock(block.Hash(), block.Height(), false)
+	miner.chain.SetStableBlock(block.Hash(), block.Height())
 	assert.NoError(t, err)
 
 	setSelfNodeKey(Nodes[5].privateKey)
@@ -390,7 +383,7 @@ func TestMiner_GetSleepValidAuthor(t *testing.T) {
 	assert.NoError(t, err)
 	err = miner.chain.InsertChain(block, true)
 	assert.NoError(t, err)
-	miner.chain.SetStableBlock(block.Hash(), block.Height(), false)
+	miner.chain.SetStableBlock(block.Hash(), block.Height())
 	assert.NoError(t, err)
 
 	reset := miner.getSleepTime()
@@ -418,7 +411,7 @@ func TestMiner_GetSleepSlot1(t *testing.T) {
 
 	err = miner.chain.InsertChain(block, true)
 	assert.NoError(t, err)
-	miner.chain.SetStableBlock(block.Hash(), block.Height(), false)
+	miner.chain.SetStableBlock(block.Hash(), block.Height())
 	assert.NoError(t, err)
 
 	reset := miner.getSleepTime()
@@ -467,7 +460,7 @@ func TestMiner_GetSleepSlot2(t *testing.T) {
 
 	err = miner.chain.InsertChain(block, true)
 	assert.NoError(t, err)
-	miner.chain.SetStableBlock(block.Hash(), block.Height(), false)
+	miner.chain.SetStableBlock(block.Hash(), block.Height())
 	assert.NoError(t, err)
 
 	reset := miner.getSleepTime()
@@ -516,7 +509,7 @@ func TestMiner_GetSleepSlot3(t *testing.T) {
 
 	err = miner.chain.InsertChain(block, true)
 	assert.NoError(t, err)
-	miner.chain.SetStableBlock(block.Hash(), block.Height(), false)
+	miner.chain.SetStableBlock(block.Hash(), block.Height())
 	assert.NoError(t, err)
 
 	reset := miner.getSleepTime()
@@ -565,7 +558,7 @@ func TestMiner_GetSleepSlot4(t *testing.T) {
 
 	err = miner.chain.InsertChain(block, true)
 	assert.NoError(t, err)
-	miner.chain.SetStableBlock(block.Hash(), block.Height(), false)
+	miner.chain.SetStableBlock(block.Hash(), block.Height())
 	assert.NoError(t, err)
 
 	reset := miner.getSleepTime()
@@ -659,7 +652,7 @@ func TestMiner_GetSleepNormal(t *testing.T) {
 
 	err = miner.chain.InsertChain(block, true)
 	assert.NoError(t, err)
-	miner.chain.SetStableBlock(block.Hash(), block.Height(), false)
+	miner.chain.SetStableBlock(block.Hash(), block.Height())
 	assert.NoError(t, err)
 
 	reset := miner.getSleepTime()
