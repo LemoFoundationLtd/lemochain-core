@@ -1,15 +1,21 @@
 package chain
 
 import (
+	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
-	"github.com/LemoFoundationLtd/lemochain-go/network/synchronise/protocol"
+	"github.com/LemoFoundationLtd/lemochain-go/network"
 	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"github.com/stretchr/testify/assert"
 	"math/big"
 	"testing"
 )
+
+func init() {
+	prv, _ := crypto.ToECDSA(common.FromHex("0xc21b6b2fbf230f665b936194d14da67187732bf9d28768aef1a3cbb26608f8aa"))
+	deputynode.SetSelfNodeKey(prv)
+}
 
 func TestBlockChain_Reorg8ABC(t *testing.T) {
 	store.ClearData()
@@ -241,7 +247,7 @@ func TestBlockChain_SetStableBlockCurBranch11(t *testing.T) {
 	err = blockChain.InsertChain(block5, true)
 	assert.NoError(t, err)
 
-	err = blockChain.SetStableBlock(block2.Hash(), 2, false)
+	err = blockChain.SetStableBlock(block2.Hash(), 2)
 	assert.NoError(t, err)
 
 	assert.Equal(t, 2, len(blockChain.chainForksHead))
@@ -298,7 +304,7 @@ func TestBlockChain_SetStableBlockCurBranch12(t *testing.T) {
 	err = blockChain.InsertChain(block5, true)
 	assert.NoError(t, err)
 
-	err = blockChain.SetStableBlock(block4.Hash(), 4, false)
+	err = blockChain.SetStableBlock(block4.Hash(), 4)
 	assert.NoError(t, err)
 
 	assert.Equal(t, 1, len(blockChain.chainForksHead))
@@ -354,7 +360,7 @@ func TestBlockChain_SetStableBlockCurBranch13(t *testing.T) {
 	err = blockChain.InsertChain(block5, true)
 	assert.NoError(t, err)
 
-	err = blockChain.SetStableBlock(block5.Hash(), 5, false)
+	err = blockChain.SetStableBlock(block5.Hash(), 5)
 	assert.NoError(t, err)
 
 	assert.Equal(t, 1, len(blockChain.chainForksHead))
@@ -437,7 +443,7 @@ func TestBlockChain_SetStableBlockCurBranch21(t *testing.T) {
 	err = blockChain.InsertChain(block52, true)
 	assert.NoError(t, err)
 
-	err = blockChain.SetStableBlock(block42.Hash(), 4, false)
+	err = blockChain.SetStableBlock(block42.Hash(), 4)
 	assert.NoError(t, err)
 
 	assert.Equal(t, blockChain.CurrentBlock().Hash(), block52.Hash())
@@ -513,7 +519,7 @@ func TestBlockChain_SetStableBlockCurBranch22(t *testing.T) {
 	err = blockChain.InsertChain(block52, true)
 	assert.NoError(t, err)
 
-	err = blockChain.SetStableBlock(block2.Hash(), 2, false)
+	err = blockChain.SetStableBlock(block2.Hash(), 2)
 	assert.NoError(t, err)
 
 	if block51.Hash().Big().Cmp(block52.Hash().Big()) <= 0 {
@@ -594,7 +600,7 @@ func TestBlockChain_SetStableBlockCurBranch23(t *testing.T) {
 	err = blockChain.InsertChain(block52, true)
 	assert.NoError(t, err)
 
-	err = blockChain.SetStableBlock(block52.Hash(), 5, false)
+	err = blockChain.SetStableBlock(block52.Hash(), 5)
 	assert.NoError(t, err)
 
 	assert.Equal(t, 1, len(blockChain.chainForksHead))
@@ -655,7 +661,7 @@ func TestBlockChain_SetStableBlockCurBranch31(t *testing.T) {
 	err = blockChain.InsertChain(block42, true)
 	assert.NoError(t, err)
 
-	err = blockChain.SetStableBlock(block42.Hash(), 4, false)
+	err = blockChain.SetStableBlock(block42.Hash(), 4)
 	assert.NoError(t, err)
 
 	assert.Equal(t, 1, len(blockChain.chainForksHead))
@@ -728,7 +734,7 @@ func TestBlockChain_SetStableBlockCurBranch32(t *testing.T) {
 	err = blockChain.InsertChain(block52, true)
 	assert.NoError(t, err)
 
-	err = blockChain.SetStableBlock(block42.Hash(), 4, false)
+	err = blockChain.SetStableBlock(block42.Hash(), 4)
 	assert.NoError(t, err)
 
 	assert.Equal(t, 1, len(blockChain.chainForksHead))
@@ -842,7 +848,7 @@ func TestBlockChain_SetStableBlockCurBranch41(t *testing.T) {
 	err = blockChain.InsertChain(block326, true)
 	assert.NoError(t, err)
 
-	err = blockChain.SetStableBlock(block3.Hash(), 3, false)
+	err = blockChain.SetStableBlock(block3.Hash(), 3)
 	assert.NoError(t, err)
 
 	assert.Equal(t, 2, len(blockChain.chainForksHead))
@@ -957,7 +963,7 @@ func TestBlockChain_SetStableBlockCurBranch42(t *testing.T) {
 	err = blockChain.InsertChain(block326, true)
 	assert.NoError(t, err)
 
-	err = blockChain.SetStableBlock(block2.Hash(), 2, false)
+	err = blockChain.SetStableBlock(block2.Hash(), 2)
 	assert.NoError(t, err)
 
 	assert.Equal(t, 3, len(blockChain.chainForksHead))
@@ -1073,14 +1079,14 @@ func TestBlockChain_SetStableBlockCurBranch43(t *testing.T) {
 	err = blockChain.InsertChain(block326, true)
 	assert.NoError(t, err)
 
-	err = blockChain.SetStableBlock(block316.Hash(), 6, false)
+	err = blockChain.SetStableBlock(block316.Hash(), 6)
 	assert.NoError(t, err)
 
 	assert.Equal(t, 1, len(blockChain.chainForksHead))
 	assert.NotNil(t, blockChain.chainForksHead[block316.Hash()])
 }
 
-func buildConfirm(hash common.Hash, privateKey string) (*protocol.BlockConfirmData, error) {
+func buildConfirm(hash common.Hash, privateKey string) (*network.BlockConfirmData, error) {
 	tmp, err := crypto.HexToECDSA(privateKey)
 	if err != nil {
 		return nil, err
@@ -1091,7 +1097,7 @@ func buildConfirm(hash common.Hash, privateKey string) (*protocol.BlockConfirmDa
 		return nil, err
 	}
 
-	confirm := &protocol.BlockConfirmData{
+	confirm := &network.BlockConfirmData{
 		Height: 1,
 		Hash:   hash,
 	}
@@ -1150,7 +1156,7 @@ func TestBlockChain_ReceiveConfirm(t *testing.T) {
 	assert.Equal(t, ErrInvalidConfirmInfo, err)
 
 	// has block consensus
-	err = blockChain.SetStableBlock(block1.Hash(), 1, false)
+	err = blockChain.SetStableBlock(block1.Hash(), 1)
 	assert.NoError(t, err)
 
 	confirm, err = buildConfirm(block2.Hash(), "c21b6b2fbf230f665b936194d14da67187732bf9d28768aef1a3cbb26608f8aa")
