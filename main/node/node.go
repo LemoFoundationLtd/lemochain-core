@@ -133,6 +133,10 @@ func initDeputyNodes(db protocol.ChainDB) {
 	block, _ := db.GetBlockByHeight(0)
 	var err error
 	for block != nil {
+		if block.DeputyNodes == nil || len(block.DeputyNodes) == 0 {
+			log.Warnf("initDeputyNodes: can't get deputy nodes in snapshot block")
+			return
+		}
 		deputynode.Instance().Add(block.Height(), block.DeputyNodes)
 		block, err = db.GetBlockByHeight(block.Height() + deputynode.SnapshotBlockInterval)
 		if err == store.ErrNotExist {

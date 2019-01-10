@@ -345,7 +345,7 @@ func (m *Miner) sealBlock() {
 func (m *Miner) sealHead() *types.Header {
 	// check is need to change minerAddress
 	parent := m.currentBlock()
-	if (parent.Height()+1)%101000 == 1 {
+	if (parent.Height()+1)%1001000 == 1 {
 		n := deputynode.Instance().GetDeputyByNodeID(parent.Height()+1, deputynode.GetSelfNodeID())
 		m.SetMinerAddress(n.MinerAddress)
 	}
