@@ -31,7 +31,7 @@ type AccountData struct {
 	Balance     *big.Int       `json:"balance" gencodec:"required"`
 	CodeHash    common.Hash    `json:"codeHash" gencodec:"required"`
 	StorageRoot common.Hash    `json:"root" gencodec:"required"` // MPT root of the storage trie
-	// It records the block height which contains any type of newest change log.
+	// It records the block height which contains any type of newest change log. It is updated in finalize step
 	NewestRecords map[ChangeLogType]VersionRecord `json:"records" gencodec:"required"`
 	// related transactions include income and outcome
 	TxHashList []common.Hash `json:"-"`
@@ -143,8 +143,8 @@ type AccountAccessor interface {
 	GetAddress() common.Address
 	GetBalance() *big.Int
 	SetBalance(balance *big.Int)
-	GetVersion(logType ChangeLogType) uint32
-	SetVersion(logType ChangeLogType, version uint32)
+	// GetBaseVersion returns the version of specific change log from the base block. It is not changed by tx processing until the finalised
+	GetBaseVersion(logType ChangeLogType) uint32
 	GetCodeHash() common.Hash
 	SetCodeHash(codeHash common.Hash)
 	GetCode() (Code, error)
@@ -153,7 +153,6 @@ type AccountAccessor interface {
 	SetStorageRoot(root common.Hash)
 	GetStorageState(key common.Hash) ([]byte, error)
 	SetStorageState(key common.Hash, value []byte) error
-	GetBaseHeight() uint32
 	GetTxHashList() []common.Hash
 	IsEmpty() bool
 	GetSuicide() bool

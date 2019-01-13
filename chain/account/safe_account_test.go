@@ -16,7 +16,7 @@ func TestSafeAccount_Interface(t *testing.T) {
 func loadSafeAccount(address common.Address) *SafeAccount {
 	db := newDB()
 	data, _ := db.GetAccount(newestBlock.Hash(), address)
-	return NewSafeAccount(NewManager(newestBlock.Hash(), db).processor, NewAccount(db, address, data, 10))
+	return NewSafeAccount(NewManager(newestBlock.Hash(), db).processor, NewAccount(db, address, data))
 }
 
 func TestSafeAccount_SetBalance_IsDirty(t *testing.T) {
@@ -78,7 +78,7 @@ func TestSafeAccount_MarshalJSON_UnmarshalJSON(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, account.GetAddress(), parsedAccount.GetAddress())
 	assert.Equal(t, account.GetBalance(), parsedAccount.GetBalance())
-	assert.Equal(t, account.GetVersion(BalanceLog), parsedAccount.GetVersion(BalanceLog))
+	assert.Equal(t, account.GetBaseVersion(BalanceLog), parsedAccount.GetBaseVersion(BalanceLog))
 	assert.Equal(t, account.GetCodeHash(), parsedAccount.GetCodeHash())
 	assert.Equal(t, account.GetStorageRoot(), parsedAccount.GetStorageRoot())
 	// assert.Equal(t, account.processor, parsedAccount.processor)

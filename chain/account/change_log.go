@@ -99,19 +99,12 @@ func decodeEvent(s *rlp.Stream) (interface{}, error) {
 // ChangeLog definitions
 //
 
-// increaseVersion increases account version by one
-func increaseVersion(logType types.ChangeLogType, account types.AccountAccessor) uint32 {
-	newVersion := account.GetVersion(logType) + 1
-	account.SetVersion(logType, newVersion)
-	return newVersion
-}
-
 // NewBalanceLog records balance change
-func NewBalanceLog(account types.AccountAccessor, newBalance *big.Int) *types.ChangeLog {
+func NewBalanceLog(processor types.ChangeLogProcessor, account types.AccountAccessor, newBalance *big.Int) *types.ChangeLog {
 	return &types.ChangeLog{
 		LogType: BalanceLog,
 		Address: account.GetAddress(),
-		Version: increaseVersion(BalanceLog, account),
+		Version: processor.GetNextVersion(BalanceLog, account.GetAddress()),
 		OldVal:  *(new(big.Int).Set(account.GetBalance())),
 		NewVal:  *(new(big.Int).Set(newBalance)),
 	}
@@ -140,7 +133,7 @@ func undoBalance(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 }
 
 // NewStorageLog records contract storage value change
-func NewStorageLog(account types.AccountAccessor, key common.Hash, newVal []byte) (*types.ChangeLog, error) {
+func NewStorageLog(processor types.ChangeLogProcessor, account types.AccountAccessor, key common.Hash, newVal []byte) (*types.ChangeLog, error) {
 	oldValue, err := account.GetStorageState(key)
 	if err != nil {
 		return nil, fmt.Errorf("can't create storage log: %v", err)
@@ -148,7 +141,7 @@ func NewStorageLog(account types.AccountAccessor, key common.Hash, newVal []byte
 	return &types.ChangeLog{
 		LogType: StorageLog,
 		Address: account.GetAddress(),
-		Version: increaseVersion(StorageLog, account),
+		Version: processor.GetNextVersion(StorageLog, account.GetAddress()),
 		OldVal:  oldValue,
 		NewVal:  newVal,
 		Extra:   key,
@@ -167,8 +160,7 @@ func redoStorage(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 		return types.ErrWrongChangeLogData
 	}
 	accessor := processor.GetAccount(c.Address)
-	accessor.SetStorageState(key, newVal)
-	return nil
+	return accessor.SetStorageState(key, newVal)
 }
 
 func undoStorage(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
@@ -183,16 +175,15 @@ func undoStorage(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 		return types.ErrWrongChangeLogData
 	}
 	accessor := processor.GetAccount(c.Address)
-	accessor.SetStorageState(key, oldVal)
-	return nil
+	return accessor.SetStorageState(key, oldVal)
 }
 
 // NewCodeLog records contract code setting
-func NewCodeLog(account types.AccountAccessor, code types.Code) *types.ChangeLog {
+func NewCodeLog(processor types.ChangeLogProcessor, account types.AccountAccessor, code types.Code) *types.ChangeLog {
 	return &types.ChangeLog{
 		LogType: CodeLog,
 		Address: account.GetAddress(),
-		Version: increaseVersion(CodeLog, account),
+		Version: processor.GetNextVersion(CodeLog, account.GetAddress()),
 		NewVal:  code,
 	}
 }
@@ -215,11 +206,11 @@ func undoCode(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 }
 
 // NewAddEventLog records contract code change
-func NewAddEventLog(account types.AccountAccessor, newEvent *types.Event) *types.ChangeLog {
+func NewAddEventLog(processor types.ChangeLogProcessor, account types.AccountAccessor, newEvent *types.Event) *types.ChangeLog {
 	return &types.ChangeLog{
 		LogType: AddEventLog,
 		Address: account.GetAddress(),
-		Version: increaseVersion(AddEventLog, account),
+		Version: processor.GetNextVersion(AddEventLog, account.GetAddress()),
 		NewVal:  newEvent,
 	}
 }
@@ -239,7 +230,7 @@ func undoAddEvent(c *types.ChangeLog, processor types.ChangeLogProcessor) error 
 }
 
 // NewSuicideLog records balance change
-func NewSuicideLog(account types.AccountAccessor) *types.ChangeLog {
+func NewSuicideLog(processor types.ChangeLogProcessor, account types.AccountAccessor) *types.ChangeLog {
 	oldAccount := &types.AccountData{
 		Balance:     new(big.Int).Set(account.GetBalance()),
 		CodeHash:    account.GetCodeHash(),
@@ -248,7 +239,7 @@ func NewSuicideLog(account types.AccountAccessor) *types.ChangeLog {
 	return &types.ChangeLog{
 		LogType: SuicideLog,
 		Address: account.GetAddress(),
-		Version: increaseVersion(SuicideLog, account),
+		Version: processor.GetNextVersion(SuicideLog, account.GetAddress()),
 		OldVal:  oldAccount,
 	}
 }
