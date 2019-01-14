@@ -165,7 +165,7 @@ func New(flags flag.CmdFlags) *Node {
 	// account manager
 	accMan := blockChain.AccountManager()
 	// tx pool
-	txPool := chain.NewTxPool(uint16(configFromFile.ChainID), accMan)
+	txPool := chain.NewTxPool(uint16(configFromFile.ChainID))
 	// discover manager
 	discover := p2p.NewDiscoverManager(cfg.DataDir)
 	selfNodeID := p2p.NodeID{}
