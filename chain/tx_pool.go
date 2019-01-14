@@ -2,7 +2,6 @@ package chain
 
 import (
 	"errors"
-	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
@@ -30,6 +29,10 @@ type TransactionWithTime struct {
 	RecTime int64
 	DelFlg  bool
 }
+
+// type AccountLoader interface {
+// 	GetCanonicalAccount(address common.Address) types.AccountAccessor
+// }
 
 type TxsSort interface {
 	push(tx *types.Transaction)
@@ -172,7 +175,7 @@ func (recent *TxsRecent) put(hash common.Hash) {
 }
 
 type TxPool struct {
-	am      *account.Manager
+	// am      AccountLoader
 	chainID uint16
 
 	txsCache TxsSort
@@ -183,9 +186,9 @@ type TxPool struct {
 	NewTxsFeed subscribe.Feed
 }
 
-func NewTxPool(chainID uint16, am *account.Manager) *TxPool {
+func NewTxPool(chainID uint16) *TxPool {
 	pool := &TxPool{
-		am:      am,
+		// am:      am,
 		chainID: chainID,
 		recent:  NewRecent(),
 	}
@@ -259,15 +262,17 @@ func (pool *TxPool) validateTx(tx *types.Transaction) error {
 		return ErrNegativeValue
 	}
 	// Make sure the transaction is signed properly
-	from, err := types.MakeSigner().GetSender(tx)
+	_, err := types.MakeSigner().GetSender(tx)
 	if err != nil {
 		return ErrInvalidSender
-	}
-	fromAccount := pool.am.GetAccount(from)
-	balance := fromAccount.GetBalance()
-	if balance.Cmp(tx.Cost()) < 0 {
-		return ErrInsufficientFunds
 	} else {
 		return nil
 	}
+	// fromAccount := pool.am
+	// balance := fromAccount.GetBalance()
+	// if balance.Cmp(tx.Cost()) < 0 {
+	// 	return ErrInsufficientFunds
+	// } else {
+	// 	return nil
+	// }
 }

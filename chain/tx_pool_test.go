@@ -3,12 +3,20 @@ package chain
 import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/stretchr/testify/assert"
 	"math/big"
 	"testing"
 )
 
+// type TestManager
+//
+// func (am *Manager) GetAccount(address common.Address) types.AccountAccessor {
+
 func CreateTx(to string, amount int64, gasPrice int64, expiration uint64) *types.Transaction {
+	testSigner := types.MakeSigner()
+	testPrivate, _ := crypto.HexToECDSA("432a86ab8765d82415a803e29864dcfc1ed93dac949abf6f95a583179f27e4bb") // secp256k1.V = 1
+
 	address := common.HexToAddress(to)
 
 	bigAmount := new(big.Int)
@@ -19,11 +27,26 @@ func CreateTx(to string, amount int64, gasPrice int64, expiration uint64) *types
 	bigGasPrice := new(big.Int)
 	bigGasPrice.SetInt64(gasPrice)
 
-	return types.NewTransaction(address, bigAmount, gasLimit, bigGasPrice, nil, 0, expiration, "paul xie", "")
+	tx := types.NewTransaction(address, bigAmount, gasLimit, bigGasPrice, nil, 100, expiration, "paul xie", "")
+	txV, err := types.SignTx(tx, testSigner, testPrivate)
+
+	if err != nil {
+		return nil
+	} else {
+		return txV
+	}
 }
 
 func TestTxPool_AddTx(t *testing.T) {
-	pool := NewTxPool(100, nil)
+	// store.ClearData()
+
+	// db, err := store.NewCacheChain("../../testdata/db_account")
+	// if err != nil {
+	// 	panic(err)
+	// }
+	//
+	// am := account.NewManager(common.Hash{}, db)
+	pool := NewTxPool(100)
 	tx := CreateTx("0x1d5f11eaa13e02cdca886181dc38ab4cb8cf9092e86c000fb42d12c8b504500e", 1000, 2000, 3000)
 
 	err := pool.AddTx(tx)
@@ -38,7 +61,7 @@ func TestTxPool_AddTx(t *testing.T) {
 
 func TestTxPool_Pending(t *testing.T) {
 	// txCh := make(chan types.Transactions, 100)
-	pool := NewTxPool(100, nil)
+	pool := NewTxPool(100)
 
 	// is not exist
 	tx := CreateTx("0x1d5f11eaa13e02cdca886181dc38ab4cb8cf9092e86c000fb42d12c8b504500e", 1000, 2000, 3000)
@@ -96,7 +119,7 @@ func TestTxPool_Pending(t *testing.T) {
 }
 
 func TestTxPool_Remove(t *testing.T) {
-	pool := NewTxPool(100, nil)
+	pool := NewTxPool(100)
 
 	tx1 := CreateTx("0x1d5f11eaa13e02cdca886181dc38ab4cb8cf9092e86c000fb42d12c8b504500e", 1000, 2000, 3000)
 	err := pool.AddTx(tx1)
