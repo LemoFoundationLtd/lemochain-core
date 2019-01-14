@@ -12,17 +12,15 @@ import (
 
 type testAccount struct {
 	AccountData
-	baseHeight uint32
 }
 
 func (f *testAccount) GetAddress() common.Address  { return f.AccountData.Address }
 func (f *testAccount) GetBalance() *big.Int        { return f.AccountData.Balance }
 func (f *testAccount) SetBalance(balance *big.Int) { f.AccountData.Balance = balance }
-func (f *testAccount) GetVersion(logType ChangeLogType) uint32 {
+
+// GetBaseVersion returns the version of specific change log from the base block. It is not changed by tx processing until the finalised
+func (f *testAccount) GetBaseVersion(logType ChangeLogType) uint32 {
 	return f.AccountData.NewestRecords[logType].Version
-}
-func (f *testAccount) SetVersion(logType ChangeLogType, version uint32) {
-	f.AccountData.NewestRecords[logType] = VersionRecord{Version: version, Height: f.baseHeight + 1}
 }
 func (f *testAccount) GetSuicide() bool                                    { return false }
 func (f *testAccount) SetSuicide(suicided bool)                            {}
@@ -34,7 +32,6 @@ func (f *testAccount) GetStorageRoot() common.Hash                         { ret
 func (f *testAccount) SetStorageRoot(root common.Hash)                     { f.AccountData.StorageRoot = root }
 func (f *testAccount) GetStorageState(key common.Hash) ([]byte, error)     { return nil, nil }
 func (f *testAccount) SetStorageState(key common.Hash, value []byte) error { return nil }
-func (f *testAccount) GetBaseHeight() uint32                               { return f.baseHeight }
 func (f *testAccount) GetTxHashList() []common.Hash                        { return f.AccountData.TxHashList }
 func (f *testAccount) IsEmpty() bool {
 	for _, record := range f.AccountData.NewestRecords {
@@ -43,6 +40,10 @@ func (f *testAccount) IsEmpty() bool {
 		}
 	}
 	return true
+}
+
+func (f *testAccount) GetVersion(logType ChangeLogType) uint32 {
+	return f.AccountData.NewestRecords[logType].Version
 }
 
 type testProcessor struct {
@@ -74,10 +75,18 @@ func (p *testProcessor) createAccount(logType ChangeLogType, version uint32) *te
 			Balance:       big.NewInt(100),
 			NewestRecords: map[ChangeLogType]VersionRecord{logType: {Version: version, Height: 10}},
 		},
-		baseHeight: 10,
 	}
 	p.Accounts[address] = account
 	return account
+}
+
+func (p *testProcessor) createChangeLog(logType ChangeLogType) *ChangeLog {
+	account := p.createAccount(logType, 0)
+	return &ChangeLog{LogType: logType, Address: account.GetAddress(), Version: 1}
+}
+
+func (p *testProcessor) GetNextVersion(logType ChangeLogType, addr common.Address) uint32 {
+	return 123
 }
 
 func (p *testProcessor) PushEvent(event *Event) {}
@@ -200,115 +209,34 @@ func TestChangeLog_MarshalJSON_UnmarshalJSON(t *testing.T) {
 	}
 }
 
-func createChangeLog(processor *testProcessor, accountVersion uint32, logType ChangeLogType, logVersion uint32) *ChangeLog {
-	account := processor.createAccount(logType, accountVersion)
-	return &ChangeLog{LogType: logType, Address: account.GetAddress(), Version: logVersion}
-}
-
-func removeAddress(log *ChangeLog) *ChangeLog {
-	log.Address = common.Address{}
-	return log
-}
-
 func TestChangeLog_Undo(t *testing.T) {
 	processor := &testProcessor{}
+
+	// unknown type
+	log := processor.createChangeLog(ChangeLogType(0))
+	err := log.Undo(processor)
+	assert.Equal(t, ErrUnknownChangeLogType, err)
+
+	// custom type
 	registerCustomType(10002)
-
-	tests := []struct {
-		input      *ChangeLog
-		undoErr    error
-		afterCheck func(AccountAccessor)
-	}{
-		// 0 custom type
-		{
-			input:   createChangeLog(processor, 0, ChangeLogType(0), 1),
-			undoErr: ErrUnknownChangeLogType,
-		},
-		// 1 lower version
-		{
-			input:   createChangeLog(processor, 2, ChangeLogType(10002), 1),
-			undoErr: ErrWrongChangeLogVersion,
-		},
-		// 2 same version
-		{
-			input: createChangeLog(processor, 1, ChangeLogType(10002), 1),
-			afterCheck: func(accessor AccountAccessor) {
-				assert.Equal(t, uint32(0), accessor.GetVersion(ChangeLogType(10002)))
-			},
-		},
-		// 3 higher version
-		{
-			input:   createChangeLog(processor, 2, ChangeLogType(10002), 1),
-			undoErr: ErrWrongChangeLogVersion,
-		},
-		// 4 no account
-		{
-			input:   removeAddress(createChangeLog(processor, 2, ChangeLogType(10002), 1)),
-			undoErr: ErrWrongChangeLogVersion,
-		},
-	}
-
-	for i, test := range tests {
-		err := test.input.Undo(processor)
-		assert.Equal(t, test.undoErr, err, "index=%d %s", i, test.input)
-		if test.undoErr == nil && test.afterCheck != nil {
-			a := processor.GetAccount(test.input.Address)
-			test.afterCheck(a)
-		}
-	}
+	log = processor.createChangeLog(ChangeLogType(10002))
+	err = log.Undo(processor)
+	assert.NoError(t, err)
 }
 
 func TestChangeLog_Redo(t *testing.T) {
 	processor := &testProcessor{}
+
+	// unknown type
+	log := &ChangeLog{LogType: ChangeLogType(0), Address: common.Address{}, Version: 1}
+	err := log.Redo(processor)
+	assert.Equal(t, ErrUnknownChangeLogType, err)
+
+	// custom type
 	registerCustomType(10003)
-
-	tests := []struct {
-		input      *ChangeLog
-		redoErr    error
-		afterCheck func(AccountAccessor)
-	}{
-		// 0 custom type
-		{
-			input:   &ChangeLog{LogType: ChangeLogType(0), Address: common.Address{}, Version: 1},
-			redoErr: ErrUnknownChangeLogType,
-		},
-		// 1 lower version
-		{
-			input:   createChangeLog(processor, 2, ChangeLogType(10003), 1),
-			redoErr: ErrAlreadyRedo,
-		},
-		// 2 same version
-		{
-			input:   createChangeLog(processor, 1, ChangeLogType(10003), 1),
-			redoErr: ErrAlreadyRedo,
-		},
-		// 3 correct version
-		{
-			input: createChangeLog(processor, 0, ChangeLogType(10003), 1),
-			afterCheck: func(accessor AccountAccessor) {
-				assert.Equal(t, uint32(1), accessor.GetVersion(ChangeLogType(10003)))
-			},
-		},
-		// 3 higher version
-		{
-			input:   createChangeLog(processor, 0, ChangeLogType(10003), 2),
-			redoErr: ErrWrongChangeLogVersion,
-		},
-		// 4 no account
-		{
-			input:   removeAddress(createChangeLog(processor, 1, ChangeLogType(10003), 2)),
-			redoErr: ErrWrongChangeLogVersion,
-		},
-	}
-
-	for i, test := range tests {
-		err := test.input.Redo(processor)
-		assert.Equal(t, test.redoErr, err, "index=%d %s", i, test.input)
-		if test.redoErr == nil && test.afterCheck != nil {
-			a := processor.GetAccount(test.input.Address)
-			test.afterCheck(a)
-		}
-	}
+	log = processor.createChangeLog(ChangeLogType(10003))
+	err = log.Redo(processor)
+	assert.NoError(t, err)
 }
 
 // TODO

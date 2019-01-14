@@ -18,7 +18,7 @@ func TestAccount_Interface(t *testing.T) {
 func loadAccount(db protocol.ChainDB, address common.Address) *Account {
 	acctDb := db.GetActDatabase(newestBlock.Hash())
 	data := acctDb.Find(address[:])
-	return NewAccount(db, address, data, 2)
+	return NewAccount(db, address, data)
 }
 
 func TestAccount_GetAddress(t *testing.T) {
@@ -28,7 +28,7 @@ func TestAccount_GetAddress(t *testing.T) {
 
 	// load default account
 	account := loadAccount(db, defaultAccounts[0].Address)
-	assert.Equal(t, uint32(100), account.GetVersion(BalanceLog))
+	assert.Equal(t, uint32(100), account.GetBaseVersion(BalanceLog))
 
 	//load not exist account
 	account = loadAccount(db, common.HexToAddress("0xaaa"))
@@ -56,11 +56,11 @@ func TestAccount_SetVersion_GetVersion(t *testing.T) {
 	db := newDB()
 
 	account := loadAccount(db, defaultAccounts[0].Address)
-	assert.Equal(t, uint32(100), account.GetVersion(BalanceLog))
+	assert.Equal(t, uint32(100), account.GetBaseVersion(BalanceLog))
 	assert.Equal(t, defaultAccounts[0].NewestRecords[BalanceLog].Height, account.data.NewestRecords[BalanceLog].Height)
 
-	account.SetVersion(BalanceLog, 200)
-	assert.Equal(t, uint32(200), account.GetVersion(BalanceLog))
+	account.SetVersion(BalanceLog, 200, 3)
+	assert.Equal(t, uint32(200), account.GetBaseVersion(BalanceLog))
 	assert.Equal(t, uint32(3), account.data.NewestRecords[BalanceLog].Height)
 }
 
@@ -130,12 +130,11 @@ func TestAccount_SetCode_GetCode(t *testing.T) {
 	assert.Equal(t, false, account.codeIsDirty)
 }
 
-func TestAccount_GetBaseHeight_GetTxHashList(t *testing.T) {
+func TestAccount_GetTxHashList(t *testing.T) {
 	store.ClearData()
 	db := newDB()
 
 	account := loadAccount(db, defaultAccounts[0].Address)
-	assert.Equal(t, uint32(2), account.GetBaseHeight())
 	assert.Equal(t, 2, len(account.GetTxHashList()))
 	assert.Equal(t, common.HexToHash("0x11"), account.GetTxHashList()[0])
 }
@@ -218,7 +217,7 @@ func TestAccount_IsEmpty(t *testing.T) {
 
 	account := loadAccount(db, common.HexToAddress("0x1"))
 	assert.Equal(t, true, account.IsEmpty())
-	account.SetVersion(BalanceLog, 100)
+	account.SetVersion(BalanceLog, 100, 3)
 	assert.Equal(t, false, account.IsEmpty())
 }
 
@@ -235,7 +234,7 @@ func TestAccount_MarshalJSON_UnmarshalJSON(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, account.GetAddress(), parsedAccount.GetAddress())
 	assert.Equal(t, account.GetBalance(), parsedAccount.GetBalance())
-	assert.Equal(t, account.GetVersion(BalanceLog), parsedAccount.GetVersion(BalanceLog))
+	assert.Equal(t, account.GetBaseVersion(BalanceLog), parsedAccount.GetBaseVersion(BalanceLog))
 	assert.Equal(t, account.GetCodeHash(), parsedAccount.GetCodeHash())
 	assert.Equal(t, account.GetStorageRoot(), parsedAccount.GetStorageRoot())
 	// assert.Equal(t, account.db, parsedAccount.db)
@@ -269,7 +268,7 @@ func TestAccount_Finalise_Save(t *testing.T) {
 	assert.Equal(t, 2, len(account.cachedStorage))
 	assert.Equal(t, 1, len(account.dirtyStorage))
 	assert.Equal(t, value, account.dirtyStorage[key])
-	account.SetVersion(StorageLog, 10)
+	account.SetVersion(StorageLog, 10, 3)
 	err = account.Finalise()
 	assert.NoError(t, err)
 	assert.Equal(t, "0xfb4fbcae2c19f15b34c53b059a4af53d8d793607bd8ca5868eeb9c817c4e5bc7", account.GetStorageRoot().Hex())

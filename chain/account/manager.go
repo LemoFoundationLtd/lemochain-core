@@ -9,7 +9,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/store/protocol"
 	"github.com/LemoFoundationLtd/lemochain-go/store/trie"
 	"math/big"
-	"sort"
 )
 
 // Trie cache generation limit after which to evict trie nodes from memory.
@@ -33,11 +32,11 @@ type Manager struct {
 	// This map holds 'live' accounts, which will get modified while processing a state transition.
 	accountCache map[common.Address]*SafeAccount
 
-	processor   *logProcessor
+	processor   *LogProcessor
 	versionTrie *trie.SecureTrie
 }
 
-// NewManager creates a new Manager. it is used to maintain account changes based on the block environment which specified by blockHash
+// NewManager creates a new Manager. It is used to maintain account changes based on the block environment which specified by blockHash
 func NewManager(blockHash common.Hash, db protocol.ChainDB) *Manager {
 	if db == nil {
 		panic("account.NewManager is called without a database")
@@ -55,11 +54,7 @@ func NewManager(blockHash common.Hash, db protocol.ChainDB) *Manager {
 
 	manager.acctDb = db.GetActDatabase(blockHash)
 
-	manager.processor = &logProcessor{
-		manager:    manager,
-		changeLogs: make([]*types.ChangeLog, 0),
-		events:     make([]*types.Event, 0),
-	}
+	manager.processor = NewLogProcessor(manager)
 	return manager
 }
 
@@ -68,7 +63,7 @@ func (am *Manager) GetAccount(address common.Address) types.AccountAccessor {
 	cached := am.accountCache[address]
 	if cached == nil {
 		data := am.acctDb.Find(address[:])
-		account := NewAccount(am.db, address, data, am.baseBlockHeight())
+		account := NewAccount(am.db, address, data)
 		cached = NewSafeAccount(am.processor, account)
 		// cache it
 		am.accountCache[address] = cached
@@ -82,12 +77,12 @@ func (am *Manager) GetCanonicalAccount(address common.Address) types.AccountAcce
 	if err != nil && err != store.ErrNotExist {
 		panic(err)
 	}
-	return NewAccount(am.db, address, data, am.baseBlockHeight())
+	return NewAccount(am.db, address, data)
 }
 
 // getRawAccount loads an account same as GetAccount, but editing the account of this method returned is not going to generate change logs.
 // This method is used for ChangeLog.Redo/Undo.
-func (am *Manager) getRawAccount(address common.Address) types.AccountAccessor {
+func (am *Manager) getRawAccount(address common.Address) *Account {
 	safeAccount := am.GetAccount(address)
 	// Change this account will change safeAccount. They are same pointers
 	return safeAccount.(*SafeAccount).rawAccount
@@ -106,20 +101,21 @@ func (am *Manager) AddEvent(event *types.Event) {
 		panic("account.Manager.AddEvent() is called without a Address or TxHash")
 	}
 	account := am.getRawAccount(event.Address)
-	event.Index = uint(len(am.processor.events))
-	am.processor.PushChangeLog(NewAddEventLog(account, event))
+	event.Index = uint(len(am.processor.GetEvents()))
+	newLog := NewAddEventLog(am.processor, account, event)
+	am.processor.PushChangeLog(newLog)
 	am.processor.PushEvent(event)
 }
 
 // GetEvents returns all events since last reset
 func (am *Manager) GetEvents() []*types.Event {
-	return am.processor.events
+	return am.processor.GetEvents()
 }
 
 // GetEvents returns all events since last reset
 func (am *Manager) GetEventsByTx(txHash common.Hash) []*types.Event {
 	result := make([]*types.Event, 0)
-	for _, event := range am.processor.events {
+	for _, event := range am.processor.GetEvents() {
 		if event.TxHash == txHash {
 			result = append(result, event)
 		}
@@ -129,7 +125,7 @@ func (am *Manager) GetEventsByTx(txHash common.Hash) []*types.Event {
 
 // GetChangeLogs returns all change logs since last reset
 func (am *Manager) GetChangeLogs() []*types.ChangeLog {
-	return am.processor.changeLogs
+	return am.processor.GetChangeLogs()
 }
 
 // getVersionTrie loads version trie by the version root from baseBlockHash
@@ -158,7 +154,7 @@ func (am *Manager) GetVersionRoot() common.Hash {
 // clear clears all data from one block so that Manager can get ready to process another block's transactions
 func (am *Manager) clear() {
 	am.accountCache = make(map[common.Address]*SafeAccount)
-	am.processor.clear()
+	am.processor.Clear()
 	am.versionTrie = nil
 }
 
@@ -196,21 +192,25 @@ func (am *Manager) RevertToSnapshot(revid int) {
 // Finalise finalises the state, clears the change caches and update tries.
 func (am *Manager) Finalise() error {
 	versionTrie := am.getVersionTrie()
+	currentHeight := am.currentBlockHeight()
 	for _, account := range am.accountCache {
 		if !account.IsDirty() {
 			continue
 		}
-		// update account and contract storage
-		if err := account.rawAccount.Finalise(); err != nil {
-			return err
-		}
-		// update version trie
-		for logType, record := range account.rawAccount.data.NewestRecords {
-			k := versionTrieKey(account.GetAddress(), logType)
-			version := big.NewInt(int64(record.Version)).Bytes()
+		logs := am.processor.GetLogsByAddress(account.GetAddress())
+		for _, changeLog := range logs {
+			// set version record in rawAccount.data.NewestRecords
+			account.rawAccount.SetVersion(changeLog.LogType, changeLog.Version, currentHeight)
+			// update version trie
+			k := versionTrieKey(account.GetAddress(), changeLog.LogType)
+			version := big.NewInt(int64(changeLog.Version)).Bytes()
 			if err := versionTrie.TryUpdate(k, version); err != nil {
 				return err
 			}
+		}
+		// update account and contract storage
+		if err := account.rawAccount.Finalise(); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -260,102 +260,11 @@ func (am *Manager) SaveTxInAccount(fromAddr, toAddr common.Address, txHash commo
 	to.AppendTx(txHash)
 }
 
-type revision struct {
-	id           int
-	journalIndex int
-}
-
-// logProcessor records change logs and contract events during block's transaction execution. It can access raw account data for undo/redo
-type logProcessor struct {
-	manager *Manager
-
-	// The change logs generated by transactions from the same block
-	changeLogs     []*types.ChangeLog
-	validRevisions []revision
-	nextRevisionId int
-
-	// This map holds contract events generated by every transactions
-	events []*types.Event
-}
-
-func (h *logProcessor) GetAccount(addr common.Address) types.AccountAccessor {
-	return h.manager.getRawAccount(addr)
-}
-
-func (h *logProcessor) PushEvent(event *types.Event) {
-	h.events = append(h.events, event)
-}
-
-func (h *logProcessor) PopEvent() error {
-	size := len(h.events)
-	if size == 0 {
-		return ErrNoEvents
-	}
-	h.events = h.events[:size-1]
-	return nil
-}
-
-func (h *logProcessor) PushChangeLog(log *types.ChangeLog) {
-	h.changeLogs = append(h.changeLogs, log)
-}
-
-func (h *logProcessor) clear() {
-	h.changeLogs = make([]*types.ChangeLog, 0)
-	h.events = make([]*types.Event, 0)
-}
-
-// Snapshot returns an identifier for the current revision of the change log.
-func (h *logProcessor) Snapshot() int {
-	id := h.nextRevisionId
-	h.nextRevisionId++
-	h.validRevisions = append(h.validRevisions, revision{id, len(h.changeLogs)})
-	return id
-}
-
-// checkRevisionAvailable check if the newest revision is accessible
-func (h *logProcessor) checkRevisionAvailable() bool {
-	if len(h.validRevisions) == 0 {
-		return true
-	}
-	last := h.validRevisions[len(h.validRevisions)-1]
-	return last.journalIndex <= len(h.changeLogs)
-}
-
-// RevertToSnapshot reverts all changes made since the given revision.
-func (h *logProcessor) RevertToSnapshot(revid int) {
-	// Find the snapshot in the stack of valid snapshots.
-	idx := sort.Search(len(h.validRevisions), func(i int) bool {
-		return h.validRevisions[i].id >= revid
-	})
-	if idx == len(h.validRevisions) || h.validRevisions[idx].id != revid {
-		log.Errorf("revision id %v cannot be reverted", revid)
-		panic(ErrRevisionNotExist)
-	}
-	snapshot := h.validRevisions[idx].journalIndex
-
-	// Replay the change log to undo changes.
-	for i := len(h.changeLogs) - 1; i >= snapshot; i-- {
-		h.changeLogs[i].Undo(h)
-	}
-	h.changeLogs = h.changeLogs[:snapshot]
-
-	// Remove invalidated snapshots from the stack.
-	h.validRevisions = h.validRevisions[:idx]
-}
-
 // Rebuild loads and redo all change logs to update account to the newest state.
-//
-// TODO Changelog maybe retrieved from other node, so the account in local store is not contain the newest NewestRecords.
-// We'd better change this function to "Rebuild(address common.Address, logs []types.ChangeLog)" cause the Rebuild function is called by change log synchronization module
-func (am *Manager) Rebuild(address common.Address) error {
-	accountAccessor := am.getRawAccount(address)
-	account := accountAccessor.(*Account)
-	logs, err := account.LoadNewestChangeLogs()
-	for _, log := range logs {
-		err = log.Redo(&logProcessor{manager: am})
-		if err != nil && err != types.ErrAlreadyRedo {
-			return err
-		}
+func (am *Manager) Rebuild(address common.Address, logs types.ChangeLogSlice) error {
+	account, err := am.processor.Rebuild(address, logs)
+	if err != nil {
+		return err
 	}
 	return nil
 	// save account
@@ -364,29 +273,16 @@ func (am *Manager) Rebuild(address common.Address) error {
 
 // MergeChangeLogs merges the change logs for same account in block. Then update the version of change logs and account.
 func (am *Manager) MergeChangeLogs(fromIndex int) {
-	needMerge := am.processor.changeLogs[fromIndex:]
-	mergedLogs, versionLogs := MergeChangeLogs(needMerge)
-	am.processor.changeLogs = append(am.processor.changeLogs[:fromIndex], mergedLogs...)
-	for _, changeLog := range mergedLogs {
-		am.getRawAccount(changeLog.Address).SetVersion(changeLog.LogType, changeLog.Version)
-	}
-	for _, changeLog := range versionLogs {
-		am.getRawAccount(changeLog.Address).SetVersion(changeLog.LogType, changeLog.Version)
-	}
-	// make sure the snapshot still work
-	if !am.processor.checkRevisionAvailable() {
-		log.Error("invalid revision", "last revision", am.processor.validRevisions[len(am.processor.validRevisions)-1], "new logs count", len(am.processor.changeLogs), "from index", fromIndex, "merged logs count", len(mergedLogs))
-		panic(ErrSnapshotIsBroken)
-	}
+	am.processor.MergeChangeLogs(fromIndex)
 }
 
 func (am *Manager) Stop(graceful bool) error {
 	return nil
 }
 
-func (am *Manager) baseBlockHeight() uint32 {
+func (am *Manager) currentBlockHeight() uint32 {
 	if am.baseBlock == nil {
 		return 0
 	}
-	return am.baseBlock.Height()
+	return am.baseBlock.Height() + 1
 }
