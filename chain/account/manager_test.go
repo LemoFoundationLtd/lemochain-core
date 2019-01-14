@@ -1,7 +1,6 @@
 package account
 
 import (
-	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/vm"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
@@ -10,9 +9,9 @@ import (
 	"testing"
 )
 
-func TestNewManager_Interface(t *testing.T) {
+func TestManager_Interface(t *testing.T) {
 	var _ vm.AccountManager = (*Manager)(nil)
-	var _ types.ChangeLogProcessor = (*logProcessor)(nil)
+	var _ types.ChangeLogProcessor = (*LogProcessor)(nil)
 }
 
 func TestNewManager_withoutDB(t *testing.T) {
@@ -27,13 +26,13 @@ func TestNewManager(t *testing.T) {
 	NewManager(common.Hash{}, newDB())
 }
 
-func TestNewManager_GetAccount(t *testing.T) {
+func TestManager_GetAccount(t *testing.T) {
 	db := newDB()
 
 	// exist in db
 	manager := NewManager(newestBlock.Hash(), db)
 	account := manager.GetAccount(defaultAccounts[0].Address)
-	assert.Equal(t, uint32(100), account.GetVersion(BalanceLog))
+	assert.Equal(t, uint32(100), account.GetBaseVersion(BalanceLog))
 	assert.Equal(t, false, account.IsEmpty())
 	// not exist in db
 	account = manager.GetAccount(common.HexToAddress("0xaaa"))
@@ -43,7 +42,7 @@ func TestNewManager_GetAccount(t *testing.T) {
 	// load from older block
 	manager = NewManager(defaultBlockInfos[0].hash, db)
 	account = manager.GetAccount(defaultAccounts[0].Address)
-	assert.Equal(t, uint32(100), account.GetVersion(BalanceLog))
+	assert.Equal(t, uint32(100), account.GetBaseVersion(BalanceLog))
 	assert.Equal(t, false, account.IsEmpty())
 
 	// load from genesis' parent block
@@ -60,13 +59,13 @@ func TestNewManager_GetAccount(t *testing.T) {
 	assert.Equal(t, big.NewInt(100), account2.GetBalance())
 }
 
-func TestNewManager_GetCanonicalAccount(t *testing.T) {
+func TestManager_GetCanonicalAccount(t *testing.T) {
 	db := newDB()
 
 	// exist in db
 	manager := NewManager(newestBlock.Hash(), db)
 	account := manager.GetCanonicalAccount(defaultAccounts[0].Address)
-	assert.Equal(t, uint32(100), account.GetVersion(BalanceLog))
+	assert.Equal(t, uint32(100), account.GetBaseVersion(BalanceLog))
 	// not exist in db
 	account = manager.GetCanonicalAccount(common.HexToAddress("0xaaa"))
 	assert.Equal(t, common.HexToAddress("0xaaa"), account.GetAddress())
@@ -78,122 +77,21 @@ func TestNewManager_GetCanonicalAccount(t *testing.T) {
 	assert.Empty(t, manager.accountCache[common.Address{}])
 }
 
-func TestChangeLogProcessor_GetAccount(t *testing.T) {
+func TestManager_GetChangeLogs(t *testing.T) {
 	db := newDB()
 	manager := NewManager(newestBlock.Hash(), db)
 
-	// not exist in db
-	address := common.HexToAddress("0xaaa")
-	rawAccount := manager.processor.GetAccount(address)
-	assert.Equal(t, address, rawAccount.GetAddress())
-	assert.NotEmpty(t, manager.accountCache[address])
-
-	// exist in db
-	rawAccount = manager.processor.GetAccount(defaultAccounts[0].Address)
-	assert.Equal(t, uint32(100), rawAccount.GetVersion(BalanceLog))
-
-	// change rawAccount, account should change
-	account := manager.GetAccount(defaultAccounts[0].Address)
-	rawAccount.SetBalance(big.NewInt(2))
-	assert.Equal(t, rawAccount.GetBalance(), account.GetBalance())
-
-	// change account, rawAccount should change
-	account.SetBalance(big.NewInt(3))
-	assert.Equal(t, account.GetBalance(), rawAccount.GetBalance())
-}
-
-func TestChangeLogProcessor_PushEvent_PopEvent(t *testing.T) {
-	db := newDB()
-	manager := NewManager(newestBlock.Hash(), db)
-
-	// push
-	manager.processor.PushEvent(&types.Event{Address: common.HexToAddress("0x1"), TxHash: th(1), BlockHeight: 11})
-	manager.processor.PushEvent(&types.Event{Address: common.HexToAddress("0x1"), BlockHeight: 22})
-	events := manager.GetEvents()
-	assert.Equal(t, 2, len(events))
-	assert.Equal(t, uint32(22), events[1].BlockHeight)
-
-	// pop
-	err := manager.processor.PopEvent()
-	assert.NoError(t, err)
-	events = manager.GetEvents()
-	assert.Equal(t, 1, len(events))
-	assert.Equal(t, uint32(11), events[0].BlockHeight)
-	err = manager.processor.PopEvent()
-	assert.NoError(t, err)
-	err = manager.processor.PopEvent()
-	assert.Equal(t, ErrNoEvents, err)
-}
-
-func TestChangeLogProcessor_PushChangeLog_GetChangeLogs(t *testing.T) {
-	db := newDB()
-	manager := NewManager(newestBlock.Hash(), db)
-
-	manager.processor.PushChangeLog(&types.ChangeLog{
-		LogType: types.ChangeLogType(101),
-	})
-	account := manager.GetAccount(defaultAccounts[0].Address)
+	logs := manager.GetChangeLogs()
+	assert.Equal(t, 0, len(logs))
 
 	// create a new change log
-	account.SetBalance(big.NewInt(999))
-	logs := manager.GetChangeLogs()
-	assert.Equal(t, 2, len(logs))
-	assert.Equal(t, types.ChangeLogType(101), logs[0].LogType)
-	assert.Equal(t, *big.NewInt(999), logs[1].NewVal.(big.Int))
+	manager.processor.changeLogs = append(manager.processor.changeLogs, &types.ChangeLog{NewVal: 123})
+	logs = manager.GetChangeLogs()
+	assert.Equal(t, 1, len(logs))
+	assert.Equal(t, 123, logs[0].NewVal.(int))
 }
 
-func TestNewManager_Snapshot_RevertToSnapshot(t *testing.T) {
-	db := newDB()
-	manager := NewManager(newestBlock.Hash(), db)
-
-	// snapshot when empty
-	assert.Equal(t, 0, len(manager.processor.validRevisions))
-	assert.Equal(t, 0, manager.processor.nextRevisionId)
-	newId := manager.Snapshot()
-	assert.Equal(t, 0, newId)
-	assert.Equal(t, 1, len(manager.processor.validRevisions))
-	assert.Equal(t, 1, manager.processor.nextRevisionId)
-	// revert to current snapshot
-	manager.RevertToSnapshot(newId)
-	assert.Equal(t, 0, len(manager.processor.validRevisions))
-
-	// revert not exist version
-	assert.PanicsWithValue(t, ErrRevisionNotExist, func() {
-		manager.RevertToSnapshot(100)
-	})
-
-	// create a new snapshot than revert
-	account := manager.GetAccount(defaultAccounts[0].Address)
-	newId = manager.Snapshot()
-	assert.Equal(t, 1, newId)
-	account.SetBalance(big.NewInt(999))
-	manager.RevertToSnapshot(newId)
-	assert.Equal(t, defaultAccounts[0].Balance, account.GetBalance())
-
-	// create two new snapshot than revert one
-	account = manager.GetAccount(common.HexToAddress("0x1"))
-	newId = manager.Snapshot()
-	account.SetBalance(big.NewInt(999))
-	newId = manager.Snapshot()
-	account.SetBalance(big.NewInt(1))
-	assert.Equal(t, 2, len(manager.processor.validRevisions))
-	manager.RevertToSnapshot(newId)
-	assert.Equal(t, 1, len(manager.processor.validRevisions))
-	assert.Equal(t, big.NewInt(999), account.GetBalance())
-
-	// snapshot twice
-	account = manager.GetAccount(common.HexToAddress("0x2"))
-	account.SetBalance(big.NewInt(999))
-	newId = manager.Snapshot()
-	newId2 := manager.Snapshot()
-	account.SetBalance(big.NewInt(1))
-	manager.RevertToSnapshot(newId2)
-	manager.RevertToSnapshot(newId)
-	assert.Equal(t, 1, len(manager.processor.validRevisions))
-	assert.Equal(t, big.NewInt(999), account.GetBalance())
-}
-
-func TestNewManager_AddEvent(t *testing.T) {
+func TestManager_AddEvent(t *testing.T) {
 	db := newDB()
 	manager := NewManager(newestBlock.Hash(), db)
 
@@ -212,7 +110,7 @@ func TestNewManager_AddEvent(t *testing.T) {
 	assert.Equal(t, event1, logs[0].NewVal.(*types.Event))
 }
 
-func TestNewManager_GetVersionRoot(t *testing.T) {
+func TestManager_GetVersionRoot(t *testing.T) {
 	db := newDB()
 
 	// empty version trie
@@ -228,11 +126,11 @@ func TestNewManager_GetVersionRoot(t *testing.T) {
 	key := append(defaultAccounts[0].Address.Bytes(), big.NewInt(int64(BalanceLog)).Bytes()...)
 	value, err := ReadTrie(db, root, key)
 	assert.NoError(t, err)
-	assert.Equal(t, uint32(100), manager.GetAccount(defaultAccounts[0].Address).GetVersion(BalanceLog))
+	assert.Equal(t, uint32(100), manager.GetAccount(defaultAccounts[0].Address).GetBaseVersion(BalanceLog))
 	assert.Equal(t, big.NewInt(100), new(big.Int).SetBytes(value))
 }
 
-func TestNewManager_Reset(t *testing.T) {
+func TestManager_Reset(t *testing.T) {
 	db := newDB()
 	manager := NewManager(common.Hash{}, db)
 
@@ -250,8 +148,8 @@ func TestNewManager_Reset(t *testing.T) {
 	assert.Empty(t, manager.versionTrie)
 }
 
-// saving from the newest block
-func TestNewManager_Finalise_Save(t *testing.T) {
+// saving blocks after the newest block
+func TestManager_Finalise_Save(t *testing.T) {
 	db := newDB()
 	manager := NewManager(newestBlock.Hash(), db)
 
@@ -293,8 +191,8 @@ func TestNewManager_Finalise_Save(t *testing.T) {
 	assert.Equal(t, root, manager.GetVersionRoot())
 }
 
-// saving genesis block and first block
-func TestNewManager_Finalise_Save2(t *testing.T) {
+// saving for genesis block and first block
+func TestManager_Finalise_Save2(t *testing.T) {
 	db := newDB()
 	// load from genesis' parent block
 	manager := NewManager(common.Hash{}, db)
@@ -345,11 +243,13 @@ func TestManager_Save_Reset(t *testing.T) {
 	// save balance to 1 in block1
 	account := manager.GetAccount(common.HexToAddress("0x1"))
 	account.SetBalance(big.NewInt(1))
-	assert.Equal(t, uint32(1), account.GetVersion(BalanceLog))
+	assert.Equal(t, uint32(0), account.GetBaseVersion(BalanceLog))
 	account.(*SafeAccount).AppendTx(th(12))
 	assert.Equal(t, 1, len(account.GetTxHashList()))
 	err := manager.Finalise()
 	assert.NoError(t, err)
+	assert.Equal(t, uint32(1), account.GetBaseVersion(BalanceLog))
+	assert.Equal(t, uint32(0), account.(*SafeAccount).rawAccount.data.NewestRecords[BalanceLog].Height)
 	block := &types.Block{}
 	block.SetHeader(&types.Header{Height: 0, VersionRoot: manager.GetVersionRoot()})
 	err = db.SetBlock(block.Hash(), block)
@@ -362,9 +262,11 @@ func TestManager_Save_Reset(t *testing.T) {
 	manager.Reset(block1Hash)
 	account = manager.GetAccount(common.HexToAddress("0x1"))
 	account.SetBalance(big.NewInt(2))
-	assert.Equal(t, uint32(2), account.GetVersion(BalanceLog))
+	assert.Equal(t, uint32(1), account.GetBaseVersion(BalanceLog))
 	err = manager.Finalise()
 	assert.NoError(t, err)
+	assert.Equal(t, uint32(2), account.GetBaseVersion(BalanceLog))
+	assert.Equal(t, uint32(1), account.(*SafeAccount).rawAccount.data.NewestRecords[BalanceLog].Height)
 	block = &types.Block{}
 	block.SetHeader(&types.Header{Height: 1, ParentHash: block1Hash, VersionRoot: manager.GetVersionRoot()})
 	err = db.SetBlock(block.Hash(), block)
@@ -376,57 +278,9 @@ func TestManager_Save_Reset(t *testing.T) {
 	manager.Reset(block1Hash)
 	account = manager.GetAccount(common.HexToAddress("0x1"))
 	assert.Equal(t, big.NewInt(1), account.GetBalance())
-	assert.Equal(t, uint32(1), account.GetVersion(BalanceLog))
+	assert.Equal(t, uint32(1), account.GetBaseVersion(BalanceLog))
 	assert.Equal(t, 1, len(account.GetTxHashList()))
 	assert.Equal(t, th(12), account.GetTxHashList()[0])
-}
-
-func TestManager_MergeChangeLogs(t *testing.T) {
-	db := newDB()
-	manager := NewManager(newestBlock.Hash(), db)
-
-	// merge nothing
-	manager.MergeChangeLogs(0)
-
-	account1 := manager.GetAccount(defaultAccounts[0].Address)
-	account2 := manager.GetAccount(common.HexToAddress("0x1"))
-	account3 := manager.GetAccount(common.HexToAddress("0x2"))
-
-	// balance log, balance log, custom log, balance log, balance log
-	account1.SetBalance(big.NewInt(111))              // 0
-	manager.processor.PushChangeLog(&types.ChangeLog{ // 1
-		LogType: types.ChangeLogType(101),
-	})
-	account2.SetBalance(big.NewInt(222)) // 2
-	account3.SetBalance(big.NewInt(444)) // 3
-	account1.SetBalance(big.NewInt(333)) // 4
-	account3.SetBalance(big.NewInt(0))   // 5
-	account1.SetBalance(big.NewInt(100)) // 6
-	logs := manager.GetChangeLogs()
-	assert.Equal(t, 7, len(logs))
-	assert.Equal(t, *big.NewInt(111), manager.GetChangeLogs()[0].NewVal)
-	assert.Equal(t, uint32(defaultAccounts[0].NewestRecords[BalanceLog].Version+3), account1.GetVersion(BalanceLog))
-
-	// merge different account's change log
-	manager.MergeChangeLogs(5)
-	logs = manager.GetChangeLogs()
-	assert.Equal(t, 7, len(logs))
-
-	// successfully merge
-	manager.MergeChangeLogs(0)
-	logs = manager.GetChangeLogs()
-	fmt.Println(logs)
-	assert.Equal(t, 1, len(logs))
-	assert.Equal(t, uint32(0), account3.GetVersion(BalanceLog))
-	// the first change log has been sorted to the last one
-	assert.Equal(t, *big.NewInt(222), manager.GetChangeLogs()[0].NewVal)
-
-	// broke snapshot
-	account2.SetBalance(big.NewInt(444))
-	manager.Snapshot()
-	assert.PanicsWithValue(t, ErrSnapshotIsBroken, func() {
-		manager.MergeChangeLogs(0)
-	})
 }
 
 func TestManager_SaveTxInAccount(t *testing.T) {

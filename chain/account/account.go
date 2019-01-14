@@ -12,7 +12,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/store/protocol"
 	"github.com/LemoFoundationLtd/lemochain-go/store/trie"
 	"math/big"
-	"sort"
 )
 
 var (
@@ -44,11 +43,10 @@ func (s Storage) Copy() Storage {
 
 // Account is used to read and write account data. the code and dirty storage K/V would be cached till they are flushing to db
 type Account struct {
-	data       *types.AccountData
-	db         protocol.ChainDB    // used to access account data in cache or file
-	trie       *trie.SecureTrie    // contract storage trie
-	trieDb     *store.TrieDatabase // used to access tire data in file
-	baseHeight uint32              // height of the block which load this account data from
+	data   *types.AccountData
+	db     protocol.ChainDB    // used to access account data in cache or file
+	trie   *trie.SecureTrie    // contract storage trie
+	trieDb *store.TrieDatabase // used to access tire data in file
 
 	// trie Trie // storage trie
 	code types.Code // contract byte code
@@ -61,7 +59,7 @@ type Account struct {
 }
 
 // NewAccount wrap an AccountData object, or creates a new one if it's nil.
-func NewAccount(db protocol.ChainDB, address common.Address, data *types.AccountData, baseHeight uint32) *Account {
+func NewAccount(db protocol.ChainDB, address common.Address, data *types.AccountData) *Account {
 	if data == nil {
 		// create new one
 		data = &types.AccountData{Address: address}
@@ -79,7 +77,6 @@ func NewAccount(db protocol.ChainDB, address common.Address, data *types.Account
 		db:            db,
 		cachedStorage: make(Storage),
 		dirtyStorage:  make(Storage),
-		baseHeight:    baseHeight,
 	}
 }
 
@@ -94,8 +91,8 @@ func (a *Account) UnmarshalJSON(input []byte) error {
 	if err := dec.UnmarshalJSON(input); err != nil {
 		return err
 	}
-	// TODO a.db and a.baseHeight are nil
-	*a = *NewAccount(a.db, dec.Address, dec, a.baseHeight)
+	// TODO a.db is always nil
+	*a = *NewAccount(a.db, dec.Address, dec)
 	return nil
 }
 
@@ -106,12 +103,16 @@ func (a *Account) String() string {
 // Implement AccountAccessor. Access Account without changelog
 func (a *Account) GetAddress() common.Address { return a.data.Address }
 func (a *Account) GetBalance() *big.Int       { return new(big.Int).Set(a.data.Balance) }
-func (a *Account) GetVersion(logType types.ChangeLogType) uint32 {
+
+// GetBaseVersion returns the version of specific change log from the base block. It is not changed by tx processing until the finalised
+func (a *Account) GetBaseVersion(logType types.ChangeLogType) uint32 {
 	return a.data.NewestRecords[logType].Version
+}
+func (a *Account) SetVersion(logType types.ChangeLogType, version, blockHeight uint32) {
+	a.data.NewestRecords[logType] = types.VersionRecord{Version: version, Height: blockHeight}
 }
 func (a *Account) GetSuicide() bool             { return a.suicided }
 func (a *Account) GetCodeHash() common.Hash     { return a.data.CodeHash }
-func (a *Account) GetBaseHeight() uint32        { return a.baseHeight }
 func (a *Account) GetTxHashList() []common.Hash { return a.data.TxHashList }
 
 // StorageRoot wouldn't change until Account.updateTrie() is called
@@ -123,9 +124,6 @@ func (a *Account) SetBalance(balance *big.Int) {
 		panic(ErrNegativeBalance)
 	}
 	a.data.Balance.Set(balance)
-}
-func (a *Account) SetVersion(logType types.ChangeLogType, version uint32) {
-	a.data.NewestRecords[logType] = types.VersionRecord{Version: version, Height: a.baseHeight + 1}
 }
 func (a *Account) SetSuicide(suicided bool) {
 	if suicided {
@@ -220,6 +218,15 @@ func (a *Account) IsEmpty() bool {
 	return true
 }
 
+func (a *Account) AppendTx(hash common.Hash) {
+	for _, exist := range a.data.TxHashList {
+		if exist == hash {
+			return
+		}
+	}
+	a.data.TxHashList = append(a.data.TxHashList, hash)
+}
+
 func (a *Account) getTrie() (*trie.SecureTrie, error) {
 	if a.trie == nil {
 		if a.trieDb == nil {
@@ -304,21 +311,4 @@ func (a *Account) Save() error {
 		a.codeIsDirty = false
 	}
 	return nil
-}
-
-// LoadNewestChangeLogs loads newest change logs
-func (a *Account) LoadNewestChangeLogs() ([]*types.ChangeLog, error) {
-	var logs types.ChangeLogSlice
-	// TODO the db interface has not been implemented
-	// for height, version := range a.data.NewestRecords {
-	// 	if version >= fromVersion {
-	// 		oneBlockLogs, err := a.db.LoadChangeLog(a.data.Address, height)
-	// 		if err != nil {
-	// 			return nil, err
-	// 		}
-	// 		logs = append(logs, oneBlockLogs)
-	// 	}
-	// }
-	sort.Sort(logs)
-	return logs, nil
 }
