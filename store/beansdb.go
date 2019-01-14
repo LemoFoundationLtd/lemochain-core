@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
+	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"os"
 	"path/filepath"
@@ -26,51 +28,32 @@ type BeansDB struct {
 	bitcasks  []*BitCask
 	indexDB   DB
 	route2key map[string][]byte
-	context   *ChainContext
 }
 
 func after(flag uint, route []byte, key []byte, val []byte, offset uint32) error {
 	return nil
 }
 
-func NewBeansDB(home string, height int) *BeansDB {
+func NewBeansDB(home string, height int, indexes []LastIndex) *BeansDB {
 	if height != 2 {
-		panic("height != 2")
+		panic("beansdb height != 2")
+	}
+
+	count := 1 << (uint(height) * 4)
+	if len(indexes) != count {
+		panic("len(last index) != count")
 	}
 
 	beansdb := &BeansDB{height: uint(height)}
-
-	count := 1 << (beansdb.height * 4)
 	beansdb.bitcasks = make([]*BitCask, count)
 	beansdb.route2key = make(map[string][]byte)
-
-	dns := "root:123123@tcp(localhost:3306)/lemochain?charset=utf8mb4"
-	beansdb.indexDB = NewMySqlDB(DRIVER_MYSQL, dns)
-
-	beansdb.context = new(ChainContext)
-	isExist, err := beansdb.context.isExist(home)
-	if err != nil {
-		panic("check dir is exist err : " + err.Error())
-	}
-
-	if !isExist {
-		err = os.MkdirAll(home, os.ModePerm)
-		if err != nil {
-			panic("mk dir is exist err : " + err.Error())
-		}
-	}
-
-	beansdb.context.Path = filepath.Join(home, "context.data")
-	err = beansdb.context.Load()
-	if err != nil {
-		panic("load context err : " + err.Error())
-	}
+	beansdb.indexDB = NewMySqlDB(DRIVER_MYSQL, DRIVER_DNS)
 
 	for index := 0; index < count; index++ {
 		dataPath := filepath.Join(home, "/%02d/%02d/")
 		str := fmt.Sprintf(dataPath, index>>4, index&0xf)
 
-		last := beansdb.context.GetScanIndex(index)
+		last := indexes[index]
 		database, err := NewBitCask(str, int(last.Index), last.Offset, nil, beansdb.indexDB)
 		if err != nil {
 			panic("new bitcask error : " + err.Error())
@@ -171,15 +154,6 @@ func (beansdb *BeansDB) Get(key []byte) ([]byte, error) {
 	}
 }
 
-func (beansdb *BeansDB) GetCurrentBlock() []byte {
-	return beansdb.context.GetCurrentBlock()
-}
-
-func (beansdb *BeansDB) SetCurrentBlock(data []byte) error {
-	beansdb.context.SetCurrentBlock(data)
-	return beansdb.context.Flush()
-}
-
 func (beansdb *BeansDB) Close() error {
 	return nil
 }
@@ -191,23 +165,42 @@ type contextHead struct {
 	Crc       uint16
 }
 
-type lastIndex struct {
+type LastIndex struct {
 	Index  uint32
 	Offset uint32
 }
 
 type contextBody struct {
-	ScanIndex    []lastIndex
-	CurrentBlock []byte
+	ScanIndex   []LastIndex
+	StableBlock *types.Block
+	Candidates  []common.Address
 }
 
-type ChainContext struct {
-	Path         string
-	ScanIndex    []lastIndex
-	CurrentBlock []byte
+type RunContext struct {
+	Path        string
+	ScanIndex   []LastIndex
+	StableBlock *types.Block
+	Candidates  map[common.Address]bool
 }
 
-func (context *ChainContext) load() (*contextHead, *contextBody, error) {
+func NewRunContext(path string) *RunContext {
+	path = filepath.Join(path, "/context.data")
+	context := &RunContext{
+		Path:        path,
+		ScanIndex:   make([]LastIndex, 0),
+		StableBlock: nil,
+		Candidates:  make(map[common.Address]bool),
+	}
+
+	err := context.Load()
+	if err != nil {
+		panic("load run context error : " + err.Error())
+	}
+
+	return context
+}
+
+func (context *RunContext) load() (*contextHead, *contextBody, error) {
 	file, err := os.OpenFile(context.Path, os.O_RDONLY, 0666)
 	defer file.Close()
 	if err != nil {
@@ -246,20 +239,7 @@ func (context *ChainContext) load() (*contextHead, *contextBody, error) {
 	}
 }
 
-func (context *ChainContext) isExist(path string) (bool, error) {
-	_, err := os.Stat(path)
-	if err == nil {
-		return true, nil
-	}
-
-	if os.IsNotExist(err) {
-		return false, nil
-	} else {
-		return false, err
-	}
-}
-
-func (context *ChainContext) createFile() error {
+func (context *RunContext) createFile() error {
 	f, err := os.Create(context.Path)
 	defer f.Close()
 	if err != nil {
@@ -269,16 +249,16 @@ func (context *ChainContext) createFile() error {
 	}
 }
 
-func (context *ChainContext) Load() error {
-	isExist, err := context.isExist(context.Path)
+func (context *RunContext) Load() error {
+	isExist, err := IsExist(context.Path)
 	if err != nil {
 		return err
 	}
 
 	if !isExist {
-		context.ScanIndex = make([]lastIndex, 256)
+		context.ScanIndex = make([]LastIndex, 256)
 		for index := 0; index < 256; index++ {
-			context.ScanIndex[index] = lastIndex{
+			context.ScanIndex[index] = LastIndex{
 				Index:  0,
 				Offset: 0,
 			}
@@ -296,32 +276,63 @@ func (context *ChainContext) Load() error {
 		}
 
 		context.ScanIndex = body.ScanIndex
-		context.CurrentBlock = body.CurrentBlock
+		context.StableBlock = body.StableBlock
+		for index := 0; index < len(body.Candidates); index++ {
+			context.Candidates[body.Candidates[index]] = true
+		}
 
 		return nil
 	}
 }
 
-func (context *ChainContext) GetScanIndex(index int) lastIndex {
-	return context.ScanIndex[index]
+func (context *RunContext) GetScanIndex() []LastIndex {
+	return context.ScanIndex
 }
 
-func (context *ChainContext) SetScanIndex(index int, curIndex, curOffset uint32) {
-	context.ScanIndex[index] = lastIndex{
+func (context *RunContext) SetScanIndex(index int, curIndex, curOffset uint32) {
+	context.ScanIndex[index] = LastIndex{
 		Index:  curIndex,
 		Offset: curOffset,
 	}
 }
 
-func (context *ChainContext) GetCurrentBlock() []byte {
-	return context.CurrentBlock
+func (context *RunContext) GetStableBlock() *types.Block {
+	return context.StableBlock
 }
 
-func (context *ChainContext) SetCurrentBlock(val []byte) {
-	context.CurrentBlock = val
+func (context *RunContext) SetStableBlock(block *types.Block) {
+	context.StableBlock = block
 }
 
-func (context *ChainContext) encodeHead(fileLen uint32) ([]byte, error) {
+func (context *RunContext) GetCandidates() []common.Address {
+	if len(context.Candidates) <= 0 {
+		return make([]common.Address, 0)
+	} else {
+		result := make([]common.Address, len(context.Candidates))
+		index := 0
+		for k, _ := range context.Candidates {
+			result[index] = k
+			index = index + 1
+		}
+
+		return result
+	}
+}
+
+func (context *RunContext) SetCandidate(address common.Address) {
+	context.Candidates[address] = true
+}
+
+func (context *RunContext) CandidateIsExist(address common.Address) bool {
+	_, ok := context.Candidates[address]
+	if !ok {
+		return false
+	} else {
+		return true
+	}
+}
+
+func (context *RunContext) encodeHead(fileLen uint32) ([]byte, error) {
 	head := contextHead{
 		FileLen:   fileLen,
 		Version:   1,
@@ -338,13 +349,25 @@ func (context *ChainContext) encodeHead(fileLen uint32) ([]byte, error) {
 	}
 }
 
-func (context *ChainContext) encodeBody() ([]byte, error) {
+func (context *RunContext) encodeBody() ([]byte, error) {
 	body := &contextBody{
-		ScanIndex:    context.ScanIndex,
-		CurrentBlock: context.CurrentBlock,
+		ScanIndex:   context.ScanIndex,
+		StableBlock: context.StableBlock,
+	}
+
+	if len(context.Candidates) > 0 {
+		body.Candidates = make([]common.Address, len(context.Candidates))
+		index := 0
+		for k, _ := range context.Candidates {
+			body.Candidates[index] = k
+			index = index + 1
+		}
+	} else {
+		body.Candidates = make([]common.Address, 0)
 	}
 
 	buf, err := rlp.EncodeToBytes(body)
+	err = rlp.DecodeBytes(buf, body)
 	if err != nil {
 		return nil, err
 	} else {
@@ -352,7 +375,7 @@ func (context *ChainContext) encodeBody() ([]byte, error) {
 	}
 }
 
-func (context *ChainContext) flush(buf []byte) error {
+func (context *RunContext) flush(buf []byte) error {
 	file, err := os.OpenFile(context.Path, os.O_APPEND|os.O_WRONLY, os.ModePerm)
 	defer file.Close()
 	if err != nil {
@@ -376,7 +399,7 @@ func (context *ChainContext) flush(buf []byte) error {
 	return file.Sync()
 }
 
-func (context *ChainContext) Flush() error {
+func (context *RunContext) Flush() error {
 	bodyBuf, err := context.encodeBody()
 	if err != nil {
 		return err

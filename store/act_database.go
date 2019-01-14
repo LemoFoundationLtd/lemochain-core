@@ -97,7 +97,6 @@ func (node *PatriciaNode) Clone() *PatriciaNode {
 		key:      node.key,
 		dye:      node.dye,
 		terminal: node.terminal,
-		//children:	node.children,
 	}
 
 	if node.data != nil {
@@ -637,104 +636,6 @@ func (trie *PatriciaTrie) put(curNode *PatriciaNode, key string, account *types.
 	}
 
 	return nil
-
-	// for i := 0; i < len(curNode.children); i++ {
-	// 	child := curNode.children[i]
-	//
-	// 	length := min(len(child.key), len(key))
-	// 	j := 0
-	// 	for ; j < length; j++{
-	// 		if key[j] != child.key[j] {
-	// 			break
-	// 		}
-	// 	}
-	//
-	// 	if j == 0 {
-	// 		if key[0] < child.key[0] {
-	// 			//	e.g. child="e", key="c" (currNode="abc")
-	// 			//	   abc
-	// 			//    /   \
-	// 			//   e     h
-	// 			return nil
-	// 		} else {
-	// 			continue
-	// 		}
-	// 	}else{
-	// 		if j == length {
-	// 			if len(key) == len(child.key) {
-	// 				if child.terminal && child.dye != dye{
-	// 					//	e.g. child="ab", key="ab"
-	// 					//	   ab#
-	// 					//    /
-	// 					//   f#
-	// 					if curNode.dye != dye {
-	// 						tmp := curNode.Clone()
-	// 						tmp.dye = dye
-	// 						tmp.children[i] = &PatriciaNode{
-	// 							key:	child.key,
-	// 							dye:	dye,
-	// 							data:	account,
-	// 							terminal:	child.terminal,
-	// 							children:	child.children,
-	// 						}
-	// 						return tmp
-	// 					}else{
-	// 						curNode.children[i] = &PatriciaNode{
-	// 							key:	child.key,
-	// 							dye:	dye,
-	// 							data:	account,
-	// 							terminal:	child.terminal,
-	// 							children:	child.children,
-	// 						}
-	// 						return curNode
-	// 					}
-	// 				}else{
-	// 					//	e.g. child="ab", key="ab"
-	// 					//	   ab
-	// 					//    /
-	// 					//   f#
-	// 					return nil
-	// 				}
-	// 			}else if len(key) > len(child.key) {
-	// 				//	e.g. child="ab#", key="abc"
-	// 				//	   ab#
-	// 				//    /   \
-	// 				//   a     c#
-	// 				sub := substring(key, j, len(key))
-	// 				result := trie.put(child, sub, account, dye)
-	// 				if result == nil {
-	// 					return nil
-	// 				}else{
-	// 					if curNode.dye != dye {
-	// 						tmp := curNode.Clone()
-	// 						tmp.children[i] = result
-	// 						tmp.dye = dye
-	// 						return tmp
-	// 					}else{
-	// 						curNode.children[i] = result
-	// 						return curNode
-	// 					}
-	// 				}
-	// 			}else{
-	// 				//	e.g. child="abc", key="ab"
-	// 				//	   abc
-	// 				//    /   \
-	// 				//   e     f
-	// 				return nil
-	// 			}
-	// 		}else{
-	// 			//	e.g. child="abc", key="abd"
-	// 			//	   abc
-	// 			//    /   \
-	// 			//   e     f
-	// 			return nil
-	// 		}
-	// 	}
-	//
-	// 	return nil
-	// }
-	//
-	// return nil
 }
 
 func (trie *PatriciaTrie) Collected(dye uint32) []*types.AccountData {

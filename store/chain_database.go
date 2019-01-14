@@ -7,6 +7,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
+	"os"
 	"sync"
 )
 
@@ -21,33 +22,34 @@ type ChainDatabase struct {
 
 	DataBase DB
 	Beansdb  *BeansDB
+	Context  *RunContext
 
 	rw sync.RWMutex
 }
 
 func NewChainDataBase(home string) *ChainDatabase {
-	db := &ChainDatabase{
-		Beansdb:         NewBeansDB(home, 2),
-		LastConfirm:     nil,
-		UnConfirmBlocks: make(map[common.Hash]*CBlock, 65536),
-	}
-
-	buf := db.Beansdb.GetCurrentBlock()
-	if len(buf) <= 0 {
-		return db
-	}
-
-	var block types.Block
-	err := rlp.DecodeBytes(buf, &block)
+	isExist, err := IsExist(home)
 	if err != nil {
-		panic("new chain database err : " + err.Error())
-	} else {
-		db.LastConfirm = &CBlock{
-			Block: &block,
-			Trie:  NewEmptyDatabase(db.Beansdb),
-		}
-		return db
+		panic("check home is exist error:" + err.Error())
 	}
+
+	if !isExist {
+		err = os.MkdirAll(home, os.ModePerm)
+		if err != nil {
+			panic("mk dir is exist err : " + err.Error())
+		}
+	}
+
+	db := &ChainDatabase{}
+	db.Context = NewRunContext(home)
+	db.LastConfirm = &CBlock{
+		Block: db.Context.GetStableBlock(),
+		Trie:  NewEmptyDatabase(db.Beansdb),
+	}
+
+	db.UnConfirmBlocks = make(map[common.Hash]*CBlock)
+	db.Beansdb = NewBeansDB(home, 2, db.Context.GetScanIndex())
+	return db
 }
 
 /**
@@ -105,6 +107,19 @@ func (database *ChainDatabase) blockCommit(hash common.Hash) error {
 	} else {
 		return database.Beansdb.Commit(batch)
 	}
+}
+
+func (database *ChainDatabase) filterCandidate(accounts []*types.AccountData) []*types.AccountData {
+	candidates := make([]*types.AccountData, len(accounts))
+	if len(accounts) <= 0 {
+		return candidates
+	} else {
+		return nil
+	}
+
+	// for index := 0; index < len(accounts); index++{
+	// 	if accounts[index]
+	// }
 }
 
 func (database *ChainDatabase) getBlock4Cache(hash common.Hash) (*types.Block, error) {
@@ -399,7 +414,7 @@ func (database *ChainDatabase) SetStableBlock(hash common.Hash) error {
 
 	confirm := func(item *CBlock) {
 		last := database.LastConfirm
-		if last == nil {
+		if last == nil || last.Block == nil || last.Trie == nil {
 			database.LastConfirm = item
 		} else {
 			last.Trie.DelDye(last.Block.Height())

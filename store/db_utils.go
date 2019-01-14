@@ -7,6 +7,7 @@ import (
 
 var (
 	DRIVER_MYSQL = "mysql"
+	DRIVER_DNS   = "root:123123@tcp(localhost:3306)/lemochain?charset=utf8mb4"
 )
 
 // driver = "mysql"
