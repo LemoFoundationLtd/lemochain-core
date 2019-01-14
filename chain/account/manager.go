@@ -163,12 +163,12 @@ func (am *Manager) clear() {
 
 // Reset clears out all data and switch state to the new block environment.
 func (am *Manager) Reset(blockHash common.Hash) {
+	am.clear()
 	am.baseBlockHash = blockHash
 	if err := am.loadBaseBlock(); err != nil {
 		log.Errorf("Reset to block[%s] fail: %s\n", am.baseBlockHash.Hex(), err.Error())
 		panic(err)
 	}
-	am.clear()
 }
 
 func (am *Manager) loadBaseBlock() (err error) {

@@ -34,7 +34,10 @@ type AccountData struct {
 	// It records the block height which contains any type of newest change log.
 	NewestRecords map[ChangeLogType]VersionRecord `json:"records" gencodec:"required"`
 	// related transactions include income and outcome
-	TxHashList []common.Hash `json:"-"`
+	TxHashList []common.Hash   `json:"-"`
+	IsNode     bool            // todo 临时字段，标记此账户是否为代理代理节点账户
+	VoteTo     *common.Address // todo 投票给谁
+	Votes      *big.Int        // todo 票数
 }
 
 type accountDataMarshaling struct {
@@ -159,4 +162,12 @@ type AccountAccessor interface {
 	GetSuicide() bool
 	SetSuicide(suicided bool)
 	MarshalJSON() ([]byte, error)
+
+	IsdeputyNode() bool                      // todo 临时函数
+	SetdeputyNode(isnode bool) error         // todo
+	SetVoteTo(address *common.Address) error // todo
+	GetVoteTo() *common.Address              // todo
+	SetVotes(votes *big.Int) error           // todo
+	GetVotes() *big.Int                      // todo
+
 }

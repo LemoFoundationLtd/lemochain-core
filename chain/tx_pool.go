@@ -250,8 +250,10 @@ func (pool *TxPool) Remove(keys []common.Hash) {
 }
 
 func (pool *TxPool) validateTx(tx *types.Transaction) error {
-	// from, err := tx.From()
-
+	from, err := tx.From()
+	if err != nil {
+		return ErrInvalidSender
+	}
 	if tx.ChainID() != pool.chainID {
 		return ErrTxChainID
 	}
@@ -259,10 +261,8 @@ func (pool *TxPool) validateTx(tx *types.Transaction) error {
 		return ErrNegativeValue
 	}
 	// Make sure the transaction is signed properly
-	from, err := types.MakeSigner().GetSender(tx)
-	if err != nil {
-		return ErrInvalidSender
-	}
+	// from, err := types.MakeSigner().GetSender(tx)
+
 	fromAccount := pool.am.GetAccount(from)
 	balance := fromAccount.GetBalance()
 	if balance.Cmp(tx.Cost()) < 0 {

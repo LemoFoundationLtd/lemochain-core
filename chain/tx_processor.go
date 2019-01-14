@@ -167,7 +167,31 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 		_, recipientAddr, restGas, vmErr = vmEnv.Create(sender, tx.Data(), restGas, tx.Amount())
 	} else {
 		recipientAddr = *tx.To()
-		_, restGas, vmErr = vmEnv.Call(sender, recipientAddr, tx.Data(), restGas, tx.Amount())
+		// 判断交易是普通转账交易、投票交易还是注册参加节点竞选的交易
+		switch tx.Type() {
+		case params.Ordinary_tx:
+			_, restGas, vmErr = vmEnv.Call(sender, recipientAddr, tx.Data(), restGas, tx.Amount())
+
+		case params.Vote_tx: // 执行投票交易逻辑
+			restGas, vmErr = vmEnv.CallVoteTx(senderAddr, recipientAddr, restGas)
+
+		case params.Register_tx: // 执行注册参加代理节点选举交易逻辑
+			// 设置接收注册费用1000LEMO的地址
+			strAddress := "0x1001"
+			to, err := common.StringToAddress(strAddress)
+			if err != nil {
+				log.Errorf("invalid address: %s", err)
+				return 0, err
+			}
+
+			restGas, vmErr = vmEnv.RegisterDeputynode(senderAddr, to, restGas, tx.Amount())
+
+		default:
+			log.Errorf("The type of transaction is not defined. txType = %d\n", tx.Type())
+			p.refundGas(gp, tx, restGas)
+			return 0, errors.New("the type of transaction error")
+		}
+
 	}
 	if vmErr != nil {
 		log.Info("VM returned with error", "err", vmErr)
@@ -302,7 +326,8 @@ func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *comm
 	accM.Reset(header.ParentHash)
 
 	// A random address is found as our caller address.
-	caller, err := common.StringToAddress("Lemo8392TWFWFF6PD6A93N2PBC6CJFQRSZSHN95H") // todo Consider letting users pass in their own addresses
+	strAddress := "0x1002" // todo Consider letting users pass in their own addresses
+	caller, err := common.StringToAddress(strAddress)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -312,9 +337,9 @@ func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *comm
 
 	var tx *types.Transaction
 	if to == nil { // avoid null pointer references
-		tx = types.NewContractCreation(big.NewInt(0), gasLimit, gasPrice, data, p.chain.chainID, 0, "", "")
+		tx = types.NewContractCreation(big.NewInt(0), gasLimit, gasPrice, data, params.Ordinary_tx, p.chain.chainID, uint64(time.Now().Unix()+30*60), "", "")
 	} else {
-		tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, p.chain.chainID, 0, "", "")
+		tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, params.Ordinary_tx, p.chain.chainID, uint64(time.Now().Unix()+30*60), "", "")
 	}
 
 	// Timeout limit
