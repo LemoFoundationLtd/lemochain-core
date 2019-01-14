@@ -119,10 +119,7 @@ func newChain() *chain.BlockChain {
 
 // newDB creates db for test chain module
 func newDB() protocol.ChainDB {
-	db, err := store.NewChainDataBase(store.GetStorePath())
-	if err != nil {
-		panic(err)
-	}
+	db := store.NewChainDataBase(store.GetStorePath())
 
 	for i, _ := range defaultBlockInfos {
 		if i > 0 {
@@ -132,7 +129,7 @@ func newDB() protocol.ChainDB {
 		defaultBlocks = append(defaultBlocks, newBlock)
 	}
 	// err = db.SetStableBlock(defaultBlockInfos[1].hash)
-	err = db.SetStableBlock(defaultBlocks[1].Hash())
+	err := db.SetStableBlock(defaultBlocks[1].Hash())
 	if err != nil {
 		panic(err)
 	}
