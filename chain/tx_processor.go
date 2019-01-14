@@ -87,8 +87,6 @@ func (p *TxProcessor) Process(block *types.Block) (*types.Header, error) {
 
 // ApplyTxs picks and processes transactions from miner's tx pool.
 func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions) (*types.Header, types.Transactions, types.Transactions, error) {
-	p.lock.Lock()
-	defer p.lock.Unlock()
 	gp := new(types.GasPool).AddGas(header.GasLimit)
 	gasUsed := uint64(0)
 	totalGasFee := new(big.Int)

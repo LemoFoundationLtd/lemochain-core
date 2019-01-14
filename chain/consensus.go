@@ -52,12 +52,16 @@ func verifyHeaderSignData(block *types.Block) error {
 	hash := block.Hash()
 	pubKey, err := crypto.Ecrecover(hash[:], header.SignData)
 	if err != nil {
-		log.Errorf("verifyHeader: illegal signData. %s", err)
+		log.Errorf("verifyHeaderSignData: illegal signData. %s", err)
 		return ErrVerifyHeaderFailed
 	}
-	node := deputynode.Instance().GetDeputyByAddress(block.Height(), header.MinerAddress)
+	node := deputynode.Instance().GetDeputyByAddress(header.Height, header.MinerAddress)
+	if node == nil {
+		log.Errorf("verifyHeaderSignData: can't get deputy node, height: %d", header.Height)
+		return ErrVerifyHeaderFailed
+	}
 	if node == nil || bytes.Compare(pubKey[1:], node.NodeID) != 0 {
-		log.Errorf("verifyHeader: illegal block. height:%d, hash:%s", header.Height, header.Hash().Hex())
+		log.Errorf("verifyHeaderSignData: illegal block. height:%d, hash:%s", header.Height, header.Hash().Hex())
 		return ErrVerifyHeaderFailed
 	}
 	return nil

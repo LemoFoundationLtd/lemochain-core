@@ -69,6 +69,11 @@ func (bc *BlockChain) AccountManager() *account.Manager {
 	return bc.am
 }
 
+// Lock call by miner
+func (bc *BlockChain) Lock() *sync.Mutex {
+	return &bc.mux
+}
+
 // loadLastState load latest state in starting
 func (bc *BlockChain) loadLastState() error {
 	block, err := bc.db.LoadLatestBlock()

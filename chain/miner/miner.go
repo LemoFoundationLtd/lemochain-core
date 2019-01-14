@@ -299,28 +299,43 @@ func (m *Miner) sealBlock() {
 	if !m.isSelfDeputyNode() {
 		return
 	}
-	log.Debug("start seal")
+	defer func() {
+		nodeCount := deputynode.Instance().GetDeputiesCount()
+		var timeDur int64
+		if nodeCount == 1 {
+			timeDur = m.blockInterval
+		} else {
+			timeDur = int64(nodeCount-1) * m.timeoutTime
+		}
+		m.resetMinerTimer(timeDur)
+	}()
+	log.Debug("Start seal")
 	header := m.sealHead()
-	txs := m.txPool.Pending(10000000)
+	txs := m.txPool.Pending(1000000)
+	m.chain.Lock().Lock()
+	defer m.chain.Lock().Unlock()
 	newHeader, packagedTxs, invalidTxs, err := m.txProcessor.ApplyTxs(header, txs)
 	if err != nil {
-		log.Errorf("apply transactions for block failed! %v", err)
+		log.Errorf("Apply transactions for block failed! %v", err)
 		return
 	}
 	log.Debug("ApplyTxs ok")
 	hash := newHeader.Hash()
 	signData, err := crypto.Sign(hash[:], m.privKey)
 	if err != nil {
-		log.Errorf("sign for block failed! block hash:%s", hash.Hex())
+		log.Errorf("Sign for block failed! block hash:%s", hash.Hex())
 		return
 	}
 	newHeader.SignData = signData
 	block, err := m.engine.Seal(newHeader, packagedTxs, m.chain.AccountManager().GetChangeLogs(), m.chain.AccountManager().GetEvents())
 	if err != nil {
-		log.Error("seal block error!!")
+		log.Error("Seal block error!!")
 		return
 	}
-	m.chain.SetMinedBlock(block)
+	if err = m.chain.SetMinedBlock(block); err != nil {
+		log.Error("Set mined block failed!")
+		return
+	}
 	// remove txs from pool
 	txsKeys := make([]common.Hash, len(packagedTxs)+len(invalidTxs))
 	for i, tx := range packagedTxs {
@@ -330,14 +345,6 @@ func (m *Miner) sealBlock() {
 		txsKeys[i+len(packagedTxs)] = tx.Hash()
 	}
 	m.txPool.Remove(txsKeys)
-	nodeCount := deputynode.Instance().GetDeputiesCount()
-	var timeDur int64
-	if nodeCount == 1 {
-		timeDur = m.blockInterval
-	} else {
-		timeDur = int64(nodeCount-1) * m.timeoutTime
-	}
-	m.resetMinerTimer(timeDur)
 	log.Infof("Mine a new block. height: %d hash: %s", block.Height(), block.Hash().String())
 }
 
@@ -345,7 +352,7 @@ func (m *Miner) sealBlock() {
 func (m *Miner) sealHead() *types.Header {
 	// check is need to change minerAddress
 	parent := m.currentBlock()
-	if (parent.Height()+1)%101000 == 1 {
+	if (parent.Height()+1)%1001000 == 1 {
 		n := deputynode.Instance().GetDeputyByNodeID(parent.Height()+1, deputynode.GetSelfNodeID())
 		m.SetMinerAddress(n.MinerAddress)
 	}
