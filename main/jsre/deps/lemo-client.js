@@ -425,12 +425,12 @@
 
     var cof = ( _cof$1 && _cof ) || _cof$1;
 
-    var require$$1$1 = ( _wks$1 && _wks ) || _wks$1;
+    var require$$0$5 = ( _wks$1 && _wks ) || _wks$1;
 
     // 7.2.8 IsRegExp(argument)
 
 
-    var MATCH = require$$1$1('match');
+    var MATCH = require$$0$5('match');
     var _isRegexp = function (it) {
         var isRegExp;
         return isObject(it) && ((isRegExp = it[MATCH]) !== undefined ? !!isRegExp : cof(it) == 'RegExp');
@@ -470,7 +470,7 @@
         __moduleExports: _stringContext
     });
 
-    var MATCH$1 = require$$1$1('match');
+    var MATCH$1 = require$$0$5('match');
     var _failsIsRegexp = function (KEY) {
         var re = /./;
         try {
@@ -494,12 +494,12 @@
 
     var context = ( _stringContext$1 && _stringContext ) || _stringContext$1;
 
-    var require$$0$5 = ( _failsIsRegexp$1 && _failsIsRegexp ) || _failsIsRegexp$1;
+    var require$$0$6 = ( _failsIsRegexp$1 && _failsIsRegexp ) || _failsIsRegexp$1;
 
     var STARTS_WITH = 'startsWith';
     var $startsWith = ''[STARTS_WITH];
 
-    $export$1($export$1.P + $export$1.F * require$$0$5(STARTS_WITH), 'String', {
+    $export$1($export$1.P + $export$1.F * require$$0$6(STARTS_WITH), 'String', {
         startsWith: function startsWith(searchString /* , position = 0 */) {
             var that = context(this, searchString, STARTS_WITH);
             var index = toLength(Math.min(arguments.length > 1 ? arguments[1] : undefined, that.length));
@@ -511,7 +511,7 @@
     });
 
     // 22.1.3.31 Array.prototype[@@unscopables]
-    var UNSCOPABLES = require$$1$1('unscopables');
+    var UNSCOPABLES = require$$0$5('unscopables');
     var ArrayProto = Array.prototype;
     if (ArrayProto[UNSCOPABLES] == undefined) require$$0$2(ArrayProto, UNSCOPABLES, {});
     var _addToUnscopables = function (key) {
@@ -621,12 +621,12 @@
         __moduleExports: _sharedKey
     });
 
-    var require$$0$6 = ( _arrayIncludes$1 && _arrayIncludes ) || _arrayIncludes$1;
+    var require$$0$7 = ( _arrayIncludes$1 && _arrayIncludes ) || _arrayIncludes$1;
 
-    var require$$0$7 = ( _sharedKey$1 && _sharedKey ) || _sharedKey$1;
+    var require$$0$8 = ( _sharedKey$1 && _sharedKey ) || _sharedKey$1;
 
-    var arrayIndexOf = require$$0$6(false);
-    var IE_PROTO = require$$0$7('IE_PROTO');
+    var arrayIndexOf = require$$0$7(false);
+    var IE_PROTO = require$$0$8('IE_PROTO');
 
     var _objectKeysInternal = function (object, names) {
         var O = toIObject(object);
@@ -706,7 +706,7 @@
 
 
 
-    var IE_PROTO$1 = require$$0$7('IE_PROTO');
+    var IE_PROTO$1 = require$$0$8('IE_PROTO');
     var Empty = function () { /* empty */ };
     var PROTOTYPE$1 = 'prototype';
 
@@ -751,7 +751,7 @@
 
     var def = dP$1.f;
 
-    var TAG = require$$1$1('toStringTag');
+    var TAG = require$$0$5('toStringTag');
 
     var _setToStringTag = function (it, tag, stat) {
         if (it && !has(it = stat ? it : it.prototype, TAG)) def(it, TAG, { configurable: true, value: tag });
@@ -769,7 +769,7 @@
     var IteratorPrototype = {};
 
     // 25.1.2.1.1 %IteratorPrototype%[@@iterator]()
-    require$$0$2(IteratorPrototype, require$$1$1('iterator'), function () { return this; });
+    require$$0$2(IteratorPrototype, require$$0$5('iterator'), function () { return this; });
 
     var _iterCreate = function (Constructor, NAME, next) {
         Constructor.prototype = create(IteratorPrototype, { next: descriptor(1, next) });
@@ -797,7 +797,7 @@
     // 19.1.2.9 / 15.2.3.2 Object.getPrototypeOf(O)
 
 
-    var IE_PROTO$2 = require$$0$7('IE_PROTO');
+    var IE_PROTO$2 = require$$0$8('IE_PROTO');
     var ObjectProto = Object.prototype;
 
     var _objectGpo = Object.getPrototypeOf || function (O) {
@@ -819,7 +819,7 @@
 
     var getPrototypeOf = ( _objectGpo$1 && _objectGpo ) || _objectGpo$1;
 
-    var ITERATOR = require$$1$1('iterator');
+    var ITERATOR = require$$0$5('iterator');
     var BUGGY = !([].keys && 'next' in [].keys()); // Safari has buggy iterators w/o `next`
     var FF_ITERATOR = '@@iterator';
     var KEYS = 'keys';
@@ -885,17 +885,17 @@
         __moduleExports: _iterDefine
     });
 
-    var addToUnscopables = ( _addToUnscopables$1 && _addToUnscopables ) || _addToUnscopables$1;
+    var require$$1$1 = ( _addToUnscopables$1 && _addToUnscopables ) || _addToUnscopables$1;
 
     var step = ( _iterStep$1 && _iterStep ) || _iterStep$1;
 
-    var require$$0$8 = ( _iterDefine$1 && _iterDefine ) || _iterDefine$1;
+    var require$$0$9 = ( _iterDefine$1 && _iterDefine ) || _iterDefine$1;
 
     // 22.1.3.4 Array.prototype.entries()
     // 22.1.3.13 Array.prototype.keys()
     // 22.1.3.29 Array.prototype.values()
     // 22.1.3.30 Array.prototype[@@iterator]()
-    var es6_array_iterator = require$$0$8(Array, 'Array', function (iterated, kind) {
+    var es6_array_iterator = require$$0$9(Array, 'Array', function (iterated, kind) {
         this._t = toIObject(iterated); // target
         this._i = 0;                   // next index
         this._k = kind;                // kind
@@ -916,9 +916,9 @@
     // argumentsList[@@iterator] is %ArrayProto_values% (9.4.4.6, 9.4.4.7)
     Iterators.Arguments = Iterators.Array;
 
-    addToUnscopables('keys');
-    addToUnscopables('values');
-    addToUnscopables('entries');
+    require$$1$1('keys');
+    require$$1$1('values');
+    require$$1$1('entries');
 
     var es6_array_iterator$1 = /*#__PURE__*/Object.freeze({
         default: es6_array_iterator,
@@ -927,8 +927,8 @@
 
     var $iterators = ( es6_array_iterator$1 && es6_array_iterator ) || es6_array_iterator$1;
 
-    var ITERATOR$1 = require$$1$1('iterator');
-    var TO_STRING_TAG = require$$1$1('toStringTag');
+    var ITERATOR$1 = require$$0$5('iterator');
+    var TO_STRING_TAG = require$$0$5('toStringTag');
     var ArrayValues = Iterators.Array;
 
     var DOMIterables = {
@@ -4624,9 +4624,9 @@
         __moduleExports: runtimeModule
     });
 
-    var require$$0$9 = ( runtimeModule$1 && runtimeModule ) || runtimeModule$1;
+    var require$$0$a = ( runtimeModule$1 && runtimeModule ) || runtimeModule$1;
 
-    var regenerator = require$$0$9;
+    var regenerator = require$$0$a;
 
     function asyncGeneratorStep(gen, resolve, reject, _next, _throw, key, arg) {
         try {
@@ -5716,11 +5716,11 @@
 
     var isURLSameOrigin$2 = ( isURLSameOrigin$1 && isURLSameOrigin ) || isURLSameOrigin$1;
 
-    var require$$0$a = ( btoa$1 && btoa_1 ) || btoa$1;
+    var require$$0$b = ( btoa$1 && btoa_1 ) || btoa$1;
 
     var require$$1$2 = ( cookies$1 && cookies ) || cookies$1;
 
-    var btoa$2 = (typeof window !== 'undefined' && window.btoa && window.btoa.bind(window)) || require$$0$a;
+    var btoa$2 = (typeof window !== 'undefined' && window.btoa && window.btoa.bind(window)) || require$$0$b;
 
     var xhr = function xhrAdapter(config) {
         return new Promise(function dispatchXhrRequest(resolve, reject) {
@@ -6467,9 +6467,9 @@
         __moduleExports: axios_1
     });
 
-    var require$$0$b = ( axios$1 && axios_1 ) || axios$1;
+    var require$$0$c = ( axios$1 && axios_1 ) || axios$1;
 
-    var axios$2 = require$$0$b;
+    var axios$2 = require$$0$c;
 
     // 21.2.5.3 get RegExp.prototype.flags
 
@@ -6700,13 +6700,13 @@
         __moduleExports: _objectSap
     });
 
-    var require$$0$c = ( _objectSap$1 && _objectSap ) || _objectSap$1;
+    var require$$0$d = ( _objectSap$1 && _objectSap ) || _objectSap$1;
 
     // 19.1.2.14 Object.keys(O)
 
 
 
-    require$$0$c('keys', function () {
+    require$$0$d('keys', function () {
         return function keys(it) {
             return getKeys(toObject(it));
         };
@@ -6724,9 +6724,9 @@
         f: f$1
     });
 
-    var require$$0$d = ( _objectPie$1 && _objectPie ) || _objectPie$1;
+    var require$$0$e = ( _objectPie$1 && _objectPie ) || _objectPie$1;
 
-    var isEnum = require$$0$d.f;
+    var isEnum = require$$0$e.f;
     var _objectToArray = function (isEntries) {
         return function (it) {
             var O = toIObject(it);
@@ -6746,11 +6746,11 @@
         __moduleExports: _objectToArray
     });
 
-    var require$$0$e = ( _objectToArray$1 && _objectToArray ) || _objectToArray$1;
+    var require$$0$f = ( _objectToArray$1 && _objectToArray ) || _objectToArray$1;
 
     // https://github.com/tc39/proposal-object-values-entries
 
-    var $values = require$$0$e(false);
+    var $values = require$$0$f(false);
 
     $export$1($export$1.S, 'Object', {
         values: function values(it) {
@@ -6986,65 +6986,78 @@
                     var lastSig;
                     var errCount = 0;
                     var newWatchId = this.idGenerator++;
-                    this.watchers[newWatchId] = setInterval(
+
+                    var poll =
                         /*#__PURE__*/
-                        asyncToGenerator(
-                            /*#__PURE__*/
-                            regenerator.mark(function _callee3() {
-                                var result, error, sig;
-                                return regenerator.wrap(function _callee3$(_context3) {
-                                    while (1) {
-                                        switch (_context3.prev = _context3.next) {
-                                            case 0:
-                                                _context3.prev = 0;
-                                                _context3.next = 3;
-                                                return _this.send(method, params);
+                        function () {
+                            var _ref = asyncToGenerator(
+                                /*#__PURE__*/
+                                regenerator.mark(function _callee3() {
+                                    var result, error, sig;
+                                    return regenerator.wrap(function _callee3$(_context3) {
+                                        while (1) {
+                                            switch (_context3.prev = _context3.next) {
+                                                case 0:
+                                                    _context3.prev = 0;
+                                                    _context3.next = 3;
+                                                    return _this.send(method, params);
 
-                                            case 3:
-                                                result = _context3.sent;
-                                                errCount = 0;
-                                                sig = getSig(result);
+                                                case 3:
+                                                    result = _context3.sent;
+                                                    errCount = 0;
+                                                    sig = getSig(result);
 
-                                                if (!(sig === lastSig)) {
-                                                    _context3.next = 8;
+                                                    if (!(sig === lastSig)) {
+                                                        _context3.next = 8;
+                                                        break;
+                                                    }
+
+                                                    return _context3.abrupt("return");
+
+                                                case 8:
+                                                    lastSig = sig;
+                                                    _context3.next = 18;
                                                     break;
-                                                }
 
-                                                return _context3.abrupt("return");
+                                                case 11:
+                                                    _context3.prev = 11;
+                                                    _context3.t0 = _context3["catch"](0);
+                                                    console.error('watch fail:', _context3.t0);
 
-                                            case 8:
-                                                lastSig = sig;
-                                                _context3.next = 18;
-                                                break;
+                                                    if (!(++errCount <= _this.maxPollRetry)) {
+                                                        _context3.next = 16;
+                                                        break;
+                                                    }
 
-                                            case 11:
-                                                _context3.prev = 11;
-                                                _context3.t0 = _context3["catch"](0);
-                                                console.error('watch fail:', _context3.t0);
+                                                    return _context3.abrupt("return");
 
-                                                if (!(++errCount <= _this.maxPollRetry)) {
-                                                    _context3.next = 16;
-                                                    break;
-                                                }
+                                                case 16:
+                                                    error = _context3.t0;
 
-                                                return _context3.abrupt("return");
+                                                    _this.stopWatch(newWatchId);
 
-                                            case 16:
-                                                error = _context3.t0;
+                                                case 18:
+                                                    // put callback out of try block to expose user's error
+                                                    callback(result, error);
 
-                                                _this.stopWatch(newWatchId);
-
-                                            case 18:
-                                                // put callback out of try block to expose user's error
-                                                callback(result, error);
-
-                                            case 19:
-                                            case "end":
-                                                return _context3.stop();
+                                                case 19:
+                                                case "end":
+                                                    return _context3.stop();
+                                            }
                                         }
-                                    }
-                                }, _callee3, this, [[0, 11]]);
-                            })), this.pollDuration);
+                                    }, _callee3, this, [[0, 11]]);
+                                }));
+
+                            return function poll() {
+                                return _ref.apply(this, arguments);
+                            };
+                        }();
+
+                    this.watchers[newWatchId] = setInterval(poll, this.pollDuration); // call first time immediately
+
+                    poll().catch(function (e) {
+                        return console.error(e);
+                    });
                     return newWatchId;
                 }
                 /**
@@ -7121,9 +7134,9 @@
         __moduleExports: _stringAt
     });
 
-    var require$$0$f = ( _stringAt$1 && _stringAt ) || _stringAt$1;
+    var require$$0$g = ( _stringAt$1 && _stringAt ) || _stringAt$1;
 
-    var at = require$$0$f(true);
+    var at = require$$0$g(true);
 
     // `AdvanceStringIndex` abstract operation
     // https://tc39.github.io/ecma262/#sec-advancestringindex
@@ -7138,7 +7151,7 @@
 
     // getting tag from 19.1.3.6 Object.prototype.toString()
 
-    var TAG$1 = require$$1$1('toStringTag');
+    var TAG$1 = require$$0$5('toStringTag');
     // ES3 wrong here
     var ARG = cof(function () { return arguments; }()) == 'Arguments';
 
@@ -7261,7 +7274,7 @@
         exec: regexpExec
     });
 
-    var SPECIES = require$$1$1('species');
+    var SPECIES = require$$0$5('species');
 
     var REPLACE_SUPPORTS_NAMED_GROUPS = !fails(function () {
         // #replace needs built-in support for named groups.
@@ -7286,7 +7299,7 @@
     })();
 
     var _fixReWks = function (KEY, length, exec) {
-        var SYMBOL = require$$1$1(KEY);
+        var SYMBOL = require$$0$5(KEY);
 
         var DELEGATES_TO_SYMBOL = !fails(function () {
             // String methods call symbol-named RegEp methods
@@ -7358,7 +7371,7 @@
 
     var regExpExec = ( _regexpExecAbstract$1 && _regexpExecAbstract ) || _regexpExecAbstract$1;
 
-    var require$$0$g = ( _fixReWks$1 && _fixReWks ) || _fixReWks$1;
+    var require$$0$h = ( _fixReWks$1 && _fixReWks ) || _fixReWks$1;
 
     var max$1 = Math.max;
     var min$2 = Math.min;
@@ -7371,7 +7384,7 @@
     };
 
     // @@replace logic
-    require$$0$g('replace', 2, function (defined, REPLACE, $replace, maybeCallNative) {
+    require$$0$h('replace', 2, function (defined, REPLACE, $replace, maybeCallNative) {
         return [
             // `String.prototype.replace` method
             // https://tc39.github.io/ecma262/#sec-string.prototype.replace
@@ -9449,7 +9462,7 @@
         return typeof obj.readFloatLE === 'function' && typeof obj.slice === 'function' && isFastBuffer(obj.slice(0, 0))
     }
 
-    var require$$0$h = /*#__PURE__*/Object.freeze({
+    var require$$0$i = /*#__PURE__*/Object.freeze({
         INSPECT_MAX_BYTES: INSPECT_MAX_BYTES,
         kMaxLength: _kMaxLength,
         Buffer: Buffer,
@@ -9460,7 +9473,7 @@
     var safeBuffer = createCommonjsModule(function (module, exports) {
         /* eslint-disable node/no-deprecated-api */
 
-        var Buffer = require$$0$h.Buffer;
+        var Buffer = require$$0$i.Buffer;
 
         // alternative to using Object.keys for old browsers
         function copyProps (src, dst) {
@@ -9469,10 +9482,10 @@
             }
         }
         if (Buffer.from && Buffer.alloc && Buffer.allocUnsafe && Buffer.allocUnsafeSlow) {
-            module.exports = require$$0$h;
+            module.exports = require$$0$i;
         } else {
             // Copy properties from require('buffer')
-            copyProps(require$$0$h, exports);
+            copyProps(require$$0$i, exports);
             exports.Buffer = SafeBuffer;
         }
 
@@ -9518,7 +9531,7 @@
             if (typeof size !== 'number') {
                 throw new TypeError('Argument must be a number')
             }
-            return require$$0$h.SlowBuffer(size)
+            return require$$0$i.SlowBuffer(size)
         };
     });
     var safeBuffer_1 = safeBuffer.Buffer;
@@ -10569,7 +10582,7 @@
         // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
         // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-        var Buffer = require$$0$h.Buffer;
+        var Buffer = require$$0$i.Buffer;
 
         var isBufferEncoding = Buffer.isEncoding
             || function(encoding) {
@@ -12931,11 +12944,11 @@
         __moduleExports: keccak$2
     });
 
-    var require$$0$i = ( api$1 && api ) || api$1;
+    var require$$0$j = ( api$1 && api ) || api$1;
 
     var require$$1$6 = ( keccak$3 && keccak$2 ) || keccak$3;
 
-    var js = require$$0$i(require$$1$6);
+    var js = require$$0$j(require$$1$6);
 
     // base-x encoding
     // Forked from https://github.com/cryptocoinjs/bs58
@@ -13061,7 +13074,7 @@
 
     // check on default Array iterator
 
-    var ITERATOR$2 = require$$1$1('iterator');
+    var ITERATOR$2 = require$$0$5('iterator');
     var ArrayProto$1 = Array.prototype;
 
     var _isArrayIter = function (it) {
@@ -13073,7 +13086,7 @@
         __moduleExports: _isArrayIter
     });
 
-    var ITERATOR$3 = require$$1$1('iterator');
+    var ITERATOR$3 = require$$0$5('iterator');
 
     var core_getIteratorMethod = core.getIteratorMethod = function (it) {
         if (it != undefined) return it[ITERATOR$3]
@@ -13122,7 +13135,7 @@
     // 7.3.20 SpeciesConstructor(O, defaultConstructor)
 
 
-    var SPECIES$1 = require$$1$1('species');
+    var SPECIES$1 = require$$0$5('species');
     var _speciesConstructor = function (O, D) {
         var C = anObject(O).constructor;
         var S;
@@ -13247,9 +13260,9 @@
         clear: _task_2
     });
 
-    var require$$0$j = ( _task$1 && _task ) || _task$1;
+    var require$$0$k = ( _task$1 && _task ) || _task$1;
 
-    var macrotask = require$$0$j.set;
+    var macrotask = require$$0$k.set;
     var Observer = require$$0.MutationObserver || require$$0.WebKitMutationObserver;
     var process$2 = require$$0.process;
     var Promise$1 = require$$0.Promise;
@@ -13399,7 +13412,7 @@
         __moduleExports: _redefineAll
     });
 
-    var SPECIES$2 = require$$1$1('species');
+    var SPECIES$2 = require$$0$5('species');
 
     var _setSpecies = function (KEY) {
         var C = require$$0[KEY];
@@ -13414,7 +13427,7 @@
         __moduleExports: _setSpecies
     });
 
-    var ITERATOR$4 = require$$1$1('iterator');
+    var ITERATOR$4 = require$$0$5('iterator');
     var SAFE_CLOSING = false;
 
     try {
@@ -13460,7 +13473,7 @@
 
     var require$$7 = ( _iterDetect$1 && _iterDetect ) || _iterDetect$1;
 
-    var task = require$$0$j.set;
+    var task = require$$0$k.set;
     var microtask = require$$1$7();
 
 
@@ -13481,7 +13494,7 @@
         try {
             // correct subclassing with @@species support
             var promise = $Promise.resolve(1);
-            var FakePromise = (promise.constructor = {})[require$$1$1('species')] = function (exec) {
+            var FakePromise = (promise.constructor = {})[require$$0$5('species')] = function (exec) {
                 exec(empty, empty);
             };
             // unhandled rejections tracking support, NodeJS Promise without it fails @@species test
@@ -13752,17 +13765,17 @@
         __moduleExports: _arrayFill
     });
 
-    var require$$0$k = ( _arrayFill$1 && _arrayFill ) || _arrayFill$1;
+    var require$$0$l = ( _arrayFill$1 && _arrayFill ) || _arrayFill$1;
 
     // 22.1.3.6 Array.prototype.fill(value, start = 0, end = this.length)
 
 
-    $export$1($export$1.P, 'Array', { fill: require$$0$k });
+    $export$1($export$1.P, 'Array', { fill: require$$0$l });
 
-    addToUnscopables('fill');
+    require$$1$1('fill');
 
     // @@match logic
-    require$$0$g('match', 1, function (defined, MATCH, $match, maybeCallNative) {
+    require$$0$h('match', 1, function (defined, MATCH, $match, maybeCallNative) {
         return [
             // `String.prototype.match` method
             // https://tc39.github.io/ecma262/#sec-string.prototype.match
@@ -13916,7 +13929,7 @@
 
     // https://github.com/tc39/proposal-object-values-entries
 
-    var $entries = require$$0$e(true);
+    var $entries = require$$0$f(true);
 
     $export$1($export$1.S, 'Object', {
         entries: function entries(it) {
@@ -14671,7 +14684,7 @@
         default: empty$1
     });
 
-    var require$$0$l = ( empty$2 && empty$1 ) || empty$2;
+    var require$$0$m = ( empty$2 && empty$1 ) || empty$2;
 
     var bn = createCommonjsModule(function (module) {
         (function (module, exports) {
@@ -14725,7 +14738,7 @@
 
             var Buffer;
             try {
-                Buffer = require$$0$l.Buffer;
+                Buffer = require$$0$m.Buffer;
             } catch (e) {
             }
 
@@ -18374,7 +18387,7 @@
     } else {
         // Node.js or Web worker with no crypto support
         try {
-            var crypto$1 = require$$0$l;
+            var crypto$1 = require$$0$m;
             if (typeof crypto$1.randomBytes !== 'function')
                 throw new Error('Not supported');
 
@@ -21396,13 +21409,13 @@
         __moduleExports: _384
     });
 
-    var require$$0$m = ( _1$1 && _1 ) || _1$1;
+    var require$$0$n = ( _1$1 && _1 ) || _1$1;
 
     var require$$1$9 = ( _224$1 && _224 ) || _224$1;
 
     var require$$3$3 = ( _384$1 && _384 ) || _384$1;
 
-    var sha1 = require$$0$m;
+    var sha1 = require$$0$n;
     var sha224 = require$$1$9;
     var sha256 = SHA256$1;
     var sha384 = require$$3$3;
@@ -22449,7 +22462,7 @@
 
     var curve$1 = ( curve && curve_1 ) || curve;
 
-    var require$$0$n = ( secp256k1$1 && secp256k1 ) || secp256k1$1;
+    var require$$0$o = ( secp256k1$1 && secp256k1 ) || secp256k1$1;
 
     var curves_1 = createCommonjsModule(function (module, exports) {
 
@@ -22621,7 +22634,7 @@
 
         var pre;
         try {
-            pre = require$$0$n;
+            pre = require$$0$o;
         } catch (e) {
             pre = undefined;
         }
@@ -23570,7 +23583,7 @@
         __moduleExports: eddsa
     });
 
-    var require$$0$o = ( _package$1 && _package ) || _package$1;
+    var require$$0$p = ( _package$1 && _package ) || _package$1;
 
     var require$$5$1 = ( ec$1 && ec ) || ec$1;
 
@@ -23580,7 +23593,7 @@
 
         var elliptic = exports;
 
-        elliptic.version = require$$0$o.version;
+        elliptic.version = require$$0$p.version;
         elliptic.utils = utils$7;
         elliptic.rand = rand;
         elliptic.curve = curve$1;
@@ -23921,7 +23934,7 @@
                                     case 0:
                                         apiName = typeof stable === 'undefined' || stable ? 'latestStableBlock' : 'currentBlock';
                                         _context.next = 3;
-                                        return this.requester.send("".concat(MODULE_NAME$1, "_").concat(apiName), [withBody]);
+                                        return this.requester.send("".concat(MODULE_NAME$1, "_").concat(apiName), [!!withBody]);
 
                                     case 3:
                                         block = _context.sent;
@@ -23959,7 +23972,7 @@
                                     case 0:
                                         apiName = isHash(hashOrHeight) ? 'getBlockByHash' : 'getBlockByHeight';
                                         _context2.next = 3;
-                                        return this.requester.send("".concat(MODULE_NAME$1, "_").concat(apiName), [hashOrHeight, withBody]);
+                                        return this.requester.send("".concat(MODULE_NAME$1, "_").concat(apiName), [hashOrHeight, !!withBody]);
 
                                     case 3:
                                         block = _context2.sent;
@@ -24034,7 +24047,7 @@
         getSdkVersion: {
             call: function call() {
 
-                return Promise.resolve("0.9.3");
+                return Promise.resolve("0.9.4");
             }
         },
 
@@ -24052,7 +24065,7 @@
                     callback(parseBlock(_this.signer, block));
                 };
 
-                return this.requester.watch("".concat(MODULE_NAME$1, "_latestStableBlock"), [withBody], watchHandler);
+                return this.requester.watch("".concat(MODULE_NAME$1, "_latestStableBlock"), [!!withBody], watchHandler);
             }
         }
     };
