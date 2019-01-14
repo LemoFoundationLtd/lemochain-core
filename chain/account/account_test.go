@@ -30,11 +30,11 @@ func TestAccount_GetAddress(t *testing.T) {
 	account := loadAccount(db, defaultAccounts[0].Address)
 	assert.Equal(t, uint32(100), account.GetBaseVersion(BalanceLog))
 
-	//load not exist account
+	// load not exist account
 	account = loadAccount(db, common.HexToAddress("0xaaa"))
 	assert.Equal(t, common.HexToAddress("0xaaa"), account.GetAddress())
 
-	//load from genesis' parent block
+	// load from genesis' parent block
 	db.GetActDatabase(common.Hash{})
 	_, err := db.GetAccount(common.HexToAddress("0xaaa"))
 	assert.Equal(t, store.ErrNotExist, err)

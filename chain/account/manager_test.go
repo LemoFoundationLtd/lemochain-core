@@ -82,6 +82,7 @@ func TestManager_GetCanonicalAccount(t *testing.T) {
 }
 
 func TestManager_GetChangeLogs(t *testing.T) {
+	store.ClearData()
 	db := newDB()
 
 	manager := NewManager(newestBlock.Hash(), db)
@@ -97,6 +98,7 @@ func TestManager_GetChangeLogs(t *testing.T) {
 }
 
 func TestManager_AddEvent(t *testing.T) {
+	store.ClearData()
 	db := newDB()
 	manager := NewManager(newestBlock.Hash(), db)
 

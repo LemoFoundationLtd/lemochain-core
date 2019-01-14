@@ -222,7 +222,7 @@ func versionTrieKey(address common.Address, logType types.ChangeLogType) []byte 
 
 // Save writes dirty data into db.
 func (am *Manager) Save(newBlockHash common.Hash) error {
-	//dirtyAccounts := make([]*types.AccountData, 0, len(am.accountCache))
+	// dirtyAccounts := make([]*types.AccountData, 0, len(am.accountCache))
 
 	acctDatabase := am.db.GetActDatabase(newBlockHash)
 	for _, account := range am.accountCache {
@@ -234,7 +234,7 @@ func (am *Manager) Save(newBlockHash common.Hash) error {
 		}
 
 		// save accounts to db
-		acctDatabase.Put(account.rawAccount.data, am.baseBlockHeight()+1)
+		acctDatabase.Put(account.rawAccount.data, am.currentBlockHeight())
 	}
 
 	// update version trie nodes' hash
@@ -262,7 +262,7 @@ func (am *Manager) SaveTxInAccount(fromAddr, toAddr common.Address, txHash commo
 
 // Rebuild loads and redo all change logs to update account to the newest state.
 func (am *Manager) Rebuild(address common.Address, logs types.ChangeLogSlice) error {
-	account, err := am.processor.Rebuild(address, logs)
+	_, err := am.processor.Rebuild(address, logs)
 	if err != nil {
 		return err
 	}
