@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"os"
@@ -26,6 +27,7 @@ func init() {
 
 // test correct condition max port: 65535
 func Test_setupGenesisBlock_correct(t *testing.T) {
+	store.ClearData()
 	test := struct {
 		Content string
 		Hash    common.Hash
