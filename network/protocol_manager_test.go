@@ -232,9 +232,13 @@ func Test_peerLoop(t *testing.T) {
 	rp.lstStatus.CurHeight = 100
 	pm.peers.Register(rp)
 	res = <-pm.testOutput
-	assert.Equal(t, testForceSync, res)
+	if res != testForceSync && res != testDiscover {
+		t.Error("result not match")
+	}
 	res = <-pm.testOutput
-	assert.Equal(t, testDiscover, res)
+	if res != testForceSync && res != testDiscover {
+		t.Error("result not match")
+	}
 	close(pm.quitCh)
 }
 
