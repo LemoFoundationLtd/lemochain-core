@@ -42,6 +42,17 @@ func (a *SafeAccount) String() string {
 	return a.rawAccount.String()
 }
 
+func (a *SafeAccount) GetVoteFor() common.Address { return a.rawAccount.GetVoteFor() }
+
+func (a *SafeAccount) SetVoteFor(addr common.Address) {
+	a.rawAccount.SetVoteFor(addr)
+}
+
+func (a *SafeAccount) GetCandidate() types.Candidate { return a.rawAccount.GetCandidate() }
+func (a *SafeAccount) SetCandidate(candidate types.Candidate) {
+	a.rawAccount.SetCandidate(candidate)
+}
+
 func (a *SafeAccount) GetAddress() common.Address { return a.rawAccount.GetAddress() }
 func (a *SafeAccount) GetBalance() *big.Int       { return a.rawAccount.GetBalance() }
 

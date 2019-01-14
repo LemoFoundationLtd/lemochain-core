@@ -304,21 +304,6 @@ func (context *RunContext) SetStableBlock(block *types.Block) {
 	context.StableBlock = block
 }
 
-func (context *RunContext) GetCandidates() []common.Address {
-	if len(context.Candidates) <= 0 {
-		return make([]common.Address, 0)
-	} else {
-		result := make([]common.Address, len(context.Candidates))
-		index := 0
-		for k, _ := range context.Candidates {
-			result[index] = k
-			index = index + 1
-		}
-
-		return result
-	}
-}
-
 func (context *RunContext) SetCandidate(address common.Address) {
 	context.Candidates[address] = true
 }
@@ -331,6 +316,21 @@ func (context *RunContext) CandidateIsExist(address common.Address) bool {
 		return true
 	}
 }
+
+// func (context *RunContext) GetCandidates() []common.Address {
+// 	if len(context.Candidates) <= 0 {
+// 		return make([]common.Address, 0)
+// 	} else {
+// 		result := make([]common.Address, len(context.Candidates))
+// 		index := 0
+// 		for k, _ := range context.Candidates {
+// 			result[index] = k
+// 			index = index + 1
+// 		}
+//
+// 		return result
+// 	}
+// }
 
 func (context *RunContext) encodeHead(fileLen uint32) ([]byte, error) {
 	head := contextHead{

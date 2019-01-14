@@ -100,6 +100,17 @@ func (a *Account) String() string {
 	return a.data.String()
 }
 
+func (a *Account) GetVoteFor() common.Address { return a.data.VoteFor }
+
+func (a *Account) SetVoteFor(addr common.Address) {
+	a.data.VoteFor = addr
+}
+
+func (a *Account) GetCandidate() types.Candidate { return a.data.Candidate }
+func (a *Account) SetCandidate(candidate types.Candidate) {
+	a.data.Candidate = candidate
+}
+
 // Implement AccountAccessor. Access Account without changelog
 func (a *Account) GetAddress() common.Address { return a.data.Address }
 func (a *Account) GetBalance() *big.Int       { return new(big.Int).Set(a.data.Balance) }

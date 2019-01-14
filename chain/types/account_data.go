@@ -26,6 +26,12 @@ type versionRecordMarshaling struct {
 
 // AccountData is the Lemochain consensus representation of accounts.
 // These objects are stored in the store.
+type Candidate struct {
+	IsCandidate bool
+	Votes       *big.Int
+	Profile     map[string]string
+}
+
 type AccountData struct {
 	Address     common.Address `json:"address" gencodec:"required"`
 	Balance     *big.Int       `json:"balance" gencodec:"required"`
@@ -33,6 +39,10 @@ type AccountData struct {
 	StorageRoot common.Hash    `json:"root" gencodec:"required"` // MPT root of the storage trie
 	// It records the block height which contains any type of newest change log. It is updated in finalize step
 	NewestRecords map[ChangeLogType]VersionRecord `json:"records" gencodec:"required"`
+
+	VoteFor   common.Address
+	Candidate Candidate
+
 	// related transactions include income and outcome
 	TxHashList []common.Hash `json:"-"`
 }
@@ -140,6 +150,12 @@ func (c Code) String() string {
 }
 
 type AccountAccessor interface {
+	GetVoteFor() common.Address
+	SetVoteFor(addr common.Address)
+
+	GetCandidate() Candidate
+	SetCandidate(candidate Candidate)
+
 	GetAddress() common.Address
 	GetBalance() *big.Int
 	SetBalance(balance *big.Int)
