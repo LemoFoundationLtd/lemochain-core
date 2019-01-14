@@ -279,7 +279,7 @@ func newMiner(key string) (*Miner, error) {
 		return nil, err
 	}
 
-	txPool := chain.NewTxPool(100, blockChain.AccountManager())
+	txPool := chain.NewTxPool(100)
 	return New(Cnf, blockChain, txPool, new(EngineTestForMiner)), nil
 }
 
