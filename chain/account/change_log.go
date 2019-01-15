@@ -16,6 +16,7 @@ const (
 	CodeLog
 	AddEventLog
 	SuicideLog
+	VoteForLog
 )
 
 func init() {
@@ -107,6 +108,16 @@ func NewBalanceLog(processor types.ChangeLogProcessor, account types.AccountAcce
 		Version: processor.GetNextVersion(BalanceLog, account.GetAddress()),
 		OldVal:  *(new(big.Int).Set(account.GetBalance())),
 		NewVal:  *(new(big.Int).Set(newBalance)),
+	}
+}
+
+func NewVoteForLog(processor types.ChangeLogProcessor, account types.AccountAccessor, newVoteFor common.Address) *types.ChangeLog {
+	return &types.ChangeLog{
+		LogType: VoteForLog,
+		Address: account.GetAddress(),
+		Version: processor.GetNextVersion(VoteForLog, account.GetAddress()),
+		OldVal:  account.GetVoteFor(),
+		NewVal:  newVoteFor,
 	}
 }
 
