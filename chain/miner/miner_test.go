@@ -244,13 +244,9 @@ func (engine *EngineTestForMiner) Finalize(header *types.Header, am *account.Man
 
 func newBlockChain() (*chain.BlockChain, chan *types.Block, error) {
 	chainID := uint16(99)
-	db, err := store.NewCacheChain(store.GetStorePath())
-	if err != nil {
-		return nil, nil, err
-	}
-
+	db := store.NewChainDataBase(store.GetStorePath())
 	genesis := chain.DefaultGenesisBlock()
-	_, err = chain.SetupGenesisBlock(db, genesis)
+	_, err := chain.SetupGenesisBlock(db, genesis)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -25,6 +25,11 @@ func ClearData() {
 		err = os.RemoveAll(GetStorePath())
 		failCnt = failCnt + 1
 	}
+
+	dns := "root:123123@tcp(localhost:3306)/lemochain?charset=utf8mb4"
+	db := NewMySqlDB(DRIVER_MYSQL, dns)
+	db.Clear()
+	db.Close()
 }
 
 func CreateBlock(hash common.Hash, parent common.Hash, height uint32) *types.Block {

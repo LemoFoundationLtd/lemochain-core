@@ -20,27 +20,76 @@ package store
 // The value was determined empirically.
 const IdealBatchSize = 100 * 1024
 
-// Putter wraps the database write operation supported by both batches and regular databases.
-type Putter interface {
-	Put(key []byte, value []byte) error
+type Commit interface {
+	Commit(batch Batch) error
 }
 
-// Database wraps all database operations. All methods are safe for concurrent use.
-type Database interface {
-	Putter
-	Get(key []byte) ([]byte, error)
-	Has(key []byte) (bool, error)
-	Delete(key []byte) error
-	Close()
-	NewBatch() Batch
+type NewBatch interface {
+	NewBatch(route []byte) Batch
 }
 
 // Batch is a write-only database that commits changes to its host database
 // when Write is called. Batch cannot be used concurrently.
 type Batch interface {
-	Putter
-	ValueSize() int // amount of data in the batch
-	Write() error
-	// Reset resets the batch for reuse
+	Put(flg uint, key, value []byte) error
+	Commit() error
+	Route() []byte
+	Items() []*BatchItem
+	ValueSize() int
 	Reset()
+}
+
+// Database wraps all database operations. All methods are safe for concurrent use.
+type Database interface {
+	Put(key, value []byte) error
+	NewBatch
+	Get(key []byte) ([]byte, error)
+	Has(key []byte) (bool, error)
+	Delete(key []byte) error
+	Close()
+}
+
+type BatchItem struct {
+	Flg uint
+	Key []byte
+	Val []byte
+}
+
+type LmDBBatch struct {
+	db    Commit
+	route []byte
+	items []*BatchItem
+	size  int
+}
+
+func (batch *LmDBBatch) Put(flg uint, key, value []byte) error {
+	item := &BatchItem{
+		Flg: flg,
+		Key: key,
+		Val: value,
+	}
+	batch.items = append(batch.items, item)
+	batch.size = batch.size + len(value)
+	return nil
+}
+
+func (batch *LmDBBatch) Commit() error {
+	return batch.db.Commit(batch)
+}
+
+func (batch *LmDBBatch) Route() []byte {
+	return batch.route
+}
+
+func (batch *LmDBBatch) Items() []*BatchItem {
+	return batch.items
+}
+
+func (batch *LmDBBatch) ValueSize() int {
+	return batch.size
+}
+
+func (batch *LmDBBatch) Reset() {
+	batch.size = 0
+	batch.items = make([]*BatchItem, 0)
 }

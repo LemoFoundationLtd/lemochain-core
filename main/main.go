@@ -119,25 +119,28 @@ func glemo(ctx *cli.Context) error {
 	return nil
 }
 
+func interrupt(wait func() error) {
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	defer signal.Stop(sigCh)
+	<-sigCh
+	log.Info("Got interrupt, shutting down...")
+	go wait()
+	for i := 5; i > 0; i-- {
+		<-sigCh
+		if i > 1 {
+			log.Warnf("Already shutting down, interrupt more to panic. times: %d", i-1)
+		}
+	}
+	panic("boom")
+}
+
 func startNode(ctx *cli.Context, n *node.Node) {
 	if err := n.Start(); err != nil {
 		log.Critf("Error starting node: %v", err)
 	}
-	go func() {
-		sigCh := make(chan os.Signal, 1)
-		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-		defer signal.Stop(sigCh)
-		<-sigCh
-		log.Info("Got interrupt, shutting down...")
-		go n.Stop()
-		for i := 5; i > 0; i-- {
-			<-sigCh
-			if i > 1 {
-				log.Warnf("Already shutting down, interrupt more to panic. times: %d", i-1)
-			}
-		}
-		panic("boom")
-	}()
+
+	go interrupt(n.Stop)
 
 	if ctx.IsSet(node.AutoMineFlag.Name) {
 		if err := n.StartMining(); err != nil {

@@ -29,10 +29,7 @@ const (
 // loadDpovp 加载一个Dpovp实例
 func loadDpovp() *Dpovp {
 	store.ClearData()
-	db, err := store.NewCacheChain(store.GetStorePath())
-	if err != nil {
-		panic(err)
-	}
+	db := store.NewChainDataBase(store.GetStorePath())
 	d := NewDpovp(10*1000, db)
 	return d
 }

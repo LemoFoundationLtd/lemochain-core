@@ -416,7 +416,7 @@ func (bc *BlockChain) createSignInfo(hash common.Hash, height uint32) *network.B
 	}
 	copy(data.SignInfo[:], signInfo)
 	if bc.HasBlock(hash) {
-		bc.db.SetConfirmInfo(hash, data.SignInfo)
+		bc.db.SetConfirm(hash, data.SignInfo)
 	}
 	return data
 }
@@ -445,13 +445,13 @@ func (bc *BlockChain) ReceiveConfirm(info *network.BlockConfirmData) (err error)
 	stableBlock := bc.stableBlock.Load().(*types.Block)
 	if stableBlock.Height() >= height { // stable block's confirm info
 		if ok, err := bc.hasEnoughConfirmInfo(info.Hash); err == nil && !ok {
-			bc.db.AppendConfirmInfo(info.Hash, info.SignInfo)
+			bc.db.SetConfirm(info.Hash, info.SignInfo)
 		}
 		return nil
 	}
 
 	// cache confirm info
-	if err = bc.db.SetConfirmInfo(info.Hash, info.SignInfo); err != nil {
+	if err = bc.db.SetConfirm(info.Hash, info.SignInfo); err != nil {
 		log.Errorf("can't SetConfirmInfo. height: %d, hash:%s, err: %v", info.Height, info.Hash.Hex()[:16], err)
 		return nil
 	}

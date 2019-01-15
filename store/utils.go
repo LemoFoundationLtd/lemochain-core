@@ -1,7 +1,6 @@
 package store
 
 import (
-	"encoding/binary"
 	"errors"
 	"sync"
 )
@@ -21,10 +20,7 @@ var (
 	maxDepth        = uint8(8)
 	maxFileSize     = uint32(1024 * 1024 * 1024 * 2)
 	maxBucketsCount = uint32(256)
-	dataHeaderLen   = uint32(binary.Size(RecordHeader{}))
 	keySize         = uint32(32)
-	itemHeaderSize  = uint32(binary.Size(HItem{}))
-	nodeSize        = uint32(binary.Size(Node{}))
 )
 
 var MbTable = []uint16{

@@ -100,11 +100,7 @@ func initConfig(flags flag.CmdFlags) (*Config, *ConfigFromFile, *miner.MineConfi
 
 func initDb(dataDir string) protocol.ChainDB {
 	dir := filepath.Join(dataDir, "chaindata")
-	db, err := store.NewCacheChain(dir)
-	if err != nil {
-		panic("new cacheChain failed!!!")
-	}
-	return db
+	return store.NewChainDataBase(dir)
 }
 
 func getGenesis(db protocol.ChainDB) *types.Block {

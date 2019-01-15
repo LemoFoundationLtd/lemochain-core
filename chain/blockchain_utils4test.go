@@ -24,13 +24,10 @@ func broadcastConfirmInfo(hash common.Hash, height uint32) {}
 
 func NewBlockChainForTest() (*BlockChain, chan *types.Block, error) {
 	chainID := uint16(99)
-	db, err := store.NewCacheChain(store.GetStorePath())
-	if err != nil {
-		return nil, nil, err
-	}
+	db := store.NewChainDataBase(store.GetStorePath())
 
 	genesis := DefaultGenesisBlock()
-	_, err = SetupGenesisBlock(db, genesis)
+	_, err := SetupGenesisBlock(db, genesis)
 	if err != nil {
 		return nil, nil, err
 	}

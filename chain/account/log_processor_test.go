@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"github.com/stretchr/testify/assert"
 	"math/big"
 	"testing"
 )
 
 func TestLogProcessor_GetAccount(t *testing.T) {
+	store.ClearData()
 	db := newDB()
 	manager := NewManager(newestBlock.Hash(), db)
 	processor := manager.processor
@@ -35,6 +37,7 @@ func TestLogProcessor_GetAccount(t *testing.T) {
 }
 
 func TestLogProcessor_PushEvent_PopEvent(t *testing.T) {
+	store.ClearData()
 	db := newDB()
 	processor := NewManager(newestBlock.Hash(), db).processor
 
@@ -58,6 +61,7 @@ func TestLogProcessor_PushEvent_PopEvent(t *testing.T) {
 }
 
 func TestLogProcessor_PushChangeLog_GetChangeLogs(t *testing.T) {
+	store.ClearData()
 	db := newDB()
 	processor := NewManager(newestBlock.Hash(), db).processor
 	assert.Equal(t, 0, len(processor.GetChangeLogs()))
@@ -74,6 +78,7 @@ func TestLogProcessor_PushChangeLog_GetChangeLogs(t *testing.T) {
 }
 
 func TestLogProcessor_GetLogsByAddress(t *testing.T) {
+	store.ClearData()
 	db := newDB()
 	processor := NewManager(newestBlock.Hash(), db).processor
 
@@ -104,6 +109,7 @@ func TestLogProcessor_GetLogsByAddress(t *testing.T) {
 }
 
 func TestLogProcessor_GetNextVersion(t *testing.T) {
+	store.ClearData()
 	db := newDB()
 	processor := NewManager(newestBlock.Hash(), db).processor
 	// prepare account version record
@@ -160,6 +166,7 @@ func TestLogProcessor_GetNextVersion(t *testing.T) {
 }
 
 func TestLogProcessor_Clear(t *testing.T) {
+	store.ClearData()
 	db := newDB()
 	processor := NewManager(newestBlock.Hash(), db).processor
 
@@ -180,6 +187,7 @@ func TestLogProcessor_Clear(t *testing.T) {
 
 // generate change log by safe account
 func TestLogProcessor_Snapshot_RevertToSnapshot(t *testing.T) {
+	store.ClearData()
 	db := newDB()
 	manager := NewManager(newestBlock.Hash(), db)
 	processor := manager.processor
@@ -236,6 +244,7 @@ func TestLogProcessor_Snapshot_RevertToSnapshot(t *testing.T) {
 
 // test invalid change logs
 func TestLogProcessor_Snapshot_RevertToSnapshot2(t *testing.T) {
+	store.ClearData()
 	db := newDB()
 	manager := NewManager(newestBlock.Hash(), db)
 	processor := manager.processor
@@ -271,6 +280,7 @@ func TestLogProcessor_Snapshot_RevertToSnapshot2(t *testing.T) {
 }
 
 func TestLogProcessor_MergeChangeLogs(t *testing.T) {
+	store.ClearData()
 	db := newDB()
 	manager := NewManager(newestBlock.Hash(), db)
 	processor := manager.processor

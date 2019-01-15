@@ -90,7 +90,7 @@ func (db *MemDatabase) Delete(key []byte) error {
 
 func (db *MemDatabase) Close() {}
 
-func (db *MemDatabase) NewBatch() Batch {
+func (db *MemDatabase) NewBatch(route []byte) Batch {
 	return &memBatch{db: db}
 }
 
@@ -104,19 +104,26 @@ type memBatch struct {
 	size   int
 }
 
-func (b *memBatch) Put(key, value []byte) error {
+func (b *memBatch) Put(flg uint, key, value []byte) error {
 	b.writes = append(b.writes, kv{common.CopyBytes(key), common.CopyBytes(value)})
 	b.size += len(value)
 	return nil
 }
 
-func (b *memBatch) Write() error {
+func (b *memBatch) Commit() error {
 	b.db.lock.Lock()
 	defer b.db.lock.Unlock()
 
 	for _, kv := range b.writes {
 		b.db.db[string(kv.k)] = kv.v
 	}
+	return nil
+}
+
+func (b *memBatch) Route() []byte {
+	return nil
+}
+func (b *memBatch) Items() []*BatchItem {
 	return nil
 }
 

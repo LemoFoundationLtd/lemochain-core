@@ -24,6 +24,7 @@ var (
 type Manager struct {
 	db     protocol.ChainDB
 	trieDb *store.TrieDatabase // used to access tire data in file
+	acctDb *store.PatriciaTrie
 	// Manager loads all data from the branch where the baseBlock is
 	baseBlock     *types.Block
 	baseBlockHash common.Hash
@@ -50,6 +51,9 @@ func NewManager(blockHash common.Hash, db protocol.ChainDB) *Manager {
 		log.Errorf("load block[%s] fail: %s\n", manager.baseBlockHash.Hex(), err.Error())
 		panic(err)
 	}
+
+	manager.acctDb = db.GetActDatabase(blockHash)
+
 	manager.processor = NewLogProcessor(manager)
 	return manager
 }
@@ -58,10 +62,7 @@ func NewManager(blockHash common.Hash, db protocol.ChainDB) *Manager {
 func (am *Manager) GetAccount(address common.Address) types.AccountAccessor {
 	cached := am.accountCache[address]
 	if cached == nil {
-		data, err := am.db.GetAccount(am.baseBlockHash, address)
-		if err != nil && err != store.ErrNotExist {
-			panic(err)
-		}
+		data := am.acctDb.Find(address[:])
 		account := NewAccount(am.db, address, data)
 		cached = NewSafeAccount(am.processor, account)
 		// cache it
@@ -72,7 +73,7 @@ func (am *Manager) GetAccount(address common.Address) types.AccountAccessor {
 
 // GetCanonicalAccount loads an readonly account object from confirmed block in db, or creates a new one if it's not exist. The Modification of the account will not be recorded to store.
 func (am *Manager) GetCanonicalAccount(address common.Address) types.AccountAccessor {
-	data, err := am.db.GetCanonicalAccount(address)
+	data, err := am.db.GetAccount(address)
 	if err != nil && err != store.ErrNotExist {
 		panic(err)
 	}
@@ -90,8 +91,8 @@ func (am *Manager) getRawAccount(address common.Address) *Account {
 // IsExist reports whether the given account address exists in the db.
 // Notably this also returns true for suicided accounts.
 func (am *Manager) IsExist(address common.Address) bool {
-	_, err := am.db.GetAccount(am.baseBlockHash, address)
-	return err == nil || err != store.ErrNotExist
+	data := am.acctDb.Find(address[:])
+	return data != nil
 }
 
 // AddEvent records the event during transaction's execution.
@@ -164,6 +165,8 @@ func (am *Manager) Reset(blockHash common.Hash) {
 		log.Errorf("Reset to block[%s] fail: %s\n", am.baseBlockHash.Hex(), err.Error())
 		panic(err)
 	}
+
+	am.acctDb = am.db.GetActDatabase(blockHash)
 	am.clear()
 }
 
@@ -219,7 +222,9 @@ func versionTrieKey(address common.Address, logType types.ChangeLogType) []byte 
 
 // Save writes dirty data into db.
 func (am *Manager) Save(newBlockHash common.Hash) error {
-	dirtyAccounts := make([]*types.AccountData, 0, len(am.accountCache))
+	// dirtyAccounts := make([]*types.AccountData, 0, len(am.accountCache))
+
+	acctDatabase := am.db.GetActDatabase(newBlockHash)
 	for _, account := range am.accountCache {
 		if !account.IsDirty() {
 			continue
@@ -227,15 +232,11 @@ func (am *Manager) Save(newBlockHash common.Hash) error {
 		if err := account.rawAccount.Save(); err != nil {
 			return err
 		}
-		dirtyAccounts = append(dirtyAccounts, account.rawAccount.data)
+
+		// save accounts to db
+		acctDatabase.Put(account.rawAccount.data, am.currentBlockHeight())
 	}
-	// save accounts to db
-	if len(dirtyAccounts) != 0 {
-		if err := am.db.SetAccounts(newBlockHash, dirtyAccounts); err != nil {
-			log.Errorf("save accounts to db fail: %v", err)
-			return err
-		}
-	}
+
 	// update version trie nodes' hash
 	root, err := am.getVersionTrie().Commit(nil)
 	if err != nil {
@@ -261,12 +262,13 @@ func (am *Manager) SaveTxInAccount(fromAddr, toAddr common.Address, txHash commo
 
 // Rebuild loads and redo all change logs to update account to the newest state.
 func (am *Manager) Rebuild(address common.Address, logs types.ChangeLogSlice) error {
-	account, err := am.processor.Rebuild(address, logs)
+	_, err := am.processor.Rebuild(address, logs)
 	if err != nil {
 		return err
 	}
+	return nil
 	// save account
-	return am.db.SetAccounts(am.baseBlockHash, []*types.AccountData{account.data})
+	//return am.db.SetAccounts(am.baseBlockHash, []*types.AccountData{account.data})
 }
 
 // MergeChangeLogs merges the change logs for same account in block. Then update the version of change logs and account.

@@ -264,17 +264,17 @@ func (db *TrieDatabase) Commit(node common.Hash, report bool) error {
 	db.lock.RLock()
 
 	start := time.Now()
-	batch := db.diskdb.NewBatch()
+	batch := db.diskdb.NewBatch(node[:])
 
 	// Move all of the accumulated preimages into a write batch
 	for hash, preimage := range db.preimages {
-		if err := batch.Put(db.secureKey(hash[:]), preimage); err != nil {
+		if err := batch.Put(CACHE_FLG_TRIE, db.secureKey(hash[:]), preimage); err != nil {
 			log.Error("Failed to commit preimage from trie database", "err", err)
 			db.lock.RUnlock()
 			return err
 		}
 		if batch.ValueSize() > IdealBatchSize {
-			if err := batch.Write(); err != nil {
+			if err := batch.Commit(); err != nil {
 				return err
 			}
 			batch.Reset()
@@ -288,7 +288,7 @@ func (db *TrieDatabase) Commit(node common.Hash, report bool) error {
 		return err
 	}
 	// Write batch ready, unlock for readers during persistence
-	if err := batch.Write(); err != nil {
+	if err := batch.Commit(); err != nil {
 		log.Error("Failed to write trie to disk", "err", err)
 		db.lock.RUnlock()
 		return err
@@ -329,12 +329,12 @@ func (db *TrieDatabase) commit(hash common.Hash, batch Batch) error {
 			return err
 		}
 	}
-	if err := batch.Put(hash[:], node.Blob); err != nil {
+	if err := batch.Put(CACHE_FLG_TRIE, hash[:], node.Blob); err != nil {
 		return err
 	}
 	// If we've reached an optimal match size, commit and start over
 	if batch.ValueSize() >= IdealBatchSize {
-		if err := batch.Write(); err != nil {
+		if err := batch.Commit(); err != nil {
 			return err
 		}
 		batch.Reset()

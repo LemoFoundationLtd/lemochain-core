@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"github.com/stretchr/testify/assert"
 	"math/big"
 	"testing"
@@ -14,8 +15,9 @@ func TestSafeAccount_Interface(t *testing.T) {
 }
 
 func loadSafeAccount(address common.Address) *SafeAccount {
+	store.ClearData()
 	db := newDB()
-	data, _ := db.GetAccount(newestBlock.Hash(), address)
+	data := db.GetActDatabase(newestBlock.Hash()).Find(address[:])
 	return NewSafeAccount(NewManager(newestBlock.Hash(), db).processor, NewAccount(db, address, data))
 }
 
