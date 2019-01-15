@@ -107,9 +107,20 @@ func (a *Account) SetVoteFor(addr common.Address) {
 	a.data.VoteFor = addr
 }
 
-func (a *Account) GetCandidate() types.Candidate { return a.data.Candidate }
-func (a *Account) SetCandidate(candidate types.Candidate) {
-	a.data.Candidate = candidate
+func (a *Account) GetVotes() *big.Int {
+	return a.data.Candidate.Votes
+}
+
+func (a *Account) SetVotes(votes *big.Int) {
+	a.data.Candidate.Votes = votes
+}
+
+func (a *Account) GetCandidateProfile() map[string]string {
+	return a.data.Candidate.Profile
+}
+
+func (a *Account) SetCandidateProfile(profile map[string]string) {
+	a.data.Candidate.Profile = profile
 }
 
 // Implement AccountAccessor. Access Account without changelog

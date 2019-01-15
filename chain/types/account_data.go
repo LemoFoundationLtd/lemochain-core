@@ -27,9 +27,9 @@ type versionRecordMarshaling struct {
 // AccountData is the Lemochain consensus representation of accounts.
 // These objects are stored in the store.
 type Candidate struct {
-	IsCandidate bool
-	Votes       *big.Int
-	Profile     map[string]string
+	// IsCandidate bool
+	Votes   *big.Int
+	Profile map[string]string
 }
 
 type AccountData struct {
@@ -153,8 +153,11 @@ type AccountAccessor interface {
 	GetVoteFor() common.Address
 	SetVoteFor(addr common.Address)
 
-	GetCandidate() Candidate
-	SetCandidate(candidate Candidate)
+	GetVotes() *big.Int
+	SetVotes(votes *big.Int)
+
+	GetCandidateProfile() map[string]string
+	SetCandidateProfile(profile map[string]string)
 
 	GetAddress() common.Address
 	GetBalance() *big.Int
