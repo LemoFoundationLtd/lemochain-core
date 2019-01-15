@@ -296,7 +296,7 @@ func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *comm
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	accM := account.OnlyReadManager(header.Hash(), p.chain.db)
+	accM := account.ReadOnlyManager(header.Hash(), p.chain.db)
 	accM.Reset(header.ParentHash)
 
 	// A random address is found as our caller address.
