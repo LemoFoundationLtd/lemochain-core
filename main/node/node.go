@@ -150,6 +150,9 @@ func New(flags flag.CmdFlags) *Node {
 	db := initDb(cfg.DataDir, configFromFile.DbDriver, configFromFile.DbDns)
 	// read genesis block
 	genesisBlock := getGenesis(db)
+	if genesisBlock == nil {
+		panic("can't get genesis block")
+	}
 	// read all deputy nodes from snapshot block
 	initDeputyNodes(db)
 	// new dpovp consensus engine
@@ -350,7 +353,7 @@ func (n *Node) startHTTP(endpoint string, apis []rpc.API, cors []string, vhosts 
 		return err
 	}
 	go rpc.NewHTTPServer(cors, vhosts, handler).Serve(listener)
-	log.Info("HTTP endpoint opened", "url", fmt.Sprintf("http://%s", endpoint), "cors", strings.Join(cors, ","), "vhosts", strings.Join(vhosts, ","))
+	log.Info("HTTP endpoint opened", "url", fmt.Sprintf("h ttp://%s", endpoint), "cors", strings.Join(cors, ","), "vhosts", strings.Join(vhosts, ","))
 	// All listeners booted successfully
 	n.httpEndpoint = endpoint
 	n.httpListener = listener
