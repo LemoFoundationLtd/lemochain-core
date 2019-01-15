@@ -21,7 +21,7 @@ func NewSafeAccount(processor *LogProcessor, account *Account) *SafeAccount {
 		origTxCount: len(account.GetTxHashList()),
 	}
 }
-
+func (a *SafeAccount) IsdeputyNode() bool { return a.rawAccount.data.IsNode } // todo 临时函数
 // MarshalJSON encodes the lemoClient RPC safeAccount format.
 func (a *SafeAccount) MarshalJSON() ([]byte, error) {
 	return a.rawAccount.MarshalJSON()

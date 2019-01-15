@@ -56,6 +56,7 @@ type Account struct {
 
 	codeIsDirty bool // true if the code was updated
 	suicided    bool // will be delete from the trie during the "save" phase
+
 }
 
 // NewAccount wrap an AccountData object, or creates a new one if it's nil.
@@ -125,6 +126,7 @@ func (a *Account) SetVersion(logType types.ChangeLogType, version, blockHeight u
 func (a *Account) GetSuicide() bool             { return a.suicided }
 func (a *Account) GetCodeHash() common.Hash     { return a.data.CodeHash }
 func (a *Account) GetTxHashList() []common.Hash { return a.data.TxHashList }
+func (a *Account) IsdeputyNode() bool           { return a.data.IsNode } // todo 临时函数
 
 // StorageRoot wouldn't change until Account.updateTrie() is called
 func (a *Account) GetStorageRoot() common.Hash { return a.data.StorageRoot }
@@ -133,6 +135,29 @@ func (a *Account) SetBalance(balance *big.Int) {
 	if balance.Sign() < 0 {
 		log.Errorf("can't set negative balance %v to account %06x", balance, a.data.Address)
 		panic(ErrNegativeBalance)
+	}
+
+	// 代理节点的票数的变动
+	change := new(big.Int)
+	change.Sub(balance, a.GetBalance()) // 计算balance是增加还是减少
+	nodeAddress := a.data.VoteTo        // 得到投票的竞选节点的地址
+
+	if nodeAddress != nil { // 存在要投的竞选节点的账户,则执行balance改变对应的票数变化的逻辑
+		// 得到竞选节点的account
+		nodeAccount, err := a.db.GetCanonicalAccount(*nodeAddress)
+		if err != nil {
+			log.Errorf("deputy account is not exit", err)
+			panic(err)
+		}
+		if change.Sign() == 1 { // 表示账户余额增加
+			// 增加对应代理节点的票数
+			nodeAccount.Votes.Add(nodeAccount.Votes, change)
+		} else if change.Sign() == -1 { // 表示账户余额是减少
+			nodeAccount.Votes.Sub(nodeAccount.Votes, change.Abs(change))
+		} else { // 当change值为0,代表该账户余额无增无减，直接返回
+			log.Error("Do not allow account balance change is 0")
+			return
+		}
 	}
 	a.data.Balance.Set(balance)
 }
