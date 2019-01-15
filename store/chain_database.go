@@ -25,9 +25,9 @@ type ChainDatabase struct {
 	rw sync.RWMutex
 }
 
-func NewChainDataBase(home string) *ChainDatabase {
+func NewChainDataBase(home string, driver string, dns string) *ChainDatabase {
 	db := &ChainDatabase{
-		Beansdb:         NewBeansDB(home, 2),
+		Beansdb:         NewBeansDB(home, 2, driver, dns),
 		LastConfirm:     nil,
 		UnConfirmBlocks: make(map[common.Hash]*CBlock, 65536),
 	}

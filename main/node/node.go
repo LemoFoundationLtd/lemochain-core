@@ -98,9 +98,9 @@ func initConfig(flags flag.CmdFlags) (*Config, *ConfigFromFile, *miner.MineConfi
 	return cfg, configFromFile, mineCfg
 }
 
-func initDb(dataDir string) protocol.ChainDB {
+func initDb(dataDir string, driver string, dns string) protocol.ChainDB {
 	dir := filepath.Join(dataDir, "chaindata")
-	return store.NewChainDataBase(dir)
+	return store.NewChainDataBase(dir, driver, dns)
 }
 
 func getGenesis(db protocol.ChainDB) *types.Block {
@@ -147,7 +147,7 @@ func initDeputyNodes(db protocol.ChainDB) {
 
 func New(flags flag.CmdFlags) *Node {
 	cfg, configFromFile, mineCfg := initConfig(flags)
-	db := initDb(cfg.DataDir)
+	db := initDb(cfg.DataDir, configFromFile.DbDriver, configFromFile.DbDns)
 	// read genesis block
 	genesisBlock := getGenesis(db)
 	// read all deputy nodes from snapshot block

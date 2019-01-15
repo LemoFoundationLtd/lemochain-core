@@ -33,7 +33,7 @@ func after(flag uint, route []byte, key []byte, val []byte, offset uint32) error
 	return nil
 }
 
-func NewBeansDB(home string, height int) *BeansDB {
+func NewBeansDB(home string, height int, driver string, dns string) *BeansDB {
 	if height != 2 {
 		panic("height != 2")
 	}
@@ -44,8 +44,8 @@ func NewBeansDB(home string, height int) *BeansDB {
 	beansdb.bitcasks = make([]*BitCask, count)
 	beansdb.route2key = make(map[string][]byte)
 
-	dns := "root:123123@tcp(localhost:3306)/lemochain?charset=utf8mb4"
-	beansdb.indexDB = NewMySqlDB(DRIVER_MYSQL, dns)
+	//dns := "root:123123@tcp(localhost:3306)/lemochain?charset=utf8mb4"
+	beansdb.indexDB = NewMySqlDB(driver, dns)
 
 	beansdb.context = new(ChainContext)
 	isExist, err := beansdb.context.isExist(home)
