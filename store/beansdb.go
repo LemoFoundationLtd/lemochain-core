@@ -353,7 +353,7 @@ func (context *ChainContext) encodeBody() ([]byte, error) {
 }
 
 func (context *ChainContext) flush(buf []byte) error {
-	file, err := os.OpenFile(context.Path, os.O_APPEND|os.O_WRONLY, os.ModePerm)
+	file, err := os.OpenFile(context.Path, os.O_WRONLY, os.ModePerm)
 	defer file.Close()
 	if err != nil {
 		return err

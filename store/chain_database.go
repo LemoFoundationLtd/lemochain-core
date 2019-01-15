@@ -74,8 +74,11 @@ func (database *ChainDatabase) blockCommit(hash common.Hash) error {
 	if err != nil {
 		return err
 	}
+
 	batch.Put(CACHE_FLG_BLOCK, hash[:], buf)
 	batch.Put(CACHE_FLG_BLOCK_HEIGHT, encodeBlockNumber2Hash(cItem.Block.Height()).Bytes(), hash[:])
+
+	curBlockBuf := buf
 
 	// store account
 	decode := func(account *types.AccountData, batch Batch) error {
@@ -103,7 +106,12 @@ func (database *ChainDatabase) blockCommit(hash common.Hash) error {
 	if err != nil {
 		return err
 	} else {
-		return database.Beansdb.Commit(batch)
+		err := database.Beansdb.Commit(batch)
+		if err != nil {
+			return err
+		} else {
+			return database.Beansdb.SetCurrentBlock(curBlockBuf)
+		}
 	}
 }
 
@@ -368,7 +376,11 @@ func encodeBlockNumber2Hash(number uint32) common.Hash {
 }
 
 func (database *ChainDatabase) LoadLatestBlock() (*types.Block, error) {
-	return database.LastConfirm.Block, nil
+	if database.LastConfirm == nil || database.LastConfirm.Block == nil {
+		return nil, ErrNotExist
+	} else {
+		return database.LastConfirm.Block, nil
+	}
 }
 
 func (database *ChainDatabase) SetStableBlock(hash common.Hash) error {

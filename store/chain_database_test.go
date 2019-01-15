@@ -5,6 +5,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/stretchr/testify/assert"
 	"testing"
+	// "github.com/LemoFoundationLtd/lemochain-go/common/log"
 )
 
 func TestCacheChain_SetBlock(t *testing.T) {
@@ -190,51 +191,51 @@ func TestChainDatabase_SetContractCode(t *testing.T) {
 	assert.Equal(t, code, result)
 }
 
-//
-// func TestCacheChain_SetAccounts(t *testing.T) {
-//
-// 	ClearData()
-//
-// 	cacheChain := NewChainDataBase(GetStorePath())
-// 	// block is not exist
-// 	accounts := GetAccounts()
-//
-// 	_, err := cacheChain.GetAccount(common.Hash{}, accounts[0].Address)
-// 	assert.Equal(t, ErrNotExist, err)
-//
-// 	// the block's parent is nil
-// 	parentBlock := GetBlock0()
-//
-// 	err = cacheChain.SetBlock(parentBlock.Hash(), parentBlock)
-// 	assert.NoError(t, err)
-//
-// 	// TODO:the child block have no this accounts
-// 	err = cacheChain.SetAccounts(parentBlock.Hash(), accounts)
-// 	assert.NoError(t, err)
-//
-// 	account, err := cacheChain.GetAccount(parentBlock.Hash(), accounts[0].Address)
-// 	assert.NoError(t, err)
-// 	assert.Equal(t, account.NewestRecords[0], accounts[0].NewestRecords[0])
-//
-// 	childBlock := GetBlock1()
-// 	err = cacheChain.SetBlock(childBlock.Hash(), childBlock)
-// 	assert.NoError(t, err)
-//
-// 	account, err = cacheChain.GetCanonicalAccount(accounts[0].Address)
-// 	assert.Equal(t, err, ErrNotExist)
-// 	assert.Nil(t, account)
-//
-// 	err = cacheChain.SetStableBlock(childBlock.Hash())
-// 	assert.NoError(t, err)
-//
-// 	account, err = cacheChain.GetCanonicalAccount(accounts[0].Address)
-// 	assert.NoError(t, err)
-// 	assert.Equal(t, account.NewestRecords[0], accounts[0].NewestRecords[0])
-//
-// 	account, err = cacheChain.GetCanonicalAccount(accounts[1].Address)
-// 	assert.NoError(t, err)
-// 	assert.Equal(t, account.NewestRecords[0], accounts[1].NewestRecords[0])
-// }
+func TestCacheChain_SetAccounts(t *testing.T) {
+
+	ClearData()
+
+	// cacheChain := NewChainDataBase(GetStorePath())
+	// // block is not exist
+	// accounts := GetAccounts()
+	//
+	// _, err := cacheChain.GetAccount(common.Hash{}, accounts[0].Address)
+	// assert.Equal(t, ErrNotExist, err)
+	//
+	// // the block's parent is nil
+	// parentBlock := GetBlock0()
+	//
+	// err = cacheChain.SetBlock(parentBlock.Hash(), parentBlock)
+	// assert.NoError(t, err)
+	//
+	// // TODO:the child block have no this accounts
+	// err = cacheChain.SetAccounts(parentBlock.Hash(), accounts)
+	// assert.NoError(t, err)
+	//
+	// account, err := cacheChain.GetAccount(parentBlock.Hash(), accounts[0].Address)
+	// assert.NoError(t, err)
+	// assert.Equal(t, account.NewestRecords[0], accounts[0].NewestRecords[0])
+	//
+	// childBlock := GetBlock1()
+	// err = cacheChain.SetBlock(childBlock.Hash(), childBlock)
+	// assert.NoError(t, err)
+	//
+	// account, err = cacheChain.GetAccount(accounts[0].Address)
+	// assert.Equal(t, err, ErrNotExist)
+	// assert.Nil(t, account)
+	//
+	// err = cacheChain.SetStableBlock(childBlock.Hash())
+	// assert.NoError(t, err)
+	//
+	// account, err = cacheChain.GetAccount(accounts[0].Address)
+	// assert.NoError(t, err)
+	// assert.Equal(t, account.NewestRecords[0], accounts[0].NewestRecords[0])
+	//
+	// account, err = cacheChain.GetAccount(accounts[1].Address)
+	// assert.NoError(t, err)
+	// assert.Equal(t, account.NewestRecords[0], accounts[1].NewestRecords[0])
+}
+
 //
 // func TestCacheChain_ChildBlockAccount(t *testing.T) {
 // 	ClearData()
@@ -268,63 +269,63 @@ func TestChainDatabase_SetContractCode(t *testing.T) {
 // 	assert.Equal(t, big.NewInt(500), account.Balance)
 // }
 //
-// func TestCacheChain_Data(t *testing.T) {
-// 	_ := NewChainDataBase(GetStorePath())
-//
-// 	// _, err = cacheChain.LoadLatestBlock()
-// 	// assert.NoError(t, err)
-//
-// 	//height := result.Height() - 20000
-// 	// for index := 1; index < 27179; index++{
-// 	// 	_, err = cacheChain.GetBlockByHeight(uint32(index))
-// 	// 	if err != nil {
-// 	// 		log.Errorf("index:%d", index)
-// 	// 		break
-// 	// 	}
-// 	// 	//assert.NoError(t, err)
-// 	// }
-//
-// 	// _, err = cacheChain.GetBlockByHash(result.Hash())
-// 	// assert.NoError(t, err)
-// }
-//
-// func TestCacheChain_LoadLatestBlock1(t *testing.T) {
-// 	ClearData()
-//
-// 	cacheChain := NewChainDataBase(GetStorePath())
-//
-// 	result, err := cacheChain.LoadLatestBlock()
-// 	assert.Equal(t, err, ErrNotExist)
-// 	assert.Nil(t, result)
-//
-// 	parentBlock := GetBlock0()
-// 	childBlock := GetBlock1()
-// 	err = cacheChain.SetBlock(parentBlock.Hash(), parentBlock)
-// 	assert.NoError(t, err)
-// 	err = cacheChain.SetBlock(childBlock.Hash(), childBlock)
-// 	assert.NoError(t, err)
-//
-// 	err = cacheChain.SetStableBlock(parentBlock.Hash())
-// 	assert.NoError(t, err)
-//
-// 	result, err = cacheChain.LoadLatestBlock()
-// 	assert.NoError(t, err)
-// 	assert.Equal(t, parentBlock.ParentHash(), result.ParentHash())
-//
-// 	err = cacheChain.SetStableBlock(childBlock.Hash())
-// 	assert.NoError(t, err)
-//
-// 	result, err = cacheChain.LoadLatestBlock()
-// 	assert.NoError(t, err)
-// 	assert.Equal(t, childBlock.ParentHash(), result.ParentHash())
-//
-// 	cacheChain = NewChainDataBase(GetStorePath())
-//
-// 	result, err = cacheChain.LoadLatestBlock()
-// 	assert.NoError(t, err)
-// 	assert.Equal(t, childBlock.ParentHash(), result.ParentHash())
-// }
-//
+func TestCacheChain_Data(t *testing.T) {
+	// _ := NewChainDataBase(GetStorePath())
+
+	// _, err = cacheChain.LoadLatestBlock()
+	// assert.NoError(t, err)
+	//
+	// height := result.Height() - 20000
+	// for index := 1; index < 27179; index++{
+	// 	_, err = cacheChain.GetBlockByHeight(uint32(index))
+	// 	if err != nil {
+	// 		log.Errorf("index:%d", index)
+	// 		break
+	// 	}
+	// 	//assert.NoError(t, err)
+	// }
+	//
+	// _, err = cacheChain.GetBlockByHash(result.Hash())
+	// assert.NoError(t, err)
+}
+
+func TestCacheChain_LoadLatestBlock1(t *testing.T) {
+	ClearData()
+
+	cacheChain := NewChainDataBase(GetStorePath())
+
+	result, err := cacheChain.LoadLatestBlock()
+	assert.Equal(t, err, ErrNotExist)
+	assert.Nil(t, result)
+
+	parentBlock := GetBlock0()
+	childBlock := GetBlock1()
+	err = cacheChain.SetBlock(parentBlock.Hash(), parentBlock)
+	assert.NoError(t, err)
+	err = cacheChain.SetBlock(childBlock.Hash(), childBlock)
+	assert.NoError(t, err)
+
+	err = cacheChain.SetStableBlock(parentBlock.Hash())
+	assert.NoError(t, err)
+
+	result, err = cacheChain.LoadLatestBlock()
+	assert.NoError(t, err)
+	assert.Equal(t, parentBlock.ParentHash(), result.ParentHash())
+
+	err = cacheChain.SetStableBlock(childBlock.Hash())
+	assert.NoError(t, err)
+
+	result, err = cacheChain.LoadLatestBlock()
+	assert.NoError(t, err)
+	assert.Equal(t, childBlock.ParentHash(), result.ParentHash())
+
+	cacheChain = NewChainDataBase(GetStorePath())
+
+	result, err = cacheChain.LoadLatestBlock()
+	assert.NoError(t, err)
+	assert.Equal(t, childBlock.ParentHash(), result.ParentHash())
+}
+
 func TestCacheChain_LoadLatestBlock2(t *testing.T) {
 	ClearData()
 
