@@ -17,6 +17,8 @@ const (
 	AddEventLog
 	SuicideLog
 	VoteForLog
+	VotesLog
+	CandidateProfileLog
 )
 
 func init() {
@@ -111,6 +113,16 @@ func NewBalanceLog(processor types.ChangeLogProcessor, account types.AccountAcce
 	}
 }
 
+func NewVotesLog(processor types.ChangeLogProcessor, account types.AccountAccessor, newVotes *big.Int) *types.ChangeLog {
+	return &types.ChangeLog{
+		LogType: VotesLog,
+		Address: account.GetAddress(),
+		Version: processor.GetNextVersion(VoteForLog, account.GetAddress()),
+		OldVal:  account.GetVotes(),
+		NewVal:  newVotes,
+	}
+}
+
 func NewVoteForLog(processor types.ChangeLogProcessor, account types.AccountAccessor, newVoteFor common.Address) *types.ChangeLog {
 	return &types.ChangeLog{
 		LogType: VoteForLog,
@@ -118,6 +130,16 @@ func NewVoteForLog(processor types.ChangeLogProcessor, account types.AccountAcce
 		Version: processor.GetNextVersion(VoteForLog, account.GetAddress()),
 		OldVal:  account.GetVoteFor(),
 		NewVal:  newVoteFor,
+	}
+}
+
+func NewCandidateProfileLog(processor types.ChangeLogProcessor, account types.AccountAccessor, newProfile map[string]string) *types.ChangeLog {
+	return &types.ChangeLog{
+		LogType: CandidateProfileLog,
+		Address: account.GetAddress(),
+		Version: processor.GetNextVersion(VoteForLog, account.GetAddress()),
+		OldVal:  account.GetCandidateProfile(),
+		NewVal:  newProfile,
 	}
 }
 

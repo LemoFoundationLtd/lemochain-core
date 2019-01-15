@@ -45,6 +45,8 @@ func (a *SafeAccount) String() string {
 func (a *SafeAccount) GetVoteFor() common.Address { return a.rawAccount.GetVoteFor() }
 
 func (a *SafeAccount) SetVoteFor(addr common.Address) {
+	newLog := NewVoteForLog(a.processor, a.rawAccount, addr)
+	a.processor.PushChangeLog(newLog)
 	a.rawAccount.SetVoteFor(addr)
 }
 
@@ -53,6 +55,8 @@ func (a *SafeAccount) GetVotes() *big.Int {
 }
 
 func (a *SafeAccount) SetVotes(votes *big.Int) {
+	newLog := NewVotesLog(a.processor, a.rawAccount, votes)
+	a.processor.PushChangeLog(newLog)
 	a.rawAccount.SetVotes(votes)
 }
 
@@ -61,6 +65,8 @@ func (a *SafeAccount) GetCandidateProfile() map[string]string {
 }
 
 func (a *SafeAccount) SetCandidateProfile(profile map[string]string) {
+	newLog := NewCandidateProfileLog(a.processor, a.rawAccount, profile)
+	a.processor.PushChangeLog(newLog)
 	a.rawAccount.SetCandidateProfile(profile)
 }
 
