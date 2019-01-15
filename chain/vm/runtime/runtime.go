@@ -70,7 +70,7 @@ func Execute(code, input []byte, cfg *Config) ([]byte, error) {
 	setDefaults(cfg)
 
 	if cfg.AccountManager == nil {
-		db, _ := store.NewChainDataBase("../../../testdata/vm_runtime", DRIVER_MYSQL, DNS_MYSQL)
+		db := store.NewChainDataBase("../../../testdata/vm_runtime", store.DRIVER_MYSQL, store.DNS_MYSQL)
 		cfg.AccountManager = account.NewManager(common.Hash{}, db)
 	}
 	var (
@@ -101,7 +101,7 @@ func Create(input []byte, cfg *Config) ([]byte, common.Address, uint64, error) {
 	setDefaults(cfg)
 
 	if cfg.AccountManager == nil {
-		db, _ := store.NewChainDataBase("../../../testdata/vm_runtime", DRIVER_MYSQL, DNS_MYSQL)
+		db := store.NewChainDataBase("../../../testdata/vm_runtime", store.DRIVER_MYSQL, store.DNS_MYSQL)
 		cfg.AccountManager = account.NewManager(common.Hash{}, db)
 	}
 	var (

@@ -72,7 +72,7 @@ func TestExecute(t *testing.T) {
 }
 
 func TestCall(t *testing.T) {
-	db, _ := store.NewChainDataBase("../../../testdata/vm_runtime", DRIVER_MYSQL, DNS_MYSQL)
+	db := store.NewChainDataBase("../../../testdata/vm_runtime", store.DRIVER_MYSQL, store.DNS_MYSQL)
 	am := account.NewManager(common.Hash{}, db)
 	address := common.HexToAddress("0x0a")
 	contractAccount := am.GetAccount(address)
