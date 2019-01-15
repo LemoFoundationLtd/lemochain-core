@@ -107,7 +107,10 @@ func getGenesis(db protocol.ChainDB) *types.Block {
 	block, err := db.GetBlockByHeight(0)
 	if err == store.ErrNotExist {
 		genesis := chain.DefaultGenesisBlock()
-		chain.SetupGenesisBlock(db, genesis)
+		if _, err = chain.SetupGenesisBlock(db, genesis); err != nil {
+			panic("SetupGenesisBlock Failed")
+		}
+		block, _ = db.GetBlockByHeight(0)
 	} else if err == nil {
 		// normal
 	} else {

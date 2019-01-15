@@ -13,8 +13,8 @@ type ConfigFromFile struct {
 	ChainID   uint64 `json:"chainID"     gencodec:"required"`
 	SleepTime uint64 `json:"sleepTime"   gencodec:"required"`
 	Timeout   uint64 `json:"timeout"     gencodec:"required"`
-	DbDns     string `json:"DbDns"       gencodec:"required"` // dns = root:123123@tcp(localhost:3306)/lemochain?charset=utf8mb4
-	DbDriver  string `json:"DbDriver"    gencodec:"required"` // driver = "mysql"
+	DbDns     string `json:"dbDns"       gencodec:"required"` // sample: root:123123@tcp(localhost:3306)/lemochain?charset=utf8mb4
+	DbDriver  string `json:"dbDriver"    gencodec:"required"` // sample: "mysql"
 }
 
 // driver = "mysql"
