@@ -111,7 +111,7 @@ func TestTxAPI_api(t *testing.T) {
 	testTx := types.NewTransaction(common.HexToAddress("0x1"), common.Big1, 100, common.Big2, []byte{12}, 0, 200, uint64(1544596), "aa", string("send a Tx"))
 	signTx := signTransaction(testTx, testPrivate)
 	// txCh := make(chan types.Transactions, 100)
-	node := &Node{}
+	node := new(Node)
 	txAPI := NewPublicTxAPI(node)
 
 	sendTxHash, err := txAPI.SendTx(signTx)
