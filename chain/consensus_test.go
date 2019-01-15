@@ -373,7 +373,7 @@ func TestDpovp_Seal(t *testing.T) {
 
 	TestBlockHeader := block01.Header // 得到block01头，为生成TestBlock所用
 	txs := []*types.Transaction{
-		signTransaction(types.NewTransaction(defaultAccounts[0], common.Big1, 2000000, common.Big2, []byte{12}, chainID, 1538210391, "aa", "aaa"), testPrivate),
+		signTransaction(types.NewTransaction(defaultAccounts[0], common.Big1, 2000000, common.Big2, []byte{12}, 0, chainID, 1538210391, "aa", "aaa"), testPrivate),
 		makeTransaction(testPrivate, defaultAccounts[1], common.Big1, common.Big2, 1538210491, 2000000),
 	}
 	block01.Txs = txs // 添加bock01交易

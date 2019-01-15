@@ -177,14 +177,13 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 
 		case params.Register_tx: // 执行注册参加代理节点选举交易逻辑
 			// 设置接收注册费用1000LEMO的地址
-			strAddress := "0x1001"
-			to, err := common.StringToAddress(strAddress)
-			if err != nil {
-				log.Errorf("invalid address: %s", err)
-				return 0, err
-			}
-
-			restGas, vmErr = vmEnv.RegisterDeputynode(senderAddr, to, restGas, tx.Amount())
+			// strAddress := "0x1001"
+			// to, err := common.StringToAddress(strAddress)
+			// if err != nil {
+			// 	log.Errorf("invalid address: %s", err)
+			// 	return 0, err
+			// }
+			// restGas, vmErr = vmEnv.RegisterCandidate(senderAddr, to, restGas, tx.Amount())
 
 		default:
 			log.Errorf("The type of transaction is not defined. txType = %d\n", tx.Type())

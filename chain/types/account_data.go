@@ -44,10 +44,7 @@ type AccountData struct {
 	Candidate Candidate
 
 	// related transactions include income and outcome
-	TxHashList []common.Hash   `json:"-"`
-	IsNode     bool            // todo 临时字段，标记此账户是否为代理代理节点账户
-	VoteTo     *common.Address // todo 投票给谁
-	Votes      *big.Int        // todo 票数
+	TxHashList []common.Hash `json:"-"`
 }
 
 type accountDataMarshaling struct {
@@ -177,12 +174,4 @@ type AccountAccessor interface {
 	GetSuicide() bool
 	SetSuicide(suicided bool)
 	MarshalJSON() ([]byte, error)
-
-	IsdeputyNode() bool                      // todo 临时函数
-	SetdeputyNode(isnode bool) error         // todo
-	SetVoteTo(address *common.Address) error // todo
-	GetVoteTo() *common.Address              // todo
-	SetVotes(votes *big.Int) error           // todo
-	GetVotes() *big.Int                      // todo
-
 }

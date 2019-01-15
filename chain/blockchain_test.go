@@ -1269,7 +1269,7 @@ func TestBlockChain_VerifyBlockBalanceNotSign(t *testing.T) {
 	}
 	block := makeBlock(blockChain.db, info, false)
 	block.Txs = []*types.Transaction{
-		types.NewTransaction(accounts[0].Address, common.Big2, 30000, common.Big2, []byte{}, 200, 1538210398, "", ""),
+		types.NewTransaction(accounts[0].Address, common.Big2, 30000, common.Big2, []byte{}, 0, 200, 1538210398, "", ""),
 	}
 	block.Header.TxRoot = types.DeriveTxsSha(block.Txs)
 	err = blockChain.Verify(block)
