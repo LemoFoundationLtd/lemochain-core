@@ -26,6 +26,11 @@ type versionRecordMarshaling struct {
 
 // AccountData is the Lemochain consensus representation of accounts.
 // These objects are stored in the store.
+
+var (
+	IsCandidate = "CandidateKeyIsCandidate"
+)
+
 type Candidate struct {
 	// IsCandidate bool
 	Votes   *big.Int
