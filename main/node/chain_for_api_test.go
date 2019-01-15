@@ -61,7 +61,7 @@ var (
 			logRoot:     common.HexToHash("0xc287a6c955f3d6d4d240413a585f48009106a6ff5886b194cb506e87323786d7"),
 			txList: []*types.Transaction{
 				// testAddr -> defaultAccounts[0] 1
-				signTransaction(types.NewTransaction(defaultAccounts[0], common.Big1, 2000000, common.Big2, []byte{12}, chainID, uint64(1538210391), "aa", string("aaa")), testPrivate),
+				signTransaction(types.NewTransaction(defaultAccounts[0], common.Big1, 2000000, common.Big2, []byte{12}, 0, chainID, uint64(1538210391), "aa", string("aaa")), testPrivate),
 				// testAddr -> defaultAccounts[1] 1
 				makeTransaction(testPrivate, defaultAccounts[1], common.Big1, common.Big2, uint64(1538210491), 2000000),
 			},
@@ -251,7 +251,7 @@ func makeTx(fromPrivate *ecdsa.PrivateKey, to common.Address, amount *big.Int) *
 }
 
 func makeTransaction(fromPrivate *ecdsa.PrivateKey, to common.Address, amount *big.Int, gasPrice *big.Int, expiration uint64, gasLimit uint64) *types.Transaction {
-	tx := types.NewTransaction(to, amount, gasLimit, gasPrice, []byte{}, chainID, expiration, "", string("aaa"))
+	tx := types.NewTransaction(to, amount, gasLimit, gasPrice, []byte{}, 0, chainID, expiration, "", string("aaa"))
 	return signTransaction(tx, fromPrivate)
 }
 

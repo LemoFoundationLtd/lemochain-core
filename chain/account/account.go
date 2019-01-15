@@ -56,6 +56,7 @@ type Account struct {
 
 	codeIsDirty bool // true if the code was updated
 	suicided    bool // will be delete from the trie during the "save" phase
+
 }
 
 // NewAccount wrap an AccountData object, or creates a new one if it's nil.
@@ -133,6 +134,29 @@ func (a *Account) SetBalance(balance *big.Int) {
 	if balance.Sign() < 0 {
 		log.Errorf("can't set negative balance %v to account %06x", balance, a.data.Address)
 		panic(ErrNegativeBalance)
+	}
+
+	// 代理节点的票数的变动
+	change := new(big.Int)
+	change.Sub(balance, a.GetBalance()) // 计算balance是增加还是减少
+	nodeAddress := a.GetVoteFor()       // 得到投票的竞选节点的地址
+
+	if nodeAddress != common.Address([common.AddressLength]byte{}) { // 存在要投的竞选节点的账户,则执行balance改变对应的票数变化的逻辑
+		// 得到竞选节点的account
+		nodeAccount, err := a.db.GetAccount(nodeAddress)
+		if err != nil {
+			log.Errorf("deputy account is not exit", err)
+			panic(err)
+		}
+		if change.Sign() == 1 { // 表示账户余额增加
+			// 增加对应代理节点的票数
+			nodeAccount.Candidate.Votes.Add(nodeAccount.Candidate.Votes, change)
+		} else if change.Sign() == -1 { // 表示账户余额是减少
+			nodeAccount.Candidate.Votes.Sub(nodeAccount.Candidate.Votes, change.Abs(change))
+		} else { // 当change值为0,代表该账户余额无增无减，直接返回
+			log.Error("Do not allow account balance change is 0")
+			return
+		}
 	}
 	a.data.Balance.Set(balance)
 }

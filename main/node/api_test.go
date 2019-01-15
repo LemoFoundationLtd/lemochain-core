@@ -7,6 +7,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"github.com/stretchr/testify/assert"
 	"testing"
+	"time"
 )
 
 // TestAccountAPI_api account api test
@@ -108,15 +109,18 @@ func TestChainAPI_api(t *testing.T) {
 
 // TestTxAPI_api send tx api test
 func TestTxAPI_api(t *testing.T) {
-	testTx := types.NewTransaction(common.HexToAddress("0x1"), common.Big1, 100, common.Big2, []byte{12}, 200, uint64(1544596), "aa", string("send a Tx"))
-	signTx := signTransaction(testTx, testPrivate)
+	testTx := types.NewTransaction(common.HexToAddress("0x1"), common.Big1, 100, common.Big2, []byte{12}, 0, 100, uint64(time.Now().Unix()+60*30), "aa", string("send a Tx"))
+	// signTx := signTransaction(testTx, testPrivate)
 	// txCh := make(chan types.Transactions, 100)
-	node := &Node{}
+	Chain := newChain()
+	node := &Node{
+		chain: Chain,
+	}
 	txAPI := NewPublicTxAPI(node)
 
-	sendTxHash, err := txAPI.SendTx(signTx)
+	sendTxHash, err := txAPI.SendTx(testTx)
 	assert.Nil(t, err)
-	assert.Equal(t, signTx.Hash(), sendTxHash)
+	assert.Equal(t, testTx.Hash(), sendTxHash)
 }
 
 // // TestMineAPI_api miner api test // todo

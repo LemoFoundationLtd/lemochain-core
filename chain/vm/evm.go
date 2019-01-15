@@ -3,6 +3,7 @@ package vm
 import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"math/big"
+	"strconv"
 	"sync/atomic"
 	"time"
 
@@ -169,6 +170,99 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 	return ret, contract.Gas, err
 }
 
+// 投票交易调用
+func (evm *EVM) CallVoteTx(voter, node common.Address, gas uint64) (leftgas uint64, err error) {
+	nodeAccount := evm.am.GetAccount(node)
+	voterAccount := evm.am.GetAccount(voter)
+	// 	判断to是否为参加了代理节点的竞选账户
+	if !nodeAccount.GetCandidate().IsCandidate {
+		return gas, ErrOfNotCampaignNode
+	}
+	var snapshot = evm.am.Snapshot() // 回滚操作
+
+	// 查看voter是否已经投过票了
+	if voterAccount.GetVoteFor() != common.Address([common.AddressLength]byte{}) {
+		if voterAccount.GetVoteFor() == node { // 已经投过此竞选节点了
+			return gas, ErrOfAgainVote
+		} else { // 转投其他竞选节点
+			oldNode := voterAccount.GetVoteFor()
+			newNodeAccount := nodeAccount
+			// 减少旧节点对应的票数，增加新节点对应的票数，票数为账户的balance
+			oldNodeAccount := evm.am.GetAccount(oldNode)
+			// 减少旧的竞选节点的票数
+			oldNodeVoters := new(big.Int).Sub(oldNodeAccount.GetCandidate().Votes, voterAccount.GetBalance())
+			oldCand := oldNodeAccount.GetCandidate()
+			oldCand.Votes = oldNodeVoters
+			oldNodeAccount.SetCandidate(oldCand)
+			// if err != nil {
+			// 	log.Errorf("set candidate Votes 01:%s", err)
+			// }
+			// 增加新的竞选节点的票数
+			newNodeVoters := new(big.Int).Add(newNodeAccount.GetCandidate().Votes, voterAccount.GetBalance())
+			newCand := newNodeAccount.GetCandidate()
+			newCand.Votes = newNodeVoters
+			newNodeAccount.SetCandidate(newCand)
+			// if err != nil {
+			// 	log.Errorf("setVotes 02:%s", err)
+			// }
+		}
+	} else { // 第一次投票
+		// 增加竞选节点的票数
+		nodeVoters := new(big.Int).Add(nodeAccount.GetCandidate().Votes, voterAccount.GetBalance())
+		cand := nodeAccount.GetCandidate()
+		cand.Votes = nodeVoters
+		nodeAccount.SetCandidate(cand)
+		// if err != nil {
+		// 	log.Errorf("setVotes 03:%s", err)
+		// }
+	}
+	// 修改投票者指定的竞选节点
+	voterAccount.SetVoteFor(node)
+	// 回滚
+	if err != nil {
+		evm.am.RevertToSnapshot(snapshot)
+	}
+	return gas, err
+}
+
+// 申请注册参加竞选代理节点的交易调用,to 为接收所有注册花费的押金的账户地址
+func (evm *EVM) RegisterCandidate(applicant, to common.Address, nodeId, ip string, port int, gas uint64, value *big.Int) (leftgas uint64, err error) {
+	// value不能小于规定的注册费用
+	if value.Cmp(params.RegisterCampaignNodeFees) < 0 {
+		return gas, ErrOfRegisterCampaignNodeFees
+	}
+	// 查看余额够不够
+	if !evm.CanTransfer(evm.am, applicant, value) {
+		return gas, ErrInsufficientBalance
+	}
+
+	// 申请者账户
+	nodeAccount := evm.am.GetAccount(applicant)
+	// 查看申请者是否已经为竞选代理节点
+	if nodeAccount.GetCandidate().IsCandidate {
+		return gas, nil
+	}
+
+	var snapshot = evm.am.Snapshot() // 回滚操作
+	// 转账操作
+	evm.Transfer(evm.am, applicant, to, value)
+	// 设置账户为竞选节点
+	cand := nodeAccount.GetCandidate()
+	cand.IsCandidate = true
+	cand.Profile["NodeID"] = nodeId
+	cand.Profile["IP"] = ip
+	cand.Profile["Port"] = strconv.Itoa(port)
+	nodeAccount.SetCandidate(cand)
+	// if err != nil {
+	// 	log.Errorf("set account become campaign node error: %s", err)
+	// }
+	// 回滚
+	if err != nil {
+		evm.am.RevertToSnapshot(snapshot)
+	}
+	return gas, nil
+}
+
 // CallCode executes the contract associated with the addr with the given input
 // as parameters. It also handles any necessary value transfer required and takes
 // the necessary steps to create accounts and reverses the state in case of an
@@ -315,7 +409,7 @@ func (evm *EVM) Create(caller ContractRef, code []byte, gas uint64, value *big.I
 	// Ensure there's no existing contract already at the designated address
 	contractAddr = crypto.CreateAddress(caller.GetAddress(), evm.TxHash)
 	// print out the contract address
-	log.Infof("Created the contract address = %v", contractAddr.String())
+	log.Warnf("Created the contract address = %v", contractAddr.String())
 	contractAccount := evm.am.GetAccount(contractAddr)
 	if !contractAccount.IsEmpty() {
 		return nil, common.Address{}, 0, ErrContractAddressCollision

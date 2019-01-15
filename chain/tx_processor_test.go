@@ -349,3 +349,8 @@ func TestTxProcessor_ApplyTxs2(t *testing.T) {
 	cost = txs[0].GasPrice().Mul(txs[0].GasPrice(), big.NewInt(int64(params.TxGas)))
 	assert.Equal(t, senderBalance.Sub(senderBalance, cost), newSenderBalance)
 }
+func TestNewRecent(t *testing.T) {
+	from := []byte{1, 54, 179, 166, 183, 130, 243, 254, 203, 65, 252, 241, 71, 92, 221, 55, 109, 71, 87, 201}
+	address := common.BytesToAddress(from)
+	t.Log(address.String())
+}
