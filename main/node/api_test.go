@@ -1,6 +1,7 @@
 package node
 
 import (
+	"github.com/LemoFoundationLtd/lemochain-go/chain"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
@@ -11,6 +12,7 @@ import (
 
 // TestAccountAPI_api account api test
 func TestAccountAPI_api(t *testing.T) {
+	store.ClearData()
 	db := newDB()
 	defer store.ClearData()
 	am := account.NewManager(common.Hash{}, db)
@@ -50,6 +52,7 @@ func TestAccountAPI_api(t *testing.T) {
 
 // TestChainAPI_api chain api test
 func TestChainAPI_api(t *testing.T) {
+	store.ClearData()
 	bc := newChain()
 	defer store.ClearData()
 	c := NewPublicChainAPI(bc)
@@ -111,7 +114,10 @@ func TestTxAPI_api(t *testing.T) {
 	testTx := types.NewTransaction(common.HexToAddress("0x015780F8456F9c1532645087a19DcF9a7e0c7F97"), common.Big1, 100, common.Big2, []byte{12}, 200, uint64(1544596), "aa", string("send a Tx"))
 	signTx := signTransaction(testTx, testPrivate)
 	// txCh := make(chan types.Transactions, 100)
-	node := new(Node)
+	node := &Node{
+		chain:  newChain(),
+		txPool: chain.NewTxPool(chainID),
+	}
 	txAPI := NewPublicTxAPI(node)
 
 	sendTxHash, err := txAPI.SendTx(signTx)
@@ -149,7 +155,8 @@ func TestTxAPI_api(t *testing.T) {
 func TestNewPublicTxAPI_EstimateGas(t *testing.T) {
 	Chain := newChain()
 	node := &Node{
-		chain: Chain,
+		chain:  Chain,
+		txPool: chain.NewTxPool(chainID),
 	}
 	p := NewPublicTxAPI(node)
 	// from, _ := common.StringToAddress("Lemo837QGPS3YNTYNF53CD88WA5DR3ABNA95W2DG")
