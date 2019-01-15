@@ -147,20 +147,20 @@ func (a *Account) SetBalance(balance *big.Int) {
 		panic(ErrNegativeBalance)
 	}
 
-	// 代理节点的票数的变动
+	// 候选节点的票数变动
 	change := new(big.Int)
 	change.Sub(balance, a.GetBalance()) // 计算balance是增加还是减少
-	nodeAddress := a.GetVoteFor()       // 得到投票的竞选节点的地址
 
-	if nodeAddress != common.Address([common.AddressLength]byte{}) { // 存在要投的竞选节点的账户,则执行balance改变对应的票数变化的逻辑
-		// 得到竞选节点的account
+	nodeAddress := a.GetVoteFor()                    // 得到投票的候选节点的地址
+	if nodeAddress != [common.AddressLength]byte{} { // 存在要投的候选节点的账户,则执行balance改变对应的票数变化的逻辑
+		// 得到候选节点的account
 		nodeAccount, err := a.db.GetAccount(nodeAddress)
 		if err != nil {
 			log.Errorf("deputy account is not exit", err)
 			panic(err)
 		}
 		if change.Sign() == 1 { // 表示账户余额增加
-			// 增加对应代理节点的票数
+			// 增加对应候选节点的票数
 			nodeAccount.Candidate.Votes.Add(nodeAccount.Candidate.Votes, change)
 		} else if change.Sign() == -1 { // 表示账户余额是减少
 			nodeAccount.Candidate.Votes.Sub(nodeAccount.Candidate.Votes, change.Abs(change))

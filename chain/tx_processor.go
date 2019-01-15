@@ -2,8 +2,10 @@ package chain
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/vm"
@@ -12,6 +14,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/common/math"
 	"math/big"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -177,13 +180,25 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 
 		case params.Register_tx: // 执行注册参加代理节点选举交易逻辑
 			// 设置接收注册费用1000LEMO的地址
-			// strAddress := "0x1001"
-			// to, err := common.StringToAddress(strAddress)
-			// if err != nil {
-			// 	log.Errorf("invalid address: %s", err)
-			// 	return 0, err
-			// }
-			// restGas, vmErr = vmEnv.RegisterCandidate(senderAddr, to, restGas, tx.Amount())
+			strAddress := "0x1001"
+			to, err := common.StringToAddress(strAddress)
+			if err != nil {
+				log.Errorf("invalid address: %s", err)
+				return 0, err
+			}
+			// 解析交易data中申请候选节点的信息
+			txData := tx.Data()
+			CandNode := new(deputynode.CandidateNode)
+			err = json.Unmarshal(txData, CandNode)
+			if err != nil {
+				log.Errorf("unmarshal Candidate node error: %s", err)
+				return 0, err
+			}
+			candidateAddress := CandNode.CandidateAddress
+			nodeID := string(CandNode.NodeID)
+			host := CandNode.Host
+			port := strconv.Itoa(int(CandNode.Port))
+			restGas, vmErr = vmEnv.RegisterCandidate(senderAddr, to, candidateAddress, nodeID, host, port, restGas, tx.Amount())
 
 		default:
 			log.Errorf("The type of transaction is not defined. txType = %d\n", tx.Type())

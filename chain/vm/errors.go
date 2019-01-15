@@ -12,5 +12,5 @@ var (
 	ErrContractCodeLoadFail       = errors.New("contract code load fail")
 	ErrOfRegisterCampaignNodeFees = errors.New("Insufficient fees of registered campaign node ")
 	ErrOfAgainVote                = errors.New("already voted the same as campaign node")
-	ErrOfNotCampaignNode          = errors.New("vote address is not campaign node account")
+	ErrOfNotCampaignNode          = errors.New("node address is not candidate account")
 )
