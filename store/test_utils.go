@@ -26,8 +26,8 @@ func ClearData() {
 		failCnt = failCnt + 1
 	}
 
-	dns := "root:123123@tcp(localhost:3306)/lemochain?charset=utf8mb4"
-	db := NewMySqlDB(DRIVER_MYSQL, dns)
+	//dns := "root:123123@tcp(localhost:3306)/lemochain?charset=utf8mb4"
+	db := NewMySqlDB(DRIVER_MYSQL, DNS_MYSQL)
 	db.Clear()
 	db.Close()
 }
