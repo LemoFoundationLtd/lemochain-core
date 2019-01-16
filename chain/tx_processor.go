@@ -198,21 +198,21 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 				log.Errorf("unmarshal Candidate node error: %s", err)
 				return 0, err
 			}
-			candidateAddress := CandNode.CandidateAddress
+			minerAddress := CandNode.MinerAddress
 			nodeID := string(CandNode.NodeID)
 			host := CandNode.Host
 			port := strconv.Itoa(int(CandNode.Port))
-			restGas, vmErr = vmEnv.RegisterCandidate(senderAddr, to, candidateAddress, nodeID, host, port, restGas, tx.Amount())
+			restGas, vmErr = vmEnv.RegisterCandidate(senderAddr, to, minerAddress, nodeID, host, port, restGas, tx.Amount())
 
 		default:
 			log.Errorf("The type of transaction is not defined. txType = %d\n", tx.Type())
-			p.refundGas(gp, tx, restGas)
-			return 0, errors.New("the type of transaction error")
+			// p.refundGas(gp, tx, restGas) // 交易不满足所定义的交易类型的交易视为攻击，则不返还剩下的gas
+			// return 0, errors.New("the type of transaction error")
 		}
 		// 接收者对应的候选节点的票数变化
 		endRecipientBalance := recipientAccount.GetBalance()
-		recipientChangeBalance := new(big.Int).Sub(endRecipientBalance, initialRecipientBalance)
-		p.changeCandidateVotes(recipientAddr, recipientChangeBalance)
+		recipientBalanceChange := new(big.Int).Sub(endRecipientBalance, initialRecipientBalance)
+		p.changeCandidateVotes(recipientAddr, recipientBalanceChange)
 	}
 	if vmErr != nil {
 		log.Info("VM returned with error", "err", vmErr)
@@ -228,8 +228,8 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 
 	// 发送者对应的候选节点票数变动
 	endSenderBalance := sender.GetBalance()
-	senderChangeBalance := new(big.Int).Sub(endSenderBalance, initialSenderBalance)
-	p.changeCandidateVotes(senderAddr, senderChangeBalance)
+	senderBalanceChange := new(big.Int).Sub(endSenderBalance, initialSenderBalance)
+	p.changeCandidateVotes(senderAddr, senderBalanceChange)
 
 	// Merge change logs by transaction will save more transaction execution detail than by block
 	p.am.MergeChangeLogs(mergeFrom)

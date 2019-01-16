@@ -28,10 +28,11 @@ type versionRecordMarshaling struct {
 // These objects are stored in the store.
 
 const (
-	CandidateKeyIsCandidate string = "IsCandidate"
-	CandidateKeyNodeID      string = "NodeID"
-	CandidateKeyHost        string = "Host"
-	CandidateKeyPort        string = "Port"
+	CandidateKeyIsCandidate  string = "IsCandidate"
+	CandidateKeyNodeID       string = "NodeID"
+	CandidateKeyHost         string = "Host"
+	CandidateKeyPort         string = "Port"
+	CandidateKeyMinerAddress string = "MinerAddress"
 )
 
 type Candidate struct {
