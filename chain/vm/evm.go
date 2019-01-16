@@ -187,7 +187,7 @@ func (evm *EVM) CallVoteTx(voter, node common.Address, gas uint64) (leftgas uint
 	var snapshot = evm.am.Snapshot() // 回滚操作
 	voterAccount := evm.am.GetAccount(voter)
 	// 查看voter是否已经投过票了
-	if voterAccount.GetVoteFor() != [common.AddressLength]byte{} {
+	if (voterAccount.GetVoteFor() != common.Address{}) {
 		if voterAccount.GetVoteFor() == node { // 已经投过此竞选节点了
 			return gas, ErrOfAgainVote
 		} else { // 转投其他竞选节点
@@ -227,7 +227,7 @@ func (evm *EVM) RegisterCandidate(sender, to, CandidateAddress common.Address, N
 		return gas, ErrInsufficientBalance
 	}
 	// 如果传入的CandidateAddress为空则默认申请候选节点账户为sender
-	if CandidateAddress == [common.AddressLength]byte{} {
+	if (CandidateAddress == common.Address{}) {
 		CandidateAddress = sender
 	}
 	// 申请为候选节点账户
@@ -251,7 +251,7 @@ func (evm *EVM) RegisterCandidate(sender, to, CandidateAddress common.Address, N
 	balance := nodeAccount.GetBalance()
 	oldNodeAddress := nodeAccount.GetVoteFor()
 	// 如果投过票要减少所投候选节点的票数
-	if oldNodeAddress != [common.AddressLength]byte{} { // 曾经投过别的候选节点票
+	if (oldNodeAddress != common.Address{}) { // 曾经投过别的候选节点票
 		oldNodeAccount := evm.am.GetAccount(oldNodeAddress) // 旧的候选节点的账户
 		oldNodeVoters := new(big.Int).Sub(oldNodeAccount.GetVotes(), balance)
 		oldNodeAccount.SetVotes(oldNodeVoters)
