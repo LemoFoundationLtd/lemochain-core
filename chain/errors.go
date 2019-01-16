@@ -5,6 +5,7 @@ import "errors"
 var (
 	ErrNoGenesis                     = errors.New("can't get genesis block")
 	ErrBlockNotExist                 = errors.New("block not exist in local")
+	ErrParentNotExist                = errors.New("parent block not exist in local")
 	ErrSaveBlock                     = errors.New("save block to db error")
 	ErrSaveAccount                   = errors.New("save account error")
 	ErrVerifyHeaderFailed            = errors.New("verify block's header error")

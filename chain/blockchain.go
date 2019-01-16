@@ -171,6 +171,9 @@ func (bc *BlockChain) StableBlock() *types.Block {
 
 // SetMinedBlock 挖到新块
 func (bc *BlockChain) SetMinedBlock(block *types.Block) error {
+	if ok, _ := bc.db.IsExistByHash(block.ParentHash()); !ok {
+		return ErrParentNotExist
+	}
 	if err := bc.db.SetBlock(block.Hash(), block); err != nil {
 		log.Errorf("can't insert block to cache. height:%d hash:%s", block.Height(), block.Hash().Hex())
 		return ErrSaveBlock
@@ -185,7 +188,7 @@ func (bc *BlockChain) SetMinedBlock(block *types.Block) error {
 	delete(bc.chainForksHead, block.ParentHash())
 	bc.chainForksHead[block.Hash()] = block
 	if nodeCount == 1 {
-		bc.SetStableBlock(block.Hash(), block.Height())
+		_ = bc.SetStableBlock(block.Hash(), block.Height())
 	}
 	go func() {
 		// notify
@@ -216,6 +219,9 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 	if has, _ := bc.db.IsExistByHash(hash); has {
 		return nil
 	}
+	if ok, _ := bc.db.IsExistByHash(parentHash); !ok {
+		return ErrParentNotExist
+	}
 	// save
 	block.SetEvents(bc.AccountManager().GetEvents())
 	block.SetChangeLogs(bc.AccountManager().GetChangeLogs())
@@ -231,25 +237,27 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 	// is synchronise from net or deputy nodes less than 3
 	nodeCount := deputynode.Instance().GetDeputiesCount()
 	if nodeCount < 3 {
-		defer bc.SetStableBlock(hash, block.Height())
+		defer func() { _ = bc.SetStableBlock(hash, block.Height()) }()
 	} else {
 		minCount := int(math.Ceil(float64(nodeCount) * 2.0 / 3.0))
 		if len(block.Confirms) >= minCount {
-			defer bc.SetStableBlock(hash, block.Height())
+			defer func() { _ = bc.SetStableBlock(hash, block.Height()) }()
 		}
 	}
 
 	bc.chainForksLock.Lock()
 	defer func() {
 		bc.chainForksLock.Unlock()
-		// only broadcast confirm info within 3 minutes
-		currentTime := time.Now().Unix()
-		if currentTime-int64(block.Time()) < 3*60 {
-			time.AfterFunc(500*time.Millisecond, func() {
-				msg := bc.createSignInfo(block.Hash(), block.Height())
-				subscribe.Send(subscribe.NewConfirm, msg)
-				log.Debugf("subscribe.NewConfirm.Send(%d)", msg.Height)
-			})
+		if deputynode.Instance().IsSelfDeputyNode(block.Height()) {
+			// only broadcast confirm info within 3 minutes
+			currentTime := time.Now().Unix()
+			if currentTime-int64(block.Time()) < 3*60 {
+				time.AfterFunc(500*time.Millisecond, func() {
+					msg := bc.createSignInfo(block.Hash(), block.Height())
+					subscribe.Send(subscribe.NewConfirm, msg)
+					log.Debugf("subscribe.NewConfirm.Send(%d)", msg.Height)
+				})
+			}
 		}
 	}()
 
@@ -261,6 +269,7 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 		bc.newBlockNotify(block)
 		return nil
 	}
+
 	// new block height higher than current block, switch fork.
 	curHeight := bc.currentBlock.Load().(*types.Block).Height()
 	if block.Height() == curHeight+1 {
