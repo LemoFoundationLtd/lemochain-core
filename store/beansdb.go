@@ -338,7 +338,7 @@ func (context *RunContext) load() error {
 			}
 		}
 
-		if itemHead.Flg == 2 {
+		if itemHead.Flg == 2 { // addresses
 			if itemHead.Len == 0 {
 				//make(map[common.address]bool)
 			} else {

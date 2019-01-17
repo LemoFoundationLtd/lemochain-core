@@ -84,8 +84,6 @@ func (database *ChainDatabase) blockCommit(hash common.Hash) error {
 	batch.Put(CACHE_FLG_BLOCK, hash[:], buf)
 	batch.Put(CACHE_FLG_BLOCK_HEIGHT, encodeBlockNumber2Hash(cItem.Block.Height()).Bytes(), hash[:])
 
-	// stableBlockBuf := buf
-
 	// store account
 	decode := func(account *types.AccountData, batch Batch) error {
 		buf, err = rlp.EncodeToBytes(account)
@@ -143,9 +141,6 @@ func (database *ChainDatabase) blockCommit(hash common.Hash) error {
 	}
 
 	accounts := cItem.Trie.Collected(cItem.Block.Height())
-	if len(accounts) > 0 {
-		put2Candidates(accounts)
-	}
 
 	err = decodeBatch(accounts, batch)
 	if err != nil {
@@ -157,22 +152,13 @@ func (database *ChainDatabase) blockCommit(hash common.Hash) error {
 		return err
 	}
 
+	if len(accounts) > 0 {
+		put2Candidates(accounts)
+	}
 	database.Context.StableBlock = cItem.Block
+
 	database.Context.Flush()
 	return nil
-}
-
-func (database *ChainDatabase) filterCandidate(accounts []*types.AccountData) []*types.AccountData {
-	candidates := make([]*types.AccountData, len(accounts))
-	if len(accounts) <= 0 {
-		return candidates
-	} else {
-		return nil
-	}
-
-	// for index := 0; index < len(accounts); index++{
-	// 	if accounts[index]
-	// }
 }
 
 func (database *ChainDatabase) getBlock4Cache(hash common.Hash) (*types.Block, error) {
