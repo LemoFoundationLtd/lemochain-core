@@ -47,11 +47,6 @@ func (bitcaskIndexes BitcaskIndexes) load(home string) error {
 		return err
 	}
 
-	bodyBuf, err := rlp.EncodeToBytes(bitcaskIndexes)
-	if err != nil {
-		return err
-	}
-
 	headBuf := make([]byte, binary.Size(contextHead{}))
 	_, err = file.Seek(0, 0)
 	if err != nil {
@@ -259,9 +254,9 @@ type contextHead struct {
 	Crc       uint16
 }
 
-type contextBody struct {
-	StableBlock []byte
-	Candidates  []byte
+type contextItemHead struct {
+	Flg uint32
+	Len uint32
 }
 
 type RunContext struct {
@@ -286,43 +281,84 @@ func NewRunContext(path string) *RunContext {
 	return context
 }
 
-func (context *RunContext) load() (*contextHead, *contextBody, error) {
+func (context *RunContext) load() error {
 	file, err := os.OpenFile(context.Path, os.O_RDONLY, 0666)
 	defer file.Close()
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 
 	headBuf := make([]byte, binary.Size(contextHead{}))
 	_, err = file.Seek(0, 0)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 
 	_, err = file.Read(headBuf)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 
 	var head contextHead
 	err = binary.Read(bytes.NewBuffer(headBuf), binary.LittleEndian, &head)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 
 	bodyBuf := make([]byte, head.FileLen)
 	_, err = file.Read(bodyBuf)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 
-	var body contextBody
-	err = rlp.DecodeBytes(bodyBuf, &body)
-	if err != nil {
-		return nil, nil, err
-	} else {
-		return &head, &body, nil
+	offset := 0
+	itemHeadLen := binary.Size(contextItemHead{})
+	for {
+		if offset >= len(bodyBuf) {
+			break
+		}
+
+		var itemHead contextItemHead
+		err = binary.Read(bytes.NewBuffer(bodyBuf[offset:offset+itemHeadLen]), binary.LittleEndian, &itemHead)
+		if err != nil {
+			return err
+		}
+
+		if itemHead.Flg == 1 { // stable block
+			if itemHead.Len == 0 {
+				context.StableBlock = nil
+			} else {
+				var stableBlock types.Block
+				err := rlp.DecodeBytes(bodyBuf[offset+itemHeadLen:offset+itemHeadLen+int(itemHead.Len)], &stableBlock)
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+		if itemHead.Flg == 2 {
+			if itemHead.Len == 0 {
+				//make(map[common.address]bool)
+			} else {
+				curPos := offset + itemHeadLen
+				index := 0
+				for {
+					startCurIndex := curPos + index*common.AddressLength
+					stopCurIndex := curPos + (index+1)*common.AddressLength
+					if (index+1)*common.AddressLength > int(itemHead.Len) {
+						break
+					}
+
+					context.Candidates[common.BytesToAddress(bodyBuf[startCurIndex:stopCurIndex])] = true
+					index = index + 1
+				}
+			}
+		}
+
+		offset = offset + itemHeadLen + int(itemHead.Len)
 	}
+
+	return nil
 }
 
 func (context *RunContext) createFile() error {
@@ -349,34 +385,12 @@ func (context *RunContext) Load() error {
 			return context.Flush()
 		}
 	} else {
-		_, body, err := context.load()
-		if err != nil {
-			return err
-		}
-
-		blockBuf, err := rlp.EncodeToBytes(body.StableBlock)
+		err := context.load()
 		if err != nil {
 			return err
 		} else {
-			context.StableBlock = blockBuf
-
+			return nil
 		}
-		for index := 0; index < len(body.Candidates); index++ {
-			context.Candidates[body.Candidates[index]] = true
-		}
-
-		return nil
-	}
-}
-
-func (context *RunContext) GetScanIndex() []LastIndex {
-	return context.ScanIndex
-}
-
-func (context *RunContext) SetScanIndex(index int, curIndex, curOffset uint32) {
-	context.ScanIndex[index] = LastIndex{
-		Index:  curIndex,
-		Offset: curOffset,
 	}
 }
 
@@ -419,33 +433,58 @@ func (context *RunContext) encodeHead(fileLen uint32) ([]byte, error) {
 }
 
 func (context *RunContext) encodeBody() ([]byte, error) {
-	body := &contextBody{
-		ScanIndex:   context.ScanIndex,
-		StableBlock: context.StableBlock,
-	}
+	stableItemHead := contextItemHead{Flg: 1, Len: 0}
+	stableBlockBuf := []byte(nil)
 
-	if len(context.Candidates) > 0 {
-		body.Candidates = make([]common.Address, len(context.Candidates))
-		index := 0
-		for k, _ := range context.Candidates {
-			body.Candidates[index] = k
-			index = index + 1
+	if context.StableBlock != nil {
+		stableBlockBuf, err := rlp.EncodeToBytes(context.StableBlock)
+		if err != nil {
+			return nil, err
+		} else {
+			stableItemHead.Len = uint32(len(stableBlockBuf))
 		}
-	} else {
-		body.Candidates = make([]common.Address, 0)
 	}
 
-	buf, err := rlp.EncodeToBytes(body)
-	err = rlp.DecodeBytes(buf, body)
+	candidatesItemHead := contextItemHead{
+		Flg: 2,
+		Len: uint32(len(context.Candidates) * common.AddressLength),
+	}
+
+	candidatesOffset := binary.Size(stableItemHead) + int(stableItemHead.Len) + binary.Size(candidatesItemHead)
+	totalLen := candidatesOffset + int(candidatesItemHead.Len)
+	totalBuf := make([]byte, totalLen)
+
+	// stable block
+	err := binary.Write(NewLmBuffer(totalBuf[0:]), binary.LittleEndian, &stableItemHead)
 	if err != nil {
 		return nil, err
-	} else {
-		return buf, nil
 	}
+
+	if stableItemHead.Len > 0 {
+		err = binary.Write(NewLmBuffer(totalBuf[binary.Size(stableItemHead):]), binary.LittleEndian, &stableBlockBuf)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// addresses
+	err = binary.Write(NewLmBuffer(totalBuf[binary.Size(stableItemHead)+int(stableItemHead.Len):]), binary.LittleEndian, &candidatesItemHead)
+	if err != nil {
+		return nil, err
+	}
+
+	if candidatesItemHead.Len > 0 {
+		index := 0
+		for k, _ := range context.Candidates {
+			copy(totalBuf[candidatesOffset+index*common.AddressLength:], k[:])
+		}
+	}
+
+	return totalBuf, nil
 }
 
-func (context *RunContext) flush(buf []byte) error {
-	file, err := os.OpenFile(context.Path, os.O_APPEND|os.O_WRONLY, os.ModePerm)
+func (context *RunContext) flush(headBuf, bodyBuf []byte) error {
+	file, err := os.OpenFile(context.Path, os.O_WRONLY, os.ModePerm)
 	defer file.Close()
 	if err != nil {
 		return err
@@ -456,13 +495,27 @@ func (context *RunContext) flush(buf []byte) error {
 		return err
 	}
 
-	n, err := file.Write(buf)
+	n, err := file.Write(headBuf)
 	if err != nil {
 		return err
 	}
 
-	if n != len(buf) {
-		panic("n != len(data)")
+	if n != len(headBuf) {
+		panic("n != len(head data)")
+	}
+
+	_, err = file.Seek(int64(len(headBuf)), 0)
+	if err != nil {
+		return err
+	}
+
+	n, err = file.Write(bodyBuf)
+	if err != nil {
+		return err
+	}
+
+	if n != len(bodyBuf) {
+		panic("n != len(body data)")
 	}
 
 	return file.Sync()
@@ -479,9 +532,5 @@ func (context *RunContext) Flush() error {
 		return err
 	}
 
-	totalBuf := make([]byte, len(headBuf)+len(bodyBuf))
-	copy(totalBuf[0:], headBuf[:])
-	copy(totalBuf[len(headBuf):], bodyBuf[:])
-
-	return context.flush(totalBuf)
+	return context.flush(headBuf, bodyBuf)
 }

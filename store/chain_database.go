@@ -41,14 +41,19 @@ func NewChainDataBase(home string) *ChainDatabase {
 	}
 
 	db := &ChainDatabase{}
+	db.UnConfirmBlocks = make(map[common.Hash]*CBlock)
+	db.Beansdb = NewBeansDB(home, 2)
 	db.Context = NewRunContext(home)
+	err = db.Context.Load()
+	if err != nil {
+		panic("context loading err : " + err.Error())
+	}
+
 	db.LastConfirm = &CBlock{
 		Block: db.Context.GetStableBlock(),
 		Trie:  NewEmptyDatabase(db.Beansdb),
 	}
 
-	db.UnConfirmBlocks = make(map[common.Hash]*CBlock)
-	db.Beansdb = NewBeansDB(home, 2)
 	return db
 }
 
