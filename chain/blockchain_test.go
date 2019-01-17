@@ -15,7 +15,7 @@ import (
 func init() {
 	prv, _ := crypto.ToECDSA(common.FromHex("0xc21b6b2fbf230f665b936194d14da67187732bf9d28768aef1a3cbb26608f8aa"))
 	deputynode.SetSelfNodeKey(prv)
-	deputynode.Instance()
+	//deputynode.Instance()
 }
 
 func TestBlockChain_Reorg8ABC(t *testing.T) {
