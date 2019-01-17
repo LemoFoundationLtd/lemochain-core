@@ -332,6 +332,8 @@ func (context *RunContext) load() error {
 				err := rlp.DecodeBytes(bodyBuf[offset+itemHeadLen:offset+itemHeadLen+int(itemHead.Len)], &stableBlock)
 				if err != nil {
 					return err
+				} else {
+					context.StableBlock = &stableBlock
 				}
 			}
 		}
@@ -435,9 +437,9 @@ func (context *RunContext) encodeHead(fileLen uint32) ([]byte, error) {
 func (context *RunContext) encodeBody() ([]byte, error) {
 	stableItemHead := contextItemHead{Flg: 1, Len: 0}
 	stableBlockBuf := []byte(nil)
-
+	err := error(nil)
 	if context.StableBlock != nil {
-		stableBlockBuf, err := rlp.EncodeToBytes(context.StableBlock)
+		stableBlockBuf, err = rlp.EncodeToBytes(context.StableBlock)
 		if err != nil {
 			return nil, err
 		} else {
@@ -455,16 +457,13 @@ func (context *RunContext) encodeBody() ([]byte, error) {
 	totalBuf := make([]byte, totalLen)
 
 	// stable block
-	err := binary.Write(NewLmBuffer(totalBuf[0:]), binary.LittleEndian, &stableItemHead)
+	err = binary.Write(NewLmBuffer(totalBuf[0:]), binary.LittleEndian, &stableItemHead)
 	if err != nil {
 		return nil, err
 	}
 
 	if stableItemHead.Len > 0 {
-		err = binary.Write(NewLmBuffer(totalBuf[binary.Size(stableItemHead):]), binary.LittleEndian, &stableBlockBuf)
-		if err != nil {
-			return nil, err
-		}
+		copy(totalBuf[binary.Size(stableItemHead):], stableBlockBuf[:])
 	}
 
 	// addresses

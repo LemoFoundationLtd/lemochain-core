@@ -46,10 +46,6 @@ func NewChainDataBase(home string) *ChainDatabase {
 	db.UnConfirmBlocks = make(map[common.Hash]*CBlock)
 	db.Beansdb = NewBeansDB(home, 2)
 	db.Context = NewRunContext(home)
-	err = db.Context.Load()
-	if err != nil {
-		panic("context loading err : " + err.Error())
-	}
 
 	db.LastConfirm = &CBlock{
 		Block: db.Context.GetStableBlock(),
@@ -87,6 +83,8 @@ func (database *ChainDatabase) blockCommit(hash common.Hash) error {
 	}
 	batch.Put(CACHE_FLG_BLOCK, hash[:], buf)
 	batch.Put(CACHE_FLG_BLOCK_HEIGHT, encodeBlockNumber2Hash(cItem.Block.Height()).Bytes(), hash[:])
+
+	// stableBlockBuf := buf
 
 	// store account
 	decode := func(account *types.AccountData, batch Batch) error {
@@ -152,9 +150,16 @@ func (database *ChainDatabase) blockCommit(hash common.Hash) error {
 	err = decodeBatch(accounts, batch)
 	if err != nil {
 		return err
-	} else {
-		return database.Beansdb.Commit(batch)
 	}
+
+	err = database.Beansdb.Commit(batch)
+	if err != nil {
+		return err
+	}
+
+	database.Context.StableBlock = cItem.Block
+	database.Context.Flush()
+	return nil
 }
 
 func (database *ChainDatabase) filterCandidate(accounts []*types.AccountData) []*types.AccountData {
@@ -431,7 +436,11 @@ func encodeBlockNumber2Hash(number uint32) common.Hash {
 }
 
 func (database *ChainDatabase) LoadLatestBlock() (*types.Block, error) {
-	return database.LastConfirm.Block, nil
+	if database.LastConfirm == nil || database.LastConfirm.Block == nil {
+		return nil, ErrNotExist
+	} else {
+		return database.LastConfirm.Block, nil
+	}
 }
 
 func (database *ChainDatabase) SetStableBlock(hash common.Hash) error {
