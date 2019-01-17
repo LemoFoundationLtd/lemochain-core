@@ -199,7 +199,7 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 				return 0, err
 			}
 			minerAddress := CandNode.MinerAddress
-			nodeID := string(CandNode.NodeID)
+			nodeID := common.Bytes2Hex(CandNode.NodeID)
 			host := CandNode.Host
 			port := strconv.Itoa(int(CandNode.Port))
 			restGas, vmErr = vmEnv.RegisterCandidate(senderAddr, to, minerAddress, nodeID, host, port, restGas, tx.Amount())
