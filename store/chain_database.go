@@ -8,6 +8,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"os"
+	"strconv"
 	"sync"
 )
 
@@ -20,9 +21,10 @@ type ChainDatabase struct {
 	LastConfirm     *CBlock
 	UnConfirmBlocks map[common.Hash]*CBlock
 
-	DataBase DB
-	Beansdb  *BeansDB
-	Context  *RunContext
+	DataBase       DB
+	Beansdb        *BeansDB
+	Context        *RunContext
+	CandidatesRank *VoteRank
 
 	rw sync.RWMutex
 }
@@ -53,6 +55,8 @@ func NewChainDataBase(home string) *ChainDatabase {
 		Block: db.Context.GetStableBlock(),
 		Trie:  NewEmptyDatabase(db.Beansdb),
 	}
+
+	db.CandidatesRank = NewVoteRank()
 
 	return db
 }
@@ -105,7 +109,46 @@ func (database *ChainDatabase) blockCommit(hash common.Hash) error {
 		return nil
 	}
 
+	isCandidate := func(account *types.AccountData) bool {
+		result := account.Candidate.Profile[types.CandidateKeyIsCandidate]
+		val, err := strconv.ParseBool(result)
+		if err != nil {
+			panic("to bool err : " + err.Error())
+		}
+
+		return val
+	}
+
+	getNodeID := func(account *types.AccountData) []byte {
+		result, ok := account.Candidate.Profile[types.CandidateKeyNodeID]
+		if !ok {
+			panic("node id is not exist.")
+		} else {
+			return common.Hex2Bytes(result)
+		}
+	}
+
+	put2Candidates := func(accounts []*types.AccountData) {
+		candidates := make([]*Candidate, 0)
+		for index := 0; index < len(accounts); index++ {
+			account := accounts[index]
+			if isCandidate(account) {
+				candidates = append(candidates, &Candidate{
+					address: account.Address,
+					nodeID:  getNodeID(account),
+					total:   account.Candidate.Votes,
+				})
+			}
+
+		}
+		database.CandidatesRank.Rank(candidates)
+	}
+
 	accounts := cItem.Trie.Collected(cItem.Block.Height())
+	if len(accounts) > 0 {
+		put2Candidates(accounts)
+	}
+
 	err = decodeBatch(accounts, batch)
 	if err != nil {
 		return err
@@ -515,6 +558,10 @@ func (database *ChainDatabase) GetContractCode(hash common.Hash) (types.Code, er
 // SetContractCode saves contract's code
 func (database *ChainDatabase) SetContractCode(hash common.Hash, code types.Code) error {
 	return database.Beansdb.Put(CACHE_FLG_CODE, hash[:], hash[:], code[:])
+}
+
+func (database *ChainDatabase) GetCandidatesTop() []*Candidate {
+	return database.CandidatesRank.GetTop()
 }
 
 func (database *ChainDatabase) Close() error {

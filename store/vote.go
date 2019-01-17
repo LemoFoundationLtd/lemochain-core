@@ -12,6 +12,19 @@ type Candidate struct {
 	total   *big.Int
 }
 
+func (candidate *Candidate) GetAddress() common.Address {
+	return candidate.address
+}
+
+func (candidate *Candidate) GetNodeID() []byte {
+	// return candidate.nodeID
+	panic("don't call the method.")
+}
+
+func (candidate *Candidate) GetTotal() *big.Int {
+	return candidate.total
+}
+
 type VoteRank struct {
 	TopCnt int
 	TopCap int
