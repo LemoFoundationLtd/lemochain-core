@@ -38,6 +38,20 @@ func SetSelfNodeKey(key *ecdsa.PrivateKey) {
 }
 
 //go:generate gencodec -type DeputyNode --field-override deputyNodeMarshaling -out gen_deputy_node_json.go
+//go:generate gencodec -type CandidateNode --field-override candidateNodeMarshaling -out gen_candidate_node_json.go
+
+// CandidateNode
+type CandidateNode struct {
+	MinerAddress common.Address `json:"minerAddress"        gencodec:"required"` // 候选节点挖矿收益地址
+	NodeID       []byte         `json:"nodeID"         gencodec:"required"`
+	Host         string         `json:"host"             gencodec:"required"` // ip或者域名
+	Port         uint32         `json:"port"           gencodec:"required"`   // 端口
+}
+
+type candidateNodeMarshaling struct {
+	NodeID hexutil.Bytes
+	Port   hexutil.Uint32
+}
 
 // DeputyNode
 type DeputyNode struct {

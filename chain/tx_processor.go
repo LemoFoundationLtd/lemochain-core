@@ -2,8 +2,10 @@ package chain
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/vm"
@@ -12,6 +14,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/common/math"
 	"math/big"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -142,11 +145,12 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 		context = NewEVMContext(tx, header, txIndex, tx.Hash(), blockHash, p.chain)
 		// Create a new environment which holds all relevant information
 		// about the transaction and calling mechanisms.
-		vmEnv            = vm.NewEVM(context, p.am, *p.cfg)
-		sender           = p.am.GetAccount(senderAddr)
-		contractCreation = tx.To() == nil
-		restGas          = tx.GasLimit()
-		mergeFrom        = len(p.am.GetChangeLogs())
+		vmEnv                = vm.NewEVM(context, p.am, *p.cfg)
+		sender               = p.am.GetAccount(senderAddr)
+		initialSenderBalance = sender.GetBalance()
+		contractCreation     = tx.To() == nil
+		restGas              = tx.GasLimit()
+		mergeFrom            = len(p.am.GetChangeLogs())
 	)
 	err = p.buyGas(gp, tx)
 	if err != nil {
@@ -167,6 +171,9 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 		_, recipientAddr, restGas, vmErr = vmEnv.Create(sender, tx.Data(), restGas, tx.Amount())
 	} else {
 		recipientAddr = *tx.To()
+		recipientAccount := p.am.GetAccount(recipientAddr)
+		initialRecipientBalance := recipientAccount.GetBalance()
+
 		// 判断交易是普通转账交易、投票交易还是注册参加节点竞选的交易
 		switch tx.Type() {
 		case params.Ordinary_tx:
@@ -177,20 +184,35 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 
 		case params.Register_tx: // 执行注册参加代理节点选举交易逻辑
 			// 设置接收注册费用1000LEMO的地址
-			// strAddress := "0x1001"
-			// to, err := common.StringToAddress(strAddress)
-			// if err != nil {
-			// 	log.Errorf("invalid address: %s", err)
-			// 	return 0, err
-			// }
-			// restGas, vmErr = vmEnv.RegisterCandidate(senderAddr, to, restGas, tx.Amount())
+			strAddress := "0x1001"
+			to, err := common.StringToAddress(strAddress)
+			if err != nil {
+				log.Errorf("invalid address: %s", err)
+				return 0, err
+			}
+			// 解析交易data中申请候选节点的信息
+			txData := tx.Data()
+			CandNode := new(deputynode.CandidateNode)
+			err = json.Unmarshal(txData, CandNode)
+			if err != nil {
+				log.Errorf("unmarshal Candidate node error: %s", err)
+				return 0, err
+			}
+			minerAddress := CandNode.MinerAddress
+			nodeID := string(CandNode.NodeID)
+			host := CandNode.Host
+			port := strconv.Itoa(int(CandNode.Port))
+			restGas, vmErr = vmEnv.RegisterCandidate(senderAddr, to, minerAddress, nodeID, host, port, restGas, tx.Amount())
 
 		default:
 			log.Errorf("The type of transaction is not defined. txType = %d\n", tx.Type())
-			p.refundGas(gp, tx, restGas)
-			return 0, errors.New("the type of transaction error")
+			// p.refundGas(gp, tx, restGas) // 交易不满足所定义的交易类型的交易视为攻击，则不返还剩下的gas
+			// return 0, errors.New("the type of transaction error")
 		}
-
+		// 接收者对应的候选节点的票数变化
+		endRecipientBalance := recipientAccount.GetBalance()
+		recipientBalanceChange := new(big.Int).Sub(endRecipientBalance, initialRecipientBalance)
+		p.changeCandidateVotes(recipientAddr, recipientBalanceChange)
 	}
 	if vmErr != nil {
 		log.Info("VM returned with error", "err", vmErr)
@@ -203,11 +225,32 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 	}
 	p.refundGas(gp, tx, restGas)
 	p.am.SaveTxInAccount(senderAddr, recipientAddr, tx.Hash())
+
+	// 发送者对应的候选节点票数变动
+	endSenderBalance := sender.GetBalance()
+	senderBalanceChange := new(big.Int).Sub(endSenderBalance, initialSenderBalance)
+	p.changeCandidateVotes(senderAddr, senderBalanceChange)
+
 	// Merge change logs by transaction will save more transaction execution detail than by block
 	p.am.MergeChangeLogs(mergeFrom)
 	mergeFrom = len(p.am.GetChangeLogs())
 
 	return tx.GasLimit() - restGas, nil
+}
+
+// changeCandidateVotes 账户Balance变化对应投给的候选节点的票数的变化
+func (p *TxProcessor) changeCandidateVotes(accountAddress common.Address, changeBalance *big.Int) {
+	if changeBalance.Sign() == 0 {
+		return
+	}
+	acc := p.am.GetAccount(accountAddress)
+	CandidataAddress := acc.GetVoteFor()
+	if (CandidataAddress == common.Address{}) { // 不存在投票候选节点地址
+		return
+	}
+	CandidateAccount := p.am.GetAccount(CandidataAddress)
+	// changeBalance为正数则加，为负数则减
+	CandidateAccount.SetVotes(new(big.Int).Add(CandidateAccount.GetVotes(), changeBalance))
 }
 
 func (p *TxProcessor) buyGas(gp *types.GasPool, tx *types.Transaction) error {
@@ -289,6 +332,8 @@ func (p *TxProcessor) chargeForGas(charge *big.Int, minerAddress common.Address)
 	if charge.Cmp(new(big.Int)) != 0 {
 		miner := p.am.GetAccount(minerAddress)
 		miner.SetBalance(new(big.Int).Add(miner.GetBalance(), charge))
+		// 	矿工账户投给的候选节点的票数的变化
+		p.changeCandidateVotes(minerAddress, charge)
 	}
 }
 
