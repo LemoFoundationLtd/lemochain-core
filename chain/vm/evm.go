@@ -237,9 +237,9 @@ func (evm *EVM) RegisterCandidate(CandidateAddress, to, minerAddress common.Addr
 		if profile[types.CandidateKeyMinerAddress] != minerAddress.String() {
 			profile[types.CandidateKeyMinerAddress] = minerAddress.String()
 		}
-		if profile[types.CandidateKeyNodeID] != nodeID {
-			profile[types.CandidateKeyNodeID] = nodeID
-		}
+		// if profile[types.CandidateKeyNodeID] != nodeID {
+		// 	profile[types.CandidateKeyNodeID] = nodeID
+		// }
 		if profile[types.CandidateKeyHost] != host {
 			profile[types.CandidateKeyHost] = host
 		}
