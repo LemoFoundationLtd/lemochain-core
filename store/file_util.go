@@ -14,3 +14,13 @@ func IsExist(path string) (bool, error) {
 		return false, err
 	}
 }
+
+func CreateFile(path string) error {
+	f, err := os.Create(path)
+	defer f.Close()
+	if err != nil {
+		return err
+	} else {
+		return nil
+	}
+}

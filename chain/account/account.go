@@ -115,11 +115,11 @@ func (a *Account) SetVotes(votes *big.Int) {
 	a.data.Candidate.Votes = votes
 }
 
-func (a *Account) GetCandidateProfile() map[string]string {
+func (a *Account) GetCandidateProfile() types.CandidateProfile {
 	return a.data.Candidate.Profile
 }
 
-func (a *Account) SetCandidateProfile(profile map[string]string) {
+func (a *Account) SetCandidateProfile(profile types.CandidateProfile) {
 	a.data.Candidate.Profile = profile
 }
 

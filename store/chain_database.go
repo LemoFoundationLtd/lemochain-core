@@ -48,7 +48,7 @@ func NewChainDataBase(home string) *ChainDatabase {
 	}
 
 	db.UnConfirmBlocks = make(map[common.Hash]*CBlock)
-	db.Beansdb = NewBeansDB(home, 2, db.Context.GetScanIndex())
+	db.Beansdb = NewBeansDB(home, 2)
 	return db
 }
 

@@ -31,10 +31,45 @@ const (
 	CandidateKeyIsCandidate = "IsCandidate"
 )
 
+type Pair struct {
+	key string
+	val string
+}
+
+type CandidateProfile map[string]string
+
+func (a CandidateProfile) EncodeRLP(w io.Writer) error {
+	if len(a) <= 0 {
+		return nil
+	} else {
+		tmp := make([]Pair, 0)
+		for k, v := range a {
+			tmp = append(tmp, Pair{
+				key: k,
+				val: v,
+			})
+		}
+
+		return rlp.Encode(w, tmp)
+	}
+}
+
+func (a CandidateProfile) DecodeRLP(s *rlp.Stream) error {
+	dec := make([]Pair, 0)
+	err := s.Decode(&dec)
+	if err != nil {
+		return err
+	}
+
+	for index := 0; index < len(dec); index++ {
+		a[dec[index].key] = dec[index].val
+	}
+	return nil
+}
+
 type Candidate struct {
-	// IsCandidate bool
 	Votes   *big.Int
-	Profile map[string]string
+	Profile CandidateProfile
 }
 
 type AccountData struct {
@@ -45,7 +80,7 @@ type AccountData struct {
 	// It records the block height which contains any type of newest change log. It is updated in finalize step
 	NewestRecords map[ChangeLogType]VersionRecord `json:"records" gencodec:"required"`
 
-	VoteFor   common.Address
+	VoteFor   common.Address `json:"voteFor"`
 	Candidate Candidate
 
 	// related transactions include income and outcome
@@ -161,8 +196,8 @@ type AccountAccessor interface {
 	GetVotes() *big.Int
 	SetVotes(votes *big.Int)
 
-	GetCandidateProfile() map[string]string
-	SetCandidateProfile(profile map[string]string)
+	GetCandidateProfile() CandidateProfile
+	SetCandidateProfile(profile CandidateProfile)
 
 	GetAddress() common.Address
 	GetBalance() *big.Int

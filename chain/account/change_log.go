@@ -98,20 +98,15 @@ func decodeEvent(s *rlp.Stream) (interface{}, error) {
 	return &result, err
 }
 
+func decodeCandidateProfile(s *rlp.Stream) (interface{}, error) {
+	var result types.CandidateProfile
+	err := s.Decode(&result)
+	return &result, err
+}
+
 //
 // ChangeLog definitions
 //
-
-// NewBalanceLog records balance change
-func NewBalanceLog(processor types.ChangeLogProcessor, account types.AccountAccessor, newBalance *big.Int) *types.ChangeLog {
-	return &types.ChangeLog{
-		LogType: BalanceLog,
-		Address: account.GetAddress(),
-		Version: processor.GetNextVersion(BalanceLog, account.GetAddress()),
-		OldVal:  *(new(big.Int).Set(account.GetBalance())),
-		NewVal:  *(new(big.Int).Set(newBalance)),
-	}
-}
 
 func NewVotesLog(processor types.ChangeLogProcessor, account types.AccountAccessor, newVotes *big.Int) *types.ChangeLog {
 	return &types.ChangeLog{
@@ -121,6 +116,28 @@ func NewVotesLog(processor types.ChangeLogProcessor, account types.AccountAccess
 		OldVal:  account.GetVotes(),
 		NewVal:  newVotes,
 	}
+}
+
+func redoVotes(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
+	newValue, ok := c.NewVal.(big.Int)
+	if !ok {
+		log.Errorf("expected NewVal big.Int, got %T", c.NewVal)
+		return types.ErrWrongChangeLogData
+	}
+	accessor := processor.GetAccount(c.Address)
+	accessor.SetVotes(&newValue)
+	return nil
+}
+
+func undoVotes(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
+	oldValue, ok := c.OldVal.(big.Int)
+	if !ok {
+		log.Errorf("expected OldVal big.Int, got %T", c.OldVal)
+		return types.ErrWrongChangeLogData
+	}
+	accessor := processor.GetAccount(c.Address)
+	accessor.SetVotes(&oldValue)
+	return nil
 }
 
 func NewVoteForLog(processor types.ChangeLogProcessor, account types.AccountAccessor, newVoteFor common.Address) *types.ChangeLog {
@@ -133,6 +150,28 @@ func NewVoteForLog(processor types.ChangeLogProcessor, account types.AccountAcce
 	}
 }
 
+func redoVoteFor(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
+	newVal, ok := c.NewVal.(common.Address)
+	if !ok {
+		log.Errorf("expected NewVal common.Address, got %T", c.NewVal)
+		return types.ErrWrongChangeLogData
+	}
+	accessor := processor.GetAccount(c.Address)
+	accessor.SetVoteFor(newVal)
+	return nil
+}
+
+func undoVoteFor(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
+	oldVal, ok := c.OldVal.(common.Address)
+	if !ok {
+		log.Errorf("expected NewVal common.Address, got %T", c.NewVal)
+		return types.ErrWrongChangeLogData
+	}
+	accessor := processor.GetAccount(c.Address)
+	accessor.SetVoteFor(oldVal)
+	return nil
+}
+
 func NewCandidateProfileLog(processor types.ChangeLogProcessor, account types.AccountAccessor, newProfile map[string]string) *types.ChangeLog {
 	return &types.ChangeLog{
 		LogType: CandidateProfileLog,
@@ -140,6 +179,39 @@ func NewCandidateProfileLog(processor types.ChangeLogProcessor, account types.Ac
 		Version: processor.GetNextVersion(VoteForLog, account.GetAddress()),
 		OldVal:  account.GetCandidateProfile(),
 		NewVal:  newProfile,
+	}
+}
+
+func redoCandidateProfile(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
+	newVal, ok := c.NewVal.(map[string]string)
+	if !ok {
+		log.Errorf("expected NewVal []byte, got %T", c.NewVal)
+		return types.ErrWrongChangeLogData
+	}
+	accessor := processor.GetAccount(c.Address)
+	accessor.SetCandidateProfile(newVal)
+	return nil
+}
+
+func undoCandidateProfile(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
+	oldVal, ok := c.OldVal.(map[string]string)
+	if !ok {
+		log.Errorf("expected NewVal map[string]string, got %T", c.NewVal)
+		return types.ErrWrongChangeLogData
+	}
+	accessor := processor.GetAccount(c.Address)
+	accessor.SetCandidateProfile(oldVal)
+	return nil
+}
+
+// NewBalanceLog records balance change
+func NewBalanceLog(processor types.ChangeLogProcessor, account types.AccountAccessor, newBalance *big.Int) *types.ChangeLog {
+	return &types.ChangeLog{
+		LogType: BalanceLog,
+		Address: account.GetAddress(),
+		Version: processor.GetNextVersion(BalanceLog, account.GetAddress()),
+		OldVal:  *(new(big.Int).Set(account.GetBalance())),
+		NewVal:  *(new(big.Int).Set(newBalance)),
 	}
 }
 

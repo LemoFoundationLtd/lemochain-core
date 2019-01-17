@@ -23,27 +23,121 @@ var (
 	CACHE_FLG_KV           = uint(7)
 )
 
+type LastIndex struct {
+	Index  uint32
+	Offset uint32
+}
+
+type BitcaskIndexes [256]LastIndex
+
+func (bitcaskIndexes BitcaskIndexes) load(home string) error {
+	path := filepath.Join(home, "/hit.index")
+	isExist, err := IsExist(path)
+	if err != nil {
+		return err
+	}
+
+	if !isExist {
+		return nil
+	}
+
+	file, err := os.OpenFile(path, os.O_RDONLY, 0666)
+	defer file.Close()
+	if err != nil {
+		return err
+	}
+
+	bodyBuf, err := rlp.EncodeToBytes(bitcaskIndexes)
+	if err != nil {
+		return err
+	}
+
+	headBuf := make([]byte, binary.Size(contextHead{}))
+	_, err = file.Seek(0, 0)
+	if err != nil {
+		return err
+	}
+
+	_, err = file.Read(headBuf)
+	if err != nil {
+		return err
+	}
+
+	var head contextHead
+	err = binary.Read(bytes.NewBuffer(headBuf), binary.LittleEndian, &head)
+	if err != nil {
+		return err
+	}
+
+	bodyBuf := make([]byte, head.FileLen)
+	_, err = file.Read(bodyBuf)
+	if err != nil {
+		return err
+	}
+
+	return rlp.DecodeBytes(bodyBuf, bitcaskIndexes)
+}
+
+func (bitcaskIndexes BitcaskIndexes) flush(home string) error {
+	path := filepath.Join(home, "/hit.index")
+	isExist, err := IsExist(path)
+	if err != nil {
+		return err
+	}
+
+	if !isExist {
+		err = CreateFile(path)
+		if err != nil {
+			return err
+		}
+	}
+
+	file, err := os.OpenFile(path, os.O_WRONLY, os.ModePerm)
+	defer file.Close()
+	if err != nil {
+		return err
+	}
+
+	bodyBuf, err := rlp.EncodeToBytes(bitcaskIndexes)
+	if err != nil {
+		return err
+	}
+
+	_, err = file.Seek(0, 0)
+	if err != nil {
+		return err
+	}
+
+	n, err := file.Write(bodyBuf)
+	if err != nil {
+		return err
+	}
+
+	if n != len(bodyBuf) {
+		panic("n != len(data)")
+	}
+
+	return file.Sync()
+}
+
 type BeansDB struct {
 	height    uint
 	bitcasks  []*BitCask
 	indexDB   DB
 	route2key map[string][]byte
+	scanIndex BitcaskIndexes
 }
 
 func after(flag uint, route []byte, key []byte, val []byte, offset uint32) error {
 	return nil
 }
 
-func NewBeansDB(home string, height int, indexes []LastIndex) *BeansDB {
+func NewBeansDB(home string, height int) *BeansDB {
 	if height != 2 {
 		panic("beansdb height != 2")
 	}
 
 	count := 1 << (uint(height) * 4)
-	if len(indexes) != count {
-		panic("len(last index) != count")
-	}
-
 	beansdb := &BeansDB{height: uint(height)}
 	beansdb.bitcasks = make([]*BitCask, count)
 	beansdb.route2key = make(map[string][]byte)
@@ -53,7 +147,7 @@ func NewBeansDB(home string, height int, indexes []LastIndex) *BeansDB {
 		dataPath := filepath.Join(home, "/%02d/%02d/")
 		str := fmt.Sprintf(dataPath, index>>4, index&0xf)
 
-		last := indexes[index]
+		last := beansdb.scanIndex[index]
 		database, err := NewBitCask(str, int(last.Index), last.Offset, nil, beansdb.indexDB)
 		if err != nil {
 			panic("new bitcask error : " + err.Error())
@@ -165,20 +259,13 @@ type contextHead struct {
 	Crc       uint16
 }
 
-type LastIndex struct {
-	Index  uint32
-	Offset uint32
-}
-
 type contextBody struct {
-	ScanIndex   []LastIndex
-	StableBlock *types.Block
-	Candidates  []common.Address
+	StableBlock []byte
+	Candidates  []byte
 }
 
 type RunContext struct {
 	Path        string
-	ScanIndex   []LastIndex
 	StableBlock *types.Block
 	Candidates  map[common.Address]bool
 }
@@ -187,7 +274,6 @@ func NewRunContext(path string) *RunContext {
 	path = filepath.Join(path, "/context.data")
 	context := &RunContext{
 		Path:        path,
-		ScanIndex:   make([]LastIndex, 0),
 		StableBlock: nil,
 		Candidates:  make(map[common.Address]bool),
 	}
@@ -256,13 +342,6 @@ func (context *RunContext) Load() error {
 	}
 
 	if !isExist {
-		context.ScanIndex = make([]LastIndex, 256)
-		for index := 0; index < 256; index++ {
-			context.ScanIndex[index] = LastIndex{
-				Index:  0,
-				Offset: 0,
-			}
-		}
 		err = context.createFile()
 		if err != nil {
 			return err
@@ -275,8 +354,13 @@ func (context *RunContext) Load() error {
 			return err
 		}
 
-		context.ScanIndex = body.ScanIndex
-		context.StableBlock = body.StableBlock
+		blockBuf, err := rlp.EncodeToBytes(body.StableBlock)
+		if err != nil {
+			return err
+		} else {
+			context.StableBlock = blockBuf
+
+		}
 		for index := 0; index < len(body.Candidates); index++ {
 			context.Candidates[body.Candidates[index]] = true
 		}
@@ -316,21 +400,6 @@ func (context *RunContext) CandidateIsExist(address common.Address) bool {
 		return true
 	}
 }
-
-// func (context *RunContext) GetCandidates() []common.Address {
-// 	if len(context.Candidates) <= 0 {
-// 		return make([]common.Address, 0)
-// 	} else {
-// 		result := make([]common.Address, len(context.Candidates))
-// 		index := 0
-// 		for k, _ := range context.Candidates {
-// 			result[index] = k
-// 			index = index + 1
-// 		}
-//
-// 		return result
-// 	}
-// }
 
 func (context *RunContext) encodeHead(fileLen uint32) ([]byte, error) {
 	head := contextHead{
