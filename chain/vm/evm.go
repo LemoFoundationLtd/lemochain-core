@@ -234,8 +234,8 @@ func (evm *EVM) RegisterCandidate(CandidateAddress, to, minerAddress common.Addr
 	IsCandidate, ok := profile[types.CandidateKeyIsCandidate]
 	// 如果已经是候选节点账户则查看传入的nodeID,host,port是否需要改变
 	if ok && IsCandidate == "true" {
-		if profile[types.CandidateKeyMinerAddress] != minerAddress.String() {
-			profile[types.CandidateKeyMinerAddress] = minerAddress.String()
+		if profile[types.CandidateKeyMinerAddress] != minerAddress.Hex() {
+			profile[types.CandidateKeyMinerAddress] = minerAddress.Hex()
 		}
 		// if profile[types.CandidateKeyNodeID] != nodeID {
 		// 	profile[types.CandidateKeyNodeID] = nodeID
@@ -249,7 +249,7 @@ func (evm *EVM) RegisterCandidate(CandidateAddress, to, minerAddress common.Addr
 	} else {
 		// 设置账户为竞选节点
 		profile[types.CandidateKeyIsCandidate] = "true"
-		profile[types.CandidateKeyMinerAddress] = minerAddress.String()
+		profile[types.CandidateKeyMinerAddress] = minerAddress.Hex()
 		profile[types.CandidateKeyNodeID] = nodeID
 		profile[types.CandidateKeyHost] = host
 		profile[types.CandidateKeyPort] = port

@@ -110,6 +110,7 @@ func TestChainAPI_api(t *testing.T) {
 
 // TestTxAPI_api send tx api test
 func TestTxAPI_api(t *testing.T) {
+	defer store.ClearData()
 	testTx := types.NewTransaction(common.HexToAddress("0x1"), common.Big1, 100, common.Big2, []byte{12}, 0, 100, uint64(time.Now().Unix()+60*30), "aa", string("send a Tx"))
 	// signTx := signTransaction(testTx, testPrivate)
 	// txCh := make(chan types.Transactions, 100)
@@ -153,6 +154,7 @@ func TestTxAPI_api(t *testing.T) {
 
 // TestNewPublicTxAPI_EstimateGas
 func TestNewPublicTxAPI_EstimateGas(t *testing.T) {
+	store.ClearData()
 	Chain := newChain()
 	node := &Node{
 		chain:  Chain,
