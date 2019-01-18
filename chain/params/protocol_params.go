@@ -1,5 +1,7 @@
 package params
 
+import "math/big"
+
 var (
 	TargetGasLimit uint64 = GenesisGasLimit // The artificial target
 )
@@ -9,6 +11,9 @@ const (
 	MinGasLimit          uint64 = 5000    // Minimum the gas limit may ever be.
 	GenesisGasLimit      uint64 = 4712388 // Gas limit of the Genesis block.
 
+	MaximumExtraDataSize  uint64 = 32    // Maximum size extra data may be after Genesis.
+	ExpByteGas            uint64 = 10    // Times ceil(log256(exponent)) for the EXP instruction.
+	SloadGas              uint64 = 50    // Multiplied by the number of 32-byte words that are copied (round up) for any *COPY operation and added.
 	CallValueTransferGas  uint64 = 9000  // Paid for CALL when the value transfer is non-zero.
 	CallNewAccountGas     uint64 = 25000 // Paid for CALL when the destination address didn't exist prior.
 	TxGas                 uint64 = 21000 // Per transaction not creating a contract. NOTE: Not payable on data of calls between transactions.
@@ -22,14 +27,21 @@ const (
 	Sha3Gas          uint64 = 30    // Once per SHA3 operation.
 	Sha3WordGas      uint64 = 6     // Once per word of the SHA3 operation's data.
 	SstoreResetGas   uint64 = 5000  // Once per SSTORE operation if the zeroness changes from zero.
+	SstoreClearGas   uint64 = 5000  // Once per SSTORE operation if the zeroness doesn't change.
+	SstoreRefundGas  uint64 = 15000 // Once per SSTORE operation if the zeroness changes to zero.
 	JumpdestGas      uint64 = 1     // Refunded gas, once per SSTORE operation if the zeroness changes to zero.
+	EpochDuration    uint64 = 30000 // Duration between proof-of-work epochs.
+	CallGas          uint64 = 40    // Once per CALL operation & message call transaction.
 	CreateDataGas    uint64 = 200   //
 	CallCreateDepth  uint64 = 1024  // Maximum depth of call/create stack.
+	ExpGas           uint64 = 10    // Once per EXP instruction
 	EventGas         uint64 = 375   // Per LOG* operation.
 	CopyGas          uint64 = 3     //
 	StackLimit       uint64 = 1024  // Maximum size of VM stack allowed.
+	TierStepGas      uint64 = 0     // Once per operation, for a selection of them.
 	EventTopicGas    uint64 = 375   // Multiplied by the * of the LOG*, per LOG transaction. e.g. LOG0 incurs 0 * c_txLogTopicGas, LOG4 incurs 4 * c_txLogTopicGas.
 	CreateGas        uint64 = 32000 // Once per CREATE operation & contract-creation transaction.
+	SuicideRefundGas uint64 = 24000 // Refunded following a suicide operation.
 	MemoryGas        uint64 = 3     // Times the address of the (highest referenced byte in memory + 1). NOTE: referencing happens on read, write and in instructions such as RETURN and CALL.
 	TxDataNonZeroGas uint64 = 68    // Per byte of data attached to a transaction that is not equal to zero. NOTE: Not payable on data of calls between transactions.
 

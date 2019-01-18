@@ -29,7 +29,7 @@ type ChainDatabase struct {
 	rw sync.RWMutex
 }
 
-func NewChainDataBase(home string) *ChainDatabase {
+func NewChainDataBase(home string, driver string, dns string) *ChainDatabase {
 	isExist, err := IsExist(home)
 	if err != nil {
 		panic("check home is exist error:" + err.Error())
@@ -44,7 +44,7 @@ func NewChainDataBase(home string) *ChainDatabase {
 
 	db := &ChainDatabase{}
 	db.UnConfirmBlocks = make(map[common.Hash]*CBlock)
-	db.Beansdb = NewBeansDB(home, 2)
+	db.Beansdb = NewBeansDB(home, 2, driver, dns)
 	db.Context = NewRunContext(home)
 
 	db.LastConfirm = &CBlock{
@@ -84,8 +84,6 @@ func (database *ChainDatabase) blockCommit(hash common.Hash) error {
 
 	batch.Put(CACHE_FLG_BLOCK, hash[:], buf)
 	batch.Put(CACHE_FLG_BLOCK_HEIGHT, encodeBlockNumber2Hash(cItem.Block.Height()).Bytes(), hash[:])
-
-	curBlockBuf := buf
 
 	// store account
 	decode := func(account *types.AccountData, batch Batch) error {

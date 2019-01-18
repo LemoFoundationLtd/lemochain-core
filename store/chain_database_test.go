@@ -194,7 +194,7 @@ func TestChainDatabase_SetContractCode(t *testing.T) {
 func TestCacheChain_LoadLatestBlock1(t *testing.T) {
 	ClearData()
 
-	cacheChain := NewChainDataBase(GetStorePath())
+	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
 
 	result, err := cacheChain.LoadLatestBlock()
 	assert.Equal(t, err, ErrNotExist)
@@ -221,7 +221,7 @@ func TestCacheChain_LoadLatestBlock1(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, childBlock.ParentHash(), result.ParentHash())
 
-	cacheChain = NewChainDataBase(GetStorePath())
+	cacheChain = NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
 
 	result, err = cacheChain.LoadLatestBlock()
 	assert.NoError(t, err)

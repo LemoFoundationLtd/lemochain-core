@@ -17,14 +17,14 @@ func (c ConfigFromFile) MarshalJSON() ([]byte, error) {
 		ChainID   hexutil.Uint64 `json:"chainID"     gencodec:"required"`
 		SleepTime hexutil.Uint64 `json:"sleepTime"   gencodec:"required"`
 		Timeout   hexutil.Uint64 `json:"timeout"     gencodec:"required"`
-		DbDns     string         `json:"DbDns"       gencodec:"required"`
-		DbDriver  string         `json:"DbDriver"    gencodec:"required"`
+		DbUri     string         `json:"dbUri"       gencodec:"required"`
+		DbDriver  string         `json:"dbDriver"    gencodec:"required"`
 	}
 	var enc ConfigFromFile
 	enc.ChainID = hexutil.Uint64(c.ChainID)
 	enc.SleepTime = hexutil.Uint64(c.SleepTime)
 	enc.Timeout = hexutil.Uint64(c.Timeout)
-	enc.DbDns = c.DbDns
+	enc.DbUri = c.DbUri
 	enc.DbDriver = c.DbDriver
 	return json.Marshal(&enc)
 }
@@ -35,8 +35,8 @@ func (c *ConfigFromFile) UnmarshalJSON(input []byte) error {
 		ChainID   *hexutil.Uint64 `json:"chainID"     gencodec:"required"`
 		SleepTime *hexutil.Uint64 `json:"sleepTime"   gencodec:"required"`
 		Timeout   *hexutil.Uint64 `json:"timeout"     gencodec:"required"`
-		DbDns     *string         `json:"DbDns"       gencodec:"required"`
-		DbDriver  *string         `json:"DbDriver"    gencodec:"required"`
+		DbUri     *string         `json:"dbUri"       gencodec:"required"`
+		DbDriver  *string         `json:"dbDriver"    gencodec:"required"`
 	}
 	var dec ConfigFromFile
 	if err := json.Unmarshal(input, &dec); err != nil {
@@ -54,10 +54,10 @@ func (c *ConfigFromFile) UnmarshalJSON(input []byte) error {
 		return errors.New("missing required field 'timeout' for ConfigFromFile")
 	}
 	c.Timeout = uint64(*dec.Timeout)
-	if dec.DbDns == nil {
-		return errors.New("missing required field 'DbDns' for ConfigFromFile")
+	if dec.DbUri == nil {
+		return errors.New("missing required field 'DbUri' for ConfigFromFile")
 	}
-	c.DbDns = *dec.DbDns
+	c.DbUri = *dec.DbUri
 	if dec.DbDriver == nil {
 		return errors.New("missing required field 'DbDriver' for ConfigFromFile")
 	}

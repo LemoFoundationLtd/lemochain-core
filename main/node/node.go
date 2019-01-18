@@ -150,7 +150,7 @@ func initDeputyNodes(db protocol.ChainDB) {
 
 func New(flags flag.CmdFlags) *Node {
 	cfg, configFromFile, mineCfg := initConfig(flags)
-	db := initDb(cfg.DataDir, configFromFile.DbDriver, configFromFile.DbDns)
+	db := initDb(cfg.DataDir, configFromFile.DbDriver, configFromFile.DbUri)
 	// read genesis block
 	genesisBlock := getGenesis(db)
 	if genesisBlock == nil {

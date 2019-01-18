@@ -136,7 +136,7 @@ func NewBeansDB(home string, height int, driver string, dns string) *BeansDB {
 	beansdb := &BeansDB{height: uint(height)}
 	beansdb.bitcasks = make([]*BitCask, count)
 	beansdb.route2key = make(map[string][]byte)
-	beansdb.indexDB = NewMySqlDB(DRIVER_MYSQL, DNS_MYSQL)
+	beansdb.indexDB = NewMySqlDB(driver, dns)
 
 	for index := 0; index < count; index++ {
 		dataPath := filepath.Join(home, "/%02d/%02d/")

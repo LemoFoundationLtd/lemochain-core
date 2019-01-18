@@ -256,7 +256,7 @@ func (pool *TxPool) Remove(keys []common.Hash) {
 }
 
 func (pool *TxPool) validateTx(tx *types.Transaction) error {
-	from, err := tx.From()
+	_, err := tx.From()
 	if err != nil {
 		return ErrInvalidSender
 	}
@@ -267,7 +267,7 @@ func (pool *TxPool) validateTx(tx *types.Transaction) error {
 		return ErrNegativeValue
 	}
 	// Make sure the transaction is signed properly
-	_, err := types.MakeSigner().GetSender(tx)
+	_, err = types.MakeSigner().GetSender(tx)
 	if err != nil {
 		return ErrInvalidSender
 	} else {
