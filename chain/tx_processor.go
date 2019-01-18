@@ -174,13 +174,13 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 
 		// 判断交易是普通转账交易、投票交易还是注册参加节点竞选的交易
 		switch tx.Type() {
-		case params.Ordinary_tx:
+		case params.OrdinaryTx:
 			_, restGas, vmErr = vmEnv.Call(sender, recipientAddr, tx.Data(), restGas, tx.Amount())
 
-		case params.Vote_tx: // 执行投票交易逻辑
+		case params.VoteTx: // 执行投票交易逻辑
 			restGas, vmErr = vmEnv.CallVoteTx(senderAddr, recipientAddr, restGas)
 
-		case params.Register_tx: // 执行注册参加代理节点选举交易逻辑
+		case params.RegisterTx: // 执行注册参加代理节点选举交易逻辑
 			// 设置接收注册费用1000LEMO的地址
 			strAddress := "0x1001"
 			to, err := common.StringToAddress(strAddress)
@@ -379,9 +379,9 @@ func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *comm
 
 	var tx *types.Transaction
 	if to == nil { // avoid null pointer references
-		tx = types.NewContractCreation(big.NewInt(0), gasLimit, gasPrice, data, params.Ordinary_tx, p.chain.chainID, uint64(time.Now().Unix()+30*60), "", "")
+		tx = types.NewContractCreation(big.NewInt(0), gasLimit, gasPrice, data, params.OrdinaryTx, p.chain.chainID, uint64(time.Now().Unix()+30*60), "", "")
 	} else {
-		tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, params.Ordinary_tx, p.chain.chainID, uint64(time.Now().Unix()+30*60), "", "")
+		tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, params.OrdinaryTx, p.chain.chainID, uint64(time.Now().Unix()+30*60), "", "")
 	}
 
 	// Timeout limit
