@@ -127,7 +127,7 @@ func after(flag uint, route []byte, key []byte, val []byte, offset uint32) error
 	return nil
 }
 
-func NewBeansDB(home string, height int) *BeansDB {
+func NewBeansDB(home string, height int, driver string, dns string) *BeansDB {
 	if height != 2 {
 		panic("beansdb height != 2")
 	}

@@ -244,7 +244,7 @@ func (engine *EngineTestForMiner) Finalize(header *types.Header, am *account.Man
 
 func newBlockChain() (*chain.BlockChain, chan *types.Block, error) {
 	chainID := uint16(99)
-	db := store.NewChainDataBase(store.GetStorePath())
+	db := store.NewChainDataBase(store.GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
 	genesis := chain.DefaultGenesisBlock()
 	_, err := chain.SetupGenesisBlock(db, genesis)
 	if err != nil {
@@ -275,7 +275,7 @@ func newMiner(key string) (*Miner, error) {
 		return nil, err
 	}
 
-	txPool := chain.NewTxPool(100, blockChain.AccountManager())
+	txPool := chain.NewTxPool(100)
 	return New(Cnf, blockChain, txPool, new(EngineTestForMiner)), nil
 }
 

@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	SnapshotBlockInterval = 100000
+	SnapshotBlockInterval = 1000000
 	TransitionPeriod      = 1000
 )
 
@@ -116,6 +116,7 @@ func (d *Manager) Add(height uint32, nodes DeputyNodes) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 	d.DeputyNodesList = append(d.DeputyNodesList, &DeputyNodesRecord{height: height, nodes: nodes})
+	log.Info("deputy node.add")
 }
 
 var deputyNodeManger *Manager
@@ -155,6 +156,10 @@ func (d *Manager) GetDeputiesCount() int {
 // getNodeByAddress 获取address对应的节点
 func (d *Manager) GetDeputyByAddress(height uint32, addr common.Address) *DeputyNode {
 	nodes := d.getDeputiesByHeight(height)
+	if nodes == nil || len(nodes) == 0 {
+		log.Warnf("GetDeputyByAddress: can't get deputy node, height: %d, addr: %s", height, addr.String())
+		return nil
+	}
 	for _, node := range nodes {
 		if node.MinerAddress == addr {
 			return node

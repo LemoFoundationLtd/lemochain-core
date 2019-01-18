@@ -98,16 +98,19 @@ func initConfig(flags flag.CmdFlags) (*Config, *ConfigFromFile, *miner.MineConfi
 	return cfg, configFromFile, mineCfg
 }
 
-func initDb(dataDir string) protocol.ChainDB {
+func initDb(dataDir string, driver string, dns string) protocol.ChainDB {
 	dir := filepath.Join(dataDir, "chaindata")
-	return store.NewChainDataBase(dir)
+	return store.NewChainDataBase(dir, driver, dns)
 }
 
 func getGenesis(db protocol.ChainDB) *types.Block {
 	block, err := db.GetBlockByHeight(0)
 	if err == store.ErrNotExist {
 		genesis := chain.DefaultGenesisBlock()
-		chain.SetupGenesisBlock(db, genesis)
+		if _, err = chain.SetupGenesisBlock(db, genesis); err != nil {
+			panic("SetupGenesisBlock Failed")
+		}
+		block, _ = db.GetBlockByHeight(0)
 	} else if err == nil {
 		// normal
 	} else {
@@ -129,6 +132,10 @@ func initDeputyNodes(db protocol.ChainDB) {
 	block, _ := db.GetBlockByHeight(0)
 	var err error
 	for block != nil {
+		if block.DeputyNodes == nil || len(block.DeputyNodes) == 0 {
+			log.Warnf("initDeputyNodes: can't get deputy nodes in snapshot block")
+			return
+		}
 		deputynode.Instance().Add(block.Height(), block.DeputyNodes)
 		block, err = db.GetBlockByHeight(block.Height() + deputynode.SnapshotBlockInterval)
 		if err == store.ErrNotExist {
@@ -143,9 +150,12 @@ func initDeputyNodes(db protocol.ChainDB) {
 
 func New(flags flag.CmdFlags) *Node {
 	cfg, configFromFile, mineCfg := initConfig(flags)
-	db := initDb(cfg.DataDir)
+	db := initDb(cfg.DataDir, configFromFile.DbDriver, configFromFile.DbDns)
 	// read genesis block
 	genesisBlock := getGenesis(db)
+	if genesisBlock == nil {
+		panic("can't get genesis block")
+	}
 	// read all deputy nodes from snapshot block
 	initDeputyNodes(db)
 	// new dpovp consensus engine
@@ -157,7 +167,7 @@ func New(flags flag.CmdFlags) *Node {
 	// account manager
 	accMan := blockChain.AccountManager()
 	// tx pool
-	txPool := chain.NewTxPool(uint16(configFromFile.ChainID), accMan)
+	txPool := chain.NewTxPool(uint16(configFromFile.ChainID))
 	// discover manager
 	discover := p2p.NewDiscoverManager(cfg.DataDir)
 	selfNodeID := p2p.NodeID{}
@@ -346,7 +356,7 @@ func (n *Node) startHTTP(endpoint string, apis []rpc.API, cors []string, vhosts 
 		return err
 	}
 	go rpc.NewHTTPServer(cors, vhosts, handler).Serve(listener)
-	log.Info("HTTP endpoint opened", "url", fmt.Sprintf("http://%s", endpoint), "cors", strings.Join(cors, ","), "vhosts", strings.Join(vhosts, ","))
+	log.Info("HTTP endpoint opened", "url", fmt.Sprintf("h ttp://%s", endpoint), "cors", strings.Join(cors, ","), "vhosts", strings.Join(vhosts, ","))
 	// All listeners booted successfully
 	n.httpEndpoint = endpoint
 	n.httpListener = listener

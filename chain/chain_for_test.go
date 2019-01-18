@@ -123,7 +123,7 @@ func newChain() *BlockChain {
 
 // newDB creates db for test chain module
 func newDB() protocol.ChainDB {
-	db := store.NewChainDataBase(store.GetStorePath())
+	db := store.NewChainDataBase(store.GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
 	for i, _ := range defaultBlockInfos {
 		if i > 0 {
 			defaultBlockInfos[i].parentHash = defaultBlocks[i-1].Hash()

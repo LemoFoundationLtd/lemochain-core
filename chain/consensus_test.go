@@ -29,7 +29,7 @@ const (
 // loadDpovp 加载一个Dpovp实例
 func loadDpovp() *Dpovp {
 	store.ClearData()
-	db := store.NewChainDataBase(store.GetStorePath())
+	db := store.NewChainDataBase(store.GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
 	d := NewDpovp(10*1000, db)
 	return d
 }

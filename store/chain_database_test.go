@@ -5,12 +5,13 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/stretchr/testify/assert"
 	"testing"
+	// "github.com/LemoFoundationLtd/lemochain-go/common/log"
 )
 
 func TestCacheChain_SetBlock(t *testing.T) {
 	ClearData()
 
-	cacheChain := NewChainDataBase(GetStorePath())
+	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
 
 	block0 := GetBlock0()
 	err := cacheChain.SetBlock(block0.Hash(), block0)
@@ -42,7 +43,7 @@ func TestCacheChain_SetBlock(t *testing.T) {
 func TestCacheChain_IsExistByHash(t *testing.T) {
 	ClearData()
 
-	cacheChain := NewChainDataBase(GetStorePath())
+	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
 
 	isExist, err := cacheChain.IsExistByHash(common.Hash{})
 	assert.NoError(t, err)
@@ -64,7 +65,7 @@ func TestCacheChain_IsExistByHash(t *testing.T) {
 func TestCacheChain_WriteChain1(t *testing.T) {
 	ClearData()
 
-	cacheChain := NewChainDataBase(GetStorePath())
+	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
 
 	parentBlock := GetBlock0()
 	err := cacheChain.SetBlock(parentBlock.Hash(), parentBlock)
@@ -89,7 +90,7 @@ func TestCacheChain_WriteChain1(t *testing.T) {
 func TestCacheChain_WriteChain2(t *testing.T) {
 	ClearData()
 
-	cacheChain := NewChainDataBase(GetStorePath())
+	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
 
 	parentBlock := GetBlock0()
 	err := cacheChain.SetBlock(parentBlock.Hash(), parentBlock)
@@ -117,7 +118,7 @@ func TestCacheChain_WriteChain2(t *testing.T) {
 func TestCacheChain_repeat(t *testing.T) {
 	ClearData()
 
-	cacheChain := NewChainDataBase(GetStorePath())
+	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
 
 	parentBlock := GetBlock0()
 	err := cacheChain.SetBlock(parentBlock.Hash(), parentBlock)
@@ -143,7 +144,7 @@ func TestCacheChain_repeat(t *testing.T) {
 func TestCacheChain_Load4Hit(t *testing.T) {
 	ClearData()
 
-	cacheChain := NewChainDataBase(GetStorePath())
+	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
 
 	block := GetBlock0()
 	err := cacheChain.SetBlock(block.Hash(), block)
@@ -159,7 +160,7 @@ func TestCacheChain_Load4Hit(t *testing.T) {
 	err = cacheChain.SetStableBlock(block.Hash())
 	assert.NoError(t, err)
 
-	cacheChain = NewChainDataBase(GetStorePath())
+	cacheChain = NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
 
 	parentBlock := GetBlock0()
 
@@ -177,7 +178,7 @@ func TestCacheChain_Load4Hit(t *testing.T) {
 func TestChainDatabase_SetContractCode(t *testing.T) {
 	ClearData()
 
-	database := NewChainDataBase(GetStorePath())
+	database := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
 
 	code := types.Code("this  is code")
 	hash := common.HexToHash("this is code")
@@ -230,7 +231,7 @@ func TestCacheChain_LoadLatestBlock1(t *testing.T) {
 func TestCacheChain_LoadLatestBlock2(t *testing.T) {
 	ClearData()
 
-	cacheChain := NewChainDataBase(GetStorePath())
+	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
 
 	parentBlock := GetBlock0()
 	childBlock := GetBlock1()
@@ -257,7 +258,7 @@ func TestCacheChain_LoadLatestBlock2(t *testing.T) {
 func TestCacheChain_SetConfirm1(t *testing.T) {
 	ClearData()
 
-	cacheChain := NewChainDataBase(GetStorePath())
+	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
 
 	signs, err := CreateSign(16)
 	assert.NoError(t, err)
@@ -278,7 +279,7 @@ func TestCacheChain_SetConfirm1(t *testing.T) {
 	assert.Equal(t, signs[2], result[2])
 	assert.Equal(t, signs[3], result[3])
 
-	//cacheChain = NewChainDataBase(GetStorePath())
+	//cacheChain = NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
 
 	result, err = cacheChain.GetConfirms(parentBlock.Hash())
 	assert.NoError(t, err)
@@ -292,7 +293,7 @@ func TestCacheChain_SetConfirm1(t *testing.T) {
 func TestCacheChain_SetConfirm2(t *testing.T) {
 	ClearData()
 
-	cacheChain := NewChainDataBase(GetStorePath())
+	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
 
 	signs, err := CreateSign(16)
 	assert.NoError(t, err)
@@ -333,7 +334,7 @@ func TestCacheChain_SetConfirm2(t *testing.T) {
 	assert.Equal(t, signs[2], result[2])
 	assert.Equal(t, signs[3], result[3])
 
-	//cacheChain = NewChainDataBase(GetStorePath())
+	//cacheChain = NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
 
 	result, err = cacheChain.GetConfirms(parentBlock.Hash())
 	assert.NoError(t, err)
@@ -347,7 +348,7 @@ func TestCacheChain_SetConfirm2(t *testing.T) {
 func TestCacheChain_AppendConfirm(t *testing.T) {
 	ClearData()
 
-	cacheChain := NewChainDataBase(GetStorePath())
+	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
 
 	signs, err := CreateSign(16)
 	assert.NoError(t, err)

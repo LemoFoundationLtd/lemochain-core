@@ -8,7 +8,7 @@ import (
 	"crypto/rand"
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestExamplePair(t *testing.T) {
@@ -44,8 +44,8 @@ func TestExamplePair(t *testing.T) {
 
 	// k1, k2 and k3 will all be equal.
 
-	require.Equal(t, k1, k2)
-	require.Equal(t, k1, k3)
+	assert.Equal(t, k1, k2)
+	assert.Equal(t, k1, k3)
 
-	require.Equal(t, len(np), 4) //Avoid gometalinter varcheck err on np
+	assert.Equal(t, len(np), 4) //Avoid gometalinter varcheck err on np
 }

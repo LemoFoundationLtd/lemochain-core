@@ -10,7 +10,7 @@ func TestSetupGenesisBlock(t *testing.T) {
 	genesis := DefaultGenesisBlock()
 	store.ClearData()
 
-	cacheChain := store.NewChainDataBase(store.GetStorePath())
+	cacheChain := store.NewChainDataBase(store.GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
 
 	hash, err := SetupGenesisBlock(cacheChain, genesis)
 	assert.NoError(t, err)

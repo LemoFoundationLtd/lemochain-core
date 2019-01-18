@@ -151,7 +151,7 @@ func TestTxProcessor_Process2(t *testing.T) {
 }
 
 func createNewBlock() *types.Block {
-	db := store.NewChainDataBase(store.GetStorePath())
+	db := store.NewChainDataBase(store.GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
 	return makeBlock(db, blockInfo{
 		height:     2,
 		parentHash: defaultBlocks[1].Hash(),

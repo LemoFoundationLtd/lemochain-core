@@ -67,7 +67,7 @@ func setupGenesisBlock(genesisFile, datadir string) (common.Hash, error) {
 // saveBlock save block to db
 func saveBlock(datadir string, genesis *chain.Genesis) (common.Hash, error) {
 	chaindata := filepath.Join(datadir, "chaindata")
-	db := store.NewChainDataBase(chaindata)
+	db := store.NewChainDataBase(chaindata, store.DRIVER_MYSQL, store.DNS_MYSQL)
 	hash, err := chain.SetupGenesisBlock(db, genesis)
 	if err != nil {
 		return common.Hash{}, err

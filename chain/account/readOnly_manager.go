@@ -6,6 +6,6 @@ import (
 )
 
 // onlyReadManager
-func OnlyReadManager(blockHash common.Hash, db protocol.ChainDB) *Manager {
+func ReadOnlyManager(blockHash common.Hash, db protocol.ChainDB) *Manager {
 	return NewManager(blockHash, db)
 }
