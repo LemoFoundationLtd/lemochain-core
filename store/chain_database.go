@@ -560,8 +560,22 @@ func (database *ChainDatabase) SetContractCode(hash common.Hash, code types.Code
 	return database.Beansdb.Put(CACHE_FLG_CODE, hash[:], hash[:], code[:])
 }
 
-func (database *ChainDatabase) GetCandidatesTop() []*Candidate {
-	return database.CandidatesRank.GetTop()
+func (database *ChainDatabase) GetCandidatesTop() []*types.AccountData {
+	candidates := database.CandidatesRank.GetTop()
+	if len(candidates) <= 0 {
+		return nil
+	} else {
+		accounts := make([]*types.AccountData, len(candidates))
+		for index := 0; index < len(candidates); index++ {
+			account, err := database.GetAccount(candidates[index].address)
+			if err != nil {
+				panic("get candidates err : " + err.Error())
+			} else {
+				accounts[index] = account
+			}
+		}
+		return accounts
+	}
 }
 
 func (database *ChainDatabase) Close() error {
