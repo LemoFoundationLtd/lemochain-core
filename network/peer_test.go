@@ -53,24 +53,24 @@ func (p *testPeer) WriteMsg(code uint32, msg []byte) (err error) {
 func (p *testPeer) SetWriteDeadline(duration time.Duration) {}
 func (p *testPeer) RNodeID() *p2p.NodeID {
 	if p.state == 1 {
-		bytes := common.FromHex("0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0")
+		buf := common.FromHex("0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0")
 		id := new(p2p.NodeID)
-		copy(id[:], bytes)
+		copy(id[:], buf)
 		return id
 	} else if p.state == 2 {
-		bytes := common.FromHex("0xddb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0")
+		buf := common.FromHex("0xddb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0")
 		id := new(p2p.NodeID)
-		copy(id[:], bytes)
+		copy(id[:], buf)
 		return id
 	} else if p.state == 3 {
-		bytes := common.FromHex("0x7739f34055d3c0808683dbd77a937f8e28f707d5b1e873bbe61f6f2d0347692f36ef736f342fb5ce4710f7e337f062cc2110d134b63a9575f78cb167bfae2f43")
+		buf := common.FromHex("0x7739f34055d3c0808683dbd77a937f8e28f707d5b1e873bbe61f6f2d0347692f36ef736f342fb5ce4710f7e337f062cc2110d134b63a9575f78cb167bfae2f43")
 		id := new(p2p.NodeID)
-		copy(id[:], bytes)
+		copy(id[:], buf)
 		return id
 	} else if p.state == 4 {
-		bytes := common.FromHex("0x33333f789b46e9bc09f23d5315b951bc77bbfeda653ae6f5aab564c9b4619322fddb3b1f28d1c434250e9d4dd8f51aa8334573d7281e4d63baba913e9fa6908f")
+		buf := common.FromHex("0x33333f789b46e9bc09f23d5315b951bc77bbfeda653ae6f5aab564c9b4619322fddb3b1f28d1c434250e9d4dd8f51aa8334573d7281e4d63baba913e9fa6908f")
 		id := new(p2p.NodeID)
-		copy(id[:], bytes)
+		copy(id[:], buf)
 		return id
 	} else if p.state == 5 {
 		return &p2p.NodeID{0x01, 0x02, 0x03, 0x04, 0x05}
