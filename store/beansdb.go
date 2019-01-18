@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"os"
 	"path/filepath"
@@ -218,16 +219,19 @@ func (beansdb *BeansDB) Get(key []byte) ([]byte, error) {
 	if !ok {
 		flg, route, offset, err := beansdb.indexDB.GetIndex(key)
 		if err != nil {
+			log.Errorf("get index from db err : " + err.Error())
 			return nil, err
 		}
 
 		if route == nil {
+			log.Error("get index from db is not exist.")
 			return nil, nil
 		}
 
 		bitcask := beansdb.route(route)
 		val, err := bitcask.Get(uint(flg), route, key, offset)
 		if err != nil {
+			log.Error("get data from disk err : " + err.Error())
 			return nil, err
 		} else {
 			return val, nil

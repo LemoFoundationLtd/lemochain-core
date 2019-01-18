@@ -62,6 +62,7 @@ func (p *testProcessor) createAccount(logType types.ChangeLogType, version uint3
 			Address:       address,
 			Balance:       big.NewInt(100),
 			NewestRecords: map[types.ChangeLogType]types.VersionRecord{logType: {Version: version, Height: 10}},
+			VoteFor:       common.HexToAddress("0x0001"),
 		}),
 	}
 	account.cachedStorage = map[common.Hash][]byte{
@@ -258,6 +259,15 @@ func TestChangeLog_Undo(t *testing.T) {
 			afterCheck: func(accessor types.AccountAccessor) {
 				assert.Equal(t, big.NewInt(100), accessor.GetBalance())
 				assert.Equal(t, false, accessor.GetSuicide())
+			},
+		},
+
+		// VoteFor
+		{
+			input: NewVoteForLog(processor, processor.createAccount(VoteForLog, 1), common.HexToAddress("0x0002")),
+			afterCheck: func(accessor types.AccountAccessor) {
+				assert.Equal(t, common.HexToAddress("0x0001"), accessor.GetVoteFor())
+				// assert.Equal(t, false, accessor.GetSuicide())
 			},
 		},
 	}

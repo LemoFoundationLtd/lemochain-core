@@ -21,7 +21,6 @@ type ChainDatabase struct {
 	LastConfirm     *CBlock
 	UnConfirmBlocks map[common.Hash]*CBlock
 
-	DataBase       DB
 	Beansdb        *BeansDB
 	Context        *RunContext
 	CandidatesRank *VoteRank
@@ -42,10 +41,11 @@ func NewChainDataBase(home string, driver string, dns string) *ChainDatabase {
 		}
 	}
 
-	db := &ChainDatabase{}
-	db.UnConfirmBlocks = make(map[common.Hash]*CBlock)
-	db.Beansdb = NewBeansDB(home, 2, driver, dns)
-	db.Context = NewRunContext(home)
+	db := &ChainDatabase{
+		UnConfirmBlocks: make(map[common.Hash]*CBlock),
+		Beansdb:         NewBeansDB(home, 2, driver, dns),
+		Context:         NewRunContext(home),
+	}
 
 	db.LastConfirm = &CBlock{
 		Block: db.Context.GetStableBlock(),
@@ -53,7 +53,6 @@ func NewChainDataBase(home string, driver string, dns string) *ChainDatabase {
 	}
 
 	db.CandidatesRank = NewVoteRank()
-
 	return db
 }
 
@@ -67,11 +66,18 @@ func NewChainDataBase(home string, driver string, dns string) *ChainDatabase {
 func (database *ChainDatabase) blockCommit(hash common.Hash) error {
 	cItem := database.UnConfirmBlocks[hash]
 	if (cItem == nil) || (cItem.Block == nil) {
-		return nil
+		// return nil
+		panic("item or item'block is nil.")
 	}
 
-	if (cItem.Block.Height() > 0) && (cItem.Block.Height() < database.LastConfirm.Block.Height()) {
-		return nil
+	if (database.LastConfirm.Block == nil) && (cItem.Block.Height() != 0) {
+		panic("database.LastConfirm == nil && cItem.Block.Height() != 0")
+	}
+
+	if (database.LastConfirm.Block != nil) &&
+		(cItem.Block.Height() < database.LastConfirm.Block.Height()) {
+		panic("(database.LastConfirm.Block != nil) && (cItem.Block.Height() < database.LastConfirm.Block.Height())")
+		// return nil
 	}
 
 	batch := database.Beansdb.NewBatch(hash[:])
@@ -161,8 +167,8 @@ func (database *ChainDatabase) blockCommit(hash common.Hash) error {
 		put2Candidates(accounts)
 	}
 	database.Context.StableBlock = cItem.Block
-
 	database.Context.Flush()
+
 	return nil
 }
 
@@ -321,32 +327,32 @@ func (database *ChainDatabase) SetBlock(hash common.Hash, block *types.Block) er
 
 	// genesis block
 	if (block.ParentHash() == common.Hash{}) {
-		cBlock := &CBlock{
+		database.UnConfirmBlocks[hash] = &CBlock{
 			Block: block,
 			Trie:  NewEmptyDatabase(database.Beansdb),
 		}
-
-		database.UnConfirmBlocks[hash] = cBlock
-		return nil
-	} else {
-		cBlock := &CBlock{}
-		pHash := block.Header.ParentHash
-		pBlock := database.UnConfirmBlocks[pHash]
-		if pBlock == nil {
-			if database.LastConfirm.Block.Header.Hash() != pHash {
-				panic("PARENT IS ERROR.")
-			} else {
-				cBlock.Block = block
-				cBlock.Trie = NewActDatabase(database.Beansdb, database.LastConfirm.Trie)
-			}
-		} else {
-			cBlock.Block = block
-			cBlock.Trie = NewActDatabase(database.Beansdb, pBlock.Trie)
-		}
-
-		database.UnConfirmBlocks[hash] = cBlock
 		return nil
 	}
+
+	pHash := block.Header.ParentHash
+	pBlock := database.UnConfirmBlocks[pHash]
+	if pBlock == nil {
+		if database.LastConfirm.Block.Header.Hash() != pHash {
+			panic("parent block is not exist.")
+		} else {
+			database.UnConfirmBlocks[hash] = &CBlock{
+				Block: block,
+				Trie:  NewActDatabase(database.Beansdb, database.LastConfirm.Trie),
+			}
+		}
+	} else {
+		database.UnConfirmBlocks[hash] = &CBlock{
+			Block: block,
+			Trie:  NewActDatabase(database.Beansdb, pBlock.Trie),
+		}
+	}
+
+	return nil
 }
 
 func (database *ChainDatabase) appendConfirm(block *types.Block, confirms []types.SignData) {
