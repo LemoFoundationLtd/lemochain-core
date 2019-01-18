@@ -310,7 +310,7 @@ func (m *Miner) sealBlock() {
 		m.resetMinerTimer(timeDur)
 	}()
 	log.Debug("Start seal")
-	header := m.sealHead()
+	header, dNodes := m.sealHead()
 	txs := m.txPool.Pending(1000000)
 	m.chain.Lock().Lock()
 	defer m.chain.Lock().Unlock()
@@ -332,6 +332,9 @@ func (m *Miner) sealBlock() {
 		log.Error("Seal block error!!")
 		return
 	}
+	if dNodes != nil {
+		block.SetDeputyNodes(dNodes)
+	}
 	if err = m.chain.SetMinedBlock(block); err != nil {
 		log.Error("Set mined block failed!")
 		return
@@ -349,11 +352,24 @@ func (m *Miner) sealBlock() {
 }
 
 // sealHead 生成区块头
-func (m *Miner) sealHead() *types.Header {
+func (m *Miner) sealHead() (*types.Header, deputynode.DeputyNodes) {
 	// check is need to change minerAddress
 	parent := m.currentBlock()
-	if (parent.Height()+1)%1001000 == 1 {
-		n := deputynode.Instance().GetDeputyByNodeID(parent.Height()+1, deputynode.GetSelfNodeID())
+	height := parent.Height() + 1
+	h := &types.Header{
+		ParentHash:   parent.Hash(),
+		MinerAddress: m.minerAddress,
+		Height:       height,
+		GasLimit:     calcGasLimit(parent),
+		Extra:        m.extra,
+	}
+	var nodes deputynode.DeputyNodes = nil
+	if height%params.SnapshotBlock == 0 {
+		nodes = m.chain.GetNewDeputyNodes()
+		root := types.DeriveDeputyRootSha(nodes)
+		h.DeputyRoot = root[:]
+	} else if height%params.EpochBlock == 0 {
+		n := deputynode.Instance().GetDeputyByNodeID(height, deputynode.GetSelfNodeID())
 		m.SetMinerAddress(n.MinerAddress)
 	}
 
@@ -364,15 +380,8 @@ func (m *Miner) sealHead() *types.Header {
 	if parTime > blockTime {
 		blockTime = parTime
 	}
-
-	return &types.Header{
-		ParentHash:   parent.Hash(),
-		MinerAddress: m.minerAddress,
-		Height:       parent.Height() + 1,
-		GasLimit:     calcGasLimit(parent),
-		Time:         blockTime,
-		Extra:        m.extra,
-	}
+	h.Time = blockTime
+	return h, nodes
 }
 
 // calcGasLimit computes the gas limit of the next block after parent.

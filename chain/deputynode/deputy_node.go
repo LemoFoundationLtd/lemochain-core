@@ -10,6 +10,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
+	"math/big"
 	"net"
 	"strconv"
 	"strings"
@@ -60,7 +61,7 @@ type DeputyNode struct {
 	IP           net.IP         `json:"ip"             gencodec:"required"` // ip
 	Port         uint32         `json:"port"           gencodec:"required"` // 端口
 	Rank         uint32         `json:"rank"           gencodec:"required"` // 排名 从0开始
-	Votes        uint32         `json:"votes"          gencodec:"required"` // 得票数
+	Votes        *big.Int       `json:"votes"          gencodec:"required"` // 得票数
 }
 
 func (d *DeputyNode) Hash() (h common.Hash) {
@@ -97,11 +98,11 @@ type deputyNodeMarshaling struct {
 	IP     hexutil.IP
 	Port   hexutil.Uint32
 	Rank   hexutil.Uint32
-	Votes  hexutil.Uint32
+	Votes  *hexutil.Big10
 }
 
 type DeputyNodesRecord struct {
-	height uint32
+	height uint32 // 0, 100W, 200W, 300W, 400W...
 	nodes  DeputyNodes
 }
 
@@ -200,10 +201,8 @@ func (d *Manager) GetSlot(height uint32, firstAddress, nextAddress common.Addres
 
 // TimeToHandOutRewards 是否该发出块奖励了
 func (d *Manager) TimeToHandOutRewards(height uint32) bool {
-	// d.lock.Lock()
-	// defer d.lock.Unlock()
 	for i := 1; i < len(d.DeputyNodesList); i++ {
-		if d.DeputyNodesList[i].height+1000+1 == height {
+		if d.DeputyNodesList[i].height+1000 == height {
 			return true
 		}
 	}

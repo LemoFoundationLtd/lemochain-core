@@ -215,8 +215,9 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 				}
 				// local chain has this block
 				if pm.chain.HasBlock(b.ParentHash()) {
-					pm.chain.InsertChain(b, true)
-					go pm.setConfirmsFromCache(b.Height(), b.Hash())
+					if err := pm.chain.InsertChain(b, true); err == nil {
+						go pm.setConfirmsFromCache(b.Height(), b.Hash())
+					}
 				} else {
 					pm.blockCache.Add(b)
 					if rcvMsg.p != nil {
@@ -232,8 +233,9 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 		case <-queueTimer.C:
 			processBlock := func(block *types.Block) bool {
 				if pm.chain.HasBlock(block.ParentHash()) {
-					pm.chain.InsertChain(block, false)
-					go pm.setConfirmsFromCache(block.Height(), block.Hash())
+					if err := pm.chain.InsertChain(block, false); err == nil {
+						go pm.setConfirmsFromCache(block.Height(), block.Hash())
+					}
 					return true
 				}
 				return false
@@ -318,7 +320,9 @@ func (pm *ProtocolManager) setConfirmsFromCache(height uint32, hash common.Hash)
 		return
 	}
 	for _, confirm := range confirms {
-		pm.chain.ReceiveConfirm(confirm)
+		if err := pm.chain.ReceiveConfirm(confirm); err != nil {
+			log.Debugf("setConfirmsFromCache: %v", err)
+		}
 	}
 	if pm.confirmsCache.Size() > 100 {
 		log.Debugf("confirmsCache's size: %d", pm.confirmsCache.Size())
@@ -425,7 +429,9 @@ func (pm *ProtocolManager) handlePeer(p *peer) {
 	rStatus, err := pm.handshake(p)
 	if err != nil {
 		log.Warnf("protocol handshake failed: %v", err)
-		pm.discover.SetConnectResult(p.NodeID(), false)
+		if err = pm.discover.SetConnectResult(p.NodeID(), false); err != nil {
+			log.Debugf("handlePeer: %v", err)
+		}
 		p.FailedHandshakeClose()
 		return
 	}
@@ -436,14 +442,18 @@ func (pm *ProtocolManager) handlePeer(p *peer) {
 		from, err := pm.findSyncFrom(&rStatus.LatestStatus)
 		if err != nil {
 			log.Warnf("find sync from error: %v", err)
-			pm.discover.SetConnectResult(p.NodeID(), false)
+			if err = pm.discover.SetConnectResult(p.NodeID(), false); err != nil {
+				log.Debugf("handlePeer: %v", err)
+			}
 			p.HardForkClose()
 			return
 		}
 		p.RequestBlocks(from, rStatus.LatestStatus.CurHeight)
 	}
 	// set connect result
-	pm.discover.SetConnectResult(p.NodeID(), true)
+	if err = pm.discover.SetConnectResult(p.NodeID(), true); err != nil {
+		log.Debugf("handlePeer: %v", err)
+	}
 
 	for {
 		// handle peer net message
@@ -563,7 +573,6 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		log.Debugf("invalid code: %d, from: %s", msg.Code, common.ToHex(p.NodeID()[:8]))
 		return ErrInvalidCode
 	}
-	return nil
 }
 
 // handleLstStatusMsg handle latest remote status message
@@ -611,7 +620,11 @@ func (pm *ProtocolManager) handleTxsMsg(msg *p2p.Msg) error {
 	if err := msg.Decode(&txs); err != nil {
 		return err
 	}
-	go pm.txPool.AddTxs(txs)
+	go func() {
+		if err := pm.txPool.AddTxs(txs); err != nil {
+			log.Debugf("handleTxsMsg: %v", err)
+		}
+	}()
 	return nil
 }
 
@@ -705,7 +718,11 @@ func (pm *ProtocolManager) handleConfirmMsg(msg *p2p.Msg) error {
 		return nil
 	}
 	if pm.chain.HasBlock(confirm.Hash) {
-		go pm.chain.ReceiveConfirm(confirm)
+		go func() {
+			if err := pm.chain.ReceiveConfirm(confirm); err != nil {
+				log.Debugf("handleTxsMsg: %v", err)
+			}
+		}()
 	} else {
 		pm.confirmsCache.Push(confirm)
 	}

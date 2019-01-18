@@ -2,9 +2,11 @@ package chain
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
@@ -14,6 +16,8 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/network"
 	db "github.com/LemoFoundationLtd/lemochain-go/store/protocol"
 	"math"
+	"net"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -433,11 +437,12 @@ func (bc *BlockChain) verifyBody(block *types.Block) error {
 		return ErrVerifyBlockFailed
 	}
 	// verify deputyRoot
-	if len(block.DeputyNodes) > 0 {
-		hash := types.DeriveDeputyRootSha(block.DeputyNodes)
-		root := block.Header.DeputyRoot
-		if bytes.Compare(hash[:], root) != 0 {
-			log.Errorf("verify block failed. deputyRoot not match. header's root: %s, check root: %s", common.ToHex(root), hash.String())
+	if block.Height()%params.SnapshotBlock == 0 {
+		bRoot := types.DeriveDeputyRootSha(block.DeputyNodes)
+		nodes := bc.GetNewDeputyNodes()
+		selfRoot := types.DeriveDeputyRootSha(nodes)
+		if bytes.Compare(bRoot[:], selfRoot[:]) != 0 {
+			log.Errorf("verify block failed. deputyNodes not match.block's nodes: %v, self nodes: %v", block.DeputyNodes, nodes)
 			return ErrVerifyBlockFailed
 		}
 	}
@@ -551,7 +556,9 @@ func (bc *BlockChain) GetConfirms(query *network.GetConfirmInfo) []types.SignDat
 // ReceiveConfirms receive confirm package from net connection
 func (bc *BlockChain) ReceiveConfirms(pack network.BlockConfirms) {
 	if pack.Hash != (common.Hash{}) && pack.Pack != nil && len(pack.Pack) > 0 {
-		bc.db.SetConfirms(pack.Hash, pack.Pack)
+		if err := bc.db.SetConfirms(pack.Hash, pack.Pack); err != nil {
+			log.Debugf("ReceiveConfirms: %v", err)
+		}
 	}
 }
 
@@ -566,4 +573,40 @@ func (bc *BlockChain) Stop() {
 
 func (bc *BlockChain) Db() db.ChainDB {
 	return bc.db
+}
+
+// GetNewDeputyNodes get next epoch deputy nodes for snapshot block
+func (bc *BlockChain) GetNewDeputyNodes() deputynode.DeputyNodes {
+	result := make(deputynode.DeputyNodes, 0, 17)
+	list := bc.db.GetCandidatesTop()
+	for _, n := range list {
+		dn := new(deputynode.DeputyNode)
+		dn.Votes = n.GetTotal()
+		acc := bc.am.GetAccount(n.GetAddress())
+		profile := acc.GetCandidateProfile()
+		strAddr := profile[types.CandidateKeyMinerAddress]
+		addr, err := common.StringToAddress(strAddr)
+		if err != nil {
+			log.Errorf("GetNewDeputyNodes: profile error, addr: %s", strAddr)
+			continue
+		}
+		dn.MinerAddress = addr
+		dn.IP = net.ParseIP(profile[types.CandidateKeyHost])
+		port, err := strconv.Atoi(profile[types.CandidateKeyPort])
+		if err != nil || (port < 100 || port > 65535) {
+			log.Errorf("GetNewDeputyNodes: profile error, port: %s", profile[types.CandidateKeyPort])
+			continue
+		}
+		dn.Port = uint32(port)
+		dn.Rank = uint32(len(result))
+		strID := profile[types.CandidateKeyNodeID]
+		nID, err := hex.DecodeString(strID)
+		if err != nil {
+			log.Errorf("GetNewDeputyNodes: profile error, NodeID: %s", strID)
+			continue
+		}
+		dn.NodeID = nID
+		result = append(result, dn)
+	}
+	return result
 }

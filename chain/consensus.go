@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
+	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/store/protocol"
@@ -67,6 +69,19 @@ func verifyHeaderSignData(block *types.Block) error {
 	return nil
 }
 
+// VerifyDeputyRoot verify deputy root
+func (d *Dpovp) VerifyDeputyRoot(block *types.Block) error {
+	if block.Height()%params.SnapshotBlock == 0 {
+		hash := types.DeriveDeputyRootSha(block.DeputyNodes)
+		root := block.Header.DeputyRoot
+		if bytes.Compare(hash[:], root) != 0 {
+			log.Errorf("verify block failed. deputyRoot not match. header's root: %s, check root: %s", common.ToHex(root), hash.String())
+			return ErrVerifyBlockFailed
+		}
+	}
+	return nil
+}
+
 // VerifyHeader verify block header
 func (d *Dpovp) VerifyHeader(block *types.Block) error {
 	nodeCount := deputynode.Instance().GetDeputiesCount() // The total number of nodes
@@ -81,6 +96,11 @@ func (d *Dpovp) VerifyHeader(block *types.Block) error {
 	}
 	// Verify the block signature data
 	if err := verifyHeaderSignData(block); err != nil {
+		return err
+	}
+
+	// verify deputy node root when height is 100W*N
+	if err := d.VerifyDeputyRoot(block); err != nil {
 		return err
 	}
 
