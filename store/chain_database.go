@@ -109,13 +109,17 @@ func (database *ChainDatabase) blockCommit(hash common.Hash) error {
 	}
 
 	isCandidate := func(account *types.AccountData) bool {
-		result := account.Candidate.Profile[types.CandidateKeyIsCandidate]
-		val, err := strconv.ParseBool(result)
-		if err != nil {
-			panic("to bool err : " + err.Error())
-		}
+		result, ok := account.Candidate.Profile[types.CandidateKeyIsCandidate]
+		if !ok {
+			return false
+		} else {
+			val, err := strconv.ParseBool(result)
+			if err != nil {
+				panic("to bool err : " + err.Error())
+			}
 
-		return val
+			return val
+		}
 	}
 
 	getNodeID := func(account *types.AccountData) []byte {
