@@ -388,7 +388,7 @@ func Test_CandidateVoteTx(t *testing.T) {
 	tx := types.NewTransaction(defaultAccounts[3], params.RegisterCandidateNodeFees, 220000, common.Big1, data, params.RegisterTx, chainID, uint64(time.Now().Unix()+300), "", "")
 	sign_RegisterTx := signTransaction(tx, testPrivate)
 
-	txs := types.Transactions{voteTx, sign_RegisterTx}
+	txs := types.Transactions{sign_RegisterTx, voteTx}
 
 	p.ApplyTxs(header, txs)
 

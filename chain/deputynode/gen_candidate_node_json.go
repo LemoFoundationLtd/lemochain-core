@@ -15,12 +15,14 @@ var _ = (*candidateNodeMarshaling)(nil)
 // MarshalJSON marshals as JSON.
 func (c CandidateNode) MarshalJSON() ([]byte, error) {
 	type CandidateNode struct {
+		IsCandidate  bool           `json:"isCandidate"      gencodec:"required"`
 		MinerAddress common.Address `json:"minerAddress"        gencodec:"required"`
 		NodeID       hexutil.Bytes  `json:"nodeID"         gencodec:"required"`
 		Host         string         `json:"host"             gencodec:"required"`
 		Port         hexutil.Uint32 `json:"port"           gencodec:"required"`
 	}
 	var enc CandidateNode
+	enc.IsCandidate = c.IsCandidate
 	enc.MinerAddress = c.MinerAddress
 	enc.NodeID = c.NodeID
 	enc.Host = c.Host
@@ -31,6 +33,7 @@ func (c CandidateNode) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON unmarshals from JSON.
 func (c *CandidateNode) UnmarshalJSON(input []byte) error {
 	type CandidateNode struct {
+		IsCandidate  *bool           `json:"isCandidate"      gencodec:"required"`
 		MinerAddress *common.Address `json:"minerAddress"        gencodec:"required"`
 		NodeID       *hexutil.Bytes  `json:"nodeID"         gencodec:"required"`
 		Host         *string         `json:"host"             gencodec:"required"`
@@ -40,6 +43,10 @@ func (c *CandidateNode) UnmarshalJSON(input []byte) error {
 	if err := json.Unmarshal(input, &dec); err != nil {
 		return err
 	}
+	if dec.IsCandidate == nil {
+		return errors.New("missing required field 'isCandidate' for CandidateNode")
+	}
+	c.IsCandidate = *dec.IsCandidate
 	if dec.MinerAddress == nil {
 		return errors.New("missing required field 'minerAddress' for CandidateNode")
 	}

@@ -42,6 +42,7 @@ func SetSelfNodeKey(key *ecdsa.PrivateKey) {
 
 // CandidateNode
 type CandidateNode struct {
+	IsCandidate  bool           `json:"isCandidate"      gencodec:"required"`
 	MinerAddress common.Address `json:"minerAddress"        gencodec:"required"` // 候选节点挖矿收益地址
 	NodeID       []byte         `json:"nodeID"         gencodec:"required"`
 	Host         string         `json:"host"             gencodec:"required"` // ip或者域名

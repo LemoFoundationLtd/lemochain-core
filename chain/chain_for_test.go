@@ -37,6 +37,7 @@ type blockInfo struct {
 
 // 申请候选节点交易用
 var cand = &deputynode.CandidateNode{
+	IsCandidate:  true,
 	MinerAddress: common.HexToAddress("0x20000"),
 	NodeID:       common.FromHex("0x34f0df789b46e9bc09f23d5315b951bc77bbfeda653ae6f5aab564c9b4619322fddb3b1f28d1c434250e9d4dd8f51aa8334573d7281e4d63baba913e9fa6908f"),
 	Host:         "0.0.0.1",
@@ -205,6 +206,7 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 			profile[types.CandidateKeyHost] = cand.Host
 			profile[types.CandidateKeyPort] = strconv.Itoa(int(cand.Port))
 			to.SetCandidateProfile(profile)
+			to.SetVotes(big.NewInt(1))
 		}
 
 		// make sure the change log has right order
