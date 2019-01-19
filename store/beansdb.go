@@ -31,7 +31,7 @@ type LastIndex struct {
 
 type BitcaskIndexes [256]LastIndex
 
-func (bitcaskIndexes BitcaskIndexes) load(home string) error {
+func (bitcaskIndexes *BitcaskIndexes) load(home string) error {
 	path := filepath.Join(home, "/hit.index")
 	isExist, err := IsExist(path)
 	if err != nil {
@@ -74,7 +74,7 @@ func (bitcaskIndexes BitcaskIndexes) load(home string) error {
 	return rlp.DecodeBytes(bodyBuf, bitcaskIndexes)
 }
 
-func (bitcaskIndexes BitcaskIndexes) flush(home string) error {
+func (bitcaskIndexes *BitcaskIndexes) flush(home string) error {
 	path := filepath.Join(home, "/hit.index")
 	isExist, err := IsExist(path)
 	if err != nil {
@@ -99,18 +99,40 @@ func (bitcaskIndexes BitcaskIndexes) flush(home string) error {
 		return err
 	}
 
+	head := contextHead{
+		FileLen:   uint32(len(bodyBuf)),
+		Version:   1,
+		TimeStamp: uint32(time.Now().Unix()),
+		Crc:       0,
+	}
+
+	headBuf := make([]byte, binary.Size(contextHead{}))
+	err = binary.Write(NewLmBuffer(headBuf[:]), binary.LittleEndian, &head)
+	if err != nil {
+		return err
+	}
+
 	_, err = file.Seek(0, 0)
 	if err != nil {
 		return err
 	}
 
-	n, err := file.Write(bodyBuf)
+	n, err := file.Write(headBuf)
+	if err != nil {
+		return err
+	}
+
+	if n != len(headBuf) {
+		panic("n != len(headBuf)")
+	}
+
+	n, err = file.Write(bodyBuf)
 	if err != nil {
 		return err
 	}
 
 	if n != len(bodyBuf) {
-		panic("n != len(data)")
+		panic("n != len(bodyBuf)")
 	}
 
 	return file.Sync()
@@ -125,6 +147,7 @@ type BeansDB struct {
 }
 
 func after(flag uint, route []byte, key []byte, val []byte, offset uint32) error {
+	log.Errorf("Flg : " + common.ToHex(route))
 	return nil
 }
 
@@ -139,17 +162,30 @@ func NewBeansDB(home string, height int, driver string, dns string) *BeansDB {
 	beansdb.route2key = make(map[string][]byte)
 	beansdb.indexDB = NewMySqlDB(driver, dns)
 
+	err := beansdb.scanIndex.load(home)
+	if err != nil {
+		panic("load scan index err : " + err.Error())
+	}
+
 	for index := 0; index < count; index++ {
 		dataPath := filepath.Join(home, "/%02d/%02d/")
 		str := fmt.Sprintf(dataPath, index>>4, index&0xf)
 
 		last := beansdb.scanIndex[index]
-		database, err := NewBitCask(str, int(last.Index), last.Offset, nil, beansdb.indexDB)
+		database, err := NewBitCask(str, int(last.Index), last.Offset, after, beansdb.indexDB)
+		beansdb.scanIndex[index].Index = uint32(database.CurIndex)
+		beansdb.scanIndex[index].Offset = uint32(database.CurOffset)
+
 		if err != nil {
 			panic("new bitcask error : " + err.Error())
 		}
 
 		beansdb.bitcasks[index] = database
+	}
+
+	err = beansdb.scanIndex.flush(home)
+	if err != nil {
+		panic("flush context to disk err : " + err.Error())
 	}
 
 	return beansdb

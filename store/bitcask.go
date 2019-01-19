@@ -111,23 +111,34 @@ func NewBitCask(homePath string, lastIndex int, lastOffset uint32, after AfterSc
 		err = db.scan(lastIndex, lastOffset)
 		if err != nil {
 			return nil, err
-		} else {
+		}
+
+		isExist, err := IsExist(db.path(db.CurIndex))
+		if err != nil {
+			return nil, err
+		}
+
+		if !isExist {
 			err = db.createFile(db.CurIndex)
 			if err != nil {
 				return nil, err
 			} else {
 				return db, nil
 			}
+		} else {
+			return db, nil
 		}
-		return db, nil
 	}
 }
 
 func (bitcask *BitCask) scan(lastIndex int, lastOffset uint32) error {
 
+	nextIndex := lastIndex
+	nextOffset := lastOffset
+
 	for {
-		lastPath := bitcask.path(lastIndex)
-		isExist, err := bitcask.isExist(lastPath)
+		nextPath := bitcask.path(nextIndex)
+		isExist, err := bitcask.isExist(nextPath)
 		if err != nil {
 			return err
 		}
@@ -136,14 +147,15 @@ func (bitcask *BitCask) scan(lastIndex int, lastOffset uint32) error {
 			break
 		}
 
-		file, err := os.OpenFile(lastPath, os.O_RDONLY, os.ModePerm)
+		file, err := os.OpenFile(nextPath, os.O_RDONLY, os.ModePerm)
 		defer file.Close()
 		if err != nil {
 			return err
 		}
 
+		lastIndex = nextIndex
 		for {
-			head, _, err := bitcask.read(file, int64(lastOffset))
+			head, body, err := bitcask.read(file, int64(nextOffset))
 			if err == io.EOF {
 				break
 			}
@@ -152,18 +164,19 @@ func (bitcask *BitCask) scan(lastIndex int, lastOffset uint32) error {
 				return err
 			}
 
-			// err = bitcask.After(uint(head.Flg), body.Route, body.Key, body.Val, lastOffset)
-			// if err != nil {
-			// 	return err
-			// } else {
-			// 	delete(bitcask.Cache, string(body.Key))
-			// }
+			err = bitcask.After(uint(head.Flg), body.Route, body.Key, body.Val, lastOffset)
+			if err != nil {
+				return err
+			} else {
+				delete(bitcask.Cache, string(body.Key))
+			}
 
-			lastOffset = lastOffset + uint32(RHEAD_LENGTH) + uint32(head.Len)
+			nextOffset = nextOffset + uint32(RHEAD_LENGTH) + uint32(head.Len)
+			lastOffset = nextOffset
 		}
 
-		lastIndex = lastIndex + 1
-		lastOffset = 0
+		nextIndex = nextIndex + 1
+		nextOffset = 0
 	}
 
 	bitcask.CurIndex = lastIndex
@@ -311,8 +324,7 @@ func (bitcask *BitCask) read(file *os.File, offset int64) (*RHead, *RBody, error
 	if err != nil {
 		return nil, nil, err
 	}
-	// ERROR_ACCESS_DENIED
-	//
+
 	var head RHead
 	err = binary.Read(bytes.NewBuffer(heaBuf), binary.LittleEndian, &head)
 	if err == io.EOF {
