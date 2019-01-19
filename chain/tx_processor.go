@@ -180,7 +180,7 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 			_, restGas, vmErr = vmEnv.Call(sender, recipientAddr, tx.Data(), restGas, tx.Amount())
 
 		case params.VoteTx: // 执行投票交易逻辑
-			restGas, vmErr = vmEnv.CallVoteTx(senderAddr, recipientAddr, restGas)
+			restGas, vmErr = vmEnv.CallVoteTx(senderAddr, recipientAddr, restGas, initialSenderBalance)
 
 		case params.RegisterTx: // 执行注册参加代理节点选举交易逻辑
 			// 设置接收注册费用1000LEMO的地址
@@ -203,11 +203,12 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 				log.Errorf("unmarshal Candidate node error: %s", err)
 				return 0, err
 			}
+			isCandidate := CandNode.IsCandidate
 			minerAddress := CandNode.MinerAddress
 			nodeID := common.ToHex(CandNode.NodeID)
 			host := CandNode.Host
 			port := strconv.Itoa(int(CandNode.Port))
-			restGas, vmErr = vmEnv.RegisterCandidate(senderAddr, to, minerAddress, nodeID, host, port, restGas, tx.Amount())
+			restGas, vmErr = vmEnv.RegisterOrModifyOfCandidate(senderAddr, to, minerAddress, isCandidate, nodeID, host, port, restGas, tx.Amount(), initialSenderBalance)
 
 		default:
 			log.Errorf("The type of transaction is not defined. txType = %d\n", tx.Type())
@@ -216,8 +217,12 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 		}
 		// 接收者对应的候选节点的票数变化
 		endRecipientBalance := recipientAccount.GetBalance()
-		recipientBalanceChange := new(big.Int).Sub(endRecipientBalance, initialRecipientBalance)
-		p.changeCandidateVotes(recipientAddr, recipientBalanceChange)
+		if initialRecipientBalance == nil {
+			p.changeCandidateVotes(recipientAddr, endRecipientBalance)
+		} else {
+			recipientBalanceChange := new(big.Int).Sub(endRecipientBalance, initialRecipientBalance)
+			p.changeCandidateVotes(recipientAddr, recipientBalanceChange)
+		}
 	}
 	if vmErr != nil {
 		log.Info("VM returned with error", "err", vmErr)
@@ -233,7 +238,8 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 
 	// 发送者对应的候选节点票数变动
 	endSenderBalance := sender.GetBalance()
-	fmt.Println("结束的Balance=", endSenderBalance.String())
+	fmt.Println("一笔交易结束时的senderBalance:", endSenderBalance.String())
+
 	senderBalanceChange := new(big.Int).Sub(endSenderBalance, initialSenderBalance)
 	p.changeCandidateVotes(senderAddr, senderBalanceChange)
 
@@ -251,10 +257,16 @@ func (p *TxProcessor) changeCandidateVotes(accountAddress common.Address, change
 	}
 	acc := p.am.GetAccount(accountAddress)
 	CandidataAddress := acc.GetVoteFor()
-	if (CandidataAddress == common.Address{}) { // 不存在投票候选节点地址
+
+	if (CandidataAddress == common.Address{}) { // 不存在投票候选节点地址或者候选者已经取消候选者资格
 		return
 	}
+	// 查看投给的候选者是否已经取消了候选资格
 	CandidateAccount := p.am.GetAccount(CandidataAddress)
+	profile := CandidateAccount.GetCandidateProfile()
+	if profile[types.CandidateKeyIsCandidate] == "false" {
+		return
+	}
 	// changeBalance为正数则加，为负数则减
 	CandidateAccount.SetVotes(new(big.Int).Add(CandidateAccount.GetVotes(), changeBalance))
 }
