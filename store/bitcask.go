@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"io"
 	"os"
@@ -106,17 +108,17 @@ func NewBitCask(homePath string, lastIndex int, lastOffset uint32, after AfterSc
 			return db, nil
 		}
 	} else {
-		// err = db.scan(lastIndex, lastOffset)
-		// if err != nil {
-		// 	return nil, err
-		// }else{
-		// 	err = db.createFile(db.CurIndex)
-		// 	if err != nil {
-		// 		return nil, err
-		// 	}else{
-		// 		return db, nil
-		// 	}
-		// }
+		err = db.scan(lastIndex, lastOffset)
+		if err != nil {
+			return nil, err
+		} else {
+			err = db.createFile(db.CurIndex)
+			if err != nil {
+				return nil, err
+			} else {
+				return db, nil
+			}
+		}
 		return db, nil
 	}
 }
@@ -134,14 +136,14 @@ func (bitcask *BitCask) scan(lastIndex int, lastOffset uint32) error {
 			break
 		}
 
-		file, err := os.OpenFile(lastPath, os.O_APPEND|os.O_WRONLY, os.ModePerm)
+		file, err := os.OpenFile(lastPath, os.O_RDONLY, os.ModePerm)
 		defer file.Close()
 		if err != nil {
 			return err
 		}
 
 		for {
-			head, body, err := bitcask.read(file, int64(lastOffset))
+			head, _, err := bitcask.read(file, int64(lastOffset))
 			if err == io.EOF {
 				break
 			}
@@ -150,17 +152,15 @@ func (bitcask *BitCask) scan(lastIndex int, lastOffset uint32) error {
 				return err
 			}
 
-			err = bitcask.After(uint(head.Flg), body.Route, body.Key, body.Val, lastOffset)
-			if err != nil {
-				return err
-			} else {
-				delete(bitcask.Cache, string(body.Key))
-			}
+			// err = bitcask.After(uint(head.Flg), body.Route, body.Key, body.Val, lastOffset)
+			// if err != nil {
+			// 	return err
+			// } else {
+			// 	delete(bitcask.Cache, string(body.Key))
+			// }
 
 			lastOffset = lastOffset + uint32(RHEAD_LENGTH) + uint32(head.Len)
 		}
-
-		// update database index
 
 		lastIndex = lastIndex + 1
 		lastOffset = 0
@@ -311,7 +311,8 @@ func (bitcask *BitCask) read(file *os.File, offset int64) (*RHead, *RBody, error
 	if err != nil {
 		return nil, nil, err
 	}
-
+	// ERROR_ACCESS_DENIED
+	//
 	var head RHead
 	err = binary.Read(bytes.NewBuffer(heaBuf), binary.LittleEndian, &head)
 	if err == io.EOF {
@@ -356,11 +357,14 @@ func (bitcask *BitCask) get(flag uint, route []byte, key []byte, offset int64) (
 			return nil, nil
 		}
 
-		if (bytes.Compare(body.Route, route) != 0) || (bytes.Compare(body.Key, key) != 0) {
-			return nil, nil
-		} else {
-			return body.Val, nil
-		}
+		// if (bytes.Compare(body.Route, route) != 0) || (bytes.Compare(body.Key, key) != 0) {
+		// 	return nil, nil
+		// } else {
+		// 	return body.Val, nil
+		// }
+		str := common.BytesToHash(body.Key).Hex()
+		log.Errorf("str:" + str)
+		return body.Val, nil
 	}
 }
 
