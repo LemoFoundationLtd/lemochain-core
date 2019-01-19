@@ -35,7 +35,7 @@ type blockInfo struct {
 	deputyNodes deputynode.DeputyNodes
 }
 
-// 申请候选节点交易
+// 申请候选节点交易用
 var cand = &deputynode.CandidateNode{
 	MinerAddress: common.HexToAddress("0x20000"),
 	NodeID:       common.FromHex("0x34f0df789b46e9bc09f23d5315b951bc77bbfeda653ae6f5aab564c9b4619322fddb3b1f28d1c434250e9d4dd8f51aa8334573d7281e4d63baba913e9fa6908f"),
@@ -79,8 +79,8 @@ var (
 				signTransaction(types.NewTransaction(defaultAccounts[0], common.Big1, 2000000, common.Big2, []byte{12}, 0, chainID, 1538210391, "aa", "aaa"), testPrivate),
 				// testAddr -> defaultAccounts[1] 1
 				makeTransaction(testPrivate, defaultAccounts[1], 0, common.Big1, common.Big2, 1538210491, 2000000),
-
-				signTransaction(types.NewTransaction(defaultAccounts[0], params.RegisterCandidateNodeFees, 220000, common.Big1, CandidateData, params.VoteTx, chainID, uint64(time.Now().Unix()+300), "", ""), testPrivate),
+				// 初始化一笔申请候选节点交易，让defaultAccounts[0]为候选节点
+				signTransaction(types.NewTransaction(defaultAccounts[0], params.RegisterCandidateNodeFees, 220000, common.Big1, CandidateData, params.RegisterTx, chainID, uint64(time.Now().Unix()+300), "", ""), testPrivate),
 			},
 			gasLimit: 20000000,
 			time:     1538209755,
@@ -196,8 +196,8 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 		fee := new(big.Int).Mul(new(big.Int).SetUint64(gas), tx.GasPrice())
 		cost := new(big.Int).Add(tx.Amount(), fee)
 		to := manager.GetAccount(*tx.To())
-		// 投票交易
-		if tx.Type() == params.VoteTx {
+		// 为申请候选节点交易
+		if tx.Type() == params.RegisterTx {
 			profile := make(types.CandidateProfile)
 			profile[types.CandidateKeyIsCandidate] = "true"
 			profile[types.CandidateKeyMinerAddress] = cand.MinerAddress.String()
