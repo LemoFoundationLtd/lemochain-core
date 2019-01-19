@@ -13,8 +13,9 @@ import (
 )
 
 type CBlock struct {
-	Block *types.Block
-	Trie  *PatriciaTrie
+	Block      *types.Block
+	Trie       *PatriciaTrie
+	Candidates [30]Candidate
 }
 
 type ChainDatabase struct {
@@ -54,6 +55,60 @@ func NewChainDataBase(home string, driver string, dns string) *ChainDatabase {
 
 	db.CandidatesRank = NewVoteRank()
 	return db
+}
+
+func isCandidate(account *types.AccountData) bool {
+	result, ok := account.Candidate.Profile[types.CandidateKeyIsCandidate]
+	if !ok {
+		return false
+	} else {
+		val, err := strconv.ParseBool(result)
+		if err != nil {
+			panic("to bool err : " + err.Error())
+		}
+
+		return val
+	}
+}
+
+func put2Candidates(accounts []*types.AccountData, rank *VoteRank) {
+	candidates := make([]*Candidate, 0)
+	for index := 0; index < len(accounts); index++ {
+		account := accounts[index]
+		if isCandidate(account) {
+			candidates = append(candidates, &Candidate{
+				address: account.Address,
+				//nodeID:  getNodeID(account),
+				total: account.Candidate.Votes,
+			})
+		}
+	}
+	rank.Rank(candidates)
+}
+
+func (database *ChainDatabase) blockRank(hash common.Hash) {
+	cItem := database.UnConfirmBlocks[hash]
+	if (cItem == nil) || (cItem.Block == nil) {
+		// return nil
+		panic("item or item'block is nil.")
+	}
+
+	if (database.LastConfirm.Block == nil) && (cItem.Block.Height() != 0) {
+		panic("database.LastConfirm == nil && cItem.Block.Height() != 0")
+	}
+
+	if (database.LastConfirm.Block != nil) &&
+		(cItem.Block.Height() < database.LastConfirm.Block.Height()) {
+		panic("(database.LastConfirm.Block != nil) && (cItem.Block.Height() < database.LastConfirm.Block.Height())")
+		// return nil
+	}
+
+	// accounts := cItem.Trie.Collected(cItem.Block.Height())
+	// if len(accounts) <= 0 {
+	// 	return
+	// }else{
+	// 	database
+	// }
 }
 
 /**
@@ -112,47 +167,22 @@ func (database *ChainDatabase) blockCommit(hash common.Hash) error {
 		return nil
 	}
 
-	isCandidate := func(account *types.AccountData) bool {
-		result, ok := account.Candidate.Profile[types.CandidateKeyIsCandidate]
-		if !ok {
-			return false
-		} else {
-			val, err := strconv.ParseBool(result)
-			if err != nil {
-				panic("to bool err : " + err.Error())
-			}
-
-			return val
-		}
-	}
-
-	getNodeID := func(account *types.AccountData) []byte {
-		result, ok := account.Candidate.Profile[types.CandidateKeyNodeID]
-		if !ok {
-			panic("node id is not exist.")
-		} else {
-			return common.Hex2Bytes(result)
-		}
-	}
-
-	put2Candidates := func(accounts []*types.AccountData) {
-		candidates := make([]*Candidate, 0)
+	filterCandidates := func(accounts []*types.AccountData) {
 		for index := 0; index < len(accounts); index++ {
 			account := accounts[index]
-			if isCandidate(account) {
-				candidates = append(candidates, &Candidate{
-					address: account.Address,
-					nodeID:  getNodeID(account),
-					total:   account.Candidate.Votes,
-				})
+			if isCandidate(account) && !database.Context.CandidateIsExist(account.Address) {
+				database.Context.SetCandidate(account.Address)
 			}
-
 		}
-		database.CandidatesRank.Rank(candidates)
+	}
+
+	commitContext := func(block *types.Block, accounts []*types.AccountData) error {
+		filterCandidates(accounts)
+		database.Context.StableBlock = cItem.Block
+		return database.Context.Flush()
 	}
 
 	accounts := cItem.Trie.Collected(cItem.Block.Height())
-
 	err = decodeBatch(accounts, batch)
 	if err != nil {
 		return err
@@ -163,13 +193,7 @@ func (database *ChainDatabase) blockCommit(hash common.Hash) error {
 		return err
 	}
 
-	if len(accounts) > 0 {
-		put2Candidates(accounts)
-	}
-	database.Context.StableBlock = cItem.Block
-	database.Context.Flush()
-
-	return nil
+	return commitContext(cItem.Block, accounts)
 }
 
 func (database *ChainDatabase) getBlock4Cache(hash common.Hash) (*types.Block, error) {

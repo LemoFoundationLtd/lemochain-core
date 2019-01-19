@@ -51,6 +51,10 @@ func IsValuable(log *types.ChangeLog) bool {
 	case SuicideLog:
 		oldAccount := log.OldVal.(*types.AccountData)
 		valuable = oldAccount != nil && (oldAccount.Balance != big.NewInt(0) || !isEmptyHash(oldAccount.CodeHash) || !isEmptyHash(oldAccount.StorageRoot))
+	case VotesLog:
+	case VoteForLog:
+	case CandidateProfileLog:
+		return true
 	default:
 		valuable = log.OldVal != log.NewVal
 	}
