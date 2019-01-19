@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
@@ -150,6 +151,7 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 		restGas              = tx.GasLimit()
 		mergeFrom            = len(p.am.GetChangeLogs())
 	)
+	fmt.Println("初始的Balance=", initialSenderBalance.String())
 	err = p.buyGas(gp, tx)
 	if err != nil {
 		return 0, err
@@ -188,6 +190,11 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 				log.Errorf("invalid address: %s", err)
 				return 0, err
 			}
+			// 判断tx的接收者是否为"0x1001"地址,(目前只是通过TxType判断是注册交易的,交易的接受者自动变为"0x1001",这里判断不判断都不影响)
+			if *tx.To() != to {
+				log.Error("RegisterTx recipient Address false")
+				return 0, errors.New("RegisterTx recipient Address false")
+			}
 			// 解析交易data中申请候选节点的信息
 			txData := tx.Data()
 			CandNode := new(deputynode.CandidateNode)
@@ -197,7 +204,7 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 				return 0, err
 			}
 			minerAddress := CandNode.MinerAddress
-			nodeID := common.Bytes2Hex(CandNode.NodeID)
+			nodeID := common.ToHex(CandNode.NodeID)
 			host := CandNode.Host
 			port := strconv.Itoa(int(CandNode.Port))
 			restGas, vmErr = vmEnv.RegisterCandidate(senderAddr, to, minerAddress, nodeID, host, port, restGas, tx.Amount())
@@ -226,6 +233,7 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 
 	// 发送者对应的候选节点票数变动
 	endSenderBalance := sender.GetBalance()
+	fmt.Println("结束的Balance=", endSenderBalance.String())
 	senderBalanceChange := new(big.Int).Sub(endSenderBalance, initialSenderBalance)
 	p.changeCandidateVotes(senderAddr, senderBalanceChange)
 

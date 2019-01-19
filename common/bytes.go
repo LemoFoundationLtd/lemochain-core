@@ -73,10 +73,12 @@ func isHex(str string) bool {
 	return true
 }
 
+// Deprecated: use ToHex
 func Bytes2Hex(d []byte) string {
 	return hex.EncodeToString(d)
 }
 
+// Deprecated: use FromHex
 func Hex2Bytes(str string) []byte {
 	h, _ := hex.DecodeString(str)
 

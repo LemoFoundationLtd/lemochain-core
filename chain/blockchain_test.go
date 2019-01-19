@@ -2,6 +2,7 @@ package chain
 
 import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
@@ -1212,8 +1213,8 @@ func TestBlockChain_VerifyBodyNormal(t *testing.T) {
 		gasLimit:    1000000000,
 		deputyNodes: genesis.DeputyNodes,
 		txList: []*types.Transaction{
-			makeTx(tmp, accounts[0].Address, big.NewInt(30000)),
-			makeTx(tmp, accounts[1].Address, big.NewInt(40000)),
+			makeTx(tmp, accounts[0].Address, params.OrdinaryTx, big.NewInt(30000)),
+			makeTx(tmp, accounts[1].Address, params.OrdinaryTx, big.NewInt(40000)),
 		},
 		time:   1540893799,
 		author: genesis.MinerAddress(),
@@ -1246,8 +1247,8 @@ func TestBlockChain_VerifyBlockBalanceNotEnough(t *testing.T) {
 	}
 	block := makeBlock(blockChain.db, info, false)
 	block.Txs = []*types.Transaction{
-		makeTx(tmp, accounts[0].Address, big.NewInt(30000)),
-		makeTx(tmp, accounts[1].Address, big.NewInt(40000)),
+		makeTx(tmp, accounts[0].Address, params.OrdinaryTx, big.NewInt(30000)),
+		makeTx(tmp, accounts[1].Address, params.OrdinaryTx, big.NewInt(40000)),
 	}
 	block.Header.TxRoot = types.DeriveTxsSha(block.Txs)
 	err = blockChain.Verify(block)
@@ -1300,8 +1301,8 @@ func TestBlockChain_VerifyBlockBalanceValidDeputy(t *testing.T) {
 		gasLimit:    1000000000,
 		deputyNodes: genesis.DeputyNodes,
 		txList: []*types.Transaction{
-			makeTx(tmp, accounts[0].Address, big.NewInt(30000)),
-			makeTx(tmp, accounts[1].Address, big.NewInt(40000)),
+			makeTx(tmp, accounts[0].Address, params.OrdinaryTx, big.NewInt(30000)),
+			makeTx(tmp, accounts[1].Address, params.OrdinaryTx, big.NewInt(40000)),
 		},
 		time:   1540893799,
 		author: genesis.MinerAddress(),
@@ -1331,8 +1332,8 @@ func TestBlockChain_VerifyBlockBalanceValidTx(t *testing.T) {
 		gasLimit:    1000000000,
 		deputyNodes: genesis.DeputyNodes,
 		txList: []*types.Transaction{
-			makeTx(tmp, accounts[0].Address, big.NewInt(30000)),
-			makeTx(tmp, accounts[1].Address, big.NewInt(40000)),
+			makeTx(tmp, accounts[0].Address, params.OrdinaryTx, big.NewInt(30000)),
+			makeTx(tmp, accounts[1].Address, params.OrdinaryTx, big.NewInt(40000)),
 		},
 		time:   1540893799,
 		author: genesis.MinerAddress(),

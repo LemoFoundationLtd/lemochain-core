@@ -171,11 +171,6 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 
 // 投票交易调用
 func (evm *EVM) CallVoteTx(voter, node common.Address, gas uint64) (leftgas uint64, err error) {
-	// // 不允许给自己投票，因为在申请候选节点的时候默认投给自己
-	// if voter == node {
-	// 	return gas, errors.New("can't vote to yourself")
-	// }
-
 	nodeAccount := evm.am.GetAccount(node)
 	// 	判断node是否为候选节点的竞选账户
 	profile := nodeAccount.GetCandidateProfile()
@@ -218,7 +213,7 @@ func (evm *EVM) CallVoteTx(voter, node common.Address, gas uint64) (leftgas uint
 // 申请注册参加竞选代理节点的交易调用,sender为发起申请交易的用户地址，to为接收注册费用的账户地址，CandidateAddress为要成为候选节点的地址，Host为节点ip或者域名
 func (evm *EVM) RegisterCandidate(CandidateAddress, to, minerAddress common.Address, nodeID, host, port string, gas uint64, value *big.Int) (leftgas uint64, err error) {
 	// value不能小于规定的注册费用
-	if value.Cmp(params.RegisterCampaignNodeFees) < 0 {
+	if value.Cmp(params.RegisterCandidateNodeFees) < 0 {
 		return gas, ErrOfRegisterCandidateNodeFees
 	}
 	// 查看余额够不够
@@ -247,12 +242,17 @@ func (evm *EVM) RegisterCandidate(CandidateAddress, to, minerAddress common.Addr
 			profile[types.CandidateKeyPort] = port
 		}
 	} else {
+		// 初始化map
+		// profile = make(types.CandidateProfile, 5)
 		// 设置账户为竞选节点
+		profile = make(types.CandidateProfile)
 		profile[types.CandidateKeyIsCandidate] = "true"
 		profile[types.CandidateKeyMinerAddress] = minerAddress.Hex()
 		profile[types.CandidateKeyNodeID] = nodeID
 		profile[types.CandidateKeyHost] = host
 		profile[types.CandidateKeyPort] = port
+
+		nodeAccount.SetCandidateProfile(profile)
 		// 初始化竞选节点为自己投票
 		balance := nodeAccount.GetBalance()
 		oldNodeAddress := nodeAccount.GetVoteFor()
@@ -265,8 +265,12 @@ func (evm *EVM) RegisterCandidate(CandidateAddress, to, minerAddress common.Addr
 		// 设置投票候选节点为自己地址
 		nodeAccount.SetVoteFor(CandidateAddress)
 		// 设置自己的票数，此时自己的票数为自己的balance,防止可能存在未知的漏洞还是获取当前票数+balance来设置最终的票数。
-		nodeVoters := new(big.Int).Add(nodeAccount.GetVotes(), balance)
-		nodeAccount.SetVotes(nodeVoters)
+		if nodeAccount.GetVotes() != nil {
+			nodeVoters := new(big.Int).Add(nodeAccount.GetVotes(), balance)
+			nodeAccount.SetVotes(nodeVoters)
+		} else {
+			nodeAccount.SetVotes(balance)
+		}
 	}
 	// 转账操作，必须放在票数改变逻辑后面，保证不会因为balance改变导致票数的改变出错
 	evm.Transfer(evm.am, CandidateAddress, to, value)

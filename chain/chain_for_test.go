@@ -3,6 +3,7 @@ package chain
 import (
 	"bytes"
 	"crypto/ecdsa"
+	"encoding/json"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
@@ -15,6 +16,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"github.com/LemoFoundationLtd/lemochain-go/store/protocol"
 	"math/big"
+	"strconv"
 	"time"
 )
 
@@ -33,14 +35,24 @@ type blockInfo struct {
 	deputyNodes deputynode.DeputyNodes
 }
 
+// 申请候选节点交易
+var cand = &deputynode.CandidateNode{
+	MinerAddress: common.HexToAddress("0x20000"),
+	NodeID:       common.FromHex("0x34f0df789b46e9bc09f23d5315b951bc77bbfeda653ae6f5aab564c9b4619322fddb3b1f28d1c434250e9d4dd8f51aa8334573d7281e4d63baba913e9fa6908f"),
+	Host:         "0.0.0.1",
+	Port:         8080,
+}
+var CandidateData, _ = json.Marshal(cand)
+
 var (
+	voteAdd, _             = common.StringToAddress("0x1001")
 	chainID         uint16 = 200
 	bigNumber, _           = new(big.Int).SetString("1000000000000000000000", 10) // 1 thousand
 	testSigner             = types.DefaultSigner{}
 	testPrivate, _         = crypto.HexToECDSA("432a86ab8765d82415a803e29864dcfc1ed93dac949abf6f95a583179f27e4bb") // secp256k1.V = 1
 	testAddr               = crypto.PubkeyToAddress(testPrivate.PublicKey)                                         // 0x0107134B9CdD7D89F83eFa6175F9b3552F29094c
 	defaultAccounts        = []common.Address{
-		common.HexToAddress("0x10000"), common.HexToAddress("0x20000"), testAddr,
+		common.HexToAddress("0x10000"), common.HexToAddress("0x20000"), testAddr, voteAdd,
 	}
 	defaultBlocks     = make([]*types.Block, 0)
 	defaultBlockInfos = []blockInfo{
@@ -66,7 +78,9 @@ var (
 				// testAddr -> defaultAccounts[0] 1
 				signTransaction(types.NewTransaction(defaultAccounts[0], common.Big1, 2000000, common.Big2, []byte{12}, 0, chainID, 1538210391, "aa", "aaa"), testPrivate),
 				// testAddr -> defaultAccounts[1] 1
-				makeTransaction(testPrivate, defaultAccounts[1], common.Big1, common.Big2, 1538210491, 2000000),
+				makeTransaction(testPrivate, defaultAccounts[1], 0, common.Big1, common.Big2, 1538210491, 2000000),
+
+				signTransaction(types.NewTransaction(defaultAccounts[0], params.RegisterCandidateNodeFees, 220000, common.Big1, CandidateData, params.VoteTx, chainID, uint64(time.Now().Unix()+300), "", ""), testPrivate),
 			},
 			gasLimit: 20000000,
 			time:     1538209755,
@@ -81,7 +95,7 @@ var (
 			logRoot:     common.HexToHash("0x40ab1668ecddd288ded6cec4135dadb071beee4e2826640e96c416894aaa6469"),
 			txList: []*types.Transaction{
 				// testAddr -> defaultAccounts[0] 2
-				makeTransaction(testPrivate, defaultAccounts[0], bigNumber, common.Big2, 1538210395, 2000000),
+				makeTransaction(testPrivate, defaultAccounts[0], 0, bigNumber, common.Big2, 1538210395, 2000000),
 			},
 			time:     1538209758,
 			gasLimit: 20000000,
@@ -96,9 +110,9 @@ var (
 			logRoot:     common.HexToHash("0xa92582c4c7627d130a38c94e568b8c671817fe742930636c7b0190b7f7344064"),
 			txList: []*types.Transaction{
 				// testAddr -> defaultAccounts[0] 2
-				makeTransaction(testPrivate, defaultAccounts[0], common.Big2, common.Big2, 1538210398, 30000),
+				makeTransaction(testPrivate, defaultAccounts[0], 0, common.Big2, common.Big2, 1538210398, 30000),
 				// testAddr -> defaultAccounts[1] 2
-				makeTransaction(testPrivate, defaultAccounts[1], common.Big2, common.Big3, 1538210425, 30000),
+				makeTransaction(testPrivate, defaultAccounts[1], 0, common.Big2, common.Big3, 1538210425, 30000),
 			},
 			time:     1538209761,
 			gasLimit: 20000000,
@@ -182,6 +196,17 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 		fee := new(big.Int).Mul(new(big.Int).SetUint64(gas), tx.GasPrice())
 		cost := new(big.Int).Add(tx.Amount(), fee)
 		to := manager.GetAccount(*tx.To())
+		// 投票交易
+		if tx.Type() == params.VoteTx {
+			profile := make(types.CandidateProfile)
+			profile[types.CandidateKeyIsCandidate] = "true"
+			profile[types.CandidateKeyMinerAddress] = cand.MinerAddress.String()
+			profile[types.CandidateKeyNodeID] = common.ToHex(cand.NodeID)
+			profile[types.CandidateKeyHost] = cand.Host
+			profile[types.CandidateKeyPort] = strconv.Itoa(int(cand.Port))
+			to.SetCandidateProfile(profile)
+		}
+
 		// make sure the change log has right order
 		if fromAddr.Hex() < tx.To().Hex() {
 			from.SetBalance(new(big.Int).Sub(from.GetBalance(), cost))
@@ -271,12 +296,12 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 	return block
 }
 
-func makeTx(fromPrivate *ecdsa.PrivateKey, to common.Address, amount *big.Int) *types.Transaction {
-	return makeTransaction(fromPrivate, to, amount, common.Big1, uint64(time.Now().Unix()+300), 1000000)
+func makeTx(fromPrivate *ecdsa.PrivateKey, to common.Address, txType uint8, amount *big.Int) *types.Transaction {
+	return makeTransaction(fromPrivate, to, txType, amount, common.Big1, uint64(time.Now().Unix()+300), 1000000)
 }
 
-func makeTransaction(fromPrivate *ecdsa.PrivateKey, to common.Address, amount, gasPrice *big.Int, expiration uint64, gasLimit uint64) *types.Transaction {
-	tx := types.NewTransaction(to, amount, gasLimit, gasPrice, []byte{}, 0, chainID, expiration, "", "")
+func makeTransaction(fromPrivate *ecdsa.PrivateKey, to common.Address, txType uint8, amount, gasPrice *big.Int, expiration uint64, gasLimit uint64) *types.Transaction {
+	tx := types.NewTransaction(to, amount, gasLimit, gasPrice, []byte{}, txType, chainID, expiration, "", "")
 	return signTransaction(tx, fromPrivate)
 }
 
