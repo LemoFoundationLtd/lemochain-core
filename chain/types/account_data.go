@@ -43,10 +43,10 @@ type Pair struct {
 type CandidateProfile map[string]string
 
 func (a CandidateProfile) EncodeRLP(w io.Writer) error {
+	tmp := make([]Pair, 0)
 	if len(a) <= 0 {
-		return nil
+		return rlp.Encode(w, tmp)
 	} else {
-		tmp := make([]Pair, 0)
 		for k, v := range a {
 			tmp = append(tmp, Pair{
 				key: k,
@@ -85,7 +85,7 @@ type AccountData struct {
 	NewestRecords map[ChangeLogType]VersionRecord `json:"records" gencodec:"required"`
 
 	VoteFor   common.Address `json:"voteFor"`
-	Candidate Candidate
+	Candidate Candidate      `json:"candidate"`
 
 	// related transactions include income and outcome
 	TxHashList []common.Hash `json:"-"`
@@ -104,12 +104,13 @@ type rlpVersionRecord struct {
 
 // rlpAccountData defines the fields which would be encode/decode by rlp
 type rlpAccountData struct {
-	Address     common.Address
-	Balance     *big.Int
-	CodeHash    common.Hash
-	StorageRoot common.Hash
-	TxHashList  []common.Hash
-
+	Address       common.Address
+	Balance       *big.Int
+	CodeHash      common.Hash
+	StorageRoot   common.Hash
+	TxHashList    []common.Hash
+	VoteFor       common.Address
+	Candidate     Candidate
 	NewestRecords []rlpVersionRecord
 }
 
@@ -125,6 +126,8 @@ func (a *AccountData) EncodeRLP(w io.Writer) error {
 		CodeHash:      a.CodeHash,
 		StorageRoot:   a.StorageRoot,
 		TxHashList:    a.TxHashList,
+		VoteFor:       a.VoteFor,
+		Candidate:     a.Candidate,
 		NewestRecords: NewestRecords,
 	})
 }
@@ -134,7 +137,8 @@ func (a *AccountData) DecodeRLP(s *rlp.Stream) error {
 	var dec rlpAccountData
 	err := s.Decode(&dec)
 	if err == nil {
-		a.Address, a.Balance, a.CodeHash, a.StorageRoot, a.TxHashList = dec.Address, dec.Balance, dec.CodeHash, dec.StorageRoot, dec.TxHashList
+		a.Address, a.Balance, a.CodeHash, a.StorageRoot, a.TxHashList, a.VoteFor, a.Candidate =
+			dec.Address, dec.Balance, dec.CodeHash, dec.StorageRoot, dec.TxHashList, dec.VoteFor, dec.Candidate
 		a.NewestRecords = make(map[ChangeLogType]VersionRecord)
 
 		for _, record := range dec.NewestRecords {

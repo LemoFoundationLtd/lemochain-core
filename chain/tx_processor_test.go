@@ -1,6 +1,8 @@
 package chain
 
 import (
+	"encoding/json"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/vm"
@@ -10,8 +12,10 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"github.com/stretchr/testify/assert"
+	"log"
 	"math/big"
 	"testing"
+	"time"
 )
 
 func TestNewTxProcessor(t *testing.T) {
@@ -134,7 +138,7 @@ func TestTxProcessor_Process2(t *testing.T) {
 
 	// used gas reach limit in some tx
 	block = createNewBlock()
-	block.Txs[0] = makeTransaction(testPrivate, defaultAccounts[1], big.NewInt(100), common.Big1, 0, 1)
+	block.Txs[0] = makeTransaction(testPrivate, defaultAccounts[1], params.OrdinaryTx, big.NewInt(100), common.Big1, 0, 1)
 	block.Header.TxRoot = types.DeriveTxsSha(block.Txs)
 	_, err = p.Process(block)
 	assert.Equal(t, ErrInvalidTxInBlock, err)
@@ -142,7 +146,7 @@ func TestTxProcessor_Process2(t *testing.T) {
 	// balance not enough
 	block = createNewBlock()
 	balance := p.am.GetAccount(testAddr).GetBalance()
-	block.Txs[0] = makeTx(testPrivate, defaultAccounts[1], new(big.Int).Add(balance, big.NewInt(1)))
+	block.Txs[0] = makeTx(testPrivate, defaultAccounts[1], params.OrdinaryTx, new(big.Int).Add(balance, big.NewInt(1)))
 	block.Header.TxRoot = types.DeriveTxsSha(block.Txs)
 	_, err = p.Process(block)
 	assert.Equal(t, ErrInvalidTxInBlock, err)
@@ -157,7 +161,7 @@ func createNewBlock() *types.Block {
 		parentHash: defaultBlocks[1].Hash(),
 		author:     testAddr,
 		txList: []*types.Transaction{
-			makeTx(testPrivate, defaultAccounts[1], big.NewInt(100)),
+			makeTx(testPrivate, defaultAccounts[1], params.OrdinaryTx, big.NewInt(100)),
 		}}, false)
 }
 
@@ -275,7 +279,7 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 	balance := p.am.GetAccount(testAddr).GetBalance()
 	txs = types.Transactions{
 		txs[0],
-		makeTx(testPrivate, defaultAccounts[1], new(big.Int).Add(balance, big.NewInt(1))),
+		makeTx(testPrivate, defaultAccounts[1], params.OrdinaryTx, new(big.Int).Add(balance, big.NewInt(1))),
 		txs[1],
 	}
 	newHeader, selectedTxs, invalidTxs, err = p.ApplyTxs(emptyHeader, txs)
@@ -312,7 +316,7 @@ func TestTxProcessor_ApplyTxs2(t *testing.T) {
 	minerBalance := p.am.GetAccount(defaultAccounts[0]).GetBalance()
 	recipientBalance := p.am.GetAccount(defaultAccounts[1]).GetBalance()
 	txs := types.Transactions{
-		makeTx(testPrivate, defaultAccounts[1], common.Big1),
+		makeTx(testPrivate, defaultAccounts[1], params.OrdinaryTx, common.Big1),
 	}
 	newHeader, _, _, err := p.ApplyTxs(emptyHeader, txs)
 	assert.NoError(t, err)
@@ -340,7 +344,7 @@ func TestTxProcessor_ApplyTxs2(t *testing.T) {
 	p.am.Reset(emptyHeader.ParentHash)
 	senderBalance = p.am.GetAccount(testAddr).GetBalance()
 	txs = types.Transactions{
-		makeTx(testPrivate, testAddr, common.Big1),
+		makeTx(testPrivate, testAddr, params.OrdinaryTx, common.Big1),
 	}
 	newHeader, _, _, err = p.ApplyTxs(emptyHeader, txs)
 	assert.NoError(t, err)
@@ -349,8 +353,47 @@ func TestTxProcessor_ApplyTxs2(t *testing.T) {
 	cost = txs[0].GasPrice().Mul(txs[0].GasPrice(), big.NewInt(int64(params.TxGas)))
 	assert.Equal(t, senderBalance.Sub(senderBalance, cost), newSenderBalance)
 }
-func TestNewRecent(t *testing.T) {
-	from := []byte{1, 54, 179, 166, 183, 130, 243, 254, 203, 65, 252, 241, 71, 92, 221, 55, 109, 71, 87, 201}
-	address := common.BytesToAddress(from)
-	t.Log(address.String())
+
+// Test_applyTx 测试执行交易的函数
+func Test_CandidateVoteTx(t *testing.T) {
+	p := NewTxProcessor(newChain())
+	header := defaultBlocks[3].Header
+	p.am.Reset(header.ParentHash)
+	account00 := p.am.GetAccount(defaultAccounts[0])
+	// // 初始化defaultAccounts[0]为候选节点
+	// profile := account00.GetCandidateProfile()
+	// _, ok := profile[types.CandidateKeyIsCandidate]
+	// if !ok {
+	// 	profile = make(types.CandidateProfile, 5)
+	// 	profile[types.CandidateKeyIsCandidate] = "true"
+	// 	account00.SetCandidateProfile(profile)
+	// }
+
+	// 为投票者初始化balance
+	testAccount := p.am.GetAccount(testAddr)
+	testAccount.SetBalance(big.NewInt(1000000000000))
+	voteTx := makeTx(testPrivate, defaultAccounts[0], params.VoteTx, big.NewInt(0))
+	// 为申请者初始化balance
+	account03 := p.am.GetAccount(defaultAccounts[3])
+	account03.SetBalance(new(big.Int).Mul(params.RegisterCandidateNodeFees, big.NewInt(2))) // 2000LEMO
+	// 申请候选节点交易
+	candidata := &deputynode.CandidateNode{
+		MinerAddress: common.HexToAddress("0x20000"),
+		NodeID:       common.FromHex("0x34f0df789b46e9bc09f23d5315b951bc77bbfeda653ae6f5aab564c9b4619322fddb3b1f28d1c434250e9d4dd8f51aa8334573d7281e4d63baba913e9fa6908f"),
+		Host:         "0.0.0.1",
+		Port:         8080,
+	}
+	data, _ := json.Marshal(candidata)
+
+	tx := types.NewTransaction(defaultAccounts[3], params.RegisterCandidateNodeFees, 220000, common.Big1, data, params.RegisterTx, chainID, uint64(time.Now().Unix()+300), "", "")
+	sign_RegisterTx := signTransaction(tx, testPrivate)
+
+	txs := types.Transactions{sign_RegisterTx, voteTx}
+
+	p.ApplyTxs(header, txs)
+
+	votes := account00.GetVotes()
+	log.Println("vote=", votes)
+	pro := account03.GetCandidateProfile()
+	log.Printf("nodeid = %s,ip = %s,port = %s,miner = %s\n", pro[types.CandidateKeyNodeID], pro[types.CandidateKeyHost], pro[types.CandidateKeyPort], pro[types.CandidateKeyMinerAddress])
 }

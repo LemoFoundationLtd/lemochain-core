@@ -58,5 +58,5 @@ const (
 
 var (
 	oneLEMO                  = big.NewInt(1000000000000000000)             // 1 LEMO
-	RegisterCampaignNodeFees = new(big.Int).Mul(big.NewInt(1000), oneLEMO) // Register Candidate node fees = 1000LEMO
+	RegisterCandidateNodeFees = new(big.Int).Mul(big.NewInt(1000), oneLEMO) // Register Candidate node fees = 1000LEMO
 )

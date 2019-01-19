@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
@@ -150,6 +151,7 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 		restGas              = tx.GasLimit()
 		mergeFrom            = len(p.am.GetChangeLogs())
 	)
+	fmt.Println("初始的Balance=", initialSenderBalance.String())
 	err = p.buyGas(gp, tx)
 	if err != nil {
 		return 0, err
@@ -174,19 +176,24 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 
 		// 判断交易是普通转账交易、投票交易还是注册参加节点竞选的交易
 		switch tx.Type() {
-		case params.Ordinary_tx:
+		case params.OrdinaryTx:
 			_, restGas, vmErr = vmEnv.Call(sender, recipientAddr, tx.Data(), restGas, tx.Amount())
 
-		case params.Vote_tx: // 执行投票交易逻辑
-			restGas, vmErr = vmEnv.CallVoteTx(senderAddr, recipientAddr, restGas)
+		case params.VoteTx: // 执行投票交易逻辑
+			restGas, vmErr = vmEnv.CallVoteTx(senderAddr, recipientAddr, restGas, initialSenderBalance)
 
-		case params.Register_tx: // 执行注册参加代理节点选举交易逻辑
+		case params.RegisterTx: // 执行注册参加代理节点选举交易逻辑
 			// 设置接收注册费用1000LEMO的地址
 			strAddress := "0x1001"
 			to, err := common.StringToAddress(strAddress)
 			if err != nil {
 				log.Errorf("invalid address: %s", err)
 				return 0, err
+			}
+			// 判断tx的接收者是否为"0x1001"地址,(目前只是通过TxType判断是注册交易的,交易的接受者自动变为"0x1001",这里判断不判断都不影响)
+			if *tx.To() != to {
+				log.Error("RegisterTx recipient Address false")
+				return 0, errors.New("RegisterTx recipient Address false")
 			}
 			// 解析交易data中申请候选节点的信息
 			txData := tx.Data()
@@ -196,11 +203,12 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 				log.Errorf("unmarshal Candidate node error: %s", err)
 				return 0, err
 			}
+			isCandidate := CandNode.IsCandidate
 			minerAddress := CandNode.MinerAddress
-			nodeID := common.Bytes2Hex(CandNode.NodeID)
+			nodeID := common.ToHex(CandNode.NodeID)
 			host := CandNode.Host
 			port := strconv.Itoa(int(CandNode.Port))
-			restGas, vmErr = vmEnv.RegisterCandidate(senderAddr, to, minerAddress, nodeID, host, port, restGas, tx.Amount())
+			restGas, vmErr = vmEnv.RegisterOrModifyOfCandidate(senderAddr, to, minerAddress, isCandidate, nodeID, host, port, restGas, tx.Amount(), initialSenderBalance)
 
 		default:
 			log.Errorf("The type of transaction is not defined. txType = %d\n", tx.Type())
@@ -209,8 +217,12 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 		}
 		// 接收者对应的候选节点的票数变化
 		endRecipientBalance := recipientAccount.GetBalance()
-		recipientBalanceChange := new(big.Int).Sub(endRecipientBalance, initialRecipientBalance)
-		p.changeCandidateVotes(recipientAddr, recipientBalanceChange)
+		if initialRecipientBalance == nil {
+			p.changeCandidateVotes(recipientAddr, endRecipientBalance)
+		} else {
+			recipientBalanceChange := new(big.Int).Sub(endRecipientBalance, initialRecipientBalance)
+			p.changeCandidateVotes(recipientAddr, recipientBalanceChange)
+		}
 	}
 	if vmErr != nil {
 		log.Info("VM returned with error", "err", vmErr)
@@ -226,6 +238,8 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 
 	// 发送者对应的候选节点票数变动
 	endSenderBalance := sender.GetBalance()
+	fmt.Println("一笔交易结束时的senderBalance:", endSenderBalance.String())
+
 	senderBalanceChange := new(big.Int).Sub(endSenderBalance, initialSenderBalance)
 	p.changeCandidateVotes(senderAddr, senderBalanceChange)
 
@@ -243,10 +257,16 @@ func (p *TxProcessor) changeCandidateVotes(accountAddress common.Address, change
 	}
 	acc := p.am.GetAccount(accountAddress)
 	CandidataAddress := acc.GetVoteFor()
-	if (CandidataAddress == common.Address{}) { // 不存在投票候选节点地址
+
+	if (CandidataAddress == common.Address{}) { // 不存在投票候选节点地址或者候选者已经取消候选者资格
 		return
 	}
+	// 查看投给的候选者是否已经取消了候选资格
 	CandidateAccount := p.am.GetAccount(CandidataAddress)
+	profile := CandidateAccount.GetCandidateProfile()
+	if profile[types.CandidateKeyIsCandidate] == "false" {
+		return
+	}
 	// changeBalance为正数则加，为负数则减
 	CandidateAccount.SetVotes(new(big.Int).Add(CandidateAccount.GetVotes(), changeBalance))
 }
@@ -379,9 +399,9 @@ func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *comm
 
 	var tx *types.Transaction
 	if to == nil { // avoid null pointer references
-		tx = types.NewContractCreation(big.NewInt(0), gasLimit, gasPrice, data, params.Ordinary_tx, p.chain.chainID, uint64(time.Now().Unix()+30*60), "", "")
+		tx = types.NewContractCreation(big.NewInt(0), gasLimit, gasPrice, data, params.OrdinaryTx, p.chain.chainID, uint64(time.Now().Unix()+30*60), "", "")
 	} else {
-		tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, params.Ordinary_tx, p.chain.chainID, uint64(time.Now().Unix()+30*60), "", "")
+		tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, params.OrdinaryTx, p.chain.chainID, uint64(time.Now().Unix()+30*60), "", "")
 	}
 
 	// Timeout limit

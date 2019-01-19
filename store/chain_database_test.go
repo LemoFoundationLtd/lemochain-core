@@ -8,6 +8,16 @@ import (
 	// "github.com/LemoFoundationLtd/lemochain-go/common/log"
 )
 
+func TestChainDatabase_GetBlockByHash(t *testing.T) {
+	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
+	//hash := common.HexToHash("0x1ed5c1a23d47e52b815ce6f1ee45bae18a8dc2fdb05707ac25e6362ee0d6ab47")
+	hash := common.HexToHash("0x0b0482c1d8fc642f04e6ebf4d979af6d05c8d49f316bf7f9398ebcffd1a50eb9")
+	result, err := cacheChain.GetBlockByHash(hash)
+	resultHash := result.Hash()
+	assert.NoError(t, err)
+	assert.Equal(t, resultHash, hash)
+}
+
 func TestCacheChain_SetBlock(t *testing.T) {
 	ClearData()
 
