@@ -52,7 +52,7 @@ func (top *VoteTop) Clone() *VoteTop {
 		TopCap: top.TopCap,
 	}
 
-	copy.Top = make([]*Candidate, 0, top.TopCnt)
+	copy.Top = make([]*Candidate, top.TopCnt)
 	for index := 0; index < top.TopCnt; index++ {
 		copy.Top[index] = top.Top[index].Clone()
 	}
