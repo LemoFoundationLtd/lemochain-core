@@ -1,8 +1,7 @@
 package chain
 
 import (
-	"encoding/json"
-	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
+	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/vm"
@@ -12,7 +11,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"github.com/stretchr/testify/assert"
-	"log"
 	"math/big"
 	"testing"
 	"time"
@@ -354,46 +352,111 @@ func TestTxProcessor_ApplyTxs2(t *testing.T) {
 	assert.Equal(t, senderBalance.Sub(senderBalance, cost), newSenderBalance)
 }
 
-// Test_applyTx 测试执行交易的函数
-func Test_CandidateVoteTx(t *testing.T) {
+//  Test_voteAndRegisteTx测试投票交易和注册候选节点交易
+func Test_voteAndRegisteTx(t *testing.T) {
+	store.ClearData()
 	p := NewTxProcessor(newChain())
-	header := defaultBlocks[3].Header
-	p.am.Reset(header.ParentHash)
-	account00 := p.am.GetAccount(defaultAccounts[0])
-	// // 初始化defaultAccounts[0]为候选节点
-	// profile := account00.GetCandidateProfile()
-	// _, ok := profile[types.CandidateKeyIsCandidate]
-	// if !ok {
-	// 	profile = make(types.CandidateProfile, 5)
-	// 	profile[types.CandidateKeyIsCandidate] = "true"
-	// 	account00.SetCandidateProfile(profile)
-	// }
+	// new一个用于投票的account，并setBalance
+	voteTxAdd, _ := common.StringToAddress("Lemo83W59DHT7FD4KSB3HWRJ5T4JD82TZW27ZKHJ")
 
-	// 为投票者初始化balance
-	testAccount := p.am.GetAccount(testAddr)
-	testAccount.SetBalance(big.NewInt(1000000000000))
-	voteTx := makeTx(testPrivate, defaultAccounts[0], params.VoteTx, big.NewInt(0))
-	// 为申请者初始化balance
-	account03 := p.am.GetAccount(defaultAccounts[3])
-	account03.SetBalance(new(big.Int).Mul(params.RegisterCandidateNodeFees, big.NewInt(2))) // 2000LEMO
+	votePrivate, _ := crypto.HexToECDSA("7a720181f628d9b132af6730d797fc3486adfb2993f0796ac6854f5885697746")
+	balanceTx := makeTx(testPrivate, voteTxAdd, params.OrdinaryTx, big.NewInt(1000000))
 	// 申请候选节点交易
-	candidata := &deputynode.CandidateNode{
-		MinerAddress: common.HexToAddress("0x20000"),
-		NodeID:       common.FromHex("0x34f0df789b46e9bc09f23d5315b951bc77bbfeda653ae6f5aab564c9b4619322fddb3b1f28d1c434250e9d4dd8f51aa8334573d7281e4d63baba913e9fa6908f"),
-		Host:         "0.0.0.1",
-		Port:         8080,
+	strAddress := "0x1001"
+	to, _ := common.StringToAddress(strAddress)
+	registerTx := signTransaction(types.NewTransaction(to, params.RegisterCandidateNodeFees, 220000, common.Big1, CandidateData, params.RegisterTx, chainID, uint64(time.Now().Unix()+300), "", ""), testPrivate)
+
+	parentBlock := p.chain.currentBlock.Load().(*types.Block)
+	header := &types.Header{
+		ParentHash:   parentBlock.Hash(),
+		MinerAddress: parentBlock.MinerAddress(),
+		VersionRoot:  parentBlock.VersionRoot(),
+		Height:       parentBlock.Height() + 1,
+		GasLimit:     parentBlock.GasLimit(),
+		GasUsed:      0,
+		Time:         parentBlock.Time() + 4,
 	}
-	data, _ := json.Marshal(candidata)
+	newHeader, _, _, err := p.ApplyTxs(header, types.Transactions{registerTx, balanceTx})
+	if err != nil {
+		fmt.Printf(" apply register tx err : %s \n", err)
+	}
+	registerBlock := &types.Block{
+		Txs:         types.Transactions{registerTx, balanceTx},
+		ChangeLogs:  p.am.GetChangeLogs(),
+		Events:      p.am.GetEvents(),
+		Confirms:    nil,
+		DeputyNodes: nil,
+	}
+	registerBlock.SetHeader(newHeader)
+	blockHash := newHeader.Hash()
+	err = p.chain.db.SetBlock(blockHash, registerBlock)
+	if err != nil && err != store.ErrExist {
+		panic(err)
+	}
+	err = p.am.Save(blockHash)
+	if err != nil {
+		panic(err)
+	}
+	err = p.chain.db.SetStableBlock(blockHash)
+	if err != nil {
+		panic(err)
+	}
 
-	tx := types.NewTransaction(defaultAccounts[3], params.RegisterCandidateNodeFees, 220000, common.Big1, data, params.RegisterTx, chainID, uint64(time.Now().Unix()+300), "", "")
-	sign_RegisterTx := signTransaction(tx, testPrivate)
+	// 	验证注册代理节点交易信息
+	registerAddress, _ := registerTx.From()
+	registerAccoount := p.am.GetCanonicalAccount(registerAddress)
+	assert.Equal(t, registerAddress, registerAccoount.GetVoteFor())                               // 投给自己
+	assert.Equal(t, registerAccoount.GetBalance().String(), registerAccoount.GetVotes().String()) // 初始票数为自己的Balance
 
-	txs := types.Transactions{sign_RegisterTx, voteTx}
+	// 打印出候选者的信息
+	profile := registerAccoount.GetCandidateProfile()
+	for k, v := range profile {
+		fmt.Printf("profile[%s]%s\n", k, v)
+	}
+	// ------------------------------------------------------------------------------
+	//  测试发送投票交易,投票给testAdd
+	p.am.Reset(registerBlock.Hash())
+	voteTx := makeTx(votePrivate, registerAddress, params.VoteTx, big.NewInt(0))
+	voteHeader := &types.Header{
+		ParentHash:   registerBlock.Hash(),
+		MinerAddress: registerBlock.MinerAddress(),
+		VersionRoot:  registerBlock.VersionRoot(),
+		Height:       registerBlock.Height() + 1,
+		GasLimit:     registerBlock.GasLimit(),
+		Time:         registerBlock.Time() + 4,
+	}
+	newVoteHeader, _, _, err := p.ApplyTxs(voteHeader, types.Transactions{voteTx})
+	if err != nil {
+		fmt.Printf(" apply vote tx err : %s \n", err)
+	}
+	voteBlock := &types.Block{
+		Header:      newVoteHeader,
+		Txs:         types.Transactions{voteTx},
+		ChangeLogs:  p.am.GetChangeLogs(),
+		Events:      p.am.GetEvents(),
+		Confirms:    nil,
+		DeputyNodes: nil,
+	}
 
-	p.ApplyTxs(header, txs)
+	voteHash := voteBlock.Hash()
+	err = p.chain.db.SetBlock(voteHash, voteBlock)
+	if err != nil && err != store.ErrExist {
+		panic(err)
+	}
+	err = p.am.Save(voteHash)
+	if err != nil {
+		panic(err)
+	}
+	err = p.chain.db.SetStableBlock(voteHash)
+	if err != nil {
+		panic(err)
+	}
+	voteNewAccount := p.am.GetCanonicalAccount(voteTxAdd)
 
-	votes := account00.GetVotes()
-	log.Println("vote=", votes)
-	pro := account03.GetCandidateProfile()
-	log.Printf("nodeid = %s,ip = %s,port = %s,miner = %s\n", pro[types.CandidateKeyNodeID], pro[types.CandidateKeyHost], pro[types.CandidateKeyPort], pro[types.CandidateKeyMinerAddress])
+	newRegisterAcc := p.am.GetCanonicalAccount(registerAddress)
+	// 	验证
+	assert.Equal(t, registerAddress, voteNewAccount.GetVoteFor()) // 是否投给了指定的address
+	// 票数是否增加了期望的值
+	assert.Equal(t, new(big.Int).Add(newRegisterAcc.GetBalance(), voteNewAccount.GetBalance()), newRegisterAcc.GetVotes())
+
 }

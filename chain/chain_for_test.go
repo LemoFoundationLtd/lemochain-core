@@ -16,7 +16,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"github.com/LemoFoundationLtd/lemochain-go/store/protocol"
 	"math/big"
-	"strconv"
 	"time"
 )
 
@@ -35,7 +34,7 @@ type blockInfo struct {
 	deputyNodes deputynode.DeputyNodes
 }
 
-// 申请候选节点交易用
+// 申请候选节点交易用data
 var cand = &deputynode.CandidateNode{
 	IsCandidate:  true,
 	MinerAddress: common.HexToAddress("0x20000"),
@@ -46,14 +45,13 @@ var cand = &deputynode.CandidateNode{
 var CandidateData, _ = json.Marshal(cand)
 
 var (
-	voteAdd, _             = common.StringToAddress("0x1001")
 	chainID         uint16 = 200
 	bigNumber, _           = new(big.Int).SetString("1000000000000000000000", 10) // 1 thousand
 	testSigner             = types.DefaultSigner{}
 	testPrivate, _         = crypto.HexToECDSA("432a86ab8765d82415a803e29864dcfc1ed93dac949abf6f95a583179f27e4bb") // secp256k1.V = 1
 	testAddr               = crypto.PubkeyToAddress(testPrivate.PublicKey)                                         // 0x0107134B9CdD7D89F83eFa6175F9b3552F29094c
 	defaultAccounts        = []common.Address{
-		common.HexToAddress("0x10000"), common.HexToAddress("0x20000"), testAddr, voteAdd,
+		common.HexToAddress("0x10000"), common.HexToAddress("0x20000"), testAddr,
 	}
 	defaultBlocks     = make([]*types.Block, 0)
 	defaultBlockInfos = []blockInfo{
@@ -80,8 +78,6 @@ var (
 				signTransaction(types.NewTransaction(defaultAccounts[0], common.Big1, 2000000, common.Big2, []byte{12}, 0, chainID, 1538210391, "aa", "aaa"), testPrivate),
 				// testAddr -> defaultAccounts[1] 1
 				makeTransaction(testPrivate, defaultAccounts[1], 0, common.Big1, common.Big2, 1538210491, 2000000),
-				// 初始化一笔申请候选节点交易，让defaultAccounts[0]为候选节点
-				signTransaction(types.NewTransaction(defaultAccounts[0], params.RegisterCandidateNodeFees, 220000, common.Big1, CandidateData, params.RegisterTx, chainID, uint64(time.Now().Unix()+300), "", ""), testPrivate),
 			},
 			gasLimit: 20000000,
 			time:     1538209755,
@@ -197,18 +193,12 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 		fee := new(big.Int).Mul(new(big.Int).SetUint64(gas), tx.GasPrice())
 		cost := new(big.Int).Add(tx.Amount(), fee)
 		to := manager.GetAccount(*tx.To())
-		// 为申请候选节点交易
-		if tx.Type() == params.RegisterTx {
-			profile := make(types.CandidateProfile)
-			profile[types.CandidateKeyIsCandidate] = "true"
-			profile[types.CandidateKeyMinerAddress] = cand.MinerAddress.String()
-			profile[types.CandidateKeyNodeID] = common.ToHex(cand.NodeID)
-			profile[types.CandidateKeyHost] = cand.Host
-			profile[types.CandidateKeyPort] = strconv.Itoa(int(cand.Port))
-			to.SetCandidateProfile(profile)
-			to.SetVotes(big.NewInt(1))
+		if tx.Type() == 1 || tx.Type() == 2 {
+			newProfile := make(types.CandidateProfile, 5)
+			newProfile[types.CandidateKeyIsCandidate] = "true"
+			to.SetCandidateProfile(newProfile)
+			to.SetVotes(big.NewInt(10))
 		}
-
 		// make sure the change log has right order
 		if fromAddr.Hex() < tx.To().Hex() {
 			from.SetBalance(new(big.Int).Sub(from.GetBalance(), cost))
