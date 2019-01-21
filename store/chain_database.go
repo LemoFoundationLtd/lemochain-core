@@ -310,6 +310,16 @@ func (database *ChainDatabase) SetBlock(hash common.Hash, block *types.Block) er
 		return ErrExist
 	}
 
+	if ((block.Height() == 0) && (block.ParentHash() != common.Hash{})) ||
+		((block.ParentHash() == common.Hash{}) && (block.Height() != 0)) {
+		panic("(height == 0) && (ParentHash() != common.Hash{}) || (height != 0) && (ParentHash() == common.Hash{})")
+	}
+
+	if (database.LastConfirm.Block != nil) &&
+		(block.Height() <= database.LastConfirm.Block.Height()) {
+		panic("(database.LastConfirm.Block != nil) && (height < database.LastConfirm.Block.Height())")
+	}
+
 	// genesis block
 	if (block.ParentHash() == common.Hash{}) {
 		database.UnConfirmBlocks[hash] = &CBlock{
@@ -564,14 +574,14 @@ func (database *ChainDatabase) CandidatesRanking(hash common.Hash) {
 		panic("item or item'block is nil.")
 	}
 
-	if (database.LastConfirm.Block == nil) && (cItem.Block.Height() != 0) {
-		panic("database.LastConfirm == nil && cItem.Block.Height() != 0")
+	if ((cItem.Block.Height() == 0) && (cItem.Block.ParentHash() != common.Hash{})) ||
+		((cItem.Block.ParentHash() == common.Hash{}) && (cItem.Block.Height() != 0)) {
+		panic("（cItem.Block.Height() == 0) || (cItem.Block.ParentHash() != common.Hash{})")
 	}
 
 	if (database.LastConfirm.Block != nil) &&
-		(cItem.Block.Height() < database.LastConfirm.Block.Height()) {
+		(cItem.Block.Height() <= database.LastConfirm.Block.Height()) {
 		panic("(database.LastConfirm.Block != nil) && (cItem.Block.Height() < database.LastConfirm.Block.Height())")
-		// return nil
 	}
 
 	all := func(hash common.Hash) []*Candidate {
