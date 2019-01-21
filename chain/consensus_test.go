@@ -10,6 +10,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"github.com/stretchr/testify/assert"
+	"math/big"
 	"testing"
 	"time"
 )
@@ -69,7 +70,7 @@ func initDeputyNode(numNode int, height uint32) error {
 		IP:           nil,
 		Port:         7001,
 		Rank:         1,
-		Votes:        120,
+		Votes:        big.NewInt(120),
 	}
 	nodes[1] = &deputynode.DeputyNode{
 		MinerAddress: common.HexToAddress(block02MinerAddress),
@@ -77,7 +78,7 @@ func initDeputyNode(numNode int, height uint32) error {
 		IP:           nil,
 		Port:         7002,
 		Rank:         2,
-		Votes:        110,
+		Votes:        big.NewInt(110),
 	}
 	nodes[2] = &deputynode.DeputyNode{
 		MinerAddress: common.HexToAddress(block03MinerAddress),
@@ -85,7 +86,7 @@ func initDeputyNode(numNode int, height uint32) error {
 		IP:           nil,
 		Port:         7003,
 		Rank:         3,
-		Votes:        100,
+		Votes:        big.NewInt(100),
 	}
 	nodes[3] = &deputynode.DeputyNode{
 		MinerAddress: common.HexToAddress(block04MinerAddress),
@@ -93,7 +94,7 @@ func initDeputyNode(numNode int, height uint32) error {
 		IP:           nil,
 		Port:         7004,
 		Rank:         4,
-		Votes:        90,
+		Votes:        big.NewInt(90),
 	}
 	nodes[4] = &deputynode.DeputyNode{
 		MinerAddress: common.HexToAddress(block05MinerAddress),
@@ -101,7 +102,7 @@ func initDeputyNode(numNode int, height uint32) error {
 		IP:           nil,
 		Port:         7005,
 		Rank:         5,
-		Votes:        80,
+		Votes:        big.NewInt(80),
 	}
 
 	if numNode > 5 || numNode == 0 {
