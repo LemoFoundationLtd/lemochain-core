@@ -14,6 +14,28 @@ type testAccount struct {
 	AccountData
 }
 
+func (f *testAccount) GetVoteFor() common.Address { return f.GetVoteFor() }
+
+func (f *testAccount) SetVoteFor(addr common.Address) {
+	f.SetVoteFor(addr)
+}
+
+func (f *testAccount) GetVotes() *big.Int {
+	return f.GetVotes()
+}
+
+func (f *testAccount) SetVotes(votes *big.Int) {
+	f.SetVotes(votes)
+}
+
+func (f *testAccount) GetCandidateProfile() CandidateProfile {
+	return f.GetCandidateProfile()
+}
+
+func (f *testAccount) SetCandidateProfile(profile CandidateProfile) {
+	f.SetCandidateProfile(profile)
+}
+
 func (f *testAccount) GetAddress() common.Address  { return f.AccountData.Address }
 func (f *testAccount) GetBalance() *big.Int        { return f.AccountData.Balance }
 func (f *testAccount) SetBalance(balance *big.Int) { f.AccountData.Balance = balance }
