@@ -121,6 +121,11 @@ func (a *AccountData) EncodeRLP(w io.Writer) error {
 	for logType, record := range a.NewestRecords {
 		NewestRecords = append(NewestRecords, rlpVersionRecord{logType, record.Version, record.Height})
 	}
+
+	if a.Candidate.Profile == nil {
+		a.Candidate.Profile = make(CandidateProfile)
+	}
+
 	return rlp.Encode(w, rlpAccountData{
 		Address:       a.Address,
 		Balance:       a.Balance,
@@ -136,6 +141,10 @@ func (a *AccountData) EncodeRLP(w io.Writer) error {
 // DecodeRLP implements rlp.Decoder.
 func (a *AccountData) DecodeRLP(s *rlp.Stream) error {
 	var dec rlpAccountData
+	if dec.Candidate.Profile == nil {
+		dec.Candidate.Profile = make(CandidateProfile)
+	}
+
 	err := s.Decode(&dec)
 	if err == nil {
 		a.Address, a.Balance, a.CodeHash, a.StorageRoot, a.TxHashList, a.VoteFor, a.Candidate =
