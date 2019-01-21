@@ -36,8 +36,8 @@ const (
 )
 
 type Pair struct {
-	key string
-	val string
+	Key string
+	Val string
 }
 
 type CandidateProfile map[string]string
@@ -49,8 +49,8 @@ func (a CandidateProfile) EncodeRLP(w io.Writer) error {
 	} else {
 		for k, v := range a {
 			tmp = append(tmp, Pair{
-				key: k,
-				val: v,
+				Key: k,
+				Val: v,
 			})
 		}
 
@@ -66,7 +66,7 @@ func (a CandidateProfile) DecodeRLP(s *rlp.Stream) error {
 	}
 
 	for index := 0; index < len(dec); index++ {
-		a[dec[index].key] = dec[index].val
+		a[dec[index].Key] = dec[index].Val
 	}
 	return nil
 }
@@ -102,6 +102,11 @@ type rlpVersionRecord struct {
 	Height  uint32
 }
 
+type rlpCandidate struct {
+	Votes   *big.Int
+	Profile []Pair
+}
+
 // rlpAccountData defines the fields which would be encode/decode by rlp
 type rlpAccountData struct {
 	Address       common.Address
@@ -110,7 +115,7 @@ type rlpAccountData struct {
 	StorageRoot   common.Hash
 	TxHashList    []common.Hash
 	VoteFor       common.Address
-	Candidate     Candidate
+	Candidate     rlpCandidate
 	NewestRecords []rlpVersionRecord
 }
 
@@ -125,6 +130,15 @@ func (a *AccountData) EncodeRLP(w io.Writer) error {
 		a.Candidate.Profile = make(CandidateProfile)
 	}
 
+	candidate := rlpCandidate{Votes: a.Candidate.Votes}
+	candidate.Profile = make([]Pair, 0)
+	for k, v := range a.Candidate.Profile {
+		candidate.Profile = append(candidate.Profile, Pair{
+			Key: k,
+			Val: v,
+		})
+	}
+
 	return rlp.Encode(w, rlpAccountData{
 		Address:       a.Address,
 		Balance:       a.Balance,
@@ -132,7 +146,7 @@ func (a *AccountData) EncodeRLP(w io.Writer) error {
 		StorageRoot:   a.StorageRoot,
 		TxHashList:    a.TxHashList,
 		VoteFor:       a.VoteFor,
-		Candidate:     a.Candidate,
+		Candidate:     candidate,
 		NewestRecords: NewestRecords,
 	})
 }
@@ -140,18 +154,23 @@ func (a *AccountData) EncodeRLP(w io.Writer) error {
 // DecodeRLP implements rlp.Decoder.
 func (a *AccountData) DecodeRLP(s *rlp.Stream) error {
 	var dec rlpAccountData
-	if dec.Candidate.Profile == nil {
-		dec.Candidate.Profile = make(CandidateProfile)
-	}
+	// dec.Candidate.Profile = make(CandidateProfile)
 
 	err := s.Decode(&dec)
 	if err == nil {
-		a.Address, a.Balance, a.CodeHash, a.StorageRoot, a.TxHashList, a.VoteFor, a.Candidate =
-			dec.Address, dec.Balance, dec.CodeHash, dec.StorageRoot, dec.TxHashList, dec.VoteFor, dec.Candidate
+		a.Address, a.Balance, a.CodeHash, a.StorageRoot, a.TxHashList, a.VoteFor =
+			dec.Address, dec.Balance, dec.CodeHash, dec.StorageRoot, dec.TxHashList, dec.VoteFor
 		a.NewestRecords = make(map[ChangeLogType]VersionRecord)
 
 		for _, record := range dec.NewestRecords {
 			a.NewestRecords[ChangeLogType(record.LogType)] = VersionRecord{Version: record.Version, Height: record.Height}
+		}
+
+		candidate := dec.Candidate
+		a.Candidate.Votes = candidate.Votes
+		a.Candidate.Profile = make(map[string]string)
+		for index := 0; index < len(candidate.Profile); index++ {
+			a.Candidate.Profile[candidate.Profile[index].Key] = candidate.Profile[index].Val
 		}
 	}
 	return err
