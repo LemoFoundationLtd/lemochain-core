@@ -170,6 +170,9 @@ func TestManager_Finalise_Save(t *testing.T) {
 	err := manager.Finalise()
 	assert.NoError(t, err)
 	// save
+	block := &types.Block{}
+	block.SetHeader(&types.Header{VersionRoot: manager.GetVersionRoot(), Height: 2})
+	err = db.SetBlock(b(1), block)
 	err = manager.Save(b(1))
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(manager.accountCache))
@@ -189,8 +192,8 @@ func TestManager_Finalise_Save(t *testing.T) {
 	root = manager.GetVersionRoot()
 	assert.NotEqual(t, newestBlock.VersionRoot(), root)
 	// save
-	block := &types.Block{}
-	block.SetHeader(&types.Header{VersionRoot: root})
+	block = &types.Block{}
+	block.SetHeader(&types.Header{VersionRoot: root, Height: 3})
 	err = db.SetBlock(b(2), block)
 	assert.NoError(t, err)
 	err = manager.Save(b(2))
@@ -215,6 +218,9 @@ func TestManager_Finalise_Save2(t *testing.T) {
 	err := manager.Finalise()
 	assert.NoError(t, err)
 	// save
+	block := &types.Block{}
+	block.SetHeader(&types.Header{VersionRoot: manager.GetVersionRoot(), Height: 2})
+	err = db.SetBlock(b(11), block)
 	err = manager.Save(b(11))
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(manager.accountCache))
@@ -234,8 +240,8 @@ func TestManager_Finalise_Save2(t *testing.T) {
 	root = manager.GetVersionRoot()
 	assert.NotEqual(t, emptyTrieRoot, root)
 	// save
-	block := &types.Block{}
-	block.SetHeader(&types.Header{VersionRoot: root})
+	block = &types.Block{}
+	block.SetHeader(&types.Header{VersionRoot: root, Height: 3})
 	err = db.SetBlock(b(12), block)
 	assert.NoError(t, err)
 	err = manager.Save(b(12))
@@ -263,7 +269,7 @@ func TestManager_Save_Reset(t *testing.T) {
 	assert.Equal(t, uint32(1), account.GetBaseVersion(BalanceLog))
 	assert.Equal(t, uint32(0), account.(*SafeAccount).rawAccount.data.NewestRecords[BalanceLog].Height)
 	block := &types.Block{}
-	block.SetHeader(&types.Header{Height: 0, VersionRoot: manager.GetVersionRoot()})
+	block.SetHeader(&types.Header{Height: 2, VersionRoot: manager.GetVersionRoot()})
 	err = db.SetBlock(block.Hash(), block)
 	assert.NoError(t, err)
 	err = manager.Save(block.Hash())
@@ -279,9 +285,9 @@ func TestManager_Save_Reset(t *testing.T) {
 	err = manager.Finalise()
 	assert.NoError(t, err)
 	assert.Equal(t, uint32(2), account.GetBaseVersion(BalanceLog))
-	assert.Equal(t, uint32(1), account.(*SafeAccount).rawAccount.data.NewestRecords[BalanceLog].Height)
+	assert.Equal(t, uint32(3), account.(*SafeAccount).rawAccount.data.NewestRecords[BalanceLog].Height)
 	block = &types.Block{}
-	block.SetHeader(&types.Header{Height: 1, ParentHash: block1Hash, VersionRoot: manager.GetVersionRoot()})
+	block.SetHeader(&types.Header{Height: 3, ParentHash: block1Hash, VersionRoot: manager.GetVersionRoot()})
 	err = db.SetBlock(block.Hash(), block)
 	assert.NoError(t, err)
 	err = manager.Save(block.Hash())

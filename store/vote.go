@@ -25,6 +25,108 @@ func (candidate *Candidate) GetTotal() *big.Int {
 	return candidate.total
 }
 
+func (candidate *Candidate) Clone() *Candidate {
+	return &Candidate{
+		address: candidate.address,
+		total:   new(big.Int).Set(candidate.total),
+	}
+}
+
+type VoteTop struct {
+	TopCnt int
+	TopCap int
+	Top    []*Candidate
+}
+
+func NewVoteTop() *VoteTop {
+	return &VoteTop{
+		TopCnt: 0,
+		TopCap: 30,
+		Top:    make([]*Candidate, 0, 30),
+	}
+}
+
+func (top *VoteTop) Clone() *VoteTop {
+	copy := &VoteTop{
+		TopCnt: top.TopCnt,
+		TopCap: top.TopCap,
+	}
+
+	copy.Top = make([]*Candidate, 0, top.TopCnt)
+	for index := 0; index < top.TopCnt; index++ {
+		copy.Top[index] = top.Top[index].Clone()
+	}
+
+	return copy
+}
+
+func (top *VoteTop) Rank() {
+	for i := 0; i < top.TopCnt; i++ {
+		for j := i + 1; j < top.TopCnt; j++ {
+			if top.Top[i].total.Cmp(top.Top[j].total) < 0 {
+				top.Top[i], top.Top[j] = top.Top[j], top.Top[i]
+			}
+
+			if (top.Top[i].total.Cmp(top.Top[j].total) == 0) &&
+				(bytes.Compare(top.Top[i].address[:], top.Top[j].address[:]) < 0) {
+				top.Top[i], top.Top[j] = top.Top[j], top.Top[i]
+			}
+		}
+	}
+}
+
+func (top *VoteTop) Max() *Candidate {
+	if top.TopCnt <= 0 {
+		return nil
+	} else {
+		return top.Top[0].Clone()
+	}
+}
+
+func (top *VoteTop) Min() *Candidate {
+	if top.TopCnt <= 0 {
+		return nil
+	} else {
+		return top.Top[top.TopCnt-1].Clone()
+	}
+}
+
+func (top *VoteTop) Del(address common.Address) {
+	for index := 0; index < top.TopCnt; index++ {
+		if bytes.Compare(top.Top[index].address[:], address[:]) != 0 {
+			continue
+		} else {
+			copy(top.Top[0:index], top.Top[index+1:])
+			break
+		}
+	}
+}
+
+func (top *VoteTop) Clear() {
+	top.TopCnt = 0
+}
+
+func (top *VoteTop) Count() int {
+	return top.TopCnt
+}
+
+func (top *VoteTop) ToHashMap() map[common.Address]*Candidate {
+	result := make(map[common.Address]*Candidate)
+	for index := 0; index < len(top.Top); index++ {
+		result[top.Top[index].address] = top.Top[index]
+	}
+	return result
+}
+
+func (top *VoteTop) Reset(candidates []*Candidate) {
+	if len(candidates) <= 0 {
+		top.TopCnt = 0
+	} else {
+		top.Top = append(top.Top[0:], candidates...)
+		top.TopCnt = len(candidates)
+	}
+}
+
 type VoteRank struct {
 	TopCnt int
 	TopCap int
@@ -146,5 +248,29 @@ func (vote *VoteRank) Rank(candidates []*Candidate) {
 	} else {
 		vote.puts(candidates)
 		vote.rank()
+	}
+}
+
+func (vote *VoteRank) RankAll(candidates []*Candidate) {
+	vote.TopCnt = 0
+
+	if len(candidates) <= 0 {
+		return
+	} else {
+		minCnt := min(vote.TopCap, len(candidates))
+		for i := 0; i < minCnt; i++ {
+			for j := i + 1; j < len(candidates); j++ {
+				if candidates[i].total.Cmp(candidates[j].total) < 0 {
+					candidates[i], candidates[j] = candidates[j], candidates[i]
+				}
+
+				if (candidates[i].total.Cmp(candidates[j].total) == 0) &&
+					(bytes.Compare(candidates[i].address[:], candidates[j].address[:]) < 0) {
+					candidates[i], candidates[j] = candidates[j], candidates[i]
+				}
+			}
+			vote.Top[vote.TopCnt] = candidates[i]
+			vote.TopCnt = vote.TopCnt + 1
+		}
 	}
 }

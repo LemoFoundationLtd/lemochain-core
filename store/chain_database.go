@@ -7,15 +7,16 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
+	"math/big"
 	"os"
 	"strconv"
 	"sync"
 )
 
 type CBlock struct {
-	Block      *types.Block
-	Trie       *PatriciaTrie
-	Candidates [30]Candidate
+	Block *types.Block
+	Trie  *PatriciaTrie
+	Top30 *VoteTop
 }
 
 type ChainDatabase struct {
@@ -69,46 +70,6 @@ func isCandidate(account *types.AccountData) bool {
 
 		return val
 	}
-}
-
-func put2Candidates(accounts []*types.AccountData, rank *VoteRank) {
-	candidates := make([]*Candidate, 0)
-	for index := 0; index < len(accounts); index++ {
-		account := accounts[index]
-		if isCandidate(account) {
-			candidates = append(candidates, &Candidate{
-				address: account.Address,
-				//nodeID:  getNodeID(account),
-				total: account.Candidate.Votes,
-			})
-		}
-	}
-	rank.Rank(candidates)
-}
-
-func (database *ChainDatabase) blockRank(hash common.Hash) {
-	cItem := database.UnConfirmBlocks[hash]
-	if (cItem == nil) || (cItem.Block == nil) {
-		// return nil
-		panic("item or item'block is nil.")
-	}
-
-	if (database.LastConfirm.Block == nil) && (cItem.Block.Height() != 0) {
-		panic("database.LastConfirm == nil && cItem.Block.Height() != 0")
-	}
-
-	if (database.LastConfirm.Block != nil) &&
-		(cItem.Block.Height() < database.LastConfirm.Block.Height()) {
-		panic("(database.LastConfirm.Block != nil) && (cItem.Block.Height() < database.LastConfirm.Block.Height())")
-		// return nil
-	}
-
-	// accounts := cItem.Trie.Collected(cItem.Block.Height())
-	// if len(accounts) <= 0 {
-	// 	return
-	// }else{
-	// 	database
-	// }
 }
 
 /**
@@ -354,6 +315,7 @@ func (database *ChainDatabase) SetBlock(hash common.Hash, block *types.Block) er
 		database.UnConfirmBlocks[hash] = &CBlock{
 			Block: block,
 			Trie:  NewEmptyDatabase(database.Beansdb),
+			Top30: NewVoteTop(),
 		}
 		return nil
 	}
@@ -367,12 +329,14 @@ func (database *ChainDatabase) SetBlock(hash common.Hash, block *types.Block) er
 			database.UnConfirmBlocks[hash] = &CBlock{
 				Block: block,
 				Trie:  NewActDatabase(database.Beansdb, database.LastConfirm.Trie),
+				Top30: database.LastConfirm.Top30.Clone(),
 			}
 		}
 	} else {
 		database.UnConfirmBlocks[hash] = &CBlock{
 			Block: block,
 			Trie:  NewActDatabase(database.Beansdb, pBlock.Trie),
+			Top30: pBlock.Top30.Clone(),
 		}
 	}
 
@@ -590,8 +554,97 @@ func (database *ChainDatabase) SetContractCode(hash common.Hash, code types.Code
 	return database.Beansdb.Put(CACHE_FLG_CODE, hash[:], hash[:], code[:])
 }
 
-func (database *ChainDatabase) GetCandidatesTop() []*Candidate {
+func (database *ChainDatabase) GetCandidatesTop(hash common.Hash) []*Candidate {
 	return database.CandidatesRank.GetTop()
+}
+
+func (database *ChainDatabase) CandidatesRanking(hash common.Hash) {
+	cItem := database.UnConfirmBlocks[hash]
+	if (cItem == nil) || (cItem.Block == nil) {
+		panic("item or item'block is nil.")
+	}
+
+	if (database.LastConfirm.Block == nil) && (cItem.Block.Height() != 0) {
+		panic("database.LastConfirm == nil && cItem.Block.Height() != 0")
+	}
+
+	if (database.LastConfirm.Block != nil) &&
+		(cItem.Block.Height() < database.LastConfirm.Block.Height()) {
+		panic("(database.LastConfirm.Block != nil) && (cItem.Block.Height() < database.LastConfirm.Block.Height())")
+		// return nil
+	}
+
+	all := func(hash common.Hash) []*Candidate {
+		db := database.GetActDatabase(hash)
+		result := make([]*Candidate, len(database.Context.Candidates))
+		for k, _ := range database.Context.Candidates {
+			account := db.Find(k[:])
+			result = append(result, &Candidate{
+				address: account.Address,
+				total:   new(big.Int).Set(account.Candidate.Votes),
+			})
+		}
+		return result
+	}
+
+	accounts := cItem.Trie.Collected(cItem.Block.Height())
+	if len(accounts) <= 0 {
+		return
+	} else {
+		top30 := cItem.Top30
+		lastMinCandidate := top30.Min()
+		lastCount := top30.Count()
+
+		lastCandidatesMap := top30.ToHashMap()
+		incrCandidates := make([]*Candidate, 0)
+		nextCandidates := make([]*Candidate, 0)
+		for index := 0; index < len(accounts); index++ {
+			account := accounts[index]
+
+			if isCandidate(account) {
+				nextCandidates = append(nextCandidates, &Candidate{
+					address: account.Address,
+					total:   new(big.Int).Set(account.Candidate.Votes),
+				})
+			}
+
+			// cancle candidate
+			_, ok := lastCandidatesMap[account.Address]
+			isExist := database.Context.CandidateIsExist(account.Address)
+			if isExist && !ok {
+				top30.Del(account.Address)
+				continue
+			}
+
+			// vote chanage
+			if ok {
+				lastCandidatesMap[account.Address].total.Set(account.Candidate.Votes)
+				continue
+			}
+
+			// incr
+			if !isExist && isCandidate(account) {
+				incrCandidates = append(incrCandidates, &Candidate{
+					address: account.Address,
+					total:   new(big.Int).Set(account.Candidate.Votes),
+				})
+				continue
+			}
+		}
+
+		top30.Rank()
+		if (lastMinCandidate == nil) ||
+			(lastCount > top30.Count()) ||
+			(lastMinCandidate.total.Cmp(top30.Min().total) > 0) { // 如果本轮前30有代理节点取消，或前30代理的最少投票值变小，则+本轮新增代理，并全部重新计算
+			candidates := all(hash)
+			candidates = append(candidates, incrCandidates...)
+			database.CandidatesRank.RankAll(candidates)
+			cItem.Top30.Reset(database.CandidatesRank.GetTop())
+		} else {
+			database.CandidatesRank.Rank(nextCandidates) // 否则按照30 + 4000的规则进行计算
+			cItem.Top30.Reset(database.CandidatesRank.GetTop())
+		}
+	}
 }
 
 func (database *ChainDatabase) Close() error {

@@ -235,6 +235,8 @@ func (am *Manager) Save(newBlockHash common.Hash) error {
 		acctDatabase.Put(account.rawAccount.data, am.currentBlockHeight())
 	}
 
+	am.db.CandidatesRanking(newBlockHash)
+
 	// update version trie nodes' hash
 	root, err := am.getVersionTrie().Commit(nil)
 	if err != nil {

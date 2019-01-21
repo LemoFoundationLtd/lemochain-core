@@ -65,6 +65,7 @@ func (a CandidateProfile) DecodeRLP(s *rlp.Stream) error {
 		return err
 	}
 
+	a = make(CandidateProfile)
 	for index := 0; index < len(dec); index++ {
 		a[dec[index].key] = dec[index].val
 	}
