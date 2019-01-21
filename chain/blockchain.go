@@ -578,7 +578,7 @@ func (bc *BlockChain) Db() db.ChainDB {
 // GetNewDeputyNodes get next epoch deputy nodes for snapshot block
 func (bc *BlockChain) GetNewDeputyNodes() deputynode.DeputyNodes {
 	result := make(deputynode.DeputyNodes, 0, 17)
-	list := bc.db.GetCandidatesTop()
+	list := bc.db.GetCandidatesTop(bc.CurrentBlock().Hash())
 	for _, n := range list {
 		dn := new(deputynode.DeputyNode)
 		dn.Votes = n.GetTotal()
