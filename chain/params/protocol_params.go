@@ -51,12 +51,11 @@ const (
 	Bn256ScalarMulGas       uint64 = 40000  // Gas needed for an elliptic curve scalar multiplication
 	Bn256PairingBaseGas     uint64 = 100000 // Base price for an elliptic curve pairing check
 	Bn256PairingPerPointGas uint64 = 80000  // Per-point price for an elliptic curve pairing check
-
-	SnapshotBlock = 1000000
-	EpochBlock    = 1001000
 )
 
 var (
-	oneLEMO                  = big.NewInt(1000000000000000000)             // 1 LEMO
-	RegisterCandidateNodeFees = new(big.Int).Mul(big.NewInt(1000), oneLEMO) // Register Candidate node fees = 1000LEMO
+	SnapshotBlock             uint32 = 1000000
+	PeriodBlock               uint32 = 1000
+	oneLEMO                          = big.NewInt(1000000000000000000)             // 1 LEMO
+	RegisterCandidateNodeFees        = new(big.Int).Mul(big.NewInt(1000), oneLEMO) // Register Candidate node fees = 1000LEMO
 )

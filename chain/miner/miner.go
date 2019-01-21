@@ -368,7 +368,7 @@ func (m *Miner) sealHead() (*types.Header, deputynode.DeputyNodes) {
 		nodes = m.chain.GetNewDeputyNodes()
 		root := types.DeriveDeputyRootSha(nodes)
 		h.DeputyRoot = root[:]
-	} else if height%params.EpochBlock == 0 {
+	} else if height%params.SnapshotBlock == params.PeriodBlock {
 		n := deputynode.Instance().GetDeputyByNodeID(height, deputynode.GetSelfNodeID())
 		m.SetMinerAddress(n.MinerAddress)
 	}

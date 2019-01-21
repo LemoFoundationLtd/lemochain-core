@@ -103,7 +103,7 @@ type deputyNodeMarshaling struct {
 }
 
 type DeputyNodesRecord struct {
-	height uint32 // 0, 100W, 200W, 300W, 400W...
+	height uint32 // 0, 100W+1K, 200W+1K, 300W+1K, 400W+1K...
 	nodes  DeputyNodes
 }
 

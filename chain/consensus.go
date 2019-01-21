@@ -158,10 +158,10 @@ func (d *Dpovp) Finalize(header *types.Header, am *account.Manager) {
 	if deputynode.Instance().TimeToHandOutRewards(header.Height) {
 		rewards := deputynode.CalcSalary(header.Height)
 		for _, item := range rewards {
-			account := am.GetAccount(item.Address)
-			balance := account.GetBalance()
+			acc := am.GetAccount(item.Address)
+			balance := acc.GetBalance()
 			balance.Add(balance, item.Salary)
-			account.SetBalance(balance)
+			acc.SetBalance(balance)
 		}
 	}
 }
