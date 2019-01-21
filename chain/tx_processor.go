@@ -208,7 +208,7 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 			nodeID := common.ToHex(CandNode.NodeID)
 			host := CandNode.Host
 			port := strconv.Itoa(int(CandNode.Port))
-			restGas, vmErr = vmEnv.RegisterOrModifyOfCandidate(senderAddr, to, minerAddress, isCandidate, nodeID, host, port, restGas, tx.Amount(), initialSenderBalance)
+			restGas, vmErr = vmEnv.RegisterOrUpdateToCandidate(senderAddr, to, minerAddress, isCandidate, nodeID, host, port, restGas, tx.Amount(), initialSenderBalance)
 
 		default:
 			log.Errorf("The type of transaction is not defined. txType = %d\n", tx.Type())

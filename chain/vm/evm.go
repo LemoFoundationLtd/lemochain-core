@@ -211,7 +211,7 @@ func (evm *EVM) CallVoteTx(voter, node common.Address, gas uint64, initialBalanc
 }
 
 // 申请注册参加竞选代理节点的交易调用,sender为发起申请交易的用户地址，to为接收注册费用的账户地址，CandidateAddress为要成为候选节点的地址，Host为节点ip或者域名
-func (evm *EVM) RegisterOrModifyOfCandidate(CandidateAddress, to, minerAddress common.Address, isCandidate bool, nodeID, host, port string, gas uint64, value, initialSenderBalance *big.Int) (leftgas uint64, err error) {
+func (evm *EVM) RegisterOrUpdateToCandidate(CandidateAddress, to, minerAddress common.Address, isCandidate bool, nodeID, host, port string, gas uint64, value, initialSenderBalance *big.Int) (leftgas uint64, err error) {
 	// value不能小于规定的注册费用
 	if value.Cmp(params.RegisterCandidateNodeFees) < 0 {
 		return gas, ErrOfRegisterCandidateNodeFees
