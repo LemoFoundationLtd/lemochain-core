@@ -13,19 +13,20 @@ import (
 	"sync"
 )
 
+var max_candidate_count = 30
+
 type CBlock struct {
 	Block *types.Block
 	Trie  *PatriciaTrie
-	Top30 *VoteTop
+	Top30 []*Candidate
 }
 
 type ChainDatabase struct {
 	LastConfirm     *CBlock
 	UnConfirmBlocks map[common.Hash]*CBlock
 
-	Beansdb        *BeansDB
-	Context        *RunContext
-	CandidatesRank *VoteRank
+	Beansdb *BeansDB
+	Context *RunContext
 
 	rw sync.RWMutex
 }
@@ -54,7 +55,6 @@ func NewChainDataBase(home string, driver string, dns string) *ChainDatabase {
 		Trie:  NewEmptyDatabase(db.Beansdb),
 	}
 
-	db.CandidatesRank = NewVoteRank()
 	return db
 }
 
@@ -325,9 +325,21 @@ func (database *ChainDatabase) SetBlock(hash common.Hash, block *types.Block) er
 		database.UnConfirmBlocks[hash] = &CBlock{
 			Block: block,
 			Trie:  NewEmptyDatabase(database.Beansdb),
-			Top30: NewVoteTop(),
+			Top30: make([]*Candidate, 0),
 		}
 		return nil
+	}
+
+	clone := func(src []*Candidate) []*Candidate {
+		if len(src) <= 0 {
+			return make([]*Candidate, 0)
+		} else {
+			dst := make([]*Candidate, len(src))
+			for index := 0; index < len(src); index++ {
+				dst[index] = src[index].Clone()
+			}
+			return dst
+		}
 	}
 
 	pHash := block.Header.ParentHash
@@ -339,14 +351,14 @@ func (database *ChainDatabase) SetBlock(hash common.Hash, block *types.Block) er
 			database.UnConfirmBlocks[hash] = &CBlock{
 				Block: block,
 				Trie:  NewActDatabase(database.Beansdb, database.LastConfirm.Trie),
-				Top30: database.LastConfirm.Top30.Clone(),
+				Top30: clone(database.LastConfirm.Top30),
 			}
 		}
 	} else {
 		database.UnConfirmBlocks[hash] = &CBlock{
 			Block: block,
 			Trie:  NewActDatabase(database.Beansdb, pBlock.Trie),
-			Top30: pBlock.Top30.Clone(),
+			Top30: clone(pBlock.Top30),
 		}
 	}
 
@@ -570,7 +582,7 @@ func (database *ChainDatabase) GetCandidatesTop(hash common.Hash) []*Candidate {
 		if cItem.Top30 == nil {
 			panic("item top30 is nil.")
 		} else {
-			return cItem.Top30.Top
+			return cItem.Top30
 		}
 	}
 
@@ -579,7 +591,7 @@ func (database *ChainDatabase) GetCandidatesTop(hash common.Hash) []*Candidate {
 	}
 
 	if hash == database.LastConfirm.Block.Hash() {
-		return database.LastConfirm.Top30.Top
+		return database.LastConfirm.Top30
 	} else {
 		panic("hash != database.LastConfirm.Block.Hash()")
 	}
@@ -606,71 +618,84 @@ func (database *ChainDatabase) CandidatesRanking(hash common.Hash) {
 		result := make([]*Candidate, 0, len(database.Context.Candidates))
 		for k, _ := range database.Context.Candidates {
 			account := db.Find(k[:])
-			result = append(result, &Candidate{
-				address: account.Address,
-				total:   new(big.Int).Set(account.Candidate.Votes),
-			})
+			if !isCandidate(account) {
+				continue
+			} else {
+				result = append(result, &Candidate{
+					address: account.Address,
+					total:   new(big.Int).Set(account.Candidate.Votes),
+				})
+			}
 		}
 		return result
+	}
+
+	data := func(accounts []*types.AccountData, lastCandidatesMap map[common.Address]*Candidate) (map[common.Address]*Candidate, []*Candidate) {
+
+		nextCandidates := make([]*Candidate, 0)
+
+		for index := 0; index < len(accounts); index++ {
+			account := accounts[index]
+			isCandidate := isCandidate(account)
+
+			if isCandidate {
+				nextCandidates = append(nextCandidates, &Candidate{
+					address: account.Address,
+					total:   new(big.Int).Set(account.Candidate.Votes),
+				})
+
+				database.Context.SetCandidate(account.Address)
+			}
+
+			_, ok := lastCandidatesMap[account.Address]
+			if ok {
+				if !isCandidate {
+					delete(lastCandidatesMap, account.Address)
+				} else {
+					lastCandidatesMap[account.Address].total.Set(account.Candidate.Votes)
+				}
+			}
+		}
+
+		return lastCandidatesMap, nextCandidates
 	}
 
 	accounts := cItem.Trie.Collected(cItem.Block.Height())
 	if len(accounts) <= 0 {
 		return
+	}
+
+	voteTop := NewVoteTop(cItem.Top30)
+	lastCandidatesMap, nextCandidates := data(accounts, voteTop.ToHashMap())
+
+	lastMinCandidate := voteTop.Min()
+	lastCount := voteTop.Count()
+
+	voteTop.ToSlice(lastCandidatesMap)
+	voteTop.Rank(max_candidate_count)
+
+	if (lastMinCandidate != nil) &&
+		(lastCount == voteTop.Count()) &&
+		(lastMinCandidate.total.Cmp(voteTop.Min().total) <= 0) {
+
+		lastMinCandidate = voteTop.Min()
+		for index := 0; index < len(nextCandidates); index++ {
+			if (lastMinCandidate.total.Cmp(nextCandidates[index].total) < 0) ||
+				((lastMinCandidate.total.Cmp(nextCandidates[index].total) == 0) && (bytes.Compare(lastMinCandidate.address[:], nextCandidates[index].address[:]) < 0)) {
+				_, ok := lastCandidatesMap[nextCandidates[index].address]
+				if !ok {
+					lastCandidatesMap[nextCandidates[index].address] = nextCandidates[index]
+				}
+			}
+		}
+
+		voteTop.ToSlice(lastCandidatesMap)
+		voteTop.Rank(max_candidate_count)
+		cItem.Top30 = voteTop.GetTop(max_candidate_count)
 	} else {
-		top30 := cItem.Top30
-		lastMinCandidate := top30.Min()
-		lastCount := top30.Count()
-
-		lastCandidatesMap := top30.ToHashMap()
-		incrCandidates := make([]*Candidate, 0)
-		nextCandidates := make([]*Candidate, 0)
-		for index := 0; index < len(accounts); index++ {
-			account := accounts[index]
-
-			if isCandidate(account) {
-				nextCandidates = append(nextCandidates, &Candidate{
-					address: account.Address,
-					total:   new(big.Int).Set(account.Candidate.Votes),
-				})
-			}
-
-			// cancle candidate
-			_, ok := lastCandidatesMap[account.Address]
-			isExist := database.Context.CandidateIsExist(account.Address)
-			if isExist && !ok {
-				top30.Del(account.Address)
-				continue
-			}
-
-			// vote chanage
-			if ok {
-				lastCandidatesMap[account.Address].total.Set(account.Candidate.Votes)
-				continue
-			}
-
-			// incr
-			if !isExist && isCandidate(account) {
-				incrCandidates = append(incrCandidates, &Candidate{
-					address: account.Address,
-					total:   new(big.Int).Set(account.Candidate.Votes),
-				})
-				continue
-			}
-		}
-
-		top30.Rank()
-		if (lastMinCandidate == nil) ||
-			(lastCount > top30.Count()) ||
-			(lastMinCandidate.total.Cmp(top30.Min().total) > 0) { // 如果本轮前30有代理节点取消，或前30代理的最少投票值变小，则+本轮新增代理，并全部重新计算
-			candidates := all(hash)
-			candidates = append(candidates, incrCandidates...)
-			database.CandidatesRank.RankAll(candidates)
-			cItem.Top30.Reset(database.CandidatesRank.GetTop())
-		} else {
-			database.CandidatesRank.Rank(nextCandidates) // 否则按照30 + 4000的规则进行计算
-			cItem.Top30.Reset(database.CandidatesRank.GetTop())
-		}
+		candidates := all(hash)
+		voteTop.RankAll(max_candidate_count, candidates)
+		cItem.Top30 = voteTop.GetTop(max_candidate_count)
 	}
 }
 
