@@ -183,9 +183,8 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 		cost := new(big.Int).Add(tx.Amount(), fee)
 		to := manager.GetAccount(*tx.To())
 		if tx.Type() == 1 || tx.Type() == 2 {
-			newProfile := new(types.CandidateProfile)
-			newProfile.Profile = make(map[string]string, 5)
-			newProfile.Profile[types.CandidateKeyIsCandidate] = "true"
+			newProfile := make(map[string]string, 5)
+			newProfile[types.CandidateKeyIsCandidate] = "true"
 			to.SetCandidateProfile(newProfile)
 			to.SetVotes(big.NewInt(10))
 		}

@@ -584,22 +584,22 @@ func (bc *BlockChain) GetNewDeputyNodes() deputynode.DeputyNodes {
 		dn.Votes = n.GetTotal()
 		acc := bc.am.GetAccount(n.GetAddress())
 		profile := acc.GetCandidateProfile()
-		strAddr := profile.Profile[types.CandidateKeyMinerAddress]
+		strAddr := profile[types.CandidateKeyMinerAddress]
 		addr, err := common.StringToAddress(strAddr)
 		if err != nil {
 			log.Errorf("GetNewDeputyNodes: profile error, addr: %s", strAddr)
 			continue
 		}
 		dn.MinerAddress = addr
-		dn.IP = net.ParseIP(profile.Profile[types.CandidateKeyHost])
-		port, err := strconv.Atoi(profile.Profile[types.CandidateKeyPort])
+		dn.IP = net.ParseIP(profile[types.CandidateKeyHost])
+		port, err := strconv.Atoi(profile[types.CandidateKeyPort])
 		if err != nil || (port < 100 || port > 65535) {
-			log.Errorf("GetNewDeputyNodes: profile error, port: %s", profile.Profile[types.CandidateKeyPort])
+			log.Errorf("GetNewDeputyNodes: profile error, port: %s", profile[types.CandidateKeyPort])
 			continue
 		}
 		dn.Port = uint32(port)
 		dn.Rank = uint32(len(result))
-		strID := profile.Profile[types.CandidateKeyNodeID]
+		strID := profile[types.CandidateKeyNodeID]
 		nID, err := hex.DecodeString(strID)
 		if err != nil {
 			log.Errorf("GetNewDeputyNodes: profile error, NodeID: %s", strID)

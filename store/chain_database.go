@@ -59,11 +59,11 @@ func NewChainDataBase(home string, driver string, dns string) *ChainDatabase {
 }
 
 func isCandidate(account *types.AccountData) bool {
-	if account.Candidate.Profile == nil || len(account.Candidate.Profile.Profile) <= 0 {
+	if len(account.Candidate.Profile) <= 0 {
 		return false
 	}
 
-	result, ok := account.Candidate.Profile.Profile[types.CandidateKeyIsCandidate]
+	result, ok := account.Candidate.Profile[types.CandidateKeyIsCandidate]
 	if !ok {
 		return false
 	} else {

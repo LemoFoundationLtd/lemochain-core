@@ -253,7 +253,7 @@ func (p *TxProcessor) changeCandidateVotes(accountAddress common.Address, change
 	// 查看投给的候选者是否已经取消了候选资格
 	CandidateAccount := p.am.GetAccount(CandidataAddress)
 	profile := CandidateAccount.GetCandidateProfile()
-	if profile.Profile[types.CandidateKeyIsCandidate] == "false" {
+	if profile[types.CandidateKeyIsCandidate] == "false" {
 		return
 	}
 	// changeBalance为正数则加，为负数则减

@@ -442,10 +442,10 @@ func Test_voteAndRegisteTx(t *testing.T) {
 	assert.Equal(t, testAddr, account00.GetVoteFor())                               // 投给自己
 	assert.Equal(t, account00.GetBalance().String(), account00.GetVotes().String()) // 初始票数为自己的Balance
 	profile := account00.GetCandidateProfile()
-	assert.Equal(t, cand00.MinerAddress.Hex(), profile.Profile[types.CandidateKeyMinerAddress])
-	assert.Equal(t, cand00.Host, profile.Profile[types.CandidateKeyHost])
-	assert.Equal(t, strconv.Itoa(int(cand00.Port)), profile.Profile[types.CandidateKeyPort])
-	assert.Equal(t, common.ToHex(cand00.NodeID), profile.Profile[types.CandidateKeyNodeID])
+	assert.Equal(t, cand00.MinerAddress.Hex(), profile[types.CandidateKeyMinerAddress])
+	assert.Equal(t, cand00.Host, profile[types.CandidateKeyHost])
+	assert.Equal(t, strconv.Itoa(int(cand00.Port)), profile[types.CandidateKeyPort])
+	assert.Equal(t, common.ToHex(cand00.NodeID), profile[types.CandidateKeyNodeID])
 	log.Warn("account00Vote:", account00.GetVotes().String())
 	// ---Block02-----------------------------------------------------------------------
 	//  2. 测试发送投票交易,testAddr01账户为testAddr候选节点账户投票,并注册testAddr02为候选节点
@@ -503,10 +503,10 @@ func Test_voteAndRegisteTx(t *testing.T) {
 	assert.Equal(t, address02, account02.GetVoteFor())                                // 默认投给自己
 	assert.Equal(t, account02.GetBalance().String(), block02testAddr02Votes.String()) // 初始票数为自己的Balance
 	profile02 := account02.GetCandidateProfile()
-	assert.Equal(t, cand02.MinerAddress.Hex(), profile02.Profile[types.CandidateKeyMinerAddress])
-	assert.Equal(t, cand02.Host, profile02.Profile[types.CandidateKeyHost])
-	assert.Equal(t, strconv.Itoa(int(cand02.Port)), profile02.Profile[types.CandidateKeyPort])
-	assert.Equal(t, common.ToHex(cand02.NodeID), profile02.Profile[types.CandidateKeyNodeID])
+	assert.Equal(t, cand02.MinerAddress.Hex(), profile02[types.CandidateKeyMinerAddress])
+	assert.Equal(t, cand02.Host, profile02[types.CandidateKeyHost])
+	assert.Equal(t, strconv.Itoa(int(cand02.Port)), profile02[types.CandidateKeyPort])
+	assert.Equal(t, common.ToHex(cand02.NodeID), profile02[types.CandidateKeyNodeID])
 	// ---Block03-----------------------------------------------------------------------------
 	// 3. testAddr01从候选节点testAddr 转投 给候选节点testAddr02; 候选节点testAddr修改注册信息
 	p.am.Reset(Block02.Hash())
@@ -575,7 +575,7 @@ func Test_voteAndRegisteTx(t *testing.T) {
 
 	// 	验证2. 候选节点testAddr修改后的信息
 	pro := latestAccount00.GetCandidateProfile()
-	assert.Equal(t, strconv.Itoa(int(changeCand00.Port)), pro.Profile[types.CandidateKeyPort])
-	assert.Equal(t, common.ToHex(changeCand00.NodeID), pro.Profile[types.CandidateKeyNodeID])
+	assert.Equal(t, strconv.Itoa(int(changeCand00.Port)), pro[types.CandidateKeyPort])
+	assert.Equal(t, common.ToHex(changeCand00.NodeID), pro[types.CandidateKeyNodeID])
 
 }

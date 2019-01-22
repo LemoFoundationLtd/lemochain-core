@@ -112,9 +112,14 @@ func decodeEvent(s *rlp.Stream) (interface{}, error) {
 }
 
 func decodeCandidateProfile(s *rlp.Stream) (interface{}, error) {
-	var result types.CandidateProfile
-	err := s.Decode(&result)
-	return &result, err
+	_, size, _ := s.Kind()
+	result := make(types.CandidateProfile)
+	if size <= 0 {
+		return &result, nil
+	} else {
+		err := s.Decode(result)
+		return &result, err
+	}
 }
 
 //
@@ -185,13 +190,14 @@ func undoVoteFor(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 	return nil
 }
 
-func NewCandidateProfileLog(processor types.ChangeLogProcessor, account types.AccountAccessor, newProfile *types.CandidateProfile) *types.ChangeLog {
+func NewCandidateProfileLog(processor types.ChangeLogProcessor, account types.AccountAccessor, newProfile types.CandidateProfile) *types.ChangeLog {
+	oldVal := account.GetCandidateProfile()
 	return &types.ChangeLog{
 		LogType: CandidateProfileLog,
 		Address: account.GetAddress(),
 		Version: processor.GetNextVersion(VoteForLog, account.GetAddress()),
-		OldVal:  account.GetCandidateProfile(),
-		NewVal:  newProfile,
+		OldVal:  &oldVal,
+		NewVal:  &newProfile,
 	}
 }
 
@@ -202,7 +208,7 @@ func redoCandidateProfile(c *types.ChangeLog, processor types.ChangeLogProcessor
 		return types.ErrWrongChangeLogData
 	}
 	accessor := processor.GetAccount(c.Address)
-	accessor.SetCandidateProfile(newVal)
+	accessor.SetCandidateProfile(*newVal)
 	return nil
 }
 
@@ -213,7 +219,7 @@ func undoCandidateProfile(c *types.ChangeLog, processor types.ChangeLogProcessor
 		return types.ErrWrongChangeLogData
 	}
 	accessor := processor.GetAccount(c.Address)
-	accessor.SetCandidateProfile(oldVal)
+	accessor.SetCandidateProfile(*oldVal)
 	return nil
 }
 
