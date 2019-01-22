@@ -3,6 +3,7 @@ package store
 import (
 	"bytes"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"math/big"
 )
 
@@ -122,7 +123,8 @@ func (top *VoteTop) Reset(candidates []*Candidate) {
 	if len(candidates) <= 0 {
 		top.TopCnt = 0
 	} else {
-		top.Top = append(top.Top[0:], candidates...)
+		//top.Top = append(top.Top[0:], candidates...)
+		top.Top = candidates
 		top.TopCnt = len(candidates)
 	}
 }
@@ -260,6 +262,7 @@ func (vote *VoteRank) RankAll(candidates []*Candidate) {
 		minCnt := min(vote.TopCap, len(candidates))
 		for i := 0; i < minCnt; i++ {
 			for j := i + 1; j < len(candidates); j++ {
+				log.Warnf("zh candidates[i].total: %v", candidates[i])
 				if candidates[i].total.Cmp(candidates[j].total) < 0 {
 					candidates[i], candidates[j] = candidates[j], candidates[i]
 				}

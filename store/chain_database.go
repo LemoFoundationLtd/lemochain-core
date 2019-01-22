@@ -586,7 +586,7 @@ func (database *ChainDatabase) CandidatesRanking(hash common.Hash) {
 
 	all := func(hash common.Hash) []*Candidate {
 		db := database.GetActDatabase(hash)
-		result := make([]*Candidate, len(database.Context.Candidates))
+		result := make([]*Candidate, 0, len(database.Context.Candidates))
 		for k, _ := range database.Context.Candidates {
 			account := db.Find(k[:])
 			result = append(result, &Candidate{
