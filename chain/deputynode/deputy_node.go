@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/ecdsa"
 	"errors"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto/sha3"
@@ -203,7 +204,7 @@ func (d *Manager) GetSlot(height uint32, firstAddress, nextAddress common.Addres
 // TimeToHandOutRewards 是否该发出块奖励了
 func (d *Manager) TimeToHandOutRewards(height uint32) bool {
 	for i := 1; i < len(d.DeputyNodesList); i++ {
-		if d.DeputyNodesList[i].height+1000 == height {
+		if d.DeputyNodesList[i].height+params.PeriodBlock == height {
 			return true
 		}
 	}

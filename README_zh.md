@@ -51,8 +51,8 @@ go build
 	"timeout": "10000",
 	"dbUri": "root:123456@tcp(127.0.0.1:3306)/lemochain?charset=utf8mb4",
 	"dbDriver": "mysql",
-    "snapshotBlock": "1000000",
-    "periodBlock":"1000"
+	"snapshotBlock": "1000000",
+	"periodBlock":"1000"
 }
 ```
 - `chainID` LemoChain的ID，不能为0

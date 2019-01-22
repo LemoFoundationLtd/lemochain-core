@@ -1,6 +1,9 @@
 package params
 
-import "math/big"
+import (
+	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"math/big"
+)
 
 var (
 	TargetGasLimit uint64 = GenesisGasLimit // The artificial target
@@ -58,4 +61,7 @@ var (
 	PeriodBlock               uint32 = 1000
 	oneLEMO                          = big.NewInt(1000000000000000000)             // 1 LEMO
 	RegisterCandidateNodeFees        = new(big.Int).Mul(big.NewInt(1000), oneLEMO) // Register Candidate node fees = 1000LEMO
+	FeeReceiveAddress, _             = common.StringToAddress("0x1001")            // 设置接收注册费用1000LEMO的地址
+	IsCandidateNode                  = "true"
+	NotCandidateNode                 = "false"
 )

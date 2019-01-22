@@ -175,7 +175,7 @@ func (evm *EVM) CallVoteTx(voter, node common.Address, gas uint64, initialBalanc
 	// 	判断node是否为候选节点的竞选账户
 	profile := nodeAccount.GetCandidateProfile()
 	IsCandidate, ok := profile[types.CandidateKeyIsCandidate]
-	if !ok || IsCandidate == "false" {
+	if !ok || IsCandidate == params.NotCandidateNode {
 		return gas, ErrOfNotCandidateNode
 	}
 	var snapshot = evm.am.Snapshot() // 回滚操作
@@ -228,10 +228,10 @@ func (evm *EVM) RegisterOrUpdateToCandidate(CandidateAddress, to, minerAddress c
 	profile := nodeAccount.GetCandidateProfile()
 	IsCandidate, ok := profile[types.CandidateKeyIsCandidate]
 	// 如果已经是候选节点账户则查看传入的候选节点参数是否需要改变或者是否为一个取消候选人资格的交易
-	if ok && IsCandidate == "true" {
+	if ok && IsCandidate == params.IsCandidateNode {
 		// 判断是否要注销候选者资格
 		if !isCandidate {
-			profile[types.CandidateKeyIsCandidate] = "false"
+			profile[types.CandidateKeyIsCandidate] = params.NotCandidateNode
 			nodeAccount.SetCandidateProfile(profile)
 			// 注销后的用户的票数为0
 			nodeAccount.SetVotes(big.NewInt(0))
@@ -239,24 +239,16 @@ func (evm *EVM) RegisterOrUpdateToCandidate(CandidateAddress, to, minerAddress c
 			evm.Transfer(evm.am, CandidateAddress, to, value)
 			return gas, nil
 		}
-		if profile[types.CandidateKeyMinerAddress] != minerAddress.Hex() {
-			profile[types.CandidateKeyMinerAddress] = minerAddress.Hex()
-		}
-		// if profile[types.CandidateKeyNodeID] != nodeID {
-		// 	profile[types.CandidateKeyNodeID] = nodeID
-		// }
-		if profile[types.CandidateKeyHost] != host {
-			profile[types.CandidateKeyHost] = host
-		}
-		if profile[types.CandidateKeyPort] != port {
-			profile[types.CandidateKeyPort] = port
-		}
+		// 修改候选节点info
+		profile[types.CandidateKeyMinerAddress] = minerAddress.Hex()
+		profile[types.CandidateKeyHost] = host
+		profile[types.CandidateKeyPort] = port
 		nodeAccount.SetCandidateProfile(profile)
 	} else {
 		// 初始化map
 		// 注册为竞选节点
 		newProfile := make(types.CandidateProfile, 5)
-		newProfile[types.CandidateKeyIsCandidate] = "true"
+		newProfile[types.CandidateKeyIsCandidate] = params.IsCandidateNode
 		newProfile[types.CandidateKeyMinerAddress] = minerAddress.Hex()
 		newProfile[types.CandidateKeyNodeID] = nodeID
 		newProfile[types.CandidateKeyHost] = host

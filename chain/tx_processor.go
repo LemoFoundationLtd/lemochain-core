@@ -183,15 +183,8 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 			restGas, vmErr = vmEnv.CallVoteTx(senderAddr, recipientAddr, restGas, initialSenderBalance)
 
 		case params.RegisterTx: // 执行注册参加代理节点选举交易逻辑
-			// 设置接收注册费用1000LEMO的地址
-			strAddress := "0x1001"
-			to, err := common.StringToAddress(strAddress)
-			if err != nil {
-				log.Errorf("invalid address: %s", err)
-				return 0, err
-			}
 			// 判断tx的接收者是否为"0x1001"地址,(目前只是通过TxType判断是注册交易的,交易的接受者自动变为"0x1001",这里判断不判断都不影响)
-			if *tx.To() != to {
+			if *tx.To() != params.FeeReceiveAddress {
 				log.Error("RegisterTx recipient Address false")
 				return 0, errors.New("RegisterTx recipient Address false")
 			}
@@ -208,7 +201,7 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 			nodeID := common.ToHex(CandNode.NodeID)
 			host := CandNode.Host
 			port := strconv.Itoa(int(CandNode.Port))
-			restGas, vmErr = vmEnv.RegisterOrUpdateToCandidate(senderAddr, to, minerAddress, isCandidate, nodeID, host, port, restGas, tx.Amount(), initialSenderBalance)
+			restGas, vmErr = vmEnv.RegisterOrUpdateToCandidate(senderAddr, params.FeeReceiveAddress, minerAddress, isCandidate, nodeID, host, port, restGas, tx.Amount(), initialSenderBalance)
 
 		default:
 			log.Errorf("The type of transaction is not defined. txType = %d\n", tx.Type())
@@ -241,6 +234,7 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 	fmt.Println("一笔交易结束时的senderBalance:", endSenderBalance.String())
 
 	senderBalanceChange := new(big.Int).Sub(endSenderBalance, initialSenderBalance)
+	fmt.Printf("发送者减少的Balance = %s", senderBalanceChange.String())
 	p.changeCandidateVotes(senderAddr, senderBalanceChange)
 
 	// Merge change logs by transaction will save more transaction execution detail than by block
