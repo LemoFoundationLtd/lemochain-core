@@ -286,7 +286,7 @@ func TestDpovp_VerifyHeader01(t *testing.T) {
 	testBlock00, err := newTestBlock(dpovp, common.Hash{}, 0, common.HexToAddress(block01MinerAddress), uint32(time.Now().Unix()-10), deputy01Privkey, true)
 	assert.NoError(t, err)
 	// header := testBlock00.Header
-	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyHeader(testBlock00))
+	assert.Equal(t, ErrVerifyBlockFailed, dpovp.VerifyHeader(testBlock00))
 
 	// 验证父区块的高度为0，也就是父区块为创世区块情况
 	testBlock01, err := newTestBlock(dpovp, testBlock00.Hash(), 1, common.HexToAddress(block02MinerAddress), uint32(time.Now().Unix()-5), deputy02Privkey, true)

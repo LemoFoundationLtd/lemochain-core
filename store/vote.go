@@ -3,6 +3,7 @@ package store
 import (
 	"bytes"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"math/big"
 )
 
@@ -22,13 +23,13 @@ func (candidate *Candidate) GetNodeID() []byte {
 }
 
 func (candidate *Candidate) GetTotal() *big.Int {
-	return candidate.total
+	return new(big.Int).Set(candidate.total)
 }
 
 func (candidate *Candidate) Clone() *Candidate {
 	return &Candidate{
-		address: candidate.address,
-		total:   new(big.Int).Set(candidate.total),
+		address: candidate.GetAddress(),
+		total:   candidate.GetTotal(),
 	}
 }
 
@@ -97,6 +98,7 @@ func (top *VoteTop) Del(address common.Address) {
 			continue
 		} else {
 			copy(top.Top[0:index], top.Top[index+1:])
+			top.TopCnt = top.TopCnt - 1
 			break
 		}
 	}
@@ -122,7 +124,8 @@ func (top *VoteTop) Reset(candidates []*Candidate) {
 	if len(candidates) <= 0 {
 		top.TopCnt = 0
 	} else {
-		top.Top = append(top.Top[0:], candidates...)
+		//top.Top = append(top.Top[0:], candidates...)
+		top.Top = candidates
 		top.TopCnt = len(candidates)
 	}
 }
@@ -260,6 +263,7 @@ func (vote *VoteRank) RankAll(candidates []*Candidate) {
 		minCnt := min(vote.TopCap, len(candidates))
 		for i := 0; i < minCnt; i++ {
 			for j := i + 1; j < len(candidates); j++ {
+				log.Warnf("zh candidates[i].total: %v", candidates[i])
 				if candidates[i].total.Cmp(candidates[j].total) < 0 {
 					candidates[i], candidates[j] = candidates[j], candidates[i]
 				}

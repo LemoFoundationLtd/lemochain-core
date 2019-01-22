@@ -2,6 +2,7 @@ package types
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"math/big"
 	"testing"
@@ -236,4 +237,6 @@ func TestParseV(t *testing.T) {
 	assert.Equal(t, uint8(0), version)
 	assert.Equal(t, uint8(0), secp256k1V)
 	assert.Equal(t, uint16(0), chainID)
+
+	fmt.Println(crypto.GenerateAddress())
 }

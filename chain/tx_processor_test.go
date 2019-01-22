@@ -1,7 +1,9 @@
 package chain
 
 import (
+	"encoding/json"
 	"fmt"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/vm"
@@ -12,6 +14,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"github.com/stretchr/testify/assert"
 	"math/big"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -356,18 +359,51 @@ func TestTxProcessor_ApplyTxs2(t *testing.T) {
 func Test_voteAndRegisteTx(t *testing.T) {
 	store.ClearData()
 	p := NewTxProcessor(newChain())
-	// new一个用于投票的account，并setBalance
-	voteTxAdd, _ := common.StringToAddress("Lemo83W59DHT7FD4KSB3HWRJ5T4JD82TZW27ZKHJ")
 
-	votePrivate, _ := crypto.HexToECDSA("7a720181f628d9b132af6730d797fc3486adfb2993f0796ac6854f5885697746")
-	balanceTx := makeTx(testPrivate, voteTxAdd, params.OrdinaryTx, big.NewInt(1000000))
-	// 申请候选节点交易
+	// 接收注册候选节点1000LEMO的地址
 	strAddress := "0x1001"
 	to, _ := common.StringToAddress(strAddress)
-	registerTx := signTransaction(types.NewTransaction(to, params.RegisterCandidateNodeFees, 220000, common.Big1, CandidateData, params.RegisterTx, chainID, uint64(time.Now().Unix()+300), "", ""), testPrivate)
+
+	// 申请第一个候选节点(testAddr)信息data
+	var cand00 = &deputynode.CandidateNode{
+		IsCandidate:  true,
+		MinerAddress: common.HexToAddress("0x10000"),
+		NodeID:       common.FromHex("0x34f0df789b46e9bc09f23d5315b951bc77bbfeda653ae6f5aab564c9b4619322fddb3b1f28d1c434250e9d4dd8f51aa8334573d7281e4d63baba913e9fa6908f"),
+		Host:         "0.0.0.0",
+		Port:         0000,
+	}
+	candData00, _ := json.Marshal(cand00)
+	// 申请第二个候选节点(testAddr02)信息data
+	var cand02 = &deputynode.CandidateNode{
+		IsCandidate:  true,
+		MinerAddress: common.HexToAddress("0x222222"),
+		NodeID:       common.FromHex("0x7739f34055d3c0808683dbd77a937f8e28f707d5b1e873bbe61f6f2d0347692f36ef736f342fb5ce4710f7e337f062cc2110d134b63a9575f78cb167bfae2f43"),
+		Host:         "2.2.2.2",
+		Port:         2222,
+	}
+	candData02, _ := json.Marshal(cand02)
+
+	// 生成有balance的account
+	testAddr01, _ := common.StringToAddress("Lemo83W59DHT7FD4KSB3HWRJ5T4JD82TZW27ZKHJ")
+	testPrivate01, _ := crypto.HexToECDSA("7a720181f628d9b132af6730d797fc3486adfb2993f0796ac6854f5885697746")
+	testAddr02, _ := common.StringToAddress("Lemo83F96RQR3J5GW8CS35JWP2A4QBQ3CYHHQJAK")
+	testPrivate02, _ := crypto.HexToECDSA("5462a02f5fbac2ae8e157d95809aa57fc6f12095b14ee95b051aa9d47ad054f4")
+	testAddr03, _ := common.StringToAddress("Lemo843A8K22PDK9BSZT8SDN95GASSRSDW2DJZ3S")
+	// testPrivate03, _ := crypto.HexToECDSA("197e8f49f38487f2b435bc8eb1f2d9fec5cde987d0c91926921d8ac8ac7f7261")
+	value := new(big.Int).Mul(params.RegisterCandidateNodeFees, big.NewInt(2)) // 转账为2000LEMO
+	// 给testAdd01账户转账
+	getBalanceTx01 := makeTx(testPrivate, testAddr01, params.OrdinaryTx, value)
+	// 给testAdd02账户转账
+	getBalanceTx02 := makeTx(testPrivate, testAddr02, params.OrdinaryTx, value)
+	// 给testAdd03账户转账
+	getBalanceTx03 := makeTx(testPrivate, testAddr03, params.OrdinaryTx, value)
+
+	// ---Block01----------------------------------------------------------------------
+	// 1. testAddr 账户申请候选节点交易，包含给testAddr01,testAddr02,testAddr03转账交易
+	registerTx01 := signTransaction(types.NewTransaction(to, params.RegisterCandidateNodeFees, 200000, common.Big1, candData00, params.RegisterTx, chainID, uint64(time.Now().Unix()+300), "", ""), testPrivate)
 
 	parentBlock := p.chain.currentBlock.Load().(*types.Block)
-	header := &types.Header{
+	header01 := &types.Header{
 		ParentHash:   parentBlock.Hash(),
 		MinerAddress: parentBlock.MinerAddress(),
 		VersionRoot:  parentBlock.VersionRoot(),
@@ -376,20 +412,21 @@ func Test_voteAndRegisteTx(t *testing.T) {
 		GasUsed:      0,
 		Time:         parentBlock.Time() + 4,
 	}
-	newHeader, _, _, err := p.ApplyTxs(header, types.Transactions{registerTx, balanceTx})
+	tx01 := types.Transactions{registerTx01, getBalanceTx01, getBalanceTx02, getBalanceTx03}
+	newHeader01, _, _, err := p.ApplyTxs(header01, tx01)
 	if err != nil {
 		fmt.Printf(" apply register tx err : %s \n", err)
 	}
-	registerBlock := &types.Block{
-		Txs:         types.Transactions{registerTx, balanceTx},
+	Block01 := &types.Block{
+		Txs:         tx01,
 		ChangeLogs:  p.am.GetChangeLogs(),
 		Events:      p.am.GetEvents(),
 		Confirms:    nil,
 		DeputyNodes: nil,
 	}
-	registerBlock.SetHeader(newHeader)
-	blockHash := newHeader.Hash()
-	err = p.chain.db.SetBlock(blockHash, registerBlock)
+	Block01.SetHeader(newHeader01)
+	blockHash := newHeader01.Hash()
+	err = p.chain.db.SetBlock(blockHash, Block01)
 	if err != nil && err != store.ErrExist {
 		panic(err)
 	}
@@ -403,60 +440,141 @@ func Test_voteAndRegisteTx(t *testing.T) {
 	}
 
 	// 	验证注册代理节点交易信息
-	registerAddress, _ := registerTx.From()
-	registerAccoount := p.am.GetCanonicalAccount(registerAddress)
-	assert.Equal(t, registerAddress, registerAccoount.GetVoteFor())                               // 投给自己
-	assert.Equal(t, registerAccoount.GetBalance().String(), registerAccoount.GetVotes().String()) // 初始票数为自己的Balance
+	testAddr, _ := registerTx01.From()
+	account00 := p.am.GetCanonicalAccount(testAddr)
+	assert.Equal(t, testAddr, account00.GetVoteFor())                               // 投给自己
+	assert.Equal(t, account00.GetBalance().String(), account00.GetVotes().String()) // 初始票数为自己的Balance
+	profile := account00.GetCandidateProfile()
+	assert.Equal(t, cand00.MinerAddress.Hex(), profile[types.CandidateKeyMinerAddress])
+	assert.Equal(t, cand00.Host, profile[types.CandidateKeyHost])
+	assert.Equal(t, strconv.Itoa(int(cand00.Port)), profile[types.CandidateKeyPort])
+	assert.Equal(t, common.ToHex(cand00.NodeID), profile[types.CandidateKeyNodeID])
 
-	// 打印出候选者的信息
-	profile := registerAccoount.GetCandidateProfile()
-	for k, v := range profile {
-		fmt.Printf("profile[%s]%s\n", k, v)
+	// ---Block02-----------------------------------------------------------------------
+	//  2. 测试发送投票交易,testAddr01账户为testAddr候选节点账户投票,并注册testAddr02为候选节点
+	p.am.Reset(Block01.Hash())
+	// 投票交易
+	voteTx01 := makeTx(testPrivate01, testAddr, params.VoteTx, big.NewInt(0))
+	// 注册testAddr02为候选节点的交易
+	registerTx02 := signTransaction(types.NewTransaction(to, params.RegisterCandidateNodeFees, 200000, common.Big1, candData02, params.RegisterTx, chainID, uint64(time.Now().Unix()+300), "", ""), testPrivate02)
+
+	header02 := &types.Header{
+		ParentHash:   Block01.Hash(),
+		MinerAddress: Block01.MinerAddress(),
+		VersionRoot:  Block01.VersionRoot(),
+		Height:       Block01.Height() + 1,
+		GasLimit:     Block01.GasLimit(),
+		Time:         Block01.Time() + 4,
 	}
-	// ------------------------------------------------------------------------------
-	//  测试发送投票交易,投票给testAdd
-	p.am.Reset(registerBlock.Hash())
-	voteTx := makeTx(votePrivate, registerAddress, params.VoteTx, big.NewInt(0))
-	voteHeader := &types.Header{
-		ParentHash:   registerBlock.Hash(),
-		MinerAddress: registerBlock.MinerAddress(),
-		VersionRoot:  registerBlock.VersionRoot(),
-		Height:       registerBlock.Height() + 1,
-		GasLimit:     registerBlock.GasLimit(),
-		Time:         registerBlock.Time() + 4,
-	}
-	newVoteHeader, _, _, err := p.ApplyTxs(voteHeader, types.Transactions{voteTx})
+	txs02 := types.Transactions{voteTx01, registerTx02}
+	newHeader02, _, _, err := p.ApplyTxs(header02, txs02)
 	if err != nil {
 		fmt.Printf(" apply vote tx err : %s \n", err)
 	}
-	voteBlock := &types.Block{
-		Header:      newVoteHeader,
-		Txs:         types.Transactions{voteTx},
+	Block02 := &types.Block{
+		Header:      newHeader02,
+		Txs:         txs02,
 		ChangeLogs:  p.am.GetChangeLogs(),
 		Events:      p.am.GetEvents(),
 		Confirms:    nil,
 		DeputyNodes: nil,
 	}
 
-	voteHash := voteBlock.Hash()
-	err = p.chain.db.SetBlock(voteHash, voteBlock)
+	Hash02 := Block02.Hash()
+	err = p.chain.db.SetBlock(Hash02, Block02)
 	if err != nil && err != store.ErrExist {
 		panic(err)
 	}
-	err = p.am.Save(voteHash)
+	err = p.am.Save(Hash02)
 	if err != nil {
 		panic(err)
 	}
-	err = p.chain.db.SetStableBlock(voteHash)
+	err = p.chain.db.SetStableBlock(Hash02)
 	if err != nil {
 		panic(err)
 	}
-	voteNewAccount := p.am.GetCanonicalAccount(voteTxAdd)
+	// 	验证1. 投票交易后的结果
+	account01 := p.am.GetCanonicalAccount(testAddr01)
+	newAccount00 := p.am.GetCanonicalAccount(testAddr)
+	assert.Equal(t, testAddr, account01.GetVoteFor()) // 是否投给了指定的address
+	block02testAddr00Votes := newAccount00.GetVotes()
+	assert.Equal(t, new(big.Int).Add(newAccount00.GetBalance(), account01.GetBalance()), block02testAddr00Votes) // 票数是否增加了期望的值
+	// 验证2. testAddr02注册代理节点的结果
+	address02, _ := registerTx02.From()
+	account02 := p.am.GetCanonicalAccount(address02)
+	block02testAddr02Votes := account02.GetVotes()
+	assert.Equal(t, address02, account02.GetVoteFor())                                // 默认投给自己
+	assert.Equal(t, account02.GetBalance().String(), block02testAddr02Votes.String()) // 初始票数为自己的Balance
+	profile02 := account02.GetCandidateProfile()
+	assert.Equal(t, cand02.MinerAddress.Hex(), profile02[types.CandidateKeyMinerAddress])
+	assert.Equal(t, cand02.Host, profile02[types.CandidateKeyHost])
+	assert.Equal(t, strconv.Itoa(int(cand02.Port)), profile02[types.CandidateKeyPort])
+	assert.Equal(t, common.ToHex(cand02.NodeID), profile02[types.CandidateKeyNodeID])
+	// ---Block03-----------------------------------------------------------------------------
+	// 3. testAddr01从候选节点testAddr 转投 给候选节点testAddr02; 候选节点testAddr修改注册信息
+	p.am.Reset(Block02.Hash())
+	// 	投票交易
+	voteTx02 := makeTx(testPrivate01, address02, params.VoteTx, big.NewInt(0))
+	// 修改候选节点profile交易
+	changeCand00 := &deputynode.CandidateNode{
+		IsCandidate:  true,
+		MinerAddress: cand00.MinerAddress,
+		NodeID:       cand00.NodeID,
+		Host:         "www.changeIndo.org",
+		Port:         30303,
+	}
+	changeCandData00, _ := json.Marshal(changeCand00)
+	registerTx03 := signTransaction(types.NewTransaction(to, params.RegisterCandidateNodeFees, 200000, common.Big1, changeCandData00, params.RegisterTx, chainID, uint64(time.Now().Unix()+300), "", ""), testPrivate)
+	// 生成block
+	header03 := &types.Header{
+		ParentHash:   Block02.Hash(),
+		MinerAddress: Block02.MinerAddress(),
+		VersionRoot:  Block02.VersionRoot(),
+		Height:       Block02.Height() + 1,
+		GasLimit:     Block02.GasLimit(),
+		Time:         Block02.Time() + 4,
+	}
+	txs03 := types.Transactions{voteTx02, registerTx03}
+	newHeader03, _, _, err := p.ApplyTxs(header03, txs03)
+	if err != nil {
+		fmt.Printf(" apply vote tx err : %s \n", err)
+	}
+	Block03 := &types.Block{
+		Header:      newHeader03,
+		Txs:         txs03,
+		ChangeLogs:  p.am.GetChangeLogs(),
+		Events:      p.am.GetEvents(),
+		Confirms:    nil,
+		DeputyNodes: nil,
+	}
 
-	newRegisterAcc := p.am.GetCanonicalAccount(registerAddress)
-	// 	验证
-	assert.Equal(t, registerAddress, voteNewAccount.GetVoteFor()) // 是否投给了指定的address
-	// 票数是否增加了期望的值
-	assert.Equal(t, new(big.Int).Add(newRegisterAcc.GetBalance(), voteNewAccount.GetBalance()), newRegisterAcc.GetVotes())
+	Hash03 := Block03.Hash()
+	err = p.chain.db.SetBlock(Hash03, Block03)
+	if err != nil && err != store.ErrExist {
+		panic(err)
+	}
+	err = p.am.Save(Hash03)
+	if err != nil {
+		panic(err)
+	}
+	err = p.chain.db.SetStableBlock(Hash03)
+	if err != nil {
+		panic(err)
+	}
+	// 	验证1. 候选节点testAddr票数减少量 = testAddr01的Balance，候选节点testAddr02票数增加量 = testAddr01的Balance
+	latestAccount00 := p.am.GetCanonicalAccount(testAddr)
+	block03testAddr00Votes := latestAccount00.GetVotes()
+	subVote00 := new(big.Int).Sub(block02testAddr00Votes, block03testAddr00Votes)
+	testAccount01 := p.am.GetCanonicalAccount(testAddr01)
+	assert.Equal(t, subVote00, new(big.Int).Add(testAccount01.GetBalance(), big.NewInt(21000)))
 
+	latestAccount02 := p.am.GetCanonicalAccount(testAddr02)
+	block03testAddr02Votes := latestAccount02.GetVotes()
+	addVotes02 := new(big.Int).Sub(block03testAddr02Votes, block02testAddr02Votes)
+	assert.Equal(t, addVotes02, testAccount01.GetBalance())
+
+	// 	验证2. 候选节点testAddr修改后的信息
+	pro := latestAccount00.GetCandidateProfile()
+	assert.Equal(t, strconv.Itoa(int(changeCand00.Port)), pro[types.CandidateKeyPort])
+	assert.Equal(t, common.ToHex(changeCand00.NodeID), pro[types.CandidateKeyNodeID])
 }
