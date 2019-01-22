@@ -3,7 +3,6 @@ package chain
 import (
 	"bytes"
 	"crypto/ecdsa"
-	"encoding/json"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
@@ -33,16 +32,6 @@ type blockInfo struct {
 	deputyRoot  []byte
 	deputyNodes deputynode.DeputyNodes
 }
-
-// 申请候选节点交易用data
-var cand = &deputynode.CandidateNode{
-	IsCandidate:  true,
-	MinerAddress: common.HexToAddress("0x20000"),
-	NodeID:       common.FromHex("0x34f0df789b46e9bc09f23d5315b951bc77bbfeda653ae6f5aab564c9b4619322fddb3b1f28d1c434250e9d4dd8f51aa8334573d7281e4d63baba913e9fa6908f"),
-	Host:         "0.0.0.1",
-	Port:         8080,
-}
-var CandidateData, _ = json.Marshal(cand)
 
 var (
 	chainID         uint16 = 200
