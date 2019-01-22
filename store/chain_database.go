@@ -565,7 +565,24 @@ func (database *ChainDatabase) SetContractCode(hash common.Hash, code types.Code
 }
 
 func (database *ChainDatabase) GetCandidatesTop(hash common.Hash) []*Candidate {
-	return database.CandidatesRank.GetTop()
+	cItem := database.UnConfirmBlocks[hash]
+	if (cItem != nil) && (cItem.Block != nil) {
+		if cItem.Top30 == nil {
+			panic("item top30 is nil.")
+		} else {
+			return cItem.Top30.Top
+		}
+	}
+
+	if database.LastConfirm.Block == nil { // all in cache
+		panic("database.LastConfirm.Block == nil")
+	}
+
+	if hash == database.LastConfirm.Block.Hash() {
+		return database.LastConfirm.Top30.Top
+	} else {
+		panic("hash != database.LastConfirm.Block.Hash()")
+	}
 }
 
 func (database *ChainDatabase) CandidatesRanking(hash common.Hash) {
