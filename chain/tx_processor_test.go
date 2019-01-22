@@ -10,6 +10,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/common/flag"
+	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"github.com/stretchr/testify/assert"
@@ -360,10 +361,6 @@ func Test_voteAndRegisteTx(t *testing.T) {
 	store.ClearData()
 	p := NewTxProcessor(newChain())
 
-	// 接收注册候选节点1000LEMO的地址
-	strAddress := "0x1001"
-	to, _ := common.StringToAddress(strAddress)
-
 	// 申请第一个候选节点(testAddr)信息data
 	var cand00 = &deputynode.CandidateNode{
 		IsCandidate:  true,
@@ -400,7 +397,7 @@ func Test_voteAndRegisteTx(t *testing.T) {
 
 	// ---Block01----------------------------------------------------------------------
 	// 1. testAddr 账户申请候选节点交易，包含给testAddr01,testAddr02,testAddr03转账交易
-	registerTx01 := signTransaction(types.NewTransaction(to, params.RegisterCandidateNodeFees, 200000, common.Big1, candData00, params.RegisterTx, chainID, uint64(time.Now().Unix()+300), "", ""), testPrivate)
+	registerTx01 := signTransaction(types.NewTransaction(params.FeeReceiveAddress, params.RegisterCandidateNodeFees, 200000, common.Big1, candData00, params.RegisterTx, chainID, uint64(time.Now().Unix()+300), "", ""), testPrivate)
 
 	parentBlock := p.chain.currentBlock.Load().(*types.Block)
 	header01 := &types.Header{
@@ -449,14 +446,14 @@ func Test_voteAndRegisteTx(t *testing.T) {
 	assert.Equal(t, cand00.Host, profile[types.CandidateKeyHost])
 	assert.Equal(t, strconv.Itoa(int(cand00.Port)), profile[types.CandidateKeyPort])
 	assert.Equal(t, common.ToHex(cand00.NodeID), profile[types.CandidateKeyNodeID])
-
+	log.Warn("account00Vote:", account00.GetVotes().String())
 	// ---Block02-----------------------------------------------------------------------
 	//  2. 测试发送投票交易,testAddr01账户为testAddr候选节点账户投票,并注册testAddr02为候选节点
 	p.am.Reset(Block01.Hash())
 	// 投票交易
 	voteTx01 := makeTx(testPrivate01, testAddr, params.VoteTx, big.NewInt(0))
 	// 注册testAddr02为候选节点的交易
-	registerTx02 := signTransaction(types.NewTransaction(to, params.RegisterCandidateNodeFees, 200000, common.Big1, candData02, params.RegisterTx, chainID, uint64(time.Now().Unix()+300), "", ""), testPrivate02)
+	registerTx02 := signTransaction(types.NewTransaction(params.FeeReceiveAddress, params.RegisterCandidateNodeFees, 200000, common.Big1, candData02, params.RegisterTx, chainID, uint64(time.Now().Unix()+300), "", ""), testPrivate02)
 
 	header02 := &types.Header{
 		ParentHash:   Block01.Hash(),
@@ -524,7 +521,7 @@ func Test_voteAndRegisteTx(t *testing.T) {
 		Port:         30303,
 	}
 	changeCandData00, _ := json.Marshal(changeCand00)
-	registerTx03 := signTransaction(types.NewTransaction(to, params.RegisterCandidateNodeFees, 200000, common.Big1, changeCandData00, params.RegisterTx, chainID, uint64(time.Now().Unix()+300), "", ""), testPrivate)
+	registerTx03 := signTransaction(types.NewTransaction(params.FeeReceiveAddress, params.RegisterCandidateNodeFees, 200000, common.Big1, changeCandData00, params.RegisterTx, chainID, uint64(time.Now().Unix()+300), "", ""), testPrivate)
 	// 生成block
 	header03 := &types.Header{
 		ParentHash:   Block02.Hash(),
@@ -564,9 +561,12 @@ func Test_voteAndRegisteTx(t *testing.T) {
 	// 	验证1. 候选节点testAddr票数减少量 = testAddr01的Balance，候选节点testAddr02票数增加量 = testAddr01的Balance
 	latestAccount00 := p.am.GetCanonicalAccount(testAddr)
 	block03testAddr00Votes := latestAccount00.GetVotes()
+	log.Warn("block03testAddr00Votes:", block03testAddr00Votes.String())
+	log.Warn("block02testAddr00Votes:", block02testAddr00Votes.String())
+
 	subVote00 := new(big.Int).Sub(block02testAddr00Votes, block03testAddr00Votes)
 	testAccount01 := p.am.GetCanonicalAccount(testAddr01)
-	assert.Equal(t, subVote00, new(big.Int).Add(testAccount01.GetBalance(), big.NewInt(21000)))
+	assert.Equal(t, new(big.Int).Sub(subVote00, new(big.Int).Add(big.NewInt(17884), params.RegisterCandidateNodeFees)), new(big.Int).Add(testAccount01.GetBalance(), big.NewInt(42000)))
 
 	latestAccount02 := p.am.GetCanonicalAccount(testAddr02)
 	block03testAddr02Votes := latestAccount02.GetVotes()
