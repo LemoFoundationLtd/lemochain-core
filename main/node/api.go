@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/LemoFoundationLtd/lemochain-go/chain"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/miner"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
@@ -67,6 +68,55 @@ func (a *PublicAccountAPI) GetAccount(LemoAddress string) (types.AccountAccessor
 
 	accountData := a.manager.GetCanonicalAccount(address)
 	return accountData, nil
+}
+
+// GetVotes 获取account的votes
+func (a *PublicAccountAPI) GetVotes(LemoAddress string) (string, error) {
+	CandiAccount, err := a.GetAccount(LemoAddress)
+	if err != nil {
+		return "", err
+	}
+	votes := CandiAccount.GetVotes().String()
+	return votes, nil
+}
+
+// GetVoteFor 获取投的候选节点地址
+func (a *PublicAccountAPI) GetVoteFor(LemoAddress string) (string, error) {
+	candiAccount, err := a.GetAccount(LemoAddress)
+	if err != nil {
+		return "", err
+	}
+	forAddress := candiAccount.GetVoteFor().String()
+	return forAddress, nil
+}
+
+// GetCandidateProfile 获取候选节点的配置信息
+func (a *PublicAccountAPI) GetCandidateProfile(LemoAddress string) *deputynode.CandidateNode {
+	candiAccount, err := a.GetAccount(LemoAddress)
+	if err != nil {
+		return nil
+	}
+	mapProfile := candiAccount.GetCandidateProfile()
+	if _, ok := mapProfile.Profile[types.CandidateKeyIsCandidate]; !ok {
+		return nil
+	}
+
+	candidateNode := &deputynode.CandidateNode{}
+	iscandidate, err := strconv.ParseBool(mapProfile.Profile[types.CandidateKeyIsCandidate])
+	if err != nil {
+		return nil
+	}
+	candidateNode.IsCandidate = iscandidate
+	candidateNode.NodeID = common.FromHex(mapProfile.Profile[types.CandidateKeyNodeID])
+	candidateNode.MinerAddress = common.HexToAddress(mapProfile.Profile[types.CandidateKeyMinerAddress])
+	candidateNode.Host = mapProfile.Profile[types.CandidateKeyHost]
+	port, err := strconv.Atoi(mapProfile.Profile[types.CandidateKeyPort])
+	if err != nil {
+		return nil
+	}
+	candidateNode.Port = uint32(port)
+
+	return candidateNode
 }
 
 // ChainAPI

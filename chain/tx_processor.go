@@ -15,7 +15,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/common/math"
 	"math/big"
-	"strconv"
 	"sync"
 	"time"
 )
@@ -183,25 +182,21 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 			restGas, vmErr = vmEnv.CallVoteTx(senderAddr, recipientAddr, restGas, initialSenderBalance)
 
 		case params.RegisterTx: // 执行注册参加代理节点选举交易逻辑
-			// 判断tx的接收者是否为"0x1001"地址,(目前只是通过TxType判断是注册交易的,交易的接受者自动变为"0x1001",这里判断不判断都不影响)
-			if *tx.To() != params.FeeReceiveAddress {
-				log.Error("RegisterTx recipient Address false")
-				return 0, errors.New("RegisterTx recipient Address false")
-			}
+			// // 判断tx的接收者是否为"0x1001"地址,(目前只是通过TxType判断是注册交易的,交易的接受者自动变为"0x1001",这里判断不判断都不影响)
+			// if *tx.To() != params.FeeReceiveAddress {
+			// 	log.Error("RegisterTx recipient Address false")
+			// 	return 0, errors.New("RegisterTx recipient Address false")
+			// }
+
 			// 解析交易data中申请候选节点的信息
 			txData := tx.Data()
-			CandNode := new(deputynode.CandidateNode)
-			err = json.Unmarshal(txData, CandNode)
+			candiNode := new(deputynode.CandidateNode)
+			err = json.Unmarshal(txData, candiNode)
 			if err != nil {
 				log.Errorf("unmarshal Candidate node error: %s", err)
 				return 0, err
 			}
-			isCandidate := CandNode.IsCandidate
-			minerAddress := CandNode.MinerAddress
-			nodeID := common.ToHex(CandNode.NodeID)
-			host := CandNode.Host
-			port := strconv.Itoa(int(CandNode.Port))
-			restGas, vmErr = vmEnv.RegisterOrUpdateToCandidate(senderAddr, params.FeeReceiveAddress, minerAddress, isCandidate, nodeID, host, port, restGas, tx.Amount(), initialSenderBalance)
+			restGas, vmErr = vmEnv.RegisterOrUpdateToCandidate(senderAddr, params.FeeReceiveAddress, candiNode, restGas, tx.Amount(), initialSenderBalance)
 
 		default:
 			log.Errorf("The type of transaction is not defined. txType = %d\n", tx.Type())

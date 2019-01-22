@@ -1,8 +1,10 @@
 package vm
 
 import (
+	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"math/big"
+	"strconv"
 	"sync/atomic"
 	"time"
 
@@ -211,7 +213,14 @@ func (evm *EVM) CallVoteTx(voter, node common.Address, gas uint64, initialBalanc
 }
 
 // 申请注册参加竞选代理节点的交易调用,sender为发起申请交易的用户地址，to为接收注册费用的账户地址，CandidateAddress为要成为候选节点的地址，Host为节点ip或者域名
-func (evm *EVM) RegisterOrUpdateToCandidate(CandidateAddress, to, minerAddress common.Address, isCandidate bool, nodeID, host, port string, gas uint64, value, initialSenderBalance *big.Int) (leftgas uint64, err error) {
+func (evm *EVM) RegisterOrUpdateToCandidate(CandidateAddress, to common.Address, candiNode *deputynode.CandidateNode, gas uint64, value, initialSenderBalance *big.Int) (leftgas uint64, err error) {
+	// 解析出传入的candidateNode信息
+	isCandidate := candiNode.IsCandidate
+	minerAddress := candiNode.MinerAddress
+	nodeID := common.ToHex(candiNode.NodeID)
+	host := candiNode.Host
+	port := strconv.Itoa(int(candiNode.Port))
+
 	// value不能小于规定的注册费用
 	if value.Cmp(params.RegisterCandidateNodeFees) < 0 {
 		return gas, ErrOfRegisterCandidateNodeFees
