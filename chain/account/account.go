@@ -73,6 +73,12 @@ func NewAccount(db protocol.ChainDB, address common.Address, data *types.Account
 	if data.NewestRecords == nil {
 		data.NewestRecords = make(map[types.ChangeLogType]types.VersionRecord)
 	}
+
+	if data.Candidate.Profile == nil {
+		data.Candidate.Profile = new(types.CandidateProfile)
+		data.Candidate.Profile.Profile = make(map[string]string)
+	}
+
 	return &Account{
 		data:          data,
 		db:            db,
@@ -115,11 +121,11 @@ func (a *Account) SetVotes(votes *big.Int) {
 	a.data.Candidate.Votes = votes
 }
 
-func (a *Account) GetCandidateProfile() types.CandidateProfile {
+func (a *Account) GetCandidateProfile() *types.CandidateProfile {
 	return a.data.Candidate.Profile
 }
 
-func (a *Account) SetCandidateProfile(profile types.CandidateProfile) {
+func (a *Account) SetCandidateProfile(profile *types.CandidateProfile) {
 	a.data.Candidate.Profile = profile
 }
 

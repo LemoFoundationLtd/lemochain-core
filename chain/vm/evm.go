@@ -174,7 +174,7 @@ func (evm *EVM) CallVoteTx(voter, node common.Address, gas uint64, initialBalanc
 	nodeAccount := evm.am.GetAccount(node)
 	// 	判断node是否为候选节点的竞选账户
 	profile := nodeAccount.GetCandidateProfile()
-	IsCandidate, ok := profile[types.CandidateKeyIsCandidate]
+	IsCandidate, ok := profile.Profile[types.CandidateKeyIsCandidate]
 	if !ok || IsCandidate == params.NotCandidateNode {
 		return gas, ErrOfNotCandidateNode
 	}
@@ -226,12 +226,12 @@ func (evm *EVM) RegisterOrUpdateToCandidate(CandidateAddress, to, minerAddress c
 	nodeAccount := evm.am.GetAccount(CandidateAddress)
 	// 查看申请地址是否已经为竞选代理节点
 	profile := nodeAccount.GetCandidateProfile()
-	IsCandidate, ok := profile[types.CandidateKeyIsCandidate]
+	IsCandidate, ok := profile.Profile[types.CandidateKeyIsCandidate]
 	// 如果已经是候选节点账户则查看传入的候选节点参数是否需要改变或者是否为一个取消候选人资格的交易
 	if ok && IsCandidate == params.IsCandidateNode {
 		// 判断是否要注销候选者资格
 		if !isCandidate {
-			profile[types.CandidateKeyIsCandidate] = params.NotCandidateNode
+			profile.Profile[types.CandidateKeyIsCandidate] = params.NotCandidateNode
 			nodeAccount.SetCandidateProfile(profile)
 			// 注销后的用户的票数为0
 			nodeAccount.SetVotes(big.NewInt(0))
@@ -240,19 +240,20 @@ func (evm *EVM) RegisterOrUpdateToCandidate(CandidateAddress, to, minerAddress c
 			return gas, nil
 		}
 		// 修改候选节点info
-		profile[types.CandidateKeyMinerAddress] = minerAddress.Hex()
-		profile[types.CandidateKeyHost] = host
-		profile[types.CandidateKeyPort] = port
+		profile.Profile[types.CandidateKeyMinerAddress] = minerAddress.Hex()
+		profile.Profile[types.CandidateKeyHost] = host
+		profile.Profile[types.CandidateKeyPort] = port
 		nodeAccount.SetCandidateProfile(profile)
 	} else {
 		// 初始化map
 		// 注册为竞选节点
-		newProfile := make(types.CandidateProfile, 5)
-		newProfile[types.CandidateKeyIsCandidate] = params.IsCandidateNode
-		newProfile[types.CandidateKeyMinerAddress] = minerAddress.Hex()
-		newProfile[types.CandidateKeyNodeID] = nodeID
-		newProfile[types.CandidateKeyHost] = host
-		newProfile[types.CandidateKeyPort] = port
+		newProfile := new(types.CandidateProfile)
+		newProfile.Profile = make(map[string]string, 5)
+		newProfile.Profile[types.CandidateKeyIsCandidate] = params.IsCandidateNode
+		newProfile.Profile[types.CandidateKeyMinerAddress] = minerAddress.Hex()
+		newProfile.Profile[types.CandidateKeyNodeID] = nodeID
+		newProfile.Profile[types.CandidateKeyHost] = host
+		newProfile.Profile[types.CandidateKeyPort] = port
 		nodeAccount.SetCandidateProfile(newProfile)
 
 		// 设置自己的账户投给自己，票数为执行交易前的Balance，所以要加上购买gas所用的balance

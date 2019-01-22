@@ -59,7 +59,11 @@ func NewChainDataBase(home string, driver string, dns string) *ChainDatabase {
 }
 
 func isCandidate(account *types.AccountData) bool {
-	result, ok := account.Candidate.Profile[types.CandidateKeyIsCandidate]
+	if account.Candidate.Profile == nil || len(account.Candidate.Profile.Profile) <= 0 {
+		return false
+	}
+
+	result, ok := account.Candidate.Profile.Profile[types.CandidateKeyIsCandidate]
 	if !ok {
 		return false
 	} else {
@@ -691,11 +695,11 @@ func (database *ChainDatabase) CandidatesRanking(hash common.Hash) {
 
 		voteTop.ToSlice(lastCandidatesMap)
 		voteTop.Rank(max_candidate_count)
-		cItem.Top30 = voteTop.GetTop(max_candidate_count)
+		cItem.Top30 = voteTop.GetTop()
 	} else {
 		candidates := all(hash)
 		voteTop.RankAll(max_candidate_count, candidates)
-		cItem.Top30 = voteTop.GetTop(max_candidate_count)
+		cItem.Top30 = voteTop.GetTop()
 	}
 }
 

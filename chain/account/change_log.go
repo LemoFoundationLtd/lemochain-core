@@ -185,7 +185,7 @@ func undoVoteFor(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 	return nil
 }
 
-func NewCandidateProfileLog(processor types.ChangeLogProcessor, account types.AccountAccessor, newProfile types.CandidateProfile) *types.ChangeLog {
+func NewCandidateProfileLog(processor types.ChangeLogProcessor, account types.AccountAccessor, newProfile *types.CandidateProfile) *types.ChangeLog {
 	return &types.ChangeLog{
 		LogType: CandidateProfileLog,
 		Address: account.GetAddress(),
@@ -196,7 +196,7 @@ func NewCandidateProfileLog(processor types.ChangeLogProcessor, account types.Ac
 }
 
 func redoCandidateProfile(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
-	newVal, ok := c.NewVal.(types.CandidateProfile)
+	newVal, ok := c.NewVal.(*types.CandidateProfile)
 	if !ok {
 		log.Errorf("expected NewVal []byte, got %T", c.NewVal)
 		return types.ErrWrongChangeLogData
@@ -207,7 +207,7 @@ func redoCandidateProfile(c *types.ChangeLog, processor types.ChangeLogProcessor
 }
 
 func undoCandidateProfile(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
-	oldVal, ok := c.OldVal.(types.CandidateProfile)
+	oldVal, ok := c.OldVal.(*types.CandidateProfile)
 	if !ok {
 		log.Errorf("expected NewVal map[string]string, got %T", c.NewVal)
 		return types.ErrWrongChangeLogData

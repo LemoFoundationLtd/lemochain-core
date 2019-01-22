@@ -40,14 +40,16 @@ type Pair struct {
 	Val string
 }
 
-type CandidateProfile map[string]string
+type CandidateProfile struct {
+	Profile map[string]string
+}
 
-func (a CandidateProfile) EncodeRLP(w io.Writer) error {
+func (a *CandidateProfile) EncodeRLP(w io.Writer) error {
 	tmp := make([]Pair, 0)
-	if len(a) <= 0 {
+	if (a == nil) || (len(a.Profile) <= 0) {
 		return rlp.Encode(w, tmp)
 	} else {
-		for k, v := range a {
+		for k, v := range a.Profile {
 			tmp = append(tmp, Pair{
 				Key: k,
 				Val: v,
@@ -58,22 +60,31 @@ func (a CandidateProfile) EncodeRLP(w io.Writer) error {
 	}
 }
 
-func (a CandidateProfile) DecodeRLP(s *rlp.Stream) error {
+func (a *CandidateProfile) DecodeRLP(s *rlp.Stream) error {
+	_, size, _ := s.Kind()
+	if size <= 0 {
+		return nil
+	}
+
 	dec := make([]Pair, 0)
 	err := s.Decode(&dec)
 	if err != nil {
 		return err
 	}
 
+	if a.Profile == nil {
+		a.Profile = make(map[string]string)
+	}
+
 	for index := 0; index < len(dec); index++ {
-		a[dec[index].Key] = dec[index].Val
+		a.Profile[dec[index].Key] = dec[index].Val
 	}
 	return nil
 }
 
 type Candidate struct {
 	Votes   *big.Int
-	Profile CandidateProfile
+	Profile *CandidateProfile
 }
 
 type AccountData struct {
@@ -102,11 +113,6 @@ type rlpVersionRecord struct {
 	Height  uint32
 }
 
-type rlpCandidate struct {
-	Votes   *big.Int
-	Profile []Pair
-}
-
 // rlpAccountData defines the fields which would be encode/decode by rlp
 type rlpAccountData struct {
 	Address       common.Address
@@ -115,7 +121,7 @@ type rlpAccountData struct {
 	StorageRoot   common.Hash
 	TxHashList    []common.Hash
 	VoteFor       common.Address
-	Candidate     rlpCandidate
+	Candidate     Candidate
 	NewestRecords []rlpVersionRecord
 }
 
@@ -126,19 +132,6 @@ func (a *AccountData) EncodeRLP(w io.Writer) error {
 		NewestRecords = append(NewestRecords, rlpVersionRecord{logType, record.Version, record.Height})
 	}
 
-	if a.Candidate.Profile == nil {
-		a.Candidate.Profile = make(CandidateProfile)
-	}
-
-	candidate := rlpCandidate{Votes: a.Candidate.Votes}
-	candidate.Profile = make([]Pair, 0)
-	for k, v := range a.Candidate.Profile {
-		candidate.Profile = append(candidate.Profile, Pair{
-			Key: k,
-			Val: v,
-		})
-	}
-
 	return rlp.Encode(w, rlpAccountData{
 		Address:       a.Address,
 		Balance:       a.Balance,
@@ -146,7 +139,7 @@ func (a *AccountData) EncodeRLP(w io.Writer) error {
 		StorageRoot:   a.StorageRoot,
 		TxHashList:    a.TxHashList,
 		VoteFor:       a.VoteFor,
-		Candidate:     candidate,
+		Candidate:     a.Candidate,
 		NewestRecords: NewestRecords,
 	})
 }
@@ -158,19 +151,12 @@ func (a *AccountData) DecodeRLP(s *rlp.Stream) error {
 
 	err := s.Decode(&dec)
 	if err == nil {
-		a.Address, a.Balance, a.CodeHash, a.StorageRoot, a.TxHashList, a.VoteFor =
-			dec.Address, dec.Balance, dec.CodeHash, dec.StorageRoot, dec.TxHashList, dec.VoteFor
+		a.Address, a.Balance, a.CodeHash, a.StorageRoot, a.TxHashList, a.VoteFor, a.Candidate =
+			dec.Address, dec.Balance, dec.CodeHash, dec.StorageRoot, dec.TxHashList, dec.VoteFor, dec.Candidate
 		a.NewestRecords = make(map[ChangeLogType]VersionRecord)
 
 		for _, record := range dec.NewestRecords {
 			a.NewestRecords[ChangeLogType(record.LogType)] = VersionRecord{Version: record.Version, Height: record.Height}
-		}
-
-		candidate := dec.Candidate
-		a.Candidate.Votes = candidate.Votes
-		a.Candidate.Profile = make(map[string]string)
-		for index := 0; index < len(candidate.Profile); index++ {
-			a.Candidate.Profile[candidate.Profile[index].Key] = candidate.Profile[index].Val
 		}
 	}
 	return err
@@ -232,8 +218,8 @@ type AccountAccessor interface {
 	GetVotes() *big.Int
 	SetVotes(votes *big.Int)
 
-	GetCandidateProfile() CandidateProfile
-	SetCandidateProfile(profile CandidateProfile)
+	GetCandidateProfile() *CandidateProfile
+	SetCandidateProfile(profile *CandidateProfile)
 
 	GetAddress() common.Address
 	GetBalance() *big.Int

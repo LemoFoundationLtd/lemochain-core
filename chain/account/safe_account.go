@@ -60,11 +60,11 @@ func (a *SafeAccount) SetVotes(votes *big.Int) {
 	a.rawAccount.SetVotes(votes)
 }
 
-func (a *SafeAccount) GetCandidateProfile() types.CandidateProfile {
+func (a *SafeAccount) GetCandidateProfile() *types.CandidateProfile {
 	return a.rawAccount.GetCandidateProfile()
 }
 
-func (a *SafeAccount) SetCandidateProfile(profile types.CandidateProfile) {
+func (a *SafeAccount) SetCandidateProfile(profile *types.CandidateProfile) {
 	newLog := NewCandidateProfileLog(a.processor, a.rawAccount, profile)
 	a.processor.PushChangeLog(newLog)
 	a.rawAccount.SetCandidateProfile(profile)

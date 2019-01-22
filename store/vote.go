@@ -89,10 +89,9 @@ func (top *VoteTop) Count() int {
 	return top.TopCnt
 }
 
-func (top *VoteTop) GetTop(topSize int) []*Candidate {
-	minSize := min(topSize, top.TopCnt)
-	result := make([]*Candidate, minSize)
-	for index := 0; index < minSize; index++ {
+func (top *VoteTop) GetTop() []*Candidate {
+	result := make([]*Candidate, top.TopCnt)
+	for index := 0; index < top.TopCnt; index++ {
 		result[index] = top.Top[index].Clone()
 	}
 	return result
@@ -156,7 +155,7 @@ func (top *VoteTop) ranking(topSize int, candidates []*Candidate) []*Candidate {
 				}
 
 				if (candidates[i].total.Cmp(candidates[j].total) == 0) &&
-					(bytes.Compare(candidates[i].address[:], candidates[j].address[:]) < 0) {
+					(bytes.Compare(candidates[i].address[:], candidates[j].address[:]) > 0) {
 					candidates[i], candidates[j] = candidates[j], candidates[i]
 				}
 			}
