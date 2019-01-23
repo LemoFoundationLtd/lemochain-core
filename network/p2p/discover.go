@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
+	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
@@ -50,7 +51,7 @@ func newRawNode(nodeID *NodeID, endpoint string) *RawNode {
 
 // String string formatter
 func (n *RawNode) String() string {
-	idStr := common.ToHex(n.NodeID[:])
+	idStr := fmt.Sprintf("%x", n.NodeID[:])
 	return idStr + "@" + n.Endpoint
 }
 
