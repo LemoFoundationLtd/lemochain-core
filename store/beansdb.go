@@ -260,7 +260,7 @@ func (beansdb *BeansDB) Get(key []byte) ([]byte, error) {
 		}
 
 		if route == nil {
-			log.Error("get index from db is not exist.")
+			//log.Error("get index from db is not exist.")
 			return nil, nil
 		}
 

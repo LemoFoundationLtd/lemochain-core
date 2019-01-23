@@ -470,14 +470,14 @@ func (bitcask *BitCask) Commit(batch Batch) error {
 		return err
 	} else {
 		for index := 0; index < len(items); index++ {
-			pos := uint32(int(pos+tmpPos[index]) | bitcask.CurIndex)
+			curPos := uint32(int(pos+tmpPos[index]) | bitcask.CurIndex)
 			bitcask.Cache[string(items[index].Key)] = RIndex{
 				flg: items[index].Flg,
-				pos: pos,
+				pos: curPos,
 				len: len(tmpBuf[index]),
 			}
 
-			bitcask.IndexDB.SetIndex(int(items[index].Flg), batch.Route(), items[index].Key, int64(pos))
+			bitcask.IndexDB.SetIndex(int(items[index].Flg), batch.Route(), items[index].Key, int64(curPos))
 		}
 		return nil
 	}
