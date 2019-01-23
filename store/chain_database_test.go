@@ -6,7 +6,21 @@ import (
 	"github.com/stretchr/testify/assert"
 	"testing"
 	// "github.com/LemoFoundationLtd/lemochain-go/common/log"
+	"github.com/LemoFoundationLtd/lemochain-go/common/log"
+	"strconv"
 )
+
+func TestChainDatabase_Get(t *testing.T) {
+	// db := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
+	// db.GetBlockByHash(common.HexToHash("0x5850717e08df47246c36f5b9b0cd23993356933ad73f6fca7e01de995e683715"))
+
+	var x uint8 = 129
+	y := int8(x)
+	log.Errorf("" + string(y))
+
+	hash := common.BytesToHash(encodeBlockNumber2Hash(114).Bytes())
+	log.Errorf("" + hash.Hex())
+}
 
 func TestCacheChain_SetBlock(t *testing.T) {
 	ClearData()
@@ -387,4 +401,39 @@ func TestCacheChain_AppendConfirm(t *testing.T) {
 	assert.Equal(t, block.Confirms[1], signs[1])
 	assert.Equal(t, block.Confirms[14], signs[14])
 	assert.Equal(t, block.Confirms[15], signs[15])
+}
+
+func TestChainDatabase_Commit(t *testing.T) {
+	ClearData()
+
+	chain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
+	// rand.Seed(time.Now().Unix())
+	blocks := NewBlockBatch(1000)
+	chain.SetBlock(blocks[0].Hash(), blocks[0])
+	err := chain.SetStableBlock(blocks[0].Hash())
+	assert.NoError(t, err)
+	for index := 1; index < 1000; index++ {
+		chain.SetBlock(blocks[index].Hash(), blocks[index])
+		err = chain.SetStableBlock(blocks[index].Hash())
+		assert.NoError(t, err)
+		if index > 10 {
+			val, err := chain.GetBlockByHeight(uint32(index - 7))
+			assert.NoError(t, err)
+			if val == nil {
+				panic("val :" + strconv.Itoa(index))
+			}
+		}
+		log.Errorf("index:" + strconv.Itoa(index))
+	}
+}
+
+func TestNewChainDataBase(t *testing.T) {
+	for index := 0; index < 2000000000; index++ {
+		// offset := uint32(index) & 0xffffff00
+		CURINDEX := uint32(index) & 0xff
+		if CURINDEX == 129 {
+			// panic("INDEX:129, INDEX:" + strconv.Itoa(int(index)))
+			log.Errorf("INDEX:" + strconv.Itoa(index))
+		}
+	}
 }

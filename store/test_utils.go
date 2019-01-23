@@ -8,6 +8,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"math/big"
+	"math/rand"
 	"os"
 	"time"
 )
@@ -51,6 +52,30 @@ func GetBlock1() *types.Block {
 	parentBlock := GetBlock0()
 	childHash := common.HexToHash("1111111111111111")
 	return CreateBlock(childHash, parentBlock.Hash(), 1)
+}
+
+func GetRandomString(len int) string {
+	str := "0123456789abcdef"
+	bytes := []byte(str)
+	result := []byte{'0', 'x'}
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	for i := 0; i < len; i++ {
+		result = append(result, bytes[r.Intn(16)])
+	}
+	return string(result)
+}
+
+func NewBlockBatch(size int) []*types.Block {
+	result := make([]*types.Block, 0, size+1)
+
+	str := GetRandomString(64)
+	hash := common.HexToHash(str)
+	result = append(result, CreateBlock(hash, common.Hash{}, 0))
+
+	for index := 1; index <= size; index++ {
+		result = append(result, CreateBlock(common.HexToHash(GetRandomString(64)), result[index-1].Hash(), uint32(index)))
+	}
+	return result
 }
 
 func GetBlock2() *types.Block {
