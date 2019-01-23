@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"bytes"
+	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"time"
 )
@@ -24,6 +25,7 @@ func (msg *Msg) Decode(data interface{}) error {
 	length := len(msg.Content)
 	s := rlp.NewStream(reader, uint64(length))
 	if err := s.Decode(data); err != nil {
+		log.Debugf("Msg.Decode error: %v", err)
 		return ErrRlpDecode
 	}
 	return nil
