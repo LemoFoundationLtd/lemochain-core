@@ -2,6 +2,7 @@ package network
 
 import (
 	"errors"
+	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
@@ -15,9 +16,6 @@ import (
 const (
 	ForceSyncInternal = 10 * time.Second
 	DiscoverInternal  = 10 * time.Second
-	ReqStatusTimeout  = 5 * time.Second // must less than ForceSyncInternal
-
-	SyncTimeout = int64(20)
 )
 
 // just for test
@@ -579,7 +577,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 func (pm *ProtocolManager) handleLstStatusMsg(msg *p2p.Msg, p *peer) error {
 	var status LatestStatus
 	if err := msg.Decode(&status); err != nil {
-		return err
+		return fmt.Errorf("handleLstStatusMsg error: %v", err)
 	}
 	go pm.forceSyncBlock(&status, p)
 	return nil
@@ -589,7 +587,7 @@ func (pm *ProtocolManager) handleLstStatusMsg(msg *p2p.Msg, p *peer) error {
 func (pm *ProtocolManager) handleGetLstStatusMsg(msg *p2p.Msg, p *peer) error {
 	var req GetLatestStatus
 	if err := msg.Decode(&req); err != nil {
-		return err
+		return fmt.Errorf("handleGetLstStatusMsg error: %v", err)
 	}
 	status := &LatestStatus{
 		CurHeight: pm.chain.CurrentBlock().Height(),
@@ -605,7 +603,7 @@ func (pm *ProtocolManager) handleGetLstStatusMsg(msg *p2p.Msg, p *peer) error {
 func (pm *ProtocolManager) handleBlockHashMsg(msg *p2p.Msg, p *peer) error {
 	var hashMsg BlockHashData
 	if err := msg.Decode(&hashMsg); err != nil {
-		return err
+		return fmt.Errorf("handleBlockHashMsg error: %v", err)
 	}
 	if pm.chain.HasBlock(hashMsg.Hash) {
 		return nil
@@ -618,7 +616,7 @@ func (pm *ProtocolManager) handleBlockHashMsg(msg *p2p.Msg, p *peer) error {
 func (pm *ProtocolManager) handleTxsMsg(msg *p2p.Msg) error {
 	var txs types.Transactions
 	if err := msg.Decode(&txs); err != nil {
-		return err
+		return fmt.Errorf("handleTxsMsg error: %v", err)
 	}
 	go func() {
 		if err := pm.txPool.AddTxs(txs); err != nil {
@@ -632,7 +630,7 @@ func (pm *ProtocolManager) handleTxsMsg(msg *p2p.Msg) error {
 func (pm *ProtocolManager) handleBlocksMsg(msg *p2p.Msg, p *peer) error {
 	var blocks types.Blocks
 	if err := msg.Decode(&blocks); err != nil {
-		return err
+		return fmt.Errorf("handleBlocksMsg error: %v", err)
 	}
 	rcvMsg := &rcvBlockObj{
 		p:      p,
@@ -646,7 +644,7 @@ func (pm *ProtocolManager) handleBlocksMsg(msg *p2p.Msg, p *peer) error {
 func (pm *ProtocolManager) handleGetBlocksMsg(msg *p2p.Msg, p *peer) error {
 	var query GetBlocksData
 	if err := msg.Decode(&query); err != nil {
-		return err
+		return fmt.Errorf("handleGetBlocksMsg error: %v", err)
 	}
 	if query.From > query.To {
 		return errors.New("invalid request blocks' param")
@@ -686,7 +684,7 @@ func (pm *ProtocolManager) respBlocks(from, to uint32, p *peer) {
 func (pm *ProtocolManager) handleConfirmsMsg(msg *p2p.Msg) error {
 	var confirms BlockConfirms
 	if err := msg.Decode(&confirms); err != nil {
-		return err
+		return fmt.Errorf("handleConfirmsMsg error: %v", err)
 	}
 	go pm.chain.ReceiveConfirms(confirms)
 	return nil
@@ -696,7 +694,7 @@ func (pm *ProtocolManager) handleConfirmsMsg(msg *p2p.Msg) error {
 func (pm *ProtocolManager) handleGetConfirmsMsg(msg *p2p.Msg, p *peer) error {
 	var condition GetConfirmInfo
 	if err := msg.Decode(&condition); err != nil {
-		return err
+		return fmt.Errorf("handleGetConfirmsMsg error: %v", err)
 	}
 	confirmInfo := pm.chain.GetConfirms(&condition)
 	resMsg := &BlockConfirms{
@@ -712,7 +710,7 @@ func (pm *ProtocolManager) handleGetConfirmsMsg(msg *p2p.Msg, p *peer) error {
 func (pm *ProtocolManager) handleConfirmMsg(msg *p2p.Msg) error {
 	confirm := new(BlockConfirmData)
 	if err := msg.Decode(confirm); err != nil {
-		return err
+		return fmt.Errorf("handleConfirmMsg error: %v", err)
 	}
 	if confirm.Height < pm.chain.StableBlock().Height() {
 		return nil
@@ -733,7 +731,7 @@ func (pm *ProtocolManager) handleConfirmMsg(msg *p2p.Msg) error {
 func (pm *ProtocolManager) handleDiscoverReqMsg(msg *p2p.Msg, p *peer) error {
 	var condition DiscoverReqData
 	if err := msg.Decode(&condition); err != nil {
-		return err
+		return fmt.Errorf("handleDiscoverReqMsg error: %v", err)
 	}
 	res := new(DiscoverResData)
 	res.Sequence = condition.Sequence
@@ -746,7 +744,7 @@ func (pm *ProtocolManager) handleDiscoverReqMsg(msg *p2p.Msg, p *peer) error {
 func (pm *ProtocolManager) handleDiscoverResMsg(msg *p2p.Msg) error {
 	var disRes DiscoverResData
 	if err := msg.Decode(&disRes); err != nil {
-		return err
+		return fmt.Errorf("handleDiscoverResMsg error: %v", err)
 	}
 	pm.discover.AddNewList(disRes.Nodes)
 	return nil

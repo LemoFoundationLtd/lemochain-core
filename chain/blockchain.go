@@ -463,7 +463,9 @@ func (bc *BlockChain) createSignInfo(hash common.Hash, height uint32) *network.B
 	}
 	copy(data.SignInfo[:], signInfo)
 	if bc.HasBlock(hash) {
-		bc.db.SetConfirm(hash, data.SignInfo)
+		if err := bc.db.SetConfirm(hash, data.SignInfo); err != nil {
+			log.Errorf("SetConfirm failed: %v", err)
+		}
 	}
 	return data
 }
@@ -492,7 +494,9 @@ func (bc *BlockChain) ReceiveConfirm(info *network.BlockConfirmData) (err error)
 	stableBlock := bc.stableBlock.Load().(*types.Block)
 	if stableBlock.Height() >= height { // stable block's confirm info
 		if ok, err := bc.hasEnoughConfirmInfo(info.Hash); err == nil && !ok {
-			bc.db.SetConfirm(info.Hash, info.SignInfo)
+			if err = bc.db.SetConfirm(info.Hash, info.SignInfo); err != nil {
+				log.Errorf("SetConfirm failed: %v", err)
+			}
 		}
 		return nil
 	}

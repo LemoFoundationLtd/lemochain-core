@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/LemoFoundationLtd/lemochain-go/chain"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
-	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/miner"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
@@ -71,14 +70,14 @@ func (a *PublicAccountAPI) GetAccount(LemoAddress string) (types.AccountAccessor
 }
 
 // GetVotes 获取account的votes
-func (a *PublicAccountAPI) GetVotes(LemoAddress string) (string, error) {
-	CandiAccount, err := a.GetAccount(LemoAddress)
-	if err != nil {
-		return "", err
-	}
-	votes := CandiAccount.GetVotes().String()
-	return votes, nil
-}
+// func (a *PublicAccountAPI) GetVotes(LemoAddress string) (string, error) {
+// 	CandiAccount, err := a.GetAccount(LemoAddress)
+// 	if err != nil {
+// 		return "", err
+// 	}
+// 	votes := CandiAccount.GetVotes().String()
+// 	return votes, nil
+// }
 
 // GetVoteFor 获取投的候选节点地址
 func (a *PublicAccountAPI) GetVoteFor(LemoAddress string) (string, error) {
@@ -90,8 +89,15 @@ func (a *PublicAccountAPI) GetVoteFor(LemoAddress string) (string, error) {
 	return forAddress, nil
 }
 
-// GetCandidateProfile 获取候选节点的配置信息
-func (a *PublicAccountAPI) GetCandidateProfile(LemoAddress string) *deputynode.CandidateNode {
+//go:generate gencodec -type CandiateInfo -out gen_candidate_info_json.go
+
+type CandiateInfo struct {
+	Votes   string            `json:"votes" gencodec:"required"`
+	Profile map[string]string `json:"profile"  gencodec:"required"`
+}
+
+// GetCandidateInfo 获取候选节点的配置信息
+func (a *PublicAccountAPI) GetCandidateInfo(LemoAddress string) *CandiateInfo {
 	candiAccount, err := a.GetAccount(LemoAddress)
 	if err != nil {
 		return nil
@@ -101,22 +107,16 @@ func (a *PublicAccountAPI) GetCandidateProfile(LemoAddress string) *deputynode.C
 		return nil
 	}
 
-	candidateNode := &deputynode.CandidateNode{}
-	iscandidate, err := strconv.ParseBool(mapProfile[types.CandidateKeyIsCandidate])
-	if err != nil {
-		return nil
+	candidateInfo := &CandiateInfo{
+		Profile: make(map[string]string),
 	}
-	candidateNode.IsCandidate = iscandidate
-	candidateNode.NodeID = common.FromHex(mapProfile[types.CandidateKeyNodeID])
-	candidateNode.MinerAddress = common.HexToAddress(mapProfile[types.CandidateKeyMinerAddress])
-	candidateNode.Host = mapProfile[types.CandidateKeyHost]
-	port, err := strconv.Atoi(mapProfile[types.CandidateKeyPort])
-	if err != nil {
-		return nil
-	}
-	candidateNode.Port = uint32(port)
-
-	return candidateNode
+	candidateInfo.Profile[types.CandidateKeyIsCandidate] = mapProfile[types.CandidateKeyIsCandidate]
+	candidateInfo.Profile[types.CandidateKeyHost] = mapProfile[types.CandidateKeyHost]
+	candidateInfo.Profile[types.CandidateKeyNodeID] = mapProfile[types.CandidateKeyNodeID]
+	candidateInfo.Profile[types.CandidateKeyPort] = mapProfile[types.CandidateKeyPort]
+	candidateInfo.Profile[types.CandidateKeyMinerAddress] = mapProfile[types.CandidateKeyMinerAddress]
+	candidateInfo.Votes = candiAccount.GetVotes().String()
+	return candidateInfo
 }
 
 // ChainAPI

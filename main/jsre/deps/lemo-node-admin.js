@@ -1,8 +1,7 @@
 lemo._createAPI('account', [
     {name: 'newKeyPair', method: 'account_newKeyPair'},
-    {name: 'getVotes', method: 'account_getVotes'},
     {name: 'getVoteFor', method: 'account_getVoteFor'},
-    {name: 'getCandidateProfile', method: 'account_getCandidateProfile'},
+    {name: 'getCandidateInfo', method: 'account_getCandidateInfo'},
 
 ]);
 lemo._createAPI('mine', [

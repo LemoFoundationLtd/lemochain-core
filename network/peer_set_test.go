@@ -6,6 +6,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/network/p2p"
 	"github.com/stretchr/testify/assert"
+	"math/big"
 	"net"
 	"testing"
 )
@@ -93,7 +94,7 @@ var deputyNodes = deputynode.DeputyNodes{
 		IP:           net.ParseIP("149.28.68.93"),
 		Port:         7003,
 		Rank:         0,
-		Votes:        50000,
+		Votes:        new(big.Int).SetInt64(50000),
 	},
 	&deputynode.DeputyNode{
 		MinerAddress: decodeMinerAddress("Lemo83JW7TBPA7P2P6AR9ZC2WCQJYRNHZ4NJD4CY"),
@@ -101,7 +102,7 @@ var deputyNodes = deputynode.DeputyNodes{
 		IP:           net.ParseIP("149.28.68.93"),
 		Port:         7005,
 		Rank:         1,
-		Votes:        40000,
+		Votes:        new(big.Int).SetInt64(40000),
 	},
 	&deputynode.DeputyNode{
 		MinerAddress: decodeMinerAddress("Lemo842BJZ4DKCC764C63Y6A943775JH6NQ3Z33Y"),
@@ -109,7 +110,7 @@ var deputyNodes = deputynode.DeputyNodes{
 		IP:           net.ParseIP("149.28.25.8"),
 		Port:         7003,
 		Rank:         2,
-		Votes:        30000,
+		Votes:        new(big.Int).SetInt64(30000),
 	},
 	&deputynode.DeputyNode{
 		MinerAddress: decodeMinerAddress("Lemo837QGPS3YNTYNF53CD88WA5DR3ABNA95W2DG"),
@@ -117,7 +118,7 @@ var deputyNodes = deputynode.DeputyNodes{
 		IP:           net.ParseIP("45.77.121.107"),
 		Port:         7003,
 		Rank:         3,
-		Votes:        20000,
+		Votes:        new(big.Int).SetInt64(20000),
 	},
 	&deputynode.DeputyNode{
 		MinerAddress: decodeMinerAddress("Lemo83HKZK68JQZDRGS5PWT2ZBSKR5CRADCSJB9B"),
@@ -125,7 +126,7 @@ var deputyNodes = deputynode.DeputyNodes{
 		IP:           net.ParseIP("63.211.111.245"),
 		Port:         7003,
 		Rank:         4,
-		Votes:        10000,
+		Votes:        new(big.Int).SetInt64(10000),
 	},
 }
 

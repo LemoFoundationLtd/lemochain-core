@@ -11,9 +11,8 @@ import (
 )
 
 const (
-	DurShort  = 3 * time.Second
-	DurMiddle = 5 * time.Second
-	DurLong   = 10 * time.Second
+	DurShort = 3 * time.Second
+	DurLong  = 10 * time.Second
 )
 
 // ProtocolHandshake protocol handshake

@@ -67,8 +67,10 @@ func (m *DialManager) runDialTask(node string) int {
 	// dial
 	conn, err := net.DialTimeout("tcp", endpoint, dialTimeout)
 	if err != nil {
-		m.discover.SetConnectResult(nodeID, false)
 		log.Warnf("dial node error: %s", err.Error())
+		if err = m.discover.SetConnectResult(nodeID, false); err != nil {
+			log.Errorf("SetConnectResult failed: %v", err)
+		}
 		return -1
 	}
 	// handle connection
