@@ -97,20 +97,20 @@ func (a *PublicAccountAPI) GetCandidateProfile(LemoAddress string) *deputynode.C
 		return nil
 	}
 	mapProfile := candiAccount.GetCandidateProfile()
-	if _, ok := mapProfile.Profile[types.CandidateKeyIsCandidate]; !ok {
+	if _, ok := mapProfile[types.CandidateKeyIsCandidate]; !ok {
 		return nil
 	}
 
 	candidateNode := &deputynode.CandidateNode{}
-	iscandidate, err := strconv.ParseBool(mapProfile.Profile[types.CandidateKeyIsCandidate])
+	iscandidate, err := strconv.ParseBool(mapProfile[types.CandidateKeyIsCandidate])
 	if err != nil {
 		return nil
 	}
 	candidateNode.IsCandidate = iscandidate
-	candidateNode.NodeID = common.FromHex(mapProfile.Profile[types.CandidateKeyNodeID])
-	candidateNode.MinerAddress = common.HexToAddress(mapProfile.Profile[types.CandidateKeyMinerAddress])
-	candidateNode.Host = mapProfile.Profile[types.CandidateKeyHost]
-	port, err := strconv.Atoi(mapProfile.Profile[types.CandidateKeyPort])
+	candidateNode.NodeID = common.FromHex(mapProfile[types.CandidateKeyNodeID])
+	candidateNode.MinerAddress = common.HexToAddress(mapProfile[types.CandidateKeyMinerAddress])
+	candidateNode.Host = mapProfile[types.CandidateKeyHost]
+	port, err := strconv.Atoi(mapProfile[types.CandidateKeyPort])
 	if err != nil {
 		return nil
 	}
