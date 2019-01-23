@@ -97,7 +97,6 @@ func (database *ChainDatabase) blockCommit(hash common.Hash) error {
 	if (database.LastConfirm.Block != nil) &&
 		(cItem.Block.Height() < database.LastConfirm.Block.Height()) {
 		panic("(database.LastConfirm.Block != nil) && (cItem.Block.Height() < database.LastConfirm.Block.Height())")
-		// return nil
 	}
 
 	batch := database.Beansdb.NewBatch(hash[:])
