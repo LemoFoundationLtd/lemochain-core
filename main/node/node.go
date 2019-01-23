@@ -322,7 +322,9 @@ func (n *Node) startIPC(apis []rpc.API) error {
 
 func (n *Node) stopIPC() {
 	if n.ipcListener != nil {
-		n.ipcListener.Close()
+		if err := n.ipcListener.Close(); err != nil {
+			log.Errorf("close ipcListener failed: %v", err)
+		}
 		n.ipcListener = nil
 		log.Info("IPC endpoint closed", "endpoint", n.ipcEndpoint)
 	}
@@ -367,7 +369,9 @@ func (n *Node) startHTTP(endpoint string, apis []rpc.API, cors []string, vhosts 
 
 func (n *Node) stopHTTP() {
 	if n.httpListener != nil {
-		n.httpListener.Close()
+		if err := n.httpListener.Close(); err != nil {
+			log.Errorf("close httpListener failed: %v", err)
+		}
 		n.httpListener = nil
 
 		log.Info("HTTP endpoint closed", "url", fmt.Sprintf("http://%s", n.httpEndpoint))

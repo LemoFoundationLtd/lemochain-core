@@ -101,7 +101,9 @@ func (p *Peer) safeClose() {
 	}
 	if needClose {
 		close(p.stopCh)
-		p.conn.Close()
+		if err := p.conn.Close(); err != nil {
+			log.Infof("close connection failed: %v", err)
+		}
 	}
 }
 

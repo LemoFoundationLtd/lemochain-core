@@ -101,7 +101,9 @@ func (srv *Server) Stop() {
 		return
 	}
 	// close listener
-	srv.listener.Close()
+	if err := srv.listener.Close(); err != nil {
+		log.Infof("stop listener failed: %v", err)
+	}
 	close(srv.quitCh)
 	// close connected nodes
 	for _, p := range srv.connectedNodes {
@@ -122,7 +124,11 @@ func (srv *Server) run() {
 	defer srv.wg.Done()
 
 	// start dial task
-	go srv.dialManager.Start()
+	go func() {
+		if err := srv.dialManager.Start(); err != nil {
+			log.Errorf("start dialManager failed: %v", err)
+		}
+	}()
 
 	for {
 		select {
@@ -131,7 +137,9 @@ func (srv *Server) run() {
 			if _, ok := srv.connectedNodes[*p.RNodeID()]; ok {
 				log.Debugf("Add peer event. But connection has already exist. nodeID: %s", p.RNodeID().String()[:16])
 				p.Close()
-				srv.discover.SetConnectResult(p.RNodeID(), true)
+				if err := srv.discover.SetConnectResult(p.RNodeID(), true); err != nil {
+					log.Infof("SetConnectResult failed: %v", err)
+				}
 				break
 			} else {
 				log.Debugf("Add peer event. nodeID: %s", p.RNodeID().String()[:16])
@@ -190,7 +198,11 @@ func (srv *Server) listenLoop() {
 			log.Debug("TCP Accept error", "err", err)
 			continue
 		}
-		go srv.HandleConn(fd, nil)
+		go func() {
+			if err := srv.HandleConn(fd, nil); err != nil {
+				log.Errorf("HandleConn failed: %v", err)
+			}
+		}()
 	}
 }
 
@@ -204,14 +216,22 @@ func (srv *Server) HandleConn(fd net.Conn, nodeID *NodeID) error {
 	err := peer.DoHandshake(srv.PrivateKey, nodeID)
 	if err != nil {
 		log.Debugf("peer handshake failed: %v", err)
-		fd.Close()
-		srv.discover.SetConnectResult(peer.RNodeID(), false)
+		if err = fd.Close(); err != nil {
+			log.Errorf("close connections failed", err)
+		}
+		if err = srv.discover.SetConnectResult(peer.RNodeID(), false); err != nil {
+			log.Errorf("SetConnectResult failed: %v", err)
+		}
 		return err
 	}
 	// is itself
 	if bytes.Compare(peer.RNodeID()[:], deputynode.GetSelfNodeID()) == 0 {
-		fd.Close()
-		srv.discover.SetConnectResult(peer.RNodeID(), false)
+		if err = fd.Close(); err != nil {
+			log.Errorf("close connections failed", err)
+		}
+		if err = srv.discover.SetConnectResult(peer.RNodeID(), false); err != nil {
+			log.Errorf("SetConnectResult failed: %v", err)
+		}
 		return ErrConnectSelf
 	}
 	// output log
