@@ -13,4 +13,7 @@ var (
 	ErrOfRegisterCandidateNodeFees = errors.New("Insufficient fees of registered candidate node ")
 	ErrOfAgainVote                 = errors.New("already voted the same as candidate node")
 	ErrOfNotCandidateNode          = errors.New("node address is not candidate account")
+	ErrOfRegisterNodeID            = errors.New("can't get nodeId of RegisterInfo")
+	ErrOfRegisterHost              = errors.New("can't get host of RegisterInfo")
+	ErrOfRegisterPort              = errors.New("can't get port of RegisterInfo")
 )

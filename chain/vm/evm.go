@@ -1,10 +1,8 @@
 package vm
 
 import (
-	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"math/big"
-	"strconv"
 	"sync/atomic"
 	"time"
 
@@ -213,43 +211,61 @@ func (evm *EVM) CallVoteTx(voter, node common.Address, gas uint64, initialBalanc
 }
 
 // 申请注册参加竞选代理节点的交易调用,sender为发起申请交易的用户地址，to为接收注册费用的账户地址，CandidateAddress为要成为候选节点的地址，Host为节点ip或者域名
-func (evm *EVM) RegisterOrUpdateToCandidate(CandidateAddress, to common.Address, candiNode *deputynode.CandidateNode, gas uint64, value, initialSenderBalance *big.Int) (leftgas uint64, err error) {
+func (evm *EVM) RegisterOrUpdateToCandidate(candidateAddress, to common.Address, candiNode types.CandidateProfile, gas uint64, value, initialSenderBalance *big.Int) (leftgas uint64, err error) {
 	// 解析出传入的candidateNode信息
-	isCandidate := candiNode.IsCandidate
-	minerAddress := candiNode.MinerAddress
-	nodeID := common.ToHex(candiNode.NodeID)
-	host := candiNode.Host
-	port := strconv.Itoa(int(candiNode.Port))
+	isCandidate, ok := candiNode[types.CandidateKeyIsCandidate]
+	if !ok {
+		isCandidate = params.IsCandidateNode
+	}
+
+	minerAddress, ok := candiNode[types.CandidateKeyMinerAddress]
+	if !ok {
+		minerAddress = candidateAddress.String()
+	}
+
+	nodeID, ok := candiNode[types.CandidateKeyNodeID]
+	if !ok {
+		return gas, ErrOfRegisterNodeID
+	}
+
+	host, ok := candiNode[types.CandidateKeyHost]
+	if !ok {
+		return gas, ErrOfRegisterHost
+	}
+	port, ok := candiNode[types.CandidateKeyPort]
+	if !ok {
+		return gas, ErrOfRegisterPort
+	}
 
 	// value不能小于规定的注册费用
 	if value.Cmp(params.RegisterCandidateNodeFees) < 0 {
 		return gas, ErrOfRegisterCandidateNodeFees
 	}
 	// 查看余额够不够
-	if !evm.CanTransfer(evm.am, CandidateAddress, value) {
+	if !evm.CanTransfer(evm.am, candidateAddress, value) {
 		return gas, ErrInsufficientBalance
 	}
 	// var snapshot = evm.am.Snapshot() // 回滚操作
 
 	// 申请为候选节点账户
-	nodeAccount := evm.am.GetAccount(CandidateAddress)
+	nodeAccount := evm.am.GetAccount(candidateAddress)
 	// 查看申请地址是否已经为竞选代理节点
 	profile := nodeAccount.GetCandidateProfile()
 	IsCandidate, ok := profile[types.CandidateKeyIsCandidate]
 	// 如果已经是候选节点账户则查看传入的候选节点参数是否需要改变或者是否为一个取消候选人资格的交易
 	if ok && IsCandidate == params.IsCandidateNode {
 		// 判断是否要注销候选者资格
-		if !isCandidate {
+		if isCandidate == params.NotCandidateNode {
 			profile[types.CandidateKeyIsCandidate] = params.NotCandidateNode
 			nodeAccount.SetCandidateProfile(profile)
 			// 注销后的用户的票数为0
 			nodeAccount.SetVotes(big.NewInt(0))
 			// 注销也需要消耗1000LEMO
-			evm.Transfer(evm.am, CandidateAddress, to, value)
+			evm.Transfer(evm.am, candidateAddress, to, value)
 			return gas, nil
 		}
 		// 修改候选节点info
-		profile[types.CandidateKeyMinerAddress] = minerAddress.Hex()
+		profile[types.CandidateKeyMinerAddress] = minerAddress
 		profile[types.CandidateKeyHost] = host
 		profile[types.CandidateKeyPort] = port
 		nodeAccount.SetCandidateProfile(profile)
@@ -258,7 +274,7 @@ func (evm *EVM) RegisterOrUpdateToCandidate(CandidateAddress, to common.Address,
 		// 注册为竞选节点
 		newProfile := make(map[string]string, 5)
 		newProfile[types.CandidateKeyIsCandidate] = params.IsCandidateNode
-		newProfile[types.CandidateKeyMinerAddress] = minerAddress.Hex()
+		newProfile[types.CandidateKeyMinerAddress] = minerAddress
 		newProfile[types.CandidateKeyNodeID] = nodeID
 		newProfile[types.CandidateKeyHost] = host
 		newProfile[types.CandidateKeyPort] = port
@@ -273,13 +289,13 @@ func (evm *EVM) RegisterOrUpdateToCandidate(CandidateAddress, to common.Address,
 			oldNodeAccount.SetVotes(oldNodeVoters)
 		}
 		// 设置投票候选节点为自己地址
-		nodeAccount.SetVoteFor(CandidateAddress)
+		nodeAccount.SetVoteFor(candidateAddress)
 		// 设置自己的票数，此时自己的票数为自己的balance.
 		nodeAccount.SetVotes(initialSenderBalance)
 
 	}
 	// 转账操作，必须放在票数改变逻辑后面，保证不会因为balance改变导致票数的改变出错
-	evm.Transfer(evm.am, CandidateAddress, to, value)
+	evm.Transfer(evm.am, candidateAddress, to, value)
 	// // 回滚
 	// if err != nil {
 	// 	evm.am.RevertToSnapshot(snapshot)

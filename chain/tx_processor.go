@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
-	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/vm"
@@ -150,7 +149,6 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 		restGas              = tx.GasLimit()
 		mergeFrom            = len(p.am.GetChangeLogs())
 	)
-	fmt.Println("初始的Balance=", initialSenderBalance.String())
 	err = p.buyGas(gp, tx)
 	if err != nil {
 		return 0, err
@@ -173,37 +171,29 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 		recipientAccount := p.am.GetAccount(recipientAddr)
 		initialRecipientBalance := recipientAccount.GetBalance()
 
-		// 判断交易是普通转账交易、投票交易还是注册参加节点竞选的交易
+		// Judge the type of transaction
 		switch tx.Type() {
 		case params.OrdinaryTx:
 			_, restGas, vmErr = vmEnv.Call(sender, recipientAddr, tx.Data(), restGas, tx.Amount())
 
-		case params.VoteTx: // 执行投票交易逻辑
+		case params.VoteTx:
 			restGas, vmErr = vmEnv.CallVoteTx(senderAddr, recipientAddr, restGas, initialSenderBalance)
 
-		case params.RegisterTx: // 执行注册参加代理节点选举交易逻辑
-			// // 判断tx的接收者是否为"0x1001"地址,(目前只是通过TxType判断是注册交易的,交易的接受者自动变为"0x1001",这里判断不判断都不影响)
-			// if *tx.To() != params.FeeReceiveAddress {
-			// 	log.Error("RegisterTx recipient Address false")
-			// 	return 0, errors.New("RegisterTx recipient Address false")
-			// }
-
-			// 解析交易data中申请候选节点的信息
+		case params.RegisterTx:
+			// Unmarshal tx data
 			txData := tx.Data()
-			candiNode := new(deputynode.CandidateNode)
-			err = json.Unmarshal(txData, candiNode)
+			profile := make(types.CandidateProfile)
+			err = json.Unmarshal(txData, &profile)
 			if err != nil {
 				log.Errorf("unmarshal Candidate node error: %s", err)
 				return 0, err
 			}
-			restGas, vmErr = vmEnv.RegisterOrUpdateToCandidate(senderAddr, params.FeeReceiveAddress, candiNode, restGas, tx.Amount(), initialSenderBalance)
+			restGas, vmErr = vmEnv.RegisterOrUpdateToCandidate(senderAddr, params.FeeReceiveAddress, profile, restGas, tx.Amount(), initialSenderBalance)
 
 		default:
 			log.Errorf("The type of transaction is not defined. txType = %d\n", tx.Type())
-			// p.refundGas(gp, tx, restGas) // 交易不满足所定义的交易类型的交易视为攻击，则不返还剩下的gas
-			// return 0, errors.New("the type of transaction error")
 		}
-		// 接收者对应的候选节点的票数变化
+		// Candidate node votes change
 		endRecipientBalance := recipientAccount.GetBalance()
 		if initialRecipientBalance == nil {
 			p.changeCandidateVotes(recipientAddr, endRecipientBalance)
