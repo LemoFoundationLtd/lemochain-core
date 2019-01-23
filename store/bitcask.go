@@ -171,7 +171,7 @@ func (bitcask *BitCask) scan(lastIndex int, lastOffset uint32) error {
 				delete(bitcask.Cache, string(body.Key))
 			}
 
-			nextOffset = nextOffset + uint32(RHEAD_LENGTH) + uint32(head.Len)
+			nextOffset = nextOffset + bitcask.align(uint32(RHEAD_LENGTH)+uint32(head.Len))
 			lastOffset = nextOffset
 		}
 
@@ -197,7 +197,7 @@ func (bitcask *BitCask) encode(hBuf []byte, bBuf []byte) []byte {
 	tLen := bitcask.align(uint32(len(hBuf)) + uint32(len(bBuf)))
 
 	tBuf := make([]byte, tLen)
-	copy(tBuf[:], hBuf[:])
+	copy(tBuf[0:], hBuf[:])
 	copy(tBuf[len(hBuf):], bBuf[:])
 
 	return tBuf
@@ -355,7 +355,7 @@ func (bitcask *BitCask) get(flag uint, route []byte, key []byte, offset int64) (
 	bucketIndex := uint32(offset) & 0xff
 
 	dataPath := bitcask.path(int(bucketIndex))
-	file, err := os.OpenFile(dataPath, os.O_RDONLY, 0666)
+	file, err := os.OpenFile(dataPath, os.O_RDONLY, os.ModePerm)
 	defer file.Close()
 	if err != nil {
 		return nil, err

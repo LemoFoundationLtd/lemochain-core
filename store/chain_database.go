@@ -668,15 +668,33 @@ func (database *ChainDatabase) CandidatesRanking(hash common.Hash) {
 		return
 	}
 
-	voteTop := NewVoteTop(cItem.Top30)
-	lastCandidatesMap, nextCandidates := data(accounts, voteTop.ToHashMap())
+	toHashMap := func(src []*Candidate) map[common.Address]*Candidate {
+		result := make(map[common.Address]*Candidate)
+		for index := 0; index < len(src); index++ {
+			result[src[index].address] = src[index]
+		}
+		return result
+	}
 
+	toSlice := func(src map[common.Address]*Candidate) []*Candidate {
+		if len(src) <= 0 {
+			return make([]*Candidate, 0)
+		} else {
+			dst := make([]*Candidate, 0, len(src))
+			for _, v := range src {
+				dst = append(dst, v)
+			}
+			return dst
+		}
+	}
+
+	lastCandidatesMap, nextCandidates := data(accounts, toHashMap(cItem.Top30))
+
+	voteTop := NewVoteTop(cItem.Top30)
 	lastMinCandidate := voteTop.Min()
 	lastCount := voteTop.Count()
 
-	voteTop.ToSlice(lastCandidatesMap)
-	voteTop.Rank(max_candidate_count)
-
+	voteTop.Rank(max_candidate_count, toSlice(lastCandidatesMap))
 	if (lastMinCandidate != nil) &&
 		(lastCount == voteTop.Count()) &&
 		(lastMinCandidate.total.Cmp(voteTop.Min().total) <= 0) {
@@ -692,12 +710,11 @@ func (database *ChainDatabase) CandidatesRanking(hash common.Hash) {
 			}
 		}
 
-		voteTop.ToSlice(lastCandidatesMap)
-		voteTop.Rank(max_candidate_count)
+		voteTop.Rank(max_candidate_count, toSlice(lastCandidatesMap))
 		cItem.Top30 = voteTop.GetTop()
 	} else {
 		candidates := all(hash)
-		voteTop.RankAll(max_candidate_count, candidates)
+		voteTop.Rank(max_candidate_count, candidates)
 		cItem.Top30 = voteTop.GetTop()
 	}
 }

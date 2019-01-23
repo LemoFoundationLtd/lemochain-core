@@ -73,7 +73,7 @@ func (top *VoteTop) Del(address common.Address) {
 		if bytes.Compare(top.Top[index].address[:], address[:]) != 0 {
 			continue
 		} else {
-			copy(top.Top[0:index], top.Top[index+1:])
+			top.Top = append(top.Top[0:index], top.Top[index+1:]...)
 			top.TopCnt = top.TopCnt - 1
 			break
 		}
@@ -97,26 +97,6 @@ func (top *VoteTop) GetTop() []*Candidate {
 	return result
 }
 
-func (top *VoteTop) ToHashMap() map[common.Address]*Candidate {
-	result := make(map[common.Address]*Candidate)
-	for index := 0; index < top.TopCnt; index++ {
-		result[top.Top[index].address] = top.Top[index]
-	}
-	return result
-}
-
-func (top *VoteTop) ToSlice(src map[common.Address]*Candidate) {
-	if len(src) <= 0 {
-		top.Clear()
-	} else {
-		top.TopCnt = len(src)
-		top.Top = make([]*Candidate, 0, len(src))
-		for _, v := range src {
-			top.Top = append(top.Top, v)
-		}
-	}
-}
-
 func (top *VoteTop) Reset(candidates []*Candidate) {
 	if len(candidates) <= 0 {
 		top.Clear()
@@ -126,12 +106,7 @@ func (top *VoteTop) Reset(candidates []*Candidate) {
 	}
 }
 
-func (top *VoteTop) Rank(topSize int) {
-	result := top.ranking(topSize, top.Top)
-	top.Reset(result)
-}
-
-func (top *VoteTop) RankAll(topSize int, candidates []*Candidate) {
+func (top *VoteTop) Rank(topSize int, candidates []*Candidate) {
 	result := top.ranking(topSize, candidates)
 	top.Reset(result)
 }

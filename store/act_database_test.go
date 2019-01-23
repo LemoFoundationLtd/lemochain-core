@@ -95,6 +95,34 @@ func (reader *TestReader) Has(key []byte) (bool, error) {
 	return false, nil
 }
 
+func TestPatriciaTrie_Put1(t *testing.T) {
+	trie := NewEmptyDatabase(new(TestReader))
+
+	account1 := &types.AccountData{
+		Address: common.HexToAddress("0x1"),
+		Balance: big.NewInt(1),
+	}
+	account2 := &types.AccountData{
+		Address: common.HexToAddress("0x2"),
+		Balance: big.NewInt(2),
+	}
+	trie.Insert(account1.Address[:], account1)
+	trie.Insert(account2.Address[:], account2)
+
+	tmp1 := NewActDatabase(new(TestReader), trie)
+	account3 := &types.AccountData{
+		Address: common.HexToAddress("0x11"),
+		Balance: big.NewInt(3),
+	}
+	tmp1.Put(account3, 1)
+
+	account4 := &types.AccountData{
+		Address: common.HexToAddress("0x400000000000"),
+		Balance: big.NewInt(400000000),
+	}
+	tmp1.Put(account4, 1)
+}
+
 func TestPatriciaTrie_Put(t *testing.T) {
 	trie := NewEmptyDatabase(new(TestReader))
 
@@ -110,7 +138,6 @@ func TestPatriciaTrie_Put(t *testing.T) {
 	trie.Insert(account2.Address[:], account2)
 
 	tmp1 := trie.Clone()
-
 	account3 := &types.AccountData{
 		Address: common.HexToAddress("0x3"),
 		Balance: big.NewInt(3),
@@ -157,68 +184,3 @@ func TestPatriciaTrie_Put(t *testing.T) {
 	result = tmp2.Find(account6.Address[:])
 	assert.Equal(t, account6.Address, result.Address)
 }
-
-// func TestNewPatriciaTrieInsertAndFind(t *testing.T) {
-// 	trie := NewActDatabase(nil, nil)
-//
-// 	act1 := &Account{val:1}
-// 	trie.Insert("xiegaoqiang", act1)
-// 	val := trie.Find("xiegaoqiang")
-// 	assert.Equal(t, 1, val.val)
-//
-// 	act2 := &Account{val:2}
-// 	trie.Insert("xie", act2)
-// 	val = trie.Find("xie")
-// 	assert.Equal(t, 2, val.val)
-//
-//
-// 	act3 := &Account{val:3}
-// 	trie.Insert("xiegao", act3)
-// 	val = trie.Find("xiegao")
-// 	assert.Equal(t, 3, val.val)
-//
-// 	act4 := &Account{val:4}
-// 	trie.Insert("xieabc", act4)
-// 	val = trie.Find("xieabc")
-// 	assert.Equal(t, 4, val.val)
-// }
-//
-// func TestPatriciaTrie_Dye(t *testing.T) {
-// 	trie := NewPatriciaTrie()
-//
-// 	act1 := &Account{val:1}
-// 	trie.Insert("xiegaoqiang", act1)
-//
-// 	act2 := &Account{val:2}
-// 	trie.Insert("xie", act2)
-//
-// 	act3 := &Account{val:3}
-// 	trie.Insert("xiegao", act3)
-//
-// 	act4 := &Account{val:4}
-// 	trie.Insert("xieabc", act4)
-//
-// 	trie.Dye("xiegao", 100)
-// }
-//
-// func TestPatriciaTrie_Collected(t *testing.T) {
-//
-// 	trie := NewPatriciaTrie()
-//
-// 	act1 := &Account{val:1}
-// 	trie.Insert("xiegaoqiang", act1)
-//
-// 	act2 := &Account{val:2}
-// 	trie.Insert("xie", act2)
-//
-// 	act3 := &Account{val:3}
-// 	trie.Insert("xiegao", act3)
-//
-// 	act4 := &Account{val:4}
-// 	trie.Insert("xieabc", act4)
-//
-// 	trie.Dye("xiegao", 100)
-//
-// 	accounts := trie.Collected(100)
-// 	assert.Equal(t, 2, len(accounts))
-// }
