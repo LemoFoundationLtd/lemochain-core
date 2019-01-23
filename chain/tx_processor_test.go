@@ -15,12 +15,12 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"github.com/stretchr/testify/assert"
 	"math/big"
-	"strconv"
 	"testing"
 	"time"
 )
 
 func TestNewTxProcessor(t *testing.T) {
+	store.ClearData()
 	chain := newChain()
 	p := NewTxProcessor(chain)
 	assert.NotEqual(t, (*vm.Config)(nil), p.cfg)
@@ -362,22 +362,21 @@ func Test_voteAndRegisteTx(t *testing.T) {
 	p := NewTxProcessor(newChain())
 
 	// 申请第一个候选节点(testAddr)信息data
-	var cand00 = &deputynode.CandidateNode{
-		IsCandidate:  true,
-		MinerAddress: common.HexToAddress("0x10000"),
-		NodeID:       common.FromHex("0x34f0df789b46e9bc09f23d5315b951bc77bbfeda653ae6f5aab564c9b4619322fddb3b1f28d1c434250e9d4dd8f51aa8334573d7281e4d63baba913e9fa6908f"),
-		Host:         "0.0.0.0",
-		Port:         0000,
-	}
+	cand00 := make(types.CandidateProfile)
+	cand00[types.CandidateKeyIsCandidate] = params.IsCandidateNode
+	cand00[types.CandidateKeyPort] = "0000"
+	cand00[types.CandidateKeyNodeID] = "0x34f0df789b46e9bc09f23d5315b951bc77bbfeda653ae6f5aab564c9b4619322fddb3b1f28d1c434250e9d4dd8f51aa8334573d7281e4d63baba913e9fa6908f"
+	cand00[types.CandidateKeyMinerAddress] = "0x10000"
+	cand00[types.CandidateKeyHost] = "0.0.0.0"
 	candData00, _ := json.Marshal(cand00)
+
 	// 申请第二个候选节点(testAddr02)信息data
-	var cand02 = &deputynode.CandidateNode{
-		IsCandidate:  true,
-		MinerAddress: common.HexToAddress("0x222222"),
-		NodeID:       common.FromHex("0x7739f34055d3c0808683dbd77a937f8e28f707d5b1e873bbe61f6f2d0347692f36ef736f342fb5ce4710f7e337f062cc2110d134b63a9575f78cb167bfae2f43"),
-		Host:         "2.2.2.2",
-		Port:         2222,
-	}
+	cand02 := make(types.CandidateProfile)
+	cand02[types.CandidateKeyIsCandidate] = params.IsCandidateNode
+	cand02[types.CandidateKeyPort] = "2222"
+	cand02[types.CandidateKeyNodeID] = "0x7739f34055d3c0808683dbd77a937f8e28f707d5b1e873bbe61f6f2d0347692f36ef736f342fb5ce4710f7e337f062cc2110d134b63a9575f78cb167bfae2f43"
+	cand02[types.CandidateKeyMinerAddress] = "0x222222"
+	cand02[types.CandidateKeyHost] = "2.2.2.2"
 	candData02, _ := json.Marshal(cand02)
 
 	// 生成有balance的account
@@ -442,10 +441,10 @@ func Test_voteAndRegisteTx(t *testing.T) {
 	assert.Equal(t, testAddr, account00.GetVoteFor())                               // 投给自己
 	assert.Equal(t, account00.GetBalance().String(), account00.GetVotes().String()) // 初始票数为自己的Balance
 	profile := account00.GetCandidateProfile()
-	assert.Equal(t, cand00.MinerAddress.Hex(), profile[types.CandidateKeyMinerAddress])
-	assert.Equal(t, cand00.Host, profile[types.CandidateKeyHost])
-	assert.Equal(t, strconv.Itoa(int(cand00.Port)), profile[types.CandidateKeyPort])
-	assert.Equal(t, common.ToHex(cand00.NodeID), profile[types.CandidateKeyNodeID])
+	assert.Equal(t, cand00[types.CandidateKeyMinerAddress], profile[types.CandidateKeyMinerAddress])
+	assert.Equal(t, cand00[types.CandidateKeyHost], profile[types.CandidateKeyHost])
+	assert.Equal(t, cand00[types.CandidateKeyPort], profile[types.CandidateKeyPort])
+	assert.Equal(t, cand00[types.CandidateKeyNodeID], profile[types.CandidateKeyNodeID])
 	log.Warn("account00Vote:", account00.GetVotes().String())
 	// ---Block02-----------------------------------------------------------------------
 	//  2. 测试发送投票交易,testAddr01账户为testAddr候选节点账户投票,并注册testAddr02为候选节点
@@ -503,23 +502,23 @@ func Test_voteAndRegisteTx(t *testing.T) {
 	assert.Equal(t, address02, account02.GetVoteFor())                                // 默认投给自己
 	assert.Equal(t, account02.GetBalance().String(), block02testAddr02Votes.String()) // 初始票数为自己的Balance
 	profile02 := account02.GetCandidateProfile()
-	assert.Equal(t, cand02.MinerAddress.Hex(), profile02[types.CandidateKeyMinerAddress])
-	assert.Equal(t, cand02.Host, profile02[types.CandidateKeyHost])
-	assert.Equal(t, strconv.Itoa(int(cand02.Port)), profile02[types.CandidateKeyPort])
-	assert.Equal(t, common.ToHex(cand02.NodeID), profile02[types.CandidateKeyNodeID])
+	assert.Equal(t, cand02[types.CandidateKeyMinerAddress], profile02[types.CandidateKeyMinerAddress])
+	assert.Equal(t, cand02[types.CandidateKeyHost], profile02[types.CandidateKeyHost])
+	assert.Equal(t, cand02[types.CandidateKeyPort], profile02[types.CandidateKeyPort])
+	assert.Equal(t, cand02[types.CandidateKeyNodeID], profile02[types.CandidateKeyNodeID])
 	// ---Block03-----------------------------------------------------------------------------
 	// 3. testAddr01从候选节点testAddr 转投 给候选节点testAddr02; 候选节点testAddr修改注册信息
 	p.am.Reset(Block02.Hash())
 	// 	投票交易
 	voteTx02 := makeTx(testPrivate01, address02, params.VoteTx, big.NewInt(0))
 	// 修改候选节点profile交易
-	changeCand00 := &deputynode.CandidateNode{
-		IsCandidate:  true,
-		MinerAddress: cand00.MinerAddress,
-		NodeID:       cand00.NodeID,
-		Host:         "www.changeIndo.org",
-		Port:         30303,
-	}
+	changeCand00 := make(types.CandidateProfile)
+	changeCand00[types.CandidateKeyIsCandidate] = params.IsCandidateNode
+	changeCand00[types.CandidateKeyPort] = "8080"
+	changeCand00[types.CandidateKeyNodeID] = "0x34f0df789b46e9bc09f23d5315b951bc77bbfeda653ae6f5aab564c9b4619322fddb3b1f28d1c434250e9d4dd8f51aa8334573d7281e4d63baba913e9fa6908f"
+	changeCand00[types.CandidateKeyMinerAddress] = "0x222222"
+	changeCand00[types.CandidateKeyHost] = "www.changeIndo.org"
+
 	changeCandData00, _ := json.Marshal(changeCand00)
 	registerTx03 := signTransaction(types.NewTransaction(params.FeeReceiveAddress, params.RegisterCandidateNodeFees, 200000, common.Big1, changeCandData00, params.RegisterTx, chainID, uint64(time.Now().Unix()+300), "", ""), testPrivate)
 	// 生成block
@@ -566,7 +565,7 @@ func Test_voteAndRegisteTx(t *testing.T) {
 
 	subVote00 := new(big.Int).Sub(block02testAddr00Votes, block03testAddr00Votes)
 	testAccount01 := p.am.GetCanonicalAccount(testAddr01)
-	assert.Equal(t, new(big.Int).Sub(subVote00, new(big.Int).Add(big.NewInt(17884), params.RegisterCandidateNodeFees)), new(big.Int).Add(testAccount01.GetBalance(), big.NewInt(42000)))
+	assert.Equal(t, new(big.Int).Sub(subVote00, new(big.Int).Add(big.NewInt(15776), params.RegisterCandidateNodeFees)), new(big.Int).Add(testAccount01.GetBalance(), big.NewInt(42000)))
 
 	latestAccount02 := p.am.GetCanonicalAccount(testAddr02)
 	block03testAddr02Votes := latestAccount02.GetVotes()
@@ -575,7 +574,109 @@ func Test_voteAndRegisteTx(t *testing.T) {
 
 	// 	验证2. 候选节点testAddr修改后的信息
 	pro := latestAccount00.GetCandidateProfile()
-	assert.Equal(t, strconv.Itoa(int(changeCand00.Port)), pro[types.CandidateKeyPort])
-	assert.Equal(t, common.ToHex(changeCand00.NodeID), pro[types.CandidateKeyNodeID])
+	assert.Equal(t, changeCand00[types.CandidateKeyPort], pro[types.CandidateKeyPort])
+	assert.Equal(t, changeCand00[types.CandidateKeyHost], pro[types.CandidateKeyHost])
 
+}
+
+// 序列化注册候选节点所用data
+func TestIntrinsicGas(t *testing.T) {
+	log.Warn("0x1001 = ", params.FeeReceiveAddress.String())
+
+	var cand01 = &deputynode.CandidateNode{
+		IsCandidate:  true,
+		MinerAddress: common.HexToAddress("0x11111"),
+		NodeID:       common.FromHex("0x7739f34055d3c0808683dbd77a937f8e28f707d5b1e873bbe61f6f2d0347692f36ef736f342fb5ce4710f7e337f062cc2110d134b63a9575f78cb167bfae2f43"),
+		Host:         "1.1.1.1",
+		Port:         1000,
+	}
+	Data01, _ := json.Marshal(cand01)
+	fmt.Println(common.ToHex(Data01))
+
+	var cand02 = &deputynode.CandidateNode{
+		IsCandidate:  true,
+		MinerAddress: common.HexToAddress("0x2222"),
+		NodeID:       common.FromHex("0x7739f34055d3c0808683dbd77a937f8e28f707d5b1e873bbe61f6f2d0347692f36ef736f342fb5ce4710f7e337f062cc2110d134b63a9575f78cb167bfae2f43"),
+		Host:         "2222",
+		Port:         2000,
+	}
+	Data02, _ := json.Marshal(cand02)
+	fmt.Println(common.ToHex(Data02))
+
+	var cand03 = &deputynode.CandidateNode{
+		IsCandidate:  true,
+		MinerAddress: common.HexToAddress("0x333333"),
+		NodeID:       common.FromHex("0x7739f34055d3c0808683dbd77a937f8e28f707d5b1e873bbe61f6f2d0347692f36ef736f342fb5ce4710f7e337f062cc2110d134b63a9575f78cb167bfae2f43"),
+		Host:         "3333",
+		Port:         3000,
+	}
+	Data03, _ := json.Marshal(cand03)
+	fmt.Println(common.ToHex(Data03))
+
+	var cand04 = &deputynode.CandidateNode{
+		IsCandidate:  true,
+		MinerAddress: common.HexToAddress("0x44444"),
+		NodeID:       common.FromHex("0x7739f34055d3c0808683dbd77a937f8e28f707d5b1e873bbe61f6f2d0347692f36ef736f342fb5ce4710f7e337f062cc2110d134b63a9575f78cb167bfae2f43"),
+		Host:         "4444",
+		Port:         4000,
+	}
+	Data04, _ := json.Marshal(cand04)
+	fmt.Println(common.ToHex(Data04))
+
+	var cand05 = &deputynode.CandidateNode{
+		IsCandidate:  true,
+		MinerAddress: common.HexToAddress("0x5555"),
+		NodeID:       common.FromHex("0x7739f34055d3c0808683dbd77a937f8e28f707d5b1e873bbe61f6f2d0347692f36ef736f342fb5ce4710f7e337f062cc2110d134b63a9575f78cb167bfae2f43"),
+		Host:         "5555",
+		Port:         5000,
+	}
+	Data05, _ := json.Marshal(cand05)
+	fmt.Println(common.ToHex(Data05))
+
+}
+func TestTxPrr_CallTx(t *testing.T) {
+	pro1 := make(types.CandidateProfile)
+	pro1[types.CandidateKeyIsCandidate] = params.IsCandidateNode
+	pro1[types.CandidateKeyPort] = "1111"
+	pro1[types.CandidateKeyNodeID] = "0x111111"
+	pro1[types.CandidateKeyMinerAddress] = "Lemo11111"
+	pro1[types.CandidateKeyHost] = "1111"
+	marPro1, _ := json.Marshal(pro1)
+	fmt.Println("txData1:", common.ToHex(marPro1))
+
+	pro2 := make(types.CandidateProfile)
+	pro2[types.CandidateKeyIsCandidate] = params.IsCandidateNode
+	pro2[types.CandidateKeyPort] = "2222"
+	pro2[types.CandidateKeyNodeID] = "0x222222"
+	pro2[types.CandidateKeyMinerAddress] = "Lemo2222"
+	pro2[types.CandidateKeyHost] = "2222"
+	marPro2, _ := json.Marshal(pro2)
+	fmt.Println("txData2:", common.ToHex(marPro2))
+
+	pro3 := make(types.CandidateProfile)
+	pro3[types.CandidateKeyIsCandidate] = params.IsCandidateNode
+	pro3[types.CandidateKeyPort] = "3333"
+	pro3[types.CandidateKeyNodeID] = "0x333333"
+	pro3[types.CandidateKeyMinerAddress] = "Lemo3333"
+	pro3[types.CandidateKeyHost] = "3333"
+	marPro3, _ := json.Marshal(pro3)
+	fmt.Println("txData3:", common.ToHex(marPro3))
+
+	pro4 := make(types.CandidateProfile)
+	pro4[types.CandidateKeyIsCandidate] = params.IsCandidateNode
+	pro4[types.CandidateKeyPort] = "4444"
+	pro4[types.CandidateKeyNodeID] = "0x444444"
+	pro4[types.CandidateKeyMinerAddress] = "Lemo4444"
+	pro4[types.CandidateKeyHost] = "4444"
+	marPro4, _ := json.Marshal(pro4)
+	fmt.Println("txData4:", common.ToHex(marPro4))
+
+	pro5 := make(types.CandidateProfile)
+	pro5[types.CandidateKeyIsCandidate] = params.IsCandidateNode
+	pro5[types.CandidateKeyPort] = "5555"
+	pro5[types.CandidateKeyNodeID] = "0x555555"
+	pro5[types.CandidateKeyMinerAddress] = "Lemo5555"
+	pro5[types.CandidateKeyHost] = "5555"
+	marPro5, _ := json.Marshal(pro5)
+	fmt.Println("txData5:", common.ToHex(marPro5))
 }
