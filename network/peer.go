@@ -227,6 +227,16 @@ func (p *peer) SendBlocks(blocks types.Blocks) int {
 		p.conn.Close()
 		return -2
 	}
+	// for test
+	// block := blocks[0]
+	// if len(block.Txs) > 0 {
+	// 	for _, tx := range block.Txs {
+	// 		if tx.Type() > 0 {
+	// 			log.Debugf("block: %s", block.Json())
+	// 			log.Debugf("block rlp: %s", common.ToHex(buf))
+	// 		}
+	// 	}
+	// }
 	return 0
 }
 

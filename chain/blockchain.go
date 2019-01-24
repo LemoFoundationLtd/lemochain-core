@@ -272,7 +272,7 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 
 	fork, err := bc.needFork(block)
 	if err != nil {
-		log.Errorf("InsertChain: fork failed: %v", err)
+		log.Errorf("InsertChain: needFork failed: %v", err)
 		return nil
 	}
 	if fork {
@@ -291,43 +291,45 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 func (bc *BlockChain) needFork(b *types.Block) (bool, error) {
 	cB := bc.currentBlock.Load().(*types.Block)
 	sB := bc.stableBlock.Load().(*types.Block)
-	target := b // 新块所在链 父块
-	cFB := cB   // 当前链 父块
+	bFB := b  // 新块所在链 父块
+	cFB := cB // 当前链 父块
 	var err error
 	if b.Height() > cB.Height() {
 		// 查找与cB同高度的区块
-		for target.Height() > cB.Height() {
-			if target, err = bc.db.GetBlockByHash(target.ParentHash()); err != nil {
+		for bFB.Height() > cB.Height() {
+			if bFB, err = bc.db.GetBlockByHash(bFB.ParentHash()); err != nil {
+				log.Debugf("needFork: getBlock failed. height: %d, hash: %s", bFB.Height(), bFB.Hash().String())
 				return false, err
 			}
 		}
 	} else if b.Height() < cB.Height() {
-		tmpBlock := cB
 		// 查找与cB同高度的区块
-		for tmpBlock.Height() > b.Height() {
-			if tmpBlock, err = bc.db.GetBlockByHash(tmpBlock.ParentHash()); err != nil {
+		for cFB.Height() > b.Height() {
+			if cFB, err = bc.db.GetBlockByHash(cFB.ParentHash()); err != nil {
+				log.Debugf("needFork: getBlock failed. height: %d, hash: %s", cFB.Height(), cFB.Hash().String())
 				return false, err
 			}
 		}
-		cFB = tmpBlock
 	}
 
-	// 查找cB与b共同的第一个祖先区块
-	for target.ParentHash() != cFB.ParentHash() {
-		if target, err = bc.db.GetBlockByHash(target.ParentHash()); err != nil {
+	// find same ancestor
+	for bFB.ParentHash() != cFB.ParentHash() {
+		if bFB, err = bc.db.GetBlockByHash(bFB.ParentHash()); err != nil {
+			log.Debugf("needFork: getBlock failed. height: %d, hash: %s", bFB.Height(), bFB.Hash().String())
 			return false, err
 		}
 		if cFB, err = bc.db.GetBlockByHash(cFB.ParentHash()); err != nil {
+			log.Debugf("needFork: getBlock failed. height: %d, hash: %s", cFB.Height(), cFB.Hash().String())
 			return false, err
 		}
 	}
-	// 如果高度小于稳定区块高度
-	if target.Height() <= sB.Height() {
+	// ancestor's height can't less than stable block's height
+	if bFB.Height() <= sB.Height() {
 		return false, nil
 	}
-	targetHash := target.Hash()
-	cFBHash := cFB.Hash()
-	if cFB.Time() > target.Time() || (cFB.Time() == target.Time() && bytes.Compare(targetHash[:], cFBHash[:]) < 0) {
+	bHash := bFB.Hash()
+	cHash := cFB.Hash()
+	if cFB.Time() > bFB.Time() || (cFB.Time() == bFB.Time() && bytes.Compare(cHash[:], bHash[:]) > 0) {
 		return true, nil
 	}
 	return false, nil
@@ -356,38 +358,65 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32) error {
 	}()
 
 	parBlock := bc.currentBlock.Load().(*types.Block)
-	oldCurHash := parBlock.Hash()
 	// fork
 	bc.chainForksLock.Lock()
 	defer bc.chainForksLock.Unlock()
-	var curBlock *types.Block
-	var bPre *types.Block
+	curBlock := parBlock
 
+	tmp := make(map[common.Hash][]*types.Block)
+	maxLength := uint32(0)
+	curHash := common.Hash{}
 	// prune forks and choose current block by height
 	for fHash, fBlock := range bc.chainForksHead {
 		if parBlock.Height() <= height {
 			delete(bc.chainForksHead, fHash)
 			continue
 		}
+		length := fBlock.Height() - height - 1
+		if length > maxLength {
+			maxLength = length
+		}
+		pars := make([]*types.Block, length+1)
+		pars[length] = fBlock
+		length--
 		parBlock = fBlock
 		// get the same height block on current fork
-		for parBlock.Height() > height {
+		for parBlock.Height() > height+1 {
 			parBlock = bc.GetBlockByHash(parBlock.ParentHash())
+			pars[length] = parBlock
+			length--
 		}
 		// current chain and stable chain is same
-		if parBlock.ParentHash() == hash {
-			bPreHash := bPre.Hash()
-			parHash := parBlock.Hash()
-			if (bPre == nil) ||
-				(bPre.Time() > parBlock.Time() || (bPre.Time() == parBlock.Time() && (bytes.Compare(bPreHash[:], parHash[:]) > 0))) {
-				bPre = parBlock
-				curBlock = fBlock
-			}
-		} else {
+		if parBlock.ParentHash() != hash {
 			delete(bc.chainForksHead, fHash)
+		} else {
+			tmp[fHash] = pars
 		}
 	}
-	if curBlock != nil && oldCurHash != curBlock.Hash() {
+	// chose current block
+	for i := uint32(0); i < maxLength; i++ {
+		var b *types.Block
+		for k, v := range tmp {
+			if int(i) >= len(v) {
+				continue
+			}
+			if b == nil {
+				b = v[i]
+				curHash = k
+			} else {
+				bHash := b.Hash()
+				vHash := v[i].Hash()
+				if (b.Time() > v[i].Time()) || (b.Time() == v[i].Time() && bytes.Compare(bHash[:], vHash[:]) > 0) {
+					b = v[i]
+				} else {
+					delete(tmp, k)
+				}
+			}
+
+		}
+	}
+	// fork
+	if curHash != curBlock.Hash() {
 		bc.currentBlock.Store(curBlock)
 		bc.newBlockNotify(curBlock)
 		log.Infof("chain forked-2! current block: height(%d), hash(%s)", curBlock.Height(), curBlock.Hash().Hex())
@@ -422,7 +451,7 @@ func (bc *BlockChain) Verify(block *types.Block) error {
 
 	// verify block hash
 	if newHeader.Hash() != hash {
-		log.Errorf("verify block error! hash:%s", hash.Hex())
+		log.Errorf("verify block error! oldHeader: %v, newHeader:%v", block.Header, newHeader)
 		return ErrVerifyBlockFailed
 	}
 	return nil
