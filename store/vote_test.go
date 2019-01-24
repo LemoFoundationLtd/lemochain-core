@@ -5,6 +5,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/stretchr/testify/assert"
 	"math/big"
+	"strconv"
 	"testing"
 )
 
@@ -130,4 +131,21 @@ func TestNewVoteTop(t *testing.T) {
 	}
 	assert.Equal(t, 4, vote.Count())
 	assert.Equal(t, true, isSort(result, vote.GetTop(), 4))
+}
+
+func BenchmarkNewVoteT(b *testing.B) {
+	b.ReportAllocs()
+	result := make([]*Candidate, 500000)
+	for index := 0; index < 500000; index++ {
+		result[index] = &Candidate{
+			address: common.HexToAddress(strconv.Itoa(index)),
+			total:   new(big.Int).SetInt64(int64(index)),
+		}
+	}
+
+	vote := NewVoteTop(result)
+	b.ResetTimer()
+	for index := 0; index < b.N; index++ {
+		vote.Rank(30, result)
+	}
 }

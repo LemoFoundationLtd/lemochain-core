@@ -125,13 +125,15 @@ func (top *VoteTop) ranking(topSize int, candidates []*Candidate) []*Candidate {
 		result := make([]*Candidate, minCnt)
 		for i := 0; i < minCnt; i++ {
 			for j := i + 1; j < length; j++ {
-				if candidates[i].total.Cmp(candidates[j].total) < 0 {
-					candidates[i], candidates[j] = candidates[j], candidates[i]
-				}
+				val := candidates[i].total.Cmp(candidates[j].total)
 
-				if (candidates[i].total.Cmp(candidates[j].total) == 0) &&
-					(bytes.Compare(candidates[i].address[:], candidates[j].address[:]) > 0) {
+				if val < 0 {
 					candidates[i], candidates[j] = candidates[j], candidates[i]
+				} else {
+					if (val == 0) &&
+						(bytes.Compare(candidates[i].address[:], candidates[j].address[:]) > 0) {
+						candidates[i], candidates[j] = candidates[j], candidates[i]
+					}
 				}
 			}
 			result[i] = candidates[i]
