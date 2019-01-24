@@ -2,11 +2,13 @@ package types
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto/sha3"
 	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
+	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"strings"
 )
@@ -177,7 +179,17 @@ func (b *Block) String() string {
 		fmt.Sprintf("ChangeLogs: %v", b.ChangeLogs),
 		fmt.Sprintf("Events: %v", b.Events),
 		fmt.Sprintf("Confirms: %v", b.Confirms),
+		fmt.Sprintf("DeputyNodes: %v", b.DeputyNodes),
 	}
 
 	return fmt.Sprintf("{%s}", strings.Join(set, ", "))
+}
+
+func (b *Block) Json() string {
+	buf, err := json.Marshal(b)
+	if err != nil {
+		log.Error("block's marshal failed: %v", err)
+		return ""
+	}
+	return string(buf)
 }
