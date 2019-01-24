@@ -400,7 +400,7 @@ func (m *DiscoverManager) writeFindFile() {
 
 	path := filepath.Join(m.dataDir, FindFile)
 	// open file
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 666) // read and write
+	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0666) // read and write
 	if err != nil {
 		return
 	}
