@@ -5,6 +5,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/stretchr/testify/assert"
 	"math/big"
+	"strconv"
 	"testing"
 )
 
@@ -134,12 +135,7 @@ func TestPatriciaTrie_Put1(t *testing.T) {
 	}
 	tmp1.Put(account10, 1)
 
-	result := trie.Find(account1.Address[:])
-	assert.Equal(t, result.Address, account1.Address)
-	result = tmp1.Find(account1.Address[:])
-	assert.Equal(t, result.Address, account1.Address)
-
-	result = trie.Find(account10.Address[:])
+	result := trie.Find(account10.Address[:])
 	assert.Nil(t, result)
 	result = tmp1.Find(account10.Address[:])
 	assert.Equal(t, result.Address, account10.Address)
@@ -148,6 +144,19 @@ func TestPatriciaTrie_Put1(t *testing.T) {
 	assert.Nil(t, result)
 	result = tmp1.Find(account11.Address[:])
 	assert.Equal(t, result.Address, account11.Address)
+
+	result = trie.Find(account1.Address[:])
+	assert.Equal(t, result.Address, account1.Address)
+	result = tmp1.Find(account1.Address[:])
+	assert.Equal(t, result.Address, account1.Address)
+	result = trie.Find(account12.Address[:])
+	assert.Equal(t, result.Address, account12.Address)
+	result = tmp1.Find(account12.Address[:])
+	assert.Equal(t, result.Address, account12.Address)
+	result = trie.Find(account13.Address[:])
+	assert.Equal(t, result.Address, account13.Address)
+	result = tmp1.Find(account13.Address[:])
+	assert.Equal(t, result.Address, account13.Address)
 }
 
 // e.g. child = "ab"
@@ -194,6 +203,15 @@ func TestPatriciaTrie_Put2(t *testing.T) {
 	assert.Nil(t, result)
 	result = tmp1.find(tmp1.root, str)
 	assert.Equal(t, result, account1)
+
+	result = trie.Find(account12.Address[:])
+	assert.Equal(t, result, account12)
+	result = tmp1.Find(account12.Address[:])
+	assert.Equal(t, result, account12)
+	result = trie.Find(account13.Address[:])
+	assert.Equal(t, result, account13)
+	result = tmp1.Find(account13.Address[:])
+	assert.Equal(t, result, account13)
 }
 
 // e.g. child = "ab"
@@ -241,6 +259,15 @@ func TestPatriciaTrie_Put3(t *testing.T) {
 	assert.Nil(t, result)
 	result = tmp1.find(tmp1.root, str)
 	assert.Equal(t, result, account111)
+
+	result = trie.Find(account12.Address[:])
+	assert.Equal(t, result, account12)
+	result = tmp1.Find(account12.Address[:])
+	assert.Equal(t, result, account12)
+	result = trie.Find(account13.Address[:])
+	assert.Equal(t, result, account13)
+	result = tmp1.Find(account13.Address[:])
+	assert.Equal(t, result, account13)
 }
 
 // 	e.g. child = "ab#"
@@ -268,7 +295,7 @@ func TestPatriciaTrie_Put4(t *testing.T) {
 
 	trie.Insert(account1112.Address[:], account1112)
 	trie.Insert(account1113.Address[:], account1113)
-	trie.Insert([]byte(str), account111)
+	trie.insert(trie.root, str, account111)
 
 	account1111 := &types.AccountData{
 		Address: common.HexToAddress("0x1111"),
@@ -281,6 +308,20 @@ func TestPatriciaTrie_Put4(t *testing.T) {
 	assert.Nil(t, result)
 	result = tmp1.Find(account1111.Address[:])
 	assert.Equal(t, result, account1111)
+
+	result = trie.Find(account1112.Address[:])
+	assert.Equal(t, result, account1112)
+	result = tmp1.Find(account1112.Address[:])
+	assert.Equal(t, result, account1112)
+	result = trie.Find(account1113.Address[:])
+	assert.Equal(t, result, account1113)
+	result = tmp1.Find(account1113.Address[:])
+	assert.Equal(t, result, account1113)
+
+	result = trie.find(trie.root, str)
+	assert.Equal(t, result, account111)
+	result = tmp1.find(trie.root, str)
+	assert.Equal(t, result, account111)
 }
 
 // 	e.g. child = "ab#"
@@ -328,6 +369,15 @@ func TestPatriciaTrie_Put5(t *testing.T) {
 	assert.Nil(t, result)
 	result = tmp1.Find(account1111.Address[:])
 	assert.Equal(t, result, account1111)
+
+	result = trie.Find(account1112.Address[:])
+	assert.Equal(t, result, account1112)
+	result = tmp1.Find(account1112.Address[:])
+	assert.Equal(t, result, account1112)
+	result = trie.Find(account1113.Address[:])
+	assert.Equal(t, result, account1113)
+	result = tmp1.Find(account1113.Address[:])
+	assert.Equal(t, result, account1113)
 }
 
 // 	e.g. child="abc#"
@@ -449,65 +499,265 @@ func TestPatriciaTrie_Put7(t *testing.T) {
 	assert.Equal(t, result, account1113)
 }
 
-//
-// func TestPatriciaTrie_Put(t *testing.T) {
-// 	trie := NewEmptyDatabase(new(TestReader))
-//
-// 	account1 := &types.AccountData{
-// 		Address: common.HexToAddress("0x1"),
-// 		Balance: big.NewInt(1),
-// 	}
-// 	account2 := &types.AccountData{
-// 		Address: common.HexToAddress("0x2"),
-// 		Balance: big.NewInt(2),
-// 	}
-// 	trie.Insert(account1.Address[:], account1)
-// 	trie.Insert(account2.Address[:], account2)
-//
-// 	tmp1 := trie.Clone()
-// 	account3 := &types.AccountData{
-// 		Address: common.HexToAddress("0x3"),
-// 		Balance: big.NewInt(3),
-// 	}
-// 	tmp1.Put(account3, 1)
-//
-// 	account4 := &types.AccountData{
-// 		Address: common.HexToAddress("0x400000000000"),
-// 		Balance: big.NewInt(400000000),
-// 	}
-// 	tmp1.Put(account4, 1)
-//
-// 	account5 := &types.AccountData{
-// 		Address: common.HexToAddress("0x500000000000"),
-// 		Balance: big.NewInt(500000000),
-// 	}
-// 	tmp1.Put(account5, 1)
-//
-// 	result := trie.Find(account3.Address[:])
-// 	assert.Nil(t, result)
-//
-// 	result = tmp1.Find(account3.Address[:])
-// 	assert.Equal(t, result.Address, common.HexToAddress("0x3"))
-//
-// 	result = trie.Find(account5.Address[:])
-// 	assert.Nil(t, result)
-//
-// 	result = tmp1.Find(account5.Address[:])
-// 	assert.Equal(t, result.Address, common.HexToAddress("0x500000000000"))
-//
-// 	tmp2 := tmp1.Clone()
-// 	account6 := &types.AccountData{
-// 		Address: common.HexToAddress("0x600000000000"),
-// 		Balance: big.NewInt(600000000),
-// 	}
-// 	tmp2.Put(account6, 2)
-//
-// 	result = trie.Find(account6.Address[:])
-// 	assert.Nil(t, result)
-//
-// 	result = tmp1.Find(account6.Address[:])
-// 	assert.Nil(t, result)
-//
-// 	result = tmp2.Find(account6.Address[:])
-// 	assert.Equal(t, account6.Address, result.Address)
-// }
+//	e.g. child="abc#"
+//	   abc#    insert("abd")         ab
+//    /   \     ==========>     	/  \
+//   e     f   				       c#  d#
+//                           	  /  \
+//                          	 e    f
+// split at j
+func TestPatriciaTrie_Put8(t *testing.T) {
+	trie := NewEmptyDatabase(new(TestReader))
+
+	account1112 := &types.AccountData{
+		Address: common.HexToAddress("0x1112"),
+		Balance: big.NewInt(12),
+	}
+
+	account1113 := &types.AccountData{
+		Address: common.HexToAddress("0x1113"),
+		Balance: big.NewInt(13),
+	}
+
+	account111 := &types.AccountData{
+		Address: common.HexToAddress("0x111"),
+		Balance: big.NewInt(1),
+	}
+	str := "0x000000000000000000000000000000000000111"
+	trie.insert(trie.root, str, account111)
+	trie.Insert(account1112.Address[:], account1112)
+	trie.Insert(account1113.Address[:], account1113)
+
+	tmp1 := NewActDatabase(new(TestReader), trie)
+	result := trie.find(trie.root, str)
+	assert.Equal(t, result, account111)
+	result = tmp1.find(tmp1.root, str)
+	assert.Equal(t, result, account111)
+
+	account112 := &types.AccountData{
+		Address: common.HexToAddress("0x112"),
+		Balance: big.NewInt(1),
+	}
+	str = "0x000000000000000000000000000000000000112"
+	node := tmp1.put(tmp1.root, str, account112, 1)
+	if node != nil {
+		tmp1.root = node
+	}
+
+	result = trie.find(trie.root, str)
+	assert.Nil(t, result)
+	result = tmp1.find(tmp1.root, str)
+	assert.Equal(t, result, account112)
+
+	result = trie.Find(account1112.Address[:])
+	assert.Equal(t, result, account1112)
+	result = trie.Find(account1113.Address[:])
+	assert.Equal(t, result, account1113)
+	result = tmp1.Find(account1112.Address[:])
+	assert.Equal(t, result, account1112)
+	result = tmp1.Find(account1113.Address[:])
+	assert.Equal(t, result, account1113)
+}
+
+//	e.g. child="abc#"
+//	   abc#    insert("abd")         ab
+//    /   \     ==========>     	/  \
+//   e     f   				       1#  c#
+//                           	  	   /  \
+//                          	 	  e    f
+// split at j
+func TestPatriciaTrie_Put9(t *testing.T) {
+	trie := NewEmptyDatabase(new(TestReader))
+
+	account1112 := &types.AccountData{
+		Address: common.HexToAddress("0x1112"),
+		Balance: big.NewInt(12),
+	}
+
+	account1113 := &types.AccountData{
+		Address: common.HexToAddress("0x1113"),
+		Balance: big.NewInt(13),
+	}
+
+	account111 := &types.AccountData{
+		Address: common.HexToAddress("0x111"),
+		Balance: big.NewInt(1),
+	}
+	str := "0x000000000000000000000000000000000000111"
+	trie.insert(trie.root, str, account111)
+	trie.Insert(account1112.Address[:], account1112)
+	trie.Insert(account1113.Address[:], account1113)
+
+	tmp1 := NewActDatabase(new(TestReader), trie)
+	result := trie.find(trie.root, str)
+	assert.Equal(t, result, account111)
+	result = tmp1.find(tmp1.root, str)
+	assert.Equal(t, result, account111)
+
+	account110 := &types.AccountData{
+		Address: common.HexToAddress("0x110"),
+		Balance: big.NewInt(1),
+	}
+	str = "0x000000000000000000000000000000000000110"
+	node := tmp1.put(tmp1.root, str, account110, 1)
+	if node != nil {
+		tmp1.root = node
+	}
+
+	result = trie.find(trie.root, str)
+	assert.Nil(t, result)
+	result = tmp1.find(tmp1.root, str)
+	assert.Equal(t, result, account110)
+
+	result = trie.Find(account1112.Address[:])
+	assert.Equal(t, result, account1112)
+	result = trie.Find(account1113.Address[:])
+	assert.Equal(t, result, account1113)
+	result = tmp1.Find(account1112.Address[:])
+	assert.Equal(t, result, account1112)
+	result = tmp1.Find(account1113.Address[:])
+	assert.Equal(t, result, account1113)
+}
+
+//	e.g. child="abc#"
+//	   abc#    insert("abd")         ab
+//    /   \     ==========>     	/  \
+//   e     f   				       c#  d#
+//                           	  /  \
+//                          	 e    f
+// split at j
+func TestPatriciaTrie_Put10(t *testing.T) {
+	trie := NewEmptyDatabase(new(TestReader))
+
+	account1112 := &types.AccountData{
+		Address: common.HexToAddress("0x1112"),
+		Balance: big.NewInt(12),
+	}
+
+	account1113 := &types.AccountData{
+		Address: common.HexToAddress("0x1113"),
+		Balance: big.NewInt(13),
+	}
+
+	trie.Insert(account1112.Address[:], account1112)
+	trie.Insert(account1113.Address[:], account1113)
+
+	tmp1 := NewActDatabase(new(TestReader), trie)
+	account111 := &types.AccountData{
+		Address: common.HexToAddress("0x111"),
+		Balance: big.NewInt(1),
+	}
+	str := "0x000000000000000000000000000000000000111"
+	node := tmp1.put(tmp1.root, str, account111, 1)
+	if node != nil {
+		tmp1.root = node
+	}
+
+	result := trie.find(trie.root, str)
+	assert.Nil(t, result)
+	result = tmp1.find(tmp1.root, str)
+	assert.Equal(t, result, account111)
+
+	account112 := &types.AccountData{
+		Address: common.HexToAddress("0x112"),
+		Balance: big.NewInt(1),
+	}
+	str = "0x000000000000000000000000000000000000112"
+	node = tmp1.put(tmp1.root, str, account112, 1)
+	if node != nil {
+		tmp1.root = node
+	}
+
+	result = trie.find(trie.root, str)
+	assert.Nil(t, result)
+	result = tmp1.find(tmp1.root, str)
+	assert.Equal(t, result, account112)
+
+	result = trie.Find(account1112.Address[:])
+	assert.Equal(t, result, account1112)
+	result = trie.Find(account1113.Address[:])
+	assert.Equal(t, result, account1113)
+	result = tmp1.Find(account1112.Address[:])
+	assert.Equal(t, result, account1112)
+	result = tmp1.Find(account1113.Address[:])
+	assert.Equal(t, result, account1113)
+}
+
+func TestPatriciaTrie_Put11(t *testing.T) {
+	trie := NewEmptyDatabase(new(TestReader))
+	tmp1 := NewActDatabase(new(TestReader), trie)
+	account1112 := &types.AccountData{
+		Address: common.HexToAddress("0x1112"),
+		Balance: big.NewInt(12),
+	}
+	tmp1.Put(account1112, 1)
+
+	result := trie.Find(account1112.Address[:])
+	assert.Nil(t, result)
+
+	result = tmp1.Find(account1112.Address[:])
+	assert.Equal(t, result, account1112)
+}
+
+func TestPatriciaTrie_Put12(t *testing.T) {
+	trie := NewEmptyDatabase(new(TestReader))
+
+	tmp1 := NewActDatabase(new(TestReader), trie)
+	account1112 := &types.AccountData{
+		Address: common.HexToAddress("0x1112"),
+		Balance: big.NewInt(12),
+	}
+	str := "1112"
+	node := tmp1.put(tmp1.root, str, account1112, 1)
+	if node != nil {
+		tmp1.root = node
+	}
+	result := trie.find(trie.root, str)
+	assert.Nil(t, result)
+	result = tmp1.find(tmp1.root, str)
+	assert.Equal(t, result, account1112)
+
+	account2223 := &types.AccountData{
+		Address: common.HexToAddress("0x2223"),
+		Balance: big.NewInt(12),
+	}
+	str = "2223"
+	node = tmp1.put(tmp1.root, str, account2223, 1)
+	if node != nil {
+		tmp1.root = node
+	}
+
+	result = trie.find(trie.root, str)
+	assert.Nil(t, result)
+	result = tmp1.find(tmp1.root, str)
+	assert.Equal(t, result, account2223)
+}
+
+func TestPatriciaTrie_Collected(t *testing.T) {
+	trie := NewEmptyDatabase(new(TestReader))
+
+	account1112 := &types.AccountData{
+		Address: common.HexToAddress("112"),
+		Balance: big.NewInt(12),
+	}
+
+	account1113 := &types.AccountData{
+		Address: common.HexToAddress("113"),
+		Balance: big.NewInt(13),
+	}
+	trie.Insert(account1112.Address[:], account1112)
+	trie.Insert(account1113.Address[:], account1113)
+
+	tmp1 := NewActDatabase(new(TestReader), trie)
+	for index := 114; index < 20000; index++ {
+		account := &types.AccountData{
+			Address: common.HexToAddress(strconv.Itoa(index)),
+			Balance: big.NewInt(13),
+		}
+		tmp1.Put(account, 1)
+		tmp1.Find(account.Address[:])
+	}
+
+	accounts := tmp1.Collected(1)
+	assert.Equal(t, 20000-114, len(accounts))
+}

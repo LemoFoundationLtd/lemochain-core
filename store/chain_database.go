@@ -548,12 +548,18 @@ func (database *ChainDatabase) GetTrieDatabase() *TrieDatabase {
 
 func (database *ChainDatabase) GetActDatabase(hash common.Hash) *PatriciaTrie {
 	item := database.UnConfirmBlocks[hash]
-	if item == nil || item.Block == nil || item.Trie == nil {
-		if database.LastConfirm == nil {
+	if (item == nil) ||
+		(item.Block == nil) ||
+		(item.Trie == nil) {
+		if (database.LastConfirm == nil) || (database.LastConfirm.Trie == nil) {
 			return NewEmptyDatabase(database.Beansdb)
-		} else {
-			return database.LastConfirm.Trie
 		}
+
+		if (database.LastConfirm.Block != nil) && (hash != database.LastConfirm.Block.Hash()) {
+			panic("hash != database.LastConfirm.Block.Hash()")
+		}
+
+		return database.LastConfirm.Trie
 	} else {
 		return item.Trie
 	}
