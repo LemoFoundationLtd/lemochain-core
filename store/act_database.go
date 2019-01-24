@@ -622,11 +622,7 @@ func (trie *PatriciaTrie) put(curNode *PatriciaNode, key string, account *types.
 
 func (trie *PatriciaTrie) Collected(dye uint32) []*types.AccountData {
 	accounts := make([]*types.AccountData, 0)
-	if dye < 0 {
-		return accounts
-	} else {
-		return trie.collected(trie.root, dye, accounts)
-	}
+	return trie.collected(trie.root, dye, accounts)
 }
 
 func (trie *PatriciaTrie) collected(curNode *PatriciaNode, dye uint32, accounts []*types.AccountData) []*types.AccountData {

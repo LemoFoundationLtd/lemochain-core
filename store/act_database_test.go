@@ -755,7 +755,6 @@ func TestPatriciaTrie_Collected(t *testing.T) {
 			Balance: big.NewInt(13),
 		}
 		tmp1.Put(account, 1)
-		tmp1.Find(account.Address[:])
 	}
 
 	accounts := tmp1.Collected(1)
