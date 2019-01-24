@@ -155,28 +155,6 @@ func (a *Account) SetBalance(balance *big.Int) {
 		log.Errorf("can't set negative balance %v to account %06x", balance, a.data.Address)
 		panic(ErrNegativeBalance)
 	}
-	// // 候选节点的票数变动
-	// change := new(big.Int)
-	// change.Sub(balance, a.GetBalance()) // 计算balance是增加还是减少
-	//
-	// nodeAddress := a.GetVoteFor()          // 得到投票的候选节点的地址
-	// if (nodeAddress != common.Address{}) { // 存在要投的候选节点的账户,则执行balance改变对应的票数变化的逻辑
-	// 	// 得到候选节点的account
-	// 	nodeAccount, err := a.db.GetAccount(nodeAddress)
-	// 	if err != nil {
-	// 		log.Errorf("deputy account is not exit", err)
-	// 		panic(err)
-	// 	}
-	// 	if change.Sign() == 1 { // 表示账户余额增加
-	// 		// 增加对应候选节点的票数
-	// 		nodeAccount.Candidate.Votes.Add(nodeAccount.Candidate.Votes, change)
-	// 	} else if change.Sign() == -1 { // 表示账户余额是减少
-	// 		nodeAccount.Candidate.Votes.Sub(nodeAccount.Candidate.Votes, change.Abs(change))
-	// 	} else { // 当change值为0,代表该账户余额无增无减，直接返回
-	// 		log.Error("Do not allow account balance change is 0")
-	// 		return
-	// 	}
-	// }
 	a.data.Balance.Set(balance)
 }
 func (a *Account) SetSuicide(suicided bool) {
