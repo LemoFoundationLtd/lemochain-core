@@ -432,11 +432,6 @@ func (trie *PatriciaTrie) delLess(curNode *PatriciaNode, dye uint32) {
 func (trie *PatriciaTrie) Put(account *types.AccountData, dye uint32) {
 	key := common.ToHex(account.Address[:])
 
-	// tmp := trie.Find(account.Address[:])
-	// if tmp == nil {
-	// 	trie.Insert(account.Address[:], account)
-	// }
-
 	result := trie.put(trie.root, key, account, dye)
 	if result != nil {
 		trie.root = result
@@ -444,8 +439,6 @@ func (trie *PatriciaTrie) Put(account *types.AccountData, dye uint32) {
 }
 
 func (trie *PatriciaTrie) put(curNode *PatriciaNode, key string, account *types.AccountData, dye uint32) *PatriciaNode {
-	done := false
-
 	for i := 0; i < len(curNode.children); i++ {
 		child := curNode.children[i]
 
@@ -481,9 +474,6 @@ func (trie *PatriciaTrie) put(curNode *PatriciaNode, key string, account *types.
 					tmpCurNode.dye = dye
 					return tmpCurNode
 				}
-
-				done = true
-				break
 			} else {
 				continue
 			}
@@ -609,42 +599,30 @@ func (trie *PatriciaTrie) put(curNode *PatriciaNode, key string, account *types.
 					return tmpCurNode
 				}
 			}
-
-			done = true
-			break
-		}
-
-	}
-
-	if !done {
-		node := &PatriciaNode{
-			key:      key,
-			dye:      dye,
-			terminal: true,
-			data:     account,
-		}
-
-		if curNode.dye == dye {
-			curNode.children = append(curNode.children, node)
-			return nil
-		} else {
-			tmpCurNode := curNode.Clone()
-			tmpCurNode.dye = dye
-			tmpCurNode.children = append(tmpCurNode.children, node)
-			return tmpCurNode
 		}
 	}
 
-	return nil
+	node := &PatriciaNode{
+		key:      key,
+		dye:      dye,
+		terminal: true,
+		data:     account,
+	}
+
+	if curNode.dye == dye {
+		curNode.children = append(curNode.children, node)
+		return nil
+	} else {
+		tmpCurNode := curNode.Clone()
+		tmpCurNode.dye = dye
+		tmpCurNode.children = append(tmpCurNode.children, node)
+		return tmpCurNode
+	}
 }
 
 func (trie *PatriciaTrie) Collected(dye uint32) []*types.AccountData {
 	accounts := make([]*types.AccountData, 0)
-	if dye < 0 {
-		return accounts
-	} else {
-		return trie.collected(trie.root, dye, accounts)
-	}
+	return trie.collected(trie.root, dye, accounts)
 }
 
 func (trie *PatriciaTrie) collected(curNode *PatriciaNode, dye uint32, accounts []*types.AccountData) []*types.AccountData {

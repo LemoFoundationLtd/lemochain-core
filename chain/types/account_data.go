@@ -7,6 +7,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"io"
 	"math/big"
+	"sort"
 	"strings"
 )
 
@@ -47,12 +48,25 @@ func (a *CandidateProfile) EncodeRLP(w io.Writer) error {
 	if len(*a) <= 0 {
 		return rlp.Encode(w, tmp)
 	} else {
-		for k, v := range *a {
+		keys := make([]string, 0, len(*a))
+		for k, _ := range *a {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+
+		for index := 0; index < len(keys); index++ {
 			tmp = append(tmp, Pair{
-				Key: k,
-				Val: v,
+				Key: keys[index],
+				Val: (*a)[keys[index]],
 			})
 		}
+
+		// for k, v := range *a {
+		// 	tmp = append(tmp, Pair{
+		// 		Key: k,
+		// 		Val: v,
+		// 	})
+		// }
 
 		return rlp.Encode(w, tmp)
 	}
