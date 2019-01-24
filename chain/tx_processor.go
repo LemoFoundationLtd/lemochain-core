@@ -214,10 +214,9 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 	p.refundGas(gp, tx, restGas)
 	p.am.SaveTxInAccount(senderAddr, recipientAddr, tx.Hash())
 
-	// 发送者对应的候选节点票数变动
+	// The number of votes of the candidate nodes corresponding to the sender.
 	endSenderBalance := sender.GetBalance()
 	fmt.Println("一笔交易结束时的senderBalance:", endSenderBalance.String())
-
 	senderBalanceChange := new(big.Int).Sub(endSenderBalance, initialSenderBalance)
 	fmt.Printf("发送者减少的Balance = %s", senderBalanceChange.String())
 	p.changeCandidateVotes(senderAddr, senderBalanceChange)
@@ -229,7 +228,7 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 	return tx.GasLimit() - restGas, nil
 }
 
-// changeCandidateVotes 账户Balance变化对应投给的候选节点的票数的变化
+// changeCandidateVotes candidate node vote change corresponding to balance change
 func (p *TxProcessor) changeCandidateVotes(accountAddress common.Address, changeBalance *big.Int) {
 	if changeBalance.Sign() == 0 {
 		return
@@ -237,16 +236,15 @@ func (p *TxProcessor) changeCandidateVotes(accountAddress common.Address, change
 	acc := p.am.GetAccount(accountAddress)
 	CandidataAddress := acc.GetVoteFor()
 
-	if (CandidataAddress == common.Address{}) { // 不存在投票候选节点地址或者候选者已经取消候选者资格
+	if (CandidataAddress == common.Address{}) {
 		return
 	}
-	// 查看投给的候选者是否已经取消了候选资格
 	CandidateAccount := p.am.GetAccount(CandidataAddress)
 	profile := CandidateAccount.GetCandidateProfile()
 	if profile[types.CandidateKeyIsCandidate] == "false" {
 		return
 	}
-	// changeBalance为正数则加，为负数则减
+	// set votes
 	CandidateAccount.SetVotes(new(big.Int).Add(CandidateAccount.GetVotes(), changeBalance))
 }
 

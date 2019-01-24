@@ -169,65 +169,62 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 	return ret, contract.Gas, err
 }
 
-// 投票交易调用
+// CallVoteTx voting transaction call
 func (evm *EVM) CallVoteTx(voter, node common.Address, gas uint64, initialBalance *big.Int) (leftgas uint64, err error) {
 	nodeAccount := evm.am.GetAccount(node)
-	// 	判断node是否为候选节点的竞选账户
+
 	profile := nodeAccount.GetCandidateProfile()
 	IsCandidate, ok := profile[types.CandidateKeyIsCandidate]
 	if !ok || IsCandidate == params.NotCandidateNode {
 		return gas, ErrOfNotCandidateNode
 	}
-	var snapshot = evm.am.Snapshot() // 回滚操作
+	// var snapshot = evm.am.Snapshot()
 	voterAccount := evm.am.GetAccount(voter)
-	// 查看voter是否已经投过票了
+	// Determine if the account has already voted
 	if (voterAccount.GetVoteFor() != common.Address{}) {
-		if voterAccount.GetVoteFor() == node { // 已经投过此竞选节点了
+		if voterAccount.GetVoteFor() == node {
 			return gas, ErrOfAgainVote
-		} else { // 转投其他竞选节点
+		} else {
 			oldNode := voterAccount.GetVoteFor()
 			newNodeAccount := nodeAccount
-			// 减少旧节点对应的票数，增加新节点对应的票数，票数为账户的balance
+			// Change in votes
 			oldNodeAccount := evm.am.GetAccount(oldNode)
-			// 减少旧的竞选节点的票数
+			// reduce the number of votes for old candidate nodes
 			oldNodeVoters := new(big.Int).Sub(oldNodeAccount.GetVotes(), initialBalance)
 			oldNodeAccount.SetVotes(oldNodeVoters)
-			// 增加新的竞选节点的票数
+			// Increase the number of votes for new candidate nodes
 			newNodeVoters := new(big.Int).Add(newNodeAccount.GetVotes(), initialBalance)
 			newNodeAccount.SetVotes(newNodeVoters)
 		}
-	} else { // 第一次投票
-		// 增加竞选节点的票数
+	} else { // First vote
+		// Increase the number of votes for candidate nodes
 		nodeVoters := new(big.Int).Add(nodeAccount.GetVotes(), initialBalance)
 		nodeAccount.SetVotes(nodeVoters)
 	}
-	// 修改投票者指定的竞选节点
+	// Set up voter account
 	voterAccount.SetVoteFor(node)
-	// 回滚
-	if err != nil {
-		evm.am.RevertToSnapshot(snapshot)
-	}
+
+	// if err != nil {
+	// 	evm.am.RevertToSnapshot(snapshot)
+	// }
 	return gas, err
 }
 
-// 申请注册参加竞选代理节点的交易调用,sender为发起申请交易的用户地址，to为接收注册费用的账户地址，CandidateAddress为要成为候选节点的地址，Host为节点ip或者域名
+// Candidate node account transaction call
 func (evm *EVM) RegisterOrUpdateToCandidate(candidateAddress, to common.Address, candiNode types.CandidateProfile, gas uint64, value, initialSenderBalance *big.Int) (leftgas uint64, err error) {
-	// 解析出传入的candidateNode信息
+	// Candidate node information
 	isCandidate, ok := candiNode[types.CandidateKeyIsCandidate]
 	if !ok {
 		isCandidate = params.IsCandidateNode
 	}
-
 	minerAddress, ok := candiNode[types.CandidateKeyMinerAddress]
 	if !ok {
 		minerAddress = candidateAddress.String()
 	}
-
 	nodeID, ok := candiNode[types.CandidateKeyNodeID]
 	if !ok {
 		return gas, ErrOfRegisterNodeID
 	}
-
 	host, ok := candiNode[types.CandidateKeyHost]
 	if !ok {
 		return gas, ErrOfRegisterHost
@@ -237,41 +234,40 @@ func (evm *EVM) RegisterOrUpdateToCandidate(candidateAddress, to common.Address,
 		return gas, ErrOfRegisterPort
 	}
 
-	// value不能小于规定的注册费用
+	// Value cannot be less than the specified registration fee
 	if value.Cmp(params.RegisterCandidateNodeFees) < 0 {
 		return gas, ErrOfRegisterCandidateNodeFees
 	}
-	// 查看余额够不够
+	// Checking the balance is not enough
 	if !evm.CanTransfer(evm.am, candidateAddress, value) {
 		return gas, ErrInsufficientBalance
 	}
-	// var snapshot = evm.am.Snapshot() // 回滚操作
+	// var snapshot = evm.am.Snapshot()
 
-	// 申请为候选节点账户
+	// Register as a candidate node account
 	nodeAccount := evm.am.GetAccount(candidateAddress)
-	// 查看申请地址是否已经为竞选代理节点
+	// Check if the application address is already a candidate proxy node.
 	profile := nodeAccount.GetCandidateProfile()
 	IsCandidate, ok := profile[types.CandidateKeyIsCandidate]
-	// 如果已经是候选节点账户则查看传入的候选节点参数是否需要改变或者是否为一个取消候选人资格的交易
+	// Set candidate node information if it is already a candidate node account
 	if ok && IsCandidate == params.IsCandidateNode {
-		// 判断是否要注销候选者资格
+		// Determine whether to disqualify a candidate node
 		if isCandidate == params.NotCandidateNode {
 			profile[types.CandidateKeyIsCandidate] = params.NotCandidateNode
 			nodeAccount.SetCandidateProfile(profile)
-			// 注销后的用户的票数为0
+			// Set the number of votes to 0
 			nodeAccount.SetVotes(big.NewInt(0))
-			// 注销也需要消耗1000LEMO
+			// Transaction costs
 			evm.Transfer(evm.am, candidateAddress, to, value)
 			return gas, nil
 		}
-		// 修改候选节点info
+
 		profile[types.CandidateKeyMinerAddress] = minerAddress
 		profile[types.CandidateKeyHost] = host
 		profile[types.CandidateKeyPort] = port
 		nodeAccount.SetCandidateProfile(profile)
 	} else {
-		// 初始化map
-		// 注册为竞选节点
+		// Register candidate nodes
 		newProfile := make(map[string]string, 5)
 		newProfile[types.CandidateKeyIsCandidate] = params.IsCandidateNode
 		newProfile[types.CandidateKeyMinerAddress] = minerAddress
@@ -280,23 +276,18 @@ func (evm *EVM) RegisterOrUpdateToCandidate(candidateAddress, to common.Address,
 		newProfile[types.CandidateKeyPort] = port
 		nodeAccount.SetCandidateProfile(newProfile)
 
-		// 设置自己的账户投给自己，票数为执行交易前的Balance，所以要加上购买gas所用的balance
 		oldNodeAddress := nodeAccount.GetVoteFor()
-		// 如果投过票要减少所投候选节点的票数
-		if (oldNodeAddress != common.Address{}) { // 曾经投过别的候选节点票
-			oldNodeAccount := evm.am.GetAccount(oldNodeAddress) // 旧的候选节点的账户
+
+		if (oldNodeAddress != common.Address{}) {
+			oldNodeAccount := evm.am.GetAccount(oldNodeAddress)
 			oldNodeVoters := new(big.Int).Sub(oldNodeAccount.GetVotes(), initialSenderBalance)
 			oldNodeAccount.SetVotes(oldNodeVoters)
 		}
-		// 设置投票候选节点为自己地址
 		nodeAccount.SetVoteFor(candidateAddress)
-		// 设置自己的票数，此时自己的票数为自己的balance.
 		nodeAccount.SetVotes(initialSenderBalance)
 
 	}
-	// 转账操作，必须放在票数改变逻辑后面，保证不会因为balance改变导致票数的改变出错
 	evm.Transfer(evm.am, candidateAddress, to, value)
-	// // 回滚
 	// if err != nil {
 	// 	evm.am.RevertToSnapshot(snapshot)
 	// }
