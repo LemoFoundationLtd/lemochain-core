@@ -69,16 +69,6 @@ func (a *PublicAccountAPI) GetAccount(LemoAddress string) (types.AccountAccessor
 	return accountData, nil
 }
 
-// GetVotes 获取account的votes
-// func (a *PublicAccountAPI) GetVotes(LemoAddress string) (string, error) {
-// 	CandiAccount, err := a.GetAccount(LemoAddress)
-// 	if err != nil {
-// 		return "", err
-// 	}
-// 	votes := CandiAccount.GetVotes().String()
-// 	return votes, nil
-// }
-
 // GetVoteFor 获取投的候选节点地址
 func (a *PublicAccountAPI) GetVoteFor(LemoAddress string) (string, error) {
 	candiAccount, err := a.GetAccount(LemoAddress)

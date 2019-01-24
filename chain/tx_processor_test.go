@@ -3,7 +3,6 @@ package chain
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/vm"
@@ -580,61 +579,7 @@ func Test_voteAndRegisteTx(t *testing.T) {
 }
 
 // 序列化注册候选节点所用data
-func TestIntrinsicGas(t *testing.T) {
-	log.Warn("0x1001 = ", params.FeeReceiveAddress.String())
-
-	var cand01 = &deputynode.CandidateNode{
-		IsCandidate:  true,
-		MinerAddress: common.HexToAddress("0x11111"),
-		NodeID:       common.FromHex("0x7739f34055d3c0808683dbd77a937f8e28f707d5b1e873bbe61f6f2d0347692f36ef736f342fb5ce4710f7e337f062cc2110d134b63a9575f78cb167bfae2f43"),
-		Host:         "1.1.1.1",
-		Port:         1000,
-	}
-	Data01, _ := json.Marshal(cand01)
-	fmt.Println(common.ToHex(Data01))
-
-	var cand02 = &deputynode.CandidateNode{
-		IsCandidate:  true,
-		MinerAddress: common.HexToAddress("0x2222"),
-		NodeID:       common.FromHex("0x7739f34055d3c0808683dbd77a937f8e28f707d5b1e873bbe61f6f2d0347692f36ef736f342fb5ce4710f7e337f062cc2110d134b63a9575f78cb167bfae2f43"),
-		Host:         "2222",
-		Port:         2000,
-	}
-	Data02, _ := json.Marshal(cand02)
-	fmt.Println(common.ToHex(Data02))
-
-	var cand03 = &deputynode.CandidateNode{
-		IsCandidate:  true,
-		MinerAddress: common.HexToAddress("0x333333"),
-		NodeID:       common.FromHex("0x7739f34055d3c0808683dbd77a937f8e28f707d5b1e873bbe61f6f2d0347692f36ef736f342fb5ce4710f7e337f062cc2110d134b63a9575f78cb167bfae2f43"),
-		Host:         "3333",
-		Port:         3000,
-	}
-	Data03, _ := json.Marshal(cand03)
-	fmt.Println(common.ToHex(Data03))
-
-	var cand04 = &deputynode.CandidateNode{
-		IsCandidate:  true,
-		MinerAddress: common.HexToAddress("0x44444"),
-		NodeID:       common.FromHex("0x7739f34055d3c0808683dbd77a937f8e28f707d5b1e873bbe61f6f2d0347692f36ef736f342fb5ce4710f7e337f062cc2110d134b63a9575f78cb167bfae2f43"),
-		Host:         "4444",
-		Port:         4000,
-	}
-	Data04, _ := json.Marshal(cand04)
-	fmt.Println(common.ToHex(Data04))
-
-	var cand05 = &deputynode.CandidateNode{
-		IsCandidate:  true,
-		MinerAddress: common.HexToAddress("0x5555"),
-		NodeID:       common.FromHex("0x7739f34055d3c0808683dbd77a937f8e28f707d5b1e873bbe61f6f2d0347692f36ef736f342fb5ce4710f7e337f062cc2110d134b63a9575f78cb167bfae2f43"),
-		Host:         "5555",
-		Port:         5000,
-	}
-	Data05, _ := json.Marshal(cand05)
-	fmt.Println(common.ToHex(Data05))
-
-}
-func TestTxPrr_CallTx(t *testing.T) {
+func Test_CreatRegisterTxData(t *testing.T) {
 	pro1 := make(types.CandidateProfile)
 	pro1[types.CandidateKeyIsCandidate] = params.IsCandidateNode
 	pro1[types.CandidateKeyPort] = "1111"
