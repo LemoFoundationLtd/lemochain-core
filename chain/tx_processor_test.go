@@ -375,13 +375,12 @@ func TestTxProcessor_candidateTX(t *testing.T) {
 	//
 	registerTx01 := signTransaction(types.NewTransaction(params.FeeReceiveAddress, params.RegisterCandidateNodeFees, 200000, common.Big1, candData00, params.RegisterTx, chainID, uint64(time.Now().Unix()+300), "", ""), testPrivate)
 
-	parentBlock := p.chain.currentBlock.Load().(*types.Block)
+	parentBlock := p.chain.stableBlock.Load().(*types.Block)
 
-	p.am.Reset(parentBlock.Hash())
+	// p.am.Reset(parentBlock.Hash())
 	header01 := &types.Header{
 		ParentHash:   parentBlock.Hash(),
 		MinerAddress: parentBlock.MinerAddress(),
-		VersionRoot:  parentBlock.VersionRoot(),
 		Height:       parentBlock.Height() + 1,
 		GasLimit:     parentBlock.GasLimit(),
 		GasUsed:      0,
@@ -410,18 +409,28 @@ func TestTxProcessor_candidateTX(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	err = p.chain.db.SetStableBlock(blockHash)
-	if err != nil {
-		panic(err)
-	}
+	bbb := Block01.ChangeLogs
+	BB, _ := rlp.EncodeToBytes(bbb[2])
+	fmt.Println("rlp: ", common.ToHex(BB))
+	// fmt.Println("BB:", BB)
+	// err = p.chain.db.SetStableBlock(blockHash)
+	// if err != nil {
+	// 	panic(err)
+	// }
 	afterHeader := Block01.Header
+
 	//
-	p.am.Reset(parentBlock.Hash())
 	beforeHeader, err := p.Process(Block01)
 	if err != nil {
 		fmt.Println("Process: ", err)
 	}
+
+	cc := p.am.GetChangeLogs()
+	CC, _ := rlp.EncodeToBytes(cc[2])
+	fmt.Println("rlp: ", common.ToHex(CC))
 	assert.Equal(t, afterHeader, beforeHeader)
+	assert.Equal(t, bbb, cc)
+	assert.Equal(t, CC, BB)
 
 }
 
