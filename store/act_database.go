@@ -477,7 +477,7 @@ func (trie *PatriciaTrie) put(curNode *PatriciaNode, key string, account *types.
 					return nil
 				} else {
 					tmpCurNode := curNode.Clone()
-					curNode.children = insert(curNode.children, i, node)
+					tmpCurNode.children = insert(tmpCurNode.children, i, node)
 					tmpCurNode.dye = dye
 					return tmpCurNode
 				}

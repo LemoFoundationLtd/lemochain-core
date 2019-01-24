@@ -408,11 +408,11 @@ func TestChainDatabase_Commit(t *testing.T) {
 
 	chain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
 	// rand.Seed(time.Now().Unix())
-	blocks := NewBlockBatch(1000)
+	blocks := NewBlockBatch(10)
 	chain.SetBlock(blocks[0].Hash(), blocks[0])
 	err := chain.SetStableBlock(blocks[0].Hash())
 	assert.NoError(t, err)
-	for index := 1; index < 1000; index++ {
+	for index := 1; index < 10; index++ {
 		chain.SetBlock(blocks[index].Hash(), blocks[index])
 		err = chain.SetStableBlock(blocks[index].Hash())
 		assert.NoError(t, err)
@@ -428,7 +428,7 @@ func TestChainDatabase_Commit(t *testing.T) {
 }
 
 func TestNewChainDataBase(t *testing.T) {
-	for index := 0; index < 2000000000; index++ {
+	for index := 0; index < 10; index++ {
 		// offset := uint32(index) & 0xffffff00
 		CURINDEX := uint32(index) & 0xff
 		if CURINDEX == 129 {

@@ -117,7 +117,7 @@ func decodeCandidateProfile(s *rlp.Stream) (interface{}, error) {
 	if size <= 0 {
 		return &result, nil
 	} else {
-		err := s.Decode(result)
+		err := s.Decode(&result)
 		return &result, err
 	}
 }
@@ -130,7 +130,7 @@ func NewVotesLog(processor types.ChangeLogProcessor, account types.AccountAccess
 	return &types.ChangeLog{
 		LogType: VotesLog,
 		Address: account.GetAddress(),
-		Version: processor.GetNextVersion(VoteForLog, account.GetAddress()),
+		Version: processor.GetNextVersion(VotesLog, account.GetAddress()),
 		OldVal:  account.GetVotes(),
 		NewVal:  newVotes,
 	}
@@ -195,7 +195,7 @@ func NewCandidateProfileLog(processor types.ChangeLogProcessor, account types.Ac
 	return &types.ChangeLog{
 		LogType: CandidateProfileLog,
 		Address: account.GetAddress(),
-		Version: processor.GetNextVersion(VoteForLog, account.GetAddress()),
+		Version: processor.GetNextVersion(CandidateProfileLog, account.GetAddress()),
 		OldVal:  &oldVal,
 		NewVal:  &newProfile,
 	}
@@ -204,7 +204,7 @@ func NewCandidateProfileLog(processor types.ChangeLogProcessor, account types.Ac
 func redoCandidateProfile(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 	newVal, ok := c.NewVal.(*types.CandidateProfile)
 	if !ok {
-		log.Errorf("expected NewVal []byte, got %T", c.NewVal)
+		log.Errorf("expected NewVal *CandidateProfile, got %T", c.NewVal)
 		return types.ErrWrongChangeLogData
 	}
 	accessor := processor.GetAccount(c.Address)
