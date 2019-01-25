@@ -151,7 +151,7 @@ func after(flag uint, route []byte, key []byte, val []byte, offset uint32) error
 	return nil
 }
 
-func NewBeansDB(home string, height int, driver string, dns string) *BeansDB {
+func NewBeansDB(home string, height int, DB *MySqlDB) *BeansDB {
 	if height != 2 {
 		panic("beansdb height != 2")
 	}
@@ -160,7 +160,7 @@ func NewBeansDB(home string, height int, driver string, dns string) *BeansDB {
 	beansdb := &BeansDB{height: uint(height)}
 	beansdb.bitcasks = make([]*BitCask, count)
 	beansdb.route2key = make(map[string][]byte)
-	beansdb.indexDB = NewMySqlDB(driver, dns)
+	beansdb.indexDB = DB
 
 	err := beansdb.scanIndex.load(home)
 	if err != nil {

@@ -26,6 +26,7 @@ type ChainDB interface {
 
 	GetTrieDatabase() *store.TrieDatabase
 	GetActDatabase(hash common.Hash) *store.PatriciaTrie
+	GetBizDatabase() store.BizDb
 
 	GetContractCode(hash common.Hash) (types.Code, error)
 	SetContractCode(hash common.Hash, code types.Code) error

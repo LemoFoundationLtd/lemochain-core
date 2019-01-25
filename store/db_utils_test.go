@@ -1,12 +1,48 @@
 package store
 
+import (
+	"github.com/stretchr/testify/assert"
+	"testing"
+)
+
 //
 // import (
 // 	"testing"
 // 	"github.com/stretchr/testify/assert"
 // 	"strconv"
 // )
-//
+
+func TestSet(t *testing.T) {
+	db, err := Open(DRIVER_MYSQL, DNS_MYSQL)
+	assert.NoError(t, err)
+
+	err = TxSet(db, "hash", "addr1", "addr2", []byte("paul"), 1)
+	err = TxSet(db, "hash1", "addr1", "addr2", []byte("paul"), 2)
+	err = TxSet(db, "hash2", "addr1", "addr2", []byte("paul"), 3)
+	err = TxSet(db, "hash3", "addr1", "addr2", []byte("paul"), 4)
+	err = TxSet(db, "hash4", "addr1", "addr2", []byte("paul"), 5)
+	assert.NoError(t, err)
+
+	val, err := TxGet8Hash(db, "hash")
+	assert.NoError(t, err)
+	assert.Equal(t, []byte("paul"), val)
+
+	results, maxVer, err := TxGet8Addr(db, "addr1", 0, 2)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(results))
+	assert.Equal(t, int64(2), maxVer)
+
+	results, maxVer, err = TxGet8Addr(db, "addr1", 2, 2)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(results))
+	assert.Equal(t, int64(4), maxVer)
+
+	results, maxVer, err = TxGet8Addr(db, "addr1", 4, 2)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(results))
+	assert.Equal(t, int64(5), maxVer)
+}
+
 //
 // func TestDoUtils_Set(t *testing.T) {
 // 	dns := "root:123123@tcp(localhost:3306)/lemochain?charset=utf8mb4"

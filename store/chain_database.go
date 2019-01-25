@@ -24,11 +24,12 @@ type CBlock struct {
 type ChainDatabase struct {
 	LastConfirm     *CBlock
 	UnConfirmBlocks map[common.Hash]*CBlock
+	Context         *RunContext
 
+	DB      *MySqlDB
 	Beansdb *BeansDB
-	Context *RunContext
-
-	rw sync.RWMutex
+	BizDB   *BizDatabase
+	rw      sync.RWMutex
 }
 
 func NewChainDataBase(home string, driver string, dns string) *ChainDatabase {
@@ -46,15 +47,17 @@ func NewChainDataBase(home string, driver string, dns string) *ChainDatabase {
 
 	db := &ChainDatabase{
 		UnConfirmBlocks: make(map[common.Hash]*CBlock),
-		Beansdb:         NewBeansDB(home, 2, driver, dns),
+		DB:              NewMySqlDB(driver, dns),
 		Context:         NewRunContext(home),
 	}
 
+	db.Beansdb = NewBeansDB(home, 2, db.DB)
 	db.LastConfirm = &CBlock{
 		Block: db.Context.GetStableBlock(),
 		Trie:  NewEmptyDatabase(db.Beansdb),
 	}
 
+	db.BizDB = NewBizDatabase(db.Beansdb, db.DB)
 	return db
 }
 
@@ -563,6 +566,10 @@ func (database *ChainDatabase) GetActDatabase(hash common.Hash) *PatriciaTrie {
 	} else {
 		return item.Trie
 	}
+}
+
+func (database *ChainDatabase) GetBizDatabase() BizDb {
+	return database.BizDB
 }
 
 // GetContractCode loads contract's code from db.
