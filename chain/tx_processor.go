@@ -212,7 +212,6 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 		}
 	}
 	p.refundGas(gp, tx, restGas)
-	p.am.SaveTxInAccount(senderAddr, recipientAddr, tx.Hash())
 
 	// The number of votes of the candidate nodes corresponding to the sender.
 	endSenderBalance := sender.GetBalance()
@@ -352,6 +351,7 @@ func (p *TxProcessor) FillHeader(header *types.Header, txs types.Transactions, g
 	}
 	header.VersionRoot = p.am.GetVersionRoot()
 	changeLogs := p.am.GetChangeLogs()
+	log.Errorf("changlog.00000000002", changeLogs)
 	header.LogRoot = types.DeriveChangeLogsSha(changeLogs)
 	return header, nil
 }
