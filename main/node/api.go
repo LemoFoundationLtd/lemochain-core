@@ -47,6 +47,16 @@ func NewPublicAccountAPI(m *account.Manager) *PublicAccountAPI {
 	return &PublicAccountAPI{m}
 }
 
+// account下面的所有交易 todo
+func (a *PublicAccountAPI) GetTxListFromAccount(LemoAddress string) []*types.Transaction {
+	// account, err := a.GetAccount(LemoAddress)
+	// if err != nil {
+	// 	return nil
+	// }
+	// account.GetTxs()
+	return nil
+}
+
 // GetBalance get balance in mo
 func (a *PublicAccountAPI) GetBalance(LemoAddress string) (string, error) {
 	accounts, err := a.GetAccount(LemoAddress)
@@ -69,7 +79,7 @@ func (a *PublicAccountAPI) GetAccount(LemoAddress string) (types.AccountAccessor
 	return accountData, nil
 }
 
-// GetVoteFor 获取投的候选节点地址
+// GetVoteFor
 func (a *PublicAccountAPI) GetVoteFor(LemoAddress string) (string, error) {
 	candiAccount, err := a.GetAccount(LemoAddress)
 	if err != nil {
@@ -82,11 +92,12 @@ func (a *PublicAccountAPI) GetVoteFor(LemoAddress string) (string, error) {
 //go:generate gencodec -type CandiateInfo -out gen_candidate_info_json.go
 
 type CandiateInfo struct {
-	Votes   string            `json:"votes" gencodec:"required"`
-	Profile map[string]string `json:"profile"  gencodec:"required"`
+	CandidateAddress string            `json:"candidate" gencodec:"required"`
+	Votes            string            `json:"votes" gencodec:"required"`
+	Profile          map[string]string `json:"profile"  gencodec:"required"`
 }
 
-// GetCandidateInfo 获取候选节点的配置信息
+// GetCandidateInfo get candidate node information
 func (a *PublicAccountAPI) GetCandidateInfo(LemoAddress string) *CandiateInfo {
 	candiAccount, err := a.GetAccount(LemoAddress)
 	if err != nil {
@@ -106,6 +117,7 @@ func (a *PublicAccountAPI) GetCandidateInfo(LemoAddress string) *CandiateInfo {
 	candidateInfo.Profile[types.CandidateKeyPort] = mapProfile[types.CandidateKeyPort]
 	candidateInfo.Profile[types.CandidateKeyMinerAddress] = mapProfile[types.CandidateKeyMinerAddress]
 	candidateInfo.Votes = candiAccount.GetVotes().String()
+	candidateInfo.CandidateAddress = LemoAddress
 	return candidateInfo
 }
 
@@ -117,6 +129,11 @@ type PublicChainAPI struct {
 // NewChainAPI API for access to chain information
 func NewPublicChainAPI(chain *chain.BlockChain) *PublicChainAPI {
 	return &PublicChainAPI{chain}
+}
+
+// GetCandidateNodeList 获取所有的候选节点列表信息 todo
+func (c *PublicChainAPI) GetCandidateNodeList(topNum uint8) []*CandiateInfo {
+	return nil
 }
 
 // GetBlockByNumber get block information by height
@@ -347,6 +364,11 @@ func (t *PublicTxAPI) SendTx(tx *types.Transaction) (common.Hash, error) {
 // PendingTx
 func (t *PublicTxAPI) PendingTx(size int) []*types.Transaction {
 	return t.node.txPool.Pending(size)
+}
+
+// 通过交易hash拉取指定交易 todo
+func (t *PublicTxAPI) GetTxByHash(txHash common.Hash) *types.Transaction {
+	return nil
 }
 
 // ReadContract read variables in a contract includes the return value of a function.
