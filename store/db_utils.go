@@ -2,6 +2,7 @@ package store
 
 import (
 	"database/sql"
+	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -11,11 +12,26 @@ var (
 	//DNS_MYSQL = "root:123456@tcp(149.28.68.93:3306)/lemochain01?charset=utf8mb4"
 )
 
+var (
+	tables = []string{
+		`CREATE TABLE IF NOT EXISTS t_kv (
+  				lm_flg int(11) NOT NULL,
+  				lm_key varchar(256) NOT NULL,
+  				lm_val blob NOT NULL,
+  				lm_pos bigint(22) NOT NULL,
+  				st timestamp NOT NULL 
+			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
+	}
+)
+
+// driver = "mysql"
+// dns = root:123123@tcp(localhost:3306)/lemochain?charset=utf8mb4
 func Open(driver string, dns string) (*sql.DB, error) {
 	db, err := sql.Open(driver, dns)
 	if err != nil {
 		return nil, err
 	} else {
+		InitTable(db)
 		return db, nil
 	}
 }
@@ -140,5 +156,14 @@ func Del(db *sql.DB, key string) error {
 		return err
 	} else {
 		return nil
+	}
+}
+
+func InitTable(db *sql.DB) {
+	for _, tb := range tables {
+		_, err := db.Exec(tb)
+		if err != nil {
+			panic(fmt.Sprintf("init mysql's table error: %v", err))
+		}
 	}
 }
