@@ -29,7 +29,6 @@ func (a AccountData) MarshalJSON() ([]byte, error) {
 	enc.CodeHash = a.CodeHash
 	enc.StorageRoot = a.StorageRoot
 	enc.NewestRecords = a.NewestRecords
-	enc.TxHashList = a.TxHashList
 	return json.Marshal(&enc)
 }
 
@@ -67,8 +66,5 @@ func (a *AccountData) UnmarshalJSON(input []byte) error {
 		return errors.New("missing required field 'records' for AccountData")
 	}
 	a.NewestRecords = dec.NewestRecords
-	if dec.TxHashList != nil {
-		a.TxHashList = dec.TxHashList
-	}
 	return nil
 }
