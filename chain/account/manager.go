@@ -253,13 +253,6 @@ func (am *Manager) Save(newBlockHash common.Hash) error {
 	return nil
 }
 
-func (am *Manager) SaveTxInAccount(fromAddr, toAddr common.Address, txHash common.Hash) {
-	from := am.GetAccount(fromAddr).(*SafeAccount)
-	from.AppendTx(txHash)
-	to := am.GetAccount(toAddr).(*SafeAccount)
-	to.AppendTx(txHash)
-}
-
 // Rebuild loads and redo all change logs to update account to the newest state.
 func (am *Manager) Rebuild(address common.Address, logs types.ChangeLogSlice) error {
 	_, err := am.processor.Rebuild(address, logs)

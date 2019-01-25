@@ -355,7 +355,86 @@ func TestTxProcessor_ApplyTxs2(t *testing.T) {
 	assert.Equal(t, senderBalance.Sub(senderBalance, cost), newSenderBalance)
 }
 
-// Test_voteAndRegisteTx测试投票交易和注册候选节点交易
+//
+func TestTxProcessor_candidateTX(t *testing.T) {
+	store.ClearData()
+	p := NewTxProcessor(newChain())
+
+	// 申请第一个候选节点(testAddr)信息data
+	cand00 := make(types.CandidateProfile)
+	cand00[types.CandidateKeyIsCandidate] = params.IsCandidateNode
+	cand00[types.CandidateKeyPort] = "0000"
+	cand00[types.CandidateKeyNodeID] = "0x34f0df789b46e9bc09f23d5315b951bc77bbfeda653ae6f5aab564c9b4619322fddb3b1f28d1c434250e9d4dd8f51aa8334573d7281e4d63baba913e9fa6908f"
+	cand00[types.CandidateKeyMinerAddress] = "0x10000"
+	cand00[types.CandidateKeyHost] = "0.0.0.0"
+	candData00, _ := json.Marshal(cand00)
+
+	testAddr01, _ := common.StringToAddress("Lemo83W59DHT7FD4KSB3HWRJ5T4JD82TZW27ZKHJ")
+	value := new(big.Int).Mul(params.RegisterCandidateNodeFees, big.NewInt(2)) // 转账为2000LEMO
+	getBalanceTx01 := makeTx(testPrivate, testAddr01, params.OrdinaryTx, value)
+	//
+	registerTx01 := signTransaction(types.NewTransaction(params.FeeReceiveAddress, params.RegisterCandidateNodeFees, 200000, common.Big1, candData00, params.RegisterTx, chainID, uint64(time.Now().Unix()+300), "", ""), testPrivate)
+
+	parentBlock := p.chain.stableBlock.Load().(*types.Block)
+
+	// p.am.Reset(parentBlock.Hash())
+	header01 := &types.Header{
+		ParentHash:   parentBlock.Hash(),
+		MinerAddress: parentBlock.MinerAddress(),
+		Height:       parentBlock.Height() + 1,
+		GasLimit:     parentBlock.GasLimit(),
+		GasUsed:      0,
+		Time:         parentBlock.Time() + 4,
+	}
+
+	tx01 := types.Transactions{registerTx01, getBalanceTx01}
+	newHeader01, _, _, err := p.ApplyTxs(header01, tx01)
+	if err != nil {
+		fmt.Printf(" apply register tx err : %s \n", err)
+	}
+	Block01 := &types.Block{
+		Txs:         tx01,
+		ChangeLogs:  p.am.GetChangeLogs(),
+		Events:      p.am.GetEvents(),
+		Confirms:    nil,
+		DeputyNodes: nil,
+	}
+	Block01.SetHeader(newHeader01)
+	blockHash := newHeader01.Hash()
+	err = p.chain.db.SetBlock(blockHash, Block01)
+	if err != nil && err != store.ErrExist {
+		panic(err)
+	}
+	err = p.am.Save(blockHash)
+	if err != nil {
+		panic(err)
+	}
+	bbb := Block01.ChangeLogs
+	BB, _ := rlp.EncodeToBytes(bbb[2])
+	fmt.Println("rlp: ", common.ToHex(BB))
+	// fmt.Println("BB:", BB)
+	// err = p.chain.db.SetStableBlock(blockHash)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	afterHeader := Block01.Header
+
+	//
+	beforeHeader, err := p.Process(Block01)
+	if err != nil {
+		fmt.Println("Process: ", err)
+	}
+
+	cc := p.am.GetChangeLogs()
+	CC, _ := rlp.EncodeToBytes(cc[2])
+	fmt.Println("rlp: ", common.ToHex(CC))
+	assert.Equal(t, afterHeader, beforeHeader)
+	assert.Equal(t, bbb, cc)
+	assert.Equal(t, CC, BB)
+
+}
+
+//  Test_voteAndRegisteTx测试投票交易和注册候选节点交易
 func Test_voteAndRegisteTx(t *testing.T) {
 	store.ClearData()
 	p := NewTxProcessor(newChain())

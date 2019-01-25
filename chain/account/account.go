@@ -106,6 +106,12 @@ func (a *Account) String() string {
 	return a.data.String()
 }
 
+func (a *Account) GetTxCount() int { return a.data.TxCount }
+
+func (a *Account) SetTxCount(count int) {
+	a.data.TxCount = count
+}
+
 func (a *Account) GetVoteFor() common.Address { return a.data.VoteFor }
 
 func (a *Account) SetVoteFor(addr common.Address) {
@@ -143,9 +149,10 @@ func (a *Account) GetBaseVersion(logType types.ChangeLogType) uint32 {
 func (a *Account) SetVersion(logType types.ChangeLogType, version, blockHeight uint32) {
 	a.data.NewestRecords[logType] = types.VersionRecord{Version: version, Height: blockHeight}
 }
-func (a *Account) GetSuicide() bool             { return a.suicided }
-func (a *Account) GetCodeHash() common.Hash     { return a.data.CodeHash }
-func (a *Account) GetTxHashList() []common.Hash { return a.data.TxHashList }
+func (a *Account) GetSuicide() bool         { return a.suicided }
+func (a *Account) GetCodeHash() common.Hash { return a.data.CodeHash }
+
+// func (a *Account) GetTxHashList() []common.Hash { return a.data.TxHashList }
 
 // StorageRoot wouldn't change until Account.updateTrie() is called
 func (a *Account) GetStorageRoot() common.Hash { return a.data.StorageRoot }
@@ -248,15 +255,6 @@ func (a *Account) IsEmpty() bool {
 		}
 	}
 	return true
-}
-
-func (a *Account) AppendTx(hash common.Hash) {
-	for _, exist := range a.data.TxHashList {
-		if exist == hash {
-			return
-		}
-	}
-	a.data.TxHashList = append(a.data.TxHashList, hash)
 }
 
 func (a *Account) getTrie() (*trie.SecureTrie, error) {

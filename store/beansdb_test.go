@@ -6,9 +6,9 @@ import (
 )
 
 func TestBeansDB_Put(t *testing.T) {
-	ClearData()
+	// ClearData()
 
-	beansdb := NewBeansDB(GetStorePath(), 2, DRIVER_MYSQL, DNS_MYSQL)
+	beansdb := NewBeansDB(GetStorePath(), 2, NewMySqlDB(DRIVER_MYSQL, DNS_MYSQL), nil)
 	assert.NotNil(t, beansdb)
 
 	key, err := CreateBufWithNumber(32)
@@ -28,7 +28,7 @@ func TestBeansDB_Put(t *testing.T) {
 func TestBeansDB_Commit(t *testing.T) {
 	ClearData()
 
-	beansdb := NewBeansDB(GetStorePath(), 2, DRIVER_MYSQL, DNS_MYSQL)
+	beansdb := NewBeansDB(GetStorePath(), 2, NewMySqlDB(DRIVER_MYSQL, DNS_MYSQL), nil)
 	assert.NotNil(t, beansdb)
 
 	route, err := CreateBufWithNumber(32)
