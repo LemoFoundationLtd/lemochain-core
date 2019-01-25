@@ -19,7 +19,9 @@ import (
 )
 
 const (
-	defaultGasPrice = 1e9
+	defaultGasPrice      = 1e9
+	MaxDeputyHostLength  = 128
+	StandardNodeIdLength = 128
 )
 
 var (
@@ -161,39 +163,59 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 	// vm errors do not effect consensus and are therefor not assigned to err,
 	// except for insufficient balance error.
 	var (
-		vmErr         error
-		recipientAddr common.Address
+		vmErr                   error
+		recipientAddr           common.Address
+		initialRecipientBalance *big.Int
+		recipientAccount        types.AccountAccessor
 	)
-	if contractCreation {
-		_, recipientAddr, restGas, vmErr = vmEnv.Create(sender, tx.Data(), restGas, tx.Amount())
-	} else {
+	if !contractCreation {
 		recipientAddr = *tx.To()
-		recipientAccount := p.am.GetAccount(recipientAddr)
-		initialRecipientBalance := recipientAccount.GetBalance()
-
-		// Judge the type of transaction
-		switch tx.Type() {
-		case params.OrdinaryTx:
+		recipientAccount = p.am.GetAccount(recipientAddr)
+		initialRecipientBalance = recipientAccount.GetBalance()
+	}
+	// Judge the type of transaction
+	switch tx.Type() {
+	case params.OrdinaryTx:
+		if contractCreation {
+			_, recipientAddr, restGas, vmErr = vmEnv.Create(sender, tx.Data(), restGas, tx.Amount())
+		} else {
 			_, restGas, vmErr = vmEnv.Call(sender, recipientAddr, tx.Data(), restGas, tx.Amount())
-
-		case params.VoteTx:
-			restGas, vmErr = vmEnv.CallVoteTx(senderAddr, recipientAddr, restGas, initialSenderBalance)
-
-		case params.RegisterTx:
-			// Unmarshal tx data
-			txData := tx.Data()
-			profile := make(types.CandidateProfile)
-			err = json.Unmarshal(txData, &profile)
-			if err != nil {
-				log.Errorf("unmarshal Candidate node error: %s", err)
-				return 0, err
-			}
-			restGas, vmErr = vmEnv.RegisterOrUpdateToCandidate(senderAddr, params.FeeReceiveAddress, profile, restGas, tx.Amount(), initialSenderBalance)
-
-		default:
-			log.Errorf("The type of transaction is not defined. txType = %d\n", tx.Type())
 		}
-		// Candidate node votes change
+	case params.VoteTx:
+		restGas, vmErr = vmEnv.CallVoteTx(senderAddr, recipientAddr, restGas, initialSenderBalance)
+
+	case params.RegisterTx:
+		// Unmarshal tx data
+		txData := tx.Data()
+		profile := make(types.CandidateProfile)
+		err = json.Unmarshal(txData, &profile)
+		if err != nil {
+			log.Errorf("unmarshal Candidate node error: %s", err)
+			return 0, err
+		}
+
+		if nodeId, ok := profile[types.CandidateKeyNodeID]; ok {
+			nodeIdLength := len(nodeId)
+			if nodeIdLength != StandardNodeIdLength {
+				nodeIdErr := fmt.Errorf("the nodeId length [%d] is not equal the standard length [%d] ", nodeIdLength, StandardNodeIdLength)
+				return 0, nodeIdErr
+			}
+		}
+		if host, ok := profile[types.CandidateKeyHost]; ok {
+			hostLength := len(host)
+			if hostLength > MaxDeputyHostLength {
+				hostErr := fmt.Errorf("the length of host field in transaction is out of max length limit. host length = %d. max length limit = %d. ", hostLength, MaxDeputyHostLength)
+				return 0, hostErr
+			}
+		}
+
+		restGas, vmErr = vmEnv.RegisterOrUpdateToCandidate(senderAddr, params.FeeReceiveAddress, profile, restGas, tx.Amount(), initialSenderBalance)
+
+	default:
+		log.Errorf("The type of transaction is not defined. txType = %d\n", tx.Type())
+	}
+	// Candidate node votes change
+	if !contractCreation {
 		endRecipientBalance := recipientAccount.GetBalance()
 		if initialRecipientBalance == nil {
 			p.changeCandidateVotes(recipientAddr, endRecipientBalance)
@@ -202,6 +224,7 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 			p.changeCandidateVotes(recipientAddr, recipientBalanceChange)
 		}
 	}
+
 	if vmErr != nil {
 		log.Info("VM returned with error", "err", vmErr)
 		// The only possible consensus-error would be if there wasn't
@@ -213,13 +236,18 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 	}
 	p.refundGas(gp, tx, restGas)
 
+	if !contractCreation {
+		oldRecipientTxCount := recipientAccount.GetTxCount()
+		recipientAccount.SetTxCount(oldRecipientTxCount + 1)
+	}
+
+	oldsenderTxCount := sender.GetTxCount()
+	sender.SetTxCount(oldsenderTxCount + 1)
+
 	// The number of votes of the candidate nodes corresponding to the sender.
 	endSenderBalance := sender.GetBalance()
-	fmt.Println("一笔交易结束时的senderBalance:", endSenderBalance.String())
 	senderBalanceChange := new(big.Int).Sub(endSenderBalance, initialSenderBalance)
-	fmt.Printf("发送者减少的Balance = %s", senderBalanceChange.String())
 	p.changeCandidateVotes(senderAddr, senderBalanceChange)
-
 	// Merge change logs by transaction will save more transaction execution detail than by block
 	p.am.MergeChangeLogs(mergeFrom)
 	mergeFrom = len(p.am.GetChangeLogs())
