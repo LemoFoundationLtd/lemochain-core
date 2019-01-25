@@ -348,7 +348,7 @@ func (m *Miner) sealBlock() {
 		txsKeys[i+len(packagedTxs)] = tx.Hash()
 	}
 	m.txPool.Remove(txsKeys)
-	log.Infof("Mine a new block. height: %d hash: %s", block.Height(), block.Hash().String())
+	log.Infof("Mine a new block. height: %d hash: %s, len(txs): %d", block.Height(), block.Hash().String(), len(block.Txs))
 }
 
 // sealHead 生成区块头

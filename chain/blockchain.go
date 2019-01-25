@@ -357,21 +357,29 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32) error {
 		log.Infof("Consensus. height:%d hash:%s", block.Height(), block.Hash().Hex())
 	}()
 
-	parBlock := bc.currentBlock.Load().(*types.Block)
+	curBlock := bc.currentBlock.Load().(*types.Block)
+	parBlock := curBlock
 	// fork
 	bc.chainForksLock.Lock()
 	defer bc.chainForksLock.Unlock()
-	curBlock := parBlock
 
 	tmp := make(map[common.Hash][]*types.Block)
 	maxLength := uint32(0)
-	curHash := common.Hash{}
-	// prune forks and choose current block by height
+	// prune forks
 	for fHash, fBlock := range bc.chainForksHead {
-		if parBlock.Height() <= height {
+		if parBlock.Height() < height {
 			delete(bc.chainForksHead, fHash)
 			continue
 		}
+		// same height and same hash
+		if parBlock.Hash() == hash {
+			continue
+		}
+		if parBlock.Height() == height && parBlock.Hash() != hash {
+			delete(bc.chainForksHead, fHash)
+			continue
+		}
+
 		length := fBlock.Height() - height - 1
 		if length > maxLength {
 			maxLength = length
@@ -393,6 +401,7 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32) error {
 			tmp[fHash] = pars
 		}
 	}
+	var newCurBlock *types.Block
 	// chose current block
 	for i := uint32(0); i < maxLength; i++ {
 		var b *types.Block
@@ -402,12 +411,13 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32) error {
 			}
 			if b == nil {
 				b = v[i]
-				curHash = k
+				newCurBlock = b
 			} else {
 				bHash := b.Hash()
 				vHash := v[i].Hash()
 				if (b.Time() > v[i].Time()) || (b.Time() == v[i].Time() && bytes.Compare(bHash[:], vHash[:]) > 0) {
 					b = v[i]
+					newCurBlock = b
 				} else {
 					delete(tmp, k)
 				}
@@ -415,11 +425,15 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32) error {
 
 		}
 	}
-	// fork
-	if curHash != curBlock.Hash() {
-		bc.currentBlock.Store(curBlock)
-		bc.newBlockNotify(curBlock)
-		log.Infof("chain forked-2! current block: height(%d), hash(%s)", curBlock.Height(), curBlock.Hash().Hex())
+	if newCurBlock != nil {
+		// fork
+		oldCurHash := curBlock.Hash()
+		newCurHash := newCurBlock.Hash()
+		if bytes.Compare(newCurHash[:], oldCurHash[:]) != 0 {
+			bc.currentBlock.Store(curBlock)
+			bc.newBlockNotify(curBlock)
+			log.Infof("chain forked-2! oldCurHash{ h: %d, hash: %s}, newCurBlock{h:%d, hash: %s}", curBlock.Height(), oldCurHash.Hex(), newCurBlock.Height(), newCurHash.Hex())
+		}
 	}
 	// notify
 	subscribe.Send(subscribe.NewStableBlock, block)
