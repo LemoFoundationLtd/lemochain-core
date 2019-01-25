@@ -49,8 +49,8 @@ func Set(db *sql.DB, key string, val []byte) error {
 	}
 }
 
-func TxSet(db *sql.DB, hash, from, to string, val []byte, ver int64) error {
-	_, err := db.Exec("REPLACE INTO t_tx(tx_key, tx_from, tx_to, tx_val, tx_ver) VALUES (?,?,?,?,?)", hash, from, to, val, ver)
+func TxSet(db *sql.DB, hash, from, to string, val []byte, ver int64, st int64) error {
+	_, err := db.Exec("REPLACE INTO t_tx(tx_key, tx_from, tx_to, tx_val, tx_ver, tx_st) VALUES (?,?,?,?,?,?)", hash, from, to, val, ver, st)
 	if err != nil {
 		return err
 	} else {
@@ -58,44 +58,80 @@ func TxSet(db *sql.DB, hash, from, to string, val []byte, ver int64) error {
 	}
 }
 
-func TxGet8Hash(db *sql.DB, hash string) ([]byte, error) {
-	row := db.QueryRow("SELECT tx_val FROM t_tx WHERE tx_key = ?", hash)
+func TxGet8Hash(db *sql.DB, hash string) ([]byte, int64, error) {
+	row := db.QueryRow("SELECT tx_val, tx_st FROM t_tx WHERE tx_key = ?", hash)
 	var val []byte
-	err := row.Scan(&val)
+	var st int64
+	err := row.Scan(&val, &st)
 	if err != nil {
-		return nil, err
+		return nil, -1, err
 	} else {
-		return val, nil
+		return val, st, nil
 	}
 }
 
-func TxGet8Addr(db *sql.DB, addr string, start int64, size int) ([][]byte, int64, error) {
-	stmt, err := db.Prepare("SELECT tx_val, tx_ver FROM t_tx WHERE (tx_from = ? or tx_to = ?) and (tx_ver > ?) ORDER BY tx_ver ASC LIMIT 0, ?")
+func TxGet8AddrNext(db *sql.DB, addr string, start int64, size int) ([][]byte, []int64, int64, error) {
+	stmt, err := db.Prepare("SELECT tx_val, tx_ver, tx_st FROM t_tx WHERE (tx_from = ? or tx_to = ?) and (tx_ver > ?) ORDER BY tx_ver ASC LIMIT 0, ?")
 	if err != nil {
-		return nil, -1, err
+		return nil, nil, -1, err
 	}
 
 	rows, err := stmt.Query(addr, addr, start, size)
 	if err != nil {
-		return nil, -1, err
+		return nil, nil, -1, err
 	}
 
-	result := make([][]byte, 0)
+	resultVal := make([][]byte, 0)
+	resultSt := make([]int64, 0)
 	maxVer := start
 	for rows.Next() {
 		var val []byte
 		var ver int64
-		err := rows.Scan(&val, &ver)
+		var st int64
+		err := rows.Scan(&val, &ver, &st)
 		if err != nil {
-			return nil, -1, err
+			return nil, nil, -1, err
 		}
 
-		result = append(result, val)
+		resultVal = append(resultVal, val)
+		resultSt = append(resultSt, st)
 		if maxVer < ver {
 			maxVer = ver
 		}
 	}
-	return result, maxVer, nil
+	return resultVal, resultSt, maxVer, nil
+}
+
+func TxGet8AddrPre(db *sql.DB, addr string, start int64, size int) ([][]byte, []int64, int64, error) {
+	stmt, err := db.Prepare("SELECT tx_val, tx_ver, tx_st FROM t_tx WHERE (tx_from = ? or tx_to = ?) and (tx_ver < ?) ORDER BY tx_ver DESC LIMIT 0, ?")
+	if err != nil {
+		return nil, nil, -1, err
+	}
+
+	rows, err := stmt.Query(addr, addr, start, size)
+	if err != nil {
+		return nil, nil, -1, err
+	}
+
+	resultVal := make([][]byte, 0)
+	resultSt := make([]int64, 0)
+	maxVer := start
+	for rows.Next() {
+		var val []byte
+		var ver int64
+		var st int64
+		err := rows.Scan(&val, &ver, &st)
+		if err != nil {
+			return nil, nil, -1, err
+		}
+
+		resultVal = append(resultVal, val)
+		resultSt = append(resultSt, st)
+		if maxVer > ver {
+			maxVer = ver
+		}
+	}
+	return resultVal, resultSt, maxVer, nil
 }
 
 func Del(db *sql.DB, key string) error {

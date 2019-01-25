@@ -86,7 +86,7 @@ func (db *MySqlDB) TxGet8Hash(hash string) ([]byte, int64, error) {
 }
 
 func (db *MySqlDB) TxGet8AddrNext(addr string, start int64, size int) ([][]byte, []int64, int64, error) {
-	stmt, err := db.engine.Prepare("SELECT tx_val, tx_ver tx_st FROM t_tx WHERE (tx_from = ? or tx_to = ?) and (tx_ver > ?) ORDER BY tx_ver ASC LIMIT 0, ?")
+	stmt, err := db.engine.Prepare("SELECT tx_val, tx_ver, tx_st FROM t_tx WHERE (tx_from = ? or tx_to = ?) and (tx_ver > ?) ORDER BY tx_ver ASC LIMIT 0, ?")
 	if err != nil {
 		return nil, nil, -1, err
 	}
@@ -118,7 +118,7 @@ func (db *MySqlDB) TxGet8AddrNext(addr string, start int64, size int) ([][]byte,
 }
 
 func (db *MySqlDB) TxGet8AddrPre(addr string, start int64, size int) ([][]byte, []int64, int64, error) {
-	stmt, err := db.engine.Prepare("SELECT tx_val, tx_ver tx_st FROM t_tx WHERE (tx_from = ? or tx_to = ?) and (tx_ver < ?) ORDER BY tx_ver DESC LIMIT 0, ?")
+	stmt, err := db.engine.Prepare("SELECT tx_val, tx_ver, tx_st FROM t_tx WHERE (tx_from = ? or tx_to = ?) and (tx_ver < ?) ORDER BY tx_ver DESC LIMIT 0, ?")
 	if err != nil {
 		return nil, nil, -1, err
 	}
@@ -142,7 +142,7 @@ func (db *MySqlDB) TxGet8AddrPre(addr string, start int64, size int) ([][]byte, 
 
 		resultVal = append(resultVal, val)
 		resultSt = append(resultSt, st)
-		if maxVer < ver {
+		if maxVer > ver {
 			maxVer = ver
 		}
 	}
