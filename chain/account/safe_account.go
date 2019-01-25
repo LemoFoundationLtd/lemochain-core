@@ -8,17 +8,15 @@ import (
 
 // SafeAccount is used to record modifications with changelog. So that the modifications can be reverted
 type SafeAccount struct {
-	rawAccount  *Account
-	processor   *LogProcessor
-	origTxCount int
+	rawAccount *Account
+	processor  *LogProcessor
 }
 
 // NewSafeAccount creates an account object.
 func NewSafeAccount(processor *LogProcessor, account *Account) *SafeAccount {
 	return &SafeAccount{
-		rawAccount:  account,
-		processor:   processor,
-		origTxCount: len(account.GetTxHashList()),
+		rawAccount: account,
+		processor:  processor,
 	}
 }
 
@@ -40,6 +38,12 @@ func (a *SafeAccount) UnmarshalJSON(input []byte) error {
 
 func (a *SafeAccount) String() string {
 	return a.rawAccount.String()
+}
+
+func (a *SafeAccount) GetTxCount() int { return a.rawAccount.GetTxCount() }
+
+func (a *SafeAccount) SetTxCount(count int) {
+	a.rawAccount.SetTxCount(count)
 }
 
 func (a *SafeAccount) GetVoteFor() common.Address { return a.rawAccount.GetVoteFor() }
@@ -85,7 +89,8 @@ func (a *SafeAccount) GetStorageRoot() common.Hash  { return a.rawAccount.GetSto
 func (a *SafeAccount) GetStorageState(key common.Hash) ([]byte, error) {
 	return a.rawAccount.GetStorageState(key)
 }
-func (a *SafeAccount) GetTxHashList() []common.Hash { return a.rawAccount.GetTxHashList() }
+
+// func (a *SafeAccount) GetTxHashList() []common.Hash { return a.rawAccount.GetTxHashList() }
 
 // overwrite Account.SetXXX. Access Account with changelog
 func (a *SafeAccount) SetBalance(balance *big.Int) {
@@ -124,13 +129,6 @@ func (a *SafeAccount) SetStorageState(key common.Hash, value []byte) error {
 }
 
 func (a *SafeAccount) IsDirty() bool {
-	if a.origTxCount != len(a.GetTxHashList()) {
-		return true
-	}
 	logs := a.processor.GetLogsByAddress(a.GetAddress())
 	return len(logs) != 0
-}
-
-func (a *SafeAccount) AppendTx(hash common.Hash) {
-	a.rawAccount.AppendTx(hash)
 }

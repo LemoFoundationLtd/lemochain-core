@@ -105,9 +105,7 @@ type AccountData struct {
 
 	VoteFor   common.Address `json:"voteFor"`
 	Candidate Candidate      `json:"candidate"`
-
-	// related transactions include income and outcome
-	TxHashList []common.Hash `json:"-"`
+	TxCount   int
 }
 
 type accountDataMarshaling struct {
@@ -151,11 +149,11 @@ func (a *AccountData) EncodeRLP(w io.Writer) error {
 	}
 
 	return rlp.Encode(w, rlpAccountData{
-		Address:       a.Address,
-		Balance:       a.Balance,
-		CodeHash:      a.CodeHash,
-		StorageRoot:   a.StorageRoot,
-		TxHashList:    a.TxHashList,
+		Address:     a.Address,
+		Balance:     a.Balance,
+		CodeHash:    a.CodeHash,
+		StorageRoot: a.StorageRoot,
+		// TxHashList:    a.TxHashList,
 		VoteFor:       a.VoteFor,
 		Candidate:     candidate,
 		NewestRecords: NewestRecords,
@@ -171,8 +169,8 @@ func (a *AccountData) DecodeRLP(s *rlp.Stream) error {
 
 	err := s.Decode(&dec)
 	if err == nil {
-		a.Address, a.Balance, a.CodeHash, a.StorageRoot, a.TxHashList, a.VoteFor =
-			dec.Address, dec.Balance, dec.CodeHash, dec.StorageRoot, dec.TxHashList, dec.VoteFor
+		a.Address, a.Balance, a.CodeHash, a.StorageRoot, a.VoteFor =
+			dec.Address, dec.Balance, dec.CodeHash, dec.StorageRoot, dec.VoteFor
 		a.NewestRecords = make(map[ChangeLogType]VersionRecord)
 
 		a.Candidate.Votes = dec.Candidate.Votes
@@ -194,12 +192,6 @@ func (a *AccountData) Copy() *AccountData {
 			cpy.NewestRecords[logType] = record
 		}
 	}
-	if len(a.TxHashList) > 0 {
-		cpy.TxHashList = make([]common.Hash, 0, len(a.TxHashList))
-		for _, hash := range a.TxHashList {
-			cpy.TxHashList = append(cpy.TxHashList, hash)
-		}
-	}
 	return &cpy
 }
 
@@ -214,9 +206,7 @@ func (a *AccountData) String() string {
 	if a.StorageRoot != (common.Hash{}) {
 		set = append(set, fmt.Sprintf("StorageRoot: %s", a.StorageRoot.Hex()))
 	}
-	if len(a.TxHashList) > 0 {
-		set = append(set, fmt.Sprintf("TxHashList: %v", a.TxHashList))
-	}
+
 	if len(a.NewestRecords) > 0 {
 		records := make([]string, 0, len(a.NewestRecords))
 		for logType, record := range a.NewestRecords {
@@ -235,6 +225,9 @@ func (c Code) String() string {
 }
 
 type AccountAccessor interface {
+	GetTxCount() int
+	SetTxCount(count int)
+
 	GetVoteFor() common.Address
 	SetVoteFor(addr common.Address)
 
@@ -257,7 +250,6 @@ type AccountAccessor interface {
 	SetStorageRoot(root common.Hash)
 	GetStorageState(key common.Hash) ([]byte, error)
 	SetStorageState(key common.Hash, value []byte) error
-	GetTxHashList() []common.Hash
 	IsEmpty() bool
 	GetSuicide() bool
 	SetSuicide(suicided bool)

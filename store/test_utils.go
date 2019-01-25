@@ -93,10 +93,6 @@ func GetAccount(address string, balance int64, version uint32) *types.AccountDat
 		NewestRecords: newestRecords,
 		CodeHash:      common.HexToHash("0x1d5f11eaa13e02cdca886181dc38ab4cb8cf9092e86c000fb42d12c8b504500e"),
 		StorageRoot:   common.HexToHash("0xcbeb7c7e36b846713bc99b8fa527e8d552e31bfaa1ac0f2b773958cda3aba3ed"),
-		TxHashList: []common.Hash{
-			common.HexToHash("0x11"),
-			common.HexToHash("0x22"),
-		},
 	}
 }
 

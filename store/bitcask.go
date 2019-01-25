@@ -55,6 +55,10 @@ type BitCask struct {
 	IndexDB DB
 }
 
+func (bitcask *BitCask) afterScan(flag uint, route []byte, key []byte, val []byte, offset uint32) error {
+	return bitcask.After(flag, route, key, val, offset)
+}
+
 func (bitcask *BitCask) path(index int) string {
 	dataPath := filepath.Join(bitcask.HomePath, "%03d.data")
 	return fmt.Sprintf(dataPath, index)
@@ -86,6 +90,7 @@ func (bitcask *BitCask) createFile(index int) error {
 
 func NewBitCask(homePath string, lastIndex int, lastOffset uint32, after AfterScan, indexDB DB) (*BitCask, error) {
 	db := &BitCask{HomePath: homePath, After: after, IndexDB: indexDB}
+	db.After = after
 	isExist, err := db.isExist(homePath)
 	if err != nil {
 		return nil, err
@@ -164,7 +169,7 @@ func (bitcask *BitCask) scan(lastIndex int, lastOffset uint32) error {
 				return err
 			}
 
-			err = bitcask.After(uint(head.Flg), body.Route, body.Key, body.Val, lastOffset)
+			err = bitcask.afterScan(uint(head.Flg), body.Route, body.Key, body.Val, lastOffset)
 			if err != nil {
 				return err
 			} else {

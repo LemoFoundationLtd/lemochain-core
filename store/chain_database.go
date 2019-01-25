@@ -15,6 +15,24 @@ import (
 
 var max_candidate_count = 30
 
+func isCandidate(account *types.AccountData) bool {
+	if len(account.Candidate.Profile) <= 0 {
+		return false
+	}
+
+	result, ok := account.Candidate.Profile[types.CandidateKeyIsCandidate]
+	if !ok {
+		return false
+	} else {
+		val, err := strconv.ParseBool(result)
+		if err != nil {
+			panic("to bool err : " + err.Error())
+		}
+
+		return val
+	}
+}
+
 type CBlock struct {
 	Block *types.Block
 	Trie  *PatriciaTrie
@@ -24,11 +42,12 @@ type CBlock struct {
 type ChainDatabase struct {
 	LastConfirm     *CBlock
 	UnConfirmBlocks map[common.Hash]*CBlock
+	Context         *RunContext
 
+	DB      *MySqlDB
 	Beansdb *BeansDB
-	Context *RunContext
-
-	rw sync.RWMutex
+	BizDB   *BizDatabase
+	rw      sync.RWMutex
 }
 
 func NewChainDataBase(home string, driver string, dns string) *ChainDatabase {
@@ -46,34 +65,22 @@ func NewChainDataBase(home string, driver string, dns string) *ChainDatabase {
 
 	db := &ChainDatabase{
 		UnConfirmBlocks: make(map[common.Hash]*CBlock),
-		Beansdb:         NewBeansDB(home, 2, driver, dns),
+		DB:              NewMySqlDB(driver, dns),
 		Context:         NewRunContext(home),
 	}
 
+	db.Beansdb = NewBeansDB(home, 2, db.DB, db.AfterScan)
 	db.LastConfirm = &CBlock{
 		Block: db.Context.GetStableBlock(),
 		Trie:  NewEmptyDatabase(db.Beansdb),
 	}
 
+	db.BizDB = NewBizDatabase(db.Beansdb, db.DB)
 	return db
 }
 
-func isCandidate(account *types.AccountData) bool {
-	if len(account.Candidate.Profile) <= 0 {
-		return false
-	}
-
-	result, ok := account.Candidate.Profile[types.CandidateKeyIsCandidate]
-	if !ok {
-		return false
-	} else {
-		val, err := strconv.ParseBool(result)
-		if err != nil {
-			panic("to bool err : " + err.Error())
-		}
-
-		return val
-	}
+func (database *ChainDatabase) AfterScan(flag uint, key []byte, val []byte) error {
+	return database.BizDB.AfterCommit(flag, key, val)
 }
 
 /**
@@ -555,14 +562,18 @@ func (database *ChainDatabase) GetActDatabase(hash common.Hash) *PatriciaTrie {
 			return NewEmptyDatabase(database.Beansdb)
 		}
 
-		if (database.LastConfirm.Block != nil) && (hash != database.LastConfirm.Block.Hash()) {
-			panic("hash != database.LastConfirm.Block.Hash()")
-		}
+		// if (database.LastConfirm.Block != nil) && (hash != database.LastConfirm.Block.Hash()) {
+		// 	panic("hash != database.LastConfirm.Block.Hash()")
+		// }
 
 		return database.LastConfirm.Trie
 	} else {
 		return item.Trie
 	}
+}
+
+func (database *ChainDatabase) GetBizDatabase() BizDb {
+	return database.BizDB
 }
 
 // GetContractCode loads contract's code from db.
