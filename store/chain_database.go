@@ -558,9 +558,9 @@ func (database *ChainDatabase) GetActDatabase(hash common.Hash) *PatriciaTrie {
 			return NewEmptyDatabase(database.Beansdb)
 		}
 
-		if (database.LastConfirm.Block != nil) && (hash != database.LastConfirm.Block.Hash()) {
-			panic("hash != database.LastConfirm.Block.Hash()")
-		}
+		// if (database.LastConfirm.Block != nil) && (hash != database.LastConfirm.Block.Hash()) {
+		// 	panic("hash != database.LastConfirm.Block.Hash()")
+		// }
 
 		return database.LastConfirm.Trie
 	} else {
