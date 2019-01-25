@@ -18,13 +18,11 @@ package console
 
 import (
 	"encoding/json"
-	"io"
-	"strings"
-	"time"
-
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/network/rpc"
 	"github.com/robertkrimen/otto"
+	"io"
+	"strings"
 )
 
 // bridge is a collection of JavaScript utility methods to bride the .js runtime
@@ -42,68 +40,6 @@ func newBridge(client *rpc.Client, prompter UserPrompter, printer io.Writer) *br
 		prompter: prompter,
 		printer:  printer,
 	}
-}
-
-// Sleep will block the console for the specified number of seconds.
-func (b *bridge) Sleep(call otto.FunctionCall) (response otto.Value) {
-	if call.Argument(0).IsNumber() {
-		sleep, _ := call.Argument(0).ToInteger()
-		time.Sleep(time.Duration(sleep) * time.Second)
-		return otto.TrueValue()
-	}
-	return throwJSException("usage: sleep(<number of seconds>)")
-}
-
-// SleepBlocks will block the console for a specified number of new blocks optionally
-// until the given timeout is reached.
-func (b *bridge) SleepBlocks(call otto.FunctionCall) (response otto.Value) {
-	var (
-		blocks = int64(0)
-		sleep  = int64(9999999999999999) // indefinitely
-	)
-	// Parse the input parameters for the sleep
-	nArgs := len(call.ArgumentList)
-	if nArgs == 0 {
-		throwJSException("usage: sleepBlocks(<n blocks>[, max sleep in seconds])")
-	}
-	if nArgs >= 1 {
-		if call.Argument(0).IsNumber() {
-			blocks, _ = call.Argument(0).ToInteger()
-		} else {
-			throwJSException("expected number as first argument")
-		}
-	}
-	if nArgs >= 2 {
-		if call.Argument(1).IsNumber() {
-			sleep, _ = call.Argument(1).ToInteger()
-		} else {
-			throwJSException("expected number as second argument")
-		}
-	}
-	// go through the console, this will allow lemoClient to call the appropriate
-	// callbacks if a delayed response or notification is received.
-	blockNumber := func() int64 {
-		result, err := call.Otto.Run("lemo.blockNumber")
-		if err != nil {
-			throwJSException(err.Error())
-		}
-		block, err := result.ToInteger()
-		if err != nil {
-			throwJSException(err.Error())
-		}
-		return block
-	}
-	// Poll the current block number until either it ot a timeout is reached
-	targetBlockNr := blockNumber() + blocks
-	deadline := time.Now().Add(time.Duration(sleep) * time.Second)
-
-	for time.Now().Before(deadline) {
-		if blockNumber() >= targetBlockNr {
-			return otto.TrueValue()
-		}
-		time.Sleep(time.Second)
-	}
-	return otto.FalseValue()
 }
 
 type jsonrpcCall struct {

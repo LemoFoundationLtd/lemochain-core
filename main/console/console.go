@@ -116,26 +116,6 @@ func (c *Console) init(chainID uint16) error {
 	return nil
 }
 
-func (c *Console) getFromJsre(varaiblePath string) (result *otto.Object, err error) {
-	path := strings.Split(varaiblePath, ".")
-	for _, name := range path {
-		var value otto.Value
-		if result == nil {
-			value, err = c.jsre.Get(name)
-		} else {
-			value, err = result.Get(name)
-		}
-		if err != nil {
-			return result, err
-		}
-		result = value.Object()
-		if result == nil {
-			return result, fmt.Errorf("%s is undefined", name)
-		}
-	}
-	return result, err
-}
-
 // consoleOutput is an override for the console.log and console.error methods to
 // stream the output into the configured output stream instead of stdout.
 func (c *Console) consoleOutput(call otto.FunctionCall) otto.Value {
@@ -171,7 +151,7 @@ func (c *Console) Welcome() {
 	// List all the supported modules for the user to call
 	if modules, err := c.client.SupportedModules(); err == nil {
 		sort.Strings(modules)
-		fmt.Fprintln(c.printer, "lemo modules:", strings.Join(modules, ", "))
+		fmt.Fprintln(c.printer, "server side modules:", strings.Join(modules, ", "))
 	}
 	fmt.Fprintln(c.printer)
 }

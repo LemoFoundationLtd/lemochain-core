@@ -355,7 +355,7 @@ func TestTxProcessor_ApplyTxs2(t *testing.T) {
 	assert.Equal(t, senderBalance.Sub(senderBalance, cost), newSenderBalance)
 }
 
-//  Test_voteAndRegisteTx测试投票交易和注册候选节点交易
+// Test_voteAndRegisteTx测试投票交易和注册候选节点交易
 func Test_voteAndRegisteTx(t *testing.T) {
 	store.ClearData()
 	p := NewTxProcessor(newChain())
