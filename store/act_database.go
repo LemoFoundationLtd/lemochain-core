@@ -158,24 +158,28 @@ func (trie *PatriciaTrie) Find(key []byte) *types.AccountData {
 
 	tmp := common.ToHex(key[:])
 	act := trie.find(trie.root, tmp)
-	if act == nil {
-		val, err := trie.reader.Get(key)
-		if err != nil {
-			return nil
-		} else {
-			var account types.AccountData
-			err = rlp.DecodeBytes(val, &account)
-			if err != nil {
-				return nil
-			} else {
-				trie.insert(trie.root, tmp, &account)
-			}
-
-			return &account
-		}
-	} else {
+	if act != nil {
 		return act
 	}
+
+	val, err := trie.reader.Get(key)
+	if err != nil {
+		panic("trie.reader.Get(key):" + err.Error())
+	}
+
+	if val == nil {
+		return nil
+	}
+
+	var account types.AccountData
+	err = rlp.DecodeBytes(val, &account)
+	if err != nil {
+		panic("trie.reader.Get(key):" + err.Error())
+	} else {
+		trie.insert(trie.root, tmp, &account)
+	}
+
+	return &account
 }
 
 func (trie *PatriciaTrie) find(curNode *PatriciaNode, key string) *types.AccountData {

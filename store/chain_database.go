@@ -484,7 +484,7 @@ func (database *ChainDatabase) SetStableBlock(hash common.Hash) error {
 		if last == nil || last.Block == nil || last.Trie == nil {
 			database.LastConfirm = item
 		} else {
-			last.Trie.DelDye(last.Block.Height())
+			// last.Trie.DelDye(last.Block.Height())
 			database.LastConfirm = item
 		}
 	}
@@ -506,7 +506,7 @@ func (database *ChainDatabase) SetStableBlock(hash common.Hash) error {
 	clear := func(max uint32) {
 		for k, v := range database.UnConfirmBlocks {
 			if v.Block.Height() < database.LastConfirm.Block.Height() {
-				v.Trie.DelDye(v.Block.Height())
+				// v.Trie.DelDye(v.Block.Height())
 				delete(database.UnConfirmBlocks, k)
 			}
 		}

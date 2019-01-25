@@ -27,7 +27,7 @@ type MySqlDB struct {
 func NewMySqlDB(driver string, dns string) *MySqlDB {
 	db, err := Open(driver, dns)
 	if err != nil {
-		panic("OPEN MYSQL DATABASE ERROR.")
+		panic("OPEN MYSQL DATABASE ERROR." + err.Error())
 	} else {
 		return &MySqlDB{
 			engine: db,
