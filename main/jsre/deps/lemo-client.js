@@ -24,7 +24,7 @@
 	});
 
 	var _core = createCommonjsModule(function (module) {
-	var core = module.exports = { version: '2.6.0' };
+	var core = module.exports = { version: '2.5.7' };
 	if (typeof __e == 'number') __e = core; // eslint-disable-line no-undef
 	});
 	var _core_1 = _core.version;
@@ -246,7 +246,7 @@
 	  return store[key] || (store[key] = value !== undefined ? value : {});
 	})('versions', []).push({
 	  version: _core.version,
-	  mode: _library ? 'pure' : 'global',
+	  mode: 'global',
 	  copyright: '© 2018 Denis Pushkarev (zloirock.ru)'
 	});
 	});
@@ -6194,9 +6194,11 @@
 	        }, _callee, this, [[0, 6]]);
 	      }));
 
-	      return function send(_x) {
+	      function send(_x) {
 	        return _send.apply(this, arguments);
-	      };
+	      }
+
+	      return send;
 	    }()
 	  }]);
 
@@ -6373,9 +6375,11 @@
 	        }, _callee, this);
 	      }));
 
-	      return function send(_x, _x2) {
+	      function send(_x, _x2) {
 	        return _send.apply(this, arguments);
-	      };
+	      }
+
+	      return send;
 	    }()
 	    /**
 	     * Send batch request to lemo node asynchronously over RPC
@@ -6435,9 +6439,11 @@
 	        }, _callee2, this);
 	      }));
 
-	      return function sendBatch(_x3) {
+	      function sendBatch(_x3) {
 	        return _sendBatch.apply(this, arguments);
-	      };
+	      }
+
+	      return sendBatch;
 	    }()
 	    /**
 	     * Poll till the response changed
@@ -6589,212 +6595,16 @@
 	  return JSON.stringify(data);
 	}
 
-	// true  -> String#at
-	// false -> String#codePointAt
-	var _stringAt = function (TO_STRING) {
-	  return function (that, pos) {
-	    var s = String(_defined(that));
-	    var i = _toInteger(pos);
-	    var l = s.length;
-	    var a, b;
-	    if (i < 0 || i >= l) return TO_STRING ? '' : undefined;
-	    a = s.charCodeAt(i);
-	    return a < 0xd800 || a > 0xdbff || i + 1 === l || (b = s.charCodeAt(i + 1)) < 0xdc00 || b > 0xdfff
-	      ? TO_STRING ? s.charAt(i) : a
-	      : TO_STRING ? s.slice(i, i + 2) : (a - 0xd800 << 10) + (b - 0xdc00) + 0x10000;
-	  };
-	};
-
-	var at = _stringAt(true);
-
-	 // `AdvanceStringIndex` abstract operation
-	// https://tc39.github.io/ecma262/#sec-advancestringindex
-	var _advanceStringIndex = function (S, index, unicode) {
-	  return index + (unicode ? at(S, index).length : 1);
-	};
-
-	// getting tag from 19.1.3.6 Object.prototype.toString()
-
-	var TAG$1 = _wks('toStringTag');
-	// ES3 wrong here
-	var ARG = _cof(function () { return arguments; }()) == 'Arguments';
-
-	// fallback for IE11 Script Access Denied error
-	var tryGet = function (it, key) {
-	  try {
-	    return it[key];
-	  } catch (e) { /* empty */ }
-	};
-
-	var _classof = function (it) {
-	  var O, T, B;
-	  return it === undefined ? 'Undefined' : it === null ? 'Null'
-	    // @@toStringTag case
-	    : typeof (T = tryGet(O = Object(it), TAG$1)) == 'string' ? T
-	    // builtinTag case
-	    : ARG ? _cof(O)
-	    // ES3 arguments fallback
-	    : (B = _cof(O)) == 'Object' && typeof O.callee == 'function' ? 'Arguments' : B;
-	};
-
-	var builtinExec = RegExp.prototype.exec;
-
-	 // `RegExpExec` abstract operation
-	// https://tc39.github.io/ecma262/#sec-regexpexec
-	var _regexpExecAbstract = function (R, S) {
-	  var exec = R.exec;
-	  if (typeof exec === 'function') {
-	    var result = exec.call(R, S);
-	    if (typeof result !== 'object') {
-	      throw new TypeError('RegExp exec method returned something other than an Object or null');
-	    }
-	    return result;
-	  }
-	  if (_classof(R) !== 'RegExp') {
-	    throw new TypeError('RegExp#exec called on incompatible receiver');
-	  }
-	  return builtinExec.call(R, S);
-	};
-
-	var nativeExec = RegExp.prototype.exec;
-	// This always refers to the native implementation, because the
-	// String#replace polyfill uses ./fix-regexp-well-known-symbol-logic.js,
-	// which loads this file before patching the method.
-	var nativeReplace = String.prototype.replace;
-
-	var patchedExec = nativeExec;
-
-	var LAST_INDEX = 'lastIndex';
-
-	var UPDATES_LAST_INDEX_WRONG = (function () {
-	  var re1 = /a/,
-	      re2 = /b*/g;
-	  nativeExec.call(re1, 'a');
-	  nativeExec.call(re2, 'a');
-	  return re1[LAST_INDEX] !== 0 || re2[LAST_INDEX] !== 0;
-	})();
-
-	// nonparticipating capturing group, copied from es5-shim's String#split patch.
-	var NPCG_INCLUDED = /()??/.exec('')[1] !== undefined;
-
-	var PATCH = UPDATES_LAST_INDEX_WRONG || NPCG_INCLUDED;
-
-	if (PATCH) {
-	  patchedExec = function exec(str) {
-	    var re = this;
-	    var lastIndex, reCopy, match, i;
-
-	    if (NPCG_INCLUDED) {
-	      reCopy = new RegExp('^' + re.source + '$(?!\\s)', _flags.call(re));
-	    }
-	    if (UPDATES_LAST_INDEX_WRONG) lastIndex = re[LAST_INDEX];
-
-	    match = nativeExec.call(re, str);
-
-	    if (UPDATES_LAST_INDEX_WRONG && match) {
-	      re[LAST_INDEX] = re.global ? match.index + match[0].length : lastIndex;
-	    }
-	    if (NPCG_INCLUDED && match && match.length > 1) {
-	      // Fix browsers whose `exec` methods don't consistently return `undefined`
-	      // for NPCG, like IE8. NOTE: This doesn' work for /(.?)?/
-	      // eslint-disable-next-line no-loop-func
-	      nativeReplace.call(match[0], reCopy, function () {
-	        for (i = 1; i < arguments.length - 2; i++) {
-	          if (arguments[i] === undefined) match[i] = undefined;
-	        }
-	      });
-	    }
-
-	    return match;
-	  };
-	}
-
-	var _regexpExec = patchedExec;
-
-	_export({
-	  target: 'RegExp',
-	  proto: true,
-	  forced: _regexpExec !== /./.exec
-	}, {
-	  exec: _regexpExec
-	});
-
-	var SPECIES = _wks('species');
-
-	var REPLACE_SUPPORTS_NAMED_GROUPS = !_fails(function () {
-	  // #replace needs built-in support for named groups.
-	  // #match works fine because it just return the exec results, even if it has
-	  // a "grops" property.
-	  var re = /./;
-	  re.exec = function () {
-	    var result = [];
-	    result.groups = { a: '7' };
-	    return result;
-	  };
-	  return ''.replace(re, '$<a>') !== '7';
-	});
-
-	var SPLIT_WORKS_WITH_OVERWRITTEN_EXEC = (function () {
-	  // Chrome 51 has a buggy "split" implementation when RegExp#exec !== nativeExec
-	  var re = /(?:)/;
-	  var originalExec = re.exec;
-	  re.exec = function () { return originalExec.apply(this, arguments); };
-	  var result = 'ab'.split(re);
-	  return result.length === 2 && result[0] === 'a' && result[1] === 'b';
-	})();
-
 	var _fixReWks = function (KEY, length, exec) {
 	  var SYMBOL = _wks(KEY);
-
-	  var DELEGATES_TO_SYMBOL = !_fails(function () {
-	    // String methods call symbol-named RegEp methods
+	  var fns = exec(_defined, SYMBOL, ''[KEY]);
+	  var strfn = fns[0];
+	  var rxfn = fns[1];
+	  if (_fails(function () {
 	    var O = {};
 	    O[SYMBOL] = function () { return 7; };
 	    return ''[KEY](O) != 7;
-	  });
-
-	  var DELEGATES_TO_EXEC = DELEGATES_TO_SYMBOL ? !_fails(function () {
-	    // Symbol-named RegExp methods call .exec
-	    var execCalled = false;
-	    var re = /a/;
-	    re.exec = function () { execCalled = true; return null; };
-	    if (KEY === 'split') {
-	      // RegExp[@@split] doesn't call the regex's exec method, but first creates
-	      // a new one. We need to return the patched regex when creating the new one.
-	      re.constructor = {};
-	      re.constructor[SPECIES] = function () { return re; };
-	    }
-	    re[SYMBOL]('');
-	    return !execCalled;
-	  }) : undefined;
-
-	  if (
-	    !DELEGATES_TO_SYMBOL ||
-	    !DELEGATES_TO_EXEC ||
-	    (KEY === 'replace' && !REPLACE_SUPPORTS_NAMED_GROUPS) ||
-	    (KEY === 'split' && !SPLIT_WORKS_WITH_OVERWRITTEN_EXEC)
-	  ) {
-	    var nativeRegExpMethod = /./[SYMBOL];
-	    var fns = exec(
-	      _defined,
-	      SYMBOL,
-	      ''[KEY],
-	      function maybeCallNative(nativeMethod, regexp, str, arg2, forceStringMethod) {
-	        if (regexp.exec === _regexpExec) {
-	          if (DELEGATES_TO_SYMBOL && !forceStringMethod) {
-	            // The native String method already delegates to @@method (this
-	            // polyfilled function), leasing to infinite recursion.
-	            // We avoid it by directly calling the native @@method method.
-	            return { done: true, value: nativeRegExpMethod.call(regexp, str, arg2) };
-	          }
-	          return { done: true, value: nativeMethod.call(str, regexp, arg2) };
-	        }
-	        return { done: false };
-	      }
-	    );
-	    var strfn = fns[0];
-	    var rxfn = fns[1];
-
+	  })) {
 	    _redefine(String.prototype, KEY, strfn);
 	    _hide(RegExp.prototype, SYMBOL, length == 2
 	      // 21.2.5.8 RegExp.prototype[@@replace](string, replaceValue)
@@ -6807,115 +6617,16 @@
 	  }
 	};
 
-	var max$1 = Math.max;
-	var min$2 = Math.min;
-	var floor$1 = Math.floor;
-	var SUBSTITUTION_SYMBOLS = /\$([$&`']|\d\d?|<[^>]*>)/g;
-	var SUBSTITUTION_SYMBOLS_NO_NAMED = /\$([$&`']|\d\d?)/g;
-
-	var maybeToString = function (it) {
-	  return it === undefined ? it : String(it);
-	};
-
 	// @@replace logic
-	_fixReWks('replace', 2, function (defined, REPLACE, $replace, maybeCallNative) {
-	  return [
-	    // `String.prototype.replace` method
-	    // https://tc39.github.io/ecma262/#sec-string.prototype.replace
-	    function replace(searchValue, replaceValue) {
-	      var O = defined(this);
-	      var fn = searchValue == undefined ? undefined : searchValue[REPLACE];
-	      return fn !== undefined
-	        ? fn.call(searchValue, O, replaceValue)
-	        : $replace.call(String(O), searchValue, replaceValue);
-	    },
-	    // `RegExp.prototype[@@replace]` method
-	    // https://tc39.github.io/ecma262/#sec-regexp.prototype-@@replace
-	    function (regexp, replaceValue) {
-	      var res = maybeCallNative($replace, regexp, this, replaceValue);
-	      if (res.done) return res.value;
-
-	      var rx = _anObject(regexp);
-	      var S = String(this);
-	      var functionalReplace = typeof replaceValue === 'function';
-	      if (!functionalReplace) replaceValue = String(replaceValue);
-	      var global = rx.global;
-	      if (global) {
-	        var fullUnicode = rx.unicode;
-	        rx.lastIndex = 0;
-	      }
-	      var results = [];
-	      while (true) {
-	        var result = _regexpExecAbstract(rx, S);
-	        if (result === null) break;
-	        results.push(result);
-	        if (!global) break;
-	        var matchStr = String(result[0]);
-	        if (matchStr === '') rx.lastIndex = _advanceStringIndex(S, _toLength(rx.lastIndex), fullUnicode);
-	      }
-	      var accumulatedResult = '';
-	      var nextSourcePosition = 0;
-	      for (var i = 0; i < results.length; i++) {
-	        result = results[i];
-	        var matched = String(result[0]);
-	        var position = max$1(min$2(_toInteger(result.index), S.length), 0);
-	        var captures = [];
-	        // NOTE: This is equivalent to
-	        //   captures = result.slice(1).map(maybeToString)
-	        // but for some reason `nativeSlice.call(result, 1, result.length)` (called in
-	        // the slice polyfill when slicing native arrays) "doesn't work" in safari 9 and
-	        // causes a crash (https://pastebin.com/N21QzeQA) when trying to debug it.
-	        for (var j = 1; j < result.length; j++) captures.push(maybeToString(result[j]));
-	        var namedCaptures = result.groups;
-	        if (functionalReplace) {
-	          var replacerArgs = [matched].concat(captures, position, S);
-	          if (namedCaptures !== undefined) replacerArgs.push(namedCaptures);
-	          var replacement = String(replaceValue.apply(undefined, replacerArgs));
-	        } else {
-	          replacement = getSubstitution(matched, S, position, captures, namedCaptures, replaceValue);
-	        }
-	        if (position >= nextSourcePosition) {
-	          accumulatedResult += S.slice(nextSourcePosition, position) + replacement;
-	          nextSourcePosition = position + matched.length;
-	        }
-	      }
-	      return accumulatedResult + S.slice(nextSourcePosition);
-	    }
-	  ];
-
-	    // https://tc39.github.io/ecma262/#sec-getsubstitution
-	  function getSubstitution(matched, str, position, captures, namedCaptures, replacement) {
-	    var tailPos = position + matched.length;
-	    var m = captures.length;
-	    var symbols = SUBSTITUTION_SYMBOLS_NO_NAMED;
-	    if (namedCaptures !== undefined) {
-	      namedCaptures = _toObject(namedCaptures);
-	      symbols = SUBSTITUTION_SYMBOLS;
-	    }
-	    return $replace.call(replacement, symbols, function (match, ch) {
-	      var capture;
-	      switch (ch.charAt(0)) {
-	        case '$': return '$';
-	        case '&': return matched;
-	        case '`': return str.slice(0, position);
-	        case "'": return str.slice(tailPos);
-	        case '<':
-	          capture = namedCaptures[ch.slice(1, -1)];
-	          break;
-	        default: // \d\d?
-	          var n = +ch;
-	          if (n === 0) return ch;
-	          if (n > m) {
-	            var f = floor$1(n / 10);
-	            if (f === 0) return ch;
-	            if (f <= m) return captures[f - 1] === undefined ? ch.charAt(1) : captures[f - 1] + ch.charAt(1);
-	            return ch;
-	          }
-	          capture = captures[n - 1];
-	      }
-	      return capture === undefined ? '' : capture;
-	    });
-	  }
+	_fixReWks('replace', 2, function (defined, REPLACE, $replace) {
+	  // 21.1.3.14 String.prototype.replace(searchValue, replaceValue)
+	  return [function replace(searchValue, replaceValue) {
+	    var O = defined(this);
+	    var fn = searchValue == undefined ? undefined : searchValue[REPLACE];
+	    return fn !== undefined
+	      ? fn.call(searchValue, O, replaceValue)
+	      : $replace.call(String(O), searchValue, replaceValue);
+	  }, $replace];
 	});
 
 	var lookup = [];
@@ -9994,230 +9705,344 @@
 	  return ret;
 	};
 
-	var string_decoder = createCommonjsModule(function (module, exports) {
-	// Copyright Joyent, Inc. and other Node contributors.
-	//
-	// Permission is hereby granted, free of charge, to any person obtaining a
-	// copy of this software and associated documentation files (the
-	// "Software"), to deal in the Software without restriction, including
-	// without limitation the rights to use, copy, modify, merge, publish,
-	// distribute, sublicense, and/or sell copies of the Software, and to permit
-	// persons to whom the Software is furnished to do so, subject to the
-	// following conditions:
-	//
-	// The above copyright notice and this permission notice shall be included
-	// in all copies or substantial portions of the Software.
-	//
-	// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-	// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-	// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
-	// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-	// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-	// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
-	// USE OR OTHER DEALINGS IN THE SOFTWARE.
+	var safeBuffer$1 = createCommonjsModule(function (module, exports) {
+	/* eslint-disable node/no-deprecated-api */
 
 	var Buffer = bufferEs6.Buffer;
 
-	var isBufferEncoding = Buffer.isEncoding
-	  || function(encoding) {
-	       switch (encoding && encoding.toLowerCase()) {
-	         case 'hex': case 'utf8': case 'utf-8': case 'ascii': case 'binary': case 'base64': case 'ucs2': case 'ucs-2': case 'utf16le': case 'utf-16le': case 'raw': return true;
-	         default: return false;
-	       }
-	     };
-
-
-	function assertEncoding(encoding) {
-	  if (encoding && !isBufferEncoding(encoding)) {
-	    throw new Error('Unknown encoding: ' + encoding);
+	// alternative to using Object.keys for old browsers
+	function copyProps (src, dst) {
+	  for (var key in src) {
+	    dst[key] = src[key];
 	  }
+	}
+	if (Buffer.from && Buffer.alloc && Buffer.allocUnsafe && Buffer.allocUnsafeSlow) {
+	  module.exports = bufferEs6;
+	} else {
+	  // Copy properties from require('buffer')
+	  copyProps(bufferEs6, exports);
+	  exports.Buffer = SafeBuffer;
+	}
+
+	function SafeBuffer (arg, encodingOrOffset, length) {
+	  return Buffer(arg, encodingOrOffset, length)
+	}
+
+	// Copy static methods from Buffer
+	copyProps(Buffer, SafeBuffer);
+
+	SafeBuffer.from = function (arg, encodingOrOffset, length) {
+	  if (typeof arg === 'number') {
+	    throw new TypeError('Argument must not be a number')
+	  }
+	  return Buffer(arg, encodingOrOffset, length)
+	};
+
+	SafeBuffer.alloc = function (size, fill, encoding) {
+	  if (typeof size !== 'number') {
+	    throw new TypeError('Argument must be a number')
+	  }
+	  var buf = Buffer(size);
+	  if (fill !== undefined) {
+	    if (typeof encoding === 'string') {
+	      buf.fill(fill, encoding);
+	    } else {
+	      buf.fill(fill);
+	    }
+	  } else {
+	    buf.fill(0);
+	  }
+	  return buf
+	};
+
+	SafeBuffer.allocUnsafe = function (size) {
+	  if (typeof size !== 'number') {
+	    throw new TypeError('Argument must be a number')
+	  }
+	  return Buffer(size)
+	};
+
+	SafeBuffer.allocUnsafeSlow = function (size) {
+	  if (typeof size !== 'number') {
+	    throw new TypeError('Argument must be a number')
+	  }
+	  return bufferEs6.SlowBuffer(size)
+	};
+	});
+	var safeBuffer_1$1 = safeBuffer$1.Buffer;
+
+	/*<replacement>*/
+
+	var Buffer$1 = safeBuffer$1.Buffer;
+	/*</replacement>*/
+
+	var isEncoding = Buffer$1.isEncoding || function (encoding) {
+	  encoding = '' + encoding;
+	  switch (encoding && encoding.toLowerCase()) {
+	    case 'hex':case 'utf8':case 'utf-8':case 'ascii':case 'binary':case 'base64':case 'ucs2':case 'ucs-2':case 'utf16le':case 'utf-16le':case 'raw':
+	      return true;
+	    default:
+	      return false;
+	  }
+	};
+
+	function _normalizeEncoding(enc) {
+	  if (!enc) return 'utf8';
+	  var retried;
+	  while (true) {
+	    switch (enc) {
+	      case 'utf8':
+	      case 'utf-8':
+	        return 'utf8';
+	      case 'ucs2':
+	      case 'ucs-2':
+	      case 'utf16le':
+	      case 'utf-16le':
+	        return 'utf16le';
+	      case 'latin1':
+	      case 'binary':
+	        return 'latin1';
+	      case 'base64':
+	      case 'ascii':
+	      case 'hex':
+	        return enc;
+	      default:
+	        if (retried) return; // undefined
+	        enc = ('' + enc).toLowerCase();
+	        retried = true;
+	    }
+	  }
+	}
+	// Do not cache `Buffer.isEncoding` when checking encoding names as some
+	// modules monkey-patch it to support additional encodings
+	function normalizeEncoding(enc) {
+	  var nenc = _normalizeEncoding(enc);
+	  if (typeof nenc !== 'string' && (Buffer$1.isEncoding === isEncoding || !isEncoding(enc))) throw new Error('Unknown encoding: ' + enc);
+	  return nenc || enc;
 	}
 
 	// StringDecoder provides an interface for efficiently splitting a series of
 	// buffers into a series of JS strings without breaking apart multi-byte
-	// characters. CESU-8 is handled as part of the UTF-8 encoding.
-	//
-	// @TODO Handling all encodings inside a single object makes it very difficult
-	// to reason about this code, so it should be split up in the future.
-	// @TODO There should be a utf8-strict encoding that rejects invalid UTF-8 code
-	// points as used by CESU-8.
-	var StringDecoder = exports.StringDecoder = function(encoding) {
-	  this.encoding = (encoding || 'utf8').toLowerCase().replace(/[-_]/, '');
-	  assertEncoding(encoding);
+	// characters.
+	var StringDecoder_1 = StringDecoder;
+	function StringDecoder(encoding) {
+	  this.encoding = normalizeEncoding(encoding);
+	  var nb;
 	  switch (this.encoding) {
-	    case 'utf8':
-	      // CESU-8 represents each of Surrogate Pair by 3-bytes
-	      this.surrogateSize = 3;
-	      break;
-	    case 'ucs2':
 	    case 'utf16le':
-	      // UTF-16 represents each of Surrogate Pair by 2-bytes
-	      this.surrogateSize = 2;
-	      this.detectIncompleteChar = utf16DetectIncompleteChar;
+	      this.text = utf16Text;
+	      this.end = utf16End;
+	      nb = 4;
+	      break;
+	    case 'utf8':
+	      this.fillLast = utf8FillLast;
+	      nb = 4;
 	      break;
 	    case 'base64':
-	      // Base-64 stores 3 bytes in 4 chars, and pads the remainder.
-	      this.surrogateSize = 3;
-	      this.detectIncompleteChar = base64DetectIncompleteChar;
+	      this.text = base64Text;
+	      this.end = base64End;
+	      nb = 3;
 	      break;
 	    default:
-	      this.write = passThroughWrite;
+	      this.write = simpleWrite;
+	      this.end = simpleEnd;
 	      return;
 	  }
-
-	  // Enough space to store all bytes of a single character. UTF-8 needs 4
-	  // bytes, but CESU-8 may require up to 6 (3 bytes per surrogate).
-	  this.charBuffer = new Buffer(6);
-	  // Number of bytes received for the current incomplete multi-byte character.
-	  this.charReceived = 0;
-	  // Number of bytes expected for the current incomplete multi-byte character.
-	  this.charLength = 0;
-	};
-
-
-	// write decodes the given buffer and returns it as JS string that is
-	// guaranteed to not contain any partial multi-byte characters. Any partial
-	// character found at the end of the buffer is buffered up, and will be
-	// returned when calling write again with the remaining bytes.
-	//
-	// Note: Converting a Buffer containing an orphan surrogate to a String
-	// currently works, but converting a String to a Buffer (via `new Buffer`, or
-	// Buffer#write) will replace incomplete surrogates with the unicode
-	// replacement character. See https://codereview.chromium.org/121173009/ .
-	StringDecoder.prototype.write = function(buffer) {
-	  var charStr = '';
-	  // if our last write ended with an incomplete multibyte character
-	  while (this.charLength) {
-	    // determine how many remaining bytes this buffer has to offer for this char
-	    var available = (buffer.length >= this.charLength - this.charReceived) ?
-	        this.charLength - this.charReceived :
-	        buffer.length;
-
-	    // add the new bytes to the char buffer
-	    buffer.copy(this.charBuffer, this.charReceived, 0, available);
-	    this.charReceived += available;
-
-	    if (this.charReceived < this.charLength) {
-	      // still not enough chars in this buffer? wait for more ...
-	      return '';
-	    }
-
-	    // remove bytes belonging to the current character from the buffer
-	    buffer = buffer.slice(available, buffer.length);
-
-	    // get the character that was split
-	    charStr = this.charBuffer.slice(0, this.charLength).toString(this.encoding);
-
-	    // CESU-8: lead surrogate (D800-DBFF) is also the incomplete character
-	    var charCode = charStr.charCodeAt(charStr.length - 1);
-	    if (charCode >= 0xD800 && charCode <= 0xDBFF) {
-	      this.charLength += this.surrogateSize;
-	      charStr = '';
-	      continue;
-	    }
-	    this.charReceived = this.charLength = 0;
-
-	    // if there are no more bytes in this buffer, just emit our char
-	    if (buffer.length === 0) {
-	      return charStr;
-	    }
-	    break;
-	  }
-
-	  // determine and set charLength / charReceived
-	  this.detectIncompleteChar(buffer);
-
-	  var end = buffer.length;
-	  if (this.charLength) {
-	    // buffer the incomplete character bytes we got
-	    buffer.copy(this.charBuffer, 0, buffer.length - this.charReceived, end);
-	    end -= this.charReceived;
-	  }
-
-	  charStr += buffer.toString(this.encoding, 0, end);
-
-	  var end = charStr.length - 1;
-	  var charCode = charStr.charCodeAt(end);
-	  // CESU-8: lead surrogate (D800-DBFF) is also the incomplete character
-	  if (charCode >= 0xD800 && charCode <= 0xDBFF) {
-	    var size = this.surrogateSize;
-	    this.charLength += size;
-	    this.charReceived += size;
-	    this.charBuffer.copy(this.charBuffer, size, 0, size);
-	    buffer.copy(this.charBuffer, 0, 0, size);
-	    return charStr.substring(0, end);
-	  }
-
-	  // or just emit the charStr
-	  return charStr;
-	};
-
-	// detectIncompleteChar determines if there is an incomplete UTF-8 character at
-	// the end of the given buffer. If so, it sets this.charLength to the byte
-	// length that character, and sets this.charReceived to the number of bytes
-	// that are available for this character.
-	StringDecoder.prototype.detectIncompleteChar = function(buffer) {
-	  // determine how many bytes we have to check at the end of this buffer
-	  var i = (buffer.length >= 3) ? 3 : buffer.length;
-
-	  // Figure out if one of the last i bytes of our buffer announces an
-	  // incomplete char.
-	  for (; i > 0; i--) {
-	    var c = buffer[buffer.length - i];
-
-	    // See http://en.wikipedia.org/wiki/UTF-8#Description
-
-	    // 110XXXXX
-	    if (i == 1 && c >> 5 == 0x06) {
-	      this.charLength = 2;
-	      break;
-	    }
-
-	    // 1110XXXX
-	    if (i <= 2 && c >> 4 == 0x0E) {
-	      this.charLength = 3;
-	      break;
-	    }
-
-	    // 11110XXX
-	    if (i <= 3 && c >> 3 == 0x1E) {
-	      this.charLength = 4;
-	      break;
-	    }
-	  }
-	  this.charReceived = i;
-	};
-
-	StringDecoder.prototype.end = function(buffer) {
-	  var res = '';
-	  if (buffer && buffer.length)
-	    res = this.write(buffer);
-
-	  if (this.charReceived) {
-	    var cr = this.charReceived;
-	    var buf = this.charBuffer;
-	    var enc = this.encoding;
-	    res += buf.slice(0, cr).toString(enc);
-	  }
-
-	  return res;
-	};
-
-	function passThroughWrite(buffer) {
-	  return buffer.toString(this.encoding);
+	  this.lastNeed = 0;
+	  this.lastTotal = 0;
+	  this.lastChar = Buffer$1.allocUnsafe(nb);
 	}
 
-	function utf16DetectIncompleteChar(buffer) {
-	  this.charReceived = buffer.length % 2;
-	  this.charLength = this.charReceived ? 2 : 0;
+	StringDecoder.prototype.write = function (buf) {
+	  if (buf.length === 0) return '';
+	  var r;
+	  var i;
+	  if (this.lastNeed) {
+	    r = this.fillLast(buf);
+	    if (r === undefined) return '';
+	    i = this.lastNeed;
+	    this.lastNeed = 0;
+	  } else {
+	    i = 0;
+	  }
+	  if (i < buf.length) return r ? r + this.text(buf, i) : this.text(buf, i);
+	  return r || '';
+	};
+
+	StringDecoder.prototype.end = utf8End;
+
+	// Returns only complete characters in a Buffer
+	StringDecoder.prototype.text = utf8Text;
+
+	// Attempts to complete a partial non-UTF-8 character using bytes from a Buffer
+	StringDecoder.prototype.fillLast = function (buf) {
+	  if (this.lastNeed <= buf.length) {
+	    buf.copy(this.lastChar, this.lastTotal - this.lastNeed, 0, this.lastNeed);
+	    return this.lastChar.toString(this.encoding, 0, this.lastTotal);
+	  }
+	  buf.copy(this.lastChar, this.lastTotal - this.lastNeed, 0, buf.length);
+	  this.lastNeed -= buf.length;
+	};
+
+	// Checks the type of a UTF-8 byte, whether it's ASCII, a leading byte, or a
+	// continuation byte. If an invalid byte is detected, -2 is returned.
+	function utf8CheckByte(byte) {
+	  if (byte <= 0x7F) return 0;else if (byte >> 5 === 0x06) return 2;else if (byte >> 4 === 0x0E) return 3;else if (byte >> 3 === 0x1E) return 4;
+	  return byte >> 6 === 0x02 ? -1 : -2;
 	}
 
-	function base64DetectIncompleteChar(buffer) {
-	  this.charReceived = buffer.length % 3;
-	  this.charLength = this.charReceived ? 3 : 0;
+	// Checks at most 3 bytes at the end of a Buffer in order to detect an
+	// incomplete multi-byte UTF-8 character. The total number of bytes (2, 3, or 4)
+	// needed to complete the UTF-8 character (if applicable) are returned.
+	function utf8CheckIncomplete(self, buf, i) {
+	  var j = buf.length - 1;
+	  if (j < i) return 0;
+	  var nb = utf8CheckByte(buf[j]);
+	  if (nb >= 0) {
+	    if (nb > 0) self.lastNeed = nb - 1;
+	    return nb;
+	  }
+	  if (--j < i || nb === -2) return 0;
+	  nb = utf8CheckByte(buf[j]);
+	  if (nb >= 0) {
+	    if (nb > 0) self.lastNeed = nb - 2;
+	    return nb;
+	  }
+	  if (--j < i || nb === -2) return 0;
+	  nb = utf8CheckByte(buf[j]);
+	  if (nb >= 0) {
+	    if (nb > 0) {
+	      if (nb === 2) nb = 0;else self.lastNeed = nb - 3;
+	    }
+	    return nb;
+	  }
+	  return 0;
 	}
-	});
-	var string_decoder_1 = string_decoder.StringDecoder;
+
+	// Validates as many continuation bytes for a multi-byte UTF-8 character as
+	// needed or are available. If we see a non-continuation byte where we expect
+	// one, we "replace" the validated continuation bytes we've seen so far with
+	// a single UTF-8 replacement character ('\ufffd'), to match v8's UTF-8 decoding
+	// behavior. The continuation byte check is included three times in the case
+	// where all of the continuation bytes for a character exist in the same buffer.
+	// It is also done this way as a slight performance increase instead of using a
+	// loop.
+	function utf8CheckExtraBytes(self, buf, p) {
+	  if ((buf[0] & 0xC0) !== 0x80) {
+	    self.lastNeed = 0;
+	    return '\ufffd';
+	  }
+	  if (self.lastNeed > 1 && buf.length > 1) {
+	    if ((buf[1] & 0xC0) !== 0x80) {
+	      self.lastNeed = 1;
+	      return '\ufffd';
+	    }
+	    if (self.lastNeed > 2 && buf.length > 2) {
+	      if ((buf[2] & 0xC0) !== 0x80) {
+	        self.lastNeed = 2;
+	        return '\ufffd';
+	      }
+	    }
+	  }
+	}
+
+	// Attempts to complete a multi-byte UTF-8 character using bytes from a Buffer.
+	function utf8FillLast(buf) {
+	  var p = this.lastTotal - this.lastNeed;
+	  var r = utf8CheckExtraBytes(this, buf, p);
+	  if (r !== undefined) return r;
+	  if (this.lastNeed <= buf.length) {
+	    buf.copy(this.lastChar, p, 0, this.lastNeed);
+	    return this.lastChar.toString(this.encoding, 0, this.lastTotal);
+	  }
+	  buf.copy(this.lastChar, p, 0, buf.length);
+	  this.lastNeed -= buf.length;
+	}
+
+	// Returns all complete UTF-8 characters in a Buffer. If the Buffer ended on a
+	// partial character, the character's bytes are buffered until the required
+	// number of bytes are available.
+	function utf8Text(buf, i) {
+	  var total = utf8CheckIncomplete(this, buf, i);
+	  if (!this.lastNeed) return buf.toString('utf8', i);
+	  this.lastTotal = total;
+	  var end = buf.length - (total - this.lastNeed);
+	  buf.copy(this.lastChar, 0, end);
+	  return buf.toString('utf8', i, end);
+	}
+
+	// For UTF-8, a replacement character is added when ending on a partial
+	// character.
+	function utf8End(buf) {
+	  var r = buf && buf.length ? this.write(buf) : '';
+	  if (this.lastNeed) return r + '\ufffd';
+	  return r;
+	}
+
+	// UTF-16LE typically needs two bytes per character, but even if we have an even
+	// number of bytes available, we need to check if we end on a leading/high
+	// surrogate. In that case, we need to wait for the next two bytes in order to
+	// decode the last character properly.
+	function utf16Text(buf, i) {
+	  if ((buf.length - i) % 2 === 0) {
+	    var r = buf.toString('utf16le', i);
+	    if (r) {
+	      var c = r.charCodeAt(r.length - 1);
+	      if (c >= 0xD800 && c <= 0xDBFF) {
+	        this.lastNeed = 2;
+	        this.lastTotal = 4;
+	        this.lastChar[0] = buf[buf.length - 2];
+	        this.lastChar[1] = buf[buf.length - 1];
+	        return r.slice(0, -1);
+	      }
+	    }
+	    return r;
+	  }
+	  this.lastNeed = 1;
+	  this.lastTotal = 2;
+	  this.lastChar[0] = buf[buf.length - 1];
+	  return buf.toString('utf16le', i, buf.length - 1);
+	}
+
+	// For UTF-16LE we do not explicitly append special replacement characters if we
+	// end on a partial character, we simply let v8 handle that.
+	function utf16End(buf) {
+	  var r = buf && buf.length ? this.write(buf) : '';
+	  if (this.lastNeed) {
+	    var end = this.lastTotal - this.lastNeed;
+	    return r + this.lastChar.toString('utf16le', 0, end);
+	  }
+	  return r;
+	}
+
+	function base64Text(buf, i) {
+	  var n = (buf.length - i) % 3;
+	  if (n === 0) return buf.toString('base64', i);
+	  this.lastNeed = 3 - n;
+	  this.lastTotal = 3;
+	  if (n === 1) {
+	    this.lastChar[0] = buf[buf.length - 1];
+	  } else {
+	    this.lastChar[0] = buf[buf.length - 2];
+	    this.lastChar[1] = buf[buf.length - 1];
+	  }
+	  return buf.toString('base64', i, buf.length - n);
+	}
+
+	function base64End(buf) {
+	  var r = buf && buf.length ? this.write(buf) : '';
+	  if (this.lastNeed) return r + this.lastChar.toString('base64', 0, 3 - this.lastNeed);
+	  return r;
+	}
+
+	// Pass bytes on through for single-byte encodings (e.g. ascii, latin1, hex)
+	function simpleWrite(buf) {
+	  return buf.toString(this.encoding);
+	}
+
+	function simpleEnd(buf) {
+	  return buf && buf.length ? this.write(buf) : '';
+	}
 
 	Readable.ReadableState = ReadableState;
 
@@ -10307,7 +10132,7 @@
 	  this.decoder = null;
 	  this.encoding = null;
 	  if (options.encoding) {
-	    this.decoder = new string_decoder_1(options.encoding);
+	    this.decoder = new StringDecoder_1(options.encoding);
 	    this.encoding = options.encoding;
 	  }
 	}
@@ -10414,7 +10239,7 @@
 
 	// backwards compatibility.
 	Readable.prototype.setEncoding = function (enc) {
-	  this._readableState.decoder = new string_decoder_1(enc);
+	  this._readableState.decoder = new StringDecoder_1(enc);
 	  this._readableState.encoding = enc;
 	  return this;
 	};
@@ -11882,7 +11707,7 @@
 	}
 	});
 
-	var Buffer$1 = safeBuffer.Buffer;
+	var Buffer$2 = safeBuffer.Buffer;
 	var Transform$1 = Stream.Transform;
 
 
@@ -11926,9 +11751,9 @@
 	  };
 
 	  Keccak.prototype.update = function (data, encoding) {
-	    if (!Buffer$1.isBuffer(data) && typeof data !== 'string') throw new TypeError('Data must be a string or a buffer')
+	    if (!Buffer$2.isBuffer(data) && typeof data !== 'string') throw new TypeError('Data must be a string or a buffer')
 	    if (this._finalized) throw new Error('Digest already called')
-	    if (!Buffer$1.isBuffer(data)) data = Buffer$1.from(data, encoding);
+	    if (!Buffer$2.isBuffer(data)) data = Buffer$2.from(data, encoding);
 
 	    this._state.absorb(data);
 
@@ -11966,7 +11791,7 @@
 	  return Keccak
 	};
 
-	var Buffer$2 = safeBuffer.Buffer;
+	var Buffer$3 = safeBuffer.Buffer;
 	var Transform$2 = Stream.Transform;
 
 
@@ -12004,9 +11829,9 @@
 	  };
 
 	  Shake.prototype.update = function (data, encoding) {
-	    if (!Buffer$2.isBuffer(data) && typeof data !== 'string') throw new TypeError('Data must be a string or a buffer')
+	    if (!Buffer$3.isBuffer(data) && typeof data !== 'string') throw new TypeError('Data must be a string or a buffer')
 	    if (this._finalized) throw new Error('Squeeze already called')
-	    if (!Buffer$2.isBuffer(data)) data = Buffer$2.from(data, encoding);
+	    if (!Buffer$3.isBuffer(data)) data = Buffer$3.from(data, encoding);
 
 	    this._state.absorb(data);
 
@@ -12257,7 +12082,7 @@
 		p1600: p1600
 	};
 
-	var Buffer$3 = safeBuffer.Buffer;
+	var Buffer$4 = safeBuffer.Buffer;
 
 
 	function Keccak () {
@@ -12305,7 +12130,7 @@
 	Keccak.prototype.squeeze = function (length) {
 	  if (!this.squeezing) this.absorbLastFewBits(0x01);
 
-	  var output = Buffer$3.alloc(length);
+	  var output = Buffer$4.alloc(length);
 	  for (var i = 0; i < length; ++i) {
 	    output[i] = (this.state[~~(this.count / 4)] >>> (8 * (this.count % 4))) & 0xff;
 	    this.count += 1;
@@ -12329,6 +12154,72 @@
 
 	var js = api(keccak$1);
 
+	var safeBuffer$2 = createCommonjsModule(function (module, exports) {
+	/* eslint-disable node/no-deprecated-api */
+
+	var Buffer = bufferEs6.Buffer;
+
+	// alternative to using Object.keys for old browsers
+	function copyProps (src, dst) {
+	  for (var key in src) {
+	    dst[key] = src[key];
+	  }
+	}
+	if (Buffer.from && Buffer.alloc && Buffer.allocUnsafe && Buffer.allocUnsafeSlow) {
+	  module.exports = bufferEs6;
+	} else {
+	  // Copy properties from require('buffer')
+	  copyProps(bufferEs6, exports);
+	  exports.Buffer = SafeBuffer;
+	}
+
+	function SafeBuffer (arg, encodingOrOffset, length) {
+	  return Buffer(arg, encodingOrOffset, length)
+	}
+
+	// Copy static methods from Buffer
+	copyProps(Buffer, SafeBuffer);
+
+	SafeBuffer.from = function (arg, encodingOrOffset, length) {
+	  if (typeof arg === 'number') {
+	    throw new TypeError('Argument must not be a number')
+	  }
+	  return Buffer(arg, encodingOrOffset, length)
+	};
+
+	SafeBuffer.alloc = function (size, fill, encoding) {
+	  if (typeof size !== 'number') {
+	    throw new TypeError('Argument must be a number')
+	  }
+	  var buf = Buffer(size);
+	  if (fill !== undefined) {
+	    if (typeof encoding === 'string') {
+	      buf.fill(fill, encoding);
+	    } else {
+	      buf.fill(fill);
+	    }
+	  } else {
+	    buf.fill(0);
+	  }
+	  return buf
+	};
+
+	SafeBuffer.allocUnsafe = function (size) {
+	  if (typeof size !== 'number') {
+	    throw new TypeError('Argument must be a number')
+	  }
+	  return Buffer(size)
+	};
+
+	SafeBuffer.allocUnsafeSlow = function (size) {
+	  if (typeof size !== 'number') {
+	    throw new TypeError('Argument must be a number')
+	  }
+	  return bufferEs6.SlowBuffer(size)
+	};
+	});
+	var safeBuffer_1$2 = safeBuffer$2.Buffer;
+
 	// base-x encoding
 	// Forked from https://github.com/cryptocoinjs/bs58
 	// Originally written by Mike Hearn for BitcoinJ
@@ -12337,7 +12228,7 @@
 	// Merged Buffer refactorings from base58-native by Stephen Pair
 	// Copyright (c) 2013 BitPay Inc
 
-	var Buffer$4 = safeBuffer.Buffer;
+	var Buffer$5 = safeBuffer$2.Buffer;
 
 	var baseX = function base (ALPHABET) {
 	  var ALPHABET_MAP = {};
@@ -12381,7 +12272,7 @@
 
 	  function decodeUnsafe (string) {
 	    if (typeof string !== 'string') throw new TypeError('Expected String')
-	    if (string.length === 0) return Buffer$4.allocUnsafe(0)
+	    if (string.length === 0) return Buffer$5.allocUnsafe(0)
 
 	    var bytes = [0];
 	    for (var i = 0; i < string.length; i++) {
@@ -12405,7 +12296,7 @@
 	      bytes.push(0);
 	    }
 
-	    return Buffer$4.from(bytes.reverse())
+	    return Buffer$5.from(bytes.reverse())
 	  }
 
 	  function decode (string) {
@@ -12420,6 +12311,30 @@
 	    decodeUnsafe: decodeUnsafe,
 	    decode: decode
 	  }
+	};
+
+	// getting tag from 19.1.3.6 Object.prototype.toString()
+
+	var TAG$1 = _wks('toStringTag');
+	// ES3 wrong here
+	var ARG = _cof(function () { return arguments; }()) == 'Arguments';
+
+	// fallback for IE11 Script Access Denied error
+	var tryGet = function (it, key) {
+	  try {
+	    return it[key];
+	  } catch (e) { /* empty */ }
+	};
+
+	var _classof = function (it) {
+	  var O, T, B;
+	  return it === undefined ? 'Undefined' : it === null ? 'Null'
+	    // @@toStringTag case
+	    : typeof (T = tryGet(O = Object(it), TAG$1)) == 'string' ? T
+	    // builtinTag case
+	    : ARG ? _cof(O)
+	    // ES3 arguments fallback
+	    : (B = _cof(O)) == 'Object' && typeof O.callee == 'function' ? 'Arguments' : B;
 	};
 
 	var _anInstance = function (it, Constructor, name, forbiddenField) {
@@ -12483,11 +12398,11 @@
 	// 7.3.20 SpeciesConstructor(O, defaultConstructor)
 
 
-	var SPECIES$1 = _wks('species');
+	var SPECIES = _wks('species');
 	var _speciesConstructor = function (O, D) {
 	  var C = _anObject(O).constructor;
 	  var S;
-	  return C === undefined || (S = _anObject(C)[SPECIES$1]) == undefined ? D : _aFunction(S);
+	  return C === undefined || (S = _anObject(C)[SPECIES]) == undefined ? D : _aFunction(S);
 	};
 
 	// fast apply, http://jsperf.lnkit.com/fast-apply/5
@@ -12704,11 +12619,11 @@
 	  return target;
 	};
 
-	var SPECIES$2 = _wks('species');
+	var SPECIES$1 = _wks('species');
 
 	var _setSpecies = function (KEY) {
 	  var C = _global[KEY];
-	  if (_descriptors && C && !C[SPECIES$2]) _objectDp.f(C, SPECIES$2, {
+	  if (_descriptors && C && !C[SPECIES$1]) _objectDp.f(C, SPECIES$1, {
 	    configurable: true,
 	    get: function () { return this; }
 	  });
@@ -13030,37 +12945,13 @@
 	_addToUnscopables('fill');
 
 	// @@match logic
-	_fixReWks('match', 1, function (defined, MATCH, $match, maybeCallNative) {
-	  return [
-	    // `String.prototype.match` method
-	    // https://tc39.github.io/ecma262/#sec-string.prototype.match
-	    function match(regexp) {
-	      var O = defined(this);
-	      var fn = regexp == undefined ? undefined : regexp[MATCH];
-	      return fn !== undefined ? fn.call(regexp, O) : new RegExp(regexp)[MATCH](String(O));
-	    },
-	    // `RegExp.prototype[@@match]` method
-	    // https://tc39.github.io/ecma262/#sec-regexp.prototype-@@match
-	    function (regexp) {
-	      var res = maybeCallNative($match, regexp, this);
-	      if (res.done) return res.value;
-	      var rx = _anObject(regexp);
-	      var S = String(this);
-	      if (!rx.global) return _regexpExecAbstract(rx, S);
-	      var fullUnicode = rx.unicode;
-	      rx.lastIndex = 0;
-	      var A = [];
-	      var n = 0;
-	      var result;
-	      while ((result = _regexpExecAbstract(rx, S)) !== null) {
-	        var matchStr = String(result[0]);
-	        A[n] = matchStr;
-	        if (matchStr === '') rx.lastIndex = _advanceStringIndex(S, _toLength(rx.lastIndex), fullUnicode);
-	        n++;
-	      }
-	      return n === 0 ? null : A;
-	    }
-	  ];
+	_fixReWks('match', 1, function (defined, MATCH, $match) {
+	  // 21.1.3.11 String.prototype.match(regexp)
+	  return [function match(regexp) {
+	    var O = defined(this);
+	    var fn = regexp == undefined ? undefined : regexp[MATCH];
+	    return fn !== undefined ? fn.call(regexp, O) : new RegExp(regexp)[MATCH](String(O));
+	  }, $match];
 	});
 
 	var _stringRepeat = function repeat(count) {
@@ -13110,9 +13001,13 @@
 	function formatMoney(mo) {
 	  mo = new bignumber(mo).toString(10);
 
-	  if (/0{18}$/.test(mo)) {
-	    return "".concat(mo.slice(0, mo.length - 18), " LEMO");
-	  } else if (/0{12}$/.test(mo)) {
+	  if (mo.length > 12) {
+	    // use LEMO
+	    if (/0{18}$/.test(mo)) {
+	      // no dot
+	      return "".concat(mo.slice(0, mo.length - 18), " LEMO");
+	    }
+
 	    if (mo.length <= 18) {
 	      mo = mo.padStart(19, '0');
 	    }
@@ -13120,7 +13015,10 @@
 	    var int = mo.slice(0, mo.length - 18);
 	    var rest = mo.slice(mo.length - 18).replace(/0+$/, '');
 	    return "".concat(int, ".").concat(rest, " LEMO");
-	  } else if (/0{9}$/.test(mo)) {
+	  } // use mo
+
+
+	  if (/0{9}$/.test(mo)) {
 	    return "".concat(mo.slice(0, mo.length - 9), "G mo");
 	  } else if (/0{6}$/.test(mo)) {
 	    return "".concat(mo.slice(0, mo.length - 6), "M mo");
@@ -13305,37 +13203,50 @@
 	  TWEAK_LENGTH_INVALID: 'tweak length is invalid'
 	};
 
-	var name = "elliptic";
-	var version$1 = "6.4.1";
-	var description = "EC cryptography";
-	var main = "lib/elliptic.js";
-	var files = [
-		"lib"
+	var _args = [
+		[
+			"github:LemoFoundationLtd/elliptic#fit_rollup",
+			"E:\\Work\\chain\\lemo-client"
+		]
 	];
-	var scripts = {
-		jscs: "jscs benchmarks/*.js lib/*.js lib/**/*.js lib/**/**/*.js test/index.js",
-		jshint: "jscs benchmarks/*.js lib/*.js lib/**/*.js lib/**/**/*.js test/index.js",
-		lint: "npm run jscs && npm run jshint",
-		unit: "istanbul test _mocha --reporter=spec test/index.js",
-		test: "npm run lint && npm run unit",
-		version: "grunt dist && git add dist/"
+	var _from = "github:LemoFoundationLtd/elliptic#fit_rollup";
+	var _id = "elliptic@github:LemoFoundationLtd/elliptic#1a6a65cfd3f2fc1fa8c7be357ed154521adf08e8";
+	var _inBundle = false;
+	var _integrity = "";
+	var _location = "/elliptic";
+	var _phantomChildren = {
 	};
-	var repository = {
+	var _requested = {
 		type: "git",
-		url: "git@github.com:indutny/elliptic"
+		raw: "github:LemoFoundationLtd/elliptic#fit_rollup",
+		rawSpec: "github:LemoFoundationLtd/elliptic#fit_rollup",
+		saveSpec: "github:LemoFoundationLtd/elliptic#fit_rollup",
+		fetchSpec: null,
+		gitCommittish: "fit_rollup"
 	};
-	var keywords = [
-		"EC",
-		"Elliptic",
-		"curve",
-		"Cryptography"
+	var _requiredBy = [
+		"/"
 	];
-	var author = "Fedor Indutny <fedor@indutny.com>";
-	var license = "MIT";
+	var _resolved = "github:LemoFoundationLtd/elliptic#1a6a65cfd3f2fc1fa8c7be357ed154521adf08e8";
+	var _spec = "github:LemoFoundationLtd/elliptic#fit_rollup";
+	var _where = "E:\\Work\\chain\\lemo-client";
+	var author = {
+		name: "Fedor Indutny",
+		email: "fedor@indutny.com"
+	};
 	var bugs = {
 		url: "https://github.com/indutny/elliptic/issues"
 	};
-	var homepage = "https://github.com/indutny/elliptic";
+	var dependencies = {
+		"bn.js": "^4.4.0",
+		brorand: "^1.0.1",
+		"hash.js": "^1.0.0",
+		"hmac-drbg": "^1.0.0",
+		inherits: "^2.0.1",
+		"minimalistic-assert": "^1.0.0",
+		"minimalistic-crypto-utils": "^1.0.0"
+	};
+	var description = "EC cryptography";
 	var devDependencies = {
 		brfs: "^1.4.3",
 		coveralls: "^2.11.3",
@@ -13352,47 +13263,88 @@
 		jshint: "^2.6.0",
 		mocha: "^2.1.0"
 	};
-	var dependencies = {
-		"bn.js": "^4.4.0",
-		brorand: "^1.0.1",
-		"hash.js": "^1.0.0",
-		"hmac-drbg": "^1.0.0",
-		inherits: "^2.0.1",
-		"minimalistic-assert": "^1.0.0",
-		"minimalistic-crypto-utils": "^1.0.0"
+	var files = [
+		"lib"
+	];
+	var homepage = "https://github.com/indutny/elliptic";
+	var keywords = [
+		"EC",
+		"Elliptic",
+		"curve",
+		"Cryptography"
+	];
+	var license = "MIT";
+	var main = "lib/elliptic.js";
+	var name = "elliptic";
+	var repository = {
+		type: "git",
+		url: "git+ssh://git@github.com/indutny/elliptic.git"
 	};
+	var scripts = {
+		jscs: "jscs benchmarks/*.js lib/*.js lib/**/*.js lib/**/**/*.js test/index.js",
+		jshint: "jscs benchmarks/*.js lib/*.js lib/**/*.js lib/**/**/*.js test/index.js",
+		lint: "npm run jscs && npm run jshint",
+		test: "npm run lint && npm run unit",
+		unit: "istanbul test _mocha --reporter=spec test/index.js",
+		version: "grunt dist && git add dist/"
+	};
+	var version$1 = "6.4.1";
 	var _package = {
-		name: name,
-		version: version$1,
-		description: description,
-		main: main,
-		files: files,
-		scripts: scripts,
-		repository: repository,
-		keywords: keywords,
+		_args: _args,
+		_from: _from,
+		_id: _id,
+		_inBundle: _inBundle,
+		_integrity: _integrity,
+		_location: _location,
+		_phantomChildren: _phantomChildren,
+		_requested: _requested,
+		_requiredBy: _requiredBy,
+		_resolved: _resolved,
+		_spec: _spec,
+		_where: _where,
 		author: author,
-		license: license,
 		bugs: bugs,
-		homepage: homepage,
+		dependencies: dependencies,
+		description: description,
 		devDependencies: devDependencies,
-		dependencies: dependencies
+		files: files,
+		homepage: homepage,
+		keywords: keywords,
+		license: license,
+		main: main,
+		name: name,
+		repository: repository,
+		scripts: scripts,
+		version: version$1
 	};
 
 	var _package$1 = /*#__PURE__*/Object.freeze({
-		name: name,
-		version: version$1,
-		description: description,
-		main: main,
-		files: files,
-		scripts: scripts,
-		repository: repository,
-		keywords: keywords,
+		_args: _args,
+		_from: _from,
+		_id: _id,
+		_inBundle: _inBundle,
+		_integrity: _integrity,
+		_location: _location,
+		_phantomChildren: _phantomChildren,
+		_requested: _requested,
+		_requiredBy: _requiredBy,
+		_resolved: _resolved,
+		_spec: _spec,
+		_where: _where,
 		author: author,
-		license: license,
 		bugs: bugs,
-		homepage: homepage,
-		devDependencies: devDependencies,
 		dependencies: dependencies,
+		description: description,
+		devDependencies: devDependencies,
+		files: files,
+		homepage: homepage,
+		keywords: keywords,
+		license: license,
+		main: main,
+		name: name,
+		repository: repository,
+		scripts: scripts,
+		version: version$1,
 		default: _package
 	});
 
@@ -22382,7 +22334,7 @@
 
 	var MAX_TX_MESSAGE_LENGTH = 1024; // The max length limit of host field in deputy
 
-	var MAX_DEPUTY_HOST_LENGTH = 128;
+	var MAX_DEPUTY_HOST_LENGTH = 128; // The length of hash string (with 0x)
 
 	//     type    version  secp256k1.recovery  chainID
 	// |----8----|----7----|--------1--------|----16----|
@@ -23001,7 +22953,7 @@
 
 	    if (block.transactions) {
 	      block.transactions.forEach(function (item) {
-	        item.from = signer.recover(new Tx(item));
+	        parseTx(signer, item);
 	      });
 	    }
 	  }
@@ -23031,6 +22983,13 @@
 	  }
 
 	  return dict[logType];
+	}
+	function parseTx(signer, tx) {
+	  tx.from = signer.recover(new Tx(tx));
+	  tx.amount = parseMoney(tx.amount);
+	  tx.expirationTime = Number(tx.expirationTime);
+	  tx.gasLimit = Number(tx.gasLimit);
+	  return tx;
 	}
 	function parseMoney(str) {
 	  var result = new bignumber(str);
@@ -23102,9 +23061,11 @@
 	        }, _callee, this);
 	      }));
 
-	      return function call(_x, _x2) {
+	      function call(_x, _x2) {
 	        return _call.apply(this, arguments);
-	      };
+	      }
+
+	      return call;
 	    }()
 	  },
 
@@ -23140,9 +23101,11 @@
 	        }, _callee2, this);
 	      }));
 
-	      return function call(_x3, _x4) {
+	      function call(_x3, _x4) {
 	        return _call2.apply(this, arguments);
-	      };
+	      }
+
+	      return call;
 	    }()
 	  },
 
@@ -23276,6 +23239,19 @@
 
 	var MODULE_NAME$4 = 'tx';
 	var apis$4 = {
+	  /**
+	   * Get the specific transaction information
+	   * @param {string|number} hashOrHeight Hash or height which used to find the block
+	   * @param {boolean?} withBody Get the body detail if true
+	   * @return {Promise<object>}
+	   */
+	  getTx: {
+	    method: "".concat(MODULE_NAME$4, "_getTxByHash"),
+	    outputFormatter: function outputFormatter(tx) {
+	      return tx && parseTx(this.signer, tx);
+	    }
+	  },
+
 	  /**
 	   * Sign and send transaction
 	   * @param {string} privateKey The private key from sender account
