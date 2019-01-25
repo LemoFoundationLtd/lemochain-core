@@ -144,14 +144,13 @@ type BeansDB struct {
 	indexDB   DB
 	route2key map[string][]byte
 	scanIndex BitcaskIndexes
+
+	after BizAfterScan
 }
 
-func after(flag uint, route []byte, key []byte, val []byte, offset uint32) error {
-	log.Errorf("Flg : " + common.ToHex(route))
-	return nil
-}
+type BizAfterScan func(flag uint, key []byte, val []byte) error
 
-func NewBeansDB(home string, height int, DB *MySqlDB) *BeansDB {
+func NewBeansDB(home string, height int, DB *MySqlDB, after BizAfterScan) *BeansDB {
 	if height != 2 {
 		panic("beansdb height != 2")
 	}
@@ -161,6 +160,7 @@ func NewBeansDB(home string, height int, DB *MySqlDB) *BeansDB {
 	beansdb.bitcasks = make([]*BitCask, count)
 	beansdb.route2key = make(map[string][]byte)
 	beansdb.indexDB = DB
+	beansdb.after = after
 
 	err := beansdb.scanIndex.load(home)
 	if err != nil {
@@ -172,7 +172,7 @@ func NewBeansDB(home string, height int, DB *MySqlDB) *BeansDB {
 		str := fmt.Sprintf(dataPath, index>>4, index&0xf)
 
 		last := beansdb.scanIndex[index]
-		database, err := NewBitCask(str, int(last.Index), last.Offset, after, beansdb.indexDB)
+		database, err := NewBitCask(str, int(last.Index), last.Offset, beansdb.AfterScan, beansdb.indexDB)
 		beansdb.scanIndex[index].Index = uint32(database.CurIndex)
 		beansdb.scanIndex[index].Offset = uint32(database.CurOffset)
 
@@ -189,6 +189,15 @@ func NewBeansDB(home string, height int, DB *MySqlDB) *BeansDB {
 	}
 
 	return beansdb
+}
+
+func (beansdb *BeansDB) AfterScan(flag uint, route []byte, key []byte, val []byte, offset uint32) error {
+	log.Errorf("Flg : " + common.ToHex(route))
+	if beansdb.after == nil {
+		return nil
+	} else {
+		return beansdb.after(flag, key, val)
+	}
 }
 
 func (beansdb *BeansDB) route(route []byte) *BitCask {

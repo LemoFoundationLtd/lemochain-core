@@ -15,6 +15,24 @@ import (
 
 var max_candidate_count = 30
 
+func isCandidate(account *types.AccountData) bool {
+	if len(account.Candidate.Profile) <= 0 {
+		return false
+	}
+
+	result, ok := account.Candidate.Profile[types.CandidateKeyIsCandidate]
+	if !ok {
+		return false
+	} else {
+		val, err := strconv.ParseBool(result)
+		if err != nil {
+			panic("to bool err : " + err.Error())
+		}
+
+		return val
+	}
+}
+
 type CBlock struct {
 	Block *types.Block
 	Trie  *PatriciaTrie
@@ -51,7 +69,7 @@ func NewChainDataBase(home string, driver string, dns string) *ChainDatabase {
 		Context:         NewRunContext(home),
 	}
 
-	db.Beansdb = NewBeansDB(home, 2, db.DB)
+	db.Beansdb = NewBeansDB(home, 2, db.DB, db.AfterScan)
 	db.LastConfirm = &CBlock{
 		Block: db.Context.GetStableBlock(),
 		Trie:  NewEmptyDatabase(db.Beansdb),
@@ -61,22 +79,8 @@ func NewChainDataBase(home string, driver string, dns string) *ChainDatabase {
 	return db
 }
 
-func isCandidate(account *types.AccountData) bool {
-	if len(account.Candidate.Profile) <= 0 {
-		return false
-	}
-
-	result, ok := account.Candidate.Profile[types.CandidateKeyIsCandidate]
-	if !ok {
-		return false
-	} else {
-		val, err := strconv.ParseBool(result)
-		if err != nil {
-			panic("to bool err : " + err.Error())
-		}
-
-		return val
-	}
+func (database *ChainDatabase) AfterScan(flag uint, key []byte, val []byte) error {
+	return database.BizDB.AfterCommit(flag, key, val)
 }
 
 /**
