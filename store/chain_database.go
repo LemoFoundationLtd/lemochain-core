@@ -513,7 +513,7 @@ func (database *ChainDatabase) SetStableBlock(hash common.Hash) error {
 
 	clear := func(max uint32) {
 		for k, v := range database.UnConfirmBlocks {
-			if v.Block.Height() < database.LastConfirm.Block.Height() {
+			if v.Block.Height() <= database.LastConfirm.Block.Height() {
 				// v.Trie.DelDye(v.Block.Height())
 				delete(database.UnConfirmBlocks, k)
 			}
