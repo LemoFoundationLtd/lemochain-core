@@ -1,6 +1,7 @@
 package store
 
 import (
+	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
@@ -115,6 +116,9 @@ func (db *BizDatabase) afterBlock(key []byte, val []byte) error {
 		}
 
 		to := tx.To()
+		if to == nil {
+			to = &params.FeeReceiveAddress
+		}
 
 		hashStr := hash.Hex()
 		fromStr := from.Hex()
