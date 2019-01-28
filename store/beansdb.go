@@ -193,8 +193,14 @@ func NewBeansDB(home string, height int, DB *MySqlDB, after BizAfterScan) *Beans
 func (beansdb *BeansDB) AfterScan(flag uint, route []byte, key []byte, val []byte, offset uint32) error {
 	if beansdb.after == nil {
 		return nil
+	}
+
+	err := beansdb.after(flag, key, val)
+	if err != nil {
+		return err
 	} else {
-		return beansdb.after(flag, key, val)
+		delete(beansdb.route2key, string(key))
+		return nil
 	}
 }
 

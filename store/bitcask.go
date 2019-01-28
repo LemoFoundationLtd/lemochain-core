@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -56,7 +57,14 @@ type BitCask struct {
 }
 
 func (bitcask *BitCask) afterScan(flag uint, route []byte, key []byte, val []byte, offset uint32) error {
-	return bitcask.After(flag, route, key, val, offset)
+	log.Error("flg : " + strconv.Itoa(int(flag)))
+	err := bitcask.After(flag, route, key, val, offset)
+	if err != nil {
+		return err
+	} else {
+		delete(bitcask.Cache, string(key))
+		return nil
+	}
 }
 
 func (bitcask *BitCask) path(index int) string {
@@ -482,7 +490,15 @@ func (bitcask *BitCask) Commit(batch Batch) error {
 				len: len(tmpBuf[index]),
 			}
 
-			bitcask.IndexDB.SetIndex(int(items[index].Flg), batch.Route(), items[index].Key, int64(curPos))
+			err = bitcask.IndexDB.SetIndex(int(items[index].Flg), batch.Route(), items[index].Key, int64(curPos))
+			if err != nil {
+				return err
+			}
+
+			err = bitcask.afterScan(items[index].Flg, batch.Route(), items[index].Key, items[index].Val, curPos)
+			if err != nil {
+				return err
+			}
 		}
 		return nil
 	}
