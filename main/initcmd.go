@@ -6,6 +6,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
+	"github.com/LemoFoundationLtd/lemochain-go/main/config"
 	"github.com/LemoFoundationLtd/lemochain-go/main/node"
 	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"gopkg.in/urfave/cli.v1"
@@ -67,12 +68,18 @@ func setupGenesisBlock(genesisFile, datadir string) (common.Hash, error) {
 // saveBlock save block to db
 func saveBlock(datadir string, genesis *chain.Genesis) (common.Hash, error) {
 	chaindata := filepath.Join(datadir, "chaindata")
-	db := store.NewChainDataBase(chaindata, store.DRIVER_MYSQL, store.DNS_MYSQL)
+	cfg, err := config.ReadConfigFile(datadir)
+	if err != nil {
+		log.Error("read config failed: %v", err)
+	}
+	db := store.NewChainDataBase(chaindata, cfg.DbDriver, cfg.DbUri)
 	hash, err := chain.SetupGenesisBlock(db, genesis)
 	if err != nil {
 		return common.Hash{}, err
 	}
-	db.Close()
+	if err := db.Close(); err != nil {
+		log.Errorf("close db failed. %v", err)
+	}
 	// check deputy nodes
 	if len(genesis.DeputyNodes) == 0 {
 		return common.Hash{}, ErrEmptyDeputyNodes
