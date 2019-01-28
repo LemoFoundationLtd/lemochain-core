@@ -3,6 +3,7 @@ package store
 import (
 	"database/sql"
 	"fmt"
+	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -14,13 +15,24 @@ var (
 
 var (
 	tables = []string{
-		`CREATE TABLE IF NOT EXISTS t_kv (
-  				lm_flg int(11) NOT NULL,
-  				lm_key varchar(256) NOT NULL,
-  				lm_val blob NOT NULL,
-  				lm_pos bigint(22) NOT NULL,
-  				st timestamp NOT NULL 
-			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
+		`CREATE TABLE IF NOT EXISTS t_kv  (
+			lm_flg int(11) NOT NULL,
+  			lm_key varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  			lm_val blob NOT NULL,
+  			lm_pos bigint(22) NOT NULL,
+  			st timestamp(0) NOT NULL DEFAULT CURRENT_TIMESTAMP(0) ON UPDATE CURRENT_TIMESTAMP(0),
+  			PRIMARY KEY (lm_key) USING BTREE
+			) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic;`,
+		`CREATE TABLE IF NOT EXISTS t_tx  (
+ 			 tx_key varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  			tx_from varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  			tx_to varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  			tx_val blob NOT NULL,
+  			tx_ver bigint(255) NOT NULL,
+  			tx_st bigint(255) NULL DEFAULT NULL,
+  			st timestamp(0) NOT NULL DEFAULT CURRENT_TIMESTAMP(0) ON UPDATE CURRENT_TIMESTAMP(0),
+  			PRIMARY KEY (tx_key) USING BTREE
+			) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic;`,
 	}
 )
 
@@ -166,4 +178,5 @@ func InitTable(db *sql.DB) {
 			panic(fmt.Sprintf("init mysql's table error: %v", err))
 		}
 	}
+	log.Debug("init mysql's tables ok")
 }

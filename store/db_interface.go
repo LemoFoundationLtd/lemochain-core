@@ -78,11 +78,15 @@ func (db *MySqlDB) TxGetByHash(hash string) ([]byte, int64, error) {
 	var val []byte
 	var st int64
 	err := row.Scan(&val, &st)
+	if err == sql.ErrNoRows {
+		return nil, -1, nil
+	}
+
 	if err != nil {
 		return nil, -1, err
-	} else {
-		return val, st, nil
 	}
+
+	return val, st, nil
 }
 
 func (db *MySqlDB) TxGetByAddr(addr string, start int64, size int) ([][]byte, []int64, int64, error) {

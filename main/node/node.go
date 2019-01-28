@@ -13,6 +13,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/flag"
 	"github.com/LemoFoundationLtd/lemochain-go/common/flock"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
+	"github.com/LemoFoundationLtd/lemochain-go/main/config"
 	"github.com/LemoFoundationLtd/lemochain-go/network"
 	"github.com/LemoFoundationLtd/lemochain-go/network/p2p"
 	"github.com/LemoFoundationLtd/lemochain-go/network/rpc"
@@ -25,12 +26,6 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-)
-
-const ConfigGuideUrl = "Please visit https://github.com/LemoFoundationLtd/lemochain-go#configuration-file for detail"
-
-var (
-	ErrConfig = errors.New(`file "config.json" format error.` + ConfigGuideUrl)
 )
 
 type Node struct {
@@ -78,14 +73,12 @@ type Node struct {
 	lock     sync.RWMutex
 }
 
-func initConfig(flags flag.CmdFlags) (*Config, *ConfigFromFile, *miner.MineConfig) {
+func initConfig(flags flag.CmdFlags) (*Config, *config.ConfigFromFile, *miner.MineConfig) {
 	cfg := getNodeConfig(flags)
 	deputynode.SetSelfNodeKey(cfg.NodeKey())
 	cfg.P2P.PrivateKey = deputynode.GetSelfNodeKey()
 	log.Infof("Local nodeID: %s", common.ToHex(deputynode.GetSelfNodeID()))
-
-	filePath := filepath.Join(cfg.DataDir, "config.json")
-	configFromFile, err := readConfigFile(filePath)
+	configFromFile, err := config.ReadConfigFile(cfg.DataDir)
 	if err != nil {
 		panic(fmt.Sprintf("read config.json error: %v", err))
 	}
