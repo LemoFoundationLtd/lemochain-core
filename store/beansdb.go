@@ -173,6 +173,9 @@ func NewBeansDB(home string, height int, DB *MySqlDB, after BizAfterScan) *Beans
 
 		last := beansdb.scanIndex[index]
 		database, err := NewBitCask(str, int(last.Index), last.Offset, beansdb.AfterScan, beansdb.indexDB)
+		if err != nil {
+			panic("new bitcask err : " + err.Error())
+		}
 		beansdb.scanIndex[index].Index = uint32(database.CurIndex)
 		beansdb.scanIndex[index].Offset = uint32(database.CurOffset)
 

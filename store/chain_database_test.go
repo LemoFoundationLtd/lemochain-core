@@ -10,19 +10,6 @@ import (
 	"strconv"
 )
 
-func TestChainDatabase_Get(t *testing.T) {
-	// db := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
-	// db.GetBlockByHash(common.HexToHash("0x5850717e08df47246c36f5b9b0cd23993356933ad73f6fca7e01de995e683715"))
-
-	// var x uint8 = 129
-	// y := int8(x)
-	// log.Errorf("" + string(y))
-	//
-	// hash := common.BytesToHash(encodeBlockNumber2Hash(114).Bytes())
-	// log.Errorf("" + hash.Hex())
-	NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
-}
-
 func TestCacheChain_SetBlock(t *testing.T) {
 	ClearData()
 

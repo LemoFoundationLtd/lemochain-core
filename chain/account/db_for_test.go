@@ -56,7 +56,6 @@ var (
 				BalanceLog: {Version: 100, Height: 1},
 				CodeLog:    {Version: 101, Height: 2},
 			},
-			TxHashList: []common.Hash{common.HexToHash("0x11"), common.HexToHash("0x22")},
 		},
 	}
 	defaultCodes = []struct {

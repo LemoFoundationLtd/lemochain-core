@@ -68,6 +68,7 @@ func NewChainDataBase(home string, driver string, dns string) *ChainDatabase {
 		DB:              NewMySqlDB(driver, dns),
 		Context:         NewRunContext(home),
 	}
+	db.BizDB = NewBizDatabase(nil, db.DB)
 
 	db.Beansdb = NewBeansDB(home, 2, db.DB, db.AfterScan)
 	db.LastConfirm = &CBlock{
@@ -75,7 +76,6 @@ func NewChainDataBase(home string, driver string, dns string) *ChainDatabase {
 		Trie:  NewEmptyDatabase(db.Beansdb),
 	}
 
-	db.BizDB = NewBizDatabase(db.Beansdb, db.DB)
 	return db
 }
 
