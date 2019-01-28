@@ -375,14 +375,15 @@ func (t *PublicTxAPI) PendingTx(size int) []*types.Transaction {
 }
 
 // GetTxByHash 通过交易hash拉取指定交易
-func (t *PublicTxAPI) GetTxByHash(txHash common.Hash) (*store.VTransaction, error) {
+func (t *PublicTxAPI) GetTxByHash(hash string) (*store.VTransaction, error) {
+	txHash := common.HexToHash(hash)
 	bizDb := t.node.db.GetBizDatabase()
 	vTx, err := bizDb.GetTx8Hash(txHash)
 	return vTx, err
 }
 
 // PullBackTxListByAddress 向后拉取address所涉及的交易列表
-func (t *PublicTxAPI) PullBackTxListByAddress(src common.Address, start int64, size int) ([]*store.VTransaction, int64, error) {
+func (t *PublicTxAPI) GetTxListByAddress(src common.Address, start int64, size int) ([]*store.VTransaction, int64, error) {
 	// src, err := common.StringToAddress(lemoAddress)
 	// if err != nil {
 	// 	return nil, start, err
@@ -392,16 +393,16 @@ func (t *PublicTxAPI) PullBackTxListByAddress(src common.Address, start int64, s
 	return vTxs, next, err
 }
 
-// PullForwardTxListByAddress 向前拉取address所涉及的交易列表
-func (t *PublicTxAPI) PullForwardTxListByAddress(src common.Address, start int64, size int) ([]*store.VTransaction, int64, error) {
-	// src, err := common.StringToAddress(lemoAddress)
-	// if err != nil {
-	// 	return nil, start, err
-	// }
-	bizDb := t.node.db.GetBizDatabase()
-	vTxs, previous, err := bizDb.GetTx8AddrPre(src, start, size)
-	return vTxs, previous, err
-}
+// // PullForwardTxListByAddress 向前拉取address所涉及的交易列表
+// func (t *PublicTxAPI) PullForwardTxListByAddress(src common.Address, start int64, size int) ([]*store.VTransaction, int64, error) {
+// 	// src, err := common.StringToAddress(lemoAddress)
+// if err != nil {
+// 	return nil, start, err
+// }
+// 	bizDb := t.node.db.GetBizDatabase()
+// 	vTxs, previous, err := bizDb.GetTx8AddrPre(src, start, size)
+// 	return vTxs, previous, err
+// }
 
 // ReadContract read variables in a contract includes the return value of a function.
 func (t *PublicTxAPI) ReadContract(to *common.Address, data hexutil.Bytes) (string, error) {

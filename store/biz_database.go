@@ -12,7 +12,7 @@ import (
 
 type VTransaction struct {
 	Tx *types.Transaction `json:"tx"  gencodec:"required"`
-	St int64              `json:"st"  gencodec:"required"`
+	St int64              `json:"time"  gencodec:"required"`
 }
 
 type BizDb interface {
