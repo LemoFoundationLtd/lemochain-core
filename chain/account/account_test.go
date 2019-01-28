@@ -15,6 +15,19 @@ func TestAccount_Interface(t *testing.T) {
 	var _ types.AccountAccessor = (*Account)(nil)
 }
 
+func TestChainDatabase_Get(t *testing.T) {
+	// db := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
+	// db.GetBlockByHash(common.HexToHash("0x5850717e08df47246c36f5b9b0cd23993356933ad73f6fca7e01de995e683715"))
+
+	// var x uint8 = 129
+	// y := int8(x)
+	// log.Errorf("" + string(y))
+	//
+	// hash := common.BytesToHash(encodeBlockNumber2Hash(114).Bytes())
+	// log.Errorf("" + hash.Hex())
+	store.NewChainDataBase(store.GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
+}
+
 func loadAccount(db protocol.ChainDB, address common.Address) *Account {
 	acctDb := db.GetActDatabase(newestBlock.Hash())
 	data := acctDb.Find(address[:])
@@ -128,15 +141,6 @@ func TestAccount_SetCode_GetCode(t *testing.T) {
 	assert.Empty(t, readCode)
 	assert.Equal(t, common.Hash{}, account.GetCodeHash())
 	assert.Equal(t, false, account.codeIsDirty)
-}
-
-func TestAccount_GetTxHashList(t *testing.T) {
-	store.ClearData()
-	db := newDB()
-
-	account := loadAccount(db, defaultAccounts[0].Address)
-	assert.Equal(t, 2, len(account.GetTxHashList()))
-	assert.Equal(t, common.HexToHash("0x11"), account.GetTxHashList()[0])
 }
 
 func TestAccount_SetStorageRoot_GetStorageRoot(t *testing.T) {

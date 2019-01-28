@@ -135,8 +135,6 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 		}
 		gasUsed += gas
 		salary.Add(salary, fee)
-		from.(*account.SafeAccount).AppendTx(tx.Hash())
-		to.(*account.SafeAccount).AppendTx(tx.Hash())
 	}
 	if salary.Cmp(new(big.Int)) != 0 {
 		miner := manager.GetAccount(info.author)

@@ -14,6 +14,12 @@ type testAccount struct {
 	AccountData
 }
 
+func (f *testAccount) GetTxCount() int { return f.GetTxCount() }
+
+func (f *testAccount) SetTxCount(count int) {
+	f.SetTxCount(count)
+}
+
 func (f *testAccount) GetVoteFor() common.Address { return f.GetVoteFor() }
 
 func (f *testAccount) SetVoteFor(addr common.Address) {
@@ -54,7 +60,6 @@ func (f *testAccount) GetStorageRoot() common.Hash                         { ret
 func (f *testAccount) SetStorageRoot(root common.Hash)                     { f.AccountData.StorageRoot = root }
 func (f *testAccount) GetStorageState(key common.Hash) ([]byte, error)     { return nil, nil }
 func (f *testAccount) SetStorageState(key common.Hash, value []byte) error { return nil }
-func (f *testAccount) GetTxHashList() []common.Hash                        { return f.AccountData.TxHashList }
 func (f *testAccount) IsEmpty() bool {
 	for _, record := range f.AccountData.NewestRecords {
 		if record.Version != 0 {

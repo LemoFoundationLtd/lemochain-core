@@ -34,7 +34,6 @@ func TestSafeAccount_SetBalance_IsDirty(t *testing.T) {
 
 	account = loadSafeAccount(defaultAccounts[0].Address)
 	assert.Equal(t, false, account.IsDirty())
-	account.AppendTx(th(1))
 	assert.Equal(t, true, account.IsDirty())
 }
 
