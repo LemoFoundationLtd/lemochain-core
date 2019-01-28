@@ -23,7 +23,7 @@ func (a AccountData) MarshalJSON() ([]byte, error) {
 		NewestRecords map[ChangeLogType]VersionRecord `json:"records" gencodec:"required"`
 		VoteFor       common.Address                  `json:"voteFor"`
 		Candidate     Candidate                       `json:"candidate"`
-		TxCount       int
+		TxCount       int                             `json:"txCount"`
 	}
 	var enc AccountData
 	enc.Address = a.Address
@@ -47,7 +47,7 @@ func (a *AccountData) UnmarshalJSON(input []byte) error {
 		NewestRecords map[ChangeLogType]VersionRecord `json:"records" gencodec:"required"`
 		VoteFor       *common.Address                 `json:"voteFor"`
 		Candidate     *Candidate                      `json:"candidate"`
-		TxCount       *int
+		TxCount       *int                            `json:"txCount"`
 	}
 	var dec AccountData
 	if err := json.Unmarshal(input, &dec); err != nil {
