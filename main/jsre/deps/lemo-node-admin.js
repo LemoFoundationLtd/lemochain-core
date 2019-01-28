@@ -17,4 +17,6 @@ lemo._createAPI('tx', [
     {name: 'readContract', method: 'tx_readContract'},
     {name: 'estimateGas', method: 'tx_estimateGas'},
     {name: 'estimateCreateContractGas', method: 'tx_estimateCreateContractGas'},
+    {name: 'pullBackTxListByAddress', method: 'tx_pullBackTxListByAddress'},
+    {name: 'pullForwardTxListByAddress',method: 'tx_pullForwardTxListByAddress'},
 ]);
