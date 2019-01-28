@@ -33,6 +33,7 @@ type ChainDB interface {
 
 	CandidatesRanking(hash common.Hash)
 	GetCandidatesTop(hash common.Hash) []*store.Candidate
+	GetCandidatesPage(no int, size int) ([]common.Address, error)
 
 	Close() error
 }

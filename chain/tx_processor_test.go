@@ -483,7 +483,15 @@ func Test_voteAndRegisteTx(t *testing.T) {
 		Time:         parentBlock.Time() + 4,
 	}
 	tx01 := types.Transactions{registerTx01, getBalanceTx01, getBalanceTx02, getBalanceTx03}
-	newHeader01, _, _, err := p.ApplyTxs(header01, tx01)
+	a := make(chan bool)
+	var err error
+	var newHeader01 *types.Header
+	go func() {
+		newHeader01, _, _, err = p.ApplyTxs(header01, tx01)
+		a <- true
+	}()
+	<-a
+	// newHeader01, _, _, err := p.ApplyTxs(header01, tx01)
 	if err != nil {
 		fmt.Printf(" apply register tx err : %s \n", err)
 	}
@@ -631,7 +639,6 @@ func Test_voteAndRegisteTx(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-
 	// 	验证1. 候选节点testAddr票数减少量 = testAddr01的Balance，候选节点testAddr02票数增加量 = testAddr01的Balance
 	latestAccount00 := p.am.GetCanonicalAccount(testAddr)
 	block03testAddr00Votes := latestAccount00.GetVotes()
@@ -652,8 +659,6 @@ func Test_voteAndRegisteTx(t *testing.T) {
 	assert.Equal(t, changeCand00[types.CandidateKeyPort], pro[types.CandidateKeyPort])
 	assert.Equal(t, changeCand00[types.CandidateKeyHost], pro[types.CandidateKeyHost])
 
-	// chaindb := store.NewChainDataBase(store.GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
-	// chaindb.GetBlockByHash(Hash03)
 }
 
 // 序列化注册候选节点所用data

@@ -105,7 +105,7 @@ type AccountData struct {
 
 	VoteFor   common.Address `json:"voteFor"`
 	Candidate Candidate      `json:"candidate"`
-	TxCount   int
+	TxCount   int            `json:"txCount"`
 }
 
 type accountDataMarshaling struct {

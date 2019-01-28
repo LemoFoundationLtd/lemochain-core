@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/miner"
@@ -12,10 +13,16 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/network/p2p"
+	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"math/big"
 	"runtime"
 	"strconv"
 	"time"
+)
+
+const (
+	MaxTxToNameLength  = 100
+	MaxTxMessageLength = 1024
 )
 
 // Private
@@ -45,16 +52,6 @@ type PublicAccountAPI struct {
 // NewPublicAccountAPI
 func NewPublicAccountAPI(m *account.Manager) *PublicAccountAPI {
 	return &PublicAccountAPI{m}
-}
-
-// account下面的所有交易 todo
-func (a *PublicAccountAPI) GetTxListFromAccount(LemoAddress string) []*types.Transaction {
-	// account, err := a.GetAccount(LemoAddress)
-	// if err != nil {
-	// 	return nil
-	// }
-	// account.GetTxs()
-	return nil
 }
 
 // GetBalance get balance in mo
@@ -131,9 +128,34 @@ func NewPublicChainAPI(chain *chain.BlockChain) *PublicChainAPI {
 	return &PublicChainAPI{chain}
 }
 
-// GetCandidateNodeList 获取所有的候选节点列表信息 todo
-func (c *PublicChainAPI) GetCandidateNodeList(topNum uint8) []*CandiateInfo {
-	return nil
+// GetCandidateNodeList get all candidate node list information
+func (c *PublicChainAPI) GetCandidateNodeList(no, size int) ([]*CandiateInfo, error) {
+	addresses, err := c.chain.Db().GetCandidatesPage(no, size)
+	if err != nil {
+		return nil, err
+	}
+	candidateInfoes := make([]*CandiateInfo, 0)
+	for i := 0; i < len(addresses); i++ {
+		candidateAccount := c.chain.AccountManager().GetAccount(addresses[i])
+		mapProfile := candidateAccount.GetCandidateProfile()
+		if isCandidate, ok := mapProfile[types.CandidateKeyIsCandidate]; !ok || isCandidate == params.NotCandidateNode {
+			err = fmt.Errorf("the node of %s is not candidate node", addresses[i].String())
+			return nil, err
+		}
+		candidateInfo := &CandiateInfo{
+			Profile: make(map[string]string),
+		}
+		candidateInfo.Profile[types.CandidateKeyIsCandidate] = mapProfile[types.CandidateKeyIsCandidate]
+		candidateInfo.Profile[types.CandidateKeyHost] = mapProfile[types.CandidateKeyHost]
+		candidateInfo.Profile[types.CandidateKeyNodeID] = mapProfile[types.CandidateKeyNodeID]
+		candidateInfo.Profile[types.CandidateKeyPort] = mapProfile[types.CandidateKeyPort]
+		candidateInfo.Profile[types.CandidateKeyMinerAddress] = mapProfile[types.CandidateKeyMinerAddress]
+		candidateInfo.Votes = candidateAccount.GetVotes().String()
+		candidateInfo.CandidateAddress = addresses[i].String()
+
+		candidateInfoes = append(candidateInfoes, candidateInfo)
+	}
+	return candidateInfoes, nil
 }
 
 // GetBlockByNumber get block information by height
@@ -357,6 +379,17 @@ func NewPublicTxAPI(node *Node) *PublicTxAPI {
 
 // Send send a transaction
 func (t *PublicTxAPI) SendTx(tx *types.Transaction) (common.Hash, error) {
+
+	toNameLength := len(tx.ToName())
+	if toNameLength > MaxTxToNameLength {
+		toNameErr := fmt.Errorf("the length of toName field in transaction is out of max length limit. toName length = %d. max length limit = %d. ", toNameLength, MaxTxToNameLength)
+		return common.Hash{}, toNameErr
+	}
+	txMessageLength := len(tx.Message())
+	if txMessageLength > MaxTxMessageLength {
+		txMessageErr := fmt.Errorf("the length of message field in transaction is out of max length limit. message length = %d. max length limit = %d. ", txMessageLength, MaxTxMessageLength)
+		return common.Hash{}, txMessageErr
+	}
 	err := t.node.txPool.AddTx(tx)
 	return tx.Hash(), err
 }
@@ -366,10 +399,35 @@ func (t *PublicTxAPI) PendingTx(size int) []*types.Transaction {
 	return t.node.txPool.Pending(size)
 }
 
-// 通过交易hash拉取指定交易 todo
-func (t *PublicTxAPI) GetTxByHash(txHash common.Hash) *types.Transaction {
-	return nil
+// GetTxByHash pull the specified transaction through a transaction hash
+func (t *PublicTxAPI) GetTxByHash(hash string) (*store.VTransaction, error) {
+	txHash := common.HexToHash(hash)
+	bizDb := t.node.db.GetBizDatabase()
+	vTx, err := bizDb.GetTx8Hash(txHash)
+	return vTx, err
 }
+
+// GetTxListByAddress pull the list of transactions
+func (t *PublicTxAPI) GetTxListByAddress(lemoAddress string, start int64, size int) ([]*store.VTransaction, int64, error) {
+	src, err := common.StringToAddress(lemoAddress)
+	if err != nil {
+		return nil, start, err
+	}
+	bizDb := t.node.db.GetBizDatabase()
+	vTxs, next, err := bizDb.GetTx8AddrNext(src, start, size)
+	return vTxs, next, err
+}
+
+// // PullForwardTxListByAddress 向前拉取address所涉及的交易列表
+// func (t *PublicTxAPI) PullForwardTxListByAddress(src common.Address, start int64, size int) ([]*store.VTransaction, int64, error) {
+// 	// src, err := common.StringToAddress(lemoAddress)
+// if err != nil {
+// 	return nil, start, err
+// }
+// 	bizDb := t.node.db.GetBizDatabase()
+// 	vTxs, previous, err := bizDb.GetTx8AddrPre(src, start, size)
+// 	return vTxs, previous, err
+// }
 
 // ReadContract read variables in a contract includes the return value of a function.
 func (t *PublicTxAPI) ReadContract(to *common.Address, data hexutil.Bytes) (string, error) {

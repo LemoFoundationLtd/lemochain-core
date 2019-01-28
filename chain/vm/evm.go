@@ -211,7 +211,7 @@ func (evm *EVM) CallVoteTx(voter, node common.Address, gas uint64, initialBalanc
 }
 
 // Candidate node account transaction call
-func (evm *EVM) RegisterOrUpdateToCandidate(candidateAddress, to common.Address, candiNode types.CandidateProfile, gas uint64, value, initialSenderBalance *big.Int) (leftgas uint64, err error) {
+func (evm *EVM) RegisterOrUpdateToCandidate(candidateAddress, to common.Address, candiNode types.CandidateProfile, gas uint64, initialSenderBalance *big.Int) (leftgas uint64, err error) {
 	// Candidate node information
 	isCandidate, ok := candiNode[types.CandidateKeyIsCandidate]
 	if !ok {
@@ -233,13 +233,8 @@ func (evm *EVM) RegisterOrUpdateToCandidate(candidateAddress, to common.Address,
 	if !ok {
 		return gas, ErrOfRegisterPort
 	}
-
-	// Value cannot be less than the specified registration fee
-	if value.Cmp(params.RegisterCandidateNodeFees) < 0 {
-		return gas, ErrOfRegisterCandidateNodeFees
-	}
 	// Checking the balance is not enough
-	if !evm.CanTransfer(evm.am, candidateAddress, value) {
+	if !evm.CanTransfer(evm.am, candidateAddress, params.RegisterCandidateNodeFees) {
 		return gas, ErrInsufficientBalance
 	}
 	// var snapshot = evm.am.Snapshot()
@@ -258,7 +253,7 @@ func (evm *EVM) RegisterOrUpdateToCandidate(candidateAddress, to common.Address,
 			// Set the number of votes to 0
 			nodeAccount.SetVotes(big.NewInt(0))
 			// Transaction costs
-			evm.Transfer(evm.am, candidateAddress, to, value)
+			evm.Transfer(evm.am, candidateAddress, to, params.RegisterCandidateNodeFees)
 			return gas, nil
 		}
 
@@ -287,7 +282,7 @@ func (evm *EVM) RegisterOrUpdateToCandidate(candidateAddress, to common.Address,
 		nodeAccount.SetVotes(initialSenderBalance)
 
 	}
-	evm.Transfer(evm.am, candidateAddress, to, value)
+	evm.Transfer(evm.am, candidateAddress, to, params.RegisterCandidateNodeFees)
 	// if err != nil {
 	// 	evm.am.RevertToSnapshot(snapshot)
 	// }

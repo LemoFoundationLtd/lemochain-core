@@ -8,9 +8,11 @@ import (
 	"time"
 )
 
+//go:generate gencodec -type VTransaction -out gen_vTransaction_info_json.go
+
 type VTransaction struct {
-	Tx *types.Transaction
-	St int64
+	Tx *types.Transaction `json:"tx"  gencodec:"required"`
+	St int64              `json:"time"  gencodec:"required"`
 }
 
 type BizDb interface {

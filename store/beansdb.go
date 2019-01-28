@@ -175,15 +175,11 @@ func NewBeansDB(home string, height int, DB *MySqlDB, after BizAfterScan) *Beans
 		database, err := NewBitCask(str, int(last.Index), last.Offset, beansdb.AfterScan, beansdb.indexDB)
 		if err != nil {
 			panic("new bitcask err : " + err.Error())
+		} else {
+			beansdb.bitcasks[index] = database
+			beansdb.scanIndex[index].Index = uint32(database.CurIndex)
+			beansdb.scanIndex[index].Offset = uint32(database.CurOffset)
 		}
-		beansdb.scanIndex[index].Index = uint32(database.CurIndex)
-		beansdb.scanIndex[index].Offset = uint32(database.CurOffset)
-
-		if err != nil {
-			panic("new bitcask error : " + err.Error())
-		}
-
-		beansdb.bitcasks[index] = database
 	}
 
 	err = beansdb.scanIndex.flush(home)
@@ -195,11 +191,16 @@ func NewBeansDB(home string, height int, DB *MySqlDB, after BizAfterScan) *Beans
 }
 
 func (beansdb *BeansDB) AfterScan(flag uint, route []byte, key []byte, val []byte, offset uint32) error {
-	log.Errorf("Flg : " + common.ToHex(route))
 	if beansdb.after == nil {
 		return nil
+	}
+
+	err := beansdb.after(flag, key, val)
+	if err != nil {
+		return err
 	} else {
-		return beansdb.after(flag, key, val)
+		delete(beansdb.route2key, string(key))
+		return nil
 	}
 }
 
@@ -461,6 +462,74 @@ func (context *RunContext) SetStableBlock(block *types.Block) {
 
 func (context *RunContext) SetCandidate(address common.Address) {
 	context.Candidates[address] = true
+}
+
+func (context *RunContext) GetCandidatePage(no int, size int) ([]common.Address, error) {
+	file, err := os.OpenFile(context.Path, os.O_RDONLY, 0666)
+	defer file.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	headBuf := make([]byte, binary.Size(contextHead{}))
+	_, err = file.Seek(0, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = file.Read(headBuf)
+	if err != nil {
+		return nil, err
+	}
+
+	var head contextHead
+	err = binary.Read(bytes.NewBuffer(headBuf), binary.LittleEndian, &head)
+	if err != nil {
+		return nil, err
+	}
+
+	bodyBuf := make([]byte, head.FileLen)
+	_, err = file.Read(bodyBuf)
+	if err != nil {
+		return nil, err
+	}
+
+	offset := 0
+	itemHeadLen := binary.Size(contextItemHead{})
+	for {
+		if offset >= len(bodyBuf) {
+			return make([]common.Address, 0), nil
+		}
+
+		var itemHead contextItemHead
+		err = binary.Read(bytes.NewBuffer(bodyBuf[offset:offset+itemHeadLen]), binary.LittleEndian, &itemHead)
+		if err != nil {
+			return nil, err
+		}
+
+		if itemHead.Flg != 2 { // !addresses
+			offset = offset + itemHeadLen + int(itemHead.Len)
+			continue
+		}
+
+		if itemHead.Len == 0 {
+			return make([]common.Address, 0), nil
+		}
+
+		result := make([]common.Address, 0)
+		curPos := offset + itemHeadLen
+		page := (no - 1) * size
+		startCurIndex := curPos + page*common.AddressLength
+		for index := 0; index < size; index++ {
+			stopCurIndex := startCurIndex + (index+1)*common.AddressLength
+			if (page+index+1)*common.AddressLength > int(itemHead.Len) {
+				break
+			} else {
+				result = append(result, common.BytesToAddress(bodyBuf[startCurIndex:stopCurIndex]))
+			}
+		}
+		return result, nil
+	}
 }
 
 func (context *RunContext) CandidateIsExist(address common.Address) bool {
