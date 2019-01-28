@@ -36,7 +36,7 @@ func TestTxProcessor_Process(t *testing.T) {
 	store.ClearData()
 	p := NewTxProcessor(newChain())
 
-	sender := p.am.GetAccount(testAddr)
+	p.am.GetAccount(testAddr)
 	// last not stable block
 	block := defaultBlocks[2]
 	newHeader, err := p.Process(block)
@@ -48,9 +48,7 @@ func TestTxProcessor_Process(t *testing.T) {
 	assert.Equal(t, block.Header.VersionRoot, newHeader.VersionRoot)
 	assert.Equal(t, block.Header.LogRoot, newHeader.LogRoot)
 	assert.Equal(t, block.Hash(), newHeader.Hash())
-	sender = p.am.GetAccount(testAddr)
-	assert.Equal(t, 3, len(sender.GetTxHashList()))
-	assert.Equal(t, block.Txs[0].Hash(), sender.GetTxHashList()[2])
+	p.am.GetAccount(testAddr)
 
 	// block not in db
 	block = defaultBlocks[3]
@@ -63,9 +61,7 @@ func TestTxProcessor_Process(t *testing.T) {
 	assert.Equal(t, block.Header.VersionRoot, newHeader.VersionRoot)
 	assert.Equal(t, block.Header.LogRoot, newHeader.LogRoot)
 	assert.Equal(t, block.Hash(), newHeader.Hash())
-	sender = p.am.GetAccount(testAddr)
-	assert.Equal(t, 5, len(sender.GetTxHashList()))
-	assert.Equal(t, block.Txs[0].Hash(), sender.GetTxHashList()[3])
+	p.am.GetAccount(testAddr)
 
 	// genesis block
 	block = defaultBlocks[0]
