@@ -209,7 +209,7 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 			}
 		}
 
-		restGas, vmErr = vmEnv.RegisterOrUpdateToCandidate(senderAddr, params.FeeReceiveAddress, profile, restGas, tx.Amount(), initialSenderBalance)
+		restGas, vmErr = vmEnv.RegisterOrUpdateToCandidate(senderAddr, params.FeeReceiveAddress, profile, restGas, initialSenderBalance)
 
 	default:
 		log.Errorf("The type of transaction is not defined. txType = %d\n", tx.Type())
