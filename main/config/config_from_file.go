@@ -1,4 +1,4 @@
-package node
+package config
 
 import (
 	"encoding/json"
@@ -6,6 +6,13 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
 	"os"
+	"path/filepath"
+)
+
+const ConfigGuideUrl = "Please visit https://github.com/LemoFoundationLtd/lemochain-go#configuration-file for detail"
+
+var (
+	ErrConfig = errors.New(`file "config.json" format error.` + ConfigGuideUrl)
 )
 
 //go:generate gencodec -type ConfigFromFile -field-override ConfigFromFileMarshaling -out gen_config_from_file_json.go
@@ -30,8 +37,9 @@ type ConfigFromFileMarshaling struct {
 	PeriodBlock   hexutil.Uint64
 }
 
-func readConfigFile(path string) (*ConfigFromFile, error) {
-	file, err := os.Open(path)
+func ReadConfigFile(dir string) (*ConfigFromFile, error) {
+	filePath := filepath.Join(dir, "config.json")
+	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, errors.New(err.Error() + "\r\n" + ConfigGuideUrl)
 	}
