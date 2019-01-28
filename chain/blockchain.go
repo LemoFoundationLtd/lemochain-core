@@ -215,7 +215,8 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 
 	hash := block.Hash()
 	parentHash := block.ParentHash()
-	currentHash := bc.currentBlock.Load().(*types.Block).Hash()
+	oldCurrentBlock := bc.currentBlock.Load().(*types.Block)
+	currentHash := oldCurrentBlock.Hash()
 	if has, _ := bc.db.IsExistByHash(hash); has {
 		return nil
 	}
@@ -245,10 +246,11 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 		}
 	}
 
+	broadcastConfirm := false
 	bc.chainForksLock.Lock()
 	defer func() {
 		bc.chainForksLock.Unlock()
-		if deputynode.Instance().IsSelfDeputyNode(block.Height()) {
+		if broadcastConfirm && deputynode.Instance().IsSelfDeputyNode(block.Height()) {
 			// only broadcast confirm info within 3 minutes
 			currentTime := time.Now().Unix()
 			if currentTime-int64(block.Time()) < 3*60 {
@@ -267,6 +269,7 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 		delete(bc.chainForksHead, currentHash) // remove old record from fork container
 		bc.chainForksHead[hash] = block        // record new fork
 		bc.newBlockNotify(block)
+		broadcastConfirm = true
 		return nil
 	}
 
@@ -276,6 +279,9 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 		return nil
 	}
 	if fork {
+		if block.Height() > oldCurrentBlock.Height() {
+			broadcastConfirm = true
+		}
 		bc.currentBlock.Store(block)
 		log.Warnf("chain forked-1! current block: height(%d), hash(%s)", block.Height(), block.Hash().Hex())
 	}
@@ -363,7 +369,7 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32) error {
 	bc.chainForksLock.Lock()
 	defer bc.chainForksLock.Unlock()
 
-	tmp := make(map[common.Hash][]*types.Block)
+	tmp := make(map[common.Hash][]*types.Block) // record all fork's parent, reach to stable block
 	maxLength := uint32(0)
 	// prune forks
 	for fHash, fBlock := range bc.chainForksHead {
@@ -377,6 +383,9 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32) error {
 		}
 		if parBlock.Height() == height && parBlock.Hash() != hash {
 			delete(bc.chainForksHead, fHash)
+			continue
+		} else if parBlock.Height() == height && parBlock.Hash() == hash {
+			tmp[hash] = []*types.Block{}
 			continue
 		}
 
