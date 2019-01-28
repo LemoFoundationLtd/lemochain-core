@@ -128,11 +128,11 @@ func NewPublicChainAPI(chain *chain.BlockChain) *PublicChainAPI {
 	return &PublicChainAPI{chain}
 }
 
-// GetCandidateNodeList get all candidate node list information
-func (c *PublicChainAPI) GetCandidateNodeList(no, size int) ([]*CandiateInfo, error) {
-	addresses, err := c.chain.Db().GetCandidatesPage(no, size)
+// GetCandidateNodeList get all candidate node list information and return total candidate node
+func (c *PublicChainAPI) GetCandidateList(index, size int) ([]*CandiateInfo, int, error) {
+	addresses, total, err := c.chain.Db().GetCandidatesPage(index, size)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	candidateInfoes := make([]*CandiateInfo, 0)
 	for i := 0; i < len(addresses); i++ {
@@ -140,7 +140,7 @@ func (c *PublicChainAPI) GetCandidateNodeList(no, size int) ([]*CandiateInfo, er
 		mapProfile := candidateAccount.GetCandidateProfile()
 		if isCandidate, ok := mapProfile[types.CandidateKeyIsCandidate]; !ok || isCandidate == params.NotCandidateNode {
 			err = fmt.Errorf("the node of %s is not candidate node", addresses[i].String())
-			return nil, err
+			return nil, 0, err
 		}
 		candidateInfo := &CandiateInfo{
 			Profile: make(map[string]string),
@@ -155,7 +155,7 @@ func (c *PublicChainAPI) GetCandidateNodeList(no, size int) ([]*CandiateInfo, er
 
 		candidateInfoes = append(candidateInfoes, candidateInfo)
 	}
-	return candidateInfoes, nil
+	return candidateInfoes, total, nil
 }
 
 // GetBlockByNumber get block information by height
@@ -403,7 +403,7 @@ func (t *PublicTxAPI) PendingTx(size int) []*types.Transaction {
 func (t *PublicTxAPI) GetTxByHash(hash string) (*store.VTransaction, error) {
 	txHash := common.HexToHash(hash)
 	bizDb := t.node.db.GetBizDatabase()
-	vTx, err := bizDb.GetTx8Hash(txHash)
+	vTx, err := bizDb.GetTxByHash(txHash)
 	return vTx, err
 }
 
@@ -414,7 +414,7 @@ func (t *PublicTxAPI) GetTxListByAddress(lemoAddress string, start int64, size i
 		return nil, start, err
 	}
 	bizDb := t.node.db.GetBizDatabase()
-	vTxs, next, err := bizDb.GetTx8AddrNext(src, start, size)
+	vTxs, next, err := bizDb.GetTxByAddr(src, start, size)
 	return vTxs, next, err
 }
 

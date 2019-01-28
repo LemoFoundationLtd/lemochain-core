@@ -513,7 +513,7 @@ func (database *ChainDatabase) SetStableBlock(hash common.Hash) error {
 
 	clear := func(max uint32) {
 		for k, v := range database.UnConfirmBlocks {
-			if v.Block.Height() < database.LastConfirm.Block.Height() {
+			if v.Block.Height() <= database.LastConfirm.Block.Height() {
 				// v.Trie.DelDye(v.Block.Height())
 				delete(database.UnConfirmBlocks, k)
 			}
@@ -618,11 +618,11 @@ func (database *ChainDatabase) GetCandidatesTop(hash common.Hash) []*Candidate {
 	}
 }
 
-func (database *ChainDatabase) GetCandidatesPage(no int, size int) ([]common.Address, error) {
-	if (no <= 0) || (size > 200) || (size <= 0) {
-		return nil, errors.New("argment error.")
+func (database *ChainDatabase) GetCandidatesPage(index int, size int) ([]common.Address, int, error) {
+	if (index <= 0) || (size > 200) || (size <= 0) {
+		return nil, -1, errors.New("argment error.")
 	} else {
-		return database.Context.GetCandidatePage(no, size)
+		return database.Context.GetCandidatePage(index, size)
 	}
 }
 

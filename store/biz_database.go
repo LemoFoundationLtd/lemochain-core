@@ -1,6 +1,7 @@
 package store
 
 import (
+	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
@@ -16,11 +17,9 @@ type VTransaction struct {
 }
 
 type BizDb interface {
-	GetTx8Hash(hash common.Hash) (*VTransaction, error)
+	GetTxByHash(hash common.Hash) (*VTransaction, error)
 
-	GetTx8AddrPre(src common.Address, start int64, size int) ([]*VTransaction, int64, error)
-
-	GetTx8AddrNext(src common.Address, start int64, size int) ([]*VTransaction, int64, error)
+	GetTxByAddr(src common.Address, start int64, size int) ([]*VTransaction, int64, error)
 }
 
 type BizDatabase struct {
@@ -35,8 +34,8 @@ func NewBizDatabase(reader DatabaseReader, database *MySqlDB) *BizDatabase {
 	}
 }
 
-func (db *BizDatabase) GetTx8Hash(hash common.Hash) (*VTransaction, error) {
-	val, st, err := db.Database.TxGet8Hash(hash.Hex())
+func (db *BizDatabase) GetTxByHash(hash common.Hash) (*VTransaction, error) {
+	val, st, err := db.Database.TxGetByHash(hash.Hex())
 	if err != nil {
 		return nil, err
 	}
@@ -53,30 +52,8 @@ func (db *BizDatabase) GetTx8Hash(hash common.Hash) (*VTransaction, error) {
 	}, nil
 }
 
-func (db *BizDatabase) GetTx8AddrPre(src common.Address, start int64, size int) ([]*VTransaction, int64, error) {
-	vals, sts, ver, err := db.Database.TxGet8AddrPre(src.Hex(), start, size)
-	if err != nil {
-		return nil, -1, err
-	}
-
-	txs := make([]*VTransaction, len(vals))
-	for index := 0; index < len(vals); index++ {
-		var tx types.Transaction
-		err = rlp.DecodeBytes(vals[index], &tx)
-		if err != nil {
-			return nil, -1, err
-		}
-
-		txs[index] = &VTransaction{
-			Tx: &tx,
-			St: sts[index],
-		}
-	}
-	return txs, ver, nil
-}
-
-func (db *BizDatabase) GetTx8AddrNext(src common.Address, start int64, size int) ([]*VTransaction, int64, error) {
-	vals, sts, ver, err := db.Database.TxGet8AddrNext(src.Hex(), start, size)
+func (db *BizDatabase) GetTxByAddr(src common.Address, start int64, size int) ([]*VTransaction, int64, error) {
+	vals, sts, ver, err := db.Database.TxGetByAddr(src.Hex(), start, size)
 	if err != nil {
 		return nil, -1, err
 	}
@@ -139,6 +116,9 @@ func (db *BizDatabase) afterBlock(key []byte, val []byte) error {
 		}
 
 		to := tx.To()
+		if to == nil {
+			to = &params.FeeReceiveAddress
+		}
 
 		hashStr := hash.Hex()
 		fromStr := from.Hex()
