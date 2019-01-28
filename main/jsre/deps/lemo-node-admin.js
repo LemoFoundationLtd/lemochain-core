@@ -20,3 +20,6 @@ lemo._createAPI('tx', [
     {name: 'getTxListByAddress', method: 'tx_getTxListByAddress'},
     {name: 'getTxByHash',method: 'tx_getTxByHash'},
 ]);
+lemo._createAPI('chain', [
+    {name: 'getCandidateList', method: 'chain_getCandidateList'},
+]);

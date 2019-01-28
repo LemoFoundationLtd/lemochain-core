@@ -349,7 +349,7 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32) error {
 	}
 	// set stable
 	if err := bc.db.SetStableBlock(hash); err != nil {
-		log.Errorf("SetStableBlock error. height:%d hash:%s", height, common.ToHex(hash[:]))
+		log.Errorf("SetStableBlock error. height:%d hash:%s, err:%s", height, common.ToHex(hash[:]), err.Error())
 		return ErrSetStableBlockToDB
 	}
 	bc.stableBlock.Store(block)

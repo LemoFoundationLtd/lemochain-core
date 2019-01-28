@@ -354,7 +354,7 @@ func (p *TxProcessor) chargeForGas(charge *big.Int, minerAddress common.Address)
 	if charge.Cmp(new(big.Int)) != 0 {
 		miner := p.am.GetAccount(minerAddress)
 		miner.SetBalance(new(big.Int).Add(miner.GetBalance(), charge))
-		// 	矿工账户投给的候选节点的票数的变化
+		// change in the number of votes cast by the miner's account to the candidate node
 		p.changeCandidateVotes(minerAddress, charge)
 	}
 }
