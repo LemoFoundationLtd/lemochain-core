@@ -128,9 +128,34 @@ func NewPublicChainAPI(chain *chain.BlockChain) *PublicChainAPI {
 	return &PublicChainAPI{chain}
 }
 
-// GetCandidateNodeList 获取所有的候选节点列表信息 todo
-func (c *PublicChainAPI) GetCandidateNodeList(topNum uint8) []*CandiateInfo {
-	return nil
+// GetCandidateNodeList get all candidate node list information
+func (c *PublicChainAPI) GetCandidateNodeList(no, size int) ([]*CandiateInfo, error) {
+	addresses, err := c.chain.Db().GetCandidatesPage(no, size)
+	if err != nil {
+		return nil, err
+	}
+	candidateInfoes := make([]*CandiateInfo, 0)
+	for i := 0; i < len(addresses); i++ {
+		candidateAccount := c.chain.AccountManager().GetAccount(addresses[i])
+		mapProfile := candidateAccount.GetCandidateProfile()
+		if isCandidate, ok := mapProfile[types.CandidateKeyIsCandidate]; !ok || isCandidate == params.NotCandidateNode {
+			err = fmt.Errorf("the node of %s is not candidate node", addresses[i].String())
+			return nil, err
+		}
+		candidateInfo := &CandiateInfo{
+			Profile: make(map[string]string),
+		}
+		candidateInfo.Profile[types.CandidateKeyIsCandidate] = mapProfile[types.CandidateKeyIsCandidate]
+		candidateInfo.Profile[types.CandidateKeyHost] = mapProfile[types.CandidateKeyHost]
+		candidateInfo.Profile[types.CandidateKeyNodeID] = mapProfile[types.CandidateKeyNodeID]
+		candidateInfo.Profile[types.CandidateKeyPort] = mapProfile[types.CandidateKeyPort]
+		candidateInfo.Profile[types.CandidateKeyMinerAddress] = mapProfile[types.CandidateKeyMinerAddress]
+		candidateInfo.Votes = candidateAccount.GetVotes().String()
+		candidateInfo.CandidateAddress = addresses[i].String()
+
+		candidateInfoes = append(candidateInfoes, candidateInfo)
+	}
+	return candidateInfoes, nil
 }
 
 // GetBlockByNumber get block information by height
@@ -374,7 +399,7 @@ func (t *PublicTxAPI) PendingTx(size int) []*types.Transaction {
 	return t.node.txPool.Pending(size)
 }
 
-// GetTxByHash 通过交易hash拉取指定交易
+// GetTxByHash pull the specified transaction through a transaction hash
 func (t *PublicTxAPI) GetTxByHash(hash string) (*store.VTransaction, error) {
 	txHash := common.HexToHash(hash)
 	bizDb := t.node.db.GetBizDatabase()
@@ -382,12 +407,12 @@ func (t *PublicTxAPI) GetTxByHash(hash string) (*store.VTransaction, error) {
 	return vTx, err
 }
 
-// PullBackTxListByAddress 向后拉取address所涉及的交易列表
-func (t *PublicTxAPI) GetTxListByAddress(src common.Address, start int64, size int) ([]*store.VTransaction, int64, error) {
-	// src, err := common.StringToAddress(lemoAddress)
-	// if err != nil {
-	// 	return nil, start, err
-	// }
+// GetTxListByAddress pull the list of transactions
+func (t *PublicTxAPI) GetTxListByAddress(lemoAddress string, start int64, size int) ([]*store.VTransaction, int64, error) {
+	src, err := common.StringToAddress(lemoAddress)
+	if err != nil {
+		return nil, start, err
+	}
 	bizDb := t.node.db.GetBizDatabase()
 	vTxs, next, err := bizDb.GetTx8AddrNext(src, start, size)
 	return vTxs, next, err
