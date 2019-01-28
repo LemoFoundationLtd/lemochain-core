@@ -17,7 +17,7 @@ import (
 var max_candidate_count = 30
 
 func isCandidate(account *types.AccountData) bool {
-	if len(account.Candidate.Profile) <= 0 {
+	if (account == nil) || (len(account.Candidate.Profile) <= 0) {
 		return false
 	}
 
@@ -647,6 +647,10 @@ func (database *ChainDatabase) CandidatesRanking(hash common.Hash) {
 		result := make([]*Candidate, 0, len(database.Context.Candidates))
 		for k, _ := range database.Context.Candidates {
 			account := db.Find(k[:])
+			if account == nil {
+				panic("get all candidates error.account is nil.")
+			}
+
 			if !isCandidate(account) {
 				continue
 			} else {
