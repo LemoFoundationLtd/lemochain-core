@@ -73,7 +73,7 @@ func (db *MySqlDB) TxSet(hash, from, to string, val []byte, ver int64, st int64)
 	}
 }
 
-func (db *MySqlDB) TxGet8Hash(hash string) ([]byte, int64, error) {
+func (db *MySqlDB) TxGetByHash(hash string) ([]byte, int64, error) {
 	row := db.engine.QueryRow("SELECT tx_val, tx_st FROM t_tx WHERE tx_key = ?", hash)
 	var val []byte
 	var st int64
@@ -85,7 +85,7 @@ func (db *MySqlDB) TxGet8Hash(hash string) ([]byte, int64, error) {
 	}
 }
 
-func (db *MySqlDB) TxGet8AddrNext(addr string, start int64, size int) ([][]byte, []int64, int64, error) {
+func (db *MySqlDB) TxGetByAddr(addr string, start int64, size int) ([][]byte, []int64, int64, error) {
 	stmt, err := db.engine.Prepare("SELECT tx_val, tx_ver, tx_st FROM t_tx WHERE (tx_from = ? or tx_to = ?) and (tx_ver > ?) ORDER BY tx_ver ASC LIMIT 0, ?")
 	if err != nil {
 		return nil, nil, -1, err
@@ -111,38 +111,6 @@ func (db *MySqlDB) TxGet8AddrNext(addr string, start int64, size int) ([][]byte,
 		resultVal = append(resultVal, val)
 		resultSt = append(resultSt, st)
 		if maxVer < ver {
-			maxVer = ver
-		}
-	}
-	return resultVal, resultSt, maxVer, nil
-}
-
-func (db *MySqlDB) TxGet8AddrPre(addr string, start int64, size int) ([][]byte, []int64, int64, error) {
-	stmt, err := db.engine.Prepare("SELECT tx_val, tx_ver, tx_st FROM t_tx WHERE (tx_from = ? or tx_to = ?) and (tx_ver < ?) ORDER BY tx_ver DESC LIMIT 0, ?")
-	if err != nil {
-		return nil, nil, -1, err
-	}
-
-	rows, err := stmt.Query(addr, addr, start, size)
-	if err != nil {
-		return nil, nil, -1, err
-	}
-
-	resultVal := make([][]byte, 0)
-	resultSt := make([]int64, 0)
-	maxVer := start
-	for rows.Next() {
-		var val []byte
-		var ver int64
-		var st int64
-		err := rows.Scan(&val, &ver, &st)
-		if err != nil {
-			return nil, nil, -1, err
-		}
-
-		resultVal = append(resultVal, val)
-		resultSt = append(resultSt, st)
-		if maxVer > ver {
 			maxVer = ver
 		}
 	}
