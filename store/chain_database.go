@@ -3,6 +3,7 @@ package store
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
@@ -614,6 +615,14 @@ func (database *ChainDatabase) GetCandidatesTop(hash common.Hash) []*Candidate {
 		return database.LastConfirm.Top30
 	} else {
 		panic("hash != database.LastConfirm.Block.Hash()")
+	}
+}
+
+func (database *ChainDatabase) GetCandidatesPage(no int, size int) ([]common.Address, error) {
+	if (no <= 0) || (size > 200) || (size <= 0) {
+		return nil, errors.New("argment error.")
+	} else {
+		return database.Context.GetCandidatePage(no, size)
 	}
 }
 
