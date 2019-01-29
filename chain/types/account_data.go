@@ -23,6 +23,7 @@ type versionRecordMarshaling struct {
 	Height  hexutil.Uint32
 }
 
+//go:generate gencodec -type Candidate --field-override candidateMarshaling -out gen_candidate_json.go
 //go:generate gencodec -type AccountData --field-override accountDataMarshaling -out gen_account_data_json.go
 
 // AccountData is the Lemochain consensus representation of accounts.
@@ -91,8 +92,12 @@ func (a *CandidateProfile) DecodeRLP(s *rlp.Stream) error {
 }
 
 type Candidate struct {
-	Votes   *big.Int
-	Profile CandidateProfile
+	Votes   *big.Int         `json:"votes"`
+	Profile CandidateProfile `json:"profile"`
+}
+
+type candidateMarshaling struct {
+	Votes *hexutil.Big10
 }
 
 type AccountData struct {

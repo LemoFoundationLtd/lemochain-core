@@ -8,33 +8,40 @@ import (
 )
 
 // MarshalJSON marshals as JSON.
-func (c CandiateInfo) MarshalJSON() ([]byte, error) {
-	type CandiateInfo struct {
-		Votes   string            `json:"votes" gencodec:"required"`
-		Profile map[string]string `json:"profile"  gencodec:"required"`
+func (c CandidateInfo) MarshalJSON() ([]byte, error) {
+	type CandidateInfo struct {
+		CandidateAddress string            `json:"candidate" gencodec:"required"`
+		Votes            string            `json:"votes" gencodec:"required"`
+		Profile          map[string]string `json:"profile"  gencodec:"required"`
 	}
-	var enc CandiateInfo
+	var enc CandidateInfo
+	enc.CandidateAddress = c.CandidateAddress
 	enc.Votes = c.Votes
 	enc.Profile = c.Profile
 	return json.Marshal(&enc)
 }
 
 // UnmarshalJSON unmarshals from JSON.
-func (c *CandiateInfo) UnmarshalJSON(input []byte) error {
-	type CandiateInfo struct {
-		Votes   *string           `json:"votes" gencodec:"required"`
-		Profile map[string]string `json:"profile"  gencodec:"required"`
+func (c *CandidateInfo) UnmarshalJSON(input []byte) error {
+	type CandidateInfo struct {
+		CandidateAddress *string           `json:"candidate" gencodec:"required"`
+		Votes            *string           `json:"votes" gencodec:"required"`
+		Profile          map[string]string `json:"profile"  gencodec:"required"`
 	}
-	var dec CandiateInfo
+	var dec CandidateInfo
 	if err := json.Unmarshal(input, &dec); err != nil {
 		return err
 	}
+	if dec.CandidateAddress == nil {
+		return errors.New("missing required field 'candidate' for CandidateInfo")
+	}
+	c.CandidateAddress = *dec.CandidateAddress
 	if dec.Votes == nil {
-		return errors.New("missing required field 'votes' for CandiateInfo")
+		return errors.New("missing required field 'votes' for CandidateInfo")
 	}
 	c.Votes = *dec.Votes
 	if dec.Profile == nil {
-		return errors.New("missing required field 'profile' for CandiateInfo")
+		return errors.New("missing required field 'profile' for CandidateInfo")
 	}
 	c.Profile = dec.Profile
 	return nil

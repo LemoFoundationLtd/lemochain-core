@@ -316,44 +316,6 @@
 	  }
 	});
 
-	function _defineProperty(obj, key, value) {
-	  if (key in obj) {
-	    Object.defineProperty(obj, key, {
-	      value: value,
-	      enumerable: true,
-	      configurable: true,
-	      writable: true
-	    });
-	  } else {
-	    obj[key] = value;
-	  }
-
-	  return obj;
-	}
-
-	var defineProperty = _defineProperty;
-
-	function _objectSpread(target) {
-	  for (var i = 1; i < arguments.length; i++) {
-	    var source = arguments[i] != null ? arguments[i] : {};
-	    var ownKeys = Object.keys(source);
-
-	    if (typeof Object.getOwnPropertySymbols === 'function') {
-	      ownKeys = ownKeys.concat(Object.getOwnPropertySymbols(source).filter(function (sym) {
-	        return Object.getOwnPropertyDescriptor(source, sym).enumerable;
-	      }));
-	    }
-
-	    ownKeys.forEach(function (key) {
-	      defineProperty(target, key, source[key]);
-	    });
-	  }
-
-	  return target;
-	}
-
-	var objectSpread = _objectSpread;
-
 	function _arrayWithHoles(arr) {
 	  if (Array.isArray(arr)) return arr;
 	}
@@ -677,6 +639,37 @@
 	_addToUnscopables('values');
 	_addToUnscopables('entries');
 
+	var f$1 = {}.propertyIsEnumerable;
+
+	var _objectPie = {
+		f: f$1
+	};
+
+	var isEnum = _objectPie.f;
+	var _objectToArray = function (isEntries) {
+	  return function (it) {
+	    var O = _toIobject(it);
+	    var keys = _objectKeys(O);
+	    var length = keys.length;
+	    var i = 0;
+	    var result = [];
+	    var key;
+	    while (length > i) if (isEnum.call(O, key = keys[i++])) {
+	      result.push(isEntries ? [key, O[key]] : O[key]);
+	    } return result;
+	  };
+	};
+
+	// https://github.com/tc39/proposal-object-values-entries
+
+	var $entries = _objectToArray(true);
+
+	_export(_export.S, 'Object', {
+	  entries: function entries(it) {
+	    return $entries(it);
+	  }
+	});
+
 	var ITERATOR$1 = _wks('iterator');
 	var TO_STRING_TAG = _wks('toStringTag');
 	var ArrayValues = _iterators.Array;
@@ -728,57 +721,6 @@
 	    if (explicit) for (key in es6_array_iterator) if (!proto[key]) _redefine(proto, key, es6_array_iterator[key], true);
 	  }
 	}
-
-	var f$1 = {}.propertyIsEnumerable;
-
-	var _objectPie = {
-		f: f$1
-	};
-
-	var isEnum = _objectPie.f;
-	var _objectToArray = function (isEntries) {
-	  return function (it) {
-	    var O = _toIobject(it);
-	    var keys = _objectKeys(O);
-	    var length = keys.length;
-	    var i = 0;
-	    var result = [];
-	    var key;
-	    while (length > i) if (isEnum.call(O, key = keys[i++])) {
-	      result.push(isEntries ? [key, O[key]] : O[key]);
-	    } return result;
-	  };
-	};
-
-	// https://github.com/tc39/proposal-object-values-entries
-
-	var $entries = _objectToArray(true);
-
-	_export(_export.S, 'Object', {
-	  entries: function entries(it) {
-	    return $entries(it);
-	  }
-	});
-
-	var _typeof_1 = createCommonjsModule(function (module) {
-	function _typeof2(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof2 = function _typeof2(obj) { return typeof obj; }; } else { _typeof2 = function _typeof2(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof2(obj); }
-
-	function _typeof(obj) {
-	  if (typeof Symbol === "function" && _typeof2(Symbol.iterator) === "symbol") {
-	    module.exports = _typeof = function _typeof(obj) {
-	      return _typeof2(obj);
-	    };
-	  } else {
-	    module.exports = _typeof = function _typeof(obj) {
-	      return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof2(obj);
-	    };
-	  }
-
-	  return _typeof(obj);
-	}
-
-	module.exports = _typeof;
-	});
 
 	function _classCallCheck(instance, Constructor) {
 	  if (!(instance instanceof Constructor)) {
@@ -4440,6 +4382,44 @@
 
 	var asyncToGenerator = _asyncToGenerator;
 
+	function _defineProperty(obj, key, value) {
+	  if (key in obj) {
+	    Object.defineProperty(obj, key, {
+	      value: value,
+	      enumerable: true,
+	      configurable: true,
+	      writable: true
+	    });
+	  } else {
+	    obj[key] = value;
+	  }
+
+	  return obj;
+	}
+
+	var defineProperty = _defineProperty;
+
+	function _objectSpread(target) {
+	  for (var i = 1; i < arguments.length; i++) {
+	    var source = arguments[i] != null ? arguments[i] : {};
+	    var ownKeys = Object.keys(source);
+
+	    if (typeof Object.getOwnPropertySymbols === 'function') {
+	      ownKeys = ownKeys.concat(Object.getOwnPropertySymbols(source).filter(function (sym) {
+	        return Object.getOwnPropertyDescriptor(source, sym).enumerable;
+	      }));
+	    }
+
+	    ownKeys.forEach(function (key) {
+	      defineProperty(target, key, source[key]);
+	    });
+	  }
+
+	  return target;
+	}
+
+	var objectSpread = _objectSpread;
+
 	var bind = function bind(fn, thisArg) {
 	  return function wrap() {
 	    var args = new Array(arguments.length);
@@ -6042,12 +6022,32 @@
 	  }
 	});
 
+	var _typeof_1 = createCommonjsModule(function (module) {
+	function _typeof2(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof2 = function _typeof2(obj) { return typeof obj; }; } else { _typeof2 = function _typeof2(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof2(obj); }
+
+	function _typeof(obj) {
+	  if (typeof Symbol === "function" && _typeof2(Symbol.iterator) === "symbol") {
+	    module.exports = _typeof = function _typeof(obj) {
+	      return _typeof2(obj);
+	    };
+	  } else {
+	    module.exports = _typeof = function _typeof(obj) {
+	      return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof2(obj);
+	    };
+	  }
+
+	  return _typeof(obj);
+	}
+
+	module.exports = _typeof;
+	});
+
 	var errors = {
 	  InvalidAPIDefinition: function InvalidAPIDefinition(config) {
 	    return "invalid api config ".concat(JSON.stringify(config));
 	  },
-	  InvalidAPIMethod: function InvalidAPIMethod(config) {
-	    return "should set only one property of 'method' or 'call' in api config: ".concat(JSON.stringify(config));
+	  InvalidAPIName: function InvalidAPIName(methodName) {
+	    return "invalid api method name ".concat(JSON.stringify(methodName));
 	  },
 	  UnavailableAPIModule: function UnavailableAPIModule(moduleName) {
 	    return "can not create api into module: ".concat(moduleName, ", because this property is exist");
@@ -6084,6 +6084,9 @@
 	  },
 	  InvalidAddressCheckSum: function InvalidAddressCheckSum(address) {
 	    return "Invalid address checksum ".concat(address);
+	  },
+	  DecodeAddressError: function DecodeAddressError(address, errMsg) {
+	    return "Decode address ".concat(address, " fail: ").concat(errMsg);
 	  },
 	  ConnectionTimeout: function ConnectionTimeout(ms) {
 	    return "CONNECTION TIMEOUT: timeout of ".concat(ms, " ms achived");
@@ -22201,7 +22204,14 @@
 	    throw new Error(errors.InvalidAddressCheckSum(origAddr));
 	  }
 
-	  var fullPayload = base26.decode(address.slice(4));
+	  var fullPayload;
+
+	  try {
+	    fullPayload = base26.decode(address.slice(4));
+	  } catch (e) {
+	    throw new Error(errors.DecodeAddressError(address, e.message));
+	  }
+
 	  var data = fullPayload.slice(0, fullPayload.length - 1);
 	  var checkSum = fullPayload[fullPayload.length - 1];
 	  var realCheckSum = 0;
@@ -22942,19 +22952,17 @@
 	  if (block) {
 	    if (block.header) {
 	      block.header.height = Number(block.header.height);
+	      block.header.gasLimit = Number(block.header.gasLimit);
+	      block.header.gasUsed = Number(block.header.gasUsed);
 	      block.header.timestamp = Number(block.header.timestamp);
 	    }
 
 	    if (block.changeLogs) {
-	      block.changeLogs.forEach(function (item) {
-	        item.type = parseChangeLogType(item.type);
-	      });
+	      block.changeLogs = block.changeLogs.map(parseChangeLog);
 	    }
 
 	    if (block.transactions) {
-	      block.transactions.forEach(function (item) {
-	        parseTx(signer, item);
-	      });
+	      block.transactions = block.transactions.map(parseTx.bind(null, signer));
 	    }
 	  }
 
@@ -22973,10 +22981,30 @@
 	    record.version = Number(record.version);
 	    account.records[parseChangeLogType(logType)] = record;
 	  });
+
+	  if (account.candidate) {
+	    account.candidate = parseCandidate(account.candidate);
+	  }
+
 	  return account;
 	}
+
+	function parseCandidate(candidate) {
+	  if (candidate && candidate.profile) {
+	    candidate.profile.isCandidate = candidate.profile.isCandidate.toLowerCase() === 'true';
+	    candidate.profile.port = Number(candidate.profile.port);
+	  }
+
+	  return candidate;
+	}
+
+	function parseChangeLog(changeLog) {
+	  changeLog.type = parseChangeLogType(changeLog.type);
+	  changeLog.version = Number(changeLog.version);
+	  return changeLog;
+	}
 	function parseChangeLogType(logType) {
-	  var dict = ['', 'BalanceLog', 'StorageLog', 'CodeLog', 'AddEventLog', 'SuicideLog'];
+	  var dict = ['', 'BalanceLog', 'StorageLog', 'CodeLog', 'AddEventLog', 'SuicideLog', 'VoteForLog', 'VotesLog', 'CandidateProfileLog'];
 
 	  if (logType <= 0 || logType >= dict.length) {
 	    return "UnknonwType(".concat(logType, ")");
@@ -23007,20 +23035,108 @@
 	   * @param {string} address
 	   * @return {Promise<object>}
 	   */
-	  getAccount: {
-	    method: "".concat(MODULE_NAME, "_getAccount"),
-	    outputFormatter: parseAccount
-	  },
+	  getAccount: function () {
+	    var _getAccount = asyncToGenerator(
+	    /*#__PURE__*/
+	    regenerator.mark(function _callee(address) {
+	      var result;
+	      return regenerator.wrap(function _callee$(_context) {
+	        while (1) {
+	          switch (_context.prev = _context.next) {
+	            case 0:
+	              _context.next = 2;
+	              return this.requester.send("".concat(MODULE_NAME, "_getAccount"), [address]);
+
+	            case 2:
+	              result = _context.sent;
+	              return _context.abrupt("return", parseAccount(result));
+
+	            case 4:
+	            case "end":
+	              return _context.stop();
+	          }
+	        }
+	      }, _callee, this);
+	    }));
+
+	    function getAccount(_x) {
+	      return _getAccount.apply(this, arguments);
+	    }
+
+	    return getAccount;
+	  }(),
+
+	  /**
+	   * Get candidate information
+	   * @param {string} address
+	   * @return {Promise<object>}
+	   */
+	  getCandidateInfo: function () {
+	    var _getCandidateInfo = asyncToGenerator(
+	    /*#__PURE__*/
+	    regenerator.mark(function _callee2(address) {
+	      var result;
+	      return regenerator.wrap(function _callee2$(_context2) {
+	        while (1) {
+	          switch (_context2.prev = _context2.next) {
+	            case 0:
+	              _context2.next = 2;
+	              return this.requester.send("".concat(MODULE_NAME, "_getAccount"), [address]);
+
+	            case 2:
+	              result = _context2.sent;
+	              return _context2.abrupt("return", parseAccount(result).candidate);
+
+	            case 4:
+	            case "end":
+	              return _context2.stop();
+	          }
+	        }
+	      }, _callee2, this);
+	    }));
+
+	    function getCandidateInfo(_x2) {
+	      return _getCandidateInfo.apply(this, arguments);
+	    }
+
+	    return getCandidateInfo;
+	  }(),
 
 	  /**
 	   * Get balance from account
 	   * @param {string} address
 	   * @return {Promise<BigNumber>}
 	   */
-	  getBalance: {
-	    method: "".concat(MODULE_NAME, "_getBalance"),
-	    outputFormatter: parseMoney
-	  }
+	  getBalance: function () {
+	    var _getBalance = asyncToGenerator(
+	    /*#__PURE__*/
+	    regenerator.mark(function _callee3(address) {
+	      var result;
+	      return regenerator.wrap(function _callee3$(_context3) {
+	        while (1) {
+	          switch (_context3.prev = _context3.next) {
+	            case 0:
+	              _context3.next = 2;
+	              return this.requester.send("".concat(MODULE_NAME, "_getBalance"), [address]);
+
+	            case 2:
+	              result = _context3.sent;
+	              return _context3.abrupt("return", parseMoney(result));
+
+	            case 4:
+	            case "end":
+	              return _context3.stop();
+	          }
+	        }
+	      }, _callee3, this);
+	    }));
+
+	    function getBalance(_x3) {
+	      return _getBalance.apply(this, arguments);
+	    }
+
+	    return getBalance;
+	  }()
 	};
 	var account = {
 	  moduleName: MODULE_NAME,
@@ -23035,39 +23151,37 @@
 	   * @param {boolean?} withBody Get the body detail if true
 	   * @return {Promise<object>}
 	   */
-	  getCurrentBlock: {
-	    call: function () {
-	      var _call = asyncToGenerator(
-	      /*#__PURE__*/
-	      regenerator.mark(function _callee(stable, withBody) {
-	        var apiName, block;
-	        return regenerator.wrap(function _callee$(_context) {
-	          while (1) {
-	            switch (_context.prev = _context.next) {
-	              case 0:
-	                apiName = typeof stable === 'undefined' || stable ? 'latestStableBlock' : 'currentBlock';
-	                _context.next = 3;
-	                return this.requester.send("".concat(MODULE_NAME$1, "_").concat(apiName), [!!withBody]);
+	  getCurrentBlock: function () {
+	    var _getCurrentBlock = asyncToGenerator(
+	    /*#__PURE__*/
+	    regenerator.mark(function _callee(stable, withBody) {
+	      var apiName, block;
+	      return regenerator.wrap(function _callee$(_context) {
+	        while (1) {
+	          switch (_context.prev = _context.next) {
+	            case 0:
+	              apiName = typeof stable === 'undefined' || stable ? 'latestStableBlock' : 'currentBlock';
+	              _context.next = 3;
+	              return this.requester.send("".concat(MODULE_NAME$1, "_").concat(apiName), [!!withBody]);
 
-	              case 3:
-	                block = _context.sent;
-	                return _context.abrupt("return", parseBlock(this.signer, block));
+	            case 3:
+	              block = _context.sent;
+	              return _context.abrupt("return", parseBlock(this.signer, block));
 
-	              case 5:
-	              case "end":
-	                return _context.stop();
-	            }
+	            case 5:
+	            case "end":
+	              return _context.stop();
 	          }
-	        }, _callee, this);
-	      }));
+	        }
+	      }, _callee, this);
+	    }));
 
-	      function call(_x, _x2) {
-	        return _call.apply(this, arguments);
-	      }
+	    function getCurrentBlock(_x, _x2) {
+	      return _getCurrentBlock.apply(this, arguments);
+	    }
 
-	      return call;
-	    }()
-	  },
+	    return getCurrentBlock;
+	  }(),
 
 	  /**
 	   * Get the specific block information
@@ -23075,97 +23189,141 @@
 	   * @param {boolean?} withBody Get the body detail if true
 	   * @return {Promise<object>}
 	   */
-	  getBlock: {
-	    call: function () {
-	      var _call2 = asyncToGenerator(
-	      /*#__PURE__*/
-	      regenerator.mark(function _callee2(hashOrHeight, withBody) {
-	        var apiName, block;
-	        return regenerator.wrap(function _callee2$(_context2) {
-	          while (1) {
-	            switch (_context2.prev = _context2.next) {
-	              case 0:
-	                apiName = isHash(hashOrHeight) ? 'getBlockByHash' : 'getBlockByHeight';
-	                _context2.next = 3;
-	                return this.requester.send("".concat(MODULE_NAME$1, "_").concat(apiName), [hashOrHeight, !!withBody]);
+	  getBlock: function () {
+	    var _getBlock = asyncToGenerator(
+	    /*#__PURE__*/
+	    regenerator.mark(function _callee2(hashOrHeight, withBody) {
+	      var apiName, block;
+	      return regenerator.wrap(function _callee2$(_context2) {
+	        while (1) {
+	          switch (_context2.prev = _context2.next) {
+	            case 0:
+	              apiName = isHash(hashOrHeight) ? 'getBlockByHash' : 'getBlockByHeight';
+	              _context2.next = 3;
+	              return this.requester.send("".concat(MODULE_NAME$1, "_").concat(apiName), [hashOrHeight, !!withBody]);
 
-	              case 3:
-	                block = _context2.sent;
-	                return _context2.abrupt("return", parseBlock(this.signer, block));
+	            case 3:
+	              block = _context2.sent;
+	              return _context2.abrupt("return", parseBlock(this.signer, block));
 
-	              case 5:
-	              case "end":
-	                return _context2.stop();
-	            }
+	            case 5:
+	            case "end":
+	              return _context2.stop();
 	          }
-	        }, _callee2, this);
-	      }));
+	        }
+	      }, _callee2, this);
+	    }));
 
-	      function call(_x3, _x4) {
-	        return _call2.apply(this, arguments);
-	      }
+	    function getBlock(_x3, _x4) {
+	      return _getBlock.apply(this, arguments);
+	    }
 
-	      return call;
-	    }()
-	  },
+	    return getBlock;
+	  }(),
 
 	  /**
 	   * Get the current height of chain head block
 	   * @param {boolean?} stable=true Get stable block or the newest block without consensus
 	   * @return {Promise<number>}
 	   */
-	  getCurrentHeight: {
-	    call: function call(stable) {
-	      var apiName = typeof stable === 'undefined' || stable ? 'latestStableHeight' : 'currentHeight';
-	      return this.requester.send("".concat(MODULE_NAME$1, "_").concat(apiName));
-	    }
+	  getCurrentHeight: function getCurrentHeight(stable) {
+	    var apiName = typeof stable === 'undefined' || stable ? 'latestStableHeight' : 'currentHeight';
+	    return this.requester.send("".concat(MODULE_NAME$1, "_").concat(apiName));
 	  },
 
 	  /**
 	   * Get the information of genesis block, whose height is 0
 	   * @return {Promise<object>}
 	   */
-	  getGenesis: {
-	    method: "".concat(MODULE_NAME$1, "_genesis"),
-	    outputFormatter: function outputFormatter(block) {
-	      return parseBlock(this.signer, block);
+	  getGenesis: function () {
+	    var _getGenesis = asyncToGenerator(
+	    /*#__PURE__*/
+	    regenerator.mark(function _callee3() {
+	      var result;
+	      return regenerator.wrap(function _callee3$(_context3) {
+	        while (1) {
+	          switch (_context3.prev = _context3.next) {
+	            case 0:
+	              _context3.next = 2;
+	              return this.requester.send("".concat(MODULE_NAME$1, "_genesis"), []);
+
+	            case 2:
+	              result = _context3.sent;
+	              return _context3.abrupt("return", parseBlock(this.signer, result));
+
+	            case 4:
+	            case "end":
+	              return _context3.stop();
+	          }
+	        }
+	      }, _callee3, this);
+	    }));
+
+	    function getGenesis() {
+	      return _getGenesis.apply(this, arguments);
 	    }
-	  },
+
+	    return getGenesis;
+	  }(),
 
 	  /**
 	   * Get the chainID of current connected blockchain
 	   * @return {Promise<number>}
 	   */
-	  getChainID: {
-	    method: "".concat(MODULE_NAME$1, "_chainID")
+	  getChainID: function getChainID() {
+	    return this.requester.send("".concat(MODULE_NAME$1, "_chainID"), []);
 	  },
 
 	  /**
 	   * Get the gas price advice. It is used to make sure the transaction will be packaged in a few seconds
 	   * @return {Promise<BigNumber>}
 	   */
-	  getGasPriceAdvice: {
-	    method: "".concat(MODULE_NAME$1, "_gasPriceAdvice"),
-	    outputFormatter: parseMoney
-	  },
+	  getGasPriceAdvice: function () {
+	    var _getGasPriceAdvice = asyncToGenerator(
+	    /*#__PURE__*/
+	    regenerator.mark(function _callee4() {
+	      var result;
+	      return regenerator.wrap(function _callee4$(_context4) {
+	        while (1) {
+	          switch (_context4.prev = _context4.next) {
+	            case 0:
+	              _context4.next = 2;
+	              return this.requester.send("".concat(MODULE_NAME$1, "_gasPriceAdvice"), []);
+
+	            case 2:
+	              result = _context4.sent;
+	              return _context4.abrupt("return", parseMoney(result));
+
+	            case 4:
+	            case "end":
+	              return _context4.stop();
+	          }
+	        }
+	      }, _callee4, this);
+	    }));
+
+	    function getGasPriceAdvice() {
+	      return _getGasPriceAdvice.apply(this, arguments);
+	    }
+
+	    return getGasPriceAdvice;
+	  }(),
 
 	  /**
 	   * Get the version of lemochain node
 	   * @return {Promise<number>}
 	   */
-	  getNodeVersion: {
-	    method: "".concat(MODULE_NAME$1, "_nodeVersion")
+	  getNodeVersion: function getNodeVersion() {
+	    return this.requester.send("".concat(MODULE_NAME$1, "_nodeVersion"), []);
 	  },
 
 	  /**
 	   * Get the version of sdk
 	   * @return {string}
 	   */
-	  getSdkVersion: {
-	    call: function call() {
+	  getSdkVersion: function getSdkVersion() {
 
-	      return "0.9.5";
-	    }
+	    return "0.9.5";
 	  },
 
 	  /**
@@ -23174,16 +23332,14 @@
 	   * @param {Function} callback It is used to deliver the block object
 	   * @return {number} watch id which used to stop watch
 	   */
-	  watchBlock: {
-	    call: function call(withBody, callback) {
-	      var _this = this;
+	  watchBlock: function watchBlock(withBody, callback) {
+	    var _this = this;
 
-	      var watchHandler = function watchHandler(block) {
-	        callback(parseBlock(_this.signer, block));
-	      };
+	    var watchHandler = function watchHandler(block) {
+	      callback(parseBlock(_this.signer, block));
+	    };
 
-	      return this.requester.watch("".concat(MODULE_NAME$1, "_latestStableBlock"), [!!withBody], watchHandler);
-	    }
+	    return this.requester.watch("".concat(MODULE_NAME$1, "_latestStableBlock"), [!!withBody], watchHandler);
 	  }
 	};
 	var chain = {
@@ -23197,16 +23353,16 @@
 	   * Return true if the lemochain node is mining
 	   * @return {Promise<boolean>}
 	   */
-	  getMining: {
-	    method: "".concat(MODULE_NAME$2, "_isMining")
+	  getMining: function getMining() {
+	    return this.requester.send("".concat(MODULE_NAME$2, "_isMining"), []);
 	  },
 
 	  /**
 	   * Get miner address of the lemochain node
 	   * @return {Promise<string>}
 	   */
-	  getMiner: {
-	    method: "".concat(MODULE_NAME$2, "_miner")
+	  getMiner: function getMiner() {
+	    return this.requester.send("".concat(MODULE_NAME$2, "_miner"), []);
 	  }
 	};
 	var mine = {
@@ -23220,16 +23376,16 @@
 	   * Get connected peers count from the lemochain node
 	   * @return {Promise<number>}
 	   */
-	  getPeersCount: {
-	    method: "".concat(MODULE_NAME$3, "_peersCount")
+	  getPeersCount: function getPeersCount() {
+	    return this.requester.send("".concat(MODULE_NAME$3, "_peersCount"), []);
 	  },
 
 	  /**
 	   * Get the lemochain node information
 	   * @return {Promise<object>}
 	   */
-	  getInfo: {
-	    method: "".concat(MODULE_NAME$3, "_info")
+	  getInfo: function getInfo() {
+	    return this.requester.send("".concat(MODULE_NAME$3, "_info"), []);
 	  }
 	};
 	var net = {
@@ -23242,15 +23398,49 @@
 	  /**
 	   * Get the specific transaction information
 	   * @param {string|number} hashOrHeight Hash or height which used to find the block
-	   * @param {boolean?} withBody Get the body detail if true
 	   * @return {Promise<object>}
 	   */
-	  getTx: {
-	    method: "".concat(MODULE_NAME$4, "_getTxByHash"),
-	    outputFormatter: function outputFormatter(tx) {
-	      return tx && parseTx(this.signer, tx);
+	  getTx: function () {
+	    var _getTx = asyncToGenerator(
+	    /*#__PURE__*/
+	    regenerator.mark(function _callee(hashOrHeight) {
+	      var result, tx;
+	      return regenerator.wrap(function _callee$(_context) {
+	        while (1) {
+	          switch (_context.prev = _context.next) {
+	            case 0:
+	              _context.next = 2;
+	              return this.requester.send("".concat(MODULE_NAME$4, "_getTxByHash"), [hashOrHeight]);
+
+	            case 2:
+	              result = _context.sent;
+
+	              if (result) {
+	                _context.next = 5;
+	                break;
+	              }
+
+	              return _context.abrupt("return", null);
+
+	            case 5:
+	              tx = parseTx(this.signer, result.tx);
+	              tx.minedTime = result.time;
+	              return _context.abrupt("return", tx);
+
+	            case 8:
+	            case "end":
+	              return _context.stop();
+	          }
+	        }
+	      }, _callee, this);
+	    }));
+
+	    function getTx(_x) {
+	      return _getTx.apply(this, arguments);
 	    }
-	  },
+
+	    return getTx;
+	  }(),
 
 	  /**
 	   * Sign and send transaction
@@ -23258,13 +23448,10 @@
 	   * @param {object} txConfig Transaction config
 	   * @return {Promise<object>}
 	   */
-	  sendTx: {
-	    method: "".concat(MODULE_NAME$4, "_sendTx"),
-	    inputFormatter: function inputFormatter(privateKey, txConfig) {
-	      var tx = new Tx(txConfig);
-	      this.signer.sign(tx, privateKey);
-	      return [tx.toJson()];
-	    }
+	  sendTx: function sendTx(privateKey, txConfig) {
+	    var tx = new Tx(txConfig);
+	    this.signer.sign(tx, privateKey);
+	    return this.requester.send("".concat(MODULE_NAME$4, "_sendTx"), [tx.toJson()]);
 	  },
 
 	  /**
@@ -23272,21 +23459,18 @@
 	   * @param {object|string} txConfig Transaction config returned by lemo.tx.sign
 	   * @return {Promise<object>}
 	   */
-	  send: {
-	    method: "".concat(MODULE_NAME$4, "_sendTx"),
-	    inputFormatter: function inputFormatter(txConfig) {
-	      if (typeof txConfig === 'string') {
-	        txConfig = JSON.parse(txConfig);
-	      }
-
-	      var tx = new Tx(txConfig);
-
-	      if (!tx.r || !tx.s) {
-	        throw new Error("can't send an unsigned transaction");
-	      }
-
-	      return [tx.toJson()];
+	  send: function send(txConfig) {
+	    if (typeof txConfig === 'string') {
+	      txConfig = JSON.parse(txConfig);
 	    }
+
+	    var tx = new Tx(txConfig);
+
+	    if (!tx.r || !tx.s) {
+	      throw new Error("can't send an unsigned transaction");
+	    }
+
+	    return this.requester.send("".concat(MODULE_NAME$4, "_sendTx"), [tx.toJson()]);
 	  },
 
 	  /**
@@ -23295,12 +23479,10 @@
 	   * @param {object} txConfig Transaction config
 	   * @return {string}
 	   */
-	  sign: {
-	    call: function call(privateKey, txConfig) {
-	      var tx = new Tx(txConfig);
-	      this.signer.sign(tx, privateKey);
-	      return JSON.stringify(tx.toJson());
-	    }
+	  sign: function sign(privateKey, txConfig) {
+	    var tx = new Tx(txConfig);
+	    this.signer.sign(tx, privateKey);
+	    return JSON.stringify(tx.toJson());
 	  },
 
 	  /**
@@ -23309,12 +23491,10 @@
 	   * @param {object} txConfig Transaction config
 	   * @return {string}
 	   */
-	  signVote: {
-	    call: function call(privateKey, txConfig) {
-	      var tx = Tx.createVoteTx(txConfig);
-	      this.signer.sign(tx, privateKey);
-	      return JSON.stringify(tx.toJson());
-	    }
+	  signVote: function signVote(privateKey, txConfig) {
+	    var tx = Tx.createVoteTx(txConfig);
+	    this.signer.sign(tx, privateKey);
+	    return JSON.stringify(tx.toJson());
 	  },
 
 	  /**
@@ -23324,12 +23504,10 @@
 	   * @param {object} candidateInfo Candidate information
 	   * @return {string}
 	   */
-	  signCandidate: {
-	    call: function call(privateKey, txConfig, candidateInfo) {
-	      var tx = Tx.createCandidateTx(txConfig, candidateInfo);
-	      this.signer.sign(tx, privateKey);
-	      return JSON.stringify(tx.toJson());
-	    }
+	  signCandidate: function signCandidate(privateKey, txConfig, candidateInfo) {
+	    var tx = Tx.createCandidateTx(txConfig, candidateInfo);
+	    this.signer.sign(tx, privateKey);
+	    return JSON.stringify(tx.toJson());
 	  }
 	};
 	var tx = {
@@ -23344,14 +23522,12 @@
 	   * @param {string} address
 	   * @return {string} verify error message
 	   */
-	  verifyAddress: {
-	    call: function call(address) {
-	      try {
-	        decodeAddress(address);
-	        return '';
-	      } catch (e) {
-	        return e.message;
-	      }
+	  verifyAddress: function verifyAddress(address) {
+	    try {
+	      decodeAddress(address);
+	      return '';
+	    } catch (e) {
+	      return e.message;
 	    }
 	  }
 	};
@@ -23360,36 +23536,6 @@
 	  apis: apis$5
 	};
 
-	function _arrayWithoutHoles(arr) {
-	  if (Array.isArray(arr)) {
-	    for (var i = 0, arr2 = new Array(arr.length); i < arr.length; i++) {
-	      arr2[i] = arr[i];
-	    }
-
-	    return arr2;
-	  }
-	}
-
-	var arrayWithoutHoles = _arrayWithoutHoles;
-
-	function _iterableToArray(iter) {
-	  if (Symbol.iterator in Object(iter) || Object.prototype.toString.call(iter) === "[object Arguments]") return Array.from(iter);
-	}
-
-	var iterableToArray = _iterableToArray;
-
-	function _nonIterableSpread() {
-	  throw new TypeError("Invalid attempt to spread non-iterable instance");
-	}
-
-	var nonIterableSpread = _nonIterableSpread;
-
-	function _toConsumableArray(arr) {
-	  return arrayWithoutHoles(arr) || iterableToArray(arr) || nonIterableSpread();
-	}
-
-	var toConsumableArray = _toConsumableArray;
-
 	var Api =
 	/*#__PURE__*/
 	function () {
@@ -23397,110 +23543,41 @@
 	   * Create api method and attach to lemo object
 	   * @param {object} config
 	   * @param {string} config.name The method name which attached to lemo object
-	   * @param {Function?} config.call The custom api function call. It should return a Promise for keeping same interface
-	   * @param {string?} config.method The remote api name
-	   * @param {Function?} config.inputFormatter Convert input data before send request
-	   * @param {Function?} config.outputFormatter Convert received data from request before return
-	   * @param {Requester} requester
-	   * @param {Signer} signer
+	   * @param {Function} config.call The custom api function call. It should return a Promise for keeping same interface
+	   * @param {Requester?} requester
+	   * @param {Signer?} signer
 	   */
 	  function Api(config, requester, signer) {
 	    classCallCheck(this, Api);
 
-	    if (!config || !config.name) {
+	    if (!config || !config.name || !config.call) {
 	      throw new Error(errors.InvalidAPIDefinition(config));
 	    }
 
-	    if (!!config.call === !!config.method) {
-	      throw new Error(errors.InvalidAPIMethod(config));
-	    }
-
 	    this.name = config.name;
-	    this.inputFormatter = config.inputFormatter;
-	    this.outputFormatter = config.outputFormatter;
 	    this.call = config.call;
-	    this.method = config.method;
 	    this.requester = requester;
 	    this.signer = signer;
 	  }
 
 	  createClass(Api, [{
 	    key: "attachTo",
-	    value: function attachTo(obj) {
-	      if (typeof obj[this.name] !== 'undefined') {
+	    value: function attachTo(obj, moduleName) {
+	      if (moduleName && !obj[moduleName]) {
+	        obj[moduleName] = {};
+	      }
+
+	      var target = moduleName ? obj[moduleName] : obj;
+
+	      if (_typeof_1(target) !== 'object') {
+	        throw new Error(errors.UnavailableAPIModule(moduleName));
+	      }
+
+	      if (typeof target[this.name] !== 'undefined') {
 	        throw new Error(errors.UnavailableAPIName(this.name));
 	      }
 
-	      obj[this.name] = this.buildCall();
-	    }
-	  }, {
-	    key: "buildCall",
-	    value: function buildCall() {
-	      var _this = this;
-
-	      // bind 'this' of call, inputFormatter and outputFormatter to api instance
-	      if (typeof this.call === 'function') {
-	        return this.call.bind(this);
-	      }
-
-	      return (
-	        /*#__PURE__*/
-	        asyncToGenerator(
-	        /*#__PURE__*/
-	        regenerator.mark(function _callee() {
-	          var _len,
-	              args,
-	              _key,
-	              result,
-	              _args = arguments;
-
-	          return regenerator.wrap(function _callee$(_context) {
-	            while (1) {
-	              switch (_context.prev = _context.next) {
-	                case 0:
-	                  for (_len = _args.length, args = new Array(_len), _key = 0; _key < _len; _key++) {
-	                    args[_key] = _args[_key];
-	                  }
-
-	                  if (!_this.inputFormatter) {
-	                    _context.next = 5;
-	                    break;
-	                  }
-
-	                  args = _this.inputFormatter.apply(_this, toConsumableArray(args));
-
-	                  if (Array.isArray(args)) {
-	                    _context.next = 5;
-	                    break;
-	                  }
-
-	                  throw new Error('inputFormatter must return array');
-
-	                case 5:
-	                  _context.next = 7;
-	                  return _this.requester.send(_this.method, args);
-
-	                case 7:
-	                  result = _context.sent;
-
-	                  if (!_this.outputFormatter) {
-	                    _context.next = 10;
-	                    break;
-	                  }
-
-	                  return _context.abrupt("return", _this.outputFormatter(result));
-
-	                case 10:
-	                  return _context.abrupt("return", result);
-
-	                case 11:
-	                case "end":
-	                  return _context.stop();
-	              }
-	            }
-	          }, _callee, this);
-	        }))
-	      );
+	      target[this.name] = this.call.bind(this);
 	    }
 	  }]);
 
@@ -23552,19 +23629,13 @@
 	      enumerable: false
 	    }); // modules
 
-	    this._createAPI(account.moduleName, account.apis);
+	    createModule(this, account.moduleName, account.apis);
+	    createModule(this, '', chain.apis); // attach the apis from chain to 'this'
 
-	    this._createAPI('', chain.apis); // attach the apis from chain to 'this'
-
-
-	    this._createAPI(mine.moduleName, mine.apis);
-
-	    this._createAPI(net.moduleName, net.apis);
-
-	    this._createAPI(tx.moduleName, tx.apis);
-
-	    this._createAPI(tool.moduleName, tool.apis); // utils
-
+	    createModule(this, mine.moduleName, mine.apis);
+	    createModule(this, net.moduleName, net.apis);
+	    createModule(this, tx.moduleName, tx.apis);
+	    createModule(this, tool.moduleName, tool.apis); // utils
 
 	    this.BigNumber = bignumber;
 	  }
@@ -23594,38 +23665,54 @@
 	  return LemoClient;
 	}();
 	/**
-	 * Create an API and attach to lemo object
+	 * Create an module and attach to lemo object
 	 * @param {LemoClient} lemo
 	 * @param {string} moduleName Attach api methods to the sub module object of lemo. If moduleName is empty, then attach to lemo object
 	 * @param {Array|object} apis Api constructor config list
 	 */
 
 
-	function createAPI(lemo, moduleName, apis) {
-	  if (moduleName) {
-	    if (!lemo[moduleName]) {
-	      lemo[moduleName] = {};
-	    } else if (_typeof_1(lemo[moduleName]) !== 'object') {
-	      throw new Error(errors.UnavailableAPIModule(moduleName));
-	    }
-	  } // transform object to array
+	function createModule(lemo, moduleName, apis) {
+	  Object.entries(apis).forEach(function (_ref) {
+	    var _ref2 = slicedToArray(_ref, 2),
+	        key = _ref2[0],
+	        value = _ref2[1];
+
+	    new Api({
+	      name: key,
+	      call: value
+	    }, lemo._requester, lemo._signer).attachTo(lemo, moduleName);
+	  });
+	}
+	/**
+	 * Create an remote call API and attach to lemo object
+	 * @param {LemoClient} lemo
+	 * @param {string} moduleName Attach api methods to the sub module object of lemo. If moduleName is empty, then attach to lemo object
+	 * @param {string} apiName Final api name you can call on lemo object
+	 * @param {string|Function} methodNameOrFunc The method name for remote API or customized function
+	 */
 
 
-	  if (!Array.isArray(apis)) {
-	    apis = Object.entries(apis).map(function (_ref) {
-	      var _ref2 = slicedToArray(_ref, 2),
-	          key = _ref2[0],
-	          value = _ref2[1];
+	function createAPI(lemo, moduleName, apiName, methodNameOrFunc) {
+	  var config = {
+	    name: apiName
+	  };
 
-	      return objectSpread({
-	        name: key
-	      }, value);
-	    });
+	  if (typeof methodNameOrFunc === 'function') {
+	    config.call = methodNameOrFunc;
+	  } else if (typeof methodNameOrFunc === 'string') {
+	    config.call = function () {
+	      for (var _len = arguments.length, args = new Array(_len), _key = 0; _key < _len; _key++) {
+	        args[_key] = arguments[_key];
+	      }
+
+	      return lemo._requester.send("".concat(moduleName, "_").concat(methodNameOrFunc), args);
+	    };
+	  } else {
+	    throw new Error(errors.InvalidAPIName(methodNameOrFunc));
 	  }
 
-	  apis.forEach(function (api) {
-	    new Api(api, lemo._requester, lemo._signer).attachTo(moduleName ? lemo[moduleName] : lemo);
-	  });
+	  new Api(config, lemo._requester, lemo._signer).attachTo(lemo, moduleName);
 	}
 	/**
 	 * Create conn object by config
