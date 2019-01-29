@@ -23,7 +23,7 @@ var (
   			st timestamp(0) NOT NULL DEFAULT CURRENT_TIMESTAMP(0) ON UPDATE CURRENT_TIMESTAMP(0),
   			PRIMARY KEY (lm_key) USING BTREE
 			) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic;`,
-		`CREATE TABLE t_tx  (
+		`CREATE TABLE IF NOT EXISTS t_tx  (
   			tx_key varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
   			tx_block_key varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
   			tx_from varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
