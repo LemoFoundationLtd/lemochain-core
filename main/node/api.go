@@ -445,7 +445,7 @@ func (t *PublicTxAPI) GetTxByHash(hash string) (*store.VTransactionDetail, error
 
 //go:generate gencodec -type TxListByAddress --field-override txListByAddressMarshaling -out gen_txListByAddress_info_json.go
 type TxListByAddress struct {
-	VTransactions []*store.VTransaction `json:"vTransactions" gencodec:"required"`
+	VTransactions []*store.VTransaction `json:"txList" gencodec:"required"`
 	NextVersion   uint64                `json:"next" gencodec:"required"`
 }
 type txListByAddressMarshaling struct {

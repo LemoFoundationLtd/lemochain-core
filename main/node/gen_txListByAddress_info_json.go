@@ -15,7 +15,7 @@ var _ = (*txListByAddressMarshaling)(nil)
 // MarshalJSON marshals as JSON.
 func (t TxListByAddress) MarshalJSON() ([]byte, error) {
 	type TxListByAddress struct {
-		VTransactions []*store.VTransaction `json:"vTransactions" gencodec:"required"`
+		VTransactions []*store.VTransaction `json:"txList" gencodec:"required"`
 		NextVersion   hexutil.Uint64        `json:"next" gencodec:"required"`
 	}
 	var enc TxListByAddress
@@ -27,7 +27,7 @@ func (t TxListByAddress) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON unmarshals from JSON.
 func (t *TxListByAddress) UnmarshalJSON(input []byte) error {
 	type TxListByAddress struct {
-		VTransactions []*store.VTransaction `json:"vTransactions" gencodec:"required"`
+		VTransactions []*store.VTransaction `json:"txList" gencodec:"required"`
 		NextVersion   *hexutil.Uint64       `json:"next" gencodec:"required"`
 	}
 	var dec TxListByAddress
@@ -35,7 +35,7 @@ func (t *TxListByAddress) UnmarshalJSON(input []byte) error {
 		return err
 	}
 	if dec.VTransactions == nil {
-		return errors.New("missing required field 'vTransactions' for TxListByAddress")
+		return errors.New("missing required field 'txList' for TxListByAddress")
 	}
 	t.VTransactions = dec.VTransactions
 	if dec.NextVersion == nil {
