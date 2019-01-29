@@ -405,13 +405,18 @@ func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *comm
 	var tx *types.Transaction
 	switch txType {
 	case params.OrdinaryTx:
-
-	}
-
-	if to == nil { // avoid null pointer references
-		tx = types.NewContractCreation(big.NewInt(0), gasLimit, gasPrice, data, params.OrdinaryTx, p.chain.chainID, uint64(time.Now().Unix()+30*60), "", "")
-	} else {
-		tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, params.OrdinaryTx, p.chain.chainID, uint64(time.Now().Unix()+30*60), "", "")
+		if to == nil { // avoid null pointer references
+			tx = types.NewContractCreation(big.NewInt(0), gasLimit, gasPrice, data, params.OrdinaryTx, p.chain.chainID, uint64(time.Now().Unix()+30*60), "", "")
+		} else {
+			tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, params.OrdinaryTx, p.chain.chainID, uint64(time.Now().Unix()+30*60), "", "")
+		}
+	case params.VoteTx:
+		tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, params.VoteTx, p.chain.chainID, uint64(time.Now().Unix()+30*60), "", "")
+	case params.RegisterTx:
+		tx = types.NewContractCreation(big.NewInt(0), gasLimit, gasPrice, data, params.RegisterTx, p.chain.chainID, uint64(time.Now().Unix()+30*60), "", "")
+	default:
+		err = errors.New("tx type error")
+		return nil, 0, err
 	}
 
 	// Timeout limit
@@ -438,11 +443,43 @@ func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *comm
 	}
 	IsContractCreate := tx.To() == nil
 	var ret []byte
-	if IsContractCreate {
-		ret, _, restGas, err = Evm.Create(sender, tx.Data(), restGas, big.NewInt(0))
-	} else {
+	switch tx.Type() {
+	case params.OrdinaryTx:
+		if IsContractCreate {
+			ret, _, restGas, err = Evm.Create(sender, tx.Data(), restGas, big.NewInt(0))
+		} else {
+			recipientAddr := *tx.To()
+			ret, restGas, err = Evm.Call(sender, recipientAddr, tx.Data(), restGas, big.NewInt(0))
+		}
+	case params.VoteTx:
 		recipientAddr := *tx.To()
-		ret, restGas, err = Evm.Call(sender, recipientAddr, tx.Data(), restGas, big.NewInt(0))
+		restGas, err = Evm.CallVoteTx(sender.GetAddress(), recipientAddr, restGas, sender.GetBalance())
+	case params.RegisterTx:
+		// Unmarshal tx data
+		txData := tx.Data()
+		profile := make(types.CandidateProfile)
+		err = json.Unmarshal(txData, &profile)
+		if err != nil {
+			log.Errorf("unmarshal Candidate node error: %s", err)
+			return nil, 0, err
+		}
+
+		if nodeId, ok := profile[types.CandidateKeyNodeID]; ok {
+			nodeIdLength := len(nodeId)
+			if nodeIdLength != StandardNodeIdLength {
+				nodeIdErr := fmt.Errorf("the nodeId length [%d] is not equal the standard length [%d] ", nodeIdLength, StandardNodeIdLength)
+				return nil, 0, nodeIdErr
+			}
+		}
+		if host, ok := profile[types.CandidateKeyHost]; ok {
+			hostLength := len(host)
+			if hostLength > MaxDeputyHostLength {
+				hostErr := fmt.Errorf("the length of host field in transaction is out of max length limit. host length = %d. max length limit = %d. ", hostLength, MaxDeputyHostLength)
+				return nil, 0, hostErr
+			}
+		}
+
+		restGas, err = Evm.RegisterOrUpdateToCandidate(sender.GetAddress(), params.FeeReceiveAddress, profile, restGas, sender.GetBalance())
 	}
 
 	if err := vmError(); err != nil {
