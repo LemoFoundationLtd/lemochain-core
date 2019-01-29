@@ -4,24 +4,28 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"strconv"
 	"time"
 )
 
 //go:generate gencodec -type VTransaction -out gen_vTransaction_info_json.go
-//go:generate gencodec -type VTransactionDetail -out gen_vTransactionDetail_info_json.go
-
 type VTransaction struct {
-	Tx *types.Transaction `json:"tx"  		gencodec:"required"`
-	St int64              `json:"time"  		gencodec:"required"`
+	Tx *types.Transaction `json:"tx" gencodec:"required"`
+	St int64              `json:"time" gencodec:"required"`
 }
 
+//go:generate gencodec -type VTransactionDetail --field-override vTransactionDetailMarshaling -out gen_vTransactionDetail_info_json.go
 type VTransactionDetail struct {
-	BlockHash common.Hash        `json:"blockHash"  	gencodec:"required"`
-	Height    uint32             `json:"height"  	gencodec:"required"`
-	Tx        *types.Transaction `json:"tx"  		gencodec:"required"`
-	St        int64              `json:"time"  		gencodec:"required"`
+	BlockHash common.Hash        `json:"blockHash" gencodec:"required"`
+	Height    uint32             `json:"height" gencodec:"required"`
+	Tx        *types.Transaction `json:"tx"  gencodec:"required"`
+	St        int64              `json:"time" gencodec:"required"`
+}
+
+type vTransactionDetailMarshaling struct {
+	Height hexutil.Uint32
 }
 
 type BizDb interface {

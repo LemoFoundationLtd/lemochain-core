@@ -436,17 +436,20 @@ func (t *PublicTxAPI) PendingTx(size int) []*types.Transaction {
 }
 
 // GetTxByHash pull the specified transaction through a transaction hash
-func (t *PublicTxAPI) GetTxByHash(hash string) (*store.VTransaction, error) {
+func (t *PublicTxAPI) GetTxByHash(hash string) (*store.VTransactionDetail, error) {
 	txHash := common.HexToHash(hash)
 	bizDb := t.node.db.GetBizDatabase()
-	vTx, err := bizDb.GetTxByHash(txHash)
-	return vTx, err
+	vTxDetail, err := bizDb.GetTxByHash(txHash)
+	return vTxDetail, err
 }
 
-//go:generate gencodec -type TxListByAddress -out gen_txListByAddress_info_json.go
+//go:generate gencodec -type TxListByAddress --field-override txListByAddressMarshaling -out gen_txListByAddress_info_json.go
 type TxListByAddress struct {
 	VTransactions []*store.VTransaction `json:"vTransactions" gencodec:"required"`
-	NextVersion   int64                 `json:"next" gencodec:"required"`
+	NextVersion   uint64                `json:"next" gencodec:"required"`
+}
+type txListByAddressMarshaling struct {
+	NextVersion hexutil.Uint64
 }
 
 // GetTxListByAddress pull the list of transactions
@@ -462,7 +465,7 @@ func (t *PublicTxAPI) GetTxListByAddress(lemoAddress string, start int64, size i
 	}
 	txList := &TxListByAddress{
 		VTransactions: vTxs,
-		NextVersion:   next,
+		NextVersion:   uint64(next),
 	}
 
 	return txList, nil
@@ -482,26 +485,34 @@ func (t *PublicTxAPI) GetTxListByAddress(lemoAddress string, start int64, size i
 // ReadContract read variables in a contract includes the return value of a function.
 func (t *PublicTxAPI) ReadContract(to *common.Address, data hexutil.Bytes) (string, error) {
 	ctx := context.Background()
-	result, _, err := t.doCall(ctx, to, data, 5*time.Second)
+	result, _, err := t.doCall(ctx, to, params.OrdinaryTx, data, 5*time.Second)
 	return common.ToHex(result), err
 }
 
 // EstimateGas returns an estimate of the amount of gas needed to execute the given transaction.
-func (t *PublicTxAPI) EstimateGas(to *common.Address, data hexutil.Bytes) (uint64, error) {
+func (t *PublicTxAPI) EstimateGas(to *common.Address, txType uint8, data hexutil.Bytes) (string, error) {
+	var costGas uint64
+	var err error
 	ctx := context.Background()
-	_, costGas, err := t.doCall(ctx, to, data, 5*time.Second)
-	return costGas, err
+	if to == nil {
+		_, costGas, err = t.doCall(ctx, nil, txType, data, 5*time.Second)
+	} else {
+		_, costGas, err = t.doCall(ctx, to, txType, data, 5*time.Second)
+	}
+	strCostGas := strconv.FormatUint(costGas, 10)
+	return strCostGas, err
 }
 
 // EstimateContractGas returns an estimate of the amount of gas needed to create a smart contract.
+// todo will delete
 func (t *PublicTxAPI) EstimateCreateContractGas(data hexutil.Bytes) (uint64, error) {
 	ctx := context.Background()
-	_, costGas, err := t.doCall(ctx, nil, data, 5*time.Second)
+	_, costGas, err := t.doCall(ctx, nil, params.OrdinaryTx, data, 5*time.Second)
 	return costGas, err
 }
 
 // doCall
-func (t *PublicTxAPI) doCall(ctx context.Context, to *common.Address, data hexutil.Bytes, timeout time.Duration) ([]byte, uint64, error) {
+func (t *PublicTxAPI) doCall(ctx context.Context, to *common.Address, txType uint8, data hexutil.Bytes, timeout time.Duration) ([]byte, uint64, error) {
 	t.node.lock.Lock()
 	defer t.node.lock.Unlock()
 
@@ -512,7 +523,7 @@ func (t *PublicTxAPI) doCall(ctx context.Context, to *common.Address, data hexut
 	stableHeader := stableBlock.Header
 
 	p := t.node.chain.TxProcessor()
-	ret, costGas, err := p.CallTx(ctx, stableHeader, to, data, common.Hash{}, timeout)
+	ret, costGas, err := p.CallTx(ctx, stableHeader, to, txType, data, common.Hash{}, timeout)
 
 	return ret, costGas, err
 }

@@ -385,7 +385,7 @@ func (p *TxProcessor) FillHeader(header *types.Header, txs types.Transactions, g
 }
 
 // CallTx pre-execute transactions and contracts.
-func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *common.Address, data hexutil.Bytes, blockHash common.Hash, timeout time.Duration) ([]byte, uint64, error) {
+func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *common.Address, txType uint8, data hexutil.Bytes, blockHash common.Hash, timeout time.Duration) ([]byte, uint64, error) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
@@ -393,7 +393,7 @@ func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *comm
 	accM.Reset(header.ParentHash)
 
 	// A random address is found as our caller address.
-	strAddress := "0x1002" // todo Consider letting users pass in their own addresses
+	strAddress := "0x12345" // todo Consider letting users pass in their own addresses
 	caller, err := common.StringToAddress(strAddress)
 	if err != nil {
 		return nil, 0, err
@@ -403,6 +403,11 @@ func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *comm
 	gasPrice := new(big.Int).SetUint64(defaultGasPrice)
 
 	var tx *types.Transaction
+	switch txType {
+	case params.OrdinaryTx:
+
+	}
+
 	if to == nil { // avoid null pointer references
 		tx = types.NewContractCreation(big.NewInt(0), gasLimit, gasPrice, data, params.OrdinaryTx, p.chain.chainID, uint64(time.Now().Unix()+30*60), "", "")
 	} else {

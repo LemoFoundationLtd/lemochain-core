@@ -6,18 +6,21 @@ import (
 	"encoding/json"
 	"errors"
 
+	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
 	"github.com/LemoFoundationLtd/lemochain-go/store"
 )
+
+var _ = (*txListByAddressMarshaling)(nil)
 
 // MarshalJSON marshals as JSON.
 func (t TxListByAddress) MarshalJSON() ([]byte, error) {
 	type TxListByAddress struct {
 		VTransactions []*store.VTransaction `json:"vTransactions" gencodec:"required"`
-		NextVersion   int64                 `json:"next" gencodec:"required"`
+		NextVersion   hexutil.Uint64        `json:"next" gencodec:"required"`
 	}
 	var enc TxListByAddress
 	enc.VTransactions = t.VTransactions
-	enc.NextVersion = t.NextVersion
+	enc.NextVersion = hexutil.Uint64(t.NextVersion)
 	return json.Marshal(&enc)
 }
 
@@ -25,7 +28,7 @@ func (t TxListByAddress) MarshalJSON() ([]byte, error) {
 func (t *TxListByAddress) UnmarshalJSON(input []byte) error {
 	type TxListByAddress struct {
 		VTransactions []*store.VTransaction `json:"vTransactions" gencodec:"required"`
-		NextVersion   *int64                `json:"next" gencodec:"required"`
+		NextVersion   *hexutil.Uint64       `json:"next" gencodec:"required"`
 	}
 	var dec TxListByAddress
 	if err := json.Unmarshal(input, &dec); err != nil {
@@ -38,6 +41,6 @@ func (t *TxListByAddress) UnmarshalJSON(input []byte) error {
 	if dec.NextVersion == nil {
 		return errors.New("missing required field 'next' for TxListByAddress")
 	}
-	t.NextVersion = *dec.NextVersion
+	t.NextVersion = uint64(*dec.NextVersion)
 	return nil
 }

@@ -4,6 +4,7 @@ package store
 
 import (
 	"encoding/json"
+	"errors"
 
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 )
@@ -11,8 +12,8 @@ import (
 // MarshalJSON marshals as JSON.
 func (v VTransaction) MarshalJSON() ([]byte, error) {
 	type VTransaction struct {
-		Tx *types.Transaction `json:"tx"  		gencodec:"required"`
-		St int64              `json:"time"  		gencodec:"required"`
+		Tx *types.Transaction `json:"tx" gencodec:"required"`
+		St int64              `json:"time" gencodec:"required"`
 	}
 	var enc VTransaction
 	enc.Tx = v.Tx
@@ -23,18 +24,20 @@ func (v VTransaction) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON unmarshals from JSON.
 func (v *VTransaction) UnmarshalJSON(input []byte) error {
 	type VTransaction struct {
-		Tx *types.Transaction `json:"tx"  		gencodec:"required"`
-		St *int64             `json:"time"  		gencodec:"required"`
+		Tx *types.Transaction `json:"tx" gencodec:"required"`
+		St *int64             `json:"time" gencodec:"required"`
 	}
 	var dec VTransaction
 	if err := json.Unmarshal(input, &dec); err != nil {
 		return err
 	}
-	if dec.Tx != nil {
-		v.Tx = dec.Tx
+	if dec.Tx == nil {
+		return errors.New("missing required field 'tx' for VTransaction")
 	}
-	if dec.St != nil {
-		v.St = *dec.St
+	v.Tx = dec.Tx
+	if dec.St == nil {
+		return errors.New("missing required field 'time' for VTransaction")
 	}
+	v.St = *dec.St
 	return nil
 }
