@@ -19,13 +19,13 @@ func (v VTransactionDetail) MarshalJSON() ([]byte, error) {
 		BlockHash common.Hash        `json:"blockHash" gencodec:"required"`
 		Height    hexutil.Uint32     `json:"height" gencodec:"required"`
 		Tx        *types.Transaction `json:"tx"  gencodec:"required"`
-		St        int64              `json:"time" gencodec:"required"`
+		St        hexutil.Uint64     `json:"time" gencodec:"required"`
 	}
 	var enc VTransactionDetail
 	enc.BlockHash = v.BlockHash
 	enc.Height = hexutil.Uint32(v.Height)
 	enc.Tx = v.Tx
-	enc.St = v.St
+	enc.St = hexutil.Uint64(v.St)
 	return json.Marshal(&enc)
 }
 
@@ -35,7 +35,7 @@ func (v *VTransactionDetail) UnmarshalJSON(input []byte) error {
 		BlockHash *common.Hash       `json:"blockHash" gencodec:"required"`
 		Height    *hexutil.Uint32    `json:"height" gencodec:"required"`
 		Tx        *types.Transaction `json:"tx"  gencodec:"required"`
-		St        *int64             `json:"time" gencodec:"required"`
+		St        *hexutil.Uint64    `json:"time" gencodec:"required"`
 	}
 	var dec VTransactionDetail
 	if err := json.Unmarshal(input, &dec); err != nil {
@@ -56,6 +56,6 @@ func (v *VTransactionDetail) UnmarshalJSON(input []byte) error {
 	if dec.St == nil {
 		return errors.New("missing required field 'time' for VTransactionDetail")
 	}
-	v.St = *dec.St
+	v.St = int64(*dec.St)
 	return nil
 }

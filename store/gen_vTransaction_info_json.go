@@ -7,17 +7,20 @@ import (
 	"errors"
 
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
+	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
 )
+
+var _ = (*vTransactionMarshaling)(nil)
 
 // MarshalJSON marshals as JSON.
 func (v VTransaction) MarshalJSON() ([]byte, error) {
 	type VTransaction struct {
 		Tx *types.Transaction `json:"tx" gencodec:"required"`
-		St int64              `json:"time" gencodec:"required"`
+		St hexutil.Uint64     `json:"time" gencodec:"required"`
 	}
 	var enc VTransaction
 	enc.Tx = v.Tx
-	enc.St = v.St
+	enc.St = hexutil.Uint64(v.St)
 	return json.Marshal(&enc)
 }
 
@@ -25,7 +28,7 @@ func (v VTransaction) MarshalJSON() ([]byte, error) {
 func (v *VTransaction) UnmarshalJSON(input []byte) error {
 	type VTransaction struct {
 		Tx *types.Transaction `json:"tx" gencodec:"required"`
-		St *int64             `json:"time" gencodec:"required"`
+		St *hexutil.Uint64    `json:"time" gencodec:"required"`
 	}
 	var dec VTransaction
 	if err := json.Unmarshal(input, &dec); err != nil {
@@ -38,6 +41,6 @@ func (v *VTransaction) UnmarshalJSON(input []byte) error {
 	if dec.St == nil {
 		return errors.New("missing required field 'time' for VTransaction")
 	}
-	v.St = *dec.St
+	v.St = int64(*dec.St)
 	return nil
 }

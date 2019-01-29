@@ -10,10 +10,13 @@ import (
 	"time"
 )
 
-//go:generate gencodec -type VTransaction -out gen_vTransaction_info_json.go
+//go:generate gencodec -type VTransaction --field-override vTransactionMarshaling -out gen_vTransaction_info_json.go
 type VTransaction struct {
 	Tx *types.Transaction `json:"tx" gencodec:"required"`
 	St int64              `json:"time" gencodec:"required"`
+}
+type vTransactionMarshaling struct {
+	St hexutil.Uint64
 }
 
 //go:generate gencodec -type VTransactionDetail --field-override vTransactionDetailMarshaling -out gen_vTransactionDetail_info_json.go
@@ -26,6 +29,7 @@ type VTransactionDetail struct {
 
 type vTransactionDetailMarshaling struct {
 	Height hexutil.Uint32
+	St     hexutil.Uint64
 }
 
 type BizDb interface {
