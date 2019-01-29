@@ -228,9 +228,9 @@ type bintree struct {
 }
 
 var _bintree = &bintree{nil, map[string]*bintree{
-	"babel-polyfill.js":  {babelPolyfillJs, map[string]*bintree{}},
-	"lemo-client.js":     {lemoClientJs, map[string]*bintree{}},
-	"lemo-node-admin.js": {lemoNodeAdminJs, map[string]*bintree{}},
+	"babel-polyfill.js":  &bintree{babelPolyfillJs, map[string]*bintree{}},
+	"lemo-client.js":     &bintree{lemoClientJs, map[string]*bintree{}},
+	"lemo-node-admin.js": &bintree{lemoNodeAdminJs, map[string]*bintree{}},
 }}
 
 // RestoreAsset restores an asset under the given directory

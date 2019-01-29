@@ -86,16 +86,16 @@ func (a *PublicAccountAPI) GetVoteFor(LemoAddress string) (string, error) {
 	return forAddress, nil
 }
 
-//go:generate gencodec -type CandiateInfo -out gen_candidate_info_json.go
+//go:generate gencodec -type CandidateInfo -out gen_candidate_info_json.go
 
-type CandiateInfo struct {
+type CandidateInfo struct {
 	CandidateAddress string            `json:"candidate" gencodec:"required"`
 	Votes            string            `json:"votes" gencodec:"required"`
 	Profile          map[string]string `json:"profile"  gencodec:"required"`
 }
 
 // GetCandidateInfo get candidate node information
-func (a *PublicAccountAPI) GetCandidateInfo(LemoAddress string) *CandiateInfo {
+func (a *PublicAccountAPI) GetCandidateInfo(LemoAddress string) *CandidateInfo {
 	candiAccount, err := a.GetAccount(LemoAddress)
 	if err != nil {
 		return nil
@@ -105,7 +105,7 @@ func (a *PublicAccountAPI) GetCandidateInfo(LemoAddress string) *CandiateInfo {
 		return nil
 	}
 
-	candidateInfo := &CandiateInfo{
+	candidateInfo := &CandidateInfo{
 		Profile: make(map[string]string),
 	}
 	candidateInfo.Profile[types.CandidateKeyIsCandidate] = mapProfile[types.CandidateKeyIsCandidate]
@@ -128,21 +128,21 @@ func NewPublicChainAPI(chain *chain.BlockChain) *PublicChainAPI {
 	return &PublicChainAPI{chain}
 }
 
-// GetCandidateNodeList get all candidate node list information and return total candidate node
-func (c *PublicChainAPI) GetCandidateList(index, size int) ([]*CandiateInfo, int, error) {
+// GetCandidateNodeList get all candidate node list information and return total candidate node todo
+func (c *PublicChainAPI) GetCandidateList(index, size int) ([]*CandidateInfo, int) {
 	addresses, total, err := c.chain.Db().GetCandidatesPage(index, size)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0
 	}
-	candidateInfoes := make([]*CandiateInfo, 0)
+	candidateInfoes := make([]*CandidateInfo, 0)
 	for i := 0; i < len(addresses); i++ {
 		candidateAccount := c.chain.AccountManager().GetAccount(addresses[i])
 		mapProfile := candidateAccount.GetCandidateProfile()
 		if isCandidate, ok := mapProfile[types.CandidateKeyIsCandidate]; !ok || isCandidate == params.NotCandidateNode {
 			err = fmt.Errorf("the node of %s is not candidate node", addresses[i].String())
-			return nil, 0, err
+			return nil, 0
 		}
-		candidateInfo := &CandiateInfo{
+		candidateInfo := &CandidateInfo{
 			Profile: make(map[string]string),
 		}
 		candidateInfo.Profile[types.CandidateKeyIsCandidate] = mapProfile[types.CandidateKeyIsCandidate]
@@ -155,7 +155,24 @@ func (c *PublicChainAPI) GetCandidateList(index, size int) ([]*CandiateInfo, int
 
 		candidateInfoes = append(candidateInfoes, candidateInfo)
 	}
-	return candidateInfoes, total, nil
+	return candidateInfoes, total
+}
+
+// GetCandidateTop30
+func (c *PublicChainAPI) GetCandidateTop30(blockHash common.Hash) []*CandidateInfo {
+	storeInfoes := c.chain.Db().GetCandidatesTop(blockHash)
+
+	candidateInfoes := make([]*CandidateInfo, 0)
+	for _, info := range storeInfoes {
+		candidateInfo := &CandidateInfo{
+			Profile: make(map[string]string),
+		}
+		candidateInfo.Profile[types.CandidateKeyNodeID] = common.ToHex(info.GetNodeID())
+		candidateInfo.CandidateAddress = info.GetAddress().String()
+		candidateInfo.Votes = info.GetTotal().String()
+		candidateInfoes = append(candidateInfoes, candidateInfo)
+	}
+	return candidateInfoes
 }
 
 // GetBlockByNumber get block information by height
@@ -408,14 +425,14 @@ func (t *PublicTxAPI) GetTxByHash(hash string) (*store.VTransaction, error) {
 }
 
 // GetTxListByAddress pull the list of transactions
-func (t *PublicTxAPI) GetTxListByAddress(lemoAddress string, start int64, size int) ([]*store.VTransaction, int64, error) {
+func (t *PublicTxAPI) GetTxListByAddress(lemoAddress string, start uint64, size int) ([]*store.VTransaction, uint64) {
 	src, err := common.StringToAddress(lemoAddress)
 	if err != nil {
-		return nil, start, err
+		return nil, start
 	}
 	bizDb := t.node.db.GetBizDatabase()
-	vTxs, next, err := bizDb.GetTxByAddr(src, start, size)
-	return vTxs, next, err
+	vTxs, next, err := bizDb.GetTxByAddr(src, int64(start), size)
+	return vTxs, uint64(next)
 }
 
 // // PullForwardTxListByAddress 向前拉取address所涉及的交易列表
