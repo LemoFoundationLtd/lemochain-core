@@ -86,37 +86,37 @@ func (a *PublicAccountAPI) GetVoteFor(LemoAddress string) (string, error) {
 	return forAddress, nil
 }
 
-//go:generate gencodec -type CandiateInfo -out gen_candidate_info_json.go
+//go:generate gencodec -type CandidateInfo -out gen_candidate_info_json.go
 
-type CandiateInfo struct {
+type CandidateInfo struct {
 	CandidateAddress string            `json:"candidate" gencodec:"required"`
 	Votes            string            `json:"votes" gencodec:"required"`
 	Profile          map[string]string `json:"profile"  gencodec:"required"`
 }
 
-// GetCandidateInfo get candidate node information
-func (a *PublicAccountAPI) GetCandidateInfo(LemoAddress string) *CandiateInfo {
-	candiAccount, err := a.GetAccount(LemoAddress)
-	if err != nil {
-		return nil
-	}
-	mapProfile := candiAccount.GetCandidateProfile()
-	if _, ok := mapProfile[types.CandidateKeyIsCandidate]; !ok {
-		return nil
-	}
-
-	candidateInfo := &CandiateInfo{
-		Profile: make(map[string]string),
-	}
-	candidateInfo.Profile[types.CandidateKeyIsCandidate] = mapProfile[types.CandidateKeyIsCandidate]
-	candidateInfo.Profile[types.CandidateKeyHost] = mapProfile[types.CandidateKeyHost]
-	candidateInfo.Profile[types.CandidateKeyNodeID] = mapProfile[types.CandidateKeyNodeID]
-	candidateInfo.Profile[types.CandidateKeyPort] = mapProfile[types.CandidateKeyPort]
-	candidateInfo.Profile[types.CandidateKeyMinerAddress] = mapProfile[types.CandidateKeyMinerAddress]
-	candidateInfo.Votes = candiAccount.GetVotes().String()
-	candidateInfo.CandidateAddress = LemoAddress
-	return candidateInfo
-}
+// // GetCandidateInfo get candidate node information
+// func (a *PublicAccountAPI) GetCandidateInfo(LemoAddress string) *CandidateInfo {
+// 	candiAccount, err := a.GetAccount(LemoAddress)
+// 	if err != nil {
+// 		return nil
+// 	}
+// 	mapProfile := candiAccount.GetCandidateProfile()
+// 	if _, ok := mapProfile[types.CandidateKeyIsCandidate]; !ok {
+// 		return nil
+// 	}
+//
+// 	candidateInfo := &CandidateInfo{
+// 		Profile: make(map[string]string),
+// 	}
+// 	candidateInfo.Profile[types.CandidateKeyIsCandidate] = mapProfile[types.CandidateKeyIsCandidate]
+// 	candidateInfo.Profile[types.CandidateKeyHost] = mapProfile[types.CandidateKeyHost]
+// 	candidateInfo.Profile[types.CandidateKeyNodeID] = mapProfile[types.CandidateKeyNodeID]
+// 	candidateInfo.Profile[types.CandidateKeyPort] = mapProfile[types.CandidateKeyPort]
+// 	candidateInfo.Profile[types.CandidateKeyMinerAddress] = mapProfile[types.CandidateKeyMinerAddress]
+// 	candidateInfo.Votes = candiAccount.GetVotes().String()
+// 	candidateInfo.CandidateAddress = LemoAddress
+// 	return candidateInfo
+// }
 
 // ChainAPI
 type PublicChainAPI struct {
@@ -128,34 +128,70 @@ func NewPublicChainAPI(chain *chain.BlockChain) *PublicChainAPI {
 	return &PublicChainAPI{chain}
 }
 
-// GetCandidateNodeList get all candidate node list information and return total candidate node
-func (c *PublicChainAPI) GetCandidateList(index, size int) ([]*CandiateInfo, int, error) {
+//go:generate gencodec -type GetCandidateList --field-override getCandidateListMarshaling -out gen_getCandidateList_info_json.go
+type GetCandidateList struct {
+	CandidateInfoes []*CandidateInfo `json:"candidateInfoes" gencodec:"required"`
+	Total           uint32           `json:"total" gencodec:"required"`
+}
+type getCandidateListMarshaling struct {
+	Total hexutil.Uint32
+}
+
+// GetCandidateNodeList get all candidate node list information and return total candidate node todo
+func (c *PublicChainAPI) GetCandidateList(index, size int) (*GetCandidateList, error) {
 	addresses, total, err := c.chain.Db().GetCandidatesPage(index, size)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
-	candidateInfoes := make([]*CandiateInfo, 0)
+	candidateInfoes := make([]*CandidateInfo, 0)
 	for i := 0; i < len(addresses); i++ {
 		candidateAccount := c.chain.AccountManager().GetAccount(addresses[i])
 		mapProfile := candidateAccount.GetCandidateProfile()
 		if isCandidate, ok := mapProfile[types.CandidateKeyIsCandidate]; !ok || isCandidate == params.NotCandidateNode {
 			err = fmt.Errorf("the node of %s is not candidate node", addresses[i].String())
-			return nil, 0, err
+			return nil, err
 		}
-		candidateInfo := &CandiateInfo{
+
+		candidateInfo := &CandidateInfo{
 			Profile: make(map[string]string),
 		}
-		candidateInfo.Profile[types.CandidateKeyIsCandidate] = mapProfile[types.CandidateKeyIsCandidate]
-		candidateInfo.Profile[types.CandidateKeyHost] = mapProfile[types.CandidateKeyHost]
-		candidateInfo.Profile[types.CandidateKeyNodeID] = mapProfile[types.CandidateKeyNodeID]
-		candidateInfo.Profile[types.CandidateKeyPort] = mapProfile[types.CandidateKeyPort]
-		candidateInfo.Profile[types.CandidateKeyMinerAddress] = mapProfile[types.CandidateKeyMinerAddress]
+
+		candidateInfo.Profile = mapProfile
+		// candidateInfo.Profile[types.CandidateKeyIsCandidate] = mapProfile[types.CandidateKeyIsCandidate]
+		// candidateInfo.Profile[types.CandidateKeyHost] = mapProfile[types.CandidateKeyHost]
+		// candidateInfo.Profile[types.CandidateKeyNodeID] = mapProfile[types.CandidateKeyNodeID]
+		// candidateInfo.Profile[types.CandidateKeyPort] = mapProfile[types.CandidateKeyPort]
+		// candidateInfo.Profile[types.CandidateKeyMinerAddress] = mapProfile[types.CandidateKeyMinerAddress]
 		candidateInfo.Votes = candidateAccount.GetVotes().String()
 		candidateInfo.CandidateAddress = addresses[i].String()
 
 		candidateInfoes = append(candidateInfoes, candidateInfo)
 	}
-	return candidateInfoes, total, nil
+	getCandiList := &GetCandidateList{
+		CandidateInfoes: candidateInfoes,
+		Total:           uint32(total),
+	}
+	return getCandiList, nil
+}
+
+// GetCandidateTop30 get top 30 candidate node
+func (c *PublicChainAPI) GetCandidateTop30(blockHash common.Hash) []*CandidateInfo {
+	storeInfoes := c.chain.Db().GetCandidatesTop(blockHash)
+
+	candidateInfoes := make([]*CandidateInfo, 0)
+	for _, info := range storeInfoes {
+		candidateInfo := &CandidateInfo{
+			Profile: make(map[string]string),
+		}
+		CandidateAddress := info.GetAddress()
+		CandidateAccount := c.chain.AccountManager().GetAccount(CandidateAddress)
+		profile := CandidateAccount.GetCandidateProfile()
+		candidateInfo.Profile = profile
+		candidateInfo.CandidateAddress = CandidateAddress.String()
+		candidateInfo.Votes = info.GetTotal().String()
+		candidateInfoes = append(candidateInfoes, candidateInfo)
+	}
+	return candidateInfoes
 }
 
 // GetBlockByNumber get block information by height
@@ -400,22 +436,39 @@ func (t *PublicTxAPI) PendingTx(size int) []*types.Transaction {
 }
 
 // GetTxByHash pull the specified transaction through a transaction hash
-func (t *PublicTxAPI) GetTxByHash(hash string) (*store.VTransaction, error) {
+func (t *PublicTxAPI) GetTxByHash(hash string) (*store.VTransactionDetail, error) {
 	txHash := common.HexToHash(hash)
 	bizDb := t.node.db.GetBizDatabase()
-	vTx, err := bizDb.GetTxByHash(txHash)
-	return vTx, err
+	vTxDetail, err := bizDb.GetTxByHash(txHash)
+	return vTxDetail, err
+}
+
+//go:generate gencodec -type TxListByAddress --field-override txListByAddressMarshaling -out gen_txListByAddress_info_json.go
+type TxListByAddress struct {
+	VTransactions []*store.VTransaction `json:"vTransactions" gencodec:"required"`
+	NextVersion   uint64                `json:"next" gencodec:"required"`
+}
+type txListByAddressMarshaling struct {
+	NextVersion hexutil.Uint64
 }
 
 // GetTxListByAddress pull the list of transactions
-func (t *PublicTxAPI) GetTxListByAddress(lemoAddress string, start int64, size int) ([]*store.VTransaction, int64, error) {
+func (t *PublicTxAPI) GetTxListByAddress(lemoAddress string, start int64, size int) (*TxListByAddress, error) {
 	src, err := common.StringToAddress(lemoAddress)
 	if err != nil {
-		return nil, start, err
+		return nil, err
 	}
 	bizDb := t.node.db.GetBizDatabase()
 	vTxs, next, err := bizDb.GetTxByAddr(src, start, size)
-	return vTxs, next, err
+	if err != nil {
+		return nil, err
+	}
+	txList := &TxListByAddress{
+		VTransactions: vTxs,
+		NextVersion:   uint64(next),
+	}
+
+	return txList, nil
 }
 
 // // PullForwardTxListByAddress 向前拉取address所涉及的交易列表
@@ -432,26 +485,34 @@ func (t *PublicTxAPI) GetTxListByAddress(lemoAddress string, start int64, size i
 // ReadContract read variables in a contract includes the return value of a function.
 func (t *PublicTxAPI) ReadContract(to *common.Address, data hexutil.Bytes) (string, error) {
 	ctx := context.Background()
-	result, _, err := t.doCall(ctx, to, data, 5*time.Second)
+	result, _, err := t.doCall(ctx, to, params.OrdinaryTx, data, 5*time.Second)
 	return common.ToHex(result), err
 }
 
 // EstimateGas returns an estimate of the amount of gas needed to execute the given transaction.
-func (t *PublicTxAPI) EstimateGas(to *common.Address, data hexutil.Bytes) (uint64, error) {
+func (t *PublicTxAPI) EstimateGas(to *common.Address, txType uint8, data hexutil.Bytes) (string, error) {
+	var costGas uint64
+	var err error
 	ctx := context.Background()
-	_, costGas, err := t.doCall(ctx, to, data, 5*time.Second)
-	return costGas, err
+	if to == nil {
+		_, costGas, err = t.doCall(ctx, nil, txType, data, 5*time.Second)
+	} else {
+		_, costGas, err = t.doCall(ctx, to, txType, data, 5*time.Second)
+	}
+	strCostGas := strconv.FormatUint(costGas, 10)
+	return strCostGas, err
 }
 
 // EstimateContractGas returns an estimate of the amount of gas needed to create a smart contract.
+// todo will delete
 func (t *PublicTxAPI) EstimateCreateContractGas(data hexutil.Bytes) (uint64, error) {
 	ctx := context.Background()
-	_, costGas, err := t.doCall(ctx, nil, data, 5*time.Second)
+	_, costGas, err := t.doCall(ctx, nil, params.OrdinaryTx, data, 5*time.Second)
 	return costGas, err
 }
 
 // doCall
-func (t *PublicTxAPI) doCall(ctx context.Context, to *common.Address, data hexutil.Bytes, timeout time.Duration) ([]byte, uint64, error) {
+func (t *PublicTxAPI) doCall(ctx context.Context, to *common.Address, txType uint8, data hexutil.Bytes, timeout time.Duration) ([]byte, uint64, error) {
 	t.node.lock.Lock()
 	defer t.node.lock.Unlock()
 
@@ -462,7 +523,7 @@ func (t *PublicTxAPI) doCall(ctx context.Context, to *common.Address, data hexut
 	stableHeader := stableBlock.Header
 
 	p := t.node.chain.TxProcessor()
-	ret, costGas, err := p.CallTx(ctx, stableHeader, to, data, common.Hash{}, timeout)
+	ret, costGas, err := p.CallTx(ctx, stableHeader, to, txType, data, common.Hash{}, timeout)
 
 	return ret, costGas, err
 }
