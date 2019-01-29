@@ -1,6 +1,7 @@
 package store
 
 import (
+	"errors"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
@@ -35,10 +36,12 @@ type vTransactionDetailMarshaling struct {
 type BizDb interface {
 	GetTxByHash(hash common.Hash) (*VTransactionDetail, error)
 
-	GetTxByAddr(src common.Address, start int64, size int) ([]*VTransaction, int64, error)
+	GetTxByAddr(src common.Address, index int, size int) ([]*VTransaction, int, error)
 }
 
 type Reader interface {
+	GetLastConfirm() *CBlock
+
 	GetBlockByHash(hash common.Hash) (*types.Block, error)
 }
 
@@ -83,8 +86,28 @@ func (db *BizDatabase) GetTxByHash(hash common.Hash) (*VTransactionDetail, error
 	}, nil
 }
 
-func (db *BizDatabase) GetTxByAddr(src common.Address, start int64, size int) ([]*VTransaction, int64, error) {
-	_, vals, sts, ver, err := db.Database.TxGetByAddr(src.Hex(), start, size)
+func (db *BizDatabase) GetTxByAddr(src common.Address, index int, size int) ([]*VTransaction, int, error) {
+	if (index <= 0) || (size > 200) || (size <= 0) {
+		return nil, -1, errors.New("argment error.")
+	}
+
+	confirm := db.Reader.GetLastConfirm()
+	accounts := confirm.Trie
+	if accounts == nil {
+		return make([]*VTransaction, 0), 0, nil
+	}
+
+	account := accounts.Find(src[:])
+	if account == nil {
+		return make([]*VTransaction, 0), 0, nil
+	}
+
+	txCount := account.TxCount
+	if txCount <= 0 || (index-1)*size > txCount {
+		return make([]*VTransaction, 0), 0, nil
+	}
+
+	_, vals, sts, err := db.Database.TxGetByAddr(src.Hex(), index, size)
 	if err != nil {
 		return nil, -1, err
 	}
@@ -102,7 +125,7 @@ func (db *BizDatabase) GetTxByAddr(src common.Address, start int64, size int) ([
 			St: sts[index],
 		}
 	}
-	return txs, ver, nil
+	return txs, txCount, nil
 }
 
 func (db *BizDatabase) AfterCommit(flag uint, key []byte, val []byte) error {

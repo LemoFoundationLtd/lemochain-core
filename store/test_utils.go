@@ -43,17 +43,6 @@ func CreateBlock(hash common.Hash, parent common.Hash, height uint32) *types.Blo
 	return block
 }
 
-func GetBlock0() *types.Block {
-	hash := common.HexToHash("0000000000000000")
-	return CreateBlock(hash, common.Hash{}, 0)
-}
-
-func GetBlock1() *types.Block {
-	parentBlock := GetBlock0()
-	childHash := common.HexToHash("1111111111111111")
-	return CreateBlock(childHash, parentBlock.Hash(), 1)
-}
-
 func GetRandomString(len int) string {
 	str := "0123456789abcdef"
 	bytes := []byte(str)
@@ -78,10 +67,33 @@ func NewBlockBatch(size int) []*types.Block {
 	return result
 }
 
+func GetBlock0() *types.Block {
+	hash := common.HexToHash("0000000000000000")
+	return CreateBlock(hash, common.Hash{}, 0)
+}
+
+func GetBlock1() *types.Block {
+	parentBlock := GetBlock0()
+	childHash := common.HexToHash("1111111111111111")
+	return CreateBlock(childHash, parentBlock.Hash(), 1)
+}
+
 func GetBlock2() *types.Block {
 	parentBlock := GetBlock1()
 	childHash := common.HexToHash("2222222222222222")
 	return CreateBlock(childHash, parentBlock.Hash(), 2)
+}
+
+func GetBlock3() *types.Block {
+	parentBlock := GetBlock2()
+	childHash := common.HexToHash("33333333333333333")
+	return CreateBlock(childHash, parentBlock.Hash(), 3)
+}
+
+func GetBlock4() *types.Block {
+	parentBlock := GetBlock3()
+	childHash := common.HexToHash("44444444444444444")
+	return CreateBlock(childHash, parentBlock.Hash(), 4)
 }
 
 func GetAccount(address string, balance int64, version uint32) *types.AccountData {

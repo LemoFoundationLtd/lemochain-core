@@ -14,32 +14,110 @@ func TestCacheChain_SetBlock(t *testing.T) {
 	ClearData()
 
 	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
+	result, err := cacheChain.GetBlockByHeight(0)
+	assert.Equal(t, err, ErrNotExist)
 
+	//
 	block0 := GetBlock0()
-	err := cacheChain.SetBlock(block0.Hash(), block0)
+	err = cacheChain.SetBlock(block0.Hash(), block0)
 	assert.NoError(t, err)
 
 	err = cacheChain.SetStableBlock(block0.Hash())
 	assert.NoError(t, err)
 
-	result, err := cacheChain.GetBlockByHash(block0.Hash())
+	result, err = cacheChain.GetBlockByHash(block0.Hash())
 	assert.NoError(t, err)
 	assert.Equal(t, block0.ParentHash(), result.ParentHash())
 
+	//
 	block1 := GetBlock1()
 	err = cacheChain.SetBlock(block1.Hash(), block1)
-	assert.NoError(t, err)
-
-	err = cacheChain.SetStableBlock(block1.Hash())
 	assert.NoError(t, err)
 
 	result, err = cacheChain.GetBlockByHash(block1.Hash())
 	assert.NoError(t, err)
 	assert.Equal(t, block1.ParentHash(), result.ParentHash())
 
-	result, err = cacheChain.GetBlock(block0.Hash(), 0)
+	result, err = cacheChain.GetBlockByHeight(block1.Height())
+	assert.Equal(t, err, ErrNotExist)
+
+	block2 := GetBlock2()
+	err = cacheChain.SetBlock(block2.Hash(), block2)
 	assert.NoError(t, err)
-	assert.Equal(t, block0.ParentHash(), result.ParentHash())
+
+	result, err = cacheChain.GetBlockByHash(block2.Hash())
+	assert.NoError(t, err)
+	assert.Equal(t, block2.ParentHash(), result.ParentHash())
+
+	result, err = cacheChain.GetBlockByHeight(block2.Height())
+	assert.Equal(t, err, ErrNotExist)
+
+	block3 := GetBlock3()
+	err = cacheChain.SetBlock(block3.Hash(), block3)
+	assert.NoError(t, err)
+
+	result, err = cacheChain.GetBlockByHash(block3.Hash())
+	assert.NoError(t, err)
+	assert.Equal(t, block3.ParentHash(), result.ParentHash())
+
+	result, err = cacheChain.GetBlockByHeight(block3.Height())
+	assert.Equal(t, err, ErrNotExist)
+
+	//
+	err = cacheChain.SetStableBlock(block2.Hash())
+	assert.NoError(t, err)
+
+	result, err = cacheChain.GetBlockByHash(block2.Hash())
+	assert.NoError(t, err)
+	assert.Equal(t, block2.ParentHash(), result.ParentHash())
+
+	result, err = cacheChain.GetBlockByHeight(block2.Height())
+	assert.NoError(t, err)
+	assert.Equal(t, block2.ParentHash(), result.ParentHash())
+
+	result, err = cacheChain.GetBlockByHash(block3.Hash())
+	assert.NoError(t, err)
+	assert.Equal(t, block3.ParentHash(), result.ParentHash())
+
+	result, err = cacheChain.GetBlockByHeight(block3.Height())
+	assert.Equal(t, err, ErrNotExist)
+}
+
+func TestCacheChain_SetBlockError(t *testing.T) {
+	ClearData()
+
+	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
+	block1 := GetBlock1()
+
+	assert.PanicsWithValue(t, "(database.LastConfirm.Block == nil) && (block.Height() != 0) && (block.ParentHash() != common.Hash{})", func() {
+		cacheChain.SetBlock(block1.Hash(), block1)
+	})
+
+	block0 := GetBlock0()
+	cacheChain.SetBlock(block0.Hash(), block0)
+	cacheChain.SetStableBlock(block0.Hash())
+
+	err := cacheChain.SetBlock(block0.Hash(), block0)
+	assert.Equal(t, ErrExist, err)
+
+	block1.Header.Height = 0
+	assert.PanicsWithValue(t, "(block.Height() == 0) || (block.ParentHash() == common.Hash{})", func() {
+		cacheChain.SetBlock(block1.Hash(), block1)
+	})
+	block1.Header.Height = 1
+	cacheChain.SetBlock(block1.Hash(), block1)
+	cacheChain.SetStableBlock(block1.Hash())
+
+	block2 := GetBlock2()
+	block2.Header.Height = 1
+	assert.PanicsWithValue(t, "(database.LastConfirm.Block != nil) && (height < database.LastConfirm.Block.Height())", func() {
+		cacheChain.SetBlock(block2.Hash(), block2)
+	})
+
+	block4 := GetBlock4()
+	assert.PanicsWithValue(t, "parent block is not exist.", func() {
+		cacheChain.SetBlock(block4.Hash(), block4)
+	})
 }
 
 func TestCacheChain_IsExistByHash(t *testing.T) {

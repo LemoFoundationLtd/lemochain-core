@@ -93,21 +93,21 @@ func (db *MySqlDB) TxGetByHash(key string) (string, []byte, int64, error) {
 	return hash, val, st, nil
 }
 
-func (db *MySqlDB) TxGetByAddr(addr string, start int64, size int) ([]string, [][]byte, []int64, int64, error) {
-	stmt, err := db.engine.Prepare(txsql + " WHERE (tx_from = ? or tx_to = ?) and (tx_ver > ?) ORDER BY tx_ver ASC LIMIT 0, ?")
+func (db *MySqlDB) TxGetByAddr(addr string, index int, size int) ([]string, [][]byte, []int64, error) {
+	start := (index - 1) * size
+	stmt, err := db.engine.Prepare(txsql + " WHERE tx_from = ? or tx_to = ? ORDER BY tx_ver ASC LIMIT ?, ?")
 	if err != nil {
-		return nil, nil, nil, -1, err
+		return nil, nil, nil, err
 	}
 
 	rows, err := stmt.Query(addr, addr, start, size)
 	if err != nil {
-		return nil, nil, nil, -1, err
+		return nil, nil, nil, err
 	}
 
 	resultHash := make([]string, 0)
 	resultVal := make([][]byte, 0)
 	resultSt := make([]int64, 0)
-	maxVer := start
 	for rows.Next() {
 		var hash string
 		var val []byte
@@ -115,17 +115,14 @@ func (db *MySqlDB) TxGetByAddr(addr string, start int64, size int) ([]string, []
 		var st int64
 		err := rows.Scan(&hash, &val, &ver, &st)
 		if err != nil {
-			return nil, nil, nil, -1, err
-		}
-
-		resultHash = append(resultHash, hash)
-		resultVal = append(resultVal, val)
-		resultSt = append(resultSt, st)
-		if maxVer < ver {
-			maxVer = ver
+			return nil, nil, nil, err
+		} else {
+			resultHash = append(resultHash, hash)
+			resultVal = append(resultVal, val)
+			resultSt = append(resultSt, st)
 		}
 	}
-	return resultHash, resultVal, resultSt, maxVer, nil
+	return resultHash, resultVal, resultSt, nil
 }
 
 func (db *MySqlDB) Clear() error {

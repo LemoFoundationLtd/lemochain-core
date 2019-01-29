@@ -39,31 +39,24 @@ func TestMySqlDB_Tx(t *testing.T) {
 	assert.Equal(t, int64(100), st)
 
 	// next
-	hashes, results, sts, maxVer, err := db.TxGetByAddr("addr1", 0, 2)
+	hashes, results, sts, err := db.TxGetByAddr("addr1", 1, 2)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(hashes))
 	assert.Equal(t, 2, len(results))
 	assert.Equal(t, 2, len(sts))
-	assert.Equal(t, int64(2), maxVer)
+	assert.Equal(t, sts[1], int64(101))
 
-	hashes, results, sts, maxVer, err = db.TxGetByAddr("addr1", 2, 2)
+	hashes, results, sts, err = db.TxGetByAddr("addr1", 2, 2)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(hashes))
 	assert.Equal(t, 2, len(results))
 	assert.Equal(t, 2, len(sts))
-	assert.Equal(t, int64(4), maxVer)
+	assert.Equal(t, sts[1], int64(103))
 
-	hashes, results, sts, maxVer, err = db.TxGetByAddr("addr1", 4, 2)
+	hashes, results, sts, err = db.TxGetByAddr("addr1", 3, 2)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(hashes))
 	assert.Equal(t, 1, len(results))
 	assert.Equal(t, 1, len(sts))
-	assert.Equal(t, int64(5), maxVer)
-
-	hashes, results, sts, maxVer, err = db.TxGetByAddr("addr1", 5, 2)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(hashes))
-	assert.Equal(t, 0, len(results))
-	assert.Equal(t, 0, len(sts))
-	assert.Equal(t, int64(5), maxVer)
+	assert.Equal(t, sts[0], int64(104))
 }

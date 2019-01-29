@@ -92,6 +92,10 @@ func NewChainDataBase(home string, driver string, dns string) *ChainDatabase {
 	return db
 }
 
+func (database *ChainDatabase) GetLastConfirm() *CBlock {
+	return database.LastConfirm
+}
+
 func (database *ChainDatabase) AfterScan(flag uint, key []byte, val []byte) error {
 	return database.BizDB.AfterCommit(flag, key, val)
 }
@@ -332,14 +336,18 @@ func (database *ChainDatabase) SetBlock(hash common.Hash, block *types.Block) er
 		return ErrExist
 	}
 
-	if ((block.Height() == 0) && (block.ParentHash() != common.Hash{})) ||
-		((block.ParentHash() == common.Hash{}) && (block.Height() != 0)) {
-		panic("(height == 0) && (ParentHash() != common.Hash{}) || (height != 0) && (ParentHash() == common.Hash{})")
-	}
+	if database.LastConfirm.Block == nil {
+		if (block.Height() != 0) || (block.ParentHash() != common.Hash{}) {
+			panic("(database.LastConfirm.Block == nil) && (block.Height() != 0) && (block.ParentHash() != common.Hash{})")
+		}
+	} else {
+		if (block.Height() == 0) || (block.ParentHash() == common.Hash{}) {
+			panic("(block.Height() == 0) || (block.ParentHash() == common.Hash{})")
+		}
 
-	if (database.LastConfirm.Block != nil) &&
-		(block.Height() <= database.LastConfirm.Block.Height()) {
-		panic("(database.LastConfirm.Block != nil) && (height < database.LastConfirm.Block.Height())")
+		if block.Height() <= database.LastConfirm.Block.Height() {
+			panic("(database.LastConfirm.Block != nil) && (height < database.LastConfirm.Block.Height())")
+		}
 	}
 
 	// genesis block
@@ -478,8 +486,7 @@ func (database *ChainDatabase) SetStableBlock(hash common.Hash) error {
 
 	cItem := database.UnConfirmBlocks[hash]
 	if cItem == nil {
-		log.Errorf("set stable block error:the block is not exist. hash: %s", hash.String())
-		return ErrNotExist
+		panic("set stable block error:the block is not exist. hash:" + hash.Hex())
 	}
 
 	blocks := make([]*CBlock, 0)
