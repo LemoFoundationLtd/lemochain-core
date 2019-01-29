@@ -498,7 +498,7 @@ func (context *RunContext) GetCandidatePage(index int, size int) ([]common.Addre
 	itemHeadLen := binary.Size(contextItemHead{})
 	for {
 		if offset >= len(bodyBuf) {
-			return make([]common.Address, 0), -1, nil
+			return make([]common.Address, 0), 0, nil
 		}
 
 		var itemHead contextItemHead
