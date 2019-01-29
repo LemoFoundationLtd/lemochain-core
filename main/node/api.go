@@ -94,29 +94,29 @@ type CandidateInfo struct {
 	Profile          map[string]string `json:"profile"  gencodec:"required"`
 }
 
-// GetCandidateInfo get candidate node information
-func (a *PublicAccountAPI) GetCandidateInfo(LemoAddress string) *CandidateInfo {
-	candiAccount, err := a.GetAccount(LemoAddress)
-	if err != nil {
-		return nil
-	}
-	mapProfile := candiAccount.GetCandidateProfile()
-	if _, ok := mapProfile[types.CandidateKeyIsCandidate]; !ok {
-		return nil
-	}
-
-	candidateInfo := &CandidateInfo{
-		Profile: make(map[string]string),
-	}
-	candidateInfo.Profile[types.CandidateKeyIsCandidate] = mapProfile[types.CandidateKeyIsCandidate]
-	candidateInfo.Profile[types.CandidateKeyHost] = mapProfile[types.CandidateKeyHost]
-	candidateInfo.Profile[types.CandidateKeyNodeID] = mapProfile[types.CandidateKeyNodeID]
-	candidateInfo.Profile[types.CandidateKeyPort] = mapProfile[types.CandidateKeyPort]
-	candidateInfo.Profile[types.CandidateKeyMinerAddress] = mapProfile[types.CandidateKeyMinerAddress]
-	candidateInfo.Votes = candiAccount.GetVotes().String()
-	candidateInfo.CandidateAddress = LemoAddress
-	return candidateInfo
-}
+// // GetCandidateInfo get candidate node information
+// func (a *PublicAccountAPI) GetCandidateInfo(LemoAddress string) *CandidateInfo {
+// 	candiAccount, err := a.GetAccount(LemoAddress)
+// 	if err != nil {
+// 		return nil
+// 	}
+// 	mapProfile := candiAccount.GetCandidateProfile()
+// 	if _, ok := mapProfile[types.CandidateKeyIsCandidate]; !ok {
+// 		return nil
+// 	}
+//
+// 	candidateInfo := &CandidateInfo{
+// 		Profile: make(map[string]string),
+// 	}
+// 	candidateInfo.Profile[types.CandidateKeyIsCandidate] = mapProfile[types.CandidateKeyIsCandidate]
+// 	candidateInfo.Profile[types.CandidateKeyHost] = mapProfile[types.CandidateKeyHost]
+// 	candidateInfo.Profile[types.CandidateKeyNodeID] = mapProfile[types.CandidateKeyNodeID]
+// 	candidateInfo.Profile[types.CandidateKeyPort] = mapProfile[types.CandidateKeyPort]
+// 	candidateInfo.Profile[types.CandidateKeyMinerAddress] = mapProfile[types.CandidateKeyMinerAddress]
+// 	candidateInfo.Votes = candiAccount.GetVotes().String()
+// 	candidateInfo.CandidateAddress = LemoAddress
+// 	return candidateInfo
+// }
 
 // ChainAPI
 type PublicChainAPI struct {
@@ -128,11 +128,20 @@ func NewPublicChainAPI(chain *chain.BlockChain) *PublicChainAPI {
 	return &PublicChainAPI{chain}
 }
 
+//go:generate gencodec -type GetCandidateList --field-override getCandidateListMarshaling -out gen_getCandidateList_info_json.go
+type GetCandidateList struct {
+	CandidateInfoes []*CandidateInfo `json:"candidateInfoes" gencodec:"required"`
+	Total           uint32           `json:"total" gencodec:"required"`
+}
+type getCandidateListMarshaling struct {
+	Total hexutil.Uint32
+}
+
 // GetCandidateNodeList get all candidate node list information and return total candidate node todo
-func (c *PublicChainAPI) GetCandidateList(index, size int) ([]*CandidateInfo, int) {
+func (c *PublicChainAPI) GetCandidateList(index, size int) (*GetCandidateList, error) {
 	addresses, total, err := c.chain.Db().GetCandidatesPage(index, size)
 	if err != nil {
-		return nil, 0
+		return nil, err
 	}
 	candidateInfoes := make([]*CandidateInfo, 0)
 	for i := 0; i < len(addresses); i++ {
@@ -140,25 +149,32 @@ func (c *PublicChainAPI) GetCandidateList(index, size int) ([]*CandidateInfo, in
 		mapProfile := candidateAccount.GetCandidateProfile()
 		if isCandidate, ok := mapProfile[types.CandidateKeyIsCandidate]; !ok || isCandidate == params.NotCandidateNode {
 			err = fmt.Errorf("the node of %s is not candidate node", addresses[i].String())
-			return nil, 0
+			return nil, err
 		}
+
 		candidateInfo := &CandidateInfo{
 			Profile: make(map[string]string),
 		}
-		candidateInfo.Profile[types.CandidateKeyIsCandidate] = mapProfile[types.CandidateKeyIsCandidate]
-		candidateInfo.Profile[types.CandidateKeyHost] = mapProfile[types.CandidateKeyHost]
-		candidateInfo.Profile[types.CandidateKeyNodeID] = mapProfile[types.CandidateKeyNodeID]
-		candidateInfo.Profile[types.CandidateKeyPort] = mapProfile[types.CandidateKeyPort]
-		candidateInfo.Profile[types.CandidateKeyMinerAddress] = mapProfile[types.CandidateKeyMinerAddress]
+
+		candidateInfo.Profile = mapProfile
+		// candidateInfo.Profile[types.CandidateKeyIsCandidate] = mapProfile[types.CandidateKeyIsCandidate]
+		// candidateInfo.Profile[types.CandidateKeyHost] = mapProfile[types.CandidateKeyHost]
+		// candidateInfo.Profile[types.CandidateKeyNodeID] = mapProfile[types.CandidateKeyNodeID]
+		// candidateInfo.Profile[types.CandidateKeyPort] = mapProfile[types.CandidateKeyPort]
+		// candidateInfo.Profile[types.CandidateKeyMinerAddress] = mapProfile[types.CandidateKeyMinerAddress]
 		candidateInfo.Votes = candidateAccount.GetVotes().String()
 		candidateInfo.CandidateAddress = addresses[i].String()
 
 		candidateInfoes = append(candidateInfoes, candidateInfo)
 	}
-	return candidateInfoes, total
+	getCandiList := &GetCandidateList{
+		CandidateInfoes: candidateInfoes,
+		Total:           uint32(total),
+	}
+	return getCandiList, nil
 }
 
-// GetCandidateTop30
+// GetCandidateTop30 get top 30 candidate node
 func (c *PublicChainAPI) GetCandidateTop30(blockHash common.Hash) []*CandidateInfo {
 	storeInfoes := c.chain.Db().GetCandidatesTop(blockHash)
 
@@ -167,8 +183,11 @@ func (c *PublicChainAPI) GetCandidateTop30(blockHash common.Hash) []*CandidateIn
 		candidateInfo := &CandidateInfo{
 			Profile: make(map[string]string),
 		}
-		candidateInfo.Profile[types.CandidateKeyNodeID] = common.ToHex(info.GetNodeID())
-		candidateInfo.CandidateAddress = info.GetAddress().String()
+		CandidateAddress := info.GetAddress()
+		CandidateAccount := c.chain.AccountManager().GetAccount(CandidateAddress)
+		profile := CandidateAccount.GetCandidateProfile()
+		candidateInfo.Profile = profile
+		candidateInfo.CandidateAddress = CandidateAddress.String()
 		candidateInfo.Votes = info.GetTotal().String()
 		candidateInfoes = append(candidateInfoes, candidateInfo)
 	}
@@ -424,15 +443,29 @@ func (t *PublicTxAPI) GetTxByHash(hash string) (*store.VTransaction, error) {
 	return vTx, err
 }
 
+//go:generate gencodec -type TxListByAddress -out gen_txListByAddress_info_json.go
+type TxListByAddress struct {
+	VTransactions []*store.VTransaction `json:"vTransactions" gencodec:"required"`
+	NextVersion   int64                 `json:"next" gencodec:"required"`
+}
+
 // GetTxListByAddress pull the list of transactions
-func (t *PublicTxAPI) GetTxListByAddress(lemoAddress string, start uint64, size int) ([]*store.VTransaction, uint64) {
+func (t *PublicTxAPI) GetTxListByAddress(lemoAddress string, start int64, size int) (*TxListByAddress, error) {
 	src, err := common.StringToAddress(lemoAddress)
 	if err != nil {
-		return nil, start
+		return nil, err
 	}
 	bizDb := t.node.db.GetBizDatabase()
-	vTxs, next, err := bizDb.GetTxByAddr(src, int64(start), size)
-	return vTxs, uint64(next)
+	vTxs, next, err := bizDb.GetTxByAddr(src, start, size)
+	if err != nil {
+		return nil, err
+	}
+	txList := &TxListByAddress{
+		VTransactions: vTxs,
+		NextVersion:   next,
+	}
+
+	return txList, nil
 }
 
 // // PullForwardTxListByAddress 向前拉取address所涉及的交易列表
