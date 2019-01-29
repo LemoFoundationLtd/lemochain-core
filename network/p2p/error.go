@@ -14,6 +14,7 @@ var (
 	ErrRecoveryFailed     = errors.New("recovery public key failed")
 	ErrAlreadyRunning     = errors.New("has already running")
 	ErrNilPrvKey          = errors.New("privateKey can't be nil")
+	ErrLengthOverflow     = errors.New("net stream package length too long")
 
 	ErrRlpDecode = errors.New("rlp decode failed")
 

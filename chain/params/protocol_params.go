@@ -64,4 +64,6 @@ var (
 	FeeReceiveAddress, _             = common.StringToAddress("0x1001")            // 设置接收注册费用1000LEMO的地址
 	IsCandidateNode                  = "true"
 	NotCandidateNode                 = "false"
+
+	MaxPackageLength uint32 = 100 * 1024 * 1024 // 100M
 )
