@@ -446,26 +446,26 @@ func (t *PublicTxAPI) GetTxByHash(hash string) (*store.VTransactionDetail, error
 //go:generate gencodec -type TxListByAddress --field-override txListByAddressMarshaling -out gen_txListByAddress_info_json.go
 type TxListByAddress struct {
 	VTransactions []*store.VTransaction `json:"txList" gencodec:"required"`
-	NextVersion   uint64                `json:"next" gencodec:"required"`
+	Total         uint64                `json:"total" gencodec:"required"`
 }
 type txListByAddressMarshaling struct {
-	NextVersion hexutil.Uint64
+	Total hexutil.Uint64
 }
 
 // GetTxListByAddress pull the list of transactions
-func (t *PublicTxAPI) GetTxListByAddress(lemoAddress string, start int64, size int) (*TxListByAddress, error) {
+func (t *PublicTxAPI) GetTxListByAddress(lemoAddress string, index int, size int) (*TxListByAddress, error) {
 	src, err := common.StringToAddress(lemoAddress)
 	if err != nil {
 		return nil, err
 	}
 	bizDb := t.node.db.GetBizDatabase()
-	vTxs, next, err := bizDb.GetTxByAddr(src, start, size)
+	vTxs, total, err := bizDb.GetTxByAddr(src, index, size)
 	if err != nil {
 		return nil, err
 	}
 	txList := &TxListByAddress{
 		VTransactions: vTxs,
-		NextVersion:   uint64(next),
+		Total:         uint64(total),
 	}
 
 	return txList, nil
