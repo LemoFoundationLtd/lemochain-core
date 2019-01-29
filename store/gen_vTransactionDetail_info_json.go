@@ -4,22 +4,26 @@ package store
 
 import (
 	"encoding/json"
+	"errors"
 
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
 )
+
+var _ = (*vTransactionDetailMarshaling)(nil)
 
 // MarshalJSON marshals as JSON.
 func (v VTransactionDetail) MarshalJSON() ([]byte, error) {
 	type VTransactionDetail struct {
-		BlockHash common.Hash        `json:"blockHash"  	gencodec:"required"`
-		Height    uint32             `json:"height"  	gencodec:"required"`
-		Tx        *types.Transaction `json:"tx"  		gencodec:"required"`
-		St        int64              `json:"time"  		gencodec:"required"`
+		BlockHash common.Hash        `json:"blockHash" gencodec:"required"`
+		Height    hexutil.Uint32     `json:"height" gencodec:"required"`
+		Tx        *types.Transaction `json:"tx"  gencodec:"required"`
+		St        int64              `json:"time" gencodec:"required"`
 	}
 	var enc VTransactionDetail
 	enc.BlockHash = v.BlockHash
-	enc.Height = v.Height
+	enc.Height = hexutil.Uint32(v.Height)
 	enc.Tx = v.Tx
 	enc.St = v.St
 	return json.Marshal(&enc)
@@ -28,26 +32,30 @@ func (v VTransactionDetail) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON unmarshals from JSON.
 func (v *VTransactionDetail) UnmarshalJSON(input []byte) error {
 	type VTransactionDetail struct {
-		BlockHash *common.Hash       `json:"blockHash"  	gencodec:"required"`
-		Height    *uint32            `json:"height"  	gencodec:"required"`
-		Tx        *types.Transaction `json:"tx"  		gencodec:"required"`
-		St        *int64             `json:"time"  		gencodec:"required"`
+		BlockHash *common.Hash       `json:"blockHash" gencodec:"required"`
+		Height    *hexutil.Uint32    `json:"height" gencodec:"required"`
+		Tx        *types.Transaction `json:"tx"  gencodec:"required"`
+		St        *int64             `json:"time" gencodec:"required"`
 	}
 	var dec VTransactionDetail
 	if err := json.Unmarshal(input, &dec); err != nil {
 		return err
 	}
-	if dec.BlockHash != nil {
-		v.BlockHash = *dec.BlockHash
+	if dec.BlockHash == nil {
+		return errors.New("missing required field 'blockHash' for VTransactionDetail")
 	}
-	if dec.Height != nil {
-		v.Height = *dec.Height
+	v.BlockHash = *dec.BlockHash
+	if dec.Height == nil {
+		return errors.New("missing required field 'height' for VTransactionDetail")
 	}
-	if dec.Tx != nil {
-		v.Tx = dec.Tx
+	v.Height = uint32(*dec.Height)
+	if dec.Tx == nil {
+		return errors.New("missing required field 'tx' for VTransactionDetail")
 	}
-	if dec.St != nil {
-		v.St = *dec.St
+	v.Tx = dec.Tx
+	if dec.St == nil {
+		return errors.New("missing required field 'time' for VTransactionDetail")
 	}
+	v.St = *dec.St
 	return nil
 }
