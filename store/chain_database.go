@@ -10,6 +10,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"math/big"
 	"os"
+	"strconv"
 	"sync"
 )
 
@@ -36,8 +37,18 @@ func isCandidate(account *types.AccountData) bool {
 	if (account == nil) ||
 		(len(account.Candidate.Profile) <= 0) {
 		return false
-	} else {
+	}
+
+	result, ok := account.Candidate.Profile[types.CandidateKeyIsCandidate]
+	if !ok {
 		return false
+	}
+
+	val, err := strconv.ParseBool(result)
+	if err != nil {
+		panic("to bool err : " + err.Error())
+	} else {
+		return val
 	}
 }
 
