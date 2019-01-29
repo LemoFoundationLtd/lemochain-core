@@ -28,12 +28,12 @@ func NewMySqlDB(driver string, dns string) *MySqlDB {
 	db, err := Open(driver, dns)
 	if err != nil {
 		panic("OPEN MYSQL DATABASE ERROR." + err.Error())
-	} else {
-		return &MySqlDB{
-			engine: db,
-			driver: driver,
-			dns:    dns,
-		}
+	}
+
+	return &MySqlDB{
+		engine: db,
+		driver: driver,
+		dns:    dns,
 	}
 }
 
@@ -64,8 +64,10 @@ func (db *MySqlDB) GetIndex(key []byte) (int, []byte, int64, error) {
 	return flg, val, pos, nil
 }
 
-func (db *MySqlDB) TxSet(hash, from, to string, val []byte, ver int64, st int64) error {
-	_, err := db.engine.Exec("REPLACE INTO t_tx(tx_key, tx_from, tx_to, tx_val, tx_ver, tx_st) VALUES (?,?,?,?,?,?)", hash, from, to, val, ver, st)
+var txsql string = "SELECT tx_block_key, tx_val, tx_ver, tx_st FROM t_tx"
+
+func (db *MySqlDB) TxSet(hash, blockHash, from, to string, val []byte, ver int64, st int64) error {
+	_, err := db.engine.Exec("REPLACE INTO t_tx(tx_key, tx_block_key, tx_from, tx_to, tx_val, tx_ver, tx_st) VALUES (?,?,?,?,?,?,?)", hash, blockHash, from, to, val, ver, st)
 	if err != nil {
 		return err
 	} else {
@@ -73,61 +75,71 @@ func (db *MySqlDB) TxSet(hash, from, to string, val []byte, ver int64, st int64)
 	}
 }
 
-func (db *MySqlDB) TxGetByHash(hash string) ([]byte, int64, error) {
-	row := db.engine.QueryRow("SELECT tx_val, tx_st FROM t_tx WHERE tx_key = ?", hash)
+func (db *MySqlDB) TxGetByHash(key string) (string, []byte, int64, error) {
+	row := db.engine.QueryRow(txsql+" WHERE tx_key = ?", key)
+	var hash string
 	var val []byte
+	var ver int64
 	var st int64
-	err := row.Scan(&val, &st)
+	err := row.Scan(&hash, &val, &ver, &st)
 	if err == sql.ErrNoRows {
-		return nil, -1, nil
+		return "", nil, -1, nil
 	}
 
 	if err != nil {
-		return nil, -1, err
+		return "", nil, -1, err
 	}
 
-	return val, st, nil
+	return hash, val, st, nil
 }
 
-func (db *MySqlDB) TxGetByAddr(addr string, start int64, size int) ([][]byte, []int64, int64, error) {
-	stmt, err := db.engine.Prepare("SELECT tx_val, tx_ver, tx_st FROM t_tx WHERE (tx_from = ? or tx_to = ?) and (tx_ver > ?) ORDER BY tx_ver ASC LIMIT 0, ?")
+func (db *MySqlDB) TxGetByAddr(addr string, start int64, size int) ([]string, [][]byte, []int64, int64, error) {
+	stmt, err := db.engine.Prepare(txsql + " WHERE (tx_from = ? or tx_to = ?) and (tx_ver > ?) ORDER BY tx_ver ASC LIMIT 0, ?")
 	if err != nil {
-		return nil, nil, -1, err
+		return nil, nil, nil, -1, err
 	}
 
 	rows, err := stmt.Query(addr, addr, start, size)
 	if err != nil {
-		return nil, nil, -1, err
+		return nil, nil, nil, -1, err
 	}
 
+	resultHash := make([]string, 0)
 	resultVal := make([][]byte, 0)
 	resultSt := make([]int64, 0)
 	maxVer := start
 	for rows.Next() {
+		var hash string
 		var val []byte
 		var ver int64
 		var st int64
-		err := rows.Scan(&val, &ver, &st)
+		err := rows.Scan(&hash, &val, &ver, &st)
 		if err != nil {
-			return nil, nil, -1, err
+			return nil, nil, nil, -1, err
 		}
 
+		resultHash = append(resultHash, hash)
 		resultVal = append(resultVal, val)
 		resultSt = append(resultSt, st)
 		if maxVer < ver {
 			maxVer = ver
 		}
 	}
-	return resultVal, resultSt, maxVer, nil
+	return resultHash, resultVal, resultSt, maxVer, nil
 }
 
 func (db *MySqlDB) Clear() error {
 	_, err := db.engine.Exec("DELETE FROM t_kv")
 	if err != nil {
 		return err
-	} else {
-		return nil
 	}
+
+	_, err = db.engine.Exec("DELETE FROM t_tx")
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (db *MySqlDB) Close() {

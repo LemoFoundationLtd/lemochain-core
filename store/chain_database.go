@@ -16,24 +16,6 @@ import (
 
 var max_candidate_count = 30
 
-func isCandidate(account *types.AccountData) bool {
-	if (account == nil) || (len(account.Candidate.Profile) <= 0) {
-		return false
-	}
-
-	result, ok := account.Candidate.Profile[types.CandidateKeyIsCandidate]
-	if !ok {
-		return false
-	} else {
-		val, err := strconv.ParseBool(result)
-		if err != nil {
-			panic("to bool err : " + err.Error())
-		}
-
-		return val
-	}
-}
-
 type CBlock struct {
 	Block *types.Block
 	Trie  *PatriciaTrie
@@ -51,17 +33,47 @@ type ChainDatabase struct {
 	rw      sync.RWMutex
 }
 
-func NewChainDataBase(home string, driver string, dns string) *ChainDatabase {
+func isCandidate(account *types.AccountData) bool {
+	if (account == nil) ||
+		(len(account.Candidate.Profile) <= 0) {
+		return false
+	}
+
+	result, ok := account.Candidate.Profile[types.CandidateKeyIsCandidate]
+	if !ok {
+		return false
+	}
+
+	val, err := strconv.ParseBool(result)
+	if err != nil {
+		panic("to bool err : " + err.Error())
+	} else {
+		return val
+	}
+}
+
+func checkHome(home string) error {
 	isExist, err := IsExist(home)
 	if err != nil {
 		panic("check home is exist error:" + err.Error())
 	}
 
-	if !isExist {
-		err = os.MkdirAll(home, os.ModePerm)
-		if err != nil {
-			panic("mk dir is exist err : " + err.Error())
-		}
+	if isExist {
+		return nil
+	}
+
+	err = os.MkdirAll(home, os.ModePerm)
+	if err != nil {
+		panic("mk dir is exist err : " + err.Error())
+	} else {
+		return nil
+	}
+}
+
+func NewChainDataBase(home string, driver string, dns string) *ChainDatabase {
+	err := checkHome(home)
+	if err != nil {
+		panic("check home: " + home + "|error: " + err.Error())
 	}
 
 	db := &ChainDatabase{
@@ -69,8 +81,8 @@ func NewChainDataBase(home string, driver string, dns string) *ChainDatabase {
 		DB:              NewMySqlDB(driver, dns),
 		Context:         NewRunContext(home),
 	}
-	db.BizDB = NewBizDatabase(nil, db.DB)
 
+	db.BizDB = NewBizDatabase(db, db.DB)
 	db.Beansdb = NewBeansDB(home, 2, db.DB, db.AfterScan)
 	db.LastConfirm = &CBlock{
 		Block: db.Context.GetStableBlock(),
@@ -94,7 +106,6 @@ func (database *ChainDatabase) AfterScan(flag uint, key []byte, val []byte) erro
 func (database *ChainDatabase) blockCommit(hash common.Hash) error {
 	cItem := database.UnConfirmBlocks[hash]
 	if (cItem == nil) || (cItem.Block == nil) {
-		// return nil
 		panic("item or item'block is nil.")
 	}
 
@@ -150,7 +161,7 @@ func (database *ChainDatabase) blockCommit(hash common.Hash) error {
 
 	commitContext := func(block *types.Block, accounts []*types.AccountData) error {
 		filterCandidates(accounts)
-		database.Context.StableBlock = cItem.Block
+		database.Context.SetStableBlock(cItem.Block)
 		return database.Context.Flush()
 	}
 
@@ -670,7 +681,6 @@ func (database *ChainDatabase) CandidatesRanking(hash common.Hash) {
 		for index := 0; index < len(accounts); index++ {
 			account := accounts[index]
 			isCandidate := isCandidate(account)
-
 			if isCandidate {
 				nextCandidates = append(nextCandidates, &Candidate{
 					address: account.Address,

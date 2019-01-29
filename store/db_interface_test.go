@@ -20,62 +20,50 @@ func TestMySqlDB_SetIndex(t *testing.T) {
 }
 
 func TestMySqlDB_Tx(t *testing.T) {
+	ClearData()
+
 	db := NewMySqlDB(DRIVER_MYSQL, DNS_MYSQL)
 	defer db.Close()
 
-	err := db.TxSet("hash", "addr1", "addr2", []byte("paul"), 1, 100)
-	err = db.TxSet("hash1", "addr1", "addr2", []byte("paul"), 2, 101)
-	err = db.TxSet("hash2", "addr1", "addr2", []byte("paul"), 3, 102)
-	err = db.TxSet("hash3", "addr1", "addr2", []byte("paul"), 4, 103)
-	err = db.TxSet("hash4", "addr1", "addr2", []byte("paul"), 5, 104)
+	err := db.TxSet("hash", "block hash", "addr1", "addr2", []byte("paul"), 1, 100)
+	err = db.TxSet("hash1", "block hash", "addr1", "addr2", []byte("paul"), 2, 101)
+	err = db.TxSet("hash2", "block hash", "addr1", "addr2", []byte("paul"), 3, 102)
+	err = db.TxSet("hash3", "block hash", "addr1", "addr2", []byte("paul"), 4, 103)
+	err = db.TxSet("hash4", "block hash", "addr1", "addr2", []byte("paul"), 5, 104)
 	assert.NoError(t, err)
 
-	val, st, err := db.TxGet8Hash("hash")
+	hash, val, st, err := db.TxGetByHash("hash")
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("paul"), val)
+	assert.Equal(t, "block hash", hash)
 	assert.Equal(t, int64(100), st)
 
 	// next
-	results, sts, maxVer, err := db.TxGet8AddrNext("addr1", 0, 2)
+	hashes, results, sts, maxVer, err := db.TxGetByAddr("addr1", 0, 2)
 	assert.NoError(t, err)
+	assert.Equal(t, 2, len(hashes))
 	assert.Equal(t, 2, len(results))
 	assert.Equal(t, 2, len(sts))
 	assert.Equal(t, int64(2), maxVer)
 
-	results, sts, maxVer, err = db.TxGet8AddrNext("addr1", 2, 2)
+	hashes, results, sts, maxVer, err = db.TxGetByAddr("addr1", 2, 2)
 	assert.NoError(t, err)
+	assert.Equal(t, 2, len(hashes))
 	assert.Equal(t, 2, len(results))
 	assert.Equal(t, 2, len(sts))
 	assert.Equal(t, int64(4), maxVer)
 
-	results, sts, maxVer, err = db.TxGet8AddrNext("addr1", 4, 2)
+	hashes, results, sts, maxVer, err = db.TxGetByAddr("addr1", 4, 2)
 	assert.NoError(t, err)
+	assert.Equal(t, 1, len(hashes))
 	assert.Equal(t, 1, len(results))
 	assert.Equal(t, 1, len(sts))
 	assert.Equal(t, int64(5), maxVer)
 
-	results, sts, maxVer, err = db.TxGet8AddrNext("addr1", 5, 2)
+	hashes, results, sts, maxVer, err = db.TxGetByAddr("addr1", 5, 2)
 	assert.NoError(t, err)
+	assert.Equal(t, 0, len(hashes))
 	assert.Equal(t, 0, len(results))
 	assert.Equal(t, 0, len(sts))
 	assert.Equal(t, int64(5), maxVer)
-
-	// pre
-	results, sts, maxVer, err = db.TxGet8AddrPre("addr1", 4, 2)
-	assert.NoError(t, err)
-	assert.Equal(t, 2, len(results))
-	assert.Equal(t, 2, len(sts))
-	assert.Equal(t, int64(2), maxVer)
-
-	results, sts, maxVer, err = db.TxGet8AddrPre("addr1", 2, 2)
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(results))
-	assert.Equal(t, 1, len(sts))
-	assert.Equal(t, int64(1), maxVer)
-
-	results, sts, maxVer, err = db.TxGet8AddrPre("addr1", 1, 2)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(results))
-	assert.Equal(t, 0, len(sts))
-	assert.Equal(t, int64(1), maxVer)
 }

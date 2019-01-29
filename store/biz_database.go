@@ -10,32 +10,53 @@ import (
 )
 
 //go:generate gencodec -type VTransaction -out gen_vTransaction_info_json.go
+//go:generate gencodec -type VTransactionDetail -out gen_vTransactionDetail_info_json.go
 
 type VTransaction struct {
-	Tx *types.Transaction `json:"tx"  gencodec:"required"`
-	St int64              `json:"time"  gencodec:"required"`
+	Tx *types.Transaction `json:"tx"  		gencodec:"required"`
+	St int64              `json:"time"  		gencodec:"required"`
+}
+
+type VTransactionDetail struct {
+	BlockHash common.Hash        `json:"blockHash"  	gencodec:"required"`
+	Height    uint32             `json:"height"  	gencodec:"required"`
+	Tx        *types.Transaction `json:"tx"  		gencodec:"required"`
+	St        int64              `json:"time"  		gencodec:"required"`
 }
 
 type BizDb interface {
-	GetTxByHash(hash common.Hash) (*VTransaction, error)
+	GetTxByHash(hash common.Hash) (*VTransactionDetail, error)
 
 	GetTxByAddr(src common.Address, start int64, size int) ([]*VTransaction, int64, error)
 }
 
+type Reader interface {
+	GetBlockByHash(hash common.Hash) (*types.Block, error)
+}
+
 type BizDatabase struct {
-	Reader   DatabaseReader
+	Reader   Reader
 	Database *MySqlDB
 }
 
-func NewBizDatabase(reader DatabaseReader, database *MySqlDB) *BizDatabase {
+func NewBizDatabase(reader Reader, database *MySqlDB) *BizDatabase {
 	return &BizDatabase{
 		Reader:   reader,
 		Database: database,
 	}
 }
 
-func (db *BizDatabase) GetTxByHash(hash common.Hash) (*VTransaction, error) {
-	val, st, err := db.Database.TxGetByHash(hash.Hex())
+func (db *BizDatabase) GetTxByHash(hash common.Hash) (*VTransactionDetail, error) {
+	blockHash, val, st, err := db.Database.TxGetByHash(hash.Hex())
+	if err != nil {
+		return nil, err
+	}
+
+	block, err := db.Reader.GetBlockByHash(common.HexToHash(blockHash))
+	if err == ErrNotExist {
+		return nil, ErrNotExist
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -46,14 +67,16 @@ func (db *BizDatabase) GetTxByHash(hash common.Hash) (*VTransaction, error) {
 		return nil, err
 	}
 
-	return &VTransaction{
-		Tx: &tx,
-		St: st,
+	return &VTransactionDetail{
+		BlockHash: block.Hash(),
+		Height:    block.Height(),
+		Tx:        &tx,
+		St:        st,
 	}, nil
 }
 
 func (db *BizDatabase) GetTxByAddr(src common.Address, start int64, size int) ([]*VTransaction, int64, error) {
-	vals, sts, ver, err := db.Database.TxGetByAddr(src.Hex(), start, size)
+	_, vals, sts, ver, err := db.Database.TxGetByAddr(src.Hex(), start, size)
 	if err != nil {
 		return nil, -1, err
 	}
@@ -90,7 +113,7 @@ func (db *BizDatabase) AfterCommit(flag uint, key []byte, val []byte) error {
 	} else if flag == CACHE_FLG_KV {
 		return nil
 	} else {
-		panic("unknow flag.flag = " + strconv.Itoa(int(flag)))
+		panic("unknown flag.flag = " + strconv.Itoa(int(flag)))
 	}
 }
 
@@ -129,7 +152,7 @@ func (db *BizDatabase) afterBlock(key []byte, val []byte) error {
 			return err
 		}
 
-		err = db.Database.TxSet(hashStr, fromStr, toStr, val, ver+int64(index), int64(block.Header.Time))
+		err = db.Database.TxSet(hashStr, common.ToHex(key), fromStr, toStr, val, ver+int64(index), int64(block.Header.Time))
 		if err != nil {
 			return err
 		}
