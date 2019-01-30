@@ -19,6 +19,7 @@ const (
 	VoteForLog
 	VotesLog
 	CandidateProfileLog
+	TxCountLog
 )
 
 func init() {
@@ -30,6 +31,7 @@ func init() {
 	types.RegisterChangeLog(VoteForLog, "VoteForLog", decodeAddress, decodeEmptyInterface, redoVoteFor, undoVoteFor)
 	types.RegisterChangeLog(VotesLog, "VotesLog", decodeBigInt, decodeEmptyInterface, redoVotes, undoVotes)
 	types.RegisterChangeLog(CandidateProfileLog, "CandidateProfileLog", decodeCandidateProfile, decodeEmptyInterface, redoCandidateProfile, undoCandidateProfile)
+	types.RegisterChangeLog(TxCountLog, "TxCountLog", decodeUInt32, decodeEmptyInterface, redoTxCount, undoTxCount)
 }
 
 // IsValuable returns true if the change log contains some data change
@@ -120,6 +122,12 @@ func decodeCandidateProfile(s *rlp.Stream) (interface{}, error) {
 		err := s.Decode(&result)
 		return &result, err
 	}
+}
+
+func decodeUInt32(s *rlp.Stream) (interface{}, error) {
+	var result uint32
+	err := s.Decode(&result)
+	return &result, err
 }
 
 //
@@ -220,6 +228,38 @@ func undoCandidateProfile(c *types.ChangeLog, processor types.ChangeLogProcessor
 	}
 	accessor := processor.GetAccount(c.Address)
 	accessor.SetCandidateProfile(*oldVal)
+	return nil
+}
+
+func NewTxCountLog(processor types.ChangeLogProcessor, account types.AccountAccessor, newTxCount uint32) *types.ChangeLog {
+	return &types.ChangeLog{
+		LogType: TxCountLog,
+		Address: account.GetAddress(),
+		Version: processor.GetNextVersion(TxCountLog, account.GetAddress()),
+		OldVal:  account.GetTxCount(),
+		NewVal:  newTxCount,
+	}
+}
+
+func redoTxCount(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
+	newValue, ok := c.NewVal.(uint32)
+	if !ok {
+		log.Errorf("expected NewVal uint32, got %T", c.NewVal)
+		return types.ErrWrongChangeLogData
+	}
+	accessor := processor.GetAccount(c.Address)
+	accessor.SetTxCount(newValue)
+	return nil
+}
+
+func undoTxCount(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
+	oldValue, ok := c.OldVal.(uint32)
+	if !ok {
+		log.Errorf("expected OldVal uint32, got %T", c.OldVal)
+		return types.ErrWrongChangeLogData
+	}
+	accessor := processor.GetAccount(c.Address)
+	accessor.SetTxCount(oldValue)
 	return nil
 }
 

@@ -40,9 +40,11 @@ func (a *SafeAccount) String() string {
 	return a.rawAccount.String()
 }
 
-func (a *SafeAccount) GetTxCount() int { return a.rawAccount.GetTxCount() }
+func (a *SafeAccount) GetTxCount() uint32 { return a.rawAccount.GetTxCount() }
 
-func (a *SafeAccount) SetTxCount(count int) {
+func (a *SafeAccount) SetTxCount(count uint32) {
+	newLog := NewTxCountLog(a.processor, a.rawAccount, count)
+	a.processor.PushChangeLog(newLog)
 	a.rawAccount.SetTxCount(count)
 }
 

@@ -122,22 +122,29 @@ func TestCacheChain_SetBlockError(t *testing.T) {
 
 func TestCacheChain_IsExistByHash(t *testing.T) {
 	ClearData()
-
 	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
 
 	isExist, err := cacheChain.IsExistByHash(common.Hash{})
 	assert.NoError(t, err)
 	assert.Equal(t, false, isExist)
 
-	parentBlock := GetBlock0()
-	err = cacheChain.SetBlock(parentBlock.Hash(), parentBlock)
+	block := GetBlock0()
+	err = cacheChain.SetBlock(block.Hash(), block)
 	assert.NoError(t, err)
 
-	isExist, err = cacheChain.IsExistByHash(parentBlock.Hash())
+	isExist, err = cacheChain.IsExistByHash(block.Hash())
 	assert.NoError(t, err)
 	assert.Equal(t, true, isExist)
 
-	err = cacheChain.SetStableBlock(parentBlock.Hash())
+	err = cacheChain.SetStableBlock(block.Hash())
+	assert.NoError(t, err)
+
+	isExist, err = cacheChain.IsExistByHash(block.Hash())
+	assert.NoError(t, err)
+	assert.Equal(t, true, isExist)
+
+	cacheChain = NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
+	isExist, err = cacheChain.IsExistByHash(block.Hash())
 	assert.NoError(t, err)
 	assert.Equal(t, true, isExist)
 }

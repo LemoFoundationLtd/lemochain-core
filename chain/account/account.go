@@ -106,9 +106,9 @@ func (a *Account) String() string {
 	return a.data.String()
 }
 
-func (a *Account) GetTxCount() int { return a.data.TxCount }
+func (a *Account) GetTxCount() uint32 { return a.data.TxCount }
 
-func (a *Account) SetTxCount(count int) {
+func (a *Account) SetTxCount(count uint32) {
 	a.data.TxCount = count
 }
 

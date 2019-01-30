@@ -110,11 +110,12 @@ type AccountData struct {
 
 	VoteFor   common.Address `json:"voteFor"`
 	Candidate Candidate      `json:"candidate"`
-	TxCount   int            `json:"txCount"`
+	TxCount   uint32         `json:"txCount"`
 }
 
 type accountDataMarshaling struct {
 	Balance *hexutil.Big10
+	TxCount hexutil.Uint32
 }
 
 // rlpVersionRecord defines the fields which would be encode/decode by rlp
@@ -138,6 +139,7 @@ type rlpAccountData struct {
 	TxHashList    []common.Hash
 	VoteFor       common.Address
 	Candidate     rlpCandidate
+	TxCount       uint32
 	NewestRecords []rlpVersionRecord
 }
 
@@ -154,13 +156,13 @@ func (a *AccountData) EncodeRLP(w io.Writer) error {
 	}
 
 	return rlp.Encode(w, rlpAccountData{
-		Address:     a.Address,
-		Balance:     a.Balance,
-		CodeHash:    a.CodeHash,
-		StorageRoot: a.StorageRoot,
-		// TxHashList:    a.TxHashList,
+		Address:       a.Address,
+		Balance:       a.Balance,
+		CodeHash:      a.CodeHash,
+		StorageRoot:   a.StorageRoot,
 		VoteFor:       a.VoteFor,
 		Candidate:     candidate,
+		TxCount:       a.TxCount,
 		NewestRecords: NewestRecords,
 	})
 }
@@ -174,8 +176,8 @@ func (a *AccountData) DecodeRLP(s *rlp.Stream) error {
 
 	err := s.Decode(&dec)
 	if err == nil {
-		a.Address, a.Balance, a.CodeHash, a.StorageRoot, a.VoteFor =
-			dec.Address, dec.Balance, dec.CodeHash, dec.StorageRoot, dec.VoteFor
+		a.Address, a.Balance, a.CodeHash, a.StorageRoot, a.VoteFor, a.TxCount =
+			dec.Address, dec.Balance, dec.CodeHash, dec.StorageRoot, dec.VoteFor, dec.TxCount
 		a.NewestRecords = make(map[ChangeLogType]VersionRecord)
 
 		a.Candidate.Votes = dec.Candidate.Votes
@@ -230,8 +232,8 @@ func (c Code) String() string {
 }
 
 type AccountAccessor interface {
-	GetTxCount() int
-	SetTxCount(count int)
+	GetTxCount() uint32
+	SetTxCount(count uint32)
 
 	GetVoteFor() common.Address
 	SetVoteFor(addr common.Address)
