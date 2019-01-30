@@ -89,7 +89,7 @@ func (a *PublicAccountAPI) GetVoteFor(LemoAddress string) (string, error) {
 //go:generate gencodec -type CandidateInfo -out gen_candidate_info_json.go
 
 type CandidateInfo struct {
-	CandidateAddress string            `json:"candidate" gencodec:"required"`
+	CandidateAddress string            `json:"address" gencodec:"required"`
 	Votes            string            `json:"votes" gencodec:"required"`
 	Profile          map[string]string `json:"profile"  gencodec:"required"`
 }
@@ -128,22 +128,22 @@ func NewPublicChainAPI(chain *chain.BlockChain) *PublicChainAPI {
 	return &PublicChainAPI{chain}
 }
 
-//go:generate gencodec -type GetCandidateList --field-override getCandidateListMarshaling -out gen_getCandidateList_info_json.go
-type GetCandidateList struct {
-	CandidateInfoes []*CandidateInfo `json:"candidateInfoes" gencodec:"required"`
-	Total           uint32           `json:"total" gencodec:"required"`
+//go:generate gencodec -type CandidateListRes --field-override candidateListResMarshaling -out gen_candidate_list_res_json.go
+type CandidateListRes struct {
+	CandidateList []*CandidateInfo `json:"candidateList" gencodec:"required"`
+	Total         uint32           `json:"total" gencodec:"required"`
 }
-type getCandidateListMarshaling struct {
+type candidateListResMarshaling struct {
 	Total hexutil.Uint32
 }
 
 // GetCandidateNodeList get all candidate node list information and return total candidate node todo
-func (c *PublicChainAPI) GetCandidateList(index, size int) (*GetCandidateList, error) {
+func (c *PublicChainAPI) GetCandidateList(index, size int) (*CandidateListRes, error) {
 	addresses, total, err := c.chain.Db().GetCandidatesPage(index, size)
 	if err != nil {
 		return nil, err
 	}
-	candidateInfoes := make([]*CandidateInfo, 0)
+	candidateList := make([]*CandidateInfo, 0)
 	for i := 0; i < len(addresses); i++ {
 		candidateAccount := c.chain.AccountManager().GetAccount(addresses[i])
 		mapProfile := candidateAccount.GetCandidateProfile()
@@ -165,21 +165,21 @@ func (c *PublicChainAPI) GetCandidateList(index, size int) (*GetCandidateList, e
 		candidateInfo.Votes = candidateAccount.GetVotes().String()
 		candidateInfo.CandidateAddress = addresses[i].String()
 
-		candidateInfoes = append(candidateInfoes, candidateInfo)
+		candidateList = append(candidateList, candidateInfo)
 	}
-	getCandiList := &GetCandidateList{
-		CandidateInfoes: candidateInfoes,
-		Total:           uint32(total),
+	result := &CandidateListRes{
+		CandidateList: candidateList,
+		Total:         uint32(total),
 	}
-	return getCandiList, nil
+	return result, nil
 }
 
 // GetCandidateTop30 get top 30 candidate node
 func (c *PublicChainAPI) GetCandidateTop30(blockHash common.Hash) []*CandidateInfo {
-	storeInfoes := c.chain.Db().GetCandidatesTop(blockHash)
+	storeInfos := c.chain.Db().GetCandidatesTop(blockHash)
 
-	candidateInfoes := make([]*CandidateInfo, 0)
-	for _, info := range storeInfoes {
+	candidateList := make([]*CandidateInfo, 0)
+	for _, info := range storeInfos {
 		candidateInfo := &CandidateInfo{
 			Profile: make(map[string]string),
 		}
@@ -189,9 +189,9 @@ func (c *PublicChainAPI) GetCandidateTop30(blockHash common.Hash) []*CandidateIn
 		candidateInfo.Profile = profile
 		candidateInfo.CandidateAddress = CandidateAddress.String()
 		candidateInfo.Votes = info.GetTotal().String()
-		candidateInfoes = append(candidateInfoes, candidateInfo)
+		candidateList = append(candidateList, candidateInfo)
 	}
-	return candidateInfoes
+	return candidateList
 }
 
 // GetBlockByNumber get block information by height
@@ -443,17 +443,17 @@ func (t *PublicTxAPI) GetTxByHash(hash string) (*store.VTransactionDetail, error
 	return vTxDetail, err
 }
 
-//go:generate gencodec -type TxListByAddress --field-override txListByAddressMarshaling -out gen_txListByAddress_info_json.go
-type TxListByAddress struct {
+//go:generate gencodec -type TxListRes --field-override txListResMarshaling -out gen_tx_list_res_json.go
+type TxListRes struct {
 	VTransactions []*store.VTransaction `json:"txList" gencodec:"required"`
 	Total         uint64                `json:"total" gencodec:"required"`
 }
-type txListByAddressMarshaling struct {
+type txListResMarshaling struct {
 	Total hexutil.Uint64
 }
 
 // GetTxListByAddress pull the list of transactions
-func (t *PublicTxAPI) GetTxListByAddress(lemoAddress string, index int, size int) (*TxListByAddress, error) {
+func (t *PublicTxAPI) GetTxListByAddress(lemoAddress string, index int, size int) (*TxListRes, error) {
 	src, err := common.StringToAddress(lemoAddress)
 	if err != nil {
 		return nil, err
@@ -463,7 +463,7 @@ func (t *PublicTxAPI) GetTxListByAddress(lemoAddress string, index int, size int
 	if err != nil {
 		return nil, err
 	}
-	txList := &TxListByAddress{
+	txList := &TxListRes{
 		VTransactions: vTxs,
 		Total:         uint64(total),
 	}
