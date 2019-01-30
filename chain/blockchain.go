@@ -261,6 +261,9 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 				})
 			}
 		}
+		// for debug
+		b := bc.currentBlock.Load().(*types.Block)
+		log.Debugf("current block: %d, %s", b.Height(), b.Hash().String())
 	}()
 
 	// normal, in same chain
@@ -364,7 +367,6 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32) error {
 	}()
 
 	curBlock := bc.currentBlock.Load().(*types.Block)
-	parBlock := curBlock
 	// fork
 	bc.chainForksLock.Lock()
 	defer bc.chainForksLock.Unlock()
@@ -373,18 +375,16 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32) error {
 	maxLength := uint32(0)
 	// prune forks
 	for fHash, fBlock := range bc.chainForksHead {
-		if parBlock.Height() < height {
+		if curBlock.Height() < height {
+			delete(bc.chainForksHead, fHash)
+			continue
+		}
+		if curBlock.Height() == height && curBlock.Hash() != hash {
 			delete(bc.chainForksHead, fHash)
 			continue
 		}
 		// same height and same hash
-		if parBlock.Hash() == hash {
-			continue
-		}
-		if parBlock.Height() == height && parBlock.Hash() != hash {
-			delete(bc.chainForksHead, fHash)
-			continue
-		} else if parBlock.Height() == height && parBlock.Hash() == hash {
+		if curBlock.Hash() == hash {
 			tmp[hash] = []*types.Block{}
 			continue
 		}
@@ -396,7 +396,7 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32) error {
 		pars := make([]*types.Block, length+1)
 		pars[length] = fBlock
 		length--
-		parBlock = fBlock
+		parBlock := fBlock
 		// get the same height block on current fork
 		for parBlock.Height() > height+1 {
 			parBlock = bc.GetBlockByHash(parBlock.ParentHash())
@@ -412,26 +412,32 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32) error {
 	}
 	var newCurBlock *types.Block
 	// chose current block
-	for i := uint32(0); i < maxLength; i++ {
-		var b *types.Block
-		for k, v := range tmp {
-			if int(i) >= len(v) {
-				continue
-			}
-			if b == nil {
-				b = v[i]
-				newCurBlock = b
-			} else {
-				bHash := b.Hash()
-				vHash := v[i].Hash()
-				if (b.Time() > v[i].Time()) || (b.Time() == v[i].Time() && bytes.Compare(bHash[:], vHash[:]) > 0) {
-					b = v[i]
+	if maxLength == uint32(0) {
+		for k, _ := range tmp {
+			newCurBlock = bc.GetBlockByHash(k)
+		}
+	} else {
+		for i := uint32(0); i < maxLength; i++ {
+			var b *types.Block
+			for k, blocks := range tmp {
+				if int(i) >= len(blocks) {
+					continue
+				}
+				if b == nil {
+					b = blocks[i]
 					newCurBlock = b
 				} else {
-					delete(tmp, k)
+					bHash := b.Hash()
+					vHash := blocks[i].Hash()
+					if (b.Time() > blocks[i].Time()) || (b.Time() == blocks[i].Time() && bytes.Compare(bHash[:], vHash[:]) > 0) {
+						b = blocks[i]
+						newCurBlock = b
+					} else {
+						delete(tmp, k)
+					}
 				}
-			}
 
+			}
 		}
 	}
 	if newCurBlock != nil {
@@ -443,6 +449,8 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32) error {
 			bc.newBlockNotify(curBlock)
 			log.Infof("chain forked-2! oldCurHash{ h: %d, hash: %s}, newCurBlock{h:%d, hash: %s}", curBlock.Height(), oldCurHash.Hex(), newCurBlock.Height(), newCurHash.Hex())
 		}
+	} else {
+		log.Debug("not have new current block")
 	}
 	// notify
 	subscribe.Send(subscribe.NewStableBlock, block)

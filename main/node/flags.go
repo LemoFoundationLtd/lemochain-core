@@ -109,12 +109,6 @@ var (
 		Usage: "Output log level",
 		Value: 4,
 	}
-	// for attach command
-	ChainIDFlag = cli.IntFlag{
-		Name:  common.LogLevel,
-		Usage: "ID for LemoChain network",
-		Value: 4,
-	}
 )
 
 // setListenPort set listen port
