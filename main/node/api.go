@@ -94,30 +94,6 @@ type CandidateInfo struct {
 	Profile          map[string]string `json:"profile"  gencodec:"required"`
 }
 
-// // GetCandidateInfo get candidate node information
-// func (a *PublicAccountAPI) GetCandidateInfo(LemoAddress string) *CandidateInfo {
-// 	candiAccount, err := a.GetAccount(LemoAddress)
-// 	if err != nil {
-// 		return nil
-// 	}
-// 	mapProfile := candiAccount.GetCandidateProfile()
-// 	if _, ok := mapProfile[types.CandidateKeyIsCandidate]; !ok {
-// 		return nil
-// 	}
-//
-// 	candidateInfo := &CandidateInfo{
-// 		Profile: make(map[string]string),
-// 	}
-// 	candidateInfo.Profile[types.CandidateKeyIsCandidate] = mapProfile[types.CandidateKeyIsCandidate]
-// 	candidateInfo.Profile[types.CandidateKeyHost] = mapProfile[types.CandidateKeyHost]
-// 	candidateInfo.Profile[types.CandidateKeyNodeID] = mapProfile[types.CandidateKeyNodeID]
-// 	candidateInfo.Profile[types.CandidateKeyPort] = mapProfile[types.CandidateKeyPort]
-// 	candidateInfo.Profile[types.CandidateKeyMinerAddress] = mapProfile[types.CandidateKeyMinerAddress]
-// 	candidateInfo.Votes = candiAccount.GetVotes().String()
-// 	candidateInfo.CandidateAddress = LemoAddress
-// 	return candidateInfo
-// }
-
 // ChainAPI
 type PublicChainAPI struct {
 	chain *chain.BlockChain
@@ -143,7 +119,7 @@ func (c *PublicChainAPI) GetCandidateList(index, size int) (*CandidateListRes, e
 	if err != nil {
 		return nil, err
 	}
-	candidateList := make([]*CandidateInfo, len(addresses), len(addresses))
+	candidateList := make([]*CandidateInfo, 0, len(addresses))
 	for i := 0; i < len(addresses); i++ {
 		candidateAccount := c.chain.AccountManager().GetAccount(addresses[i])
 		mapProfile := candidateAccount.GetCandidateProfile()
@@ -164,7 +140,7 @@ func (c *PublicChainAPI) GetCandidateList(index, size int) (*CandidateListRes, e
 	}
 	result := &CandidateListRes{
 		CandidateList: candidateList,
-		Total:         uint32(total),
+		Total:         total,
 	}
 	return result, nil
 }
@@ -174,7 +150,7 @@ func (c *PublicChainAPI) GetCandidateTop30() []*CandidateInfo {
 	latestStableBlock := c.chain.StableBlock()
 	stableBlockHash := latestStableBlock.Hash()
 	storeInfos := c.chain.Db().GetCandidatesTop(stableBlockHash)
-	candidateList := make([]*CandidateInfo, len(storeInfos), 30)
+	candidateList := make([]*CandidateInfo, 0, 30)
 	for _, info := range storeInfos {
 		candidateInfo := &CandidateInfo{
 			Profile: make(map[string]string),
@@ -442,10 +418,10 @@ func (t *PublicTxAPI) GetTxByHash(hash string) (*store.VTransactionDetail, error
 //go:generate gencodec -type TxListRes --field-override txListResMarshaling -out gen_tx_list_res_json.go
 type TxListRes struct {
 	VTransactions []*store.VTransaction `json:"txList" gencodec:"required"`
-	Total         uint64                `json:"total" gencodec:"required"`
+	Total         uint32                `json:"total" gencodec:"required"`
 }
 type txListResMarshaling struct {
-	Total hexutil.Uint64
+	Total hexutil.Uint32
 }
 
 // GetTxListByAddress pull the list of transactions
@@ -461,7 +437,7 @@ func (t *PublicTxAPI) GetTxListByAddress(lemoAddress string, index int, size int
 	}
 	txList := &TxListRes{
 		VTransactions: vTxs,
-		Total:         uint64(total),
+		Total:         total,
 	}
 
 	return txList, nil
