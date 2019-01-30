@@ -521,11 +521,12 @@ func (context *RunContext) GetCandidatePage(index int, size int) ([]common.Addre
 		page := (index - 1) * size
 		startCurIndex := curPos + page*common.AddressLength
 		for index := 0; index < size; index++ {
-			stopCurIndex := startCurIndex + (index+1)*common.AddressLength
+			pos1 := startCurIndex + index*common.AddressLength
+			pos2 := startCurIndex + (index+1)*common.AddressLength
 			if (page+index+1)*common.AddressLength > int(itemHead.Len) {
 				break
 			} else {
-				result = append(result, common.BytesToAddress(bodyBuf[startCurIndex:stopCurIndex]))
+				result = append(result, common.BytesToAddress(bodyBuf[pos1:pos2]))
 			}
 		}
 		return result, len(context.Candidates), nil
@@ -600,6 +601,7 @@ func (context *RunContext) encodeBody() ([]byte, error) {
 		index := 0
 		for k, _ := range context.Candidates {
 			copy(totalBuf[candidatesOffset+index*common.AddressLength:], k[:])
+			index = index + 1
 		}
 	}
 
