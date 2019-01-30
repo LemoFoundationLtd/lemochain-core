@@ -129,13 +129,15 @@ func newDB() protocol.ChainDB {
 			defaultBlockInfos[i].parentHash = defaultBlocks[i-1].Hash()
 		}
 		newBlock := makeBlock(db, defaultBlockInfos[i], i < 3)
+		if i == 0 || i == 1 {
+			err := db.SetStableBlock(defaultBlockInfos[i].hash)
+			if err != nil {
+				panic(err)
+			}
+		}
 		defaultBlocks = append(defaultBlocks, newBlock)
 	}
-	// err = db.SetStableBlock(defaultBlockInfos[1].hash)
-	err := db.SetStableBlock(defaultBlocks[1].Hash())
-	if err != nil {
-		panic(err)
-	}
+
 	return db
 }
 

@@ -735,9 +735,17 @@ func (database *ChainDatabase) CandidatesRanking(hash common.Hash) {
 		}
 	}
 
-	lastCandidatesMap, nextCandidates := data(accounts, toHashMap(cItem.Top30))
-
 	voteTop := NewVoteTop(cItem.Top30)
+	lastCandidatesMap, nextCandidates := data(accounts, toHashMap(cItem.Top30))
+	if len(cItem.Top30) < max_candidate_count {
+		for index := 0; index < len(nextCandidates); index++ {
+			lastCandidatesMap[nextCandidates[index].address] = nextCandidates[index]
+		}
+		voteTop.Rank(max_candidate_count, toSlice(lastCandidatesMap))
+		cItem.Top30 = voteTop.GetTop()
+		return
+	}
+
 	lastMinCandidate := voteTop.Min()
 	lastCount := voteTop.Count()
 
