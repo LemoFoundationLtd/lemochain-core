@@ -143,7 +143,7 @@ func (c *PublicChainAPI) GetCandidateList(index, size int) (*CandidateListRes, e
 	if err != nil {
 		return nil, err
 	}
-	candidateList := make([]*CandidateInfo, 0)
+	candidateList := make([]*CandidateInfo, len(addresses), len(addresses))
 	for i := 0; i < len(addresses); i++ {
 		candidateAccount := c.chain.AccountManager().GetAccount(addresses[i])
 		mapProfile := candidateAccount.GetCandidateProfile()
@@ -170,10 +170,11 @@ func (c *PublicChainAPI) GetCandidateList(index, size int) (*CandidateListRes, e
 }
 
 // GetCandidateTop30 get top 30 candidate node
-func (c *PublicChainAPI) GetCandidateTop30(blockHash common.Hash) []*CandidateInfo {
-	storeInfos := c.chain.Db().GetCandidatesTop(blockHash)
-
-	candidateList := make([]*CandidateInfo, 0)
+func (c *PublicChainAPI) GetCandidateTop30() []*CandidateInfo {
+	latestStableBlock := c.chain.StableBlock()
+	stableBlockHash := latestStableBlock.Hash()
+	storeInfos := c.chain.Db().GetCandidatesTop(stableBlockHash)
+	candidateList := make([]*CandidateInfo, len(storeInfos), 30)
 	for _, info := range storeInfos {
 		candidateInfo := &CandidateInfo{
 			Profile: make(map[string]string),
