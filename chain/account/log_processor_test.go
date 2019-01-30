@@ -322,18 +322,13 @@ func TestLogProcessor_MergeChangeLogs2(t *testing.T) {
 	safeAccount3 := manager.GetAccount(common.HexToAddress("0x2"))
 
 	// balance log, balance log, custom log, balance log, balance log
-	safeAccount1.SetBalance(big.NewInt(111))  // 0
-	processor.PushChangeLog(&types.ChangeLog{ // 1
-		LogType: types.ChangeLogType(101),
-		Address: safeAccount1.GetAddress(),
-		NewVal:  100,
-		Version: processor.GetNextVersion(types.ChangeLogType(101), safeAccount1.GetAddress()),
-	})
-	safeAccount2.SetBalance(big.NewInt(222)) // 2
-	safeAccount3.SetBalance(big.NewInt(444)) // 3
-	safeAccount1.SetBalance(big.NewInt(333)) // 4
-	safeAccount3.SetBalance(big.NewInt(0))   // 5
-	safeAccount1.SetBalance(big.NewInt(111)) // 6
+	safeAccount1.SetBalance(big.NewInt(111))           // 0
+	safeAccount1.SetVoteFor(safeAccount2.GetAddress()) // 1
+	safeAccount2.SetBalance(big.NewInt(222))           // 2
+	safeAccount3.SetBalance(big.NewInt(444))           // 3
+	safeAccount1.SetBalance(big.NewInt(333))           // 4
+	safeAccount3.SetBalance(big.NewInt(0))             // 5
+	safeAccount1.SetBalance(big.NewInt(111))           // 6
 	logs := processor.GetChangeLogs()
 	assert.Equal(t, 7, len(logs))
 	assert.Equal(t, *big.NewInt(111), logs[0].NewVal)
@@ -359,10 +354,10 @@ func TestLogProcessor_MergeChangeLogs2(t *testing.T) {
 	assert.Equal(t, *big.NewInt(111), logs[1].NewVal)
 	assert.Equal(t, safeAccount1.GetBaseVersion(BalanceLog)+1, logs[1].Version)
 	// 1
-	assert.Equal(t, types.ChangeLogType(101), logs[2].LogType)
+	assert.Equal(t, VoteForLog, logs[2].LogType)
 	assert.Equal(t, safeAccount1.GetAddress(), logs[2].Address)
-	assert.Equal(t, nil, logs[2].OldVal)
-	assert.Equal(t, 100, logs[2].NewVal)
+	assert.Equal(t, common.Address{}, logs[2].OldVal)
+	assert.Equal(t, safeAccount2.GetAddress(), logs[2].NewVal)
 	assert.Equal(t, uint32(1), logs[2].Version)
 
 	// broke snapshot

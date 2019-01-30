@@ -20,6 +20,7 @@ const (
 	VotesLog
 	CandidateProfileLog
 	TxCountLog
+	LOG_TYPE_STOP
 )
 
 func init() {

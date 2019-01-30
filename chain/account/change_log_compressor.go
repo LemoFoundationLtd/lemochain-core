@@ -49,23 +49,29 @@ func needMerge(logType types.ChangeLogType) bool {
 // merge traverses change logs and merges change log into the same type one which in front of it
 func merge(logs types.ChangeLogSlice) types.ChangeLogSlice {
 	result := make(types.ChangeLogSlice, 0)
-	combineResult := make(map[types.ChangeLogType]*types.ChangeLog)
+
+	combineResult := make([][]*types.ChangeLog, LOG_TYPE_STOP)
 	for _, log := range logs {
 		if needMerge(log.LogType) {
-			_, ok := combineResult[log.LogType]
-			if !ok {
-				combineResult[log.LogType] = log
+			if combineResult[log.LogType] == nil {
+				combineResult[log.LogType] = make([]*types.ChangeLog, 1)
+				combineResult[log.LogType][0] = log
 			} else {
-				combineResult[log.LogType].NewVal = log.NewVal
-				combineResult[log.LogType].Extra = log.Extra
+				combineResult[log.LogType][0].NewVal = log.NewVal
+				combineResult[log.LogType][0].Extra = log.Extra
 			}
 		} else {
-			result = append(result, log.Copy())
+			if combineResult[log.LogType] == nil {
+				combineResult[log.LogType] = make([]*types.ChangeLog, 0)
+			}
+			combineResult[log.LogType] = append(combineResult[log.LogType], log.Copy())
 		}
 	}
 
-	for _, v := range combineResult {
-		result = append(result, v.Copy())
+	for i := 0; i < len(combineResult); i++ {
+		for j := 0; j < len(combineResult[i]); j++ {
+			result = append(result, combineResult[i][j].Copy())
+		}
 	}
 
 	return result
