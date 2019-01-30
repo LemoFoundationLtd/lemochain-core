@@ -44,9 +44,7 @@ var (
 		node.IPCPathFlag,
 	}
 
-	attachFlags = []cli.Flag{
-		node.ChainIDFlag,
-	}
+	attachFlags = make([]cli.Flag, 0)
 )
 
 func init() {
