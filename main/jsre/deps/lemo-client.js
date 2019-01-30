@@ -22797,7 +22797,7 @@
 	  return new Tx(newTxConfig);
 	};
 
-	function parseBlock(signer, block) {
+	function parseBlock(signer, block, withBody) {
 	  if (block) {
 	    if (block.header) {
 	      block.header.height = parseNumber(block.header.height);
@@ -22806,12 +22806,15 @@
 	      block.header.timestamp = parseNumber(block.header.timestamp);
 	    }
 
-	    if (block.changeLogs) {
-	      block.changeLogs = block.changeLogs.map(parseChangeLog);
-	    }
-
-	    if (block.transactions) {
-	      block.transactions = block.transactions.map(parseTx.bind(null, signer));
+	    if (withBody) {
+	      block.changeLogs = (block.changeLogs || []).map(parseChangeLog);
+	      block.transactions = (block.transactions || []).map(parseTx.bind(null, signer));
+	    } else {
+	      delete block.changeLogs;
+	      delete block.transactions;
+	      delete block.confirms;
+	      delete block.deputyNodes;
+	      delete block.events;
 	    }
 	  }
 
@@ -22832,27 +22835,23 @@
 	    account.records[parseChangeLogType(logType)] = record;
 	  });
 
-	  if (account.candidate && account.candidate.profile) {
-	    account.candidate.profile = parseCandidateProfile(account.candidate.profile);
+	  if (account.candidate) {
+	    account.candidate = parseCandidate(account.candidate);
 	  }
 
 	  return account;
 	}
+	function parseCandidate(candidate) {
+	  if (candidate.profile) {
+	    candidate.profile.isCandidate = /true/i.test(candidate.profile.isCandidate);
+	    candidate.profile.port = parseNumber(candidate.profile.port);
+	  }
 
-	function parseCandidateProfile(profile) {
-	  profile.isCandidate = /true/i.test(profile.isCandidate);
-	  profile.port = parseNumber(profile.port);
-	  return profile;
+	  return candidate;
 	}
-
 	function parseCandidateListRes(res) {
-	  var candidateList = res.candidateList || [];
-	  candidateList = candidateList.map(function (item) {
-	    item.profile = parseCandidateProfile(item.profile);
-	    return item;
-	  });
 	  return {
-	    candidateList: candidateList,
+	    candidateList: (res.candidateList || []).map(parseCandidate),
 	    total: parseNumber(res.total)
 	  };
 	}
@@ -23049,7 +23048,7 @@
 
 	            case 3:
 	              block = _context.sent;
-	              return _context.abrupt("return", parseBlock(this.signer, block));
+	              return _context.abrupt("return", parseBlock(this.signer, block, withBody));
 
 	            case 5:
 	            case "end":
@@ -23087,7 +23086,7 @@
 
 	            case 3:
 	              block = _context2.sent;
-	              return _context2.abrupt("return", parseBlock(this.signer, block));
+	              return _context2.abrupt("return", parseBlock(this.signer, block, withBody));
 
 	            case 5:
 	            case "end":
@@ -23132,7 +23131,7 @@
 
 	            case 2:
 	              result = _context3.sent;
-	              return _context3.abrupt("return", parseBlock(this.signer, result));
+	              return _context3.abrupt("return", parseBlock(this.signer, result, true));
 
 	            case 4:
 	            case "end":
@@ -23219,7 +23218,7 @@
 	    var _this = this;
 
 	    var watchHandler = function watchHandler(block) {
-	      callback(parseBlock(_this.signer, block));
+	      callback(parseBlock(_this.signer, block, withBody));
 	    };
 
 	    return this.requester.watch("".concat(MODULE_NAME$1, "_latestStableBlock"), [!!withBody], watchHandler);
@@ -23228,7 +23227,7 @@
 	  /**
 	   * Get paged candidates information
 	   * @param {number} index Index of candidates
-	   * @param {number} limit The count of candidates required
+	   * @param {number} limit Max count of required candidates
 	   * @return {Promise<object>}
 	   */
 	  getCandidateList: function () {
@@ -23264,24 +23263,23 @@
 
 	  /**
 	   * Get top 30 candidates information
-	   * @param {string} blockHash
 	   * @return {Promise<object>}
 	   */
 	  getCandidateTop30: function () {
 	    var _getCandidateTop = asyncToGenerator(
 	    /*#__PURE__*/
-	    regenerator.mark(function _callee6(blockHash) {
+	    regenerator.mark(function _callee6() {
 	      var result;
 	      return regenerator.wrap(function _callee6$(_context6) {
 	        while (1) {
 	          switch (_context6.prev = _context6.next) {
 	            case 0:
 	              _context6.next = 2;
-	              return this.requester.send("".concat(MODULE_NAME$1, "_getCandidateTop30"), [blockHash]);
+	              return this.requester.send("".concat(MODULE_NAME$1, "_getCandidateTop30"), []);
 
 	            case 2:
 	              result = _context6.sent;
-	              return _context6.abrupt("return", parseCandidateListRes(result));
+	              return _context6.abrupt("return", (result || []).map(parseCandidate));
 
 	            case 4:
 	            case "end":
@@ -23291,7 +23289,7 @@
 	      }, _callee6, this);
 	    }));
 
-	    function getCandidateTop30(_x7) {
+	    function getCandidateTop30() {
 	      return _getCandidateTop.apply(this, arguments);
 	    }
 
