@@ -16,11 +16,11 @@ var _ = (*txListResMarshaling)(nil)
 func (t TxListRes) MarshalJSON() ([]byte, error) {
 	type TxListRes struct {
 		VTransactions []*store.VTransaction `json:"txList" gencodec:"required"`
-		Total         hexutil.Uint64        `json:"total" gencodec:"required"`
+		Total         hexutil.Uint32        `json:"total" gencodec:"required"`
 	}
 	var enc TxListRes
 	enc.VTransactions = t.VTransactions
-	enc.Total = hexutil.Uint64(t.Total)
+	enc.Total = hexutil.Uint32(t.Total)
 	return json.Marshal(&enc)
 }
 
@@ -28,7 +28,7 @@ func (t TxListRes) MarshalJSON() ([]byte, error) {
 func (t *TxListRes) UnmarshalJSON(input []byte) error {
 	type TxListRes struct {
 		VTransactions []*store.VTransaction `json:"txList" gencodec:"required"`
-		Total         *hexutil.Uint64       `json:"total" gencodec:"required"`
+		Total         *hexutil.Uint32       `json:"total" gencodec:"required"`
 	}
 	var dec TxListRes
 	if err := json.Unmarshal(input, &dec); err != nil {
@@ -41,6 +41,6 @@ func (t *TxListRes) UnmarshalJSON(input []byte) error {
 	if dec.Total == nil {
 		return errors.New("missing required field 'total' for TxListRes")
 	}
-	t.Total = uint64(*dec.Total)
+	t.Total = uint32(*dec.Total)
 	return nil
 }

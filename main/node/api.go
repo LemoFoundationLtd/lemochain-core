@@ -164,7 +164,7 @@ func (c *PublicChainAPI) GetCandidateList(index, size int) (*CandidateListRes, e
 	}
 	result := &CandidateListRes{
 		CandidateList: candidateList,
-		Total:         uint32(total),
+		Total:         total,
 	}
 	return result, nil
 }
@@ -442,10 +442,10 @@ func (t *PublicTxAPI) GetTxByHash(hash string) (*store.VTransactionDetail, error
 //go:generate gencodec -type TxListRes --field-override txListResMarshaling -out gen_tx_list_res_json.go
 type TxListRes struct {
 	VTransactions []*store.VTransaction `json:"txList" gencodec:"required"`
-	Total         uint64                `json:"total" gencodec:"required"`
+	Total         uint32                `json:"total" gencodec:"required"`
 }
 type txListResMarshaling struct {
-	Total hexutil.Uint64
+	Total hexutil.Uint32
 }
 
 // GetTxListByAddress pull the list of transactions
@@ -461,7 +461,7 @@ func (t *PublicTxAPI) GetTxListByAddress(lemoAddress string, index int, size int
 	}
 	txList := &TxListRes{
 		VTransactions: vTxs,
-		Total:         uint64(total),
+		Total:         total,
 	}
 
 	return txList, nil
