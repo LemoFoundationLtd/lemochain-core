@@ -1,7 +1,6 @@
 package account
 
 import (
-	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/store"
@@ -279,7 +278,7 @@ func TestLogProcessor_Snapshot_RevertToSnapshot2(t *testing.T) {
 	})
 }
 
-func TestLogProcessor_MergeChangeLogs(t *testing.T) {
+func TestLogProcessor_MergeChangeLogs1(t *testing.T) {
 	store.ClearData()
 	db := newDB()
 	manager := NewManager(newestBlock.Hash(), db)
@@ -290,35 +289,81 @@ func TestLogProcessor_MergeChangeLogs(t *testing.T) {
 
 	safeAccount1 := manager.GetAccount(defaultAccounts[0].Address)
 	safeAccount2 := manager.GetAccount(common.HexToAddress("0x1"))
+
+	// balance log, balance log, custom log, balance log, balance log
+	safeAccount1.SetBalance(big.NewInt(111)) // 0
+	safeAccount2.SetBalance(big.NewInt(222)) // 1
+	logs := processor.GetChangeLogs()
+	assert.Equal(t, 2, len(logs))
+	assert.Equal(t, *big.NewInt(111), logs[0].NewVal)
+
+	// merge different account's change log
+	processor.MergeChangeLogs(0)
+	logs = processor.GetChangeLogs()
+	assert.Equal(t, 2, len(logs))
+
+	// merge unchanged
+	safeAccount2.SetBalance(big.NewInt(333)) // 2
+	safeAccount2.SetBalance(big.NewInt(444)) // 3
+	safeAccount2.SetBalance(big.NewInt(333)) // 4
+	processor.MergeChangeLogs(2)
+	logs = processor.GetChangeLogs()
+	assert.Equal(t, 3, len(logs))
+}
+
+func TestLogProcessor_MergeChangeLogs2(t *testing.T) {
+	store.ClearData()
+	db := newDB()
+	manager := NewManager(newestBlock.Hash(), db)
+	processor := manager.processor
+
+	safeAccount1 := manager.GetAccount(defaultAccounts[0].Address)
+	safeAccount2 := manager.GetAccount(common.HexToAddress("0x1"))
 	safeAccount3 := manager.GetAccount(common.HexToAddress("0x2"))
 
 	// balance log, balance log, custom log, balance log, balance log
 	safeAccount1.SetBalance(big.NewInt(111))  // 0
 	processor.PushChangeLog(&types.ChangeLog{ // 1
 		LogType: types.ChangeLogType(101),
+		Address: safeAccount1.GetAddress(),
+		NewVal:  100,
+		Version: processor.GetNextVersion(types.ChangeLogType(101), safeAccount1.GetAddress()),
 	})
 	safeAccount2.SetBalance(big.NewInt(222)) // 2
 	safeAccount3.SetBalance(big.NewInt(444)) // 3
 	safeAccount1.SetBalance(big.NewInt(333)) // 4
 	safeAccount3.SetBalance(big.NewInt(0))   // 5
-	safeAccount1.SetBalance(big.NewInt(100)) // 6
+	safeAccount1.SetBalance(big.NewInt(111)) // 6
 	logs := processor.GetChangeLogs()
 	assert.Equal(t, 7, len(logs))
-	assert.Equal(t, *big.NewInt(111), processor.GetChangeLogs()[0].NewVal)
-
-	// merge different account's change log
-	processor.MergeChangeLogs(5)
-	logs = processor.GetChangeLogs()
-	assert.Equal(t, 7, len(logs))
+	assert.Equal(t, *big.NewInt(111), logs[0].NewVal)
 
 	// successfully merge
+	// the 6th overwrite 4th and 0th
+	// the 5th overwrite 3th. but the 5th is not valuable, so we remove 5th too
+	// then sort logs by address. the result sequence is: 2, 0, 1
 	processor.MergeChangeLogs(0)
 	logs = processor.GetChangeLogs()
-	fmt.Println(logs)
-	assert.Equal(t, 1, len(logs))
+	assert.Equal(t, 3, len(logs))
 	assert.Equal(t, uint32(0), safeAccount3.GetBaseVersion(BalanceLog))
-	// the first change log has been sorted to the last one
-	assert.Equal(t, *big.NewInt(222), processor.GetChangeLogs()[0].NewVal)
+	// 2
+	assert.Equal(t, BalanceLog, logs[0].LogType)
+	assert.Equal(t, safeAccount2.GetAddress(), logs[0].Address)
+	assert.Equal(t, *big.NewInt(0), logs[0].OldVal)
+	assert.Equal(t, *big.NewInt(222), logs[0].NewVal)
+	assert.Equal(t, safeAccount2.GetBaseVersion(BalanceLog)+1, logs[0].Version)
+	// 0
+	assert.Equal(t, BalanceLog, logs[1].LogType)
+	assert.Equal(t, safeAccount1.GetAddress(), logs[1].Address)
+	assert.Equal(t, *defaultAccounts[0].Balance, logs[1].OldVal)
+	assert.Equal(t, *big.NewInt(111), logs[1].NewVal)
+	assert.Equal(t, safeAccount1.GetBaseVersion(BalanceLog)+1, logs[1].Version)
+	// 1
+	assert.Equal(t, types.ChangeLogType(101), logs[2].LogType)
+	assert.Equal(t, safeAccount1.GetAddress(), logs[2].Address)
+	assert.Equal(t, nil, logs[2].OldVal)
+	assert.Equal(t, 100, logs[2].NewVal)
+	assert.Equal(t, uint32(1), logs[2].Version)
 
 	// broke snapshot
 	safeAccount2.SetBalance(big.NewInt(444))
@@ -327,115 +372,3 @@ func TestLogProcessor_MergeChangeLogs(t *testing.T) {
 		processor.MergeChangeLogs(0)
 	})
 }
-
-// func createChangeLog(processor *testProcessor, accountVersion uint32, logType ChangeLogType, logVersion uint32) *ChangeLog {
-// 	account := processor.createAccount(logType, accountVersion)
-// 	return &ChangeLog{LogType: logType, Address: account.GetAddress(), Version: logVersion}
-// }
-//
-// func removeAddress(log *ChangeLog) *ChangeLog {
-// 	log.Address = common.Address{}
-// 	return log
-// }
-//
-// func TestChangeLog_Undo(t *testing.T) {
-// 	processor := &testProcessor{}
-// 	registerCustomType(10002)
-//
-// 	tests := []struct {
-// 		input      *ChangeLog
-// 		undoErr    error
-// 		afterCheck func(AccountAccessor)
-// 	}{
-// 		// 0 custom type
-// 		{
-// 			input:   createChangeLog(processor, 0, ChangeLogType(0), 1),
-// 			undoErr: ErrUnknownChangeLogType,
-// 		},
-// 		// 1 lower version
-// 		{
-// 			input:   createChangeLog(processor, 2, ChangeLogType(10002), 1),
-// 			undoErr: ErrWrongChangeLogVersion,
-// 		},
-// 		// 2 same version
-// 		{
-// 			input: createChangeLog(processor, 1, ChangeLogType(10002), 1),
-// 			afterCheck: func(accessor AccountAccessor) {
-// 				assert.Equal(t, uint32(0), accessor.(*testAccount).GetVersion(ChangeLogType(10002)))
-// 				assert.Equal(t, uint32(0), accessor.(*testAccount).GetVersion(ChangeLogType(10002)))
-// 			},
-// 		},
-// 		// 3 higher version
-// 		{
-// 			input:   createChangeLog(processor, 2, ChangeLogType(10002), 1),
-// 			undoErr: ErrWrongChangeLogVersion,
-// 		},
-// 		// 4 no account
-// 		{
-// 			input:   removeAddress(createChangeLog(processor, 2, ChangeLogType(10002), 1)),
-// 			undoErr: ErrWrongChangeLogVersion,
-// 		},
-// 	}
-//
-// 	for i, test := range tests {
-// 		err := test.input.Undo(processor)
-// 		assert.Equal(t, test.undoErr, err, "index=%d %s", i, test.input)
-// 		if test.undoErr == nil && test.afterCheck != nil {
-// 			a := processor.GetAccount(test.input.Address)
-// 			test.afterCheck(a)
-// 		}
-// 	}
-// }
-//
-// func TestChangeLog_Redo(t *testing.T) {
-// 	processor := &testProcessor{}
-// 	registerCustomType(10003)
-//
-// 	tests := []struct {
-// 		input      *ChangeLog
-// 		redoErr    error
-// 		afterCheck func(AccountAccessor)
-// 	}{
-// 		// 0 custom type
-// 		{
-// 			input:   &ChangeLog{LogType: ChangeLogType(0), Address: common.Address{}, Version: 1},
-// 			redoErr: ErrUnknownChangeLogType,
-// 		},
-// 		// 1 lower version
-// 		{
-// 			input:   createChangeLog(processor, 2, ChangeLogType(10003), 1),
-// 			redoErr: ErrAlreadyRedo,
-// 		},
-// 		// 2 same version
-// 		{
-// 			input:   createChangeLog(processor, 1, ChangeLogType(10003), 1),
-// 			redoErr: ErrAlreadyRedo,
-// 		},
-// 		// 3 correct version
-// 		{
-// 			input: createChangeLog(processor, 0, ChangeLogType(10003), 1),
-// 			afterCheck: func(accessor AccountAccessor) {
-// 				assert.Equal(t, uint32(1), accessor.(*testAccount).GetVersion(ChangeLogType(10003)))
-// 			},
-// 		},
-// 		// 3 higher version
-// 		{
-// 			input:   createChangeLog(processor, 0, ChangeLogType(10003), 2),
-// 			redoErr: ErrWrongChangeLogVersion,
-// 		},
-// 		// 4 no account
-// 		{
-// 			input:   removeAddress(createChangeLog(processor, 1, ChangeLogType(10003), 2)),
-// 			redoErr: ErrWrongChangeLogVersion,
-// 		},
-// 	}
-//
-// 	for i, test := range tests {
-// 		err := test.input.Redo(processor)
-// 		assert.Equal(t, test.redoErr, err, "index=%d %s", i, test.input)
-// 		if test.redoErr == nil && test.afterCheck != nil {
-// 			a := processor.GetAccount(test.input.Address)
-// 			test.afterCheck(a)
-// 		}
-// 	}
-// }
