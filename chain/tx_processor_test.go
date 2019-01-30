@@ -511,6 +511,10 @@ func Test_voteAndRegisteTx(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
+
+	result := p.chain.db.GetCandidatesTop(blockHash)
+	assert.Equal(t, 1, len(result))
+
 	err = p.chain.db.SetStableBlock(blockHash)
 	if err != nil {
 		panic(err)
@@ -566,10 +570,15 @@ func Test_voteAndRegisteTx(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
+
 	err = p.chain.db.SetStableBlock(Hash02)
 	if err != nil {
 		panic(err)
 	}
+
+	result = p.chain.db.GetCandidatesTop(Hash02)
+	assert.Equal(t, 2, len(result))
+
 	// 	验证1. 投票交易后的结果
 	account01 := p.am.GetCanonicalAccount(testAddr01)
 	newAccount00 := p.am.GetCanonicalAccount(testAddr)

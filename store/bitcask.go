@@ -327,6 +327,17 @@ func (bitcask *BitCask) Put(flag uint, route []byte, key []byte, val []byte) err
 		pos: uint32(int(offset) | bitcask.CurIndex),
 		len: len(data),
 	}
+
+	err = bitcask.IndexDB.SetIndex(int(flag), route, key, int64(offset))
+	if err != nil {
+		return err
+	}
+
+	err = bitcask.afterScan(uint(flag), route, key, val, uint32(offset))
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
