@@ -730,24 +730,6 @@
 
 	var classCallCheck = _classCallCheck;
 
-	function _defineProperties(target, props) {
-	  for (var i = 0; i < props.length; i++) {
-	    var descriptor = props[i];
-	    descriptor.enumerable = descriptor.enumerable || false;
-	    descriptor.configurable = true;
-	    if ("value" in descriptor) descriptor.writable = true;
-	    Object.defineProperty(target, descriptor.key, descriptor);
-	  }
-	}
-
-	function _createClass(Constructor, protoProps, staticProps) {
-	  if (protoProps) _defineProperties(Constructor.prototype, protoProps);
-	  if (staticProps) _defineProperties(Constructor, staticProps);
-	  return Constructor;
-	}
-
-	var createClass = _createClass;
-
 	var bignumber = createCommonjsModule(function (module) {
 	(function (globalObject) {
 
@@ -4420,6 +4402,24 @@
 
 	var objectSpread = _objectSpread;
 
+	function _defineProperties(target, props) {
+	  for (var i = 0; i < props.length; i++) {
+	    var descriptor = props[i];
+	    descriptor.enumerable = descriptor.enumerable || false;
+	    descriptor.configurable = true;
+	    if ("value" in descriptor) descriptor.writable = true;
+	    Object.defineProperty(target, descriptor.key, descriptor);
+	  }
+	}
+
+	function _createClass(Constructor, protoProps, staticProps) {
+	  if (protoProps) _defineProperties(Constructor.prototype, protoProps);
+	  if (staticProps) _defineProperties(Constructor, staticProps);
+	  return Constructor;
+	}
+
+	var createClass = _createClass;
+
 	var bind = function bind(fn, thisArg) {
 	  return function wrap() {
 	    var args = new Array(arguments.length);
@@ -6045,6 +6045,9 @@
 	var errors = {
 	  InvalidAPIDefinition: function InvalidAPIDefinition(config) {
 	    return "invalid api config ".concat(JSON.stringify(config));
+	  },
+	  InvalidAPIMethod: function InvalidAPIMethod(config) {
+	    return "should set only one property of 'value' or 'call' in api config: ".concat(JSON.stringify(config));
 	  },
 	  InvalidAPIName: function InvalidAPIName(methodName) {
 	    return "invalid api method name ".concat(JSON.stringify(methodName));
@@ -13010,18 +13013,7 @@
 
 	  if (mo.length > 12) {
 	    // use LEMO
-	    if (/0{18}$/.test(mo)) {
-	      // no dot
-	      return "".concat(mo.slice(0, mo.length - 18), " LEMO");
-	    }
-
-	    if (mo.length <= 18) {
-	      mo = mo.padStart(19, '0');
-	    }
-
-	    var int = mo.slice(0, mo.length - 18);
-	    var rest = mo.slice(mo.length - 18).replace(/0+$/, '');
-	    return "".concat(int, ".").concat(rest, " LEMO");
+	    return moToLemo(mo);
 	  } // use mo
 
 
@@ -13034,6 +13026,26 @@
 	  } else {
 	    return "".concat(mo, " mo");
 	  }
+	}
+	function moToLemo(mo) {
+	  mo = new bignumber(mo).toString(10);
+
+	  if (mo === '0') {
+	    return '0 LEMO';
+	  }
+
+	  if (/0{18}$/.test(mo)) {
+	    // no dot
+	    return "".concat(mo.slice(0, mo.length - 18), " LEMO");
+	  }
+
+	  if (mo.length <= 18) {
+	    mo = mo.padStart(19, '0');
+	  }
+
+	  var int = mo.slice(0, mo.length - 18);
+	  var rest = mo.slice(mo.length - 18).replace(/0+$/, '');
+	  return "".concat(int, ".").concat(rest, " LEMO");
 	}
 	function toBuffer(v) {
 	  if (safeBuffer_1.isBuffer(v)) {
@@ -22842,6 +22854,10 @@
 	  return account;
 	}
 	function parseCandidate(candidate) {
+	  if (candidate.votes) {
+	    candidate.votes = moToLemo(candidate.votes).replace(' LEMO', '');
+	  }
+
 	  if (candidate.profile) {
 	    candidate.profile.isCandidate = /true/i.test(candidate.profile.isCandidate);
 	    candidate.profile.port = parseNumber(candidate.profile.port);
@@ -22899,7 +22915,7 @@
 	}
 
 	function parseNumber(str) {
-	  return parseInt(str || 0, 10);
+	  return parseInt(str, 10) || 0;
 	}
 	function parseMoney(str) {
 	  var result = new bignumber(str);
@@ -23025,8 +23041,49 @@
 	  apis: apis
 	};
 
-	var MODULE_NAME$1 = 'chain';
+	var MODULE_NAME$1 = '';
 	var apis$1 = {
+	  /**
+	   * The version of sdk
+	   * @return {string}
+	   */
+	  SDK_VERSION: getSdkVersion(),
+
+	  /**
+	   * The type enum of transaction
+	   * @return {object}
+	   */
+	  TxType: TxType,
+
+	  /**
+	   * Stop a watching by watchId. If no watchId specified, stop all
+	   * @param {number?} watchId
+	   */
+	  stopWatch: function stopWatch(watchId) {
+	    return this.requester.stopWatch(watchId);
+	  },
+
+	  /**
+	   * Return true if watching new data
+	   * @return {boolean}
+	   */
+	  isWatching: function isWatching() {
+	    return this.requester.isWatching();
+	  }
+	};
+
+	function getSdkVersion() {
+
+	  return "0.9.5";
+	}
+
+	var global$2 = {
+	  moduleName: MODULE_NAME$1,
+	  apis: apis$1
+	};
+
+	var MODULE_NAME$2 = 'chain';
+	var apis$2 = {
 	  /**
 	   * Get current block information
 	   * @param {boolean?} stable=true Get stable block or the newest block without consensus
@@ -23044,7 +23101,7 @@
 	            case 0:
 	              apiName = typeof stable === 'undefined' || stable ? 'latestStableBlock' : 'currentBlock';
 	              _context.next = 3;
-	              return this.requester.send("".concat(MODULE_NAME$1, "_").concat(apiName), [!!withBody]);
+	              return this.requester.send("".concat(MODULE_NAME$2, "_").concat(apiName), [!!withBody]);
 
 	            case 3:
 	              block = _context.sent;
@@ -23082,7 +23139,7 @@
 	            case 0:
 	              apiName = isHash(hashOrHeight) ? 'getBlockByHash' : 'getBlockByHeight';
 	              _context2.next = 3;
-	              return this.requester.send("".concat(MODULE_NAME$1, "_").concat(apiName), [hashOrHeight, !!withBody]);
+	              return this.requester.send("".concat(MODULE_NAME$2, "_").concat(apiName), [hashOrHeight, !!withBody]);
 
 	            case 3:
 	              block = _context2.sent;
@@ -23110,7 +23167,7 @@
 	   */
 	  getCurrentHeight: function getCurrentHeight(stable) {
 	    var apiName = typeof stable === 'undefined' || stable ? 'latestStableHeight' : 'currentHeight';
-	    return this.requester.send("".concat(MODULE_NAME$1, "_").concat(apiName));
+	    return this.requester.send("".concat(MODULE_NAME$2, "_").concat(apiName));
 	  },
 
 	  /**
@@ -23127,7 +23184,7 @@
 	          switch (_context3.prev = _context3.next) {
 	            case 0:
 	              _context3.next = 2;
-	              return this.requester.send("".concat(MODULE_NAME$1, "_genesis"), []);
+	              return this.requester.send("".concat(MODULE_NAME$2, "_genesis"), []);
 
 	            case 2:
 	              result = _context3.sent;
@@ -23153,7 +23210,7 @@
 	   * @return {Promise<number>}
 	   */
 	  getChainID: function getChainID() {
-	    return this.requester.send("".concat(MODULE_NAME$1, "_chainID"), []);
+	    return this.requester.send("".concat(MODULE_NAME$2, "_chainID"), []);
 	  },
 
 	  /**
@@ -23170,7 +23227,7 @@
 	          switch (_context4.prev = _context4.next) {
 	            case 0:
 	              _context4.next = 2;
-	              return this.requester.send("".concat(MODULE_NAME$1, "_gasPriceAdvice"), []);
+	              return this.requester.send("".concat(MODULE_NAME$2, "_gasPriceAdvice"), []);
 
 	            case 2:
 	              result = _context4.sent;
@@ -23196,16 +23253,7 @@
 	   * @return {Promise<number>}
 	   */
 	  getNodeVersion: function getNodeVersion() {
-	    return this.requester.send("".concat(MODULE_NAME$1, "_nodeVersion"), []);
-	  },
-
-	  /**
-	   * Get the version of sdk
-	   * @return {string}
-	   */
-	  getSdkVersion: function getSdkVersion() {
-
-	    return "0.9.5";
+	    return this.requester.send("".concat(MODULE_NAME$2, "_nodeVersion"), []);
 	  },
 
 	  /**
@@ -23221,7 +23269,7 @@
 	      callback(parseBlock(_this.signer, block, withBody));
 	    };
 
-	    return this.requester.watch("".concat(MODULE_NAME$1, "_latestStableBlock"), [!!withBody], watchHandler);
+	    return this.requester.watch("".concat(MODULE_NAME$2, "_latestStableBlock"), [!!withBody], watchHandler);
 	  },
 
 	  /**
@@ -23240,7 +23288,7 @@
 	          switch (_context5.prev = _context5.next) {
 	            case 0:
 	              _context5.next = 2;
-	              return this.requester.send("".concat(MODULE_NAME$1, "_getCandidateList"), [index, limit]);
+	              return this.requester.send("".concat(MODULE_NAME$2, "_getCandidateList"), [index, limit]);
 
 	            case 2:
 	              result = _context5.sent;
@@ -23275,7 +23323,7 @@
 	          switch (_context6.prev = _context6.next) {
 	            case 0:
 	              _context6.next = 2;
-	              return this.requester.send("".concat(MODULE_NAME$1, "_getCandidateTop30"), []);
+	              return this.requester.send("".concat(MODULE_NAME$2, "_getCandidateTop30"), []);
 
 	            case 2:
 	              result = _context6.sent;
@@ -23297,18 +23345,18 @@
 	  }()
 	};
 	var chain = {
-	  moduleName: MODULE_NAME$1,
-	  apis: apis$1
+	  moduleName: MODULE_NAME$2,
+	  apis: apis$2
 	};
 
-	var MODULE_NAME$2 = 'mine';
-	var apis$2 = {
+	var MODULE_NAME$3 = 'mine';
+	var apis$3 = {
 	  /**
 	   * Return true if the lemochain node is mining
 	   * @return {Promise<boolean>}
 	   */
 	  getMining: function getMining() {
-	    return this.requester.send("".concat(MODULE_NAME$2, "_isMining"), []);
+	    return this.requester.send("".concat(MODULE_NAME$3, "_isMining"), []);
 	  },
 
 	  /**
@@ -23316,22 +23364,22 @@
 	   * @return {Promise<string>}
 	   */
 	  getMiner: function getMiner() {
-	    return this.requester.send("".concat(MODULE_NAME$2, "_miner"), []);
+	    return this.requester.send("".concat(MODULE_NAME$3, "_miner"), []);
 	  }
 	};
 	var mine = {
-	  moduleName: MODULE_NAME$2,
-	  apis: apis$2
+	  moduleName: MODULE_NAME$3,
+	  apis: apis$3
 	};
 
-	var MODULE_NAME$3 = 'net';
-	var apis$3 = {
+	var MODULE_NAME$4 = 'net';
+	var apis$4 = {
 	  /**
 	   * Get connected peers count from the lemochain node
 	   * @return {Promise<number>}
 	   */
 	  getPeersCount: function getPeersCount() {
-	    return this.requester.send("".concat(MODULE_NAME$3, "_peersCount"), []);
+	    return this.requester.send("".concat(MODULE_NAME$4, "_peersCount"), []);
 	  },
 
 	  /**
@@ -23339,16 +23387,16 @@
 	   * @return {Promise<object>}
 	   */
 	  getInfo: function getInfo() {
-	    return this.requester.send("".concat(MODULE_NAME$3, "_info"), []);
+	    return this.requester.send("".concat(MODULE_NAME$4, "_info"), []);
 	  }
 	};
 	var net = {
-	  moduleName: MODULE_NAME$3,
-	  apis: apis$3
+	  moduleName: MODULE_NAME$4,
+	  apis: apis$4
 	};
 
-	var MODULE_NAME$4 = 'tx';
-	var apis$4 = {
+	var MODULE_NAME$5 = 'tx';
+	var apis$5 = {
 	  /**
 	   * Get transaction's information by hash
 	   * @param {string|number} txHash Hash of transaction
@@ -23364,7 +23412,7 @@
 	          switch (_context.prev = _context.next) {
 	            case 0:
 	              _context.next = 2;
-	              return this.requester.send("".concat(MODULE_NAME$4, "_getTxByHash"), [txHash]);
+	              return this.requester.send("".concat(MODULE_NAME$5, "_getTxByHash"), [txHash]);
 
 	            case 2:
 	              result = _context.sent;
@@ -23411,7 +23459,7 @@
 	          switch (_context2.prev = _context2.next) {
 	            case 0:
 	              _context2.next = 2;
-	              return this.requester.send("".concat(MODULE_NAME$4, "_getTxListByAddress"), [address, index, limit]);
+	              return this.requester.send("".concat(MODULE_NAME$5, "_getTxListByAddress"), [address, index, limit]);
 
 	            case 2:
 	              result = _context2.sent;
@@ -23450,7 +23498,7 @@
 	  sendTx: function sendTx(privateKey, txConfig) {
 	    var tx = new Tx(txConfig);
 	    this.signer.sign(tx, privateKey);
-	    return this.requester.send("".concat(MODULE_NAME$4, "_sendTx"), [tx.toJson()]);
+	    return this.requester.send("".concat(MODULE_NAME$5, "_sendTx"), [tx.toJson()]);
 	  },
 
 	  /**
@@ -23469,7 +23517,7 @@
 	      throw new Error("can't send an unsigned transaction");
 	    }
 
-	    return this.requester.send("".concat(MODULE_NAME$4, "_sendTx"), [tx.toJson()]);
+	    return this.requester.send("".concat(MODULE_NAME$5, "_sendTx"), [tx.toJson()]);
 	  },
 
 	  /**
@@ -23507,35 +23555,15 @@
 	    var tx = Tx.createCandidateTx(txConfig, candidateInfo);
 	    this.signer.sign(tx, privateKey);
 	    return JSON.stringify(tx.toJson());
-	  },
-
-	  /**
-	   * Run smart contract in read-only mode than return some data
-	   * @param {string} contractAddress The address of smart contract
-	   * @param {string} data Smart contract execution code data
-	   * @return {Promise<object>}
-	   */
-	  readContract: function readContract(contractAddress, data) {
-	    return this.requester.send("".concat(MODULE_NAME$4, "_readContract"), [contractAddress, data]);
-	  },
-
-	  /**
-	   * Estimate the gas cost for run a smart contract. The result can be used to fill gasLimit in transaction
-	   * @param {string} to The address of smart contract. If it is empty, then create smart contract
-	   * @param {string} data Smart contract execution code data
-	   * @return {Promise<object>}
-	   */
-	  estimateGas: function estimateGas(to, data) {
-	    return this.requester.send("".concat(MODULE_NAME$4, "_estimateGas"), [to, data]);
 	  }
 	};
 	var tx = {
-	  moduleName: MODULE_NAME$4,
-	  apis: apis$4
+	  moduleName: MODULE_NAME$5,
+	  apis: apis$5
 	};
 
-	var MODULE_NAME$5 = 'tool';
-	var apis$5 = {
+	var MODULE_NAME$6 = 'tool';
+	var apis$6 = {
 	  /**
 	   * Verify a LemoChain address
 	   * @param {string} address
@@ -23551,8 +23579,8 @@
 	  }
 	};
 	var tool = {
-	  moduleName: MODULE_NAME$5,
-	  apis: apis$5
+	  moduleName: MODULE_NAME$6,
+	  apis: apis$6
 	};
 
 	var Api =
@@ -23562,19 +23590,25 @@
 	   * Create api method and attach to lemo object
 	   * @param {object} config
 	   * @param {string} config.name The method name which attached to lemo object
-	   * @param {Function} config.call The custom api function call. It should return a Promise for keeping same interface
+	   * @param {Function?} config.call The custom api function call
+	   * @param {*?} config.value The custom api value
 	   * @param {Requester?} requester
 	   * @param {Signer?} signer
 	   */
 	  function Api(config, requester, signer) {
 	    classCallCheck(this, Api);
 
-	    if (!config || !config.name || !config.call) {
+	    if (!config || !config.name) {
 	      throw new Error(errors.InvalidAPIDefinition(config));
+	    }
+
+	    if (!!config.call === !!config.value) {
+	      throw new Error(errors.InvalidAPIMethod(config));
 	    }
 
 	    this.name = config.name;
 	    this.call = config.call;
+	    this.value = config.value;
 	    this.requester = requester;
 	    this.signer = signer;
 	  }
@@ -23596,93 +23630,78 @@
 	        throw new Error(errors.UnavailableAPIName(this.name));
 	      }
 
-	      target[this.name] = this.call.bind(this);
+	      if (this.value) {
+	        target[this.name] = this.value;
+	      } else {
+	        target[this.name] = this.call.bind(this);
+	      }
 	    }
 	  }]);
 
 	  return Api;
 	}();
 
-	var LemoClient =
-	/*#__PURE__*/
-	function () {
-	  function LemoClient() {
-	    var config = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+	var LemoClient = function LemoClient() {
+	  var config = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
 
-	    classCallCheck(this, LemoClient);
+	  classCallCheck(this, LemoClient);
 
-	    this.config = {
-	      chainID: config.chainID || 1,
-	      // 1: LemoChain main net, 100 LemoChain test net
-	      conn: {
-	        send: config.send,
-	        // Custom requester. If this property is set, other conn config below will be ignored
-	        host: config.host || 'http://127.0.0.1:8001',
-	        // LemoChain node HTTP RPC address
-	        timeout: config.timeout,
-	        // LemoChain node HTTP RPC timeout
-	        username: config.username,
-	        // LemoChain node HTTP RPC authorise
-	        password: config.password,
-	        // LemoChain node HTTP RPC authorise
-	        headers: config.headers // LemoChain node HTTP RPC Headers
+	  this.config = {
+	    chainID: config.chainID || 1,
+	    // 1: LemoChain main net, 100 LemoChain test net
+	    conn: {
+	      send: config.send,
+	      // Custom requester. If this property is set, other conn config below will be ignored
+	      host: config.host || 'http://127.0.0.1:8001',
+	      // LemoChain node HTTP RPC address
+	      timeout: config.timeout,
+	      // LemoChain node HTTP RPC timeout
+	      username: config.username,
+	      // LemoChain node HTTP RPC authorise
+	      password: config.password,
+	      // LemoChain node HTTP RPC authorise
+	      headers: config.headers // LemoChain node HTTP RPC Headers
 
-	      },
-	      requester: {
-	        pollDuration: config.pollDuration || DEFAULT_POLL_DURATION,
-	        // The interval time of watching poll. It is in milliseconds
-	        maxPollRetry: config.maxPollRetry || MAX_POLL_RETRY
-	      } // The Object.defineProperty is not work in otto. but we can name fields with first letter '_' to make it invisible
+	    },
+	    requester: {
+	      pollDuration: config.pollDuration || DEFAULT_POLL_DURATION,
+	      // The interval time of watching poll. It is in milliseconds
+	      maxPollRetry: config.maxPollRetry || MAX_POLL_RETRY
+	    } // The Object.defineProperty is not work in otto. but we can name fields with first letter '_' to make it invisible
 
-	    };
-	    this._requester = new Requester(newConn(this.config.conn), this.config.requester);
-	    Object.defineProperty(this, '_requester', {
-	      enumerable: false
-	    });
-	    Object.defineProperty(this, '_createAPI', {
-	      enumerable: false,
-	      value: createAPI.bind(null, this)
-	    });
-	    this._signer = new Signer(this.config.chainID);
-	    Object.defineProperty(this, '_signer', {
-	      enumerable: false
-	    }); // modules
+	  };
+	  this._requester = new Requester(newConn(this.config.conn), this.config.requester);
+	  Object.defineProperty(this, '_requester', {
+	    enumerable: false
+	  });
+	  Object.defineProperty(this, '_createAPI', {
+	    enumerable: false,
+	    value: createAPI.bind(null, this)
+	  });
+	  this._signer = new Signer(this.config.chainID);
+	  Object.defineProperty(this, '_signer', {
+	    enumerable: false
+	  });
+	  attachModules(this);
+	  exposeUtils(this);
+	};
 
-	    createModule(this, account.moduleName, account.apis);
-	    createModule(this, '', chain.apis); // attach the apis from chain to 'this'
+	function attachModules(lemo) {
+	  // modules
+	  createModule(lemo, '', global$2.apis); // attach the apis from chain to 'this'
 
-	    createModule(this, mine.moduleName, mine.apis);
-	    createModule(this, net.moduleName, net.apis);
-	    createModule(this, tx.moduleName, tx.apis);
-	    createModule(this, tool.moduleName, tool.apis); // utils
+	  createModule(lemo, account.moduleName, account.apis);
+	  createModule(lemo, '', chain.apis); // attach the apis from chain to 'this'
 
-	    this.BigNumber = bignumber;
-	  }
-	  /**
-	   * Stop a watching by watchId. If no watchId specified, stop all
-	   * @param {number?} watchId
-	   */
+	  createModule(lemo, mine.moduleName, mine.apis);
+	  createModule(lemo, net.moduleName, net.apis);
+	  createModule(lemo, tx.moduleName, tx.apis);
+	  createModule(lemo, tool.moduleName, tool.apis);
+	}
 
-
-	  createClass(LemoClient, [{
-	    key: "stopWatch",
-	    value: function stopWatch(watchId) {
-	      return this._requester.stopWatch(watchId);
-	    }
-	    /**
-	     * Return true if watching new data
-	     * @return {boolean}
-	     */
-
-	  }, {
-	    key: "isWatching",
-	    value: function isWatching() {
-	      return this._requester.isWatching();
-	    }
-	  }]);
-
-	  return LemoClient;
-	}();
+	function exposeUtils(lemo) {
+	  lemo.BigNumber = bignumber;
+	}
 	/**
 	 * Create an module and attach to lemo object
 	 * @param {LemoClient} lemo
@@ -23697,10 +23716,17 @@
 	        key = _ref2[0],
 	        value = _ref2[1];
 
-	    new Api({
-	      name: key,
-	      call: value
-	    }, lemo._requester, lemo._signer).attachTo(lemo, moduleName);
+	    var apiConfig = {
+	      name: key
+	    };
+
+	    if (typeof value === 'function') {
+	      apiConfig.call = value;
+	    } else {
+	      apiConfig.value = value;
+	    }
+
+	    new Api(apiConfig, lemo._requester, lemo._signer).attachTo(lemo, moduleName);
 	  });
 	}
 	/**

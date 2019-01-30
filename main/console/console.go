@@ -134,17 +134,16 @@ func (c *Console) Welcome() {
 	fmt.Fprintf(c.printer, "Welcome to the lemo JavaScript console!\n")
 	c.jsre.Run(`Promise.all([
 		lemo.getNodeVersion(),
-		lemo.getSdkVersion(),
 		lemo.mine.getMiner(),
 		lemo.getCurrentBlock(false, false),
 		lemo.getCurrentBlock(true, false)
 	]).then(function(results) {
 		var msg = [
 			"node: v" + results[0],
-			"sdk: v" + results[1],
-			"minerAddress: " + results[2],
-			"current block: " + results[3].header.height + " " + results[3].header.hash + " (" + new Date(1000 * results[3].header.timestamp).toLocaleString() + ")",
-			"latest stable block: " + results[4].header.height + " " + results[4].header.hash + " (" + new Date(1000 * results[4].header.timestamp).toLocaleString() + ")"
+			"sdk: v" + lemo.SDK_VERSION,
+			"minerAddress: " + results[1],
+			"current block: " + results[2].header.height + " " + results[2].header.hash + " (" + new Date(1000 * results[2].header.timestamp).toLocaleString() + ")",
+			"latest stable block: " + results[3].header.height + " " + results[3].header.hash + " (" + new Date(1000 * results[3].header.timestamp).toLocaleString() + ")"
 		].join("\n") + "\n";
 		console.log(msg)
 	});`)
