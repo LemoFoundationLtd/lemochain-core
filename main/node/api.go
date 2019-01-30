@@ -137,7 +137,7 @@ type candidateListResMarshaling struct {
 	Total hexutil.Uint32
 }
 
-// GetCandidateNodeList get all candidate node list information and return total candidate node todo
+// GetCandidateNodeList get all candidate node list information and return total candidate node
 func (c *PublicChainAPI) GetCandidateList(index, size int) (*CandidateListRes, error) {
 	addresses, total, err := c.chain.Db().GetCandidatesPage(index, size)
 	if err != nil {
@@ -157,11 +157,6 @@ func (c *PublicChainAPI) GetCandidateList(index, size int) (*CandidateListRes, e
 		}
 
 		candidateInfo.Profile = mapProfile
-		// candidateInfo.Profile[types.CandidateKeyIsCandidate] = mapProfile[types.CandidateKeyIsCandidate]
-		// candidateInfo.Profile[types.CandidateKeyHost] = mapProfile[types.CandidateKeyHost]
-		// candidateInfo.Profile[types.CandidateKeyNodeID] = mapProfile[types.CandidateKeyNodeID]
-		// candidateInfo.Profile[types.CandidateKeyPort] = mapProfile[types.CandidateKeyPort]
-		// candidateInfo.Profile[types.CandidateKeyMinerAddress] = mapProfile[types.CandidateKeyMinerAddress]
 		candidateInfo.Votes = candidateAccount.GetVotes().String()
 		candidateInfo.CandidateAddress = addresses[i].String()
 
