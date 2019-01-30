@@ -14,9 +14,9 @@ type testAccount struct {
 	AccountData
 }
 
-func (f *testAccount) GetTxCount() int { return f.GetTxCount() }
+func (f *testAccount) GetTxCount() uint32 { return f.GetTxCount() }
 
-func (f *testAccount) SetTxCount(count int) {
+func (f *testAccount) SetTxCount(count uint32) {
 	f.SetTxCount(count)
 }
 

@@ -33,12 +33,25 @@ func MergeChangeLogs(logs types.ChangeLogSlice) types.ChangeLogSlice {
 	return mergedLogs
 }
 
+func needMerge(logType types.ChangeLogType) bool {
+	if (logType == BalanceLog) ||
+		(logType == StorageLog) ||
+		(logType == VoteForLog) ||
+		(logType == VotesLog) ||
+		(logType == CandidateProfileLog) ||
+		(logType == TxCountLog) {
+		return true
+	} else {
+		return false
+	}
+}
+
 // merge traverses change logs and merges change log into the same type one which in front of it
 func merge(logs types.ChangeLogSlice) types.ChangeLogSlice {
 	result := make(types.ChangeLogSlice, 0)
 	combineResult := make(map[types.ChangeLogType]*types.ChangeLog)
 	for _, log := range logs {
-		if (log.LogType == BalanceLog) || (log.LogType == StorageLog) {
+		if needMerge(log.LogType) {
 			log, ok := combineResult[log.LogType]
 			if !ok {
 				combineResult[log.LogType] = log
