@@ -17,7 +17,7 @@ func MergeChangeLogs(logs types.ChangeLogSlice) types.ChangeLogSlice {
 	for addr, accountLogs := range logsByAccount {
 		newAccountLogs := merge(accountLogs)
 		newAccountLogs = removeUnchanged(newAccountLogs)
-		resetVersion(newAccountLogs)
+		// resetVersion(newAccountLogs)
 		logsByAccount[addr] = newAccountLogs
 	}
 	// sort all logs by account
@@ -36,17 +36,39 @@ func MergeChangeLogs(logs types.ChangeLogSlice) types.ChangeLogSlice {
 // merge traverses change logs and merges change log into the same type one which in front of it
 func merge(logs types.ChangeLogSlice) types.ChangeLogSlice {
 	result := make(types.ChangeLogSlice, 0)
+	combineResult := make(map[types.ChangeLogType]*types.ChangeLog)
 	for _, log := range logs {
-		exist := result.FindByType(log)
-		if exist != nil && (log.LogType == BalanceLog || log.LogType == StorageLog) {
-			// update the exist one
-			exist.NewVal = log.NewVal
-			exist.Extra = log.Extra
+		if (log.LogType == BalanceLog) || (log.LogType == StorageLog) {
+			log, ok := combineResult[log.LogType]
+			if !ok {
+				combineResult[log.LogType] = log
+			} else {
+				combineResult[log.LogType].NewVal = log.NewVal
+				combineResult[log.LogType].Extra = log.Extra
+			}
 		} else {
 			result = append(result, log.Copy())
 		}
 	}
+
+	for _, v := range combineResult {
+		result = append(result, v.Copy())
+	}
+
 	return result
+
+	// result := make(types.ChangeLogSlice, 0)
+	// for _, log := range logs {
+	// 	exist := result.FindByType(log)
+	// 	if exist != nil && (log.LogType == BalanceLog || log.LogType == StorageLog) {
+	// 		// update the exist one
+	// 		exist.NewVal = log.NewVal
+	// 		exist.Extra = log.Extra
+	// 	} else {
+	// 		result = append(result, log.Copy())
+	// 	}
+	// }
+	// return result
 }
 
 // removeUnchanged removes the unchanged log

@@ -16,11 +16,11 @@ import (
 
 var max_candidate_count = 30
 
-type CBlock struct {
-	Block *types.Block
-	Trie  *PatriciaTrie
-	Top30 []*Candidate
-}
+// type CBlock struct {
+// 	Block *types.Block
+// 	Trie  *PatriciaTrie
+// 	Top30 []*Candidate
+// }
 
 type ChainDatabase struct {
 	LastConfirm     *CBlock
