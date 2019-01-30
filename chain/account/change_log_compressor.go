@@ -52,12 +52,12 @@ func merge(logs types.ChangeLogSlice) types.ChangeLogSlice {
 	combineResult := make(map[types.ChangeLogType]*types.ChangeLog)
 	for _, log := range logs {
 		if needMerge(log.LogType) {
-			log, ok := combineResult[log.LogType]
+			tmp, ok := combineResult[log.LogType]
 			if !ok {
-				combineResult[log.LogType] = log
+				combineResult[log.LogType] = tmp
 			} else {
-				combineResult[log.LogType].NewVal = log.NewVal
-				combineResult[log.LogType].Extra = log.Extra
+				combineResult[log.LogType].NewVal = tmp.NewVal
+				combineResult[log.LogType].Extra = tmp.Extra
 			}
 		} else {
 			result = append(result, log.Copy())
