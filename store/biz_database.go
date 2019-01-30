@@ -36,7 +36,7 @@ type vTransactionDetailMarshaling struct {
 type BizDb interface {
 	GetTxByHash(hash common.Hash) (*VTransactionDetail, error)
 
-	GetTxByAddr(src common.Address, index int, size int) ([]*VTransaction, int, error)
+	GetTxByAddr(src common.Address, index int, size int) ([]*VTransaction, uint32, error)
 }
 
 type Reader interface {
@@ -86,9 +86,9 @@ func (db *BizDatabase) GetTxByHash(hash common.Hash) (*VTransactionDetail, error
 	}, nil
 }
 
-func (db *BizDatabase) GetTxByAddr(src common.Address, index int, size int) ([]*VTransaction, int, error) {
-	if (index <= 0) || (size > 200) || (size <= 0) {
-		return nil, -1, errors.New("argment error.")
+func (db *BizDatabase) GetTxByAddr(src common.Address, index int, size int) ([]*VTransaction, uint32, error) {
+	if (index < 0) || (size > 200) || (size <= 0) {
+		return nil, 0, errors.New("argment error.")
 	}
 
 	confirm := db.Reader.GetLastConfirm()
@@ -103,13 +103,13 @@ func (db *BizDatabase) GetTxByAddr(src common.Address, index int, size int) ([]*
 	}
 
 	txCount := account.TxCount
-	if txCount <= 0 || (index-1)*size > txCount {
+	if txCount <= 0 || index*size > int(txCount) {
 		return make([]*VTransaction, 0), 0, nil
 	}
 
 	_, vals, sts, err := db.Database.TxGetByAddr(src.Hex(), index, size)
 	if err != nil {
-		return nil, -1, err
+		return nil, 0, err
 	}
 
 	txs := make([]*VTransaction, len(vals))
@@ -117,7 +117,7 @@ func (db *BizDatabase) GetTxByAddr(src common.Address, index int, size int) ([]*
 		var tx types.Transaction
 		err = rlp.DecodeBytes(vals[index], &tx)
 		if err != nil {
-			return nil, -1, err
+			return nil, 0, err
 		}
 
 		txs[index] = &VTransaction{

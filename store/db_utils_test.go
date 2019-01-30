@@ -1,70 +1,65 @@
 package store
 
-import (
-	"github.com/stretchr/testify/assert"
-	"testing"
-)
-
-func TestSet(t *testing.T) {
-	db, err := Open(DRIVER_MYSQL, DNS_MYSQL)
-	assert.NoError(t, err)
-
-	err = TxSet(db, "hash", "addr1", "addr2", []byte("paul"), 1, 100)
-	err = TxSet(db, "hash1", "addr1", "addr2", []byte("paul"), 2, 101)
-	err = TxSet(db, "hash2", "addr1", "addr2", []byte("paul"), 3, 102)
-	err = TxSet(db, "hash3", "addr1", "addr2", []byte("paul"), 4, 103)
-	err = TxSet(db, "hash4", "addr1", "addr2", []byte("paul"), 5, 104)
-	assert.NoError(t, err)
-
-	val, st, err := TxGet8Hash(db, "hash")
-	assert.NoError(t, err)
-	assert.Equal(t, []byte("paul"), val)
-	assert.Equal(t, int64(100), st)
-
-	// next
-	results, sts, maxVer, err := TxGet8AddrNext(db, "addr1", 0, 2)
-	assert.NoError(t, err)
-	assert.Equal(t, 2, len(results))
-	assert.Equal(t, 2, len(sts))
-	assert.Equal(t, int64(2), maxVer)
-
-	results, sts, maxVer, err = TxGet8AddrNext(db, "addr1", 2, 2)
-	assert.NoError(t, err)
-	assert.Equal(t, 2, len(results))
-	assert.Equal(t, 2, len(sts))
-	assert.Equal(t, int64(4), maxVer)
-
-	results, sts, maxVer, err = TxGet8AddrNext(db, "addr1", 4, 2)
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(results))
-	assert.Equal(t, 1, len(sts))
-	assert.Equal(t, int64(5), maxVer)
-
-	results, sts, maxVer, err = TxGet8AddrNext(db, "addr1", 5, 2)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(results))
-	assert.Equal(t, 0, len(sts))
-	assert.Equal(t, int64(5), maxVer)
-
-	// pre
-	results, sts, maxVer, err = TxGet8AddrPre(db, "addr1", 4, 2)
-	assert.NoError(t, err)
-	assert.Equal(t, 2, len(results))
-	assert.Equal(t, 2, len(sts))
-	assert.Equal(t, int64(2), maxVer)
-
-	results, sts, maxVer, err = TxGet8AddrPre(db, "addr1", 2, 2)
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(results))
-	assert.Equal(t, 1, len(sts))
-	assert.Equal(t, int64(1), maxVer)
-
-	results, sts, maxVer, err = TxGet8AddrPre(db, "addr1", 1, 2)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(results))
-	assert.Equal(t, 0, len(sts))
-	assert.Equal(t, int64(1), maxVer)
-}
+// func TestSet(t *testing.T) {
+// 	db, err := Open(DRIVER_MYSQL, DNS_MYSQL)
+// 	assert.NoError(t, err)
+//
+// 	err = TxSet(db, "hash", "addr1", "addr2", []byte("paul"), 1, 100)
+// 	err = TxSet(db, "hash1", "addr1", "addr2", []byte("paul"), 2, 101)
+// 	err = TxSet(db, "hash2", "addr1", "addr2", []byte("paul"), 3, 102)
+// 	err = TxSet(db, "hash3", "addr1", "addr2", []byte("paul"), 4, 103)
+// 	err = TxSet(db, "hash4", "addr1", "addr2", []byte("paul"), 5, 104)
+// 	assert.NoError(t, err)
+//
+// 	val, st, err := TxGet8Hash(db, "hash")
+// 	assert.NoError(t, err)
+// 	assert.Equal(t, []byte("paul"), val)
+// 	assert.Equal(t, int64(100), st)
+//
+// 	// next
+// 	results, sts, maxVer, err := TxGet8AddrNext(db, "addr1", 0, 2)
+// 	assert.NoError(t, err)
+// 	assert.Equal(t, 2, len(results))
+// 	assert.Equal(t, 2, len(sts))
+// 	assert.Equal(t, int64(2), maxVer)
+//
+// 	results, sts, maxVer, err = TxGet8AddrNext(db, "addr1", 2, 2)
+// 	assert.NoError(t, err)
+// 	assert.Equal(t, 2, len(results))
+// 	assert.Equal(t, 2, len(sts))
+// 	assert.Equal(t, int64(4), maxVer)
+//
+// 	results, sts, maxVer, err = TxGet8AddrNext(db, "addr1", 4, 2)
+// 	assert.NoError(t, err)
+// 	assert.Equal(t, 1, len(results))
+// 	assert.Equal(t, 1, len(sts))
+// 	assert.Equal(t, int64(5), maxVer)
+//
+// 	results, sts, maxVer, err = TxGet8AddrNext(db, "addr1", 5, 2)
+// 	assert.NoError(t, err)
+// 	assert.Equal(t, 0, len(results))
+// 	assert.Equal(t, 0, len(sts))
+// 	assert.Equal(t, int64(5), maxVer)
+//
+// 	// pre
+// 	results, sts, maxVer, err = TxGet8AddrPre(db, "addr1", 4, 2)
+// 	assert.NoError(t, err)
+// 	assert.Equal(t, 2, len(results))
+// 	assert.Equal(t, 2, len(sts))
+// 	assert.Equal(t, int64(2), maxVer)
+//
+// 	results, sts, maxVer, err = TxGet8AddrPre(db, "addr1", 2, 2)
+// 	assert.NoError(t, err)
+// 	assert.Equal(t, 1, len(results))
+// 	assert.Equal(t, 1, len(sts))
+// 	assert.Equal(t, int64(1), maxVer)
+//
+// 	results, sts, maxVer, err = TxGet8AddrPre(db, "addr1", 1, 2)
+// 	assert.NoError(t, err)
+// 	assert.Equal(t, 0, len(results))
+// 	assert.Equal(t, 0, len(sts))
+// 	assert.Equal(t, int64(1), maxVer)
+// }
 
 //
 // func TestDoUtils_Set(t *testing.T) {

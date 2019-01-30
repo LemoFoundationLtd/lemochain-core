@@ -636,8 +636,8 @@ func (database *ChainDatabase) GetCandidatesTop(hash common.Hash) []*Candidate {
 	}
 }
 
-func (database *ChainDatabase) GetCandidatesPage(index int, size int) ([]common.Address, int, error) {
-	if (index <= 0) || (size > 200) || (size <= 0) {
+func (database *ChainDatabase) GetCandidatesPage(index int, size int) ([]common.Address, uint32, error) {
+	if (index < 0) || (size > 200) || (size <= 0) {
 		return nil, -1, errors.New("argment error.")
 	} else {
 		return database.Context.GetCandidatePage(index, size)

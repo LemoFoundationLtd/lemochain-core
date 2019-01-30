@@ -149,122 +149,102 @@ func TestCacheChain_IsExistByHash(t *testing.T) {
 	assert.Equal(t, true, isExist)
 }
 
-func TestCacheChain_WriteChain1(t *testing.T) {
+func TestCacheChain_WriteChain(t *testing.T) {
 	ClearData()
+	block0 := GetBlock0()
+	block1 := GetBlock1()
+	block2 := GetBlock2()
+	block3 := GetBlock3()
+	block4 := GetBlock4()
 
 	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
-
-	parentBlock := GetBlock0()
-	err := cacheChain.SetBlock(parentBlock.Hash(), parentBlock)
+	cacheChain.SetBlock(block0.Hash(), block0)
+	err := cacheChain.SetStableBlock(block0.Hash())
 	assert.NoError(t, err)
 
-	childBlock := GetBlock1()
-	err = cacheChain.SetBlock(childBlock.Hash(), childBlock)
+	// 1, 2#, 3
+	cacheChain.SetBlock(block1.Hash(), block1)
+	cacheChain.SetBlock(block2.Hash(), block2)
+	cacheChain.SetBlock(block3.Hash(), block3)
+	err = cacheChain.SetStableBlock(block2.Hash())
 	assert.NoError(t, err)
-
-	err = cacheChain.SetStableBlock(childBlock.Hash())
+	result, err := cacheChain.GetBlockByHeight(1)
 	assert.NoError(t, err)
+	assert.Equal(t, result.Hash(), block1.Hash())
 
-	result, err := cacheChain.GetBlockByHash(parentBlock.Hash())
+	result, err = cacheChain.GetBlockByHeight(2)
 	assert.NoError(t, err)
-	assert.Equal(t, result.Hash(), parentBlock.Hash())
+	assert.Equal(t, result.Hash(), block2.Hash())
 
-	result, err = cacheChain.GetBlockByHash(childBlock.Hash())
+	result, err = cacheChain.GetBlockByHeight(3)
+	assert.Equal(t, ErrNotExist, err)
+
+	// from db
+	cacheChain = NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
+	result, err = cacheChain.GetBlockByHeight(1)
 	assert.NoError(t, err)
-	assert.Equal(t, result.Hash(), childBlock.Hash())
-}
+	assert.Equal(t, result.Hash(), block1.Hash())
 
-func TestCacheChain_WriteChain2(t *testing.T) {
+	result, err = cacheChain.GetBlockByHeight(2)
+	assert.NoError(t, err)
+	assert.Equal(t, result.Hash(), block2.Hash())
+
+	result, err = cacheChain.GetBlockByHeight(3)
+	assert.Equal(t, ErrNotExist, err)
+
 	ClearData()
-
-	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
-
-	parentBlock := GetBlock0()
-	err := cacheChain.SetBlock(parentBlock.Hash(), parentBlock)
+	cacheChain = NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
+	cacheChain.SetBlock(block0.Hash(), block0)
+	err = cacheChain.SetStableBlock(block0.Hash())
 	assert.NoError(t, err)
 
-	childBlock := GetBlock1()
-	err = cacheChain.SetBlock(childBlock.Hash(), childBlock)
+	// 1, 2, 3#
+	cacheChain.SetBlock(block1.Hash(), block1)
+	cacheChain.SetBlock(block2.Hash(), block2)
+	cacheChain.SetBlock(block3.Hash(), block3)
+	err = cacheChain.SetStableBlock(block3.Hash())
 	assert.NoError(t, err)
-
-	err = cacheChain.SetStableBlock(parentBlock.Hash())
+	result, err = cacheChain.GetBlockByHeight(1)
 	assert.NoError(t, err)
+	assert.Equal(t, result.Hash(), block1.Hash())
 
-	err = cacheChain.SetStableBlock(childBlock.Hash())
+	result, err = cacheChain.GetBlockByHeight(2)
 	assert.NoError(t, err)
+	assert.Equal(t, result.Hash(), block2.Hash())
 
-	result, err := cacheChain.GetBlockByHash(parentBlock.Hash())
+	result, err = cacheChain.GetBlockByHeight(3)
 	assert.NoError(t, err)
-	assert.Equal(t, result.Hash(), parentBlock.Hash())
-
-	result, err = cacheChain.GetBlockByHash(childBlock.Hash())
-	assert.NoError(t, err)
-	assert.Equal(t, result.Hash(), childBlock.Hash())
-}
-
-func TestCacheChain_repeat(t *testing.T) {
-	ClearData()
-
-	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
-
-	parentBlock := GetBlock0()
-	err := cacheChain.SetBlock(parentBlock.Hash(), parentBlock)
-	assert.NoError(t, err)
-
-	childBlock := GetBlock1()
-	err = cacheChain.SetBlock(childBlock.Hash(), childBlock)
-	assert.NoError(t, err)
-
-	err = cacheChain.SetStableBlock(childBlock.Hash())
-	assert.NoError(t, err)
-
-	//
-	parentBlock = GetBlock0()
-	err = cacheChain.SetBlock(parentBlock.Hash(), parentBlock)
-	assert.Equal(t, err, ErrExist)
-
-	childBlock = GetBlock1()
-	err = cacheChain.SetBlock(childBlock.Hash(), childBlock)
-	assert.Equal(t, err, ErrExist)
-}
-
-func TestCacheChain_Load4Hit(t *testing.T) {
-	ClearData()
-
-	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
-
-	block := GetBlock0()
-	err := cacheChain.SetBlock(block.Hash(), block)
-	assert.NoError(t, err)
-
-	err = cacheChain.SetStableBlock(block.Hash())
-	assert.NoError(t, err)
-
-	block = GetBlock1()
-	err = cacheChain.SetBlock(block.Hash(), block)
-	assert.NoError(t, err)
-
-	err = cacheChain.SetStableBlock(block.Hash())
-	assert.NoError(t, err)
+	assert.Equal(t, result.Hash(), block3.Hash())
 
 	cacheChain = NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
-
-	parentBlock := GetBlock0()
-
-	result, err := cacheChain.GetBlockByHash(parentBlock.Hash())
+	result, err = cacheChain.GetBlockByHeight(1)
 	assert.NoError(t, err)
-	assert.Equal(t, parentBlock.ParentHash(), result.ParentHash())
+	assert.Equal(t, result.Hash(), block1.Hash())
 
-	//
-	childBlock := GetBlock1()
-	result, err = cacheChain.GetBlockByHash(childBlock.Hash())
+	result, err = cacheChain.GetBlockByHeight(2)
 	assert.NoError(t, err)
-	assert.Equal(t, childBlock.ParentHash(), parentBlock.Hash())
+	assert.Equal(t, result.Hash(), block2.Hash())
+
+	result, err = cacheChain.GetBlockByHeight(3)
+	assert.NoError(t, err)
+	assert.Equal(t, result.Hash(), block3.Hash())
+
+	// error block
+	assert.PanicsWithValue(t, "set stable block error:the block is not exist. hash:"+block1.Hash().Hex(), func() {
+		cacheChain.SetStableBlock(block1.Hash())
+	})
+
+	assert.PanicsWithValue(t, "set stable block error:the block is not exist. hash:"+block3.Hash().Hex(), func() {
+		cacheChain.SetStableBlock(block3.Hash())
+	})
+
+	assert.PanicsWithValue(t, "set stable block error:the block is not exist. hash:"+block4.Hash().Hex(), func() {
+		cacheChain.SetStableBlock(block4.Hash())
+	})
 }
 
 func TestChainDatabase_SetContractCode(t *testing.T) {
 	ClearData()
-
 	database := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
 
 	code := types.Code("this  is code")
@@ -276,70 +256,54 @@ func TestChainDatabase_SetContractCode(t *testing.T) {
 	result, err := database.GetContractCode(hash)
 	assert.NoError(t, err)
 	assert.Equal(t, code, result)
+
+	database = NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
+	result, err = database.GetContractCode(hash)
+	assert.NoError(t, err)
+	assert.Equal(t, code, result)
 }
 
-func TestCacheChain_LoadLatestBlock1(t *testing.T) {
+func TestCacheChain_LastConfirm(t *testing.T) {
 	ClearData()
 
+	block0 := GetBlock0()
+	block1 := GetBlock1()
+	block2 := GetBlock2()
+	block3 := GetBlock3()
+	block4 := GetBlock4()
 	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
+	lastConfirmBlock := cacheChain.LastConfirm.Block
+	assert.Nil(t, lastConfirmBlock)
 
-	result, err := cacheChain.LoadLatestBlock()
-	assert.Equal(t, err, ErrNotExist)
-	assert.Nil(t, result)
+	cacheChain.SetBlock(block0.Hash(), block0)
+	cacheChain.SetStableBlock(block0.Hash())
+	lastConfirmBlock = cacheChain.LastConfirm.Block
+	assert.Equal(t, block0.Hash(), lastConfirmBlock.Hash())
 
-	parentBlock := GetBlock0()
-	childBlock := GetBlock1()
-	err = cacheChain.SetBlock(parentBlock.Hash(), parentBlock)
-	assert.NoError(t, err)
-	err = cacheChain.SetBlock(childBlock.Hash(), childBlock)
-	assert.NoError(t, err)
+	cacheChain.SetBlock(block1.Hash(), block1)
+	cacheChain.SetBlock(block2.Hash(), block2)
+	cacheChain.SetBlock(block3.Hash(), block3)
+	cacheChain.SetStableBlock(block2.Hash())
+	lastConfirmBlock = cacheChain.LastConfirm.Block
+	assert.Equal(t, block2.Hash(), lastConfirmBlock.Hash())
 
-	err = cacheChain.SetStableBlock(parentBlock.Hash())
-	assert.NoError(t, err)
+	ClearData()
+	cacheChain = NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
+	cacheChain.SetBlock(block0.Hash(), block0)
+	cacheChain.SetStableBlock(block0.Hash())
 
-	result, err = cacheChain.LoadLatestBlock()
-	assert.NoError(t, err)
-	assert.Equal(t, parentBlock.ParentHash(), result.ParentHash())
+	cacheChain.SetBlock(block1.Hash(), block1)
+	cacheChain.SetBlock(block2.Hash(), block2)
+	cacheChain.SetBlock(block3.Hash(), block3)
+	cacheChain.SetBlock(block4.Hash(), block4)
+	cacheChain.SetStableBlock(block4.Hash())
 
-	err = cacheChain.SetStableBlock(childBlock.Hash())
-	assert.NoError(t, err)
-
-	result, err = cacheChain.LoadLatestBlock()
-	assert.NoError(t, err)
-	assert.Equal(t, childBlock.ParentHash(), result.ParentHash())
+	lastConfirmBlock = cacheChain.LastConfirm.Block
+	assert.Equal(t, block4.Hash(), lastConfirmBlock.Hash())
 
 	cacheChain = NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
-
-	result, err = cacheChain.LoadLatestBlock()
-	assert.NoError(t, err)
-	assert.Equal(t, childBlock.ParentHash(), result.ParentHash())
-}
-
-func TestCacheChain_LoadLatestBlock2(t *testing.T) {
-	ClearData()
-
-	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
-
-	parentBlock := GetBlock0()
-	childBlock := GetBlock1()
-	err := cacheChain.SetBlock(parentBlock.Hash(), parentBlock)
-	assert.NoError(t, err)
-	err = cacheChain.SetBlock(childBlock.Hash(), childBlock)
-	assert.NoError(t, err)
-
-	err = cacheChain.SetStableBlock(childBlock.Hash())
-	assert.NoError(t, err)
-
-	result, err := cacheChain.LoadLatestBlock()
-	assert.NoError(t, err)
-	assert.Equal(t, childBlock.ParentHash(), result.ParentHash())
-
-	err = cacheChain.SetStableBlock(parentBlock.Hash())
-	assert.Equal(t, err, ErrNotExist)
-
-	result, err = cacheChain.LoadLatestBlock()
-	assert.NoError(t, err)
-	assert.Equal(t, childBlock.ParentHash(), result.ParentHash())
+	lastConfirmBlock = cacheChain.LastConfirm.Block
+	assert.Equal(t, block4.Hash(), lastConfirmBlock.Hash())
 }
 
 func TestCacheChain_SetConfirm1(t *testing.T) {
@@ -497,16 +461,5 @@ func TestChainDatabase_Commit(t *testing.T) {
 			}
 		}
 		log.Errorf("index:" + strconv.Itoa(index))
-	}
-}
-
-func TestNewChainDataBase(t *testing.T) {
-	for index := 0; index < 10; index++ {
-		// offset := uint32(index) & 0xffffff00
-		CURINDEX := uint32(index) & 0xff
-		if CURINDEX == 129 {
-			// panic("INDEX:129, INDEX:" + strconv.Itoa(int(index)))
-			log.Errorf("INDEX:" + strconv.Itoa(index))
-		}
 	}
 }

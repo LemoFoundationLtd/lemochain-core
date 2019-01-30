@@ -94,7 +94,7 @@ func (db *MySqlDB) TxGetByHash(key string) (string, []byte, int64, error) {
 }
 
 func (db *MySqlDB) TxGetByAddr(addr string, index int, size int) ([]string, [][]byte, []int64, error) {
-	start := (index - 1) * size
+	start := index * size
 	stmt, err := db.engine.Prepare(txsql + " WHERE tx_from = ? or tx_to = ? ORDER BY tx_ver ASC LIMIT ?, ?")
 	if err != nil {
 		return nil, nil, nil, err

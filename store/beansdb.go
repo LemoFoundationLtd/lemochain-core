@@ -464,34 +464,34 @@ func (context *RunContext) SetCandidate(address common.Address) {
 	context.Candidates[address] = true
 }
 
-func (context *RunContext) GetCandidatePage(index int, size int) ([]common.Address, int, error) {
+func (context *RunContext) GetCandidatePage(index int, size int) ([]common.Address, uint32, error) {
 	file, err := os.OpenFile(context.Path, os.O_RDONLY, 0666)
 	defer file.Close()
 	if err != nil {
-		return nil, -1, err
+		return nil, 0, err
 	}
 
 	headBuf := make([]byte, binary.Size(contextHead{}))
 	_, err = file.Seek(0, 0)
 	if err != nil {
-		return nil, -1, err
+		return nil, 0, err
 	}
 
 	_, err = file.Read(headBuf)
 	if err != nil {
-		return nil, -1, err
+		return nil, 0, err
 	}
 
 	var head contextHead
 	err = binary.Read(bytes.NewBuffer(headBuf), binary.LittleEndian, &head)
 	if err != nil {
-		return nil, -1, err
+		return nil, 0, err
 	}
 
 	bodyBuf := make([]byte, head.FileLen)
 	_, err = file.Read(bodyBuf)
 	if err != nil {
-		return nil, -1, err
+		return nil, 0, err
 	}
 
 	offset := 0
@@ -504,7 +504,7 @@ func (context *RunContext) GetCandidatePage(index int, size int) ([]common.Addre
 		var itemHead contextItemHead
 		err = binary.Read(bytes.NewBuffer(bodyBuf[offset:offset+itemHeadLen]), binary.LittleEndian, &itemHead)
 		if err != nil {
-			return nil, -1, err
+			return nil, 0, err
 		}
 
 		if itemHead.Flg != 2 { // !addresses
@@ -513,12 +513,12 @@ func (context *RunContext) GetCandidatePage(index int, size int) ([]common.Addre
 		}
 
 		if itemHead.Len == 0 {
-			return make([]common.Address, 0), -1, nil
+			return make([]common.Address, 0), 0, nil
 		}
 
 		result := make([]common.Address, 0)
 		curPos := offset + itemHeadLen
-		page := (index - 1) * size
+		page := index * size
 		startCurIndex := curPos + page*common.AddressLength
 		for index := 0; index < size; index++ {
 			pos1 := startCurIndex + index*common.AddressLength
@@ -529,7 +529,7 @@ func (context *RunContext) GetCandidatePage(index int, size int) ([]common.Addre
 				result = append(result, common.BytesToAddress(bodyBuf[pos1:pos2]))
 			}
 		}
-		return result, len(context.Candidates), nil
+		return result, uint32(len(context.Candidates)), nil
 	}
 }
 
