@@ -10,7 +10,7 @@ import (
 // MarshalJSON marshals as JSON.
 func (c CandidateInfo) MarshalJSON() ([]byte, error) {
 	type CandidateInfo struct {
-		CandidateAddress string            `json:"candidate" gencodec:"required"`
+		CandidateAddress string            `json:"address" gencodec:"required"`
 		Votes            string            `json:"votes" gencodec:"required"`
 		Profile          map[string]string `json:"profile"  gencodec:"required"`
 	}
@@ -24,7 +24,7 @@ func (c CandidateInfo) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON unmarshals from JSON.
 func (c *CandidateInfo) UnmarshalJSON(input []byte) error {
 	type CandidateInfo struct {
-		CandidateAddress *string           `json:"candidate" gencodec:"required"`
+		CandidateAddress *string           `json:"address" gencodec:"required"`
 		Votes            *string           `json:"votes" gencodec:"required"`
 		Profile          map[string]string `json:"profile"  gencodec:"required"`
 	}
@@ -33,7 +33,7 @@ func (c *CandidateInfo) UnmarshalJSON(input []byte) error {
 		return err
 	}
 	if dec.CandidateAddress == nil {
-		return errors.New("missing required field 'candidate' for CandidateInfo")
+		return errors.New("missing required field 'address' for CandidateInfo")
 	}
 	c.CandidateAddress = *dec.CandidateAddress
 	if dec.Votes == nil {

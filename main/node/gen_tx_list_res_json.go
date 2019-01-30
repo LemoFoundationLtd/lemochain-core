@@ -10,36 +10,36 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/store"
 )
 
-var _ = (*txListByAddressMarshaling)(nil)
+var _ = (*txListResMarshaling)(nil)
 
 // MarshalJSON marshals as JSON.
-func (t TxListByAddress) MarshalJSON() ([]byte, error) {
-	type TxListByAddress struct {
+func (t TxListRes) MarshalJSON() ([]byte, error) {
+	type TxListRes struct {
 		VTransactions []*store.VTransaction `json:"txList" gencodec:"required"`
 		Total         hexutil.Uint64        `json:"total" gencodec:"required"`
 	}
-	var enc TxListByAddress
+	var enc TxListRes
 	enc.VTransactions = t.VTransactions
 	enc.Total = hexutil.Uint64(t.Total)
 	return json.Marshal(&enc)
 }
 
 // UnmarshalJSON unmarshals from JSON.
-func (t *TxListByAddress) UnmarshalJSON(input []byte) error {
-	type TxListByAddress struct {
+func (t *TxListRes) UnmarshalJSON(input []byte) error {
+	type TxListRes struct {
 		VTransactions []*store.VTransaction `json:"txList" gencodec:"required"`
 		Total         *hexutil.Uint64       `json:"total" gencodec:"required"`
 	}
-	var dec TxListByAddress
+	var dec TxListRes
 	if err := json.Unmarshal(input, &dec); err != nil {
 		return err
 	}
 	if dec.VTransactions == nil {
-		return errors.New("missing required field 'txList' for TxListByAddress")
+		return errors.New("missing required field 'txList' for TxListRes")
 	}
 	t.VTransactions = dec.VTransactions
 	if dec.Total == nil {
-		return errors.New("missing required field 'total' for TxListByAddress")
+		return errors.New("missing required field 'total' for TxListRes")
 	}
 	t.Total = uint64(*dec.Total)
 	return nil

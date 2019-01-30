@@ -13004,6 +13004,10 @@
 	function formatMoney(mo) {
 	  mo = new bignumber(mo).toString(10);
 
+	  if (mo === '0') {
+	    return '0 LEMO';
+	  }
+
 	  if (mo.length > 12) {
 	    // use LEMO
 	    if (/0{18}$/.test(mo)) {
@@ -22640,161 +22644,6 @@
 	  return Signer;
 	}();
 
-	var gOPD = Object.getOwnPropertyDescriptor;
-
-	var f$4 = _descriptors ? gOPD : function getOwnPropertyDescriptor(O, P) {
-	  O = _toIobject(O);
-	  P = _toPrimitive(P, true);
-	  if (_ie8DomDefine) try {
-	    return gOPD(O, P);
-	  } catch (e) { /* empty */ }
-	  if (_has(O, P)) return _propertyDesc(!_objectPie.f.call(O, P), O[P]);
-	};
-
-	var _objectGopd = {
-		f: f$4
-	};
-
-	// Works with __proto__ only. Old v8 can't work with null proto objects.
-	/* eslint-disable no-proto */
-
-
-	var check = function (O, proto) {
-	  _anObject(O);
-	  if (!_isObject(proto) && proto !== null) throw TypeError(proto + ": can't set as prototype!");
-	};
-	var _setProto = {
-	  set: Object.setPrototypeOf || ('__proto__' in {} ? // eslint-disable-line
-	    function (test, buggy, set) {
-	      try {
-	        set = _ctx(Function.call, _objectGopd.f(Object.prototype, '__proto__').set, 2);
-	        set(test, []);
-	        buggy = !(test instanceof Array);
-	      } catch (e) { buggy = true; }
-	      return function setPrototypeOf(O, proto) {
-	        check(O, proto);
-	        if (buggy) O.__proto__ = proto;
-	        else set(O, proto);
-	        return O;
-	      };
-	    }({}, false) : undefined),
-	  check: check
-	};
-
-	var setPrototypeOf = _setProto.set;
-	var _inheritIfRequired = function (that, target, C) {
-	  var S = target.constructor;
-	  var P;
-	  if (S !== C && typeof S == 'function' && (P = S.prototype) !== C.prototype && _isObject(P) && setPrototypeOf) {
-	    setPrototypeOf(that, P);
-	  } return that;
-	};
-
-	// 19.1.2.7 / 15.2.3.4 Object.getOwnPropertyNames(O)
-
-	var hiddenKeys = _enumBugKeys.concat('length', 'prototype');
-
-	var f$5 = Object.getOwnPropertyNames || function getOwnPropertyNames(O) {
-	  return _objectKeysInternal(O, hiddenKeys);
-	};
-
-	var _objectGopn = {
-		f: f$5
-	};
-
-	var _stringWs = '\x09\x0A\x0B\x0C\x0D\x20\xA0\u1680\u180E\u2000\u2001\u2002\u2003' +
-	  '\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u202F\u205F\u3000\u2028\u2029\uFEFF';
-
-	var space = '[' + _stringWs + ']';
-	var non = '\u200b\u0085';
-	var ltrim = RegExp('^' + space + space + '*');
-	var rtrim = RegExp(space + space + '*$');
-
-	var exporter = function (KEY, exec, ALIAS) {
-	  var exp = {};
-	  var FORCE = _fails(function () {
-	    return !!_stringWs[KEY]() || non[KEY]() != non;
-	  });
-	  var fn = exp[KEY] = FORCE ? exec(trim$1) : _stringWs[KEY];
-	  if (ALIAS) exp[ALIAS] = fn;
-	  _export(_export.P + _export.F * FORCE, 'String', exp);
-	};
-
-	// 1 -> String#trimLeft
-	// 2 -> String#trimRight
-	// 3 -> String#trim
-	var trim$1 = exporter.trim = function (string, TYPE) {
-	  string = String(_defined(string));
-	  if (TYPE & 1) string = string.replace(ltrim, '');
-	  if (TYPE & 2) string = string.replace(rtrim, '');
-	  return string;
-	};
-
-	var _stringTrim = exporter;
-
-	var gOPN = _objectGopn.f;
-	var gOPD$1 = _objectGopd.f;
-	var dP$2 = _objectDp.f;
-	var $trim = _stringTrim.trim;
-	var NUMBER = 'Number';
-	var $Number = _global[NUMBER];
-	var Base = $Number;
-	var proto$1 = $Number.prototype;
-	// Opera ~12 has broken Object#toString
-	var BROKEN_COF = _cof(_objectCreate(proto$1)) == NUMBER;
-	var TRIM = 'trim' in String.prototype;
-
-	// 7.1.3 ToNumber(argument)
-	var toNumber = function (argument) {
-	  var it = _toPrimitive(argument, false);
-	  if (typeof it == 'string' && it.length > 2) {
-	    it = TRIM ? it.trim() : $trim(it, 3);
-	    var first = it.charCodeAt(0);
-	    var third, radix, maxCode;
-	    if (first === 43 || first === 45) {
-	      third = it.charCodeAt(2);
-	      if (third === 88 || third === 120) return NaN; // Number('+0x1') should be NaN, old V8 fix
-	    } else if (first === 48) {
-	      switch (it.charCodeAt(1)) {
-	        case 66: case 98: radix = 2; maxCode = 49; break; // fast equal /^0b[01]+$/i
-	        case 79: case 111: radix = 8; maxCode = 55; break; // fast equal /^0o[0-7]+$/i
-	        default: return +it;
-	      }
-	      for (var digits = it.slice(2), i = 0, l = digits.length, code; i < l; i++) {
-	        code = digits.charCodeAt(i);
-	        // parseInt parses a string to a first unavailable symbol
-	        // but ToNumber should return NaN if a string contains unavailable symbols
-	        if (code < 48 || code > maxCode) return NaN;
-	      } return parseInt(digits, radix);
-	    }
-	  } return +it;
-	};
-
-	if (!$Number(' 0o1') || !$Number('0b1') || $Number('+0x1')) {
-	  $Number = function Number(value) {
-	    var it = arguments.length < 1 ? 0 : value;
-	    var that = this;
-	    return that instanceof $Number
-	      // check on 1..constructor(foo) case
-	      && (BROKEN_COF ? _fails(function () { proto$1.valueOf.call(that); }) : _cof(that) != NUMBER)
-	        ? _inheritIfRequired(new Base(toNumber(it)), that, $Number) : toNumber(it);
-	  };
-	  for (var keys$1 = _descriptors ? gOPN(Base) : (
-	    // ES3:
-	    'MAX_VALUE,MIN_VALUE,NaN,NEGATIVE_INFINITY,POSITIVE_INFINITY,' +
-	    // ES6 (in case, if modules with ES6 Number statics required before):
-	    'EPSILON,isFinite,isInteger,isNaN,isSafeInteger,MAX_SAFE_INTEGER,' +
-	    'MIN_SAFE_INTEGER,parseFloat,parseInt,isInteger'
-	  ).split(','), j = 0, key$3; keys$1.length > j; j++) {
-	    if (_has(Base, key$3 = keys$1[j]) && !_has($Number, key$3)) {
-	      dP$2($Number, key$3, gOPD$1(Base, key$3));
-	    }
-	  }
-	  $Number.prototype = proto$1;
-	  proto$1.constructor = $Number;
-	  _redefine(_global, NUMBER, $Number);
-	}
-
 	var Tx =
 	/*#__PURE__*/
 	function () {
@@ -22951,10 +22800,10 @@
 	function parseBlock(signer, block) {
 	  if (block) {
 	    if (block.header) {
-	      block.header.height = Number(block.header.height);
-	      block.header.gasLimit = Number(block.header.gasLimit);
-	      block.header.gasUsed = Number(block.header.gasUsed);
-	      block.header.timestamp = Number(block.header.timestamp);
+	      block.header.height = parseNumber(block.header.height);
+	      block.header.gasLimit = parseNumber(block.header.gasLimit);
+	      block.header.gasUsed = parseNumber(block.header.gasUsed);
+	      block.header.timestamp = parseNumber(block.header.timestamp);
 	    }
 
 	    if (block.changeLogs) {
@@ -22970,6 +22819,7 @@
 	}
 	function parseAccount(account) {
 	  account.balance = parseMoney(account.balance);
+	  account.txCount = parseNumber(account.txCount);
 	  var oldRecords = account.records || {};
 	  account.records = {};
 	  Object.entries(oldRecords).forEach(function (_ref) {
@@ -22977,30 +22827,38 @@
 	        logType = _ref2[0],
 	        record = _ref2[1];
 
-	    record.height = Number(record.height);
-	    record.version = Number(record.version);
+	    record.height = parseNumber(record.height);
+	    record.version = parseNumber(record.version);
 	    account.records[parseChangeLogType(logType)] = record;
 	  });
 
-	  if (account.candidate) {
-	    account.candidate = parseCandidate(account.candidate);
+	  if (account.candidate && account.candidate.profile) {
+	    account.candidate.profile = parseCandidateProfile(account.candidate.profile);
 	  }
 
 	  return account;
 	}
 
-	function parseCandidate(candidate) {
-	  if (candidate && candidate.profile) {
-	    candidate.profile.isCandidate = candidate.profile.isCandidate.toLowerCase() === 'true';
-	    candidate.profile.port = Number(candidate.profile.port);
-	  }
-
-	  return candidate;
+	function parseCandidateProfile(profile) {
+	  profile.isCandidate = /true/i.test(profile.isCandidate);
+	  profile.port = parseNumber(profile.port);
+	  return profile;
 	}
 
+	function parseCandidateListRes(res) {
+	  var candidateList = res.candidateList || [];
+	  candidateList = candidateList.map(function (item) {
+	    item.profile = parseCandidateProfile(item.profile);
+	    return item;
+	  });
+	  return {
+	    candidateList: candidateList,
+	    total: parseNumber(res.total)
+	  };
+	}
 	function parseChangeLog(changeLog) {
 	  changeLog.type = parseChangeLogType(changeLog.type);
-	  changeLog.version = Number(changeLog.version);
+	  changeLog.version = parseNumber(changeLog.version);
 	  return changeLog;
 	}
 	function parseChangeLogType(logType) {
@@ -23012,12 +22870,37 @@
 
 	  return dict[logType];
 	}
+	function parseTxRes(signer, res) {
+	  var tx = parseTx(signer, res.tx);
+	  tx.minedTime = parseNumber(res.time);
+	  tx.blockHeight = parseNumber(res.height);
+	  tx.blockHash = res.blockHash;
+	  return tx;
+	}
+	function parseTxListRes(signer, res) {
+	  var txList = res.txList || [];
+	  txList = txList.map(function (item) {
+	    var tx = parseTx(signer, item.tx);
+	    tx.minedTime = parseNumber(item.time);
+	    return tx;
+	  });
+	  return {
+	    txList: txList,
+	    total: parseNumber(res.total)
+	  };
+	}
+
 	function parseTx(signer, tx) {
 	  tx.from = signer.recover(new Tx(tx));
 	  tx.amount = parseMoney(tx.amount);
-	  tx.expirationTime = Number(tx.expirationTime);
-	  tx.gasLimit = Number(tx.gasLimit);
+	  tx.expirationTime = parseNumber(tx.expirationTime);
+	  tx.gasPrice = parseMoney(tx.gasPrice);
+	  tx.gasLimit = parseNumber(tx.gasLimit);
 	  return tx;
+	}
+
+	function parseNumber(str) {
+	  return parseInt(str || 0, 10);
 	}
 	function parseMoney(str) {
 	  var result = new bignumber(str);
@@ -23340,7 +23223,80 @@
 	    };
 
 	    return this.requester.watch("".concat(MODULE_NAME$1, "_latestStableBlock"), [!!withBody], watchHandler);
-	  }
+	  },
+
+	  /**
+	   * Get paged candidates information
+	   * @param {number} index Index of candidates
+	   * @param {number} limit The count of candidates required
+	   * @return {Promise<object>}
+	   */
+	  getCandidateList: function () {
+	    var _getCandidateList = asyncToGenerator(
+	    /*#__PURE__*/
+	    regenerator.mark(function _callee5(index, limit) {
+	      var result;
+	      return regenerator.wrap(function _callee5$(_context5) {
+	        while (1) {
+	          switch (_context5.prev = _context5.next) {
+	            case 0:
+	              _context5.next = 2;
+	              return this.requester.send("".concat(MODULE_NAME$1, "_getCandidateList"), [index, limit]);
+
+	            case 2:
+	              result = _context5.sent;
+	              return _context5.abrupt("return", parseCandidateListRes(result));
+
+	            case 4:
+	            case "end":
+	              return _context5.stop();
+	          }
+	        }
+	      }, _callee5, this);
+	    }));
+
+	    function getCandidateList(_x5, _x6) {
+	      return _getCandidateList.apply(this, arguments);
+	    }
+
+	    return getCandidateList;
+	  }(),
+
+	  /**
+	   * Get top 30 candidates information
+	   * @param {string} blockHash
+	   * @return {Promise<object>}
+	   */
+	  getCandidateTop30: function () {
+	    var _getCandidateTop = asyncToGenerator(
+	    /*#__PURE__*/
+	    regenerator.mark(function _callee6(blockHash) {
+	      var result;
+	      return regenerator.wrap(function _callee6$(_context6) {
+	        while (1) {
+	          switch (_context6.prev = _context6.next) {
+	            case 0:
+	              _context6.next = 2;
+	              return this.requester.send("".concat(MODULE_NAME$1, "_getCandidateTop30"), [blockHash]);
+
+	            case 2:
+	              result = _context6.sent;
+	              return _context6.abrupt("return", parseCandidateListRes(result));
+
+	            case 4:
+	            case "end":
+	              return _context6.stop();
+	          }
+	        }
+	      }, _callee6, this);
+	    }));
+
+	    function getCandidateTop30(_x7) {
+	      return _getCandidateTop.apply(this, arguments);
+	    }
+
+	    return getCandidateTop30;
+	  }()
 	};
 	var chain = {
 	  moduleName: MODULE_NAME$1,
@@ -23396,21 +23352,21 @@
 	var MODULE_NAME$4 = 'tx';
 	var apis$4 = {
 	  /**
-	   * Get the specific transaction information
-	   * @param {string|number} hashOrHeight Hash or height which used to find the block
+	   * Get transaction's information by hash
+	   * @param {string|number} txHash Hash of transaction
 	   * @return {Promise<object>}
 	   */
 	  getTx: function () {
 	    var _getTx = asyncToGenerator(
 	    /*#__PURE__*/
-	    regenerator.mark(function _callee(hashOrHeight) {
-	      var result, tx;
+	    regenerator.mark(function _callee(txHash) {
+	      var result;
 	      return regenerator.wrap(function _callee$(_context) {
 	        while (1) {
 	          switch (_context.prev = _context.next) {
 	            case 0:
 	              _context.next = 2;
-	              return this.requester.send("".concat(MODULE_NAME$4, "_getTxByHash"), [hashOrHeight]);
+	              return this.requester.send("".concat(MODULE_NAME$4, "_getTxByHash"), [txHash]);
 
 	            case 2:
 	              result = _context.sent;
@@ -23423,11 +23379,9 @@
 	              return _context.abrupt("return", null);
 
 	            case 5:
-	              tx = parseTx(this.signer, result.tx);
-	              tx.minedTime = result.time;
-	              return _context.abrupt("return", tx);
+	              return _context.abrupt("return", parseTxRes(this.signer, result));
 
-	            case 8:
+	            case 6:
 	            case "end":
 	              return _context.stop();
 	          }
@@ -23440,6 +23394,53 @@
 	    }
 
 	    return getTx;
+	  }(),
+
+	  /**
+	   * Get transactions' information in account
+	   * @param {string} address Account address
+	   * @param {number} index Index of transactions
+	   * @param {number} limit The count of transactions required
+	   * @return {Promise<object>}
+	   */
+	  getTxListByAddress: function () {
+	    var _getTxListByAddress = asyncToGenerator(
+	    /*#__PURE__*/
+	    regenerator.mark(function _callee2(address, index, limit) {
+	      var result;
+	      return regenerator.wrap(function _callee2$(_context2) {
+	        while (1) {
+	          switch (_context2.prev = _context2.next) {
+	            case 0:
+	              _context2.next = 2;
+	              return this.requester.send("".concat(MODULE_NAME$4, "_getTxListByAddress"), [address, index, limit]);
+
+	            case 2:
+	              result = _context2.sent;
+
+	              if (result) {
+	                _context2.next = 5;
+	                break;
+	              }
+
+	              return _context2.abrupt("return", null);
+
+	            case 5:
+	              return _context2.abrupt("return", parseTxListRes(this.signer, result));
+
+	            case 6:
+	            case "end":
+	              return _context2.stop();
+	          }
+	        }
+	      }, _callee2, this);
+	    }));
+
+	    function getTxListByAddress(_x2, _x3, _x4) {
+	      return _getTxListByAddress.apply(this, arguments);
+	    }
+
+	    return getTxListByAddress;
 	  }(),
 
 	  /**
@@ -23508,6 +23509,26 @@
 	    var tx = Tx.createCandidateTx(txConfig, candidateInfo);
 	    this.signer.sign(tx, privateKey);
 	    return JSON.stringify(tx.toJson());
+	  },
+
+	  /**
+	   * Run smart contract in read-only mode than return some data
+	   * @param {string} contractAddress The address of smart contract
+	   * @param {string} data Smart contract execution code data
+	   * @return {Promise<object>}
+	   */
+	  readContract: function readContract(contractAddress, data) {
+	    return this.requester.send("".concat(MODULE_NAME$4, "_readContract"), [contractAddress, data]);
+	  },
+
+	  /**
+	   * Estimate the gas cost for run a smart contract. The result can be used to fill gasLimit in transaction
+	   * @param {string} to The address of smart contract. If it is empty, then create smart contract
+	   * @param {string} data Smart contract execution code data
+	   * @return {Promise<object>}
+	   */
+	  estimateGas: function estimateGas(to, data) {
+	    return this.requester.send("".concat(MODULE_NAME$4, "_estimateGas"), [to, data]);
 	  }
 	};
 	var tx = {
