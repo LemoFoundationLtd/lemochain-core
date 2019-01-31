@@ -277,8 +277,8 @@ func (beansdb *BeansDB) Get(key []byte) ([]byte, error) {
 			return nil, nil
 		}
 
-		str := common.BytesToHash(route).Hex()
-		log.Error("str:" + str)
+		// str := common.BytesToHash(route).Hex()
+		// log.Error("str:" + str)
 
 		bitcask := beansdb.route(route)
 		val, err := bitcask.Get(uint(flg), route, key, offset)
