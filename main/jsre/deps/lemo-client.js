@@ -22351,7 +22351,18 @@
 	  // Vote transaction for set vote target
 	  VOTE: 1,
 	  // Candidate transaction for register or edit candidate information
-	  CANDIDATE: 2 // The length of nodeID
+	  CANDIDATE: 2
+	};
+	var ChangeLogTypes = {
+	  BalanceLog: 1,
+	  StorageLog: 2,
+	  CodeLog: 3,
+	  AddEventLog: 4,
+	  SuicideLog: 5,
+	  VoteForLog: 6,
+	  VotesLog: 7,
+	  CandidateProfileLog: 8,
+	  TxCountLog: 9 // The length of nodeID
 
 	};
 	var NODE_ID_LENGTH = 128; // The max length limit of toName field in transaction
@@ -22656,6 +22667,93 @@
 	  return Signer;
 	}();
 
+	// 7.2.2 IsArray(argument)
+
+	var _isArray = Array.isArray || function isArray(arg) {
+	  return _cof(arg) == 'Array';
+	};
+
+	var SPECIES$2 = _wks('species');
+
+	var _arraySpeciesConstructor = function (original) {
+	  var C;
+	  if (_isArray(original)) {
+	    C = original.constructor;
+	    // cross-realm fallback
+	    if (typeof C == 'function' && (C === Array || _isArray(C.prototype))) C = undefined;
+	    if (_isObject(C)) {
+	      C = C[SPECIES$2];
+	      if (C === null) C = undefined;
+	    }
+	  } return C === undefined ? Array : C;
+	};
+
+	// 9.4.2.3 ArraySpeciesCreate(originalArray, length)
+
+
+	var _arraySpeciesCreate = function (original, length) {
+	  return new (_arraySpeciesConstructor(original))(length);
+	};
+
+	// 0 -> Array#forEach
+	// 1 -> Array#map
+	// 2 -> Array#filter
+	// 3 -> Array#some
+	// 4 -> Array#every
+	// 5 -> Array#find
+	// 6 -> Array#findIndex
+
+
+
+
+
+	var _arrayMethods = function (TYPE, $create) {
+	  var IS_MAP = TYPE == 1;
+	  var IS_FILTER = TYPE == 2;
+	  var IS_SOME = TYPE == 3;
+	  var IS_EVERY = TYPE == 4;
+	  var IS_FIND_INDEX = TYPE == 6;
+	  var NO_HOLES = TYPE == 5 || IS_FIND_INDEX;
+	  var create = $create || _arraySpeciesCreate;
+	  return function ($this, callbackfn, that) {
+	    var O = _toObject($this);
+	    var self = _iobject(O);
+	    var f = _ctx(callbackfn, that, 3);
+	    var length = _toLength(self.length);
+	    var index = 0;
+	    var result = IS_MAP ? create($this, length) : IS_FILTER ? create($this, 0) : undefined;
+	    var val, res;
+	    for (;length > index; index++) if (NO_HOLES || index in self) {
+	      val = self[index];
+	      res = f(val, index, O);
+	      if (TYPE) {
+	        if (IS_MAP) result[index] = res;   // map
+	        else if (res) switch (TYPE) {
+	          case 3: return true;             // some
+	          case 5: return val;              // find
+	          case 6: return index;            // findIndex
+	          case 2: result.push(val);        // filter
+	        } else if (IS_EVERY) return false; // every
+	      }
+	    }
+	    return IS_FIND_INDEX ? -1 : IS_SOME || IS_EVERY ? IS_EVERY : result;
+	  };
+	};
+
+	// 22.1.3.8 Array.prototype.find(predicate, thisArg = undefined)
+
+	var $find = _arrayMethods(5);
+	var KEY = 'find';
+	var forced = true;
+	// Shouldn't skip holes
+	if (KEY in []) Array(1)[KEY](function () { forced = false; });
+	_export(_export.P + _export.F * forced, 'Array', {
+	  find: function find(callbackfn /* , that = undefined */) {
+	    return $find(this, callbackfn, arguments.length > 1 ? arguments[1] : undefined);
+	  }
+	});
+	_addToUnscopables(KEY);
+
 	var Tx =
 	/*#__PURE__*/
 	function () {
@@ -22877,13 +22975,16 @@
 	  return changeLog;
 	}
 	function parseChangeLogType(logType) {
-	  var dict = ['', 'BalanceLog', 'StorageLog', 'CodeLog', 'AddEventLog', 'SuicideLog', 'VoteForLog', 'VotesLog', 'CandidateProfileLog'];
+	  logType = parseInt(logType, 10);
+	  var typeInfo = Object.entries(ChangeLogTypes).find(function (item) {
+	    return logType === item[1];
+	  });
 
-	  if (logType <= 0 || logType >= dict.length) {
+	  if (!typeInfo) {
 	    return "UnknonwType(".concat(logType, ")");
 	  }
 
-	  return dict[logType];
+	  return typeInfo[0];
 	}
 	function parseTxRes(signer, res) {
 	  var tx = parseTx(signer, res.tx);
@@ -22906,7 +23007,12 @@
 	}
 
 	function parseTx(signer, tx) {
-	  tx.from = signer.recover(new Tx(tx));
+	  // new Tx will fill default fields such as gasPrice. So we couldn't return it directly
+	  var txObj = new Tx(tx);
+	  tx.from = signer.recover(txObj);
+	  tx.type = txObj.type;
+	  tx.typeText = parseTxType(txObj.type);
+	  tx.version = txObj.version;
 	  tx.amount = parseMoney(tx.amount);
 	  tx.expirationTime = parseNumber(tx.expirationTime);
 	  tx.gasPrice = parseMoney(tx.gasPrice);
@@ -22914,6 +23020,18 @@
 	  return tx;
 	}
 
+	function parseTxType(txType) {
+	  txType = parseInt(txType, 10);
+	  var typeInfo = Object.entries(TxType).find(function (item) {
+	    return txType === item[1];
+	  });
+
+	  if (!typeInfo) {
+	    return "UnknonwType(".concat(txType, ")");
+	  }
+
+	  return typeInfo[0];
+	}
 	function parseNumber(str) {
 	  return parseInt(str, 10) || 0;
 	}
