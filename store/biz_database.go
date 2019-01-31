@@ -104,7 +104,7 @@ func (db *BizDatabase) GetTxByAddr(src common.Address, index int, size int) ([]*
 
 	txCount := account.TxCount
 	if uint32(index) > txCount {
-		return make([]*VTransaction, 0), 0, nil
+		return make([]*VTransaction, 0), txCount, nil
 	}
 
 	_, vals, sts, err := db.Database.TxGetByAddr(src.Hex(), index, size)

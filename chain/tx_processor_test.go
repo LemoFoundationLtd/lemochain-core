@@ -576,9 +576,6 @@ func Test_voteAndRegisteTx(t *testing.T) {
 		panic(err)
 	}
 
-	result = p.chain.db.GetCandidatesTop(Hash02)
-	assert.Equal(t, 2, len(result))
-
 	// 	验证1. 投票交易后的结果
 	account01 := p.am.GetCanonicalAccount(testAddr01)
 	newAccount00 := p.am.GetCanonicalAccount(testAddr)
@@ -667,6 +664,14 @@ func Test_voteAndRegisteTx(t *testing.T) {
 	assert.Equal(t, changeCand00[types.CandidateKeyPort], pro[types.CandidateKeyPort])
 	assert.Equal(t, changeCand00[types.CandidateKeyHost], pro[types.CandidateKeyHost])
 
+	biz := p.chain.db.GetBizDatabase()
+	tmp, cnt, err := biz.GetTxByAddr(testAddr01, 0, 4)
+	assert.Equal(t, uint32(3), cnt)
+	assert.Equal(t, 3, len(tmp))
+
+	tmp, cnt, err = biz.GetTxByAddr(testAddr01, 4, 4)
+	assert.Equal(t, uint32(3), cnt)
+	assert.Equal(t, 0, len(tmp))
 }
 
 // 序列化注册候选节点所用data
