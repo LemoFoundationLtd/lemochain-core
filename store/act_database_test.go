@@ -5,7 +5,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/stretchr/testify/assert"
 	"math/big"
-	"strconv"
 	"testing"
 )
 
@@ -734,29 +733,89 @@ func TestPatriciaTrie_Put12(t *testing.T) {
 }
 
 func TestPatriciaTrie_Collected(t *testing.T) {
-	trie := NewEmptyDatabase(new(TestReader))
 
-	account1112 := &types.AccountData{
-		Address: common.HexToAddress("112"),
+	trie := NewEmptyDatabase(new(TestReader))
+	addr01, _ := common.StringToAddress("Lemo8888888888888888888888888888884SD4Q6")
+	addr02, _ := common.StringToAddress("Lemo836BQKCBZ8Z7B7N4G4N4SNGBT24ZZSJQD24D")
+	addr03, _ := common.StringToAddress("Lemo8888888888888888888888885PKQARFNQWYR")
+	addr04, _ := common.StringToAddress("Lemo83W59DHT7FD4KSB3HWRJ5T4JD82TZW27ZKHJ")
+	addr05, _ := common.StringToAddress("Lemo83F96RQR3J5GW8CS35JWP2A4QBQ3CYHHQJAK")
+	addr06, _ := common.StringToAddress("Lemo843A8K22PDK9BSZT8SDN95GASSRSDW2DJZ3S")
+	account01 := &types.AccountData{
+		Address: addr01,
 		Balance: big.NewInt(12),
 	}
 
-	account1113 := &types.AccountData{
-		Address: common.HexToAddress("113"),
+	account02 := &types.AccountData{
+		Address: addr02,
 		Balance: big.NewInt(13),
 	}
-	trie.Insert(account1112.Address[:], account1112)
-	trie.Insert(account1113.Address[:], account1113)
 
-	tmp1 := NewActDatabase(new(TestReader), trie)
-	for index := 114; index < 20000; index++ {
-		account := &types.AccountData{
-			Address: common.HexToAddress(strconv.Itoa(index)),
-			Balance: big.NewInt(13),
-		}
-		tmp1.Put(account, 1)
+	account03 := &types.AccountData{
+		Address: addr03,
+		Balance: big.NewInt(13),
 	}
 
-	accounts := tmp1.Collected(1)
-	assert.Equal(t, 20000-114, len(accounts))
+	account04 := &types.AccountData{
+		Address: addr04,
+		Balance: big.NewInt(13),
+	}
+
+	account05 := &types.AccountData{
+		Address: addr05,
+		Balance: big.NewInt(13),
+	}
+
+	account06 := &types.AccountData{
+		Address: addr06,
+		Balance: big.NewInt(13),
+	}
+	trie.Put(account01, 2)
+	trie.Put(account02, 2)
+	trie.Put(account03, 2)
+	trie.Put(account04, 2)
+	trie.Put(account05, 2)
+	trie.Put(account06, 2)
+	result := trie.Collected(2)
+	assert.Equal(t, 6, len(result))
+
+	addr1, _ := common.StringToAddress("Lemo8888888888888888888888885PKQARFNQWYR")
+	addr2, _ := common.StringToAddress("Lemo8888888888888888888888888888884SD4Q6")
+	addr3, _ := common.StringToAddress("Lemo83W59DHT7FD4KSB3HWRJ5T4JD82TZW27ZKHJ")
+	addr4, _ := common.StringToAddress("Lemo836BQKCBZ8Z7B7N4G4N4SNGBT24ZZSJQD24D")
+	addr5, _ := common.StringToAddress("Lemo83F96RQR3J5GW8CS35JWP2A4QBQ3CYHHQJAK")
+	account1 := &types.AccountData{
+		Address: addr1,
+		Balance: big.NewInt(12),
+	}
+
+	account2 := &types.AccountData{
+		Address: addr2,
+		Balance: big.NewInt(13),
+	}
+
+	account3 := &types.AccountData{
+		Address: addr3,
+		Balance: big.NewInt(13),
+	}
+
+	account4 := &types.AccountData{
+		Address: addr4,
+		Balance: big.NewInt(13),
+	}
+
+	account5 := &types.AccountData{
+		Address: addr5,
+		Balance: big.NewInt(13),
+	}
+
+	tmp1 := NewActDatabase(new(TestReader), trie)
+	tmp1.Put(account1, 3)
+	tmp1.Put(account2, 3)
+	tmp1.Put(account3, 3)
+	tmp1.Put(account4, 3)
+	tmp1.Put(account5, 3)
+
+	result = tmp1.Collected(3)
+	assert.Equal(t, 5, len(result))
 }
