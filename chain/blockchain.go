@@ -263,11 +263,11 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 		}
 		// for debug
 		b := bc.currentBlock.Load().(*types.Block)
-		log.Debugf("current block: %d, %s", b.Height(), b.Hash().String())
+		log.Debugf("current block: %d, %s, parent: %s", b.Height(), b.Hash().String()[:16], b.ParentHash().String()[:16])
 	}()
 
 	// normal, in same chain
-	if bytes.Compare(parentHash[:], currentHash[:]) == 0 {
+	if parentHash == currentHash {
 		bc.currentBlock.Store(block)
 		delete(bc.chainForksHead, currentHash) // remove old record from fork container
 		bc.chainForksHead[hash] = block        // record new fork
@@ -287,6 +287,12 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 		}
 		bc.currentBlock.Store(block)
 		log.Warnf("chain forked-1! current block: height(%d), hash(%s)", block.Height(), block.Hash().Hex())
+	} else {
+		bHash := block.Hash().String()
+		pHash := block.ParentHash().String()
+		oHash := oldCurrentBlock.Hash()
+		log.Debugf("not update current block. block: %d - %s, parent: %s, current: %d - %s",
+			block.Height(), bHash[:16], pHash[:16], oldCurrentBlock.Height(), oHash[:16])
 	}
 	if _, ok := bc.chainForksHead[parentHash]; ok {
 		delete(bc.chainForksHead, parentHash)
@@ -392,6 +398,9 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32) error {
 		length := fBlock.Height() - height - 1
 		if length > maxLength {
 			maxLength = length
+		}
+		if int(length) < 0 {
+			panic("internal error")
 		}
 		pars := make([]*types.Block, length+1)
 		pars[length] = fBlock
