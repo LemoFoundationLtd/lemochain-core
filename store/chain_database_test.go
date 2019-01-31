@@ -84,8 +84,8 @@ func TestCacheChain_SetBlock(t *testing.T) {
 }
 
 func TestCacheChain_SetBlockError(t *testing.T) {
+	// ERROR #1
 	ClearData()
-
 	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
 	block1 := GetBlock1()
 
@@ -114,9 +114,32 @@ func TestCacheChain_SetBlockError(t *testing.T) {
 		cacheChain.SetBlock(block2.Hash(), block2)
 	})
 
-	block4 := GetBlock4()
+	// ERROR #2
+	ClearData()
+	cacheChain = NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
+	block0 = GetBlock0()
+	block1 = GetBlock1()
+	block2 = GetBlock2()
+	// block3 := GetBlock3()
+
+	cacheChain.SetBlock(block0.Hash(), block0)
+	cacheChain.SetStableBlock(block0.Hash())
+
+	hash := block1.Hash()
+	block1.Header.Height = 2
+	assert.PanicsWithValue(t, "database.LastConfirm.Block.Height() + 1 != block.Height()", func() {
+		cacheChain.SetBlock(hash, block1)
+	})
+
 	assert.PanicsWithValue(t, "database.LastConfirm.Block.Header.Hash() != pHash", func() {
-		cacheChain.SetBlock(block4.Hash(), block4)
+		cacheChain.SetBlock(block2.Hash(), block2)
+	})
+
+	cacheChain.SetBlock(block1.Hash(), block1)
+	hash = block2.Hash()
+	block2.Header.Height = 3
+	assert.PanicsWithValue(t, "pBlock.Block.Height() + 1 != block.Height()", func() {
+		cacheChain.SetBlock(block2.Hash(), block2)
 	})
 }
 
