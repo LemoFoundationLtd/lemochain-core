@@ -44,6 +44,18 @@ type Pair struct {
 
 type CandidateProfile map[string]string
 
+func (a *CandidateProfile) Clone() *CandidateProfile {
+	if a == nil {
+		return nil
+	}
+
+	result := make(CandidateProfile)
+	for k, v := range *a {
+		result[k] = v
+	}
+	return &result
+}
+
 func (a *CandidateProfile) EncodeRLP(w io.Writer) error {
 	tmp := make([]Pair, 0)
 	if len(*a) <= 0 {
