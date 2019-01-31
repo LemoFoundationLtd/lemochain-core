@@ -4,13 +4,10 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"github.com/LemoFoundationLtd/lemochain-go/common"
-	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"io"
 	"os"
 	"path/filepath"
-	"strconv"
 	"sync"
 	"time"
 )
@@ -57,7 +54,7 @@ type BitCask struct {
 }
 
 func (bitcask *BitCask) afterScan(flag uint, route []byte, key []byte, val []byte, offset uint32) error {
-	log.Error("flg : " + strconv.Itoa(int(flag)))
+	// log.Error("flg : " + strconv.Itoa(int(flag)))
 	if bitcask.After == nil {
 		return nil
 	}
@@ -402,8 +399,8 @@ func (bitcask *BitCask) get(flag uint, route []byte, key []byte, offset int64) (
 		// } else {
 		// 	return body.Val, nil
 		// }
-		str := common.BytesToHash(body.Key).Hex()
-		log.Errorf("str:" + str)
+		// str := common.BytesToHash(body.Key).Hex()
+		// log.Errorf("str:" + str)
 		return body.Val, nil
 	}
 }

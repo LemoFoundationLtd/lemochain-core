@@ -353,8 +353,6 @@ func TestCacheChain_SetConfirm1(t *testing.T) {
 	assert.Equal(t, signs[2], result[2])
 	assert.Equal(t, signs[3], result[3])
 
-	//cacheChain = NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
-
 	result, err = cacheChain.GetConfirms(parentBlock.Hash())
 	assert.NoError(t, err)
 	assert.Equal(t, 16, len(result))
