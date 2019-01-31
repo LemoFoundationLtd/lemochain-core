@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
@@ -14,7 +15,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/network/p2p"
 	"github.com/LemoFoundationLtd/lemochain-go/store"
-	"github.com/pkg/errors"
 	"math/big"
 	"runtime"
 	"strconv"
@@ -401,12 +401,12 @@ func (t *PublicTxAPI) SendTx(tx *types.Transaction) (common.Hash, error) {
 func AvailableTx(tx *types.Transaction) error {
 	toNameLength := len(tx.ToName())
 	if toNameLength > MaxTxToNameLength {
-		toNameErr := errors.Errorf("the length of toName field in transaction is out of max length limit. toName length = %d. max length limit = %d. ", toNameLength, MaxTxToNameLength)
+		toNameErr := fmt.Errorf("the length of toName field in transaction is out of max length limit. toName length = %d. max length limit = %d. ", toNameLength, MaxTxToNameLength)
 		return toNameErr
 	}
 	txMessageLength := len(tx.Message())
 	if txMessageLength > MaxTxMessageLength {
-		txMessageErr := errors.Errorf("the length of message field in transaction is out of max length limit. message length = %d. max length limit = %d. ", txMessageLength, MaxTxMessageLength)
+		txMessageErr := fmt.Errorf("the length of message field in transaction is out of max length limit. message length = %d. max length limit = %d. ", txMessageLength, MaxTxMessageLength)
 		return txMessageErr
 	}
 	switch tx.Type() {
@@ -421,10 +421,11 @@ func AvailableTx(tx *types.Transaction) error {
 	case params.RegisterTx:
 		if len(tx.Data()) == 0 {
 			registerTxErr := errors.New("the data of register candidate node transaction can't null")
+
 			return registerTxErr
 		}
 	default:
-		txTypeErr := errors.Errorf("transaction type error. txType = %v", tx.Type())
+		txTypeErr := fmt.Errorf("transaction type error. txType = %v", tx.Type())
 		return txTypeErr
 	}
 	return nil
