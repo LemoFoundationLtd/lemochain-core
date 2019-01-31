@@ -512,12 +512,17 @@ func (trie *PatriciaTrie) put(curNode *PatriciaNode, key string, account *types.
 					//   e    f     			c# e  f
 					sub := substring(key, j, len(key))
 					result := trie.put(child, sub, account, dye)
+					if result == nil {
+						return nil
+					}
+
+					curNode.children[i] = result
 					if curNode.dye == dye {
 						return nil
 					} else {
 						tmpCurNode := curNode.Clone()
 						tmpCurNode.dye = dye
-						tmpCurNode.children[i] = result
+						//tmpCurNode.children[i] = result
 						return tmpCurNode
 					}
 				} else {
