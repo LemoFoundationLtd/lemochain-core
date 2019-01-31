@@ -140,8 +140,8 @@ func NewVotesLog(processor types.ChangeLogProcessor, account types.AccountAccess
 		LogType: VotesLog,
 		Address: account.GetAddress(),
 		Version: processor.GetNextVersion(VotesLog, account.GetAddress()),
-		OldVal:  account.GetVotes(),
-		NewVal:  newVotes,
+		OldVal:  *(new(big.Int).Set(account.GetVotes())),
+		NewVal:  *(new(big.Int).Set(newVotes)),
 	}
 }
 
