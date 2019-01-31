@@ -31,10 +31,6 @@ func TestSafeAccount_SetBalance_IsDirty(t *testing.T) {
 	assert.Equal(t, 1, len(account.processor.changeLogs))
 	assert.Equal(t, BalanceLog, account.processor.changeLogs[0].LogType)
 	assert.Equal(t, *big.NewInt(200), account.processor.changeLogs[0].NewVal.(big.Int))
-
-	account = loadSafeAccount(defaultAccounts[0].Address)
-	assert.Equal(t, false, account.IsDirty())
-	assert.Equal(t, true, account.IsDirty())
 }
 
 func TestSafeAccount_SetCode_IsDirty(t *testing.T) {

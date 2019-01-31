@@ -98,13 +98,16 @@ func newDB() protocol.ChainDB {
 	for i, _ := range defaultBlockInfos {
 		// use pointer for repairing incorrect hash
 		saveBlock(db, i, &defaultBlockInfos[i])
+		if i == 0 {
+			saveAccount(db)
+		}
 		if i <= 1 {
 			if err := db.SetStableBlock(defaultBlockInfos[i].hash); err != nil {
 				panic(err)
 			}
 		}
 	}
-	saveAccount(db)
+
 	testStorageTrieGet(db)
 	return db
 }

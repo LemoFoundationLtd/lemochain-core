@@ -376,15 +376,23 @@ func (database *ChainDatabase) SetBlock(hash common.Hash, block *types.Block) er
 	pBlock := database.UnConfirmBlocks[pHash]
 	if pBlock == nil {
 		if database.LastConfirm.Block.Header.Hash() != pHash {
-			panic("parent block is not exist.")
-		} else {
-			database.UnConfirmBlocks[hash] = &CBlock{
-				Block: block,
-				Trie:  NewActDatabase(database.Beansdb, database.LastConfirm.Trie),
-				Top30: clone(database.LastConfirm.Top30),
-			}
+			panic("database.LastConfirm.Block.Header.Hash() != pHash")
+		}
+
+		if database.LastConfirm.Block.Height()+1 != block.Height() {
+			panic("database.LastConfirm.Block.Height() + 1 != block.Height()")
+		}
+
+		database.UnConfirmBlocks[hash] = &CBlock{
+			Block: block,
+			Trie:  NewActDatabase(database.Beansdb, database.LastConfirm.Trie),
+			Top30: clone(database.LastConfirm.Top30),
 		}
 	} else {
+		if pBlock.Block.Height()+1 != block.Height() {
+			panic("pBlock.Block.Height() + 1 != block.Height()")
+		}
+
 		database.UnConfirmBlocks[hash] = &CBlock{
 			Block: block,
 			Trie:  NewActDatabase(database.Beansdb, pBlock.Trie),

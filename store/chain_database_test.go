@@ -115,7 +115,7 @@ func TestCacheChain_SetBlockError(t *testing.T) {
 	})
 
 	block4 := GetBlock4()
-	assert.PanicsWithValue(t, "parent block is not exist.", func() {
+	assert.PanicsWithValue(t, "database.LastConfirm.Block.Header.Hash() != pHash", func() {
 		cacheChain.SetBlock(block4.Hash(), block4)
 	})
 }

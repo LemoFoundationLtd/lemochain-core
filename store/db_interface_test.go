@@ -39,7 +39,7 @@ func TestMySqlDB_Tx(t *testing.T) {
 	assert.Equal(t, int64(100), st)
 
 	// next
-	hashes, results, sts, err := db.TxGetByAddr("addr1", 1, 2)
+	hashes, results, sts, err := db.TxGetByAddr("addr1", 0, 2)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(hashes))
 	assert.Equal(t, 2, len(results))
@@ -54,6 +54,13 @@ func TestMySqlDB_Tx(t *testing.T) {
 	assert.Equal(t, sts[1], int64(103))
 
 	hashes, results, sts, err = db.TxGetByAddr("addr1", 3, 2)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(hashes))
+	assert.Equal(t, 2, len(results))
+	assert.Equal(t, 2, len(sts))
+	assert.Equal(t, sts[1], int64(104))
+
+	hashes, results, sts, err = db.TxGetByAddr("addr1", 4, 2)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(hashes))
 	assert.Equal(t, 1, len(results))
