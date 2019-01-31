@@ -73,6 +73,7 @@ func (a *PublicAccountAPI) GetAccount(LemoAddress string) (types.AccountAccessor
 	}
 
 	accountData := a.manager.GetCanonicalAccount(address)
+	// accountData := a.manager.GetAccount(address)
 	return accountData, nil
 }
 
@@ -466,11 +467,7 @@ func (t *PublicTxAPI) EstimateGas(to *common.Address, txType uint8, data hexutil
 	var costGas uint64
 	var err error
 	ctx := context.Background()
-	if to == nil {
-		_, costGas, err = t.doCall(ctx, nil, txType, data, 5*time.Second)
-	} else {
-		_, costGas, err = t.doCall(ctx, to, txType, data, 5*time.Second)
-	}
+	_, costGas, err = t.doCall(ctx, to, txType, data, 5*time.Second)
 	strCostGas := strconv.FormatUint(costGas, 10)
 	return strCostGas, err
 }
