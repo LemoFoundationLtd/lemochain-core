@@ -8,6 +8,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto/secp256k1"
 	"github.com/stretchr/testify/assert"
+	"math/big"
 	"testing"
 )
 
@@ -44,7 +45,7 @@ func NewDeputyNode(MinerAddress common.Address, nodeID []byte, port uint32) *Dep
 		IP:           nil,
 		Port:         port,
 		Rank:         0,
-		Votes:        0,
+		Votes:        big.NewInt(0),
 	}
 }
 
@@ -98,7 +99,7 @@ func deputyNodes(nodeNum int) (DeputyNodes, error) {
 		IP:           nil,
 		Port:         7001,
 		Rank:         0,
-		Votes:        120,
+		Votes:        big.NewInt(120),
 	}
 	nodes[1] = &DeputyNode{
 		MinerAddress: common.HexToAddress(block02MinerAddress),
@@ -106,7 +107,7 @@ func deputyNodes(nodeNum int) (DeputyNodes, error) {
 		IP:           nil,
 		Port:         7002,
 		Rank:         1,
-		Votes:        110,
+		Votes:        big.NewInt(110),
 	}
 	nodes[2] = &DeputyNode{
 		MinerAddress: common.HexToAddress(block03MinerAddress),
@@ -114,7 +115,7 @@ func deputyNodes(nodeNum int) (DeputyNodes, error) {
 		IP:           nil,
 		Port:         7003,
 		Rank:         2,
-		Votes:        100,
+		Votes:        big.NewInt(100),
 	}
 	nodes[3] = &DeputyNode{
 		MinerAddress: common.HexToAddress(block04MinerAddress),
@@ -122,7 +123,7 @@ func deputyNodes(nodeNum int) (DeputyNodes, error) {
 		IP:           nil,
 		Port:         7004,
 		Rank:         3,
-		Votes:        90,
+		Votes:        big.NewInt(90),
 	}
 	nodes[4] = &DeputyNode{
 		MinerAddress: common.HexToAddress(block05MinerAddress),
@@ -130,7 +131,7 @@ func deputyNodes(nodeNum int) (DeputyNodes, error) {
 		IP:           nil,
 		Port:         7005,
 		Rank:         4,
-		Votes:        80,
+		Votes:        big.NewInt(80),
 	}
 
 	return nodes[:nodeNum], nil
