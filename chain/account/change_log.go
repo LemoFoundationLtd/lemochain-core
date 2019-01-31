@@ -199,8 +199,20 @@ func undoVoteFor(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 	return nil
 }
 
+func cloneCandidateProfile(src types.CandidateProfile) types.CandidateProfile {
+	if src == nil {
+		return nil
+	}
+	result := make(types.CandidateProfile)
+	for k, v := range src {
+		result[k] = v
+	}
+	return result
+}
+
 func NewCandidateProfileLog(processor types.ChangeLogProcessor, account types.AccountAccessor, newProfile types.CandidateProfile) *types.ChangeLog {
-	oldVal := account.GetCandidateProfile()
+	oldVal := cloneCandidateProfile(account.GetCandidateProfile())
+	newProfile = cloneCandidateProfile(newProfile)
 	return &types.ChangeLog{
 		LogType: CandidateProfileLog,
 		Address: account.GetAddress(),
@@ -297,6 +309,16 @@ func undoBalance(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 	return nil
 }
 
+func cloneBytes(src []byte) []byte {
+	if src == nil {
+		return nil
+	}
+
+	result := make([]byte, len(src))
+	copy(result, src)
+	return result
+}
+
 // NewStorageLog records contract storage value change
 func NewStorageLog(processor types.ChangeLogProcessor, account types.AccountAccessor, key common.Hash, newVal []byte) (*types.ChangeLog, error) {
 	oldValue, err := account.GetStorageState(key)
@@ -307,8 +329,8 @@ func NewStorageLog(processor types.ChangeLogProcessor, account types.AccountAcce
 		LogType: StorageLog,
 		Address: account.GetAddress(),
 		Version: processor.GetNextVersion(StorageLog, account.GetAddress()),
-		OldVal:  oldValue,
-		NewVal:  newVal,
+		OldVal:  cloneBytes(oldValue),
+		NewVal:  cloneBytes(newVal),
 		Extra:   key,
 	}, nil
 }
