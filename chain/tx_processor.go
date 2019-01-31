@@ -268,7 +268,7 @@ func (p *TxProcessor) changeCandidateVotes(accountAddress common.Address, change
 	}
 	CandidateAccount := p.am.GetAccount(CandidataAddress)
 	profile := CandidateAccount.GetCandidateProfile()
-	if profile[types.CandidateKeyIsCandidate] == "false" {
+	if profile[types.CandidateKeyIsCandidate] == params.NotCandidateNode {
 		return
 	}
 	// set votes

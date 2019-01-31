@@ -14,6 +14,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/network/p2p"
 	"github.com/LemoFoundationLtd/lemochain-go/store"
+	"github.com/pkg/errors"
 	"math/big"
 	"runtime"
 	"strconv"
@@ -388,19 +389,45 @@ func NewPublicTxAPI(node *Node) *PublicTxAPI {
 
 // Send send a transaction
 func (t *PublicTxAPI) SendTx(tx *types.Transaction) (common.Hash, error) {
+	err := AvailableTx(tx)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	err = t.node.txPool.AddTx(tx)
+	return tx.Hash(), err
+}
 
+// AvailableTx transaction parameter verification
+func AvailableTx(tx *types.Transaction) error {
 	toNameLength := len(tx.ToName())
 	if toNameLength > MaxTxToNameLength {
-		toNameErr := fmt.Errorf("the length of toName field in transaction is out of max length limit. toName length = %d. max length limit = %d. ", toNameLength, MaxTxToNameLength)
-		return common.Hash{}, toNameErr
+		toNameErr := errors.Errorf("the length of toName field in transaction is out of max length limit. toName length = %d. max length limit = %d. ", toNameLength, MaxTxToNameLength)
+		return toNameErr
 	}
 	txMessageLength := len(tx.Message())
 	if txMessageLength > MaxTxMessageLength {
-		txMessageErr := fmt.Errorf("the length of message field in transaction is out of max length limit. message length = %d. max length limit = %d. ", txMessageLength, MaxTxMessageLength)
-		return common.Hash{}, txMessageErr
+		txMessageErr := errors.Errorf("the length of message field in transaction is out of max length limit. message length = %d. max length limit = %d. ", txMessageLength, MaxTxMessageLength)
+		return txMessageErr
 	}
-	err := t.node.txPool.AddTx(tx)
-	return tx.Hash(), err
+	switch tx.Type() {
+	case params.OrdinaryTx:
+		if tx.To() == nil {
+			if len(tx.Data()) == 0 {
+				createContractErr := errors.New("the data of create contract transaction can't null")
+				return createContractErr
+			}
+		}
+	case params.VoteTx:
+	case params.RegisterTx:
+		if len(tx.Data()) == 0 {
+			registerTxErr := errors.New("the data of register candidate node transaction can't null")
+			return registerTxErr
+		}
+	default:
+		txTypeErr := errors.Errorf("transaction type error. txType = %v", tx.Type())
+		return txTypeErr
+	}
+	return nil
 }
 
 // PendingTx
