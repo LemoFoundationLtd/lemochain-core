@@ -382,3 +382,24 @@ func TestChangeLog_Redo(t *testing.T) {
 		}
 	}
 }
+
+// Set twice, and the first changeLog shouldn't change
+func TestChangeLog_valueShouldBeStable(t *testing.T) {
+	store.ClearData()
+	db := newDB()
+	manager := NewManager(common.Hash{}, db)
+
+	// CandidateProfileLog
+	account := manager.GetAccount(common.HexToAddress("0x1"))
+	profile := make(types.CandidateProfile, 0)
+	profile["aa"] = "bb"
+	account.SetCandidateProfile(profile)
+	assert.Equal(t, 1, len(manager.GetChangeLogs()))
+	// get and set again
+	profile = account.GetCandidateProfile()
+	profile["aa"] = "cc"
+	account.SetCandidateProfile(profile)
+	assert.Equal(t, 2, len(manager.GetChangeLogs()))
+	old := manager.GetChangeLogs()[0].NewVal.(*types.CandidateProfile)
+	assert.Equal(t, "bb", (*old)["aa"])
+}
