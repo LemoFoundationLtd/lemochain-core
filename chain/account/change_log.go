@@ -278,6 +278,7 @@ func undoTxCount(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 
 // NewBalanceLog records balance change
 func NewBalanceLog(processor types.ChangeLogProcessor, account types.AccountAccessor, newBalance *big.Int) *types.ChangeLog {
+	log.Info("NewBalanceLog", "address", account.GetAddress(), "old", account.GetBalance(), "new", newBalance)
 	return &types.ChangeLog{
 		LogType: BalanceLog,
 		Address: account.GetAddress(),
@@ -305,6 +306,7 @@ func undoBalance(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 		return types.ErrWrongChangeLogData
 	}
 	accessor := processor.GetAccount(c.Address)
+	log.Info("undoBalance")
 	accessor.SetBalance(&oldValue)
 	return nil
 }
@@ -444,6 +446,7 @@ func undoSuicide(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 		return types.ErrWrongChangeLogData
 	}
 	accessor := processor.GetAccount(c.Address)
+	log.Info("undoSuicide")
 	accessor.SetBalance(oldValue.Balance)
 	accessor.SetCodeHash(oldValue.CodeHash)
 	accessor.SetStorageRoot(oldValue.StorageRoot)

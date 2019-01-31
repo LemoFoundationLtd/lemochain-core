@@ -1,6 +1,7 @@
 package chain
 
 import (
+	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"math/big"
 
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
@@ -74,6 +75,7 @@ func Transfer(am vm.AccountManager, sender, recipient common.Address, amount *bi
 	if amount.Cmp(big.NewInt(0)) == 1 {
 		senderAccount := am.GetAccount(sender)
 		recipientAccount := am.GetAccount(recipient)
+		log.Info("Evm transfer")
 		senderAccount.SetBalance(new(big.Int).Sub(senderAccount.GetBalance(), amount))
 		recipientAccount.SetBalance(new(big.Int).Add(recipientAccount.GetBalance(), amount))
 	}

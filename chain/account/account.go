@@ -56,7 +56,6 @@ type Account struct {
 
 	codeIsDirty bool // true if the code was updated
 	suicided    bool // will be delete from the trie during the "save" phase
-
 }
 
 // NewAccount wrap an AccountData object, or creates a new one if it's nil.
@@ -162,6 +161,7 @@ func (a *Account) SetBalance(balance *big.Int) {
 		log.Errorf("can't set negative balance %v to account %06x", balance, a.data.Address)
 		panic(ErrNegativeBalance)
 	}
+	log.Info("Set raw balance", "address", a.GetAddress(), "old", "new", balance)
 	a.data.Balance.Set(balance)
 }
 func (a *Account) SetSuicide(suicided bool) {

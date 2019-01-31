@@ -346,6 +346,7 @@ func (p *TxProcessor) refundGas(gp *types.GasPool, tx *types.Transaction, restGa
 
 	// Return LEMO for remaining gas, exchanged at the original rate.
 	remaining := new(big.Int).Mul(new(big.Int).SetUint64(restGas), tx.GasPrice())
+	log.Info("refundGas")
 	sender.SetBalance(new(big.Int).Add(sender.GetBalance(), remaining))
 
 	// Also return remaining gas to the block gas counter so it is

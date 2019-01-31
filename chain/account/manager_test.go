@@ -281,7 +281,7 @@ func TestManager_Save_Reset(t *testing.T) {
 	// save balance to 2 in block2
 	block1Hash := block.Hash()
 	manager.Reset(block1Hash)
-	//manager = NewManager(block1Hash, db)
+	// manager = NewManager(block1Hash, db)
 	account = manager.GetAccount(common.HexToAddress("0x1"))
 	account.SetBalance(big.NewInt(2))
 	assert.Equal(t, uint32(1), account.GetBaseVersion(BalanceLog))
