@@ -414,7 +414,7 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32) error {
 		if length > maxLength {
 			maxLength = length
 		}
-		if length > uint32(INTMAX) {
+		if length>>31 == 1 {
 			panic("internal error")
 		}
 		log.Errorf("start length=", length)
