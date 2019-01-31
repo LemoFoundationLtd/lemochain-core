@@ -390,18 +390,18 @@ func TestChangeLog_valueShouldBeStable(t *testing.T) {
 	manager := NewManager(common.Hash{}, db)
 	account := manager.GetAccount(common.HexToAddress("0x1"))
 
-	// CandidateProfileLog
-	profile := make(types.CandidateProfile, 0)
-	profile["aa"] = "bb"
-	account.SetCandidateProfile(profile)
+	// BalanceLog
+	manager.clear()
+	balance := big.NewInt(123)
+	account.SetBalance(balance)
 	assert.Equal(t, 1, len(manager.GetChangeLogs()))
 	// get and set again
-	profile = account.GetCandidateProfile()
-	profile["aa"] = "cc"
-	account.SetCandidateProfile(profile)
+	balance = account.GetBalance()
+	balance.Set(big.NewInt(234))
+	account.SetBalance(balance)
 	assert.Equal(t, 2, len(manager.GetChangeLogs()))
-	oldProfile := manager.GetChangeLogs()[0].NewVal.(*types.CandidateProfile)
-	assert.Equal(t, "bb", (*oldProfile)["aa"])
+	oldBalance := manager.GetChangeLogs()[0].NewVal.(big.Int)
+	assert.Equal(t, *big.NewInt(123), oldBalance)
 
 	// StorageLog
 	manager.clear()
@@ -415,5 +415,47 @@ func TestChangeLog_valueShouldBeStable(t *testing.T) {
 	_ = account.SetStorageState(h(1), val)
 	assert.Equal(t, 2, len(manager.GetChangeLogs()))
 	oldVal := manager.GetChangeLogs()[0].NewVal.([]byte)
-	assert.Equal(t, 56, oldVal[0])
+	assert.Equal(t, byte(56), oldVal[0])
+
+	// VoteForLog
+	manager.clear()
+	voteFor := common.HexToAddress("0x123")
+	account.SetVoteFor(voteFor)
+	assert.Equal(t, 1, len(manager.GetChangeLogs()))
+	// get and set again
+	voteFor = account.GetVoteFor()
+	voteFor[0] = 88
+	account.SetVoteFor(voteFor)
+	assert.Equal(t, 2, len(manager.GetChangeLogs()))
+	oldVoteFor := manager.GetChangeLogs()[0].NewVal.(common.Address)
+	assert.Equal(t, common.HexToAddress("0x123"), oldVoteFor)
+
+	// Votes
+	manager.clear()
+	votes := big.NewInt(123)
+	account.SetVotes(votes)
+	assert.Equal(t, 1, len(manager.GetChangeLogs()))
+	// get and set again
+	votes = account.GetVotes()
+	votes.Set(big.NewInt(234))
+	account.SetVotes(votes)
+	assert.Equal(t, 2, len(manager.GetChangeLogs()))
+	oldVotes := manager.GetChangeLogs()[0].NewVal.(*big.Int)
+	assert.Equal(t, big.NewInt(123), oldVotes)
+
+	// CandidateProfileLog
+	manager.clear()
+	profile := make(types.CandidateProfile, 0)
+	profile["aa"] = "bb"
+	account.SetCandidateProfile(profile)
+	assert.Equal(t, 1, len(manager.GetChangeLogs()))
+	// get and set again
+	profile = account.GetCandidateProfile()
+	profile["aa"] = "cc"
+	account.SetCandidateProfile(profile)
+	assert.Equal(t, 2, len(manager.GetChangeLogs()))
+	oldProfile := manager.GetChangeLogs()[0].NewVal.(*types.CandidateProfile)
+	assert.Equal(t, "bb", (*oldProfile)["aa"])
+
+	// The value in TxCountLog is uint32. No need to test
 }
