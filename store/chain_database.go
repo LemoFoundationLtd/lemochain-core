@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
@@ -171,6 +172,8 @@ func (database *ChainDatabase) blockCommit(hash common.Hash) error {
 	}
 
 	accounts := cItem.Trie.Collected(cItem.Block.Height())
+	fmt.Println(cItem.Block.Height())
+	fmt.Println(accounts)
 	err = decodeBatch(accounts, batch)
 	if err != nil {
 		return err

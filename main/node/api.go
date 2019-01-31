@@ -413,14 +413,14 @@ func AvailableTx(tx *types.Transaction) error {
 	case params.OrdinaryTx:
 		if tx.To() == nil {
 			if len(tx.Data()) == 0 {
-				createContractErr := errors.New("the data of create contract transaction can't null")
+				createContractErr := errors.New("The data of contract creation transaction can't be null ")
 				return createContractErr
 			}
 		}
 	case params.VoteTx:
 	case params.RegisterTx:
 		if len(tx.Data()) == 0 {
-			registerTxErr := errors.New("the data of register candidate node transaction can't null")
+			registerTxErr := errors.New("The data of contract creation transaction can't be null ")
 
 			return registerTxErr
 		}
