@@ -517,13 +517,11 @@ func (context *RunContext) GetCandidatePage(index int, size int) ([]common.Addre
 		}
 
 		result := make([]common.Address, 0)
-		curPos := offset + itemHeadLen
-		page := index * size
-		startCurIndex := curPos + page*common.AddressLength
-		for index := 0; index < size; index++ {
-			pos1 := startCurIndex + index*common.AddressLength
-			pos2 := startCurIndex + (index+1)*common.AddressLength
-			if (page+index+1)*common.AddressLength > int(itemHead.Len) {
+		startCurIndex := offset + itemHeadLen + index*common.AddressLength
+		for i := 0; i < size; i++ {
+			pos1 := startCurIndex + i*common.AddressLength
+			pos2 := startCurIndex + (i+1)*common.AddressLength
+			if (index+i+1)*common.AddressLength > int(itemHead.Len) {
 				break
 			} else {
 				result = append(result, common.BytesToAddress(bodyBuf[pos1:pos2]))

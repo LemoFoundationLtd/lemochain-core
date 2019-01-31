@@ -103,7 +103,7 @@ func (db *BizDatabase) GetTxByAddr(src common.Address, index int, size int) ([]*
 	}
 
 	txCount := account.TxCount
-	if txCount <= 0 || index*size > int(txCount) {
+	if uint32(index) < txCount {
 		return make([]*VTransaction, 0), 0, nil
 	}
 
