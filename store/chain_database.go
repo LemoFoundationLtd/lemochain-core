@@ -346,7 +346,11 @@ func (database *ChainDatabase) SetBlock(hash common.Hash, block *types.Block) er
 		}
 
 		if block.Height() <= database.LastConfirm.Block.Height() {
-			panic("(database.LastConfirm.Block != nil) && (height < database.LastConfirm.Block.Height())")
+			bheight := strconv.Itoa(int(block.Height()))
+			bhash := block.Hash().Hex()
+			lheight := strconv.Itoa(int(database.LastConfirm.Block.Height()))
+			lhash := database.LastConfirm.Block.Hash().Hex()
+			panic("block'height:" + bheight + "|bhash:" + bhash + "|confirm'height:" + lheight + "|lhash:" + lhash)
 		}
 	}
 
@@ -376,11 +380,19 @@ func (database *ChainDatabase) SetBlock(hash common.Hash, block *types.Block) er
 	pBlock := database.UnConfirmBlocks[pHash]
 	if pBlock == nil {
 		if database.LastConfirm.Block.Header.Hash() != pHash {
-			panic("database.LastConfirm.Block.Header.Hash() != pHash")
+			bheight := strconv.Itoa(int(block.Height()))
+			bhash := block.Hash().Hex()
+			lheight := strconv.Itoa(int(database.LastConfirm.Block.Height()))
+			lhash := database.LastConfirm.Block.Hash().Hex()
+			panic("block'height:" + bheight + "|bhash:" + bhash + "|confirm'height:" + lheight + "|lhash:" + lhash)
 		}
 
 		if database.LastConfirm.Block.Height()+1 != block.Height() {
-			panic("database.LastConfirm.Block.Height() + 1 != block.Height()")
+			bheight := strconv.Itoa(int(block.Height()))
+			bhash := block.Hash().Hex()
+			lheight := strconv.Itoa(int(database.LastConfirm.Block.Height()))
+			lhash := database.LastConfirm.Block.Hash().Hex()
+			panic("block'height:" + bheight + "|bhash:" + bhash + "|confirm'height:" + lheight + "|lhash:" + lhash)
 		}
 
 		database.UnConfirmBlocks[hash] = &CBlock{
@@ -390,7 +402,11 @@ func (database *ChainDatabase) SetBlock(hash common.Hash, block *types.Block) er
 		}
 	} else {
 		if pBlock.Block.Height()+1 != block.Height() {
-			panic("pBlock.Block.Height() + 1 != block.Height()")
+			bheight := strconv.Itoa(int(block.Height()))
+			bhash := block.Hash().Hex()
+			lheight := strconv.Itoa(int(database.LastConfirm.Block.Height()))
+			lhash := database.LastConfirm.Block.Hash().Hex()
+			panic("block'height:" + bheight + "|bhash:" + bhash + "|confirm'height:" + lheight + "|lhash:" + lhash)
 		}
 
 		database.UnConfirmBlocks[hash] = &CBlock{
