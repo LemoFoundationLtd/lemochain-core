@@ -733,6 +733,7 @@ func TestPatriciaTrie_Put12(t *testing.T) {
 }
 
 func TestPatriciaTrie_Collected(t *testing.T) {
+
 	trie := NewEmptyDatabase(new(TestReader))
 	addr01, _ := common.StringToAddress("Lemo8888888888888888888888888888884SD4Q6")
 	addr02, _ := common.StringToAddress("Lemo836BQKCBZ8Z7B7N4G4N4SNGBT24ZZSJQD24D")
@@ -775,6 +776,8 @@ func TestPatriciaTrie_Collected(t *testing.T) {
 	trie.Put(account04, 2)
 	trie.Put(account05, 2)
 	trie.Put(account06, 2)
+	result := trie.Collected(2)
+	assert.Equal(t, 6, len(result))
 
 	addr1, _ := common.StringToAddress("Lemo8888888888888888888888885PKQARFNQWYR")
 	addr2, _ := common.StringToAddress("Lemo8888888888888888888888888888884SD4Q6")
@@ -813,6 +816,6 @@ func TestPatriciaTrie_Collected(t *testing.T) {
 	tmp1.Put(account4, 3)
 	tmp1.Put(account5, 3)
 
-	result := tmp1.Collected(3)
+	result = tmp1.Collected(3)
 	assert.Equal(t, 5, len(result))
 }

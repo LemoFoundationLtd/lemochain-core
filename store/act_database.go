@@ -516,13 +516,13 @@ func (trie *PatriciaTrie) put(curNode *PatriciaNode, key string, account *types.
 						return nil
 					}
 
-					curNode.children[i] = result
 					if curNode.dye == dye {
+						curNode.children[i] = result
 						return nil
 					} else {
 						tmpCurNode := curNode.Clone()
 						tmpCurNode.dye = dye
-						//tmpCurNode.children[i] = result
+						tmpCurNode.children[i] = result
 						return tmpCurNode
 					}
 				} else {
