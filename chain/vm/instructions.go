@@ -3,7 +3,6 @@ package vm
 import (
 	"errors"
 	"fmt"
-	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"math/big"
 
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
@@ -797,7 +796,6 @@ func opSuicide(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack *
 	}
 	balance := contractAccount.GetBalance()
 	receiverAccount := evm.am.GetAccount(common.BigToAddress(stack.pop()))
-	log.Info("opSuicide")
 	receiverAccount.SetBalance(balance.Add(receiverAccount.GetBalance(), balance))
 
 	contractAccount.SetSuicide(true)

@@ -161,7 +161,6 @@ func (d *Dpovp) Finalize(header *types.Header, am *account.Manager) {
 			acc := am.GetAccount(item.Address)
 			balance := acc.GetBalance()
 			balance.Add(balance, item.Salary)
-			log.Info("Dpovp finalize")
 			acc.SetBalance(balance)
 		}
 	}
