@@ -402,7 +402,9 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32) error {
 		if int(length) < 0 {
 			panic("internal error")
 		}
+		log.Errorf("start length=", length)
 		pars := make([]*types.Block, length+1)
+		log.Errorf("stop length=", length)
 		pars[length] = fBlock
 		length--
 		parBlock := fBlock
