@@ -83,7 +83,6 @@ func (p *TxProcessor) Process(block *types.Block) (*types.Header, error) {
 		gasUsed = gasUsed + gas
 		fee := new(big.Int).Mul(new(big.Int).SetUint64(gas), tx.GasPrice())
 		totalGasFee.Add(totalGasFee, fee)
-		log.Info("Increased gas fee", "gas", gas, "fee", fee, "price", tx.GasPrice())
 	}
 	p.chargeForGas(totalGasFee, header.MinerAddress)
 
@@ -157,7 +156,6 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 		return 0, err
 	}
 	restGas, err = p.payIntrinsicGas(tx, restGas)
-	log.Info("Cost intrinsic gas", "gasLimit", tx.GasLimit(), "restGas", restGas)
 	if err != nil {
 		return 0, err
 	}
@@ -216,7 +214,6 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 	default:
 		log.Errorf("The type of transaction is not defined. txType = %d\n", tx.Type())
 	}
-	log.Info("Cost gas by evm", "restGas", restGas)
 	// Candidate node votes change
 	if !contractCreation {
 		endRecipientBalance := recipientAccount.GetBalance()
@@ -238,7 +235,6 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 		}
 	}
 	p.refundGas(gp, tx, restGas)
-	log.Info("Refund gas", "restGas", restGas)
 
 	if !contractCreation {
 		oldRecipientTxCount := recipientAccount.GetTxCount()
@@ -356,7 +352,6 @@ func (p *TxProcessor) refundGas(gp *types.GasPool, tx *types.Transaction, restGa
 // chargeForGas change the gas to miner
 func (p *TxProcessor) chargeForGas(charge *big.Int, minerAddress common.Address) {
 	if charge.Cmp(new(big.Int)) != 0 {
-		log.Info("chargeForGas", "charge", charge.String(), "miner", minerAddress)
 		miner := p.am.GetAccount(minerAddress)
 		miner.SetBalance(new(big.Int).Add(miner.GetBalance(), charge))
 		// change in the number of votes cast by the miner's account to the candidate node
