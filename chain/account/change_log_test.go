@@ -388,9 +388,9 @@ func TestChangeLog_valueShouldBeStable(t *testing.T) {
 	store.ClearData()
 	db := newDB()
 	manager := NewManager(common.Hash{}, db)
+	account := manager.GetAccount(common.HexToAddress("0x1"))
 
 	// CandidateProfileLog
-	account := manager.GetAccount(common.HexToAddress("0x1"))
 	profile := make(types.CandidateProfile, 0)
 	profile["aa"] = "bb"
 	account.SetCandidateProfile(profile)
@@ -400,6 +400,20 @@ func TestChangeLog_valueShouldBeStable(t *testing.T) {
 	profile["aa"] = "cc"
 	account.SetCandidateProfile(profile)
 	assert.Equal(t, 2, len(manager.GetChangeLogs()))
-	old := manager.GetChangeLogs()[0].NewVal.(*types.CandidateProfile)
-	assert.Equal(t, "bb", (*old)["aa"])
+	oldProfile := manager.GetChangeLogs()[0].NewVal.(*types.CandidateProfile)
+	assert.Equal(t, "bb", (*oldProfile)["aa"])
+
+	// StorageLog
+	manager.clear()
+	val := make([]byte, 1)
+	val[0] = 56
+	_ = account.SetStorageState(h(1), val)
+	assert.Equal(t, 1, len(manager.GetChangeLogs()))
+	// get and set again
+	val, _ = account.GetStorageState(h(1))
+	val[0] = 48
+	_ = account.SetStorageState(h(1), val)
+	assert.Equal(t, 2, len(manager.GetChangeLogs()))
+	oldVal := manager.GetChangeLogs()[0].NewVal.([]byte)
+	assert.Equal(t, 56, oldVal[0])
 }
