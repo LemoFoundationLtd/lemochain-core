@@ -213,9 +213,9 @@ func (evm *EVM) CallVoteTx(voter, node common.Address, gas uint64, initialBalanc
 // Candidate node account transaction call
 func (evm *EVM) RegisterOrUpdateToCandidate(candidateAddress, to common.Address, candiNode types.CandidateProfile, gas uint64, initialSenderBalance *big.Int) (leftgas uint64, err error) {
 	// Candidate node information
-	isCandidate, ok := candiNode[types.CandidateKeyIsCandidate]
+	newIsCandidate, ok := candiNode[types.CandidateKeyIsCandidate]
 	if !ok {
-		isCandidate = params.IsCandidateNode
+		newIsCandidate = params.IsCandidateNode
 	}
 	minerAddress, ok := candiNode[types.CandidateKeyMinerAddress]
 	if !ok {
@@ -247,7 +247,7 @@ func (evm *EVM) RegisterOrUpdateToCandidate(candidateAddress, to common.Address,
 	// Set candidate node information if it is already a candidate node account
 	if ok && IsCandidate == params.IsCandidateNode {
 		// Determine whether to disqualify a candidate node
-		if isCandidate == params.NotCandidateNode {
+		if newIsCandidate == params.NotCandidateNode {
 			profile[types.CandidateKeyIsCandidate] = params.NotCandidateNode
 			nodeAccount.SetCandidateProfile(profile)
 			// Set the number of votes to 0
