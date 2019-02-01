@@ -50,14 +50,20 @@ func IsValuable(log *types.ChangeLog) bool {
 	case CodeLog:
 		valuable = log.NewVal != nil && len(log.NewVal.(types.Code)) > 0
 	case AddEventLog:
-		valuable = log.NewVal != nil
+		valuable = log.NewVal != (*types.Event)(nil)
 	case SuicideLog:
 		oldAccount := log.OldVal.(*types.AccountData)
-		valuable = oldAccount != nil && (oldAccount.Balance != big.NewInt(0) || !isEmptyHash(oldAccount.CodeHash) || !isEmptyHash(oldAccount.StorageRoot))
+		valuable = oldAccount != nil && (big.NewInt(0).Cmp(oldAccount.Balance) != 0 || !isEmptyHash(oldAccount.CodeHash) || !isEmptyHash(oldAccount.StorageRoot))
 	case VotesLog:
+		oldVal := log.OldVal.(big.Int)
+		newVal := log.NewVal.(big.Int)
+		valuable = oldVal.Cmp(&newVal) != 0
 	case VoteForLog:
+		oldVal := log.OldVal.(common.Address)
+		newVal := log.NewVal.(common.Address)
+		valuable = oldVal != newVal
 	case CandidateProfileLog:
-		return true
+		fallthrough
 	default:
 		valuable = log.OldVal != log.NewVal
 	}

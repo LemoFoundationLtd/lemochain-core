@@ -217,12 +217,16 @@ func (c *ChangeLog) Copy() *ChangeLog {
 }
 
 var bigIntType = reflect.TypeOf(big.Int{})
+var addressType = reflect.TypeOf(common.Address{})
 
-func formatIfIsBigInt(v interface{}) interface{} {
+func formatInterface(v interface{}) interface{} {
 	result := v
 	if reflect.TypeOf(result) == bigIntType {
 		i := v.(big.Int)
 		result = (&i).Text(10)
+	} else if reflect.TypeOf(result) == addressType {
+		i := v.(common.Address)
+		result = i.String()
 	}
 	return result
 }
@@ -233,13 +237,13 @@ func (c *ChangeLog) String() string {
 		fmt.Sprintf("Version: %d", c.Version),
 	}
 	if c.OldVal != nil {
-		set = append(set, fmt.Sprintf("OldVal: %v", formatIfIsBigInt(c.OldVal)))
+		set = append(set, fmt.Sprintf("OldVal: %v", formatInterface(c.OldVal)))
 	}
 	if c.NewVal != nil {
-		set = append(set, fmt.Sprintf("NewVal: %v", formatIfIsBigInt(c.NewVal)))
+		set = append(set, fmt.Sprintf("NewVal: %v", formatInterface(c.NewVal)))
 	}
 	if c.Extra != nil {
-		set = append(set, fmt.Sprintf("Extra: %v", formatIfIsBigInt(c.Extra)))
+		set = append(set, fmt.Sprintf("Extra: %v", formatInterface(c.Extra)))
 	}
 
 	return fmt.Sprintf("%s{%s}", c.LogType, strings.Join(set, ", "))
