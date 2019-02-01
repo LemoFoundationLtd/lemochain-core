@@ -23,8 +23,6 @@ import (
 	"time"
 )
 
-const INTMAX = int(^uint(0) >> 1)
-
 type BlockChain struct {
 	chainID      uint16
 	flags        flag.CmdFlags
@@ -42,6 +40,8 @@ type BlockChain struct {
 	running        int32
 
 	RecvBlockFeed subscribe.Feed
+
+	setStableMux sync.Mutex
 
 	quitCh chan struct{}
 }
@@ -367,6 +367,9 @@ func (bc *BlockChain) needFork(b *types.Block) (bool, error) {
 
 // SetStableBlock
 func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32) error {
+	bc.setStableMux.Lock()
+	defer bc.setStableMux.Unlock()
+
 	block := bc.GetBlockByHash(hash)
 	if block == nil {
 		log.Warnf("SetStableBlock: block not exist. height: %d hash: %s", height, hash.String())
