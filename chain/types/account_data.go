@@ -233,6 +233,15 @@ func (a *AccountData) String() string {
 		}
 		set = append(set, fmt.Sprintf("NewestRecords: {%s}", strings.Join(records, ", ")))
 	}
+	if a.VoteFor != (common.Address{}) {
+		set = append(set, fmt.Sprintf("VoteFor: %s", a.VoteFor.String()))
+	}
+	if a.Candidate.Votes != nil || len(a.Candidate.Profile) != 0 {
+		set = append(set, fmt.Sprintf("Candidate: {Votes: %s, Profile: %v}", a.Candidate.Votes.String(), a.Candidate.Profile))
+	}
+	if a.TxCount != 0 {
+		set = append(set, fmt.Sprintf("TxCount: %d", a.TxCount))
+	}
 
 	return fmt.Sprintf("{%s}", strings.Join(set, ", "))
 }
