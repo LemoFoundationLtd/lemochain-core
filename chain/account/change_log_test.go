@@ -135,7 +135,7 @@ func getCustomTypeData(t *testing.T) []testCustomTypeConfig {
 	// 4 SuicideLog
 	tests = append(tests, testCustomTypeConfig{
 		input:   NewSuicideLog(processor, processor.createAccount(SuicideLog, 0)),
-		str:     "SuicideLog{Account: Lemo8888888888888888888888888888888883WD, Version: 1, OldVal: {Address: Lemo888888888888888888888888888888888888, Balance: 100}}",
+		str:     "SuicideLog{Account: Lemo8888888888888888888888888888888883WD, Version: 1, OldVal: {Address: Lemo888888888888888888888888888888888888, Balance: 100, VoteFor: Lemo888888888888888888888888888888888888, TxCount: 0}}",
 		hash:    "0x6204ac1a4be1e52c77942259e094c499b263ad7176ae9060d5bae2b856c9743a",
 		rlp:     "0xd90594000000000000000000000000000000000000000501c0c0",
 		decoded: "SuicideLog{Account: Lemo8888888888888888888888888888888883WD, Version: 1}",
