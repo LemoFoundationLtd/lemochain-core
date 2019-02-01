@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/miner"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
@@ -113,6 +114,11 @@ type CandidateListRes struct {
 }
 type candidateListResMarshaling struct {
 	Total hexutil.Uint32
+}
+
+// GetDeputynodeList
+func (c *PublicChainAPI) GetDeputynodeList() []string {
+	return deputynode.Instance().GetLatestDeputies()
 }
 
 // GetCandidateNodeList get all candidate node list information and return total candidate node
