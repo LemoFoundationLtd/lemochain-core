@@ -1,5 +1,5 @@
 lemo._createAPI('account', 'newKeyPair', 'newKeyPair');
-lemo._createAPI('chain', 'getDeputynodeList', 'getDeputynodeList');
+lemo._createAPI('chain', 'getDeputyNodeList', 'getDeputyNodeList');
 
 lemo._createAPI('mine', 'start', 'mineStart');
 lemo._createAPI('mine', 'stop', 'mineStop');

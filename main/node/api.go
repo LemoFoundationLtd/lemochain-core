@@ -117,7 +117,7 @@ type candidateListResMarshaling struct {
 }
 
 // GetDeputynodeList
-func (c *PublicChainAPI) GetDeputynodeList() []string {
+func (c *PublicChainAPI) GetDeputyNodeList() []string {
 	return deputynode.Instance().GetLatestDeputies()
 }
 
