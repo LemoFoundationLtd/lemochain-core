@@ -5,6 +5,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
+	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"github.com/stretchr/testify/assert"
 	"math/big"
 	"testing"
@@ -384,7 +385,7 @@ func TestChangeLog_Redo(t *testing.T) {
 }
 
 // Set twice, and the first changeLog shouldn't change
-func TestChangeLog_valueShouldBeStable(t *testing.T) {
+func TestChangeLog_valueShouldBeStableCandidateProfile(t *testing.T) {
 	store.ClearData()
 	db := newDB()
 	manager := NewManager(common.Hash{}, db)
@@ -440,8 +441,8 @@ func TestChangeLog_valueShouldBeStable(t *testing.T) {
 	votes.Set(big.NewInt(234))
 	account.SetVotes(votes)
 	assert.Equal(t, 2, len(manager.GetChangeLogs()))
-	oldVotes := manager.GetChangeLogs()[0].NewVal.(*big.Int)
-	assert.Equal(t, big.NewInt(123), oldVotes)
+	oldVotes := manager.GetChangeLogs()[0].NewVal.(big.Int)
+	assert.Equal(t, *big.NewInt(123), oldVotes)
 
 	// CandidateProfileLog
 	manager.clear()

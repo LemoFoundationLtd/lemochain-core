@@ -77,6 +77,10 @@ func NewAccount(db protocol.ChainDB, address common.Address, data *types.Account
 		data.Candidate.Profile = make(types.CandidateProfile)
 	}
 
+	if data.Candidate.Votes == nil {
+		data.Candidate.Votes = new(big.Int)
+	}
+
 	return &Account{
 		data:          data,
 		db:            db,

@@ -10,6 +10,13 @@ import (
 	"strconv"
 )
 
+func TestChainDatabase_Test(t *testing.T) {
+	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
+	result160, _ := cacheChain.GetBlockByHeight(160)
+	result161, _ := cacheChain.GetBlockByHeight(161)
+	assert.Equal(t, result160, result161)
+}
+
 func TestCacheChain_SetBlock(t *testing.T) {
 	ClearData()
 
@@ -135,6 +142,7 @@ func TestCacheChain_SetBlockError(t *testing.T) {
 		cacheChain.SetBlock(block2.Hash(), block2)
 	})
 
+	block1 = GetBlock1()
 	cacheChain.SetBlock(block1.Hash(), block1)
 	hash = block2.Hash()
 	block2.Header.Height = 3

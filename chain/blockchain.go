@@ -23,6 +23,8 @@ import (
 	"time"
 )
 
+const INTMAX = int(^uint(0) >> 1)
+
 type BlockChain struct {
 	chainID      uint16
 	flags        flag.CmdFlags
@@ -171,6 +173,11 @@ func (bc *BlockChain) StableBlock() *types.Block {
 
 // SetMinedBlock 挖到新块
 func (bc *BlockChain) SetMinedBlock(block *types.Block) error {
+	sb := bc.stableBlock.Load().(*types.Block)
+	if sb.Height() >= block.Height() {
+		log.Debug("mine a block, but height not large than stable block")
+		return nil
+	}
 	if ok, _ := bc.db.IsExistByHash(block.ParentHash()); !ok {
 		return ErrParentNotExist
 	}
@@ -178,6 +185,7 @@ func (bc *BlockChain) SetMinedBlock(block *types.Block) error {
 		log.Errorf("can't insert block to cache. height:%d hash:%s", block.Height(), block.Hash().Hex())
 		return ErrSaveBlock
 	}
+	log.Debugf("Insert mined block to db, height: %d, hash: %s", block.Height(), block.Hash().String())
 	err := bc.AccountManager().Save(block.Hash())
 	if err != nil {
 		log.Error("save account error!", "hash", block.Hash().Hex(), "err", err)
@@ -226,6 +234,13 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 	// save
 	block.SetEvents(bc.AccountManager().GetEvents())
 	block.SetChangeLogs(bc.AccountManager().GetChangeLogs())
+
+	sb := bc.stableBlock.Load().(*types.Block)
+	if sb.Height() >= block.Height() {
+		log.Debug("mine a block, but height not large than stable block")
+		return nil
+	}
+
 	if err = bc.db.SetBlock(hash, block); err != nil {
 		log.Errorf("can't insert block to cache. height:%d hash:%s", block.Height(), hash.Hex())
 		return ErrSaveBlock
@@ -290,7 +305,7 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 	} else {
 		bHash := block.Hash().String()
 		pHash := block.ParentHash().String()
-		oHash := oldCurrentBlock.Hash()
+		oHash := oldCurrentBlock.Hash().String()
 		log.Debugf("not update current block. block: %d - %s, parent: %s, current: %d - %s",
 			block.Height(), bHash[:16], pHash[:16], oldCurrentBlock.Height(), oHash[:16])
 	}
@@ -381,16 +396,16 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32) error {
 	maxLength := uint32(0)
 	// prune forks
 	for fHash, fBlock := range bc.chainForksHead {
-		if curBlock.Height() < height {
+		if fBlock.Height() < height {
 			delete(bc.chainForksHead, fHash)
 			continue
 		}
-		if curBlock.Height() == height && curBlock.Hash() != hash {
+		if fBlock.Height() == height && fBlock.Hash() != hash {
 			delete(bc.chainForksHead, fHash)
 			continue
 		}
 		// same height and same hash
-		if curBlock.Hash() == hash {
+		if fBlock.Hash() == hash {
 			tmp[hash] = []*types.Block{}
 			continue
 		}
@@ -399,7 +414,7 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32) error {
 		if length > maxLength {
 			maxLength = length
 		}
-		if int(length) < 0 {
+		if length>>31 == 1 {
 			panic("internal error")
 		}
 		log.Errorf("start length=", length)
@@ -463,6 +478,14 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32) error {
 	} else {
 		log.Debug("not have new current block")
 	}
+	defer func() {
+		sb := bc.stableBlock.Load().(*types.Block)
+		cb := bc.currentBlock.Load().(*types.Block)
+		if cb.Height() < sb.Height() {
+			log.Debug("current block's height < stable block's height")
+			bc.currentBlock.Store(sb)
+		}
+	}()
 	// notify
 	subscribe.Send(subscribe.NewStableBlock, block)
 	log.Infof("stable height reach to: %d", height)
