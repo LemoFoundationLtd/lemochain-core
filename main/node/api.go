@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/miner"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
@@ -113,6 +114,11 @@ type CandidateListRes struct {
 }
 type candidateListResMarshaling struct {
 	Total hexutil.Uint32
+}
+
+// GetDeputyNodeList
+func (c *PublicChainAPI) GetDeputyNodeList() []string {
+	return deputynode.Instance().GetLatestDeputies()
 }
 
 // GetCandidateNodeList get all candidate node list information and return total candidate node
@@ -471,17 +477,6 @@ func (t *PublicTxAPI) GetTxListByAddress(lemoAddress string, index int, size int
 
 	return txList, nil
 }
-
-// // PullForwardTxListByAddress 向前拉取address所涉及的交易列表
-// func (t *PublicTxAPI) PullForwardTxListByAddress(src common.Address, start int64, size int) ([]*store.VTransaction, int64, error) {
-// 	// src, err := common.StringToAddress(lemoAddress)
-// if err != nil {
-// 	return nil, start, err
-// }
-// 	bizDb := t.node.db.GetBizDatabase()
-// 	vTxs, previous, err := bizDb.GetTx8AddrPre(src, start, size)
-// 	return vTxs, previous, err
-// }
 
 // ReadContract read variables in a contract includes the return value of a function.
 func (t *PublicTxAPI) ReadContract(to *common.Address, data hexutil.Bytes) (string, error) {

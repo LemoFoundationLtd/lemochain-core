@@ -8,6 +8,7 @@ import (
 	"io"
 	"math/big"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -73,14 +74,6 @@ func (a *CandidateProfile) EncodeRLP(w io.Writer) error {
 				Val: (*a)[keys[index]],
 			})
 		}
-
-		// for k, v := range *a {
-		// 	tmp = append(tmp, Pair{
-		// 		Key: k,
-		// 		Val: v,
-		// 	})
-		// }
-
 		return rlp.Encode(w, tmp)
 	}
 }
@@ -205,6 +198,18 @@ func (a *AccountData) DecodeRLP(s *rlp.Stream) error {
 func (a *AccountData) Copy() *AccountData {
 	cpy := *a
 	cpy.Balance = new(big.Int).Set(a.Balance)
+
+	if a.Candidate.Votes != nil {
+		cpy.Candidate.Votes = new(big.Int).Set(a.Candidate.Votes)
+	}
+
+	if len(a.Candidate.Profile) > 0 {
+		cpy.Candidate.Profile = make(CandidateProfile)
+		for k, v := range a.Candidate.Profile {
+			cpy.Candidate.Profile[k] = v
+		}
+	}
+
 	if len(a.NewestRecords) > 0 {
 		cpy.NewestRecords = make(map[ChangeLogType]VersionRecord)
 		for logType, record := range a.NewestRecords {
@@ -218,6 +223,12 @@ func (a *AccountData) String() string {
 	set := []string{
 		fmt.Sprintf("Address: %s", a.Address.String()),
 		fmt.Sprintf("Balance: %s", a.Balance.String()),
+		fmt.Sprintf("VoteFor: %s", a.VoteFor.String()),
+		fmt.Sprintf("TxCount: %s", strconv.Itoa(int(a.TxCount))),
+	}
+
+	if a.Candidate.Votes != nil {
+		set = append(set, fmt.Sprintf("Votes: %s", a.Candidate.Votes.String()))
 	}
 	if a.CodeHash != (common.Hash{}) {
 		set = append(set, fmt.Sprintf("CodeHash: %s", a.CodeHash.Hex()))
@@ -241,6 +252,14 @@ func (a *AccountData) String() string {
 	}
 	if a.TxCount != 0 {
 		set = append(set, fmt.Sprintf("TxCount: %d", a.TxCount))
+	}
+
+	if len(a.Candidate.Profile) > 0 {
+		records := make([]string, 0, len(a.Candidate.Profile))
+		for k, v := range a.Candidate.Profile {
+			records = append(records, fmt.Sprintf("%s => %s", k, v))
+		}
+		set = append(set, fmt.Sprintf("CandidateProfiles: {%s}", strings.Join(records, ", ")))
 	}
 
 	return fmt.Sprintf("{%s}", strings.Join(set, ", "))
