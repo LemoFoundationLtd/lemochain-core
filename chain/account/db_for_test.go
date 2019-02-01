@@ -56,7 +56,6 @@ var (
 				BalanceLog: {Version: 100, Height: 1},
 				CodeLog:    {Version: 101, Height: 2},
 			},
-			TxHashList: []common.Hash{common.HexToHash("0x11"), common.HexToHash("0x22")},
 		},
 	}
 	defaultCodes = []struct {
@@ -99,12 +98,16 @@ func newDB() protocol.ChainDB {
 	for i, _ := range defaultBlockInfos {
 		// use pointer for repairing incorrect hash
 		saveBlock(db, i, &defaultBlockInfos[i])
+		if i == 0 {
+			saveAccount(db)
+		}
+		if i <= 1 {
+			if err := db.SetStableBlock(defaultBlockInfos[i].hash); err != nil {
+				panic(err)
+			}
+		}
 	}
-	saveAccount(db)
-	err := db.SetStableBlock(defaultBlockInfos[1].hash)
-	if err != nil {
-		panic(err)
-	}
+
 	testStorageTrieGet(db)
 	return db
 }
@@ -175,11 +178,11 @@ func saveAccount(db protocol.ChainDB) {
 		}
 
 		acctDb.Put(defaultAccounts[index], 0)
-		//acctDb.Dye(string(defaultAccounts[index].Address[:]), am.baseBlock.Height())
-		//dirtyAccounts = append(dirtyAccounts, account.rawAccount.data)
+		// acctDb.Dye(string(defaultAccounts[index].Address[:]), am.baseBlock.Height())
+		// dirtyAccounts = append(dirtyAccounts, account.rawAccount.data)
 	}
 
-	//err := db.SetAccounts(defaultBlockInfos[0].hash, defaultAccounts)
+	// err := db.SetAccounts(defaultBlockInfos[0].hash, defaultAccounts)
 
 	// save code
 	for _, codeInfo := range defaultCodes {

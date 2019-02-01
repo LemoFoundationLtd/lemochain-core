@@ -3,51 +3,102 @@ package store
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
+	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
+	"math/big"
+	"os"
+	"strconv"
 	"sync"
 )
 
-type CBlock struct {
-	Block *types.Block
-	Trie  *PatriciaTrie
-}
+var max_candidate_count = 30
+
+// type CBlock struct {
+// 	Block *types.Block
+// 	Trie  *PatriciaTrie
+// 	Top30 []*Candidate
+// }
 
 type ChainDatabase struct {
 	LastConfirm     *CBlock
 	UnConfirmBlocks map[common.Hash]*CBlock
+	Context         *RunContext
 
-	DataBase DB
-	Beansdb  *BeansDB
+	DB      *MySqlDB
+	Beansdb *BeansDB
+	BizDB   *BizDatabase
+	rw      sync.RWMutex
+}
 
-	rw sync.RWMutex
+func isCandidate(account *types.AccountData) bool {
+	if (account == nil) ||
+		(len(account.Candidate.Profile) <= 0) {
+		return false
+	}
+
+	result, ok := account.Candidate.Profile[types.CandidateKeyIsCandidate]
+	if !ok {
+		return false
+	}
+
+	val, err := strconv.ParseBool(result)
+	if err != nil {
+		panic("to bool err : " + err.Error())
+	} else {
+		return val
+	}
+}
+
+func checkHome(home string) error {
+	isExist, err := IsExist(home)
+	if err != nil {
+		panic("check home is exist error:" + err.Error())
+	}
+
+	if isExist {
+		return nil
+	}
+
+	err = os.MkdirAll(home, os.ModePerm)
+	if err != nil {
+		panic("mk dir is exist err : " + err.Error())
+	} else {
+		return nil
+	}
 }
 
 func NewChainDataBase(home string, driver string, dns string) *ChainDatabase {
-	db := &ChainDatabase{
-		Beansdb:         NewBeansDB(home, 2, driver, dns),
-		LastConfirm:     nil,
-		UnConfirmBlocks: make(map[common.Hash]*CBlock, 65536),
-	}
-
-	buf := db.Beansdb.GetCurrentBlock()
-	if len(buf) <= 0 {
-		return db
-	}
-
-	var block types.Block
-	err := rlp.DecodeBytes(buf, &block)
+	err := checkHome(home)
 	if err != nil {
-		panic("new chain database err : " + err.Error())
-	} else {
-		db.LastConfirm = &CBlock{
-			Block: &block,
-			Trie:  NewEmptyDatabase(db.Beansdb),
-		}
-		return db
+		panic("check home: " + home + "|error: " + err.Error())
 	}
+
+	db := &ChainDatabase{
+		UnConfirmBlocks: make(map[common.Hash]*CBlock),
+		DB:              NewMySqlDB(driver, dns),
+		Context:         NewRunContext(home),
+	}
+
+	db.BizDB = NewBizDatabase(db, db.DB)
+	db.Beansdb = NewBeansDB(home, 2, db.DB, db.AfterScan)
+	db.LastConfirm = &CBlock{
+		Block: db.Context.GetStableBlock(),
+		Trie:  NewEmptyDatabase(db.Beansdb),
+	}
+
+	return db
+}
+
+func (database *ChainDatabase) GetLastConfirm() *CBlock {
+	return database.LastConfirm
+}
+
+func (database *ChainDatabase) AfterScan(flag uint, key []byte, val []byte) error {
+	return database.BizDB.AfterCommit(flag, key, val)
 }
 
 /**
@@ -58,13 +109,19 @@ func NewChainDataBase(home string, driver string, dns string) *ChainDatabase {
  * 5. height => block's hash(chain)
  */
 func (database *ChainDatabase) blockCommit(hash common.Hash) error {
+	log.Error("block commit : " + hash.Hex())
 	cItem := database.UnConfirmBlocks[hash]
 	if (cItem == nil) || (cItem.Block == nil) {
-		return nil
+		panic("item or item'block is nil.")
 	}
 
-	if (cItem.Block.Height() > 0) && (cItem.Block.Height() < database.LastConfirm.Block.Height()) {
-		return nil
+	if (database.LastConfirm.Block == nil) && (cItem.Block.Height() != 0) {
+		panic("database.LastConfirm == nil && cItem.Block.Height() != 0")
+	}
+
+	if (database.LastConfirm.Block != nil) &&
+		(cItem.Block.Height() < database.LastConfirm.Block.Height()) {
+		panic("(database.LastConfirm.Block != nil) && (cItem.Block.Height() < database.LastConfirm.Block.Height())")
 	}
 
 	batch := database.Beansdb.NewBatch(hash[:])
@@ -77,8 +134,6 @@ func (database *ChainDatabase) blockCommit(hash common.Hash) error {
 
 	batch.Put(CACHE_FLG_BLOCK, hash[:], buf)
 	batch.Put(CACHE_FLG_BLOCK_HEIGHT, encodeBlockNumber2Hash(cItem.Block.Height()).Bytes(), hash[:])
-
-	curBlockBuf := buf
 
 	// store account
 	decode := func(account *types.AccountData, batch Batch) error {
@@ -101,18 +156,35 @@ func (database *ChainDatabase) blockCommit(hash common.Hash) error {
 		return nil
 	}
 
+	filterCandidates := func(accounts []*types.AccountData) {
+		for index := 0; index < len(accounts); index++ {
+			account := accounts[index]
+			if isCandidate(account) && !database.Context.CandidateIsExist(account.Address) {
+				database.Context.SetCandidate(account.Address)
+			}
+		}
+	}
+
+	commitContext := func(block *types.Block, accounts []*types.AccountData) error {
+		filterCandidates(accounts)
+		database.Context.SetStableBlock(cItem.Block)
+		return database.Context.Flush()
+	}
+
 	accounts := cItem.Trie.Collected(cItem.Block.Height())
+	fmt.Println(cItem.Block.Height())
+	fmt.Println(accounts)
 	err = decodeBatch(accounts, batch)
 	if err != nil {
 		return err
-	} else {
-		err := database.Beansdb.Commit(batch)
-		if err != nil {
-			return err
-		} else {
-			return database.Beansdb.SetCurrentBlock(curBlockBuf)
-		}
 	}
+
+	err = database.Beansdb.Commit(batch)
+	if err != nil {
+		return err
+	}
+
+	return commitContext(cItem.Block, accounts)
 }
 
 func (database *ChainDatabase) getBlock4Cache(hash common.Hash) (*types.Block, error) {
@@ -268,34 +340,87 @@ func (database *ChainDatabase) SetBlock(hash common.Hash, block *types.Block) er
 		return ErrExist
 	}
 
+	if database.LastConfirm.Block == nil {
+		if (block.Height() != 0) || (block.ParentHash() != common.Hash{}) {
+			panic("(database.LastConfirm.Block == nil) && (block.Height() != 0) && (block.ParentHash() != common.Hash{})")
+		}
+	} else {
+		if (block.Height() == 0) || (block.ParentHash() == common.Hash{}) {
+			panic("(block.Height() == 0) || (block.ParentHash() == common.Hash{})")
+		}
+
+		if block.Height() <= database.LastConfirm.Block.Height() {
+			bheight := strconv.Itoa(int(block.Height()))
+			bhash := block.Hash().Hex()
+			lheight := strconv.Itoa(int(database.LastConfirm.Block.Height()))
+			lhash := database.LastConfirm.Block.Hash().Hex()
+			panic("block'height:" + bheight + "|bhash:" + bhash + "|confirm'height:" + lheight + "|lhash:" + lhash)
+		}
+	}
+
 	// genesis block
 	if (block.ParentHash() == common.Hash{}) {
-		cBlock := &CBlock{
+		database.UnConfirmBlocks[hash] = &CBlock{
 			Block: block,
 			Trie:  NewEmptyDatabase(database.Beansdb),
+			Top30: make([]*Candidate, 0),
 		}
-
-		database.UnConfirmBlocks[hash] = cBlock
-		return nil
-	} else {
-		cBlock := &CBlock{}
-		pHash := block.Header.ParentHash
-		pBlock := database.UnConfirmBlocks[pHash]
-		if pBlock == nil {
-			if database.LastConfirm.Block.Header.Hash() != pHash {
-				panic("PARENT IS ERROR.")
-			} else {
-				cBlock.Block = block
-				cBlock.Trie = NewActDatabase(database.Beansdb, database.LastConfirm.Trie)
-			}
-		} else {
-			cBlock.Block = block
-			cBlock.Trie = NewActDatabase(database.Beansdb, pBlock.Trie)
-		}
-
-		database.UnConfirmBlocks[hash] = cBlock
 		return nil
 	}
+
+	clone := func(src []*Candidate) []*Candidate {
+		if len(src) <= 0 {
+			return make([]*Candidate, 0)
+		} else {
+			dst := make([]*Candidate, len(src))
+			for index := 0; index < len(src); index++ {
+				dst[index] = src[index].Clone()
+			}
+			return dst
+		}
+	}
+
+	pHash := block.Header.ParentHash
+	pBlock := database.UnConfirmBlocks[pHash]
+	if pBlock == nil {
+		if database.LastConfirm.Block.Header.Hash() != pHash {
+			bheight := strconv.Itoa(int(block.Height()))
+			bhash := block.Hash().Hex()
+			lheight := strconv.Itoa(int(database.LastConfirm.Block.Height()))
+			lhash := database.LastConfirm.Block.Hash().Hex()
+			panic("block'height:" + bheight + "|bhash:" + bhash + "|confirm'height:" + lheight + "|lhash:" + lhash)
+		}
+
+		if database.LastConfirm.Block.Height()+1 != block.Height() {
+			bheight := strconv.Itoa(int(block.Height()))
+			bhash := block.Hash().Hex()
+			lheight := strconv.Itoa(int(database.LastConfirm.Block.Height()))
+			lhash := database.LastConfirm.Block.Hash().Hex()
+			panic("block'height:" + bheight + "|bhash:" + bhash + "|confirm'height:" + lheight + "|lhash:" + lhash)
+		}
+
+		database.UnConfirmBlocks[hash] = &CBlock{
+			Block: block,
+			Trie:  NewActDatabase(database.Beansdb, database.LastConfirm.Trie),
+			Top30: clone(database.LastConfirm.Top30),
+		}
+	} else {
+		if pBlock.Block.Height()+1 != block.Height() {
+			bheight := strconv.Itoa(int(block.Height()))
+			bhash := block.Hash().Hex()
+			lheight := strconv.Itoa(int(database.LastConfirm.Block.Height()))
+			lhash := database.LastConfirm.Block.Hash().Hex()
+			panic("block'height:" + bheight + "|bhash:" + bhash + "|confirm'height:" + lheight + "|lhash:" + lhash)
+		}
+
+		database.UnConfirmBlocks[hash] = &CBlock{
+			Block: block,
+			Trie:  NewActDatabase(database.Beansdb, pBlock.Trie),
+			Top30: clone(pBlock.Top30),
+		}
+	}
+
+	return nil
 }
 
 func (database *ChainDatabase) appendConfirm(block *types.Block, confirms []types.SignData) {
@@ -387,10 +512,10 @@ func (database *ChainDatabase) SetStableBlock(hash common.Hash) error {
 	database.rw.Lock()
 	defer database.rw.Unlock()
 
+	log.Error("set stable block : " + hash.Hex())
 	cItem := database.UnConfirmBlocks[hash]
 	if cItem == nil {
-		log.Errorf("set stable block error:the block is not exist. hash: %s", hash.String())
-		return ErrNotExist
+		panic("set stable block error:the block is not exist. hash:" + hash.Hex())
 	}
 
 	blocks := make([]*CBlock, 0)
@@ -411,10 +536,10 @@ func (database *ChainDatabase) SetStableBlock(hash common.Hash) error {
 
 	confirm := func(item *CBlock) {
 		last := database.LastConfirm
-		if last == nil {
+		if last == nil || last.Block == nil || last.Trie == nil {
 			database.LastConfirm = item
 		} else {
-			last.Trie.DelDye(last.Block.Height())
+			// last.Trie.DelDye(last.Block.Height())
 			database.LastConfirm = item
 		}
 	}
@@ -435,8 +560,8 @@ func (database *ChainDatabase) SetStableBlock(hash common.Hash) error {
 
 	clear := func(max uint32) {
 		for k, v := range database.UnConfirmBlocks {
-			if v.Block.Height() < database.LastConfirm.Block.Height() {
-				v.Trie.DelDye(v.Block.Height())
+			if v.Block.Height() <= database.LastConfirm.Block.Height() {
+				// v.Trie.DelDye(v.Block.Height())
 				delete(database.UnConfirmBlocks, k)
 			}
 		}
@@ -478,15 +603,25 @@ func (database *ChainDatabase) GetTrieDatabase() *TrieDatabase {
 
 func (database *ChainDatabase) GetActDatabase(hash common.Hash) *PatriciaTrie {
 	item := database.UnConfirmBlocks[hash]
-	if item == nil || item.Block == nil || item.Trie == nil {
-		if database.LastConfirm == nil {
+	if (item == nil) ||
+		(item.Block == nil) ||
+		(item.Trie == nil) {
+		if (database.LastConfirm == nil) || (database.LastConfirm.Trie == nil) {
 			return NewEmptyDatabase(database.Beansdb)
-		} else {
-			return database.LastConfirm.Trie
 		}
+
+		// if (database.LastConfirm.Block != nil) && (hash != database.LastConfirm.Block.Hash()) {
+		// 	panic("hash != database.LastConfirm.Block.Hash()")
+		// }
+
+		return database.LastConfirm.Trie
 	} else {
 		return item.Trie
 	}
+}
+
+func (database *ChainDatabase) GetBizDatabase() BizDb {
+	return database.BizDB
 }
 
 // GetContractCode loads contract's code from db.
@@ -507,6 +642,165 @@ func (database *ChainDatabase) GetContractCode(hash common.Hash) (types.Code, er
 // SetContractCode saves contract's code
 func (database *ChainDatabase) SetContractCode(hash common.Hash, code types.Code) error {
 	return database.Beansdb.Put(CACHE_FLG_CODE, hash[:], hash[:], code[:])
+}
+
+func (database *ChainDatabase) GetCandidatesTop(hash common.Hash) []*Candidate {
+	cItem := database.UnConfirmBlocks[hash]
+	if (cItem != nil) && (cItem.Block != nil) {
+		if cItem.Top30 == nil {
+			panic("item top30 is nil.")
+		} else {
+			return cItem.Top30
+		}
+	}
+
+	if database.LastConfirm.Block == nil { // all in cache
+		panic("database.LastConfirm.Block == nil")
+	}
+
+	if hash == database.LastConfirm.Block.Hash() {
+		return database.LastConfirm.Top30
+	} else {
+		panic("hash != database.LastConfirm.Block.Hash()")
+	}
+}
+
+func (database *ChainDatabase) GetCandidatesPage(index int, size int) ([]common.Address, uint32, error) {
+	if (index < 0) || (size > 200) || (size <= 0) {
+		return nil, 0, errors.New("argment error.")
+	} else {
+		return database.Context.GetCandidatePage(index, size)
+	}
+}
+
+func (database *ChainDatabase) CandidatesRanking(hash common.Hash) {
+	cItem := database.UnConfirmBlocks[hash]
+	if (cItem == nil) || (cItem.Block == nil) {
+		panic("item or item'block is nil.")
+	}
+
+	if ((cItem.Block.Height() == 0) && (cItem.Block.ParentHash() != common.Hash{})) ||
+		((cItem.Block.ParentHash() == common.Hash{}) && (cItem.Block.Height() != 0)) {
+		panic("（cItem.Block.Height() == 0) || (cItem.Block.ParentHash() != common.Hash{})")
+	}
+
+	if (database.LastConfirm.Block != nil) &&
+		(cItem.Block.Height() <= database.LastConfirm.Block.Height()) {
+		panic("(database.LastConfirm.Block != nil) && (cItem.Block.Height() < database.LastConfirm.Block.Height())")
+	}
+
+	all := func(hash common.Hash) []*Candidate {
+		db := database.GetActDatabase(hash)
+		result := make([]*Candidate, 0, len(database.Context.Candidates))
+		for k, _ := range database.Context.Candidates {
+			account := db.Find(k[:])
+			if account == nil {
+				panic("get all candidates error.account is nil.")
+			}
+
+			if !isCandidate(account) {
+				continue
+			} else {
+				result = append(result, &Candidate{
+					address: account.Address,
+					total:   new(big.Int).Set(account.Candidate.Votes),
+				})
+			}
+		}
+		return result
+	}
+
+	data := func(accounts []*types.AccountData, lastCandidatesMap map[common.Address]*Candidate) (map[common.Address]*Candidate, []*Candidate) {
+
+		nextCandidates := make([]*Candidate, 0)
+
+		for index := 0; index < len(accounts); index++ {
+			account := accounts[index]
+			isCandidate := isCandidate(account)
+			if isCandidate {
+				nextCandidates = append(nextCandidates, &Candidate{
+					address: account.Address,
+					total:   new(big.Int).Set(account.Candidate.Votes),
+				})
+
+				database.Context.SetCandidate(account.Address)
+			}
+
+			_, ok := lastCandidatesMap[account.Address]
+			if ok {
+				if !isCandidate {
+					delete(lastCandidatesMap, account.Address)
+				} else {
+					lastCandidatesMap[account.Address].total.Set(account.Candidate.Votes)
+				}
+			}
+		}
+
+		return lastCandidatesMap, nextCandidates
+	}
+
+	accounts := cItem.Trie.Collected(cItem.Block.Height())
+	if len(accounts) <= 0 {
+		return
+	}
+
+	toHashMap := func(src []*Candidate) map[common.Address]*Candidate {
+		result := make(map[common.Address]*Candidate)
+		for index := 0; index < len(src); index++ {
+			result[src[index].address] = src[index]
+		}
+		return result
+	}
+
+	toSlice := func(src map[common.Address]*Candidate) []*Candidate {
+		if len(src) <= 0 {
+			return make([]*Candidate, 0)
+		} else {
+			dst := make([]*Candidate, 0, len(src))
+			for _, v := range src {
+				dst = append(dst, v)
+			}
+			return dst
+		}
+	}
+
+	voteTop := NewVoteTop(cItem.Top30)
+	lastCandidatesMap, nextCandidates := data(accounts, toHashMap(cItem.Top30))
+	if len(cItem.Top30) < max_candidate_count {
+		for index := 0; index < len(nextCandidates); index++ {
+			lastCandidatesMap[nextCandidates[index].address] = nextCandidates[index]
+		}
+		voteTop.Rank(max_candidate_count, toSlice(lastCandidatesMap))
+		cItem.Top30 = voteTop.GetTop()
+		return
+	}
+
+	lastMinCandidate := voteTop.Min()
+	lastCount := voteTop.Count()
+
+	voteTop.Rank(max_candidate_count, toSlice(lastCandidatesMap))
+	if (lastMinCandidate != nil) &&
+		(lastCount == voteTop.Count()) &&
+		(lastMinCandidate.total.Cmp(voteTop.Min().total) <= 0) {
+
+		lastMinCandidate = voteTop.Min()
+		for index := 0; index < len(nextCandidates); index++ {
+			if (lastMinCandidate.total.Cmp(nextCandidates[index].total) < 0) ||
+				((lastMinCandidate.total.Cmp(nextCandidates[index].total) == 0) && (bytes.Compare(lastMinCandidate.address[:], nextCandidates[index].address[:]) < 0)) {
+				_, ok := lastCandidatesMap[nextCandidates[index].address]
+				if !ok {
+					lastCandidatesMap[nextCandidates[index].address] = nextCandidates[index]
+				}
+			}
+		}
+
+		voteTop.Rank(max_candidate_count, toSlice(lastCandidatesMap))
+		cItem.Top30 = voteTop.GetTop()
+	} else {
+		candidates := all(hash)
+		voteTop.Rank(max_candidate_count, candidates)
+		cItem.Top30 = voteTop.GetTop()
+	}
 }
 
 func (database *ChainDatabase) Close() error {

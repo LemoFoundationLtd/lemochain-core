@@ -1,18 +1,21 @@
 package node
 
 import (
+	"encoding/json"
+	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"github.com/stretchr/testify/assert"
 	"testing"
+	"time"
 )
 
 // TestAccountAPI_api account api test
 func TestAccountAPI_api(t *testing.T) {
-	store.ClearData()
 	db := newDB()
 	defer store.ClearData()
 	am := account.NewManager(common.Hash{}, db)
@@ -52,7 +55,6 @@ func TestAccountAPI_api(t *testing.T) {
 
 // TestChainAPI_api chain api test
 func TestChainAPI_api(t *testing.T) {
-	store.ClearData()
 	bc := newChain()
 	defer store.ClearData()
 	c := NewPublicChainAPI(bc)
@@ -111,18 +113,20 @@ func TestChainAPI_api(t *testing.T) {
 
 // TestTxAPI_api send tx api test
 func TestTxAPI_api(t *testing.T) {
-	testTx := types.NewTransaction(common.HexToAddress("0x015780F8456F9c1532645087a19DcF9a7e0c7F97"), common.Big1, 100, common.Big2, []byte{12}, 200, uint64(1544596), "aa", string("send a Tx"))
-	signTx := signTransaction(testTx, testPrivate)
+	defer store.ClearData()
+	testTx := types.NewTransaction(common.HexToAddress("0x1"), common.Big1, 100, common.Big2, []byte{12}, 0, 100, uint64(time.Now().Unix()+60*30), "aa", string("send a Tx"))
+	// signTx := signTransaction(testTx, testPrivate)
 	// txCh := make(chan types.Transactions, 100)
+	Chain := newChain()
 	node := &Node{
-		chain:  newChain(),
+		chain:  Chain,
 		txPool: chain.NewTxPool(chainID),
 	}
 	txAPI := NewPublicTxAPI(node)
 
-	sendTxHash, err := txAPI.SendTx(signTx)
+	sendTxHash, err := txAPI.SendTx(testTx)
 	assert.Nil(t, err)
-	assert.Equal(t, signTx.Hash(), sendTxHash)
+	assert.Equal(t, testTx.Hash(), sendTxHash)
 }
 
 // // TestMineAPI_api miner api test // todo
@@ -153,6 +157,7 @@ func TestTxAPI_api(t *testing.T) {
 
 // TestNewPublicTxAPI_EstimateGas
 func TestNewPublicTxAPI_EstimateGas(t *testing.T) {
+	store.ClearData()
 	Chain := newChain()
 	node := &Node{
 		chain:  Chain,
@@ -165,4 +170,52 @@ func TestNewPublicTxAPI_EstimateGas(t *testing.T) {
 	// args := NewCallArgs(from, nil, 0, big.NewInt(0), big.NewInt(0), data)
 	gas, err := p.EstimateGas(nil, data)
 	t.Log(gas, err)
+}
+
+// 序列化注册候选节点所用data
+func Test_CreatRegisterTxData(t *testing.T) {
+	pro1 := make(types.CandidateProfile)
+	pro1[types.CandidateKeyIsCandidate] = params.IsCandidateNode
+	pro1[types.CandidateKeyPort] = "1111"
+	pro1[types.CandidateKeyNodeID] = "11f0df789b46e9bc09f23d5315b951bc77bbfeda653ae6f5aab564c9b4619322fddb3b1f28d1c434250e9d4dd8f51aa8334573d7281e4d63baba913e9fa6908f"
+	pro1[types.CandidateKeyMinerAddress] = "Lemo11111"
+	pro1[types.CandidateKeyHost] = "1111"
+	marPro1, _ := json.Marshal(pro1)
+	fmt.Println("txData1:", common.ToHex(marPro1))
+
+	pro2 := make(types.CandidateProfile)
+	pro2[types.CandidateKeyIsCandidate] = params.IsCandidateNode
+	pro2[types.CandidateKeyPort] = "2222"
+	pro2[types.CandidateKeyNodeID] = "22f0df789b46e9bc09f23d5315b951bc77bbfeda653ae6f5aab564c9b4619322fddb3b1f28d1c434250e9d4dd8f51aa8334573d7281e4d63baba913e9fa6908f"
+	pro2[types.CandidateKeyMinerAddress] = "Lemo2222"
+	pro2[types.CandidateKeyHost] = "2222"
+	marPro2, _ := json.Marshal(pro2)
+	fmt.Println("txData2:", common.ToHex(marPro2))
+
+	pro3 := make(types.CandidateProfile)
+	pro3[types.CandidateKeyIsCandidate] = params.IsCandidateNode
+	pro3[types.CandidateKeyPort] = "3333"
+	pro3[types.CandidateKeyNodeID] = "33f0df789b46e9bc09f23d5315b951bc77bbfeda653ae6f5aab564c9b4619322fddb3b1f28d1c434250e9d4dd8f51aa8334573d7281e4d63baba913e9fa6908f"
+	pro3[types.CandidateKeyMinerAddress] = "Lemo3333"
+	pro3[types.CandidateKeyHost] = "3333"
+	marPro3, _ := json.Marshal(pro3)
+	fmt.Println("txData3:", common.ToHex(marPro3))
+
+	pro4 := make(types.CandidateProfile)
+	pro4[types.CandidateKeyIsCandidate] = params.IsCandidateNode
+	pro4[types.CandidateKeyPort] = "4444"
+	pro4[types.CandidateKeyNodeID] = "44f0df789b46e9bc09f23d5315b951bc77bbfeda653ae6f5aab564c9b4619322fddb3b1f28d1c434250e9d4dd8f51aa8334573d7281e4d63baba913e9fa6908f"
+	pro4[types.CandidateKeyMinerAddress] = "Lemo4444"
+	pro4[types.CandidateKeyHost] = "4444"
+	marPro4, _ := json.Marshal(pro4)
+	fmt.Println("txData4:", common.ToHex(marPro4))
+
+	pro5 := make(types.CandidateProfile)
+	pro5[types.CandidateKeyIsCandidate] = params.IsCandidateNode
+	pro5[types.CandidateKeyPort] = "5555"
+	pro5[types.CandidateKeyNodeID] = "55f0df789b46e9bc09f23d5315b951bc77bbfeda653ae6f5aab564c9b4619322fddb3b1f28d1c434250e9d4dd8f51aa8334573d7281e4d63baba913e9fa6908f"
+	pro5[types.CandidateKeyMinerAddress] = "Lemo5555"
+	pro5[types.CandidateKeyHost] = "5555"
+	marPro5, _ := json.Marshal(pro5)
+	fmt.Println("txData5:", common.ToHex(marPro5))
 }

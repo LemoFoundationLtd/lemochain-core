@@ -3,7 +3,6 @@ package main
 import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/main/console"
-	"github.com/LemoFoundationLtd/lemochain-go/main/node"
 	"github.com/LemoFoundationLtd/lemochain-go/network/rpc"
 	"gopkg.in/urfave/cli.v1"
 )
@@ -57,7 +56,10 @@ func remoteConsole(ctx *cli.Context) error {
 	if err != nil {
 		log.Critf("Unable to attach to remote glemo: %v", err)
 	}
-	chainID := uint16(ctx.GlobalUint(node.ChainIDFlag.Name))
+	var chainID uint16
+	if err := client.Call(&chainID, "chain_chainID"); err != nil {
+		log.Critf("Unable to call remote glemo: %v", err)
+	}
 	startConsole(client, chainID)
 	return nil
 }

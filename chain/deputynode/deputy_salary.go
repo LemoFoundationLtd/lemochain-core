@@ -2,6 +2,7 @@ package deputynode
 
 import (
 	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"math/big"
 )
 
@@ -20,14 +21,12 @@ func CalcSalary(height uint32) []*DeputySalary {
 	nodes := Instance().getDeputiesByHeight(height)
 	totalVotes := new(big.Int)
 	for _, node := range nodes {
-		totalVotes.Add(totalVotes, new(big.Int).SetUint64(uint64(node.Votes)))
+		totalVotes.Add(totalVotes, node.Votes)
 	}
 	totalRewards := getTotalSalary(height)
-	// realRewards := new(big.Int)
 	for _, node := range nodes {
-		// n_v := new(big.Int).SetUint64(node.Votes)
 		r := new(big.Int)
-		r.Mul(new(big.Int).SetUint64(uint64(node.Votes)), totalRewards)
+		r.Mul(node.Votes, totalRewards)
 		r.Div(r, totalVotes) // reward = vote * totalRewards / totalVotes
 		r.Div(r, minSalary)  // reward = reward / minSalary * reward
 		r.Mul(r, minSalary)
@@ -36,13 +35,15 @@ func CalcSalary(height uint32) []*DeputySalary {
 			Salary:  r,
 		}
 		salaries = append(salaries, reward)
-		// realRewards.Add(realRewards, r)
 	}
-	// remainReward := totalRewards.Sub(totalRewards, realRewards)
 	return salaries
 }
 
-// getTotalSalary 获取当前轮总奖励 todo
+// getTotalSalary 获取当前轮总奖励
 func getTotalSalary(height uint32) *big.Int {
-	return new(big.Int).SetUint64(1000000000000000000) // 1 lemo
+	res, ok := new(big.Int).SetString("1800000000000000000000000", 10) // 180W lemo each epoch
+	if !ok {
+		log.Crit("getTotalSalary failed")
+	}
+	return res
 }

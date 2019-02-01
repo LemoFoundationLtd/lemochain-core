@@ -2,7 +2,9 @@ package chain
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
@@ -17,7 +19,9 @@ import (
 )
 
 const (
-	defaultGasPrice = 1e9
+	defaultGasPrice      = 1e9
+	MaxDeputyHostLength  = 128
+	StandardNodeIdLength = 128
 )
 
 var (
@@ -140,11 +144,12 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 		context = NewEVMContext(tx, header, txIndex, tx.Hash(), blockHash, p.chain)
 		// Create a new environment which holds all relevant information
 		// about the transaction and calling mechanisms.
-		vmEnv            = vm.NewEVM(context, p.am, *p.cfg)
-		sender           = p.am.GetAccount(senderAddr)
-		contractCreation = tx.To() == nil
-		restGas          = tx.GasLimit()
-		mergeFrom        = len(p.am.GetChangeLogs())
+		vmEnv                = vm.NewEVM(context, p.am, *p.cfg)
+		sender               = p.am.GetAccount(senderAddr)
+		initialSenderBalance = sender.GetBalance()
+		contractCreation     = tx.To() == nil
+		restGas              = tx.GasLimit()
+		mergeFrom            = len(p.am.GetChangeLogs())
 	)
 	err = p.buyGas(gp, tx)
 	if err != nil {
@@ -158,15 +163,68 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 	// vm errors do not effect consensus and are therefor not assigned to err,
 	// except for insufficient balance error.
 	var (
-		vmErr         error
-		recipientAddr common.Address
+		vmErr                   error
+		recipientAddr           common.Address
+		initialRecipientBalance *big.Int
+		recipientAccount        types.AccountAccessor
 	)
-	if contractCreation {
-		_, recipientAddr, restGas, vmErr = vmEnv.Create(sender, tx.Data(), restGas, tx.Amount())
-	} else {
+	if !contractCreation {
 		recipientAddr = *tx.To()
-		_, restGas, vmErr = vmEnv.Call(sender, recipientAddr, tx.Data(), restGas, tx.Amount())
+		recipientAccount = p.am.GetAccount(recipientAddr)
+		initialRecipientBalance = recipientAccount.GetBalance()
 	}
+	// Judge the type of transaction
+	switch tx.Type() {
+	case params.OrdinaryTx:
+		if contractCreation {
+			_, recipientAddr, restGas, vmErr = vmEnv.Create(sender, tx.Data(), restGas, tx.Amount())
+		} else {
+			_, restGas, vmErr = vmEnv.Call(sender, recipientAddr, tx.Data(), restGas, tx.Amount())
+		}
+	case params.VoteTx:
+		restGas, vmErr = vmEnv.CallVoteTx(senderAddr, recipientAddr, restGas, initialSenderBalance)
+
+	case params.RegisterTx:
+		// Unmarshal tx data
+		txData := tx.Data()
+		profile := make(types.CandidateProfile)
+		err = json.Unmarshal(txData, &profile)
+		if err != nil {
+			log.Errorf("unmarshal Candidate node error: %s", err)
+			return 0, err
+		}
+
+		if nodeId, ok := profile[types.CandidateKeyNodeID]; ok {
+			nodeIdLength := len(nodeId)
+			if nodeIdLength != StandardNodeIdLength {
+				nodeIdErr := fmt.Errorf("the nodeId length [%d] is not equal the standard length [%d] ", nodeIdLength, StandardNodeIdLength)
+				return 0, nodeIdErr
+			}
+		}
+		if host, ok := profile[types.CandidateKeyHost]; ok {
+			hostLength := len(host)
+			if hostLength > MaxDeputyHostLength {
+				hostErr := fmt.Errorf("the length of host field in transaction is out of max length limit. host length = %d. max length limit = %d. ", hostLength, MaxDeputyHostLength)
+				return 0, hostErr
+			}
+		}
+
+		restGas, vmErr = vmEnv.RegisterOrUpdateToCandidate(senderAddr, params.FeeReceiveAddress, profile, restGas, initialSenderBalance)
+
+	default:
+		log.Errorf("The type of transaction is not defined. txType = %d\n", tx.Type())
+	}
+	// Candidate node votes change
+	if !contractCreation {
+		endRecipientBalance := recipientAccount.GetBalance()
+		if initialRecipientBalance == nil {
+			p.changeCandidateVotes(recipientAddr, endRecipientBalance)
+		} else {
+			recipientBalanceChange := new(big.Int).Sub(endRecipientBalance, initialRecipientBalance)
+			p.changeCandidateVotes(recipientAddr, recipientBalanceChange)
+		}
+	}
+
 	if vmErr != nil {
 		log.Info("VM returned with error", "err", vmErr)
 		// The only possible consensus-error would be if there wasn't
@@ -177,12 +235,44 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 		}
 	}
 	p.refundGas(gp, tx, restGas)
-	p.am.SaveTxInAccount(senderAddr, recipientAddr, tx.Hash())
+
+	if !contractCreation {
+		oldRecipientTxCount := recipientAccount.GetTxCount()
+		recipientAccount.SetTxCount(oldRecipientTxCount + 1)
+	}
+
+	oldsenderTxCount := sender.GetTxCount()
+	sender.SetTxCount(oldsenderTxCount + 1)
+
+	// The number of votes of the candidate nodes corresponding to the sender.
+	endSenderBalance := sender.GetBalance()
+	senderBalanceChange := new(big.Int).Sub(endSenderBalance, initialSenderBalance)
+	p.changeCandidateVotes(senderAddr, senderBalanceChange)
 	// Merge change logs by transaction will save more transaction execution detail than by block
 	p.am.MergeChangeLogs(mergeFrom)
 	mergeFrom = len(p.am.GetChangeLogs())
 
 	return tx.GasLimit() - restGas, nil
+}
+
+// changeCandidateVotes candidate node vote change corresponding to balance change
+func (p *TxProcessor) changeCandidateVotes(accountAddress common.Address, changeBalance *big.Int) {
+	if changeBalance.Sign() == 0 {
+		return
+	}
+	acc := p.am.GetAccount(accountAddress)
+	CandidataAddress := acc.GetVoteFor()
+
+	if (CandidataAddress == common.Address{}) {
+		return
+	}
+	CandidateAccount := p.am.GetAccount(CandidataAddress)
+	profile := CandidateAccount.GetCandidateProfile()
+	if profile[types.CandidateKeyIsCandidate] == params.NotCandidateNode {
+		return
+	}
+	// set votes
+	CandidateAccount.SetVotes(new(big.Int).Add(CandidateAccount.GetVotes(), changeBalance))
 }
 
 func (p *TxProcessor) buyGas(gp *types.GasPool, tx *types.Transaction) error {
@@ -264,6 +354,8 @@ func (p *TxProcessor) chargeForGas(charge *big.Int, minerAddress common.Address)
 	if charge.Cmp(new(big.Int)) != 0 {
 		miner := p.am.GetAccount(minerAddress)
 		miner.SetBalance(new(big.Int).Add(miner.GetBalance(), charge))
+		// change in the number of votes cast by the miner's account to the candidate node
+		p.changeCandidateVotes(minerAddress, charge)
 	}
 }
 
@@ -287,12 +379,13 @@ func (p *TxProcessor) FillHeader(header *types.Header, txs types.Transactions, g
 	}
 	header.VersionRoot = p.am.GetVersionRoot()
 	changeLogs := p.am.GetChangeLogs()
+	log.Errorf("changlog.00000000002", changeLogs)
 	header.LogRoot = types.DeriveChangeLogsSha(changeLogs)
 	return header, nil
 }
 
 // CallTx pre-execute transactions and contracts.
-func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *common.Address, data hexutil.Bytes, blockHash common.Hash, timeout time.Duration) ([]byte, uint64, error) {
+func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *common.Address, txType uint8, data hexutil.Bytes, blockHash common.Hash, timeout time.Duration) ([]byte, uint64, error) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
@@ -300,7 +393,8 @@ func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *comm
 	accM.Reset(header.ParentHash)
 
 	// A random address is found as our caller address.
-	caller, err := common.StringToAddress("Lemo8392TWFWFF6PD6A93N2PBC6CJFQRSZSHN95H") // todo Consider letting users pass in their own addresses
+	strAddress := "0x12345" // todo Consider letting users pass in their own addresses
+	caller, err := common.StringToAddress(strAddress)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -309,10 +403,20 @@ func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *comm
 	gasPrice := new(big.Int).SetUint64(defaultGasPrice)
 
 	var tx *types.Transaction
-	if to == nil { // avoid null pointer references
-		tx = types.NewContractCreation(big.NewInt(0), gasLimit, gasPrice, data, p.chain.chainID, 0, "", "")
-	} else {
-		tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, p.chain.chainID, 0, "", "")
+	switch txType {
+	case params.OrdinaryTx:
+		if to == nil { // avoid null pointer references
+			tx = types.NewContractCreation(big.NewInt(0), gasLimit, gasPrice, data, params.OrdinaryTx, p.chain.chainID, uint64(time.Now().Unix()+30*60), "", "")
+		} else {
+			tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, params.OrdinaryTx, p.chain.chainID, uint64(time.Now().Unix()+30*60), "", "")
+		}
+	case params.VoteTx:
+		tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, params.VoteTx, p.chain.chainID, uint64(time.Now().Unix()+30*60), "", "")
+	case params.RegisterTx:
+		tx = types.NewContractCreation(big.NewInt(0), gasLimit, gasPrice, data, params.RegisterTx, p.chain.chainID, uint64(time.Now().Unix()+30*60), "", "")
+	default:
+		err = errors.New("tx type error")
+		return nil, 0, err
 	}
 
 	// Timeout limit
@@ -339,11 +443,43 @@ func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *comm
 	}
 	IsContractCreate := tx.To() == nil
 	var ret []byte
-	if IsContractCreate {
-		ret, _, restGas, err = Evm.Create(sender, tx.Data(), restGas, big.NewInt(0))
-	} else {
+	switch tx.Type() {
+	case params.OrdinaryTx:
+		if IsContractCreate {
+			ret, _, restGas, err = Evm.Create(sender, tx.Data(), restGas, big.NewInt(0))
+		} else {
+			recipientAddr := *tx.To()
+			ret, restGas, err = Evm.Call(sender, recipientAddr, tx.Data(), restGas, big.NewInt(0))
+		}
+	case params.VoteTx:
 		recipientAddr := *tx.To()
-		ret, restGas, err = Evm.Call(sender, recipientAddr, tx.Data(), restGas, big.NewInt(0))
+		restGas, err = Evm.CallVoteTx(sender.GetAddress(), recipientAddr, restGas, sender.GetBalance())
+	case params.RegisterTx:
+		// Unmarshal tx data
+		txData := tx.Data()
+		profile := make(types.CandidateProfile)
+		err = json.Unmarshal(txData, &profile)
+		if err != nil {
+			log.Errorf("unmarshal Candidate node error: %s", err)
+			return nil, 0, err
+		}
+
+		if nodeId, ok := profile[types.CandidateKeyNodeID]; ok {
+			nodeIdLength := len(nodeId)
+			if nodeIdLength != StandardNodeIdLength {
+				nodeIdErr := fmt.Errorf("the nodeId length [%d] is not equal the standard length [%d] ", nodeIdLength, StandardNodeIdLength)
+				return nil, 0, nodeIdErr
+			}
+		}
+		if host, ok := profile[types.CandidateKeyHost]; ok {
+			hostLength := len(host)
+			if hostLength > MaxDeputyHostLength {
+				hostErr := fmt.Errorf("the length of host field in transaction is out of max length limit. host length = %d. max length limit = %d. ", hostLength, MaxDeputyHostLength)
+				return nil, 0, hostErr
+			}
+		}
+
+		restGas, err = Evm.RegisterOrUpdateToCandidate(sender.GetAddress(), params.FeeReceiveAddress, profile, restGas, sender.GetBalance())
 	}
 
 	if err := vmError(); err != nil {

@@ -1,5 +1,10 @@
 package params
 
+import (
+	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"math/big"
+)
+
 var (
 	TargetGasLimit uint64 = GenesisGasLimit // The artificial target
 )
@@ -49,4 +54,16 @@ const (
 	Bn256ScalarMulGas       uint64 = 40000  // Gas needed for an elliptic curve scalar multiplication
 	Bn256PairingBaseGas     uint64 = 100000 // Base price for an elliptic curve pairing check
 	Bn256PairingPerPointGas uint64 = 80000  // Per-point price for an elliptic curve pairing check
+)
+
+var (
+	SnapshotBlock             uint32 = 1000000
+	PeriodBlock               uint32 = 1000
+	oneLEMO                          = big.NewInt(1000000000000000000)             // 1 LEMO
+	RegisterCandidateNodeFees        = new(big.Int).Mul(big.NewInt(1000), oneLEMO) // Register Candidate node fees = 1000LEMO
+	FeeReceiveAddress, _             = common.StringToAddress("0x1001")            // 设置接收注册费用1000LEMO的地址
+	IsCandidateNode                  = "true"
+	NotCandidateNode                 = "false"
+
+	MaxPackageLength uint32 = 100 * 1024 * 1024 // 100M
 )

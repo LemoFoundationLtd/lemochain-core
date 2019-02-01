@@ -163,6 +163,8 @@ func TestManager_Finalise_Save(t *testing.T) {
 	db := newDB()
 	manager := NewManager(newestBlock.Hash(), db)
 
+	parentHash := newestBlock.Hash()
+
 	// nothing to finalise
 	account := manager.GetAccount(common.HexToAddress("0x1"))
 	assert.Equal(t, 1, len(manager.accountCache))
@@ -170,7 +172,10 @@ func TestManager_Finalise_Save(t *testing.T) {
 	err := manager.Finalise()
 	assert.NoError(t, err)
 	// save
-	err = manager.Save(b(1))
+	block := &types.Block{}
+	block.SetHeader(&types.Header{ParentHash: parentHash, VersionRoot: manager.GetVersionRoot(), Height: 3})
+	err = db.SetBlock(block.Hash(), block)
+	err = manager.Save(block.Hash())
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(manager.accountCache))
 
@@ -188,9 +193,11 @@ func TestManager_Finalise_Save(t *testing.T) {
 	assert.NoError(t, err)
 	root = manager.GetVersionRoot()
 	assert.NotEqual(t, newestBlock.VersionRoot(), root)
+
 	// save
-	block := &types.Block{}
-	block.SetHeader(&types.Header{VersionRoot: root})
+	parentHash = block.Hash()
+	block = &types.Block{}
+	block.SetHeader(&types.Header{ParentHash: parentHash, VersionRoot: root, Height: 4})
 	err = db.SetBlock(b(2), block)
 	assert.NoError(t, err)
 	err = manager.Save(b(2))
@@ -215,7 +222,10 @@ func TestManager_Finalise_Save2(t *testing.T) {
 	err := manager.Finalise()
 	assert.NoError(t, err)
 	// save
-	err = manager.Save(b(11))
+	block := &types.Block{}
+	block.SetHeader(&types.Header{ParentHash: newestBlock.Hash(), VersionRoot: manager.GetVersionRoot(), Height: 3})
+	err = db.SetBlock(block.Hash(), block)
+	err = manager.Save(block.Hash())
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(manager.accountCache))
 
@@ -234,15 +244,16 @@ func TestManager_Finalise_Save2(t *testing.T) {
 	root = manager.GetVersionRoot()
 	assert.NotEqual(t, emptyTrieRoot, root)
 	// save
-	block := &types.Block{}
-	block.SetHeader(&types.Header{VersionRoot: root})
-	err = db.SetBlock(b(12), block)
+	parentHash := block.Hash()
+	block = &types.Block{}
+	block.SetHeader(&types.Header{ParentHash: parentHash, VersionRoot: root, Height: 4})
+	err = db.SetBlock(block.Hash(), block)
 	assert.NoError(t, err)
-	err = manager.Save(b(12))
+	err = manager.Save(block.Hash())
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(manager.accountCache))
 	assert.Equal(t, 0, len(manager.processor.changeLogs))
-	manager = NewManager(b(12), db)
+	manager = NewManager(block.Hash(), db)
 	assert.Equal(t, root, manager.GetVersionRoot())
 }
 
@@ -256,14 +267,12 @@ func TestManager_Save_Reset(t *testing.T) {
 	account := manager.GetAccount(common.HexToAddress("0x1"))
 	account.SetBalance(big.NewInt(1))
 	assert.Equal(t, uint32(0), account.GetBaseVersion(BalanceLog))
-	account.(*SafeAccount).AppendTx(th(12))
-	assert.Equal(t, 1, len(account.GetTxHashList()))
 	err := manager.Finalise()
 	assert.NoError(t, err)
 	assert.Equal(t, uint32(1), account.GetBaseVersion(BalanceLog))
 	assert.Equal(t, uint32(0), account.(*SafeAccount).rawAccount.data.NewestRecords[BalanceLog].Height)
 	block := &types.Block{}
-	block.SetHeader(&types.Header{Height: 0, VersionRoot: manager.GetVersionRoot()})
+	block.SetHeader(&types.Header{ParentHash: defaultBlocks[1].Hash(), Height: 2, VersionRoot: manager.GetVersionRoot()})
 	err = db.SetBlock(block.Hash(), block)
 	assert.NoError(t, err)
 	err = manager.Save(block.Hash())
@@ -272,16 +281,16 @@ func TestManager_Save_Reset(t *testing.T) {
 	// save balance to 2 in block2
 	block1Hash := block.Hash()
 	manager.Reset(block1Hash)
-	//manager = NewManager(block1Hash, db)
+	// manager = NewManager(block1Hash, db)
 	account = manager.GetAccount(common.HexToAddress("0x1"))
 	account.SetBalance(big.NewInt(2))
 	assert.Equal(t, uint32(1), account.GetBaseVersion(BalanceLog))
 	err = manager.Finalise()
 	assert.NoError(t, err)
 	assert.Equal(t, uint32(2), account.GetBaseVersion(BalanceLog))
-	assert.Equal(t, uint32(1), account.(*SafeAccount).rawAccount.data.NewestRecords[BalanceLog].Height)
+	assert.Equal(t, uint32(3), account.(*SafeAccount).rawAccount.data.NewestRecords[BalanceLog].Height)
 	block = &types.Block{}
-	block.SetHeader(&types.Header{Height: 1, ParentHash: block1Hash, VersionRoot: manager.GetVersionRoot()})
+	block.SetHeader(&types.Header{Height: 3, ParentHash: block1Hash, VersionRoot: manager.GetVersionRoot()})
 	err = db.SetBlock(block.Hash(), block)
 	assert.NoError(t, err)
 	err = manager.Save(block.Hash())
@@ -292,25 +301,4 @@ func TestManager_Save_Reset(t *testing.T) {
 	account = manager.GetAccount(common.HexToAddress("0x1"))
 	assert.Equal(t, big.NewInt(1), account.GetBalance())
 	assert.Equal(t, uint32(1), account.GetBaseVersion(BalanceLog))
-	assert.Equal(t, 1, len(account.GetTxHashList()))
-	assert.Equal(t, th(12), account.GetTxHashList()[0])
-}
-
-func TestManager_SaveTxInAccount(t *testing.T) {
-	store.ClearData()
-	db := newDB()
-	manager := NewManager(common.Hash{}, db)
-
-	account1 := manager.GetAccount(defaultAccounts[0].Address)
-	account2 := manager.GetAccount(common.HexToAddress("0x1"))
-	assert.Equal(t, 2, len(account1.GetTxHashList()))
-	assert.Equal(t, 0, len(account2.GetTxHashList()))
-	manager.SaveTxInAccount(account1.GetAddress(), account2.GetAddress(), common.HexToHash("0x111"))
-	assert.Equal(t, 3, len(account1.GetTxHashList()))
-	assert.Equal(t, common.HexToHash("0x11"), account1.GetTxHashList()[0])
-	assert.Equal(t, 1, len(account2.GetTxHashList()))
-
-	// from is to
-	manager.SaveTxInAccount(account1.GetAddress(), account1.GetAddress(), common.HexToHash("0x222"))
-	assert.Equal(t, 4, len(account1.GetTxHashList()))
 }

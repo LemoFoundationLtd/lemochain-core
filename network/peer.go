@@ -11,9 +11,8 @@ import (
 )
 
 const (
-	DurShort  = 3 * time.Second
-	DurMiddle = 5 * time.Second
-	DurLong   = 10 * time.Second
+	DurShort = 3 * time.Second
+	DurLong  = 10 * time.Second
 )
 
 // ProtocolHandshake protocol handshake
@@ -228,6 +227,18 @@ func (p *peer) SendBlocks(blocks types.Blocks) int {
 		p.conn.Close()
 		return -2
 	}
+	// for test
+	// block := blocks[0]
+	// if len(block.Txs) > 0 {
+	// 	for _, tx := range block.Txs {
+	// 		if tx.Type() == uint8(2) { // 0: common tx; 1: vote tx; 2: register for cand*
+	// 			log.Debugf("block: %s", block.Json())
+	// 			// log.Debugf("block rlp: %s", common.ToHex(buf))
+	// 		} else {
+	// 			log.Debugf("block has other type txs")
+	// 		}
+	// 	}
+	// }
 	return 0
 }
 

@@ -33,7 +33,7 @@ type Interpreter struct {
 	gasTable params.GasTable
 	intPool  *intPool
 
-	readOnly   bool   // Whlemo to throw on stateful modifications
+	readOnly   bool   // Whether to throw on stateful modifications
 	returnData []byte // Last CALL's return data for subsequent reuse
 }
 
@@ -104,6 +104,7 @@ func (in *Interpreter) Run(contract *Contract, input []byte) (ret []byte, err er
 	)
 	contract.Input = input
 
+	// 设置跟踪器，以便回滚
 	if in.cfg.Debug {
 		defer func() {
 			if err != nil {
@@ -127,11 +128,15 @@ func (in *Interpreter) Run(contract *Contract, input []byte) (ret []byte, err er
 
 		// Get the operation from the jump table and validate the stack to ensure there are
 		// enough stack items available to perform the operation.
+		// 得到下一个需要执行的指令
 		op = contract.GetOp(pc)
+		// 通过指令表得到该指令对应的操作
 		operation := in.cfg.JumpTable[op]
+		// 检查该操作是否合法
 		if !operation.valid {
 			return nil, fmt.Errorf("invalid opcode 0x%x", int(op))
 		}
+		// 检查是否有足够的堆栈空间
 		if err := operation.validateStack(stack); err != nil {
 			return nil, err
 		}
@@ -143,13 +148,16 @@ func (in *Interpreter) Run(contract *Contract, input []byte) (ret []byte, err er
 		var memorySize uint64
 		// calculate the new memory size and expand the memory to fit
 		// the operation
+		// 计算内存的存储量，需要收费了
 		if operation.memorySize != nil {
+			// 返回的memSize为uint64类型的增加内存长度到memSize
 			memSize, overflow := bigUint64(operation.memorySize(stack))
 			if overflow {
 				return nil, errGasUintOverflow
 			}
 			// memory is expanded in words of 32 bytes. Gas
 			// is also calculated in words.
+			// 返回的是32的倍数的内存的增加数，因为内存增加是按照32个字节为单位增加的
 			if memorySize, overflow = math.SafeMul(toWordSize(memSize), 32); overflow {
 				return nil, errGasUintOverflow
 			}

@@ -2,6 +2,7 @@ package chain
 
 import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
@@ -15,6 +16,7 @@ import (
 func init() {
 	prv, _ := crypto.ToECDSA(common.FromHex("0xc21b6b2fbf230f665b936194d14da67187732bf9d28768aef1a3cbb26608f8aa"))
 	deputynode.SetSelfNodeKey(prv)
+	//deputynode.Instance()
 }
 
 func TestBlockChain_Reorg8ABC(t *testing.T) {
@@ -62,6 +64,10 @@ func TestBlockChain_Reorg8ABC(t *testing.T) {
 	info.height = 3
 	info.gasLimit = 1000
 	block32 := makeBlock(blockChain.db, info, false)
+
+	// assert.PanicsWithValue(t, "PARENT IS ERROR.", func() {
+	// 	blockChain.InsertChain(block32, true)
+	// })
 	err = blockChain.InsertChain(block32, true)
 	assert.NoError(t, err)
 	assert.NotNil(t, blockChain.chainForksHead[block31.Hash()])
@@ -1207,8 +1213,8 @@ func TestBlockChain_VerifyBodyNormal(t *testing.T) {
 		gasLimit:    1000000000,
 		deputyNodes: genesis.DeputyNodes,
 		txList: []*types.Transaction{
-			makeTx(tmp, accounts[0].Address, big.NewInt(30000)),
-			makeTx(tmp, accounts[1].Address, big.NewInt(40000)),
+			makeTx(tmp, accounts[0].Address, params.OrdinaryTx, big.NewInt(30000)),
+			makeTx(tmp, accounts[1].Address, params.OrdinaryTx, big.NewInt(40000)),
 		},
 		time:   1540893799,
 		author: genesis.MinerAddress(),
@@ -1241,8 +1247,8 @@ func TestBlockChain_VerifyBlockBalanceNotEnough(t *testing.T) {
 	}
 	block := makeBlock(blockChain.db, info, false)
 	block.Txs = []*types.Transaction{
-		makeTx(tmp, accounts[0].Address, big.NewInt(30000)),
-		makeTx(tmp, accounts[1].Address, big.NewInt(40000)),
+		makeTx(tmp, accounts[0].Address, params.OrdinaryTx, big.NewInt(30000)),
+		makeTx(tmp, accounts[1].Address, params.OrdinaryTx, big.NewInt(40000)),
 	}
 	block.Header.TxRoot = types.DeriveTxsSha(block.Txs)
 	err = blockChain.Verify(block)
@@ -1269,7 +1275,7 @@ func TestBlockChain_VerifyBlockBalanceNotSign(t *testing.T) {
 	}
 	block := makeBlock(blockChain.db, info, false)
 	block.Txs = []*types.Transaction{
-		types.NewTransaction(accounts[0].Address, common.Big2, 30000, common.Big2, []byte{}, 200, 1538210398, "", ""),
+		types.NewTransaction(accounts[0].Address, common.Big2, 30000, common.Big2, []byte{}, 0, 200, 1538210398, "", ""),
 	}
 	block.Header.TxRoot = types.DeriveTxsSha(block.Txs)
 	err = blockChain.Verify(block)
@@ -1295,8 +1301,8 @@ func TestBlockChain_VerifyBlockBalanceValidDeputy(t *testing.T) {
 		gasLimit:    1000000000,
 		deputyNodes: genesis.DeputyNodes,
 		txList: []*types.Transaction{
-			makeTx(tmp, accounts[0].Address, big.NewInt(30000)),
-			makeTx(tmp, accounts[1].Address, big.NewInt(40000)),
+			makeTx(tmp, accounts[0].Address, params.OrdinaryTx, big.NewInt(30000)),
+			makeTx(tmp, accounts[1].Address, params.OrdinaryTx, big.NewInt(40000)),
 		},
 		time:   1540893799,
 		author: genesis.MinerAddress(),
@@ -1326,8 +1332,8 @@ func TestBlockChain_VerifyBlockBalanceValidTx(t *testing.T) {
 		gasLimit:    1000000000,
 		deputyNodes: genesis.DeputyNodes,
 		txList: []*types.Transaction{
-			makeTx(tmp, accounts[0].Address, big.NewInt(30000)),
-			makeTx(tmp, accounts[1].Address, big.NewInt(40000)),
+			makeTx(tmp, accounts[0].Address, params.OrdinaryTx, big.NewInt(30000)),
+			makeTx(tmp, accounts[1].Address, params.OrdinaryTx, big.NewInt(40000)),
 		},
 		time:   1540893799,
 		author: genesis.MinerAddress(),

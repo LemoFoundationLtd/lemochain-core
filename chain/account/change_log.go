@@ -16,6 +16,11 @@ const (
 	CodeLog
 	AddEventLog
 	SuicideLog
+	VoteForLog
+	VotesLog
+	CandidateProfileLog
+	TxCountLog
+	LOG_TYPE_STOP
 )
 
 func init() {
@@ -24,6 +29,10 @@ func init() {
 	types.RegisterChangeLog(CodeLog, "CodeLog", decodeCode, decodeEmptyInterface, redoCode, undoCode)
 	types.RegisterChangeLog(AddEventLog, "AddEventLog", decodeEvent, decodeEmptyInterface, redoAddEvent, undoAddEvent)
 	types.RegisterChangeLog(SuicideLog, "SuicideLog", decodeEmptyInterface, decodeEmptyInterface, redoSuicide, undoSuicide)
+	types.RegisterChangeLog(VoteForLog, "VoteForLog", decodeAddress, decodeEmptyInterface, redoVoteFor, undoVoteFor)
+	types.RegisterChangeLog(VotesLog, "VotesLog", decodeBigInt, decodeEmptyInterface, redoVotes, undoVotes)
+	types.RegisterChangeLog(CandidateProfileLog, "CandidateProfileLog", decodeCandidateProfile, decodeEmptyInterface, redoCandidateProfile, undoCandidateProfile)
+	types.RegisterChangeLog(TxCountLog, "TxCountLog", decodeUInt32, decodeEmptyInterface, redoTxCount, undoTxCount)
 }
 
 // IsValuable returns true if the change log contains some data change
@@ -41,10 +50,20 @@ func IsValuable(log *types.ChangeLog) bool {
 	case CodeLog:
 		valuable = log.NewVal != nil && len(log.NewVal.(types.Code)) > 0
 	case AddEventLog:
-		valuable = log.NewVal != nil
+		valuable = log.NewVal != (*types.Event)(nil)
 	case SuicideLog:
 		oldAccount := log.OldVal.(*types.AccountData)
-		valuable = oldAccount != nil && (oldAccount.Balance != big.NewInt(0) || !isEmptyHash(oldAccount.CodeHash) || !isEmptyHash(oldAccount.StorageRoot))
+		valuable = oldAccount != nil && (big.NewInt(0).Cmp(oldAccount.Balance) != 0 || !isEmptyHash(oldAccount.CodeHash) || !isEmptyHash(oldAccount.StorageRoot))
+	case VotesLog:
+		oldVal := log.OldVal.(big.Int)
+		newVal := log.NewVal.(big.Int)
+		valuable = oldVal.Cmp(&newVal) != 0
+	case VoteForLog:
+		oldVal := log.OldVal.(common.Address)
+		newVal := log.NewVal.(common.Address)
+		valuable = oldVal != newVal
+	case CandidateProfileLog:
+		fallthrough
 	default:
 		valuable = log.OldVal != log.NewVal
 	}
@@ -88,6 +107,12 @@ func decodeCode(s *rlp.Stream) (interface{}, error) {
 	return types.Code(result), err
 }
 
+func decodeAddress(s *rlp.Stream) (interface{}, error) {
+	var result []byte
+	err := s.Decode(&result)
+	return common.BytesToAddress(result), err
+}
+
 // decodeEvents decode an interface which contains an *types.Event
 func decodeEvent(s *rlp.Stream) (interface{}, error) {
 	var result types.Event
@@ -95,9 +120,167 @@ func decodeEvent(s *rlp.Stream) (interface{}, error) {
 	return &result, err
 }
 
+func decodeCandidateProfile(s *rlp.Stream) (interface{}, error) {
+	_, size, _ := s.Kind()
+	result := make(types.CandidateProfile)
+	if size <= 0 {
+		return &result, nil
+	} else {
+		err := s.Decode(&result)
+		return &result, err
+	}
+}
+
+func decodeUInt32(s *rlp.Stream) (interface{}, error) {
+	var result uint32
+	err := s.Decode(&result)
+	return &result, err
+}
+
 //
 // ChangeLog definitions
 //
+
+func NewVotesLog(processor types.ChangeLogProcessor, account types.AccountAccessor, newVotes *big.Int) *types.ChangeLog {
+	return &types.ChangeLog{
+		LogType: VotesLog,
+		Address: account.GetAddress(),
+		Version: processor.GetNextVersion(VotesLog, account.GetAddress()),
+		OldVal:  *(new(big.Int).Set(account.GetVotes())),
+		NewVal:  *(new(big.Int).Set(newVotes)),
+	}
+}
+
+func redoVotes(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
+	newValue, ok := c.NewVal.(big.Int)
+	if !ok {
+		log.Errorf("expected NewVal big.Int, got %T", c.NewVal)
+		return types.ErrWrongChangeLogData
+	}
+	accessor := processor.GetAccount(c.Address)
+	accessor.SetVotes(&newValue)
+	return nil
+}
+
+func undoVotes(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
+	oldValue, ok := c.OldVal.(big.Int)
+	if !ok {
+		log.Errorf("expected OldVal big.Int, got %T", c.OldVal)
+		return types.ErrWrongChangeLogData
+	}
+	accessor := processor.GetAccount(c.Address)
+	accessor.SetVotes(&oldValue)
+	return nil
+}
+
+func NewVoteForLog(processor types.ChangeLogProcessor, account types.AccountAccessor, newVoteFor common.Address) *types.ChangeLog {
+	return &types.ChangeLog{
+		LogType: VoteForLog,
+		Address: account.GetAddress(),
+		Version: processor.GetNextVersion(VoteForLog, account.GetAddress()),
+		OldVal:  account.GetVoteFor(),
+		NewVal:  newVoteFor,
+	}
+}
+
+func redoVoteFor(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
+	newVal, ok := c.NewVal.(common.Address)
+	if !ok {
+		log.Errorf("expected NewVal common.Address, got %T", c.NewVal)
+		return types.ErrWrongChangeLogData
+	}
+	accessor := processor.GetAccount(c.Address)
+	accessor.SetVoteFor(newVal)
+	return nil
+}
+
+func undoVoteFor(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
+	oldVal, ok := c.OldVal.(common.Address)
+	if !ok {
+		log.Errorf("expected NewVal common.Address, got %T", c.NewVal)
+		return types.ErrWrongChangeLogData
+	}
+	accessor := processor.GetAccount(c.Address)
+	accessor.SetVoteFor(oldVal)
+	return nil
+}
+
+func cloneCandidateProfile(src types.CandidateProfile) types.CandidateProfile {
+	if src == nil {
+		return nil
+	}
+	result := make(types.CandidateProfile)
+	for k, v := range src {
+		result[k] = v
+	}
+	return result
+}
+
+func NewCandidateProfileLog(processor types.ChangeLogProcessor, account types.AccountAccessor, newProfile types.CandidateProfile) *types.ChangeLog {
+	oldVal := cloneCandidateProfile(account.GetCandidateProfile())
+	newProfile = cloneCandidateProfile(newProfile)
+	return &types.ChangeLog{
+		LogType: CandidateProfileLog,
+		Address: account.GetAddress(),
+		Version: processor.GetNextVersion(CandidateProfileLog, account.GetAddress()),
+		OldVal:  &oldVal,
+		NewVal:  &newProfile,
+	}
+}
+
+func redoCandidateProfile(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
+	newVal, ok := c.NewVal.(*types.CandidateProfile)
+	if !ok {
+		log.Errorf("expected NewVal *CandidateProfile, got %T", c.NewVal)
+		return types.ErrWrongChangeLogData
+	}
+	accessor := processor.GetAccount(c.Address)
+	accessor.SetCandidateProfile(*newVal)
+	return nil
+}
+
+func undoCandidateProfile(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
+	oldVal, ok := c.OldVal.(*types.CandidateProfile)
+	if !ok {
+		log.Errorf("expected NewVal map[string]string, got %T", c.NewVal)
+		return types.ErrWrongChangeLogData
+	}
+	accessor := processor.GetAccount(c.Address)
+	accessor.SetCandidateProfile(*oldVal)
+	return nil
+}
+
+func NewTxCountLog(processor types.ChangeLogProcessor, account types.AccountAccessor, newTxCount uint32) *types.ChangeLog {
+	return &types.ChangeLog{
+		LogType: TxCountLog,
+		Address: account.GetAddress(),
+		Version: processor.GetNextVersion(TxCountLog, account.GetAddress()),
+		OldVal:  account.GetTxCount(),
+		NewVal:  newTxCount,
+	}
+}
+
+func redoTxCount(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
+	newValue, ok := c.NewVal.(uint32)
+	if !ok {
+		log.Errorf("expected NewVal uint32, got %T", c.NewVal)
+		return types.ErrWrongChangeLogData
+	}
+	accessor := processor.GetAccount(c.Address)
+	accessor.SetTxCount(newValue)
+	return nil
+}
+
+func undoTxCount(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
+	oldValue, ok := c.OldVal.(uint32)
+	if !ok {
+		log.Errorf("expected OldVal uint32, got %T", c.OldVal)
+		return types.ErrWrongChangeLogData
+	}
+	accessor := processor.GetAccount(c.Address)
+	accessor.SetTxCount(oldValue)
+	return nil
+}
 
 // NewBalanceLog records balance change
 func NewBalanceLog(processor types.ChangeLogProcessor, account types.AccountAccessor, newBalance *big.Int) *types.ChangeLog {
@@ -132,6 +315,16 @@ func undoBalance(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 	return nil
 }
 
+func cloneBytes(src []byte) []byte {
+	if src == nil {
+		return nil
+	}
+
+	result := make([]byte, len(src))
+	copy(result, src)
+	return result
+}
+
 // NewStorageLog records contract storage value change
 func NewStorageLog(processor types.ChangeLogProcessor, account types.AccountAccessor, key common.Hash, newVal []byte) (*types.ChangeLog, error) {
 	oldValue, err := account.GetStorageState(key)
@@ -142,8 +335,8 @@ func NewStorageLog(processor types.ChangeLogProcessor, account types.AccountAcce
 		LogType: StorageLog,
 		Address: account.GetAddress(),
 		Version: processor.GetNextVersion(StorageLog, account.GetAddress()),
-		OldVal:  oldValue,
-		NewVal:  newVal,
+		OldVal:  cloneBytes(oldValue),
+		NewVal:  cloneBytes(newVal),
 		Extra:   key,
 	}, nil
 }

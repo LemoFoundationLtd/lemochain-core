@@ -17,6 +17,7 @@ lemochain-go项目是这种共识机制的Go语言实现，其控制台命令文
 
 ## 安装
 
+
 ### 配置编译环境
 - 安装`golang`，1.10版及以上
 - 在环境变量中配置工作目录`GOPATH`
@@ -49,14 +50,18 @@ go build
 	"sleepTime": "3000",
 	"timeout": "10000",
 	"dbUri": "root:123456@tcp(127.0.0.1:3306)/lemochain?charset=utf8mb4",
-	"dbDriver": "mysql"
+	"dbDriver": "mysql",
+	"snapshotBlock": "1000000",
+	"periodBlock":"1000"
 }
 ```
-- `chainID` LemoChain的ID
+- `chainID` LemoChain的ID，不能为0
 - `sleepTime` 收到区块后等待一定时间后再出块，以免区块中没有交易（后续版本将会改为根据交易池状态决定是否出块）
-- `timeout` 各节点出块的超时时间
+- `timeout` 各节点出块的超时时间，不能小于3秒(3000毫秒)
 - `dbUri` 数据库连接地址。格式为`[用户名]:[密码]@tcp([IP]:[端口号])/[数据库名]?charset=utf8mb4`
 - `dbDriver` 数据库类型
+- `snapshotBlock` 快照块高度
+- `periodBlock` 过渡期区块数
 
 ### 节点白名单
 节点启动后会自动连接这些节点，位于datadir根目录下，名为：`whitelist`  

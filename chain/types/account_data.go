@@ -7,6 +7,8 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"io"
 	"math/big"
+	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -22,10 +24,87 @@ type versionRecordMarshaling struct {
 	Height  hexutil.Uint32
 }
 
+//go:generate gencodec -type Candidate --field-override candidateMarshaling -out gen_candidate_json.go
 //go:generate gencodec -type AccountData --field-override accountDataMarshaling -out gen_account_data_json.go
 
 // AccountData is the Lemochain consensus representation of accounts.
 // These objects are stored in the store.
+
+const (
+	CandidateKeyIsCandidate  string = "isCandidate"
+	CandidateKeyNodeID       string = "nodeID"
+	CandidateKeyHost         string = "host"
+	CandidateKeyPort         string = "port"
+	CandidateKeyMinerAddress string = "minerAddress"
+)
+
+type Pair struct {
+	Key string
+	Val string
+}
+
+type CandidateProfile map[string]string
+
+func (a *CandidateProfile) Clone() *CandidateProfile {
+	if a == nil {
+		return nil
+	}
+
+	result := make(CandidateProfile)
+	for k, v := range *a {
+		result[k] = v
+	}
+	return &result
+}
+
+func (a *CandidateProfile) EncodeRLP(w io.Writer) error {
+	tmp := make([]Pair, 0)
+	if len(*a) <= 0 {
+		return rlp.Encode(w, tmp)
+	} else {
+		keys := make([]string, 0, len(*a))
+		for k, _ := range *a {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+
+		for index := 0; index < len(keys); index++ {
+			tmp = append(tmp, Pair{
+				Key: keys[index],
+				Val: (*a)[keys[index]],
+			})
+		}
+		return rlp.Encode(w, tmp)
+	}
+}
+
+func (a *CandidateProfile) DecodeRLP(s *rlp.Stream) error {
+	_, size, _ := s.Kind()
+	if size <= 0 {
+		return nil
+	}
+
+	dec := make([]Pair, 0)
+	err := s.Decode(&dec)
+	if err != nil {
+		return err
+	}
+
+	for index := 0; index < len(dec); index++ {
+		(*a)[dec[index].Key] = dec[index].Val
+	}
+	return nil
+}
+
+type Candidate struct {
+	Votes   *big.Int         `json:"votes"`
+	Profile CandidateProfile `json:"profile"`
+}
+
+type candidateMarshaling struct {
+	Votes *hexutil.Big10
+}
+
 type AccountData struct {
 	Address     common.Address `json:"address" gencodec:"required"`
 	Balance     *big.Int       `json:"balance" gencodec:"required"`
@@ -33,12 +112,15 @@ type AccountData struct {
 	StorageRoot common.Hash    `json:"root" gencodec:"required"` // MPT root of the storage trie
 	// It records the block height which contains any type of newest change log. It is updated in finalize step
 	NewestRecords map[ChangeLogType]VersionRecord `json:"records" gencodec:"required"`
-	// related transactions include income and outcome
-	TxHashList []common.Hash `json:"-"`
+
+	VoteFor   common.Address `json:"voteFor"`
+	Candidate Candidate      `json:"candidate"`
+	TxCount   uint32         `json:"txCount"`
 }
 
 type accountDataMarshaling struct {
 	Balance *hexutil.Big10
+	TxCount hexutil.Uint32
 }
 
 // rlpVersionRecord defines the fields which would be encode/decode by rlp
@@ -48,14 +130,21 @@ type rlpVersionRecord struct {
 	Height  uint32
 }
 
+type rlpCandidate struct {
+	Votes   *big.Int
+	Profile *CandidateProfile
+}
+
 // rlpAccountData defines the fields which would be encode/decode by rlp
 type rlpAccountData struct {
-	Address     common.Address
-	Balance     *big.Int
-	CodeHash    common.Hash
-	StorageRoot common.Hash
-	TxHashList  []common.Hash
-
+	Address       common.Address
+	Balance       *big.Int
+	CodeHash      common.Hash
+	StorageRoot   common.Hash
+	TxHashList    []common.Hash
+	VoteFor       common.Address
+	Candidate     rlpCandidate
+	TxCount       uint32
 	NewestRecords []rlpVersionRecord
 }
 
@@ -65,12 +154,20 @@ func (a *AccountData) EncodeRLP(w io.Writer) error {
 	for logType, record := range a.NewestRecords {
 		NewestRecords = append(NewestRecords, rlpVersionRecord{logType, record.Version, record.Height})
 	}
+
+	candidate := rlpCandidate{
+		Votes:   a.Candidate.Votes,
+		Profile: &(a.Candidate.Profile),
+	}
+
 	return rlp.Encode(w, rlpAccountData{
 		Address:       a.Address,
 		Balance:       a.Balance,
 		CodeHash:      a.CodeHash,
 		StorageRoot:   a.StorageRoot,
-		TxHashList:    a.TxHashList,
+		VoteFor:       a.VoteFor,
+		Candidate:     candidate,
+		TxCount:       a.TxCount,
 		NewestRecords: NewestRecords,
 	})
 }
@@ -78,10 +175,18 @@ func (a *AccountData) EncodeRLP(w io.Writer) error {
 // DecodeRLP implements rlp.Decoder.
 func (a *AccountData) DecodeRLP(s *rlp.Stream) error {
 	var dec rlpAccountData
+
+	profile := make(CandidateProfile)
+	dec.Candidate.Profile = &profile
+
 	err := s.Decode(&dec)
 	if err == nil {
-		a.Address, a.Balance, a.CodeHash, a.StorageRoot, a.TxHashList = dec.Address, dec.Balance, dec.CodeHash, dec.StorageRoot, dec.TxHashList
+		a.Address, a.Balance, a.CodeHash, a.StorageRoot, a.VoteFor, a.TxCount =
+			dec.Address, dec.Balance, dec.CodeHash, dec.StorageRoot, dec.VoteFor, dec.TxCount
 		a.NewestRecords = make(map[ChangeLogType]VersionRecord)
+
+		a.Candidate.Votes = dec.Candidate.Votes
+		a.Candidate.Profile = *dec.Candidate.Profile
 
 		for _, record := range dec.NewestRecords {
 			a.NewestRecords[ChangeLogType(record.LogType)] = VersionRecord{Version: record.Version, Height: record.Height}
@@ -93,16 +198,22 @@ func (a *AccountData) DecodeRLP(s *rlp.Stream) error {
 func (a *AccountData) Copy() *AccountData {
 	cpy := *a
 	cpy.Balance = new(big.Int).Set(a.Balance)
+
+	if a.Candidate.Votes != nil {
+		cpy.Candidate.Votes = new(big.Int).Set(a.Candidate.Votes)
+	}
+
+	if len(a.Candidate.Profile) > 0 {
+		cpy.Candidate.Profile = make(CandidateProfile)
+		for k, v := range a.Candidate.Profile {
+			cpy.Candidate.Profile[k] = v
+		}
+	}
+
 	if len(a.NewestRecords) > 0 {
 		cpy.NewestRecords = make(map[ChangeLogType]VersionRecord)
 		for logType, record := range a.NewestRecords {
 			cpy.NewestRecords[logType] = record
-		}
-	}
-	if len(a.TxHashList) > 0 {
-		cpy.TxHashList = make([]common.Hash, 0, len(a.TxHashList))
-		for _, hash := range a.TxHashList {
-			cpy.TxHashList = append(cpy.TxHashList, hash)
 		}
 	}
 	return &cpy
@@ -112,6 +223,12 @@ func (a *AccountData) String() string {
 	set := []string{
 		fmt.Sprintf("Address: %s", a.Address.String()),
 		fmt.Sprintf("Balance: %s", a.Balance.String()),
+		fmt.Sprintf("VoteFor: %s", a.VoteFor.String()),
+		fmt.Sprintf("TxCount: %s", strconv.Itoa(int(a.TxCount))),
+	}
+
+	if a.Candidate.Votes != nil {
+		set = append(set, fmt.Sprintf("Votes: %s", a.Candidate.Votes.String()))
 	}
 	if a.CodeHash != (common.Hash{}) {
 		set = append(set, fmt.Sprintf("CodeHash: %s", a.CodeHash.Hex()))
@@ -119,15 +236,30 @@ func (a *AccountData) String() string {
 	if a.StorageRoot != (common.Hash{}) {
 		set = append(set, fmt.Sprintf("StorageRoot: %s", a.StorageRoot.Hex()))
 	}
-	if len(a.TxHashList) > 0 {
-		set = append(set, fmt.Sprintf("TxHashList: %v", a.TxHashList))
-	}
+
 	if len(a.NewestRecords) > 0 {
 		records := make([]string, 0, len(a.NewestRecords))
 		for logType, record := range a.NewestRecords {
 			records = append(records, fmt.Sprintf("%s: {v: %d, h: %d}", logType, record.Version, record.Height))
 		}
 		set = append(set, fmt.Sprintf("NewestRecords: {%s}", strings.Join(records, ", ")))
+	}
+	if a.VoteFor != (common.Address{}) {
+		set = append(set, fmt.Sprintf("VoteFor: %s", a.VoteFor.String()))
+	}
+	if a.Candidate.Votes != nil || len(a.Candidate.Profile) != 0 {
+		set = append(set, fmt.Sprintf("Candidate: {Votes: %s, Profile: %v}", a.Candidate.Votes.String(), a.Candidate.Profile))
+	}
+	if a.TxCount != 0 {
+		set = append(set, fmt.Sprintf("TxCount: %d", a.TxCount))
+	}
+
+	if len(a.Candidate.Profile) > 0 {
+		records := make([]string, 0, len(a.Candidate.Profile))
+		for k, v := range a.Candidate.Profile {
+			records = append(records, fmt.Sprintf("%s => %s", k, v))
+		}
+		set = append(set, fmt.Sprintf("CandidateProfiles: {%s}", strings.Join(records, ", ")))
 	}
 
 	return fmt.Sprintf("{%s}", strings.Join(set, ", "))
@@ -140,6 +272,18 @@ func (c Code) String() string {
 }
 
 type AccountAccessor interface {
+	GetTxCount() uint32
+	SetTxCount(count uint32)
+
+	GetVoteFor() common.Address
+	SetVoteFor(addr common.Address)
+
+	GetVotes() *big.Int
+	SetVotes(votes *big.Int)
+
+	GetCandidateProfile() CandidateProfile
+	SetCandidateProfile(profile CandidateProfile)
+
 	GetAddress() common.Address
 	GetBalance() *big.Int
 	SetBalance(balance *big.Int)
@@ -153,7 +297,6 @@ type AccountAccessor interface {
 	SetStorageRoot(root common.Hash)
 	GetStorageState(key common.Hash) ([]byte, error)
 	SetStorageState(key common.Hash, value []byte) error
-	GetTxHashList() []common.Hash
 	IsEmpty() bool
 	GetSuicide() bool
 	SetSuicide(suicided bool)

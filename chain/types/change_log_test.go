@@ -14,6 +14,34 @@ type testAccount struct {
 	AccountData
 }
 
+func (f *testAccount) GetTxCount() uint32 { return f.GetTxCount() }
+
+func (f *testAccount) SetTxCount(count uint32) {
+	f.SetTxCount(count)
+}
+
+func (f *testAccount) GetVoteFor() common.Address { return f.GetVoteFor() }
+
+func (f *testAccount) SetVoteFor(addr common.Address) {
+	f.SetVoteFor(addr)
+}
+
+func (f *testAccount) GetVotes() *big.Int {
+	return f.GetVotes()
+}
+
+func (f *testAccount) SetVotes(votes *big.Int) {
+	f.SetVotes(votes)
+}
+
+func (f *testAccount) GetCandidateProfile() CandidateProfile {
+	return f.GetCandidateProfile()
+}
+
+func (f *testAccount) SetCandidateProfile(profile CandidateProfile) {
+	f.SetCandidateProfile(profile)
+}
+
 func (f *testAccount) GetAddress() common.Address  { return f.AccountData.Address }
 func (f *testAccount) GetBalance() *big.Int        { return f.AccountData.Balance }
 func (f *testAccount) SetBalance(balance *big.Int) { f.AccountData.Balance = balance }
@@ -32,7 +60,6 @@ func (f *testAccount) GetStorageRoot() common.Hash                         { ret
 func (f *testAccount) SetStorageRoot(root common.Hash)                     { f.AccountData.StorageRoot = root }
 func (f *testAccount) GetStorageState(key common.Hash) ([]byte, error)     { return nil, nil }
 func (f *testAccount) SetStorageState(key common.Hash, value []byte) error { return nil }
-func (f *testAccount) GetTxHashList() []common.Hash                        { return f.AccountData.TxHashList }
 func (f *testAccount) IsEmpty() bool {
 	for _, record := range f.AccountData.NewestRecords {
 		if record.Version != 0 {

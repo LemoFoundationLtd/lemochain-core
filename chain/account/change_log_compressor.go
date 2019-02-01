@@ -17,7 +17,7 @@ func MergeChangeLogs(logs types.ChangeLogSlice) types.ChangeLogSlice {
 	for addr, accountLogs := range logsByAccount {
 		newAccountLogs := merge(accountLogs)
 		newAccountLogs = removeUnchanged(newAccountLogs)
-		resetVersion(newAccountLogs)
+		// resetVersion(newAccountLogs)
 		logsByAccount[addr] = newAccountLogs
 	}
 	// sort all logs by account
@@ -33,20 +33,61 @@ func MergeChangeLogs(logs types.ChangeLogSlice) types.ChangeLogSlice {
 	return mergedLogs
 }
 
+func needMerge(logType types.ChangeLogType) bool {
+	if (logType == BalanceLog) ||
+		(logType == StorageLog) ||
+		(logType == VoteForLog) ||
+		(logType == VotesLog) ||
+		(logType == CandidateProfileLog) ||
+		(logType == TxCountLog) {
+		return true
+	} else {
+		return false
+	}
+}
+
 // merge traverses change logs and merges change log into the same type one which in front of it
 func merge(logs types.ChangeLogSlice) types.ChangeLogSlice {
 	result := make(types.ChangeLogSlice, 0)
+
+	combineResult := make([][]*types.ChangeLog, LOG_TYPE_STOP)
 	for _, log := range logs {
-		exist := result.FindByType(log)
-		if exist != nil && (log.LogType == BalanceLog || log.LogType == StorageLog) {
-			// update the exist one
-			exist.NewVal = log.NewVal
-			exist.Extra = log.Extra
+		if needMerge(log.LogType) {
+			if combineResult[log.LogType] == nil {
+				combineResult[log.LogType] = make([]*types.ChangeLog, 1)
+				combineResult[log.LogType][0] = log
+			} else {
+				combineResult[log.LogType][0].NewVal = log.NewVal
+				combineResult[log.LogType][0].Extra = log.Extra
+			}
 		} else {
-			result = append(result, log.Copy())
+			if combineResult[log.LogType] == nil {
+				combineResult[log.LogType] = make([]*types.ChangeLog, 0)
+			}
+			combineResult[log.LogType] = append(combineResult[log.LogType], log.Copy())
 		}
 	}
+
+	for i := 0; i < len(combineResult); i++ {
+		for j := 0; j < len(combineResult[i]); j++ {
+			result = append(result, combineResult[i][j].Copy())
+		}
+	}
+
 	return result
+
+	// result := make(types.ChangeLogSlice, 0)
+	// for _, log := range logs {
+	// 	exist := result.FindByType(log)
+	// 	if exist != nil && (log.LogType == BalanceLog || log.LogType == StorageLog) {
+	// 		// update the exist one
+	// 		exist.NewVal = log.NewVal
+	// 		exist.Extra = log.Extra
+	// 	} else {
+	// 		result = append(result, log.Copy())
+	// 	}
+	// }
+	// return result
 }
 
 // removeUnchanged removes the unchanged log

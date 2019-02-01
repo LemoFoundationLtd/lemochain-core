@@ -20,7 +20,6 @@ package jsre
 import (
 	crand "crypto/rand"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/main/jsre/deps"
@@ -313,33 +312,39 @@ func (self *JSRE) Evaluate(code string, w io.Writer) error {
 		val, err := vm.Run(code)
 		if err != nil {
 			prettyError(vm, err, w)
+		} else if self.isPromise(val) {
+			self.printPromiseResolve(vm, val, w)
+			return
 		} else {
-			err = self.printPromiseResolve(vm, val, w)
-			if err != nil {
-				prettyPrint(vm, val, w)
-			}
+			prettyPrint(vm, val, w)
 		}
 		fmt.Fprintln(w)
 	})
 	return fail
 }
 
-// printPromiseResolve calls the "then" function from the javascript promise object, then prints the result
-func (self *JSRE) printPromiseResolve(vm *otto.Otto, promise otto.Value, writer io.Writer) error {
+// isPromise test if the "then" property not exist
+func (self *JSRE) isPromise(promise otto.Value) bool {
 	if !promise.IsObject() {
-		return errors.New("not a promise")
+		return false
 	}
 	then, err := promise.Object().Get("then")
-	if err != nil || !then.IsFunction() {
-		return errors.New("not a promise")
-	}
+	return err == nil && then.IsFunction()
+}
 
-	_, err = then.Call(promise, func(call otto.FunctionCall) otto.Value {
+// printPromiseResolve calls the "then" function from the javascript promise object, then prints the result
+func (self *JSRE) printPromiseResolve(vm *otto.Otto, promise otto.Value, writer io.Writer) {
+	then, _ := promise.Object().Get("then")
+
+	_, err := then.Call(promise, func(call otto.FunctionCall) otto.Value {
 		prettyPrint(vm, call.Argument(0), writer)
 		fmt.Fprintln(writer)
 		return otto.UndefinedValue()
 	})
-	return err
+	if err != nil {
+		prettyError(vm, err, writer)
+		fmt.Fprintln(writer)
+	}
 }
 
 // Compile compiles and then runs a piece of JS code.

@@ -41,11 +41,14 @@ func (ps *peerSet) UnRegister(p *peer) {
 	ps.lock.Lock()
 	defer ps.lock.Unlock()
 
-	if _, ok := ps.peers[*p.NodeID()]; ok {
+	if peer, ok := ps.peers[*p.NodeID()]; ok {
+		peer.conn.Close()
 		delete(ps.peers, *p.NodeID())
 	}
 	if p.conn.NeedReConnect() {
-		ps.discover.SetReconnect(p.NodeID())
+		if err := ps.discover.SetReconnect(p.NodeID()); err != nil {
+			log.Infof("SetReconnect failed: %v", err)
+		}
 	}
 }
 

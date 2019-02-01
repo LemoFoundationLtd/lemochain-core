@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"github.com/stretchr/testify/assert"
+	"math/big"
 	"testing"
 	"time"
 )
@@ -68,7 +70,7 @@ func initDeputyNode(numNode int, height uint32) error {
 		IP:           nil,
 		Port:         7001,
 		Rank:         1,
-		Votes:        120,
+		Votes:        big.NewInt(120),
 	}
 	nodes[1] = &deputynode.DeputyNode{
 		MinerAddress: common.HexToAddress(block02MinerAddress),
@@ -76,7 +78,7 @@ func initDeputyNode(numNode int, height uint32) error {
 		IP:           nil,
 		Port:         7002,
 		Rank:         2,
-		Votes:        110,
+		Votes:        big.NewInt(110),
 	}
 	nodes[2] = &deputynode.DeputyNode{
 		MinerAddress: common.HexToAddress(block03MinerAddress),
@@ -84,7 +86,7 @@ func initDeputyNode(numNode int, height uint32) error {
 		IP:           nil,
 		Port:         7003,
 		Rank:         3,
-		Votes:        100,
+		Votes:        big.NewInt(100),
 	}
 	nodes[3] = &deputynode.DeputyNode{
 		MinerAddress: common.HexToAddress(block04MinerAddress),
@@ -92,7 +94,7 @@ func initDeputyNode(numNode int, height uint32) error {
 		IP:           nil,
 		Port:         7004,
 		Rank:         4,
-		Votes:        90,
+		Votes:        big.NewInt(90),
 	}
 	nodes[4] = &deputynode.DeputyNode{
 		MinerAddress: common.HexToAddress(block05MinerAddress),
@@ -100,7 +102,7 @@ func initDeputyNode(numNode int, height uint32) error {
 		IP:           nil,
 		Port:         7005,
 		Rank:         5,
-		Votes:        80,
+		Votes:        big.NewInt(80),
 	}
 
 	if numNode > 5 || numNode == 0 {
@@ -284,7 +286,7 @@ func TestDpovp_VerifyHeader01(t *testing.T) {
 	testBlock00, err := newTestBlock(dpovp, common.Hash{}, 0, common.HexToAddress(block01MinerAddress), uint32(time.Now().Unix()-10), deputy01Privkey, true)
 	assert.NoError(t, err)
 	// header := testBlock00.Header
-	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyHeader(testBlock00))
+	assert.Equal(t, ErrVerifyBlockFailed, dpovp.VerifyHeader(testBlock00))
 
 	// 验证父区块的高度为0，也就是父区块为创世区块情况
 	testBlock01, err := newTestBlock(dpovp, testBlock00.Hash(), 1, common.HexToAddress(block02MinerAddress), uint32(time.Now().Unix()-5), deputy02Privkey, true)
@@ -373,8 +375,8 @@ func TestDpovp_Seal(t *testing.T) {
 
 	TestBlockHeader := block01.Header // 得到block01头，为生成TestBlock所用
 	txs := []*types.Transaction{
-		signTransaction(types.NewTransaction(defaultAccounts[0], common.Big1, 2000000, common.Big2, []byte{12}, chainID, 1538210391, "aa", "aaa"), testPrivate),
-		makeTransaction(testPrivate, defaultAccounts[1], common.Big1, common.Big2, 1538210491, 2000000),
+		signTransaction(types.NewTransaction(defaultAccounts[0], common.Big1, 2000000, common.Big2, []byte{12}, 0, chainID, 1538210391, "aa", "aaa"), testPrivate),
+		makeTransaction(testPrivate, defaultAccounts[1], params.OrdinaryTx, common.Big1, common.Big2, 1538210491, 2000000),
 	}
 	block01.Txs = txs // 添加bock01交易
 	TestBlockChangeLog := block01.ChangeLogs

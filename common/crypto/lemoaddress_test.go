@@ -1,6 +1,8 @@
 package crypto
 
 import (
+	"fmt"
+	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -14,4 +16,11 @@ func TestWallet_GenerateAddress(t *testing.T) {
 		// t.Logf("LemoAddress=%v,\n publicKey=%v,\n privateKey=%v\n", addressKeyPair.LemoAddress, addressKeyPair.PublicKey, addressKeyPair.PrivateKey)
 
 	}
+}
+
+func TestGenerateAddress(t *testing.T) {
+	strAdd := "0x1001"
+	address, _ := common.StringToAddress(strAdd)
+	lemoAddress := address.String()
+	fmt.Println(lemoAddress)
 }

@@ -169,6 +169,126 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 	return ret, contract.Gas, err
 }
 
+// CallVoteTx voting transaction call
+func (evm *EVM) CallVoteTx(voter, node common.Address, gas uint64, initialBalance *big.Int) (leftgas uint64, err error) {
+	nodeAccount := evm.am.GetAccount(node)
+
+	profile := nodeAccount.GetCandidateProfile()
+	IsCandidate, ok := profile[types.CandidateKeyIsCandidate]
+	if !ok || IsCandidate == params.NotCandidateNode {
+		return gas, ErrOfNotCandidateNode
+	}
+	// var snapshot = evm.am.Snapshot()
+	voterAccount := evm.am.GetAccount(voter)
+	// Determine if the account has already voted
+	if (voterAccount.GetVoteFor() != common.Address{}) {
+		if voterAccount.GetVoteFor() == node {
+			return gas, ErrOfAgainVote
+		} else {
+			oldNode := voterAccount.GetVoteFor()
+			newNodeAccount := nodeAccount
+			// Change in votes
+			oldNodeAccount := evm.am.GetAccount(oldNode)
+			// reduce the number of votes for old candidate nodes
+			oldNodeVoters := new(big.Int).Sub(oldNodeAccount.GetVotes(), initialBalance)
+			oldNodeAccount.SetVotes(oldNodeVoters)
+			// Increase the number of votes for new candidate nodes
+			newNodeVoters := new(big.Int).Add(newNodeAccount.GetVotes(), initialBalance)
+			newNodeAccount.SetVotes(newNodeVoters)
+		}
+	} else { // First vote
+		// Increase the number of votes for candidate nodes
+		nodeVoters := new(big.Int).Add(nodeAccount.GetVotes(), initialBalance)
+		nodeAccount.SetVotes(nodeVoters)
+	}
+	// Set up voter account
+	voterAccount.SetVoteFor(node)
+
+	// if err != nil {
+	// 	evm.am.RevertToSnapshot(snapshot)
+	// }
+	return gas, err
+}
+
+// Candidate node account transaction call
+func (evm *EVM) RegisterOrUpdateToCandidate(candidateAddress, to common.Address, candiNode types.CandidateProfile, gas uint64, initialSenderBalance *big.Int) (leftgas uint64, err error) {
+	// Candidate node information
+	newIsCandidate, ok := candiNode[types.CandidateKeyIsCandidate]
+	if !ok {
+		newIsCandidate = params.IsCandidateNode
+	}
+	minerAddress, ok := candiNode[types.CandidateKeyMinerAddress]
+	if !ok {
+		minerAddress = candidateAddress.String()
+	}
+	nodeID, ok := candiNode[types.CandidateKeyNodeID]
+	if !ok {
+		return gas, ErrOfRegisterNodeID
+	}
+	host, ok := candiNode[types.CandidateKeyHost]
+	if !ok {
+		return gas, ErrOfRegisterHost
+	}
+	port, ok := candiNode[types.CandidateKeyPort]
+	if !ok {
+		return gas, ErrOfRegisterPort
+	}
+	// Checking the balance is not enough
+	if !evm.CanTransfer(evm.am, candidateAddress, params.RegisterCandidateNodeFees) {
+		return gas, ErrInsufficientBalance
+	}
+	// var snapshot = evm.am.Snapshot()
+
+	// Register as a candidate node account
+	nodeAccount := evm.am.GetAccount(candidateAddress)
+	// Check if the application address is already a candidate proxy node.
+	profile := nodeAccount.GetCandidateProfile()
+	IsCandidate, ok := profile[types.CandidateKeyIsCandidate]
+	// Set candidate node information if it is already a candidate node account
+	if ok && IsCandidate == params.IsCandidateNode {
+		// Determine whether to disqualify a candidate node
+		if newIsCandidate == params.NotCandidateNode {
+			profile[types.CandidateKeyIsCandidate] = params.NotCandidateNode
+			nodeAccount.SetCandidateProfile(profile)
+			// Set the number of votes to 0
+			nodeAccount.SetVotes(big.NewInt(0))
+			// Transaction costs
+			evm.Transfer(evm.am, candidateAddress, to, params.RegisterCandidateNodeFees)
+			return gas, nil
+		}
+
+		profile[types.CandidateKeyMinerAddress] = minerAddress
+		profile[types.CandidateKeyHost] = host
+		profile[types.CandidateKeyPort] = port
+		nodeAccount.SetCandidateProfile(profile)
+	} else {
+		// Register candidate nodes
+		newProfile := make(map[string]string, 5)
+		newProfile[types.CandidateKeyIsCandidate] = params.IsCandidateNode
+		newProfile[types.CandidateKeyMinerAddress] = minerAddress
+		newProfile[types.CandidateKeyNodeID] = nodeID
+		newProfile[types.CandidateKeyHost] = host
+		newProfile[types.CandidateKeyPort] = port
+		nodeAccount.SetCandidateProfile(newProfile)
+
+		oldNodeAddress := nodeAccount.GetVoteFor()
+
+		if (oldNodeAddress != common.Address{}) {
+			oldNodeAccount := evm.am.GetAccount(oldNodeAddress)
+			oldNodeVoters := new(big.Int).Sub(oldNodeAccount.GetVotes(), initialSenderBalance)
+			oldNodeAccount.SetVotes(oldNodeVoters)
+		}
+		nodeAccount.SetVoteFor(candidateAddress)
+		nodeAccount.SetVotes(initialSenderBalance)
+
+	}
+	evm.Transfer(evm.am, candidateAddress, to, params.RegisterCandidateNodeFees)
+	// if err != nil {
+	// 	evm.am.RevertToSnapshot(snapshot)
+	// }
+	return gas, nil
+}
+
 // CallCode executes the contract associated with the addr with the given input
 // as parameters. It also handles any necessary value transfer required and takes
 // the necessary steps to create accounts and reverses the state in case of an
@@ -315,7 +435,7 @@ func (evm *EVM) Create(caller ContractRef, code []byte, gas uint64, value *big.I
 	// Ensure there's no existing contract already at the designated address
 	contractAddr = crypto.CreateAddress(caller.GetAddress(), evm.TxHash)
 	// print out the contract address
-	log.Infof("Created the contract address = %v", contractAddr.String())
+	log.Warnf("Created the contract address = %v", contractAddr.String())
 	contractAccount := evm.am.GetAccount(contractAddr)
 	if !contractAccount.IsEmpty() {
 		return nil, common.Address{}, 0, ErrContractAddressCollision

@@ -63,12 +63,14 @@ type txdataMarshaling struct {
 	S          *hexutil.Big
 }
 
-func NewTransaction(to common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte, chainID uint16, expiration uint64, toName string, message string) *Transaction {
-	return newTransaction(0, TxVersion, chainID, &to, amount, gasLimit, gasPrice, data, expiration, toName, message)
+// 注：TxType：0为普通交易，1为节点投票交易，2为注册成为代理节点交易
+func NewTransaction(to common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte, TxType uint8, chainID uint16, expiration uint64, toName string, message string) *Transaction {
+	return newTransaction(TxType, TxVersion, chainID, &to, amount, gasLimit, gasPrice, data, expiration, toName, message)
 }
 
-func NewContractCreation(amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte, chainID uint16, expiration uint64, toName string, message string) *Transaction {
-	return newTransaction(0, TxVersion, chainID, nil, amount, gasLimit, gasPrice, data, expiration, toName, message)
+// 创建智能合约交易
+func NewContractCreation(amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte, TxType uint8, chainID uint16, expiration uint64, toName string, message string) *Transaction {
+	return newTransaction(TxType, TxVersion, chainID, nil, amount, gasLimit, gasPrice, data, expiration, toName, message)
 }
 
 func newTransaction(txType uint8, version uint8, chainID uint16, to *common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte, expiration uint64, toName string, message string) *Transaction {

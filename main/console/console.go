@@ -116,26 +116,6 @@ func (c *Console) init(chainID uint16) error {
 	return nil
 }
 
-func (c *Console) getFromJsre(varaiblePath string) (result *otto.Object, err error) {
-	path := strings.Split(varaiblePath, ".")
-	for _, name := range path {
-		var value otto.Value
-		if result == nil {
-			value, err = c.jsre.Get(name)
-		} else {
-			value, err = result.Get(name)
-		}
-		if err != nil {
-			return result, err
-		}
-		result = value.Object()
-		if result == nil {
-			return result, fmt.Errorf("%s is undefined", name)
-		}
-	}
-	return result, err
-}
-
 // consoleOutput is an override for the console.log and console.error methods to
 // stream the output into the configured output stream instead of stdout.
 func (c *Console) consoleOutput(call otto.FunctionCall) otto.Value {
@@ -154,24 +134,23 @@ func (c *Console) Welcome() {
 	fmt.Fprintf(c.printer, "Welcome to the lemo JavaScript console!\n")
 	c.jsre.Run(`Promise.all([
 		lemo.getNodeVersion(),
-		lemo.getSdkVersion(),
 		lemo.mine.getMiner(),
 		lemo.getCurrentBlock(false, false),
 		lemo.getCurrentBlock(true, false)
 	]).then(function(results) {
 		var msg = [
 			"node: v" + results[0],
-			"sdk: v" + results[1],
-			"minerAddress: " + results[2],
-			"current block: " + results[3].header.height + " " + results[3].header.hash + " (" + new Date(1000 * results[3].header.timestamp).toLocaleString() + ")",
-			"latest stable block: " + results[4].header.height + " " + results[4].header.hash + " (" + new Date(1000 * results[4].header.timestamp).toLocaleString() + ")"
+			"sdk: v" + lemo.SDK_VERSION,
+			"minerAddress: " + results[1],
+			"current block: " + results[2].header.height + " " + results[2].header.hash + " (" + new Date(1000 * results[2].header.timestamp).toLocaleString() + ")",
+			"latest stable block: " + results[3].header.height + " " + results[3].header.hash + " (" + new Date(1000 * results[3].header.timestamp).toLocaleString() + ")"
 		].join("\n") + "\n";
 		console.log(msg)
 	});`)
 	// List all the supported modules for the user to call
 	if modules, err := c.client.SupportedModules(); err == nil {
 		sort.Strings(modules)
-		fmt.Fprintln(c.printer, "lemo modules:", strings.Join(modules, ", "))
+		fmt.Fprintln(c.printer, "server side modules:", strings.Join(modules, ", "))
 	}
 	fmt.Fprintln(c.printer)
 }

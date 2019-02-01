@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"crypto/ecdsa"
 	"errors"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto/sha3"
 	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
+	"math/big"
 	"net"
 	"strconv"
 	"strings"
@@ -38,6 +40,21 @@ func SetSelfNodeKey(key *ecdsa.PrivateKey) {
 }
 
 //go:generate gencodec -type DeputyNode --field-override deputyNodeMarshaling -out gen_deputy_node_json.go
+//go:generate gencodec -type CandidateNode --field-override candidateNodeMarshaling -out gen_candidate_node_json.go
+
+// CandidateNode
+type CandidateNode struct {
+	IsCandidate  bool           `json:"isCandidate"      gencodec:"required"`
+	MinerAddress common.Address `json:"minerAddress"        gencodec:"required"` // 候选节点挖矿收益地址
+	NodeID       []byte         `json:"nodeID"         gencodec:"required"`
+	Host         string         `json:"host"             gencodec:"required"` // ip或者域名
+	Port         uint32         `json:"port"           gencodec:"required"`   // 端口
+}
+
+type candidateNodeMarshaling struct {
+	NodeID hexutil.Bytes
+	Port   hexutil.Uint32
+}
 
 // DeputyNode
 type DeputyNode struct {
@@ -46,7 +63,7 @@ type DeputyNode struct {
 	IP           net.IP         `json:"ip"             gencodec:"required"` // ip
 	Port         uint32         `json:"port"           gencodec:"required"` // 端口
 	Rank         uint32         `json:"rank"           gencodec:"required"` // 排名 从0开始
-	Votes        uint32         `json:"votes"          gencodec:"required"` // 得票数
+	Votes        *big.Int       `json:"votes"          gencodec:"required"` // 得票数
 }
 
 func (d *DeputyNode) Hash() (h common.Hash) {
@@ -83,11 +100,11 @@ type deputyNodeMarshaling struct {
 	IP     hexutil.IP
 	Port   hexutil.Uint32
 	Rank   hexutil.Uint32
-	Votes  hexutil.Uint32
+	Votes  *hexutil.Big10
 }
 
 type DeputyNodesRecord struct {
-	height uint32
+	height uint32 // 0, 100W+1K, 200W+1K, 300W+1K, 400W+1K...
 	nodes  DeputyNodes
 }
 
@@ -186,10 +203,8 @@ func (d *Manager) GetSlot(height uint32, firstAddress, nextAddress common.Addres
 
 // TimeToHandOutRewards 是否该发出块奖励了
 func (d *Manager) TimeToHandOutRewards(height uint32) bool {
-	// d.lock.Lock()
-	// defer d.lock.Unlock()
 	for i := 1; i < len(d.DeputyNodesList); i++ {
-		if d.DeputyNodesList[i].height+1000+1 == height {
+		if d.DeputyNodesList[i].height+params.PeriodBlock == height {
 			return true
 		}
 	}

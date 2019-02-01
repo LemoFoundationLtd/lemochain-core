@@ -8,6 +8,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"math/big"
+	"math/rand"
 	"os"
 	"time"
 )
@@ -26,8 +27,8 @@ func ClearData() {
 		failCnt = failCnt + 1
 	}
 
-	dns := "root:123123@tcp(localhost:3306)/lemochain?charset=utf8mb4"
-	db := NewMySqlDB(DRIVER_MYSQL, dns)
+	//dns := "root:123123@tcp(localhost:3306)/lemochain?charset=utf8mb4"
+	db := NewMySqlDB(DRIVER_MYSQL, DNS_MYSQL)
 	db.Clear()
 	db.Close()
 }
@@ -40,6 +41,30 @@ func CreateBlock(hash common.Hash, parent common.Hash, height uint32) *types.Blo
 	block := &types.Block{}
 	block.SetHeader(header)
 	return block
+}
+
+func GetRandomString(len int) string {
+	str := "0123456789abcdef"
+	bytes := []byte(str)
+	result := []byte{'0', 'x'}
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	for i := 0; i < len; i++ {
+		result = append(result, bytes[r.Intn(16)])
+	}
+	return string(result)
+}
+
+func NewBlockBatch(size int) []*types.Block {
+	result := make([]*types.Block, 0, size+1)
+
+	str := GetRandomString(64)
+	hash := common.HexToHash(str)
+	result = append(result, CreateBlock(hash, common.Hash{}, 0))
+
+	for index := 1; index <= size; index++ {
+		result = append(result, CreateBlock(common.HexToHash(GetRandomString(64)), result[index-1].Hash(), uint32(index)))
+	}
+	return result
 }
 
 func GetBlock0() *types.Block {
@@ -59,6 +84,18 @@ func GetBlock2() *types.Block {
 	return CreateBlock(childHash, parentBlock.Hash(), 2)
 }
 
+func GetBlock3() *types.Block {
+	parentBlock := GetBlock2()
+	childHash := common.HexToHash("33333333333333333")
+	return CreateBlock(childHash, parentBlock.Hash(), 3)
+}
+
+func GetBlock4() *types.Block {
+	parentBlock := GetBlock3()
+	childHash := common.HexToHash("44444444444444444")
+	return CreateBlock(childHash, parentBlock.Hash(), 4)
+}
+
 func GetAccount(address string, balance int64, version uint32) *types.AccountData {
 	newestRecords := make(map[types.ChangeLogType]types.VersionRecord)
 	newestRecords[0] = types.VersionRecord{Version: version, Height: 100}
@@ -68,10 +105,6 @@ func GetAccount(address string, balance int64, version uint32) *types.AccountDat
 		NewestRecords: newestRecords,
 		CodeHash:      common.HexToHash("0x1d5f11eaa13e02cdca886181dc38ab4cb8cf9092e86c000fb42d12c8b504500e"),
 		StorageRoot:   common.HexToHash("0xcbeb7c7e36b846713bc99b8fa527e8d552e31bfaa1ac0f2b773958cda3aba3ed"),
-		TxHashList: []common.Hash{
-			common.HexToHash("0x11"),
-			common.HexToHash("0x22"),
-		},
 	}
 }
 

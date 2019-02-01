@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/ecdsa"
 	"encoding/binary"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/common/mclock"
@@ -101,7 +102,9 @@ func (p *Peer) safeClose() {
 	}
 	if needClose {
 		close(p.stopCh)
-		p.conn.Close()
+		if err := p.conn.Close(); err != nil {
+			log.Infof("close connection failed: %v", err)
+		}
 	}
 }
 
@@ -151,7 +154,9 @@ func (p *Peer) ReadMsg() (msg *Msg, err error) {
 
 // readMsg read message from net stream
 func (p *Peer) readMsg() (msg *Msg, err error) {
-	p.conn.SetReadDeadline(time.Now().Add(frameReadTimeout))
+	if err = p.conn.SetReadDeadline(time.Now().Add(frameReadTimeout)); err != nil {
+		return msg, err
+	}
 	// read PackagePrefix and package length
 	headBuf := make([]byte, len(PackagePrefix)+PackageLength) // 6 bytes
 	if _, err := io.ReadFull(p.conn, headBuf); err != nil {
@@ -166,6 +171,9 @@ func (p *Peer) readMsg() (msg *Msg, err error) {
 	length := binary.BigEndian.Uint32(headBuf[2:])
 	if length == 0 {
 		return msg, ErrUnavailablePackage
+	}
+	if length > params.MaxPackageLength {
+		return msg, ErrLengthOverflow
 	}
 	// read actual encoded content
 	content := make([]byte, length)

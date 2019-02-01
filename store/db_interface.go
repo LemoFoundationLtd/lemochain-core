@@ -27,13 +27,13 @@ type MySqlDB struct {
 func NewMySqlDB(driver string, dns string) *MySqlDB {
 	db, err := Open(driver, dns)
 	if err != nil {
-		panic("OPEN MYSQL DATABASE ERROR.")
-	} else {
-		return &MySqlDB{
-			engine: db,
-			driver: driver,
-			dns:    dns,
-		}
+		panic("OPEN MYSQL DATABASE ERROR." + err.Error())
+	}
+
+	return &MySqlDB{
+		engine: db,
+		driver: driver,
+		dns:    dns,
 	}
 }
 
@@ -64,13 +64,78 @@ func (db *MySqlDB) GetIndex(key []byte) (int, []byte, int64, error) {
 	return flg, val, pos, nil
 }
 
-func (db *MySqlDB) Clear() error {
-	_, err := db.engine.Exec("DELETE FROM t_kv")
+var txsql string = "SELECT tx_block_key, tx_val, tx_ver, tx_st FROM t_tx"
+
+func (db *MySqlDB) TxSet(hash, blockHash, from, to string, val []byte, ver int64, st int64) error {
+	_, err := db.engine.Exec("REPLACE INTO t_tx(tx_key, tx_block_key, tx_from, tx_to, tx_val, tx_ver, tx_st) VALUES (?,?,?,?,?,?,?)", hash, blockHash, from, to, val, ver, st)
 	if err != nil {
 		return err
 	} else {
 		return nil
 	}
+}
+
+func (db *MySqlDB) TxGetByHash(key string) (string, []byte, int64, error) {
+	row := db.engine.QueryRow(txsql+" WHERE tx_key = ?", key)
+	var hash string
+	var val []byte
+	var ver int64
+	var st int64
+	err := row.Scan(&hash, &val, &ver, &st)
+	if err == sql.ErrNoRows {
+		return "", nil, -1, nil
+	}
+
+	if err != nil {
+		return "", nil, -1, err
+	}
+
+	return hash, val, st, nil
+}
+
+func (db *MySqlDB) TxGetByAddr(addr string, index int, size int) ([]string, [][]byte, []int64, error) {
+	stmt, err := db.engine.Prepare(txsql + " WHERE tx_from = ? or tx_to = ? ORDER BY tx_ver ASC LIMIT ?, ?")
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	rows, err := stmt.Query(addr, addr, index, size)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	resultHash := make([]string, 0)
+	resultVal := make([][]byte, 0)
+	resultSt := make([]int64, 0)
+	for rows.Next() {
+		var hash string
+		var val []byte
+		var ver int64
+		var st int64
+		err := rows.Scan(&hash, &val, &ver, &st)
+		if err != nil {
+			return nil, nil, nil, err
+		} else {
+			resultHash = append(resultHash, hash)
+			resultVal = append(resultVal, val)
+			resultSt = append(resultSt, st)
+		}
+	}
+	return resultHash, resultVal, resultSt, nil
+}
+
+func (db *MySqlDB) Clear() error {
+	_, err := db.engine.Exec("DELETE FROM t_kv")
+	if err != nil {
+		return err
+	}
+
+	_, err = db.engine.Exec("DELETE FROM t_tx")
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (db *MySqlDB) Close() {

@@ -2,6 +2,7 @@ package types
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"math/big"
 	"testing"
@@ -17,11 +18,11 @@ var (
 	testPrivate, _ = crypto.HexToECDSA("432a86ab8765d82415a803e29864dcfc1ed93dac949abf6f95a583179f27e4bb") // secp256k1.V = 1
 	testAddr       = crypto.PubkeyToAddress(testPrivate.PublicKey)                                         // 0x0107134b9cdd7d89f83efa6175f9b3552f29094c
 
-	testTx = NewTransaction(common.HexToAddress("0x1"), common.Big1, 100, common.Big2, []byte{12}, 200, 1544584596, "aa", "aaa")
+	testTx = NewTransaction(common.HexToAddress("0x1"), common.Big1, 100, common.Big2, []byte{12}, 0, 200, 1544584596, "aa", "aaa")
 
 	bigNum, _ = new(big.Int).SetString("111111111111111111111111111111111111111111111111111111111111", 16)
 	bigString = "888888888888888888888888888888888888888888888888888888888888"
-	testTxBig = NewTransaction(common.HexToAddress("0x1000000000000000000000000000000000000000"), bigNum, 100, bigNum, []byte(bigString), 200, 1544584596, bigString, bigString)
+	testTxBig = NewTransaction(common.HexToAddress("0x1000000000000000000000000000000000000000"), bigNum, 100, bigNum, []byte(bigString), 0, 200, 1544584596, bigString, bigString)
 )
 
 func ExpirationFromNow() uint64 {
@@ -30,7 +31,7 @@ func ExpirationFromNow() uint64 {
 
 func TestNewTransaction(t *testing.T) {
 	expiration := ExpirationFromNow()
-	tx := NewTransaction(common.HexToAddress("0x1"), common.Big1, 100, common.Big2, []byte{12}, 200, expiration, "aa", "")
+	tx := NewTransaction(common.HexToAddress("0x1"), common.Big1, 100, common.Big2, []byte{12}, 0, 200, expiration, "aa", "")
 	assert.Equal(t, uint8(0), tx.Type())
 	assert.Equal(t, TxVersion, tx.Version())
 	assert.Equal(t, uint16(200), tx.ChainID())
@@ -47,7 +48,7 @@ func TestNewTransaction(t *testing.T) {
 
 func TestNewContractCreation(t *testing.T) {
 	expiration := ExpirationFromNow()
-	tx := NewContractCreation(common.Big1, 100, common.Big2, []byte{12}, 200, expiration, "aa", "")
+	tx := NewContractCreation(common.Big1, 100, common.Big2, []byte{12}, 0, 200, expiration, "aa", "")
 	assert.Equal(t, uint8(0), tx.Type())
 	assert.Equal(t, TxVersion, tx.Version())
 	assert.Equal(t, uint16(200), tx.ChainID())
@@ -236,4 +237,6 @@ func TestParseV(t *testing.T) {
 	assert.Equal(t, uint8(0), version)
 	assert.Equal(t, uint8(0), secp256k1V)
 	assert.Equal(t, uint16(0), chainID)
+
+	fmt.Println(crypto.GenerateAddress())
 }

@@ -5,6 +5,7 @@ package deputynode
 import (
 	"encoding/json"
 	"errors"
+	"math/big"
 	"net"
 
 	"github.com/LemoFoundationLtd/lemochain-go/common"
@@ -21,7 +22,7 @@ func (d DeputyNode) MarshalJSON() ([]byte, error) {
 		IP           hexutil.IP     `json:"ip"             gencodec:"required"`
 		Port         hexutil.Uint32 `json:"port"           gencodec:"required"`
 		Rank         hexutil.Uint32 `json:"rank"           gencodec:"required"`
-		Votes        hexutil.Uint32 `json:"votes"          gencodec:"required"`
+		Votes        *hexutil.Big10 `json:"votes"          gencodec:"required"`
 	}
 	var enc DeputyNode
 	enc.MinerAddress = d.MinerAddress
@@ -29,7 +30,7 @@ func (d DeputyNode) MarshalJSON() ([]byte, error) {
 	enc.IP = hexutil.IP(d.IP)
 	enc.Port = hexutil.Uint32(d.Port)
 	enc.Rank = hexutil.Uint32(d.Rank)
-	enc.Votes = hexutil.Uint32(d.Votes)
+	enc.Votes = (*hexutil.Big10)(d.Votes)
 	return json.Marshal(&enc)
 }
 
@@ -41,7 +42,7 @@ func (d *DeputyNode) UnmarshalJSON(input []byte) error {
 		IP           *hexutil.IP     `json:"ip"             gencodec:"required"`
 		Port         *hexutil.Uint32 `json:"port"           gencodec:"required"`
 		Rank         *hexutil.Uint32 `json:"rank"           gencodec:"required"`
-		Votes        *hexutil.Uint32 `json:"votes"          gencodec:"required"`
+		Votes        *hexutil.Big10  `json:"votes"          gencodec:"required"`
 	}
 	var dec DeputyNode
 	if err := json.Unmarshal(input, &dec); err != nil {
@@ -70,6 +71,6 @@ func (d *DeputyNode) UnmarshalJSON(input []byte) error {
 	if dec.Votes == nil {
 		return errors.New("missing required field 'votes' for DeputyNode")
 	}
-	d.Votes = uint32(*dec.Votes)
+	d.Votes = (*big.Int)(dec.Votes)
 	return nil
 }

@@ -16,19 +16,19 @@ import (
 func writeFile(file string, context string) {
 	datadir := filepath.Join(os.TempDir(), "datadir")
 	file = filepath.Join(datadir, file)
-	ioutil.WriteFile(file, []byte(context), 777)
+	_ = ioutil.WriteFile(file, []byte(context), 777)
 }
 
 func removeFile(file string) {
 	datadir := filepath.Join(os.TempDir(), "datadir")
 	file = filepath.Join(datadir, file)
-	os.Remove(file)
+	_ = os.Remove(file)
 }
 
 func newDiscover() *DiscoverManager {
 	datadir := filepath.Join(os.TempDir(), "datadir")
 	if _, err := os.Stat(datadir); err != nil {
-		os.MkdirAll(datadir, 777)
+		_ = os.MkdirAll(datadir, 777)
 	}
 	return NewDiscoverManager(datadir)
 }

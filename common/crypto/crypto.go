@@ -186,7 +186,7 @@ func ValidateSignatureValues(v byte, r, s *big.Int) bool {
 		return false
 	}
 	// Allow r to be in full N range
-	return r.Cmp(secp256k1_N) < 0 && s.Cmp(secp256k1_N) < 0 && (v == 0 || v == 1)
+	return r.Cmp(secp256k1_N) < 0 && s.Cmp(secp256k1_N) < 0 && (v == 0 || v == 1 || v == 2)
 }
 
 func PubkeyToAddress(p ecdsa.PublicKey) common.Address {

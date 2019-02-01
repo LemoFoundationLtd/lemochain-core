@@ -13,6 +13,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/flag"
 	"github.com/LemoFoundationLtd/lemochain-go/common/flock"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
+	"github.com/LemoFoundationLtd/lemochain-go/main/config"
 	"github.com/LemoFoundationLtd/lemochain-go/network"
 	"github.com/LemoFoundationLtd/lemochain-go/network/p2p"
 	"github.com/LemoFoundationLtd/lemochain-go/network/rpc"
@@ -25,12 +26,6 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-)
-
-const ConfigGuideUrl = "Please visit https://github.com/LemoFoundationLtd/lemochain-go#configuration-file for detail"
-
-var (
-	ErrConfig = errors.New(`file "config.json" format error.` + ConfigGuideUrl)
 )
 
 type Node struct {
@@ -78,14 +73,12 @@ type Node struct {
 	lock     sync.RWMutex
 }
 
-func initConfig(flags flag.CmdFlags) (*Config, *ConfigFromFile, *miner.MineConfig) {
+func initConfig(flags flag.CmdFlags) (*Config, *config.ConfigFromFile, *miner.MineConfig) {
 	cfg := getNodeConfig(flags)
 	deputynode.SetSelfNodeKey(cfg.NodeKey())
 	cfg.P2P.PrivateKey = deputynode.GetSelfNodeKey()
 	log.Infof("Local nodeID: %s", common.ToHex(deputynode.GetSelfNodeID()))
-
-	filePath := filepath.Join(cfg.DataDir, "config.json")
-	configFromFile, err := readConfigFile(filePath)
+	configFromFile, err := config.ReadConfigFile(cfg.DataDir)
 	if err != nil {
 		panic(fmt.Sprintf("read config.json error: %v", err))
 	}
@@ -150,7 +143,7 @@ func initDeputyNodes(db protocol.ChainDB) {
 
 func New(flags flag.CmdFlags) *Node {
 	cfg, configFromFile, mineCfg := initConfig(flags)
-	db := initDb(cfg.DataDir, configFromFile.DbDriver, configFromFile.DbDns)
+	db := initDb(cfg.DataDir, configFromFile.DbDriver, configFromFile.DbUri)
 	// read genesis block
 	genesisBlock := getGenesis(db)
 	if genesisBlock == nil {
@@ -322,7 +315,9 @@ func (n *Node) startIPC(apis []rpc.API) error {
 
 func (n *Node) stopIPC() {
 	if n.ipcListener != nil {
-		n.ipcListener.Close()
+		if err := n.ipcListener.Close(); err != nil {
+			log.Errorf("close ipcListener failed: %v", err)
+		}
 		n.ipcListener = nil
 		log.Info("IPC endpoint closed", "endpoint", n.ipcEndpoint)
 	}
@@ -367,7 +362,9 @@ func (n *Node) startHTTP(endpoint string, apis []rpc.API, cors []string, vhosts 
 
 func (n *Node) stopHTTP() {
 	if n.httpListener != nil {
-		n.httpListener.Close()
+		if err := n.httpListener.Close(); err != nil {
+			log.Errorf("close httpListener failed: %v", err)
+		}
 		n.httpListener = nil
 
 		log.Info("HTTP endpoint closed", "url", fmt.Sprintf("http://%s", n.httpEndpoint))

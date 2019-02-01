@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
+	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
@@ -50,7 +51,7 @@ func newRawNode(nodeID *NodeID, endpoint string) *RawNode {
 
 // String string formatter
 func (n *RawNode) String() string {
-	idStr := common.Bytes2Hex(n.NodeID[:])
+	idStr := fmt.Sprintf("%x", n.NodeID[:])
 	return idStr + "@" + n.Endpoint
 }
 
@@ -332,7 +333,11 @@ func readFile(path string) []string {
 	if err != nil {
 		return nil
 	}
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			log.Infof("close file failed: %v", err)
+		}
+	}()
 
 	list := make([]string, 0, MaxNodeCount)
 	buf := bufio.NewReader(f)
@@ -395,18 +400,26 @@ func (m *DiscoverManager) writeFindFile() {
 
 	path := filepath.Join(m.dataDir, FindFile)
 	// open file
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 666) // read and write
+	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0666) // read and write
 	if err != nil {
 		return
 	}
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			log.Infof("close file failed: %v", err)
+		}
+	}()
 
 	// write file
 	buf := bufio.NewWriter(f)
 	for _, n := range list {
-		buf.WriteString(n + "\n")
+		if _, err := buf.WriteString(n + "\n"); err != nil {
+			log.Infof("write file failed: %v", err)
+		}
 	}
-	buf.Flush()
+	if err := buf.Flush(); err != nil {
+		log.Infof("write file failed: %v", err)
+	}
 }
 
 // checkNodeString verify invalid

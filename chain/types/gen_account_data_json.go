@@ -21,7 +21,9 @@ func (a AccountData) MarshalJSON() ([]byte, error) {
 		CodeHash      common.Hash                     `json:"codeHash" gencodec:"required"`
 		StorageRoot   common.Hash                     `json:"root" gencodec:"required"`
 		NewestRecords map[ChangeLogType]VersionRecord `json:"records" gencodec:"required"`
-		TxHashList    []common.Hash                   `json:"-"`
+		VoteFor       common.Address                  `json:"voteFor"`
+		Candidate     Candidate                       `json:"candidate"`
+		TxCount       hexutil.Uint32                  `json:"txCount"`
 	}
 	var enc AccountData
 	enc.Address = a.Address
@@ -29,7 +31,9 @@ func (a AccountData) MarshalJSON() ([]byte, error) {
 	enc.CodeHash = a.CodeHash
 	enc.StorageRoot = a.StorageRoot
 	enc.NewestRecords = a.NewestRecords
-	enc.TxHashList = a.TxHashList
+	enc.VoteFor = a.VoteFor
+	enc.Candidate = a.Candidate
+	enc.TxCount = hexutil.Uint32(a.TxCount)
 	return json.Marshal(&enc)
 }
 
@@ -41,7 +45,9 @@ func (a *AccountData) UnmarshalJSON(input []byte) error {
 		CodeHash      *common.Hash                    `json:"codeHash" gencodec:"required"`
 		StorageRoot   *common.Hash                    `json:"root" gencodec:"required"`
 		NewestRecords map[ChangeLogType]VersionRecord `json:"records" gencodec:"required"`
-		TxHashList    []common.Hash                   `json:"-"`
+		VoteFor       *common.Address                 `json:"voteFor"`
+		Candidate     *Candidate                      `json:"candidate"`
+		TxCount       *hexutil.Uint32                 `json:"txCount"`
 	}
 	var dec AccountData
 	if err := json.Unmarshal(input, &dec); err != nil {
@@ -67,8 +73,14 @@ func (a *AccountData) UnmarshalJSON(input []byte) error {
 		return errors.New("missing required field 'records' for AccountData")
 	}
 	a.NewestRecords = dec.NewestRecords
-	if dec.TxHashList != nil {
-		a.TxHashList = dec.TxHashList
+	if dec.VoteFor != nil {
+		a.VoteFor = *dec.VoteFor
+	}
+	if dec.Candidate != nil {
+		a.Candidate = *dec.Candidate
+	}
+	if dec.TxCount != nil {
+		a.TxCount = uint32(*dec.TxCount)
 	}
 	return nil
 }

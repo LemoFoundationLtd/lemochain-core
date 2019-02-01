@@ -72,6 +72,15 @@ func NewAccount(db protocol.ChainDB, address common.Address, data *types.Account
 	if data.NewestRecords == nil {
 		data.NewestRecords = make(map[types.ChangeLogType]types.VersionRecord)
 	}
+
+	if data.Candidate.Profile == nil {
+		data.Candidate.Profile = make(types.CandidateProfile)
+	}
+
+	if data.Candidate.Votes == nil {
+		data.Candidate.Votes = new(big.Int)
+	}
+
 	return &Account{
 		data:          data,
 		db:            db,
@@ -100,6 +109,38 @@ func (a *Account) String() string {
 	return a.data.String()
 }
 
+func (a *Account) GetTxCount() uint32 { return a.data.TxCount }
+
+func (a *Account) SetTxCount(count uint32) {
+	a.data.TxCount = count
+}
+
+func (a *Account) GetVoteFor() common.Address { return a.data.VoteFor }
+
+func (a *Account) SetVoteFor(addr common.Address) {
+	a.data.VoteFor = addr
+}
+
+func (a *Account) GetVotes() *big.Int {
+	return a.data.Candidate.Votes
+}
+
+func (a *Account) SetVotes(votes *big.Int) {
+	a.data.Candidate.Votes = votes
+}
+
+func (a *Account) GetCandidateProfile() types.CandidateProfile {
+	if a.data.Candidate.Profile == nil {
+		return make(types.CandidateProfile)
+	} else {
+		return a.data.Candidate.Profile
+	}
+}
+
+func (a *Account) SetCandidateProfile(profile types.CandidateProfile) {
+	a.data.Candidate.Profile = profile
+}
+
 // Implement AccountAccessor. Access Account without changelog
 func (a *Account) GetAddress() common.Address { return a.data.Address }
 func (a *Account) GetBalance() *big.Int       { return new(big.Int).Set(a.data.Balance) }
@@ -111,9 +152,10 @@ func (a *Account) GetBaseVersion(logType types.ChangeLogType) uint32 {
 func (a *Account) SetVersion(logType types.ChangeLogType, version, blockHeight uint32) {
 	a.data.NewestRecords[logType] = types.VersionRecord{Version: version, Height: blockHeight}
 }
-func (a *Account) GetSuicide() bool             { return a.suicided }
-func (a *Account) GetCodeHash() common.Hash     { return a.data.CodeHash }
-func (a *Account) GetTxHashList() []common.Hash { return a.data.TxHashList }
+func (a *Account) GetSuicide() bool         { return a.suicided }
+func (a *Account) GetCodeHash() common.Hash { return a.data.CodeHash }
+
+// func (a *Account) GetTxHashList() []common.Hash { return a.data.TxHashList }
 
 // StorageRoot wouldn't change until Account.updateTrie() is called
 func (a *Account) GetStorageRoot() common.Hash { return a.data.StorageRoot }
@@ -216,15 +258,6 @@ func (a *Account) IsEmpty() bool {
 		}
 	}
 	return true
-}
-
-func (a *Account) AppendTx(hash common.Hash) {
-	for _, exist := range a.data.TxHashList {
-		if exist == hash {
-			return
-		}
-	}
-	a.data.TxHashList = append(a.data.TxHashList, hash)
 }
 
 func (a *Account) getTrie() (*trie.SecureTrie, error) {

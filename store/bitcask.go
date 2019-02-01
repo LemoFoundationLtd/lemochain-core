@@ -53,6 +53,21 @@ type BitCask struct {
 	IndexDB DB
 }
 
+func (bitcask *BitCask) afterScan(flag uint, route []byte, key []byte, val []byte, offset uint32) error {
+	// log.Error("flg : " + strconv.Itoa(int(flag)))
+	if bitcask.After == nil {
+		return nil
+	}
+
+	err := bitcask.After(flag, route, key, val, offset)
+	if err != nil {
+		return err
+	} else {
+		delete(bitcask.Cache, string(key))
+		return nil
+	}
+}
+
 func (bitcask *BitCask) path(index int) string {
 	dataPath := filepath.Join(bitcask.HomePath, "%03d.data")
 	return fmt.Sprintf(dataPath, index)
@@ -84,6 +99,7 @@ func (bitcask *BitCask) createFile(index int) error {
 
 func NewBitCask(homePath string, lastIndex int, lastOffset uint32, after AfterScan, indexDB DB) (*BitCask, error) {
 	db := &BitCask{HomePath: homePath, After: after, IndexDB: indexDB}
+	db.After = after
 	isExist, err := db.isExist(homePath)
 	if err != nil {
 		return nil, err
@@ -106,26 +122,37 @@ func NewBitCask(homePath string, lastIndex int, lastOffset uint32, after AfterSc
 			return db, nil
 		}
 	} else {
-		// err = db.scan(lastIndex, lastOffset)
-		// if err != nil {
-		// 	return nil, err
-		// }else{
-		// 	err = db.createFile(db.CurIndex)
-		// 	if err != nil {
-		// 		return nil, err
-		// 	}else{
-		// 		return db, nil
-		// 	}
-		// }
-		return db, nil
+		err = db.scan(lastIndex, lastOffset)
+		if err != nil {
+			return nil, err
+		}
+
+		isExist, err := IsExist(db.path(db.CurIndex))
+		if err != nil {
+			return nil, err
+		}
+
+		if !isExist {
+			err = db.createFile(db.CurIndex)
+			if err != nil {
+				return nil, err
+			} else {
+				return db, nil
+			}
+		} else {
+			return db, nil
+		}
 	}
 }
 
 func (bitcask *BitCask) scan(lastIndex int, lastOffset uint32) error {
 
+	nextIndex := lastIndex
+	nextOffset := lastOffset
+
 	for {
-		lastPath := bitcask.path(lastIndex)
-		isExist, err := bitcask.isExist(lastPath)
+		nextPath := bitcask.path(nextIndex)
+		isExist, err := bitcask.isExist(nextPath)
 		if err != nil {
 			return err
 		}
@@ -134,14 +161,15 @@ func (bitcask *BitCask) scan(lastIndex int, lastOffset uint32) error {
 			break
 		}
 
-		file, err := os.OpenFile(lastPath, os.O_APPEND|os.O_WRONLY, os.ModePerm)
+		file, err := os.OpenFile(nextPath, os.O_RDONLY, os.ModePerm)
 		defer file.Close()
 		if err != nil {
 			return err
 		}
 
+		lastIndex = nextIndex
 		for {
-			head, body, err := bitcask.read(file, int64(lastOffset))
+			head, body, err := bitcask.read(file, int64(nextOffset))
 			if err == io.EOF {
 				break
 			}
@@ -150,20 +178,19 @@ func (bitcask *BitCask) scan(lastIndex int, lastOffset uint32) error {
 				return err
 			}
 
-			err = bitcask.After(uint(head.Flg), body.Route, body.Key, body.Val, lastOffset)
+			err = bitcask.afterScan(uint(head.Flg), body.Route, body.Key, body.Val, lastOffset)
 			if err != nil {
 				return err
 			} else {
 				delete(bitcask.Cache, string(body.Key))
 			}
 
-			lastOffset = lastOffset + uint32(RHEAD_LENGTH) + uint32(head.Len)
+			nextOffset = nextOffset + bitcask.align(uint32(RHEAD_LENGTH)+uint32(head.Len))
+			lastOffset = nextOffset
 		}
 
-		// update database index
-
-		lastIndex = lastIndex + 1
-		lastOffset = 0
+		nextIndex = nextIndex + 1
+		nextOffset = 0
 	}
 
 	bitcask.CurIndex = lastIndex
@@ -184,7 +211,7 @@ func (bitcask *BitCask) encode(hBuf []byte, bBuf []byte) []byte {
 	tLen := bitcask.align(uint32(len(hBuf)) + uint32(len(bBuf)))
 
 	tBuf := make([]byte, tLen)
-	copy(tBuf[:], hBuf[:])
+	copy(tBuf[0:], hBuf[:])
 	copy(tBuf[len(hBuf):], bBuf[:])
 
 	return tBuf
@@ -297,6 +324,17 @@ func (bitcask *BitCask) Put(flag uint, route []byte, key []byte, val []byte) err
 		pos: uint32(int(offset) | bitcask.CurIndex),
 		len: len(data),
 	}
+
+	err = bitcask.IndexDB.SetIndex(int(flag), route, key, int64(offset))
+	if err != nil {
+		return err
+	}
+
+	err = bitcask.afterScan(uint(flag), route, key, val, uint32(offset))
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -342,7 +380,7 @@ func (bitcask *BitCask) get(flag uint, route []byte, key []byte, offset int64) (
 	bucketIndex := uint32(offset) & 0xff
 
 	dataPath := bitcask.path(int(bucketIndex))
-	file, err := os.OpenFile(dataPath, os.O_RDONLY, 0666)
+	file, err := os.OpenFile(dataPath, os.O_RDONLY, os.ModePerm)
 	defer file.Close()
 	if err != nil {
 		return nil, err
@@ -356,11 +394,14 @@ func (bitcask *BitCask) get(flag uint, route []byte, key []byte, offset int64) (
 			return nil, nil
 		}
 
-		if (bytes.Compare(body.Route, route) != 0) || (bytes.Compare(body.Key, key) != 0) {
-			return nil, nil
-		} else {
-			return body.Val, nil
-		}
+		// if (bytes.Compare(body.Route, route) != 0) || (bytes.Compare(body.Key, key) != 0) {
+		// 	return nil, nil
+		// } else {
+		// 	return body.Val, nil
+		// }
+		// str := common.BytesToHash(body.Key).Hex()
+		// log.Errorf("str:" + str)
+		return body.Val, nil
 	}
 }
 
@@ -454,14 +495,22 @@ func (bitcask *BitCask) Commit(batch Batch) error {
 		return err
 	} else {
 		for index := 0; index < len(items); index++ {
-			pos := uint32(int(pos+tmpPos[index]) | bitcask.CurIndex)
+			curPos := uint32(int(pos+tmpPos[index]) | bitcask.CurIndex)
 			bitcask.Cache[string(items[index].Key)] = RIndex{
 				flg: items[index].Flg,
-				pos: pos,
+				pos: curPos,
 				len: len(tmpBuf[index]),
 			}
 
-			bitcask.IndexDB.SetIndex(int(items[index].Flg), batch.Route(), items[index].Key, int64(pos))
+			err = bitcask.IndexDB.SetIndex(int(items[index].Flg), batch.Route(), items[index].Key, int64(curPos))
+			if err != nil {
+				return err
+			}
+
+			err = bitcask.afterScan(items[index].Flg, batch.Route(), items[index].Key, items[index].Val, curPos)
+			if err != nil {
+				return err
+			}
 		}
 		return nil
 	}
