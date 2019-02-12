@@ -261,7 +261,7 @@ func (am *Manager) Rebuild(address common.Address, logs types.ChangeLogSlice) er
 	}
 	return nil
 	// save account
-	//return am.db.SetAccounts(am.baseBlockHash, []*types.AccountData{account.data})
+	// return am.db.SetAccounts(am.baseBlockHash, []*types.AccountData{account.data})
 }
 
 // MergeChangeLogs merges the change logs for same account in block. Then update the version of change logs and account.
