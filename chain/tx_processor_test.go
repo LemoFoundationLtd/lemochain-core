@@ -679,8 +679,8 @@ func Test_CreatRegisterTxData(t *testing.T) {
 	pro1 := make(types.CandidateProfile)
 	pro1[types.CandidateKeyIsCandidate] = params.IsCandidateNode
 	pro1[types.CandidateKeyPort] = "1111"
-	pro1[types.CandidateKeyNodeID] = "0x111111"
-	pro1[types.CandidateKeyMinerAddress] = "Lemo11111"
+	pro1[types.CandidateKeyNodeID] = "5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0"
+	pro1[types.CandidateKeyMinerAddress] = "Lemo83JZRYPYF97CFSZBBQBH4GW42PD8CFHT5ARN"
 	pro1[types.CandidateKeyHost] = "1111"
 	marPro1, _ := json.Marshal(pro1)
 	fmt.Println("txData1:", common.ToHex(marPro1))
