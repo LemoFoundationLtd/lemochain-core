@@ -28,7 +28,7 @@ The lemochain-go project is the Golang implement of this consensus mechanism. [l
     git clone https://github.com/LemoFoundationLtd/lemochain-go src\github.com\LemoFoundationLtd\lemochain-go
     ```
 - Install `GCC`, cause ECDSA is required. Install `mingw` if you use windows, otherwise click [here](https://gcc.gnu.org/install) to read the GCC documentation.
-- Install [MySQL](https://dev.mysql.com/downloads/installer/) v5.3 (or any later version), or you can use cloud database. Create a database named `lemochain`
+- Download and install [MySQL](https://dev.mysql.com/downloads/installer/) v5.3 or any later version (or you can use cloud database). Create a database named `lemochain`
 
 ### Compiling
 ```
