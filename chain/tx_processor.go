@@ -393,7 +393,7 @@ func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *comm
 	accM.Reset(header.ParentHash)
 
 	// A random address is found as our caller address.
-	strAddress := "0x12345" // todo Consider letting users pass in their own addresses
+	strAddress := "0x123456" // todo Consider letting users pass in their own addresses
 	caller, err := common.StringToAddress(strAddress)
 	if err != nil {
 		return nil, 0, err
@@ -478,7 +478,8 @@ func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *comm
 				return nil, 0, hostErr
 			}
 		}
-
+		sender = accM.GetAccount(caller)
+		sender.SetBalance(params.RegisterCandidateNodeFees)
 		restGas, err = Evm.RegisterOrUpdateToCandidate(sender.GetAddress(), params.FeeReceiveAddress, profile, restGas, sender.GetBalance())
 	}
 
@@ -492,7 +493,6 @@ func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *comm
 // getEVM
 func getEVM(ctx context.Context, caller common.Address, tx *types.Transaction, header *types.Header, txIndex uint, txHash common.Hash, blockHash common.Hash, chain ChainContext, cfg vm.Config, accM *account.Manager) (*vm.EVM, func() error, types.AccountAccessor) {
 	sender := accM.GetCanonicalAccount(caller)
-
 	vmError := func() error { return nil }
 	evmContext := NewEVMContext(tx, header, txIndex, txHash, blockHash, chain)
 	vmEnv := vm.NewEVM(evmContext, accM, cfg)
