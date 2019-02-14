@@ -63,6 +63,7 @@ func (p *testProcessor) createAccount(logType types.ChangeLogType, version uint3
 	}
 	account.data.Candidate.Votes = big.NewInt(200)
 	account.data.Candidate.Profile[types.CandidateKeyIsCandidate] = params.IsCandidateNode
+	account.SetTxCount(uint32(100))
 	return account
 }
 
@@ -358,6 +359,27 @@ func TestChangeLog_Undo(t *testing.T) {
 				assert.Equal(t, common.HexToAddress("0x0001"), accessor.GetVoteFor())
 			},
 		},
+		// 9 TxCount
+		{
+			input: NewTxCountLog(processor, processor.createAccount(TxCountLog, 1), 200),
+			afterCheck: func(accessor types.AccountAccessor) {
+				assert.Equal(t, uint32(100), accessor.GetTxCount())
+			},
+		},
+		// 10 Votes
+		{
+			input: NewVotesLog(processor, processor.createAccount(VotesLog, 1), new(big.Int).SetInt64(500)),
+			afterCheck: func(accessor types.AccountAccessor) {
+				assert.Equal(t, new(big.Int).SetInt64(200), accessor.GetVotes())
+			},
+		},
+		// 11 CandidateProfile
+		{
+			input: NewCandidateProfileLog(processor, processor.createAccount(VotesLog, 1), map[string]string{types.CandidateKeyIsCandidate: "false", types.CandidateKeyHost: "host"}),
+			afterCheck: func(accessor types.AccountAccessor) {
+				assert.Equal(t, "true", accessor.GetCandidateProfile()[types.CandidateKeyIsCandidate])
+			},
+		},
 	}
 
 	for i, test := range tests {
@@ -457,6 +479,35 @@ func TestChangeLog_Redo(t *testing.T) {
 			afterCheck: func(accessor types.AccountAccessor) {
 				assert.Equal(t, true, accessor.GetSuicide())
 				assert.Equal(t, big.NewInt(0), accessor.GetBalance())
+			},
+		},
+		// 10 VoteFor
+		{
+			input: decreaseVersion(NewVoteForLog(processor, processor.createAccount(VoteForLog, 1), common.HexToAddress("0x0002"))),
+			afterCheck: func(accessor types.AccountAccessor) {
+				assert.Equal(t, common.HexToAddress("0x0002"), accessor.GetVoteFor())
+			},
+		},
+		// 11 TxCount
+		{
+			input: decreaseVersion(NewTxCountLog(processor, processor.createAccount(TxCountLog, 1), 200)),
+			afterCheck: func(accessor types.AccountAccessor) {
+				assert.Equal(t, uint32(200), accessor.GetTxCount())
+			},
+		},
+		// 12 Votes
+		{
+			input: decreaseVersion(NewVotesLog(processor, processor.createAccount(VotesLog, 1), new(big.Int).SetInt64(500))),
+			afterCheck: func(accessor types.AccountAccessor) {
+				assert.Equal(t, new(big.Int).SetInt64(500), accessor.GetVotes())
+			},
+		},
+		// 13 CandidateProfile
+		{
+			input: decreaseVersion(NewCandidateProfileLog(processor, processor.createAccount(VotesLog, 1), map[string]string{types.CandidateKeyIsCandidate: "false", types.CandidateKeyHost: "host"})),
+			afterCheck: func(accessor types.AccountAccessor) {
+				assert.Equal(t, "false", accessor.GetCandidateProfile()[types.CandidateKeyIsCandidate])
+				assert.Equal(t, "host", accessor.GetCandidateProfile()[types.CandidateKeyHost])
 			},
 		},
 	}
