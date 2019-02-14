@@ -181,3 +181,8 @@ func InitTable(db *sql.DB) {
 	}
 	log.Debug("init mysql's tables ok")
 }
+
+func CreateDB(db *sql.DB) (sql.Result, error) {
+
+	return db.Exec("create database tppamltest3")
+}

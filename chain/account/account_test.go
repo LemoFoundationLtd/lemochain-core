@@ -25,7 +25,7 @@ func TestChainDatabase_Get(t *testing.T) {
 	//
 	// hash := common.BytesToHash(encodeBlockNumber2Hash(114).Bytes())
 	// log.Errorf("" + hash.Hex())
-	store.NewChainDataBase(store.GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
+	// store.NewChainDataBase(store.GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
 }
 
 func loadAccount(db protocol.ChainDB, address common.Address) *Account {
