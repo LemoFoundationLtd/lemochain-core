@@ -177,7 +177,7 @@ func getTestLogs(t *testing.T) []testLogConfig {
 	tests = append(tests, testLogConfig{
 		input:      NewSuicideLog(processor, processor.createAccount(SuicideLog, 0)),
 		isValuable: true,
-		str:        "Lemo888888888888888888888888888888888534, Version: 1, OldVal: {Address: Lemo888888888888888888888888888888888888, Balance: 100, VoteFor: Lemo888888888888888888888888888888888888, TxCount: 0}}",
+		str:        "SuicideLog{Account: Lemo888888888888888888888888888888888534, Version: 1, OldVal: {Address: Lemo888888888888888888888888888888888888, Balance: 100, VoteFor: Lemo888888888888888888888888888888888888, TxCount: 0}}",
 		hash:       "0xe2d92fe499dfbd00be20be9a041ac164f0c985a81c7ae8f5921f22a9f9d98090",
 		rlp:        "0xd90594000000000000000000000000000000000000000801c0c0",
 		decoded:    "SuicideLog{Account: Lemo888888888888888888888888888888888534, Version: 1}",
@@ -186,7 +186,7 @@ func getTestLogs(t *testing.T) []testLogConfig {
 	tests = append(tests, testLogConfig{
 		input:      NewSuicideLog(processor, processor.createEmptyAccount()),
 		isValuable: false,
-		str:        "SuicideLog{Account: Lemo888888888888888888888888888888888534, Version: 1, OldVal: {Address: Lemo888888888888888888888888888888888888, Balance: 100, VoteFor: Lemo888888888888888888888888888888888888, TxCount: 0}}",
+		str:        "SuicideLog{Account: Lemo8888888888888888888888888888888885CZ, Version: 1, OldVal: {Address: Lemo888888888888888888888888888888888888, Balance: 0, VoteFor: Lemo888888888888888888888888888888888888, TxCount: 0}}",
 		hash:       "0x8d05be4a001f2ad367c9642b30a1825621eefa9fd56f7383eb7ef74a67fed1d4",
 		rlp:        "0xd90594000000000000000000000000000000000000000901c0c0",
 		decoded:    "SuicideLog{Account: Lemo8888888888888888888888888888888885CZ, Version: 1}",
