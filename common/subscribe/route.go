@@ -2,7 +2,6 @@ package subscribe
 
 import (
 	"errors"
-	"fmt"
 	"reflect"
 	"sync"
 )
@@ -50,8 +49,6 @@ func (r *CentralRouteSub) sub(name string, ch interface{}) error {
 	if chType.Kind() != reflect.Chan || chType.ChanDir()&reflect.RecvDir == 0 {
 		return ErrChType
 	}
-	eleType := chType.Elem().Kind()
-	fmt.Println(eleType)
 	if item, ok := r.names[name]; ok {
 		if item.eType != chType {
 			return ErrChType
