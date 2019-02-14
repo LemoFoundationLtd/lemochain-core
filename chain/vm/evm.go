@@ -1,6 +1,7 @@
 package vm
 
 import (
+	"errors"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"math/big"
 	"sync/atomic"
@@ -25,7 +26,11 @@ func run(evm *EVM, contract *Contract, input []byte) ([]byte, error) {
 	if contract.CodeAddr != nil {
 		precompiles := PrecompiledContracts
 		if p := precompiles[*contract.CodeAddr]; p != nil {
-			return RunPrecompiledContract(p, input, contract)
+			// Determine whether the address to set the reward value is correct
+			if *contract.CodeAddr == common.BytesToAddress([]byte{9}) && contract.caller.GetAddress() != params.RewardAddress {
+				return nil, errors.New("Insufficient permission to call this Precompiled contract. ")
+			}
+			return RunPrecompiledContract(p, input, contract, evm)
 		}
 	}
 	return evm.interpreter.Run(contract, input)
@@ -515,6 +520,6 @@ func (evm *EVM) AddEvent(address common.Address, topics []common.Hash, data []by
 		TxIndex:     evm.TxIndex,
 		TxHash:      evm.TxHash,
 		BlockHash:   evm.BlockHash,
-		// event.Index is set outside.
+		// event.Term is set outside.
 	})
 }
