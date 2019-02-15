@@ -141,6 +141,9 @@ func newTestBlock(dpovp *Dpovp, parentHash common.Hash, height uint32, address c
 		gasLimit:    0,
 		time:        timeStamp,
 	}, save)
+	if save {
+		dpovp.db.SetStableBlock(testBlock.Hash())
+	}
 	// 对区块进行签名
 	signBlock, err := signTestBlock(signPrivate, testBlock)
 	if err != nil {
