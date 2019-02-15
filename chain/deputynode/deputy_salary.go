@@ -1,6 +1,10 @@
 package deputynode
 
 import (
+	"encoding/json"
+	"errors"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"math/big"
@@ -46,4 +50,28 @@ func getTotalSalary(height uint32) *big.Int {
 		log.Crit("getTotalSalary failed")
 	}
 	return res
+}
+
+// GetTermRewardValue reward value of miners at the change of term
+func GetTermRewardValue(am account.Manager, term uint32) (*big.Int, error) {
+	// Precompile the contract address
+	address := params.TermRewardPrecompiledContractAddress
+	acc := am.GetAccount(address)
+	// key of db
+	key := address.Hash()
+	value, err := acc.GetStorageState(key)
+	if err != nil {
+		return nil, err
+	}
+
+	rewardMap := make(params.RewardsMap)
+	err = json.Unmarshal(value, &rewardMap)
+	if err != nil {
+		return nil, err
+	}
+	if reward, ok := rewardMap[term]; ok {
+		return reward.Value, nil
+	} else {
+		return nil, errors.New("reward value does not exit. ")
+	}
 }

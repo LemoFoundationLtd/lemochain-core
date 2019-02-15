@@ -70,10 +70,15 @@ var (
 
 	MaxPackageLength uint32 = 100 * 1024 * 1024 // 100M
 
-	RewardPoolTotal, _ = new(big.Int).SetString("900000000000000000000000000", 10) // 奖励池总量
+	RewardPoolTotal, _                   = new(big.Int).SetString("900000000000000000000000000", 10)          // 奖励池总量
+	RewardAddress, _                     = common.StringToAddress("Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG") // 调用设置换届奖励预编译合约的地址
+	TermRewardPrecompiledContractAddress = common.BytesToAddress([]byte{9})                                   // 换届奖励的预编译合约地址
+
 )
 
 //go:generate gencodec -type Reward --field-override RewardMarshaling -out gen_Reward_json.go
+// 每一届矿工奖励存储到account的数据结构
+type RewardsMap map[uint32]*Reward
 type Reward struct {
 	Term  uint32   `json:"term" gencodec:"required"`
 	Value *big.Int `json:"value" gencodec:"required"`
@@ -87,6 +92,7 @@ type RewardMarshaling struct {
 }
 
 //go:generate gencodec -type NewReward --field-override NewRewardMarshaling -out gen_NewReward_json.go
+// 申请每一届矿工奖励值交易data的数据结构
 type NewReward struct {
 	Term  uint32   `json:"term" gencodec:"required"`
 	Value *big.Int `json:"value" gencodec:"required"`
@@ -96,11 +102,3 @@ type NewRewardMarshaling struct {
 	Term  hexutil.Uint32
 	Value *hexutil.Big10
 }
-
-type RewardsMap map[uint32]*Reward
-
-// set the miner reward address
-// var RewardAddress = common.HexToAddress("0x1002")
-
-// 测试用
-var RewardAddress, _ = common.StringToAddress("Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG")

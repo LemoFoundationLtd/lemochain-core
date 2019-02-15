@@ -1,5 +1,5 @@
 lemo._createAPI('account', 'newKeyPair', 'newKeyPair');
-lemo._createAPI('account', 'getStorageState', 'getStorageState');
+lemo._createAPI('account', 'getAllRewardValue', 'getAllRewardValue');
 
 lemo._createAPI('chain', 'getDeputyNodeList', 'getDeputyNodeList');
 

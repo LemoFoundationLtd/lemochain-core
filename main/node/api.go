@@ -90,8 +90,8 @@ func (a *PublicAccountAPI) GetVoteFor(LemoAddress string) (string, error) {
 	return forAddress, nil
 }
 
-func (a *PublicAccountAPI) GetStorageState() ([]*params.Reward, error) {
-	address := common.BytesToAddress([]byte{9})
+func (a *PublicAccountAPI) GetAllRewardValue() ([]*params.Reward, error) {
+	address := params.TermRewardPrecompiledContractAddress
 	acc, err := a.GetAccount(address.String())
 	if err != nil {
 		return nil, err

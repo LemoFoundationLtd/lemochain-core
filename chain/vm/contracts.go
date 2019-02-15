@@ -76,7 +76,7 @@ func (c *setRewardValue) Run(input []byte) ([]byte, error) {
 		return false32Byte, err
 	}
 
-	rewardAddress := common.BytesToAddress([]byte{9})
+	rewardAddress := params.TermRewardPrecompiledContractAddress
 	rewardAccount := c.am.GetAccount(rewardAddress)
 	Key := rewardAddress.Hash()
 	rewardBytes, err := rewardAccount.GetStorageState(Key)
