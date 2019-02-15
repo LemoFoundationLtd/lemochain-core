@@ -23192,7 +23192,7 @@
 
 	function getSdkVersion() {
 
-	  return "0.9.5";
+	  return "0.9.6";
 	}
 
 	var global$2 = {
@@ -23496,7 +23496,7 @@
 	   * Get connected peers count from the lemochain node
 	   * @return {Promise<number>}
 	   */
-	  getPeersCount: function getPeersCount() {
+	  getConnectionsCount: function getConnectionsCount() {
 	    return this.requester.send("".concat(MODULE_NAME$4, "_peersCount"), []);
 	  },
 
