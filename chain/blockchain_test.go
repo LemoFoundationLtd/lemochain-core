@@ -1053,7 +1053,7 @@ func TestBlockChain_SetStableBlockCurBranch42(t *testing.T) {
 	assert.NotNil(t, blockChain.chainForksHead[block215.Hash()])
 	assert.NotNil(t, blockChain.chainForksHead[block316.Hash()])
 	assert.NotNil(t, blockChain.chainForksHead[block326.Hash()])
-	assert.Equal(t, blockChain.CurrentBlock().Hash(), block215.Hash())
+	assert.Equal(t, blockChain.CurrentBlock().Hash().Prefix(), block215.Hash().Prefix())
 
 	err = blockChain.SetStableBlock(block3.Hash(), 3)
 	assert.NoError(t, err)
@@ -1401,7 +1401,7 @@ func TestBlockChain_VerifyBlockBalanceValidDeputy(t *testing.T) {
 	accounts := store.GetAccounts()
 	info := blockInfo{
 		parentHash:  genesis.Hash(),
-		height:      1,
+		height:      100000000,
 		gasLimit:    1000000000,
 		deputyNodes: genesis.DeputyNodes,
 		txList: []*types.Transaction{
