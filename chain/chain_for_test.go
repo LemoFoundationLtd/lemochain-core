@@ -273,7 +273,12 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 		if err != nil && err != store.ErrExist {
 			panic(err)
 		}
+
 		err = manager.Save(blockHash)
+		if err != nil {
+			panic(err)
+		}
+		err = db.SetStableBlock(blockHash)
 		if err != nil {
 			panic(err)
 		}

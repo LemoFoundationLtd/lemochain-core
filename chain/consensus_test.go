@@ -297,6 +297,7 @@ func TestDpovp_VerifyHeader01(t *testing.T) {
 
 // TestDpovp_VerifyHeader03 测试slot == 0,slot == 1,slot > 1的情况
 func TestDpovp_VerifyHeader02(t *testing.T) {
+	store.ClearData()
 	// 创建5个代理节点
 	err := initDeputyNode(5, 0)
 	assert.NoError(t, err)
