@@ -24,7 +24,7 @@ var (
 type Manager struct {
 	db     protocol.ChainDB
 	trieDb *store.TrieDatabase // used to access tire data in file
-	acctDb *store.PatriciaTrie
+	acctDb *store.AccountTrieDB
 	// Manager loads all data from the branch where the baseBlock is
 	baseBlock     *types.Block
 	baseBlockHash common.Hash
@@ -61,7 +61,7 @@ func NewManager(blockHash common.Hash, db protocol.ChainDB) *Manager {
 func (am *Manager) GetAccount(address common.Address) types.AccountAccessor {
 	cached := am.accountCache[address]
 	if cached == nil {
-		data := am.acctDb.Find(address[:])
+		data, _ := am.acctDb.Get(address)
 		account := NewAccount(am.db, address, data)
 		cached = NewSafeAccount(am.processor, account)
 		// cache it
@@ -90,7 +90,7 @@ func (am *Manager) getRawAccount(address common.Address) *Account {
 // IsExist reports whether the given account address exists in the db.
 // Notably this also returns true for suicided accounts.
 func (am *Manager) IsExist(address common.Address) bool {
-	data := am.acctDb.Find(address[:])
+	data, _ := am.acctDb.Get(address)
 	return data != nil
 }
 

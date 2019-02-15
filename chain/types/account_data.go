@@ -195,6 +195,10 @@ func (a *AccountData) DecodeRLP(s *rlp.Stream) error {
 	return err
 }
 
+func (a *AccountData) Clone() NodeData {
+	return a.Copy()
+}
+
 func (a *AccountData) Copy() *AccountData {
 	cpy := *a
 	cpy.Balance = new(big.Int).Set(a.Balance)

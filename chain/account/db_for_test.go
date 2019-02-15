@@ -172,17 +172,8 @@ func saveAccount(db protocol.ChainDB) {
 	acctDb := db.GetActDatabase(defaultBlockInfos[0].hash)
 
 	for index := 0; index < len(defaultAccounts); index++ {
-		err := acctDb.Insert(defaultAccounts[index].Address[:], defaultAccounts[index])
-		if err != nil {
-			panic(err)
-		}
-
 		acctDb.Put(defaultAccounts[index], 0)
-		// acctDb.Dye(string(defaultAccounts[index].Address[:]), am.baseBlock.Height())
-		// dirtyAccounts = append(dirtyAccounts, account.rawAccount.data)
 	}
-
-	// err := db.SetAccounts(defaultBlockInfos[0].hash, defaultAccounts)
 
 	// save code
 	for _, codeInfo := range defaultCodes {

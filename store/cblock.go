@@ -5,13 +5,15 @@ import (
 )
 
 type CBlock struct {
-	Block *types.Block
-	Trie  *PatriciaTrie
-	Top30 []*Candidate
+	Block  *types.Block
+	TrieDB *AccountTrieDB
+	Top30  []*Candidate
 }
 
 func (block *CBlock) SetTop(src []*Candidate) {
 	if len(src) <= 0 {
 		block.Top30 = make([]*Candidate, 0)
+	} else {
+
 	}
 }

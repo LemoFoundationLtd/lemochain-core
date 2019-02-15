@@ -1,6 +1,7 @@
 package store
 
 import (
+	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/stretchr/testify/assert"
@@ -95,13 +96,26 @@ func TestPatriciaNode_Insert(t *testing.T) {
 	assert.Equal(t, node.dye, nodes[0].dye)
 }
 
+func Interface2AccountData(data types.NodeData) *types.AccountData {
+	if data == nil {
+		return nil
+	}
+
+	account, ok := data.(*types.AccountData)
+	if !ok {
+		panic(fmt.Sprintf("expected NewVal *CandidateProfile, got %T", data))
+	} else {
+		return account
+	}
+}
+
 // e.g. child = "e"(curNode = "abc")
 //	"abc"		insert("c")		"abc"
 //	/	\		   ====>  		/ |	\
 // e	 f				   	   c# e  f
 func TestPatriciaTrie_Put1(t *testing.T) {
-	trie := NewEmptyDatabase(new(TestReader))
-
+	trie := NewEmptyDatabase()
+	triedb := NewAccountTrieDB(trie, new(TestReader))
 	account1 := &types.AccountData{
 		Address: common.HexToAddress("0x1"),
 		Balance: big.NewInt(1),
@@ -116,45 +130,46 @@ func TestPatriciaTrie_Put1(t *testing.T) {
 		Address: common.HexToAddress("0x13"),
 		Balance: big.NewInt(13),
 	}
-	trie.Insert(account1.Address[:], account1)
-	trie.Insert(account12.Address[:], account12)
-	trie.Insert(account13.Address[:], account13)
+	triedb.Set(account1)
+	triedb.Set(account12)
+	triedb.Set(account13)
 
-	tmp1 := NewActDatabase(new(TestReader), trie)
+	tmp1 := NewActDatabase(trie)
+	tmp1db := NewAccountTrieDB(tmp1, new(TestReader))
 
 	account11 := &types.AccountData{
 		Address: common.HexToAddress("0x11"),
 		Balance: big.NewInt(11),
 	}
-	tmp1.Put(account11, 1)
+	tmp1db.Put(account11, 1)
 
 	account10 := &types.AccountData{
 		Address: common.HexToAddress("0x10"),
 		Balance: big.NewInt(10),
 	}
-	tmp1.Put(account10, 1)
+	tmp1db.Put(account10, 1)
 
-	result := trie.Find(account10.Address[:])
+	result, _ := triedb.Get(account10.Address)
 	assert.Nil(t, result)
-	result = tmp1.Find(account10.Address[:])
+	result, _ = tmp1db.Get(account10.Address)
 	assert.Equal(t, result.Address, account10.Address)
 
-	result = trie.Find(account11.Address[:])
+	result, _ = triedb.Get(account11.Address)
 	assert.Nil(t, result)
-	result = tmp1.Find(account11.Address[:])
+	result, _ = tmp1db.Get(account11.Address)
 	assert.Equal(t, result.Address, account11.Address)
 
-	result = trie.Find(account1.Address[:])
+	result, _ = triedb.Get(account1.Address)
 	assert.Equal(t, result.Address, account1.Address)
-	result = tmp1.Find(account1.Address[:])
+	result, _ = tmp1db.Get(account1.Address)
 	assert.Equal(t, result.Address, account1.Address)
-	result = trie.Find(account12.Address[:])
+	result, _ = triedb.Get(account12.Address)
 	assert.Equal(t, result.Address, account12.Address)
-	result = tmp1.Find(account12.Address[:])
+	result, _ = tmp1db.Get(account12.Address)
 	assert.Equal(t, result.Address, account12.Address)
-	result = trie.Find(account13.Address[:])
+	result, _ = triedb.Get(account13.Address)
 	assert.Equal(t, result.Address, account13.Address)
-	result = tmp1.Find(account13.Address[:])
+	result, _ = tmp1db.Get(account13.Address)
 	assert.Equal(t, result.Address, account13.Address)
 }
 
@@ -163,7 +178,8 @@ func TestPatriciaTrie_Put1(t *testing.T) {
 //    /  \    =========>    /   \
 //   e    f     		   e     f
 func TestPatriciaTrie_Put2(t *testing.T) {
-	trie := NewEmptyDatabase(new(TestReader))
+	trie := NewEmptyDatabase()
+	triedb := NewAccountTrieDB(trie, new(TestReader))
 
 	account12 := &types.AccountData{
 		Address: common.HexToAddress("0x112"),
@@ -174,11 +190,11 @@ func TestPatriciaTrie_Put2(t *testing.T) {
 		Address: common.HexToAddress("0x113"),
 		Balance: big.NewInt(13),
 	}
+	triedb.Set(account12)
+	triedb.Set(account13)
 
-	trie.Insert(account12.Address[:], account12)
-	trie.Insert(account13.Address[:], account13)
-
-	tmp1 := NewActDatabase(new(TestReader), trie)
+	tmp1 := NewActDatabase(trie)
+	tmp1db := NewAccountTrieDB(tmp1, new(TestReader))
 	account1 := &types.AccountData{
 		Address: common.HexToAddress("0x11"),
 		Balance: big.NewInt(1),
@@ -189,27 +205,27 @@ func TestPatriciaTrie_Put2(t *testing.T) {
 	if node != nil {
 		tmp1.root = node
 	}
-	result := trie.find(trie.root, str)
-	assert.Nil(t, result)
-	result = tmp1.find(tmp1.root, str)
-	assert.Equal(t, result, account1)
+	val := trie.find(trie.root, str)
+	assert.Nil(t, val)
+	val = tmp1.find(tmp1.root, str)
+	assert.Equal(t, Interface2AccountData(val), account1)
 
 	node = tmp1.put(tmp1.root, str, account1, 1)
 	if node != nil {
 		tmp1.root = node
 	}
-	result = trie.find(trie.root, str)
-	assert.Nil(t, result)
-	result = tmp1.find(tmp1.root, str)
-	assert.Equal(t, result, account1)
+	val = trie.find(trie.root, str)
+	assert.Nil(t, val)
+	val = tmp1.find(tmp1.root, str)
+	assert.Equal(t, Interface2AccountData(val), account1)
 
-	result = trie.Find(account12.Address[:])
+	result, _ := triedb.Get(account12.Address)
 	assert.Equal(t, result, account12)
-	result = tmp1.Find(account12.Address[:])
+	result, _ = tmp1db.Get(account12.Address)
 	assert.Equal(t, result, account12)
-	result = trie.Find(account13.Address[:])
+	result, _ = triedb.Get(account13.Address)
 	assert.Equal(t, result, account13)
-	result = tmp1.Find(account13.Address[:])
+	result, _ = tmp1db.Get(account13.Address)
 	assert.Equal(t, result, account13)
 }
 
@@ -218,7 +234,8 @@ func TestPatriciaTrie_Put2(t *testing.T) {
 //    /  \    =========>    /   \
 //   e    f     		   e     f
 func TestPatriciaTrie_Put3(t *testing.T) {
-	trie := NewEmptyDatabase(new(TestReader))
+	trie := NewEmptyDatabase()
+	triedb := NewAccountTrieDB(trie, new(TestReader))
 
 	account12 := &types.AccountData{
 		Address: common.HexToAddress("0x1112"),
@@ -229,19 +246,21 @@ func TestPatriciaTrie_Put3(t *testing.T) {
 		Address: common.HexToAddress("0x1113"),
 		Balance: big.NewInt(13),
 	}
+	triedb.Set(account12)
+	triedb.Set(account13)
 
-	trie.Insert(account12.Address[:], account12)
-	trie.Insert(account13.Address[:], account13)
-
-	tmp1 := NewActDatabase(new(TestReader), trie)
+	tmp1 := NewActDatabase(trie)
+	tmp1db := NewAccountTrieDB(tmp1, new(TestReader))
 	account1222 := &types.AccountData{
 		Address: common.HexToAddress("0x1222"),
 		Balance: big.NewInt(1222),
 	}
-	tmp1.Put(account1222, 1)
-	result := trie.Find(account1222.Address[:])
+
+	tmp1db.Put(account1222, 1)
+
+	result, _ := triedb.Get(account1222.Address)
 	assert.Nil(t, result)
-	result = tmp1.Find(account1222.Address[:])
+	result, _ = tmp1db.Get(account1222.Address)
 	assert.Equal(t, result, account1222)
 
 	account111 := &types.AccountData{
@@ -249,23 +268,22 @@ func TestPatriciaTrie_Put3(t *testing.T) {
 		Balance: big.NewInt(1),
 	}
 
-	str := "0x000000000000000000000000000000000000111"
-	node := tmp1.put(tmp1.root, str, account111, 1)
+	node := tmp1.put(tmp1.root, account111.Address.Hex(), account111, 1)
 	if node != nil {
 		tmp1.root = node
 	}
-	result = trie.find(trie.root, str)
-	assert.Nil(t, result)
-	result = tmp1.find(tmp1.root, str)
-	assert.Equal(t, result, account111)
+	val := trie.find(trie.root, account111.Address.Hex())
+	assert.Nil(t, val)
+	val = tmp1.find(tmp1.root, account111.Address.Hex())
+	assert.Equal(t, Interface2AccountData(val), account111)
 
-	result = trie.Find(account12.Address[:])
+	result, _ = triedb.Get(account12.Address)
 	assert.Equal(t, result, account12)
-	result = tmp1.Find(account12.Address[:])
+	result, _ = tmp1db.Get(account12.Address)
 	assert.Equal(t, result, account12)
-	result = trie.Find(account13.Address[:])
+	result, _ = triedb.Get(account13.Address)
 	assert.Equal(t, result, account13)
-	result = tmp1.Find(account13.Address[:])
+	result, _ = tmp1db.Get(account13.Address)
 	assert.Equal(t, result, account13)
 }
 
@@ -274,7 +292,8 @@ func TestPatriciaTrie_Put3(t *testing.T) {
 //    /  \    ==========>    / | \
 //   e    f     			c# e  f
 func TestPatriciaTrie_Put4(t *testing.T) {
-	trie := NewEmptyDatabase(new(TestReader))
+	trie := NewEmptyDatabase()
+	triedb := NewAccountTrieDB(trie, new(TestReader))
 
 	account1112 := &types.AccountData{
 		Address: common.HexToAddress("0x1112"),
@@ -291,36 +310,36 @@ func TestPatriciaTrie_Put4(t *testing.T) {
 		Balance: big.NewInt(1),
 	}
 	str := "0x000000000000000000000000000000000000111"
-
-	trie.Insert(account1112.Address[:], account1112)
-	trie.Insert(account1113.Address[:], account1113)
+	triedb.Set(account1112)
+	triedb.Set(account1113)
 	trie.insert(trie.root, str, account111)
 
 	account1111 := &types.AccountData{
 		Address: common.HexToAddress("0x1111"),
 		Balance: big.NewInt(1111),
 	}
-	tmp1 := NewActDatabase(new(TestReader), trie)
-	tmp1.Put(account1111, 1)
+	tmp1 := NewActDatabase(trie)
+	tmp1db := NewAccountTrieDB(tmp1, new(TestReader))
+	tmp1db.Put(account1111, 1)
 
-	result := trie.Find(account1111.Address[:])
+	result, _ := triedb.Get(account1111.Address)
 	assert.Nil(t, result)
-	result = tmp1.Find(account1111.Address[:])
+	result, _ = tmp1db.Get(account1111.Address)
 	assert.Equal(t, result, account1111)
 
-	result = trie.Find(account1112.Address[:])
+	result, _ = triedb.Get(account1112.Address)
 	assert.Equal(t, result, account1112)
-	result = tmp1.Find(account1112.Address[:])
+	result, _ = tmp1db.Get(account1112.Address)
 	assert.Equal(t, result, account1112)
-	result = trie.Find(account1113.Address[:])
+	result, _ = triedb.Get(account1113.Address)
 	assert.Equal(t, result, account1113)
-	result = tmp1.Find(account1113.Address[:])
+	result, _ = tmp1db.Get(account1113.Address)
 	assert.Equal(t, result, account1113)
 
-	result = trie.find(trie.root, str)
-	assert.Equal(t, result, account111)
-	result = tmp1.find(trie.root, str)
-	assert.Equal(t, result, account111)
+	val := trie.find(trie.root, str)
+	assert.Equal(t, Interface2AccountData(val), account111)
+	val = tmp1.find(trie.root, str)
+	assert.Equal(t, Interface2AccountData(val), account111)
 }
 
 // 	e.g. child = "ab#"
@@ -328,7 +347,8 @@ func TestPatriciaTrie_Put4(t *testing.T) {
 //    /  \    ==========>    / | \
 //   e    f     			c# e  f
 func TestPatriciaTrie_Put5(t *testing.T) {
-	trie := NewEmptyDatabase(new(TestReader))
+	trie := NewEmptyDatabase()
+	triedb := NewAccountTrieDB(trie, new(TestReader))
 
 	account1112 := &types.AccountData{
 		Address: common.HexToAddress("0x1112"),
@@ -339,11 +359,10 @@ func TestPatriciaTrie_Put5(t *testing.T) {
 		Address: common.HexToAddress("0x1113"),
 		Balance: big.NewInt(13),
 	}
+	triedb.Set(account1112)
+	triedb.Set(account1113)
 
-	trie.Insert(account1112.Address[:], account1112)
-	trie.Insert(account1113.Address[:], account1113)
-
-	tmp1 := NewActDatabase(new(TestReader), trie)
+	tmp1 := NewActDatabase(trie)
 	account111 := &types.AccountData{
 		Address: common.HexToAddress("0x111"),
 		Balance: big.NewInt(1),
@@ -362,20 +381,21 @@ func TestPatriciaTrie_Put5(t *testing.T) {
 		Address: common.HexToAddress("0x1111"),
 		Balance: big.NewInt(1111),
 	}
-	tmp1.Put(account1111, 1)
 
-	result = trie.Find(account1111.Address[:])
+	tmp1db := NewAccountTrieDB(tmp1, new(TestReader))
+	tmp1db.Put(account1111, 1)
+	result, _ = triedb.Get(account1111.Address)
 	assert.Nil(t, result)
-	result = tmp1.Find(account1111.Address[:])
+	result, _ = tmp1db.Get(account1111.Address)
 	assert.Equal(t, result, account1111)
 
-	result = trie.Find(account1112.Address[:])
+	result, _ = triedb.Get(account1112.Address)
 	assert.Equal(t, result, account1112)
-	result = tmp1.Find(account1112.Address[:])
+	result, _ = tmp1db.Get(account1112.Address)
 	assert.Equal(t, result, account1112)
-	result = trie.Find(account1113.Address[:])
+	result, _ = triedb.Get(account1113.Address)
 	assert.Equal(t, result, account1113)
-	result = tmp1.Find(account1113.Address[:])
+	result, _ = tmp1db.Get(account1113.Address)
 	assert.Equal(t, result, account1113)
 }
 
@@ -386,7 +406,8 @@ func TestPatriciaTrie_Put5(t *testing.T) {
 // 					           /  \
 //                            e    f
 func TestPatriciaTrie_Put6(t *testing.T) {
-	trie := NewEmptyDatabase(new(TestReader))
+	trie := NewEmptyDatabase()
+	triedb := NewAccountTrieDB(trie, new(TestReader))
 
 	account1112 := &types.AccountData{
 		Address: common.HexToAddress("0x1112"),
@@ -404,10 +425,10 @@ func TestPatriciaTrie_Put6(t *testing.T) {
 	}
 	str := "0x000000000000000000000000000000000000111"
 	trie.insert(trie.root, str, account111)
-	trie.Insert(account1112.Address[:], account1112)
-	trie.Insert(account1113.Address[:], account1113)
+	triedb.Set(account1112)
+	triedb.Set(account1113)
 
-	tmp1 := NewActDatabase(new(TestReader), trie)
+	tmp1 := NewActDatabase(trie)
 	result := trie.find(trie.root, str)
 	assert.Equal(t, result, account111)
 	result = tmp1.find(tmp1.root, str)
@@ -427,13 +448,14 @@ func TestPatriciaTrie_Put6(t *testing.T) {
 	result = tmp1.find(tmp1.root, str)
 	assert.Equal(t, result, account11)
 
-	result = trie.Find(account1112.Address[:])
+	tmp1db := NewAccountTrieDB(tmp1, new(TestReader))
+	result, _ = triedb.Get(account1112.Address)
 	assert.Equal(t, result, account1112)
-	result = trie.Find(account1113.Address[:])
+	result, _ = triedb.Get(account1113.Address)
 	assert.Equal(t, result, account1113)
-	result = tmp1.Find(account1112.Address[:])
+	result, _ = tmp1db.Get(account1112.Address)
 	assert.Equal(t, result, account1112)
-	result = tmp1.Find(account1113.Address[:])
+	result, _ = tmp1db.Get(account1113.Address)
 	assert.Equal(t, result, account1113)
 }
 
@@ -444,7 +466,8 @@ func TestPatriciaTrie_Put6(t *testing.T) {
 // 					           /  \
 //                            e    f
 func TestPatriciaTrie_Put7(t *testing.T) {
-	trie := NewEmptyDatabase(new(TestReader))
+	trie := NewEmptyDatabase()
+	triedb := NewAccountTrieDB(trie, new(TestReader))
 
 	account1112 := &types.AccountData{
 		Address: common.HexToAddress("0x1112"),
@@ -455,11 +478,10 @@ func TestPatriciaTrie_Put7(t *testing.T) {
 		Address: common.HexToAddress("0x1113"),
 		Balance: big.NewInt(13),
 	}
+	triedb.Set(account1112)
+	triedb.Set(account1113)
 
-	trie.Insert(account1112.Address[:], account1112)
-	trie.Insert(account1113.Address[:], account1113)
-
-	tmp1 := NewActDatabase(new(TestReader), trie)
+	tmp1 := NewActDatabase(trie)
 	account111 := &types.AccountData{
 		Address: common.HexToAddress("0x111"),
 		Balance: big.NewInt(1),
@@ -488,13 +510,14 @@ func TestPatriciaTrie_Put7(t *testing.T) {
 	result = tmp1.find(tmp1.root, str)
 	assert.Equal(t, result, account11)
 
-	result = trie.Find(account1112.Address[:])
+	tmp1db := NewAccountTrieDB(tmp1, new(TestReader))
+	result, _ = triedb.Get(account1112.Address)
 	assert.Equal(t, result, account1112)
-	result = trie.Find(account1113.Address[:])
+	result, _ = triedb.Get(account1113.Address)
 	assert.Equal(t, result, account1113)
-	result = tmp1.Find(account1112.Address[:])
+	result, _ = tmp1db.Get(account1112.Address)
 	assert.Equal(t, result, account1112)
-	result = tmp1.Find(account1113.Address[:])
+	result, _ = tmp1db.Get(account1113.Address)
 	assert.Equal(t, result, account1113)
 }
 
@@ -506,7 +529,8 @@ func TestPatriciaTrie_Put7(t *testing.T) {
 //                          	 e    f
 // split at j
 func TestPatriciaTrie_Put8(t *testing.T) {
-	trie := NewEmptyDatabase(new(TestReader))
+	trie := NewEmptyDatabase()
+	triedb := NewAccountTrieDB(trie, new(TestReader))
 
 	account1112 := &types.AccountData{
 		Address: common.HexToAddress("0x1112"),
@@ -524,10 +548,10 @@ func TestPatriciaTrie_Put8(t *testing.T) {
 	}
 	str := "0x000000000000000000000000000000000000111"
 	trie.insert(trie.root, str, account111)
-	trie.Insert(account1112.Address[:], account1112)
-	trie.Insert(account1113.Address[:], account1113)
+	triedb.Set(account1112)
+	triedb.Set(account1113)
 
-	tmp1 := NewActDatabase(new(TestReader), trie)
+	tmp1 := NewActDatabase(trie)
 	result := trie.find(trie.root, str)
 	assert.Equal(t, result, account111)
 	result = tmp1.find(tmp1.root, str)
@@ -548,13 +572,14 @@ func TestPatriciaTrie_Put8(t *testing.T) {
 	result = tmp1.find(tmp1.root, str)
 	assert.Equal(t, result, account112)
 
-	result = trie.Find(account1112.Address[:])
+	tmp1db := NewAccountTrieDB(tmp1, new(TestReader))
+	result, _ = triedb.Get(account1112.Address)
 	assert.Equal(t, result, account1112)
-	result = trie.Find(account1113.Address[:])
+	result, _ = triedb.Get(account1113.Address)
 	assert.Equal(t, result, account1113)
-	result = tmp1.Find(account1112.Address[:])
+	result, _ = tmp1db.Get(account1112.Address)
 	assert.Equal(t, result, account1112)
-	result = tmp1.Find(account1113.Address[:])
+	result, _ = tmp1db.Get(account1113.Address)
 	assert.Equal(t, result, account1113)
 }
 
@@ -566,7 +591,8 @@ func TestPatriciaTrie_Put8(t *testing.T) {
 //                          	 	  e    f
 // split at j
 func TestPatriciaTrie_Put9(t *testing.T) {
-	trie := NewEmptyDatabase(new(TestReader))
+	trie := NewEmptyDatabase()
+	triedb := NewAccountTrieDB(trie, new(TestReader))
 
 	account1112 := &types.AccountData{
 		Address: common.HexToAddress("0x1112"),
@@ -584,10 +610,10 @@ func TestPatriciaTrie_Put9(t *testing.T) {
 	}
 	str := "0x000000000000000000000000000000000000111"
 	trie.insert(trie.root, str, account111)
-	trie.Insert(account1112.Address[:], account1112)
-	trie.Insert(account1113.Address[:], account1113)
+	triedb.Set(account1112)
+	triedb.Set(account1113)
 
-	tmp1 := NewActDatabase(new(TestReader), trie)
+	tmp1 := NewActDatabase(trie)
 	result := trie.find(trie.root, str)
 	assert.Equal(t, result, account111)
 	result = tmp1.find(tmp1.root, str)
@@ -608,13 +634,14 @@ func TestPatriciaTrie_Put9(t *testing.T) {
 	result = tmp1.find(tmp1.root, str)
 	assert.Equal(t, result, account110)
 
-	result = trie.Find(account1112.Address[:])
+	tmp1db := NewAccountTrieDB(tmp1, new(TestReader))
+	result, _ = triedb.Get(account1112.Address)
 	assert.Equal(t, result, account1112)
-	result = trie.Find(account1113.Address[:])
+	result, _ = triedb.Get(account1113.Address)
 	assert.Equal(t, result, account1113)
-	result = tmp1.Find(account1112.Address[:])
+	result, _ = tmp1db.Get(account1112.Address)
 	assert.Equal(t, result, account1112)
-	result = tmp1.Find(account1113.Address[:])
+	result, _ = tmp1db.Get(account1113.Address)
 	assert.Equal(t, result, account1113)
 }
 
@@ -626,7 +653,8 @@ func TestPatriciaTrie_Put9(t *testing.T) {
 //                          	 e    f
 // split at j
 func TestPatriciaTrie_Put10(t *testing.T) {
-	trie := NewEmptyDatabase(new(TestReader))
+	trie := NewEmptyDatabase()
+	triedb := NewAccountTrieDB(trie, new(TestReader))
 
 	account1112 := &types.AccountData{
 		Address: common.HexToAddress("0x1112"),
@@ -637,11 +665,10 @@ func TestPatriciaTrie_Put10(t *testing.T) {
 		Address: common.HexToAddress("0x1113"),
 		Balance: big.NewInt(13),
 	}
+	triedb.Set(account1112)
+	triedb.Set(account1113)
 
-	trie.Insert(account1112.Address[:], account1112)
-	trie.Insert(account1113.Address[:], account1113)
-
-	tmp1 := NewActDatabase(new(TestReader), trie)
+	tmp1 := NewActDatabase(trie)
 	account111 := &types.AccountData{
 		Address: common.HexToAddress("0x111"),
 		Balance: big.NewInt(1),
@@ -672,36 +699,38 @@ func TestPatriciaTrie_Put10(t *testing.T) {
 	result = tmp1.find(tmp1.root, str)
 	assert.Equal(t, result, account112)
 
-	result = trie.Find(account1112.Address[:])
+	tmp1db := NewAccountTrieDB(tmp1, new(TestReader))
+	result, _ = triedb.Get(account1112.Address)
 	assert.Equal(t, result, account1112)
-	result = trie.Find(account1113.Address[:])
+	result, _ = triedb.Get(account1113.Address)
 	assert.Equal(t, result, account1113)
-	result = tmp1.Find(account1112.Address[:])
+	result, _ = tmp1db.Get(account1112.Address)
 	assert.Equal(t, result, account1112)
-	result = tmp1.Find(account1113.Address[:])
+	result, _ = tmp1db.Get(account1113.Address)
 	assert.Equal(t, result, account1113)
 }
 
 func TestPatriciaTrie_Put11(t *testing.T) {
-	trie := NewEmptyDatabase(new(TestReader))
-	tmp1 := NewActDatabase(new(TestReader), trie)
+	trie := NewEmptyDatabase()
+	triedb := NewAccountTrieDB(trie, new(TestReader))
+	tmp1 := NewActDatabase(trie)
+	tmp1db := NewAccountTrieDB(tmp1, new(TestReader))
 	account1112 := &types.AccountData{
 		Address: common.HexToAddress("0x1112"),
 		Balance: big.NewInt(12),
 	}
-	tmp1.Put(account1112, 1)
+	tmp1db.Put(account1112, 1)
 
-	result := trie.Find(account1112.Address[:])
+	result, _ := triedb.Get(account1112.Address)
 	assert.Nil(t, result)
 
-	result = tmp1.Find(account1112.Address[:])
+	result, _ = tmp1db.Get(account1112.Address)
 	assert.Equal(t, result, account1112)
 }
 
 func TestPatriciaTrie_Put12(t *testing.T) {
-	trie := NewEmptyDatabase(new(TestReader))
-
-	tmp1 := NewActDatabase(new(TestReader), trie)
+	trie := NewEmptyDatabase()
+	tmp1 := NewActDatabase(trie)
 	account1112 := &types.AccountData{
 		Address: common.HexToAddress("0x1112"),
 		Balance: big.NewInt(12),
@@ -733,8 +762,8 @@ func TestPatriciaTrie_Put12(t *testing.T) {
 }
 
 func TestPatriciaTrie_Collected(t *testing.T) {
-
-	trie := NewEmptyDatabase(new(TestReader))
+	trie := NewEmptyDatabase()
+	triedb := NewAccountTrieDB(trie, new(TestReader))
 	addr01, _ := common.StringToAddress("Lemo8888888888888888888888888888884SD4Q6")
 	addr02, _ := common.StringToAddress("Lemo836BQKCBZ8Z7B7N4G4N4SNGBT24ZZSJQD24D")
 	addr03, _ := common.StringToAddress("Lemo8888888888888888888888885PKQARFNQWYR")
@@ -770,12 +799,13 @@ func TestPatriciaTrie_Collected(t *testing.T) {
 		Address: addr06,
 		Balance: big.NewInt(13),
 	}
-	trie.Put(account01, 2)
-	trie.Put(account02, 2)
-	trie.Put(account03, 2)
-	trie.Put(account04, 2)
-	trie.Put(account05, 2)
-	trie.Put(account06, 2)
+
+	triedb.Put(account01, 2)
+	triedb.Put(account02, 2)
+	triedb.Put(account03, 2)
+	triedb.Put(account04, 2)
+	triedb.Put(account05, 2)
+	triedb.Put(account06, 2)
 	result := trie.Collected(2)
 	assert.Equal(t, 6, len(result))
 
@@ -809,12 +839,13 @@ func TestPatriciaTrie_Collected(t *testing.T) {
 		Balance: big.NewInt(13),
 	}
 
-	tmp1 := NewActDatabase(new(TestReader), trie)
-	tmp1.Put(account1, 3)
-	tmp1.Put(account2, 3)
-	tmp1.Put(account3, 3)
-	tmp1.Put(account4, 3)
-	tmp1.Put(account5, 3)
+	tmp1 := NewActDatabase(trie)
+	tmp1db := NewAccountTrieDB(tmp1, new(TestReader))
+	tmp1db.Put(account1, 3)
+	tmp1db.Put(account2, 3)
+	tmp1db.Put(account3, 3)
+	tmp1db.Put(account4, 3)
+	tmp1db.Put(account5, 3)
 
 	result = tmp1.Collected(3)
 	assert.Equal(t, 5, len(result))

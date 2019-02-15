@@ -86,8 +86,8 @@ func NewChainDataBase(home string, driver string, dns string) *ChainDatabase {
 	db.BizDB = NewBizDatabase(db, db.DB)
 	db.Beansdb = NewBeansDB(home, 2, db.DB, db.AfterScan)
 	db.LastConfirm = &CBlock{
-		Block: db.Context.GetStableBlock(),
-		Trie:  NewEmptyDatabase(db.Beansdb),
+		Block:  db.Context.GetStableBlock(),
+		TrieDB: NewEmptyAccountTrieDB(db.Beansdb),
 	}
 
 	return db
@@ -171,7 +171,7 @@ func (database *ChainDatabase) blockCommit(hash common.Hash) error {
 		return database.Context.Flush()
 	}
 
-	accounts := cItem.Trie.Collected(cItem.Block.Height())
+	accounts := cItem.TrieDB.Collect(cItem.Block.Height())
 	fmt.Println(cItem.Block.Height())
 	fmt.Println(accounts)
 	err = decodeBatch(accounts, batch)
@@ -361,9 +361,9 @@ func (database *ChainDatabase) SetBlock(hash common.Hash, block *types.Block) er
 	// genesis block
 	if (block.ParentHash() == common.Hash{}) {
 		database.UnConfirmBlocks[hash] = &CBlock{
-			Block: block,
-			Trie:  NewEmptyDatabase(database.Beansdb),
-			Top30: make([]*Candidate, 0),
+			Block:  block,
+			TrieDB: NewEmptyAccountTrieDB(database.Beansdb),
+			Top30:  make([]*Candidate, 0),
 		}
 		return nil
 	}
@@ -400,9 +400,9 @@ func (database *ChainDatabase) SetBlock(hash common.Hash, block *types.Block) er
 		}
 
 		database.UnConfirmBlocks[hash] = &CBlock{
-			Block: block,
-			Trie:  NewActDatabase(database.Beansdb, database.LastConfirm.Trie),
-			Top30: clone(database.LastConfirm.Top30),
+			Block:  block,
+			TrieDB: CloneAccountTrieDB(database.LastConfirm.TrieDB),
+			Top30:  clone(database.LastConfirm.Top30),
 		}
 	} else {
 		if pBlock.Block.Height()+1 != block.Height() {
@@ -414,9 +414,9 @@ func (database *ChainDatabase) SetBlock(hash common.Hash, block *types.Block) er
 		}
 
 		database.UnConfirmBlocks[hash] = &CBlock{
-			Block: block,
-			Trie:  NewActDatabase(database.Beansdb, pBlock.Trie),
-			Top30: clone(pBlock.Top30),
+			Block:  block,
+			TrieDB: CloneAccountTrieDB(pBlock.TrieDB),
+			Top30:  clone(pBlock.Top30),
 		}
 	}
 
@@ -536,7 +536,7 @@ func (database *ChainDatabase) SetStableBlock(hash common.Hash) error {
 
 	confirm := func(item *CBlock) {
 		last := database.LastConfirm
-		if last == nil || last.Block == nil || last.Trie == nil {
+		if last == nil || last.Block == nil || last.TrieDB == nil {
 			database.LastConfirm = item
 		} else {
 			// last.Trie.DelDye(last.Block.Height())
@@ -601,22 +601,20 @@ func (database *ChainDatabase) GetTrieDatabase() *TrieDatabase {
 	return NewTrieDatabase(NewLDBDatabase(database.Beansdb))
 }
 
-func (database *ChainDatabase) GetActDatabase(hash common.Hash) *PatriciaTrie {
+func (database *ChainDatabase) GetActDatabase(hash common.Hash) *AccountTrieDB {
 	item := database.UnConfirmBlocks[hash]
-	if (item == nil) ||
-		(item.Block == nil) ||
-		(item.Trie == nil) {
-		if (database.LastConfirm == nil) || (database.LastConfirm.Trie == nil) {
-			return NewEmptyDatabase(database.Beansdb)
+	if item == nil {
+		if database.LastConfirm == nil {
+			return NewAccountTrieDB(NewEmptyDatabase(), database.Beansdb)
+		} else {
+			// if (database.LastConfirm.Block != nil) && (hash != database.LastConfirm.Block.Hash()) {
+			// 	panic("hash != database.LastConfirm.Block.Hash()")
+			// }
+
+			return database.LastConfirm.TrieDB
 		}
-
-		// if (database.LastConfirm.Block != nil) && (hash != database.LastConfirm.Block.Hash()) {
-		// 	panic("hash != database.LastConfirm.Block.Hash()")
-		// }
-
-		return database.LastConfirm.Trie
 	} else {
-		return item.Trie
+		return item.TrieDB
 	}
 }
 
@@ -689,11 +687,15 @@ func (database *ChainDatabase) CandidatesRanking(hash common.Hash) {
 		panic("(database.LastConfirm.Block != nil) && (cItem.Block.Height() < database.LastConfirm.Block.Height())")
 	}
 
-	all := func(hash common.Hash) []*Candidate {
+	all := func(hash common.Hash) ([]*Candidate, error) {
 		db := database.GetActDatabase(hash)
 		result := make([]*Candidate, 0, len(database.Context.Candidates))
 		for k, _ := range database.Context.Candidates {
-			account := db.Find(k[:])
+			account, err := db.Get(k)
+			if err != nil {
+				return nil, err
+			}
+
 			if account == nil {
 				panic("get all candidates error.account is nil.")
 			}
@@ -707,7 +709,7 @@ func (database *ChainDatabase) CandidatesRanking(hash common.Hash) {
 				})
 			}
 		}
-		return result
+		return result, nil
 	}
 
 	data := func(accounts []*types.AccountData, lastCandidatesMap map[common.Address]*Candidate) (map[common.Address]*Candidate, []*Candidate) {
@@ -739,7 +741,7 @@ func (database *ChainDatabase) CandidatesRanking(hash common.Hash) {
 		return lastCandidatesMap, nextCandidates
 	}
 
-	accounts := cItem.Trie.Collected(cItem.Block.Height())
+	accounts := cItem.TrieDB.Collect(cItem.Block.Height())
 	if len(accounts) <= 0 {
 		return
 	}
@@ -797,7 +799,10 @@ func (database *ChainDatabase) CandidatesRanking(hash common.Hash) {
 		voteTop.Rank(max_candidate_count, toSlice(lastCandidatesMap))
 		cItem.Top30 = voteTop.GetTop()
 	} else {
-		candidates := all(hash)
+		candidates, err := all(hash)
+		if err != nil {
+			panic("err: " + err.Error())
+		}
 		voteTop.Rank(max_candidate_count, candidates)
 		cItem.Top30 = voteTop.GetTop()
 	}

@@ -7,6 +7,7 @@ import (
 	"testing"
 	// "github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
+	"math/big"
 	"strconv"
 )
 
@@ -491,4 +492,75 @@ func TestChainDatabase_Commit(t *testing.T) {
 		}
 		log.Errorf("index:" + strconv.Itoa(index))
 	}
+}
+
+// Candidates Ranking
+func NewAccountData(address common.Address, isCandidate bool) *types.AccountData {
+	account := &types.AccountData{
+		Address:       address,
+		Balance:       new(big.Int).SetInt64(100),
+		NewestRecords: make(map[types.ChangeLogType]types.VersionRecord),
+	}
+
+	account.Candidate.Profile = make(types.CandidateProfile)
+	if isCandidate {
+		account.Candidate.Profile[types.CandidateKeyIsCandidate] = "true"
+	}
+	account.Candidate.Votes = new(big.Int)
+
+	return account
+}
+
+func NewAccountDataBatch(count int) []*types.AccountData {
+	result := make([]*types.AccountData, count)
+	for index := 0; index < count; index++ {
+		result[index] = NewAccountData(common.HexToAddress(strconv.Itoa(index)), true)
+	}
+	return result
+}
+
+func TestChainDatabase_CandidatesRankingNo1(t *testing.T) {
+	ClearData()
+	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
+	block0 := GetBlock0()
+	block1 := GetBlock1()
+	block2 := GetBlock2()
+
+	cacheChain.SetBlock(block0.Hash(), block0)
+	cacheChain.SetStableBlock(block0.Hash())
+	cacheChain.SetBlock(block1.Hash(), block1)
+	cacheChain.SetBlock(block2.Hash(), block2)
+	cacheChain.SetStableBlock(block2.Hash())
+
+	block3 := GetBlock3()
+	cacheChain.SetBlock(block3.Hash(), block3)
+	block3Act := cacheChain.GetActDatabase(block3.Hash())
+
+	count := 10
+	candidates := NewAccountDataBatch(count)
+	account1 := NewAccountData(common.HexToAddress(strconv.Itoa(0x1000)), false)
+	account1.VoteFor = candidates[0].Address
+	account1.Balance.SetInt64(50000)
+	block3Act.Put(account1, block3.Height())
+	candidates[0].Candidate.Votes.SetInt64(50000)
+
+	account2 := NewAccountData(common.HexToAddress(strconv.Itoa(0x1001)), false)
+	account2.VoteFor = candidates[9].Address
+	account2.Balance.SetInt64(40000)
+	block3Act.Put(account2, block3.Height())
+	candidates[9].Candidate.Votes.SetInt64(40000)
+
+	for index := 0; index < count; index++ {
+		block3Act.Put(candidates[index], block3.Height())
+	}
+
+	cacheChain.CandidatesRanking(block3.Hash())
+	top30 := cacheChain.GetCandidatesTop(block3.Hash())
+	assert.Equal(t, candidates[0].Address, top30[0].address)
+	assert.Equal(t, candidates[9].Address, top30[1].address)
+	assert.Equal(t, candidates[1].Address, top30[2].address)
+}
+
+func TestChainDatabase_CandidatesRankingNo2(t *testing.T) {
+
 }
