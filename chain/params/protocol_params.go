@@ -2,6 +2,7 @@ package params
 
 import (
 	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
 	"math/big"
 )
 
@@ -54,16 +55,50 @@ const (
 	Bn256ScalarMulGas       uint64 = 40000  // Gas needed for an elliptic curve scalar multiplication
 	Bn256PairingBaseGas     uint64 = 100000 // Base price for an elliptic curve pairing check
 	Bn256PairingPerPointGas uint64 = 80000  // Per-point price for an elliptic curve pairing check
+
 )
 
 var (
-	SnapshotBlock             uint32 = 1000000
-	PeriodBlock               uint32 = 1000
-	oneLEMO                          = big.NewInt(1000000000000000000)             // 1 LEMO
-	RegisterCandidateNodeFees        = new(big.Int).Mul(big.NewInt(1000), oneLEMO) // Register Candidate node fees = 1000LEMO
-	FeeReceiveAddress, _             = common.StringToAddress("0x1001")            // 设置接收注册费用1000LEMO的地址
-	IsCandidateNode                  = "true"
-	NotCandidateNode                 = "false"
+	SnapshotBlock uint32 = 1000000
+	PeriodBlock   uint32 = 1000
+	// oneLEMO                          = big.NewInt(1000000000000000000)             // 1 LEMO
+	// RegisterCandidateNodeFees        = new(big.Int).Mul(big.NewInt(1000), oneLEMO) // Register Candidate node fees = 1000LEMO
+	RegisterCandidateNodeFees, _ = new(big.Int).SetString("1000000000000000000000", 10)
+	FeeReceiveAddress, _         = common.StringToAddress("0x1001") // 设置接收注册费用1000LEMO的地址
+	IsCandidateNode              = "true"
+	NotCandidateNode             = "false"
 
 	MaxPackageLength uint32 = 100 * 1024 * 1024 // 100M
+
+	RewardPoolTotal, _                   = new(big.Int).SetString("900000000000000000000000000", 10)          // 奖励池总量
+	RewardAddress, _                     = common.StringToAddress("Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG") // 调用设置换届奖励预编译合约的地址
+	TermRewardPrecompiledContractAddress = common.BytesToAddress([]byte{9})                                   // 换届奖励的预编译合约地址
+
 )
+
+//go:generate gencodec -type Reward --field-override RewardMarshaling -out gen_Reward_json.go
+// 每一届矿工奖励存储到account的数据结构
+type RewardsMap map[uint32]*Reward
+type Reward struct {
+	Term  uint32   `json:"term" gencodec:"required"`
+	Value *big.Int `json:"value" gencodec:"required"`
+	Times uint32   `json:"times" gencodec:"required"`
+}
+
+type RewardMarshaling struct {
+	Term  hexutil.Uint32
+	Value *hexutil.Big10
+	Times hexutil.Uint32
+}
+
+//go:generate gencodec -type NewReward --field-override NewRewardMarshaling -out gen_NewReward_json.go
+// 申请每一届矿工奖励值交易data的数据结构
+type NewReward struct {
+	Term  uint32   `json:"term" gencodec:"required"`
+	Value *big.Int `json:"value" gencodec:"required"`
+}
+
+type NewRewardMarshaling struct {
+	Term  hexutil.Uint32
+	Value *hexutil.Big10
+}

@@ -674,13 +674,13 @@ func Test_voteAndRegisteTx(t *testing.T) {
 	assert.Equal(t, 0, len(tmp))
 }
 
-// 序列化注册候选节点所用data
+// 注册候选节点所用交易data
 func Test_CreatRegisterTxData(t *testing.T) {
 	pro1 := make(types.CandidateProfile)
 	pro1[types.CandidateKeyIsCandidate] = params.IsCandidateNode
 	pro1[types.CandidateKeyPort] = "1111"
-	pro1[types.CandidateKeyNodeID] = "0x111111"
-	pro1[types.CandidateKeyMinerAddress] = "Lemo11111"
+	pro1[types.CandidateKeyNodeID] = "5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0"
+	pro1[types.CandidateKeyMinerAddress] = "Lemo83JZRYPYF97CFSZBBQBH4GW42PD8CFHT5ARN"
 	pro1[types.CandidateKeyHost] = "1111"
 	marPro1, _ := json.Marshal(pro1)
 	fmt.Println("txData1:", common.ToHex(marPro1))
@@ -720,4 +720,15 @@ func Test_CreatRegisterTxData(t *testing.T) {
 	pro5[types.CandidateKeyHost] = "5555"
 	marPro5, _ := json.Marshal(pro5)
 	fmt.Println("txData5:", common.ToHex(marPro5))
+}
+
+// 生成调用设置换届奖励的预编译合约交易的data
+func TestBlockChain_txData(t *testing.T) {
+	re := params.NewReward{
+		Term:  3,
+		Value: big.NewInt(3330),
+	}
+	by, _ := json.Marshal(re)
+	fmt.Println("tx data", common.ToHex(by))
+	fmt.Println("预编译合约地址", common.BytesToAddress([]byte{9}).String())
 }

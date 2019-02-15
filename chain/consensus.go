@@ -2,6 +2,8 @@ package chain
 
 import (
 	"bytes"
+	"encoding/json"
+	"errors"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
@@ -10,6 +12,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/store/protocol"
+	"math/big"
 	"time"
 )
 
@@ -163,5 +166,29 @@ func (d *Dpovp) Finalize(header *types.Header, am *account.Manager) {
 			balance.Add(balance, item.Salary)
 			acc.SetBalance(balance)
 		}
+	}
+}
+
+// getTermRewardValue reward value of miners at the change of term
+func getTermRewardValue(am account.Manager, term uint32) (*big.Int, error) {
+	// Precompile the contract address
+	address := params.TermRewardPrecompiledContractAddress
+	acc := am.GetAccount(address)
+	// key of db
+	key := address.Hash()
+	value, err := acc.GetStorageState(key)
+	if err != nil {
+		return nil, err
+	}
+
+	rewardMap := make(params.RewardsMap)
+	err = json.Unmarshal(value, &rewardMap)
+	if err != nil {
+		return nil, err
+	}
+	if reward, ok := rewardMap[term]; ok {
+		return reward.Value, nil
+	} else {
+		return nil, errors.New("reward value does not exit. ")
 	}
 }

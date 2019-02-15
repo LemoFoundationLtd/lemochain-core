@@ -126,19 +126,30 @@ func (a *Account) GetVotes() *big.Int {
 }
 
 func (a *Account) SetVotes(votes *big.Int) {
-	a.data.Candidate.Votes = votes
+	a.data.Candidate.Votes = new(big.Int).Set(votes)
 }
 
 func (a *Account) GetCandidateProfile() types.CandidateProfile {
 	if a.data.Candidate.Profile == nil {
 		return make(types.CandidateProfile)
 	} else {
-		return a.data.Candidate.Profile
+		result := make(types.CandidateProfile)
+		for k, v := range a.data.Candidate.Profile {
+			result[k] = v
+		}
+		return result
 	}
 }
 
 func (a *Account) SetCandidateProfile(profile types.CandidateProfile) {
-	a.data.Candidate.Profile = profile
+	if len(profile) <= 0 {
+		a.data.Candidate.Profile = make(map[string]string)
+	} else {
+		a.data.Candidate.Profile = make(map[string]string)
+		for k, v := range profile {
+			a.data.Candidate.Profile[k] = v
+		}
+	}
 }
 
 // Implement AccountAccessor. Access Account without changelog

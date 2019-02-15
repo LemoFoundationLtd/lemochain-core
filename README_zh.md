@@ -28,7 +28,7 @@ lemochain-go项目是这种共识机制的Go语言实现，其控制台命令文
     git clone https://github.com/LemoFoundationLtd/lemochain-go src\github.com\LemoFoundationLtd\lemochain-go
     ```
 - 因为`ECDSA`算法代码是由C语言编写，所以编译时会用到`GCC`，建议`windows`下安装`mingw`，其他系统请点击[GCC文档](https://gcc.gnu.org/install)
-- 安装`MySQL` v5.3 或以上版本
+- 下载安装[MySQL](https://dev.mysql.com/downloads/installer/) v5.3 或以上版本，也可以使用云数据库。然后创建一个名为`lemochain`的库
 
 ### 编译
 ```
