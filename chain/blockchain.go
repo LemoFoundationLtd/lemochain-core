@@ -18,6 +18,7 @@ import (
 	"math"
 	"net"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -185,7 +186,7 @@ func (bc *BlockChain) SetMinedBlock(block *types.Block) error {
 		log.Errorf("can't insert block to cache. height:%d hash:%s", block.Height(), block.Hash().Hex())
 		return ErrSaveBlock
 	}
-	log.Debugf("Insert mined block to db, height: %d, hash: %s", block.Height(), block.Hash().String())
+	log.Debugf("Insert mined block to db, height: %d, hash: %s, time: %d, parent: %s", block.Height(), block.Hash().Prefix(), block.Time(), block.ParentHash().Prefix())
 	err := bc.AccountManager().Save(block.Hash())
 	if err != nil {
 		log.Error("save account error!", "hash", block.Hash().Hex(), "err", err)
@@ -242,12 +243,12 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 	}
 
 	if err = bc.db.SetBlock(hash, block); err != nil {
-		log.Errorf("can't insert block to cache. height:%d hash:%s", block.Height(), hash.Hex())
+		log.Errorf("can't insert block to cache. height:%d hash:%s", block.Height(), hash.Prefix())
 		return ErrSaveBlock
 	}
-	log.Infof("Insert block to chain. height: %d. hash: %s", block.Height(), block.Hash().String())
+	log.Infof("Insert block to chain. height: %d. hash: %s. time: %d. parent: %s", block.Height(), block.Hash().Prefix(), block.Time(), block.ParentHash().Prefix())
 	if err := bc.AccountManager().Save(hash); err != nil {
-		log.Error("save account error!", "height", block.Height(), "hash", hash.Hex(), "err", err)
+		log.Error("save account error!", "height", block.Height(), "hash", hash.Prefix(), "err", err)
 		return err
 	}
 	// is synchronise from net or deputy nodes less than 3
@@ -301,13 +302,10 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 			broadcastConfirm = true
 		}
 		bc.currentBlock.Store(block)
-		log.Warnf("chain forked-1! current block: height(%d), hash(%s)", block.Height(), block.Hash().Hex())
+		log.Warnf("chain forked-1! current block: height(%d), hash(%s)", block.Height(), block.Hash().Prefix())
 	} else {
-		bHash := block.Hash().String()
-		pHash := block.ParentHash().String()
-		oHash := oldCurrentBlock.Hash().String()
 		log.Debugf("not update current block. block: %d - %s, parent: %s, current: %d - %s",
-			block.Height(), bHash[:16], pHash[:16], oldCurrentBlock.Height(), oHash[:16])
+			block.Height(), block.Hash().Prefix(), block.ParentHash().Prefix(), oldCurrentBlock.Height(), oldCurrentBlock.Hash().Prefix())
 	}
 	if _, ok := bc.chainForksHead[parentHash]; ok {
 		delete(bc.chainForksHead, parentHash)
@@ -355,6 +353,7 @@ func (bc *BlockChain) needFork(b *types.Block) (bool, error) {
 	}
 	// ancestor's height can't less than stable block's height
 	if bFB.Height() <= sB.Height() {
+		log.Debugf("bFB.Height(%d) <= sB.Height(%d)", bFB.Height(), sB.Height())
 		return false, nil
 	}
 	bHash := bFB.Hash()
@@ -390,6 +389,14 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32) error {
 		log.Infof("Consensus. height:%d hash:%s", block.Height(), block.Hash().Hex())
 	}()
 
+	if len(bc.chainForksHead) > 0 {
+		res := strings.Builder{}
+		for _, v := range bc.chainForksHead {
+			res.WriteString(fmt.Sprintf("height: %d. hash: %s. parent: %s\r\n", v.Height(), v.Hash().Prefix(), v.ParentHash().Prefix()))
+		}
+		log.Debugf("total forks: %s", res)
+	}
+
 	curBlock := bc.currentBlock.Load().(*types.Block)
 	// fork
 	bc.chainForksLock.Lock()
@@ -420,9 +427,7 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32) error {
 		if length>>31 == 1 {
 			panic("internal error")
 		}
-		log.Errorf("start length=", length)
 		pars := make([]*types.Block, length+1)
-		log.Errorf("stop length=", length)
 		pars[length] = fBlock
 		length--
 		parBlock := fBlock
@@ -446,7 +451,7 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32) error {
 			newCurBlock = bc.GetBlockByHash(k)
 		}
 	} else {
-		for i := uint32(0); i < maxLength; i++ {
+		for i := uint32(0); i <= maxLength; i++ {
 			var b *types.Block
 			for k, blocks := range tmp {
 				if int(i) >= len(blocks) {
@@ -474,9 +479,9 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32) error {
 		oldCurHash := curBlock.Hash()
 		newCurHash := newCurBlock.Hash()
 		if bytes.Compare(newCurHash[:], oldCurHash[:]) != 0 {
-			bc.currentBlock.Store(curBlock)
-			bc.newBlockNotify(curBlock)
-			log.Infof("chain forked-2! oldCurHash{ h: %d, hash: %s}, newCurBlock{h:%d, hash: %s}", curBlock.Height(), oldCurHash.Hex(), newCurBlock.Height(), newCurHash.Hex())
+			bc.currentBlock.Store(newCurBlock)
+			bc.newBlockNotify(newCurBlock)
+			log.Infof("chain forked-2! oldCurHash{ h: %d, hash: %s}, newCurBlock{h:%d, hash: %s}", curBlock.Height(), oldCurHash.Prefix(), newCurBlock.Height(), newCurHash.Prefix())
 		}
 	} else {
 		log.Debug("not have new current block")
@@ -605,6 +610,8 @@ func (bc *BlockChain) ReceiveConfirm(info *network.BlockConfirmData) (err error)
 	}
 
 	if ok, _ := bc.hasEnoughConfirmInfo(info.Hash); ok {
+		bc.mux.Lock()
+		defer bc.mux.Unlock()
 		if err = bc.SetStableBlock(info.Hash, height); err != nil {
 			log.Errorf("ReceiveConfirm: setStableBlock failed. height: %d, hash:%s, err: %v", info.Height, info.Hash.Hex()[:16], err)
 		}

@@ -130,7 +130,7 @@ func newDB() protocol.ChainDB {
 		}
 		newBlock := makeBlock(db, defaultBlockInfos[i], i < 3)
 		if i == 0 || i == 1 {
-			err := db.SetStableBlock(defaultBlockInfos[i].hash)
+			err := db.SetStableBlock(newBlock.Hash())
 			if err != nil {
 				panic(err)
 			}
@@ -193,10 +193,14 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 		// make sure the change log has right order
 		if fromAddr.Hex() < tx.To().Hex() {
 			from.SetBalance(new(big.Int).Sub(from.GetBalance(), cost))
+			from.SetTxCount(from.GetTxCount() + 1)
 			to.SetBalance(new(big.Int).Add(to.GetBalance(), tx.Amount()))
+			to.SetTxCount(to.GetTxCount() + 1)
 		} else {
 			to.SetBalance(new(big.Int).Add(to.GetBalance(), tx.Amount()))
+			to.SetTxCount(to.GetTxCount() + 1)
 			from.SetBalance(new(big.Int).Sub(from.GetBalance(), cost))
+			from.SetTxCount(from.GetTxCount() + 1)
 		}
 		gasUsed += gas
 		salary.Add(salary, fee)
@@ -217,7 +221,7 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 		info.versionRoot = manager.GetVersionRoot()
 	}
 	changeLogs := manager.GetChangeLogs()
-	// fmt.Printf("%d changeLogs %v\n", info.height, changeLogs)
+	fmt.Printf("%d changeLogs %v\n", info.height, changeLogs)
 	logRoot := types.DeriveChangeLogsSha(changeLogs)
 	if logRoot != info.logRoot {
 		if info.logRoot != (common.Hash{}) {
@@ -269,6 +273,7 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 		if err != nil && err != store.ErrExist {
 			panic(err)
 		}
+
 		err = manager.Save(blockHash)
 		if err != nil {
 			panic(err)
