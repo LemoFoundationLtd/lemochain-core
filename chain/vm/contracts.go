@@ -2,15 +2,16 @@ package vm
 
 import (
 	"crypto/sha256"
+	"encoding/json"
 	"errors"
-	"math/big"
-
+	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto/bn256"
 	"github.com/LemoFoundationLtd/lemochain-go/common/math"
 	"golang.org/x/crypto/ripemd160"
+	"math/big"
 )
 
 // PrecompiledContract is the basic interface for native Go contracts. The implementation
@@ -19,6 +20,7 @@ import (
 type PrecompiledContract interface {
 	RequiredGas(input []byte) uint64  // RequiredPrice calculates the contract gas use
 	Run(input []byte) ([]byte, error) // Run runs the precompiled contract
+	SetContext(evm *EVM)
 }
 
 // PrecompiledContracts contains the default set of pre-compiled Lemochain contracts
@@ -31,15 +33,125 @@ var PrecompiledContracts = map[common.Address]PrecompiledContract{
 	common.BytesToAddress([]byte{6}): &bn256Add{},
 	common.BytesToAddress([]byte{7}): &bn256ScalarMul{},
 	common.BytesToAddress([]byte{8}): &bn256Pairing{},
+	common.BytesToAddress([]byte{9}): &setRewardValue{},
 }
 
 // RunPrecompiledContract runs and evaluates the output of a precompiled contract.
-func RunPrecompiledContract(p PrecompiledContract, input []byte, contract *Contract) (ret []byte, err error) {
+func RunPrecompiledContract(p PrecompiledContract, input []byte, contract *Contract, evm *EVM) (ret []byte, err error) {
 	gas := p.RequiredGas(input)
 	if contract.UseGas(gas) {
-		return p.Run(input)
+		p.SetContext(evm)
+		ret, err = p.Run(input)
+		if err != nil {
+			return ret, err
+		}
+		return ret, err
 	}
 	return nil, ErrOutOfGas
+}
+
+// setRewardValue
+type setRewardValue struct {
+	am          AccountManager
+	blockHeight uint32
+}
+
+func (c *setRewardValue) RequiredGas(input []byte) uint64 {
+	return 0
+}
+
+func (c *setRewardValue) Run(input []byte) ([]byte, error) {
+	newReward := &params.NewReward{}
+	err := json.Unmarshal(input, newReward)
+	if err != nil {
+		return false32Byte, err
+	}
+	// 设置的value必须要小于奖励池的总数
+	if newReward.Value.Cmp(params.RewardPoolTotal) >= 0 {
+		return false32Byte, errors.New("set value can't >= Reward pool total")
+	}
+	// 不能设置或者修改过期换届的奖励值
+	if newReward.Term*params.SnapshotBlock+params.PeriodBlock <= c.blockHeight {
+		err = fmt.Errorf("the %d term deputy node reward is overdue", newReward.Term)
+		return false32Byte, err
+	}
+
+	rewardAddress := common.BytesToAddress([]byte{9})
+	rewardAccount := c.am.GetAccount(rewardAddress)
+	Key := rewardAddress.Hash()
+	rewardBytes, err := rewardAccount.GetStorageState(Key)
+	if err != nil {
+		return false32Byte, err
+	}
+	rewardMap := make(params.RewardsMap)
+	// 第一次设置
+	if rewardBytes == nil {
+		rewardMap[newReward.Term] = &params.Reward{
+			Term:  newReward.Term,
+			Value: newReward.Value,
+			Times: 1,
+		}
+	} else {
+		err = json.Unmarshal(rewardBytes, &rewardMap)
+		if err != nil {
+			return false32Byte, err
+		}
+
+		// 计算当前总共发了多少奖励
+		var total = big.NewInt(0)
+		var addValue = big.NewInt(0)
+		for _, v := range rewardMap {
+			total = new(big.Int).Add(total, v.Value)
+		}
+		// 判断加上此次奖励是否会超过奖励池中的总数，区分修改和新加入
+		if re, ok := rewardMap[newReward.Term]; ok {
+			oldValue := re.Value
+			newValue := newReward.Value
+			addValue = new(big.Int).Sub(newValue, oldValue)
+		} else {
+			addValue = newReward.Value
+		}
+
+		if params.RewardPoolTotal.Cmp(new(big.Int).Add(total, addValue)) == -1 {
+			return false32Byte, errors.New("Reward pool balance is insufficient ")
+		}
+
+		// 判断是否为修改value操作
+		if oldReward, ok := rewardMap[newReward.Term]; ok {
+			// 如果同一届已经修改了两次了则不能再次进行修改了
+			if oldReward.Times == 2 {
+				err = fmt.Errorf("update %d term deputy node reward false", newReward.Term)
+				return false32Byte, err
+			}
+			// update
+			oldReward.Value = newReward.Value
+			oldReward.Times++
+		} else { // 设置新的换届奖励
+			rewardMap[newReward.Term] = &params.Reward{
+				Term:  newReward.Term,
+				Value: newReward.Value,
+				Times: 1,
+			}
+		}
+	}
+
+	// 保存到账户
+	endBytes, err := json.Marshal(rewardMap)
+	if err != nil {
+		return false32Byte, err
+	}
+	err = rewardAccount.SetStorageState(Key, endBytes)
+	if err != nil {
+		return false32Byte, err
+	}
+	return true32Byte, nil
+}
+
+// SetAccountManager
+func (c *setRewardValue) SetContext(evm *EVM) {
+	c.am = evm.am
+	c.blockHeight = evm.BlockHeight
+
 }
 
 // ECRECOVER implemented as a native contract.
@@ -76,6 +188,10 @@ func (c *ecrecover) Run(input []byte) ([]byte, error) {
 	return common.LeftPadBytes(addr.Bytes(), 32), nil
 }
 
+func (c *ecrecover) SetContext(evm *EVM) {
+
+}
+
 // SHA256 implemented as a native contract.
 type sha256hash struct{}
 
@@ -89,6 +205,9 @@ func (c *sha256hash) RequiredGas(input []byte) uint64 {
 func (c *sha256hash) Run(input []byte) ([]byte, error) {
 	h := sha256.Sum256(input)
 	return h[:], nil
+}
+func (c *sha256hash) SetContext(evm *EVM) {
+
 }
 
 // RIPMED160 implemented as a native contract.
@@ -106,6 +225,9 @@ func (c *ripemd160hash) Run(input []byte) ([]byte, error) {
 	ripemd.Write(input)
 	return common.LeftPadBytes(ripemd.Sum(nil), 32), nil
 }
+func (c *ripemd160hash) SetContext(evm *EVM) {
+
+}
 
 // data copy implemented as a native contract.
 type dataCopy struct{}
@@ -119,6 +241,9 @@ func (c *dataCopy) RequiredGas(input []byte) uint64 {
 }
 func (c *dataCopy) Run(in []byte) ([]byte, error) {
 	return in, nil
+}
+func (c *dataCopy) SetContext(evm *EVM) {
+
 }
 
 // bigModExp implements a native big integer exponential modular operation.
@@ -225,6 +350,9 @@ func (c *bigModExp) Run(input []byte) ([]byte, error) {
 	}
 	return common.LeftPadBytes(base.Exp(base, exp, mod).Bytes(), int(modLen)), nil
 }
+func (c *bigModExp) SetContext(evm *EVM) {
+
+}
 
 // newCurvePoint unmarshals a binary blob into a bn256 elliptic curve point,
 // returning it, or an error if the point is invalid.
@@ -267,6 +395,9 @@ func (c *bn256Add) Run(input []byte) ([]byte, error) {
 	res.Add(x, y)
 	return res.Marshal(), nil
 }
+func (c *bn256Add) SetContext(evm *EVM) {
+
+}
 
 // bn256ScalarMul implements a native elliptic curve scalar multiplication.
 type bn256ScalarMul struct{}
@@ -284,6 +415,9 @@ func (c *bn256ScalarMul) Run(input []byte) ([]byte, error) {
 	res := new(bn256.G1)
 	res.ScalarMult(p, new(big.Int).SetBytes(getData(input, 64, 32)))
 	return res.Marshal(), nil
+}
+func (c *bn256ScalarMul) SetContext(evm *EVM) {
+
 }
 
 var (
@@ -332,4 +466,7 @@ func (c *bn256Pairing) Run(input []byte) ([]byte, error) {
 		return true32Byte, nil
 	}
 	return false32Byte, nil
+}
+func (c *bn256Pairing) SetContext(evm *EVM) {
+
 }

@@ -25,7 +25,7 @@ func TestChainDatabase_Get(t *testing.T) {
 	//
 	// hash := common.BytesToHash(encodeBlockNumber2Hash(114).Bytes())
 	// log.Errorf("" + hash.Hex())
-	store.NewChainDataBase(store.GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
+	// store.NewChainDataBase(store.GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
 }
 
 func loadAccount(db protocol.ChainDB, address common.Address) *Account {
@@ -89,6 +89,64 @@ func TestAccount_SetSuicide_GetSuicide(t *testing.T) {
 	assert.Equal(t, big.NewInt(0), account.GetBalance())
 	assert.Equal(t, common.Hash{}, account.GetCodeHash())
 	assert.Equal(t, common.Hash{}, account.GetStorageRoot())
+}
+
+func TestAccount_GetVoteFor(t *testing.T) {
+	store.ClearData()
+	db := newDB()
+
+	account := loadAccount(db, defaultAccounts[0].Address)
+	assert.Equal(t, common.Address{}, account.GetVoteFor())
+
+	account.SetVoteFor(common.HexToAddress("0x5000"))
+	assert.Equal(t, common.HexToAddress("0x5000"), account.GetVoteFor())
+}
+
+func TestAccount_GetTxCount(t *testing.T) {
+	store.ClearData()
+	db := newDB()
+
+	account := loadAccount(db, defaultAccounts[0].Address)
+	assert.Equal(t, uint32(0), account.GetTxCount())
+
+	account.SetTxCount(uint32(100))
+	assert.Equal(t, uint32(100), account.GetTxCount())
+}
+
+func TestAccount_GetCandidateProfile(t *testing.T) {
+	store.ClearData()
+	db := newDB()
+
+	account := loadAccount(db, defaultAccounts[0].Address)
+	assert.NotNil(t, account.GetCandidateProfile())
+	assert.Equal(t, 0, len(account.GetCandidateProfile()))
+
+	profiles := account.GetCandidateProfile()
+	profiles[types.CandidateKeyIsCandidate] = "true"
+	account.SetCandidateProfile(profiles)
+	assert.Equal(t, 1, len(account.GetCandidateProfile()))
+
+	profiles[types.CandidateKeyNodeID] = "NodeId"
+	assert.Equal(t, 1, len(account.GetCandidateProfile()))
+
+	profiles = account.GetCandidateProfile()
+	profiles[types.CandidateKeyNodeID] = "NodeId"
+	assert.Equal(t, 1, len(account.GetCandidateProfile()))
+}
+
+func TestAccount_GetVotes(t *testing.T) {
+	store.ClearData()
+	db := newDB()
+
+	account := loadAccount(db, defaultAccounts[0].Address)
+	assert.Equal(t, new(big.Int).SetInt64(0), account.GetVotes())
+
+	votes := new(big.Int).SetInt64(100)
+	account.SetVotes(votes)
+	assert.Equal(t, votes, account.GetVotes())
+
+	votes.SetInt64(200)
+	assert.NotEqual(t, votes, account.GetVotes())
 }
 
 func TestAccount_SetCodeHash_GetCodeHash(t *testing.T) {

@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain"
@@ -87,6 +88,23 @@ func (a *PublicAccountAPI) GetVoteFor(LemoAddress string) (string, error) {
 	}
 	forAddress := candiAccount.GetVoteFor().String()
 	return forAddress, nil
+}
+
+func (a *PublicAccountAPI) GetStorageState() ([]*params.Reward, error) {
+	address := common.BytesToAddress([]byte{9})
+	acc, err := a.GetAccount(address.String())
+	if err != nil {
+		return nil, err
+	}
+	key := address.Hash()
+	value, err := acc.GetStorageState(key)
+	rewardMap := make(params.RewardsMap)
+	json.Unmarshal(value, &rewardMap)
+	var result = make([]*params.Reward, 0)
+	for _, v := range rewardMap {
+		result = append(result, v)
+	}
+	return result, nil
 }
 
 //go:generate gencodec -type CandidateInfo -out gen_candidate_info_json.go
