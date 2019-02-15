@@ -71,7 +71,7 @@ func verifyHeaderSignData(block *types.Block) error {
 
 // VerifyDeputyRoot verify deputy root
 func (d *Dpovp) VerifyDeputyRoot(block *types.Block) error {
-	if block.Height()%params.SnapshotBlock == 0 {
+	if block.Height()%params.SnapshotBlock == 0 && block.Height() > 0 {
 		hash := types.DeriveDeputyRootSha(block.DeputyNodes)
 		root := block.Header.DeputyRoot
 		if bytes.Compare(hash[:], root) != 0 {

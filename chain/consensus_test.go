@@ -277,7 +277,7 @@ func Test_headerExtra(t *testing.T) {
 
 // TestDpovp_VerifyHeader01 对共识中共识区块与父块关联情况共识的测试
 func TestDpovp_VerifyHeader01(t *testing.T) {
-	err := initDeputyNode(3, 0)
+	err := initDeputyNode(5, 0)
 	assert.NoError(t, err)
 	t.Log(deputynode.Instance().GetDeputiesCount())
 	dpovp := loadDpovp()
@@ -286,10 +286,10 @@ func TestDpovp_VerifyHeader01(t *testing.T) {
 	testBlock00, err := newTestBlock(dpovp, common.Hash{}, 0, common.HexToAddress(block01MinerAddress), uint32(time.Now().Unix()-10), deputy01Privkey, true)
 	assert.NoError(t, err)
 	// header := testBlock00.Header
-	assert.Equal(t, ErrVerifyBlockFailed, dpovp.VerifyHeader(testBlock00))
+	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyHeader(testBlock00))
 
 	// 验证父区块的高度为0，也就是父区块为创世区块情况
-	testBlock01, err := newTestBlock(dpovp, testBlock00.Hash(), 1, common.HexToAddress(block02MinerAddress), uint32(time.Now().Unix()-5), deputy02Privkey, true)
+	testBlock01, err := newTestBlock(dpovp, testBlock00.Hash(), 1, common.HexToAddress(block02MinerAddress), uint32(time.Now().Unix()-5), deputy02Privkey, false)
 	assert.NoError(t, err)
 
 	assert.Equal(t, nil, dpovp.VerifyHeader(testBlock01))

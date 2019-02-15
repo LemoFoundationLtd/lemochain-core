@@ -35,6 +35,7 @@ func TestBlockChain_Reorg8ABC(t *testing.T) {
 
 	info.parentHash = genesis.Hash()
 	info.height = 1
+	info.time = uint32(time.Now().Unix() - 22)
 	block1 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block1, true)
 	assert.NoError(t, err)
@@ -44,6 +45,7 @@ func TestBlockChain_Reorg8ABC(t *testing.T) {
 
 	info.parentHash = block1.Hash()
 	info.height = 2
+	info.time = uint32(time.Now().Unix() - 19)
 	block2 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block2, true)
 	assert.NoError(t, err)
@@ -55,6 +57,7 @@ func TestBlockChain_Reorg8ABC(t *testing.T) {
 
 	info.parentHash = hash
 	info.height = 3
+	info.time = uint32(time.Now().Unix() - 16)
 	block31 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block31, true)
 	assert.NoError(t, err)
@@ -64,46 +67,43 @@ func TestBlockChain_Reorg8ABC(t *testing.T) {
 
 	info.parentHash = hash
 	info.height = 3
+	info.time = uint32(time.Now().Unix() - 9)
 	info.gasLimit = 1000
 	block32 := makeBlock(blockChain.db, info, false)
 
-	// assert.PanicsWithValue(t, "PARENT IS ERROR.", func() {
-	// 	blockChain.InsertChain(block32, true)
-	// })
 	err = blockChain.InsertChain(block32, true)
 	assert.NoError(t, err)
 	assert.NotNil(t, blockChain.chainForksHead[block31.Hash()])
 	assert.NotNil(t, blockChain.chainForksHead[block32.Hash()])
-	if block31.Hash().Big().Cmp(block32.Hash().Big()) <= 0 {
-		assert.Equal(t, blockChain.CurrentBlock().Hash(), block31.Hash())
-	} else {
-		assert.Equal(t, blockChain.CurrentBlock().Hash(), block32.Hash())
-	}
+	assert.Equal(t, blockChain.CurrentBlock().Hash(), block31.Hash())
 
 	info.parentHash = block32.Hash()
 	info.height = 4
+	info.time = uint32(time.Now().Unix() - 6)
 	block41 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block41, true)
 	assert.NoError(t, err)
-	assert.Equal(t, blockChain.CurrentBlock().Hash(), block41.Hash())
+	assert.Equal(t, blockChain.CurrentBlock().Hash(), block31.Hash())
 	assert.Nil(t, blockChain.chainForksHead[block32.Hash()])
 	assert.NotNil(t, blockChain.chainForksHead[block41.Hash()])
 
 	info.parentHash = block41.Hash()
 	info.height = 5
+	info.time = uint32(time.Now().Unix() - 3)
 	block5 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block5, true)
 	assert.NoError(t, err)
-	assert.Equal(t, blockChain.CurrentBlock().Hash(), block5.Hash())
+	assert.Equal(t, blockChain.CurrentBlock().Hash(), block31.Hash())
 	assert.Nil(t, blockChain.chainForksHead[block41.Hash()])
 	assert.NotNil(t, blockChain.chainForksHead[block5.Hash()])
 
 	info.parentHash = block31.Hash()
 	info.height = 4
+	info.time = uint32(time.Now().Unix() - 13)
 	block42 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block42, true)
 	assert.NoError(t, err)
-	assert.Equal(t, blockChain.CurrentBlock().Hash(), block5.Hash())
+	assert.Equal(t, blockChain.CurrentBlock().Hash(), block42.Hash())
 	assert.Nil(t, blockChain.chainForksHead[block31.Hash()])
 	assert.NotNil(t, blockChain.chainForksHead[block42.Hash()])
 }
@@ -121,12 +121,14 @@ func TestBlockChain_Reorg8Len(t *testing.T) {
 
 	info.parentHash = genesis.Hash()
 	info.height = 1
+	info.time = uint32(time.Now().Unix() - 22)
 	block1 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block1, true)
 	assert.NoError(t, err)
 
 	info.parentHash = block1.Hash()
 	info.height = 2
+	info.time = uint32(time.Now().Unix() - 19)
 	block2 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block2, true)
 	assert.NoError(t, err)
@@ -135,12 +137,14 @@ func TestBlockChain_Reorg8Len(t *testing.T) {
 
 	info.parentHash = hash
 	info.height = 3
+	info.time = uint32(time.Now().Unix() - 16)
 	block31 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block31, true)
 	assert.NoError(t, err)
 
 	info.parentHash = hash
 	info.height = 3
+	info.time = uint32(time.Now().Unix() - 9)
 	info.gasLimit = 1000
 	block32 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block32, true)
@@ -148,6 +152,7 @@ func TestBlockChain_Reorg8Len(t *testing.T) {
 
 	info.parentHash = block31.Hash()
 	info.height = 4
+	info.time = uint32(time.Now().Unix() - 13)
 	block41 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block41, true)
 	assert.NoError(t, err)
@@ -155,6 +160,7 @@ func TestBlockChain_Reorg8Len(t *testing.T) {
 
 	info.parentHash = block41.Hash()
 	info.height = 5
+	info.time = uint32(time.Now().Unix() - 10)
 	block51 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block51, true)
 	assert.NoError(t, err)
@@ -162,6 +168,7 @@ func TestBlockChain_Reorg8Len(t *testing.T) {
 
 	info.parentHash = block32.Hash()
 	info.height = 4
+	info.time = uint32(time.Now().Unix() - 6)
 	block42 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block42, true)
 	assert.NoError(t, err)
@@ -169,14 +176,11 @@ func TestBlockChain_Reorg8Len(t *testing.T) {
 
 	info.parentHash = block42.Hash()
 	info.height = 5
+	info.time = uint32(time.Now().Unix() - 3)
 	block52 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block52, true)
 	assert.NoError(t, err)
-	if block51.Hash().Big().Cmp(block52.Hash().Big()) <= 0 {
-		assert.Equal(t, blockChain.CurrentBlock().Hash(), block51.Hash())
-	} else {
-		assert.Equal(t, blockChain.CurrentBlock().Hash(), block52.Hash())
-	}
+	assert.Equal(t, blockChain.CurrentBlock().Hash(), block51.Hash())
 }
 
 func TestBlockChain_GetBlockByHeight(t *testing.T) {
@@ -974,7 +978,7 @@ func TestBlockChain_SetStableBlockCurBranch42(t *testing.T) {
 	// Block215
 	info.parentHash = block214.Hash()
 	info.height = 5
-	info.time = uint32(time.Now().Unix() - 22)
+	info.time = uint32(time.Now().Unix() - 10)
 	info.gasLimit = 1004
 	block215 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block215, true)
@@ -983,6 +987,7 @@ func TestBlockChain_SetStableBlockCurBranch42(t *testing.T) {
 	// Block3
 	info.parentHash = block2.Hash()
 	info.height = 3
+	info.time = uint32(time.Now().Unix() - 9)
 	info.gasLimit = 1005
 	block3 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block3, true)
@@ -991,6 +996,7 @@ func TestBlockChain_SetStableBlockCurBranch42(t *testing.T) {
 	// Block314
 	info.parentHash = block3.Hash()
 	info.height = 4
+	info.time = uint32(time.Now().Unix() - 6)
 	info.gasLimit = 1006
 	block314 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block314, true)
@@ -999,6 +1005,7 @@ func TestBlockChain_SetStableBlockCurBranch42(t *testing.T) {
 	// Block315
 	info.parentHash = block314.Hash()
 	info.height = 5
+	info.time = uint32(time.Now().Unix() - 3)
 	info.gasLimit = 1007
 	block315 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block315, true)
@@ -1007,6 +1014,7 @@ func TestBlockChain_SetStableBlockCurBranch42(t *testing.T) {
 	// Block316
 	info.parentHash = block315.Hash()
 	info.height = 6
+	info.time = uint32(time.Now().Unix() - 0)
 	info.gasLimit = 1008
 	block316 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block316, true)
@@ -1015,6 +1023,7 @@ func TestBlockChain_SetStableBlockCurBranch42(t *testing.T) {
 	// Block324
 	info.parentHash = block3.Hash()
 	info.height = 4
+	info.time = uint32(time.Now().Unix() + 1)
 	info.gasLimit = 1009
 	block324 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block324, true)
@@ -1023,6 +1032,7 @@ func TestBlockChain_SetStableBlockCurBranch42(t *testing.T) {
 	// Block325
 	info.parentHash = block324.Hash()
 	info.height = 5
+	info.time = uint32(time.Now().Unix() + 4)
 	info.gasLimit = 1010
 	block325 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block325, true)
@@ -1031,6 +1041,7 @@ func TestBlockChain_SetStableBlockCurBranch42(t *testing.T) {
 	// Block326
 	info.parentHash = block325.Hash()
 	info.height = 6
+	info.time = uint32(time.Now().Unix() + 7)
 	info.gasLimit = 1011
 	block326 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block326, true)
@@ -1038,11 +1049,24 @@ func TestBlockChain_SetStableBlockCurBranch42(t *testing.T) {
 
 	err = blockChain.SetStableBlock(block2.Hash(), 2)
 	assert.NoError(t, err)
-
 	assert.Equal(t, 3, len(blockChain.chainForksHead))
 	assert.NotNil(t, blockChain.chainForksHead[block215.Hash()])
 	assert.NotNil(t, blockChain.chainForksHead[block316.Hash()])
 	assert.NotNil(t, blockChain.chainForksHead[block326.Hash()])
+	assert.Equal(t, blockChain.CurrentBlock().Hash(), block215.Hash())
+
+	err = blockChain.SetStableBlock(block3.Hash(), 3)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(blockChain.chainForksHead))
+	assert.NotNil(t, blockChain.chainForksHead[block316.Hash()])
+	assert.NotNil(t, blockChain.chainForksHead[block326.Hash()])
+	assert.Equal(t, blockChain.CurrentBlock().Hash(), block316.Hash())
+
+	err = blockChain.SetStableBlock(block325.Hash(), 5)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(blockChain.chainForksHead))
+	assert.NotNil(t, blockChain.chainForksHead[block326.Hash()])
+	assert.Equal(t, blockChain.CurrentBlock().Hash(), block326.Hash())
 }
 
 // 1、2{213、214、215、216}、{3{{314、315、316}、{324、325, 326}}}， set stable #316
@@ -1059,6 +1083,7 @@ func TestBlockChain_SetStableBlockCurBranch43(t *testing.T) {
 	var info blockInfo
 	info.parentHash = genesis.Hash()
 	info.height = uint32(1)
+	info.time = uint32(time.Now().Unix() - 22)
 	info.gasLimit = 1000
 	block1 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block1, true)
@@ -1067,6 +1092,7 @@ func TestBlockChain_SetStableBlockCurBranch43(t *testing.T) {
 	// Block2
 	info.parentHash = block1.Hash()
 	info.height = 2
+	info.time = uint32(time.Now().Unix() - 19)
 	info.gasLimit = 1001
 	block2 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block2, true)
@@ -1075,6 +1101,7 @@ func TestBlockChain_SetStableBlockCurBranch43(t *testing.T) {
 	// Block213
 	info.parentHash = block2.Hash()
 	info.height = 3
+	info.time = uint32(time.Now().Unix() - 16)
 	info.gasLimit = 1002
 	block213 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block213, true)
@@ -1083,6 +1110,7 @@ func TestBlockChain_SetStableBlockCurBranch43(t *testing.T) {
 	// Block24
 	info.parentHash = block213.Hash()
 	info.height = 4
+	info.time = uint32(time.Now().Unix() - 13)
 	info.gasLimit = 1003
 	block214 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block214, true)
@@ -1091,6 +1119,7 @@ func TestBlockChain_SetStableBlockCurBranch43(t *testing.T) {
 	// Block215
 	info.parentHash = block214.Hash()
 	info.height = 5
+	info.time = uint32(time.Now().Unix() - 10)
 	info.gasLimit = 1004
 	block215 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block215, true)
@@ -1099,6 +1128,7 @@ func TestBlockChain_SetStableBlockCurBranch43(t *testing.T) {
 	// Block3
 	info.parentHash = block2.Hash()
 	info.height = 3
+	info.time = uint32(time.Now().Unix() - 9)
 	info.gasLimit = 1005
 	block3 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block3, true)
@@ -1107,6 +1137,7 @@ func TestBlockChain_SetStableBlockCurBranch43(t *testing.T) {
 	// Block314
 	info.parentHash = block3.Hash()
 	info.height = 4
+	info.time = uint32(time.Now().Unix() - 6)
 	info.gasLimit = 1006
 	block314 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block314, true)
@@ -1115,6 +1146,7 @@ func TestBlockChain_SetStableBlockCurBranch43(t *testing.T) {
 	// Block315
 	info.parentHash = block314.Hash()
 	info.height = 5
+	info.time = uint32(time.Now().Unix() - 3)
 	info.gasLimit = 1007
 	block315 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block315, true)
@@ -1123,6 +1155,7 @@ func TestBlockChain_SetStableBlockCurBranch43(t *testing.T) {
 	// Block316
 	info.parentHash = block315.Hash()
 	info.height = 6
+	info.time = uint32(time.Now().Unix() - 0)
 	info.gasLimit = 1008
 	block316 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block316, true)
@@ -1131,6 +1164,7 @@ func TestBlockChain_SetStableBlockCurBranch43(t *testing.T) {
 	// Block324
 	info.parentHash = block3.Hash()
 	info.height = 4
+	info.time = uint32(time.Now().Unix() + 1)
 	info.gasLimit = 1009
 	block324 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block324, true)
@@ -1139,6 +1173,7 @@ func TestBlockChain_SetStableBlockCurBranch43(t *testing.T) {
 	// Block325
 	info.parentHash = block324.Hash()
 	info.height = 5
+	info.time = uint32(time.Now().Unix() + 4)
 	info.gasLimit = 1010
 	block325 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block325, true)
@@ -1147,6 +1182,7 @@ func TestBlockChain_SetStableBlockCurBranch43(t *testing.T) {
 	// Block326
 	info.parentHash = block325.Hash()
 	info.height = 6
+	info.time = uint32(time.Now().Unix() + 7)
 	info.gasLimit = 1011
 	block326 := makeBlock(blockChain.db, info, false)
 	err = blockChain.InsertChain(block326, true)
@@ -1157,6 +1193,7 @@ func TestBlockChain_SetStableBlockCurBranch43(t *testing.T) {
 
 	assert.Equal(t, 1, len(blockChain.chainForksHead))
 	assert.NotNil(t, blockChain.chainForksHead[block316.Hash()])
+	assert.Equal(t, blockChain.CurrentBlock().Hash(), block316.Hash())
 }
 
 func buildConfirm(hash common.Hash, privateKey string) (*network.BlockConfirmData, error) {
