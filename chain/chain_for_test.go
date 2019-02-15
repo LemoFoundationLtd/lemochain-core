@@ -130,7 +130,7 @@ func newDB() protocol.ChainDB {
 		}
 		newBlock := makeBlock(db, defaultBlockInfos[i], i < 3)
 		if i == 0 || i == 1 {
-			err := db.SetStableBlock(defaultBlockInfos[i].hash)
+			err := db.SetStableBlock(newBlock.Hash())
 			if err != nil {
 				panic(err)
 			}
