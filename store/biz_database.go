@@ -92,7 +92,7 @@ func (db *BizDatabase) GetTxByAddr(src common.Address, index int, size int) ([]*
 	}
 
 	confirm := db.Reader.GetLastConfirm()
-	trieDB := confirm.TrieDB
+	trieDB := confirm.AccountTrieDB
 	if trieDB == nil {
 		return make([]*VTransaction, 0), 0, nil
 	}

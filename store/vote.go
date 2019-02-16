@@ -2,13 +2,13 @@ package store
 
 import (
 	"bytes"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"math/big"
 )
 
 type Candidate struct {
 	address common.Address
-	nodeID  []byte
 	total   *big.Int
 }
 
@@ -25,11 +25,15 @@ func (candidate *Candidate) GetTotal() *big.Int {
 	return new(big.Int).Set(candidate.total)
 }
 
-func (candidate *Candidate) Clone() *Candidate {
+func (candidate *Candidate) Copy() *Candidate {
 	return &Candidate{
 		address: candidate.GetAddress(),
 		total:   candidate.GetTotal(),
 	}
+}
+
+func (candidate *Candidate) Clone() types.NodeData {
+	return candidate.Copy()
 }
 
 type VoteTop struct {
@@ -46,7 +50,7 @@ func (top *VoteTop) Clone() *VoteTop {
 
 	copy.Top = make([]*Candidate, top.TopCnt)
 	for index := 0; index < top.TopCnt; index++ {
-		copy.Top[index] = top.Top[index].Clone()
+		copy.Top[index] = top.Top[index].Copy()
 	}
 
 	return copy
@@ -56,7 +60,7 @@ func (top *VoteTop) Max() *Candidate {
 	if top.TopCnt <= 0 {
 		return nil
 	} else {
-		return top.Top[0].Clone()
+		return top.Top[0].Copy()
 	}
 }
 
@@ -64,7 +68,7 @@ func (top *VoteTop) Min() *Candidate {
 	if top.TopCnt <= 0 {
 		return nil
 	} else {
-		return top.Top[top.TopCnt-1].Clone()
+		return top.Top[top.TopCnt-1].Copy()
 	}
 }
 
@@ -92,7 +96,7 @@ func (top *VoteTop) Count() int {
 func (top *VoteTop) GetTop() []*Candidate {
 	result := make([]*Candidate, top.TopCnt)
 	for index := 0; index < top.TopCnt; index++ {
-		result[index] = top.Top[index].Clone()
+		result[index] = top.Top[index].Copy()
 	}
 	return result
 }

@@ -17,12 +17,6 @@ import (
 
 var max_candidate_count = 30
 
-// type CBlock struct {
-// 	Block *types.Block
-// 	Trie  *PatriciaTrie
-// 	Top30 []*Candidate
-// }
-
 type ChainDatabase struct {
 	LastConfirm     *CBlock
 	UnConfirmBlocks map[common.Hash]*CBlock
@@ -32,25 +26,6 @@ type ChainDatabase struct {
 	Beansdb *BeansDB
 	BizDB   *BizDatabase
 	rw      sync.RWMutex
-}
-
-func isCandidate(account *types.AccountData) bool {
-	if (account == nil) ||
-		(len(account.Candidate.Profile) <= 0) {
-		return false
-	}
-
-	result, ok := account.Candidate.Profile[types.CandidateKeyIsCandidate]
-	if !ok {
-		return false
-	}
-
-	val, err := strconv.ParseBool(result)
-	if err != nil {
-		panic("to bool err : " + err.Error())
-	} else {
-		return val
-	}
 }
 
 func checkHome(home string) error {
@@ -86,8 +61,8 @@ func NewChainDataBase(home string, driver string, dns string) *ChainDatabase {
 	db.BizDB = NewBizDatabase(db, db.DB)
 	db.Beansdb = NewBeansDB(home, 2, db.DB, db.AfterScan)
 	db.LastConfirm = &CBlock{
-		Block:  db.Context.GetStableBlock(),
-		TrieDB: NewEmptyAccountTrieDB(db.Beansdb),
+		Block:         db.Context.GetStableBlock(),
+		AccountTrieDB: NewEmptyAccountTrieDB(db.Beansdb),
 	}
 
 	return db
@@ -159,8 +134,11 @@ func (database *ChainDatabase) blockCommit(hash common.Hash) error {
 	filterCandidates := func(accounts []*types.AccountData) {
 		for index := 0; index < len(accounts); index++ {
 			account := accounts[index]
-			if isCandidate(account) && !database.Context.CandidateIsExist(account.Address) {
-				database.Context.SetCandidate(account.Address)
+			if cItem.isCandidate(account) && !database.Context.CandidateIsExist(account.Address) {
+				database.Context.SetCandidate(&Candidate{
+					address: account.Address,
+					total:   new(big.Int).Set(account.Candidate.Votes),
+				})
 			}
 		}
 	}
@@ -171,7 +149,7 @@ func (database *ChainDatabase) blockCommit(hash common.Hash) error {
 		return database.Context.Flush()
 	}
 
-	accounts := cItem.TrieDB.Collect(cItem.Block.Height())
+	accounts := cItem.AccountTrieDB.Collect(cItem.Block.Height())
 	fmt.Println(cItem.Block.Height())
 	fmt.Println(accounts)
 	err = decodeBatch(accounts, batch)
@@ -360,24 +338,8 @@ func (database *ChainDatabase) SetBlock(hash common.Hash, block *types.Block) er
 
 	// genesis block
 	if (block.ParentHash() == common.Hash{}) {
-		database.UnConfirmBlocks[hash] = &CBlock{
-			Block:  block,
-			TrieDB: NewEmptyAccountTrieDB(database.Beansdb),
-			Top30:  make([]*Candidate, 0),
-		}
+		database.UnConfirmBlocks[hash] = NewGenesisBlock(block, database.Beansdb)
 		return nil
-	}
-
-	clone := func(src []*Candidate) []*Candidate {
-		if len(src) <= 0 {
-			return make([]*Candidate, 0)
-		} else {
-			dst := make([]*Candidate, len(src))
-			for index := 0; index < len(src); index++ {
-				dst[index] = src[index].Clone()
-			}
-			return dst
-		}
 	}
 
 	pHash := block.Header.ParentHash
@@ -399,11 +361,7 @@ func (database *ChainDatabase) SetBlock(hash common.Hash, block *types.Block) er
 			panic("block'height:" + bheight + "|bhash:" + bhash + "|confirm'height:" + lheight + "|lhash:" + lhash)
 		}
 
-		database.UnConfirmBlocks[hash] = &CBlock{
-			Block:  block,
-			TrieDB: CloneAccountTrieDB(database.LastConfirm.TrieDB),
-			Top30:  clone(database.LastConfirm.Top30),
-		}
+		database.UnConfirmBlocks[hash] = NewNormalBlock(block, database.LastConfirm.AccountTrieDB, database.LastConfirm.CandidateTrieDB, database.LastConfirm.Top30)
 	} else {
 		if pBlock.Block.Height()+1 != block.Height() {
 			bheight := strconv.Itoa(int(block.Height()))
@@ -413,11 +371,7 @@ func (database *ChainDatabase) SetBlock(hash common.Hash, block *types.Block) er
 			panic("block'height:" + bheight + "|bhash:" + bhash + "|confirm'height:" + lheight + "|lhash:" + lhash)
 		}
 
-		database.UnConfirmBlocks[hash] = &CBlock{
-			Block:  block,
-			TrieDB: CloneAccountTrieDB(pBlock.TrieDB),
-			Top30:  clone(pBlock.Top30),
-		}
+		database.UnConfirmBlocks[hash] = NewNormalBlock(block, pBlock.AccountTrieDB, pBlock.CandidateTrieDB, pBlock.Top30)
 	}
 
 	return nil
@@ -536,7 +490,7 @@ func (database *ChainDatabase) SetStableBlock(hash common.Hash) error {
 
 	confirm := func(item *CBlock) {
 		last := database.LastConfirm
-		if last == nil || last.Block == nil || last.TrieDB == nil {
+		if last == nil || last.Block == nil || last.AccountTrieDB == nil {
 			database.LastConfirm = item
 		} else {
 			// last.Trie.DelDye(last.Block.Height())
@@ -611,10 +565,10 @@ func (database *ChainDatabase) GetActDatabase(hash common.Hash) *AccountTrieDB {
 			// 	panic("hash != database.LastConfirm.Block.Hash()")
 			// }
 
-			return database.LastConfirm.TrieDB
+			return database.LastConfirm.AccountTrieDB
 		}
 	} else {
-		return item.TrieDB
+		return item.AccountTrieDB
 	}
 }
 
@@ -687,125 +641,7 @@ func (database *ChainDatabase) CandidatesRanking(hash common.Hash) {
 		panic("(database.LastConfirm.Block != nil) && (cItem.Block.Height() < database.LastConfirm.Block.Height())")
 	}
 
-	all := func(hash common.Hash) ([]*Candidate, error) {
-		db := database.GetActDatabase(hash)
-		result := make([]*Candidate, 0, len(database.Context.Candidates))
-		for k, _ := range database.Context.Candidates {
-			account, err := db.Get(k)
-			if err != nil {
-				return nil, err
-			}
-
-			if account == nil {
-				panic("get all candidates error.account is nil.")
-			}
-
-			if !isCandidate(account) {
-				continue
-			} else {
-				result = append(result, &Candidate{
-					address: account.Address,
-					total:   new(big.Int).Set(account.Candidate.Votes),
-				})
-			}
-		}
-		return result, nil
-	}
-
-	data := func(accounts []*types.AccountData, lastCandidatesMap map[common.Address]*Candidate) (map[common.Address]*Candidate, []*Candidate) {
-
-		nextCandidates := make([]*Candidate, 0)
-
-		for index := 0; index < len(accounts); index++ {
-			account := accounts[index]
-			isCandidate := isCandidate(account)
-			if isCandidate {
-				nextCandidates = append(nextCandidates, &Candidate{
-					address: account.Address,
-					total:   new(big.Int).Set(account.Candidate.Votes),
-				})
-
-				database.Context.SetCandidate(account.Address)
-			}
-
-			_, ok := lastCandidatesMap[account.Address]
-			if ok {
-				if !isCandidate {
-					delete(lastCandidatesMap, account.Address)
-				} else {
-					lastCandidatesMap[account.Address].total.Set(account.Candidate.Votes)
-				}
-			}
-		}
-
-		return lastCandidatesMap, nextCandidates
-	}
-
-	accounts := cItem.TrieDB.Collect(cItem.Block.Height())
-	if len(accounts) <= 0 {
-		return
-	}
-
-	toHashMap := func(src []*Candidate) map[common.Address]*Candidate {
-		result := make(map[common.Address]*Candidate)
-		for index := 0; index < len(src); index++ {
-			result[src[index].address] = src[index]
-		}
-		return result
-	}
-
-	toSlice := func(src map[common.Address]*Candidate) []*Candidate {
-		if len(src) <= 0 {
-			return make([]*Candidate, 0)
-		} else {
-			dst := make([]*Candidate, 0, len(src))
-			for _, v := range src {
-				dst = append(dst, v)
-			}
-			return dst
-		}
-	}
-
-	voteTop := NewVoteTop(cItem.Top30)
-	lastCandidatesMap, nextCandidates := data(accounts, toHashMap(cItem.Top30))
-	if len(cItem.Top30) < max_candidate_count {
-		for index := 0; index < len(nextCandidates); index++ {
-			lastCandidatesMap[nextCandidates[index].address] = nextCandidates[index]
-		}
-		voteTop.Rank(max_candidate_count, toSlice(lastCandidatesMap))
-		cItem.Top30 = voteTop.GetTop()
-		return
-	}
-
-	lastMinCandidate := voteTop.Min()
-	lastCount := voteTop.Count()
-
-	voteTop.Rank(max_candidate_count, toSlice(lastCandidatesMap))
-	if (lastMinCandidate != nil) &&
-		(lastCount == voteTop.Count()) &&
-		(lastMinCandidate.total.Cmp(voteTop.Min().total) <= 0) {
-
-		lastMinCandidate = voteTop.Min()
-		for index := 0; index < len(nextCandidates); index++ {
-			if (lastMinCandidate.total.Cmp(nextCandidates[index].total) < 0) ||
-				((lastMinCandidate.total.Cmp(nextCandidates[index].total) == 0) && (bytes.Compare(lastMinCandidate.address[:], nextCandidates[index].address[:]) < 0)) {
-				_, ok := lastCandidatesMap[nextCandidates[index].address]
-				if !ok {
-					lastCandidatesMap[nextCandidates[index].address] = nextCandidates[index]
-				}
-			}
-		}
-
-		voteTop.Rank(max_candidate_count, toSlice(lastCandidatesMap))
-		cItem.Top30 = voteTop.GetTop()
-	} else {
-		candidates, err := all(hash)
-		if err != nil {
-			panic("err: " + err.Error())
-		}
-		voteTop.Rank(max_candidate_count, candidates)
-		cItem.Top30 = voteTop.GetTop()
-	}
+	cItem.Ranking()
 }
 
 func (database *ChainDatabase) Close() error {
