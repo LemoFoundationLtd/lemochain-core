@@ -77,7 +77,7 @@ var (
 )
 
 //go:generate gencodec -type Reward --field-override RewardMarshaling -out gen_Reward_json.go
-// 每一届矿工奖励存储到account的数据结构
+// The map to store the miner's reward
 type RewardsMap map[uint32]*Reward
 type Reward struct {
 	Term  uint32   `json:"term" gencodec:"required"`
@@ -91,14 +91,13 @@ type RewardMarshaling struct {
 	Times hexutil.Uint32
 }
 
-//go:generate gencodec -type NewReward --field-override NewRewardMarshaling -out gen_NewReward_json.go
-// 申请每一届矿工奖励值交易data的数据结构
-type NewReward struct {
+//go:generate gencodec -type RewardJson --field-override RewardJsonMarshaling -out gen_RewardJson_json.go
+type RewardJson struct {
 	Term  uint32   `json:"term" gencodec:"required"`
 	Value *big.Int `json:"value" gencodec:"required"`
 }
 
-type NewRewardMarshaling struct {
+type RewardJsonMarshaling struct {
 	Term  hexutil.Uint32
 	Value *hexutil.Big10
 }

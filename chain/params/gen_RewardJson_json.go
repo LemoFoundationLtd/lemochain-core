@@ -10,37 +10,37 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
 )
 
-var _ = (*NewRewardMarshaling)(nil)
+var _ = (*RewardJsonMarshaling)(nil)
 
 // MarshalJSON marshals as JSON.
-func (n NewReward) MarshalJSON() ([]byte, error) {
-	type NewReward struct {
+func (r RewardJson) MarshalJSON() ([]byte, error) {
+	type RewardJson struct {
 		Term  hexutil.Uint32 `json:"term" gencodec:"required"`
 		Value *hexutil.Big10 `json:"value" gencodec:"required"`
 	}
-	var enc NewReward
-	enc.Term = hexutil.Uint32(n.Term)
-	enc.Value = (*hexutil.Big10)(n.Value)
+	var enc RewardJson
+	enc.Term = hexutil.Uint32(r.Term)
+	enc.Value = (*hexutil.Big10)(r.Value)
 	return json.Marshal(&enc)
 }
 
 // UnmarshalJSON unmarshals from JSON.
-func (n *NewReward) UnmarshalJSON(input []byte) error {
-	type NewReward struct {
+func (r *RewardJson) UnmarshalJSON(input []byte) error {
+	type RewardJson struct {
 		Term  *hexutil.Uint32 `json:"term" gencodec:"required"`
 		Value *hexutil.Big10  `json:"value" gencodec:"required"`
 	}
-	var dec NewReward
+	var dec RewardJson
 	if err := json.Unmarshal(input, &dec); err != nil {
 		return err
 	}
 	if dec.Term == nil {
-		return errors.New("missing required field 'term' for NewReward")
+		return errors.New("missing required field 'term' for RewardJson")
 	}
-	n.Term = uint32(*dec.Term)
+	r.Term = uint32(*dec.Term)
 	if dec.Value == nil {
-		return errors.New("missing required field 'value' for NewReward")
+		return errors.New("missing required field 'value' for RewardJson")
 	}
-	n.Value = (*big.Int)(dec.Value)
+	r.Value = (*big.Int)(dec.Value)
 	return nil
 }
