@@ -491,3 +491,31 @@ func TestChainDatabase_Commit(t *testing.T) {
 		log.Errorf("index:" + strconv.Itoa(index))
 	}
 }
+
+func TestChainDatabase_CandidatesRanking(t *testing.T) {
+	ClearData()
+	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
+	block0 := GetBlock0()
+	cacheChain.SetBlock(block0.Hash(), block0)
+	cacheChain.SetStableBlock(block0.Hash())
+
+	block1 := GetBlock1()
+	cacheChain.SetBlock(block1.Hash(), block1)
+
+	count := 100
+	candidates := NewAccountDataBatch(100)
+	for index := 0; index < count; index++ {
+		cacheChain.GetActDatabase(block1.Hash()).Put(candidates[index], 1)
+	}
+	cacheChain.CandidatesRanking(block1.Hash())
+	cacheChain.SetStableBlock(block1.Hash())
+
+	top := cacheChain.GetCandidatesTop(block1.Hash())
+	assert.Equal(t, max_candidate_count, len(top))
+
+	page, total, err := cacheChain.GetCandidatesPage(0, 10)
+	assert.NoError(t, err)
+	assert.Equal(t, uint32(count), total)
+	assert.Equal(t, common.HexToAddress(strconv.Itoa(0)), page[0])
+	assert.Equal(t, common.HexToAddress(strconv.Itoa(9)), page[9])
+}

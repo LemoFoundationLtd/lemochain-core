@@ -136,8 +136,8 @@ func (database *ChainDatabase) blockCommit(hash common.Hash) error {
 			account := accounts[index]
 			if cItem.isCandidate(account) && !database.Context.CandidateIsExist(account.Address) {
 				database.Context.SetCandidate(&Candidate{
-					address: account.Address,
-					total:   new(big.Int).Set(account.Candidate.Votes),
+					Address: account.Address,
+					Total:   new(big.Int).Set(account.Candidate.Votes),
 				})
 			}
 		}

@@ -46,7 +46,7 @@ func NewNormalBlock(block *types.Block, accountTrieDB *AccountTrieDB, candidateT
 func (block *CBlock) toHashMap(src []*Candidate) map[common.Address]*Candidate {
 	result := make(map[common.Address]*Candidate)
 	for index := 0; index < len(src); index++ {
-		result[src[index].address] = src[index]
+		result[src[index].Address] = src[index]
 	}
 	return result
 }
@@ -90,8 +90,8 @@ func (block *CBlock) data(accounts []*types.AccountData, lastCandidatesMap map[c
 		isCandidate := block.isCandidate(account)
 		if isCandidate {
 			candidate := &Candidate{
-				address: account.Address,
-				total:   new(big.Int).Set(account.Candidate.Votes),
+				Address: account.Address,
+				Total:   new(big.Int).Set(account.Candidate.Votes),
 			}
 			nextCandidates = append(nextCandidates, candidate)
 			block.CandidateTrieDB.Put(candidate, block.Block.Height())
@@ -102,7 +102,7 @@ func (block *CBlock) data(accounts []*types.AccountData, lastCandidatesMap map[c
 			if !isCandidate {
 				panic("can't cancel candidate: " + account.Address.Hex())
 			} else {
-				lastCandidatesMap[account.Address].total.Set(account.Candidate.Votes)
+				lastCandidatesMap[account.Address].Total.Set(account.Candidate.Votes)
 			}
 		}
 	}
@@ -112,7 +112,7 @@ func (block *CBlock) data(accounts []*types.AccountData, lastCandidatesMap map[c
 
 func (block *CBlock) less30(lastCandidatesMap map[common.Address]*Candidate, nextCandidates []*Candidate) {
 	for index := 0; index < len(nextCandidates); index++ {
-		lastCandidatesMap[nextCandidates[index].address] = nextCandidates[index]
+		lastCandidatesMap[nextCandidates[index].Address] = nextCandidates[index]
 	}
 	voteTop := NewVoteTop(block.Top30)
 	voteTop.Rank(max_candidate_count, block.toSlice(lastCandidatesMap))
@@ -123,14 +123,14 @@ func (block *CBlock) greater30(lastCandidatesMap map[common.Address]*Candidate, 
 	voteTop := NewVoteTop(block.Top30)
 	lastMinCandidate := voteTop.Min()
 	voteTop.Rank(max_candidate_count, block.toSlice(lastCandidatesMap))
-	if (lastMinCandidate != nil) && (lastMinCandidate.total.Cmp(voteTop.Min().total) <= 0) {
+	if (lastMinCandidate != nil) && (lastMinCandidate.Total.Cmp(voteTop.Min().Total) <= 0) {
 		lastMinCandidate = voteTop.Min()
 		for index := 0; index < len(nextCandidates); index++ {
-			if (lastMinCandidate.total.Cmp(nextCandidates[index].total) < 0) ||
-				((lastMinCandidate.total.Cmp(nextCandidates[index].total) == 0) && (bytes.Compare(lastMinCandidate.address[:], nextCandidates[index].address[:]) < 0)) {
-				_, ok := lastCandidatesMap[nextCandidates[index].address]
+			if (lastMinCandidate.Total.Cmp(nextCandidates[index].Total) < 0) ||
+				((lastMinCandidate.Total.Cmp(nextCandidates[index].Total) == 0) && (bytes.Compare(lastMinCandidate.Address[:], nextCandidates[index].Address[:]) < 0)) {
+				_, ok := lastCandidatesMap[nextCandidates[index].Address]
 				if !ok {
-					lastCandidatesMap[nextCandidates[index].address] = nextCandidates[index]
+					lastCandidatesMap[nextCandidates[index].Address] = nextCandidates[index]
 				}
 			}
 		}

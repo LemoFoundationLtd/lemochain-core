@@ -792,7 +792,7 @@ func (db *CandidateTrieDB) Set(candidate *Candidate) {
 		return
 	}
 
-	db.trie.Insert(db.key(candidate.address), candidate.Clone())
+	db.trie.Insert(db.key(candidate.Address), candidate.Clone())
 }
 
 func (db *CandidateTrieDB) Get(address common.Address) (*Candidate, error) {
@@ -836,7 +836,7 @@ func (db *CandidateTrieDB) Put(candidate *Candidate, dye uint32) {
 		return
 	}
 
-	db.trie.Put(db.key(candidate.address), candidate.Copy(), dye)
+	db.trie.Put(db.key(candidate.Address), candidate.Copy(), dye)
 }
 
 func (db *CandidateTrieDB) Flush() error {

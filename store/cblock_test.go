@@ -60,7 +60,7 @@ func equal(src []*types.AccountData, size int, dst []*Candidate) bool {
 	}
 
 	for index := 0; index < size; index++ {
-		if src[index].Address != dst[index].address {
+		if src[index].Address != dst[index].Address {
 			return false
 		}
 	}

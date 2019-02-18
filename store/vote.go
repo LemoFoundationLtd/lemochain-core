@@ -8,12 +8,12 @@ import (
 )
 
 type Candidate struct {
-	address common.Address
-	total   *big.Int
+	Address common.Address
+	Total   *big.Int
 }
 
 func (candidate *Candidate) GetAddress() common.Address {
-	return candidate.address
+	return candidate.Address
 }
 
 func (candidate *Candidate) GetNodeID() []byte {
@@ -22,13 +22,13 @@ func (candidate *Candidate) GetNodeID() []byte {
 }
 
 func (candidate *Candidate) GetTotal() *big.Int {
-	return new(big.Int).Set(candidate.total)
+	return new(big.Int).Set(candidate.Total)
 }
 
 func (candidate *Candidate) Copy() *Candidate {
 	return &Candidate{
-		address: candidate.GetAddress(),
-		total:   candidate.GetTotal(),
+		Address: candidate.GetAddress(),
+		Total:   candidate.GetTotal(),
 	}
 }
 
@@ -74,7 +74,7 @@ func (top *VoteTop) Min() *Candidate {
 
 func (top *VoteTop) Del(address common.Address) {
 	for index := 0; index < top.TopCnt; index++ {
-		if bytes.Compare(top.Top[index].address[:], address[:]) != 0 {
+		if bytes.Compare(top.Top[index].Address[:], address[:]) != 0 {
 			continue
 		} else {
 			top.Top = append(top.Top[0:index], top.Top[index+1:]...)
@@ -129,13 +129,13 @@ func (top *VoteTop) ranking(topSize int, candidates []*Candidate) []*Candidate {
 		result := make([]*Candidate, minCnt)
 		for i := 0; i < minCnt; i++ {
 			for j := i + 1; j < length; j++ {
-				val := candidates[i].total.Cmp(candidates[j].total)
+				val := candidates[i].Total.Cmp(candidates[j].Total)
 
 				if val < 0 {
 					candidates[i], candidates[j] = candidates[j], candidates[i]
 				} else {
 					if (val == 0) &&
-						(bytes.Compare(candidates[i].address[:], candidates[j].address[:]) > 0) {
+						(bytes.Compare(candidates[i].Address[:], candidates[j].Address[:]) > 0) {
 						candidates[i], candidates[j] = candidates[j], candidates[i]
 					}
 				}

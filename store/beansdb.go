@@ -334,7 +334,7 @@ func NewCandidateCache() *CandidateCache {
 		ItemMaxSize:  64,
 		Cap:          64 * 1024,
 		Cur:          0,
-		CandidateBuf: make([]byte, 0, 64*1024),
+		CandidateBuf: make([]byte, 64*1024),
 	}
 }
 
@@ -353,7 +353,7 @@ func (cache *CandidateCache) Set(candidate *Candidate) error {
 		panic("candidate buf is larger than ItemMaxSize")
 	}
 
-	pos, ok := cache.Candidates[candidate.address]
+	pos, ok := cache.Candidates[candidate.Address]
 	if ok {
 		pos.Len = uint32(len(buf))
 		err = binary.Write(NewLmBuffer(cache.CandidateBuf[pos.Pos:]), binary.LittleEndian, &pos)
@@ -361,7 +361,7 @@ func (cache *CandidateCache) Set(candidate *Candidate) error {
 			return err
 		} else {
 			copy(cache.CandidateBuf[(pos.Pos+uint32(candidatePosLen)):], buf[:])
-			cache.Candidates[candidate.address] = pos
+			cache.Candidates[candidate.Address] = pos
 		}
 	} else {
 		if cache.Cur+cache.ItemMaxSize > cache.Cap {
@@ -380,7 +380,7 @@ func (cache *CandidateCache) Set(candidate *Candidate) error {
 			return err
 		} else {
 			copy(cache.CandidateBuf[(pos.Pos+uint32(candidatePosLen)):], buf[:])
-			cache.Candidates[candidate.address] = pos
+			cache.Candidates[candidate.Address] = pos
 			cache.Cur = cache.Cur + cache.ItemMaxSize
 		}
 	}
@@ -422,7 +422,7 @@ func (cache *CandidateCache) Decode(buf []byte, length int) error {
 			return err
 		}
 
-		cache.Candidates[candidate.address] = pos
+		cache.Candidates[candidate.Address] = pos
 	}
 
 	return nil
@@ -445,12 +445,12 @@ func (cache *CandidateCache) GetCandidatePage(index int, size int) ([]common.Add
 		}
 
 		var candidate Candidate
-		err = rlp.DecodeBytes(cache.CandidateBuf[start+candidatePosLen:pos.Len], &candidate)
+		err = rlp.DecodeBytes(cache.CandidateBuf[start+candidatePosLen:start+candidatePosLen+int(pos.Len)], &candidate)
 		if err != nil {
 			return nil, uint32(total), err
 		}
 
-		result[index] = candidate.address
+		result = append(result, candidate.Address)
 	}
 	return result, uint32(total), nil
 }
