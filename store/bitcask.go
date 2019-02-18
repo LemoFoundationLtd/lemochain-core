@@ -507,6 +507,7 @@ func (bitcask *BitCask) Commit(batch Batch) error {
 				return err
 			}
 
+			// 需要优化，操作DB太慢了
 			err = bitcask.afterScan(items[index].Flg, batch.Route(), items[index].Key, items[index].Val, curPos)
 			if err != nil {
 				return err

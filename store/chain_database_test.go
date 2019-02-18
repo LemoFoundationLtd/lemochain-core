@@ -492,6 +492,30 @@ func TestChainDatabase_Commit(t *testing.T) {
 	}
 }
 
+func TestChainDatabase_GetBlock(t *testing.T) {
+	ClearData()
+
+	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
+	block0 := GetBlock0()
+	cacheChain.SetBlock(block0.Hash(), block0)
+	cacheChain.SetStableBlock(block0.Hash())
+
+	result, err := cacheChain.GetBlock(block0.Hash(), block0.Height())
+	assert.NoError(t, err)
+	assert.Equal(t, block0.Hash(), result.Hash())
+
+	_, err = cacheChain.GetBlock(block0.Hash(), block0.Height()+1)
+	assert.Equal(t, ErrNotExist, err)
+
+	cacheChain = NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
+	result, err = cacheChain.GetBlock(block0.Hash(), block0.Height())
+	assert.NoError(t, err)
+	assert.Equal(t, block0.Hash(), result.Hash())
+
+	_, err = cacheChain.GetBlock(block0.Hash(), block0.Height()+1)
+	assert.Equal(t, ErrNotExist, err)
+}
+
 func TestChainDatabase_CandidatesRanking(t *testing.T) {
 	ClearData()
 	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
@@ -504,8 +528,9 @@ func TestChainDatabase_CandidatesRanking(t *testing.T) {
 
 	count := 100
 	candidates := NewAccountDataBatch(100)
+	actDatabase, _ := cacheChain.GetActDatabase(block1.Hash())
 	for index := 0; index < count; index++ {
-		cacheChain.GetActDatabase(block1.Hash()).Put(candidates[index], 1)
+		actDatabase.Put(candidates[index], 1)
 	}
 	cacheChain.CandidatesRanking(block1.Hash())
 	cacheChain.SetStableBlock(block1.Hash())
@@ -521,5 +546,10 @@ func TestChainDatabase_CandidatesRanking(t *testing.T) {
 	page, total, err = cacheChain.GetCandidatesPage(10, 100)
 	assert.NoError(t, err)
 	assert.Equal(t, 90, len(page))
+	assert.Equal(t, uint32(count), total)
+
+	page, total, err = cacheChain.GetCandidatesPage(100, 10)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(page))
 	assert.Equal(t, uint32(count), total)
 }

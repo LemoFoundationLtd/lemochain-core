@@ -169,7 +169,7 @@ func saveBlock(db protocol.ChainDB, blockIndex int, info *blockInfo) {
 func saveAccount(db protocol.ChainDB) {
 	trieDB := db.GetTrieDatabase()
 	// save account (to db cache, not to file)
-	acctDb := db.GetActDatabase(defaultBlockInfos[0].hash)
+	acctDb, _ := db.GetActDatabase(defaultBlockInfos[0].hash)
 
 	for index := 0; index < len(defaultAccounts); index++ {
 		acctDb.Put(defaultAccounts[index], 0)

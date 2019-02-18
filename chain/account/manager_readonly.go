@@ -12,7 +12,7 @@ func ReadOnlyManager(blockHash common.Hash, db protocol.ChainDB) *Manager {
 		baseBlockHash: blockHash,
 	}
 	manager.loadBaseBlock()
-	manager.acctDb = db.GetActDatabase(blockHash)
+	manager.acctDb, _ = db.GetActDatabase(blockHash)
 	manager.processor = &LogProcessor{
 		accountLoader: manager,
 	}

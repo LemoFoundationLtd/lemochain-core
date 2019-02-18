@@ -29,7 +29,7 @@ func TestChainDatabase_Get(t *testing.T) {
 }
 
 func loadAccount(db protocol.ChainDB, address common.Address) *Account {
-	acctDb := db.GetActDatabase(newestBlock.Hash())
+	acctDb, _ := db.GetActDatabase(newestBlock.Hash())
 	data, _ := acctDb.Get(address)
 	return NewAccount(db, address, data)
 }

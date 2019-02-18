@@ -555,20 +555,29 @@ func (database *ChainDatabase) GetTrieDatabase() *TrieDatabase {
 	return NewTrieDatabase(NewLDBDatabase(database.Beansdb))
 }
 
-func (database *ChainDatabase) GetActDatabase(hash common.Hash) *AccountTrieDB {
+func (database *ChainDatabase) GetActDatabase(hash common.Hash) (*AccountTrieDB, error) {
+	if (hash == common.Hash{}) {
+		return NewAccountTrieDB(NewEmptyDatabase(), database.Beansdb), nil
+	}
+
 	item := database.UnConfirmBlocks[hash]
 	if item == nil {
-		if database.LastConfirm == nil {
-			return NewAccountTrieDB(NewEmptyDatabase(), database.Beansdb)
-		} else {
-			// if (database.LastConfirm.Block != nil) && (hash != database.LastConfirm.Block.Hash()) {
-			// 	panic("hash != database.LastConfirm.Block.Hash()")
-			// }
+		_, err := database.getBlock4DB(hash)
+		if err == ErrNotExist {
+			panic("the block not exist. check the block is set.")
+		}
 
-			return database.LastConfirm.AccountTrieDB
+		if err != nil {
+			return nil, err
+		}
+
+		if database.LastConfirm == nil {
+			return NewAccountTrieDB(NewEmptyDatabase(), database.Beansdb), nil
+		} else {
+			return database.LastConfirm.AccountTrieDB, nil
 		}
 	} else {
-		return item.AccountTrieDB
+		return item.AccountTrieDB, nil
 	}
 }
 
