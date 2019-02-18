@@ -139,7 +139,7 @@ func Instance() *Manager {
 func (d *Manager) getDeputiesByHeight(height uint32) DeputyNodes {
 	d.lock.Lock()
 	defer d.lock.Unlock()
-	if len(d.DeputyNodesList) == 1 {
+	if d.DeputyNodesList == nil || len(d.DeputyNodesList) == 0 {
 		panic("not set deputy nodes")
 	} else if len(d.DeputyNodesList) == 1 {
 		return d.DeputyNodesList[0].nodes

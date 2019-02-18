@@ -3,11 +3,10 @@ package store
 import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
-	"github.com/stretchr/testify/assert"
-	"testing"
-	// "github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
+	"github.com/stretchr/testify/assert"
 	"strconv"
+	"testing"
 )
 
 func TestChainDatabase_Test(t *testing.T) {
@@ -491,4 +490,36 @@ func TestChainDatabase_Commit(t *testing.T) {
 		}
 		log.Errorf("index:" + strconv.Itoa(index))
 	}
+}
+
+func TestChainDatabase_CandidatesRanking(t *testing.T) {
+	ClearData()
+	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
+	block0 := GetBlock0()
+	cacheChain.SetBlock(block0.Hash(), block0)
+	cacheChain.SetStableBlock(block0.Hash())
+
+	block1 := GetBlock1()
+	cacheChain.SetBlock(block1.Hash(), block1)
+
+	count := 100
+	candidates := NewAccountDataBatch(100)
+	for index := 0; index < count; index++ {
+		cacheChain.GetActDatabase(block1.Hash()).Put(candidates[index], 1)
+	}
+	cacheChain.CandidatesRanking(block1.Hash())
+	cacheChain.SetStableBlock(block1.Hash())
+
+	top := cacheChain.GetCandidatesTop(block1.Hash())
+	assert.Equal(t, max_candidate_count, len(top))
+
+	page, total, err := cacheChain.GetCandidatesPage(0, 10)
+	assert.NoError(t, err)
+	assert.Equal(t, 10, len(page))
+	assert.Equal(t, uint32(count), total)
+
+	page, total, err = cacheChain.GetCandidatesPage(10, 100)
+	assert.NoError(t, err)
+	assert.Equal(t, 90, len(page))
+	assert.Equal(t, uint32(count), total)
 }

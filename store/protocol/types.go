@@ -25,7 +25,7 @@ type ChainDB interface {
 	GetAccount(addr common.Address) (*types.AccountData, error)
 
 	GetTrieDatabase() *store.TrieDatabase
-	GetActDatabase(hash common.Hash) *store.PatriciaTrie
+	GetActDatabase(hash common.Hash) *store.AccountTrieDB
 	GetBizDatabase() store.BizDb
 
 	GetContractCode(hash common.Hash) (types.Code, error)

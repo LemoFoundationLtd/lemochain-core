@@ -2,18 +2,18 @@ package store
 
 import (
 	"bytes"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"math/big"
 )
 
 type Candidate struct {
-	address common.Address
-	nodeID  []byte
-	total   *big.Int
+	Address common.Address
+	Total   *big.Int
 }
 
 func (candidate *Candidate) GetAddress() common.Address {
-	return candidate.address
+	return candidate.Address
 }
 
 func (candidate *Candidate) GetNodeID() []byte {
@@ -22,14 +22,18 @@ func (candidate *Candidate) GetNodeID() []byte {
 }
 
 func (candidate *Candidate) GetTotal() *big.Int {
-	return new(big.Int).Set(candidate.total)
+	return new(big.Int).Set(candidate.Total)
 }
 
-func (candidate *Candidate) Clone() *Candidate {
+func (candidate *Candidate) Copy() *Candidate {
 	return &Candidate{
-		address: candidate.GetAddress(),
-		total:   candidate.GetTotal(),
+		Address: candidate.GetAddress(),
+		Total:   candidate.GetTotal(),
 	}
+}
+
+func (candidate *Candidate) Clone() types.NodeData {
+	return candidate.Copy()
 }
 
 type VoteTop struct {
@@ -46,7 +50,7 @@ func (top *VoteTop) Clone() *VoteTop {
 
 	copy.Top = make([]*Candidate, top.TopCnt)
 	for index := 0; index < top.TopCnt; index++ {
-		copy.Top[index] = top.Top[index].Clone()
+		copy.Top[index] = top.Top[index].Copy()
 	}
 
 	return copy
@@ -56,7 +60,7 @@ func (top *VoteTop) Max() *Candidate {
 	if top.TopCnt <= 0 {
 		return nil
 	} else {
-		return top.Top[0].Clone()
+		return top.Top[0].Copy()
 	}
 }
 
@@ -64,13 +68,13 @@ func (top *VoteTop) Min() *Candidate {
 	if top.TopCnt <= 0 {
 		return nil
 	} else {
-		return top.Top[top.TopCnt-1].Clone()
+		return top.Top[top.TopCnt-1].Copy()
 	}
 }
 
 func (top *VoteTop) Del(address common.Address) {
 	for index := 0; index < top.TopCnt; index++ {
-		if bytes.Compare(top.Top[index].address[:], address[:]) != 0 {
+		if bytes.Compare(top.Top[index].Address[:], address[:]) != 0 {
 			continue
 		} else {
 			top.Top = append(top.Top[0:index], top.Top[index+1:]...)
@@ -92,7 +96,7 @@ func (top *VoteTop) Count() int {
 func (top *VoteTop) GetTop() []*Candidate {
 	result := make([]*Candidate, top.TopCnt)
 	for index := 0; index < top.TopCnt; index++ {
-		result[index] = top.Top[index].Clone()
+		result[index] = top.Top[index].Copy()
 	}
 	return result
 }
@@ -125,13 +129,13 @@ func (top *VoteTop) ranking(topSize int, candidates []*Candidate) []*Candidate {
 		result := make([]*Candidate, minCnt)
 		for i := 0; i < minCnt; i++ {
 			for j := i + 1; j < length; j++ {
-				val := candidates[i].total.Cmp(candidates[j].total)
+				val := candidates[i].Total.Cmp(candidates[j].Total)
 
 				if val < 0 {
 					candidates[i], candidates[j] = candidates[j], candidates[i]
 				} else {
 					if (val == 0) &&
-						(bytes.Compare(candidates[i].address[:], candidates[j].address[:]) > 0) {
+						(bytes.Compare(candidates[i].Address[:], candidates[j].Address[:]) > 0) {
 						candidates[i], candidates[j] = candidates[j], candidates[i]
 					}
 				}

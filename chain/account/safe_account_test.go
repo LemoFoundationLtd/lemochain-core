@@ -17,7 +17,7 @@ func TestSafeAccount_Interface(t *testing.T) {
 func loadSafeAccount(address common.Address) *SafeAccount {
 	store.ClearData()
 	db := newDB()
-	data := db.GetActDatabase(newestBlock.Hash()).Find(address[:])
+	data, _ := db.GetActDatabase(newestBlock.Hash()).Get(address)
 	return NewSafeAccount(NewManager(newestBlock.Hash(), db).processor, NewAccount(db, address, data))
 }
 

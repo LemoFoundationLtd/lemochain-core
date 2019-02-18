@@ -11,7 +11,7 @@ import (
 
 func isSort(src []*Candidate, dst []*Candidate, size int) bool {
 	for index := 0; index < size; index++ {
-		if src[index].total.Cmp(dst[index].total) != 0 {
+		if src[index].Total.Cmp(dst[index].Total) != 0 {
 			return false
 		}
 	}
@@ -28,62 +28,62 @@ func isEqual(src *Candidate, dst *Candidate) bool {
 		return false
 	}
 
-	return (bytes.Compare(src.address[:], dst.address[:]) == 0) && (src.total.Cmp(dst.total) == 0)
+	return (bytes.Compare(src.Address[:], dst.Address[:]) == 0) && (src.Total.Cmp(dst.Total) == 0)
 }
 
 func TestNewVoteTop(t *testing.T) {
 
 	data := []*Candidate{
 		&Candidate{
-			address: common.HexToAddress("0x01"),
-			total:   new(big.Int).SetInt64(1),
+			Address: common.HexToAddress("0x01"),
+			Total:   new(big.Int).SetInt64(1),
 		},
 		&Candidate{
-			address: common.HexToAddress("0x03"),
-			total:   new(big.Int).SetInt64(3),
+			Address: common.HexToAddress("0x03"),
+			Total:   new(big.Int).SetInt64(3),
 		},
 		&Candidate{
-			address: common.HexToAddress("0x04"),
-			total:   new(big.Int).SetInt64(3),
+			Address: common.HexToAddress("0x04"),
+			Total:   new(big.Int).SetInt64(3),
 		},
 		&Candidate{
-			address: common.HexToAddress("0x02"),
-			total:   new(big.Int).SetInt64(2),
+			Address: common.HexToAddress("0x02"),
+			Total:   new(big.Int).SetInt64(2),
 		},
 		&Candidate{
-			address: common.HexToAddress("0x05"),
-			total:   new(big.Int).SetInt64(5),
+			Address: common.HexToAddress("0x05"),
+			Total:   new(big.Int).SetInt64(5),
 		},
 	}
 	result := []*Candidate{
 		&Candidate{
-			address: common.HexToAddress("0x05"),
-			total:   new(big.Int).SetInt64(5),
+			Address: common.HexToAddress("0x05"),
+			Total:   new(big.Int).SetInt64(5),
 		},
 		&Candidate{
-			address: common.HexToAddress("0x03"),
-			total:   new(big.Int).SetInt64(3),
+			Address: common.HexToAddress("0x03"),
+			Total:   new(big.Int).SetInt64(3),
 		},
 		&Candidate{
-			address: common.HexToAddress("0x04"),
-			total:   new(big.Int).SetInt64(3),
+			Address: common.HexToAddress("0x04"),
+			Total:   new(big.Int).SetInt64(3),
 		},
 		&Candidate{
-			address: common.HexToAddress("0x02"),
-			total:   new(big.Int).SetInt64(2),
+			Address: common.HexToAddress("0x02"),
+			Total:   new(big.Int).SetInt64(2),
 		},
 		&Candidate{
-			address: common.HexToAddress("0x01"),
-			total:   new(big.Int).SetInt64(1),
+			Address: common.HexToAddress("0x01"),
+			Total:   new(big.Int).SetInt64(1),
 		},
 	}
 	max := &Candidate{
-		address: common.HexToAddress("0x05"),
-		total:   new(big.Int).SetInt64(5),
+		Address: common.HexToAddress("0x05"),
+		Total:   new(big.Int).SetInt64(5),
 	}
 	min := &Candidate{
-		address: common.HexToAddress("0x01"),
-		total:   new(big.Int).SetInt64(1),
+		Address: common.HexToAddress("0x01"),
+		Total:   new(big.Int).SetInt64(1),
 	}
 
 	vote := NewVoteTop(data)
@@ -113,20 +113,20 @@ func TestNewVoteTop(t *testing.T) {
 
 	result = []*Candidate{
 		&Candidate{
-			address: common.HexToAddress("0x05"),
-			total:   new(big.Int).SetInt64(5),
+			Address: common.HexToAddress("0x05"),
+			Total:   new(big.Int).SetInt64(5),
 		},
 		&Candidate{
-			address: common.HexToAddress("0x04"),
-			total:   new(big.Int).SetInt64(3),
+			Address: common.HexToAddress("0x04"),
+			Total:   new(big.Int).SetInt64(3),
 		},
 		&Candidate{
-			address: common.HexToAddress("0x02"),
-			total:   new(big.Int).SetInt64(2),
+			Address: common.HexToAddress("0x02"),
+			Total:   new(big.Int).SetInt64(2),
 		},
 		&Candidate{
-			address: common.HexToAddress("0x01"),
-			total:   new(big.Int).SetInt64(1),
+			Address: common.HexToAddress("0x01"),
+			Total:   new(big.Int).SetInt64(1),
 		},
 	}
 	assert.Equal(t, 4, vote.Count())
@@ -138,8 +138,8 @@ func BenchmarkNewVoteT(b *testing.B) {
 	result := make([]*Candidate, 500000)
 	for index := 0; index < 500000; index++ {
 		result[index] = &Candidate{
-			address: common.HexToAddress(strconv.Itoa(index)),
-			total:   new(big.Int).SetInt64(int64(index)),
+			Address: common.HexToAddress(strconv.Itoa(index)),
+			Total:   new(big.Int).SetInt64(int64(index)),
 		}
 	}
 

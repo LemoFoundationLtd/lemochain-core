@@ -283,6 +283,9 @@ func TestManager_Save_Reset(t *testing.T) {
 	manager.Reset(block1Hash)
 	// manager = NewManager(block1Hash, db)
 	account = manager.GetAccount(common.HexToAddress("0x1"))
+	assert.Equal(t, big.NewInt(1), account.GetBalance())
+	assert.Equal(t, uint32(1), account.GetBaseVersion(BalanceLog))
+
 	account.SetBalance(big.NewInt(2))
 	assert.Equal(t, uint32(1), account.GetBaseVersion(BalanceLog))
 	err = manager.Finalise()

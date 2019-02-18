@@ -315,10 +315,151 @@ type contextItemHead struct {
 	Len uint32
 }
 
+type CandidatePos struct {
+	Pos uint32
+	Len uint32
+}
+
+type CandidateCache struct {
+	Candidates   map[common.Address]CandidatePos
+	ItemMaxSize  int
+	Cap          int
+	Cur          int
+	CandidateBuf []byte
+}
+
+func NewCandidateCache() *CandidateCache {
+	return &CandidateCache{
+		Candidates:   make(map[common.Address]CandidatePos),
+		ItemMaxSize:  64,
+		Cap:          64 * 1024,
+		Cur:          0,
+		CandidateBuf: make([]byte, 64*1024),
+	}
+}
+
+func (cache *CandidateCache) Set(candidate *Candidate) error {
+	if candidate == nil {
+		return nil
+	}
+
+	buf, err := rlp.EncodeToBytes(candidate)
+	if err != nil {
+		return err
+	}
+
+	candidatePosLen := binary.Size(CandidatePos{})
+	if cache.ItemMaxSize < (len(buf) + candidatePosLen) {
+		panic("candidate buf is larger than ItemMaxSize")
+	}
+
+	pos, ok := cache.Candidates[candidate.Address]
+	if ok {
+		pos.Len = uint32(len(buf))
+		err = binary.Write(NewLmBuffer(cache.CandidateBuf[pos.Pos:]), binary.LittleEndian, &pos)
+		if err != nil {
+			return err
+		} else {
+			copy(cache.CandidateBuf[(pos.Pos+uint32(candidatePosLen)):], buf[:])
+			cache.Candidates[candidate.Address] = pos
+		}
+	} else {
+		if cache.Cur+cache.ItemMaxSize > cache.Cap {
+			tmp := make([]byte, cache.Cap*2)
+			copy(tmp[:], cache.CandidateBuf[:])
+			cache.Cap = cache.Cap * 2
+		}
+
+		pos := CandidatePos{
+			Pos: uint32(cache.Cur),
+			Len: uint32(len(buf)),
+		}
+
+		err = binary.Write(NewLmBuffer(cache.CandidateBuf[pos.Pos:]), binary.LittleEndian, &pos)
+		if err != nil {
+			return err
+		} else {
+			copy(cache.CandidateBuf[(pos.Pos+uint32(candidatePosLen)):], buf[:])
+			cache.Candidates[candidate.Address] = pos
+			cache.Cur = cache.Cur + cache.ItemMaxSize
+		}
+	}
+
+	return nil
+}
+
+func (cache *CandidateCache) IsExist(address common.Address) bool {
+	_, ok := cache.Candidates[address]
+	if !ok {
+		return false
+	} else {
+		return true
+	}
+}
+
+func (cache *CandidateCache) Encode() ([]byte, int) {
+	return cache.CandidateBuf, cache.Cur
+}
+
+func (cache *CandidateCache) Decode(buf []byte, length int) error {
+	if len(buf) < length {
+		panic("decode candidate: len(buf) litter than len")
+	}
+
+	candidatePosLen := binary.Size(CandidatePos{})
+	count := length / cache.ItemMaxSize
+	for index := 0; index < count; index++ {
+		start := index * cache.ItemMaxSize
+		var pos CandidatePos
+		err := binary.Read(bytes.NewBuffer(buf[start:start+candidatePosLen]), binary.LittleEndian, &pos)
+		if err != nil {
+			return err
+		}
+
+		var candidate Candidate
+		err = rlp.DecodeBytes(buf[start+candidatePosLen:pos.Len], &candidate)
+		if err != nil {
+			return err
+		}
+
+		cache.Candidates[candidate.Address] = pos
+	}
+
+	return nil
+}
+
+func (cache *CandidateCache) GetCandidatePage(index int, size int) ([]common.Address, uint32, error) {
+	total := len(cache.Candidates)
+	if index > total {
+		return make([]common.Address, 0), uint32(total), nil
+	}
+
+	result := make([]common.Address, 0, size)
+	start := index
+	candidatePosLen := binary.Size(CandidatePos{})
+	for ; (index < start+size) && (index < total); index++ {
+		start := index * cache.ItemMaxSize
+		var pos CandidatePos
+		err := binary.Read(bytes.NewBuffer(cache.CandidateBuf[start:start+candidatePosLen]), binary.LittleEndian, &pos)
+		if err != nil {
+			return nil, uint32(total), err
+		}
+
+		var candidate Candidate
+		err = rlp.DecodeBytes(cache.CandidateBuf[start+candidatePosLen:start+candidatePosLen+int(pos.Len)], &candidate)
+		if err != nil {
+			return nil, uint32(total), err
+		}
+
+		result = append(result, candidate.Address)
+	}
+	return result, uint32(total), nil
+}
+
 type RunContext struct {
 	Path        string
 	StableBlock *types.Block
-	Candidates  map[common.Address]bool
+	Candidates  *CandidateCache
 }
 
 func NewRunContext(path string) *RunContext {
@@ -326,7 +467,7 @@ func NewRunContext(path string) *RunContext {
 	context := &RunContext{
 		Path:        path,
 		StableBlock: nil,
-		Candidates:  make(map[common.Address]bool),
+		Candidates:  NewCandidateCache(),
 	}
 
 	err := context.Load()
@@ -399,17 +540,7 @@ func (context *RunContext) load() error {
 				//make(map[common.address]bool)
 			} else {
 				curPos := offset + itemHeadLen
-				index := 0
-				for {
-					startCurIndex := curPos + index*common.AddressLength
-					stopCurIndex := curPos + (index+1)*common.AddressLength
-					if (index+1)*common.AddressLength > int(itemHead.Len) {
-						break
-					}
-
-					context.Candidates[common.BytesToAddress(bodyBuf[startCurIndex:stopCurIndex])] = true
-					index = index + 1
-				}
+				context.Candidates.Decode(bodyBuf[curPos:(curPos+int(itemHead.Len))], int(itemHead.Len))
 			}
 		}
 
@@ -460,84 +591,16 @@ func (context *RunContext) SetStableBlock(block *types.Block) {
 	context.StableBlock = block
 }
 
-func (context *RunContext) SetCandidate(address common.Address) {
-	context.Candidates[address] = true
+func (context *RunContext) SetCandidate(candidate *Candidate) {
+	context.Candidates.Set(candidate)
 }
 
 func (context *RunContext) GetCandidatePage(index int, size int) ([]common.Address, uint32, error) {
-	file, err := os.OpenFile(context.Path, os.O_RDONLY, 0666)
-	defer file.Close()
-	if err != nil {
-		return nil, 0, err
-	}
-
-	headBuf := make([]byte, binary.Size(contextHead{}))
-	_, err = file.Seek(0, 0)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	_, err = file.Read(headBuf)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	var head contextHead
-	err = binary.Read(bytes.NewBuffer(headBuf), binary.LittleEndian, &head)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	bodyBuf := make([]byte, head.FileLen)
-	_, err = file.Read(bodyBuf)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	offset := 0
-	itemHeadLen := binary.Size(contextItemHead{})
-	for {
-		if offset >= len(bodyBuf) {
-			return make([]common.Address, 0), 0, nil
-		}
-
-		var itemHead contextItemHead
-		err = binary.Read(bytes.NewBuffer(bodyBuf[offset:offset+itemHeadLen]), binary.LittleEndian, &itemHead)
-		if err != nil {
-			return nil, 0, err
-		}
-
-		if itemHead.Flg != 2 { // !addresses
-			offset = offset + itemHeadLen + int(itemHead.Len)
-			continue
-		}
-
-		if itemHead.Len == 0 {
-			return make([]common.Address, 0), 0, nil
-		}
-
-		result := make([]common.Address, 0)
-		startCurIndex := offset + itemHeadLen + index*common.AddressLength
-		for i := 0; i < size; i++ {
-			pos1 := startCurIndex + i*common.AddressLength
-			pos2 := startCurIndex + (i+1)*common.AddressLength
-			if (index+i+1)*common.AddressLength > int(itemHead.Len) {
-				break
-			} else {
-				result = append(result, common.BytesToAddress(bodyBuf[pos1:pos2]))
-			}
-		}
-		return result, uint32(len(context.Candidates)), nil
-	}
+	return context.Candidates.GetCandidatePage(index, size)
 }
 
 func (context *RunContext) CandidateIsExist(address common.Address) bool {
-	_, ok := context.Candidates[address]
-	if !ok {
-		return false
-	} else {
-		return true
-	}
+	return context.Candidates.IsExist(address)
 }
 
 func (context *RunContext) encodeHead(fileLen uint32) ([]byte, error) {
@@ -559,6 +622,7 @@ func (context *RunContext) encodeHead(fileLen uint32) ([]byte, error) {
 
 func (context *RunContext) encodeBody() ([]byte, error) {
 	stableItemHead := contextItemHead{Flg: 1, Len: 0}
+
 	stableBlockBuf := []byte(nil)
 	err := error(nil)
 	if context.StableBlock != nil {
@@ -570,9 +634,10 @@ func (context *RunContext) encodeBody() ([]byte, error) {
 		}
 	}
 
+	candidatesBuf, bufLen := context.Candidates.Encode()
 	candidatesItemHead := contextItemHead{
 		Flg: 2,
-		Len: uint32(len(context.Candidates) * common.AddressLength),
+		Len: uint32(bufLen),
 	}
 
 	candidatesOffset := binary.Size(stableItemHead) + int(stableItemHead.Len) + binary.Size(candidatesItemHead)
@@ -589,18 +654,14 @@ func (context *RunContext) encodeBody() ([]byte, error) {
 		copy(totalBuf[binary.Size(stableItemHead):], stableBlockBuf[:])
 	}
 
-	// addresses
+	// candidate
 	err = binary.Write(NewLmBuffer(totalBuf[binary.Size(stableItemHead)+int(stableItemHead.Len):]), binary.LittleEndian, &candidatesItemHead)
 	if err != nil {
 		return nil, err
 	}
 
 	if candidatesItemHead.Len > 0 {
-		index := 0
-		for k, _ := range context.Candidates {
-			copy(totalBuf[candidatesOffset+index*common.AddressLength:], k[:])
-			index = index + 1
-		}
+		copy(totalBuf[candidatesOffset:], candidatesBuf[:])
 	}
 
 	return totalBuf, nil

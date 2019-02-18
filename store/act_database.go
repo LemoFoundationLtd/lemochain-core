@@ -1,6 +1,7 @@
 package store
 
 import (
+	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
@@ -60,7 +61,7 @@ func substring(str string, start int, length int) string {
 type PatriciaNode struct {
 	key      string
 	dye      uint32
-	data     *types.AccountData
+	data     types.NodeData
 	terminal bool
 	children []*PatriciaNode
 }
@@ -100,7 +101,7 @@ func (node *PatriciaNode) Clone() *PatriciaNode {
 	}
 
 	if node.data != nil {
-		result.data = node.data.Copy()
+		result.data = node.data.Clone()
 	}
 
 	if len(node.children) > 0 {
@@ -118,26 +119,23 @@ type PatriciaTrie struct {
 	total  int
 	minDye uint32
 	maxDye uint32
-	reader DatabaseReader
 }
 
-func NewEmptyDatabase(reader DatabaseReader) *PatriciaTrie {
+func NewEmptyDatabase() *PatriciaTrie {
 	return &PatriciaTrie{
 		root:   new(PatriciaNode),
 		total:  0,
 		minDye: 0,
 		maxDye: 0,
-		reader: reader,
 	}
 }
 
-func NewActDatabase(reader DatabaseReader, root *PatriciaTrie) *PatriciaTrie {
+func NewActDatabase(root *PatriciaTrie) *PatriciaTrie {
 	return &PatriciaTrie{
 		root:   root.root,
 		total:  root.total,
 		minDye: root.minDye,
 		maxDye: root.maxDye,
-		reader: reader,
 	}
 }
 
@@ -147,42 +145,18 @@ func (trie *PatriciaTrie) Clone() *PatriciaTrie {
 		total:  trie.total,
 		minDye: trie.minDye,
 		maxDye: trie.maxDye,
-		reader: trie.reader,
 	}
 }
 
-func (trie *PatriciaTrie) Find(key []byte) *types.AccountData {
+func (trie *PatriciaTrie) Find(key string) types.NodeData {
 	if len(key) <= 0 {
 		return nil
 	}
 
-	tmp := common.ToHex(key[:])
-	act := trie.find(trie.root, tmp)
-	if act != nil {
-		return act
-	}
-
-	val, err := trie.reader.Get(key)
-	if err != nil {
-		panic("trie.reader.Get(key):" + err.Error())
-	}
-
-	if val == nil {
-		return nil
-	}
-
-	var account types.AccountData
-	err = rlp.DecodeBytes(val, &account)
-	if err != nil {
-		panic("trie.reader.Get(key):" + err.Error())
-	} else {
-		trie.insert(trie.root, tmp, &account)
-	}
-
-	return &account
+	return trie.find(trie.root, key)
 }
 
-func (trie *PatriciaTrie) find(curNode *PatriciaNode, key string) *types.AccountData {
+func (trie *PatriciaTrie) find(curNode *PatriciaNode, key string) types.NodeData {
 	for i := 0; i < len(curNode.children); i++ {
 		child := curNode.children[i]
 
@@ -249,16 +223,15 @@ func (trie *PatriciaTrie) find(curNode *PatriciaNode, key string) *types.Account
 	return nil
 }
 
-func (trie *PatriciaTrie) Insert(key []byte, data *types.AccountData) error {
+func (trie *PatriciaTrie) Insert(key string, data types.NodeData) error {
 	if len(key) <= 0 {
 		return nil
 	}
 
-	tmp := common.ToHex(key[:])
-	return trie.insert(trie.root, tmp, data)
+	return trie.insert(trie.root, key, data)
 }
 
-func (trie *PatriciaTrie) insert(curNode *PatriciaNode, key string, data *types.AccountData) error {
+func (trie *PatriciaTrie) insert(curNode *PatriciaNode, key string, data types.NodeData) error {
 	done := false
 
 	for i := 0; i < len(curNode.children); i++ {
@@ -433,16 +406,14 @@ func (trie *PatriciaTrie) delLess(curNode *PatriciaNode, dye uint32) {
 }
 
 // dye the node's path
-func (trie *PatriciaTrie) Put(account *types.AccountData, dye uint32) {
-	key := common.ToHex(account.Address[:])
-
-	result := trie.put(trie.root, key, account, dye)
+func (trie *PatriciaTrie) Put(key string, data types.NodeData, dye uint32) {
+	result := trie.put(trie.root, key, data, dye)
 	if result != nil {
 		trie.root = result
 	}
 }
 
-func (trie *PatriciaTrie) put(curNode *PatriciaNode, key string, account *types.AccountData, dye uint32) *PatriciaNode {
+func (trie *PatriciaTrie) put(curNode *PatriciaNode, key string, data types.NodeData, dye uint32) *PatriciaNode {
 	for i := 0; i < len(curNode.children); i++ {
 		child := curNode.children[i]
 
@@ -465,7 +436,7 @@ func (trie *PatriciaTrie) put(curNode *PatriciaNode, key string, account *types.
 					key:      key,
 					dye:      dye,
 					terminal: true,
-					data:     account,
+					data:     data,
 					children: nil,
 				}
 
@@ -493,7 +464,7 @@ func (trie *PatriciaTrie) put(curNode *PatriciaNode, key string, account *types.
 					} else {
 						tmpChild := child.Clone()
 						tmpChild.dye = dye
-						tmpChild.data = account
+						tmpChild.data = data
 						tmpChild.terminal = true
 						if curNode.dye == dye {
 							curNode.children[i] = tmpChild
@@ -511,7 +482,7 @@ func (trie *PatriciaTrie) put(curNode *PatriciaNode, key string, account *types.
 					//    /  \    ==========>    / | \
 					//   e    f     			c# e  f
 					sub := substring(key, j, len(key))
-					result := trie.put(child, sub, account, dye)
+					result := trie.put(child, sub, data, dye)
 					if result == nil {
 						return nil
 					}
@@ -545,7 +516,7 @@ func (trie *PatriciaTrie) put(curNode *PatriciaNode, key string, account *types.
 					tmpChild.key = key
 					tmpChild.dye = dye
 					tmpChild.terminal = true
-					tmpChild.data = account
+					tmpChild.data = data
 					tmpChild.children = insert(child.children, 0, node)
 
 					if curNode.dye == dye {
@@ -580,7 +551,7 @@ func (trie *PatriciaTrie) put(curNode *PatriciaNode, key string, account *types.
 					key:      sub,
 					terminal: true,
 					dye:      dye,
-					data:     account,
+					data:     data,
 					children: make([]*PatriciaNode, 0),
 				}
 
@@ -615,7 +586,7 @@ func (trie *PatriciaTrie) put(curNode *PatriciaNode, key string, account *types.
 		key:      key,
 		dye:      dye,
 		terminal: true,
-		data:     account,
+		data:     data,
 	}
 
 	if curNode.dye == dye {
@@ -629,23 +600,249 @@ func (trie *PatriciaTrie) put(curNode *PatriciaNode, key string, account *types.
 	}
 }
 
-func (trie *PatriciaTrie) Collected(dye uint32) []*types.AccountData {
-	accounts := make([]*types.AccountData, 0)
-	return trie.collected(trie.root, dye, accounts)
+func (trie *PatriciaTrie) Collected(dye uint32) []types.NodeData {
+	all := make([]types.NodeData, 0)
+	return trie.collected(trie.root, dye, all)
 }
 
-func (trie *PatriciaTrie) collected(curNode *PatriciaNode, dye uint32, accounts []*types.AccountData) []*types.AccountData {
+func (trie *PatriciaTrie) collected(curNode *PatriciaNode, dye uint32, all []types.NodeData) []types.NodeData {
 	if curNode.dye != dye {
-		return accounts
+		return all
 	} else {
 		for i := 0; i < len(curNode.children); i++ {
-			accounts = trie.collected(curNode.children[i], dye, accounts)
+			all = trie.collected(curNode.children[i], dye, all)
 		}
 
 		if curNode.data != nil && curNode.terminal {
-			return append(accounts, curNode.data)
+			return append(all, curNode.data)
 		} else {
-			return accounts
+			return all
 		}
 	}
+}
+
+func (trie *PatriciaTrie) All() []types.NodeData {
+	all := make([]types.NodeData, 0, trie.total)
+	return trie.all(trie.root, all)
+}
+
+func (trie *PatriciaTrie) all(curNode *PatriciaNode, all []types.NodeData) []types.NodeData {
+	for i := 0; i < len(curNode.children); i++ {
+		all = trie.all(curNode.children[i], all)
+	}
+
+	if curNode.terminal && curNode.data != nil {
+		return append(all, curNode.data)
+	} else {
+		return all
+	}
+}
+
+// AccountAPI
+type AccountTrieDB struct {
+	trie   *PatriciaTrie
+	reader DatabaseReader
+}
+
+func NewEmptyAccountTrieDB(reader DatabaseReader) *AccountTrieDB {
+	return &AccountTrieDB{
+		trie:   NewEmptyDatabase(),
+		reader: reader,
+	}
+}
+
+func NewAccountTrieDB(trie *PatriciaTrie, reader DatabaseReader) *AccountTrieDB {
+	return &AccountTrieDB{
+		trie:   trie,
+		reader: reader,
+	}
+}
+
+func (db *AccountTrieDB) Clone() *AccountTrieDB {
+	return &AccountTrieDB{
+		reader: db.reader,
+		trie:   NewActDatabase(db.trie),
+	}
+}
+
+func (db *AccountTrieDB) SetTrie(trie *PatriciaTrie) {
+	db.trie = trie
+}
+
+func (db *AccountTrieDB) GetTrie() *PatriciaTrie {
+	return db.trie
+}
+
+func (db *AccountTrieDB) SetReader(reader DatabaseReader) {
+	db.reader = reader
+}
+
+func (db *AccountTrieDB) GetReader() DatabaseReader {
+	return db.reader
+}
+
+func (db *AccountTrieDB) Set(account *types.AccountData) {
+	if account == nil {
+		return
+	}
+
+	key := account.Address.Hex()
+	db.trie.Insert(key, account.Copy())
+}
+
+func (db *AccountTrieDB) Get(address common.Address) (*types.AccountData, error) {
+	key := address.Hex()
+	data := db.trie.Find(key)
+	if data == nil {
+		val, err := db.reader.Get(address[:])
+		if err != nil {
+			return nil, err
+		}
+		if val == nil {
+			return nil, nil
+		}
+
+		var account types.AccountData
+		err = rlp.DecodeBytes(val, &account)
+		if err != nil {
+			panic("trie.reader.Get(key):" + err.Error())
+		} else {
+			db.trie.insert(db.trie.root, key, &account)
+			return (&account).Copy(), nil
+		}
+	} else {
+		val, ok := data.(*types.AccountData)
+		if !ok {
+			panic(fmt.Sprintf("expected val *AccountData, got %T", data))
+		} else {
+			return val.Copy(), nil
+		}
+	}
+}
+
+func (db *AccountTrieDB) Put(account *types.AccountData, dye uint32) {
+	if account == nil {
+		return
+	}
+
+	key := account.Address.Hex()
+	db.trie.Put(key, account.Copy(), dye)
+}
+
+func (db *AccountTrieDB) Collect(dye uint32) []*types.AccountData {
+	all := db.trie.Collected(dye)
+	if len(all) <= 0 {
+		return make([]*types.AccountData, 0)
+	}
+
+	accounts := make([]*types.AccountData, len(all))
+	for index := 0; index < len(all); index++ {
+		account, ok := all[index].(*types.AccountData)
+		if !ok {
+			panic(fmt.Sprintf("expected val *AccountData, got %T", all[index]))
+		} else {
+			accounts[index] = account
+		}
+	}
+	return accounts
+}
+
+// CandidateAPI
+type CandidateTrieDB struct {
+	trie   *PatriciaTrie
+	reader DatabaseReader
+}
+
+func NewEmptyCandidateTrieDB() *CandidateTrieDB {
+	return &CandidateTrieDB{
+		trie:   NewEmptyDatabase(),
+		reader: nil,
+	}
+}
+
+func (db *CandidateTrieDB) Clone() *CandidateTrieDB {
+	return &CandidateTrieDB{
+		reader: db.reader,
+		trie:   NewActDatabase(db.trie),
+	}
+}
+
+func (db *CandidateTrieDB) SetTrie(trie *PatriciaTrie) {
+	db.trie = trie
+}
+
+func (db *CandidateTrieDB) GetTrie() *PatriciaTrie {
+	return db.trie
+}
+
+func (db *CandidateTrieDB) SetReader(reader DatabaseReader) {
+	db.reader = reader
+}
+
+func (db *CandidateTrieDB) GetReader() DatabaseReader {
+	return db.reader
+}
+
+func (db *CandidateTrieDB) key(address common.Address) string {
+	return "candidate:" + address.Hex()
+}
+
+func (db *CandidateTrieDB) Set(candidate *Candidate) {
+	if candidate == nil {
+		return
+	}
+
+	db.trie.Insert(db.key(candidate.Address), candidate.Clone())
+}
+
+func (db *CandidateTrieDB) Get(address common.Address) (*Candidate, error) {
+	data := db.trie.Find(db.key(address))
+	val, ok := data.(*Candidate)
+	if !ok {
+		panic(fmt.Sprintf("expected val *Candidate, got %T", data))
+	}
+
+	if val == nil {
+		return nil, nil
+	} else {
+		return val.Copy(), nil
+	}
+}
+
+func (db *CandidateTrieDB) GetAll() []*Candidate {
+	result := db.trie.All()
+	if len(result) <= 0 {
+		return make([]*Candidate, 0)
+	}
+
+	candidates := make([]*Candidate, len(result))
+	for index := 0; index < len(result); index++ {
+		candidate, ok := result[index].(*Candidate)
+		if !ok {
+			panic(fmt.Sprintf("expected val *Candidate, got %T", result[index]))
+		}
+
+		if candidate == nil {
+			panic("got nil candidate.")
+		}
+
+		candidates[index] = candidate
+	}
+	return candidates
+}
+
+func (db *CandidateTrieDB) Put(candidate *Candidate, dye uint32) {
+	if candidate == nil {
+		return
+	}
+
+	db.trie.Put(db.key(candidate.Address), candidate.Copy(), dye)
+}
+
+func (db *CandidateTrieDB) Flush() error {
+	return nil
+}
+
+func (db *CandidateTrieDB) Loading() error {
+	return nil
 }
