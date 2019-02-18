@@ -435,8 +435,9 @@ func (cache *CandidateCache) GetCandidatePage(index int, size int) ([]common.Add
 	}
 
 	result := make([]common.Address, 0, size)
+	start := index
 	candidatePosLen := binary.Size(CandidatePos{})
-	for ; (index < index+size) && (index < total); index++ {
+	for ; (index < start+size) && (index < total); index++ {
 		start := index * cache.ItemMaxSize
 		var pos CandidatePos
 		err := binary.Read(bytes.NewBuffer(cache.CandidateBuf[start:start+candidatePosLen]), binary.LittleEndian, &pos)
