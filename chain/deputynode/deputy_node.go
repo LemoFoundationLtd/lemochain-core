@@ -115,6 +115,7 @@ type Manager struct {
 }
 
 // Add 投票结束 统计结果通过add函数缓存起来
+// height: next term start height. if snapshot:1000, period:100, result: 1101 2101 3101...
 func (d *Manager) Add(height uint32, nodes DeputyNodes) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
@@ -138,6 +139,11 @@ func Instance() *Manager {
 func (d *Manager) getDeputiesByHeight(height uint32) DeputyNodes {
 	d.lock.Lock()
 	defer d.lock.Unlock()
+	if len(d.DeputyNodesList) == 1 {
+		panic("not set deputy nodes")
+	} else if len(d.DeputyNodesList) == 1 {
+		return d.DeputyNodesList[0].nodes
+	}
 	var nodes DeputyNodes
 	for i := 0; i < len(d.DeputyNodesList)-1; i++ {
 		if d.DeputyNodesList[i].height <= height && d.DeputyNodesList[i+1].height > height {
