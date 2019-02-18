@@ -122,13 +122,8 @@ func (block *CBlock) less30(lastCandidatesMap map[common.Address]*Candidate, nex
 func (block *CBlock) greater30(lastCandidatesMap map[common.Address]*Candidate, nextCandidates []*Candidate) {
 	voteTop := NewVoteTop(block.Top30)
 	lastMinCandidate := voteTop.Min()
-	lastCount := voteTop.Count()
-
 	voteTop.Rank(max_candidate_count, block.toSlice(lastCandidatesMap))
-	if (lastMinCandidate != nil) &&
-		(lastCount == voteTop.Count()) &&
-		(lastMinCandidate.total.Cmp(voteTop.Min().total) <= 0) {
-
+	if (lastMinCandidate != nil) && (lastMinCandidate.total.Cmp(voteTop.Min().total) <= 0) {
 		lastMinCandidate = voteTop.Min()
 		for index := 0; index < len(nextCandidates); index++ {
 			if (lastMinCandidate.total.Cmp(nextCandidates[index].total) < 0) ||
