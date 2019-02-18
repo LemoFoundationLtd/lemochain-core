@@ -23192,7 +23192,7 @@
 
 	function getSdkVersion() {
 
-	  return "0.9.6";
+	  return "0.9.7";
 	}
 
 	var global$2 = {
@@ -23460,7 +23460,15 @@
 	    }
 
 	    return getCandidateTop30;
-	  }()
+	  }(),
+
+	  /**
+	   * Get the address list of current deputy nodes
+	   * @return {Promise<object>}
+	   */
+	  getDeputyNodeList: function getDeputyNodeList() {
+	    return this.requester.send("".concat(MODULE_NAME$2, "_getDeputyNodeList"), []);
+	  }
 	};
 	var chain = {
 	  moduleName: MODULE_NAME$2,
