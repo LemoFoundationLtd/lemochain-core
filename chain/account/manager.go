@@ -52,7 +52,7 @@ func NewManager(blockHash common.Hash, db protocol.ChainDB) *Manager {
 		panic(err)
 	}
 
-	manager.acctDb = db.GetActDatabase(blockHash)
+	manager.acctDb, _ = db.GetActDatabase(blockHash)
 	manager.processor = NewLogProcessor(manager)
 	return manager
 }
@@ -165,7 +165,7 @@ func (am *Manager) Reset(blockHash common.Hash) {
 		panic(err)
 	}
 
-	am.acctDb = am.db.GetActDatabase(blockHash)
+	am.acctDb, _ = am.db.GetActDatabase(blockHash)
 	am.clear()
 }
 
@@ -222,7 +222,7 @@ func versionTrieKey(address common.Address, logType types.ChangeLogType) []byte 
 // Save writes dirty data into db.
 func (am *Manager) Save(newBlockHash common.Hash) error {
 	// dirtyAccounts := make([]*types.AccountData, 0, len(am.accountCache))
-	acctDatabase := am.db.GetActDatabase(newBlockHash)
+	acctDatabase, _ := am.db.GetActDatabase(newBlockHash)
 	for _, account := range am.accountCache {
 		if !account.IsDirty() {
 			continue

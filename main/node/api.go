@@ -90,6 +90,7 @@ func (a *PublicAccountAPI) GetVoteFor(LemoAddress string) (string, error) {
 	return forAddress, nil
 }
 
+// GetAllRewardValue get the value for each bonus
 func (a *PublicAccountAPI) GetAllRewardValue() ([]*params.Reward, error) {
 	address := params.TermRewardPrecompiledContractAddress
 	acc, err := a.GetAccount(address.String())
