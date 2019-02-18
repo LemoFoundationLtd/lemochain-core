@@ -325,16 +325,20 @@ func (bc *BlockChain) needFork(b *types.Block) (bool, error) {
 	if b.Height() > cB.Height() {
 		// 查找与cB同高度的区块
 		for bFB.Height() > cB.Height() {
-			if bFB, err = bc.db.GetBlockByHash(bFB.ParentHash()); err != nil {
-				log.Debugf("needFork: getBlock failed. height: %d, hash: %s", bFB.Height(), bFB.Hash().String())
+			hash := bFB.ParentHash()
+			height := bFB.Height() + 1
+			if bFB, err = bc.db.GetBlockByHash(hash); err != nil {
+				log.Debugf("needFork: getBlock failed. height: %d, hash: %s", height, hash.Prefix())
 				return false, err
 			}
 		}
 	} else if b.Height() < cB.Height() {
 		// 查找与cB同高度的区块
 		for cFB.Height() > b.Height() {
-			if cFB, err = bc.db.GetBlockByHash(cFB.ParentHash()); err != nil {
-				log.Debugf("needFork: getBlock failed. height: %d, hash: %s", cFB.Height(), cFB.Hash().String())
+			hash := cFB.ParentHash()
+			height := cFB.Height() + 1
+			if cFB, err = bc.db.GetBlockByHash(hash); err != nil {
+				log.Debugf("needFork: getBlock failed. height: %d, hash: %s", height, hash.Prefix())
 				return false, err
 			}
 		}
@@ -342,12 +346,16 @@ func (bc *BlockChain) needFork(b *types.Block) (bool, error) {
 
 	// find same ancestor
 	for bFB.ParentHash() != cFB.ParentHash() {
-		if bFB, err = bc.db.GetBlockByHash(bFB.ParentHash()); err != nil {
-			log.Debugf("needFork: getBlock failed. height: %d, hash: %s", bFB.Height(), bFB.Hash().String())
+		hashB := bFB.ParentHash()
+		heightB := bFB.Height() + 1
+		hashC := cFB.ParentHash()
+		heightC := cFB.Height() + 1
+		if bFB, err = bc.db.GetBlockByHash(hashB); err != nil {
+			log.Debugf("needFork: getBlock failed. height: %d, hash: %s", heightB, hashB.Prefix())
 			return false, err
 		}
-		if cFB, err = bc.db.GetBlockByHash(cFB.ParentHash()); err != nil {
-			log.Debugf("needFork: getBlock failed. height: %d, hash: %s", cFB.Height(), cFB.Hash().String())
+		if cFB, err = bc.db.GetBlockByHash(hashC); err != nil {
+			log.Debugf("needFork: getBlock failed. height: %d, hash: %s", heightC, hashC.Prefix())
 			return false, err
 		}
 	}
@@ -386,15 +394,15 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32) error {
 	}
 	bc.stableBlock.Store(block)
 	defer func() {
-		log.Infof("Consensus. height:%d hash:%s", block.Height(), block.Hash().Hex())
+		log.Infof("Consensus. height:%d hash:%s", block.Height(), block.Hash().Prefix())
 	}()
 
-	if len(bc.chainForksHead) > 0 {
+	if len(bc.chainForksHead) > 1 {
 		res := strings.Builder{}
 		for _, v := range bc.chainForksHead {
 			res.WriteString(fmt.Sprintf("height: %d. hash: %s. parent: %s\r\n", v.Height(), v.Hash().Prefix(), v.ParentHash().Prefix()))
 		}
-		log.Debugf("total forks: %s", res)
+		log.Debugf("total forks: %s", res.String())
 	}
 
 	curBlock := bc.currentBlock.Load().(*types.Block)
