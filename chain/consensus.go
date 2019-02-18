@@ -159,7 +159,13 @@ func (d *Dpovp) Seal(header *types.Header, txs []*types.Transaction, changeLog [
 func (d *Dpovp) Finalize(header *types.Header, am *account.Manager) {
 	// handout rewards
 	if deputynode.Instance().TimeToHandOutRewards(header.Height) {
-		rewards := deputynode.CalcSalary(header.Height)
+		term := (header.Height-params.PeriodBlock)/params.SnapshotBlock - 1
+		termRewards, err := getTermRewardValue(am, term)
+		if err != nil {
+			log.Warnf("Rewards failed: %v", err)
+			return
+		}
+		rewards := deputynode.CalcSalary(header.Height, termRewards)
 		for _, item := range rewards {
 			acc := am.GetAccount(item.Address)
 			balance := acc.GetBalance()
@@ -170,7 +176,7 @@ func (d *Dpovp) Finalize(header *types.Header, am *account.Manager) {
 }
 
 // getTermRewardValue reward value of miners at the change of term
-func getTermRewardValue(am account.Manager, term uint32) (*big.Int, error) {
+func getTermRewardValue(am *account.Manager, term uint32) (*big.Int, error) {
 	// Precompile the contract address
 	address := params.TermRewardPrecompiledContractAddress
 	acc := am.GetAccount(address)
