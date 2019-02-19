@@ -15,7 +15,7 @@ import (
 	"sync"
 )
 
-var max_candidate_count = 30
+var max_candidate_count = 20
 
 type ChainDatabase struct {
 	LastConfirm     *CBlock

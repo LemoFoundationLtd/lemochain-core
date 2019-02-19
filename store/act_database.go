@@ -838,11 +838,3 @@ func (db *CandidateTrieDB) Put(candidate *Candidate, dye uint32) {
 
 	db.trie.Put(db.key(candidate.Address), candidate.Copy(), dye)
 }
-
-func (db *CandidateTrieDB) Flush() error {
-	return nil
-}
-
-func (db *CandidateTrieDB) Loading() error {
-	return nil
-}

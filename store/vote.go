@@ -16,11 +16,6 @@ func (candidate *Candidate) GetAddress() common.Address {
 	return candidate.Address
 }
 
-func (candidate *Candidate) GetNodeID() []byte {
-	// return candidate.nodeID
-	panic("don't call the method.")
-}
-
 func (candidate *Candidate) GetTotal() *big.Int {
 	return new(big.Int).Set(candidate.Total)
 }
