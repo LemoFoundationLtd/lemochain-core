@@ -97,8 +97,6 @@ func (block *CBlock) data(candidates []*Candidate) ([]*Candidate, []*Candidate) 
 	inMap := block.toHashMap(in)
 	for index := 0; index < len(candidates); index++ {
 		candidate := candidates[index]
-		block.CandidateTrieDB.Put(candidate, block.Block.Height())
-
 		_, ok := inMap[candidate.Address]
 		if ok {
 			inMap[candidate.Address] = candidate
@@ -108,6 +106,17 @@ func (block *CBlock) data(candidates []*Candidate) ([]*Candidate, []*Candidate) 
 	}
 
 	return block.toSlice(inMap), out
+}
+
+func (block *CBlock) dye(candidates []*Candidate) {
+	if len(candidates) <= 0 {
+		return
+	}
+
+	for index := 0; index < len(candidates); index++ {
+		candidate := candidates[index]
+		block.CandidateTrieDB.Put(candidate, block.Block.Height())
+	}
 }
 
 func (block *CBlock) less30(in []*Candidate, out []*Candidate) {
@@ -160,12 +169,11 @@ func (block *CBlock) Ranking() {
 	}
 
 	candidates := block.filterCandidates(accounts)
+	block.dye(candidates)
 	in, out := block.data(candidates)
 	if block.Top.Count() < max_candidate_count {
 		block.less30(in, out)
-		return
 	} else {
 		block.greater30(in, out)
-		return
 	}
 }

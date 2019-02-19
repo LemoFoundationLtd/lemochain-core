@@ -561,6 +561,10 @@ func TestChainDatabase_CandidatesRanking(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, block1.Hash(), last.Hash())
 
+	account, err := cacheChain.GetAccount(common.HexToAddress(strconv.Itoa(99)))
+	assert.NoError(t, err)
+	assert.Equal(t, account.Address, common.HexToAddress(strconv.Itoa(99)))
+
 	all, err := cacheChain.Context.GetCandidates()
 	assert.NoError(t, err)
 	assert.Equal(t, count, len(all))

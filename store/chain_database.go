@@ -8,7 +8,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
-	"math/big"
 	"os"
 	"strconv"
 	"sync"
@@ -134,17 +133,12 @@ func (database *ChainDatabase) blockCommit(hash common.Hash) error {
 		return nil
 	}
 
-	dye := func(candidates []*Candidate) {
-		for index := 0; index < len(candidates); index++ {
-			database.Context.SetCandidate(&Candidate{
-				Address: candidates[index].Address,
-				Total:   new(big.Int).Set(candidates[index].Total),
-			})
-		}
-	}
-
 	commitContext := func(block *types.Block, candidates []*Candidate) error {
-		dye(candidates)
+		err := database.Context.SetCandidates(candidates)
+		if err != nil {
+			return err
+		}
+
 		database.Context.SetStableBlock(cItem.Block)
 		return database.Context.Flush()
 	}
