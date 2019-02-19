@@ -557,6 +557,14 @@ func TestChainDatabase_CandidatesRanking(t *testing.T) {
 	top = cacheChain.GetCandidatesTop(block1.Hash())
 	assert.Equal(t, max_candidate_count, len(top))
 
+	last, err := cacheChain.LoadLatestBlock()
+	assert.NoError(t, err)
+	assert.Equal(t, block1.Hash(), last.Hash())
+
+	account, err := cacheChain.GetAccount(common.HexToAddress(strconv.Itoa(99)))
+	assert.NoError(t, err)
+	assert.Equal(t, account.Address, common.HexToAddress(strconv.Itoa(99)))
+
 	all, err := cacheChain.Context.GetCandidates()
 	assert.NoError(t, err)
 	assert.Equal(t, count, len(all))
@@ -575,5 +583,4 @@ func TestChainDatabase_CandidatesRanking(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(page))
 	assert.Equal(t, uint32(count), total)
-
 }

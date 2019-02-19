@@ -4,12 +4,10 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
-	"math/big"
 	"os"
 	"strconv"
 	"sync"
@@ -61,13 +59,7 @@ func NewChainDataBase(home string, driver string, dns string) *ChainDatabase {
 	db.BizDB = NewBizDatabase(db, db.DB)
 	db.Beansdb = NewBeansDB(home, 2, db.DB, db.AfterScan)
 
-	db.LastConfirm = &CBlock{
-		Block:           db.Context.GetStableBlock(),
-		AccountTrieDB:   NewEmptyAccountTrieDB(db.Beansdb),
-		CandidateTrieDB: NewEmptyCandidateTrieDB(),
-		Top:             NewEmptyVoteTop(),
-	}
-
+	db.LastConfirm = NewGenesisBlock(db.Context.GetStableBlock(), db.Beansdb)
 	candidates, err := db.Context.Candidates.GetCandidates()
 	if err != nil {
 		panic("get candidates err: " + err.Error())
@@ -141,27 +133,17 @@ func (database *ChainDatabase) blockCommit(hash common.Hash) error {
 		return nil
 	}
 
-	filterCandidates := func(accounts []*types.AccountData) {
-		for index := 0; index < len(accounts); index++ {
-			account := accounts[index]
-			if cItem.isCandidate(account) && !database.Context.CandidateIsExist(account.Address) {
-				database.Context.SetCandidate(&Candidate{
-					Address: account.Address,
-					Total:   new(big.Int).Set(account.Candidate.Votes),
-				})
-			}
+	commitContext := func(block *types.Block, candidates []*Candidate) error {
+		err := database.Context.SetCandidates(candidates)
+		if err != nil {
+			return err
 		}
-	}
 
-	commitContext := func(block *types.Block, accounts []*types.AccountData) error {
-		filterCandidates(accounts)
 		database.Context.SetStableBlock(cItem.Block)
 		return database.Context.Flush()
 	}
 
 	accounts := cItem.AccountTrieDB.Collect(cItem.Block.Height())
-	fmt.Println(cItem.Block.Height())
-	fmt.Println(accounts)
 	err = decodeBatch(accounts, batch)
 	if err != nil {
 		return err
@@ -172,7 +154,8 @@ func (database *ChainDatabase) blockCommit(hash common.Hash) error {
 		return err
 	}
 
-	return commitContext(cItem.Block, accounts)
+	candidates := cItem.filterCandidates(accounts)
+	return commitContext(cItem.Block, candidates)
 }
 
 func (database *ChainDatabase) getBlock4Cache(hash common.Hash) (*types.Block, error) {

@@ -8,6 +8,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
+	"math/big"
 	"os"
 	"path/filepath"
 	"time"
@@ -624,8 +625,23 @@ func (context *RunContext) SetStableBlock(block *types.Block) {
 	context.StableBlock = block
 }
 
-func (context *RunContext) SetCandidate(candidate *Candidate) {
-	context.Candidates.Set(candidate)
+func (context *RunContext) SetCandidate(candidate *Candidate) error {
+	return context.Candidates.Set(candidate)
+}
+
+func (context *RunContext) SetCandidates(candidates []*Candidate) error {
+	for index := 0; index < len(candidates); index++ {
+		candidate := &Candidate{
+			Address: candidates[index].Address,
+			Total:   new(big.Int).Set(candidates[index].Total),
+		}
+
+		err := context.SetCandidate(candidate)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (context *RunContext) GetCandidates() ([]*Candidate, error) {
