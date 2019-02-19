@@ -60,9 +60,19 @@ func NewChainDataBase(home string, driver string, dns string) *ChainDatabase {
 
 	db.BizDB = NewBizDatabase(db, db.DB)
 	db.Beansdb = NewBeansDB(home, 2, db.DB, db.AfterScan)
+
 	db.LastConfirm = &CBlock{
-		Block:         db.Context.GetStableBlock(),
-		AccountTrieDB: NewEmptyAccountTrieDB(db.Beansdb),
+		Block:           db.Context.GetStableBlock(),
+		AccountTrieDB:   NewEmptyAccountTrieDB(db.Beansdb),
+		CandidateTrieDB: NewEmptyCandidateTrieDB(),
+		Top:             NewEmptyVoteTop(),
+	}
+
+	candidates, err := db.Context.Candidates.GetCandidates()
+	if err != nil {
+		panic("get candidates err: " + err.Error())
+	} else {
+		db.LastConfirm.Top.Rank(max_candidate_count, candidates)
 	}
 
 	return db
@@ -361,7 +371,7 @@ func (database *ChainDatabase) SetBlock(hash common.Hash, block *types.Block) er
 			panic("block'height:" + bheight + "|bhash:" + bhash + "|confirm'height:" + lheight + "|lhash:" + lhash)
 		}
 
-		database.UnConfirmBlocks[hash] = NewNormalBlock(block, database.LastConfirm.AccountTrieDB, database.LastConfirm.CandidateTrieDB, database.LastConfirm.Top30)
+		database.UnConfirmBlocks[hash] = NewNormalBlock(block, database.LastConfirm.AccountTrieDB, database.LastConfirm.CandidateTrieDB, database.LastConfirm.Top)
 	} else {
 		if pBlock.Block.Height()+1 != block.Height() {
 			bheight := strconv.Itoa(int(block.Height()))
@@ -371,7 +381,7 @@ func (database *ChainDatabase) SetBlock(hash common.Hash, block *types.Block) er
 			panic("block'height:" + bheight + "|bhash:" + bhash + "|confirm'height:" + lheight + "|lhash:" + lhash)
 		}
 
-		database.UnConfirmBlocks[hash] = NewNormalBlock(block, pBlock.AccountTrieDB, pBlock.CandidateTrieDB, pBlock.Top30)
+		database.UnConfirmBlocks[hash] = NewNormalBlock(block, pBlock.AccountTrieDB, pBlock.CandidateTrieDB, pBlock.Top)
 	}
 
 	return nil
@@ -608,10 +618,10 @@ func (database *ChainDatabase) SetContractCode(hash common.Hash, code types.Code
 func (database *ChainDatabase) GetCandidatesTop(hash common.Hash) []*Candidate {
 	cItem := database.UnConfirmBlocks[hash]
 	if (cItem != nil) && (cItem.Block != nil) {
-		if cItem.Top30 == nil {
+		if cItem.Top == nil {
 			panic("item top30 is nil.")
 		} else {
-			return cItem.Top30
+			return cItem.Top.GetTop()
 		}
 	}
 
@@ -620,7 +630,7 @@ func (database *ChainDatabase) GetCandidatesTop(hash common.Hash) []*Candidate {
 	}
 
 	if hash == database.LastConfirm.Block.Hash() {
-		return database.LastConfirm.Top30
+		return database.LastConfirm.Top.GetTop()
 	} else {
 		panic("hash != database.LastConfirm.Block.Hash()")
 	}

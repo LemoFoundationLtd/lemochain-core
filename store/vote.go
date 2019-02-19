@@ -32,27 +32,32 @@ func (candidate *Candidate) Clone() types.NodeData {
 }
 
 type VoteTop struct {
-	TopCnt int
-	Top    []*Candidate
+	Top []*Candidate
+}
+
+func NewEmptyVoteTop() *VoteTop {
+	return &VoteTop{Top: make([]*Candidate, 0)}
 }
 
 func NewVoteTop(top []*Candidate) *VoteTop {
-	return &VoteTop{TopCnt: len(top), Top: top}
+	voteTop := &VoteTop{}
+	if len(top) <= 0 {
+		voteTop.Top = make([]*Candidate, 0)
+	} else {
+		voteTop.Top = make([]*Candidate, len(top))
+		for index := 0; index < len(top); index++ {
+			voteTop.Top[index] = top[index].Copy()
+		}
+	}
+	return voteTop
 }
 
 func (top *VoteTop) Clone() *VoteTop {
-	copy := &VoteTop{TopCnt: top.TopCnt}
-
-	copy.Top = make([]*Candidate, top.TopCnt)
-	for index := 0; index < top.TopCnt; index++ {
-		copy.Top[index] = top.Top[index].Copy()
-	}
-
-	return copy
+	return NewVoteTop(top.Top)
 }
 
 func (top *VoteTop) Max() *Candidate {
-	if top.TopCnt <= 0 {
+	if len(top.Top) <= 0 {
 		return nil
 	} else {
 		return top.Top[0].Copy()
@@ -60,37 +65,24 @@ func (top *VoteTop) Max() *Candidate {
 }
 
 func (top *VoteTop) Min() *Candidate {
-	if top.TopCnt <= 0 {
+	if len(top.Top) <= 0 {
 		return nil
 	} else {
-		return top.Top[top.TopCnt-1].Copy()
-	}
-}
-
-func (top *VoteTop) Del(address common.Address) {
-	for index := 0; index < top.TopCnt; index++ {
-		if bytes.Compare(top.Top[index].Address[:], address[:]) != 0 {
-			continue
-		} else {
-			top.Top = append(top.Top[0:index], top.Top[index+1:]...)
-			top.TopCnt = top.TopCnt - 1
-			break
-		}
+		return top.Top[len(top.Top)-1].Copy()
 	}
 }
 
 func (top *VoteTop) Clear() {
-	top.TopCnt = 0
 	top.Top = make([]*Candidate, 0)
 }
 
 func (top *VoteTop) Count() int {
-	return top.TopCnt
+	return len(top.Top)
 }
 
 func (top *VoteTop) GetTop() []*Candidate {
-	result := make([]*Candidate, top.TopCnt)
-	for index := 0; index < top.TopCnt; index++ {
+	result := make([]*Candidate, len(top.Top))
+	for index := 0; index < len(top.Top); index++ {
 		result[index] = top.Top[index].Copy()
 	}
 	return result
@@ -98,10 +90,12 @@ func (top *VoteTop) GetTop() []*Candidate {
 
 func (top *VoteTop) Reset(candidates []*Candidate) {
 	if len(candidates) <= 0 {
-		top.Clear()
+		top.Top = make([]*Candidate, 0)
 	} else {
-		top.Top = candidates
-		top.TopCnt = len(candidates)
+		top.Top = make([]*Candidate, len(candidates))
+		for index := 0; index < len(candidates); index++ {
+			top.Top[index] = candidates[index].Copy()
+		}
 	}
 }
 

@@ -140,7 +140,7 @@ func TestCBlock_RankingNo1(t *testing.T) {
 	}
 
 	cblock1.Ranking()
-	top30 := cblock1.Top30
+	top30 := cblock1.Top.GetTop()
 	assert.Equal(t, count, len(top30))
 	assert.Equal(t, true, equal(candidates, count, top30))
 }
@@ -159,7 +159,7 @@ func TestCBlock_RankingNo2(t *testing.T) {
 	}
 
 	cblock1.Ranking()
-	top30 := cblock1.Top30
+	top30 := cblock1.Top.GetTop()
 	assert.Equal(t, count, len(top30))
 	assert.Equal(t, true, equal(sort(candidates), count, top30))
 }
@@ -180,7 +180,7 @@ func TestCBlock_RankingNo3(t *testing.T) {
 	cblock1.Ranking()
 	cblock1Candidates := clone(candidates)
 
-	cblock2 := NewNormalBlock(GetBlock2(), cblock1.AccountTrieDB, cblock1.CandidateTrieDB, cblock1.Top30)
+	cblock2 := NewNormalBlock(GetBlock2(), cblock1.AccountTrieDB, cblock1.CandidateTrieDB, cblock1.Top)
 	candidates = append(candidates, NewAccountData(common.HexToAddress(strconv.Itoa(count+1)), true))
 	candidates[count].Candidate.Votes.SetInt64(30000)
 	cblock2.AccountTrieDB.Put(candidates[count], 2)
@@ -190,11 +190,11 @@ func TestCBlock_RankingNo3(t *testing.T) {
 	cblock2.AccountTrieDB.Put(candidates[count+1], 2)
 	cblock2.Ranking()
 
-	block1Top30 := cblock1.Top30
+	block1Top30 := cblock1.Top.GetTop()
 	assert.Equal(t, true, equal(sort(cblock1Candidates), count, block1Top30))
 	assert.Equal(t, count, len(cblock1.CandidateTrieDB.GetAll()))
 
-	block2Top30 := cblock2.Top30
+	block2Top30 := cblock2.Top.GetTop()
 	assert.Equal(t, max_candidate_count, len(block2Top30))
 	assert.Equal(t, count+2, len(cblock2.CandidateTrieDB.GetAll()))
 	assert.Equal(t, true, equal(sort(candidates), max_candidate_count, block2Top30))
@@ -229,7 +229,7 @@ func TestCBlock_RankingNo10(t *testing.T) {
 	cblock1.Ranking()
 	cblock1Candidates := clone(candidates)
 
-	cblock2 := NewNormalBlock(GetBlock2(), cblock1.AccountTrieDB, cblock1.CandidateTrieDB, cblock1.Top30)
+	cblock2 := NewNormalBlock(GetBlock2(), cblock1.AccountTrieDB, cblock1.CandidateTrieDB, cblock1.Top)
 	candidates = append(candidates, NewAccountData(common.HexToAddress(strconv.Itoa(count)), true))
 	candidates[count].Candidate.Votes.SetInt64(50000)
 	cblock2.AccountTrieDB.Put(candidates[count], 2)
@@ -239,11 +239,11 @@ func TestCBlock_RankingNo10(t *testing.T) {
 	cblock2.AccountTrieDB.Put(candidates[count+1], 2)
 	cblock2.Ranking()
 
-	block1Top30 := cblock1.Top30
+	block1Top30 := cblock1.Top.GetTop()
 	assert.Equal(t, true, equal(sort(cblock1Candidates), max_candidate_count, block1Top30))
 	assert.Equal(t, count, len(cblock1.CandidateTrieDB.GetAll()))
 
-	block2Top30 := cblock2.Top30
+	block2Top30 := cblock2.Top.GetTop()
 	assert.Equal(t, true, equal(sort(candidates), max_candidate_count, block2Top30))
 	assert.Equal(t, count+2, len(cblock2.CandidateTrieDB.GetAll()))
 }
@@ -263,7 +263,7 @@ func TestCBlock_RankingNo11(t *testing.T) {
 	cblock1.Ranking()
 	cblock1Candidates := clone(candidates)
 
-	cblock2 := NewNormalBlock(GetBlock2(), cblock1.AccountTrieDB, cblock1.CandidateTrieDB, cblock1.Top30)
+	cblock2 := NewNormalBlock(GetBlock2(), cblock1.AccountTrieDB, cblock1.CandidateTrieDB, cblock1.Top)
 	candidates = append(candidates, NewAccountData(common.HexToAddress(strconv.Itoa(count)), true))
 	candidates[count].Candidate.Votes.SetInt64(20)
 	cblock2.AccountTrieDB.Put(candidates[count], 2)
@@ -273,11 +273,11 @@ func TestCBlock_RankingNo11(t *testing.T) {
 	cblock2.AccountTrieDB.Put(candidates[count+1], 2)
 	cblock2.Ranking()
 
-	block1Top30 := cblock1.Top30
+	block1Top30 := cblock1.Top.GetTop()
 	assert.Equal(t, true, equal(sort(cblock1Candidates), max_candidate_count, block1Top30))
 	assert.Equal(t, count, len(cblock1.CandidateTrieDB.GetAll()))
 
-	block2Top30 := cblock2.Top30
+	block2Top30 := cblock2.Top.GetTop()
 	assert.Equal(t, true, equal(sort(candidates), max_candidate_count, block2Top30))
 	assert.Equal(t, count+2, len(cblock2.CandidateTrieDB.GetAll()))
 }
@@ -297,7 +297,7 @@ func TestCBlock_RankingNo12(t *testing.T) {
 	cblock1.Ranking()
 	cblock1Candidates := clone(candidates)
 
-	cblock2 := NewNormalBlock(GetBlock2(), cblock1.AccountTrieDB, cblock1.CandidateTrieDB, cblock1.Top30)
+	cblock2 := NewNormalBlock(GetBlock2(), cblock1.AccountTrieDB, cblock1.CandidateTrieDB, cblock1.Top)
 	candidates[18].Candidate.Votes.SetInt64(40)
 	cblock2.AccountTrieDB.Put(candidates[18], 2)
 
@@ -305,11 +305,11 @@ func TestCBlock_RankingNo12(t *testing.T) {
 	cblock2.AccountTrieDB.Put(candidates[19], 2)
 	cblock2.Ranking()
 
-	block2Top30 := cblock2.Top30
+	block2Top30 := cblock2.Top.GetTop()
 	assert.Equal(t, true, equal(sort(candidates), max_candidate_count, block2Top30))
 	assert.Equal(t, count, len(cblock2.CandidateTrieDB.GetAll()))
 
-	block1Top30 := cblock1.Top30
+	block1Top30 := cblock1.Top.GetTop()
 	assert.Equal(t, true, equal(sort(cblock1Candidates), max_candidate_count, block1Top30))
 	assert.Equal(t, count, len(cblock1.CandidateTrieDB.GetAll()))
 }

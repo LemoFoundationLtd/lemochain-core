@@ -106,31 +106,6 @@ func TestNewVoteTop(t *testing.T) {
 	// Clear
 	vote.Clear()
 	assert.Equal(t, 0, len(vote.GetTop()))
-
-	// Del
-	vote.Rank(5, data)
-	vote.Del(common.HexToAddress("0x03"))
-
-	result = []*Candidate{
-		&Candidate{
-			Address: common.HexToAddress("0x05"),
-			Total:   new(big.Int).SetInt64(5),
-		},
-		&Candidate{
-			Address: common.HexToAddress("0x04"),
-			Total:   new(big.Int).SetInt64(3),
-		},
-		&Candidate{
-			Address: common.HexToAddress("0x02"),
-			Total:   new(big.Int).SetInt64(2),
-		},
-		&Candidate{
-			Address: common.HexToAddress("0x01"),
-			Total:   new(big.Int).SetInt64(1),
-		},
-	}
-	assert.Equal(t, 4, vote.Count())
-	assert.Equal(t, true, isSort(result, vote.GetTop(), 4))
 }
 
 func BenchmarkNewVoteT(b *testing.B) {

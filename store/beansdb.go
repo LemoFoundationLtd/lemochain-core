@@ -428,6 +428,28 @@ func (cache *CandidateCache) Decode(buf []byte, length int) error {
 	return nil
 }
 
+func (cache *CandidateCache) GetCandidates() ([]*Candidate, error) {
+	if len(cache.Candidates) <= 0 {
+		return make([]*Candidate, 0), nil
+	}
+
+	candidatePosLen := binary.Size(CandidatePos{})
+	result := make([]*Candidate, 0, len(cache.Candidates))
+	for k, v := range cache.Candidates {
+		var candidate Candidate
+		err := rlp.DecodeBytes(cache.CandidateBuf[int(v.Pos)+candidatePosLen:int(v.Pos)+candidatePosLen+int(v.Len)], &candidate)
+		if err != nil {
+			return nil, err
+		}
+
+		result = append(result, &Candidate{
+			Address: k,
+			Total:   candidate.Total,
+		})
+	}
+	return result, nil
+}
+
 func (cache *CandidateCache) GetCandidatePage(index int, size int) ([]common.Address, uint32, error) {
 	total := len(cache.Candidates)
 	if index > total {
@@ -593,6 +615,10 @@ func (context *RunContext) SetStableBlock(block *types.Block) {
 
 func (context *RunContext) SetCandidate(candidate *Candidate) {
 	context.Candidates.Set(candidate)
+}
+
+func (context *RunContext) GetCandidates() ([]*Candidate, error) {
+	return context.Candidates.GetCandidates()
 }
 
 func (context *RunContext) GetCandidatePage(index int, size int) ([]common.Address, uint32, error) {
