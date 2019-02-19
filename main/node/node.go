@@ -130,7 +130,7 @@ func initDeputyNodes(db protocol.ChainDB) {
 			return
 		}
 		deputynode.Instance().Add(block.Height(), block.DeputyNodes)
-		block, err = db.GetBlockByHeight(block.Height() + deputynode.SnapshotBlockInterval)
+		block, err = db.GetBlockByHeight(block.Height() + params.SnapshotBlock)
 		if err == store.ErrNotExist {
 			break
 		} else if err == nil {

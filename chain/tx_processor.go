@@ -362,7 +362,7 @@ func (p *TxProcessor) chargeForGas(charge *big.Int, minerAddress common.Address)
 // FillHeader creates a new header then fills it with the result of transactions process
 func (p *TxProcessor) FillHeader(header *types.Header, txs types.Transactions, gasUsed uint64) (*types.Header, error) {
 	if len(txs) > 0 {
-		log.Infof("process %d transactions", len(txs))
+		log.Infof("process %d transactions: %v", len(txs))
 	}
 	events := p.am.GetEvents()
 	header.Bloom = types.CreateBloom(events)
@@ -379,7 +379,7 @@ func (p *TxProcessor) FillHeader(header *types.Header, txs types.Transactions, g
 	}
 	header.VersionRoot = p.am.GetVersionRoot()
 	changeLogs := p.am.GetChangeLogs()
-	log.Errorf("changlog.00000000002", changeLogs)
+	log.Errorf("changlog.00000000002: %v", changeLogs)
 	header.LogRoot = types.DeriveChangeLogsSha(changeLogs)
 	return header, nil
 }

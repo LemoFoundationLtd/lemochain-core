@@ -18,10 +18,10 @@ import (
 	"sync"
 )
 
-const (
-	SnapshotBlockInterval = 1000000
-	TransitionPeriod      = 1000
-)
+// const (
+// 	SnapshotBlockInterval = 1000000
+// 	TransitionPeriod      = 1000
+// )
 
 var (
 	selfNodeKey *ecdsa.PrivateKey
@@ -192,7 +192,7 @@ func (d *Manager) GetDeputyByNodeID(height uint32, nodeID []byte) *DeputyNode {
 func (d *Manager) GetSlot(height uint32, firstAddress, nextAddress common.Address) int {
 	firstNode := d.GetDeputyByAddress(height, firstAddress)
 	nextNode := d.GetDeputyByAddress(height, nextAddress)
-	if ((height == 1) || (height > SnapshotBlockInterval && height%SnapshotBlockInterval == TransitionPeriod+1)) && nextNode != nil {
+	if ((height == 1) || (height > params.SnapshotBlock && height%params.SnapshotBlock == params.PeriodBlock+1)) && nextNode != nil {
 		return int(nextNode.Rank + 1)
 	}
 	if firstNode == nil || nextNode == nil {
@@ -205,6 +205,20 @@ func (d *Manager) GetSlot(height uint32, firstAddress, nextAddress common.Addres
 		return 1
 	}
 	return (int(nextNode.Rank) - int(firstNode.Rank) + nodeCount) % nodeCount
+}
+
+func (d *Manager) GetNodeRankByNodeID(height uint32, nodeID []byte) int {
+	if nextNode := d.GetDeputyByNodeID(height, nodeID); nextNode != nil {
+		return int(nextNode.Rank)
+	}
+	return -1
+}
+
+func (d *Manager) GetNodeRankByAddress(height uint32, addr common.Address) int {
+	if nextNode := d.GetDeputyByAddress(height, addr); nextNode != nil {
+		return int(nextNode.Rank)
+	}
+	return -1
 }
 
 // TimeToHandOutRewards 是否该发出块奖励了

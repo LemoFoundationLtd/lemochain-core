@@ -695,7 +695,7 @@ func (bc *BlockChain) Db() db.ChainDB {
 func (bc *BlockChain) GetNewDeputyNodes() deputynode.DeputyNodes {
 	result := make(deputynode.DeputyNodes, 0, 17)
 	list := bc.db.GetCandidatesTop(bc.CurrentBlock().Hash())
-	for _, n := range list {
+	for i, n := range list {
 		dn := new(deputynode.DeputyNode)
 		dn.Votes = n.GetTotal()
 		acc := bc.am.GetAccount(n.GetAddress())
@@ -714,7 +714,7 @@ func (bc *BlockChain) GetNewDeputyNodes() deputynode.DeputyNodes {
 			continue
 		}
 		dn.Port = uint32(port)
-		dn.Rank = uint32(len(result))
+		dn.Rank = uint32(i)
 		strID := profile[types.CandidateKeyNodeID]
 		nID, err := hex.DecodeString(strID)
 		if err != nil {

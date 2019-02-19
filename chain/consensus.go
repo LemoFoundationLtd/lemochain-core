@@ -92,7 +92,6 @@ func (d *Dpovp) VerifyHeader(block *types.Block) error {
 	if nodeCount == 1 {
 		return nil
 	}
-
 	// Verify that the block timestamp is less than the current time
 	if err := verifyHeaderTime(block); err != nil {
 		return err
@@ -101,12 +100,10 @@ func (d *Dpovp) VerifyHeader(block *types.Block) error {
 	if err := verifyHeaderSignData(block); err != nil {
 		return err
 	}
-
 	// verify deputy node root when height is 100W*N
 	if err := d.VerifyDeputyRoot(block); err != nil {
 		return err
 	}
-
 	header := block.Header
 	// verify extra data
 	if len(header.Extra) > MaxExtraDataLen {
@@ -123,10 +120,20 @@ func (d *Dpovp) VerifyHeader(block *types.Block) error {
 		log.Debug("verifyHeader: parent block is genesis block")
 		return nil
 	}
+	var slot int
+	if (header.Height > params.PeriodBlock+1) && (header.Height-params.PeriodBlock-1)%params.SnapshotBlock == 0 {
+		rank := deputynode.Instance().GetNodeRankByAddress(header.Height, block.MinerAddress())
+		if rank == -1 {
+			return ErrVerifyHeaderFailed
+		}
+		slot = rank + 1
+	} else {
+		slot = deputynode.Instance().GetSlot(header.Height, parent.Header.MinerAddress, header.MinerAddress)
+	}
+
 	// The time interval between the current block and the parent block. unit：ms
 	timeSpan := int64(header.Time-parent.Header.Time) * 1000
 	oldTimeSpan := timeSpan
-	slot := deputynode.Instance().GetSlot(header.Height, parent.Header.MinerAddress, header.MinerAddress)
 	oneLoopTime := int64(nodeCount) * d.timeoutTime // All timeout times for a round of deputy nodes
 
 	timeSpan %= oneLoopTime
@@ -137,7 +144,7 @@ func (d *Dpovp) VerifyHeader(block *types.Block) error {
 		}
 	} else if slot == 1 {
 		if timeSpan >= d.timeoutTime {
-			log.Debugf("verifyHeader: verify failed.timeSpan< oneLoopTime. timeSpan:%d nodeCount:%d slot:%d oneLoopTime:%d -3", timeSpan, nodeCount, slot, oneLoopTime)
+			log.Debugf("verifyHeader: height: %d. verify failed.timeSpan< oneLoopTime. timeSpan:%d nodeCount:%d slot:%d oneLoopTime:%d -3", block.Height(), timeSpan, nodeCount, slot, oneLoopTime)
 			return ErrVerifyHeaderFailed
 		}
 	} else {

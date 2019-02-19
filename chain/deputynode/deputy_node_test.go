@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"errors"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto/secp256k1"
@@ -215,7 +216,7 @@ func TestManager_GetSlot(t *testing.T) {
 
 	nodes01, err := deputyNodes(5)
 	assert.NoError(t, err)
-	ma.Add(SnapshotBlockInterval, nodes01) // 创建5个代理节点的节点列表，高度为100000
+	ma.Add(params.SnapshotBlock, nodes01) // 创建5个代理节点的节点列表，高度为100000
 
 	// 测试height==1的情况，此情况为上一个块为创世块
 	assert.Equal(t, 1, ma.GetSlot(1, common.Address{}, common.HexToAddress(block01MinerAddress)))
@@ -223,9 +224,9 @@ func TestManager_GetSlot(t *testing.T) {
 	assert.Equal(t, 3, ma.GetSlot(1, common.Address{}, common.HexToAddress(block03MinerAddress)))
 
 	// 测试换届的情况
-	assert.Equal(t, 1, ma.GetSlot(SnapshotBlockInterval+TransitionPeriod+1, common.Address{}, common.HexToAddress(block01MinerAddress)))
-	assert.Equal(t, 2, ma.GetSlot(SnapshotBlockInterval+TransitionPeriod+1, common.Address{}, common.HexToAddress(block02MinerAddress)))
-	assert.Equal(t, 3, ma.GetSlot(SnapshotBlockInterval+TransitionPeriod+1, common.Address{}, common.HexToAddress(block03MinerAddress)))
+	assert.Equal(t, 1, ma.GetSlot(params.SnapshotBlock+params.PeriodBlock+1, common.Address{}, common.HexToAddress(block01MinerAddress)))
+	assert.Equal(t, 2, ma.GetSlot(params.SnapshotBlock+params.PeriodBlock+1, common.Address{}, common.HexToAddress(block02MinerAddress)))
+	assert.Equal(t, 3, ma.GetSlot(params.SnapshotBlock+params.PeriodBlock+1, common.Address{}, common.HexToAddress(block03MinerAddress)))
 
 	// 测试firstNode和NextNode为空的情况
 	assert.Equal(t, -1, ma.GetSlot(22, common.Address{}, common.Address{}))
