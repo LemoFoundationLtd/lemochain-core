@@ -36,8 +36,6 @@ type Miner struct {
 
 	blockMineTimer *time.Timer // 出块timer
 
-	switchNexTerm bool
-
 	recvNewBlockCh chan *types.Block // 收到新块通知
 	recvBlockSub   subscribe.Subscription
 	timeToMineCh   chan struct{} // 到出块时间了
@@ -288,10 +286,12 @@ func (m *Miner) loopMiner() {
 			} else {
 				log.Error("getSleepTime internal error.")
 			}
-			if block.Height()%params.SnapshotBlock == params.PeriodBlock {
+			if block.Height()%params.SnapshotBlock == 0 {
+				deputynode.Instance().Add(block.Height()+params.PeriodBlock+1, block.DeputyNodes)
+				log.Debugf("add new term deputy nodes: %v", block.DeputyNodes)
+			} else if block.Height()%params.SnapshotBlock == params.PeriodBlock {
 				n := deputynode.Instance().GetDeputyByNodeID(block.Height(), deputynode.GetSelfNodeID())
 				m.SetMinerAddress(n.MinerAddress)
-				m.switchNexTerm = true
 				log.Debugf("new term deputy nodes: %v", n)
 			}
 		case <-m.stopCh:
@@ -381,7 +381,6 @@ func (m *Miner) sealHead() (*types.Header, deputynode.DeputyNodes) {
 	} else if height%params.SnapshotBlock == params.PeriodBlock {
 		n := deputynode.Instance().GetDeputyByNodeID(height, deputynode.GetSelfNodeID())
 		m.SetMinerAddress(n.MinerAddress)
-		m.switchNexTerm = true
 		log.Debugf("new term deputy nodes: %v", n)
 	}
 
