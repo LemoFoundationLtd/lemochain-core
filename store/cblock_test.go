@@ -133,7 +133,7 @@ func TestCBlock_RankingNo1(t *testing.T) {
 	account2 := NewAccountData(common.HexToAddress(strconv.Itoa(0x1001)), false)
 	cblock1.AccountTrieDB.Put(account2, 1)
 
-	count := 29
+	count := 19
 	candidates := NewAccountDataBatch(count)
 	for index := 0; index < count; index++ {
 		cblock1.AccountTrieDB.Put(candidates[index], 1)
@@ -150,7 +150,7 @@ func TestCBlock_RankingNo2(t *testing.T) {
 	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
 	cblock1 := NewGenesisBlock(GetBlock1(), cacheChain.Beansdb)
 
-	count := 29
+	count := 19
 	candidates := NewAccountDataBatch(count)
 	candidates[0].Candidate.Votes.SetInt64(50000)
 	candidates[9].Candidate.Votes.SetInt64(40000)
@@ -170,7 +170,7 @@ func TestCBlock_RankingNo3(t *testing.T) {
 
 	cblock1 := NewGenesisBlock(GetBlock1(), cacheChain.Beansdb)
 
-	count := 29
+	count := 19
 	candidates := NewAccountDataBatch(count)
 	candidates[0].Candidate.Votes.SetInt64(50000)
 	candidates[9].Candidate.Votes.SetInt64(40000)

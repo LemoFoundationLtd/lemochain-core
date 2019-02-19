@@ -46,7 +46,7 @@ func NewNormalBlock(block *types.Block, accountTrieDB *AccountTrieDB, candidateT
 func (block *CBlock) toHashMap(src []*Candidate) map[common.Address]*Candidate {
 	result := make(map[common.Address]*Candidate)
 	for index := 0; index < len(src); index++ {
-		result[src[index].Address] = src[index]
+		result[src[index].Address] = src[index].Copy()
 	}
 	return result
 }
