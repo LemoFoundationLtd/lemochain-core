@@ -114,20 +114,38 @@ func (block *CBlock) less30(in []*Candidate, out []*Candidate) {
 	block.Top.Rank(max_candidate_count, append(in, out...))
 }
 
+func (block *CBlock) minIsReduce(oldMin *Candidate, newMin *Candidate) bool {
+	if (oldMin != nil) &&
+		(newMin != nil) &&
+		(newMin.Total.Cmp(oldMin.Total) >= 0) {
+		return false
+	} else {
+		return true
+	}
+}
+
+func (block *CBlock) canPick(src *Candidate, dst *Candidate) bool {
+	if (src.Total.Cmp(dst.Total) < 0) ||
+		((src.Total.Cmp(dst.Total) == 0) && (bytes.Compare(src.Address[:], dst.Address[:]) < 0)) {
+		return true
+	} else {
+		return false
+	}
+}
+
 func (block *CBlock) greater30(in []*Candidate, out []*Candidate) {
 	top := NewEmptyVoteTop()
 	top.Rank(max_candidate_count, in)
-
-	lastMinCandidate := block.Top.Min()
-	if (lastMinCandidate != nil) && (lastMinCandidate.Total.Cmp(top.Min().Total) <= 0) {
+	newMin := top.Min()
+	oldMin := block.Top.Min()
+	if !block.minIsReduce(oldMin, newMin) {
 		for index := 0; index < len(out); index++ {
-			if (lastMinCandidate.Total.Cmp(out[index].Total) < 0) ||
-				((lastMinCandidate.Total.Cmp(out[index].Total) == 0) && (bytes.Compare(lastMinCandidate.Address[:], out[index].Address[:]) < 0)) {
-				in = append(in, out[index])
+			candidate := out[index]
+			if block.canPick(newMin, candidate) {
+				in = append(in, candidate)
 			}
-
-			block.Top.Rank(max_candidate_count, in)
 		}
+		block.Top.Rank(max_candidate_count, in)
 	} else {
 		candidates := block.CandidateTrieDB.GetAll()
 		block.Top.Rank(max_candidate_count, candidates)
