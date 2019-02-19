@@ -724,7 +724,7 @@ func Test_CreatRegisterTxData(t *testing.T) {
 
 // 生成调用设置换届奖励的预编译合约交易的data
 func TestBlockChain_txData(t *testing.T) {
-	re := params.NewReward{
+	re := params.RewardJson{
 		Term:  3,
 		Value: big.NewInt(3330),
 	}

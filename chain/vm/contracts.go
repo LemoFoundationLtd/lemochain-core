@@ -61,7 +61,7 @@ func (c *setRewardValue) RequiredGas(input []byte) uint64 {
 }
 
 func (c *setRewardValue) Run(input []byte) ([]byte, error) {
-	newReward := &params.NewReward{}
+	newReward := &params.RewardJson{}
 	err := json.Unmarshal(input, newReward)
 	if err != nil {
 		return false32Byte, err
@@ -97,13 +97,13 @@ func (c *setRewardValue) Run(input []byte) ([]byte, error) {
 			return false32Byte, err
 		}
 
-		// 计算当前总共发了多少奖励
+		// Calculate how many bonuses have been awarded
 		var total = big.NewInt(0)
 		var addValue = big.NewInt(0)
 		for _, v := range rewardMap {
 			total = new(big.Int).Add(total, v.Value)
 		}
-		// 判断加上此次奖励是否会超过奖励池中的总数，区分修改和新加入
+		// Judge whether the reward of the distributed over the total number of bonus pool
 		if re, ok := rewardMap[newReward.Term]; ok {
 			oldValue := re.Value
 			newValue := newReward.Value
@@ -116,9 +116,9 @@ func (c *setRewardValue) Run(input []byte) ([]byte, error) {
 			return false32Byte, errors.New("Reward pool balance is insufficient ")
 		}
 
-		// 判断是否为修改value操作
+		// Judge whether to modify the value operation
 		if oldReward, ok := rewardMap[newReward.Term]; ok {
-			// 如果同一届已经修改了两次了则不能再次进行修改了
+			// The number of modifications exceeded the limit
 			if oldReward.Times == 2 {
 				err = fmt.Errorf("update %d term deputy node reward false", newReward.Term)
 				return false32Byte, err
@@ -126,7 +126,7 @@ func (c *setRewardValue) Run(input []byte) ([]byte, error) {
 			// update
 			oldReward.Value = newReward.Value
 			oldReward.Times++
-		} else { // 设置新的换届奖励
+		} else { // Set up new reward
 			rewardMap[newReward.Term] = &params.Reward{
 				Term:  newReward.Term,
 				Value: newReward.Value,
@@ -135,7 +135,7 @@ func (c *setRewardValue) Run(input []byte) ([]byte, error) {
 		}
 	}
 
-	// 保存到账户
+	// Save to account
 	endBytes, err := json.Marshal(rewardMap)
 	if err != nil {
 		return false32Byte, err
