@@ -557,6 +557,10 @@ func TestChainDatabase_CandidatesRanking(t *testing.T) {
 	top = cacheChain.GetCandidatesTop(block1.Hash())
 	assert.Equal(t, max_candidate_count, len(top))
 
+	all, err := cacheChain.Context.GetCandidates()
+	assert.NoError(t, err)
+	assert.Equal(t, count, len(all))
+
 	page, total, err = cacheChain.GetCandidatesPage(0, 10)
 	assert.NoError(t, err)
 	assert.Equal(t, 10, len(page))
