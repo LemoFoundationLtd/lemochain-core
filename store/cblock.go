@@ -36,7 +36,7 @@ func NewNormalBlock(block *types.Block, accountTrieDB *AccountTrieDB, candidateT
 func (block *CBlock) toHashMap(src []*Candidate) map[common.Address]*Candidate {
 	result := make(map[common.Address]*Candidate)
 	for index := 0; index < len(src); index++ {
-		result[src[index].Address] = src[index].Copy()
+		result[src[index].Address] = src[index]
 	}
 	return result
 }
@@ -72,58 +72,62 @@ func (block *CBlock) isCandidate(account *types.AccountData) bool {
 	}
 }
 
-func (block *CBlock) data(accounts []*types.AccountData, lastCandidatesMap map[common.Address]*Candidate) (map[common.Address]*Candidate, []*Candidate) {
-	nextCandidates := make([]*Candidate, 0)
-
+func (block *CBlock) filterCandidates(accounts []*types.AccountData) []*Candidate {
+	candidates := make([]*Candidate, 0)
 	for index := 0; index < len(accounts); index++ {
 		account := accounts[index]
-		isCandidate := block.isCandidate(account)
-		if isCandidate {
-			candidate := &Candidate{
+		if block.isCandidate(account) {
+			candidates = append(candidates, &Candidate{
 				Address: account.Address,
 				Total:   new(big.Int).Set(account.Candidate.Votes),
-			}
-			nextCandidates = append(nextCandidates, candidate)
-			block.CandidateTrieDB.Put(candidate, block.Block.Height())
+			})
 		}
+	}
+	return candidates
+}
 
-		_, ok := lastCandidatesMap[account.Address]
+func (block *CBlock) data(candidates []*Candidate) ([]*Candidate, []*Candidate) {
+	in := block.Top.GetTop()
+	out := make([]*Candidate, 0)
+
+	if len(candidates) <= 0 {
+		return in, out
+	}
+
+	inMap := block.toHashMap(in)
+	for index := 0; index < len(candidates); index++ {
+		candidate := candidates[index]
+		block.CandidateTrieDB.Put(candidate, block.Block.Height())
+
+		_, ok := inMap[candidate.Address]
 		if ok {
-			if !isCandidate {
-				panic("can't cancel candidate: " + account.Address.Hex())
-			} else {
-				lastCandidatesMap[account.Address].Total.Set(account.Candidate.Votes)
-			}
+			inMap[candidate.Address] = candidate
+		} else {
+			out = append(out, candidate)
 		}
 	}
 
-	return lastCandidatesMap, nextCandidates
+	return block.toSlice(inMap), out
 }
 
-func (block *CBlock) less30(lastCandidatesMap map[common.Address]*Candidate, nextCandidates []*Candidate) {
-	for index := 0; index < len(nextCandidates); index++ {
-		lastCandidatesMap[nextCandidates[index].Address] = nextCandidates[index]
-	}
-	block.Top.Rank(max_candidate_count, block.toSlice(lastCandidatesMap))
+func (block *CBlock) less30(in []*Candidate, out []*Candidate) {
+	block.Top.Rank(max_candidate_count, append(in, out...))
 }
 
-func (block *CBlock) greater30(lastCandidatesMap map[common.Address]*Candidate, nextCandidates []*Candidate) {
-	lastMinCandidate := block.Top.Min()
-
+func (block *CBlock) greater30(in []*Candidate, out []*Candidate) {
 	top := NewEmptyVoteTop()
-	top.Rank(max_candidate_count, block.toSlice(lastCandidatesMap))
-	if (lastMinCandidate != nil) && (lastMinCandidate.Total.Cmp(top.Min().Total) <= 0) {
-		for index := 0; index < len(nextCandidates); index++ {
-			if (lastMinCandidate.Total.Cmp(nextCandidates[index].Total) < 0) ||
-				((lastMinCandidate.Total.Cmp(nextCandidates[index].Total) == 0) && (bytes.Compare(lastMinCandidate.Address[:], nextCandidates[index].Address[:]) < 0)) {
-				_, ok := lastCandidatesMap[nextCandidates[index].Address]
-				if !ok {
-					lastCandidatesMap[nextCandidates[index].Address] = nextCandidates[index]
-				}
-			}
-		}
+	top.Rank(max_candidate_count, in)
 
-		block.Top.Rank(max_candidate_count, block.toSlice(lastCandidatesMap))
+	lastMinCandidate := block.Top.Min()
+	if (lastMinCandidate != nil) && (lastMinCandidate.Total.Cmp(top.Min().Total) <= 0) {
+		for index := 0; index < len(out); index++ {
+			if (lastMinCandidate.Total.Cmp(out[index].Total) < 0) ||
+				((lastMinCandidate.Total.Cmp(out[index].Total) == 0) && (bytes.Compare(lastMinCandidate.Address[:], out[index].Address[:]) < 0)) {
+				in = append(in, out[index])
+			}
+
+			block.Top.Rank(max_candidate_count, in)
+		}
 	} else {
 		candidates := block.CandidateTrieDB.GetAll()
 		block.Top.Rank(max_candidate_count, candidates)
@@ -137,12 +141,13 @@ func (block *CBlock) Ranking() {
 		return
 	}
 
-	lastCandidatesMap, nextCandidates := block.data(accounts, block.toHashMap(block.Top.GetTop()))
+	candidates := block.filterCandidates(accounts)
+	in, out := block.data(candidates)
 	if block.Top.Count() < max_candidate_count {
-		block.less30(lastCandidatesMap, nextCandidates)
+		block.less30(in, out)
 		return
 	} else {
-		block.greater30(lastCandidatesMap, nextCandidates)
+		block.greater30(in, out)
 		return
 	}
 }
