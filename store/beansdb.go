@@ -332,9 +332,9 @@ func NewCandidateCache() *CandidateCache {
 	return &CandidateCache{
 		Candidates:   make(map[common.Address]CandidatePos),
 		ItemMaxSize:  64,
-		Cap:          64 * 1024,
+		Cap:          64 * 64,
 		Cur:          0,
-		CandidateBuf: make([]byte, 64*1024),
+		CandidateBuf: make([]byte, 64*64),
 	}
 }
 
@@ -368,6 +368,7 @@ func (cache *CandidateCache) Set(candidate *Candidate) error {
 			tmp := make([]byte, cache.Cap*2)
 			copy(tmp[:], cache.CandidateBuf[:])
 			cache.Cap = cache.Cap * 2
+			cache.CandidateBuf = tmp
 		}
 
 		pos := CandidatePos{
@@ -416,8 +417,12 @@ func (cache *CandidateCache) Decode(buf []byte, length int) error {
 			return err
 		}
 
+		if start != int(pos.Pos) || pos.Len == 0 {
+			panic("start != pos.")
+		}
+
 		var candidate Candidate
-		err = rlp.DecodeBytes(buf[start+candidatePosLen:pos.Len], &candidate)
+		err = rlp.DecodeBytes(buf[start+candidatePosLen:start+candidatePosLen+int(pos.Len)], &candidate)
 		if err != nil {
 			return err
 		}
@@ -425,7 +430,35 @@ func (cache *CandidateCache) Decode(buf []byte, length int) error {
 		cache.Candidates[candidate.Address] = pos
 	}
 
+	cache.CandidateBuf = buf
+	cache.Cap = len(buf)
+	cache.Cur = cache.Cap
 	return nil
+}
+
+func (cache *CandidateCache) GetCandidates() ([]*Candidate, error) {
+	if len(cache.Candidates) <= 0 {
+		return make([]*Candidate, 0), nil
+	}
+
+	candidatePosLen := binary.Size(CandidatePos{})
+	result := make([]*Candidate, 0, len(cache.Candidates))
+	for _, v := range cache.Candidates {
+		var pos CandidatePos
+		err := binary.Read(bytes.NewBuffer(cache.CandidateBuf[int(v.Pos):int(v.Pos)+candidatePosLen]), binary.LittleEndian, &pos)
+		if err != nil {
+			return nil, err
+		}
+
+		var candidate Candidate
+		err = rlp.DecodeBytes(cache.CandidateBuf[int(v.Pos)+candidatePosLen:int(v.Pos)+candidatePosLen+int(v.Len)], &candidate)
+		if err != nil {
+			return nil, err
+		}
+
+		result = append(result, &candidate)
+	}
+	return result, nil
 }
 
 func (cache *CandidateCache) GetCandidatePage(index int, size int) ([]common.Address, uint32, error) {
@@ -593,6 +626,10 @@ func (context *RunContext) SetStableBlock(block *types.Block) {
 
 func (context *RunContext) SetCandidate(candidate *Candidate) {
 	context.Candidates.Set(candidate)
+}
+
+func (context *RunContext) GetCandidates() ([]*Candidate, error) {
+	return context.Candidates.GetCandidates()
 }
 
 func (context *RunContext) GetCandidatePage(index int, size int) ([]common.Address, uint32, error) {

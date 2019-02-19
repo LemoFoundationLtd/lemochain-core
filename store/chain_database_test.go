@@ -552,4 +552,28 @@ func TestChainDatabase_CandidatesRanking(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(page))
 	assert.Equal(t, uint32(count), total)
+
+	cacheChain = NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
+	top = cacheChain.GetCandidatesTop(block1.Hash())
+	assert.Equal(t, max_candidate_count, len(top))
+
+	all, err := cacheChain.Context.GetCandidates()
+	assert.NoError(t, err)
+	assert.Equal(t, count, len(all))
+
+	page, total, err = cacheChain.GetCandidatesPage(0, 10)
+	assert.NoError(t, err)
+	assert.Equal(t, 10, len(page))
+	assert.Equal(t, uint32(count), total)
+
+	page, total, err = cacheChain.GetCandidatesPage(10, 100)
+	assert.NoError(t, err)
+	assert.Equal(t, 90, len(page))
+	assert.Equal(t, uint32(count), total)
+
+	page, total, err = cacheChain.GetCandidatesPage(100, 10)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(page))
+	assert.Equal(t, uint32(count), total)
+
 }
