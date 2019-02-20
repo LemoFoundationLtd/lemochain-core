@@ -145,13 +145,13 @@ func (m *Miner) getSleepTime() int {
 		log.Debugf("self not deputy node. mining forbidden")
 		return -1
 	}
-	nodeCount := deputynode.Instance().GetDeputiesCount()
+	curHeight := m.currentBlock().Height()
+	nodeCount := deputynode.Instance().GetDeputiesCount(curHeight + 1)
 	if nodeCount == 1 { // 只有一个主节点
 		waitTime := m.blockInterval
 		log.Debugf("getSleepTime: waitTime:%d", waitTime)
 		return int(waitTime)
 	}
-	curHeight := m.currentBlock().Height()
 	if (curHeight > params.PeriodBlock) && (curHeight-params.PeriodBlock)%params.SnapshotBlock == 0 {
 		if rank := deputynode.Instance().GetNodeRankByNodeID(curHeight, deputynode.GetSelfNodeID()); rank > -1 {
 			waitTime := rank * int(m.timeoutTime)
@@ -349,8 +349,12 @@ func (m *Miner) sealBlock() {
 	if !m.isSelfDeputyNode() {
 		return
 	}
+	log.Debug("Start seal")
+	header, dNodes := m.sealHead()
+	txs := m.txPool.Pending(1000000)
+
 	defer func() {
-		nodeCount := deputynode.Instance().GetDeputiesCount()
+		nodeCount := deputynode.Instance().GetDeputiesCount(header.Height + 1)
 		var timeDur int64
 		if nodeCount == 1 {
 			timeDur = m.blockInterval
@@ -359,9 +363,7 @@ func (m *Miner) sealBlock() {
 		}
 		m.resetMinerTimer(timeDur)
 	}()
-	log.Debug("Start seal")
-	header, dNodes := m.sealHead()
-	txs := m.txPool.Pending(1000000)
+
 	m.chain.Lock().Lock()
 	defer m.chain.Lock().Unlock()
 	newHeader, packagedTxs, invalidTxs, err := m.txProcessor.ApplyTxs(header, txs)

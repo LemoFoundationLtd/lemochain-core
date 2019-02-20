@@ -87,7 +87,7 @@ func (d *Dpovp) VerifyDeputyRoot(block *types.Block) error {
 
 // VerifyHeader verify block header
 func (d *Dpovp) VerifyHeader(block *types.Block) error {
-	nodeCount := deputynode.Instance().GetDeputiesCount() // The total number of nodes
+	nodeCount := deputynode.Instance().GetDeputiesCount(block.Height()) // The total number of nodes
 	// There's only one out block node
 	if nodeCount == 1 {
 		return nil
@@ -127,6 +127,7 @@ func (d *Dpovp) VerifyHeader(block *types.Block) error {
 			return ErrVerifyHeaderFailed
 		}
 		slot = rank + 1
+		log.Debugf("rank: %d", rank)
 	} else {
 		slot = deputynode.Instance().GetSlot(header.Height, parent.Header.MinerAddress, header.MinerAddress)
 	}
@@ -139,7 +140,7 @@ func (d *Dpovp) VerifyHeader(block *types.Block) error {
 	timeSpan %= oneLoopTime
 	if slot == 0 { // The last block was made for itself
 		if timeSpan < oneLoopTime-d.timeoutTime {
-			log.Debugf("verifyHeader: verify failed. oldTimeSpan: %d timeSpan:%d nodeCount:%d slot:%d oneLoopTime:%d -2", oldTimeSpan, timeSpan, nodeCount, slot, oneLoopTime)
+			log.Debugf("verifyHeader: verify failed. height:%d. oldTimeSpan: %d timeSpan:%d nodeCount:%d slot:%d oneLoopTime:%d -2", header.Height, oldTimeSpan, timeSpan, nodeCount, slot, oneLoopTime)
 			return ErrVerifyHeaderFailed
 		}
 	} else if slot == 1 {
@@ -149,7 +150,7 @@ func (d *Dpovp) VerifyHeader(block *types.Block) error {
 		}
 	} else {
 		if timeSpan/d.timeoutTime != int64(slot-1) {
-			log.Debugf("verifyHeader: verify failed. oldTimeSpan: %d timeSpan:%d nodeCount:%d slot:%d oneLoopTime:%d -4", oldTimeSpan, timeSpan, nodeCount, slot, oneLoopTime)
+			log.Debugf("verifyHeader: verify failed. height: %d. oldTimeSpan: %d timeSpan:%d nodeCount:%d slot:%d oneLoopTime:%d -4", header.Height, oldTimeSpan, timeSpan, nodeCount, slot, oneLoopTime)
 			return ErrVerifyHeaderFailed
 		}
 	}

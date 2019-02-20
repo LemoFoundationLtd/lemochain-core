@@ -251,7 +251,7 @@ func TestDpovp_nodeCount1(t *testing.T) {
 	dpovp := loadDpovp()
 	defer store.ClearData()
 
-	t.Log(deputynode.Instance().GetDeputiesCount())
+	t.Log(deputynode.Instance().GetDeputiesCount(1))
 	assert.Equal(t, nil, dpovp.VerifyHeader(&types.Block{}))
 }
 
@@ -282,7 +282,7 @@ func Test_headerExtra(t *testing.T) {
 func TestDpovp_VerifyHeader01(t *testing.T) {
 	err := initDeputyNode(5, 0)
 	assert.NoError(t, err)
-	t.Log(deputynode.Instance().GetDeputiesCount())
+	t.Log(deputynode.Instance().GetDeputiesCount(1))
 	dpovp := loadDpovp()
 	defer store.ClearData()
 	// 验证不存在父区块的情况

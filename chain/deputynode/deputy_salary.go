@@ -16,7 +16,7 @@ type DeputySalary struct {
 
 // CalcSalary 计算收益
 func CalcSalary(height uint32, termRewards *big.Int) []*DeputySalary {
-	nodes := Instance().getDeputiesByHeight(height)
+	nodes := Instance().getDeputiesByHeight(height, true)
 	salaries := make([]*DeputySalary, len(nodes))
 	totalVotes := new(big.Int)
 	for _, node := range nodes {

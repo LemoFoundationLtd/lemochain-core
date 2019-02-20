@@ -192,7 +192,7 @@ func (bc *BlockChain) SetMinedBlock(block *types.Block) error {
 		log.Error("save account error!", "hash", block.Hash().Hex(), "err", err)
 		return ErrSaveAccount
 	}
-	nodeCount := deputynode.Instance().GetDeputiesCount()
+	nodeCount := deputynode.Instance().GetDeputiesCount(block.Height())
 	bc.currentBlock.Store(block)
 	delete(bc.chainForksHead, block.ParentHash())
 	bc.chainForksHead[block.Hash()] = block
@@ -252,7 +252,7 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 		return err
 	}
 	// is synchronise from net or deputy nodes less than 3
-	nodeCount := deputynode.Instance().GetDeputiesCount()
+	nodeCount := deputynode.Instance().GetDeputiesCount(block.Height())
 	if nodeCount < 3 {
 		defer func() { _ = bc.SetStableBlock(hash, block.Height()) }()
 	} else {
@@ -603,7 +603,7 @@ func (bc *BlockChain) ReceiveConfirm(info *network.BlockConfirmData) (err error)
 	// has block consensus
 	stableBlock := bc.stableBlock.Load().(*types.Block)
 	if stableBlock.Height() >= height { // stable block's confirm info
-		if ok, err := bc.hasEnoughConfirmInfo(info.Hash); err == nil && !ok {
+		if ok, err := bc.hasEnoughConfirmInfo(info.Hash, height); err == nil && !ok {
 			if err = bc.db.SetConfirm(info.Hash, info.SignInfo); err != nil {
 				log.Errorf("SetConfirm failed: %v", err)
 			}
@@ -617,7 +617,7 @@ func (bc *BlockChain) ReceiveConfirm(info *network.BlockConfirmData) (err error)
 		return nil
 	}
 
-	if ok, _ := bc.hasEnoughConfirmInfo(info.Hash); ok {
+	if ok, _ := bc.hasEnoughConfirmInfo(info.Hash, height); ok {
 		bc.mux.Lock()
 		defer bc.mux.Unlock()
 		if err = bc.SetStableBlock(info.Hash, height); err != nil {
@@ -627,12 +627,12 @@ func (bc *BlockChain) ReceiveConfirm(info *network.BlockConfirmData) (err error)
 	return nil
 }
 
-func (bc *BlockChain) hasEnoughConfirmInfo(hash common.Hash) (bool, error) {
+func (bc *BlockChain) hasEnoughConfirmInfo(hash common.Hash, height uint32) (bool, error) {
 	confirmCount, err := bc.getConfirmCount(hash)
 	if err != nil {
 		return false, err
 	}
-	nodeCount := deputynode.Instance().GetDeputiesCount()
+	nodeCount := deputynode.Instance().GetDeputiesCount(height)
 	minCount := int(math.Ceil(float64(nodeCount) * 2.0 / 3.0))
 	if confirmCount >= minCount {
 		return true, nil
