@@ -149,7 +149,7 @@ func (ps *peerSet) DeputyNodes(height uint32) []*peer {
 func (ps *peerSet) DelayNodes(height uint32) []*peer {
 	peers := make([]*peer, 0)
 	for _, p := range ps.peers {
-		if !deputynode.Instance().IsNodeDeputy(height, p.NodeID()[:]) {
+		if deputynode.Instance().IsNodeDeputy(height, p.NodeID()[:]) == false {
 			peers = append(peers, p)
 		}
 	}

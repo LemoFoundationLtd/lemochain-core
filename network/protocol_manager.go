@@ -282,6 +282,8 @@ func (pm *ProtocolManager) stableBlockLoop() {
 			pm.oldStableBlock.Store(block)
 			peers := pm.peers.DelayNodes(block.Height())
 			if len(peers) > 0 {
+				// for debug
+				log.Debug("broadcast stable block to delay node")
 				go pm.broadcastBlock(peers, block, false)
 			}
 			go func() {
@@ -608,6 +610,8 @@ func (pm *ProtocolManager) handleBlockHashMsg(msg *p2p.Msg, p *peer) error {
 	if pm.chain.HasBlock(hashMsg.Hash) {
 		return nil
 	}
+	// update status
+	p.UpdateStatus(hashMsg.Height, hashMsg.Hash)
 	go p.RequestBlocks(hashMsg.Height, hashMsg.Height)
 	return nil
 }
@@ -655,8 +659,15 @@ func (pm *ProtocolManager) handleGetBlocksMsg(msg *p2p.Msg, p *peer) error {
 
 // respBlocks response blocks to remote peer
 func (pm *ProtocolManager) respBlocks(from, to uint32, p *peer) {
-	const eachSize = 10
+	if from == to {
+		block := pm.chain.GetBlockByHeight(from)
+		if block != nil && p != nil {
+			p.SendBlocks([]*types.Block{block})
+		}
+		return
+	}
 
+	const eachSize = 10
 	total := to - from
 	var count uint32
 	if total%eachSize == 0 {
