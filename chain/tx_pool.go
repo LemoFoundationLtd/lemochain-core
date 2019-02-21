@@ -267,7 +267,14 @@ func (pool *TxPool) validateTx(tx *types.Transaction) error {
 		return ErrNegativeValue
 	}
 	// Make sure the transaction is signed properly
-	_, err = types.MakeSigner().GetSender(tx)
+	if len(tx.GasPayerSign()) == 0 {
+		_, err = types.MakeSigner().GetSender(tx)
+	} else {
+		// reimbursement transaction
+		_, err = types.MakeReimbursementTxSigner().GetSender(tx)
+		_, err = types.MakeGasPayerSigner().GasPayer(tx)
+	}
+
 	if err != nil {
 		return ErrInvalidSender
 	} else {

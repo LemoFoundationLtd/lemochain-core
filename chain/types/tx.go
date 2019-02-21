@@ -50,17 +50,46 @@ type txdata struct {
 
 	// This is only used when marshaling to JSON.
 	Hash *common.Hash `json:"hash" rlp:"-"`
+	// gas payer signature
+	GasPayerSign []byte `json:"gasPayerSign"`
 }
 
 type txdataMarshaling struct {
-	GasPrice   *hexutil.Big10
-	GasLimit   hexutil.Uint64
-	Amount     *hexutil.Big10
-	Data       hexutil.Bytes
-	Expiration hexutil.Uint64
-	V          *hexutil.Big
-	R          *hexutil.Big
-	S          *hexutil.Big
+	GasPrice     *hexutil.Big10
+	GasLimit     hexutil.Uint64
+	Amount       *hexutil.Big10
+	Data         hexutil.Bytes
+	Expiration   hexutil.Uint64
+	V            *hexutil.Big
+	R            *hexutil.Big
+	S            *hexutil.Big
+	GasPayerSign hexutil.Bytes
+}
+
+// reimbursement transaction
+type RTransaction struct {
+	Tx       *Transaction
+	GasPayer common.Address
+}
+
+// NewReimbursementTransaction new instead of paying gas transaction
+func NewReimbursementTransaction(to, gasPayer common.Address, amount *big.Int, data []byte, TxType uint8, chainID uint16, expiration uint64, toName string, message string) *RTransaction {
+	tx := newTransaction(TxType, TxVersion, chainID, &to, amount, 0, nil, data, expiration, toName, message)
+	rTx := &RTransaction{
+		Tx:       tx,
+		GasPayer: gasPayer,
+	}
+	return rTx
+}
+
+// NewReimbursementContractCreation
+func NewReimbursementContractCreation(gasPayer common.Address, amount *big.Int, data []byte, TxType uint8, chainID uint16, expiration uint64, toName string, message string) *RTransaction {
+	tx := newTransaction(TxType, TxVersion, chainID, nil, amount, 0, nil, data, expiration, toName, message)
+	rTx := &RTransaction{
+		Tx:       tx,
+		GasPayer: gasPayer,
+	}
+	return rTx
 }
 
 // 注：TxType：0为普通交易，1为节点投票交易，2为注册成为代理节点交易
@@ -89,6 +118,7 @@ func newTransaction(txType uint8, version uint8, chainID uint16, to *common.Addr
 		V:             CombineV(txType, version, chainID),
 		R:             new(big.Int),
 		S:             new(big.Int),
+		GasPayerSign:  make([]byte, 0),
 	}
 	if amount != nil {
 		d.Amount.Set(amount)
@@ -158,6 +188,9 @@ func (tx *Transaction) To() *common.Address {
 	to := *tx.data.Recipient
 	return &to
 }
+func (tx *Transaction) GasPayerSign() []byte {
+	return tx.data.GasPayerSign
+}
 
 func (tx *Transaction) From() (common.Address, error) {
 	from := tx.from.Load()
@@ -167,12 +200,31 @@ func (tx *Transaction) From() (common.Address, error) {
 
 	// parse type and create signer by self
 	// now we have one signer only
-	addr, err := MakeSigner().GetSender(tx)
+	var addr common.Address
+	var err error
+	if len(tx.data.GasPayerSign) != 0 {
+		// reimbursement transaction
+		addr, err = MakeReimbursementTxSigner().GetSender(tx)
+	} else {
+		addr, err = MakeSigner().GetSender(tx)
+	}
 	if err != nil {
 		return common.Address{}, err
 	}
 	tx.from.Store(addr)
 	return addr, nil
+}
+
+// GasPayer returns address of instead of pay transaction gas.
+func (tx *Transaction) GasPayer() (common.Address, error) {
+	var addr common.Address
+	var err error
+	if len(tx.data.GasPayerSign) == 0 {
+		addr, err = tx.From()
+	} else {
+		addr, err = MakeGasPayerSigner().GasPayer(tx)
+	}
+	return addr, err
 }
 
 func (tx *Transaction) Hash() common.Hash {
