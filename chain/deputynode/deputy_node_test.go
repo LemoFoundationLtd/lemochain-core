@@ -167,14 +167,14 @@ func TestManager_getDeputiesByHeight(t *testing.T) {
 	assert.NoError(t, err)
 	ma.Add(200, nodes03)
 	// 获取第一个代理节点表
-	assert.Equal(t, nodes01, ma.getDeputiesByHeight(0))
-	assert.Equal(t, nodes01, ma.getDeputiesByHeight(99))
+	assert.Equal(t, nodes01, ma.GetDeputiesByHeight(0))
+	assert.Equal(t, nodes01, ma.GetDeputiesByHeight(99))
 	// 获取第二个代理节点表
-	assert.Equal(t, nodes02, ma.getDeputiesByHeight(100))
-	assert.Equal(t, nodes02, ma.getDeputiesByHeight(199))
+	assert.Equal(t, nodes02, ma.GetDeputiesByHeight(100))
+	assert.Equal(t, nodes02, ma.GetDeputiesByHeight(199))
 	// 获取最后一个节点表
-	assert.Equal(t, nodes03, ma.getDeputiesByHeight(200))
-	assert.Equal(t, nodes03, ma.getDeputiesByHeight(1000000000)) // height为无穷大时则默认为最后一个节点列表
+	assert.Equal(t, nodes03, ma.GetDeputiesByHeight(200))
+	assert.Equal(t, nodes03, ma.GetDeputiesByHeight(1000000000)) // height为无穷大时则默认为最后一个节点列表
 
 }
 

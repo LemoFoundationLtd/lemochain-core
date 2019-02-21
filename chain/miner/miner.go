@@ -297,8 +297,9 @@ func (m *Miner) loopRecvBlock() {
 	for {
 		if atomic.LoadInt32(&m.mining) == 0 {
 			select {
-			case <-m.recvNewBlockCh:
+			case block := <-m.recvNewBlockCh:
 				log.Debug("Receive new block. but not start mining")
+				m.updateMiner(block)
 			case <-m.quitCh:
 				return
 			case <-m.startCh:
@@ -318,6 +319,7 @@ func (m *Miner) loopMiner() {
 			m.sealBlock()
 		case block := <-m.recvNewBlockCh:
 			log.Infof("Receive new block. height: %d. hash: %s. Reset timer.", block.Height(), block.Hash().Hex())
+			m.updateMiner(block)
 			waitTime := m.getSleepTime()
 			if waitTime == 0 {
 				log.Debug("time to mine direct")
@@ -328,19 +330,19 @@ func (m *Miner) loopMiner() {
 			} else {
 				log.Error("getSleepTime internal error.")
 			}
-			if block.Height()%params.SnapshotBlock == 0 {
-				deputynode.Instance().Add(block.Height()+params.PeriodBlock+1, block.DeputyNodes)
-				log.Debugf("add new term deputy nodes: %v", block.DeputyNodes)
-			} else if block.Height()%params.SnapshotBlock == params.PeriodBlock {
-				n := deputynode.Instance().GetDeputyByNodeID(block.Height(), deputynode.GetSelfNodeID())
-				m.SetMinerAddress(n.MinerAddress)
-				log.Debugf("new term deputy nodes: %v", n)
-			}
 		case <-m.stopCh:
 			return
 		case <-m.quitCh:
 			return
 		}
+	}
+}
+
+func (m *Miner) updateMiner(block *types.Block) {
+	if block.Height() > params.PeriodBlock && block.Height()%params.SnapshotBlock == params.PeriodBlock {
+		n := deputynode.Instance().GetDeputyByNodeID(block.Height(), deputynode.GetSelfNodeID())
+		m.SetMinerAddress(n.MinerAddress)
+		log.Debugf("new term deputy nodes: %v", n)
 	}
 }
 
@@ -421,11 +423,11 @@ func (m *Miner) sealHead() (*types.Header, deputynode.DeputyNodes) {
 		root := types.DeriveDeputyRootSha(nodes)
 		h.DeputyRoot = root[:]
 		deputynode.Instance().Add(height+params.PeriodBlock+1, nodes)
-		log.Debugf("add new term deputy nodes: %v", nodes)
+		log.Debugf("add new term deputy nodes: %s", nodes.String())
 	} else if height%params.SnapshotBlock == params.PeriodBlock {
 		n := deputynode.Instance().GetDeputyByNodeID(height, deputynode.GetSelfNodeID())
 		m.SetMinerAddress(n.MinerAddress)
-		log.Debugf("new term deputy nodes: %v", n)
+		log.Debugf("set next term's miner address: %s", n.MinerAddress.String())
 	}
 
 	// allowable 1 second time error

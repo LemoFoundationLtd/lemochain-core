@@ -208,6 +208,13 @@ func (bc *BlockChain) SetMinedBlock(block *types.Block) error {
 	return nil
 }
 
+func (bc *BlockChain) updateDeputyNodes(block *types.Block) {
+	if block.Height()%params.SnapshotBlock == 0 {
+		deputynode.Instance().Add(block.Height()+params.PeriodBlock+1, block.DeputyNodes)
+		log.Debugf("add new term deputy nodes: %v", block.DeputyNodes)
+	}
+}
+
 func (bc *BlockChain) newBlockNotify(block *types.Block) {
 	bc.RecvBlockFeed.Send(block)
 }
@@ -277,6 +284,7 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 				})
 			}
 		}
+		bc.updateDeputyNodes(block)
 		// for debug
 		b := bc.currentBlock.Load().(*types.Block)
 		log.Debugf("current block: %d, %s, parent: %s", b.Height(), b.Hash().String()[:16], b.ParentHash().String()[:16])

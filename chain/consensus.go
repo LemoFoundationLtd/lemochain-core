@@ -62,7 +62,8 @@ func verifyHeaderSignData(block *types.Block) error {
 	}
 	node := deputynode.Instance().GetDeputyByAddress(header.Height, header.MinerAddress)
 	if node == nil {
-		log.Errorf("verifyHeaderSignData: can't get deputy node, height: %d", header.Height)
+		nodes := deputynode.Instance().GetDeputiesByHeight(block.Height(), false)
+		log.Errorf("verifyHeaderSignData: can't get deputy node, height: %d, miner: %s, deputy nodes: %s", header.Height, header.MinerAddress.String(), nodes.String())
 		return ErrVerifyHeaderFailed
 	}
 	if node == nil || bytes.Compare(pubKey[1:], node.NodeID) != 0 {
