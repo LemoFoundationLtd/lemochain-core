@@ -30,7 +30,6 @@ func SignTx(tx *Transaction, s Signer, prv *ecdsa.PrivateKey) (*Transaction, err
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("sigdata:", sig)
 	return tx.WithSignature(s, sig)
 }
 

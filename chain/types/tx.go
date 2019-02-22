@@ -66,10 +66,11 @@ type txdataMarshaling struct {
 	GasPayerSign hexutil.Bytes
 }
 
+//go:generate gencodec -type RTransaction -out gen_RTransaction_json.go
 // reimbursement transaction
 type RTransaction struct {
-	Tx       *Transaction
-	GasPayer common.Address
+	Tx       *Transaction   `json:"transaction"`
+	GasPayer common.Address `json:"gasPayer"`
 }
 
 // NewReimbursementTransaction new instead of paying gas transaction
