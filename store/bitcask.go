@@ -54,7 +54,6 @@ type BitCask struct {
 }
 
 func (bitcask *BitCask) afterScan(flag uint, route []byte, key []byte, val []byte, offset uint32) error {
-	// log.Error("flg : " + strconv.Itoa(int(flag)))
 	if bitcask.After == nil {
 		return nil
 	}
