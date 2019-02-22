@@ -204,6 +204,7 @@ func (bc *BlockChain) SetMinedBlock(block *types.Block) error {
 		subscribe.Send(subscribe.NewMinedBlock, block)
 		msg := bc.createSignInfo(block.Hash(), block.Height())
 		subscribe.Send(subscribe.NewConfirm, msg)
+		bc.newBlockNotify(block)
 	}()
 	return nil
 }

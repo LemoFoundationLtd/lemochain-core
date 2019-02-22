@@ -669,8 +669,6 @@ func TestMiner_GetSleepNormal(t *testing.T) {
 	assert.Equal(t, calDeviation(30000, reset), true)
 }
 
-func Test_t(t *testing.T) {
-	s := []byte{0x01, 0x02, 0x03}
-	tmp := s[:5]
-	fmt.Printf("%x", tmp)
+func Test_NextTerm(t *testing.T) {
+
 }
