@@ -429,7 +429,7 @@ func TestTxProcessor_candidateTX(t *testing.T) {
 	assert.Equal(t, CC, BB)
 }
 
-//  Test_voteAndRegisteTx测试投票交易和注册候选节点交易
+//  Test_voteAndRegisteTx 测试投票交易和注册候选节点交易
 func Test_voteAndRegisteTx(t *testing.T) {
 	store.ClearData()
 	p := NewTxProcessor(newChain())
@@ -674,7 +674,7 @@ func Test_voteAndRegisteTx(t *testing.T) {
 	assert.Equal(t, 0, len(tmp))
 }
 
-// 注册候选节点所用交易data
+// Test_CreatRegisterTxData 注册候选节点所用交易data
 func Test_CreatRegisterTxData(t *testing.T) {
 	pro1 := make(types.CandidateProfile)
 	pro1[types.CandidateKeyIsCandidate] = params.IsCandidateNode
@@ -722,7 +722,104 @@ func Test_CreatRegisterTxData(t *testing.T) {
 	fmt.Println("txData5:", common.ToHex(marPro5))
 }
 
-// 生成调用设置换届奖励的预编译合约交易的data
+// TestReimbursement_transaction 打包并验证代付gas交易测试
+func TestReimbursement_transaction(t *testing.T) {
+	var (
+		senderPrivate, _   = crypto.HexToECDSA("c8fa12aa54fbcc249611e5fefa0967658a7ca06022e9d50b53ef6f5b050b697f")
+		senderAddr         = crypto.PubkeyToAddress(senderPrivate.PublicKey)
+		gasPayerPrivate, _ = crypto.HexToECDSA("57a0b0be5616e74c4315882e3649ade12c775db3b5023dcaa168d01825612c9b")
+		gasPayerAddr       = crypto.PubkeyToAddress(gasPayerPrivate.PublicKey)
+		Tx01               = makeTx(testPrivate, gasPayerAddr, params.OrdinaryTx, params.RegisterCandidateNodeFees) // 转账1000LEMO给gasPayerAddr
+		Tx02               = makeTx(testPrivate, senderAddr, params.OrdinaryTx, params.RegisterCandidateNodeFees)   // 转账1000LEMO给senderAddr
+
+		amountReceiver = common.HexToAddress("0x1234")
+		TxV01          = types.NewReimbursementTransaction(amountReceiver, gasPayerAddr, params.RegisterCandidateNodeFees, []byte{}, params.OrdinaryTx, chainID, uint64(time.Now().Unix()+300), "", "").Tx
+	)
+	store.ClearData()
+	p := NewTxProcessor(newChain())
+	parentBlock := p.chain.stableBlock.Load().(*types.Block)
+
+	header01 := &types.Header{
+		ParentHash:   parentBlock.Hash(),
+		MinerAddress: parentBlock.MinerAddress(),
+		Height:       parentBlock.Height() + 1,
+		GasLimit:     parentBlock.GasLimit(),
+		GasUsed:      0,
+		Time:         parentBlock.Time() + 4,
+	}
+	txs := types.Transactions{Tx01, Tx02}
+	newHeader01, _, _, err := p.ApplyTxs(header01, txs)
+	assert.NoError(t, err)
+	Block01 := &types.Block{
+		Txs:         txs,
+		ChangeLogs:  p.am.GetChangeLogs(),
+		Events:      p.am.GetEvents(),
+		Confirms:    nil,
+		DeputyNodes: nil,
+	}
+	Block01.SetHeader(newHeader01)
+	blockHash := newHeader01.Hash()
+	err = p.chain.db.SetBlock(blockHash, Block01)
+	if err != nil && err != store.ErrExist {
+		panic(err)
+	}
+	err = p.am.Save(blockHash)
+	if err != nil {
+		panic(err)
+	}
+	err = p.chain.db.SetStableBlock(blockHash)
+	if err != nil {
+		panic(err)
+	}
+	gasPayerAcc := p.am.GetAccount(gasPayerAddr)
+	senderAcc := p.am.GetAccount(senderAddr)
+	initGasPayerBalance := gasPayerAcc.GetBalance()
+	initTxSenderBalance := senderAcc.GetBalance()
+	assert.Equal(t, params.RegisterCandidateNodeFees, initGasPayerBalance)
+	assert.Equal(t, params.RegisterCandidateNodeFees, initTxSenderBalance)
+
+	// ------------------------------------------------------
+	Header02 := &types.Header{
+		ParentHash:   Block01.Hash(),
+		MinerAddress: Block01.MinerAddress(),
+		Height:       Block01.Height() + 1,
+		GasLimit:     Block01.GasLimit(),
+		GasUsed:      0,
+		Time:         Block01.Time() + 400,
+	}
+	firstSignTxV, err := types.SignTx(TxV01, types.MakeReimbursementTxSigner(), senderPrivate)
+	assert.NoError(t, err)
+	lastSignTxV, err := types.MakeGasPayerSigner().GasPayerSignTx(firstSignTxV, common.Big1, uint64(60000), gasPayerPrivate)
+	assert.NoError(t, err)
+
+	txVs := types.Transactions{lastSignTxV}
+	newHeader02, _, _, err := p.ApplyTxs(Header02, txVs)
+	assert.NoError(t, err)
+	Block02 := &types.Block{
+		Header:     newHeader02,
+		Txs:        txVs,
+		ChangeLogs: p.am.GetChangeLogs(),
+		Events:     p.am.GetEvents(),
+	}
+	block02Hash := Block02.Hash()
+	p.chain.db.SetBlock(block02Hash, Block02)
+	p.am.Save(block02Hash)
+
+	verifyHeader02, err := p.Process(Block02)
+	assert.NoError(t, err)
+	assert.Equal(t, Block02.Header, verifyHeader02)
+
+	p.chain.db.SetStableBlock(block02Hash)
+	endGasPayerBalance := p.am.GetAccount(gasPayerAddr).GetBalance()
+	endTxSenderBalance := p.am.GetAccount(senderAddr).GetBalance()
+
+	assert.Equal(t, big.NewInt(0), endTxSenderBalance)
+	assert.Equal(t, endGasPayerBalance, new(big.Int).Sub(initGasPayerBalance, big.NewInt(int64(params.TxGas))))
+	assert.Equal(t, params.RegisterCandidateNodeFees, p.am.GetAccount(amountReceiver).GetBalance())
+
+}
+
+// TestBlockChain_txData 生成调用设置换届奖励的预编译合约交易的data
 func TestBlockChain_txData(t *testing.T) {
 	re := params.RewardJson{
 		Term:  3,
