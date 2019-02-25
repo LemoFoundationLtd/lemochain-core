@@ -733,7 +733,7 @@ func TestReimbursement_transaction(t *testing.T) {
 		Tx02               = makeTx(testPrivate, senderAddr, params.OrdinaryTx, params.RegisterCandidateNodeFees)   // 转账1000LEMO给senderAddr
 
 		amountReceiver = common.HexToAddress("0x1234")
-		TxV01          = types.NewReimbursementTransaction(amountReceiver, gasPayerAddr, params.RegisterCandidateNodeFees, []byte{}, params.OrdinaryTx, chainID, uint64(time.Now().Unix()+300), "", "").Tx
+		TxV01          = types.NewReimbursementTransaction(amountReceiver, gasPayerAddr, params.RegisterCandidateNodeFees, []byte{}, params.OrdinaryTx, chainID, uint64(time.Now().Unix()+300), "", "")
 	)
 	store.ClearData()
 	p := NewTxProcessor(newChain())
@@ -787,9 +787,10 @@ func TestReimbursement_transaction(t *testing.T) {
 		GasUsed:      0,
 		Time:         Block01.Time() + 400,
 	}
-	firstSignTxV, err := types.SignTx(TxV01, types.MakeReimbursementTxSigner(), senderPrivate)
+	firstSignTxV, err := types.MakeReimbursementTxSigner().SignTx(TxV01, senderPrivate)
 	assert.NoError(t, err)
-	lastSignTxV, err := types.MakeGasPayerSigner().GasPayerSignTx(firstSignTxV, common.Big1, uint64(60000), gasPayerPrivate)
+	firstSignTxV = types.GasPayerSignatureTx(firstSignTxV, common.Big1, uint64(60000))
+	lastSignTxV, err := types.MakeGasPayerSigner().SignTx(firstSignTxV, gasPayerPrivate)
 	assert.NoError(t, err)
 
 	txVs := types.Transactions{lastSignTxV}

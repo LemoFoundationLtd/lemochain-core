@@ -23,20 +23,19 @@ func MakeReimbursementTxSigner() Signer {
 	return ReimbursementTxSigner{}
 }
 
-// SignTx signs the transaction using the given signer and private key
-func SignTx(tx *Transaction, s Signer, prv *ecdsa.PrivateKey) (*Transaction, error) {
-	h := s.Hash(tx)
-	sig, err := crypto.Sign(h[:], prv)
-	if err != nil {
-		return nil, err
-	}
-	return tx.WithSignature(s, sig)
+// MakeGasPayerSigner returns gas payer signer
+func MakeGasPayerSigner() Signer {
+	return GasPayerSigner{}
 }
 
 // Signer encapsulates transaction signature handling.
 type Signer interface {
-	// GetSender returns the sender address of the transaction.
-	GetSender(tx *Transaction) (common.Address, error)
+	// SignTx returns transaction after signature
+	SignTx(tx *Transaction, prv *ecdsa.PrivateKey) (*Transaction, error)
+
+	// GetSigner returns the sender address of the transaction.
+	GetSigner(tx *Transaction) (common.Address, error)
+
 	// ParseSignature returns the raw R, S, V values corresponding to the
 	// given signature.
 	ParseSignature(tx *Transaction, sig []byte) (r, s, v *big.Int, err error)
@@ -48,7 +47,16 @@ type Signer interface {
 type DefaultSigner struct {
 }
 
-func (s DefaultSigner) GetSender(tx *Transaction) (common.Address, error) {
+func (s DefaultSigner) SignTx(tx *Transaction, prv *ecdsa.PrivateKey) (*Transaction, error) {
+	h := s.Hash(tx)
+	sig, err := crypto.Sign(h[:], prv)
+	if err != nil {
+		return nil, err
+	}
+	return tx.WithSignature(s, sig)
+}
+
+func (s DefaultSigner) GetSigner(tx *Transaction) (common.Address, error) {
 	sigHash := s.Hash(tx)
 	sig, err := recoverSignData(tx)
 	if err != nil {
@@ -99,8 +107,22 @@ func (s DefaultSigner) Hash(tx *Transaction) common.Hash {
 type ReimbursementTxSigner struct {
 }
 
+// SignTx returns first signature to reimbursement gas transaction
+func (s ReimbursementTxSigner) SignTx(tx *Transaction, prv *ecdsa.PrivateKey) (*Transaction, error) {
+	h := s.Hash(tx)
+	sig, err := crypto.Sign(h[:], prv)
+	if err != nil {
+		return nil, err
+	}
+	return tx.WithSignature(s, sig)
+}
+
 // Hash excluding gasLimit and gasPrice
 func (s ReimbursementTxSigner) Hash(tx *Transaction) common.Hash {
+	gasPayer, err := tx.GasPayer()
+	if err != nil {
+		return common.Hash{}
+	}
 	return rlpHash([]interface{}{
 		tx.Type(),
 		tx.Version(),
@@ -111,11 +133,12 @@ func (s ReimbursementTxSigner) Hash(tx *Transaction) common.Hash {
 		tx.data.Data,
 		tx.data.Expiration,
 		tx.data.Message,
+		gasPayer,
 	})
 }
 
-// GetSender
-func (s ReimbursementTxSigner) GetSender(tx *Transaction) (common.Address, error) {
+// GetSigner
+func (s ReimbursementTxSigner) GetSigner(tx *Transaction) (common.Address, error) {
 	sigHash := s.Hash(tx)
 	sig, err := recoverSignData(tx)
 	if err != nil {
@@ -145,38 +168,36 @@ func (s ReimbursementTxSigner) ParseSignature(tx *Transaction, sig []byte) (R, S
 	return R, S, V, nil
 }
 
-// MakeGasPayerSigner returns gas payer signer
-func MakeGasPayerSigner() GasPayerSigner {
-	return GasPayerSigner{}
-}
-
 type GasPayerSigner struct {
 }
 
-// GasPayerSign gas payer signs the signature of transaction
-func (g GasPayerSigner) GasPayerSignTx(tx *Transaction, gasPrice *big.Int, gasLimit uint64, prv *ecdsa.PrivateKey) (*Transaction, error) {
-	h, err := g.SignHash(tx, gasPrice, gasLimit)
+// SignTx returns last signature to reimbursement gas transaction
+func (g GasPayerSigner) SignTx(tx *Transaction, prv *ecdsa.PrivateKey) (*Transaction, error) {
+	gasPayer, err := tx.GasPayer()
 	if err != nil {
 		return nil, err
 	}
+	addr := crypto.PubkeyToAddress(prv.PublicKey)
+	if gasPayer != addr {
+		return nil, errors.New("not expect gas payer")
+	}
+
+	h := g.Hash(tx)
+
 	lastSignData, err := crypto.Sign(h[:], prv)
 	if err != nil {
 		return nil, err
 	}
 	cpy := &Transaction{data: tx.data}
-	cpy.data.GasPrice = gasPrice
-	cpy.data.GasLimit = gasLimit
-	cpy.data.GasPayerSign = lastSignData
+	cpy.data.GasPayerSig = lastSignData
 	return cpy, nil
 }
 
 // GetGasPayer returns gas payer address
-func (g GasPayerSigner) GasPayer(tx *Transaction) (common.Address, error) {
-	sigHash, err := g.SignHash(tx, tx.GasPrice(), tx.GasLimit())
-	if err != nil {
-		return common.Address{}, err
-	}
-	sig := tx.data.GasPayerSign
+func (g GasPayerSigner) GetSigner(tx *Transaction) (common.Address, error) {
+	sigHash := g.Hash(tx)
+
+	sig := tx.data.GasPayerSig
 	// recover the public key from the signature
 	pub, err := crypto.Ecrecover(sigHash[:], sig)
 	if err != nil {
@@ -189,17 +210,22 @@ func (g GasPayerSigner) GasPayer(tx *Transaction) (common.Address, error) {
 	return addr, nil
 }
 
-// SignHash returns sign hash
-func (g GasPayerSigner) SignHash(tx *Transaction, gasPrice *big.Int, gasLimit uint64) (common.Hash, error) {
+// Hash returns sign hash
+func (g GasPayerSigner) Hash(tx *Transaction) common.Hash {
 	firstSignData, err := recoverSignData(tx)
 	if err != nil {
-		return common.Hash{}, err
+		return common.Hash{}
 	}
 	return rlpHash([]interface{}{
 		firstSignData,
-		gasPrice,
-		gasLimit,
-	}), nil
+		tx.GasPrice(),
+		tx.GasLimit(),
+	})
+}
+
+// ParseSignature
+func (g GasPayerSigner) ParseSignature(tx *Transaction, sig []byte) (r, s, v *big.Int, err error) {
+	return
 }
 
 // recoverSignData recover tx sign data by V, R, S

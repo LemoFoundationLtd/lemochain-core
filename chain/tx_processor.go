@@ -249,7 +249,7 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 	p.changeCandidateVotes(senderAddr, senderBalanceChange)
 
 	// reimbursement transaction
-	if len(tx.GasPayerSign()) != 0 {
+	if len(tx.GasPayerSig()) != 0 {
 		payer, _ := tx.GasPayer()
 		accPayer := p.am.GetAccount(payer)
 		// add txCount

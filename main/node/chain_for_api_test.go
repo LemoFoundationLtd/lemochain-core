@@ -53,7 +53,7 @@ var (
 		},
 		// block 1 is stable block
 		{
-			hash:        common.HexToHash("0x3f4c3152fb02a7673bf804b1ddeb75542b6ef9a5a87501d9cfbbcf6c3632a211"),
+			hash:        common.HexToHash("0x7b49b0aad9f4caa94bced369b9fcdb7e215b3748f6837c85d78afa2390bf913a"),
 			height:      1,
 			author:      common.HexToAddress("0x20000"),
 			versionRoot: common.HexToHash("0xc4fa99a20b2db7026f80366e34213861457e240bf0411d57f7a22cbf5b7f2346"),
@@ -120,19 +120,20 @@ func newChain() *chain.BlockChain {
 // newDB creates db for test chain module
 func newDB() protocol.ChainDB {
 	db := store.NewChainDataBase(store.GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
-
 	for i, _ := range defaultBlockInfos {
 		if i > 0 {
 			defaultBlockInfos[i].parentHash = defaultBlocks[i-1].Hash()
 		}
 		newBlock := makeBlock(db, defaultBlockInfos[i], i < 3)
+		if i == 0 || i == 1 {
+			err := db.SetStableBlock(newBlock.Hash())
+			if err != nil {
+				panic(err)
+			}
+		}
 		defaultBlocks = append(defaultBlocks, newBlock)
 	}
-	// err = db.SetStableBlock(defaultBlockInfos[1].hash)
-	err := db.SetStableBlock(defaultBlocks[1].Hash())
-	if err != nil {
-		panic(err)
-	}
+
 	return db
 }
 
@@ -256,7 +257,7 @@ func makeTransaction(fromPrivate *ecdsa.PrivateKey, to common.Address, amount *b
 }
 
 func signTransaction(tx *types.Transaction, private *ecdsa.PrivateKey) *types.Transaction {
-	tx, err := types.SignTx(tx, testSigner, private)
+	tx, err := testSigner.SignTx(tx, private)
 	if err != nil {
 		panic(err)
 	}
