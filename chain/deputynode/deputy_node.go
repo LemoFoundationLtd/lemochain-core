@@ -19,8 +19,7 @@ import (
 )
 
 const (
-	SnapshotBlockInterval = 1000000
-	TransitionPeriod      = 1000
+	TotalCount = 5
 )
 
 var (
@@ -40,7 +39,7 @@ func SetSelfNodeKey(key *ecdsa.PrivateKey) {
 }
 
 //go:generate gencodec -type DeputyNode --field-override deputyNodeMarshaling -out gen_deputy_node_json.go
-//go:generate gencodec -type CandidateNode --field-override candidateNodeMarshaling -out gen_candidate_node_json.go
+//go:generate gencodec -type CandiDeputyNodeCoutdateNode --field-override candidateNodeMarshaling -out gen_candidate_node_json.go
 
 // CandidateNode
 type CandidateNode struct {
@@ -115,6 +114,7 @@ type Manager struct {
 }
 
 // Add 投票结束 统计结果通过add函数缓存起来
+// height: next term start height. if snapshot:1000, period:100, result: 1101 2101 3101...
 func (d *Manager) Add(height uint32, nodes DeputyNodes) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
@@ -135,30 +135,50 @@ func Instance() *Manager {
 }
 
 // getDeputiesByHeight 通过height获取对应的节点列表
-func (d *Manager) getDeputiesByHeight(height uint32) DeputyNodes {
+func (d *Manager) getDeputiesByHeight(height uint32, total bool) DeputyNodes {
 	d.lock.Lock()
 	defer d.lock.Unlock()
+	if d.DeputyNodesList == nil || len(d.DeputyNodesList) == 0 {
+		panic("not set deputy nodes")
+	} else if len(d.DeputyNodesList) == 1 {
+		if !total && len(d.DeputyNodesList[0].nodes) > TotalCount {
+			return d.DeputyNodesList[0].nodes[:TotalCount]
+		}
+		return d.DeputyNodesList[0].nodes
+	}
 	var nodes DeputyNodes
 	for i := 0; i < len(d.DeputyNodesList)-1; i++ {
 		if d.DeputyNodesList[i].height <= height && d.DeputyNodesList[i+1].height > height {
-			nodes = d.DeputyNodesList[i].nodes
+			if !total && len(d.DeputyNodesList[i].nodes) > TotalCount {
+				nodes = d.DeputyNodesList[i].nodes[:TotalCount]
+			} else {
+				nodes = d.DeputyNodesList[i].nodes
+			}
 			break
 		}
 	}
 	if nodes == nil {
-		nodes = d.DeputyNodesList[len(d.DeputyNodesList)-1].nodes
+		if !total && len(d.DeputyNodesList[len(d.DeputyNodesList)-1].nodes) > TotalCount {
+			nodes = d.DeputyNodesList[len(d.DeputyNodesList)-1].nodes[:TotalCount]
+		} else {
+			nodes = d.DeputyNodesList[len(d.DeputyNodesList)-1].nodes
+		}
 	}
 	return nodes
 }
 
 // getDeputyNodeCount 获取共识节点数量
-func (d *Manager) GetDeputiesCount() int {
-	return len(d.DeputyNodesList[0].nodes)
+func (d *Manager) GetDeputiesCount(height uint32) int {
+	nodes := d.getDeputiesByHeight(height, true)
+	if len(nodes) < TotalCount {
+		return len(nodes)
+	}
+	return TotalCount
 }
 
 // getNodeByAddress 获取address对应的节点
 func (d *Manager) GetDeputyByAddress(height uint32, addr common.Address) *DeputyNode {
-	nodes := d.getDeputiesByHeight(height)
+	nodes := d.getDeputiesByHeight(height, false)
 	if nodes == nil || len(nodes) == 0 {
 		log.Warnf("GetDeputyByAddress: can't get deputy node, height: %d, addr: %s", height, addr.String())
 		return nil
@@ -173,7 +193,7 @@ func (d *Manager) GetDeputyByAddress(height uint32, addr common.Address) *Deputy
 
 // getNodeByNodeID 根据nodeid获取对应的节点
 func (d *Manager) GetDeputyByNodeID(height uint32, nodeID []byte) *DeputyNode {
-	nodes := d.getDeputiesByHeight(height)
+	nodes := d.getDeputiesByHeight(height, false)
 	for _, node := range nodes {
 		if bytes.Compare(node.NodeID, nodeID) == 0 {
 			return node
@@ -186,19 +206,33 @@ func (d *Manager) GetDeputyByNodeID(height uint32, nodeID []byte) *DeputyNode {
 func (d *Manager) GetSlot(height uint32, firstAddress, nextAddress common.Address) int {
 	firstNode := d.GetDeputyByAddress(height, firstAddress)
 	nextNode := d.GetDeputyByAddress(height, nextAddress)
-	if ((height == 1) || (height > SnapshotBlockInterval && height%SnapshotBlockInterval == TransitionPeriod+1)) && nextNode != nil {
+	if ((height == 1) || (height > params.SnapshotBlock && height%params.SnapshotBlock == params.PeriodBlock+1)) && nextNode != nil {
 		return int(nextNode.Rank + 1)
 	}
 	if firstNode == nil || nextNode == nil {
 		return -1
 	}
-	nodeCount := d.GetDeputiesCount()
+	nodeCount := d.GetDeputiesCount(height)
 	// 只有一个主节点
 	if nodeCount == 1 {
 		log.Debug("getSlot: only one star node")
 		return 1
 	}
 	return (int(nextNode.Rank) - int(firstNode.Rank) + nodeCount) % nodeCount
+}
+
+func (d *Manager) GetNodeRankByNodeID(height uint32, nodeID []byte) int {
+	if nextNode := d.GetDeputyByNodeID(height, nodeID); nextNode != nil {
+		return int(nextNode.Rank)
+	}
+	return -1
+}
+
+func (d *Manager) GetNodeRankByAddress(height uint32, addr common.Address) int {
+	if nextNode := d.GetDeputyByAddress(height, addr); nextNode != nil {
+		return int(nextNode.Rank)
+	}
+	return -1
 }
 
 // TimeToHandOutRewards 是否该发出块奖励了

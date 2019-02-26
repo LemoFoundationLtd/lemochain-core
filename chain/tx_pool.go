@@ -258,7 +258,7 @@ func (pool *TxPool) Remove(keys []common.Hash) {
 func (pool *TxPool) validateTx(tx *types.Transaction) error {
 	_, err := tx.From()
 	if err != nil {
-		return ErrInvalidSender
+		return err
 	}
 	if tx.ChainID() != pool.chainID {
 		return ErrTxChainID
@@ -267,9 +267,16 @@ func (pool *TxPool) validateTx(tx *types.Transaction) error {
 		return ErrNegativeValue
 	}
 	// Make sure the transaction is signed properly
-	_, err = types.MakeSigner().GetSender(tx)
+	if len(tx.GasPayerSig()) == 0 {
+		_, err = types.MakeSigner().GetSigner(tx)
+	} else {
+		// reimbursement transaction
+		_, err = types.MakeReimbursementTxSigner().GetSigner(tx)
+		_, err = types.MakeGasPayerSigner().GetSigner(tx)
+	}
+
 	if err != nil {
-		return ErrInvalidSender
+		return err
 	} else {
 		return nil
 	}

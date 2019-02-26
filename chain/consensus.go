@@ -87,12 +87,11 @@ func (d *Dpovp) VerifyDeputyRoot(block *types.Block) error {
 
 // VerifyHeader verify block header
 func (d *Dpovp) VerifyHeader(block *types.Block) error {
-	nodeCount := deputynode.Instance().GetDeputiesCount() // The total number of nodes
+	nodeCount := deputynode.Instance().GetDeputiesCount(block.Height()) // The total number of nodes
 	// There's only one out block node
 	if nodeCount == 1 {
 		return nil
 	}
-
 	// Verify that the block timestamp is less than the current time
 	if err := verifyHeaderTime(block); err != nil {
 		return err
@@ -101,12 +100,10 @@ func (d *Dpovp) VerifyHeader(block *types.Block) error {
 	if err := verifyHeaderSignData(block); err != nil {
 		return err
 	}
-
 	// verify deputy node root when height is 100W*N
 	if err := d.VerifyDeputyRoot(block); err != nil {
 		return err
 	}
-
 	header := block.Header
 	// verify extra data
 	if len(header.Extra) > MaxExtraDataLen {
@@ -123,26 +120,37 @@ func (d *Dpovp) VerifyHeader(block *types.Block) error {
 		log.Debug("verifyHeader: parent block is genesis block")
 		return nil
 	}
+	var slot int
+	if (header.Height > params.PeriodBlock+1) && (header.Height-params.PeriodBlock-1)%params.SnapshotBlock == 0 {
+		rank := deputynode.Instance().GetNodeRankByAddress(header.Height, block.MinerAddress())
+		if rank == -1 {
+			return ErrVerifyHeaderFailed
+		}
+		slot = rank + 1
+		log.Debugf("rank: %d", rank)
+	} else {
+		slot = deputynode.Instance().GetSlot(header.Height, parent.Header.MinerAddress, header.MinerAddress)
+	}
+
 	// The time interval between the current block and the parent block. unit：ms
 	timeSpan := int64(header.Time-parent.Header.Time) * 1000
 	oldTimeSpan := timeSpan
-	slot := deputynode.Instance().GetSlot(header.Height, parent.Header.MinerAddress, header.MinerAddress)
 	oneLoopTime := int64(nodeCount) * d.timeoutTime // All timeout times for a round of deputy nodes
 
 	timeSpan %= oneLoopTime
 	if slot == 0 { // The last block was made for itself
 		if timeSpan < oneLoopTime-d.timeoutTime {
-			log.Debugf("verifyHeader: verify failed. oldTimeSpan: %d timeSpan:%d nodeCount:%d slot:%d oneLoopTime:%d -2", oldTimeSpan, timeSpan, nodeCount, slot, oneLoopTime)
+			log.Debugf("verifyHeader: verify failed. height:%d. oldTimeSpan: %d timeSpan:%d nodeCount:%d slot:%d oneLoopTime:%d -2", header.Height, oldTimeSpan, timeSpan, nodeCount, slot, oneLoopTime)
 			return ErrVerifyHeaderFailed
 		}
 	} else if slot == 1 {
 		if timeSpan >= d.timeoutTime {
-			log.Debugf("verifyHeader: verify failed.timeSpan< oneLoopTime. timeSpan:%d nodeCount:%d slot:%d oneLoopTime:%d -3", timeSpan, nodeCount, slot, oneLoopTime)
+			log.Debugf("verifyHeader: height: %d. verify failed.timeSpan< oneLoopTime. timeSpan:%d nodeCount:%d slot:%d oneLoopTime:%d -3", block.Height(), timeSpan, nodeCount, slot, oneLoopTime)
 			return ErrVerifyHeaderFailed
 		}
 	} else {
 		if timeSpan/d.timeoutTime != int64(slot-1) {
-			log.Debugf("verifyHeader: verify failed. oldTimeSpan: %d timeSpan:%d nodeCount:%d slot:%d oneLoopTime:%d -4", oldTimeSpan, timeSpan, nodeCount, slot, oneLoopTime)
+			log.Debugf("verifyHeader: verify failed. height: %d. oldTimeSpan: %d timeSpan:%d nodeCount:%d slot:%d oneLoopTime:%d -4", header.Height, oldTimeSpan, timeSpan, nodeCount, slot, oneLoopTime)
 			return ErrVerifyHeaderFailed
 		}
 	}
@@ -159,7 +167,13 @@ func (d *Dpovp) Seal(header *types.Header, txs []*types.Transaction, changeLog [
 func (d *Dpovp) Finalize(header *types.Header, am *account.Manager) {
 	// handout rewards
 	if deputynode.Instance().TimeToHandOutRewards(header.Height) {
-		rewards := deputynode.CalcSalary(header.Height)
+		term := (header.Height-params.PeriodBlock)/params.SnapshotBlock - 1
+		termRewards, err := getTermRewardValue(am, term)
+		if err != nil {
+			log.Warnf("Rewards failed: %v", err)
+			return
+		}
+		rewards := deputynode.CalcSalary(header.Height, termRewards)
 		for _, item := range rewards {
 			acc := am.GetAccount(item.Address)
 			balance := acc.GetBalance()
@@ -170,7 +184,7 @@ func (d *Dpovp) Finalize(header *types.Header, am *account.Manager) {
 }
 
 // getTermRewardValue reward value of miners at the change of term
-func getTermRewardValue(am account.Manager, term uint32) (*big.Int, error) {
+func getTermRewardValue(am *account.Manager, term uint32) (*big.Int, error) {
 	// Precompile the contract address
 	address := params.TermRewardPrecompiledContractAddress
 	acc := am.GetAccount(address)

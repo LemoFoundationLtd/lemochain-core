@@ -2,7 +2,6 @@ package node
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -421,6 +420,28 @@ func (t *PublicTxAPI) SendTx(tx *types.Transaction) (common.Hash, error) {
 	}
 	err = t.node.txPool.AddTx(tx)
 	return tx.Hash(), err
+}
+
+// SendReimbursedGasTx gas代付交易 todo 测试使用
+func (t *PublicTxAPI) SendReimbursedGasTx(senderPrivate, gasPayerPrivate string, to, gasPayer common.Address, amount int64, data []byte, txType uint8, toName, message string) (common.Hash, error) {
+	tx := types.NewReimbursementTransaction(to, gasPayer, big.NewInt(amount), data, txType, t.node.chainID, uint64(time.Now().Unix()+1800), toName, message)
+	senderPriv, _ := crypto.HexToECDSA(senderPrivate)
+	gasPayerPriv, _ := crypto.HexToECDSA(gasPayerPrivate)
+	firstSignTx, err := types.MakeReimbursementTxSigner().SignTx(tx, senderPriv)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	signTx := types.GasPayerSignatureTx(firstSignTx, common.Big1, uint64(60000))
+	lastSignTx, err := types.MakeGasPayerSigner().SignTx(signTx, gasPayerPriv)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	err = AvailableTx(lastSignTx)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	err = t.node.txPool.AddTx(lastSignTx)
+	return lastSignTx.Hash(), err
 }
 
 // IssueToken 发行token交易

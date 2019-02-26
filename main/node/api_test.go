@@ -60,12 +60,12 @@ func TestChainAPI_api(t *testing.T) {
 	c := NewPublicChainAPI(bc)
 
 	// getBlockByHash
-	exBlock1 := c.chain.GetBlockByHash(common.HexToHash("0x3f4c3152fb02a7673bf804b1ddeb75542b6ef9a5a87501d9cfbbcf6c3632a211"))
-	assert.Equal(t, exBlock1, c.GetBlockByHash("0x3f4c3152fb02a7673bf804b1ddeb75542b6ef9a5a87501d9cfbbcf6c3632a211", true))
+	exBlock1 := c.chain.GetBlockByHash(common.HexToHash("0x7b49b0aad9f4caa94bced369b9fcdb7e215b3748f6837c85d78afa2390bf913a"))
+	assert.Equal(t, exBlock1, c.GetBlockByHash("0x7b49b0aad9f4caa94bced369b9fcdb7e215b3748f6837c85d78afa2390bf913a", true))
 	Block1 := &types.Block{
 		Header: exBlock1.Header,
 	}
-	assert.Equal(t, Block1, c.GetBlockByHash("0x3f4c3152fb02a7673bf804b1ddeb75542b6ef9a5a87501d9cfbbcf6c3632a211", false))
+	assert.Equal(t, Block1, c.GetBlockByHash("0x7b49b0aad9f4caa94bced369b9fcdb7e215b3748f6837c85d78afa2390bf913a", false))
 
 	// getBlockByHeight
 	exBlock2 := c.chain.GetBlockByHeight(1)
@@ -114,7 +114,8 @@ func TestChainAPI_api(t *testing.T) {
 // TestTxAPI_api send tx api test
 func TestTxAPI_api(t *testing.T) {
 	defer store.ClearData()
-	testTx := types.NewTransaction(common.HexToAddress("0x1"), common.Big1, 100, common.Big2, []byte{12}, 0, 100, uint64(time.Now().Unix()+60*30), "aa", string("send a Tx"))
+	testTx := types.NewTransaction(common.HexToAddress("0x1"), common.Big1, 100, common.Big2, []byte{12}, 0, chainID, uint64(time.Now().Unix()+60*30), "aa", string("send a Tx"))
+	tx := signTransaction(testTx, testPrivate)
 	// signTx := signTransaction(testTx, testPrivate)
 	// txCh := make(chan types.Transactions, 100)
 	Chain := newChain()
@@ -124,9 +125,9 @@ func TestTxAPI_api(t *testing.T) {
 	}
 	txAPI := NewPublicTxAPI(node)
 
-	sendTxHash, err := txAPI.SendTx(testTx)
+	sendTxHash, err := txAPI.SendTx(tx)
 	assert.Nil(t, err)
-	assert.Equal(t, testTx.Hash(), sendTxHash)
+	assert.Equal(t, tx.Hash(), sendTxHash)
 }
 
 // // TestMineAPI_api miner api test // todo

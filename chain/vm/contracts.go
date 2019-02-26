@@ -66,11 +66,10 @@ func (c *setRewardValue) Run(input []byte) ([]byte, error) {
 	if err != nil {
 		return false32Byte, err
 	}
-	// 设置的value必须要小于奖励池的总数
 	if newReward.Value.Cmp(params.RewardPoolTotal) >= 0 {
 		return false32Byte, errors.New("set value can't >= Reward pool total")
 	}
-	// 不能设置或者修改过期换届的奖励值
+	// It is not allowed to set a old term
 	if newReward.Term*params.SnapshotBlock+params.PeriodBlock <= c.blockHeight {
 		err = fmt.Errorf("the %d term deputy node reward is overdue", newReward.Term)
 		return false32Byte, err
@@ -84,7 +83,7 @@ func (c *setRewardValue) Run(input []byte) ([]byte, error) {
 		return false32Byte, err
 	}
 	rewardMap := make(params.RewardsMap)
-	// 第一次设置
+	// first setup
 	if rewardBytes == nil {
 		rewardMap[newReward.Term] = &params.Reward{
 			Term:  newReward.Term,

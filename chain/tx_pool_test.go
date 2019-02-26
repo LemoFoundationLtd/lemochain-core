@@ -28,7 +28,7 @@ func CreateTx(to string, amount int64, gasPrice int64, expiration uint64) *types
 	bigGasPrice.SetInt64(gasPrice)
 
 	tx := types.NewTransaction(address, bigAmount, gasLimit, bigGasPrice, nil, 0, 100, expiration, "paul xie", "")
-	txV, err := types.SignTx(tx, testSigner, testPrivate)
+	txV, err := testSigner.SignTx(tx, testPrivate)
 
 	if err != nil {
 		return nil
