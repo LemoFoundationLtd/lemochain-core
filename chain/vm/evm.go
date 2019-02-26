@@ -266,6 +266,8 @@ func (evm *EVM) RegisterOrUpdateToCandidate(candidateAddress, to common.Address,
 		profile[types.CandidateKeyHost] = host
 		profile[types.CandidateKeyPort] = port
 		nodeAccount.SetCandidateProfile(profile)
+	} else if ok && IsCandidate == params.NotCandidateNode {
+		return gas, errors.New("Cannot register again after unregistering. ")
 	} else {
 		// Register candidate nodes
 		newProfile := make(map[string]string, 5)
