@@ -206,9 +206,11 @@ func (bc *BlockChain) SetMinedBlock(block *types.Block) error {
 		subscribe.Send(subscribe.NewConfirm, msg)
 		bc.newBlockNotify(block)
 	}()
+	bc.updateDeputyNodes(block)
 	return nil
 }
 
+// updateDeputyNodes update deputy nodes map
 func (bc *BlockChain) updateDeputyNodes(block *types.Block) {
 	if block.Height()%params.SnapshotBlock == 0 {
 		deputynode.Instance().Add(block.Height()+params.PeriodBlock+1, block.DeputyNodes)
@@ -216,6 +218,7 @@ func (bc *BlockChain) updateDeputyNodes(block *types.Block) {
 	}
 }
 
+// newBlockNotify
 func (bc *BlockChain) newBlockNotify(block *types.Block) {
 	bc.RecvBlockFeed.Send(block)
 }

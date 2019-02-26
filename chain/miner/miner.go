@@ -40,9 +40,9 @@ type Miner struct {
 	recvNewBlockCh chan *types.Block // 收到新块通知
 	recvBlockSub   subscribe.Subscription
 	timeToMineCh   chan struct{} // 到出块时间了
-	startCh        chan struct{}
-	stopCh         chan struct{} // 停止挖矿
-	quitCh         chan struct{} // 退出
+	// startCh        chan struct{}
+	stopCh chan struct{} // 停止挖矿
+	quitCh chan struct{} // 退出
 }
 
 func New(cfg *MineConfig, chain *chain.BlockChain, txPool *chain.TxPool, engine chain.Engine) *Miner {
@@ -57,11 +57,11 @@ func New(cfg *MineConfig, chain *chain.BlockChain, txPool *chain.TxPool, engine 
 		txProcessor:    chain.TxProcessor(),
 		recvNewBlockCh: make(chan *types.Block, 1),
 		timeToMineCh:   make(chan struct{}),
-		startCh:        make(chan struct{}),
-		stopCh:         make(chan struct{}),
-		quitCh:         make(chan struct{}),
+		// startCh:        make(chan struct{}),
+		stopCh: make(chan struct{}),
+		quitCh: make(chan struct{}),
 	}
-	go m.loopRecvBlock()
+	// go m.loopRecvBlock()
 	return m
 }
 
@@ -74,18 +74,26 @@ func (m *Miner) Start() {
 	case <-m.timeToMineCh:
 	default:
 	}
-	m.startCh <- struct{}{}
+	// update miner address to miner object
+	curBlock := m.chain.CurrentBlock()
+	m.updateMiner(curBlock)
+
+	// m.startCh <- struct{}{}
 	go m.loopMiner()
-	waitTime := m.getSleepTime()
-	if waitTime == 0 {
-		m.sealBlock()
-	} else if waitTime > 0 {
-		m.resetMinerTimer(int64(waitTime))
+	if m.isSelfDeputyNode() {
+		waitTime := m.getSleepTime()
+		if waitTime == 0 {
+			m.sealBlock()
+		} else if waitTime > 0 {
+			m.resetMinerTimer(int64(waitTime))
+		} else {
+			log.Error("internal error. start mining failed")
+			atomic.CompareAndSwapInt32(&m.mining, 1, 0)
+			m.stopCh <- struct{}{}
+			return
+		}
 	} else {
-		log.Error("internal error. start mining failed")
-		atomic.CompareAndSwapInt32(&m.mining, 1, 0)
-		m.stopCh <- struct{}{}
-		return
+		m.resetMinerTimer(-1)
 	}
 	m.recvBlockSub = m.chain.RecvBlockFeed.Subscribe(m.recvNewBlockCh)
 	log.Info("start mining...")
@@ -162,7 +170,7 @@ func (m *Miner) getSleepTime() int {
 		return -1
 	}
 	timeDur := m.getTimespan() // 获取当前时间与最新块的时间差
-	myself := deputynode.Instance().GetDeputyByNodeID(curHeight, deputynode.GetSelfNodeID())
+	myself := deputynode.Instance().GetDeputyByNodeID(curHeight+1, deputynode.GetSelfNodeID())
 	curHeader := m.currentBlock().Header
 	slot := deputynode.Instance().GetSlot(curHeader.Height+1, curHeader.MinerAddress, myself.MinerAddress) // 获取新块离本节点索引的距离
 	if slot == -1 {
@@ -295,23 +303,25 @@ func (m *Miner) resetMinerTimer(timeDur int64) {
 	})
 }
 
-// loopRecvBlock drop no use block
-func (m *Miner) loopRecvBlock() {
-	for {
-		if atomic.LoadInt32(&m.mining) == 0 {
-			select {
-			case block := <-m.recvNewBlockCh:
-				log.Debug("Receive new block. but not start mining")
-				m.updateMiner(block)
-			case <-m.quitCh:
-				return
-			case <-m.startCh:
-			}
-		} else {
-			time.Sleep(200 * time.Millisecond)
-		}
-	}
-}
+// // loopRecvBlock drop no use block
+// func (m *Miner) loopRecvBlock() {
+// 	for {
+// 		if atomic.LoadInt32(&m.mining) == 0 {
+// 			select {
+// 			case block := <-m.recvNewBlockCh:
+// 				log.Debug("Receive new block. but not start mining")
+// 				m.updateMiner(block)
+// 			case <-m.quitCh:
+// 				log.Debug("loopRecvBlock stopped")
+// 				return
+// 			case <-m.startCh:
+// 				log.Debug("Start mining, loopRecvBlock sleeping")
+// 			}
+// 		} else {
+// 			time.Sleep(200 * time.Millisecond)
+// 		}
+// 	}
+// }
 
 // loopMiner
 func (m *Miner) loopMiner() {
@@ -381,13 +391,12 @@ func (m *Miner) loopMiner() {
 	}
 }
 
+// updateMiner update next term's miner address
 func (m *Miner) updateMiner(block *types.Block) {
-	if block.Height() > params.PeriodBlock && block.Height()%params.SnapshotBlock == params.PeriodBlock {
-		n := deputynode.Instance().GetDeputyByNodeID(block.Height(), deputynode.GetSelfNodeID())
-		if n != nil {
-			m.SetMinerAddress(n.MinerAddress)
-			log.Debugf("set next term miner address: %s", n.MinerAddress.String())
-		}
+	n := deputynode.Instance().GetDeputyByNodeID(block.Height()+1, deputynode.GetSelfNodeID())
+	if n != nil {
+		m.SetMinerAddress(n.MinerAddress)
+		log.Debugf("set next term miner address: %s", n.MinerAddress.String())
 	}
 }
 
