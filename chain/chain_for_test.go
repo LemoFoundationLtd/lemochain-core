@@ -292,7 +292,7 @@ func makeTransaction(fromPrivate *ecdsa.PrivateKey, to common.Address, txType ui
 }
 
 func signTransaction(tx *types.Transaction, private *ecdsa.PrivateKey) *types.Transaction {
-	tx, err := types.SignTx(tx, testSigner, private)
+	tx, err := testSigner.SignTx(tx, private)
 	if err != nil {
 		panic(err)
 	}

@@ -240,7 +240,6 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 		oldRecipientTxCount := recipientAccount.GetTxCount()
 		recipientAccount.SetTxCount(oldRecipientTxCount + 1)
 	}
-
 	oldsenderTxCount := sender.GetTxCount()
 	sender.SetTxCount(oldsenderTxCount + 1)
 
@@ -248,6 +247,19 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 	endSenderBalance := sender.GetBalance()
 	senderBalanceChange := new(big.Int).Sub(endSenderBalance, initialSenderBalance)
 	p.changeCandidateVotes(senderAddr, senderBalanceChange)
+
+	// reimbursement transaction
+	if len(tx.GasPayerSig()) != 0 {
+		payer, _ := tx.GasPayer()
+		accPayer := p.am.GetAccount(payer)
+		// add txCount
+		accPayer.SetTxCount(accPayer.GetTxCount() + 1)
+		// balance decrease the amount
+		reduceBalance := new(big.Int).Mul(new(big.Int).SetUint64(tx.GasLimit()-restGas), tx.GasPrice())
+		negativeChangeBalance := new(big.Int).Neg(reduceBalance)
+		p.changeCandidateVotes(payer, negativeChangeBalance)
+	}
+
 	// Merge change logs by transaction will save more transaction execution detail than by block
 	p.am.MergeChangeLogs(mergeFrom)
 	mergeFrom = len(p.am.GetChangeLogs())
@@ -276,18 +288,20 @@ func (p *TxProcessor) changeCandidateVotes(accountAddress common.Address, change
 }
 
 func (p *TxProcessor) buyGas(gp *types.GasPool, tx *types.Transaction) error {
-	// ignore the error because it is checked in applyTx
-	senderAddr, _ := tx.From()
-	sender := p.am.GetAccount(senderAddr)
-
-	maxFee := new(big.Int).Mul(new(big.Int).SetUint64(tx.GasLimit()), tx.GasPrice())
-	if sender.GetBalance().Cmp(maxFee) < 0 {
-		return ErrInsufficientBalanceForGas
-	}
-	if err := gp.SubGas(tx.GasLimit()); err != nil {
+	payerAddr, err := tx.GasPayer()
+	if err != nil {
 		return err
 	}
-	sender.SetBalance(new(big.Int).Sub(sender.GetBalance(), maxFee))
+	payer := p.am.GetAccount(payerAddr)
+
+	maxFee := new(big.Int).Mul(new(big.Int).SetUint64(tx.GasLimit()), tx.GasPrice())
+	if payer.GetBalance().Cmp(maxFee) < 0 {
+		return ErrInsufficientBalanceForGas
+	}
+	if err = gp.SubGas(tx.GasLimit()); err != nil {
+		return err
+	}
+	payer.SetBalance(new(big.Int).Sub(payer.GetBalance(), maxFee))
 	return nil
 }
 
@@ -336,13 +350,13 @@ func IntrinsicGas(data []byte, contractCreation bool) (uint64, error) {
 }
 
 func (p *TxProcessor) refundGas(gp *types.GasPool, tx *types.Transaction, restGas uint64) {
-	// ignore the error because it is checked in applyTx
-	senderAddr, _ := tx.From()
-	sender := p.am.GetAccount(senderAddr)
+	// ignore the error because it is checked in buyGas
+	payerAddr, _ := tx.GasPayer()
+	payer := p.am.GetAccount(payerAddr)
 
 	// Return LEMO for remaining gas, exchanged at the original rate.
 	remaining := new(big.Int).Mul(new(big.Int).SetUint64(restGas), tx.GasPrice())
-	sender.SetBalance(new(big.Int).Add(sender.GetBalance(), remaining))
+	payer.SetBalance(new(big.Int).Add(payer.GetBalance(), remaining))
 
 	// Also return remaining gas to the block gas counter so it is
 	// available for the next transaction.

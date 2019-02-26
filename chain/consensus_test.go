@@ -252,7 +252,7 @@ func TestDpovp_nodeCount1(t *testing.T) {
 	defer store.ClearData()
 
 	t.Log(deputynode.Instance().GetDeputiesCount(1))
-	assert.Equal(t, nil, dpovp.VerifyHeader(&types.Block{}))
+	assert.Equal(t, nil, dpovp.VerifyHeader(&types.Block{Header: &types.Header{Height: 1}}))
 }
 
 // 验证区块头Extra字段长度是否正确
