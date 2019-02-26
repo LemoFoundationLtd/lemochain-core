@@ -216,7 +216,7 @@ func (evm *EVM) CallVoteTx(voter, node common.Address, gas uint64, initialBalanc
 }
 
 // Candidate node account transaction call
-func (evm *EVM) RegisterOrUpdateToCandidate(candidateAddress, to common.Address, candiNode types.CandidateProfile, gas uint64, initialSenderBalance *big.Int) (leftgas uint64, err error) {
+func (evm *EVM) RegisterOrUpdateToCandidate(candidateAddress, to common.Address, candiNode types.Profile, gas uint64, initialSenderBalance *big.Int) (leftgas uint64, err error) {
 	// Candidate node information
 	newIsCandidate, ok := candiNode[types.CandidateKeyIsCandidate]
 	if !ok {

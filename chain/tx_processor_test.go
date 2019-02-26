@@ -357,7 +357,7 @@ func TestTxProcessor_candidateTX(t *testing.T) {
 	p := NewTxProcessor(newChain())
 
 	// 申请第一个候选节点(testAddr)信息data
-	cand00 := make(types.CandidateProfile)
+	cand00 := make(types.Profile)
 	cand00[types.CandidateKeyIsCandidate] = params.IsCandidateNode
 	cand00[types.CandidateKeyPort] = "0000"
 	cand00[types.CandidateKeyNodeID] = "34f0df789b46e9bc09f23d5315b951bc77bbfeda653ae6f5aab564c9b4619322fddb3b1f28d1c434250e9d4dd8f51aa8334573d7281e4d63baba913e9fa6908f"
@@ -435,7 +435,7 @@ func Test_voteAndRegisteTx(t *testing.T) {
 	p := NewTxProcessor(newChain())
 
 	// 申请第一个候选节点(testAddr)信息data
-	cand00 := make(types.CandidateProfile)
+	cand00 := make(types.Profile)
 	cand00[types.CandidateKeyIsCandidate] = params.IsCandidateNode
 	cand00[types.CandidateKeyPort] = "0000"
 	cand00[types.CandidateKeyNodeID] = "34f0df789b46e9bc09f23d5315b951bc77bbfeda653ae6f5aab564c9b4619322fddb3b1f28d1c434250e9d4dd8f51aa8334573d7281e4d63baba913e9fa6908f"
@@ -444,7 +444,7 @@ func Test_voteAndRegisteTx(t *testing.T) {
 	candData00, _ := json.Marshal(cand00)
 
 	// 申请第二个候选节点(testAddr02)信息data
-	cand02 := make(types.CandidateProfile)
+	cand02 := make(types.Profile)
 	cand02[types.CandidateKeyIsCandidate] = params.IsCandidateNode
 	cand02[types.CandidateKeyPort] = "2222"
 	cand02[types.CandidateKeyNodeID] = "7739f34055d3c0808683dbd77a937f8e28f707d5b1e873bbe61f6f2d0347692f36ef736f342fb5ce4710f7e337f062cc2110d134b63a9575f78cb167bfae2f43"
@@ -599,7 +599,7 @@ func Test_voteAndRegisteTx(t *testing.T) {
 	// 	投票交易
 	voteTx02 := makeTx(testPrivate01, address02, params.VoteTx, big.NewInt(0))
 	// 修改候选节点profile交易
-	changeCand00 := make(types.CandidateProfile)
+	changeCand00 := make(types.Profile)
 	changeCand00[types.CandidateKeyIsCandidate] = params.IsCandidateNode
 	changeCand00[types.CandidateKeyPort] = "8080"
 	changeCand00[types.CandidateKeyNodeID] = "34f0df789b46e9bc09f23d5315b951bc77bbfeda653ae6f5aab564c9b4619322fddb3b1f28d1c434250e9d4dd8f51aa8334573d7281e4d63baba913e9fa6908f"
@@ -676,7 +676,7 @@ func Test_voteAndRegisteTx(t *testing.T) {
 
 // Test_CreatRegisterTxData 注册候选节点所用交易data
 func Test_CreatRegisterTxData(t *testing.T) {
-	pro1 := make(types.CandidateProfile)
+	pro1 := make(types.Profile)
 	pro1[types.CandidateKeyIsCandidate] = params.IsCandidateNode
 	pro1[types.CandidateKeyPort] = "1111"
 	pro1[types.CandidateKeyNodeID] = "5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0"
@@ -685,7 +685,7 @@ func Test_CreatRegisterTxData(t *testing.T) {
 	marPro1, _ := json.Marshal(pro1)
 	fmt.Println("txData1:", common.ToHex(marPro1))
 
-	pro2 := make(types.CandidateProfile)
+	pro2 := make(types.Profile)
 	pro2[types.CandidateKeyIsCandidate] = params.IsCandidateNode
 	pro2[types.CandidateKeyPort] = "2222"
 	pro2[types.CandidateKeyNodeID] = "0x222222"
@@ -694,7 +694,7 @@ func Test_CreatRegisterTxData(t *testing.T) {
 	marPro2, _ := json.Marshal(pro2)
 	fmt.Println("txData2:", common.ToHex(marPro2))
 
-	pro3 := make(types.CandidateProfile)
+	pro3 := make(types.Profile)
 	pro3[types.CandidateKeyIsCandidate] = params.IsCandidateNode
 	pro3[types.CandidateKeyPort] = "3333"
 	pro3[types.CandidateKeyNodeID] = "0x333333"
@@ -703,7 +703,7 @@ func Test_CreatRegisterTxData(t *testing.T) {
 	marPro3, _ := json.Marshal(pro3)
 	fmt.Println("txData3:", common.ToHex(marPro3))
 
-	pro4 := make(types.CandidateProfile)
+	pro4 := make(types.Profile)
 	pro4[types.CandidateKeyIsCandidate] = params.IsCandidateNode
 	pro4[types.CandidateKeyPort] = "4444"
 	pro4[types.CandidateKeyNodeID] = "0x444444"
@@ -712,7 +712,7 @@ func Test_CreatRegisterTxData(t *testing.T) {
 	marPro4, _ := json.Marshal(pro4)
 	fmt.Println("txData4:", common.ToHex(marPro4))
 
-	pro5 := make(types.CandidateProfile)
+	pro5 := make(types.Profile)
 	pro5[types.CandidateKeyIsCandidate] = params.IsCandidateNode
 	pro5[types.CandidateKeyPort] = "5555"
 	pro5[types.CandidateKeyNodeID] = "0x555555"

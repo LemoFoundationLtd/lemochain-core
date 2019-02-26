@@ -196,6 +196,27 @@ func (am *Manager) Finalise() error {
 		if !account.IsDirty() {
 			continue
 		}
+
+		oldStorageRoot := account.rawAccount.GetStorageRoot()
+		oldAssetRoot := account.rawAccount.GetAssetRoot()
+		oldTokenRoot := account.rawAccount.GetTokenRoot()
+
+		// update account and contract storage
+		if err := account.rawAccount.Finalise(); err != nil {
+			return err
+		}
+
+		newStorageRoot := account.rawAccount.GetStorageRoot()
+		newAssetRoot := account.rawAccount.GetAssetRoot()
+		newTokenRoot := account.rawAccount.GetTokenRoot()
+
+		log, _ := NewStorageRootLog(am.processor, account.rawAccount, oldStorageRoot, newStorageRoot)
+		am.processor.PushChangeLog(log)
+		log, _ = NewAssetRootLog(am.processor, account.rawAccount, oldAssetRoot, newAssetRoot)
+		am.processor.PushChangeLog(log)
+		log, _ = NewTokenRootLog(am.processor, account.rawAccount, oldTokenRoot, newTokenRoot)
+		am.processor.PushChangeLog(log)
+
 		logs := am.processor.GetLogsByAddress(account.GetAddress())
 		for _, changeLog := range logs {
 			// set version record in rawAccount.data.NewestRecords
@@ -207,10 +228,7 @@ func (am *Manager) Finalise() error {
 				return err
 			}
 		}
-		// update account and contract storage
-		if err := account.rawAccount.Finalise(); err != nil {
-			return err
-		}
+
 	}
 	return nil
 }

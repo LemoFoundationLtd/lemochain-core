@@ -35,11 +35,26 @@ func MergeChangeLogs(logs types.ChangeLogSlice) types.ChangeLogSlice {
 
 func needMerge(logType types.ChangeLogType) bool {
 	if (logType == BalanceLog) ||
-		(logType == StorageLog) ||
 		(logType == VoteForLog) ||
 		(logType == VotesLog) ||
+		(logType == StorageLog) ||
+		(logType == StorageRootLog) ||
+		(logType == AssetLog) ||
+		(logType == AssetRootLog) ||
+		(logType == TokenLog) ||
+		(logType == TokenRootLog) ||
 		(logType == CandidateProfileLog) ||
 		(logType == TxCountLog) {
+		return true
+	} else {
+		return false
+	}
+}
+
+func needDel(logType types.ChangeLogType) bool {
+	if (logType == StorageLog) ||
+		(logType == AssetLog) ||
+		(logType == TokenLog) {
 		return true
 	} else {
 		return false
@@ -53,6 +68,10 @@ func merge(logs types.ChangeLogSlice) types.ChangeLogSlice {
 	combineResult := make([][]*types.ChangeLog, LOG_TYPE_STOP)
 	for _, log := range logs {
 		if needMerge(log.LogType) {
+			if needDel(log.LogType) {
+				continue
+			}
+
 			if combineResult[log.LogType] == nil {
 				combineResult[log.LogType] = make([]*types.ChangeLog, 1)
 				combineResult[log.LogType][0] = log
@@ -75,19 +94,6 @@ func merge(logs types.ChangeLogSlice) types.ChangeLogSlice {
 	}
 
 	return result
-
-	// result := make(types.ChangeLogSlice, 0)
-	// for _, log := range logs {
-	// 	exist := result.FindByType(log)
-	// 	if exist != nil && (log.LogType == BalanceLog || log.LogType == StorageLog) {
-	// 		// update the exist one
-	// 		exist.NewVal = log.NewVal
-	// 		exist.Extra = log.Extra
-	// 	} else {
-	// 		result = append(result, log.Copy())
-	// 	}
-	// }
-	// return result
 }
 
 // removeUnchanged removes the unchanged log
@@ -99,12 +105,4 @@ func removeUnchanged(logs types.ChangeLogSlice) types.ChangeLogSlice {
 		}
 	}
 	return result
-}
-
-// resetVersion reset change logs version, then return the changed versions
-func resetVersion(logs types.ChangeLogSlice) {
-	count := len(logs)
-	for i := 1; i < count; i++ {
-		logs[i].Version = logs[i-1].Version + 1
-	}
 }

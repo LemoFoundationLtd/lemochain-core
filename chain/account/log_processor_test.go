@@ -367,3 +367,62 @@ func TestLogProcessor_MergeChangeLogs2(t *testing.T) {
 		processor.MergeChangeLogs(0)
 	})
 }
+
+func TestLogProcessor_MergeChangeLogs3(t *testing.T) {
+	store.ClearData()
+	db := newDB()
+	manager := NewManager(newestBlock.Hash(), db)
+	processor := manager.processor
+
+	safeAccount1 := manager.GetAccount(defaultAccounts[0].Address)
+	safeAccount2 := manager.GetAccount(common.HexToAddress("0x1"))
+	safeAccount3 := manager.GetAccount(common.HexToAddress("0x2"))
+
+	//processor.PushChangeLog(NewStor)
+
+	// balance log, balance log, custom log, balance log, balance log
+	safeAccount1.SetBalance(big.NewInt(111))           // 0
+	safeAccount1.SetVoteFor(safeAccount2.GetAddress()) // 1
+	safeAccount2.SetBalance(big.NewInt(222))           // 2
+	safeAccount3.SetBalance(big.NewInt(444))           // 3
+	safeAccount1.SetBalance(big.NewInt(333))           // 4
+	safeAccount3.SetBalance(big.NewInt(0))             // 5
+	safeAccount1.SetBalance(big.NewInt(111))           // 6
+	logs := processor.GetChangeLogs()
+	assert.Equal(t, 7, len(logs))
+	assert.Equal(t, *big.NewInt(111), logs[0].NewVal)
+
+	// successfully merge
+	// the 6th overwrite 4th and 0th
+	// the 5th overwrite 3th. but the 5th is not valuable, so we remove 5th too
+	// then sort logs by address. the result sequence is: 2, 0, 1
+	processor.MergeChangeLogs(0)
+	logs = processor.GetChangeLogs()
+	assert.Equal(t, 3, len(logs))
+	assert.Equal(t, uint32(0), safeAccount3.GetBaseVersion(BalanceLog))
+	// 2
+	assert.Equal(t, BalanceLog, logs[0].LogType)
+	assert.Equal(t, safeAccount2.GetAddress(), logs[0].Address)
+	assert.Equal(t, *big.NewInt(0), logs[0].OldVal)
+	assert.Equal(t, *big.NewInt(222), logs[0].NewVal)
+	assert.Equal(t, safeAccount2.GetBaseVersion(BalanceLog)+1, logs[0].Version)
+	// 0
+	assert.Equal(t, BalanceLog, logs[1].LogType)
+	assert.Equal(t, safeAccount1.GetAddress(), logs[1].Address)
+	assert.Equal(t, *defaultAccounts[0].Balance, logs[1].OldVal)
+	assert.Equal(t, *big.NewInt(111), logs[1].NewVal)
+	assert.Equal(t, safeAccount1.GetBaseVersion(BalanceLog)+1, logs[1].Version)
+	// 1
+	assert.Equal(t, VoteForLog, logs[2].LogType)
+	assert.Equal(t, safeAccount1.GetAddress(), logs[2].Address)
+	assert.Equal(t, common.Address{}, logs[2].OldVal)
+	assert.Equal(t, safeAccount2.GetAddress(), logs[2].NewVal)
+	assert.Equal(t, uint32(1), logs[2].Version)
+
+	// broke snapshot
+	safeAccount2.SetBalance(big.NewInt(444))
+	processor.Snapshot()
+	assert.PanicsWithValue(t, ErrSnapshotIsBroken, func() {
+		processor.MergeChangeLogs(0)
+	})
+}

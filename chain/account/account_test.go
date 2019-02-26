@@ -208,10 +208,10 @@ func TestAccount_SetStorageRoot_GetStorageRoot(t *testing.T) {
 	account := loadAccount(db, defaultAccounts[0].Address)
 	assert.Equal(t, defaultAccounts[0].StorageRoot, account.GetStorageRoot())
 
-	account.dirtyStorage[k(1)] = []byte{12}
+	account.storage.dirty[k(1)] = []byte{12}
 	account.SetStorageRoot(h(200))
 	assert.Equal(t, h(200), account.GetStorageRoot())
-	assert.Empty(t, account.dirtyStorage)
+	assert.Empty(t, account.storage.dirty)
 }
 
 func TestAccount_SetStorageState_GetStorageState(t *testing.T) {
@@ -228,7 +228,7 @@ func TestAccount_SetStorageState_GetStorageState(t *testing.T) {
 	// exist in cache
 	key1 := k(1)
 	value1 := []byte{11}
-	account.cachedStorage[key1] = value1
+	account.storage.cached[key1] = value1
 	readValue, err = account.GetStorageState(key1)
 	assert.NoError(t, err)
 	assert.Equal(t, value1, readValue)
@@ -242,8 +242,8 @@ func TestAccount_SetStorageState_GetStorageState(t *testing.T) {
 	key3 := k(3)
 	value3 := []byte{22}
 	account.SetStorageState(key3, value3)
-	assert.Equal(t, value3, account.cachedStorage[key3])
-	assert.Equal(t, value3, account.dirtyStorage[key3])
+	assert.Equal(t, value3, account.storage.cached[key3])
+	assert.Equal(t, value3, account.storage.dirty[key3])
 
 	// set empty
 	key4 := k(4)
@@ -312,8 +312,8 @@ func TestAccount_Finalise_Save(t *testing.T) {
 	value, err := account.GetStorageState(defaultStorage[0].key)
 	assert.NoError(t, err)
 	assert.Equal(t, defaultStorage[0].value, value)
-	assert.Equal(t, 1, len(account.cachedStorage))
-	assert.Equal(t, 0, len(account.dirtyStorage))
+	assert.Equal(t, 1, len(account.storage.cached))
+	assert.Equal(t, 0, len(account.storage.dirty))
 	assert.Equal(t, 2, len(account.data.NewestRecords))
 	err = account.Finalise()
 	assert.NoError(t, err)
@@ -327,9 +327,9 @@ func TestAccount_Finalise_Save(t *testing.T) {
 	value = []byte{11, 22, 33}
 	err = account.SetStorageState(key, value)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(account.cachedStorage))
-	assert.Equal(t, 1, len(account.dirtyStorage))
-	assert.Equal(t, value, account.dirtyStorage[key])
+	assert.Equal(t, 2, len(account.storage.cached))
+	assert.Equal(t, 1, len(account.storage.dirty))
+	assert.Equal(t, value, account.storage.dirty[key])
 	account.SetVersion(StorageLog, 10, 3)
 	err = account.Finalise()
 	assert.NoError(t, err)
@@ -337,7 +337,7 @@ func TestAccount_Finalise_Save(t *testing.T) {
 	assert.Equal(t, 3, len(account.data.NewestRecords))
 	assert.Equal(t, uint32(3), account.data.NewestRecords[StorageLog].Height)
 	assert.Equal(t, uint32(10), account.data.NewestRecords[StorageLog].Version)
-	assert.Equal(t, 0, len(account.dirtyStorage))
+	assert.Equal(t, 0, len(account.storage.dirty))
 	// save
 	err = account.Save()
 	assert.NoError(t, err)
@@ -351,7 +351,7 @@ func TestAccount_Finalise_Save(t *testing.T) {
 	value = []byte{44, 55}
 	err = account.SetStorageState(key, value)
 	assert.NoError(t, err)
-	assert.Equal(t, value, account.dirtyStorage[key])
+	assert.Equal(t, value, account.storage.dirty[key])
 	err = account.Finalise()
 	assert.NoError(t, err)
 	assert.Equal(t, "0x0adade766035e43ef12b9ac1a84db5eae1c9a3501d81510cdc8cbd0fb3a4b922", account.GetStorageRoot().Hex())
@@ -367,7 +367,7 @@ func TestAccount_Finalise_Save(t *testing.T) {
 	// finalise after remove value
 	err = account.SetStorageState(key, nil)
 	assert.NoError(t, err)
-	assert.Empty(t, account.dirtyStorage[key])
+	assert.Empty(t, account.storage.dirty[key])
 	err = account.Finalise()
 	assert.NoError(t, err)
 	assert.Equal(t, defaultAccounts[0].StorageRoot, account.GetStorageRoot())
@@ -383,7 +383,7 @@ func TestAccount_Finalise_Save(t *testing.T) {
 	// finalise after remove value with empty []byte
 	value = []byte{}
 	err = account.SetStorageState(key, value)
-	assert.Equal(t, value, account.dirtyStorage[key])
+	assert.Equal(t, value, account.storage.dirty[key])
 	assert.NoError(t, err)
 	err = account.Finalise()
 	assert.Equal(t, defaultAccounts[0].StorageRoot, account.GetStorageRoot())

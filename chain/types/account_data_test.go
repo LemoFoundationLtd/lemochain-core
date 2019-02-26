@@ -24,7 +24,7 @@ func getAccountData() *AccountData {
 		TxCount:       100,
 	}
 
-	account.Candidate.Profile = make(CandidateProfile)
+	account.Candidate.Profile = make(Profile)
 	account.Candidate.Profile[CandidateKeyHost] = "127.0.0.1"
 	account.Candidate.Votes = big.NewInt(0)
 
@@ -66,7 +66,7 @@ func TestAccountData_Copy(t *testing.T) {
 	account.Candidate.Votes = new(big.Int).SetInt64(400)
 	assert.NotEqual(t, account.Candidate.Votes, cpy.Candidate.Votes)
 
-	account.Candidate.Profile = make(CandidateProfile)
+	account.Candidate.Profile = make(Profile)
 	account.Candidate.Profile[CandidateKeyIsCandidate] = "false"
 	assert.NotEqual(t, account.Candidate.Profile, cpy.Candidate.Profile)
 }

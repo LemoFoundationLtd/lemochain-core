@@ -43,21 +43,21 @@ type Pair struct {
 	Val string
 }
 
-type CandidateProfile map[string]string
+type Profile map[string]string
 
-func (a *CandidateProfile) Clone() *CandidateProfile {
+func (a *Profile) Clone() *Profile {
 	if a == nil {
 		return nil
 	}
 
-	result := make(CandidateProfile)
+	result := make(Profile)
 	for k, v := range *a {
 		result[k] = v
 	}
 	return &result
 }
 
-func (a *CandidateProfile) EncodeRLP(w io.Writer) error {
+func (a *Profile) EncodeRLP(w io.Writer) error {
 	tmp := make([]Pair, 0)
 	if len(*a) <= 0 {
 		return rlp.Encode(w, tmp)
@@ -78,7 +78,7 @@ func (a *CandidateProfile) EncodeRLP(w io.Writer) error {
 	}
 }
 
-func (a *CandidateProfile) DecodeRLP(s *rlp.Stream) error {
+func (a *Profile) DecodeRLP(s *rlp.Stream) error {
 	_, size, _ := s.Kind()
 	if size <= 0 {
 		return nil
@@ -97,8 +97,8 @@ func (a *CandidateProfile) DecodeRLP(s *rlp.Stream) error {
 }
 
 type Candidate struct {
-	Votes   *big.Int         `json:"votes"`
-	Profile CandidateProfile `json:"profile"`
+	Votes   *big.Int `json:"votes"`
+	Profile Profile  `json:"profile"`
 }
 
 type candidateMarshaling struct {
@@ -110,6 +110,8 @@ type AccountData struct {
 	Balance     *big.Int       `json:"balance" gencodec:"required"`
 	CodeHash    common.Hash    `json:"codeHash" gencodec:"required"`
 	StorageRoot common.Hash    `json:"root" gencodec:"required"` // MPT root of the storage trie
+	AssetRoot   common.Hash    `json:"assetRoot" gencodec:"required"`
+	TokenRoot   common.Hash    `json:"tokenRoot" gencodec:"required"`
 	// It records the block height which contains any type of newest change log. It is updated in finalize step
 	NewestRecords map[ChangeLogType]VersionRecord `json:"records" gencodec:"required"`
 
@@ -132,7 +134,7 @@ type rlpVersionRecord struct {
 
 type rlpCandidate struct {
 	Votes   *big.Int
-	Profile *CandidateProfile
+	Profile *Profile
 }
 
 // rlpAccountData defines the fields which would be encode/decode by rlp
@@ -141,6 +143,8 @@ type rlpAccountData struct {
 	Balance       *big.Int
 	CodeHash      common.Hash
 	StorageRoot   common.Hash
+	AssetRoot     common.Hash
+	TokenRoot     common.Hash
 	TxHashList    []common.Hash
 	VoteFor       common.Address
 	Candidate     rlpCandidate
@@ -165,6 +169,8 @@ func (a *AccountData) EncodeRLP(w io.Writer) error {
 		Balance:       a.Balance,
 		CodeHash:      a.CodeHash,
 		StorageRoot:   a.StorageRoot,
+		AssetRoot:     a.AssetRoot,
+		TokenRoot:     a.TokenRoot,
 		VoteFor:       a.VoteFor,
 		Candidate:     candidate,
 		TxCount:       a.TxCount,
@@ -176,13 +182,13 @@ func (a *AccountData) EncodeRLP(w io.Writer) error {
 func (a *AccountData) DecodeRLP(s *rlp.Stream) error {
 	var dec rlpAccountData
 
-	profile := make(CandidateProfile)
+	profile := make(Profile)
 	dec.Candidate.Profile = &profile
 
 	err := s.Decode(&dec)
 	if err == nil {
-		a.Address, a.Balance, a.CodeHash, a.StorageRoot, a.VoteFor, a.TxCount =
-			dec.Address, dec.Balance, dec.CodeHash, dec.StorageRoot, dec.VoteFor, dec.TxCount
+		a.Address, a.Balance, a.CodeHash, a.StorageRoot, a.AssetRoot, a.TokenRoot, a.VoteFor, a.TxCount =
+			dec.Address, dec.Balance, dec.CodeHash, dec.StorageRoot, dec.AssetRoot, dec.TokenRoot, dec.VoteFor, dec.TxCount
 		a.NewestRecords = make(map[ChangeLogType]VersionRecord)
 
 		a.Candidate.Votes = dec.Candidate.Votes
@@ -208,7 +214,7 @@ func (a *AccountData) Copy() *AccountData {
 	}
 
 	if len(a.Candidate.Profile) > 0 {
-		cpy.Candidate.Profile = make(CandidateProfile)
+		cpy.Candidate.Profile = make(Profile)
 		for k, v := range a.Candidate.Profile {
 			cpy.Candidate.Profile[k] = v
 		}
@@ -239,6 +245,14 @@ func (a *AccountData) String() string {
 	}
 	if a.StorageRoot != (common.Hash{}) {
 		set = append(set, fmt.Sprintf("StorageRoot: %s", a.StorageRoot.Hex()))
+	}
+
+	if a.AssetRoot != (common.Hash{}) {
+		set = append(set, fmt.Sprintf("AssetRoot: %s", a.AssetRoot.Hex()))
+	}
+
+	if a.TokenRoot != (common.Hash{}) {
+		set = append(set, fmt.Sprintf("TokenRoot: %s", a.TokenRoot.Hex()))
 	}
 
 	if len(a.NewestRecords) > 0 {
@@ -285,8 +299,8 @@ type AccountAccessor interface {
 	GetVotes() *big.Int
 	SetVotes(votes *big.Int)
 
-	GetCandidateProfile() CandidateProfile
-	SetCandidateProfile(profile CandidateProfile)
+	GetCandidateProfile() Profile
+	SetCandidateProfile(profile Profile)
 
 	GetAddress() common.Address
 	GetBalance() *big.Int
@@ -299,8 +313,16 @@ type AccountAccessor interface {
 	SetCode(code Code)
 	GetStorageRoot() common.Hash
 	SetStorageRoot(root common.Hash)
+	GetAssetRoot() common.Hash
+	SetAssetRoot(root common.Hash)
+	GetTokenRoot() common.Hash
+	SetTokenRoot(root common.Hash)
 	GetStorageState(key common.Hash) ([]byte, error)
 	SetStorageState(key common.Hash, value []byte) error
+	GetAssetState(token common.Token) (*DigAsset, error)
+	SetAssetState(token common.Token, asset *DigAsset) error
+	GetTokenState(token common.Token) (*DigAsset, error)
+	SetTokenState(token common.Token, asset *DigAsset) error
 	IsEmpty() bool
 	GetSuicide() bool
 	SetSuicide(suicided bool)

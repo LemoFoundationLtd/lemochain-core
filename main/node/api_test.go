@@ -175,7 +175,7 @@ func TestNewPublicTxAPI_EstimateGas(t *testing.T) {
 
 // 序列化注册候选节点所用data
 func Test_CreatRegisterTxData(t *testing.T) {
-	pro1 := make(types.CandidateProfile)
+	pro1 := make(types.Profile)
 	pro1[types.CandidateKeyIsCandidate] = params.IsCandidateNode
 	pro1[types.CandidateKeyPort] = "1111"
 	pro1[types.CandidateKeyNodeID] = "11f0df789b46e9bc09f23d5315b951bc77bbfeda653ae6f5aab564c9b4619322fddb3b1f28d1c434250e9d4dd8f51aa8334573d7281e4d63baba913e9fa6908f"
@@ -184,7 +184,7 @@ func Test_CreatRegisterTxData(t *testing.T) {
 	marPro1, _ := json.Marshal(pro1)
 	fmt.Println("txData1:", common.ToHex(marPro1))
 
-	pro2 := make(types.CandidateProfile)
+	pro2 := make(types.Profile)
 	pro2[types.CandidateKeyIsCandidate] = params.IsCandidateNode
 	pro2[types.CandidateKeyPort] = "2222"
 	pro2[types.CandidateKeyNodeID] = "22f0df789b46e9bc09f23d5315b951bc77bbfeda653ae6f5aab564c9b4619322fddb3b1f28d1c434250e9d4dd8f51aa8334573d7281e4d63baba913e9fa6908f"
@@ -193,7 +193,7 @@ func Test_CreatRegisterTxData(t *testing.T) {
 	marPro2, _ := json.Marshal(pro2)
 	fmt.Println("txData2:", common.ToHex(marPro2))
 
-	pro3 := make(types.CandidateProfile)
+	pro3 := make(types.Profile)
 	pro3[types.CandidateKeyIsCandidate] = params.IsCandidateNode
 	pro3[types.CandidateKeyPort] = "3333"
 	pro3[types.CandidateKeyNodeID] = "33f0df789b46e9bc09f23d5315b951bc77bbfeda653ae6f5aab564c9b4619322fddb3b1f28d1c434250e9d4dd8f51aa8334573d7281e4d63baba913e9fa6908f"
@@ -202,7 +202,7 @@ func Test_CreatRegisterTxData(t *testing.T) {
 	marPro3, _ := json.Marshal(pro3)
 	fmt.Println("txData3:", common.ToHex(marPro3))
 
-	pro4 := make(types.CandidateProfile)
+	pro4 := make(types.Profile)
 	pro4[types.CandidateKeyIsCandidate] = params.IsCandidateNode
 	pro4[types.CandidateKeyPort] = "4444"
 	pro4[types.CandidateKeyNodeID] = "44f0df789b46e9bc09f23d5315b951bc77bbfeda653ae6f5aab564c9b4619322fddb3b1f28d1c434250e9d4dd8f51aa8334573d7281e4d63baba913e9fa6908f"
@@ -211,7 +211,7 @@ func Test_CreatRegisterTxData(t *testing.T) {
 	marPro4, _ := json.Marshal(pro4)
 	fmt.Println("txData4:", common.ToHex(marPro4))
 
-	pro5 := make(types.CandidateProfile)
+	pro5 := make(types.Profile)
 	pro5[types.CandidateKeyIsCandidate] = params.IsCandidateNode
 	pro5[types.CandidateKeyPort] = "5555"
 	pro5[types.CandidateKeyNodeID] = "55f0df789b46e9bc09f23d5315b951bc77bbfeda653ae6f5aab564c9b4619322fddb3b1f28d1c434250e9d4dd8f51aa8334573d7281e4d63baba913e9fa6908f"

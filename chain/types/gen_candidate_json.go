@@ -14,8 +14,8 @@ var _ = (*candidateMarshaling)(nil)
 // MarshalJSON marshals as JSON.
 func (c Candidate) MarshalJSON() ([]byte, error) {
 	type Candidate struct {
-		Votes   *hexutil.Big10   `json:"votes"`
-		Profile CandidateProfile `json:"profile"`
+		Votes   *hexutil.Big10 `json:"votes"`
+		Profile Profile        `json:"profile"`
 	}
 	var enc Candidate
 	enc.Votes = (*hexutil.Big10)(c.Votes)
@@ -26,8 +26,8 @@ func (c Candidate) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON unmarshals from JSON.
 func (c *Candidate) UnmarshalJSON(input []byte) error {
 	type Candidate struct {
-		Votes   *hexutil.Big10    `json:"votes"`
-		Profile *CandidateProfile `json:"profile"`
+		Votes   *hexutil.Big10 `json:"votes"`
+		Profile *Profile       `json:"profile"`
 	}
 	var dec Candidate
 	if err := json.Unmarshal(input, &dec); err != nil {

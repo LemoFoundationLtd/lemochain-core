@@ -17,7 +17,7 @@ func NewAccountData(address common.Address, isCandidate bool) *types.AccountData
 		NewestRecords: make(map[types.ChangeLogType]types.VersionRecord),
 	}
 
-	account.Candidate.Profile = make(types.CandidateProfile)
+	account.Candidate.Profile = make(types.Profile)
 	if isCandidate {
 		account.Candidate.Votes = new(big.Int).SetInt64(500)
 		account.Candidate.Profile[types.CandidateKeyIsCandidate] = "true"
@@ -35,7 +35,7 @@ func NewAccountDataWithVotes(address common.Address, val int64) *types.AccountDa
 		NewestRecords: make(map[types.ChangeLogType]types.VersionRecord),
 	}
 
-	account.Candidate.Profile = make(types.CandidateProfile)
+	account.Candidate.Profile = make(types.Profile)
 	account.Candidate.Votes = new(big.Int).SetInt64(val)
 	account.Candidate.Profile[types.CandidateKeyIsCandidate] = "true"
 

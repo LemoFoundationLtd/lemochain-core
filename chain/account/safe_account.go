@@ -66,11 +66,11 @@ func (a *SafeAccount) SetVotes(votes *big.Int) {
 	a.rawAccount.SetVotes(votes)
 }
 
-func (a *SafeAccount) GetCandidateProfile() types.CandidateProfile {
+func (a *SafeAccount) GetCandidateProfile() types.Profile {
 	return a.rawAccount.GetCandidateProfile()
 }
 
-func (a *SafeAccount) SetCandidateProfile(profile types.CandidateProfile) {
+func (a *SafeAccount) SetCandidateProfile(profile types.Profile) {
 	newLog := NewCandidateProfileLog(a.processor, a.rawAccount, profile)
 	a.processor.PushChangeLog(newLog)
 	a.rawAccount.SetCandidateProfile(profile)
@@ -87,9 +87,62 @@ func (a *SafeAccount) GetSuicide() bool             { return a.rawAccount.GetSui
 func (a *SafeAccount) GetCodeHash() common.Hash     { return a.rawAccount.GetCodeHash() }
 func (a *SafeAccount) GetCode() (types.Code, error) { return a.rawAccount.GetCode() }
 func (a *SafeAccount) IsEmpty() bool                { return a.rawAccount.IsEmpty() }
-func (a *SafeAccount) GetStorageRoot() common.Hash  { return a.rawAccount.GetStorageRoot() }
+
+func (a *SafeAccount) GetStorageRoot() common.Hash { return a.rawAccount.GetStorageRoot() }
+
+func (a *SafeAccount) SetStorageRoot(root common.Hash) {
+	panic("SafeAccount.SetStorageRoot should not be called")
+}
+
+func (a *SafeAccount) GetAssetRoot() common.Hash { return a.rawAccount.GetAssetRoot() }
+
+func (a *SafeAccount) SetAssetRoot(root common.Hash) {
+	panic("SafeAccount.SetAssetRoot should not be called")
+}
+
+func (a *SafeAccount) GetTokenRoot() common.Hash { return a.rawAccount.GetTokenRoot() }
+
+func (a *SafeAccount) SetTokenRoot(root common.Hash) {
+	panic("SafeAccount.SetTokenRoot should not be called")
+}
+
 func (a *SafeAccount) GetStorageState(key common.Hash) ([]byte, error) {
 	return a.rawAccount.GetStorageState(key)
+}
+
+func (a *SafeAccount) SetStorageState(key common.Hash, value []byte) error {
+	newLog, err := NewStorageLog(a.processor, a.rawAccount, key, value)
+	if err != nil {
+		return err
+	}
+	a.processor.PushChangeLog(newLog)
+	return a.rawAccount.SetStorageState(key, value)
+}
+
+func (a *SafeAccount) GetAssetState(token common.Token) (*types.DigAsset, error) {
+	return a.rawAccount.GetAssetState(token)
+}
+
+func (a *SafeAccount) SetAssetState(token common.Token, asset *types.DigAsset) error {
+	newLog, err := NewAssetLog(a.processor, a.rawAccount, token, asset)
+	if err != nil {
+		return err
+	}
+	a.processor.PushChangeLog(newLog)
+	return a.rawAccount.SetAssetState(token, asset)
+}
+
+func (a *SafeAccount) GetTokenState(token common.Token) (*types.DigAsset, error) {
+	return a.rawAccount.GetTokenState(token)
+}
+
+func (a *SafeAccount) SetTokenState(token common.Token, asset *types.DigAsset) error {
+	newLog, err := NewTokenLog(a.processor, a.rawAccount, token, asset)
+	if err != nil {
+		return err
+	}
+	a.processor.PushChangeLog(newLog)
+	return a.rawAccount.SetTokenState(token, asset)
 }
 
 // func (a *SafeAccount) GetTxHashList() []common.Hash { return a.rawAccount.GetTxHashList() }
@@ -115,19 +168,6 @@ func (a *SafeAccount) SetCode(code types.Code) {
 	newLog := NewCodeLog(a.processor, a.rawAccount, code)
 	a.processor.PushChangeLog(newLog)
 	a.rawAccount.SetCode(code)
-}
-
-func (a *SafeAccount) SetStorageRoot(root common.Hash) {
-	panic("SafeAccount.SetStorageRoot should not be called")
-}
-
-func (a *SafeAccount) SetStorageState(key common.Hash, value []byte) error {
-	newLog, err := NewStorageLog(a.processor, a.rawAccount, key, value)
-	if err != nil {
-		return err
-	}
-	a.processor.PushChangeLog(newLog)
-	return a.rawAccount.SetStorageState(key, value)
 }
 
 func (a *SafeAccount) IsDirty() bool {

@@ -8,6 +8,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
+	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"github.com/LemoFoundationLtd/lemochain-go/store/protocol"
 	"github.com/LemoFoundationLtd/lemochain-go/store/trie"
@@ -41,18 +42,149 @@ func (s Storage) Copy() Storage {
 	return cpy
 }
 
-// Account is used to read and write account data. the code and dirty storage K/V would be cached till they are flushing to db
-type Account struct {
-	data   *types.AccountData
+type StorageCache struct {
 	db     protocol.ChainDB    // used to access account data in cache or file
 	trie   *trie.SecureTrie    // contract storage trie
 	trieDb *store.TrieDatabase // used to access tire data in file
+	cached Storage             // Storage entry cache to avoid duplicate reads
+	dirty  Storage             // Storage entries that need to be flushed to disk
+}
+
+func NewStorageCache(db protocol.ChainDB) *StorageCache {
+	return &StorageCache{
+		db:     db,
+		cached: make(Storage),
+		dirty:  make(Storage),
+	}
+}
+
+func (cache *StorageCache) Reset() {
+	cache.trie = nil
+	cache.cached = make(Storage)
+	cache.dirty = make(Storage)
+}
+
+func (cache *StorageCache) GetTrie(root common.Hash) (*trie.SecureTrie, error) {
+	if cache.trie == nil {
+		if cache.trieDb == nil {
+			cache.trieDb = cache.db.GetTrieDatabase()
+		}
+
+		var err error
+		cache.trie, err = trie.NewSecure(root, cache.trieDb, MaxTrieCacheGen)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return cache.trie, nil
+}
+
+func (cache *StorageCache) Save(root common.Hash) error {
+	if len(cache.dirty) > 0 {
+		return ErrTrieChanged
+	}
+
+	if root != (common.Hash{}) {
+		tr, err := cache.GetTrie(root)
+		if err != nil {
+			log.Errorf("load trie by root 0x%x fail: %v", root, err)
+			return ErrTrieFail
+		}
+		// update contract storage trie nodes' hash
+		result, err := tr.Commit(nil)
+		if err != nil {
+			return err
+		}
+		if root != result {
+			return ErrTrieChanged
+		}
+		// save contract storage trie
+		err = cache.trieDb.Commit(result, false)
+		if err != nil {
+			log.Error("save contract storage fail", "address")
+			return err
+		}
+	}
+	return nil
+}
+
+// updateTrie writes cached storage modifications into storage trie.
+func (cache *StorageCache) Update(root common.Hash) (common.Hash, error) {
+	if root == (common.Hash{}) && len(cache.dirty) == 0 {
+		return common.Hash{}, nil
+	}
+
+	tr, err := cache.GetTrie(root)
+	if err != nil {
+		log.Errorf("load trie by root 0x%x fail: %v", root, err)
+		return common.Hash{}, ErrTrieFail
+	}
+
+	for key, value := range cache.dirty {
+		delete(cache.dirty, key)
+		if len(value) == 0 {
+			err = tr.TryDelete(key[:])
+			if err != nil {
+				return common.Hash{}, err
+			} else {
+				continue
+			}
+		}
+		v := bytes.TrimLeft(value, "\x00")
+		err = tr.TryUpdate(key[:], v)
+		if err != nil {
+			return common.Hash{}, err
+		}
+	}
+
+	return tr.Hash(), nil
+}
+
+func (cache *StorageCache) SetState(key common.Hash, value []byte) error {
+	cache.cached[key] = value
+	cache.dirty[key] = value
+	return nil
+}
+
+func (cache *StorageCache) GetState(root common.Hash, key common.Hash) ([]byte, error) {
+	value, exists := cache.cached[key]
+	if exists {
+		return value, nil
+	}
+	// Load from DB in case it is missing.
+	tr, err := cache.GetTrie(root)
+	if err != nil {
+		log.Errorf("load trie by root 0x%x fail: %v", root, err)
+		return nil, ErrTrieFail
+	}
+	value, err = tr.TryGet(key[:])
+	// ignore ErrNotExist, just return empty []byte
+	if err != nil && err != store.ErrNotExist {
+		return nil, err
+	}
+	if len(value) != 0 {
+		cache.cached[key] = value
+	}
+	return value, nil
+}
+
+// Account is used to read and write account data. the code and dirty storage K/V would be cached till they are flushing to db
+type Account struct {
+	data *types.AccountData
+	db   protocol.ChainDB // used to access account data in cache or file
+
+	storage *StorageCache
+	asset   *StorageCache
+	token   *StorageCache
+
+	// trie   *trie.SecureTrie    // contract storage trie
+	// trieDb *store.TrieDatabase // used to access tire data in file
+	// cachedStorage Storage // Storage entry cache to avoid duplicate reads
+	// dirtyStorage  Storage // Storage entries that need to be flushed to disk
 
 	// trie Trie // storage trie
 	code types.Code // contract byte code
-
-	cachedStorage Storage // Storage entry cache to avoid duplicate reads
-	dirtyStorage  Storage // Storage entries that need to be flushed to disk
 
 	codeIsDirty bool // true if the code was updated
 	suicided    bool // will be delete from the trie during the "save" phase
@@ -74,7 +206,7 @@ func NewAccount(db protocol.ChainDB, address common.Address, data *types.Account
 	}
 
 	if data.Candidate.Profile == nil {
-		data.Candidate.Profile = make(types.CandidateProfile)
+		data.Candidate.Profile = make(types.Profile)
 	}
 
 	if data.Candidate.Votes == nil {
@@ -82,10 +214,11 @@ func NewAccount(db protocol.ChainDB, address common.Address, data *types.Account
 	}
 
 	return &Account{
-		data:          data,
-		db:            db,
-		cachedStorage: make(Storage),
-		dirtyStorage:  make(Storage),
+		data:    data,
+		db:      db,
+		storage: NewStorageCache(db),
+		asset:   NewStorageCache(db),
+		token:   NewStorageCache(db),
 	}
 }
 
@@ -129,11 +262,11 @@ func (a *Account) SetVotes(votes *big.Int) {
 	a.data.Candidate.Votes = new(big.Int).Set(votes)
 }
 
-func (a *Account) GetCandidateProfile() types.CandidateProfile {
+func (a *Account) GetCandidateProfile() types.Profile {
 	if a.data.Candidate.Profile == nil {
-		return make(types.CandidateProfile)
+		return make(types.Profile)
 	} else {
-		result := make(types.CandidateProfile)
+		result := make(types.Profile)
 		for k, v := range a.data.Candidate.Profile {
 			result[k] = v
 		}
@@ -141,7 +274,7 @@ func (a *Account) GetCandidateProfile() types.CandidateProfile {
 	}
 }
 
-func (a *Account) SetCandidateProfile(profile types.CandidateProfile) {
+func (a *Account) SetCandidateProfile(profile types.Profile) {
 	if len(profile) <= 0 {
 		a.data.Candidate.Profile = make(map[string]string)
 	} else {
@@ -171,6 +304,25 @@ func (a *Account) GetCodeHash() common.Hash { return a.data.CodeHash }
 // StorageRoot wouldn't change until Account.updateTrie() is called
 func (a *Account) GetStorageRoot() common.Hash { return a.data.StorageRoot }
 
+func (a *Account) SetStorageRoot(root common.Hash) {
+	a.data.StorageRoot = root
+	a.storage.Reset()
+}
+
+func (a *Account) GetAssetRoot() common.Hash { return a.data.AssetRoot }
+
+func (a *Account) SetAssetRoot(root common.Hash) {
+	a.data.AssetRoot = root
+	a.asset.Reset()
+}
+
+func (a *Account) GetTokenRoot() common.Hash { return a.data.TokenRoot }
+
+func (a *Account) SetTokenRoot(root common.Hash) {
+	a.data.TokenRoot = root
+	a.token.Reset()
+}
+
 func (a *Account) SetBalance(balance *big.Int) {
 	if balance.Sign() < 0 {
 		log.Errorf("can't set negative balance %v to account %06x", balance, a.data.Address)
@@ -183,6 +335,8 @@ func (a *Account) SetSuicide(suicided bool) {
 		a.SetBalance(new(big.Int))
 		a.SetCodeHash(common.Hash{})
 		a.SetStorageRoot(common.Hash{})
+		a.SetAssetRoot(common.Hash{})
+		a.SetTokenRoot(common.Hash{})
 	}
 	a.suicided = suicided
 }
@@ -190,11 +344,6 @@ func (a *Account) SetSuicide(suicided bool) {
 func (a *Account) SetCodeHash(codeHash common.Hash) {
 	a.data.CodeHash = codeHash
 	a.code = nil
-}
-func (a *Account) SetStorageRoot(root common.Hash) {
-	a.data.StorageRoot = root
-	a.dirtyStorage = make(Storage)
-	a.trie = nil
 }
 
 // Code returns the contract code associated with this account, if any.
@@ -232,33 +381,75 @@ func (a *Account) SetCode(code types.Code) {
 
 // GetState returns a value in account storage.
 func (a *Account) GetStorageState(key common.Hash) ([]byte, error) {
-	value, exists := a.cachedStorage[key]
-	if exists {
-		return value, nil
-	}
-	// Load from DB in case it is missing.
-	tr, err := a.getTrie()
-	if err != nil {
-		log.Errorf("load trie by root 0x%x fail: %v", a.data.StorageRoot, err)
-		return nil, ErrTrieFail
-	}
-	value, err = tr.TryGet(key[:])
-	// ignore ErrNotExist, just return empty []byte
-	if err != nil && err != store.ErrNotExist {
-		return nil, err
-	}
-	if len(value) != 0 {
-		a.cachedStorage[key] = value
-	}
-	return value, nil
+	return a.storage.GetState(a.data.StorageRoot, key)
 }
 
 // SetState updates a value in account storage.
 func (a *Account) SetStorageState(key common.Hash, value []byte) error {
-	// TODO the key is Hash already, but secureTrie hash it again?
-	a.cachedStorage[key] = value
-	a.dirtyStorage[key] = value
-	return nil
+	return a.storage.SetState(key, value)
+}
+
+func (a *Account) GetAssetState(token common.Token) (*types.DigAsset, error) {
+	val, err := a.asset.GetState(a.data.AssetRoot, common.BytesToHash(token[:]))
+	if err != nil {
+		return nil, err
+	} else {
+		var asset types.DigAsset
+		err = rlp.DecodeBytes(val, &asset)
+		if err != nil {
+			return nil, err
+		} else {
+			return &asset, nil
+		}
+	}
+}
+
+// GetAssetState(token common.Token) (DigAsset, error)
+// SetAssetState(token common.Token, asset DigAsset) error
+// GetTokenState(token common.Token) (DigAsset, error)
+// SetTokenState(token common.Token, asset DigAsset) error
+
+func (a *Account) SetAssetState(token common.Token, asset *types.DigAsset) error {
+	if asset == nil {
+		panic("asset is nil.")
+	}
+
+	asset.Type = types.DigAssetTypeAsset
+	val, err := rlp.EncodeToBytes(asset)
+	if err != nil {
+		return err
+	} else {
+		return a.asset.SetState(common.BytesToHash(token[:]), val)
+	}
+}
+
+func (a *Account) GetTokenState(token common.Token) (*types.DigAsset, error) {
+	val, err := a.asset.GetState(a.data.TokenRoot, common.BytesToHash(token[:]))
+	if err != nil {
+		return nil, err
+	} else {
+		var asset types.DigAsset
+		err = rlp.DecodeBytes(val, &asset)
+		if err != nil {
+			return nil, err
+		} else {
+			return &asset, nil
+		}
+	}
+}
+
+func (a *Account) SetTokenState(token common.Token, asset *types.DigAsset) error {
+	if asset == nil {
+		panic("asset is nil.")
+	}
+
+	asset.Type = types.DigAssetTypeToken
+	val, err := rlp.EncodeToBytes(asset)
+	if err != nil {
+		return err
+	} else {
+		return a.asset.SetState(common.BytesToHash(token[:]), val)
+	}
 }
 
 // IsEmpty returns whether the state object is either non-existent or empty (version = 0)
@@ -271,47 +462,35 @@ func (a *Account) IsEmpty() bool {
 	return true
 }
 
-func (a *Account) getTrie() (*trie.SecureTrie, error) {
-	if a.trie == nil {
-		if a.trieDb == nil {
-			a.trieDb = a.db.GetTrieDatabase()
-		}
-		var err error
-		a.trie, err = trie.NewSecure(a.data.StorageRoot, a.trieDb, MaxTrieCacheGen)
-		if err != nil {
-			return nil, err
-			// a.trie, _ = trie.NewSecure(common.Hash{}, trieDb, MaxTrieCacheGen)
-		}
-	}
-	return a.trie, nil
-}
-
 // updateTrie writes cached storage modifications into storage trie.
 func (a *Account) updateTrie() error {
-	if a.data.StorageRoot == (common.Hash{}) && len(a.dirtyStorage) == 0 {
-		return nil
-	}
-	tr, err := a.getTrie()
-	if err != nil {
-		log.Errorf("load trie by root 0x%x fail: %v", a.data.StorageRoot, err)
-		return ErrTrieFail
-	}
-	for key, value := range a.dirtyStorage {
-		delete(a.dirtyStorage, key)
-		if len(value) == 0 {
-			err = tr.TryDelete(key[:])
-			if err != nil {
-				return err
-			}
-			continue
-		}
-		v := bytes.TrimLeft(value, "\x00")
-		err = tr.TryUpdate(key[:], v)
+	if a.data.StorageRoot != (common.Hash{}) {
+		hash, err := a.storage.Update(a.data.StorageRoot)
 		if err != nil {
 			return err
+		} else {
+			a.data.StorageRoot = hash
 		}
 	}
-	a.data.StorageRoot = tr.Hash()
+
+	if a.data.AssetRoot != (common.Hash{}) {
+		hash, err := a.asset.Update(a.data.AssetRoot)
+		if err != nil {
+			return err
+		} else {
+			a.data.AssetRoot = hash
+		}
+	}
+
+	if a.data.TokenRoot != (common.Hash{}) {
+		hash, err := a.token.Update(a.data.TokenRoot)
+		if err != nil {
+			return err
+		} else {
+			a.data.TokenRoot = hash
+		}
+	}
+
 	return nil
 }
 
@@ -323,30 +502,27 @@ func (a *Account) Finalise() error {
 
 // Save writes dirty data into db.
 func (a *Account) Save() error {
-	if len(a.dirtyStorage) > 0 {
-		return ErrTrieChanged
-	}
 	if a.data.StorageRoot != (common.Hash{}) {
-		tr, err := a.getTrie()
+		err := a.storage.Save(a.data.StorageRoot)
 		if err != nil {
-			log.Errorf("load trie by root 0x%x fail: %v", a.data.StorageRoot, err)
-			return ErrTrieFail
-		}
-		// update contract storage trie nodes' hash
-		root, err := tr.Commit(nil)
-		if err != nil {
-			return err
-		}
-		if root != a.data.StorageRoot {
-			return ErrTrieChanged
-		}
-		// save contract storage trie
-		err = a.trieDb.Commit(root, false)
-		if err != nil {
-			log.Error("save contract storage fail", "address", a.data.Address)
 			return err
 		}
 	}
+
+	if a.data.AssetRoot != (common.Hash{}) {
+		err := a.asset.Save(a.data.AssetRoot)
+		if err != nil {
+			return err
+		}
+	}
+
+	if a.data.TokenRoot != (common.Hash{}) {
+		err := a.token.Save(a.data.TokenRoot)
+		if err != nil {
+			return err
+		}
+	}
+
 	// save code
 	if a.codeIsDirty {
 		if err := a.db.SetContractCode(a.data.CodeHash, a.code); err != nil {

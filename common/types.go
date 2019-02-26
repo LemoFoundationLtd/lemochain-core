@@ -15,12 +15,14 @@ import (
 const (
 	HashLength    = 32
 	AddressLength = 20
+	TokenLength   = 32
 	logo          = "Lemo"
 )
 
 var (
 	hashT    = reflect.TypeOf(Hash{})
 	addressT = reflect.TypeOf(Address{})
+	tokenT   = reflect.TypeOf(Token{})
 )
 
 // Hash represents the 32 byte Keccak256 hash of arbitrary data.
@@ -270,4 +272,91 @@ func (a AddressSlice) Less(i, j int) bool {
 
 func (a AddressSlice) Swap(i, j int) {
 	a[i], a[j] = a[j], a[i]
+}
+
+type Token [TokenLength]byte
+
+func BytesToToken(b []byte) Token {
+	var t Token
+	t.SetBytes(b)
+	return t
+}
+func StringToToken(s string) Hash { return BytesToHash([]byte(s)) }
+func BigToToken(b *big.Int) Hash  { return BytesToHash(b.Bytes()) }
+func HexToToken(s string) Hash    { return BytesToHash(FromHex(s)) }
+
+// Get the string representation of the underlying hash
+func (t Token) Str() string   { return string(t[:]) }
+func (t Token) Bytes() []byte { return t[:] }
+func (t Token) Big() *big.Int { return new(big.Int).SetBytes(t[:]) }
+func (t Token) Hex() string   { return hexutil.Encode(t[:]) }
+
+// TerminalString implements log.TerminalStringer, formatting a string for console
+// output during logging.
+func (t Token) TerminalString() string {
+	return fmt.Sprintf("%x…%x", t[:3], t[29:])
+}
+
+// String implements the stringer interface and is used also by the logger when
+// doing full logging into a file.
+func (t Token) String() string {
+	return t.Hex()
+}
+
+func (t Token) Prefix() string {
+	s := t.Hex()
+	return s[:16]
+}
+
+// Format implements fmt.Formatter, forcing the byte slice to be formatted as is,
+// without going through the stringer interface used for logging.
+func (t Token) Format(s fmt.State, c rune) {
+	fmt.Fprintf(s, "%"+string(c), t[:])
+}
+
+// UnmarshalText parses a hash in hex syntax.
+func (t *Token) UnmarshalText(input []byte) error {
+	return hexutil.UnmarshalFixedText("Token", input, t[:], true)
+}
+
+// UnmarshalJSON parses a hash in hex syntax.
+func (t *Token) UnmarshalJSON(input []byte) error {
+	return hexutil.UnmarshalFixedJSON(tokenT, input, t[:])
+}
+
+// MarshalText returns the hex representation of h.
+func (t Token) MarshalText() ([]byte, error) {
+	return hexutil.Bytes(t[:]).MarshalText()
+}
+
+// Sets the hash to the value of b. If b is larger than len(h), 'b' will be cropped (from the left).
+func (t *Token) SetBytes(b []byte) {
+	if len(b) > len(t) {
+		b = b[len(b)-TokenLength:]
+	}
+
+	copy(t[TokenLength-len(b):], b)
+}
+
+// Set string `s` to h. If s is larger than len(h) s will be cropped (from left) to fit.
+func (t *Token) SetString(s string) { t.SetBytes([]byte(s)) }
+
+// Sets h to other
+func (t *Token) Set(other Hash) {
+	for i, v := range other {
+		t[i] = v
+	}
+}
+
+// Generate implements testing/quick.Generator.
+func (t Token) Generate(rand *rand.Rand, size int) reflect.Value {
+	m := rand.Intn(len(t))
+	for i := len(t) - 1; i > m; i-- {
+		t[i] = byte(rand.Uint32())
+	}
+	return reflect.ValueOf(t)
+}
+
+func EmptyToken(t Token) bool {
+	return t == Token{}
 }

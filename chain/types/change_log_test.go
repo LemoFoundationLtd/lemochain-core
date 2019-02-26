@@ -34,11 +34,11 @@ func (f *testAccount) SetVotes(votes *big.Int) {
 	f.SetVotes(votes)
 }
 
-func (f *testAccount) GetCandidateProfile() CandidateProfile {
+func (f *testAccount) GetCandidateProfile() Profile {
 	return f.GetCandidateProfile()
 }
 
-func (f *testAccount) SetCandidateProfile(profile CandidateProfile) {
+func (f *testAccount) SetCandidateProfile(profile Profile) {
 	f.SetCandidateProfile(profile)
 }
 

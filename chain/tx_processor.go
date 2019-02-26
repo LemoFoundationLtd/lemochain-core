@@ -187,7 +187,7 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 	case params.RegisterTx:
 		// Unmarshal tx data
 		txData := tx.Data()
-		profile := make(types.CandidateProfile)
+		profile := make(types.Profile)
 		err = json.Unmarshal(txData, &profile)
 		if err != nil {
 			log.Errorf("unmarshal Candidate node error: %s", err)
@@ -471,7 +471,7 @@ func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *comm
 	case params.RegisterTx:
 		// Unmarshal tx data
 		txData := tx.Data()
-		profile := make(types.CandidateProfile)
+		profile := make(types.Profile)
 		err = json.Unmarshal(txData, &profile)
 		if err != nil {
 			log.Errorf("unmarshal Candidate node error: %s", err)

@@ -103,7 +103,7 @@ func Interface2AccountData(data types.NodeData) *types.AccountData {
 
 	account, ok := data.(*types.AccountData)
 	if !ok {
-		panic(fmt.Sprintf("expected NewVal *CandidateProfile, got %T", data))
+		panic(fmt.Sprintf("expected NewVal *Profile, got %T", data))
 	} else {
 		return account
 	}

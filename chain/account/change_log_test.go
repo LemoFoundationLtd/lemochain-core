@@ -58,7 +58,7 @@ func (p *testProcessor) createAccount(logType types.ChangeLogType, version uint3
 	account.data.Balance = big.NewInt(100)
 	account.data.NewestRecords = map[types.ChangeLogType]types.VersionRecord{logType: {Version: version, Height: 10}}
 	account.data.VoteFor = common.HexToAddress("0x0001")
-	account.cachedStorage = map[common.Hash][]byte{
+	account.storage.cached = map[common.Hash][]byte{
 		common.HexToHash("0xaaa"): {45, 67},
 	}
 	account.data.Candidate.Votes = big.NewInt(200)
@@ -373,7 +373,7 @@ func TestChangeLog_Undo(t *testing.T) {
 				assert.Equal(t, new(big.Int).SetInt64(200), accessor.GetVotes())
 			},
 		},
-		// 11 CandidateProfile
+		// 11 Profile
 		{
 			input: NewCandidateProfileLog(processor, processor.createAccount(VotesLog, 1), map[string]string{types.CandidateKeyIsCandidate: "false", types.CandidateKeyHost: "host"}),
 			afterCheck: func(accessor types.AccountAccessor) {
@@ -502,7 +502,7 @@ func TestChangeLog_Redo(t *testing.T) {
 				assert.Equal(t, new(big.Int).SetInt64(500), accessor.GetVotes())
 			},
 		},
-		// 13 CandidateProfile
+		// 13 Profile
 		{
 			input: decreaseVersion(NewCandidateProfileLog(processor, processor.createAccount(VotesLog, 1), map[string]string{types.CandidateKeyIsCandidate: "false", types.CandidateKeyHost: "host"})),
 			afterCheck: func(accessor types.AccountAccessor) {
@@ -584,7 +584,7 @@ func TestChangeLog_valueShouldBeStableCandidateProfile(t *testing.T) {
 
 	// CandidateProfileLog
 	manager.clear()
-	profile := make(types.CandidateProfile, 0)
+	profile := make(types.Profile, 0)
 	profile["aa"] = "bb"
 	account.SetCandidateProfile(profile)
 	assert.Equal(t, 1, len(manager.GetChangeLogs()))
@@ -593,7 +593,7 @@ func TestChangeLog_valueShouldBeStableCandidateProfile(t *testing.T) {
 	profile["aa"] = "cc"
 	account.SetCandidateProfile(profile)
 	assert.Equal(t, 2, len(manager.GetChangeLogs()))
-	oldProfile := manager.GetChangeLogs()[0].NewVal.(*types.CandidateProfile)
+	oldProfile := manager.GetChangeLogs()[0].NewVal.(*types.Profile)
 	assert.Equal(t, "bb", (*oldProfile)["aa"])
 
 	// The value in TxCountLog is uint32. No need to test
