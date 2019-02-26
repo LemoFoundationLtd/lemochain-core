@@ -167,14 +167,14 @@ func TestManager_getDeputiesByHeight(t *testing.T) {
 	assert.NoError(t, err)
 	ma.Add(200, nodes03)
 	// 获取第一个代理节点表
-	assert.Equal(t, nodes01, ma.GetDeputiesByHeight(0))
-	assert.Equal(t, nodes01, ma.GetDeputiesByHeight(99))
+	assert.Equal(t, nodes01, ma.GetDeputiesByHeight(0, false))
+	assert.Equal(t, nodes01, ma.GetDeputiesByHeight(99, false))
 	// 获取第二个代理节点表
-	assert.Equal(t, nodes02, ma.GetDeputiesByHeight(100))
-	assert.Equal(t, nodes02, ma.GetDeputiesByHeight(199))
+	assert.Equal(t, nodes02, ma.GetDeputiesByHeight(100, false))
+	assert.Equal(t, nodes02, ma.GetDeputiesByHeight(199, false))
 	// 获取最后一个节点表
-	assert.Equal(t, nodes03, ma.GetDeputiesByHeight(200))
-	assert.Equal(t, nodes03, ma.GetDeputiesByHeight(1000000000)) // height为无穷大时则默认为最后一个节点列表
+	assert.Equal(t, nodes03, ma.GetDeputiesByHeight(200, false))
+	assert.Equal(t, nodes03, ma.GetDeputiesByHeight(1000000000, false)) // height为无穷大时则默认为最后一个节点列表
 
 }
 
@@ -267,4 +267,29 @@ func TestManager_TimeToHandOutRewards(t *testing.T) {
 	assert.Equal(t, true, ma.TimeToHandOutRewards(100000+1000+1))
 	assert.Equal(t, true, ma.TimeToHandOutRewards(200000+1000+1))
 	assert.Equal(t, false, ma.TimeToHandOutRewards(111111+1000+1))
+}
+
+func Test_GetLatestDeputies(t *testing.T) {
+	ma := Instance()
+	ma.Clear()
+	params.PeriodBlock = 10
+	params.SnapshotBlock = 100
+
+	nodes, _ := deputyNodes(3)
+	ma.Add(1, nodes)
+	assert.Len(t, ma.GetLatestDeputies(1), 3)
+
+	nodes, _ = deputyNodes(4)
+	ma.Add(111, nodes)
+	assert.Len(t, ma.GetLatestDeputies(100), 3)
+	assert.Len(t, ma.GetLatestDeputies(110), 3)
+	assert.Len(t, ma.GetLatestDeputies(111), 4)
+	assert.Len(t, ma.GetLatestDeputies(112), 4)
+
+	nodes, _ = deputyNodes(5)
+	ma.Add(211, nodes)
+	assert.Len(t, ma.GetLatestDeputies(200), 4)
+	assert.Len(t, ma.GetLatestDeputies(210), 4)
+	assert.Len(t, ma.GetLatestDeputies(211), 5)
+	assert.Len(t, ma.GetLatestDeputies(212), 5)
 }

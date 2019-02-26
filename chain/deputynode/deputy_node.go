@@ -274,9 +274,18 @@ func (d *Manager) Clear() {
 	d.DeputyNodesList = make([]*DeputyNodesRecord, 0, 1)
 }
 
-func (d *Manager) GetLatestDeputies() []string {
+// GetLatestDeputies for api
+func (d *Manager) GetLatestDeputies(height uint32) []string {
 	res := make([]string, 0)
-	for _, n := range d.DeputyNodesList[len(d.DeputyNodesList)-1].nodes {
+	var nodes DeputyNodes
+	if height <= params.PeriodBlock {
+		nodes = d.DeputyNodesList[0].nodes
+	} else if height%params.SnapshotBlock > params.PeriodBlock {
+		nodes = d.DeputyNodesList[len(d.DeputyNodesList)-1].nodes
+	} else {
+		nodes = d.DeputyNodesList[len(d.DeputyNodesList)-2].nodes
+	}
+	for _, n := range nodes {
 		builder := &strings.Builder{}
 		builder.WriteString(common.ToHex(n.NodeID)[2:])
 		builder.WriteString("@")

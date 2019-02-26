@@ -137,7 +137,7 @@ type candidateListResMarshaling struct {
 
 // GetDeputyNodeList
 func (c *PublicChainAPI) GetDeputyNodeList() []string {
-	return deputynode.Instance().GetLatestDeputies()
+	return deputynode.Instance().GetLatestDeputies(c.chain.CurrentBlock().Height())
 }
 
 // GetCandidateNodeList get all candidate node list information and return total candidate node

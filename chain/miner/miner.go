@@ -281,7 +281,7 @@ func (m *Miner) getSleepTime() int {
 	}
 }
 
-// 重置出块定时器
+// resetMinerTimer reset timer
 func (m *Miner) resetMinerTimer(timeDur int64) {
 	// for debug
 	if m.currentBlock().Height()%params.SnapshotBlock >= params.PeriodBlock && m.currentBlock().Height()%params.SnapshotBlock < params.PeriodBlock+20 {
@@ -302,26 +302,6 @@ func (m *Miner) resetMinerTimer(timeDur int64) {
 		}
 	})
 }
-
-// // loopRecvBlock drop no use block
-// func (m *Miner) loopRecvBlock() {
-// 	for {
-// 		if atomic.LoadInt32(&m.mining) == 0 {
-// 			select {
-// 			case block := <-m.recvNewBlockCh:
-// 				log.Debug("Receive new block. but not start mining")
-// 				m.updateMiner(block)
-// 			case <-m.quitCh:
-// 				log.Debug("loopRecvBlock stopped")
-// 				return
-// 			case <-m.startCh:
-// 				log.Debug("Start mining, loopRecvBlock sleeping")
-// 			}
-// 		} else {
-// 			time.Sleep(200 * time.Millisecond)
-// 		}
-// 	}
-// }
 
 // loopMiner
 func (m *Miner) loopMiner() {
