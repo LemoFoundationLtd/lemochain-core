@@ -98,6 +98,11 @@ func NewContractCreation(amount *big.Int, gasLimit uint64, gasPrice *big.Int, da
 	return newTransaction(TxType, TxVersion, chainID, nil, amount, gasLimit, gasPrice, data, expiration, toName, message)
 }
 
+// 实例化一个to == nil的交易
+func NoReceiverTransaction(amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte, TxType uint8, chainID uint16, expiration uint64, toName string, message string) *Transaction {
+	return newTransaction(TxType, TxVersion, chainID, nil, amount, gasLimit, gasPrice, data, expiration, toName, message)
+}
+
 func newTransaction(txType uint8, version uint8, chainID uint16, to *common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte, expiration uint64, toName string, message string) *Transaction {
 	if version >= 128 {
 		panic(fmt.Sprintf("invalid transaction version %d, should < 128", version))

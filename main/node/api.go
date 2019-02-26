@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -447,8 +448,8 @@ func (t *PublicTxAPI) SendReimbursedGasTx(senderPrivate, gasPayerPrivate string,
 // IssueToken 发行token交易
 func (t *PublicTxAPI) IssueToken(prv *ecdsa.PrivateKey, decimals uint8, amount *big.Int, mineable bool) (common.Hash, error) {
 	data := []byte{1} // todo
-	tx := types.NewContractCreation(nil, uint64(500000), big.NewInt(1), data, params.IssueTokenTx, t.node.chainID, uint64(time.Now().Unix()+30*60), "", "issue token tx")
-	signTx, err := types.SignTx(tx, types.MakeSigner(), prv)
+	tx := types.NoReceiverTransaction(nil, uint64(500000), big.NewInt(1), data, params.IssueTokenTx, t.node.chainID, uint64(time.Now().Unix()+30*60), "", "issue token tx")
+	signTx, err := types.MakeSigner().SignTx(tx, prv)
 	if err != nil {
 		return common.Hash{}, err
 	}
@@ -456,33 +457,69 @@ func (t *PublicTxAPI) IssueToken(prv *ecdsa.PrivateKey, decimals uint8, amount *
 }
 
 // AdditionalToken 增发token交易
-func (t *PublicTxAPI) AdditionalToken(prv *ecdsa.PrivateKey, code int32, amount *big.Int, receiver common.Address) (common.Address, error) {
-
+func (t *PublicTxAPI) AdditionalToken(prv *ecdsa.PrivateKey, code int32, amount *big.Int, receiver common.Address) (common.Hash, error) {
+	data := []byte{1} // todo
+	tx := types.NoReceiverTransaction(nil, uint64(500000), big.NewInt(1), data, params.AdditionalTokenTx, t.node.chainID, uint64(time.Now().Unix()+30*60), "", "issue token tx")
+	signTx, err := types.MakeSigner().SignTx(tx, prv)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return t.SendTx(signTx)
 }
 
 // TradingToken 交易token,包含调用智能合约交易
-func (t *PublicTxAPI) TradingToken(prv *ecdsa.PrivateKey, to common.Address, code int32, amount *big.Int, input []byte) (common.Address, error) {
-
+func (t *PublicTxAPI) TradingToken(prv *ecdsa.PrivateKey, to common.Address, code int32, amount *big.Int, input []byte) (common.Hash, error) {
+	data := []byte{1} // todo
+	tx := types.NoReceiverTransaction(nil, uint64(500000), big.NewInt(1), data, params.TradingTokenTx, t.node.chainID, uint64(time.Now().Unix()+30*60), "", "issue token tx")
+	signTx, err := types.MakeSigner().SignTx(tx, prv)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return t.SendTx(signTx)
 }
 
 // IssueAssert 发行资产交易
 func (t *PublicTxAPI) IssueAssert(prv *ecdsa.PrivateKey, decimals uint8, metaDataHash []common.Hash, mineable bool) (common.Hash, error) {
-
+	data := []byte{1} // todo
+	tx := types.NoReceiverTransaction(nil, uint64(500000), big.NewInt(1), data, params.IssueAssertTx, t.node.chainID, uint64(time.Now().Unix()+30*60), "", "issue token tx")
+	signTx, err := types.MakeSigner().SignTx(tx, prv)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return t.SendTx(signTx)
 }
 
 // AdditionalAssert 增发资产交易
 func (t *PublicTxAPI) AdditionalAssert(prv *ecdsa.PrivateKey, code int32, metaDataHash []common.Hash, receiver common.Address) (common.Hash, error) {
-
+	data := []byte{1} // todo
+	tx := types.NoReceiverTransaction(nil, uint64(500000), big.NewInt(1), data, params.AdditionalAssertTx, t.node.chainID, uint64(time.Now().Unix()+30*60), "", "issue token tx")
+	signTx, err := types.MakeSigner().SignTx(tx, prv)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return t.SendTx(signTx)
 }
 
 // TradingAssert 交易Assert
 func (t *PublicTxAPI) TradingAssert(prv *ecdsa.PrivateKey, to common.Address, code int32, tokenIds []common.Hash, input []byte) (common.Hash, error) {
-
+	data := []byte{1} // todo
+	tx := types.NoReceiverTransaction(nil, uint64(500000), big.NewInt(1), data, params.TradingAssertTx, t.node.chainID, uint64(time.Now().Unix()+30*60), "", "issue token tx")
+	signTx, err := types.MakeSigner().SignTx(tx, prv)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return t.SendTx(signTx)
 }
 
 // ModifyTokenAssertInfo 修改token/资产info
 func (t *PublicTxAPI) ModifyTokenAssertInfo(prv *ecdsa.PrivateKey, info map[string]interface{}, code uint32) (common.Hash, error) {
-
+	data := []byte{1} // todo
+	tx := types.NoReceiverTransaction(nil, uint64(500000), big.NewInt(1), data, params.ModifyTokenAssertInfoTx, t.node.chainID, uint64(time.Now().Unix()+30*60), "", "issue token tx")
+	signTx, err := types.MakeSigner().SignTx(tx, prv)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return t.SendTx(signTx)
 }
 
 // AvailableTx transaction parameter verification
