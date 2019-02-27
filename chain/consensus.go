@@ -21,7 +21,7 @@ const MaxExtraDataLen = 256
 type Engine interface {
 	VerifyHeader(block *types.Block) error
 
-	Seal(header *types.Header, txs []*types.Transaction, changeLog []*types.ChangeLog, events []*types.Event) (*types.Block, error)
+	Seal(header *types.Header, txs []*types.Transaction, changeLog []*types.ChangeLog) (*types.Block, error)
 
 	Finalize(header *types.Header, am *account.Manager)
 }
@@ -159,8 +159,8 @@ func (d *Dpovp) VerifyHeader(block *types.Block) error {
 }
 
 // Seal packaged into a block
-func (d *Dpovp) Seal(header *types.Header, txs []*types.Transaction, changeLog []*types.ChangeLog, events []*types.Event) (*types.Block, error) {
-	block := types.NewBlock(header, txs, changeLog, events, nil)
+func (d *Dpovp) Seal(header *types.Header, txs []*types.Transaction, changeLog []*types.ChangeLog) (*types.Block, error) {
+	block := types.NewBlock(header, txs, changeLog, nil)
 	return block, nil
 }
 

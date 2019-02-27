@@ -242,7 +242,6 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 		TxRoot:       info.txRoot,
 		LogRoot:      info.logRoot,
 		Bloom:        types.CreateBloom(nil),
-		EventRoot:    common.HexToHash("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"), // empty merkle
 		Height:       info.height,
 		GasLimit:     info.gasLimit,
 		GasUsed:      gasUsed,

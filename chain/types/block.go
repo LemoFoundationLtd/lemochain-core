@@ -22,7 +22,6 @@ type Header struct {
 	VersionRoot  common.Hash    `json:"versionRoot"      gencodec:"required"`
 	TxRoot       common.Hash    `json:"transactionRoot"  gencodec:"required"`
 	LogRoot      common.Hash    `json:"changeLogRoot"    gencodec:"required"`
-	EventRoot    common.Hash    `json:"eventRoot"        gencodec:"required"`
 	Bloom        Bloom          `json:"eventBloom"       gencodec:"required"`
 	Height       uint32         `json:"height"           gencodec:"required"`
 	GasLimit     uint64         `json:"gasLimit"         gencodec:"required"`
@@ -61,17 +60,15 @@ type Block struct {
 	Header      *Header                `json:"header"        gencodec:"required"`
 	Txs         []*Transaction         `json:"transactions"  gencodec:"required"`
 	ChangeLogs  []*ChangeLog           `json:"changeLogs"    gencodec:"required"`
-	Events      []*Event               `json:"events"        gencodec:"required"`
 	Confirms    []SignData             `json:"confirms"`
 	DeputyNodes deputynode.DeputyNodes `json:"deputyNodes"`
 }
 
-func NewBlock(header *Header, txs []*Transaction, changeLog []*ChangeLog, events []*Event, confirms []SignData) *Block {
+func NewBlock(header *Header, txs []*Transaction, changeLog []*ChangeLog, confirms []SignData) *Block {
 	return &Block{
 		Header:     header,
 		Txs:        txs,
 		ChangeLogs: changeLog,
-		Events:     events,
 		Confirms:   confirms,
 	}
 }
@@ -86,7 +83,6 @@ func (h *Header) Hash() common.Hash {
 		h.VersionRoot,
 		h.TxRoot,
 		h.LogRoot,
-		h.EventRoot,
 		h.Bloom,
 		h.Height,
 		h.GasLimit,
@@ -130,7 +126,6 @@ func (h *Header) String() string {
 		fmt.Sprintf("VersionRoot: %s", h.VersionRoot.Hex()),
 		fmt.Sprintf("TxRoot: %s", h.TxRoot.Hex()),
 		fmt.Sprintf("LogRoot: %s", h.LogRoot.Hex()),
-		fmt.Sprintf("EventRoot: %s", h.EventRoot.Hex()),
 		fmt.Sprintf("Bloom: %s", common.ToHex(h.Bloom[:])),
 		fmt.Sprintf("Height: %d", h.Height),
 		fmt.Sprintf("GasLimit: %d", h.GasLimit),
@@ -153,7 +148,6 @@ func (b *Block) MinerAddress() common.Address { return b.Header.MinerAddress }
 func (b *Block) VersionRoot() common.Hash     { return b.Header.VersionRoot }
 func (b *Block) TxHash() common.Hash          { return b.Header.TxRoot }
 func (b *Block) LogsHash() common.Hash        { return b.Header.LogRoot }
-func (b *Block) EventRoot() common.Hash       { return b.Header.EventRoot }
 func (b *Block) Bloom() Bloom                 { return b.Header.Bloom }
 func (b *Block) GasLimit() uint64             { return b.Header.GasLimit }
 func (b *Block) GasUsed() uint64              { return b.Header.GasUsed }
@@ -161,11 +155,11 @@ func (b *Block) Time() uint32                 { return b.Header.Time }
 func (b *Block) SignData() []byte             { return b.Header.SignData }
 func (b *Block) Extra() []byte                { return b.Header.Extra }
 
-func (b *Block) SetHeader(header *Header)                          { b.Header = header }
-func (b *Block) SetTxs(txs []*Transaction)                         { b.Txs = txs }
-func (b *Block) SetConfirms(confirms []SignData)                   { b.Confirms = confirms }
-func (b *Block) SetChangeLogs(logs []*ChangeLog)                   { b.ChangeLogs = logs }
-func (b *Block) SetEvents(events []*Event)                         { b.Events = events }
+func (b *Block) SetHeader(header *Header)        { b.Header = header }
+func (b *Block) SetTxs(txs []*Transaction)       { b.Txs = txs }
+func (b *Block) SetConfirms(confirms []SignData) { b.Confirms = confirms }
+func (b *Block) SetChangeLogs(logs []*ChangeLog) { b.ChangeLogs = logs }
+
 func (b *Block) SetDeputyNodes(deputyNodes deputynode.DeputyNodes) { b.DeputyNodes = deputyNodes }
 
 func (b *Block) Size() int {
@@ -177,7 +171,6 @@ func (b *Block) String() string {
 		fmt.Sprintf("Header: %v", b.Header),
 		fmt.Sprintf("Txs: %v", b.Txs),
 		fmt.Sprintf("ChangeLogs: %v", b.ChangeLogs),
-		fmt.Sprintf("Events: %v", b.Events),
 		fmt.Sprintf("Confirms: %v", b.Confirms),
 		fmt.Sprintf("DeputyNodes: %v", b.DeputyNodes),
 	}

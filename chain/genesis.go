@@ -149,14 +149,13 @@ func (g *Genesis) ToBlock() *types.Block {
 		ParentHash:   common.Hash{},
 		MinerAddress: g.Founder,
 		TxRoot:       common.HexToHash("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"), // empty merkle
-		EventRoot:    common.HexToHash("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"), // empty merkle
 		Height:       0,
 		GasLimit:     g.GasLimit,
 		Extra:        g.ExtraData,
 		Time:         g.Time,
 		DeputyRoot:   types.DeriveDeputyRootSha(g.DeputyNodes).Bytes(),
 	}
-	block := types.NewBlock(head, nil, nil, nil, nil)
+	block := types.NewBlock(head, nil, nil, nil)
 	block.SetDeputyNodes(g.DeputyNodes)
 	return block
 }

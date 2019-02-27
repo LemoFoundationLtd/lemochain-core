@@ -244,7 +244,6 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 		return ErrParentNotExist
 	}
 	// save
-	block.SetEvents(bc.AccountManager().GetEvents())
 	block.SetChangeLogs(bc.AccountManager().GetChangeLogs())
 
 	sb := bc.stableBlock.Load().(*types.Block)

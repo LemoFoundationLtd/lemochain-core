@@ -12,7 +12,7 @@ type EngineTestForChain struct{}
 
 func (engine *EngineTestForChain) VerifyHeader(block *types.Block) error { return nil }
 
-func (engine *EngineTestForChain) Seal(header *types.Header, txs []*types.Transaction, changeLog []*types.ChangeLog, events []*types.Event) (*types.Block, error) {
+func (engine *EngineTestForChain) Seal(header *types.Header, txs []*types.Transaction, changeLog []*types.ChangeLog) (*types.Block, error) {
 	return nil, nil
 }
 

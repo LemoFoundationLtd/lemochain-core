@@ -423,7 +423,7 @@ func (m *Miner) sealBlock() {
 		return
 	}
 	newHeader.SignData = signData
-	block, err := m.engine.Seal(newHeader, packagedTxs, m.chain.AccountManager().GetChangeLogs(), m.chain.AccountManager().GetEvents())
+	block, err := m.engine.Seal(newHeader, packagedTxs, m.chain.AccountManager().GetChangeLogs())
 	if err != nil {
 		log.Error("Seal block error!!")
 		return

@@ -380,7 +380,6 @@ func (p *TxProcessor) FillHeader(header *types.Header, txs types.Transactions, g
 	}
 	events := p.am.GetEvents()
 	header.Bloom = types.CreateBloom(events)
-	header.EventRoot = types.DeriveEventsSha(events)
 	header.GasUsed = gasUsed
 	header.TxRoot = types.DeriveTxsSha(txs)
 	// Pay miners at the end of their tenure. This method increases miners' balance.

@@ -15,7 +15,6 @@ func (b Block) MarshalJSON() ([]byte, error) {
 		Header      *Header                `json:"header"        gencodec:"required"`
 		Txs         []*Transaction         `json:"transactions"  gencodec:"required"`
 		ChangeLogs  []*ChangeLog           `json:"changeLogs"    gencodec:"required"`
-		Events      []*Event               `json:"events"        gencodec:"required"`
 		Confirms    []SignData             `json:"confirms"`
 		DeputyNodes deputynode.DeputyNodes `json:"deputyNodes"`
 	}
@@ -23,7 +22,6 @@ func (b Block) MarshalJSON() ([]byte, error) {
 	enc.Header = b.Header
 	enc.Txs = b.Txs
 	enc.ChangeLogs = b.ChangeLogs
-	enc.Events = b.Events
 	enc.Confirms = b.Confirms
 	enc.DeputyNodes = b.DeputyNodes
 	return json.Marshal(&enc)
@@ -35,7 +33,6 @@ func (b *Block) UnmarshalJSON(input []byte) error {
 		Header      *Header                 `json:"header"        gencodec:"required"`
 		Txs         []*Transaction          `json:"transactions"  gencodec:"required"`
 		ChangeLogs  []*ChangeLog            `json:"changeLogs"    gencodec:"required"`
-		Events      []*Event                `json:"events"        gencodec:"required"`
 		Confirms    []SignData              `json:"confirms"`
 		DeputyNodes *deputynode.DeputyNodes `json:"deputyNodes"`
 	}
@@ -55,10 +52,6 @@ func (b *Block) UnmarshalJSON(input []byte) error {
 		return errors.New("missing required field 'changeLogs' for Block")
 	}
 	b.ChangeLogs = dec.ChangeLogs
-	if dec.Events == nil {
-		return errors.New("missing required field 'events' for Block")
-	}
-	b.Events = dec.Events
 	if dec.Confirms != nil {
 		b.Confirms = dec.Confirms
 	}
