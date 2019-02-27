@@ -660,7 +660,8 @@ func (pm *ProtocolManager) handleGetBlocksMsg(msg *p2p.Msg, p *peer) error {
 // respBlocks response blocks to remote peer
 func (pm *ProtocolManager) respBlocks(from, to uint32, p *peer) {
 	if from == to {
-		block := pm.chain.GetBlockByHeight(from)
+		b := pm.chain.GetBlockByHeight(from)
+		block := b.Copy()
 		if block != nil && p != nil {
 			p.SendBlocks([]*types.Block{block})
 		}
@@ -679,7 +680,9 @@ func (pm *ProtocolManager) respBlocks(from, to uint32, p *peer) {
 	for i := uint32(0); i < count; i++ {
 		blocks := make(types.Blocks, 0, eachSize)
 		for j := 0; j < eachSize; j++ {
-			blocks = append(blocks, pm.chain.GetBlockByHeight(height))
+			b := pm.chain.GetBlockByHeight(height)
+			block := b.Copy()
+			blocks = append(blocks, block)
 			height++
 			if height > to {
 				break

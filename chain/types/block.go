@@ -193,3 +193,13 @@ func (b *Block) Json() string {
 	}
 	return string(buf)
 }
+
+func (b *Block) Copy() *Block {
+	return &Block{
+		Header:      b.Header,
+		Txs:         b.Txs,
+		ChangeLogs:  nil,
+		Confirms:    b.Confirms,
+		DeputyNodes: b.DeputyNodes,
+	}
+}
