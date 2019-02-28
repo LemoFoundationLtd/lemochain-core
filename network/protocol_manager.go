@@ -58,7 +58,7 @@ type ProtocolManager struct {
 	addPeerCh    chan p2p.IPeer
 	removePeerCh chan p2p.IPeer
 
-	txsCh           chan types.Transactions
+	txCh            chan *types.Transaction
 	newMinedBlockCh chan *types.Block
 	stableBlockCh   chan *types.Block
 	rcvBlocksCh     chan *rcvBlockObj
@@ -86,7 +86,7 @@ func NewProtocolManager(chainID uint16, nodeID p2p.NodeID, chain BlockChain, txP
 		addPeerCh:    make(chan p2p.IPeer),
 		removePeerCh: make(chan p2p.IPeer),
 
-		txsCh:           make(chan types.Transactions, 10),
+		txCh:            make(chan *types.Transaction, 10),
 		newMinedBlockCh: make(chan *types.Block),
 		stableBlockCh:   make(chan *types.Block, 10),
 		rcvBlocksCh:     make(chan *rcvBlockObj, 10),
@@ -109,7 +109,7 @@ func (pm *ProtocolManager) sub() {
 	subscribe.Sub(subscribe.DeletePeer, pm.removePeerCh)
 	subscribe.Sub(subscribe.NewMinedBlock, pm.newMinedBlockCh)
 	subscribe.Sub(subscribe.NewStableBlock, pm.stableBlockCh)
-	subscribe.Sub(subscribe.NewTxs, pm.txsCh)
+	subscribe.Sub(subscribe.NewTx, pm.txCh)
 	subscribe.Sub(subscribe.NewConfirm, pm.confirmCh)
 }
 
@@ -119,7 +119,7 @@ func (pm *ProtocolManager) unSub() {
 	subscribe.UnSub(subscribe.DeletePeer, pm.removePeerCh)
 	subscribe.UnSub(subscribe.NewMinedBlock, pm.newMinedBlockCh)
 	subscribe.UnSub(subscribe.NewStableBlock, pm.stableBlockCh)
-	subscribe.UnSub(subscribe.NewTxs, pm.txsCh)
+	subscribe.UnSub(subscribe.NewTx, pm.txCh)
 	subscribe.UnSub(subscribe.NewConfirm, pm.confirmCh)
 }
 
@@ -152,13 +152,13 @@ func (pm *ProtocolManager) txConfirmLoop() {
 		case <-pm.quitCh:
 			log.Info("txConfirmLoop finished")
 			return
-		case txs := <-pm.txsCh:
+		case tx := <-pm.txCh:
 			curHeight := pm.chain.CurrentBlock().Height()
 			peers := pm.peers.DeputyNodes(curHeight)
 			if len(peers) == 0 {
 				peers = pm.peers.DelayNodes(curHeight)
 			}
-			go pm.broadcastTxs(peers, txs)
+			go pm.broadcastTxs(peers, types.Transactions{tx})
 		case info := <-pm.confirmCh:
 			if pm.peers.LatestStableHeight() > info.Height {
 				continue

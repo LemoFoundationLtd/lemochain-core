@@ -185,8 +185,6 @@ type TxPool struct {
 
 	recent *TxsRecent
 	mux    sync.Mutex
-
-	NewTxsFeed subscribe.Feed
 }
 
 func NewTxPool(chainID uint16) *TxPool {
@@ -214,7 +212,7 @@ func (pool *TxPool) AddTx(tx *types.Transaction) error {
 		}
 		pool.recent.put(hash)
 		pool.txsCache.push(tx)
-		pool.NewTxsFeed.Send(types.Transactions{tx})
+		subscribe.Send(subscribe.NewTx, tx)
 		return nil
 	}
 }
@@ -228,7 +226,7 @@ func (pool *TxPool) AddTxs(txs []*types.Transaction) error {
 			if err != nil {
 				return err
 			}
-			subscribe.Send(subscribe.NewTxs, []*types.Transaction{txs[index]})
+			subscribe.Send(subscribe.NewTx, txs[index])
 		}
 
 		return nil
