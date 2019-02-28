@@ -6,14 +6,14 @@ import (
 )
 
 type Asset struct {
-	Category    int
-	IsDivisible bool
-	AssetCode   common.Hash
-	Decimals    int
-	TotalSupply *big.Int
-	IsMineable  bool
-	Issuer      common.Address
-	Profile     Profile
+	Category        int
+	IsDivisible     bool
+	AssetCode       common.Hash
+	Decimals        int
+	TotalSupply     *big.Int
+	IsReplenishable bool
+	Issuer          common.Address
+	Profile         Profile
 }
 
 // type AssetExtend struct {
@@ -53,14 +53,14 @@ func (asset *Asset) Clone() *Asset {
 		return nil
 	} else {
 		return &Asset{
-			Category:    asset.Category,
-			IsDivisible: asset.IsDivisible,
-			AssetCode:   asset.AssetCode,
-			Decimals:    asset.Decimals,
-			TotalSupply: new(big.Int).Set(asset.TotalSupply),
-			IsMineable:  asset.IsMineable,
-			Issuer:      asset.Issuer,
-			Profile:     clone(asset.Profile),
+			Category:        asset.Category,
+			IsDivisible:     asset.IsDivisible,
+			AssetCode:       asset.AssetCode,
+			Decimals:        asset.Decimals,
+			TotalSupply:     new(big.Int).Set(asset.TotalSupply),
+			IsReplenishable: asset.IsReplenishable,
+			Issuer:          asset.Issuer,
+			Profile:         clone(asset.Profile),
 		}
 	}
 }

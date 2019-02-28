@@ -14,10 +14,12 @@ const (
 	BalanceLog types.ChangeLogType = iota + 1
 	StorageLog
 	StorageRootLog
-	AssetLog
-	AssetRootLog
-	TokenLog
-	TokenRootLog
+	AssetCodeLog
+	AssetCodeRootLog
+	AssetIdLog
+	AssetIdRootLog
+	EquityLog
+	EquityRootLog
 	CodeLog
 	AddEventLog
 	SuicideLog
@@ -32,10 +34,12 @@ func init() {
 	types.RegisterChangeLog(BalanceLog, "BalanceLog", decodeBigInt, decodeEmptyInterface, redoBalance, undoBalance)
 	types.RegisterChangeLog(StorageLog, "StorageLog", decodeBytes, decodeBytes, redoStorage, undoStorage)
 	types.RegisterChangeLog(StorageRootLog, "StorageRootLog", decodeHash, decodeHash, redoStorageRoot, undoStorageRoot)
-	types.RegisterChangeLog(AssetLog, "AssetLog", decodeDigAsset, decodeDigAsset, redoAsset, undoAsset)
-	types.RegisterChangeLog(AssetRootLog, "AssetRootLog", decodeHash, decodeHash, redoAssetRoot, undoAssetRoot)
-	types.RegisterChangeLog(TokenLog, "TokenLog", decodeDigAsset, decodeDigAsset, redoToken, undoToken)
-	types.RegisterChangeLog(TokenRootLog, "TokenRootLog", decodeHash, decodeHash, redoTokenRoot, undoTokenRoot)
+	types.RegisterChangeLog(AssetCodeLog, "AssetCodeLog", decodeAsset, decodeAsset, redoAssetCode, undoAssetCode)
+	types.RegisterChangeLog(AssetCodeRootLog, "AssetCodeRootLog", decodeHash, decodeHash, redoAssetCodeRoot, undoAssetCodeRoot)
+	types.RegisterChangeLog(AssetIdLog, "AssetIdLog", decodeAsset, decodeAsset, redoAssetId, undoAssetId)
+	types.RegisterChangeLog(AssetIdRootLog, "AssetIdRootLog", decodeHash, decodeHash, redoAssetIdRoot, undoAssetIdRoot)
+	types.RegisterChangeLog(EquityLog, "EquityLog", decodeEquity, decodeEquity, redoEquity, undoEquity)
+	types.RegisterChangeLog(EquityRootLog, "EquityRootLog", decodeHash, decodeHash, redoEquityRoot, undoEquityRoot)
 	types.RegisterChangeLog(CodeLog, "CodeLog", decodeCode, decodeEmptyInterface, redoCode, undoCode)
 	types.RegisterChangeLog(AddEventLog, "AddEventLog", decodeEvent, decodeEmptyInterface, redoAddEvent, undoAddEvent)
 	types.RegisterChangeLog(SuicideLog, "SuicideLog", decodeEmptyInterface, decodeEmptyInterface, redoSuicide, undoSuicide)
@@ -153,8 +157,14 @@ func decodeHash(s *rlp.Stream) (interface{}, error) {
 	return common.BytesToHash(result), err
 }
 
-func decodeDigAsset(s *rlp.Stream) (interface{}, error) {
-	var result types.DigAsset
+func decodeAsset(s *rlp.Stream) (interface{}, error) {
+	var result types.Asset
+	err := s.Decode(&result)
+	return &result, err
+}
+
+func decodeEquity(s *rlp.Stream) (interface{}, error) {
+	var result types.AssetEquity
 	err := s.Decode(&result)
 	return &result, err
 }
@@ -424,157 +434,234 @@ func undoStorageRoot(c *types.ChangeLog, processor types.ChangeLogProcessor) err
 	return nil
 }
 
-func NewAssetLog(processor types.ChangeLogProcessor, account types.AccountAccessor, token common.Token, newVal *types.DigAsset) (*types.ChangeLog, error) {
-	oldValue, err := account.GetAssetState(token)
+func NewAssetCodeLog(processor types.ChangeLogProcessor, account types.AccountAccessor, code common.Hash, newVal *types.Asset) (*types.ChangeLog, error) {
+	oldValue, err := account.GetAssetCodeState(code)
 	if err != nil {
 		return nil, fmt.Errorf("can't create asset log: %v", err)
 	}
 	return &types.ChangeLog{
-		LogType: AssetLog,
+		LogType: AssetCodeLog,
 		Address: account.GetAddress(),
-		Version: processor.GetNextVersion(AssetLog, account.GetAddress()),
+		Version: processor.GetNextVersion(AssetCodeLog, account.GetAddress()),
 		OldVal:  oldValue.Clone(),
 		NewVal:  newVal.Clone(),
-		Extra:   token,
+		Extra:   code,
 	}, nil
 }
 
-func redoAsset(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
-	newVal, ok := c.NewVal.(*types.DigAsset)
+func redoAssetCode(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
+	newVal, ok := c.NewVal.(*types.Asset)
 	if !ok {
-		log.Errorf("expected NewVal *types.DigAsset, got %T", c.NewVal)
+		log.Errorf("expected NewVal *types.Asset, got %T", c.NewVal)
 		return types.ErrWrongChangeLogData
 	}
-	token, ok := c.Extra.(common.Token)
+	hash, ok := c.Extra.(common.Hash)
 	if !ok {
-		log.Errorf("expected Extra common.Token, got %T", c.Extra)
-		return types.ErrWrongChangeLogData
-	}
-	accessor := processor.GetAccount(c.Address)
-	return accessor.SetAssetState(token, newVal)
-}
-
-func undoAsset(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
-	oldVal, ok := c.OldVal.(*types.DigAsset)
-	if !ok {
-		log.Errorf("expected NewVal *types.DigAsset, got %T", c.NewVal)
-		return types.ErrWrongChangeLogData
-	}
-	token, ok := c.Extra.(common.Token)
-	if !ok {
-		log.Errorf("expected Extra common.Token, got %T", c.Extra)
+		log.Errorf("expected Extra common.Hash, got %T", c.Extra)
 		return types.ErrWrongChangeLogData
 	}
 	accessor := processor.GetAccount(c.Address)
-	return accessor.SetAssetState(token, oldVal)
+	return accessor.SetAssetCodeState(hash, newVal)
 }
 
-func NewAssetRootLog(processor types.ChangeLogProcessor, account types.AccountAccessor, oldVal common.Hash, newVal common.Hash) (*types.ChangeLog, error) {
+func undoAssetCode(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
+	oldVal, ok := c.OldVal.(*types.Asset)
+	if !ok {
+		log.Errorf("expected NewVal *types.Asset, got %T", c.NewVal)
+		return types.ErrWrongChangeLogData
+	}
+	hash, ok := c.Extra.(common.Hash)
+	if !ok {
+		log.Errorf("expected Extra common.Hash, got %T", c.Extra)
+		return types.ErrWrongChangeLogData
+	}
+	accessor := processor.GetAccount(c.Address)
+	return accessor.SetAssetCodeState(hash, oldVal)
+}
+
+func NewAssetCodeRootLog(processor types.ChangeLogProcessor, account types.AccountAccessor, oldVal common.Hash, newVal common.Hash) (*types.ChangeLog, error) {
 	return &types.ChangeLog{
-		LogType: AssetRootLog,
+		LogType: AssetCodeRootLog,
 		Address: account.GetAddress(),
-		Version: processor.GetNextVersion(AssetRootLog, account.GetAddress()),
+		Version: processor.GetNextVersion(AssetCodeRootLog, account.GetAddress()),
 		OldVal:  oldVal,
 		NewVal:  newVal,
 	}, nil
 }
 
-func redoAssetRoot(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
+func redoAssetCodeRoot(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 	newVal, ok := c.NewVal.(common.Hash)
 	if !ok {
 		log.Errorf("expected NewVal common.hash, got %T", c.NewVal)
 		return types.ErrWrongChangeLogData
 	}
 	accessor := processor.GetAccount(c.Address)
-	accessor.SetAssetRoot(newVal)
+	accessor.SetAssetCodeRoot(newVal)
 	return nil
 }
 
-func undoAssetRoot(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
+func undoAssetCodeRoot(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 	oldVal, ok := c.OldVal.(common.Hash)
 	if !ok {
 		log.Errorf("expected NewVal common.hash, got %T", c.NewVal)
 		return types.ErrWrongChangeLogData
 	}
 	accessor := processor.GetAccount(c.Address)
-	accessor.SetAssetRoot(oldVal)
+	accessor.SetAssetCodeRoot(oldVal)
 	return nil
 }
 
-func NewTokenLog(processor types.ChangeLogProcessor, account types.AccountAccessor, token common.Token, newVal *types.DigAsset) (*types.ChangeLog, error) {
-	oldValue, err := account.GetTokenState(token)
+func NewAssetIdLog(processor types.ChangeLogProcessor, account types.AccountAccessor, id common.Hash, newVal string) (*types.ChangeLog, error) {
+	oldValue, err := account.GetAssetIdState(id)
 	if err != nil {
 		return nil, fmt.Errorf("can't create asset log: %v", err)
 	}
 	return &types.ChangeLog{
-		LogType: AssetLog,
+		LogType: AssetIdLog,
 		Address: account.GetAddress(),
-		Version: processor.GetNextVersion(AssetLog, account.GetAddress()),
-		OldVal:  oldValue.Clone(),
-		NewVal:  newVal.Clone(),
-		Extra:   token,
+		Version: processor.GetNextVersion(AssetIdLog, account.GetAddress()),
+		OldVal:  oldValue,
+		NewVal:  newVal,
+		Extra:   id,
 	}, nil
 }
 
-func redoToken(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
-	newVal, ok := c.NewVal.(*types.DigAsset)
+func redoAssetId(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
+	newVal, ok := c.NewVal.(string)
 	if !ok {
-		log.Errorf("expected NewVal *types.DigAsset, got %T", c.NewVal)
+		log.Errorf("expected NewVal string, got %T", c.NewVal)
 		return types.ErrWrongChangeLogData
 	}
-	token, ok := c.Extra.(common.Token)
+	id, ok := c.Extra.(common.Hash)
+	if !ok {
+		log.Errorf("expected Extra common.Hash, got %T", c.Extra)
+		return types.ErrWrongChangeLogData
+	}
+	accessor := processor.GetAccount(c.Address)
+	return accessor.SetAssetIdState(id, newVal)
+}
+
+func undoAssetId(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
+	oldVal, ok := c.OldVal.(string)
+	if !ok {
+		log.Errorf("expected NewVal *types.Asset, got %T", c.NewVal)
+		return types.ErrWrongChangeLogData
+	}
+	id, ok := c.Extra.(common.Hash)
 	if !ok {
 		log.Errorf("expected Extra common.Token, got %T", c.Extra)
 		return types.ErrWrongChangeLogData
 	}
 	accessor := processor.GetAccount(c.Address)
-	return accessor.SetTokenState(token, newVal)
+	return accessor.SetAssetIdState(id, oldVal)
 }
 
-func undoToken(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
-	oldVal, ok := c.OldVal.(*types.DigAsset)
-	if !ok {
-		log.Errorf("expected NewVal *types.DigAsset, got %T", c.NewVal)
-		return types.ErrWrongChangeLogData
-	}
-	token, ok := c.Extra.(common.Token)
-	if !ok {
-		log.Errorf("expected Extra common.Token, got %T", c.Extra)
-		return types.ErrWrongChangeLogData
-	}
-	accessor := processor.GetAccount(c.Address)
-	return accessor.SetTokenState(token, oldVal)
-}
-
-func NewTokenRootLog(processor types.ChangeLogProcessor, account types.AccountAccessor, oldVal common.Hash, newVal common.Hash) (*types.ChangeLog, error) {
+func NewAssetIdRootLog(processor types.ChangeLogProcessor, account types.AccountAccessor, oldVal common.Hash, newVal common.Hash) (*types.ChangeLog, error) {
 	return &types.ChangeLog{
-		LogType: TokenRootLog,
+		LogType: AssetIdRootLog,
 		Address: account.GetAddress(),
-		Version: processor.GetNextVersion(TokenRootLog, account.GetAddress()),
+		Version: processor.GetNextVersion(AssetIdRootLog, account.GetAddress()),
 		OldVal:  oldVal,
 		NewVal:  newVal,
 	}, nil
 }
 
-func redoTokenRoot(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
+func redoAssetIdRoot(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 	newVal, ok := c.NewVal.(common.Hash)
 	if !ok {
 		log.Errorf("expected NewVal common.hash, got %T", c.NewVal)
 		return types.ErrWrongChangeLogData
 	}
 	accessor := processor.GetAccount(c.Address)
-	accessor.SetTokenRoot(newVal)
+	accessor.SetAssetIdRoot(newVal)
 	return nil
 }
 
-func undoTokenRoot(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
+func undoAssetIdRoot(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 	oldVal, ok := c.OldVal.(common.Hash)
 	if !ok {
 		log.Errorf("expected NewVal common.hash, got %T", c.NewVal)
 		return types.ErrWrongChangeLogData
 	}
 	accessor := processor.GetAccount(c.Address)
-	accessor.SetTokenRoot(oldVal)
+	accessor.SetAssetIdRoot(oldVal)
+	return nil
+}
+
+func NewEquityLog(processor types.ChangeLogProcessor, account types.AccountAccessor, id common.Hash, newVal *types.AssetEquity) (*types.ChangeLog, error) {
+	oldValue, err := account.GetEquityState(id)
+	if err != nil {
+		return nil, fmt.Errorf("can't create equity log: %v", err)
+	}
+	return &types.ChangeLog{
+		LogType: EquityLog,
+		Address: account.GetAddress(),
+		Version: processor.GetNextVersion(EquityLog, account.GetAddress()),
+		OldVal:  oldValue.Clone(),
+		NewVal:  newVal.Clone(),
+		Extra:   id,
+	}, nil
+}
+
+func redoEquity(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
+	newVal, ok := c.NewVal.(*types.AssetEquity)
+	if !ok {
+		log.Errorf("expected NewVal *types.AssetEquity, got %T", c.NewVal)
+		return types.ErrWrongChangeLogData
+	}
+	id, ok := c.Extra.(common.Hash)
+	if !ok {
+		log.Errorf("expected Extra common.Hash, got %T", c.Extra)
+		return types.ErrWrongChangeLogData
+	}
+	accessor := processor.GetAccount(c.Address)
+	return accessor.SetEquityState(id, newVal)
+}
+
+func undoEquity(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
+	oldVal, ok := c.OldVal.(*types.AssetEquity)
+	if !ok {
+		log.Errorf("expected NewVal *types.AssetEquity, got %T", c.NewVal)
+		return types.ErrWrongChangeLogData
+	}
+	id, ok := c.Extra.(common.Hash)
+	if !ok {
+		log.Errorf("expected Extra common.Hash, got %T", c.Extra)
+		return types.ErrWrongChangeLogData
+	}
+	accessor := processor.GetAccount(c.Address)
+	return accessor.SetEquityState(id, oldVal)
+}
+
+func NewEquityRootLog(processor types.ChangeLogProcessor, account types.AccountAccessor, oldVal common.Hash, newVal common.Hash) (*types.ChangeLog, error) {
+	return &types.ChangeLog{
+		LogType: EquityRootLog,
+		Address: account.GetAddress(),
+		Version: processor.GetNextVersion(EquityRootLog, account.GetAddress()),
+		OldVal:  oldVal,
+		NewVal:  newVal,
+	}, nil
+}
+
+func redoEquityRoot(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
+	newVal, ok := c.NewVal.(common.Hash)
+	if !ok {
+		log.Errorf("expected NewVal common.hash, got %T", c.NewVal)
+		return types.ErrWrongChangeLogData
+	}
+	accessor := processor.GetAccount(c.Address)
+	accessor.SetEquityRoot(newVal)
+	return nil
+}
+
+func undoEquityRoot(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
+	oldVal, ok := c.OldVal.(common.Hash)
+	if !ok {
+		log.Errorf("expected NewVal common.hash, got %T", c.NewVal)
+		return types.ErrWrongChangeLogData
+	}
+	accessor := processor.GetAccount(c.Address)
+	accessor.SetEquityRoot(oldVal)
 	return nil
 }
 

@@ -106,12 +106,15 @@ type candidateMarshaling struct {
 }
 
 type AccountData struct {
-	Address     common.Address `json:"address" gencodec:"required"`
-	Balance     *big.Int       `json:"balance" gencodec:"required"`
-	CodeHash    common.Hash    `json:"codeHash" gencodec:"required"`
-	StorageRoot common.Hash    `json:"root" gencodec:"required"` // MPT root of the storage trie
-	AssetRoot   common.Hash    `json:"assetRoot" gencodec:"required"`
-	TokenRoot   common.Hash    `json:"tokenRoot" gencodec:"required"`
+	Address  common.Address `json:"address" gencodec:"required"`
+	Balance  *big.Int       `json:"balance" gencodec:"required"`
+	CodeHash common.Hash    `json:"codeHash" gencodec:"required"`
+
+	StorageRoot   common.Hash `json:"root" gencodec:"required"`
+	AssetCodeRoot common.Hash `json:"AssetCodeRoot" gencodec:"required"`
+	AssetIdRoot   common.Hash `json:"AssetIdRoot" gencodec:"required"`
+	EquityRoot    common.Hash `json:"EquityRoot" gencodec:"required"`
+
 	// It records the block height which contains any type of newest change log. It is updated in finalize step
 	NewestRecords map[ChangeLogType]VersionRecord `json:"records" gencodec:"required"`
 
@@ -143,8 +146,9 @@ type rlpAccountData struct {
 	Balance       *big.Int
 	CodeHash      common.Hash
 	StorageRoot   common.Hash
-	AssetRoot     common.Hash
-	TokenRoot     common.Hash
+	AssetCodeRoot common.Hash `json:"AssetCodeRoot" gencodec:"required"`
+	AssetIdRoot   common.Hash `json:"AssetIdRoot" gencodec:"required"`
+	EquityRoot    common.Hash `json:"EquityRoot" gencodec:"required"`
 	TxHashList    []common.Hash
 	VoteFor       common.Address
 	Candidate     rlpCandidate
@@ -169,8 +173,9 @@ func (a *AccountData) EncodeRLP(w io.Writer) error {
 		Balance:       a.Balance,
 		CodeHash:      a.CodeHash,
 		StorageRoot:   a.StorageRoot,
-		AssetRoot:     a.AssetRoot,
-		TokenRoot:     a.TokenRoot,
+		AssetCodeRoot: a.AssetCodeRoot,
+		AssetIdRoot:   a.AssetIdRoot,
+		EquityRoot:    a.EquityRoot,
 		VoteFor:       a.VoteFor,
 		Candidate:     candidate,
 		TxCount:       a.TxCount,
@@ -187,8 +192,8 @@ func (a *AccountData) DecodeRLP(s *rlp.Stream) error {
 
 	err := s.Decode(&dec)
 	if err == nil {
-		a.Address, a.Balance, a.CodeHash, a.StorageRoot, a.AssetRoot, a.TokenRoot, a.VoteFor, a.TxCount =
-			dec.Address, dec.Balance, dec.CodeHash, dec.StorageRoot, dec.AssetRoot, dec.TokenRoot, dec.VoteFor, dec.TxCount
+		a.Address, a.Balance, a.CodeHash, a.StorageRoot, a.AssetCodeRoot, a.AssetIdRoot, a.EquityRoot, a.VoteFor, a.TxCount =
+			dec.Address, dec.Balance, dec.CodeHash, dec.StorageRoot, dec.AssetCodeRoot, dec.AssetIdRoot, dec.EquityRoot, dec.VoteFor, dec.TxCount
 		a.NewestRecords = make(map[ChangeLogType]VersionRecord)
 
 		a.Candidate.Votes = dec.Candidate.Votes
@@ -247,12 +252,16 @@ func (a *AccountData) String() string {
 		set = append(set, fmt.Sprintf("StorageRoot: %s", a.StorageRoot.Hex()))
 	}
 
-	if a.AssetRoot != (common.Hash{}) {
-		set = append(set, fmt.Sprintf("AssetRoot: %s", a.AssetRoot.Hex()))
+	if a.AssetCodeRoot != (common.Hash{}) {
+		set = append(set, fmt.Sprintf("AssetCodeRoot: %s", a.AssetCodeRoot.Hex()))
 	}
 
-	if a.TokenRoot != (common.Hash{}) {
-		set = append(set, fmt.Sprintf("TokenRoot: %s", a.TokenRoot.Hex()))
+	if a.AssetIdRoot != (common.Hash{}) {
+		set = append(set, fmt.Sprintf("AssetIdRoot: %s", a.AssetIdRoot.Hex()))
+	}
+
+	if a.EquityRoot != (common.Hash{}) {
+		set = append(set, fmt.Sprintf("EquityRoot: %s", a.EquityRoot.Hex()))
 	}
 
 	if len(a.NewestRecords) > 0 {
@@ -313,16 +322,25 @@ type AccountAccessor interface {
 	SetCode(code Code)
 	GetStorageRoot() common.Hash
 	SetStorageRoot(root common.Hash)
-	GetAssetRoot() common.Hash
-	SetAssetRoot(root common.Hash)
-	GetTokenRoot() common.Hash
-	SetTokenRoot(root common.Hash)
+	GetAssetCodeRoot() common.Hash
+	SetAssetCodeRoot(root common.Hash)
+	GetAssetIdRoot() common.Hash
+	SetAssetIdRoot(root common.Hash)
+	GetEquityRoot() common.Hash
+	SetEquityRoot(root common.Hash)
+
 	GetStorageState(key common.Hash) ([]byte, error)
 	SetStorageState(key common.Hash, value []byte) error
-	GetAssetState(token common.Token) (*DigAsset, error)
-	SetAssetState(token common.Token, asset *DigAsset) error
-	GetTokenState(token common.Token) (*DigAsset, error)
-	SetTokenState(token common.Token, asset *DigAsset) error
+
+	GetAssetCodeState(code common.Hash) (*Asset, error)
+	SetAssetCodeState(code common.Hash, asset *Asset) error
+
+	GetAssetIdState(id common.Hash) (string, error)
+	SetAssetIdState(id common.Hash, data string) error
+
+	GetEquityState(id common.Hash) (*AssetEquity, error)
+	SetEquityState(id common.Hash, equity *AssetEquity) error
+
 	IsEmpty() bool
 	GetSuicide() bool
 	SetSuicide(suicided bool)

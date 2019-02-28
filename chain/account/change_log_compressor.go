@@ -39,10 +39,12 @@ func needMerge(logType types.ChangeLogType) bool {
 		(logType == VotesLog) ||
 		(logType == StorageLog) ||
 		(logType == StorageRootLog) ||
-		(logType == AssetLog) ||
-		(logType == AssetRootLog) ||
-		(logType == TokenLog) ||
-		(logType == TokenRootLog) ||
+		(logType == AssetCodeLog) ||
+		(logType == AssetCodeRootLog) ||
+		(logType == AssetIdLog) ||
+		(logType == AssetIdRootLog) ||
+		(logType == EquityLog) ||
+		(logType == EquityRootLog) ||
 		(logType == CandidateProfileLog) ||
 		(logType == TxCountLog) {
 		return true
@@ -53,8 +55,9 @@ func needMerge(logType types.ChangeLogType) bool {
 
 func needDel(logType types.ChangeLogType) bool {
 	if (logType == StorageLog) ||
-		(logType == AssetLog) ||
-		(logType == TokenLog) {
+		(logType == AssetCodeLog) ||
+		(logType == AssetIdLog) ||
+		(logType == EquityLog) {
 		return true
 	} else {
 		return false

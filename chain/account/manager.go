@@ -198,8 +198,9 @@ func (am *Manager) Finalise() error {
 		}
 
 		oldStorageRoot := account.rawAccount.GetStorageRoot()
-		oldAssetRoot := account.rawAccount.GetAssetRoot()
-		oldTokenRoot := account.rawAccount.GetTokenRoot()
+		oldAssetCodeRoot := account.rawAccount.GetAssetCodeRoot()
+		oldAssetIdRoot := account.rawAccount.GetAssetIdRoot()
+		oldEquityRoot := account.rawAccount.GetEquityRoot()
 
 		// update account and contract storage
 		if err := account.rawAccount.Finalise(); err != nil {
@@ -207,14 +208,17 @@ func (am *Manager) Finalise() error {
 		}
 
 		newStorageRoot := account.rawAccount.GetStorageRoot()
-		newAssetRoot := account.rawAccount.GetAssetRoot()
-		newTokenRoot := account.rawAccount.GetTokenRoot()
+		newAssetCodeRoot := account.rawAccount.GetAssetCodeRoot()
+		newAssetIdRoot := account.rawAccount.GetAssetIdRoot()
+		newEquityRoot := account.rawAccount.GetEquityRoot()
 
 		log, _ := NewStorageRootLog(am.processor, account.rawAccount, oldStorageRoot, newStorageRoot)
 		am.processor.PushChangeLog(log)
-		log, _ = NewAssetRootLog(am.processor, account.rawAccount, oldAssetRoot, newAssetRoot)
+		log, _ = NewAssetCodeRootLog(am.processor, account.rawAccount, oldAssetCodeRoot, newAssetCodeRoot)
 		am.processor.PushChangeLog(log)
-		log, _ = NewTokenRootLog(am.processor, account.rawAccount, oldTokenRoot, newTokenRoot)
+		log, _ = NewAssetIdRootLog(am.processor, account.rawAccount, oldAssetIdRoot, newAssetIdRoot)
+		am.processor.PushChangeLog(log)
+		log, _ = NewEquityRootLog(am.processor, account.rawAccount, oldEquityRoot, newEquityRoot)
 		am.processor.PushChangeLog(log)
 
 		logs := am.processor.GetLogsByAddress(account.GetAddress())

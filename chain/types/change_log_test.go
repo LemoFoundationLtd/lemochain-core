@@ -51,24 +51,24 @@ func (f *testAccount) SetBalance(balance *big.Int) { f.AccountData.Balance = bal
 func (f *testAccount) GetBaseVersion(logType ChangeLogType) uint32 {
 	return f.AccountData.NewestRecords[logType].Version
 }
-func (f *testAccount) GetSuicide() bool                                        { return false }
-func (f *testAccount) SetSuicide(suicided bool)                                {}
-func (f *testAccount) GetCodeHash() common.Hash                                { return f.AccountData.CodeHash }
-func (f *testAccount) SetCodeHash(codeHash common.Hash)                        { f.AccountData.CodeHash = codeHash }
-func (f *testAccount) GetCode() (Code, error)                                  { return nil, nil }
-func (f *testAccount) SetCode(code Code)                                       {}
-func (f *testAccount) GetStorageRoot() common.Hash                             { return f.AccountData.StorageRoot }
-func (f *testAccount) SetStorageRoot(root common.Hash)                         { f.AccountData.StorageRoot = root }
-func (f *testAccount) GetAssetRoot() common.Hash                               { return f.AccountData.AssetRoot }
-func (f *testAccount) SetAssetRoot(root common.Hash)                           { f.AccountData.AssetRoot = root }
-func (f *testAccount) GetTokenRoot() common.Hash                               { return f.AccountData.TokenRoot }
-func (f *testAccount) SetTokenRoot(root common.Hash)                           { f.AccountData.TokenRoot = root }
-func (f *testAccount) GetStorageState(key common.Hash) ([]byte, error)         { return nil, nil }
-func (f *testAccount) SetStorageState(key common.Hash, value []byte) error     { return nil }
-func (f *testAccount) GetAssetState(token common.Token) (*DigAsset, error)     { return nil, nil }
-func (f *testAccount) SetAssetState(token common.Token, asset *DigAsset) error { return nil }
-func (f *testAccount) GetTokenState(token common.Token) (*DigAsset, error)     { return nil, nil }
-func (f *testAccount) SetTokenState(token common.Token, asset *DigAsset) error { return nil }
+func (f *testAccount) GetSuicide() bool                                     { return false }
+func (f *testAccount) SetSuicide(suicided bool)                             {}
+func (f *testAccount) GetCodeHash() common.Hash                             { return f.AccountData.CodeHash }
+func (f *testAccount) SetCodeHash(codeHash common.Hash)                     { f.AccountData.CodeHash = codeHash }
+func (f *testAccount) GetCode() (Code, error)                               { return nil, nil }
+func (f *testAccount) SetCode(code Code)                                    {}
+func (f *testAccount) GetStorageRoot() common.Hash                          { return f.AccountData.StorageRoot }
+func (f *testAccount) SetStorageRoot(root common.Hash)                      { f.AccountData.StorageRoot = root }
+func (f *testAccount) GetAssetRoot() common.Hash                            { return f.AccountData.AssetRoot }
+func (f *testAccount) SetAssetRoot(root common.Hash)                        { f.AccountData.AssetRoot = root }
+func (f *testAccount) GetTokenRoot() common.Hash                            { return f.AccountData.TokenRoot }
+func (f *testAccount) SetTokenRoot(root common.Hash)                        { f.AccountData.TokenRoot = root }
+func (f *testAccount) GetStorageState(key common.Hash) ([]byte, error)      { return nil, nil }
+func (f *testAccount) SetStorageState(key common.Hash, value []byte) error  { return nil }
+func (f *testAccount) GetAssetState(token common.Token) (*Asset, error)     { return nil, nil }
+func (f *testAccount) SetAssetState(token common.Token, asset *Asset) error { return nil }
+func (f *testAccount) GetTokenState(token common.Token) (*Asset, error)     { return nil, nil }
+func (f *testAccount) SetTokenState(token common.Token, asset *Asset) error { return nil }
 func (f *testAccount) IsEmpty() bool {
 	for _, record := range f.AccountData.NewestRecords {
 		if record.Version != 0 {

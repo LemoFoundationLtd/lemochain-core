@@ -94,16 +94,22 @@ func (a *SafeAccount) SetStorageRoot(root common.Hash) {
 	panic("SafeAccount.SetStorageRoot should not be called")
 }
 
-func (a *SafeAccount) GetAssetRoot() common.Hash { return a.rawAccount.GetAssetRoot() }
+func (a *SafeAccount) GetAssetCodeRoot() common.Hash { return a.rawAccount.GetAssetCodeRoot() }
 
-func (a *SafeAccount) SetAssetRoot(root common.Hash) {
-	panic("SafeAccount.SetAssetRoot should not be called")
+func (a *SafeAccount) SetAssetCodeRoot(root common.Hash) {
+	panic("SafeAccount.SetAssetCodeRoot should not be called")
 }
 
-func (a *SafeAccount) GetTokenRoot() common.Hash { return a.rawAccount.GetTokenRoot() }
+func (a *SafeAccount) GetAssetIdRoot() common.Hash { return a.rawAccount.GetAssetIdRoot() }
 
-func (a *SafeAccount) SetTokenRoot(root common.Hash) {
-	panic("SafeAccount.SetTokenRoot should not be called")
+func (a *SafeAccount) SetAssetIdRoot(root common.Hash) {
+	panic("SafeAccount.SetAssetIdRoot should not be called")
+}
+
+func (a *SafeAccount) GetEquityRoot() common.Hash { return a.rawAccount.GetEquityRoot() }
+
+func (a *SafeAccount) SetEquityRoot(root common.Hash) {
+	panic("SafeAccount.SetEquityRoot should not be called")
 }
 
 func (a *SafeAccount) GetStorageState(key common.Hash) ([]byte, error) {
@@ -119,30 +125,43 @@ func (a *SafeAccount) SetStorageState(key common.Hash, value []byte) error {
 	return a.rawAccount.SetStorageState(key, value)
 }
 
-func (a *SafeAccount) GetAssetState(token common.Token) (*types.DigAsset, error) {
-	return a.rawAccount.GetAssetState(token)
+func (a *SafeAccount) GetAssetCodeState(code common.Hash) (*types.Asset, error) {
+	return a.rawAccount.GetAssetCodeState(code)
 }
 
-func (a *SafeAccount) SetAssetState(token common.Token, asset *types.DigAsset) error {
-	newLog, err := NewAssetLog(a.processor, a.rawAccount, token, asset)
+func (a *SafeAccount) SetAssetCodeState(code common.Hash, asset *types.Asset) error {
+	newLog, err := NewAssetCodeLog(a.processor, a.rawAccount, code, asset)
 	if err != nil {
 		return err
 	}
 	a.processor.PushChangeLog(newLog)
-	return a.rawAccount.SetAssetState(token, asset)
+	return a.rawAccount.SetAssetCodeState(code, asset)
 }
 
-func (a *SafeAccount) GetTokenState(token common.Token) (*types.DigAsset, error) {
-	return a.rawAccount.GetTokenState(token)
+func (a *SafeAccount) GetAssetIdState(id common.Hash) (string, error) {
+	return a.rawAccount.GetAssetIdState(id)
 }
 
-func (a *SafeAccount) SetTokenState(token common.Token, asset *types.DigAsset) error {
-	newLog, err := NewTokenLog(a.processor, a.rawAccount, token, asset)
+func (a *SafeAccount) SetAssetIdState(id common.Hash, val string) error {
+	newLog, err := NewAssetIdLog(a.processor, a.rawAccount, id, val)
 	if err != nil {
 		return err
 	}
 	a.processor.PushChangeLog(newLog)
-	return a.rawAccount.SetTokenState(token, asset)
+	return a.rawAccount.SetAssetIdState(id, val)
+}
+
+func (a *SafeAccount) GetEquityState(id common.Hash) (*types.AssetEquity, error) {
+	return a.rawAccount.GetEquityState(id)
+}
+
+func (a *SafeAccount) SetEquityState(id common.Hash, equity *types.AssetEquity) error {
+	newLog, err := NewEquityLog(a.processor, a.rawAccount, id, equity)
+	if err != nil {
+		return err
+	}
+	a.processor.PushChangeLog(newLog)
+	return a.rawAccount.SetEquityState(id, equity)
 }
 
 // func (a *SafeAccount) GetTxHashList() []common.Hash { return a.rawAccount.GetTxHashList() }

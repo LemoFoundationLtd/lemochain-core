@@ -174,20 +174,15 @@ type Account struct {
 	data *types.AccountData
 	db   protocol.ChainDB // used to access account data in cache or file
 
-	storage *StorageCache
-	asset   *StorageCache
-	token   *StorageCache
+	storage   *StorageCache
+	assetCode *StorageCache
+	assetId   *StorageCache
+	equity    *StorageCache
 
-	// trie   *trie.SecureTrie    // contract storage trie
-	// trieDb *store.TrieDatabase // used to access tire data in file
-	// cachedStorage Storage // Storage entry cache to avoid duplicate reads
-	// dirtyStorage  Storage // Storage entries that need to be flushed to disk
+	code        types.Code // contract byte code
+	codeIsDirty bool       // true if the code was updated
 
-	// trie Trie // storage trie
-	code types.Code // contract byte code
-
-	codeIsDirty bool // true if the code was updated
-	suicided    bool // will be delete from the trie during the "save" phase
+	suicided bool // will be delete from the trie during the "save" phase
 }
 
 // NewAccount wrap an AccountData object, or creates a new one if it's nil.
@@ -214,11 +209,12 @@ func NewAccount(db protocol.ChainDB, address common.Address, data *types.Account
 	}
 
 	return &Account{
-		data:    data,
-		db:      db,
-		storage: NewStorageCache(db),
-		asset:   NewStorageCache(db),
-		token:   NewStorageCache(db),
+		data:      data,
+		db:        db,
+		storage:   NewStorageCache(db),
+		assetCode: NewStorageCache(db),
+		assetId:   NewStorageCache(db),
+		equity:    NewStorageCache(db),
 	}
 }
 
@@ -309,18 +305,25 @@ func (a *Account) SetStorageRoot(root common.Hash) {
 	a.storage.Reset()
 }
 
-func (a *Account) GetAssetRoot() common.Hash { return a.data.AssetRoot }
+func (a *Account) GetAssetCodeRoot() common.Hash { return a.data.AssetCodeRoot }
 
-func (a *Account) SetAssetRoot(root common.Hash) {
-	a.data.AssetRoot = root
-	a.asset.Reset()
+func (a *Account) SetAssetCodeRoot(root common.Hash) {
+	a.data.AssetCodeRoot = root
+	a.assetCode.Reset()
 }
 
-func (a *Account) GetTokenRoot() common.Hash { return a.data.TokenRoot }
+func (a *Account) GetAssetIdRoot() common.Hash { return a.data.AssetIdRoot }
 
-func (a *Account) SetTokenRoot(root common.Hash) {
-	a.data.TokenRoot = root
-	a.token.Reset()
+func (a *Account) SetAssetIdRoot(root common.Hash) {
+	a.data.AssetIdRoot = root
+	a.assetId.Reset()
+}
+
+func (a *Account) GetEquityRoot() common.Hash { return a.data.EquityRoot }
+
+func (a *Account) SetEquityRoot(root common.Hash) {
+	a.data.EquityRoot = root
+	a.equity.Reset()
 }
 
 func (a *Account) SetBalance(balance *big.Int) {
@@ -330,13 +333,14 @@ func (a *Account) SetBalance(balance *big.Int) {
 	}
 	a.data.Balance.Set(balance)
 }
+
 func (a *Account) SetSuicide(suicided bool) {
 	if suicided {
 		a.SetBalance(new(big.Int))
 		a.SetCodeHash(common.Hash{})
 		a.SetStorageRoot(common.Hash{})
-		a.SetAssetRoot(common.Hash{})
-		a.SetTokenRoot(common.Hash{})
+		a.SetAssetCodeRoot(common.Hash{})
+		a.SetAssetIdRoot(common.Hash{})
 	}
 	a.suicided = suicided
 }
@@ -389,12 +393,12 @@ func (a *Account) SetStorageState(key common.Hash, value []byte) error {
 	return a.storage.SetState(key, value)
 }
 
-func (a *Account) GetAssetState(token common.Token) (*types.DigAsset, error) {
-	val, err := a.asset.GetState(a.data.AssetRoot, common.BytesToHash(token[:]))
+func (a *Account) GetAssetCodeState(code common.Hash) (*types.Asset, error) {
+	val, err := a.assetCode.GetState(a.data.AssetCodeRoot, code)
 	if err != nil {
 		return nil, err
 	} else {
-		var asset types.DigAsset
+		var asset types.Asset
 		err = rlp.DecodeBytes(val, &asset)
 		if err != nil {
 			return nil, err
@@ -404,51 +408,57 @@ func (a *Account) GetAssetState(token common.Token) (*types.DigAsset, error) {
 	}
 }
 
-// GetAssetState(token common.Token) (DigAsset, error)
-// SetAssetState(token common.Token, asset DigAsset) error
-// GetTokenState(token common.Token) (DigAsset, error)
-// SetTokenState(token common.Token, asset DigAsset) error
-
-func (a *Account) SetAssetState(token common.Token, asset *types.DigAsset) error {
+func (a *Account) SetAssetCodeState(code common.Hash, asset *types.Asset) error {
 	if asset == nil {
 		panic("asset is nil.")
 	}
 
-	asset.Type = types.DigAssetTypeAsset
 	val, err := rlp.EncodeToBytes(asset)
 	if err != nil {
 		return err
 	} else {
-		return a.asset.SetState(common.BytesToHash(token[:]), val)
+		return a.assetCode.SetState(code, val)
 	}
 }
 
-func (a *Account) GetTokenState(token common.Token) (*types.DigAsset, error) {
-	val, err := a.asset.GetState(a.data.TokenRoot, common.BytesToHash(token[:]))
+func (a *Account) GetAssetIdState(id common.Hash) (string, error) {
+	val, err := a.assetId.GetState(a.data.AssetIdRoot, id)
+	if err != nil {
+		return "", err
+	} else {
+		return string(val[:]), nil
+	}
+}
+
+func (a *Account) SetAssetIdState(id common.Hash, data string) error {
+	return a.assetId.SetState(id, []byte(data))
+}
+
+func (a *Account) GetEquityState(id common.Hash) (*types.AssetEquity, error) {
+	val, err := a.equity.GetState(a.data.EquityRoot, id)
 	if err != nil {
 		return nil, err
 	} else {
-		var asset types.DigAsset
-		err = rlp.DecodeBytes(val, &asset)
+		var equity types.AssetEquity
+		err = rlp.DecodeBytes(val, &equity)
 		if err != nil {
 			return nil, err
 		} else {
-			return &asset, nil
+			return &equity, nil
 		}
 	}
 }
 
-func (a *Account) SetTokenState(token common.Token, asset *types.DigAsset) error {
-	if asset == nil {
-		panic("asset is nil.")
+func (a *Account) SetEquityState(id common.Hash, equity *types.AssetEquity) error {
+	if equity == nil {
+		panic("equity is nil.")
 	}
 
-	asset.Type = types.DigAssetTypeToken
-	val, err := rlp.EncodeToBytes(asset)
+	val, err := rlp.EncodeToBytes(equity)
 	if err != nil {
 		return err
 	} else {
-		return a.asset.SetState(common.BytesToHash(token[:]), val)
+		return a.equity.SetState(id, val)
 	}
 }
 
@@ -473,21 +483,30 @@ func (a *Account) updateTrie() error {
 		}
 	}
 
-	if a.data.AssetRoot != (common.Hash{}) {
-		hash, err := a.asset.Update(a.data.AssetRoot)
+	if a.data.AssetCodeRoot != (common.Hash{}) {
+		hash, err := a.assetCode.Update(a.data.AssetCodeRoot)
 		if err != nil {
 			return err
 		} else {
-			a.data.AssetRoot = hash
+			a.data.AssetCodeRoot = hash
 		}
 	}
 
-	if a.data.TokenRoot != (common.Hash{}) {
-		hash, err := a.token.Update(a.data.TokenRoot)
+	if a.data.AssetIdRoot != (common.Hash{}) {
+		hash, err := a.assetId.Update(a.data.AssetIdRoot)
 		if err != nil {
 			return err
 		} else {
-			a.data.TokenRoot = hash
+			a.data.AssetIdRoot = hash
+		}
+	}
+
+	if a.data.EquityRoot != (common.Hash{}) {
+		hash, err := a.equity.Update(a.data.EquityRoot)
+		if err != nil {
+			return err
+		} else {
+			a.data.EquityRoot = hash
 		}
 	}
 
@@ -509,15 +528,22 @@ func (a *Account) Save() error {
 		}
 	}
 
-	if a.data.AssetRoot != (common.Hash{}) {
-		err := a.asset.Save(a.data.AssetRoot)
+	if a.data.AssetCodeRoot != (common.Hash{}) {
+		err := a.assetCode.Save(a.data.AssetCodeRoot)
 		if err != nil {
 			return err
 		}
 	}
 
-	if a.data.TokenRoot != (common.Hash{}) {
-		err := a.token.Save(a.data.TokenRoot)
+	if a.data.AssetIdRoot != (common.Hash{}) {
+		err := a.assetId.Save(a.data.AssetIdRoot)
+		if err != nil {
+			return err
+		}
+	}
+
+	if a.data.EquityRoot != (common.Hash{}) {
+		err := a.equity.Save(a.data.EquityRoot)
 		if err != nil {
 			return err
 		}
