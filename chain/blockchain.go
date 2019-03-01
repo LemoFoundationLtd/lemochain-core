@@ -212,8 +212,8 @@ func (bc *BlockChain) SetMinedBlock(block *types.Block) error {
 
 // updateDeputyNodes update deputy nodes map
 func (bc *BlockChain) updateDeputyNodes(block *types.Block) {
-	if block.Height()%params.SnapshotBlock == 0 {
-		deputynode.Instance().Add(block.Height()+params.PeriodBlock+1, block.DeputyNodes)
+	if block.Height()%params.TermDuration == 0 {
+		deputynode.Instance().Add(block.Height()+params.InterimDuration+1, block.DeputyNodes)
 		log.Debugf("add new term deputy nodes: %v", block.DeputyNodes)
 	}
 }
@@ -558,7 +558,7 @@ func (bc *BlockChain) verifyBody(block *types.Block) error {
 		return ErrVerifyBlockFailed
 	}
 	// verify deputyRoot
-	if block.Height()%params.SnapshotBlock == 0 {
+	if block.Height()%params.TermDuration == 0 {
 		bRoot := types.DeriveDeputyRootSha(block.DeputyNodes)
 		nodes := bc.GetNewDeputyNodes()
 		selfRoot := types.DeriveDeputyRootSha(nodes)

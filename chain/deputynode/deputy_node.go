@@ -215,10 +215,10 @@ func (d *Manager) GetSlot(height uint32, firstAddress, nextAddress common.Addres
 	firstNode := d.GetDeputyByAddress(height, firstAddress)
 	nextNode := d.GetDeputyByAddress(height, nextAddress)
 	// for test
-	if height%params.SnapshotBlock > params.PeriodBlock && height%params.SnapshotBlock < params.PeriodBlock+20 {
+	if height%params.TermDuration > params.InterimDuration && height%params.TermDuration < params.InterimDuration+20 {
 		log.Debugf("GetSlot: height:%d. first: %s, next: %s", height, firstAddress.String(), nextAddress.String())
 	}
-	if ((height == 1) || (height > params.SnapshotBlock && height%params.SnapshotBlock == params.PeriodBlock+1)) && nextNode != nil {
+	if ((height == 1) || (height > params.TermDuration && height%params.TermDuration == params.InterimDuration+1)) && nextNode != nil {
 		log.Debugf("GetSlot: change term. rank: %d", nextNode.Rank)
 		return int(nextNode.Rank + 1)
 	}
@@ -251,7 +251,7 @@ func (d *Manager) GetNodeRankByAddress(height uint32, addr common.Address) int {
 // TimeToHandOutRewards 是否该发出块奖励了
 func (d *Manager) TimeToHandOutRewards(height uint32) bool {
 	for i := 1; i < len(d.DeputyNodesList); i++ {
-		if d.DeputyNodesList[i].height+params.PeriodBlock == height {
+		if d.DeputyNodesList[i].height+params.InterimDuration == height {
 			return true
 		}
 	}
@@ -278,9 +278,9 @@ func (d *Manager) Clear() {
 func (d *Manager) GetLatestDeputies(height uint32) []string {
 	res := make([]string, 0)
 	var nodes DeputyNodes
-	if height <= params.PeriodBlock {
+	if height <= params.InterimDuration {
 		nodes = d.DeputyNodesList[0].nodes
-	} else if height%params.SnapshotBlock > params.PeriodBlock {
+	} else if height%params.TermDuration > params.InterimDuration {
 		nodes = d.DeputyNodesList[len(d.DeputyNodesList)-1].nodes
 	} else {
 		nodes = d.DeputyNodesList[len(d.DeputyNodesList)-2].nodes

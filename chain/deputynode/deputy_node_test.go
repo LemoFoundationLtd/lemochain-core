@@ -216,7 +216,7 @@ func TestManager_GetSlot(t *testing.T) {
 
 	nodes01, err := deputyNodes(5)
 	assert.NoError(t, err)
-	ma.Add(params.SnapshotBlock, nodes01) // 创建5个代理节点的节点列表，高度为100000
+	ma.Add(params.TermDuration, nodes01) // 创建5个代理节点的节点列表，高度为100000
 
 	// 测试height==1的情况，此情况为上一个块为创世块
 	assert.Equal(t, 1, ma.GetSlot(1, common.Address{}, common.HexToAddress(block01MinerAddress)))
@@ -224,9 +224,9 @@ func TestManager_GetSlot(t *testing.T) {
 	assert.Equal(t, 3, ma.GetSlot(1, common.Address{}, common.HexToAddress(block03MinerAddress)))
 
 	// 测试换届的情况
-	assert.Equal(t, 1, ma.GetSlot(params.SnapshotBlock+params.PeriodBlock+1, common.Address{}, common.HexToAddress(block01MinerAddress)))
-	assert.Equal(t, 2, ma.GetSlot(params.SnapshotBlock+params.PeriodBlock+1, common.Address{}, common.HexToAddress(block02MinerAddress)))
-	assert.Equal(t, 3, ma.GetSlot(params.SnapshotBlock+params.PeriodBlock+1, common.Address{}, common.HexToAddress(block03MinerAddress)))
+	assert.Equal(t, 1, ma.GetSlot(params.TermDuration+params.InterimDuration+1, common.Address{}, common.HexToAddress(block01MinerAddress)))
+	assert.Equal(t, 2, ma.GetSlot(params.TermDuration+params.InterimDuration+1, common.Address{}, common.HexToAddress(block02MinerAddress)))
+	assert.Equal(t, 3, ma.GetSlot(params.TermDuration+params.InterimDuration+1, common.Address{}, common.HexToAddress(block03MinerAddress)))
 
 	// 测试firstNode和NextNode为空的情况
 	assert.Equal(t, -1, ma.GetSlot(22, common.Address{}, common.Address{}))
@@ -272,8 +272,8 @@ func TestManager_TimeToHandOutRewards(t *testing.T) {
 func Test_GetLatestDeputies(t *testing.T) {
 	ma := Instance()
 	ma.Clear()
-	params.PeriodBlock = 10
-	params.SnapshotBlock = 100
+	params.InterimDuration = 10
+	params.TermDuration = 100
 
 	nodes, _ := deputyNodes(3)
 	ma.Add(1, nodes)

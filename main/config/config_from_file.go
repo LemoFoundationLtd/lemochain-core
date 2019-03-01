@@ -18,23 +18,23 @@ var (
 //go:generate gencodec -type ConfigFromFile -field-override ConfigFromFileMarshaling -out gen_config_from_file_json.go
 
 type ConfigFromFile struct {
-	ChainID       uint64 `json:"chainID"        gencodec:"required"`
-	SleepTime     uint64 `json:"sleepTime"`
-	Timeout       uint64 `json:"timeout"`
-	DbUri         string `json:"dbUri"          gencodec:"required"` // sample: root:123123@tcp(localhost:3306)/lemochain?charset=utf8mb4
-	DbDriver      string `json:"dbDriver"       gencodec:"required"` // sample: "mysql"
-	SnapshotBlock uint64 `json:"snapshotBlock"`
-	PeriodBlock   uint64 `json:"periodBlock"`
+	ChainID         uint64 `json:"chainID"        gencodec:"required"`
+	SleepTime       uint64 `json:"sleepTime"`
+	Timeout         uint64 `json:"timeout"`
+	DbUri           string `json:"dbUri"          gencodec:"required"` // sample: root:123123@tcp(localhost:3306)/lemochain?charset=utf8mb4
+	DbDriver        string `json:"dbDriver"       gencodec:"required"` // sample: "mysql"
+	TermDuration    uint64 `json:"termDuration"`
+	InterimDuration uint64 `json:"interimDuration"`
 }
 
 // driver = "mysql"
 // dns = root:123123@tcp(localhost:3306)/lemochain?charset=utf8mb4
 type ConfigFromFileMarshaling struct {
-	ChainID       hexutil.Uint64
-	SleepTime     hexutil.Uint64
-	Timeout       hexutil.Uint64
-	SnapshotBlock hexutil.Uint64
-	PeriodBlock   hexutil.Uint64
+	ChainID         hexutil.Uint64
+	SleepTime       hexutil.Uint64
+	Timeout         hexutil.Uint64
+	TermDuration    hexutil.Uint64
+	InterimDuration hexutil.Uint64
 }
 
 func ReadConfigFile(dir string) (*ConfigFromFile, error) {
@@ -69,10 +69,10 @@ func (c *ConfigFromFile) Check() {
 	if c.Timeout == 0 {
 		c.Timeout = 10000
 	}
-	if c.SnapshotBlock > 0 {
-		params.SnapshotBlock = uint32(c.SnapshotBlock)
+	if c.TermDuration > 0 {
+		params.TermDuration = uint32(c.TermDuration)
 	}
-	if c.PeriodBlock > 0 {
-		params.PeriodBlock = uint32(c.PeriodBlock)
+	if c.InterimDuration > 0 {
+		params.InterimDuration = uint32(c.InterimDuration)
 	}
 }
