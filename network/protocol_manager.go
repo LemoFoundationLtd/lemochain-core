@@ -3,6 +3,7 @@ package network
 import (
 	"errors"
 	"fmt"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
@@ -153,10 +154,10 @@ func (pm *ProtocolManager) txConfirmLoop() {
 			log.Info("txConfirmLoop finished")
 			return
 		case tx := <-pm.txCh:
-			curHeight := pm.chain.CurrentBlock().Height()
-			peers := pm.peers.DeputyNodes(curHeight)
-			if len(peers) == 0 {
-				peers = pm.peers.DelayNodes(curHeight)
+			nextHeight := pm.chain.CurrentBlock().Height() + 1
+			peers := pm.peers.DeputyNodes(nextHeight)
+			if deputynode.Instance().IsSelfDeputyNode(nextHeight) == false && len(peers) == 0 {
+				peers = pm.peers.DelayNodes(nextHeight)
 			}
 			go pm.broadcastTxs(peers, types.Transactions{tx})
 		case info := <-pm.confirmCh:
