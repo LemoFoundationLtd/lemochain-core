@@ -482,7 +482,7 @@ func (evm *EVM) ModifyAssetInfoTx(sender common.Address, data []byte) error {
 }
 
 // TradingAssetTx 交易资产,包含调用智能合约交易
-func (evm *EVM) TradingAssetTx(caller ContractRef, addr common.Address, assetCode, assetId common.Hash, amount *big.Int, gas uint64, input []byte) (ret []byte, leftOverGas uint64, err error) {
+func (evm *EVM) TradingAssetTx(caller ContractRef, addr common.Address, gas uint64, assetId common.Hash, amount *big.Int, input []byte) (ret []byte, leftOverGas uint64, err error) {
 	if evm.vmConfig.NoRecursion && evm.depth > 0 {
 		return nil, gas, nil
 	}

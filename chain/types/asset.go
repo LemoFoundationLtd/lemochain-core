@@ -93,3 +93,10 @@ type ModifyAssetInfo struct {
 	AssetCode common.Hash
 	Info      Profile
 }
+
+// 交易资产
+type TradingAsset struct {
+	AssetId common.Hash
+	Value   *big.Int
+	Input   []byte
+}
