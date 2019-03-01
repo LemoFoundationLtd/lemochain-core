@@ -300,6 +300,11 @@ func (evm *EVM) RegisterOrUpdateToCandidate(candidateAddress, to common.Address,
 // CreateAssetTx 创建资产 todo profile 接口要变
 func (evm *EVM) CreateAssetTx(sender common.Address, data []byte, txHash common.Hash) error {
 	var err error
+	// judge data's length
+	if len(data) > types.MaxMarshalAssetLength {
+		err = fmt.Errorf("the length of data by marshal asset more than max length,len(data) = %d ", len(data))
+		return err
+	}
 	issuerAcc := evm.am.GetAccount(sender)
 	asset := &types.Asset{}
 	err = json.Unmarshal(data, asset)
@@ -324,6 +329,10 @@ func (evm *EVM) IssueAssetTx(sender, receiver common.Address, txHash common.Hash
 	issueAsset := &types.IssueAsset{}
 	err := json.Unmarshal(data, issueAsset)
 	if err != nil {
+		return err
+	}
+	if len(issueAsset.MetaData) > types.MaxMetaDataLength {
+		err = fmt.Errorf("the length of metaData more than limit, len(metaData) = %d ", len(issueAsset.MetaData))
 		return err
 	}
 	assetCode := issueAsset.AssetCode
@@ -398,9 +407,17 @@ func (evm *EVM) ReplenishAssetTx(sender, receiver common.Address, data []byte) e
 	// receiver account
 	recAcc := evm.am.GetAccount(receiver)
 	equity, err := recAcc.GetEquityState(newAssetId)
-	if err != nil {
+	if err != nil && err != store.ErrNotExist {
 		return err
 	}
+	if err == store.ErrNotExist {
+		equity = &types.AssetEquity{
+			AssetCode: repl.AssetCode,
+			AssetId:   repl.AssetId,
+			Equity:    big.NewInt(0),
+		}
+	}
+
 	if newAssetCode != equity.AssetCode {
 		err = fmt.Errorf("assetCode not equal: newAssetCode = %s,originalAssetCode = %s. ", newAssetCode.String(), equity.AssetCode.String())
 		return err
