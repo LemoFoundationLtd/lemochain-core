@@ -214,9 +214,7 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 				}
 				// local chain has this block
 				if pm.chain.HasBlock(b.ParentHash()) {
-					if err := pm.chain.InsertChain(b, true); err == nil {
-						go pm.setConfirmsFromCache(b.Height(), b.Hash())
-					}
+					pm.insertBlock(b)
 				} else {
 					pm.blockCache.Add(b)
 					if rcvMsg.p != nil {
@@ -232,9 +230,7 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 		case <-queueTimer.C:
 			processBlock := func(block *types.Block) bool {
 				if pm.chain.HasBlock(block.ParentHash()) {
-					if err := pm.chain.InsertChain(block, false); err == nil {
-						go pm.setConfirmsFromCache(block.Height(), block.Hash())
-					}
+					pm.insertBlock(block)
 					return true
 				}
 				return false
@@ -257,6 +253,22 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 		case <-testRcvTimer.C: // just for test
 			testRcvFlag = true
 		}
+	}
+}
+
+// insertBlock insert block
+func (pm *ProtocolManager) insertBlock(b *types.Block) {
+	if err := pm.chain.InsertChain(b, true); err == nil {
+		if len(b.Txs) > 0 {
+			txsKeys := make([]common.Hash, len(b.Txs))
+			for i, tx := range b.Txs {
+				txsKeys[i] = tx.Hash()
+			}
+			pm.txPool.Remove(txsKeys)
+		}
+		go pm.setConfirmsFromCache(b.Height(), b.Hash())
+	} else {
+		log.Errorf("insertBlock failed: %v", err)
 	}
 }
 
