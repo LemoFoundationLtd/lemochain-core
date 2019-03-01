@@ -582,6 +582,8 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		return pm.handleDiscoverReqMsg(msg, p)
 	case DiscoverResMsg:
 		return pm.handleDiscoverResMsg(msg)
+	case GetBlocksWithChangeLogMsg:
+		return pm.handleGetBlocksWithChangeLogMsg(msg, p)
 	default:
 		log.Debugf("invalid code: %d, from: %s", msg.Code, common.ToHex(p.NodeID()[:8]))
 		return ErrInvalidCode
@@ -666,17 +668,19 @@ func (pm *ProtocolManager) handleGetBlocksMsg(msg *p2p.Msg, p *peer) error {
 	if query.From > query.To {
 		return errors.New("invalid request blocks' param")
 	}
-	go pm.respBlocks(query.From, query.To, p)
+	go pm.respBlocks(query.From, query.To, p, false)
 	return nil
 }
 
 // respBlocks response blocks to remote peer
-func (pm *ProtocolManager) respBlocks(from, to uint32, p *peer) {
+func (pm *ProtocolManager) respBlocks(from, to uint32, p *peer, hasChangeLog bool) {
 	if from == to {
 		b := pm.chain.GetBlockByHeight(from)
-		block := b.Copy()
-		if block != nil && p != nil {
-			p.SendBlocks([]*types.Block{block})
+		if !hasChangeLog {
+			b = b.Copy()
+		}
+		if b != nil && p != nil {
+			p.SendBlocks([]*types.Block{b})
 		}
 		return
 	}
@@ -694,8 +698,10 @@ func (pm *ProtocolManager) respBlocks(from, to uint32, p *peer) {
 		blocks := make(types.Blocks, 0, eachSize)
 		for j := 0; j < eachSize; j++ {
 			b := pm.chain.GetBlockByHeight(height)
-			block := b.Copy()
-			blocks = append(blocks, block)
+			if !hasChangeLog {
+				b = b.Copy()
+			}
+			blocks = append(blocks, b)
 			height++
 			if height > to {
 				break
@@ -774,5 +780,18 @@ func (pm *ProtocolManager) handleDiscoverResMsg(msg *p2p.Msg) error {
 		return fmt.Errorf("handleDiscoverResMsg error: %v", err)
 	}
 	pm.discover.AddNewList(disRes.Nodes)
+	return nil
+}
+
+// handleGetBlocksWithChangeLogMsg for
+func (pm *ProtocolManager) handleGetBlocksWithChangeLogMsg(msg *p2p.Msg, p *peer) error {
+	var query GetBlocksData
+	if err := msg.Decode(&query); err != nil {
+		return fmt.Errorf("handleGetBlocksMsg error: %v", err)
+	}
+	if query.From > query.To {
+		return errors.New("invalid request blocks' param")
+	}
+	go pm.respBlocks(query.From, query.To, p, true)
 	return nil
 }

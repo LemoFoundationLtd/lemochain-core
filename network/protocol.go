@@ -21,6 +21,9 @@ const (
 	// for find node
 	DiscoverReqMsg = 0x0c // find node request message
 	DiscoverResMsg = 0x0d // find node response message
+
+	// for lemochain-server and light node
+	GetBlocksWithChangeLogMsg = 0x0e
 )
 
 // GetLatestStatus get latest status
