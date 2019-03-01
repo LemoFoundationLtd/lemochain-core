@@ -31,11 +31,18 @@ type versionRecordMarshaling struct {
 // These objects are stored in the store.
 
 const (
+	// candidate profile
 	CandidateKeyIsCandidate  string = "isCandidate"
 	CandidateKeyNodeID       string = "nodeID"
 	CandidateKeyHost         string = "host"
 	CandidateKeyPort         string = "port"
 	CandidateKeyMinerAddress string = "minerAddress"
+	// asset profile
+	AssetName              string = "name"
+	AssetSymbol            string = "symbol"
+	AssetDescription       string = "description"
+	AssetStop              string = "stop"
+	AssetSuggestedGasLimit string = "suggestedGasLimit"
 )
 
 type Pair struct {
@@ -341,6 +348,7 @@ type AccountAccessor interface {
 	GetEquityState(id common.Hash) (*AssetEquity, error)
 	SetEquityState(id common.Hash, equity *AssetEquity) error
 
+	GetIssuerState(code common.Hash) common.Address
 	IsEmpty() bool
 	GetSuicide() bool
 	SetSuicide(suicided bool)
