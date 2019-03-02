@@ -2,12 +2,12 @@ package store
 
 import (
 	"bytes"
-	"encoding/binary"
 	"errors"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
+	"github.com/LemoFoundationLtd/lemochain-go/store/leveldb"
 	"os"
 	"strconv"
 	"sync"
@@ -19,11 +19,10 @@ type ChainDatabase struct {
 	LastConfirm     *CBlock
 	UnConfirmBlocks map[common.Hash]*CBlock
 	Context         *RunContext
-
-	DB      *MySqlDB
-	Beansdb *BeansDB
-	BizDB   *BizDatabase
-	rw      sync.RWMutex
+	LevelDB         *leveldb.LevelDBDatabase
+	Beansdb         *BeansDB
+	BizDB           *BizDatabase
+	rw              sync.RWMutex
 }
 
 func checkHome(home string) error {
@@ -52,12 +51,12 @@ func NewChainDataBase(home string, driver string, dns string) *ChainDatabase {
 
 	db := &ChainDatabase{
 		UnConfirmBlocks: make(map[common.Hash]*CBlock),
-		DB:              NewMySqlDB(driver, dns),
 		Context:         NewRunContext(home),
+		LevelDB:         leveldb.NewLevelDBDatabase(home, 16, 16),
 	}
 
-	db.BizDB = NewBizDatabase(db, db.DB)
-	db.Beansdb = NewBeansDB(home, 2, db.DB, db.AfterScan)
+	db.BizDB = NewBizDatabase(db, nil)
+	db.Beansdb = NewBeansDB(home, 2, db.LevelDB, db.AfterScan)
 
 	db.LastConfirm = NewGenesisBlock(db.Context.GetStableBlock(), db.Beansdb)
 	candidates, err := db.Context.Candidates.GetCandidates()
@@ -110,7 +109,7 @@ func (database *ChainDatabase) blockCommit(hash common.Hash) error {
 	}
 
 	batch.Put(CACHE_FLG_BLOCK, hash[:], buf)
-	batch.Put(CACHE_FLG_BLOCK_HEIGHT, encodeBlockNumber2Hash(cItem.Block.Height()).Bytes(), hash[:])
+	batch.Put(CACHE_FLG_BLOCK_HEIGHT, leveldb.GetCanonicalKey(cItem.Block.Height()), hash[:])
 
 	// store account
 	decode := func(account *types.AccountData, batch Batch) error {
@@ -249,7 +248,7 @@ func (database *ChainDatabase) GetBlockByHeight(height uint32) (*types.Block, er
 	database.rw.Lock()
 	defer database.rw.Unlock()
 
-	val, err := database.Beansdb.Get(encodeBlockNumber2Hash(height).Bytes())
+	val, err := database.Beansdb.Get(leveldb.GetCanonicalKey(height))
 	if err != nil {
 		return nil, err
 	}
@@ -436,15 +435,6 @@ func (database *ChainDatabase) GetConfirms(hash common.Hash) ([]types.SignData, 
 	} else {
 		return block.Confirms, nil
 	}
-}
-
-func encodeBlockNumber2Hash(number uint32) common.Hash {
-	enc := make([]byte, 4)
-	binary.BigEndian.PutUint32(enc, number)
-
-	prefix := []byte("height-hash-")
-	hash := append(prefix, enc...)
-	return common.BytesToHash(hash)
 }
 
 func (database *ChainDatabase) LoadLatestBlock() (*types.Block, error) {
@@ -646,6 +636,15 @@ func (database *ChainDatabase) CandidatesRanking(hash common.Hash) {
 	cItem.Ranking()
 }
 
+func (database *ChainDatabase) GetAssetCode(code common.Hash) (common.Address, error) {
+	return leveldb.GetAssetCode(database.LevelDB, code)
+}
+
+func (database *ChainDatabase) GetAssetID(id common.Hash) (common.Address, error) {
+	return leveldb.GetAssetID(database.LevelDB, id)
+}
+
 func (database *ChainDatabase) Close() error {
+	database.LevelDB.Close()
 	return nil
 }

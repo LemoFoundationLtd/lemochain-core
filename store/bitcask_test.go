@@ -1,6 +1,7 @@
 package store
 
 import (
+	"github.com/LemoFoundationLtd/lemochain-go/store/leveldb"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -10,7 +11,7 @@ var dns = "root:123123@tcp(localhost:3306)/lemochain?charset=utf8mb4"
 func TestBitCask_Put(t *testing.T) {
 	ClearData()
 
-	bitcask, err := NewBitCask(GetStorePath(), 0, 0, nil, NewMySqlDB(DRIVER_MYSQL, dns))
+	bitcask, err := NewBitCask(GetStorePath(), 0, 0, nil, leveldb.NewLevelDBDatabase(GetStorePath(), 16, 16))
 	assert.NoError(t, err)
 	assert.NotNil(t, bitcask)
 
@@ -31,7 +32,9 @@ func TestBitCask_Put(t *testing.T) {
 func TestBitCask_Commit(t *testing.T) {
 	ClearData()
 
-	bitcask, err := NewBitCask(GetStorePath(), 0, 0, nil, NewMySqlDB(DRIVER_MYSQL, dns))
+	// bitcask, err := NewBitCask(GetStorePath(), 0, 0, nil, NewMySqlDB(DRIVER_MYSQL, dns))
+	bitcask, err := NewBitCask(GetStorePath(), 0, 0, nil, leveldb.NewLevelDBDatabase(GetStorePath(), 16, 16))
+
 	assert.NoError(t, err)
 	assert.NotNil(t, bitcask)
 

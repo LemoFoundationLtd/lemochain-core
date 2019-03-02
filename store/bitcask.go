@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
+	"github.com/LemoFoundationLtd/lemochain-go/store/leveldb"
 	"io"
 	"os"
 	"path/filepath"
@@ -50,7 +51,7 @@ type BitCask struct {
 	Cache map[string]RIndex
 
 	After   AfterScan
-	IndexDB DB
+	IndexDB *leveldb.LevelDBDatabase
 }
 
 func (bitcask *BitCask) afterScan(flag uint, route []byte, key []byte, val []byte, offset uint32) error {
@@ -96,7 +97,7 @@ func (bitcask *BitCask) createFile(index int) error {
 	}
 }
 
-func NewBitCask(homePath string, lastIndex int, lastOffset uint32, after AfterScan, indexDB DB) (*BitCask, error) {
+func NewBitCask(homePath string, lastIndex int, lastOffset uint32, after AfterScan, indexDB *leveldb.LevelDBDatabase) (*BitCask, error) {
 	db := &BitCask{HomePath: homePath, After: after, IndexDB: indexDB}
 	db.After = after
 	isExist, err := db.isExist(homePath)
@@ -324,7 +325,16 @@ func (bitcask *BitCask) Put(flag uint, route []byte, key []byte, val []byte) err
 		len: len(data),
 	}
 
-	err = bitcask.IndexDB.SetIndex(int(flag), route, key, int64(offset))
+	// err = bitcask.IndexDB.SetIndex(int(flag), route, key, int64(offset))
+	// if err != nil {
+	// 	return err
+	// }
+	err = leveldb.SetPos(bitcask.IndexDB, key, &leveldb.Position{
+		Flag:   uint32(flag),
+		Route:  route,
+		Offset: uint32(offset),
+	})
+
 	if err != nil {
 		return err
 	}
@@ -416,11 +426,16 @@ func (bitcask *BitCask) Get4Cache(route []byte, key []byte) ([]byte, error) {
 
 	index, ok := bitcask.Cache[string(key)]
 	if !ok {
-		flg, route, offset, err := bitcask.IndexDB.GetIndex(key)
+		position, err := leveldb.GetPos(bitcask.IndexDB, key)
+		// if err != nil {
+		// 	return nil, err
+		// }
+		//
+		// flg, route, offset, err := bitcask.IndexDB.GetIndex(key)
 		if err != nil {
 			return nil, err
 		} else {
-			return bitcask.get(uint(flg), route, key, offset)
+			return bitcask.get(uint(position.Flag), position.Route, key, int64(position.Offset))
 		}
 	} else {
 		return bitcask.get(index.flg, route, key, int64(index.pos))
@@ -501,7 +516,17 @@ func (bitcask *BitCask) Commit(batch Batch) error {
 				len: len(tmpBuf[index]),
 			}
 
-			err = bitcask.IndexDB.SetIndex(int(items[index].Flg), batch.Route(), items[index].Key, int64(curPos))
+			// err = bitcask.IndexDB.SetIndex(int(items[index].Flg), batch.Route(), items[index].Key, int64(curPos))
+			// if err != nil {
+			// 	return err
+			// }
+
+			err = leveldb.SetPos(bitcask.IndexDB, items[index].Key, &leveldb.Position{
+				Flag:   uint32(items[index].Flg),
+				Route:  batch.Route(),
+				Offset: uint32(curPos),
+			})
+
 			if err != nil {
 				return err
 			}

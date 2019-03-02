@@ -8,6 +8,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
+	"github.com/LemoFoundationLtd/lemochain-go/store/leveldb"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -142,7 +143,7 @@ func (bitcaskIndexes *BitcaskIndexes) flush(home string) error {
 type BeansDB struct {
 	height    uint
 	bitcasks  []*BitCask
-	indexDB   DB
+	indexDB   *leveldb.LevelDBDatabase
 	route2key map[string][]byte
 	scanIndex BitcaskIndexes
 
@@ -151,7 +152,7 @@ type BeansDB struct {
 
 type BizAfterScan func(flag uint, key []byte, val []byte) error
 
-func NewBeansDB(home string, height int, DB *MySqlDB, after BizAfterScan) *BeansDB {
+func NewBeansDB(home string, height int, DB *leveldb.LevelDBDatabase, after BizAfterScan) *BeansDB {
 	if height != 2 {
 		panic("beansdb height != 2")
 	}
@@ -267,22 +268,17 @@ func (beansdb *BeansDB) Has(key []byte) (bool, error) {
 func (beansdb *BeansDB) Get(key []byte) ([]byte, error) {
 	route, ok := beansdb.route2key[string(key)]
 	if !ok {
-		flg, route, offset, err := beansdb.indexDB.GetIndex(key)
+		position, err := leveldb.GetPos(beansdb.indexDB, key)
 		if err != nil {
-			log.Errorf("get index from db err : " + err.Error())
 			return nil, err
 		}
 
-		if route == nil {
-			//log.Error("get index from db is not exist.")
+		if position == nil {
 			return nil, nil
 		}
 
-		// str := common.BytesToHash(route).Hex()
-		// log.Error("str:" + str)
-
 		bitcask := beansdb.route(route)
-		val, err := bitcask.Get(uint(flg), route, key, offset)
+		val, err := bitcask.Get(uint(position.Flag), position.Route, key, int64(position.Offset))
 		if err != nil {
 			log.Error("get data from disk err : " + err.Error())
 			return nil, err

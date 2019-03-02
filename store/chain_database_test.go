@@ -11,6 +11,7 @@ import (
 
 func TestChainDatabase_Test(t *testing.T) {
 	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
+	defer cacheChain.Close()
 	result160, _ := cacheChain.GetBlockByHeight(160)
 	result161, _ := cacheChain.GetBlockByHeight(161)
 	assert.Equal(t, result160, result161)
@@ -20,6 +21,8 @@ func TestCacheChain_SetBlock(t *testing.T) {
 	ClearData()
 
 	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
+	defer cacheChain.Close()
+
 	result, err := cacheChain.GetBlockByHeight(0)
 	assert.Equal(t, err, ErrNotExist)
 
@@ -93,6 +96,8 @@ func TestCacheChain_SetBlockError(t *testing.T) {
 	// ERROR #1
 	ClearData()
 	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
+	defer cacheChain.Close()
+
 	block1 := GetBlock1()
 
 	assert.PanicsWithValue(t, "(database.LastConfirm.Block == nil) && (block.Height() != 0) && (block.ParentHash() != common.Hash{})", func() {
@@ -153,6 +158,7 @@ func TestCacheChain_SetBlockError(t *testing.T) {
 func TestCacheChain_IsExistByHash(t *testing.T) {
 	ClearData()
 	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
+	defer cacheChain.Close()
 
 	isExist, err := cacheChain.IsExistByHash(common.Hash{})
 	assert.NoError(t, err)
@@ -188,6 +194,7 @@ func TestCacheChain_WriteChain(t *testing.T) {
 	block4 := GetBlock4()
 
 	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
+
 	cacheChain.SetBlock(block0.Hash(), block0)
 	err := cacheChain.SetStableBlock(block0.Hash())
 	assert.NoError(t, err)
@@ -208,9 +215,12 @@ func TestCacheChain_WriteChain(t *testing.T) {
 
 	result, err = cacheChain.GetBlockByHeight(3)
 	assert.Equal(t, ErrNotExist, err)
+	cacheChain.Close()
 
 	// from db
 	cacheChain = NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
+	defer cacheChain.Close()
+
 	result, err = cacheChain.GetBlockByHeight(1)
 	assert.NoError(t, err)
 	assert.Equal(t, result.Hash(), block1.Hash())
@@ -221,9 +231,11 @@ func TestCacheChain_WriteChain(t *testing.T) {
 
 	result, err = cacheChain.GetBlockByHeight(3)
 	assert.Equal(t, ErrNotExist, err)
+	cacheChain.Close()
 
 	ClearData()
 	cacheChain = NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
+
 	cacheChain.SetBlock(block0.Hash(), block0)
 	err = cacheChain.SetStableBlock(block0.Hash())
 	assert.NoError(t, err)
@@ -552,6 +564,7 @@ func TestChainDatabase_CandidatesRanking(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(page))
 	assert.Equal(t, uint32(count), total)
+	cacheChain.Close()
 
 	cacheChain = NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
 	top = cacheChain.GetCandidatesTop(block1.Hash())
