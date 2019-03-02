@@ -1,16 +1,19 @@
 package vm
 
 import (
+	"encoding/json"
 	"errors"
-	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
-	"math/big"
-	"sync/atomic"
-	"time"
-
+	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
+	"github.com/LemoFoundationLtd/lemochain-go/store"
+	"math/big"
+	"strings"
+	"sync/atomic"
+	"time"
 )
 
 type (
@@ -215,7 +218,7 @@ func (evm *EVM) CallVoteTx(voter, node common.Address, gas uint64, initialBalanc
 	return gas, err
 }
 
-// Candidate node account transaction call
+// RegisterOrUpdateToCandidate candidate node account transaction call
 func (evm *EVM) RegisterOrUpdateToCandidate(candidateAddress, to common.Address, candiNode types.Profile, gas uint64, initialSenderBalance *big.Int) (leftgas uint64, err error) {
 	// Candidate node information
 	newIsCandidate, ok := candiNode[types.CandidateKeyIsCandidate]
@@ -292,6 +295,323 @@ func (evm *EVM) RegisterOrUpdateToCandidate(candidateAddress, to common.Address,
 	// 	evm.am.RevertToSnapshot(snapshot)
 	// }
 	return gas, nil
+}
+
+// CreateAssetTx 创建资产 todo profile 接口要变
+func (evm *EVM) CreateAssetTx(sender common.Address, data []byte, txHash common.Hash) error {
+	var err error
+	// judge data's length
+	if len(data) > types.MaxMarshalAssetLength {
+		err = fmt.Errorf("the length of data by marshal asset more than max length,len(data) = %d ", len(data))
+		return err
+	}
+	issuerAcc := evm.am.GetAccount(sender)
+	asset := &types.Asset{}
+	err = json.Unmarshal(data, asset)
+	if err != nil {
+		return err
+	}
+	newAss := asset.Clone()
+	newAss.Issuer = sender
+	newAss.AssetCode = txHash
+	newAss.TotalSupply = big.NewInt(0) // init 0
+	var snapshot = evm.am.Snapshot()
+	err = issuerAcc.SetAssetCodeState(newAss.AssetCode, newAss)
+	if err != nil {
+		evm.am.RevertToSnapshot(snapshot)
+	}
+	return err
+}
+
+// IssueAssetTx 发行资产
+func (evm *EVM) IssueAssetTx(sender, receiver common.Address, txHash common.Hash, data []byte) error {
+
+	issueAsset := &types.IssueAsset{}
+	err := json.Unmarshal(data, issueAsset)
+	if err != nil {
+		return err
+	}
+	if len(issueAsset.MetaData) > types.MaxMetaDataLength {
+		err = fmt.Errorf("the length of metaData more than limit, len(metaData) = %d ", len(issueAsset.MetaData))
+		return err
+	}
+	assetCode := issueAsset.AssetCode
+	issuerAcc := evm.am.GetAccount(sender)
+	asset, err := issuerAcc.GetAssetCodeState(assetCode)
+	if err != nil {
+		return err
+	}
+
+	recAcc := evm.am.GetAccount(receiver)
+	equity := &types.AssetEquity{}
+	equity.AssetCode = asset.AssetCode
+	equity.Equity = issueAsset.Amount
+
+	// judge assert type
+	AssType := asset.Category
+	if AssType == types.Asset01 { // ERC20
+		equity.AssetId = asset.AssetCode
+	} else if AssType == types.Asset02 || AssType == types.Asset03 { // ERC721 and ERC721+20
+		equity.AssetId = txHash
+	} else {
+		err = fmt.Errorf("Assert's Category error,Category = %d ", AssType)
+		return err
+	}
+	var snapshot = evm.am.Snapshot()
+	newAsset := asset.Clone()
+	// add totalSupply
+	if !newAsset.IsDivisible {
+		newAsset.TotalSupply = new(big.Int).Add(newAsset.TotalSupply, big.NewInt(1))
+	} else {
+		newAsset.TotalSupply = new(big.Int).Add(newAsset.TotalSupply, issueAsset.Amount)
+	}
+	err = issuerAcc.SetAssetCodeState(assetCode, newAsset)
+	if err != nil {
+		evm.am.RevertToSnapshot(snapshot)
+		return err
+	}
+	err = recAcc.SetEquityState(equity.AssetId, equity)
+	if err != nil {
+		evm.am.RevertToSnapshot(snapshot)
+		return err
+	}
+	err = recAcc.SetAssetIdState(equity.AssetId, issueAsset.MetaData)
+	if err != nil {
+		evm.am.RevertToSnapshot(snapshot)
+		return err
+	}
+	return nil
+}
+
+// ReplenishAssetTx 增发资产交易
+func (evm *EVM) ReplenishAssetTx(sender, receiver common.Address, data []byte) error {
+	repl := &types.ReplenishAsset{}
+	err := json.Unmarshal(data, repl)
+	if err != nil {
+		return err
+	}
+	newAssetCode := repl.AssetCode
+	newAssetId := repl.AssetId
+	addAmount := repl.Amount
+	// assert owner account
+	issuerAcc := evm.am.GetAccount(sender)
+	asset, err := issuerAcc.GetAssetCodeState(newAssetCode)
+	if err != nil {
+		return err
+	}
+	// judge IsReplenishable
+	if !asset.IsReplenishable {
+		return errors.New("Asset's IsReplenishable is false ")
+	}
+
+	// receiver account
+	recAcc := evm.am.GetAccount(receiver)
+	equity, err := recAcc.GetEquityState(newAssetId)
+	if err != nil && err != store.ErrNotExist {
+		return err
+	}
+	if err == store.ErrNotExist {
+		equity = &types.AssetEquity{
+			AssetCode: repl.AssetCode,
+			AssetId:   repl.AssetId,
+			Equity:    big.NewInt(0),
+		}
+	}
+
+	if newAssetCode != equity.AssetCode {
+		err = fmt.Errorf("assetCode not equal: newAssetCode = %s,originalAssetCode = %s. ", newAssetCode.String(), equity.AssetCode.String())
+		return err
+	}
+	var snapshot = evm.am.Snapshot()
+	// add amount
+	newEquity := equity.Clone()
+	newEquity.Equity = new(big.Int).Add(newEquity.Equity, addAmount)
+	err = recAcc.SetEquityState(newEquity.AssetId, newEquity)
+	if err != nil {
+		evm.am.RevertToSnapshot(snapshot)
+		return err
+	}
+	// add asset totalSupply
+	oldTotalSupply := asset.TotalSupply
+	newAsset := asset.Clone()
+	if !newAsset.IsDivisible {
+		return errors.New("this 'isDivisible == false' kind of asset can't be replenished ")
+	}
+	newTotalSupply := new(big.Int).Add(oldTotalSupply, addAmount)
+	newAsset.TotalSupply = newTotalSupply
+	err = issuerAcc.SetAssetCodeState(newAssetCode, newAsset)
+	if err != nil {
+		evm.am.RevertToSnapshot(snapshot)
+		return err
+	}
+	return nil
+}
+
+// 修改资产profile  todo profile接口要变
+func (evm *EVM) ModifyAssetInfoTx(sender common.Address, data []byte) error {
+	modifyInfo := &types.ModifyAssetInfo{}
+	err := json.Unmarshal(data, modifyInfo)
+	if err != nil {
+		return err
+	}
+	acc := evm.am.GetAccount(sender)
+	oldAsset, err := acc.GetAssetCodeState(modifyInfo.AssetCode)
+	if err != nil {
+		return err
+	}
+	newAsset := oldAsset.Clone()
+	info := modifyInfo.Info
+	// modify profile
+	for k, v := range info {
+		newAsset.Profile[strings.ToLower(k)] = v
+	}
+	// 	judge profile size
+	var length int
+	for _, s := range newAsset.Profile {
+		length = length + len(s)
+	}
+	if length > types.MaxProfileStringLength {
+		return errors.New("The size of the profile exceeded the limit. ")
+	}
+	var snapshot = evm.am.Snapshot()
+	err = acc.SetAssetCodeState(modifyInfo.AssetCode, newAsset)
+	if err != nil {
+		evm.am.RevertToSnapshot(snapshot)
+	}
+	return err
+}
+
+// TradingAssetTx 交易资产,包含调用智能合约交易
+func (evm *EVM) TradingAssetTx(caller ContractRef, addr common.Address, gas uint64, assetId common.Hash, amount *big.Int, input []byte) (ret []byte, leftOverGas uint64, err error) {
+	if evm.vmConfig.NoRecursion && evm.depth > 0 {
+		return nil, gas, nil
+	}
+
+	// Fail if we're trying to execute above the call depth limit
+	if evm.depth > int(params.CallCreateDepth) {
+		return nil, gas, ErrDepth
+	}
+
+	senderAcc := evm.am.GetAccount(caller.GetAddress())
+	senderEquity, err := senderAcc.GetEquityState(assetId)
+	if err != nil {
+		return nil, gas, err
+	}
+	// get asset todo 增加GetIssuerState接口
+	issuer := senderAcc.GetIssuerState(senderEquity.AssetCode)
+	issuerAcc := evm.am.GetAccount(issuer)
+	asset, err := issuerAcc.GetAssetCodeState(senderEquity.AssetCode)
+	if err != nil {
+		return nil, gas, err
+	}
+
+	// Fail if we're trying to transfer more than the available balance
+	if senderEquity.Equity.Cmp(amount) < 0 && asset.IsDivisible {
+		return nil, gas, ErrInsufficientBalance
+	}
+
+	contractAccount := evm.am.GetAccount(addr)
+	code, err := contractAccount.GetCode()
+	if err != nil {
+		return nil, gas, ErrContractCodeLoadFail
+	}
+
+	var (
+		to       = AccountRef(addr)
+		snapshot = evm.am.Snapshot()
+	)
+	if len(code) == 0 && PrecompiledContracts[addr] == nil && amount.Sign() == 0 {
+		return nil, gas, nil
+	}
+
+	// if to == 0, then destruction of assets
+	destroyAsset := addr == common.BytesToAddress([]byte{0})
+
+	// Transfer assetId balance
+	// if isDivisible == false,then we should set the amount equal to the balance value of assetId
+	if !asset.IsDivisible {
+		amount = senderEquity.Equity
+	}
+	if !destroyAsset {
+		toEquity, err := contractAccount.GetEquityState(assetId)
+		if err != nil && err == store.ErrNotExist { // not exist this kind of assetId
+			// 	set new assetEquity for to
+			newToEquity := senderEquity.Clone()
+			newToEquity.Equity = amount
+			err = contractAccount.SetEquityState(assetId, newToEquity)
+			if err != nil {
+				evm.am.RevertToSnapshot(snapshot)
+				return nil, gas, err
+			}
+		} else if err != nil && err != store.ErrNotExist { // other err
+			return nil, gas, err
+		} else { // err == nil
+			// 	add assetId's balance of to
+			newToEquity := toEquity.Clone()
+			newToEquity.Equity = new(big.Int).Add(newToEquity.Equity, amount)
+			err = contractAccount.SetEquityState(assetId, newToEquity)
+			if err != nil {
+				evm.am.RevertToSnapshot(snapshot)
+				return nil, gas, err
+			}
+		}
+	} else {
+		// reduce totalSupply
+		newAsset := asset.Clone()
+		if newAsset.IsDivisible {
+			newAsset.TotalSupply = new(big.Int).Sub(newAsset.TotalSupply, amount)
+		} else {
+			newAsset.TotalSupply = new(big.Int).Sub(newAsset.TotalSupply, big.NewInt(1))
+		}
+		err = issuerAcc.SetAssetCodeState(newAsset.AssetCode, newAsset)
+		if err != nil {
+			evm.am.RevertToSnapshot(snapshot)
+			return nil, gas, err
+		}
+	}
+
+	// reduce sender's asset
+	newSenderEquity := senderEquity.Clone()
+	newSenderEquity.Equity = new(big.Int).Sub(newSenderEquity.Equity, amount)
+	if newSenderEquity.Equity.Cmp(big.NewInt(0)) == 0 {
+		// if assetId's balance == 0,then delete this kind of assetId
+		// todo 移除assetId接口
+		// senderAcc.DeleteAssetIdState(assetId)
+	} else { // set new assetEquity for sender
+		err = senderAcc.SetEquityState(assetId, newSenderEquity)
+		if err != nil {
+			evm.am.RevertToSnapshot(snapshot)
+			return nil, gas, err
+		}
+	}
+
+	// Initialise a new contract and set the code that is to be used by the EVM.
+	// The contract is a scoped environment for this execution context only.
+	contract := NewContract(caller, to, amount, gas)
+	contract.SetCallCode(&addr, contractAccount.GetCodeHash(), code)
+
+	start := time.Now()
+
+	// Capture the tracer start/end events in debug mode
+	if evm.vmConfig.Debug && evm.depth == 0 {
+		evm.vmConfig.Tracer.CaptureStart(caller.GetAddress(), addr, false, input, gas, nil)
+
+		defer func() { // Lazy evaluation of the parameters
+			evm.vmConfig.Tracer.CaptureEnd(ret, gas-contract.Gas, time.Since(start), err)
+		}()
+	}
+	ret, err = run(evm, contract, input)
+
+	// When an error was returned by the EVM or when setting the creation code
+	// above we revert to the snapshot and consume any gas remaining. Additionally
+	// when we're in homestead this also counts for code storage gas errors.
+	if err != nil {
+		evm.am.RevertToSnapshot(snapshot)
+		if err != errExecutionReverted {
+			contract.UseGas(contract.Gas)
+		}
+	}
+	return ret, contract.Gas, err
 }
 
 // CallCode executes the contract associated with the addr with the given input

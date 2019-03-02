@@ -5,6 +5,15 @@ import (
 	"math/big"
 )
 
+const (
+	Asset01                = 1    // erc20
+	Asset02                = 2    // erc721
+	Asset03                = 3    // erc20+721
+	MaxProfileStringLength = 1024 // max string length
+	MaxMarshalAssetLength  = 2048
+	MaxMetaDataLength      = 256
+)
+
 type Asset struct {
 	Category        int
 	IsDivisible     bool
@@ -63,4 +72,31 @@ func (asset *Asset) Clone() *Asset {
 			Profile:         clone(asset.Profile),
 		}
 	}
+}
+
+// 发行资产
+type IssueAsset struct {
+	AssetCode common.Hash
+	MetaData  string // 用户传进来的数据
+	Amount    *big.Int
+}
+
+// 增发资产
+type ReplenishAsset struct {
+	AssetCode common.Hash
+	AssetId   common.Hash
+	Amount    *big.Int
+}
+
+// 修改资产profile
+type ModifyAssetInfo struct {
+	AssetCode common.Hash
+	Info      Profile
+}
+
+// 交易资产
+type TradingAsset struct {
+	AssetId common.Hash
+	Value   *big.Int
+	Input   []byte
 }

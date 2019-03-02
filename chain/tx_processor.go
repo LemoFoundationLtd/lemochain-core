@@ -211,6 +211,22 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 
 		restGas, vmErr = vmEnv.RegisterOrUpdateToCandidate(senderAddr, params.FeeReceiveAddress, profile, restGas, initialSenderBalance)
 
+	case params.CreateAssetTx:
+		vmErr = vmEnv.CreateAssetTx(senderAddr, tx.Data(), tx.Hash())
+	case params.IssueAssetTx:
+		vmErr = vmEnv.IssueAssetTx(senderAddr, recipientAddr, tx.Hash(), tx.Data())
+	case params.ReplenishAssetTx:
+		vmErr = vmEnv.ReplenishAssetTx(senderAddr, recipientAddr, tx.Data())
+	case params.ModifyAssetTx:
+		vmErr = vmEnv.ModifyAssetInfoTx(senderAddr, tx.Data())
+	case params.TradingAssetTx:
+		tradingAsset := &types.TradingAsset{}
+		err = json.Unmarshal(tx.Data(), tradingAsset)
+		if err != nil {
+			log.Errorf("unmarshal trading asset data err: %s", err)
+			return 0, err
+		}
+		_, restGas, vmErr = vmEnv.TradingAssetTx(sender, recipientAddr, restGas, tradingAsset.AssetId, tradingAsset.Value, tradingAsset.Input)
 	default:
 		log.Errorf("The type of transaction is not defined. txType = %d\n", tx.Type())
 	}

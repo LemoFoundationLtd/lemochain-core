@@ -71,10 +71,8 @@ func CanTransfer(am vm.AccountManager, addr common.Address, amount *big.Int) boo
 
 // Transfer subtracts amount from sender and adds amount to recipient using the given Db
 func Transfer(am vm.AccountManager, sender, recipient common.Address, amount *big.Int) {
-	if amount.Cmp(big.NewInt(0)) == 1 {
-		senderAccount := am.GetAccount(sender)
-		recipientAccount := am.GetAccount(recipient)
-		senderAccount.SetBalance(new(big.Int).Sub(senderAccount.GetBalance(), amount))
-		recipientAccount.SetBalance(new(big.Int).Add(recipientAccount.GetBalance(), amount))
-	}
+	senderAccount := am.GetAccount(sender)
+	recipientAccount := am.GetAccount(recipient)
+	senderAccount.SetBalance(new(big.Int).Sub(senderAccount.GetBalance(), amount))
+	recipientAccount.SetBalance(new(big.Int).Add(recipientAccount.GetBalance(), amount))
 }
