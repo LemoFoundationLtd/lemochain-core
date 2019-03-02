@@ -297,7 +297,7 @@ func (evm *EVM) RegisterOrUpdateToCandidate(candidateAddress, to common.Address,
 	return gas, nil
 }
 
-// CreateAssetTx 创建资产 todo profile 接口要变
+// CreateAssetTx 创建资产
 func (evm *EVM) CreateAssetTx(sender common.Address, data []byte, txHash common.Hash) error {
 	var err error
 	// judge data's length
@@ -316,7 +316,7 @@ func (evm *EVM) CreateAssetTx(sender common.Address, data []byte, txHash common.
 	newAss.AssetCode = txHash
 	newAss.TotalSupply = big.NewInt(0) // init 0
 	var snapshot = evm.am.Snapshot()
-	err = issuerAcc.SetAssetCodeState(newAss.AssetCode, newAss)
+	err = issuerAcc.SetAssetCode(newAss.AssetCode, newAss)
 	if err != nil {
 		evm.am.RevertToSnapshot(snapshot)
 	}
@@ -331,13 +331,19 @@ func (evm *EVM) IssueAssetTx(sender, receiver common.Address, txHash common.Hash
 	if err != nil {
 		return err
 	}
+	// metaData length limit
 	if len(issueAsset.MetaData) > types.MaxMetaDataLength {
 		err = fmt.Errorf("the length of metaData more than limit, len(metaData) = %d ", len(issueAsset.MetaData))
 		return err
 	}
+	// amount > 0
+	if issueAsset.Amount.Cmp(big.NewInt(0)) <= 0 {
+		err = fmt.Errorf("issue asset amount must > 0 , currentAmount = %s", issueAsset.Amount.String())
+		return err
+	}
 	assetCode := issueAsset.AssetCode
 	issuerAcc := evm.am.GetAccount(sender)
-	asset, err := issuerAcc.GetAssetCodeState(assetCode)
+	asset, err := issuerAcc.GetAssetCode(assetCode)
 	if err != nil {
 		return err
 	}
@@ -351,25 +357,33 @@ func (evm *EVM) IssueAssetTx(sender, receiver common.Address, txHash common.Hash
 	AssType := asset.Category
 	if AssType == types.Asset01 { // ERC20
 		equity.AssetId = asset.AssetCode
-	} else if AssType == types.Asset02 || AssType == types.Asset03 { // ERC721 and ERC721+20
+	} else if AssType == types.Asset02 || AssType == types.Asset03 { // ERC721 or ERC721+20
 		equity.AssetId = txHash
 	} else {
-		err = fmt.Errorf("Assert's Category error,Category = %d ", AssType)
+		err = fmt.Errorf("Assert's Category not exist ,Category = %d ", AssType)
 		return err
 	}
 	var snapshot = evm.am.Snapshot()
 	newAsset := asset.Clone()
 	// add totalSupply
-	if !newAsset.IsDivisible {
-		newAsset.TotalSupply = new(big.Int).Add(newAsset.TotalSupply, big.NewInt(1))
-	} else {
-		newAsset.TotalSupply = new(big.Int).Add(newAsset.TotalSupply, issueAsset.Amount)
+	var oldTotalSupply *big.Int
+	var newTotalSupply *big.Int
+	oldTotalSupply, err = issuerAcc.GetAssetCodeTotalSupply(assetCode)
+	if err != nil {
+		return err
 	}
-	err = issuerAcc.SetAssetCodeState(assetCode, newAsset)
+	if !newAsset.IsDivisible {
+		newTotalSupply = new(big.Int).Add(oldTotalSupply, big.NewInt(1))
+	} else {
+		newTotalSupply = new(big.Int).Add(oldTotalSupply, issueAsset.Amount)
+	}
+	// set new totalSupply
+	err = issuerAcc.SetAssetCodeTotalSupply(assetCode, newTotalSupply)
 	if err != nil {
 		evm.am.RevertToSnapshot(snapshot)
 		return err
 	}
+	// set new asset equity for receiver
 	err = recAcc.SetEquityState(equity.AssetId, equity)
 	if err != nil {
 		evm.am.RevertToSnapshot(snapshot)
@@ -393,9 +407,14 @@ func (evm *EVM) ReplenishAssetTx(sender, receiver common.Address, data []byte) e
 	newAssetCode := repl.AssetCode
 	newAssetId := repl.AssetId
 	addAmount := repl.Amount
-	// assert owner account
+	// amount > 0
+	if addAmount.Cmp(big.NewInt(0)) <= 0 {
+		err = fmt.Errorf("replenish asset amount must > 0,currentAmount = %s", addAmount.String())
+		return err
+	}
+	// assert issuer account
 	issuerAcc := evm.am.GetAccount(sender)
-	asset, err := issuerAcc.GetAssetCodeState(newAssetCode)
+	asset, err := issuerAcc.GetAssetCode(newAssetCode)
 	if err != nil {
 		return err
 	}
@@ -403,7 +422,10 @@ func (evm *EVM) ReplenishAssetTx(sender, receiver common.Address, data []byte) e
 	if !asset.IsReplenishable {
 		return errors.New("Asset's IsReplenishable is false ")
 	}
-
+	// erc721 asset can't be replenished
+	if !asset.IsDivisible {
+		return errors.New("this 'isDivisible == false' kind of asset can't be replenished ")
+	}
 	// receiver account
 	recAcc := evm.am.GetAccount(receiver)
 	equity, err := recAcc.GetEquityState(newAssetId)
@@ -412,8 +434,8 @@ func (evm *EVM) ReplenishAssetTx(sender, receiver common.Address, data []byte) e
 	}
 	if err == store.ErrNotExist {
 		equity = &types.AssetEquity{
-			AssetCode: repl.AssetCode,
-			AssetId:   repl.AssetId,
+			AssetCode: newAssetCode,
+			AssetId:   newAssetId,
 			Equity:    big.NewInt(0),
 		}
 	}
@@ -432,14 +454,14 @@ func (evm *EVM) ReplenishAssetTx(sender, receiver common.Address, data []byte) e
 		return err
 	}
 	// add asset totalSupply
-	oldTotalSupply := asset.TotalSupply
-	newAsset := asset.Clone()
-	if !newAsset.IsDivisible {
-		return errors.New("this 'isDivisible == false' kind of asset can't be replenished ")
+	var oldTotalSupply *big.Int
+	var newTotalSupply *big.Int
+	oldTotalSupply, err = issuerAcc.GetAssetCodeTotalSupply(newAssetCode)
+	if err != nil {
+		return err
 	}
-	newTotalSupply := new(big.Int).Add(oldTotalSupply, addAmount)
-	newAsset.TotalSupply = newTotalSupply
-	err = issuerAcc.SetAssetCodeState(newAssetCode, newAsset)
+	newTotalSupply = new(big.Int).Add(oldTotalSupply, addAmount)
+	err = issuerAcc.SetAssetCodeTotalSupply(newAssetCode, newTotalSupply)
 	if err != nil {
 		evm.am.RevertToSnapshot(snapshot)
 		return err
@@ -447,7 +469,7 @@ func (evm *EVM) ReplenishAssetTx(sender, receiver common.Address, data []byte) e
 	return nil
 }
 
-// 修改资产profile  todo profile接口要变
+// 修改资产profile
 func (evm *EVM) ModifyAssetInfoTx(sender common.Address, data []byte) error {
 	modifyInfo := &types.ModifyAssetInfo{}
 	err := json.Unmarshal(data, modifyInfo)
@@ -455,26 +477,30 @@ func (evm *EVM) ModifyAssetInfoTx(sender common.Address, data []byte) error {
 		return err
 	}
 	acc := evm.am.GetAccount(sender)
-	oldAsset, err := acc.GetAssetCodeState(modifyInfo.AssetCode)
-	if err != nil {
-		return err
-	}
-	newAsset := oldAsset.Clone()
+	// oldAsset, err := acc.GetAssetCode(modifyInfo.AssetCode)
+	// if err != nil {
+	// 	return err
+	// }
+	// newAsset := oldAsset.Clone()
 	info := modifyInfo.Info
+	var snapshot = evm.am.Snapshot()
 	// modify profile
 	for k, v := range info {
-		newAsset.Profile[strings.ToLower(k)] = v
+		err = acc.SetAssetCodeState(modifyInfo.AssetCode, strings.ToLower(k), v)
+		if err != nil {
+			evm.am.RevertToSnapshot(snapshot)
+			return err
+		}
 	}
 	// 	judge profile size
+	asset, err := acc.GetAssetCode(modifyInfo.AssetCode)
 	var length int
-	for _, s := range newAsset.Profile {
+	for _, s := range asset.Profile {
 		length = length + len(s)
 	}
 	if length > types.MaxProfileStringLength {
-		return errors.New("The size of the profile exceeded the limit. ")
+		err = errors.New("The size of the profile exceeded the limit. ")
 	}
-	var snapshot = evm.am.Snapshot()
-	err = acc.SetAssetCodeState(modifyInfo.AssetCode, newAsset)
 	if err != nil {
 		evm.am.RevertToSnapshot(snapshot)
 	}
@@ -500,7 +526,7 @@ func (evm *EVM) TradingAssetTx(caller ContractRef, addr common.Address, gas uint
 	// get asset todo 增加GetIssuerState接口
 	issuer := senderAcc.GetIssuerState(senderEquity.AssetCode)
 	issuerAcc := evm.am.GetAccount(issuer)
-	asset, err := issuerAcc.GetAssetCodeState(senderEquity.AssetCode)
+	asset, err := issuerAcc.GetAssetCode(senderEquity.AssetCode)
 	if err != nil {
 		return nil, gas, err
 	}
@@ -544,6 +570,7 @@ func (evm *EVM) TradingAssetTx(caller ContractRef, addr common.Address, gas uint
 				return nil, gas, err
 			}
 		} else if err != nil && err != store.ErrNotExist { // other err
+			evm.am.RevertToSnapshot(snapshot)
 			return nil, gas, err
 		} else { // err == nil
 			// 	add assetId's balance of to
@@ -557,13 +584,18 @@ func (evm *EVM) TradingAssetTx(caller ContractRef, addr common.Address, gas uint
 		}
 	} else {
 		// reduce totalSupply
-		newAsset := asset.Clone()
-		if newAsset.IsDivisible {
-			newAsset.TotalSupply = new(big.Int).Sub(newAsset.TotalSupply, amount)
-		} else {
-			newAsset.TotalSupply = new(big.Int).Sub(newAsset.TotalSupply, big.NewInt(1))
+		var oldTotalSupply *big.Int
+		var newTotalSupply *big.Int
+		oldTotalSupply, err = issuerAcc.GetAssetCodeTotalSupply(senderEquity.AssetCode)
+		if err != nil {
+			return nil, gas, err
 		}
-		err = issuerAcc.SetAssetCodeState(newAsset.AssetCode, newAsset)
+		if asset.IsDivisible {
+			newTotalSupply = new(big.Int).Sub(oldTotalSupply, amount)
+		} else {
+			newTotalSupply = new(big.Int).Sub(oldTotalSupply, big.NewInt(1))
+		}
+		err = issuerAcc.SetAssetCodeTotalSupply(senderEquity.AssetCode, newTotalSupply)
 		if err != nil {
 			evm.am.RevertToSnapshot(snapshot)
 			return nil, gas, err
@@ -575,8 +607,11 @@ func (evm *EVM) TradingAssetTx(caller ContractRef, addr common.Address, gas uint
 	newSenderEquity.Equity = new(big.Int).Sub(newSenderEquity.Equity, amount)
 	if newSenderEquity.Equity.Cmp(big.NewInt(0)) == 0 {
 		// if assetId's balance == 0,then delete this kind of assetId
-		// todo 移除assetId接口
-		// senderAcc.DeleteAssetIdState(assetId)
+		err = senderAcc.DelAssetIdState(assetId)
+		if err != nil {
+			evm.am.RevertToSnapshot(snapshot)
+			return nil, gas, err
+		}
 	} else { // set new assetEquity for sender
 		err = senderAcc.SetEquityState(assetId, newSenderEquity)
 		if err != nil {

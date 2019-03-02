@@ -2,7 +2,6 @@ package node
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -150,7 +149,7 @@ func (c *PublicChainAPI) GetCandidateList(index, size int) (*CandidateListRes, e
 	candidateList := make([]*CandidateInfo, 0, len(addresses))
 	for i := 0; i < len(addresses); i++ {
 		candidateAccount := c.chain.AccountManager().GetAccount(addresses[i])
-		mapProfile := candidateAccount.GetCandidateProfile()
+		mapProfile := candidateAccount.GetCandidate()
 		if isCandidate, ok := mapProfile[types.CandidateKeyIsCandidate]; !ok || isCandidate == params.NotCandidateNode {
 			err = fmt.Errorf("the node of %s is not candidate node", addresses[i].String())
 			return nil, err
@@ -185,7 +184,7 @@ func (c *PublicChainAPI) GetCandidateTop30() []*CandidateInfo {
 		}
 		CandidateAddress := info.GetAddress()
 		CandidateAccount := c.chain.AccountManager().GetAccount(CandidateAddress)
-		profile := CandidateAccount.GetCandidateProfile()
+		profile := CandidateAccount.GetCandidate()
 		candidateInfo.Profile = profile
 		candidateInfo.CandidateAddress = CandidateAddress.String()
 		candidateInfo.Votes = info.GetTotal().String()
@@ -445,77 +444,114 @@ func (t *PublicTxAPI) SendReimbursedGasTx(senderPrivate, gasPayerPrivate string,
 	return lastSignTx.Hash(), err
 }
 
-// IssueToken 发行token交易
-func (t *PublicTxAPI) IssueToken(prv *ecdsa.PrivateKey, decimals uint8, amount *big.Int, mineable bool) (common.Hash, error) {
-	data := []byte{1} // todo
-	tx := types.NoReceiverTransaction(nil, uint64(500000), big.NewInt(1), data, params.IssueTokenTx, t.node.chainID, uint64(time.Now().Unix()+30*60), "", "issue token tx")
-	signTx, err := types.MakeSigner().SignTx(tx, prv)
+// CreateAsset 创建资产
+func (t *PublicTxAPI) CreateAsset(prv string, category, decimals int, isReplenishable, isDivisible bool) (common.Hash, error) {
+	private, _ := crypto.HexToECDSA(prv)
+	issuer := crypto.PubkeyToAddress(private.PublicKey)
+	profile := make(types.Profile)
+	profile[types.AssetName] = "Demo Token"
+	profile[types.AssetSymbol] = "DT"
+	profile[types.AssetDescription] = "test issue token"
+	profile[types.AssetStop] = "false"
+	profile[types.AssetSuggestedGasLimit] = "60000"
+	asset := &types.Asset{
+		Category:        category,
+		IsDivisible:     isDivisible,
+		AssetCode:       common.Hash{},
+		Decimals:        decimals,
+		TotalSupply:     big.NewInt(100000),
+		IsReplenishable: isReplenishable,
+		Issuer:          issuer,
+		Profile:         profile,
+	}
+	data, err := json.Marshal(asset)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	tx := types.NoReceiverTransaction(nil, uint64(500000), big.NewInt(1), data, params.CreateAssetTx, t.node.chainID, uint64(time.Now().Unix()+30*60), "", "create asset tx")
+	signTx, err := types.MakeSigner().SignTx(tx, private)
 	if err != nil {
 		return common.Hash{}, err
 	}
 	return t.SendTx(signTx)
 }
 
-// AdditionalToken 增发token交易
-func (t *PublicTxAPI) AdditionalToken(prv *ecdsa.PrivateKey, code int32, amount *big.Int, receiver common.Address) (common.Hash, error) {
-	data := []byte{1} // todo
-	tx := types.NoReceiverTransaction(nil, uint64(500000), big.NewInt(1), data, params.AdditionalTokenTx, t.node.chainID, uint64(time.Now().Unix()+30*60), "", "issue token tx")
-	signTx, err := types.MakeSigner().SignTx(tx, prv)
+// 发行资产
+func (t *PublicTxAPI) IssueAsset(prv string, receiver common.Address, assetCode common.Hash, amount *big.Int, metaData string) (common.Hash, error) {
+	issue := &types.IssueAsset{
+		AssetCode: assetCode,
+		MetaData:  metaData,
+		Amount:    amount,
+	}
+	data, err := json.Marshal(issue)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	tx := types.NewTransaction(receiver, nil, uint64(500000), big.NewInt(1), data, params.IssueAssetTx, t.node.chainID, uint64(time.Now().Unix()+30*60), "", "issue asset tx")
+	private, _ := crypto.HexToECDSA(prv)
+	signTx, err := types.MakeSigner().SignTx(tx, private)
 	if err != nil {
 		return common.Hash{}, err
 	}
 	return t.SendTx(signTx)
 }
 
-// TradingToken 交易token,包含调用智能合约交易
-func (t *PublicTxAPI) TradingToken(prv *ecdsa.PrivateKey, to common.Address, code int32, amount *big.Int, input []byte) (common.Hash, error) {
-	data := []byte{1} // todo
-	tx := types.NoReceiverTransaction(nil, uint64(500000), big.NewInt(1), data, params.TradingTokenTx, t.node.chainID, uint64(time.Now().Unix()+30*60), "", "issue token tx")
-	signTx, err := types.MakeSigner().SignTx(tx, prv)
+// 增发资产
+func (t *PublicTxAPI) ReplenishAsset(prv string, receiver common.Address, assetCode, assetId common.Hash, amount *big.Int) (common.Hash, error) {
+	repl := &types.ReplenishAsset{
+		AssetCode: assetCode,
+		AssetId:   assetId,
+		Amount:    amount,
+	}
+	data, err := json.Marshal(repl)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	tx := types.NewTransaction(receiver, nil, uint64(500000), big.NewInt(1), data, params.ReplenishAssetTx, t.node.chainID, uint64(time.Now().Unix()+30*60), "", "replenish asset tx")
+	private, _ := crypto.HexToECDSA(prv)
+	signTx, err := types.MakeSigner().SignTx(tx, private)
 	if err != nil {
 		return common.Hash{}, err
 	}
 	return t.SendTx(signTx)
 }
 
-// IssueAssert 发行资产交易
-func (t *PublicTxAPI) IssueAssert(prv *ecdsa.PrivateKey, decimals uint8, metaDataHash []common.Hash, mineable bool) (common.Hash, error) {
-	data := []byte{1} // todo
-	tx := types.NoReceiverTransaction(nil, uint64(500000), big.NewInt(1), data, params.IssueAssertTx, t.node.chainID, uint64(time.Now().Unix()+30*60), "", "issue token tx")
-	signTx, err := types.MakeSigner().SignTx(tx, prv)
+// ModifyAsset 修改资产信息
+func (t *PublicTxAPI) ModifyAsset(prv string, assetCode common.Hash) (common.Hash, error) {
+	info := make(types.Profile)
+	info["name"] = "Modify"
+	info["stop"] = "true"
+	modify := &types.ModifyAssetInfo{
+		AssetCode: assetCode,
+		Info:      info,
+	}
+	data, err := json.Marshal(modify)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	tx := types.NoReceiverTransaction(nil, uint64(500000), big.NewInt(1), data, params.ModifyAssetTx, t.node.chainID, uint64(time.Now().Unix()+30*60), "", "modify asset tx")
+	private, _ := crypto.HexToECDSA(prv)
+	signTx, err := types.MakeSigner().SignTx(tx, private)
 	if err != nil {
 		return common.Hash{}, err
 	}
 	return t.SendTx(signTx)
 }
 
-// AdditionalAssert 增发资产交易
-func (t *PublicTxAPI) AdditionalAssert(prv *ecdsa.PrivateKey, code int32, metaDataHash []common.Hash, receiver common.Address) (common.Hash, error) {
-	data := []byte{1} // todo
-	tx := types.NoReceiverTransaction(nil, uint64(500000), big.NewInt(1), data, params.AdditionalAssertTx, t.node.chainID, uint64(time.Now().Unix()+30*60), "", "issue token tx")
-	signTx, err := types.MakeSigner().SignTx(tx, prv)
+// 交易资产
+func (t *PublicTxAPI) TradingAsset(prv string, to common.Address, assetCode, assetId common.Hash, amount *big.Int, input []byte) (common.Hash, error) {
+	trading := &types.TradingAsset{
+		AssetId: assetId,
+		Value:   amount,
+		Input:   input,
+	}
+	data, err := json.Marshal(trading)
 	if err != nil {
 		return common.Hash{}, err
 	}
-	return t.SendTx(signTx)
-}
-
-// TradingAssert 交易Assert
-func (t *PublicTxAPI) TradingAssert(prv *ecdsa.PrivateKey, to common.Address, code int32, tokenIds []common.Hash, input []byte) (common.Hash, error) {
-	data := []byte{1} // todo
-	tx := types.NoReceiverTransaction(nil, uint64(500000), big.NewInt(1), data, params.TradingAssertTx, t.node.chainID, uint64(time.Now().Unix()+30*60), "", "issue token tx")
-	signTx, err := types.MakeSigner().SignTx(tx, prv)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	return t.SendTx(signTx)
-}
-
-// ModifyTokenAssertInfo 修改token/资产info
-func (t *PublicTxAPI) ModifyTokenAssertInfo(prv *ecdsa.PrivateKey, info map[string]interface{}, code uint32) (common.Hash, error) {
-	data := []byte{1} // todo
-	tx := types.NoReceiverTransaction(nil, uint64(500000), big.NewInt(1), data, params.ModifyTokenAssertInfoTx, t.node.chainID, uint64(time.Now().Unix()+30*60), "", "issue token tx")
-	signTx, err := types.MakeSigner().SignTx(tx, prv)
+	tx := types.NewTransaction(to, amount, uint64(500000), big.NewInt(1), data, params.TradingAssetTx, t.node.chainID, uint64(time.Now().Unix()+30*60), "", "trading asset tx")
+	private, _ := crypto.HexToECDSA(prv)
+	signTx, err := types.MakeSigner().SignTx(tx, private)
 	if err != nil {
 		return common.Hash{}, err
 	}

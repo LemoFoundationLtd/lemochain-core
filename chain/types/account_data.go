@@ -30,11 +30,18 @@ type versionRecordMarshaling struct {
 // These objects are stored in the store.
 
 const (
+	// candidate profile
 	CandidateKeyIsCandidate  string = "isCandidate"
 	CandidateKeyNodeID       string = "nodeID"
 	CandidateKeyHost         string = "host"
 	CandidateKeyPort         string = "port"
 	CandidateKeyMinerAddress string = "minerAddress"
+	// asset profile
+	AssetName              string = "name"
+	AssetSymbol            string = "symbol"
+	AssetDescription       string = "description"
+	AssetStop              string = "stop"
+	AssetSuggestedGasLimit string = "suggestedGasLimit"
 )
 
 type Pair struct {
