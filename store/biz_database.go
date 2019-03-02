@@ -6,9 +6,9 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
+	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"strconv"
-	"time"
 )
 
 //go:generate gencodec -type VTransaction --field-override vTransactionMarshaling -out gen_vTransaction_info_json.go
@@ -165,30 +165,37 @@ func (db *BizDatabase) afterBlock(key []byte, val []byte) error {
 		return nil
 	}
 
-	ver := time.Now().UnixNano()
+	// ver := time.Now().UnixNano()
 	for index := 0; index < len(txs); index++ {
 		tx := txs[index]
-		hash := tx.Hash()
+		// hash := tx.Hash()
 		from, err := tx.From()
 		if err != nil {
 			return err
 		}
+		//
+		// to := tx.To()
+		// if to == nil {
+		// 	to = &params.FeeReceiveAddress
+		// }
 
-		to := tx.To()
-		if to == nil {
-			to = &params.FeeReceiveAddress
+		// hashStr := hash.Hex()
+		// fromStr := from.Hex()
+		// toStr := to.Hex()
+		//
+		// val, err := rlp.EncodeToBytes(tx)
+		// if err != nil {
+		// 	return err
+		// }
+
+		txType := tx.Type()
+		if txType == params.CreateAssetTx {
+			log.Error("insert account code: " + tx.Hash().Hex() + "|addr: " + from.Hex())
+		} else if txType == params.IssueAssetTx {
+			log.Error("insert account id: " + tx.Hash().Hex() + "|addr: " + from.Hex())
 		}
 
-		hashStr := hash.Hex()
-		fromStr := from.Hex()
-		toStr := to.Hex()
-
-		val, err := rlp.EncodeToBytes(tx)
-		if err != nil {
-			return err
-		}
-
-		err = db.Database.TxSet(hashStr, common.ToHex(key), fromStr, toStr, val, ver+int64(index), int64(block.Header.Time))
+		//err = db.Database.TxSet(hashStr, common.ToHex(key), fromStr, toStr, val, ver+int64(index), int64(block.Header.Time))
 		if err != nil {
 			return err
 		}
