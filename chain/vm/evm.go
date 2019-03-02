@@ -178,7 +178,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 func (evm *EVM) CallVoteTx(voter, node common.Address, gas uint64, initialBalance *big.Int) (leftgas uint64, err error) {
 	nodeAccount := evm.am.GetAccount(node)
 
-	profile := nodeAccount.GetCandidateProfile()
+	profile := nodeAccount.GetCandidate()
 	IsCandidate, ok := profile[types.CandidateKeyIsCandidate]
 	if !ok || IsCandidate == params.NotCandidateNode {
 		return gas, ErrOfNotCandidateNode
@@ -247,14 +247,14 @@ func (evm *EVM) RegisterOrUpdateToCandidate(candidateAddress, to common.Address,
 	// Register as a candidate node account
 	nodeAccount := evm.am.GetAccount(candidateAddress)
 	// Check if the application address is already a candidate proxy node.
-	profile := nodeAccount.GetCandidateProfile()
+	profile := nodeAccount.GetCandidate()
 	IsCandidate, ok := profile[types.CandidateKeyIsCandidate]
 	// Set candidate node information if it is already a candidate node account
 	if ok && IsCandidate == params.IsCandidateNode {
 		// Determine whether to disqualify a candidate node
 		if newIsCandidate == params.NotCandidateNode {
 			profile[types.CandidateKeyIsCandidate] = params.NotCandidateNode
-			nodeAccount.SetCandidateProfile(profile)
+			nodeAccount.SetCandidate(profile)
 			// Set the number of votes to 0
 			nodeAccount.SetVotes(big.NewInt(0))
 			// Transaction costs
@@ -265,7 +265,7 @@ func (evm *EVM) RegisterOrUpdateToCandidate(candidateAddress, to common.Address,
 		profile[types.CandidateKeyMinerAddress] = minerAddress
 		profile[types.CandidateKeyHost] = host
 		profile[types.CandidateKeyPort] = port
-		nodeAccount.SetCandidateProfile(profile)
+		nodeAccount.SetCandidate(profile)
 	} else {
 		// Register candidate nodes
 		newProfile := make(map[string]string, 5)
@@ -274,7 +274,7 @@ func (evm *EVM) RegisterOrUpdateToCandidate(candidateAddress, to common.Address,
 		newProfile[types.CandidateKeyNodeID] = nodeID
 		newProfile[types.CandidateKeyHost] = host
 		newProfile[types.CandidateKeyPort] = port
-		nodeAccount.SetCandidateProfile(newProfile)
+		nodeAccount.SetCandidate(newProfile)
 
 		oldNodeAddress := nodeAccount.GetVoteFor()
 

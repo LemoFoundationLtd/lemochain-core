@@ -102,36 +102,25 @@ func TestAccount_GetVoteFor(t *testing.T) {
 	assert.Equal(t, common.HexToAddress("0x5000"), account.GetVoteFor())
 }
 
-func TestAccount_GetTxCount(t *testing.T) {
+func TestAccount_GetCandidate(t *testing.T) {
 	store.ClearData()
 	db := newDB()
 
 	account := loadAccount(db, defaultAccounts[0].Address)
-	assert.Equal(t, uint32(0), account.GetTxCount())
+	assert.NotNil(t, account.GetCandidate())
+	assert.Equal(t, 0, len(account.GetCandidate()))
 
-	account.SetTxCount(uint32(100))
-	assert.Equal(t, uint32(100), account.GetTxCount())
-}
-
-func TestAccount_GetCandidateProfile(t *testing.T) {
-	store.ClearData()
-	db := newDB()
-
-	account := loadAccount(db, defaultAccounts[0].Address)
-	assert.NotNil(t, account.GetCandidateProfile())
-	assert.Equal(t, 0, len(account.GetCandidateProfile()))
-
-	profiles := account.GetCandidateProfile()
+	profiles := account.GetCandidate()
 	profiles[types.CandidateKeyIsCandidate] = "true"
-	account.SetCandidateProfile(profiles)
-	assert.Equal(t, 1, len(account.GetCandidateProfile()))
+	account.SetCandidate(profiles)
+	assert.Equal(t, 1, len(account.GetCandidate()))
 
 	profiles[types.CandidateKeyNodeID] = "NodeId"
-	assert.Equal(t, 1, len(account.GetCandidateProfile()))
+	assert.Equal(t, 1, len(account.GetCandidate()))
 
-	profiles = account.GetCandidateProfile()
+	profiles = account.GetCandidate()
 	profiles[types.CandidateKeyNodeID] = "NodeId"
-	assert.Equal(t, 1, len(account.GetCandidateProfile()))
+	assert.Equal(t, 1, len(account.GetCandidate()))
 }
 
 func TestAccount_GetVotes(t *testing.T) {

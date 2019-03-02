@@ -2,7 +2,6 @@ package types
 
 import (
 	"fmt"
-	"github.com/LemoFoundationLtd/lemochain-dev/log"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
@@ -13,6 +12,86 @@ import (
 
 type testAccount struct {
 	AccountData
+}
+
+func (f *testAccount) GetCandidate() Profile {
+	panic("implement me")
+}
+
+func (f *testAccount) SetCandidate(profile Profile) {
+	panic("implement me")
+}
+
+func (f *testAccount) GetCandidateState(key string) string {
+	panic("implement me")
+}
+
+func (f *testAccount) SetCandidateState(key string, val string) {
+	panic("implement me")
+}
+
+func (f *testAccount) GetAssetCodeRoot() common.Hash {
+	panic("implement me")
+}
+
+func (f *testAccount) SetAssetCodeRoot(root common.Hash) {
+	panic("implement me")
+}
+
+func (f *testAccount) GetAssetIdRoot() common.Hash {
+	panic("implement me")
+}
+
+func (f *testAccount) SetAssetIdRoot(root common.Hash) {
+	panic("implement me")
+}
+
+func (f *testAccount) GetEquityRoot() common.Hash {
+	panic("implement me")
+}
+
+func (f *testAccount) SetEquityRoot(root common.Hash) {
+	panic("implement me")
+}
+
+func (f *testAccount) GetAssetCode(code common.Hash) (*Asset, error) {
+	panic("implement me")
+}
+
+func (f *testAccount) SetAssetCode(code common.Hash, asset *Asset) error {
+	panic("implement me")
+}
+
+func (f *testAccount) GetAssetCodeTotalSupply(code common.Hash) (*big.Int, error) {
+	panic("implement me")
+}
+
+func (f *testAccount) SetAssetCodeTotalSupply(code common.Hash, val *big.Int) error {
+	panic("implement me")
+}
+
+func (f *testAccount) GetAssetCodeState(code common.Hash, key string) (string, error) {
+	panic("implement me")
+}
+
+func (f *testAccount) SetAssetCodeState(code common.Hash, key string, val string) error {
+	panic("implement me")
+}
+
+func (f *testAccount) GetAssetIdState(id common.Hash) (string, error) {
+	panic("implement me")
+}
+
+func (f *testAccount) SetAssetIdState(id common.Hash, data string) error {
+	panic("implement me")
+}
+
+func (f *testAccount) GetEquityState(id common.Hash) (*AssetEquity, error) {
+	panic("implement me")
+}
+
+func (f *testAccount) SetEquityState(id common.Hash, equity *AssetEquity) error {
+	panic("implement me")
 }
 
 func (f *testAccount) GetTxCount() uint32 { return f.GetTxCount() }
@@ -51,24 +130,16 @@ func (f *testAccount) SetBalance(balance *big.Int) { f.AccountData.Balance = bal
 func (f *testAccount) GetBaseVersion(logType ChangeLogType) uint32 {
 	return f.AccountData.NewestRecords[logType].Version
 }
-func (f *testAccount) GetSuicide() bool                                     { return false }
-func (f *testAccount) SetSuicide(suicided bool)                             {}
-func (f *testAccount) GetCodeHash() common.Hash                             { return f.AccountData.CodeHash }
-func (f *testAccount) SetCodeHash(codeHash common.Hash)                     { f.AccountData.CodeHash = codeHash }
-func (f *testAccount) GetCode() (Code, error)                               { return nil, nil }
-func (f *testAccount) SetCode(code Code)                                    {}
-func (f *testAccount) GetStorageRoot() common.Hash                          { return f.AccountData.StorageRoot }
-func (f *testAccount) SetStorageRoot(root common.Hash)                      { f.AccountData.StorageRoot = root }
-func (f *testAccount) GetAssetRoot() common.Hash                            { return f.AccountData.AssetRoot }
-func (f *testAccount) SetAssetRoot(root common.Hash)                        { f.AccountData.AssetRoot = root }
-func (f *testAccount) GetTokenRoot() common.Hash                            { return f.AccountData.TokenRoot }
-func (f *testAccount) SetTokenRoot(root common.Hash)                        { f.AccountData.TokenRoot = root }
-func (f *testAccount) GetStorageState(key common.Hash) ([]byte, error)      { return nil, nil }
-func (f *testAccount) SetStorageState(key common.Hash, value []byte) error  { return nil }
-func (f *testAccount) GetAssetState(token common.Token) (*Asset, error)     { return nil, nil }
-func (f *testAccount) SetAssetState(token common.Token, asset *Asset) error { return nil }
-func (f *testAccount) GetTokenState(token common.Token) (*Asset, error)     { return nil, nil }
-func (f *testAccount) SetTokenState(token common.Token, asset *Asset) error { return nil }
+func (f *testAccount) GetSuicide() bool                                    { return false }
+func (f *testAccount) SetSuicide(suicided bool)                            {}
+func (f *testAccount) GetCodeHash() common.Hash                            { return f.AccountData.CodeHash }
+func (f *testAccount) SetCodeHash(codeHash common.Hash)                    { f.AccountData.CodeHash = codeHash }
+func (f *testAccount) GetCode() (Code, error)                              { return nil, nil }
+func (f *testAccount) SetCode(code Code)                                   {}
+func (f *testAccount) GetStorageRoot() common.Hash                         { return f.AccountData.StorageRoot }
+func (f *testAccount) SetStorageRoot(root common.Hash)                     { f.AccountData.StorageRoot = root }
+func (f *testAccount) GetStorageState(key common.Hash) ([]byte, error)     { return nil, nil }
+func (f *testAccount) SetStorageState(key common.Hash, value []byte) error { return nil }
 func (f *testAccount) IsEmpty() bool {
 	for _, record := range f.AccountData.NewestRecords {
 		if record.Version != 0 {

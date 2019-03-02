@@ -20,20 +20,24 @@ func (a AccountData) MarshalJSON() ([]byte, error) {
 		Balance       *hexutil.Big10                  `json:"balance" gencodec:"required"`
 		CodeHash      common.Hash                     `json:"codeHash" gencodec:"required"`
 		StorageRoot   common.Hash                     `json:"root" gencodec:"required"`
-		NewestRecords map[ChangeLogType]VersionRecord `json:"records" gencodec:"required"`
+		AssetCodeRoot common.Hash                     `json:"AssetCodeRoot" gencodec:"required"`
+		AssetIdRoot   common.Hash                     `json:"AssetIdRoot" gencodec:"required"`
+		EquityRoot    common.Hash                     `json:"EquityRoot" gencodec:"required"`
 		VoteFor       common.Address                  `json:"voteFor"`
 		Candidate     Candidate                       `json:"candidate"`
-		TxCount       hexutil.Uint32                  `json:"txCount"`
+		NewestRecords map[ChangeLogType]VersionRecord `json:"records" gencodec:"required"`
 	}
 	var enc AccountData
 	enc.Address = a.Address
 	enc.Balance = (*hexutil.Big10)(a.Balance)
 	enc.CodeHash = a.CodeHash
 	enc.StorageRoot = a.StorageRoot
-	enc.NewestRecords = a.NewestRecords
+	enc.AssetCodeRoot = a.AssetCodeRoot
+	enc.AssetIdRoot = a.AssetIdRoot
+	enc.EquityRoot = a.EquityRoot
 	enc.VoteFor = a.VoteFor
 	enc.Candidate = a.Candidate
-	enc.TxCount = hexutil.Uint32(a.TxCount)
+	enc.NewestRecords = a.NewestRecords
 	return json.Marshal(&enc)
 }
 
@@ -44,10 +48,12 @@ func (a *AccountData) UnmarshalJSON(input []byte) error {
 		Balance       *hexutil.Big10                  `json:"balance" gencodec:"required"`
 		CodeHash      *common.Hash                    `json:"codeHash" gencodec:"required"`
 		StorageRoot   *common.Hash                    `json:"root" gencodec:"required"`
-		NewestRecords map[ChangeLogType]VersionRecord `json:"records" gencodec:"required"`
+		AssetCodeRoot *common.Hash                    `json:"AssetCodeRoot" gencodec:"required"`
+		AssetIdRoot   *common.Hash                    `json:"AssetIdRoot" gencodec:"required"`
+		EquityRoot    *common.Hash                    `json:"EquityRoot" gencodec:"required"`
 		VoteFor       *common.Address                 `json:"voteFor"`
 		Candidate     *Candidate                      `json:"candidate"`
-		TxCount       *hexutil.Uint32                 `json:"txCount"`
+		NewestRecords map[ChangeLogType]VersionRecord `json:"records" gencodec:"required"`
 	}
 	var dec AccountData
 	if err := json.Unmarshal(input, &dec); err != nil {
@@ -69,18 +75,27 @@ func (a *AccountData) UnmarshalJSON(input []byte) error {
 		return errors.New("missing required field 'root' for AccountData")
 	}
 	a.StorageRoot = *dec.StorageRoot
-	if dec.NewestRecords == nil {
-		return errors.New("missing required field 'records' for AccountData")
+	if dec.AssetCodeRoot == nil {
+		return errors.New("missing required field 'AssetCodeRoot' for AccountData")
 	}
-	a.NewestRecords = dec.NewestRecords
+	a.AssetCodeRoot = *dec.AssetCodeRoot
+	if dec.AssetIdRoot == nil {
+		return errors.New("missing required field 'AssetIdRoot' for AccountData")
+	}
+	a.AssetIdRoot = *dec.AssetIdRoot
+	if dec.EquityRoot == nil {
+		return errors.New("missing required field 'EquityRoot' for AccountData")
+	}
+	a.EquityRoot = *dec.EquityRoot
 	if dec.VoteFor != nil {
 		a.VoteFor = *dec.VoteFor
 	}
 	if dec.Candidate != nil {
 		a.Candidate = *dec.Candidate
 	}
-	if dec.TxCount != nil {
-		a.TxCount = uint32(*dec.TxCount)
+	if dec.NewestRecords == nil {
+		return errors.New("missing required field 'records' for AccountData")
 	}
+	a.NewestRecords = dec.NewestRecords
 	return nil
 }

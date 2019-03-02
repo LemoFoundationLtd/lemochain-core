@@ -12,6 +12,52 @@ type SafeAccount struct {
 	processor  *LogProcessor
 }
 
+func (a *SafeAccount) GetCandidate() types.Profile { return a.rawAccount.GetCandidate() }
+
+func (a *SafeAccount) SetCandidate(profile types.Profile) {
+	newLog := NewCandidateLog(a.processor, a.rawAccount, profile)
+	a.processor.PushChangeLog(newLog)
+	a.rawAccount.SetCandidate(profile)
+}
+
+func (a *SafeAccount) GetCandidateState(key string) string {
+	return a.rawAccount.GetCandidateState(key)
+}
+
+func (a *SafeAccount) SetCandidateState(key string, val string) {
+	newLog := NewCandidateStateLog(a.processor, a.rawAccount, key, val)
+	a.processor.PushChangeLog(newLog)
+	a.rawAccount.SetCandidateState(key, val)
+}
+
+func (a *SafeAccount) GetAssetCode(code common.Hash) (*types.Asset, error) {
+	return a.rawAccount.GetAssetCode(code)
+}
+
+func (a *SafeAccount) SetAssetCode(code common.Hash, asset *types.Asset) error {
+	newLog, err := NewAssetCodeLog(a.processor, a.rawAccount, code, asset)
+	if err != nil {
+		return err
+	} else {
+		a.processor.PushChangeLog(newLog)
+		return a.rawAccount.SetAssetCode(code, asset)
+	}
+}
+
+func (a *SafeAccount) GetAssetCodeTotalSupply(code common.Hash) (*big.Int, error) {
+	return a.rawAccount.GetAssetCodeTotalSupply(code)
+}
+
+func (a *SafeAccount) SetAssetCodeTotalSupply(code common.Hash, val *big.Int) error {
+	newLog, err := NewAssetCodeTotalSupplyLog(a.processor, a.rawAccount, code, val)
+	if err != nil {
+		return err
+	} else {
+		a.processor.PushChangeLog(newLog)
+		return a.rawAccount.SetAssetCodeTotalSupply(code, val)
+	}
+}
+
 // NewSafeAccount creates an account object.
 func NewSafeAccount(processor *LogProcessor, account *Account) *SafeAccount {
 	return &SafeAccount{
@@ -40,14 +86,6 @@ func (a *SafeAccount) String() string {
 	return a.rawAccount.String()
 }
 
-func (a *SafeAccount) GetTxCount() uint32 { return a.rawAccount.GetTxCount() }
-
-func (a *SafeAccount) SetTxCount(count uint32) {
-	newLog := NewTxCountLog(a.processor, a.rawAccount, count)
-	a.processor.PushChangeLog(newLog)
-	a.rawAccount.SetTxCount(count)
-}
-
 func (a *SafeAccount) GetVoteFor() common.Address { return a.rawAccount.GetVoteFor() }
 
 func (a *SafeAccount) SetVoteFor(addr common.Address) {
@@ -64,16 +102,6 @@ func (a *SafeAccount) SetVotes(votes *big.Int) {
 	newLog := NewVotesLog(a.processor, a.rawAccount, votes)
 	a.processor.PushChangeLog(newLog)
 	a.rawAccount.SetVotes(votes)
-}
-
-func (a *SafeAccount) GetCandidateProfile() types.Profile {
-	return a.rawAccount.GetCandidateProfile()
-}
-
-func (a *SafeAccount) SetCandidateProfile(profile types.Profile) {
-	newLog := NewCandidateProfileLog(a.processor, a.rawAccount, profile)
-	a.processor.PushChangeLog(newLog)
-	a.rawAccount.SetCandidateProfile(profile)
 }
 
 func (a *SafeAccount) GetAddress() common.Address { return a.rawAccount.GetAddress() }
@@ -125,17 +153,18 @@ func (a *SafeAccount) SetStorageState(key common.Hash, value []byte) error {
 	return a.rawAccount.SetStorageState(key, value)
 }
 
-func (a *SafeAccount) GetAssetCodeState(code common.Hash) (*types.Asset, error) {
-	return a.rawAccount.GetAssetCodeState(code)
+func (a *SafeAccount) GetAssetCodeState(code common.Hash, key string) (string, error) {
+	return a.rawAccount.GetAssetCodeState(code, key)
 }
 
-func (a *SafeAccount) SetAssetCodeState(code common.Hash, asset *types.Asset) error {
-	newLog, err := NewAssetCodeLog(a.processor, a.rawAccount, code, asset)
+func (a *SafeAccount) SetAssetCodeState(code common.Hash, key string, val string) error {
+	newLog, err := NewAssetCodeStateLog(a.processor, a.rawAccount, code, key, val)
 	if err != nil {
 		return err
+	} else {
+		a.processor.PushChangeLog(newLog)
+		return a.rawAccount.SetAssetCodeState(code, key, val)
 	}
-	a.processor.PushChangeLog(newLog)
-	return a.rawAccount.SetAssetCodeState(code, asset)
 }
 
 func (a *SafeAccount) GetAssetIdState(id common.Hash) (string, error) {
@@ -163,8 +192,6 @@ func (a *SafeAccount) SetEquityState(id common.Hash, equity *types.AssetEquity) 
 	a.processor.PushChangeLog(newLog)
 	return a.rawAccount.SetEquityState(id, equity)
 }
-
-// func (a *SafeAccount) GetTxHashList() []common.Hash { return a.rawAccount.GetTxHashList() }
 
 // overwrite Account.SetXXX. Access Account with changelog
 func (a *SafeAccount) SetBalance(balance *big.Int) {

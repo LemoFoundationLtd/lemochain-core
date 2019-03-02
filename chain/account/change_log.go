@@ -14,21 +14,32 @@ const (
 	BalanceLog types.ChangeLogType = iota + 1
 	StorageLog
 	StorageRootLog
+
 	AssetCodeLog
+	AssetCodeStateLog
 	AssetCodeRootLog
+	AssetCodeTotalSupplyLog
 	AssetIdLog
 	AssetIdRootLog
 	EquityLog
 	EquityRootLog
+	CandidateLog
+	CandidateStateLog
+
 	CodeLog
 	AddEventLog
 	SuicideLog
 	VoteForLog
 	VotesLog
-	CandidateProfileLog
+
 	TxCountLog
 	LOG_TYPE_STOP
 )
+
+type ProfileChangeLogExtra struct {
+	UUID common.Hash
+	Key  string
+}
 
 func init() {
 	types.RegisterChangeLog(BalanceLog, "BalanceLog", decodeBigInt, decodeEmptyInterface, redoBalance, undoBalance)
@@ -45,8 +56,7 @@ func init() {
 	types.RegisterChangeLog(SuicideLog, "SuicideLog", decodeEmptyInterface, decodeEmptyInterface, redoSuicide, undoSuicide)
 	types.RegisterChangeLog(VoteForLog, "VoteForLog", decodeAddress, decodeEmptyInterface, redoVoteFor, undoVoteFor)
 	types.RegisterChangeLog(VotesLog, "VotesLog", decodeBigInt, decodeEmptyInterface, redoVotes, undoVotes)
-	types.RegisterChangeLog(CandidateProfileLog, "CandidateProfileLog", decodeCandidateProfile, decodeEmptyInterface, redoCandidateProfile, undoCandidateProfile)
-	types.RegisterChangeLog(TxCountLog, "TxCountLog", decodeUInt32, decodeEmptyInterface, redoTxCount, undoTxCount)
+	types.RegisterChangeLog(CandidateLog, "CandidateProfileLog", decodeString, decodeEmptyInterface, redoCandidate, undoCandidate)
 }
 
 // IsValuable returns true if the change log contains some data change
@@ -76,7 +86,7 @@ func IsValuable(log *types.ChangeLog) bool {
 		oldVal := log.OldVal.(common.Address)
 		newVal := log.NewVal.(common.Address)
 		valuable = oldVal != newVal
-	case CandidateProfileLog:
+	case AssetCodeStateLog:
 		fallthrough
 	default:
 		valuable = log.OldVal != log.NewVal
@@ -134,7 +144,7 @@ func decodeEvent(s *rlp.Stream) (interface{}, error) {
 	return &result, err
 }
 
-func decodeCandidateProfile(s *rlp.Stream) (interface{}, error) {
+func decodeCandidate(s *rlp.Stream) (interface{}, error) {
 	_, size, _ := s.Kind()
 	result := make(types.Profile)
 	if size <= 0 {
@@ -157,6 +167,12 @@ func decodeHash(s *rlp.Stream) (interface{}, error) {
 	return common.BytesToHash(result), err
 }
 
+func decodeString(s *rlp.Stream) (interface{}, error) {
+	var result []byte
+	err := s.Decode(&result)
+	return string(result), err
+}
+
 func decodeAsset(s *rlp.Stream) (interface{}, error) {
 	var result types.Asset
 	err := s.Decode(&result)
@@ -165,6 +181,12 @@ func decodeAsset(s *rlp.Stream) (interface{}, error) {
 
 func decodeEquity(s *rlp.Stream) (interface{}, error) {
 	var result types.AssetEquity
+	err := s.Decode(&result)
+	return &result, err
+}
+
+func decodeProfileChangeLogExtra(s *rlp.Stream) (interface{}, error) {
+	var result ProfileChangeLogExtra
 	err := s.Decode(&result)
 	return &result, err
 }
@@ -247,69 +269,83 @@ func cloneCandidateProfile(src types.Profile) types.Profile {
 	return result
 }
 
-func NewCandidateProfileLog(processor types.ChangeLogProcessor, account types.AccountAccessor, newProfile types.Profile) *types.ChangeLog {
-	oldVal := cloneCandidateProfile(account.GetCandidateProfile())
-	newProfile = cloneCandidateProfile(newProfile)
+func NewCandidateLog(processor types.ChangeLogProcessor, account types.AccountAccessor, newVal types.Profile) *types.ChangeLog {
+	oldVal := cloneCandidateProfile(account.GetCandidate())
+	newVal = cloneCandidateProfile(newVal)
 	return &types.ChangeLog{
-		LogType: CandidateProfileLog,
+		LogType: CandidateLog,
 		Address: account.GetAddress(),
-		Version: processor.GetNextVersion(CandidateProfileLog, account.GetAddress()),
+		Version: processor.GetNextVersion(CandidateLog, account.GetAddress()),
 		OldVal:  &oldVal,
-		NewVal:  &newProfile,
+		NewVal:  &newVal,
 	}
 }
 
-func redoCandidateProfile(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
+func redoCandidate(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 	newVal, ok := c.NewVal.(*types.Profile)
 	if !ok {
 		log.Errorf("expected NewVal *Profile, got %T", c.NewVal)
 		return types.ErrWrongChangeLogData
 	}
 	accessor := processor.GetAccount(c.Address)
-	accessor.SetCandidateProfile(*newVal)
+	accessor.SetCandidate(*newVal)
 	return nil
 }
 
-func undoCandidateProfile(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
+func undoCandidate(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 	oldVal, ok := c.OldVal.(*types.Profile)
 	if !ok {
 		log.Errorf("expected NewVal map[string]string, got %T", c.NewVal)
 		return types.ErrWrongChangeLogData
 	}
 	accessor := processor.GetAccount(c.Address)
-	accessor.SetCandidateProfile(*oldVal)
+	accessor.SetCandidate(*oldVal)
 	return nil
 }
 
-func NewTxCountLog(processor types.ChangeLogProcessor, account types.AccountAccessor, newTxCount uint32) *types.ChangeLog {
+func NewCandidateStateLog(processor types.ChangeLogProcessor, account types.AccountAccessor, key string, newVal string) *types.ChangeLog {
 	return &types.ChangeLog{
-		LogType: TxCountLog,
+		LogType: CandidateStateLog,
 		Address: account.GetAddress(),
-		Version: processor.GetNextVersion(TxCountLog, account.GetAddress()),
-		OldVal:  account.GetTxCount(),
-		NewVal:  newTxCount,
+		Version: processor.GetNextVersion(CandidateStateLog, account.GetAddress()),
+		OldVal:  account.GetCandidateState(key),
+		NewVal:  newVal,
+		Extra:   key,
 	}
 }
 
-func redoTxCount(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
-	newValue, ok := c.NewVal.(uint32)
+func redoCandidateState(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
+	newVal, ok := c.NewVal.(string)
 	if !ok {
-		log.Errorf("expected NewVal uint32, got %T", c.NewVal)
+		log.Errorf("expected NewVal string, got %T", c.NewVal)
 		return types.ErrWrongChangeLogData
 	}
+
+	key, ok := c.NewVal.(string)
+	if !ok {
+		log.Errorf("expected NewVal string, got %T", c.NewVal)
+		return types.ErrWrongChangeLogData
+	}
+
 	accessor := processor.GetAccount(c.Address)
-	accessor.SetTxCount(newValue)
+	accessor.SetCandidateState(key, newVal)
 	return nil
 }
 
-func undoTxCount(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
-	oldValue, ok := c.OldVal.(uint32)
+func undoCandidateState(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
+	oldVal, ok := c.OldVal.(string)
 	if !ok {
-		log.Errorf("expected OldVal uint32, got %T", c.OldVal)
+		log.Errorf("expected NewVal string, got %T", c.NewVal)
+		return types.ErrWrongChangeLogData
+	}
+
+	key, ok := c.NewVal.(string)
+	if !ok {
+		log.Errorf("expected NewVal string, got %T", c.NewVal)
 		return types.ErrWrongChangeLogData
 	}
 	accessor := processor.GetAccount(c.Address)
-	accessor.SetTxCount(oldValue)
+	accessor.SetCandidateState(key, oldVal)
 	return nil
 }
 
@@ -434,17 +470,18 @@ func undoStorageRoot(c *types.ChangeLog, processor types.ChangeLogProcessor) err
 	return nil
 }
 
-func NewAssetCodeLog(processor types.ChangeLogProcessor, account types.AccountAccessor, code common.Hash, newVal *types.Asset) (*types.ChangeLog, error) {
-	oldValue, err := account.GetAssetCodeState(code)
+func NewAssetCodeLog(processor types.ChangeLogProcessor, account types.AccountAccessor, code common.Hash, asset *types.Asset) (*types.ChangeLog, error) {
+	oldValue, err := account.GetAssetCode(code)
 	if err != nil {
 		return nil, fmt.Errorf("can't create asset log: %v", err)
 	}
+
 	return &types.ChangeLog{
 		LogType: AssetCodeLog,
 		Address: account.GetAddress(),
 		Version: processor.GetNextVersion(AssetCodeLog, account.GetAddress()),
 		OldVal:  oldValue.Clone(),
-		NewVal:  newVal.Clone(),
+		NewVal:  asset.Clone(),
 		Extra:   code,
 	}, nil
 }
@@ -461,7 +498,7 @@ func redoAssetCode(c *types.ChangeLog, processor types.ChangeLogProcessor) error
 		return types.ErrWrongChangeLogData
 	}
 	accessor := processor.GetAccount(c.Address)
-	return accessor.SetAssetCodeState(hash, newVal)
+	return accessor.SetAssetCode(hash, newVal)
 }
 
 func undoAssetCode(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
@@ -476,7 +513,107 @@ func undoAssetCode(c *types.ChangeLog, processor types.ChangeLogProcessor) error
 		return types.ErrWrongChangeLogData
 	}
 	accessor := processor.GetAccount(c.Address)
-	return accessor.SetAssetCodeState(hash, oldVal)
+	return accessor.SetAssetCode(hash, oldVal)
+}
+
+func NewAssetCodeStateLog(processor types.ChangeLogProcessor, account types.AccountAccessor, id common.Hash, key string, newVal string) (*types.ChangeLog, error) {
+	oldVal, err := account.GetAssetCodeState(id, key)
+	if err != nil {
+		return nil, fmt.Errorf("can't create asset code state log: %v", err)
+	}
+
+	return &types.ChangeLog{
+		LogType: AssetCodeStateLog,
+		Address: account.GetAddress(),
+		Version: processor.GetNextVersion(AssetCodeStateLog, account.GetAddress()),
+		OldVal:  oldVal,
+		NewVal:  newVal,
+		Extra: &ProfileChangeLogExtra{
+			UUID: id,
+			Key:  key,
+		},
+	}, nil
+}
+
+func redoAssetCodeState(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
+	newVal, ok := c.NewVal.(string)
+	if !ok {
+		log.Errorf("expected NewVal string, got %T", c.NewVal)
+		return types.ErrWrongChangeLogData
+	}
+	extra, ok := c.Extra.(*ProfileChangeLogExtra)
+	if !ok {
+		log.Errorf("expected Extra ProfileChangeLogExtra, got %T", c.Extra)
+		return types.ErrWrongChangeLogData
+	}
+
+	accessor := processor.GetAccount(c.Address)
+	return accessor.SetAssetCodeState(extra.UUID, extra.Key, newVal)
+}
+
+func undoAssetCodeState(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
+	oldVal, ok := c.OldVal.(string)
+	if !ok {
+		log.Errorf("expected NewVal *types.Asset, got %T", c.NewVal)
+		return types.ErrWrongChangeLogData
+	}
+	extra, ok := c.Extra.(*ProfileChangeLogExtra)
+	if !ok {
+		log.Errorf("expected Extra common.Token, got %T", c.Extra)
+		return types.ErrWrongChangeLogData
+	}
+	accessor := processor.GetAccount(c.Address)
+	return accessor.SetAssetCodeState(extra.UUID, extra.Key, oldVal)
+}
+
+func NewAssetCodeTotalSupplyLog(processor types.ChangeLogProcessor, account types.AccountAccessor, code common.Hash, newVal *big.Int) (*types.ChangeLog, error) {
+	oldVal, err := account.GetAssetCodeTotalSupply(code)
+	if err != nil {
+		return nil, fmt.Errorf("can't create total supply log: %v", err)
+	}
+
+	return &types.ChangeLog{
+		LogType: AssetCodeTotalSupplyLog,
+		Address: account.GetAddress(),
+		Version: processor.GetNextVersion(AssetCodeTotalSupplyLog, account.GetAddress()),
+		OldVal:  new(big.Int).Set(oldVal),
+		NewVal:  new(big.Int).Set(newVal),
+		Extra:   code,
+	}, nil
+}
+
+func redoAssetCodeTotalSupply(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
+	newVal, ok := c.NewVal.(*big.Int)
+	if !ok {
+		log.Errorf("expected NewVal *big.Int, got %T", c.NewVal)
+		return types.ErrWrongChangeLogData
+	}
+
+	code, ok := c.Extra.(common.Hash)
+	if !ok {
+		log.Errorf("expected Extra common.Hash, got %T", c.Extra)
+		return types.ErrWrongChangeLogData
+	}
+
+	accessor := processor.GetAccount(c.Address)
+	return accessor.SetAssetCodeTotalSupply(code, newVal)
+}
+
+func undoAssetCodeTotalSupply(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
+	oldVal, ok := c.OldVal.(*big.Int)
+	if !ok {
+		log.Errorf("expected OldVal *big.Int, got %T", c.NewVal)
+		return types.ErrWrongChangeLogData
+	}
+
+	code, ok := c.Extra.(common.Hash)
+	if !ok {
+		log.Errorf("expected Extra common.Hash, got %T", c.Extra)
+		return types.ErrWrongChangeLogData
+	}
+
+	accessor := processor.GetAccount(c.Address)
+	return accessor.SetAssetCodeTotalSupply(code, oldVal)
 }
 
 func NewAssetCodeRootLog(processor types.ChangeLogProcessor, account types.AccountAccessor, oldVal common.Hash, newVal common.Hash) (*types.ChangeLog, error) {
@@ -593,6 +730,7 @@ func NewEquityLog(processor types.ChangeLogProcessor, account types.AccountAcces
 	if err != nil {
 		return nil, fmt.Errorf("can't create equity log: %v", err)
 	}
+
 	return &types.ChangeLog{
 		LogType: EquityLog,
 		Address: account.GetAddress(),

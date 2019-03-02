@@ -63,7 +63,6 @@ func (p *testProcessor) createAccount(logType types.ChangeLogType, version uint3
 	}
 	account.data.Candidate.Votes = big.NewInt(200)
 	account.data.Candidate.Profile[types.CandidateKeyIsCandidate] = params.IsCandidateNode
-	account.SetTxCount(uint32(100))
 	return account
 }
 
@@ -359,13 +358,6 @@ func TestChangeLog_Undo(t *testing.T) {
 				assert.Equal(t, common.HexToAddress("0x0001"), accessor.GetVoteFor())
 			},
 		},
-		// 9 TxCount
-		{
-			input: NewTxCountLog(processor, processor.createAccount(TxCountLog, 1), 200),
-			afterCheck: func(accessor types.AccountAccessor) {
-				assert.Equal(t, uint32(100), accessor.GetTxCount())
-			},
-		},
 		// 10 Votes
 		{
 			input: NewVotesLog(processor, processor.createAccount(VotesLog, 1), new(big.Int).SetInt64(500)),
@@ -375,9 +367,9 @@ func TestChangeLog_Undo(t *testing.T) {
 		},
 		// 11 Profile
 		{
-			input: NewCandidateProfileLog(processor, processor.createAccount(VotesLog, 1), map[string]string{types.CandidateKeyIsCandidate: "false", types.CandidateKeyHost: "host"}),
+			input: NewCandidateLog(processor, processor.createAccount(VotesLog, 1), map[string]string{types.CandidateKeyIsCandidate: "false", types.CandidateKeyHost: "host"}),
 			afterCheck: func(accessor types.AccountAccessor) {
-				assert.Equal(t, "true", accessor.GetCandidateProfile()[types.CandidateKeyIsCandidate])
+				assert.Equal(t, "true", accessor.GetCandidate()[types.CandidateKeyIsCandidate])
 			},
 		},
 	}
@@ -488,13 +480,6 @@ func TestChangeLog_Redo(t *testing.T) {
 				assert.Equal(t, common.HexToAddress("0x0002"), accessor.GetVoteFor())
 			},
 		},
-		// 11 TxCount
-		{
-			input: decreaseVersion(NewTxCountLog(processor, processor.createAccount(TxCountLog, 1), 200)),
-			afterCheck: func(accessor types.AccountAccessor) {
-				assert.Equal(t, uint32(200), accessor.GetTxCount())
-			},
-		},
 		// 12 Votes
 		{
 			input: decreaseVersion(NewVotesLog(processor, processor.createAccount(VotesLog, 1), new(big.Int).SetInt64(500))),
@@ -504,10 +489,10 @@ func TestChangeLog_Redo(t *testing.T) {
 		},
 		// 13 Profile
 		{
-			input: decreaseVersion(NewCandidateProfileLog(processor, processor.createAccount(VotesLog, 1), map[string]string{types.CandidateKeyIsCandidate: "false", types.CandidateKeyHost: "host"})),
+			input: decreaseVersion(NewCandidateLog(processor, processor.createAccount(VotesLog, 1), map[string]string{types.CandidateKeyIsCandidate: "false", types.CandidateKeyHost: "host"})),
 			afterCheck: func(accessor types.AccountAccessor) {
-				assert.Equal(t, "false", accessor.GetCandidateProfile()[types.CandidateKeyIsCandidate])
-				assert.Equal(t, "host", accessor.GetCandidateProfile()[types.CandidateKeyHost])
+				assert.Equal(t, "false", accessor.GetCandidate()[types.CandidateKeyIsCandidate])
+				assert.Equal(t, "host", accessor.GetCandidate()[types.CandidateKeyHost])
 			},
 		},
 	}
@@ -586,12 +571,12 @@ func TestChangeLog_valueShouldBeStableCandidateProfile(t *testing.T) {
 	manager.clear()
 	profile := make(types.Profile, 0)
 	profile["aa"] = "bb"
-	account.SetCandidateProfile(profile)
+	account.SetCandidate(profile)
 	assert.Equal(t, 1, len(manager.GetChangeLogs()))
 	// get and set again
-	profile = account.GetCandidateProfile()
+	profile = account.GetCandidate()
 	profile["aa"] = "cc"
-	account.SetCandidateProfile(profile)
+	account.SetCandidate(profile)
 	assert.Equal(t, 2, len(manager.GetChangeLogs()))
 	oldProfile := manager.GetChangeLogs()[0].NewVal.(*types.Profile)
 	assert.Equal(t, "bb", (*oldProfile)["aa"])

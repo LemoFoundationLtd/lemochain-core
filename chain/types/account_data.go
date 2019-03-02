@@ -8,7 +8,6 @@ import (
 	"io"
 	"math/big"
 	"sort"
-	"strconv"
 	"strings"
 )
 
@@ -115,17 +114,15 @@ type AccountData struct {
 	AssetIdRoot   common.Hash `json:"AssetIdRoot" gencodec:"required"`
 	EquityRoot    common.Hash `json:"EquityRoot" gencodec:"required"`
 
-	// It records the block height which contains any type of newest change log. It is updated in finalize step
-	NewestRecords map[ChangeLogType]VersionRecord `json:"records" gencodec:"required"`
-
 	VoteFor   common.Address `json:"voteFor"`
 	Candidate Candidate      `json:"candidate"`
-	TxCount   uint32         `json:"txCount"`
+
+	// It records the block height which contains any type of newest change log. It is updated in finalize step
+	NewestRecords map[ChangeLogType]VersionRecord `json:"records" gencodec:"required"`
 }
 
 type accountDataMarshaling struct {
 	Balance *hexutil.Big10
-	TxCount hexutil.Uint32
 }
 
 // rlpVersionRecord defines the fields which would be encode/decode by rlp
@@ -178,7 +175,6 @@ func (a *AccountData) EncodeRLP(w io.Writer) error {
 		EquityRoot:    a.EquityRoot,
 		VoteFor:       a.VoteFor,
 		Candidate:     candidate,
-		TxCount:       a.TxCount,
 		NewestRecords: NewestRecords,
 	})
 }
@@ -192,8 +188,8 @@ func (a *AccountData) DecodeRLP(s *rlp.Stream) error {
 
 	err := s.Decode(&dec)
 	if err == nil {
-		a.Address, a.Balance, a.CodeHash, a.StorageRoot, a.AssetCodeRoot, a.AssetIdRoot, a.EquityRoot, a.VoteFor, a.TxCount =
-			dec.Address, dec.Balance, dec.CodeHash, dec.StorageRoot, dec.AssetCodeRoot, dec.AssetIdRoot, dec.EquityRoot, dec.VoteFor, dec.TxCount
+		a.Address, a.Balance, a.CodeHash, a.StorageRoot, a.AssetCodeRoot, a.AssetIdRoot, a.EquityRoot, a.VoteFor =
+			dec.Address, dec.Balance, dec.CodeHash, dec.StorageRoot, dec.AssetCodeRoot, dec.AssetIdRoot, dec.EquityRoot, dec.VoteFor
 		a.NewestRecords = make(map[ChangeLogType]VersionRecord)
 
 		a.Candidate.Votes = dec.Candidate.Votes
@@ -239,7 +235,6 @@ func (a *AccountData) String() string {
 		fmt.Sprintf("Address: %s", a.Address.String()),
 		fmt.Sprintf("Balance: %s", a.Balance.String()),
 		fmt.Sprintf("VoteFor: %s", a.VoteFor.String()),
-		fmt.Sprintf("TxCount: %s", strconv.Itoa(int(a.TxCount))),
 	}
 
 	if a.Candidate.Votes != nil {
@@ -277,9 +272,6 @@ func (a *AccountData) String() string {
 	if a.Candidate.Votes != nil || len(a.Candidate.Profile) != 0 {
 		set = append(set, fmt.Sprintf("Candidate: {Votes: %s, Profile: %v}", a.Candidate.Votes.String(), a.Candidate.Profile))
 	}
-	if a.TxCount != 0 {
-		set = append(set, fmt.Sprintf("TxCount: %d", a.TxCount))
-	}
 
 	if len(a.Candidate.Profile) > 0 {
 		records := make([]string, 0, len(a.Candidate.Profile))
@@ -299,8 +291,8 @@ func (c Code) String() string {
 }
 
 type AccountAccessor interface {
-	GetTxCount() uint32
-	SetTxCount(count uint32)
+	GetAddress() common.Address
+	GetBaseVersion(logType ChangeLogType) uint32
 
 	GetVoteFor() common.Address
 	SetVoteFor(addr common.Address)
@@ -308,18 +300,20 @@ type AccountAccessor interface {
 	GetVotes() *big.Int
 	SetVotes(votes *big.Int)
 
-	GetCandidateProfile() Profile
-	SetCandidateProfile(profile Profile)
+	GetCandidate() Profile
+	SetCandidate(profile Profile)
+	GetCandidateState(key string) string
+	SetCandidateState(key string, val string)
 
-	GetAddress() common.Address
 	GetBalance() *big.Int
 	SetBalance(balance *big.Int)
-	// GetBaseVersion returns the version of specific change log from the base block. It is not changed by tx processing until the finalised
-	GetBaseVersion(logType ChangeLogType) uint32
+
 	GetCodeHash() common.Hash
 	SetCodeHash(codeHash common.Hash)
+
 	GetCode() (Code, error)
 	SetCode(code Code)
+
 	GetStorageRoot() common.Hash
 	SetStorageRoot(root common.Hash)
 	GetAssetCodeRoot() common.Hash
@@ -332,17 +326,23 @@ type AccountAccessor interface {
 	GetStorageState(key common.Hash) ([]byte, error)
 	SetStorageState(key common.Hash, value []byte) error
 
-	GetAssetCodeState(code common.Hash) (*Asset, error)
-	SetAssetCodeState(code common.Hash, asset *Asset) error
+	GetAssetCode(code common.Hash) (*Asset, error)
+	SetAssetCode(code common.Hash, asset *Asset) error
+	GetAssetCodeTotalSupply(code common.Hash) (*big.Int, error)
+	SetAssetCodeTotalSupply(code common.Hash, val *big.Int) error
+	GetAssetCodeState(code common.Hash, key string) (string, error)
+	SetAssetCodeState(code common.Hash, key string, val string) error
 
 	GetAssetIdState(id common.Hash) (string, error)
+	DelAssetIdState(id common.Hash) error
 	SetAssetIdState(id common.Hash, data string) error
 
 	GetEquityState(id common.Hash) (*AssetEquity, error)
 	SetEquityState(id common.Hash, equity *AssetEquity) error
 
-	IsEmpty() bool
 	GetSuicide() bool
 	SetSuicide(suicided bool)
+
+	IsEmpty() bool
 	MarshalJSON() ([]byte, error)
 }

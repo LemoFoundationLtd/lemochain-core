@@ -21,7 +21,6 @@ func getAccountData() *AccountData {
 		StorageRoot:   common.HexToHash("0xcbeb7c7e36b846713bc99b8fa527e8d552e31bfaa1ac0f2b773958cda3aba3ed"),
 		NewestRecords: map[ChangeLogType]VersionRecord{logType1: {100, 10}, logType2: {101, 11}},
 		VoteFor:       common.HexToAddress("0x00001"),
-		TxCount:       100,
 	}
 
 	account.Candidate.Profile = make(Profile)

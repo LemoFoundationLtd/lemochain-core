@@ -238,12 +238,6 @@ func (a *Account) String() string {
 	return a.data.String()
 }
 
-func (a *Account) GetTxCount() uint32 { return a.data.TxCount }
-
-func (a *Account) SetTxCount(count uint32) {
-	a.data.TxCount = count
-}
-
 func (a *Account) GetVoteFor() common.Address { return a.data.VoteFor }
 
 func (a *Account) SetVoteFor(addr common.Address) {
@@ -258,7 +252,7 @@ func (a *Account) SetVotes(votes *big.Int) {
 	a.data.Candidate.Votes = new(big.Int).Set(votes)
 }
 
-func (a *Account) GetCandidateProfile() types.Profile {
+func (a *Account) GetCandidate() types.Profile {
 	if a.data.Candidate.Profile == nil {
 		return make(types.Profile)
 	} else {
@@ -270,15 +264,27 @@ func (a *Account) GetCandidateProfile() types.Profile {
 	}
 }
 
-func (a *Account) SetCandidateProfile(profile types.Profile) {
-	if len(profile) <= 0 {
-		a.data.Candidate.Profile = make(map[string]string)
-	} else {
-		a.data.Candidate.Profile = make(map[string]string)
-		for k, v := range profile {
-			a.data.Candidate.Profile[k] = v
-		}
+func (a *Account) SetCandidate(profile types.Profile) {
+	a.data.Candidate.Profile = make(types.Profile)
+	for k, v := range profile {
+		a.data.Candidate.Profile[k] = v
 	}
+}
+
+func (a *Account) GetCandidateState(key string) string {
+	if a.data.Candidate.Profile == nil {
+		return ""
+	} else {
+		return a.data.Candidate.Profile[key]
+	}
+}
+
+func (a *Account) SetCandidateState(key string, val string) {
+	if a.data.Candidate.Profile == nil {
+		a.data.Candidate.Profile = make(types.Profile)
+	}
+
+	a.data.Candidate.Profile[key] = val
 }
 
 // Implement AccountAccessor. Access Account without changelog
@@ -393,7 +399,7 @@ func (a *Account) SetStorageState(key common.Hash, value []byte) error {
 	return a.storage.SetState(key, value)
 }
 
-func (a *Account) GetAssetCodeState(code common.Hash) (*types.Asset, error) {
+func (a *Account) GetAssetCode(code common.Hash) (*types.Asset, error) {
 	val, err := a.assetCode.GetState(a.data.AssetCodeRoot, code)
 	if err != nil {
 		return nil, err
@@ -408,7 +414,7 @@ func (a *Account) GetAssetCodeState(code common.Hash) (*types.Asset, error) {
 	}
 }
 
-func (a *Account) SetAssetCodeState(code common.Hash, asset *types.Asset) error {
+func (a *Account) SetAssetCode(code common.Hash, asset *types.Asset) error {
 	if asset == nil {
 		panic("asset is nil.")
 	}
@@ -421,12 +427,51 @@ func (a *Account) SetAssetCodeState(code common.Hash, asset *types.Asset) error 
 	}
 }
 
+func (a *Account) GetAssetCodeTotalSupply(code common.Hash) (*big.Int, error) {
+	asset, err := a.GetAssetCode(code)
+	if err != nil {
+		return nil, err
+	} else {
+		return asset.TotalSupply, nil
+	}
+}
+
+func (a *Account) SetAssetCodeTotalSupply(code common.Hash, val *big.Int) error {
+	asset, err := a.GetAssetCode(code)
+	if err != nil {
+		return err
+	} else {
+		asset.TotalSupply = val
+		return a.SetAssetCode(code, asset)
+	}
+}
+
+func (a *Account) GetAssetCodeState(code common.Hash, key string) (string, error) {
+	asset, err := a.GetAssetCode(code)
+	if err != nil {
+		return "", err
+	}
+
+	return asset.Profile[key], nil
+}
+
+func (a *Account) SetAssetCodeState(code common.Hash, key string, val string) error {
+	asset, err := a.GetAssetCode(code)
+	if err != nil {
+		return err
+	} else {
+		asset.Profile[key] = val
+		return nil
+	}
+}
+
 func (a *Account) GetAssetIdState(id common.Hash) (string, error) {
-	val, err := a.assetId.GetState(a.data.AssetIdRoot, id)
+	root := a.GetAssetIdRoot()
+	val, err := a.assetId.GetState(root, id)
 	if err != nil {
 		return "", err
 	} else {
-		return string(val[:]), nil
+		return string(val), nil
 	}
 }
 
@@ -451,14 +496,14 @@ func (a *Account) GetEquityState(id common.Hash) (*types.AssetEquity, error) {
 
 func (a *Account) SetEquityState(id common.Hash, equity *types.AssetEquity) error {
 	if equity == nil {
-		panic("equity is nil.")
-	}
-
-	val, err := rlp.EncodeToBytes(equity)
-	if err != nil {
-		return err
+		return a.equity.SetState(id, nil)
 	} else {
-		return a.equity.SetState(id, val)
+		val, err := rlp.EncodeToBytes(equity)
+		if err != nil {
+			return err
+		} else {
+			return a.equity.SetState(id, val)
+		}
 	}
 }
 
