@@ -51,8 +51,8 @@ go build
 	"timeout": "10000",
 	"dbUri": "root:123456@tcp(127.0.0.1:3306)/lemochain?charset=utf8mb4",
 	"dbDriver": "mysql",
-	"snapshotBlock": "1000000",
-	"periodBlock":"1000"
+	"termDuration": "1000000",
+	"interimDuration":"1000"
 }
 ```
 - `chainID` LemoChain的ID，不能为0
@@ -60,8 +60,8 @@ go build
 - `timeout` 各节点出块的超时时间，不能小于3秒(3000毫秒)
 - `dbUri` 数据库连接地址。格式为`[用户名]:[密码]@tcp([IP]:[端口号])/[数据库名]?charset=utf8mb4`
 - `dbDriver` 数据库类型
-- `snapshotBlock` 快照块高度
-- `periodBlock` 过渡期区块数
+- `termDuration` 两个快照块之间间隔的区块数
+- `interimDuration` 过渡期区块数
 
 ### 节点白名单
 节点启动后会自动连接这些节点，位于datadir根目录下，名为：`whitelist`  
