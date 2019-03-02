@@ -2,6 +2,7 @@ package types
 
 import (
 	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
 	"math/big"
 )
 
@@ -28,11 +29,14 @@ type Asset struct {
 // type AssetExtend struct {
 // 	MateData  map[common.Hash]string
 // }
-
+//go:generate gencodec -type AssetEquity --field-override assetEquityMarshaling -out gen_assetEquity_json.go
 type AssetEquity struct {
-	AssetCode common.Hash
-	AssetId   common.Hash
-	Equity    *big.Int
+	AssetCode common.Hash `json:"assetCode" gencodec:"required"`
+	AssetId   common.Hash `json:"assetId" gencodec:"required"`
+	Equity    *big.Int    `json:"equity" gencodec:"required"`
+}
+type assetEquityMarshaling struct {
+	Equity *hexutil.Big10
 }
 
 func (equity *AssetEquity) Clone() *AssetEquity {

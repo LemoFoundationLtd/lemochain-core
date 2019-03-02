@@ -1,6 +1,7 @@
 package chain
 
 import (
+	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
@@ -525,7 +526,7 @@ func Test_voteAndRegisteTx(t *testing.T) {
 	account00 := p.am.GetCanonicalAccount(testAddr)
 	assert.Equal(t, testAddr, account00.GetVoteFor())                               // 投给自己
 	assert.Equal(t, account00.GetBalance().String(), account00.GetVotes().String()) // 初始票数为自己的Balance
-	profile := account00.GetCandidateProfile()
+	profile := account00.GetCandidate()
 	assert.Equal(t, cand00[types.CandidateKeyMinerAddress], profile[types.CandidateKeyMinerAddress])
 	assert.Equal(t, cand00[types.CandidateKeyHost], profile[types.CandidateKeyHost])
 	assert.Equal(t, cand00[types.CandidateKeyPort], profile[types.CandidateKeyPort])
@@ -588,7 +589,7 @@ func Test_voteAndRegisteTx(t *testing.T) {
 	block02testAddr02Votes := account02.GetVotes()
 	assert.Equal(t, address02, account02.GetVoteFor())                                // 默认投给自己
 	assert.Equal(t, account02.GetBalance().String(), block02testAddr02Votes.String()) // 初始票数为自己的Balance
-	profile02 := account02.GetCandidateProfile()
+	profile02 := account02.GetCandidate()
 	assert.Equal(t, cand02[types.CandidateKeyMinerAddress], profile02[types.CandidateKeyMinerAddress])
 	assert.Equal(t, cand02[types.CandidateKeyHost], profile02[types.CandidateKeyHost])
 	assert.Equal(t, cand02[types.CandidateKeyPort], profile02[types.CandidateKeyPort])
@@ -660,7 +661,7 @@ func Test_voteAndRegisteTx(t *testing.T) {
 	assert.Equal(t, addVotes02, testAccount01.GetBalance())
 
 	// 	验证2. 候选节点testAddr修改后的信息
-	pro := latestAccount00.GetCandidateProfile()
+	pro := latestAccount00.GetCandidate()
 	assert.Equal(t, changeCand00[types.CandidateKeyPort], pro[types.CandidateKeyPort])
 	assert.Equal(t, changeCand00[types.CandidateKeyHost], pro[types.CandidateKeyHost])
 
@@ -829,4 +830,69 @@ func TestBlockChain_txData(t *testing.T) {
 	by, _ := json.Marshal(re)
 	fmt.Println("tx data", common.ToHex(by))
 	fmt.Println("预编译合约地址", common.BytesToAddress([]byte{9}).String())
+}
+
+// TestCreateAssetTx create asset
+func TestCreateAssetTx(t *testing.T) {
+	tx01, err := newCreateAssetTx(testPrivate, types.Asset01, true, true)
+	assert.NoError(t, err)
+	store.ClearData()
+	p := NewTxProcessor(newChain())
+	parentBlock := p.chain.stableBlock.Load().(*types.Block)
+	header01 := &types.Header{
+		ParentHash:   parentBlock.Hash(),
+		MinerAddress: parentBlock.MinerAddress(),
+		Height:       parentBlock.Height() + 1,
+		GasLimit:     parentBlock.GasLimit(),
+		Time:         parentBlock.Time() + 4,
+	}
+	txs := types.Transactions{tx01}
+	newHeader01, _, _, err := p.ApplyTxs(header01, txs)
+	assert.NoError(t, err)
+	Block01 := &types.Block{
+		Header:     newHeader01,
+		Txs:        txs,
+		ChangeLogs: p.am.GetChangeLogs(),
+		Events:     p.am.GetEvents(),
+	}
+	Block01Hash := Block01.Hash()
+	p.chain.db.SetBlock(Block01Hash, Block01)
+	p.am.Save(Block01Hash)
+	p.chain.db.SetStableBlock(Block01Hash)
+
+	// 	compare
+	senderAcc := p.am.GetAccount(crypto.PubkeyToAddress(testPrivate.PublicKey))
+	asset, err := senderAcc.GetAssetCode(tx01.Hash())
+	assert.NoError(t, err)
+	assert.Equal(t, types.Asset01, asset.Category)
+	assert.Equal(t, true, asset.IsDivisible, asset.IsReplenishable)
+	assert.Equal(t, "Demo Token", asset.Profile[types.AssetName])
+	assert.Equal(t, "DT", asset.Profile[types.AssetSymbol])
+	assert.Equal(t, "test issue token", asset.Profile[types.AssetDescription])
+	assert.Equal(t, "false", asset.Profile[types.AssetStop])
+	assert.Equal(t, "60000", asset.Profile[types.AssetSuggestedGasLimit])
+}
+
+// newCreateAssetTx
+func newCreateAssetTx(private *ecdsa.PrivateKey, category int, isReplenishable, isDivisible bool) (*types.Transaction, error) {
+	issuer := crypto.PubkeyToAddress(private.PublicKey)
+	profile := make(types.Profile)
+	profile[types.AssetName] = "Demo Token"
+	profile[types.AssetSymbol] = "DT"
+	profile[types.AssetDescription] = "test issue token"
+	profile[types.AssetStop] = "false"
+	profile[types.AssetSuggestedGasLimit] = "60000"
+	asset := &types.Asset{
+		Category:        category,
+		IsDivisible:     isDivisible,
+		AssetCode:       common.Hash{},
+		Decimals:        5,
+		TotalSupply:     big.NewInt(10000000),
+		IsReplenishable: isReplenishable,
+		Issuer:          issuer,
+		Profile:         profile,
+	}
+	data, _ := json.Marshal(asset)
+	tx := types.NoReceiverTransaction(nil, uint64(500000), big.NewInt(1), data, params.CreateAssetTx, chainID, uint64(time.Now().Unix()+30*60), "", "create asset tx")
+	return types.MakeSigner().SignTx(tx, private)
 }

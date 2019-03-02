@@ -226,7 +226,7 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 			log.Errorf("unmarshal trading asset data err: %s", err)
 			return 0, err
 		}
-		_, restGas, vmErr = vmEnv.TradingAssetTx(sender, recipientAddr, restGas, tradingAsset.AssetId, tradingAsset.Value, tradingAsset.Input)
+		_, restGas, vmErr = vmEnv.TradingAssetTx(sender, recipientAddr, restGas, tradingAsset.AssetId, tradingAsset.Value, tradingAsset.Input, p.chain.db)
 	default:
 		log.Errorf("The type of transaction is not defined. txType = %d\n", tx.Type())
 	}
@@ -252,13 +252,6 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 	}
 	p.refundGas(gp, tx, restGas)
 
-	if !contractCreation {
-		oldRecipientTxCount := recipientAccount.GetTxCount()
-		recipientAccount.SetTxCount(oldRecipientTxCount + 1)
-	}
-	oldsenderTxCount := sender.GetTxCount()
-	sender.SetTxCount(oldsenderTxCount + 1)
-
 	// The number of votes of the candidate nodes corresponding to the sender.
 	endSenderBalance := sender.GetBalance()
 	senderBalanceChange := new(big.Int).Sub(endSenderBalance, initialSenderBalance)
@@ -267,9 +260,6 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 	// reimbursement transaction
 	if len(tx.GasPayerSig()) != 0 {
 		payer, _ := tx.GasPayer()
-		accPayer := p.am.GetAccount(payer)
-		// add txCount
-		accPayer.SetTxCount(accPayer.GetTxCount() + 1)
 		// balance decrease the amount
 		reduceBalance := new(big.Int).Mul(new(big.Int).SetUint64(tx.GasLimit()-restGas), tx.GasPrice())
 		negativeChangeBalance := new(big.Int).Neg(reduceBalance)
@@ -295,7 +285,7 @@ func (p *TxProcessor) changeCandidateVotes(accountAddress common.Address, change
 		return
 	}
 	CandidateAccount := p.am.GetAccount(CandidataAddress)
-	profile := CandidateAccount.GetCandidateProfile()
+	profile := CandidateAccount.GetCandidate()
 	if profile[types.CandidateKeyIsCandidate] == params.NotCandidateNode {
 		return
 	}

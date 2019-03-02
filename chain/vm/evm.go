@@ -10,6 +10,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/store"
+	"github.com/LemoFoundationLtd/lemochain-go/store/protocol"
 	"math/big"
 	"strings"
 	"sync/atomic"
@@ -508,7 +509,7 @@ func (evm *EVM) ModifyAssetInfoTx(sender common.Address, data []byte) error {
 }
 
 // TradingAssetTx 交易资产,包含调用智能合约交易
-func (evm *EVM) TradingAssetTx(caller ContractRef, addr common.Address, gas uint64, assetId common.Hash, amount *big.Int, input []byte) (ret []byte, leftOverGas uint64, err error) {
+func (evm *EVM) TradingAssetTx(caller ContractRef, addr common.Address, gas uint64, assetId common.Hash, amount *big.Int, input []byte, chainDB protocol.ChainDB) (ret []byte, leftOverGas uint64, err error) {
 	if evm.vmConfig.NoRecursion && evm.depth > 0 {
 		return nil, gas, nil
 	}
@@ -523,8 +524,11 @@ func (evm *EVM) TradingAssetTx(caller ContractRef, addr common.Address, gas uint
 	if err != nil {
 		return nil, gas, err
 	}
-	// get asset todo 增加GetIssuerState接口
-	issuer := senderAcc.GetIssuerState(senderEquity.AssetCode)
+	// get asset
+	issuer, err := chainDB.GetAssetCode(senderEquity.AssetCode)
+	if err != nil {
+		return nil, gas, err
+	}
 	issuerAcc := evm.am.GetAccount(issuer)
 	asset, err := issuerAcc.GetAssetCode(senderEquity.AssetCode)
 	if err != nil {
