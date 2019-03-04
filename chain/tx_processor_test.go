@@ -832,36 +832,19 @@ func TestBlockChain_txData(t *testing.T) {
 	fmt.Println("预编译合约地址", common.BytesToAddress([]byte{9}).String())
 }
 
-// TestCreateAssetTx create asset
+// TestCreateAssetTx create asset test
 func TestCreateAssetTx(t *testing.T) {
 	tx01, err := newCreateAssetTx(testPrivate, types.Asset01, true, true)
 	assert.NoError(t, err)
-	store.ClearData()
-	p := NewTxProcessor(newChain())
+	bc := newChain()
+	defer bc.db.Close()
+	p := NewTxProcessor(bc)
 	parentBlock := p.chain.stableBlock.Load().(*types.Block)
-	header01 := &types.Header{
-		ParentHash:   parentBlock.Hash(),
-		MinerAddress: parentBlock.MinerAddress(),
-		Height:       parentBlock.Height() + 1,
-		GasLimit:     parentBlock.GasLimit(),
-		Time:         parentBlock.Time() + 4,
-	}
 	txs := types.Transactions{tx01}
-	newHeader01, _, _, err := p.ApplyTxs(header01, txs)
+	block01, err := newNextBlock(p, parentBlock, txs, true)
 	assert.NoError(t, err)
-	Block01 := &types.Block{
-		Header:     newHeader01,
-		Txs:        txs,
-		ChangeLogs: p.am.GetChangeLogs(),
-		Events:     p.am.GetEvents(),
-	}
-	Block01Hash := Block01.Hash()
-	p.chain.db.SetBlock(Block01Hash, Block01)
-	p.am.Save(Block01Hash)
-	p.chain.db.SetStableBlock(Block01Hash)
-
 	// 	compare
-	p.am.Reset(Block01Hash)
+	p.am.Reset(block01.Hash())
 	senderAcc := p.am.GetAccount(crypto.PubkeyToAddress(testPrivate.PublicKey))
 	asset, err := senderAcc.GetAssetCode(tx01.Hash())
 	assert.NoError(t, err)
@@ -872,6 +855,41 @@ func TestCreateAssetTx(t *testing.T) {
 	assert.Equal(t, "test issue token", asset.Profile[types.AssetDescription])
 	assert.Equal(t, "false", asset.Profile[types.AssetStop])
 	assert.Equal(t, "60000", asset.Profile[types.AssetSuggestedGasLimit])
+}
+
+// newNextBlock new a block
+func newNextBlock(p *TxProcessor, parentBlock *types.Block, txs types.Transactions, save bool) (*types.Block, error) {
+	header01 := &types.Header{
+		ParentHash:   parentBlock.Hash(),
+		MinerAddress: parentBlock.MinerAddress(),
+		Height:       parentBlock.Height() + 1,
+		GasLimit:     parentBlock.GasLimit(),
+		Time:         parentBlock.Time() + 4,
+	}
+	newHeader, _, _, err := p.ApplyTxs(header01, txs)
+	if err != nil {
+		return nil, err
+	}
+	newBlock := &types.Block{
+		Header:     newHeader,
+		Txs:        txs,
+		ChangeLogs: p.am.GetChangeLogs(),
+		Events:     p.am.GetEvents(),
+	}
+	BlockHash := newBlock.Hash()
+	err = p.chain.db.SetBlock(BlockHash, newBlock)
+	if err != nil {
+		return nil, err
+	}
+	p.am.Save(BlockHash)
+	if save {
+		err = p.chain.db.SetStableBlock(BlockHash)
+		p.am.Reset(BlockHash)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return newBlock, nil
 }
 
 // newCreateAssetTx
@@ -896,4 +914,119 @@ func newCreateAssetTx(private *ecdsa.PrivateKey, category uint32, isReplenishabl
 	data, _ := json.Marshal(asset)
 	tx := types.NoReceiverTransaction(nil, uint64(500000), big.NewInt(1), data, params.CreateAssetTx, chainID, uint64(time.Now().Unix()+30*60), "", "create asset tx")
 	return types.MakeSigner().SignTx(tx, private)
+}
+
+// TestIssueAssetTest issue asset tx test
+func TestIssueAssetTest(t *testing.T) {
+	store.ClearData()
+	bc := newChain()
+	defer bc.db.Close()
+	p := NewTxProcessor(bc)
+	parentBlock := p.chain.stableBlock.Load().(*types.Block)
+
+	// 执行创建资产的交易的区块
+	tx01, err := newCreateAssetTx(testPrivate, types.Asset01, false, true)
+	assert.NoError(t, err)
+	tx02, err := newCreateAssetTx(testPrivate, types.Asset02, false, false)
+	assert.NoError(t, err)
+	tx03, err := newCreateAssetTx(testPrivate, types.Asset03, true, true)
+	Ctxs := types.Transactions{tx01, tx02, tx03}
+	block01, err := newNextBlock(p, parentBlock, Ctxs, true)
+	assert.NoError(t, err)
+	asset01Code := tx01.Hash()
+	asset02Code := tx02.Hash()
+	asset03Code := tx03.Hash()
+
+	// 执行发行资产的交易的区块
+	receiver := common.HexToAddress("0x0813")
+	issAsset01Tx, err := newIssueAssetTx(testPrivate, receiver, asset01Code, big.NewInt(110), "issue erc20 asset")
+	assert.NoError(t, err)
+	issAsset02Tx, err := newIssueAssetTx(testPrivate, receiver, asset02Code, big.NewInt(110), "issue erc721 asset")
+	assert.NoError(t, err)
+	issAsset03Tx, err := newIssueAssetTx(testPrivate, receiver, asset03Code, big.NewInt(110), "issue erc721+20 asset")
+	assert.NoError(t, err)
+	Itxs := types.Transactions{issAsset01Tx, issAsset02Tx, issAsset03Tx}
+	block02, err := newNextBlock(p, block01, Itxs, true)
+	assert.NoError(t, err)
+	assert.Equal(t, block01.Height()+1, block02.Height())
+
+	// 验证资产issuer中的资产totalSupply
+	issuerAcc := p.am.GetAccount(testAddr)
+	asset01Total, err := issuerAcc.GetAssetCodeTotalSupply(asset01Code)
+	assert.NoError(t, err)
+	asset02Total, err := issuerAcc.GetAssetCodeTotalSupply(asset02Code)
+	assert.NoError(t, err)
+	asset03Total, err := issuerAcc.GetAssetCodeTotalSupply(asset03Code)
+	assert.NoError(t, err)
+	assert.Equal(t, big.NewInt(110), asset01Total)
+	assert.Equal(t, big.NewInt(1), asset02Total)
+	assert.Equal(t, big.NewInt(110), asset03Total)
+
+	// 验证receiver中的资产余额
+	asset01Id := asset01Code
+	asset02Id := issAsset02Tx.Hash()
+	asset03Id := issAsset03Tx.Hash()
+	receiverAcc := p.am.GetAccount(receiver)
+	equity01, err := receiverAcc.GetEquityState(asset01Id)
+	assert.NoError(t, err)
+	equity02, err := receiverAcc.GetEquityState(asset02Id)
+	assert.NoError(t, err)
+	equity03, err := receiverAcc.GetEquityState(asset03Id)
+	assert.NoError(t, err)
+	assert.Equal(t, big.NewInt(110), equity01.Equity)
+	assert.Equal(t, big.NewInt(110), equity02.Equity)
+	assert.Equal(t, big.NewInt(110), equity03.Equity)
+
+	// 	验证metaData
+	metaData01, err := receiverAcc.GetAssetIdState(asset01Id)
+	assert.NoError(t, err)
+	metaData02, err := receiverAcc.GetAssetIdState(asset02Id)
+	assert.NoError(t, err)
+	metaData03, err := receiverAcc.GetAssetIdState(asset03Id)
+	assert.NoError(t, err)
+	assert.Equal(t, "issue erc20 asset", metaData01)
+	assert.Equal(t, "issue erc721 asset", metaData02)
+	assert.Equal(t, "issue erc721+20 asset", metaData03)
+}
+
+// new发行资产交易
+func newIssueAssetTx(prv *ecdsa.PrivateKey, receiver common.Address, assetCode common.Hash, amount *big.Int, metaData string) (*types.Transaction, error) {
+	issue := &types.IssueAsset{
+		AssetCode: assetCode,
+		MetaData:  metaData,
+		Amount:    amount,
+	}
+	data, err := json.Marshal(issue)
+	if err != nil {
+		return nil, err
+	}
+	tx := types.NewTransaction(receiver, nil, uint64(500000), big.NewInt(1), data, params.IssueAssetTx, chainID, uint64(time.Now().Unix()+30*60), "", "issue asset tx")
+
+	signTx, err := types.MakeSigner().SignTx(tx, prv)
+	if err != nil {
+		return nil, err
+	}
+	return signTx, nil
+}
+
+// relenishAsset tx test
+func TestReplenishAssetTx(t *testing.T) {
+	defer store.ClearData()
+
+}
+
+// new 增发资产交易
+func newReplenishAssetTx(private *ecdsa.PrivateKey, receiver common.Address, assetCode, assetId common.Hash, amount *big.Int) (*types.Transaction, error) {
+	repl := &types.ReplenishAsset{
+		AssetCode: assetCode,
+		AssetId:   assetId,
+		Amount:    amount,
+	}
+	data, err := json.Marshal(repl)
+	if err != nil {
+		return nil, err
+	}
+	tx := types.NewTransaction(receiver, nil, uint64(500000), big.NewInt(1), data, params.ReplenishAssetTx, chainID, uint64(time.Now().Unix()+30*60), "", "replenish asset tx")
+	signTx, err := types.MakeSigner().SignTx(tx, private)
+	return signTx, err
 }
