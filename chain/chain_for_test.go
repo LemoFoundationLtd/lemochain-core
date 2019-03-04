@@ -187,20 +187,16 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 		if tx.Type() == 1 || tx.Type() == 2 {
 			newProfile := make(map[string]string, 5)
 			newProfile[types.CandidateKeyIsCandidate] = "true"
-			to.SetCandidateProfile(newProfile)
+			to.SetCandidate(newProfile)
 			to.SetVotes(big.NewInt(10))
 		}
 		// make sure the change log has right order
 		if fromAddr.Hex() < tx.To().Hex() {
 			from.SetBalance(new(big.Int).Sub(from.GetBalance(), cost))
-			from.SetTxCount(from.GetTxCount() + 1)
 			to.SetBalance(new(big.Int).Add(to.GetBalance(), tx.Amount()))
-			to.SetTxCount(to.GetTxCount() + 1)
 		} else {
 			to.SetBalance(new(big.Int).Add(to.GetBalance(), tx.Amount()))
-			to.SetTxCount(to.GetTxCount() + 1)
 			from.SetBalance(new(big.Int).Sub(from.GetBalance(), cost))
-			from.SetTxCount(from.GetTxCount() + 1)
 		}
 		gasUsed += gas
 		salary.Add(salary, fee)
