@@ -411,6 +411,8 @@ func (a *Account) GetAssetCode(code common.Hash) (*types.Asset, error) {
 	}
 
 	var asset types.Asset
+	asset.TotalSupply = new(big.Int)
+	asset.Profile = make(types.Profile)
 	err = rlp.DecodeBytes(val, &asset)
 	if err != nil {
 		return nil, err

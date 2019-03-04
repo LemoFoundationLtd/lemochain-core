@@ -7,10 +7,10 @@ import (
 )
 
 const (
-	Asset01                = 1    // erc20
-	Asset02                = 2    // erc721
-	Asset03                = 3    // erc20+721
-	MaxProfileStringLength = 1024 // max string length
+	Asset01                = uint32(1) // erc20
+	Asset02                = uint32(2) // erc721
+	Asset03                = uint32(3) // erc20+721
+	MaxProfileStringLength = 1024      // max string length
 	MaxMarshalAssetLength  = 2048
 	MaxMetaDataLength      = 256
 )
@@ -48,7 +48,6 @@ func (equity *AssetEquity) Clone() *AssetEquity {
 }
 
 func (asset *Asset) Clone() *Asset {
-
 	clone := func(profile Profile) Profile {
 		result := make(Profile)
 		if len(profile) <= 0 {
