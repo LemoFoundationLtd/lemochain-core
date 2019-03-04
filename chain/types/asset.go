@@ -16,10 +16,10 @@ const (
 )
 
 type Asset struct {
-	Category        int
+	Category        uint32
 	IsDivisible     bool
 	AssetCode       common.Hash
-	Decimals        int
+	Decimals        uint32
 	TotalSupply     *big.Int
 	IsReplenishable bool
 	Issuer          common.Address
