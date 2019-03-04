@@ -341,7 +341,6 @@ type AccountAccessor interface {
 	SetAssetCodeState(code common.Hash, key string, val string) error
 
 	GetAssetIdState(id common.Hash) (string, error)
-	DelAssetIdState(id common.Hash) error
 	SetAssetIdState(id common.Hash, data string) error
 
 	GetEquityState(id common.Hash) (*AssetEquity, error)
