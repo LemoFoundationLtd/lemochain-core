@@ -699,7 +699,7 @@ func (bc *BlockChain) GetNewDeputyNodes() deputynode.DeputyNodes {
 		dn := new(deputynode.DeputyNode)
 		dn.Votes = n.GetTotal()
 		acc := bc.am.GetAccount(n.GetAddress())
-		profile := acc.GetCandidateProfile()
+		profile := acc.GetCandidate()
 		strAddr := profile[types.CandidateKeyMinerAddress]
 		addr, err := common.StringToAddress(strAddr)
 		if err != nil {
