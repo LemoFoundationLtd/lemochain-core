@@ -31,8 +31,6 @@ const (
 	SuicideLog
 	VoteForLog
 	VotesLog
-
-	TxCountLog
 	LOG_TYPE_STOP
 )
 
@@ -44,19 +42,22 @@ type ProfileChangeLogExtra struct {
 func init() {
 	types.RegisterChangeLog(BalanceLog, "BalanceLog", decodeBigInt, decodeEmptyInterface, redoBalance, undoBalance)
 	types.RegisterChangeLog(StorageLog, "StorageLog", decodeBytes, decodeBytes, redoStorage, undoStorage)
-	types.RegisterChangeLog(StorageRootLog, "StorageRootLog", decodeHash, decodeHash, redoStorageRoot, undoStorageRoot)
-	types.RegisterChangeLog(AssetCodeLog, "AssetCodeLog", decodeAsset, decodeAsset, redoAssetCode, undoAssetCode)
-	types.RegisterChangeLog(AssetCodeRootLog, "AssetCodeRootLog", decodeHash, decodeHash, redoAssetCodeRoot, undoAssetCodeRoot)
-	types.RegisterChangeLog(AssetIdLog, "AssetIdLog", decodeAsset, decodeAsset, redoAssetId, undoAssetId)
-	types.RegisterChangeLog(AssetIdRootLog, "AssetIdRootLog", decodeHash, decodeHash, redoAssetIdRoot, undoAssetIdRoot)
-	types.RegisterChangeLog(EquityLog, "EquityLog", decodeEquity, decodeEquity, redoEquity, undoEquity)
-	types.RegisterChangeLog(EquityRootLog, "EquityRootLog", decodeHash, decodeHash, redoEquityRoot, undoEquityRoot)
+	types.RegisterChangeLog(StorageRootLog, "StorageRootLog", decodeHash, decodeEmptyInterface, redoStorageRoot, undoStorageRoot)
+	types.RegisterChangeLog(AssetCodeLog, "AssetCodeLog", decodeAsset, decodeHash, redoAssetCode, undoAssetCode)
+	types.RegisterChangeLog(AssetCodeRootLog, "AssetCodeRootLog", decodeHash, decodeEmptyInterface, redoAssetCodeRoot, undoAssetCodeRoot)
+	types.RegisterChangeLog(AssetCodeStateLog, "AssetCodeStateLog", decodeString, decodeProfileChangeLogExtra, redoAssetCodeState, undoAssetCodeState)
+	types.RegisterChangeLog(AssetCodeTotalSupplyLog, "AssetCodeTotalSupplyLog", decodeBigInt, decodeHash, redoAssetCodeTotalSupply, undoAssetCodeTotalSupply)
+	types.RegisterChangeLog(AssetIdLog, "AssetIdLog", decodeString, decodeHash, redoAssetId, undoAssetId)
+	types.RegisterChangeLog(AssetIdRootLog, "AssetIdRootLog", decodeHash, decodeEmptyInterface, redoAssetIdRoot, undoAssetIdRoot)
+	types.RegisterChangeLog(EquityLog, "EquityLog", decodeEquity, decodeHash, redoEquity, undoEquity)
+	types.RegisterChangeLog(EquityRootLog, "EquityRootLog", decodeHash, decodeEmptyInterface, redoEquityRoot, undoEquityRoot)
 	types.RegisterChangeLog(CodeLog, "CodeLog", decodeCode, decodeEmptyInterface, redoCode, undoCode)
 	types.RegisterChangeLog(AddEventLog, "AddEventLog", decodeEvent, decodeEmptyInterface, redoAddEvent, undoAddEvent)
 	types.RegisterChangeLog(SuicideLog, "SuicideLog", decodeEmptyInterface, decodeEmptyInterface, redoSuicide, undoSuicide)
 	types.RegisterChangeLog(VoteForLog, "VoteForLog", decodeAddress, decodeEmptyInterface, redoVoteFor, undoVoteFor)
 	types.RegisterChangeLog(VotesLog, "VotesLog", decodeBigInt, decodeEmptyInterface, redoVotes, undoVotes)
 	types.RegisterChangeLog(CandidateLog, "CandidateProfileLog", decodeString, decodeEmptyInterface, redoCandidate, undoCandidate)
+	types.RegisterChangeLog(CandidateStateLog, "CandidateStateLog", decodeString, decodeString, redoCandidateState, undoCandidateState)
 }
 
 // IsValuable returns true if the change log contains some data change
