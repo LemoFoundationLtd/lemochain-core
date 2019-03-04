@@ -38,6 +38,7 @@ func TestAccount_GetAddress(t *testing.T) {
 	store.ClearData()
 
 	db := newDB()
+	defer db.Close()
 
 	// load default account
 	account := loadAccount(db, defaultAccounts[0].Address)
@@ -56,6 +57,7 @@ func TestAccount_GetAddress(t *testing.T) {
 func TestAccount_SetBalance_GetBalance(t *testing.T) {
 	store.ClearData()
 	db := newDB()
+	defer db.Close()
 
 	account := loadAccount(db, defaultAccounts[0].Address)
 	assert.Equal(t, big.NewInt(100), account.GetBalance())
@@ -67,6 +69,7 @@ func TestAccount_SetBalance_GetBalance(t *testing.T) {
 func TestAccount_SetVersion_GetVersion(t *testing.T) {
 	store.ClearData()
 	db := newDB()
+	defer db.Close()
 
 	account := loadAccount(db, defaultAccounts[0].Address)
 	assert.Equal(t, uint32(100), account.GetBaseVersion(BalanceLog))
@@ -80,6 +83,7 @@ func TestAccount_SetVersion_GetVersion(t *testing.T) {
 func TestAccount_SetSuicide_GetSuicide(t *testing.T) {
 	store.ClearData()
 	db := newDB()
+	defer db.Close()
 
 	account := loadAccount(db, defaultAccounts[0].Address)
 	assert.Equal(t, false, account.GetSuicide())
@@ -94,6 +98,7 @@ func TestAccount_SetSuicide_GetSuicide(t *testing.T) {
 func TestAccount_GetVoteFor(t *testing.T) {
 	store.ClearData()
 	db := newDB()
+	defer db.Close()
 
 	account := loadAccount(db, defaultAccounts[0].Address)
 	assert.Equal(t, common.Address{}, account.GetVoteFor())
@@ -105,6 +110,7 @@ func TestAccount_GetVoteFor(t *testing.T) {
 func TestAccount_GetCandidate(t *testing.T) {
 	store.ClearData()
 	db := newDB()
+	defer db.Close()
 
 	account := loadAccount(db, defaultAccounts[0].Address)
 	assert.NotNil(t, account.GetCandidate())
@@ -126,6 +132,7 @@ func TestAccount_GetCandidate(t *testing.T) {
 func TestAccount_GetVotes(t *testing.T) {
 	store.ClearData()
 	db := newDB()
+	defer db.Close()
 
 	account := loadAccount(db, defaultAccounts[0].Address)
 	assert.Equal(t, new(big.Int).SetInt64(0), account.GetVotes())
@@ -141,6 +148,7 @@ func TestAccount_GetVotes(t *testing.T) {
 func TestAccount_SetCodeHash_GetCodeHash(t *testing.T) {
 	store.ClearData()
 	db := newDB()
+	defer db.Close()
 
 	account := loadAccount(db, defaultAccounts[0].Address)
 	assert.Equal(t, defaultCodes[0].hash, account.GetCodeHash())
@@ -158,6 +166,7 @@ func TestAccount_SetCodeHash_GetCodeHash(t *testing.T) {
 func TestAccount_SetCode_GetCode(t *testing.T) {
 	store.ClearData()
 	db := newDB()
+	defer db.Close()
 
 	account := loadAccount(db, defaultAccounts[0].Address)
 	readCode, err := account.GetCode()
@@ -193,6 +202,7 @@ func TestAccount_SetCode_GetCode(t *testing.T) {
 func TestAccount_SetStorageRoot_GetStorageRoot(t *testing.T) {
 	store.ClearData()
 	db := newDB()
+	defer db.Close()
 
 	account := loadAccount(db, defaultAccounts[0].Address)
 	assert.Equal(t, defaultAccounts[0].StorageRoot, account.GetStorageRoot())
@@ -206,6 +216,7 @@ func TestAccount_SetStorageRoot_GetStorageRoot(t *testing.T) {
 func TestAccount_SetStorageState_GetStorageState(t *testing.T) {
 	store.ClearData()
 	db := newDB()
+	defer db.Close()
 
 	account := loadAccount(db, defaultAccounts[0].Address)
 
@@ -265,6 +276,7 @@ func TestAccount_SetStorageState_GetStorageState(t *testing.T) {
 func TestAccount_IsEmpty(t *testing.T) {
 	store.ClearData()
 	db := newDB()
+	defer db.Close()
 
 	account := loadAccount(db, common.HexToAddress("0x1"))
 	assert.Equal(t, true, account.IsEmpty())
@@ -275,6 +287,7 @@ func TestAccount_IsEmpty(t *testing.T) {
 func TestAccount_MarshalJSON_UnmarshalJSON(t *testing.T) {
 	store.ClearData()
 	db := newDB()
+	defer db.Close()
 
 	account := loadAccount(db, defaultAccounts[0].Address)
 	data, err := json.Marshal(account)
@@ -294,6 +307,7 @@ func TestAccount_MarshalJSON_UnmarshalJSON(t *testing.T) {
 func TestAccount_Finalise_Save(t *testing.T) {
 	store.ClearData()
 	db := newDB()
+	defer db.Close()
 
 	account := loadAccount(db, defaultAccounts[0].Address)
 

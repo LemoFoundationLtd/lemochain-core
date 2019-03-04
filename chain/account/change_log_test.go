@@ -511,6 +511,8 @@ func TestChangeLog_Redo(t *testing.T) {
 func TestChangeLog_valueShouldBeStableCandidateProfile(t *testing.T) {
 	store.ClearData()
 	db := newDB()
+	defer db.Close()
+
 	manager := NewManager(common.Hash{}, db)
 	account := manager.GetAccount(common.HexToAddress("0x1"))
 

@@ -12,6 +12,8 @@ import (
 func TestLogProcessor_GetAccount(t *testing.T) {
 	store.ClearData()
 	db := newDB()
+	defer db.Close()
+
 	manager := NewManager(newestBlock.Hash(), db)
 	processor := manager.processor
 
@@ -38,6 +40,7 @@ func TestLogProcessor_GetAccount(t *testing.T) {
 func TestLogProcessor_PushEvent_PopEvent(t *testing.T) {
 	store.ClearData()
 	db := newDB()
+	defer db.Close()
 	processor := NewManager(newestBlock.Hash(), db).processor
 
 	// push
@@ -62,6 +65,7 @@ func TestLogProcessor_PushEvent_PopEvent(t *testing.T) {
 func TestLogProcessor_PushChangeLog_GetChangeLogs(t *testing.T) {
 	store.ClearData()
 	db := newDB()
+	defer db.Close()
 	processor := NewManager(newestBlock.Hash(), db).processor
 	assert.Equal(t, 0, len(processor.GetChangeLogs()))
 
@@ -79,6 +83,7 @@ func TestLogProcessor_PushChangeLog_GetChangeLogs(t *testing.T) {
 func TestLogProcessor_GetLogsByAddress(t *testing.T) {
 	store.ClearData()
 	db := newDB()
+	defer db.Close()
 	processor := NewManager(newestBlock.Hash(), db).processor
 
 	// no log
@@ -110,6 +115,7 @@ func TestLogProcessor_GetLogsByAddress(t *testing.T) {
 func TestLogProcessor_GetNextVersion(t *testing.T) {
 	store.ClearData()
 	db := newDB()
+	defer db.Close()
 	processor := NewManager(newestBlock.Hash(), db).processor
 	// prepare account version record
 	account := processor.GetAccount(common.HexToAddress("0x1"))
@@ -167,6 +173,7 @@ func TestLogProcessor_GetNextVersion(t *testing.T) {
 func TestLogProcessor_Clear(t *testing.T) {
 	store.ClearData()
 	db := newDB()
+	defer db.Close()
 	processor := NewManager(newestBlock.Hash(), db).processor
 
 	processor.PushEvent(&types.Event{Address: common.HexToAddress("0x1"), TxHash: th(1), BlockHeight: 11})
@@ -188,6 +195,7 @@ func TestLogProcessor_Clear(t *testing.T) {
 func TestLogProcessor_Snapshot_RevertToSnapshot(t *testing.T) {
 	store.ClearData()
 	db := newDB()
+	defer db.Close()
 	manager := NewManager(newestBlock.Hash(), db)
 	processor := manager.processor
 
@@ -245,6 +253,7 @@ func TestLogProcessor_Snapshot_RevertToSnapshot(t *testing.T) {
 func TestLogProcessor_Snapshot_RevertToSnapshot2(t *testing.T) {
 	store.ClearData()
 	db := newDB()
+	defer db.Close()
 	manager := NewManager(newestBlock.Hash(), db)
 	processor := manager.processor
 	// prepare account version record
@@ -281,6 +290,7 @@ func TestLogProcessor_Snapshot_RevertToSnapshot2(t *testing.T) {
 func TestLogProcessor_MergeChangeLogs1(t *testing.T) {
 	store.ClearData()
 	db := newDB()
+	defer db.Close()
 	manager := NewManager(newestBlock.Hash(), db)
 	processor := manager.processor
 
@@ -314,6 +324,7 @@ func TestLogProcessor_MergeChangeLogs1(t *testing.T) {
 func TestLogProcessor_MergeChangeLogs2(t *testing.T) {
 	store.ClearData()
 	db := newDB()
+	defer db.Close()
 	manager := NewManager(newestBlock.Hash(), db)
 	processor := manager.processor
 
@@ -371,6 +382,7 @@ func TestLogProcessor_MergeChangeLogs2(t *testing.T) {
 func TestLogProcessor_MergeChangeLogs3(t *testing.T) {
 	store.ClearData()
 	db := newDB()
+	defer db.Close()
 	manager := NewManager(newestBlock.Hash(), db)
 	processor := manager.processor
 
