@@ -56,7 +56,7 @@ func init() {
 	types.RegisterChangeLog(SuicideLog, "SuicideLog", decodeEmptyInterface, decodeEmptyInterface, redoSuicide, undoSuicide)
 	types.RegisterChangeLog(VoteForLog, "VoteForLog", decodeAddress, decodeEmptyInterface, redoVoteFor, undoVoteFor)
 	types.RegisterChangeLog(VotesLog, "VotesLog", decodeBigInt, decodeEmptyInterface, redoVotes, undoVotes)
-	types.RegisterChangeLog(CandidateLog, "CandidateProfileLog", decodeString, decodeEmptyInterface, redoCandidate, undoCandidate)
+	types.RegisterChangeLog(CandidateLog, "CandidateProfileLog", decodeCandidate, decodeEmptyInterface, redoCandidate, undoCandidate)
 	types.RegisterChangeLog(CandidateStateLog, "CandidateStateLog", decodeString, decodeString, redoCandidateState, undoCandidateState)
 }
 
