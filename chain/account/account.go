@@ -519,40 +519,32 @@ func (a *Account) IsEmpty() bool {
 
 // updateTrie writes cached storage modifications into storage trie.
 func (a *Account) updateTrie() error {
-	if a.data.StorageRoot != (common.Hash{}) {
-		hash, err := a.storage.Update(a.data.StorageRoot)
-		if err != nil {
-			return err
-		} else {
-			a.data.StorageRoot = hash
-		}
+	hash, err := a.storage.Update(a.data.StorageRoot)
+	if err != nil {
+		return err
+	} else {
+		a.data.StorageRoot = hash
 	}
 
-	if a.data.AssetCodeRoot != (common.Hash{}) {
-		hash, err := a.assetCode.Update(a.data.AssetCodeRoot)
-		if err != nil {
-			return err
-		} else {
-			a.data.AssetCodeRoot = hash
-		}
+	hash, err = a.assetCode.Update(a.data.AssetCodeRoot)
+	if err != nil {
+		return err
+	} else {
+		a.data.AssetCodeRoot = hash
 	}
 
-	if a.data.AssetIdRoot != (common.Hash{}) {
-		hash, err := a.assetId.Update(a.data.AssetIdRoot)
-		if err != nil {
-			return err
-		} else {
-			a.data.AssetIdRoot = hash
-		}
+	hash, err = a.assetId.Update(a.data.AssetIdRoot)
+	if err != nil {
+		return err
+	} else {
+		a.data.AssetIdRoot = hash
 	}
 
-	if a.data.EquityRoot != (common.Hash{}) {
-		hash, err := a.equity.Update(a.data.EquityRoot)
-		if err != nil {
-			return err
-		} else {
-			a.data.EquityRoot = hash
-		}
+	hash, err = a.equity.Update(a.data.EquityRoot)
+	if err != nil {
+		return err
+	} else {
+		a.data.EquityRoot = hash
 	}
 
 	return nil
