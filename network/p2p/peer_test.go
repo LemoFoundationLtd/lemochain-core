@@ -51,7 +51,7 @@ func newClient(t *testing.T, cliPeerCh chan *Peer) {
 	if err != nil {
 		t.Fatalf("dial failed")
 	}
-	peer := newPeer(conn)
+	peer := NewPeer(conn)
 	srvNodeID := PubKeyToNodeID(pubSrv)
 	if err = peer.DoHandshake(prvCli, &srvNodeID); err != nil {
 		t.Fatalf("client handshake failed: %v", err)
@@ -68,7 +68,7 @@ func Test_doHandshake(t *testing.T) {
 	if conn == nil {
 		t.Fatalf("new server failed")
 	}
-	peer := newPeer(*conn)
+	peer := NewPeer(*conn)
 	if err := peer.DoHandshake(prvSrv, nil); err != nil {
 		t.Fatalf("server handshake failed: %v", err)
 	}
@@ -82,8 +82,8 @@ func Test_doHandshake(t *testing.T) {
 
 func newPeers(t *testing.T) (pCli, pSrv IPeer) {
 	connCli, connSrv := net.Pipe()
-	pCli = newPeer(connCli)
-	pSrv = newPeer(connSrv)
+	pCli = NewPeer(connCli)
+	pSrv = NewPeer(connSrv)
 	errSrvCh := make(chan error)
 	go func() {
 		errSrvCh <- pSrv.DoHandshake(prvSrv, nil)

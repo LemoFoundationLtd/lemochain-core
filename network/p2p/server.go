@@ -62,7 +62,7 @@ func NewServer(config Config, discover *DiscoverManager) *Server {
 		Config:   config,
 		discover: discover,
 
-		newPeer: newPeer,
+		newPeer: NewPeer,
 
 		addPeerCh: make(chan IPeer, 1),
 		delPeerCh: make(chan IPeer, 1),
