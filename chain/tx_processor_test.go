@@ -861,6 +861,7 @@ func TestCreateAssetTx(t *testing.T) {
 	p.chain.db.SetStableBlock(Block01Hash)
 
 	// 	compare
+	p.am.Reset(Block01Hash)
 	senderAcc := p.am.GetAccount(crypto.PubkeyToAddress(testPrivate.PublicKey))
 	asset, err := senderAcc.GetAssetCode(tx01.Hash())
 	assert.NoError(t, err)
@@ -874,7 +875,7 @@ func TestCreateAssetTx(t *testing.T) {
 }
 
 // newCreateAssetTx
-func newCreateAssetTx(private *ecdsa.PrivateKey, category int, isReplenishable, isDivisible bool) (*types.Transaction, error) {
+func newCreateAssetTx(private *ecdsa.PrivateKey, category uint32, isReplenishable, isDivisible bool) (*types.Transaction, error) {
 	issuer := crypto.PubkeyToAddress(private.PublicKey)
 	profile := make(types.Profile)
 	profile[types.AssetName] = "Demo Token"

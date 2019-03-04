@@ -209,8 +209,9 @@ func NewAccount(db protocol.ChainDB, address common.Address, data *types.Account
 	}
 
 	return &Account{
-		data:      data,
-		db:        db,
+		data: data,
+		db:   db,
+
 		storage:   NewStorageCache(db),
 		assetCode: NewStorageCache(db),
 		assetId:   NewStorageCache(db),
@@ -403,14 +404,18 @@ func (a *Account) GetAssetCode(code common.Hash) (*types.Asset, error) {
 	val, err := a.assetCode.GetState(a.data.AssetCodeRoot, code)
 	if err != nil {
 		return nil, err
+	}
+
+	if val == nil {
+		return nil, nil
+	}
+
+	var asset types.Asset
+	err = rlp.DecodeBytes(val, &asset)
+	if err != nil {
+		return nil, err
 	} else {
-		var asset types.Asset
-		err = rlp.DecodeBytes(val, &asset)
-		if err != nil {
-			return nil, err
-		} else {
-			return &asset, nil
-		}
+		return &asset, nil
 	}
 }
 
