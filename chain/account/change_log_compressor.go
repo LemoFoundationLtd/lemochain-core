@@ -45,8 +45,7 @@ func needMerge(logType types.ChangeLogType) bool {
 		(logType == AssetIdRootLog) ||
 		(logType == EquityLog) ||
 		(logType == EquityRootLog) ||
-		(logType == CandidateLog) ||
-		(logType == TxCountLog) {
+		(logType == CandidateLog) {
 		return true
 	} else {
 		return false
