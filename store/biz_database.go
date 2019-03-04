@@ -8,6 +8,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
+	"github.com/LemoFoundationLtd/lemochain-go/store/leveldb"
 	"strconv"
 )
 
@@ -48,12 +49,14 @@ type Reader interface {
 type BizDatabase struct {
 	Reader   Reader
 	Database *MySqlDB
+	LevelDB  *leveldb.LevelDBDatabase
 }
 
-func NewBizDatabase(reader Reader, database *MySqlDB) *BizDatabase {
+func NewBizDatabase(reader Reader, database *MySqlDB, levelDB *leveldb.LevelDBDatabase) *BizDatabase {
 	return &BizDatabase{
 		Reader:   reader,
 		Database: database,
+		LevelDB:  levelDB,
 	}
 }
 
@@ -190,9 +193,18 @@ func (db *BizDatabase) afterBlock(key []byte, val []byte) error {
 
 		txType := tx.Type()
 		if txType == params.CreateAssetTx {
+			// db.LevelDB.
 			log.Error("insert account code: " + tx.Hash().Hex() + "|addr: " + from.Hex())
+			err := leveldb.Set(db.LevelDB, leveldb.GetAssetCodeKey(tx.Hash()), from.Bytes())
+			if err != nil {
+				panic("insert account code err: " + err.Error())
+			}
 		} else if txType == params.IssueAssetTx {
 			log.Error("insert account id: " + tx.Hash().Hex() + "|addr: " + from.Hex())
+			err := leveldb.Set(db.LevelDB, leveldb.GetAssetIdKey(tx.Hash()), from.Bytes())
+			if err != nil {
+				panic("insert account id err: " + err.Error())
+			}
 		}
 
 		//err = db.Database.TxSet(hashStr, common.ToHex(key), fromStr, toStr, val, ver+int64(index), int64(block.Header.Time))

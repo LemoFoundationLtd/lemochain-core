@@ -55,7 +55,7 @@ func NewChainDataBase(home string, driver string, dns string) *ChainDatabase {
 		LevelDB:         leveldb.NewLevelDBDatabase(home, 16, 16),
 	}
 
-	db.BizDB = NewBizDatabase(db, nil)
+	db.BizDB = NewBizDatabase(db, NewMySqlDB(driver, dns), db.LevelDB)
 	db.Beansdb = NewBeansDB(home, 2, db.LevelDB, db.AfterScan)
 
 	db.LastConfirm = NewGenesisBlock(db.Context.GetStableBlock(), db.Beansdb)
