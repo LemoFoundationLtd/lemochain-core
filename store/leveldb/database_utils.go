@@ -19,7 +19,10 @@ type DatabaseDeleter interface {
 }
 
 var (
-	heightPrefix = []byte("h")
+	hashPrefix = []byte("B")
+	hashSuffix = []byte("b")
+
+	heightPrefix = []byte("H")
 	heightSuffix = []byte("h") // // headerPrefix + height (uint64 big endian) + heightSuffix -> hash
 
 	accountPrefix = []byte("A")
@@ -63,6 +66,10 @@ func GetCanonicalHash(db DatabaseReader, height uint32) (common.Hash, error) {
 
 func SetCanonicalHash(db DatabasePutter, height uint32, hash common.Hash) error {
 	return db.Put(GetCanonicalKey(height), hash.Bytes())
+}
+
+func GetBlockHashKey(hash common.Hash) []byte {
+	return append(append(hashPrefix, hash.Bytes()...), hashSuffix...)
 }
 
 func toPosition(val []byte) (*Position, error) {

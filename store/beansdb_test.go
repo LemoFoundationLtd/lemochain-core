@@ -8,9 +8,11 @@ import (
 
 func TestBeansDB_Put(t *testing.T) {
 	ClearData()
+	levelDB := leveldb.NewLevelDBDatabase(GetStorePath(), 16, 16)
+	defer levelDB.Close()
 
-	// beansdb := NewBeansDB(GetStorePath(), 2, NewMySqlDB(DRIVER_MYSQL, DNS_MYSQL), nil)
-	beansdb := NewBeansDB(GetStorePath(), 2, leveldb.NewLevelDBDatabase(GetStorePath(), 16, 16), nil)
+	beansdb := NewBeansDB(GetStorePath(), 2, levelDB, nil)
+
 	assert.NotNil(t, beansdb)
 
 	key, err := CreateBufWithNumber(32)
@@ -29,9 +31,10 @@ func TestBeansDB_Put(t *testing.T) {
 
 func TestBeansDB_Commit(t *testing.T) {
 	ClearData()
+	levelDB := leveldb.NewLevelDBDatabase(GetStorePath(), 16, 16)
+	defer levelDB.Close()
 
-	// beansdb := NewBeansDB(GetStorePath(), 2, NewMySqlDB(DRIVER_MYSQL, DNS_MYSQL), nil)
-	beansdb := NewBeansDB(GetStorePath(), 2, leveldb.NewLevelDBDatabase(GetStorePath(), 16, 16), nil)
+	beansdb := NewBeansDB(GetStorePath(), 2, levelDB, nil)
 	assert.NotNil(t, beansdb)
 
 	route, err := CreateBufWithNumber(32)

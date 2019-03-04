@@ -277,7 +277,7 @@ func (beansdb *BeansDB) Get(key []byte) ([]byte, error) {
 			return nil, nil
 		}
 
-		bitcask := beansdb.route(route)
+		bitcask := beansdb.route(position.Route)
 		val, err := bitcask.Get(uint(position.Flag), position.Route, key, int64(position.Offset))
 		if err != nil {
 			log.Error("get data from disk err : " + err.Error())

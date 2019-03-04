@@ -9,6 +9,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"github.com/LemoFoundationLtd/lemochain-go/store/leveldb"
 	"os"
+	"path/filepath"
 	"strconv"
 	"sync"
 )
@@ -52,7 +53,7 @@ func NewChainDataBase(home string, driver string, dns string) *ChainDatabase {
 	db := &ChainDatabase{
 		UnConfirmBlocks: make(map[common.Hash]*CBlock),
 		Context:         NewRunContext(home),
-		LevelDB:         leveldb.NewLevelDBDatabase(home, 16, 16),
+		LevelDB:         leveldb.NewLevelDBDatabase(filepath.Join(home, "index"), 16, 16),
 	}
 
 	db.BizDB = NewBizDatabase(db, NewMySqlDB(driver, dns), db.LevelDB)
@@ -108,7 +109,7 @@ func (database *ChainDatabase) blockCommit(hash common.Hash) error {
 		return err
 	}
 
-	batch.Put(CACHE_FLG_BLOCK, hash[:], buf)
+	batch.Put(CACHE_FLG_BLOCK, leveldb.GetBlockHashKey(hash), buf)
 	batch.Put(CACHE_FLG_BLOCK_HEIGHT, leveldb.GetCanonicalKey(cItem.Block.Height()), hash[:])
 
 	// store account
@@ -117,7 +118,7 @@ func (database *ChainDatabase) blockCommit(hash common.Hash) error {
 		if err != nil {
 			return err
 		} else {
-			batch.Put(CACHE_FLG_ACT, account.Address[:], buf)
+			batch.Put(CACHE_FLG_ACT, leveldb.GetAddressKey(account.Address), buf)
 			return nil
 		}
 	}
@@ -175,7 +176,7 @@ func (database *ChainDatabase) getBlock4DB(hash common.Hash) (*types.Block, erro
 		return nil, ErrNotExist
 	}
 
-	val, err := database.Beansdb.Get(hash[:])
+	val, err := database.Beansdb.Get(leveldb.GetBlockHashKey(hash))
 	if err != nil {
 		return nil, err
 	}
@@ -202,7 +203,7 @@ func (database *ChainDatabase) setBlock2DB(hash common.Hash, block *types.Block)
 	if err != nil {
 		return err
 	} else {
-		return database.Beansdb.Put(CACHE_FLG_BLOCK, hash[:], hash[:], buf)
+		return database.Beansdb.Put(CACHE_FLG_BLOCK, hash[:], leveldb.GetBlockHashKey(hash), buf)
 	}
 }
 
@@ -286,7 +287,7 @@ func (database *ChainDatabase) isExistByHash(hash common.Hash) (bool, error) {
 		return true, nil
 	}
 
-	return database.Beansdb.Has(hash[:])
+	return database.Beansdb.Has(leveldb.GetBlockHashKey(hash))
 }
 
 func (database *ChainDatabase) IsExistByHash(hash common.Hash) (bool, error) {
@@ -516,7 +517,7 @@ func (database *ChainDatabase) SetStableBlock(hash common.Hash) error {
 
 // GetAccount loads account from cache or db
 func (database *ChainDatabase) GetAccount(addr common.Address) (*types.AccountData, error) {
-	val, err := database.Beansdb.Get(addr[:])
+	val, err := database.Beansdb.Get(leveldb.GetAddressKey(addr))
 	if err != nil {
 		return nil, err
 	}
@@ -645,6 +646,10 @@ func (database *ChainDatabase) GetAssetID(id common.Hash) (common.Address, error
 }
 
 func (database *ChainDatabase) Close() error {
-	database.LevelDB.Close()
+	if database.LevelDB != nil {
+		database.LevelDB.Close()
+		database.LevelDB = nil
+	}
+
 	return nil
 }

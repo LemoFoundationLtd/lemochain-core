@@ -22,6 +22,7 @@ import (
 	"sync"
 	"time"
 
+	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-dev/log"
 	"github.com/LemoFoundationLtd/lemochain-dev/metrics"
 	"github.com/syndtr/goleveldb/leveldb"
@@ -147,9 +148,11 @@ func (db *LevelDBDatabase) Close() {
 	}
 	err := db.db.Close()
 	if err == nil {
-		db.log.Info("Database closed")
+		db.log.Error("Database closed")
+		fmt.Println("database closed")
 	} else {
 		db.log.Error("Failed to close database", "err", err)
+		fmt.Println("Failed to close database, err:" + err.Error())
 	}
 }
 
