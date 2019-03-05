@@ -298,7 +298,7 @@ func (evm *EVM) RegisterOrUpdateToCandidate(candidateAddress, to common.Address,
 	return gas, nil
 }
 
-// CreateAssetTx 创建资产
+// CreateAssetTx
 func (evm *EVM) CreateAssetTx(sender common.Address, data []byte, txHash common.Hash) error {
 	var err error
 	// judge data's length

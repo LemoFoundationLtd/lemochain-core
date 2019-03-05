@@ -1073,17 +1073,17 @@ func TestReplenishAssetTx(t *testing.T) {
 	assert.Equal(t, big.NewInt(1), total02)
 	total03, err := issuerAcc.GetAssetCodeTotalSupply(asset03Code)
 	assert.NoError(t, err)
-	assert.Equal(t, big.NewInt(200), total03)
+	assert.Equal(t, big.NewInt(110), total03)
 	receiverAcc := p.am.GetAccount(receiver)
 	equity01, err := receiverAcc.GetEquityState(asset01Id)
 	assert.NoError(t, err)
 	assert.Equal(t, big.NewInt(200), equity01.Equity)
 	equity02, err := receiverAcc.GetEquityState(asset02Id)
 	assert.NoError(t, err)
-	assert.Equal(t, big.NewInt(1), equity02.Equity)
+	assert.Equal(t, big.NewInt(110), equity02.Equity)
 	equity03, err := receiverAcc.GetEquityState(asset03Id)
 	assert.NoError(t, err)
-	assert.Equal(t, big.NewInt(200), equity03.Equity)
+	assert.Equal(t, big.NewInt(110), equity03.Equity)
 
 }
 
