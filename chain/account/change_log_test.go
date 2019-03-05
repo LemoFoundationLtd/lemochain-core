@@ -131,6 +131,7 @@ func getTestLogs(t *testing.T) []testLogConfig {
 		rlp:        "0xf83b0294000000000000000000000000000000000000000301824359a00000000000000000000000000000000000000000000000000000000000000aaa",
 		decoded:    "StorageLog{Account: Lemo88888888888888888888888888888888835N, Version: 1, NewVal: [67 89], Extra: [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 10 170]}",
 	})
+
 	// 3 StorageLog
 	tests = append(tests, testLogConfig{
 		input:      NewStorageLogWithoutError(t, processor, 0, common.HexToHash("0xaaa"), []byte{45, 67}),
@@ -141,21 +142,32 @@ func getTestLogs(t *testing.T) []testLogConfig {
 		decoded:    "StorageLog{Account: Lemo8888888888888888888888888888888883GH, Version: 1, NewVal: [45 67], Extra: [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 10 170]}",
 	})
 
+	// storage root
+	tests = append(tests, testLogConfig{
+		input:      NewStorageRootLog(processor, processor.createAccount(BalanceLog, 0), common.HexToHash("0x01"), common.HexToHash("0x02")),
+		isValuable: true,
+		str:        "StorageRootLog{Account: Lemo8888888888888888888888888888888883WD, Version: 1, OldVal: [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1], NewVal: [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2]}",
+		hash:       "0x9b40bebbdc2758db2b756f64eed632f0484e48faa3794adbc503cc55ac5ac334",
+		rlp:        "0xf8390394000000000000000000000000000000000000000501a00000000000000000000000000000000000000000000000000000000000000002c0",
+		decoded:    "StorageRootLog{Account: Lemo8888888888888888888888888888888883WD, Version: 1, NewVal: [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2]}",
+	})
+
 	// 4 CodeLog
 	tests = append(tests, testLogConfig{
 		input:      NewCodeLog(processor, processor.createAccount(CodeLog, 0), []byte{0x12, 0x34}),
 		isValuable: true,
-		str:        "CodeLog{Account: Lemo8888888888888888888888888888888883WD, Version: 1, NewVal: 0x1234}",
-		hash:       "0x71414949bfacba2baae60c0d947827bdab6c92e0e388a60f110228245d395a63",
-		rlp:        "0xdb0394000000000000000000000000000000000000000501821234c0",
+		str:        "CodeLog{Account: Lemo88888888888888888888888888888888849A, Version: 1, NewVal: 0x1234}",
+		hash:       "0x68d9b4a1e48a3f52774beb565d8123281421a4bb3519b30ce7e7cbb24d0dd308",
+		rlp:        "0xdb0e94000000000000000000000000000000000000000601821234c0",
 	})
+
 	// 5 CodeLog
 	tests = append(tests, testLogConfig{
 		input:      NewCodeLog(processor, processor.createAccount(CodeLog, 0), []byte{}),
 		isValuable: false,
-		str:        "CodeLog{Account: Lemo88888888888888888888888888888888849A, Version: 1, NewVal: }",
-		hash:       "0x7f95953470d2e6140ba7f18e8d7471708f6cd828bdcdb94d5e625e2df5765e56",
-		rlp:        "0xd9039400000000000000000000000000000000000000060180c0",
+		str:        "CodeLog{Account: Lemo8888888888888888888888888888888884N7, Version: 1, NewVal: }",
+		hash:       "0x73cefd2f2312068337e16f784f8cb06ea132b701b8d614c30aff7f5867d2d6f3",
+		rlp:        "0xd90e9400000000000000000000000000000000000000070180c0",
 	})
 
 	// 6 AddEventLog
@@ -167,9 +179,9 @@ func getTestLogs(t *testing.T) []testLogConfig {
 	tests = append(tests, testLogConfig{
 		input:      NewAddEventLog(processor, processor.createAccount(AddEventLog, 0), newEvent),
 		isValuable: true,
-		str:        "AddEventLog{Account: Lemo8888888888888888888888888888888884N7, Version: 1, NewVal: event: 0000000000000000000000000000000000000aaa [0000000000000000000000000000000000000000000000000000000000000bbb 0000000000000000000000000000000000000000000000000000000000000ccc] 8000 0000000000000000000000000000000000000000000000000000000000000000 0 0000000000000000000000000000000000000000000000000000000000000000 0}",
-		hash:       "0xf2471fc3ebed4f84c29ceded41910de27f1fbdfdff0430b3421e379ea2ed4554",
-		rlp:        "0xf8760494000000000000000000000000000000000000000701f85c940000000000000000000000000000000000000aaaf842a00000000000000000000000000000000000000000000000000000000000000bbba00000000000000000000000000000000000000000000000000000000000000ccc828000c0",
+		str:        "AddEventLog{Account: Lemo888888888888888888888888888888888534, Version: 1, NewVal: event: 0000000000000000000000000000000000000aaa [0000000000000000000000000000000000000000000000000000000000000bbb 0000000000000000000000000000000000000000000000000000000000000ccc] 8000 0000000000000000000000000000000000000000000000000000000000000000 0 0000000000000000000000000000000000000000000000000000000000000000 0}",
+		hash:       "0x9819dd922773475d634fbb6d775e464bd07e3a4217982b78c3f1230dac488de4",
+		rlp:        "0xf8760f94000000000000000000000000000000000000000801f85c940000000000000000000000000000000000000aaaf842a00000000000000000000000000000000000000000000000000000000000000bbba00000000000000000000000000000000000000000000000000000000000000ccc828000c0",
 	})
 	// It is not possible to set NewVal in AddEventLog to nil. We can't test is because we can't rlp encode a (*types.Event)(nil)
 
@@ -177,57 +189,57 @@ func getTestLogs(t *testing.T) []testLogConfig {
 	tests = append(tests, testLogConfig{
 		input:      NewSuicideLog(processor, processor.createAccount(SuicideLog, 0)),
 		isValuable: true,
-		str:        "SuicideLog{Account: Lemo888888888888888888888888888888888534, Version: 1, OldVal: {Address: Lemo888888888888888888888888888888888888, Balance: 100, VoteFor: Lemo888888888888888888888888888888888888, TxCount: 0}}",
-		hash:       "0xe2d92fe499dfbd00be20be9a041ac164f0c985a81c7ae8f5921f22a9f9d98090",
-		rlp:        "0xd90594000000000000000000000000000000000000000801c0c0",
-		decoded:    "SuicideLog{Account: Lemo888888888888888888888888888888888534, Version: 1}",
+		str:        "SuicideLog{Account: Lemo8888888888888888888888888888888885CZ, Version: 1, OldVal: {Address: Lemo888888888888888888888888888888888888, Balance: 100, VoteFor: Lemo888888888888888888888888888888888888}}",
+		hash:       "0x7ee159c6b3a060c673a26e97e15438a5a16d7b8b21ebcff99f59f2455a8b6147",
+		rlp:        "0xd91094000000000000000000000000000000000000000901c0c0",
+		decoded:    "SuicideLog{Account: Lemo8888888888888888888888888888888885CZ, Version: 1}",
 	})
 	// 8 SuicideLog
 	tests = append(tests, testLogConfig{
 		input:      NewSuicideLog(processor, processor.createEmptyAccount()),
 		isValuable: false,
-		str:        "SuicideLog{Account: Lemo8888888888888888888888888888888885CZ, Version: 1, OldVal: {Address: Lemo888888888888888888888888888888888888, Balance: 0, VoteFor: Lemo888888888888888888888888888888888888, TxCount: 0}}",
-		hash:       "0x8d05be4a001f2ad367c9642b30a1825621eefa9fd56f7383eb7ef74a67fed1d4",
-		rlp:        "0xd90594000000000000000000000000000000000000000901c0c0",
-		decoded:    "SuicideLog{Account: Lemo8888888888888888888888888888888885CZ, Version: 1}",
+		str:        "SuicideLog{Account: Lemo8888888888888888888888888888888885RT, Version: 1, OldVal: {Address: Lemo888888888888888888888888888888888888, Balance: 0, VoteFor: Lemo888888888888888888888888888888888888}}",
+		hash:       "0x6d7a3da06cd453572ac14e54994b53dcbc907299ed32760b3eeb1f456099cfbd",
+		rlp:        "0xd91094000000000000000000000000000000000000000a01c0c0",
+		decoded:    "SuicideLog{Account: Lemo8888888888888888888888888888888885RT, Version: 1}",
 	})
 
 	// 9 VotesLog
 	tests = append(tests, testLogConfig{
 		input:      NewVotesLog(processor, processor.createAccount(VotesLog, 0), big.NewInt(1000)),
 		isValuable: true,
-		str:        "VotesLog{Account: Lemo8888888888888888888888888888888885RT, Version: 1, OldVal: 200, NewVal: 1000}",
-		hash:       "0x06d9d7c475a3d6b50dd790452e3a753e2f01adf0f7448d3e3ddb8f394d63741a",
-		rlp:        "0xdb0794000000000000000000000000000000000000000a018203e8c0",
-		decoded:    "VotesLog{Account: Lemo8888888888888888888888888888888885RT, Version: 1, NewVal: 1000}",
+		str:        "VotesLog{Account: Lemo88888888888888888888888888888888866Q, Version: 1, OldVal: 200, NewVal: 1000}",
+		hash:       "0xfc049109e9882cbd4ca27b628958e17242eef720de85cc807a2a5f63313b492f",
+		rlp:        "0xdb1294000000000000000000000000000000000000000b018203e8c0",
+		decoded:    "VotesLog{Account: Lemo88888888888888888888888888888888866Q, Version: 1, NewVal: 1000}",
 	})
 	// 10 VotesLog
 	tests = append(tests, testLogConfig{
 		input:      NewVotesLog(processor, processor.createAccount(VotesLog, 0), big.NewInt(200)),
 		isValuable: false,
-		str:        "VotesLog{Account: Lemo88888888888888888888888888888888866Q, Version: 1, OldVal: 200, NewVal: 200}",
-		hash:       "0x890f53b1b8b23a4086db0feb9f602101b950e5407770f58be537e7dc1c5aea8e",
-		rlp:        "0xda0794000000000000000000000000000000000000000b0181c8c0",
-		decoded:    "VotesLog{Account: Lemo88888888888888888888888888888888866Q, Version: 1, NewVal: 200}",
+		str:        "VotesLog{Account: Lemo8888888888888888888888888888888886HK, Version: 1, OldVal: 200, NewVal: 200}",
+		hash:       "0xe555e6c1771827e5edc0e25ac953e5a2b7c4e7fba2c2976a5b608b5133daf646",
+		rlp:        "0xda1294000000000000000000000000000000000000000c0181c8c0",
+		decoded:    "VotesLog{Account: Lemo8888888888888888888888888888888886HK, Version: 1, NewVal: 200}",
 	})
 
 	// 11 VoteForLog
 	tests = append(tests, testLogConfig{
 		input:      NewVoteForLog(processor, processor.createAccount(VoteForLog, 0), common.HexToAddress("0x0002")),
 		isValuable: true,
-		str:        "VoteForLog{Account: Lemo8888888888888888888888888888888886HK, Version: 1, OldVal: Lemo8888888888888888888888888888888888BW, NewVal: Lemo8888888888888888888888888888888888QR}",
-		hash:       "0x738ccb6ac44d3b4ee4feaaaec6be9290bedd24a180ecbf2097536f8b4d0c2136",
-		rlp:        "0xed0694000000000000000000000000000000000000000c01940000000000000000000000000000000000000002c0",
-		decoded:    "VoteForLog{Account: Lemo8888888888888888888888888888888886HK, Version: 1, NewVal: Lemo8888888888888888888888888888888888QR}",
+		str:        "VoteForLog{Account: Lemo8888888888888888888888888888888886YG, Version: 1, OldVal: Lemo8888888888888888888888888888888888BW, NewVal: Lemo8888888888888888888888888888888888QR}",
+		hash:       "0xe377afa192cccb5db82fa76173b993909c11d8eb0e5dd006ddc538e8338ff480",
+		rlp:        "0xed1194000000000000000000000000000000000000000d01940000000000000000000000000000000000000002c0",
+		decoded:    "VoteForLog{Account: Lemo8888888888888888888888888888888886YG, Version: 1, NewVal: Lemo8888888888888888888888888888888888QR}",
 	})
 	// 12 VoteForLog
 	tests = append(tests, testLogConfig{
 		input:      NewVoteForLog(processor, processor.createAccount(VoteForLog, 0), common.HexToAddress("0x0001")),
 		isValuable: false,
-		str:        "VoteForLog{Account: Lemo8888888888888888888888888888888886YG, Version: 1, OldVal: Lemo8888888888888888888888888888888888BW, NewVal: Lemo8888888888888888888888888888888888BW}",
-		hash:       "0x4bf77f5842a27b81509583e0872f647b7116fb65225af79fb4932f0c7f4bac82",
-		rlp:        "0xed0694000000000000000000000000000000000000000d01940000000000000000000000000000000000000001c0",
-		decoded:    "VoteForLog{Account: Lemo8888888888888888888888888888888886YG, Version: 1, NewVal: Lemo8888888888888888888888888888888888BW}",
+		str:        "VoteForLog{Account: Lemo8888888888888888888888888888888887AC, Version: 1, OldVal: Lemo8888888888888888888888888888888888BW, NewVal: Lemo8888888888888888888888888888888888BW}",
+		hash:       "0x78cfaf7515a698c7399c8699f214294ab23392afbdeac14715ca967f7171a553",
+		rlp:        "0xed1194000000000000000000000000000000000000000e01940000000000000000000000000000000000000001c0",
+		decoded:    "VoteForLog{Account: Lemo8888888888888888888888888888888887AC, Version: 1, NewVal: Lemo8888888888888888888888888888888888BW}",
 	})
 
 	return tests

@@ -212,7 +212,7 @@ func (am *Manager) Finalise() error {
 		newAssetIdRoot := account.rawAccount.GetAssetIdRoot()
 		newEquityRoot := account.rawAccount.GetEquityRoot()
 
-		log, _ := NewStorageRootLog(am.processor, account.rawAccount, oldStorageRoot, newStorageRoot)
+		log := NewStorageRootLog(am.processor, account.rawAccount, oldStorageRoot, newStorageRoot)
 		am.processor.PushChangeLog(log)
 		log, _ = NewAssetCodeRootLog(am.processor, account.rawAccount, oldAssetCodeRoot, newAssetCodeRoot)
 		am.processor.PushChangeLog(log)

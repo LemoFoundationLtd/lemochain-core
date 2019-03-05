@@ -439,14 +439,14 @@ func undoStorage(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 	return accessor.SetStorageState(key, oldVal)
 }
 
-func NewStorageRootLog(processor types.ChangeLogProcessor, account types.AccountAccessor, oldVal common.Hash, newVal common.Hash) (*types.ChangeLog, error) {
+func NewStorageRootLog(processor types.ChangeLogProcessor, account types.AccountAccessor, oldVal common.Hash, newVal common.Hash) *types.ChangeLog {
 	return &types.ChangeLog{
 		LogType: StorageRootLog,
 		Address: account.GetAddress(),
 		Version: processor.GetNextVersion(StorageRootLog, account.GetAddress()),
 		OldVal:  oldVal,
 		NewVal:  newVal,
-	}, nil
+	}
 }
 
 func redoStorageRoot(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
