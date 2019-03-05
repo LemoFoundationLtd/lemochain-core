@@ -61,6 +61,36 @@ func (p *testProcessor) createAccount(logType types.ChangeLogType, version uint3
 	account.storage.cached = map[common.Hash][]byte{
 		common.HexToHash("0xaaa"): {45, 67},
 	}
+
+	val, _ := rlp.EncodeToBytes(&types.Asset{
+		Category:        1,
+		IsDivisible:     true,
+		AssetCode:       common.HexToHash("0x11"),
+		Decimals:        0,
+		TotalSupply:     new(big.Int).SetInt64(1),
+		IsReplenishable: false,
+		Issuer:          common.HexToAddress("0x22"),
+		Profile: map[string]string{
+			"lemokey": "lemoval",
+		},
+	})
+	account.assetCode.cached = map[common.Hash][]byte{
+		common.HexToHash("0x33"): val,
+	}
+
+	account.assetId.cached = map[common.Hash][]byte{
+		common.HexToHash("0x33"): []byte("old"),
+	}
+
+	val, _ = rlp.EncodeToBytes(&types.AssetEquity{
+		AssetCode: common.HexToHash("0x22"),
+		AssetId:   common.HexToHash("0x33"),
+		Equity:    new(big.Int).SetInt64(100),
+	})
+	account.equity.cached = map[common.Hash][]byte{
+		common.HexToHash("0x33"): val,
+	}
+
 	account.data.Candidate.Votes = big.NewInt(200)
 	account.data.Candidate.Profile[types.CandidateKeyIsCandidate] = params.IsCandidateNode
 	return account
@@ -242,6 +272,76 @@ func getTestLogs(t *testing.T) []testLogConfig {
 		decoded:    "VoteForLog{Account: Lemo8888888888888888888888888888888887AC, Version: 1, NewVal: Lemo8888888888888888888888888888888888BW}",
 	})
 
+	// 13 AssetCode
+	log, _ := NewAssetCodeLog(processor, processor.createAccount(AssetCodeLog, 0), common.HexToHash("0x33"), new(types.Asset))
+	tests = append(tests, testLogConfig{
+		input:      log,
+		isValuable: true,
+		str:        "AssetCodeLog{Account: Lemo8888888888888888888888888888888887P9, Version: 1, OldVal: {Category: 1, IsDivisible: true, AssetCode: 0x0000000000000000000000000000000000000000000000000000000000000011, Decimals: 0, Issuer: Lemo888888888888888888888888888888888FY4, IsReplenishable: false, TotalSupply: 1, Profiles: {lemokey => lemoval}}, NewVal: {Category: 0, IsDivisible: false, AssetCode: 0x0000000000000000000000000000000000000000000000000000000000000000, Decimals: 0, Issuer: Lemo888888888888888888888888888888888888, IsReplenishable: false, TotalSupply: 0, Profile: []}, Extra: [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 51]}",
+		hash:       "0x18cff028352d5e0dcf7f0e54b6700de3792959f4dece767acf64e5a2617d44cd",
+		rlp:        "0xf8760494000000000000000000000000000000000000000f01f83c8080a00000000000000000000000000000000000000000000000000000000000000000808080940000000000000000000000000000000000000000c0a00000000000000000000000000000000000000000000000000000000000000033",
+		decoded:    "AssetCodeLog{Account: Lemo8888888888888888888888888888888887P9, Version: 1, NewVal: {Category: 0, IsDivisible: false, AssetCode: 0x0000000000000000000000000000000000000000000000000000000000000000, Decimals: 0, Issuer: Lemo888888888888888888888888888888888888, IsReplenishable: false, TotalSupply: 0, Profile: []}, Extra: [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 51]}",
+	})
+
+	log, _ = NewAssetCodeStateLog(processor, processor.createAccount(AssetCodeStateLog, 0), common.HexToHash("0x33"), "key", "new")
+	tests = append(tests, testLogConfig{
+		input:      log,
+		isValuable: true,
+		str:        "AssetCodeStateLog{Account: Lemo888888888888888888888888888888888246, Version: 1, OldVal: , NewVal: new, Extra: {UUID: 0x0000000000000000000000000000000000000000000000000000000000000033, Key: key}}",
+		hash:       "0xca473e00e10bced9d57451b9b7bf2a6d2af434f62a570479442e8352c463ba90",
+		rlp:        "0xf8410594000000000000000000000000000000000000001001836e6577e5a00000000000000000000000000000000000000000000000000000000000000033836b6579",
+		decoded:    "AssetCodeStateLog{Account: Lemo888888888888888888888888888888888246, Version: 1, NewVal: new, Extra: {UUID: 0x0000000000000000000000000000000000000000000000000000000000000033, Key: key}}",
+	})
+
+	log, _ = NewAssetCodeRootLog(processor, processor.createAccount(AssetCodeRootLog, 0), common.HexToHash("0x01"), common.HexToHash("0x02"))
+	tests = append(tests, testLogConfig{
+		input:      log,
+		isValuable: true,
+		str:        "AssetCodeRootLog{Account: Lemo8888888888888888888888888888888882F3, Version: 1, OldVal: [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1], NewVal: [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2]}",
+		hash:       "0x82174d68a2a7b0c1d8a351d58842cbf66bcc5860482155992dc6fadbd87ad584",
+		rlp:        "0xf8390694000000000000000000000000000000000000001101a00000000000000000000000000000000000000000000000000000000000000002c0",
+		decoded:    "AssetCodeRootLog{Account: Lemo8888888888888888888888888888888882F3, Version: 1, NewVal: [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2]}",
+	})
+
+	log, _ = NewAssetIdLog(processor, processor.createAccount(AssetIdLog, 0), common.HexToHash("0x33"), "new")
+	tests = append(tests, testLogConfig{
+		input:      log,
+		isValuable: true,
+		str:        "AssetIdLog{Account: Lemo8888888888888888888888888888888882SY, Version: 1, OldVal: old, NewVal: new, Extra: [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 51]}",
+		hash:       "0xd293ba6abe604251f8a9b33feeca4b3c730ac526ac90e2e2a80c56bbf3ae83dc",
+		rlp:        "0xf83c0894000000000000000000000000000000000000001201836e6577a00000000000000000000000000000000000000000000000000000000000000033",
+		decoded:    "AssetIdLog{Account: Lemo8888888888888888888888888888888882SY, Version: 1, NewVal: new, Extra: [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 51]}",
+	})
+
+	log, _ = NewAssetIdRootLog(processor, processor.createAccount(AssetIdRootLog, 0), common.HexToHash("0x01"), common.HexToHash("0x02"))
+	tests = append(tests, testLogConfig{
+		input:      log,
+		isValuable: true,
+		str:        "AssetIdRootLog{Account: Lemo88888888888888888888888888888888897S, Version: 1, OldVal: [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1], NewVal: [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2]}",
+		hash:       "0x3a536384f429704678fc645e3efd73d16a0b902f35b211c142b37811c1f258c0",
+		rlp:        "0xf8390994000000000000000000000000000000000000001301a00000000000000000000000000000000000000000000000000000000000000002c0",
+		decoded:    "AssetIdRootLog{Account: Lemo88888888888888888888888888888888897S, Version: 1, NewVal: [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2]}",
+	})
+
+	log, _ = NewEquityLog(processor, processor.createAccount(EquityLog, 0), common.HexToHash("0x33"), new(types.AssetEquity))
+	tests = append(tests, testLogConfig{
+		input:      log,
+		isValuable: true,
+		str:        "EquityLog{Account: Lemo8888888888888888888888888888888889JP, Version: 1, OldVal: {AssetCode: 0x0000000000000000000000000000000000000000000000000000000000000022, AssetId: 0x0000000000000000000000000000000000000000000000000000000000000033, Equity: 100}, NewVal: {AssetCode: 0x0000000000000000000000000000000000000000000000000000000000000000, AssetId: 0x0000000000000000000000000000000000000000000000000000000000000000, Equity: 0}, Extra: [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 51]}",
+		hash:       "0xab78c9401d21445580b71f94ce2976b2bcdf85ac9d7f556d02345018a8ca151f",
+		rlp:        "0xf87d0a94000000000000000000000000000000000000001401f843a00000000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000000000080a00000000000000000000000000000000000000000000000000000000000000033",
+		decoded:    "EquityLog{Account: Lemo8888888888888888888888888888888889JP, Version: 1, NewVal: {AssetCode: 0x0000000000000000000000000000000000000000000000000000000000000000, AssetId: 0x0000000000000000000000000000000000000000000000000000000000000000, Equity: 0}, Extra: [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 51]}",
+	})
+
+	log, _ = NewEquityRootLog(processor, processor.createAccount(EquityRootLog, 0), common.HexToHash("0x01"), common.HexToHash("0x02"))
+	tests = append(tests, testLogConfig{
+		input:      log,
+		isValuable: true,
+		str:        "EquityRootLog{Account: Lemo8888888888888888888888888888888889ZJ, Version: 1, OldVal: [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1], NewVal: [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2]}",
+		hash:       "0xf23e2a21d65ab7b4c5211f49d26d2665ff8d0cfe2d6897fb3ab874ae285205c1",
+		rlp:        "0xf8390b94000000000000000000000000000000000000001501a00000000000000000000000000000000000000000000000000000000000000002c0",
+		decoded:    "EquityRootLog{Account: Lemo8888888888888888888888888888888889ZJ, Version: 1, NewVal: [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2]}",
+	})
 	return tests
 }
 

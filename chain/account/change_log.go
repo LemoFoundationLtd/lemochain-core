@@ -8,6 +8,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"math/big"
+	"strings"
 )
 
 const (
@@ -39,6 +40,15 @@ type ProfileChangeLogExtra struct {
 	Key  string
 }
 
+func (extra *ProfileChangeLogExtra) String() string {
+	set := []string{
+		fmt.Sprintf("UUID: %s", extra.UUID.String()),
+		fmt.Sprintf("Key: %s", extra.Key),
+	}
+
+	return fmt.Sprintf("{%s}", strings.Join(set, ", "))
+}
+
 func init() {
 	types.RegisterChangeLog(BalanceLog, "BalanceLog", decodeBigInt, decodeEmptyInterface, redoBalance, undoBalance)
 	types.RegisterChangeLog(StorageLog, "StorageLog", decodeBytes, decodeBytes, redoStorage, undoStorage)
@@ -56,7 +66,7 @@ func init() {
 	types.RegisterChangeLog(SuicideLog, "SuicideLog", decodeEmptyInterface, decodeEmptyInterface, redoSuicide, undoSuicide)
 	types.RegisterChangeLog(VoteForLog, "VoteForLog", decodeAddress, decodeEmptyInterface, redoVoteFor, undoVoteFor)
 	types.RegisterChangeLog(VotesLog, "VotesLog", decodeBigInt, decodeEmptyInterface, redoVotes, undoVotes)
-	types.RegisterChangeLog(CandidateLog, "CandidateProfileLog", decodeCandidate, decodeEmptyInterface, redoCandidate, undoCandidate)
+	types.RegisterChangeLog(CandidateLog, "CandidateLog", decodeCandidate, decodeEmptyInterface, redoCandidate, undoCandidate)
 	types.RegisterChangeLog(CandidateStateLog, "CandidateStateLog", decodeString, decodeString, redoCandidateState, undoCandidateState)
 }
 
@@ -184,6 +194,7 @@ func decodeAsset(s *rlp.Stream) (interface{}, error) {
 
 func decodeEquity(s *rlp.Stream) (interface{}, error) {
 	var result types.AssetEquity
+	result.Equity = new(big.Int)
 	err := s.Decode(&result)
 	return &result, err
 }

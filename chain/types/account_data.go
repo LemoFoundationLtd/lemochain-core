@@ -285,7 +285,7 @@ func (a *AccountData) String() string {
 		for k, v := range a.Candidate.Profile {
 			records = append(records, fmt.Sprintf("%s => %s", k, v))
 		}
-		set = append(set, fmt.Sprintf("CandidateProfiles: {%s}", strings.Join(records, ", ")))
+		set = append(set, fmt.Sprintf("Profiles: {%s}", strings.Join(records, ", ")))
 	}
 
 	return fmt.Sprintf("{%s}", strings.Join(set, ", "))
