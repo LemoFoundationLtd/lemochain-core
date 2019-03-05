@@ -472,7 +472,7 @@ func (a *Account) SetAssetCodeState(code common.Hash, key string, val string) er
 		return err
 	} else {
 		asset.Profile[key] = val
-		return nil
+		return a.SetAssetCode(code, asset)
 	}
 }
 
