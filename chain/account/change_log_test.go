@@ -402,6 +402,10 @@ func TestChangeLog_Undo(t *testing.T) {
 	processor.PushEvent(&types.Event{})
 	processor.PushEvent(event1)
 
+	assetCodeLog, _ := NewAssetCodeLog(processor, processor.createAccount(AssetCodeLog, 1), common.HexToHash("0x33"), new(types.Asset))
+	assetCodeRootLog, _ := NewAssetCodeRootLog(processor, processor.createAccount(AssetCodeRootLog, 1), common.HexToHash("0x01"), common.HexToHash("0x02"))
+	assetCodeStateLog, _ := NewAssetCodeStateLog(processor, processor.createAccount(AssetCodeStateLog, 1), common.HexToHash("0x33"), "lemokey", "newVal")
+
 	tests := []struct {
 		input      *types.ChangeLog
 		undoErr    error
@@ -428,17 +432,24 @@ func TestChangeLog_Undo(t *testing.T) {
 				assert.NoError(t, err)
 			},
 		},
-		// 3 NewStorageLog no OldVal
+		// 3 NewStorageRootLog
+		{
+			input: NewStorageRootLog(processor, processor.createAccount(StorageRootLog, 1), common.HexToHash("0x01"), common.HexToHash("0x02")),
+			afterCheck: func(accessor types.AccountAccessor) {
+				assert.Equal(t, common.HexToHash("0x01"), accessor.GetStorageRoot())
+			},
+		},
+		// 4 NewStorageLog no OldVal
 		{
 			input:   &types.ChangeLog{LogType: StorageLog, Address: processor.createAccount(StorageLog, 1).GetAddress(), Version: 1},
 			undoErr: types.ErrWrongChangeLogData,
 		},
-		// 4 NewStorageLog no Extra
+		// 5 NewStorageLog no Extra
 		{
-			input:   &types.ChangeLog{LogType: StorageLog, Address: processor.createAccount(StorageLog, 1).GetAddress(), Version: 1, OldVal: []byte{45, 67}},
+			input:   &types.ChangeLog{LogType: StorageLog, Address: processor.createAccount(StorageRootLog, 1).GetAddress(), Version: 1, OldVal: []byte{45, 67}},
 			undoErr: types.ErrWrongChangeLogData,
 		},
-		// 5 NewCodeLog
+		// 6 NewCodeLog
 		{
 			input: NewCodeLog(processor, processor.createAccount(CodeLog, 1), []byte{12}),
 			afterCheck: func(accessor types.AccountAccessor) {
@@ -447,7 +458,7 @@ func TestChangeLog_Undo(t *testing.T) {
 				assert.NoError(t, err)
 			},
 		},
-		// 6 NewAddEventLog
+		// 7 NewAddEventLog
 		{
 			input: NewAddEventLog(processor, processor.createAccount(AddEventLog, 1), event1),
 			afterCheck: func(accessor types.AccountAccessor) {
@@ -455,7 +466,7 @@ func TestChangeLog_Undo(t *testing.T) {
 				assert.Empty(t, events)
 			},
 		},
-		// 7 NewSuicideLog
+		// 8 NewSuicideLog
 		{
 			input: NewSuicideLog(processor, processor.createAccount(SuicideLog, 1)),
 			afterCheck: func(accessor types.AccountAccessor) {
@@ -463,7 +474,7 @@ func TestChangeLog_Undo(t *testing.T) {
 				assert.Equal(t, false, accessor.GetSuicide())
 			},
 		},
-		// 8 VoteFor
+		// 9 VoteFor
 		{
 			input: NewVoteForLog(processor, processor.createAccount(VoteForLog, 1), common.HexToAddress("0x0002")),
 			afterCheck: func(accessor types.AccountAccessor) {
@@ -484,6 +495,43 @@ func TestChangeLog_Undo(t *testing.T) {
 				assert.Equal(t, "true", accessor.GetCandidate()[types.CandidateKeyIsCandidate])
 			},
 		},
+		// 12 NewAssetCodeLog
+		{
+			input: assetCodeLog,
+			afterCheck: func(accessor types.AccountAccessor) {
+				GetAssetCode := func(accessor types.AccountAccessor, code common.Hash) *types.Asset {
+					result, _ := accessor.GetAssetCode(code)
+					return result
+				}
+
+				assert.Equal(t, common.HexToHash("0x11"), GetAssetCode(accessor, common.HexToHash("0x33")).AssetCode)
+				assert.Equal(t, common.HexToAddress("0x22"), GetAssetCode(accessor, common.HexToHash("0x33")).Issuer)
+				assert.Equal(t, 1, len(GetAssetCode(accessor, common.HexToHash("0x33")).Profile))
+			},
+		},
+		// 13 NewAssetCodeRootLog
+		{
+			input: assetCodeRootLog,
+			afterCheck: func(accessor types.AccountAccessor) {
+				assert.Equal(t, common.HexToHash("0x01"), accessor.GetAssetCodeRoot())
+			},
+		},
+		// 14 NewAssetCodeStateLog
+		{
+			input: assetCodeStateLog,
+			afterCheck: func(accessor types.AccountAccessor) {
+				GetAssetCodeState := func(accessor types.AccountAccessor, code common.Hash, key string) string {
+					result, _ := accessor.GetAssetCodeState(code, key)
+					return result
+				}
+				assert.Equal(t, "lemoval", GetAssetCodeState(accessor, common.HexToHash("0x33"), "lemokey"))
+			},
+		},
+		// 15 NewAssetIdLog
+		// {
+		//
+		// },
+
 	}
 
 	for i, test := range tests {
