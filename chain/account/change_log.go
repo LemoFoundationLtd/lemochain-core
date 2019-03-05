@@ -750,7 +750,6 @@ func NewEquityLog(processor types.ChangeLogProcessor, account types.AccountAcces
 		LogType: EquityLog,
 		Address: account.GetAddress(),
 		Version: processor.GetNextVersion(EquityLog, account.GetAddress()),
-		NewVal:  newVal.Clone(),
 		Extra:   id,
 	}
 
@@ -758,6 +757,12 @@ func NewEquityLog(processor types.ChangeLogProcessor, account types.AccountAcces
 		log.OldVal = nil
 	} else {
 		log.OldVal = oldValue.Clone()
+	}
+
+	if newVal == nil {
+		log.NewVal = nil
+	} else {
+		log.NewVal = newVal.Clone()
 	}
 	return log, nil
 }
