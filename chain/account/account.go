@@ -438,9 +438,13 @@ func (a *Account) GetAssetCodeTotalSupply(code common.Hash) (*big.Int, error) {
 	asset, err := a.GetAssetCode(code)
 	if err != nil {
 		return nil, err
-	} else {
-		return asset.TotalSupply, nil
 	}
+
+	if asset == nil {
+		return new(big.Int).SetInt64(0), nil
+	}
+
+	return asset.TotalSupply, nil
 }
 
 func (a *Account) SetAssetCodeTotalSupply(code common.Hash, val *big.Int) error {
@@ -490,14 +494,18 @@ func (a *Account) GetEquityState(id common.Hash) (*types.AssetEquity, error) {
 	val, err := a.equity.GetState(a.data.EquityRoot, id)
 	if err != nil {
 		return nil, err
+	}
+
+	if val == nil {
+		return nil, nil
+	}
+
+	var equity types.AssetEquity
+	err = rlp.DecodeBytes(val, &equity)
+	if err != nil {
+		return nil, err
 	} else {
-		var equity types.AssetEquity
-		err = rlp.DecodeBytes(val, &equity)
-		if err != nil {
-			return nil, err
-		} else {
-			return &equity, nil
-		}
+		return &equity, nil
 	}
 }
 

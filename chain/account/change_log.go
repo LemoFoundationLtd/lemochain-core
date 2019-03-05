@@ -732,14 +732,20 @@ func NewEquityLog(processor types.ChangeLogProcessor, account types.AccountAcces
 		return nil, fmt.Errorf("can't create equity log: %v", err)
 	}
 
-	return &types.ChangeLog{
+	log := &types.ChangeLog{
 		LogType: EquityLog,
 		Address: account.GetAddress(),
 		Version: processor.GetNextVersion(EquityLog, account.GetAddress()),
-		OldVal:  oldValue.Clone(),
 		NewVal:  newVal.Clone(),
 		Extra:   id,
-	}, nil
+	}
+
+	if oldValue == nil {
+		log.OldVal = nil
+	} else {
+		log.OldVal = oldValue.Clone()
+	}
+	return log, nil
 }
 
 func redoEquity(c *types.ChangeLog, processor types.ChangeLogProcessor) error {

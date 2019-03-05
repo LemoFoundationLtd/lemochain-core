@@ -40,11 +40,18 @@ type assetEquityMarshaling struct {
 }
 
 func (equity *AssetEquity) Clone() *AssetEquity {
-	return &AssetEquity{
+	result := &AssetEquity{
 		AssetCode: equity.AssetCode,
 		AssetId:   equity.AssetId,
-		Equity:    new(big.Int).Set(equity.Equity),
 	}
+
+	if equity.Equity == nil {
+		result.Equity = new(big.Int)
+	} else {
+		result.Equity = new(big.Int).Set(equity.Equity)
+	}
+
+	return result
 }
 
 func (asset *Asset) Clone() *Asset {
