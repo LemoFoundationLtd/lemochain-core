@@ -7,6 +7,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
+	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"math/big"
 	"strings"
 )
@@ -486,7 +487,7 @@ func undoStorageRoot(c *types.ChangeLog, processor types.ChangeLogProcessor) err
 
 func NewAssetCodeLog(processor types.ChangeLogProcessor, account types.AccountAccessor, code common.Hash, asset *types.Asset) (*types.ChangeLog, error) {
 	oldValue, err := account.GetAssetCode(code)
-	if err != nil {
+	if err != nil && err != store.ErrNotExist {
 		return nil, fmt.Errorf("can't create asset log: %v", err)
 	}
 
@@ -532,7 +533,7 @@ func undoAssetCode(c *types.ChangeLog, processor types.ChangeLogProcessor) error
 
 func NewAssetCodeStateLog(processor types.ChangeLogProcessor, account types.AccountAccessor, id common.Hash, key string, newVal string) (*types.ChangeLog, error) {
 	oldVal, err := account.GetAssetCodeState(id, key)
-	if err != nil {
+	if err != nil && err != store.ErrNotExist {
 		return nil, fmt.Errorf("can't create asset code state log: %v", err)
 	}
 
@@ -582,7 +583,7 @@ func undoAssetCodeState(c *types.ChangeLog, processor types.ChangeLogProcessor) 
 
 func NewAssetCodeTotalSupplyLog(processor types.ChangeLogProcessor, account types.AccountAccessor, code common.Hash, newVal *big.Int) (*types.ChangeLog, error) {
 	oldVal, err := account.GetAssetCodeTotalSupply(code)
-	if err != nil {
+	if err != nil && err != store.ErrNotExist {
 		return nil, fmt.Errorf("can't create total supply log: %v", err)
 	}
 
@@ -664,7 +665,7 @@ func undoAssetCodeRoot(c *types.ChangeLog, processor types.ChangeLogProcessor) e
 
 func NewAssetIdLog(processor types.ChangeLogProcessor, account types.AccountAccessor, id common.Hash, newVal string) (*types.ChangeLog, error) {
 	oldValue, err := account.GetAssetIdState(id)
-	if err != nil {
+	if err != nil && err != store.ErrNotExist {
 		return nil, fmt.Errorf("can't create asset log: %v", err)
 	}
 	return &types.ChangeLog{
@@ -741,7 +742,7 @@ func undoAssetIdRoot(c *types.ChangeLog, processor types.ChangeLogProcessor) err
 
 func NewEquityLog(processor types.ChangeLogProcessor, account types.AccountAccessor, id common.Hash, newVal *types.AssetEquity) (*types.ChangeLog, error) {
 	oldValue, err := account.GetEquityState(id)
-	if err != nil {
+	if err != nil && err != store.ErrNotExist {
 		return nil, fmt.Errorf("can't create equity log: %v", err)
 	}
 
