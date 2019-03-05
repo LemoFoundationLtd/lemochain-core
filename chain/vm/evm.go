@@ -618,7 +618,7 @@ func (evm *EVM) TradingAssetTx(caller ContractRef, addr common.Address, gas uint
 	newSenderEquity.Equity = new(big.Int).Sub(newSenderEquity.Equity, amount)
 	if newSenderEquity.Equity.Cmp(big.NewInt(0)) == 0 {
 		// if assetId's balance == 0,then delete this kind of assetId
-		err = senderAcc.SetAssetIdState(assetId, "")
+		err = senderAcc.SetEquityState(assetId, nil)
 		if err != nil {
 			evm.am.RevertToSnapshot(snapshot)
 			return nil, gas, err
