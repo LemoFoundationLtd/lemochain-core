@@ -176,6 +176,8 @@ func decodeString(s *rlp.Stream) (interface{}, error) {
 
 func decodeAsset(s *rlp.Stream) (interface{}, error) {
 	var result types.Asset
+	result.TotalSupply = new(big.Int)
+	result.Profile = make(types.Profile)
 	err := s.Decode(&result)
 	return &result, err
 }

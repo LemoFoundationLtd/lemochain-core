@@ -57,7 +57,7 @@ func needDel(logType types.ChangeLogType) bool {
 		(logType == AssetCodeLog) ||
 		(logType == AssetIdLog) ||
 		(logType == EquityLog) {
-		return true
+		return false
 	} else {
 		return false
 	}

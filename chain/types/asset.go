@@ -7,12 +7,11 @@ import (
 )
 
 const (
-	Asset01                = uint32(1) // erc20
-	Asset02                = uint32(2) // erc721
-	Asset03                = uint32(3) // erc20+721
-	MaxProfileStringLength = 1024      // max string length
-	MaxMarshalAssetLength  = 2048
-	MaxMetaDataLength      = 256
+	Asset01               = uint32(1) // erc20
+	Asset02               = uint32(2) // erc721
+	Asset03               = uint32(3) // erc20+721
+	MaxMarshalAssetLength = 2048
+	MaxMetaDataLength     = 256
 )
 
 type Asset struct {

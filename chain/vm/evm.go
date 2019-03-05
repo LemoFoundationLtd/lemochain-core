@@ -494,18 +494,25 @@ func (evm *EVM) ModifyAssetInfoTx(sender common.Address, data []byte) error {
 		}
 	}
 	// 	judge profile size
-	asset, err := acc.GetAssetCode(modifyInfo.AssetCode)
-	var length int
-	for _, s := range asset.Profile {
-		length = length + len(s)
-	}
-	if length > types.MaxProfileStringLength {
-		err = errors.New("The size of the profile exceeded the limit. ")
-	}
+	newAsset, err := acc.GetAssetCode(modifyInfo.AssetCode)
 	if err != nil {
 		evm.am.RevertToSnapshot(snapshot)
+		return err
 	}
-	return err
+	newData, err := json.Marshal(newAsset)
+	if err != nil {
+		evm.am.RevertToSnapshot(snapshot)
+		return err
+	}
+	// judge data's length
+	if len(newData) > types.MaxMarshalAssetLength {
+		err = fmt.Errorf("the length of data by marshal asset more than max length,len(data) = %d ", len(data))
+		if err != nil {
+			evm.am.RevertToSnapshot(snapshot)
+			return err
+		}
+	}
+	return nil
 }
 
 // TradingAssetTx 交易资产,包含调用智能合约交易
