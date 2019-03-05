@@ -407,7 +407,7 @@ func (a *Account) GetAssetCode(code common.Hash) (*types.Asset, error) {
 	}
 
 	if val == nil {
-		return nil, nil
+		return nil, store.ErrNotExist
 	}
 
 	var asset types.Asset
@@ -497,7 +497,7 @@ func (a *Account) GetEquityState(id common.Hash) (*types.AssetEquity, error) {
 	}
 
 	if val == nil {
-		return nil, nil
+		return nil, store.ErrNotExist
 	}
 
 	var equity types.AssetEquity
