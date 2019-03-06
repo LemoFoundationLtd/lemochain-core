@@ -1,8 +1,10 @@
 package chain
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
@@ -166,7 +168,9 @@ func createNewBlock() *types.Block {
 // test tx picking logic
 func TestTxProcessor_ApplyTxs(t *testing.T) {
 	store.ClearData()
-	p := NewTxProcessor(newChain())
+	bc := newChain()
+	defer bc.db.Close()
+	p := NewTxProcessor(bc)
 
 	// 1 txs
 	header := defaultBlocks[2].Header
@@ -297,7 +301,9 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 // test different transactions
 func TestTxProcessor_ApplyTxs2(t *testing.T) {
 	store.ClearData()
-	p := NewTxProcessor(newChain())
+	bc := newChain()
+	defer bc.db.Close()
+	p := NewTxProcessor(bc)
 
 	// transfer to other
 	header := defaultBlocks[3].Header
@@ -355,7 +361,9 @@ func TestTxProcessor_ApplyTxs2(t *testing.T) {
 // TestTxProcessor_candidateTX 打包特殊交易测试
 func TestTxProcessor_candidateTX(t *testing.T) {
 	store.ClearData()
-	p := NewTxProcessor(newChain())
+	bc := newChain()
+	defer bc.db.Close()
+	p := NewTxProcessor(bc)
 
 	// 申请第一个候选节点(testAddr)信息data
 	cand00 := make(types.Profile)
@@ -386,8 +394,8 @@ func TestTxProcessor_candidateTX(t *testing.T) {
 	// 	panic(err)
 	// }
 	afterHeader := Block01.Header
-
 	//
+	t.Log(Block01.MinerAddress().String())
 	beforeHeader, err := p.Process(Block01)
 	if err != nil {
 		fmt.Println("Process: ", err)
@@ -728,6 +736,12 @@ func newNextBlock(p *TxProcessor, parentBlock *types.Block, txs types.Transactio
 		return nil, invalidTxs, err
 	}
 	p.am.Save(BlockHash)
+	ProHeader, err := p.Process(newBlock)
+	data01, _ := rlp.EncodeToBytes(newHeader)
+	data02, _ := rlp.EncodeToBytes(ProHeader)
+	if bytes.Compare(data01, data02) != 0 {
+		return nil, nil, errors.New("the result of applyTx and processTx are not equal")
+	}
 	if save {
 		err = p.chain.db.SetStableBlock(BlockHash)
 		p.am.Reset(BlockHash)
@@ -762,6 +776,7 @@ func TestCreateAssetTx(t *testing.T) {
 	assert.Equal(t, "test issue token", asset.Profile[types.AssetDescription])
 	assert.Equal(t, "false", asset.Profile[types.AssetStop])
 	assert.Equal(t, "60000", asset.Profile[types.AssetSuggestedGasLimit])
+
 }
 
 // newCreateAssetTx

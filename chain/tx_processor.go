@@ -413,7 +413,7 @@ func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *comm
 	accM.Reset(header.ParentHash)
 
 	// A random address is found as our caller address.
-	strAddress := "0x123456" // todo Consider letting users pass in their own addresses
+	strAddress := "0x20190306" // todo Consider letting users pass in their own addresses
 	caller, err := common.StringToAddress(strAddress)
 	if err != nil {
 		return nil, 0, err
@@ -434,6 +434,16 @@ func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *comm
 		tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, params.VoteTx, p.chain.chainID, uint64(time.Now().Unix()+30*60), "", "")
 	case params.RegisterTx:
 		tx = types.NewContractCreation(big.NewInt(0), gasLimit, gasPrice, data, params.RegisterTx, p.chain.chainID, uint64(time.Now().Unix()+30*60), "", "")
+	case params.CreateAssetTx:
+		tx = types.NoReceiverTransaction(big.NewInt(0), gasLimit, gasPrice, data, params.CreateAssetTx, p.chain.chainID, uint64(time.Now().Unix()+30*60), "", "")
+	case params.IssueAssetTx:
+		tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, params.IssueAssetTx, p.chain.chainID, uint64(time.Now().Unix()+30*60), "", "")
+	case params.ReplenishAssetTx:
+		tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, params.ReplenishAssetTx, p.chain.chainID, uint64(time.Now().Unix()+30*60), "", "")
+	case params.ModifyAssetTx:
+		tx = types.NoReceiverTransaction(big.NewInt(0), gasLimit, gasPrice, data, params.ModifyAssetTx, p.chain.chainID, uint64(time.Now().Unix()+30*60), "", "")
+	case params.TradingAssetTx:
+		tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, params.TradingAssetTx, p.chain.chainID, uint64(time.Now().Unix()+30*60), "", "")
 	default:
 		err = errors.New("tx type error")
 		return nil, 0, err
@@ -501,6 +511,8 @@ func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *comm
 		sender = accM.GetAccount(caller)
 		sender.SetBalance(params.RegisterCandidateNodeFees)
 		restGas, err = Evm.RegisterOrUpdateToCandidate(sender.GetAddress(), params.FeeReceiveAddress, profile, restGas, sender.GetBalance())
+	case params.CreateAssetTx, params.IssueAssetTx, params.ReplenishAssetTx, params.ModifyAssetTx, params.TradingAssetTx:
+
 	}
 
 	if err := vmError(); err != nil {
