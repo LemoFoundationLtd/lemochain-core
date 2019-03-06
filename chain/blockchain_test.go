@@ -25,7 +25,6 @@ func TestBlockChain_Reorg8ABC(t *testing.T) {
 	store.ClearData()
 
 	var info blockInfo
-
 	blockChain, _, err := NewBlockChainForTest()
 	assert.NoError(t, err)
 
