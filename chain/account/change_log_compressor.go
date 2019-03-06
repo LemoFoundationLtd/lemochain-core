@@ -40,7 +40,9 @@ func needMerge(logType types.ChangeLogType) bool {
 		(logType == StorageLog) ||
 		(logType == StorageRootLog) ||
 		(logType == AssetCodeLog) ||
+		(logType == AssetCodeStateLog) ||
 		(logType == AssetCodeRootLog) ||
+		(logType == AssetCodeTotalSupplyLog) ||
 		(logType == AssetIdLog) ||
 		(logType == AssetIdRootLog) ||
 		(logType == EquityLog) ||
@@ -70,9 +72,9 @@ func merge(logs types.ChangeLogSlice) types.ChangeLogSlice {
 	combineResult := make([][]*types.ChangeLog, LOG_TYPE_STOP)
 	for _, log := range logs {
 		if needMerge(log.LogType) {
-			if needDel(log.LogType) {
-				continue
-			}
+			// if needDel(log.LogType) {
+			// 	continue
+			// }
 
 			if combineResult[log.LogType] == nil {
 				combineResult[log.LogType] = make([]*types.ChangeLog, 1)

@@ -212,14 +212,25 @@ func (am *Manager) Finalise() error {
 		newAssetIdRoot := account.rawAccount.GetAssetIdRoot()
 		newEquityRoot := account.rawAccount.GetEquityRoot()
 
-		log := NewStorageRootLog(am.processor, account.rawAccount, oldStorageRoot, newStorageRoot)
-		am.processor.PushChangeLog(log)
-		log, _ = NewAssetCodeRootLog(am.processor, account.rawAccount, oldAssetCodeRoot, newAssetCodeRoot)
-		am.processor.PushChangeLog(log)
-		log, _ = NewAssetIdRootLog(am.processor, account.rawAccount, oldAssetIdRoot, newAssetIdRoot)
-		am.processor.PushChangeLog(log)
-		log, _ = NewEquityRootLog(am.processor, account.rawAccount, oldEquityRoot, newEquityRoot)
-		am.processor.PushChangeLog(log)
+		if newStorageRoot != (common.Hash{}) {
+			log := NewStorageRootLog(am.processor, account.rawAccount, oldStorageRoot, newStorageRoot)
+			am.processor.PushChangeLog(log)
+		}
+
+		if newAssetCodeRoot != (common.Hash{}) {
+			log, _ := NewAssetCodeRootLog(am.processor, account.rawAccount, oldAssetCodeRoot, newAssetCodeRoot)
+			am.processor.PushChangeLog(log)
+		}
+
+		if newAssetIdRoot != (common.Hash{}) {
+			log, _ := NewAssetIdRootLog(am.processor, account.rawAccount, oldAssetIdRoot, newAssetIdRoot)
+			am.processor.PushChangeLog(log)
+		}
+
+		if newEquityRoot != (common.Hash{}) {
+			log, _ := NewEquityRootLog(am.processor, account.rawAccount, oldEquityRoot, newEquityRoot)
+			am.processor.PushChangeLog(log)
+		}
 
 		logs := am.processor.GetLogsByAddress(account.GetAddress())
 		for _, changeLog := range logs {
