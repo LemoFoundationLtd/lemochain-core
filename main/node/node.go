@@ -19,6 +19,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/network/rpc"
 	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"github.com/LemoFoundationLtd/lemochain-go/store/protocol"
+	"github.com/inconshreveable/log15"
 	"math/big"
 	"net"
 	"os"
@@ -543,4 +544,15 @@ func (n *Node) apis() []rpc.API {
 			Public:    true,
 		},
 	}
+}
+
+func InitLogConfig(logFlag int) {
+	// logLevel is in range 0~4
+	logLevel := log15.Lvl(logFlag - 1)
+	// default level
+	if logLevel < 0 || logLevel > 4 {
+		logLevel = log.LevelError // 1
+	}
+	showCodeLine := logLevel >= 3 // LevelInfo, LevelDebug
+	log.Setup(logLevel, true, showCodeLine)
 }

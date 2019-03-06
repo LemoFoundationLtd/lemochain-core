@@ -279,3 +279,15 @@ func (am *Manager) currentBlockHeight() uint32 {
 	}
 	return am.baseBlock.Height() + 1
 }
+
+func (am *Manager) RebuildAll(b *types.Block) error {
+	am.Reset(b.ParentHash())
+	if b.ChangeLogs != nil {
+		for _, cl := range b.ChangeLogs {
+			if err := cl.Redo(am.processor); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
