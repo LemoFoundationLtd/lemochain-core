@@ -2,6 +2,7 @@ package store
 
 import (
 	"errors"
+	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
@@ -159,6 +160,8 @@ func (db *BizDatabase) AfterCommit(flag uint, key []byte, val []byte) error {
 func (db *BizDatabase) afterBlock(key []byte, val []byte) error {
 	var block types.Block
 	err := rlp.DecodeBytes(val, &block)
+	ret := hexutil.Encode(val)
+	fmt.Sprintf(ret)
 	if err != nil {
 		return err
 	}

@@ -186,24 +186,41 @@ func decodeString(s *rlp.Stream) (interface{}, error) {
 }
 
 func decodeAsset(s *rlp.Stream) (interface{}, error) {
-	var result types.Asset
-	result.TotalSupply = new(big.Int)
-	result.Profile = make(types.Profile)
-	err := s.Decode(&result)
-	return &result, err
+	_, size, _ := s.Kind()
+	if size <= 0 {
+		return nil, nil
+	} else {
+		var result types.Asset
+		result.TotalSupply = new(big.Int)
+		result.Profile = make(types.Profile)
+		err := s.Decode(&result)
+		return &result, err
+	}
 }
 
 func decodeEquity(s *rlp.Stream) (interface{}, error) {
+	// _, size, _ := s.Kind()
+	// if size <= 0 {
+	// 	return nil, nil
+	// }else{
 	var result types.AssetEquity
 	result.Equity = new(big.Int)
-	err := s.Decode(&result)
-	return &result, err
+	// err := s.Decode(&result)
+	// return &result, err
+	s.Decode(&result)
+	return &result, nil
+	// }
 }
 
 func decodeProfileChangeLogExtra(s *rlp.Stream) (interface{}, error) {
-	var result ProfileChangeLogExtra
-	err := s.Decode(&result)
-	return &result, err
+	_, size, _ := s.Kind()
+	if size <= 0 {
+		return nil, nil
+	} else {
+		var result ProfileChangeLogExtra
+		err := s.Decode(&result)
+		return &result, err
+	}
 }
 
 //
@@ -753,17 +770,20 @@ func NewEquityLog(processor types.ChangeLogProcessor, account types.AccountAcces
 		Extra:   id,
 	}
 
+	emptyEquity := new(types.AssetEquity)
+	emptyEquity.Equity = new(big.Int)
 	if oldValue == nil {
-		log.OldVal = nil
+		log.OldVal = emptyEquity
 	} else {
 		log.OldVal = oldValue.Clone()
 	}
 
 	if newVal == nil {
-		log.NewVal = nil
+		log.NewVal = emptyEquity
 	} else {
 		log.NewVal = newVal.Clone()
 	}
+
 	return log, nil
 }
 
