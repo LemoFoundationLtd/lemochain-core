@@ -324,7 +324,7 @@ func (evm *EVM) CreateAssetTx(sender common.Address, data []byte, txHash common.
 	return err
 }
 
-// IssueAssetTx 发行资产
+// IssueAssetTx
 func (evm *EVM) IssueAssetTx(sender, receiver common.Address, txHash common.Hash, data []byte) error {
 
 	issueAsset := &types.IssueAsset{}
@@ -398,7 +398,7 @@ func (evm *EVM) IssueAssetTx(sender, receiver common.Address, txHash common.Hash
 	return nil
 }
 
-// ReplenishAssetTx 增发资产交易
+// ReplenishAssetTx
 func (evm *EVM) ReplenishAssetTx(sender, receiver common.Address, data []byte) error {
 	repl := &types.ReplenishAsset{}
 	err := json.Unmarshal(data, repl)
@@ -470,19 +470,14 @@ func (evm *EVM) ReplenishAssetTx(sender, receiver common.Address, data []byte) e
 	return nil
 }
 
-// 修改资产profile
-func (evm *EVM) ModifyAssetInfoTx(sender common.Address, data []byte) error {
+// ModifyAssetProfileTx
+func (evm *EVM) ModifyAssetProfileTx(sender common.Address, data []byte) error {
 	modifyInfo := &types.ModifyAssetInfo{}
 	err := json.Unmarshal(data, modifyInfo)
 	if err != nil {
 		return err
 	}
 	acc := evm.am.GetAccount(sender)
-	// oldAsset, err := acc.GetAssetCode(modifyInfo.AssetCode)
-	// if err != nil {
-	// 	return err
-	// }
-	// newAsset := oldAsset.Clone()
 	info := modifyInfo.Info
 	var snapshot = evm.am.Snapshot()
 	// modify profile
@@ -515,7 +510,7 @@ func (evm *EVM) ModifyAssetInfoTx(sender common.Address, data []byte) error {
 	return nil
 }
 
-// TradingAssetTx 交易资产,包含调用智能合约交易
+// TradingAssetTx
 func (evm *EVM) TradingAssetTx(caller ContractRef, addr common.Address, gas uint64, assetId common.Hash, amount *big.Int, input []byte, chainDB protocol.ChainDB) (ret []byte, leftOverGas uint64, err error) {
 	if evm.vmConfig.NoRecursion && evm.depth > 0 {
 		return nil, gas, nil

@@ -218,7 +218,7 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 	case params.ReplenishAssetTx:
 		vmErr = vmEnv.ReplenishAssetTx(senderAddr, recipientAddr, tx.Data())
 	case params.ModifyAssetTx:
-		vmErr = vmEnv.ModifyAssetInfoTx(senderAddr, tx.Data())
+		vmErr = vmEnv.ModifyAssetProfileTx(senderAddr, tx.Data())
 	case params.TradingAssetTx:
 		tradingAsset := &types.TradingAsset{}
 		err = json.Unmarshal(tx.Data(), tradingAsset)

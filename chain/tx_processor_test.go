@@ -373,39 +373,10 @@ func TestTxProcessor_candidateTX(t *testing.T) {
 	registerTx01 := signTransaction(types.NewTransaction(params.FeeReceiveAddress, params.RegisterCandidateNodeFees, 200000, common.Big1, candData00, params.RegisterTx, chainID, uint64(time.Now().Unix()+300), "", ""), testPrivate)
 
 	parentBlock := p.chain.stableBlock.Load().(*types.Block)
-
-	// p.am.Reset(parentBlock.Hash())
-	header01 := &types.Header{
-		ParentHash:   parentBlock.Hash(),
-		MinerAddress: parentBlock.MinerAddress(),
-		Height:       parentBlock.Height() + 1,
-		GasLimit:     parentBlock.GasLimit(),
-		GasUsed:      0,
-		Time:         parentBlock.Time() + 4,
-	}
-
-	tx01 := types.Transactions{registerTx01, getBalanceTx01}
-	newHeader01, _, _, err := p.ApplyTxs(header01, tx01)
-	if err != nil {
-		fmt.Printf(" apply register tx err : %s \n", err)
-	}
-	Block01 := &types.Block{
-		Txs:         tx01,
-		ChangeLogs:  p.am.GetChangeLogs(),
-		Events:      p.am.GetEvents(),
-		Confirms:    nil,
-		DeputyNodes: nil,
-	}
-	Block01.SetHeader(newHeader01)
-	blockHash := newHeader01.Hash()
-	err = p.chain.db.SetBlock(blockHash, Block01)
-	if err != nil && err != store.ErrExist {
-		panic(err)
-	}
-	err = p.am.Save(blockHash)
-	if err != nil {
-		panic(err)
-	}
+	txs01 := types.Transactions{registerTx01, getBalanceTx01}
+	Block01, invalidTxs, err := newNextBlock(p, parentBlock, txs01, false)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(invalidTxs))
 	bbb := Block01.ChangeLogs
 	BB, _ := rlp.EncodeToBytes(bbb[2])
 	fmt.Println("rlp: ", common.ToHex(BB))
@@ -473,53 +444,14 @@ func Test_voteAndRegisteTx(t *testing.T) {
 	registerTx01 := signTransaction(types.NewTransaction(params.FeeReceiveAddress, params.RegisterCandidateNodeFees, 200000, common.Big1, candData00, params.RegisterTx, chainID, uint64(time.Now().Unix()+300), "", ""), testPrivate)
 
 	parentBlock := p.chain.currentBlock.Load().(*types.Block)
-	header01 := &types.Header{
-		ParentHash:   parentBlock.Hash(),
-		MinerAddress: parentBlock.MinerAddress(),
-		VersionRoot:  parentBlock.VersionRoot(),
-		Height:       parentBlock.Height() + 1,
-		GasLimit:     parentBlock.GasLimit(),
-		GasUsed:      0,
-		Time:         parentBlock.Time() + 4,
-	}
-	tx01 := types.Transactions{registerTx01, getBalanceTx01, getBalanceTx02, getBalanceTx03}
-	a := make(chan bool)
-	var err error
-	var newHeader01 *types.Header
-	go func() {
-		newHeader01, _, _, err = p.ApplyTxs(header01, tx01)
-		a <- true
-	}()
-	<-a
-	// newHeader01, _, _, err := p.ApplyTxs(header01, tx01)
-	if err != nil {
-		fmt.Printf(" apply register tx err : %s \n", err)
-	}
-	Block01 := &types.Block{
-		Txs:         tx01,
-		ChangeLogs:  p.am.GetChangeLogs(),
-		Events:      p.am.GetEvents(),
-		Confirms:    nil,
-		DeputyNodes: nil,
-	}
-	Block01.SetHeader(newHeader01)
-	blockHash := newHeader01.Hash()
-	err = p.chain.db.SetBlock(blockHash, Block01)
-	if err != nil && err != store.ErrExist {
-		panic(err)
-	}
-	err = p.am.Save(blockHash)
-	if err != nil {
-		panic(err)
-	}
+	txs01 := types.Transactions{registerTx01, getBalanceTx01, getBalanceTx02, getBalanceTx03}
+	Block01, invalidTxs, err := newNextBlock(p, parentBlock, txs01, true)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(invalidTxs))
 
+	blockHash := Block01.Hash()
 	result := p.chain.db.GetCandidatesTop(blockHash)
 	assert.Equal(t, 1, len(result))
-
-	err = p.chain.db.SetStableBlock(blockHash)
-	if err != nil {
-		panic(err)
-	}
 
 	// 	验证注册代理节点交易信息
 	testAddr, _ := registerTx01.From()
@@ -539,43 +471,10 @@ func Test_voteAndRegisteTx(t *testing.T) {
 	voteTx01 := makeTx(testPrivate01, testAddr, params.VoteTx, big.NewInt(0))
 	// 注册testAddr02为候选节点的交易
 	registerTx02 := signTransaction(types.NewTransaction(params.FeeReceiveAddress, params.RegisterCandidateNodeFees, 200000, common.Big1, candData02, params.RegisterTx, chainID, uint64(time.Now().Unix()+300), "", ""), testPrivate02)
-
-	header02 := &types.Header{
-		ParentHash:   Block01.Hash(),
-		MinerAddress: Block01.MinerAddress(),
-		VersionRoot:  Block01.VersionRoot(),
-		Height:       Block01.Height() + 1,
-		GasLimit:     Block01.GasLimit(),
-		Time:         Block01.Time() + 4,
-	}
 	txs02 := types.Transactions{voteTx01, registerTx02}
-	newHeader02, _, _, err := p.ApplyTxs(header02, txs02)
-	if err != nil {
-		fmt.Printf(" apply vote tx err : %s \n", err)
-	}
-	Block02 := &types.Block{
-		Header:      newHeader02,
-		Txs:         txs02,
-		ChangeLogs:  p.am.GetChangeLogs(),
-		Events:      p.am.GetEvents(),
-		Confirms:    nil,
-		DeputyNodes: nil,
-	}
-
-	Hash02 := Block02.Hash()
-	err = p.chain.db.SetBlock(Hash02, Block02)
-	if err != nil && err != store.ErrExist {
-		panic(err)
-	}
-	err = p.am.Save(Hash02)
-	if err != nil {
-		panic(err)
-	}
-
-	err = p.chain.db.SetStableBlock(Hash02)
-	if err != nil {
-		panic(err)
-	}
+	Block02, invalidTxs, err := newNextBlock(p, Block01, txs02, true)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(invalidTxs))
 
 	// 	验证1. 投票交易后的结果
 	account01 := p.am.GetCanonicalAccount(testAddr01)
@@ -609,42 +508,13 @@ func Test_voteAndRegisteTx(t *testing.T) {
 
 	changeCandData00, _ := json.Marshal(changeCand00)
 	registerTx03 := signTransaction(types.NewTransaction(params.FeeReceiveAddress, params.RegisterCandidateNodeFees, 200000, common.Big1, changeCandData00, params.RegisterTx, chainID, uint64(time.Now().Unix()+300), "", ""), testPrivate)
-	// 生成block
-	header03 := &types.Header{
-		ParentHash:   Block02.Hash(),
-		MinerAddress: Block02.MinerAddress(),
-		VersionRoot:  Block02.VersionRoot(),
-		Height:       Block02.Height() + 1,
-		GasLimit:     Block02.GasLimit(),
-		Time:         Block02.Time() + 4,
-	}
 	txs03 := types.Transactions{voteTx02, registerTx03}
-	newHeader03, _, _, err := p.ApplyTxs(header03, txs03)
-	if err != nil {
-		fmt.Printf(" apply vote tx err : %s \n", err)
-	}
-	Block03 := &types.Block{
-		Header:      newHeader03,
-		Txs:         txs03,
-		ChangeLogs:  p.am.GetChangeLogs(),
-		Events:      p.am.GetEvents(),
-		Confirms:    nil,
-		DeputyNodes: nil,
-	}
 
-	Hash03 := Block03.Hash()
-	err = p.chain.db.SetBlock(Hash03, Block03)
-	if err != nil && err != store.ErrExist {
-		panic(err)
-	}
-	err = p.am.Save(Hash03)
-	if err != nil {
-		panic(err)
-	}
-	err = p.chain.db.SetStableBlock(Hash03)
-	if err != nil {
-		panic(err)
-	}
+	Block03, invalidTxs, err := newNextBlock(p, Block02, txs03, true)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(invalidTxs))
+	assert.NotEmpty(t, Block03)
+
 	// 	验证1. 候选节点testAddr票数减少量 = testAddr01的Balance，候选节点testAddr02票数增加量 = testAddr01的Balance
 	latestAccount00 := p.am.GetCanonicalAccount(testAddr)
 	block03testAddr00Votes := latestAccount00.GetVotes()
@@ -772,6 +642,7 @@ func TestReimbursement_transaction(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
+	p.am.Reset(blockHash)
 	gasPayerAcc := p.am.GetAccount(gasPayerAddr)
 	senderAcc := p.am.GetAccount(senderAddr)
 	initGasPayerBalance := gasPayerAcc.GetBalance()
