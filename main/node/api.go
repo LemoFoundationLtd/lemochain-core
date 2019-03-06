@@ -108,8 +108,51 @@ func (a *PublicAccountAPI) GetAllRewardValue() ([]*params.Reward, error) {
 	return result, nil
 }
 
-//go:generate gencodec -type CandidateInfo -out gen_candidate_info_json.go
+// GetAssetEquity returns asset equity
+func (a *PublicAccountAPI) GetAssetEquityByAssetId(LemoAddress string, assetId common.Hash) (*types.AssetEquity, error) {
+	acc, err := a.GetAccount(LemoAddress)
+	if err != nil {
+		return nil, err
+	}
+	return acc.GetEquityState(assetId)
+}
 
+// GetAssetEquitiesByAssetCode returns assetEquity slice
+func (a *PublicAccountAPI) GetAssetEquitiesByAssetCode(LemoAddress string, assetCode common.Hash) ([]types.AssetEquity, error) {
+	// acc, err := a.GetAccount(LemoAddress)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// todo 获取账户下同一个assetCode下面的所有assetId
+	return nil, nil
+}
+
+// GetAssetEquitiesByAddress
+func (a *PublicAccountAPI) GetAssetEquitiesByAddress(lemoAddress string) ([]types.AssetEquity, error) {
+	// acc, err := a.GetAccount(LemoAddress)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// todo 获取账户下所有资产
+	return nil, nil
+}
+
+// GetAssetIssueInfo
+func (a *PublicAccountAPI) GetAssetIssueInfo(assetCode common.Hash) (*types.Asset, error) {
+
+}
+
+// GetMetaDataByAssetId returns metaData
+func (a *PublicAccountAPI) GetMetaDataByAssetId(assetId common.Hash) (string, error) {
+
+}
+
+// GetIssuer
+func (a *PublicAccountAPI) GetIssuer(assetId common.Hash) (*common.Address, error) {
+
+}
+
+//go:generate gencodec -type CandidateInfo -out gen_candidate_info_json.go
 type CandidateInfo struct {
 	CandidateAddress string            `json:"address" gencodec:"required"`
 	Votes            string            `json:"votes" gencodec:"required"`
@@ -445,7 +488,7 @@ func (t *PublicTxAPI) SendReimbursedGasTx(senderPrivate, gasPayerPrivate string,
 }
 
 // CreateAsset 创建资产
-func (t *PublicTxAPI) CreateAsset(prv string, category, decimals int, isReplenishable, isDivisible bool) (common.Hash, error) {
+func (t *PublicTxAPI) CreateAsset(prv string, category, decimals uint32, isReplenishable, isDivisible bool) (common.Hash, error) {
 	private, _ := crypto.HexToECDSA(prv)
 	issuer := crypto.PubkeyToAddress(private.PublicKey)
 	profile := make(types.Profile)
