@@ -703,32 +703,6 @@ func TestBlockChain_txData(t *testing.T) {
 	fmt.Println("预编译合约地址", common.BytesToAddress([]byte{9}).String())
 }
 
-// TestCreateAssetTx create asset test
-func TestCreateAssetTx(t *testing.T) {
-	tx01, err := newCreateAssetTx(testPrivate, types.Asset01, true, true)
-	assert.NoError(t, err)
-	bc := newChain()
-	defer bc.db.Close()
-	p := NewTxProcessor(bc)
-	parentBlock := p.chain.stableBlock.Load().(*types.Block)
-	txs := types.Transactions{tx01}
-	block01, invalidTxs, err := newNextBlock(p, parentBlock, txs, true)
-	assert.Equal(t, 0, len(invalidTxs))
-	assert.NoError(t, err)
-	// 	compare
-	p.am.Reset(block01.Hash())
-	senderAcc := p.am.GetAccount(crypto.PubkeyToAddress(testPrivate.PublicKey))
-	asset, err := senderAcc.GetAssetCode(tx01.Hash())
-	assert.NoError(t, err)
-	assert.Equal(t, types.Asset01, asset.Category)
-	assert.Equal(t, true, asset.IsDivisible, asset.IsReplenishable)
-	assert.Equal(t, "Demo Token", asset.Profile[types.AssetName])
-	assert.Equal(t, "DT", asset.Profile[types.AssetSymbol])
-	assert.Equal(t, "test issue token", asset.Profile[types.AssetDescription])
-	assert.Equal(t, "false", asset.Profile[types.AssetStop])
-	assert.Equal(t, "60000", asset.Profile[types.AssetSuggestedGasLimit])
-}
-
 // newNextBlock new a block
 func newNextBlock(p *TxProcessor, parentBlock *types.Block, txs types.Transactions, save bool) (*types.Block, types.Transactions, error) {
 	header01 := &types.Header{
@@ -762,6 +736,32 @@ func newNextBlock(p *TxProcessor, parentBlock *types.Block, txs types.Transactio
 		}
 	}
 	return newBlock, invalidTxs, nil
+}
+
+// TestCreateAssetTx create asset test
+func TestCreateAssetTx(t *testing.T) {
+	tx01, err := newCreateAssetTx(testPrivate, types.Asset01, true, true)
+	assert.NoError(t, err)
+	bc := newChain()
+	defer bc.db.Close()
+	p := NewTxProcessor(bc)
+	parentBlock := p.chain.stableBlock.Load().(*types.Block)
+	txs := types.Transactions{tx01}
+	block01, invalidTxs, err := newNextBlock(p, parentBlock, txs, true)
+	assert.Equal(t, 0, len(invalidTxs))
+	assert.NoError(t, err)
+	// 	compare
+	p.am.Reset(block01.Hash())
+	senderAcc := p.am.GetAccount(crypto.PubkeyToAddress(testPrivate.PublicKey))
+	asset, err := senderAcc.GetAssetCode(tx01.Hash())
+	assert.NoError(t, err)
+	assert.Equal(t, types.Asset01, asset.Category)
+	assert.Equal(t, true, asset.IsDivisible, asset.IsReplenishable)
+	assert.Equal(t, "Demo Token", asset.Profile[types.AssetName])
+	assert.Equal(t, "DT", asset.Profile[types.AssetSymbol])
+	assert.Equal(t, "test issue token", asset.Profile[types.AssetDescription])
+	assert.Equal(t, "false", asset.Profile[types.AssetStop])
+	assert.Equal(t, "60000", asset.Profile[types.AssetSuggestedGasLimit])
 }
 
 // newCreateAssetTx
@@ -1139,8 +1139,8 @@ func TestTradingAssetTx(t *testing.T) {
 	assert.Equal(t, big.NewInt(100), newEquity13.Equity)
 
 	newEquity22, err := newAcc2.GetEquityState(assetId02)
-	t.Log(newEquity22.String())
-	// assert.Equal(t, store.ErrNotExist, err)
+	assert.Empty(t, newEquity22)
+	assert.Equal(t, store.ErrNotExist, err)
 	newEquity21, err := newAcc2.GetEquityState(assetId01)
 	assert.NoError(t, err)
 	assert.Equal(t, big.NewInt(100), newEquity21.Equity)
@@ -1165,4 +1165,36 @@ func newTradingAssetTx(private *ecdsa.PrivateKey, to common.Address, assetId com
 	}
 	tx := types.NewTransaction(to, amount, uint64(500000), big.NewInt(1), data, params.TradingAssetTx, chainID, uint64(time.Now().Unix()+30*60), "", "trading asset tx")
 	return types.MakeSigner().SignTx(tx, private)
+}
+
+// test asset max marshal data length
+func TestMaxAssetProfile(t *testing.T) {
+	profile := make(types.Profile)
+	profile["aaaaaaaaaaaaaaaaaaaa"] = "www.lemochain.com"
+	profile["bbbbbbbbbbbbbbbbbbbb"] = "www.lemochain.com"
+	profile["cccccccccccccccccccc"] = "www.lemochain.com"
+	profile["dddddddddddddddddddd"] = "www.lemochain.com"
+	profile["eeeeeeeeeeeeeeeeeeee"] = "www.lemochain.com"
+	profile["ffffffffffffffffffff"] = "www.lemochain.com"
+	profile["gggggggggggggggggggg"] = "www.lemochain.com"
+	profile["hhhhhhhhhhhhhhhhhhhh"] = "www.lemochain.com"
+	profile["iiiiiiiiiiiiiiiiiiii"] = "www.lemochain.com"
+	profile["jjjjjjjjjjjjjjjjjjjj"] = "www.lemochain.com"
+	asset := &types.Asset{
+		Category:        1,
+		IsDivisible:     false,
+		AssetCode:       common.StringToHash("702aff687d34228aa696d32cf702844c4cbe619411250e864ea45826d8df6751"),
+		Decimals:        18,
+		TotalSupply:     big.NewInt(111111111111111111),
+		IsReplenishable: false,
+		Issuer:          common.HexToAddress("0x702aff687d34228aa69619411250e864ea45826d8df6751"),
+		Profile:         profile,
+	}
+	data, err := json.Marshal(asset)
+	assert.NoError(t, err)
+	t.Logf("data length : %d", len(data))
+
+	gasUsed, err := IntrinsicGas(data, false)
+	assert.NoError(t, err)
+	t.Logf("max gasUsed : %d", gasUsed)
 }
