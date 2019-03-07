@@ -13,7 +13,7 @@ const (
 	Asset01               = uint32(1) // erc20
 	Asset02               = uint32(2) // erc721
 	Asset03               = uint32(3) // erc20+721
-	MaxMarshalAssetLength = 2048
+	MaxMarshalAssetLength = 680
 	MaxMetaDataLength     = 256
 )
 

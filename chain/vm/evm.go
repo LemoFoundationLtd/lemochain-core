@@ -301,11 +301,6 @@ func (evm *EVM) RegisterOrUpdateToCandidate(candidateAddress, to common.Address,
 // CreateAssetTx
 func (evm *EVM) CreateAssetTx(sender common.Address, data []byte, txHash common.Hash) error {
 	var err error
-	// judge data's length
-	if len(data) > types.MaxMarshalAssetLength {
-		err = fmt.Errorf("the length of data by marshal asset more than max length,len(data) = %d ", len(data))
-		return err
-	}
 	issuerAcc := evm.am.GetAccount(sender)
 	asset := &types.Asset{}
 	err = json.Unmarshal(data, asset)
@@ -316,6 +311,15 @@ func (evm *EVM) CreateAssetTx(sender common.Address, data []byte, txHash common.
 	newAss.Issuer = sender
 	newAss.AssetCode = txHash
 	newAss.TotalSupply = big.NewInt(0) // init 0
+	newData, err := json.Marshal(newAss)
+	if err != nil {
+		return err
+	}
+	// judge data's length
+	if len(newData) > types.MaxMarshalAssetLength {
+		err = fmt.Errorf("the length of data by marshal asset more than max length,len(data) = %d ", len(newData))
+		return err
+	}
 	var snapshot = evm.am.Snapshot()
 	err = issuerAcc.SetAssetCode(newAss.AssetCode, newAss)
 	if err != nil {
@@ -348,7 +352,11 @@ func (evm *EVM) IssueAssetTx(sender, receiver common.Address, txHash common.Hash
 	if err != nil {
 		return err
 	}
-
+	// Determine whether asset is frozen
+	isStop, err := issuerAcc.GetAssetCodeState(assetCode, types.AssetStop)
+	if err == nil && isStop == "true" {
+		return errors.New("Can't issue the frozen assets. ")
+	}
 	recAcc := evm.am.GetAccount(receiver)
 	equity := &types.AssetEquity{}
 	equity.AssetCode = asset.AssetCode
@@ -418,6 +426,11 @@ func (evm *EVM) ReplenishAssetTx(sender, receiver common.Address, data []byte) e
 	asset, err := issuerAcc.GetAssetCode(newAssetCode)
 	if err != nil {
 		return err
+	}
+	// Determine whether asset is frozen
+	isStop, err := issuerAcc.GetAssetCodeState(newAssetCode, types.AssetStop)
+	if err == nil && isStop == "true" {
+		return errors.New("Can't replenish the frozen assets. ")
 	}
 	// judge IsReplenishable
 	if !asset.IsReplenishable {
@@ -532,6 +545,11 @@ func (evm *EVM) TradingAssetTx(caller ContractRef, addr common.Address, gas uint
 		return nil, gas, err
 	}
 	issuerAcc := evm.am.GetAccount(issuer)
+	isStop, err := issuerAcc.GetAssetCodeState(senderEquity.AssetCode, types.AssetStop)
+	if err == nil && isStop == "true" {
+		return nil, gas, errors.New("Cannot trade frozen assets. ")
+	}
+
 	asset, err := issuerAcc.GetAssetCode(senderEquity.AssetCode)
 	if err != nil {
 		return nil, gas, err
