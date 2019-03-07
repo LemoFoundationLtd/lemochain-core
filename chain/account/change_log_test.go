@@ -85,7 +85,7 @@ func (p *testProcessor) createAccount(logType types.ChangeLogType, version uint3
 	val, _ = rlp.EncodeToBytes(&types.AssetEquity{
 		AssetCode: common.HexToHash("0x22"),
 		AssetId:   common.HexToHash("0x33"),
-		Equity:    new(big.Int).SetInt64(100),
+		Equity:    new(big.Int).SetInt64(200),
 	})
 	account.equity.cached = map[common.Hash][]byte{
 		common.HexToHash("0x33"): val,
@@ -405,7 +405,15 @@ func TestChangeLog_Undo(t *testing.T) {
 	assetCodeLog, _ := NewAssetCodeLog(processor, processor.createAccount(AssetCodeLog, 1), common.HexToHash("0x33"), new(types.Asset))
 	assetCodeRootLog, _ := NewAssetCodeRootLog(processor, processor.createAccount(AssetCodeRootLog, 1), common.HexToHash("0x01"), common.HexToHash("0x02"))
 	assetCodeStateLog, _ := NewAssetCodeStateLog(processor, processor.createAccount(AssetCodeStateLog, 1), common.HexToHash("0x33"), "lemokey", "newVal")
-
+	assetIdLog, _ := NewAssetIdLog(processor, processor.createAccount(AssetIdLog, 1), common.HexToHash("0x033"), "newVal")
+	assetIdRootLog, _ := NewAssetIdRootLog(processor, processor.createAccount(AssetIdRootLog, 1), common.HexToHash("0x11"), common.HexToHash("0x22"))
+	equityStateLog, _ := NewEquityLog(processor, processor.createAccount(EquityLog, 1), common.HexToHash("0x33"), &types.AssetEquity{
+		AssetCode: common.HexToHash("0x22"),
+		AssetId:   common.HexToHash("0x33"),
+		Equity:    new(big.Int).SetInt64(100),
+	})
+	equityRootLog, _ := NewEquityRootLog(processor, processor.createAccount(EquityRootLog, 1), common.HexToHash("0x11"), common.HexToHash("0x22"))
+	assetCodeTotalSupplyLog, _ := NewAssetCodeTotalSupplyLog(processor, processor.createAccount(AssetCodeTotalSupplyLog, 1), common.HexToHash("0x33"), new(big.Int).SetInt64(500))
 	tests := []struct {
 		input      *types.ChangeLog
 		undoErr    error
@@ -528,10 +536,50 @@ func TestChangeLog_Undo(t *testing.T) {
 			},
 		},
 		// 15 NewAssetIdLog
-		// {
-		//
-		// },
-
+		{
+			input: assetIdLog,
+			afterCheck: func(accessor types.AccountAccessor) {
+				GetAssetIdState := func(id common.Hash) string {
+					result, _ := accessor.GetAssetIdState(id)
+					return result
+				}
+				assert.Equal(t, "old", GetAssetIdState(common.HexToHash("0x33")))
+			},
+		},
+		// 16NewAssetIdRootLog
+		{
+			input: assetIdRootLog,
+			afterCheck: func(accessor types.AccountAccessor) {
+				assert.Equal(t, common.HexToHash("0x11"), accessor.GetAssetIdRoot())
+			},
+		},
+		// 17NewEquityLog
+		{
+			input: equityStateLog,
+			afterCheck: func(accessor types.AccountAccessor) {
+				GetEquity := func(id common.Hash) *types.AssetEquity {
+					result, _ := accessor.GetEquityState(id)
+					return result
+				}
+				assert.Equal(t, new(big.Int).SetInt64(200), GetEquity(common.HexToHash("0x33")).Equity)
+			},
+		},
+		// 18NewEquityRootLog
+		{
+			input: equityRootLog,
+			afterCheck: func(accessor types.AccountAccessor) {
+				root := accessor.GetEquityRoot()
+				assert.Equal(t, common.HexToHash("0x11"), root)
+			},
+		},
+		// 19 AssetCodeTotalSupplyLog
+		{
+			input: assetCodeTotalSupplyLog,
+			afterCheck: func(accessor types.AccountAccessor) {
+				result, _ := accessor.GetAssetCodeTotalSupply(common.HexToHash("0x33"))
+				assert.Equal(t, new(big.Int).SetInt64(1), result)
+			},
+		},
 	}
 
 	for i, test := range tests {
@@ -554,6 +602,19 @@ func TestChangeLog_Redo(t *testing.T) {
 		// account.SetVersion(log.LogType, account.GetVersion(log.LogType)-1)
 		return log
 	}
+
+	assetCodeLog, _ := NewAssetCodeLog(processor, processor.createAccount(AssetCodeLog, 1), common.HexToHash("0x33"), new(types.Asset))
+	assetCodeRootLog, _ := NewAssetCodeRootLog(processor, processor.createAccount(AssetCodeRootLog, 1), common.HexToHash("0x01"), common.HexToHash("0x02"))
+	assetCodeStateLog, _ := NewAssetCodeStateLog(processor, processor.createAccount(AssetCodeStateLog, 1), common.HexToHash("0x33"), "lemokey", "newVal")
+	assetIdLog, _ := NewAssetIdLog(processor, processor.createAccount(AssetIdLog, 1), common.HexToHash("0x033"), "newVal")
+	assetIdRootLog, _ := NewAssetIdRootLog(processor, processor.createAccount(AssetIdRootLog, 1), common.HexToHash("0x11"), common.HexToHash("0x22"))
+	equityStateLog, _ := NewEquityLog(processor, processor.createAccount(EquityLog, 1), common.HexToHash("0x33"), &types.AssetEquity{
+		AssetCode: common.HexToHash("0x22"),
+		AssetId:   common.HexToHash("0x33"),
+		Equity:    new(big.Int).SetInt64(100),
+	})
+	equityRootLog, _ := NewEquityRootLog(processor, processor.createAccount(EquityRootLog, 1), common.HexToHash("0x11"), common.HexToHash("0x22"))
+	assetCodeTotalSupplyLog, _ := NewAssetCodeTotalSupplyLog(processor, processor.createAccount(AssetCodeTotalSupplyLog, 1), common.HexToHash("0x33"), new(big.Int).SetInt64(500))
 
 	tests := []struct {
 		input      *types.ChangeLog
@@ -653,6 +714,84 @@ func TestChangeLog_Redo(t *testing.T) {
 			afterCheck: func(accessor types.AccountAccessor) {
 				assert.Equal(t, "false", accessor.GetCandidate()[types.CandidateKeyIsCandidate])
 				assert.Equal(t, "host", accessor.GetCandidate()[types.CandidateKeyHost])
+			},
+		},
+
+		// 12 NewAssetCodeLog
+		{
+			input: assetCodeLog,
+			afterCheck: func(accessor types.AccountAccessor) {
+				GetAssetCode := func(accessor types.AccountAccessor, code common.Hash) *types.Asset {
+					result, _ := accessor.GetAssetCode(code)
+					return result
+				}
+
+				assert.Equal(t, common.Hash{}, GetAssetCode(accessor, common.HexToHash("0x33")).AssetCode)
+				assert.Equal(t, common.Address{}, GetAssetCode(accessor, common.HexToHash("0x33")).Issuer)
+				assert.Equal(t, 0, len(GetAssetCode(accessor, common.HexToHash("0x33")).Profile))
+			},
+		},
+		// 13 NewAssetCodeRootLog
+		{
+			input: assetCodeRootLog,
+			afterCheck: func(accessor types.AccountAccessor) {
+				assert.Equal(t, common.HexToHash("0x02"), accessor.GetAssetCodeRoot())
+			},
+		},
+		// 14 NewAssetCodeStateLog
+		{
+			input: assetCodeStateLog,
+			afterCheck: func(accessor types.AccountAccessor) {
+				GetAssetCodeState := func(accessor types.AccountAccessor, code common.Hash, key string) string {
+					result, _ := accessor.GetAssetCodeState(code, key)
+					return result
+				}
+				assert.Equal(t, "newVal", GetAssetCodeState(accessor, common.HexToHash("0x33"), "lemokey"))
+			},
+		},
+		// 15 NewAssetIdLog
+		{
+			input: assetIdLog,
+			afterCheck: func(accessor types.AccountAccessor) {
+				GetAssetIdState := func(id common.Hash) string {
+					result, _ := accessor.GetAssetIdState(id)
+					return result
+				}
+				assert.Equal(t, "newVal", GetAssetIdState(common.HexToHash("0x33")))
+			},
+		},
+		// 16NewAssetIdRootLog
+		{
+			input: assetIdRootLog,
+			afterCheck: func(accessor types.AccountAccessor) {
+				assert.Equal(t, common.HexToHash("0x22"), accessor.GetAssetIdRoot())
+			},
+		},
+		// 17NewEquityLog
+		{
+			input: equityStateLog,
+			afterCheck: func(accessor types.AccountAccessor) {
+				GetEquity := func(id common.Hash) *types.AssetEquity {
+					result, _ := accessor.GetEquityState(id)
+					return result
+				}
+				assert.Equal(t, new(big.Int).SetInt64(100), GetEquity(common.HexToHash("0x33")).Equity)
+			},
+		},
+		// 18NewEquityRootLog
+		{
+			input: equityRootLog,
+			afterCheck: func(accessor types.AccountAccessor) {
+				root := accessor.GetEquityRoot()
+				assert.Equal(t, common.HexToHash("0x22"), root)
+			},
+		},
+		// 19 AssetCodeTotalSupplyLog
+		{
+			input: assetCodeTotalSupplyLog,
+			afterCheck: func(accessor types.AccountAccessor) {
+				result, _ := accessor.GetAssetCodeTotalSupply(common.HexToHash("0x33"))
+				assert.Equal(t, new(big.Int).SetInt64(500), result)
 			},
 		},
 	}
