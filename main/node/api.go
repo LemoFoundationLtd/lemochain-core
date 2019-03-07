@@ -117,41 +117,6 @@ func (a *PublicAccountAPI) GetAssetEquityByAssetId(LemoAddress string, assetId c
 	return acc.GetEquityState(assetId)
 }
 
-// GetAssetEquitiesByAssetCode returns assetEquity slice
-func (a *PublicAccountAPI) GetAssetEquitiesByAssetCode(LemoAddress string, assetCode common.Hash) ([]types.AssetEquity, error) {
-	// acc, err := a.GetAccount(LemoAddress)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// todo 获取账户下同一个assetCode下面的所有assetId
-	return nil, nil
-}
-
-// GetAssetEquitiesByAddress
-func (a *PublicAccountAPI) GetAssetEquitiesByAddress(lemoAddress string) ([]types.AssetEquity, error) {
-	// acc, err := a.GetAccount(LemoAddress)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// todo 获取账户下所有资产
-	return nil, nil
-}
-
-// GetAssetIssueInfo
-func (a *PublicAccountAPI) GetAssetIssueInfo(assetCode common.Hash) (*types.Asset, error) {
-
-}
-
-// GetMetaDataByAssetId returns metaData
-func (a *PublicAccountAPI) GetMetaDataByAssetId(assetId common.Hash) (string, error) {
-
-}
-
-// GetIssuer
-func (a *PublicAccountAPI) GetIssuer(assetId common.Hash) (*common.Address, error) {
-
-}
-
 //go:generate gencodec -type CandidateInfo -out gen_candidate_info_json.go
 type CandidateInfo struct {
 	CandidateAddress string            `json:"address" gencodec:"required"`
