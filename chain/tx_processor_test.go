@@ -1054,6 +1054,7 @@ func TestModifyAssetProfile(t *testing.T) {
 	assert.Equal(t, "Modify", name03)
 	assert.Equal(t, "lemo", lemo03)
 	assert.Equal(t, "zyj", zyj03)
+
 }
 
 // new 修改资产交易
