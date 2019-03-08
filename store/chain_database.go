@@ -56,7 +56,7 @@ func NewChainDataBase(home string, driver string, dns string) *ChainDatabase {
 		LevelDB:         leveldb.NewLevelDBDatabase(filepath.Join(home, "index"), 16, 16),
 	}
 
-	db.BizDB = NewBizDatabase(db, NewMySqlDB(driver, dns), db.LevelDB)
+	db.BizDB = NewBizDatabase(db, db.LevelDB)
 	db.Beansdb = NewBeansDB(home, 2, db.LevelDB, db.AfterScan)
 
 	db.LastConfirm = NewGenesisBlock(db.Context.GetStableBlock(), db.Beansdb)
@@ -564,10 +564,6 @@ func (database *ChainDatabase) GetActDatabase(hash common.Hash) (*AccountTrieDB,
 		return item.AccountTrieDB, nil
 	}
 }
-
-// func (database *ChainDatabase) GetBizDatabase() BizDb {
-// 	return database.BizDB
-// }
 
 // GetContractCode loads contract's code from db.
 func (database *ChainDatabase) GetContractCode(hash common.Hash) (types.Code, error) {

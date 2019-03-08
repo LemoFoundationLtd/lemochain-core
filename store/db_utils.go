@@ -45,7 +45,7 @@ func Open(driver string, dns string) (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	} else {
-		InitTable(db)
+		// InitTable(db)
 		return db, nil
 	}
 }

@@ -1,7 +1,6 @@
 package store
 
 import (
-	"errors"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
@@ -48,93 +47,93 @@ type Reader interface {
 }
 
 type BizDatabase struct {
-	Reader   Reader
-	Database *MySqlDB
-	LevelDB  *leveldb.LevelDBDatabase
+	Reader  Reader
+	LevelDB *leveldb.LevelDBDatabase
 }
 
-func NewBizDatabase(reader Reader, database *MySqlDB, levelDB *leveldb.LevelDBDatabase) *BizDatabase {
+func NewBizDatabase(reader Reader, levelDB *leveldb.LevelDBDatabase) *BizDatabase {
 	return &BizDatabase{
-		Reader:   reader,
-		Database: database,
-		LevelDB:  levelDB,
+		Reader:  reader,
+		LevelDB: levelDB,
 	}
 }
 
 func (db *BizDatabase) GetTxByHash(hash common.Hash) (*VTransactionDetail, error) {
-	blockHash, val, st, err := db.Database.TxGetByHash(hash.Hex())
-	if err != nil {
-		return nil, err
-	}
-
-	block, err := db.Reader.GetBlockByHash(common.HexToHash(blockHash))
-	if err == ErrNotExist {
-		return nil, ErrNotExist
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	var tx types.Transaction
-	err = rlp.DecodeBytes(val, &tx)
-	if err != nil {
-		return nil, err
-	}
-
-	return &VTransactionDetail{
-		BlockHash: block.Hash(),
-		Height:    block.Height(),
-		Tx:        &tx,
-		St:        st,
-	}, nil
+	// blockHash, val, st, err := db.Database.TxGetByHash(hash.Hex())
+	// if err != nil {
+	// 	return nil, err
+	// }
+	//
+	// block, err := db.Reader.GetBlockByHash(common.HexToHash(blockHash))
+	// if err == ErrNotExist {
+	// 	return nil, ErrNotExist
+	// }
+	//
+	// if err != nil {
+	// 	return nil, err
+	// }
+	//
+	// var tx types.Transaction
+	// err = rlp.DecodeBytes(val, &tx)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	//
+	// return &VTransactionDetail{
+	// 	BlockHash: block.Hash(),
+	// 	Height:    block.Height(),
+	// 	Tx:        &tx,
+	// 	St:        st,
+	// }, nil
+	return nil, nil
 }
 
 func (db *BizDatabase) GetTxByAddr(src common.Address, index int, size int) ([]*VTransaction, uint32, error) {
-	if (index < 0) || (size > 200) || (size <= 0) {
-		return nil, 0, errors.New("argment error.")
-	}
-
-	confirm := db.Reader.GetLastConfirm()
-	trieDB := confirm.AccountTrieDB
-	if trieDB == nil {
-		return make([]*VTransaction, 0), 0, nil
-	}
-
-	account, err := trieDB.Get(src)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	if account == nil {
-		return make([]*VTransaction, 0), 0, nil
-	}
-
-	txCount := uint32(0)
-	// txCount := account.TxCount
-	// if uint32(index) > txCount {
-	// 	return make([]*VTransaction, 0), txCount, nil
+	// if (index < 0) || (size > 200) || (size <= 0) {
+	// 	return nil, 0, errors.New("argment error.")
 	// }
-
-	_, vals, sts, err := db.Database.TxGetByAddr(src.Hex(), index, size)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	txs := make([]*VTransaction, len(vals))
-	for index := 0; index < len(vals); index++ {
-		var tx types.Transaction
-		err = rlp.DecodeBytes(vals[index], &tx)
-		if err != nil {
-			return nil, 0, err
-		}
-
-		txs[index] = &VTransaction{
-			Tx: &tx,
-			St: sts[index],
-		}
-	}
-	return txs, txCount, nil
+	//
+	// confirm := db.Reader.GetLastConfirm()
+	// trieDB := confirm.AccountTrieDB
+	// if trieDB == nil {
+	// 	return make([]*VTransaction, 0), 0, nil
+	// }
+	//
+	// account, err := trieDB.Get(src)
+	// if err != nil {
+	// 	return nil, 0, err
+	// }
+	//
+	// if account == nil {
+	// 	return make([]*VTransaction, 0), 0, nil
+	// }
+	//
+	// txCount := uint32(0)
+	// // txCount := account.TxCount
+	// // if uint32(index) > txCount {
+	// // 	return make([]*VTransaction, 0), txCount, nil
+	// // }
+	//
+	// _, vals, sts, err := db.Database.TxGetByAddr(src.Hex(), index, size)
+	// if err != nil {
+	// 	return nil, 0, err
+	// }
+	//
+	// txs := make([]*VTransaction, len(vals))
+	// for index := 0; index < len(vals); index++ {
+	// 	var tx types.Transaction
+	// 	err = rlp.DecodeBytes(vals[index], &tx)
+	// 	if err != nil {
+	// 		return nil, 0, err
+	// 	}
+	//
+	// 	txs[index] = &VTransaction{
+	// 		Tx: &tx,
+	// 		St: sts[index],
+	// 	}
+	// }
+	// return txs, txCount, nil
+	return nil, 0, nil
 }
 
 func (db *BizDatabase) AfterCommit(flag uint, key []byte, val []byte) error {
