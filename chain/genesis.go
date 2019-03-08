@@ -111,12 +111,12 @@ func SetupGenesisBlock(db protocol.ChainDB, genesis *Genesis) (common.Hash, erro
 
 	// check genesis block's time
 	if int64(genesis.Time) > time.Now().Unix() {
-		panic("Genesis block's time can't be larger than current time.")
+		panic("genesis block's time can't be larger than current time.")
 	}
 	// check deputy nodes
 	for _, deputy := range genesis.DeputyNodes {
 		if err := deputy.Check(); err != nil {
-			panic("genesis deputy nodes check error")
+			panic(fmt.Errorf("genesis deputy nodes check error: %s", err.Error()))
 		}
 	}
 

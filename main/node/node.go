@@ -100,14 +100,11 @@ func initDb(dataDir string, driver string, dns string) protocol.ChainDB {
 func getGenesis(db protocol.ChainDB) *types.Block {
 	block, err := db.GetBlockByHeight(0)
 	if err == store.ErrNotExist {
-		genesis := chain.DefaultGenesisBlock()
-		if _, err = chain.SetupGenesisBlock(db, genesis); err != nil {
+		if _, err = chain.SetupGenesisBlock(db, nil); err != nil {
 			panic("SetupGenesisBlock Failed")
 		}
 		block, _ = db.GetBlockByHeight(0)
-	} else if err == nil {
-		// normal
-	} else {
+	} else if err != nil {
 		panic(fmt.Sprintf("can't get genesis block. err: %v", err))
 	}
 	return block
