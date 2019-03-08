@@ -173,7 +173,6 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 		TxRoot:       info.txRoot,
 		LogRoot:      info.logRoot,
 		Bloom:        types.CreateBloom(nil),
-		EventRoot:    common.HexToHash("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"), // empty merkle
 		Height:       info.height,
 		GasLimit:     info.gasLimit,
 		GasUsed:      gasUsed,
@@ -234,7 +233,7 @@ type EngineTestForMiner struct{}
 
 func (engine *EngineTestForMiner) VerifyHeader(block *types.Block) error { return nil }
 
-func (engine *EngineTestForMiner) Seal(header *types.Header, txs []*types.Transaction, changeLog []*types.ChangeLog, events []*types.Event) (*types.Block, error) {
+func (engine *EngineTestForMiner) Seal(header *types.Header, txs []*types.Transaction, changeLog []*types.ChangeLog) (*types.Block, error) {
 	return nil, nil
 }
 
@@ -669,8 +668,6 @@ func TestMiner_GetSleepNormal(t *testing.T) {
 	assert.Equal(t, calDeviation(30000, reset), true)
 }
 
-func Test_t(t *testing.T) {
-	s := []byte{0x01, 0x02, 0x03}
-	tmp := s[:5]
-	fmt.Printf("%x", tmp)
+func Test_NextTerm(t *testing.T) {
+
 }

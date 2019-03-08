@@ -50,7 +50,9 @@ It defines initial deputy node list and some running configuration about this no
 	"sleepTime": "3000",
 	"timeout": "10000",
 	"dbUri": "root:123456@tcp(127.0.0.1:3306)/lemochain?charset=utf8mb4",
-	"dbDriver": "mysql"
+	"dbDriver": "mysql",
+	"termDuration": "1000000",
+	"interimDuration":"1000"
 }
 ```
 - `chainID` The ID of LemoChain
@@ -58,6 +60,8 @@ It defines initial deputy node list and some running configuration about this no
 - `timeout` The maximum limit of block generation for every nodes
 - `dbUri` The connection string of database. It is like `[USER_NAME]:[PASSWORD]@tcp([IP]:[PORT])/[DB_NAME]?charset=utf8mb4`
 - `dbDriver` The type of database driver
+- `termDuration` The block numbers between to snapshot blocks
+- `interimDuration` The block numbers of interim period
 
 chainID | description
 ---|---

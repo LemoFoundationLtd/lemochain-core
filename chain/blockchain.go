@@ -204,10 +204,21 @@ func (bc *BlockChain) SetMinedBlock(block *types.Block) error {
 		subscribe.Send(subscribe.NewMinedBlock, block)
 		msg := bc.createSignInfo(block.Hash(), block.Height())
 		subscribe.Send(subscribe.NewConfirm, msg)
+		bc.newBlockNotify(block)
 	}()
+	bc.updateDeputyNodes(block)
 	return nil
 }
 
+// updateDeputyNodes update deputy nodes map
+func (bc *BlockChain) updateDeputyNodes(block *types.Block) {
+	if block.Height()%params.TermDuration == 0 {
+		deputynode.Instance().Add(block.Height()+params.InterimDuration+1, block.DeputyNodes)
+		log.Debugf("add new term deputy nodes: %v", block.DeputyNodes)
+	}
+}
+
+// newBlockNotify
 func (bc *BlockChain) newBlockNotify(block *types.Block) {
 	bc.RecvBlockFeed.Send(block)
 }
@@ -233,7 +244,6 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 		return ErrParentNotExist
 	}
 	// save
-	block.SetEvents(bc.AccountManager().GetEvents())
 	block.SetChangeLogs(bc.AccountManager().GetChangeLogs())
 
 	sb := bc.stableBlock.Load().(*types.Block)
@@ -277,6 +287,7 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 				})
 			}
 		}
+		bc.updateDeputyNodes(block)
 		// for debug
 		b := bc.currentBlock.Load().(*types.Block)
 		log.Debugf("current block: %d, %s, parent: %s", b.Height(), b.Hash().String()[:16], b.ParentHash().String()[:16])
@@ -547,7 +558,7 @@ func (bc *BlockChain) verifyBody(block *types.Block) error {
 		return ErrVerifyBlockFailed
 	}
 	// verify deputyRoot
-	if block.Height()%params.SnapshotBlock == 0 {
+	if block.Height()%params.TermDuration == 0 {
 		bRoot := types.DeriveDeputyRootSha(block.DeputyNodes)
 		nodes := bc.GetNewDeputyNodes()
 		selfRoot := types.DeriveDeputyRootSha(nodes)

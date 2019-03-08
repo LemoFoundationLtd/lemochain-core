@@ -45,7 +45,6 @@ func TestTxProcessor_Process(t *testing.T) {
 	newHeader, err := p.Process(block)
 	assert.NoError(t, err)
 	assert.Equal(t, block.Header.Bloom, newHeader.Bloom)
-	assert.Equal(t, block.Header.EventRoot, newHeader.EventRoot)
 	assert.Equal(t, block.Header.GasUsed, newHeader.GasUsed)
 	assert.Equal(t, block.Header.TxRoot, newHeader.TxRoot)
 	assert.Equal(t, block.Header.VersionRoot, newHeader.VersionRoot)
@@ -58,7 +57,6 @@ func TestTxProcessor_Process(t *testing.T) {
 	newHeader, err = p.Process(block)
 	assert.NoError(t, err)
 	assert.Equal(t, block.Header.Bloom, newHeader.Bloom)
-	assert.Equal(t, block.Header.EventRoot, newHeader.EventRoot)
 	assert.Equal(t, block.Header.GasUsed, newHeader.GasUsed)
 	assert.Equal(t, block.Header.TxRoot, newHeader.TxRoot)
 	assert.Equal(t, block.Header.VersionRoot, newHeader.VersionRoot)
@@ -71,7 +69,6 @@ func TestTxProcessor_Process(t *testing.T) {
 	newHeader, err = p.Process(block)
 	assert.NoError(t, err)
 	assert.Equal(t, block.Header.Bloom, newHeader.Bloom)
-	assert.Equal(t, block.Header.EventRoot, newHeader.EventRoot)
 	assert.Equal(t, block.Header.GasUsed, newHeader.GasUsed)
 	assert.Equal(t, block.Header.TxRoot, newHeader.TxRoot)
 	assert.Equal(t, block.Header.VersionRoot, newHeader.VersionRoot)
@@ -83,7 +80,6 @@ func TestTxProcessor_Process(t *testing.T) {
 	newHeader, err = p.Process(block)
 	assert.NoError(t, err)
 	assert.Equal(t, block.Header.Bloom, newHeader.Bloom)
-	assert.Equal(t, block.Header.EventRoot, newHeader.EventRoot)
 	assert.Equal(t, block.Header.GasUsed, newHeader.GasUsed)
 	assert.Equal(t, block.Header.TxRoot, newHeader.TxRoot)
 	assert.Equal(t, block.Header.VersionRoot, newHeader.VersionRoot)
@@ -186,7 +182,6 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 	newHeader, selectedTxs, invalidTxs, err := p.ApplyTxs(emptyHeader, txs)
 	assert.NoError(t, err)
 	assert.Equal(t, header.Bloom, newHeader.Bloom)
-	assert.Equal(t, header.EventRoot, newHeader.EventRoot)
 	assert.Equal(t, header.GasUsed, newHeader.GasUsed)
 	assert.Equal(t, header.TxRoot, newHeader.TxRoot)
 	assert.Equal(t, header.VersionRoot, newHeader.VersionRoot)
@@ -210,7 +205,6 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 	newHeader, selectedTxs, invalidTxs, err = p.ApplyTxs(emptyHeader, txs)
 	assert.NoError(t, err)
 	assert.Equal(t, header.Bloom, newHeader.Bloom)
-	assert.Equal(t, header.EventRoot, newHeader.EventRoot)
 	assert.Equal(t, header.GasUsed, newHeader.GasUsed)
 	assert.Equal(t, header.TxRoot, newHeader.TxRoot)
 	assert.Equal(t, header.VersionRoot, newHeader.VersionRoot)
@@ -236,7 +230,6 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, types.Bloom{}, newHeader.Bloom)
 	emptyTrieHash := common.HexToHash("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470")
-	assert.Equal(t, emptyTrieHash, newHeader.EventRoot)
 	assert.Equal(t, emptyTrieHash, newHeader.TxRoot)
 	assert.Equal(t, emptyTrieHash, newHeader.LogRoot)
 	assert.Equal(t, 0, len(selectedTxs))
@@ -257,7 +250,6 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 	newHeader, selectedTxs, invalidTxs, err = p.ApplyTxs(emptyHeader, txs)
 	assert.NoError(t, err)
 	assert.Equal(t, header.Bloom, newHeader.Bloom)
-	assert.Equal(t, header.EventRoot, newHeader.EventRoot)
 	assert.NotEqual(t, header.GasUsed, newHeader.GasUsed)
 	assert.NotEqual(t, header.TxRoot, newHeader.TxRoot)
 	assert.NotEqual(t, header.VersionRoot, newHeader.VersionRoot)
@@ -287,7 +279,6 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 	newHeader, selectedTxs, invalidTxs, err = p.ApplyTxs(emptyHeader, txs)
 	assert.NoError(t, err)
 	assert.Equal(t, header.Bloom, newHeader.Bloom)
-	assert.Equal(t, header.EventRoot, newHeader.EventRoot)
 	assert.Equal(t, header.GasUsed, newHeader.GasUsed)
 	assert.Equal(t, header.TxRoot, newHeader.TxRoot)
 	assert.Equal(t, header.VersionRoot, newHeader.VersionRoot)
@@ -632,7 +623,6 @@ func TestReimbursement_transaction(t *testing.T) {
 	Block01 := &types.Block{
 		Txs:         txs,
 		ChangeLogs:  p.am.GetChangeLogs(),
-		Events:      p.am.GetEvents(),
 		Confirms:    nil,
 		DeputyNodes: nil,
 	}
@@ -680,7 +670,6 @@ func TestReimbursement_transaction(t *testing.T) {
 		Header:     newHeader02,
 		Txs:        txVs,
 		ChangeLogs: p.am.GetChangeLogs(),
-		Events:     p.am.GetEvents(),
 	}
 	block02Hash := Block02.Hash()
 	p.chain.db.SetBlock(block02Hash, Block02)

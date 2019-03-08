@@ -54,8 +54,8 @@ type Peer struct {
 	stopCh         chan struct{}
 }
 
-// newPeer
-func newPeer(fd net.Conn) IPeer {
+// NewPeer
+func NewPeer(fd net.Conn) IPeer {
 	return &Peer{
 		conn:          fd,
 		created:       mclock.Now(),

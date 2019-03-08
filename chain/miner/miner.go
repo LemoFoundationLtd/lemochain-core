@@ -40,9 +40,9 @@ type Miner struct {
 	recvNewBlockCh chan *types.Block // 收到新块通知
 	recvBlockSub   subscribe.Subscription
 	timeToMineCh   chan struct{} // 到出块时间了
-	startCh        chan struct{}
-	stopCh         chan struct{} // 停止挖矿
-	quitCh         chan struct{} // 退出
+	// startCh        chan struct{}
+	stopCh chan struct{} // 停止挖矿
+	quitCh chan struct{} // 退出
 }
 
 func New(cfg *MineConfig, chain *chain.BlockChain, txPool *chain.TxPool, engine chain.Engine) *Miner {
@@ -57,11 +57,11 @@ func New(cfg *MineConfig, chain *chain.BlockChain, txPool *chain.TxPool, engine 
 		txProcessor:    chain.TxProcessor(),
 		recvNewBlockCh: make(chan *types.Block, 1),
 		timeToMineCh:   make(chan struct{}),
-		startCh:        make(chan struct{}),
-		stopCh:         make(chan struct{}),
-		quitCh:         make(chan struct{}),
+		// startCh:        make(chan struct{}),
+		stopCh: make(chan struct{}),
+		quitCh: make(chan struct{}),
 	}
-	go m.loopRecvBlock()
+	// go m.loopRecvBlock()
 	return m
 }
 
@@ -74,18 +74,26 @@ func (m *Miner) Start() {
 	case <-m.timeToMineCh:
 	default:
 	}
-	m.startCh <- struct{}{}
+	// update miner address to miner object
+	curBlock := m.chain.CurrentBlock()
+	m.updateMiner(curBlock)
+
+	// m.startCh <- struct{}{}
 	go m.loopMiner()
-	waitTime := m.getSleepTime()
-	if waitTime == 0 {
-		m.sealBlock()
-	} else if waitTime > 0 {
-		m.resetMinerTimer(int64(waitTime))
+	if m.isSelfDeputyNode() {
+		waitTime := m.getSleepTime()
+		if waitTime == 0 {
+			m.sealBlock()
+		} else if waitTime > 0 {
+			m.resetMinerTimer(int64(waitTime))
+		} else {
+			log.Error("internal error. start mining failed")
+			atomic.CompareAndSwapInt32(&m.mining, 1, 0)
+			m.stopCh <- struct{}{}
+			return
+		}
 	} else {
-		log.Error("internal error. start mining failed")
-		atomic.CompareAndSwapInt32(&m.mining, 1, 0)
-		m.stopCh <- struct{}{}
-		return
+		m.resetMinerTimer(-1)
 	}
 	m.recvBlockSub = m.chain.RecvBlockFeed.Subscribe(m.recvNewBlockCh)
 	log.Info("start mining...")
@@ -152,7 +160,7 @@ func (m *Miner) getSleepTime() int {
 		log.Debugf("getSleepTime: waitTime:%d", waitTime)
 		return int(waitTime)
 	}
-	if (curHeight > params.PeriodBlock) && (curHeight-params.PeriodBlock)%params.SnapshotBlock == 0 {
+	if (curHeight > params.InterimDuration) && (curHeight-params.InterimDuration)%params.TermDuration == 0 {
 		if rank := deputynode.Instance().GetNodeRankByNodeID(curHeight, deputynode.GetSelfNodeID()); rank > -1 {
 			waitTime := rank * int(m.timeoutTime)
 			log.Debugf("getSleepTime: waitTime:%d", waitTime)
@@ -162,7 +170,7 @@ func (m *Miner) getSleepTime() int {
 		return -1
 	}
 	timeDur := m.getTimespan() // 获取当前时间与最新块的时间差
-	myself := deputynode.Instance().GetDeputyByNodeID(curHeight, deputynode.GetSelfNodeID())
+	myself := deputynode.Instance().GetDeputyByNodeID(curHeight+1, deputynode.GetSelfNodeID())
 	curHeader := m.currentBlock().Header
 	slot := deputynode.Instance().GetSlot(curHeader.Height+1, curHeader.MinerAddress, myself.MinerAddress) // 获取新块离本节点索引的距离
 	if slot == -1 {
@@ -171,7 +179,7 @@ func (m *Miner) getSleepTime() int {
 	}
 	oneLoopTime := int64(nodeCount) * m.timeoutTime
 	// for test
-	if curHeight%params.SnapshotBlock >= params.PeriodBlock && curHeight%params.SnapshotBlock < params.PeriodBlock+20 {
+	if curHeight%params.TermDuration >= params.InterimDuration && curHeight%params.TermDuration < params.InterimDuration+20 {
 		log.Debugf("getSleepTime: timeDur:%d slot:%d oneLoopTime:%d", timeDur, slot, oneLoopTime)
 	}
 	if slot == 0 { // 上一个块为自己出的块
@@ -209,7 +217,7 @@ func (m *Miner) getSleepTime() int {
 		if timeDur > oneLoopTime { // 间隔大于一轮
 			timeDur = timeDur % oneLoopTime // 求余
 			// for test
-			if curHeight%params.SnapshotBlock >= params.PeriodBlock && curHeight%params.SnapshotBlock < params.PeriodBlock+20 {
+			if curHeight%params.TermDuration >= params.InterimDuration && curHeight%params.TermDuration < params.InterimDuration+20 {
 				log.Debugf("getSleepTime: slot:1 timeDur:%d>oneLoopTime:%d ", timeDur, oneLoopTime)
 			}
 			if timeDur < m.timeoutTime { //
@@ -218,7 +226,7 @@ func (m *Miner) getSleepTime() int {
 			} else {
 				waitTime := oneLoopTime - timeDur
 				// for test
-				if curHeight%params.SnapshotBlock >= params.PeriodBlock && curHeight%params.SnapshotBlock < params.PeriodBlock+20 {
+				if curHeight%params.TermDuration >= params.InterimDuration && curHeight%params.TermDuration < params.InterimDuration+20 {
 					log.Debugf("ModifyTimer: slot:1 timeDur:%d>=self.timeoutTime:%d resetMinerTimer(waitTime:%d)", timeDur, m.timeoutTime, waitTime)
 				}
 				return int(waitTime)
@@ -227,13 +235,13 @@ func (m *Miner) getSleepTime() int {
 			if timeDur >= m.timeoutTime { // 过了本节点该出块的时机
 				waitTime := oneLoopTime - timeDur
 				// for test
-				if curHeight%params.SnapshotBlock >= params.PeriodBlock && curHeight%params.SnapshotBlock < params.PeriodBlock+20 {
+				if curHeight%params.TermDuration >= params.InterimDuration && curHeight%params.TermDuration < params.InterimDuration+20 {
 					log.Debugf("getSleepTime: slot:1 timeDur<oneLoopTime, timeDur>self.timeoutTime, resetMinerTimer(waitTime:%d)", waitTime)
 				}
 				return int(waitTime)
 			} else if timeDur >= m.blockInterval { // 如果上一个区块的时间与当前时间差大或等于3s（区块间的最小间隔为3s），则直接出块无需休眠
 				// for test
-				if curHeight%params.SnapshotBlock >= params.PeriodBlock && curHeight%params.SnapshotBlock < params.PeriodBlock+20 {
+				if curHeight%params.TermDuration >= params.InterimDuration && curHeight%params.TermDuration < params.InterimDuration+20 {
 					log.Debugf("getSleepTime: timeDur: %d. isTurn=true. --4", timeDur)
 				}
 				return 0
@@ -244,7 +252,7 @@ func (m *Miner) getSleepTime() int {
 					return -1
 				}
 				// for test
-				if curHeight%params.SnapshotBlock >= params.PeriodBlock && curHeight%params.SnapshotBlock < params.PeriodBlock+20 {
+				if curHeight%params.TermDuration >= params.InterimDuration && curHeight%params.TermDuration < params.InterimDuration+20 {
 					log.Debugf("getSleepTime: slot:1, else, resetMinerTimer(waitTime:%d)", waitTime)
 				}
 				return int(waitTime)
@@ -254,7 +262,7 @@ func (m *Miner) getSleepTime() int {
 		timeDur = timeDur % oneLoopTime
 		if timeDur >= int64(slot-1)*m.timeoutTime && timeDur < int64(slot)*m.timeoutTime {
 			// for test
-			if curHeight%params.SnapshotBlock >= params.PeriodBlock && curHeight%params.SnapshotBlock < params.PeriodBlock+20 {
+			if curHeight%params.TermDuration >= params.InterimDuration && curHeight%params.TermDuration < params.InterimDuration+20 {
 				log.Debugf("getSleepTime: timeDur:%d. isTurn=true. --5", timeDur)
 			}
 			return 0
@@ -265,7 +273,7 @@ func (m *Miner) getSleepTime() int {
 				return -1
 			}
 			// for test
-			if curHeight%params.SnapshotBlock >= params.PeriodBlock && curHeight%params.SnapshotBlock < params.PeriodBlock+20 {
+			if curHeight%params.TermDuration >= params.InterimDuration && curHeight%params.TermDuration < params.InterimDuration+20 {
 				log.Debug(fmt.Sprintf("getSleepTime: slot:>1, timeDur:%d, resetMinerTimer(waitTime:%d)", timeDur, waitTime))
 			}
 			return int(waitTime)
@@ -273,15 +281,18 @@ func (m *Miner) getSleepTime() int {
 	}
 }
 
-// 重置出块定时器
+// resetMinerTimer reset timer
 func (m *Miner) resetMinerTimer(timeDur int64) {
 	// for debug
-	if m.currentBlock().Height()%params.SnapshotBlock >= params.PeriodBlock && m.currentBlock().Height()%params.SnapshotBlock < params.PeriodBlock+20 {
+	if m.currentBlock().Height()%params.TermDuration >= params.InterimDuration && m.currentBlock().Height()%params.TermDuration < params.InterimDuration+20 {
 		log.Debugf("resetMinerTimer: %d", timeDur)
 	}
 	// 停掉之前的定时器
 	if m.blockMineTimer != nil {
 		m.blockMineTimer.Stop()
+	}
+	if timeDur <= 0 {
+		return
 	}
 	// 重开新的定时器
 	m.blockMineTimer = time.AfterFunc(time.Duration(timeDur*int64(time.Millisecond)), func() {
@@ -290,23 +301,6 @@ func (m *Miner) resetMinerTimer(timeDur int64) {
 			m.timeToMineCh <- struct{}{}
 		}
 	})
-}
-
-// loopRecvBlock drop no use block
-func (m *Miner) loopRecvBlock() {
-	for {
-		if atomic.LoadInt32(&m.mining) == 0 {
-			select {
-			case <-m.recvNewBlockCh:
-				log.Debug("Receive new block. but not start mining")
-			case <-m.quitCh:
-				return
-			case <-m.startCh:
-			}
-		} else {
-			time.Sleep(200 * time.Millisecond)
-		}
-	}
 }
 
 // loopMiner
@@ -318,29 +312,71 @@ func (m *Miner) loopMiner() {
 			m.sealBlock()
 		case block := <-m.recvNewBlockCh:
 			log.Infof("Receive new block. height: %d. hash: %s. Reset timer.", block.Height(), block.Hash().Hex())
-			waitTime := m.getSleepTime()
-			if waitTime == 0 {
-				log.Debug("time to mine direct")
-				m.resetMinerTimer(m.timeoutTime)
-				m.sealBlock()
-			} else if waitTime > 0 {
-				m.resetMinerTimer(int64(waitTime))
-			} else {
-				log.Error("getSleepTime internal error.")
+			if !m.isSelfDeputyNode() {
+				m.resetMinerTimer(-1)
+				break
 			}
-			if block.Height()%params.SnapshotBlock == 0 {
-				deputynode.Instance().Add(block.Height()+params.PeriodBlock+1, block.DeputyNodes)
-				log.Debugf("add new term deputy nodes: %v", block.DeputyNodes)
-			} else if block.Height()%params.SnapshotBlock == params.PeriodBlock {
-				n := deputynode.Instance().GetDeputyByNodeID(block.Height(), deputynode.GetSelfNodeID())
-				m.SetMinerAddress(n.MinerAddress)
-				log.Debugf("new term deputy nodes: %v", n)
+			// update miner address
+			m.updateMiner(block)
+			// latest block is self mined
+			if block.MinerAddress() == m.minerAddress {
+				var timeDur int64
+				// snapshot block + InterimDuration 换届最后一个区块
+				if block.Height() > params.InterimDuration && block.Height()%params.TermDuration == params.InterimDuration {
+					rank := deputynode.Instance().GetNodeRankByAddress(block.Height()+1, m.minerAddress)
+					if rank == 0 {
+						timeDur = m.blockInterval
+					} else {
+						timeDur = int64(rank) * m.timeoutTime
+					}
+				} else {
+					nodeCount := deputynode.Instance().GetDeputiesCount(block.Height() + 1)
+					if nodeCount == 1 {
+						timeDur = m.blockInterval
+					} else {
+						timeDur = int64(nodeCount-1) * m.timeoutTime
+					}
+				}
+				m.resetMinerTimer(timeDur)
+			} else {
+				var timeDur int64
+				// snapshot block + InterimDuration
+				if block.Height() > params.InterimDuration && block.Height()%params.TermDuration == params.InterimDuration {
+					rank := deputynode.Instance().GetNodeRankByAddress(block.Height()+1, m.minerAddress)
+					if rank < 0 {
+						log.Error("self not deputy node in this term")
+					} else if rank == 0 {
+						timeDur = m.blockInterval
+					} else {
+						timeDur = int64(rank) * m.timeoutTime
+					}
+					m.resetMinerTimer(timeDur)
+				} else {
+					timeDur = int64(m.getSleepTime())
+					if timeDur == 0 {
+						log.Debug("time to mine direct")
+						m.sealBlock()
+					} else if timeDur > 0 {
+						m.resetMinerTimer(timeDur)
+					} else {
+						log.Error("getSleepTime internal error.")
+					}
+				}
 			}
 		case <-m.stopCh:
 			return
 		case <-m.quitCh:
 			return
 		}
+	}
+}
+
+// updateMiner update next term's miner address
+func (m *Miner) updateMiner(block *types.Block) {
+	n := deputynode.Instance().GetDeputyByNodeID(block.Height()+1, deputynode.GetSelfNodeID())
+	if n != nil {
+		m.SetMinerAddress(n.MinerAddress)
+		log.Debugf("set next term miner address: %s", n.MinerAddress.String())
 	}
 }
 
@@ -354,12 +390,20 @@ func (m *Miner) sealBlock() {
 	txs := m.txPool.Pending(1000000)
 
 	defer func() {
-		nodeCount := deputynode.Instance().GetDeputiesCount(header.Height + 1)
 		var timeDur int64
-		if nodeCount == 1 {
-			timeDur = m.blockInterval
+		// snapshot block
+		if header.Height > params.InterimDuration && header.Height%params.TermDuration == params.InterimDuration {
+			rank := deputynode.Instance().GetNodeRankByAddress(header.Height+1, m.minerAddress)
+			if rank == 0 {
+				timeDur = m.blockInterval
+			}
 		} else {
-			timeDur = int64(nodeCount-1) * m.timeoutTime
+			nodeCount := deputynode.Instance().GetDeputiesCount(header.Height + 1)
+			if nodeCount == 1 {
+				timeDur = m.blockInterval
+			} else {
+				timeDur = int64(nodeCount-1) * m.timeoutTime
+			}
 		}
 		m.resetMinerTimer(timeDur)
 	}()
@@ -379,7 +423,7 @@ func (m *Miner) sealBlock() {
 		return
 	}
 	newHeader.SignData = signData
-	block, err := m.engine.Seal(newHeader, packagedTxs, m.chain.AccountManager().GetChangeLogs(), m.chain.AccountManager().GetEvents())
+	block, err := m.engine.Seal(newHeader, packagedTxs, m.chain.AccountManager().GetChangeLogs())
 	if err != nil {
 		log.Error("Seal block error!!")
 		return
@@ -416,16 +460,16 @@ func (m *Miner) sealHead() (*types.Header, deputynode.DeputyNodes) {
 		Extra:        m.extra,
 	}
 	var nodes deputynode.DeputyNodes = nil
-	if height%params.SnapshotBlock == 0 {
+	if height%params.TermDuration == 0 {
 		nodes = m.chain.GetNewDeputyNodes()
 		root := types.DeriveDeputyRootSha(nodes)
 		h.DeputyRoot = root[:]
-		deputynode.Instance().Add(height+params.PeriodBlock+1, nodes)
-		log.Debugf("add new term deputy nodes: %v", nodes)
-	} else if height%params.SnapshotBlock == params.PeriodBlock {
+		deputynode.Instance().Add(height+params.InterimDuration+1, nodes)
+		log.Debugf("add new term deputy nodes: %s", nodes.String())
+	} else if height%params.TermDuration == params.InterimDuration {
 		n := deputynode.Instance().GetDeputyByNodeID(height, deputynode.GetSelfNodeID())
 		m.SetMinerAddress(n.MinerAddress)
-		log.Debugf("new term deputy nodes: %v", n)
+		log.Debugf("set next term's miner address: %s", n.MinerAddress.String())
 	}
 
 	// allowable 1 second time error

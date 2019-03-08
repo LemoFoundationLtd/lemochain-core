@@ -21,7 +21,7 @@ const MaxExtraDataLen = 256
 type Engine interface {
 	VerifyHeader(block *types.Block) error
 
-	Seal(header *types.Header, txs []*types.Transaction, changeLog []*types.ChangeLog, events []*types.Event) (*types.Block, error)
+	Seal(header *types.Header, txs []*types.Transaction, changeLog []*types.ChangeLog) (*types.Block, error)
 
 	Finalize(header *types.Header, am *account.Manager)
 }
@@ -62,7 +62,8 @@ func verifyHeaderSignData(block *types.Block) error {
 	}
 	node := deputynode.Instance().GetDeputyByAddress(header.Height, header.MinerAddress)
 	if node == nil {
-		log.Errorf("verifyHeaderSignData: can't get deputy node, height: %d", header.Height)
+		nodes := deputynode.Instance().GetDeputiesByHeight(block.Height(), false)
+		log.Errorf("verifyHeaderSignData: can't get deputy node, height: %d, miner: %s, deputy nodes: %s", header.Height, header.MinerAddress.String(), nodes.String())
 		return ErrVerifyHeaderFailed
 	}
 	if node == nil || bytes.Compare(pubKey[1:], node.NodeID) != 0 {
@@ -74,7 +75,7 @@ func verifyHeaderSignData(block *types.Block) error {
 
 // VerifyDeputyRoot verify deputy root
 func (d *Dpovp) VerifyDeputyRoot(block *types.Block) error {
-	if block.Height()%params.SnapshotBlock == 0 && block.Height() > 0 {
+	if block.Height()%params.TermDuration == 0 && block.Height() > 0 {
 		hash := types.DeriveDeputyRootSha(block.DeputyNodes)
 		root := block.Header.DeputyRoot
 		if bytes.Compare(hash[:], root) != 0 {
@@ -121,7 +122,7 @@ func (d *Dpovp) VerifyHeader(block *types.Block) error {
 		return nil
 	}
 	var slot int
-	if (header.Height > params.PeriodBlock+1) && (header.Height-params.PeriodBlock-1)%params.SnapshotBlock == 0 {
+	if (header.Height > params.InterimDuration+1) && (header.Height-params.InterimDuration-1)%params.TermDuration == 0 {
 		rank := deputynode.Instance().GetNodeRankByAddress(header.Height, block.MinerAddress())
 		if rank == -1 {
 			return ErrVerifyHeaderFailed
@@ -158,8 +159,8 @@ func (d *Dpovp) VerifyHeader(block *types.Block) error {
 }
 
 // Seal packaged into a block
-func (d *Dpovp) Seal(header *types.Header, txs []*types.Transaction, changeLog []*types.ChangeLog, events []*types.Event) (*types.Block, error) {
-	block := types.NewBlock(header, txs, changeLog, events, nil)
+func (d *Dpovp) Seal(header *types.Header, txs []*types.Transaction, changeLog []*types.ChangeLog) (*types.Block, error) {
+	block := types.NewBlock(header, txs, changeLog, nil)
 	return block, nil
 }
 
@@ -167,7 +168,7 @@ func (d *Dpovp) Seal(header *types.Header, txs []*types.Transaction, changeLog [
 func (d *Dpovp) Finalize(header *types.Header, am *account.Manager) {
 	// handout rewards
 	if deputynode.Instance().TimeToHandOutRewards(header.Height) {
-		term := (header.Height-params.PeriodBlock)/params.SnapshotBlock - 1
+		term := (header.Height-params.InterimDuration)/params.TermDuration - 1
 		termRewards, err := getTermRewardValue(am, term)
 		if err != nil {
 			log.Warnf("Rewards failed: %v", err)

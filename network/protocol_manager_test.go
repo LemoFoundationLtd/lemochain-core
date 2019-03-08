@@ -84,8 +84,8 @@ func Test_txConfirmLoop(t *testing.T) {
 	go pm.txConfirmLoop()
 
 	// test tx
-	txs := make(types.Transactions, 0)
-	pm.txsCh <- txs
+	tx := &types.Transaction{}
+	pm.txCh <- tx
 	res := <-pm.testOutput
 	assert.Equal(t, testBroadcastTxs, res)
 

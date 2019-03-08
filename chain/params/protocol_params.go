@@ -59,8 +59,8 @@ const (
 )
 
 var (
-	SnapshotBlock uint32 = 1000000
-	PeriodBlock   uint32 = 1000
+	TermDuration    uint32 = 1000000 // 每届间隔
+	InterimDuration uint32 = 1000    // 过渡期
 	// oneLEMO                          = big.NewInt(1000000000000000000)             // 1 LEMO
 	// RegisterCandidateNodeFees        = new(big.Int).Mul(big.NewInt(1000), oneLEMO) // Register Candidate node fees = 1000LEMO
 	RegisterCandidateNodeFees, _ = new(big.Int).SetString("1000000000000000000000", 10)

@@ -2,6 +2,7 @@ package subscribe
 
 import (
 	"errors"
+	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"reflect"
 	"sync"
 )
@@ -11,7 +12,7 @@ const (
 	DeletePeer     = "deletePeer"
 	NewMinedBlock  = "newMinedBlock"
 	NewStableBlock = "newStableBlock"
-	NewTxs         = "newTxs"
+	NewTx          = "newTx"
 	NewConfirm     = "newConfirm"
 )
 
@@ -133,11 +134,15 @@ func (r *CentralRouteSub) clearSub() {
 }
 
 func Sub(name string, ch interface{}) {
-	centralRoute.sub(name, ch)
+	if err := centralRoute.sub(name, ch); err != nil {
+		log.Error(err.Error())
+	}
 }
 
 func UnSub(name string, ch interface{}) {
-	centralRoute.unSub(name, ch)
+	if err := centralRoute.unSub(name, ch); err != nil {
+		log.Error(err.Error())
+	}
 }
 
 func ClearSub() {
@@ -145,5 +150,7 @@ func ClearSub() {
 }
 
 func Send(name string, value interface{}) {
-	centralRoute.send(name, value)
+	if err := centralRoute.send(name, value); err != nil {
+		log.Error(err.Error())
+	}
 }

@@ -3,6 +3,7 @@ package deputynode
 import (
 	"bytes"
 	"crypto/ecdsa"
+	"encoding/json"
 	"errors"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
@@ -102,6 +103,13 @@ type deputyNodeMarshaling struct {
 	Votes  *hexutil.Big10
 }
 
+func (nodes DeputyNodes) String() string {
+	if buf, err := json.Marshal(nodes); err == nil {
+		return string(buf)
+	}
+	return ""
+}
+
 type DeputyNodesRecord struct {
 	height uint32 // 0, 100W+1K, 200W+1K, 300W+1K, 400W+1K...
 	nodes  DeputyNodes
@@ -134,8 +142,8 @@ func Instance() *Manager {
 	return deputyNodeManger
 }
 
-// getDeputiesByHeight 通过height获取对应的节点列表
-func (d *Manager) getDeputiesByHeight(height uint32, total bool) DeputyNodes {
+// GetDeputiesByHeight 通过height获取对应的节点列表
+func (d *Manager) GetDeputiesByHeight(height uint32, total bool) DeputyNodes {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 	if d.DeputyNodesList == nil || len(d.DeputyNodesList) == 0 {
@@ -169,7 +177,7 @@ func (d *Manager) getDeputiesByHeight(height uint32, total bool) DeputyNodes {
 
 // getDeputyNodeCount 获取共识节点数量
 func (d *Manager) GetDeputiesCount(height uint32) int {
-	nodes := d.getDeputiesByHeight(height, true)
+	nodes := d.GetDeputiesByHeight(height, true)
 	if len(nodes) < TotalCount {
 		return len(nodes)
 	}
@@ -178,7 +186,7 @@ func (d *Manager) GetDeputiesCount(height uint32) int {
 
 // getNodeByAddress 获取address对应的节点
 func (d *Manager) GetDeputyByAddress(height uint32, addr common.Address) *DeputyNode {
-	nodes := d.getDeputiesByHeight(height, false)
+	nodes := d.GetDeputiesByHeight(height, false)
 	if nodes == nil || len(nodes) == 0 {
 		log.Warnf("GetDeputyByAddress: can't get deputy node, height: %d, addr: %s", height, addr.String())
 		return nil
@@ -193,7 +201,7 @@ func (d *Manager) GetDeputyByAddress(height uint32, addr common.Address) *Deputy
 
 // getNodeByNodeID 根据nodeid获取对应的节点
 func (d *Manager) GetDeputyByNodeID(height uint32, nodeID []byte) *DeputyNode {
-	nodes := d.getDeputiesByHeight(height, false)
+	nodes := d.GetDeputiesByHeight(height, false)
 	for _, node := range nodes {
 		if bytes.Compare(node.NodeID, nodeID) == 0 {
 			return node
@@ -206,7 +214,12 @@ func (d *Manager) GetDeputyByNodeID(height uint32, nodeID []byte) *DeputyNode {
 func (d *Manager) GetSlot(height uint32, firstAddress, nextAddress common.Address) int {
 	firstNode := d.GetDeputyByAddress(height, firstAddress)
 	nextNode := d.GetDeputyByAddress(height, nextAddress)
-	if ((height == 1) || (height > params.SnapshotBlock && height%params.SnapshotBlock == params.PeriodBlock+1)) && nextNode != nil {
+	// for test
+	if height%params.TermDuration > params.InterimDuration && height%params.TermDuration < params.InterimDuration+20 {
+		log.Debugf("GetSlot: height:%d. first: %s, next: %s", height, firstAddress.String(), nextAddress.String())
+	}
+	if ((height == 1) || (height > params.TermDuration && height%params.TermDuration == params.InterimDuration+1)) && nextNode != nil {
+		log.Debugf("GetSlot: change term. rank: %d", nextNode.Rank)
 		return int(nextNode.Rank + 1)
 	}
 	if firstNode == nil || nextNode == nil {
@@ -238,7 +251,7 @@ func (d *Manager) GetNodeRankByAddress(height uint32, addr common.Address) int {
 // TimeToHandOutRewards 是否该发出块奖励了
 func (d *Manager) TimeToHandOutRewards(height uint32) bool {
 	for i := 1; i < len(d.DeputyNodesList); i++ {
-		if d.DeputyNodesList[i].height+params.PeriodBlock == height {
+		if d.DeputyNodesList[i].height+params.InterimDuration == height {
 			return true
 		}
 	}
@@ -261,9 +274,18 @@ func (d *Manager) Clear() {
 	d.DeputyNodesList = make([]*DeputyNodesRecord, 0, 1)
 }
 
-func (d *Manager) GetLatestDeputies() []string {
+// GetLatestDeputies for api
+func (d *Manager) GetLatestDeputies(height uint32) []string {
 	res := make([]string, 0)
-	for _, n := range d.DeputyNodesList[len(d.DeputyNodesList)-1].nodes {
+	var nodes DeputyNodes
+	if height <= params.InterimDuration {
+		nodes = d.DeputyNodesList[0].nodes
+	} else if height%params.TermDuration > params.InterimDuration {
+		nodes = d.DeputyNodesList[len(d.DeputyNodesList)-1].nodes
+	} else {
+		nodes = d.DeputyNodesList[len(d.DeputyNodesList)-2].nodes
+	}
+	for _, n := range nodes {
 		builder := &strings.Builder{}
 		builder.WriteString(common.ToHex(n.NodeID)[2:])
 		builder.WriteString("@")

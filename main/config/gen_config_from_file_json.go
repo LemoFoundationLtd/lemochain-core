@@ -14,13 +14,13 @@ var _ = (*ConfigFromFileMarshaling)(nil)
 // MarshalJSON marshals as JSON.
 func (c ConfigFromFile) MarshalJSON() ([]byte, error) {
 	type ConfigFromFile struct {
-		ChainID       hexutil.Uint64 `json:"chainID"        gencodec:"required"`
-		SleepTime     hexutil.Uint64 `json:"sleepTime"`
-		Timeout       hexutil.Uint64 `json:"timeout"`
-		DbUri         string         `json:"dbUri"          gencodec:"required"`
-		DbDriver      string         `json:"dbDriver"       gencodec:"required"`
-		SnapshotBlock hexutil.Uint64 `json:"snapshotBlock"`
-		PeriodBlock   hexutil.Uint64 `json:"periodBlock"`
+		ChainID         hexutil.Uint64 `json:"chainID"        gencodec:"required"`
+		SleepTime       hexutil.Uint64 `json:"sleepTime"`
+		Timeout         hexutil.Uint64 `json:"timeout"`
+		DbUri           string         `json:"dbUri"          gencodec:"required"`
+		DbDriver        string         `json:"dbDriver"       gencodec:"required"`
+		TermDuration    hexutil.Uint64 `json:"termDuration"`
+		InterimDuration hexutil.Uint64 `json:"interimDuration"`
 	}
 	var enc ConfigFromFile
 	enc.ChainID = hexutil.Uint64(c.ChainID)
@@ -28,21 +28,21 @@ func (c ConfigFromFile) MarshalJSON() ([]byte, error) {
 	enc.Timeout = hexutil.Uint64(c.Timeout)
 	enc.DbUri = c.DbUri
 	enc.DbDriver = c.DbDriver
-	enc.SnapshotBlock = hexutil.Uint64(c.SnapshotBlock)
-	enc.PeriodBlock = hexutil.Uint64(c.PeriodBlock)
+	enc.TermDuration = hexutil.Uint64(c.TermDuration)
+	enc.InterimDuration = hexutil.Uint64(c.InterimDuration)
 	return json.Marshal(&enc)
 }
 
 // UnmarshalJSON unmarshals from JSON.
 func (c *ConfigFromFile) UnmarshalJSON(input []byte) error {
 	type ConfigFromFile struct {
-		ChainID       *hexutil.Uint64 `json:"chainID"        gencodec:"required"`
-		SleepTime     *hexutil.Uint64 `json:"sleepTime"`
-		Timeout       *hexutil.Uint64 `json:"timeout"`
-		DbUri         *string         `json:"dbUri"          gencodec:"required"`
-		DbDriver      *string         `json:"dbDriver"       gencodec:"required"`
-		SnapshotBlock *hexutil.Uint64 `json:"snapshotBlock"`
-		PeriodBlock   *hexutil.Uint64 `json:"periodBlock"`
+		ChainID         *hexutil.Uint64 `json:"chainID"        gencodec:"required"`
+		SleepTime       *hexutil.Uint64 `json:"sleepTime"`
+		Timeout         *hexutil.Uint64 `json:"timeout"`
+		DbUri           *string         `json:"dbUri"          gencodec:"required"`
+		DbDriver        *string         `json:"dbDriver"       gencodec:"required"`
+		TermDuration    *hexutil.Uint64 `json:"termDuration"`
+		InterimDuration *hexutil.Uint64 `json:"interimDuration"`
 	}
 	var dec ConfigFromFile
 	if err := json.Unmarshal(input, &dec); err != nil {
@@ -66,11 +66,11 @@ func (c *ConfigFromFile) UnmarshalJSON(input []byte) error {
 		return errors.New("missing required field 'dbDriver' for ConfigFromFile")
 	}
 	c.DbDriver = *dec.DbDriver
-	if dec.SnapshotBlock != nil {
-		c.SnapshotBlock = uint64(*dec.SnapshotBlock)
+	if dec.TermDuration != nil {
+		c.TermDuration = uint64(*dec.TermDuration)
 	}
-	if dec.PeriodBlock != nil {
-		c.PeriodBlock = uint64(*dec.PeriodBlock)
+	if dec.InterimDuration != nil {
+		c.InterimDuration = uint64(*dec.InterimDuration)
 	}
 	return nil
 }

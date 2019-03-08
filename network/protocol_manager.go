@@ -3,6 +3,7 @@ package network
 import (
 	"errors"
 	"fmt"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
@@ -58,7 +59,7 @@ type ProtocolManager struct {
 	addPeerCh    chan p2p.IPeer
 	removePeerCh chan p2p.IPeer
 
-	txsCh           chan types.Transactions
+	txCh            chan *types.Transaction
 	newMinedBlockCh chan *types.Block
 	stableBlockCh   chan *types.Block
 	rcvBlocksCh     chan *rcvBlockObj
@@ -86,7 +87,7 @@ func NewProtocolManager(chainID uint16, nodeID p2p.NodeID, chain BlockChain, txP
 		addPeerCh:    make(chan p2p.IPeer),
 		removePeerCh: make(chan p2p.IPeer),
 
-		txsCh:           make(chan types.Transactions, 10),
+		txCh:            make(chan *types.Transaction, 10),
 		newMinedBlockCh: make(chan *types.Block),
 		stableBlockCh:   make(chan *types.Block, 10),
 		rcvBlocksCh:     make(chan *rcvBlockObj, 10),
@@ -109,7 +110,7 @@ func (pm *ProtocolManager) sub() {
 	subscribe.Sub(subscribe.DeletePeer, pm.removePeerCh)
 	subscribe.Sub(subscribe.NewMinedBlock, pm.newMinedBlockCh)
 	subscribe.Sub(subscribe.NewStableBlock, pm.stableBlockCh)
-	subscribe.Sub(subscribe.NewTxs, pm.txsCh)
+	subscribe.Sub(subscribe.NewTx, pm.txCh)
 	subscribe.Sub(subscribe.NewConfirm, pm.confirmCh)
 }
 
@@ -119,7 +120,7 @@ func (pm *ProtocolManager) unSub() {
 	subscribe.UnSub(subscribe.DeletePeer, pm.removePeerCh)
 	subscribe.UnSub(subscribe.NewMinedBlock, pm.newMinedBlockCh)
 	subscribe.UnSub(subscribe.NewStableBlock, pm.stableBlockCh)
-	subscribe.UnSub(subscribe.NewTxs, pm.txsCh)
+	subscribe.UnSub(subscribe.NewTx, pm.txCh)
 	subscribe.UnSub(subscribe.NewConfirm, pm.confirmCh)
 }
 
@@ -152,13 +153,13 @@ func (pm *ProtocolManager) txConfirmLoop() {
 		case <-pm.quitCh:
 			log.Info("txConfirmLoop finished")
 			return
-		case txs := <-pm.txsCh:
-			curHeight := pm.chain.CurrentBlock().Height()
-			peers := pm.peers.DeputyNodes(curHeight)
-			if len(peers) == 0 {
-				peers = pm.peers.DelayNodes(curHeight)
+		case tx := <-pm.txCh:
+			nextHeight := pm.chain.CurrentBlock().Height() + 1
+			peers := pm.peers.DeputyNodes(nextHeight)
+			if deputynode.Instance().IsSelfDeputyNode(nextHeight) == false && len(peers) == 0 {
+				peers = pm.peers.DelayNodes(nextHeight)
 			}
-			go pm.broadcastTxs(peers, txs)
+			go pm.broadcastTxs(peers, types.Transactions{tx})
 		case info := <-pm.confirmCh:
 			if pm.peers.LatestStableHeight() > info.Height {
 				continue
@@ -213,9 +214,7 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 				}
 				// local chain has this block
 				if pm.chain.HasBlock(b.ParentHash()) {
-					if err := pm.chain.InsertChain(b, true); err == nil {
-						go pm.setConfirmsFromCache(b.Height(), b.Hash())
-					}
+					pm.insertBlock(b)
 				} else {
 					pm.blockCache.Add(b)
 					if rcvMsg.p != nil {
@@ -231,9 +230,7 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 		case <-queueTimer.C:
 			processBlock := func(block *types.Block) bool {
 				if pm.chain.HasBlock(block.ParentHash()) {
-					if err := pm.chain.InsertChain(block, false); err == nil {
-						go pm.setConfirmsFromCache(block.Height(), block.Hash())
-					}
+					pm.insertBlock(block)
 					return true
 				}
 				return false
@@ -256,6 +253,22 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 		case <-testRcvTimer.C: // just for test
 			testRcvFlag = true
 		}
+	}
+}
+
+// insertBlock insert block
+func (pm *ProtocolManager) insertBlock(b *types.Block) {
+	if err := pm.chain.InsertChain(b, true); err == nil {
+		if len(b.Txs) > 0 {
+			txsKeys := make([]common.Hash, len(b.Txs))
+			for i, tx := range b.Txs {
+				txsKeys[i] = tx.Hash()
+			}
+			pm.txPool.Remove(txsKeys)
+		}
+		go pm.setConfirmsFromCache(b.Height(), b.Hash())
+	} else {
+		log.Errorf("insertBlock failed: %v", err)
 	}
 }
 
@@ -282,6 +295,8 @@ func (pm *ProtocolManager) stableBlockLoop() {
 			pm.oldStableBlock.Store(block)
 			peers := pm.peers.DelayNodes(block.Height())
 			if len(peers) > 0 {
+				// for debug
+				log.Debug("broadcast stable block to delay node")
 				go pm.broadcastBlock(peers, block, false)
 			}
 			go func() {
@@ -567,6 +582,8 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		return pm.handleDiscoverReqMsg(msg, p)
 	case DiscoverResMsg:
 		return pm.handleDiscoverResMsg(msg)
+	case GetBlocksWithChangeLogMsg:
+		return pm.handleGetBlocksWithChangeLogMsg(msg, p)
 	default:
 		log.Debugf("invalid code: %d, from: %s", msg.Code, common.ToHex(p.NodeID()[:8]))
 		return ErrInvalidCode
@@ -608,6 +625,8 @@ func (pm *ProtocolManager) handleBlockHashMsg(msg *p2p.Msg, p *peer) error {
 	if pm.chain.HasBlock(hashMsg.Hash) {
 		return nil
 	}
+	// update status
+	p.UpdateStatus(hashMsg.Height, hashMsg.Hash)
 	go p.RequestBlocks(hashMsg.Height, hashMsg.Height)
 	return nil
 }
@@ -649,14 +668,24 @@ func (pm *ProtocolManager) handleGetBlocksMsg(msg *p2p.Msg, p *peer) error {
 	if query.From > query.To {
 		return errors.New("invalid request blocks' param")
 	}
-	go pm.respBlocks(query.From, query.To, p)
+	go pm.respBlocks(query.From, query.To, p, false)
 	return nil
 }
 
 // respBlocks response blocks to remote peer
-func (pm *ProtocolManager) respBlocks(from, to uint32, p *peer) {
-	const eachSize = 10
+func (pm *ProtocolManager) respBlocks(from, to uint32, p *peer, hasChangeLog bool) {
+	if from == to {
+		b := pm.chain.GetBlockByHeight(from)
+		if !hasChangeLog {
+			b = b.Copy()
+		}
+		if b != nil && p != nil {
+			p.SendBlocks([]*types.Block{b})
+		}
+		return
+	}
 
+	const eachSize = 10
 	total := to - from
 	var count uint32
 	if total%eachSize == 0 {
@@ -668,7 +697,11 @@ func (pm *ProtocolManager) respBlocks(from, to uint32, p *peer) {
 	for i := uint32(0); i < count; i++ {
 		blocks := make(types.Blocks, 0, eachSize)
 		for j := 0; j < eachSize; j++ {
-			blocks = append(blocks, pm.chain.GetBlockByHeight(height))
+			b := pm.chain.GetBlockByHeight(height)
+			if !hasChangeLog {
+				b = b.Copy()
+			}
+			blocks = append(blocks, b)
 			height++
 			if height > to {
 				break
@@ -747,5 +780,18 @@ func (pm *ProtocolManager) handleDiscoverResMsg(msg *p2p.Msg) error {
 		return fmt.Errorf("handleDiscoverResMsg error: %v", err)
 	}
 	pm.discover.AddNewList(disRes.Nodes)
+	return nil
+}
+
+// handleGetBlocksWithChangeLogMsg for
+func (pm *ProtocolManager) handleGetBlocksWithChangeLogMsg(msg *p2p.Msg, p *peer) error {
+	var query GetBlocksData
+	if err := msg.Decode(&query); err != nil {
+		return fmt.Errorf("handleGetBlocksMsg error: %v", err)
+	}
+	if query.From > query.To {
+		return errors.New("invalid request blocks' param")
+	}
+	go pm.respBlocks(query.From, query.To, p, true)
 	return nil
 }

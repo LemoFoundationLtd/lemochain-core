@@ -163,7 +163,6 @@ func Test_verifyHeaderTime(t *testing.T) {
 				VersionRoot:  common.Hash{},
 				TxRoot:       common.Hash{},
 				LogRoot:      common.Hash{},
-				EventRoot:    common.Hash{},
 				Bloom:        types.Bloom{},
 				Height:       0,
 				GasLimit:     0,
@@ -174,7 +173,6 @@ func Test_verifyHeaderTime(t *testing.T) {
 			},
 			Txs:        nil,
 			ChangeLogs: nil,
-			Events:     nil,
 			Confirms:   nil,
 		},
 		{
@@ -184,7 +182,6 @@ func Test_verifyHeaderTime(t *testing.T) {
 				VersionRoot:  common.Hash{},
 				TxRoot:       common.Hash{},
 				LogRoot:      common.Hash{},
-				EventRoot:    common.Hash{},
 				Bloom:        types.Bloom{},
 				Height:       0,
 				GasLimit:     0,
@@ -195,7 +192,6 @@ func Test_verifyHeaderTime(t *testing.T) {
 			},
 			Txs:        nil,
 			ChangeLogs: nil,
-			Events:     nil,
 			Confirms:   nil,
 		},
 		{
@@ -205,7 +201,6 @@ func Test_verifyHeaderTime(t *testing.T) {
 				VersionRoot:  common.Hash{},
 				TxRoot:       common.Hash{},
 				LogRoot:      common.Hash{},
-				EventRoot:    common.Hash{},
 				Bloom:        types.Bloom{},
 				Height:       0,
 				GasLimit:     0,
@@ -216,7 +211,6 @@ func Test_verifyHeaderTime(t *testing.T) {
 			},
 			Txs:        nil,
 			ChangeLogs: nil,
-			Events:     nil,
 			Confirms:   nil,
 		},
 	}
@@ -384,8 +378,7 @@ func TestDpovp_Seal(t *testing.T) {
 	}
 	block01.Txs = txs // 添加bock01交易
 	TestBlockChangeLog := block01.ChangeLogs
-	TestBlockEvents := block01.Events
-	TestBlock, err := dpovp.Seal(TestBlockHeader, txs, TestBlockChangeLog, TestBlockEvents)
+	TestBlock, err := dpovp.Seal(TestBlockHeader, txs, TestBlockChangeLog)
 	assert.NoError(t, err)
 	assert.Equal(t, block01.Hash(), TestBlock.Hash())
 }
