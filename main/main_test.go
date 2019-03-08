@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/docker/docker/pkg/reexec"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"os/exec"
@@ -18,7 +17,7 @@ func TestMain_interrupt(t *testing.T) {
 	//process *os.Process := os.Process.Signal()
 
 	cmd := &exec.Cmd{
-		Path: reexec.Self(),
+		Path: os.Args[0],
 		Args: []string{"p2p-node"},
 	}
 
