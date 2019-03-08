@@ -16,6 +16,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/network/p2p"
+	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"math/big"
 	"runtime"
 	"strconv"
@@ -612,15 +613,15 @@ func (t *PublicTxAPI) PendingTx(size int) []*types.Transaction {
 // 	return vTxDetail, err
 // }
 //
-// //go:generate gencodec -type TxListRes --field-override txListResMarshaling -out gen_tx_list_res_json.go
-// type TxListRes struct {
-// 	VTransactions []*store.VTransaction `json:"txList" gencodec:"required"`
-// 	Total         uint32                `json:"total" gencodec:"required"`
-// }
-// type txListResMarshaling struct {
-// 	Total hexutil.Uint32
-// }
-//
+//go:generate gencodec -type TxListRes --field-override txListResMarshaling -out gen_tx_list_res_json.go
+type TxListRes struct {
+	VTransactions []*store.VTransaction `json:"txList" gencodec:"required"`
+	Total         uint32                `json:"total" gencodec:"required"`
+}
+type txListResMarshaling struct {
+	Total hexutil.Uint32
+}
+
 // // GetTxListByAddress pull the list of transactions
 // func (t *PublicTxAPI) GetTxListByAddress(lemoAddress string, index int, size int) (*TxListRes, error) {
 // 	src, err := common.StringToAddress(lemoAddress)
