@@ -565,9 +565,9 @@ func (database *ChainDatabase) GetActDatabase(hash common.Hash) (*AccountTrieDB,
 	}
 }
 
-func (database *ChainDatabase) GetBizDatabase() BizDb {
-	return database.BizDB
-}
+// func (database *ChainDatabase) GetBizDatabase() BizDb {
+// 	return database.BizDB
+// }
 
 // GetContractCode loads contract's code from db.
 func (database *ChainDatabase) GetContractCode(hash common.Hash) (types.Code, error) {

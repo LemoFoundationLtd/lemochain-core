@@ -22,7 +22,6 @@ import (
 	"sync"
 	"time"
 
-	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-dev/log"
 	"github.com/LemoFoundationLtd/lemochain-dev/metrics"
 	"github.com/syndtr/goleveldb/leveldb"
@@ -71,9 +70,11 @@ func NewLevelDBDatabase(file string, cache int, handles int) *LevelDBDatabase {
 		WriteBuffer:            cache / 4 * opt.MiB, // Two of these are used internally
 		Filter:                 filter.NewBloomFilter(10),
 	})
+
 	if _, corrupted := err.(*errors.ErrCorrupted); corrupted {
 		db, err = leveldb.RecoverFile(file, nil)
 	}
+
 	// (Re)check for errors and abort if opening of the db failed
 	if err != nil {
 		panic("new level database err: " + err.Error())
@@ -95,7 +96,6 @@ func (db *LevelDBDatabase) Path() string {
 func (db *LevelDBDatabase) Put(key []byte, value []byte) error {
 	// Generate the data to write to disk, update the meter and write
 	//value = rle.Compress(value)
-
 	return db.db.Put(key, value, nil)
 }
 
@@ -115,8 +115,8 @@ func (db *LevelDBDatabase) Get(key []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return dat, nil
 	//return rle.Decompress(dat)
+	return dat, nil
 }
 
 // Delete deletes the key from the queue and database
@@ -146,13 +146,12 @@ func (db *LevelDBDatabase) Close() {
 			db.log.Error("Metrics collection failed", "err", err)
 		}
 	}
+
 	err := db.db.Close()
 	if err == nil {
-		db.log.Error("Database closed")
-		fmt.Println("database closed")
+		db.log.Info("Database closed")
 	} else {
 		db.log.Error("Failed to close database", "err", err)
-		fmt.Println("Failed to close database, err:" + err.Error())
 	}
 }
 

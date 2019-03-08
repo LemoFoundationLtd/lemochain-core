@@ -31,11 +31,9 @@ func newTestLDB() (*LevelDBDatabase, func()) {
 	if err != nil {
 		panic("failed to create test file: " + err.Error())
 	}
-	db, err := NewLevelDBDatabase(dirname, 0, 0)
-	if err != nil {
-		panic("failed to create test database: " + err.Error())
-	}
+	os.RemoveAll(dirname)
 
+	db := NewLevelDBDatabase(dirname, 0, 0)
 	return db, func() {
 		db.Close()
 		os.RemoveAll(dirname)
@@ -110,8 +108,8 @@ func testPutGet(db *LevelDBDatabase, t *testing.T) {
 	}
 
 	for _, v := range test_values {
-		_, err := db.Get([]byte(v))
-		if err == nil {
+		val, err := db.Get([]byte(v))
+		if val != nil || err != nil {
 			t.Fatalf("got deleted value %q", v)
 		}
 	}
@@ -170,8 +168,8 @@ func testParallelPutGet(db *LevelDBDatabase, t *testing.T) {
 	for i := 0; i < n; i++ {
 		go func(key string) {
 			defer pending.Done()
-			_, err := db.Get([]byte(key))
-			if err == nil {
+			val, err := db.Get([]byte(key))
+			if err == nil && val != nil {
 				panic("get succeeded")
 			}
 		}(strconv.Itoa(i))
