@@ -647,5 +647,7 @@ func (database *ChainDatabase) Close() error {
 		database.LevelDB = nil
 	}
 
+	database.Beansdb.Close()
+
 	return nil
 }

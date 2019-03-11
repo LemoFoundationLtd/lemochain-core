@@ -163,7 +163,6 @@ func TestCacheChain_SetBlockError(t *testing.T) {
 func TestCacheChain_IsExistByHash(t *testing.T) {
 	ClearData()
 	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
-	defer cacheChain.Close()
 
 	isExist, err := cacheChain.IsExistByHash(common.Hash{})
 	assert.NoError(t, err)

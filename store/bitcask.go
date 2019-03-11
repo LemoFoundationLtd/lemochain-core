@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"github.com/LemoFoundationLtd/lemochain-go/store/leveldb"
 	"io"
@@ -41,31 +42,13 @@ type IndexReader interface {
 }
 
 type BitCask struct {
-	rw sync.RWMutex
-
-	HomePath string
-
+	rw        sync.RWMutex
+	HomePath  string
 	CurIndex  int
 	CurOffset int64
+	IndexDB   *leveldb.LevelDBDatabase
 
-	Cache map[string]RIndex
-
-	After   AfterScan
-	IndexDB *leveldb.LevelDBDatabase
-}
-
-func (bitcask *BitCask) afterScan(flag uint, route []byte, key []byte, val []byte, offset uint32) error {
-	if bitcask.After == nil {
-		return nil
-	}
-
-	err := bitcask.After(flag, route, key, val, offset)
-	if err != nil {
-		return err
-	} else {
-		delete(bitcask.Cache, string(key))
-		return nil
-	}
+	q *queue
 }
 
 func (bitcask *BitCask) path(index int) string {
@@ -98,14 +81,14 @@ func (bitcask *BitCask) createFile(index int) error {
 }
 
 func NewBitCask(homePath string, lastIndex int, lastOffset uint32, after AfterScan, indexDB *leveldb.LevelDBDatabase) (*BitCask, error) {
-	db := &BitCask{HomePath: homePath, After: after, IndexDB: indexDB}
-	db.After = after
+	db := &BitCask{HomePath: homePath, IndexDB: indexDB}
+	db.q = NewQueue(after, db.IndexDB)
+	db.q.start()
+
 	isExist, err := db.isExist(homePath)
 	if err != nil {
 		return nil, err
 	}
-
-	db.Cache = make(map[string]RIndex)
 
 	if !isExist {
 		err = os.MkdirAll(homePath, os.ModePerm)
@@ -178,14 +161,18 @@ func (bitcask *BitCask) scan(lastIndex int, lastOffset uint32) error {
 				return err
 			}
 
-			err = bitcask.afterScan(uint(head.Flg), body.Route, body.Key, body.Val, lastOffset)
-			if err != nil {
-				return err
-			} else {
-				delete(bitcask.Cache, string(body.Key))
-			}
+			length := bitcask.align(uint32(RHEAD_LENGTH) + uint32(head.Len))
+			bitcask.q.set(body.Route, &element{
+				item: &BatchItem{
+					Flg: uint(head.Flg),
+					Key: body.Key,
+					Val: body.Val,
+				},
+				offset: lastOffset,
+				len:    int(length),
+			})
 
-			nextOffset = nextOffset + bitcask.align(uint32(RHEAD_LENGTH)+uint32(head.Len))
+			nextOffset = nextOffset + length
 			lastOffset = nextOffset
 		}
 
@@ -319,32 +306,17 @@ func (bitcask *BitCask) Put(flag uint, route []byte, key []byte, val []byte) err
 		return err
 	}
 
-	bitcask.Cache[string(key[:])] = RIndex{
-		flg: flag,
-		pos: uint32(int(offset) | bitcask.CurIndex),
-		len: len(data),
-	}
-
-	// err = bitcask.IndexDB.SetIndex(int(flag), route, key, int64(offset))
-	// if err != nil {
-	// 	return err
-	// }
 	err = leveldb.SetPos(bitcask.IndexDB, key, &leveldb.Position{
 		Flag:   uint32(flag),
 		Route:  route,
-		Offset: uint32(offset),
+		Offset: uint32(int(offset) | bitcask.CurIndex),
 	})
 
 	if err != nil {
 		return err
+	} else {
+		return nil
 	}
-
-	err = bitcask.afterScan(uint(flag), route, key, val, uint32(offset))
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (bitcask *BitCask) read(file *os.File, offset int64) (*RHead, *RBody, error) {
@@ -403,13 +375,6 @@ func (bitcask *BitCask) get(flag uint, route []byte, key []byte, offset int64) (
 			return nil, nil
 		}
 
-		// if (bytes.Compare(body.Route, route) != 0) || (bytes.Compare(body.Key, key) != 0) {
-		// 	return nil, nil
-		// } else {
-		// 	return body.Val, nil
-		// }
-		// str := common.BytesToHash(body.Key).Hex()
-		// log.Errorf("str:" + str)
 		return body.Val, nil
 	}
 }
@@ -424,26 +389,21 @@ func (bitcask *BitCask) Get4Cache(route []byte, key []byte) ([]byte, error) {
 	bitcask.rw.RLock()
 	defer bitcask.rw.RUnlock()
 
-	index, ok := bitcask.Cache[string(key)]
-	if !ok {
+	index := bitcask.q.get(key)
+	if index != nil {
+		return bitcask.get(index.flg, route, key, int64(index.pos))
+	} else {
 		position, err := leveldb.GetPos(bitcask.IndexDB, key)
-		// if err != nil {
-		// 	return nil, err
-		// }
-		//
-		// flg, route, offset, err := bitcask.IndexDB.GetIndex(key)
 		if err != nil {
 			return nil, err
 		} else {
 			return bitcask.get(uint(position.Flag), position.Route, key, int64(position.Offset))
 		}
-	} else {
-		return bitcask.get(index.flg, route, key, int64(index.pos))
 	}
 }
 
 func (bitcask *BitCask) Close() error {
-	return nil
+	return bitcask.q.stop()
 }
 
 func (bitcask *BitCask) NewBatch(route []byte) Batch {
@@ -508,35 +468,139 @@ func (bitcask *BitCask) Commit(batch Batch) error {
 	if err != nil {
 		return err
 	} else {
+		elements := make([]*element, len(items))
 		for index := 0; index < len(items); index++ {
 			curPos := uint32(int(pos+tmpPos[index]) | bitcask.CurIndex)
-			bitcask.Cache[string(items[index].Key)] = RIndex{
-				flg: items[index].Flg,
-				pos: curPos,
-				len: len(tmpBuf[index]),
-			}
-
-			// err = bitcask.IndexDB.SetIndex(int(items[index].Flg), batch.Route(), items[index].Key, int64(curPos))
-			// if err != nil {
-			// 	return err
-			// }
-
-			err = leveldb.SetPos(bitcask.IndexDB, items[index].Key, &leveldb.Position{
-				Flag:   uint32(items[index].Flg),
-				Route:  batch.Route(),
-				Offset: uint32(curPos),
-			})
-
-			if err != nil {
-				return err
-			}
-
-			// 需要优化，操作DB太慢了
-			err = bitcask.afterScan(items[index].Flg, batch.Route(), items[index].Key, items[index].Val, curPos)
-			if err != nil {
-				return err
+			elements[index] = &element{
+				item:   items[index],
+				offset: curPos,
+				len:    len(tmpBuf[index]),
 			}
 		}
+
+		bitcask.q.setBatch(route, elements)
 		return nil
 	}
+}
+
+type element struct {
+	item   *BatchItem
+	offset uint32
+	len    int
+}
+
+type inject struct {
+	route    []byte
+	elements []*element
+}
+
+type queue struct {
+	after   AfterScan
+	cache   map[string]RIndex
+	inject  chan *inject
+	quit    chan struct{}
+	indexDB *leveldb.LevelDBDatabase
+}
+
+func NewQueue(after AfterScan, indexDB *leveldb.LevelDBDatabase) *queue {
+	return &queue{
+		after:   after,
+		cache:   make(map[string]RIndex),
+		inject:  make(chan *inject),
+		quit:    make(chan struct{}),
+		indexDB: indexDB,
+	}
+}
+
+func (q *queue) set(route []byte, item *element) {
+	items := make([]*element, 1)
+	items[0] = item
+	q.setBatch(route, items)
+}
+
+func (q *queue) setBatch(route []byte, items []*element) {
+	for index := 0; index < len(items); index++ {
+		q.cache[string(items[index].item.Key)] = RIndex{
+			flg: items[index].item.Flg,
+			pos: items[index].offset,
+			len: items[index].len,
+		}
+	}
+
+	op := &inject{
+		route:    route,
+		elements: items,
+	}
+
+	select {
+	case q.inject <- op:
+		return
+	case <-q.quit:
+		return
+	}
+}
+
+func (q *queue) get(key []byte) *RIndex {
+	index, ok := q.cache[string(key)]
+	if !ok {
+		return nil
+	} else {
+		return &RIndex{
+			flg: index.flg,
+			pos: index.pos,
+			len: index.len,
+		}
+	}
+}
+
+func (q *queue) start() {
+	go q.loop()
+}
+
+func (q *queue) loop() {
+	for {
+		select {
+		case <-q.quit:
+			return
+
+		case op := <-q.inject:
+			route := op.route
+			elements := op.elements
+
+			for index := 0; index < len(elements); index++ {
+				element := elements[index]
+				_, ok := q.cache[string(element.item.Key)]
+				if !ok {
+
+				} else {
+					err := leveldb.SetPos(q.indexDB, element.item.Key, &leveldb.Position{
+						Flag:   uint32(element.item.Flg),
+						Route:  route,
+						Offset: uint32(element.offset),
+					})
+
+					if err != nil {
+						panic("q.after err: " + err.Error())
+					}
+
+					if q.after == nil {
+						log.Errorf("q.after is nil.")
+						return
+					}
+
+					err = q.after(element.item.Flg, route, element.item.Key, element.item.Val, element.offset)
+					if err != nil {
+						panic("q.after err: " + err.Error())
+					} else {
+						delete(q.cache, string(element.item.Key))
+					}
+				}
+			}
+		}
+	}
+}
+
+func (q *queue) stop() error {
+	close(q.quit)
+	return nil
 }
