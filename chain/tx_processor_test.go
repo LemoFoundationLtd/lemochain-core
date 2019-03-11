@@ -15,6 +15,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
 	"github.com/LemoFoundationLtd/lemochain-go/store"
+	"github.com/LemoFoundationLtd/lemochain-go/store/protocol"
 	"github.com/stretchr/testify/assert"
 	"math/big"
 	"testing"
@@ -37,7 +38,9 @@ func TestNewTxProcessor(t *testing.T) {
 // test valid block processing
 func TestTxProcessor_Process(t *testing.T) {
 	store.ClearData()
-	p := NewTxProcessor(newChain())
+	bc := newChain()
+	defer bc.db.Close()
+	p := NewTxProcessor(bc)
 
 	p.am.GetAccount(testAddr)
 	// last not stable block
@@ -76,7 +79,7 @@ func TestTxProcessor_Process(t *testing.T) {
 	assert.Equal(t, block.Hash(), newHeader.Hash())
 
 	// block on fork branch
-	block = createNewBlock()
+	block = createNewBlock(bc.db)
 	newHeader, err = p.Process(block)
 	assert.NoError(t, err)
 	assert.Equal(t, block.Header.Bloom, newHeader.Bloom)
@@ -90,10 +93,12 @@ func TestTxProcessor_Process(t *testing.T) {
 // test invalid block processing
 func TestTxProcessor_Process2(t *testing.T) {
 	store.ClearData()
-	p := NewTxProcessor(newChain())
+	bc := newChain()
+	defer bc.db.Close()
+	p := NewTxProcessor(bc)
 
 	// tamper with amount
-	block := createNewBlock()
+	block := createNewBlock(bc.db)
 	rawTx, _ := rlp.EncodeToBytes(block.Txs[0])
 	rawTx[29]++ // amount++
 	cpy := new(types.Transaction)
@@ -105,7 +110,7 @@ func TestTxProcessor_Process2(t *testing.T) {
 	assert.Equal(t, ErrInvalidTxInBlock, err)
 
 	// invalid signature
-	block = createNewBlock()
+	block = createNewBlock(bc.db)
 	rawTx, _ = rlp.EncodeToBytes(block.Txs[0])
 	rawTx[43] = 0 // invalid S
 	cpy = new(types.Transaction)
@@ -116,7 +121,7 @@ func TestTxProcessor_Process2(t *testing.T) {
 	assert.Equal(t, ErrInvalidTxInBlock, err)
 
 	// not enough gas (resign by another address)
-	block = createNewBlock()
+	block = createNewBlock(bc.db)
 	private, _ := crypto.GenerateKey()
 	origFrom, _ := block.Txs[0].From()
 	block.Txs[0] = signTransaction(block.Txs[0], private)
@@ -127,20 +132,20 @@ func TestTxProcessor_Process2(t *testing.T) {
 	assert.Equal(t, ErrInvalidTxInBlock, err)
 
 	// exceed block gas limit
-	block = createNewBlock()
+	block = createNewBlock(bc.db)
 	block.Header.GasLimit = 1
 	_, err = p.Process(block)
 	assert.Equal(t, ErrInvalidTxInBlock, err)
 
 	// used gas reach limit in some tx
-	block = createNewBlock()
+	block = createNewBlock(bc.db)
 	block.Txs[0] = makeTransaction(testPrivate, defaultAccounts[1], params.OrdinaryTx, big.NewInt(100), common.Big1, 0, 1)
 	block.Header.TxRoot = types.DeriveTxsSha(block.Txs)
 	_, err = p.Process(block)
 	assert.Equal(t, ErrInvalidTxInBlock, err)
 
 	// balance not enough
-	block = createNewBlock()
+	block = createNewBlock(bc.db)
 	balance := p.am.GetAccount(testAddr).GetBalance()
 	block.Txs[0] = makeTx(testPrivate, defaultAccounts[1], params.OrdinaryTx, new(big.Int).Add(balance, big.NewInt(1)))
 	block.Header.TxRoot = types.DeriveTxsSha(block.Txs)
@@ -150,8 +155,8 @@ func TestTxProcessor_Process2(t *testing.T) {
 	// TODO test create or call contract fail
 }
 
-func createNewBlock() *types.Block {
-	db := store.NewChainDataBase(store.GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
+func createNewBlock(db protocol.ChainDB) *types.Block {
+	// db := store.NewChainDataBase(store.GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
 	return makeBlock(db, blockInfo{
 		height:     2,
 		parentHash: defaultBlocks[1].Hash(),
