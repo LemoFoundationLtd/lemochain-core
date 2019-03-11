@@ -297,6 +297,9 @@ func (beansdb *BeansDB) Get(key []byte) ([]byte, error) {
 }
 
 func (beansdb *BeansDB) Close() error {
+	for index := 0; index < len(beansdb.bitcasks); index++ {
+		beansdb.bitcasks[index].Close()
+	}
 	return nil
 }
 
