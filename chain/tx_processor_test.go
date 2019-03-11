@@ -733,6 +733,7 @@ func newNextBlock(p *TxProcessor, parentBlock *types.Block, txs types.Transactio
 	data01, _ := rlp.EncodeToBytes(newHeader)
 	data02, _ := rlp.EncodeToBytes(ProHeader)
 	if bytes.Compare(data01, data02) != 0 {
+		log.Warnf("newHeader:%v \n processHeader:%v\n", newHeader, ProHeader)
 		return nil, nil, errors.New("the result of applyTx and processTx are not equal")
 	}
 	if save {
@@ -1110,6 +1111,7 @@ func TestTradingAssetTx(t *testing.T) {
 	assert.NoError(t, err)
 	Itxs := types.Transactions{issAsset01Tx, issAsset02Tx, issAsset03Tx}
 	block02, invalidTxs, err := newNextBlock(p, block01, Itxs, true)
+	assert.NoError(t, err)
 	assert.Equal(t, 0, len(invalidTxs))
 	acc01 := p.am.GetAccount(addr01)
 	acc02 := p.am.GetAccount(addr02)
