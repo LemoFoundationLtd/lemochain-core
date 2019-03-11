@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/docker/docker/pkg/reexec"
 	"github.com/stretchr/testify/assert"
 	"os"
@@ -22,6 +23,7 @@ func TestMain_interrupt(t *testing.T) {
 		Args: []string{"p2p-node"},
 	}
 
+	fmt.Println(cmd.Path)
 	assert.PanicsWithValue(t, "boom", func() {
 		go interrupt(stop)
 	})
