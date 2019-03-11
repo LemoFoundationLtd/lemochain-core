@@ -16,7 +16,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/network/p2p"
-	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"math/big"
 	"runtime"
 	"strconv"
@@ -605,43 +604,41 @@ func (t *PublicTxAPI) PendingTx(size int) []*types.Transaction {
 	return t.node.txPool.Pending(size)
 }
 
-// GetTxByHash pull the specified transaction through a transaction hash
-func (t *PublicTxAPI) GetTxByHash(hash string) (*store.VTransactionDetail, error) {
-	// txHash := common.HexToHash(hash)
-	// bizDb := t.node.db.GetBizDatabase()
-	// vTxDetail, err := bizDb.GetTxByHash(txHash)
-	// return vTxDetail, err
-	return nil, nil
-}
-
-//go:generate gencodec -type TxListRes --field-override txListResMarshaling -out gen_tx_list_res_json.go
-type TxListRes struct {
-	VTransactions []*store.VTransaction `json:"txList" gencodec:"required"`
-	Total         uint32                `json:"total" gencodec:"required"`
-}
-type txListResMarshaling struct {
-	Total hexutil.Uint32
-}
-
-// GetTxListByAddress pull the list of transactions
-func (t *PublicTxAPI) GetTxListByAddress(lemoAddress string, index int, size int) (*TxListRes, error) {
-	// src, err := common.StringToAddress(lemoAddress)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// bizDb := t.node.db.GetBizDatabase()
-	// vTxs, total, err := bizDb.GetTxByAddr(src, index, size)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// txList := &TxListRes{
-	// 	VTransactions: vTxs,
-	// 	Total:         total,
-	// }
-	//
-	// return txList, nil
-	return nil, nil
-}
+// // GetTxByHash pull the specified transaction through a transaction hash
+// func (t *PublicTxAPI) GetTxByHash(hash string) (*store.VTransactionDetail, error) {
+// 	txHash := common.HexToHash(hash)
+// 	bizDb := t.node.db.GetBizDatabase()
+// 	vTxDetail, err := bizDb.GetTxByHash(txHash)
+// 	return vTxDetail, err
+// }
+//
+// //go:generate gencodec -type TxListRes --field-override txListResMarshaling -out gen_tx_list_res_json.go
+// type TxListRes struct {
+// 	VTransactions []*store.VTransaction `json:"txList" gencodec:"required"`
+// 	Total         uint32                `json:"total" gencodec:"required"`
+// }
+// type txListResMarshaling struct {
+// 	Total hexutil.Uint32
+// }
+//
+// // GetTxListByAddress pull the list of transactions
+// func (t *PublicTxAPI) GetTxListByAddress(lemoAddress string, index int, size int) (*TxListRes, error) {
+// 	src, err := common.StringToAddress(lemoAddress)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	bizDb := t.node.db.GetBizDatabase()
+// 	vTxs, total, err := bizDb.GetTxByAddr(src, index, size)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	txList := &TxListRes{
+// 		VTransactions: vTxs,
+// 		Total:         total,
+// 	}
+//
+// 	return txList, nil
+// }
 
 // ReadContract read variables in a contract includes the return value of a function.
 func (t *PublicTxAPI) ReadContract(to *common.Address, data hexutil.Bytes) (string, error) {
