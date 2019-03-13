@@ -12,6 +12,7 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 )
 
@@ -141,13 +142,13 @@ func (bitcaskIndexes *BitcaskIndexes) flush(home string) error {
 }
 
 type BeansDB struct {
-	height    uint
-	bitcasks  []*BitCask
-	indexDB   *leveldb.LevelDBDatabase
-	route2key map[string][]byte
+	height   uint
+	bitcasks []*BitCask
+	indexDB  *leveldb.LevelDBDatabase
+	//route2key map[string][]byte
 	scanIndex BitcaskIndexes
-
-	after BizAfterScan
+	route2key sync.Map
+	after     BizAfterScan
 }
 
 type BizAfterScan func(flag uint, key []byte, val []byte) error
@@ -160,7 +161,8 @@ func NewBeansDB(home string, height int, DB *leveldb.LevelDBDatabase, after BizA
 	count := 1 << (uint(height) * 4)
 	beansdb := &BeansDB{height: uint(height)}
 	beansdb.bitcasks = make([]*BitCask, count)
-	beansdb.route2key = make(map[string][]byte)
+	// beansdb.route2key = make(map[string][]byte)
+	// beansdb.route2key = new(sync.Map)
 	beansdb.indexDB = DB
 	beansdb.after = after
 
@@ -201,7 +203,8 @@ func (beansdb *BeansDB) AfterScan(flag uint, route []byte, key []byte, val []byt
 	if err != nil {
 		return err
 	} else {
-		delete(beansdb.route2key, string(key))
+		beansdb.route2key.Delete(string(key))
+		// delete(beansdb.route2key, string(key))
 		return nil
 	}
 }
@@ -235,7 +238,8 @@ func (beansdb *BeansDB) Commit(batch Batch) error {
 		route := batch.Route()
 
 		for index := 0; index < len(items); index++ {
-			beansdb.route2key[string(items[index].Key)] = route
+			// beansdb.route2key[string(items[index].Key)] = route
+			beansdb.route2key.Store(string(items[index].Key), route)
 		}
 		return nil
 	}
@@ -247,7 +251,8 @@ func (beansdb *BeansDB) Put(flg uint, route []byte, key []byte, val []byte) erro
 	if err != nil {
 		return err
 	} else {
-		beansdb.route2key[string(key)] = route
+		// beansdb.route2key[string(key)] = route
+		beansdb.route2key.Store(string(key), route)
 		return nil
 	}
 }
@@ -266,7 +271,8 @@ func (beansdb *BeansDB) Has(key []byte) (bool, error) {
 }
 
 func (beansdb *BeansDB) Get(key []byte) ([]byte, error) {
-	route, ok := beansdb.route2key[string(key)]
+	// route, ok := beansdb.route2key[string(key)]
+	route, ok := beansdb.route2key.Load(string(key))
 	if !ok {
 		position, err := leveldb.GetPos(beansdb.indexDB, key)
 		if err != nil {
@@ -286,8 +292,8 @@ func (beansdb *BeansDB) Get(key []byte) ([]byte, error) {
 			return val, nil
 		}
 	} else {
-		bitcask := beansdb.route(route)
-		val, err := bitcask.Get4Cache(route, key)
+		bitcask := beansdb.route(route.([]byte))
+		val, err := bitcask.Get4Cache(route.([]byte), key)
 		if err != nil {
 			return nil, err
 		} else {
