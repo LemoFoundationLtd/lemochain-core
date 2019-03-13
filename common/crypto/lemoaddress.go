@@ -7,9 +7,9 @@ import (
 //go:generate gencodec -type AccountKey -out gen_account_keys_json.go
 
 type AccountKey struct {
-	Private string `json:"private"`
-	Public  string `json:"public"`
-	Address string `json:"address"`
+	Private string         `json:"private"`
+	Public  string         `json:"public"`
+	Address common.Address `json:"address"`
 }
 
 // GenerateAddress generate Lemo address
@@ -23,8 +23,6 @@ func GenerateAddress() (*AccountKey, error) {
 	pubKey := privKey.PublicKey
 	// Get the address(Address) through the public key
 	address := PubkeyToAddress(pubKey)
-	// get lemoAddress
-	lemoAddress := address.String()
 
 	// PublicKey type is converted to bytes type
 	publicToBytes := FromECDSAPub(&pubKey)
@@ -33,6 +31,6 @@ func GenerateAddress() (*AccountKey, error) {
 	return &AccountKey{
 		Private: common.ToHex(privateToBytes),
 		Public:  common.ToHex(publicToBytes[1:]),
-		Address: lemoAddress,
+		Address: address,
 	}, nil
 }
