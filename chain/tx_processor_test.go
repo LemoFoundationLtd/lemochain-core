@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/vm"
@@ -694,17 +695,6 @@ func TestReimbursement_transaction(t *testing.T) {
 
 }
 
-// TestBlockChain_txData 生成调用设置换届奖励的预编译合约交易的data
-func TestBlockChain_txData(t *testing.T) {
-	re := params.RewardJson{
-		Term:  3,
-		Value: big.NewInt(3330),
-	}
-	by, _ := json.Marshal(re)
-	fmt.Println("tx data", common.ToHex(by))
-	fmt.Println("预编译合约地址", common.BytesToAddress([]byte{9}).String())
-}
-
 // newNextBlock new a block
 func newNextBlock(p *TxProcessor, parentBlock *types.Block, txs types.Transactions, save bool) (*types.Block, types.Transactions, error) {
 	header01 := &types.Header{
@@ -1208,4 +1198,117 @@ func TestMaxAssetProfile(t *testing.T) {
 	gasUsed, err := IntrinsicGas(data, false)
 	assert.NoError(t, err)
 	t.Logf("max gasUsed : %d", gasUsed)
+}
+
+// TestPrecomplieContract and send rewards for deputyNode
+func TestPrecomplieContract(t *testing.T) {
+	params.TermDuration = 4    // 换届间隔
+	params.InterimDuration = 1 // 过渡期
+	store.ClearData()
+	bc := newChain()
+	defer bc.db.Close()
+	p := NewTxProcessor(bc)
+
+	data := setRewardTxData(1, new(big.Int).Div(params.RewardPoolTotal, common.Big2))
+	private, err := crypto.HexToECDSA("c21b6b2fbf230f665b936194d14da67187732bf9d28768aef1a3cbb26608f8aa")
+	assert.NoError(t, err)
+	TxV01 := types.NewReimbursementTransaction(params.TermRewardPrecompiledContractAddress, testAddr, nil, data, params.OrdinaryTx, chainID, uint64(time.Now().Unix()+300), "", "")
+	firstSignTxV, err := types.MakeReimbursementTxSigner().SignTx(TxV01, private)
+	assert.NoError(t, err)
+	firstSignTxV = types.GasPayerSignatureTx(firstSignTxV, common.Big1, uint64(60000))
+	lastSignTxV, err := types.MakeGasPayerSigner().SignTx(firstSignTxV, testPrivate)
+	assert.NoError(t, err)
+	txs := types.Transactions{lastSignTxV}
+
+	Block02, _, err := newNextBlock(p, p.chain.stableBlock.Load().(*types.Block), txs, true)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, Block02)
+	Acc := p.am.GetAccount(params.TermRewardPrecompiledContractAddress)
+	key := params.TermRewardPrecompiledContractAddress.Hash()
+	v, err := Acc.GetStorageState(key)
+	assert.NoError(t, err)
+	rewardMap := make(params.RewardsMap)
+	err = json.Unmarshal(v, &rewardMap)
+	assert.NoError(t, err)
+	assert.Equal(t, uint32(1), rewardMap[1].Term)
+	assert.Equal(t, new(big.Int).Div(params.RewardPoolTotal, common.Big2), rewardMap[1].Value)
+	assert.Equal(t, uint32(1), rewardMap[1].Times)
+	// genesisBlock := p.chain.GetBlockByHeight(0)
+	Block03, _, err := newNextBlock(p, Block02, nil, true)
+	assert.NotEmpty(t, Block03)
+	Block04, _, err := newNextBlock(p, Block03, nil, true)
+	assert.NotEmpty(t, Block04)
+	Block05, _, err := newNextBlock(p, Block04, nil, true)
+	assert.NotEmpty(t, Block05)
+	Block06, _, err := newNextBlock(p, Block05, nil, true)
+	assert.NotEmpty(t, Block06)
+	// t.Log(p.am.GetAccount(DefaultDeputyNodes[1].MinerAddress).GetBalance())
+	balance01, _ := new(big.Int).SetString("120000000000000000000000000", 10)
+	assert.Equal(t, balance01, p.am.GetAccount(DefaultDeputyNodes[1].MinerAddress).GetBalance())
+	// t.Log(p.am.GetAccount(DefaultDeputyNodes[2].MinerAddress).GetBalance())
+	balance02, _ := new(big.Int).SetString("90000000000000000000000000", 10)
+	assert.Equal(t, balance02, p.am.GetAccount(DefaultDeputyNodes[2].MinerAddress).GetBalance())
+	// t.Log(p.am.GetAccount(DefaultDeputyNodes[3].MinerAddress).GetBalance())
+	balance03, _ := new(big.Int).SetString("60000000000000000000000000", 10)
+	assert.Equal(t, balance03, p.am.GetAccount(DefaultDeputyNodes[3].MinerAddress).GetBalance())
+	// t.Log(p.am.GetAccount(DefaultDeputyNodes[4].MinerAddress).GetBalance())
+	balance04, _ := new(big.Int).SetString("30000000000000000000000000", 10)
+	assert.Equal(t, balance04, p.am.GetAccount(DefaultDeputyNodes[4].MinerAddress).GetBalance())
+
+	data02 := setRewardTxData(2, new(big.Int).Div(params.RewardPoolTotal, common.Big2))
+	TxV02 := types.NewReimbursementTransaction(params.TermRewardPrecompiledContractAddress, testAddr, nil, data02, params.OrdinaryTx, chainID, uint64(time.Now().Unix()+300), "", "")
+	firstSignTxV02, err := types.MakeReimbursementTxSigner().SignTx(TxV02, private)
+	assert.NoError(t, err)
+	firstSignTxV02 = types.GasPayerSignatureTx(firstSignTxV02, common.Big1, uint64(60000))
+	lastSignTxV02, err := types.MakeGasPayerSigner().SignTx(firstSignTxV02, testPrivate)
+	assert.NoError(t, err)
+	txs02 := types.Transactions{lastSignTxV02}
+	Block07, _, err := newNextBlock(p, Block06, txs02, true)
+	assert.NoError(t, err)
+	Block08, _, err := newNextBlock(p, Block07, nil, true)
+	// set next deputyNodeList
+	deputynode.Instance().Add(9, DefaultDeputyNodes)
+
+	assert.NoError(t, err)
+	Block09, _, err := newNextBlock(p, Block08, nil, true)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, Block09)
+	// t.Log(p.am.GetAccount(DefaultDeputyNodes[1].MinerAddress).GetBalance())
+	balance01, _ = new(big.Int).SetString("240000000000000000000000000", 10)
+	assert.Equal(t, balance01, p.am.GetAccount(DefaultDeputyNodes[1].MinerAddress).GetBalance())
+	// t.Log(p.am.GetAccount(DefaultDeputyNodes[2].MinerAddress).GetBalance())
+	balance02, _ = new(big.Int).SetString("180000000000000000000000000", 10)
+	assert.Equal(t, balance02, p.am.GetAccount(DefaultDeputyNodes[2].MinerAddress).GetBalance())
+	// t.Log(p.am.GetAccount(DefaultDeputyNodes[3].MinerAddress).GetBalance())
+	balance03, _ = new(big.Int).SetString("120000000000000000000000000", 10)
+	assert.Equal(t, balance03, p.am.GetAccount(DefaultDeputyNodes[3].MinerAddress).GetBalance())
+	// t.Log(p.am.GetAccount(DefaultDeputyNodes[4].MinerAddress).GetBalance())
+	balance04, _ = new(big.Int).SetString("60000000000000000000000000", 10)
+	assert.Equal(t, balance04, p.am.GetAccount(DefaultDeputyNodes[4].MinerAddress).GetBalance())
+
+}
+
+//
+func setRewardTxData(term uint32, value *big.Int) []byte {
+	re := params.RewardJson{
+		Term:  term,
+		Value: value,
+	}
+	by, err := json.Marshal(re)
+	if err != nil {
+		log.Warn(err.Error())
+		return nil
+	}
+	return by
+}
+
+// TestBlockChain_txData 生成调用设置换届奖励的预编译合约交易的data
+func TestBlockChain_txData(t *testing.T) {
+	re := params.RewardJson{
+		Term:  3,
+		Value: big.NewInt(3330),
+	}
+	by, _ := json.Marshal(re)
+	fmt.Println("tx data", common.ToHex(by))
+	fmt.Println("预编译合约地址", common.BytesToAddress([]byte{9}).String())
 }

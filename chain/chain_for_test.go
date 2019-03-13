@@ -53,6 +53,7 @@ var (
 			txRoot:      common.HexToHash("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"), // empty merkle
 			logRoot:     common.HexToHash("0xb0d3749ecc3a7a0db6368284320863a3d2fa963b2c33b41c6ebf8632cd84bda9"),
 			time:        1538209751,
+			deputyNodes: DefaultDeputyNodes,
 		},
 		// block 1 is stable block
 		{
@@ -157,6 +158,7 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 	var deputyRoot []byte
 	if len(info.deputyNodes) > 0 {
 		deputyRoot = types.DeriveDeputyRootSha(info.deputyNodes).Bytes()
+		deputynode.Instance().Add(params.TermDuration+params.InterimDuration+1, info.deputyNodes)
 	}
 	if bytes.Compare(deputyRoot, info.deputyRoot) != 0 {
 		if len(info.deputyNodes) > 0 || len(info.deputyRoot) != 0 {
