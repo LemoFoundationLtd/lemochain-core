@@ -322,7 +322,7 @@ func (pm *ProtocolManager) fetchConfirmsFromRemote(start, end uint32) {
 	if p == nil {
 		return
 	}
-	for h := start; h < end; h++ {
+	for h := start; h <= end; h++ {
 		b := pm.chain.GetBlockByHeight(h)
 		if b == nil {
 			continue
@@ -712,7 +712,7 @@ func (pm *ProtocolManager) respBlocks(from, to uint32, p *peer, hasChangeLog boo
 	}
 
 	const eachSize = 10
-	total := to - from
+	total := to - from + 1
 	var count uint32
 	if total%eachSize == 0 {
 		count = total / eachSize

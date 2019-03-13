@@ -129,7 +129,6 @@ func NewBitCask(homePath string, lastIndex int, lastOffset uint32, after AfterSc
 }
 
 func (bitcask *BitCask) scan(lastIndex int, lastOffset uint32) error {
-
 	nextIndex := lastIndex
 	nextOffset := lastOffset
 
@@ -496,16 +495,16 @@ type inject struct {
 
 type queue struct {
 	after   AfterScan
-	cache   map[string]RIndex
+	cache   sync.Map
 	inject  chan *inject
 	quit    chan struct{}
 	indexDB *leveldb.LevelDBDatabase
+	rw      sync.Mutex
 }
 
 func NewQueue(after AfterScan, indexDB *leveldb.LevelDBDatabase) *queue {
 	return &queue{
 		after:   after,
-		cache:   make(map[string]RIndex),
 		inject:  make(chan *inject),
 		quit:    make(chan struct{}),
 		indexDB: indexDB,
@@ -515,22 +514,7 @@ func NewQueue(after AfterScan, indexDB *leveldb.LevelDBDatabase) *queue {
 func (q *queue) set(route []byte, item *element) {
 	items := make([]*element, 1)
 	items[0] = item
-	q.setBatch(route, items)
-}
-
-func (q *queue) setBatch(route []byte, items []*element) {
-	for index := 0; index < len(items); index++ {
-		q.cache[string(items[index].item.Key)] = RIndex{
-			flg: items[index].item.Flg,
-			pos: items[index].offset,
-			len: items[index].len,
-		}
-	}
-
-	op := &inject{
-		route:    route,
-		elements: items,
-	}
+	op := q.batch(route, items)
 
 	select {
 	case q.inject <- op:
@@ -540,15 +524,43 @@ func (q *queue) setBatch(route []byte, items []*element) {
 	}
 }
 
+func (q *queue) setBatch(route []byte, items []*element) {
+	op := q.batch(route, items)
+
+	select {
+	case q.inject <- op:
+		return
+	case <-q.quit:
+		return
+	}
+}
+
+func (q *queue) batch(route []byte, items []*element) *inject {
+	for index := 0; index < len(items); index++ {
+		q.cache.Store(string(items[index].item.Key), RIndex{
+			flg: items[index].item.Flg,
+			pos: items[index].offset,
+			len: items[index].len,
+		})
+	}
+
+	return &inject{
+		route:    route,
+		elements: items,
+	}
+}
+
 func (q *queue) get(key []byte) *RIndex {
-	index, ok := q.cache[string(key)]
+	index, ok := q.cache.Load(string(key))
+
 	if !ok {
 		return nil
 	} else {
+		tmp := index.(RIndex)
 		return &RIndex{
-			flg: index.flg,
-			pos: index.pos,
-			len: index.len,
+			flg: tmp.flg,
+			pos: tmp.pos,
+			len: tmp.len,
 		}
 	}
 }
@@ -569,9 +581,9 @@ func (q *queue) loop() {
 
 			for index := 0; index < len(elements); index++ {
 				element := elements[index]
-				_, ok := q.cache[string(element.item.Key)]
+				_, ok := q.cache.Load(string(element.item.Key))
 				if !ok {
-
+					continue
 				} else {
 					err := leveldb.SetPos(q.indexDB, element.item.Key, &leveldb.Position{
 						Flag:   uint32(element.item.Flg),
@@ -592,7 +604,7 @@ func (q *queue) loop() {
 					if err != nil {
 						panic("q.after err: " + err.Error())
 					} else {
-						delete(q.cache, string(element.item.Key))
+						q.cache.Delete(string(element.item.Key))
 					}
 				}
 			}

@@ -12,6 +12,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"github.com/LemoFoundationLtd/lemochain-go/store/protocol"
 	"math/big"
+	"sort"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -495,14 +496,26 @@ func (evm *EVM) ModifyAssetProfileTx(sender common.Address, data []byte) error {
 	acc := evm.am.GetAccount(sender)
 	info := modifyInfo.Info
 	var snapshot = evm.am.Snapshot()
-	// modify profile
-	for k, v := range info {
-		err = acc.SetAssetCodeState(modifyInfo.AssetCode, strings.ToLower(k), v)
+	infoSlice := make([]string, 0, len(info))
+	for k, _ := range info {
+		infoSlice = append(infoSlice, strings.ToLower(k))
+	}
+	sort.Strings(infoSlice)
+	for i := 0; i < len(infoSlice); i++ {
+		err = acc.SetAssetCodeState(modifyInfo.AssetCode, infoSlice[i], info[infoSlice[i]])
 		if err != nil {
 			evm.am.RevertToSnapshot(snapshot)
 			return err
 		}
 	}
+	// modify profile
+	// for k, v := range info {
+	// 	err = acc.SetAssetCodeState(modifyInfo.AssetCode, strings.ToLower(k), v)
+	// 	if err != nil {
+	// 		evm.am.RevertToSnapshot(snapshot)
+	// 		return err
+	// 	}
+	// }
 	// 	judge profile size
 	newAsset, err := acc.GetAssetCode(modifyInfo.AssetCode)
 	if err != nil {
