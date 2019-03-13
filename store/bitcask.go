@@ -129,7 +129,6 @@ func NewBitCask(homePath string, lastIndex int, lastOffset uint32, after AfterSc
 }
 
 func (bitcask *BitCask) scan(lastIndex int, lastOffset uint32) error {
-
 	nextIndex := lastIndex
 	nextOffset := lastOffset
 
@@ -500,6 +499,7 @@ type queue struct {
 	inject  chan *inject
 	quit    chan struct{}
 	indexDB *leveldb.LevelDBDatabase
+	rw      sync.Mutex
 }
 
 func NewQueue(after AfterScan, indexDB *leveldb.LevelDBDatabase) *queue {
@@ -513,12 +513,21 @@ func NewQueue(after AfterScan, indexDB *leveldb.LevelDBDatabase) *queue {
 }
 
 func (q *queue) set(route []byte, item *element) {
+	q.rw.Lock()
 	items := make([]*element, 1)
 	items[0] = item
-	q.setBatch(route, items)
+	op := q.batch(route, items)
+	q.rw.Unlock()
+
+	select {
+	case q.inject <- op:
+		return
+	case <-q.quit:
+		return
+	}
 }
 
-func (q *queue) setBatch(route []byte, items []*element) {
+func (q *queue) batch(route []byte, items []*element) *inject {
 	for index := 0; index < len(items); index++ {
 		q.cache[string(items[index].item.Key)] = RIndex{
 			flg: items[index].item.Flg,
@@ -527,10 +536,16 @@ func (q *queue) setBatch(route []byte, items []*element) {
 		}
 	}
 
-	op := &inject{
+	return &inject{
 		route:    route,
 		elements: items,
 	}
+}
+
+func (q *queue) setBatch(route []byte, items []*element) {
+	q.rw.Lock()
+	op := q.batch(route, items)
+	q.rw.Unlock()
 
 	select {
 	case q.inject <- op:
@@ -541,7 +556,10 @@ func (q *queue) setBatch(route []byte, items []*element) {
 }
 
 func (q *queue) get(key []byte) *RIndex {
+	q.rw.Lock()
 	index, ok := q.cache[string(key)]
+	q.rw.Unlock()
+
 	if !ok {
 		return nil
 	} else {
@@ -569,9 +587,11 @@ func (q *queue) loop() {
 
 			for index := 0; index < len(elements); index++ {
 				element := elements[index]
+				q.rw.Lock()
 				_, ok := q.cache[string(element.item.Key)]
+				q.rw.Unlock()
 				if !ok {
-
+					continue
 				} else {
 					err := leveldb.SetPos(q.indexDB, element.item.Key, &leveldb.Position{
 						Flag:   uint32(element.item.Flg),
@@ -592,7 +612,9 @@ func (q *queue) loop() {
 					if err != nil {
 						panic("q.after err: " + err.Error())
 					} else {
+						q.rw.Lock()
 						delete(q.cache, string(element.item.Key))
+						q.rw.Unlock()
 					}
 				}
 			}
