@@ -21,6 +21,7 @@ func (c ConfigFromFile) MarshalJSON() ([]byte, error) {
 		DbDriver        string         `json:"dbDriver"       gencodec:"required"`
 		TermDuration    hexutil.Uint64 `json:"termDuration"`
 		InterimDuration hexutil.Uint64 `json:"interimDuration"`
+		ConnectionLimit hexutil.Uint64 `json:"connectionLimit"`
 	}
 	var enc ConfigFromFile
 	enc.ChainID = hexutil.Uint64(c.ChainID)
@@ -30,6 +31,7 @@ func (c ConfigFromFile) MarshalJSON() ([]byte, error) {
 	enc.DbDriver = c.DbDriver
 	enc.TermDuration = hexutil.Uint64(c.TermDuration)
 	enc.InterimDuration = hexutil.Uint64(c.InterimDuration)
+	enc.ConnectionLimit = hexutil.Uint64(c.ConnectionLimit)
 	return json.Marshal(&enc)
 }
 
@@ -43,6 +45,7 @@ func (c *ConfigFromFile) UnmarshalJSON(input []byte) error {
 		DbDriver        *string         `json:"dbDriver"       gencodec:"required"`
 		TermDuration    *hexutil.Uint64 `json:"termDuration"`
 		InterimDuration *hexutil.Uint64 `json:"interimDuration"`
+		ConnectionLimit *hexutil.Uint64 `json:"connectionLimit"`
 	}
 	var dec ConfigFromFile
 	if err := json.Unmarshal(input, &dec); err != nil {
@@ -71,6 +74,9 @@ func (c *ConfigFromFile) UnmarshalJSON(input []byte) error {
 	}
 	if dec.InterimDuration != nil {
 		c.InterimDuration = uint64(*dec.InterimDuration)
+	}
+	if dec.ConnectionLimit != nil {
+		c.ConnectionLimit = uint64(*dec.ConnectionLimit)
 	}
 	return nil
 }
