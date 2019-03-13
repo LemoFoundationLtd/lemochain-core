@@ -15,6 +15,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"github.com/LemoFoundationLtd/lemochain-go/store/protocol"
 	"math/big"
+	"math/rand"
 	"time"
 )
 

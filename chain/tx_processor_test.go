@@ -18,6 +18,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/store/protocol"
 	"github.com/stretchr/testify/assert"
 	"math/big"
+	"math/rand"
 	"testing"
 	"time"
 )
@@ -1208,4 +1209,42 @@ func TestMaxAssetProfile(t *testing.T) {
 	gasUsed, err := IntrinsicGas(data, false)
 	assert.NoError(t, err)
 	t.Logf("max gasUsed : %d", gasUsed)
+}
+
+func BenchmarkTx(b *testing.B) {
+	store.ClearData()
+	bc := newChain()
+	defer bc.db.Close()
+	p := NewTxProcessor(bc)
+
+	// prepare account and balance
+	blockHash, accountKeys := createAccounts(b.N, bc.db)
+	bc.am.Reset(blockHash)
+	header := &types.Header{
+		ParentHash:   blockHash,
+		MinerAddress: defaultAccounts[0],
+		Height:       4,
+		GasLimit:     2100000000,
+		Time:         1538209762,
+	}
+	// make txs
+	txs := make(types.Transactions, b.N, b.N)
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	for i := 0; i < b.N; i++ {
+		fromKey := accountKeys[r.Intn(b.N)]
+		fromPrivate, _ := crypto.ToECDSA(common.FromHex(fromKey.Private))
+		to := accountKeys[r.Intn(b.N)].Address
+		fromBalance := p.am.GetAccount(fromKey.Address).GetBalance() // maybe 0
+		amount := new(big.Int).Rand(r, fromBalance)                  // maybe too many if we make transaction more than twice from same address
+		txs[i] = makeTx(fromPrivate, to, params.OrdinaryTx, amount)
+	}
+	// clear account cache
+	// p.am.Reset(blockHash)
+
+	start := time.Now().UnixNano()
+	b.ResetTimer()
+	_, selectedTxs, invalidTxs, err := p.ApplyTxs(header, txs)
+	fmt.Printf("BenchmarkTx cost %dms\n", (time.Now().UnixNano()-start)/1000000)
+	assert.NoError(b, err)
+	fmt.Printf("%d transactions sucess, %d transactions fail", len(selectedTxs), len(invalidTxs))
 }
