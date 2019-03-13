@@ -164,7 +164,7 @@ func New(flags flag.CmdFlags) *Node {
 	selfNodeID := p2p.NodeID{}
 	copy(selfNodeID[:], deputynode.GetSelfNodeID())
 	// protocol manager
-	pm := network.NewProtocolManager(uint16(configFromFile.ChainID), selfNodeID, blockChain, txPool, discover, params.VersionUint())
+	pm := network.NewProtocolManager(uint16(configFromFile.ChainID), selfNodeID, blockChain, txPool, discover, int(configFromFile.ConnectionLimit), params.VersionUint())
 	// p2p server
 	server := p2p.NewServer(cfg.P2P, discover)
 	n := &Node{

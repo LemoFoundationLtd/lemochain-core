@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/vm"
@@ -695,6 +694,17 @@ func TestReimbursement_transaction(t *testing.T) {
 
 }
 
+// TestBlockChain_txData 生成调用设置换届奖励的预编译合约交易的data
+func TestBlockChain_txData(t *testing.T) {
+	re := params.RewardJson{
+		Term:  3,
+		Value: big.NewInt(3330),
+	}
+	by, _ := json.Marshal(re)
+	fmt.Println("tx data", common.ToHex(by))
+	fmt.Println("预编译合约地址", common.BytesToAddress([]byte{9}).String())
+}
+
 // newNextBlock new a block
 func newNextBlock(p *TxProcessor, parentBlock *types.Block, txs types.Transactions, save bool) (*types.Block, types.Transactions, error) {
 	header01 := &types.Header{
@@ -1311,4 +1321,42 @@ func TestBlockChain_txData(t *testing.T) {
 	by, _ := json.Marshal(re)
 	fmt.Println("tx data", common.ToHex(by))
 	fmt.Println("预编译合约地址", common.BytesToAddress([]byte{9}).String())
+}
+
+func BenchmarkTx(b *testing.B) {
+	store.ClearData()
+	bc := newChain()
+	defer bc.db.Close()
+	p := NewTxProcessor(bc)
+
+	// prepare account and balance
+	blockHash, accountKeys := createAccounts(b.N, bc.db)
+	bc.am.Reset(blockHash)
+	header := &types.Header{
+		ParentHash:   blockHash,
+		MinerAddress: defaultAccounts[0],
+		Height:       4,
+		GasLimit:     2100000000,
+		Time:         1538209762,
+	}
+	// make txs
+	txs := make(types.Transactions, b.N, b.N)
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	for i := 0; i < b.N; i++ {
+		fromKey := accountKeys[r.Intn(b.N)]
+		fromPrivate, _ := crypto.ToECDSA(common.FromHex(fromKey.Private))
+		to := accountKeys[r.Intn(b.N)].Address
+		fromBalance := p.am.GetAccount(fromKey.Address).GetBalance() // maybe 0
+		amount := new(big.Int).Rand(r, fromBalance)                  // maybe too many if we make transaction more than twice from same address
+		txs[i] = makeTx(fromPrivate, to, params.OrdinaryTx, amount)
+	}
+	// clear account cache
+	// p.am.Reset(blockHash)
+
+	start := time.Now().UnixNano()
+	b.ResetTimer()
+	_, selectedTxs, invalidTxs, err := p.ApplyTxs(header, txs)
+	fmt.Printf("BenchmarkTx cost %dms\n", (time.Now().UnixNano()-start)/1000000)
+	assert.NoError(b, err)
+	fmt.Printf("%d transactions sucess, %d transactions fail", len(selectedTxs), len(invalidTxs))
 }
