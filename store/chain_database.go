@@ -86,7 +86,7 @@ func (database *ChainDatabase) AfterScan(flag uint, key []byte, val []byte) erro
  * 5. height => block's hash(chain)
  */
 func (database *ChainDatabase) blockCommit(hash common.Hash) error {
-	log.Error("block commit : " + hash.Hex())
+	// log.Error("block commit : " + hash.Hex())
 	cItem := database.UnConfirmBlocks[hash]
 	if (cItem == nil) || (cItem.Block == nil) {
 		panic("item or item'block is nil.")
@@ -450,7 +450,7 @@ func (database *ChainDatabase) SetStableBlock(hash common.Hash) error {
 	database.rw.Lock()
 	defer database.rw.Unlock()
 
-	log.Error("set stable block : " + hash.Hex())
+	// log.Error("set stable block : " + hash.Hex())
 	cItem := database.UnConfirmBlocks[hash]
 	if cItem == nil {
 		panic("set stable block error:the block is not exist. hash:" + hash.Hex())

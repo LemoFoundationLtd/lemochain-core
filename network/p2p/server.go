@@ -43,7 +43,7 @@ type Server struct {
 	running  int32        // flag for is server running
 	listener net.Listener // TCP listener
 
-	connectedNodes map[NodeID]IPeer
+	connectedNodes map[NodeID]IPeer // connect pool
 	peersMux       sync.Mutex
 
 	quitCh    chan struct{}
@@ -89,6 +89,13 @@ func (srv *Server) Start() error {
 	if err := srv.discover.Start(); err != nil {
 		log.Warnf("discover.start: %v", err)
 	}
+
+	// start dial task
+	go func() {
+		if err := srv.dialManager.Start(); err != nil {
+			log.Errorf("start dialManager failed: %v", err)
+		}
+	}()
 	// Run receive logic code
 	go srv.run()
 	return nil
@@ -122,13 +129,6 @@ func (srv *Server) Stop() {
 func (srv *Server) run() {
 	srv.wg.Add(1)
 	defer srv.wg.Done()
-
-	// start dial task
-	go func() {
-		if err := srv.dialManager.Start(); err != nil {
-			log.Errorf("start dialManager failed: %v", err)
-		}
-	}()
 
 	for {
 		select {

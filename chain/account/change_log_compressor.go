@@ -34,24 +34,21 @@ func MergeChangeLogs(logs types.ChangeLogSlice) types.ChangeLogSlice {
 }
 
 func needMerge(logType types.ChangeLogType) bool {
-	if (logType == BalanceLog) ||
-		(logType == VoteForLog) ||
-		(logType == VotesLog) ||
-		(logType == StorageLog) ||
-		(logType == StorageRootLog) ||
-		(logType == AssetCodeLog) ||
-		(logType == AssetCodeStateLog) ||
-		(logType == AssetCodeRootLog) ||
-		(logType == AssetCodeTotalSupplyLog) ||
-		(logType == AssetIdLog) ||
-		(logType == AssetIdRootLog) ||
-		(logType == EquityLog) ||
-		(logType == EquityRootLog) ||
-		(logType == CandidateLog) {
-		return true
-	} else {
-		return false
-	}
+	// if (logType == BalanceLog) ||
+	// 	(logType == VoteForLog) ||
+	// 	(logType == VotesLog) ||
+	// 	(logType == StorageRootLog) ||
+	// 	(logType == AssetCodeLog) ||
+	// 	(logType == AssetCodeRootLog) ||
+	// 	(logType == AssetCodeTotalSupplyLog) ||
+	// 	(logType == AssetIdRootLog) ||
+	// 	(logType == EquityLog) ||
+	// 	(logType == EquityRootLog)  {
+	// 	return true
+	// } else {
+	// 	return false
+	// }
+	return true
 }
 
 func needDel(logType types.ChangeLogType) bool {
@@ -72,16 +69,14 @@ func merge(logs types.ChangeLogSlice) types.ChangeLogSlice {
 	combineResult := make([][]*types.ChangeLog, LOG_TYPE_STOP)
 	for _, log := range logs {
 		if needMerge(log.LogType) {
-			// if needDel(log.LogType) {
-			// 	continue
-			// }
-
 			if combineResult[log.LogType] == nil {
-				combineResult[log.LogType] = make([]*types.ChangeLog, 1)
-				combineResult[log.LogType][0] = log
+				combineResult[log.LogType] = make([]*types.ChangeLog, 0)
+				combineResult[log.LogType] = append(combineResult[log.LogType], log)
+				// combineResult[log.LogType][0] = log
 			} else {
-				combineResult[log.LogType][0].NewVal = log.NewVal
-				combineResult[log.LogType][0].Extra = log.Extra
+				combineResult[log.LogType] = append(combineResult[log.LogType], log)
+				// combineResult[log.LogType][0].NewVal = log.NewVal
+				// combineResult[log.LogType][0].Extra = log.Extra
 			}
 		} else {
 			if combineResult[log.LogType] == nil {

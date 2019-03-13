@@ -1023,40 +1023,40 @@ func TestModifyAssetProfile(t *testing.T) {
 	assert.NoError(t, err)
 	lemo01, err := issuerAcc.GetAssetCodeState(asset01Code, "lemo")
 	assert.NoError(t, err)
-	zyj01, err := issuerAcc.GetAssetCodeState(asset01Code, "zyj")
+	zyj01, err := issuerAcc.GetAssetCodeState(asset01Code, "aaa")
 	assert.NoError(t, err)
-	assert.Equal(t, "Modify", name01)
-	assert.Equal(t, "lemo", lemo01)
-	assert.Equal(t, "zyj", zyj01)
+	assert.Equal(t, "modify", name01)
+	assert.Equal(t, "lemo1", lemo01)
+	assert.Equal(t, "aaa1", zyj01)
 	//
 	name02, err := issuerAcc.GetAssetCodeState(asset02Code, "name")
 	assert.NoError(t, err)
 	lemo02, err := issuerAcc.GetAssetCodeState(asset02Code, "lemo")
 	assert.NoError(t, err)
-	zyj02, err := issuerAcc.GetAssetCodeState(asset02Code, "zyj")
+	zyj02, err := issuerAcc.GetAssetCodeState(asset02Code, "aaa")
 	assert.NoError(t, err)
-	assert.Equal(t, "Modify", name02)
-	assert.Equal(t, "lemo", lemo02)
-	assert.Equal(t, "zyj", zyj02)
+	assert.Equal(t, "modify", name02)
+	assert.Equal(t, "lemo1", lemo02)
+	assert.Equal(t, "aaa1", zyj02)
 	//
 	name03, err := issuerAcc.GetAssetCodeState(asset03Code, "name")
 	assert.NoError(t, err)
 	lemo03, err := issuerAcc.GetAssetCodeState(asset03Code, "lemo")
 	assert.NoError(t, err)
-	zyj03, err := issuerAcc.GetAssetCodeState(asset03Code, "zyj")
+	zyj03, err := issuerAcc.GetAssetCodeState(asset03Code, "aaa")
 	assert.NoError(t, err)
-	assert.Equal(t, "Modify", name03)
-	assert.Equal(t, "lemo", lemo03)
-	assert.Equal(t, "zyj", zyj03)
+	assert.Equal(t, "modify", name03)
+	assert.Equal(t, "lemo1", lemo03)
+	assert.Equal(t, "aaa1", zyj03)
 
 }
 
 // new 修改资产交易
 func newModifyAssetTx(private *ecdsa.PrivateKey, assetCode common.Hash) (*types.Transaction, error) {
 	info := make(types.Profile)
-	info["name"] = "Modify"
-	info["lemo"] = "lemo"
-	info["ZYJ"] = "zyj"
+	info["name"] = "modify"
+	info["lemo"] = "lemo1"
+	info["aaa"] = "aaa1"
 	modify := &types.ModifyAssetInfo{
 		AssetCode: assetCode,
 		Info:      info,
