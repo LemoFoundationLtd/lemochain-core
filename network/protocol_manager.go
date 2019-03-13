@@ -17,6 +17,7 @@ import (
 const (
 	ForceSyncInternal = 10 * time.Second
 	DiscoverInternal  = 10 * time.Second
+	DefaultLimit      = 50 // default connection limit
 )
 
 // just for test
@@ -46,10 +47,10 @@ type ProtocolManager struct {
 	nodeID      p2p.NodeID
 	nodeVersion uint32
 
-	chain    BlockChain
-	discover *p2p.DiscoverManager
-	txPool   TxPool
-
+	chain         BlockChain
+	discover      *p2p.DiscoverManager
+	txPool        TxPool
+	limit         int
 	peers         *peerSet      // connected peers
 	confirmsCache *ConfirmCache // received confirm info before block, cache them
 	blockCache    *BlockCache
@@ -72,7 +73,10 @@ type ProtocolManager struct {
 	testOutput chan int
 }
 
-func NewProtocolManager(chainID uint16, nodeID p2p.NodeID, chain BlockChain, txPool TxPool, discover *p2p.DiscoverManager, nodeVersion uint32) *ProtocolManager {
+func NewProtocolManager(chainID uint16, nodeID p2p.NodeID, chain BlockChain, txPool TxPool, discover *p2p.DiscoverManager, limit int, nodeVersion uint32) *ProtocolManager {
+	if limit == 0 {
+		limit = DefaultLimit
+	}
 	pm := &ProtocolManager{
 		chainID:       chainID,
 		nodeID:        nodeID,
@@ -80,6 +84,7 @@ func NewProtocolManager(chainID uint16, nodeID p2p.NodeID, chain BlockChain, txP
 		chain:         chain,
 		txPool:        txPool,
 		discover:      discover,
+		limit:         limit,
 		peers:         NewPeerSet(discover),
 		confirmsCache: NewConfirmCache(),
 		blockCache:    NewBlockCache(),
@@ -362,11 +367,13 @@ func (pm *ProtocolManager) peerLoop() {
 			log.Info("peerLoop finished")
 			return
 		case rPeer := <-pm.addPeerCh: // new peer added
-			p := newPeer(rPeer)
-			go pm.handlePeer(p)
-			// for test
-			if pm.test {
-				pm.testOutput <- testAddPeer
+			if pm.checkConnectionLimit(rPeer) {
+				p := newPeer(rPeer)
+				go pm.handlePeer(p)
+				// for test
+				if pm.test {
+					pm.testOutput <- testAddPeer
+				}
 			}
 		case rPeer := <-pm.removePeerCh:
 			p := newPeer(rPeer)
@@ -400,6 +407,25 @@ func (pm *ProtocolManager) peerLoop() {
 			}
 		}
 	}
+}
+
+func (pm *ProtocolManager) checkConnectionLimit(p p2p.IPeer) bool {
+	height := pm.chain.CurrentBlock().Height() + 1
+	rNodeID := *(p.RNodeID())
+	// deputy node
+	if n := deputynode.Instance().GetDeputyByNodeID(height, rNodeID[:]); n != nil {
+		return true
+	}
+	// if node in white list
+	if pm.discover.InWhiteList(rNodeID) {
+		return true
+	}
+	// limit
+	connected := pm.peers.DelayNodes(height)
+	if len(connected) <= pm.limit {
+		return true
+	}
+	return false
 }
 
 // broadcastTxs broadcast transaction

@@ -422,6 +422,13 @@ func (m *DiscoverManager) writeFindFile() {
 	}
 }
 
+// InWhiteList node in white list
+func (m *DiscoverManager) InWhiteList(nodeID NodeID) (ok bool) {
+	key := crypto.Keccak256Hash(nodeID[:])
+	_, ok = m.whiteNodes[key]
+	return
+}
+
 // checkNodeString verify invalid
 func checkNodeString(node string) (*NodeID, string) {
 	tmp := strings.Split(node, "@")
