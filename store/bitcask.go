@@ -495,7 +495,7 @@ type inject struct {
 
 type queue struct {
 	after   AfterScan
-	cache   map[string]RIndex
+	cache   sync.Map
 	inject  chan *inject
 	quit    chan struct{}
 	indexDB *leveldb.LevelDBDatabase
@@ -505,7 +505,6 @@ type queue struct {
 func NewQueue(after AfterScan, indexDB *leveldb.LevelDBDatabase) *queue {
 	return &queue{
 		after:   after,
-		cache:   make(map[string]RIndex),
 		inject:  make(chan *inject),
 		quit:    make(chan struct{}),
 		indexDB: indexDB,
@@ -513,11 +512,20 @@ func NewQueue(after AfterScan, indexDB *leveldb.LevelDBDatabase) *queue {
 }
 
 func (q *queue) set(route []byte, item *element) {
-	q.rw.Lock()
 	items := make([]*element, 1)
 	items[0] = item
 	op := q.batch(route, items)
-	q.rw.Unlock()
+
+	select {
+	case q.inject <- op:
+		return
+	case <-q.quit:
+		return
+	}
+}
+
+func (q *queue) setBatch(route []byte, items []*element) {
+	op := q.batch(route, items)
 
 	select {
 	case q.inject <- op:
@@ -529,11 +537,11 @@ func (q *queue) set(route []byte, item *element) {
 
 func (q *queue) batch(route []byte, items []*element) *inject {
 	for index := 0; index < len(items); index++ {
-		q.cache[string(items[index].item.Key)] = RIndex{
+		q.cache.Store(string(items[index].item.Key), RIndex{
 			flg: items[index].item.Flg,
 			pos: items[index].offset,
 			len: items[index].len,
-		}
+		})
 	}
 
 	return &inject{
@@ -542,31 +550,17 @@ func (q *queue) batch(route []byte, items []*element) *inject {
 	}
 }
 
-func (q *queue) setBatch(route []byte, items []*element) {
-	q.rw.Lock()
-	op := q.batch(route, items)
-	q.rw.Unlock()
-
-	select {
-	case q.inject <- op:
-		return
-	case <-q.quit:
-		return
-	}
-}
-
 func (q *queue) get(key []byte) *RIndex {
-	q.rw.Lock()
-	index, ok := q.cache[string(key)]
-	q.rw.Unlock()
+	index, ok := q.cache.Load(string(key))
 
 	if !ok {
 		return nil
 	} else {
+		tmp := index.(RIndex)
 		return &RIndex{
-			flg: index.flg,
-			pos: index.pos,
-			len: index.len,
+			flg: tmp.flg,
+			pos: tmp.pos,
+			len: tmp.len,
 		}
 	}
 }
@@ -587,9 +581,7 @@ func (q *queue) loop() {
 
 			for index := 0; index < len(elements); index++ {
 				element := elements[index]
-				q.rw.Lock()
-				_, ok := q.cache[string(element.item.Key)]
-				q.rw.Unlock()
+				_, ok := q.cache.Load(string(element.item.Key))
 				if !ok {
 					continue
 				} else {
@@ -612,9 +604,7 @@ func (q *queue) loop() {
 					if err != nil {
 						panic("q.after err: " + err.Error())
 					} else {
-						q.rw.Lock()
-						delete(q.cache, string(element.item.Key))
-						q.rw.Unlock()
+						q.cache.Delete(string(element.item.Key))
 					}
 				}
 			}
