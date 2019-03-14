@@ -3,6 +3,7 @@ package types
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
@@ -44,7 +45,7 @@ func ExpirationFromNow() uint64 {
 func TestNewTransaction(t *testing.T) {
 	expiration := ExpirationFromNow()
 	tx := NewTransaction(common.HexToAddress("0x1"), common.Big1, 100, common.Big2, []byte{12}, 0, 200, expiration, "aa", "")
-	assert.Equal(t, uint8(0), tx.Type())
+	assert.Equal(t, params.OrdinaryTx, tx.Type())
 	assert.Equal(t, TxVersion, tx.Version())
 	assert.Equal(t, uint16(200), tx.ChainID())
 	assert.Equal(t, big.NewInt(0x200c8), tx.data.V)
@@ -61,7 +62,7 @@ func TestNewTransaction(t *testing.T) {
 func TestNewContractCreation(t *testing.T) {
 	expiration := ExpirationFromNow()
 	tx := NewContractCreation(common.Big1, 100, common.Big2, []byte{12}, 0, 200, expiration, "aa", "")
-	assert.Equal(t, uint8(0), tx.Type())
+	assert.Equal(t, params.OrdinaryTx, tx.Type())
 	assert.Equal(t, TxVersion, tx.Version())
 	assert.Equal(t, uint16(200), tx.ChainID())
 	assert.Equal(t, big.NewInt(0x200c8), tx.data.V)
