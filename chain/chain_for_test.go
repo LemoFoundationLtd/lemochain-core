@@ -295,6 +295,33 @@ func signTransaction(tx *types.Transaction, private *ecdsa.PrivateKey) *types.Tr
 	return tx
 }
 
+// createAccounts creates random accounts and transfer LEMO to them
+func createAccounts(n int, db protocol.ChainDB) (common.Hash, []*crypto.AccountKey) {
+	accountKeys := make([]*crypto.AccountKey, n, n)
+	txs := make(types.Transactions, n, n)
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	// [0, 100) LEMO
+	maxAmount, _ := new(big.Int).SetString("100000000000000000000", 10)
+	for i := 0; i < n; i++ {
+		accountKey, err := crypto.GenerateAddress()
+		if err != nil {
+			panic(err)
+		}
+		accountKeys[i] = accountKey
+		txs[i] = makeTx(testPrivate, accountKey.Address, params.OrdinaryTx, new(big.Int).Rand(r, maxAmount))
+	}
+	newBlock := makeBlock(db, blockInfo{
+		height:     3,
+		parentHash: defaultBlocks[2].Hash(),
+		author:     defaultAccounts[0],
+		time:       1538209761,
+		txList:     txs,
+		gasLimit:   2100000000,
+	}, true)
+	return newBlock.Hash(), accountKeys
+}
+
 // h returns hash for test
 func h(i int64) common.Hash { return common.HexToHash(fmt.Sprintf("0xa%x", i)) }
 
