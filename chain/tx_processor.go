@@ -38,10 +38,10 @@ type TxProcessor struct {
 }
 
 type ApplyTxsResult struct {
-	Txs     types.Transactions // The transactions executed indeed. These transactions will be packaged in a block
-	Events  []*types.Event     // contract events
-	Bloom   types.Bloom        // used to search contract events
-	GasUsed uint64             // gas used by all transactions
+	Txs    types.Transactions // The transactions executed indeed. These transactions will be packaged in a block
+	Events []*types.Event     // contract events
+	// Bloom   types.Bloom        // used to search contract events
+	GasUsed uint64 // gas used by all transactions
 }
 
 func NewTxProcessor(bc *BlockChain) *TxProcessor {
@@ -384,8 +384,8 @@ func (p *TxProcessor) FillHeader(header *types.Header, txs types.Transactions, g
 	if len(txs) > 0 {
 		log.Infof("process %d transactions: %v", len(txs))
 	}
-	events := p.am.GetEvents()
-	header.Bloom = types.CreateBloom(events)
+	// events := p.am.GetEvents()
+	// header.Bloom = types.CreateBloom(events)
 	header.GasUsed = gasUsed
 	header.TxRoot = types.DeriveTxsSha(txs)
 	// Pay miners at the end of their tenure. This method increases miners' balance.
