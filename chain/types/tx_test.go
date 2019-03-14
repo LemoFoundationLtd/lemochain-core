@@ -344,3 +344,21 @@ func TestParseV(t *testing.T) {
 
 	fmt.Println(crypto.GenerateAddress())
 }
+
+func TestGasPgnatureTx(t *testing.T) {
+	type A struct {
+		aa common.Hash
+		bb []byte
+	}
+	h := &A{}
+	if h.aa == (common.Hash{}) {
+		t.Log("hash")
+	}
+	if h.bb == nil {
+		t.Log("byte", h.bb)
+	}
+	var dd []byte
+	if dd == nil {
+		t.Log(dd)
+	}
+}

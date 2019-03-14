@@ -168,7 +168,7 @@ func (d *Dpovp) Seal(header *types.Header, txs []*types.Transaction, changeLog [
 func (d *Dpovp) Finalize(header *types.Header, am *account.Manager) {
 	// handout rewards
 	if deputynode.Instance().TimeToHandOutRewards(header.Height) {
-		term := (header.Height-params.InterimDuration)/params.TermDuration - 1
+		term := (header.Height - params.InterimDuration) / params.TermDuration
 		termRewards, err := getTermRewardValue(am, term)
 		if err != nil {
 			log.Warnf("Rewards failed: %v", err)
