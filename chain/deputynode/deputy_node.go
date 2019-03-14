@@ -111,7 +111,7 @@ func (nodes DeputyNodes) String() string {
 }
 
 type DeputyNodesRecord struct {
-	height uint32 // 0, 100W+1K, 200W+1K, 300W+1K, 400W+1K...
+	height uint32 // 0, 100W+1K+1, 200W+1K+1, 300W+1K+1, 400W+1K+1...
 	nodes  DeputyNodes
 }
 
@@ -251,7 +251,7 @@ func (d *Manager) GetNodeRankByAddress(height uint32, addr common.Address) int {
 // TimeToHandOutRewards 是否该发出块奖励了
 func (d *Manager) TimeToHandOutRewards(height uint32) bool {
 	for i := 1; i < len(d.DeputyNodesList); i++ {
-		if d.DeputyNodesList[i].height+params.InterimDuration == height {
+		if d.DeputyNodesList[i].height == height {
 			return true
 		}
 	}
