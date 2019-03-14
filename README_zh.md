@@ -52,7 +52,8 @@ go build
 	"dbUri": "root:123456@tcp(127.0.0.1:3306)/lemochain?charset=utf8mb4",
 	"dbDriver": "mysql",
 	"termDuration": "1000000",
-	"interimDuration":"1000"
+	"interimDuration":"1000",
+	"connectionLimit":"20"
 }
 ```
 - `chainID` LemoChain的ID，不能为0
@@ -62,6 +63,7 @@ go build
 - `dbDriver` 数据库类型
 - `termDuration` 两个快照块之间间隔的区块数
 - `interimDuration` 过渡期区块数
+- `connectionLimit` 最大连接数（代理节点、白名单除外）
 
 ### 节点白名单
 节点启动后会自动连接这些节点，位于datadir根目录下，名为：`whitelist`  
