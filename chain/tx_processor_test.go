@@ -1211,7 +1211,7 @@ func TestMaxAssetProfile(t *testing.T) {
 	t.Logf("max gasUsed : %d", gasUsed)
 }
 
-func BenchmarkTx(b *testing.B) {
+func BenchmarkApplyTxs(b *testing.B) {
 	store.ClearData()
 	bc := newChain()
 	defer bc.db.Close()
@@ -1238,13 +1238,57 @@ func BenchmarkTx(b *testing.B) {
 		amount := new(big.Int).Rand(r, fromBalance)                  // maybe too many if we make transaction more than twice from same address
 		txs[i] = makeTx(fromPrivate, to, params.OrdinaryTx, amount)
 	}
-	// clear account cache
-	// p.am.Reset(blockHash)
 
 	start := time.Now().UnixNano()
 	b.ResetTimer()
 	_, selectedTxs, invalidTxs, err := p.ApplyTxs(header, txs)
-	fmt.Printf("BenchmarkTx cost %dms\n", (time.Now().UnixNano()-start)/1000000)
+	fmt.Printf("BenchmarkApplyTxs cost %dms\n", (time.Now().UnixNano()-start)/1000000)
 	assert.NoError(b, err)
-	fmt.Printf("%d transactions sucess, %d transactions fail", len(selectedTxs), len(invalidTxs))
+	fmt.Printf("%d transactions success, %d transactions fail\n", len(selectedTxs), len(invalidTxs))
+}
+
+func BenchmarkMakeBlock(b *testing.B) {
+	store.ClearData()
+	bc := newChain()
+	defer bc.db.Close()
+	p := NewTxProcessor(bc)
+	balanceRecord := make(map[common.Address]*big.Int)
+
+	// prepare account and balance
+	blockHash, accountKeys := createAccounts(b.N, bc.db)
+	bc.am.Reset(blockHash)
+	bc.db.SetStableBlock(blockHash)
+	// make txs
+	txs := make(types.Transactions, b.N, b.N)
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	for i := 0; i < b.N; i++ {
+		fromKey := accountKeys[r.Intn(b.N)]
+		fromPrivate, _ := crypto.ToECDSA(common.FromHex(fromKey.Private))
+		to := accountKeys[r.Intn(b.N)].Address
+		fromBalance, ok := balanceRecord[fromKey.Address]
+		if !ok {
+			fromBalance = p.am.GetAccount(fromKey.Address).GetBalance() // maybe 0
+		}
+		amount := new(big.Int).Rand(r, fromBalance)
+		balanceRecord[fromKey.Address] = new(big.Int).Sub(fromBalance, amount)
+		txs[i] = makeTx(fromPrivate, to, params.OrdinaryTx, amount)
+	}
+
+	start := time.Now().UnixNano()
+	b.ResetTimer()
+	newBlock := makeBlock(bc.db, blockInfo{
+		height:     4,
+		parentHash: blockHash,
+		author:     defaultAccounts[0],
+		time:       1538209762,
+		txList:     txs,
+		gasLimit:   2100000000,
+	}, true)
+	fmt.Printf("BenchmarkMakeBlock cost %dms\n", (time.Now().UnixNano()-start)/1000000)
+	fmt.Printf("%d transactions success, %d transactions fail\n", len(newBlock.Txs), b.N-len(newBlock.Txs))
+
+	startSave := time.Now().UnixNano()
+	bc.db.SetStableBlock(newBlock.Hash())
+	fmt.Printf("Saving stable to disk cost %dms\n", (time.Now().UnixNano()-startSave)/1000000)
+	time.Sleep(3 * time.Second)
 }
