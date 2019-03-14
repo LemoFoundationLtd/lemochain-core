@@ -48,7 +48,6 @@ func TestTxProcessor_Process(t *testing.T) {
 	block := defaultBlocks[2]
 	newHeader, err := p.Process(block)
 	assert.NoError(t, err)
-	// assert.Equal(t, block.Header.Bloom, newHeader.Bloom)
 	assert.Equal(t, block.Header.GasUsed, newHeader.GasUsed)
 	assert.Equal(t, block.Header.TxRoot, newHeader.TxRoot)
 	assert.Equal(t, block.Header.VersionRoot, newHeader.VersionRoot)
@@ -60,7 +59,6 @@ func TestTxProcessor_Process(t *testing.T) {
 	block = defaultBlocks[3]
 	newHeader, err = p.Process(block)
 	assert.NoError(t, err)
-	// assert.Equal(t, block.Header.Bloom, newHeader.Bloom)
 	assert.Equal(t, block.Header.GasUsed, newHeader.GasUsed)
 	assert.Equal(t, block.Header.TxRoot, newHeader.TxRoot)
 	assert.Equal(t, block.Header.VersionRoot, newHeader.VersionRoot)
@@ -72,7 +70,6 @@ func TestTxProcessor_Process(t *testing.T) {
 	block = defaultBlocks[0]
 	newHeader, err = p.Process(block)
 	assert.NoError(t, err)
-	// assert.Equal(t, block.Header.Bloom, newHeader.Bloom)
 	assert.Equal(t, block.Header.GasUsed, newHeader.GasUsed)
 	assert.Equal(t, block.Header.TxRoot, newHeader.TxRoot)
 	assert.Equal(t, block.Header.VersionRoot, newHeader.VersionRoot)
@@ -83,7 +80,6 @@ func TestTxProcessor_Process(t *testing.T) {
 	block = createNewBlock(bc.db)
 	newHeader, err = p.Process(block)
 	assert.NoError(t, err)
-	// assert.Equal(t, block.Header.Bloom, newHeader.Bloom)
 	assert.Equal(t, block.Header.GasUsed, newHeader.GasUsed)
 	assert.Equal(t, block.Header.TxRoot, newHeader.TxRoot)
 	assert.Equal(t, block.Header.VersionRoot, newHeader.VersionRoot)
@@ -187,7 +183,6 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 	}
 	newHeader, selectedTxs, invalidTxs, err := p.ApplyTxs(emptyHeader, txs)
 	assert.NoError(t, err)
-	// assert.Equal(t, header.Bloom, newHeader.Bloom)
 	assert.Equal(t, header.GasUsed, newHeader.GasUsed)
 	assert.Equal(t, header.TxRoot, newHeader.TxRoot)
 	assert.Equal(t, header.VersionRoot, newHeader.VersionRoot)
@@ -210,7 +205,6 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 	}
 	newHeader, selectedTxs, invalidTxs, err = p.ApplyTxs(emptyHeader, txs)
 	assert.NoError(t, err)
-	// assert.Equal(t, header.Bloom, newHeader.Bloom)
 	assert.Equal(t, header.GasUsed, newHeader.GasUsed)
 	assert.Equal(t, header.TxRoot, newHeader.TxRoot)
 	assert.Equal(t, header.VersionRoot, newHeader.VersionRoot)
@@ -234,7 +228,6 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 	origBalance := author.GetBalance()
 	newHeader, selectedTxs, invalidTxs, err = p.ApplyTxs(emptyHeader, nil)
 	assert.NoError(t, err)
-	// assert.Equal(t, types.Bloom{}, newHeader.Bloom)
 	emptyTrieHash := common.HexToHash("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470")
 	assert.Equal(t, emptyTrieHash, newHeader.TxRoot)
 	assert.Equal(t, emptyTrieHash, newHeader.LogRoot)
@@ -255,7 +248,6 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 	}
 	newHeader, selectedTxs, invalidTxs, err = p.ApplyTxs(emptyHeader, txs)
 	assert.NoError(t, err)
-	// assert.Equal(t, header.Bloom, newHeader.Bloom)
 	assert.NotEqual(t, header.GasUsed, newHeader.GasUsed)
 	assert.NotEqual(t, header.TxRoot, newHeader.TxRoot)
 	assert.NotEqual(t, header.VersionRoot, newHeader.VersionRoot)
@@ -284,7 +276,6 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 	}
 	newHeader, selectedTxs, invalidTxs, err = p.ApplyTxs(emptyHeader, txs)
 	assert.NoError(t, err)
-	// assert.Equal(t, header.Bloom, newHeader.Bloom)
 	assert.Equal(t, header.GasUsed, newHeader.GasUsed)
 	assert.Equal(t, header.TxRoot, newHeader.TxRoot)
 	assert.Equal(t, header.VersionRoot, newHeader.VersionRoot)
@@ -1351,7 +1342,6 @@ func Test_rlpBlock(t *testing.T) {
 
 	block, _, err := newNextBlock(p, p.chain.stableBlock.Load().(*types.Block), types.Transactions{}, true)
 	assert.NoError(t, err)
-	// t.Log("bloom:", len(block.Bloom()))
 	t.Log("txRoot:", block.Header.TxRoot.String())
 	t.Log("logRoot:", block.Header.LogRoot.String())
 

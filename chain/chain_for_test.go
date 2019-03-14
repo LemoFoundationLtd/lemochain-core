@@ -240,12 +240,11 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 		VersionRoot:  info.versionRoot,
 		TxRoot:       info.txRoot,
 		LogRoot:      info.logRoot,
-		// Bloom:        types.CreateBloom(nil),
-		Height:   info.height,
-		GasLimit: info.gasLimit,
-		GasUsed:  gasUsed,
-		Time:     info.time,
-		Extra:    []byte{},
+		Height:       info.height,
+		GasLimit:     info.gasLimit,
+		GasUsed:      gasUsed,
+		Time:         info.time,
+		Extra:        []byte{},
 	}
 	if len(info.deputyRoot) > 0 {
 		header.DeputyRoot = make([]byte, len(info.deputyRoot))

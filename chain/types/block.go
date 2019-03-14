@@ -23,14 +23,13 @@ type Header struct {
 	VersionRoot  common.Hash    `json:"versionRoot"      gencodec:"required"`
 	TxRoot       common.Hash    `json:"transactionRoot"  gencodec:"required"`
 	LogRoot      common.Hash    `json:"changeLogRoot"    gencodec:"required"`
-	// Bloom        Bloom          `json:"eventBloom"       gencodec:"required"`
-	Height     uint32 `json:"height"           gencodec:"required"`
-	GasLimit   uint64 `json:"gasLimit"         gencodec:"required"`
-	GasUsed    uint64 `json:"gasUsed"          gencodec:"required"`
-	Time       uint32 `json:"timestamp"        gencodec:"required"`
-	SignData   []byte `json:"signData"         gencodec:"required"`
-	DeputyRoot []byte `json:"deputyRoot"`
-	Extra      []byte `json:"extraData"` // max length is 256 bytes
+	Height       uint32         `json:"height"           gencodec:"required"`
+	GasLimit     uint64         `json:"gasLimit"         gencodec:"required"`
+	GasUsed      uint64         `json:"gasUsed"          gencodec:"required"`
+	Time         uint32         `json:"timestamp"        gencodec:"required"`
+	SignData     []byte         `json:"signData"         gencodec:"required"`
+	DeputyRoot   []byte         `json:"deputyRoot"`
+	Extra        []byte         `json:"extraData"` // max length is 256 bytes
 }
 
 type headerMarshaling struct {
@@ -84,7 +83,6 @@ func (h *Header) Hash() common.Hash {
 		h.VersionRoot,
 		h.TxRoot,
 		h.LogRoot,
-		// h.Bloom,
 		h.Height,
 		h.GasLimit,
 		h.GasUsed,
@@ -127,7 +125,6 @@ func (h *Header) String() string {
 		fmt.Sprintf("VersionRoot: %s", h.VersionRoot.Hex()),
 		fmt.Sprintf("TxRoot: %s", h.TxRoot.Hex()),
 		fmt.Sprintf("LogRoot: %s", h.LogRoot.Hex()),
-		// fmt.Sprintf("Bloom: %s", common.ToHex(h.Bloom[:])),
 		fmt.Sprintf("Height: %d", h.Height),
 		fmt.Sprintf("GasLimit: %d", h.GasLimit),
 		fmt.Sprintf("GasUsed: %d", h.GasUsed),
@@ -149,14 +146,13 @@ type rlpHeader struct {
 	VersionRoot  common.Hash
 	TxRoot       []byte //
 	LogRoot      []byte //
-	// Bloom        []byte
-	Height     uint32
-	GasLimit   uint64
-	GasUsed    uint64
-	Time       uint32
-	SignData   []byte
-	DeputyRoot []byte
-	Extra      []byte
+	Height       uint32
+	GasLimit     uint64
+	GasUsed      uint64
+	Time         uint32
+	SignData     []byte
+	DeputyRoot   []byte
+	Extra        []byte
 }
 
 // EncodeRLP implements rlp.Encoder.
@@ -164,7 +160,6 @@ func (h *Header) EncodeRLP(w io.Writer) error {
 	var (
 		txRoot  []byte
 		logRoot []byte
-		// bloom   []byte
 	)
 	if h.TxRoot != emptyHash {
 		txRoot = h.TxRoot.Bytes()
@@ -174,24 +169,19 @@ func (h *Header) EncodeRLP(w io.Writer) error {
 		logRoot = h.LogRoot.Bytes()
 	}
 
-	// if h.Bloom != (Bloom{}) {
-	// 	bloom = h.Bloom.Bytes()
-	// }
-
 	return rlp.Encode(w, rlpHeader{
 		ParentHash:   h.ParentHash,
 		MinerAddress: h.MinerAddress,
 		VersionRoot:  h.VersionRoot,
 		TxRoot:       txRoot,
 		LogRoot:      logRoot,
-		// Bloom:        bloom,
-		Height:     h.Height,
-		GasLimit:   h.GasLimit,
-		GasUsed:    h.GasUsed,
-		Time:       h.Time,
-		SignData:   h.SignData,
-		DeputyRoot: h.DeputyRoot,
-		Extra:      h.Extra,
+		Height:       h.Height,
+		GasLimit:     h.GasLimit,
+		GasUsed:      h.GasUsed,
+		Time:         h.Time,
+		SignData:     h.SignData,
+		DeputyRoot:   h.DeputyRoot,
+		Extra:        h.Extra,
 	})
 }
 
@@ -214,9 +204,6 @@ func (h *Header) DecodeRLP(s *rlp.Stream) error {
 		} else {
 			h.LogRoot = emptyHash
 		}
-		// if len(dec.Bloom) > 0 {
-		// 	h.Bloom = BytesToBloom(dec.Bloom)
-		// }
 	}
 	return err
 }
@@ -229,7 +216,6 @@ func (b *Block) VersionRoot() common.Hash     { return b.Header.VersionRoot }
 func (b *Block) TxHash() common.Hash          { return b.Header.TxRoot }
 func (b *Block) LogsHash() common.Hash        { return b.Header.LogRoot }
 
-// func (b *Block) Bloom() Bloom                 { return b.Header.Bloom }
 func (b *Block) GasLimit() uint64 { return b.Header.GasLimit }
 func (b *Block) GasUsed() uint64  { return b.Header.GasUsed }
 func (b *Block) Time() uint32     { return b.Header.Time }
