@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"sync"
+	"time"
 )
 
 var max_candidate_count = 20
@@ -23,7 +24,7 @@ type ChainDatabase struct {
 	LevelDB         *leveldb.LevelDBDatabase
 	Beansdb         *BeansDB
 	BizDB           *BizDatabase
-	rw              sync.RWMutex
+	RW              sync.RWMutex
 }
 
 func checkHome(home string) error {
@@ -59,7 +60,12 @@ func NewChainDataBase(home string, driver string, dns string) *ChainDatabase {
 	db.BizDB = NewBizDatabase(db, db.LevelDB)
 	db.Beansdb = NewBeansDB(home, 2, db.LevelDB, db.AfterScan)
 
-	db.LastConfirm = NewGenesisBlock(db.Context.GetStableBlock(), db.Beansdb)
+	stableBlock, err := db.GetStableBlock()
+	if err != nil {
+		panic("get stable block err: " + err.Error())
+	}
+
+	db.LastConfirm = NewGenesisBlock(stableBlock, db.Beansdb)
 	candidates, err := db.Context.Candidates.GetCandidates()
 	if err != nil {
 		panic("get candidates err: " + err.Error())
@@ -68,6 +74,24 @@ func NewChainDataBase(home string, driver string, dns string) *ChainDatabase {
 	}
 
 	return db
+}
+
+func (database *ChainDatabase) GetStableBlock() (*types.Block, error) {
+	stableBlockHash, err := leveldb.GetCurrentBlock(database.LevelDB)
+	if err != nil {
+		panic("get current block err: " + err.Error())
+	}
+
+	if stableBlockHash == (common.Hash{}) {
+		return nil, nil
+	}
+
+	stableBlock, err := database.GetBlockByHash(stableBlockHash)
+	if err != nil {
+		return nil, err
+	}
+
+	return stableBlock, nil
 }
 
 func (database *ChainDatabase) GetLastConfirm() *CBlock {
@@ -134,12 +158,20 @@ func (database *ChainDatabase) blockCommit(hash common.Hash) error {
 	}
 
 	commitContext := func(block *types.Block, candidates []*Candidate) error {
+		err = leveldb.SetCurrentBlock(database.LevelDB, cItem.Block.Hash())
+		if err != nil {
+			return err
+		}
+
+		if len(candidates) <= 0 {
+			return nil
+		}
+
 		err := database.Context.SetCandidates(candidates)
 		if err != nil {
 			return err
 		}
 
-		database.Context.SetStableBlock(cItem.Block)
 		return database.Context.Flush()
 	}
 
@@ -230,8 +262,8 @@ func (database *ChainDatabase) SizeOfValue(hash common.Hash) (int, error) {
 }
 
 func (database *ChainDatabase) GetBlock(hash common.Hash, height uint32) (*types.Block, error) {
-	database.rw.Lock()
-	defer database.rw.Unlock()
+	database.RW.Lock()
+	defer database.RW.Unlock()
 
 	block, err := database.getBlock(hash)
 	if err != nil {
@@ -246,8 +278,8 @@ func (database *ChainDatabase) GetBlock(hash common.Hash, height uint32) (*types
 }
 
 func (database *ChainDatabase) GetBlockByHeight(height uint32) (*types.Block, error) {
-	database.rw.Lock()
-	defer database.rw.Unlock()
+	database.RW.Lock()
+	defer database.RW.Unlock()
 
 	val, err := database.Beansdb.Get(leveldb.GetCanonicalKey(height))
 	if err != nil {
@@ -271,8 +303,8 @@ func (database *ChainDatabase) GetBlockByHeight(height uint32) (*types.Block, er
 }
 
 func (database *ChainDatabase) GetBlockByHash(hash common.Hash) (*types.Block, error) {
-	database.rw.Lock()
-	defer database.rw.Unlock()
+	database.RW.Lock()
+	defer database.RW.Unlock()
 
 	return database.getBlock(hash)
 }
@@ -291,15 +323,15 @@ func (database *ChainDatabase) isExistByHash(hash common.Hash) (bool, error) {
 }
 
 func (database *ChainDatabase) IsExistByHash(hash common.Hash) (bool, error) {
-	database.rw.Lock()
-	defer database.rw.Unlock()
+	database.RW.Lock()
+	defer database.RW.Unlock()
 
 	return database.isExistByHash(hash)
 }
 
 func (database *ChainDatabase) SetBlock(hash common.Hash, block *types.Block) error {
-	database.rw.Lock()
-	defer database.rw.Unlock()
+	database.RW.Lock()
+	defer database.RW.Unlock()
 
 	isExist, err := database.isExistByHash(hash)
 	if err != nil {
@@ -411,8 +443,8 @@ func (database *ChainDatabase) setConfirm(hash common.Hash, confirms []types.Sig
 
 // 设置区块的确认信息 每次收到一个
 func (database *ChainDatabase) SetConfirm(hash common.Hash, signData types.SignData) error {
-	database.rw.Lock()
-	defer database.rw.Unlock()
+	database.RW.Lock()
+	defer database.RW.Unlock()
 
 	confirms := make([]types.SignData, 0)
 	confirms = append(confirms, signData)
@@ -420,15 +452,15 @@ func (database *ChainDatabase) SetConfirm(hash common.Hash, signData types.SignD
 }
 
 func (database *ChainDatabase) SetConfirms(hash common.Hash, pack []types.SignData) error {
-	database.rw.Lock()
-	defer database.rw.Unlock()
+	database.RW.Lock()
+	defer database.RW.Unlock()
 
 	return database.setConfirm(hash, pack)
 }
 
 func (database *ChainDatabase) GetConfirms(hash common.Hash) ([]types.SignData, error) {
-	database.rw.Lock()
-	defer database.rw.Unlock()
+	database.RW.Lock()
+	defer database.RW.Unlock()
 
 	block, err := database.getBlock(hash)
 	if err != nil {
@@ -447,8 +479,8 @@ func (database *ChainDatabase) LoadLatestBlock() (*types.Block, error) {
 }
 
 func (database *ChainDatabase) SetStableBlock(hash common.Hash) error {
-	database.rw.Lock()
-	defer database.rw.Unlock()
+	database.RW.Lock()
+	defer database.RW.Unlock()
 
 	// log.Error("set stable block : " + hash.Hex())
 	cItem := database.UnConfirmBlocks[hash]
@@ -643,6 +675,7 @@ func (database *ChainDatabase) GetAssetID(id common.Hash) (common.Address, error
 
 func (database *ChainDatabase) Close() error {
 	if database.LevelDB != nil {
+		time.Sleep(1 * time.Second)
 		database.LevelDB.Close()
 		database.LevelDB = nil
 	}

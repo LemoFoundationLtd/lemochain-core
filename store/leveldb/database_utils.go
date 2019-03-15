@@ -1,6 +1,7 @@
 package leveldb
 
 import (
+	"bytes"
 	"encoding/binary"
 	"github.com/LemoFoundationLtd/lemochain-go/common"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
@@ -33,6 +34,11 @@ var (
 
 	assetIdPrefix = []byte("I")
 	assetIdSuffix = []byte("i")
+
+	lastScanPosPrefix = []byte("P")
+	lastScanPosSuffix = []byte("p")
+
+	currentBlockKey = []byte("LEMO-CURRENT-BLOCK")
 )
 
 type Position struct {
@@ -41,14 +47,72 @@ type Position struct {
 	Offset uint32
 }
 
-func encodeBlockNumber(height uint32) []byte {
+func toPosition(val []byte) (*Position, error) {
+	if len(val) <= 0 {
+		return nil, nil
+	} else {
+		var position Position
+		err := rlp.DecodeBytes(val, &position)
+		if err != nil {
+			return nil, err
+		} else {
+			return &position, nil
+		}
+	}
+}
+
+func GetCurrentBlock(db DatabaseReader) (common.Hash, error) {
+	val, err := db.Get(currentBlockKey)
+	if err != nil {
+		return common.Hash{}, err
+	}
+
+	if len(val) <= 0 {
+		return common.Hash{}, nil
+	}
+
+	return common.BytesToHash(val), nil
+}
+
+func SetCurrentBlock(db DatabasePutter, hash common.Hash) error {
+	return db.Put(currentBlockKey, hash.Bytes())
+}
+
+func GetScanPosKey(path string) []byte {
+	return append(append(lastScanPosPrefix, []byte(path)...), lastScanPosSuffix...)
+}
+
+func GetScanPos(db DatabaseReader, path string) (uint32, error) {
+	data, err := db.Get(GetScanPosKey(path))
+	if err != nil {
+		return 0, err
+	}
+
+	if len(data) <= 0 {
+		return 0, nil
+	}
+
+	var pos uint32
+	err = binary.Read(bytes.NewBuffer(data), binary.BigEndian, &pos)
+	if err != nil {
+		return 0, nil
+	}
+
+	return pos, nil
+}
+
+func SetScanPos(db DatabasePutter, path string, pos uint32) error {
+	return db.Put(GetScanPosKey(path), encodeNumber(pos))
+}
+
+func encodeNumber(height uint32) []byte {
 	enc := make([]byte, 4)
 	binary.BigEndian.PutUint32(enc, height)
 	return enc
 }
 
 func GetCanonicalKey(height uint32) []byte {
-	return append(append(heightPrefix, encodeBlockNumber(height)...), heightSuffix...)
+	return append(append(heightPrefix, encodeNumber(height)...), heightSuffix...)
 }
 
 func GetCanonicalHash(db DatabaseReader, height uint32) (common.Hash, error) {
@@ -70,20 +134,6 @@ func SetCanonicalHash(db DatabasePutter, height uint32, hash common.Hash) error 
 
 func GetBlockHashKey(hash common.Hash) []byte {
 	return append(append(hashPrefix, hash.Bytes()...), hashSuffix...)
-}
-
-func toPosition(val []byte) (*Position, error) {
-	if len(val) <= 0 {
-		return nil, nil
-	} else {
-		var position Position
-		err := rlp.DecodeBytes(val, &position)
-		if err != nil {
-			return nil, err
-		} else {
-			return &position, nil
-		}
-	}
 }
 
 func GetBlockHash(db DatabaseReader, hash common.Hash) (*Position, error) {

@@ -12,7 +12,7 @@ func TestBitCask_Put(t *testing.T) {
 	ClearData()
 	levelDB := leveldb.NewLevelDBDatabase(GetStorePath(), 16, 16)
 	defer levelDB.Close()
-	bitcask, err := NewBitCask(GetStorePath(), 0, 0, nil, levelDB)
+	bitcask, err := NewBitCask(GetStorePath(), nil, levelDB)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, bitcask)
@@ -35,7 +35,7 @@ func TestBitCask_Commit(t *testing.T) {
 	ClearData()
 	levelDB := leveldb.NewLevelDBDatabase(GetStorePath(), 16, 16)
 	defer levelDB.Close()
-	bitcask, err := NewBitCask(GetStorePath(), 0, 0, nil, levelDB)
+	bitcask, err := NewBitCask(GetStorePath(), nil, levelDB)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, bitcask)

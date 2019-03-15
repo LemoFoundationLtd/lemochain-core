@@ -43,7 +43,7 @@ func NewAccountDataWithVotes(address common.Address, val int64) *types.AccountDa
 }
 
 func NewAccountDataBatch(count int) []*types.AccountData {
-	result := make([]*types.AccountData, count, 100)
+	result := make([]*types.AccountData, count)
 	for index := 0; index < count; index++ {
 		result[index] = NewAccountData(common.HexToAddress(strconv.Itoa(index)), true)
 	}
