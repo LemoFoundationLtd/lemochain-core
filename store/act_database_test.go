@@ -850,3 +850,22 @@ func TestPatriciaTrie_Collected(t *testing.T) {
 	result = tmp1.Collected(3)
 	assert.Equal(t, 5, len(result))
 }
+
+func TestPatriciaTrie_PutBatch(t *testing.T) {
+	trie := NewEmptyDatabase()
+	triedb := NewAccountTrieDB(trie, new(TestReader))
+
+	result := NewAccountDataBatch(10000)
+	for index := 0; index < 10000; index++ {
+		// result[index].Balance, _ = new(big.Int).SetString("3000000000000000000000000", 10)
+		// result[index].Balance, _ = new(big.Int).SetString("3000000000000000000000000", 10)
+		// result[index].Balance, _ = new(big.Int).SetString("3000000000000000000000000", 10)
+		// result[index].Balance, _ = new(big.Int).SetString("3000000000000000000000000", 10)
+		result[index].Balance = new(big.Int).Set(new(big.Int).SetInt64(50000))
+		result[index].Balance = new(big.Int).Set(new(big.Int).SetInt64(50000))
+		result[index].Balance = new(big.Int).Set(new(big.Int).SetInt64(50000))
+		result[index].Balance = new(big.Int).Set(new(big.Int).SetInt64(50000))
+		triedb.Put(result[index], 100)
+		triedb.Get(result[index].Address)
+	}
+}
