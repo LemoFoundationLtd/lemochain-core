@@ -21,9 +21,7 @@ const MaxExtraDataLen = 256
 type Engine interface {
 	VerifyHeader(block *types.Block) error
 
-	Seal(header *types.Header, txs []*types.Transaction, changeLog []*types.ChangeLog) (*types.Block, error)
-
-	Finalize(header *types.Header, am *account.Manager)
+	Seal(header *types.Header, txs []*types.Transaction, gasUsed uint64, am *account.Manager, dNodes deputynode.DeputyNodes) (*types.Block, error)
 }
 
 type Dpovp struct {
@@ -93,11 +91,11 @@ func (d *Dpovp) VerifyHeader(block *types.Block) error {
 	if nodeCount == 1 {
 		return nil
 	}
-	// Verify that the block timestamp is less than the current time
+	// VerifyAndFill that the block timestamp is less than the current time
 	if err := verifyHeaderTime(block); err != nil {
 		return err
 	}
-	// Verify the block signature data
+	// VerifyAndFill the block signature data
 	if err := verifyHeaderSignData(block); err != nil {
 		return err
 	}
@@ -159,22 +157,38 @@ func (d *Dpovp) VerifyHeader(block *types.Block) error {
 }
 
 // Seal packaged into a block
-func (d *Dpovp) Seal(header *types.Header, txs []*types.Transaction, changeLog []*types.ChangeLog) (*types.Block, error) {
-	block := types.NewBlock(header, txs, changeLog, nil)
+func (d *Dpovp) Seal(header *types.Header, txs []*types.Transaction, gasUsed uint64, am *account.Manager, dNodes deputynode.DeputyNodes) (*types.Block, error) {
+	// Pay miners at the end of their tenure. This method increases miners' balance.
+	err := d.Finalize(header.Height, am)
+	if err != nil {
+		return nil, err
+	}
+
+	changeLogs := am.GetChangeLogs()
+	newHeader := header.Copy()
+	newHeader.VersionRoot = am.GetVersionRoot()
+	newHeader.LogRoot = types.DeriveChangeLogsSha(changeLogs)
+	newHeader.TxRoot = types.DeriveTxsSha(txs)
+	newHeader.GasUsed = gasUsed
+
+	block := types.NewBlock(newHeader, txs, changeLogs, nil)
+	if dNodes != nil {
+		block.SetDeputyNodes(dNodes)
+	}
 	return block, nil
 }
 
 // Finalize
-func (d *Dpovp) Finalize(header *types.Header, am *account.Manager) {
+func (d *Dpovp) Finalize(height uint32, am *account.Manager) error {
 	// handout rewards
-	if deputynode.Instance().TimeToHandOutRewards(header.Height) {
-		term := (header.Height - params.InterimDuration) / params.TermDuration
+	if deputynode.Instance().TimeToHandOutRewards(height) {
+		term := (height - params.InterimDuration) / params.TermDuration
 		termRewards, err := getTermRewardValue(am, term)
 		if err != nil {
-			log.Warnf("Rewards failed: %v", err)
-			return
+			log.Warnf("rewards failed: %v", err)
+			return err
 		}
-		rewards := deputynode.CalcSalary(header.Height, termRewards)
+		rewards := deputynode.CalcSalary(height, termRewards)
 		for _, item := range rewards {
 			acc := am.GetAccount(item.Address)
 			balance := acc.GetBalance()
@@ -182,6 +196,14 @@ func (d *Dpovp) Finalize(header *types.Header, am *account.Manager) {
 			acc.SetBalance(balance)
 		}
 	}
+
+	// finalize accounts
+	err := am.Finalise()
+	if err != nil {
+		log.Warnf("finalise manager failed: %v", err)
+		return err
+	}
+	return nil
 }
 
 // getTermRewardValue reward value of miners at the change of term

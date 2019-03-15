@@ -46,7 +46,6 @@ func (bc *testChain) StableBlock() *types.Block {
 }
 func (bc *testChain) InsertChain(block *types.Block, isSyncing bool) error { return nil }
 func (bc *testChain) SetStableBlock(hash common.Hash, height uint32) error { return nil }
-func (bc *testChain) Verify(block *types.Block) error                      { return nil }
 
 func (bc *testChain) ReceiveConfirm(info *BlockConfirmData) (err error) { return nil }
 

@@ -1,10 +1,8 @@
 package chain
 
 import (
-	"bytes"
 	"crypto/ecdsa"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
@@ -27,6 +25,7 @@ import (
 func TestNewTxProcessor(t *testing.T) {
 	store.ClearData()
 	chain := newChain()
+	defer chain.db.Close()
 	p := NewTxProcessor(chain)
 	assert.NotEqual(t, (*vm.Config)(nil), p.cfg)
 	assert.Equal(t, false, p.cfg.Debug)
@@ -47,45 +46,37 @@ func TestTxProcessor_Process(t *testing.T) {
 	p.am.GetAccount(testAddr)
 	// last not stable block
 	block := defaultBlocks[2]
-	newHeader, err := p.Process(block)
+	gasUsed, err := p.Process(block.Header, block.Txs)
 	assert.NoError(t, err)
-	assert.Equal(t, block.Header.GasUsed, newHeader.GasUsed)
-	assert.Equal(t, block.Header.TxRoot, newHeader.TxRoot)
-	assert.Equal(t, block.Header.VersionRoot, newHeader.VersionRoot)
-	assert.Equal(t, block.Header.LogRoot, newHeader.LogRoot)
-	assert.Equal(t, block.Hash(), newHeader.Hash())
+	assert.Equal(t, block.Header.GasUsed, gasUsed)
+	assert.Equal(t, block.Header.VersionRoot, p.am.GetVersionRoot())
+	assert.Equal(t, len(block.ChangeLogs), len(p.am.GetChangeLogs()))
 	p.am.GetAccount(testAddr)
 
 	// block not in db
 	block = defaultBlocks[3]
-	newHeader, err = p.Process(block)
+	gasUsed, err = p.Process(block.Header, block.Txs)
 	assert.NoError(t, err)
-	assert.Equal(t, block.Header.GasUsed, newHeader.GasUsed)
-	assert.Equal(t, block.Header.TxRoot, newHeader.TxRoot)
-	assert.Equal(t, block.Header.VersionRoot, newHeader.VersionRoot)
-	assert.Equal(t, block.Header.LogRoot, newHeader.LogRoot)
-	assert.Equal(t, block.Hash(), newHeader.Hash())
+	assert.Equal(t, block.Header.GasUsed, gasUsed)
+	assert.Equal(t, block.Header.VersionRoot, p.am.GetVersionRoot())
+	assert.Equal(t, len(block.ChangeLogs), len(p.am.GetChangeLogs()))
 	p.am.GetAccount(testAddr)
 
 	// genesis block
 	block = defaultBlocks[0]
-	newHeader, err = p.Process(block)
+	gasUsed, err = p.Process(block.Header, block.Txs)
 	assert.NoError(t, err)
-	assert.Equal(t, block.Header.GasUsed, newHeader.GasUsed)
-	assert.Equal(t, block.Header.TxRoot, newHeader.TxRoot)
-	assert.Equal(t, block.Header.VersionRoot, newHeader.VersionRoot)
-	assert.Equal(t, block.Header.LogRoot, newHeader.LogRoot)
-	assert.Equal(t, block.Hash(), newHeader.Hash())
+	assert.Equal(t, block.Header.GasUsed, gasUsed)
+	assert.Equal(t, block.Header.VersionRoot, p.am.GetVersionRoot())
+	assert.Equal(t, len(block.ChangeLogs), len(p.am.GetChangeLogs()))
 
 	// block on fork branch
 	block = createNewBlock(bc.db)
-	newHeader, err = p.Process(block)
+	gasUsed, err = p.Process(block.Header, block.Txs)
 	assert.NoError(t, err)
-	assert.Equal(t, block.Header.GasUsed, newHeader.GasUsed)
-	assert.Equal(t, block.Header.TxRoot, newHeader.TxRoot)
-	assert.Equal(t, block.Header.VersionRoot, newHeader.VersionRoot)
-	assert.Equal(t, block.Header.LogRoot, newHeader.LogRoot)
-	assert.Equal(t, block.Hash(), newHeader.Hash())
+	assert.Equal(t, block.Header.GasUsed, gasUsed)
+	assert.Equal(t, block.Header.VersionRoot, p.am.GetVersionRoot())
+	assert.Equal(t, len(block.ChangeLogs), len(p.am.GetChangeLogs()))
 }
 
 // test invalid block processing
@@ -104,7 +95,7 @@ func TestTxProcessor_Process2(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, new(big.Int).Add(block.Txs[0].Amount(), big.NewInt(1)), cpy.Amount())
 	block.Txs[0] = cpy
-	_, err = p.Process(block)
+	_, err = p.Process(block.Header, block.Txs)
 	assert.Equal(t, ErrInvalidTxInBlock, err)
 
 	// invalid signature
@@ -115,7 +106,7 @@ func TestTxProcessor_Process2(t *testing.T) {
 	err = rlp.DecodeBytes(rawTx, cpy)
 	assert.NoError(t, err)
 	block.Txs[0] = cpy
-	_, err = p.Process(block)
+	_, err = p.Process(block.Header, block.Txs)
 	assert.Equal(t, ErrInvalidTxInBlock, err)
 
 	// not enough gas (resign by another address)
@@ -126,20 +117,20 @@ func TestTxProcessor_Process2(t *testing.T) {
 	newFrom, _ := block.Txs[0].From()
 	assert.NotEqual(t, origFrom, newFrom)
 	block.Header.TxRoot = types.DeriveTxsSha(block.Txs)
-	_, err = p.Process(block)
+	_, err = p.Process(block.Header, block.Txs)
 	assert.Equal(t, ErrInvalidTxInBlock, err)
 
 	// exceed block gas limit
 	block = createNewBlock(bc.db)
 	block.Header.GasLimit = 1
-	_, err = p.Process(block)
+	_, err = p.Process(block.Header, block.Txs)
 	assert.Equal(t, ErrInvalidTxInBlock, err)
 
 	// used gas reach limit in some tx
 	block = createNewBlock(bc.db)
 	block.Txs[0] = makeTransaction(testPrivate, defaultAccounts[1], params.OrdinaryTx, big.NewInt(100), common.Big1, 0, 1)
 	block.Header.TxRoot = types.DeriveTxsSha(block.Txs)
-	_, err = p.Process(block)
+	_, err = p.Process(block.Header, block.Txs)
 	assert.Equal(t, ErrInvalidTxInBlock, err)
 
 	// balance not enough
@@ -147,7 +138,7 @@ func TestTxProcessor_Process2(t *testing.T) {
 	balance := p.am.GetAccount(testAddr).GetBalance()
 	block.Txs[0] = makeTx(testPrivate, defaultAccounts[1], params.OrdinaryTx, new(big.Int).Add(balance, big.NewInt(1)))
 	block.Header.TxRoot = types.DeriveTxsSha(block.Txs)
-	_, err = p.Process(block)
+	_, err = p.Process(block.Header, block.Txs)
 	assert.Equal(t, ErrInvalidTxInBlock, err)
 
 	// TODO test create or call contract fail
@@ -182,14 +173,10 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 		GasUsed:      header.GasUsed,
 		Time:         header.Time,
 	}
-	newHeader, selectedTxs, invalidTxs, err := p.ApplyTxs(emptyHeader, txs)
-	assert.NoError(t, err)
-	assert.Equal(t, header.GasUsed, newHeader.GasUsed)
-	assert.Equal(t, header.TxRoot, newHeader.TxRoot)
-	assert.Equal(t, header.VersionRoot, newHeader.VersionRoot)
-	assert.Equal(t, header.LogRoot, newHeader.LogRoot)
-	assert.Empty(t, newHeader.DeputyRoot)
-	assert.Equal(t, header.Hash(), newHeader.Hash())
+	selectedTxs, invalidTxs, gasUsed := p.ApplyTxs(emptyHeader, txs)
+	assert.Equal(t, header.GasUsed, gasUsed)
+	assert.Equal(t, header.VersionRoot, p.am.GetVersionRoot())
+	assert.Equal(t, defaultBlocks[2].ChangeLogs, p.am.GetChangeLogs())
 	assert.Equal(t, len(txs), len(selectedTxs))
 	assert.Equal(t, 0, len(invalidTxs))
 
@@ -204,13 +191,10 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 		GasUsed:      header.GasUsed,
 		Time:         header.Time,
 	}
-	newHeader, selectedTxs, invalidTxs, err = p.ApplyTxs(emptyHeader, txs)
-	assert.NoError(t, err)
-	assert.Equal(t, header.GasUsed, newHeader.GasUsed)
-	assert.Equal(t, header.TxRoot, newHeader.TxRoot)
-	assert.Equal(t, header.VersionRoot, newHeader.VersionRoot)
-	assert.Equal(t, header.LogRoot, newHeader.LogRoot)
-	assert.Equal(t, header.Hash(), newHeader.Hash())
+	selectedTxs, invalidTxs, gasUsed = p.ApplyTxs(emptyHeader, txs)
+	assert.Equal(t, header.GasUsed, gasUsed)
+	assert.Equal(t, header.VersionRoot, p.am.GetVersionRoot())
+	assert.Equal(t, defaultBlocks[3].ChangeLogs, p.am.GetChangeLogs())
 	assert.Equal(t, len(txs), len(selectedTxs))
 	assert.Equal(t, 0, len(invalidTxs))
 
@@ -227,11 +211,9 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 	p.am.Reset(emptyHeader.ParentHash)
 	author := p.am.GetAccount(header.MinerAddress)
 	origBalance := author.GetBalance()
-	newHeader, selectedTxs, invalidTxs, err = p.ApplyTxs(emptyHeader, nil)
-	assert.NoError(t, err)
-	emptyTrieHash := common.HexToHash("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470")
-	assert.Equal(t, emptyTrieHash, newHeader.TxRoot)
-	assert.Equal(t, emptyTrieHash, newHeader.LogRoot)
+	selectedTxs, invalidTxs, gasUsed = p.ApplyTxs(emptyHeader, nil)
+	assert.Equal(t, 0, gasUsed)
+	assert.Equal(t, defaultBlocks[2].VersionRoot(), p.am.GetVersionRoot()) // last block version root
 	assert.Equal(t, 0, len(selectedTxs))
 	assert.Equal(t, *origBalance, *author.GetBalance())
 	assert.Equal(t, 0, len(p.am.GetChangeLogs()))
@@ -247,13 +229,10 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 		GasUsed:      header.GasUsed,
 		Time:         header.Time,
 	}
-	newHeader, selectedTxs, invalidTxs, err = p.ApplyTxs(emptyHeader, txs)
-	assert.NoError(t, err)
-	assert.NotEqual(t, header.GasUsed, newHeader.GasUsed)
-	assert.NotEqual(t, header.TxRoot, newHeader.TxRoot)
-	assert.NotEqual(t, header.VersionRoot, newHeader.VersionRoot)
-	assert.NotEqual(t, header.LogRoot, newHeader.LogRoot)
-	assert.NotEqual(t, header.Hash(), newHeader.Hash())
+	selectedTxs, invalidTxs, gasUsed = p.ApplyTxs(emptyHeader, txs)
+	assert.Equal(t, header.GasUsed, gasUsed)
+	assert.Equal(t, header.VersionRoot, p.am.GetVersionRoot())
+	assert.Equal(t, true, len(defaultBlocks[3].ChangeLogs) < len(p.am.GetChangeLogs()))
 	assert.NotEqual(t, len(txs), len(selectedTxs))
 	assert.Equal(t, 0, len(invalidTxs))
 
@@ -275,13 +254,7 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 		makeTx(testPrivate, defaultAccounts[1], params.OrdinaryTx, new(big.Int).Add(balance, big.NewInt(1))),
 		txs[1],
 	}
-	newHeader, selectedTxs, invalidTxs, err = p.ApplyTxs(emptyHeader, txs)
-	assert.NoError(t, err)
-	assert.Equal(t, header.GasUsed, newHeader.GasUsed)
-	assert.Equal(t, header.TxRoot, newHeader.TxRoot)
-	assert.Equal(t, header.VersionRoot, newHeader.VersionRoot)
-	assert.Equal(t, header.LogRoot, newHeader.LogRoot)
-	assert.Equal(t, header.Hash(), newHeader.Hash())
+	selectedTxs, invalidTxs, _ = p.ApplyTxs(emptyHeader, txs)
 	assert.Equal(t, len(txs)-1, len(selectedTxs))
 	assert.Equal(t, 1, len(invalidTxs))
 }
@@ -311,9 +284,8 @@ func TestTxProcessor_ApplyTxs2(t *testing.T) {
 	txs := types.Transactions{
 		makeTx(testPrivate, defaultAccounts[1], params.OrdinaryTx, common.Big1),
 	}
-	newHeader, _, _, err := p.ApplyTxs(emptyHeader, txs)
-	assert.NoError(t, err)
-	assert.Equal(t, params.TxGas, newHeader.GasUsed)
+	_, _, GasUsed := p.ApplyTxs(emptyHeader, txs)
+	assert.Equal(t, params.TxGas, GasUsed)
 	newSenderBalance := p.am.GetAccount(testAddr).GetBalance()
 	newMinerBalance := p.am.GetAccount(defaultAccounts[0]).GetBalance()
 	newRecipientBalance := p.am.GetAccount(defaultAccounts[1]).GetBalance()
@@ -339,9 +311,8 @@ func TestTxProcessor_ApplyTxs2(t *testing.T) {
 	txs = types.Transactions{
 		makeTx(testPrivate, testAddr, params.OrdinaryTx, common.Big1),
 	}
-	newHeader, _, _, err = p.ApplyTxs(emptyHeader, txs)
-	assert.NoError(t, err)
-	assert.Equal(t, params.TxGas, newHeader.GasUsed)
+	_, _, GasUsed = p.ApplyTxs(emptyHeader, txs)
+	assert.Equal(t, params.TxGas, GasUsed)
 	newSenderBalance = p.am.GetAccount(testAddr).GetBalance()
 	cost = txs[0].GasPrice().Mul(txs[0].GasPrice(), big.NewInt(int64(params.TxGas)))
 	assert.Equal(t, senderBalance.Sub(senderBalance, cost), newSenderBalance)
@@ -373,9 +344,7 @@ func TestTxProcessor_candidateTX(t *testing.T) {
 
 	parentBlock := p.chain.stableBlock.Load().(*types.Block)
 	txs01 := types.Transactions{registerTx01, getBalanceTx01}
-	Block01, invalidTxs, err := newNextBlock(p, parentBlock, txs01, false)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(invalidTxs))
+	Block01 := newNextBlock(p, parentBlock, txs01, false)
 	bbb := Block01.ChangeLogs
 	BB, _ := rlp.EncodeToBytes(bbb[2])
 	fmt.Println("rlp: ", common.ToHex(BB))
@@ -384,10 +353,9 @@ func TestTxProcessor_candidateTX(t *testing.T) {
 	// if err != nil {
 	// 	panic(err)
 	// }
-	afterHeader := Block01.Header
 	//
 	t.Log(Block01.MinerAddress().String())
-	beforeHeader, err := p.Process(Block01)
+	GasUsed, err := p.Process(Block01.Header, Block01.Txs)
 	if err != nil {
 		fmt.Println("Process: ", err)
 	}
@@ -395,7 +363,7 @@ func TestTxProcessor_candidateTX(t *testing.T) {
 	cc := p.am.GetChangeLogs()
 	CC, _ := rlp.EncodeToBytes(cc[2])
 	fmt.Println("rlp: ", common.ToHex(CC))
-	assert.Equal(t, afterHeader, beforeHeader)
+	assert.Equal(t, Block01.Header.GasUsed, GasUsed)
 	assert.Equal(t, bbb, cc)
 	assert.Equal(t, CC, BB)
 	// 	临界值测试
@@ -461,9 +429,7 @@ func Test_voteAndRegisteTx(t *testing.T) {
 
 	parentBlock := p.chain.currentBlock.Load().(*types.Block)
 	txs01 := types.Transactions{registerTx01, getBalanceTx01, getBalanceTx02, getBalanceTx03}
-	Block01, invalidTxs, err := newNextBlock(p, parentBlock, txs01, true)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(invalidTxs))
+	Block01 := newNextBlock(p, parentBlock, txs01, true)
 
 	blockHash := Block01.Hash()
 	result := p.chain.db.GetCandidatesTop(blockHash)
@@ -488,9 +454,7 @@ func Test_voteAndRegisteTx(t *testing.T) {
 	// 注册testAddr02为候选节点的交易
 	registerTx02 := signTransaction(types.NewTransaction(params.FeeReceiveAddress, params.RegisterCandidateNodeFees, 200000, common.Big1, candData02, params.RegisterTx, chainID, uint64(time.Now().Unix()+300), "", ""), testPrivate02)
 	txs02 := types.Transactions{voteTx01, registerTx02}
-	Block02, invalidTxs, err := newNextBlock(p, Block01, txs02, true)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(invalidTxs))
+	Block02 := newNextBlock(p, Block01, txs02, true)
 
 	// 	验证1. 投票交易后的结果
 	account01 := p.am.GetCanonicalAccount(testAddr01)
@@ -526,9 +490,7 @@ func Test_voteAndRegisteTx(t *testing.T) {
 	registerTx03 := signTransaction(types.NewTransaction(params.FeeReceiveAddress, params.RegisterCandidateNodeFees, 200000, common.Big1, changeCandData00, params.RegisterTx, chainID, uint64(time.Now().Unix()+300), "", ""), testPrivate)
 	txs03 := types.Transactions{voteTx02, registerTx03}
 
-	Block03, invalidTxs, err := newNextBlock(p, Block02, txs03, true)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(invalidTxs))
+	Block03 := newNextBlock(p, Block02, txs03, true)
 	assert.NotEmpty(t, Block03)
 
 	// 	验证1. 候选节点testAddr票数减少量 = testAddr01的Balance，候选节点testAddr02票数增加量 = testAddr01的Balance
@@ -624,40 +586,12 @@ func TestReimbursement_transaction(t *testing.T) {
 	)
 	store.ClearData()
 	p := NewTxProcessor(newChain())
-	parentBlock := p.chain.stableBlock.Load().(*types.Block)
 
-	header01 := &types.Header{
-		ParentHash:   parentBlock.Hash(),
-		MinerAddress: parentBlock.MinerAddress(),
-		Height:       parentBlock.Height() + 1,
-		GasLimit:     parentBlock.GasLimit(),
-		GasUsed:      0,
-		Time:         parentBlock.Time() + 4,
-	}
-	txs := types.Transactions{Tx01, Tx02}
-	newHeader01, _, _, err := p.ApplyTxs(header01, txs)
-	assert.NoError(t, err)
-	Block01 := &types.Block{
-		Txs:         txs,
-		ChangeLogs:  p.am.GetChangeLogs(),
-		Confirms:    nil,
-		DeputyNodes: nil,
-	}
-	Block01.SetHeader(newHeader01)
-	blockHash := newHeader01.Hash()
-	err = p.chain.db.SetBlock(blockHash, Block01)
-	if err != nil && err != store.ErrExist {
-		panic(err)
-	}
-	err = p.am.Save(blockHash)
-	if err != nil {
-		panic(err)
-	}
-	err = p.chain.db.SetStableBlock(blockHash)
-	if err != nil {
-		panic(err)
-	}
-	p.am.Reset(blockHash)
+	// create a block contains two account which used to make reimbursement transaction
+	parentBlock := p.chain.stableBlock.Load().(*types.Block)
+	Block01 := newNextBlock(p, parentBlock, types.Transactions{Tx01, Tx02}, true)
+	p.am.Reset(Block01.Hash())
+	// check their balance
 	gasPayerAcc := p.am.GetAccount(gasPayerAddr)
 	senderAcc := p.am.GetAccount(senderAddr)
 	initGasPayerBalance := gasPayerAcc.GetBalance()
@@ -665,45 +599,19 @@ func TestReimbursement_transaction(t *testing.T) {
 	assert.Equal(t, params.RegisterCandidateNodeFees, initGasPayerBalance)
 	assert.Equal(t, params.RegisterCandidateNodeFees, initTxSenderBalance)
 
-	// ------------------------------------------------------
-	Header02 := &types.Header{
-		ParentHash:   Block01.Hash(),
-		MinerAddress: Block01.MinerAddress(),
-		Height:       Block01.Height() + 1,
-		GasLimit:     Block01.GasLimit(),
-		GasUsed:      0,
-		Time:         Block01.Time() + 400,
-	}
+	// sender transfer LEMO to receiver, payer pay for that transaction
 	firstSignTxV, err := types.MakeReimbursementTxSigner().SignTx(TxV01, senderPrivate)
 	assert.NoError(t, err)
 	firstSignTxV = types.GasPayerSignatureTx(firstSignTxV, common.Big1, uint64(60000))
 	lastSignTxV, err := types.MakeGasPayerSigner().SignTx(firstSignTxV, gasPayerPrivate)
 	assert.NoError(t, err)
-
-	txVs := types.Transactions{lastSignTxV}
-	newHeader02, _, _, err := p.ApplyTxs(Header02, txVs)
-	assert.NoError(t, err)
-	Block02 := &types.Block{
-		Header:     newHeader02,
-		Txs:        txVs,
-		ChangeLogs: p.am.GetChangeLogs(),
-	}
-	block02Hash := Block02.Hash()
-	p.chain.db.SetBlock(block02Hash, Block02)
-	p.am.Save(block02Hash)
-
-	verifyHeader02, err := p.Process(Block02)
-	assert.NoError(t, err)
-	assert.Equal(t, Block02.Header, verifyHeader02)
-
-	p.chain.db.SetStableBlock(block02Hash)
+	newNextBlock(p, Block01, types.Transactions{lastSignTxV}, true)
+	// check their balance
 	endGasPayerBalance := p.am.GetAccount(gasPayerAddr).GetBalance()
 	endTxSenderBalance := p.am.GetAccount(senderAddr).GetBalance()
-
 	assert.Equal(t, big.NewInt(0), endTxSenderBalance)
 	assert.Equal(t, endGasPayerBalance, new(big.Int).Sub(initGasPayerBalance, big.NewInt(int64(params.TxGas))))
 	assert.Equal(t, params.RegisterCandidateNodeFees, p.am.GetAccount(amountReceiver).GetBalance())
-
 }
 
 // TestBlockChain_txData 生成调用设置换届奖励的预编译合约交易的data
@@ -718,44 +626,28 @@ func TestBlockChain_data(t *testing.T) {
 }
 
 // newNextBlock new a block
-func newNextBlock(p *TxProcessor, parentBlock *types.Block, txs types.Transactions, save bool) (*types.Block, types.Transactions, error) {
-	header01 := &types.Header{
-		ParentHash:   parentBlock.Hash(),
-		MinerAddress: parentBlock.MinerAddress(),
-		Height:       parentBlock.Height() + 1,
-		GasLimit:     parentBlock.GasLimit(),
-		Time:         parentBlock.Time() + 4,
+func newNextBlock(p *TxProcessor, parentBlock *types.Block, txs types.Transactions, save bool) *types.Block {
+	blockInfo := blockInfo{
+		parentHash: parentBlock.Hash(),
+		height:     parentBlock.Height() + 1,
+		author:     parentBlock.MinerAddress(),
+		time:       parentBlock.Time() + 4,
+		gasLimit:   parentBlock.GasLimit(),
 	}
-	newHeader, _, invalidTxs, err := p.ApplyTxs(header01, txs)
-	if err != nil {
-		return nil, invalidTxs, err
-	}
-	newBlock := &types.Block{
-		Header:     newHeader,
-		Txs:        txs,
-		ChangeLogs: p.am.GetChangeLogs(),
-	}
-	BlockHash := newBlock.Hash()
-	err = p.chain.db.SetBlock(BlockHash, newBlock)
-	if err != nil {
-		return nil, invalidTxs, err
-	}
-	p.am.Save(BlockHash)
-	ProHeader, err := p.Process(newBlock)
-	data01, _ := rlp.EncodeToBytes(newHeader)
-	data02, _ := rlp.EncodeToBytes(ProHeader)
-	if bytes.Compare(data01, data02) != 0 {
-		log.Warnf("newHeader:%v \n processHeader:%v\n", newHeader, ProHeader)
-		return nil, nil, errors.New("the result of applyTx and processTx are not equal")
+	newBlock := makeBlock(p.chain.db, blockInfo, save)
+
+	gasUsed, err := p.Process(newBlock.Header, newBlock.Txs)
+	if newBlock.GasUsed() != gasUsed {
+		panic(fmt.Errorf("gasUsed is different. before process: %d, after: %d", newBlock.GasUsed(), gasUsed))
 	}
 	if save {
-		err = p.chain.db.SetStableBlock(BlockHash)
-		p.am.Reset(BlockHash)
+		err = p.chain.db.SetStableBlock(newBlock.Hash())
+		p.am.Reset(newBlock.Hash())
 		if err != nil {
-			return nil, invalidTxs, err
+			panic(err)
 		}
 	}
-	return newBlock, invalidTxs, nil
+	return newBlock
 }
 
 // TestCreateAssetTx create asset test
@@ -767,9 +659,7 @@ func TestCreateAssetTx(t *testing.T) {
 	p := NewTxProcessor(bc)
 	parentBlock := p.chain.stableBlock.Load().(*types.Block)
 	txs := types.Transactions{tx01}
-	block01, invalidTxs, err := newNextBlock(p, parentBlock, txs, true)
-	assert.Equal(t, 0, len(invalidTxs))
-	assert.NoError(t, err)
+	block01 := newNextBlock(p, parentBlock, txs, true)
 	// 	compare
 	p.am.Reset(block01.Hash())
 	senderAcc := p.am.GetAccount(crypto.PubkeyToAddress(testPrivate.PublicKey))
@@ -824,9 +714,7 @@ func TestIssueAssetTest(t *testing.T) {
 	assert.NoError(t, err)
 	tx03, err := newCreateAssetTx(testPrivate, types.Asset03, true, true)
 	Ctxs := types.Transactions{tx01, tx02, tx03}
-	block01, invalidTxs, err := newNextBlock(p, parentBlock, Ctxs, true)
-	assert.Equal(t, 0, len(invalidTxs))
-	assert.NoError(t, err)
+	block01 := newNextBlock(p, parentBlock, Ctxs, true)
 	asset01Code := tx01.Hash()
 	asset02Code := tx02.Hash()
 	asset03Code := tx03.Hash()
@@ -840,9 +728,7 @@ func TestIssueAssetTest(t *testing.T) {
 	issAsset03Tx, err := newIssueAssetTx(testPrivate, receiver, asset03Code, big.NewInt(110), "issue erc721+20 asset")
 	assert.NoError(t, err)
 	Itxs := types.Transactions{issAsset01Tx, issAsset02Tx, issAsset03Tx}
-	block02, invalidTxs, err := newNextBlock(p, block01, Itxs, true)
-	assert.Equal(t, 0, len(invalidTxs))
-	assert.NoError(t, err)
+	block02 := newNextBlock(p, block01, Itxs, true)
 	assert.Equal(t, block01.Height()+1, block02.Height())
 
 	// 验证资产issuer中的资产totalSupply
@@ -919,9 +805,7 @@ func TestReplenishAssetTx(t *testing.T) {
 	assert.NoError(t, err)
 	tx03, err := newCreateAssetTx(testPrivate, types.Asset03, false, true) // 不可增发
 	Ctxs := types.Transactions{tx01, tx02, tx03}
-	block01, invalidTxs, err := newNextBlock(p, parentBlock, Ctxs, true)
-	assert.Equal(t, 0, len(invalidTxs))
-	assert.NoError(t, err)
+	block01 := newNextBlock(p, parentBlock, Ctxs, true)
 	asset01Code := tx01.Hash()
 	asset02Code := tx02.Hash()
 	asset03Code := tx03.Hash()
@@ -934,9 +818,7 @@ func TestReplenishAssetTx(t *testing.T) {
 	issAsset03Tx, err := newIssueAssetTx(testPrivate, receiver, asset03Code, big.NewInt(110), "issue erc721+20 asset")
 	assert.NoError(t, err)
 	Itxs := types.Transactions{issAsset01Tx, issAsset02Tx, issAsset03Tx}
-	block02, invalidTxs, err := newNextBlock(p, block01, Itxs, true)
-	assert.Equal(t, 0, len(invalidTxs))
-	assert.NoError(t, err)
+	block02 := newNextBlock(p, block01, Itxs, true)
 	assert.Equal(t, block01.Height()+1, block02.Height())
 	//
 	asset01Id := asset01Code
@@ -951,9 +833,7 @@ func TestReplenishAssetTx(t *testing.T) {
 	assert.NoError(t, err)
 
 	Rtxs := types.Transactions{relpAsset01, relpAsset02, relpAsset03}
-	block03, invalidTxs, err := newNextBlock(p, block02, Rtxs, true)
-	assert.Equal(t, 0, len(invalidTxs))
-	assert.NoError(t, err)
+	block03 := newNextBlock(p, block02, Rtxs, true)
 	assert.Equal(t, block02.Height()+1, block03.Height())
 	// 	验证增发后的totalSupply和接收者的equity
 	issuerAcc := p.am.GetAccount(testAddr)
@@ -1009,9 +889,7 @@ func TestModifyAssetProfile(t *testing.T) {
 	assert.NoError(t, err)
 	tx03, err := newCreateAssetTx(testPrivate, types.Asset03, false, true) // 不可增发
 	Ctxs := types.Transactions{tx01, tx02, tx03}
-	block01, invalidTxs, err := newNextBlock(p, parentBlock, Ctxs, true)
-	assert.Equal(t, 0, len(invalidTxs))
-	assert.NoError(t, err)
+	block01 := newNextBlock(p, parentBlock, Ctxs, true)
 	asset01Code := tx01.Hash()
 	asset02Code := tx02.Hash()
 	asset03Code := tx03.Hash()
@@ -1024,9 +902,7 @@ func TestModifyAssetProfile(t *testing.T) {
 	modifyTx03, err := newModifyAssetTx(testPrivate, asset03Code)
 	assert.NoError(t, err)
 	mTxs := types.Transactions{modifyTx01, modifyTx02, modifyTx03}
-	block02, invalidTxs, err := newNextBlock(p, block01, mTxs, true)
-	assert.Equal(t, 0, len(invalidTxs))
-	assert.NoError(t, err)
+	block02 := newNextBlock(p, block01, mTxs, true)
 	assert.Equal(t, block01.Height()+1, block02.Height())
 
 	// 验证
@@ -1107,9 +983,7 @@ func TestTradingAssetTx(t *testing.T) {
 	tx06 := makeTx(testPrivate, addr03, params.OrdinaryTx, big.NewInt(500000))
 
 	cTxs := types.Transactions{tx01, tx02, tx03, tx04, tx05, tx06}
-	block01, invalidTxs, err := newNextBlock(p, parentBlock, cTxs, true)
-	assert.Equal(t, 0, len(invalidTxs))
-	assert.NoError(t, err)
+	block01 := newNextBlock(p, parentBlock, cTxs, true)
 	asset01Code := tx01.Hash()
 	asset02Code := tx02.Hash()
 	asset03Code := tx03.Hash()
@@ -1122,9 +996,7 @@ func TestTradingAssetTx(t *testing.T) {
 	issAsset03Tx, err := newIssueAssetTx(testPrivate, addr03, asset03Code, big.NewInt(110), "issue erc721+20 asset")
 	assert.NoError(t, err)
 	Itxs := types.Transactions{issAsset01Tx, issAsset02Tx, issAsset03Tx}
-	block02, invalidTxs, err := newNextBlock(p, block01, Itxs, true)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(invalidTxs))
+	block02 := newNextBlock(p, block01, Itxs, true)
 	acc01 := p.am.GetAccount(addr01)
 	acc02 := p.am.GetAccount(addr02)
 	acc03 := p.am.GetAccount(addr03)
@@ -1146,9 +1018,7 @@ func TestTradingAssetTx(t *testing.T) {
 	trading03Tx, err := newTradingAssetTx(private03, addr01, assetId03, big.NewInt(100), nil)
 	assert.NoError(t, err)
 	tTxs := types.Transactions{trading01Tx, trading02Tx, trading03Tx}
-	block03, invalidTxs, err := newNextBlock(p, block02, tTxs, true)
-	assert.Equal(t, 0, len(invalidTxs))
-	assert.NoError(t, err)
+	block03 := newNextBlock(p, block02, tTxs, true)
 	assert.Equal(t, block02.Height()+1, block03.Height())
 	// 验证
 	newAcc1 := p.am.GetAccount(addr01)
@@ -1242,8 +1112,7 @@ func TestPrecomplieContract(t *testing.T) {
 	assert.NoError(t, err)
 	txs := types.Transactions{lastSignTxV}
 
-	Block02, _, err := newNextBlock(p, p.chain.stableBlock.Load().(*types.Block), txs, true)
-	assert.NoError(t, err)
+	Block02 := newNextBlock(p, p.chain.stableBlock.Load().(*types.Block), txs, true)
 	assert.NotEmpty(t, Block02)
 	Acc := p.am.GetAccount(params.TermRewardPrecompiledContractAddress)
 	key := params.TermRewardPrecompiledContractAddress.Hash()
@@ -1256,13 +1125,13 @@ func TestPrecomplieContract(t *testing.T) {
 	assert.Equal(t, new(big.Int).Div(params.RewardPoolTotal, common.Big2), rewardMap[1].Value)
 	assert.Equal(t, uint32(1), rewardMap[1].Times)
 	// genesisBlock := p.chain.GetBlockByHeight(0)
-	Block03, _, err := newNextBlock(p, Block02, nil, true)
+	Block03 := newNextBlock(p, Block02, nil, true)
 	assert.NotEmpty(t, Block03)
-	Block04, _, err := newNextBlock(p, Block03, nil, true)
+	Block04 := newNextBlock(p, Block03, nil, true)
 	assert.NotEmpty(t, Block04)
-	Block05, _, err := newNextBlock(p, Block04, nil, true)
+	Block05 := newNextBlock(p, Block04, nil, true)
 	assert.NotEmpty(t, Block05)
-	Block06, _, err := newNextBlock(p, Block05, nil, true)
+	Block06 := newNextBlock(p, Block05, nil, true)
 	assert.NotEmpty(t, Block06)
 	// t.Log(p.am.GetAccount(DefaultDeputyNodes[1].MinerAddress).GetBalance())
 	balance01, _ := new(big.Int).SetString("120000000000000000000000000", 10)
@@ -1285,15 +1154,12 @@ func TestPrecomplieContract(t *testing.T) {
 	lastSignTxV02, err := types.MakeGasPayerSigner().SignTx(firstSignTxV02, testPrivate)
 	assert.NoError(t, err)
 	txs02 := types.Transactions{lastSignTxV02}
-	Block07, _, err := newNextBlock(p, Block06, txs02, true)
-	assert.NoError(t, err)
-	Block08, _, err := newNextBlock(p, Block07, nil, true)
+	Block07 := newNextBlock(p, Block06, txs02, true)
+	Block08 := newNextBlock(p, Block07, nil, true)
 	// set next deputyNodeList
 	deputynode.Instance().Add(9, DefaultDeputyNodes)
 
-	assert.NoError(t, err)
-	Block09, _, err := newNextBlock(p, Block08, nil, true)
-	assert.NoError(t, err)
+	Block09 := newNextBlock(p, Block08, nil, true)
 	assert.NotEmpty(t, Block09)
 	// t.Log(p.am.GetAccount(DefaultDeputyNodes[1].MinerAddress).GetBalance())
 	balance01, _ = new(big.Int).SetString("240000000000000000000000000", 10)
@@ -1341,8 +1207,7 @@ func Test_rlpBlock(t *testing.T) {
 	defer bc.db.Close()
 	p := NewTxProcessor(bc)
 
-	block, _, err := newNextBlock(p, p.chain.stableBlock.Load().(*types.Block), types.Transactions{}, true)
-	assert.NoError(t, err)
+	block := newNextBlock(p, p.chain.stableBlock.Load().(*types.Block), types.Transactions{}, true)
 	t.Log("txRoot:", block.Header.TxRoot.String())
 	t.Log("logRoot:", block.Header.LogRoot.String())
 
@@ -1388,9 +1253,8 @@ func BenchmarkApplyTxs(b *testing.B) {
 
 	start := time.Now().UnixNano()
 	b.ResetTimer()
-	_, selectedTxs, invalidTxs, err := p.ApplyTxs(header, txs)
+	selectedTxs, invalidTxs, _ := p.ApplyTxs(header, txs)
 	fmt.Printf("BenchmarkApplyTxs cost %dms\n", (time.Now().UnixNano()-start)/1000000)
-	assert.NoError(b, err)
 	fmt.Printf("%d transactions success, %d transactions fail\n", len(selectedTxs), len(invalidTxs))
 }
 
@@ -1438,4 +1302,33 @@ func BenchmarkMakeBlock(b *testing.B) {
 	bc.db.SetStableBlock(newBlock.Hash())
 	fmt.Printf("Saving stable to disk cost %dms\n", (time.Now().UnixNano()-startSave)/1000000)
 	time.Sleep(3 * time.Second)
+}
+
+func BenchmarkSetBalance(b *testing.B) {
+	fromAddr := testAddr
+	fromBalance := new(big.Int)
+	toBalance := new(big.Int)
+	salary := new(big.Int)
+	amount, _ := new(big.Int).SetString("1234857462837462918237", 10)
+	tx := makeTx(testPrivate, common.HexToAddress("0x123"), params.OrdinaryTx, amount)
+	for i := 0; i < b.N; i++ {
+		gas := params.TxGas + params.TxDataNonZeroGas*uint64(len("abc"))
+		// fromAddr, err := tx.From()
+		// if err != nil {
+		// 	panic(err)
+		// }
+		// from := manager.GetAccount(fromAddr)
+		fee := new(big.Int).Mul(new(big.Int).SetUint64(gas), tx.GasPrice())
+		cost := new(big.Int).Add(tx.Amount(), fee)
+		// to := manager.GetAccount(*tx.To())
+		// make sure the change log has right order
+		if fromAddr.Hex() < tx.To().Hex() {
+			fromBalance.Set(new(big.Int).Sub(fromBalance, cost))
+			toBalance.Set(new(big.Int).Add(toBalance, tx.Amount()))
+		} else {
+			toBalance.Set(new(big.Int).Add(toBalance, tx.Amount()))
+			fromBalance.Set(new(big.Int).Sub(fromBalance, cost))
+		}
+		salary.Add(salary, fee)
+	}
 }

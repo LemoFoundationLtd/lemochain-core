@@ -47,7 +47,7 @@ var (
 			height:      0,
 			author:      defaultAccounts[0],
 			versionRoot: common.HexToHash("0xaa4c649637a466c2879495969aac0403716ad1e8b62a9865bead851d99c6f895"),
-			txRoot:      common.HexToHash("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"), // empty merkle
+			txRoot:      common.EmptyMerkleHash, // empty merkle
 			logRoot:     common.HexToHash("0x189fc4c478582b56997a1808456a32285672109334e9f03654d3e4f181eb83a2"),
 			time:        1538209751,
 		},

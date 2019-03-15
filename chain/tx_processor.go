@@ -56,28 +56,28 @@ func NewTxProcessor(bc *BlockChain) *TxProcessor {
 }
 
 // Process processes all transactions in a block. Change accounts' data and execute contract codes.
-func (p *TxProcessor) Process(block *types.Block) (*types.Header, error) {
+func (p *TxProcessor) Process(header *types.Header, txs types.Transactions) (uint64, error) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 	var (
-		gp          = new(types.GasPool).AddGas(block.GasLimit())
+		gp          = new(types.GasPool).AddGas(header.GasLimit)
 		gasUsed     = uint64(0)
 		totalGasFee = new(big.Int)
-		header      = block.Header
-		txs         = block.Txs
 	)
+
 	p.am.Reset(header.ParentHash)
+
 	// genesis
 	if header.Height == 0 {
 		log.Warn("It is not necessary to process genesis block.")
-		return header, nil
+		return gasUsed, nil
 	}
 	// Iterate over and process the individual transactions
 	for i, tx := range txs {
-		gas, err := p.applyTx(gp, header, tx, uint(i), block.Hash())
+		gas, err := p.applyTx(gp, header, tx, uint(i), header.Hash())
 		if err != nil {
 			log.Info("Invalid transaction", "hash", tx.Hash(), "err", err)
-			return nil, ErrInvalidTxInBlock
+			return gasUsed, ErrInvalidTxInBlock
 		}
 		gasUsed = gasUsed + gas
 		fee := new(big.Int).Mul(new(big.Int).SetUint64(gas), tx.GasPrice())
@@ -85,25 +85,32 @@ func (p *TxProcessor) Process(block *types.Block) (*types.Header, error) {
 	}
 	p.chargeForGas(totalGasFee, header.MinerAddress)
 
-	return p.FillHeader(header.Copy(), txs, gasUsed)
+	if len(txs) > 0 {
+		log.Infof("process %d transactions", len(txs))
+	}
+	return gasUsed, nil
 }
 
 // ApplyTxs picks and processes transactions from miner's tx pool.
-func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions) (*types.Header, types.Transactions, types.Transactions, error) {
-	gp := new(types.GasPool).AddGas(header.GasLimit)
-	gasUsed := uint64(0)
-	totalGasFee := new(big.Int)
-	selectedTxs := make(types.Transactions, 0)
-	invalidTxs := make(types.Transactions, 0)
+func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions) (types.Transactions, types.Transactions, uint64) {
+	var (
+		gp          = new(types.GasPool).AddGas(header.GasLimit)
+		gasUsed     = uint64(0)
+		totalGasFee = new(big.Int)
+		selectedTxs = make(types.Transactions, 0)
+		invalidTxs  = make(types.Transactions, 0)
+	)
 
 	p.am.Reset(header.ParentHash)
 
+	// Iterate over and process the individual transactions
 	for _, tx := range txs {
 		// If we don't have enough gas for any further transactions then we're done
 		if gp.Gas() < params.TxGas {
 			log.Info("Not enough gas for further transactions", "gp", gp)
 			break
 		}
+
 		// Start executing the transaction
 		snap := p.am.Snapshot()
 
@@ -128,8 +135,10 @@ func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions) (*t
 	}
 	p.chargeForGas(totalGasFee, header.MinerAddress)
 
-	newHeader, err := p.FillHeader(header.Copy(), selectedTxs, gasUsed)
-	return newHeader, selectedTxs, invalidTxs, err
+	if len(selectedTxs) > 0 {
+		log.Infof("process %d transactions", len(selectedTxs))
+	}
+	return selectedTxs, invalidTxs, gasUsed
 }
 
 // applyTx processes transaction. Change accounts' data and execute contract codes.
@@ -376,28 +385,6 @@ func (p *TxProcessor) chargeForGas(charge *big.Int, minerAddress common.Address)
 		// change in the number of votes cast by the miner's account to the candidate node
 		p.changeCandidateVotes(minerAddress, charge)
 	}
-}
-
-// FillHeader creates a new header then fills it with the result of transactions process
-func (p *TxProcessor) FillHeader(header *types.Header, txs types.Transactions, gasUsed uint64) (*types.Header, error) {
-	if len(txs) > 0 {
-		log.Infof("process %d transactions: %v", len(txs))
-	}
-	header.GasUsed = gasUsed
-	header.TxRoot = types.DeriveTxsSha(txs)
-	// Pay miners at the end of their tenure. This method increases miners' balance.
-	p.chain.engine.Finalize(header, p.am)
-	// Update version trie, storage trie.
-	err := p.am.Finalise()
-	if err != nil {
-		// Access trie node fail.
-		return nil, err
-	}
-	header.VersionRoot = p.am.GetVersionRoot()
-	changeLogs := p.am.GetChangeLogs()
-	log.Errorf("changlog.00000000002: %v", changeLogs)
-	header.LogRoot = types.DeriveChangeLogsSha(changeLogs)
-	return header, nil
 }
 
 // CallTx pre-execute transactions and contracts.

@@ -410,27 +410,20 @@ func (m *Miner) sealBlock() {
 
 	m.chain.Lock().Lock()
 	defer m.chain.Lock().Unlock()
-	newHeader, packagedTxs, invalidTxs, err := m.txProcessor.ApplyTxs(header, txs)
-	if err != nil {
-		log.Errorf("Apply transactions for block failed! %v", err)
-		return
-	}
+	// apply transactions
+	packagedTxs, invalidTxs, gasUsed := m.txProcessor.ApplyTxs(header, txs)
 	log.Debug("ApplyTxs ok")
-	hash := newHeader.Hash()
-	signData, err := crypto.Sign(hash[:], m.privKey)
+	// seal block
+	block, err := m.engine.Seal(header, packagedTxs, gasUsed, m.chain.AccountManager(), dNodes)
 	if err != nil {
-		log.Errorf("Sign for block failed! block hash:%s", hash.Hex())
+		log.Errorf("Seal block error! %v", err)
 		return
 	}
-	newHeader.SignData = signData
-	block, err := m.engine.Seal(newHeader, packagedTxs, m.chain.AccountManager().GetChangeLogs())
-	if err != nil {
-		log.Error("Seal block error!!")
+	if err = m.signBlock(block); err != nil {
+		log.Errorf("Sign for block failed! block hash:%s", block.Hash().Hex())
 		return
 	}
-	if dNodes != nil {
-		block.SetDeputyNodes(dNodes)
-	}
+
 	if err = m.chain.SetMinedBlock(block); err != nil {
 		log.Error("Set mined block failed!")
 		return
@@ -445,6 +438,16 @@ func (m *Miner) sealBlock() {
 	}
 	m.txPool.Remove(txsKeys)
 	log.Infof("Mine a new block. height: %d hash: %s, len(txs): %d", block.Height(), block.Hash().String(), len(block.Txs))
+}
+
+// signBlock signed the block and fill in header
+func (m *Miner) signBlock(block *types.Block) (err error) {
+	hash := block.Hash()
+	signData, err := crypto.Sign(hash[:], m.privKey)
+	if err == nil {
+		block.Header.SignData = signData
+	}
+	return
 }
 
 // sealHead 生成区块头
