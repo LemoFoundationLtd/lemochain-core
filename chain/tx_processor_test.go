@@ -58,6 +58,7 @@ func TestTxProcessor_Process(t *testing.T) {
 
 	// block not in db
 	block = defaultBlocks[3]
+	t.Log(block)
 	newHeader, err = p.Process(block)
 	assert.NoError(t, err)
 	assert.Equal(t, block.Header.GasUsed, newHeader.GasUsed)
