@@ -4,14 +4,16 @@ package crypto
 
 import (
 	"encoding/json"
+
+	"github.com/LemoFoundationLtd/lemochain-go/common"
 )
 
 // MarshalJSON marshals as JSON.
 func (a AccountKey) MarshalJSON() ([]byte, error) {
 	type AccountKey struct {
-		Private string `json:"private"`
-		Public  string `json:"public"`
-		Address string `json:"address"`
+		Private string         `json:"private"`
+		Public  string         `json:"public"`
+		Address common.Address `json:"address"`
 	}
 	var enc AccountKey
 	enc.Private = a.Private
@@ -23,9 +25,9 @@ func (a AccountKey) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON unmarshals from JSON.
 func (a *AccountKey) UnmarshalJSON(input []byte) error {
 	type AccountKey struct {
-		Private *string `json:"private"`
-		Public  *string `json:"public"`
-		Address *string `json:"address"`
+		Private *string         `json:"private"`
+		Public  *string         `json:"public"`
+		Address *common.Address `json:"address"`
 	}
 	var dec AccountKey
 	if err := json.Unmarshal(input, &dec); err != nil {

@@ -10,6 +10,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
 	"github.com/LemoFoundationLtd/lemochain-go/common/log"
 	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
+	"io"
 	"strings"
 )
 
@@ -22,7 +23,6 @@ type Header struct {
 	VersionRoot  common.Hash    `json:"versionRoot"      gencodec:"required"`
 	TxRoot       common.Hash    `json:"transactionRoot"  gencodec:"required"`
 	LogRoot      common.Hash    `json:"changeLogRoot"    gencodec:"required"`
-	Bloom        Bloom          `json:"eventBloom"       gencodec:"required"`
 	Height       uint32         `json:"height"           gencodec:"required"`
 	GasLimit     uint64         `json:"gasLimit"         gencodec:"required"`
 	GasUsed      uint64         `json:"gasUsed"          gencodec:"required"`
@@ -83,7 +83,6 @@ func (h *Header) Hash() common.Hash {
 		h.VersionRoot,
 		h.TxRoot,
 		h.LogRoot,
-		h.Bloom,
 		h.Height,
 		h.GasLimit,
 		h.GasUsed,
@@ -126,7 +125,6 @@ func (h *Header) String() string {
 		fmt.Sprintf("VersionRoot: %s", h.VersionRoot.Hex()),
 		fmt.Sprintf("TxRoot: %s", h.TxRoot.Hex()),
 		fmt.Sprintf("LogRoot: %s", h.LogRoot.Hex()),
-		fmt.Sprintf("Bloom: %s", common.ToHex(h.Bloom[:])),
 		fmt.Sprintf("Height: %d", h.Height),
 		fmt.Sprintf("GasLimit: %d", h.GasLimit),
 		fmt.Sprintf("GasUsed: %d", h.GasUsed),
@@ -141,6 +139,75 @@ func (h *Header) String() string {
 	return fmt.Sprintf("{%s}", strings.Join(set, ", "))
 }
 
+// rlpHeader
+type rlpHeader struct {
+	ParentHash   common.Hash
+	MinerAddress common.Address
+	VersionRoot  common.Hash
+	TxRoot       []byte //
+	LogRoot      []byte //
+	Height       uint32
+	GasLimit     uint64
+	GasUsed      uint64
+	Time         uint32
+	SignData     []byte
+	DeputyRoot   []byte
+	Extra        []byte
+}
+
+// EncodeRLP implements rlp.Encoder.
+func (h *Header) EncodeRLP(w io.Writer) error {
+	var (
+		txRoot  []byte
+		logRoot []byte
+	)
+	if h.TxRoot != emptyHash {
+		txRoot = h.TxRoot.Bytes()
+	}
+
+	if h.LogRoot != emptyHash {
+		logRoot = h.LogRoot.Bytes()
+	}
+
+	return rlp.Encode(w, rlpHeader{
+		ParentHash:   h.ParentHash,
+		MinerAddress: h.MinerAddress,
+		VersionRoot:  h.VersionRoot,
+		TxRoot:       txRoot,
+		LogRoot:      logRoot,
+		Height:       h.Height,
+		GasLimit:     h.GasLimit,
+		GasUsed:      h.GasUsed,
+		Time:         h.Time,
+		SignData:     h.SignData,
+		DeputyRoot:   h.DeputyRoot,
+		Extra:        h.Extra,
+	})
+}
+
+// DecodeRLP implements rlp.Decoder.
+func (h *Header) DecodeRLP(s *rlp.Stream) error {
+	var dec rlpHeader
+
+	err := s.Decode(&dec)
+	if err == nil {
+		h.ParentHash, h.MinerAddress, h.VersionRoot, h.Height, h.GasLimit, h.GasUsed, h.Time, h.SignData, h.DeputyRoot, h.Extra =
+			dec.ParentHash, dec.MinerAddress, dec.VersionRoot, dec.Height, dec.GasLimit, dec.GasUsed, dec.Time, dec.SignData, dec.DeputyRoot, dec.Extra
+
+		if len(dec.TxRoot) > 0 {
+			h.TxRoot = common.BytesToHash(dec.TxRoot)
+		} else {
+			h.TxRoot = emptyHash
+		}
+		if len(dec.LogRoot) > 0 {
+			h.LogRoot = common.BytesToHash(dec.LogRoot)
+		} else {
+			h.LogRoot = emptyHash
+		}
+	}
+	return err
+}
+
 func (b *Block) Hash() common.Hash            { return b.Header.Hash() }
 func (b *Block) Height() uint32               { return b.Header.Height }
 func (b *Block) ParentHash() common.Hash      { return b.Header.ParentHash }
@@ -148,12 +215,12 @@ func (b *Block) MinerAddress() common.Address { return b.Header.MinerAddress }
 func (b *Block) VersionRoot() common.Hash     { return b.Header.VersionRoot }
 func (b *Block) TxHash() common.Hash          { return b.Header.TxRoot }
 func (b *Block) LogsHash() common.Hash        { return b.Header.LogRoot }
-func (b *Block) Bloom() Bloom                 { return b.Header.Bloom }
-func (b *Block) GasLimit() uint64             { return b.Header.GasLimit }
-func (b *Block) GasUsed() uint64              { return b.Header.GasUsed }
-func (b *Block) Time() uint32                 { return b.Header.Time }
-func (b *Block) SignData() []byte             { return b.Header.SignData }
-func (b *Block) Extra() []byte                { return b.Header.Extra }
+
+func (b *Block) GasLimit() uint64 { return b.Header.GasLimit }
+func (b *Block) GasUsed() uint64  { return b.Header.GasUsed }
+func (b *Block) Time() uint32     { return b.Header.Time }
+func (b *Block) SignData() []byte { return b.Header.SignData }
+func (b *Block) Extra() []byte    { return b.Header.Extra }
 
 func (b *Block) SetHeader(header *Header)        { b.Header = header }
 func (b *Block) SetTxs(txs []*Transaction)       { b.Txs = txs }

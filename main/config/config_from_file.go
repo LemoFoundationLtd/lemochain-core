@@ -25,6 +25,7 @@ type ConfigFromFile struct {
 	DbDriver        string `json:"dbDriver"       gencodec:"required"` // sample: "mysql"
 	TermDuration    uint64 `json:"termDuration"`
 	InterimDuration uint64 `json:"interimDuration"`
+	ConnectionLimit uint64 `json:"connectionLimit"`
 }
 
 // driver = "mysql"
@@ -35,6 +36,7 @@ type ConfigFromFileMarshaling struct {
 	Timeout         hexutil.Uint64
 	TermDuration    hexutil.Uint64
 	InterimDuration hexutil.Uint64
+	ConnectionLimit hexutil.Uint64
 }
 
 func ReadConfigFile(dir string) (*ConfigFromFile, error) {

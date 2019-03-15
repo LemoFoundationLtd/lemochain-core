@@ -15,6 +15,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-go/store"
 	"github.com/LemoFoundationLtd/lemochain-go/store/protocol"
 	"math/big"
+	"math/rand"
 	"time"
 )
 
@@ -39,6 +40,7 @@ var (
 	testSigner             = types.DefaultSigner{}
 	testPrivate, _         = crypto.HexToECDSA("432a86ab8765d82415a803e29864dcfc1ed93dac949abf6f95a583179f27e4bb") // secp256k1.V = 1
 	testAddr               = crypto.PubkeyToAddress(testPrivate.PublicKey)                                         // 0x0107134B9CdD7D89F83eFa6175F9b3552F29094c
+	totalLEMO, _           = new(big.Int).SetString("1000000000000000000000000", 10)                               // 1 million
 	defaultAccounts        = []common.Address{
 		common.HexToAddress("0x10000"), common.HexToAddress("0x20000"), testAddr,
 	}
@@ -53,6 +55,7 @@ var (
 			txRoot:      common.HexToHash("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"), // empty merkle
 			logRoot:     common.HexToHash("0xb0d3749ecc3a7a0db6368284320863a3d2fa963b2c33b41c6ebf8632cd84bda9"),
 			time:        1538209751,
+			deputyNodes: DefaultDeputyNodes,
 		},
 		// block 1 is stable block
 		{
@@ -142,6 +145,7 @@ func newDB() protocol.ChainDB {
 }
 
 func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
+	start := time.Now().UnixNano()
 	manager := account.NewManager(info.parentHash, db)
 	// sign transactions
 	var err error
@@ -153,24 +157,13 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 		}
 		info.txRoot = txRoot
 	}
-
-	var deputyRoot []byte
-	if len(info.deputyNodes) > 0 {
-		deputyRoot = types.DeriveDeputyRootSha(info.deputyNodes).Bytes()
-	}
-	if bytes.Compare(deputyRoot, info.deputyRoot) != 0 {
-		if len(info.deputyNodes) > 0 || len(info.deputyRoot) != 0 {
-			fmt.Printf("%d deputyRoot error. except: %s, got: %s\n", info.height, common.ToHex(info.deputyRoot), common.ToHex(deputyRoot))
-		}
-		info.deputyRoot = deputyRoot
-	}
+	txMerkleEnd := time.Now().UnixNano()
 
 	// genesis coin
 	if info.height == 0 {
 		owner := manager.GetAccount(testAddr)
 		// 1 million
-		balance, _ := new(big.Int).SetString("1000000000000000000000000", 10)
-		owner.SetBalance(balance)
+		owner.SetBalance(new(big.Int).Set(totalLEMO))
 	}
 	// account
 	salary := new(big.Int)
@@ -184,7 +177,7 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 		fee := new(big.Int).Mul(new(big.Int).SetUint64(gas), tx.GasPrice())
 		cost := new(big.Int).Add(tx.Amount(), fee)
 		to := manager.GetAccount(*tx.To())
-		if tx.Type() == 1 || tx.Type() == 2 {
+		if tx.Type() == params.VoteTx || tx.Type() == params.RegisterTx {
 			newProfile := make(map[string]string, 5)
 			newProfile[types.CandidateKeyIsCandidate] = "true"
 			to.SetCandidate(newProfile)
@@ -205,10 +198,13 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 		miner := manager.GetAccount(info.author)
 		miner.SetBalance(new(big.Int).Add(miner.GetBalance(), salary))
 	}
+	editAccountsEnd := time.Now().UnixNano()
 	err = manager.Finalise()
 	if err != nil {
 		panic(err)
 	}
+	finaliseEnd := time.Now().UnixNano()
+
 	// header
 	if manager.GetVersionRoot() != info.versionRoot {
 		if info.versionRoot != (common.Hash{}) {
@@ -217,7 +213,7 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 		info.versionRoot = manager.GetVersionRoot()
 	}
 	changeLogs := manager.GetChangeLogs()
-	fmt.Printf("%d changeLogs %v\n", info.height, changeLogs)
+	// fmt.Printf("%d changeLogs %v\n", info.height, changeLogs)
 	logRoot := types.DeriveChangeLogsSha(changeLogs)
 	if logRoot != info.logRoot {
 		if info.logRoot != (common.Hash{}) {
@@ -237,12 +233,23 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 		VersionRoot:  info.versionRoot,
 		TxRoot:       info.txRoot,
 		LogRoot:      info.logRoot,
-		Bloom:        types.CreateBloom(nil),
 		Height:       info.height,
 		GasLimit:     info.gasLimit,
 		GasUsed:      gasUsed,
 		Time:         info.time,
 		Extra:        []byte{},
+	}
+
+	var deputyRoot []byte
+	if len(info.deputyNodes) > 0 {
+		deputyRoot = types.DeriveDeputyRootSha(info.deputyNodes).Bytes()
+		deputynode.Instance().Add(params.TermDuration+params.InterimDuration+1, info.deputyNodes)
+	}
+	if bytes.Compare(deputyRoot, info.deputyRoot) != 0 {
+		if len(info.deputyNodes) > 0 || len(info.deputyRoot) != 0 {
+			fmt.Printf("%d deputyRoot error. except: %s, got: %s\n", info.height, common.ToHex(info.deputyRoot), common.ToHex(deputyRoot))
+		}
+		info.deputyRoot = deputyRoot
 	}
 	if len(info.deputyRoot) > 0 {
 		header.DeputyRoot = make([]byte, len(info.deputyRoot))
@@ -263,6 +270,8 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 		DeputyNodes: info.deputyNodes,
 	}
 	block.SetHeader(header)
+	buildBlockEnd := time.Now().UnixNano()
+
 	if save {
 		err = db.SetBlock(blockHash, block)
 		if err != nil && err != store.ErrExist {
@@ -274,6 +283,13 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 			panic(err)
 		}
 	}
+	saveEnd := time.Now().UnixNano()
+
+	fmt.Printf("Building tx merkle trie cost %dms. %d txs in total\n", (txMerkleEnd-start)/1000000, len(info.txList))
+	fmt.Printf("Editing balance of accounts cost %dms\n", (editAccountsEnd-txMerkleEnd)/1000000)
+	fmt.Printf("Finalising manager cost %dms\n", (finaliseEnd-editAccountsEnd)/1000000)
+	fmt.Printf("Building block cost %dms\n", (buildBlockEnd-finaliseEnd)/1000000)
+	fmt.Printf("Saving block and accounts cost %dms\n\n", (saveEnd-buildBlockEnd)/1000000)
 	return block
 }
 
@@ -292,6 +308,32 @@ func signTransaction(tx *types.Transaction, private *ecdsa.PrivateKey) *types.Tr
 		panic(err)
 	}
 	return tx
+}
+
+// createAccounts creates random accounts and transfer LEMO to them
+func createAccounts(n int, db protocol.ChainDB) (common.Hash, []*crypto.AccountKey) {
+	accountKeys := make([]*crypto.AccountKey, n, n)
+	txs := make(types.Transactions, n, n)
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	maxAmount := new(big.Int).Div(totalLEMO, big.NewInt(int64(n)))
+	for i := 0; i < n; i++ {
+		accountKey, err := crypto.GenerateAddress()
+		if err != nil {
+			panic(err)
+		}
+		accountKeys[i] = accountKey
+		txs[i] = makeTx(testPrivate, accountKey.Address, params.OrdinaryTx, new(big.Int).Rand(r, maxAmount))
+	}
+	newBlock := makeBlock(db, blockInfo{
+		height:     3,
+		parentHash: defaultBlocks[2].Hash(),
+		author:     defaultAccounts[0],
+		time:       1538209761,
+		txList:     txs,
+		gasLimit:   2100000000,
+	}, true)
+	return newBlock.Hash(), accountKeys
 }
 
 // h returns hash for test
