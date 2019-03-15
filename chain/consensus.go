@@ -165,6 +165,7 @@ func (d *Dpovp) Seal(header *types.Header, txs []*types.Transaction, gasUsed uin
 	}
 
 	changeLogs := am.GetChangeLogs()
+	log.Errorf("%d changlog.00000000002: %v", header.Height, changeLogs)
 	newHeader := header.Copy()
 	newHeader.VersionRoot = am.GetVersionRoot()
 	newHeader.LogRoot = types.DeriveChangeLogsSha(changeLogs)
