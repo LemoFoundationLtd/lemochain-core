@@ -76,11 +76,11 @@ var (
 		},
 		// block 2 is not stable block
 		{
-			hash:        common.HexToHash("0x18229ab6caf0a9f2972eaa97ff4ede9189e0f6d96bbef3a972795313d92319b2"),
+			hash:        common.HexToHash("0x81c8be9e6067eb2aa291472e4e63601f47c7ef46b1d8541320ebcbce6d5d1a49"),
 			height:      2,
 			author:      defaultAccounts[0],
 			versionRoot: common.HexToHash("0x407e1d64578f852d97ab3b5a655ece80ca1422ef68ba0145756f35a4b7fb141b"),
-			txRoot:      common.HexToHash("0xf499c76d7f3693700d1cab1618d7c62c619686578ce982375161747927117a8f"),
+			txRoot:      common.HexToHash("0xea8917e81b2b4688bf4bd25c04cbce3d834ddd362b327c3b2979533561b8f5cf"),
 			logRoot:     common.HexToHash("0x40ab1668ecddd288ded6cec4135dadb071beee4e2826640e96c416894aaa6469"),
 			txList: []*types.Transaction{
 				// testAddr -> defaultAccounts[0] 2
@@ -213,7 +213,7 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 		info.versionRoot = manager.GetVersionRoot()
 	}
 	changeLogs := manager.GetChangeLogs()
-	// fmt.Printf("%d changeLogs %v\n", info.height, changeLogs)
+	fmt.Printf("%d changeLogs %v\n", info.height, changeLogs)
 	logRoot := types.DeriveChangeLogsSha(changeLogs)
 	if logRoot != info.logRoot {
 		if info.logRoot != (common.Hash{}) {
