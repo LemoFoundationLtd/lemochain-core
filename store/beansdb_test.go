@@ -35,6 +35,8 @@ func TestBeansDB_Commit(t *testing.T) {
 	defer levelDB.Close()
 
 	beansdb := NewBeansDB(GetStorePath(), 2, levelDB, nil)
+
+	defer beansdb.Close()
 	assert.NotNil(t, beansdb)
 
 	route, err := CreateBufWithNumber(32)
@@ -79,4 +81,6 @@ func TestBeansDB_Commit(t *testing.T) {
 	result, err = beansdb.Get(item4.Key)
 	assert.NoError(t, err)
 	assert.Equal(t, item4.Val, result)
+
+	batch.Commit()
 }

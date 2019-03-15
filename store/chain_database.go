@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"sync"
-	"time"
 )
 
 var max_candidate_count = 20
@@ -674,13 +673,12 @@ func (database *ChainDatabase) GetAssetID(id common.Hash) (common.Address, error
 }
 
 func (database *ChainDatabase) Close() error {
+	database.Beansdb.Close()
+
 	if database.LevelDB != nil {
-		time.Sleep(1 * time.Second)
 		database.LevelDB.Close()
 		database.LevelDB = nil
 	}
-
-	database.Beansdb.Close()
 
 	return nil
 }

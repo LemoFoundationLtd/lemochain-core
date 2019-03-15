@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -678,6 +679,7 @@ func (q *queue) loop() {
 				op := q.writing[0]
 				err := q.process(op)
 				if err != nil {
+					log.Errorf("q.repeat channel. len(writing):" + strconv.Itoa(len(q.writing)) + "|err: " + err.Error())
 					q.repeat(op)
 					q.RW.Unlock()
 					continue
@@ -691,6 +693,7 @@ func (q *queue) loop() {
 		case op := <-q.inject:
 			q.RW.Lock()
 			if len(q.writing) > 0 {
+				log.Errorf("q.inject channel. len(writing):" + strconv.Itoa(len(q.writing)))
 				q.writing = append(q.writing, op)
 				q.RW.Unlock()
 				continue
@@ -698,6 +701,7 @@ func (q *queue) loop() {
 				err := q.process(op)
 				if err != nil {
 					q.writing = append(q.writing, op)
+					log.Errorf("q.inject channel. len(writing):" + strconv.Itoa(len(q.writing)) + "|err: " + err.Error())
 					q.repeat(op)
 					q.RW.Unlock()
 					continue
@@ -713,9 +717,10 @@ func (q *queue) loop() {
 
 func (q *queue) repeat(op *inject) {
 	q.repeatCount = q.repeatCount + 1
-	if q.repeatCount >= 3 {
+	if q.repeatCount > 3 {
 		panic("repeat set index to level db greater than 3.")
 	} else {
+		log.Errorf("repeat set index to level db.count: " + strconv.Itoa(q.repeatCount))
 		q.repeatTimer = time.AfterFunc(time.Duration(q.repeatCount*int(time.Second)), func() {
 			q.repeatChan <- struct{}{}
 		})
