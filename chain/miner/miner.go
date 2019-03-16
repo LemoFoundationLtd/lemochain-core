@@ -413,8 +413,14 @@ func (m *Miner) sealBlock() {
 	// apply transactions
 	packagedTxs, invalidTxs, gasUsed := m.txProcessor.ApplyTxs(header, txs)
 	log.Debug("ApplyTxs ok")
+	// Finalize accounts
+	am := m.chain.AccountManager()
+	if err := m.engine.Finalize(header.Height, am); err != nil {
+		log.Errorf("Finalize accounts error: %v", err)
+		return
+	}
 	// seal block
-	block, err := m.engine.Seal(header, packagedTxs, gasUsed, m.chain.AccountManager(), dNodes)
+	block, err := m.engine.Seal(header, am.GetTxsProduct(packagedTxs, gasUsed), dNodes)
 	if err != nil {
 		log.Errorf("Seal block error! %v", err)
 		return

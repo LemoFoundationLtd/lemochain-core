@@ -20,6 +20,14 @@ var (
 	ErrSnapshotIsBroken = errors.New("the snapshot is broken")
 )
 
+// TxsProduct is the product of transaction execution
+type TxsProduct struct {
+	Txs         types.Transactions // The transactions executed indeed. These transactions will be packaged in a block
+	GasUsed     uint64             // gas used by all transactions
+	ChangeLogs  []*types.ChangeLog
+	VersionRoot common.Hash
+}
+
 // Manager is used to maintain the newest and not confirmed account data. It will save all data to the db when finished a block's transactions processing.
 type Manager struct {
 	db     protocol.ChainDB
@@ -284,6 +292,16 @@ func (am *Manager) Save(newBlockHash common.Hash) error {
 	log.Debugf("save version trie success: %#x", root)
 	am.clear()
 	return nil
+}
+
+// GetTxProduct get the product of transaction execution
+func (am *Manager) GetTxsProduct(txs types.Transactions, gasUsed uint64) *TxsProduct {
+	return &TxsProduct{
+		Txs:         txs,
+		GasUsed:     gasUsed,
+		ChangeLogs:  am.GetChangeLogs(),
+		VersionRoot: am.GetVersionRoot(),
+	}
 }
 
 // Rebuild loads and redo all change logs to update account to the newest state.

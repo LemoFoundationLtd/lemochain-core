@@ -10,10 +10,10 @@ import (
 
 type EngineTestForChain struct{}
 
-func (engine *EngineTestForChain) VerifyHeader(block *types.Block) error { return nil }
-
-func (engine *EngineTestForChain) Seal(header *types.Header, txs []*types.Transaction, gasUsed uint64, am *account.Manager, dNodes deputynode.DeputyNodes) (*types.Block, error) {
-	return types.NewBlock(header, txs, am.GetChangeLogs(), nil), nil
+func (engine *EngineTestForChain) VerifyHeader(block *types.Block) error             { return nil }
+func (engine *EngineTestForChain) Finalize(height uint32, am *account.Manager) error { return nil }
+func (engine *EngineTestForChain) Seal(header *types.Header, txProduct *account.TxsProduct, dNodes deputynode.DeputyNodes) (*types.Block, error) {
+	return types.NewBlock(header, txProduct.Txs, txProduct.ChangeLogs, nil), nil
 }
 
 func broadcastStableBlock(block *types.Block) {}

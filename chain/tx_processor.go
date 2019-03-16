@@ -37,12 +37,6 @@ type TxProcessor struct {
 	lock sync.Mutex
 }
 
-type ApplyTxsResult struct {
-	Txs     types.Transactions // The transactions executed indeed. These transactions will be packaged in a block
-	Events  []*types.Event     // contract events
-	GasUsed uint64             // gas used by all transactions
-}
-
 func NewTxProcessor(bc *BlockChain) *TxProcessor {
 	debug := bc.Flags().Bool(common.Debug)
 	cfg := &vm.Config{
