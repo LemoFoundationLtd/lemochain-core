@@ -319,57 +319,57 @@ func TestTxProcessor_ApplyTxs2(t *testing.T) {
 	assert.Equal(t, senderBalance.Sub(senderBalance, cost), newSenderBalance)
 }
 
-// TestTxProcessor_candidateTX 打包特殊交易测试
-func TestTxProcessor_candidateTX(t *testing.T) {
-	store.ClearData()
-	bc := newChain()
-	defer bc.db.Close()
-	p := NewTxProcessor(bc)
-
-	// // 申请第一个候选节点(testAddr)信息data
-	// cand00 := make(types.Profile)
-	// cand00[types.CandidateKeyIsCandidate] = params.IsCandidateNode
-	// cand00[types.CandidateKeyPort] = "0000"
-	// cand00[types.CandidateKeyNodeID] = "34f0df789b46e9bc09f23d5315b951bc77bbfeda653ae6f5aab564c9b4619322fddb3b1f28d1c434250e9d4dd8f51aa8334573d7281e4d63baba913e9fa6908f"
-	// cand00[types.CandidateKeyMinerAddress] = "0x10000"
-	// cand00[types.CandidateKeyHost] = "0.0.0.0"
-	// candData00, _ := json.Marshal(cand00)
-
-	candData00 := createCandidateData(params.IsCandidateNode, "34f0df789b46e9bc09f23d5315b951bc77bbfeda653ae6f5aab564c9b4619322fddb3b1f28d1c434250e9d4dd8f51aa8334573d7281e4d63baba913e9fa6908f", "0.0.0.0", "0.0.0.0", "0x10000")
-
-	testAddr01, _ := common.StringToAddress("Lemo83W59DHT7FD4KSB3HWRJ5T4JD82TZW27ZKHJ")
-	value := new(big.Int).Mul(params.RegisterCandidateNodeFees, big.NewInt(2)) // 转账为2000LEMO
-	getBalanceTx01 := makeTx(testPrivate, testAddr01, params.OrdinaryTx, value)
-	//
-	registerTx01 := signTransaction(types.NewTransaction(params.FeeReceiveAddress, params.RegisterCandidateNodeFees, 200000, common.Big1, candData00, params.RegisterTx, chainID, uint64(time.Now().Unix()+300), "", ""), testPrivate)
-
-	parentBlock := p.chain.stableBlock.Load().(*types.Block)
-	txs01 := types.Transactions{registerTx01, getBalanceTx01}
-	Block01 := newNextBlock(p, parentBlock, txs01, false)
-	bbb := Block01.ChangeLogs
-	BB, _ := rlp.EncodeToBytes(bbb[2])
-	fmt.Println("rlp: ", common.ToHex(BB))
-	// fmt.Println("BB:", BB)
-	// err = p.chain.db.SetStableBlock(blockHash)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	//
-	t.Log(Block01.MinerAddress().String())
-	GasUsed, err := p.Process(Block01.Header, Block01.Txs)
-	if err != nil {
-		fmt.Println("Process: ", err)
-	}
-
-	cc := p.am.GetChangeLogs()
-	CC, _ := rlp.EncodeToBytes(cc[2])
-	fmt.Println("rlp: ", common.ToHex(CC))
-	assert.Equal(t, Block01.Header.GasUsed, GasUsed)
-	assert.Equal(t, bbb, cc)
-	assert.Equal(t, CC, BB)
-	// 	临界值测试
-	// candData01 := createCandidateData(params.NotCandidateNode)
-}
+// // TestTxProcessor_candidateTX 打包特殊交易测试
+// func TestTxProcessor_candidateTX(t *testing.T) {
+// 	store.ClearData()
+// 	bc := newChain()
+// 	defer bc.db.Close()
+// 	p := NewTxProcessor(bc)
+//
+// 	// // 申请第一个候选节点(testAddr)信息data
+// 	// cand00 := make(types.Profile)
+// 	// cand00[types.CandidateKeyIsCandidate] = params.IsCandidateNode
+// 	// cand00[types.CandidateKeyPort] = "0000"
+// 	// cand00[types.CandidateKeyNodeID] = "34f0df789b46e9bc09f23d5315b951bc77bbfeda653ae6f5aab564c9b4619322fddb3b1f28d1c434250e9d4dd8f51aa8334573d7281e4d63baba913e9fa6908f"
+// 	// cand00[types.CandidateKeyMinerAddress] = "0x10000"
+// 	// cand00[types.CandidateKeyHost] = "0.0.0.0"
+// 	// candData00, _ := json.Marshal(cand00)
+//
+// 	candData00 := createCandidateData(params.IsCandidateNode, "34f0df789b46e9bc09f23d5315b951bc77bbfeda653ae6f5aab564c9b4619322fddb3b1f28d1c434250e9d4dd8f51aa8334573d7281e4d63baba913e9fa6908f", "0.0.0.0", "0.0.0.0", "0x10000")
+//
+// 	testAddr01, _ := common.StringToAddress("Lemo83W59DHT7FD4KSB3HWRJ5T4JD82TZW27ZKHJ")
+// 	value := new(big.Int).Mul(params.RegisterCandidateNodeFees, big.NewInt(2)) // 转账为2000LEMO
+// 	getBalanceTx01 := makeTx(testPrivate, testAddr01, params.OrdinaryTx, value)
+// 	//
+// 	registerTx01 := signTransaction(types.NewTransaction(params.FeeReceiveAddress, params.RegisterCandidateNodeFees, 200000, common.Big1, candData00, params.RegisterTx, chainID, uint64(time.Now().Unix()+300), "", ""), testPrivate)
+//
+// 	parentBlock := p.chain.stableBlock.Load().(*types.Block)
+// 	txs01 := types.Transactions{registerTx01, getBalanceTx01}
+// 	Block01 := newNextBlock(p, parentBlock, txs01, false)
+// 	bbb := Block01.ChangeLogs
+// 	BB, _ := rlp.EncodeToBytes(bbb[2])
+// 	fmt.Println("rlp: ", common.ToHex(BB))
+// 	// fmt.Println("BB:", BB)
+// 	// err = p.chain.db.SetStableBlock(blockHash)
+// 	// if err != nil {
+// 	// 	panic(err)
+// 	// }
+// 	//
+// 	t.Log(Block01.MinerAddress().String())
+// 	GasUsed, err := p.Process(Block01.Header, Block01.Txs)
+// 	if err != nil {
+// 		fmt.Println("Process: ", err)
+// 	}
+//
+// 	cc := p.am.GetChangeLogs()
+// 	CC, _ := rlp.EncodeToBytes(cc[2])
+// 	fmt.Println("rlp: ", common.ToHex(CC))
+// 	assert.Equal(t, Block01.Header.GasUsed, GasUsed)
+// 	assert.Equal(t, bbb, cc)
+// 	assert.Equal(t, CC, BB)
+// 	// 	临界值测试
+// 	// candData01 := createCandidateData(params.NotCandidateNode)
+// }
 
 // create register candidate node tx data
 func createCandidateData(isCandidata, nodeID, host, port, minerAdd string) []byte {
