@@ -52,7 +52,7 @@ func (extra *ProfileChangeLogExtra) String() string {
 
 func init() {
 	types.RegisterChangeLog(BalanceLog, "BalanceLog", decodeBigInt, decodeEmptyInterface, redoBalance, undoBalance)
-	types.RegisterChangeLog(StorageLog, "StorageLog", decodeBytes, decodeBytes, redoStorage, undoStorage)
+	types.RegisterChangeLog(StorageLog, "StorageLog", decodeBytes, decodeHash, redoStorage, undoStorage)
 	types.RegisterChangeLog(StorageRootLog, "StorageRootLog", decodeHash, decodeEmptyInterface, redoStorageRoot, undoStorageRoot)
 	types.RegisterChangeLog(AssetCodeLog, "AssetCodeLog", decodeAsset, decodeHash, redoAssetCode, undoAssetCode)
 	types.RegisterChangeLog(AssetCodeRootLog, "AssetCodeRootLog", decodeHash, decodeEmptyInterface, redoAssetCodeRoot, undoAssetCodeRoot)
@@ -288,7 +288,7 @@ func redoVoteFor(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 func undoVoteFor(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 	oldVal, ok := c.OldVal.(common.Address)
 	if !ok {
-		log.Errorf("undoVoteFor expected NewVal common.Address, got %T", c.NewVal)
+		log.Errorf("undoVoteFor expected OldVal common.Address, got %T", c.OldVal)
 		return types.ErrWrongChangeLogData
 	}
 	accessor := processor.GetAccount(c.Address)
@@ -333,7 +333,7 @@ func redoCandidate(c *types.ChangeLog, processor types.ChangeLogProcessor) error
 func undoCandidate(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 	oldVal, ok := c.OldVal.(*types.Profile)
 	if !ok {
-		log.Errorf("undoCandidate expected NewVal map[string]string, got %T", c.NewVal)
+		log.Errorf("undoCandidate expected OldVal *types.Profile, got %T", c.OldVal)
 		return types.ErrWrongChangeLogData
 	}
 	accessor := processor.GetAccount(c.Address)
@@ -361,7 +361,7 @@ func redoCandidateState(c *types.ChangeLog, processor types.ChangeLogProcessor) 
 
 	key, ok := c.Extra.(string)
 	if !ok {
-		log.Errorf("redoCandidateState expected Extra string, got %T", c.NewVal)
+		log.Errorf("redoCandidateState expected Extra string, got %T", c.Extra)
 		return types.ErrWrongChangeLogData
 	}
 
@@ -379,7 +379,7 @@ func undoCandidateState(c *types.ChangeLog, processor types.ChangeLogProcessor) 
 
 	key, ok := c.Extra.(string)
 	if !ok {
-		log.Errorf("undoCandidateState expected Extra string, got %T", c.NewVal)
+		log.Errorf("undoCandidateState expected Extra string, got %T", c.Extra)
 		return types.ErrWrongChangeLogData
 	}
 	accessor := processor.GetAccount(c.Address)
@@ -464,7 +464,7 @@ func redoStorage(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 func undoStorage(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 	oldVal, ok := c.OldVal.([]byte)
 	if !ok {
-		log.Errorf("undoStorage expected NewVal []byte, got %T", c.NewVal)
+		log.Errorf("undoStorage expected OldVal []byte, got %T", c.OldVal)
 		return types.ErrWrongChangeLogData
 	}
 	key, ok := c.Extra.(common.Hash)
@@ -489,7 +489,7 @@ func NewStorageRootLog(processor types.ChangeLogProcessor, account types.Account
 func redoStorageRoot(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 	newVal, ok := c.NewVal.(common.Hash)
 	if !ok {
-		log.Errorf("redoStorageRoot expected NewVal common.hash, got %T", c.NewVal)
+		log.Errorf("redoStorageRoot expected NewVal common.Hash, got %T", c.NewVal)
 		return types.ErrWrongChangeLogData
 	}
 	accessor := processor.GetAccount(c.Address)
@@ -500,7 +500,7 @@ func redoStorageRoot(c *types.ChangeLog, processor types.ChangeLogProcessor) err
 func undoStorageRoot(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 	oldVal, ok := c.OldVal.(common.Hash)
 	if !ok {
-		log.Errorf("redoStorageRoot expected NewVal common.hash, got %T", c.NewVal)
+		log.Errorf("redoStorageRoot expected OldVal common.Hash, got %T", c.OldVal)
 		return types.ErrWrongChangeLogData
 	}
 	accessor := processor.GetAccount(c.Address)
@@ -542,7 +542,7 @@ func redoAssetCode(c *types.ChangeLog, processor types.ChangeLogProcessor) error
 func undoAssetCode(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 	oldVal, ok := c.OldVal.(*types.Asset)
 	if !ok {
-		log.Errorf("undoAssetCode expected NewVal *types.Asset, got %T", c.NewVal)
+		log.Errorf("undoAssetCode expected OldVal *types.Asset, got %T", c.OldVal)
 		return types.ErrWrongChangeLogData
 	}
 	hash, ok := c.Extra.(common.Hash)
@@ -592,7 +592,7 @@ func redoAssetCodeState(c *types.ChangeLog, processor types.ChangeLogProcessor) 
 func undoAssetCodeState(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 	oldVal, ok := c.OldVal.(string)
 	if !ok {
-		log.Errorf("undoAssetCodeState expected NewVal *types.Asset, got %T", c.NewVal)
+		log.Errorf("undoAssetCodeState expected OldVal string, got %T", c.OldVal)
 		return types.ErrWrongChangeLogData
 	}
 	extra, ok := c.Extra.(*ProfileChangeLogExtra)
@@ -640,7 +640,7 @@ func redoAssetCodeTotalSupply(c *types.ChangeLog, processor types.ChangeLogProce
 func undoAssetCodeTotalSupply(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 	oldVal, ok := c.OldVal.(*big.Int)
 	if !ok {
-		log.Errorf("undoAssetCodeTotalSupply expected OldVal *big.Int, got %T", c.NewVal)
+		log.Errorf("undoAssetCodeTotalSupply expected OldVal *big.Int, got %T", c.OldVal)
 		return types.ErrWrongChangeLogData
 	}
 
@@ -667,7 +667,7 @@ func NewAssetCodeRootLog(processor types.ChangeLogProcessor, account types.Accou
 func redoAssetCodeRoot(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 	newVal, ok := c.NewVal.(common.Hash)
 	if !ok {
-		log.Errorf("redoAssetCodeRoot expected NewVal common.hash, got %T", c.NewVal)
+		log.Errorf("redoAssetCodeRoot expected NewVal common.Hash, got %T", c.NewVal)
 		return types.ErrWrongChangeLogData
 	}
 	accessor := processor.GetAccount(c.Address)
@@ -678,7 +678,7 @@ func redoAssetCodeRoot(c *types.ChangeLog, processor types.ChangeLogProcessor) e
 func undoAssetCodeRoot(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 	oldVal, ok := c.OldVal.(common.Hash)
 	if !ok {
-		log.Errorf("redoAssetCodeRoot expected NewVal common.hash, got %T", c.NewVal)
+		log.Errorf("redoAssetCodeRoot expected OldVal common.Hash, got %T", c.OldVal)
 		return types.ErrWrongChangeLogData
 	}
 	accessor := processor.GetAccount(c.Address)
@@ -719,12 +719,12 @@ func redoAssetId(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 func undoAssetId(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 	oldVal, ok := c.OldVal.(string)
 	if !ok {
-		log.Errorf("undoAssetId expected NewVal *types.Asset, got %T", c.NewVal)
+		log.Errorf("undoAssetId expected OldVal *types.Asset, got %T", c.OldVal)
 		return types.ErrWrongChangeLogData
 	}
 	id, ok := c.Extra.(common.Hash)
 	if !ok {
-		log.Errorf("undoAssetId expected Extra common.hash, got %T", c.Extra)
+		log.Errorf("undoAssetId expected Extra common.Hash, got %T", c.Extra)
 		return types.ErrWrongChangeLogData
 	}
 	accessor := processor.GetAccount(c.Address)
@@ -744,7 +744,7 @@ func NewAssetIdRootLog(processor types.ChangeLogProcessor, account types.Account
 func redoAssetIdRoot(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 	newVal, ok := c.NewVal.(common.Hash)
 	if !ok {
-		log.Errorf("redoAssetIdRoot expected NewVal common.hash, got %T", c.NewVal)
+		log.Errorf("redoAssetIdRoot expected NewVal common.Hash, got %T", c.NewVal)
 		return types.ErrWrongChangeLogData
 	}
 	accessor := processor.GetAccount(c.Address)
@@ -755,7 +755,7 @@ func redoAssetIdRoot(c *types.ChangeLog, processor types.ChangeLogProcessor) err
 func undoAssetIdRoot(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 	oldVal, ok := c.OldVal.(common.Hash)
 	if !ok {
-		log.Errorf("undoAssetIdRoot expected NewVal common.hash, got %T", c.NewVal)
+		log.Errorf("undoAssetIdRoot expected OldVal common.Hash, got %T", c.OldVal)
 		return types.ErrWrongChangeLogData
 	}
 	accessor := processor.GetAccount(c.Address)
@@ -809,7 +809,7 @@ func redoEquity(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 func undoEquity(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 	oldVal, ok := c.OldVal.(*types.AssetEquity)
 	if !ok {
-		log.Errorf("undoEquity expected NewVal *types.AssetEquity, got %T", c.NewVal)
+		log.Errorf("undoEquity expected OldVal *types.AssetEquity, got %T", c.OldVal)
 		return types.ErrWrongChangeLogData
 	}
 	id, ok := c.Extra.(common.Hash)
@@ -834,7 +834,7 @@ func NewEquityRootLog(processor types.ChangeLogProcessor, account types.AccountA
 func redoEquityRoot(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 	newVal, ok := c.NewVal.(common.Hash)
 	if !ok {
-		log.Errorf("redoEquityRoot expected NewVal common.hash, got %T", c.NewVal)
+		log.Errorf("redoEquityRoot expected NewVal common.Hash, got %T", c.NewVal)
 		return types.ErrWrongChangeLogData
 	}
 	accessor := processor.GetAccount(c.Address)
@@ -845,7 +845,7 @@ func redoEquityRoot(c *types.ChangeLog, processor types.ChangeLogProcessor) erro
 func undoEquityRoot(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 	oldVal, ok := c.OldVal.(common.Hash)
 	if !ok {
-		log.Errorf("undoEquityRoot expected NewVal common.hash, got %T", c.NewVal)
+		log.Errorf("undoEquityRoot expected OldVal common.Hash, got %T", c.OldVal)
 		return types.ErrWrongChangeLogData
 	}
 	accessor := processor.GetAccount(c.Address)
