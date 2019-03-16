@@ -229,7 +229,7 @@ func Test_verifyHeaderSignData(t *testing.T) {
 	err := initDeputyNode(3, 0) // 选择前三个共识节点
 	assert.NoError(t, err)
 	dpovp := loadDpovp()
-	defer store.ClearData()
+	defer dpovp.db.Close()
 	// 创建一个块并用另一个节点来对此区块进行签名
 	block01 := newTestBlock(dpovp, common.Hash{}, 1, common.HexToAddress(block01MinerAddress), uint32(time.Now().Unix()), deputy02Privkey, false)
 	// header := block01.Header
@@ -241,7 +241,7 @@ func TestDpovp_nodeCount1(t *testing.T) {
 	err := initDeputyNode(1, 0)
 	assert.NoError(t, err)
 	dpovp := loadDpovp()
-	defer store.ClearData()
+	defer dpovp.db.Close()
 
 	t.Log(deputynode.Instance().GetDeputiesCount(1))
 	assert.Equal(t, nil, dpovp.VerifyHeader(&types.Block{Header: &types.Header{Height: 1}}))
@@ -252,7 +252,7 @@ func Test_headerExtra(t *testing.T) {
 	err := initDeputyNode(3, 0)
 	assert.NoError(t, err)
 	dpovp := loadDpovp()
-	defer store.ClearData()
+	defer dpovp.db.Close()
 	// 创建一个标准的区块
 	testBlcok := newTestBlock(dpovp, common.Hash{}, 1, common.HexToAddress(block01MinerAddress), uint32(time.Now().Unix()-10), deputy01Privkey, false)
 	// 设置区块头中的extra字段长度大于标准长度
@@ -275,7 +275,7 @@ func TestDpovp_VerifyHeader01(t *testing.T) {
 	assert.NoError(t, err)
 	t.Log(deputynode.Instance().GetDeputiesCount(1))
 	dpovp := loadDpovp()
-	defer store.ClearData()
+	defer dpovp.db.Close()
 	// 验证不存在父区块的情况
 	testBlock00 := newTestBlock(dpovp, common.Hash{}, 0, common.HexToAddress(block01MinerAddress), uint32(time.Now().Unix()-10), deputy01Privkey, true)
 	// header := testBlock00.Header
@@ -294,7 +294,7 @@ func TestDpovp_VerifyHeader02(t *testing.T) {
 	err := initDeputyNode(5, 0)
 	assert.NoError(t, err)
 	dpovp := loadDpovp()
-	defer store.ClearData()
+	defer dpovp.db.Close()
 	// 创世块,随便哪个节点出块在这里没有影响
 	block00 := newTestBlock(dpovp, common.Hash{}, 0, common.HexToAddress(block01MinerAddress), 1995, deputy01Privkey, true)
 	// parent is genesis block,由第一个节点出块,此区块是作为测试区块的参照区块
@@ -346,7 +346,7 @@ func TestDpovp_VerifyHeader02(t *testing.T) {
 // TestDpovp_Seal
 func TestDpovp_Seal(t *testing.T) {
 	dpovp := loadDpovp()
-	defer store.ClearData()
+	defer dpovp.db.Close()
 	// 创世块
 	block00 := newTestBlock(dpovp, common.Hash{}, 0, common.HexToAddress(block01MinerAddress), 995, deputy01Privkey, true)
 	// parent is genesis block,此区块是作为测试区块的参照区块
@@ -380,6 +380,7 @@ func TestDpovp_Finalize(t *testing.T) {
 	assert.NoError(t, err)
 
 	dpovp := loadDpovp()
+	defer dpovp.db.Close()
 	am := account.NewManager(common.Hash{}, dpovp.db)
 	// 测试挖出的块高度不满足发放奖励高度的时候
 	err = dpovp.Finalize(9999, am)

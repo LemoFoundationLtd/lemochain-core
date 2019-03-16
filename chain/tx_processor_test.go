@@ -389,7 +389,9 @@ func createCandidateData(isCandidata, nodeID, host, port, minerAdd string) []byt
 //  Test_voteAndRegisteTx 测试投票交易和注册候选节点交易
 func Test_voteAndRegisteTx(t *testing.T) {
 	store.ClearData()
-	p := NewTxProcessor(newChain())
+	chain := newChain()
+	defer chain.db.Close()
+	p := NewTxProcessor(chain)
 
 	// 申请第一个候选节点(testAddr)信息data
 	cand00 := make(types.Profile)
@@ -586,7 +588,9 @@ func TestReimbursement_transaction(t *testing.T) {
 		TxV01          = types.NewReimbursementTransaction(amountReceiver, gasPayerAddr, params.RegisterCandidateNodeFees, []byte{}, params.OrdinaryTx, chainID, uint64(time.Now().Unix()+300), "", "")
 	)
 	store.ClearData()
-	p := NewTxProcessor(newChain())
+	chain := newChain()
+	defer chain.db.Close()
+	p := NewTxProcessor(chain)
 
 	// create a block contains two account which used to make reimbursement transaction
 	parentBlock := p.chain.stableBlock.Load().(*types.Block)
@@ -655,9 +659,10 @@ func newNextBlock(p *TxProcessor, parentBlock *types.Block, txs types.Transactio
 func TestCreateAssetTx(t *testing.T) {
 	tx01, err := newCreateAssetTx(testPrivate, types.Asset01, true, true)
 	assert.NoError(t, err)
-	bc := newChain()
-	defer bc.db.Close()
-	p := NewTxProcessor(bc)
+	store.ClearData()
+	chain := newChain()
+	defer chain.db.Close()
+	p := NewTxProcessor(chain)
 	parentBlock := p.chain.stableBlock.Load().(*types.Block)
 	txs := types.Transactions{tx01}
 	block01 := newNextBlock(p, parentBlock, txs, true)
