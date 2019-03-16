@@ -27,6 +27,7 @@ import (
 func TestNewTxProcessor(t *testing.T) {
 	store.ClearData()
 	chain := newChain()
+	defer chain.db.Close()
 	p := NewTxProcessor(chain)
 	assert.NotEqual(t, (*vm.Config)(nil), p.cfg)
 	assert.Equal(t, false, p.cfg.Debug)
@@ -420,7 +421,9 @@ func createCandidateData(isCandidata, nodeID, host, port, minerAdd string) []byt
 //  Test_voteAndRegisteTx 测试投票交易和注册候选节点交易
 func Test_voteAndRegisteTx(t *testing.T) {
 	store.ClearData()
-	p := NewTxProcessor(newChain())
+	bc := newChain()
+	defer bc.db.Close()
+	p := NewTxProcessor(bc)
 
 	// 申请第一个候选节点(testAddr)信息data
 	cand00 := make(types.Profile)
@@ -623,7 +626,9 @@ func TestReimbursement_transaction(t *testing.T) {
 		TxV01          = types.NewReimbursementTransaction(amountReceiver, gasPayerAddr, params.RegisterCandidateNodeFees, []byte{}, params.OrdinaryTx, chainID, uint64(time.Now().Unix()+300), "", "")
 	)
 	store.ClearData()
-	p := NewTxProcessor(newChain())
+	bc := newChain()
+	defer bc.db.Close()
+	p := NewTxProcessor(bc)
 	parentBlock := p.chain.stableBlock.Load().(*types.Block)
 
 	header01 := &types.Header{

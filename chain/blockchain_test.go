@@ -26,6 +26,7 @@ func TestBlockChain_Reorg8ABC(t *testing.T) {
 
 	var info blockInfo
 	blockChain, _, err := NewBlockChainForTest()
+	defer blockChain.db.Close()
 	assert.NoError(t, err)
 
 	genesis := blockChain.GetBlockByHeight(0)
@@ -113,6 +114,8 @@ func TestBlockChain_Reorg8Len(t *testing.T) {
 	var info blockInfo
 
 	blockChain, _, err := NewBlockChainForTest()
+	defer blockChain.db.Close()
+
 	assert.NoError(t, err)
 
 	genesis := blockChain.GetBlockByHeight(0)
@@ -186,6 +189,7 @@ func TestBlockChain_GetBlockByHeight(t *testing.T) {
 	store.ClearData()
 
 	blockChain, _, err := NewBlockChainForTest()
+	defer blockChain.db.Close()
 	assert.NoError(t, err)
 
 	genesis := blockChain.GetBlockByHeight(0)
@@ -215,6 +219,7 @@ func TestBlockChain_SetStableBlockCurBranch11(t *testing.T) {
 	store.ClearData()
 
 	blockChain, _, err := NewBlockChainForTest()
+	defer blockChain.db.Close()
 	assert.NoError(t, err)
 
 	genesis := blockChain.GetBlockByHeight(0)
@@ -279,6 +284,7 @@ func TestBlockChain_SetStableBlockCurBranch12(t *testing.T) {
 	store.ClearData()
 
 	blockChain, _, err := NewBlockChainForTest()
+	defer blockChain.db.Close()
 	assert.NoError(t, err)
 
 	genesis := blockChain.GetBlockByHeight(0)
@@ -341,6 +347,7 @@ func TestBlockChain_SetStableBlockCurBranch13(t *testing.T) {
 	store.ClearData()
 
 	blockChain, _, err := NewBlockChainForTest()
+	defer blockChain.db.Close()
 	assert.NoError(t, err)
 
 	genesis := blockChain.GetBlockByHeight(0)
@@ -403,6 +410,7 @@ func TestBlockChain_SetStableBlockCurBranch21(t *testing.T) {
 	store.ClearData()
 
 	blockChain, _, err := NewBlockChainForTest()
+	defer blockChain.db.Close()
 	assert.NoError(t, err)
 
 	genesis := blockChain.GetBlockByHeight(0)
@@ -487,6 +495,7 @@ func TestBlockChain_SetStableBlockCurBranch22(t *testing.T) {
 	store.ClearData()
 
 	blockChain, _, err := NewBlockChainForTest()
+	defer blockChain.db.Close()
 	assert.NoError(t, err)
 
 	genesis := blockChain.GetBlockByHeight(0)
@@ -572,6 +581,7 @@ func TestBlockChain_SetStableBlockCurBranch23(t *testing.T) {
 	store.ClearData()
 
 	blockChain, _, err := NewBlockChainForTest()
+	defer blockChain.db.Close()
 	assert.NoError(t, err)
 
 	genesis := blockChain.GetBlockByHeight(0)
@@ -654,6 +664,7 @@ func TestBlockChain_SetStableBlockCurBranch31(t *testing.T) {
 	store.ClearData()
 
 	blockChain, _, err := NewBlockChainForTest()
+	defer blockChain.db.Close()
 	assert.NoError(t, err)
 
 	genesis := blockChain.GetBlockByHeight(0)
@@ -722,6 +733,7 @@ func TestBlockChain_SetStableBlockCurBranch32(t *testing.T) {
 	store.ClearData()
 
 	blockChain, _, err := NewBlockChainForTest()
+	defer blockChain.db.Close()
 	assert.NoError(t, err)
 
 	genesis := blockChain.GetBlockByHeight(0)
@@ -804,6 +816,7 @@ func TestBlockChain_SetStableBlockCurBranch41(t *testing.T) {
 	store.ClearData()
 
 	blockChain, _, err := NewBlockChainForTest()
+	defer blockChain.db.Close()
 	assert.NoError(t, err)
 
 	genesis := blockChain.GetBlockByHeight(0)
@@ -932,6 +945,7 @@ func TestBlockChain_SetStableBlockCurBranch42(t *testing.T) {
 	store.ClearData()
 
 	blockChain, _, err := NewBlockChainForTest()
+	defer blockChain.db.Close()
 	assert.NoError(t, err)
 
 	genesis := blockChain.GetBlockByHeight(0)
@@ -1073,6 +1087,7 @@ func TestBlockChain_SetStableBlockCurBranch43(t *testing.T) {
 	store.ClearData()
 
 	blockChain, _, err := NewBlockChainForTest()
+	defer blockChain.db.Close()
 	assert.NoError(t, err)
 
 	genesis := blockChain.GetBlockByHeight(0)
@@ -1219,6 +1234,7 @@ func TestBlockChain_ReceiveConfirm(t *testing.T) {
 	store.ClearData()
 
 	blockChain, _, err := NewBlockChainForTest()
+	defer blockChain.db.Close()
 	assert.NoError(t, err)
 
 	genesis := blockChain.GetBlockByHeight(0)
@@ -1301,6 +1317,7 @@ func TestBlockChain_VerifyBodyNormal(t *testing.T) {
 	store.ClearData()
 
 	blockChain, _, err := NewBlockChainForTest()
+	defer blockChain.db.Close()
 	assert.NoError(t, err)
 
 	genesis := blockChain.GetBlockByHeight(0)
@@ -1331,6 +1348,7 @@ func TestBlockChain_VerifyBlockBalanceNotEnough(t *testing.T) {
 	store.ClearData()
 
 	blockChain, _, err := NewBlockChainForTest()
+	defer blockChain.db.Close()
 	assert.NoError(t, err)
 
 	genesis := blockChain.GetBlockByHeight(0)
@@ -1362,6 +1380,7 @@ func TestBlockChain_VerifyBlockBalanceNotSign(t *testing.T) {
 	store.ClearData()
 
 	blockChain, _, err := NewBlockChainForTest()
+	defer blockChain.db.Close()
 	assert.NoError(t, err)
 
 	genesis := blockChain.GetBlockByHeight(0)
@@ -1389,6 +1408,7 @@ func TestBlockChain_VerifyBlockBalanceValidDeputy(t *testing.T) {
 	store.ClearData()
 
 	blockChain, _, err := NewBlockChainForTest()
+	defer blockChain.db.Close()
 	assert.NoError(t, err)
 
 	genesis := blockChain.GetBlockByHeight(0)
@@ -1420,6 +1440,7 @@ func TestBlockChain_VerifyBlockBalanceValidTx(t *testing.T) {
 	store.ClearData()
 
 	blockChain, _, err := NewBlockChainForTest()
+	defer blockChain.db.Close()
 	assert.NoError(t, err)
 
 	genesis := blockChain.GetBlockByHeight(0)
@@ -1452,6 +1473,7 @@ func TestInsertChain_1(t *testing.T) {
 	store.ClearData()
 
 	bc, _, err := NewBlockChainForTest()
+	defer bc.db.Close()
 	assert.NoError(t, err)
 
 	genesis := bc.GetBlockByHeight(0)

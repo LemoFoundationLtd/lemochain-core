@@ -223,10 +223,11 @@ func Test_verifyHeaderTime(t *testing.T) {
 
 // Test_verifyHeaderSignData 测试验证区块签名数据函数是否正确
 func Test_verifyHeaderSignData(t *testing.T) {
+	store.ClearData()
 	err := initDeputyNode(3, 0) // 选择前三个共识节点
 	assert.NoError(t, err)
 	dpovp := loadDpovp()
-	defer store.ClearData()
+	defer dpovp.db.Close()
 	// 创建一个块并用另一个节点来对此区块进行签名
 	block01, err := newTestBlock(dpovp, common.Hash{}, 1, common.HexToAddress(block01MinerAddress), uint32(time.Now().Unix()), deputy02Privkey, false)
 	assert.NoError(t, err)
@@ -236,11 +237,12 @@ func Test_verifyHeaderSignData(t *testing.T) {
 
 // // TestDpovp_nodeCount1 nodeCount = 1 的情况下直接返回nil
 func TestDpovp_nodeCount1(t *testing.T) {
+	store.ClearData()
 
 	err := initDeputyNode(1, 0)
 	assert.NoError(t, err)
 	dpovp := loadDpovp()
-	defer store.ClearData()
+	defer dpovp.db.Close()
 
 	t.Log(deputynode.Instance().GetDeputiesCount(1))
 	assert.Equal(t, nil, dpovp.VerifyHeader(&types.Block{Header: &types.Header{Height: 1}}))
@@ -248,10 +250,11 @@ func TestDpovp_nodeCount1(t *testing.T) {
 
 // 验证区块头Extra字段长度是否正确
 func Test_headerExtra(t *testing.T) {
+	store.ClearData()
 	err := initDeputyNode(3, 0)
 	assert.NoError(t, err)
 	dpovp := loadDpovp()
-	defer store.ClearData()
+	defer dpovp.db.Close()
 	// 创建一个标准的区块
 	testBlcok, err := newTestBlock(dpovp, common.Hash{}, 1, common.HexToAddress(block01MinerAddress), uint32(time.Now().Unix()-10), deputy01Privkey, false)
 	assert.NoError(t, err)
@@ -271,11 +274,12 @@ func Test_headerExtra(t *testing.T) {
 
 // TestDpovp_VerifyHeader01 对共识中共识区块与父块关联情况共识的测试
 func TestDpovp_VerifyHeader01(t *testing.T) {
+	store.ClearData()
 	err := initDeputyNode(5, 0)
 	assert.NoError(t, err)
 	t.Log(deputynode.Instance().GetDeputiesCount(1))
 	dpovp := loadDpovp()
-	defer store.ClearData()
+	defer dpovp.db.Close()
 	// 验证不存在父区块的情况
 	testBlock00, err := newTestBlock(dpovp, common.Hash{}, 0, common.HexToAddress(block01MinerAddress), uint32(time.Now().Unix()-10), deputy01Privkey, true)
 	assert.NoError(t, err)
@@ -296,7 +300,7 @@ func TestDpovp_VerifyHeader02(t *testing.T) {
 	err := initDeputyNode(5, 0)
 	assert.NoError(t, err)
 	dpovp := loadDpovp()
-	defer store.ClearData()
+	defer dpovp.db.Close()
 	// 创世块,随便哪个节点出块在这里没有影响
 	block00, err := newTestBlock(dpovp, common.Hash{}, 0, common.HexToAddress(block01MinerAddress), 1995, deputy01Privkey, true)
 	assert.NoError(t, err)
@@ -359,8 +363,9 @@ func TestDpovp_VerifyHeader02(t *testing.T) {
 
 // TestDpovp_Seal
 func TestDpovp_Seal(t *testing.T) {
+	store.ClearData()
 	dpovp := loadDpovp()
-	defer store.ClearData()
+	defer dpovp.db.Close()
 	// 创世块
 	block00, err := newTestBlock(dpovp, common.Hash{}, 0, common.HexToAddress(block01MinerAddress), 995, deputy01Privkey, true)
 	assert.NoError(t, err)
@@ -382,7 +387,7 @@ func TestDpovp_Seal(t *testing.T) {
 
 // TestDpovp_Finalize todo
 func TestDpovp_Finalize(t *testing.T) {
-
+	store.ClearData()
 	// 添加第一个共识节点列表,设置共识的节点为前两个节点
 	err := initDeputyNode(2, 0)
 	assert.NoError(t, err)
@@ -394,6 +399,7 @@ func TestDpovp_Finalize(t *testing.T) {
 	assert.NoError(t, err)
 
 	dpovp := loadDpovp()
+	defer dpovp.db.Close()
 	am := account.NewManager(common.Hash{}, dpovp.db)
 	// 测试挖出的块高度不满足发放奖励高度的时候
 	dpovp.Finalize(&types.Header{Height: 9999}, am)

@@ -11,6 +11,7 @@ func TestSetupGenesisBlock(t *testing.T) {
 	store.ClearData()
 
 	cacheChain := store.NewChainDataBase(store.GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
+	defer cacheChain.Close()
 
 	hash, err := SetupGenesisBlock(cacheChain, genesis)
 	assert.NoError(t, err)
