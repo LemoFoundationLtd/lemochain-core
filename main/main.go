@@ -78,6 +78,13 @@ func init() {
 func main() {
 	if err := app.Run(os.Args); err != nil {
 		fmt.Fprintln(os.Stderr, err)
+		// recover panic and add panic info to log.txt
+		if e := recover(); e != nil {
+			var buf [4096]byte
+			n := runtime.Stack(buf[:], false)
+			log.Error("==>", string(buf[:n]))
+			os.Exit(1)
+		}
 		os.Exit(1)
 	}
 }
