@@ -121,15 +121,10 @@ func SetupGenesisBlock(db protocol.ChainDB, genesis *Genesis) (common.Hash, erro
 	}
 
 	am := account.NewManager(common.Hash{}, db)
-	block := genesis.ToBlock()
-	genesis.setBalance(am)
-	if err := am.Finalise(); err != nil {
-		return common.Hash{}, fmt.Errorf("setup genesis block failed: %v", err)
+	block, err := genesis.ToBlock(am)
+	if err != nil {
+		return common.Hash{}, fmt.Errorf("build genesis block failed: %v", err)
 	}
-	block.Header.VersionRoot = am.GetVersionRoot()
-	logs := am.GetChangeLogs()
-	block.SetChangeLogs(logs)
-	block.Header.LogRoot = types.DeriveChangeLogsSha(logs)
 	hash := block.Hash()
 	if err := db.SetBlock(hash, block); err != nil {
 		return common.Hash{}, fmt.Errorf("setup genesis block failed: %v", err)
@@ -144,20 +139,29 @@ func SetupGenesisBlock(db protocol.ChainDB, genesis *Genesis) (common.Hash, erro
 }
 
 // ToBlock
-func (g *Genesis) ToBlock() *types.Block {
-	head := &types.Header{
+func (g *Genesis) ToBlock(am *account.Manager) (*types.Block, error) {
+	g.setBalance(am)
+	err := am.Finalise()
+	if err != nil {
+		return nil, err
+	}
+	logs := am.GetChangeLogs()
+
+	header := &types.Header{
 		ParentHash:   common.Hash{},
 		MinerAddress: g.Founder,
-		TxRoot:       common.HexToHash("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"), // empty merkle
+		TxRoot:       common.EmptyMerkleHash, // empty merkle
 		Height:       0,
 		GasLimit:     g.GasLimit,
 		Extra:        g.ExtraData,
 		Time:         g.Time,
 		DeputyRoot:   types.DeriveDeputyRootSha(g.DeputyNodes).Bytes(),
+		VersionRoot:  am.GetVersionRoot(),
+		LogRoot:      types.DeriveChangeLogsSha(logs),
 	}
-	block := types.NewBlock(head, nil, nil, nil)
+	block := types.NewBlock(header, nil, logs, nil)
 	block.SetDeputyNodes(g.DeputyNodes)
-	return block
+	return block, nil
 }
 
 func (g *Genesis) setBalance(am *account.Manager) {

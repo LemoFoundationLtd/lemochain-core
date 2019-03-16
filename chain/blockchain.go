@@ -228,30 +228,29 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 	bc.mux.Lock()
 	defer bc.mux.Unlock()
 
-	if err := bc.Verify(block); err != nil {
-		log.Errorf("block verify failed: %v", err)
-		return ErrVerifyBlockFailed
-	}
-
 	hash := block.Hash()
 	parentHash := block.ParentHash()
 	oldCurrentBlock := bc.currentBlock.Load().(*types.Block)
 	currentHash := oldCurrentBlock.Hash()
+	sb := bc.stableBlock.Load().(*types.Block)
 	if has, _ := bc.db.IsExistByHash(hash); has {
 		return nil
 	}
 	if ok, _ := bc.db.IsExistByHash(parentHash); !ok {
 		return ErrParentNotExist
 	}
-	// save
-	block.SetChangeLogs(bc.AccountManager().GetChangeLogs())
-
-	sb := bc.stableBlock.Load().(*types.Block)
 	if sb.Height() >= block.Height() {
 		log.Debug("mine a block, but height not large than stable block")
 		return nil
 	}
 
+	block, err = bc.VerifyAndFill(block)
+	if err != nil {
+		log.Errorf("block verify failed: %v", err)
+		return ErrVerifyBlockFailed
+	}
+
+	// save
 	if err = bc.db.SetBlock(hash, block); err != nil {
 		log.Errorf("can't insert block to cache. height:%d hash:%s", block.Height(), hash.Prefix())
 		return ErrSaveBlock
@@ -519,34 +518,39 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32) error {
 	return nil
 }
 
-// Verify verify block
-func (bc *BlockChain) Verify(block *types.Block) error {
+// VerifyAndFill verify block then create a new block
+func (bc *BlockChain) VerifyAndFill(block *types.Block) (*types.Block, error) {
 	// verify header
 	if err := bc.engine.VerifyHeader(block); err != nil {
-		return err
+		return nil, err
 	}
 	// verify body
 	if err := bc.verifyBody(block); err != nil {
-		return err
+		return nil, err
 	}
 
 	hash := block.Hash()
 	// execute tx
-	newHeader, err := bc.processor.Process(block)
+	gasUsed, err := bc.processor.Process(block.Header, block.Txs)
 	if err == ErrInvalidTxInBlock {
-		return err
+		return nil, err
 	} else if err == nil {
 	} else {
 		log.Errorf("processor internal error: %v", err)
 		panic("processor internal error")
 	}
+	newBlock, err := bc.engine.Seal(block.Header, block.Txs, gasUsed, bc.am, block.DeputyNodes)
+	if err != nil {
+		log.Errorf("Seal block error: %v", err)
+		return nil, err
+	}
 
 	// verify block hash
-	if newHeader.Hash() != hash {
-		log.Errorf("verify block error! oldHeader: %v, newHeader:%v", block.Header, newHeader)
-		return ErrVerifyBlockFailed
+	if newBlock.Hash() != hash {
+		log.Errorf("verify block error! oldHeader: %v, newHeader:%v", block.Header, newBlock.Header)
+		return nil, ErrVerifyBlockFailed
 	}
-	return nil
+	return newBlock, nil
 }
 
 // verifyBody verify block body

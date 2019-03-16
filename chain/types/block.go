@@ -161,11 +161,11 @@ func (h *Header) EncodeRLP(w io.Writer) error {
 		txRoot  []byte
 		logRoot []byte
 	)
-	if h.TxRoot != emptyHash {
+	if h.TxRoot != emptyRootHash {
 		txRoot = h.TxRoot.Bytes()
 	}
 
-	if h.LogRoot != emptyHash {
+	if h.LogRoot != emptyRootHash {
 		logRoot = h.LogRoot.Bytes()
 	}
 
@@ -197,12 +197,12 @@ func (h *Header) DecodeRLP(s *rlp.Stream) error {
 		if len(dec.TxRoot) > 0 {
 			h.TxRoot = common.BytesToHash(dec.TxRoot)
 		} else {
-			h.TxRoot = emptyHash
+			h.TxRoot = emptyRootHash
 		}
 		if len(dec.LogRoot) > 0 {
 			h.LogRoot = common.BytesToHash(dec.LogRoot)
 		} else {
-			h.LogRoot = emptyHash
+			h.LogRoot = emptyRootHash
 		}
 	}
 	return err

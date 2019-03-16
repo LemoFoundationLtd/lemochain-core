@@ -232,11 +232,9 @@ type EngineTestForMiner struct{}
 
 func (engine *EngineTestForMiner) VerifyHeader(block *types.Block) error { return nil }
 
-func (engine *EngineTestForMiner) Seal(header *types.Header, txs []*types.Transaction, changeLog []*types.ChangeLog) (*types.Block, error) {
+func (engine *EngineTestForMiner) Seal(header *types.Header, txs []*types.Transaction, gasUsed uint64, am *account.Manager, dNodes deputynode.DeputyNodes) (*types.Block, error) {
 	return nil, nil
 }
-
-func (engine *EngineTestForMiner) Finalize(header *types.Header, am *account.Manager) {}
 
 func newBlockChain() (*chain.BlockChain, chan *types.Block, error) {
 	chainID := uint16(99)

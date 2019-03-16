@@ -1340,8 +1340,12 @@ func TestBlockChain_VerifyBodyNormal(t *testing.T) {
 		author: genesis.MinerAddress(),
 	}
 	block := makeBlock(blockChain.db, info, false)
-	err = blockChain.Verify(block)
+	newBlock, err := blockChain.VerifyAndFill(block)
 	assert.NoError(t, err)
+	assert.NotEqual(t, common.EmptyMerkleHash, newBlock.Header.VersionRoot)
+	assert.NotEqual(t, common.EmptyMerkleHash, newBlock.Header.LogRoot)
+	assert.NotEqual(t, common.EmptyMerkleHash, newBlock.Header.TxRoot)
+	assert.NotEqual(t, 0, newBlock.Header.GasUsed)
 }
 
 func TestBlockChain_VerifyBlockBalanceNotEnough(t *testing.T) {
@@ -1372,7 +1376,7 @@ func TestBlockChain_VerifyBlockBalanceNotEnough(t *testing.T) {
 		makeTx(tmp, accounts[1].Address, params.OrdinaryTx, big.NewInt(40000)),
 	}
 	block.Header.TxRoot = types.DeriveTxsSha(block.Txs)
-	err = blockChain.Verify(block)
+	_, err = blockChain.VerifyAndFill(block)
 	assert.Equal(t, err, ErrInvalidTxInBlock)
 }
 
@@ -1400,7 +1404,7 @@ func TestBlockChain_VerifyBlockBalanceNotSign(t *testing.T) {
 		types.NewTransaction(accounts[0].Address, common.Big2, 30000, common.Big2, []byte{}, 0, 200, 1538210398, "", ""),
 	}
 	block.Header.TxRoot = types.DeriveTxsSha(block.Txs)
-	err = blockChain.Verify(block)
+	_, err = blockChain.VerifyAndFill(block)
 	assert.Equal(t, err, ErrInvalidTxInBlock)
 }
 
@@ -1432,7 +1436,7 @@ func TestBlockChain_VerifyBlockBalanceValidDeputy(t *testing.T) {
 	}
 	block := makeBlock(blockChain.db, info, false)
 	block.DeputyNodes = append(block.DeputyNodes[:1], block.DeputyNodes[2:]...)
-	err = blockChain.Verify(block)
+	_, err = blockChain.VerifyAndFill(block)
 	assert.Equal(t, err, ErrVerifyBlockFailed)
 }
 
@@ -1464,7 +1468,7 @@ func TestBlockChain_VerifyBlockBalanceValidTx(t *testing.T) {
 	}
 	block := makeBlock(blockChain.db, info, false)
 	block.Txs = append(block.Txs[:1], block.Txs[2:]...)
-	err = blockChain.Verify(block)
+	_, err = blockChain.VerifyAndFill(block)
 	assert.Equal(t, err, ErrVerifyBlockFailed)
 }
 

@@ -12,11 +12,9 @@ type EngineTestForChain struct{}
 
 func (engine *EngineTestForChain) VerifyHeader(block *types.Block) error { return nil }
 
-func (engine *EngineTestForChain) Seal(header *types.Header, txs []*types.Transaction, changeLog []*types.ChangeLog) (*types.Block, error) {
+func (engine *EngineTestForChain) Seal(header *types.Header, txs []*types.Transaction, gasUsed uint64, am *account.Manager, dNodes deputynode.DeputyNodes) (*types.Block, error) {
 	return nil, nil
 }
-
-func (engine *EngineTestForChain) Finalize(header *types.Header, am *account.Manager) {}
 
 func broadcastStableBlock(block *types.Block) {}
 
