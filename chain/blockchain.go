@@ -539,7 +539,12 @@ func (bc *BlockChain) VerifyAndFill(block *types.Block) (*types.Block, error) {
 		log.Errorf("processor internal error: %v", err)
 		panic("processor internal error")
 	}
-	newBlock, err := bc.engine.Seal(block.Header, block.Txs, gasUsed, bc.am, block.DeputyNodes)
+	// Finalize accounts
+	if err = bc.engine.Finalize(block.Header.Height, bc.am); err != nil {
+		log.Errorf("Finalize accounts error: %v", err)
+		return nil, err
+	}
+	newBlock, err := bc.engine.Seal(block.Header, bc.am.GetTxsProduct(block.Txs, gasUsed), block.DeputyNodes)
 	if err != nil {
 		log.Errorf("Seal block error: %v", err)
 		return nil, err

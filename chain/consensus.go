@@ -21,7 +21,9 @@ const MaxExtraDataLen = 256
 type Engine interface {
 	VerifyHeader(block *types.Block) error
 
-	Seal(header *types.Header, txs []*types.Transaction, gasUsed uint64, am *account.Manager, dNodes deputynode.DeputyNodes) (*types.Block, error)
+	Finalize(height uint32, am *account.Manager) error
+
+	Seal(header *types.Header, txProduct *account.TxsProduct, dNodes deputynode.DeputyNodes) (*types.Block, error)
 }
 
 type Dpovp struct {
@@ -156,32 +158,25 @@ func (d *Dpovp) VerifyHeader(block *types.Block) error {
 	return nil
 }
 
-// Seal packaged into a block
-func (d *Dpovp) Seal(header *types.Header, txs []*types.Transaction, gasUsed uint64, am *account.Manager, dNodes deputynode.DeputyNodes) (*types.Block, error) {
-	// Pay miners at the end of their tenure. This method increases miners' balance.
-	err := d.Finalize(header.Height, am)
-	if err != nil {
-		return nil, err
-	}
-
-	changeLogs := am.GetChangeLogs()
-	log.Errorf("%d changlog.00000000002: %v", header.Height, changeLogs)
+// Seal packages all products into a block
+func (d *Dpovp) Seal(header *types.Header, txProduct *account.TxsProduct, dNodes deputynode.DeputyNodes) (*types.Block, error) {
+	log.Errorf("%d changlog.00000000002: %v", header.Height, txProduct.ChangeLogs)
 	newHeader := header.Copy()
-	newHeader.VersionRoot = am.GetVersionRoot()
-	newHeader.LogRoot = types.DeriveChangeLogsSha(changeLogs)
-	newHeader.TxRoot = types.DeriveTxsSha(txs)
-	newHeader.GasUsed = gasUsed
+	newHeader.VersionRoot = txProduct.VersionRoot
+	newHeader.LogRoot = types.DeriveChangeLogsSha(txProduct.ChangeLogs)
+	newHeader.TxRoot = types.DeriveTxsSha(txProduct.Txs)
+	newHeader.GasUsed = txProduct.GasUsed
 
-	block := types.NewBlock(newHeader, txs, changeLogs, nil)
+	block := types.NewBlock(newHeader, txProduct.Txs, txProduct.ChangeLogs, nil)
 	if dNodes != nil {
 		block.SetDeputyNodes(dNodes)
 	}
 	return block, nil
 }
 
-// Finalize
+// Finalize increases miners' balance and fix all account changes
 func (d *Dpovp) Finalize(height uint32, am *account.Manager) error {
-	// handout rewards
+	// Pay miners at the end of their tenure
 	if deputynode.Instance().TimeToHandOutRewards(height) {
 		term := (height - params.InterimDuration) / params.TermDuration
 		termRewards, err := getTermRewardValue(am, term)

@@ -114,45 +114,43 @@ func initDeputyNode(numNode int, height uint32) error {
 }
 
 // 对区块进行签名的函数
-func signTestBlock(deputyPrivate string, block *types.Block) ([]byte, error) {
+func signTestBlock(deputyPrivate string, block *types.Block) {
 	// 对区块签名
 	private, err := crypto.ToECDSA(common.FromHex(deputyPrivate))
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 	signBlock, err := crypto.Sign(block.Hash().Bytes(), private)
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
-	return signBlock, nil
+	block.Header.SignData = signBlock
 }
 
-// newTestBlock 创建一个函数，专门用来生成符合测试用例所用的区块
-func newTestBlock(dpovp *Dpovp, parentHash common.Hash, height uint32, address common.Address, timeStamp uint32, signPrivate string, save bool) *types.Block {
-	testBlock := makeBlock(dpovp.db, blockInfo{
-		hash:        common.Hash{},
-		parentHash:  parentHash,
-		height:      height,
-		author:      address,
-		versionRoot: common.Hash{},
-		txRoot:      common.Hash{},
-		logRoot:     common.Hash{},
-		txList:      nil,
-		gasLimit:    0,
-		time:        timeStamp,
-	}, save)
+// newSignedBlock 用来生成符合测试用例所用的区块
+func newSignedBlock(dpovp *Dpovp, parentHash common.Hash, author common.Address, txs []*types.Transaction, time uint32, signPrivate string, save bool) *types.Block {
+	newBlockInfo := blockInfo{
+		parentHash: parentHash,
+		author:     author,
+		txList:     txs,
+		gasLimit:   500000000,
+		time:       time,
+	}
+	parent, err := dpovp.db.GetBlockByHash(parentHash)
+	if err != nil {
+		// genesis block
+		newBlockInfo.height = 0
+	} else {
+		newBlockInfo.height = parent.Height() + 1
+	}
+	testBlock := makeBlock(dpovp.db, newBlockInfo, save)
 	if save {
-		err := dpovp.db.SetStableBlock(testBlock.Hash())
-		if err != nil {
+		if err := dpovp.db.SetStableBlock(testBlock.Hash()); err != nil {
 			panic(err)
 		}
 	}
 	// 对区块进行签名
-	signBlock, err := signTestBlock(signPrivate, testBlock)
-	if err != nil {
-		panic(err)
-	}
-	testBlock.Header.SignData = signBlock
+	signTestBlock(signPrivate, testBlock)
 	return testBlock
 }
 
@@ -231,7 +229,7 @@ func Test_verifyHeaderSignData(t *testing.T) {
 	dpovp := loadDpovp()
 	defer dpovp.db.Close()
 	// 创建一个块并用另一个节点来对此区块进行签名
-	block01 := newTestBlock(dpovp, common.Hash{}, 1, common.HexToAddress(block01MinerAddress), uint32(time.Now().Unix()), deputy02Privkey, false)
+	block01 := newSignedBlock(dpovp, common.Hash{}, common.HexToAddress(block01MinerAddress), nil, uint32(time.Now().Unix()), deputy02Privkey, false)
 	// header := block01.Header
 	assert.Equal(t, ErrVerifyHeaderFailed, verifyHeaderSignData(block01))
 }
@@ -254,19 +252,14 @@ func Test_headerExtra(t *testing.T) {
 	dpovp := loadDpovp()
 	defer dpovp.db.Close()
 	// 创建一个标准的区块
-	testBlcok := newTestBlock(dpovp, common.Hash{}, 1, common.HexToAddress(block01MinerAddress), uint32(time.Now().Unix()-10), deputy01Privkey, false)
+	testBlcok := newSignedBlock(dpovp, common.Hash{}, common.HexToAddress(block01MinerAddress), nil, uint32(time.Now().Unix()-10), deputy01Privkey, false)
 	// 设置区块头中的extra字段长度大于标准长度
 	extra := make([]byte, 257)
 	testBlcok.Header.Extra = extra
-	// 把区块之前的签名置空
-	testBlcok.Header.SignData = []byte{}
 	// 重新对区块进行签名
-	signData, err := signTestBlock(deputy01Privkey, testBlcok)
-	assert.NoError(t, err)
-	testBlcok.Header.SignData = signData
+	signTestBlock(deputy01Privkey, testBlcok)
 	// 验证
 	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyHeader(testBlcok))
-
 }
 
 // TestDpovp_VerifyHeader01 对共识中共识区块与父块关联情况共识的测试
@@ -277,12 +270,12 @@ func TestDpovp_VerifyHeader01(t *testing.T) {
 	dpovp := loadDpovp()
 	defer dpovp.db.Close()
 	// 验证不存在父区块的情况
-	testBlock00 := newTestBlock(dpovp, common.Hash{}, 0, common.HexToAddress(block01MinerAddress), uint32(time.Now().Unix()-10), deputy01Privkey, true)
+	testBlock00 := newSignedBlock(dpovp, common.Hash{}, common.HexToAddress(block01MinerAddress), nil, uint32(time.Now().Unix()-10), deputy01Privkey, true)
 	// header := testBlock00.Header
 	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyHeader(testBlock00))
 
 	// 验证父区块的高度为0，也就是父区块为创世区块情况
-	testBlock01 := newTestBlock(dpovp, testBlock00.Hash(), 1, common.HexToAddress(block02MinerAddress), uint32(time.Now().Unix()-5), deputy02Privkey, false)
+	testBlock01 := newSignedBlock(dpovp, testBlock00.Hash(), common.HexToAddress(block02MinerAddress), nil, uint32(time.Now().Unix()-5), deputy02Privkey, false)
 
 	assert.Equal(t, nil, dpovp.VerifyHeader(testBlock01))
 }
@@ -296,49 +289,49 @@ func TestDpovp_VerifyHeader02(t *testing.T) {
 	dpovp := loadDpovp()
 	defer dpovp.db.Close()
 	// 创世块,随便哪个节点出块在这里没有影响
-	block00 := newTestBlock(dpovp, common.Hash{}, 0, common.HexToAddress(block01MinerAddress), 1995, deputy01Privkey, true)
+	block00 := newSignedBlock(dpovp, common.Hash{}, common.HexToAddress(block01MinerAddress), nil, 1995, deputy01Privkey, true)
 	// parent is genesis block,由第一个节点出块,此区块是作为测试区块的参照区块
-	block01 := newTestBlock(dpovp, block00.Hash(), 1, common.HexToAddress(block01MinerAddress), 2000, deputy01Privkey, true)
+	block01 := newSignedBlock(dpovp, block00.Hash(), common.HexToAddress(block01MinerAddress), nil, 2000, deputy01Privkey, true)
 
 	// if slot == 0 :
 	// 还是由第一个节点出块,模拟 (if slot == 0 ) 的情况 ,与block01时间差为44s,满足条件(if timeSpan >= oneLoopTime-d.timeoutTime),此区块共识验证通过会返回nil
-	block02 := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block01MinerAddress), 2044, deputy01Privkey, false)
+	block02 := newSignedBlock(dpovp, block01.Hash(), common.HexToAddress(block01MinerAddress), nil, 2044, deputy01Privkey, false)
 	assert.Equal(t, nil, dpovp.VerifyHeader(block02))
 	// 与block01时间差为33s,小于40s,验证不通过的情况
-	block03 := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block01MinerAddress), 2033, deputy01Privkey, false)
+	block03 := newSignedBlock(dpovp, block01.Hash(), common.HexToAddress(block01MinerAddress), nil, 2033, deputy01Privkey, false)
 	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyHeader(block03))
 	// 测试一个临界值，与block01时间差等于40s的情况
-	block04 := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block01MinerAddress), 2040, deputy01Privkey, false)
+	block04 := newSignedBlock(dpovp, block01.Hash(), common.HexToAddress(block01MinerAddress), nil, 2040, deputy01Privkey, false)
 	assert.Equal(t, nil, dpovp.VerifyHeader(block04))
 
 	// else if slot == 1 :
 	// 都与block01作为父块, 设置出块代理节点为第二个节点，满足slot == 1,时间差设为第一种小于一轮(50s)的情况,
 	// block05时间满足(timeSpan >= d.blockInterval && timeSpan < d.timeoutTime)的正常情况
-	block05 := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block02MinerAddress), 2005, deputy02Privkey, false)
+	block05 := newSignedBlock(dpovp, block01.Hash(), common.HexToAddress(block02MinerAddress), nil, 2005, deputy02Privkey, false)
 	assert.Equal(t, nil, dpovp.VerifyHeader(block05))
 	// block06 不满足(timeSpan >= d.blockInterval && timeSpan < d.timeoutTime)的情况,timeSpan == 11 > 10
-	block06 := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block02MinerAddress), 2011, deputy02Privkey, false)
+	block06 := newSignedBlock(dpovp, block01.Hash(), common.HexToAddress(block02MinerAddress), nil, 2011, deputy02Privkey, false)
 	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyHeader(block06))
 	// if slot == 1 else 的情况，此情况是timeSpan >= oneLoopTime,时间间隔超过一轮
 	// 首先测试 timeSpan % oneLoopTime < timeoutTime 的正常情况
-	block07 := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block02MinerAddress), 2051, deputy02Privkey, false)
+	block07 := newSignedBlock(dpovp, block01.Hash(), common.HexToAddress(block02MinerAddress), nil, 2051, deputy02Privkey, false)
 	assert.Equal(t, nil, dpovp.VerifyHeader(block07))
 	// 异常情况,timeSpan % oneLoopTime = 20 > timeoutTime
-	block08 := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block02MinerAddress), 2070, deputy02Privkey, false)
+	block08 := newSignedBlock(dpovp, block01.Hash(), common.HexToAddress(block02MinerAddress), nil, 2070, deputy02Privkey, false)
 	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyHeader(block08))
 
 	// else :
 	// slot > 1的情况分析
 	// timeSpan/d.timeoutTime == int64(slot-1) , timeSpan与timeoutTime的除数正好是间隔的代理节点数，为正常情况
 	// 设置block09为第四个节点出块，与block01出块节点中间相隔2个节点,设置时间timeSpan == 20--29都是符合出块的时间
-	block09 := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block04MinerAddress), 2025, deputy04Privkey, false)
+	block09 := newSignedBlock(dpovp, block01.Hash(), common.HexToAddress(block04MinerAddress), nil, 2025, deputy04Privkey, false)
 	assert.Equal(t, nil, dpovp.VerifyHeader(block09))
 	// 不符合情况,设置timeSpan >=30 || timeSpan < 20
 	// timeSpan >=30 情况， 满足条件 timeSpan/d.timeoutTime != int64(slot-1)
-	block10 := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block04MinerAddress), 2030, deputy04Privkey, false)
+	block10 := newSignedBlock(dpovp, block01.Hash(), common.HexToAddress(block04MinerAddress), nil, 2030, deputy04Privkey, false)
 	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyHeader(block10))
 	// timeSpan < 20 情况， 满足条件 timeSpan/d.timeoutTime != int64(slot-1)
-	block11 := newTestBlock(dpovp, block01.Hash(), 2, common.HexToAddress(block04MinerAddress), 2019, deputy04Privkey, false)
+	block11 := newSignedBlock(dpovp, block01.Hash(), common.HexToAddress(block04MinerAddress), nil, 2019, deputy04Privkey, false)
 	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyHeader(block11))
 
 }
@@ -348,23 +341,28 @@ func TestDpovp_Seal(t *testing.T) {
 	dpovp := loadDpovp()
 	defer dpovp.db.Close()
 	// 创世块
-	block00 := newTestBlock(dpovp, common.Hash{}, 0, common.HexToAddress(block01MinerAddress), 995, deputy01Privkey, true)
-	// parent is genesis block,此区块是作为测试区块的参照区块
-	block01 := newTestBlock(dpovp, block00.Hash(), 1, common.HexToAddress(block01MinerAddress), 1000, deputy01Privkey, true)
+	block00 := newSignedBlock(dpovp, common.Hash{}, common.HexToAddress(block01MinerAddress), nil, 995, deputy01Privkey, true)
 
-	TestBlockHeader := block01.Header // 得到block01头，为生成TestBlock所用
 	txs := []*types.Transaction{
 		signTransaction(types.NewTransaction(defaultAccounts[0], common.Big1, 2000000, common.Big2, []byte{12}, 0, chainID, 1538210391, "aa", "aaa"), testPrivate),
 		makeTransaction(testPrivate, defaultAccounts[1], params.OrdinaryTx, common.Big1, common.Big2, 1538210491, 2000000),
 	}
-	block01.Txs = txs // 添加bock01交易
-	manager := account.NewManager(block00.Hash(), dpovp.db)
-	TestBlock, err := dpovp.Seal(TestBlockHeader, txs, block01.Header.GasUsed, manager, nil)
+	// parent is genesis block,此区块是作为测试区块的参照区块
+	block01 := newSignedBlock(dpovp, block00.Hash(), common.HexToAddress(block01MinerAddress), txs, 1000, deputy01Privkey, true)
+
+	TestBlockHeader := block01.Header // 得到block01头，为生成TestBlock所用
+	product := &account.TxsProduct{
+		Txs:         txs,
+		GasUsed:     block01.GasUsed(),
+		ChangeLogs:  block01.ChangeLogs,
+		VersionRoot: block01.VersionRoot(),
+	}
+	TestBlock, err := dpovp.Seal(TestBlockHeader, product, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, block01.Hash(), TestBlock.Hash())
 	assert.Equal(t, block01.Txs, TestBlock.Txs)
 	assert.Equal(t, block01.ChangeLogs, TestBlock.ChangeLogs)
-	assert.Equal(t, nil, TestBlock.DeputyNodes)
+	assert.Equal(t, deputynode.DeputyNodes(nil), TestBlock.DeputyNodes)
 }
 
 // TestDpovp_Finalize todo

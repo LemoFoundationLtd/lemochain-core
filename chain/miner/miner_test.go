@@ -230,10 +230,10 @@ func makeSignBlock(key string, db protocol.ChainDB, info blockInfo, save bool) (
 
 type EngineTestForMiner struct{}
 
-func (engine *EngineTestForMiner) VerifyHeader(block *types.Block) error { return nil }
-
-func (engine *EngineTestForMiner) Seal(header *types.Header, txs []*types.Transaction, gasUsed uint64, am *account.Manager, dNodes deputynode.DeputyNodes) (*types.Block, error) {
-	return nil, nil
+func (engine *EngineTestForMiner) VerifyHeader(block *types.Block) error             { return nil }
+func (engine *EngineTestForMiner) Finalize(height uint32, am *account.Manager) error { return nil }
+func (engine *EngineTestForMiner) Seal(header *types.Header, txProduct *account.TxsProduct, dNodes deputynode.DeputyNodes) (*types.Block, error) {
+	return types.NewBlock(header, txProduct.Txs, txProduct.ChangeLogs, nil), nil
 }
 
 func newBlockChain() (*chain.BlockChain, chan *types.Block, error) {
