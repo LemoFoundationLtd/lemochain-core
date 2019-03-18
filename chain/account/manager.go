@@ -336,6 +336,13 @@ func (am *Manager) RebuildAll(b *types.Block) error {
 	if b.ChangeLogs != nil {
 		am.processor.changeLogs = b.ChangeLogs
 		for _, cl := range b.ChangeLogs {
+			if cl.LogType == StorageRootLog ||
+				cl.LogType == AssetIdRootLog ||
+				cl.LogType == AssetCodeRootLog ||
+				cl.LogType == EquityRootLog {
+				continue
+			}
+
 			if err := cl.Redo(am.processor); err != nil {
 				return err
 			}
