@@ -336,7 +336,7 @@ func (am *Manager) currentBlockHeight() uint32 {
 
 func (am *Manager) RebuildAll(b *types.Block) error {
 	am.Reset(b.ParentHash())
-	if b.ChangeLogs != nil {
+	if len(b.ChangeLogs) > 0 {
 		am.processor.changeLogs = b.ChangeLogs
 		for _, cl := range b.ChangeLogs {
 			am.getRawAccount(cl.Address).SetVersion(cl.LogType, cl.Version, am.baseBlock.Height()+1)
