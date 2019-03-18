@@ -109,15 +109,14 @@ func TestManager_AddEvent(t *testing.T) {
 	defer db.Close()
 	manager := NewManager(newestBlock.Hash(), db)
 
-	event1 := &types.Event{Address: common.HexToAddress("0x1"), TxHash: th(1), BlockHeight: 11}
-	event2 := &types.Event{Address: common.HexToAddress("0x1"), TxHash: th(1), BlockHeight: 22}
+	event1 := &types.Event{Address: common.HexToAddress("0x1"), TxHash: th(1)}
+	event2 := &types.Event{Address: common.HexToAddress("0x1"), TxHash: th(1)}
 	manager.AddEvent(event1)
 	assert.Equal(t, uint(0), event1.Index)
 	manager.AddEvent(event2)
 	assert.Equal(t, uint(1), event2.Index)
 	events := manager.GetEvents()
 	assert.Equal(t, 2, len(events))
-	assert.Equal(t, uint32(11), events[0].BlockHeight)
 	logs := manager.GetChangeLogs()
 	assert.Equal(t, 2, len(logs))
 	assert.Equal(t, AddEventLog, logs[0].LogType)

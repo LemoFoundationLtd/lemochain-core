@@ -209,7 +209,7 @@ func getTestLogs(t *testing.T) []testLogConfig {
 	tests = append(tests, testLogConfig{
 		input:      NewAddEventLog(processor, processor.createAccount(AddEventLog, 0), newEvent),
 		isValuable: true,
-		str:        "AddEventLog{Account: Lemo888888888888888888888888888888888534, Version: 1, NewVal: event: 0000000000000000000000000000000000000aaa [0000000000000000000000000000000000000000000000000000000000000bbb 0000000000000000000000000000000000000000000000000000000000000ccc] 8000 0000000000000000000000000000000000000000000000000000000000000000 0 0000000000000000000000000000000000000000000000000000000000000000 0}",
+		str:        "AddEventLog{Account: Lemo888888888888888888888888888888888534, Version: 1, NewVal: event: 0000000000000000000000000000000000000aaa [0000000000000000000000000000000000000000000000000000000000000bbb 0000000000000000000000000000000000000000000000000000000000000ccc] 8000 0000000000000000000000000000000000000000000000000000000000000000 0 0}",
 		hash:       "0x9819dd922773475d634fbb6d775e464bd07e3a4217982b78c3f1230dac488de4",
 		rlp:        "0xf8760f94000000000000000000000000000000000000000801f85c940000000000000000000000000000000000000aaaf842a00000000000000000000000000000000000000000000000000000000000000bbba00000000000000000000000000000000000000000000000000000000000000ccc828000c0",
 	})
@@ -669,11 +669,10 @@ func TestChangeLog_Redo(t *testing.T) {
 		// 7 NewAddEventLog
 		{
 			input: decreaseVersion(NewAddEventLog(processor, processor.createAccount(AddEventLog, 1), &types.Event{
-				Address:   common.HexToAddress("0xaaa"),
-				Topics:    []common.Hash{common.HexToHash("bbb"), common.HexToHash("ccc")},
-				Data:      []byte{0x80, 0x0},
-				BlockHash: common.HexToHash("0xddd"),
-				TxHash:    common.HexToHash("0x777"),
+				Address: common.HexToAddress("0xaaa"),
+				Topics:  []common.Hash{common.HexToHash("bbb"), common.HexToHash("ccc")},
+				Data:    []byte{0x80, 0x0},
+				TxHash:  common.HexToHash("0x777"),
 			})),
 			afterCheck: func(accessor types.AccountAccessor) {
 				events := findEvent(processor, common.HexToHash("0x777"))

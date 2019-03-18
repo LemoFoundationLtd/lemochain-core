@@ -212,7 +212,7 @@ func WriteTrace(writer io.Writer, logs []StructLog) {
 // WriteEvents writes vm logs in a readable format to the given writer
 func WriteEvents(writer io.Writer, events []*types.Event) {
 	for _, event := range events {
-		fmt.Fprintf(writer, "EVENT%d: %x bn=%d txi=%x\n", len(event.Topics), event.Address, event.BlockHeight, event.TxIndex)
+		fmt.Fprintf(writer, "EVENT%d: %x txi=%x\n", len(event.Topics), event.Address, event.TxIndex)
 
 		for i, topic := range event.Topics {
 			fmt.Fprintf(writer, "%08d  %x\n", i, topic)

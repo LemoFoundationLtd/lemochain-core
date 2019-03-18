@@ -910,10 +910,8 @@ func (evm *EVM) AddEvent(address common.Address, topics []common.Hash, data []by
 		Data:    data,
 		// This is a non-consensus field, but assigned here because
 		// chain/account doesn't know the current block number.
-		BlockHeight: evm.BlockHeight,
-		TxIndex:     evm.TxIndex,
-		TxHash:      evm.TxHash,
-		BlockHash:   evm.BlockHash,
+		TxIndex: evm.TxIndex,
+		TxHash:  evm.TxHash,
 		// event.Term is set outside.
 	})
 }

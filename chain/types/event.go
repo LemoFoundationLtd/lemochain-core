@@ -31,13 +31,10 @@ type Event struct {
 	// Derived fields. These fields are filled in by the node
 	// but not secured by consensus.
 	// block in which the transaction was included
-	BlockHeight uint32 `json:"blockHeight"`
 	// hash of the transaction
 	TxHash common.Hash `json:"transactionHash" gencodec:"required"`
 	// index of the transaction in the block
 	TxIndex uint `json:"transactionIndex" gencodec:"required"`
-	// hash of the block in which the transaction was included
-	BlockHash common.Hash `json:"blockHash"`
 	// index of the event in the receipt
 	Index uint `json:"eventIndex" gencodec:"required"`
 
@@ -47,10 +44,9 @@ type Event struct {
 }
 
 type eventMarshaling struct {
-	Data        hexutil.Bytes
-	BlockHeight hexutil.Uint64
-	TxIndex     hexutil.Uint64
-	Index       hexutil.Uint64
+	Data    hexutil.Bytes
+	TxIndex hexutil.Uint64
+	Index   hexutil.Uint64
 }
 
 type rlpEvent struct {
@@ -60,14 +56,12 @@ type rlpEvent struct {
 }
 
 type rlpStorageEvent struct {
-	Address     common.Address
-	Topics      []common.Hash
-	Data        []byte
-	BlockHeight uint32
-	TxHash      common.Hash
-	TxIndex     uint
-	BlockHash   common.Hash
-	Index       uint
+	Address common.Address
+	Topics  []common.Hash
+	Data    []byte
+	TxHash  common.Hash
+	TxIndex uint
+	Index   uint
 }
 
 // Hash returns the keccak256 hash of its RLP encoding.
@@ -95,7 +89,7 @@ func (l *Event) DecodeRLP(s *rlp.Stream) error {
 }
 
 func (l *Event) String() string {
-	return fmt.Sprintf(`event: %x %x %x %x %d %x %d`, l.Address, l.Topics, l.Data, l.TxHash, l.TxIndex, l.BlockHash, l.Index)
+	return fmt.Sprintf(`event: %x %x %x %x %d %d`, l.Address, l.Topics, l.Data, l.TxHash, l.TxIndex, l.Index)
 }
 
 // EventForStorage is a wrapper around a Event that flattens and parses the entire content of
@@ -105,14 +99,12 @@ type EventForStorage Event
 // EncodeRLP implements rlp.Encoder.
 func (l *EventForStorage) EncodeRLP(w io.Writer) error {
 	return rlp.Encode(w, rlpStorageEvent{
-		Address:     l.Address,
-		Topics:      l.Topics,
-		Data:        l.Data,
-		BlockHeight: l.BlockHeight,
-		TxHash:      l.TxHash,
-		TxIndex:     l.TxIndex,
-		BlockHash:   l.BlockHash,
-		Index:       l.Index,
+		Address: l.Address,
+		Topics:  l.Topics,
+		Data:    l.Data,
+		TxHash:  l.TxHash,
+		TxIndex: l.TxIndex,
+		Index:   l.Index,
 	})
 }
 
@@ -122,14 +114,12 @@ func (l *EventForStorage) DecodeRLP(s *rlp.Stream) error {
 	err := s.Decode(&dec)
 	if err == nil {
 		*l = EventForStorage{
-			Address:     dec.Address,
-			Topics:      dec.Topics,
-			Data:        dec.Data,
-			BlockHeight: dec.BlockHeight,
-			TxHash:      dec.TxHash,
-			TxIndex:     dec.TxIndex,
-			BlockHash:   dec.BlockHash,
-			Index:       dec.Index,
+			Address: dec.Address,
+			Topics:  dec.Topics,
+			Data:    dec.Data,
+			TxHash:  dec.TxHash,
+			TxIndex: dec.TxIndex,
+			Index:   dec.Index,
 		}
 	}
 	return err

@@ -44,18 +44,16 @@ func TestLogProcessor_PushEvent_PopEvent(t *testing.T) {
 	processor := NewManager(newestBlock.Hash(), db).processor
 
 	// push
-	processor.PushEvent(&types.Event{Address: common.HexToAddress("0x1"), TxHash: th(1), BlockHeight: 11})
-	processor.PushEvent(&types.Event{Address: common.HexToAddress("0x1"), BlockHeight: 22})
+	processor.PushEvent(&types.Event{Address: common.HexToAddress("0x1"), TxHash: th(1)})
+	processor.PushEvent(&types.Event{Address: common.HexToAddress("0x1")})
 	events := processor.GetEvents()
 	assert.Equal(t, 2, len(events))
-	assert.Equal(t, uint32(22), events[1].BlockHeight)
 
 	// pop
 	err := processor.PopEvent()
 	assert.NoError(t, err)
 	events = processor.GetEvents()
 	assert.Equal(t, 1, len(events))
-	assert.Equal(t, uint32(11), events[0].BlockHeight)
 	err = processor.PopEvent()
 	assert.NoError(t, err)
 	err = processor.PopEvent()
@@ -176,7 +174,7 @@ func TestLogProcessor_Clear(t *testing.T) {
 	defer db.Close()
 	processor := NewManager(newestBlock.Hash(), db).processor
 
-	processor.PushEvent(&types.Event{Address: common.HexToAddress("0x1"), TxHash: th(1), BlockHeight: 11})
+	processor.PushEvent(&types.Event{Address: common.HexToAddress("0x1"), TxHash: th(1)})
 	processor.PushChangeLog(&types.ChangeLog{
 		LogType: types.ChangeLogType(101),
 	})
