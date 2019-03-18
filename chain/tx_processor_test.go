@@ -4,16 +4,16 @@ import (
 	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
-	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
-	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
-	"github.com/LemoFoundationLtd/lemochain-go/chain/vm"
-	"github.com/LemoFoundationLtd/lemochain-go/common"
-	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
-	"github.com/LemoFoundationLtd/lemochain-go/common/flag"
-	"github.com/LemoFoundationLtd/lemochain-go/common/log"
-	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
-	"github.com/LemoFoundationLtd/lemochain-go/store"
-	"github.com/LemoFoundationLtd/lemochain-go/store/protocol"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/vm"
+	"github.com/LemoFoundationLtd/lemochain-core/common"
+	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
+	"github.com/LemoFoundationLtd/lemochain-core/common/flag"
+	"github.com/LemoFoundationLtd/lemochain-core/common/log"
+	"github.com/LemoFoundationLtd/lemochain-core/common/rlp"
+	"github.com/LemoFoundationLtd/lemochain-core/store"
+	"github.com/LemoFoundationLtd/lemochain-core/store/protocol"
 	"github.com/stretchr/testify/assert"
 	"math/big"
 	"math/rand"
@@ -369,6 +369,21 @@ func TestTxProcessor_ApplyTxs2(t *testing.T) {
 // 	// 	临界值测试
 // 	// candData01 := createCandidateData(params.NotCandidateNode)
 // }
+
+func TestGetHashFn(t *testing.T) {
+	store.ClearData()
+	chain := newChain()
+	defer chain.db.Close()
+	p := NewTxProcessor(chain)
+
+	candiAddr01, err := common.StringToAddress("Lemo8493289P3N6STKGRAPAT278FWD32S95S95ZS")
+	assert.NoError(t, err)
+	acc01 := p.am.GetAccount(candiAddr01)
+	acc01.SetBalance(big.NewInt(5000000))
+	p.am.Finalise()
+	t.Log(acc01.GetBalance())
+
+}
 
 // create register candidate node tx data
 func createCandidateData(isCandidata, nodeID, host, port, minerAdd string) []byte {

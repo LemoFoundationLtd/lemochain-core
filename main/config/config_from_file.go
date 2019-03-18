@@ -3,13 +3,13 @@ package config
 import (
 	"encoding/json"
 	"errors"
-	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
-	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
+	"github.com/LemoFoundationLtd/lemochain-core/common/hexutil"
 	"os"
 	"path/filepath"
 )
 
-const ConfigGuideUrl = "Please visit https://github.com/LemoFoundationLtd/lemochain-go#configuration-file for detail"
+const ConfigGuideUrl = "Please visit https://github.com/LemoFoundationLtd/lemochain-core#configuration-file for detail"
 
 var (
 	ErrConfig = errors.New(`file "config.json" format error.` + ConfigGuideUrl)

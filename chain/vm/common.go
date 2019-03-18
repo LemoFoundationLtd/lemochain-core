@@ -3,8 +3,8 @@ package vm
 import (
 	"math/big"
 
-	"github.com/LemoFoundationLtd/lemochain-go/common"
-	"github.com/LemoFoundationLtd/lemochain-go/common/math"
+	"github.com/LemoFoundationLtd/lemochain-core/common"
+	"github.com/LemoFoundationLtd/lemochain-core/common/math"
 )
 
 // calculates the memory size required for a step

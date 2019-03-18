@@ -3,8 +3,8 @@ package vm
 import (
 	"math/big"
 
-	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
-	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
+	"github.com/LemoFoundationLtd/lemochain-core/common"
 )
 
 type NoopEVMCallContext struct{}

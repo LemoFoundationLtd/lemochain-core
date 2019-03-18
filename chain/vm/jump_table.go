@@ -4,7 +4,7 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 )
 
 type (

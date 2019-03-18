@@ -12,10 +12,10 @@ import (
 	"math/big"
 	"os"
 
-	"github.com/LemoFoundationLtd/lemochain-go/common"
-	"github.com/LemoFoundationLtd/lemochain-go/common/crypto/sha3"
-	"github.com/LemoFoundationLtd/lemochain-go/common/math"
-	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
+	"github.com/LemoFoundationLtd/lemochain-core/common"
+	"github.com/LemoFoundationLtd/lemochain-core/common/crypto/sha3"
+	"github.com/LemoFoundationLtd/lemochain-core/common/math"
+	"github.com/LemoFoundationLtd/lemochain-core/common/rlp"
 )
 
 var (

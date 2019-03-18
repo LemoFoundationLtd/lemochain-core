@@ -7,10 +7,10 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
-	"github.com/LemoFoundationLtd/lemochain-go/common"
-	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
-	"github.com/LemoFoundationLtd/lemochain-go/common/math"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
+	"github.com/LemoFoundationLtd/lemochain-core/common"
+	"github.com/LemoFoundationLtd/lemochain-core/common/hexutil"
+	"github.com/LemoFoundationLtd/lemochain-core/common/math"
 )
 
 type Storage map[common.Hash]common.Hash

@@ -3,7 +3,7 @@ package vm
 import (
 	"fmt"
 
-	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 )
 
 func makeStackFunc(pop, push int) stackValidationFunc {

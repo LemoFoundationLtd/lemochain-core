@@ -1,10 +1,10 @@
 package node
 
 import (
-	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
-	"github.com/LemoFoundationLtd/lemochain-go/common"
-	"github.com/LemoFoundationLtd/lemochain-go/common/flag"
-	"github.com/LemoFoundationLtd/lemochain-go/network/p2p"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
+	"github.com/LemoFoundationLtd/lemochain-core/common"
+	"github.com/LemoFoundationLtd/lemochain-core/common/flag"
+	"github.com/LemoFoundationLtd/lemochain-core/network/p2p"
 	"gopkg.in/urfave/cli.v1"
 	"os"
 	"path/filepath"

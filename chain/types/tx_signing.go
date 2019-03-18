@@ -4,8 +4,8 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
-	"github.com/LemoFoundationLtd/lemochain-go/common"
-	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
+	"github.com/LemoFoundationLtd/lemochain-core/common"
+	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"math/big"
 )
 

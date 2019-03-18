@@ -1,16 +1,16 @@
 package runtime
 
 import (
-	"github.com/LemoFoundationLtd/lemochain-go/chain/account"
-	"github.com/LemoFoundationLtd/lemochain-go/chain/vm/abi"
-	"github.com/LemoFoundationLtd/lemochain-go/store"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/vm/abi"
+	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"github.com/stretchr/testify/assert"
 	"math/big"
 	"strings"
 	"testing"
 
-	"github.com/LemoFoundationLtd/lemochain-go/chain/vm"
-	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/vm"
+	"github.com/LemoFoundationLtd/lemochain-core/common"
 )
 
 func TestDefaults(t *testing.T) {

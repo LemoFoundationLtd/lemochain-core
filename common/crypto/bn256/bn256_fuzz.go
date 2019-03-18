@@ -10,8 +10,8 @@ import (
 	"bytes"
 	"math/big"
 
-	cloudflare "github.com/LemoFoundationLtd/lemochain-go/crypto/bn256/cloudflare"
-	google "github.com/LemoFoundationLtd/lemochain-go/crypto/bn256/google"
+	cloudflare "github.com/LemoFoundationLtd/lemochain-core/crypto/bn256/cloudflare"
+	google "github.com/LemoFoundationLtd/lemochain-core/crypto/bn256/google"
 )
 
 // FuzzAdd fuzzez bn256 addition between the Google and Cloudflare libraries.

@@ -1,7 +1,7 @@
 package crypto
 
 import (
-	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-core/common"
 )
 
 //go:generate gencodec -type AccountKey -out gen_account_keys_json.go

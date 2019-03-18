@@ -40,7 +40,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
+	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 )
 
 var dumpEnc bool

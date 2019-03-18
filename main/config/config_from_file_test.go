@@ -1,7 +1,7 @@
 package config
 
 import (
-	"github.com/LemoFoundationLtd/lemochain-go/store"
+	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"github.com/stretchr/testify/assert"
 	"path/filepath"
 	"testing"

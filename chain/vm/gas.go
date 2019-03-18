@@ -3,7 +3,7 @@ package vm
 import (
 	"math/big"
 
-	"github.com/LemoFoundationLtd/lemochain-go/chain/params"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 )
 
 const (

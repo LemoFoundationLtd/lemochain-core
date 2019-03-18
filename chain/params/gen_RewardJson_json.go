@@ -7,7 +7,7 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
+	"github.com/LemoFoundationLtd/lemochain-core/common/hexutil"
 )
 
 var _ = (*RewardJsonMarshaling)(nil)

@@ -5,7 +5,7 @@ import (
 	"crypto/elliptic"
 	"errors"
 	"fmt"
-	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
+	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"math/big"
 )
 

@@ -3,9 +3,9 @@ package node
 import (
 	"crypto/ecdsa"
 	"fmt"
-	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
-	"github.com/LemoFoundationLtd/lemochain-go/common/log"
-	"github.com/LemoFoundationLtd/lemochain-go/network/p2p"
+	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
+	"github.com/LemoFoundationLtd/lemochain-core/common/log"
+	"github.com/LemoFoundationLtd/lemochain-core/network/p2p"
 	"io/ioutil"
 	"os"
 	"path/filepath"

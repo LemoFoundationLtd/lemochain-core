@@ -1,10 +1,10 @@
 package types
 
 import (
-	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
-	"github.com/LemoFoundationLtd/lemochain-go/common"
-	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
-	"github.com/LemoFoundationLtd/lemochain-go/common/merkle"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
+	"github.com/LemoFoundationLtd/lemochain-core/common"
+	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
+	"github.com/LemoFoundationLtd/lemochain-core/common/merkle"
 )
 
 var emptyRootHash = crypto.Keccak256Hash(nil)

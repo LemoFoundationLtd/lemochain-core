@@ -2,7 +2,7 @@ package store
 
 import (
 	"database/sql"
-	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-core/common"
 )
 
 type DBWriter interface {

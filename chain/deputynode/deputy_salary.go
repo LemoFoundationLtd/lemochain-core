@@ -1,7 +1,7 @@
 package deputynode
 
 import (
-	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"math/big"
 )
 

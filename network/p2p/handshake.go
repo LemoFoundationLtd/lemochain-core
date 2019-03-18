@@ -7,11 +7,11 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
-	"github.com/LemoFoundationLtd/lemochain-go/common"
-	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
-	"github.com/LemoFoundationLtd/lemochain-go/common/crypto/ecies"
-	"github.com/LemoFoundationLtd/lemochain-go/common/crypto/secp256k1"
-	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
+	"github.com/LemoFoundationLtd/lemochain-core/common"
+	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
+	"github.com/LemoFoundationLtd/lemochain-core/common/crypto/ecies"
+	"github.com/LemoFoundationLtd/lemochain-core/common/crypto/secp256k1"
+	"github.com/LemoFoundationLtd/lemochain-core/common/rlp"
 	"io"
 )
 

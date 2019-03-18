@@ -4,7 +4,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-core/common"
 )
 
 type twoOperandTest struct {

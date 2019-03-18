@@ -3,7 +3,7 @@ package vm
 import (
 	"math/big"
 
-	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-core/common"
 )
 
 // ContractRef is a reference to the contract's backing object

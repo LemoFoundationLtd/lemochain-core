@@ -1,7 +1,7 @@
 #!/bin/bash -e
 # Requires installation of: `github.com/wadey/gocovmerge`
 
-cd $GOPATH/src/github.com/LemoFoundationLtd/lemochain-go
+cd $GOPATH/src/github.com/LemoFoundationLtd/lemochain-core
 
 rm -rf ./cov
 mkdir cov

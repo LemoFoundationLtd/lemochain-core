@@ -2,12 +2,12 @@ package types
 
 import (
 	"fmt"
-	"github.com/LemoFoundationLtd/lemochain-go/common/crypto/sha3"
+	"github.com/LemoFoundationLtd/lemochain-core/common/crypto/sha3"
 	"io"
 
-	"github.com/LemoFoundationLtd/lemochain-go/common"
-	"github.com/LemoFoundationLtd/lemochain-go/common/hexutil"
-	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
+	"github.com/LemoFoundationLtd/lemochain-core/common"
+	"github.com/LemoFoundationLtd/lemochain-core/common/hexutil"
+	"github.com/LemoFoundationLtd/lemochain-core/common/rlp"
 )
 
 //go:generate gencodec -type Event -field-override eventMarshaling -out gen_event_json.go

@@ -42,7 +42,7 @@ import (
 	"fmt"
 	"hash"
 
-	lemocrypto "github.com/LemoFoundationLtd/lemochain-go/common/crypto"
+	lemocrypto "github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 )
 
 var (

@@ -3,8 +3,8 @@ package leveldb
 import (
 	"bytes"
 	"encoding/binary"
-	"github.com/LemoFoundationLtd/lemochain-go/common"
-	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
+	"github.com/LemoFoundationLtd/lemochain-core/common"
+	"github.com/LemoFoundationLtd/lemochain-core/common/rlp"
 )
 
 type DatabasePutter interface {

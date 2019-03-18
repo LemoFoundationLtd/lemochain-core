@@ -1,9 +1,9 @@
 package runtime
 
 import (
-	"github.com/LemoFoundationLtd/lemochain-go/chain"
-	"github.com/LemoFoundationLtd/lemochain-go/chain/vm"
-	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-core/chain"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/vm"
+	"github.com/LemoFoundationLtd/lemochain-core/common"
 )
 
 func NewEnv(cfg *Config) *vm.EVM {

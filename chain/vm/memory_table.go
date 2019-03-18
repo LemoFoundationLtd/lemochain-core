@@ -3,7 +3,7 @@ package vm
 import (
 	"math/big"
 
-	"github.com/LemoFoundationLtd/lemochain-go/common/math"
+	"github.com/LemoFoundationLtd/lemochain-core/common/math"
 )
 
 func memorySha3(stack *Stack) *big.Int {

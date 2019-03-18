@@ -2,9 +2,9 @@ package network
 
 import (
 	"crypto/rand"
-	"github.com/LemoFoundationLtd/lemochain-go/chain/deputynode"
-	"github.com/LemoFoundationLtd/lemochain-go/common/log"
-	"github.com/LemoFoundationLtd/lemochain-go/network/p2p"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
+	"github.com/LemoFoundationLtd/lemochain-core/common/log"
+	"github.com/LemoFoundationLtd/lemochain-core/network/p2p"
 	"math/big"
 	"sync"
 )

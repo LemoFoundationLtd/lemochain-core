@@ -3,9 +3,9 @@ package p2p
 import (
 	"crypto/ecdsa"
 	"errors"
-	"github.com/LemoFoundationLtd/lemochain-go/common"
-	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
-	"github.com/LemoFoundationLtd/lemochain-go/common/subscribe"
+	"github.com/LemoFoundationLtd/lemochain-core/common"
+	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
+	"github.com/LemoFoundationLtd/lemochain-core/common/subscribe"
 	"github.com/stretchr/testify/assert"
 	"net"
 	"testing"

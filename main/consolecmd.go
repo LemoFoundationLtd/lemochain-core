@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/LemoFoundationLtd/lemochain-go/common/log"
-	"github.com/LemoFoundationLtd/lemochain-go/main/console"
-	"github.com/LemoFoundationLtd/lemochain-go/network/rpc"
+	"github.com/LemoFoundationLtd/lemochain-core/common/log"
+	"github.com/LemoFoundationLtd/lemochain-core/main/console"
+	"github.com/LemoFoundationLtd/lemochain-core/network/rpc"
 	"gopkg.in/urfave/cli.v1"
 )
 

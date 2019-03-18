@@ -7,8 +7,8 @@ import (
 	"crypto/elliptic"
 	"fmt"
 
-	"github.com/LemoFoundationLtd/lemochain-go/common/crypto/secp256k1"
-	"github.com/LemoFoundationLtd/lemochain-go/common/math"
+	"github.com/LemoFoundationLtd/lemochain-core/common/crypto/secp256k1"
+	"github.com/LemoFoundationLtd/lemochain-core/common/math"
 )
 
 // Ecrecover returns the uncompressed public key that created the given signature.

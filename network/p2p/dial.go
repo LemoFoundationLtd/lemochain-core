@@ -1,7 +1,7 @@
 package p2p
 
 import (
-	"github.com/LemoFoundationLtd/lemochain-go/common/log"
+	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"net"
 	"sync/atomic"
 	"time"

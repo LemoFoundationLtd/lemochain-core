@@ -5,7 +5,7 @@ package crypto
 import (
 	"encoding/json"
 
-	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-core/common"
 )
 
 // MarshalJSON marshals as JSON.

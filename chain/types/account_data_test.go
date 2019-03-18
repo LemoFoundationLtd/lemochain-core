@@ -1,8 +1,8 @@
 package types
 
 import (
-	"github.com/LemoFoundationLtd/lemochain-go/common"
-	"github.com/LemoFoundationLtd/lemochain-go/common/rlp"
+	"github.com/LemoFoundationLtd/lemochain-core/common"
+	"github.com/LemoFoundationLtd/lemochain-core/common/rlp"
 	"github.com/stretchr/testify/assert"
 	"math/big"
 	"testing"

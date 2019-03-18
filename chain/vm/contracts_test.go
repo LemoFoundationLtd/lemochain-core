@@ -5,7 +5,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-core/common"
 )
 
 // precompiledTest defines the input/output pairs for precompiled contract tests.

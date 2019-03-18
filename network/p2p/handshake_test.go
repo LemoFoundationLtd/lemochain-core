@@ -2,8 +2,8 @@ package p2p
 
 import (
 	"bytes"
-	"github.com/LemoFoundationLtd/lemochain-go/common"
-	"github.com/LemoFoundationLtd/lemochain-go/common/crypto"
+	"github.com/LemoFoundationLtd/lemochain-core/common"
+	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"net"

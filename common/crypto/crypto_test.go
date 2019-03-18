@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"fmt"
-	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-core/common"
 )
 
 var testAddrHex = "015ef7c6d6a3077b2531e72b08e55516265d451a"

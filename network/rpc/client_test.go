@@ -1,18 +1,18 @@
-// Copyright 2016 The lemochain-go Authors
-// This file is part of the lemochain-go library.
+// Copyright 2016 The lemochain-core Authors
+// This file is part of the lemochain-core library.
 //
-// The lemochain-go library is free software: you can redistribute it and/or modify
+// The lemochain-core library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The lemochain-go library is distributed in the hope that it will be useful,
+// The lemochain-core library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the lemochain-go library. If not, see <http://www.gnu.org/licenses/>.
+// along with the lemochain-core library. If not, see <http://www.gnu.org/licenses/>.
 
 package rpc
 
@@ -28,7 +28,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/LemoFoundationLtd/lemochain-go/common/log"
+	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/davecgh/go-spew/spew"
 )
 
@@ -368,7 +368,7 @@ func TestClientNotificationStorm(t *testing.T) {
 
 func TestClientReconnect(t *testing.T) {
 	// Listen on a random endpoint.
-	endpoint := fmt.Sprintf("lemochain-go-test-ipc-%d-%d", os.Getpid(), rand.Int63())
+	endpoint := fmt.Sprintf("lemochain-core-test-ipc-%d-%d", os.Getpid(), rand.Int63())
 	if runtime.GOOS == "windows" {
 		endpoint = `\\.\pipe\` + endpoint
 	} else {
@@ -455,7 +455,7 @@ func newTestServer(serviceName string, service interface{}) *Server {
 
 func ipcTestClient(srv *Server, fl *flakeyListener) (*Client, net.Listener) {
 	// Listen on a random endpoint.
-	endpoint := fmt.Sprintf("lemochain-go-test-ipc-%d-%d", os.Getpid(), rand.Int63())
+	endpoint := fmt.Sprintf("lemochain-core-test-ipc-%d-%d", os.Getpid(), rand.Int63())
 	if runtime.GOOS == "windows" {
 		endpoint = `\\.\pipe\` + endpoint
 	} else {

@@ -3,8 +3,8 @@ package runtime_test
 import (
 	"fmt"
 
-	"github.com/LemoFoundationLtd/lemochain-go/chain/vm/runtime"
-	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/vm/runtime"
+	"github.com/LemoFoundationLtd/lemochain-core/common"
 )
 
 func ExampleExecute() {

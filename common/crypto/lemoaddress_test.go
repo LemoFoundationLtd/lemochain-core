@@ -2,7 +2,7 @@ package crypto
 
 import (
 	"fmt"
-	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )

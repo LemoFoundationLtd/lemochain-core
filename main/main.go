@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/LemoFoundationLtd/lemochain-go/common"
-	"github.com/LemoFoundationLtd/lemochain-go/common/flag"
-	"github.com/LemoFoundationLtd/lemochain-go/common/log"
-	"github.com/LemoFoundationLtd/lemochain-go/main/console"
-	"github.com/LemoFoundationLtd/lemochain-go/main/node"
+	"github.com/LemoFoundationLtd/lemochain-core/common"
+	"github.com/LemoFoundationLtd/lemochain-core/common/flag"
+	"github.com/LemoFoundationLtd/lemochain-core/common/log"
+	"github.com/LemoFoundationLtd/lemochain-core/main/console"
+	"github.com/LemoFoundationLtd/lemochain-core/main/node"
 	"github.com/inconshreveable/log15"
 	"gopkg.in/urfave/cli.v1"
 	"os"
@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	app = node.NewApp("the lemochain-go command line interface")
+	app = node.NewApp("the lemochain-core command line interface")
 	// flags to configure the node
 	nodeFlags = []cli.Flag{
 		node.DataDirFlag,
@@ -50,7 +50,7 @@ var (
 func init() {
 	app.Action = glemo
 	app.HideVersion = true
-	app.Copyright = "Copyright 2017-2018 The Lemochain-go Authors"
+	app.Copyright = "Copyright 2017-2018 The lemochain-core Authors"
 	app.Commands = []cli.Command{
 		initCommand,
 		consoleCommand,

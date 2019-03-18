@@ -1,18 +1,18 @@
 ![Logo of the project](./logo.png)
 
 # LemoChain
-[![Build Status](https://travis-ci.org/LemoFoundationLtd/lemochain-go.svg?branch=master)](https://travis-ci.org/LemoFoundationLtd/lemochain-go)
-[![code coverage](https://img.shields.io/coveralls/LemoFoundationLtd/lemochain-go.svg?style=flat-square)](https://coveralls.io/r/LemoFoundationLtd/lemochain-go)
-[![gitter chat](https://img.shields.io/gitter/room/LemoFoundationLtd/lemochain-go.svg?style=flat-square)](https://gitter.im/LemoFoundationLtd/lemochain-go)
+[![Build Status](https://travis-ci.org/LemoFoundationLtd/lemochain-core.svg?branch=master)](https://travis-ci.org/LemoFoundationLtd/lemochain-core)
+[![code coverage](https://img.shields.io/coveralls/LemoFoundationLtd/lemochain-core.svg?style=flat-square)](https://coveralls.io/r/LemoFoundationLtd/lemochain-core)
+[![gitter chat](https://img.shields.io/gitter/room/LemoFoundationLtd/lemochain-core.svg?style=flat-square)](https://gitter.im/LemoFoundationLtd/lemochain-core)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com)
-[![GitHub license](https://img.shields.io/badge/license-LGPL3.0-blue.svg?style=flat-square)](https://github.com/LemoFoundationLtd/lemochain-go/blob/master/LICENSE)
+[![GitHub license](https://img.shields.io/badge/license-LGPL3.0-blue.svg?style=flat-square)](https://github.com/LemoFoundationLtd/lemochain-core/blob/master/LICENSE)
 
 LemoChain是一个通用的数据交易区块链，各种规模的公司可以将其结构化的商业数据货币化，在这个平台上进行交易。通过加强区块链与日常商业的相关性，LemoChain将加速区块链技术融入我们的日常生活。  
 LemoChain独创的DPoVP共识机制具有高响应速度的特性，解决了区块链分布式网络响应速度慢，难以在各种应用场景落地的难题。  
-lemochain-go项目是这种共识机制的Go语言实现，其控制台命令文档见[lemo-client](https://github.com/LemoFoundationLtd/lemo-client)。  
+lemochain-core项目是这种共识机制的Go语言实现，其控制台命令文档见[lemo-client](https://github.com/LemoFoundationLtd/lemo-client)。  
 
-[中文版](https://github.com/LemoFoundationLtd/lemochain-go/blob/master/README_zh.md)  
-[English](https://github.com/LemoFoundationLtd/lemochain-go/blob/master/README.md)
+[中文版](https://github.com/LemoFoundationLtd/lemochain-core/blob/master/README_zh.md)  
+[English](https://github.com/LemoFoundationLtd/lemochain-core/blob/master/README.md)
 
 
 ## 安装
@@ -25,14 +25,14 @@ lemochain-go项目是这种共识机制的Go语言实现，其控制台命令文
 - 在`GOPATH`工作目录下创建源码目录并拉取代码
     ```
     mkdir src\github.com\LemoFoundationLtd
-    git clone https://github.com/LemoFoundationLtd/lemochain-go src\github.com\LemoFoundationLtd\lemochain-go
+    git clone https://github.com/LemoFoundationLtd/lemochain-core src\github.com\LemoFoundationLtd\lemochain-core
     ```
 - 因为`ECDSA`算法代码是由C语言编写，所以编译时会用到`GCC`，建议`windows`下安装`mingw`，其他系统请点击[GCC文档](https://gcc.gnu.org/install)
 - 下载安装[MySQL](https://dev.mysql.com/downloads/installer/) v5.3 或以上版本，也可以使用云数据库。然后创建一个名为`lemochain`的库
 
 ### 编译
 ```
-cd src\github.com\LemoFoundationLtd\lemochain-go\main
+cd src\github.com\LemoFoundationLtd\lemochain-core\main
 go build
 ```
 > 注意: 编译目标程序需为64位

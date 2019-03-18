@@ -1,19 +1,19 @@
 ![Logo of the project](./logo.png)
 
 # LemoChain
-[![Build Status](https://travis-ci.org/LemoFoundationLtd/lemochain-go.svg?branch=master)](https://travis-ci.org/LemoFoundationLtd/lemochain-go)
-[![Coverage Status](https://coveralls.io/repos/github/LemoFoundationLtd/lemochain-go/badge.svg?branch=master)](https://coveralls.io/github/LemoFoundationLtd/lemochain-go?branch=master)
-[![gitter chat](https://img.shields.io/gitter/room/LemoFoundationLtd/lemochain-go.svg?style=flat-square)](https://gitter.im/LemoFoundationLtd/lemochain-go)
+[![Build Status](https://travis-ci.org/LemoFoundationLtd/lemochain-core.svg?branch=master)](https://travis-ci.org/LemoFoundationLtd/lemochain-core)
+[![Coverage Status](https://coveralls.io/repos/github/LemoFoundationLtd/lemochain-core/badge.svg?branch=master)](https://coveralls.io/github/LemoFoundationLtd/lemochain-core?branch=master)
+[![gitter chat](https://img.shields.io/gitter/room/LemoFoundationLtd/lemochain-core.svg?style=flat-square)](https://gitter.im/LemoFoundationLtd/lemochain-core)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com)
-[![GitHub license](https://img.shields.io/badge/license-LGPL3.0-blue.svg?style=flat-square)](https://github.com/LemoFoundationLtd/lemochain-go/blob/master/LICENSE)
+[![GitHub license](https://img.shields.io/badge/license-LGPL3.0-blue.svg?style=flat-square)](https://github.com/LemoFoundationLtd/lemochain-core/blob/master/LICENSE)
 
 LemoChain is a data exchange blockchain, where companies of all sizes can monetize their structured business data and trade within the platform. By strengthening the relevance of the blockchain and daily business, LemoChain will accelerate the integration of blockchain technology into our daily lives.  
 The original DPoVP consensus mechanism of LemoChain has the characteristic of high scalability, which solves the problem of the slow response of the existing distributed networks and the difficulties they face in complying with various application scenarios.  
-The lemochain-go project aims to demonstrate the principle of this consensus mechanism, verifying its improved throughput and transaction confirmation speed.  
-The lemochain-go project is the Golang implement of this consensus mechanism. [lemo-client](https://github.com/LemoFoundationLtd/lemo-client) is document of the command in lemochain-go console.  
+The lemochain-core project aims to demonstrate the principle of this consensus mechanism, verifying its improved throughput and transaction confirmation speed.  
+The lemochain-core project is the Golang implement of this consensus mechanism. [lemo-client](https://github.com/LemoFoundationLtd/lemo-client) is document of the command in lemochain-core console.  
 
-[中文版](https://github.com/LemoFoundationLtd/lemochain-go/blob/master/README_zh.md)  
-[English](https://github.com/LemoFoundationLtd/lemochain-go/blob/master/README.md)
+[中文版](https://github.com/LemoFoundationLtd/lemochain-core/blob/master/README_zh.md)  
+[English](https://github.com/LemoFoundationLtd/lemochain-core/blob/master/README.md)
 
 
 ## Installing
@@ -25,14 +25,14 @@ The lemochain-go project is the Golang implement of this consensus mechanism. [l
 - Make source code directory in `GOPATH` and download source code into it
     ```
     mkdir src\github.com\LemoFoundationLtd
-    git clone https://github.com/LemoFoundationLtd/lemochain-go src\github.com\LemoFoundationLtd\lemochain-go
+    git clone https://github.com/LemoFoundationLtd/lemochain-core src\github.com\LemoFoundationLtd\lemochain-core
     ```
 - Install `GCC`, cause ECDSA is required. Install `mingw` if you use windows, otherwise click [here](https://gcc.gnu.org/install) to read the GCC documentation.
 - Download and install [MySQL](https://dev.mysql.com/downloads/installer/) v5.3 or any later version (or you can use cloud database). Create a database named `lemochain`
 
 ### Compiling
 ```
-cd src\github.com\LemoFoundationLtd\lemochain-go\main
+cd src\github.com\LemoFoundationLtd\lemochain-core\main
 go build
 ```
 > NOTE: Target platform should be x64

@@ -2,7 +2,7 @@ package subscribe
 
 import (
 	"errors"
-	"github.com/LemoFoundationLtd/lemochain-go/common/log"
+	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"reflect"
 	"sync"
 )

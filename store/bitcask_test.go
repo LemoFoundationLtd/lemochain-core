@@ -1,7 +1,7 @@
 package store
 
 import (
-	"github.com/LemoFoundationLtd/lemochain-go/store/leveldb"
+	"github.com/LemoFoundationLtd/lemochain-core/store/leveldb"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )

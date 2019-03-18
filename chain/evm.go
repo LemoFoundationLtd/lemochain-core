@@ -3,9 +3,9 @@ package chain
 import (
 	"math/big"
 
-	"github.com/LemoFoundationLtd/lemochain-go/chain/types"
-	"github.com/LemoFoundationLtd/lemochain-go/chain/vm"
-	"github.com/LemoFoundationLtd/lemochain-go/common"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/vm"
+	"github.com/LemoFoundationLtd/lemochain-core/common"
 )
 
 // ChainContext supports retrieving headers and consensus parameters from the
