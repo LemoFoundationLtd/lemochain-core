@@ -181,6 +181,9 @@ func (am *Manager) loadBaseBlock() (err error) {
 	var block *types.Block
 	if (am.baseBlockHash != common.Hash{}) {
 		block, err = am.db.GetBlockByHash(am.baseBlockHash)
+		if err != nil {
+			panic("load base block err: " + err.Error())
+		}
 	}
 	am.baseBlock = block
 	return err
@@ -336,6 +339,7 @@ func (am *Manager) RebuildAll(b *types.Block) error {
 	if b.ChangeLogs != nil {
 		am.processor.changeLogs = b.ChangeLogs
 		for _, cl := range b.ChangeLogs {
+			am.getRawAccount(cl.Address).SetVersion(cl.LogType, cl.Version, am.baseBlock.Height()+1)
 			if cl.LogType == StorageRootLog ||
 				cl.LogType == AssetIdRootLog ||
 				cl.LogType == AssetCodeRootLog ||
