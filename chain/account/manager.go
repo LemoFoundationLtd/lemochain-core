@@ -223,22 +223,22 @@ func (am *Manager) Finalise() error {
 		newAssetIdRoot := account.rawAccount.GetAssetIdRoot()
 		newEquityRoot := account.rawAccount.GetEquityRoot()
 
-		if newStorageRoot != (common.Hash{}) {
+		if newStorageRoot != oldStorageRoot {
 			log := NewStorageRootLog(am.processor, account.rawAccount, oldStorageRoot, newStorageRoot)
 			am.processor.PushChangeLog(log)
 		}
 
-		if newAssetCodeRoot != (common.Hash{}) {
+		if newAssetCodeRoot != oldAssetCodeRoot {
 			log, _ := NewAssetCodeRootLog(am.processor, account.rawAccount, oldAssetCodeRoot, newAssetCodeRoot)
 			am.processor.PushChangeLog(log)
 		}
 
-		if newAssetIdRoot != (common.Hash{}) {
+		if newAssetIdRoot != oldAssetIdRoot {
 			log, _ := NewAssetIdRootLog(am.processor, account.rawAccount, oldAssetIdRoot, newAssetIdRoot)
 			am.processor.PushChangeLog(log)
 		}
 
-		if newEquityRoot != (common.Hash{}) {
+		if newEquityRoot != oldEquityRoot {
 			log, _ := NewEquityRootLog(am.processor, account.rawAccount, oldEquityRoot, newEquityRoot)
 			am.processor.PushChangeLog(log)
 		}
@@ -339,7 +339,6 @@ func (am *Manager) RebuildAll(b *types.Block) error {
 	if len(b.ChangeLogs) > 0 {
 		am.processor.changeLogs = b.ChangeLogs
 		for _, cl := range b.ChangeLogs {
-			am.getRawAccount(cl.Address).SetVersion(cl.LogType, cl.Version, am.baseBlock.Height()+1)
 			if cl.LogType == StorageRootLog ||
 				cl.LogType == AssetIdRootLog ||
 				cl.LogType == AssetCodeRootLog ||
