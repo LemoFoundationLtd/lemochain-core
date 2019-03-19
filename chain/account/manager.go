@@ -337,7 +337,6 @@ func (am *Manager) currentBlockHeight() uint32 {
 func (am *Manager) RebuildAll(b *types.Block) error {
 	am.Reset(b.ParentHash())
 	if len(b.ChangeLogs) > 0 {
-		am.processor.changeLogs = b.ChangeLogs
 		for _, cl := range b.ChangeLogs {
 			if cl.LogType == StorageRootLog ||
 				cl.LogType == AssetIdRootLog ||
@@ -349,6 +348,8 @@ func (am *Manager) RebuildAll(b *types.Block) error {
 			if err := cl.Redo(am.processor); err != nil {
 				return err
 			}
+
+			am.processor.changeLogs = append(am.processor.changeLogs, cl)
 		}
 	}
 	return nil
