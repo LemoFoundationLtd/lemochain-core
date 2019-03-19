@@ -420,7 +420,7 @@ func (m *Miner) sealBlock() {
 		return
 	}
 	// seal block
-	block, err := m.engine.Seal(header, am.GetTxsProduct(packagedTxs, gasUsed), dNodes)
+	block, err := m.engine.Seal(header, am.GetTxsProduct(packagedTxs, gasUsed), nil, dNodes)
 	if err != nil {
 		log.Errorf("Seal block error! %v", err)
 		return
