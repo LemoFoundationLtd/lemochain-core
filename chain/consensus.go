@@ -23,7 +23,7 @@ type Engine interface {
 
 	Finalize(height uint32, am *account.Manager) error
 
-	Seal(header *types.Header, txProduct *account.TxsProduct, dNodes deputynode.DeputyNodes) (*types.Block, error)
+	Seal(header *types.Header, txProduct *account.TxsProduct, confirms []types.SignData, dNodes deputynode.DeputyNodes) (*types.Block, error)
 }
 
 type Dpovp struct {
@@ -159,7 +159,7 @@ func (d *Dpovp) VerifyHeader(block *types.Block) error {
 }
 
 // Seal packages all products into a block
-func (d *Dpovp) Seal(header *types.Header, txProduct *account.TxsProduct, dNodes deputynode.DeputyNodes) (*types.Block, error) {
+func (d *Dpovp) Seal(header *types.Header, txProduct *account.TxsProduct, confirms []types.SignData, dNodes deputynode.DeputyNodes) (*types.Block, error) {
 	log.Errorf("%d changlog.00000000002: %v", header.Height, txProduct.ChangeLogs)
 	newHeader := header.Copy()
 	newHeader.VersionRoot = txProduct.VersionRoot
@@ -167,7 +167,8 @@ func (d *Dpovp) Seal(header *types.Header, txProduct *account.TxsProduct, dNodes
 	newHeader.TxRoot = types.DeriveTxsSha(txProduct.Txs)
 	newHeader.GasUsed = txProduct.GasUsed
 
-	block := types.NewBlock(newHeader, txProduct.Txs, txProduct.ChangeLogs, nil)
+	block := types.NewBlock(newHeader, txProduct.Txs, txProduct.ChangeLogs)
+	block.SetConfirms(confirms)
 	if dNodes != nil {
 		block.SetDeputyNodes(dNodes)
 	}

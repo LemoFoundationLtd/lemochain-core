@@ -159,7 +159,7 @@ func (g *Genesis) ToBlock(am *account.Manager) (*types.Block, error) {
 		VersionRoot:  am.GetVersionRoot(),
 		LogRoot:      types.DeriveChangeLogsSha(logs),
 	}
-	block := types.NewBlock(header, nil, logs, nil)
+	block := types.NewBlock(header, nil, logs)
 	block.SetDeputyNodes(g.DeputyNodes)
 	return block, nil
 }
