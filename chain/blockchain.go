@@ -544,7 +544,7 @@ func (bc *BlockChain) VerifyAndFill(block *types.Block) (*types.Block, error) {
 		log.Errorf("Finalize accounts error: %v", err)
 		return nil, err
 	}
-	newBlock, err := bc.engine.Seal(block.Header, bc.am.GetTxsProduct(block.Txs, gasUsed), block.DeputyNodes)
+	newBlock, err := bc.engine.Seal(block.Header, bc.am.GetTxsProduct(block.Txs, gasUsed), block.Confirms, block.DeputyNodes)
 	if err != nil {
 		log.Errorf("Seal block error: %v", err)
 		return nil, err
