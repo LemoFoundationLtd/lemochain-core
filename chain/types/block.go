@@ -64,12 +64,11 @@ type Block struct {
 	DeputyNodes deputynode.DeputyNodes `json:"deputyNodes"`
 }
 
-func NewBlock(header *Header, txs []*Transaction, changeLog []*ChangeLog, confirms []SignData) *Block {
+func NewBlock(header *Header, txs []*Transaction, changeLog []*ChangeLog) *Block {
 	return &Block{
 		Header:     header,
 		Txs:        txs,
 		ChangeLogs: changeLog,
-		Confirms:   confirms,
 	}
 }
 

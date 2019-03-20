@@ -544,7 +544,7 @@ func (bc *BlockChain) VerifyAndFill(block *types.Block) (*types.Block, error) {
 		log.Errorf("Finalize accounts error: %v", err)
 		return nil, err
 	}
-	newBlock, err := bc.engine.Seal(block.Header, bc.am.GetTxsProduct(block.Txs, gasUsed), block.DeputyNodes)
+	newBlock, err := bc.engine.Seal(block.Header, bc.am.GetTxsProduct(block.Txs, gasUsed), block.Confirms, block.DeputyNodes)
 	if err != nil {
 		log.Errorf("Seal block error: %v", err)
 		return nil, err
@@ -715,6 +715,9 @@ func (bc *BlockChain) Db() db.ChainDB {
 func (bc *BlockChain) GetNewDeputyNodes() deputynode.DeputyNodes {
 	result := make(deputynode.DeputyNodes, 0, 17)
 	list := bc.db.GetCandidatesTop(bc.CurrentBlock().Hash())
+	if len(list) > deputynode.TotalCount {
+		list = list[:deputynode.TotalCount]
+	}
 	for i, n := range list {
 		dn := new(deputynode.DeputyNode)
 		dn.Votes = n.GetTotal()

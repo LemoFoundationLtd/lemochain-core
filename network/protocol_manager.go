@@ -219,6 +219,8 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 				}
 				// local chain has this block
 				if pm.chain.HasBlock(b.ParentHash()) {
+					log.Debugf("get block from peer:%s", rcvMsg.p.NodeID().String())
+					log.Debugf("received block's comfirm length: %d", len(b.Confirms))
 					pm.insertBlock(b)
 				} else {
 					pm.blockCache.Add(b)
@@ -335,6 +337,7 @@ func (pm *ProtocolManager) fetchConfirmsFromRemote(start, end uint32) {
 func (pm *ProtocolManager) setConfirmsFromCache(height uint32, hash common.Hash) {
 	confirms := pm.confirmsCache.Pop(height, hash)
 	if confirms == nil {
+		log.Debug("confirmsCache.Pop confirms == nil")
 		return
 	}
 	for _, confirm := range confirms {

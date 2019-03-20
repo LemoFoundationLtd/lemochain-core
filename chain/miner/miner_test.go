@@ -232,8 +232,8 @@ type EngineTestForMiner struct{}
 
 func (engine *EngineTestForMiner) VerifyHeader(block *types.Block) error             { return nil }
 func (engine *EngineTestForMiner) Finalize(height uint32, am *account.Manager) error { return nil }
-func (engine *EngineTestForMiner) Seal(header *types.Header, txProduct *account.TxsProduct, dNodes deputynode.DeputyNodes) (*types.Block, error) {
-	return types.NewBlock(header, txProduct.Txs, txProduct.ChangeLogs, nil), nil
+func (engine *EngineTestForMiner) Seal(header *types.Header, txProduct *account.TxsProduct, confirms []types.SignData, dNodes deputynode.DeputyNodes) (*types.Block, error) {
+	return types.NewBlock(header, txProduct.Txs, txProduct.ChangeLogs), nil
 }
 
 func newBlockChain() (*chain.BlockChain, chan *types.Block, error) {
