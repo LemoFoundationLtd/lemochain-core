@@ -39,7 +39,7 @@ func TestManager_GetAccount(t *testing.T) {
 	// exist in db
 	manager := NewManager(newestBlock.Hash(), db)
 	account := manager.GetAccount(defaultAccounts[0].Address)
-	assert.Equal(t, uint32(100), account.GetBaseVersion(BalanceLog))
+	assert.Equal(t, uint32(100), account.GetVersion(BalanceLog))
 	assert.Equal(t, false, account.IsEmpty())
 	// not exist in db
 	account = manager.GetAccount(common.HexToAddress("0xaaa"))
@@ -49,7 +49,7 @@ func TestManager_GetAccount(t *testing.T) {
 	// load from older block
 	manager = NewManager(defaultBlockInfos[0].hash, db)
 	account = manager.GetAccount(defaultAccounts[0].Address)
-	assert.Equal(t, uint32(100), account.GetBaseVersion(BalanceLog))
+	assert.Equal(t, uint32(100), account.GetVersion(BalanceLog))
 	assert.Equal(t, false, account.IsEmpty())
 
 	// load from genesis' parent block
@@ -74,7 +74,7 @@ func TestManager_GetCanonicalAccount(t *testing.T) {
 	// exist in db
 	manager := NewManager(newestBlock.Hash(), db)
 	account := manager.GetCanonicalAccount(defaultAccounts[0].Address)
-	assert.Equal(t, uint32(100), account.GetBaseVersion(BalanceLog))
+	assert.Equal(t, uint32(100), account.GetVersion(BalanceLog))
 	// not exist in db
 	account = manager.GetCanonicalAccount(common.HexToAddress("0xaaa"))
 	assert.Equal(t, common.HexToAddress("0xaaa"), account.GetAddress())
@@ -115,8 +115,8 @@ func TestManager_AddEvent(t *testing.T) {
 	assert.Equal(t, uint(0), event1.Index)
 	manager.AddEvent(event2)
 	assert.Equal(t, uint(1), event2.Index)
-	events := manager.GetEvents()
-	assert.Equal(t, 2, len(events))
+	// events := manager.GetEvents()
+	// assert.Equal(t, 2, len(events))
 	logs := manager.GetChangeLogs()
 	assert.Equal(t, 2, len(logs))
 	assert.Equal(t, AddEventLog, logs[0].LogType)
@@ -141,7 +141,7 @@ func TestManager_GetVersionRoot(t *testing.T) {
 	key := append(defaultAccounts[0].Address.Bytes(), big.NewInt(int64(BalanceLog)).Bytes()...)
 	value, err := ReadTrie(db, root, key)
 	assert.NoError(t, err)
-	assert.Equal(t, uint32(100), manager.GetAccount(defaultAccounts[0].Address).GetBaseVersion(BalanceLog))
+	assert.Equal(t, uint32(100), manager.GetAccount(defaultAccounts[0].Address).GetVersion(BalanceLog))
 	assert.Equal(t, big.NewInt(100), new(big.Int).SetBytes(value))
 }
 
@@ -161,7 +161,6 @@ func TestManager_Reset(t *testing.T) {
 	assert.Equal(t, newestBlock.Hash(), manager.baseBlockHash)
 	assert.Empty(t, manager.accountCache)
 	assert.Empty(t, manager.processor.changeLogs)
-	assert.Empty(t, manager.processor.events)
 	assert.Empty(t, manager.versionTrie)
 }
 
@@ -279,10 +278,10 @@ func TestManager_Save_Reset(t *testing.T) {
 	// save balance to 1 in block1
 	account := manager.GetAccount(common.HexToAddress("0x1"))
 	account.SetBalance(big.NewInt(1))
-	assert.Equal(t, uint32(0), account.GetBaseVersion(BalanceLog))
+	assert.Equal(t, uint32(0), account.GetVersion(BalanceLog))
 	err := manager.Finalise()
 	assert.NoError(t, err)
-	assert.Equal(t, uint32(1), account.GetBaseVersion(BalanceLog))
+	assert.Equal(t, uint32(1), account.GetVersion(BalanceLog))
 	assert.Equal(t, uint32(0), account.(*SafeAccount).rawAccount.data.NewestRecords[BalanceLog].Height)
 	block := &types.Block{}
 	block.SetHeader(&types.Header{ParentHash: defaultBlocks[1].Hash(), Height: 2, VersionRoot: manager.GetVersionRoot()})
@@ -297,13 +296,13 @@ func TestManager_Save_Reset(t *testing.T) {
 	// manager = NewManager(block1Hash, db)
 	account = manager.GetAccount(common.HexToAddress("0x1"))
 	assert.Equal(t, big.NewInt(1), account.GetBalance())
-	assert.Equal(t, uint32(1), account.GetBaseVersion(BalanceLog))
+	assert.Equal(t, uint32(1), account.GetVersion(BalanceLog))
 
 	account.SetBalance(big.NewInt(2))
-	assert.Equal(t, uint32(1), account.GetBaseVersion(BalanceLog))
+	assert.Equal(t, uint32(1), account.GetVersion(BalanceLog))
 	err = manager.Finalise()
 	assert.NoError(t, err)
-	assert.Equal(t, uint32(2), account.GetBaseVersion(BalanceLog))
+	assert.Equal(t, uint32(2), account.GetVersion(BalanceLog))
 	assert.Equal(t, uint32(3), account.(*SafeAccount).rawAccount.data.NewestRecords[BalanceLog].Height)
 	block = &types.Block{}
 	block.SetHeader(&types.Header{Height: 3, ParentHash: block1Hash, VersionRoot: manager.GetVersionRoot()})
@@ -316,5 +315,5 @@ func TestManager_Save_Reset(t *testing.T) {
 	manager.Reset(block1Hash)
 	account = manager.GetAccount(common.HexToAddress("0x1"))
 	assert.Equal(t, big.NewInt(1), account.GetBalance())
-	assert.Equal(t, uint32(1), account.GetBaseVersion(BalanceLog))
+	assert.Equal(t, uint32(1), account.GetVersion(BalanceLog))
 }

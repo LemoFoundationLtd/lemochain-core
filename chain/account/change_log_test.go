@@ -38,7 +38,7 @@ func (p *testProcessor) GetAccount(address common.Address) types.AccountAccessor
 
 func (p *testProcessor) GetNextVersion(logType types.ChangeLogType, addr common.Address) uint32 {
 	account := p.Accounts[addr]
-	return account.GetBaseVersion(logType) + 1
+	return account.GetNestVersion(logType)
 }
 
 func (p *testProcessor) PushEvent(event *types.Event) {
@@ -124,7 +124,7 @@ type testLogConfig struct {
 
 func NewStorageLogWithoutError(t *testing.T, processor *testProcessor, version uint32, key common.Hash, newVal []byte) *types.ChangeLog {
 	account := processor.createAccount(StorageLog, version)
-	log, err := NewStorageLog(processor, account, key, newVal)
+	log, err := NewStorageLog(account.GetAddress(), processor, key, newVal)
 	assert.NoError(t, err)
 	return log
 }
@@ -134,8 +134,9 @@ func getTestLogs(t *testing.T) []testLogConfig {
 	tests := make([]testLogConfig, 0)
 
 	// 0 BalanceLog
+	account := processor.createAccount(BalanceLog, 0)
 	tests = append(tests, testLogConfig{
-		input:      NewBalanceLog(processor, processor.createAccount(BalanceLog, 0), big.NewInt(0)),
+		input:      NewBalanceLog(account.GetAddress(), processor, big.NewInt(0)),
 		isValuable: true,
 		str:        "BalanceLog{Account: Lemo8888888888888888888888888888888888BW, Version: 1, OldVal: 100, NewVal: 0}",
 		hash:       "0x9532d32f3b2253bb6fb438cb8ac394882b15a1a2883e6619398d50f059ea2692",
@@ -143,8 +144,9 @@ func getTestLogs(t *testing.T) []testLogConfig {
 		decoded:    "BalanceLog{Account: Lemo8888888888888888888888888888888888BW, Version: 1, NewVal: 0}",
 	})
 	// 1 BalanceLog
+	account = processor.createAccount(BalanceLog, 0)
 	tests = append(tests, testLogConfig{
-		input:      NewBalanceLog(processor, processor.createAccount(BalanceLog, 0), big.NewInt(100)),
+		input:      NewBalanceLog(account.GetAddress(), processor, big.NewInt(100)),
 		isValuable: false,
 		str:        "BalanceLog{Account: Lemo8888888888888888888888888888888888QR, Version: 1, OldVal: 100, NewVal: 100}",
 		hash:       "0xdca6aeea6698dc07743ef2eec68d49117906684ff3540cf055b02c58b8b05ada",
@@ -173,8 +175,9 @@ func getTestLogs(t *testing.T) []testLogConfig {
 	})
 
 	// storage root
+	account = processor.createAccount(BalanceLog, 0)
 	tests = append(tests, testLogConfig{
-		input:      NewStorageRootLog(processor, processor.createAccount(BalanceLog, 0), common.HexToHash("0x01"), common.HexToHash("0x02")),
+		input:      NewStorageRootLog(account.GetAddress(), processor, common.HexToHash("0x01"), common.HexToHash("0x02")),
 		isValuable: true,
 		str:        "StorageRootLog{Account: Lemo8888888888888888888888888888888883WD, Version: 1, OldVal: [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1], NewVal: [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2]}",
 		hash:       "0x9b40bebbdc2758db2b756f64eed632f0484e48faa3794adbc503cc55ac5ac334",
@@ -183,8 +186,9 @@ func getTestLogs(t *testing.T) []testLogConfig {
 	})
 
 	// 4 CodeLog
+	account = processor.createAccount(CodeLog, 0)
 	tests = append(tests, testLogConfig{
-		input:      NewCodeLog(processor, processor.createAccount(CodeLog, 0), []byte{0x12, 0x34}),
+		input:      NewCodeLog(account.GetAddress(), processor, []byte{0x12, 0x34}),
 		isValuable: true,
 		str:        "CodeLog{Account: Lemo88888888888888888888888888888888849A, Version: 1, NewVal: 0x1234}",
 		hash:       "0x68d9b4a1e48a3f52774beb565d8123281421a4bb3519b30ce7e7cbb24d0dd308",
@@ -192,8 +196,9 @@ func getTestLogs(t *testing.T) []testLogConfig {
 	})
 
 	// 5 CodeLog
+	account = processor.createAccount(CodeLog, 0)
 	tests = append(tests, testLogConfig{
-		input:      NewCodeLog(processor, processor.createAccount(CodeLog, 0), []byte{}),
+		input:      NewCodeLog(account.GetAddress(), processor, []byte{}),
 		isValuable: false,
 		str:        "CodeLog{Account: Lemo8888888888888888888888888888888884N7, Version: 1, NewVal: }",
 		hash:       "0x73cefd2f2312068337e16f784f8cb06ea132b701b8d614c30aff7f5867d2d6f3",
@@ -206,8 +211,10 @@ func getTestLogs(t *testing.T) []testLogConfig {
 		Topics:  []common.Hash{common.HexToHash("bbb"), common.HexToHash("ccc")},
 		Data:    []byte{0x80, 0x0},
 	}
+
+	account = processor.createAccount(AddEventLog, 0)
 	tests = append(tests, testLogConfig{
-		input:      NewAddEventLog(processor, processor.createAccount(AddEventLog, 0), newEvent),
+		input:      NewAddEventLog(account.GetAddress(), processor, newEvent),
 		isValuable: true,
 		str:        "AddEventLog{Account: Lemo888888888888888888888888888888888534, Version: 1, NewVal: event: 0000000000000000000000000000000000000aaa [0000000000000000000000000000000000000000000000000000000000000bbb 0000000000000000000000000000000000000000000000000000000000000ccc] 8000 0000000000000000000000000000000000000000000000000000000000000000 0 0}",
 		hash:       "0x9819dd922773475d634fbb6d775e464bd07e3a4217982b78c3f1230dac488de4",
@@ -216,8 +223,9 @@ func getTestLogs(t *testing.T) []testLogConfig {
 	// It is not possible to set NewVal in AddEventLog to nil. We can't test is because we can't rlp encode a (*types.Event)(nil)
 
 	// 7 SuicideLog
+	account = processor.createAccount(SuicideLog, 0)
 	tests = append(tests, testLogConfig{
-		input:      NewSuicideLog(processor, processor.createAccount(SuicideLog, 0)),
+		input:      NewSuicideLog(account.GetAddress(), processor),
 		isValuable: true,
 		str:        "SuicideLog{Account: Lemo8888888888888888888888888888888885CZ, Version: 1, OldVal: {Address: Lemo888888888888888888888888888888888888, Balance: 100, VoteFor: Lemo888888888888888888888888888888888888}}",
 		hash:       "0x7ee159c6b3a060c673a26e97e15438a5a16d7b8b21ebcff99f59f2455a8b6147",
@@ -225,8 +233,9 @@ func getTestLogs(t *testing.T) []testLogConfig {
 		decoded:    "SuicideLog{Account: Lemo8888888888888888888888888888888885CZ, Version: 1}",
 	})
 	// 8 SuicideLog
+	account = processor.createEmptyAccount()
 	tests = append(tests, testLogConfig{
-		input:      NewSuicideLog(processor, processor.createEmptyAccount()),
+		input:      NewSuicideLog(account.GetAddress(), processor),
 		isValuable: false,
 		str:        "SuicideLog{Account: Lemo8888888888888888888888888888888885RT, Version: 1, OldVal: {Address: Lemo888888888888888888888888888888888888, Balance: 0, VoteFor: Lemo888888888888888888888888888888888888}}",
 		hash:       "0x6d7a3da06cd453572ac14e54994b53dcbc907299ed32760b3eeb1f456099cfbd",
@@ -235,8 +244,9 @@ func getTestLogs(t *testing.T) []testLogConfig {
 	})
 
 	// 9 VotesLog
+	account = processor.createAccount(VotesLog, 0)
 	tests = append(tests, testLogConfig{
-		input:      NewVotesLog(processor, processor.createAccount(VotesLog, 0), big.NewInt(1000)),
+		input:      NewVotesLog(account.GetAddress(), processor, big.NewInt(1000)),
 		isValuable: true,
 		str:        "VotesLog{Account: Lemo88888888888888888888888888888888866Q, Version: 1, OldVal: 200, NewVal: 1000}",
 		hash:       "0xfc049109e9882cbd4ca27b628958e17242eef720de85cc807a2a5f63313b492f",
@@ -244,8 +254,9 @@ func getTestLogs(t *testing.T) []testLogConfig {
 		decoded:    "VotesLog{Account: Lemo88888888888888888888888888888888866Q, Version: 1, NewVal: 1000}",
 	})
 	// 10 VotesLog
+	account = processor.createAccount(VotesLog, 0)
 	tests = append(tests, testLogConfig{
-		input:      NewVotesLog(processor, processor.createAccount(VotesLog, 0), big.NewInt(200)),
+		input:      NewVotesLog(account.GetAddress(), processor, big.NewInt(200)),
 		isValuable: false,
 		str:        "VotesLog{Account: Lemo8888888888888888888888888888888886HK, Version: 1, OldVal: 200, NewVal: 200}",
 		hash:       "0xe555e6c1771827e5edc0e25ac953e5a2b7c4e7fba2c2976a5b608b5133daf646",
@@ -254,8 +265,9 @@ func getTestLogs(t *testing.T) []testLogConfig {
 	})
 
 	// 11 VoteForLog
+	account = processor.createAccount(VoteForLog, 0)
 	tests = append(tests, testLogConfig{
-		input:      NewVoteForLog(processor, processor.createAccount(VoteForLog, 0), common.HexToAddress("0x0002")),
+		input:      NewVoteForLog(account.GetAddress(), processor, common.HexToAddress("0x0002")),
 		isValuable: true,
 		str:        "VoteForLog{Account: Lemo8888888888888888888888888888888886YG, Version: 1, OldVal: Lemo8888888888888888888888888888888888BW, NewVal: Lemo8888888888888888888888888888888888QR}",
 		hash:       "0xe377afa192cccb5db82fa76173b993909c11d8eb0e5dd006ddc538e8338ff480",
@@ -263,8 +275,9 @@ func getTestLogs(t *testing.T) []testLogConfig {
 		decoded:    "VoteForLog{Account: Lemo8888888888888888888888888888888886YG, Version: 1, NewVal: Lemo8888888888888888888888888888888888QR}",
 	})
 	// 12 VoteForLog
+	account = processor.createAccount(VoteForLog, 0)
 	tests = append(tests, testLogConfig{
-		input:      NewVoteForLog(processor, processor.createAccount(VoteForLog, 0), common.HexToAddress("0x0001")),
+		input:      NewVoteForLog(account.GetAddress(), processor, common.HexToAddress("0x0001")),
 		isValuable: false,
 		str:        "VoteForLog{Account: Lemo8888888888888888888888888888888887AC, Version: 1, OldVal: Lemo8888888888888888888888888888888888BW, NewVal: Lemo8888888888888888888888888888888888BW}",
 		hash:       "0x78cfaf7515a698c7399c8699f214294ab23392afbdeac14715ca967f7171a553",
@@ -273,7 +286,8 @@ func getTestLogs(t *testing.T) []testLogConfig {
 	})
 
 	// 13 AssetCode
-	log, _ := NewAssetCodeLog(processor, processor.createAccount(AssetCodeLog, 0), common.HexToHash("0x33"), new(types.Asset))
+	account = processor.createAccount(AssetCodeLog, 0)
+	log, _ := NewAssetCodeLog(account.GetAddress(), processor, common.HexToHash("0x33"), new(types.Asset))
 	tests = append(tests, testLogConfig{
 		input:      log,
 		isValuable: true,
@@ -283,7 +297,8 @@ func getTestLogs(t *testing.T) []testLogConfig {
 		decoded:    "AssetCodeLog{Account: Lemo8888888888888888888888888888888887P9, Version: 1, NewVal: {Category: 0, IsDivisible: false, AssetCode: 0x0000000000000000000000000000000000000000000000000000000000000000, Decimals: 0, Issuer: Lemo888888888888888888888888888888888888, IsReplenishable: false, TotalSupply: 0, Profile: []}, Extra: [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 51]}",
 	})
 
-	log, _ = NewAssetCodeStateLog(processor, processor.createAccount(AssetCodeStateLog, 0), common.HexToHash("0x33"), "key", "new")
+	account = processor.createAccount(AssetCodeStateLog, 0)
+	log, _ = NewAssetCodeStateLog(account.GetAddress(), processor, common.HexToHash("0x33"), "key", "new")
 	tests = append(tests, testLogConfig{
 		input:      log,
 		isValuable: true,
@@ -293,7 +308,8 @@ func getTestLogs(t *testing.T) []testLogConfig {
 		decoded:    "AssetCodeStateLog{Account: Lemo888888888888888888888888888888888246, Version: 1, NewVal: new, Extra: {UUID: 0x0000000000000000000000000000000000000000000000000000000000000033, Key: key}}",
 	})
 
-	log, _ = NewAssetCodeRootLog(processor, processor.createAccount(AssetCodeRootLog, 0), common.HexToHash("0x01"), common.HexToHash("0x02"))
+	account = processor.createAccount(AssetCodeRootLog, 0)
+	log, _ = NewAssetCodeRootLog(account.GetAddress(), processor, common.HexToHash("0x01"), common.HexToHash("0x02"))
 	tests = append(tests, testLogConfig{
 		input:      log,
 		isValuable: true,
@@ -303,7 +319,8 @@ func getTestLogs(t *testing.T) []testLogConfig {
 		decoded:    "AssetCodeRootLog{Account: Lemo8888888888888888888888888888888882F3, Version: 1, NewVal: [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2]}",
 	})
 
-	log, _ = NewAssetIdLog(processor, processor.createAccount(AssetIdLog, 0), common.HexToHash("0x33"), "new")
+	account = processor.createAccount(AssetIdLog, 0)
+	log, _ = NewAssetIdLog(account.GetAddress(), processor, common.HexToHash("0x33"), "new")
 	tests = append(tests, testLogConfig{
 		input:      log,
 		isValuable: true,
@@ -313,7 +330,8 @@ func getTestLogs(t *testing.T) []testLogConfig {
 		decoded:    "AssetIdLog{Account: Lemo8888888888888888888888888888888882SY, Version: 1, NewVal: new, Extra: [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 51]}",
 	})
 
-	log, _ = NewAssetIdRootLog(processor, processor.createAccount(AssetIdRootLog, 0), common.HexToHash("0x01"), common.HexToHash("0x02"))
+	account = processor.createAccount(AssetIdRootLog, 0)
+	log, _ = NewAssetIdRootLog(account.GetAddress(), processor, common.HexToHash("0x01"), common.HexToHash("0x02"))
 	tests = append(tests, testLogConfig{
 		input:      log,
 		isValuable: true,
@@ -323,7 +341,8 @@ func getTestLogs(t *testing.T) []testLogConfig {
 		decoded:    "AssetIdRootLog{Account: Lemo88888888888888888888888888888888897S, Version: 1, NewVal: [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2]}",
 	})
 
-	log, _ = NewEquityLog(processor, processor.createAccount(EquityLog, 0), common.HexToHash("0x33"), new(types.AssetEquity))
+	account = processor.createAccount(EquityLog, 0)
+	log, _ = NewEquityLog(account.GetAddress(), processor, common.HexToHash("0x33"), new(types.AssetEquity))
 	tests = append(tests, testLogConfig{
 		input:      log,
 		isValuable: true,
@@ -333,7 +352,8 @@ func getTestLogs(t *testing.T) []testLogConfig {
 		decoded:    "EquityLog{Account: Lemo8888888888888888888888888888888889JP, Version: 1, NewVal: {AssetCode: 0x0000000000000000000000000000000000000000000000000000000000000000, AssetId: 0x0000000000000000000000000000000000000000000000000000000000000000, Equity: 0}, Extra: [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 51]}",
 	})
 
-	log, _ = NewEquityRootLog(processor, processor.createAccount(EquityRootLog, 0), common.HexToHash("0x01"), common.HexToHash("0x02"))
+	account = processor.createAccount(EquityRootLog, 0)
+	log, _ = NewEquityRootLog(account.GetAddress(), processor, common.HexToHash("0x01"), common.HexToHash("0x02"))
 	tests = append(tests, testLogConfig{
 		input:      log,
 		isValuable: true,
@@ -402,18 +422,35 @@ func TestChangeLog_Undo(t *testing.T) {
 	processor.PushEvent(&types.Event{})
 	processor.PushEvent(event1)
 
-	assetCodeLog, _ := NewAssetCodeLog(processor, processor.createAccount(AssetCodeLog, 1), common.HexToHash("0x33"), new(types.Asset))
-	assetCodeRootLog, _ := NewAssetCodeRootLog(processor, processor.createAccount(AssetCodeRootLog, 1), common.HexToHash("0x01"), common.HexToHash("0x02"))
-	assetCodeStateLog, _ := NewAssetCodeStateLog(processor, processor.createAccount(AssetCodeStateLog, 1), common.HexToHash("0x33"), "lemokey", "newVal")
-	assetIdLog, _ := NewAssetIdLog(processor, processor.createAccount(AssetIdLog, 1), common.HexToHash("0x033"), "newVal")
-	assetIdRootLog, _ := NewAssetIdRootLog(processor, processor.createAccount(AssetIdRootLog, 1), common.HexToHash("0x11"), common.HexToHash("0x22"))
-	equityStateLog, _ := NewEquityLog(processor, processor.createAccount(EquityLog, 1), common.HexToHash("0x33"), &types.AssetEquity{
+	account := processor.createAccount(AssetCodeLog, 1)
+	assetCodeLog, _ := NewAssetCodeLog(account.GetAddress(), processor, common.HexToHash("0x33"), new(types.Asset))
+	account = processor.createAccount(AssetCodeRootLog, 1)
+	assetCodeRootLog, _ := NewAssetCodeRootLog(account.GetAddress(), processor, common.HexToHash("0x01"), common.HexToHash("0x02"))
+	account = processor.createAccount(AssetCodeStateLog, 1)
+	assetCodeStateLog, _ := NewAssetCodeStateLog(account.GetAddress(), processor, common.HexToHash("0x33"), "lemokey", "newVal")
+	account = processor.createAccount(AssetIdLog, 1)
+	assetIdLog, _ := NewAssetIdLog(account.GetAddress(), processor, common.HexToHash("0x033"), "newVal")
+	account = processor.createAccount(AssetIdRootLog, 1)
+	assetIdRootLog, _ := NewAssetIdRootLog(account.GetAddress(), processor, common.HexToHash("0x11"), common.HexToHash("0x22"))
+	account = processor.createAccount(EquityLog, 1)
+	equityStateLog, _ := NewEquityLog(account.GetAddress(), processor, common.HexToHash("0x33"), &types.AssetEquity{
 		AssetCode: common.HexToHash("0x22"),
 		AssetId:   common.HexToHash("0x33"),
 		Equity:    new(big.Int).SetInt64(100),
 	})
-	equityRootLog, _ := NewEquityRootLog(processor, processor.createAccount(EquityRootLog, 1), common.HexToHash("0x11"), common.HexToHash("0x22"))
-	assetCodeTotalSupplyLog, _ := NewAssetCodeTotalSupplyLog(processor, processor.createAccount(AssetCodeTotalSupplyLog, 1), common.HexToHash("0x33"), new(big.Int).SetInt64(500))
+	account = processor.createAccount(EquityRootLog, 1)
+	equityRootLog, _ := NewEquityRootLog(account.GetAddress(), processor, common.HexToHash("0x11"), common.HexToHash("0x22"))
+	account = processor.createAccount(AssetCodeTotalSupplyLog, 1)
+	assetCodeTotalSupplyLog, _ := NewAssetCodeTotalSupplyLog(account.GetAddress(), processor, common.HexToHash("0x33"), new(big.Int).SetInt64(500))
+
+	account0 := processor.createAccount(BalanceLog, 1)
+	account3 := processor.createAccount(StorageRootLog, 1)
+	account6 := processor.createAccount(CodeLog, 1)
+	account7 := processor.createAccount(AddEventLog, 1)
+	account8 := processor.createAccount(SuicideLog, 1)
+	account9 := processor.createAccount(VoteForLog, 1)
+	account10 := processor.createAccount(VotesLog, 1)
+	account11 := processor.createAccount(VotesLog, 1)
 	tests := []struct {
 		input      *types.ChangeLog
 		undoErr    error
@@ -421,7 +458,7 @@ func TestChangeLog_Undo(t *testing.T) {
 	}{
 		// 0 NewBalanceLog
 		{
-			input: NewBalanceLog(processor, processor.createAccount(BalanceLog, 1), big.NewInt(120)),
+			input: NewBalanceLog(account0.GetAddress(), processor, big.NewInt(120)),
 			afterCheck: func(accessor types.AccountAccessor) {
 				assert.Equal(t, big.NewInt(100), accessor.GetBalance())
 			},
@@ -442,7 +479,7 @@ func TestChangeLog_Undo(t *testing.T) {
 		},
 		// 3 NewStorageRootLog
 		{
-			input: NewStorageRootLog(processor, processor.createAccount(StorageRootLog, 1), common.HexToHash("0x01"), common.HexToHash("0x02")),
+			input: NewStorageRootLog(account3.GetAddress(), processor, common.HexToHash("0x01"), common.HexToHash("0x02")),
 			afterCheck: func(accessor types.AccountAccessor) {
 				assert.Equal(t, common.HexToHash("0x01"), accessor.GetStorageRoot())
 			},
@@ -459,7 +496,7 @@ func TestChangeLog_Undo(t *testing.T) {
 		},
 		// 6 NewCodeLog
 		{
-			input: NewCodeLog(processor, processor.createAccount(CodeLog, 1), []byte{12}),
+			input: NewCodeLog(account6.GetAddress(), processor, []byte{12}),
 			afterCheck: func(accessor types.AccountAccessor) {
 				code, err := accessor.GetCode()
 				assert.Empty(t, code)
@@ -468,7 +505,7 @@ func TestChangeLog_Undo(t *testing.T) {
 		},
 		// 7 NewAddEventLog
 		{
-			input: NewAddEventLog(processor, processor.createAccount(AddEventLog, 1), event1),
+			input: NewAddEventLog(account7.GetAddress(), processor, event1),
 			afterCheck: func(accessor types.AccountAccessor) {
 				events := findEvent(processor, event1.TxHash)
 				assert.Empty(t, events)
@@ -476,7 +513,7 @@ func TestChangeLog_Undo(t *testing.T) {
 		},
 		// 8 NewSuicideLog
 		{
-			input: NewSuicideLog(processor, processor.createAccount(SuicideLog, 1)),
+			input: NewSuicideLog(account8.GetAddress(), processor),
 			afterCheck: func(accessor types.AccountAccessor) {
 				assert.Equal(t, big.NewInt(100), accessor.GetBalance())
 				assert.Equal(t, false, accessor.GetSuicide())
@@ -484,21 +521,21 @@ func TestChangeLog_Undo(t *testing.T) {
 		},
 		// 9 VoteFor
 		{
-			input: NewVoteForLog(processor, processor.createAccount(VoteForLog, 1), common.HexToAddress("0x0002")),
+			input: NewVoteForLog(account9.GetAddress(), processor, common.HexToAddress("0x0002")),
 			afterCheck: func(accessor types.AccountAccessor) {
 				assert.Equal(t, common.HexToAddress("0x0001"), accessor.GetVoteFor())
 			},
 		},
 		// 10 Votes
 		{
-			input: NewVotesLog(processor, processor.createAccount(VotesLog, 1), new(big.Int).SetInt64(500)),
+			input: NewVotesLog(account10.GetAddress(), processor, new(big.Int).SetInt64(500)),
 			afterCheck: func(accessor types.AccountAccessor) {
 				assert.Equal(t, new(big.Int).SetInt64(200), accessor.GetVotes())
 			},
 		},
 		// 11 Profile
 		{
-			input: NewCandidateLog(processor, processor.createAccount(VotesLog, 1), map[string]string{types.CandidateKeyIsCandidate: "false", types.CandidateKeyHost: "host"}),
+			input: NewCandidateLog(account11.GetAddress(), processor, map[string]string{types.CandidateKeyIsCandidate: "false", types.CandidateKeyHost: "host"}),
 			afterCheck: func(accessor types.AccountAccessor) {
 				assert.Equal(t, "true", accessor.GetCandidate()[types.CandidateKeyIsCandidate])
 			},
@@ -603,19 +640,34 @@ func TestChangeLog_Redo(t *testing.T) {
 		return log
 	}
 
-	assetCodeLog, _ := NewAssetCodeLog(processor, processor.createAccount(AssetCodeLog, 1), common.HexToHash("0x33"), new(types.Asset))
-	assetCodeRootLog, _ := NewAssetCodeRootLog(processor, processor.createAccount(AssetCodeRootLog, 1), common.HexToHash("0x01"), common.HexToHash("0x02"))
-	assetCodeStateLog, _ := NewAssetCodeStateLog(processor, processor.createAccount(AssetCodeStateLog, 1), common.HexToHash("0x33"), "lemokey", "newVal")
-	assetIdLog, _ := NewAssetIdLog(processor, processor.createAccount(AssetIdLog, 1), common.HexToHash("0x033"), "newVal")
-	assetIdRootLog, _ := NewAssetIdRootLog(processor, processor.createAccount(AssetIdRootLog, 1), common.HexToHash("0x11"), common.HexToHash("0x22"))
-	equityStateLog, _ := NewEquityLog(processor, processor.createAccount(EquityLog, 1), common.HexToHash("0x33"), &types.AssetEquity{
+	account := processor.createAccount(AssetCodeLog, 1)
+	assetCodeLog, _ := NewAssetCodeLog(account.GetAddress(), processor, common.HexToHash("0x33"), new(types.Asset))
+	account = processor.createAccount(AssetCodeRootLog, 1)
+	assetCodeRootLog, _ := NewAssetCodeRootLog(account.GetAddress(), processor, common.HexToHash("0x01"), common.HexToHash("0x02"))
+	account = processor.createAccount(AssetCodeStateLog, 1)
+	assetCodeStateLog, _ := NewAssetCodeStateLog(account.GetAddress(), processor, common.HexToHash("0x33"), "lemokey", "newVal")
+	account = processor.createAccount(AssetIdLog, 1)
+	assetIdLog, _ := NewAssetIdLog(account.GetAddress(), processor, common.HexToHash("0x033"), "newVal")
+	account = processor.createAccount(AssetIdRootLog, 1)
+	assetIdRootLog, _ := NewAssetIdRootLog(account.GetAddress(), processor, common.HexToHash("0x11"), common.HexToHash("0x22"))
+	account = processor.createAccount(EquityLog, 1)
+	equityStateLog, _ := NewEquityLog(account.GetAddress(), processor, common.HexToHash("0x33"), &types.AssetEquity{
 		AssetCode: common.HexToHash("0x22"),
 		AssetId:   common.HexToHash("0x33"),
 		Equity:    new(big.Int).SetInt64(100),
 	})
-	equityRootLog, _ := NewEquityRootLog(processor, processor.createAccount(EquityRootLog, 1), common.HexToHash("0x11"), common.HexToHash("0x22"))
-	assetCodeTotalSupplyLog, _ := NewAssetCodeTotalSupplyLog(processor, processor.createAccount(AssetCodeTotalSupplyLog, 1), common.HexToHash("0x33"), new(big.Int).SetInt64(500))
+	account = processor.createAccount(EquityRootLog, 1)
+	equityRootLog, _ := NewEquityRootLog(account.GetAddress(), processor, common.HexToHash("0x11"), common.HexToHash("0x22"))
+	account = processor.createAccount(AssetCodeTotalSupplyLog, 1)
+	assetCodeTotalSupplyLog, _ := NewAssetCodeTotalSupplyLog(account.GetAddress(), processor, common.HexToHash("0x33"), new(big.Int).SetInt64(500))
 
+	account0 := processor.createAccount(BalanceLog, 1)
+	account5 := processor.createAccount(CodeLog, 1)
+	account7 := processor.createAccount(AddEventLog, 1)
+	account9 := processor.createAccount(BalanceLog, 1)
+	account10 := processor.createAccount(VoteForLog, 1)
+	account12 := processor.createAccount(VotesLog, 1)
+	account13 := processor.createAccount(VotesLog, 1)
 	tests := []struct {
 		input      *types.ChangeLog
 		redoErr    error
@@ -623,7 +675,7 @@ func TestChangeLog_Redo(t *testing.T) {
 	}{
 		// 0 NewBalanceLog
 		{
-			input: decreaseVersion(NewBalanceLog(processor, processor.createAccount(BalanceLog, 1), big.NewInt(120))),
+			input: decreaseVersion(NewBalanceLog(account0.GetAddress(), processor, big.NewInt(120))),
 			afterCheck: func(accessor types.AccountAccessor) {
 				assert.Equal(t, big.NewInt(120), accessor.GetBalance())
 			},
@@ -654,7 +706,7 @@ func TestChangeLog_Redo(t *testing.T) {
 		},
 		// 5 NewCodeLog
 		{
-			input: decreaseVersion(NewCodeLog(processor, processor.createAccount(CodeLog, 1), []byte{12})),
+			input: decreaseVersion(NewCodeLog(account5.GetAddress(), processor, []byte{12})),
 			afterCheck: func(accessor types.AccountAccessor) {
 				code, err := accessor.GetCode()
 				assert.Equal(t, types.Code{12}, code)
@@ -668,7 +720,7 @@ func TestChangeLog_Redo(t *testing.T) {
 		},
 		// 7 NewAddEventLog
 		{
-			input: decreaseVersion(NewAddEventLog(processor, processor.createAccount(AddEventLog, 1), &types.Event{
+			input: decreaseVersion(NewAddEventLog(account7.GetAddress(), processor, &types.Event{
 				Address: common.HexToAddress("0xaaa"),
 				Topics:  []common.Hash{common.HexToHash("bbb"), common.HexToHash("ccc")},
 				Data:    []byte{0x80, 0x0},
@@ -687,7 +739,7 @@ func TestChangeLog_Redo(t *testing.T) {
 		},
 		// 9 NewBalanceLog
 		{
-			input: decreaseVersion(NewSuicideLog(processor, processor.createAccount(BalanceLog, 1))),
+			input: decreaseVersion(NewSuicideLog(account9.GetAddress(), processor)),
 			afterCheck: func(accessor types.AccountAccessor) {
 				assert.Equal(t, true, accessor.GetSuicide())
 				assert.Equal(t, big.NewInt(0), accessor.GetBalance())
@@ -695,21 +747,21 @@ func TestChangeLog_Redo(t *testing.T) {
 		},
 		// 10 VoteFor
 		{
-			input: decreaseVersion(NewVoteForLog(processor, processor.createAccount(VoteForLog, 1), common.HexToAddress("0x0002"))),
+			input: decreaseVersion(NewVoteForLog(account10.GetAddress(), processor, common.HexToAddress("0x0002"))),
 			afterCheck: func(accessor types.AccountAccessor) {
 				assert.Equal(t, common.HexToAddress("0x0002"), accessor.GetVoteFor())
 			},
 		},
 		// 12 Votes
 		{
-			input: decreaseVersion(NewVotesLog(processor, processor.createAccount(VotesLog, 1), new(big.Int).SetInt64(500))),
+			input: decreaseVersion(NewVotesLog(account12.GetAddress(), processor, new(big.Int).SetInt64(500))),
 			afterCheck: func(accessor types.AccountAccessor) {
 				assert.Equal(t, new(big.Int).SetInt64(500), accessor.GetVotes())
 			},
 		},
 		// 13 Profile
 		{
-			input: decreaseVersion(NewCandidateLog(processor, processor.createAccount(VotesLog, 1), map[string]string{types.CandidateKeyIsCandidate: "false", types.CandidateKeyHost: "host"})),
+			input: decreaseVersion(NewCandidateLog(account13.GetAddress(), processor, map[string]string{types.CandidateKeyIsCandidate: "false", types.CandidateKeyHost: "host"})),
 			afterCheck: func(accessor types.AccountAccessor) {
 				assert.Equal(t, "false", accessor.GetCandidate()[types.CandidateKeyIsCandidate])
 				assert.Equal(t, "host", accessor.GetCandidate()[types.CandidateKeyHost])

@@ -28,9 +28,6 @@ var (
 // It is implemented by account.Manager
 type ChangeLogProcessor interface {
 	GetAccount(addr common.Address) AccountAccessor
-	GetNextVersion(logType ChangeLogType, addr common.Address) uint32
-	PushEvent(event *Event)
-	PopEvent() error
 }
 
 type ChangeLogType uint32

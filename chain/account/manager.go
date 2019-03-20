@@ -108,27 +108,28 @@ func (am *Manager) AddEvent(event *types.Event) {
 		panic("account.Manager.AddEvent() is called without a Address or TxHash")
 	}
 	account := am.getRawAccount(event.Address)
-	event.Index = uint(len(am.processor.GetEvents()))
-	newLog := NewAddEventLog(am.processor, account, event)
-	am.processor.PushChangeLog(newLog)
-	am.processor.PushEvent(event)
+	account.PushEvent(event)
+	// event.Index = uint(len(am.processor.GetEvents()))
+	// newLog := NewAddEventLog(am.processor, account, event)
+	// am.processor.PushChangeLog(newLog)
+	// am.processor.PushEvent(event)
 }
 
-// GetEvents returns all events since last reset
-func (am *Manager) GetEvents() []*types.Event {
-	return am.processor.GetEvents()
-}
-
-// GetEvents returns all events since last reset
-func (am *Manager) GetEventsByTx(txHash common.Hash) []*types.Event {
-	result := make([]*types.Event, 0)
-	for _, event := range am.processor.GetEvents() {
-		if event.TxHash == txHash {
-			result = append(result, event)
-		}
-	}
-	return result
-}
+// // GetEvents returns all events since last reset
+// func (am *Manager) GetEvents() []*types.Event {
+// 	return am.processor.GetEvents()
+// }
+//
+// // GetEvents returns all events since last reset
+// func (am *Manager) GetEventsByTx(txHash common.Hash) []*types.Event {
+// 	result := make([]*types.Event, 0)
+// 	for _, event := range am.processor.GetEvents() {
+// 		if event.TxHash == txHash {
+// 			result = append(result, event)
+// 		}
+// 	}
+// 	return result
+// }
 
 // GetChangeLogs returns all change logs since last reset
 func (am *Manager) GetChangeLogs() []*types.ChangeLog {
@@ -224,22 +225,22 @@ func (am *Manager) Finalise() error {
 		newEquityRoot := account.rawAccount.GetEquityRoot()
 
 		if newStorageRoot != oldStorageRoot {
-			log := NewStorageRootLog(am.processor, account.rawAccount, oldStorageRoot, newStorageRoot)
+			log := NewStorageRootLog(account.GetAddress(), am.processor, oldStorageRoot, newStorageRoot)
 			am.processor.PushChangeLog(log)
 		}
 
 		if newAssetCodeRoot != oldAssetCodeRoot {
-			log, _ := NewAssetCodeRootLog(am.processor, account.rawAccount, oldAssetCodeRoot, newAssetCodeRoot)
+			log, _ := NewAssetCodeRootLog(account.GetAddress(), am.processor, oldAssetCodeRoot, newAssetCodeRoot)
 			am.processor.PushChangeLog(log)
 		}
 
 		if newAssetIdRoot != oldAssetIdRoot {
-			log, _ := NewAssetIdRootLog(am.processor, account.rawAccount, oldAssetIdRoot, newAssetIdRoot)
+			log, _ := NewAssetIdRootLog(account.GetAddress(), am.processor, oldAssetIdRoot, newAssetIdRoot)
 			am.processor.PushChangeLog(log)
 		}
 
 		if newEquityRoot != oldEquityRoot {
-			log, _ := NewEquityRootLog(am.processor, account.rawAccount, oldEquityRoot, newEquityRoot)
+			log, _ := NewEquityRootLog(account.GetAddress(), am.processor, oldEquityRoot, newEquityRoot)
 			am.processor.PushChangeLog(log)
 		}
 

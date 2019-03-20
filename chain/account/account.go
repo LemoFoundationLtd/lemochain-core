@@ -182,20 +182,40 @@ type Account struct {
 	code        types.Code // contract byte code
 	codeIsDirty bool       // true if the code was updated
 
-	suicided bool // will be delete from the trie during the "save" phase
+	events        []*types.Event
+	newestRecords map[types.ChangeLogType]uint32
+	suicided      bool // will be delete from the trie during the "save" phase
+}
+
+func (a *Account) PushEvent(event *types.Event) {
+	a.events = append(a.events, event)
+}
+
+func (a *Account) PopEvent() error {
+	size := len(a.events)
+	if size == 0 {
+		return ErrNoEvents
+	}
+	a.events = a.events[:size-1]
+	return nil
+}
+
+func (a *Account) GetEvents() []*types.Event {
+	return a.events
 }
 
 // NewAccount wrap an AccountData object, or creates a new one if it's nil.
 func NewAccount(db protocol.ChainDB, address common.Address, data *types.AccountData) *Account {
 	if data == nil {
-		// create new one
 		data = &types.AccountData{Address: address}
 	} else {
 		data = data.Copy()
 	}
+
 	if data.Balance == nil {
 		data.Balance = new(big.Int)
 	}
+
 	if data.NewestRecords == nil {
 		data.NewestRecords = make(map[types.ChangeLogType]types.VersionRecord)
 	}
@@ -208,15 +228,21 @@ func NewAccount(db protocol.ChainDB, address common.Address, data *types.Account
 		data.Candidate.Votes = new(big.Int)
 	}
 
-	return &Account{
-		data: data,
-		db:   db,
-
-		storage:   NewStorageCache(db),
-		assetCode: NewStorageCache(db),
-		assetId:   NewStorageCache(db),
-		equity:    NewStorageCache(db),
+	account := &Account{
+		data:          data,
+		db:            db,
+		events:        make([]*types.Event, 0),
+		newestRecords: make(map[types.ChangeLogType]uint32),
+		storage:       NewStorageCache(db),
+		assetCode:     NewStorageCache(db),
+		assetId:       NewStorageCache(db),
+		equity:        NewStorageCache(db),
 	}
+
+	for k, v := range data.NewestRecords {
+		account.newestRecords[k] = v.Version
+	}
+	return account
 }
 
 // MarshalJSON encodes the lemoClient RPC account format.
@@ -293,16 +319,21 @@ func (a *Account) GetAddress() common.Address { return a.data.Address }
 func (a *Account) GetBalance() *big.Int       { return new(big.Int).Set(a.data.Balance) }
 
 // GetBaseVersion returns the version of specific change log from the base block. It is not changed by tx processing until the finalised
-func (a *Account) GetBaseVersion(logType types.ChangeLogType) uint32 {
+func (a *Account) GetVersion(logType types.ChangeLogType) uint32 {
 	return a.data.NewestRecords[logType].Version
 }
+
+// GetBaseVersion returns the version of specific change log from the base block. It is not changed by tx processing until the finalised
+func (a *Account) GetNestVersion(logType types.ChangeLogType) uint32 {
+	a.newestRecords[logType] = a.newestRecords[logType] + 1
+	return a.newestRecords[logType]
+}
+
 func (a *Account) SetVersion(logType types.ChangeLogType, version, blockHeight uint32) {
 	a.data.NewestRecords[logType] = types.VersionRecord{Version: version, Height: blockHeight}
 }
 func (a *Account) GetSuicide() bool         { return a.suicided }
 func (a *Account) GetCodeHash() common.Hash { return a.data.CodeHash }
-
-// func (a *Account) GetTxHashList() []common.Hash { return a.data.TxHashList }
 
 // StorageRoot wouldn't change until Account.updateTrie() is called
 func (a *Account) GetStorageRoot() common.Hash { return a.data.StorageRoot }
