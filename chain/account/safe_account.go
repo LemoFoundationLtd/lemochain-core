@@ -12,10 +12,28 @@ type SafeAccount struct {
 	processor  *LogProcessor
 }
 
+func (a *SafeAccount) GetNestVersion(logType types.ChangeLogType) uint32 {
+	panic("implement me")
+}
+
+func (a *SafeAccount) PushEvent(event *types.Event) {
+	newLog := NewAddEventLog(a.GetAddress(), a.processor, event)
+	a.processor.PushChangeLog(newLog)
+	a.rawAccount.PushEvent(event)
+}
+
+func (a *SafeAccount) PopEvent() error {
+	panic("implement me")
+}
+
+func (a *SafeAccount) GetEvents() []*types.Event {
+	panic("implement me")
+}
+
 func (a *SafeAccount) GetCandidate() types.Profile { return a.rawAccount.GetCandidate() }
 
 func (a *SafeAccount) SetCandidate(profile types.Profile) {
-	newLog := NewCandidateLog(a.processor, a.rawAccount, profile)
+	newLog := NewCandidateLog(a.GetAddress(), a.processor, profile)
 	a.processor.PushChangeLog(newLog)
 	a.rawAccount.SetCandidate(profile)
 }
@@ -25,7 +43,7 @@ func (a *SafeAccount) GetCandidateState(key string) string {
 }
 
 func (a *SafeAccount) SetCandidateState(key string, val string) {
-	newLog := NewCandidateStateLog(a.processor, a.rawAccount, key, val)
+	newLog := NewCandidateStateLog(a.GetAddress(), a.processor, key, val)
 	a.processor.PushChangeLog(newLog)
 	a.rawAccount.SetCandidateState(key, val)
 }
@@ -35,7 +53,7 @@ func (a *SafeAccount) GetAssetCode(code common.Hash) (*types.Asset, error) {
 }
 
 func (a *SafeAccount) SetAssetCode(code common.Hash, asset *types.Asset) error {
-	newLog, err := NewAssetCodeLog(a.processor, a.rawAccount, code, asset)
+	newLog, err := NewAssetCodeLog(a.GetAddress(), a.processor, code, asset)
 	if err != nil {
 		return err
 	} else {
@@ -49,7 +67,7 @@ func (a *SafeAccount) GetAssetCodeTotalSupply(code common.Hash) (*big.Int, error
 }
 
 func (a *SafeAccount) SetAssetCodeTotalSupply(code common.Hash, val *big.Int) error {
-	newLog, err := NewAssetCodeTotalSupplyLog(a.processor, a.rawAccount, code, val)
+	newLog, err := NewAssetCodeTotalSupplyLog(a.GetAddress(), a.processor, code, val)
 	if err != nil {
 		return err
 	} else {
@@ -89,7 +107,7 @@ func (a *SafeAccount) String() string {
 func (a *SafeAccount) GetVoteFor() common.Address { return a.rawAccount.GetVoteFor() }
 
 func (a *SafeAccount) SetVoteFor(addr common.Address) {
-	newLog := NewVoteForLog(a.processor, a.rawAccount, addr)
+	newLog := NewVoteForLog(a.GetAddress(), a.processor, addr)
 	a.processor.PushChangeLog(newLog)
 	a.rawAccount.SetVoteFor(addr)
 }
@@ -99,7 +117,7 @@ func (a *SafeAccount) GetVotes() *big.Int {
 }
 
 func (a *SafeAccount) SetVotes(votes *big.Int) {
-	newLog := NewVotesLog(a.processor, a.rawAccount, votes)
+	newLog := NewVotesLog(a.GetAddress(), a.processor, votes)
 	a.processor.PushChangeLog(newLog)
 	a.rawAccount.SetVotes(votes)
 }
@@ -108,8 +126,8 @@ func (a *SafeAccount) GetAddress() common.Address { return a.rawAccount.GetAddre
 func (a *SafeAccount) GetBalance() *big.Int       { return a.rawAccount.GetBalance() }
 
 // GetBaseVersion returns the version of specific change log from the base block. It is not changed by tx processing until the finalised
-func (a *SafeAccount) GetBaseVersion(logType types.ChangeLogType) uint32 {
-	return a.rawAccount.GetBaseVersion(logType)
+func (a *SafeAccount) GetVersion(logType types.ChangeLogType) uint32 {
+	return a.rawAccount.GetVersion(logType)
 }
 func (a *SafeAccount) GetSuicide() bool             { return a.rawAccount.GetSuicide() }
 func (a *SafeAccount) GetCodeHash() common.Hash     { return a.rawAccount.GetCodeHash() }
@@ -145,7 +163,7 @@ func (a *SafeAccount) GetStorageState(key common.Hash) ([]byte, error) {
 }
 
 func (a *SafeAccount) SetStorageState(key common.Hash, value []byte) error {
-	newLog, err := NewStorageLog(a.processor, a.rawAccount, key, value)
+	newLog, err := NewStorageLog(a.GetAddress(), a.processor, key, value)
 	if err != nil {
 		return err
 	}
@@ -158,7 +176,7 @@ func (a *SafeAccount) GetAssetCodeState(code common.Hash, key string) (string, e
 }
 
 func (a *SafeAccount) SetAssetCodeState(code common.Hash, key string, val string) error {
-	newLog, err := NewAssetCodeStateLog(a.processor, a.rawAccount, code, key, val)
+	newLog, err := NewAssetCodeStateLog(a.GetAddress(), a.processor, code, key, val)
 	if err != nil {
 		return err
 	} else {
@@ -172,7 +190,7 @@ func (a *SafeAccount) GetAssetIdState(id common.Hash) (string, error) {
 }
 
 func (a *SafeAccount) SetAssetIdState(id common.Hash, val string) error {
-	newLog, err := NewAssetIdLog(a.processor, a.rawAccount, id, val)
+	newLog, err := NewAssetIdLog(a.GetAddress(), a.processor, id, val)
 	if err != nil {
 		return err
 	}
@@ -185,7 +203,7 @@ func (a *SafeAccount) GetEquityState(id common.Hash) (*types.AssetEquity, error)
 }
 
 func (a *SafeAccount) SetEquityState(id common.Hash, equity *types.AssetEquity) error {
-	newLog, err := NewEquityLog(a.processor, a.rawAccount, id, equity)
+	newLog, err := NewEquityLog(a.GetAddress(), a.processor, id, equity)
 	if err != nil {
 		return err
 	}
@@ -195,13 +213,13 @@ func (a *SafeAccount) SetEquityState(id common.Hash, equity *types.AssetEquity) 
 
 // overwrite Account.SetXXX. Access Account with changelog
 func (a *SafeAccount) SetBalance(balance *big.Int) {
-	newLog := NewBalanceLog(a.processor, a.rawAccount, balance)
+	newLog := NewBalanceLog(a.GetAddress(), a.processor, balance)
 	a.processor.PushChangeLog(newLog)
 	a.rawAccount.SetBalance(balance)
 }
 
 func (a *SafeAccount) SetSuicide(suicided bool) {
-	newLog := NewSuicideLog(a.processor, a.rawAccount)
+	newLog := NewSuicideLog(a.GetAddress(), a.processor)
 	a.processor.PushChangeLog(newLog)
 	a.rawAccount.SetSuicide(suicided)
 }
@@ -211,7 +229,7 @@ func (a *SafeAccount) SetCodeHash(codeHash common.Hash) {
 }
 
 func (a *SafeAccount) SetCode(code types.Code) {
-	newLog := NewCodeLog(a.processor, a.rawAccount, code)
+	newLog := NewCodeLog(a.GetAddress(), a.processor, code)
 	a.processor.PushChangeLog(newLog)
 	a.rawAccount.SetCode(code)
 }

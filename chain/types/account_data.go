@@ -299,7 +299,8 @@ func (c Code) String() string {
 
 type AccountAccessor interface {
 	GetAddress() common.Address
-	GetBaseVersion(logType ChangeLogType) uint32
+	GetVersion(logType ChangeLogType) uint32
+	GetNestVersion(logType ChangeLogType) uint32
 
 	GetVoteFor() common.Address
 	SetVoteFor(addr common.Address)
@@ -345,6 +346,10 @@ type AccountAccessor interface {
 
 	GetEquityState(id common.Hash) (*AssetEquity, error)
 	SetEquityState(id common.Hash, equity *AssetEquity) error
+
+	PushEvent(event *Event)
+	PopEvent() error
+	GetEvents() []*Event
 
 	GetSuicide() bool
 	SetSuicide(suicided bool)
