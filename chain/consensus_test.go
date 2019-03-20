@@ -357,7 +357,7 @@ func TestDpovp_Seal(t *testing.T) {
 		ChangeLogs:  block01.ChangeLogs,
 		VersionRoot: block01.VersionRoot(),
 	}
-	TestBlock, err := dpovp.Seal(TestBlockHeader, product, nil)
+	TestBlock, err := dpovp.Seal(TestBlockHeader, product, block01.Confirms, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, block01.Hash(), TestBlock.Hash())
 	assert.Equal(t, block01.Txs, TestBlock.Txs)

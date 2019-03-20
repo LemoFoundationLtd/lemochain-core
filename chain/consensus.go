@@ -179,8 +179,9 @@ func (d *Dpovp) Seal(header *types.Header, txProduct *account.TxsProduct, confir
 func (d *Dpovp) Finalize(height uint32, am *account.Manager) error {
 	// Pay miners at the end of their tenure
 	if deputynode.Instance().TimeToHandOutRewards(height) {
-		term := (height - params.InterimDuration) / params.TermDuration
+		term := (height-params.InterimDuration)/params.TermDuration - 1
 		termRewards, err := getTermRewardValue(am, term)
+		log.Debugf("the %d term's reward value = %s ", term, termRewards.String())
 		if err != nil {
 			log.Warnf("rewards failed: %v", err)
 			return err

@@ -715,6 +715,9 @@ func (bc *BlockChain) Db() db.ChainDB {
 func (bc *BlockChain) GetNewDeputyNodes() deputynode.DeputyNodes {
 	result := make(deputynode.DeputyNodes, 0, 17)
 	list := bc.db.GetCandidatesTop(bc.CurrentBlock().Hash())
+	if len(list) > deputynode.TotalCount {
+		list = list[:deputynode.TotalCount]
+	}
 	for i, n := range list {
 		dn := new(deputynode.DeputyNode)
 		dn.Votes = n.GetTotal()
