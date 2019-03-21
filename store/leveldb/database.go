@@ -22,8 +22,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/LemoFoundationLtd/lemochain-dev/log"
-	"github.com/LemoFoundationLtd/lemochain-dev/metrics"
+	// "github.com/LemoFoundationLtd/lemochain-dev/log"
+	// "github.com/LemoFoundationLtd/lemochain-dev/metrics"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/errors"
 	"github.com/syndtr/goleveldb/leveldb/filter"
@@ -38,21 +38,21 @@ type LevelDBDatabase struct {
 	fn string      // filename for reporting
 	db *leveldb.DB // LevelDB instance
 
-	compTimeMeter  metrics.Meter // Meter for measuring the total time spent in database compaction
-	compReadMeter  metrics.Meter // Meter for measuring the data read during compaction
-	compWriteMeter metrics.Meter // Meter for measuring the data written during compaction
-	diskReadMeter  metrics.Meter // Meter for measuring the effective amount of data read
-	diskWriteMeter metrics.Meter // Meter for measuring the effective amount of data written
+	// compTimeMeter  metrics.Meter // Meter for measuring the total time spent in database compaction
+	// compReadMeter  metrics.Meter // Meter for measuring the data read during compaction
+	// compWriteMeter metrics.Meter // Meter for measuring the data written during compaction
+	// diskReadMeter  metrics.Meter // Meter for measuring the effective amount of data read
+	// diskWriteMeter metrics.Meter // Meter for measuring the effective amount of data written
 
 	quitLock sync.Mutex      // Mutex protecting the quit channel access
 	quitChan chan chan error // Quit channel to stop the metrics collection before closing the database
 
-	log log.Logger // Contextual logger tracking the database path
+	// log log.Logger // Contextual logger tracking the database path
 }
 
 // NewLDBDatabase returns a LevelDB wrapped object.
 func NewLevelDBDatabase(file string, cache int, handles int) *LevelDBDatabase {
-	logger := log.New("database", file)
+	// logger := log.New("database", file)
 
 	// Ensure we have some minimal caching and file guarantees
 	if cache < 16 {
@@ -61,7 +61,7 @@ func NewLevelDBDatabase(file string, cache int, handles int) *LevelDBDatabase {
 	if handles < 16 {
 		handles = 16
 	}
-	logger.Info("Allocated cache and file handles", "cache", cache, "handles", handles)
+	// logger.Info("Allocated cache and file handles", "cache", cache, "handles", handles)
 
 	// Open the db and recover any potential corruptions
 	db, err := leveldb.OpenFile(file, &opt.Options{
@@ -80,9 +80,9 @@ func NewLevelDBDatabase(file string, cache int, handles int) *LevelDBDatabase {
 		panic("new level database err: " + err.Error())
 	} else {
 		return &LevelDBDatabase{
-			fn:  file,
-			db:  db,
-			log: logger,
+			fn: file,
+			db: db,
+			// log: logger,
 		}
 	}
 }
@@ -143,15 +143,15 @@ func (db *LevelDBDatabase) Close() {
 		errc := make(chan error)
 		db.quitChan <- errc
 		if err := <-errc; err != nil {
-			db.log.Error("Metrics collection failed", "err", err)
+			// db.log.Error("Metrics collection failed", "err", err)
 		}
 	}
 
 	err := db.db.Close()
 	if err == nil {
-		db.log.Info("Database closed")
+		// db.log.Info("Database closed")
 	} else {
-		db.log.Error("Failed to close database", "err", err)
+		// db.log.Error("Failed to close database", "err", err)
 	}
 }
 
@@ -162,15 +162,15 @@ func (db *LevelDBDatabase) LDB() *leveldb.DB {
 // Meter configures the database metrics collectors and
 func (db *LevelDBDatabase) Meter(prefix string) {
 	// Short circuit metering if the metrics system is disabled
-	if !metrics.Enabled {
-		return
-	}
-	// Initialize all the metrics collector at the requested prefix
-	db.compTimeMeter = metrics.NewRegisteredMeter(prefix+"compact/time", nil)
-	db.compReadMeter = metrics.NewRegisteredMeter(prefix+"compact/input", nil)
-	db.compWriteMeter = metrics.NewRegisteredMeter(prefix+"compact/output", nil)
-	db.diskReadMeter = metrics.NewRegisteredMeter(prefix+"disk/read", nil)
-	db.diskWriteMeter = metrics.NewRegisteredMeter(prefix+"disk/write", nil)
+	// if !metrics.Enabled {
+	// 	return
+	// }
+	// // Initialize all the metrics collector at the requested prefix
+	// db.compTimeMeter = metrics.NewRegisteredMeter(prefix+"compact/time", nil)
+	// db.compReadMeter = metrics.NewRegisteredMeter(prefix+"compact/input", nil)
+	// db.compWriteMeter = metrics.NewRegisteredMeter(prefix+"compact/output", nil)
+	// db.diskReadMeter = metrics.NewRegisteredMeter(prefix+"disk/read", nil)
+	// db.diskWriteMeter = metrics.NewRegisteredMeter(prefix+"disk/write", nil)
 
 	// Create a quit channel for the periodic collector and run it
 	db.quitLock.Lock()
@@ -207,7 +207,7 @@ func (db *LevelDBDatabase) meter(refresh time.Duration) {
 		// Retrieve the database stats
 		stats, err := db.db.GetProperty("leveldb.stats")
 		if err != nil {
-			db.log.Error("Failed to read database stats", "err", err)
+			// db.log.Error("Failed to read database stats", "err", err)
 			return
 		}
 		// Find the compaction table, skip the header
@@ -216,7 +216,7 @@ func (db *LevelDBDatabase) meter(refresh time.Duration) {
 			lines = lines[1:]
 		}
 		if len(lines) <= 3 {
-			db.log.Error("Compaction table not found")
+			// db.log.Error("Compaction table not found")
 			return
 		}
 		lines = lines[3:]
@@ -233,60 +233,60 @@ func (db *LevelDBDatabase) meter(refresh time.Duration) {
 			for idx, counter := range parts[3:] {
 				value, err := strconv.ParseFloat(strings.TrimSpace(counter), 64)
 				if err != nil {
-					db.log.Error("Compaction entry parsing failed", "err", err)
+					// db.log.Error("Compaction entry parsing failed", "err", err)
 					return
 				}
 				compactions[i%2][idx] += value
 			}
 		}
 		// Update all the requested meters
-		if db.compTimeMeter != nil {
-			db.compTimeMeter.Mark(int64((compactions[i%2][0] - compactions[(i-1)%2][0]) * 1000 * 1000 * 1000))
-		}
-		if db.compReadMeter != nil {
-			db.compReadMeter.Mark(int64((compactions[i%2][1] - compactions[(i-1)%2][1]) * 1024 * 1024))
-		}
-		if db.compWriteMeter != nil {
-			db.compWriteMeter.Mark(int64((compactions[i%2][2] - compactions[(i-1)%2][2]) * 1024 * 1024))
-		}
+		// if db.compTimeMeter != nil {
+		// 	db.compTimeMeter.Mark(int64((compactions[i%2][0] - compactions[(i-1)%2][0]) * 1000 * 1000 * 1000))
+		// }
+		// if db.compReadMeter != nil {
+		// 	db.compReadMeter.Mark(int64((compactions[i%2][1] - compactions[(i-1)%2][1]) * 1024 * 1024))
+		// }
+		// if db.compWriteMeter != nil {
+		// 	db.compWriteMeter.Mark(int64((compactions[i%2][2] - compactions[(i-1)%2][2]) * 1024 * 1024))
+		// }
 
 		// Retrieve the database iostats.
 		ioStats, err := db.db.GetProperty("leveldb.iostats")
 		if err != nil {
-			db.log.Error("Failed to read database iostats", "err", err)
+			// db.log.Error("Failed to read database iostats", "err", err)
 			return
 		}
 		parts := strings.Split(ioStats, " ")
 		if len(parts) < 2 {
-			db.log.Error("Bad syntax of ioStats", "ioStats", ioStats)
+			// db.log.Error("Bad syntax of ioStats", "ioStats", ioStats)
 			return
 		}
 		r := strings.Split(parts[0], ":")
 		if len(r) < 2 {
-			db.log.Error("Bad syntax of read entry", "entry", parts[0])
+			// db.log.Error("Bad syntax of read entry", "entry", parts[0])
 			return
 		}
 		read, err := strconv.ParseFloat(r[1], 64)
 		if err != nil {
-			db.log.Error("Read entry parsing failed", "err", err)
+			// db.log.Error("Read entry parsing failed", "err", err)
 			return
 		}
 		w := strings.Split(parts[1], ":")
 		if len(w) < 2 {
-			db.log.Error("Bad syntax of write entry", "entry", parts[1])
+			// db.log.Error("Bad syntax of write entry", "entry", parts[1])
 			return
 		}
 		write, err := strconv.ParseFloat(w[1], 64)
 		if err != nil {
-			db.log.Error("Write entry parsing failed", "err", err)
+			// db.log.Error("Write entry parsing failed", "err", err)
 			return
 		}
-		if db.diskReadMeter != nil {
-			db.diskReadMeter.Mark(int64((read - iostats[0]) * 1024 * 1024))
-		}
-		if db.diskWriteMeter != nil {
-			db.diskWriteMeter.Mark(int64((write - iostats[1]) * 1024 * 1024))
-		}
+		// if db.diskReadMeter != nil {
+		// 	db.diskReadMeter.Mark(int64((read - iostats[0]) * 1024 * 1024))
+		// }
+		// if db.diskWriteMeter != nil {
+		// 	db.diskWriteMeter.Mark(int64((write - iostats[1]) * 1024 * 1024))
+		// }
 		iostats[0] = read
 		iostats[1] = write
 
