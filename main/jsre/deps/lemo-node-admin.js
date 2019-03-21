@@ -17,3 +17,5 @@ lemo._createAPI('tx', 'replenishAsset', 'replenishAsset');
 lemo._createAPI('tx', 'modifyAsset', 'modifyAsset');
 lemo._createAPI('tx', 'tradingAsset', 'tradingAsset');
 
+lemo._createAPI('chain', 'getAllDeputyNodesList', 'getAllDeputyNodesList');
+

@@ -147,6 +147,11 @@ func (c *PublicChainAPI) GetDeputyNodeList() []string {
 	return deputynode.Instance().GetLatestDeputies(c.chain.CurrentBlock().Height())
 }
 
+// GetAllDeputyNodesList get all deputy nodes list
+func (c *PublicChainAPI) GetAllDeputyNodesList() []*deputynode.JsonDeputyNodesRecord {
+	return deputynode.Instance().GetAllDeputyNodeList()
+}
+
 // // GetCandidateNodeList get all candidate node list information and return total candidate node
 // func (c *PublicChainAPI) GetCandidateList(index, size int) (*CandidateListRes, error) {
 // 	addresses, total, err := c.chain.Db().GetCandidatesPage(index, size)

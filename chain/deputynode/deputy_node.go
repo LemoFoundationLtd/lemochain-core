@@ -40,7 +40,7 @@ func SetSelfNodeKey(key *ecdsa.PrivateKey) {
 }
 
 //go:generate gencodec -type DeputyNode --field-override deputyNodeMarshaling -out gen_deputy_node_json.go
-//go:generate gencodec -type CandiDeputyNodeCoutdateNode --field-override candidateNodeMarshaling -out gen_candidate_node_json.go
+//go:generate gencodec -type CandidateNode --field-override candidateNodeMarshaling -out gen_candidate_node_json.go
 
 // CandidateNode
 type CandidateNode struct {
@@ -140,6 +140,28 @@ func Instance() *Manager {
 		}
 	})
 	return deputyNodeManger
+}
+
+//go:generate gencodec -type JsonDeputyNodesRecord --field-override JsonDeputyNodesRecordMarshaling -out gen_JsonDeputyNodesRecord_json.go
+type JsonDeputyNodesRecord struct {
+	Height uint32      `json:"height"`
+	Nodes  DeputyNodes `json:"nodes"`
+}
+
+type JsonDeputyNodesRecordMarshaling struct {
+	Height hexutil.Uint32
+}
+
+// 获取所有的代理节点列表
+func (d *Manager) GetAllDeputyNodeList() []*JsonDeputyNodesRecord {
+	deps := make([]*JsonDeputyNodesRecord, 0, len(d.DeputyNodesList))
+	for _, v := range d.DeputyNodesList {
+		dep := &JsonDeputyNodesRecord{}
+		dep.Height = v.height
+		dep.Nodes = v.nodes
+		deps = append(deps, dep)
+	}
+	return deps
 }
 
 // GetDeputiesByHeight 通过height获取对应的节点列表
