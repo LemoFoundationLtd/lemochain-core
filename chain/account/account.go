@@ -324,12 +324,13 @@ func (a *Account) GetVersion(logType types.ChangeLogType) uint32 {
 }
 
 // GetBaseVersion returns the version of specific change log from the base block. It is not changed by tx processing until the finalised
-func (a *Account) GetNestVersion(logType types.ChangeLogType) uint32 {
+func (a *Account) GetNextVersion(logType types.ChangeLogType) uint32 {
 	a.newestRecords[logType] = a.newestRecords[logType] + 1
 	return a.newestRecords[logType]
 }
 
 func (a *Account) SetVersion(logType types.ChangeLogType, version, blockHeight uint32) {
+	a.newestRecords[logType] = version
 	a.data.NewestRecords[logType] = types.VersionRecord{Version: version, Height: blockHeight}
 }
 func (a *Account) GetSuicide() bool         { return a.suicided }

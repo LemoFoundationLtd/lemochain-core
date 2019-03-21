@@ -237,7 +237,7 @@ func NewVotesLog(address common.Address, processor types.ChangeLogProcessor, new
 	return &types.ChangeLog{
 		LogType: VotesLog,
 		Address: account.GetAddress(),
-		Version: account.GetNestVersion(VotesLog),
+		Version: account.GetNextVersion(VotesLog),
 		OldVal:  *(new(big.Int).Set(account.GetVotes())),
 		NewVal:  *(new(big.Int).Set(newVotes)),
 	}
@@ -270,7 +270,7 @@ func NewVoteForLog(address common.Address, processor types.ChangeLogProcessor, n
 	return &types.ChangeLog{
 		LogType: VoteForLog,
 		Address: account.GetAddress(),
-		Version: account.GetNestVersion(VoteForLog),
+		Version: account.GetNextVersion(VoteForLog),
 		OldVal:  account.GetVoteFor(),
 		NewVal:  newVoteFor,
 	}
@@ -316,7 +316,7 @@ func NewCandidateLog(address common.Address, processor types.ChangeLogProcessor,
 	return &types.ChangeLog{
 		LogType: CandidateLog,
 		Address: account.GetAddress(),
-		Version: account.GetNestVersion(CandidateLog),
+		Version: account.GetNextVersion(CandidateLog),
 		OldVal:  &oldVal,
 		NewVal:  &newVal,
 	}
@@ -349,7 +349,7 @@ func NewCandidateStateLog(address common.Address, processor types.ChangeLogProce
 	return &types.ChangeLog{
 		LogType: CandidateStateLog,
 		Address: account.GetAddress(),
-		Version: account.GetNestVersion(CandidateStateLog),
+		Version: account.GetNextVersion(CandidateStateLog),
 		OldVal:  account.GetCandidateState(key),
 		NewVal:  newVal,
 		Extra:   key,
@@ -397,7 +397,7 @@ func NewBalanceLog(address common.Address, processor types.ChangeLogProcessor, n
 	return &types.ChangeLog{
 		LogType: BalanceLog,
 		Address: account.GetAddress(),
-		Version: account.GetNestVersion(BalanceLog),
+		Version: account.GetNextVersion(BalanceLog),
 		OldVal:  *(new(big.Int).Set(account.GetBalance())),
 		NewVal:  *(new(big.Int).Set(newBalance)),
 	}
@@ -445,7 +445,7 @@ func NewStorageLog(address common.Address, processor types.ChangeLogProcessor, k
 	return &types.ChangeLog{
 		LogType: StorageLog,
 		Address: account.GetAddress(),
-		Version: account.GetNestVersion(StorageLog),
+		Version: account.GetNextVersion(StorageLog),
 		OldVal:  cloneBytes(oldValue),
 		NewVal:  cloneBytes(newVal),
 		Extra:   key,
@@ -487,7 +487,7 @@ func NewStorageRootLog(address common.Address, processor types.ChangeLogProcesso
 	return &types.ChangeLog{
 		LogType: StorageRootLog,
 		Address: account.GetAddress(),
-		Version: account.GetNestVersion(StorageRootLog),
+		Version: account.GetNextVersion(StorageRootLog),
 		OldVal:  oldVal,
 		NewVal:  newVal,
 	}
@@ -525,7 +525,7 @@ func NewAssetCodeLog(address common.Address, processor types.ChangeLogProcessor,
 	return &types.ChangeLog{
 		LogType: AssetCodeLog,
 		Address: account.GetAddress(),
-		Version: account.GetNestVersion(AssetCodeLog),
+		Version: account.GetNextVersion(AssetCodeLog),
 		OldVal:  oldValue.Clone(),
 		NewVal:  asset.Clone(),
 		Extra:   code,
@@ -573,7 +573,7 @@ func NewAssetCodeStateLog(address common.Address, processor types.ChangeLogProce
 	return &types.ChangeLog{
 		LogType: AssetCodeStateLog,
 		Address: account.GetAddress(),
-		Version: account.GetNestVersion(AssetCodeStateLog),
+		Version: account.GetNextVersion(AssetCodeStateLog),
 		OldVal:  oldVal,
 		NewVal:  newVal,
 		Extra: &ProfileChangeLogExtra{
@@ -625,7 +625,7 @@ func NewAssetCodeTotalSupplyLog(address common.Address, processor types.ChangeLo
 	return &types.ChangeLog{
 		LogType: AssetCodeTotalSupplyLog,
 		Address: account.GetAddress(),
-		Version: account.GetNestVersion(AssetCodeTotalSupplyLog),
+		Version: account.GetNextVersion(AssetCodeTotalSupplyLog),
 		OldVal:  new(big.Int).Set(oldVal),
 		NewVal:  new(big.Int).Set(newVal),
 		Extra:   code,
@@ -671,7 +671,7 @@ func NewAssetCodeRootLog(address common.Address, processor types.ChangeLogProces
 	return &types.ChangeLog{
 		LogType: AssetCodeRootLog,
 		Address: account.GetAddress(),
-		Version: account.GetNestVersion(AssetCodeRootLog),
+		Version: account.GetNextVersion(AssetCodeRootLog),
 		OldVal:  oldVal,
 		NewVal:  newVal,
 	}, nil
@@ -708,7 +708,7 @@ func NewAssetIdLog(address common.Address, processor types.ChangeLogProcessor, i
 	return &types.ChangeLog{
 		LogType: AssetIdLog,
 		Address: account.GetAddress(),
-		Version: account.GetNestVersion(AssetIdLog),
+		Version: account.GetNextVersion(AssetIdLog),
 		OldVal:  oldValue,
 		NewVal:  newVal,
 		Extra:   id,
@@ -750,7 +750,7 @@ func NewAssetIdRootLog(address common.Address, processor types.ChangeLogProcesso
 	return &types.ChangeLog{
 		LogType: AssetIdRootLog,
 		Address: account.GetAddress(),
-		Version: account.GetNestVersion(AssetIdRootLog),
+		Version: account.GetNextVersion(AssetIdRootLog),
 		OldVal:  oldVal,
 		NewVal:  newVal,
 	}, nil
@@ -789,7 +789,7 @@ func NewEquityLog(address common.Address, processor types.ChangeLogProcessor, id
 	log := &types.ChangeLog{
 		LogType: EquityLog,
 		Address: account.GetAddress(),
-		Version: account.GetNestVersion(EquityLog),
+		Version: account.GetNextVersion(EquityLog),
 		Extra:   id,
 	}
 
@@ -843,7 +843,7 @@ func NewEquityRootLog(address common.Address, processor types.ChangeLogProcessor
 	return &types.ChangeLog{
 		LogType: EquityRootLog,
 		Address: account.GetAddress(),
-		Version: account.GetNestVersion(EquityRootLog),
+		Version: account.GetNextVersion(EquityRootLog),
 		OldVal:  oldVal,
 		NewVal:  newVal,
 	}, nil
@@ -877,7 +877,7 @@ func NewCodeLog(address common.Address, processor types.ChangeLogProcessor, code
 	return &types.ChangeLog{
 		LogType: CodeLog,
 		Address: account.GetAddress(),
-		Version: account.GetNestVersion(CodeLog),
+		Version: account.GetNextVersion(CodeLog),
 		NewVal:  code,
 	}
 }
@@ -905,7 +905,7 @@ func NewAddEventLog(address common.Address, processor types.ChangeLogProcessor, 
 	return &types.ChangeLog{
 		LogType: AddEventLog,
 		Address: account.GetAddress(),
-		Version: account.GetNestVersion(AddEventLog),
+		Version: account.GetNextVersion(AddEventLog),
 		NewVal:  newEvent,
 	}
 }
@@ -922,8 +922,9 @@ func redoAddEvent(c *types.ChangeLog, processor types.ChangeLogProcessor) error 
 }
 
 func undoAddEvent(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
-	account := processor.GetAccount(c.Address)
-	return account.PopEvent()
+	// 	account := processor.GetAccount(c.Address)
+	// 	return account.PopEvent()
+	return nil
 }
 
 // NewSuicideLog records balance change
@@ -937,7 +938,7 @@ func NewSuicideLog(address common.Address, processor types.ChangeLogProcessor) *
 	return &types.ChangeLog{
 		LogType: SuicideLog,
 		Address: account.GetAddress(),
-		Version: account.GetNestVersion(SuicideLog),
+		Version: account.GetNextVersion(SuicideLog),
 		OldVal:  oldAccount,
 	}
 }

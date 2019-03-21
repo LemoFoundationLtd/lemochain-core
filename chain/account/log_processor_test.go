@@ -3,9 +3,11 @@ package account
 import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
+	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"github.com/stretchr/testify/assert"
 	"math/big"
+	"strconv"
 	"testing"
 )
 
@@ -37,28 +39,19 @@ func TestLogProcessor_GetAccount(t *testing.T) {
 	assert.Equal(t, safeAccount.GetBalance(), account.GetBalance())
 }
 
-// func TestLogProcessor_PushEvent_PopEvent(t *testing.T) {
-// 	store.ClearData()
-// 	db := newDB()
-// 	defer db.Close()
-// 	processor := NewManager(newestBlock.Hash(), db).processor
-//
-// 	// push
-// 	processor.PushEvent(&types.Event{Address: common.HexToAddress("0x1"), TxHash: th(1)})
-// 	processor.PushEvent(&types.Event{Address: common.HexToAddress("0x1")})
-// 	events := processor.GetEvents()
-// 	assert.Equal(t, 2, len(events))
-//
-// 	// pop
-// 	err := processor.PopEvent()
-// 	assert.NoError(t, err)
-// 	events = processor.GetEvents()
-// 	assert.Equal(t, 1, len(events))
-// 	err = processor.PopEvent()
-// 	assert.NoError(t, err)
-// 	err = processor.PopEvent()
-// 	assert.Equal(t, ErrNoEvents, err)
-// }
+func TestLogProcessor_PushEvent_PopEvent(t *testing.T) {
+	store.ClearData()
+	db := newDB()
+	defer db.Close()
+	// processor := NewManager(newestBlock.Hash(), db).processor
+
+	manager := NewManager(newestBlock.Hash(), db)
+	// push
+	manager.AddEvent(&types.Event{Address: common.HexToAddress("0x1"), TxHash: th(1)})
+	manager.AddEvent(&types.Event{Address: common.HexToAddress("0x1")})
+	events := manager.GetEvents()
+	assert.Equal(t, 2, len(events))
+}
 
 func TestLogProcessor_PushChangeLog_GetChangeLogs(t *testing.T) {
 	store.ClearData()
@@ -110,63 +103,63 @@ func TestLogProcessor_GetLogsByAddress(t *testing.T) {
 	assert.Empty(t, logs)
 }
 
-// func TestLogProcessor_GetNextVersion(t *testing.T) {
-// 	store.ClearData()
-// 	db := newDB()
-// 	defer db.Close()
-// 	processor := NewManager(newestBlock.Hash(), db).processor
-// 	// prepare account version record
-// 	account := processor.GetAccount(common.HexToAddress("0x1"))
-// 	account.(*Account).SetVersion(types.ChangeLogType(101), 10, 20)
-//
-// 	// no log
-// 	version := processor.GetNextVersion(types.ChangeLogType(101), common.HexToAddress("0x1"))
-// 	assert.Equal(t, uint32(11), version)
-//
-// 	// 1 log
-// 	processor.PushChangeLog(&types.ChangeLog{
-// 		LogType: types.ChangeLogType(101),
-// 		Address: common.HexToAddress("0x1"),
-// 		Version: 11,
-// 	})
-// 	version = processor.GetNextVersion(types.ChangeLogType(101), common.HexToAddress("0x1"))
-// 	assert.Equal(t, uint32(12), version)
-// 	version = processor.GetNextVersion(types.ChangeLogType(102), common.HexToAddress("0x1"))
-// 	assert.Equal(t, uint32(1), version)
-// 	version = processor.GetNextVersion(types.ChangeLogType(101), common.HexToAddress("0x2"))
-// 	assert.Equal(t, uint32(1), version)
-//
-// 	// 2 logs
-// 	processor.PushChangeLog(&types.ChangeLog{
-// 		LogType: types.ChangeLogType(101),
-// 		Address: common.HexToAddress("0x1"),
-// 		Version: 12,
-// 	})
-// 	version = processor.GetNextVersion(types.ChangeLogType(101), common.HexToAddress("0x1"))
-// 	assert.Equal(t, uint32(13), version)
-//
-// 	// push log for different account
-// 	processor.PushChangeLog(&types.ChangeLog{
-// 		LogType: types.ChangeLogType(101),
-// 		Address: common.HexToAddress("0x2"),
-// 		Version: 1,
-// 	})
-// 	version = processor.GetNextVersion(types.ChangeLogType(101), common.HexToAddress("0x1"))
-// 	assert.Equal(t, uint32(13), version)
-// 	version = processor.GetNextVersion(types.ChangeLogType(101), common.HexToAddress("0x2"))
-// 	assert.Equal(t, uint32(2), version)
-//
-// 	// push log for different type
-// 	processor.PushChangeLog(&types.ChangeLog{
-// 		LogType: types.ChangeLogType(102),
-// 		Address: common.HexToAddress("0x1"),
-// 		Version: 1,
-// 	})
-// 	version = processor.GetNextVersion(types.ChangeLogType(101), common.HexToAddress("0x1"))
-// 	assert.Equal(t, uint32(13), version)
-// 	version = processor.GetNextVersion(types.ChangeLogType(102), common.HexToAddress("0x1"))
-// 	assert.Equal(t, uint32(2), version)
-// }
+func TestLogProcessor_GetNextVersion(t *testing.T) {
+	store.ClearData()
+	db := newDB()
+	defer db.Close()
+	processor := NewManager(newestBlock.Hash(), db).processor
+	// prepare account version record
+	account := processor.GetAccount(common.HexToAddress("0x1"))
+	account.(*Account).SetVersion(types.ChangeLogType(101), 10, 20)
+
+	// no log
+	version := processor.GetAccount(common.HexToAddress("0x1")).GetNextVersion(types.ChangeLogType(101))
+	assert.Equal(t, uint32(11), version)
+
+	// 1 log
+	processor.PushChangeLog(&types.ChangeLog{
+		LogType: types.ChangeLogType(101),
+		Address: common.HexToAddress("0x1"),
+		Version: 11,
+	})
+	version = processor.GetAccount(common.HexToAddress("0x1")).GetNextVersion(types.ChangeLogType(101))
+	assert.Equal(t, uint32(12), version)
+	version = processor.GetAccount(common.HexToAddress("0x2")).GetNextVersion(types.ChangeLogType(102))
+	assert.Equal(t, uint32(1), version)
+	version = processor.GetAccount(common.HexToAddress("0x2")).GetNextVersion(types.ChangeLogType(101))
+	assert.Equal(t, uint32(1), version)
+
+	// 2 logs
+	processor.PushChangeLog(&types.ChangeLog{
+		LogType: types.ChangeLogType(101),
+		Address: common.HexToAddress("0x1"),
+		Version: 12,
+	})
+	version = processor.GetAccount(common.HexToAddress("0x1")).GetNextVersion(types.ChangeLogType(101))
+	assert.Equal(t, uint32(13), version)
+
+	// push log for different account
+	processor.PushChangeLog(&types.ChangeLog{
+		LogType: types.ChangeLogType(101),
+		Address: common.HexToAddress("0x2"),
+		Version: 1,
+	})
+	version = processor.GetAccount(common.HexToAddress("0x1")).GetNextVersion(types.ChangeLogType(101))
+	assert.Equal(t, uint32(14), version)
+	version = processor.GetAccount(common.HexToAddress("0x2")).GetNextVersion(types.ChangeLogType(101))
+	assert.Equal(t, uint32(2), version)
+
+	// push log for different type
+	processor.PushChangeLog(&types.ChangeLog{
+		LogType: types.ChangeLogType(102),
+		Address: common.HexToAddress("0x1"),
+		Version: 1,
+	})
+	version = processor.GetAccount(common.HexToAddress("0x1")).GetNextVersion(types.ChangeLogType(101))
+	assert.Equal(t, uint32(15), version)
+	version = processor.GetAccount(common.HexToAddress("0x1")).GetNextVersion(types.ChangeLogType(102))
+	assert.Equal(t, uint32(1), version)
+}
 
 func TestLogProcessor_Clear(t *testing.T) {
 	store.ClearData()
@@ -268,6 +261,8 @@ func TestLogProcessor_Snapshot_RevertToSnapshot2(t *testing.T) {
 	// version is continuous
 	processor.Clear()
 	newId = processor.Snapshot()
+	log.Errorf("safe account version: " + strconv.Itoa(int(safeAccount.GetVersion(BalanceLog))))
+	log.Errorf("safe account next version: " + strconv.Itoa(int(safeAccount.GetNextVersion(BalanceLog))))
 	safeAccount.SetBalance(big.NewInt(200))
 	safeAccount.SetBalance(big.NewInt(201))
 	assert.Equal(t, 2, len(processor.GetChangeLogs()))
