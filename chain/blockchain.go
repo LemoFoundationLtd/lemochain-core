@@ -206,7 +206,7 @@ func (bc *BlockChain) SetMinedBlock(block *types.Block) error {
 		subscribe.Send(subscribe.NewConfirm, msg)
 		bc.newBlockNotify(block)
 	}()
-	bc.updateDeputyNodes(block)
+	// bc.updateDeputyNodes(block)
 	return nil
 }
 
@@ -718,6 +718,7 @@ func (bc *BlockChain) GetNewDeputyNodes() deputynode.DeputyNodes {
 	if len(list) > deputynode.TotalCount {
 		list = list[:deputynode.TotalCount]
 	}
+
 	for i, n := range list {
 		dn := new(deputynode.DeputyNode)
 		dn.Votes = n.GetTotal()
