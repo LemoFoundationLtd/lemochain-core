@@ -12,8 +12,8 @@ type SafeAccount struct {
 	processor  *LogProcessor
 }
 
-func (a *SafeAccount) GetNestVersion(logType types.ChangeLogType) uint32 {
-	return a.rawAccount.GetNestVersion(logType)
+func (a *SafeAccount) GetNextVersion(logType types.ChangeLogType) uint32 {
+	return a.rawAccount.GetNextVersion(logType)
 }
 
 func (a *SafeAccount) PushEvent(event *types.Event) {
@@ -23,11 +23,11 @@ func (a *SafeAccount) PushEvent(event *types.Event) {
 }
 
 func (a *SafeAccount) PopEvent() error {
-	panic("implement me")
+	return a.rawAccount.PopEvent()
 }
 
 func (a *SafeAccount) GetEvents() []*types.Event {
-	panic("implement me")
+	return a.rawAccount.GetEvents()
 }
 
 func (a *SafeAccount) GetCandidate() types.Profile { return a.rawAccount.GetCandidate() }

@@ -38,7 +38,7 @@ func (p *testProcessor) GetAccount(address common.Address) types.AccountAccessor
 
 func (p *testProcessor) GetNextVersion(logType types.ChangeLogType, addr common.Address) uint32 {
 	account := p.Accounts[addr]
-	return account.GetNestVersion(logType)
+	return account.GetNextVersion(logType)
 }
 
 func (p *testProcessor) PushEvent(event *types.Event) {

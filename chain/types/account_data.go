@@ -300,7 +300,7 @@ func (c Code) String() string {
 type AccountAccessor interface {
 	GetAddress() common.Address
 	GetVersion(logType ChangeLogType) uint32
-	GetNestVersion(logType ChangeLogType) uint32
+	GetNextVersion(logType ChangeLogType) uint32
 
 	GetVoteFor() common.Address
 	SetVoteFor(addr common.Address)

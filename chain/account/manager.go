@@ -116,9 +116,14 @@ func (am *Manager) AddEvent(event *types.Event) {
 }
 
 // // GetEvents returns all events since last reset
-// func (am *Manager) GetEvents() []*types.Event {
-// 	return am.processor.GetEvents()
-// }
+func (am *Manager) GetEvents() []*types.Event {
+	events := make([]*types.Event, 0)
+	for _, v := range am.accountCache {
+		events = append(events, v.GetEvents()...)
+	}
+	return events
+}
+
 //
 // // GetEvents returns all events since last reset
 // func (am *Manager) GetEventsByTx(txHash common.Hash) []*types.Event {

@@ -324,7 +324,7 @@ func (a *Account) GetVersion(logType types.ChangeLogType) uint32 {
 }
 
 // GetBaseVersion returns the version of specific change log from the base block. It is not changed by tx processing until the finalised
-func (a *Account) GetNestVersion(logType types.ChangeLogType) uint32 {
+func (a *Account) GetNextVersion(logType types.ChangeLogType) uint32 {
 	a.newestRecords[logType] = a.newestRecords[logType] + 1
 	return a.newestRecords[logType]
 }

@@ -298,7 +298,7 @@ func TestAccount_MarshalJSON_UnmarshalJSON(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, account.GetAddress(), parsedAccount.GetAddress())
 	assert.Equal(t, account.GetBalance(), parsedAccount.GetBalance())
-	assert.Equal(t, account.GetNestVersion(BalanceLog), parsedAccount.GetNestVersion(BalanceLog))
+	assert.Equal(t, account.GetNextVersion(BalanceLog), parsedAccount.GetNextVersion(BalanceLog))
 	assert.Equal(t, account.GetCodeHash(), parsedAccount.GetCodeHash())
 	assert.Equal(t, account.GetStorageRoot(), parsedAccount.GetStorageRoot())
 	// assert.Equal(t, account.db, parsedAccount.db)
