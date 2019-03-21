@@ -922,8 +922,9 @@ func redoAddEvent(c *types.ChangeLog, processor types.ChangeLogProcessor) error 
 }
 
 func undoAddEvent(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
-	account := processor.GetAccount(c.Address)
-	return account.PopEvent()
+	// 	account := processor.GetAccount(c.Address)
+	// 	return account.PopEvent()
+	return nil
 }
 
 // NewSuicideLog records balance change

@@ -107,7 +107,7 @@ func (am *Manager) AddEvent(event *types.Event) {
 	if (event.Address == common.Address{}) {
 		panic("account.Manager.AddEvent() is called without a Address or TxHash")
 	}
-	account := am.getRawAccount(event.Address)
+	account := am.GetAccount(event.Address)
 	account.PushEvent(event)
 	// event.Index = uint(len(am.processor.GetEvents()))
 	// newLog := NewAddEventLog(am.processor, account, event)

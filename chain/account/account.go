@@ -330,6 +330,7 @@ func (a *Account) GetNestVersion(logType types.ChangeLogType) uint32 {
 }
 
 func (a *Account) SetVersion(logType types.ChangeLogType, version, blockHeight uint32) {
+	a.newestRecords[logType] = version
 	a.data.NewestRecords[logType] = types.VersionRecord{Version: version, Height: blockHeight}
 }
 func (a *Account) GetSuicide() bool         { return a.suicided }

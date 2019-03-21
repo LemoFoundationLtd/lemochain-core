@@ -407,12 +407,16 @@ func TestIsValuable(t *testing.T) {
 }
 
 func findEvent(processor *testProcessor, txHash common.Hash) []*types.Event {
+	accounts := processor.Accounts
 	result := make([]*types.Event, 0)
-	for _, event := range processor.Events {
-		if event.TxHash == txHash {
-			result = append(result, event)
+	for _, v := range accounts {
+		for _, event := range v.GetEvents() {
+			if event.TxHash == txHash {
+				result = append(result, event)
+			}
 		}
 	}
+
 	return result
 }
 

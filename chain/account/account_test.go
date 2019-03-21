@@ -42,7 +42,7 @@ func TestAccount_GetAddress(t *testing.T) {
 
 	// load default account
 	account := loadAccount(db, defaultAccounts[0].Address)
-	assert.Equal(t, uint32(100), account.GetNestVersion(BalanceLog))
+	assert.Equal(t, uint32(100), account.GetVersion(BalanceLog))
 
 	// load not exist account
 	account = loadAccount(db, common.HexToAddress("0xaaa"))
@@ -72,11 +72,11 @@ func TestAccount_SetVersion_GetVersion(t *testing.T) {
 	defer db.Close()
 
 	account := loadAccount(db, defaultAccounts[0].Address)
-	assert.Equal(t, uint32(100), account.GetNestVersion(BalanceLog))
+	assert.Equal(t, uint32(100), account.GetVersion(BalanceLog))
 	assert.Equal(t, defaultAccounts[0].NewestRecords[BalanceLog].Height, account.data.NewestRecords[BalanceLog].Height)
 
 	account.SetVersion(BalanceLog, 200, 3)
-	assert.Equal(t, uint32(200), account.GetNestVersion(BalanceLog))
+	assert.Equal(t, uint32(200), account.GetVersion(BalanceLog))
 	assert.Equal(t, uint32(3), account.data.NewestRecords[BalanceLog].Height)
 }
 

@@ -3,9 +3,11 @@ package account
 import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
+	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"github.com/stretchr/testify/assert"
 	"math/big"
+	"strconv"
 	"testing"
 )
 
@@ -268,6 +270,8 @@ func TestLogProcessor_Snapshot_RevertToSnapshot2(t *testing.T) {
 	// version is continuous
 	processor.Clear()
 	newId = processor.Snapshot()
+	log.Errorf("safe account version: " + strconv.Itoa(int(safeAccount.GetVersion(BalanceLog))))
+	log.Errorf("safe account next version: " + strconv.Itoa(int(safeAccount.GetNestVersion(BalanceLog))))
 	safeAccount.SetBalance(big.NewInt(200))
 	safeAccount.SetBalance(big.NewInt(201))
 	assert.Equal(t, 2, len(processor.GetChangeLogs()))

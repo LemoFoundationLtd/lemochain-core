@@ -13,7 +13,7 @@ type SafeAccount struct {
 }
 
 func (a *SafeAccount) GetNestVersion(logType types.ChangeLogType) uint32 {
-	panic("implement me")
+	return a.rawAccount.GetNestVersion(logType)
 }
 
 func (a *SafeAccount) PushEvent(event *types.Event) {
