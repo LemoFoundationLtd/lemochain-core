@@ -192,6 +192,18 @@ func (d *Dpovp) Finalize(height uint32, am *account.Manager) error {
 			balance := acc.GetBalance()
 			balance.Add(balance, item.Salary)
 			acc.SetBalance(balance)
+			// 	candidate node vote change corresponding to balance change
+			candidateAddr := acc.GetVoteFor()
+			if (candidateAddr == common.Address{}) {
+				continue
+			}
+			candidateAcc := am.GetAccount(candidateAddr)
+			profile := candidateAcc.GetCandidate()
+			if profile[types.CandidateKeyIsCandidate] == params.NotCandidateNode {
+				continue
+			}
+			// set votes
+			candidateAcc.SetVotes(new(big.Int).Add(candidateAcc.GetVotes(), item.Salary))
 		}
 	}
 
