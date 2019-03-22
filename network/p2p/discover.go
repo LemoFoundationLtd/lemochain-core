@@ -39,7 +39,7 @@ type RawNode struct {
 	Endpoint    string
 	IsReconnect bool
 	ConnCounter int8
-	Sequence    int32 // fresh: >0; stale: <0; connecting: 0
+	Sequence    int32 // fresh(已连接): >0; stale(连接过并失败): <0; connecting(可以连接): 0
 }
 
 func newRawNode(nodeID *NodeID, endpoint string) *RawNode {
@@ -147,6 +147,10 @@ func (m *DiscoverManager) connectingNodes() []string {
 		if node.Sequence == 0 {
 			res = append(res, node.String())
 		}
+	}
+	// limit max connect number
+	if len(res) > MaxNodeCount {
+		res = res[:MaxNodeCount]
 	}
 	return res
 }
