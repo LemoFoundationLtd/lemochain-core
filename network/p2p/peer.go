@@ -250,7 +250,7 @@ func (p *Peer) heartbeatLoop() {
 		case <-p.heartbeatTimer.C:
 			// send heartbeat data
 			if err := p.WriteMsg(CodeHeartbeat, nil); err != nil {
-				log.Debugf("heartbeatLoop: nodeID: %s, : %v", p.RNodeID().String()[:16], err)
+				log.Debugf("heartbeatLoop error: nodeID: %s, : %v", p.RNodeID().String()[:16], err)
 				return
 			}
 			// reset heartbeatTimer
