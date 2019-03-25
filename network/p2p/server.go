@@ -211,10 +211,11 @@ func (srv *Server) HandleConn(fd net.Conn, nodeID *NodeID) error {
 	if atomic.LoadInt32(&srv.running) == 0 {
 		return ErrSrvHasStopped
 	}
-	// if already connection then close conn
-	if _, ok := srv.connectedNodes[*nodeID]; ok {
-		fd.Close()
-	}
+	// // if already connection then close conn
+	// if _, ok := srv.connectedNodes[*nodeID]; ok {
+	// 	log.Debug("test close already connect")
+	// 	fd.Close()
+	// }
 
 	// handshake
 	peer := srv.newPeer(fd)
