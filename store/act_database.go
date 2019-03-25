@@ -5,6 +5,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/rlp"
+	"github.com/LemoFoundationLtd/lemochain-core/store/leveldb"
 )
 
 func min(first int, args ...int) int {
@@ -694,7 +695,7 @@ func (db *AccountTrieDB) Get(address common.Address) (*types.AccountData, error)
 	key := address.Hex()
 	data := db.trie.Find(key)
 	if data == nil {
-		val, err := db.reader.Get(address[:])
+		val, err := db.reader.Get(leveldb.GetAddressKey(address))
 		if err != nil {
 			return nil, err
 		}
