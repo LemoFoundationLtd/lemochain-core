@@ -468,6 +468,7 @@ func (m *Miner) sealHead() (*types.Header, deputynode.DeputyNodes) {
 		GasLimit:     calcGasLimit(parent),
 		Extra:        m.extra,
 	}
+	log.Info("before miner :", h.MinerAddress.String())
 	var nodes deputynode.DeputyNodes = nil
 	if height%params.TermDuration == 0 {
 		nodes = m.chain.GetNewDeputyNodes()
@@ -477,7 +478,9 @@ func (m *Miner) sealHead() (*types.Header, deputynode.DeputyNodes) {
 		log.Debugf("add new term deputy nodes: %s", nodes.String())
 	} else if height%params.TermDuration == params.InterimDuration {
 		n := deputynode.Instance().GetDeputyByNodeID(height, deputynode.GetSelfNodeID())
+		log.Info("setup miner :", n.MinerAddress.String())
 		m.SetMinerAddress(n.MinerAddress)
+		log.Info("after miner :", h.MinerAddress.String())
 		log.Debugf("set next term's miner address: %s", n.MinerAddress.String())
 	}
 

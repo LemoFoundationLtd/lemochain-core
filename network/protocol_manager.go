@@ -35,7 +35,7 @@ const (
 	testDiscover
 )
 
-var testRcvFlag = false
+// var testRcvFlag = false   // for test
 
 type rcvBlockObj struct {
 	p      *peer
@@ -189,7 +189,7 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 	queueTimer := time.NewTimer(proInterval)
 
 	// just for test
-	testRcvTimer := time.NewTimer(8 * time.Second)
+	// testRcvTimer := time.NewTimer(8 * time.Second)
 
 	for {
 		select {
@@ -202,8 +202,8 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 			go pm.broadcastBlock(peers, block, true)
 		case rcvMsg := <-pm.rcvBlocksCh:
 			// for test
-			testRcvFlag = false
-			testRcvTimer.Reset(8 * time.Second)
+			// testRcvFlag = false
+			// testRcvTimer.Reset(8 * time.Second)
 
 			// peer's latest height
 			pLstHeight := rcvMsg.p.LatestStatus().CurHeight
@@ -257,8 +257,8 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 			if pm.test {
 				pm.testOutput <- testQueueTimer
 			}
-		case <-testRcvTimer.C: // just for test
-			testRcvFlag = true
+			// case <-testRcvTimer.C: // just for test
+			// 	testRcvFlag = true
 		}
 	}
 }
@@ -580,13 +580,13 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		return err
 	}
 
-	if testRcvFlag {
-		if msg.Code == BlocksMsg {
-			log.Debug("handleMsg receive blocks, but not process.")
-		} else {
-			log.Debug("not receive block, but receive other types of message.")
-		}
-	}
+	// if testRcvFlag {
+	// 	if msg.Code == BlocksMsg {
+	// 		log.Debug("handleMsg receive blocks, but not process.")
+	// 	} else {
+	// 		log.Debug("not receive block, but receive other types of message.")
+	// 	}
+	// }
 
 	switch msg.Code {
 	case LstStatusMsg:

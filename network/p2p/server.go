@@ -211,6 +211,12 @@ func (srv *Server) HandleConn(fd net.Conn, nodeID *NodeID) error {
 	if atomic.LoadInt32(&srv.running) == 0 {
 		return ErrSrvHasStopped
 	}
+	// // if already connection then close conn
+	// if _, ok := srv.connectedNodes[*nodeID]; ok {
+	// 	log.Debug("test close already connect")
+	// 	fd.Close()
+	// }
+
 	// handshake
 	peer := srv.newPeer(fd)
 	err := peer.DoHandshake(srv.PrivateKey, nodeID)
@@ -288,7 +294,7 @@ func (srv *Server) Connect(node string) string {
 	if res := srv.dialManager.runDialTask(node); res < 0 {
 		return "connect node failed: %s" + node
 	}
-	return ""
+	return "connect success"
 }
 
 // Disconnect disconnect a connection for api

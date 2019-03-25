@@ -102,8 +102,9 @@ func (p *Peer) safeClose() {
 	}
 	if needClose {
 		close(p.stopCh)
+		log.Info("close peer connection")
 		if err := p.conn.Close(); err != nil {
-			log.Infof("close connection failed: %v", err)
+			log.Infof("close peer connection failed: %v", err)
 		}
 	}
 }
@@ -250,7 +251,7 @@ func (p *Peer) heartbeatLoop() {
 		case <-p.heartbeatTimer.C:
 			// send heartbeat data
 			if err := p.WriteMsg(CodeHeartbeat, nil); err != nil {
-				log.Debugf("heartbeatLoop: nodeID: %s, : %v", p.RNodeID().String()[:16], err)
+				log.Debugf("heartbeatLoop error: nodeID: %s, : %v", p.RNodeID().String()[:16], err)
 				return
 			}
 			// reset heartbeatTimer

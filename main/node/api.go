@@ -102,7 +102,11 @@ func (a *PublicAccountAPI) GetAllRewardValue() ([]*params.Reward, error) {
 	json.Unmarshal(value, &rewardMap)
 	var result = make([]*params.Reward, 0)
 	for _, v := range rewardMap {
-		result = append(result, v)
+		var maxTerm uint32 = 0
+		if v.Term == maxTerm {
+			result = append(result, v)
+			maxTerm++
+		}
 	}
 	return result, nil
 }
@@ -145,6 +149,11 @@ func NewPublicChainAPI(chain *chain.BlockChain) *PublicChainAPI {
 // GetDeputyNodeList
 func (c *PublicChainAPI) GetDeputyNodeList() []string {
 	return deputynode.Instance().GetLatestDeputies(c.chain.CurrentBlock().Height())
+}
+
+// GetAllDeputyNodesList get all deputy nodes list
+func (c *PublicChainAPI) GetAllDeputyNodesList() []*deputynode.JsonDeputyNodesRecord {
+	return deputynode.Instance().GetAllDeputyNodeList()
 }
 
 // // GetCandidateNodeList get all candidate node list information and return total candidate node

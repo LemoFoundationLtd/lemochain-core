@@ -1212,7 +1212,7 @@ func setRewardTxData(term uint32, value *big.Int) []byte {
 
 // TestBlockChain_txData 生成调用设置换届奖励的预编译合约交易的data
 func TestBlockChain_txData(t *testing.T) {
-	value, _ := new(big.Int).SetString("999999999999999999999999", 10)
+	value, _ := new(big.Int).SetString("99999999999999999999", 10)
 	re := params.RewardJson{
 		Term:  0,
 		Value: value,
@@ -1220,6 +1220,18 @@ func TestBlockChain_txData(t *testing.T) {
 	by, _ := json.Marshal(re)
 	fmt.Println("tx data", common.ToHex(by))
 	fmt.Println("预编译合约地址", common.BytesToAddress([]byte{9}).String())
+}
+
+func TestIntrinsicGas(t *testing.T) {
+	value, _ := new(big.Int).SetString("500000000000000000000000", 10)
+	for i := 11; i < 26; i++ {
+		re := params.RewardJson{
+			Term:  uint32(i),
+			Value: value,
+		}
+		by, _ := json.Marshal(re)
+		fmt.Println(i, "term: ", common.ToHex(by))
+	}
 }
 
 func Test_rlpBlock(t *testing.T) {
