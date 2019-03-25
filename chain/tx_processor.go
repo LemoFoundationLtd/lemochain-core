@@ -297,6 +297,7 @@ func (p *TxProcessor) changeCandidateVotes(accountAddress common.Address, change
 
 func (p *TxProcessor) buyGas(gp *types.GasPool, tx *types.Transaction) error {
 	payerAddr, err := tx.GasPayer()
+	log.Info("tx gas payer address:\n", payerAddr.String())
 	if err != nil {
 		return err
 	}

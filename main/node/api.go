@@ -73,7 +73,6 @@ func (a *PublicAccountAPI) GetAccount(LemoAddress string) (types.AccountAccessor
 	if err != nil {
 		return nil, err
 	}
-
 	accountData := a.manager.GetCanonicalAccount(address)
 	// accountData := a.manager.GetAccount(address)
 	return accountData, nil
@@ -101,13 +100,22 @@ func (a *PublicAccountAPI) GetAllRewardValue() ([]*params.Reward, error) {
 	rewardMap := make(params.RewardsMap)
 	json.Unmarshal(value, &rewardMap)
 	var result = make([]*params.Reward, 0)
-	for _, v := range rewardMap {
-		var maxTerm uint32 = 0
-		if v.Term == maxTerm {
+	// var maxTerm uint32 = 0
+	// for _, v := range rewardMap {
+	// 	if v.Term == maxTerm {
+	// 		result = append(result, v)
+	// 		maxTerm++
+	// 	}
+	// }
+	var i uint32
+	for i = 0; ; i++ {
+		if v, ok := rewardMap[i]; ok {
 			result = append(result, v)
-			maxTerm++
+		} else {
+			break
 		}
 	}
+
 	return result, nil
 }
 

@@ -1,7 +1,7 @@
 package base26
 
 import (
-	"github.com/lemoTestCoin/common"
+	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/stretchr/testify/assert"
 	"math/big"
 	"testing"
