@@ -3,10 +3,8 @@ package types
 import (
 	"crypto/ecdsa"
 	"errors"
-	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
-	"math/big"
 )
 
 var (
@@ -36,9 +34,6 @@ type Signer interface {
 	// GetSigner returns the sender address of the transaction.
 	GetSigner(tx *Transaction) (common.Address, error)
 
-	// ParseSignature returns the raw R, S, V values corresponding to the
-	// given signature.
-	ParseSignature(tx *Transaction, sig []byte) (r, s, v *big.Int, err error)
 	// Hash returns the hash to be signed.
 	Hash(tx *Transaction) common.Hash
 }
@@ -53,15 +48,14 @@ func (s DefaultSigner) SignTx(tx *Transaction, prv *ecdsa.PrivateKey) (*Transact
 	if err != nil {
 		return nil, err
 	}
-	return tx.WithSignature(s, sig)
+	cpy := &Transaction{data: tx.data, gasPayer: tx.gasPayer}
+	cpy.data.Sig = sig
+	return cpy, nil
 }
 
 func (s DefaultSigner) GetSigner(tx *Transaction) (common.Address, error) {
 	sigHash := s.Hash(tx)
-	sig, err := recoverSignData(tx)
-	if err != nil {
-		return common.Address{}, err
-	}
+	sig := tx.data.Sig
 	// recover the public key from the signature
 	pub, err := crypto.Ecrecover(sigHash[:], sig)
 	if err != nil {
@@ -72,18 +66,6 @@ func (s DefaultSigner) GetSigner(tx *Transaction) (common.Address, error) {
 	}
 	addr := crypto.PubToAddress(pub)
 	return addr, nil
-}
-
-// ParseSignature returns a new transaction with the given signature. This signature
-// needs to be in the [R || S || V] format where V is 0 or 1.
-func (s DefaultSigner) ParseSignature(tx *Transaction, sig []byte) (R, S, V *big.Int, err error) {
-	if len(sig) != 65 {
-		panic(fmt.Sprintf("wrong size for signature: got %d, want 65", len(sig)))
-	}
-	R = new(big.Int).SetBytes(sig[:32])
-	S = new(big.Int).SetBytes(sig[32:64])
-	V = SetSecp256k1V(tx.data.V, sig[64])
-	return R, S, V, nil
 }
 
 // Hash returns the hash to be signed by the sender.
@@ -114,7 +96,9 @@ func (s ReimbursementTxSigner) SignTx(tx *Transaction, prv *ecdsa.PrivateKey) (*
 	if err != nil {
 		return nil, err
 	}
-	return tx.WithSignature(s, sig)
+	cpy := &Transaction{data: tx.data, gasPayer: tx.gasPayer}
+	cpy.data.Sig = sig
+	return cpy, nil
 }
 
 // Hash excluding gasLimit and gasPrice
@@ -140,10 +124,7 @@ func (s ReimbursementTxSigner) Hash(tx *Transaction) common.Hash {
 // GetSigner
 func (s ReimbursementTxSigner) GetSigner(tx *Transaction) (common.Address, error) {
 	sigHash := s.Hash(tx)
-	sig, err := recoverSignData(tx)
-	if err != nil {
-		return common.Address{}, err
-	}
+	sig := tx.data.Sig
 	// recover the public key from the signature
 	pub, err := crypto.Ecrecover(sigHash[:], sig)
 	if err != nil {
@@ -154,18 +135,6 @@ func (s ReimbursementTxSigner) GetSigner(tx *Transaction) (common.Address, error
 	}
 	addr := crypto.PubToAddress(pub)
 	return addr, nil
-}
-
-// ParseSignature
-func (s ReimbursementTxSigner) ParseSignature(tx *Transaction, sig []byte) (R, S, V *big.Int, err error) {
-	if len(sig) != 65 {
-		panic(fmt.Sprintf("wrong size for signature: got %d, want 65", len(sig)))
-	}
-	R = new(big.Int).SetBytes(sig[:32])
-	S = new(big.Int).SetBytes(sig[32:64])
-	// if sig[64] == 1, then V will change. else V remains unchanged
-	V = SetSecp256k1V(tx.data.V, sig[64])
-	return R, S, V, nil
 }
 
 type GasPayerSigner struct {
@@ -212,38 +181,10 @@ func (g GasPayerSigner) GetSigner(tx *Transaction) (common.Address, error) {
 
 // Hash returns sign hash
 func (g GasPayerSigner) Hash(tx *Transaction) common.Hash {
-	firstSignData, err := recoverSignData(tx)
-	if err != nil {
-		return common.Hash{}
-	}
+	firstSignData := tx.data.Sig
 	return rlpHash([]interface{}{
 		firstSignData,
 		tx.GasPrice(),
 		tx.GasLimit(),
 	})
-}
-
-// ParseSignature
-func (g GasPayerSigner) ParseSignature(tx *Transaction, sig []byte) (r, s, v *big.Int, err error) {
-	return
-}
-
-// recoverSignData recover tx sign data by V, R, S
-func recoverSignData(tx *Transaction) ([]byte, error) {
-	V, R, S := tx.data.V, tx.data.R, tx.data.S
-
-	if V.BitLen() > 32 {
-		return nil, ErrInvalidSig
-	}
-	_, _, v, _ := ParseV(V)
-	if !crypto.ValidateSignatureValues(v, R, S) {
-		return nil, ErrInvalidSig
-	}
-	// encode the signature in uncompressed format
-	rb, sb := R.Bytes(), S.Bytes()
-	sig := make([]byte, 65)
-	copy(sig[32-len(rb):32], rb)
-	copy(sig[64-len(sb):64], sb)
-	sig[64] = v
-	return sig, nil
 }

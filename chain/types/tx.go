@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
-	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-core/common/hexutil"
 	"github.com/LemoFoundationLtd/lemochain-core/common/rlp"
 	"io"
@@ -16,9 +15,10 @@ import (
 //go:generate gencodec -type txdata --field-override txdataMarshaling -out gen_tx_json.go
 
 var (
-	DefaultTTTL   uint64 = 2 * 60 * 60 // Transaction Time To Live, 2hours
-	ErrInvalidSig        = errors.New("invalid transaction v, r, s values")
-	TxVersion     uint8  = 1 // current transaction version. should between 0 and 128
+	DefaultTTTL       uint64 = 2 * 60 * 60 // Transaction Time To Live, 2hours
+	ErrInvalidSig            = errors.New("invalid transaction sig")
+	ErrInvalidVersion        = errors.New("invalid transaction version")
+	TxVersion         uint8  = 1 // current transaction version. should between 0 and 128
 )
 
 type Transactions []*Transaction
@@ -41,13 +41,11 @@ type txdata struct {
 	Data          []byte          `json:"data"`
 	Expiration    uint64          `json:"expirationTime" gencodec:"required"`
 	Message       string          `json:"message"`
-
-	// V is combined by these properties:
-	//     type    version secp256k1.recovery  chainID
-	// |----8----|----7----|--------1--------|----16----|
-	V *big.Int `json:"v" gencodec:"required"`
-	R *big.Int `json:"r" gencodec:"required"`
-	S *big.Int `json:"s" gencodec:"required"`
+	//
+	Type    uint8  `json:"txType" gencodec:"required"`
+	Version uint8  `json:"version" gencodec:"required"`
+	ChainID uint16 `json:"chainId" gencodec:"required"`
+	Sig     []byte `json:"sig" gencodec:"required"`
 
 	// This is only used when marshaling to JSON.
 	Hash *common.Hash `json:"hash" rlp:"-"`
@@ -61,9 +59,10 @@ type txdataMarshaling struct {
 	Amount      *hexutil.Big10
 	Data        hexutil.Bytes
 	Expiration  hexutil.Uint64
-	V           *hexutil.Big
-	R           *hexutil.Big
-	S           *hexutil.Big
+	Type        hexutil.Uint8
+	Version     hexutil.Uint8
+	ChainID     hexutil.Uint16
+	Sig         hexutil.Bytes
 	GasPayerSig hexutil.Bytes
 }
 
@@ -116,9 +115,10 @@ func newTransaction(txType uint8, version uint8, chainID uint16, to *common.Addr
 		Data:          data,
 		Expiration:    expiration,
 		Message:       message,
-		V:             CombineV(txType, version, chainID),
-		R:             new(big.Int),
-		S:             new(big.Int),
+		Type:          txType,
+		Version:       version,
+		ChainID:       chainID,
+		Sig:           make([]byte, 0),
 		GasPayerSig:   make([]byte, 0),
 	}
 	if amount != nil {
@@ -160,21 +160,23 @@ func (tx *Transaction) UnmarshalJSON(input []byte) error {
 	if err := dec.UnmarshalJSON(input); err != nil {
 		return err
 	}
-	_, version, V, _ := ParseV(dec.V)
+	// _, version, V, _ := ParseV(dec.V)
+	version := dec.Version
 	if version != TxVersion {
+		return ErrInvalidVersion
+	}
+
+	if len(dec.Sig) != 65 {
 		return ErrInvalidSig
 	}
-	// should has R, S
-	if !crypto.ValidateSignatureValues(V, dec.R, dec.S) {
-		return ErrInvalidSig
-	}
+
 	*tx = Transaction{data: dec}
 	return nil
 }
 
-func (tx *Transaction) Type() uint8        { txType, _, _, _ := ParseV(tx.data.V); return txType }
-func (tx *Transaction) Version() uint8     { _, version, _, _ := ParseV(tx.data.V); return version }
-func (tx *Transaction) ChainID() uint16    { _, _, _, chainID := ParseV(tx.data.V); return chainID }
+func (tx *Transaction) Type() uint8        { return tx.data.Type }
+func (tx *Transaction) Version() uint8     { return tx.data.Version }
+func (tx *Transaction) ChainID() uint16    { return tx.data.ChainID }
 func (tx *Transaction) Data() []byte       { return common.CopyBytes(tx.data.Data) }
 func (tx *Transaction) GasLimit() uint64   { return tx.data.GasLimit }
 func (tx *Transaction) GasPrice() *big.Int { return new(big.Int).Set(tx.data.GasPrice) }
@@ -189,6 +191,11 @@ func (tx *Transaction) To() *common.Address {
 	to := *tx.data.Recipient
 	return &to
 }
+
+func (tx *Transaction) Sig() []byte {
+	return tx.data.Sig
+}
+
 func (tx *Transaction) GasPayerSig() []byte {
 	return tx.data.GasPayerSig
 }
@@ -250,17 +257,6 @@ func (tx *Transaction) Hash() common.Hash {
 	return v
 }
 
-// WithSignature returns a new transaction with the given signature.
-func (tx *Transaction) WithSignature(signer Signer, sig []byte) (*Transaction, error) {
-	r, s, v, err := signer.ParseSignature(tx, sig)
-	if err != nil {
-		return nil, err
-	}
-	cpy := &Transaction{data: tx.data, gasPayer: tx.gasPayer}
-	cpy.data.R, cpy.data.S, cpy.data.V = r, s, v
-	return cpy, nil
-}
-
 // Cost returns amount + gasprice * gaslimit.
 func (tx *Transaction) Cost() *big.Int {
 	total := new(big.Int).Mul(tx.data.GasPrice, new(big.Int).SetUint64(tx.data.GasLimit))
@@ -268,26 +264,36 @@ func (tx *Transaction) Cost() *big.Int {
 	return total
 }
 
-func (tx *Transaction) Raw() (*big.Int, *big.Int, *big.Int) {
-	return tx.data.V, tx.data.R, tx.data.S
-}
+// func (tx *Transaction) Raw() (*big.Int, *big.Int, *big.Int) {
+// 	return tx.data.V, tx.data.R, tx.data.S
+// }
 
 func (tx *Transaction) String() string {
-	var from, to string
-	if tx.data.R != nil {
+	var from, to, gasPayer string
+	if tx.data.Sig != nil {
 		if f, err := tx.From(); err != nil { // derive but don't cache
 			from = "[invalid sender: invalid sig]"
 		} else {
 			from = f.String()
 		}
 	} else {
-		from = "[invalid sender: nil R field]"
+		from = "[invalid sender: nil Sig field]"
 	}
 
 	if tx.data.Recipient == nil {
 		to = "[contract creation]"
 	} else {
 		to = tx.data.Recipient.String()
+	}
+
+	if tx.data.GasPayerSig != nil {
+		if g, err := tx.GasPayer(); err != nil {
+			gasPayer = "[invalid gasPayer: invalid gasPayerSig]"
+		} else {
+			gasPayer = g.String()
+		}
+	} else {
+		gasPayer = from
 	}
 
 	set := []string{
@@ -298,6 +304,7 @@ func (tx *Transaction) String() string {
 		fmt.Sprintf("ChainID: %d", tx.ChainID()),
 		fmt.Sprintf("From: %s", from),
 		fmt.Sprintf("To: %s", to),
+		fmt.Sprintf("GasPayer:%s", gasPayer),
 	}
 	if len(tx.data.RecipientName) > 0 {
 		set = append(set, fmt.Sprintf("ToName: %s", tx.data.RecipientName))
@@ -312,10 +319,12 @@ func (tx *Transaction) String() string {
 	if len(tx.data.Message) > 0 {
 		set = append(set, fmt.Sprintf("Message: %s", tx.data.Message))
 	}
-	set = append(set, fmt.Sprintf("V: %#x", tx.data.V))
-	set = append(set, fmt.Sprintf("R: %#x", tx.data.R))
-	set = append(set, fmt.Sprintf("S: %#x", tx.data.S))
-
+	if len(tx.Sig()) > 0 {
+		set = append(set, fmt.Sprintf("Sig:%s", common.ToHex(tx.Sig())))
+	}
+	if len(tx.GasPayerSig()) > 0 {
+		set = append(set, fmt.Sprintf("gasPayerSig:%s", common.ToHex(tx.GasPayerSig())))
+	}
 	return fmt.Sprintf("{%s}", strings.Join(set, ", "))
 }
 
