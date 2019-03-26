@@ -1,6 +1,7 @@
 package chain
 
 import (
+	"errors"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
@@ -12,6 +13,12 @@ import (
 	"math/big"
 	"net"
 	"time"
+)
+
+var (
+	ErrGenesisExtraTooLong = errors.New("genesis block's extraData is longer than 256")
+	ErrGenesisTimeTooLarge = errors.New("genesis block's time is larger than current time")
+	ErrNoDeputyNodes       = errors.New("no deputy nodes in genesis")
 )
 
 // DefaultDeputyNodes
@@ -95,47 +102,53 @@ func DefaultGenesisBlock() *Genesis {
 	}
 }
 
-// SetupGenesisBlock setup genesis block
-func SetupGenesisBlock(db protocol.ChainDB, genesis *Genesis) (common.Hash, error) {
-	if genesis == nil {
-		log.Info("Writing default genesis block.")
-		genesis = DefaultGenesisBlock()
-	}
-	if len(genesis.DeputyNodes) == 0 {
-		panic("default deputy nodes can't be empty")
-	}
-
+func checkGenesisConfig(genesis *Genesis) error {
 	if len(genesis.ExtraData) > 256 {
-		panic("genesis block's extraData length larger than 256")
+		return ErrGenesisExtraTooLong
 	}
 
 	// check genesis block's time
 	if int64(genesis.Time) > time.Now().Unix() {
-		panic("genesis block's time can't be larger than current time.")
+		return ErrGenesisTimeTooLarge
 	}
 	// check deputy nodes
+	if len(genesis.DeputyNodes) == 0 {
+		return ErrNoDeputyNodes
+	}
 	for _, deputy := range genesis.DeputyNodes {
 		if err := deputy.Check(); err != nil {
-			panic(fmt.Errorf("genesis deputy nodes check error: %s", err.Error()))
+			return fmt.Errorf("genesis deputy nodes check error: %s", err.Error())
 		}
+	}
+	return nil
+}
+
+// SetupGenesisBlock setup genesis block
+func SetupGenesisBlock(db protocol.ChainDB, genesis *Genesis) common.Hash {
+	if genesis == nil {
+		log.Info("Writing default genesis block.")
+		genesis = DefaultGenesisBlock()
+	}
+	if err := checkGenesisConfig(genesis); err != nil {
+		panic(err)
 	}
 
 	am := account.NewManager(common.Hash{}, db)
 	block, err := genesis.ToBlock(am)
 	if err != nil {
-		return common.Hash{}, fmt.Errorf("build genesis block failed: %v", err)
+		panic(fmt.Errorf("build genesis block failed: %v", err))
 	}
 	hash := block.Hash()
 	if err := db.SetBlock(hash, block); err != nil {
-		return common.Hash{}, fmt.Errorf("setup genesis block failed: %v", err)
+		panic(fmt.Errorf("setup genesis block failed: %v", err))
 	}
 	if err := am.Save(hash); err != nil {
-		return common.Hash{}, fmt.Errorf("setup genesis block failed: %v", err)
+		panic(fmt.Errorf("setup genesis block failed: %v", err))
 	}
 	if err := db.SetStableBlock(hash); err != nil {
-		return common.Hash{}, fmt.Errorf("setup genesis block failed: %v", err)
+		panic(fmt.Errorf("setup genesis block failed: %v", err))
 	}
-	return block.Hash(), nil
+	return block.Hash()
 }
 
 // ToBlock

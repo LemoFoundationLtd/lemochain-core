@@ -25,10 +25,7 @@ func NewBlockChainForTest() (*BlockChain, chan *types.Block, error) {
 	db := store.NewChainDataBase(store.GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
 
 	genesis := DefaultGenesisBlock()
-	_, err := SetupGenesisBlock(db, genesis)
-	if err != nil {
-		return nil, nil, err
-	}
+	SetupGenesisBlock(db, genesis)
 
 	var engine EngineTestForChain
 	ch := make(chan *types.Block)
