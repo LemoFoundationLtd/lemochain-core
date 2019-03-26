@@ -336,3 +336,10 @@ func TestGasPgnatureTx(t *testing.T) {
 		t.Log(dd)
 	}
 }
+
+func TestTransaction_txlen(t *testing.T) {
+	sigTx, err := MakeSigner().SignTx(testTx, testPrivate)
+	assert.NoError(t, err)
+	data, _ := sigTx.MarshalJSON()
+	t.Log(len(data))
+}
