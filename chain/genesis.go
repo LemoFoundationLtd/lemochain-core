@@ -150,7 +150,7 @@ func (g *Genesis) ToBlock(am *account.Manager) (*types.Block, error) {
 	header := &types.Header{
 		ParentHash:   common.Hash{},
 		MinerAddress: g.Founder,
-		TxRoot:       common.EmptyMerkleHash, // empty merkle
+		TxRoot:       types.DeriveTxsSha(nil),
 		Height:       0,
 		GasLimit:     g.GasLimit,
 		Extra:        g.ExtraData,

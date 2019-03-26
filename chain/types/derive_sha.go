@@ -3,46 +3,36 @@ package types
 import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
-	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-core/common/merkle"
 )
 
-var emptyRootHash = crypto.Keccak256Hash(nil)
-
-// DeriveTxsSha 计算交易的根HASH
-func DeriveTxsSha(txs []*Transaction) common.Hash {
-	if txs == nil || len(txs) == 0 {
-		return emptyRootHash
-	}
-	leaves := make([]common.Hash, 0, len(txs))
-	for _, tx := range txs {
-		leaves = append(leaves, tx.Hash())
-	}
-	m := merkle.New(leaves)
-	return m.Root()
+type Hashable interface {
+	Hash() common.Hash
 }
 
-// DeriveChangeLogsSha 计算changelog的根HASH
-func DeriveChangeLogsSha(logs []*ChangeLog) common.Hash {
-	if logs == nil || len(logs) == 0 {
-		return emptyRootHash
+// DeriveTxsSha compute the root hash of transactions merkle trie
+func DeriveTxsSha(rawList []*Transaction) common.Hash {
+	leaves := make([]common.Hash, 0, len(rawList))
+	for i, item := range rawList {
+		leaves[i] = item.Hash()
 	}
-	leaves := make([]common.Hash, 0, len(logs))
-	for _, log := range logs {
-		leaves = append(leaves, log.Hash())
-	}
-	m := merkle.New(leaves)
-	return m.Root()
+	return merkle.New(leaves).Root()
 }
 
-func DeriveDeputyRootSha(nodes deputynode.DeputyNodes) common.Hash {
-	if nodes == nil || len(nodes) == 0 {
-		return emptyRootHash
+// DeriveChangeLogsSha compute the root hash of changelogs merkle trie
+func DeriveChangeLogsSha(rawList []*ChangeLog) common.Hash {
+	leaves := make([]common.Hash, 0, len(rawList))
+	for i, item := range rawList {
+		leaves[i] = item.Hash()
 	}
-	leaves := make([]common.Hash, 0, len(nodes))
-	for _, n := range nodes {
-		leaves = append(leaves, n.Hash())
+	return merkle.New(leaves).Root()
+}
+
+// DeriveDeputyRootSha compute the root hash of deputy nodes merkle trie
+func DeriveDeputyRootSha(rawList deputynode.DeputyNodes) common.Hash {
+	leaves := make([]common.Hash, 0, len(rawList))
+	for i, item := range rawList {
+		leaves[i] = item.Hash()
 	}
-	m := merkle.New(leaves)
-	return m.Root()
+	return merkle.New(leaves).Root()
 }

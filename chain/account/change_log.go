@@ -107,7 +107,7 @@ func IsValuable(log *types.ChangeLog) bool {
 }
 
 func isEmptyHash(hash common.Hash) bool {
-	return hash == (common.Hash{}) || hash == sha3Nil
+	return hash == (common.Hash{}) || hash == common.Sha3Nil
 }
 
 // decodeEmptyInterface decode an interface which contains an empty interface{}. its encoded data is [192], same as rlp([])
