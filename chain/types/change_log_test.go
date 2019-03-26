@@ -125,6 +125,10 @@ func (f *testAccount) SetCandidateProfile(profile Profile) {
 func (f *testAccount) GetAddress() common.Address  { return f.AccountData.Address }
 func (f *testAccount) GetBalance() *big.Int        { return f.AccountData.Balance }
 func (f *testAccount) SetBalance(balance *big.Int) { f.AccountData.Balance = balance }
+func (f *testAccount) GetNextVersion(logType ChangeLogType) uint32 {
+	a := f.AccountData.NewestRecords[logType].Version
+	return a + 1
+}
 
 // GetBaseVersion returns the version of specific change log from the base block. It is not changed by tx processing until the finalised
 func (f *testAccount) GetBaseVersion(logType ChangeLogType) uint32 {
@@ -140,6 +144,16 @@ func (f *testAccount) GetStorageRoot() common.Hash                         { ret
 func (f *testAccount) SetStorageRoot(root common.Hash)                     { f.AccountData.StorageRoot = root }
 func (f *testAccount) GetStorageState(key common.Hash) ([]byte, error)     { return nil, nil }
 func (f *testAccount) SetStorageState(key common.Hash, value []byte) error { return nil }
+func (f *testAccount) GetEvents() []*Event {
+	return nil
+}
+func (f *testAccount) PushEvent(event *Event) {
+
+}
+func (f *testAccount) PopEvent() error {
+	return nil
+}
+
 func (f *testAccount) IsEmpty() bool {
 	for _, record := range f.AccountData.NewestRecords {
 		if record.Version != 0 {
@@ -148,7 +162,9 @@ func (f *testAccount) IsEmpty() bool {
 	}
 	return true
 }
-
+func (f *testAccount) MarshalISON() ([]byte, error) {
+	return f.AccountData.MarshalJSON()
+}
 func (f *testAccount) GetVersion(logType ChangeLogType) uint32 {
 	return f.AccountData.NewestRecords[logType].Version
 }
