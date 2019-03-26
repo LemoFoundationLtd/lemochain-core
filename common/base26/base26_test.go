@@ -1,7 +1,6 @@
 package base26
 
 import (
-	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/stretchr/testify/assert"
 	"math/big"
 	"testing"
@@ -69,11 +68,10 @@ func TestDecode(t *testing.T) {
 	}
 }
 func TestEncode2(t *testing.T) {
-	address := common.FromHex("0xffffffffffffffffffffffffffffffffffffffffff")
+	address := []byte("0xffffffffffffffffffffffffffffffffffffffffff")
 	t.Log(len(address))
 	LemoAdd := Encode(address)
 	t.Log(LemoAdd)
 	addr := Decode([]byte(LemoAdd))
-	t.Log(common.ToHex(addr))
 	assert.Equal(t, len(address), len(addr))
 }
