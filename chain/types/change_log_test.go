@@ -148,9 +148,16 @@ func (f *testAccount) IsEmpty() bool {
 	}
 	return true
 }
-
 func (f *testAccount) GetVersion(logType ChangeLogType) uint32 {
 	return f.AccountData.NewestRecords[logType].Version
+}
+func (f *testAccount) GetNextVersion(logType ChangeLogType) uint32 {
+	panic("implement me")
+}
+func (f *testAccount) PushEvent(event *Event) {}
+func (f *testAccount) PopEvent() error        { return nil }
+func (f *testAccount) GetEvents() []*Event {
+	panic("implement me")
 }
 
 type testProcessor struct {
