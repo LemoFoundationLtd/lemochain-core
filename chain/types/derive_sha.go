@@ -12,7 +12,7 @@ type Hashable interface {
 
 // DeriveTxsSha compute the root hash of transactions merkle trie
 func DeriveTxsSha(rawList []*Transaction) common.Hash {
-	leaves := make([]common.Hash, 0, len(rawList))
+	leaves := make([]common.Hash, len(rawList))
 	for i, item := range rawList {
 		leaves[i] = item.Hash()
 	}
@@ -21,7 +21,7 @@ func DeriveTxsSha(rawList []*Transaction) common.Hash {
 
 // DeriveChangeLogsSha compute the root hash of changelogs merkle trie
 func DeriveChangeLogsSha(rawList []*ChangeLog) common.Hash {
-	leaves := make([]common.Hash, 0, len(rawList))
+	leaves := make([]common.Hash, len(rawList))
 	for i, item := range rawList {
 		leaves[i] = item.Hash()
 	}
@@ -30,7 +30,7 @@ func DeriveChangeLogsSha(rawList []*ChangeLog) common.Hash {
 
 // DeriveDeputyRootSha compute the root hash of deputy nodes merkle trie
 func DeriveDeputyRootSha(rawList deputynode.DeputyNodes) common.Hash {
-	leaves := make([]common.Hash, 0, len(rawList))
+	leaves := make([]common.Hash, len(rawList))
 	for i, item := range rawList {
 		leaves[i] = item.Hash()
 	}
