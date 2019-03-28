@@ -1,4 +1,3 @@
-lemo._createAPI('account', 'newKeyPair', 'newKeyPair');
 lemo._createAPI('account', 'getAllRewardValue', 'getAllRewardValue');
 
 lemo._createAPI('mine', 'start', 'mineStart');
