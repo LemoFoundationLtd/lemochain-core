@@ -93,8 +93,8 @@ var (
 
 // newDB creates db for test account module
 func newDB() protocol.ChainDB {
+	// db := store.NewChainDataBase(store.GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
 	db := store.NewChainDataBase(store.GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
-
 	for i, _ := range defaultBlockInfos {
 		// use pointer for repairing incorrect hash
 		saveBlock(db, i, &defaultBlockInfos[i])

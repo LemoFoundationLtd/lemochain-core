@@ -16,8 +16,9 @@ import (
 
 // TestAccountAPI_api account api test
 func TestAccountAPI_api(t *testing.T) {
+	store.ClearData()
 	db := newDB()
-	defer store.ClearData()
+	defer db.Close()
 	am := account.NewManager(common.Hash{}, db)
 	acc := NewPublicAccountAPI(am)
 	priAcc := NewPrivateAccountAPI(am)
@@ -55,8 +56,9 @@ func TestAccountAPI_api(t *testing.T) {
 
 // TestChainAPI_api chain api test
 func TestChainAPI_api(t *testing.T) {
+	store.ClearData()
 	bc := newChain()
-	defer store.ClearData()
+	defer bc.Db().Close()
 	c := NewPublicChainAPI(bc)
 
 	// getBlockByHash
@@ -113,12 +115,13 @@ func TestChainAPI_api(t *testing.T) {
 
 // TestTxAPI_api send tx api test
 func TestTxAPI_api(t *testing.T) {
-	defer store.ClearData()
+	store.ClearData()
 	testTx := types.NewTransaction(common.HexToAddress("0x1"), common.Big1, 100, common.Big2, []byte{12}, 0, chainID, uint64(time.Now().Unix()+60*30), "aa", string("send a Tx"))
 	tx := signTransaction(testTx, testPrivate)
 	// signTx := signTransaction(testTx, testPrivate)
 	// txCh := make(chan types.Transactions, 100)
 	Chain := newChain()
+	defer Chain.Db().Close()
 	node := &Node{
 		chain:  Chain,
 		txPool: chain.NewTxPool(chainID),
@@ -160,6 +163,7 @@ func TestTxAPI_api(t *testing.T) {
 func TestNewPublicTxAPI_EstimateGas(t *testing.T) {
 	store.ClearData()
 	Chain := newChain()
+	defer Chain.Db().Close()
 	node := &Node{
 		chain:  Chain,
 		txPool: chain.NewTxPool(chainID),
