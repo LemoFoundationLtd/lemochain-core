@@ -19,6 +19,11 @@ const (
 	RootNode
 )
 
+var (
+	// There is not a root hash of empty merkle trie, so we use the hash of nil to represent it
+	EmptyTrieHash = common.Sha3Nil
+)
+
 // MerkleNode 用在获取与验证伴随节点
 type MerkleNode struct {
 	Hash     common.Hash
@@ -43,6 +48,9 @@ func New(leafHashes []common.Hash) *MerkleTree {
 func (m *MerkleTree) Root() common.Hash {
 	if m.nodes == nil {
 		m.calculateNodes()
+	}
+	if len(m.nodes) == 0 {
+		return EmptyTrieHash
 	}
 	return m.nodes[len(m.nodes)-1]
 }
@@ -95,4 +103,18 @@ func FindSiblingNodes(src common.Hash, srcNodes []common.Hash) ([]MerkleNode, er
 	result := make([]MerkleNode, 0)
 	result = findPath(index, result)
 	return result, nil
+}
+
+// Verify verify the target node hash with sibling nodes and root
+func Verify(target common.Hash, root common.Hash, sibling []MerkleNode) bool {
+	computedRoot := target
+	for _, item := range sibling {
+		// fmt.Println(common.ToHex(item.Hash[:]))
+		if item.NodeType == LeftNode {
+			computedRoot = crypto.Keccak256Hash(append(item.Hash[:], computedRoot[:]...))
+		} else if item.NodeType == RightNode {
+			computedRoot = crypto.Keccak256Hash(append(computedRoot[:], item.Hash[:]...))
+		}
+	}
+	return bytes.Compare(root[:], computedRoot[:]) == 0
 }

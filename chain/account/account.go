@@ -16,7 +16,6 @@ import (
 )
 
 var (
-	sha3Nil            = crypto.Keccak256Hash(nil)
 	ErrNegativeBalance = errors.New("balance can't be negative")
 	ErrLoadCodeFail    = errors.New("can't load contract code")
 	ErrTrieFail        = errors.New("can't load contract storage trie")
@@ -395,7 +394,7 @@ func (a *Account) GetCode() (types.Code, error) {
 		return a.code, nil
 	}
 	codeHash := a.data.CodeHash
-	if codeHash == sha3Nil || codeHash == (common.Hash{}) {
+	if codeHash == common.Sha3Nil || codeHash == (common.Hash{}) {
 		return nil, nil
 	}
 	code, err := a.db.GetContractCode(codeHash)
@@ -416,7 +415,7 @@ func (a *Account) SetCode(code types.Code) {
 	oldHash := a.data.CodeHash
 	newHash := crypto.Keccak256Hash(code)
 	// hash changed and not both hash are empty
-	if oldHash != newHash && !(oldHash == common.Hash{} && newHash == sha3Nil) {
+	if oldHash != newHash && !(oldHash == common.Hash{} && newHash == common.Sha3Nil) {
 		a.data.CodeHash = newHash
 		a.codeIsDirty = true
 	}

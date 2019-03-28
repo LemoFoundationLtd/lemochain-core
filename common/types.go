@@ -20,10 +20,10 @@ const (
 )
 
 var (
-	hashT           = reflect.TypeOf(Hash{})
-	addressT        = reflect.TypeOf(Address{})
-	tokenT          = reflect.TypeOf(Token{})
-	EmptyMerkleHash = HexToHash("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470")
+	hashT    = reflect.TypeOf(Hash{})
+	addressT = reflect.TypeOf(Address{})
+	tokenT   = reflect.TypeOf(Token{})
+	Sha3Nil  = HexToHash("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470") // crypto.Keccak256Hash(nil)
 )
 
 // Hash represents the 32 byte Keccak256 hash of arbitrary data.
