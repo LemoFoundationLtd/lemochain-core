@@ -24,7 +24,7 @@ func (t txdata) MarshalJSON() ([]byte, error) {
 		Data          hexutil.Bytes   `json:"data"`
 		Expiration    hexutil.Uint64  `json:"expirationTime" gencodec:"required"`
 		Message       string          `json:"message"`
-		Type          hexutil.Uint8   `json:"txType" gencodec:"required"`
+		Type          hexutil.Uint16  `json:"txType" gencodec:"required"`
 		Version       hexutil.Uint8   `json:"version" gencodec:"required"`
 		ChainID       hexutil.Uint16  `json:"chainId" gencodec:"required"`
 		Sig           hexutil.Bytes   `json:"sig" gencodec:"required"`
@@ -40,7 +40,7 @@ func (t txdata) MarshalJSON() ([]byte, error) {
 	enc.Data = t.Data
 	enc.Expiration = hexutil.Uint64(t.Expiration)
 	enc.Message = t.Message
-	enc.Type = hexutil.Uint8(t.Type)
+	enc.Type = hexutil.Uint16(t.Type)
 	enc.Version = hexutil.Uint8(t.Version)
 	enc.ChainID = hexutil.Uint16(t.ChainID)
 	enc.Sig = t.Sig
@@ -60,7 +60,7 @@ func (t *txdata) UnmarshalJSON(input []byte) error {
 		Data          *hexutil.Bytes  `json:"data"`
 		Expiration    *hexutil.Uint64 `json:"expirationTime" gencodec:"required"`
 		Message       *string         `json:"message"`
-		Type          *hexutil.Uint8  `json:"txType" gencodec:"required"`
+		Type          *hexutil.Uint16 `json:"txType" gencodec:"required"`
 		Version       *hexutil.Uint8  `json:"version" gencodec:"required"`
 		ChainID       *hexutil.Uint16 `json:"chainId" gencodec:"required"`
 		Sig           *hexutil.Bytes  `json:"sig" gencodec:"required"`
@@ -102,7 +102,7 @@ func (t *txdata) UnmarshalJSON(input []byte) error {
 	if dec.Type == nil {
 		return errors.New("missing required field 'txType' for txdata")
 	}
-	t.Type = uint8(*dec.Type)
+	t.Type = uint16(*dec.Type)
 	if dec.Version == nil {
 		return errors.New("missing required field 'version' for txdata")
 	}

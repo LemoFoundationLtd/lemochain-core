@@ -382,7 +382,7 @@ func (p *TxProcessor) chargeForGas(charge *big.Int, minerAddress common.Address)
 }
 
 // CallTx pre-execute transactions and contracts.
-func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *common.Address, txType uint8, data hexutil.Bytes, blockHash common.Hash, timeout time.Duration) ([]byte, uint64, error) {
+func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *common.Address, txType uint16, data hexutil.Bytes, blockHash common.Hash, timeout time.Duration) ([]byte, uint64, error) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 

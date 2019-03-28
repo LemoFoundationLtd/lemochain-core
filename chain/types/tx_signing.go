@@ -48,7 +48,7 @@ func (s DefaultSigner) SignTx(tx *Transaction, prv *ecdsa.PrivateKey) (*Transact
 	if err != nil {
 		return nil, err
 	}
-	cpy := &Transaction{data: tx.data, gasPayer: tx.gasPayer}
+	cpy := tx.Clone()
 	cpy.data.Sig = sig
 	return cpy, nil
 }
@@ -96,7 +96,7 @@ func (s ReimbursementTxSigner) SignTx(tx *Transaction, prv *ecdsa.PrivateKey) (*
 	if err != nil {
 		return nil, err
 	}
-	cpy := &Transaction{data: tx.data, gasPayer: tx.gasPayer}
+	cpy := tx.Clone()
 	cpy.data.Sig = sig
 	return cpy, nil
 }
@@ -157,7 +157,7 @@ func (g GasPayerSigner) SignTx(tx *Transaction, prv *ecdsa.PrivateKey) (*Transac
 	if err != nil {
 		return nil, err
 	}
-	cpy := &Transaction{data: tx.data}
+	cpy := tx.Clone()
 	cpy.data.GasPayerSig = lastSignData
 	return cpy, nil
 }

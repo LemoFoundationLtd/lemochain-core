@@ -294,11 +294,11 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 	return block
 }
 
-func makeTx(fromPrivate *ecdsa.PrivateKey, to common.Address, txType uint8, amount *big.Int) *types.Transaction {
+func makeTx(fromPrivate *ecdsa.PrivateKey, to common.Address, txType uint16, amount *big.Int) *types.Transaction {
 	return makeTransaction(fromPrivate, to, txType, amount, common.Big1, uint64(time.Now().Unix()+300), 1000000)
 }
 
-func makeTransaction(fromPrivate *ecdsa.PrivateKey, to common.Address, txType uint8, amount, gasPrice *big.Int, expiration uint64, gasLimit uint64) *types.Transaction {
+func makeTransaction(fromPrivate *ecdsa.PrivateKey, to common.Address, txType uint16, amount, gasPrice *big.Int, expiration uint64, gasLimit uint64) *types.Transaction {
 	tx := types.NewTransaction(to, amount, gasLimit, gasPrice, []byte{}, txType, chainID, expiration, "", "")
 	return signTransaction(tx, fromPrivate)
 }
