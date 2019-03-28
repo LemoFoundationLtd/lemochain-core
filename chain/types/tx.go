@@ -45,9 +45,9 @@ type txdata struct {
 	Data          []byte          `json:"data"`
 	Expiration    uint64          `json:"expirationTime" gencodec:"required"`
 	Message       string          `json:"message"`
-	Type          uint16          `json:"txType" gencodec:"required"`
+	Type          uint16          `json:"type" gencodec:"required"`
 	Version       uint8           `json:"version" gencodec:"required"`
-	ChainID       uint16          `json:"chainId" gencodec:"required"`
+	ChainID       uint16          `json:"chainID" gencodec:"required"`
 	Sig           []byte          `json:"sig" gencodec:"required"`
 
 	// This is only used when marshaling to JSON.
