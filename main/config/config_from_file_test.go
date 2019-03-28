@@ -11,7 +11,7 @@ func TestReadConfigFile(t *testing.T) {
 	path := store.GetStorePath()
 	filepath.Join(path, "config.json")
 
-	configFromFile, err := readConfigFile("D://GoWorks//src//github.com//LemoFoundationLtd//lmstore//config.json")
+	configFromFile, err := ReadConfigFile("D://GoWorks//src//github.com//LemoFoundationLtd//lmstore//config.json")
 	assert.NoError(t, err)
 	assert.NotNil(t, configFromFile)
 

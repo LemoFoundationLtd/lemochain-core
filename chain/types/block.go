@@ -9,6 +9,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto/sha3"
 	"github.com/LemoFoundationLtd/lemochain-core/common/hexutil"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
+	"github.com/LemoFoundationLtd/lemochain-core/common/merkle"
 	"github.com/LemoFoundationLtd/lemochain-core/common/rlp"
 	"io"
 	"strings"
@@ -160,11 +161,11 @@ func (h *Header) EncodeRLP(w io.Writer) error {
 		txRoot  []byte
 		logRoot []byte
 	)
-	if h.TxRoot != emptyRootHash {
+	if h.TxRoot != merkle.EmptyTrieHash {
 		txRoot = h.TxRoot.Bytes()
 	}
 
-	if h.LogRoot != emptyRootHash {
+	if h.LogRoot != merkle.EmptyTrieHash {
 		logRoot = h.LogRoot.Bytes()
 	}
 
@@ -196,12 +197,12 @@ func (h *Header) DecodeRLP(s *rlp.Stream) error {
 		if len(dec.TxRoot) > 0 {
 			h.TxRoot = common.BytesToHash(dec.TxRoot)
 		} else {
-			h.TxRoot = emptyRootHash
+			h.TxRoot = merkle.EmptyTrieHash
 		}
 		if len(dec.LogRoot) > 0 {
 			h.LogRoot = common.BytesToHash(dec.LogRoot)
 		} else {
-			h.LogRoot = emptyRootHash
+			h.LogRoot = merkle.EmptyTrieHash
 		}
 	}
 	return err

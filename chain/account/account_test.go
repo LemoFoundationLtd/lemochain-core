@@ -186,7 +186,7 @@ func TestAccount_SetCode_GetCode(t *testing.T) {
 	readCode, err = account.GetCode()
 	assert.NoError(t, err)
 	assert.Empty(t, readCode)
-	assert.Equal(t, sha3Nil, account.GetCodeHash())
+	assert.Equal(t, common.Sha3Nil, account.GetCodeHash())
 	assert.Equal(t, true, account.codeIsDirty)
 
 	// set nil to new account

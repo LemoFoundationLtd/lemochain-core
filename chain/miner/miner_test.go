@@ -240,10 +240,7 @@ func newBlockChain() (*chain.BlockChain, chan *types.Block, error) {
 	chainID := uint16(99)
 	db := store.NewChainDataBase(store.GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
 	genesis := chain.DefaultGenesisBlock()
-	_, err := chain.SetupGenesisBlock(db, genesis)
-	if err != nil {
-		return nil, nil, err
-	}
+	chain.SetupGenesisBlock(db, genesis)
 
 	var engine EngineTestForMiner
 	ch := make(chan *types.Block)

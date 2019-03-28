@@ -6,6 +6,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
+	"github.com/LemoFoundationLtd/lemochain-core/common/merkle"
 	"github.com/LemoFoundationLtd/lemochain-core/network"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"github.com/stretchr/testify/assert"
@@ -1342,9 +1343,9 @@ func TestBlockChain_VerifyBodyNormal(t *testing.T) {
 	block := makeBlock(blockChain.db, info, false)
 	newBlock, err := blockChain.VerifyAndFill(block)
 	assert.NoError(t, err)
-	assert.NotEqual(t, common.EmptyMerkleHash, newBlock.Header.VersionRoot)
-	assert.NotEqual(t, common.EmptyMerkleHash, newBlock.Header.LogRoot)
-	assert.NotEqual(t, common.EmptyMerkleHash, newBlock.Header.TxRoot)
+	assert.NotEqual(t, merkle.EmptyTrieHash, newBlock.Header.VersionRoot)
+	assert.NotEqual(t, merkle.EmptyTrieHash, newBlock.Header.LogRoot)
+	assert.NotEqual(t, merkle.EmptyTrieHash, newBlock.Header.TxRoot)
 	assert.NotEqual(t, 0, newBlock.Header.GasUsed)
 }
 

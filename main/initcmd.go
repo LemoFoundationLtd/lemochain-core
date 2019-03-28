@@ -11,7 +11,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"gopkg.in/urfave/cli.v1"
 	"os"
-	"path/filepath"
 )
 
 var (
@@ -62,29 +61,22 @@ func setupGenesisBlock(genesisFile, datadir string) (common.Hash, error) {
 	if err != nil {
 		return common.Hash{}, err
 	}
-	return saveBlock(datadir, genesis)
+	return saveBlock(datadir, genesis), nil
 }
 
 // saveBlock save block to db
-func saveBlock(datadir string, genesis *chain.Genesis) (common.Hash, error) {
-	chaindata := filepath.Join(datadir, "chaindata")
+func saveBlock(datadir string, genesis *chain.Genesis) common.Hash {
+	chaindata := node.GetChainDataPath(datadir)
 	cfg, err := config.ReadConfigFile(datadir)
 	if err != nil {
-		log.Error("read config failed: %v", err)
+		log.Errorf("read config failed: %v", err)
 	}
 	db := store.NewChainDataBase(chaindata, cfg.DbDriver, cfg.DbUri)
-	hash, err := chain.SetupGenesisBlock(db, genesis)
-	if err != nil {
-		return common.Hash{}, err
-	}
+	hash := chain.SetupGenesisBlock(db, genesis)
 	if err := db.Close(); err != nil {
 		log.Errorf("close db failed. %v", err)
 	}
-	// check deputy nodes
-	if len(genesis.DeputyNodes) == 0 {
-		return common.Hash{}, ErrEmptyDeputyNodes
-	}
-	return hash, nil
+	return hash
 }
 
 // unmarshal

@@ -12,6 +12,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-core/common/flag"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
+	"github.com/LemoFoundationLtd/lemochain-core/common/merkle"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"github.com/LemoFoundationLtd/lemochain-core/store/protocol"
 	"math/big"
@@ -52,24 +53,24 @@ var (
 			height:      0,
 			author:      defaultAccounts[0],
 			versionRoot: common.HexToHash("0x6eea9449a171035539c71d2895830afc061d0777da6e86735d9899c888d953c1"),
-			txRoot:      common.EmptyMerkleHash,
+			txRoot:      merkle.EmptyTrieHash,
 			logRoot:     common.HexToHash("0xb0d3749ecc3a7a0db6368284320863a3d2fa963b2c33b41c6ebf8632cd84bda9"),
 			time:        1538209751,
 			deputyNodes: DefaultDeputyNodes,
 		},
 		// block 1 is stable block
 		{
-			hash:        common.HexToHash("0xfabb0fff8f44b829f937070de3d8625972900867a6dce77b24c0b5ccd1d591ca"),
+			hash:        common.HexToHash("0x13eab3a7cdd62168d2d2e009a97b237f5b088a6bd4ea00a5b4019df750b12fee"),
 			height:      1,
 			author:      common.HexToAddress("0x20000"),
 			versionRoot: common.HexToHash("0xfa470f96f703f04ba85d39bf7f64aa43e8b352e541fe36ea9f053336dfd1b22a"),
-			txRoot:      common.HexToHash("0x44bb706ae39d4e24df62fee83d9daa0e0a8e422e9b3f6d48243e2511cb055479"),
+			txRoot:      common.HexToHash("0xd4d2b1b6785e94c8e753e932e4913705a8ecac449b48407a4db1033387197713"),
 			logRoot:     common.HexToHash("0xb6062a94cf5ce70ec3910072da83eca56ba584aba8273e4d0837eb03c090e473"),
 			txList: []*types.Transaction{
 				// testAddr -> defaultAccounts[0] 1
-				signTransaction(types.NewTransaction(defaultAccounts[0], common.Big1, 2000000, common.Big2, []byte{12}, 0, chainID, 1538210391, "aa", "aaa"), testPrivate),
+				signTransaction(types.NewTransaction(defaultAccounts[0], common.Big1, 2000000, common.Big2, []byte{12}, params.OrdinaryTx, chainID, 1538210391, "aa", "aaa"), testPrivate),
 				// testAddr -> defaultAccounts[1] 1
-				makeTransaction(testPrivate, defaultAccounts[1], 0, common.Big1, common.Big2, 1538210491, 2000000),
+				makeTransaction(testPrivate, defaultAccounts[1], params.OrdinaryTx, common.Big1, common.Big2, 1538210491, 2000000),
 			},
 			gasLimit: 20000000,
 			time:     1538209755,
@@ -84,24 +85,24 @@ var (
 			logRoot:     common.HexToHash("0x40ab1668ecddd288ded6cec4135dadb071beee4e2826640e96c416894aaa6469"),
 			txList: []*types.Transaction{
 				// testAddr -> defaultAccounts[0] 2
-				makeTransaction(testPrivate, defaultAccounts[0], 0, bigNumber, common.Big2, 1538210395, 2000000),
+				makeTransaction(testPrivate, defaultAccounts[0], params.OrdinaryTx, bigNumber, common.Big2, 1538210395, 2000000),
 			},
 			time:     1538209758,
 			gasLimit: 20000000,
 		},
 		// block 3 is not store in db
 		{
-			hash:        common.HexToHash("0xfd283c1db324237dcf224ccae7e68bca17f1f806d68a0208458188cca5f20d23"),
+			hash:        common.HexToHash("0x900fc2632b9a86e107a9ba0252fdd34a45f253475f6d7d01a23d0e37bca49d20"),
 			height:      3,
 			author:      defaultAccounts[0],
 			versionRoot: common.HexToHash("0x26a8540cd0e07e18d08ad484cfb44b0fd40dc5f197678897fc80076dbfa942b4"),
-			txRoot:      common.HexToHash("0x3f4519bff066109e8b47621fc8fa8bc791abec347478cc8f0d084012fc83f76d"),
+			txRoot:      common.HexToHash("0x7ced5615dbeb7adb62f909ec9cad37d1a692f3996fd73fefc462d2c81b9c411c"),
 			logRoot:     common.HexToHash("0xa92582c4c7627d130a38c94e568b8c671817fe742930636c7b0190b7f7344064"),
 			txList: []*types.Transaction{
 				// testAddr -> defaultAccounts[0] 2
-				makeTransaction(testPrivate, defaultAccounts[0], 0, common.Big2, common.Big2, 1538210398, 30000),
+				makeTransaction(testPrivate, defaultAccounts[0], params.OrdinaryTx, common.Big2, common.Big2, 1538210398, 30000),
 				// testAddr -> defaultAccounts[1] 2
-				makeTransaction(testPrivate, defaultAccounts[1], 0, common.Big2, common.Big3, 1538210425, 30000),
+				makeTransaction(testPrivate, defaultAccounts[1], params.OrdinaryTx, common.Big2, common.Big3, 1538210425, 30000),
 			},
 			time:     1538209761,
 			gasLimit: 20000000,

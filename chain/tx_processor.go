@@ -154,7 +154,7 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 		initialSenderBalance = sender.GetBalance()
 		contractCreation     = tx.To() == nil
 		restGas              = tx.GasLimit()
-		mergeFrom            = len(p.am.GetChangeLogs())
+		//mergeFrom            = len(p.am.GetChangeLogs())
 	)
 	err = p.buyGas(gp, tx)
 	if err != nil {
@@ -300,7 +300,7 @@ func (p *TxProcessor) changeCandidateVotes(accountAddress common.Address, change
 
 func (p *TxProcessor) buyGas(gp *types.GasPool, tx *types.Transaction) error {
 	payerAddr, err := tx.GasPayer()
-	log.Info("tx gas payer address:\n", payerAddr.String())
+	log.Infof("tx gas payer address: %s", payerAddr.String())
 	if err != nil {
 		return err
 	}
