@@ -24,9 +24,9 @@ func (t txdata) MarshalJSON() ([]byte, error) {
 		Data          hexutil.Bytes   `json:"data"`
 		Expiration    hexutil.Uint64  `json:"expirationTime" gencodec:"required"`
 		Message       string          `json:"message"`
-		Type          hexutil.Uint16  `json:"txType" gencodec:"required"`
+		Type          hexutil.Uint16  `json:"type" gencodec:"required"`
 		Version       hexutil.Uint8   `json:"version" gencodec:"required"`
-		ChainID       hexutil.Uint16  `json:"chainId" gencodec:"required"`
+		ChainID       hexutil.Uint16  `json:"chainID" gencodec:"required"`
 		Sig           hexutil.Bytes   `json:"sig" gencodec:"required"`
 		Hash          *common.Hash    `json:"hash" rlp:"-"`
 		GasPayerSig   hexutil.Bytes   `json:"gasPayerSig"`
@@ -60,9 +60,9 @@ func (t *txdata) UnmarshalJSON(input []byte) error {
 		Data          *hexutil.Bytes  `json:"data"`
 		Expiration    *hexutil.Uint64 `json:"expirationTime" gencodec:"required"`
 		Message       *string         `json:"message"`
-		Type          *hexutil.Uint16 `json:"txType" gencodec:"required"`
+		Type          *hexutil.Uint16 `json:"type" gencodec:"required"`
 		Version       *hexutil.Uint8  `json:"version" gencodec:"required"`
-		ChainID       *hexutil.Uint16 `json:"chainId" gencodec:"required"`
+		ChainID       *hexutil.Uint16 `json:"chainID" gencodec:"required"`
 		Sig           *hexutil.Bytes  `json:"sig" gencodec:"required"`
 		Hash          *common.Hash    `json:"hash" rlp:"-"`
 		GasPayerSig   *hexutil.Bytes  `json:"gasPayerSig"`
@@ -100,7 +100,7 @@ func (t *txdata) UnmarshalJSON(input []byte) error {
 		t.Message = *dec.Message
 	}
 	if dec.Type == nil {
-		return errors.New("missing required field 'txType' for txdata")
+		return errors.New("missing required field 'type' for txdata")
 	}
 	t.Type = uint16(*dec.Type)
 	if dec.Version == nil {
@@ -108,7 +108,7 @@ func (t *txdata) UnmarshalJSON(input []byte) error {
 	}
 	t.Version = uint8(*dec.Version)
 	if dec.ChainID == nil {
-		return errors.New("missing required field 'chainId' for txdata")
+		return errors.New("missing required field 'chainID' for txdata")
 	}
 	t.ChainID = uint16(*dec.ChainID)
 	if dec.Sig == nil {
