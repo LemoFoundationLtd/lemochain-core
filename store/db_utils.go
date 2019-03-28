@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
-	_ "github.com/go-sql-driver/mysql"
 )
 
 var (
