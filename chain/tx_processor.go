@@ -79,6 +79,8 @@ func (p *TxProcessor) Process(header *types.Header, txs types.Transactions) (uin
 	}
 	p.chargeForGas(totalGasFee, header.MinerAddress)
 
+	p.am.MergeChangeLogs(0)
+
 	if len(txs) > 0 {
 		log.Infof("process %d transactions", len(txs))
 	}
@@ -128,6 +130,7 @@ func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions) (ty
 		totalGasFee.Add(totalGasFee, fee)
 	}
 	p.chargeForGas(totalGasFee, header.MinerAddress)
+	p.am.MergeChangeLogs(0)
 
 	if len(selectedTxs) > 0 {
 		log.Infof("process %d transactions", len(selectedTxs))
@@ -269,8 +272,8 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 	}
 
 	// Merge change logs by transaction will save more transaction execution detail than by block
-	p.am.MergeChangeLogs(mergeFrom)
-	mergeFrom = len(p.am.GetChangeLogs())
+	// p.am.MergeChangeLogs(mergeFrom)
+	// mergeFrom = len(p.am.GetChangeLogs())
 
 	return tx.GasLimit() - restGas, nil
 }
