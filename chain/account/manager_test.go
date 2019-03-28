@@ -4,7 +4,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/vm"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
-	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"github.com/stretchr/testify/assert"
 	"math/big"
 	"testing"
@@ -24,15 +23,16 @@ func TestNewManager_withoutDB(t *testing.T) {
 }
 
 func TestNewManager(t *testing.T) {
-	store.ClearData()
+	ClearData()
 	db := newDB()
 	defer db.Close()
+
 	NewManager(common.Hash{}, db)
 
 }
 
 func TestManager_GetAccount(t *testing.T) {
-	store.ClearData()
+	ClearData()
 	db := newDB()
 	defer db.Close()
 
@@ -67,7 +67,7 @@ func TestManager_GetAccount(t *testing.T) {
 }
 
 func TestManager_GetCanonicalAccount(t *testing.T) {
-	store.ClearData()
+	ClearData()
 	db := newDB()
 	defer db.Close()
 
@@ -87,7 +87,7 @@ func TestManager_GetCanonicalAccount(t *testing.T) {
 }
 
 func TestManager_GetChangeLogs(t *testing.T) {
-	store.ClearData()
+	ClearData()
 	db := newDB()
 	defer db.Close()
 
@@ -104,9 +104,10 @@ func TestManager_GetChangeLogs(t *testing.T) {
 }
 
 func TestManager_AddEvent(t *testing.T) {
-	store.ClearData()
+	ClearData()
 	db := newDB()
 	defer db.Close()
+
 	manager := NewManager(newestBlock.Hash(), db)
 
 	event1 := &types.Event{Address: common.HexToAddress("0x1"), TxHash: th(1)}
@@ -124,7 +125,7 @@ func TestManager_AddEvent(t *testing.T) {
 }
 
 func TestManager_GetVersionRoot(t *testing.T) {
-	store.ClearData()
+	ClearData()
 	db := newDB()
 	defer db.Close()
 
@@ -146,9 +147,10 @@ func TestManager_GetVersionRoot(t *testing.T) {
 }
 
 func TestManager_Reset(t *testing.T) {
-	store.ClearData()
+	ClearData()
 	db := newDB()
 	defer db.Close()
+
 	manager := NewManager(common.Hash{}, db)
 
 	account := manager.GetAccount(common.HexToAddress("0x1"))
@@ -166,9 +168,10 @@ func TestManager_Reset(t *testing.T) {
 
 // saving blocks after the newest block
 func TestManager_Finalise_Save(t *testing.T) {
-	store.ClearData()
+	ClearData()
 	db := newDB()
 	defer db.Close()
+
 	manager := NewManager(newestBlock.Hash(), db)
 
 	parentHash := newestBlock.Hash()
@@ -218,7 +221,7 @@ func TestManager_Finalise_Save(t *testing.T) {
 
 // saving for genesis block and first block
 func TestManager_Finalise_Save2(t *testing.T) {
-	store.ClearData()
+	ClearData()
 	db := newDB()
 	defer db.Close()
 
@@ -268,7 +271,7 @@ func TestManager_Finalise_Save2(t *testing.T) {
 }
 
 func TestManager_Save_Reset(t *testing.T) {
-	store.ClearData()
+	ClearData()
 	db := newDB()
 	defer db.Close()
 

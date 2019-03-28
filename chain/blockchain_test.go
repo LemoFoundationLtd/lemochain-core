@@ -23,7 +23,7 @@ func init() {
 }
 
 func TestBlockChain_Reorg8ABC(t *testing.T) {
-	store.ClearData()
+	ClearData()
 
 	var info blockInfo
 	blockChain, _, err := NewBlockChainForTest()
@@ -110,7 +110,7 @@ func TestBlockChain_Reorg8ABC(t *testing.T) {
 }
 
 func TestBlockChain_Reorg8Len(t *testing.T) {
-	store.ClearData()
+	ClearData()
 
 	var info blockInfo
 
@@ -187,7 +187,7 @@ func TestBlockChain_Reorg8Len(t *testing.T) {
 }
 
 func TestBlockChain_GetBlockByHeight(t *testing.T) {
-	store.ClearData()
+	ClearData()
 
 	blockChain, _, err := NewBlockChainForTest()
 	defer blockChain.db.Close()
@@ -217,7 +217,7 @@ func TestBlockChain_GetBlockByHeight(t *testing.T) {
 
 // 1、2、31、32{42、52}，set stable #2
 func TestBlockChain_SetStableBlockCurBranch11(t *testing.T) {
-	store.ClearData()
+	ClearData()
 
 	blockChain, _, err := NewBlockChainForTest()
 	defer blockChain.db.Close()
@@ -282,7 +282,7 @@ func TestBlockChain_SetStableBlockCurBranch11(t *testing.T) {
 
 // 1、2、31、32{42、52}，set stable #42
 func TestBlockChain_SetStableBlockCurBranch12(t *testing.T) {
-	store.ClearData()
+	ClearData()
 
 	blockChain, _, err := NewBlockChainForTest()
 	defer blockChain.db.Close()
@@ -345,7 +345,7 @@ func TestBlockChain_SetStableBlockCurBranch12(t *testing.T) {
 
 // 1、2、31、32{42、52}，set stable #52
 func TestBlockChain_SetStableBlockCurBranch13(t *testing.T) {
-	store.ClearData()
+	ClearData()
 
 	blockChain, _, err := NewBlockChainForTest()
 	defer blockChain.db.Close()
@@ -408,7 +408,7 @@ func TestBlockChain_SetStableBlockCurBranch13(t *testing.T) {
 
 // 1、2、31{41、51}、32{42、52} set stable #42
 func TestBlockChain_SetStableBlockCurBranch21(t *testing.T) {
-	store.ClearData()
+	ClearData()
 
 	blockChain, _, err := NewBlockChainForTest()
 	defer blockChain.db.Close()
@@ -493,7 +493,7 @@ func TestBlockChain_SetStableBlockCurBranch21(t *testing.T) {
 
 // 1、2、31{41、51}、32{42、52} set stable #2
 func TestBlockChain_SetStableBlockCurBranch22(t *testing.T) {
-	store.ClearData()
+	ClearData()
 
 	blockChain, _, err := NewBlockChainForTest()
 	defer blockChain.db.Close()
@@ -579,7 +579,7 @@ func TestBlockChain_SetStableBlockCurBranch22(t *testing.T) {
 
 // 1、2、31{41、51}、32{42、52} set stable #52
 func TestBlockChain_SetStableBlockCurBranch23(t *testing.T) {
-	store.ClearData()
+	ClearData()
 
 	blockChain, _, err := NewBlockChainForTest()
 	defer blockChain.db.Close()
@@ -662,7 +662,7 @@ func TestBlockChain_SetStableBlockCurBranch23(t *testing.T) {
 
 // 1、2、31{41、51}、32{42} set stable #42
 func TestBlockChain_SetStableBlockCurBranch31(t *testing.T) {
-	store.ClearData()
+	ClearData()
 
 	blockChain, _, err := NewBlockChainForTest()
 	defer blockChain.db.Close()
@@ -731,7 +731,7 @@ func TestBlockChain_SetStableBlockCurBranch31(t *testing.T) {
 
 // 1、2、31{41、51、61}、32{42、52} set stable #42
 func TestBlockChain_SetStableBlockCurBranch32(t *testing.T) {
-	store.ClearData()
+	ClearData()
 
 	blockChain, _, err := NewBlockChainForTest()
 	defer blockChain.db.Close()
@@ -814,7 +814,7 @@ func TestBlockChain_SetStableBlockCurBranch32(t *testing.T) {
 
 // 1、2{213、214、215、216}、{3{{314、315、316}、{324、325, 326}}}， set stable #3
 func TestBlockChain_SetStableBlockCurBranch41(t *testing.T) {
-	store.ClearData()
+	ClearData()
 
 	blockChain, _, err := NewBlockChainForTest()
 	defer blockChain.db.Close()
@@ -943,7 +943,7 @@ func TestBlockChain_SetStableBlockCurBranch41(t *testing.T) {
 
 // 1、2{213、214、215、216}、{3{{314、315、316}、{324、325, 326}}}， set stable #2
 func TestBlockChain_SetStableBlockCurBranch42(t *testing.T) {
-	store.ClearData()
+	ClearData()
 
 	blockChain, _, err := NewBlockChainForTest()
 	defer blockChain.db.Close()
@@ -1085,7 +1085,7 @@ func TestBlockChain_SetStableBlockCurBranch42(t *testing.T) {
 
 // 1、2{213、214、215、216}、{3{{314、315、316}、{324、325, 326}}}， set stable #316
 func TestBlockChain_SetStableBlockCurBranch43(t *testing.T) {
-	store.ClearData()
+	ClearData()
 
 	blockChain, _, err := NewBlockChainForTest()
 	defer blockChain.db.Close()
@@ -1232,7 +1232,7 @@ func buildConfirm(hash common.Hash, privateKey string) (*network.BlockConfirmDat
 }
 
 func TestBlockChain_ReceiveConfirm(t *testing.T) {
-	store.ClearData()
+	ClearData()
 
 	blockChain, _, err := NewBlockChainForTest()
 	defer blockChain.db.Close()
@@ -1315,7 +1315,7 @@ func TestBlockChain_ReceiveConfirm(t *testing.T) {
 }
 
 func TestBlockChain_VerifyBodyNormal(t *testing.T) {
-	store.ClearData()
+	ClearData()
 
 	blockChain, _, err := NewBlockChainForTest()
 	defer blockChain.db.Close()
@@ -1350,7 +1350,7 @@ func TestBlockChain_VerifyBodyNormal(t *testing.T) {
 }
 
 func TestBlockChain_VerifyBlockBalanceNotEnough(t *testing.T) {
-	store.ClearData()
+	ClearData()
 
 	blockChain, _, err := NewBlockChainForTest()
 	defer blockChain.db.Close()
@@ -1382,7 +1382,7 @@ func TestBlockChain_VerifyBlockBalanceNotEnough(t *testing.T) {
 }
 
 func TestBlockChain_VerifyBlockBalanceNotSign(t *testing.T) {
-	store.ClearData()
+	ClearData()
 
 	blockChain, _, err := NewBlockChainForTest()
 	defer blockChain.db.Close()
@@ -1410,7 +1410,7 @@ func TestBlockChain_VerifyBlockBalanceNotSign(t *testing.T) {
 }
 
 func TestBlockChain_VerifyBlockBalanceValidDeputy(t *testing.T) {
-	store.ClearData()
+	ClearData()
 
 	blockChain, _, err := NewBlockChainForTest()
 	defer blockChain.db.Close()
@@ -1442,7 +1442,7 @@ func TestBlockChain_VerifyBlockBalanceValidDeputy(t *testing.T) {
 }
 
 func TestBlockChain_VerifyBlockBalanceValidTx(t *testing.T) {
-	store.ClearData()
+	ClearData()
 
 	blockChain, _, err := NewBlockChainForTest()
 	defer blockChain.db.Close()
@@ -1475,7 +1475,7 @@ func TestBlockChain_VerifyBlockBalanceValidTx(t *testing.T) {
 
 // 1->2->{31,32} 32
 func TestInsertChain_1(t *testing.T) {
-	store.ClearData()
+	ClearData()
 
 	bc, _, err := NewBlockChainForTest()
 	defer bc.db.Close()

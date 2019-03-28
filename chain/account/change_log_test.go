@@ -6,7 +6,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/hexutil"
 	"github.com/LemoFoundationLtd/lemochain-core/common/rlp"
-	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"github.com/stretchr/testify/assert"
 	"math/big"
 	"testing"
@@ -863,7 +862,7 @@ func TestChangeLog_Redo(t *testing.T) {
 
 // Set twice, and the first changeLog shouldn't change
 func TestChangeLog_valueShouldBeStableCandidateProfile(t *testing.T) {
-	store.ClearData()
+	ClearData()
 	db := newDB()
 	defer db.Close()
 

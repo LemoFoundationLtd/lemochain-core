@@ -12,7 +12,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common/flag"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/common/rlp"
-	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"github.com/LemoFoundationLtd/lemochain-core/store/protocol"
 	"github.com/stretchr/testify/assert"
 	"math/big"
@@ -22,7 +21,7 @@ import (
 )
 
 func TestNewTxProcessor(t *testing.T) {
-	store.ClearData()
+	ClearData()
 	chain := newChain()
 	defer chain.db.Close()
 	p := NewTxProcessor(chain)
@@ -37,7 +36,7 @@ func TestNewTxProcessor(t *testing.T) {
 
 // test valid block processing
 func TestTxProcessor_Process(t *testing.T) {
-	store.ClearData()
+	ClearData()
 	bc := newChain()
 	defer bc.db.Close()
 	p := NewTxProcessor(bc)
@@ -89,7 +88,7 @@ func TestTxProcessor_Process(t *testing.T) {
 
 // test invalid block processing
 func TestTxProcessor_Process2(t *testing.T) {
-	store.ClearData()
+	ClearData()
 	bc := newChain()
 	defer bc.db.Close()
 	p := NewTxProcessor(bc)
@@ -165,7 +164,7 @@ func createNewBlock(db protocol.ChainDB) *types.Block {
 
 // test tx picking logic
 func TestTxProcessor_ApplyTxs(t *testing.T) {
-	store.ClearData()
+	ClearData()
 	bc := newChain()
 	defer bc.db.Close()
 	p := NewTxProcessor(bc)
@@ -270,7 +269,7 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 // TODO move these cases to evm
 // test different transactions
 func TestTxProcessor_ApplyTxs2(t *testing.T) {
-	store.ClearData()
+	ClearData()
 	bc := newChain()
 	defer bc.db.Close()
 	p := NewTxProcessor(bc)
@@ -379,7 +378,7 @@ func TestTxProcessor_ApplyTxs2(t *testing.T) {
 // }
 
 func TestGetHashFn(t *testing.T) {
-	store.ClearData()
+	ClearData()
 	chain := newChain()
 	defer chain.db.Close()
 	p := NewTxProcessor(chain)
@@ -1243,7 +1242,7 @@ func TestIntrinsicGas(t *testing.T) {
 }
 
 func Test_rlpBlock(t *testing.T) {
-	store.ClearData()
+	ClearData()
 	bc := newChain()
 	defer bc.db.Close()
 	p := NewTxProcessor(bc)
@@ -1265,7 +1264,7 @@ func Test_rlpBlock(t *testing.T) {
 }
 
 func BenchmarkApplyTxs(b *testing.B) {
-	store.ClearData()
+	ClearData()
 	bc := newChain()
 	defer bc.db.Close()
 	p := NewTxProcessor(bc)
@@ -1300,7 +1299,7 @@ func BenchmarkApplyTxs(b *testing.B) {
 }
 
 func BenchmarkMakeBlock(b *testing.B) {
-	store.ClearData()
+	ClearData()
 	bc := newChain()
 	defer bc.db.Close()
 	p := NewTxProcessor(bc)
