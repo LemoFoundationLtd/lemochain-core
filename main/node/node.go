@@ -92,20 +92,28 @@ func initConfig(flags flag.CmdFlags) (*Config, *config.ConfigFromFile, *miner.Mi
 	return cfg, configFromFile, mineCfg
 }
 
+func GetChainDataPath(dataDir string) string {
+	return filepath.Join(dataDir, "chaindata")
+}
+
 func initDb(dataDir string, driver string, dns string) protocol.ChainDB {
-	dir := filepath.Join(dataDir, "chaindata")
+	dir := GetChainDataPath(dataDir)
 	return store.NewChainDataBase(dir, driver, dns)
 }
 
 func getGenesis(db protocol.ChainDB) *types.Block {
 	block, err := db.GetBlockByHeight(0)
-	if err == store.ErrNotExist {
-		if _, err = chain.SetupGenesisBlock(db, nil); err != nil {
-			panic("SetupGenesisBlock Failed")
+	if err != nil {
+		if err == store.ErrNotExist {
+			// create genesis block
+			chain.SetupGenesisBlock(db, nil)
+			block, _ = db.GetBlockByHeight(0)
+		} else {
+			panic(fmt.Sprintf("can't get genesis block. err: %v", err))
 		}
-		block, _ = db.GetBlockByHeight(0)
-	} else if err != nil {
-		panic(fmt.Sprintf("can't get genesis block. err: %v", err))
+	}
+	if block == nil {
+		panic("can't get genesis block")
 	}
 	return block
 }
@@ -144,9 +152,6 @@ func New(flags flag.CmdFlags) *Node {
 	db := initDb(cfg.DataDir, configFromFile.DbDriver, configFromFile.DbUri)
 	// read genesis block
 	genesisBlock := getGenesis(db)
-	if genesisBlock == nil {
-		panic("can't get genesis block")
-	}
 	// read all deputy nodes from snapshot block
 	initDeputyNodes(db)
 	// new dpovp consensus engine
@@ -349,7 +354,7 @@ func (n *Node) startHTTP(endpoint string, apis []rpc.API, cors []string, vhosts 
 		return err
 	}
 	go rpc.NewHTTPServer(cors, vhosts, handler).Serve(listener)
-	log.Info("HTTP endpoint opened", "url", fmt.Sprintf("h ttp://%s", endpoint), "cors", strings.Join(cors, ","), "vhosts", strings.Join(vhosts, ","))
+	log.Info("HTTP endpoint opened", "url", fmt.Sprintf("http://%s", endpoint), "cors", strings.Join(cors, ","), "vhosts", strings.Join(vhosts, ","))
 	// All listeners booted successfully
 	n.httpEndpoint = endpoint
 	n.httpListener = listener

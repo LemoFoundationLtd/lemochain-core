@@ -49,16 +49,20 @@ func TestTxProcessor_Process(t *testing.T) {
 	gasUsed, err := p.Process(block.Header, block.Txs)
 	assert.NoError(t, err)
 	assert.Equal(t, block.Header.GasUsed, gasUsed)
+	err = p.am.Finalise()
+	assert.NoError(t, err)
 	assert.Equal(t, block.Header.VersionRoot, p.am.GetVersionRoot())
 	assert.Equal(t, len(block.ChangeLogs), len(p.am.GetChangeLogs()))
 	p.am.GetAccount(testAddr)
 
 	// block not in db
 	block = defaultBlocks[3]
-	t.Log(block)
 	gasUsed, err = p.Process(block.Header, block.Txs)
 	assert.NoError(t, err)
+	err = p.am.Finalise()
+	assert.NoError(t, err)
 	assert.Equal(t, block.Header.GasUsed, gasUsed)
+	// TODO these test is fail because Account.GetNextVersion always +1, so that the ChangeLog is not continuous. This will be fixed if we refactor the logic of ChangeLog merging to makes all version continuous in account.
 	assert.Equal(t, block.Header.VersionRoot, p.am.GetVersionRoot())
 	assert.Equal(t, len(block.ChangeLogs), len(p.am.GetChangeLogs()))
 	p.am.GetAccount(testAddr)
@@ -67,6 +71,8 @@ func TestTxProcessor_Process(t *testing.T) {
 	block = defaultBlocks[0]
 	gasUsed, err = p.Process(block.Header, block.Txs)
 	assert.NoError(t, err)
+	err = p.am.Finalise()
+	assert.NoError(t, err)
 	assert.Equal(t, block.Header.GasUsed, gasUsed)
 	assert.Equal(t, block.Header.VersionRoot, p.am.GetVersionRoot())
 	assert.Equal(t, len(block.ChangeLogs), len(p.am.GetChangeLogs()))
@@ -74,6 +80,8 @@ func TestTxProcessor_Process(t *testing.T) {
 	// block on fork branch
 	block = createNewBlock(bc.db)
 	gasUsed, err = p.Process(block.Header, block.Txs)
+	assert.NoError(t, err)
+	err = p.am.Finalise()
 	assert.NoError(t, err)
 	assert.Equal(t, block.Header.GasUsed, gasUsed)
 	assert.Equal(t, block.Header.VersionRoot, p.am.GetVersionRoot())

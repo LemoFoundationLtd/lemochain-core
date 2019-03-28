@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/LemoFoundationLtd/lemochain-core/chain"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"github.com/stretchr/testify/assert"
@@ -153,7 +154,7 @@ func Test_setupGenesisBlock_no_deputy(t *testing.T) {
 	fileName := "test_genesis.json"
 	datadir := "lemo-test"
 	writeContentToFile(test.Content, fileName)
-	assert.PanicsWithValue(t, "default deputy nodes can't be empty", func() {
+	assert.PanicsWithValue(t, chain.ErrNoDeputyNodes, func() {
 		setupGenesisBlock(fileName, datadir)
 	})
 	deleteTmpFile(fileName)

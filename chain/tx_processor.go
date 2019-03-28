@@ -270,7 +270,6 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 
 	// Merge change logs by transaction will save more transaction execution detail than by block
 	p.am.MergeChangeLogs(mergeFrom)
-	mergeFrom = len(p.am.GetChangeLogs())
 
 	return tx.GasLimit() - restGas, nil
 }
@@ -297,7 +296,7 @@ func (p *TxProcessor) changeCandidateVotes(accountAddress common.Address, change
 
 func (p *TxProcessor) buyGas(gp *types.GasPool, tx *types.Transaction) error {
 	payerAddr, err := tx.GasPayer()
-	log.Info("tx gas payer address:\n", payerAddr.String())
+	log.Infof("tx gas payer address: %s", payerAddr.String())
 	if err != nil {
 		return err
 	}
