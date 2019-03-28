@@ -24,7 +24,7 @@
 	});
 
 	var _core = createCommonjsModule(function (module) {
-	var core = module.exports = { version: '2.5.7' };
+	var core = module.exports = { version: '2.6.0' };
 	if (typeof __e == 'number') __e = core; // eslint-disable-line no-undef
 	});
 	var _core_1 = _core.version;
@@ -316,11 +316,166 @@
 	  }
 	});
 
+	function _typeof(obj) {
+	  if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") {
+	    _typeof = function (obj) {
+	      return typeof obj;
+	    };
+	  } else {
+	    _typeof = function (obj) {
+	      return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj;
+	    };
+	  }
+
+	  return _typeof(obj);
+	}
+
+	function asyncGeneratorStep(gen, resolve, reject, _next, _throw, key, arg) {
+	  try {
+	    var info = gen[key](arg);
+	    var value = info.value;
+	  } catch (error) {
+	    reject(error);
+	    return;
+	  }
+
+	  if (info.done) {
+	    resolve(value);
+	  } else {
+	    Promise.resolve(value).then(_next, _throw);
+	  }
+	}
+
+	function _asyncToGenerator(fn) {
+	  return function () {
+	    var self = this,
+	        args = arguments;
+	    return new Promise(function (resolve, reject) {
+	      var gen = fn.apply(self, args);
+
+	      function _next(value) {
+	        asyncGeneratorStep(gen, resolve, reject, _next, _throw, "next", value);
+	      }
+
+	      function _throw(err) {
+	        asyncGeneratorStep(gen, resolve, reject, _next, _throw, "throw", err);
+	      }
+
+	      _next(undefined);
+	    });
+	  };
+	}
+
+	function _classCallCheck(instance, Constructor) {
+	  if (!(instance instanceof Constructor)) {
+	    throw new TypeError("Cannot call a class as a function");
+	  }
+	}
+
+	function _defineProperties(target, props) {
+	  for (var i = 0; i < props.length; i++) {
+	    var descriptor = props[i];
+	    descriptor.enumerable = descriptor.enumerable || false;
+	    descriptor.configurable = true;
+	    if ("value" in descriptor) descriptor.writable = true;
+	    Object.defineProperty(target, descriptor.key, descriptor);
+	  }
+	}
+
+	function _createClass(Constructor, protoProps, staticProps) {
+	  if (protoProps) _defineProperties(Constructor.prototype, protoProps);
+	  if (staticProps) _defineProperties(Constructor, staticProps);
+	  return Constructor;
+	}
+
+	function _defineProperty(obj, key, value) {
+	  if (key in obj) {
+	    Object.defineProperty(obj, key, {
+	      value: value,
+	      enumerable: true,
+	      configurable: true,
+	      writable: true
+	    });
+	  } else {
+	    obj[key] = value;
+	  }
+
+	  return obj;
+	}
+
+	function _objectSpread(target) {
+	  for (var i = 1; i < arguments.length; i++) {
+	    var source = arguments[i] != null ? arguments[i] : {};
+	    var ownKeys = Object.keys(source);
+
+	    if (typeof Object.getOwnPropertySymbols === 'function') {
+	      ownKeys = ownKeys.concat(Object.getOwnPropertySymbols(source).filter(function (sym) {
+	        return Object.getOwnPropertyDescriptor(source, sym).enumerable;
+	      }));
+	    }
+
+	    ownKeys.forEach(function (key) {
+	      _defineProperty(target, key, source[key]);
+	    });
+	  }
+
+	  return target;
+	}
+
+	function _inherits(subClass, superClass) {
+	  if (typeof superClass !== "function" && superClass !== null) {
+	    throw new TypeError("Super expression must either be null or a function");
+	  }
+
+	  subClass.prototype = Object.create(superClass && superClass.prototype, {
+	    constructor: {
+	      value: subClass,
+	      writable: true,
+	      configurable: true
+	    }
+	  });
+	  if (superClass) _setPrototypeOf(subClass, superClass);
+	}
+
+	function _getPrototypeOf(o) {
+	  _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
+	    return o.__proto__ || Object.getPrototypeOf(o);
+	  };
+	  return _getPrototypeOf(o);
+	}
+
+	function _setPrototypeOf(o, p) {
+	  _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
+	    o.__proto__ = p;
+	    return o;
+	  };
+
+	  return _setPrototypeOf(o, p);
+	}
+
+	function _assertThisInitialized(self) {
+	  if (self === void 0) {
+	    throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
+	  }
+
+	  return self;
+	}
+
+	function _possibleConstructorReturn(self, call) {
+	  if (call && (typeof call === "object" || typeof call === "function")) {
+	    return call;
+	  }
+
+	  return _assertThisInitialized(self);
+	}
+
+	function _slicedToArray(arr, i) {
+	  return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _nonIterableRest();
+	}
+
 	function _arrayWithHoles(arr) {
 	  if (Array.isArray(arr)) return arr;
 	}
-
-	var arrayWithHoles = _arrayWithHoles;
 
 	function _iterableToArrayLimit(arr, i) {
 	  var _arr = [];
@@ -348,19 +503,9 @@
 	  return _arr;
 	}
 
-	var iterableToArrayLimit = _iterableToArrayLimit;
-
 	function _nonIterableRest() {
 	  throw new TypeError("Invalid attempt to destructure non-iterable instance");
 	}
-
-	var nonIterableRest = _nonIterableRest;
-
-	function _slicedToArray(arr, i) {
-	  return arrayWithHoles(arr) || iterableToArrayLimit(arr, i) || nonIterableRest();
-	}
-
-	var slicedToArray = _slicedToArray;
 
 	// 22.1.3.31 Array.prototype[@@unscopables]
 	var UNSCOPABLES = _wks('unscopables');
@@ -721,14 +866,6 @@
 	    if (explicit) for (key in es6_array_iterator) if (!proto[key]) _redefine(proto, key, es6_array_iterator[key], true);
 	  }
 	}
-
-	function _classCallCheck(instance, Constructor) {
-	  if (!(instance instanceof Constructor)) {
-	    throw new TypeError("Cannot call a class as a function");
-	  }
-	}
-
-	var classCallCheck = _classCallCheck;
 
 	var bignumber = createCommonjsModule(function (module) {
 	(function (globalObject) {
@@ -3550,7 +3687,9 @@
 	})(commonjsGlobal);
 	});
 
-	// current transaction version. should between 0 to 128
+	// The id of chain network.should between 0 to 128
+	var CHAIN_ID_MAIN_NET = 1;
+
 	var TX_VERSION = 1; // Transaction Time To Live, 2hours. It is set on chain
 
 	var TTTL = 2 * 60 * 60; // Gas price for smart contract. Unit is mo/gas
@@ -3561,7 +3700,9 @@
 
 	var DEFAULT_POLL_DURATION = 3000; // The max retry times when poll failed
 
-	var MAX_POLL_RETRY = 5; // 1: secp256k1 public key
+	var MAX_POLL_RETRY = 5; // The  max  poll timeOut  of  tx
+
+	var TX_POLL_MAX_TIME_OUT = 120000; // 1: secp256k1 public key
 
 	var ADDRESS_VERSION = 1;
 
@@ -4285,140 +4426,6 @@
 	  })() || Function("return this")()
 	);
 	});
-
-	/**
-	 * Copyright (c) 2014-present, Facebook, Inc.
-	 *
-	 * This source code is licensed under the MIT license found in the
-	 * LICENSE file in the root directory of this source tree.
-	 */
-
-	// This method of obtaining a reference to the global object needs to be
-	// kept identical to the way it is obtained in runtime.js
-	var g = (function() {
-	  return this || (typeof self === "object" && self);
-	})() || Function("return this")();
-
-	// Use `getOwnPropertyNames` because not all browsers support calling
-	// `hasOwnProperty` on the global `self` object in a worker. See #183.
-	var hadRuntime = g.regeneratorRuntime &&
-	  Object.getOwnPropertyNames(g).indexOf("regeneratorRuntime") >= 0;
-
-	// Save the old regeneratorRuntime in case it needs to be restored later.
-	var oldRuntime = hadRuntime && g.regeneratorRuntime;
-
-	// Force reevalutation of runtime.js.
-	g.regeneratorRuntime = undefined;
-
-	var runtimeModule = runtime;
-
-	if (hadRuntime) {
-	  // Restore the original runtime.
-	  g.regeneratorRuntime = oldRuntime;
-	} else {
-	  // Remove the global property added by runtime.js.
-	  try {
-	    delete g.regeneratorRuntime;
-	  } catch(e) {
-	    g.regeneratorRuntime = undefined;
-	  }
-	}
-
-	var regenerator = runtimeModule;
-
-	function asyncGeneratorStep(gen, resolve, reject, _next, _throw, key, arg) {
-	  try {
-	    var info = gen[key](arg);
-	    var value = info.value;
-	  } catch (error) {
-	    reject(error);
-	    return;
-	  }
-
-	  if (info.done) {
-	    resolve(value);
-	  } else {
-	    Promise.resolve(value).then(_next, _throw);
-	  }
-	}
-
-	function _asyncToGenerator(fn) {
-	  return function () {
-	    var self = this,
-	        args = arguments;
-	    return new Promise(function (resolve, reject) {
-	      var gen = fn.apply(self, args);
-
-	      function _next(value) {
-	        asyncGeneratorStep(gen, resolve, reject, _next, _throw, "next", value);
-	      }
-
-	      function _throw(err) {
-	        asyncGeneratorStep(gen, resolve, reject, _next, _throw, "throw", err);
-	      }
-
-	      _next(undefined);
-	    });
-	  };
-	}
-
-	var asyncToGenerator = _asyncToGenerator;
-
-	function _defineProperty(obj, key, value) {
-	  if (key in obj) {
-	    Object.defineProperty(obj, key, {
-	      value: value,
-	      enumerable: true,
-	      configurable: true,
-	      writable: true
-	    });
-	  } else {
-	    obj[key] = value;
-	  }
-
-	  return obj;
-	}
-
-	var defineProperty = _defineProperty;
-
-	function _objectSpread(target) {
-	  for (var i = 1; i < arguments.length; i++) {
-	    var source = arguments[i] != null ? arguments[i] : {};
-	    var ownKeys = Object.keys(source);
-
-	    if (typeof Object.getOwnPropertySymbols === 'function') {
-	      ownKeys = ownKeys.concat(Object.getOwnPropertySymbols(source).filter(function (sym) {
-	        return Object.getOwnPropertyDescriptor(source, sym).enumerable;
-	      }));
-	    }
-
-	    ownKeys.forEach(function (key) {
-	      defineProperty(target, key, source[key]);
-	    });
-	  }
-
-	  return target;
-	}
-
-	var objectSpread = _objectSpread;
-
-	function _defineProperties(target, props) {
-	  for (var i = 0; i < props.length; i++) {
-	    var descriptor = props[i];
-	    descriptor.enumerable = descriptor.enumerable || false;
-	    descriptor.configurable = true;
-	    if ("value" in descriptor) descriptor.writable = true;
-	    Object.defineProperty(target, descriptor.key, descriptor);
-	  }
-	}
-
-	function _createClass(Constructor, protoProps, staticProps) {
-	  if (protoProps) _defineProperties(Constructor.prototype, protoProps);
-	  if (staticProps) _defineProperties(Constructor, staticProps);
-	  return Constructor;
-	}
-
-	var createClass = _createClass;
 
 	var bind = function bind(fn, thisArg) {
 	  return function wrap() {
@@ -6022,26 +6029,6 @@
 	  }
 	});
 
-	var _typeof_1 = createCommonjsModule(function (module) {
-	function _typeof2(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof2 = function _typeof2(obj) { return typeof obj; }; } else { _typeof2 = function _typeof2(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof2(obj); }
-
-	function _typeof(obj) {
-	  if (typeof Symbol === "function" && _typeof2(Symbol.iterator) === "symbol") {
-	    module.exports = _typeof = function _typeof(obj) {
-	      return _typeof2(obj);
-	    };
-	  } else {
-	    module.exports = _typeof = function _typeof(obj) {
-	      return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof2(obj);
-	    };
-	  }
-
-	  return _typeof(obj);
-	}
-
-	module.exports = _typeof;
-	});
-
 	var errors = {
 	  InvalidAPIDefinition: function InvalidAPIDefinition(config) {
 	    return "invalid api config ".concat(JSON.stringify(config));
@@ -6079,8 +6066,11 @@
 	  InvalidAddress: function InvalidAddress(address) {
 	    return "Invalid LemoChain address ".concat(address);
 	  },
+	  InvalidAddressLength: function InvalidAddressLength(address) {
+	    return "Invalid length of LemoChain address ".concat(address);
+	  },
 	  InvalidAddressType: function InvalidAddressType(address) {
-	    return "Invalid type of address ".concat(address, ", expected 'string' rather than '").concat(_typeof_1(address), "'");
+	    return "Invalid type of address ".concat(address, ", expected 'string' rather than '").concat(_typeof(address), "'");
 	  },
 	  InvalidHexAddress: function InvalidHexAddress(address) {
 	    return "Invalid hex address ".concat(address);
@@ -6091,20 +6081,14 @@
 	  DecodeAddressError: function DecodeAddressError(address, errMsg) {
 	    return "Decode address ".concat(address, " fail: ").concat(errMsg);
 	  },
-	  ConnectionTimeout: function ConnectionTimeout(ms) {
-	    return "CONNECTION TIMEOUT: timeout of ".concat(ms, " ms achived");
-	  },
 	  TXFieldToLong: function TXFieldToLong(fieldName, length) {
 	    return "The field ".concat(fieldName, " must less than ").concat(length, " bytes");
 	  },
-	  TXVTypeConflict: function TXVTypeConflict(tx) {
-	    return "'v' ".concat(tx.v, " and 'type' ").concat(tx.type, " cannot be set at same time");
-	  },
-	  TXVVersionConflict: function TXVVersionConflict(tx) {
-	    return "'v' ".concat(tx.v, " and 'version' ").concat(tx.version, " cannot be set at same time");
-	  },
 	  TXMustBeNumber: function TXMustBeNumber(key, value) {
-	    return "'".concat(key, "' ").concat(value, " should be a number");
+	    return "'".concat(key, "' ").concat(value, " should be a number or hex");
+	  },
+	  TXInvalidChainID: function TXInvalidChainID() {
+	    return '\'chainID\' should not be empty';
 	  },
 	  TXInvalidType: function TXInvalidType(key, value, types) {
 	    // Get class name if any type is class
@@ -6112,10 +6096,10 @@
 	      return item.name || item;
 	    });
 	    var typePhrase = types.length === 1 ? types[0] : "one of [".concat(types, "]");
-	    return "The type of '".concat(key, "' should be '").concat(typePhrase, "', rather than '").concat(_typeof_1(value), "'");
+	    return "The type of '".concat(key, "' should be '").concat(typePhrase, "', rather than '").concat(_typeof(value), "'");
 	  },
 	  TXCanNotTestRange: function TXCanNotTestRange(key, value) {
-	    return "The type of '".concat(key, "' ").concat(value, " is invalid: ").concat(_typeof_1(value));
+	    return "The type of '".concat(key, "' ").concat(value, " is invalid: ").concat(_typeof(value));
 	  },
 	  TXInvalidRange: function TXInvalidRange(key, value, from, to) {
 	    return "'".concat(key, "' ").concat(value, " is not in range [0x").concat(from.toString(16), ", 0x").concat(to.toString(16), "]");
@@ -6124,7 +6108,13 @@
 	    return "The length of '".concat(key, "' ").concat(value, " should be ").concat(length, ", not ").concat(value.length, "]");
 	  },
 	  TXInvalidMaxLength: function TXInvalidMaxLength(key, value, length) {
-	    return "The length of '".concat(key, "' ").concat(value, " should be less than ").concat(length, ", but not it is ").concat(value.length, "]");
+	    return "The length of '".concat(key, "' ").concat(value, " should be less than ").concat(length, ", but now it is ").concat(value.length, "]");
+	  },
+	  TXInvalidMaxBytes: function TXInvalidMaxBytes(key, value, length, currentLength) {
+	    return "The length of '".concat(key, "' ").concat(value, " should be less than ").concat(length, " bytes, but now it is ").concat(currentLength, "]");
+	  },
+	  InvalidPollTxTimeOut: function InvalidPollTxTimeOut() {
+	    return 'Error: transaction query timeout';
 	  }
 	};
 
@@ -6132,7 +6122,7 @@
 	/*#__PURE__*/
 	function () {
 	  function HttpConn(host, timeout, username, password, headers) {
-	    classCallCheck(this, HttpConn);
+	    _classCallCheck(this, HttpConn);
 
 	    if (!host) {
 	      throw new Error(errors.InvalidHTTPHost());
@@ -6156,20 +6146,20 @@
 	    }
 
 	    if (headers) {
-	      config.headers = objectSpread({}, config.headers, headers);
+	      config.headers = _objectSpread({}, config.headers, headers);
 	    }
 
 	    this.axiosInstance = axios$1.create(config);
 	  }
 
-	  createClass(HttpConn, [{
+	  _createClass(HttpConn, [{
 	    key: "send",
 	    value: function () {
-	      var _send = asyncToGenerator(
+	      var _send = _asyncToGenerator(
 	      /*#__PURE__*/
-	      regenerator.mark(function _callee(payload) {
+	      regeneratorRuntime.mark(function _callee(payload) {
 	        var response;
-	        return regenerator.wrap(function _callee$(_context) {
+	        return regeneratorRuntime.wrap(function _callee$(_context) {
 	          while (1) {
 	            switch (_context.prev = _context.next) {
 	              case 0:
@@ -6185,8 +6175,8 @@
 	              case 6:
 	                _context.prev = 6;
 	                _context.t0 = _context["catch"](0);
-	                console.error('send fail!');
-	                console.error(_context.t0);
+	                console.warn('send fail!');
+	                console.warn(_context.t0);
 	                throw new Error(errors.InvalidConnection(this.host));
 
 	              case 11:
@@ -6200,11 +6190,9 @@
 	        }, _callee, this, [[0, 6]]);
 	      }));
 
-	      function send(_x) {
+	      return function send(_x) {
 	        return _send.apply(this, arguments);
-	      }
-
-	      return send;
+	      };
 	    }()
 	  }]);
 
@@ -6241,6 +6229,850 @@
 	    return $values(it);
 	  }
 	});
+
+	var typeDetect = createCommonjsModule(function (module, exports) {
+	(function (global, factory) {
+		module.exports = factory();
+	}(commonjsGlobal, (function () {
+	/* !
+	 * type-detect
+	 * Copyright(c) 2013 jake luer <jake@alogicalparadox.com>
+	 * MIT Licensed
+	 */
+	var promiseExists = typeof Promise === 'function';
+
+	/* eslint-disable no-undef */
+	var globalObject = typeof self === 'object' ? self : commonjsGlobal; // eslint-disable-line id-blacklist
+
+	var symbolExists = typeof Symbol !== 'undefined';
+	var mapExists = typeof Map !== 'undefined';
+	var setExists = typeof Set !== 'undefined';
+	var weakMapExists = typeof WeakMap !== 'undefined';
+	var weakSetExists = typeof WeakSet !== 'undefined';
+	var dataViewExists = typeof DataView !== 'undefined';
+	var symbolIteratorExists = symbolExists && typeof Symbol.iterator !== 'undefined';
+	var symbolToStringTagExists = symbolExists && typeof Symbol.toStringTag !== 'undefined';
+	var setEntriesExists = setExists && typeof Set.prototype.entries === 'function';
+	var mapEntriesExists = mapExists && typeof Map.prototype.entries === 'function';
+	var setIteratorPrototype = setEntriesExists && Object.getPrototypeOf(new Set().entries());
+	var mapIteratorPrototype = mapEntriesExists && Object.getPrototypeOf(new Map().entries());
+	var arrayIteratorExists = symbolIteratorExists && typeof Array.prototype[Symbol.iterator] === 'function';
+	var arrayIteratorPrototype = arrayIteratorExists && Object.getPrototypeOf([][Symbol.iterator]());
+	var stringIteratorExists = symbolIteratorExists && typeof String.prototype[Symbol.iterator] === 'function';
+	var stringIteratorPrototype = stringIteratorExists && Object.getPrototypeOf(''[Symbol.iterator]());
+	var toStringLeftSliceLength = 8;
+	var toStringRightSliceLength = -1;
+	/**
+	 * ### typeOf (obj)
+	 *
+	 * Uses `Object.prototype.toString` to determine the type of an object,
+	 * normalising behaviour across engine versions & well optimised.
+	 *
+	 * @param {Mixed} object
+	 * @return {String} object type
+	 * @api public
+	 */
+	function typeDetect(obj) {
+	  /* ! Speed optimisation
+	   * Pre:
+	   *   string literal     x 3,039,035 ops/sec ±1.62% (78 runs sampled)
+	   *   boolean literal    x 1,424,138 ops/sec ±4.54% (75 runs sampled)
+	   *   number literal     x 1,653,153 ops/sec ±1.91% (82 runs sampled)
+	   *   undefined          x 9,978,660 ops/sec ±1.92% (75 runs sampled)
+	   *   function           x 2,556,769 ops/sec ±1.73% (77 runs sampled)
+	   * Post:
+	   *   string literal     x 38,564,796 ops/sec ±1.15% (79 runs sampled)
+	   *   boolean literal    x 31,148,940 ops/sec ±1.10% (79 runs sampled)
+	   *   number literal     x 32,679,330 ops/sec ±1.90% (78 runs sampled)
+	   *   undefined          x 32,363,368 ops/sec ±1.07% (82 runs sampled)
+	   *   function           x 31,296,870 ops/sec ±0.96% (83 runs sampled)
+	   */
+	  var typeofObj = typeof obj;
+	  if (typeofObj !== 'object') {
+	    return typeofObj;
+	  }
+
+	  /* ! Speed optimisation
+	   * Pre:
+	   *   null               x 28,645,765 ops/sec ±1.17% (82 runs sampled)
+	   * Post:
+	   *   null               x 36,428,962 ops/sec ±1.37% (84 runs sampled)
+	   */
+	  if (obj === null) {
+	    return 'null';
+	  }
+
+	  /* ! Spec Conformance
+	   * Test: `Object.prototype.toString.call(window)``
+	   *  - Node === "[object global]"
+	   *  - Chrome === "[object global]"
+	   *  - Firefox === "[object Window]"
+	   *  - PhantomJS === "[object Window]"
+	   *  - Safari === "[object Window]"
+	   *  - IE 11 === "[object Window]"
+	   *  - IE Edge === "[object Window]"
+	   * Test: `Object.prototype.toString.call(this)``
+	   *  - Chrome Worker === "[object global]"
+	   *  - Firefox Worker === "[object DedicatedWorkerGlobalScope]"
+	   *  - Safari Worker === "[object DedicatedWorkerGlobalScope]"
+	   *  - IE 11 Worker === "[object WorkerGlobalScope]"
+	   *  - IE Edge Worker === "[object WorkerGlobalScope]"
+	   */
+	  if (obj === globalObject) {
+	    return 'global';
+	  }
+
+	  /* ! Speed optimisation
+	   * Pre:
+	   *   array literal      x 2,888,352 ops/sec ±0.67% (82 runs sampled)
+	   * Post:
+	   *   array literal      x 22,479,650 ops/sec ±0.96% (81 runs sampled)
+	   */
+	  if (
+	    Array.isArray(obj) &&
+	    (symbolToStringTagExists === false || !(Symbol.toStringTag in obj))
+	  ) {
+	    return 'Array';
+	  }
+
+	  // Not caching existence of `window` and related properties due to potential
+	  // for `window` to be unset before tests in quasi-browser environments.
+	  if (typeof window === 'object' && window !== null) {
+	    /* ! Spec Conformance
+	     * (https://html.spec.whatwg.org/multipage/browsers.html#location)
+	     * WhatWG HTML$7.7.3 - The `Location` interface
+	     * Test: `Object.prototype.toString.call(window.location)``
+	     *  - IE <=11 === "[object Object]"
+	     *  - IE Edge <=13 === "[object Object]"
+	     */
+	    if (typeof window.location === 'object' && obj === window.location) {
+	      return 'Location';
+	    }
+
+	    /* ! Spec Conformance
+	     * (https://html.spec.whatwg.org/#document)
+	     * WhatWG HTML$3.1.1 - The `Document` object
+	     * Note: Most browsers currently adher to the W3C DOM Level 2 spec
+	     *       (https://www.w3.org/TR/DOM-Level-2-HTML/html.html#ID-26809268)
+	     *       which suggests that browsers should use HTMLTableCellElement for
+	     *       both TD and TH elements. WhatWG separates these.
+	     *       WhatWG HTML states:
+	     *         > For historical reasons, Window objects must also have a
+	     *         > writable, configurable, non-enumerable property named
+	     *         > HTMLDocument whose value is the Document interface object.
+	     * Test: `Object.prototype.toString.call(document)``
+	     *  - Chrome === "[object HTMLDocument]"
+	     *  - Firefox === "[object HTMLDocument]"
+	     *  - Safari === "[object HTMLDocument]"
+	     *  - IE <=10 === "[object Document]"
+	     *  - IE 11 === "[object HTMLDocument]"
+	     *  - IE Edge <=13 === "[object HTMLDocument]"
+	     */
+	    if (typeof window.document === 'object' && obj === window.document) {
+	      return 'Document';
+	    }
+
+	    if (typeof window.navigator === 'object') {
+	      /* ! Spec Conformance
+	       * (https://html.spec.whatwg.org/multipage/webappapis.html#mimetypearray)
+	       * WhatWG HTML$8.6.1.5 - Plugins - Interface MimeTypeArray
+	       * Test: `Object.prototype.toString.call(navigator.mimeTypes)``
+	       *  - IE <=10 === "[object MSMimeTypesCollection]"
+	       */
+	      if (typeof window.navigator.mimeTypes === 'object' &&
+	          obj === window.navigator.mimeTypes) {
+	        return 'MimeTypeArray';
+	      }
+
+	      /* ! Spec Conformance
+	       * (https://html.spec.whatwg.org/multipage/webappapis.html#pluginarray)
+	       * WhatWG HTML$8.6.1.5 - Plugins - Interface PluginArray
+	       * Test: `Object.prototype.toString.call(navigator.plugins)``
+	       *  - IE <=10 === "[object MSPluginsCollection]"
+	       */
+	      if (typeof window.navigator.plugins === 'object' &&
+	          obj === window.navigator.plugins) {
+	        return 'PluginArray';
+	      }
+	    }
+
+	    if ((typeof window.HTMLElement === 'function' ||
+	        typeof window.HTMLElement === 'object') &&
+	        obj instanceof window.HTMLElement) {
+	      /* ! Spec Conformance
+	      * (https://html.spec.whatwg.org/multipage/webappapis.html#pluginarray)
+	      * WhatWG HTML$4.4.4 - The `blockquote` element - Interface `HTMLQuoteElement`
+	      * Test: `Object.prototype.toString.call(document.createElement('blockquote'))``
+	      *  - IE <=10 === "[object HTMLBlockElement]"
+	      */
+	      if (obj.tagName === 'BLOCKQUOTE') {
+	        return 'HTMLQuoteElement';
+	      }
+
+	      /* ! Spec Conformance
+	       * (https://html.spec.whatwg.org/#htmltabledatacellelement)
+	       * WhatWG HTML$4.9.9 - The `td` element - Interface `HTMLTableDataCellElement`
+	       * Note: Most browsers currently adher to the W3C DOM Level 2 spec
+	       *       (https://www.w3.org/TR/DOM-Level-2-HTML/html.html#ID-82915075)
+	       *       which suggests that browsers should use HTMLTableCellElement for
+	       *       both TD and TH elements. WhatWG separates these.
+	       * Test: Object.prototype.toString.call(document.createElement('td'))
+	       *  - Chrome === "[object HTMLTableCellElement]"
+	       *  - Firefox === "[object HTMLTableCellElement]"
+	       *  - Safari === "[object HTMLTableCellElement]"
+	       */
+	      if (obj.tagName === 'TD') {
+	        return 'HTMLTableDataCellElement';
+	      }
+
+	      /* ! Spec Conformance
+	       * (https://html.spec.whatwg.org/#htmltableheadercellelement)
+	       * WhatWG HTML$4.9.9 - The `td` element - Interface `HTMLTableHeaderCellElement`
+	       * Note: Most browsers currently adher to the W3C DOM Level 2 spec
+	       *       (https://www.w3.org/TR/DOM-Level-2-HTML/html.html#ID-82915075)
+	       *       which suggests that browsers should use HTMLTableCellElement for
+	       *       both TD and TH elements. WhatWG separates these.
+	       * Test: Object.prototype.toString.call(document.createElement('th'))
+	       *  - Chrome === "[object HTMLTableCellElement]"
+	       *  - Firefox === "[object HTMLTableCellElement]"
+	       *  - Safari === "[object HTMLTableCellElement]"
+	       */
+	      if (obj.tagName === 'TH') {
+	        return 'HTMLTableHeaderCellElement';
+	      }
+	    }
+	  }
+
+	  /* ! Speed optimisation
+	  * Pre:
+	  *   Float64Array       x 625,644 ops/sec ±1.58% (80 runs sampled)
+	  *   Float32Array       x 1,279,852 ops/sec ±2.91% (77 runs sampled)
+	  *   Uint32Array        x 1,178,185 ops/sec ±1.95% (83 runs sampled)
+	  *   Uint16Array        x 1,008,380 ops/sec ±2.25% (80 runs sampled)
+	  *   Uint8Array         x 1,128,040 ops/sec ±2.11% (81 runs sampled)
+	  *   Int32Array         x 1,170,119 ops/sec ±2.88% (80 runs sampled)
+	  *   Int16Array         x 1,176,348 ops/sec ±5.79% (86 runs sampled)
+	  *   Int8Array          x 1,058,707 ops/sec ±4.94% (77 runs sampled)
+	  *   Uint8ClampedArray  x 1,110,633 ops/sec ±4.20% (80 runs sampled)
+	  * Post:
+	  *   Float64Array       x 7,105,671 ops/sec ±13.47% (64 runs sampled)
+	  *   Float32Array       x 5,887,912 ops/sec ±1.46% (82 runs sampled)
+	  *   Uint32Array        x 6,491,661 ops/sec ±1.76% (79 runs sampled)
+	  *   Uint16Array        x 6,559,795 ops/sec ±1.67% (82 runs sampled)
+	  *   Uint8Array         x 6,463,966 ops/sec ±1.43% (85 runs sampled)
+	  *   Int32Array         x 5,641,841 ops/sec ±3.49% (81 runs sampled)
+	  *   Int16Array         x 6,583,511 ops/sec ±1.98% (80 runs sampled)
+	  *   Int8Array          x 6,606,078 ops/sec ±1.74% (81 runs sampled)
+	  *   Uint8ClampedArray  x 6,602,224 ops/sec ±1.77% (83 runs sampled)
+	  */
+	  var stringTag = (symbolToStringTagExists && obj[Symbol.toStringTag]);
+	  if (typeof stringTag === 'string') {
+	    return stringTag;
+	  }
+
+	  var objPrototype = Object.getPrototypeOf(obj);
+	  /* ! Speed optimisation
+	  * Pre:
+	  *   regex literal      x 1,772,385 ops/sec ±1.85% (77 runs sampled)
+	  *   regex constructor  x 2,143,634 ops/sec ±2.46% (78 runs sampled)
+	  * Post:
+	  *   regex literal      x 3,928,009 ops/sec ±0.65% (78 runs sampled)
+	  *   regex constructor  x 3,931,108 ops/sec ±0.58% (84 runs sampled)
+	  */
+	  if (objPrototype === RegExp.prototype) {
+	    return 'RegExp';
+	  }
+
+	  /* ! Speed optimisation
+	  * Pre:
+	  *   date               x 2,130,074 ops/sec ±4.42% (68 runs sampled)
+	  * Post:
+	  *   date               x 3,953,779 ops/sec ±1.35% (77 runs sampled)
+	  */
+	  if (objPrototype === Date.prototype) {
+	    return 'Date';
+	  }
+
+	  /* ! Spec Conformance
+	   * (http://www.ecma-international.org/ecma-262/6.0/index.html#sec-promise.prototype-@@tostringtag)
+	   * ES6$25.4.5.4 - Promise.prototype[@@toStringTag] should be "Promise":
+	   * Test: `Object.prototype.toString.call(Promise.resolve())``
+	   *  - Chrome <=47 === "[object Object]"
+	   *  - Edge <=20 === "[object Object]"
+	   *  - Firefox 29-Latest === "[object Promise]"
+	   *  - Safari 7.1-Latest === "[object Promise]"
+	   */
+	  if (promiseExists && objPrototype === Promise.prototype) {
+	    return 'Promise';
+	  }
+
+	  /* ! Speed optimisation
+	  * Pre:
+	  *   set                x 2,222,186 ops/sec ±1.31% (82 runs sampled)
+	  * Post:
+	  *   set                x 4,545,879 ops/sec ±1.13% (83 runs sampled)
+	  */
+	  if (setExists && objPrototype === Set.prototype) {
+	    return 'Set';
+	  }
+
+	  /* ! Speed optimisation
+	  * Pre:
+	  *   map                x 2,396,842 ops/sec ±1.59% (81 runs sampled)
+	  * Post:
+	  *   map                x 4,183,945 ops/sec ±6.59% (82 runs sampled)
+	  */
+	  if (mapExists && objPrototype === Map.prototype) {
+	    return 'Map';
+	  }
+
+	  /* ! Speed optimisation
+	  * Pre:
+	  *   weakset            x 1,323,220 ops/sec ±2.17% (76 runs sampled)
+	  * Post:
+	  *   weakset            x 4,237,510 ops/sec ±2.01% (77 runs sampled)
+	  */
+	  if (weakSetExists && objPrototype === WeakSet.prototype) {
+	    return 'WeakSet';
+	  }
+
+	  /* ! Speed optimisation
+	  * Pre:
+	  *   weakmap            x 1,500,260 ops/sec ±2.02% (78 runs sampled)
+	  * Post:
+	  *   weakmap            x 3,881,384 ops/sec ±1.45% (82 runs sampled)
+	  */
+	  if (weakMapExists && objPrototype === WeakMap.prototype) {
+	    return 'WeakMap';
+	  }
+
+	  /* ! Spec Conformance
+	   * (http://www.ecma-international.org/ecma-262/6.0/index.html#sec-dataview.prototype-@@tostringtag)
+	   * ES6$24.2.4.21 - DataView.prototype[@@toStringTag] should be "DataView":
+	   * Test: `Object.prototype.toString.call(new DataView(new ArrayBuffer(1)))``
+	   *  - Edge <=13 === "[object Object]"
+	   */
+	  if (dataViewExists && objPrototype === DataView.prototype) {
+	    return 'DataView';
+	  }
+
+	  /* ! Spec Conformance
+	   * (http://www.ecma-international.org/ecma-262/6.0/index.html#sec-%mapiteratorprototype%-@@tostringtag)
+	   * ES6$23.1.5.2.2 - %MapIteratorPrototype%[@@toStringTag] should be "Map Iterator":
+	   * Test: `Object.prototype.toString.call(new Map().entries())``
+	   *  - Edge <=13 === "[object Object]"
+	   */
+	  if (mapExists && objPrototype === mapIteratorPrototype) {
+	    return 'Map Iterator';
+	  }
+
+	  /* ! Spec Conformance
+	   * (http://www.ecma-international.org/ecma-262/6.0/index.html#sec-%setiteratorprototype%-@@tostringtag)
+	   * ES6$23.2.5.2.2 - %SetIteratorPrototype%[@@toStringTag] should be "Set Iterator":
+	   * Test: `Object.prototype.toString.call(new Set().entries())``
+	   *  - Edge <=13 === "[object Object]"
+	   */
+	  if (setExists && objPrototype === setIteratorPrototype) {
+	    return 'Set Iterator';
+	  }
+
+	  /* ! Spec Conformance
+	   * (http://www.ecma-international.org/ecma-262/6.0/index.html#sec-%arrayiteratorprototype%-@@tostringtag)
+	   * ES6$22.1.5.2.2 - %ArrayIteratorPrototype%[@@toStringTag] should be "Array Iterator":
+	   * Test: `Object.prototype.toString.call([][Symbol.iterator]())``
+	   *  - Edge <=13 === "[object Object]"
+	   */
+	  if (arrayIteratorExists && objPrototype === arrayIteratorPrototype) {
+	    return 'Array Iterator';
+	  }
+
+	  /* ! Spec Conformance
+	   * (http://www.ecma-international.org/ecma-262/6.0/index.html#sec-%stringiteratorprototype%-@@tostringtag)
+	   * ES6$21.1.5.2.2 - %StringIteratorPrototype%[@@toStringTag] should be "String Iterator":
+	   * Test: `Object.prototype.toString.call(''[Symbol.iterator]())``
+	   *  - Edge <=13 === "[object Object]"
+	   */
+	  if (stringIteratorExists && objPrototype === stringIteratorPrototype) {
+	    return 'String Iterator';
+	  }
+
+	  /* ! Speed optimisation
+	  * Pre:
+	  *   object from null   x 2,424,320 ops/sec ±1.67% (76 runs sampled)
+	  * Post:
+	  *   object from null   x 5,838,000 ops/sec ±0.99% (84 runs sampled)
+	  */
+	  if (objPrototype === null) {
+	    return 'Object';
+	  }
+
+	  return Object
+	    .prototype
+	    .toString
+	    .call(obj)
+	    .slice(toStringLeftSliceLength, toStringRightSliceLength);
+	}
+
+	return typeDetect;
+
+	})));
+	});
+
+	/* globals Symbol: false, Uint8Array: false, WeakMap: false */
+	/*!
+	 * deep-eql
+	 * Copyright(c) 2013 Jake Luer <jake@alogicalparadox.com>
+	 * MIT Licensed
+	 */
+
+
+	function FakeMap() {
+	  this._key = 'chai/deep-eql__' + Math.random() + Date.now();
+	}
+
+	FakeMap.prototype = {
+	  get: function getMap(key) {
+	    return key[this._key];
+	  },
+	  set: function setMap(key, value) {
+	    if (Object.isExtensible(key)) {
+	      Object.defineProperty(key, this._key, {
+	        value: value,
+	        configurable: true,
+	      });
+	    }
+	  },
+	};
+
+	var MemoizeMap = typeof WeakMap === 'function' ? WeakMap : FakeMap;
+	/*!
+	 * Check to see if the MemoizeMap has recorded a result of the two operands
+	 *
+	 * @param {Mixed} leftHandOperand
+	 * @param {Mixed} rightHandOperand
+	 * @param {MemoizeMap} memoizeMap
+	 * @returns {Boolean|null} result
+	*/
+	function memoizeCompare(leftHandOperand, rightHandOperand, memoizeMap) {
+	  // Technically, WeakMap keys can *only* be objects, not primitives.
+	  if (!memoizeMap || isPrimitive(leftHandOperand) || isPrimitive(rightHandOperand)) {
+	    return null;
+	  }
+	  var leftHandMap = memoizeMap.get(leftHandOperand);
+	  if (leftHandMap) {
+	    var result = leftHandMap.get(rightHandOperand);
+	    if (typeof result === 'boolean') {
+	      return result;
+	    }
+	  }
+	  return null;
+	}
+
+	/*!
+	 * Set the result of the equality into the MemoizeMap
+	 *
+	 * @param {Mixed} leftHandOperand
+	 * @param {Mixed} rightHandOperand
+	 * @param {MemoizeMap} memoizeMap
+	 * @param {Boolean} result
+	*/
+	function memoizeSet(leftHandOperand, rightHandOperand, memoizeMap, result) {
+	  // Technically, WeakMap keys can *only* be objects, not primitives.
+	  if (!memoizeMap || isPrimitive(leftHandOperand) || isPrimitive(rightHandOperand)) {
+	    return;
+	  }
+	  var leftHandMap = memoizeMap.get(leftHandOperand);
+	  if (leftHandMap) {
+	    leftHandMap.set(rightHandOperand, result);
+	  } else {
+	    leftHandMap = new MemoizeMap();
+	    leftHandMap.set(rightHandOperand, result);
+	    memoizeMap.set(leftHandOperand, leftHandMap);
+	  }
+	}
+
+	/*!
+	 * Primary Export
+	 */
+
+	var deepEql = deepEqual;
+	var MemoizeMap_1 = MemoizeMap;
+
+	/**
+	 * Assert deeply nested sameValue equality between two objects of any type.
+	 *
+	 * @param {Mixed} leftHandOperand
+	 * @param {Mixed} rightHandOperand
+	 * @param {Object} [options] (optional) Additional options
+	 * @param {Array} [options.comparator] (optional) Override default algorithm, determining custom equality.
+	 * @param {Array} [options.memoize] (optional) Provide a custom memoization object which will cache the results of
+	    complex objects for a speed boost. By passing `false` you can disable memoization, but this will cause circular
+	    references to blow the stack.
+	 * @return {Boolean} equal match
+	 */
+	function deepEqual(leftHandOperand, rightHandOperand, options) {
+	  // If we have a comparator, we can't assume anything; so bail to its check first.
+	  if (options && options.comparator) {
+	    return extensiveDeepEqual(leftHandOperand, rightHandOperand, options);
+	  }
+
+	  var simpleResult = simpleEqual(leftHandOperand, rightHandOperand);
+	  if (simpleResult !== null) {
+	    return simpleResult;
+	  }
+
+	  // Deeper comparisons are pushed through to a larger function
+	  return extensiveDeepEqual(leftHandOperand, rightHandOperand, options);
+	}
+
+	/**
+	 * Many comparisons can be canceled out early via simple equality or primitive checks.
+	 * @param {Mixed} leftHandOperand
+	 * @param {Mixed} rightHandOperand
+	 * @return {Boolean|null} equal match
+	 */
+	function simpleEqual(leftHandOperand, rightHandOperand) {
+	  // Equal references (except for Numbers) can be returned early
+	  if (leftHandOperand === rightHandOperand) {
+	    // Handle +-0 cases
+	    return leftHandOperand !== 0 || 1 / leftHandOperand === 1 / rightHandOperand;
+	  }
+
+	  // handle NaN cases
+	  if (
+	    leftHandOperand !== leftHandOperand && // eslint-disable-line no-self-compare
+	    rightHandOperand !== rightHandOperand // eslint-disable-line no-self-compare
+	  ) {
+	    return true;
+	  }
+
+	  // Anything that is not an 'object', i.e. symbols, functions, booleans, numbers,
+	  // strings, and undefined, can be compared by reference.
+	  if (isPrimitive(leftHandOperand) || isPrimitive(rightHandOperand)) {
+	    // Easy out b/c it would have passed the first equality check
+	    return false;
+	  }
+	  return null;
+	}
+
+	/*!
+	 * The main logic of the `deepEqual` function.
+	 *
+	 * @param {Mixed} leftHandOperand
+	 * @param {Mixed} rightHandOperand
+	 * @param {Object} [options] (optional) Additional options
+	 * @param {Array} [options.comparator] (optional) Override default algorithm, determining custom equality.
+	 * @param {Array} [options.memoize] (optional) Provide a custom memoization object which will cache the results of
+	    complex objects for a speed boost. By passing `false` you can disable memoization, but this will cause circular
+	    references to blow the stack.
+	 * @return {Boolean} equal match
+	*/
+	function extensiveDeepEqual(leftHandOperand, rightHandOperand, options) {
+	  options = options || {};
+	  options.memoize = options.memoize === false ? false : options.memoize || new MemoizeMap();
+	  var comparator = options && options.comparator;
+
+	  // Check if a memoized result exists.
+	  var memoizeResultLeft = memoizeCompare(leftHandOperand, rightHandOperand, options.memoize);
+	  if (memoizeResultLeft !== null) {
+	    return memoizeResultLeft;
+	  }
+	  var memoizeResultRight = memoizeCompare(rightHandOperand, leftHandOperand, options.memoize);
+	  if (memoizeResultRight !== null) {
+	    return memoizeResultRight;
+	  }
+
+	  // If a comparator is present, use it.
+	  if (comparator) {
+	    var comparatorResult = comparator(leftHandOperand, rightHandOperand);
+	    // Comparators may return null, in which case we want to go back to default behavior.
+	    if (comparatorResult === false || comparatorResult === true) {
+	      memoizeSet(leftHandOperand, rightHandOperand, options.memoize, comparatorResult);
+	      return comparatorResult;
+	    }
+	    // To allow comparators to override *any* behavior, we ran them first. Since it didn't decide
+	    // what to do, we need to make sure to return the basic tests first before we move on.
+	    var simpleResult = simpleEqual(leftHandOperand, rightHandOperand);
+	    if (simpleResult !== null) {
+	      // Don't memoize this, it takes longer to set/retrieve than to just compare.
+	      return simpleResult;
+	    }
+	  }
+
+	  var leftHandType = typeDetect(leftHandOperand);
+	  if (leftHandType !== typeDetect(rightHandOperand)) {
+	    memoizeSet(leftHandOperand, rightHandOperand, options.memoize, false);
+	    return false;
+	  }
+
+	  // Temporarily set the operands in the memoize object to prevent blowing the stack
+	  memoizeSet(leftHandOperand, rightHandOperand, options.memoize, true);
+
+	  var result = extensiveDeepEqualByType(leftHandOperand, rightHandOperand, leftHandType, options);
+	  memoizeSet(leftHandOperand, rightHandOperand, options.memoize, result);
+	  return result;
+	}
+
+	function extensiveDeepEqualByType(leftHandOperand, rightHandOperand, leftHandType, options) {
+	  switch (leftHandType) {
+	    case 'String':
+	    case 'Number':
+	    case 'Boolean':
+	    case 'Date':
+	      // If these types are their instance types (e.g. `new Number`) then re-deepEqual against their values
+	      return deepEqual(leftHandOperand.valueOf(), rightHandOperand.valueOf());
+	    case 'Promise':
+	    case 'Symbol':
+	    case 'function':
+	    case 'WeakMap':
+	    case 'WeakSet':
+	      return leftHandOperand === rightHandOperand;
+	    case 'Error':
+	      return keysEqual(leftHandOperand, rightHandOperand, [ 'name', 'message', 'code' ], options);
+	    case 'Arguments':
+	    case 'Int8Array':
+	    case 'Uint8Array':
+	    case 'Uint8ClampedArray':
+	    case 'Int16Array':
+	    case 'Uint16Array':
+	    case 'Int32Array':
+	    case 'Uint32Array':
+	    case 'Float32Array':
+	    case 'Float64Array':
+	    case 'Array':
+	      return iterableEqual(leftHandOperand, rightHandOperand, options);
+	    case 'RegExp':
+	      return regexpEqual(leftHandOperand, rightHandOperand);
+	    case 'Generator':
+	      return generatorEqual(leftHandOperand, rightHandOperand, options);
+	    case 'DataView':
+	      return iterableEqual(new Uint8Array(leftHandOperand.buffer), new Uint8Array(rightHandOperand.buffer), options);
+	    case 'ArrayBuffer':
+	      return iterableEqual(new Uint8Array(leftHandOperand), new Uint8Array(rightHandOperand), options);
+	    case 'Set':
+	      return entriesEqual(leftHandOperand, rightHandOperand, options);
+	    case 'Map':
+	      return entriesEqual(leftHandOperand, rightHandOperand, options);
+	    default:
+	      return objectEqual(leftHandOperand, rightHandOperand, options);
+	  }
+	}
+
+	/*!
+	 * Compare two Regular Expressions for equality.
+	 *
+	 * @param {RegExp} leftHandOperand
+	 * @param {RegExp} rightHandOperand
+	 * @return {Boolean} result
+	 */
+
+	function regexpEqual(leftHandOperand, rightHandOperand) {
+	  return leftHandOperand.toString() === rightHandOperand.toString();
+	}
+
+	/*!
+	 * Compare two Sets/Maps for equality. Faster than other equality functions.
+	 *
+	 * @param {Set} leftHandOperand
+	 * @param {Set} rightHandOperand
+	 * @param {Object} [options] (Optional)
+	 * @return {Boolean} result
+	 */
+
+	function entriesEqual(leftHandOperand, rightHandOperand, options) {
+	  // IE11 doesn't support Set#entries or Set#@@iterator, so we need manually populate using Set#forEach
+	  if (leftHandOperand.size !== rightHandOperand.size) {
+	    return false;
+	  }
+	  if (leftHandOperand.size === 0) {
+	    return true;
+	  }
+	  var leftHandItems = [];
+	  var rightHandItems = [];
+	  leftHandOperand.forEach(function gatherEntries(key, value) {
+	    leftHandItems.push([ key, value ]);
+	  });
+	  rightHandOperand.forEach(function gatherEntries(key, value) {
+	    rightHandItems.push([ key, value ]);
+	  });
+	  return iterableEqual(leftHandItems.sort(), rightHandItems.sort(), options);
+	}
+
+	/*!
+	 * Simple equality for flat iterable objects such as Arrays, TypedArrays or Node.js buffers.
+	 *
+	 * @param {Iterable} leftHandOperand
+	 * @param {Iterable} rightHandOperand
+	 * @param {Object} [options] (Optional)
+	 * @return {Boolean} result
+	 */
+
+	function iterableEqual(leftHandOperand, rightHandOperand, options) {
+	  var length = leftHandOperand.length;
+	  if (length !== rightHandOperand.length) {
+	    return false;
+	  }
+	  if (length === 0) {
+	    return true;
+	  }
+	  var index = -1;
+	  while (++index < length) {
+	    if (deepEqual(leftHandOperand[index], rightHandOperand[index], options) === false) {
+	      return false;
+	    }
+	  }
+	  return true;
+	}
+
+	/*!
+	 * Simple equality for generator objects such as those returned by generator functions.
+	 *
+	 * @param {Iterable} leftHandOperand
+	 * @param {Iterable} rightHandOperand
+	 * @param {Object} [options] (Optional)
+	 * @return {Boolean} result
+	 */
+
+	function generatorEqual(leftHandOperand, rightHandOperand, options) {
+	  return iterableEqual(getGeneratorEntries(leftHandOperand), getGeneratorEntries(rightHandOperand), options);
+	}
+
+	/*!
+	 * Determine if the given object has an @@iterator function.
+	 *
+	 * @param {Object} target
+	 * @return {Boolean} `true` if the object has an @@iterator function.
+	 */
+	function hasIteratorFunction(target) {
+	  return typeof Symbol !== 'undefined' &&
+	    typeof target === 'object' &&
+	    typeof Symbol.iterator !== 'undefined' &&
+	    typeof target[Symbol.iterator] === 'function';
+	}
+
+	/*!
+	 * Gets all iterator entries from the given Object. If the Object has no @@iterator function, returns an empty array.
+	 * This will consume the iterator - which could have side effects depending on the @@iterator implementation.
+	 *
+	 * @param {Object} target
+	 * @returns {Array} an array of entries from the @@iterator function
+	 */
+	function getIteratorEntries(target) {
+	  if (hasIteratorFunction(target)) {
+	    try {
+	      return getGeneratorEntries(target[Symbol.iterator]());
+	    } catch (iteratorError) {
+	      return [];
+	    }
+	  }
+	  return [];
+	}
+
+	/*!
+	 * Gets all entries from a Generator. This will consume the generator - which could have side effects.
+	 *
+	 * @param {Generator} target
+	 * @returns {Array} an array of entries from the Generator.
+	 */
+	function getGeneratorEntries(generator) {
+	  var generatorResult = generator.next();
+	  var accumulator = [ generatorResult.value ];
+	  while (generatorResult.done === false) {
+	    generatorResult = generator.next();
+	    accumulator.push(generatorResult.value);
+	  }
+	  return accumulator;
+	}
+
+	/*!
+	 * Gets all own and inherited enumerable keys from a target.
+	 *
+	 * @param {Object} target
+	 * @returns {Array} an array of own and inherited enumerable keys from the target.
+	 */
+	function getEnumerableKeys(target) {
+	  var keys = [];
+	  for (var key in target) {
+	    keys.push(key);
+	  }
+	  return keys;
+	}
+
+	/*!
+	 * Determines if two objects have matching values, given a set of keys. Defers to deepEqual for the equality check of
+	 * each key. If any value of the given key is not equal, the function will return false (early).
+	 *
+	 * @param {Mixed} leftHandOperand
+	 * @param {Mixed} rightHandOperand
+	 * @param {Array} keys An array of keys to compare the values of leftHandOperand and rightHandOperand against
+	 * @param {Object} [options] (Optional)
+	 * @return {Boolean} result
+	 */
+	function keysEqual(leftHandOperand, rightHandOperand, keys, options) {
+	  var length = keys.length;
+	  if (length === 0) {
+	    return true;
+	  }
+	  for (var i = 0; i < length; i += 1) {
+	    if (deepEqual(leftHandOperand[keys[i]], rightHandOperand[keys[i]], options) === false) {
+	      return false;
+	    }
+	  }
+	  return true;
+	}
+
+	/*!
+	 * Recursively check the equality of two Objects. Once basic sameness has been established it will defer to `deepEqual`
+	 * for each enumerable key in the object.
+	 *
+	 * @param {Mixed} leftHandOperand
+	 * @param {Mixed} rightHandOperand
+	 * @param {Object} [options] (Optional)
+	 * @return {Boolean} result
+	 */
+	function objectEqual(leftHandOperand, rightHandOperand, options) {
+	  var leftHandKeys = getEnumerableKeys(leftHandOperand);
+	  var rightHandKeys = getEnumerableKeys(rightHandOperand);
+	  if (leftHandKeys.length && leftHandKeys.length === rightHandKeys.length) {
+	    leftHandKeys.sort();
+	    rightHandKeys.sort();
+	    if (iterableEqual(leftHandKeys, rightHandKeys) === false) {
+	      return false;
+	    }
+	    return keysEqual(leftHandOperand, rightHandOperand, leftHandKeys, options);
+	  }
+
+	  var leftHandEntries = getIteratorEntries(leftHandOperand);
+	  var rightHandEntries = getIteratorEntries(rightHandOperand);
+	  if (leftHandEntries.length && leftHandEntries.length === rightHandEntries.length) {
+	    leftHandEntries.sort();
+	    rightHandEntries.sort();
+	    return iterableEqual(leftHandEntries, rightHandEntries, options);
+	  }
+
+	  if (leftHandKeys.length === 0 &&
+	      leftHandEntries.length === 0 &&
+	      rightHandKeys.length === 0 &&
+	      rightHandEntries.length === 0) {
+	    return true;
+	  }
+
+	  return false;
+	}
+
+	/*!
+	 * Returns true if the argument is a primitive.
+	 *
+	 * This intentionally returns true for all objects that can be compared by reference,
+	 * including functions and symbols.
+	 *
+	 * @param {Mixed} value
+	 * @return {Boolean} result
+	 */
+	function isPrimitive(value) {
+	  return value === null || typeof value !== 'object';
+	}
+	deepEql.MemoizeMap = MemoizeMap_1;
 
 	var messageId = 0;
 	/**
@@ -6315,15 +7147,15 @@
 	  function Requester(conn) {
 	    var config = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
 
-	    classCallCheck(this, Requester);
+	    _classCallCheck(this, Requester);
 
 	    if (!conn) {
 	      throw new Error(errors.InvalidConn());
 	    }
 
 	    this.conn = conn;
-	    this.pollDuration = config.pollDuration || DEFAULT_POLL_DURATION;
-	    this.maxPollRetry = config.maxPollRetry || MAX_POLL_RETRY;
+	    this.pollDuration = config.pollDuration !== undefined ? config.pollDuration : DEFAULT_POLL_DURATION;
+	    this.maxPollRetry = config.maxPollRetry !== undefined ? config.maxPollRetry : MAX_POLL_RETRY;
 	    this.idGenerator = 1; // used for generate watchId
 
 	    this.watchers = {}; // key is watchId, value is timer
@@ -6337,14 +7169,14 @@
 	   */
 
 
-	  createClass(Requester, [{
+	  _createClass(Requester, [{
 	    key: "send",
 	    value: function () {
-	      var _send = asyncToGenerator(
+	      var _send = _asyncToGenerator(
 	      /*#__PURE__*/
-	      regenerator.mark(function _callee(method, params) {
+	      regeneratorRuntime.mark(function _callee(method, params) {
 	        var payload, response;
-	        return regenerator.wrap(function _callee$(_context) {
+	        return regeneratorRuntime.wrap(function _callee$(_context) {
 	          while (1) {
 	            switch (_context.prev = _context.next) {
 	              case 0:
@@ -6381,11 +7213,9 @@
 	        }, _callee, this);
 	      }));
 
-	      function send(_x, _x2) {
+	      return function send(_x, _x2) {
 	        return _send.apply(this, arguments);
-	      }
-
-	      return send;
+	      };
 	    }()
 	    /**
 	     * Send batch request to lemo node asynchronously over RPC
@@ -6399,11 +7229,11 @@
 	  }, {
 	    key: "sendBatch",
 	    value: function () {
-	      var _sendBatch = asyncToGenerator(
+	      var _sendBatch = _asyncToGenerator(
 	      /*#__PURE__*/
-	      regenerator.mark(function _callee2(data) {
+	      regeneratorRuntime.mark(function _callee2(data) {
 	        var payload, response;
-	        return regenerator.wrap(function _callee2$(_context2) {
+	        return regeneratorRuntime.wrap(function _callee2$(_context2) {
 	          while (1) {
 	            switch (_context2.prev = _context2.next) {
 	              case 0:
@@ -6445,11 +7275,9 @@
 	        }, _callee2, this);
 	      }));
 
-	      function sendBatch(_x3) {
+	      return function sendBatch(_x3) {
 	        return _sendBatch.apply(this, arguments);
-	      }
-
-	      return sendBatch;
+	      };
 	    }()
 	    /**
 	     * Poll till the response changed
@@ -6471,18 +7299,18 @@
 	        params = undefined;
 	      }
 
-	      var lastSig;
+	      var lastRes;
 	      var errCount = 0;
 	      var newWatchId = this.idGenerator++;
 
 	      var poll =
 	      /*#__PURE__*/
 	      function () {
-	        var _ref = asyncToGenerator(
+	        var _ref = _asyncToGenerator(
 	        /*#__PURE__*/
-	        regenerator.mark(function _callee3() {
-	          var result, error, sig;
-	          return regenerator.wrap(function _callee3$(_context3) {
+	        regeneratorRuntime.mark(function _callee3() {
+	          var result, error;
+	          return regeneratorRuntime.wrap(function _callee3$(_context3) {
 	            while (1) {
 	              switch (_context3.prev = _context3.next) {
 	                case 0:
@@ -6493,47 +7321,46 @@
 	                case 3:
 	                  result = _context3.sent;
 	                  errCount = 0;
-	                  sig = getSig(result);
 
-	                  if (!(sig === lastSig)) {
-	                    _context3.next = 8;
+	                  if (!deepEql(result, lastRes)) {
+	                    _context3.next = 7;
 	                    break;
 	                  }
 
 	                  return _context3.abrupt("return");
 
-	                case 8:
-	                  lastSig = sig;
-	                  _context3.next = 18;
+	                case 7:
+	                  lastRes = result;
+	                  _context3.next = 17;
 	                  break;
 
-	                case 11:
-	                  _context3.prev = 11;
+	                case 10:
+	                  _context3.prev = 10;
 	                  _context3.t0 = _context3["catch"](0);
-	                  console.error('watch fail:', _context3.t0);
+	                  console.warn("watch fail ".concat(errCount + 1, " times: ").concat(_context3.t0.message));
 
 	                  if (!(++errCount <= _this.maxPollRetry)) {
-	                    _context3.next = 16;
+	                    _context3.next = 15;
 	                    break;
 	                  }
 
 	                  return _context3.abrupt("return");
 
-	                case 16:
+	                case 15:
 	                  error = _context3.t0;
 
 	                  _this.stopWatch(newWatchId);
 
-	                case 18:
+	                case 17:
 	                  // put callback out of try block to expose user's error
-	                  callback(result, error);
+	                  callback(result, newWatchId, error);
 
-	                case 19:
+	                case 18:
 	                case "end":
 	                  return _context3.stop();
 	              }
 	            }
-	          }, _callee3, this, [[0, 11]]);
+	          }, _callee3, this, [[0, 10]]);
 	        }));
 
 	        return function poll() {
@@ -6556,7 +7383,7 @@
 	  }, {
 	    key: "stopWatch",
 	    value: function stopWatch(watchId) {
-	      if (!watchId) {
+	      if (typeof watchId === 'undefined') {
 	        this.reset();
 	        return;
 	      }
@@ -6590,27 +7417,300 @@
 
 	  return Requester;
 	}();
-	/**
-	 * Get the signature of data
-	 * @param {object} data
-	 * @return {string}
-	 */
+
+	// 7.2.2 IsArray(argument)
+
+	var _isArray = Array.isArray || function isArray(arg) {
+	  return _cof(arg) == 'Array';
+	};
+
+	var SPECIES = _wks('species');
+
+	var _arraySpeciesConstructor = function (original) {
+	  var C;
+	  if (_isArray(original)) {
+	    C = original.constructor;
+	    // cross-realm fallback
+	    if (typeof C == 'function' && (C === Array || _isArray(C.prototype))) C = undefined;
+	    if (_isObject(C)) {
+	      C = C[SPECIES];
+	      if (C === null) C = undefined;
+	    }
+	  } return C === undefined ? Array : C;
+	};
+
+	// 9.4.2.3 ArraySpeciesCreate(originalArray, length)
 
 
-	function getSig(data) {
-	  return JSON.stringify(data);
+	var _arraySpeciesCreate = function (original, length) {
+	  return new (_arraySpeciesConstructor(original))(length);
+	};
+
+	// 0 -> Array#forEach
+	// 1 -> Array#map
+	// 2 -> Array#filter
+	// 3 -> Array#some
+	// 4 -> Array#every
+	// 5 -> Array#find
+	// 6 -> Array#findIndex
+
+
+
+
+
+	var _arrayMethods = function (TYPE, $create) {
+	  var IS_MAP = TYPE == 1;
+	  var IS_FILTER = TYPE == 2;
+	  var IS_SOME = TYPE == 3;
+	  var IS_EVERY = TYPE == 4;
+	  var IS_FIND_INDEX = TYPE == 6;
+	  var NO_HOLES = TYPE == 5 || IS_FIND_INDEX;
+	  var create = $create || _arraySpeciesCreate;
+	  return function ($this, callbackfn, that) {
+	    var O = _toObject($this);
+	    var self = _iobject(O);
+	    var f = _ctx(callbackfn, that, 3);
+	    var length = _toLength(self.length);
+	    var index = 0;
+	    var result = IS_MAP ? create($this, length) : IS_FILTER ? create($this, 0) : undefined;
+	    var val, res;
+	    for (;length > index; index++) if (NO_HOLES || index in self) {
+	      val = self[index];
+	      res = f(val, index, O);
+	      if (TYPE) {
+	        if (IS_MAP) result[index] = res;   // map
+	        else if (res) switch (TYPE) {
+	          case 3: return true;             // some
+	          case 5: return val;              // find
+	          case 6: return index;            // findIndex
+	          case 2: result.push(val);        // filter
+	        } else if (IS_EVERY) return false; // every
+	      }
+	    }
+	    return IS_FIND_INDEX ? -1 : IS_SOME || IS_EVERY ? IS_EVERY : result;
+	  };
+	};
+
+	// 22.1.3.8 Array.prototype.find(predicate, thisArg = undefined)
+
+	var $find = _arrayMethods(5);
+	var KEY = 'find';
+	var forced = true;
+	// Shouldn't skip holes
+	if (KEY in []) Array(1)[KEY](function () { forced = false; });
+	_export(_export.P + _export.F * forced, 'Array', {
+	  find: function find(callbackfn /* , that = undefined */) {
+	    return $find(this, callbackfn, arguments.length > 1 ? arguments[1] : undefined);
+	  }
+	});
+	_addToUnscopables(KEY);
+
+	// true  -> String#at
+	// false -> String#codePointAt
+	var _stringAt = function (TO_STRING) {
+	  return function (that, pos) {
+	    var s = String(_defined(that));
+	    var i = _toInteger(pos);
+	    var l = s.length;
+	    var a, b;
+	    if (i < 0 || i >= l) return TO_STRING ? '' : undefined;
+	    a = s.charCodeAt(i);
+	    return a < 0xd800 || a > 0xdbff || i + 1 === l || (b = s.charCodeAt(i + 1)) < 0xdc00 || b > 0xdfff
+	      ? TO_STRING ? s.charAt(i) : a
+	      : TO_STRING ? s.slice(i, i + 2) : (a - 0xd800 << 10) + (b - 0xdc00) + 0x10000;
+	  };
+	};
+
+	var at = _stringAt(true);
+
+	 // `AdvanceStringIndex` abstract operation
+	// https://tc39.github.io/ecma262/#sec-advancestringindex
+	var _advanceStringIndex = function (S, index, unicode) {
+	  return index + (unicode ? at(S, index).length : 1);
+	};
+
+	// getting tag from 19.1.3.6 Object.prototype.toString()
+
+	var TAG$1 = _wks('toStringTag');
+	// ES3 wrong here
+	var ARG = _cof(function () { return arguments; }()) == 'Arguments';
+
+	// fallback for IE11 Script Access Denied error
+	var tryGet = function (it, key) {
+	  try {
+	    return it[key];
+	  } catch (e) { /* empty */ }
+	};
+
+	var _classof = function (it) {
+	  var O, T, B;
+	  return it === undefined ? 'Undefined' : it === null ? 'Null'
+	    // @@toStringTag case
+	    : typeof (T = tryGet(O = Object(it), TAG$1)) == 'string' ? T
+	    // builtinTag case
+	    : ARG ? _cof(O)
+	    // ES3 arguments fallback
+	    : (B = _cof(O)) == 'Object' && typeof O.callee == 'function' ? 'Arguments' : B;
+	};
+
+	var builtinExec = RegExp.prototype.exec;
+
+	 // `RegExpExec` abstract operation
+	// https://tc39.github.io/ecma262/#sec-regexpexec
+	var _regexpExecAbstract = function (R, S) {
+	  var exec = R.exec;
+	  if (typeof exec === 'function') {
+	    var result = exec.call(R, S);
+	    if (typeof result !== 'object') {
+	      throw new TypeError('RegExp exec method returned something other than an Object or null');
+	    }
+	    return result;
+	  }
+	  if (_classof(R) !== 'RegExp') {
+	    throw new TypeError('RegExp#exec called on incompatible receiver');
+	  }
+	  return builtinExec.call(R, S);
+	};
+
+	var nativeExec = RegExp.prototype.exec;
+	// This always refers to the native implementation, because the
+	// String#replace polyfill uses ./fix-regexp-well-known-symbol-logic.js,
+	// which loads this file before patching the method.
+	var nativeReplace = String.prototype.replace;
+
+	var patchedExec = nativeExec;
+
+	var LAST_INDEX = 'lastIndex';
+
+	var UPDATES_LAST_INDEX_WRONG = (function () {
+	  var re1 = /a/,
+	      re2 = /b*/g;
+	  nativeExec.call(re1, 'a');
+	  nativeExec.call(re2, 'a');
+	  return re1[LAST_INDEX] !== 0 || re2[LAST_INDEX] !== 0;
+	})();
+
+	// nonparticipating capturing group, copied from es5-shim's String#split patch.
+	var NPCG_INCLUDED = /()??/.exec('')[1] !== undefined;
+
+	var PATCH = UPDATES_LAST_INDEX_WRONG || NPCG_INCLUDED;
+
+	if (PATCH) {
+	  patchedExec = function exec(str) {
+	    var re = this;
+	    var lastIndex, reCopy, match, i;
+
+	    if (NPCG_INCLUDED) {
+	      reCopy = new RegExp('^' + re.source + '$(?!\\s)', _flags.call(re));
+	    }
+	    if (UPDATES_LAST_INDEX_WRONG) lastIndex = re[LAST_INDEX];
+
+	    match = nativeExec.call(re, str);
+
+	    if (UPDATES_LAST_INDEX_WRONG && match) {
+	      re[LAST_INDEX] = re.global ? match.index + match[0].length : lastIndex;
+	    }
+	    if (NPCG_INCLUDED && match && match.length > 1) {
+	      // Fix browsers whose `exec` methods don't consistently return `undefined`
+	      // for NPCG, like IE8. NOTE: This doesn' work for /(.?)?/
+	      // eslint-disable-next-line no-loop-func
+	      nativeReplace.call(match[0], reCopy, function () {
+	        for (i = 1; i < arguments.length - 2; i++) {
+	          if (arguments[i] === undefined) match[i] = undefined;
+	        }
+	      });
+	    }
+
+	    return match;
+	  };
 	}
+
+	var _regexpExec = patchedExec;
+
+	_export({
+	  target: 'RegExp',
+	  proto: true,
+	  forced: _regexpExec !== /./.exec
+	}, {
+	  exec: _regexpExec
+	});
+
+	var SPECIES$1 = _wks('species');
+
+	var REPLACE_SUPPORTS_NAMED_GROUPS = !_fails(function () {
+	  // #replace needs built-in support for named groups.
+	  // #match works fine because it just return the exec results, even if it has
+	  // a "grops" property.
+	  var re = /./;
+	  re.exec = function () {
+	    var result = [];
+	    result.groups = { a: '7' };
+	    return result;
+	  };
+	  return ''.replace(re, '$<a>') !== '7';
+	});
+
+	var SPLIT_WORKS_WITH_OVERWRITTEN_EXEC = (function () {
+	  // Chrome 51 has a buggy "split" implementation when RegExp#exec !== nativeExec
+	  var re = /(?:)/;
+	  var originalExec = re.exec;
+	  re.exec = function () { return originalExec.apply(this, arguments); };
+	  var result = 'ab'.split(re);
+	  return result.length === 2 && result[0] === 'a' && result[1] === 'b';
+	})();
 
 	var _fixReWks = function (KEY, length, exec) {
 	  var SYMBOL = _wks(KEY);
-	  var fns = exec(_defined, SYMBOL, ''[KEY]);
-	  var strfn = fns[0];
-	  var rxfn = fns[1];
-	  if (_fails(function () {
+
+	  var DELEGATES_TO_SYMBOL = !_fails(function () {
+	    // String methods call symbol-named RegEp methods
 	    var O = {};
 	    O[SYMBOL] = function () { return 7; };
 	    return ''[KEY](O) != 7;
-	  })) {
+	  });
+
+	  var DELEGATES_TO_EXEC = DELEGATES_TO_SYMBOL ? !_fails(function () {
+	    // Symbol-named RegExp methods call .exec
+	    var execCalled = false;
+	    var re = /a/;
+	    re.exec = function () { execCalled = true; return null; };
+	    if (KEY === 'split') {
+	      // RegExp[@@split] doesn't call the regex's exec method, but first creates
+	      // a new one. We need to return the patched regex when creating the new one.
+	      re.constructor = {};
+	      re.constructor[SPECIES$1] = function () { return re; };
+	    }
+	    re[SYMBOL]('');
+	    return !execCalled;
+	  }) : undefined;
+
+	  if (
+	    !DELEGATES_TO_SYMBOL ||
+	    !DELEGATES_TO_EXEC ||
+	    (KEY === 'replace' && !REPLACE_SUPPORTS_NAMED_GROUPS) ||
+	    (KEY === 'split' && !SPLIT_WORKS_WITH_OVERWRITTEN_EXEC)
+	  ) {
+	    var nativeRegExpMethod = /./[SYMBOL];
+	    var fns = exec(
+	      _defined,
+	      SYMBOL,
+	      ''[KEY],
+	      function maybeCallNative(nativeMethod, regexp, str, arg2, forceStringMethod) {
+	        if (regexp.exec === _regexpExec) {
+	          if (DELEGATES_TO_SYMBOL && !forceStringMethod) {
+	            // The native String method already delegates to @@method (this
+	            // polyfilled function), leasing to infinite recursion.
+	            // We avoid it by directly calling the native @@method method.
+	            return { done: true, value: nativeRegExpMethod.call(regexp, str, arg2) };
+	          }
+	          return { done: true, value: nativeMethod.call(str, regexp, arg2) };
+	        }
+	        return { done: false };
+	      }
+	    );
+	    var strfn = fns[0];
+	    var rxfn = fns[1];
+
 	    _redefine(String.prototype, KEY, strfn);
 	    _hide(RegExp.prototype, SYMBOL, length == 2
 	      // 21.2.5.8 RegExp.prototype[@@replace](string, replaceValue)
@@ -6623,16 +7723,794 @@
 	  }
 	};
 
+	var max$1 = Math.max;
+	var min$2 = Math.min;
+	var floor$1 = Math.floor;
+	var SUBSTITUTION_SYMBOLS = /\$([$&`']|\d\d?|<[^>]*>)/g;
+	var SUBSTITUTION_SYMBOLS_NO_NAMED = /\$([$&`']|\d\d?)/g;
+
+	var maybeToString = function (it) {
+	  return it === undefined ? it : String(it);
+	};
+
 	// @@replace logic
-	_fixReWks('replace', 2, function (defined, REPLACE, $replace) {
-	  // 21.1.3.14 String.prototype.replace(searchValue, replaceValue)
-	  return [function replace(searchValue, replaceValue) {
-	    var O = defined(this);
-	    var fn = searchValue == undefined ? undefined : searchValue[REPLACE];
-	    return fn !== undefined
-	      ? fn.call(searchValue, O, replaceValue)
-	      : $replace.call(String(O), searchValue, replaceValue);
-	  }, $replace];
+	_fixReWks('replace', 2, function (defined, REPLACE, $replace, maybeCallNative) {
+	  return [
+	    // `String.prototype.replace` method
+	    // https://tc39.github.io/ecma262/#sec-string.prototype.replace
+	    function replace(searchValue, replaceValue) {
+	      var O = defined(this);
+	      var fn = searchValue == undefined ? undefined : searchValue[REPLACE];
+	      return fn !== undefined
+	        ? fn.call(searchValue, O, replaceValue)
+	        : $replace.call(String(O), searchValue, replaceValue);
+	    },
+	    // `RegExp.prototype[@@replace]` method
+	    // https://tc39.github.io/ecma262/#sec-regexp.prototype-@@replace
+	    function (regexp, replaceValue) {
+	      var res = maybeCallNative($replace, regexp, this, replaceValue);
+	      if (res.done) return res.value;
+
+	      var rx = _anObject(regexp);
+	      var S = String(this);
+	      var functionalReplace = typeof replaceValue === 'function';
+	      if (!functionalReplace) replaceValue = String(replaceValue);
+	      var global = rx.global;
+	      if (global) {
+	        var fullUnicode = rx.unicode;
+	        rx.lastIndex = 0;
+	      }
+	      var results = [];
+	      while (true) {
+	        var result = _regexpExecAbstract(rx, S);
+	        if (result === null) break;
+	        results.push(result);
+	        if (!global) break;
+	        var matchStr = String(result[0]);
+	        if (matchStr === '') rx.lastIndex = _advanceStringIndex(S, _toLength(rx.lastIndex), fullUnicode);
+	      }
+	      var accumulatedResult = '';
+	      var nextSourcePosition = 0;
+	      for (var i = 0; i < results.length; i++) {
+	        result = results[i];
+	        var matched = String(result[0]);
+	        var position = max$1(min$2(_toInteger(result.index), S.length), 0);
+	        var captures = [];
+	        // NOTE: This is equivalent to
+	        //   captures = result.slice(1).map(maybeToString)
+	        // but for some reason `nativeSlice.call(result, 1, result.length)` (called in
+	        // the slice polyfill when slicing native arrays) "doesn't work" in safari 9 and
+	        // causes a crash (https://pastebin.com/N21QzeQA) when trying to debug it.
+	        for (var j = 1; j < result.length; j++) captures.push(maybeToString(result[j]));
+	        var namedCaptures = result.groups;
+	        if (functionalReplace) {
+	          var replacerArgs = [matched].concat(captures, position, S);
+	          if (namedCaptures !== undefined) replacerArgs.push(namedCaptures);
+	          var replacement = String(replaceValue.apply(undefined, replacerArgs));
+	        } else {
+	          replacement = getSubstitution(matched, S, position, captures, namedCaptures, replaceValue);
+	        }
+	        if (position >= nextSourcePosition) {
+	          accumulatedResult += S.slice(nextSourcePosition, position) + replacement;
+	          nextSourcePosition = position + matched.length;
+	        }
+	      }
+	      return accumulatedResult + S.slice(nextSourcePosition);
+	    }
+	  ];
+
+	    // https://tc39.github.io/ecma262/#sec-getsubstitution
+	  function getSubstitution(matched, str, position, captures, namedCaptures, replacement) {
+	    var tailPos = position + matched.length;
+	    var m = captures.length;
+	    var symbols = SUBSTITUTION_SYMBOLS_NO_NAMED;
+	    if (namedCaptures !== undefined) {
+	      namedCaptures = _toObject(namedCaptures);
+	      symbols = SUBSTITUTION_SYMBOLS;
+	    }
+	    return $replace.call(replacement, symbols, function (match, ch) {
+	      var capture;
+	      switch (ch.charAt(0)) {
+	        case '$': return '$';
+	        case '&': return matched;
+	        case '`': return str.slice(0, position);
+	        case "'": return str.slice(tailPos);
+	        case '<':
+	          capture = namedCaptures[ch.slice(1, -1)];
+	          break;
+	        default: // \d\d?
+	          var n = +ch;
+	          if (n === 0) return ch;
+	          if (n > m) {
+	            var f = floor$1(n / 10);
+	            if (f === 0) return ch;
+	            if (f <= m) return captures[f - 1] === undefined ? ch.charAt(1) : captures[f - 1] + ch.charAt(1);
+	            return ch;
+	          }
+	          capture = captures[n - 1];
+	      }
+	      return capture === undefined ? '' : capture;
+	    });
+	  }
+	});
+
+	var _anInstance = function (it, Constructor, name, forbiddenField) {
+	  if (!(it instanceof Constructor) || (forbiddenField !== undefined && forbiddenField in it)) {
+	    throw TypeError(name + ': incorrect invocation!');
+	  } return it;
+	};
+
+	// call something on iterator step with safe closing on error
+
+	var _iterCall = function (iterator, fn, value, entries) {
+	  try {
+	    return entries ? fn(_anObject(value)[0], value[1]) : fn(value);
+	  // 7.4.6 IteratorClose(iterator, completion)
+	  } catch (e) {
+	    var ret = iterator['return'];
+	    if (ret !== undefined) _anObject(ret.call(iterator));
+	    throw e;
+	  }
+	};
+
+	// check on default Array iterator
+
+	var ITERATOR$2 = _wks('iterator');
+	var ArrayProto$1 = Array.prototype;
+
+	var _isArrayIter = function (it) {
+	  return it !== undefined && (_iterators.Array === it || ArrayProto$1[ITERATOR$2] === it);
+	};
+
+	var ITERATOR$3 = _wks('iterator');
+
+	var core_getIteratorMethod = _core.getIteratorMethod = function (it) {
+	  if (it != undefined) return it[ITERATOR$3]
+	    || it['@@iterator']
+	    || _iterators[_classof(it)];
+	};
+
+	var _forOf = createCommonjsModule(function (module) {
+	var BREAK = {};
+	var RETURN = {};
+	var exports = module.exports = function (iterable, entries, fn, that, ITERATOR) {
+	  var iterFn = ITERATOR ? function () { return iterable; } : core_getIteratorMethod(iterable);
+	  var f = _ctx(fn, that, entries ? 2 : 1);
+	  var index = 0;
+	  var length, step, iterator, result;
+	  if (typeof iterFn != 'function') throw TypeError(iterable + ' is not iterable!');
+	  // fast case for arrays with default iterator
+	  if (_isArrayIter(iterFn)) for (length = _toLength(iterable.length); length > index; index++) {
+	    result = entries ? f(_anObject(step = iterable[index])[0], step[1]) : f(iterable[index]);
+	    if (result === BREAK || result === RETURN) return result;
+	  } else for (iterator = iterFn.call(iterable); !(step = iterator.next()).done;) {
+	    result = _iterCall(iterator, f, step.value, entries);
+	    if (result === BREAK || result === RETURN) return result;
+	  }
+	};
+	exports.BREAK = BREAK;
+	exports.RETURN = RETURN;
+	});
+
+	// 7.3.20 SpeciesConstructor(O, defaultConstructor)
+
+
+	var SPECIES$2 = _wks('species');
+	var _speciesConstructor = function (O, D) {
+	  var C = _anObject(O).constructor;
+	  var S;
+	  return C === undefined || (S = _anObject(C)[SPECIES$2]) == undefined ? D : _aFunction(S);
+	};
+
+	// fast apply, http://jsperf.lnkit.com/fast-apply/5
+	var _invoke = function (fn, args, that) {
+	  var un = that === undefined;
+	  switch (args.length) {
+	    case 0: return un ? fn()
+	                      : fn.call(that);
+	    case 1: return un ? fn(args[0])
+	                      : fn.call(that, args[0]);
+	    case 2: return un ? fn(args[0], args[1])
+	                      : fn.call(that, args[0], args[1]);
+	    case 3: return un ? fn(args[0], args[1], args[2])
+	                      : fn.call(that, args[0], args[1], args[2]);
+	    case 4: return un ? fn(args[0], args[1], args[2], args[3])
+	                      : fn.call(that, args[0], args[1], args[2], args[3]);
+	  } return fn.apply(that, args);
+	};
+
+	var process$1 = _global.process;
+	var setTask = _global.setImmediate;
+	var clearTask = _global.clearImmediate;
+	var MessageChannel = _global.MessageChannel;
+	var Dispatch = _global.Dispatch;
+	var counter = 0;
+	var queue$1 = {};
+	var ONREADYSTATECHANGE = 'onreadystatechange';
+	var defer, channel, port;
+	var run = function () {
+	  var id = +this;
+	  // eslint-disable-next-line no-prototype-builtins
+	  if (queue$1.hasOwnProperty(id)) {
+	    var fn = queue$1[id];
+	    delete queue$1[id];
+	    fn();
+	  }
+	};
+	var listener = function (event) {
+	  run.call(event.data);
+	};
+	// Node.js 0.9+ & IE10+ has setImmediate, otherwise:
+	if (!setTask || !clearTask) {
+	  setTask = function setImmediate(fn) {
+	    var args = [];
+	    var i = 1;
+	    while (arguments.length > i) args.push(arguments[i++]);
+	    queue$1[++counter] = function () {
+	      // eslint-disable-next-line no-new-func
+	      _invoke(typeof fn == 'function' ? fn : Function(fn), args);
+	    };
+	    defer(counter);
+	    return counter;
+	  };
+	  clearTask = function clearImmediate(id) {
+	    delete queue$1[id];
+	  };
+	  // Node.js 0.8-
+	  if (_cof(process$1) == 'process') {
+	    defer = function (id) {
+	      process$1.nextTick(_ctx(run, id, 1));
+	    };
+	  // Sphere (JS game engine) Dispatch API
+	  } else if (Dispatch && Dispatch.now) {
+	    defer = function (id) {
+	      Dispatch.now(_ctx(run, id, 1));
+	    };
+	  // Browsers with MessageChannel, includes WebWorkers
+	  } else if (MessageChannel) {
+	    channel = new MessageChannel();
+	    port = channel.port2;
+	    channel.port1.onmessage = listener;
+	    defer = _ctx(port.postMessage, port, 1);
+	  // Browsers with postMessage, skip WebWorkers
+	  // IE8 has postMessage, but it's sync & typeof its postMessage is 'object'
+	  } else if (_global.addEventListener && typeof postMessage == 'function' && !_global.importScripts) {
+	    defer = function (id) {
+	      _global.postMessage(id + '', '*');
+	    };
+	    _global.addEventListener('message', listener, false);
+	  // IE8-
+	  } else if (ONREADYSTATECHANGE in _domCreate('script')) {
+	    defer = function (id) {
+	      _html.appendChild(_domCreate('script'))[ONREADYSTATECHANGE] = function () {
+	        _html.removeChild(this);
+	        run.call(id);
+	      };
+	    };
+	  // Rest old browsers
+	  } else {
+	    defer = function (id) {
+	      setTimeout(_ctx(run, id, 1), 0);
+	    };
+	  }
+	}
+	var _task = {
+	  set: setTask,
+	  clear: clearTask
+	};
+
+	var macrotask = _task.set;
+	var Observer = _global.MutationObserver || _global.WebKitMutationObserver;
+	var process$2 = _global.process;
+	var Promise$1 = _global.Promise;
+	var isNode = _cof(process$2) == 'process';
+
+	var _microtask = function () {
+	  var head, last, notify;
+
+	  var flush = function () {
+	    var parent, fn;
+	    if (isNode && (parent = process$2.domain)) parent.exit();
+	    while (head) {
+	      fn = head.fn;
+	      head = head.next;
+	      try {
+	        fn();
+	      } catch (e) {
+	        if (head) notify();
+	        else last = undefined;
+	        throw e;
+	      }
+	    } last = undefined;
+	    if (parent) parent.enter();
+	  };
+
+	  // Node.js
+	  if (isNode) {
+	    notify = function () {
+	      process$2.nextTick(flush);
+	    };
+	  // browsers with MutationObserver, except iOS Safari - https://github.com/zloirock/core-js/issues/339
+	  } else if (Observer && !(_global.navigator && _global.navigator.standalone)) {
+	    var toggle = true;
+	    var node = document.createTextNode('');
+	    new Observer(flush).observe(node, { characterData: true }); // eslint-disable-line no-new
+	    notify = function () {
+	      node.data = toggle = !toggle;
+	    };
+	  // environments with maybe non-completely correct, but existent Promise
+	  } else if (Promise$1 && Promise$1.resolve) {
+	    // Promise.resolve without an argument throws an error in LG WebOS 2
+	    var promise = Promise$1.resolve(undefined);
+	    notify = function () {
+	      promise.then(flush);
+	    };
+	  // for other environments - macrotask based on:
+	  // - setImmediate
+	  // - MessageChannel
+	  // - window.postMessag
+	  // - onreadystatechange
+	  // - setTimeout
+	  } else {
+	    notify = function () {
+	      // strange IE + webpack dev server bug - use .call(global)
+	      macrotask.call(_global, flush);
+	    };
+	  }
+
+	  return function (fn) {
+	    var task = { fn: fn, next: undefined };
+	    if (last) last.next = task;
+	    if (!head) {
+	      head = task;
+	      notify();
+	    } last = task;
+	  };
+	};
+
+	// 25.4.1.5 NewPromiseCapability(C)
+
+
+	function PromiseCapability(C) {
+	  var resolve, reject;
+	  this.promise = new C(function ($$resolve, $$reject) {
+	    if (resolve !== undefined || reject !== undefined) throw TypeError('Bad Promise constructor');
+	    resolve = $$resolve;
+	    reject = $$reject;
+	  });
+	  this.resolve = _aFunction(resolve);
+	  this.reject = _aFunction(reject);
+	}
+
+	var f$2 = function (C) {
+	  return new PromiseCapability(C);
+	};
+
+	var _newPromiseCapability = {
+		f: f$2
+	};
+
+	var _perform = function (exec) {
+	  try {
+	    return { e: false, v: exec() };
+	  } catch (e) {
+	    return { e: true, v: e };
+	  }
+	};
+
+	var navigator$1 = _global.navigator;
+
+	var _userAgent = navigator$1 && navigator$1.userAgent || '';
+
+	var _promiseResolve = function (C, x) {
+	  _anObject(C);
+	  if (_isObject(x) && x.constructor === C) return x;
+	  var promiseCapability = _newPromiseCapability.f(C);
+	  var resolve = promiseCapability.resolve;
+	  resolve(x);
+	  return promiseCapability.promise;
+	};
+
+	var _redefineAll = function (target, src, safe) {
+	  for (var key in src) _redefine(target, key, src[key], safe);
+	  return target;
+	};
+
+	var SPECIES$3 = _wks('species');
+
+	var _setSpecies = function (KEY) {
+	  var C = _global[KEY];
+	  if (_descriptors && C && !C[SPECIES$3]) _objectDp.f(C, SPECIES$3, {
+	    configurable: true,
+	    get: function () { return this; }
+	  });
+	};
+
+	var ITERATOR$4 = _wks('iterator');
+	var SAFE_CLOSING = false;
+
+	try {
+	  var riter = [7][ITERATOR$4]();
+	  riter['return'] = function () { SAFE_CLOSING = true; };
+	} catch (e) { /* empty */ }
+
+	var _iterDetect = function (exec, skipClosing) {
+	  if (!skipClosing && !SAFE_CLOSING) return false;
+	  var safe = false;
+	  try {
+	    var arr = [7];
+	    var iter = arr[ITERATOR$4]();
+	    iter.next = function () { return { done: safe = true }; };
+	    arr[ITERATOR$4] = function () { return iter; };
+	    exec(arr);
+	  } catch (e) { /* empty */ }
+	  return safe;
+	};
+
+	var task = _task.set;
+	var microtask = _microtask();
+
+
+
+
+	var PROMISE = 'Promise';
+	var TypeError$1 = _global.TypeError;
+	var process$3 = _global.process;
+	var versions$1 = process$3 && process$3.versions;
+	var v8 = versions$1 && versions$1.v8 || '';
+	var $Promise = _global[PROMISE];
+	var isNode$1 = _classof(process$3) == 'process';
+	var empty = function () { /* empty */ };
+	var Internal, newGenericPromiseCapability, OwnPromiseCapability, Wrapper;
+	var newPromiseCapability = newGenericPromiseCapability = _newPromiseCapability.f;
+
+	var USE_NATIVE = !!function () {
+	  try {
+	    // correct subclassing with @@species support
+	    var promise = $Promise.resolve(1);
+	    var FakePromise = (promise.constructor = {})[_wks('species')] = function (exec) {
+	      exec(empty, empty);
+	    };
+	    // unhandled rejections tracking support, NodeJS Promise without it fails @@species test
+	    return (isNode$1 || typeof PromiseRejectionEvent == 'function')
+	      && promise.then(empty) instanceof FakePromise
+	      // v8 6.6 (Node 10 and Chrome 66) have a bug with resolving custom thenables
+	      // https://bugs.chromium.org/p/chromium/issues/detail?id=830565
+	      // we can't detect it synchronously, so just check versions
+	      && v8.indexOf('6.6') !== 0
+	      && _userAgent.indexOf('Chrome/66') === -1;
+	  } catch (e) { /* empty */ }
+	}();
+
+	// helpers
+	var isThenable = function (it) {
+	  var then;
+	  return _isObject(it) && typeof (then = it.then) == 'function' ? then : false;
+	};
+	var notify = function (promise, isReject) {
+	  if (promise._n) return;
+	  promise._n = true;
+	  var chain = promise._c;
+	  microtask(function () {
+	    var value = promise._v;
+	    var ok = promise._s == 1;
+	    var i = 0;
+	    var run = function (reaction) {
+	      var handler = ok ? reaction.ok : reaction.fail;
+	      var resolve = reaction.resolve;
+	      var reject = reaction.reject;
+	      var domain = reaction.domain;
+	      var result, then, exited;
+	      try {
+	        if (handler) {
+	          if (!ok) {
+	            if (promise._h == 2) onHandleUnhandled(promise);
+	            promise._h = 1;
+	          }
+	          if (handler === true) result = value;
+	          else {
+	            if (domain) domain.enter();
+	            result = handler(value); // may throw
+	            if (domain) {
+	              domain.exit();
+	              exited = true;
+	            }
+	          }
+	          if (result === reaction.promise) {
+	            reject(TypeError$1('Promise-chain cycle'));
+	          } else if (then = isThenable(result)) {
+	            then.call(result, resolve, reject);
+	          } else resolve(result);
+	        } else reject(value);
+	      } catch (e) {
+	        if (domain && !exited) domain.exit();
+	        reject(e);
+	      }
+	    };
+	    while (chain.length > i) run(chain[i++]); // variable length - can't use forEach
+	    promise._c = [];
+	    promise._n = false;
+	    if (isReject && !promise._h) onUnhandled(promise);
+	  });
+	};
+	var onUnhandled = function (promise) {
+	  task.call(_global, function () {
+	    var value = promise._v;
+	    var unhandled = isUnhandled(promise);
+	    var result, handler, console;
+	    if (unhandled) {
+	      result = _perform(function () {
+	        if (isNode$1) {
+	          process$3.emit('unhandledRejection', value, promise);
+	        } else if (handler = _global.onunhandledrejection) {
+	          handler({ promise: promise, reason: value });
+	        } else if ((console = _global.console) && console.error) {
+	          console.error('Unhandled promise rejection', value);
+	        }
+	      });
+	      // Browsers should not trigger `rejectionHandled` event if it was handled here, NodeJS - should
+	      promise._h = isNode$1 || isUnhandled(promise) ? 2 : 1;
+	    } promise._a = undefined;
+	    if (unhandled && result.e) throw result.v;
+	  });
+	};
+	var isUnhandled = function (promise) {
+	  return promise._h !== 1 && (promise._a || promise._c).length === 0;
+	};
+	var onHandleUnhandled = function (promise) {
+	  task.call(_global, function () {
+	    var handler;
+	    if (isNode$1) {
+	      process$3.emit('rejectionHandled', promise);
+	    } else if (handler = _global.onrejectionhandled) {
+	      handler({ promise: promise, reason: promise._v });
+	    }
+	  });
+	};
+	var $reject = function (value) {
+	  var promise = this;
+	  if (promise._d) return;
+	  promise._d = true;
+	  promise = promise._w || promise; // unwrap
+	  promise._v = value;
+	  promise._s = 2;
+	  if (!promise._a) promise._a = promise._c.slice();
+	  notify(promise, true);
+	};
+	var $resolve = function (value) {
+	  var promise = this;
+	  var then;
+	  if (promise._d) return;
+	  promise._d = true;
+	  promise = promise._w || promise; // unwrap
+	  try {
+	    if (promise === value) throw TypeError$1("Promise can't be resolved itself");
+	    if (then = isThenable(value)) {
+	      microtask(function () {
+	        var wrapper = { _w: promise, _d: false }; // wrap
+	        try {
+	          then.call(value, _ctx($resolve, wrapper, 1), _ctx($reject, wrapper, 1));
+	        } catch (e) {
+	          $reject.call(wrapper, e);
+	        }
+	      });
+	    } else {
+	      promise._v = value;
+	      promise._s = 1;
+	      notify(promise, false);
+	    }
+	  } catch (e) {
+	    $reject.call({ _w: promise, _d: false }, e); // wrap
+	  }
+	};
+
+	// constructor polyfill
+	if (!USE_NATIVE) {
+	  // 25.4.3.1 Promise(executor)
+	  $Promise = function Promise(executor) {
+	    _anInstance(this, $Promise, PROMISE, '_h');
+	    _aFunction(executor);
+	    Internal.call(this);
+	    try {
+	      executor(_ctx($resolve, this, 1), _ctx($reject, this, 1));
+	    } catch (err) {
+	      $reject.call(this, err);
+	    }
+	  };
+	  // eslint-disable-next-line no-unused-vars
+	  Internal = function Promise(executor) {
+	    this._c = [];             // <- awaiting reactions
+	    this._a = undefined;      // <- checked in isUnhandled reactions
+	    this._s = 0;              // <- state
+	    this._d = false;          // <- done
+	    this._v = undefined;      // <- value
+	    this._h = 0;              // <- rejection state, 0 - default, 1 - handled, 2 - unhandled
+	    this._n = false;          // <- notify
+	  };
+	  Internal.prototype = _redefineAll($Promise.prototype, {
+	    // 25.4.5.3 Promise.prototype.then(onFulfilled, onRejected)
+	    then: function then(onFulfilled, onRejected) {
+	      var reaction = newPromiseCapability(_speciesConstructor(this, $Promise));
+	      reaction.ok = typeof onFulfilled == 'function' ? onFulfilled : true;
+	      reaction.fail = typeof onRejected == 'function' && onRejected;
+	      reaction.domain = isNode$1 ? process$3.domain : undefined;
+	      this._c.push(reaction);
+	      if (this._a) this._a.push(reaction);
+	      if (this._s) notify(this, false);
+	      return reaction.promise;
+	    },
+	    // 25.4.5.1 Promise.prototype.catch(onRejected)
+	    'catch': function (onRejected) {
+	      return this.then(undefined, onRejected);
+	    }
+	  });
+	  OwnPromiseCapability = function () {
+	    var promise = new Internal();
+	    this.promise = promise;
+	    this.resolve = _ctx($resolve, promise, 1);
+	    this.reject = _ctx($reject, promise, 1);
+	  };
+	  _newPromiseCapability.f = newPromiseCapability = function (C) {
+	    return C === $Promise || C === Wrapper
+	      ? new OwnPromiseCapability(C)
+	      : newGenericPromiseCapability(C);
+	  };
+	}
+
+	_export(_export.G + _export.W + _export.F * !USE_NATIVE, { Promise: $Promise });
+	_setToStringTag($Promise, PROMISE);
+	_setSpecies(PROMISE);
+	Wrapper = _core[PROMISE];
+
+	// statics
+	_export(_export.S + _export.F * !USE_NATIVE, PROMISE, {
+	  // 25.4.4.5 Promise.reject(r)
+	  reject: function reject(r) {
+	    var capability = newPromiseCapability(this);
+	    var $$reject = capability.reject;
+	    $$reject(r);
+	    return capability.promise;
+	  }
+	});
+	_export(_export.S + _export.F * (_library || !USE_NATIVE), PROMISE, {
+	  // 25.4.4.6 Promise.resolve(x)
+	  resolve: function resolve(x) {
+	    return _promiseResolve(_library && this === Wrapper ? $Promise : this, x);
+	  }
+	});
+	_export(_export.S + _export.F * !(USE_NATIVE && _iterDetect(function (iter) {
+	  $Promise.all(iter)['catch'](empty);
+	})), PROMISE, {
+	  // 25.4.4.1 Promise.all(iterable)
+	  all: function all(iterable) {
+	    var C = this;
+	    var capability = newPromiseCapability(C);
+	    var resolve = capability.resolve;
+	    var reject = capability.reject;
+	    var result = _perform(function () {
+	      var values = [];
+	      var index = 0;
+	      var remaining = 1;
+	      _forOf(iterable, false, function (promise) {
+	        var $index = index++;
+	        var alreadyCalled = false;
+	        values.push(undefined);
+	        remaining++;
+	        C.resolve(promise).then(function (value) {
+	          if (alreadyCalled) return;
+	          alreadyCalled = true;
+	          values[$index] = value;
+	          --remaining || resolve(values);
+	        }, reject);
+	      });
+	      --remaining || resolve(values);
+	    });
+	    if (result.e) reject(result.v);
+	    return capability.promise;
+	  },
+	  // 25.4.4.4 Promise.race(iterable)
+	  race: function race(iterable) {
+	    var C = this;
+	    var capability = newPromiseCapability(C);
+	    var reject = capability.reject;
+	    var result = _perform(function () {
+	      _forOf(iterable, false, function (promise) {
+	        C.resolve(promise).then(capability.resolve, reject);
+	      });
+	    });
+	    if (result.e) reject(result.v);
+	    return capability.promise;
+	  }
+	});
+
+	var _arrayFill = function fill(value /* , start = 0, end = @length */) {
+	  var O = _toObject(this);
+	  var length = _toLength(O.length);
+	  var aLen = arguments.length;
+	  var index = _toAbsoluteIndex(aLen > 1 ? arguments[1] : undefined, length);
+	  var end = aLen > 2 ? arguments[2] : undefined;
+	  var endPos = end === undefined ? length : _toAbsoluteIndex(end, length);
+	  while (endPos > index) O[index++] = value;
+	  return O;
+	};
+
+	// 22.1.3.6 Array.prototype.fill(value, start = 0, end = this.length)
+
+
+	_export(_export.P, 'Array', { fill: _arrayFill });
+
+	_addToUnscopables('fill');
+
+	// @@match logic
+	_fixReWks('match', 1, function (defined, MATCH, $match, maybeCallNative) {
+	  return [
+	    // `String.prototype.match` method
+	    // https://tc39.github.io/ecma262/#sec-string.prototype.match
+	    function match(regexp) {
+	      var O = defined(this);
+	      var fn = regexp == undefined ? undefined : regexp[MATCH];
+	      return fn !== undefined ? fn.call(regexp, O) : new RegExp(regexp)[MATCH](String(O));
+	    },
+	    // `RegExp.prototype[@@match]` method
+	    // https://tc39.github.io/ecma262/#sec-regexp.prototype-@@match
+	    function (regexp) {
+	      var res = maybeCallNative($match, regexp, this);
+	      if (res.done) return res.value;
+	      var rx = _anObject(regexp);
+	      var S = String(this);
+	      if (!rx.global) return _regexpExecAbstract(rx, S);
+	      var fullUnicode = rx.unicode;
+	      rx.lastIndex = 0;
+	      var A = [];
+	      var n = 0;
+	      var result;
+	      while ((result = _regexpExecAbstract(rx, S)) !== null) {
+	        var matchStr = String(result[0]);
+	        A[n] = matchStr;
+	        if (matchStr === '') rx.lastIndex = _advanceStringIndex(S, _toLength(rx.lastIndex), fullUnicode);
+	        n++;
+	      }
+	      return n === 0 ? null : A;
+	    }
+	  ];
+	});
+
+	var _stringRepeat = function repeat(count) {
+	  var str = String(_defined(this));
+	  var res = '';
+	  var n = _toInteger(count);
+	  if (n < 0 || n == Infinity) throw RangeError("Count can't be negative");
+	  for (;n > 0; (n >>>= 1) && (str += str)) if (n & 1) res += str;
+	  return res;
+	};
+
+	// https://github.com/tc39/proposal-string-pad-start-end
+
+
+
+
+	var _stringPad = function (that, maxLength, fillString, left) {
+	  var S = String(_defined(that));
+	  var stringLength = S.length;
+	  var fillStr = fillString === undefined ? ' ' : String(fillString);
+	  var intMaxLength = _toLength(maxLength);
+	  if (intMaxLength <= stringLength || fillStr == '') return S;
+	  var fillLen = intMaxLength - stringLength;
+	  var stringFiller = _stringRepeat.call(fillStr, Math.ceil(fillLen / fillStr.length));
+	  if (stringFiller.length > fillLen) stringFiller = stringFiller.slice(0, fillLen);
+	  return left ? stringFiller + S : S + stringFiller;
+	};
+
+	// https://github.com/tc39/proposal-string-pad-start-end
+
+
+
+
+	// https://github.com/zloirock/core-js/issues/280
+	_export(_export.P + _export.F * /Version\/10\.\d+(\.\d+)? Safari\//.test(_userAgent), 'String', {
+	  padStart: function padStart(maxLength /* , fillString = ' ' */) {
+	    return _stringPad(this, maxLength, arguments.length > 1 ? arguments[1] : undefined, true);
+	  }
 	});
 
 	var lookup = [];
@@ -8687,6 +10565,392 @@
 	});
 	var safeBuffer_1 = safeBuffer.Buffer;
 
+	function isHash(hashOrHeight) {
+	  return typeof hashOrHeight === 'string' && hashOrHeight.toLowerCase().startsWith('0x');
+	}
+	function has0xPrefix(str) {
+	  return typeof str === 'string' && str.slice(0, 2).toLowerCase() === '0x';
+	}
+	function formatMoney(mo) {
+	  mo = new bignumber(mo).toString(10);
+
+	  if (mo === '0') {
+	    return '0 LEMO';
+	  }
+
+	  if (mo.length > 12) {
+	    // use LEMO
+	    return moToLemo(mo);
+	  } // use mo
+
+
+	  if (/0{9}$/.test(mo)) {
+	    return "".concat(mo.slice(0, mo.length - 9), "G mo");
+	  } else if (/0{6}$/.test(mo)) {
+	    return "".concat(mo.slice(0, mo.length - 6), "M mo");
+	  } else if (/0{3}$/.test(mo)) {
+	    return "".concat(mo.slice(0, mo.length - 3), "K mo");
+	  } else {
+	    return "".concat(mo, " mo");
+	  }
+	}
+	function moToLemo(mo) {
+	  mo = new bignumber(mo).toString(10);
+
+	  if (mo === '0') {
+	    return '0 LEMO';
+	  }
+
+	  if (/0{18}$/.test(mo)) {
+	    // no dot
+	    return "".concat(mo.slice(0, mo.length - 18), " LEMO");
+	  }
+
+	  if (mo.length <= 18) {
+	    mo = mo.padStart(19, '0');
+	  }
+
+	  var int = mo.slice(0, mo.length - 18);
+	  var rest = mo.slice(mo.length - 18).replace(/0+$/, '');
+	  return "".concat(int, ".").concat(rest, " LEMO");
+	}
+	function toBuffer(v) {
+	  if (safeBuffer_1.isBuffer(v)) {
+	    return v;
+	  }
+
+	  if (v === null || v === undefined) {
+	    return safeBuffer_1.allocUnsafe(0);
+	  }
+
+	  if (Array.isArray(v)) {
+	    return safeBuffer_1.from(v);
+	  }
+
+	  if (typeof v === 'string') {
+	    // is Hex String
+	    if (v.match(/^0x[0-9A-Fa-f]*$/)) {
+	      return hexStringToBuffer(v);
+	    } else {
+	      // encode string as utf8
+	      return safeBuffer_1.from(v);
+	    }
+	  }
+
+	  if (typeof v === 'number') {
+	    v = v.toString(16);
+	    return hexStringToBuffer(v);
+	  } // BigNumber object
+
+
+	  if (bignumber.isBigNumber(v)) {
+	    v = v.toString(16);
+	    return hexStringToBuffer(v);
+	  } // BN object
+
+
+	  if (v.toArray) {
+	    return safeBuffer_1.from(v.toArray());
+	  }
+
+	  throw new Error('invalid type');
+	}
+
+	function hexStringToBuffer(hex) {
+	  if (hex.slice(0, 2).toLowerCase() === '0x') {
+	    hex = hex.slice(2);
+	  }
+
+	  if (hex.length % 2) {
+	    hex = "0".concat(hex);
+	  }
+
+	  return safeBuffer_1.from(hex, 'hex');
+	}
+
+	function bufferTrimLeft(buffer) {
+	  var i = 0;
+
+	  for (; i < buffer.length; i++) {
+	    if (buffer[i].toString() !== '0') {
+	      buffer = buffer.slice(i);
+	      break;
+	    }
+	  }
+
+	  if (i === buffer.length) {
+	    buffer = safeBuffer_1.allocUnsafe(0);
+	  }
+
+	  return buffer;
+	}
+	function setBufferLength(buffer, length, right) {
+	  if (right) {
+	    if (buffer.length < length) {
+	      var buf = safeBuffer_1.allocUnsafe(length).fill(0);
+	      buffer.copy(buf);
+	      return buf;
+	    }
+
+	    return buffer.slice(0, length);
+	  } else {
+	    if (buffer.length < length) {
+	      var _buf = safeBuffer_1.allocUnsafe(length).fill(0);
+
+	      buffer.copy(_buf, length - buffer.length);
+	      return _buf;
+	    }
+
+	    return buffer.slice(-length);
+	  }
+	}
+
+	var TxType = {
+	  // Ordinary transaction for transfer LEMO or call smart contract
+	  ORDINARY: 0,
+	  // Vote transaction for set vote target
+	  VOTE: 1,
+	  // Candidate transaction for register or edit candidate information
+	  CANDIDATE: 2
+	};
+	var ChangeLogTypes = {
+	  BalanceLog: 1,
+	  StorageLog: 2,
+	  CodeLog: 3,
+	  AddEventLog: 4,
+	  SuicideLog: 5,
+	  VoteForLog: 6,
+	  VotesLog: 7,
+	  CandidateProfileLog: 8,
+	  TxCountLog: 9 // The length of nodeID
+
+	};
+	var NODE_ID_LENGTH = 128; // The length of hex address bytes (without checksum)
+
+	var ADDRESS_BYTE_LENGTH = 20; // The max length limit of toName field in transaction
+
+	var MAX_TX_TO_NAME_LENGTH = 100; // The max length limit of message field in transaction
+
+	var MAX_TX_MESSAGE_LENGTH = 1024; // The max length limit of host field in deputy
+
+	var MAX_DEPUTY_HOST_LENGTH = 128; // The length of hash string (with 0x)
+
+	var TX_TO_LENGTH = 20; // The length of signature bytes in transaction
+
+	var TX_SIG_BYTE_LENGTH = 65; // module name
+
+	var ACCOUNT_NAME = 'account';
+	var CHAIN_NAME = 'chain';
+	var GLOBAL_NAME = '';
+	var MINE_NAME = 'mine';
+	var NET_NAME = 'net';
+	var TOOL_NAME = 'tool';
+	var TX_NAME = 'tx';
+
+	/**
+	 * RLP Encoding based on: https://github.com/ethereum/wiki/wiki/%5BEnglish%5D-RLP
+	 * This function takes in a data, convert it to buffer if not, and a length for recursion
+	 *
+	 * @param {Buffer,String,Integer,Array} data - will be converted to buffer
+	 * @returns {Buffer} - returns buffer of encoded data
+	 * */
+
+	function encode$1(input) {
+	  if (input instanceof Array) {
+	    var output = [];
+
+	    for (var i = 0; i < input.length; i++) {
+	      output.push(encode$1(input[i]));
+	    }
+
+	    var buf = safeBuffer_1.concat(output);
+	    return safeBuffer_1.concat([encodeLength(buf.length, 192), buf]);
+	  } else {
+	    input = toBuffer$1(input);
+
+	    if (input.length === 1 && input[0] < 128) {
+	      return input;
+	    } else {
+	      return safeBuffer_1.concat([encodeLength(input.length, 128), input]);
+	    }
+	  }
+	}
+
+	function encodeLength(len, offset) {
+	  if (len < 56) {
+	    return safeBuffer_1.from([len + offset]);
+	  } else {
+	    var hexLength = intToHex(len);
+	    var lLength = hexLength.length / 2;
+	    var firstByte = intToHex(offset + 55 + lLength);
+	    return safeBuffer_1.from(firstByte + hexLength, 'hex');
+	  }
+	}
+
+	function isHexPrefixed(str) {
+	  return str.slice(0, 2) === '0x';
+	} // Removes 0x from a given String
+
+
+	function stripHexPrefix(str) {
+	  if (typeof str !== 'string') {
+	    return str;
+	  }
+
+	  return isHexPrefixed(str) ? str.slice(2) : str;
+	}
+
+	function intToHex(i) {
+	  var hex = i.toString(16);
+
+	  if (hex.length % 2) {
+	    hex = "0".concat(hex);
+	  }
+
+	  return hex;
+	}
+
+	function padToEven(a) {
+	  if (a.length % 2) a = "0".concat(a);
+	  return a;
+	}
+
+	function intToBuffer(i) {
+	  var hex = intToHex(i);
+	  return safeBuffer_1.from(hex, 'hex');
+	}
+
+	function toBuffer$1(v) {
+	  if (!safeBuffer_1.isBuffer(v)) {
+	    if (typeof v === 'string') {
+	      if (isHexPrefixed(v)) {
+	        v = safeBuffer_1.from(padToEven(stripHexPrefix(v)), 'hex');
+	      } else {
+	        v = safeBuffer_1.from(v);
+	      }
+	    } else if (typeof v === 'number') {
+	      if (!v) {
+	        v = safeBuffer_1.from([]);
+	      } else {
+	        v = intToBuffer(v);
+	      }
+	    } else if (v === null || v === undefined) {
+	      v = safeBuffer_1.from([]);
+	    } else if (v.toArray) {
+	      // converts a BN to a Buffer
+	      v = safeBuffer_1.from(v.toArray());
+	    } else {
+	      throw new Error('invalid type');
+	    }
+	  }
+
+	  return v;
+	}
+
+	var gOPD = Object.getOwnPropertyDescriptor;
+
+	var f$3 = _descriptors ? gOPD : function getOwnPropertyDescriptor(O, P) {
+	  O = _toIobject(O);
+	  P = _toPrimitive(P, true);
+	  if (_ie8DomDefine) try {
+	    return gOPD(O, P);
+	  } catch (e) { /* empty */ }
+	  if (_has(O, P)) return _propertyDesc(!_objectPie.f.call(O, P), O[P]);
+	};
+
+	var _objectGopd = {
+		f: f$3
+	};
+
+	// Works with __proto__ only. Old v8 can't work with null proto objects.
+	/* eslint-disable no-proto */
+
+
+	var check = function (O, proto) {
+	  _anObject(O);
+	  if (!_isObject(proto) && proto !== null) throw TypeError(proto + ": can't set as prototype!");
+	};
+	var _setProto = {
+	  set: Object.setPrototypeOf || ('__proto__' in {} ? // eslint-disable-line
+	    function (test, buggy, set) {
+	      try {
+	        set = _ctx(Function.call, _objectGopd.f(Object.prototype, '__proto__').set, 2);
+	        set(test, []);
+	        buggy = !(test instanceof Array);
+	      } catch (e) { buggy = true; }
+	      return function setPrototypeOf(O, proto) {
+	        check(O, proto);
+	        if (buggy) O.__proto__ = proto;
+	        else set(O, proto);
+	        return O;
+	      };
+	    }({}, false) : undefined),
+	  check: check
+	};
+
+	var setPrototypeOf = _setProto.set;
+	var _inheritIfRequired = function (that, target, C) {
+	  var S = target.constructor;
+	  var P;
+	  if (S !== C && typeof S == 'function' && (P = S.prototype) !== C.prototype && _isObject(P) && setPrototypeOf) {
+	    setPrototypeOf(that, P);
+	  } return that;
+	};
+
+	// 19.1.2.7 / 15.2.3.4 Object.getOwnPropertyNames(O)
+
+	var hiddenKeys = _enumBugKeys.concat('length', 'prototype');
+
+	var f$4 = Object.getOwnPropertyNames || function getOwnPropertyNames(O) {
+	  return _objectKeysInternal(O, hiddenKeys);
+	};
+
+	var _objectGopn = {
+		f: f$4
+	};
+
+	var dP$2 = _objectDp.f;
+	var gOPN = _objectGopn.f;
+
+
+	var $RegExp = _global.RegExp;
+	var Base = $RegExp;
+	var proto$1 = $RegExp.prototype;
+	var re1 = /a/g;
+	var re2 = /a/g;
+	// "new" creates a new object, old webkit buggy here
+	var CORRECT_NEW = new $RegExp(re1) !== re1;
+
+	if (_descriptors && (!CORRECT_NEW || _fails(function () {
+	  re2[_wks('match')] = false;
+	  // RegExp constructor can alter flags and IsRegExp works correct with @@match
+	  return $RegExp(re1) != re1 || $RegExp(re2) == re2 || $RegExp(re1, 'i') != '/a/i';
+	}))) {
+	  $RegExp = function RegExp(p, f) {
+	    var tiRE = this instanceof $RegExp;
+	    var piRE = _isRegexp(p);
+	    var fiU = f === undefined;
+	    return !tiRE && piRE && p.constructor === $RegExp && fiU ? p
+	      : _inheritIfRequired(CORRECT_NEW
+	        ? new Base(piRE && !fiU ? p.source : p, f)
+	        : Base((piRE = p instanceof $RegExp) ? p.source : p, piRE && fiU ? _flags.call(p) : f)
+	      , tiRE ? this : proto$1, $RegExp);
+	  };
+	  var proxy = function (key) {
+	    key in $RegExp || dP$2($RegExp, key, {
+	      configurable: true,
+	      get: function () { return Base[key]; },
+	      set: function (it) { Base[key] = it; }
+	    });
+	  };
+	  for (var keys = gOPN(Base), i$1 = 0; keys.length > i$1;) proxy(keys[i$1++]);
+	  proto$1.constructor = $RegExp;
+	  $RegExp.prototype = proto$1;
+	  _redefine(_global, 'RegExp', $RegExp);
+	}
+
+	_setSpecies('RegExp');
+
 	var domain;
 
 	// This constructor is used to store event handlers. Instantiating this is
@@ -9711,344 +11975,230 @@
 	  return ret;
 	};
 
-	var safeBuffer$1 = createCommonjsModule(function (module, exports) {
-	/* eslint-disable node/no-deprecated-api */
+	var string_decoder = createCommonjsModule(function (module, exports) {
+	// Copyright Joyent, Inc. and other Node contributors.
+	//
+	// Permission is hereby granted, free of charge, to any person obtaining a
+	// copy of this software and associated documentation files (the
+	// "Software"), to deal in the Software without restriction, including
+	// without limitation the rights to use, copy, modify, merge, publish,
+	// distribute, sublicense, and/or sell copies of the Software, and to permit
+	// persons to whom the Software is furnished to do so, subject to the
+	// following conditions:
+	//
+	// The above copyright notice and this permission notice shall be included
+	// in all copies or substantial portions of the Software.
+	//
+	// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+	// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+	// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
+	// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+	// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+	// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
+	// USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 	var Buffer = bufferEs6.Buffer;
 
-	// alternative to using Object.keys for old browsers
-	function copyProps (src, dst) {
-	  for (var key in src) {
-	    dst[key] = src[key];
+	var isBufferEncoding = Buffer.isEncoding
+	  || function(encoding) {
+	       switch (encoding && encoding.toLowerCase()) {
+	         case 'hex': case 'utf8': case 'utf-8': case 'ascii': case 'binary': case 'base64': case 'ucs2': case 'ucs-2': case 'utf16le': case 'utf-16le': case 'raw': return true;
+	         default: return false;
+	       }
+	     };
+
+
+	function assertEncoding(encoding) {
+	  if (encoding && !isBufferEncoding(encoding)) {
+	    throw new Error('Unknown encoding: ' + encoding);
 	  }
-	}
-	if (Buffer.from && Buffer.alloc && Buffer.allocUnsafe && Buffer.allocUnsafeSlow) {
-	  module.exports = bufferEs6;
-	} else {
-	  // Copy properties from require('buffer')
-	  copyProps(bufferEs6, exports);
-	  exports.Buffer = SafeBuffer;
-	}
-
-	function SafeBuffer (arg, encodingOrOffset, length) {
-	  return Buffer(arg, encodingOrOffset, length)
-	}
-
-	// Copy static methods from Buffer
-	copyProps(Buffer, SafeBuffer);
-
-	SafeBuffer.from = function (arg, encodingOrOffset, length) {
-	  if (typeof arg === 'number') {
-	    throw new TypeError('Argument must not be a number')
-	  }
-	  return Buffer(arg, encodingOrOffset, length)
-	};
-
-	SafeBuffer.alloc = function (size, fill, encoding) {
-	  if (typeof size !== 'number') {
-	    throw new TypeError('Argument must be a number')
-	  }
-	  var buf = Buffer(size);
-	  if (fill !== undefined) {
-	    if (typeof encoding === 'string') {
-	      buf.fill(fill, encoding);
-	    } else {
-	      buf.fill(fill);
-	    }
-	  } else {
-	    buf.fill(0);
-	  }
-	  return buf
-	};
-
-	SafeBuffer.allocUnsafe = function (size) {
-	  if (typeof size !== 'number') {
-	    throw new TypeError('Argument must be a number')
-	  }
-	  return Buffer(size)
-	};
-
-	SafeBuffer.allocUnsafeSlow = function (size) {
-	  if (typeof size !== 'number') {
-	    throw new TypeError('Argument must be a number')
-	  }
-	  return bufferEs6.SlowBuffer(size)
-	};
-	});
-	var safeBuffer_1$1 = safeBuffer$1.Buffer;
-
-	/*<replacement>*/
-
-	var Buffer$1 = safeBuffer$1.Buffer;
-	/*</replacement>*/
-
-	var isEncoding = Buffer$1.isEncoding || function (encoding) {
-	  encoding = '' + encoding;
-	  switch (encoding && encoding.toLowerCase()) {
-	    case 'hex':case 'utf8':case 'utf-8':case 'ascii':case 'binary':case 'base64':case 'ucs2':case 'ucs-2':case 'utf16le':case 'utf-16le':case 'raw':
-	      return true;
-	    default:
-	      return false;
-	  }
-	};
-
-	function _normalizeEncoding(enc) {
-	  if (!enc) return 'utf8';
-	  var retried;
-	  while (true) {
-	    switch (enc) {
-	      case 'utf8':
-	      case 'utf-8':
-	        return 'utf8';
-	      case 'ucs2':
-	      case 'ucs-2':
-	      case 'utf16le':
-	      case 'utf-16le':
-	        return 'utf16le';
-	      case 'latin1':
-	      case 'binary':
-	        return 'latin1';
-	      case 'base64':
-	      case 'ascii':
-	      case 'hex':
-	        return enc;
-	      default:
-	        if (retried) return; // undefined
-	        enc = ('' + enc).toLowerCase();
-	        retried = true;
-	    }
-	  }
-	}
-	// Do not cache `Buffer.isEncoding` when checking encoding names as some
-	// modules monkey-patch it to support additional encodings
-	function normalizeEncoding(enc) {
-	  var nenc = _normalizeEncoding(enc);
-	  if (typeof nenc !== 'string' && (Buffer$1.isEncoding === isEncoding || !isEncoding(enc))) throw new Error('Unknown encoding: ' + enc);
-	  return nenc || enc;
 	}
 
 	// StringDecoder provides an interface for efficiently splitting a series of
 	// buffers into a series of JS strings without breaking apart multi-byte
-	// characters.
-	var StringDecoder_1 = StringDecoder;
-	function StringDecoder(encoding) {
-	  this.encoding = normalizeEncoding(encoding);
-	  var nb;
+	// characters. CESU-8 is handled as part of the UTF-8 encoding.
+	//
+	// @TODO Handling all encodings inside a single object makes it very difficult
+	// to reason about this code, so it should be split up in the future.
+	// @TODO There should be a utf8-strict encoding that rejects invalid UTF-8 code
+	// points as used by CESU-8.
+	var StringDecoder = exports.StringDecoder = function(encoding) {
+	  this.encoding = (encoding || 'utf8').toLowerCase().replace(/[-_]/, '');
+	  assertEncoding(encoding);
 	  switch (this.encoding) {
-	    case 'utf16le':
-	      this.text = utf16Text;
-	      this.end = utf16End;
-	      nb = 4;
-	      break;
 	    case 'utf8':
-	      this.fillLast = utf8FillLast;
-	      nb = 4;
+	      // CESU-8 represents each of Surrogate Pair by 3-bytes
+	      this.surrogateSize = 3;
+	      break;
+	    case 'ucs2':
+	    case 'utf16le':
+	      // UTF-16 represents each of Surrogate Pair by 2-bytes
+	      this.surrogateSize = 2;
+	      this.detectIncompleteChar = utf16DetectIncompleteChar;
 	      break;
 	    case 'base64':
-	      this.text = base64Text;
-	      this.end = base64End;
-	      nb = 3;
+	      // Base-64 stores 3 bytes in 4 chars, and pads the remainder.
+	      this.surrogateSize = 3;
+	      this.detectIncompleteChar = base64DetectIncompleteChar;
 	      break;
 	    default:
-	      this.write = simpleWrite;
-	      this.end = simpleEnd;
+	      this.write = passThroughWrite;
 	      return;
 	  }
-	  this.lastNeed = 0;
-	  this.lastTotal = 0;
-	  this.lastChar = Buffer$1.allocUnsafe(nb);
-	}
 
-	StringDecoder.prototype.write = function (buf) {
-	  if (buf.length === 0) return '';
-	  var r;
-	  var i;
-	  if (this.lastNeed) {
-	    r = this.fillLast(buf);
-	    if (r === undefined) return '';
-	    i = this.lastNeed;
-	    this.lastNeed = 0;
-	  } else {
-	    i = 0;
-	  }
-	  if (i < buf.length) return r ? r + this.text(buf, i) : this.text(buf, i);
-	  return r || '';
+	  // Enough space to store all bytes of a single character. UTF-8 needs 4
+	  // bytes, but CESU-8 may require up to 6 (3 bytes per surrogate).
+	  this.charBuffer = new Buffer(6);
+	  // Number of bytes received for the current incomplete multi-byte character.
+	  this.charReceived = 0;
+	  // Number of bytes expected for the current incomplete multi-byte character.
+	  this.charLength = 0;
 	};
 
-	StringDecoder.prototype.end = utf8End;
 
-	// Returns only complete characters in a Buffer
-	StringDecoder.prototype.text = utf8Text;
+	// write decodes the given buffer and returns it as JS string that is
+	// guaranteed to not contain any partial multi-byte characters. Any partial
+	// character found at the end of the buffer is buffered up, and will be
+	// returned when calling write again with the remaining bytes.
+	//
+	// Note: Converting a Buffer containing an orphan surrogate to a String
+	// currently works, but converting a String to a Buffer (via `new Buffer`, or
+	// Buffer#write) will replace incomplete surrogates with the unicode
+	// replacement character. See https://codereview.chromium.org/121173009/ .
+	StringDecoder.prototype.write = function(buffer) {
+	  var charStr = '';
+	  // if our last write ended with an incomplete multibyte character
+	  while (this.charLength) {
+	    // determine how many remaining bytes this buffer has to offer for this char
+	    var available = (buffer.length >= this.charLength - this.charReceived) ?
+	        this.charLength - this.charReceived :
+	        buffer.length;
 
-	// Attempts to complete a partial non-UTF-8 character using bytes from a Buffer
-	StringDecoder.prototype.fillLast = function (buf) {
-	  if (this.lastNeed <= buf.length) {
-	    buf.copy(this.lastChar, this.lastTotal - this.lastNeed, 0, this.lastNeed);
-	    return this.lastChar.toString(this.encoding, 0, this.lastTotal);
+	    // add the new bytes to the char buffer
+	    buffer.copy(this.charBuffer, this.charReceived, 0, available);
+	    this.charReceived += available;
+
+	    if (this.charReceived < this.charLength) {
+	      // still not enough chars in this buffer? wait for more ...
+	      return '';
+	    }
+
+	    // remove bytes belonging to the current character from the buffer
+	    buffer = buffer.slice(available, buffer.length);
+
+	    // get the character that was split
+	    charStr = this.charBuffer.slice(0, this.charLength).toString(this.encoding);
+
+	    // CESU-8: lead surrogate (D800-DBFF) is also the incomplete character
+	    var charCode = charStr.charCodeAt(charStr.length - 1);
+	    if (charCode >= 0xD800 && charCode <= 0xDBFF) {
+	      this.charLength += this.surrogateSize;
+	      charStr = '';
+	      continue;
+	    }
+	    this.charReceived = this.charLength = 0;
+
+	    // if there are no more bytes in this buffer, just emit our char
+	    if (buffer.length === 0) {
+	      return charStr;
+	    }
+	    break;
 	  }
-	  buf.copy(this.lastChar, this.lastTotal - this.lastNeed, 0, buf.length);
-	  this.lastNeed -= buf.length;
+
+	  // determine and set charLength / charReceived
+	  this.detectIncompleteChar(buffer);
+
+	  var end = buffer.length;
+	  if (this.charLength) {
+	    // buffer the incomplete character bytes we got
+	    buffer.copy(this.charBuffer, 0, buffer.length - this.charReceived, end);
+	    end -= this.charReceived;
+	  }
+
+	  charStr += buffer.toString(this.encoding, 0, end);
+
+	  var end = charStr.length - 1;
+	  var charCode = charStr.charCodeAt(end);
+	  // CESU-8: lead surrogate (D800-DBFF) is also the incomplete character
+	  if (charCode >= 0xD800 && charCode <= 0xDBFF) {
+	    var size = this.surrogateSize;
+	    this.charLength += size;
+	    this.charReceived += size;
+	    this.charBuffer.copy(this.charBuffer, size, 0, size);
+	    buffer.copy(this.charBuffer, 0, 0, size);
+	    return charStr.substring(0, end);
+	  }
+
+	  // or just emit the charStr
+	  return charStr;
 	};
 
-	// Checks the type of a UTF-8 byte, whether it's ASCII, a leading byte, or a
-	// continuation byte. If an invalid byte is detected, -2 is returned.
-	function utf8CheckByte(byte) {
-	  if (byte <= 0x7F) return 0;else if (byte >> 5 === 0x06) return 2;else if (byte >> 4 === 0x0E) return 3;else if (byte >> 3 === 0x1E) return 4;
-	  return byte >> 6 === 0x02 ? -1 : -2;
-	}
+	// detectIncompleteChar determines if there is an incomplete UTF-8 character at
+	// the end of the given buffer. If so, it sets this.charLength to the byte
+	// length that character, and sets this.charReceived to the number of bytes
+	// that are available for this character.
+	StringDecoder.prototype.detectIncompleteChar = function(buffer) {
+	  // determine how many bytes we have to check at the end of this buffer
+	  var i = (buffer.length >= 3) ? 3 : buffer.length;
 
-	// Checks at most 3 bytes at the end of a Buffer in order to detect an
-	// incomplete multi-byte UTF-8 character. The total number of bytes (2, 3, or 4)
-	// needed to complete the UTF-8 character (if applicable) are returned.
-	function utf8CheckIncomplete(self, buf, i) {
-	  var j = buf.length - 1;
-	  if (j < i) return 0;
-	  var nb = utf8CheckByte(buf[j]);
-	  if (nb >= 0) {
-	    if (nb > 0) self.lastNeed = nb - 1;
-	    return nb;
-	  }
-	  if (--j < i || nb === -2) return 0;
-	  nb = utf8CheckByte(buf[j]);
-	  if (nb >= 0) {
-	    if (nb > 0) self.lastNeed = nb - 2;
-	    return nb;
-	  }
-	  if (--j < i || nb === -2) return 0;
-	  nb = utf8CheckByte(buf[j]);
-	  if (nb >= 0) {
-	    if (nb > 0) {
-	      if (nb === 2) nb = 0;else self.lastNeed = nb - 3;
-	    }
-	    return nb;
-	  }
-	  return 0;
-	}
+	  // Figure out if one of the last i bytes of our buffer announces an
+	  // incomplete char.
+	  for (; i > 0; i--) {
+	    var c = buffer[buffer.length - i];
 
-	// Validates as many continuation bytes for a multi-byte UTF-8 character as
-	// needed or are available. If we see a non-continuation byte where we expect
-	// one, we "replace" the validated continuation bytes we've seen so far with
-	// a single UTF-8 replacement character ('\ufffd'), to match v8's UTF-8 decoding
-	// behavior. The continuation byte check is included three times in the case
-	// where all of the continuation bytes for a character exist in the same buffer.
-	// It is also done this way as a slight performance increase instead of using a
-	// loop.
-	function utf8CheckExtraBytes(self, buf, p) {
-	  if ((buf[0] & 0xC0) !== 0x80) {
-	    self.lastNeed = 0;
-	    return '\ufffd';
-	  }
-	  if (self.lastNeed > 1 && buf.length > 1) {
-	    if ((buf[1] & 0xC0) !== 0x80) {
-	      self.lastNeed = 1;
-	      return '\ufffd';
+	    // See http://en.wikipedia.org/wiki/UTF-8#Description
+
+	    // 110XXXXX
+	    if (i == 1 && c >> 5 == 0x06) {
+	      this.charLength = 2;
+	      break;
 	    }
-	    if (self.lastNeed > 2 && buf.length > 2) {
-	      if ((buf[2] & 0xC0) !== 0x80) {
-	        self.lastNeed = 2;
-	        return '\ufffd';
-	      }
+
+	    // 1110XXXX
+	    if (i <= 2 && c >> 4 == 0x0E) {
+	      this.charLength = 3;
+	      break;
+	    }
+
+	    // 11110XXX
+	    if (i <= 3 && c >> 3 == 0x1E) {
+	      this.charLength = 4;
+	      break;
 	    }
 	  }
-	}
+	  this.charReceived = i;
+	};
 
-	// Attempts to complete a multi-byte UTF-8 character using bytes from a Buffer.
-	function utf8FillLast(buf) {
-	  var p = this.lastTotal - this.lastNeed;
-	  var r = utf8CheckExtraBytes(this, buf, p);
-	  if (r !== undefined) return r;
-	  if (this.lastNeed <= buf.length) {
-	    buf.copy(this.lastChar, p, 0, this.lastNeed);
-	    return this.lastChar.toString(this.encoding, 0, this.lastTotal);
+	StringDecoder.prototype.end = function(buffer) {
+	  var res = '';
+	  if (buffer && buffer.length)
+	    res = this.write(buffer);
+
+	  if (this.charReceived) {
+	    var cr = this.charReceived;
+	    var buf = this.charBuffer;
+	    var enc = this.encoding;
+	    res += buf.slice(0, cr).toString(enc);
 	  }
-	  buf.copy(this.lastChar, p, 0, buf.length);
-	  this.lastNeed -= buf.length;
+
+	  return res;
+	};
+
+	function passThroughWrite(buffer) {
+	  return buffer.toString(this.encoding);
 	}
 
-	// Returns all complete UTF-8 characters in a Buffer. If the Buffer ended on a
-	// partial character, the character's bytes are buffered until the required
-	// number of bytes are available.
-	function utf8Text(buf, i) {
-	  var total = utf8CheckIncomplete(this, buf, i);
-	  if (!this.lastNeed) return buf.toString('utf8', i);
-	  this.lastTotal = total;
-	  var end = buf.length - (total - this.lastNeed);
-	  buf.copy(this.lastChar, 0, end);
-	  return buf.toString('utf8', i, end);
+	function utf16DetectIncompleteChar(buffer) {
+	  this.charReceived = buffer.length % 2;
+	  this.charLength = this.charReceived ? 2 : 0;
 	}
 
-	// For UTF-8, a replacement character is added when ending on a partial
-	// character.
-	function utf8End(buf) {
-	  var r = buf && buf.length ? this.write(buf) : '';
-	  if (this.lastNeed) return r + '\ufffd';
-	  return r;
+	function base64DetectIncompleteChar(buffer) {
+	  this.charReceived = buffer.length % 3;
+	  this.charLength = this.charReceived ? 3 : 0;
 	}
-
-	// UTF-16LE typically needs two bytes per character, but even if we have an even
-	// number of bytes available, we need to check if we end on a leading/high
-	// surrogate. In that case, we need to wait for the next two bytes in order to
-	// decode the last character properly.
-	function utf16Text(buf, i) {
-	  if ((buf.length - i) % 2 === 0) {
-	    var r = buf.toString('utf16le', i);
-	    if (r) {
-	      var c = r.charCodeAt(r.length - 1);
-	      if (c >= 0xD800 && c <= 0xDBFF) {
-	        this.lastNeed = 2;
-	        this.lastTotal = 4;
-	        this.lastChar[0] = buf[buf.length - 2];
-	        this.lastChar[1] = buf[buf.length - 1];
-	        return r.slice(0, -1);
-	      }
-	    }
-	    return r;
-	  }
-	  this.lastNeed = 1;
-	  this.lastTotal = 2;
-	  this.lastChar[0] = buf[buf.length - 1];
-	  return buf.toString('utf16le', i, buf.length - 1);
-	}
-
-	// For UTF-16LE we do not explicitly append special replacement characters if we
-	// end on a partial character, we simply let v8 handle that.
-	function utf16End(buf) {
-	  var r = buf && buf.length ? this.write(buf) : '';
-	  if (this.lastNeed) {
-	    var end = this.lastTotal - this.lastNeed;
-	    return r + this.lastChar.toString('utf16le', 0, end);
-	  }
-	  return r;
-	}
-
-	function base64Text(buf, i) {
-	  var n = (buf.length - i) % 3;
-	  if (n === 0) return buf.toString('base64', i);
-	  this.lastNeed = 3 - n;
-	  this.lastTotal = 3;
-	  if (n === 1) {
-	    this.lastChar[0] = buf[buf.length - 1];
-	  } else {
-	    this.lastChar[0] = buf[buf.length - 2];
-	    this.lastChar[1] = buf[buf.length - 1];
-	  }
-	  return buf.toString('base64', i, buf.length - n);
-	}
-
-	function base64End(buf) {
-	  var r = buf && buf.length ? this.write(buf) : '';
-	  if (this.lastNeed) return r + this.lastChar.toString('base64', 0, 3 - this.lastNeed);
-	  return r;
-	}
-
-	// Pass bytes on through for single-byte encodings (e.g. ascii, latin1, hex)
-	function simpleWrite(buf) {
-	  return buf.toString(this.encoding);
-	}
-
-	function simpleEnd(buf) {
-	  return buf && buf.length ? this.write(buf) : '';
-	}
+	});
+	var string_decoder_1 = string_decoder.StringDecoder;
 
 	Readable.ReadableState = ReadableState;
 
@@ -10138,7 +12288,7 @@
 	  this.decoder = null;
 	  this.encoding = null;
 	  if (options.encoding) {
-	    this.decoder = new StringDecoder_1(options.encoding);
+	    this.decoder = new string_decoder_1(options.encoding);
 	    this.encoding = options.encoding;
 	  }
 	}
@@ -10245,7 +12395,7 @@
 
 	// backwards compatibility.
 	Readable.prototype.setEncoding = function (enc) {
-	  this._readableState.decoder = new StringDecoder_1(enc);
+	  this._readableState.decoder = new string_decoder_1(enc);
 	  this._readableState.encoding = enc;
 	  return this;
 	};
@@ -11412,9 +13562,9 @@
 
 	inherits$1(Duplex, Readable);
 
-	var keys = Object.keys(Writable.prototype);
-	for (var v = 0; v < keys.length; v++) {
-	  var method = keys[v];
+	var keys$1 = Object.keys(Writable.prototype);
+	for (var v = 0; v < keys$1.length; v++) {
+	  var method = keys$1[v];
 	  if (!Duplex.prototype[method]) Duplex.prototype[method] = Writable.prototype[method];
 	}
 	function Duplex(options) {
@@ -11713,7 +13863,7 @@
 	}
 	});
 
-	var Buffer$2 = safeBuffer.Buffer;
+	var Buffer$1 = safeBuffer.Buffer;
 	var Transform$1 = Stream.Transform;
 
 
@@ -11757,9 +13907,9 @@
 	  };
 
 	  Keccak.prototype.update = function (data, encoding) {
-	    if (!Buffer$2.isBuffer(data) && typeof data !== 'string') throw new TypeError('Data must be a string or a buffer')
+	    if (!Buffer$1.isBuffer(data) && typeof data !== 'string') throw new TypeError('Data must be a string or a buffer')
 	    if (this._finalized) throw new Error('Digest already called')
-	    if (!Buffer$2.isBuffer(data)) data = Buffer$2.from(data, encoding);
+	    if (!Buffer$1.isBuffer(data)) data = Buffer$1.from(data, encoding);
 
 	    this._state.absorb(data);
 
@@ -11797,7 +13947,7 @@
 	  return Keccak
 	};
 
-	var Buffer$3 = safeBuffer.Buffer;
+	var Buffer$2 = safeBuffer.Buffer;
 	var Transform$2 = Stream.Transform;
 
 
@@ -11835,9 +13985,9 @@
 	  };
 
 	  Shake.prototype.update = function (data, encoding) {
-	    if (!Buffer$3.isBuffer(data) && typeof data !== 'string') throw new TypeError('Data must be a string or a buffer')
+	    if (!Buffer$2.isBuffer(data) && typeof data !== 'string') throw new TypeError('Data must be a string or a buffer')
 	    if (this._finalized) throw new Error('Squeeze already called')
-	    if (!Buffer$3.isBuffer(data)) data = Buffer$3.from(data, encoding);
+	    if (!Buffer$2.isBuffer(data)) data = Buffer$2.from(data, encoding);
 
 	    this._state.absorb(data);
 
@@ -12088,7 +14238,7 @@
 		p1600: p1600
 	};
 
-	var Buffer$4 = safeBuffer.Buffer;
+	var Buffer$3 = safeBuffer.Buffer;
 
 
 	function Keccak () {
@@ -12136,7 +14286,7 @@
 	Keccak.prototype.squeeze = function (length) {
 	  if (!this.squeezing) this.absorbLastFewBits(0x01);
 
-	  var output = Buffer$4.alloc(length);
+	  var output = Buffer$3.alloc(length);
 	  for (var i = 0; i < length; ++i) {
 	    output[i] = (this.state[~~(this.count / 4)] >>> (8 * (this.count % 4))) & 0xff;
 	    this.count += 1;
@@ -12160,72 +14310,6 @@
 
 	var js = api(keccak$1);
 
-	var safeBuffer$2 = createCommonjsModule(function (module, exports) {
-	/* eslint-disable node/no-deprecated-api */
-
-	var Buffer = bufferEs6.Buffer;
-
-	// alternative to using Object.keys for old browsers
-	function copyProps (src, dst) {
-	  for (var key in src) {
-	    dst[key] = src[key];
-	  }
-	}
-	if (Buffer.from && Buffer.alloc && Buffer.allocUnsafe && Buffer.allocUnsafeSlow) {
-	  module.exports = bufferEs6;
-	} else {
-	  // Copy properties from require('buffer')
-	  copyProps(bufferEs6, exports);
-	  exports.Buffer = SafeBuffer;
-	}
-
-	function SafeBuffer (arg, encodingOrOffset, length) {
-	  return Buffer(arg, encodingOrOffset, length)
-	}
-
-	// Copy static methods from Buffer
-	copyProps(Buffer, SafeBuffer);
-
-	SafeBuffer.from = function (arg, encodingOrOffset, length) {
-	  if (typeof arg === 'number') {
-	    throw new TypeError('Argument must not be a number')
-	  }
-	  return Buffer(arg, encodingOrOffset, length)
-	};
-
-	SafeBuffer.alloc = function (size, fill, encoding) {
-	  if (typeof size !== 'number') {
-	    throw new TypeError('Argument must be a number')
-	  }
-	  var buf = Buffer(size);
-	  if (fill !== undefined) {
-	    if (typeof encoding === 'string') {
-	      buf.fill(fill, encoding);
-	    } else {
-	      buf.fill(fill);
-	    }
-	  } else {
-	    buf.fill(0);
-	  }
-	  return buf
-	};
-
-	SafeBuffer.allocUnsafe = function (size) {
-	  if (typeof size !== 'number') {
-	    throw new TypeError('Argument must be a number')
-	  }
-	  return Buffer(size)
-	};
-
-	SafeBuffer.allocUnsafeSlow = function (size) {
-	  if (typeof size !== 'number') {
-	    throw new TypeError('Argument must be a number')
-	  }
-	  return bufferEs6.SlowBuffer(size)
-	};
-	});
-	var safeBuffer_1$2 = safeBuffer$2.Buffer;
-
 	// base-x encoding
 	// Forked from https://github.com/cryptocoinjs/bs58
 	// Originally written by Mike Hearn for BitcoinJ
@@ -12234,7 +14318,7 @@
 	// Merged Buffer refactorings from base58-native by Stephen Pair
 	// Copyright (c) 2013 BitPay Inc
 
-	var Buffer$5 = safeBuffer$2.Buffer;
+	var Buffer$4 = safeBuffer.Buffer;
 
 	var baseX = function base (ALPHABET) {
 	  var ALPHABET_MAP = {};
@@ -12278,7 +14362,7 @@
 
 	  function decodeUnsafe (string) {
 	    if (typeof string !== 'string') throw new TypeError('Expected String')
-	    if (string.length === 0) return Buffer$5.allocUnsafe(0)
+	    if (string.length === 0) return Buffer$4.allocUnsafe(0)
 
 	    var bytes = [0];
 	    for (var i = 0; i < string.length; i++) {
@@ -12302,7 +14386,7 @@
 	      bytes.push(0);
 	    }
 
-	    return Buffer$5.from(bytes.reverse())
+	    return Buffer$4.from(bytes.reverse())
 	  }
 
 	  function decode (string) {
@@ -12319,953 +14403,37 @@
 	  }
 	};
 
-	// getting tag from 19.1.3.6 Object.prototype.toString()
-
-	var TAG$1 = _wks('toStringTag');
-	// ES3 wrong here
-	var ARG = _cof(function () { return arguments; }()) == 'Arguments';
-
-	// fallback for IE11 Script Access Denied error
-	var tryGet = function (it, key) {
-	  try {
-	    return it[key];
-	  } catch (e) { /* empty */ }
-	};
-
-	var _classof = function (it) {
-	  var O, T, B;
-	  return it === undefined ? 'Undefined' : it === null ? 'Null'
-	    // @@toStringTag case
-	    : typeof (T = tryGet(O = Object(it), TAG$1)) == 'string' ? T
-	    // builtinTag case
-	    : ARG ? _cof(O)
-	    // ES3 arguments fallback
-	    : (B = _cof(O)) == 'Object' && typeof O.callee == 'function' ? 'Arguments' : B;
-	};
-
-	var _anInstance = function (it, Constructor, name, forbiddenField) {
-	  if (!(it instanceof Constructor) || (forbiddenField !== undefined && forbiddenField in it)) {
-	    throw TypeError(name + ': incorrect invocation!');
-	  } return it;
-	};
-
-	// call something on iterator step with safe closing on error
-
-	var _iterCall = function (iterator, fn, value, entries) {
-	  try {
-	    return entries ? fn(_anObject(value)[0], value[1]) : fn(value);
-	  // 7.4.6 IteratorClose(iterator, completion)
-	  } catch (e) {
-	    var ret = iterator['return'];
-	    if (ret !== undefined) _anObject(ret.call(iterator));
-	    throw e;
-	  }
-	};
-
-	// check on default Array iterator
-
-	var ITERATOR$2 = _wks('iterator');
-	var ArrayProto$1 = Array.prototype;
-
-	var _isArrayIter = function (it) {
-	  return it !== undefined && (_iterators.Array === it || ArrayProto$1[ITERATOR$2] === it);
-	};
-
-	var ITERATOR$3 = _wks('iterator');
-
-	var core_getIteratorMethod = _core.getIteratorMethod = function (it) {
-	  if (it != undefined) return it[ITERATOR$3]
-	    || it['@@iterator']
-	    || _iterators[_classof(it)];
-	};
-
-	var _forOf = createCommonjsModule(function (module) {
-	var BREAK = {};
-	var RETURN = {};
-	var exports = module.exports = function (iterable, entries, fn, that, ITERATOR) {
-	  var iterFn = ITERATOR ? function () { return iterable; } : core_getIteratorMethod(iterable);
-	  var f = _ctx(fn, that, entries ? 2 : 1);
-	  var index = 0;
-	  var length, step, iterator, result;
-	  if (typeof iterFn != 'function') throw TypeError(iterable + ' is not iterable!');
-	  // fast case for arrays with default iterator
-	  if (_isArrayIter(iterFn)) for (length = _toLength(iterable.length); length > index; index++) {
-	    result = entries ? f(_anObject(step = iterable[index])[0], step[1]) : f(iterable[index]);
-	    if (result === BREAK || result === RETURN) return result;
-	  } else for (iterator = iterFn.call(iterable); !(step = iterator.next()).done;) {
-	    result = _iterCall(iterator, f, step.value, entries);
-	    if (result === BREAK || result === RETURN) return result;
-	  }
-	};
-	exports.BREAK = BREAK;
-	exports.RETURN = RETURN;
-	});
-
-	// 7.3.20 SpeciesConstructor(O, defaultConstructor)
-
-
-	var SPECIES = _wks('species');
-	var _speciesConstructor = function (O, D) {
-	  var C = _anObject(O).constructor;
-	  var S;
-	  return C === undefined || (S = _anObject(C)[SPECIES]) == undefined ? D : _aFunction(S);
-	};
-
-	// fast apply, http://jsperf.lnkit.com/fast-apply/5
-	var _invoke = function (fn, args, that) {
-	  var un = that === undefined;
-	  switch (args.length) {
-	    case 0: return un ? fn()
-	                      : fn.call(that);
-	    case 1: return un ? fn(args[0])
-	                      : fn.call(that, args[0]);
-	    case 2: return un ? fn(args[0], args[1])
-	                      : fn.call(that, args[0], args[1]);
-	    case 3: return un ? fn(args[0], args[1], args[2])
-	                      : fn.call(that, args[0], args[1], args[2]);
-	    case 4: return un ? fn(args[0], args[1], args[2], args[3])
-	                      : fn.call(that, args[0], args[1], args[2], args[3]);
-	  } return fn.apply(that, args);
-	};
-
-	var process$1 = _global.process;
-	var setTask = _global.setImmediate;
-	var clearTask = _global.clearImmediate;
-	var MessageChannel = _global.MessageChannel;
-	var Dispatch = _global.Dispatch;
-	var counter = 0;
-	var queue$1 = {};
-	var ONREADYSTATECHANGE = 'onreadystatechange';
-	var defer, channel, port;
-	var run = function () {
-	  var id = +this;
-	  // eslint-disable-next-line no-prototype-builtins
-	  if (queue$1.hasOwnProperty(id)) {
-	    var fn = queue$1[id];
-	    delete queue$1[id];
-	    fn();
-	  }
-	};
-	var listener = function (event) {
-	  run.call(event.data);
-	};
-	// Node.js 0.9+ & IE10+ has setImmediate, otherwise:
-	if (!setTask || !clearTask) {
-	  setTask = function setImmediate(fn) {
-	    var args = [];
-	    var i = 1;
-	    while (arguments.length > i) args.push(arguments[i++]);
-	    queue$1[++counter] = function () {
-	      // eslint-disable-next-line no-new-func
-	      _invoke(typeof fn == 'function' ? fn : Function(fn), args);
-	    };
-	    defer(counter);
-	    return counter;
-	  };
-	  clearTask = function clearImmediate(id) {
-	    delete queue$1[id];
-	  };
-	  // Node.js 0.8-
-	  if (_cof(process$1) == 'process') {
-	    defer = function (id) {
-	      process$1.nextTick(_ctx(run, id, 1));
-	    };
-	  // Sphere (JS game engine) Dispatch API
-	  } else if (Dispatch && Dispatch.now) {
-	    defer = function (id) {
-	      Dispatch.now(_ctx(run, id, 1));
-	    };
-	  // Browsers with MessageChannel, includes WebWorkers
-	  } else if (MessageChannel) {
-	    channel = new MessageChannel();
-	    port = channel.port2;
-	    channel.port1.onmessage = listener;
-	    defer = _ctx(port.postMessage, port, 1);
-	  // Browsers with postMessage, skip WebWorkers
-	  // IE8 has postMessage, but it's sync & typeof its postMessage is 'object'
-	  } else if (_global.addEventListener && typeof postMessage == 'function' && !_global.importScripts) {
-	    defer = function (id) {
-	      _global.postMessage(id + '', '*');
-	    };
-	    _global.addEventListener('message', listener, false);
-	  // IE8-
-	  } else if (ONREADYSTATECHANGE in _domCreate('script')) {
-	    defer = function (id) {
-	      _html.appendChild(_domCreate('script'))[ONREADYSTATECHANGE] = function () {
-	        _html.removeChild(this);
-	        run.call(id);
-	      };
-	    };
-	  // Rest old browsers
-	  } else {
-	    defer = function (id) {
-	      setTimeout(_ctx(run, id, 1), 0);
-	    };
-	  }
-	}
-	var _task = {
-	  set: setTask,
-	  clear: clearTask
-	};
-
-	var macrotask = _task.set;
-	var Observer = _global.MutationObserver || _global.WebKitMutationObserver;
-	var process$2 = _global.process;
-	var Promise$1 = _global.Promise;
-	var isNode = _cof(process$2) == 'process';
-
-	var _microtask = function () {
-	  var head, last, notify;
-
-	  var flush = function () {
-	    var parent, fn;
-	    if (isNode && (parent = process$2.domain)) parent.exit();
-	    while (head) {
-	      fn = head.fn;
-	      head = head.next;
-	      try {
-	        fn();
-	      } catch (e) {
-	        if (head) notify();
-	        else last = undefined;
-	        throw e;
-	      }
-	    } last = undefined;
-	    if (parent) parent.enter();
-	  };
-
-	  // Node.js
-	  if (isNode) {
-	    notify = function () {
-	      process$2.nextTick(flush);
-	    };
-	  // browsers with MutationObserver, except iOS Safari - https://github.com/zloirock/core-js/issues/339
-	  } else if (Observer && !(_global.navigator && _global.navigator.standalone)) {
-	    var toggle = true;
-	    var node = document.createTextNode('');
-	    new Observer(flush).observe(node, { characterData: true }); // eslint-disable-line no-new
-	    notify = function () {
-	      node.data = toggle = !toggle;
-	    };
-	  // environments with maybe non-completely correct, but existent Promise
-	  } else if (Promise$1 && Promise$1.resolve) {
-	    // Promise.resolve without an argument throws an error in LG WebOS 2
-	    var promise = Promise$1.resolve(undefined);
-	    notify = function () {
-	      promise.then(flush);
-	    };
-	  // for other environments - macrotask based on:
-	  // - setImmediate
-	  // - MessageChannel
-	  // - window.postMessag
-	  // - onreadystatechange
-	  // - setTimeout
-	  } else {
-	    notify = function () {
-	      // strange IE + webpack dev server bug - use .call(global)
-	      macrotask.call(_global, flush);
-	    };
-	  }
-
-	  return function (fn) {
-	    var task = { fn: fn, next: undefined };
-	    if (last) last.next = task;
-	    if (!head) {
-	      head = task;
-	      notify();
-	    } last = task;
-	  };
-	};
-
-	// 25.4.1.5 NewPromiseCapability(C)
-
-
-	function PromiseCapability(C) {
-	  var resolve, reject;
-	  this.promise = new C(function ($$resolve, $$reject) {
-	    if (resolve !== undefined || reject !== undefined) throw TypeError('Bad Promise constructor');
-	    resolve = $$resolve;
-	    reject = $$reject;
-	  });
-	  this.resolve = _aFunction(resolve);
-	  this.reject = _aFunction(reject);
-	}
-
-	var f$2 = function (C) {
-	  return new PromiseCapability(C);
-	};
-
-	var _newPromiseCapability = {
-		f: f$2
-	};
-
-	var _perform = function (exec) {
-	  try {
-	    return { e: false, v: exec() };
-	  } catch (e) {
-	    return { e: true, v: e };
-	  }
-	};
-
-	var navigator$1 = _global.navigator;
-
-	var _userAgent = navigator$1 && navigator$1.userAgent || '';
-
-	var _promiseResolve = function (C, x) {
-	  _anObject(C);
-	  if (_isObject(x) && x.constructor === C) return x;
-	  var promiseCapability = _newPromiseCapability.f(C);
-	  var resolve = promiseCapability.resolve;
-	  resolve(x);
-	  return promiseCapability.promise;
-	};
-
-	var _redefineAll = function (target, src, safe) {
-	  for (var key in src) _redefine(target, key, src[key], safe);
-	  return target;
-	};
-
-	var SPECIES$1 = _wks('species');
-
-	var _setSpecies = function (KEY) {
-	  var C = _global[KEY];
-	  if (_descriptors && C && !C[SPECIES$1]) _objectDp.f(C, SPECIES$1, {
-	    configurable: true,
-	    get: function () { return this; }
-	  });
-	};
-
-	var ITERATOR$4 = _wks('iterator');
-	var SAFE_CLOSING = false;
-
-	try {
-	  var riter = [7][ITERATOR$4]();
-	  riter['return'] = function () { SAFE_CLOSING = true; };
-	} catch (e) { /* empty */ }
-
-	var _iterDetect = function (exec, skipClosing) {
-	  if (!skipClosing && !SAFE_CLOSING) return false;
-	  var safe = false;
-	  try {
-	    var arr = [7];
-	    var iter = arr[ITERATOR$4]();
-	    iter.next = function () { return { done: safe = true }; };
-	    arr[ITERATOR$4] = function () { return iter; };
-	    exec(arr);
-	  } catch (e) { /* empty */ }
-	  return safe;
-	};
-
-	var task = _task.set;
-	var microtask = _microtask();
-
-
-
-
-	var PROMISE = 'Promise';
-	var TypeError$1 = _global.TypeError;
-	var process$3 = _global.process;
-	var versions$1 = process$3 && process$3.versions;
-	var v8 = versions$1 && versions$1.v8 || '';
-	var $Promise = _global[PROMISE];
-	var isNode$1 = _classof(process$3) == 'process';
-	var empty = function () { /* empty */ };
-	var Internal, newGenericPromiseCapability, OwnPromiseCapability, Wrapper;
-	var newPromiseCapability = newGenericPromiseCapability = _newPromiseCapability.f;
-
-	var USE_NATIVE = !!function () {
-	  try {
-	    // correct subclassing with @@species support
-	    var promise = $Promise.resolve(1);
-	    var FakePromise = (promise.constructor = {})[_wks('species')] = function (exec) {
-	      exec(empty, empty);
-	    };
-	    // unhandled rejections tracking support, NodeJS Promise without it fails @@species test
-	    return (isNode$1 || typeof PromiseRejectionEvent == 'function')
-	      && promise.then(empty) instanceof FakePromise
-	      // v8 6.6 (Node 10 and Chrome 66) have a bug with resolving custom thenables
-	      // https://bugs.chromium.org/p/chromium/issues/detail?id=830565
-	      // we can't detect it synchronously, so just check versions
-	      && v8.indexOf('6.6') !== 0
-	      && _userAgent.indexOf('Chrome/66') === -1;
-	  } catch (e) { /* empty */ }
-	}();
-
-	// helpers
-	var isThenable = function (it) {
-	  var then;
-	  return _isObject(it) && typeof (then = it.then) == 'function' ? then : false;
-	};
-	var notify = function (promise, isReject) {
-	  if (promise._n) return;
-	  promise._n = true;
-	  var chain = promise._c;
-	  microtask(function () {
-	    var value = promise._v;
-	    var ok = promise._s == 1;
-	    var i = 0;
-	    var run = function (reaction) {
-	      var handler = ok ? reaction.ok : reaction.fail;
-	      var resolve = reaction.resolve;
-	      var reject = reaction.reject;
-	      var domain = reaction.domain;
-	      var result, then, exited;
-	      try {
-	        if (handler) {
-	          if (!ok) {
-	            if (promise._h == 2) onHandleUnhandled(promise);
-	            promise._h = 1;
-	          }
-	          if (handler === true) result = value;
-	          else {
-	            if (domain) domain.enter();
-	            result = handler(value); // may throw
-	            if (domain) {
-	              domain.exit();
-	              exited = true;
-	            }
-	          }
-	          if (result === reaction.promise) {
-	            reject(TypeError$1('Promise-chain cycle'));
-	          } else if (then = isThenable(result)) {
-	            then.call(result, resolve, reject);
-	          } else resolve(result);
-	        } else reject(value);
-	      } catch (e) {
-	        if (domain && !exited) domain.exit();
-	        reject(e);
-	      }
-	    };
-	    while (chain.length > i) run(chain[i++]); // variable length - can't use forEach
-	    promise._c = [];
-	    promise._n = false;
-	    if (isReject && !promise._h) onUnhandled(promise);
-	  });
-	};
-	var onUnhandled = function (promise) {
-	  task.call(_global, function () {
-	    var value = promise._v;
-	    var unhandled = isUnhandled(promise);
-	    var result, handler, console;
-	    if (unhandled) {
-	      result = _perform(function () {
-	        if (isNode$1) {
-	          process$3.emit('unhandledRejection', value, promise);
-	        } else if (handler = _global.onunhandledrejection) {
-	          handler({ promise: promise, reason: value });
-	        } else if ((console = _global.console) && console.error) {
-	          console.error('Unhandled promise rejection', value);
-	        }
-	      });
-	      // Browsers should not trigger `rejectionHandled` event if it was handled here, NodeJS - should
-	      promise._h = isNode$1 || isUnhandled(promise) ? 2 : 1;
-	    } promise._a = undefined;
-	    if (unhandled && result.e) throw result.v;
-	  });
-	};
-	var isUnhandled = function (promise) {
-	  return promise._h !== 1 && (promise._a || promise._c).length === 0;
-	};
-	var onHandleUnhandled = function (promise) {
-	  task.call(_global, function () {
-	    var handler;
-	    if (isNode$1) {
-	      process$3.emit('rejectionHandled', promise);
-	    } else if (handler = _global.onrejectionhandled) {
-	      handler({ promise: promise, reason: promise._v });
-	    }
-	  });
-	};
-	var $reject = function (value) {
-	  var promise = this;
-	  if (promise._d) return;
-	  promise._d = true;
-	  promise = promise._w || promise; // unwrap
-	  promise._v = value;
-	  promise._s = 2;
-	  if (!promise._a) promise._a = promise._c.slice();
-	  notify(promise, true);
-	};
-	var $resolve = function (value) {
-	  var promise = this;
-	  var then;
-	  if (promise._d) return;
-	  promise._d = true;
-	  promise = promise._w || promise; // unwrap
-	  try {
-	    if (promise === value) throw TypeError$1("Promise can't be resolved itself");
-	    if (then = isThenable(value)) {
-	      microtask(function () {
-	        var wrapper = { _w: promise, _d: false }; // wrap
-	        try {
-	          then.call(value, _ctx($resolve, wrapper, 1), _ctx($reject, wrapper, 1));
-	        } catch (e) {
-	          $reject.call(wrapper, e);
-	        }
-	      });
-	    } else {
-	      promise._v = value;
-	      promise._s = 1;
-	      notify(promise, false);
-	    }
-	  } catch (e) {
-	    $reject.call({ _w: promise, _d: false }, e); // wrap
-	  }
-	};
-
-	// constructor polyfill
-	if (!USE_NATIVE) {
-	  // 25.4.3.1 Promise(executor)
-	  $Promise = function Promise(executor) {
-	    _anInstance(this, $Promise, PROMISE, '_h');
-	    _aFunction(executor);
-	    Internal.call(this);
-	    try {
-	      executor(_ctx($resolve, this, 1), _ctx($reject, this, 1));
-	    } catch (err) {
-	      $reject.call(this, err);
-	    }
-	  };
-	  // eslint-disable-next-line no-unused-vars
-	  Internal = function Promise(executor) {
-	    this._c = [];             // <- awaiting reactions
-	    this._a = undefined;      // <- checked in isUnhandled reactions
-	    this._s = 0;              // <- state
-	    this._d = false;          // <- done
-	    this._v = undefined;      // <- value
-	    this._h = 0;              // <- rejection state, 0 - default, 1 - handled, 2 - unhandled
-	    this._n = false;          // <- notify
-	  };
-	  Internal.prototype = _redefineAll($Promise.prototype, {
-	    // 25.4.5.3 Promise.prototype.then(onFulfilled, onRejected)
-	    then: function then(onFulfilled, onRejected) {
-	      var reaction = newPromiseCapability(_speciesConstructor(this, $Promise));
-	      reaction.ok = typeof onFulfilled == 'function' ? onFulfilled : true;
-	      reaction.fail = typeof onRejected == 'function' && onRejected;
-	      reaction.domain = isNode$1 ? process$3.domain : undefined;
-	      this._c.push(reaction);
-	      if (this._a) this._a.push(reaction);
-	      if (this._s) notify(this, false);
-	      return reaction.promise;
-	    },
-	    // 25.4.5.1 Promise.prototype.catch(onRejected)
-	    'catch': function (onRejected) {
-	      return this.then(undefined, onRejected);
-	    }
-	  });
-	  OwnPromiseCapability = function () {
-	    var promise = new Internal();
-	    this.promise = promise;
-	    this.resolve = _ctx($resolve, promise, 1);
-	    this.reject = _ctx($reject, promise, 1);
-	  };
-	  _newPromiseCapability.f = newPromiseCapability = function (C) {
-	    return C === $Promise || C === Wrapper
-	      ? new OwnPromiseCapability(C)
-	      : newGenericPromiseCapability(C);
-	  };
-	}
-
-	_export(_export.G + _export.W + _export.F * !USE_NATIVE, { Promise: $Promise });
-	_setToStringTag($Promise, PROMISE);
-	_setSpecies(PROMISE);
-	Wrapper = _core[PROMISE];
-
-	// statics
-	_export(_export.S + _export.F * !USE_NATIVE, PROMISE, {
-	  // 25.4.4.5 Promise.reject(r)
-	  reject: function reject(r) {
-	    var capability = newPromiseCapability(this);
-	    var $$reject = capability.reject;
-	    $$reject(r);
-	    return capability.promise;
-	  }
-	});
-	_export(_export.S + _export.F * (_library || !USE_NATIVE), PROMISE, {
-	  // 25.4.4.6 Promise.resolve(x)
-	  resolve: function resolve(x) {
-	    return _promiseResolve(_library && this === Wrapper ? $Promise : this, x);
-	  }
-	});
-	_export(_export.S + _export.F * !(USE_NATIVE && _iterDetect(function (iter) {
-	  $Promise.all(iter)['catch'](empty);
-	})), PROMISE, {
-	  // 25.4.4.1 Promise.all(iterable)
-	  all: function all(iterable) {
-	    var C = this;
-	    var capability = newPromiseCapability(C);
-	    var resolve = capability.resolve;
-	    var reject = capability.reject;
-	    var result = _perform(function () {
-	      var values = [];
-	      var index = 0;
-	      var remaining = 1;
-	      _forOf(iterable, false, function (promise) {
-	        var $index = index++;
-	        var alreadyCalled = false;
-	        values.push(undefined);
-	        remaining++;
-	        C.resolve(promise).then(function (value) {
-	          if (alreadyCalled) return;
-	          alreadyCalled = true;
-	          values[$index] = value;
-	          --remaining || resolve(values);
-	        }, reject);
-	      });
-	      --remaining || resolve(values);
-	    });
-	    if (result.e) reject(result.v);
-	    return capability.promise;
-	  },
-	  // 25.4.4.4 Promise.race(iterable)
-	  race: function race(iterable) {
-	    var C = this;
-	    var capability = newPromiseCapability(C);
-	    var reject = capability.reject;
-	    var result = _perform(function () {
-	      _forOf(iterable, false, function (promise) {
-	        C.resolve(promise).then(capability.resolve, reject);
-	      });
-	    });
-	    if (result.e) reject(result.v);
-	    return capability.promise;
-	  }
-	});
-
-	var _arrayFill = function fill(value /* , start = 0, end = @length */) {
-	  var O = _toObject(this);
-	  var length = _toLength(O.length);
-	  var aLen = arguments.length;
-	  var index = _toAbsoluteIndex(aLen > 1 ? arguments[1] : undefined, length);
-	  var end = aLen > 2 ? arguments[2] : undefined;
-	  var endPos = end === undefined ? length : _toAbsoluteIndex(end, length);
-	  while (endPos > index) O[index++] = value;
-	  return O;
-	};
-
-	// 22.1.3.6 Array.prototype.fill(value, start = 0, end = this.length)
-
-
-	_export(_export.P, 'Array', { fill: _arrayFill });
-
-	_addToUnscopables('fill');
-
-	// @@match logic
-	_fixReWks('match', 1, function (defined, MATCH, $match) {
-	  // 21.1.3.11 String.prototype.match(regexp)
-	  return [function match(regexp) {
-	    var O = defined(this);
-	    var fn = regexp == undefined ? undefined : regexp[MATCH];
-	    return fn !== undefined ? fn.call(regexp, O) : new RegExp(regexp)[MATCH](String(O));
-	  }, $match];
-	});
-
-	var _stringRepeat = function repeat(count) {
-	  var str = String(_defined(this));
-	  var res = '';
-	  var n = _toInteger(count);
-	  if (n < 0 || n == Infinity) throw RangeError("Count can't be negative");
-	  for (;n > 0; (n >>>= 1) && (str += str)) if (n & 1) res += str;
-	  return res;
-	};
-
-	// https://github.com/tc39/proposal-string-pad-start-end
-
-
-
-
-	var _stringPad = function (that, maxLength, fillString, left) {
-	  var S = String(_defined(that));
-	  var stringLength = S.length;
-	  var fillStr = fillString === undefined ? ' ' : String(fillString);
-	  var intMaxLength = _toLength(maxLength);
-	  if (intMaxLength <= stringLength || fillStr == '') return S;
-	  var fillLen = intMaxLength - stringLength;
-	  var stringFiller = _stringRepeat.call(fillStr, Math.ceil(fillLen / fillStr.length));
-	  if (stringFiller.length > fillLen) stringFiller = stringFiller.slice(0, fillLen);
-	  return left ? stringFiller + S : S + stringFiller;
-	};
-
-	// https://github.com/tc39/proposal-string-pad-start-end
-
-
-
-
-	// https://github.com/zloirock/core-js/issues/280
-	_export(_export.P + _export.F * /Version\/10\.\d+(\.\d+)? Safari\//.test(_userAgent), 'String', {
-	  padStart: function padStart(maxLength /* , fillString = ' ' */) {
-	    return _stringPad(this, maxLength, arguments.length > 1 ? arguments[1] : undefined, true);
-	  }
-	});
-
-	function isHash(hashOrHeight) {
-	  return typeof hashOrHeight === 'string' && hashOrHeight.toLowerCase().startsWith('0x');
-	}
-	function has0xPrefix(str) {
-	  return typeof str === 'string' && str.slice(0, 2).toLowerCase() === '0x';
-	}
-	function formatMoney(mo) {
-	  mo = new bignumber(mo).toString(10);
-
-	  if (mo === '0') {
-	    return '0 LEMO';
-	  }
-
-	  if (mo.length > 12) {
-	    // use LEMO
-	    return moToLemo(mo);
-	  } // use mo
-
-
-	  if (/0{9}$/.test(mo)) {
-	    return "".concat(mo.slice(0, mo.length - 9), "G mo");
-	  } else if (/0{6}$/.test(mo)) {
-	    return "".concat(mo.slice(0, mo.length - 6), "M mo");
-	  } else if (/0{3}$/.test(mo)) {
-	    return "".concat(mo.slice(0, mo.length - 3), "K mo");
-	  } else {
-	    return "".concat(mo, " mo");
-	  }
-	}
-	function moToLemo(mo) {
-	  mo = new bignumber(mo).toString(10);
-
-	  if (mo === '0') {
-	    return '0 LEMO';
-	  }
-
-	  if (/0{18}$/.test(mo)) {
-	    // no dot
-	    return "".concat(mo.slice(0, mo.length - 18), " LEMO");
-	  }
-
-	  if (mo.length <= 18) {
-	    mo = mo.padStart(19, '0');
-	  }
-
-	  var int = mo.slice(0, mo.length - 18);
-	  var rest = mo.slice(mo.length - 18).replace(/0+$/, '');
-	  return "".concat(int, ".").concat(rest, " LEMO");
-	}
-	function toBuffer(v) {
-	  if (safeBuffer_1.isBuffer(v)) {
-	    return v;
-	  }
-
-	  if (v === null || v === undefined) {
-	    return safeBuffer_1.allocUnsafe(0);
-	  }
-
-	  if (Array.isArray(v)) {
-	    return safeBuffer_1.from(v);
-	  }
-
-	  if (typeof v === 'string') {
-	    // is Hex String
-	    if (v.match(/^0x[0-9A-Fa-f]*$/)) {
-	      return hexStringToBuffer(v);
-	    } else {
-	      // encode string as utf8
-	      return safeBuffer_1.from(v);
-	    }
-	  }
-
-	  if (typeof v === 'number') {
-	    v = v.toString(16);
-	    return hexStringToBuffer(v);
-	  } // BigNumber object
-
-
-	  if (bignumber.isBigNumber(v)) {
-	    v = v.toString(16);
-	    return hexStringToBuffer(v);
-	  } // BN object
-
-
-	  if (v.toArray) {
-	    return safeBuffer_1.from(v.toArray());
-	  }
-
-	  throw new Error('invalid type');
-	}
-
-	function hexStringToBuffer(hex) {
-	  if (hex.slice(0, 2).toLowerCase() === '0x') {
-	    hex = hex.slice(2);
-	  }
-
-	  if (hex.length % 2) {
-	    hex = "0".concat(hex);
-	  }
-
-	  return safeBuffer_1.from(hex, 'hex');
-	}
-
-	function bufferTrimLeft(buffer) {
-	  var i = 0;
-
-	  for (; i < buffer.length; i++) {
-	    if (buffer[i].toString() !== '0') {
-	      buffer = buffer.slice(i);
-	      break;
-	    }
-	  }
-
-	  if (i === buffer.length) {
-	    buffer = safeBuffer_1.allocUnsafe(0);
-	  }
-
-	  return buffer;
-	}
-	function setBufferLength(buffer, length, right) {
-	  if (right) {
-	    if (buffer.length < length) {
-	      var buf = safeBuffer_1.allocUnsafe(length).fill(0);
-	      buffer.copy(buf);
-	      return buf;
-	    }
-
-	    return buffer.slice(0, length);
-	  } else {
-	    if (buffer.length < length) {
-	      var _buf = safeBuffer_1.allocUnsafe(length).fill(0);
-
-	      buffer.copy(_buf, length - buffer.length);
-	      return _buf;
-	    }
-
-	    return buffer.slice(-length);
-	  }
-	}
-
-	var toString$3 = Object.prototype.toString; // TypeError
-
-	function isArray$3(value, message) {
-	  if (!Array.isArray(value)) throw TypeError(message);
-	}
-	function isBoolean$1(value, message) {
-	  if (toString$3.call(value) !== '[object Boolean]') throw TypeError(message);
-	}
-	function isBuffer$3(value, message) {
-	  if (!isBuffer$1(value)) throw TypeError(message);
-	}
-	function isFunction$2(value, message) {
-	  if (toString$3.call(value) !== '[object Function]') throw TypeError(message);
-	}
-	function isNumber$2(value, message) {
-	  if (toString$3.call(value) !== '[object Number]') throw TypeError(message);
-	}
-	function isObject$2(value, message) {
-	  if (toString$3.call(value) !== '[object Object]') throw TypeError(message);
-	} // RangeError
-
-	function isBufferLength(buffer, length, message) {
-	  if (buffer.length !== length) throw RangeError(message);
-	}
-	function isBufferLength2(buffer, length1, length2, message) {
-	  if (buffer.length !== length1 && buffer.length !== length2) throw RangeError(message);
-	}
-	function isLengthGTZero(value, message) {
-	  if (value.length === 0) throw RangeError(message);
-	}
-	function isNumberInInterval(number, x, y, message) {
-	  if (number <= x || number >= y) throw RangeError(message);
-	}
-	var assert = {
-	  isArray: isArray$3,
-	  isBoolean: isBoolean$1,
-	  isBuffer: isBuffer$3,
-	  isFunction: isFunction$2,
-	  isNumber: isNumber$2,
-	  isObject: isObject$2,
-	  isBufferLength: isBufferLength,
-	  isBufferLength2: isBufferLength2,
-	  isLengthGTZero: isLengthGTZero,
-	  isNumberInInterval: isNumberInInterval
-	};
-
-	var messages = {
-	  COMPRESSED_TYPE_INVALID: 'compressed should be a boolean',
-	  EC_PRIVATE_KEY_TYPE_INVALID: 'private key should be a Buffer',
-	  EC_PRIVATE_KEY_LENGTH_INVALID: 'private key length is invalid',
-	  EC_PRIVATE_KEY_RANGE_INVALID: 'private key range is invalid',
-	  EC_PRIVATE_KEY_TWEAK_ADD_FAIL: 'tweak out of range or resulting private key is invalid',
-	  EC_PRIVATE_KEY_TWEAK_MUL_FAIL: 'tweak out of range',
-	  EC_PRIVATE_KEY_EXPORT_DER_FAIL: "couldn't export to DER format",
-	  EC_PRIVATE_KEY_IMPORT_DER_FAIL: "couldn't import from DER format",
-	  EC_PUBLIC_KEYS_TYPE_INVALID: 'public keys should be an Array',
-	  EC_PUBLIC_KEYS_LENGTH_INVALID: 'public keys Array should have at least 1 element',
-	  EC_PUBLIC_KEY_TYPE_INVALID: 'public key should be a Buffer',
-	  EC_PUBLIC_KEY_LENGTH_INVALID: 'public key length is invalid',
-	  EC_PUBLIC_KEY_PARSE_FAIL: 'the public key could not be parsed or is invalid',
-	  EC_PUBLIC_KEY_CREATE_FAIL: 'private was invalid, try again',
-	  EC_PUBLIC_KEY_TWEAK_ADD_FAIL: 'tweak out of range or resulting public key is invalid',
-	  EC_PUBLIC_KEY_TWEAK_MUL_FAIL: 'tweak out of range',
-	  EC_PUBLIC_KEY_COMBINE_FAIL: 'the sum of the public keys is not valid',
-	  ECDH_FAIL: 'scalar was invalid (zero or overflow)',
-	  ECDSA_SIGNATURE_TYPE_INVALID: 'signature should be a Buffer',
-	  ECDSA_SIGNATURE_LENGTH_INVALID: 'signature length is invalid',
-	  ECDSA_SIGNATURE_PARSE_FAIL: "couldn't parse signature",
-	  ECDSA_SIGNATURE_PARSE_DER_FAIL: "couldn't parse DER signature",
-	  ECDSA_SIGNATURE_SERIALIZE_DER_FAIL: "couldn't serialize signature to DER format",
-	  ECDSA_SIGN_FAIL: 'nonce generation function failed or private key is invalid',
-	  ECDSA_RECOVER_FAIL: "couldn't recover public key from signature",
-	  MSG32_TYPE_INVALID: 'message should be a Buffer',
-	  MSG32_LENGTH_INVALID: 'message length is invalid',
-	  OPTIONS_TYPE_INVALID: 'options should be an Object',
-	  OPTIONS_DATA_TYPE_INVALID: 'options.data should be a Buffer',
-	  OPTIONS_DATA_LENGTH_INVALID: 'options.data length is invalid',
-	  OPTIONS_NONCEFN_TYPE_INVALID: 'options.noncefn should be a Function',
-	  RECOVERY_ID_TYPE_INVALID: 'recovery should be a Number',
-	  RECOVERY_ID_VALUE_INVALID: 'recovery should have value between -1 and 4',
-	  TWEAK_TYPE_INVALID: 'tweak should be a Buffer',
-	  TWEAK_LENGTH_INVALID: 'tweak length is invalid'
-	};
-
-	var _args = [
-		[
-			"github:LemoFoundationLtd/elliptic#fit_rollup",
-			"E:\\Work\\chain\\lemo-client"
-		]
+	var name = "elliptic";
+	var version$1 = "6.4.1";
+	var description = "EC cryptography";
+	var main = "lib/elliptic.js";
+	var files = [
+		"lib"
 	];
-	var _from = "github:LemoFoundationLtd/elliptic#fit_rollup";
-	var _id = "elliptic@github:LemoFoundationLtd/elliptic#1a6a65cfd3f2fc1fa8c7be357ed154521adf08e8";
-	var _inBundle = false;
-	var _integrity = "";
-	var _location = "/elliptic";
-	var _phantomChildren = {
+	var scripts = {
+		jscs: "jscs benchmarks/*.js lib/*.js lib/**/*.js lib/**/**/*.js test/index.js",
+		jshint: "jscs benchmarks/*.js lib/*.js lib/**/*.js lib/**/**/*.js test/index.js",
+		lint: "npm run jscs && npm run jshint",
+		unit: "istanbul test _mocha --reporter=spec test/index.js",
+		test: "npm run lint && npm run unit",
+		version: "grunt dist && git add dist/"
 	};
-	var _requested = {
+	var repository = {
 		type: "git",
-		raw: "github:LemoFoundationLtd/elliptic#fit_rollup",
-		rawSpec: "github:LemoFoundationLtd/elliptic#fit_rollup",
-		saveSpec: "github:LemoFoundationLtd/elliptic#fit_rollup",
-		fetchSpec: null,
-		gitCommittish: "fit_rollup"
+		url: "git@github.com:indutny/elliptic"
 	};
-	var _requiredBy = [
-		"/"
+	var keywords = [
+		"EC",
+		"Elliptic",
+		"curve",
+		"Cryptography"
 	];
-	var _resolved = "github:LemoFoundationLtd/elliptic#1a6a65cfd3f2fc1fa8c7be357ed154521adf08e8";
-	var _spec = "github:LemoFoundationLtd/elliptic#fit_rollup";
-	var _where = "E:\\Work\\chain\\lemo-client";
-	var author = {
-		name: "Fedor Indutny",
-		email: "fedor@indutny.com"
-	};
+	var author = "Fedor Indutny <fedor@indutny.com>";
+	var license = "MIT";
 	var bugs = {
 		url: "https://github.com/indutny/elliptic/issues"
 	};
-	var dependencies = {
-		"bn.js": "^4.4.0",
-		brorand: "^1.0.1",
-		"hash.js": "^1.0.0",
-		"hmac-drbg": "^1.0.0",
-		inherits: "^2.0.1",
-		"minimalistic-assert": "^1.0.0",
-		"minimalistic-crypto-utils": "^1.0.0"
-	};
-	var description = "EC cryptography";
+	var homepage = "https://github.com/indutny/elliptic";
 	var devDependencies = {
 		brfs: "^1.4.3",
 		coveralls: "^2.11.3",
@@ -13282,88 +14450,47 @@
 		jshint: "^2.6.0",
 		mocha: "^2.1.0"
 	};
-	var files = [
-		"lib"
-	];
-	var homepage = "https://github.com/indutny/elliptic";
-	var keywords = [
-		"EC",
-		"Elliptic",
-		"curve",
-		"Cryptography"
-	];
-	var license = "MIT";
-	var main = "lib/elliptic.js";
-	var name = "elliptic";
-	var repository = {
-		type: "git",
-		url: "git+ssh://git@github.com/indutny/elliptic.git"
+	var dependencies = {
+		"bn.js": "^4.4.0",
+		brorand: "^1.0.1",
+		"hash.js": "^1.0.0",
+		"hmac-drbg": "^1.0.0",
+		inherits: "^2.0.1",
+		"minimalistic-assert": "^1.0.0",
+		"minimalistic-crypto-utils": "^1.0.0"
 	};
-	var scripts = {
-		jscs: "jscs benchmarks/*.js lib/*.js lib/**/*.js lib/**/**/*.js test/index.js",
-		jshint: "jscs benchmarks/*.js lib/*.js lib/**/*.js lib/**/**/*.js test/index.js",
-		lint: "npm run jscs && npm run jshint",
-		test: "npm run lint && npm run unit",
-		unit: "istanbul test _mocha --reporter=spec test/index.js",
-		version: "grunt dist && git add dist/"
-	};
-	var version$1 = "6.4.1";
 	var _package = {
-		_args: _args,
-		_from: _from,
-		_id: _id,
-		_inBundle: _inBundle,
-		_integrity: _integrity,
-		_location: _location,
-		_phantomChildren: _phantomChildren,
-		_requested: _requested,
-		_requiredBy: _requiredBy,
-		_resolved: _resolved,
-		_spec: _spec,
-		_where: _where,
-		author: author,
-		bugs: bugs,
-		dependencies: dependencies,
-		description: description,
-		devDependencies: devDependencies,
-		files: files,
-		homepage: homepage,
-		keywords: keywords,
-		license: license,
-		main: main,
 		name: name,
-		repository: repository,
+		version: version$1,
+		description: description,
+		main: main,
+		files: files,
 		scripts: scripts,
-		version: version$1
+		repository: repository,
+		keywords: keywords,
+		author: author,
+		license: license,
+		bugs: bugs,
+		homepage: homepage,
+		devDependencies: devDependencies,
+		dependencies: dependencies
 	};
 
 	var _package$1 = /*#__PURE__*/Object.freeze({
-		_args: _args,
-		_from: _from,
-		_id: _id,
-		_inBundle: _inBundle,
-		_integrity: _integrity,
-		_location: _location,
-		_phantomChildren: _phantomChildren,
-		_requested: _requested,
-		_requiredBy: _requiredBy,
-		_resolved: _resolved,
-		_spec: _spec,
-		_where: _where,
-		author: author,
-		bugs: bugs,
-		dependencies: dependencies,
-		description: description,
-		devDependencies: devDependencies,
-		files: files,
-		homepage: homepage,
-		keywords: keywords,
-		license: license,
-		main: main,
 		name: name,
-		repository: repository,
-		scripts: scripts,
 		version: version$1,
+		description: description,
+		main: main,
+		files: files,
+		scripts: scripts,
+		repository: repository,
+		keywords: keywords,
+		author: author,
+		license: license,
+		bugs: bugs,
+		homepage: homepage,
+		devDependencies: devDependencies,
+		dependencies: dependencies,
 		default: _package
 	});
 
@@ -16796,14 +17923,14 @@
 	})(module, commonjsGlobal);
 	});
 
-	var minimalisticAssert = assert$1;
+	var minimalisticAssert = assert;
 
-	function assert$1(val, msg) {
+	function assert(val, msg) {
 	  if (!val)
 	    throw new Error(msg || 'Assertion failed');
 	}
 
-	assert$1.equal = function assertEqual(l, r, msg) {
+	assert.equal = function assertEqual(l, r, msg) {
 	  if (l != r)
 	    throw new Error(msg || ('Assertion failed: ' + l + ' != ' + r));
 	};
@@ -17058,7 +18185,7 @@
 
 	var getNAF = utils_1$2.getNAF;
 	var getJSF = utils_1$2.getJSF;
-	var assert$2 = utils_1$2.assert;
+	var assert$1 = utils_1$2.assert;
 
 	function BaseCurve(type, conf) {
 	  this.type = type;
@@ -17102,7 +18229,7 @@
 	};
 
 	BaseCurve.prototype._fixedNafMul = function _fixedNafMul(p, k) {
-	  assert$2(p.precomputed);
+	  assert$1(p.precomputed);
 	  var doubles = p._getDoubles();
 
 	  var naf = getNAF(k, 1);
@@ -17157,7 +18284,7 @@
 	    if (i < 0)
 	      break;
 	    var z = naf[i];
-	    assert$2(z !== 0);
+	    assert$1(z !== 0);
 	    if (p.type === 'affine') {
 	      // J +- P
 	      if (z > 0)
@@ -17323,9 +18450,9 @@
 	  if ((bytes[0] === 0x04 || bytes[0] === 0x06 || bytes[0] === 0x07) &&
 	      bytes.length - 1 === 2 * len) {
 	    if (bytes[0] === 0x06)
-	      assert$2(bytes[bytes.length - 1] % 2 === 0);
+	      assert$1(bytes[bytes.length - 1] % 2 === 0);
 	    else if (bytes[0] === 0x07)
-	      assert$2(bytes[bytes.length - 1] % 2 === 1);
+	      assert$1(bytes[bytes.length - 1] % 2 === 1);
 
 	    var res =  this.point(bytes.slice(1, 1 + len),
 	                          bytes.slice(1 + len, 1 + 2 * len));
@@ -17427,7 +18554,7 @@
 	  return r;
 	};
 
-	var assert$3 = utils_1$2.assert;
+	var assert$2 = utils_1$2.assert;
 
 	function ShortCurve(conf) {
 	  base.call(this, 'short', conf);
@@ -17472,7 +18599,7 @@
 	      lambda = lambdas[0];
 	    } else {
 	      lambda = lambdas[1];
-	      assert$3(this.g.mul(lambda).x.cmp(this.g.x.redMul(beta)) === 0);
+	      assert$2(this.g.mul(lambda).x.cmp(this.g.x.redMul(beta)) === 0);
 	    }
 	  }
 
@@ -18528,7 +19655,7 @@
 	  return this.x.fromRed();
 	};
 
-	var assert$4 = utils_1$2.assert;
+	var assert$3 = utils_1$2.assert;
 
 	function EdwardsCurve(conf) {
 	  // NOTE: Important as we are creating point in Base.call()
@@ -18545,7 +19672,7 @@
 	  this.d = new bn(conf.d, 16).toRed(this.red);
 	  this.dd = this.d.redAdd(this.d);
 
-	  assert$4(!this.twisted || this.c.fromRed().cmpn(1) === 0);
+	  assert$3(!this.twisted || this.c.fromRed().cmpn(1) === 0);
 	  this.oneC = (conf.c | 0) === 1;
 	}
 	inherits_browser(EdwardsCurve, base);
@@ -19991,7 +21118,7 @@
 	  for (var j = 0; j < 80; j++) {
 	    var T = sum32$3(
 	      rotl32$2(
-	        sum32_4$2(A, f$3(j, B, C, D), msg[r$1[j] + start], K(j)),
+	        sum32_4$2(A, f$5(j, B, C, D), msg[r$1[j] + start], K(j)),
 	        s[j]),
 	      E);
 	    A = E;
@@ -20001,7 +21128,7 @@
 	    B = T;
 	    T = sum32$3(
 	      rotl32$2(
-	        sum32_4$2(Ah, f$3(79 - j, Bh, Ch, Dh), msg[rh[j] + start], Kh(j)),
+	        sum32_4$2(Ah, f$5(79 - j, Bh, Ch, Dh), msg[rh[j] + start], Kh(j)),
 	        sh[j]),
 	      Eh);
 	    Ah = Eh;
@@ -20025,7 +21152,7 @@
 	    return utils$2.split32(this.h, 'little');
 	};
 
-	function f$3(j, x, y, z) {
+	function f$5(j, x, y, z) {
 	  if (j <= 15)
 	    return x ^ y ^ z;
 	  else if (j <= 31)
@@ -21258,7 +22385,7 @@
 	  return utils_1$1.encode(res, enc);
 	};
 
-	var assert$5 = utils_1$2.assert;
+	var assert$4 = utils_1$2.assert;
 
 	function KeyPair(ec, options) {
 	  this.ec = ec;
@@ -21343,10 +22470,10 @@
 	    // Weierstrass/Edwards points on the other hand have both `x` and
 	    // `y` coordinates.
 	    if (this.ec.curve.type === 'mont') {
-	      assert$5(key.x, 'Need x coordinate');
+	      assert$4(key.x, 'Need x coordinate');
 	    } else if (this.ec.curve.type === 'short' ||
 	               this.ec.curve.type === 'edwards') {
-	      assert$5(key.x && key.y, 'Need both x and y coordinate');
+	      assert$4(key.x && key.y, 'Need both x and y coordinate');
 	    }
 	    this.pub = this.ec.curve.point(key.x, key.y);
 	    return;
@@ -21373,7 +22500,7 @@
 	         ' pub: ' + (this.pub && this.pub.inspect()) + ' >';
 	};
 
-	var assert$6 = utils_1$2.assert;
+	var assert$5 = utils_1$2.assert;
 
 	function Signature(options, enc) {
 	  if (options instanceof Signature)
@@ -21382,7 +22509,7 @@
 	  if (this._importDER(options, enc))
 	    return;
 
-	  assert$6(options.r && options.s, 'Signature without r or s');
+	  assert$5(options.r && options.s, 'Signature without r or s');
 	  this.r = new bn(options.r, 16);
 	  this.s = new bn(options.s, 16);
 	  if (options.recoveryParam === undefined)
@@ -21396,7 +22523,7 @@
 	  this.place = 0;
 	}
 
-	function getLength(buf, p) {
+	function getLength$1(buf, p) {
 	  var initial = buf[p.place++];
 	  if (!(initial & 0x80)) {
 	    return initial;
@@ -21429,20 +22556,20 @@
 	  if (data[p.place++] !== 0x30) {
 	    return false;
 	  }
-	  var len = getLength(data, p);
+	  var len = getLength$1(data, p);
 	  if ((len + p.place) !== data.length) {
 	    return false;
 	  }
 	  if (data[p.place++] !== 0x02) {
 	    return false;
 	  }
-	  var rlen = getLength(data, p);
+	  var rlen = getLength$1(data, p);
 	  var r = data.slice(p.place, rlen + p.place);
 	  p.place += rlen;
 	  if (data[p.place++] !== 0x02) {
 	    return false;
 	  }
-	  var slen = getLength(data, p);
+	  var slen = getLength$1(data, p);
 	  if (data.length !== slen + p.place) {
 	    return false;
 	  }
@@ -21503,7 +22630,7 @@
 	  return utils_1$2.encode(res, enc);
 	};
 
-	var assert$7 = utils_1$2.assert;
+	var assert$6 = utils_1$2.assert;
 
 
 
@@ -21514,7 +22641,7 @@
 
 	  // Shortcut `elliptic.ec(curve-name)`
 	  if (typeof options === 'string') {
-	    assert$7(curves_1.hasOwnProperty(options), 'Unknown curve ' + options);
+	    assert$6(curves_1.hasOwnProperty(options), 'Unknown curve ' + options);
 
 	    options = curves_1[options];
 	  }
@@ -21690,7 +22817,7 @@
 	};
 
 	EC.prototype.recoverPubKey = function(msg, signature$$1, j, enc) {
-	  assert$7((3 & j) === j, 'The recovery param is more than two bits');
+	  assert$6((3 & j) === j, 'The recovery param is more than two bits');
 	  signature$$1 = new signature(signature$$1, enc);
 
 	  var n = this.n;
@@ -21738,7 +22865,7 @@
 	  throw new Error('Unable to find valid recovery factor');
 	};
 
-	var assert$8 = utils_1$2.assert;
+	var assert$7 = utils_1$2.assert;
 	var parseBytes = utils_1$2.parseBytes;
 	var cachedProperty = utils_1$2.cachedProperty;
 
@@ -21812,7 +22939,7 @@
 	});
 
 	KeyPair$1.prototype.sign = function sign(message) {
-	  assert$8(this._secret, 'KeyPair can only verify');
+	  assert$7(this._secret, 'KeyPair can only verify');
 	  return this.eddsa.sign(message, this);
 	};
 
@@ -21821,7 +22948,7 @@
 	};
 
 	KeyPair$1.prototype.getSecret = function getSecret(enc) {
-	  assert$8(this._secret, 'KeyPair is public only');
+	  assert$7(this._secret, 'KeyPair is public only');
 	  return utils_1$2.encode(this.secret(), enc);
 	};
 
@@ -21831,7 +22958,7 @@
 
 	var key$2 = KeyPair$1;
 
-	var assert$9 = utils_1$2.assert;
+	var assert$8 = utils_1$2.assert;
 	var cachedProperty$1 = utils_1$2.cachedProperty;
 	var parseBytes$1 = utils_1$2.parseBytes;
 
@@ -21856,7 +22983,7 @@
 	    };
 	  }
 
-	  assert$9(sig.R && sig.S, 'Signature without R or S');
+	  assert$8(sig.R && sig.S, 'Signature without R or S');
 
 	  if (eddsa.isPoint(sig.R))
 	    this._R = sig.R;
@@ -21893,13 +23020,13 @@
 
 	var signature$1 = Signature$1;
 
-	var assert$a = utils_1$2.assert;
+	var assert$9 = utils_1$2.assert;
 	var parseBytes$2 = utils_1$2.parseBytes;
 
 
 
 	function EDDSA(curve) {
-	  assert$a(curve === 'ed25519', 'only tested with ed25519 so far');
+	  assert$9(curve === 'ed25519', 'only tested with ed25519 so far');
 
 	  if (!(this instanceof EDDSA))
 	    return new EDDSA(curve);
@@ -22024,12 +23151,105 @@
 	elliptic.eddsa = eddsa;
 	});
 
+	var toString$3 = Object.prototype.toString; // TypeError
+
+	function isArray$3(value, message) {
+	  if (!Array.isArray(value)) throw TypeError(message);
+	}
+	function isBoolean$1(value, message) {
+	  if (toString$3.call(value) !== '[object Boolean]') throw TypeError(message);
+	}
+	function isBuffer$3(value, message) {
+	  if (!isBuffer$1(value)) throw TypeError(message);
+	}
+	function isFunction$2(value, message) {
+	  if (toString$3.call(value) !== '[object Function]') throw TypeError(message);
+	}
+	function isNumber$2(value, message) {
+	  if (toString$3.call(value) !== '[object Number]') throw TypeError(message);
+	}
+	function isObject$2(value, message) {
+	  if (toString$3.call(value) !== '[object Object]') throw TypeError(message);
+	} // RangeError
+
+	function isBufferLength(buffer, length, message) {
+	  if (buffer.length !== length) throw RangeError(message);
+	}
+	function isBufferLength2(buffer, length1, length2, message) {
+	  if (buffer.length !== length1 && buffer.length !== length2) throw RangeError(message);
+	}
+	function isLengthGTZero(value, message) {
+	  if (value.length === 0) throw RangeError(message);
+	}
+	function isNumberInInterval(number, x, y, message) {
+	  if (number <= x || number >= y) throw RangeError(message);
+	}
+	var assert$a = {
+	  isArray: isArray$3,
+	  isBoolean: isBoolean$1,
+	  isBuffer: isBuffer$3,
+	  isFunction: isFunction$2,
+	  isNumber: isNumber$2,
+	  isObject: isObject$2,
+	  isBufferLength: isBufferLength,
+	  isBufferLength2: isBufferLength2,
+	  isLengthGTZero: isLengthGTZero,
+	  isNumberInInterval: isNumberInInterval
+	};
+
+	var messages = {
+	  COMPRESSED_TYPE_INVALID: 'compressed should be a boolean',
+	  EC_PRIVATE_KEY_TYPE_INVALID: 'private key should be a Buffer',
+	  EC_PRIVATE_KEY_LENGTH_INVALID: 'private key length is invalid',
+	  EC_PRIVATE_KEY_RANGE_INVALID: 'private key range is invalid',
+	  EC_PRIVATE_KEY_TWEAK_ADD_FAIL: 'tweak out of range or resulting private key is invalid',
+	  EC_PRIVATE_KEY_TWEAK_MUL_FAIL: 'tweak out of range',
+	  EC_PRIVATE_KEY_EXPORT_DER_FAIL: "couldn't export to DER format",
+	  EC_PRIVATE_KEY_IMPORT_DER_FAIL: "couldn't import from DER format",
+	  EC_PUBLIC_KEYS_TYPE_INVALID: 'public keys should be an Array',
+	  EC_PUBLIC_KEYS_LENGTH_INVALID: 'public keys Array should have at least 1 element',
+	  EC_PUBLIC_KEY_TYPE_INVALID: 'public key should be a Buffer',
+	  EC_PUBLIC_KEY_LENGTH_INVALID: 'public key length is invalid',
+	  EC_PUBLIC_KEY_PARSE_FAIL: 'the public key could not be parsed or is invalid',
+	  EC_PUBLIC_KEY_CREATE_FAIL: 'private was invalid, try again',
+	  EC_PUBLIC_KEY_TWEAK_ADD_FAIL: 'tweak out of range or resulting public key is invalid',
+	  EC_PUBLIC_KEY_TWEAK_MUL_FAIL: 'tweak out of range',
+	  EC_PUBLIC_KEY_COMBINE_FAIL: 'the sum of the public keys is not valid',
+	  ECDH_FAIL: 'scalar was invalid (zero or overflow)',
+	  ECDSA_SIGNATURE_TYPE_INVALID: 'signature should be a Buffer',
+	  ECDSA_SIGNATURE_LENGTH_INVALID: 'signature length is invalid',
+	  ECDSA_SIGNATURE_PARSE_FAIL: "couldn't parse signature",
+	  ECDSA_SIGNATURE_PARSE_DER_FAIL: "couldn't parse DER signature",
+	  ECDSA_SIGNATURE_SERIALIZE_DER_FAIL: "couldn't serialize signature to DER format",
+	  ECDSA_SIGN_FAIL: 'nonce generation function failed or private key is invalid',
+	  ECDSA_RECOVER_FAIL: "couldn't recover public key from signature",
+	  MSG32_TYPE_INVALID: 'message should be a Buffer',
+	  MSG32_LENGTH_INVALID: 'message length is invalid',
+	  OPTIONS_TYPE_INVALID: 'options should be an Object',
+	  OPTIONS_DATA_TYPE_INVALID: 'options.data should be a Buffer',
+	  OPTIONS_DATA_LENGTH_INVALID: 'options.data length is invalid',
+	  OPTIONS_NONCEFN_TYPE_INVALID: 'options.noncefn should be a Function',
+	  RECOVERY_ID_TYPE_INVALID: 'recovery should be a Number',
+	  RECOVERY_ID_VALUE_INVALID: 'recovery should have value between -1 and 4',
+	  TWEAK_TYPE_INVALID: 'tweak should be a Buffer',
+	  TWEAK_LENGTH_INVALID: 'tweak length is invalid'
+	};
+
 	var ec$1 = new elliptic_1.ec('secp256k1');
-	var ecparams = ec$1.curve;
+	var N = bnToBigNumber(ec$1.curve.n);
+
+	function checkSignParams(message, privateKey) {
+	  assert$a.isBuffer(message, messages.MSG32_TYPE_INVALID);
+	  assert$a.isBufferLength(message, 32, messages.MSG32_LENGTH_INVALID);
+	  assert$a.isBuffer(privateKey, messages.EC_PRIVATE_KEY_TYPE_INVALID);
+	  assert$a.isBufferLength(privateKey, 32, messages.EC_PRIVATE_KEY_LENGTH_INVALID);
+	}
+
 	function sign(message, privateKey) {
+	  checkSignParams(message, privateKey);
 	  var d = bufferToBigNumber(privateKey);
 
-	  if (d.comparedTo(bnToBigNumber(ecparams.n)) >= 0 || d.isZero()) {
+	  if (d.comparedTo(N) >= 0 || d.isZero()) {
 	    throw new Error(messages.ECDSA_SIGN_FAIL);
 	  }
 
@@ -22041,7 +23261,18 @@
 	    recovery: result.recoveryParam
 	  };
 	}
-	function recover(message, signature, recovery, compressed) {
+
+	function checkRecoverParams(message, signature, recovery) {
+	  assert$a.isBuffer(message, messages.MSG32_TYPE_INVALID);
+	  assert$a.isBufferLength(message, 32, messages.MSG32_LENGTH_INVALID);
+	  assert$a.isBuffer(signature, messages.ECDSA_SIGNATURE_TYPE_INVALID);
+	  assert$a.isBufferLength(signature, 64, messages.ECDSA_SIGNATURE_LENGTH_INVALID);
+	  assert$a.isNumber(recovery, messages.RECOVERY_ID_TYPE_INVALID);
+	  assert$a.isNumberInInterval(recovery, -1, 4, messages.RECOVERY_ID_VALUE_INVALID);
+	}
+
+	function recover(message, signature, recovery) {
+	  checkRecoverParams(message, signature, recovery);
 	  var sigObj = {
 	    r: signature.slice(0, 32),
 	    s: signature.slice(32, 64)
@@ -22049,14 +23280,17 @@
 	  var sigr = bufferToBigNumber(sigObj.r);
 	  var sigs = bufferToBigNumber(sigObj.s);
 
-	  if (sigr.comparedTo(bnToBigNumber(ecparams.n)) >= 0 || sigs.comparedTo(bnToBigNumber(ecparams.n)) >= 0) {
+	  if (sigr.comparedTo(N) >= 0 || sigs.comparedTo(N) >= 0) {
 	    throw new Error(messages.ECDSA_SIGNATURE_PARSE_FAIL);
 	  }
 
+	  if (sigr.isZero() || sigs.isZero()) {
+	    throw new Error(messages.ECDSA_RECOVER_FAIL);
+	  }
+
 	  try {
-	    if (sigr.isZero() || sigs.isZero()) throw new Error();
 	    var point = ec$1.recoverPubKey(message, sigObj, recovery);
-	    return safeBuffer_1.from(point.encode(true, compressed));
+	    return safeBuffer_1.from(point.encode());
 	  } catch (err) {
 	    throw new Error(messages.ECDSA_RECOVER_FAIL);
 	  }
@@ -22072,31 +23306,13 @@
 
 	var secp256k1$1 = {
 	  sign: sign,
-	  recover: recover
+	  recover: recover,
+	  N: N
 	};
 
-	/* secp256k1-node v3.5.2 https://github.com/cryptocoinjs/secp256k1-node */
-	function sign$1(message, privateKey) {
-	  assert.isBuffer(message, messages.MSG32_TYPE_INVALID);
-	  assert.isBufferLength(message, 32, messages.MSG32_LENGTH_INVALID);
-	  assert.isBuffer(privateKey, messages.EC_PRIVATE_KEY_TYPE_INVALID);
-	  assert.isBufferLength(privateKey, 32, messages.EC_PRIVATE_KEY_LENGTH_INVALID);
-	  return secp256k1$1.sign(message, privateKey);
-	}
-	function recover$1(message, signature, recovery, compressed) {
-	  assert.isBuffer(message, messages.MSG32_TYPE_INVALID);
-	  assert.isBufferLength(message, 32, messages.MSG32_LENGTH_INVALID);
-	  assert.isBuffer(signature, messages.ECDSA_SIGNATURE_TYPE_INVALID);
-	  assert.isBufferLength(signature, 64, messages.ECDSA_SIGNATURE_LENGTH_INVALID);
-	  assert.isNumber(recovery, messages.RECOVERY_ID_TYPE_INVALID);
-	  assert.isNumberInInterval(recovery, -1, 4, messages.RECOVERY_ID_VALUE_INVALID);
-	  assert.isBoolean(compressed, messages.COMPRESSED_TYPE_INVALID);
-	  return secp256k1$1.recover(message, signature, recovery, compressed);
-	}
-	var secp256k1$2 = {
-	  sign: sign$1,
-	  recover: recover$1
-	};
+	var ec$2 = new elliptic_1.ec('secp256k1'); // eslint-disable-line
+
+	var N$1 = secp256k1$1.N; // secp256k1n/2
 
 	var N_DIV_2 = new bignumber('7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a0', 16);
 	var BASE26_ALPHABET = '83456729ABCDFGHJKNPQRSTWYZ';
@@ -22107,40 +23323,40 @@
 	 * sign hash
 	 * @param {Buffer} privateKey length must be 32
 	 * @param {Buffer} hash length must be 32
-	 * @return {{recovery: number, r: Buffer, s: Buffer}}
+	 * @return {Buffer}
 	 */
 
-	function sign$2(privateKey, hash) {
-	  var sig = secp256k1$2.sign(hash, privateKey);
-	  return {
-	    recovery: sig.recovery,
-	    r: sig.signature.slice(0, 32),
-	    s: sig.signature.slice(32, 64)
-	  };
+	function sign$1(privateKey, hash) {
+	  var sig = secp256k1$1.sign(hash, privateKey);
+	  var recovery = safeBuffer_1.from([sig.recovery]);
+	  return safeBuffer_1.concat([sig.signature, recovery]);
 	}
 	/**
 	 * Recover public key from hash and sign data
 	 * @param {Buffer} hash
-	 * @param {number} recovery
-	 * @param {Buffer} r
-	 * @param {Buffer} s
+	 * @param {Buffer} sig
 	 * @return {Buffer|null}
 	 */
 
-	function recover$2(hash, recovery, r, s) {
-	  // All transaction signatures whose s-value is greater than secp256k1n/2 are considered invalid.
-	  if (new bignumber(s).gt(N_DIV_2)) {
-	    return null;
-	  }
+	function recover$1(hash, sig) {
+	  sig = setBufferLength(sig, 65);
+	  var recovery = sig[64];
 
 	  if (recovery !== 0 && recovery !== 1) {
 	    console.error('Invalid signature recovery value');
 	    return null;
+	  } // const r = sig.slice(0, 32)
+
+
+	  var s = sig.slice(32, 64); // All transaction signatures whose s-value is greater than secp256k1n/2 are considered invalid.
+
+	  if (new bignumber(s).gt(N_DIV_2)) {
+	    return null;
 	  }
 
 	  try {
-	    var signature = safeBuffer_1.concat([setBufferLength(r, 32), setBufferLength(s, 32)], 64);
-	    return secp256k1$2.recover(hash, signature, recovery, false);
+	    var signature = sig.slice(0, 64);
+	    return secp256k1$1.recover(hash, signature, recovery);
 	  } catch (e) {
 	    return null;
 	  }
@@ -22201,7 +23417,7 @@
 	  var origAddr = address;
 
 	  if (has0xPrefix(address)) {
-	    if (/^0x[0-9a-f]{0,40}$/i.test(address)) {
+	    if (new RegExp("^0x[0-9a-f]{0,".concat(ADDRESS_BYTE_LENGTH * 2, "}$"), 'i').test(address)) {
 	      return address;
 	    } else {
 	      throw new Error(errors.InvalidHexAddress(origAddr));
@@ -22228,6 +23444,13 @@
 	    throw new Error(errors.DecodeAddressError(address, e.message));
 	  }
 
+	  fullPayload = bufferTrimLeft(fullPayload);
+	  var maxLenWithCheckSum = ADDRESS_BYTE_LENGTH + 1;
+
+	  if (fullPayload.length > maxLenWithCheckSum) {
+	    throw new Error(errors.InvalidAddressLength(origAddr));
+	  }
+
 	  var data = fullPayload.slice(0, fullPayload.length - 1);
 	  var checkSum = fullPayload[fullPayload.length - 1];
 	  var realCheckSum = 0;
@@ -22245,158 +23468,57 @@
 	  return "0x".concat(hex);
 	}
 
+	function privateToAddress(privKey) {
+	  privKey = toBuffer(privKey);
+	  var privNum = new bignumber(privKey);
+
+	  if (privNum.gt(N$1) || privNum.isZero()) {
+	    throw new Error(messages.EC_PUBLIC_KEY_CREATE_FAIL);
+	  }
+
+	  var ecKey = ec$2.keyFromPrivate(privKey);
+	  var pub = safeBuffer_1.from(ecKey.getPublic().encode());
+	  return pubKeyToAddress(pub);
+	}
+
+	function randomBytes(size) {
+	  var numArr = new Array(size).fill(0).map(function () {
+	    return Math.floor(Math.random() * 256);
+	  });
+	  return safeBuffer_1.from(numArr);
+	}
 	/**
-	 * RLP Encoding based on: https://github.com/ethereum/wiki/wiki/%5BEnglish%5D-RLP
-	 * This function takes in a data, convert it to buffer if not, and a length for recursion
-	 *
-	 * @param {Buffer,String,Integer,Array} data - will be converted to buffer
-	 * @returns {Buffer} - returns buffer of encoded data
-	 * */
-
-	function encode$1(input) {
-	  if (input instanceof Array) {
-	    var output = [];
-
-	    for (var i = 0; i < input.length; i++) {
-	      output.push(encode$1(input[i]));
-	    }
-
-	    var buf = safeBuffer_1.concat(output);
-	    return safeBuffer_1.concat([encodeLength(buf.length, 192), buf]);
-	  } else {
-	    input = toBuffer$1(input);
-
-	    if (input.length === 1 && input[0] < 128) {
-	      return input;
-	    } else {
-	      return safeBuffer_1.concat([encodeLength(input.length, 128), input]);
-	    }
-	  }
-	}
-
-	function encodeLength(len, offset) {
-	  if (len < 56) {
-	    return safeBuffer_1.from([len + offset]);
-	  } else {
-	    var hexLength = intToHex(len);
-	    var lLength = hexLength.length / 2;
-	    var firstByte = intToHex(offset + 55 + lLength);
-	    return safeBuffer_1.from(firstByte + hexLength, 'hex');
-	  }
-	}
-
-	function isHexPrefixed(str) {
-	  return str.slice(0, 2) === '0x';
-	} // Removes 0x from a given String
+	 * 创建账户
+	 * @param {string|Buffer?} seed
+	 * @return {{privateKey: string, address: string}}
+	 */
 
 
-	function stripHexPrefix(str) {
-	  if (typeof str !== 'string') {
-	    return str;
-	  }
+	function generateAccount(seed) {
+	  var privKey;
+	  var address;
 
-	  return isHexPrefixed(str) ? str.slice(2) : str;
-	}
+	  while (!address) {
+	    var innerHex = keccak256(safeBuffer_1.concat([randomBytes(32), seed || randomBytes(32)]));
+	    privKey = keccak256(safeBuffer_1.concat([randomBytes(32), innerHex, randomBytes(32)]));
 
-	function intToHex(i) {
-	  var hex = i.toString(16);
-
-	  if (hex.length % 2) {
-	    hex = "0".concat(hex);
-	  }
-
-	  return hex;
-	}
-
-	function padToEven(a) {
-	  if (a.length % 2) a = "0".concat(a);
-	  return a;
-	}
-
-	function intToBuffer(i) {
-	  var hex = intToHex(i);
-	  return safeBuffer_1.from(hex, 'hex');
-	}
-
-	function toBuffer$1(v) {
-	  if (!safeBuffer_1.isBuffer(v)) {
-	    if (typeof v === 'string') {
-	      if (isHexPrefixed(v)) {
-	        v = safeBuffer_1.from(padToEven(stripHexPrefix(v)), 'hex');
-	      } else {
-	        v = safeBuffer_1.from(v);
-	      }
-	    } else if (typeof v === 'number') {
-	      if (!v) {
-	        v = safeBuffer_1.from([]);
-	      } else {
-	        v = intToBuffer(v);
-	      }
-	    } else if (v === null || v === undefined) {
-	      v = safeBuffer_1.from([]);
-	    } else if (v.toArray) {
-	      // converts a BN to a Buffer
-	      v = safeBuffer_1.from(v.toArray());
-	    } else {
-	      throw new Error('invalid type');
+	    try {
+	      address = privateToAddress(privKey);
+	    } catch (error) {
+	      console.warn(error, 'try again');
 	    }
 	  }
 
-	  return v;
-	}
-
-	var TxType = {
-	  // Ordinary transaction for transfer LEMO or call smart contract
-	  ORDINARY: 0,
-	  // Vote transaction for set vote target
-	  VOTE: 1,
-	  // Candidate transaction for register or edit candidate information
-	  CANDIDATE: 2
-	};
-	var ChangeLogTypes = {
-	  BalanceLog: 1,
-	  StorageLog: 2,
-	  CodeLog: 3,
-	  AddEventLog: 4,
-	  SuicideLog: 5,
-	  VoteForLog: 6,
-	  VotesLog: 7,
-	  CandidateProfileLog: 8,
-	  TxCountLog: 9 // The length of nodeID
-
-	};
-	var NODE_ID_LENGTH = 128; // The max length limit of toName field in transaction
-
-	var MAX_TX_TO_NAME_LENGTH = 100; // The max length limit of message field in transaction
-
-	var MAX_TX_MESSAGE_LENGTH = 1024; // The max length limit of host field in deputy
-
-	var MAX_DEPUTY_HOST_LENGTH = 128; // The length of hash string (with 0x)
-
-	//     type    version  secp256k1.recovery  chainID
-	// |----8----|----7----|--------1--------|----16----|
-	// CombineV combines type, version, chainID together to generate V
-
-	function combineV(type, version, recovery, chainID) {
-	  type = type % (1 << 8) << 24;
-	  version = version % (1 << 7) << 17;
-	  recovery = recovery % (1 << 1) << 16;
-	  chainID %= 1 << 16;
-	  return type | version | recovery | chainID;
-	} // ParseV split v to 4 parts
-
-	function parseV(v) {
-	  var type = (v >> 24) % (1 << 8);
-	  var version = (v >> 17) % (1 << 7);
-	  var recovery = (v >> 16) % (1 << 1);
-	  var chainID = v % (1 << 16);
 	  return {
-	    type: type,
-	    version: version,
-	    recovery: recovery,
-	    chainID: chainID
+	    privateKey: "0x".concat(privKey.toString('hex')),
+	    address: address
 	  };
 	}
+
+	/**
+	 * @return {Buffer}
+	 */
+
 	function toRaw(tx, fieldName, isNumber, length) {
 	  var data = tx[fieldName];
 
@@ -22427,30 +23549,33 @@
 	  var str = toRaw(tx, fieldName, true, length).toString('hex');
 	  return str ? "0x".concat(str) : '';
 	}
+	function checkChainID(config, chainID) {
+	  if (!config.chainID) {
+	    return _objectSpread({
+	      chainID: chainID
+	    }, config);
+	  } else if (config.chainID !== chainID) {
+	    console.warn("The chainID ".concat(config.chainID, " from transaction is different with ").concat(chainID, " from SDK"));
+	  }
+
+	  return config;
+	}
 	function verifyTxConfig(config) {
-	  // v, type, version
-	  if (config.v) {
-	    checkType(config, 'v', ['string', safeBuffer_1], true);
-	    checkRange(config, 'v', 0, 0xffffffff);
-	    checkRange(config, 'v', 0, 0xffffffff);
+	  if (!config.chainID) {
+	    throw new Error(errors.TXInvalidChainID());
+	  }
 
-	    if (config.type) {
-	      throw new Error(errors.TXVTypeConflict(config));
-	    }
+	  checkType(config, 'chainID', ['number', 'string'], true);
+	  checkRange(config, 'chainID', 1, 0xffff);
 
-	    if (config.version) {
-	      throw new Error(errors.TXVVersionConflict(config));
-	    }
-	  } else {
-	    if (config.type) {
-	      checkType(config, 'type', ['number', 'string'], true);
-	      checkRange(config, 'type', 0, 0xff);
-	    }
+	  if (config.type) {
+	    checkType(config, 'type', ['number', 'string'], true);
+	    checkRange(config, 'type', 0, 0xffff);
+	  }
 
-	    if (config.version) {
-	      checkType(config, 'version', ['number'], true);
-	      checkRange(config, 'version', 0, 0x7f);
-	    }
+	  if (config.version) {
+	    checkType(config, 'version', ['number', 'string'], true);
+	    checkRange(config, 'version', 0, 0xff);
 	  }
 
 	  if (config.to) {
@@ -22489,12 +23614,9 @@
 	    checkMaxLength(config, 'message', MAX_TX_MESSAGE_LENGTH);
 	  }
 
-	  if (config.r) {
-	    checkType(config, 'r', ['string', safeBuffer_1], true);
-	  }
-
-	  if (config.s) {
-	    checkType(config, 's', ['string', safeBuffer_1], true);
+	  if (config.sig) {
+	    checkType(config, 'sig', ['string', safeBuffer_1], true);
+	    checkMaxBytes(config, 'sig', TX_SIG_BYTE_LENGTH);
 	  }
 	}
 	function verifyCandidateInfo(config) {
@@ -22523,7 +23645,7 @@
 	function checkType(obj, fieldName, types, isNumber) {
 	  var data = obj[fieldName];
 
-	  var typeStr = _typeof_1(data);
+	  var typeStr = _typeof(data);
 
 	  for (var i = 0; i < types.length; i++) {
 	    if (typeStr === types[i]) {
@@ -22543,7 +23665,7 @@
 	      return;
 	    }
 
-	    var isClassType = _typeof_1(types[i]) === 'object' || typeof types[i] === 'function';
+	    var isClassType = _typeof(types[i]) === 'object' || typeof types[i] === 'function';
 
 	    if (isClassType && data instanceof types[i]) {
 	      return;
@@ -22594,41 +23716,48 @@
 	    throw new Error(errors.TXInvalidMaxLength(fieldName, obj[fieldName], maxLength));
 	  }
 	}
+	/**
+	 * @param {object} obj
+	 * @param {string} fieldName
+	 * @param {number} maxBytesLength
+	 */
+
+
+	function checkMaxBytes(obj, fieldName, maxBytesLength) {
+	  var data = obj[fieldName];
+	  var dataLen = data.length;
+
+	  if (typeof data === 'string') {
+	    dataLen = Math.ceil(dataLen / 2 - (has0xPrefix(data) ? 1 : 0));
+	  }
+
+	  if (dataLen > maxBytesLength) {
+	    throw new Error(errors.TXInvalidMaxBytes(fieldName, obj[fieldName], maxBytesLength, dataLen));
+	  }
+	}
 
 	var Signer =
 	/*#__PURE__*/
 	function () {
-	  /**
-	   * @param {number} chainID The LemoChain id
-	   */
-	  function Signer(chainID) {
-	    classCallCheck(this, Signer);
-
-	    if (!chainID) {
-	      throw new Error('ChainID should not be empty');
-	    }
-
-	    this.chainID = chainID;
+	  function Signer() {
+	    _classCallCheck(this, Signer);
 	  }
-	  /**
-	   * Sign a transaction with private key
-	   * @param {Tx} tx
-	   * @param {string|Buffer} privateKey
-	   * @return {Buffer} The signed transaction's hash
-	   */
 
-
-	  createClass(Signer, [{
+	  _createClass(Signer, [{
 	    key: "sign",
+
+	    /**
+	     * Sign a transaction with private key
+	     * @param {Tx} tx
+	     * @param {string|Buffer} privateKey
+	     * @return {string} The signature
+	     */
 	    value: function sign$$1(tx, privateKey) {
 	      privateKey = toBuffer(privateKey);
 
-	      var sig = sign$2(privateKey, this.hashForSign(tx));
+	      var sig = sign$1(privateKey, this.hashForSign(tx));
 
-	      tx.v = combineV(tx.type, tx.version, sig.recovery, this.chainID);
-	      tx.r = sig.r;
-	      tx.s = sig.s;
-	      return tx.hash();
+	      return "0x".concat(sig.toString('hex'));
 	    }
 	    /**
 	     * Recover from address from a signed transaction
@@ -22639,27 +23768,18 @@
 	  }, {
 	    key: "recover",
 	    value: function recover$$1(tx) {
-	      var parsed = parseV(tx.v);
-
-	      if (parsed.chainID !== this.chainID) {
-	        console.warn("The chainID ".concat(parsed.chainID, " from transaction is different with ").concat(this.chainID, " from SDK"));
-	      }
-
-	      var recovery = parsed.recovery;
-
-	      var pubKey = recover$2(this.hashForSign(tx), recovery, toBuffer(tx.r), toBuffer(tx.s));
+	      var pubKey = recover$1(this.hashForSign(tx), toBuffer(tx.sig));
 
 	      if (!pubKey) {
 	        throw new Error('invalid signature');
 	      }
 
-	      tx.from = pubKeyToAddress(pubKey);
-	      return tx.from;
+	      return pubKeyToAddress(pubKey);
 	    }
 	  }, {
 	    key: "hashForSign",
 	    value: function hashForSign(tx) {
-	      var raw = [toRaw(tx, 'type', true), toRaw(tx, 'version', true), toBuffer(this.chainID), tx.to ? toRaw(tx, 'to', false, 20) : '', toRaw(tx, 'toName', false), toRaw(tx, 'gasPrice', true), toRaw(tx, 'gasLimit', true), toRaw(tx, 'amount', true), toRaw(tx, 'data', true), toRaw(tx, 'expirationTime', true), toRaw(tx, 'message', false)];
+	      var raw = [toRaw(tx, 'type', true), toRaw(tx, 'version', true), toRaw(tx, 'chainID', true), tx.to ? toRaw(tx, 'to', false, TX_TO_LENGTH) : '', toRaw(tx, 'toName', false), toRaw(tx, 'gasPrice', true), toRaw(tx, 'gasLimit', true), toRaw(tx, 'amount', true), toRaw(tx, 'data', true), toRaw(tx, 'expirationTime', true), toRaw(tx, 'message', false)];
 	      return keccak256(encode$1(raw));
 	    }
 	  }]);
@@ -22667,101 +23787,15 @@
 	  return Signer;
 	}();
 
-	// 7.2.2 IsArray(argument)
-
-	var _isArray = Array.isArray || function isArray(arg) {
-	  return _cof(arg) == 'Array';
-	};
-
-	var SPECIES$2 = _wks('species');
-
-	var _arraySpeciesConstructor = function (original) {
-	  var C;
-	  if (_isArray(original)) {
-	    C = original.constructor;
-	    // cross-realm fallback
-	    if (typeof C == 'function' && (C === Array || _isArray(C.prototype))) C = undefined;
-	    if (_isObject(C)) {
-	      C = C[SPECIES$2];
-	      if (C === null) C = undefined;
-	    }
-	  } return C === undefined ? Array : C;
-	};
-
-	// 9.4.2.3 ArraySpeciesCreate(originalArray, length)
-
-
-	var _arraySpeciesCreate = function (original, length) {
-	  return new (_arraySpeciesConstructor(original))(length);
-	};
-
-	// 0 -> Array#forEach
-	// 1 -> Array#map
-	// 2 -> Array#filter
-	// 3 -> Array#some
-	// 4 -> Array#every
-	// 5 -> Array#find
-	// 6 -> Array#findIndex
-
-
-
-
-
-	var _arrayMethods = function (TYPE, $create) {
-	  var IS_MAP = TYPE == 1;
-	  var IS_FILTER = TYPE == 2;
-	  var IS_SOME = TYPE == 3;
-	  var IS_EVERY = TYPE == 4;
-	  var IS_FIND_INDEX = TYPE == 6;
-	  var NO_HOLES = TYPE == 5 || IS_FIND_INDEX;
-	  var create = $create || _arraySpeciesCreate;
-	  return function ($this, callbackfn, that) {
-	    var O = _toObject($this);
-	    var self = _iobject(O);
-	    var f = _ctx(callbackfn, that, 3);
-	    var length = _toLength(self.length);
-	    var index = 0;
-	    var result = IS_MAP ? create($this, length) : IS_FILTER ? create($this, 0) : undefined;
-	    var val, res;
-	    for (;length > index; index++) if (NO_HOLES || index in self) {
-	      val = self[index];
-	      res = f(val, index, O);
-	      if (TYPE) {
-	        if (IS_MAP) result[index] = res;   // map
-	        else if (res) switch (TYPE) {
-	          case 3: return true;             // some
-	          case 5: return val;              // find
-	          case 6: return index;            // findIndex
-	          case 2: result.push(val);        // filter
-	        } else if (IS_EVERY) return false; // every
-	      }
-	    }
-	    return IS_FIND_INDEX ? -1 : IS_SOME || IS_EVERY ? IS_EVERY : result;
-	  };
-	};
-
-	// 22.1.3.8 Array.prototype.find(predicate, thisArg = undefined)
-
-	var $find = _arrayMethods(5);
-	var KEY = 'find';
-	var forced = true;
-	// Shouldn't skip holes
-	if (KEY in []) Array(1)[KEY](function () { forced = false; });
-	_export(_export.P + _export.F * forced, 'Array', {
-	  find: function find(callbackfn /* , that = undefined */) {
-	    return $find(this, callbackfn, arguments.length > 1 ? arguments[1] : undefined);
-	  }
-	});
-	_addToUnscopables(KEY);
-
 	var Tx =
 	/*#__PURE__*/
 	function () {
 	  /**
 	   * Create transaction object
 	   * @param {object} txConfig
-	   * @param {number?} txConfig.type The type of transaction. 0: normal
-	   * @param {number?} txConfig.version The version of transaction protocol
+	   * @param {number|string?} txConfig.type The type of transaction
+	   * @param {number|string?} txConfig.version The version of transaction protocol
+	   * @param {number|string} txConfig.chainID The LemoChain id
 	   * @param {string?} txConfig.to The transaction recipient address
 	   * @param {string?} txConfig.toName The transaction recipient name
 	   * @param {number|string?} txConfig.gasPrice Gas price for smart contract. Unit is mo/gas
@@ -22770,57 +23804,77 @@
 	   * @param {Buffer|string?} txConfig.data Extra data or smart contract calling parameters
 	   * @param {number|string?} txConfig.expirationTime Default value is half hour from now
 	   * @param {string?} txConfig.message Extra value data
-	   * @param {Buffer|string?} txConfig.r Signature data
-	   * @param {Buffer|string?} txConfig.s Signature data
-	   * @param {Buffer|string?} txConfig.v Signature data, it also contains type, version, and chainID for transaction
+	   * @param {Buffer|string?} txConfig.sig Signature data
 	   */
 	  function Tx(txConfig) {
-	    classCallCheck(this, Tx);
+	    _classCallCheck(this, Tx);
 
 	    verifyTxConfig(txConfig);
-
-	    if (txConfig.v) {
-	      this.v = txConfig.v;
-	      var parsedV = parseV(txConfig.v);
-	      this.type = parsedV.type;
-	      this.version = parsedV.version;
-	    } else {
-	      // no v before sign
-	      this.v = '';
-	      this.type = parseInt(txConfig.type || 0, 10);
-	      this.version = txConfig.version || TX_VERSION;
-	    }
-
-	    this.to = txConfig.to || '';
-	    this.toName = txConfig.toName || '';
-	    this.gasPrice = txConfig.gasPrice || TX_DEFAULT_GAS_PRICE;
-	    this.gasLimit = txConfig.gasLimit || TX_DEFAULT_GAS_LIMIT;
-	    this.amount = txConfig.amount || 0;
-	    this.data = txConfig.data || ''; // seconds
-
-	    this.expirationTime = txConfig.expirationTime || Math.floor(Date.now() / 1000) + TTTL;
-	    this.message = txConfig.message || '';
-	    this.r = txConfig.r || '';
-	    this.s = txConfig.s || ''; // this will be filled after Signer.recover
-
-	    this.from = '';
+	    this.normalize(txConfig);
 	  }
-	  /**
-	   * rlp encode for hash
-	   * @return {Buffer}
-	   */
 
+	  _createClass(Tx, [{
+	    key: "normalize",
+	    value: function normalize(txConfig) {
+	      this.type = parseInt(txConfig.type || TxType.ORDINARY, 10);
+	      this.version = parseInt(txConfig.version || TX_VERSION, 10);
+	      this.chainID = parseInt(txConfig.chainID, 10) || CHAIN_ID_MAIN_NET;
+	      this.to = txConfig.to || '';
+	      this.toName = txConfig.toName || '';
+	      this.gasPrice = txConfig.gasPrice || TX_DEFAULT_GAS_PRICE;
+	      this.gasLimit = parseInt(txConfig.gasLimit || TX_DEFAULT_GAS_LIMIT, 10);
+	      this.amount = txConfig.amount || 0;
+	      this.data = txConfig.data || ''; // seconds
 
-	  createClass(Tx, [{
+	      this.expirationTime = parseInt(txConfig.expirationTime, 10) || Math.floor(Date.now() / 1000) + TTTL;
+	      this.message = txConfig.message || '';
+	      this.sig = txConfig.sig || '';
+	      var from = '';
+	      Object.defineProperty(this, 'from', {
+	        get: function get() {
+	          if (!from && this.sig) {
+	            from = new Signer().recover(this);
+	          }
+
+	          return from;
+	        },
+	        set: function set(v) {
+	          from = v;
+	        },
+	        enumerable: true
+	      });
+	    }
+	    /**
+	     * Sign a transaction with private key
+	     * @param {string|Buffer} privateKey
+	     */
+
+	  }, {
+	    key: "signWith",
+	    value: function signWith(privateKey) {
+	      this.sig = new Signer().sign(this, privateKey);
+	    }
+	    /**
+	     * rlp encode for hash
+	     * @return {Buffer}
+	     */
+
+	  }, {
 	    key: "serialize",
 	    value: function serialize() {
-	      var raw = [this.to ? toRaw(this, 'to', false, 20) : '', toRaw(this, 'toName', false), toRaw(this, 'gasPrice', true), toRaw(this, 'gasLimit', true), toRaw(this, 'amount', true), toRaw(this, 'data', true), toRaw(this, 'expirationTime', true), toRaw(this, 'message', false), toRaw(this, 'v', true), toRaw(this, 'r', true), toRaw(this, 's', true)];
+	      var raw = [toRaw(this, 'type', true), toRaw(this, 'version', true), toRaw(this, 'chainID', true), this.to ? toRaw(this, 'to', false, TX_TO_LENGTH) : '', toRaw(this, 'toName', false), toRaw(this, 'gasPrice', true), toRaw(this, 'gasLimit', true), toRaw(this, 'amount', true), toRaw(this, 'data', true), toRaw(this, 'expirationTime', true), toRaw(this, 'message', false), toRaw(this, 'sig', true)];
 	      return encode$1(raw);
 	    }
+	    /**
+	     * compute hash of all fields including of sig
+	     * @return {string}
+	     */
+
 	  }, {
 	    key: "hash",
 	    value: function hash() {
-	      return keccak256(this.serialize());
+	      var hashBuffer = keccak256(this.serialize());
+	      return "0x".concat(hashBuffer.toString('hex'));
 	    }
 	    /**
 	     * format for rpc
@@ -22830,16 +23884,16 @@
 	  }, {
 	    key: "toJson",
 	    value: function toJson() {
-	      var to = has0xPrefix(this.to) ? toHexStr(this, 'to', 20) : this.to;
 	      var result = {
+	        type: new bignumber(this.type).toString(10),
+	        version: new bignumber(this.version).toString(10),
+	        chainID: new bignumber(this.chainID).toString(10),
 	        gasPrice: new bignumber(this.gasPrice).toString(10),
 	        gasLimit: new bignumber(this.gasLimit).toString(10),
 	        amount: new bignumber(this.amount).toString(10),
-	        expirationTime: new bignumber(this.expirationTime).toString(10),
-	        v: toHexStr(this, 'v'),
-	        r: toHexStr(this, 'r'),
-	        s: toHexStr(this, 's')
+	        expirationTime: new bignumber(this.expirationTime).toString(10)
 	      };
+	      var to = has0xPrefix(this.to) ? toHexStr(this, 'to', TX_TO_LENGTH) : this.to;
 
 	      if (to) {
 	        result.to = to;
@@ -22857,6 +23911,10 @@
 	        result.message = this.message;
 	      }
 
+	      if (this.sig && this.sig.length) {
+	        result.sig = toHexStr(this, 'sig', TX_SIG_BYTE_LENGTH);
+	      }
+
 	      return result;
 	    }
 	  }]);
@@ -22864,50 +23922,7 @@
 	  return Tx;
 	}();
 
-	Tx.createVoteTx = function (txConfig) {
-	  var newTxConfig = objectSpread({}, txConfig, {
-	    type: TxType.VOTE
-	  });
-
-	  delete newTxConfig.amount;
-	  delete newTxConfig.data;
-	  return new Tx(newTxConfig);
-	};
-	/**
-	 * Create a unsigned special transaction register or edit candidate information
-	 * @param {object} txConfig Transaction config
-	 * @param {object} candidateInfo Candidate information
-	 * @param {boolean?} candidateInfo.isCandidate Set this account to be or not to be a candidate
-	 * @param {string} candidateInfo.minerAddress The address of miner account who receive miner benefit
-	 * @param {string} candidateInfo.nodeID The public key of the keypair which used to sign block
-	 * @param {string} candidateInfo.host Ip or domain of the candidate node server
-	 * @param {number|string} candidateInfo.port Port of the candidate node server
-	 * @return {Tx}
-	 */
-
-
-	Tx.createCandidateTx = function (txConfig, candidateInfo) {
-	  verifyCandidateInfo(candidateInfo);
-	  var newCandidateInfo = {
-	    isCandidate: typeof candidateInfo.isCandidate === 'undefined' ? 'true' : String(candidateInfo.isCandidate),
-	    minerAddress: candidateInfo.minerAddress,
-	    nodeID: candidateInfo.nodeID,
-	    host: candidateInfo.host,
-	    port: candidateInfo.port
-	  };
-
-	  var newTxConfig = objectSpread({}, txConfig, {
-	    type: TxType.CANDIDATE,
-	    data: safeBuffer_1.from(JSON.stringify(newCandidateInfo))
-	  });
-
-	  delete newTxConfig.to;
-	  delete newTxConfig.toName;
-	  delete newTxConfig.amount;
-	  return new Tx(newTxConfig);
-	};
-
-	function parseBlock(signer, block, withBody) {
+	function parseBlock(chainID, block, withBody) {
 	  if (block) {
 	    if (block.header) {
 	      block.header.height = parseNumber(block.header.height);
@@ -22918,7 +23933,7 @@
 
 	    if (withBody) {
 	      block.changeLogs = (block.changeLogs || []).map(parseChangeLog);
-	      block.transactions = (block.transactions || []).map(parseTx.bind(null, signer));
+	      block.transactions = (block.transactions || []).map(parseTx.bind(null, chainID));
 	    } else {
 	      delete block.changeLogs;
 	      delete block.transactions;
@@ -22936,7 +23951,7 @@
 	  var oldRecords = account.records || {};
 	  account.records = {};
 	  Object.entries(oldRecords).forEach(function (_ref) {
-	    var _ref2 = slicedToArray(_ref, 2),
+	    var _ref2 = _slicedToArray(_ref, 2),
 	        logType = _ref2[0],
 	        record = _ref2[1];
 
@@ -22986,17 +24001,17 @@
 
 	  return typeInfo[0];
 	}
-	function parseTxRes(signer, res) {
-	  var tx = parseTx(signer, res.tx);
+	function parseTxRes(chainID, res) {
+	  var tx = parseTx(chainID, res.tx);
 	  tx.minedTime = parseNumber(res.time);
 	  tx.blockHeight = parseNumber(res.height);
 	  tx.blockHash = res.blockHash;
 	  return tx;
 	}
-	function parseTxListRes(signer, res) {
+	function parseTxListRes(chainID, res) {
 	  var txList = res.txList || [];
 	  txList = txList.map(function (item) {
-	    var tx = parseTx(signer, item.tx);
+	    var tx = parseTx(chainID, item.tx);
 	    tx.minedTime = parseNumber(item.time);
 	    return tx;
 	  });
@@ -23006,10 +24021,10 @@
 	  };
 	}
 
-	function parseTx(signer, tx) {
+	function parseTx(chainID, tx) {
 	  // new Tx will fill default fields such as gasPrice. So we couldn't return it directly
 	  var txObj = new Tx(tx);
-	  tx.from = signer.recover(txObj);
+	  tx.from = txObj.from;
 	  tx.type = txObj.type;
 	  tx.typeText = parseTxType(txObj.type);
 	  tx.version = txObj.version;
@@ -23044,7 +24059,387 @@
 	  return result;
 	}
 
-	var MODULE_NAME = 'account';
+	/**
+	 * 用于监听最新区块，并使得多次调用watchBlock只发一次请求
+	 */
+
+	var _default =
+	/*#__PURE__*/
+	function () {
+	  function _default(requester) {
+	    _classCallCheck(this, _default);
+
+	    this.lastBlockHeight = -1; // 收到已通知出去的最新的块的高度
+
+	    this.pendingBlocks = []; // 收到未通知出去的块的缓冲数组
+
+	    this.callbackInfos = {}; // 多次subscribe所请求的回调函数对象集合
+
+	    this.requester = requester; // requester
+
+	    this.idGenerator = 1; // 生成返回Id，记录每次调用watchBlock
+
+	    this.watchId = 0; // requester.watch's Id，用于停止定时器
+	  }
+	  /**
+	  *  监听最新区块
+	  * @param {Requester} requester
+	  * @param {boolean} withBody
+	  * @param {Function} callback
+	  * @return {number}  记录每次调用watchBlock的Id
+	  */
+
+
+	  _createClass(_default, [{
+	    key: "subscribe",
+	    value: function subscribe(withBody, callback) {
+	      var subscribeId = this.idGenerator++;
+	      var oldWithBody = this.getWidthBody();
+	      this.callbackInfos[subscribeId] = {
+	        withBody: withBody,
+	        callback: callback
+	      };
+
+	      if (Object.keys(this.callbackInfos).length === 1) {
+	        this.watchId = this.requester.watch("".concat(CHAIN_NAME, "_latestStableBlock"), [!!this.getWidthBody()], this.watchHandler.bind(this));
+	      } else if (withBody && !oldWithBody) {
+	        this.requester.stopWatch(this.watchId);
+	        this.watchId = this.requester.watch("".concat(CHAIN_NAME, "_latestStableBlock"), [!!this.getWidthBody()], this.watchHandler.bind(this));
+	      }
+
+	      return subscribeId;
+	    }
+	    /**
+	    *  取消监听最新区块
+	    * @param {string} watchId  subscribe返回的Id
+	    */
+
+	  }, {
+	    key: "unsubscribe",
+	    value: function unsubscribe(watchId) {
+	      if (!this.requester) {
+	        throw new Error('can not use stopWatchBlock before using watchBlock');
+	      }
+
+	      if (!watchId) {
+	        throw new Error('stopWatchBlock needs a parameter id');
+	      }
+
+	      delete this.callbackInfos[watchId];
+
+	      if (!Object.keys(this.callbackInfos).length) {
+	        this.requester.stopWatch(this.watchId);
+	        delete this.watchId;
+	      }
+	    }
+	  }, {
+	    key: "getWidthBody",
+	    value: function getWidthBody() {
+	      return Object.values(this.callbackInfos).some(function (item) {
+	        return item.withBody;
+	      });
+	    }
+	  }, {
+	    key: "getLatestBlockHeight",
+	    value: function getLatestBlockHeight() {
+	      return this.pendingBlocks.length ? this.pendingBlocks[this.pendingBlocks.length - 1].header.height : this.lastBlockHeight;
+	    }
+	    /**
+	    *  根据高度拉块
+	    * @param {number} height
+	    */
+
+	  }, {
+	    key: "fetchBlock",
+	    value: function fetchBlock(height) {
+	      var _this = this;
+
+	      return this.requester.send("".concat(CHAIN_NAME, "_chain_getBlockByHeight"), [height, !!this.getWidthBody()]).then(function (result) {
+	        return parseBlock(_this.chainID, result, _this.getWidthBody());
+	      });
+	    }
+	    /**
+	    *  requester's watch  callback
+	    * @param {Object} block
+	    */
+
+	  }, {
+	    key: "watchHandler",
+	    value: function watchHandler(block, watchId, error) {
+	      if (error) {
+	        return;
+	      }
+
+	      if (watchId !== this.watchId) {
+	        return;
+	      }
+
+	      var newBlock = parseBlock(this.chainID, block, this.getWidthBody());
+	      this.processBlock(this.fetchBlock, newBlock);
+	    }
+	  }, {
+	    key: "notify",
+	    value: function notify(block) {
+	      Object.values(this.callbackInfos).forEach(function (item) {
+	        if (!item.withBody) {
+	          item.callback({
+	            header: block.header
+	          });
+	        } else {
+	          item.callback(block);
+	        }
+	      });
+	    }
+	  }, {
+	    key: "updateBlockInfo",
+	    value: function updateBlockInfo() {
+	      var notifiedblock = this.pendingBlocks.shift();
+	      this.lastBlockHeight = notifiedblock.header.height;
+	      return notifiedblock;
+	    }
+	    /**
+	    *  检查收到的块是否连续，并通知出去
+	    */
+
+	  }, {
+	    key: "checkNotifiedBlock",
+	    value: function checkNotifiedBlock() {
+	      if (this.lastBlockHeight === -1) {
+	        var notifiedblock = this.updateBlockInfo();
+	        this.notify(notifiedblock);
+	        return;
+	      }
+
+	      while (this.pendingBlocks.length && this.lastBlockHeight + 1 === this.pendingBlocks[0].header.height) {
+	        // 判断最新收到的块与上一个块是否连续
+	        var _notifiedblock = this.updateBlockInfo();
+
+	        this.notify(_notifiedblock);
+	      }
+	    }
+	    /**
+	    *  找到缓冲数组与最新拉取的缺失块的顺序，并往缓冲数组插入缺失的块
+	    */
+
+	  }, {
+	    key: "insert",
+	    value: function insert(result) {
+	      for (var i = 0; i < this.pendingBlocks.length; i++) {
+	        if (result.header.height + 1 === this.pendingBlocks[i].header.height) {
+	          this.pendingBlocks.splice(i, 0, result);
+	          break;
+	        }
+	      }
+	    }
+	    /**
+	    *  判断是否出现已存在的块
+	    *
+	    */
+
+	  }, {
+	    key: "isExistBlock",
+	    value: function isExistBlock(block) {
+	      if (this.lastBlockHeight === -1 || !this.pendingBlocks.find(function (item) {
+	        return item.header.height === block.header.height;
+	      }) && this.lastBlockHeight !== block.header.height) {
+	        return false;
+	      }
+
+	      return true;
+	    }
+	    /**
+	    *  检查watchBlock有无缺块
+	    *
+	    * @param {Function} fetchBlock
+	    * @param {Object} block
+	    * @param {Function} callback
+	    */
+
+	  }, {
+	    key: "processBlock",
+	    value: function processBlock(fetchBlock, block) {
+	      var _this2 = this;
+
+	      if (this.isExistBlock(block)) {
+	        return;
+	      }
+
+	      var nextHeight = this.getLatestBlockHeight() + 1;
+
+	      if (block.header.height < this.lastBlockHeight) {
+	        // 新块变小抛异常
+	        throw new Error('block height must be bigger than the height of current block');
+	      } else if (block.header.height < nextHeight) {
+	        this.insert(block);
+	        this.checkNotifiedBlock();
+	      } else {
+	        // 出现块不连续情况
+	        if (nextHeight === 0) {
+	          this.pendingBlocks.push(block);
+	          this.checkNotifiedBlock();
+	          return;
+	        }
+
+	        this.pendingBlocks.push(block);
+
+	        for (var i = nextHeight; i < block.header.height; i++) {
+	          var newBlockPromise = fetchBlock(i);
+	          newBlockPromise.then(function (result) {
+	            _this2.insert(result);
+
+	            _this2.checkNotifiedBlock();
+	          });
+	        }
+	      }
+	    }
+	  }]);
+
+	  return _default;
+	}();
+
+	var _default$1 =
+	/*#__PURE__*/
+	function () {
+	  function _default(requester, blockWatcher, _ref) {
+	    var serverMode = _ref.serverMode,
+	        txPollTimeout = _ref.txPollTimeout;
+
+	    _classCallCheck(this, _default);
+
+	    this.requester = requester; // requester
+
+	    this.blockWatcher = blockWatcher; // blockWatcher
+
+	    this.serverMode = serverMode; // 服务端轮询模式
+
+	    this.txPollTimeout = txPollTimeout || TX_POLL_MAX_TIME_OUT; // 轮询超时时间
+	  }
+	  /**
+	  * watch and filter transaction of block
+	  * @param {object} filterTxConfig  transaction
+	  * @param {Function} callback
+	  * @return {number}
+	  */
+
+
+	  _createClass(_default, [{
+	    key: "watchTx",
+	    value: function watchTx(filterTxConfig, callback) {
+	      if (!filterTxConfig) {
+	        throw new Error('transaction parameter can not be null');
+	      }
+
+	      filterTxConfig = {
+	        type: filterTxConfig.type === undefined ? undefined : parseInt(filterTxConfig.type, 10),
+	        version: filterTxConfig.version === undefined ? undefined : parseInt(filterTxConfig.version, 10),
+	        to: filterTxConfig.to,
+	        toName: filterTxConfig.toName,
+	        message: filterTxConfig.message
+	      };
+	      Object.keys(filterTxConfig).forEach(function (item) {
+	        if (filterTxConfig[item] === undefined) {
+	          delete filterTxConfig[item];
+	        }
+	      });
+	      var subscribeId = this.blockWatcher.subscribe(true, function (block) {
+	        var resFilterTxArr = block.transactions.filter(function (txItem) {
+	          if (Object.keys(filterTxConfig).every(function (filterTxKeyItem) {
+	            return txItem[filterTxKeyItem] === filterTxConfig[filterTxKeyItem];
+	          })) {
+	            return true;
+	          }
+
+	          return false;
+	        });
+
+	        if (resFilterTxArr.length) {
+	          callback(resFilterTxArr);
+	        }
+	      });
+	      return subscribeId;
+	    }
+	    /**
+	    * stop watching and filtering transaction of block
+	    * @param {number} watchTxId
+	    */
+
+	  }, {
+	    key: "stopWatchTx",
+	    value: function stopWatchTx(watchTxId) {
+	      this.blockWatcher.unsubscribe(watchTxId);
+	    }
+	    /**
+	    * Poll transaction's hash
+	    * @param {string|number} txHash Hash of transaction
+	    * @return {Promise<Object>}
+	    */
+
+	  }, {
+	    key: "waitTx",
+	    value: function waitTx(txHash) {
+	      if (this.serverMode) {
+	        return this.waitTxByWatchBlock(txHash);
+	      } else {
+	        return this.waitTxByGetTxByHash(txHash);
+	      }
+	    }
+	  }, {
+	    key: "waitTxByWatchBlock",
+	    value: function waitTxByWatchBlock(txHash) {
+	      var _this = this;
+
+	      return new Promise(function (resolve, reject) {
+	        var subscribeId = _this.blockWatcher.subscribe(true, function (block) {
+	          if (block.transactions.length) {
+	            var transaction = block.transactions.find(function (item) {
+	              return item.hash === txHash;
+	            });
+
+	            if (transaction) {
+	              _this.blockWatcher.unsubscribe(subscribeId);
+
+	              clearTimeout(timeoutId);
+	              resolve(transaction);
+	            }
+	          }
+	        });
+
+	        var timeoutId = setTimeout(function () {
+	          _this.blockWatcher.unsubscribe(subscribeId);
+
+	          reject(errors.InvalidPollTxTimeOut());
+	        }, _this.txPollTimeout);
+	      });
+	    }
+	  }, {
+	    key: "waitTxByGetTxByHash",
+	    value: function waitTxByGetTxByHash(txHash) {
+	      var _this2 = this;
+
+	      return new Promise(function (resolve, reject) {
+	        var watchId = _this2.requester.watch("".concat(TX_NAME, "_getTxByHash"), [txHash], function (result) {
+	          if (!result) {
+	            return;
+	          }
+
+	          _this2.requester.stopWatch(watchId);
+
+	          clearTimeout(timeoutId);
+	          resolve(result);
+	        });
+
+	        var timeoutId = setTimeout(function () {
+	          _this2.requester.stopWatch(watchId);
+
+	          reject(errors.InvalidPollTxTimeOut());
+	        }, _this2.txPollTimeout);
+	      });
+	    }
+	  }]);
+
+	  return _default;
+	}();
+
 	var apis = {
 	  /**
 	   * Get account information
@@ -23052,16 +24447,16 @@
 	   * @return {Promise<object>}
 	   */
 	  getAccount: function () {
-	    var _getAccount = asyncToGenerator(
+	    var _getAccount = _asyncToGenerator(
 	    /*#__PURE__*/
-	    regenerator.mark(function _callee(address) {
+	    regeneratorRuntime.mark(function _callee(address) {
 	      var result;
-	      return regenerator.wrap(function _callee$(_context) {
+	      return regeneratorRuntime.wrap(function _callee$(_context) {
 	        while (1) {
 	          switch (_context.prev = _context.next) {
 	            case 0:
 	              _context.next = 2;
-	              return this.requester.send("".concat(MODULE_NAME, "_getAccount"), [address]);
+	              return this.requester.send("".concat(ACCOUNT_NAME, "_getAccount"), [address]);
 
 	            case 2:
 	              result = _context.sent;
@@ -23075,11 +24470,9 @@
 	      }, _callee, this);
 	    }));
 
-	    function getAccount(_x) {
+	    return function getAccount(_x) {
 	      return _getAccount.apply(this, arguments);
-	    }
-
-	    return getAccount;
+	    };
 	  }(),
 
 	  /**
@@ -23088,16 +24481,16 @@
 	   * @return {Promise<object>}
 	   */
 	  getCandidateInfo: function () {
-	    var _getCandidateInfo = asyncToGenerator(
+	    var _getCandidateInfo = _asyncToGenerator(
 	    /*#__PURE__*/
-	    regenerator.mark(function _callee2(address) {
+	    regeneratorRuntime.mark(function _callee2(address) {
 	      var result;
-	      return regenerator.wrap(function _callee2$(_context2) {
+	      return regeneratorRuntime.wrap(function _callee2$(_context2) {
 	        while (1) {
 	          switch (_context2.prev = _context2.next) {
 	            case 0:
 	              _context2.next = 2;
-	              return this.requester.send("".concat(MODULE_NAME, "_getAccount"), [address]);
+	              return this.requester.send("".concat(ACCOUNT_NAME, "_getAccount"), [address]);
 
 	            case 2:
 	              result = _context2.sent;
@@ -23111,11 +24504,9 @@
 	      }, _callee2, this);
 	    }));
 
-	    function getCandidateInfo(_x2) {
+	    return function getCandidateInfo(_x2) {
 	      return _getCandidateInfo.apply(this, arguments);
-	    }
-
-	    return getCandidateInfo;
+	    };
 	  }(),
 
 	  /**
@@ -23124,16 +24515,16 @@
 	   * @return {Promise<BigNumber>}
 	   */
 	  getBalance: function () {
-	    var _getBalance = asyncToGenerator(
+	    var _getBalance = _asyncToGenerator(
 	    /*#__PURE__*/
-	    regenerator.mark(function _callee3(address) {
+	    regeneratorRuntime.mark(function _callee3(address) {
 	      var result;
-	      return regenerator.wrap(function _callee3$(_context3) {
+	      return regeneratorRuntime.wrap(function _callee3$(_context3) {
 	        while (1) {
 	          switch (_context3.prev = _context3.next) {
 	            case 0:
 	              _context3.next = 2;
-	              return this.requester.send("".concat(MODULE_NAME, "_getBalance"), [address]);
+	              return this.requester.send("".concat(ACCOUNT_NAME, "_getBalance"), [address]);
 
 	            case 2:
 	              result = _context3.sent;
@@ -23147,19 +24538,17 @@
 	      }, _callee3, this);
 	    }));
 
-	    function getBalance(_x3) {
+	    return function getBalance(_x3) {
 	      return _getBalance.apply(this, arguments);
-	    }
-
-	    return getBalance;
-	  }()
+	    };
+	  }(),
+	  newKeyPair: generateAccount
 	};
 	var account = {
-	  moduleName: MODULE_NAME,
+	  moduleName: ACCOUNT_NAME,
 	  apis: apis
 	};
 
-	var MODULE_NAME$1 = '';
 	var apis$1 = {
 	  /**
 	   * The version of sdk
@@ -23192,15 +24581,14 @@
 
 	function getSdkVersion() {
 
-	  return "0.9.7";
+	  return "0.9.9";
 	}
 
 	var global$2 = {
-	  moduleName: MODULE_NAME$1,
+	  moduleName: GLOBAL_NAME,
 	  apis: apis$1
 	};
 
-	var MODULE_NAME$2 = 'chain';
 	var apis$2 = {
 	  /**
 	   * Get current block information
@@ -23209,21 +24597,21 @@
 	   * @return {Promise<object>}
 	   */
 	  getCurrentBlock: function () {
-	    var _getCurrentBlock = asyncToGenerator(
+	    var _getCurrentBlock = _asyncToGenerator(
 	    /*#__PURE__*/
-	    regenerator.mark(function _callee(stable, withBody) {
+	    regeneratorRuntime.mark(function _callee(stable, withBody) {
 	      var apiName, block;
-	      return regenerator.wrap(function _callee$(_context) {
+	      return regeneratorRuntime.wrap(function _callee$(_context) {
 	        while (1) {
 	          switch (_context.prev = _context.next) {
 	            case 0:
 	              apiName = typeof stable === 'undefined' || stable ? 'latestStableBlock' : 'currentBlock';
 	              _context.next = 3;
-	              return this.requester.send("".concat(MODULE_NAME$2, "_").concat(apiName), [!!withBody]);
+	              return this.requester.send("".concat(CHAIN_NAME, "_").concat(apiName), [!!withBody]);
 
 	            case 3:
 	              block = _context.sent;
-	              return _context.abrupt("return", parseBlock(this.signer, block, withBody));
+	              return _context.abrupt("return", parseBlock(this.chainID, block, withBody));
 
 	            case 5:
 	            case "end":
@@ -23233,11 +24621,9 @@
 	      }, _callee, this);
 	    }));
 
-	    function getCurrentBlock(_x, _x2) {
+	    return function getCurrentBlock(_x, _x2) {
 	      return _getCurrentBlock.apply(this, arguments);
-	    }
-
-	    return getCurrentBlock;
+	    };
 	  }(),
 
 	  /**
@@ -23247,21 +24633,21 @@
 	   * @return {Promise<object>}
 	   */
 	  getBlock: function () {
-	    var _getBlock = asyncToGenerator(
+	    var _getBlock = _asyncToGenerator(
 	    /*#__PURE__*/
-	    regenerator.mark(function _callee2(hashOrHeight, withBody) {
+	    regeneratorRuntime.mark(function _callee2(hashOrHeight, withBody) {
 	      var apiName, block;
-	      return regenerator.wrap(function _callee2$(_context2) {
+	      return regeneratorRuntime.wrap(function _callee2$(_context2) {
 	        while (1) {
 	          switch (_context2.prev = _context2.next) {
 	            case 0:
 	              apiName = isHash(hashOrHeight) ? 'getBlockByHash' : 'getBlockByHeight';
 	              _context2.next = 3;
-	              return this.requester.send("".concat(MODULE_NAME$2, "_").concat(apiName), [hashOrHeight, !!withBody]);
+	              return this.requester.send("".concat(CHAIN_NAME, "_").concat(apiName), [hashOrHeight, !!withBody]);
 
 	            case 3:
 	              block = _context2.sent;
-	              return _context2.abrupt("return", parseBlock(this.signer, block, withBody));
+	              return _context2.abrupt("return", parseBlock(this.chainID, block, withBody));
 
 	            case 5:
 	            case "end":
@@ -23271,11 +24657,9 @@
 	      }, _callee2, this);
 	    }));
 
-	    function getBlock(_x3, _x4) {
+	    return function getBlock(_x3, _x4) {
 	      return _getBlock.apply(this, arguments);
-	    }
-
-	    return getBlock;
+	    };
 	  }(),
 
 	  /**
@@ -23285,7 +24669,7 @@
 	   */
 	  getCurrentHeight: function getCurrentHeight(stable) {
 	    var apiName = typeof stable === 'undefined' || stable ? 'latestStableHeight' : 'currentHeight';
-	    return this.requester.send("".concat(MODULE_NAME$2, "_").concat(apiName));
+	    return this.requester.send("".concat(CHAIN_NAME, "_").concat(apiName));
 	  },
 
 	  /**
@@ -23293,20 +24677,20 @@
 	   * @return {Promise<object>}
 	   */
 	  getGenesis: function () {
-	    var _getGenesis = asyncToGenerator(
+	    var _getGenesis = _asyncToGenerator(
 	    /*#__PURE__*/
-	    regenerator.mark(function _callee3() {
+	    regeneratorRuntime.mark(function _callee3() {
 	      var result;
-	      return regenerator.wrap(function _callee3$(_context3) {
+	      return regeneratorRuntime.wrap(function _callee3$(_context3) {
 	        while (1) {
 	          switch (_context3.prev = _context3.next) {
 	            case 0:
 	              _context3.next = 2;
-	              return this.requester.send("".concat(MODULE_NAME$2, "_genesis"), []);
+	              return this.requester.send("".concat(CHAIN_NAME, "_genesis"), []);
 
 	            case 2:
 	              result = _context3.sent;
-	              return _context3.abrupt("return", parseBlock(this.signer, result, true));
+	              return _context3.abrupt("return", parseBlock(this.chainID, result, true));
 
 	            case 4:
 	            case "end":
@@ -23316,11 +24700,9 @@
 	      }, _callee3, this);
 	    }));
 
-	    function getGenesis() {
+	    return function getGenesis() {
 	      return _getGenesis.apply(this, arguments);
-	    }
-
-	    return getGenesis;
+	    };
 	  }(),
 
 	  /**
@@ -23328,7 +24710,7 @@
 	   * @return {Promise<number>}
 	   */
 	  getChainID: function getChainID() {
-	    return this.requester.send("".concat(MODULE_NAME$2, "_chainID"), []);
+	    return this.requester.send("".concat(CHAIN_NAME, "_chainID"), []);
 	  },
 
 	  /**
@@ -23336,16 +24718,16 @@
 	   * @return {Promise<BigNumber>}
 	   */
 	  getGasPriceAdvice: function () {
-	    var _getGasPriceAdvice = asyncToGenerator(
+	    var _getGasPriceAdvice = _asyncToGenerator(
 	    /*#__PURE__*/
-	    regenerator.mark(function _callee4() {
+	    regeneratorRuntime.mark(function _callee4() {
 	      var result;
-	      return regenerator.wrap(function _callee4$(_context4) {
+	      return regeneratorRuntime.wrap(function _callee4$(_context4) {
 	        while (1) {
 	          switch (_context4.prev = _context4.next) {
 	            case 0:
 	              _context4.next = 2;
-	              return this.requester.send("".concat(MODULE_NAME$2, "_gasPriceAdvice"), []);
+	              return this.requester.send("".concat(CHAIN_NAME, "_gasPriceAdvice"), []);
 
 	            case 2:
 	              result = _context4.sent;
@@ -23359,11 +24741,9 @@
 	      }, _callee4, this);
 	    }));
 
-	    function getGasPriceAdvice() {
+	    return function getGasPriceAdvice() {
 	      return _getGasPriceAdvice.apply(this, arguments);
-	    }
-
-	    return getGasPriceAdvice;
+	    };
 	  }(),
 
 	  /**
@@ -23371,23 +24751,20 @@
 	   * @return {Promise<number>}
 	   */
 	  getNodeVersion: function getNodeVersion() {
-	    return this.requester.send("".concat(MODULE_NAME$2, "_nodeVersion"), []);
+	    return this.requester.send("".concat(CHAIN_NAME, "_nodeVersion"), []);
 	  },
 
 	  /**
 	   * Get new blocks from now on
 	   * @param {boolean} withBody Get the body detail if true
 	   * @param {Function} callback It is used to deliver the block object
-	   * @return {number} watch id which used to stop watch
+	   * @return {number} subscribe id which used to stop watch
 	   */
 	  watchBlock: function watchBlock(withBody, callback) {
-	    var _this = this;
-
-	    var watchHandler = function watchHandler(block) {
-	      callback(parseBlock(_this.signer, block, withBody));
-	    };
-
-	    return this.requester.watch("".concat(MODULE_NAME$2, "_latestStableBlock"), [!!withBody], watchHandler);
+	    return this.blockWatcher.subscribe(withBody, callback);
+	  },
+	  stopWatchBlock: function stopWatchBlock(subscribeId) {
+	    this.blockWatcher.unsubscribe(subscribeId);
 	  },
 
 	  /**
@@ -23397,16 +24774,16 @@
 	   * @return {Promise<object>}
 	   */
 	  getCandidateList: function () {
-	    var _getCandidateList = asyncToGenerator(
+	    var _getCandidateList = _asyncToGenerator(
 	    /*#__PURE__*/
-	    regenerator.mark(function _callee5(index, limit) {
+	    regeneratorRuntime.mark(function _callee5(index, limit) {
 	      var result;
-	      return regenerator.wrap(function _callee5$(_context5) {
+	      return regeneratorRuntime.wrap(function _callee5$(_context5) {
 	        while (1) {
 	          switch (_context5.prev = _context5.next) {
 	            case 0:
 	              _context5.next = 2;
-	              return this.requester.send("".concat(MODULE_NAME$2, "_getCandidateList"), [index, limit]);
+	              return this.requester.send("".concat(CHAIN_NAME, "_getCandidateList"), [index, limit]);
 
 	            case 2:
 	              result = _context5.sent;
@@ -23420,11 +24797,9 @@
 	      }, _callee5, this);
 	    }));
 
-	    function getCandidateList(_x5, _x6) {
+	    return function getCandidateList(_x5, _x6) {
 	      return _getCandidateList.apply(this, arguments);
-	    }
-
-	    return getCandidateList;
+	    };
 	  }(),
 
 	  /**
@@ -23432,16 +24807,16 @@
 	   * @return {Promise<object>}
 	   */
 	  getCandidateTop30: function () {
-	    var _getCandidateTop = asyncToGenerator(
+	    var _getCandidateTop = _asyncToGenerator(
 	    /*#__PURE__*/
-	    regenerator.mark(function _callee6() {
+	    regeneratorRuntime.mark(function _callee6() {
 	      var result;
-	      return regenerator.wrap(function _callee6$(_context6) {
+	      return regeneratorRuntime.wrap(function _callee6$(_context6) {
 	        while (1) {
 	          switch (_context6.prev = _context6.next) {
 	            case 0:
 	              _context6.next = 2;
-	              return this.requester.send("".concat(MODULE_NAME$2, "_getCandidateTop30"), []);
+	              return this.requester.send("".concat(CHAIN_NAME, "_getCandidateTop30"), []);
 
 	            case 2:
 	              result = _context6.sent;
@@ -23455,11 +24830,9 @@
 	      }, _callee6, this);
 	    }));
 
-	    function getCandidateTop30() {
+	    return function getCandidateTop30() {
 	      return _getCandidateTop.apply(this, arguments);
-	    }
-
-	    return getCandidateTop30;
+	    };
 	  }(),
 
 	  /**
@@ -23467,22 +24840,21 @@
 	   * @return {Promise<object>}
 	   */
 	  getDeputyNodeList: function getDeputyNodeList() {
-	    return this.requester.send("".concat(MODULE_NAME$2, "_getDeputyNodeList"), []);
+	    return this.requester.send("".concat(CHAIN_NAME, "_getDeputyNodeList"), []);
 	  }
 	};
 	var chain = {
-	  moduleName: MODULE_NAME$2,
+	  moduleName: CHAIN_NAME,
 	  apis: apis$2
 	};
 
-	var MODULE_NAME$3 = 'mine';
 	var apis$3 = {
 	  /**
 	   * Return true if the lemochain node is mining
 	   * @return {Promise<boolean>}
 	   */
 	  getMining: function getMining() {
-	    return this.requester.send("".concat(MODULE_NAME$3, "_isMining"), []);
+	    return this.requester.send("".concat(MINE_NAME, "_isMining"), []);
 	  },
 
 	  /**
@@ -23490,22 +24862,21 @@
 	   * @return {Promise<string>}
 	   */
 	  getMiner: function getMiner() {
-	    return this.requester.send("".concat(MODULE_NAME$3, "_miner"), []);
+	    return this.requester.send("".concat(MINE_NAME, "_miner"), []);
 	  }
 	};
 	var mine = {
-	  moduleName: MODULE_NAME$3,
+	  moduleName: MINE_NAME,
 	  apis: apis$3
 	};
 
-	var MODULE_NAME$4 = 'net';
 	var apis$4 = {
 	  /**
 	   * Get connected peers count from the lemochain node
 	   * @return {Promise<number>}
 	   */
 	  getConnectionsCount: function getConnectionsCount() {
-	    return this.requester.send("".concat(MODULE_NAME$4, "_peersCount"), []);
+	    return this.requester.send("".concat(NET_NAME, "_peersCount"), []);
 	  },
 
 	  /**
@@ -23513,15 +24884,98 @@
 	   * @return {Promise<object>}
 	   */
 	  getInfo: function getInfo() {
-	    return this.requester.send("".concat(MODULE_NAME$4, "_info"), []);
+	    return this.requester.send("".concat(NET_NAME, "_info"), []);
 	  }
 	};
 	var net = {
-	  moduleName: MODULE_NAME$4,
+	  moduleName: NET_NAME,
 	  apis: apis$4
 	};
 
-	var MODULE_NAME$5 = 'tx';
+	var VoteTx =
+	/*#__PURE__*/
+	function (_Tx) {
+	  _inherits(VoteTx, _Tx);
+
+	  /**
+	   * Create a unsigned special transaction to set vote target
+	   * @param {object} txConfig
+	   * @param {number?} txConfig.type The type of transaction. 0: normal
+	   * @param {number?} txConfig.version The version of transaction protocol
+	   * @param {number} txConfig.chainID The LemoChain id
+	   * @param {string?} txConfig.to The transaction recipient address
+	   * @param {string?} txConfig.toName The transaction recipient name
+	   * @param {number|string?} txConfig.gasPrice Gas price for smart contract. Unit is mo/gas
+	   * @param {number|string?} txConfig.gasLimit Max gas limit for smart contract. Unit is gas
+	   * @param {number|string?} txConfig.expirationTime Default value is half hour from now
+	   * @param {string?} txConfig.message Extra value data
+	   * @param {Buffer|string?} txConfig.sig Signature data
+	   */
+	  function VoteTx(txConfig) {
+	    _classCallCheck(this, VoteTx);
+
+	    var newTxConfig = _objectSpread({}, txConfig, {
+	      type: TxType.VOTE
+	    });
+
+	    delete newTxConfig.amount;
+	    delete newTxConfig.data;
+	    return _possibleConstructorReturn(this, _getPrototypeOf(VoteTx).call(this, newTxConfig));
+	  }
+
+	  return VoteTx;
+	}(Tx);
+
+	var CandidateTx =
+	/*#__PURE__*/
+	function (_Tx) {
+	  _inherits(CandidateTx, _Tx);
+
+	  /**
+	   * Create a unsigned special transaction register or edit candidate information
+	   * @param {object} txConfig
+	   * @param {number?} txConfig.type The type of transaction. 0: normal
+	   * @param {number?} txConfig.version The version of transaction protocol
+	   * @param {number} txConfig.chainID The LemoChain id
+	   * @param {number|string?} txConfig.gasPrice Gas price for smart contract. Unit is mo/gas
+	   * @param {number|string?} txConfig.gasLimit Max gas limit for smart contract. Unit is gas
+	   * @param {Buffer|string?} txConfig.data Extra data or smart contract calling parameters
+	   * @param {number|string?} txConfig.expirationTime Default value is half hour from now
+	   * @param {string?} txConfig.message Extra value data
+	   * @param {Buffer|string?} txConfig.sig Signature data
+	   * @param {object} candidateInfo Candidate information
+	   * @param {boolean?} candidateInfo.isCandidate Set this account to be or not to be a candidate
+	   * @param {string} candidateInfo.minerAddress The address of miner account who receive miner benefit
+	   * @param {string} candidateInfo.nodeID The public key of the keypair which used to sign block
+	   * @param {string} candidateInfo.host Ip or domain of the candidate node server
+	   * @param {number|string} candidateInfo.port Port of the candidate node server
+	   */
+	  function CandidateTx(txConfig, candidateInfo) {
+	    _classCallCheck(this, CandidateTx);
+
+	    verifyCandidateInfo(candidateInfo);
+	    var newCandidateInfo = {
+	      isCandidate: typeof candidateInfo.isCandidate === 'undefined' ? 'true' : String(candidateInfo.isCandidate),
+	      minerAddress: candidateInfo.minerAddress,
+	      nodeID: candidateInfo.nodeID,
+	      host: candidateInfo.host,
+	      port: candidateInfo.port
+	    };
+
+	    var newTxConfig = _objectSpread({}, txConfig, {
+	      type: TxType.CANDIDATE,
+	      data: safeBuffer_1.from(JSON.stringify(newCandidateInfo))
+	    });
+
+	    delete newTxConfig.to;
+	    delete newTxConfig.toName;
+	    delete newTxConfig.amount;
+	    return _possibleConstructorReturn(this, _getPrototypeOf(CandidateTx).call(this, newTxConfig));
+	  }
+
+	  return CandidateTx;
+	}(Tx);
+
 	var apis$5 = {
 	  /**
 	   * Get transaction's information by hash
@@ -23529,16 +24983,16 @@
 	   * @return {Promise<object>}
 	   */
 	  getTx: function () {
-	    var _getTx = asyncToGenerator(
+	    var _getTx = _asyncToGenerator(
 	    /*#__PURE__*/
-	    regenerator.mark(function _callee(txHash) {
+	    regeneratorRuntime.mark(function _callee(txHash) {
 	      var result;
-	      return regenerator.wrap(function _callee$(_context) {
+	      return regeneratorRuntime.wrap(function _callee$(_context) {
 	        while (1) {
 	          switch (_context.prev = _context.next) {
 	            case 0:
 	              _context.next = 2;
-	              return this.requester.send("".concat(MODULE_NAME$5, "_getTxByHash"), [txHash]);
+	              return this.requester.send("".concat(TX_NAME, "_getTxByHash"), [txHash]);
 
 	            case 2:
 	              result = _context.sent;
@@ -23551,7 +25005,7 @@
 	              return _context.abrupt("return", null);
 
 	            case 5:
-	              return _context.abrupt("return", parseTxRes(this.signer, result));
+	              return _context.abrupt("return", parseTxRes(this.chainID, result));
 
 	            case 6:
 	            case "end":
@@ -23561,11 +25015,9 @@
 	      }, _callee, this);
 	    }));
 
-	    function getTx(_x) {
+	    return function getTx(_x) {
 	      return _getTx.apply(this, arguments);
-	    }
-
-	    return getTx;
+	    };
 	  }(),
 
 	  /**
@@ -23576,16 +25028,16 @@
 	   * @return {Promise<object>}
 	   */
 	  getTxListByAddress: function () {
-	    var _getTxListByAddress = asyncToGenerator(
+	    var _getTxListByAddress = _asyncToGenerator(
 	    /*#__PURE__*/
-	    regenerator.mark(function _callee2(address, index, limit) {
+	    regeneratorRuntime.mark(function _callee2(address, index, limit) {
 	      var result;
-	      return regenerator.wrap(function _callee2$(_context2) {
+	      return regeneratorRuntime.wrap(function _callee2$(_context2) {
 	        while (1) {
 	          switch (_context2.prev = _context2.next) {
 	            case 0:
 	              _context2.next = 2;
-	              return this.requester.send("".concat(MODULE_NAME$5, "_getTxListByAddress"), [address, index, limit]);
+	              return this.requester.send("".concat(TX_NAME, "_getTxListByAddress"), [address, index, limit]);
 
 	            case 2:
 	              result = _context2.sent;
@@ -23598,7 +25050,7 @@
 	              return _context2.abrupt("return", null);
 
 	            case 5:
-	              return _context2.abrupt("return", parseTxListRes(this.signer, result));
+	              return _context2.abrupt("return", parseTxListRes(this.chainID, result));
 
 	            case 6:
 	            case "end":
@@ -23608,42 +25060,108 @@
 	      }, _callee2, this);
 	    }));
 
-	    function getTxListByAddress(_x2, _x3, _x4) {
+	    return function getTxListByAddress(_x2, _x3, _x4) {
 	      return _getTxListByAddress.apply(this, arguments);
-	    }
-
-	    return getTxListByAddress;
+	    };
 	  }(),
 
 	  /**
 	   * Sign and send transaction
 	   * @param {string} privateKey The private key from sender account
 	   * @param {object} txConfig Transaction config
+	   * @param {boolean?} waitConfirm 等待交易共识
 	   * @return {Promise<object>}
 	   */
-	  sendTx: function sendTx(privateKey, txConfig) {
+	  sendTx: function sendTx(privateKey, txConfig, waitConfirm) {
+	    var _this = this;
+
+	    txConfig = checkChainID(txConfig, this.chainID);
 	    var tx = new Tx(txConfig);
-	    this.signer.sign(tx, privateKey);
-	    return this.requester.send("".concat(MODULE_NAME$5, "_sendTx"), [tx.toJson()]);
+	    tx.signWith(privateKey);
+	    var txHash = tx.hash();
+	    return this.requester.send("".concat(TX_NAME, "_sendTx"), [tx.toJson()]).then(
+	    /*#__PURE__*/
+	    _asyncToGenerator(
+	    /*#__PURE__*/
+	    regeneratorRuntime.mark(function _callee3() {
+	      return regeneratorRuntime.wrap(function _callee3$(_context3) {
+	        while (1) {
+	          switch (_context3.prev = _context3.next) {
+	            case 0:
+	              if (waitConfirm) {
+	                _context3.next = 2;
+	                break;
+	              }
+
+	              return _context3.abrupt("return", txHash);
+
+	            case 2:
+	              _context3.next = 4;
+	              return _this.txWatcher.waitTx(txHash);
+
+	            case 4:
+	              return _context3.abrupt("return", txHash);
+
+	            case 5:
+	            case "end":
+	              return _context3.stop();
+	          }
+	        }
+	      }, _callee3, this);
+	    })));
 	  },
 
 	  /**
 	   * Send a signed transaction
 	   * @param {object|string} txConfig Transaction config returned by lemo.tx.sign
+	   * @param {boolean} waitConfirm 等待交易共识
 	   * @return {Promise<object>}
 	   */
-	  send: function send(txConfig) {
+	  send: function send(txConfig, waitConfirm) {
+	    var _this2 = this;
+
 	    if (typeof txConfig === 'string') {
 	      txConfig = JSON.parse(txConfig);
 	    }
 
+	    txConfig = checkChainID(txConfig, this.chainID);
 	    var tx = new Tx(txConfig);
+	    var txHash = tx.hash();
 
-	    if (!tx.r || !tx.s) {
+	    if (!tx.sig) {
 	      throw new Error("can't send an unsigned transaction");
 	    }
 
-	    return this.requester.send("".concat(MODULE_NAME$5, "_sendTx"), [tx.toJson()]);
+	    return this.requester.send("".concat(TX_NAME, "_sendTx"), [tx.toJson()]).then(
+	    /*#__PURE__*/
+	    _asyncToGenerator(
+	    /*#__PURE__*/
+	    regeneratorRuntime.mark(function _callee4() {
+	      return regeneratorRuntime.wrap(function _callee4$(_context4) {
+	        while (1) {
+	          switch (_context4.prev = _context4.next) {
+	            case 0:
+	              if (waitConfirm) {
+	                _context4.next = 2;
+	                break;
+	              }
+
+	              return _context4.abrupt("return", txHash);
+
+	            case 2:
+	              _context4.next = 4;
+	              return _this2.txWatcher.waitTx(txHash);
+
+	            case 4:
+	              return _context4.abrupt("return", txHash);
+
+	            case 5:
+	            case "end":
+	              return _context4.stop();
+	          }
+	        }
+	      }, _callee4, this);
+	    })));
 	  },
 
 	  /**
@@ -23653,8 +25171,9 @@
 	   * @return {string}
 	   */
 	  sign: function sign(privateKey, txConfig) {
+	    txConfig = checkChainID(txConfig, this.chainID);
 	    var tx = new Tx(txConfig);
-	    this.signer.sign(tx, privateKey);
+	    tx.signWith(privateKey);
 	    return JSON.stringify(tx.toJson());
 	  },
 
@@ -23665,8 +25184,9 @@
 	   * @return {string}
 	   */
 	  signVote: function signVote(privateKey, txConfig) {
-	    var tx = Tx.createVoteTx(txConfig);
-	    this.signer.sign(tx, privateKey);
+	    txConfig = checkChainID(txConfig, this.chainID);
+	    var tx = new VoteTx(txConfig);
+	    tx.signWith(privateKey);
 	    return JSON.stringify(tx.toJson());
 	  },
 
@@ -23678,17 +25198,35 @@
 	   * @return {string}
 	   */
 	  signCandidate: function signCandidate(privateKey, txConfig, candidateInfo) {
-	    var tx = Tx.createCandidateTx(txConfig, candidateInfo);
-	    this.signer.sign(tx, privateKey);
+	    txConfig = checkChainID(txConfig, this.chainID);
+	    var tx = new CandidateTx(txConfig, candidateInfo);
+	    tx.signWith(privateKey);
 	    return JSON.stringify(tx.toJson());
+	  },
+
+	  /**
+	  * watch and filter transaction of block
+	  * @param {object} filterTxConfig  transaction
+	  * @param {Function} callback
+	  * @return {number}
+	  */
+	  watchTx: function watchTx(filterTxConfig, callback) {
+	    return this.txWatcher.watchTx(filterTxConfig, callback);
+	  },
+
+	  /**
+	  * stop watching and filtering transaction of block
+	  * @param {number} watchTxId
+	  */
+	  stopWatchTx: function stopWatchTx(watchTxId) {
+	    this.txWatcher.stopWatchTx(watchTxId);
 	  }
 	};
 	var tx = {
-	  moduleName: MODULE_NAME$5,
+	  moduleName: TX_NAME,
 	  apis: apis$5
 	};
 
-	var MODULE_NAME$6 = 'tool';
 	var apis$6 = {
 	  /**
 	   * Verify a LemoChain address
@@ -23705,7 +25243,7 @@
 	  }
 	};
 	var tool = {
-	  moduleName: MODULE_NAME$6,
+	  moduleName: TOOL_NAME,
 	  apis: apis$6
 	};
 
@@ -23719,10 +25257,12 @@
 	   * @param {Function?} config.call The custom api function call
 	   * @param {*?} config.value The custom api value
 	   * @param {Requester?} requester
-	   * @param {Signer?} signer
+	   * @param {number?} chainID
 	   */
-	  function Api(config, requester, signer) {
-	    classCallCheck(this, Api);
+	  function Api(config, properties) {
+	    var _this = this;
+
+	    _classCallCheck(this, Api);
 
 	    if (!config || !config.name) {
 	      throw new Error(errors.InvalidAPIDefinition(config));
@@ -23735,11 +25275,12 @@
 	    this.name = config.name;
 	    this.call = config.call;
 	    this.value = config.value;
-	    this.requester = requester;
-	    this.signer = signer;
+	    Object.keys(properties).forEach(function (item) {
+	      _this[item] = properties[item];
+	    });
 	  }
 
-	  createClass(Api, [{
+	  _createClass(Api, [{
 	    key: "attachTo",
 	    value: function attachTo(obj, moduleName) {
 	      if (moduleName && !obj[moduleName]) {
@@ -23748,7 +25289,7 @@
 
 	      var target = moduleName ? obj[moduleName] : obj;
 
-	      if (_typeof_1(target) !== 'object') {
+	      if (_typeof(target) !== 'object') {
 	        throw new Error(errors.UnavailableAPIModule(moduleName));
 	      }
 
@@ -23770,7 +25311,7 @@
 	var LemoClient = function LemoClient() {
 	  var config = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
 
-	  classCallCheck(this, LemoClient);
+	  _classCallCheck(this, LemoClient);
 
 	  this.config = {
 	    chainID: config.chainID || 1,
@@ -23793,20 +25334,28 @@
 	      pollDuration: config.pollDuration || DEFAULT_POLL_DURATION,
 	      // The interval time of watching poll. It is in milliseconds
 	      maxPollRetry: config.maxPollRetry || MAX_POLL_RETRY
-	    } // The Object.defineProperty is not work in otto. but we can name fields with first letter '_' to make it invisible
+	    },
+	    serverMode: config.serverMode // The Object.defineProperty is not work in otto. but we can name fields with first letter '_' to make it invisible
 
 	  };
 	  this._requester = new Requester(newConn(this.config.conn), this.config.requester);
 	  Object.defineProperty(this, '_requester', {
 	    enumerable: false
 	  });
+	  this._blockWatcher = new _default(this._requester);
+	  Object.defineProperty(this, '_blockWatcher', {
+	    enumerable: false
+	  });
+	  this._txWatcher = new _default$1(this._requester, this._blockWatcher, {
+	    serverMode: this.config.serverMode,
+	    txPollTimeout: TX_POLL_MAX_TIME_OUT
+	  });
+	  Object.defineProperty(this, '_txWatcher', {
+	    enumerable: false
+	  });
 	  Object.defineProperty(this, '_createAPI', {
 	    enumerable: false,
 	    value: createAPI.bind(null, this)
-	  });
-	  this._signer = new Signer(this.config.chainID);
-	  Object.defineProperty(this, '_signer', {
-	    enumerable: false
 	  });
 	  attachModules(this);
 	  exposeUtils(this);
@@ -23838,7 +25387,7 @@
 
 	function createModule(lemo, moduleName, apis) {
 	  Object.entries(apis).forEach(function (_ref) {
-	    var _ref2 = slicedToArray(_ref, 2),
+	    var _ref2 = _slicedToArray(_ref, 2),
 	        key = _ref2[0],
 	        value = _ref2[1];
 
@@ -23852,7 +25401,12 @@
 	      apiConfig.value = value;
 	    }
 
-	    new Api(apiConfig, lemo._requester, lemo._signer).attachTo(lemo, moduleName);
+	    new Api(apiConfig, {
+	      requester: lemo._requester,
+	      chainID: lemo.config.chainID,
+	      blockWatcher: lemo._blockWatcher,
+	      txWatcher: lemo._txWatcher
+	    }).attachTo(lemo, moduleName);
 	  });
 	}
 	/**
@@ -23883,7 +25437,12 @@
 	    throw new Error(errors.InvalidAPIName(methodNameOrFunc));
 	  }
 
-	  new Api(config, lemo._requester, lemo._signer).attachTo(lemo, moduleName);
+	  new Api(config, {
+	    requester: lemo._requester,
+	    chainID: lemo.config.chainID,
+	    blockWatcher: lemo._blockWatcher,
+	    txWatcher: lemo._txWatcher
+	  }).attachTo(lemo, moduleName);
 	}
 	/**
 	 * Create conn object by config
