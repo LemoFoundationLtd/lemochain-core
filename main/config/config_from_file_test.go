@@ -1,23 +1,32 @@
 package config
 
 import (
-	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"github.com/stretchr/testify/assert"
-	"path/filepath"
 	"testing"
 )
 
 func TestReadConfigFile(t *testing.T) {
-	path := store.GetStorePath()
-	filepath.Join(path, "config.json")
+	defer DelConfigFile("./")
 
-	configFromFile, err := ReadConfigFile("D://GoWorks//src//github.com//LemoFoundationLtd//lmstore//config.json")
+	cfg := &ConfigFromFile{
+		ChainID:         100,
+		SleepTime:       10000,
+		Timeout:         3000,
+		DbUri:           "127.0.0.1:8080",
+		DbDriver:        "mysql",
+		TermDuration:    50,
+		InterimDuration: 50,
+		ConnectionLimit: 50,
+	}
+
+	WriteConfigFile("./", cfg)
+	configFromFile, err := ReadConfigFile("./")
 	assert.NoError(t, err)
 	assert.NotNil(t, configFromFile)
 
-	assert.Equal(t, configFromFile.ChainID, uint64(1))
-	assert.Equal(t, configFromFile.SleepTime, uint64(3000))
-	assert.Equal(t, configFromFile.Timeout, uint64(10000))
+	assert.Equal(t, configFromFile.ChainID, uint64(100))
+	assert.Equal(t, configFromFile.SleepTime, uint64(10000))
+	assert.Equal(t, configFromFile.Timeout, uint64(3000))
 }
 
 func TestReadConfigFile_Check1(t *testing.T) {

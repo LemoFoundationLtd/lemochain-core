@@ -39,6 +39,47 @@ type ConfigFromFileMarshaling struct {
 	ConnectionLimit hexutil.Uint64
 }
 
+func DelConfigFile(dir string) error {
+	filePath := filepath.Join(dir, "config.json")
+	return os.Remove(filePath)
+}
+
+func WriteConfigFile(dir string, cfg *ConfigFromFile) error {
+	result, err := json.Marshal(cfg)
+	if err != nil {
+		return err
+	}
+
+	filePath := filepath.Join(dir, "config.json")
+	_, err = os.Stat(filePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			file, err := os.Create(filePath)
+			if err != nil {
+				return err
+			} else {
+				file.Close()
+			}
+		} else {
+			return err
+		}
+	}
+
+	file, err := os.OpenFile(filePath, os.O_APPEND, os.ModePerm)
+	defer file.Close()
+
+	if err != nil {
+		return err
+	}
+
+	_, err = file.Write(result)
+	if err != nil {
+		return err
+	} else {
+		return nil
+	}
+}
+
 func ReadConfigFile(dir string) (*ConfigFromFile, error) {
 	filePath := filepath.Join(dir, "config.json")
 	file, err := os.Open(filePath)
