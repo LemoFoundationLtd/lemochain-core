@@ -6,7 +6,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
-	"github.com/LemoFoundationLtd/lemochain-core/main/config"
 	"github.com/LemoFoundationLtd/lemochain-core/main/node"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"gopkg.in/urfave/cli.v1"
@@ -33,7 +32,6 @@ It expects the genesis file as argument.`,
 var (
 	ErrFileReadFailed     = errors.New("open genesis config file failed")
 	ErrInvalidGenesisFile = errors.New("invalid genesis file")
-	ErrEmptyDeputyNodes   = errors.New("deputy nodes is empty")
 )
 
 // initGenesis 初始化创始块action
@@ -48,45 +46,43 @@ func initGenesis(ctx *cli.Context) error {
 		log.Crit("Must supply genesis json file path")
 	}
 
-	hash, err := setupGenesisBlock(genesisFile, dir)
-	if err != nil {
-		log.Crit(err.Error())
-	}
+	hash := setupGenesisBlock(genesisFile, dir)
 	log.Infof("init genesis succeed. hash: %s", hash.Hex())
 	return nil
 }
 
-func setupGenesisBlock(genesisFile, datadir string) (common.Hash, error) {
-	genesis, err := unmarshal(genesisFile)
+func setupGenesisBlock(genesisFile, datadir string) common.Hash {
+	genesis, err := loadGenesisFile(genesisFile)
 	if err != nil {
-		return common.Hash{}, err
+		panic(err)
 	}
-	return saveBlock(datadir, genesis), nil
+	return saveBlock(datadir, genesis)
 }
 
 // saveBlock save block to db
 func saveBlock(datadir string, genesis *chain.Genesis) common.Hash {
 	chaindata := node.GetChainDataPath(datadir)
-	cfg, err := config.ReadConfigFile(datadir)
-	if err != nil {
-		log.Errorf("read config failed: %v", err)
-	}
-	db := store.NewChainDataBase(chaindata, cfg.DbDriver, cfg.DbUri)
-	hash := chain.SetupGenesisBlock(db, genesis)
-	if err := db.Close(); err != nil {
-		log.Errorf("close db failed. %v", err)
-	}
-	return hash
+	db := store.NewChainDataBase(chaindata, "", "")
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Errorf("close db failed. %v", err)
+		}
+	}()
+	return chain.SetupGenesisBlock(db, genesis)
 }
 
-// unmarshal
-func unmarshal(genesisFile string) (*chain.Genesis, error) {
-	file, err := os.Open(genesisFile)
+// loadGenesisFile
+func loadGenesisFile(filePath string) (*chain.Genesis, error) {
+	file, err := os.Open(filePath)
 	if err != nil {
 		log.Errorf("%v", err)
 		return nil, ErrFileReadFailed
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			log.Errorf("close genesis file failed. %v", err)
+		}
+	}()
 
 	// decode genesis config file string
 	genesis := new(chain.Genesis)
