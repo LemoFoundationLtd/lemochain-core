@@ -330,6 +330,9 @@ func (tx *Transaction) String() string {
 // Clone deep copy transaction
 func (tx *Transaction) Clone() *Transaction {
 	cpy := *tx
+	// Clear old hash. So we can change any field in the new tx. It will be created again when Hash() is called
+	cpy.hash = atomic.Value{}
+	cpy.from = atomic.Value{}
 
 	if tx.data.Recipient != nil {
 		*cpy.data.Recipient = *tx.data.Recipient
