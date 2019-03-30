@@ -1,6 +1,7 @@
 package network
 
 import (
+	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/network/p2p"
@@ -66,7 +67,7 @@ func createPm() *ProtocolManager {
 	bc := new(testChain)
 	txPool := new(testTxPool)
 	discover := new(p2p.DiscoverManager)
-	pm := NewProtocolManager(1, p2p.NodeID{}, bc, txPool, discover, 1)
+	pm := NewProtocolManager(1, p2p.NodeID{}, bc, txPool, discover, 1, params.VersionUint())
 	pm.setTest()
 	return pm
 }

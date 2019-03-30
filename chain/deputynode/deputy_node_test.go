@@ -258,11 +258,11 @@ func TestManager_TimeToHandOutRewards(t *testing.T) {
 
 	nodes06, err := deputyNodes(2)
 	assert.NoError(t, err)
-	ma.Add(100000, nodes06)
+	ma.Add(100000+1000+1, nodes06)
 
 	nodes07, err := deputyNodes(3)
 	assert.NoError(t, err)
-	ma.Add(200000, nodes07)
+	ma.Add(200000+1000+1, nodes07)
 
 	assert.Equal(t, true, ma.TimeToHandOutRewards(100000+1000+1))
 	assert.Equal(t, true, ma.TimeToHandOutRewards(200000+1000+1))
