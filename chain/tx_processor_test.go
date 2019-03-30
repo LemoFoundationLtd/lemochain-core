@@ -13,6 +13,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common/flag"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/common/rlp"
+	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"github.com/LemoFoundationLtd/lemochain-core/store/protocol"
 	"github.com/stretchr/testify/assert"
 	"math/big"
