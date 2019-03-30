@@ -411,7 +411,8 @@ func (m *Miner) sealBlock() {
 	m.chain.Lock().Lock()
 	defer m.chain.Lock().Unlock()
 	// apply transactions
-	packagedTxs, invalidTxs, gasUsed := m.txProcessor.ApplyTxs(header, txs, m.timeoutTime)
+	outTime := m.timeoutTime * 2 / 3 // not more than 2/3 * timeoutTime
+	packagedTxs, invalidTxs, gasUsed := m.txProcessor.ApplyTxs(header, txs, outTime)
 	log.Debug("ApplyTxs ok")
 	// Finalize accounts
 	am := m.chain.AccountManager()

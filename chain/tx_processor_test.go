@@ -342,21 +342,17 @@ func TestApplyTxsTimeoutTime(t *testing.T) {
 	}
 
 	tx01 := makeTx(testPrivate, defaultAccounts[1], params.OrdinaryTx, common.Big1)
-	tx02 := makeTx(testPrivate, defaultAccounts[2], params.OrdinaryTx, common.Big1)
-	tx03 := makeTx(testPrivate, defaultAccounts[0], params.OrdinaryTx, common.Big1)
-	tx04 := makeTx(testPrivate, defaultAccounts[1], params.OrdinaryTx, common.Big2)
-	tx05 := makeTx(testPrivate, defaultAccounts[1], params.OrdinaryTx, common.Big3)
-	tx06 := makeTx(testPrivate, defaultAccounts[1], params.OrdinaryTx, common.Big32)
-	tx07 := makeTx(testPrivate, defaultAccounts[1], params.OrdinaryTx, common.Big32)
-	tx08 := makeTx(testPrivate, defaultAccounts[1], params.OrdinaryTx, common.Big32)
-	tx09 := makeTx(testPrivate, defaultAccounts[1], params.OrdinaryTx, common.Big32)
-	tx10 := makeTx(testPrivate, defaultAccounts[1], params.OrdinaryTx, common.Big32)
-
-	txs := types.Transactions{tx01, tx02, tx03, tx04, tx05, tx06, tx07, tx08, tx09, tx10}
-	selectedTxs01, _, _ := p.ApplyTxs(header, txs, int64(2))
-	assert.NotEmpty(t, len(selectedTxs01), 10)
-	selectedTxs02, _, _ := p.ApplyTxs(header, txs, int64(3))
-	assert.NotEmpty(t, len(selectedTxs02), 10)
+	txNum := 500
+	txs := make([]*types.Transaction, 0, txNum)
+	for i := 0; i < txNum; i++ {
+		txs = append(txs, tx01)
+	}
+	selectedTxs01, _, _ := p.ApplyTxs(header, txs, int64(0))
+	assert.NotEqual(t, len(selectedTxs01), txNum)
+	selectedTxs02, _, _ := p.ApplyTxs(header, txs, int64(2))
+	assert.NotEqual(t, len(selectedTxs02), txNum)
+	selectedTxs03, _, _ := p.ApplyTxs(header, txs, int64(100))
+	assert.Equal(t, len(selectedTxs03), txNum)
 }
 
 // TestTxProcessor_candidateTX 打包特殊交易测试
