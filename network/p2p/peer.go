@@ -132,7 +132,7 @@ func (p *Peer) readLoop() {
 		msg, err := p.readMsg()
 		if err != nil {
 			log.Debugf("read message error: %v", err)
-			p.safeClose()
+			p.Close()
 			return
 		}
 		if msg.Code == CodeHeartbeat {
@@ -257,6 +257,7 @@ func (p *Peer) heartbeatLoop() {
 			// reset heartbeatTimer
 			p.heartbeatTimer.Reset(heartbeatInterval)
 		case <-p.stopCh:
+			log.Debugf("peer stopch from heartbeat. nodeID:%s", p.RNodeID().String()[:16])
 			return
 		}
 	}
