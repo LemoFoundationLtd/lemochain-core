@@ -297,6 +297,7 @@ func TestMiner_GetSleepGenesis(t *testing.T) {
 
 	me := Nodes[0].privateKey
 	miner, err := newMiner(me)
+	defer miner.chain.Db().Close()
 	assert.NoError(t, err)
 
 	reset0 := miner.getSleepTime()
@@ -326,6 +327,7 @@ func TestMine_GetSleepNotSelf(t *testing.T) {
 	deputynode.Instance().Add(0, chain.DefaultDeputyNodes)
 
 	miner, err := newMiner(Nodes[0].privateKey)
+	defer miner.chain.Db().Close()
 	assert.NoError(t, err)
 
 	genesis := miner.chain.GetBlockByHeight(0)
@@ -350,6 +352,7 @@ func TestMiner_GetSleep1Deputy(t *testing.T) {
 	setSelfNodeKey(Nodes[0].privateKey)
 
 	miner, err := newMiner(Nodes[0].privateKey)
+	defer miner.chain.Db().Close()
 	assert.NoError(t, err)
 
 	reset := miner.getSleepTime()
@@ -362,6 +365,7 @@ func TestMiner_GetSleepValidAuthor(t *testing.T) {
 
 	deputynode.Instance().Add(0, chain.DefaultDeputyNodes)
 	miner, err := newMiner(Nodes[0].privateKey)
+	defer miner.chain.Db().Close()
 	assert.NoError(t, err)
 
 	genesis := miner.chain.GetBlockByHeight(0)
@@ -383,6 +387,7 @@ func TestMiner_GetSleepSlot1(t *testing.T) {
 	deputynode.Instance().Add(0, chain.DefaultDeputyNodes)
 
 	miner, err := newMiner(Nodes[0].privateKey)
+	defer miner.chain.Db().Close()
 	assert.NoError(t, err)
 
 	genesis := miner.chain.GetBlockByHeight(0)
@@ -432,6 +437,7 @@ func TestMiner_GetSleepSlot2(t *testing.T) {
 	deputynode.Instance().Add(0, chain.DefaultDeputyNodes)
 
 	miner, err := newMiner(Nodes[0].privateKey)
+	defer miner.chain.Db().Close()
 	assert.NoError(t, err)
 
 	genesis := miner.chain.GetBlockByHeight(0)
@@ -481,6 +487,7 @@ func TestMiner_GetSleepSlot3(t *testing.T) {
 	deputynode.Instance().Add(0, chain.DefaultDeputyNodes)
 
 	miner, err := newMiner(Nodes[0].privateKey)
+	defer miner.chain.Db().Close()
 	assert.NoError(t, err)
 
 	genesis := miner.chain.GetBlockByHeight(0)
@@ -530,6 +537,7 @@ func TestMiner_GetSleepSlot4(t *testing.T) {
 	deputynode.Instance().Add(0, chain.DefaultDeputyNodes)
 
 	miner, err := newMiner(Nodes[0].privateKey)
+	defer miner.chain.Db().Close()
 	assert.NoError(t, err)
 
 	genesis := miner.chain.GetBlockByHeight(0)
@@ -630,6 +638,7 @@ func TestMiner_GetSleepNormal(t *testing.T) {
 
 	me := Nodes[0].privateKey
 	miner, err := newMiner(me)
+	defer miner.chain.Db().Close()
 	assert.NoError(t, err)
 
 	genesis := miner.chain.GetBlockByHeight(0)

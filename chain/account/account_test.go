@@ -15,19 +15,6 @@ func TestAccount_Interface(t *testing.T) {
 	var _ types.AccountAccessor = (*Account)(nil)
 }
 
-func TestChainDatabase_Get(t *testing.T) {
-	// db := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
-	// db.GetBlockByHash(common.HexToHash("0x5850717e08df47246c36f5b9b0cd23993356933ad73f6fca7e01de995e683715"))
-
-	// var x uint8 = 129
-	// y := int8(x)
-	// log.Errorf("" + string(y))
-	//
-	// hash := common.BytesToHash(encodeBlockNumber2Hash(114).Bytes())
-	// log.Errorf("" + hash.Hex())
-	// store.NewChainDataBase(store.GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
-}
-
 func loadAccount(db protocol.ChainDB, address common.Address) *Account {
 	acctDb, _ := db.GetActDatabase(newestBlock.Hash())
 	data, _ := acctDb.Get(address)
@@ -35,8 +22,7 @@ func loadAccount(db protocol.ChainDB, address common.Address) *Account {
 }
 
 func TestAccount_GetAddress(t *testing.T) {
-	store.ClearData()
-
+	ClearData()
 	db := newDB()
 	defer db.Close()
 
@@ -55,7 +41,7 @@ func TestAccount_GetAddress(t *testing.T) {
 }
 
 func TestAccount_SetBalance_GetBalance(t *testing.T) {
-	store.ClearData()
+	ClearData()
 	db := newDB()
 	defer db.Close()
 
@@ -67,7 +53,7 @@ func TestAccount_SetBalance_GetBalance(t *testing.T) {
 }
 
 func TestAccount_SetVersion_GetVersion(t *testing.T) {
-	store.ClearData()
+	ClearData()
 	db := newDB()
 	defer db.Close()
 
@@ -81,7 +67,7 @@ func TestAccount_SetVersion_GetVersion(t *testing.T) {
 }
 
 func TestAccount_SetSuicide_GetSuicide(t *testing.T) {
-	store.ClearData()
+	ClearData()
 	db := newDB()
 	defer db.Close()
 
@@ -96,7 +82,7 @@ func TestAccount_SetSuicide_GetSuicide(t *testing.T) {
 }
 
 func TestAccount_GetVoteFor(t *testing.T) {
-	store.ClearData()
+	ClearData()
 	db := newDB()
 	defer db.Close()
 
@@ -108,7 +94,7 @@ func TestAccount_GetVoteFor(t *testing.T) {
 }
 
 func TestAccount_GetCandidate(t *testing.T) {
-	store.ClearData()
+	ClearData()
 	db := newDB()
 	defer db.Close()
 
@@ -130,7 +116,7 @@ func TestAccount_GetCandidate(t *testing.T) {
 }
 
 func TestAccount_GetVotes(t *testing.T) {
-	store.ClearData()
+	ClearData()
 	db := newDB()
 	defer db.Close()
 
@@ -146,7 +132,7 @@ func TestAccount_GetVotes(t *testing.T) {
 }
 
 func TestAccount_SetCodeHash_GetCodeHash(t *testing.T) {
-	store.ClearData()
+	ClearData()
 	db := newDB()
 	defer db.Close()
 
@@ -164,7 +150,7 @@ func TestAccount_SetCodeHash_GetCodeHash(t *testing.T) {
 }
 
 func TestAccount_SetCode_GetCode(t *testing.T) {
-	store.ClearData()
+	ClearData()
 	db := newDB()
 	defer db.Close()
 
@@ -200,7 +186,7 @@ func TestAccount_SetCode_GetCode(t *testing.T) {
 }
 
 func TestAccount_SetStorageRoot_GetStorageRoot(t *testing.T) {
-	store.ClearData()
+	ClearData()
 	db := newDB()
 	defer db.Close()
 
@@ -214,7 +200,7 @@ func TestAccount_SetStorageRoot_GetStorageRoot(t *testing.T) {
 }
 
 func TestAccount_SetStorageState_GetStorageState(t *testing.T) {
-	store.ClearData()
+	ClearData()
 	db := newDB()
 	defer db.Close()
 
@@ -274,7 +260,7 @@ func TestAccount_SetStorageState_GetStorageState(t *testing.T) {
 }
 
 func TestAccount_IsEmpty(t *testing.T) {
-	store.ClearData()
+	ClearData()
 	db := newDB()
 	defer db.Close()
 
@@ -285,7 +271,7 @@ func TestAccount_IsEmpty(t *testing.T) {
 }
 
 func TestAccount_MarshalJSON_UnmarshalJSON(t *testing.T) {
-	store.ClearData()
+	ClearData()
 	db := newDB()
 	defer db.Close()
 
@@ -305,7 +291,7 @@ func TestAccount_MarshalJSON_UnmarshalJSON(t *testing.T) {
 }
 
 func TestAccount_Finalise_Save(t *testing.T) {
-	store.ClearData()
+	ClearData()
 	db := newDB()
 	defer db.Close()
 

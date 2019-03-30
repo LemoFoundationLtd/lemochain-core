@@ -73,6 +73,7 @@ func TestExecute(t *testing.T) {
 
 func TestCall(t *testing.T) {
 	db := store.NewChainDataBase("../../../testdata/vm_runtime", store.DRIVER_MYSQL, store.DNS_MYSQL)
+	defer db.Close()
 	am := account.NewManager(common.Hash{}, db)
 	address := common.HexToAddress("0x0a")
 	contractAccount := am.GetAccount(address)

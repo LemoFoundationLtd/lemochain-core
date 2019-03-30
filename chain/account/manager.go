@@ -250,17 +250,21 @@ func (am *Manager) Finalise() error {
 		}
 
 		logs := am.processor.GetLogsByAddress(account.GetAddress())
+
+		// nextVersions := make(map[types.ChangeLogType]uint32)
 		for _, changeLog := range logs {
+			nextVersion := account.rawAccount.GetVersion(changeLog.LogType) + 1
+
 			// set version record in rawAccount.data.NewestRecords
-			account.rawAccount.SetVersion(changeLog.LogType, changeLog.Version, currentHeight)
+			changeLog.Version = nextVersion
+			account.rawAccount.SetVersion(changeLog.LogType, nextVersion, currentHeight)
+
 			// update version trie
 			k := versionTrieKey(account.GetAddress(), changeLog.LogType)
-			version := big.NewInt(int64(changeLog.Version)).Bytes()
-			if err := versionTrie.TryUpdate(k, version); err != nil {
+			if err := versionTrie.TryUpdate(k, big.NewInt(int64(changeLog.Version)).Bytes()); err != nil {
 				return err
 			}
 		}
-
 	}
 	return nil
 }

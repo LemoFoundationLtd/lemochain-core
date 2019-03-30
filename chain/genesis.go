@@ -16,9 +16,10 @@ import (
 )
 
 var (
-	ErrGenesisExtraTooLong = errors.New("genesis block's extraData is longer than 256")
-	ErrGenesisTimeTooLarge = errors.New("genesis block's time is larger than current time")
+	ErrGenesisExtraTooLong = errors.New("genesis config's extraData is longer than 256")
+	ErrGenesisTimeTooLarge = errors.New("genesis config's time is larger than current time")
 	ErrNoDeputyNodes       = errors.New("no deputy nodes in genesis")
+	ErrInvalidDeputyNodes  = errors.New("genesis config's deputy nodes are invalid")
 )
 
 // DefaultDeputyNodes
@@ -117,7 +118,7 @@ func checkGenesisConfig(genesis *Genesis) error {
 	}
 	for _, deputy := range genesis.DeputyNodes {
 		if err := deputy.Check(); err != nil {
-			return fmt.Errorf("genesis deputy nodes check error: %s", err.Error())
+			return ErrInvalidDeputyNodes
 		}
 	}
 	return nil
