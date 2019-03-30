@@ -145,7 +145,11 @@ func initDeputyNodes(db protocol.ChainDB) {
 			panic(ErrNoDeputyInBlock)
 		}
 
-		deputynode.Instance().Add(snapshotHeight, block.DeputyNodes)
+		var termStartHeight = snapshotHeight + params.InterimDuration + 1
+		if snapshotHeight == 0 {
+			termStartHeight = 0
+		}
+		deputynode.Instance().Add(termStartHeight, block.DeputyNodes)
 	}
 }
 
