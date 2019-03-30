@@ -117,9 +117,9 @@ type AccountData struct {
 	CodeHash common.Hash    `json:"codeHash" gencodec:"required"`
 
 	StorageRoot   common.Hash `json:"root" gencodec:"required"`
-	AssetCodeRoot common.Hash `json:"AssetCodeRoot" gencodec:"required"`
-	AssetIdRoot   common.Hash `json:"AssetIdRoot" gencodec:"required"`
-	EquityRoot    common.Hash `json:"EquityRoot" gencodec:"required"`
+	AssetCodeRoot common.Hash `json:"assetCodeRoot" gencodec:"required"`
+	AssetIdRoot   common.Hash `json:"assetIdRoot" gencodec:"required"`
+	EquityRoot    common.Hash `json:"equityRoot" gencodec:"required"`
 
 	VoteFor   common.Address `json:"voteFor"`
 	Candidate Candidate      `json:"candidate"`
