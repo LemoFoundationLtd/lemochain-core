@@ -62,12 +62,19 @@ func TestChainAPI_api(t *testing.T) {
 	c := NewPublicChainAPI(bc)
 
 	// getBlockByHash
-	exBlock1 := c.chain.GetBlockByHash(common.HexToHash("0x7b49b0aad9f4caa94bced369b9fcdb7e215b3748f6837c85d78afa2390bf913a"))
-	assert.Equal(t, exBlock1, c.GetBlockByHash("0x7b49b0aad9f4caa94bced369b9fcdb7e215b3748f6837c85d78afa2390bf913a", true))
+	exBlock1 := c.chain.GetBlockByHash(common.HexToHash("0x0bee913d964dea2142789d13b2df9c156fb3097c432762e9cceefa9814a0ebb1"))
+
+	assert.Equal(t, exBlock1.VersionRoot(), defaultBlocks[1].VersionRoot())
+	assert.Equal(t, exBlock1.Height(), defaultBlocks[1].Height())
+	assert.Equal(t, exBlock1.ParentHash(), defaultBlocks[1].ParentHash())
+	assert.Equal(t, exBlock1.Header.LogRoot, defaultBlocks[1].Header.LogRoot)
+	assert.Equal(t, exBlock1.Header.TxRoot, defaultBlocks[1].Header.TxRoot)
+
+	assert.Equal(t, exBlock1, c.GetBlockByHash("0x0bee913d964dea2142789d13b2df9c156fb3097c432762e9cceefa9814a0ebb1", true))
 	Block1 := &types.Block{
 		Header: exBlock1.Header,
 	}
-	assert.Equal(t, Block1, c.GetBlockByHash("0x7b49b0aad9f4caa94bced369b9fcdb7e215b3748f6837c85d78afa2390bf913a", false))
+	assert.Equal(t, Block1, c.GetBlockByHash("0x0bee913d964dea2142789d13b2df9c156fb3097c432762e9cceefa9814a0ebb1", false))
 
 	// getBlockByHeight
 	exBlock2 := c.chain.GetBlockByHeight(1)

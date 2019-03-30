@@ -249,6 +249,7 @@ func TestReimbursementTransaction(t *testing.T) {
 }
 
 func TestTransaction_MarshalJSON_UnmarshalJSON(t *testing.T) {
+
 	txV, err := testSigner.SignTx(testTx, testPrivate)
 	assert.NoError(t, err)
 	data, err := json.Marshal(txV)

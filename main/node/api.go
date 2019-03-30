@@ -438,7 +438,7 @@ func NewPublicTxAPI(node *Node) *PublicTxAPI {
 
 // Send send a transaction
 func (t *PublicTxAPI) SendTx(tx *types.Transaction) (common.Hash, error) {
-	err := AvailableTx(tx)
+	err := VerifyTx(tx)
 	if err != nil {
 		return common.Hash{}, err
 	}
@@ -460,7 +460,7 @@ func (t *PublicTxAPI) SendReimbursedGasTx(senderPrivate, gasPayerPrivate string,
 	if err != nil {
 		return common.Hash{}, err
 	}
-	err = AvailableTx(lastSignTx)
+	err = VerifyTx(lastSignTx)
 	if err != nil {
 		return common.Hash{}, err
 	}
@@ -582,8 +582,8 @@ func (t *PublicTxAPI) TradingAsset(prv string, to common.Address, assetCode, ass
 	return t.SendTx(signTx)
 }
 
-// AvailableTx transaction parameter verification
-func AvailableTx(tx *types.Transaction) error {
+// VerifyTx transaction parameter verification
+func VerifyTx(tx *types.Transaction) error {
 	toNameLength := len(tx.ToName())
 	if toNameLength > MaxTxToNameLength {
 		toNameErr := fmt.Errorf("the length of toName field in transaction is out of max length limit. toName length = %d. max length limit = %d. ", toNameLength, MaxTxToNameLength)
