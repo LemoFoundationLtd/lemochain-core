@@ -182,7 +182,7 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 		GasUsed:      header.GasUsed,
 		Time:         header.Time,
 	}
-	selectedTxs, invalidTxs, gasUsed := p.ApplyTxs(emptyHeader, txs)
+	selectedTxs, invalidTxs, gasUsed := p.ApplyTxs(emptyHeader, txs, int64(10000))
 	assert.Equal(t, header.GasUsed, gasUsed)
 	assert.Equal(t, header.VersionRoot, p.am.GetVersionRoot())
 	assert.Equal(t, defaultBlocks[2].ChangeLogs, p.am.GetChangeLogs())
@@ -200,7 +200,7 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 		GasUsed:      header.GasUsed,
 		Time:         header.Time,
 	}
-	selectedTxs, invalidTxs, gasUsed = p.ApplyTxs(emptyHeader, txs)
+	selectedTxs, invalidTxs, gasUsed = p.ApplyTxs(emptyHeader, txs, int64(10000))
 	assert.Equal(t, header.GasUsed, gasUsed)
 	assert.Equal(t, header.VersionRoot, p.am.GetVersionRoot())
 	assert.Equal(t, defaultBlocks[3].ChangeLogs, p.am.GetChangeLogs())
@@ -220,7 +220,7 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 	p.am.Reset(emptyHeader.ParentHash)
 	author := p.am.GetAccount(header.MinerAddress)
 	origBalance := author.GetBalance()
-	selectedTxs, invalidTxs, gasUsed = p.ApplyTxs(emptyHeader, nil)
+	selectedTxs, invalidTxs, gasUsed = p.ApplyTxs(emptyHeader, nil, int64(10000))
 	assert.Equal(t, 0, gasUsed)
 	assert.Equal(t, defaultBlocks[2].VersionRoot(), p.am.GetVersionRoot()) // last block version root
 	assert.Equal(t, 0, len(selectedTxs))
@@ -238,7 +238,7 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 		GasUsed:      header.GasUsed,
 		Time:         header.Time,
 	}
-	selectedTxs, invalidTxs, gasUsed = p.ApplyTxs(emptyHeader, txs)
+	selectedTxs, invalidTxs, gasUsed = p.ApplyTxs(emptyHeader, txs, int64(10000))
 	assert.Equal(t, header.GasUsed, gasUsed)
 	assert.Equal(t, header.VersionRoot, p.am.GetVersionRoot())
 	assert.Equal(t, true, len(defaultBlocks[3].ChangeLogs) < len(p.am.GetChangeLogs()))
@@ -263,7 +263,7 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 		makeTx(testPrivate, defaultAccounts[1], params.OrdinaryTx, new(big.Int).Add(balance, big.NewInt(1))),
 		txs[1],
 	}
-	selectedTxs, invalidTxs, _ = p.ApplyTxs(emptyHeader, txs)
+	selectedTxs, invalidTxs, _ = p.ApplyTxs(emptyHeader, txs, int64(10000))
 	assert.Equal(t, len(txs)-1, len(selectedTxs))
 	assert.Equal(t, 1, len(invalidTxs))
 }
@@ -293,7 +293,7 @@ func TestTxProcessor_ApplyTxs2(t *testing.T) {
 	txs := types.Transactions{
 		makeTx(testPrivate, defaultAccounts[1], params.OrdinaryTx, common.Big1),
 	}
-	_, _, GasUsed := p.ApplyTxs(emptyHeader, txs)
+	_, _, GasUsed := p.ApplyTxs(emptyHeader, txs, int64(10000))
 	assert.Equal(t, params.TxGas, GasUsed)
 	newSenderBalance := p.am.GetAccount(testAddr).GetBalance()
 	newMinerBalance := p.am.GetAccount(defaultAccounts[0]).GetBalance()
@@ -320,11 +320,43 @@ func TestTxProcessor_ApplyTxs2(t *testing.T) {
 	txs = types.Transactions{
 		makeTx(testPrivate, testAddr, params.OrdinaryTx, common.Big1),
 	}
-	_, _, GasUsed = p.ApplyTxs(emptyHeader, txs)
+	_, _, GasUsed = p.ApplyTxs(emptyHeader, txs, int64(10000))
 	assert.Equal(t, params.TxGas, GasUsed)
 	newSenderBalance = p.am.GetAccount(testAddr).GetBalance()
 	cost = txs[0].GasPrice().Mul(txs[0].GasPrice(), big.NewInt(int64(params.TxGas)))
 	assert.Equal(t, senderBalance.Sub(senderBalance, cost), newSenderBalance)
+}
+
+func TestApplyTxsTimeoutTime(t *testing.T) {
+	store.ClearData()
+	bc := newChain()
+	defer bc.db.Close()
+	p := NewTxProcessor(bc)
+
+	parentBlock := p.chain.stableBlock.Load().(*types.Block)
+	header := &types.Header{
+		ParentHash:   parentBlock.Hash(),
+		MinerAddress: parentBlock.MinerAddress(),
+		Height:       parentBlock.Height() + 1,
+		GasLimit:     parentBlock.GasLimit(),
+	}
+
+	tx01 := makeTx(testPrivate, defaultAccounts[1], params.OrdinaryTx, common.Big1)
+	tx02 := makeTx(testPrivate, defaultAccounts[2], params.OrdinaryTx, common.Big1)
+	tx03 := makeTx(testPrivate, defaultAccounts[0], params.OrdinaryTx, common.Big1)
+	tx04 := makeTx(testPrivate, defaultAccounts[1], params.OrdinaryTx, common.Big2)
+	tx05 := makeTx(testPrivate, defaultAccounts[1], params.OrdinaryTx, common.Big3)
+	tx06 := makeTx(testPrivate, defaultAccounts[1], params.OrdinaryTx, common.Big32)
+	tx07 := makeTx(testPrivate, defaultAccounts[1], params.OrdinaryTx, common.Big32)
+	tx08 := makeTx(testPrivate, defaultAccounts[1], params.OrdinaryTx, common.Big32)
+	tx09 := makeTx(testPrivate, defaultAccounts[1], params.OrdinaryTx, common.Big32)
+	tx10 := makeTx(testPrivate, defaultAccounts[1], params.OrdinaryTx, common.Big32)
+
+	txs := types.Transactions{tx01, tx02, tx03, tx04, tx05, tx06, tx07, tx08, tx09, tx10}
+	selectedTxs01, _, _ := p.ApplyTxs(header, txs, int64(2))
+	assert.NotEmpty(t, len(selectedTxs01), 10)
+	selectedTxs02, _, _ := p.ApplyTxs(header, txs, int64(3))
+	assert.NotEmpty(t, len(selectedTxs02), 10)
 }
 
 // TestTxProcessor_candidateTX 打包特殊交易测试
@@ -670,7 +702,7 @@ func newNextBlock(p *TxProcessor, parentBlock *types.Block, txs types.Transactio
 		GasLimit:     parentBlock.GasLimit(),
 		Time:         parentBlock.Time() + 4,
 	}
-	packagedTxs, invalidTxs, gasUsed := p.ApplyTxs(header01, txs)
+	packagedTxs, invalidTxs, gasUsed := p.ApplyTxs(header01, txs, int64(10000))
 	err := p.chain.engine.Finalize(header01.Height, p.am)
 	if err != nil {
 		panic(err)
@@ -1331,7 +1363,7 @@ func BenchmarkApplyTxs(b *testing.B) {
 
 	start := time.Now().UnixNano()
 	b.ResetTimer()
-	selectedTxs, invalidTxs, _ := p.ApplyTxs(header, txs)
+	selectedTxs, invalidTxs, _ := p.ApplyTxs(header, txs, int64(10000))
 	fmt.Printf("BenchmarkApplyTxs cost %dms\n", (time.Now().UnixNano()-start)/1000000)
 	fmt.Printf("%d transactions success, %d transactions fail\n", len(selectedTxs), len(invalidTxs))
 }

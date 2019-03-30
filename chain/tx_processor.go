@@ -88,7 +88,7 @@ func (p *TxProcessor) Process(header *types.Header, txs types.Transactions) (uin
 }
 
 // ApplyTxs picks and processes transactions from miner's tx pool.
-func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions) (types.Transactions, types.Transactions, uint64) {
+func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions, timeoutTime int64) (types.Transactions, types.Transactions, uint64) {
 	var (
 		gp          = new(types.GasPool).AddGas(header.GasLimit)
 		gasUsed     = uint64(0)
@@ -99,8 +99,19 @@ func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions) (ty
 
 	p.am.Reset(header.ParentHash)
 
+	// limit the time to execute txs
+	outTime := timeoutTime * 2 / 3 // not more than 2/3 * timeoutTime
+	applyTxsInterval := time.Duration(outTime) * time.Millisecond
+	applyTimer := time.NewTimer(applyTxsInterval)
 	// Iterate over and process the individual transactions
+label:
 	for _, tx := range txs {
+		// timer
+		select {
+		case <-applyTimer.C:
+			break label
+		default:
+		}
 		// If we don't have enough gas for any further transactions then we're done
 		if gp.Gas() < params.TxGas {
 			log.Info("Not enough gas for further transactions", "gp", gp)
