@@ -2,11 +2,20 @@ package config
 
 import (
 	"github.com/stretchr/testify/assert"
+	"os"
+	"path/filepath"
 	"testing"
 )
 
+const testDataPath = "../../testdata"
+
+func delConfigFile(dir string) {
+	filePath := filepath.Join(dir, JsonFileName)
+	os.Remove(filePath)
+}
+
 func TestReadConfigFile(t *testing.T) {
-	defer DelConfigFile("./")
+	defer delConfigFile(testDataPath)
 
 	cfg := &ConfigFromFile{
 		ChainID:         100,
@@ -19,8 +28,9 @@ func TestReadConfigFile(t *testing.T) {
 		ConnectionLimit: 50,
 	}
 
-	WriteConfigFile("./", cfg)
-	configFromFile, err := ReadConfigFile("./")
+	err := WriteConfigFile(testDataPath, cfg)
+	assert.NoError(t, err)
+	configFromFile, err := ReadConfigFile(testDataPath)
 	assert.NoError(t, err)
 	assert.NotNil(t, configFromFile)
 
@@ -36,7 +46,7 @@ func TestReadConfigFile_Check1(t *testing.T) {
 		Timeout:   uint64(40000),
 	}
 
-	assert.PanicsWithValue(t, "config.json content error: sleepTime can't be larger than timeout", func() {
+	assert.PanicsWithValue(t, ErrSleepTimeInConfig, func() {
 		configFromFile.Check()
 	})
 }
@@ -48,7 +58,7 @@ func TestReadConfigFile_Check2(t *testing.T) {
 		Timeout:   uint64(50000),
 	}
 
-	assert.PanicsWithValue(t, "config.json content error: chainID must be in [1, 65535]", func() {
+	assert.PanicsWithValue(t, ErrChainIDInConfig, func() {
 		configFromFile.Check()
 	})
 }
@@ -60,7 +70,7 @@ func TestReadConfigFile_Check3(t *testing.T) {
 		Timeout:   uint64(50000),
 	}
 
-	assert.PanicsWithValue(t, "config.json content error: chainID must be in [1, 65535]", func() {
+	assert.PanicsWithValue(t, ErrChainIDInConfig, func() {
 		configFromFile.Check()
 	})
 }
