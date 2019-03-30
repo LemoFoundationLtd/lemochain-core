@@ -125,7 +125,7 @@ func checkGenesisConfig(genesis *Genesis) error {
 }
 
 // SetupGenesisBlock setup genesis block
-func SetupGenesisBlock(db protocol.ChainDB, genesis *Genesis) common.Hash {
+func SetupGenesisBlock(db protocol.ChainDB, genesis *Genesis) *types.Block {
 	if genesis == nil {
 		log.Info("Writing default genesis block.")
 		genesis = DefaultGenesisBlock()
@@ -149,7 +149,7 @@ func SetupGenesisBlock(db protocol.ChainDB, genesis *Genesis) common.Hash {
 	if err := db.SetStableBlock(hash); err != nil {
 		panic(fmt.Errorf("setup genesis block failed: %v", err))
 	}
-	return block.Hash()
+	return block
 }
 
 // ToBlock

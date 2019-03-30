@@ -106,8 +106,7 @@ func getGenesis(db protocol.ChainDB) *types.Block {
 	if err != nil {
 		if err == store.ErrNotExist {
 			// create genesis block
-			chain.SetupGenesisBlock(db, nil)
-			block, _ = db.GetBlockByHeight(0)
+			block = chain.SetupGenesisBlock(db, nil)
 		} else {
 			panic(fmt.Sprintf("can't get genesis block. err: %v", err))
 		}

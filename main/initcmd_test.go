@@ -171,8 +171,9 @@ func Test_setupGenesisBlock_valid(t *testing.T) {
 	writeGenesisToFile(customContent("", ""), fileName)
 	defer clearTmpFiles(fileName, datadir)
 
-	hash := setupGenesisBlock(fileName, datadir)
-	assert.Equal(t, common.HexToHash("0x2a25c706ef4b7fbe478d38d50a634f70d01257d535f74c5241c4a5cdaf791e90"), hash)
+	block := setupGenesisBlock(fileName, datadir)
+	assert.Equal(t, uint32(0), block.Height())
+	assert.Equal(t, common.HexToHash("0x2a25c706ef4b7fbe478d38d50a634f70d01257d535f74c5241c4a5cdaf791e90"), block.Hash())
 }
 
 // test invalid file content
