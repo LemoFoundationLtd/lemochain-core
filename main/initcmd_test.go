@@ -37,7 +37,7 @@ func Test_setupGenesisBlock_no_file(t *testing.T) {
 	})
 }
 
-func customContent(fieldName, fieldContent string) string {
+func editDefaultTestContent(fieldName, fieldContent string) string {
 	type kv struct {
 		K, V string
 	}
@@ -86,7 +86,7 @@ func customContent(fieldName, fieldContent string) string {
 func getTestCases() []genesisTestData {
 	return []genesisTestData{
 		{"empty_genesis_file", ErrInvalidGenesisFile, ""},
-		{"invalid_json_format", ErrInvalidGenesisFile, customContent("deputyNodes", `[
+		{"invalid_json_format", ErrInvalidGenesisFile, editDefaultTestContent("deputyNodes", `[
 		{
 			"minerAddress": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
 			"nodeID": "0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0",
@@ -96,12 +96,12 @@ func getTestCases() []genesisTestData {
 			"votes": "17"
 		},
 	]`)},
-		{"no_deputy", chain.ErrNoDeputyNodes, customContent("deputyNodes", "[]")},
-		{"lack_necessary_field", ErrInvalidGenesisFile, customContent("gasLimit", "")},
-		{"invalid_founder", ErrInvalidGenesisFile, customContent("founder", "Lemo84GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG")}, // correct: Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG
-		{"invalid_extraData", ErrInvalidGenesisFile, customContent("extraData", "0x123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890")},
-		{"invalid_timestamp", ErrInvalidGenesisFile, customContent("timestamp", "1539051657aaa")},
-		{"invalid_deputy_minerAddress", ErrInvalidGenesisFile, customContent("deputyNodes", `[
+		{"no_deputy", chain.ErrNoDeputyNodes, editDefaultTestContent("deputyNodes", "[]")},
+		{"lack_necessary_field", ErrInvalidGenesisFile, editDefaultTestContent("gasLimit", "")},
+		{"invalid_founder", ErrInvalidGenesisFile, editDefaultTestContent("founder", "Lemo84GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG")}, // correct: Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG
+		{"invalid_extraData", ErrInvalidGenesisFile, editDefaultTestContent("extraData", "0x123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890")},
+		{"invalid_timestamp", ErrInvalidGenesisFile, editDefaultTestContent("timestamp", "1539051657aaa")},
+		{"invalid_deputy_minerAddress", ErrInvalidGenesisFile, editDefaultTestContent("deputyNodes", `[
 		{
 			"minerAddress": "Lemo84GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
 			"nodeID": "0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0",
@@ -111,7 +111,7 @@ func getTestCases() []genesisTestData {
 			"votes": "17"
 		}
 	]`)},
-		{"invalid_deputy_nodeID", chain.ErrInvalidDeputyNodes, customContent("deputyNodes", `[
+		{"invalid_deputy_nodeID", chain.ErrInvalidDeputyNodes, editDefaultTestContent("deputyNodes", `[
 		{
 			"minerAddress": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
 			"nodeID": "0x5e360073cd9a3c02",
@@ -121,7 +121,7 @@ func getTestCases() []genesisTestData {
 			"votes": "17"
 		}
 	]`)},
-		{"invalid_deputy_ip", ErrInvalidGenesisFile, customContent("deputyNodes", `[
+		{"invalid_deputy_ip", ErrInvalidGenesisFile, editDefaultTestContent("deputyNodes", `[
 		{
 			"minerAddress": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
 			"nodeID": "0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0",
@@ -131,7 +131,7 @@ func getTestCases() []genesisTestData {
 			"votes": "17"
 		}
 	]`)},
-		{"invalid_deputy_port", chain.ErrInvalidDeputyNodes, customContent("deputyNodes", `[
+		{"invalid_deputy_port", chain.ErrInvalidDeputyNodes, editDefaultTestContent("deputyNodes", `[
 		{
 			"minerAddress": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
 			"nodeID": "0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0",
@@ -141,7 +141,7 @@ func getTestCases() []genesisTestData {
 			"votes": "17"
 		}
 	]`)},
-		{"invalid_deputy_rank", chain.ErrInvalidDeputyNodes, customContent("deputyNodes", `[
+		{"invalid_deputy_rank", chain.ErrInvalidDeputyNodes, editDefaultTestContent("deputyNodes", `[
 		{
 			"minerAddress": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
 			"nodeID": "0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0",
@@ -151,7 +151,7 @@ func getTestCases() []genesisTestData {
 			"votes": "17"
 		}
 	]`)},
-		{"invalid_deputy_votes", ErrInvalidGenesisFile, customContent("deputyNodes", `[
+		{"invalid_deputy_votes", ErrInvalidGenesisFile, editDefaultTestContent("deputyNodes", `[
 		{
 			"minerAddress": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
 			"nodeID": "0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0",
@@ -168,7 +168,7 @@ func getTestCases() []genesisTestData {
 func Test_setupGenesisBlock_valid(t *testing.T) {
 	fileName := "test_correct_genesis.json"
 	datadir := "lemo_data_test_correct"
-	writeGenesisToFile(customContent("", ""), fileName)
+	writeGenesisToFile(editDefaultTestContent("", ""), fileName)
 	defer clearTmpFiles(fileName, datadir)
 
 	block := setupGenesisBlock(fileName, datadir)
