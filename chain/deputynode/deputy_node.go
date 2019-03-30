@@ -131,19 +131,15 @@ func (d *Manager) Add(height uint32, nodes DeputyNodes) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 	d.DeputyNodesList = append(d.DeputyNodesList, &DeputyNodesRecord{height: height, nodes: nodes})
-	log.Info("deputy node.add")
+	log.Info("deputy node.add", "height", height, "nodes count", len(nodes))
 }
 
-var deputyNodeManger *Manager
-var once sync.Once
+var managerInstance = &Manager{
+	DeputyNodesList: make([]*DeputyNodesRecord, 0, 1),
+}
 
 func Instance() *Manager {
-	once.Do(func() {
-		deputyNodeManger = &Manager{
-			DeputyNodesList: make([]*DeputyNodesRecord, 0, 1),
-		}
-	})
-	return deputyNodeManger
+	return managerInstance
 }
 
 //go:generate gencodec -type JsonDeputyNodesRecord --field-override JsonDeputyNodesRecordMarshaling -out gen_JsonDeputyNodesRecord_json.go

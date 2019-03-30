@@ -29,6 +29,10 @@ import (
 	"sync/atomic"
 )
 
+var (
+	ErrNoDeputyInBlock = errors.New("There is no deputy nodes in snapshot block")
+)
+
 type Node struct {
 	config  *Config
 	chainID uint16
@@ -127,22 +131,21 @@ func (n *Node) setMinerAddress() {
 
 // initDeputyNodes init deputy nodes information
 func initDeputyNodes(db protocol.ChainDB) {
-	block, _ := db.GetBlockByHeight(0)
-	var err error
-	for block != nil {
+	for snapshotHeight := uint32(0); ; snapshotHeight += params.TermDuration {
+		block, err := db.GetBlockByHeight(snapshotHeight)
+		if err != nil {
+			if err == store.ErrNotExist {
+				break
+			}
+			log.Errorf("Load snapshot block error: %v", err)
+			panic(err)
+		}
 		if block.DeputyNodes == nil || len(block.DeputyNodes) == 0 {
-			log.Warnf("initDeputyNodes: can't get deputy nodes in snapshot block")
-			return
+			log.Errorf("initDeputyNodes: there is no deputy nodes in snapshot block %d", snapshotHeight)
+			panic(ErrNoDeputyInBlock)
 		}
-		deputynode.Instance().Add(block.Height(), block.DeputyNodes)
-		block, err = db.GetBlockByHeight(block.Height() + params.TermDuration)
-		if err == store.ErrNotExist {
-			break
-		} else if err == nil {
-			// normal
-		} else {
-			panic(fmt.Sprintf("block get error: %v", err))
-		}
+
+		deputynode.Instance().Add(snapshotHeight, block.DeputyNodes)
 	}
 }
 
