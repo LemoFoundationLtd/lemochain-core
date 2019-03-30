@@ -6,13 +6,11 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
-	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"github.com/LemoFoundationLtd/lemochain-core/store/protocol"
 	"github.com/LemoFoundationLtd/lemochain-core/store/trie"
 	"math/big"
 	"os"
-	"time"
 )
 
 type blockInfo struct {
@@ -91,14 +89,7 @@ func GetStorePath() string {
 }
 
 func ClearData() {
-	err := os.RemoveAll(GetStorePath())
-	failCnt := 1
-	for err != nil {
-		log.Errorf("CLEAR DATA BASE FAIL.%s, SLEEP(%ds) AND CONTINUE", err.Error(), failCnt)
-		time.Sleep(time.Duration(failCnt) * time.Second)
-		err = os.RemoveAll(GetStorePath())
-		failCnt = failCnt + 1
-	}
+	os.RemoveAll(GetStorePath())
 }
 
 // newDB creates db for test account module
