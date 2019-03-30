@@ -104,7 +104,6 @@ func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions) (ty
 			log.Info("Not enough gas for further transactions", "gp", gp)
 			break
 		}
-
 		// Start executing the transaction
 		snap := p.am.Snapshot()
 
