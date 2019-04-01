@@ -213,7 +213,7 @@ func (bc *BlockChain) SetMinedBlock(block *types.Block) error {
 // updateDeputyNodes update deputy nodes map
 func (bc *BlockChain) updateDeputyNodes(block *types.Block) {
 	if block.Height()%params.TermDuration == 0 {
-		deputynode.Instance().Add(block.Height()+params.InterimDuration+1, block.DeputyNodes)
+		deputynode.Instance().SaveSnapshot(block.Height(), block.DeputyNodes)
 		log.Debugf("add new term deputy nodes: %v", block.DeputyNodes)
 	}
 }

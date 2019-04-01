@@ -293,7 +293,7 @@ func init() {
 func TestMiner_GetSleepGenesis(t *testing.T) {
 	store.ClearData()
 	deputynode.Instance().Clear()
-	deputynode.Instance().Add(0, chain.DefaultDeputyNodes)
+	deputynode.Instance().SaveSnapshot(0, chain.DefaultDeputyNodes)
 
 	me := Nodes[0].privateKey
 	miner, err := newMiner(me)
@@ -324,7 +324,7 @@ func TestMiner_GetSleepGenesis(t *testing.T) {
 func TestMine_GetSleepNotSelf(t *testing.T) {
 	store.ClearData()
 	deputynode.Instance().Clear()
-	deputynode.Instance().Add(0, chain.DefaultDeputyNodes)
+	deputynode.Instance().SaveSnapshot(0, chain.DefaultDeputyNodes)
 
 	miner, err := newMiner(Nodes[0].privateKey)
 	defer miner.chain.Db().Close()
@@ -348,7 +348,7 @@ func TestMine_GetSleepNotSelf(t *testing.T) {
 func TestMiner_GetSleep1Deputy(t *testing.T) {
 	store.ClearData()
 	deputynode.Instance().Clear()
-	deputynode.Instance().Add(0, deputynode.DeputyNodes{chain.DefaultDeputyNodes[0]})
+	deputynode.Instance().SaveSnapshot(0, deputynode.DeputyNodes{chain.DefaultDeputyNodes[0]})
 	setSelfNodeKey(Nodes[0].privateKey)
 
 	miner, err := newMiner(Nodes[0].privateKey)
@@ -363,7 +363,7 @@ func TestMiner_GetSleepValidAuthor(t *testing.T) {
 	store.ClearData()
 	deputynode.Instance().Clear()
 
-	deputynode.Instance().Add(0, chain.DefaultDeputyNodes)
+	deputynode.Instance().SaveSnapshot(0, chain.DefaultDeputyNodes)
 	miner, err := newMiner(Nodes[0].privateKey)
 	defer miner.chain.Db().Close()
 	assert.NoError(t, err)
@@ -384,7 +384,7 @@ func TestMiner_GetSleepValidAuthor(t *testing.T) {
 func TestMiner_GetSleepSlot1(t *testing.T) {
 	store.ClearData()
 	deputynode.Instance().Clear()
-	deputynode.Instance().Add(0, chain.DefaultDeputyNodes)
+	deputynode.Instance().SaveSnapshot(0, chain.DefaultDeputyNodes)
 
 	miner, err := newMiner(Nodes[0].privateKey)
 	defer miner.chain.Db().Close()
@@ -434,7 +434,7 @@ func TestMiner_GetSleepSlot1(t *testing.T) {
 func TestMiner_GetSleepSlot2(t *testing.T) {
 	store.ClearData()
 	deputynode.Instance().Clear()
-	deputynode.Instance().Add(0, chain.DefaultDeputyNodes)
+	deputynode.Instance().SaveSnapshot(0, chain.DefaultDeputyNodes)
 
 	miner, err := newMiner(Nodes[0].privateKey)
 	defer miner.chain.Db().Close()
@@ -484,7 +484,7 @@ func TestMiner_GetSleepSlot2(t *testing.T) {
 func TestMiner_GetSleepSlot3(t *testing.T) {
 	store.ClearData()
 	deputynode.Instance().Clear()
-	deputynode.Instance().Add(0, chain.DefaultDeputyNodes)
+	deputynode.Instance().SaveSnapshot(0, chain.DefaultDeputyNodes)
 
 	miner, err := newMiner(Nodes[0].privateKey)
 	defer miner.chain.Db().Close()
@@ -534,7 +534,7 @@ func TestMiner_GetSleepSlot3(t *testing.T) {
 func TestMiner_GetSleepSlot4(t *testing.T) {
 	store.ClearData()
 	deputynode.Instance().Clear()
-	deputynode.Instance().Add(0, chain.DefaultDeputyNodes)
+	deputynode.Instance().SaveSnapshot(0, chain.DefaultDeputyNodes)
 
 	miner, err := newMiner(Nodes[0].privateKey)
 	defer miner.chain.Db().Close()
@@ -584,7 +584,7 @@ func TestMiner_GetSleepSlot4(t *testing.T) {
 // func TestMiner_GetSleepSlot5(t *testing.T) {
 // 	store.ClearData()
 // 	deputynode.Instance().Clear()
-// 	deputynode.Instance().Add(0, chain.DefaultDeputyNodes)
+// 	deputynode.Instance().SaveSnapshot(0, chain.DefaultDeputyNodes)
 //
 // 	miner, err := newMiner(Nodes[0].privateKey)
 // 	assert.NoError(t, err)
@@ -634,7 +634,7 @@ func TestMiner_GetSleepSlot4(t *testing.T) {
 func TestMiner_GetSleepNormal(t *testing.T) {
 	store.ClearData()
 	deputynode.Instance().Clear()
-	deputynode.Instance().Add(0, chain.DefaultDeputyNodes)
+	deputynode.Instance().SaveSnapshot(0, chain.DefaultDeputyNodes)
 
 	me := Nodes[0].privateKey
 	miner, err := newMiner(me)

@@ -373,7 +373,9 @@ func (m *Miner) loopMiner() {
 
 // updateMiner update next term's miner address
 func (m *Miner) updateMiner(block *types.Block) {
+	// Get self deputy info in the term which next block in
 	n := deputynode.Instance().GetDeputyByNodeID(block.Height()+1, deputynode.GetSelfNodeID())
+	// A node can not set minerAddress until it becomes deputy node. And deputy node's minerAddress may changes between terms.
 	if n != nil {
 		m.SetMinerAddress(n.MinerAddress)
 		log.Debugf("set next term miner address: %s", n.MinerAddress.String())
@@ -475,7 +477,7 @@ func (m *Miner) sealHead() (*types.Header, deputynode.DeputyNodes) {
 		nodes = m.chain.GetNewDeputyNodes()
 		root := types.DeriveDeputyRootSha(nodes)
 		h.DeputyRoot = root[:]
-		deputynode.Instance().Add(height+params.InterimDuration+1, nodes)
+		deputynode.Instance().SaveSnapshot(height, nodes)
 		log.Debugf("add new term deputy nodes: %s", nodes.String())
 	} else if height%params.TermDuration == params.InterimDuration {
 		n := deputynode.Instance().GetDeputyByNodeID(height, deputynode.GetSelfNodeID())

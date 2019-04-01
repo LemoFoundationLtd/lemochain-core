@@ -108,7 +108,7 @@ func initDeputyNode(numNode int, height uint32) error {
 	if numNode > 5 || numNode == 0 {
 		return fmt.Errorf("overflow index. numNode must be [1,5]")
 	}
-	manager.Add(height, nodes[:numNode])
+	manager.SaveSnapshot(height, nodes[:numNode])
 
 	return nil
 }

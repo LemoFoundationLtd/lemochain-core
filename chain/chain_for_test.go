@@ -259,7 +259,7 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 	var deputyRoot []byte
 	if len(info.deputyNodes) > 0 {
 		deputyRoot = types.DeriveDeputyRootSha(info.deputyNodes).Bytes()
-		deputynode.Instance().Add(params.TermDuration+params.InterimDuration+1, info.deputyNodes)
+		deputynode.Instance().SaveSnapshot(params.TermDuration, info.deputyNodes)
 	}
 	if bytes.Compare(deputyRoot, info.deputyRoot) != 0 {
 		if len(info.deputyNodes) > 0 || len(info.deputyRoot) != 0 {

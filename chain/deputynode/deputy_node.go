@@ -2,12 +2,10 @@ package deputynode
 
 import (
 	"bytes"
-	"crypto/ecdsa"
 	"encoding/json"
 	"errors"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
-	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto/sha3"
 	"github.com/LemoFoundationLtd/lemochain-core/common/hexutil"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
@@ -23,24 +21,9 @@ const (
 	TotalCount = 5
 )
 
-var (
-	selfNodeKey *ecdsa.PrivateKey
-)
-
-func GetSelfNodeKey() *ecdsa.PrivateKey {
-	return selfNodeKey
-}
-
-func GetSelfNodeID() []byte {
-	return (crypto.FromECDSAPub(&selfNodeKey.PublicKey))[1:]
-}
-
-func SetSelfNodeKey(key *ecdsa.PrivateKey) {
-	selfNodeKey = key
-}
-
 //go:generate gencodec -type DeputyNode --field-override deputyNodeMarshaling -out gen_deputy_node_json.go
 //go:generate gencodec -type CandidateNode --field-override candidateNodeMarshaling -out gen_candidate_node_json.go
+//go:generate gencodec -type DeputyNodesRecord --field-override deputyNodesRecordMarshaling -out gen_deputy_nodes_record_json.go
 
 // CandidateNode
 type CandidateNode struct {
@@ -115,23 +98,18 @@ func (nodes DeputyNodes) String() string {
 }
 
 type DeputyNodesRecord struct {
-	height uint32 // 0, 100W+1K+1, 200W+1K+1, 300W+1K+1, 400W+1K+1...
-	nodes  DeputyNodes
+	// 0, 100W+1K+1, 200W+1K+1, 300W+1K+1, 400W+1K+1...
+	TermStartHeight uint32      `json:"height"`
+	Nodes           DeputyNodes `json:"nodes"`
+}
+type deputyNodesRecordMarshaling struct {
+	TermStartHeight hexutil.Uint32
 }
 
 // Manager 代理节点管理器
 type Manager struct {
-	DeputyNodesList []*DeputyNodesRecord // key：节点列表生效开始高度 value：节点列表
+	DeputyNodesList []*DeputyNodesRecord
 	lock            sync.Mutex
-}
-
-// Add 投票结束 统计结果通过add函数缓存起来
-// height: next term start height. if snapshot:1000, period:100, result: 1101 2101 3101...
-func (d *Manager) Add(height uint32, nodes DeputyNodes) {
-	d.lock.Lock()
-	defer d.lock.Unlock()
-	d.DeputyNodesList = append(d.DeputyNodesList, &DeputyNodesRecord{height: height, nodes: nodes})
-	log.Info("deputy node.add", "height", height, "nodes count", len(nodes))
 }
 
 var managerInstance = &Manager{
@@ -142,26 +120,26 @@ func Instance() *Manager {
 	return managerInstance
 }
 
-//go:generate gencodec -type JsonDeputyNodesRecord --field-override JsonDeputyNodesRecordMarshaling -out gen_JsonDeputyNodesRecord_json.go
-type JsonDeputyNodesRecord struct {
-	Height uint32      `json:"height"`
-	Nodes  DeputyNodes `json:"nodes"`
-}
-
-type JsonDeputyNodesRecordMarshaling struct {
-	Height hexutil.Uint32
-}
-
-// 获取所有的代理节点列表
-func (d *Manager) GetAllDeputyNodeList() []*JsonDeputyNodesRecord {
-	deps := make([]*JsonDeputyNodesRecord, 0, len(d.DeputyNodesList))
-	for _, v := range d.DeputyNodesList {
-		dep := &JsonDeputyNodesRecord{}
-		dep.Height = v.height
-		dep.Nodes = v.nodes
-		deps = append(deps, dep)
+// SaveSnapshot add deputy nodes record by snapshot block data
+func (d *Manager) SaveSnapshot(snapshotHeight uint32, nodes DeputyNodes) {
+	var start uint32
+	if snapshotHeight == 0 {
+		start = 0
+	} else {
+		start = snapshotHeight + params.InterimDuration + 1
 	}
-	return deps
+	record := &DeputyNodesRecord{TermStartHeight: start, Nodes: nodes}
+
+	d.addDeputyRecord(record)
+}
+
+// addDeputyRecord add a deputy nodes record
+func (d *Manager) addDeputyRecord(record *DeputyNodesRecord) {
+	d.lock.Lock()
+	defer d.lock.Unlock()
+	d.DeputyNodesList = append(d.DeputyNodesList, record)
+
+	log.Info("new deputy nodes", "start height", record.TermStartHeight, "nodes count", len(record.Nodes))
 }
 
 // GetDeputiesByHeight 通过height获取对应的节点列表
@@ -171,27 +149,27 @@ func (d *Manager) GetDeputiesByHeight(height uint32, total bool) DeputyNodes {
 	if d.DeputyNodesList == nil || len(d.DeputyNodesList) == 0 {
 		panic("not set deputy nodes")
 	} else if len(d.DeputyNodesList) == 1 {
-		if !total && len(d.DeputyNodesList[0].nodes) > TotalCount {
-			return d.DeputyNodesList[0].nodes[:TotalCount]
+		if !total && len(d.DeputyNodesList[0].Nodes) > TotalCount {
+			return d.DeputyNodesList[0].Nodes[:TotalCount]
 		}
-		return d.DeputyNodesList[0].nodes
+		return d.DeputyNodesList[0].Nodes
 	}
 	var nodes DeputyNodes
 	for i := 0; i < len(d.DeputyNodesList)-1; i++ {
-		if d.DeputyNodesList[i].height <= height && d.DeputyNodesList[i+1].height > height {
-			if !total && len(d.DeputyNodesList[i].nodes) > TotalCount {
-				nodes = d.DeputyNodesList[i].nodes[:TotalCount]
+		if d.DeputyNodesList[i].TermStartHeight <= height && d.DeputyNodesList[i+1].TermStartHeight > height {
+			if !total && len(d.DeputyNodesList[i].Nodes) > TotalCount {
+				nodes = d.DeputyNodesList[i].Nodes[:TotalCount]
 			} else {
-				nodes = d.DeputyNodesList[i].nodes
+				nodes = d.DeputyNodesList[i].Nodes
 			}
 			break
 		}
 	}
 	if nodes == nil {
-		if !total && len(d.DeputyNodesList[len(d.DeputyNodesList)-1].nodes) > TotalCount {
-			nodes = d.DeputyNodesList[len(d.DeputyNodesList)-1].nodes[:TotalCount]
+		if !total && len(d.DeputyNodesList[len(d.DeputyNodesList)-1].Nodes) > TotalCount {
+			nodes = d.DeputyNodesList[len(d.DeputyNodesList)-1].Nodes[:TotalCount]
 		} else {
-			nodes = d.DeputyNodesList[len(d.DeputyNodesList)-1].nodes
+			nodes = d.DeputyNodesList[len(d.DeputyNodesList)-1].Nodes
 		}
 	}
 	return nodes
@@ -273,7 +251,7 @@ func (d *Manager) GetNodeRankByAddress(height uint32, addr common.Address) int {
 // TimeToHandOutRewards 是否该发出块奖励了
 func (d *Manager) TimeToHandOutRewards(height uint32) bool {
 	for i := 1; i < len(d.DeputyNodesList); i++ {
-		if d.DeputyNodesList[i].height == height {
+		if d.DeputyNodesList[i].TermStartHeight == height {
 			return true
 		}
 	}
@@ -301,11 +279,11 @@ func (d *Manager) GetLatestDeputies(height uint32) []string {
 	res := make([]string, 0)
 	var nodes DeputyNodes
 	if height <= params.InterimDuration {
-		nodes = d.DeputyNodesList[0].nodes
+		nodes = d.DeputyNodesList[0].Nodes
 	} else if height%params.TermDuration > params.InterimDuration {
-		nodes = d.DeputyNodesList[len(d.DeputyNodesList)-1].nodes
+		nodes = d.DeputyNodesList[len(d.DeputyNodesList)-1].Nodes
 	} else {
-		nodes = d.DeputyNodesList[len(d.DeputyNodesList)-2].nodes
+		nodes = d.DeputyNodesList[len(d.DeputyNodesList)-2].Nodes
 	}
 	for _, n := range nodes {
 		builder := &strings.Builder{}

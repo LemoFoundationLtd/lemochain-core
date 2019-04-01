@@ -160,8 +160,8 @@ func (c *PublicChainAPI) GetDeputyNodeList() []string {
 }
 
 // GetAllDeputyNodesList get all deputy nodes list
-func (c *PublicChainAPI) GetAllDeputyNodesList() []*deputynode.JsonDeputyNodesRecord {
-	return deputynode.Instance().GetAllDeputyNodeList()
+func (c *PublicChainAPI) GetAllDeputyNodesList() []*deputynode.DeputyNodesRecord {
+	return deputynode.Instance().DeputyNodesList
 }
 
 // // GetCandidateNodeList get all candidate node list information and return total candidate node

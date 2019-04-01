@@ -45,8 +45,6 @@ type Node struct {
 	miner    *miner.Miner
 	gasPrice *big.Int
 
-	minerAddress common.Address
-
 	instanceDirLock flock.Releaser
 
 	server *p2p.Server
@@ -145,11 +143,7 @@ func initDeputyNodes(db protocol.ChainDB) {
 			panic(ErrNoDeputyInBlock)
 		}
 
-		var termStartHeight = snapshotHeight + params.InterimDuration + 1
-		if snapshotHeight == 0 {
-			termStartHeight = 0
-		}
-		deputynode.Instance().Add(termStartHeight, block.DeputyNodes)
+		deputynode.Instance().SaveSnapshot(snapshotHeight, block.DeputyNodes)
 	}
 }
 

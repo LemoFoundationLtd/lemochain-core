@@ -1252,7 +1252,7 @@ func TestPrecomplieContract(t *testing.T) {
 	Block07, _ := newNextBlock(p, Block06, txs02, true)
 	Block08, _ := newNextBlock(p, Block07, nil, true)
 	// set next deputyNodeList
-	deputynode.Instance().Add(9, DefaultDeputyNodes)
+	deputynode.Instance().SaveSnapshot(9, DefaultDeputyNodes)
 
 	Block09, _ := newNextBlock(p, Block08, nil, true)
 	assert.NotEmpty(t, Block09)

@@ -37,6 +37,6 @@ func NewBlockChainForTest() (*BlockChain, chan *types.Block, error) {
 	// blockChain.BroadcastStableBlock = broadcastStableBlock
 	// blockChain.BroadcastConfirmInfo = broadcastConfirmInfo
 
-	deputynode.Instance().Add(0, DefaultDeputyNodes)
+	deputynode.Instance().SaveSnapshot(0, DefaultDeputyNodes)
 	return blockChain, ch, nil
 }
