@@ -135,6 +135,8 @@ func (p *Peer) readLoop() {
 			p.Close()
 			return
 		}
+		// reset heartbeatTimer
+		p.heartbeatTimer.Reset(heartbeatInterval)
 		if msg.Code == CodeHeartbeat {
 			continue
 		}
@@ -250,12 +252,25 @@ func (p *Peer) heartbeatLoop() {
 		select {
 		case <-p.heartbeatTimer.C:
 			// send heartbeat data
-			if err := p.WriteMsg(CodeHeartbeat, nil); err != nil {
-				log.Debugf("heartbeatLoop error: nodeID: %s, : %v", p.RNodeID().String()[:16], err)
-				return
+			var count int = 3
+			var err error
+
+			for count > 0 {
+				err = p.WriteMsg(CodeHeartbeat, nil)
+				if err != nil {
+					time.Sleep(500 * time.Millisecond)
+					count--
+					if count == 0 {
+						log.Debugf("heartbeatLoop error: nodeID: %s, : %v", p.RNodeID().String()[:16], err)
+						return
+					}
+				} else {
+					// reset heartbeatTimer
+					p.heartbeatTimer.Reset(heartbeatInterval)
+					break
+				}
 			}
-			// reset heartbeatTimer
-			p.heartbeatTimer.Reset(heartbeatInterval)
+
 		case <-p.stopCh:
 			log.Debugf("peer stopch from heartbeat. nodeID:%s", p.RNodeID().String()[:16])
 			return

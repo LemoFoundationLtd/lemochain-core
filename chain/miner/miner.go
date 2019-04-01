@@ -388,7 +388,7 @@ func (m *Miner) sealBlock() {
 	log.Debug("Start seal")
 	header, dNodes := m.sealHead()
 	txs := m.txPool.Pending(1000000)
-	log.Debugf("Pending number of txs from txPool: ", len(txs))
+	log.Debugf("Pending number of txs from txPool: %d  ", len(txs))
 	defer func() {
 		var timeDur int64
 		// snapshot block
