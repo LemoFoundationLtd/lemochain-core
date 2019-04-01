@@ -178,7 +178,7 @@ func (d *Dpovp) Seal(header *types.Header, txProduct *account.TxsProduct, confir
 // Finalize increases miners' balance and fix all account changes
 func (d *Dpovp) Finalize(height uint32, am *account.Manager) error {
 	// Pay miners at the end of their tenure
-	if deputynode.Instance().TimeToHandOutRewards(height) {
+	if deputynode.Instance().IsRewardBlock(height) {
 		term := (height-params.InterimDuration)/params.TermDuration - 1
 		termRewards, err := getTermRewardValue(am, term)
 		log.Debugf("the %d term's reward value = %s ", term, termRewards.String())

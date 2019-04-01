@@ -144,10 +144,10 @@ func TestManager_Add(t *testing.T) {
 	ma.Clear()
 	deputyNodes01, err := deputyNodes(3)
 	assert.NoError(t, err)
-	addDeputyNodes01 := []*DeputyNodesRecord{{TermStartHeight: 0, Nodes: deputyNodes01}}
+	addDeputyNodes01 := []*TermRecord{{StartHeight: 0, Nodes: deputyNodes01}}
 	ma.SaveSnapshot(0, deputyNodes01)
 
-	assert.Equal(t, addDeputyNodes01, ma.DeputyNodesList)
+	assert.Equal(t, addDeputyNodes01, ma.termList)
 }
 
 // TestDeputyNode_getDeputiesByHeight
@@ -264,9 +264,9 @@ func TestManager_TimeToHandOutRewards(t *testing.T) {
 	assert.NoError(t, err)
 	ma.SaveSnapshot(200000, nodes07)
 
-	assert.Equal(t, true, ma.TimeToHandOutRewards(100000+1000+1))
-	assert.Equal(t, true, ma.TimeToHandOutRewards(200000+1000+1))
-	assert.Equal(t, false, ma.TimeToHandOutRewards(111111+1000+1))
+	assert.Equal(t, true, ma.IsRewardBlock(100000+1000+1))
+	assert.Equal(t, true, ma.IsRewardBlock(200000+1000+1))
+	assert.Equal(t, false, ma.IsRewardBlock(111111+1000+1))
 }
 
 func Test_GetLatestDeputies(t *testing.T) {
@@ -277,19 +277,19 @@ func Test_GetLatestDeputies(t *testing.T) {
 
 	nodes, _ := deputyNodes(3)
 	ma.SaveSnapshot(1, nodes)
-	assert.Len(t, ma.GetLatestDeputies(1), 3)
+	assert.Len(t, ma.GetDeputiesInCharge(1), 3)
 
 	nodes, _ = deputyNodes(4)
 	ma.SaveSnapshot(111, nodes)
-	assert.Len(t, ma.GetLatestDeputies(100), 3)
-	assert.Len(t, ma.GetLatestDeputies(110), 3)
-	assert.Len(t, ma.GetLatestDeputies(111), 4)
-	assert.Len(t, ma.GetLatestDeputies(112), 4)
+	assert.Len(t, ma.GetDeputiesInCharge(100), 3)
+	assert.Len(t, ma.GetDeputiesInCharge(110), 3)
+	assert.Len(t, ma.GetDeputiesInCharge(111), 4)
+	assert.Len(t, ma.GetDeputiesInCharge(112), 4)
 
 	nodes, _ = deputyNodes(5)
 	ma.SaveSnapshot(211, nodes)
-	assert.Len(t, ma.GetLatestDeputies(200), 4)
-	assert.Len(t, ma.GetLatestDeputies(210), 4)
-	assert.Len(t, ma.GetLatestDeputies(211), 5)
-	assert.Len(t, ma.GetLatestDeputies(212), 5)
+	assert.Len(t, ma.GetDeputiesInCharge(200), 4)
+	assert.Len(t, ma.GetDeputiesInCharge(210), 4)
+	assert.Len(t, ma.GetDeputiesInCharge(211), 5)
+	assert.Len(t, ma.GetDeputiesInCharge(212), 5)
 }
