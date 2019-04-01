@@ -247,29 +247,26 @@ func (p *Peer) heartbeatLoop() {
 		p.wg.Done()
 		log.Debugf("heartbeatLoop finished: %s", p.RNodeID().String()[:16])
 	}()
-
+	var count = 5
 	for {
 		select {
 		case <-p.heartbeatTimer.C:
-			// send heartbeat data
-			var count int = 3
-			var err error
 
-			for count > 0 {
-				err = p.WriteMsg(CodeHeartbeat, nil)
-				if err != nil {
-					time.Sleep(500 * time.Millisecond)
-					count--
-					if count == 0 {
-						log.Debugf("heartbeatLoop error: nodeID: %s, : %v", p.RNodeID().String()[:16], err)
-						return
-					}
-				} else {
-					// reset heartbeatTimer
-					p.heartbeatTimer.Reset(heartbeatInterval)
-					break
-				}
+			// send heartbeat data
+			err := p.WriteMsg(CodeHeartbeat, nil)
+			if err != nil && err.(net.Error).Timeout() {
+				count--
+			} else if err != nil && !err.(net.Error).Timeout() {
+				count = count - 2
+			} else {
+				count = 5
 			}
+			if count <= 0 {
+				log.Debugf("heartbeatLoop error: nodeID: %s, : %v", p.RNodeID().String()[:16], err)
+				return
+			}
+			// reset heartbeatTimer
+			p.heartbeatTimer.Reset(heartbeatInterval)
 
 		case <-p.stopCh:
 			log.Debugf("peer stopch from heartbeat. nodeID:%s", p.RNodeID().String()[:16])
