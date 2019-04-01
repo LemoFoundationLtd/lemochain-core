@@ -113,7 +113,8 @@ func (srv *Server) Stop() {
 	}
 	close(srv.quitCh)
 	// close connected nodes
-	for _, p := range srv.connectedNodes {
+	for k, p := range srv.connectedNodes {
+		delete(srv.connectedNodes, k)
 		p.Close()
 	}
 	// stop discover
@@ -256,6 +257,7 @@ func (srv *Server) runPeer(p IPeer) {
 	log.Debugf("peer(nodeID: %s) start running", common.ToHex(p.RNodeID()[:8]))
 	if err := p.Run(); err != nil { // block this
 		log.Debugf("runPeer error: %v", err)
+		srv.delPeerCh <- p
 	}
 
 	// peer has stopped
