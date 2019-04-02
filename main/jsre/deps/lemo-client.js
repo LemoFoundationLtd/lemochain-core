@@ -6115,6 +6115,9 @@
 	  },
 	  InvalidPollTxTimeOut: function InvalidPollTxTimeOut() {
 	    return 'Error: transaction query timeout';
+	  },
+	  TXCanNotChangeFrom: function TXCanNotChangeFrom() {
+	    return 'Change of account address is not allowed';
 	  }
 	};
 
@@ -6169,20 +6172,20 @@
 
 	              case 3:
 	                response = _context.sent;
-	                _context.next = 11;
+	                _context.next = 10;
 	                break;
 
 	              case 6:
 	                _context.prev = 6;
 	                _context.t0 = _context["catch"](0);
-	                console.warn('send fail!');
-	                console.warn(_context.t0);
+	                console.warn('send fail!', _context.t0.statusCode, _context.t0.message); // console.warn(error)
+
 	                throw new Error(errors.InvalidConnection(this.host));
 
-	              case 11:
+	              case 10:
 	                return _context.abrupt("return", response.data);
 
-	              case 12:
+	              case 11:
 	              case "end":
 	                return _context.stop();
 	            }
@@ -23838,8 +23841,8 @@
 
 	          return from;
 	        },
-	        set: function set(v) {
-	          from = v;
+	        set: function set() {
+	          throw new Error(errors.TXCanNotChangeFrom());
 	        },
 	        enumerable: true
 	      });
@@ -23978,12 +23981,6 @@
 
 	  return candidate;
 	}
-	function parseCandidateListRes(res) {
-	  return {
-	    candidateList: (res.candidateList || []).map(parseCandidate),
-	    total: parseNumber(res.total)
-	  };
-	}
 	function parseChangeLog(changeLog) {
 	  changeLog.type = parseChangeLogType(changeLog.type);
 	  changeLog.version = parseNumber(changeLog.version);
@@ -24047,8 +24044,13 @@
 
 	  return typeInfo[0];
 	}
+
 	function parseNumber(str) {
 	  return parseInt(str, 10) || 0;
+	}
+
+	function parseBigNumber(str) {
+	  return new bignumber(str);
 	}
 	function parseMoney(str) {
 	  var result = new bignumber(str);
@@ -24058,6 +24060,16 @@
 	  });
 	  return result;
 	}
+	var parser = {
+	  parseBlock: parseBlock,
+	  parseAccount: parseAccount,
+	  parseCandidate: parseCandidate,
+	  parseTx: parseTx,
+	  parseTxRes: parseTxRes,
+	  parseTxListRes: parseTxListRes,
+	  parseBigNumber: parseBigNumber,
+	  parseMoney: parseMoney
+	};
 
 	/**
 	 * 用于监听最新区块，并使得多次调用watchBlock只发一次请求
@@ -24082,12 +24094,11 @@
 	    this.watchId = 0; // requester.watch's Id，用于停止定时器
 	  }
 	  /**
-	  *  监听最新区块
-	  * @param {Requester} requester
-	  * @param {boolean} withBody
-	  * @param {Function} callback
-	  * @return {number}  记录每次调用watchBlock的Id
-	  */
+	   *  监听最新区块
+	   * @param {boolean} withBody
+	   * @param {Function} callback
+	   * @return {number}  记录每次调用watchBlock的Id
+	   */
 
 
 	  _createClass(_default, [{
@@ -24110,9 +24121,9 @@
 	      return subscribeId;
 	    }
 	    /**
-	    *  取消监听最新区块
-	    * @param {string} watchId  subscribe返回的Id
-	    */
+	     *  取消监听最新区块
+	     * @param {string} watchId  subscribe返回的Id
+	     */
 
 	  }, {
 	    key: "unsubscribe",
@@ -24145,9 +24156,9 @@
 	      return this.pendingBlocks.length ? this.pendingBlocks[this.pendingBlocks.length - 1].header.height : this.lastBlockHeight;
 	    }
 	    /**
-	    *  根据高度拉块
-	    * @param {number} height
-	    */
+	     *  根据高度拉块
+	     * @param {number} height
+	     */
 
 	  }, {
 	    key: "fetchBlock",
@@ -24159,9 +24170,9 @@
 	      });
 	    }
 	    /**
-	    *  requester's watch  callback
-	    * @param {Object} block
-	    */
+	     *  requester's watch  callback
+	     * @param {Object} block
+	     */
 
 	  }, {
 	    key: "watchHandler",
@@ -24198,8 +24209,8 @@
 	      return notifiedblock;
 	    }
 	    /**
-	    *  检查收到的块是否连续，并通知出去
-	    */
+	     *  检查收到的块是否连续，并通知出去
+	     */
 
 	  }, {
 	    key: "checkNotifiedBlock",
@@ -24218,8 +24229,8 @@
 	      }
 	    }
 	    /**
-	    *  找到缓冲数组与最新拉取的缺失块的顺序，并往缓冲数组插入缺失的块
-	    */
+	     *  找到缓冲数组与最新拉取的缺失块的顺序，并往缓冲数组插入缺失的块
+	     */
 
 	  }, {
 	    key: "insert",
@@ -24232,9 +24243,9 @@
 	      }
 	    }
 	    /**
-	    *  判断是否出现已存在的块
-	    *
-	    */
+	     *  判断是否出现已存在的块
+	     *
+	     */
 
 	  }, {
 	    key: "isExistBlock",
@@ -24248,12 +24259,11 @@
 	      return true;
 	    }
 	    /**
-	    *  检查watchBlock有无缺块
-	    *
-	    * @param {Function} fetchBlock
-	    * @param {Object} block
-	    * @param {Function} callback
-	    */
+	     *  检查watchBlock有无缺块
+	     *
+	     * @param {Function} fetchBlock
+	     * @param {Object} block
+	     */
 
 	  }, {
 	    key: "processBlock",
@@ -24460,7 +24470,7 @@
 
 	            case 2:
 	              result = _context.sent;
-	              return _context.abrupt("return", parseAccount(result));
+	              return _context.abrupt("return", this.parser.parseAccount(result));
 
 	            case 4:
 	            case "end":
@@ -24494,7 +24504,7 @@
 
 	            case 2:
 	              result = _context2.sent;
-	              return _context2.abrupt("return", parseAccount(result).candidate);
+	              return _context2.abrupt("return", this.parser.parseAccount(result).candidate);
 
 	            case 4:
 	            case "end":
@@ -24528,7 +24538,7 @@
 
 	            case 2:
 	              result = _context3.sent;
-	              return _context3.abrupt("return", parseMoney(result));
+	              return _context3.abrupt("return", this.parser.parseMoney(result));
 
 	            case 4:
 	            case "end":
@@ -24592,28 +24602,26 @@
 	var apis$2 = {
 	  /**
 	   * Get current block information
-	   * @param {boolean?} stable=true Get stable block or the newest block without consensus
 	   * @param {boolean?} withBody Get the body detail if true
 	   * @return {Promise<object>}
 	   */
-	  getCurrentBlock: function () {
-	    var _getCurrentBlock = _asyncToGenerator(
+	  getNewestBlock: function () {
+	    var _getNewestBlock = _asyncToGenerator(
 	    /*#__PURE__*/
-	    regeneratorRuntime.mark(function _callee(stable, withBody) {
-	      var apiName, block;
+	    regeneratorRuntime.mark(function _callee(withBody) {
+	      var block;
 	      return regeneratorRuntime.wrap(function _callee$(_context) {
 	        while (1) {
 	          switch (_context.prev = _context.next) {
 	            case 0:
-	              apiName = typeof stable === 'undefined' || stable ? 'latestStableBlock' : 'currentBlock';
-	              _context.next = 3;
-	              return this.requester.send("".concat(CHAIN_NAME, "_").concat(apiName), [!!withBody]);
+	              _context.next = 2;
+	              return this.requester.send("".concat(CHAIN_NAME, "_latestStableBlock"), [!!withBody]);
 
-	            case 3:
+	            case 2:
 	              block = _context.sent;
-	              return _context.abrupt("return", parseBlock(this.chainID, block, withBody));
+	              return _context.abrupt("return", this.parser.parseBlock(this.chainID, block, withBody));
 
-	            case 5:
+	            case 4:
 	            case "end":
 	              return _context.stop();
 	          }
@@ -24621,8 +24629,8 @@
 	      }, _callee, this);
 	    }));
 
-	    return function getCurrentBlock(_x, _x2) {
-	      return _getCurrentBlock.apply(this, arguments);
+	    return function getNewestBlock(_x) {
+	      return _getNewestBlock.apply(this, arguments);
 	    };
 	  }(),
 
@@ -24647,7 +24655,7 @@
 
 	            case 3:
 	              block = _context2.sent;
-	              return _context2.abrupt("return", parseBlock(this.chainID, block, withBody));
+	              return _context2.abrupt("return", this.parser.parseBlock(this.chainID, block, withBody));
 
 	            case 5:
 	            case "end":
@@ -24657,19 +24665,17 @@
 	      }, _callee2, this);
 	    }));
 
-	    return function getBlock(_x3, _x4) {
+	    return function getBlock(_x2, _x3) {
 	      return _getBlock.apply(this, arguments);
 	    };
 	  }(),
 
 	  /**
 	   * Get the current height of chain head block
-	   * @param {boolean?} stable=true Get stable block or the newest block without consensus
 	   * @return {Promise<number>}
 	   */
-	  getCurrentHeight: function getCurrentHeight(stable) {
-	    var apiName = typeof stable === 'undefined' || stable ? 'latestStableHeight' : 'currentHeight';
-	    return this.requester.send("".concat(CHAIN_NAME, "_").concat(apiName));
+	  getNewestHeight: function getNewestHeight() {
+	    return this.requester.send("".concat(CHAIN_NAME, "_latestStableHeight"));
 	  },
 
 	  /**
@@ -24690,7 +24696,7 @@
 
 	            case 2:
 	              result = _context3.sent;
-	              return _context3.abrupt("return", parseBlock(this.chainID, result, true));
+	              return _context3.abrupt("return", this.parser.parseBlock(this.chainID, result, true));
 
 	            case 4:
 	            case "end":
@@ -24731,7 +24737,7 @@
 
 	            case 2:
 	              result = _context4.sent;
-	              return _context4.abrupt("return", parseMoney(result));
+	              return _context4.abrupt("return", this.parser.parseMoney(result));
 
 	            case 4:
 	            case "end":
@@ -24787,7 +24793,10 @@
 
 	            case 2:
 	              result = _context5.sent;
-	              return _context5.abrupt("return", parseCandidateListRes(result));
+	              return _context5.abrupt("return", {
+	                candidateList: (result.candidateList || []).map(this.parser.parseCandidate),
+	                total: parseInt(result.total, 10) || 0
+	              });
 
 	            case 4:
 	            case "end":
@@ -24797,7 +24806,7 @@
 	      }, _callee5, this);
 	    }));
 
-	    return function getCandidateList(_x5, _x6) {
+	    return function getCandidateList(_x4, _x5) {
 	      return _getCandidateList.apply(this, arguments);
 	    };
 	  }(),
@@ -24820,7 +24829,7 @@
 
 	            case 2:
 	              result = _context6.sent;
-	              return _context6.abrupt("return", (result || []).map(parseCandidate));
+	              return _context6.abrupt("return", (result || []).map(this.parser.parseCandidate));
 
 	            case 4:
 	            case "end":
@@ -25005,7 +25014,7 @@
 	              return _context.abrupt("return", null);
 
 	            case 5:
-	              return _context.abrupt("return", parseTxRes(this.chainID, result));
+	              return _context.abrupt("return", this.parser.parseTxRes(this.chainID, result));
 
 	            case 6:
 	            case "end":
@@ -25050,7 +25059,7 @@
 	              return _context2.abrupt("return", null);
 
 	            case 5:
-	              return _context2.abrupt("return", parseTxListRes(this.chainID, result));
+	              return _context2.abrupt("return", this.parser.parseTxListRes(this.chainID, result));
 
 	            case 6:
 	            case "end":
@@ -25208,7 +25217,7 @@
 	  * watch and filter transaction of block
 	  * @param {object} filterTxConfig  transaction
 	  * @param {Function} callback
-	  * @return {number}
+	  * @return {number} subscribeId
 	  */
 	  watchTx: function watchTx(filterTxConfig, callback) {
 	    return this.txWatcher.watchTx(filterTxConfig, callback);
@@ -25216,10 +25225,10 @@
 
 	  /**
 	  * stop watching and filtering transaction of block
-	  * @param {number} watchTxId
+	  * @param {number} subscribeId
 	  */
-	  stopWatchTx: function stopWatchTx(watchTxId) {
-	    this.txWatcher.stopWatchTx(watchTxId);
+	  stopWatchTx: function stopWatchTx(subscribeId) {
+	    this.txWatcher.stopWatchTx(subscribeId);
 	  }
 	};
 	var tx = {
@@ -25335,31 +25344,34 @@
 	      // The interval time of watching poll. It is in milliseconds
 	      maxPollRetry: config.maxPollRetry || MAX_POLL_RETRY
 	    },
-	    serverMode: config.serverMode // The Object.defineProperty is not work in otto. but we can name fields with first letter '_' to make it invisible
-
+	    serverMode: config.serverMode
 	  };
-	  this._requester = new Requester(newConn(this.config.conn), this.config.requester);
-	  Object.defineProperty(this, '_requester', {
-	    enumerable: false
-	  });
-	  this._blockWatcher = new _default(this._requester);
-	  Object.defineProperty(this, '_blockWatcher', {
-	    enumerable: false
-	  });
-	  this._txWatcher = new _default$1(this._requester, this._blockWatcher, {
-	    serverMode: this.config.serverMode,
-	    txPollTimeout: TX_POLL_MAX_TIME_OUT
-	  });
-	  Object.defineProperty(this, '_txWatcher', {
-	    enumerable: false
-	  });
-	  Object.defineProperty(this, '_createAPI', {
-	    enumerable: false,
-	    value: createAPI.bind(null, this)
-	  });
+	  defineInvisibleProps(this);
 	  attachModules(this);
 	  exposeUtils(this);
 	};
+
+	function defineInvisibleProps(lemo) {
+	  var defineInvisible = function defineInvisible(filedName, value) {
+	    // The Object.defineProperty is not work in otto. but we can name fields with first letter '_' to make it invisible
+	    lemo[filedName] = value;
+	    Object.defineProperty(lemo, filedName, {
+	      enumerable: false
+	    });
+	  };
+
+	  var requester = new Requester(newConn(lemo.config.conn), lemo.config.requester);
+	  defineInvisible('_requester', requester);
+	  var blockWatcher = new _default(requester);
+	  defineInvisible('_blockWatcher', blockWatcher);
+	  var txWatcher = new _default$1(requester, blockWatcher, {
+	    serverMode: lemo.config.serverMode,
+	    txPollTimeout: TX_POLL_MAX_TIME_OUT
+	  });
+	  defineInvisible('_txWatcher', txWatcher);
+	  defineInvisible('_createAPI', createAPI.bind(null, lemo));
+	  defineInvisible('_parser', parser);
+	}
 
 	function attachModules(lemo) {
 	  // modules
@@ -25401,12 +25413,7 @@
 	      apiConfig.value = value;
 	    }
 
-	    new Api(apiConfig, {
-	      requester: lemo._requester,
-	      chainID: lemo.config.chainID,
-	      blockWatcher: lemo._blockWatcher,
-	      txWatcher: lemo._txWatcher
-	    }).attachTo(lemo, moduleName);
+	    newApiAndAttach(lemo, moduleName, apiConfig);
 	  });
 	}
 	/**
@@ -25414,34 +25421,40 @@
 	 * @param {LemoClient} lemo
 	 * @param {string} moduleName Attach api methods to the sub module object of lemo. If moduleName is empty, then attach to lemo object
 	 * @param {string} apiName Final api name you can call on lemo object
-	 * @param {string|Function} methodNameOrFunc The method name for remote API or customized function
+	 * @param {string|Function} methodNameOrFunc The method name for remote API or customized function.
+	 *   The method name must includes go module name. It looks like chain_getUnstableBlock
 	 */
 
 
 	function createAPI(lemo, moduleName, apiName, methodNameOrFunc) {
-	  var config = {
+	  var apiConfig = {
 	    name: apiName
 	  };
 
 	  if (typeof methodNameOrFunc === 'function') {
-	    config.call = methodNameOrFunc;
+	    apiConfig.call = methodNameOrFunc;
 	  } else if (typeof methodNameOrFunc === 'string') {
-	    config.call = function () {
+	    apiConfig.call = function () {
 	      for (var _len = arguments.length, args = new Array(_len), _key = 0; _key < _len; _key++) {
 	        args[_key] = arguments[_key];
 	      }
 
-	      return lemo._requester.send("".concat(moduleName, "_").concat(methodNameOrFunc), args);
+	      return lemo._requester.send(methodNameOrFunc, args);
 	    };
 	  } else {
 	    throw new Error(errors.InvalidAPIName(methodNameOrFunc));
 	  }
 
-	  new Api(config, {
+	  newApiAndAttach(lemo, moduleName, apiConfig);
+	}
+
+	function newApiAndAttach(lemo, moduleName, apiConfig) {
+	  new Api(apiConfig, {
 	    requester: lemo._requester,
 	    chainID: lemo.config.chainID,
 	    blockWatcher: lemo._blockWatcher,
-	    txWatcher: lemo._txWatcher
+	    txWatcher: lemo._txWatcher,
+	    parser: lemo._parser
 	  }).attachTo(lemo, moduleName);
 	}
 	/**
