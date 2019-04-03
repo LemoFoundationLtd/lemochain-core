@@ -123,12 +123,12 @@ func (d *Dpovp) VerifyHeader(block *types.Block) error {
 	}
 	var slot int
 	if (header.Height > params.InterimDuration+1) && (header.Height-params.InterimDuration-1)%params.TermDuration == 0 {
-		rank := deputynode.Instance().GetNodeRankByAddress(header.Height, block.MinerAddress())
-		if rank == -1 {
+		deputyNode := deputynode.Instance().GetDeputyByAddress(header.Height, block.MinerAddress())
+		if deputyNode == nil {
 			return ErrVerifyHeaderFailed
 		}
-		slot = rank + 1
-		log.Debugf("rank: %d", rank)
+		slot = int(deputyNode.Rank + 1)
+		log.Debugf("rank: %d", deputyNode.Rank)
 	} else {
 		slot = deputynode.Instance().GetSlot(header.Height, parent.Header.MinerAddress, header.MinerAddress)
 	}

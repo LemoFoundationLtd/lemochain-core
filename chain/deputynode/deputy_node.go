@@ -3,6 +3,7 @@ package deputynode
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto/sha3"
 	"github.com/LemoFoundationLtd/lemochain-core/common/hexutil"
@@ -77,6 +78,10 @@ func (d *DeputyNode) Check() error {
 		return ErrVotesInvalid
 	}
 	return nil
+}
+
+func (d *DeputyNode) NodeAddrString() string {
+	return fmt.Sprintf("%x@%s:%d", d.NodeID, d.IP, d.Port)
 }
 
 type DeputyNodes []*DeputyNode

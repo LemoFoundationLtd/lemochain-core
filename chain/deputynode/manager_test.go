@@ -1,247 +1,235 @@
 package deputynode
 
 import (
+	"crypto/ecdsa"
+	"crypto/rand"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
+	"github.com/LemoFoundationLtd/lemochain-core/common/crypto/secp256k1"
 	"github.com/stretchr/testify/assert"
 	"math/big"
+	"net"
 	"testing"
 )
 
-const (
-	block01MinerAddress = "0x015780F8456F9c1532645087a19DcF9a7e0c7F97"
-	deputy01Privkey     = "0xc21b6b2fbf230f665b936194d14da67187732bf9d28768aef1a3cbb26608f8aa"
-	block02MinerAddress = "0x016ad4Fc7e1608685Bf5fe5573973BF2B1Ef9B8A"
-	deputy02Privkey     = "0x9c3c4a327ce214f0a1bf9cfa756fbf74f1c7322399ffff925efd8c15c49953eb"
-	block03MinerAddress = "0x01f98855Be9ecc5c23A28Ce345D2Cc04686f2c61"
-	deputy03Privkey     = "0xba9b51e59ec57d66b30b9b868c76d6f4d386ce148d9c6c1520360d92ef0f27ae"
-	block04MinerAddress = "0x0112fDDcF0C08132A5dcd9ED77e1a3348ff378D2"
-	deputy04Privkey     = "0xb381bad69ad4b200462a0cc08fcb8ba64d26efd4f49933c2c2448cb23f2cd9d0"
-	block05MinerAddress = "0x016017aF50F4bB67101CE79298ACBdA1A3c12C15"
-	deputy05Privkey     = "0x56b5fe1b8c40f0dec29b621a16ffcbc7a1bb5c0b0f910c5529f991273cd0569c"
+var (
+	testDeputies = GenerateDeputies(17)
 )
 
-// deputyNodes 初始化代理节点,numNode为选择共识节点数量，取值为[1,5],height为发放奖励高度
-func deputyNodes(nodeNum int) (DeputyNodes, error) {
-	privarte01, err := crypto.ToECDSA(common.FromHex(deputy01Privkey))
-	if err != nil {
-		return nil, err
+// GenerateDeputies generate random deputy nodes
+func GenerateDeputies(num int) DeputyNodes {
+	var result []*DeputyNode
+	for i := 0; i < num; i++ {
+		private, _ := ecdsa.GenerateKey(secp256k1.S256(), rand.Reader)
+		result = append(result, &DeputyNode{
+			MinerAddress: crypto.PubkeyToAddress(private.PublicKey),
+			NodeID:       (crypto.FromECDSAPub(&private.PublicKey))[1:],
+			IP:           net.IPv4(127, 0, 0, byte(i%256)),
+			Port:         uint32(i % 9999),
+			Rank:         uint32(i),
+			Votes:        big.NewInt(int64(10000000000 - i)),
+		})
 	}
-	privarte02, err := crypto.ToECDSA(common.FromHex(deputy02Privkey))
-	if err != nil {
-		return nil, err
-	}
-	privarte03, err := crypto.ToECDSA(common.FromHex(deputy03Privkey))
-	if err != nil {
-		return nil, err
-	}
-	privarte04, err := crypto.ToECDSA(common.FromHex(deputy04Privkey))
-	if err != nil {
-		return nil, err
-	}
-	privarte05, err := crypto.ToECDSA(common.FromHex(deputy05Privkey))
-	if err != nil {
-		return nil, err
-	}
-
-	var nodes = make([]*DeputyNode, 5)
-	nodes[0] = &DeputyNode{
-		MinerAddress: common.HexToAddress(block01MinerAddress),
-		NodeID:       (crypto.FromECDSAPub(&privarte01.PublicKey))[1:],
-		IP:           nil,
-		Port:         7001,
-		Rank:         0,
-		Votes:        big.NewInt(120),
-	}
-	nodes[1] = &DeputyNode{
-		MinerAddress: common.HexToAddress(block02MinerAddress),
-		NodeID:       (crypto.FromECDSAPub(&privarte02.PublicKey))[1:],
-		IP:           nil,
-		Port:         7002,
-		Rank:         1,
-		Votes:        big.NewInt(110),
-	}
-	nodes[2] = &DeputyNode{
-		MinerAddress: common.HexToAddress(block03MinerAddress),
-		NodeID:       (crypto.FromECDSAPub(&privarte03.PublicKey))[1:],
-		IP:           nil,
-		Port:         7003,
-		Rank:         2,
-		Votes:        big.NewInt(100),
-	}
-	nodes[3] = &DeputyNode{
-		MinerAddress: common.HexToAddress(block04MinerAddress),
-		NodeID:       (crypto.FromECDSAPub(&privarte04.PublicKey))[1:],
-		IP:           nil,
-		Port:         7004,
-		Rank:         3,
-		Votes:        big.NewInt(90),
-	}
-	nodes[4] = &DeputyNode{
-		MinerAddress: common.HexToAddress(block05MinerAddress),
-		NodeID:       (crypto.FromECDSAPub(&privarte05.PublicKey))[1:],
-		IP:           nil,
-		Port:         7005,
-		Rank:         4,
-		Votes:        big.NewInt(80),
-	}
-
-	return nodes[:nodeNum], nil
+	return result
 }
 
-// TestManager_Add
-func TestManager_Add(t *testing.T) {
-	ma := Instance()
-	ma.Clear()
-	deputyNodes01, err := deputyNodes(3)
-	assert.NoError(t, err)
-	addDeputyNodes01 := []*TermRecord{{StartHeight: 0, Nodes: deputyNodes01}}
-	ma.SaveSnapshot(0, deputyNodes01)
-
-	assert.Equal(t, addDeputyNodes01, ma.termList)
+// pickNodes picks some test deputy nodes by index
+func pickNodes(nodeIndexList ...int) DeputyNodes {
+	var result []*DeputyNode
+	for i := range nodeIndexList {
+		result = append(result, testDeputies[i])
+	}
+	return result
 }
 
-// TestDeputyNode_getDeputiesByHeight
-func TestManager_getDeputiesByHeight(t *testing.T) {
-	ma := Instance()
-	ma.Clear()
+func TestManager_SaveSnapshot(t *testing.T) {
+	m := Instance()
+	m.Clear()
 
-	nodes01, err := deputyNodes(1)
-	assert.NoError(t, err)
-	ma.SaveSnapshot(0, nodes01)
+	// save genesis
+	height := uint32(0)
+	nodes := pickNodes(0, 1)
+	m.SaveSnapshot(height, nodes)
+	assert.Len(t, m.termList, 1)
+	assert.Equal(t, uint32(0), m.termList[0].StartHeight)
+	assert.Equal(t, nodes, m.termList[0].Nodes)
 
-	nodes02, err := deputyNodes(2)
-	assert.NoError(t, err)
-	ma.SaveSnapshot(100, nodes02)
+	// save snapshot
+	height = uint32(params.TermDuration * 1)
+	nodes = pickNodes(2)
+	m.SaveSnapshot(height, nodes)
+	assert.Len(t, m.termList, 2)
+	assert.Equal(t, uint32(0), m.termList[0].StartHeight)
+	assert.Equal(t, height+params.InterimDuration+1, m.termList[1].StartHeight)
+	assert.Equal(t, nodes, m.termList[1].Nodes)
 
-	nodes03, err := deputyNodes(3)
-	assert.NoError(t, err)
-	ma.SaveSnapshot(200, nodes03)
-	// 获取第一个代理节点表
-	assert.Equal(t, nodes01, ma.GetDeputiesByHeight(0, false))
-	assert.Equal(t, nodes01, ma.GetDeputiesByHeight(99, false))
-	// 获取第二个代理节点表
-	assert.Equal(t, nodes02, ma.GetDeputiesByHeight(100, false))
-	assert.Equal(t, nodes02, ma.GetDeputiesByHeight(199, false))
-	// 获取最后一个节点表
-	assert.Equal(t, nodes03, ma.GetDeputiesByHeight(200, false))
-	assert.Equal(t, nodes03, ma.GetDeputiesByHeight(1000000000, false)) // height为无穷大时则默认为最后一个节点列表
+	// save exist node
+	height = uint32(params.TermDuration * 2)
+	nodes = pickNodes(1, 3)
+	m.SaveSnapshot(height, nodes)
+	assert.Len(t, m.termList, 3)
+	assert.Equal(t, height+params.InterimDuration+1, m.termList[2].StartHeight)
+	assert.Equal(t, nodes, m.termList[2].Nodes)
 
+	// save nothing
+	height = uint32(params.TermDuration * 3)
+	nodes = pickNodes()
+	assert.PanicsWithValue(t, ErrEmptyDeputies, func() {
+		m.SaveSnapshot(height, nodes)
+	})
+
+	// save exist snapshot height
+	height = uint32(params.TermDuration * 2)
+	nodes = pickNodes(4)
+	m.SaveSnapshot(height, nodes)
+	assert.Len(t, m.termList, 3)
+
+	// save skipped snapshot
+	height = uint32(params.TermDuration * 4)
+	nodes = pickNodes(4)
+	assert.PanicsWithValue(t, ErrInvalidSnapshotHeight, func() {
+		m.SaveSnapshot(height, nodes)
+	})
+
+	// save invalid snapshot height
+	height = uint32(params.TermDuration*2 + 1)
+	nodes = pickNodes(4)
+	assert.PanicsWithValue(t, ErrInvalidSnapshotHeight, func() {
+		m.SaveSnapshot(height, nodes)
+	})
 }
 
-// TestManager_GetDeputyByAddress
+func TestManager_GetDeputiesByHeight(t *testing.T) {
+	m := Instance()
+	m.Clear()
+
+	// no any terms
+	assert.PanicsWithValue(t, ErrNoDeputies, func() {
+		m.GetDeputiesByHeight(0, false)
+	})
+
+	nodes0 := pickNodes(0, 1)
+	m.SaveSnapshot(0, nodes0)
+	nodes1 := pickNodes(0, 1, 2)
+	m.SaveSnapshot(params.TermDuration*1, nodes1)
+	nodes2 := pickNodes(1, 2, 3, 4, 5, 6)
+	m.SaveSnapshot(params.TermDuration*2, nodes2)
+
+	// genesis term
+	assert.Equal(t, nodes0, m.GetDeputiesByHeight(0, false))
+	assert.Equal(t, nodes0, m.GetDeputiesByHeight(0, true))
+	assert.Equal(t, nodes0, m.GetDeputiesByHeight(1, false))
+	assert.Equal(t, nodes0, m.GetDeputiesByHeight(1, true))
+	assert.Equal(t, nodes0, m.GetDeputiesByHeight(params.TermDuration+params.InterimDuration, false))
+	assert.Equal(t, nodes0, m.GetDeputiesByHeight(params.TermDuration+params.InterimDuration, true))
+
+	// second term
+	assert.Equal(t, nodes1, m.GetDeputiesByHeight(params.TermDuration+params.InterimDuration+1, false))
+	assert.Equal(t, nodes1, m.GetDeputiesByHeight(params.TermDuration+params.InterimDuration+1, true))
+	assert.Equal(t, nodes1, m.GetDeputiesByHeight(params.TermDuration*2+params.InterimDuration, false))
+	assert.Equal(t, nodes1, m.GetDeputiesByHeight(params.TermDuration*2+params.InterimDuration, true))
+
+	// third term
+	assert.Equal(t, nodes2[:TotalCount], m.GetDeputiesByHeight(params.TermDuration*2+params.InterimDuration+1, false))
+	assert.Equal(t, nodes2, m.GetDeputiesByHeight(params.TermDuration*2+params.InterimDuration+1, true))
+
+	// current term
+	assert.Equal(t, nodes2, m.GetDeputiesByHeight(1000000000, true))
+}
+
 func TestManager_GetDeputyByAddress(t *testing.T) {
-	ma := Instance()
-	ma.Clear()
-	nodes00, err := deputyNodes(5)
-	assert.NoError(t, err)
-	ma.SaveSnapshot(0, nodes00)
-	assert.Equal(t, nodes00[0], ma.GetDeputyByAddress(0, common.HexToAddress(block01MinerAddress)))
-	assert.Equal(t, nodes00[1], ma.GetDeputyByAddress(0, common.HexToAddress(block02MinerAddress)))
-	assert.Equal(t, nodes00[2], ma.GetDeputyByAddress(0, common.HexToAddress(block03MinerAddress)))
+	m := Instance()
+	m.Clear()
 
+	nodes := pickNodes(0, 1, 2)
+	m.SaveSnapshot(0, nodes)
+
+	assert.Equal(t, nodes[0], m.GetDeputyByAddress(0, testDeputies[0].MinerAddress))
+	assert.Equal(t, nodes[2], m.GetDeputyByAddress(0, testDeputies[2].MinerAddress))
+	// not exist
+	assert.Nil(t, m.GetDeputyByAddress(0, testDeputies[5].MinerAddress))
+	assert.Nil(t, m.GetDeputyByAddress(0, common.Address{}))
 }
 
-// TestManager_GetDeputyByNodeID
 func TestManager_GetDeputyByNodeID(t *testing.T) {
-	ma := Instance()
-	ma.Clear()
-	nodes01, err := deputyNodes(5)
-	assert.NoError(t, err)
-	ma.SaveSnapshot(0, nodes01)
+	m := Instance()
+	m.Clear()
 
-	privarte01, err := crypto.ToECDSA(common.FromHex(deputy01Privkey))
-	assert.NoError(t, err)
+	nodes := pickNodes(0, 1, 2)
+	m.SaveSnapshot(0, nodes)
 
-	assert.Equal(t, nodes01[0], ma.GetDeputyByNodeID(0, (crypto.FromECDSAPub(&privarte01.PublicKey))[1:]))
+	assert.Equal(t, nodes[0], m.GetDeputyByNodeID(0, testDeputies[0].NodeID))
+	assert.Equal(t, nodes[2], m.GetDeputyByNodeID(0, testDeputies[2].NodeID))
+	// not exist
+	assert.Nil(t, m.GetDeputyByNodeID(0, testDeputies[5].NodeID))
+	assert.Nil(t, m.GetDeputyByNodeID(0, []byte{}))
+	assert.Nil(t, m.GetDeputyByNodeID(0, nil))
 }
 
-// TestManager_GetSlot
+// TODO
 func TestManager_GetSlot(t *testing.T) {
-	ma := Instance()
-	ma.Clear()
+	m := Instance()
+	m.Clear()
 
-	nodes00, err := deputyNodes(3)
-	assert.NoError(t, err)
-	ma.SaveSnapshot(0, nodes00) // 创建3个代理节点的节点列表，列表高度为0
+	nodes00 := pickNodes(0, 1, 2)
+	m.SaveSnapshot(0, nodes00) // 创建3个代理节点的节点列表，列表高度为0
 
-	nodes01, err := deputyNodes(5)
-	assert.NoError(t, err)
-	ma.SaveSnapshot(params.TermDuration, nodes01) // 创建5个代理节点的节点列表，高度为100000
+	nodes01 := pickNodes(0, 1, 2, 3, 4)
+	m.SaveSnapshot(params.TermDuration, nodes01) // 创建5个代理节点的节点列表，高度为100000
 
 	// 测试height==1的情况，此情况为上一个块为创世块
-	assert.Equal(t, 1, ma.GetSlot(1, common.Address{}, common.HexToAddress(block01MinerAddress)))
-	assert.Equal(t, 2, ma.GetSlot(1, common.Address{}, common.HexToAddress(block02MinerAddress)))
-	assert.Equal(t, 3, ma.GetSlot(1, common.Address{}, common.HexToAddress(block03MinerAddress)))
+	assert.Equal(t, 1, m.GetSlot(1, common.Address{}, testDeputies[0].MinerAddress))
+	assert.Equal(t, 2, m.GetSlot(1, common.Address{}, testDeputies[1].MinerAddress))
+	assert.Equal(t, 3, m.GetSlot(1, common.Address{}, testDeputies[2].MinerAddress))
 
 	// 测试换届的情况
-	assert.Equal(t, 1, ma.GetSlot(params.TermDuration+params.InterimDuration+1, common.Address{}, common.HexToAddress(block01MinerAddress)))
-	assert.Equal(t, 2, ma.GetSlot(params.TermDuration+params.InterimDuration+1, common.Address{}, common.HexToAddress(block02MinerAddress)))
-	assert.Equal(t, 3, ma.GetSlot(params.TermDuration+params.InterimDuration+1, common.Address{}, common.HexToAddress(block03MinerAddress)))
+	assert.Equal(t, 1, m.GetSlot(params.TermDuration+params.InterimDuration+1, common.Address{}, testDeputies[0].MinerAddress))
+	assert.Equal(t, 2, m.GetSlot(params.TermDuration+params.InterimDuration+1, common.Address{}, testDeputies[1].MinerAddress))
+	assert.Equal(t, 3, m.GetSlot(params.TermDuration+params.InterimDuration+1, common.Address{}, testDeputies[2].MinerAddress))
 
 	// 测试firstNode和NextNode为空的情况
-	assert.Equal(t, -1, ma.GetSlot(22, common.Address{}, common.Address{}))
+	assert.Equal(t, -1, m.GetSlot(22, common.Address{}, common.Address{}))
 
 	// 测试只有一个共识节点的情况
-	ma.Clear()
-	nodes03, err := deputyNodes(1) // 生成只有一个共识节点的节点列表
-	assert.NoError(t, err)
-	ma.SaveSnapshot(1, nodes03)
-	assert.Equal(t, 1, ma.GetSlot(1, common.HexToAddress(block01MinerAddress), common.HexToAddress(block01MinerAddress)))
+	m.Clear()
+	nodes03 := pickNodes(0) // 生成只有一个共识节点的节点列表
+	m.SaveSnapshot(1, nodes03)
+	assert.Equal(t, 1, m.GetSlot(1, testDeputies[0].MinerAddress, testDeputies[0].MinerAddress))
 
-	// 正常情况下、
-	ma.Clear()
-	nodes04, err := deputyNodes(5)
-	ma.SaveSnapshot(1, nodes04)
-	assert.Equal(t, 4, ma.GetSlot(11, common.HexToAddress(block01MinerAddress), common.HexToAddress(block05MinerAddress)))
-	assert.Equal(t, 3, ma.GetSlot(11, common.HexToAddress(block02MinerAddress), common.HexToAddress(block05MinerAddress)))
-	assert.Equal(t, 2, ma.GetSlot(11, common.HexToAddress(block02MinerAddress), common.HexToAddress(block04MinerAddress)))
-	assert.Equal(t, 0, ma.GetSlot(11, common.HexToAddress(block01MinerAddress), common.HexToAddress(block01MinerAddress)))
+	// 正常情况下
+	m.Clear()
+	nodes04 := pickNodes(0, 1, 2, 3, 4)
+	m.SaveSnapshot(1, nodes04)
+	assert.Equal(t, 4, m.GetSlot(11, testDeputies[0].MinerAddress, testDeputies[4].MinerAddress))
+	assert.Equal(t, 3, m.GetSlot(11, testDeputies[1].MinerAddress, testDeputies[4].MinerAddress))
+	assert.Equal(t, 2, m.GetSlot(11, testDeputies[1].MinerAddress, testDeputies[3].MinerAddress))
+	assert.Equal(t, 0, m.GetSlot(11, testDeputies[0].MinerAddress, testDeputies[0].MinerAddress))
 }
 
-// TestManager_TimeToHandOutRewards
-func TestManager_TimeToHandOutRewards(t *testing.T) {
-	ma := Instance()
-	ma.Clear()
-	nodes05, err := deputyNodes(1)
-	assert.NoError(t, err)
-	ma.SaveSnapshot(0, nodes05)
+func TestManager_IsRewardBlock(t *testing.T) {
+	m := Instance()
+	m.Clear()
 
-	nodes06, err := deputyNodes(2)
-	assert.NoError(t, err)
-	ma.SaveSnapshot(100000, nodes06)
+	m.SaveSnapshot(0, pickNodes(0))
+	m.SaveSnapshot(params.TermDuration*1, pickNodes(0))
+	m.SaveSnapshot(params.TermDuration*2, pickNodes(0))
 
-	nodes07, err := deputyNodes(3)
-	assert.NoError(t, err)
-	ma.SaveSnapshot(200000, nodes07)
-
-	assert.Equal(t, true, ma.IsRewardBlock(100000+1000+1))
-	assert.Equal(t, true, ma.IsRewardBlock(200000+1000+1))
-	assert.Equal(t, false, ma.IsRewardBlock(111111+1000+1))
+	assert.Equal(t, false, m.IsRewardBlock(0))
+	assert.Equal(t, false, m.IsRewardBlock(1))
+	assert.Equal(t, false, m.IsRewardBlock(params.TermDuration))
+	assert.Equal(t, true, m.IsRewardBlock(params.TermDuration+params.InterimDuration+1))
+	assert.Equal(t, true, m.IsRewardBlock(params.TermDuration*2+params.InterimDuration+1))
+	assert.Equal(t, false, m.IsRewardBlock(params.TermDuration*2+params.InterimDuration+2))
+	assert.Equal(t, true, m.IsRewardBlock(params.TermDuration*3+params.InterimDuration+1))
 }
 
-func Test_GetLatestDeputies(t *testing.T) {
-	ma := Instance()
-	ma.Clear()
-	params.InterimDuration = 10
-	params.TermDuration = 100
+func Test_GetDeputiesInCharge(t *testing.T) {
+	m := Instance()
+	m.Clear()
 
-	nodes, _ := deputyNodes(3)
-	ma.SaveSnapshot(1, nodes)
-	assert.Len(t, ma.GetDeputiesInCharge(1), 3)
+	nodes := pickNodes(1, 2, 3)
+	m.SaveSnapshot(0, nodes)
 
-	nodes, _ = deputyNodes(4)
-	ma.SaveSnapshot(111, nodes)
-	assert.Len(t, ma.GetDeputiesInCharge(100), 3)
-	assert.Len(t, ma.GetDeputiesInCharge(110), 3)
-	assert.Len(t, ma.GetDeputiesInCharge(111), 4)
-	assert.Len(t, ma.GetDeputiesInCharge(112), 4)
-
-	nodes, _ = deputyNodes(5)
-	ma.SaveSnapshot(211, nodes)
-	assert.Len(t, ma.GetDeputiesInCharge(200), 4)
-	assert.Len(t, ma.GetDeputiesInCharge(210), 4)
-	assert.Len(t, ma.GetDeputiesInCharge(211), 5)
-	assert.Len(t, ma.GetDeputiesInCharge(212), 5)
+	assert.Len(t, m.GetDeputiesInCharge(1), 3)
 }

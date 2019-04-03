@@ -62,7 +62,12 @@ func TestDeputyNode_Check(t *testing.T) {
 	assert.Equal(t, ErrVotesInvalid, node.Check())
 }
 
-func TestDeputyNode_String(t *testing.T) {
+func TestDeputyNode_NodeAddrString(t *testing.T) {
+	node := NewDeputyNode()
+	assert.Equal(t, "5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0@127.0.0.1:7002", node.NodeAddrString())
+}
+
+func TestDeputyNodes_String(t *testing.T) {
 	node := NewDeputyNode()
 	nodes := (DeputyNodes)([]*DeputyNode{node})
 	assert.Equal(t, `[{"minerAddress":"Lemo8888888888888888888888888888888888BW","nodeID":"0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0","ip":"127.0.0.1","port":"7002","rank":"0","votes":"0"}]`, nodes.String())

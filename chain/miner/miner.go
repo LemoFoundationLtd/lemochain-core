@@ -161,8 +161,8 @@ func (m *Miner) getSleepTime() int {
 		return int(waitTime)
 	}
 	if (curHeight > params.InterimDuration) && (curHeight-params.InterimDuration)%params.TermDuration == 0 {
-		if rank := deputynode.Instance().GetNodeRankByNodeID(curHeight, deputynode.GetSelfNodeID()); rank > -1 {
-			waitTime := rank * int(m.timeoutTime)
+		if deputyNode := deputynode.Instance().GetDeputyByNodeID(curHeight, deputynode.GetSelfNodeID()); deputyNode != nil {
+			waitTime := int(deputyNode.Rank) * int(m.timeoutTime)
 			log.Debugf("getSleepTime: waitTime:%d", waitTime)
 			return waitTime
 		}
@@ -323,11 +323,12 @@ func (m *Miner) loopMiner() {
 				var timeDur int64
 				// snapshot block + InterimDuration 换届最后一个区块
 				if block.Height() > params.InterimDuration && block.Height()%params.TermDuration == params.InterimDuration {
-					rank := deputynode.Instance().GetNodeRankByAddress(block.Height()+1, m.minerAddress)
-					if rank == 0 {
+					deputyNode := deputynode.Instance().GetDeputyByAddress(block.Height()+1, m.minerAddress)
+					// TODO deputyNode == nil
+					if deputyNode.Rank == 0 {
 						timeDur = m.blockInterval
 					} else {
-						timeDur = int64(rank) * m.timeoutTime
+						timeDur = int64(deputyNode.Rank) * m.timeoutTime
 					}
 				} else {
 					nodeCount := deputynode.Instance().GetDeputiesCount(block.Height() + 1)
@@ -342,13 +343,13 @@ func (m *Miner) loopMiner() {
 				var timeDur int64
 				// snapshot block + InterimDuration
 				if block.Height() > params.InterimDuration && block.Height()%params.TermDuration == params.InterimDuration {
-					rank := deputynode.Instance().GetNodeRankByAddress(block.Height()+1, m.minerAddress)
-					if rank < 0 {
+					deputyNode := deputynode.Instance().GetDeputyByAddress(block.Height()+1, m.minerAddress)
+					if deputyNode == nil {
 						log.Error("self not deputy node in this term")
-					} else if rank == 0 {
+					} else if deputyNode.Rank == 0 {
 						timeDur = m.blockInterval
 					} else {
-						timeDur = int64(rank) * m.timeoutTime
+						timeDur = int64(deputyNode.Rank) * m.timeoutTime
 					}
 					m.resetMinerTimer(timeDur)
 				} else {
@@ -395,8 +396,9 @@ func (m *Miner) sealBlock() {
 		var timeDur int64
 		// snapshot block
 		if header.Height > params.InterimDuration && header.Height%params.TermDuration == params.InterimDuration {
-			rank := deputynode.Instance().GetNodeRankByAddress(header.Height+1, m.minerAddress)
-			if rank == 0 {
+			deputyNode := deputynode.Instance().GetDeputyByAddress(header.Height+1, m.minerAddress)
+			// TODO deputyNode == nil
+			if deputyNode.Rank == 0 {
 				timeDur = m.blockInterval
 			}
 		} else {

@@ -7,8 +7,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/hexutil"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
-	"strconv"
-	"strings"
 	"sync"
 )
 
@@ -18,7 +16,10 @@ const (
 )
 
 var (
-	ErrEmptyDeputies = errors.New("can't save empty deputy nodes")
+	ErrEmptyDeputies         = errors.New("can't save empty deputy nodes")
+	ErrExistSnapshotHeight   = errors.New("exist snapshot block height")
+	ErrInvalidSnapshotHeight = errors.New("invalid snapshot block height")
+	ErrNoDeputies            = errors.New("can't access deputy nodes before SaveSnapshot")
 )
 
 //go:generate gencodec -type TermRecord --field-override termRecordMarshaling -out gen_term_record_json.go
@@ -54,6 +55,7 @@ func (m *Manager) SaveSnapshot(snapshotHeight uint32, nodes DeputyNodes) {
 		panic(ErrEmptyDeputies)
 	}
 
+	// compute term start block height
 	var termStart uint32
 	if snapshotHeight == 0 {
 		termStart = 0
@@ -62,17 +64,32 @@ func (m *Manager) SaveSnapshot(snapshotHeight uint32, nodes DeputyNodes) {
 	}
 	record := &TermRecord{StartHeight: termStart, Nodes: nodes}
 
-	m.addDeputyRecord(record)
+	// save
+	if err := m.addDeputyRecord(record); err != nil {
+		if err == ErrExistSnapshotHeight {
+			log.Warn("ignore exist snapshot block error")
+		} else {
+			panic(err)
+		}
+	}
 }
 
 // addDeputyRecord add a deputy nodes record
-func (m *Manager) addDeputyRecord(record *TermRecord) {
+func (m *Manager) addDeputyRecord(record *TermRecord) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
-	// TODO check exist or skip term
+	// TODO may exist when fork at term snapshot height
+	for _, term := range m.termList {
+		if record.StartHeight <= term.StartHeight {
+			log.Warn("exist snapshot block height", "new record height", record.StartHeight, "exit height", term.StartHeight)
+			return ErrExistSnapshotHeight
+		}
+	}
+	// TODO if check skip term
 	m.termList = append(m.termList, record)
 
 	log.Info("new deputy nodes", "start height", record.StartHeight, "nodes count", len(record.Nodes))
+	return nil
 }
 
 // GetDeputiesByHeight 通过height获取对应的节点列表
@@ -81,7 +98,7 @@ func (m *Manager) GetDeputiesByHeight(height uint32, total bool) DeputyNodes {
 	defer m.lock.Unlock()
 
 	if m.termList == nil || len(m.termList) == 0 {
-		panic("not set deputy nodes")
+		panic(ErrNoDeputies)
 	}
 
 	// find record
@@ -163,31 +180,21 @@ func (m *Manager) GetSlot(height uint32, firstAddress, nextAddress common.Addres
 	return (int(nextNode.Rank) - int(firstNode.Rank) + nodeCount) % nodeCount
 }
 
-func (m *Manager) GetNodeRankByNodeID(height uint32, nodeID []byte) int {
-	if nextNode := m.GetDeputyByNodeID(height, nodeID); nextNode != nil {
-		return int(nextNode.Rank)
-	}
-	return -1
-}
-
-func (m *Manager) GetNodeRankByAddress(height uint32, addr common.Address) int {
-	if nextNode := m.GetDeputyByAddress(height, addr); nextNode != nil {
-		return int(nextNode.Rank)
-	}
-	return -1
-}
-
 // IsRewardBlock 是否该发出块奖励了
 func (m *Manager) IsRewardBlock(height uint32) bool {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
-	for i := 1; i < len(m.termList); i++ {
-		if m.termList[i].StartHeight == height {
-			return true
-		}
+	if height < params.TermDuration+params.InterimDuration+1 {
+		// in genesis term
+		return false
+	} else if height%params.TermDuration == params.InterimDuration+1 {
+		// term start block
+		return true
+	} else {
+		// other normal block
+		return false
 	}
-	return false
 }
 
 // IsSelfDeputyNode
@@ -216,31 +223,14 @@ func (m *Manager) GetTermList() []*TermRecord {
 	return m.termList[:]
 }
 
+// TODO move this out
 // GetDeputiesInCharge for api
 func (m *Manager) GetDeputiesInCharge(currentHeight uint32) []string {
-	m.lock.Lock()
-	defer m.lock.Unlock()
+	nodes := m.GetDeputiesByHeight(currentHeight, true)
 
 	res := make([]string, 0)
-	var nodes DeputyNodes
-	if currentHeight <= params.InterimDuration {
-		nodes = m.termList[0].Nodes
-	} else if currentHeight%params.TermDuration > params.InterimDuration {
-		// After interim duration. So latest deputies in charge
-		nodes = m.termList[len(m.termList)-1].Nodes
-	} else {
-		// In interim duration. So previous deputies in charge
-		nodes = m.termList[len(m.termList)-2].Nodes
-	}
-	// TODO move this outside
 	for _, n := range nodes {
-		builder := &strings.Builder{}
-		builder.WriteString(common.ToHex(n.NodeID)[2:])
-		builder.WriteString("@")
-		builder.WriteString(n.IP.String())
-		builder.WriteString(":")
-		builder.WriteString(strconv.Itoa(int(n.Port)))
-		res = append(res, builder.String())
+		res = append(res, n.NodeAddrString())
 	}
 	return res
 }
