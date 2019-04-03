@@ -71,7 +71,16 @@ func NewServer(config Config, discover *DiscoverManager) *Server {
 		quitCh:         make(chan struct{}),
 	}
 	srv.dialManager = NewDialManager(srv.HandleConn, srv.discover)
+	srv.sub()
 	return srv
+}
+
+// sub subscribe channel
+func (srv *Server) sub() {
+	subscribe.Sub(subscribe.SrvDeletePeer, srv.delPeerCh)
+}
+func (srv *Server) unSub() {
+	subscribe.UnSub(subscribe.SrvDeletePeer, srv.delPeerCh)
 }
 
 // Start
@@ -107,6 +116,7 @@ func (srv *Server) Stop() {
 		log.Debug("server not start, but exec stop command")
 		return
 	}
+	srv.unSub()
 	// close listener
 	if err := srv.listener.Close(); err != nil {
 		log.Infof("stop listener failed: %v", err)
@@ -151,7 +161,7 @@ func (srv *Server) run() {
 			srv.peersMux.Unlock()
 			// Run peer
 			go srv.runPeer(p)
-			// notice
+			// notice protocol_manager add new peer
 			subscribe.Send(subscribe.AddNewPeer, p)
 		case p := <-srv.delPeerCh:
 			log.Infof("Remove peer event. nodeID: %s", p.RNodeID().String()[:16])
@@ -159,7 +169,7 @@ func (srv *Server) run() {
 			srv.peersMux.Lock()
 			delete(srv.connectedNodes, *p.RNodeID())
 			srv.peersMux.Unlock()
-			// notice
+			// notice to protocol_manager delete peer
 			subscribe.Send(subscribe.DeletePeer, p)
 		case <-srv.quitCh:
 			log.Debug("receive server stop signal")
@@ -257,12 +267,11 @@ func (srv *Server) runPeer(p IPeer) {
 	log.Debugf("peer(nodeID: %s) start running", common.ToHex(p.RNodeID()[:8]))
 	if err := p.Run(); err != nil { // block this
 		log.Debugf("runPeer error: %v", err)
-		srv.delPeerCh <- p
 	}
 
 	// peer has stopped
 	if atomic.LoadInt32(&srv.running) == 1 {
-		srv.delPeerCh <- p
+		p.Close()
 	}
 	log.Debugf("peer Run finished: %s", common.ToHex(p.RNodeID()[:8]))
 }

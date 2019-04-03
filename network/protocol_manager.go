@@ -9,6 +9,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/common/subscribe"
 	"github.com/LemoFoundationLtd/lemochain-core/network/p2p"
+	"io"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -501,7 +502,9 @@ func (pm *ProtocolManager) handlePeer(p *peer) {
 		// handle peer net message
 		if err := pm.handleMsg(p); err != nil {
 			log.Debugf("handle message failed: %v", err)
-			pm.peers.UnRegister(p)
+			if err != io.EOF {
+				p.conn.Close()
+			}
 			return
 		}
 	}

@@ -8,6 +8,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/common/mclock"
+	"github.com/LemoFoundationLtd/lemochain-core/common/subscribe"
 	"io"
 	"net"
 	"sync"
@@ -102,6 +103,7 @@ func (p *Peer) safeClose() {
 	}
 	if needClose {
 		close(p.stopCh)
+		subscribe.Send(subscribe.SrvDeletePeer, p)
 		log.Info("close peer connection")
 		if err := p.conn.Close(); err != nil {
 			log.Infof("close peer connection failed: %v", err)
@@ -127,12 +129,21 @@ func (p *Peer) readLoop() {
 		p.wg.Done()
 		log.Debugf("readLoop finished: %s", p.RNodeID().String()[:16])
 	}()
-
+	var ok bool
 	for {
 		msg, err := p.readMsg()
 		if err != nil {
 			log.Debugf("read message error: %v", err)
 			p.Close()
+			return
+		}
+
+		select {
+		case _, ok = <-p.stopCh:
+		default:
+			ok = true
+		}
+		if !ok {
 			return
 		}
 		// reset heartbeatTimer
@@ -263,6 +274,7 @@ func (p *Peer) heartbeatLoop() {
 			}
 			if count <= 0 {
 				log.Debugf("heartbeatLoop error: nodeID: %s, : %v", p.RNodeID().String()[:16], err)
+				p.conn.Close()
 				return
 			}
 			// reset heartbeatTimer

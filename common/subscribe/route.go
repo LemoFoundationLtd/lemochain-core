@@ -9,7 +9,8 @@ import (
 
 const (
 	AddNewPeer     = "addNewPeer"
-	DeletePeer     = "deletePeer"
+	DeletePeer     = "deletePeer" // protocol_manager delete peer
+	SrvDeletePeer  = "delPeer"    // server delete peer
 	NewMinedBlock  = "newMinedBlock"
 	NewStableBlock = "newStableBlock"
 	NewTx          = "newTx"
