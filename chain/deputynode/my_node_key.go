@@ -7,6 +7,7 @@ import (
 
 var (
 	selfNodeKey *ecdsa.PrivateKey
+	selfNodeID  []byte
 )
 
 func GetSelfNodeKey() *ecdsa.PrivateKey {
@@ -14,10 +15,10 @@ func GetSelfNodeKey() *ecdsa.PrivateKey {
 }
 
 func GetSelfNodeID() []byte {
-	// TODO cache it
-	return (crypto.FromECDSAPub(&selfNodeKey.PublicKey))[1:]
+	return selfNodeID
 }
 
 func SetSelfNodeKey(key *ecdsa.PrivateKey) {
 	selfNodeKey = key
+	selfNodeID = (crypto.FromECDSAPub(&selfNodeKey.PublicKey))[1:]
 }

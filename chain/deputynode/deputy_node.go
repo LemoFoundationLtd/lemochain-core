@@ -14,6 +14,14 @@ import (
 
 //go:generate gencodec -type DeputyNode --field-override deputyNodeMarshaling -out gen_deputy_node_json.go
 
+var (
+	ErrMinerAddressInvalid = errors.New("incorrect field: 'MinerAddress'")
+	ErrNodeIDInvalid       = errors.New("incorrect field: 'NodeID'")
+	ErrPortInvalid         = errors.New("max deputy node's port is 65535")
+	ErrRankInvalid         = errors.New("max deputy node's rank is 65535")
+	ErrVotesInvalid        = errors.New("min deputy node's votes are 0")
+)
+
 // DeputyNode
 type DeputyNode struct {
 	MinerAddress common.Address `json:"minerAddress"   gencodec:"required"`
@@ -48,17 +56,25 @@ func (d *DeputyNode) Hash() (h common.Hash) {
 }
 
 func (d *DeputyNode) Check() error {
+	if d.MinerAddress == (common.Address{}) {
+		log.Errorf("incorrect field: 'MinerAddress'. value: %s", d.MinerAddress.String())
+		return ErrMinerAddressInvalid
+	}
 	if len(d.NodeID) != 64 {
 		log.Errorf("incorrect field: 'NodeID'. value: %s", common.ToHex(d.NodeID))
-		return errors.New("incorrect field: 'NodeID'")
+		return ErrNodeIDInvalid
 	}
 	if d.Port > 65535 {
 		log.Errorf("incorrect field: 'port'. value: %d", d.Port)
-		return errors.New("max deputy node's port is 65535")
+		return ErrPortInvalid
 	}
 	if d.Rank > 65535 {
 		log.Errorf("incorrect field: 'rank'. value: %d", d.Rank)
-		return errors.New("max deputy node's rank is 65535")
+		return ErrRankInvalid
+	}
+	if d.Votes.Cmp(new(big.Int)) < 0 {
+		log.Errorf("incorrect field: 'votes'. value: %d", d.Votes)
+		return ErrVotesInvalid
 	}
 	return nil
 }
