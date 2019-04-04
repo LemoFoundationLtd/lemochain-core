@@ -129,7 +129,6 @@ func (p *Peer) readLoop() {
 		p.wg.Done()
 		log.Debugf("readLoop finished: %s", p.RNodeID().String()[:16])
 	}()
-	var ok bool
 	for {
 		msg, err := p.readMsg()
 		if err != nil {
@@ -138,20 +137,19 @@ func (p *Peer) readLoop() {
 			return
 		}
 
-		select {
-		case _, ok = <-p.stopCh:
-		default:
-			ok = true
-		}
-		if !ok {
-			return
-		}
 		// reset heartbeatTimer
 		p.heartbeatTimer.Reset(heartbeatInterval)
 		if msg.Code == CodeHeartbeat {
 			continue
 		}
-		p.newMsgCh <- msg
+
+		go func() {
+			select {
+			case p.newMsgCh <- msg:
+			case <-p.stopCh:
+			}
+		}()
+
 	}
 }
 
@@ -259,9 +257,20 @@ func (p *Peer) heartbeatLoop() {
 		log.Debugf("heartbeatLoop finished: %s", p.RNodeID().String()[:16])
 	}()
 	var count = 5
+	var ok bool
 	for {
 		select {
 		case <-p.heartbeatTimer.C:
+			// check conn already closed
+			select {
+			case _, ok = <-p.stopCh:
+			default:
+				ok = true
+			}
+			if !ok {
+				log.Debugf("peer stopch from heartbeat. nodeID:%s", p.RNodeID().String()[:16])
+				return
+			}
 
 			// send heartbeat data
 			err := p.WriteMsg(CodeHeartbeat, nil)
@@ -274,16 +283,13 @@ func (p *Peer) heartbeatLoop() {
 			}
 			if count <= 0 {
 				log.Debugf("heartbeatLoop error: nodeID: %s, : %v", p.RNodeID().String()[:16], err)
-				p.conn.Close()
+				p.Close()
 				return
 			}
 			// reset heartbeatTimer
 			p.heartbeatTimer.Reset(heartbeatInterval)
-
-		case <-p.stopCh:
-			log.Debugf("peer stopch from heartbeat. nodeID:%s", p.RNodeID().String()[:16])
-			return
 		}
+
 	}
 }
 

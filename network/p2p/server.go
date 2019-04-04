@@ -258,7 +258,15 @@ func (srv *Server) HandleConn(fd net.Conn, nodeID *NodeID) error {
 		log.Debugf("First handshake as client ok: %s. id: %s", peer.RAddress(), common.ToHex(peer.RNodeID()[:8]))
 	}
 	// notice other goroutine
-	srv.addPeerCh <- peer
+	// srv.addPeerCh <- peer
+	go func() {
+		select {
+		case srv.addPeerCh <- peer:
+		case <-srv.quitCh:
+			log.Debug("server had quit")
+		}
+	}()
+
 	return nil
 }
 
