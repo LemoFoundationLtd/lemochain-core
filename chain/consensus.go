@@ -121,16 +121,16 @@ func (d *Dpovp) VerifyHeader(block *types.Block) error {
 		log.Debug("verifyHeader: parent block is genesis block")
 		return nil
 	}
-	var slot int
+	var slot uint32
 	if (header.Height > params.InterimDuration+1) && (header.Height-params.InterimDuration-1)%params.TermDuration == 0 {
 		deputyNode := deputynode.Instance().GetDeputyByAddress(header.Height, block.MinerAddress())
 		if deputyNode == nil {
 			return ErrVerifyHeaderFailed
 		}
-		slot = int(deputyNode.Rank + 1)
+		slot = deputyNode.Rank + 1
 		log.Debugf("rank: %d", deputyNode.Rank)
 	} else {
-		slot = deputynode.Instance().GetSlot(header.Height, parent.Header.MinerAddress, header.MinerAddress)
+		slot, _ = deputynode.Instance().GetMinerDistance(header.Height, parent.Header.MinerAddress, header.MinerAddress)
 	}
 
 	// The time interval between the current block and the parent block. unit：ms

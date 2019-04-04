@@ -172,9 +172,9 @@ func (m *Miner) getSleepTime() int {
 	timeDur := m.getTimespan() // 获取当前时间与最新块的时间差
 	myself := deputynode.Instance().GetDeputyByNodeID(curHeight+1, deputynode.GetSelfNodeID())
 	curHeader := m.currentBlock().Header
-	slot := deputynode.Instance().GetSlot(curHeader.Height+1, curHeader.MinerAddress, myself.MinerAddress) // 获取新块离本节点索引的距离
-	if slot == -1 {
-		log.Debugf("slot = -1")
+	slot, err := deputynode.Instance().GetMinerDistance(curHeader.Height+1, curHeader.MinerAddress, myself.MinerAddress) // 获取新块离本节点索引的距离
+	if err != nil {
+		log.Debugf("GetMinerDistance error: %v", err)
 		return -1
 	}
 	oneLoopTime := int64(nodeCount) * m.timeoutTime

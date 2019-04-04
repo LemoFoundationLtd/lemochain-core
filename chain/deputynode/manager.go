@@ -17,9 +17,12 @@ const (
 
 var (
 	ErrEmptyDeputies         = errors.New("can't save empty deputy nodes")
+	ErrInvalidDeputyRank     = errors.New("deputy node's rank is not right")
 	ErrExistSnapshotHeight   = errors.New("exist snapshot block height")
 	ErrInvalidSnapshotHeight = errors.New("invalid snapshot block height")
 	ErrNoDeputies            = errors.New("can't access deputy nodes before SaveSnapshot")
+	ErrNotDeputy             = errors.New("not a deputy address in specific height")
+	ErrMineGenesis           = errors.New("can not mine genesis block")
 )
 
 //go:generate gencodec -type TermRecord --field-override termRecordMarshaling -out gen_term_record_json.go
@@ -49,10 +52,22 @@ func Instance() *Manager {
 
 // SaveSnapshot add deputy nodes record by snapshot block data
 func (m *Manager) SaveSnapshot(snapshotHeight uint32, nodes DeputyNodes) {
+	// check snapshotHeight
+	if snapshotHeight%params.InterimDuration != 0 {
+		log.Error("invalid snapshot block height", "height", snapshotHeight)
+		panic(ErrInvalidSnapshotHeight)
+	}
 	// check nodes to make sure it is not empty
 	if nodes == nil || len(nodes) == 0 {
 		log.Error("can't save empty deputy nodes", "height", snapshotHeight)
 		panic(ErrEmptyDeputies)
+	}
+	// check nodes' rank
+	for i, node := range nodes {
+		if uint32(i) != node.Rank {
+			log.Error("invalid deputy rank", "rank", node.Rank, "expect", i)
+			panic(ErrInvalidDeputyRank)
+		}
 	}
 
 	// compute term start block height
@@ -62,10 +77,12 @@ func (m *Manager) SaveSnapshot(snapshotHeight uint32, nodes DeputyNodes) {
 	} else {
 		termStart = snapshotHeight + params.InterimDuration + 1
 	}
-	record := &TermRecord{StartHeight: termStart, Nodes: nodes}
+
+	// TODO sort nodes
 
 	// save
-	if err := m.addDeputyRecord(record); err != nil {
+	err := m.addDeputyRecord(&TermRecord{StartHeight: termStart, Nodes: nodes})
+	if err != nil {
 		if err == ErrExistSnapshotHeight {
 			log.Warn("ignore exist snapshot block error")
 		} else {
@@ -85,7 +102,7 @@ func (m *Manager) addDeputyRecord(record *TermRecord) error {
 			return ErrExistSnapshotHeight
 		}
 	}
-	// TODO if check skip term
+	// TODO check if skip term
 	m.termList = append(m.termList, record)
 
 	log.Info("new deputy nodes", "start height", record.StartHeight, "nodes count", len(record.Nodes))
@@ -129,7 +146,7 @@ func (m *Manager) GetDeputiesByHeight(height uint32, total bool) DeputyNodes {
 		nodes = nodes[:TotalCount]
 	}
 
-	return nodes
+	return nodes[:]
 }
 
 // GetDeputiesCount 获取共识节点数量
@@ -141,12 +158,7 @@ func (m *Manager) GetDeputiesCount(height uint32) int {
 // GetDeputyByAddress 获取address对应的节点
 func (m *Manager) GetDeputyByAddress(height uint32, addr common.Address) *DeputyNode {
 	nodes := m.GetDeputiesByHeight(height, false)
-	for _, node := range nodes {
-		if node.MinerAddress == addr {
-			return node
-		}
-	}
-	return nil
+	return findDeputyByAddress(nodes, addr)
 }
 
 // GetDeputyByNodeID 根据nodeID获取对应的节点
@@ -160,31 +172,51 @@ func (m *Manager) GetDeputyByNodeID(height uint32, nodeID []byte) *DeputyNode {
 	return nil
 }
 
-// GetSlot 获取最新块的出块者序号与本节点序号差
-func (m *Manager) GetSlot(height uint32, firstAddress, nextAddress common.Address) int {
-	firstNode := m.GetDeputyByAddress(height, firstAddress)
-	nextNode := m.GetDeputyByAddress(height, nextAddress)
-	if ((height == 1) || (height > params.TermDuration && height%params.TermDuration == params.InterimDuration+1)) && nextNode != nil {
-		log.Debugf("GetSlot: change term. rank: %d", nextNode.Rank)
-		return int(nextNode.Rank + 1)
+func findDeputyByAddress(deputies []*DeputyNode, addr common.Address) *DeputyNode {
+	for _, node := range deputies {
+		if node.MinerAddress == addr {
+			return node
+		}
 	}
-	if firstNode == nil || nextNode == nil {
-		return -1
+	return nil
+}
+
+// GetMinerDistance get miner index distance in same term
+func (m *Manager) GetMinerDistance(targetHeight uint32, lastBlockMiner, targetMiner common.Address) (uint32, error) {
+	if targetHeight == 0 {
+		return 0, ErrMineGenesis
 	}
-	nodeCount := m.GetDeputiesCount(height)
-	// 只有一个主节点
+	termDeputies := m.GetDeputiesByHeight(targetHeight, false)
+
+	// find target block miner deputy
+	targetDeputy := findDeputyByAddress(termDeputies, targetMiner)
+	if targetDeputy == nil {
+		return 0, ErrNotDeputy
+	}
+
+	// only one deputy
+	nodeCount := uint32(len(termDeputies))
 	if nodeCount == 1 {
-		log.Debug("getSlot: only one star node")
-		return 1
+		return 1, nil
 	}
-	return (int(nextNode.Rank) - int(firstNode.Rank) + nodeCount) % nodeCount
+
+	// Genesis block is pre-set, not belong to any deputy node. So only blocks start with height 1 is mined by deputies
+	// The reward block changes deputy nodes, so we need recompute the slot
+	if targetHeight == 1 || m.IsRewardBlock(targetHeight) {
+		return targetDeputy.Rank + 1, nil
+	}
+
+	// find last block miner deputy
+	lastDeputy := findDeputyByAddress(termDeputies, lastBlockMiner)
+	if lastDeputy == nil {
+		return 0, ErrNotDeputy
+	}
+
+	return (targetDeputy.Rank - lastDeputy.Rank + nodeCount) % nodeCount, nil
 }
 
 // IsRewardBlock 是否该发出块奖励了
 func (m *Manager) IsRewardBlock(height uint32) bool {
-	m.lock.Lock()
-	defer m.lock.Unlock()
-
 	if height < params.TermDuration+params.InterimDuration+1 {
 		// in genesis term
 		return false
@@ -199,14 +231,12 @@ func (m *Manager) IsRewardBlock(height uint32) bool {
 
 // IsSelfDeputyNode
 func (m *Manager) IsSelfDeputyNode(height uint32) bool {
-	node := m.GetDeputyByNodeID(height, GetSelfNodeID())
-	return node != nil
+	return m.IsNodeDeputy(height, GetSelfNodeID())
 }
 
 // IsNodeDeputy
 func (m *Manager) IsNodeDeputy(height uint32, nodeID []byte) bool {
-	node := m.GetDeputyByNodeID(height, nodeID)
-	return node != nil
+	return m.GetDeputyByNodeID(height, nodeID) != nil
 }
 
 // Clear for test
@@ -221,16 +251,4 @@ func (m *Manager) GetTermList() []*TermRecord {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	return m.termList[:]
-}
-
-// TODO move this out
-// GetDeputiesInCharge for api
-func (m *Manager) GetDeputiesInCharge(currentHeight uint32) []string {
-	nodes := m.GetDeputiesByHeight(currentHeight, true)
-
-	res := make([]string, 0)
-	for _, n := range nodes {
-		res = append(res, n.NodeAddrString())
-	}
-	return res
 }

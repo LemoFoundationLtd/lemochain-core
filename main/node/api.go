@@ -156,7 +156,13 @@ func NewPublicChainAPI(chain *chain.BlockChain) *PublicChainAPI {
 
 // GetDeputyNodeList
 func (c *PublicChainAPI) GetDeputyNodeList() []string {
-	return deputynode.Instance().GetDeputiesInCharge(c.chain.CurrentBlock().Height())
+	nodes := deputynode.Instance().GetDeputiesByHeight(c.chain.CurrentBlock().Height(), false)
+
+	var result []string
+	for _, n := range nodes {
+		result = append(result, n.NodeAddrString())
+	}
+	return result
 }
 
 // GetAllDeputyNodesList get all deputy nodes list

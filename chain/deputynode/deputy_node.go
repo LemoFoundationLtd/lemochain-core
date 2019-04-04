@@ -84,6 +84,19 @@ func (d *DeputyNode) NodeAddrString() string {
 	return fmt.Sprintf("%x@%s:%d", d.NodeID, d.IP, d.Port)
 }
 
+func (d *DeputyNode) Clone() *DeputyNode {
+	result := &DeputyNode{
+		MinerAddress: d.MinerAddress,
+		NodeID:       d.NodeID,
+		IP:           d.IP,
+		Port:         d.Port,
+		Rank:         d.Rank,
+		Votes:        new(big.Int).Set(d.Votes),
+	}
+
+	return result
+}
+
 type DeputyNodes []*DeputyNode
 
 func (nodes DeputyNodes) String() string {
