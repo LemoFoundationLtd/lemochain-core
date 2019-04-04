@@ -75,7 +75,7 @@ func TestAccountData_MarshalJSON_UnmarshalJSON(t *testing.T) {
 
 	data, err := account.MarshalJSON()
 	assert.NoError(t, err)
-	assert.Equal(t, `{"address":"Lemo8888888888888888888888888888883CPHBJ","balance":"100","codeHash":"0x1d5f11eaa13e02cdca886181dc38ab4cb8cf9092e86c000fb42d12c8b504500e","root":"0xcbeb7c7e36b846713bc99b8fa527e8d552e31bfaa1ac0f2b773958cda3aba3ed","records":{"1":{"version":"100","height":"10"},"2":{"version":"101","height":"11"}},"voteFor":"Lemo8888888888888888888888888888888888BW","candidate":{"votes":"0","profile":{"host":"127.0.0.1"}},"txCount":"100"}`, string(data))
+	assert.Equal(t, `{"address":"Lemo8888888888888888888888888888883CPHBJ","balance":"100","codeHash":"0x1d5f11eaa13e02cdca886181dc38ab4cb8cf9092e86c000fb42d12c8b504500e","root":"0xcbeb7c7e36b846713bc99b8fa527e8d552e31bfaa1ac0f2b773958cda3aba3ed","assetCodeRoot":"0x0000000000000000000000000000000000000000000000000000000000000000","assetIdRoot":"0x0000000000000000000000000000000000000000000000000000000000000000","equityRoot":"0x0000000000000000000000000000000000000000000000000000000000000000","voteFor":"Lemo8888888888888888888888888888888888BW","candidate":{"votes":"0","profile":{"host":"127.0.0.1"}},"records":{"1":{"version":"100","height":"10"},"2":{"version":"101","height":"11"}}}`, string(data))
 
 	decode := new(AccountData)
 	err = decode.UnmarshalJSON(data)
