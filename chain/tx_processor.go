@@ -88,7 +88,7 @@ func (p *TxProcessor) Process(header *types.Header, txs types.Transactions) (uin
 }
 
 // ApplyTxs picks and processes transactions from miner's tx pool.
-func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions) (types.Transactions, types.Transactions, uint64) {
+func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions, outTime int64) (types.Transactions, types.Transactions, uint64) {
 	var (
 		gp          = new(types.GasPool).AddGas(header.GasLimit)
 		gasUsed     = uint64(0)
@@ -99,14 +99,23 @@ func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions) (ty
 
 	p.am.Reset(header.ParentHash)
 
+	// limit the time to execute txs
+	applyTxsInterval := time.Duration(outTime) * time.Millisecond
+	applyTimer := time.NewTimer(applyTxsInterval)
 	// Iterate over and process the individual transactions
+label:
 	for _, tx := range txs {
+		// timer
+		select {
+		case <-applyTimer.C:
+			break label
+		default:
+		}
 		// If we don't have enough gas for any further transactions then we're done
 		if gp.Gas() < params.TxGas {
 			log.Info("Not enough gas for further transactions", "gp", gp)
 			break
 		}
-
 		// Start executing the transaction
 		snap := p.am.Snapshot()
 
@@ -386,7 +395,7 @@ func (p *TxProcessor) chargeForGas(charge *big.Int, minerAddress common.Address)
 }
 
 // CallTx pre-execute transactions and contracts.
-func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *common.Address, txType uint8, data hexutil.Bytes, blockHash common.Hash, timeout time.Duration) ([]byte, uint64, error) {
+func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *common.Address, txType uint16, data hexutil.Bytes, blockHash common.Hash, timeout time.Duration) ([]byte, uint64, error) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 

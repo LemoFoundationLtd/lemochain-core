@@ -10,6 +10,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/store/protocol"
 	"github.com/LemoFoundationLtd/lemochain-core/store/trie"
 	"math/big"
+	"os"
 )
 
 type blockInfo struct {
@@ -83,18 +84,18 @@ var (
 	emptyTrieRoot = common.HexToHash("0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
 )
 
-// func init() {
-// 	// clear db
-// 	// store.ClearData()
-// 	if err := os.RemoveAll("../../testdata/db_account"); err != nil {
-// 		panic(err)
-// 	}
-// }
+func GetStorePath() string {
+	return "../testdata/account"
+}
+
+func ClearData() {
+	os.RemoveAll(GetStorePath())
+}
 
 // newDB creates db for test account module
 func newDB() protocol.ChainDB {
-	db := store.NewChainDataBase(store.GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
-
+	// db := store.NewChainDataBase(store.GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
+	db := store.NewChainDataBase(GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
 	for i, _ := range defaultBlockInfos {
 		// use pointer for repairing incorrect hash
 		saveBlock(db, i, &defaultBlockInfos[i])

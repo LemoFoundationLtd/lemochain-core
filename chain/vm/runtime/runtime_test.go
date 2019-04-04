@@ -6,12 +6,18 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"github.com/stretchr/testify/assert"
 	"math/big"
+	"os"
 	"strings"
 	"testing"
 
 	"github.com/LemoFoundationLtd/lemochain-core/chain/vm"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 )
+
+func clearDB(db *store.ChainDatabase, path string) {
+	db.Close()
+	os.RemoveAll(path)
+}
 
 func TestDefaults(t *testing.T) {
 	cfg := new(Config)
@@ -41,6 +47,12 @@ func TestEVM(t *testing.T) {
 		}
 	}()
 
+	db := store.NewChainDataBase("../../../testdata/vm_TestEVM", store.DRIVER_MYSQL, store.DNS_MYSQL)
+	defer clearDB(db, "../../../testdata/vm_TestEVM")
+	cfg := &Config{
+		AccountManager: account.NewManager(common.Hash{}, db),
+	}
+
 	Execute([]byte{
 		byte(vm.DIFFICULTY),
 		byte(vm.TIMESTAMP),
@@ -49,10 +61,15 @@ func TestEVM(t *testing.T) {
 		byte(vm.ORIGIN),
 		byte(vm.BLOCKHASH),
 		byte(vm.COINBASE),
-	}, nil, nil)
+	}, nil, cfg)
 }
 
 func TestExecute(t *testing.T) {
+	db := store.NewChainDataBase("../../../testdata/vm_TestExecute", store.DRIVER_MYSQL, store.DNS_MYSQL)
+	defer clearDB(db, "../../../testdata/vm_TestExecute")
+	cfg := &Config{
+		AccountManager: account.NewManager(common.Hash{}, db),
+	}
 	ret, err := Execute([]byte{
 		byte(vm.PUSH1), 10,
 		byte(vm.PUSH1), 0,
@@ -60,7 +77,7 @@ func TestExecute(t *testing.T) {
 		byte(vm.PUSH1), 32,
 		byte(vm.PUSH1), 0,
 		byte(vm.RETURN),
-	}, nil, nil)
+	}, nil, cfg)
 	if err != nil {
 		t.Fatal("didn't expect error", err)
 	}
@@ -72,7 +89,8 @@ func TestExecute(t *testing.T) {
 }
 
 func TestCall(t *testing.T) {
-	db := store.NewChainDataBase("../../../testdata/vm_runtime", store.DRIVER_MYSQL, store.DNS_MYSQL)
+	db := store.NewChainDataBase("../../../testdata/vm_TestCall", store.DRIVER_MYSQL, store.DNS_MYSQL)
+	defer clearDB(db, "../../../testdata/vm_TestCall")
 	am := account.NewManager(common.Hash{}, db)
 	address := common.HexToAddress("0x0a")
 	contractAccount := am.GetAccount(address)
@@ -116,13 +134,18 @@ func BenchmarkCall(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
+	db := store.NewChainDataBase("../../../testdata/vm_BenchmarkCall", store.DRIVER_MYSQL, store.DNS_MYSQL)
+	defer clearDB(db, "../../../testdata/vm_BenchmarkCall")
+	cfg := &Config{
+		AccountManager: account.NewManager(common.Hash{}, db),
+	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		for j := 0; j < 400; j++ {
-			Execute(code, cpurchase, nil)
-			Execute(code, creceived, nil)
-			Execute(code, refund, nil)
+			Execute(code, cpurchase, cfg)
+			Execute(code, creceived, cfg)
+			Execute(code, refund, cfg)
 		}
 	}
 }

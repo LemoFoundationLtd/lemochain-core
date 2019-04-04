@@ -24,9 +24,10 @@ func (t txdata) MarshalJSON() ([]byte, error) {
 		Data          hexutil.Bytes   `json:"data"`
 		Expiration    hexutil.Uint64  `json:"expirationTime" gencodec:"required"`
 		Message       string          `json:"message"`
-		V             *hexutil.Big    `json:"v" gencodec:"required"`
-		R             *hexutil.Big    `json:"r" gencodec:"required"`
-		S             *hexutil.Big    `json:"s" gencodec:"required"`
+		Type          hexutil.Uint16  `json:"type" gencodec:"required"`
+		Version       hexutil.Uint8   `json:"version" gencodec:"required"`
+		ChainID       hexutil.Uint16  `json:"chainID" gencodec:"required"`
+		Sig           hexutil.Bytes   `json:"sig" gencodec:"required"`
 		Hash          *common.Hash    `json:"hash" rlp:"-"`
 		GasPayerSig   hexutil.Bytes   `json:"gasPayerSig"`
 	}
@@ -39,9 +40,10 @@ func (t txdata) MarshalJSON() ([]byte, error) {
 	enc.Data = t.Data
 	enc.Expiration = hexutil.Uint64(t.Expiration)
 	enc.Message = t.Message
-	enc.V = (*hexutil.Big)(t.V)
-	enc.R = (*hexutil.Big)(t.R)
-	enc.S = (*hexutil.Big)(t.S)
+	enc.Type = hexutil.Uint16(t.Type)
+	enc.Version = hexutil.Uint8(t.Version)
+	enc.ChainID = hexutil.Uint16(t.ChainID)
+	enc.Sig = t.Sig
 	enc.Hash = t.Hash
 	enc.GasPayerSig = t.GasPayerSig
 	return json.Marshal(&enc)
@@ -58,9 +60,10 @@ func (t *txdata) UnmarshalJSON(input []byte) error {
 		Data          *hexutil.Bytes  `json:"data"`
 		Expiration    *hexutil.Uint64 `json:"expirationTime" gencodec:"required"`
 		Message       *string         `json:"message"`
-		V             *hexutil.Big    `json:"v" gencodec:"required"`
-		R             *hexutil.Big    `json:"r" gencodec:"required"`
-		S             *hexutil.Big    `json:"s" gencodec:"required"`
+		Type          *hexutil.Uint16 `json:"type" gencodec:"required"`
+		Version       *hexutil.Uint8  `json:"version" gencodec:"required"`
+		ChainID       *hexutil.Uint16 `json:"chainID" gencodec:"required"`
+		Sig           *hexutil.Bytes  `json:"sig" gencodec:"required"`
 		Hash          *common.Hash    `json:"hash" rlp:"-"`
 		GasPayerSig   *hexutil.Bytes  `json:"gasPayerSig"`
 	}
@@ -96,18 +99,22 @@ func (t *txdata) UnmarshalJSON(input []byte) error {
 	if dec.Message != nil {
 		t.Message = *dec.Message
 	}
-	if dec.V == nil {
-		return errors.New("missing required field 'v' for txdata")
+	if dec.Type == nil {
+		return errors.New("missing required field 'type' for txdata")
 	}
-	t.V = (*big.Int)(dec.V)
-	if dec.R == nil {
-		return errors.New("missing required field 'r' for txdata")
+	t.Type = uint16(*dec.Type)
+	if dec.Version == nil {
+		return errors.New("missing required field 'version' for txdata")
 	}
-	t.R = (*big.Int)(dec.R)
-	if dec.S == nil {
-		return errors.New("missing required field 's' for txdata")
+	t.Version = uint8(*dec.Version)
+	if dec.ChainID == nil {
+		return errors.New("missing required field 'chainID' for txdata")
 	}
-	t.S = (*big.Int)(dec.S)
+	t.ChainID = uint16(*dec.ChainID)
+	if dec.Sig == nil {
+		return errors.New("missing required field 'sig' for txdata")
+	}
+	t.Sig = *dec.Sig
 	if dec.Hash != nil {
 		t.Hash = dec.Hash
 	}

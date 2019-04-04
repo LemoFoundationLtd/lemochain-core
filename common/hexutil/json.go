@@ -32,6 +32,8 @@ var (
 	big10T  = reflect.TypeOf((*Big10)(nil))
 	uint64T = reflect.TypeOf(Uint64(0))
 	uint32T = reflect.TypeOf(Uint32(0))
+	uint16T = reflect.TypeOf(uint16(0))
+	uint8T  = reflect.TypeOf(uint8(0))
 	IPT     = reflect.TypeOf(IP(nil))
 )
 
@@ -212,6 +214,62 @@ func (i *Uint32) UnmarshalJSON(input []byte) error {
 		input = input[1 : len(input)-1]
 	}
 	return wrapTypeError(i.UnmarshalText(input), uint32T)
+}
+
+// Uint16 marshals uint16 as decimal, and unmarshals string and number as decimal or hex.
+type Uint16 uint16
+
+// MarshalText implements encoding.TextMarshaler.
+func (i Uint16) MarshalText() ([]byte, error) {
+	buf := fmt.Sprintf("%d", uint16(i))
+	return []byte(buf), nil
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (i *Uint16) UnmarshalText(input []byte) error {
+	dec, err := ParseUint(string(input), 16)
+	if err != nil {
+		log.Warnf("invalid hex or decimal integer %q", input)
+		return err
+	}
+	*i = Uint16(dec)
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (i *Uint16) UnmarshalJSON(input []byte) error {
+	if isString(input) {
+		input = input[1 : len(input)-1]
+	}
+	return wrapTypeError(i.UnmarshalText(input), uint16T)
+}
+
+// Uint8 marshals uint16 as decimal, and unmarshals string and number as decimal or hex.
+type Uint8 uint8
+
+// MarshalText implements encoding.TextMarshaler.
+func (i Uint8) MarshalText() ([]byte, error) {
+	buf := fmt.Sprintf("%d", uint8(i))
+	return []byte(buf), nil
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (i *Uint8) UnmarshalText(input []byte) error {
+	dec, err := ParseUint(string(input), 8)
+	if err != nil {
+		log.Warnf("invalid hex or decimal integer %q", input)
+		return err
+	}
+	*i = Uint8(dec)
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (i *Uint8) UnmarshalJSON(input []byte) error {
+	if isString(input) {
+		input = input[1 : len(input)-1]
+	}
+	return wrapTypeError(i.UnmarshalText(input), uint8T)
 }
 
 func isString(input []byte) bool {

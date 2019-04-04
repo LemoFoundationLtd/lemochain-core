@@ -87,7 +87,7 @@ func (m *Miner) Start() {
 		} else if waitTime > 0 {
 			m.resetMinerTimer(int64(waitTime))
 		} else {
-			log.Error("internal error. start mining failed")
+			log.Error("interval error. start mining failed")
 			atomic.CompareAndSwapInt32(&m.mining, 1, 0)
 			m.stopCh <- struct{}{}
 			return
@@ -359,7 +359,7 @@ func (m *Miner) loopMiner() {
 					} else if timeDur > 0 {
 						m.resetMinerTimer(timeDur)
 					} else {
-						log.Error("getSleepTime internal error.")
+						log.Error("getSleepTime interval error.")
 					}
 				}
 			}
@@ -388,7 +388,7 @@ func (m *Miner) sealBlock() {
 	log.Debug("Start seal")
 	header, dNodes := m.sealHead()
 	txs := m.txPool.Pending(1000000)
-
+	log.Debugf("Pending number of txs from txPool: %d  ", len(txs))
 	defer func() {
 		var timeDur int64
 		// snapshot block
@@ -411,7 +411,8 @@ func (m *Miner) sealBlock() {
 	m.chain.Lock().Lock()
 	defer m.chain.Lock().Unlock()
 	// apply transactions
-	packagedTxs, invalidTxs, gasUsed := m.txProcessor.ApplyTxs(header, txs)
+	outTime := m.timeoutTime * 2 / 3 // not more than 2/3 * timeoutTime
+	packagedTxs, invalidTxs, gasUsed := m.txProcessor.ApplyTxs(header, txs, outTime)
 	log.Debug("ApplyTxs ok")
 	// Finalize accounts
 	am := m.chain.AccountManager()

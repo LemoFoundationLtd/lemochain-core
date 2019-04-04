@@ -17,6 +17,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/store/protocol"
 	"math/big"
 	"math/rand"
+	"os"
 	"time"
 )
 
@@ -111,8 +112,22 @@ var (
 )
 
 func init() {
-	store.ClearData()
 	log.Setup(log.LevelInfo, false, false)
+}
+
+func GetStorePath() string {
+	return "../testdata/blockchain"
+}
+
+func ClearData() {
+	err := os.RemoveAll(GetStorePath())
+	failCnt := 1
+	for err != nil {
+		log.Errorf("CLEAR DATA BASE FAIL.%s, SLEEP(%ds) AND CONTINUE", err.Error(), failCnt)
+		time.Sleep(time.Duration(failCnt) * time.Second)
+		err = os.RemoveAll(GetStorePath())
+		failCnt = failCnt + 1
+	}
 }
 
 // newChain creates chain for test
@@ -127,7 +142,7 @@ func newChain() *BlockChain {
 
 // newDB creates db for test chain module
 func newDB() protocol.ChainDB {
-	db := store.NewChainDataBase(store.GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
+	db := store.NewChainDataBase(GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
 	for i, _ := range defaultBlockInfos {
 		if i > 0 {
 			defaultBlockInfos[i].parentHash = defaultBlocks[i-1].Hash()
@@ -294,11 +309,11 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 	return block
 }
 
-func makeTx(fromPrivate *ecdsa.PrivateKey, to common.Address, txType uint8, amount *big.Int) *types.Transaction {
+func makeTx(fromPrivate *ecdsa.PrivateKey, to common.Address, txType uint16, amount *big.Int) *types.Transaction {
 	return makeTransaction(fromPrivate, to, txType, amount, common.Big1, uint64(time.Now().Unix()+300), 1000000)
 }
 
-func makeTransaction(fromPrivate *ecdsa.PrivateKey, to common.Address, txType uint8, amount, gasPrice *big.Int, expiration uint64, gasLimit uint64) *types.Transaction {
+func makeTransaction(fromPrivate *ecdsa.PrivateKey, to common.Address, txType uint16, amount, gasPrice *big.Int, expiration uint64, gasLimit uint64) *types.Transaction {
 	tx := types.NewTransaction(to, amount, gasLimit, gasPrice, []byte{}, txType, chainID, expiration, "", "")
 	return signTransaction(tx, fromPrivate)
 }

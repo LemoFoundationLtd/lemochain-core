@@ -438,7 +438,7 @@ func NewPublicTxAPI(node *Node) *PublicTxAPI {
 
 // Send send a transaction
 func (t *PublicTxAPI) SendTx(tx *types.Transaction) (common.Hash, error) {
-	err := AvailableTx(tx)
+	err := VerifyTx(tx)
 	if err != nil {
 		return common.Hash{}, err
 	}
@@ -447,7 +447,7 @@ func (t *PublicTxAPI) SendTx(tx *types.Transaction) (common.Hash, error) {
 }
 
 // SendReimbursedGasTx gas代付交易 todo 测试使用
-func (t *PublicTxAPI) SendReimbursedGasTx(senderPrivate, gasPayerPrivate string, to, gasPayer common.Address, amount int64, data []byte, txType uint8, toName, message string) (common.Hash, error) {
+func (t *PublicTxAPI) SendReimbursedGasTx(senderPrivate, gasPayerPrivate string, to, gasPayer common.Address, amount int64, data []byte, txType uint16, toName, message string) (common.Hash, error) {
 	tx := types.NewReimbursementTransaction(to, gasPayer, big.NewInt(amount), data, txType, t.node.chainID, uint64(time.Now().Unix()+1800), toName, message)
 	senderPriv, _ := crypto.HexToECDSA(senderPrivate)
 	gasPayerPriv, _ := crypto.HexToECDSA(gasPayerPrivate)
@@ -460,7 +460,7 @@ func (t *PublicTxAPI) SendReimbursedGasTx(senderPrivate, gasPayerPrivate string,
 	if err != nil {
 		return common.Hash{}, err
 	}
-	err = AvailableTx(lastSignTx)
+	err = VerifyTx(lastSignTx)
 	if err != nil {
 		return common.Hash{}, err
 	}
@@ -582,8 +582,8 @@ func (t *PublicTxAPI) TradingAsset(prv string, to common.Address, assetCode, ass
 	return t.SendTx(signTx)
 }
 
-// AvailableTx transaction parameter verification
-func AvailableTx(tx *types.Transaction) error {
+// VerifyTx transaction parameter verification
+func VerifyTx(tx *types.Transaction) error {
 	toNameLength := len(tx.ToName())
 	if toNameLength > MaxTxToNameLength {
 		toNameErr := fmt.Errorf("the length of toName field in transaction is out of max length limit. toName length = %d. max length limit = %d. ", toNameLength, MaxTxToNameLength)
@@ -629,7 +629,7 @@ func (t *PublicTxAPI) ReadContract(to *common.Address, data hexutil.Bytes) (stri
 }
 
 // EstimateGas returns an estimate of the amount of gas needed to execute the given transaction.
-func (t *PublicTxAPI) EstimateGas(to *common.Address, txType uint8, data hexutil.Bytes) (string, error) {
+func (t *PublicTxAPI) EstimateGas(to *common.Address, txType uint16, data hexutil.Bytes) (string, error) {
 	var costGas uint64
 	var err error
 	ctx := context.Background()
@@ -647,7 +647,7 @@ func (t *PublicTxAPI) EstimateCreateContractGas(data hexutil.Bytes) (uint64, err
 }
 
 // doCall
-func (t *PublicTxAPI) doCall(ctx context.Context, to *common.Address, txType uint8, data hexutil.Bytes, timeout time.Duration) ([]byte, uint64, error) {
+func (t *PublicTxAPI) doCall(ctx context.Context, to *common.Address, txType uint16, data hexutil.Bytes, timeout time.Duration) ([]byte, uint64, error) {
 	t.node.lock.Lock()
 	defer t.node.lock.Unlock()
 

@@ -33,12 +33,6 @@
 			"revisionTime": "2018-05-16T10:03:07Z"
 		},
 		{
-			"checksumSHA1": "4rhtWm02v19WqginMlddNpQlVA0=",
-			"path": "github.com/go-sql-driver/mysql",
-			"revision": "6be42e0ff99645d7d9626d779001a46e39c5f280",
-			"revisionTime": "2018-11-16T10:20:33Z"
-		},
-		{
 			"checksumSHA1": "4i12mddRzVhGXRyTJ1x9KAX4RGM=",
 			"path": "github.com/go-stack/stack",
 			"revision": "259ab82a6cad3992b4e21ff5cac294ccb06474bc",
@@ -592,5 +586,5 @@
 			"revision": ""
 		}
 	],
-	"rootPath": "github.com/LemoFoundationLtd/lemochain-go"
+	"rootPath": "github.com/LemoFoundationLtd/lemochain-core"
 }

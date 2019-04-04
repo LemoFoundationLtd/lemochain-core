@@ -494,7 +494,7 @@ func (pm *ProtocolManager) handlePeer(p *peer) {
 	}
 	// set connect result
 	if err = pm.discover.SetConnectResult(p.NodeID(), true); err != nil {
-		log.Debugf("handlePeer: %v", err)
+		log.Debugf("handlePeer set connect result: %v", err)
 	}
 
 	for {

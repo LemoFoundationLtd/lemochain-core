@@ -83,12 +83,16 @@ func (d *DeputyNode) Hash() (h common.Hash) {
 
 func (d *DeputyNode) Check() error {
 	if len(d.NodeID) != 64 {
-		log.Errorf("incorrect field: 'NodeID'.value: %s", common.ToHex(d.NodeID))
+		log.Errorf("incorrect field: 'NodeID'. value: %s", common.ToHex(d.NodeID))
 		return errors.New("incorrect field: 'NodeID'")
 	}
 	if d.Port > 65535 {
 		log.Errorf("incorrect field: 'port'. value: %d", d.Port)
 		return errors.New("max deputy node's port is 65535")
+	}
+	if d.Rank > 65535 {
+		log.Errorf("incorrect field: 'rank'. value: %d", d.Rank)
+		return errors.New("max deputy node's rank is 65535")
 	}
 	return nil
 }

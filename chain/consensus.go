@@ -45,7 +45,7 @@ func verifyHeaderTime(block *types.Block) error {
 	blockTime := header.Time
 	timeNow := time.Now().Unix()
 	if int64(blockTime)-timeNow > 1 { // Prevent validation failure due to time error
-		log.Error("verifyHeader: block in the future")
+		log.Errorf("verifyHeader: block in the future. height:%d", block.Height())
 		return ErrVerifyHeaderFailed
 	}
 	return nil
@@ -57,7 +57,7 @@ func verifyHeaderSignData(block *types.Block) error {
 	hash := block.Hash()
 	pubKey, err := crypto.Ecrecover(hash[:], header.SignData)
 	if err != nil {
-		log.Errorf("verifyHeaderSignData: illegal signData. %s", err)
+		log.Errorf("verifyHeaderSignData: illegal signData. %s. height:%d", err, block.Height())
 		return ErrVerifyHeaderFailed
 	}
 	node := deputynode.Instance().GetDeputyByAddress(header.Height, header.MinerAddress)

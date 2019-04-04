@@ -16,8 +16,9 @@ import (
 
 // TestAccountAPI_api account api test
 func TestAccountAPI_api(t *testing.T) {
+	store.ClearData()
 	db := newDB()
-	defer store.ClearData()
+	defer db.Close()
 	am := account.NewManager(common.Hash{}, db)
 	acc := NewPublicAccountAPI(am)
 	priAcc := NewPrivateAccountAPI(am)
@@ -55,17 +56,25 @@ func TestAccountAPI_api(t *testing.T) {
 
 // TestChainAPI_api chain api test
 func TestChainAPI_api(t *testing.T) {
+	store.ClearData()
 	bc := newChain()
-	defer store.ClearData()
+	defer bc.Db().Close()
 	c := NewPublicChainAPI(bc)
 
 	// getBlockByHash
-	exBlock1 := c.chain.GetBlockByHash(common.HexToHash("0x7b49b0aad9f4caa94bced369b9fcdb7e215b3748f6837c85d78afa2390bf913a"))
-	assert.Equal(t, exBlock1, c.GetBlockByHash("0x7b49b0aad9f4caa94bced369b9fcdb7e215b3748f6837c85d78afa2390bf913a", true))
+	exBlock1 := c.chain.GetBlockByHash(common.HexToHash("0x0bee913d964dea2142789d13b2df9c156fb3097c432762e9cceefa9814a0ebb1"))
+
+	assert.Equal(t, exBlock1.VersionRoot(), defaultBlocks[1].VersionRoot())
+	assert.Equal(t, exBlock1.Height(), defaultBlocks[1].Height())
+	assert.Equal(t, exBlock1.ParentHash(), defaultBlocks[1].ParentHash())
+	assert.Equal(t, exBlock1.Header.LogRoot, defaultBlocks[1].Header.LogRoot)
+	assert.Equal(t, exBlock1.Header.TxRoot, defaultBlocks[1].Header.TxRoot)
+
+	assert.Equal(t, exBlock1, c.GetBlockByHash("0x0bee913d964dea2142789d13b2df9c156fb3097c432762e9cceefa9814a0ebb1", true))
 	Block1 := &types.Block{
 		Header: exBlock1.Header,
 	}
-	assert.Equal(t, Block1, c.GetBlockByHash("0x7b49b0aad9f4caa94bced369b9fcdb7e215b3748f6837c85d78afa2390bf913a", false))
+	assert.Equal(t, Block1, c.GetBlockByHash("0x0bee913d964dea2142789d13b2df9c156fb3097c432762e9cceefa9814a0ebb1", false))
 
 	// getBlockByHeight
 	exBlock2 := c.chain.GetBlockByHeight(1)
@@ -113,12 +122,13 @@ func TestChainAPI_api(t *testing.T) {
 
 // TestTxAPI_api send tx api test
 func TestTxAPI_api(t *testing.T) {
-	defer store.ClearData()
+	store.ClearData()
 	testTx := types.NewTransaction(common.HexToAddress("0x1"), common.Big1, 100, common.Big2, []byte{12}, 0, chainID, uint64(time.Now().Unix()+60*30), "aa", string("send a Tx"))
 	tx := signTransaction(testTx, testPrivate)
 	// signTx := signTransaction(testTx, testPrivate)
 	// txCh := make(chan types.Transactions, 100)
 	Chain := newChain()
+	defer Chain.Db().Close()
 	node := &Node{
 		chain:  Chain,
 		txPool: chain.NewTxPool(chainID),
@@ -160,6 +170,7 @@ func TestTxAPI_api(t *testing.T) {
 func TestNewPublicTxAPI_EstimateGas(t *testing.T) {
 	store.ClearData()
 	Chain := newChain()
+	defer Chain.Db().Close()
 	node := &Node{
 		chain:  Chain,
 		txPool: chain.NewTxPool(chainID),

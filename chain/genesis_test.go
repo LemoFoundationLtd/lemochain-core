@@ -9,7 +9,7 @@ import (
 
 func TestSetupGenesisBlock(t *testing.T) {
 	genesis := DefaultGenesisBlock()
-	store.ClearData()
+	ClearData()
 
 	cacheChain := store.NewChainDataBase(store.GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
 	defer cacheChain.Close()

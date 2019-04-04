@@ -6,8 +6,6 @@ import (
 	"testing"
 )
 
-var dns = "root:123123@tcp(localhost:3306)/lemochain?charset=utf8mb4"
-
 func TestBitCask_Put(t *testing.T) {
 	ClearData()
 	levelDB := leveldb.NewLevelDBDatabase(GetStorePath(), 16, 16)
