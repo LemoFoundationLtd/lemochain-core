@@ -275,6 +275,7 @@ func (srv *Server) runPeer(p IPeer) {
 	log.Debugf("peer(nodeID: %s) start running", common.ToHex(p.RNodeID()[:8]))
 	if err := p.Run(); err != nil { // block this
 		log.Debugf("runPeer error: %v", err)
+		srv.delPeerCh <- p
 	}
 
 	// peer has stopped

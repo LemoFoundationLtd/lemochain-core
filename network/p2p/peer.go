@@ -129,6 +129,7 @@ func (p *Peer) readLoop() {
 		p.wg.Done()
 		log.Debugf("readLoop finished: %s", p.RNodeID().String()[:16])
 	}()
+
 	for {
 		msg, err := p.readMsg()
 		if err != nil {
