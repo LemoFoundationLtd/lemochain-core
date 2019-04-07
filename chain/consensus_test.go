@@ -69,7 +69,7 @@ func initDeputyNode(numNode int, height uint32) error {
 		NodeID:       (crypto.FromECDSAPub(&privarte01.PublicKey))[1:],
 		IP:           nil,
 		Port:         7001,
-		Rank:         1,
+		Rank:         0,
 		Votes:        big.NewInt(120),
 	}
 	nodes[1] = &deputynode.DeputyNode{
@@ -77,7 +77,7 @@ func initDeputyNode(numNode int, height uint32) error {
 		NodeID:       (crypto.FromECDSAPub(&privarte02.PublicKey))[1:],
 		IP:           nil,
 		Port:         7002,
-		Rank:         2,
+		Rank:         1,
 		Votes:        big.NewInt(110),
 	}
 	nodes[2] = &deputynode.DeputyNode{
@@ -85,7 +85,7 @@ func initDeputyNode(numNode int, height uint32) error {
 		NodeID:       (crypto.FromECDSAPub(&privarte03.PublicKey))[1:],
 		IP:           nil,
 		Port:         7003,
-		Rank:         3,
+		Rank:         2,
 		Votes:        big.NewInt(100),
 	}
 	nodes[3] = &deputynode.DeputyNode{
@@ -93,7 +93,7 @@ func initDeputyNode(numNode int, height uint32) error {
 		NodeID:       (crypto.FromECDSAPub(&privarte04.PublicKey))[1:],
 		IP:           nil,
 		Port:         7004,
-		Rank:         4,
+		Rank:         3,
 		Votes:        big.NewInt(90),
 	}
 	nodes[4] = &deputynode.DeputyNode{
@@ -101,7 +101,7 @@ func initDeputyNode(numNode int, height uint32) error {
 		NodeID:       (crypto.FromECDSAPub(&privarte05.PublicKey))[1:],
 		IP:           nil,
 		Port:         7005,
-		Rank:         5,
+		Rank:         4,
 		Votes:        big.NewInt(80),
 	}
 

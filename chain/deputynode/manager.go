@@ -15,7 +15,7 @@ const (
 
 var (
 	ErrEmptyDeputies         = errors.New("can't save empty deputy nodes")
-	ErrInvalidDeputyRank     = errors.New("deputy nodes should be sorted by rank")
+	ErrInvalidDeputyRank     = errors.New("deputy nodes should be sorted by rank and start from 0")
 	ErrInvalidDeputyVotes    = errors.New("there is a conflict between deputy node' rank and votes")
 	ErrMissingTerm           = errors.New("some term is missing")
 	ErrInvalidSnapshotHeight = errors.New("invalid snapshot block height")

@@ -131,7 +131,7 @@ var deputyNodes = deputynode.DeputyNodes{
 }
 
 func init() {
-	deputynode.Instance().SaveSnapshot(1, deputyNodes)
+	deputynode.Instance().SaveSnapshot(0, deputyNodes)
 }
 
 func createPeerSet() *peerSet {
