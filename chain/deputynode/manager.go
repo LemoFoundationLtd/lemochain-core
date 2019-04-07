@@ -5,8 +5,8 @@ import (
 	"errors"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
-	"github.com/LemoFoundationLtd/lemochain-core/common/hexutil"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
+	"math/big"
 	"sync"
 )
 
@@ -17,24 +17,14 @@ const (
 
 var (
 	ErrEmptyDeputies         = errors.New("can't save empty deputy nodes")
-	ErrInvalidDeputyRank     = errors.New("deputy node's rank is not right")
+	ErrInvalidDeputyRank     = errors.New("deputy nodes should be sorted by rank")
+	ErrInvalidDeputyVotes    = errors.New("there is a conflict between deputy node' rank and votes")
 	ErrExistSnapshotHeight   = errors.New("exist snapshot block height")
 	ErrInvalidSnapshotHeight = errors.New("invalid snapshot block height")
 	ErrNoDeputies            = errors.New("can't access deputy nodes before SaveSnapshot")
 	ErrNotDeputy             = errors.New("not a deputy address in specific height")
 	ErrMineGenesis           = errors.New("can not mine genesis block")
 )
-
-//go:generate gencodec -type TermRecord --field-override termRecordMarshaling -out gen_term_record_json.go
-type TermRecord struct {
-	// 0, 100W+1K+1, 200W+1K+1, 300W+1K+1, 400W+1K+1...
-	StartHeight uint32      `json:"height"`
-	Nodes       DeputyNodes `json:"nodes"`
-}
-
-type termRecordMarshaling struct {
-	StartHeight hexutil.Uint32
-}
 
 // Manager 代理节点管理器
 type Manager struct {
@@ -62,11 +52,19 @@ func (m *Manager) SaveSnapshot(snapshotHeight uint32, nodes DeputyNodes) {
 		log.Error("can't save empty deputy nodes", "height", snapshotHeight)
 		panic(ErrEmptyDeputies)
 	}
-	// check nodes' rank
 	for i, node := range nodes {
+		// check nodes' rank
 		if uint32(i) != node.Rank {
-			log.Error("invalid deputy rank", "rank", node.Rank, "expect", i)
+			log.Error("invalid deputy rank", "index", i, "rank", node.Rank, "expect", i)
 			panic(ErrInvalidDeputyRank)
+		}
+		// check nodes' votes
+		if i > 0 {
+			lastNode := nodes[i-1]
+			if node.Votes.Cmp(lastNode.Votes) > 0 {
+				log.Error("deputy should sort by votes", "index", i, "votes", node.Votes, "last node votes", lastNode.Votes)
+				panic(ErrInvalidDeputyVotes)
+			}
 		}
 	}
 
@@ -77,8 +75,6 @@ func (m *Manager) SaveSnapshot(snapshotHeight uint32, nodes DeputyNodes) {
 	} else {
 		termStart = snapshotHeight + params.InterimDuration + 1
 	}
-
-	// TODO sort nodes
 
 	// save
 	err := m.addDeputyRecord(&TermRecord{StartHeight: termStart, Nodes: nodes})
@@ -109,8 +105,8 @@ func (m *Manager) addDeputyRecord(record *TermRecord) error {
 	return nil
 }
 
-// GetDeputiesByHeight 通过height获取对应的节点列表
-func (m *Manager) GetDeputiesByHeight(height uint32, total bool) DeputyNodes {
+// GetTermByHeight 通过height获取对应的任期信息
+func (m *Manager) GetTermByHeight(height uint32) *TermRecord {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -139,31 +135,29 @@ func (m *Manager) GetDeputiesByHeight(height uint32, total bool) DeputyNodes {
 		}
 	}
 
-	// find nodes
-	nodes := record.Nodes
-	// if not total, then result nodes must be less than TotalCount
-	if !total && len(nodes) > TotalCount {
-		nodes = nodes[:TotalCount]
-	}
+	return record
+}
 
-	return nodes[:]
+// GetDeputiesByHeight 通过height获取对应的节点列表
+func (m *Manager) GetDeputiesByHeight(height uint32) DeputyNodes {
+	return m.GetTermByHeight(height).GetDeputies()
 }
 
 // GetDeputiesCount 获取共识节点数量
 func (m *Manager) GetDeputiesCount(height uint32) int {
-	nodes := m.GetDeputiesByHeight(height, false)
+	nodes := m.GetDeputiesByHeight(height)
 	return len(nodes)
 }
 
 // GetDeputyByAddress 获取address对应的节点
 func (m *Manager) GetDeputyByAddress(height uint32, addr common.Address) *DeputyNode {
-	nodes := m.GetDeputiesByHeight(height, false)
+	nodes := m.GetDeputiesByHeight(height)
 	return findDeputyByAddress(nodes, addr)
 }
 
 // GetDeputyByNodeID 根据nodeID获取对应的节点
 func (m *Manager) GetDeputyByNodeID(height uint32, nodeID []byte) *DeputyNode {
-	nodes := m.GetDeputiesByHeight(height, false)
+	nodes := m.GetDeputiesByHeight(height)
 	for _, node := range nodes {
 		if bytes.Compare(node.NodeID, nodeID) == 0 {
 			return node
@@ -186,7 +180,7 @@ func (m *Manager) GetMinerDistance(targetHeight uint32, lastBlockMiner, targetMi
 	if targetHeight == 0 {
 		return 0, ErrMineGenesis
 	}
-	termDeputies := m.GetDeputiesByHeight(targetHeight, false)
+	termDeputies := m.GetDeputiesByHeight(targetHeight)
 
 	// find target block miner deputy
 	targetDeputy := findDeputyByAddress(termDeputies, targetMiner)
@@ -251,4 +245,10 @@ func (m *Manager) GetTermList() []*TermRecord {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	return m.termList[:]
+}
+
+// CalcSalary 计算收益
+func (m *Manager) CalcSalary(height uint32, termRewards *big.Int) []*DeputySalary {
+	term := m.GetTermByHeight(height - 1)
+	return term.DivideSalary(termRewards)
 }

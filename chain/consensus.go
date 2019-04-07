@@ -62,7 +62,7 @@ func verifyHeaderSignData(block *types.Block) error {
 	}
 	node := deputynode.Instance().GetDeputyByAddress(header.Height, header.MinerAddress)
 	if node == nil {
-		nodes := deputynode.Instance().GetDeputiesByHeight(block.Height(), false)
+		nodes := deputynode.Instance().GetDeputiesByHeight(block.Height())
 		log.Errorf("verifyHeaderSignData: can't get deputy node, height: %d, miner: %s, deputy nodes: %s", header.Height, header.MinerAddress.String(), nodes.String())
 		return ErrVerifyHeaderFailed
 	}
@@ -186,7 +186,7 @@ func (d *Dpovp) Finalize(height uint32, am *account.Manager) error {
 			log.Warnf("rewards failed: %v", err)
 			return err
 		}
-		rewards := deputynode.CalcSalary(height, termRewards)
+		rewards := deputynode.Instance().CalcSalary(height, termRewards)
 		for _, item := range rewards {
 			acc := am.GetAccount(item.Address)
 			balance := acc.GetBalance()
