@@ -13,11 +13,11 @@ var _ = (*termRecordMarshaling)(nil)
 // MarshalJSON marshals as JSON.
 func (t TermRecord) MarshalJSON() ([]byte, error) {
 	type TermRecord struct {
-		StartHeight hexutil.Uint32 `json:"height"`
-		Nodes       DeputyNodes    `json:"nodes"`
+		TermIndex hexutil.Uint32 `json:"termIndex"`
+		Nodes     DeputyNodes    `json:"nodes"`
 	}
 	var enc TermRecord
-	enc.StartHeight = hexutil.Uint32(t.StartHeight)
+	enc.TermIndex = hexutil.Uint32(t.TermIndex)
 	enc.Nodes = t.Nodes
 	return json.Marshal(&enc)
 }
@@ -25,15 +25,15 @@ func (t TermRecord) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON unmarshals from JSON.
 func (t *TermRecord) UnmarshalJSON(input []byte) error {
 	type TermRecord struct {
-		StartHeight *hexutil.Uint32 `json:"height"`
-		Nodes       *DeputyNodes    `json:"nodes"`
+		TermIndex *hexutil.Uint32 `json:"termIndex"`
+		Nodes     *DeputyNodes    `json:"nodes"`
 	}
 	var dec TermRecord
 	if err := json.Unmarshal(input, &dec); err != nil {
 		return err
 	}
-	if dec.StartHeight != nil {
-		t.StartHeight = uint32(*dec.StartHeight)
+	if dec.TermIndex != nil {
+		t.TermIndex = uint32(*dec.TermIndex)
 	}
 	if dec.Nodes != nil {
 		t.Nodes = *dec.Nodes

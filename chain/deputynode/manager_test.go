@@ -55,7 +55,7 @@ func TestManager_SaveSnapshot_GetTermList(t *testing.T) {
 	nodes := pickNodes(0, 1)
 	m.SaveSnapshot(height, nodes)
 	assert.Len(t, m.GetTermList(), 1)
-	assert.Equal(t, uint32(0), m.GetTermList()[0].StartHeight)
+	assert.Equal(t, uint32(0), m.GetTermList()[0].TermIndex)
 	assert.Equal(t, nodes, m.GetTermList()[0].Nodes)
 
 	// save snapshot
@@ -63,8 +63,8 @@ func TestManager_SaveSnapshot_GetTermList(t *testing.T) {
 	nodes = pickNodes(2)
 	m.SaveSnapshot(height, nodes)
 	assert.Len(t, m.GetTermList(), 2)
-	assert.Equal(t, uint32(0), m.GetTermList()[0].StartHeight)
-	assert.Equal(t, height+params.InterimDuration+1, m.GetTermList()[1].StartHeight)
+	assert.Equal(t, uint32(0), m.GetTermList()[0].TermIndex)
+	assert.Equal(t, uint32(1), m.GetTermList()[1].TermIndex)
 	assert.Equal(t, nodes, m.GetTermList()[1].Nodes)
 
 	// save exist node
@@ -72,7 +72,7 @@ func TestManager_SaveSnapshot_GetTermList(t *testing.T) {
 	nodes = pickNodes(1, 3)
 	m.SaveSnapshot(height, nodes)
 	assert.Len(t, m.GetTermList(), 3)
-	assert.Equal(t, height+params.InterimDuration+1, m.GetTermList()[2].StartHeight)
+	assert.Equal(t, uint32(2), m.GetTermList()[2].TermIndex)
 	assert.Equal(t, nodes, m.GetTermList()[2].Nodes)
 
 	// save nothing
@@ -82,40 +82,23 @@ func TestManager_SaveSnapshot_GetTermList(t *testing.T) {
 		m.SaveSnapshot(height, nodes)
 	})
 
-	// save with invalid rank
-	height = uint32(params.TermDuration * 3)
-	nodes = pickNodes(4, 5)
-	nodes[0].Rank = 5
-	assert.PanicsWithValue(t, ErrInvalidDeputyRank, func() {
-		m.SaveSnapshot(height, nodes)
-	})
-
-	// save with invalid votes
-	height = uint32(params.TermDuration * 3)
-	nodes = pickNodes(4, 5)
-	nodes[0].Votes = big.NewInt(1)
-	nodes[1].Votes = big.NewInt(2)
-	assert.PanicsWithValue(t, ErrInvalidDeputyVotes, func() {
-		m.SaveSnapshot(height, nodes)
-	})
-
 	// save exist snapshot height
 	height = uint32(params.TermDuration * 2)
 	nodes = pickNodes(4)
 	m.SaveSnapshot(height, nodes)
 	assert.Len(t, m.GetTermList(), 3)
+	assert.Equal(t, nodes, m.GetTermList()[2].Nodes)
+
+	// save exist snapshot height then drop the terms after it
+	height = uint32(params.TermDuration * 1)
+	nodes = pickNodes(5)
+	m.SaveSnapshot(height, nodes)
+	assert.Len(t, m.GetTermList(), 2)
 
 	// save skipped snapshot
-	height = uint32(params.TermDuration * 4)
+	height = uint32(params.TermDuration * 3)
 	nodes = pickNodes(4)
-	assert.PanicsWithValue(t, ErrInvalidSnapshotHeight, func() {
-		m.SaveSnapshot(height, nodes)
-	})
-
-	// save invalid snapshot height
-	height = uint32(params.TermDuration*2 + 1)
-	nodes = pickNodes(4)
-	assert.PanicsWithValue(t, ErrInvalidSnapshotHeight, func() {
+	assert.PanicsWithValue(t, ErrMissingTerm, func() {
 		m.SaveSnapshot(height, nodes)
 	})
 }
@@ -125,39 +108,49 @@ func TestManager_GetTermByHeight(t *testing.T) {
 	m.Clear()
 
 	// no any terms
-	assert.PanicsWithValue(t, ErrNoDeputies, func() {
-		m.GetTermByHeight(0)
-	})
+	_, err := m.GetTermByHeight(0)
+	assert.Equal(t, ErrNoTerms, err)
 
-	termStart0 := uint32(0)
 	nodes0 := pickNodes(0, 1)
 	m.SaveSnapshot(0, nodes0)
-	termStart1 := params.TermDuration + params.InterimDuration + 1
 	nodes1 := pickNodes(0, 1, 2)
 	m.SaveSnapshot(params.TermDuration*1, nodes1)
-	termStart2 := params.TermDuration*2 + params.InterimDuration + 1
 	nodes2 := pickNodes(1, 2, 3, 4, 5, 6)
 	m.SaveSnapshot(params.TermDuration*2, nodes2)
 
 	// genesis term
-	assert.Equal(t, termStart0, m.GetTermByHeight(0).StartHeight)
-	assert.Equal(t, nodes0, m.GetTermByHeight(0).Nodes)
-	assert.Equal(t, termStart0, m.GetTermByHeight(1).StartHeight)
-	assert.Equal(t, nodes0, m.GetTermByHeight(1).Nodes)
-	assert.Equal(t, termStart0, m.GetTermByHeight(params.TermDuration+params.InterimDuration).StartHeight)
-	assert.Equal(t, nodes0, m.GetTermByHeight(params.TermDuration+params.InterimDuration).Nodes)
+	term, err := m.GetTermByHeight(0)
+	assert.NoError(t, err)
+	assert.Equal(t, uint32(0), term.TermIndex)
+	assert.Equal(t, nodes0, term.Nodes)
+	term, err = m.GetTermByHeight(1)
+	assert.NoError(t, err)
+	assert.Equal(t, uint32(0), term.TermIndex)
+	assert.Equal(t, nodes0, term.Nodes)
+	term, err = m.GetTermByHeight(params.TermDuration + params.InterimDuration)
+	assert.NoError(t, err)
+	assert.Equal(t, uint32(0), term.TermIndex)
+	assert.Equal(t, nodes0, term.Nodes)
 
 	// second term
-	assert.Equal(t, termStart1, m.GetTermByHeight(params.TermDuration+params.InterimDuration+1).StartHeight)
-	assert.Equal(t, nodes1, m.GetTermByHeight(params.TermDuration+params.InterimDuration+1).Nodes)
-	assert.Equal(t, nodes1, m.GetTermByHeight(params.TermDuration*2+params.InterimDuration).Nodes)
+	term, err = m.GetTermByHeight(params.TermDuration + params.InterimDuration + 1)
+	assert.NoError(t, err)
+	assert.Equal(t, uint32(1), term.TermIndex)
+	assert.Equal(t, nodes1, term.Nodes)
+	term, err = m.GetTermByHeight(params.TermDuration*2 + params.InterimDuration)
+	assert.NoError(t, err)
+	assert.Equal(t, uint32(1), term.TermIndex)
+	assert.Equal(t, nodes1, term.Nodes)
 
 	// third term
-	assert.Equal(t, nodes2, m.GetTermByHeight(params.TermDuration*2+params.InterimDuration+1).Nodes)
+	term, err = m.GetTermByHeight(params.TermDuration*2 + params.InterimDuration + 1)
+	assert.NoError(t, err)
+	assert.Equal(t, uint32(2), term.TermIndex)
+	assert.Equal(t, nodes2, term.Nodes)
 
-	// current term
-	assert.Equal(t, termStart2, m.GetTermByHeight(1000000000).StartHeight)
-	assert.Equal(t, nodes2, m.GetTermByHeight(1000000000).Nodes)
+	// not exist term
+	term, err = m.GetTermByHeight(1000000000)
+	assert.Equal(t, ErrQueryFutureTerm, err)
 }
 
 func TestManager_GetDeputyByAddress(t *testing.T) {
@@ -288,21 +281,4 @@ func TestManager_GetSlot2(t *testing.T) {
 			assert.Equal(t, test.ExpectDis, dis)
 		})
 	}
-}
-
-func TestManager_IsRewardBlock(t *testing.T) {
-	m := Instance()
-	m.Clear()
-
-	m.SaveSnapshot(0, pickNodes(0))
-	m.SaveSnapshot(params.TermDuration*1, pickNodes(0))
-	m.SaveSnapshot(params.TermDuration*2, pickNodes(0))
-
-	assert.Equal(t, false, m.IsRewardBlock(0))
-	assert.Equal(t, false, m.IsRewardBlock(1))
-	assert.Equal(t, false, m.IsRewardBlock(params.TermDuration))
-	assert.Equal(t, true, m.IsRewardBlock(params.TermDuration+params.InterimDuration+1))
-	assert.Equal(t, true, m.IsRewardBlock(params.TermDuration*2+params.InterimDuration+1))
-	assert.Equal(t, false, m.IsRewardBlock(params.TermDuration*2+params.InterimDuration+2))
-	assert.Equal(t, true, m.IsRewardBlock(params.TermDuration*3+params.InterimDuration+1))
 }
