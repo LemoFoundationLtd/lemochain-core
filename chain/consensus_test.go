@@ -31,7 +31,7 @@ const (
 // loadDpovp 加载一个Dpovp实例
 func loadDpovp() *Dpovp {
 	ClearData()
-	db := store.NewChainDataBase(store.GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
+	db := store.NewChainDataBase(GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
 	d := NewDpovp(10*1000, db)
 	return d
 }
@@ -282,7 +282,7 @@ func TestDpovp_VerifyHeader01(t *testing.T) {
 
 // TestDpovp_VerifyHeader03 测试slot == 0,slot == 1,slot > 1的情况
 func TestDpovp_VerifyHeader02(t *testing.T) {
-	store.ClearData()
+	ClearData()
 	// 创建5个代理节点
 	err := initDeputyNode(5, 0)
 	assert.NoError(t, err)

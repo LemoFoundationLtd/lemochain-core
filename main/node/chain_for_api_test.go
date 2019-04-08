@@ -10,6 +10,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"github.com/LemoFoundationLtd/lemochain-core/store/protocol"
 	"math/big"
+	"os"
 	"time"
 
 	"github.com/LemoFoundationLtd/lemochain-core/chain"
@@ -17,6 +18,14 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-core/common/flag"
 )
+
+func GetStorePath() string {
+	return "../../testdata/node_db"
+}
+
+func ClearData() {
+	os.RemoveAll(GetStorePath())
+}
 
 type blockInfo struct {
 	hash        common.Hash
@@ -105,7 +114,7 @@ var (
 )
 
 func init() {
-	store.ClearData()
+	ClearData()
 }
 
 // newChain creates chain for test
@@ -120,7 +129,7 @@ func newChain() *chain.BlockChain {
 
 // newDB creates db for test chain module
 func newDB() protocol.ChainDB {
-	db := store.NewChainDataBase(store.GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
+	db := store.NewChainDataBase(GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
 	for i, _ := range defaultBlockInfos {
 		if i > 0 {
 			defaultBlockInfos[i].parentHash = defaultBlocks[i-1].Hash()
