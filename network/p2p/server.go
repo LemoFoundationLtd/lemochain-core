@@ -19,7 +19,7 @@ import (
 
 const (
 	heartbeatInterval = 5 * time.Second
-	frameReadTimeout  = 30 * time.Second
+	frameReadTimeout  = 25 * time.Second
 	frameWriteTimeout = 20 * time.Second
 )
 

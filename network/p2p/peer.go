@@ -47,12 +47,11 @@ type Peer struct {
 	created       mclock.AbsTime
 	writeDeadline time.Duration
 
-	status         int32
-	heartbeatTimer *time.Timer
-	wmu            sync.Mutex
-	newMsgCh       chan *Msg
-	wg             sync.WaitGroup
-	stopCh         chan struct{}
+	status   int32
+	wmu      sync.Mutex
+	newMsgCh chan *Msg
+	wg       sync.WaitGroup
+	stopCh   chan struct{}
 }
 
 // NewPeer
@@ -114,7 +113,6 @@ func (p *Peer) safeClose() {
 // Run  Run peer and block this
 func (p *Peer) Run() (err error) {
 	p.wg.Add(2)
-	p.heartbeatTimer = time.NewTimer(heartbeatInterval)
 	go p.heartbeatLoop()
 	go p.readLoop()
 	// block this and wait for stop
@@ -129,39 +127,12 @@ func (p *Peer) readLoop() {
 		p.wg.Done()
 		log.Debugf("readLoop finished: %s", p.RNodeID().String()[:16])
 	}()
-	var count = 5
 	for {
 		content, err := p.readConn()
 		if err != nil {
-			if err, ok := err.(net.Error); ok {
-				if err.Timeout() || err.Temporary() {
-					count = count - 2
-				} else {
-					count = count - 3
-				}
-			} else if err == ErrUnavailablePackage || err == ErrLengthOverflow {
-				count--
-			} else {
-				log.Debugf("read conn error: %v", err)
-				p.Close()
-				return
-			}
-			if count < 0 {
-				log.Debugf("read conn error: %v", err)
-				p.Close()
-				return
-			}
-			// reset heartbeatTimer
-			p.wmu.Lock()
-			p.heartbeatTimer.Reset(heartbeatInterval)
-			p.wmu.Unlock()
-			continue
-		} else {
-			count = 5
-			// reset heartbeatTimer
-			p.wmu.Lock()
-			p.heartbeatTimer.Reset(heartbeatInterval)
-			p.wmu.Unlock()
+			log.Debugf("read conn err: %v", err)
+			p.Close()
+			return
 		}
 
 		// handle content
@@ -240,10 +211,10 @@ func (p *Peer) handle(content []byte) (err error) {
 	default:
 		select {
 		case <-p.stopCh:
-			log.Info("read'peer has stopped")
+			log.Info(" read'peer has stopped ")
 			return io.EOF
 		case p.newMsgCh <- msg:
-			log.Debug("send msg to 'p.newMsgCh' success")
+			log.Debugf("send msg to 'p.newMsgCh' success, msgCode: %d", msg.Code)
 			return nil
 		}
 	}
@@ -261,10 +232,6 @@ func (p *Peer) WriteMsg(code uint32, msg []byte) (err error) {
 	}
 	p.conn.SetWriteDeadline(time.Now().Add(p.writeDeadline))
 	_, err = p.conn.Write(buf)
-	// reset heartbeatTimer
-	if code != CodeHeartbeat && p.heartbeatTimer != nil {
-		p.heartbeatTimer.Reset(heartbeatInterval)
-	}
 	p.writeDeadline = frameWriteTimeout
 	return err
 }
@@ -293,26 +260,20 @@ func (p *Peer) LAddress() string {
 
 // heartbeatLoop send heartbeat info when after special internal of no data sending
 func (p *Peer) heartbeatLoop() {
+	heartbeat := time.NewTicker(heartbeatInterval)
 	defer func() {
 		p.wg.Done()
 		log.Debugf("heartbeatLoop finished: %s", p.RNodeID().String()[:16])
 	}()
+	defer heartbeat.Stop()
+
 	var count = 5
-	var ok bool
 	for {
 		select {
-		case <-p.heartbeatTimer.C:
-			// check conn already closed
-			select {
-			case _, ok = <-p.stopCh:
-			default:
-				ok = true
-			}
-			if !ok {
-				log.Debugf("peer stopch from heartbeat. nodeID:%s", p.RNodeID().String()[:16])
-				return
-			}
-
+		case <-p.stopCh:
+			log.Debugf("peer stopch from heartbeat. nodeID:%s", p.RNodeID().String()[:16])
+			return
+		case <-heartbeat.C:
 			// send heartbeat data
 			err := p.WriteMsg(CodeHeartbeat, nil)
 			if err != nil {
@@ -333,10 +294,6 @@ func (p *Peer) heartbeatLoop() {
 				p.Close()
 				return
 			}
-			// reset heartbeatTimer
-			p.wmu.Lock()
-			p.heartbeatTimer.Reset(heartbeatInterval)
-			p.wmu.Unlock()
 		}
 
 	}
