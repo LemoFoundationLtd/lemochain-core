@@ -188,10 +188,3 @@ func (m *Manager) Clear() {
 	defer m.lock.Unlock()
 	m.termList = make([]*TermRecord, 0, 1)
 }
-
-// Clear for test
-func (m *Manager) GetTermList() []*TermRecord {
-	m.lock.Lock()
-	defer m.lock.Unlock()
-	return m.termList[:]
-}

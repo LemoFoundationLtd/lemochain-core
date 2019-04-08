@@ -145,15 +145,6 @@ func NewPublicChainAPI(chain *chain.BlockChain) *PublicChainAPI {
 	return &PublicChainAPI{chain}
 }
 
-// //go:generate gencodec -type CandidateListRes --field-override candidateListResMarshaling -out gen_candidate_list_res_json.go
-// type CandidateListRes struct {
-// 	CandidateList []*CandidateInfo `json:"candidateList" gencodec:"required"`
-// 	Total         uint32           `json:"total" gencodec:"required"`
-// }
-// type candidateListResMarshaling struct {
-// 	Total hexutil.Uint32
-// }
-
 // GetDeputyNodeList
 func (c *PublicChainAPI) GetDeputyNodeList() []string {
 	nodes := deputynode.Instance().GetDeputiesByHeight(c.chain.CurrentBlock().Height())
@@ -164,43 +155,6 @@ func (c *PublicChainAPI) GetDeputyNodeList() []string {
 	}
 	return result
 }
-
-// GetAllDeputyNodesList get all deputy nodes list
-func (c *PublicChainAPI) GetAllDeputyNodesList() []*deputynode.TermRecord {
-	return deputynode.Instance().GetTermList()
-}
-
-// // GetCandidateNodeList get all candidate node list information and return total candidate node
-// func (c *PublicChainAPI) GetCandidateList(index, size int) (*CandidateListRes, error) {
-// 	addresses, total, err := c.chain.Db().GetCandidatesPage(index, size)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	candidateList := make([]*CandidateInfo, 0, len(addresses))
-// 	for i := 0; i < len(addresses); i++ {
-// 		candidateAccount := c.chain.AccountManager().GetAccount(addresses[i])
-// 		mapProfile := candidateAccount.GetCandidate()
-// 		if isCandidate, ok := mapProfile[types.CandidateKeyIsCandidate]; !ok || isCandidate == params.NotCandidateNode {
-// 			err = fmt.Errorf("the node of %s is not candidate node", addresses[i].String())
-// 			return nil, err
-// 		}
-//
-// 		candidateInfo := &CandidateInfo{
-// 			Profile: make(map[string]string),
-// 		}
-//
-// 		candidateInfo.Profile = mapProfile
-// 		candidateInfo.Votes = candidateAccount.GetVotes().String()
-// 		candidateInfo.CandidateAddress = addresses[i].String()
-//
-// 		candidateList = append(candidateList, candidateInfo)
-// 	}
-// 	result := &CandidateListRes{
-// 		CandidateList: candidateList,
-// 		Total:         total,
-// 	}
-// 	return result, nil
-// }
 
 // GetCandidateTop30 get top 30 candidate node
 func (c *PublicChainAPI) GetCandidateTop30() []*CandidateInfo {
@@ -312,12 +266,6 @@ func (c *PublicChainAPI) CurrentHeight() uint32 {
 func (c *PublicChainAPI) LatestStableHeight() uint32 {
 	return c.chain.StableBlock().Height()
 }
-
-// // GasPriceAdvice get suggest gas price
-// func (c *PublicChainAPI) GasPriceAdvice() *big.Int {
-// 	// todo
-// 	return big.NewInt(100000000)
-// }
 
 // NodeVersion
 func (n *PublicChainAPI) NodeVersion() string {

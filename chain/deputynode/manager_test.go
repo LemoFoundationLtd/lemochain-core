@@ -46,7 +46,7 @@ func pickNodes(nodeIndexList ...int) DeputyNodes {
 	return result
 }
 
-func TestManager_SaveSnapshot_GetTermList(t *testing.T) {
+func TestManager_SaveSnapshot(t *testing.T) {
 	m := Instance()
 	m.Clear()
 
@@ -54,26 +54,26 @@ func TestManager_SaveSnapshot_GetTermList(t *testing.T) {
 	height := uint32(0)
 	nodes := pickNodes(0, 1)
 	m.SaveSnapshot(height, nodes)
-	assert.Len(t, m.GetTermList(), 1)
-	assert.Equal(t, uint32(0), m.GetTermList()[0].TermIndex)
-	assert.Equal(t, nodes, m.GetTermList()[0].Nodes)
+	assert.Len(t, m.termList, 1)
+	assert.Equal(t, uint32(0), m.termList[0].TermIndex)
+	assert.Equal(t, nodes, m.termList[0].Nodes)
 
 	// save snapshot
 	height = uint32(params.TermDuration * 1)
 	nodes = pickNodes(2)
 	m.SaveSnapshot(height, nodes)
-	assert.Len(t, m.GetTermList(), 2)
-	assert.Equal(t, uint32(0), m.GetTermList()[0].TermIndex)
-	assert.Equal(t, uint32(1), m.GetTermList()[1].TermIndex)
-	assert.Equal(t, nodes, m.GetTermList()[1].Nodes)
+	assert.Len(t, m.termList, 2)
+	assert.Equal(t, uint32(0), m.termList[0].TermIndex)
+	assert.Equal(t, uint32(1), m.termList[1].TermIndex)
+	assert.Equal(t, nodes, m.termList[1].Nodes)
 
 	// save exist node
 	height = uint32(params.TermDuration * 2)
 	nodes = pickNodes(1, 3)
 	m.SaveSnapshot(height, nodes)
-	assert.Len(t, m.GetTermList(), 3)
-	assert.Equal(t, uint32(2), m.GetTermList()[2].TermIndex)
-	assert.Equal(t, nodes, m.GetTermList()[2].Nodes)
+	assert.Len(t, m.termList, 3)
+	assert.Equal(t, uint32(2), m.termList[2].TermIndex)
+	assert.Equal(t, nodes, m.termList[2].Nodes)
 
 	// save nothing
 	height = uint32(params.TermDuration * 3)
@@ -86,14 +86,14 @@ func TestManager_SaveSnapshot_GetTermList(t *testing.T) {
 	height = uint32(params.TermDuration * 2)
 	nodes = pickNodes(4)
 	m.SaveSnapshot(height, nodes)
-	assert.Len(t, m.GetTermList(), 3)
-	assert.Equal(t, nodes, m.GetTermList()[2].Nodes)
+	assert.Len(t, m.termList, 3)
+	assert.Equal(t, nodes, m.termList[2].Nodes)
 
 	// save exist snapshot height then drop the terms after it
 	height = uint32(params.TermDuration * 1)
 	nodes = pickNodes(5)
 	m.SaveSnapshot(height, nodes)
-	assert.Len(t, m.GetTermList(), 2)
+	assert.Len(t, m.termList, 2)
 
 	// save skipped snapshot
 	height = uint32(params.TermDuration * 3)
