@@ -62,7 +62,7 @@ func NewPeer(fd net.Conn) IPeer {
 		created:       mclock.Now(),
 		writeDeadline: frameWriteTimeout,
 		// closed:   false,
-		newMsgCh: make(chan *Msg),
+		newMsgCh: make(chan *Msg, 10),
 		stopCh:   make(chan struct{}),
 	}
 }
@@ -129,28 +129,42 @@ func (p *Peer) readLoop() {
 		p.wg.Done()
 		log.Debugf("readLoop finished: %s", p.RNodeID().String()[:16])
 	}()
-
+	var count = 3
 	for {
-		msg, err := p.readMsg()
+		content, err := p.readConn()
 		if err != nil {
-			log.Debugf("read message error: %v", err)
+			if err == ErrUnavailablePackage || err == ErrLengthOverflow || err.(net.Error).Timeout() {
+				count--
+				if count < 0 {
+					log.Debugf("read conn error: %v", err)
+					p.Close()
+					return
+				}
+				// reset heartbeatTimer
+				p.wmu.Lock()
+				p.heartbeatTimer.Reset(heartbeatInterval)
+				p.wmu.Unlock()
+				continue
+			} else {
+				log.Debugf("read conn error: %v", err)
+				p.Close()
+				return
+			}
+		} else {
+			count = 3
+			// reset heartbeatTimer
+			p.wmu.Lock()
+			p.heartbeatTimer.Reset(heartbeatInterval)
+			p.wmu.Unlock()
+		}
+
+		// handle content
+		err = p.handle(content)
+		if err != nil {
+			log.Debugf("handle conn content err: %v", err)
 			p.Close()
 			return
 		}
-
-		// reset heartbeatTimer
-		p.heartbeatTimer.Reset(heartbeatInterval)
-		if msg.Code == CodeHeartbeat {
-			continue
-		}
-
-		go func() {
-			select {
-			case p.newMsgCh <- msg:
-			case <-p.stopCh:
-			}
-		}()
-
 	}
 }
 
@@ -158,6 +172,7 @@ func (p *Peer) readLoop() {
 func (p *Peer) ReadMsg() (msg *Msg, err error) {
 	select {
 	case <-p.stopCh:
+		log.Debug("readMsg <-p.stopCh")
 		err = io.EOF
 	case msg = <-p.newMsgCh:
 		err = nil
@@ -165,49 +180,68 @@ func (p *Peer) ReadMsg() (msg *Msg, err error) {
 	return msg, err
 }
 
-// readMsg read message from net stream
-func (p *Peer) readMsg() (msg *Msg, err error) {
-	if err = p.conn.SetReadDeadline(time.Now().Add(frameReadTimeout)); err != nil {
-		return msg, err
+// readMsg read message from conn
+func (p *Peer) readConn() ([]byte, error) {
+	// set read outTime
+	if err := p.conn.SetReadDeadline(time.Now().Add(frameReadTimeout)); err != nil {
+		return nil, err
 	}
 	// read PackagePrefix and package length
 	headBuf := make([]byte, len(PackagePrefix)+PackageLength) // 6 bytes
 	if _, err := io.ReadFull(p.conn, headBuf); err != nil {
-		return msg, err
+		return nil, err
 	}
 	// compare PackagePrefix
 	if bytes.Compare(PackagePrefix[:], headBuf[:2]) != 0 {
 		log.Debug("readMsg: recv invalid stream data")
-		return msg, ErrUnavailablePackage
+		return nil, ErrUnavailablePackage
 	}
 	// package length
 	length := binary.BigEndian.Uint32(headBuf[2:])
 	if length == 0 {
-		return msg, ErrUnavailablePackage
+		return nil, ErrUnavailablePackage
 	}
 	if length > params.MaxPackageLength {
-		return msg, ErrLengthOverflow
+		return nil, ErrLengthOverflow
 	}
 	// read actual encoded content
 	content := make([]byte, length)
 	if _, err := io.ReadFull(p.conn, content); err != nil {
-		return msg, err
+		return nil, err
 	}
+	return content, nil
+}
+
+// handle
+func (p *Peer) handle(content []byte) (err error) {
 	// unpack frame
 	code, buf, err := p.unpackFrame(content)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	msg = &Msg{
+	msg := &Msg{
 		Code:       code,
 		Content:    buf,
 		ReceivedAt: time.Now(),
 	}
 	// check code
 	if msg.CheckCode() == false {
-		return msg, ErrUnavailablePackage
+		return ErrUnavailablePackage
 	}
-	return msg, nil
+	switch {
+	case msg.Code == CodeHeartbeat:
+		return nil
+	default:
+		select {
+		case <-p.stopCh:
+			log.Info("read'peer has stopped")
+			return io.EOF
+		case p.newMsgCh <- msg:
+			log.Debug("send msg to 'p.newMsgCh' success")
+			return nil
+		}
+	}
+	return nil
 }
 
 // WriteMsg send message to net stream
@@ -288,7 +322,9 @@ func (p *Peer) heartbeatLoop() {
 				return
 			}
 			// reset heartbeatTimer
+			p.wmu.Lock()
 			p.heartbeatTimer.Reset(heartbeatInterval)
+			p.wmu.Unlock()
 		}
 
 	}
