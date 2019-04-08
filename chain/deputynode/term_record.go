@@ -57,10 +57,10 @@ func NewTermRecord(snapshotHeight uint32, nodes DeputyNodes) *TermRecord {
 	return &TermRecord{TermIndex: snapshotHeight / params.TermDuration, Nodes: nodes}
 }
 
-// GetDeputies return deputy nodes. They are first TotalCount items in t.Nodes
-func (t *TermRecord) GetDeputies() DeputyNodes {
-	if len(t.Nodes) > TotalCount {
-		return t.Nodes[:TotalCount]
+// GetDeputies return deputy nodes. They are top items in t.Nodes
+func (t *TermRecord) GetDeputies(count int) DeputyNodes {
+	if len(t.Nodes) > count {
+		return t.Nodes[:count]
 	} else {
 		return t.Nodes[:]
 	}

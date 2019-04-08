@@ -55,17 +55,17 @@ func TestTermRecord_GetDeputies(t *testing.T) {
 	// empty nodes
 	nodes := GenerateDeputies(0)
 	term := &TermRecord{TermIndex: 0, Nodes: nodes}
-	assert.Equal(t, nodes, term.GetDeputies())
+	assert.Equal(t, nodes, term.GetDeputies(5))
 
 	// less than deputy nodes
 	nodes = GenerateDeputies(3)
 	term = &TermRecord{TermIndex: 0, Nodes: nodes}
-	assert.Equal(t, nodes, term.GetDeputies())
+	assert.Equal(t, nodes, term.GetDeputies(5))
 
 	// more than deputy nodes
 	nodes = GenerateDeputies(25)
 	term = &TermRecord{TermIndex: 0, Nodes: nodes}
-	assert.Equal(t, nodes[:TotalCount], term.GetDeputies())
+	assert.Equal(t, nodes[:5], term.GetDeputies(5))
 }
 
 func TestTermRecord_GetTotalVotes(t *testing.T) {

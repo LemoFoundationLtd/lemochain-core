@@ -133,7 +133,8 @@ func ClearData() {
 // newChain creates chain for test
 func newChain() *BlockChain {
 	db := newDB()
-	bc, err := NewBlockChain(chainID, NewDpovp(10*1000, db), db, flag.CmdFlags{})
+	dm := deputynode.NewManager(5)
+	bc, err := NewBlockChain(chainID, NewDpovp(10*1000, dm, db), dm, db, flag.CmdFlags{})
 	if err != nil {
 		panic(err)
 	}
@@ -257,10 +258,10 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 	}
 
 	var deputyRoot []byte
-	if len(info.deputyNodes) > 0 {
-		deputyRoot = types.DeriveDeputyRootSha(info.deputyNodes).Bytes()
-		deputynode.Instance().SaveSnapshot(params.TermDuration, info.deputyNodes)
-	}
+	// if len(info.deputyNodes) > 0 {
+	// 	deputyRoot = types.DeriveDeputyRootSha(info.deputyNodes).Bytes()
+	// 	deputynode.NewManager().SaveSnapshot(params.TermDuration, info.deputyNodes)
+	// }
 	if bytes.Compare(deputyRoot, info.deputyRoot) != 0 {
 		if len(info.deputyNodes) > 0 || len(info.deputyRoot) != 0 {
 			fmt.Printf("%d deputyRoot error. except: %s, got: %s\n", info.height, common.ToHex(info.deputyRoot), common.ToHex(deputyRoot))

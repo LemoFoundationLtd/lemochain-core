@@ -8,11 +8,6 @@ import (
 	"sync"
 )
 
-const (
-	// max deputy count
-	TotalCount = 5
-)
-
 var (
 	ErrEmptyDeputies         = errors.New("can't save empty deputy nodes")
 	ErrInvalidDeputyRank     = errors.New("deputy nodes should be sorted by rank and start from 0")
@@ -27,16 +22,18 @@ var (
 
 // Manager 代理节点管理器
 type Manager struct {
+	DeputyCount int // Max deputy count. Not include candidate nodes
+
 	termList []*TermRecord
 	lock     sync.Mutex
 }
 
-var managerInstance = &Manager{
-	termList: make([]*TermRecord, 0),
-}
-
-func Instance() *Manager {
-	return managerInstance
+// NewManager creates a new Manager. It is used to maintain term record list
+func NewManager(deputyCount int) *Manager {
+	return &Manager{
+		DeputyCount: deputyCount,
+		termList:    make([]*TermRecord, 0),
+	}
 }
 
 // SaveSnapshot add deputy nodes record by snapshot block data
@@ -103,7 +100,7 @@ func (m *Manager) GetDeputiesByHeight(height uint32) DeputyNodes {
 		// term = m.termList[len(m.termList)-1]
 		// m.lock.Unlock()
 	}
-	return term.GetDeputies()
+	return term.GetDeputies(m.DeputyCount)
 }
 
 // GetDeputiesCount 获取共识节点数量
@@ -180,11 +177,4 @@ func (m *Manager) IsSelfDeputyNode(height uint32) bool {
 // IsNodeDeputy
 func (m *Manager) IsNodeDeputy(height uint32, nodeID []byte) bool {
 	return m.GetDeputyByNodeID(height, nodeID) != nil
-}
-
-// Clear for test
-func (m *Manager) Clear() {
-	m.lock.Lock()
-	defer m.lock.Unlock()
-	m.termList = make([]*TermRecord, 0, 1)
 }

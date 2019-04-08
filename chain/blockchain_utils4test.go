@@ -29,7 +29,7 @@ func NewBlockChainForTest() (*BlockChain, chan *types.Block, error) {
 
 	var engine EngineTestForChain
 	ch := make(chan *types.Block)
-	blockChain, err := NewBlockChain(chainID, &engine, db, nil)
+	blockChain, err := NewBlockChain(chainID, &engine, deputynode.NewManager(5), db, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -37,6 +37,6 @@ func NewBlockChainForTest() (*BlockChain, chan *types.Block, error) {
 	// blockChain.BroadcastStableBlock = broadcastStableBlock
 	// blockChain.BroadcastConfirmInfo = broadcastConfirmInfo
 
-	deputynode.Instance().SaveSnapshot(0, DefaultDeputyNodes)
+	blockChain.dm.SaveSnapshot(0, DefaultDeputyNodes)
 	return blockChain, ch, nil
 }

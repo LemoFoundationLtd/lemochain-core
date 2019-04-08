@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
-	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/miner"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
@@ -147,7 +146,7 @@ func NewPublicChainAPI(chain *chain.BlockChain) *PublicChainAPI {
 
 // GetDeputyNodeList
 func (c *PublicChainAPI) GetDeputyNodeList() []string {
-	nodes := deputynode.Instance().GetDeputiesByHeight(c.chain.CurrentBlock().Height())
+	nodes := c.chain.DeputyManager().GetDeputiesByHeight(c.chain.CurrentBlock().Height())
 
 	var result []string
 	for _, n := range nodes {

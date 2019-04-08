@@ -47,8 +47,7 @@ func pickNodes(nodeIndexList ...int) DeputyNodes {
 }
 
 func TestManager_SaveSnapshot(t *testing.T) {
-	m := Instance()
-	m.Clear()
+	m := NewManager(5)
 
 	// save genesis
 	height := uint32(0)
@@ -104,8 +103,7 @@ func TestManager_SaveSnapshot(t *testing.T) {
 }
 
 func TestManager_GetTermByHeight(t *testing.T) {
-	m := Instance()
-	m.Clear()
+	m := NewManager(5)
 
 	// no any terms
 	_, err := m.GetTermByHeight(0)
@@ -154,8 +152,7 @@ func TestManager_GetTermByHeight(t *testing.T) {
 }
 
 func TestManager_GetDeputyByAddress(t *testing.T) {
-	m := Instance()
-	m.Clear()
+	m := NewManager(5)
 
 	nodes := pickNodes(0, 1, 2)
 	m.SaveSnapshot(0, nodes)
@@ -168,8 +165,7 @@ func TestManager_GetDeputyByAddress(t *testing.T) {
 }
 
 func TestManager_GetDeputyByNodeID(t *testing.T) {
-	m := Instance()
-	m.Clear()
+	m := NewManager(5)
 
 	nodes := pickNodes(0, 1, 2)
 	m.SaveSnapshot(0, nodes)
@@ -184,8 +180,7 @@ func TestManager_GetDeputyByNodeID(t *testing.T) {
 
 // test special cases
 func TestManager_GetSlot(t *testing.T) {
-	m := Instance()
-	m.Clear()
+	m := NewManager(5)
 
 	nodes0 := pickNodes(0, 1, 2)
 	m.SaveSnapshot(0, nodes0)
@@ -237,8 +232,7 @@ func TestManager_GetSlot(t *testing.T) {
 
 // test normal cases
 func TestManager_GetSlot2(t *testing.T) {
-	m := Instance()
-	m.Clear()
+	m := NewManager(5)
 
 	nodes0 := pickNodes(0, 1, 2)
 	m.SaveSnapshot(0, nodes0)

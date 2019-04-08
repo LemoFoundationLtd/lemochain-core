@@ -32,7 +32,8 @@ func TestNewTxProcessor(t *testing.T) {
 
 	flags := flag.CmdFlags{}
 	flags.Set(common.Debug, "1")
-	chain, _ = NewBlockChain(chainID, NewDpovp(10*1000, chain.db), chain.db, flags)
+	dm := deputynode.NewManager(5)
+	chain, _ = NewBlockChain(chainID, NewDpovp(10*1000, dm, chain.db), dm, chain.db, flags)
 	p = NewTxProcessor(chain)
 }
 
@@ -1252,7 +1253,7 @@ func TestPrecomplieContract(t *testing.T) {
 	Block07, _ := newNextBlock(p, Block06, txs02, true)
 	Block08, _ := newNextBlock(p, Block07, nil, true)
 	// set next deputyNodeList
-	deputynode.Instance().SaveSnapshot(9, DefaultDeputyNodes)
+	bc.DeputyManager().SaveSnapshot(9, DefaultDeputyNodes)
 
 	Block09, _ := newNextBlock(p, Block08, nil, true)
 	assert.NotEmpty(t, Block09)

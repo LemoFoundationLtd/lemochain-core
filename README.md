@@ -47,6 +47,7 @@ It defines initial deputy node list and some running configuration about this no
 ```json
 {
 	"chainID": "1203",
+	"deputyCount": "17",
 	"sleepTime": "3000",
 	"timeout": "10000",
 	"dbUri": "root:123456@tcp(127.0.0.1:3306)/lemochain?charset=utf8mb4",
@@ -56,7 +57,8 @@ It defines initial deputy node list and some running configuration about this no
 }
 ```
 - `chainID` The ID of LemoChain
-- `sleepTime` Wait seconds to generation block for fear that there is no transactins in block
+- `deputyCount` The max consensus node count
+- `sleepTime` Wait seconds to generation block for fear that there is no transactions in block
 - `timeout` The maximum limit of block generation for every nodes
 - `dbUri` The connection string of database. It is like `[USER_NAME]:[PASSWORD]@tcp([IP]:[PORT])/[DB_NAME]?charset=utf8mb4`
 - `dbDriver` The type of database driver

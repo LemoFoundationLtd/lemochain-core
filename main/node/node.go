@@ -121,14 +121,14 @@ func getGenesis(db protocol.ChainDB) *types.Block {
 
 func (n *Node) setMinerAddress() {
 	nextHeight := n.chain.CurrentBlock().Height() + 1
-	deputyNode := deputynode.Instance().GetDeputyByNodeID(nextHeight, deputynode.GetSelfNodeID())
+	deputyNode := n.chain.DeputyManager().GetDeputyByNodeID(nextHeight, deputynode.GetSelfNodeID())
 	if deputyNode != nil {
 		n.miner.SetMinerAddress(deputyNode.MinerAddress)
 	}
 }
 
 // initDeputyNodes init deputy nodes information
-func initDeputyNodes(db protocol.ChainDB) {
+func initDeputyNodes(dm *deputynode.Manager, db protocol.ChainDB) {
 	for snapshotHeight := uint32(0); ; snapshotHeight += params.TermDuration {
 		block, err := db.GetBlockByHeight(snapshotHeight)
 		if err != nil {
@@ -143,7 +143,7 @@ func initDeputyNodes(db protocol.ChainDB) {
 			panic(ErrNoDeputyInBlock)
 		}
 
-		deputynode.Instance().SaveSnapshot(snapshotHeight, block.DeputyNodes)
+		dm.SaveSnapshot(snapshotHeight, block.DeputyNodes)
 	}
 }
 
@@ -153,10 +153,11 @@ func New(flags flag.CmdFlags) *Node {
 	// read genesis block
 	genesisBlock := getGenesis(db)
 	// read all deputy nodes from snapshot block
-	initDeputyNodes(db)
+	dm := deputynode.NewManager(int(configFromFile.DeputyCount))
+	initDeputyNodes(dm, db)
 	// new dpovp consensus engine
-	engine := chain.NewDpovp(int64(configFromFile.Timeout), db)
-	blockChain, err := chain.NewBlockChain(uint16(configFromFile.ChainID), engine, db, flags)
+	engine := chain.NewDpovp(int64(configFromFile.Timeout), dm, db)
+	blockChain, err := chain.NewBlockChain(uint16(configFromFile.ChainID), engine, dm, db, flags)
 	if err != nil {
 		panic("new block chain failed!!!")
 	}
@@ -169,7 +170,7 @@ func New(flags flag.CmdFlags) *Node {
 	selfNodeID := p2p.NodeID{}
 	copy(selfNodeID[:], deputynode.GetSelfNodeID())
 	// protocol manager
-	pm := network.NewProtocolManager(uint16(configFromFile.ChainID), selfNodeID, blockChain, txPool, discover, int(configFromFile.ConnectionLimit), params.VersionUint())
+	pm := network.NewProtocolManager(uint16(configFromFile.ChainID), selfNodeID, blockChain, dm, txPool, discover, int(configFromFile.ConnectionLimit), params.VersionUint())
 	// p2p server
 	server := p2p.NewServer(cfg.P2P, discover)
 	n := &Node{

@@ -29,12 +29,14 @@ type Engine interface {
 type Dpovp struct {
 	timeoutTime int64
 	db          protocol.ChainDB
+	dm          *deputynode.Manager
 }
 
-func NewDpovp(timeout int64, db protocol.ChainDB) *Dpovp {
+func NewDpovp(timeout int64, dm *deputynode.Manager, db protocol.ChainDB) *Dpovp {
 	dpovp := &Dpovp{
 		timeoutTime: timeout,
 		db:          db,
+		dm:          dm,
 	}
 	return dpovp
 }
@@ -52,7 +54,7 @@ func verifyHeaderTime(block *types.Block) error {
 }
 
 // verifyHeaderSignData verify the block signature data
-func verifyHeaderSignData(block *types.Block) error {
+func verifyHeaderSignData(dm *deputynode.Manager, block *types.Block) error {
 	header := block.Header
 	hash := block.Hash()
 	pubKey, err := crypto.Ecrecover(hash[:], header.SignData)
@@ -60,9 +62,9 @@ func verifyHeaderSignData(block *types.Block) error {
 		log.Errorf("verifyHeaderSignData: illegal signData. %s. height:%d", err, block.Height())
 		return ErrVerifyHeaderFailed
 	}
-	node := deputynode.Instance().GetDeputyByAddress(header.Height, header.MinerAddress)
+	node := dm.GetDeputyByAddress(header.Height, header.MinerAddress)
 	if node == nil {
-		nodes := deputynode.Instance().GetDeputiesByHeight(block.Height())
+		nodes := dm.GetDeputiesByHeight(block.Height())
 		log.Errorf("verifyHeaderSignData: can't get deputy node, height: %d, miner: %s, deputy nodes: %s", header.Height, header.MinerAddress.String(), nodes.String())
 		return ErrVerifyHeaderFailed
 	}
@@ -88,7 +90,7 @@ func (d *Dpovp) VerifyDeputyRoot(block *types.Block) error {
 
 // VerifyHeader verify block header
 func (d *Dpovp) VerifyHeader(block *types.Block) error {
-	nodeCount := deputynode.Instance().GetDeputiesCount(block.Height()) // The total number of nodes
+	nodeCount := d.dm.GetDeputiesCount(block.Height()) // The total number of nodes
 	// There's only one out block node
 	if nodeCount == 1 {
 		return nil
@@ -98,7 +100,7 @@ func (d *Dpovp) VerifyHeader(block *types.Block) error {
 		return err
 	}
 	// VerifyAndFill the block signature data
-	if err := verifyHeaderSignData(block); err != nil {
+	if err := verifyHeaderSignData(d.dm, block); err != nil {
 		return err
 	}
 	// verify deputy node root when height is 100W*N
@@ -123,14 +125,14 @@ func (d *Dpovp) VerifyHeader(block *types.Block) error {
 	}
 	var slot uint32
 	if (header.Height > params.InterimDuration+1) && (header.Height-params.InterimDuration-1)%params.TermDuration == 0 {
-		deputyNode := deputynode.Instance().GetDeputyByAddress(header.Height, block.MinerAddress())
+		deputyNode := d.dm.GetDeputyByAddress(header.Height, block.MinerAddress())
 		if deputyNode == nil {
 			return ErrVerifyHeaderFailed
 		}
 		slot = deputyNode.Rank + 1
 		log.Debugf("rank: %d", deputyNode.Rank)
 	} else {
-		slot, _ = deputynode.Instance().GetMinerDistance(header.Height, parent.Header.MinerAddress, header.MinerAddress)
+		slot, _ = d.dm.GetMinerDistance(header.Height, parent.Header.MinerAddress, header.MinerAddress)
 	}
 
 	// The time interval between the current block and the parent block. unit：ms
@@ -186,7 +188,7 @@ func (d *Dpovp) Finalize(height uint32, am *account.Manager) error {
 			log.Warnf("load rewards failed: %v", err)
 			return err
 		}
-		lastTermRecord, err := deputynode.Instance().GetTermByHeight(height - 1)
+		lastTermRecord, err := d.dm.GetTermByHeight(height - 1)
 		if err != nil {
 			log.Warnf("load deputy nodes failed: %v", err)
 			return err
