@@ -233,14 +233,14 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 		vmErr = vmEnv.ReplenishAssetTx(senderAddr, recipientAddr, tx.Data())
 	case params.ModifyAssetTx:
 		vmErr = vmEnv.ModifyAssetProfileTx(senderAddr, tx.Data())
-	case params.TradingAssetTx:
+	case params.TransferAssetTx:
 		tradingAsset := &types.TradingAsset{}
 		err = json.Unmarshal(tx.Data(), tradingAsset)
 		if err != nil {
 			log.Errorf("unmarshal trading asset data err: %s", err)
 			return 0, err
 		}
-		_, restGas, vmErr = vmEnv.TradingAssetTx(sender, recipientAddr, restGas, tradingAsset.AssetId, tradingAsset.Value, tradingAsset.Input, p.chain.db)
+		_, restGas, vmErr = vmEnv.TransferAssetTx(sender, recipientAddr, restGas, tradingAsset.AssetId, tradingAsset.Value, tradingAsset.Input, p.chain.db)
 	default:
 		log.Errorf("The type of transaction is not defined. txType = %d\n", tx.Type())
 	}
@@ -432,8 +432,8 @@ func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *comm
 		tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, params.ReplenishAssetTx, p.chain.chainID, uint64(time.Now().Unix()+30*60), "", "")
 	case params.ModifyAssetTx:
 		tx = types.NoReceiverTransaction(big.NewInt(0), gasLimit, gasPrice, data, params.ModifyAssetTx, p.chain.chainID, uint64(time.Now().Unix()+30*60), "", "")
-	case params.TradingAssetTx:
-		tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, params.TradingAssetTx, p.chain.chainID, uint64(time.Now().Unix()+30*60), "", "")
+	case params.TransferAssetTx:
+		tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, params.TransferAssetTx, p.chain.chainID, uint64(time.Now().Unix()+30*60), "", "")
 	default:
 		err = errors.New("tx type error")
 		return nil, 0, err
@@ -501,7 +501,7 @@ func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *comm
 		sender = accM.GetAccount(caller)
 		sender.SetBalance(params.RegisterCandidateNodeFees)
 		restGas, err = Evm.RegisterOrUpdateToCandidate(sender.GetAddress(), params.FeeReceiveAddress, profile, restGas, sender.GetBalance())
-	case params.CreateAssetTx, params.IssueAssetTx, params.ReplenishAssetTx, params.ModifyAssetTx, params.TradingAssetTx:
+	case params.CreateAssetTx, params.IssueAssetTx, params.ReplenishAssetTx, params.ModifyAssetTx, params.TransferAssetTx:
 
 	}
 

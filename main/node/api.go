@@ -573,7 +573,7 @@ func (t *PublicTxAPI) TradingAsset(prv string, to common.Address, assetCode, ass
 	if err != nil {
 		return common.Hash{}, err
 	}
-	tx := types.NewTransaction(to, amount, uint64(500000), big.NewInt(1), data, params.TradingAssetTx, t.node.chainID, uint64(time.Now().Unix()+30*60), "", "trading asset tx")
+	tx := types.NewTransaction(to, amount, uint64(500000), big.NewInt(1), data, params.TransferAssetTx, t.node.chainID, uint64(time.Now().Unix()+30*60), "", "trading asset tx")
 	private, _ := crypto.HexToECDSA(prv)
 	signTx, err := types.MakeSigner().SignTx(tx, private)
 	if err != nil {
