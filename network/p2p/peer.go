@@ -129,29 +129,35 @@ func (p *Peer) readLoop() {
 		p.wg.Done()
 		log.Debugf("readLoop finished: %s", p.RNodeID().String()[:16])
 	}()
-	var count = 3
+	var count = 5
 	for {
 		content, err := p.readConn()
 		if err != nil {
-			if err == ErrUnavailablePackage || err == ErrLengthOverflow || err.(net.Error).Timeout() {
-				count--
-				if count < 0 {
-					log.Debugf("read conn error: %v", err)
-					p.Close()
-					return
+			if err, ok := err.(net.Error); ok {
+				if err.Timeout() || err.Temporary() {
+					count = count - 2
+				} else {
+					count = count - 3
 				}
-				// reset heartbeatTimer
-				p.wmu.Lock()
-				p.heartbeatTimer.Reset(heartbeatInterval)
-				p.wmu.Unlock()
-				continue
+			} else if err == ErrUnavailablePackage || err == ErrLengthOverflow {
+				count--
 			} else {
 				log.Debugf("read conn error: %v", err)
 				p.Close()
 				return
 			}
+			if count < 0 {
+				log.Debugf("read conn error: %v", err)
+				p.Close()
+				return
+			}
+			// reset heartbeatTimer
+			p.wmu.Lock()
+			p.heartbeatTimer.Reset(heartbeatInterval)
+			p.wmu.Unlock()
+			continue
 		} else {
-			count = 3
+			count = 5
 			// reset heartbeatTimer
 			p.wmu.Lock()
 			p.heartbeatTimer.Reset(heartbeatInterval)
@@ -309,10 +315,16 @@ func (p *Peer) heartbeatLoop() {
 
 			// send heartbeat data
 			err := p.WriteMsg(CodeHeartbeat, nil)
-			if err != nil && err.(net.Error).Timeout() {
-				count--
-			} else if err != nil && !err.(net.Error).Timeout() {
-				count = count - 2
+			if err != nil {
+				if err, ok := err.(net.Error); ok {
+					if err.Timeout() {
+						count--
+					} else {
+						count = count - 2
+					}
+				} else {
+					count = count - 2
+				}
 			} else {
 				count = 5
 			}
