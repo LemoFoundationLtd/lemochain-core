@@ -262,10 +262,10 @@ func (p *Peer) LAddress() string {
 func (p *Peer) heartbeatLoop() {
 	heartbeat := time.NewTicker(heartbeatInterval)
 	defer func() {
+		heartbeat.Stop()
 		p.wg.Done()
 		log.Debugf("heartbeatLoop finished: %s", p.RNodeID().String()[:16])
 	}()
-	defer heartbeat.Stop()
 
 	var count = 5
 	for {
@@ -277,15 +277,7 @@ func (p *Peer) heartbeatLoop() {
 			// send heartbeat data
 			err := p.WriteMsg(CodeHeartbeat, nil)
 			if err != nil {
-				if err, ok := err.(net.Error); ok {
-					if err.Timeout() {
-						count--
-					} else {
-						count = count - 2
-					}
-				} else {
-					count = count - 2
-				}
+				count--
 			} else {
 				count = 5
 			}
