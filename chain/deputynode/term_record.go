@@ -35,8 +35,8 @@ func NewTermRecord(snapshotHeight uint32, nodes DeputyNodes) *TermRecord {
 	}
 	// check nodes to make sure it is not empty
 	if nodes == nil || len(nodes) == 0 {
-		log.Error("can't save empty deputy nodes", "height", snapshotHeight)
-		panic(ErrEmptyDeputies)
+		log.Error("there is no deputy nodes in snapshot block", "height", snapshotHeight)
+		panic(ErrNoDeputyInBlock)
 	}
 	for i, node := range nodes {
 		// check nodes' rank

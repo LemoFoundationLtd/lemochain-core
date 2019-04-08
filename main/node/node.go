@@ -29,10 +29,6 @@ import (
 	"sync/atomic"
 )
 
-var (
-	ErrNoDeputyInBlock = errors.New("There is no deputy nodes in snapshot block")
-)
-
 type Node struct {
 	config  *Config
 	chainID uint16
@@ -137,10 +133,6 @@ func initDeputyNodes(dm *deputynode.Manager, db protocol.ChainDB) {
 			}
 			log.Errorf("Load snapshot block error: %v", err)
 			panic(err)
-		}
-		if block.DeputyNodes == nil || len(block.DeputyNodes) == 0 {
-			log.Errorf("initDeputyNodes: there is no deputy nodes in snapshot block %d", snapshotHeight)
-			panic(ErrNoDeputyInBlock)
 		}
 
 		dm.SaveSnapshot(snapshotHeight, block.DeputyNodes)

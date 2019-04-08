@@ -21,7 +21,7 @@ func TestNewTermRecord(t *testing.T) {
 
 	// no deputy
 	nodes = pickNodes()
-	assert.PanicsWithValue(t, ErrEmptyDeputies, func() {
+	assert.PanicsWithValue(t, ErrNoDeputyInBlock, func() {
 		NewTermRecord(params.TermDuration, nodes)
 	})
 

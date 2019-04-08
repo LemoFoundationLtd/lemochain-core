@@ -77,7 +77,7 @@ func TestManager_SaveSnapshot(t *testing.T) {
 	// save nothing
 	height = uint32(params.TermDuration * 3)
 	nodes = pickNodes()
-	assert.PanicsWithValue(t, ErrEmptyDeputies, func() {
+	assert.PanicsWithValue(t, ErrNoDeputyInBlock, func() {
 		m.SaveSnapshot(height, nodes)
 	})
 

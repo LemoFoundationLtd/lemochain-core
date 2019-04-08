@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	ErrEmptyDeputies         = errors.New("can't save empty deputy nodes")
+	ErrNoDeputyInBlock       = errors.New("there is no deputy nodes in snapshot block")
 	ErrInvalidDeputyRank     = errors.New("deputy nodes should be sorted by rank and start from 0")
 	ErrInvalidDeputyVotes    = errors.New("there is a conflict between deputy node' rank and votes")
 	ErrMissingTerm           = errors.New("some term is missing")
