@@ -328,7 +328,7 @@ func TestTxProcessor_ApplyTxs2(t *testing.T) {
 }
 
 func TestApplyTxsTimeoutTime(t *testing.T) {
-	store.ClearData()
+	ClearData()
 	bc := newChain()
 	defer bc.db.Close()
 	p := NewTxProcessor(bc)
@@ -357,7 +357,7 @@ func TestApplyTxsTimeoutTime(t *testing.T) {
 
 // TestTxProcessor_candidateTX 打包特殊交易测试
 func TestTxProcessor_candidateTX(t *testing.T) {
-	store.ClearData()
+	ClearData()
 	bc := newChain()
 	defer bc.db.Close()
 	p := NewTxProcessor(bc)
@@ -427,7 +427,7 @@ func createCandidateData(isCandidata, nodeID, host, port, minerAdd string) []byt
 
 //  Test_voteAndRegisteTx 测试投票交易和注册候选节点交易
 func Test_voteAndRegisteTx(t *testing.T) {
-	store.ClearData()
+	ClearData()
 	chain := newChain()
 	defer chain.db.Close()
 	p := NewTxProcessor(chain)
@@ -618,7 +618,7 @@ func TestReimbursement_transaction(t *testing.T) {
 		amountReceiver = common.HexToAddress("0x1234")
 		TxV01          = types.NewReimbursementTransaction(amountReceiver, gasPayerAddr, params.RegisterCandidateNodeFees, []byte{}, params.OrdinaryTx, chainID, uint64(time.Now().Unix()+300), "", "")
 	)
-	store.ClearData()
+	ClearData()
 	chain := newChain()
 	defer chain.db.Close()
 	p := NewTxProcessor(chain)
@@ -730,7 +730,7 @@ func newNextBlock(p *TxProcessor, parentBlock *types.Block, txs types.Transactio
 func TestCreateAssetTx(t *testing.T) {
 	tx01, err := newCreateAssetTx(testPrivate, types.Asset01, true, true)
 	assert.NoError(t, err)
-	store.ClearData()
+	ClearData()
 	chain := newChain()
 	defer chain.db.Close()
 	p := NewTxProcessor(chain)
@@ -781,7 +781,7 @@ func newCreateAssetTx(private *ecdsa.PrivateKey, category uint32, isReplenishabl
 
 // TestIssueAssetTest issue asset tx test
 func TestIssueAssetTest(t *testing.T) {
-	store.ClearData()
+	ClearData()
 	bc := newChain()
 	defer bc.db.Close()
 	p := NewTxProcessor(bc)
@@ -878,7 +878,7 @@ func newIssueAssetTx(prv *ecdsa.PrivateKey, receiver common.Address, assetCode c
 
 // relenishAsset tx test
 func TestReplenishAssetTx(t *testing.T) {
-	store.ClearData()
+	ClearData()
 	bc := newChain()
 	defer bc.db.Close()
 	p := NewTxProcessor(bc)
@@ -972,7 +972,7 @@ func newReplenishAssetTx(private *ecdsa.PrivateKey, receiver common.Address, ass
 
 // TestModifyAssetProfile modify asset profile map
 func TestModifyAssetProfile(t *testing.T) {
-	store.ClearData()
+	ClearData()
 	bc := newChain()
 	defer bc.db.Close()
 	p := NewTxProcessor(bc)
@@ -1061,7 +1061,7 @@ func TestTradingAssetTx(t *testing.T) {
 	addr02 := crypto.PubkeyToAddress(private02.PublicKey)
 	addr03 := crypto.PubkeyToAddress(private03.PublicKey)
 
-	store.ClearData()
+	ClearData()
 	bc := newChain()
 	defer bc.db.Close()
 	p := NewTxProcessor(bc)
@@ -1191,7 +1191,7 @@ func TestMaxAssetProfile(t *testing.T) {
 func TestPrecomplieContract(t *testing.T) {
 	params.TermDuration = 4    // 换届间隔
 	params.InterimDuration = 1 // 过渡期
-	store.ClearData()
+	ClearData()
 	bc := newChain()
 	defer bc.db.Close()
 	p := NewTxProcessor(bc)
