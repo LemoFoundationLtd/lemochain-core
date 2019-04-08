@@ -78,7 +78,7 @@ func verifyHeaderSignData(dm *deputynode.Manager, block *types.Block) error {
 // VerifyDeputyRoot verify deputy root
 func (d *Dpovp) VerifyDeputyRoot(block *types.Block) error {
 	if block.Height()%params.TermDuration == 0 && block.Height() > 0 {
-		hash := types.DeriveDeputyRootSha(block.DeputyNodes)
+		hash := block.DeputyNodes.MerkleRootSha()
 		root := block.Header.DeputyRoot
 		if bytes.Compare(hash[:], root) != 0 {
 			log.Errorf("verify block failed. deputyRoot not match. header's root: %s, check root: %s", common.ToHex(root), hash.String())
@@ -165,8 +165,8 @@ func (d *Dpovp) Seal(header *types.Header, txProduct *account.TxsProduct, confir
 	log.Errorf("%d changlog.00000000002: %v", header.Height, txProduct.ChangeLogs)
 	newHeader := header.Copy()
 	newHeader.VersionRoot = txProduct.VersionRoot
-	newHeader.LogRoot = types.DeriveChangeLogsSha(txProduct.ChangeLogs)
-	newHeader.TxRoot = types.DeriveTxsSha(txProduct.Txs)
+	newHeader.LogRoot = txProduct.ChangeLogs.MerkleRootSha()
+	newHeader.TxRoot = txProduct.Txs.MerkleRootSha()
 	newHeader.GasUsed = txProduct.GasUsed
 
 	block := types.NewBlock(newHeader, txProduct.Txs, txProduct.ChangeLogs)

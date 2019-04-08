@@ -568,15 +568,15 @@ func (bc *BlockChain) VerifyAndFill(block *types.Block) (*types.Block, error) {
 func (bc *BlockChain) verifyBody(block *types.Block) error {
 	header := block.Header
 	// verify txRoot
-	if hash := types.DeriveTxsSha(block.Txs); hash != header.TxRoot {
+	if hash := block.Txs.MerkleRootSha(); hash != header.TxRoot {
 		log.Errorf("verify block failed. hash:%s height:%d", block.Hash(), block.Height())
 		return ErrVerifyBlockFailed
 	}
 	// verify deputyRoot
 	if block.Height()%params.TermDuration == 0 {
-		bRoot := types.DeriveDeputyRootSha(block.DeputyNodes)
+		bRoot := block.DeputyNodes.MerkleRootSha()
 		nodes := bc.GetNewDeputyNodes()
-		selfRoot := types.DeriveDeputyRootSha(nodes)
+		selfRoot := nodes.MerkleRootSha()
 		if bytes.Compare(bRoot[:], selfRoot[:]) != 0 {
 			log.Errorf("verify block failed. deputyNodes not match.block's nodes: %v, self nodes: %v", block.DeputyNodes, nodes)
 			return ErrVerifyBlockFailed

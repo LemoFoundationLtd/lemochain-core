@@ -477,7 +477,7 @@ func (m *Miner) sealHead() (*types.Header, deputynode.DeputyNodes) {
 	var nodes deputynode.DeputyNodes = nil
 	if height%params.TermDuration == 0 {
 		nodes = m.chain.GetNewDeputyNodes()
-		root := types.DeriveDeputyRootSha(nodes)
+		root := nodes.MerkleRootSha()
 		h.DeputyRoot = root[:]
 		m.chain.DeputyManager().SaveSnapshot(height, nodes)
 		log.Debugf("add new term deputy nodes: %s", nodes.String())

@@ -165,14 +165,14 @@ func (g *Genesis) ToBlock(am *account.Manager) (*types.Block, error) {
 	header := &types.Header{
 		ParentHash:   common.Hash{},
 		MinerAddress: g.Founder,
-		TxRoot:       types.DeriveTxsSha(nil),
+		TxRoot:       (types.Transactions{}).MerkleRootSha(),
 		Height:       0,
 		GasLimit:     g.GasLimit,
 		Extra:        g.ExtraData,
 		Time:         g.Time,
-		DeputyRoot:   types.DeriveDeputyRootSha(g.DeputyNodes).Bytes(),
+		DeputyRoot:   g.DeputyNodes.MerkleRootSha().Bytes(),
 		VersionRoot:  am.GetVersionRoot(),
-		LogRoot:      types.DeriveChangeLogsSha(logs),
+		LogRoot:      logs.MerkleRootSha(),
 	}
 	block := types.NewBlock(header, nil, logs)
 	block.SetDeputyNodes(g.DeputyNodes)

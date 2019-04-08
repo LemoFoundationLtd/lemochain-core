@@ -1376,7 +1376,7 @@ func TestBlockChain_VerifyBlockBalanceNotEnough(t *testing.T) {
 		makeTx(tmp, accounts[0].Address, params.OrdinaryTx, big.NewInt(30000)),
 		makeTx(tmp, accounts[1].Address, params.OrdinaryTx, big.NewInt(40000)),
 	}
-	block.Header.TxRoot = types.DeriveTxsSha(block.Txs)
+	block.Header.TxRoot = block.Txs.MerkleRootSha()
 	_, err = blockChain.VerifyAndFill(block)
 	assert.Equal(t, err, ErrInvalidTxInBlock)
 }
@@ -1404,7 +1404,7 @@ func TestBlockChain_VerifyBlockBalanceNotSign(t *testing.T) {
 	block.Txs = []*types.Transaction{
 		types.NewTransaction(accounts[0].Address, common.Big2, 30000, common.Big2, []byte{}, 0, 200, 1538210398, "", ""),
 	}
-	block.Header.TxRoot = types.DeriveTxsSha(block.Txs)
+	block.Header.TxRoot = block.Txs.MerkleRootSha()
 	_, err = blockChain.VerifyAndFill(block)
 	assert.Equal(t, err, ErrInvalidTxInBlock)
 }

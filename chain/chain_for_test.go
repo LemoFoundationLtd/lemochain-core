@@ -29,7 +29,7 @@ type blockInfo struct {
 	versionRoot common.Hash
 	txRoot      common.Hash
 	logRoot     common.Hash
-	txList      []*types.Transaction
+	txList      types.Transactions
 	gasLimit    uint64
 	time        uint32
 	deputyRoot  []byte
@@ -167,7 +167,7 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 	// sign transactions
 	var err error
 	var gasUsed uint64 = 0
-	txRoot := types.DeriveTxsSha(info.txList)
+	txRoot := info.txList.MerkleRootSha()
 	if txRoot != info.txRoot {
 		if info.txRoot != (common.Hash{}) {
 			fmt.Printf("%d txRoot hash error. except: %s, got: %s\n", info.height, info.txRoot.Hex(), txRoot.Hex())
@@ -231,7 +231,7 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 	}
 	changeLogs := manager.GetChangeLogs()
 	fmt.Printf("%d changeLogs %v\n", info.height, changeLogs)
-	logRoot := types.DeriveChangeLogsSha(changeLogs)
+	logRoot := changeLogs.MerkleRootSha()
 	if logRoot != info.logRoot {
 		if info.logRoot != (common.Hash{}) {
 			fmt.Printf("%d change logs root error. except: %s, got: %s\n", info.height, info.logRoot.Hex(), logRoot.Hex())

@@ -8,6 +8,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto/sha3"
 	"github.com/LemoFoundationLtd/lemochain-core/common/hexutil"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
+	"github.com/LemoFoundationLtd/lemochain-core/common/merkle"
 	"github.com/LemoFoundationLtd/lemochain-core/common/rlp"
 	"math/big"
 	"net"
@@ -104,4 +105,13 @@ func (nodes DeputyNodes) String() string {
 		return string(buf)
 	}
 	return ""
+}
+
+// MerkleRootSha compute the root hash of deputy nodes merkle trie
+func (nodes DeputyNodes) MerkleRootSha() common.Hash {
+	leaves := make([]common.Hash, len(nodes))
+	for i, item := range nodes {
+		leaves[i] = item.Hash()
+	}
+	return merkle.New(leaves).Root()
 }

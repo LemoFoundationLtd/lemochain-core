@@ -59,8 +59,8 @@ func (sd SignData) String() string {
 // Block
 type Block struct {
 	Header      *Header                `json:"header"        gencodec:"required"`
-	Txs         []*Transaction         `json:"transactions"  gencodec:"required"`
-	ChangeLogs  []*ChangeLog           `json:"changeLogs"    gencodec:"required"`
+	Txs         Transactions           `json:"transactions"  gencodec:"required"`
+	ChangeLogs  ChangeLogSlice         `json:"changeLogs"    gencodec:"required"`
 	Confirms    []SignData             `json:"confirms"`
 	DeputyNodes deputynode.DeputyNodes `json:"deputyNodes"`
 }
