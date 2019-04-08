@@ -1052,8 +1052,8 @@ func newModifyAssetTx(private *ecdsa.PrivateKey, assetCode common.Hash) (*types.
 	return types.MakeSigner().SignTx(tx, private)
 }
 
-// TestTradingAssetTx
-func TestTradingAssetTx(t *testing.T) {
+// TestTransferAssetTx
+func TestTransferAssetTx(t *testing.T) {
 	private01, _ := crypto.HexToECDSA("08f4896eea38dd271b50baf7f3a711cef4ada76066dbe71b13601e5e2dc8e27f")
 	private02, _ := crypto.HexToECDSA("1a7c5f98cf5519e638eae69932d0260570b7c9913b8abe5550f177fbf29c11c9")
 	private03, _ := crypto.HexToECDSA("702aff687d34228aa696d32cf702844c4cbe619411250e864ea45826d8df6751")
@@ -1106,11 +1106,11 @@ func TestTradingAssetTx(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, big.NewInt(110), equity01.Equity, equity02.Equity, equity03.Equity)
 	// 执行交易资产的交易的区块
-	trading01Tx, err := newTradingAssetTx(private01, addr02, assetId01, big.NewInt(100), nil)
+	trading01Tx, err := newTransferAssetTx(private01, addr02, assetId01, big.NewInt(100), nil)
 	assert.NoError(t, err)
-	trading02Tx, err := newTradingAssetTx(private02, addr03, assetId02, big.NewInt(10000000), nil)
+	trading02Tx, err := newTransferAssetTx(private02, addr03, assetId02, big.NewInt(10000000), nil)
 	assert.NoError(t, err)
-	trading03Tx, err := newTradingAssetTx(private03, addr01, assetId03, big.NewInt(100), nil)
+	trading03Tx, err := newTransferAssetTx(private03, addr01, assetId03, big.NewInt(100), nil)
 	assert.NoError(t, err)
 	tTxs := types.Transactions{trading01Tx, trading02Tx, trading03Tx}
 	block03, _ := newNextBlock(p, block02, tTxs, true)
@@ -1141,7 +1141,7 @@ func TestTradingAssetTx(t *testing.T) {
 }
 
 // new 交易资产
-func newTradingAssetTx(private *ecdsa.PrivateKey, to common.Address, assetId common.Hash, amount *big.Int, input []byte) (*types.Transaction, error) {
+func newTransferAssetTx(private *ecdsa.PrivateKey, to common.Address, assetId common.Hash, amount *big.Int, input []byte) (*types.Transaction, error) {
 	trading := &types.TradingAsset{
 		AssetId: assetId,
 		Value:   amount,
@@ -1151,7 +1151,7 @@ func newTradingAssetTx(private *ecdsa.PrivateKey, to common.Address, assetId com
 	if err != nil {
 		return nil, err
 	}
-	tx := types.NewTransaction(to, amount, uint64(500000), big.NewInt(1), data, params.TradingAssetTx, chainID, uint64(time.Now().Unix()+30*60), "", "trading asset tx")
+	tx := types.NewTransaction(to, amount, uint64(500000), big.NewInt(1), data, params.TransferAssetTx, chainID, uint64(time.Now().Unix()+30*60), "", "trading asset tx")
 	return types.MakeSigner().SignTx(tx, private)
 }
 
