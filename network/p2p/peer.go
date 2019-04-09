@@ -89,24 +89,24 @@ func (p *Peer) DoHandshake(prv *ecdsa.PrivateKey, nodeID *NodeID) (err error) {
 
 // Close close peer
 func (p *Peer) Close() {
+	p.wmu.Lock()
 	p.safeClose()
+	p.wmu.Unlock()
 }
 
 // safeClose
 func (p *Peer) safeClose() {
-	needClose := false
 	select {
-	case _, needClose = <-p.stopCh:
+	case <-p.stopCh:
+		return
 	default:
-		needClose = true
 	}
-	if needClose {
-		close(p.stopCh)
-		subscribe.Send(subscribe.SrvDeletePeer, p)
-		log.Info("close peer connection")
-		if err := p.conn.Close(); err != nil {
-			log.Infof("close peer connection failed: %v", err)
-		}
+
+	close(p.stopCh)
+	subscribe.Send(subscribe.SrvDeletePeer, p)
+	log.Info("close peer connection")
+	if err := p.conn.Close(); err != nil {
+		log.Infof("close peer connection failed: %v", err)
 	}
 }
 
