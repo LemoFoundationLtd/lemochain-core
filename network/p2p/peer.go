@@ -8,6 +8,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/common/mclock"
+	"github.com/LemoFoundationLtd/lemochain-core/common/subscribe"
 	"io"
 	"net"
 	"sync"
@@ -46,12 +47,11 @@ type Peer struct {
 	created       mclock.AbsTime
 	writeDeadline time.Duration
 
-	status         int32
-	heartbeatTimer *time.Timer
-	wmu            sync.Mutex
-	newMsgCh       chan *Msg
-	wg             sync.WaitGroup
-	stopCh         chan struct{}
+	status   int32
+	wmu      sync.Mutex
+	newMsgCh chan *Msg
+	wg       sync.WaitGroup
+	stopCh   chan struct{}
 }
 
 // NewPeer
@@ -61,7 +61,7 @@ func NewPeer(fd net.Conn) IPeer {
 		created:       mclock.Now(),
 		writeDeadline: frameWriteTimeout,
 		// closed:   false,
-		newMsgCh: make(chan *Msg),
+		newMsgCh: make(chan *Msg, 10),
 		stopCh:   make(chan struct{}),
 	}
 }
@@ -102,6 +102,7 @@ func (p *Peer) safeClose() {
 	}
 	if needClose {
 		close(p.stopCh)
+		subscribe.Send(subscribe.SrvDeletePeer, p)
 		log.Info("close peer connection")
 		if err := p.conn.Close(); err != nil {
 			log.Infof("close peer connection failed: %v", err)
@@ -112,7 +113,6 @@ func (p *Peer) safeClose() {
 // Run  Run peer and block this
 func (p *Peer) Run() (err error) {
 	p.wg.Add(2)
-	p.heartbeatTimer = time.NewTimer(heartbeatInterval)
 	go p.heartbeatLoop()
 	go p.readLoop()
 	// block this and wait for stop
@@ -127,20 +127,21 @@ func (p *Peer) readLoop() {
 		p.wg.Done()
 		log.Debugf("readLoop finished: %s", p.RNodeID().String()[:16])
 	}()
-
 	for {
-		msg, err := p.readMsg()
+		content, err := p.readConn()
 		if err != nil {
-			log.Debugf("read message error: %v", err)
+			log.Debugf("read conn err: %v", err)
 			p.Close()
 			return
 		}
-		// reset heartbeatTimer
-		p.heartbeatTimer.Reset(heartbeatInterval)
-		if msg.Code == CodeHeartbeat {
-			continue
+
+		// handle content
+		err = p.handle(content)
+		if err != nil {
+			log.Debugf("handle conn content err: %v", err)
+			p.Close()
+			return
 		}
-		p.newMsgCh <- msg
 	}
 }
 
@@ -148,6 +149,7 @@ func (p *Peer) readLoop() {
 func (p *Peer) ReadMsg() (msg *Msg, err error) {
 	select {
 	case <-p.stopCh:
+		log.Debug("readMsg <-p.stopCh")
 		err = io.EOF
 	case msg = <-p.newMsgCh:
 		err = nil
@@ -155,49 +157,68 @@ func (p *Peer) ReadMsg() (msg *Msg, err error) {
 	return msg, err
 }
 
-// readMsg read message from net stream
-func (p *Peer) readMsg() (msg *Msg, err error) {
-	if err = p.conn.SetReadDeadline(time.Now().Add(frameReadTimeout)); err != nil {
-		return msg, err
+// readMsg read message from conn
+func (p *Peer) readConn() ([]byte, error) {
+	// set read outTime
+	if err := p.conn.SetReadDeadline(time.Now().Add(frameReadTimeout)); err != nil {
+		return nil, err
 	}
 	// read PackagePrefix and package length
 	headBuf := make([]byte, len(PackagePrefix)+PackageLength) // 6 bytes
 	if _, err := io.ReadFull(p.conn, headBuf); err != nil {
-		return msg, err
+		return nil, err
 	}
 	// compare PackagePrefix
 	if bytes.Compare(PackagePrefix[:], headBuf[:2]) != 0 {
 		log.Debug("readMsg: recv invalid stream data")
-		return msg, ErrUnavailablePackage
+		return nil, ErrUnavailablePackage
 	}
 	// package length
 	length := binary.BigEndian.Uint32(headBuf[2:])
 	if length == 0 {
-		return msg, ErrUnavailablePackage
+		return nil, ErrUnavailablePackage
 	}
 	if length > params.MaxPackageLength {
-		return msg, ErrLengthOverflow
+		return nil, ErrLengthOverflow
 	}
 	// read actual encoded content
 	content := make([]byte, length)
 	if _, err := io.ReadFull(p.conn, content); err != nil {
-		return msg, err
+		return nil, err
 	}
+	return content, nil
+}
+
+// handle
+func (p *Peer) handle(content []byte) (err error) {
 	// unpack frame
 	code, buf, err := p.unpackFrame(content)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	msg = &Msg{
+	msg := &Msg{
 		Code:       code,
 		Content:    buf,
 		ReceivedAt: time.Now(),
 	}
 	// check code
 	if msg.CheckCode() == false {
-		return msg, ErrUnavailablePackage
+		return ErrUnavailablePackage
 	}
-	return msg, nil
+	switch {
+	case msg.Code == CodeHeartbeat:
+		return nil
+	default:
+		select {
+		case <-p.stopCh:
+			log.Info(" read'peer has stopped ")
+			return io.EOF
+		case p.newMsgCh <- msg:
+			log.Debugf("send msg to 'p.newMsgCh' success, msgCode: %d", msg.Code)
+			return nil
+		}
+	}
+	return nil
 }
 
 // WriteMsg send message to net stream
@@ -211,10 +232,6 @@ func (p *Peer) WriteMsg(code uint32, msg []byte) (err error) {
 	}
 	p.conn.SetWriteDeadline(time.Now().Add(p.writeDeadline))
 	_, err = p.conn.Write(buf)
-	// reset heartbeatTimer
-	if code != CodeHeartbeat && p.heartbeatTimer != nil {
-		p.heartbeatTimer.Reset(heartbeatInterval)
-	}
 	p.writeDeadline = frameWriteTimeout
 	return err
 }
@@ -243,34 +260,35 @@ func (p *Peer) LAddress() string {
 
 // heartbeatLoop send heartbeat info when after special internal of no data sending
 func (p *Peer) heartbeatLoop() {
+	heartbeat := time.NewTicker(heartbeatInterval)
 	defer func() {
+		heartbeat.Stop()
 		p.wg.Done()
 		log.Debugf("heartbeatLoop finished: %s", p.RNodeID().String()[:16])
 	}()
-	var count = 5
+
+	var count = 3
 	for {
 		select {
-		case <-p.heartbeatTimer.C:
-
-			// send heartbeat data
-			err := p.WriteMsg(CodeHeartbeat, nil)
-			if err != nil && err.(net.Error).Timeout() {
-				count--
-			} else if err != nil && !err.(net.Error).Timeout() {
-				count = count - 2
-			} else {
-				count = 5
-			}
-			if count <= 0 {
-				log.Debugf("heartbeatLoop error: nodeID: %s, : %v", p.RNodeID().String()[:16], err)
-				return
-			}
-			// reset heartbeatTimer
-			p.heartbeatTimer.Reset(heartbeatInterval)
-
 		case <-p.stopCh:
 			log.Debugf("peer stopch from heartbeat. nodeID:%s", p.RNodeID().String()[:16])
 			return
+		case <-heartbeat.C:
+			for i := 1; ; i++ {
+				// send heartbeat data
+				err := p.WriteMsg(CodeHeartbeat, nil)
+				if err != nil {
+					if i <= count {
+						continue
+					} else {
+						log.Debugf("heartbeatLoop error: nodeID: %s, : %v", p.RNodeID().String()[:16], err)
+						p.Close()
+						return
+					}
+				} else {
+					break
+				}
+			}
 		}
 	}
 }
