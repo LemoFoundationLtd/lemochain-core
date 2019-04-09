@@ -19,6 +19,7 @@ const (
 
 var (
 	ErrChType       = errors.New("error of channel type")
+	ErrDataType     = errors.New("the type of data can not match with channel")
 	ErrNotExistName = errors.New("not exist special subscription")
 )
 
@@ -49,15 +50,20 @@ func (r *CentralRouteSub) sub(name string, ch interface{}) error {
 	chValue := reflect.ValueOf(ch)
 	chType := chValue.Type()
 	if chType.Kind() != reflect.Chan || chType.ChanDir()&reflect.RecvDir == 0 {
+		log.Error("ch must be a writable channel")
 		return ErrChType
 	}
+
 	if item, ok := r.names[name]; ok {
 		if item.eType != chType {
+			log.Errorf("it's not allowed to setup different type of channel for name: %d", name)
 			return ErrChType
 		}
 	} else {
 		r.names[name] = &CaseListItem{caseList: caseList{}, eType: chType.Elem(), lock: make(chan struct{}, 1)}
 	}
+
+	// case ch <- data:
 	cas := reflect.SelectCase{Dir: reflect.SelectSend, Chan: chValue}
 	r.names[name].caseList = append(r.names[name].caseList, cas)
 	return nil
@@ -79,7 +85,7 @@ func (r *CentralRouteSub) send(name string, value interface{}) error {
 	vValue := reflect.ValueOf(value)
 	vType := vValue.Type()
 	if vType != item.eType && !vType.Implements(item.eType) {
-		return ErrChType
+		return ErrDataType
 	}
 
 	for i := 0; i < len(cases); i++ {
