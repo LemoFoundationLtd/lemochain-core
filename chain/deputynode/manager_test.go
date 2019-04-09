@@ -38,7 +38,7 @@ func GenerateDeputies(num int) DeputyNodes {
 func pickNodes(nodeIndexList ...int) DeputyNodes {
 	var result []*DeputyNode
 	for i, nodeIndex := range nodeIndexList {
-		newDeputy := testDeputies[nodeIndex].Clone()
+		newDeputy := testDeputies[nodeIndex].Copy()
 		// reset rank
 		newDeputy.Rank = uint32(i)
 		result = append(result, newDeputy)

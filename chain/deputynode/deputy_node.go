@@ -85,7 +85,7 @@ func (d *DeputyNode) NodeAddrString() string {
 	return fmt.Sprintf("%x@%s:%d", d.NodeID, d.IP, d.Port)
 }
 
-func (d *DeputyNode) Clone() *DeputyNode {
+func (d *DeputyNode) Copy() *DeputyNode {
 	result := &DeputyNode{
 		MinerAddress: d.MinerAddress,
 		NodeID:       d.NodeID,
