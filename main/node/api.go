@@ -605,12 +605,38 @@ func VerifyTx(tx *types.Transaction) error {
 	case params.VoteTx:
 	case params.RegisterTx:
 		if len(tx.Data()) == 0 {
-			registerTxErr := errors.New("The data of contract creation transaction can't be null ")
+			registerTxErr := errors.New("The data of register candidate node transaction can't be null ")
 
 			return registerTxErr
 		}
+	case params.CreateAssetTx:
+		if len(tx.Data()) == 0 {
+			createAssetTxErr := errors.New("The data of create asset transaction can't be null ")
+			return createAssetTxErr
+		}
+
+	case params.IssueAssetTx:
+		if len(tx.Data()) == 0 {
+			issueAssetTxErr := errors.New("The data of issue asset transaction can't be null ")
+			return issueAssetTxErr
+		}
+	case params.ReplenishAssetTx:
+		if len(tx.Data()) == 0 {
+			replenishAssetTxErr := errors.New("The data of replenish asset transaction can't be null ")
+			return replenishAssetTxErr
+		}
+	case params.ModifyAssetTx:
+		if len(tx.Data()) == 0 {
+			modifyAssetTxErr := errors.New("The data of modify asset transaction can't be null ")
+			return modifyAssetTxErr
+		}
+	case params.TransferAssetTx:
+		if len(tx.Data()) == 0 {
+			transferAssetTxErr := errors.New("The data of transfer asset transaction can't be null ")
+			return transferAssetTxErr
+		}
 	default:
-		txTypeErr := fmt.Errorf("transaction type error. txType = %v", tx.Type())
+		txTypeErr := fmt.Errorf("the transaction type does not exit . type = %v", tx.Type())
 		return txTypeErr
 	}
 	return nil
