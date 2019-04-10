@@ -261,49 +261,37 @@ func (c *PublicChainAPI) Genesis() *types.Block {
 	return c.chain.Genesis()
 }
 
-// CurrentBlock get the current latest block
-func (c *PublicChainAPI) CurrentBlock(withBody bool) *types.Block {
-	if withBody {
-		return c.chain.CurrentBlock()
-	} else {
-		currentBlock := c.chain.CurrentBlock()
-		if currentBlock == nil {
-			return nil
-		}
+// CurrentBlock get the latest block. It may not be confirmed by enough deputy nodes
+func (c *PublicChainAPI) UnstableBlock(withBody bool) *types.Block {
+	block := c.chain.CurrentBlock()
+	if !withBody && block != nil {
 		// copy only header
-		onlyHeaderBlock := &types.Block{
-			Header: currentBlock.Header,
+		block = &types.Block{
+			Header: block.Header,
 		}
-		return onlyHeaderBlock
 	}
+	return block
 }
 
-// LatestStableBlock get the latest currently agreed blocks
-func (c *PublicChainAPI) LatestStableBlock(withBody bool) *types.Block {
-	if withBody {
-		return c.chain.StableBlock()
-	} else {
-		stableBlock := c.chain.StableBlock()
-		if stableBlock == nil {
-			return nil
-		}
+// CurrentBlock get the latest block.
+func (c *PublicChainAPI) CurrentBlock(withBody bool) *types.Block {
+	block := c.chain.StableBlock()
+	if !withBody && block != nil {
 		// copy only header
-		onlyHeaderBlock := &types.Block{
-			Header: stableBlock.Header,
+		block = &types.Block{
+			Header: block.Header,
 		}
-		return onlyHeaderBlock
 	}
+	return block
+}
+
+// UnstableHeight
+func (c *PublicChainAPI) UnstableHeight() uint32 {
+	return c.chain.CurrentBlock().Height()
 }
 
 // CurrentHeight
 func (c *PublicChainAPI) CurrentHeight() uint32 {
-	currentBlock := c.chain.CurrentBlock()
-	height := currentBlock.Height()
-	return height
-}
-
-// LatestStableHeight
-func (c *PublicChainAPI) LatestStableHeight() uint32 {
 	return c.chain.StableBlock().Height()
 }
 

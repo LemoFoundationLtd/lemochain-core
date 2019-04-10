@@ -22,10 +22,10 @@ lemo._createAPI('chain', 'getAllDeputyNodesList', 'chain_getAllDeputyNodesList')
 function getNewestUnstableBlock() {
     var parseBlock = this.parser.parseBlock;
     var chainID = this.chainID;
-    return this.requester.send('chain_currentBlock', [true])
+    return this.requester.send('chain_unstableBlock', [true])
         .then(function (block) {
             return parseBlock(chainID, block, true)
         })
 }
 lemo._createAPI('', 'getNewestUnstableBlock', getNewestUnstableBlock);
-lemo._createAPI('', 'getNewestUnstableHeight', 'chain_currentHeight');
+lemo._createAPI('', 'getNewestUnstableHeight', 'chain_unstableHeight');
