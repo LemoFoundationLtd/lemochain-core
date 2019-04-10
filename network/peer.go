@@ -223,7 +223,7 @@ func (p *peer) SendBlocks(blocks types.Blocks) int {
 		return -1
 	}
 	if err := p.conn.WriteMsg(BlocksMsg, buf); err != nil {
-		log.Warnf("SendBlocks to peer: %s failed. disconnect. %v", p.NodeID().String()[:16], err)
+		// log.Warnf("SendBlocks to peer: %s failed. disconnect. %v", p.NodeID().String()[:16], err)
 		p.conn.Close()
 		return -2
 	}

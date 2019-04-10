@@ -242,7 +242,7 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 		}
 		_, restGas, vmErr = vmEnv.TransferAssetTx(sender, recipientAddr, restGas, tradingAsset.AssetId, tradingAsset.Value, tradingAsset.Input, p.chain.db)
 	default:
-		log.Errorf("The type of transaction is not defined. txType = %d\n", tx.Type())
+		log.Errorf("The type of transaction is not defined. type = %d\n", tx.Type())
 	}
 	// Candidate node votes change
 	if !contractCreation {

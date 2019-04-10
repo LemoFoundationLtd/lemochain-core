@@ -262,6 +262,7 @@ func (srv *Server) HandleConn(fd net.Conn, nodeID *NodeID) error {
 	go func() {
 		select {
 		case srv.addPeerCh <- peer:
+			log.Info("srv.addPeerCh <- peer from dial")
 		case <-srv.quitCh:
 			log.Debug("server had quit")
 		}
