@@ -719,7 +719,7 @@ func (bc *BlockChain) Db() db.ChainDB {
 
 // GetNewDeputyNodes get next epoch deputy nodes for snapshot block
 func (bc *BlockChain) GetNewDeputyNodes() deputynode.DeputyNodes {
-	result := make(deputynode.DeputyNodes, 0, 17)
+	result := make(deputynode.DeputyNodes, 0, bc.dm.DeputyCount)
 	list := bc.db.GetCandidatesTop(bc.CurrentBlock().Hash())
 	if len(list) > bc.dm.DeputyCount {
 		list = list[:bc.dm.DeputyCount]
