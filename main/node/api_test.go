@@ -8,7 +8,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
-	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
@@ -16,7 +15,7 @@ import (
 
 // TestAccountAPI_api account api test
 func TestAccountAPI_api(t *testing.T) {
-	store.ClearData()
+	ClearData()
 	db := newDB()
 	defer db.Close()
 	am := account.NewManager(common.Hash{}, db)
@@ -56,7 +55,7 @@ func TestAccountAPI_api(t *testing.T) {
 
 // TestChainAPI_api chain api test
 func TestChainAPI_api(t *testing.T) {
-	store.ClearData()
+	ClearData()
 	bc := newChain()
 	defer bc.Db().Close()
 	c := NewPublicChainAPI(bc)
@@ -122,7 +121,7 @@ func TestChainAPI_api(t *testing.T) {
 
 // TestTxAPI_api send tx api test
 func TestTxAPI_api(t *testing.T) {
-	store.ClearData()
+	ClearData()
 	testTx := types.NewTransaction(common.HexToAddress("0x1"), common.Big1, 100, common.Big2, []byte{12}, 0, chainID, uint64(time.Now().Unix()+60*30), "aa", string("send a Tx"))
 	tx := signTransaction(testTx, testPrivate)
 	// signTx := signTransaction(testTx, testPrivate)
@@ -168,7 +167,7 @@ func TestTxAPI_api(t *testing.T) {
 
 // TestNewPublicTxAPI_EstimateGas
 func TestNewPublicTxAPI_EstimateGas(t *testing.T) {
-	store.ClearData()
+	ClearData()
 	Chain := newChain()
 	defer Chain.Db().Close()
 	node := &Node{

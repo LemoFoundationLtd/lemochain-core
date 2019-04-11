@@ -85,7 +85,7 @@ var (
 )
 
 func GetStorePath() string {
-	return "../testdata/account"
+	return "../../testdata/account"
 }
 
 func ClearData() {

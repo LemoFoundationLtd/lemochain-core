@@ -24,7 +24,7 @@ const (
 
 // locationTrims are trimmed for display to avoid unwieldy log lines.
 var locationTrims = []string{
-	"github.com/LemoFoundationLtd/lemochain-core/",
+	"github.com/LemoFoundationLtd/",
 }
 
 // locationLength is the maxmimum path length encountered, which all logs are

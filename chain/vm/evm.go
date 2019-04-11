@@ -538,8 +538,8 @@ func (evm *EVM) ModifyAssetProfileTx(sender common.Address, data []byte) error {
 	return nil
 }
 
-// TradingAssetTx
-func (evm *EVM) TradingAssetTx(caller ContractRef, addr common.Address, gas uint64, assetId common.Hash, amount *big.Int, input []byte, chainDB protocol.ChainDB) (ret []byte, leftOverGas uint64, err error) {
+// TransferAssetTx
+func (evm *EVM) TransferAssetTx(caller ContractRef, addr common.Address, gas uint64, assetId common.Hash, amount *big.Int, input []byte, chainDB protocol.ChainDB) (ret []byte, leftOverGas uint64, err error) {
 	if evm.vmConfig.NoRecursion && evm.depth > 0 {
 		return nil, gas, nil
 	}

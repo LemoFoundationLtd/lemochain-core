@@ -9,6 +9,6 @@ const (
 	IssueAssetTx     uint16 = 4 // 发行资产
 	ReplenishAssetTx uint16 = 5 // 增发资产交易
 	ModifyAssetTx    uint16 = 6 // 修改资产交易
-	TradingAssetTx   uint16 = 7 // 交易资产
+	TransferAssetTx  uint16 = 7 // 交易资产
 
 )

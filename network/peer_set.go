@@ -46,6 +46,8 @@ func (ps *peerSet) UnRegister(p *peer) {
 	if peer, ok := ps.peers[*p.NodeID()]; ok {
 		peer.conn.Close()
 		delete(ps.peers, *p.NodeID())
+	} else {
+		return
 	}
 	if p.conn.NeedReConnect() {
 		if err := ps.discover.SetReconnect(p.NodeID()); err != nil {

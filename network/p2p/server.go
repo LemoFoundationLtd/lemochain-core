@@ -19,7 +19,7 @@ import (
 
 const (
 	heartbeatInterval = 5 * time.Second
-	frameReadTimeout  = 30 * time.Second
+	frameReadTimeout  = 25 * time.Second
 	frameWriteTimeout = 20 * time.Second
 )
 
@@ -71,7 +71,16 @@ func NewServer(config Config, discover *DiscoverManager) *Server {
 		quitCh:         make(chan struct{}),
 	}
 	srv.dialManager = NewDialManager(srv.HandleConn, srv.discover)
+	srv.sub()
 	return srv
+}
+
+// sub subscribe channel
+func (srv *Server) sub() {
+	subscribe.Sub(subscribe.SrvDeletePeer, srv.delPeerCh)
+}
+func (srv *Server) unSub() {
+	subscribe.UnSub(subscribe.SrvDeletePeer, srv.delPeerCh)
 }
 
 // Start
@@ -107,13 +116,15 @@ func (srv *Server) Stop() {
 		log.Debug("server not start, but exec stop command")
 		return
 	}
+	srv.unSub()
 	// close listener
 	if err := srv.listener.Close(); err != nil {
 		log.Infof("stop listener failed: %v", err)
 	}
 	close(srv.quitCh)
 	// close connected nodes
-	for _, p := range srv.connectedNodes {
+	for k, p := range srv.connectedNodes {
+		delete(srv.connectedNodes, k)
 		p.Close()
 	}
 	// stop discover
@@ -150,7 +161,7 @@ func (srv *Server) run() {
 			srv.peersMux.Unlock()
 			// Run peer
 			go srv.runPeer(p)
-			// notice
+			// notice protocol_manager add new peer
 			subscribe.Send(subscribe.AddNewPeer, p)
 		case p := <-srv.delPeerCh:
 			log.Infof("Remove peer event. nodeID: %s", p.RNodeID().String()[:16])
@@ -158,7 +169,7 @@ func (srv *Server) run() {
 			srv.peersMux.Lock()
 			delete(srv.connectedNodes, *p.RNodeID())
 			srv.peersMux.Unlock()
-			// notice
+			// notice to protocol_manager delete peer
 			subscribe.Send(subscribe.DeletePeer, p)
 		case <-srv.quitCh:
 			log.Debug("receive server stop signal")
@@ -247,7 +258,16 @@ func (srv *Server) HandleConn(fd net.Conn, nodeID *NodeID) error {
 		log.Debugf("First handshake as client ok: %s. id: %s", peer.RAddress(), common.ToHex(peer.RNodeID()[:8]))
 	}
 	// notice other goroutine
-	srv.addPeerCh <- peer
+	// srv.addPeerCh <- peer
+	go func() {
+		select {
+		case srv.addPeerCh <- peer:
+			log.Info("srv.addPeerCh <- peer from dial")
+		case <-srv.quitCh:
+			log.Debug("server had quit")
+		}
+	}()
+
 	return nil
 }
 
@@ -256,11 +276,12 @@ func (srv *Server) runPeer(p IPeer) {
 	log.Debugf("peer(nodeID: %s) start running", common.ToHex(p.RNodeID()[:8]))
 	if err := p.Run(); err != nil { // block this
 		log.Debugf("runPeer error: %v", err)
+		srv.delPeerCh <- p
 	}
 
 	// peer has stopped
 	if atomic.LoadInt32(&srv.running) == 1 {
-		srv.delPeerCh <- p
+		p.Close()
 	}
 	log.Debugf("peer Run finished: %s", common.ToHex(p.RNodeID()[:8]))
 }

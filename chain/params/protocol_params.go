@@ -61,12 +61,11 @@ const (
 var (
 	TermDuration    uint32 = 1000000 // 每届间隔
 	InterimDuration uint32 = 1000    // 过渡期
-	// oneLEMO                          = big.NewInt(1000000000000000000)             // 1 LEMO
 	// RegisterCandidateNodeFees        = new(big.Int).Mul(big.NewInt(1000), oneLEMO) // Register Candidate node fees = 1000LEMO
-	RegisterCandidateNodeFees, _ = new(big.Int).SetString("1000000000000000000000", 10)
-	FeeReceiveAddress, _         = common.StringToAddress("0x1001") // 设置接收注册费用1000LEMO的地址
-	IsCandidateNode              = "true"
-	NotCandidateNode             = "false"
+	RegisterCandidateNodeFees = common.Lemo2Mo("1000")
+	FeeReceiveAddress, _      = common.StringToAddress("0x1001") // 设置接收注册费用1000LEMO的地址
+	IsCandidateNode           = "true"
+	NotCandidateNode          = "false"
 
 	MaxPackageLength uint32 = 100 * 1024 * 1024 // 100M
 

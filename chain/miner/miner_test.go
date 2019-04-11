@@ -15,9 +15,18 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/store/protocol"
 	"github.com/stretchr/testify/assert"
 	"math/big"
+	"os"
 	"testing"
 	"time"
 )
+
+func GetStorePath() string {
+	return "../../testdata/miner"
+}
+
+func ClearData() {
+	os.RemoveAll(GetStorePath())
+}
 
 type NodePair struct {
 	privateKey  string
@@ -238,7 +247,7 @@ func (engine *EngineTestForMiner) Seal(header *types.Header, txProduct *account.
 
 func newBlockChain() (*chain.BlockChain, chan *types.Block, error) {
 	chainID := uint16(99)
-	db := store.NewChainDataBase(store.GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
+	db := store.NewChainDataBase(GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
 	genesis := chain.DefaultGenesisBlock()
 	chain.SetupGenesisBlock(db, genesis)
 
@@ -260,7 +269,7 @@ func setSelfNodeKey(key string) {
 }
 
 func newMiner(key string) (*Miner, error) {
-	store.ClearData()
+	ClearData()
 	setSelfNodeKey(key)
 
 	blockChain, _, err := newBlockChain()
