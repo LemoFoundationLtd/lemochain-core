@@ -6115,6 +6115,18 @@
 	  },
 	  InvalidPollTxTimeOut: function InvalidPollTxTimeOut() {
 	    return 'Error: transaction query timeout';
+	  },
+	  TXCanNotChangeFrom: function TXCanNotChangeFrom() {
+	    return 'Change of account address is not allowed';
+	  },
+	  TXParamMissingError: function TXParamMissingError(param) {
+	    return "The ".concat(param, " in transaction can not be missing");
+	  },
+	  TXIsNotDecimalError: function TXIsNotDecimalError(param) {
+	    return "The ".concat(param, " in transaction should be a decimal number");
+	  },
+	  TXNegativeError: function TXNegativeError(param) {
+	    return "The ".concat(param, " in transaction should be positive");
 	  }
 	};
 
@@ -6169,20 +6181,20 @@
 
 	              case 3:
 	                response = _context.sent;
-	                _context.next = 11;
+	                _context.next = 10;
 	                break;
 
 	              case 6:
 	                _context.prev = 6;
 	                _context.t0 = _context["catch"](0);
-	                console.warn('send fail!');
-	                console.warn(_context.t0);
+	                console.warn('send fail!', _context.t0.statusCode, _context.t0.message); // console.warn(error)
+
 	                throw new Error(errors.InvalidConnection(this.host));
 
-	              case 11:
+	              case 10:
 	                return _context.abrupt("return", response.data);
 
-	              case 12:
+	              case 11:
 	              case "end":
 	                return _context.stop();
 	            }
@@ -7331,7 +7343,7 @@
 
 	                case 7:
 	                  lastRes = result;
-	                  _context3.next = 17;
+	                  _context3.next = 16;
 	                  break;
 
 	                case 10:
@@ -7349,13 +7361,17 @@
 	                case 15:
 	                  error = _context3.t0;
 
-	                  _this.stopWatch(newWatchId);
+	                case 16:
+	                  if (_this.watchers[newWatchId]) {
+	                    if (error) {
+	                      _this.stopWatch(newWatchId);
+	                    } // put callback out of try block to expose user's error
+
+
+	                    callback(result, error);
+	                  }
 
 	                case 17:
-	                  // put callback out of try block to expose user's error
-	                  callback(result, newWatchId, error);
-
-	                case 18:
 	                case "end":
 	                  return _context3.stop();
 	              }
@@ -10711,7 +10727,21 @@
 	  // Vote transaction for set vote target
 	  VOTE: 1,
 	  // Candidate transaction for register or edit candidate information
-	  CANDIDATE: 2
+	  CANDIDATE: 2,
+	  // 创建资产交易
+	  CREATE_ASSET: 3,
+	  // 发行资产交易
+	  ISSUE_ASSET: 4,
+	  // 交易资产交易
+	  TRANSFER_ASSET: 7
+	};
+	var CreateAssetType = {
+	  // 通证资产
+	  TokenAsset: 1,
+	  // 非同质化资产
+	  NonFungibleAsset: 2,
+	  // 通用资产
+	  CommonAsset: 3
 	};
 	var ChangeLogTypes = {
 	  BalanceLog: 1,
@@ -10737,7 +10767,11 @@
 
 	var TX_TO_LENGTH = 20; // The length of signature bytes in transaction
 
-	var TX_SIG_BYTE_LENGTH = 65; // module name
+	var TX_SIG_BYTE_LENGTH = 65; // 发行资产的唯一标识长度
+
+	var TX_ASSET_CODE_LENGTH = 66; // 交易的资产Id长度
+
+	var TX_ASSET_ID_LENGTH = 66; // module name
 
 	var ACCOUNT_NAME = 'account';
 	var CHAIN_NAME = 'chain';
@@ -23591,6 +23625,7 @@
 
 	  if (config.gasPrice) {
 	    checkType(config, 'gasPrice', ['number', 'string'], true);
+	    checkNegative(config, 'gasPrice');
 	  }
 
 	  if (config.gasLimit) {
@@ -23599,6 +23634,7 @@
 
 	  if (config.amount) {
 	    checkType(config, 'amount', ['number', 'string'], true);
+	    checkNegative(config, 'amount');
 	  }
 
 	  if (config.data) {
@@ -23634,6 +23670,64 @@
 	  checkMaxLength(config, 'host', MAX_DEPUTY_HOST_LENGTH);
 	  checkType(config, 'port', ['string', 'number'], true);
 	  checkRange(config, 'port', 1, 0xffff);
+	}
+	function verifyCreateAssetInfo(config) {
+	  if (config.category === undefined) {
+	    throw new Error(errors.TXParamMissingError('category'));
+	  }
+
+	  checkType(config, 'category', ['number'], true);
+	  checkRange(config, 'category', 1, 3);
+	  checkType(config, 'decimals', ['number'], true);
+	  checkRange(config, 'decimals', 0, 0xffff);
+	  checkType(config, 'isReplenishable', ['boolean'], false);
+	  checkType(config, 'isDivisible', ['boolean'], false);
+	  checkType(config.profile, 'name', ['string'], false);
+	  checkType(config.profile, 'symbol', ['string'], false);
+	  checkType(config.profile, 'description', ['string'], false);
+	  checkMaxLength(config.profile, 'description', 256);
+
+	  if (config.profile.suggestedGasLimit) {
+	    checkType(config.profile, 'suggestedGasLimit', ['string'], true);
+	  }
+	}
+	function verifyIssueAssetInfo(config) {
+	  if (config.assetCode === undefined) {
+	    throw new Error(errors.TXParamMissingError('assetCode'));
+	  }
+
+	  checkType(config, 'assetCode', ['string'], false);
+
+	  if (config.assetCode.length !== TX_ASSET_CODE_LENGTH) {
+	    throw new Error(errors.TXInvalidLength('assetCode', config.assetCode, TX_ASSET_CODE_LENGTH));
+	  }
+
+	  if (config.metaData) {
+	    checkType(config, 'metaData', ['string'], false);
+	    checkMaxLength(config, 'metaData', 256);
+	  }
+
+	  if (config.supplyAmount === undefined) {
+	    throw new Error(errors.TXParamMissingError('supplyAmount'));
+	  }
+
+	  checkNegative(config, 'supplyAmount');
+	  checkType(config, 'supplyAmount', ['string'], true);
+
+	  if (/^0x/i.test(config.supplyAmount)) {
+	    throw new Error(errors.TXIsNotDecimalError('supplyAmount'));
+	  }
+	}
+	function verifyTransferAssetInfo(config) {
+	  if (config.assetId === undefined) {
+	    throw new Error(errors.TXParamMissingError('assetId'));
+	  }
+
+	  checkType(config, 'assetId', ['string'], false);
+
+	  if (config.assetId.length !== TX_ASSET_ID_LENGTH) {
+	    throw new Error(errors.TXInvalidLength('assetId', config.assetId, TX_ASSET_ID_LENGTH));
+	  }
 	}
 	/**
 	 * @param {object} obj
@@ -23733,6 +23827,17 @@
 
 	  if (dataLen > maxBytesLength) {
 	    throw new Error(errors.TXInvalidMaxBytes(fieldName, obj[fieldName], maxBytesLength, dataLen));
+	  }
+	}
+	/**
+	 * @param {object} obj
+	 * @param {string} fieldName
+	 */
+
+
+	function checkNegative(obj, fieldName) {
+	  if (parseInt(obj[fieldName], 10) < 0) {
+	    throw new Error(errors.TXNegativeError(fieldName));
 	  }
 	}
 
@@ -23838,8 +23943,8 @@
 
 	          return from;
 	        },
-	        set: function set(v) {
-	          from = v;
+	        set: function set() {
+	          throw new Error(errors.TXCanNotChangeFrom());
 	        },
 	        enumerable: true
 	      });
@@ -23978,12 +24083,6 @@
 
 	  return candidate;
 	}
-	function parseCandidateListRes(res) {
-	  return {
-	    candidateList: (res.candidateList || []).map(parseCandidate),
-	    total: parseNumber(res.total)
-	  };
-	}
 	function parseChangeLog(changeLog) {
 	  changeLog.type = parseChangeLogType(changeLog.type);
 	  changeLog.version = parseNumber(changeLog.version);
@@ -24047,8 +24146,13 @@
 
 	  return typeInfo[0];
 	}
+
 	function parseNumber(str) {
 	  return parseInt(str, 10) || 0;
+	}
+
+	function parseBigNumber(str) {
+	  return new bignumber(str);
 	}
 	function parseMoney(str) {
 	  var result = new bignumber(str);
@@ -24058,6 +24162,16 @@
 	  });
 	  return result;
 	}
+	var parser = {
+	  parseBlock: parseBlock,
+	  parseAccount: parseAccount,
+	  parseCandidate: parseCandidate,
+	  parseTx: parseTx,
+	  parseTxRes: parseTxRes,
+	  parseTxListRes: parseTxListRes,
+	  parseBigNumber: parseBigNumber,
+	  parseMoney: parseMoney
+	};
 
 	/**
 	 * 用于监听最新区块，并使得多次调用watchBlock只发一次请求
@@ -24082,12 +24196,11 @@
 	    this.watchId = 0; // requester.watch's Id，用于停止定时器
 	  }
 	  /**
-	  *  监听最新区块
-	  * @param {Requester} requester
-	  * @param {boolean} withBody
-	  * @param {Function} callback
-	  * @return {number}  记录每次调用watchBlock的Id
-	  */
+	   *  监听最新区块
+	   * @param {boolean} withBody
+	   * @param {Function} callback
+	   * @return {number}  记录每次调用watchBlock的Id
+	   */
 
 
 	  _createClass(_default, [{
@@ -24101,18 +24214,18 @@
 	      };
 
 	      if (Object.keys(this.callbackInfos).length === 1) {
-	        this.watchId = this.requester.watch("".concat(CHAIN_NAME, "_latestStableBlock"), [!!this.getWidthBody()], this.watchHandler.bind(this));
+	        this.watchId = this.requester.watch("".concat(CHAIN_NAME, "_currentBlock"), [!!this.getWidthBody()], this.watchHandler.bind(this));
 	      } else if (withBody && !oldWithBody) {
 	        this.requester.stopWatch(this.watchId);
-	        this.watchId = this.requester.watch("".concat(CHAIN_NAME, "_latestStableBlock"), [!!this.getWidthBody()], this.watchHandler.bind(this));
+	        this.watchId = this.requester.watch("".concat(CHAIN_NAME, "_currentBlock"), [!!this.getWidthBody()], this.watchHandler.bind(this));
 	      }
 
 	      return subscribeId;
 	    }
 	    /**
-	    *  取消监听最新区块
-	    * @param {string} watchId  subscribe返回的Id
-	    */
+	     *  取消监听最新区块
+	     * @param {string} watchId  subscribe返回的Id
+	     */
 
 	  }, {
 	    key: "unsubscribe",
@@ -24145,9 +24258,9 @@
 	      return this.pendingBlocks.length ? this.pendingBlocks[this.pendingBlocks.length - 1].header.height : this.lastBlockHeight;
 	    }
 	    /**
-	    *  根据高度拉块
-	    * @param {number} height
-	    */
+	     *  根据高度拉块
+	     * @param {number} height
+	     */
 
 	  }, {
 	    key: "fetchBlock",
@@ -24159,18 +24272,15 @@
 	      });
 	    }
 	    /**
-	    *  requester's watch  callback
-	    * @param {Object} block
-	    */
+	     *  requester's watch  callback
+	     * @param {Object} block
+	     */
 
 	  }, {
 	    key: "watchHandler",
-	    value: function watchHandler(block, watchId, error) {
+	    value: function watchHandler(block, error) {
 	      if (error) {
-	        return;
-	      }
-
-	      if (watchId !== this.watchId) {
+	        this.notify(block, error);
 	        return;
 	      }
 
@@ -24179,14 +24289,14 @@
 	    }
 	  }, {
 	    key: "notify",
-	    value: function notify(block) {
+	    value: function notify(block, error) {
 	      Object.values(this.callbackInfos).forEach(function (item) {
 	        if (!item.withBody) {
 	          item.callback({
 	            header: block.header
-	          });
+	          }, error);
 	        } else {
-	          item.callback(block);
+	          item.callback(block, error);
 	        }
 	      });
 	    }
@@ -24198,8 +24308,8 @@
 	      return notifiedblock;
 	    }
 	    /**
-	    *  检查收到的块是否连续，并通知出去
-	    */
+	     *  检查收到的块是否连续，并通知出去
+	     */
 
 	  }, {
 	    key: "checkNotifiedBlock",
@@ -24218,8 +24328,8 @@
 	      }
 	    }
 	    /**
-	    *  找到缓冲数组与最新拉取的缺失块的顺序，并往缓冲数组插入缺失的块
-	    */
+	     *  找到缓冲数组与最新拉取的缺失块的顺序，并往缓冲数组插入缺失的块
+	     */
 
 	  }, {
 	    key: "insert",
@@ -24232,9 +24342,9 @@
 	      }
 	    }
 	    /**
-	    *  判断是否出现已存在的块
-	    *
-	    */
+	     *  判断是否出现已存在的块
+	     *
+	     */
 
 	  }, {
 	    key: "isExistBlock",
@@ -24248,12 +24358,11 @@
 	      return true;
 	    }
 	    /**
-	    *  检查watchBlock有无缺块
-	    *
-	    * @param {Function} fetchBlock
-	    * @param {Object} block
-	    * @param {Function} callback
-	    */
+	     *  检查watchBlock有无缺块
+	     *
+	     * @param {Function} fetchBlock
+	     * @param {Object} block
+	     */
 
 	  }, {
 	    key: "processBlock",
@@ -24407,7 +24516,7 @@
 	        var timeoutId = setTimeout(function () {
 	          _this.blockWatcher.unsubscribe(subscribeId);
 
-	          reject(errors.InvalidPollTxTimeOut());
+	          reject(new Error(errors.InvalidPollTxTimeOut()));
 	        }, _this.txPollTimeout);
 	      });
 	    }
@@ -24417,7 +24526,12 @@
 	      var _this2 = this;
 
 	      return new Promise(function (resolve, reject) {
-	        var watchId = _this2.requester.watch("".concat(TX_NAME, "_getTxByHash"), [txHash], function (result) {
+	        var watchId = _this2.requester.watch("".concat(TX_NAME, "_getTxByHash"), [txHash], function (result, error) {
+	          if (error) {
+	            reject(error);
+	            return;
+	          }
+
 	          if (!result) {
 	            return;
 	          }
@@ -24431,7 +24545,7 @@
 	        var timeoutId = setTimeout(function () {
 	          _this2.requester.stopWatch(watchId);
 
-	          reject(errors.InvalidPollTxTimeOut());
+	          reject(new Error(errors.InvalidPollTxTimeOut()));
 	        }, _this2.txPollTimeout);
 	      });
 	    }
@@ -24460,7 +24574,7 @@
 
 	            case 2:
 	              result = _context.sent;
-	              return _context.abrupt("return", parseAccount(result));
+	              return _context.abrupt("return", this.parser.parseAccount(result));
 
 	            case 4:
 	            case "end":
@@ -24494,7 +24608,7 @@
 
 	            case 2:
 	              result = _context2.sent;
-	              return _context2.abrupt("return", parseAccount(result).candidate);
+	              return _context2.abrupt("return", this.parser.parseAccount(result).candidate);
 
 	            case 4:
 	            case "end":
@@ -24528,7 +24642,7 @@
 
 	            case 2:
 	              result = _context3.sent;
-	              return _context3.abrupt("return", parseMoney(result));
+	              return _context3.abrupt("return", this.parser.parseMoney(result));
 
 	            case 4:
 	            case "end":
@@ -24592,28 +24706,26 @@
 	var apis$2 = {
 	  /**
 	   * Get current block information
-	   * @param {boolean?} stable=true Get stable block or the newest block without consensus
 	   * @param {boolean?} withBody Get the body detail if true
 	   * @return {Promise<object>}
 	   */
-	  getCurrentBlock: function () {
-	    var _getCurrentBlock = _asyncToGenerator(
+	  getNewestBlock: function () {
+	    var _getNewestBlock = _asyncToGenerator(
 	    /*#__PURE__*/
-	    regeneratorRuntime.mark(function _callee(stable, withBody) {
-	      var apiName, block;
+	    regeneratorRuntime.mark(function _callee(withBody) {
+	      var block;
 	      return regeneratorRuntime.wrap(function _callee$(_context) {
 	        while (1) {
 	          switch (_context.prev = _context.next) {
 	            case 0:
-	              apiName = typeof stable === 'undefined' || stable ? 'latestStableBlock' : 'currentBlock';
-	              _context.next = 3;
-	              return this.requester.send("".concat(CHAIN_NAME, "_").concat(apiName), [!!withBody]);
+	              _context.next = 2;
+	              return this.requester.send("".concat(CHAIN_NAME, "_currentBlock"), [!!withBody]);
 
-	            case 3:
+	            case 2:
 	              block = _context.sent;
-	              return _context.abrupt("return", parseBlock(this.chainID, block, withBody));
+	              return _context.abrupt("return", this.parser.parseBlock(this.chainID, block, withBody));
 
-	            case 5:
+	            case 4:
 	            case "end":
 	              return _context.stop();
 	          }
@@ -24621,8 +24733,8 @@
 	      }, _callee, this);
 	    }));
 
-	    return function getCurrentBlock(_x, _x2) {
-	      return _getCurrentBlock.apply(this, arguments);
+	    return function getNewestBlock(_x) {
+	      return _getNewestBlock.apply(this, arguments);
 	    };
 	  }(),
 
@@ -24647,7 +24759,7 @@
 
 	            case 3:
 	              block = _context2.sent;
-	              return _context2.abrupt("return", parseBlock(this.chainID, block, withBody));
+	              return _context2.abrupt("return", this.parser.parseBlock(this.chainID, block, withBody));
 
 	            case 5:
 	            case "end":
@@ -24657,19 +24769,17 @@
 	      }, _callee2, this);
 	    }));
 
-	    return function getBlock(_x3, _x4) {
+	    return function getBlock(_x2, _x3) {
 	      return _getBlock.apply(this, arguments);
 	    };
 	  }(),
 
 	  /**
 	   * Get the current height of chain head block
-	   * @param {boolean?} stable=true Get stable block or the newest block without consensus
 	   * @return {Promise<number>}
 	   */
-	  getCurrentHeight: function getCurrentHeight(stable) {
-	    var apiName = typeof stable === 'undefined' || stable ? 'latestStableHeight' : 'currentHeight';
-	    return this.requester.send("".concat(CHAIN_NAME, "_").concat(apiName));
+	  getNewestHeight: function getNewestHeight() {
+	    return this.requester.send("".concat(CHAIN_NAME, "_currentHeight"));
 	  },
 
 	  /**
@@ -24690,7 +24800,7 @@
 
 	            case 2:
 	              result = _context3.sent;
-	              return _context3.abrupt("return", parseBlock(this.chainID, result, true));
+	              return _context3.abrupt("return", this.parser.parseBlock(this.chainID, result, true));
 
 	            case 4:
 	            case "end":
@@ -24731,7 +24841,7 @@
 
 	            case 2:
 	              result = _context4.sent;
-	              return _context4.abrupt("return", parseMoney(result));
+	              return _context4.abrupt("return", this.parser.parseMoney(result));
 
 	            case 4:
 	            case "end":
@@ -24787,7 +24897,10 @@
 
 	            case 2:
 	              result = _context5.sent;
-	              return _context5.abrupt("return", parseCandidateListRes(result));
+	              return _context5.abrupt("return", {
+	                candidateList: (result.candidateList || []).map(this.parser.parseCandidate),
+	                total: parseInt(result.total, 10) || 0
+	              });
 
 	            case 4:
 	            case "end":
@@ -24797,7 +24910,7 @@
 	      }, _callee5, this);
 	    }));
 
-	    return function getCandidateList(_x5, _x6) {
+	    return function getCandidateList(_x4, _x5) {
 	      return _getCandidateList.apply(this, arguments);
 	    };
 	  }(),
@@ -24820,7 +24933,7 @@
 
 	            case 2:
 	              result = _context6.sent;
-	              return _context6.abrupt("return", (result || []).map(parseCandidate));
+	              return _context6.abrupt("return", (result || []).map(this.parser.parseCandidate));
 
 	            case 4:
 	            case "end":
@@ -24976,6 +25089,154 @@
 	  return CandidateTx;
 	}(Tx);
 
+	var CreateAssetTx =
+	/*#__PURE__*/
+	function (_Tx) {
+	  _inherits(CreateAssetTx, _Tx);
+
+	  /**
+	   * 创建资产的交易
+	   * @param {object} txConfig
+	   * @param {number?} txConfig.type The type of transaction
+	   * @param {number?} txConfig.version The version of transaction protocol
+	   * @param {number} txConfig.chainID The LemoChain id
+	   * @param {number|string?} txConfig.gasPrice Gas price for smart contract. Unit is mo/gas
+	   * @param {number|string?} txConfig.gasLimit Max gas limit for smart contract. Unit is gas
+	   * @param {Buffer|string?} txConfig.data Extra data or smart contract calling parameters
+	   * @param {number|string?} txConfig.expirationTime Default value is half hour from now
+	   * @param {string?} txConfig.message Extra value data
+	   * @param {Buffer|string?} txConfig.sig Signature data
+	   * @param {object} createAssetInfo CreateAsset information
+	   * @param {number} createAssetInfo.category 资产类型，如CreateAssetType的TokenAsset、NonFungibleAsset、CommonAsset等
+	   * @param {number} createAssetInfo.decimals 发行资产的小数位，默认为18位
+	   * @param {boolean} createAssetInfo.isReplenishable 是否可增发
+	   * @param {boolean} createAssetInfo.isDivisible  是否为可分割资产
+	   * @param {object} createAssetInfo.profile 资产信息
+	   * @param {string} createAssetInfo.profile.name 资产名字
+	   * @param {string} createAssetInfo.profile.symbol 资产标识，默认转为大写字符
+	   * @param {string} createAssetInfo.profile.description 资产基本信息
+	   * @param {string} createAssetInfo.profile.suggestedGasLimit 建议的gasLimit
+	   */
+	  function CreateAssetTx(txConfig, createAssetInfo) {
+	    _classCallCheck(this, CreateAssetTx);
+
+	    verifyCreateAssetInfo(createAssetInfo);
+	    var newCreateAsset = {
+	      category: createAssetInfo.category === undefined ? CreateAssetType.TokenAsset : createAssetInfo.category,
+	      decimals: createAssetInfo.decimals === undefined ? 18 : createAssetInfo.decimals,
+	      isReplenishable: createAssetInfo.isReplenishable === undefined ? true : createAssetInfo.isReplenishable,
+	      isDivisible: createAssetInfo.isDivisible === undefined ? true : createAssetInfo.isDivisible,
+	      profile: {
+	        name: createAssetInfo.profile.name,
+	        symbol: createAssetInfo.profile.symbol.toUpperCase(),
+	        description: createAssetInfo.profile.description,
+	        suggestedGasLimit: createAssetInfo.profile.suggestedGasLimit || '60000',
+	        stop: 'false'
+	      }
+	    };
+
+	    var newTxConfig = _objectSpread({}, txConfig, {
+	      type: TxType.CREATE_ASSET,
+	      data: safeBuffer_1.from(JSON.stringify(newCreateAsset))
+	    });
+
+	    delete newTxConfig.to;
+	    delete newTxConfig.toName;
+	    delete newTxConfig.amount;
+	    return _possibleConstructorReturn(this, _getPrototypeOf(CreateAssetTx).call(this, newTxConfig));
+	  }
+
+	  return CreateAssetTx;
+	}(Tx);
+
+	var IssueAsset =
+	/*#__PURE__*/
+	function (_Tx) {
+	  _inherits(IssueAsset, _Tx);
+
+	  /**
+	   * 发行资产的交易
+	   * @param {object} txConfig
+	   * @param {number?} txConfig.type The type of transaction
+	   * @param {string?} txConfig.to The transaction recipient address
+	   * @param {string?} txConfig.toName The transaction recipient name
+	   * @param {number?} txConfig.version The version of transaction protocol
+	   * @param {number} txConfig.chainID The LemoChain id
+	   * @param {number|string?} txConfig.gasPrice Gas price for smart contract. Unit is mo/gas
+	   * @param {number|string?} txConfig.gasLimit Max gas limit for smart contract. Unit is gas
+	   * @param {Buffer|string?} txConfig.data Extra data or smart contract calling parameters
+	   * @param {number|string?} txConfig.expirationTime Default value is half hour from now
+	   * @param {string?} txConfig.message Extra value data
+	   * @param {Buffer|string?} txConfig.sig Signature data
+	   * @param {object} issueAssetInfo IssueAsset information
+	   * @param {string} issueAssetInfo.assetCode 发行资产的唯一标识
+	   * @param {string} issueAssetInfo.metaData 资产中的自定义数据
+	   * @param {string} issueAssetInfo.supplyAmount 发行资产的数量
+	   */
+	  function IssueAsset(txConfig, issueAssetInfo) {
+	    _classCallCheck(this, IssueAsset);
+
+	    verifyIssueAssetInfo(issueAssetInfo);
+	    var newIssueAsset = {
+	      assetCode: issueAssetInfo.assetCode,
+	      metaData: issueAssetInfo.metaData,
+	      supplyAmount: issueAssetInfo.supplyAmount.toString()
+	    };
+
+	    var newTxConfig = _objectSpread({}, txConfig, {
+	      type: TxType.ISSUE_ASSET,
+	      data: safeBuffer_1.from(JSON.stringify(newIssueAsset))
+	    });
+
+	    delete newTxConfig.amount;
+	    return _possibleConstructorReturn(this, _getPrototypeOf(IssueAsset).call(this, newTxConfig));
+	  }
+
+	  return IssueAsset;
+	}(Tx);
+
+	var TransferAsset =
+	/*#__PURE__*/
+	function (_Tx) {
+	  _inherits(TransferAsset, _Tx);
+
+	  /**
+	   * 交易资产的交易
+	   * @param {object} txConfig
+	   * @param {number?} txConfig.type The type of transaction
+	   * @param {string?} txConfig.to The transaction recipient address
+	   * @param {string?} txConfig.toName The transaction recipient name
+	   * @param {number?} txConfig.version The version of transaction protocol
+	   * @param {number} txConfig.chainID The LemoChain id
+	   * @param {number|string?} txConfig.gasPrice Gas price for smart contract. Unit is mo/gas
+	   * @param {number|string?} txConfig.gasLimit Max gas limit for smart contract. Unit is gas
+	   * @param {Buffer|string?} txConfig.data Extra data or smart contract calling parameters
+	   * @param {number|string?} txConfig.expirationTime Default value is half hour from now
+	   * @param {number|string?} txConfig.amount Unit is mo
+	   * @param {string?} txConfig.message Extra value data
+	   * @param {Buffer|string?} txConfig.sig Signature data
+	   * @param {object} transferAssetInfo TransferAsset information
+	   * @param {string} transferAssetInfo.assetId 交易的资产Id
+	   */
+	  function TransferAsset(txConfig, transferAssetInfo) {
+	    _classCallCheck(this, TransferAsset);
+
+	    verifyTransferAssetInfo(transferAssetInfo);
+	    var newTransferAsset = {
+	      assetId: transferAssetInfo.assetId
+	    };
+
+	    var newTxConfig = _objectSpread({}, txConfig, {
+	      type: TxType.TRANSFER_ASSET,
+	      data: safeBuffer_1.from(JSON.stringify(newTransferAsset))
+	    });
+
+	    return _possibleConstructorReturn(this, _getPrototypeOf(TransferAsset).call(this, newTxConfig));
+	  }
+
+	  return TransferAsset;
+	}(Tx);
+
 	var apis$5 = {
 	  /**
 	   * Get transaction's information by hash
@@ -25005,7 +25266,7 @@
 	              return _context.abrupt("return", null);
 
 	            case 5:
-	              return _context.abrupt("return", parseTxRes(this.chainID, result));
+	              return _context.abrupt("return", this.parser.parseTxRes(this.chainID, result));
 
 	            case 6:
 	            case "end":
@@ -25050,7 +25311,7 @@
 	              return _context2.abrupt("return", null);
 
 	            case 5:
-	              return _context2.abrupt("return", parseTxListRes(this.chainID, result));
+	              return _context2.abrupt("return", this.parser.parseTxListRes(this.chainID, result));
 
 	            case 6:
 	            case "end":
@@ -25205,21 +25466,63 @@
 	  },
 
 	  /**
-	  * watch and filter transaction of block
-	  * @param {object} filterTxConfig  transaction
-	  * @param {Function} callback
-	  * @return {number}
-	  */
+	   * 签名创建资产的交易
+	   * @param {string} privateKey The private key from sender account
+	   * @param {object} txConfig Transaction config
+	   * @param {object} createAssetInfo CreateAsset information
+	   * @return {string}
+	   */
+	  signCreateAsset: function signCreateAsset(privateKey, txConfig, createAssetInfo) {
+	    txConfig = checkChainID(txConfig, this.chainID);
+	    var tx = new CreateAssetTx(txConfig, createAssetInfo);
+	    tx.signWith(privateKey);
+	    return JSON.stringify(tx.toJson());
+	  },
+
+	  /**
+	   * 签名发行资产的交易
+	   * @param {string} privateKey The private key from sender account
+	   * @param {object} txConfig Transaction config
+	   * @param {object} issueAssetInfo IssueAsset information
+	   * @return {string}
+	   */
+	  signIssueAsset: function signIssueAsset(privateKey, txConfig, issueAssetInfo) {
+	    txConfig = checkChainID(txConfig, this.chainID);
+	    var tx = new IssueAsset(txConfig, issueAssetInfo);
+	    tx.signWith(privateKey);
+	    return JSON.stringify(tx.toJson());
+	  },
+
+	  /**
+	   * 签名交易资产交易
+	   * @param {string} privateKey The private key from sender account
+	   * @param {object} txConfig Transaction config
+	   * @param {object} transferAssetInfo TransferAsset information
+	   * @return {string}
+	   */
+	  signTransferAsset: function signTransferAsset(privateKey, txConfig, transferAssetInfo) {
+	    txConfig = checkChainID(txConfig, this.chainID);
+	    var tx = new TransferAsset(txConfig, transferAssetInfo);
+	    tx.signWith(privateKey);
+	    return JSON.stringify(tx.toJson());
+	  },
+
+	  /**
+	   * watch and filter transaction of block
+	   * @param {object} filterTxConfig  transaction
+	   * @param {Function} callback
+	   * @return {number} subscribeId
+	   */
 	  watchTx: function watchTx(filterTxConfig, callback) {
 	    return this.txWatcher.watchTx(filterTxConfig, callback);
 	  },
 
 	  /**
-	  * stop watching and filtering transaction of block
-	  * @param {number} watchTxId
-	  */
-	  stopWatchTx: function stopWatchTx(watchTxId) {
-	    this.txWatcher.stopWatchTx(watchTxId);
+	   * stop watching and filtering transaction of block
+	   * @param {number} subscribeId
+	   */
+	  stopWatchTx: function stopWatchTx(subscribeId) {
+	    this.txWatcher.stopWatchTx(subscribeId);
 	  }
 	};
 	var tx = {
@@ -25335,31 +25638,36 @@
 	      // The interval time of watching poll. It is in milliseconds
 	      maxPollRetry: config.maxPollRetry || MAX_POLL_RETRY
 	    },
-	    serverMode: config.serverMode // The Object.defineProperty is not work in otto. but we can name fields with first letter '_' to make it invisible
-
+	    serverMode: config.serverMode,
+	    httpTimeOut: config.httpTimeOut || TX_POLL_MAX_TIME_OUT
 	  };
-	  this._requester = new Requester(newConn(this.config.conn), this.config.requester);
-	  Object.defineProperty(this, '_requester', {
-	    enumerable: false
-	  });
-	  this._blockWatcher = new _default(this._requester);
-	  Object.defineProperty(this, '_blockWatcher', {
-	    enumerable: false
-	  });
-	  this._txWatcher = new _default$1(this._requester, this._blockWatcher, {
-	    serverMode: this.config.serverMode,
-	    txPollTimeout: TX_POLL_MAX_TIME_OUT
-	  });
-	  Object.defineProperty(this, '_txWatcher', {
-	    enumerable: false
-	  });
-	  Object.defineProperty(this, '_createAPI', {
-	    enumerable: false,
-	    value: createAPI.bind(null, this)
-	  });
+	  this.config.conn.host = /^http/.test(this.config.conn.host) ? this.config.conn.host : "http://".concat(this.config.conn.host);
+	  defineInvisibleProps(this);
 	  attachModules(this);
 	  exposeUtils(this);
 	};
+
+	function defineInvisibleProps(lemo) {
+	  var defineInvisible = function defineInvisible(filedName, value) {
+	    // The Object.defineProperty is not work in otto. but we can name fields with first letter '_' to make it invisible
+	    lemo[filedName] = value;
+	    Object.defineProperty(lemo, filedName, {
+	      enumerable: false
+	    });
+	  };
+
+	  var requester = new Requester(newConn(lemo.config.conn), lemo.config.requester);
+	  defineInvisible('_requester', requester);
+	  var blockWatcher = new _default(requester);
+	  defineInvisible('_blockWatcher', blockWatcher);
+	  var txWatcher = new _default$1(requester, blockWatcher, {
+	    serverMode: lemo.config.serverMode,
+	    txPollTimeout: lemo.config.httpTimeOut
+	  });
+	  defineInvisible('_txWatcher', txWatcher);
+	  defineInvisible('_createAPI', createAPI.bind(null, lemo));
+	  defineInvisible('_parser', parser);
+	}
 
 	function attachModules(lemo) {
 	  // modules
@@ -25401,12 +25709,7 @@
 	      apiConfig.value = value;
 	    }
 
-	    new Api(apiConfig, {
-	      requester: lemo._requester,
-	      chainID: lemo.config.chainID,
-	      blockWatcher: lemo._blockWatcher,
-	      txWatcher: lemo._txWatcher
-	    }).attachTo(lemo, moduleName);
+	    newApiAndAttach(lemo, moduleName, apiConfig);
 	  });
 	}
 	/**
@@ -25414,34 +25717,40 @@
 	 * @param {LemoClient} lemo
 	 * @param {string} moduleName Attach api methods to the sub module object of lemo. If moduleName is empty, then attach to lemo object
 	 * @param {string} apiName Final api name you can call on lemo object
-	 * @param {string|Function} methodNameOrFunc The method name for remote API or customized function
+	 * @param {string|Function} methodNameOrFunc The method name for remote API or customized function.
+	 *   The method name must includes go module name. It looks like chain_getUnstableBlock
 	 */
 
 
 	function createAPI(lemo, moduleName, apiName, methodNameOrFunc) {
-	  var config = {
+	  var apiConfig = {
 	    name: apiName
 	  };
 
 	  if (typeof methodNameOrFunc === 'function') {
-	    config.call = methodNameOrFunc;
+	    apiConfig.call = methodNameOrFunc;
 	  } else if (typeof methodNameOrFunc === 'string') {
-	    config.call = function () {
+	    apiConfig.call = function () {
 	      for (var _len = arguments.length, args = new Array(_len), _key = 0; _key < _len; _key++) {
 	        args[_key] = arguments[_key];
 	      }
 
-	      return lemo._requester.send("".concat(moduleName, "_").concat(methodNameOrFunc), args);
+	      return lemo._requester.send(methodNameOrFunc, args);
 	    };
 	  } else {
 	    throw new Error(errors.InvalidAPIName(methodNameOrFunc));
 	  }
 
-	  new Api(config, {
+	  newApiAndAttach(lemo, moduleName, apiConfig);
+	}
+
+	function newApiAndAttach(lemo, moduleName, apiConfig) {
+	  new Api(apiConfig, {
 	    requester: lemo._requester,
 	    chainID: lemo.config.chainID,
 	    blockWatcher: lemo._blockWatcher,
-	    txWatcher: lemo._txWatcher
+	    txWatcher: lemo._txWatcher,
+	    parser: lemo._parser
 	  }).attachTo(lemo, moduleName);
 	}
 	/**
