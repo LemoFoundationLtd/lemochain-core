@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/common/hexutil"
+	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"os"
 	"path/filepath"
 )
@@ -26,6 +27,7 @@ var (
 
 type ConfigFromFile struct {
 	ChainID         uint64 `json:"chainID"        gencodec:"required"`
+	DeputyCount     uint64 `json:"deputyCount"    gencodec:"required"`
 	SleepTime       uint64 `json:"sleepTime"`
 	Timeout         uint64 `json:"timeout"`
 	DbUri           string `json:"dbUri"          gencodec:"required"` // sample: root:123123@tcp(localhost:3306)/lemochain?charset=utf8mb4
@@ -39,6 +41,7 @@ type ConfigFromFile struct {
 // dns = root:123123@tcp(localhost:3306)/lemochain?charset=utf8mb4
 type ConfigFromFileMarshaling struct {
 	ChainID         hexutil.Uint64
+	DeputyCount     hexutil.Uint64
 	SleepTime       hexutil.Uint64
 	Timeout         hexutil.Uint64
 	TermDuration    hexutil.Uint64
@@ -68,11 +71,10 @@ func WriteConfigFile(dir string, cfg *ConfigFromFile) error {
 	}
 
 	file, err := os.OpenFile(filePath, os.O_APPEND, os.ModePerm)
-	defer file.Close()
-
 	if err != nil {
 		return err
 	}
+	defer file.Close()
 
 	_, err = file.Write(result)
 	if err != nil {
@@ -88,8 +90,10 @@ func ReadConfigFile(dir string) (*ConfigFromFile, error) {
 	if err != nil {
 		return nil, errors.New(err.Error() + "\r\n" + ConfigGuideUrl)
 	}
+	defer file.Close()
 	var config ConfigFromFile
 	if err = json.NewDecoder(file).Decode(&config); err != nil {
+		log.Errorf("decode config fail %v", err)
 		return nil, ErrConfigFormat
 	}
 	return &config, nil
@@ -107,6 +111,9 @@ func (c *ConfigFromFile) Check() {
 	}
 	if c.ChainID == 0 {
 		c.ChainID = 1
+	}
+	if c.DeputyCount == 0 {
+		c.DeputyCount = 17
 	}
 	if c.SleepTime == 0 {
 		c.SleepTime = 3000

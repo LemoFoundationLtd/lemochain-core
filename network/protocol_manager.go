@@ -49,6 +49,7 @@ type ProtocolManager struct {
 	nodeVersion uint32
 
 	chain         BlockChain
+	dm            *deputynode.Manager
 	discover      *p2p.DiscoverManager
 	txPool        TxPool
 	limit         int
@@ -74,7 +75,7 @@ type ProtocolManager struct {
 	testOutput chan int
 }
 
-func NewProtocolManager(chainID uint16, nodeID p2p.NodeID, chain BlockChain, txPool TxPool, discover *p2p.DiscoverManager, limit int, nodeVersion uint32) *ProtocolManager {
+func NewProtocolManager(chainID uint16, nodeID p2p.NodeID, chain BlockChain, dm *deputynode.Manager, txPool TxPool, discover *p2p.DiscoverManager, limit int, nodeVersion uint32) *ProtocolManager {
 	if limit == 0 {
 		limit = DefaultLimit
 	}
@@ -83,10 +84,11 @@ func NewProtocolManager(chainID uint16, nodeID p2p.NodeID, chain BlockChain, txP
 		nodeID:        nodeID,
 		nodeVersion:   nodeVersion,
 		chain:         chain,
+		dm:            dm,
 		txPool:        txPool,
 		discover:      discover,
 		limit:         limit,
-		peers:         NewPeerSet(discover),
+		peers:         NewPeerSet(discover, dm),
 		confirmsCache: NewConfirmCache(),
 		blockCache:    NewBlockCache(),
 
@@ -162,7 +164,7 @@ func (pm *ProtocolManager) txConfirmLoop() {
 		case tx := <-pm.txCh:
 			nextHeight := pm.chain.CurrentBlock().Height() + 1
 			peers := pm.peers.DeputyNodes(nextHeight)
-			if deputynode.Instance().IsSelfDeputyNode(nextHeight) == false && len(peers) == 0 {
+			if !pm.dm.IsSelfDeputyNode(nextHeight) && len(peers) == 0 {
 				peers = pm.peers.DelayNodes(nextHeight)
 			}
 			go pm.broadcastTxs(peers, types.Transactions{tx})
@@ -417,7 +419,7 @@ func (pm *ProtocolManager) checkConnectionLimit(p p2p.IPeer) bool {
 	height := pm.chain.CurrentBlock().Height() + 1
 	rNodeID := *(p.RNodeID())
 	// deputy node
-	if n := deputynode.Instance().GetDeputyByNodeID(height, rNodeID[:]); n != nil {
+	if n := pm.dm.GetDeputyByNodeID(height, rNodeID[:]); n != nil {
 		return true
 	}
 	// if node in white list

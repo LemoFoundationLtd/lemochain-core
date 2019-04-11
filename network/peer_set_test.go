@@ -11,9 +11,16 @@ import (
 	"testing"
 )
 
-func Test_RegUnReg(t *testing.T) {
+func newTestPeerSet() *peerSet {
 	discover := new(p2p.DiscoverManager)
-	ps := NewPeerSet(discover)
+	dm := deputynode.NewManager(5)
+	dm.SaveSnapshot(0, deputyNodes)
+	ps := NewPeerSet(discover, dm)
+	return ps
+}
+
+func Test_RegUnReg(t *testing.T) {
+	ps := newTestPeerSet()
 	p := newPeer(&testPeer{})
 	ps.Register(p)
 
@@ -24,8 +31,7 @@ func Test_RegUnReg(t *testing.T) {
 }
 
 func Test_BestToSync(t *testing.T) {
-	discover := new(p2p.DiscoverManager)
-	ps := NewPeerSet(discover)
+	ps := newTestPeerSet()
 
 	pSync := ps.BestToSync(90)
 	assert.Nil(t, pSync)
@@ -44,8 +50,7 @@ func Test_BestToSync(t *testing.T) {
 }
 
 func Test_BestToDiscover(t *testing.T) {
-	discover := new(p2p.DiscoverManager)
-	ps := NewPeerSet(discover)
+	ps := newTestPeerSet()
 
 	isDis := ps.BestToDiscover()
 	assert.Nil(t, isDis)
@@ -62,8 +67,7 @@ func Test_BestToDiscover(t *testing.T) {
 }
 
 func Test_BestToFetchConfirms(t *testing.T) {
-	discover := new(p2p.DiscoverManager)
-	ps := NewPeerSet(discover)
+	ps := newTestPeerSet()
 
 	isDis := ps.BestToFetchConfirms(100)
 	assert.Nil(t, isDis)
@@ -130,13 +134,8 @@ var deputyNodes = deputynode.DeputyNodes{
 	},
 }
 
-func init() {
-	deputynode.Instance().Add(1, deputyNodes)
-}
-
 func createPeerSet() *peerSet {
-	discover := new(p2p.DiscoverManager)
-	ps := NewPeerSet(discover)
+	ps := newTestPeerSet()
 	p1 := newPeer(&testPeer{state: 1})
 	p1.lstStatus.CurHeight = 15
 	p1.lstStatus.StaHeight = 10

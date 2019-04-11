@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/LemoFoundationLtd/lemochain-core/chain"
-	"github.com/LemoFoundationLtd/lemochain-core/common"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/main/node"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
@@ -46,12 +46,12 @@ func initGenesis(ctx *cli.Context) error {
 		log.Crit("Must supply genesis json file path")
 	}
 
-	hash := setupGenesisBlock(genesisFile, dir)
-	log.Infof("init genesis succeed. hash: %s", hash.Hex())
+	block := setupGenesisBlock(genesisFile, dir)
+	log.Infof("init genesis succeed. hash: %s", block.Hash().Hex())
 	return nil
 }
 
-func setupGenesisBlock(genesisFile, datadir string) common.Hash {
+func setupGenesisBlock(genesisFile, datadir string) *types.Block {
 	genesis, err := loadGenesisFile(genesisFile)
 	if err != nil {
 		panic(err)
@@ -60,7 +60,7 @@ func setupGenesisBlock(genesisFile, datadir string) common.Hash {
 }
 
 // saveBlock save block to db
-func saveBlock(datadir string, genesis *chain.Genesis) common.Hash {
+func saveBlock(datadir string, genesis *chain.Genesis) *types.Block {
 	chaindata := node.GetChainDataPath(datadir)
 	db := store.NewChainDataBase(chaindata, "", "")
 	defer func() {

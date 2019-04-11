@@ -12,14 +12,16 @@ import (
 type peerSet struct {
 	peers    map[p2p.NodeID]*peer
 	discover *p2p.DiscoverManager
+	dm       *deputynode.Manager
 	lock     sync.RWMutex
 }
 
 // NewPeerSet
-func NewPeerSet(discover *p2p.DiscoverManager) *peerSet {
+func NewPeerSet(discover *p2p.DiscoverManager, dm *deputynode.Manager) *peerSet {
 	return &peerSet{
 		peers:    make(map[p2p.NodeID]*peer),
 		discover: discover,
+		dm:       dm,
 	}
 }
 
@@ -140,7 +142,7 @@ func (ps *peerSet) BestToFetchConfirms(height uint32) (p *peer) {
 func (ps *peerSet) DeputyNodes(height uint32) []*peer {
 	peers := make([]*peer, 0)
 	for _, p := range ps.peers {
-		if deputynode.Instance().IsNodeDeputy(height, p.NodeID()[:]) {
+		if ps.dm.IsNodeDeputy(height, p.NodeID()[:]) {
 			peers = append(peers, p)
 		}
 	}
@@ -151,7 +153,7 @@ func (ps *peerSet) DeputyNodes(height uint32) []*peer {
 func (ps *peerSet) DelayNodes(height uint32) []*peer {
 	peers := make([]*peer, 0)
 	for _, p := range ps.peers {
-		if deputynode.Instance().IsNodeDeputy(height, p.NodeID()[:]) == false {
+		if ps.dm.IsNodeDeputy(height, p.NodeID()[:]) == false {
 			peers = append(peers, p)
 		}
 	}

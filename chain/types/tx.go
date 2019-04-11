@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/hexutil"
+	"github.com/LemoFoundationLtd/lemochain-core/common/merkle"
 	"github.com/LemoFoundationLtd/lemochain-core/common/rlp"
 	"io"
 	"math/big"
@@ -26,6 +27,15 @@ var (
 )
 
 type Transactions []*Transaction
+
+// MerkleRootSha compute the root hash of transaction merkle trie
+func (ts Transactions) MerkleRootSha() common.Hash {
+	leaves := make([]common.Hash, len(ts))
+	for i, item := range ts {
+		leaves[i] = item.Hash()
+	}
+	return merkle.New(leaves).Root()
+}
 
 type Transaction struct {
 	data txdata

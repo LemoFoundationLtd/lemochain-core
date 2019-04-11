@@ -29,7 +29,7 @@ type blockInfo struct {
 	versionRoot common.Hash
 	txRoot      common.Hash
 	logRoot     common.Hash
-	txList      []*types.Transaction
+	txList      types.Transactions
 	gasLimit    uint64
 	time        uint32
 	deputyRoot  []byte
@@ -133,7 +133,8 @@ func ClearData() {
 // newChain creates chain for test
 func newChain() *BlockChain {
 	db := newDB()
-	bc, err := NewBlockChain(chainID, NewDpovp(10*1000, db), db, flag.CmdFlags{})
+	dm := deputynode.NewManager(5)
+	bc, err := NewBlockChain(chainID, NewDpovp(10*1000, dm, db), dm, db, flag.CmdFlags{})
 	if err != nil {
 		panic(err)
 	}
@@ -166,7 +167,7 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 	// sign transactions
 	var err error
 	var gasUsed uint64 = 0
-	txRoot := types.DeriveTxsSha(info.txList)
+	txRoot := info.txList.MerkleRootSha()
 	if txRoot != info.txRoot {
 		if info.txRoot != (common.Hash{}) {
 			fmt.Printf("%d txRoot hash error. except: %s, got: %s\n", info.height, info.txRoot.Hex(), txRoot.Hex())
@@ -230,7 +231,7 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 	}
 	changeLogs := manager.GetChangeLogs()
 	fmt.Printf("%d changeLogs %v\n", info.height, changeLogs)
-	logRoot := types.DeriveChangeLogsSha(changeLogs)
+	logRoot := changeLogs.MerkleRootSha()
 	if logRoot != info.logRoot {
 		if info.logRoot != (common.Hash{}) {
 			fmt.Printf("%d change logs root error. except: %s, got: %s\n", info.height, info.logRoot.Hex(), logRoot.Hex())
@@ -257,10 +258,10 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 	}
 
 	var deputyRoot []byte
-	if len(info.deputyNodes) > 0 {
-		deputyRoot = types.DeriveDeputyRootSha(info.deputyNodes).Bytes()
-		deputynode.Instance().Add(params.TermDuration+params.InterimDuration+1, info.deputyNodes)
-	}
+	// if len(info.deputyNodes) > 0 {
+	// 	deputyRoot = types.DeriveDeputyRootSha(info.deputyNodes).Bytes()
+	// 	deputynode.NewManager().SaveSnapshot(params.TermDuration, info.deputyNodes)
+	// }
 	if bytes.Compare(deputyRoot, info.deputyRoot) != 0 {
 		if len(info.deputyNodes) > 0 || len(info.deputyRoot) != 0 {
 			fmt.Printf("%d deputyRoot error. except: %s, got: %s\n", info.height, common.ToHex(info.deputyRoot), common.ToHex(deputyRoot))

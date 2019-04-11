@@ -29,6 +29,7 @@ type BlockChain struct {
 	flags        flag.CmdFlags
 	db           db.ChainDB
 	am           *account.Manager
+	dm           *deputynode.Manager
 	currentBlock atomic.Value // latest block in current chain
 	stableBlock  atomic.Value // latest stable block in current chain
 	genesisBlock *types.Block // genesis block
@@ -47,10 +48,11 @@ type BlockChain struct {
 	quitCh chan struct{}
 }
 
-func NewBlockChain(chainID uint16, engine Engine, db db.ChainDB, flags flag.CmdFlags) (bc *BlockChain, err error) {
+func NewBlockChain(chainID uint16, engine Engine, dm *deputynode.Manager, db db.ChainDB, flags flag.CmdFlags) (bc *BlockChain, err error) {
 	bc = &BlockChain{
 		chainID: chainID,
 		db:      db,
+		dm:      dm,
 		// newBlockCh:     newBlockCh,
 		flags:          flags,
 		engine:         engine,
@@ -70,6 +72,10 @@ func NewBlockChain(chainID uint16, engine Engine, db db.ChainDB, flags flag.CmdF
 
 func (bc *BlockChain) AccountManager() *account.Manager {
 	return bc.am
+}
+
+func (bc *BlockChain) DeputyManager() *deputynode.Manager {
+	return bc.dm
 }
 
 // Lock call by miner
@@ -192,7 +198,7 @@ func (bc *BlockChain) SetMinedBlock(block *types.Block) error {
 		log.Error("save account error!", "hash", block.Hash().Hex(), "err", err)
 		return ErrSaveAccount
 	}
-	nodeCount := deputynode.Instance().GetDeputiesCount(block.Height())
+	nodeCount := bc.dm.GetDeputiesCount(block.Height())
 	bc.currentBlock.Store(block)
 	delete(bc.chainForksHead, block.ParentHash())
 	bc.chainForksHead[block.Hash()] = block
@@ -213,7 +219,7 @@ func (bc *BlockChain) SetMinedBlock(block *types.Block) error {
 // updateDeputyNodes update deputy nodes map
 func (bc *BlockChain) updateDeputyNodes(block *types.Block) {
 	if block.Height()%params.TermDuration == 0 {
-		deputynode.Instance().Add(block.Height()+params.InterimDuration+1, block.DeputyNodes)
+		bc.dm.SaveSnapshot(block.Height(), block.DeputyNodes)
 		log.Debugf("add new term deputy nodes: %v", block.DeputyNodes)
 	}
 }
@@ -261,7 +267,7 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 		return err
 	}
 	// is synchronise from net or deputy nodes less than 3
-	nodeCount := deputynode.Instance().GetDeputiesCount(block.Height())
+	nodeCount := bc.dm.GetDeputiesCount(block.Height())
 	if nodeCount < 3 {
 		defer func() { _ = bc.SetStableBlock(hash, block.Height()) }()
 	} else {
@@ -275,7 +281,7 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 	bc.chainForksLock.Lock()
 	defer func() {
 		bc.chainForksLock.Unlock()
-		if broadcastConfirm && deputynode.Instance().IsSelfDeputyNode(block.Height()) {
+		if broadcastConfirm && bc.dm.IsSelfDeputyNode(block.Height()) {
 			// only broadcast confirm info within 3 minutes
 			currentTime := time.Now().Unix()
 			if currentTime-int64(block.Time()) < 3*60 {
@@ -562,15 +568,15 @@ func (bc *BlockChain) VerifyAndFill(block *types.Block) (*types.Block, error) {
 func (bc *BlockChain) verifyBody(block *types.Block) error {
 	header := block.Header
 	// verify txRoot
-	if hash := types.DeriveTxsSha(block.Txs); hash != header.TxRoot {
+	if hash := block.Txs.MerkleRootSha(); hash != header.TxRoot {
 		log.Errorf("verify block failed. hash:%s height:%d", block.Hash(), block.Height())
 		return ErrVerifyBlockFailed
 	}
 	// verify deputyRoot
 	if block.Height()%params.TermDuration == 0 {
-		bRoot := types.DeriveDeputyRootSha(block.DeputyNodes)
+		bRoot := block.DeputyNodes.MerkleRootSha()
 		nodes := bc.GetNewDeputyNodes()
-		selfRoot := types.DeriveDeputyRootSha(nodes)
+		selfRoot := nodes.MerkleRootSha()
 		if bytes.Compare(bRoot[:], selfRoot[:]) != 0 {
 			log.Errorf("verify block failed. deputyNodes not match.block's nodes: %v, self nodes: %v", block.DeputyNodes, nodes)
 			return ErrVerifyBlockFailed
@@ -652,7 +658,7 @@ func (bc *BlockChain) hasEnoughConfirmInfo(hash common.Hash, height uint32) (boo
 	if err != nil {
 		return false, err
 	}
-	nodeCount := deputynode.Instance().GetDeputiesCount(height)
+	nodeCount := bc.dm.GetDeputiesCount(height)
 	minCount := int(math.Ceil(float64(nodeCount) * 2.0 / 3.0))
 	if confirmCount >= minCount {
 		return true, nil
@@ -672,7 +678,7 @@ func (bc *BlockChain) getConfirmCount(hash common.Hash) (int, error) {
 
 // get index of signer in deputy nodes list
 func (bc *BlockChain) getSignerIndex(pubKey []byte, height uint32) int {
-	node := deputynode.Instance().GetDeputyByNodeID(height, pubKey)
+	node := bc.dm.GetDeputyByNodeID(height, pubKey)
 	if node != nil {
 		return int(node.Rank)
 	}
@@ -713,10 +719,10 @@ func (bc *BlockChain) Db() db.ChainDB {
 
 // GetNewDeputyNodes get next epoch deputy nodes for snapshot block
 func (bc *BlockChain) GetNewDeputyNodes() deputynode.DeputyNodes {
-	result := make(deputynode.DeputyNodes, 0, 17)
+	result := make(deputynode.DeputyNodes, 0, bc.dm.DeputyCount)
 	list := bc.db.GetCandidatesTop(bc.CurrentBlock().Hash())
-	if len(list) > deputynode.TotalCount {
-		list = list[:deputynode.TotalCount]
+	if len(list) > bc.dm.DeputyCount {
+		list = list[:bc.dm.DeputyCount]
 	}
 
 	for i, n := range list {

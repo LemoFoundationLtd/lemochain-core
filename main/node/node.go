@@ -41,8 +41,6 @@ type Node struct {
 	miner    *miner.Miner
 	gasPrice *big.Int
 
-	minerAddress common.Address
-
 	instanceDirLock flock.Releaser
 
 	server *p2p.Server
@@ -106,8 +104,7 @@ func getGenesis(db protocol.ChainDB) *types.Block {
 	if err != nil {
 		if err == store.ErrNotExist {
 			// create genesis block
-			chain.SetupGenesisBlock(db, nil)
-			block, _ = db.GetBlockByHeight(0)
+			block = chain.SetupGenesisBlock(db, nil)
 		} else {
 			panic(fmt.Sprintf("can't get genesis block. err: %v", err))
 		}
@@ -120,30 +117,25 @@ func getGenesis(db protocol.ChainDB) *types.Block {
 
 func (n *Node) setMinerAddress() {
 	nextHeight := n.chain.CurrentBlock().Height() + 1
-	deputyNode := deputynode.Instance().GetDeputyByNodeID(nextHeight, deputynode.GetSelfNodeID())
+	deputyNode := n.chain.DeputyManager().GetDeputyByNodeID(nextHeight, deputynode.GetSelfNodeID())
 	if deputyNode != nil {
 		n.miner.SetMinerAddress(deputyNode.MinerAddress)
 	}
 }
 
 // initDeputyNodes init deputy nodes information
-func initDeputyNodes(db protocol.ChainDB) {
-	block, _ := db.GetBlockByHeight(0)
-	var err error
-	for block != nil {
-		if block.DeputyNodes == nil || len(block.DeputyNodes) == 0 {
-			log.Warnf("initDeputyNodes: can't get deputy nodes in snapshot block")
-			return
+func initDeputyNodes(dm *deputynode.Manager, db protocol.ChainDB) {
+	for snapshotHeight := uint32(0); ; snapshotHeight += params.TermDuration {
+		block, err := db.GetBlockByHeight(snapshotHeight)
+		if err != nil {
+			if err == store.ErrNotExist {
+				break
+			}
+			log.Errorf("Load snapshot block error: %v", err)
+			panic(err)
 		}
-		deputynode.Instance().Add(block.Height(), block.DeputyNodes)
-		block, err = db.GetBlockByHeight(block.Height() + params.TermDuration)
-		if err == store.ErrNotExist {
-			break
-		} else if err == nil {
-			// normal
-		} else {
-			panic(fmt.Sprintf("block get error: %v", err))
-		}
+
+		dm.SaveSnapshot(snapshotHeight, block.DeputyNodes)
 	}
 }
 
@@ -153,10 +145,11 @@ func New(flags flag.CmdFlags) *Node {
 	// read genesis block
 	genesisBlock := getGenesis(db)
 	// read all deputy nodes from snapshot block
-	initDeputyNodes(db)
+	dm := deputynode.NewManager(int(configFromFile.DeputyCount))
+	initDeputyNodes(dm, db)
 	// new dpovp consensus engine
-	engine := chain.NewDpovp(int64(configFromFile.Timeout), db)
-	blockChain, err := chain.NewBlockChain(uint16(configFromFile.ChainID), engine, db, flags)
+	engine := chain.NewDpovp(int64(configFromFile.Timeout), dm, db)
+	blockChain, err := chain.NewBlockChain(uint16(configFromFile.ChainID), engine, dm, db, flags)
 	if err != nil {
 		panic("new block chain failed!!!")
 	}
@@ -169,7 +162,7 @@ func New(flags flag.CmdFlags) *Node {
 	selfNodeID := p2p.NodeID{}
 	copy(selfNodeID[:], deputynode.GetSelfNodeID())
 	// protocol manager
-	pm := network.NewProtocolManager(uint16(configFromFile.ChainID), selfNodeID, blockChain, txPool, discover, int(configFromFile.ConnectionLimit), params.VersionUint())
+	pm := network.NewProtocolManager(uint16(configFromFile.ChainID), selfNodeID, blockChain, dm, txPool, discover, int(configFromFile.ConnectionLimit), params.VersionUint())
 	// p2p server
 	server := p2p.NewServer(cfg.P2P, discover)
 	n := &Node{

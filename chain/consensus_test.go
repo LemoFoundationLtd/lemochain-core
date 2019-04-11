@@ -29,38 +29,36 @@ const (
 )
 
 // loadDpovp 加载一个Dpovp实例
-func loadDpovp() *Dpovp {
+func loadDpovp(dm *deputynode.Manager) *Dpovp {
 	ClearData()
 	db := store.NewChainDataBase(GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
-	d := NewDpovp(10*1000, db)
+	d := NewDpovp(10*1000, dm, db)
 	return d
 }
 
 // 初始化代理节点,numNode为选择共识节点数量，取值为[1,5],height为发放奖励高度
-func initDeputyNode(numNode int, height uint32) error {
-	manager := deputynode.Instance()
-	// 清理之前设置的共识节点列表
-	manager.Clear()
+func initDeputyNode(numNode int, height uint32) *deputynode.Manager {
+	manager := deputynode.NewManager(5)
 
 	privarte01, err := crypto.ToECDSA(common.FromHex(deputy01Privkey))
 	if err != nil {
-		return err
+		panic(err)
 	}
 	privarte02, err := crypto.ToECDSA(common.FromHex(deputy02Privkey))
 	if err != nil {
-		return err
+		panic(err)
 	}
 	privarte03, err := crypto.ToECDSA(common.FromHex(deputy03Privkey))
 	if err != nil {
-		return err
+		panic(err)
 	}
 	privarte04, err := crypto.ToECDSA(common.FromHex(deputy04Privkey))
 	if err != nil {
-		return err
+		panic(err)
 	}
 	privarte05, err := crypto.ToECDSA(common.FromHex(deputy05Privkey))
 	if err != nil {
-		return err
+		panic(err)
 	}
 
 	var nodes = make([]*deputynode.DeputyNode, 5)
@@ -69,7 +67,7 @@ func initDeputyNode(numNode int, height uint32) error {
 		NodeID:       (crypto.FromECDSAPub(&privarte01.PublicKey))[1:],
 		IP:           nil,
 		Port:         7001,
-		Rank:         1,
+		Rank:         0,
 		Votes:        big.NewInt(120),
 	}
 	nodes[1] = &deputynode.DeputyNode{
@@ -77,7 +75,7 @@ func initDeputyNode(numNode int, height uint32) error {
 		NodeID:       (crypto.FromECDSAPub(&privarte02.PublicKey))[1:],
 		IP:           nil,
 		Port:         7002,
-		Rank:         2,
+		Rank:         1,
 		Votes:        big.NewInt(110),
 	}
 	nodes[2] = &deputynode.DeputyNode{
@@ -85,7 +83,7 @@ func initDeputyNode(numNode int, height uint32) error {
 		NodeID:       (crypto.FromECDSAPub(&privarte03.PublicKey))[1:],
 		IP:           nil,
 		Port:         7003,
-		Rank:         3,
+		Rank:         2,
 		Votes:        big.NewInt(100),
 	}
 	nodes[3] = &deputynode.DeputyNode{
@@ -93,7 +91,7 @@ func initDeputyNode(numNode int, height uint32) error {
 		NodeID:       (crypto.FromECDSAPub(&privarte04.PublicKey))[1:],
 		IP:           nil,
 		Port:         7004,
-		Rank:         4,
+		Rank:         3,
 		Votes:        big.NewInt(90),
 	}
 	nodes[4] = &deputynode.DeputyNode{
@@ -101,16 +99,16 @@ func initDeputyNode(numNode int, height uint32) error {
 		NodeID:       (crypto.FromECDSAPub(&privarte05.PublicKey))[1:],
 		IP:           nil,
 		Port:         7005,
-		Rank:         5,
+		Rank:         4,
 		Votes:        big.NewInt(80),
 	}
 
 	if numNode > 5 || numNode == 0 {
-		return fmt.Errorf("overflow index. numNode must be [1,5]")
+		panic(fmt.Errorf("overflow index. numNode must be [1,5]"))
 	}
-	manager.Add(height, nodes[:numNode])
+	manager.SaveSnapshot(height, nodes[:numNode])
 
-	return nil
+	return manager
 }
 
 // 对区块进行签名的函数
@@ -224,32 +222,29 @@ func Test_verifyHeaderTime(t *testing.T) {
 
 // Test_verifyHeaderSignData 测试验证区块签名数据函数是否正确
 func Test_verifyHeaderSignData(t *testing.T) {
-	err := initDeputyNode(3, 0) // 选择前三个共识节点
-	assert.NoError(t, err)
-	dpovp := loadDpovp()
+	dm := initDeputyNode(3, 0) // 选择前三个共识节点
+	dpovp := loadDpovp(dm)
 	defer dpovp.db.Close()
 	// 创建一个块并用另一个节点来对此区块进行签名
 	block01 := newSignedBlock(dpovp, common.Hash{}, common.HexToAddress(block01MinerAddress), nil, uint32(time.Now().Unix()), deputy02Privkey, false)
 	// header := block01.Header
-	assert.Equal(t, ErrVerifyHeaderFailed, verifyHeaderSignData(block01))
+	assert.Equal(t, ErrVerifyHeaderFailed, verifyHeaderSignData(dm, block01))
 }
 
 // // TestDpovp_nodeCount1 nodeCount = 1 的情况下直接返回nil
 func TestDpovp_nodeCount1(t *testing.T) {
-	err := initDeputyNode(1, 0)
-	assert.NoError(t, err)
-	dpovp := loadDpovp()
+	dm := initDeputyNode(1, 0)
+	dpovp := loadDpovp(dm)
 	defer dpovp.db.Close()
 
-	t.Log(deputynode.Instance().GetDeputiesCount(1))
+	t.Log(dm.GetDeputiesCount(1))
 	assert.Equal(t, nil, dpovp.VerifyHeader(&types.Block{Header: &types.Header{Height: 1}}))
 }
 
 // 验证区块头Extra字段长度是否正确
 func Test_headerExtra(t *testing.T) {
-	err := initDeputyNode(3, 0)
-	assert.NoError(t, err)
-	dpovp := loadDpovp()
+	dm := initDeputyNode(3, 0)
+	dpovp := loadDpovp(dm)
 	defer dpovp.db.Close()
 	// 创建一个标准的区块
 	testBlcok := newSignedBlock(dpovp, common.Hash{}, common.HexToAddress(block01MinerAddress), nil, uint32(time.Now().Unix()-10), deputy01Privkey, false)
@@ -264,10 +259,9 @@ func Test_headerExtra(t *testing.T) {
 
 // TestDpovp_VerifyHeader01 对共识中共识区块与父块关联情况共识的测试
 func TestDpovp_VerifyHeader01(t *testing.T) {
-	err := initDeputyNode(5, 0)
-	assert.NoError(t, err)
-	t.Log(deputynode.Instance().GetDeputiesCount(1))
-	dpovp := loadDpovp()
+	dm := initDeputyNode(5, 0)
+	t.Log(dm.GetDeputiesCount(1))
+	dpovp := loadDpovp(dm)
 	defer dpovp.db.Close()
 	// 验证不存在父区块的情况
 	testBlock00 := newSignedBlock(dpovp, common.Hash{}, common.HexToAddress(block01MinerAddress), nil, uint32(time.Now().Unix()-10), deputy01Privkey, true)
@@ -284,9 +278,8 @@ func TestDpovp_VerifyHeader01(t *testing.T) {
 func TestDpovp_VerifyHeader02(t *testing.T) {
 	ClearData()
 	// 创建5个代理节点
-	err := initDeputyNode(5, 0)
-	assert.NoError(t, err)
-	dpovp := loadDpovp()
+	dm := initDeputyNode(5, 0)
+	dpovp := loadDpovp(dm)
 	defer dpovp.db.Close()
 	// 创世块,随便哪个节点出块在这里没有影响
 	block00 := newSignedBlock(dpovp, common.Hash{}, common.HexToAddress(block01MinerAddress), nil, 1995, deputy01Privkey, true)
@@ -338,7 +331,9 @@ func TestDpovp_VerifyHeader02(t *testing.T) {
 
 // TestDpovp_Seal
 func TestDpovp_Seal(t *testing.T) {
-	dpovp := loadDpovp()
+	// 创建5个代理节点
+	dm := initDeputyNode(5, 0)
+	dpovp := loadDpovp(dm)
 	defer dpovp.db.Close()
 	// 创世块
 	block00 := newSignedBlock(dpovp, common.Hash{}, common.HexToAddress(block01MinerAddress), nil, 995, deputy01Privkey, true)
@@ -368,20 +363,17 @@ func TestDpovp_Seal(t *testing.T) {
 // TestDpovp_Finalize todo
 func TestDpovp_Finalize(t *testing.T) {
 	// 添加第一个共识节点列表,设置共识的节点为前两个节点
-	err := initDeputyNode(2, 0)
-	assert.NoError(t, err)
+	dm := initDeputyNode(2, 0)
 	// 添加第二个共识节点列表,设置共识的节点为前三个节点,并设置发放奖励高度为10000,在挖出高度为10000+1000+1的区块的时候为上一轮共识节点发放奖励
-	err = initDeputyNode(3, 10000)
-	assert.NoError(t, err)
+	dm = initDeputyNode(3, 10000)
 	// 添加第三个共识节点列表,并设置发放奖励高度为20000,在挖出高度为20000+1000+1的区块的时候为上一轮共识节点发放奖励
-	err = initDeputyNode(5, 20000)
-	assert.NoError(t, err)
+	dm = initDeputyNode(5, 20000)
 
-	dpovp := loadDpovp()
+	dpovp := loadDpovp(dm)
 	defer dpovp.db.Close()
 	am := account.NewManager(common.Hash{}, dpovp.db)
 	// 测试挖出的块高度不满足发放奖励高度的时候
-	err = dpovp.Finalize(9999, am)
+	err := dpovp.Finalize(9999, am)
 	assert.NoError(t, err)
 	// dpovp.handOutRewards(9999)
 	err = dpovp.Finalize(19998, am)

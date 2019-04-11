@@ -19,6 +19,7 @@ func TestReadConfigFile(t *testing.T) {
 
 	cfg := &ConfigFromFile{
 		ChainID:         100,
+		DeputyCount:     5,
 		SleepTime:       10000,
 		Timeout:         3000,
 		DbUri:           "127.0.0.1:8080",

@@ -32,7 +32,8 @@ func TestNewTxProcessor(t *testing.T) {
 
 	flags := flag.CmdFlags{}
 	flags.Set(common.Debug, "1")
-	chain, _ = NewBlockChain(chainID, NewDpovp(10*1000, chain.db), chain.db, flags)
+	dm := deputynode.NewManager(5)
+	chain, _ = NewBlockChain(chainID, NewDpovp(10*1000, dm, chain.db), dm, chain.db, flags)
 	p = NewTxProcessor(chain)
 }
 
@@ -125,7 +126,7 @@ func TestTxProcessor_Process2(t *testing.T) {
 	block.Txs[0] = signTransaction(block.Txs[0], private)
 	newFrom, _ := block.Txs[0].From()
 	assert.NotEqual(t, origFrom, newFrom)
-	block.Header.TxRoot = types.DeriveTxsSha(block.Txs)
+	block.Header.TxRoot = block.Txs.MerkleRootSha()
 	_, err = p.Process(block.Header, block.Txs)
 	assert.Equal(t, ErrInvalidTxInBlock, err)
 
@@ -138,7 +139,7 @@ func TestTxProcessor_Process2(t *testing.T) {
 	// used gas reach limit in some tx
 	block = createNewBlock(bc.db)
 	block.Txs[0] = makeTransaction(testPrivate, defaultAccounts[1], params.OrdinaryTx, big.NewInt(100), common.Big1, 0, 1)
-	block.Header.TxRoot = types.DeriveTxsSha(block.Txs)
+	block.Header.TxRoot = block.Txs.MerkleRootSha()
 	_, err = p.Process(block.Header, block.Txs)
 	assert.Equal(t, ErrInvalidTxInBlock, err)
 
@@ -146,7 +147,7 @@ func TestTxProcessor_Process2(t *testing.T) {
 	block = createNewBlock(bc.db)
 	balance := p.am.GetAccount(testAddr).GetBalance()
 	block.Txs[0] = makeTx(testPrivate, defaultAccounts[1], params.OrdinaryTx, new(big.Int).Add(balance, big.NewInt(1)))
-	block.Header.TxRoot = types.DeriveTxsSha(block.Txs)
+	block.Header.TxRoot = block.Txs.MerkleRootSha()
 	_, err = p.Process(block.Header, block.Txs)
 	assert.Equal(t, ErrInvalidTxInBlock, err)
 
@@ -1252,7 +1253,7 @@ func TestPrecomplieContract(t *testing.T) {
 	Block07, _ := newNextBlock(p, Block06, txs02, true)
 	Block08, _ := newNextBlock(p, Block07, nil, true)
 	// set next deputyNodeList
-	deputynode.Instance().Add(9, DefaultDeputyNodes)
+	bc.DeputyManager().SaveSnapshot(9, DefaultDeputyNodes)
 
 	Block09, _ := newNextBlock(p, Block08, nil, true)
 	assert.NotEmpty(t, Block09)

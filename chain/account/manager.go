@@ -24,7 +24,7 @@ var (
 type TxsProduct struct {
 	Txs         types.Transactions // The transactions executed indeed. These transactions will be packaged in a block
 	GasUsed     uint64             // gas used by all transactions
-	ChangeLogs  []*types.ChangeLog
+	ChangeLogs  types.ChangeLogSlice
 	VersionRoot common.Hash
 }
 
@@ -137,7 +137,7 @@ func (am *Manager) GetEvents() []*types.Event {
 // }
 
 // GetChangeLogs returns all change logs since last reset
-func (am *Manager) GetChangeLogs() []*types.ChangeLog {
+func (am *Manager) GetChangeLogs() types.ChangeLogSlice {
 	return am.processor.GetChangeLogs()
 }
 

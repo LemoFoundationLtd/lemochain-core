@@ -47,6 +47,7 @@ go build
 ```json
 {
 	"chainID": "1203",
+	"deputyCount": "17",
 	"sleepTime": "3000",
 	"timeout": "10000",
 	"dbUri": "root:123456@tcp(127.0.0.1:3306)/lemochain?charset=utf8mb4",
@@ -57,6 +58,7 @@ go build
 }
 ```
 - `chainID` LemoChain的ID，不能为0
+- `deputyCount` 参与共识的最大节点数量
 - `sleepTime` 收到区块后等待一定时间后再出块，以免区块中没有交易（后续版本将会改为根据交易池状态决定是否出块）
 - `timeout` 各节点出块的超时时间，不能小于3秒(3000毫秒)
 - `dbUri` 数据库连接地址。格式为`[用户名]:[密码]@tcp([IP]:[端口号])/[数据库名]?charset=utf8mb4`

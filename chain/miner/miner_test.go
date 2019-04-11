@@ -87,7 +87,7 @@ type blockInfo struct {
 	versionRoot common.Hash
 	txRoot      common.Hash
 	logRoot     common.Hash
-	txList      []*types.Transaction
+	txList      types.Transactions
 	gasLimit    uint64
 	time        uint32
 	deputyRoot  []byte
@@ -99,7 +99,7 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 	// sign transactions
 	var err error
 	var gasUsed uint64 = 0
-	txRoot := types.DeriveTxsSha(info.txList)
+	txRoot := info.txList.MerkleRootSha()
 	if txRoot != info.txRoot {
 		if info.txRoot != (common.Hash{}) {
 			fmt.Printf("%d txRoot hash error. except: %s, got: %s\n", info.height, info.txRoot.Hex(), txRoot.Hex())
@@ -109,7 +109,7 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 
 	var deputyRoot []byte
 	if len(info.deputyNodes) > 0 {
-		deputyRoot = types.DeriveDeputyRootSha(info.deputyNodes).Bytes()
+		deputyRoot = info.deputyNodes.MerkleRootSha().Bytes()
 	}
 	if bytes.Compare(deputyRoot, info.deputyRoot) != 0 {
 		if len(info.deputyNodes) > 0 || len(info.deputyRoot) != 0 {
@@ -162,7 +162,7 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 	}
 	changeLogs := manager.GetChangeLogs()
 	// fmt.Printf("%d changeLogs %v\n", info.height, changeLogs)
-	logRoot := types.DeriveChangeLogsSha(changeLogs)
+	logRoot := changeLogs.MerkleRootSha()
 	if logRoot != info.logRoot {
 		if info.logRoot != (common.Hash{}) {
 			fmt.Printf("%d change logs root error. except: %s, got: %s\n", info.height, info.logRoot.Hex(), logRoot.Hex())
@@ -251,9 +251,11 @@ func newBlockChain() (*chain.BlockChain, chan *types.Block, error) {
 	genesis := chain.DefaultGenesisBlock()
 	chain.SetupGenesisBlock(db, genesis)
 
+	dm := deputynode.NewManager(5)
+	dm.SaveSnapshot(0, chain.DefaultDeputyNodes)
 	var engine EngineTestForMiner
 	ch := make(chan *types.Block)
-	blockChain, err := chain.NewBlockChain(chainID, &engine, db, nil)
+	blockChain, err := chain.NewBlockChain(chainID, &engine, dm, db, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -300,14 +302,10 @@ func init() {
 }
 
 func TestMiner_GetSleepGenesis(t *testing.T) {
-	store.ClearData()
-	deputynode.Instance().Clear()
-	deputynode.Instance().Add(0, chain.DefaultDeputyNodes)
-
 	me := Nodes[0].privateKey
 	miner, err := newMiner(me)
-	defer miner.chain.Db().Close()
 	assert.NoError(t, err)
+	defer miner.chain.Db().Close()
 
 	reset0 := miner.getSleepTime()
 
@@ -331,13 +329,9 @@ func TestMiner_GetSleepGenesis(t *testing.T) {
 }
 
 func TestMine_GetSleepNotSelf(t *testing.T) {
-	store.ClearData()
-	deputynode.Instance().Clear()
-	deputynode.Instance().Add(0, chain.DefaultDeputyNodes)
-
 	miner, err := newMiner(Nodes[0].privateKey)
-	defer miner.chain.Db().Close()
 	assert.NoError(t, err)
+	defer miner.chain.Db().Close()
 
 	genesis := miner.chain.GetBlockByHeight(0)
 	info := blockInfo{parentHash: genesis.Hash(), height: 1, author: common.HexToAddress(Nodes[0].address)}
@@ -355,27 +349,20 @@ func TestMine_GetSleepNotSelf(t *testing.T) {
 }
 
 func TestMiner_GetSleep1Deputy(t *testing.T) {
-	store.ClearData()
-	deputynode.Instance().Clear()
-	deputynode.Instance().Add(0, deputynode.DeputyNodes{chain.DefaultDeputyNodes[0]})
-	setSelfNodeKey(Nodes[0].privateKey)
-
 	miner, err := newMiner(Nodes[0].privateKey)
-	defer miner.chain.Db().Close()
+	// overwrite existed deputy nodes by only one node
+	miner.chain.DeputyManager().SaveSnapshot(0, deputynode.DeputyNodes{chain.DefaultDeputyNodes[0]})
 	assert.NoError(t, err)
+	defer miner.chain.Db().Close()
 
 	reset := miner.getSleepTime()
 	assert.Equal(t, int(Cnf.SleepTime), reset)
 }
 
 func TestMiner_GetSleepValidAuthor(t *testing.T) {
-	store.ClearData()
-	deputynode.Instance().Clear()
-
-	deputynode.Instance().Add(0, chain.DefaultDeputyNodes)
 	miner, err := newMiner(Nodes[0].privateKey)
-	defer miner.chain.Db().Close()
 	assert.NoError(t, err)
+	defer miner.chain.Db().Close()
 
 	genesis := miner.chain.GetBlockByHeight(0)
 	info := blockInfo{parentHash: genesis.Hash(), height: 1, author: common.HexToAddress(Nodes[5].address)}
@@ -391,13 +378,9 @@ func TestMiner_GetSleepValidAuthor(t *testing.T) {
 }
 
 func TestMiner_GetSleepSlot1(t *testing.T) {
-	store.ClearData()
-	deputynode.Instance().Clear()
-	deputynode.Instance().Add(0, chain.DefaultDeputyNodes)
-
 	miner, err := newMiner(Nodes[0].privateKey)
-	defer miner.chain.Db().Close()
 	assert.NoError(t, err)
+	defer miner.chain.Db().Close()
 
 	genesis := miner.chain.GetBlockByHeight(0)
 	wait := 1
@@ -441,13 +424,9 @@ func TestMiner_GetSleepSlot1(t *testing.T) {
 }
 
 func TestMiner_GetSleepSlot2(t *testing.T) {
-	store.ClearData()
-	deputynode.Instance().Clear()
-	deputynode.Instance().Add(0, chain.DefaultDeputyNodes)
-
 	miner, err := newMiner(Nodes[0].privateKey)
-	defer miner.chain.Db().Close()
 	assert.NoError(t, err)
+	defer miner.chain.Db().Close()
 
 	genesis := miner.chain.GetBlockByHeight(0)
 	wait := 31
@@ -491,13 +470,9 @@ func TestMiner_GetSleepSlot2(t *testing.T) {
 }
 
 func TestMiner_GetSleepSlot3(t *testing.T) {
-	store.ClearData()
-	deputynode.Instance().Clear()
-	deputynode.Instance().Add(0, chain.DefaultDeputyNodes)
-
 	miner, err := newMiner(Nodes[0].privateKey)
-	defer miner.chain.Db().Close()
 	assert.NoError(t, err)
+	defer miner.chain.Db().Close()
 
 	genesis := miner.chain.GetBlockByHeight(0)
 	wait := 45
@@ -541,13 +516,9 @@ func TestMiner_GetSleepSlot3(t *testing.T) {
 }
 
 func TestMiner_GetSleepSlot4(t *testing.T) {
-	store.ClearData()
-	deputynode.Instance().Clear()
-	deputynode.Instance().Add(0, chain.DefaultDeputyNodes)
-
 	miner, err := newMiner(Nodes[0].privateKey)
-	defer miner.chain.Db().Close()
 	assert.NoError(t, err)
+	defer miner.chain.Db().Close()
 
 	genesis := miner.chain.GetBlockByHeight(0)
 	wait := 45
@@ -591,10 +562,6 @@ func TestMiner_GetSleepSlot4(t *testing.T) {
 }
 
 // func TestMiner_GetSleepSlot5(t *testing.T) {
-// 	store.ClearData()
-// 	deputynode.Instance().Clear()
-// 	deputynode.Instance().Add(0, chain.DefaultDeputyNodes)
-//
 // 	miner, err := newMiner(Nodes[0].privateKey)
 // 	assert.NoError(t, err)
 //
@@ -641,14 +608,10 @@ func TestMiner_GetSleepSlot4(t *testing.T) {
 // }
 
 func TestMiner_GetSleepNormal(t *testing.T) {
-	store.ClearData()
-	deputynode.Instance().Clear()
-	deputynode.Instance().Add(0, chain.DefaultDeputyNodes)
-
 	me := Nodes[0].privateKey
 	miner, err := newMiner(me)
-	defer miner.chain.Db().Close()
 	assert.NoError(t, err)
+	defer miner.chain.Db().Close()
 
 	genesis := miner.chain.GetBlockByHeight(0)
 	info := blockInfo{parentHash: genesis.Hash(), height: 1, author: common.HexToAddress(Nodes[0].address)}
