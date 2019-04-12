@@ -176,9 +176,4 @@ func (h *LogProcessor) MergeChangeLogs(fromIndex int) {
 
 	mergedLogs := MergeChangeLogs(needMerge)
 	h.changeLogs = append(h.changeLogs[:fromIndex], mergedLogs...)
-	// make sure the snapshot still work
-	if !h.checkRevisionAvailable() {
-		log.Error("invalid revision", "last revision", h.revisions[len(h.revisions)-1], "new logs count", len(h.changeLogs), "from index", fromIndex, "merged logs count", len(mergedLogs))
-		panic(ErrSnapshotIsBroken)
-	}
 }

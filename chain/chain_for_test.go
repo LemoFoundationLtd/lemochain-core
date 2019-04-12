@@ -50,23 +50,17 @@ var (
 	defaultBlockInfos = []blockInfo{
 		// genesis block must no transactions
 		{
-			hash:        common.HexToHash("0xfceb0a339a5be9689a3db2b7df2a05feba5b1f6e1ce385f14764d139556b9426"),
 			height:      0,
 			author:      defaultAccounts[0],
-			versionRoot: common.HexToHash("0x6eea9449a171035539c71d2895830afc061d0777da6e86735d9899c888d953c1"),
 			txRoot:      merkle.EmptyTrieHash,
-			logRoot:     common.HexToHash("0xb0d3749ecc3a7a0db6368284320863a3d2fa963b2c33b41c6ebf8632cd84bda9"),
 			time:        1538209751,
 			deputyNodes: DefaultDeputyNodes,
 		},
 		// block 1 is stable block
 		{
-			hash:        common.HexToHash("0x13eab3a7cdd62168d2d2e009a97b237f5b088a6bd4ea00a5b4019df750b12fee"),
-			height:      1,
-			author:      common.HexToAddress("0x20000"),
-			versionRoot: common.HexToHash("0xfa470f96f703f04ba85d39bf7f64aa43e8b352e541fe36ea9f053336dfd1b22a"),
-			txRoot:      common.HexToHash("0xd4d2b1b6785e94c8e753e932e4913705a8ecac449b48407a4db1033387197713"),
-			logRoot:     common.HexToHash("0xb6062a94cf5ce70ec3910072da83eca56ba584aba8273e4d0837eb03c090e473"),
+			height: 1,
+			author: common.HexToAddress("0x20000"),
+			txRoot: common.HexToHash("0xec3a193fd32f741372031854461b0413bf7a6136c5da8482f37d3bc42f75125d"),
 			txList: []*types.Transaction{
 				// testAddr -> defaultAccounts[0] 1
 				signTransaction(types.NewTransaction(defaultAccounts[0], common.Big1, 2000000, common.Big2, []byte{12}, params.OrdinaryTx, chainID, 1538210391, "aa", "aaa"), testPrivate),
@@ -78,12 +72,9 @@ var (
 		},
 		// block 2 is not stable block
 		{
-			hash:        common.HexToHash("0x81c8be9e6067eb2aa291472e4e63601f47c7ef46b1d8541320ebcbce6d5d1a49"),
-			height:      2,
-			author:      defaultAccounts[0],
-			versionRoot: common.HexToHash("0x407e1d64578f852d97ab3b5a655ece80ca1422ef68ba0145756f35a4b7fb141b"),
-			txRoot:      common.HexToHash("0xea8917e81b2b4688bf4bd25c04cbce3d834ddd362b327c3b2979533561b8f5cf"),
-			logRoot:     common.HexToHash("0x40ab1668ecddd288ded6cec4135dadb071beee4e2826640e96c416894aaa6469"),
+			height: 2,
+			author: defaultAccounts[0],
+			txRoot: common.HexToHash("0x05633a7bb926221425abcf4b3505f5c0e7cb60b5619b24ac66aea98c97c3f1da"),
 			txList: []*types.Transaction{
 				// testAddr -> defaultAccounts[0] 2
 				makeTransaction(testPrivate, defaultAccounts[0], params.OrdinaryTx, bigNumber, common.Big2, 1538210395, 2000000),
@@ -93,12 +84,9 @@ var (
 		},
 		// block 3 is not store in db
 		{
-			hash:        common.HexToHash("0x900fc2632b9a86e107a9ba0252fdd34a45f253475f6d7d01a23d0e37bca49d20"),
-			height:      3,
-			author:      defaultAccounts[0],
-			versionRoot: common.HexToHash("0x26a8540cd0e07e18d08ad484cfb44b0fd40dc5f197678897fc80076dbfa942b4"),
-			txRoot:      common.HexToHash("0x7ced5615dbeb7adb62f909ec9cad37d1a692f3996fd73fefc462d2c81b9c411c"),
-			logRoot:     common.HexToHash("0xa92582c4c7627d130a38c94e568b8c671817fe742930636c7b0190b7f7344064"),
+			height: 3,
+			author: defaultAccounts[0],
+			txRoot: common.HexToHash("0x85400987768d585d45925e27bc64e0ecd8fc50f9d106832e352faa72eb6bd4fb"),
 			txList: []*types.Transaction{
 				// testAddr -> defaultAccounts[0] 2
 				makeTransaction(testPrivate, defaultAccounts[0], params.OrdinaryTx, common.Big2, common.Big2, 1538210398, 30000),
@@ -216,6 +204,8 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 		miner.SetBalance(new(big.Int).Add(miner.GetBalance(), salary))
 	}
 	editAccountsEnd := time.Now().UnixNano()
+
+	manager.MergeChangeLogs(0)
 	err = manager.Finalise()
 	if err != nil {
 		panic(err)
@@ -229,6 +219,7 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 		}
 		info.versionRoot = manager.GetVersionRoot()
 	}
+
 	changeLogs := manager.GetChangeLogs()
 	fmt.Printf("%d changeLogs %v\n", info.height, changeLogs)
 	logRoot := changeLogs.MerkleRootSha()

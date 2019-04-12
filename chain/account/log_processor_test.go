@@ -367,13 +367,6 @@ func TestLogProcessor_MergeChangeLogs2(t *testing.T) {
 	assert.Equal(t, common.Address{}, logs[2].OldVal)
 	assert.Equal(t, safeAccount2.GetAddress(), logs[2].NewVal)
 	assert.Equal(t, uint32(1), logs[2].Version)
-
-	// broke snapshot
-	safeAccount2.SetBalance(big.NewInt(444))
-	processor.Snapshot()
-	assert.PanicsWithValue(t, ErrSnapshotIsBroken, func() {
-		processor.MergeChangeLogs(0)
-	})
 }
 
 func TestLogProcessor_MergeChangeLogs3(t *testing.T) {
@@ -428,11 +421,4 @@ func TestLogProcessor_MergeChangeLogs3(t *testing.T) {
 	assert.Equal(t, common.Address{}, logs[2].OldVal)
 	assert.Equal(t, safeAccount2.GetAddress(), logs[2].NewVal)
 	assert.Equal(t, uint32(1), logs[2].Version)
-
-	// broke snapshot
-	safeAccount2.SetBalance(big.NewInt(444))
-	processor.Snapshot()
-	assert.PanicsWithValue(t, ErrSnapshotIsBroken, func() {
-		processor.MergeChangeLogs(0)
-	})
 }

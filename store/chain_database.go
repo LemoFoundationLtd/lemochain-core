@@ -344,11 +344,13 @@ func (database *ChainDatabase) SetBlock(hash common.Hash, block *types.Block) er
 
 	if database.LastConfirm.Block == nil {
 		if (block.Height() != 0) || (block.ParentHash() != common.Hash{}) {
-			panic("(database.LastConfirm.Block == nil) && (block.Height() != 0) && (block.ParentHash() != common.Hash{})")
+			log.Errorf("(database.LastConfirm.Block == nil) && (block.Height() != 0) && (block.ParentHash() != common.Hash{})")
+			return ErrArgInvalid
 		}
 	} else {
 		if (block.Height() == 0) || (block.ParentHash() == common.Hash{}) {
-			panic("(block.Height() == 0) || (block.ParentHash() == common.Hash{})")
+			log.Errorf("(block.Height() == 0) || (block.ParentHash() == common.Hash{})")
+			return ErrArgInvalid
 		}
 
 		if block.Height() <= database.LastConfirm.Block.Height() {
@@ -356,7 +358,8 @@ func (database *ChainDatabase) SetBlock(hash common.Hash, block *types.Block) er
 			bhash := block.Hash().Hex()
 			lheight := strconv.Itoa(int(database.LastConfirm.Block.Height()))
 			lhash := database.LastConfirm.Block.Hash().Hex()
-			panic("block'height:" + bheight + "|bhash:" + bhash + "|confirm'height:" + lheight + "|lhash:" + lhash)
+			log.Errorf("block'height:" + bheight + "|bhash:" + bhash + "|confirm'height:" + lheight + "|lhash:" + lhash)
+			return ErrArgInvalid
 		}
 	}
 
@@ -374,7 +377,8 @@ func (database *ChainDatabase) SetBlock(hash common.Hash, block *types.Block) er
 			bhash := block.Hash().Hex()
 			lheight := strconv.Itoa(int(database.LastConfirm.Block.Height()))
 			lhash := database.LastConfirm.Block.Hash().Hex()
-			panic("block'height:" + bheight + "|bhash:" + bhash + "|confirm'height:" + lheight + "|lhash:" + lhash)
+			log.Errorf("block'height:" + bheight + "|bhash:" + bhash + "|confirm'height:" + lheight + "|lhash:" + lhash)
+			return ErrArgInvalid
 		}
 
 		if database.LastConfirm.Block.Height()+1 != block.Height() {
@@ -382,7 +386,8 @@ func (database *ChainDatabase) SetBlock(hash common.Hash, block *types.Block) er
 			bhash := block.Hash().Hex()
 			lheight := strconv.Itoa(int(database.LastConfirm.Block.Height()))
 			lhash := database.LastConfirm.Block.Hash().Hex()
-			panic("block'height:" + bheight + "|bhash:" + bhash + "|confirm'height:" + lheight + "|lhash:" + lhash)
+			log.Errorf("block'height:" + bheight + "|bhash:" + bhash + "|confirm'height:" + lheight + "|lhash:" + lhash)
+			return ErrArgInvalid
 		}
 
 		database.UnConfirmBlocks[hash] = NewNormalBlock(block, database.LastConfirm.AccountTrieDB, database.LastConfirm.CandidateTrieDB, database.LastConfirm.Top)
@@ -392,7 +397,8 @@ func (database *ChainDatabase) SetBlock(hash common.Hash, block *types.Block) er
 			bhash := block.Hash().Hex()
 			lheight := strconv.Itoa(int(database.LastConfirm.Block.Height()))
 			lhash := database.LastConfirm.Block.Hash().Hex()
-			panic("block'height:" + bheight + "|bhash:" + bhash + "|confirm'height:" + lheight + "|lhash:" + lhash)
+			log.Errorf("block'height:" + bheight + "|bhash:" + bhash + "|confirm'height:" + lheight + "|lhash:" + lhash)
+			return ErrArgInvalid
 		}
 
 		database.UnConfirmBlocks[hash] = NewNormalBlock(block, pBlock.AccountTrieDB, pBlock.CandidateTrieDB, pBlock.Top)
@@ -484,7 +490,8 @@ func (database *ChainDatabase) SetStableBlock(hash common.Hash) error {
 	// log.Error("set stable block : " + hash.Hex())
 	cItem := database.UnConfirmBlocks[hash]
 	if cItem == nil {
-		panic("set stable block error:the block is not exist. hash:" + hash.Hex())
+		log.Errorf("set stable block error:the block is not exist. hash:" + hash.Hex())
+		return ErrArgInvalid
 	}
 
 	blocks := make([]*CBlock, 0)

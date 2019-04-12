@@ -70,13 +70,8 @@ func TestTxProcessor_Process(t *testing.T) {
 
 	// genesis block
 	block = defaultBlocks[0]
-	gasUsed, err = p.Process(block.Header, block.Txs)
-	assert.NoError(t, err)
-	err = p.am.Finalise()
-	assert.NoError(t, err)
-	assert.Equal(t, block.Header.GasUsed, gasUsed)
-	assert.Equal(t, block.Header.VersionRoot, p.am.GetVersionRoot())
-	assert.Equal(t, len(block.ChangeLogs), len(p.am.GetChangeLogs()))
+	_, err = p.Process(block.Header, block.Txs)
+	assert.Equal(t, err, ErrInvalidGenesis)
 
 	// block on fork branch
 	block = createNewBlock(bc.db)
@@ -184,6 +179,8 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 		Time:         header.Time,
 	}
 	selectedTxs, invalidTxs, gasUsed := p.ApplyTxs(emptyHeader, txs, int64(10000))
+	p.am.MergeChangeLogs(0)
+	p.am.Finalise()
 	assert.Equal(t, header.GasUsed, gasUsed)
 	assert.Equal(t, header.VersionRoot, p.am.GetVersionRoot())
 	assert.Equal(t, defaultBlocks[2].ChangeLogs, p.am.GetChangeLogs())
@@ -202,6 +199,8 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 		Time:         header.Time,
 	}
 	selectedTxs, invalidTxs, gasUsed = p.ApplyTxs(emptyHeader, txs, int64(10000))
+	p.am.MergeChangeLogs(0)
+	p.am.Finalise()
 	assert.Equal(t, header.GasUsed, gasUsed)
 	assert.Equal(t, header.VersionRoot, p.am.GetVersionRoot())
 	assert.Equal(t, defaultBlocks[3].ChangeLogs, p.am.GetChangeLogs())
@@ -222,7 +221,9 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 	author := p.am.GetAccount(header.MinerAddress)
 	origBalance := author.GetBalance()
 	selectedTxs, invalidTxs, gasUsed = p.ApplyTxs(emptyHeader, nil, int64(10000))
-	assert.Equal(t, 0, gasUsed)
+	p.am.MergeChangeLogs(0)
+	p.am.Finalise()
+	assert.Equal(t, uint64(0), gasUsed)
 	assert.Equal(t, defaultBlocks[2].VersionRoot(), p.am.GetVersionRoot()) // last block version root
 	assert.Equal(t, 0, len(selectedTxs))
 	assert.Equal(t, *origBalance, *author.GetBalance())
@@ -240,9 +241,11 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 		Time:         header.Time,
 	}
 	selectedTxs, invalidTxs, gasUsed = p.ApplyTxs(emptyHeader, txs, int64(10000))
-	assert.Equal(t, header.GasUsed, gasUsed)
-	assert.Equal(t, header.VersionRoot, p.am.GetVersionRoot())
-	assert.Equal(t, true, len(defaultBlocks[3].ChangeLogs) < len(p.am.GetChangeLogs()))
+	p.am.MergeChangeLogs(0)
+	p.am.Finalise()
+	assert.NotEqual(t, header.GasUsed, gasUsed)
+	assert.NotEqual(t, header.VersionRoot, p.am.GetVersionRoot())
+	assert.NotEqual(t, true, len(defaultBlocks[3].ChangeLogs), len(p.am.GetChangeLogs()))
 	assert.NotEqual(t, len(txs), len(selectedTxs))
 	assert.Equal(t, 0, len(invalidTxs))
 
@@ -265,6 +268,8 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 		txs[1],
 	}
 	selectedTxs, invalidTxs, _ = p.ApplyTxs(emptyHeader, txs, int64(10000))
+	p.am.MergeChangeLogs(0)
+	p.am.Finalise()
 	assert.Equal(t, len(txs)-1, len(selectedTxs))
 	assert.Equal(t, 1, len(invalidTxs))
 }

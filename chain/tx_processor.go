@@ -27,6 +27,7 @@ const (
 var (
 	ErrInsufficientBalanceForGas = errors.New("insufficient balance to pay for gas")
 	ErrInvalidTxInBlock          = errors.New("block contains invalid transaction")
+	ErrInvalidGenesis            = errors.New("can't process genesis block")
 )
 
 type TxProcessor struct {
@@ -64,7 +65,7 @@ func (p *TxProcessor) Process(header *types.Header, txs types.Transactions) (uin
 	// genesis
 	if header.Height == 0 {
 		log.Warn("It is not necessary to process genesis block.")
-		return gasUsed, nil
+		return gasUsed, ErrInvalidGenesis
 	}
 	// Iterate over and process the individual transactions
 	for i, tx := range txs {
