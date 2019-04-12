@@ -171,14 +171,6 @@ func (h *LogProcessor) Rebuild(address common.Address, logs types.ChangeLogSlice
 }
 
 // MergeChangeLogs merges the change logs for same account in block
-func (h *LogProcessor) MergeChangeLogs(fromIndex int) {
-	needMerge := h.changeLogs[fromIndex:]
-
-	mergedLogs := MergeChangeLogs(needMerge)
-	h.changeLogs = append(h.changeLogs[:fromIndex], mergedLogs...)
-	// make sure the snapshot still work
-	if !h.checkRevisionAvailable() {
-		log.Error("invalid revision", "last revision", h.revisions[len(h.revisions)-1], "new logs count", len(h.changeLogs), "from index", fromIndex, "merged logs count", len(mergedLogs))
-		panic(ErrSnapshotIsBroken)
-	}
+func (h *LogProcessor) MergeChangeLogs() {
+	h.changeLogs = MergeChangeLogs(h.changeLogs)
 }
