@@ -171,9 +171,6 @@ func (h *LogProcessor) Rebuild(address common.Address, logs types.ChangeLogSlice
 }
 
 // MergeChangeLogs merges the change logs for same account in block
-func (h *LogProcessor) MergeChangeLogs(fromIndex int) {
-	needMerge := h.changeLogs[fromIndex:]
-
-	mergedLogs := MergeChangeLogs(needMerge)
-	h.changeLogs = append(h.changeLogs[:fromIndex], mergedLogs...)
+func (h *LogProcessor) MergeChangeLogs() {
+	h.changeLogs = MergeChangeLogs(h.changeLogs)
 }

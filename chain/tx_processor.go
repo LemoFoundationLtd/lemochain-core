@@ -80,7 +80,7 @@ func (p *TxProcessor) Process(header *types.Header, txs types.Transactions) (uin
 	}
 	p.chargeForGas(totalGasFee, header.MinerAddress)
 
-	p.am.MergeChangeLogs(0)
+	p.am.MergeChangeLogs()
 
 	if len(txs) > 0 {
 		log.Infof("process %d transactions", len(txs))
@@ -140,7 +140,7 @@ label:
 		totalGasFee.Add(totalGasFee, fee)
 	}
 	p.chargeForGas(totalGasFee, header.MinerAddress)
-	p.am.MergeChangeLogs(0)
+	p.am.MergeChangeLogs()
 
 	if len(selectedTxs) > 0 {
 		log.Infof("process %d transactions", len(selectedTxs))

@@ -205,7 +205,7 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 	}
 	editAccountsEnd := time.Now().UnixNano()
 
-	manager.MergeChangeLogs(0)
+	manager.MergeChangeLogs()
 	err = manager.Finalise()
 	if err != nil {
 		panic(err)

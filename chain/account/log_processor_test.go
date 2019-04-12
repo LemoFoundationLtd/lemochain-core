@@ -291,7 +291,7 @@ func TestLogProcessor_MergeChangeLogs1(t *testing.T) {
 	processor := manager.processor
 
 	// merge nothing
-	processor.MergeChangeLogs(0)
+	processor.MergeChangeLogs()
 
 	safeAccount1 := manager.GetAccount(defaultAccounts[0].Address)
 	safeAccount2 := manager.GetAccount(common.HexToAddress("0x1"))
@@ -304,7 +304,7 @@ func TestLogProcessor_MergeChangeLogs1(t *testing.T) {
 	assert.Equal(t, *big.NewInt(111), logs[0].NewVal)
 
 	// merge different account's change log
-	processor.MergeChangeLogs(0)
+	processor.MergeChangeLogs()
 	logs = processor.GetChangeLogs()
 	assert.Equal(t, 2, len(logs))
 
@@ -312,9 +312,9 @@ func TestLogProcessor_MergeChangeLogs1(t *testing.T) {
 	safeAccount2.SetBalance(big.NewInt(333)) // 2
 	safeAccount2.SetBalance(big.NewInt(444)) // 3
 	safeAccount2.SetBalance(big.NewInt(333)) // 4
-	processor.MergeChangeLogs(2)
+	processor.MergeChangeLogs()
 	logs = processor.GetChangeLogs()
-	assert.Equal(t, 3, len(logs))
+	assert.Equal(t, 2, len(logs))
 }
 
 func TestLogProcessor_MergeChangeLogs2(t *testing.T) {
@@ -345,7 +345,7 @@ func TestLogProcessor_MergeChangeLogs2(t *testing.T) {
 	// the 6th overwrite 4th and 0th
 	// the 5th overwrite 3th. but the 5th is not valuable, so we remove 5th too
 	// then sort logs by address. the result sequence is: 2, 0, 1
-	processor.MergeChangeLogs(0)
+	processor.MergeChangeLogs()
 	logs = processor.GetChangeLogs()
 	assert.Equal(t, 3, len(logs))
 	assert.Equal(t, uint32(0), safeAccount3.GetVersion(BalanceLog))
@@ -399,7 +399,7 @@ func TestLogProcessor_MergeChangeLogs3(t *testing.T) {
 	// the 6th overwrite 4th and 0th
 	// the 5th overwrite 3th. but the 5th is not valuable, so we remove 5th too
 	// then sort logs by address. the result sequence is: 2, 0, 1
-	processor.MergeChangeLogs(0)
+	processor.MergeChangeLogs()
 	logs = processor.GetChangeLogs()
 	assert.Equal(t, 3, len(logs))
 	assert.Equal(t, uint32(0), safeAccount3.GetVersion(BalanceLog))

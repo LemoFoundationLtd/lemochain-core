@@ -329,8 +329,8 @@ func (am *Manager) Rebuild(address common.Address, logs types.ChangeLogSlice) er
 }
 
 // MergeChangeLogs merges the change logs for same account in block. Then update the version of change logs and account.
-func (am *Manager) MergeChangeLogs(fromIndex int) {
-	am.processor.MergeChangeLogs(fromIndex)
+func (am *Manager) MergeChangeLogs() {
+	am.processor.MergeChangeLogs()
 }
 
 func (am *Manager) Stop(graceful bool) error {
