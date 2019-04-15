@@ -265,21 +265,7 @@ func (tx *Transaction) Hash() common.Hash {
 	if hash := tx.hash.Load(); hash != nil {
 		return hash.(common.Hash)
 	}
-	v := rlpHash([]interface{}{
-		tx.Type(),
-		tx.Version(),
-		tx.ChainID(),
-		tx.data.Recipient,
-		tx.data.RecipientName,
-		tx.data.GasPrice,
-		tx.data.GasLimit,
-		tx.data.Amount,
-		tx.data.Data,
-		tx.data.Expiration,
-		tx.data.Message,
-		tx.Sig(),
-		tx.GasPayerSig(),
-	})
+	v := rlpHash(tx)
 	tx.hash.Store(v)
 	return v
 }
