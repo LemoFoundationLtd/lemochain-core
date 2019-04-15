@@ -179,22 +179,14 @@ func (db *BizDatabase) afterBlock(key []byte, val []byte) error {
 			return err
 		}
 
-		txType := tx.Type()
-		if txType == params.CreateAssetTx {
+		if tx.Type() == params.CreateAssetTx {
 			log.Info("insert account code: " + tx.Hash().Hex() + "|addr: " + from.Hex())
-			err := leveldb.Set(db.LevelDB, leveldb.GetAssetCodeKey(tx.Hash()), from.Bytes())
-			if err != nil {
-				panic("insert account code err: " + err.Error())
-			}
-		} else if txType == params.IssueAssetTx {
+			return leveldb.Set(db.LevelDB, leveldb.GetAssetCodeKey(tx.Hash()), from.Bytes())
+		} else if tx.Type() == params.IssueAssetTx {
 			log.Info("insert account id: " + tx.Hash().Hex() + "|addr: " + from.Hex())
-			err := leveldb.Set(db.LevelDB, leveldb.GetAssetIdKey(tx.Hash()), from.Bytes())
-			if err != nil {
-				panic("insert account id err: " + err.Error())
-			}
+			return leveldb.Set(db.LevelDB, leveldb.GetAssetIdKey(tx.Hash()), from.Bytes())
 		}
 
-		//err = db.Database.TxSet(hashStr, common.ToHex(key), fromStr, toStr, val, ver+int64(index), int64(block.Header.Time))
 		if err != nil {
 			return err
 		}
