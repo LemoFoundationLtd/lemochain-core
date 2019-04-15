@@ -13,6 +13,8 @@ type CBlock struct {
 	AccountTrieDB   *AccountTrieDB
 	CandidateTrieDB *CandidateTrieDB
 	Top             *VoteTop
+	Parent          *CBlock
+	Children        []*CBlock
 }
 
 func NewGenesisBlock(block *types.Block, reader DatabaseReader) *CBlock {
@@ -176,4 +178,57 @@ func (block *CBlock) Ranking() {
 	} else {
 		block.greater30(in, out)
 	}
+}
+
+func (block *CBlock) SetParent(parent *CBlock) {
+	block.Parent = parent
+	parent.Children = append(parent.Children, block)
+}
+
+func (block *CBlock) IsSameBlock(b *CBlock) bool {
+	if block == b {
+		return true
+	}
+	if block == nil || b == nil {
+		return false
+	}
+	return block.Block.Hash() == b.Block.Hash()
+}
+
+// CollectToParent collect blocks from parent to parent, include itself and exclude the end block
+func (block *CBlock) CollectToParent(end *CBlock) []*CBlock {
+	blocks := make([]*CBlock, 0)
+	for iter := block; iter != end; iter = iter.Parent {
+		blocks = append(blocks, iter)
+	}
+	return blocks
+}
+
+// Walk iterate every child recursively. Not include itself
+func (block *CBlock) Walk(fun func(*CBlock), exclude *CBlock) {
+	for _, child := range block.Children {
+		if exclude == nil || !child.IsSameBlock(exclude) {
+			fun(block)
+			child.Walk(fun, exclude)
+		}
+	}
+}
+
+// ChooseBlock compare children and choose one of them, then choose its children recursively
+func (block *CBlock) ChooseChild(comparator func(*CBlock, *CBlock) *CBlock) *CBlock {
+	count := len(block.Children)
+	if count == 0 {
+		return block
+	}
+
+	best := 0
+	for i := 1; i < count; i++ {
+		betterOne := comparator(block.Children[best], block.Children[i])
+		if betterOne == block.Children[i] {
+			best = i
+		} else if betterOne != block.Children[best] { // for debug
+			panic("must choose one from the parameters")
+		}
+	}
+	return block.Children[best].ChooseChild(comparator)
 }
