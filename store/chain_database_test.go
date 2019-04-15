@@ -185,6 +185,12 @@ func TestCacheChain_IsExistByHash(t *testing.T) {
 	cacheChain.Close()
 }
 
+// func TestCacheChain_WriteChainBatch(t *testing.T) {
+// 	for index := 0; index < 200; index++{
+// 		TestCacheChain_WriteChain(t)
+// 	}
+// }
+
 func TestCacheChain_WriteChain(t *testing.T) {
 	block0 := GetBlock0()
 	block1 := GetBlock1()
@@ -193,12 +199,13 @@ func TestCacheChain_WriteChain(t *testing.T) {
 	block4 := GetBlock4()
 
 	ClearData()
+	log.Errorf("STEP.1")
 	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
-
 	cacheChain.SetBlock(block0.Hash(), block0)
 	err := cacheChain.SetStableBlock(block0.Hash())
 	assert.NoError(t, err)
 
+	log.Errorf("STEP.2")
 	// 1, 2#, 3
 	cacheChain.SetBlock(block1.Hash(), block1)
 	cacheChain.SetBlock(block2.Hash(), block2)
@@ -217,6 +224,7 @@ func TestCacheChain_WriteChain(t *testing.T) {
 	assert.Equal(t, ErrNotExist, err)
 	cacheChain.Close()
 
+	log.Errorf("STEP.3")
 	// from db
 	cacheChain = NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
 
@@ -232,12 +240,17 @@ func TestCacheChain_WriteChain(t *testing.T) {
 	assert.Equal(t, ErrNotExist, err)
 	cacheChain.Close()
 
+	log.Errorf("STEP.4")
 	cacheChain = NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
 
 	// 1, 2, 3#
-	cacheChain.SetBlock(block1.Hash(), block1)
-	cacheChain.SetBlock(block2.Hash(), block2)
-	cacheChain.SetBlock(block3.Hash(), block3)
+	err = cacheChain.SetBlock(block1.Hash(), block1)
+	assert.Equal(t, err, ErrExist)
+	err = cacheChain.SetBlock(block2.Hash(), block2)
+	assert.Equal(t, err, ErrExist)
+	err = cacheChain.SetBlock(block3.Hash(), block3)
+	assert.NoError(t, err)
+
 	err = cacheChain.SetStableBlock(block3.Hash())
 	assert.NoError(t, err)
 	result, err = cacheChain.GetBlockByHeight(1)
@@ -253,6 +266,7 @@ func TestCacheChain_WriteChain(t *testing.T) {
 	assert.Equal(t, result.Hash(), block3.Hash())
 	cacheChain.Close()
 
+	log.Errorf("STEP.5")
 	cacheChain = NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
 	result, err = cacheChain.GetBlockByHeight(1)
 	assert.NoError(t, err)
@@ -358,6 +372,7 @@ func TestCacheChain_SetConfirm1(t *testing.T) {
 	err = cacheChain.SetStableBlock(parentBlock.Hash())
 	assert.NoError(t, err)
 	err = cacheChain.SetConfirms(parentBlock.Hash(), signs)
+	log.Errorf("set confirms end!")
 	assert.NoError(t, err)
 
 	result, err := cacheChain.GetConfirms(parentBlock.Hash())

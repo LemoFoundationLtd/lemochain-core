@@ -79,11 +79,7 @@ func (bitcask *BitCask) createFile(index int) error {
 	dataPath := bitcask.path(index)
 	f, err := os.Create(dataPath)
 	defer f.Close()
-	if err != nil {
-		return err
-	} else {
-		return nil
-	}
+	return err
 }
 
 func (bitcask *BitCask) homeIsNotExist(home string) error {
@@ -103,25 +99,18 @@ func (bitcask *BitCask) homeIsExist(home string) error {
 		return err
 	}
 
-	err = bitcask.scan(pos)
-	if err != nil {
-		return err
-	}
-
+	bitcask.CurIndex = int(pos & 0xFF)
+	bitcask.CurOffset = int64(pos & 0xFFFFFF00)
 	isExist, err := IsExist(bitcask.path(bitcask.CurIndex))
 	if err != nil {
 		return err
 	}
 
-	if !isExist {
-		err = bitcask.createFile(bitcask.CurIndex)
-		if err != nil {
-			return err
-		}
+	if isExist {
+		return nil
+	} else {
+		return bitcask.createFile(bitcask.CurIndex)
 	}
-
-	pos = uint32(int(bitcask.CurOffset) | bitcask.CurIndex)
-	return leveldb.SetScanPos(bitcask.IndexDB, home, pos)
 }
 
 func NewBitCask(home string, after AfterScan, indexDB *leveldb.LevelDBDatabase) (*BitCask, error) {
@@ -148,6 +137,33 @@ func NewBitCask(home string, after AfterScan, indexDB *leveldb.LevelDBDatabase) 
 			return db, nil
 		}
 	}
+}
+
+func (bitcask *BitCask) InitBitCask() error {
+	pos, err := leveldb.GetScanPos(bitcask.IndexDB, bitcask.HomePath)
+	if err != nil {
+		return err
+	}
+
+	err = bitcask.scan(pos)
+	if err != nil {
+		return err
+	}
+
+	isExist, err := IsExist(bitcask.path(bitcask.CurIndex))
+	if err != nil {
+		return err
+	}
+
+	if !isExist {
+		err = bitcask.createFile(bitcask.CurIndex)
+		if err != nil {
+			return err
+		}
+	}
+
+	pos = uint32(int(bitcask.CurOffset) | bitcask.CurIndex)
+	return leveldb.SetScanPos(bitcask.IndexDB, bitcask.HomePath, pos)
 }
 
 func (bitcask *BitCask) scanFile(filePath string, offset int64) (int64, error) {
@@ -332,9 +348,6 @@ func (bitcask *BitCask) flush(data []byte) (int64, error) {
 }
 
 func (bitcask *BitCask) Put(flag uint, route []byte, key []byte, val []byte) error {
-	bitcask.RW.Lock()
-	defer bitcask.RW.Unlock()
-
 	body, err := bitcask.encodeBody(route, key, val)
 	if err != nil {
 		return err
@@ -346,12 +359,8 @@ func (bitcask *BitCask) Put(flag uint, route []byte, key []byte, val []byte) err
 	}
 
 	data := bitcask.encode(head, body)
-	err = bitcask.checkSize(int64(len(data)))
-	if err != nil {
-		return err
-	}
 
-	offset, err := bitcask.flush(data)
+	offset, err := bitcask.checkAndFlush(data)
 	if err != nil {
 		return err
 	}
@@ -361,6 +370,7 @@ func (bitcask *BitCask) Put(flag uint, route []byte, key []byte, val []byte) err
 		Route:  route,
 		Offset: uint32(int(offset) | bitcask.CurIndex),
 	})
+	return nil
 }
 
 func (bitcask *BitCask) read(file *os.File, offset int64) (*RHead, *RBody, error) {
@@ -443,6 +453,10 @@ func (bitcask *BitCask) Get4Cache(route []byte, key []byte) ([]byte, error) {
 	position, err := leveldb.GetPos(bitcask.IndexDB, key)
 	if err != nil {
 		return nil, err
+	}
+
+	if position == nil {
+		return nil, ErrNotExist
 	}
 
 	return bitcask.get(uint(position.Flag), position.Route, key, int64(position.Offset))
@@ -717,7 +731,7 @@ func (q *queue) loop() {
 
 func (q *queue) repeat(op *inject) {
 	q.repeatCount = q.repeatCount + 1
-	if q.repeatCount > 3 {
+	if q.repeatCount > 1024 {
 		panic("repeat set index to level db greater than 3.")
 	} else {
 		log.Errorf("repeat set index to level db.count: " + strconv.Itoa(q.repeatCount))

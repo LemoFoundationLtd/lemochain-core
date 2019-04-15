@@ -66,6 +66,17 @@ func NewBeansDB(home string, height int, DB *leveldb.LevelDBDatabase, after BizA
 	return beansdb
 }
 
+func (beansdb *BeansDB) InitBeansDB() error {
+	for index := 0; index < len(beansdb.bitcasks); index++ {
+		err := beansdb.bitcasks[index].InitBitCask()
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (beansdb *BeansDB) AfterScan(flag uint, route []byte, key []byte, val []byte, offset uint32) error {
 	if beansdb.after == nil {
 		return nil
