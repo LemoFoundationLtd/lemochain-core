@@ -6,6 +6,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
+	"github.com/LemoFoundationLtd/lemochain-core/common/crypto/sha3"
 	"github.com/LemoFoundationLtd/lemochain-core/common/rlp"
 	"github.com/stretchr/testify/assert"
 	"math/big"
