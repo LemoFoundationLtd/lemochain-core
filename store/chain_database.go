@@ -24,6 +24,7 @@ type ChainDatabase struct {
 	Beansdb         *BeansDB
 	BizDB           *BizDatabase
 	RW              sync.RWMutex
+	BizRW           sync.RWMutex
 }
 
 func checkHome(home string) error {
@@ -60,8 +61,14 @@ func NewChainDataBase(home string, driver string, dns string) *ChainDatabase {
 	db.Beansdb = NewBeansDB(home, 2, db.LevelDB, db.AfterScan)
 
 	stableBlock, err := db.GetStableBlock()
-	if err != nil {
+	if err != nil && err != ErrNotExist {
 		panic("get stable block err: " + err.Error())
+	}
+
+	if stableBlock == nil {
+		log.Errorf("stable block is nil.")
+	} else {
+		log.Errorf("stable block`height: " + strconv.Itoa(int(stableBlock.Height())))
 	}
 
 	db.LastConfirm = NewGenesisBlock(stableBlock, db.Beansdb)
@@ -72,17 +79,22 @@ func NewChainDataBase(home string, driver string, dns string) *ChainDatabase {
 		db.LastConfirm.Top.Rank(max_candidate_count, candidates)
 	}
 
-	return db
+	err = db.Beansdb.InitBeansDB()
+	if err != nil {
+		panic("init beansdb err: " + err.Error())
+	} else {
+		return db
+	}
 }
 
 func (database *ChainDatabase) GetStableBlock() (*types.Block, error) {
 	stableBlockHash, err := leveldb.GetCurrentBlock(database.LevelDB)
 	if err != nil {
-		panic("get current block err: " + err.Error())
+		return nil, err
 	}
 
 	if stableBlockHash == (common.Hash{}) {
-		return nil, nil
+		return nil, ErrNotExist
 	}
 
 	stableBlock, err := database.GetBlockByHash(stableBlockHash)
@@ -97,7 +109,95 @@ func (database *ChainDatabase) GetLastConfirm() *CBlock {
 	return database.LastConfirm
 }
 
+func (database *ChainDatabase) commitStableBlock(val []byte) error {
+	database.BizRW.Lock()
+	defer database.BizRW.Unlock()
+
+	var block types.Block
+	err := rlp.DecodeBytes(val, &block)
+	if err != nil {
+		return err
+	}
+
+	stableBlock, err := database.GetStableBlock()
+	if err != nil && err != ErrNotExist {
+		return err
+	}
+
+	if err == ErrNotExist {
+		if block.Height() != 0 {
+			panic("commit stable block. stable block is nil.and the block is not genesis")
+		} else {
+			return leveldb.SetCurrentBlock(database.LevelDB, block.Hash())
+		}
+	} else {
+		log.Errorf("commit stable block.block height: " + strconv.Itoa(int(block.Height())))
+		if block.Height() <= stableBlock.Height() {
+			return nil
+		} else {
+			return leveldb.SetCurrentBlock(database.LevelDB, block.Hash())
+		}
+	}
+}
+
+func (database *ChainDatabase) isCandidate(account *types.AccountData) bool {
+	if (account == nil) ||
+		(len(account.Candidate.Profile) <= 0) {
+		return false
+	}
+
+	result, ok := account.Candidate.Profile[types.CandidateKeyIsCandidate]
+	if !ok {
+		return false
+	}
+
+	val, err := strconv.ParseBool(result)
+	if err != nil {
+		panic("to bool err : " + err.Error())
+	} else {
+		return val
+	}
+}
+
+func (database *ChainDatabase) commitCandidates(val []byte) error {
+	var account types.AccountData
+	err := rlp.DecodeBytes(val, &account)
+	if err != nil {
+		return err
+	}
+
+	if !database.isCandidate(&account) {
+		return nil
+	} else {
+		candidates := make([]*Candidate, 1)
+		candidates[0] = &Candidate{
+			Address: account.Address,
+			Total:   account.Candidate.Votes,
+		}
+		err := database.Context.SetCandidates(candidates)
+		if err != nil {
+			return err
+		}
+
+		return database.Context.Flush()
+	}
+}
+
 func (database *ChainDatabase) AfterScan(flag uint, key []byte, val []byte) error {
+	if flag == CACHE_FLG_BLOCK {
+		err := database.commitStableBlock(val)
+		if err != nil {
+			return err
+		}
+	}
+
+	if flag == CACHE_FLG_ACT {
+		err := database.commitCandidates(val)
+		if err != nil {
+			return err
+		}
+	}
+
 	return database.BizDB.AfterCommit(flag, key, val)
 }
 
@@ -334,6 +434,7 @@ func (database *ChainDatabase) SetBlock(hash common.Hash, block *types.Block) er
 
 	isExist, err := database.isExistByHash(hash)
 	if err != nil {
+		log.Errorf("block is exist. err: " + err.Error())
 		return err
 	}
 
@@ -344,11 +445,13 @@ func (database *ChainDatabase) SetBlock(hash common.Hash, block *types.Block) er
 
 	if database.LastConfirm.Block == nil {
 		if (block.Height() != 0) || (block.ParentHash() != common.Hash{}) {
-			panic("(database.LastConfirm.Block == nil) && (block.Height() != 0) && (block.ParentHash() != common.Hash{})")
+			log.Errorf("(database.LastConfirm.Block == nil) && (block.Height() != 0) && (block.ParentHash() != common.Hash{})")
+			return ErrArgInvalid
 		}
 	} else {
 		if (block.Height() == 0) || (block.ParentHash() == common.Hash{}) {
-			panic("(block.Height() == 0) || (block.ParentHash() == common.Hash{})")
+			log.Errorf("(block.Height() == 0) || (block.ParentHash() == common.Hash{})")
+			return ErrArgInvalid
 		}
 
 		if block.Height() <= database.LastConfirm.Block.Height() {
@@ -356,13 +459,15 @@ func (database *ChainDatabase) SetBlock(hash common.Hash, block *types.Block) er
 			bhash := block.Hash().Hex()
 			lheight := strconv.Itoa(int(database.LastConfirm.Block.Height()))
 			lhash := database.LastConfirm.Block.Hash().Hex()
-			panic("block'height:" + bheight + "|bhash:" + bhash + "|confirm'height:" + lheight + "|lhash:" + lhash)
+			log.Errorf("1.block'height:" + bheight + "|bhash:" + bhash + "|confirm'height:" + lheight + "|lhash:" + lhash)
+			return ErrArgInvalid
 		}
 	}
 
 	// genesis block
 	if (block.ParentHash() == common.Hash{}) {
 		database.UnConfirmBlocks[hash] = NewGenesisBlock(block, database.Beansdb)
+		log.Debug("block is genesis.height: " + strconv.Itoa(int(block.Height())))
 		return nil
 	}
 
@@ -374,7 +479,8 @@ func (database *ChainDatabase) SetBlock(hash common.Hash, block *types.Block) er
 			bhash := block.Hash().Hex()
 			lheight := strconv.Itoa(int(database.LastConfirm.Block.Height()))
 			lhash := database.LastConfirm.Block.Hash().Hex()
-			panic("block'height:" + bheight + "|bhash:" + bhash + "|confirm'height:" + lheight + "|lhash:" + lhash)
+			log.Errorf("2.block'height:" + bheight + "|bhash:" + bhash + "|confirm'height:" + lheight + "|lhash:" + lhash)
+			return ErrArgInvalid
 		}
 
 		if database.LastConfirm.Block.Height()+1 != block.Height() {
@@ -382,7 +488,8 @@ func (database *ChainDatabase) SetBlock(hash common.Hash, block *types.Block) er
 			bhash := block.Hash().Hex()
 			lheight := strconv.Itoa(int(database.LastConfirm.Block.Height()))
 			lhash := database.LastConfirm.Block.Hash().Hex()
-			panic("block'height:" + bheight + "|bhash:" + bhash + "|confirm'height:" + lheight + "|lhash:" + lhash)
+			log.Errorf("3.block'height:" + bheight + "|bhash:" + bhash + "|confirm'height:" + lheight + "|lhash:" + lhash)
+			return ErrArgInvalid
 		}
 
 		database.UnConfirmBlocks[hash] = NewNormalBlock(block, database.LastConfirm.AccountTrieDB, database.LastConfirm.CandidateTrieDB, database.LastConfirm.Top)
@@ -392,7 +499,8 @@ func (database *ChainDatabase) SetBlock(hash common.Hash, block *types.Block) er
 			bhash := block.Hash().Hex()
 			lheight := strconv.Itoa(int(database.LastConfirm.Block.Height()))
 			lhash := database.LastConfirm.Block.Hash().Hex()
-			panic("block'height:" + bheight + "|bhash:" + bhash + "|confirm'height:" + lheight + "|lhash:" + lhash)
+			log.Errorf("4.block'height:" + bheight + "|bhash:" + bhash + "|confirm'height:" + lheight + "|lhash:" + lhash)
+			return ErrArgInvalid
 		}
 
 		database.UnConfirmBlocks[hash] = NewNormalBlock(block, pBlock.AccountTrieDB, pBlock.CandidateTrieDB, pBlock.Top)
@@ -484,7 +592,8 @@ func (database *ChainDatabase) SetStableBlock(hash common.Hash) error {
 	// log.Error("set stable block : " + hash.Hex())
 	cItem := database.UnConfirmBlocks[hash]
 	if cItem == nil {
-		panic("set stable block error:the block is not exist. hash:" + hash.Hex())
+		log.Errorf("set stable block error:the block is not exist. hash:" + hash.Hex())
+		return ErrArgInvalid
 	}
 
 	blocks := make([]*CBlock, 0)

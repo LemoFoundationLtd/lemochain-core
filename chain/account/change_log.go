@@ -626,16 +626,16 @@ func NewAssetCodeTotalSupplyLog(address common.Address, processor types.ChangeLo
 		LogType: AssetCodeTotalSupplyLog,
 		Address: account.GetAddress(),
 		Version: account.GetNextVersion(AssetCodeTotalSupplyLog),
-		OldVal:  new(big.Int).Set(oldVal),
-		NewVal:  new(big.Int).Set(newVal),
+		OldVal:  *(new(big.Int).Set(oldVal)),
+		NewVal:  *(new(big.Int).Set(newVal)),
 		Extra:   code,
 	}, nil
 }
 
 func redoAssetCodeTotalSupply(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
-	newVal, ok := c.NewVal.(*big.Int)
+	newVal, ok := c.NewVal.(big.Int)
 	if !ok {
-		log.Errorf("redoAssetCodeTotalSupply expected NewVal *big.Int, got %T", c.NewVal)
+		log.Errorf("redoAssetCodeTotalSupply expected NewVal big.Int, got %T", c.NewVal)
 		return types.ErrWrongChangeLogData
 	}
 
@@ -646,13 +646,13 @@ func redoAssetCodeTotalSupply(c *types.ChangeLog, processor types.ChangeLogProce
 	}
 
 	accessor := processor.GetAccount(c.Address)
-	return accessor.SetAssetCodeTotalSupply(code, newVal)
+	return accessor.SetAssetCodeTotalSupply(code, &newVal)
 }
 
 func undoAssetCodeTotalSupply(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
-	oldVal, ok := c.OldVal.(*big.Int)
+	oldVal, ok := c.OldVal.(big.Int)
 	if !ok {
-		log.Errorf("undoAssetCodeTotalSupply expected OldVal *big.Int, got %T", c.OldVal)
+		log.Errorf("undoAssetCodeTotalSupply expected OldVal big.Int, got %T", c.OldVal)
 		return types.ErrWrongChangeLogData
 	}
 
@@ -663,7 +663,7 @@ func undoAssetCodeTotalSupply(c *types.ChangeLog, processor types.ChangeLogProce
 	}
 
 	accessor := processor.GetAccount(c.Address)
-	return accessor.SetAssetCodeTotalSupply(code, oldVal)
+	return accessor.SetAssetCodeTotalSupply(code, &oldVal)
 }
 
 func NewAssetCodeRootLog(address common.Address, processor types.ChangeLogProcessor, oldVal common.Hash, newVal common.Hash) (*types.ChangeLog, error) {

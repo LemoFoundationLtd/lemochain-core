@@ -361,6 +361,18 @@ func getTestLogs(t *testing.T) []testLogConfig {
 		rlp:        "0xf8390b94000000000000000000000000000000000000001501a00000000000000000000000000000000000000000000000000000000000000002c0",
 		decoded:    "EquityRootLog{Account: Lemo8888888888888888888888888888888889ZJ, Version: 1, NewVal: [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2]}",
 	})
+
+	account = processor.createAccount(AssetCodeTotalSupplyLog, 0)
+	log, _ = NewAssetCodeTotalSupplyLog(account.GetAddress(), processor, common.HexToHash("0x33"), new(big.Int).SetInt64(10))
+	tests = append(tests, testLogConfig{
+		input:      log,
+		isValuable: true,
+		str:        "AssetCodeTotalSupplyLog{Account: Lemo888888888888888888888888888888888ABF, Version: 1, OldVal: 1, NewVal: 10, Extra: [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 51]}",
+		hash:       "0x6ff638cf6b1615f41285390e903a9c4796fcb47a25dfe5e107303f952951d63e",
+		rlp:        "0xf83907940000000000000000000000000000000000000016010aa00000000000000000000000000000000000000000000000000000000000000033",
+		decoded:    "AssetCodeTotalSupplyLog{Account: Lemo888888888888888888888888888888888ABF, Version: 1, NewVal: 10, Extra: [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 51]}",
+	})
+
 	return tests
 }
 

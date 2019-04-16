@@ -22,7 +22,7 @@ func broadcastConfirmInfo(hash common.Hash, height uint32) {}
 
 func NewBlockChainForTest() (*BlockChain, chan *types.Block, error) {
 	chainID := uint16(99)
-	db := store.NewChainDataBase(store.GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
+	db := store.NewChainDataBase(GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
 
 	genesis := DefaultGenesisBlock()
 	SetupGenesisBlock(db, genesis)
