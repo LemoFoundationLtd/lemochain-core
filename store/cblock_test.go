@@ -415,29 +415,29 @@ func TestCBlock_ChooseChild(t *testing.T) {
 	b := makeBlocks()
 
 	// choose the one has bigger time
-	compareFn := func(block1, block2 *CBlock) *CBlock {
-		if block1.Block.Time() > block2.Block.Time() {
+	compareFn := func(block1, block2 *types.Block) *types.Block {
+		if block1.Time() > block2.Time() {
 			return block1
 		}
 		return block2
 	}
-	assert.Equal(t, b[3], b[0].ChooseChild(compareFn))
-	assert.Equal(t, b[3], b[3].ChooseChild(compareFn))
+	assert.Equal(t, b[3].Block, b[0].ChooseChild(compareFn))
+	assert.Equal(t, b[3].Block, b[3].ChooseChild(compareFn))
 
 	// choose the one has smaller time
-	compareFn = func(block1, block2 *CBlock) *CBlock {
-		if block1.Block.Time() < block2.Block.Time() {
+	compareFn = func(block1, block2 *types.Block) *types.Block {
+		if block1.Time() < block2.Time() {
 			return block1
 		}
 		return block2
 	}
-	assert.Equal(t, b[2], b[0].ChooseChild(compareFn))
+	assert.Equal(t, b[2].Block, b[0].ChooseChild(compareFn))
 
 	// choose other block
-	compareFn = func(_, _ *CBlock) *CBlock {
-		return b[0]
+	compareFn = func(_, _ *types.Block) *types.Block {
+		return b[0].Block
 	}
-	assert.PanicsWithValue(t, "must choose one from the parameters", func() {
+	assert.PanicsWithValue(t, "compareFn must choose one from the parameters", func() {
 		b[0].ChooseChild(compareFn)
 	})
 }

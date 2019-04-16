@@ -17,8 +17,8 @@ import (
 var max_candidate_count = 20
 
 type ChainDatabase struct {
-	LastConfirm     *CBlock
-	UnConfirmBlocks map[common.Hash]*CBlock
+	LastConfirm     *CBlock                 // the newest confirm block, and the root of unconfirmed block tree
+	UnConfirmBlocks map[common.Hash]*CBlock // unconfirmed block tree nodes
 	Context         *RunContext
 	LevelDB         *leveldb.LevelDBDatabase
 	Beansdb         *BeansDB
@@ -751,6 +751,10 @@ func (database *ChainDatabase) GetAssetCode(code common.Hash) (common.Address, e
 
 func (database *ChainDatabase) GetAssetID(id common.Hash) (common.Address, error) {
 	return leveldb.GetAssetID(database.LevelDB, id)
+}
+
+func (database *ChainDatabase) ChooseUnConfirmBlock(compareFn func(*types.Block, *types.Block) *types.Block) *types.Block {
+	return database.LastConfirm.ChooseChild(compareFn)
 }
 
 func (database *ChainDatabase) Close() error {

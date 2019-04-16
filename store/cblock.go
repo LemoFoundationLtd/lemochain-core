@@ -225,20 +225,21 @@ func (block *CBlock) Walk(fn func(*CBlock), exclude *CBlock) {
 }
 
 // ChooseBlock compare children and choose one of them, then choose its children recursively
-func (block *CBlock) ChooseChild(compareFn func(*CBlock, *CBlock) *CBlock) *CBlock {
+func (block *CBlock) ChooseChild(compareFn func(*types.Block, *types.Block) *types.Block) *types.Block {
 	count := len(block.Children)
 	if count == 0 {
-		return block
+		return block.Block
 	}
 
-	best := 0
+	bestCB := block.Children[0]
 	for i := 1; i < count; i++ {
-		betterOne := compareFn(block.Children[best], block.Children[i])
-		if betterOne == block.Children[i] {
-			best = i
-		} else if betterOne != block.Children[best] { // for debug
-			panic("must choose one from the parameters")
+		cb := block.Children[i]
+		betterRawBlock := compareFn(bestCB.Block, cb.Block)
+		if betterRawBlock == cb.Block {
+			bestCB = cb
+		} else if betterRawBlock != bestCB.Block { // for debug
+			panic("compareFn must choose one from the parameters")
 		}
 	}
-	return block.Children[best].ChooseChild(compareFn)
+	return bestCB.ChooseChild(compareFn)
 }
