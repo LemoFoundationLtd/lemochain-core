@@ -151,11 +151,8 @@ func (p *Peer) ReadMsg() (msg *Msg, err error) {
 	case <-p.stopCh:
 		log.Debug("readMsg <-p.stopCh")
 		err = io.EOF
-	default:
-		select {
-		case msg = <-p.newMsgCh:
-			err = nil
-		}
+	case msg = <-p.newMsgCh:
+		err = nil
 	}
 	return msg, err
 }
@@ -216,12 +213,9 @@ func (p *Peer) handle(content []byte) (err error) {
 		case <-p.stopCh:
 			log.Info(" read'peer has stopped ")
 			return io.EOF
-		default:
-			select {
-			case p.newMsgCh <- msg:
-				log.Debugf("send msg to 'p.newMsgCh' success, msgCode: %d", msg.Code)
-				return nil
-			}
+		case p.newMsgCh <- msg:
+			log.Debugf("send msg to 'p.newMsgCh' success, msgCode: %d", msg.Code)
+			return nil
 		}
 	}
 	return nil
