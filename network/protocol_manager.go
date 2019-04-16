@@ -710,6 +710,10 @@ func (pm *ProtocolManager) handleGetBlocksMsg(msg *p2p.Msg, p *peer) error {
 func (pm *ProtocolManager) respBlocks(from, to uint32, p *peer, hasChangeLog bool) {
 	if from == to {
 		b := pm.chain.GetBlockByHeight(from)
+		if b == nil {
+			log.Warnf("can't get a block of height %d", from)
+			return
+		}
 		if !hasChangeLog {
 			b = b.Copy()
 		}
@@ -732,6 +736,10 @@ func (pm *ProtocolManager) respBlocks(from, to uint32, p *peer, hasChangeLog boo
 		blocks := make(types.Blocks, 0, eachSize)
 		for j := 0; j < eachSize; j++ {
 			b := pm.chain.GetBlockByHeight(height)
+			if b == nil {
+				log.Warnf("can't get a block of height %d", height)
+				break
+			}
 			if !hasChangeLog {
 				b = b.Copy()
 			}
