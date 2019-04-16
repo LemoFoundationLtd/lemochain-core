@@ -27,22 +27,33 @@ func TestCacheChain_SetBlock(t *testing.T) {
 	result, err := cacheChain.GetBlockByHeight(0)
 	assert.Equal(t, err, ErrNotExist)
 
-	//
+	// set genesis
 	block0 := GetBlock0()
 	err = cacheChain.SetBlock(block0.Hash(), block0)
 	assert.NoError(t, err)
+	unconfirmCB0 := cacheChain.UnConfirmBlocks[block0.Hash()]
+	assert.Equal(t, cacheChain.LastConfirm, unconfirmCB0.Parent)
+	assert.Len(t, cacheChain.LastConfirm.Children, 1)
+	assert.Equal(t, unconfirmCB0, cacheChain.LastConfirm.Children[0])
 
 	err = cacheChain.SetStableBlock(block0.Hash())
 	assert.NoError(t, err)
+	assert.Len(t, cacheChain.UnConfirmBlocks, 0)
+	assert.Equal(t, unconfirmCB0, cacheChain.LastConfirm)
 
 	result, err = cacheChain.GetBlockByHash(block0.Hash())
 	assert.NoError(t, err)
 	assert.Equal(t, block0.ParentHash(), result.ParentHash())
 
-	//
+	// set 3 blocks
 	block1 := GetBlock1()
 	err = cacheChain.SetBlock(block1.Hash(), block1)
 	assert.NoError(t, err)
+
+	unconfirmCB1 := cacheChain.UnConfirmBlocks[block1.Hash()]
+	assert.Equal(t, unconfirmCB0, unconfirmCB1.Parent)
+	assert.Len(t, unconfirmCB0.Children, 1)
+	assert.Equal(t, unconfirmCB1, unconfirmCB0.Children[0])
 
 	result, err = cacheChain.GetBlockByHash(block1.Hash())
 	assert.NoError(t, err)
@@ -66,14 +77,7 @@ func TestCacheChain_SetBlock(t *testing.T) {
 	err = cacheChain.SetBlock(block3.Hash(), block3)
 	assert.NoError(t, err)
 
-	result, err = cacheChain.GetBlockByHash(block3.Hash())
-	assert.NoError(t, err)
-	assert.Equal(t, block3.ParentHash(), result.ParentHash())
-
-	result, err = cacheChain.GetBlockByHeight(block3.Height())
-	assert.Equal(t, err, ErrNotExist)
-
-	//
+	// set 2 blocks stable
 	err = cacheChain.SetStableBlock(block2.Hash())
 	assert.NoError(t, err)
 
@@ -97,7 +101,7 @@ func TestCacheChain_SetBlockError(t *testing.T) {
 	// ERROR #1
 	ClearData()
 	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
-	//defer cacheChain.Close()
+	// defer cacheChain.Close()
 
 	block1 := GetBlock1()
 
@@ -436,7 +440,7 @@ func TestCacheChain_SetConfirm2(t *testing.T) {
 	assert.Equal(t, signs[2], result[2])
 	assert.Equal(t, signs[3], result[3])
 
-	//cacheChain = NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
+	// cacheChain = NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
 
 	result, err = cacheChain.GetConfirms(parentBlock.Hash())
 	assert.NoError(t, err)

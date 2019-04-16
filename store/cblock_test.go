@@ -2,6 +2,7 @@ package store
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/stretchr/testify/assert"
@@ -323,4 +324,120 @@ func TestCBlock_RankingNo12(t *testing.T) {
 	block1Top30 := cblock1.Top.GetTop()
 	assert.Equal(t, true, equal(sort(cblock1Candidates), max_candidate_count, block1Top30))
 	assert.Equal(t, count, len(cblock1.CandidateTrieDB.GetAll()))
+}
+
+func TestCBlock_BeChildOf(t *testing.T) {
+	block1 := &CBlock{}
+	block2 := &CBlock{}
+
+	// normal
+	block1.BeChildOf(block2)
+	assert.Equal(t, block2, block1.Parent)
+	assert.Len(t, block2.Children, 1)
+	assert.Equal(t, block1, block2.Children[0])
+
+	// is child already
+	block1.BeChildOf(block2)
+	assert.Equal(t, block2, block1.Parent)
+	assert.Len(t, block2.Children, 1)
+	assert.Equal(t, block1, block2.Children[0])
+
+	// nil
+	block1.BeChildOf(nil)
+	assert.Equal(t, (*CBlock)(nil), block1.Parent)
+}
+
+func TestCBlock_IsSameBlock(t *testing.T) {
+	rawBlock1 := &types.Block{Header: &types.Header{Height: 1}}
+	block1 := &CBlock{Block: rawBlock1}
+	rawBlock2 := &types.Block{Header: &types.Header{Height: 2}}
+	block2 := &CBlock{Block: rawBlock2}
+	block3 := &CBlock{Block: rawBlock1}
+
+	assert.Equal(t, true, block1.IsSameBlock(block1))
+	assert.Equal(t, false, block1.IsSameBlock(block2))
+	assert.Equal(t, true, block1.IsSameBlock(block3))
+	assert.Equal(t, false, block1.IsSameBlock(nil))
+	assert.Equal(t, true, (*CBlock)(nil).IsSameBlock(nil))
+}
+
+// makeBlocks make 4 blocks and setup the tree struct like this:
+//      ┌─2
+// 0──1─┤
+//      └─3
+func makeBlocks() []*CBlock {
+	rawBlock0 := &types.Block{Header: &types.Header{Height: 100}}
+	block0 := &CBlock{Block: rawBlock0}
+	rawBlock1 := &types.Block{Header: &types.Header{Height: 101}}
+	block1 := &CBlock{Block: rawBlock1}
+	rawBlock2 := &types.Block{Header: &types.Header{Height: 102, Time: 123}}
+	block2 := &CBlock{Block: rawBlock2}
+	rawBlock3 := &types.Block{Header: &types.Header{Height: 102, Time: 234}}
+	block3 := &CBlock{Block: rawBlock3}
+
+	block1.BeChildOf(block0)
+	block2.BeChildOf(block1)
+	block3.BeChildOf(block1)
+	return []*CBlock{block0, block1, block2, block3}
+}
+
+func TestCBlock_CollectToParent(t *testing.T) {
+	b := makeBlocks()
+
+	assert.Equal(t, []*CBlock{b[0]}, b[0].CollectToParent(nil))
+	assert.Equal(t, []*CBlock{}, b[0].CollectToParent(b[0]))
+	assert.Equal(t, []*CBlock{b[1]}, b[1].CollectToParent(b[0]))
+	assert.Equal(t, []*CBlock{b[2], b[1]}, b[2].CollectToParent(b[0]))
+	assert.Equal(t, []*CBlock{b[3], b[1]}, b[3].CollectToParent(b[0]))
+}
+
+func TestCBlock_Walk(t *testing.T) {
+	b := makeBlocks()
+
+	makeTestFn := func(expect []*CBlock) func(*CBlock) {
+		index := 0
+		return func(node *CBlock) {
+			assert.Equal(t, expect[index], node, fmt.Sprintf("index=%d", index))
+			index++
+		}
+	}
+	b[3].Walk(makeTestFn([]*CBlock{}), nil)
+	b[3].Walk(makeTestFn([]*CBlock{}), b[3])
+	b[1].Walk(makeTestFn([]*CBlock{b[2], b[3]}), nil)
+	b[1].Walk(makeTestFn([]*CBlock{b[2], b[3]}), b[1])
+	b[1].Walk(makeTestFn([]*CBlock{b[3]}), b[2])
+	b[0].Walk(makeTestFn([]*CBlock{b[1], b[2], b[3]}), nil)
+	b[0].Walk(makeTestFn([]*CBlock{}), b[1])
+	b[0].Walk(makeTestFn([]*CBlock{b[1], b[3]}), b[2])
+}
+
+func TestCBlock_ChooseChild(t *testing.T) {
+	b := makeBlocks()
+
+	// choose the one has bigger time
+	compareFn := func(block1, block2 *CBlock) *CBlock {
+		if block1.Block.Time() > block2.Block.Time() {
+			return block1
+		}
+		return block2
+	}
+	assert.Equal(t, b[3], b[0].ChooseChild(compareFn))
+	assert.Equal(t, b[3], b[3].ChooseChild(compareFn))
+
+	// choose the one has smaller time
+	compareFn = func(block1, block2 *CBlock) *CBlock {
+		if block1.Block.Time() < block2.Block.Time() {
+			return block1
+		}
+		return block2
+	}
+	assert.Equal(t, b[2], b[0].ChooseChild(compareFn))
+
+	// choose other block
+	compareFn = func(_, _ *CBlock) *CBlock {
+		return b[0]
+	}
+	assert.PanicsWithValue(t, "must choose one from the parameters", func() {
+		b[0].ChooseChild(compareFn)
+	})
 }
