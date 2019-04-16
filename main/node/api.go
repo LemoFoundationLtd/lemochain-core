@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/miner"
@@ -157,7 +158,12 @@ func (c *PublicChainAPI) GetDeputyNodeList() []string {
 
 	var result []string
 	for _, n := range nodes {
-		result = append(result, n.NodeAddrString())
+		candidateAcc := c.chain.AccountManager().GetAccount(n.MinerAddress)
+		profile := candidateAcc.GetCandidate()
+		host := profile[types.CandidateKeyHost]
+		port := profile[types.CandidateKeyPort]
+		nodeAddrString := fmt.Sprintf("%x@%s:%s", n.NodeID, host, port)
+		result = append(result, nodeAddrString)
 	}
 	return result
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/vm"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
+	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-core/common/hexutil"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/common/math"
@@ -28,6 +29,9 @@ var (
 	ErrInsufficientBalanceForGas = errors.New("insufficient balance to pay for gas")
 	ErrInvalidTxInBlock          = errors.New("block contains invalid transaction")
 	ErrInvalidGenesis            = errors.New("can't process genesis block")
+	ErrInvalidHost               = errors.New("the length of host field in transaction is out of max length limit")
+	ErrInvalidAddress            = errors.New("unavailable address")
+	ErrInvalidNodeId             = errors.New("unavailable nodeId")
 )
 
 type TxProcessor struct {
@@ -209,18 +213,32 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 			return 0, err
 		}
 		// check nodeID host and incomeAddress
+		// check address
+		if strIncomeAddress, ok := profile[types.CandidateKeyIncomeAddress]; ok {
+			if !common.CheckLemoAddress(strIncomeAddress) {
+				log.Errorf("income address failed verification,please check whether the input is correct. incomeAddress = %s", strIncomeAddress)
+				return 0, ErrInvalidAddress
+			}
+		}
+		// check nodeId
 		if nodeId, ok := profile[types.CandidateKeyNodeID]; ok {
 			nodeIdLength := len(nodeId)
 			if nodeIdLength != StandardNodeIdLength {
-				nodeIdErr := fmt.Errorf("the nodeId length [%d] is not equal the standard length [%d] ", nodeIdLength, StandardNodeIdLength)
-				return 0, nodeIdErr
+				log.Errorf("the nodeId length [%d] is not equal the standard length [%d] ", nodeIdLength, StandardNodeIdLength)
+				return 0, ErrInvalidNodeId
+			}
+			// check nodeId is available
+			if !crypto.CheckPublic(nodeId) {
+				log.Errorf("unavailable nodeId, nodeId = %s", nodeId)
+				return 0, ErrInvalidNodeId
 			}
 		}
+
 		if host, ok := profile[types.CandidateKeyHost]; ok {
 			hostLength := len(host)
 			if hostLength > MaxDeputyHostLength {
-				hostErr := fmt.Errorf("the length of host field in transaction is out of max length limit. host length = %d. max length limit = %d. ", hostLength, MaxDeputyHostLength)
-				return 0, hostErr
+				log.Errorf("the length of host field in transaction is out of max length limit. host length = %d. max length limit = %d. ", hostLength, MaxDeputyHostLength)
+				return 0, ErrInvalidHost
 			}
 		}
 

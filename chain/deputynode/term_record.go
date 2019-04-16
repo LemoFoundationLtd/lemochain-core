@@ -1,16 +1,11 @@
 package deputynode
 
 import (
-	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/hexutil"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"math/big"
-)
-
-var (
-	minPrecision = new(big.Int).SetUint64(uint64(1000000000000000000)) // 1 LEMO
 )
 
 type DeputySalary struct {
@@ -73,30 +68,6 @@ func (t *TermRecord) GetTotalVotes() *big.Int {
 		totalVotes.Add(totalVotes, node.Votes)
 	}
 	return totalVotes
-}
-
-// DivideSalary divide term salary to every node including of candidate nodes
-func (t *TermRecord) DivideSalary(totalSalary *big.Int, am *account.Manager) []*DeputySalary {
-	salaries := make([]*DeputySalary, len(t.Nodes))
-	totalVotes := t.GetTotalVotes()
-	for i, node := range t.Nodes {
-		salaries[i] = &DeputySalary{
-			Address: node.GetIncomeAddress(am),
-			Salary:  divideSalary(totalSalary, node.Votes, totalVotes, minPrecision),
-		}
-	}
-	return salaries
-}
-
-func divideSalary(totalSalary, deputyVotes, totalVotes, precision *big.Int) *big.Int {
-	r := new(big.Int)
-	// totalSalary * deputyVotes / totalVotes
-	r.Mul(totalSalary, deputyVotes)
-	r.Div(r, totalVotes)
-	// r - ( r % precision )
-	mod := new(big.Int).Mod(r, precision)
-	r.Sub(r, mod)
-	return r
 }
 
 // IsRewardBlock 是否该发出块奖励了

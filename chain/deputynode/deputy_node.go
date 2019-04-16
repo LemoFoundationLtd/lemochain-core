@@ -3,8 +3,6 @@ package deputynode
 import (
 	"encoding/json"
 	"errors"
-	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
-	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto/sha3"
 	"github.com/LemoFoundationLtd/lemochain-core/common/hexutil"
@@ -80,23 +78,6 @@ func (d *DeputyNode) Copy() *DeputyNode {
 	}
 
 	return result
-}
-
-// GetIncomeAddress
-func (d *DeputyNode) GetIncomeAddress(am *account.Manager) common.Address {
-	minerAcc := am.GetAccount(d.MinerAddress)
-	profile := minerAcc.GetCandidate()
-	strIncomeAddress, ok := profile[types.CandidateKeyIncomeAddress]
-	if !ok {
-		log.Errorf("not exist income address; miner address = %s", d.MinerAddress)
-		return common.Address{}
-	}
-	incomeAddress, err := common.StringToAddress(strIncomeAddress)
-	if err != nil {
-		log.Errorf("income address unavailability; incomeAddress = %s", strIncomeAddress)
-		return common.Address{}
-	}
-	return incomeAddress
 }
 
 type DeputyNodes []*DeputyNode

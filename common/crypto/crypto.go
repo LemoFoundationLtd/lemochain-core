@@ -203,3 +203,21 @@ func zeroBytes(bytes []byte) {
 		bytes[i] = 0
 	}
 }
+
+// CheckPublic
+func CheckPublic(public string) bool {
+	input := common.FromHex(public)
+	var pubKey65 []byte
+	if len(input) == 64 {
+		pubKey65 = append([]byte{0x04}, input...)
+	} else if len(input) == 65 {
+		pubKey65 = input
+	} else {
+		return false
+	}
+	pub := ToECDSAPub(pubKey65)
+	if pub.X == nil {
+		return false
+	}
+	return true
+}
