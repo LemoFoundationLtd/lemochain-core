@@ -31,11 +31,11 @@ type versionRecordMarshaling struct {
 
 const (
 	// candidate profile
-	CandidateKeyIsCandidate  string = "isCandidate"
-	CandidateKeyNodeID       string = "nodeID"
-	CandidateKeyHost         string = "host"
-	CandidateKeyPort         string = "port"
-	CandidateKeyMinerAddress string = "minerAddress"
+	CandidateKeyIsCandidate   string = "isCandidate"
+	CandidateKeyNodeID        string = "nodeID"
+	CandidateKeyHost          string = "host"
+	CandidateKeyPort          string = "port"
+	CandidateKeyIncomeAddress string = "incomeAddress"
 	// asset profile
 	AssetName              string = "name"
 	AssetSymbol            string = "symbol"

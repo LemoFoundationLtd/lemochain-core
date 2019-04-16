@@ -1,7 +1,9 @@
 package deputynode
 
 import (
+	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
+	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/stretchr/testify/assert"
 	"math/big"
 	"math/rand"
@@ -136,6 +138,7 @@ func TestTermRecord_DivideSalary1(t *testing.T) {
 	// empty nodes
 	nodes := GenerateDeputies(0)
 	term := &TermRecord{TermIndex: 0, Nodes: nodes}
+	account.NewManager(common.Hash{})
 	assert.Empty(t, term.DivideSalary(new(big.Int)))
 
 	// 3 nodes

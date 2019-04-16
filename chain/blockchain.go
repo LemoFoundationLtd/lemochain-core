@@ -16,8 +16,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/network"
 	db "github.com/LemoFoundationLtd/lemochain-core/store/protocol"
 	"math"
-	"net"
-	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -730,20 +728,8 @@ func (bc *BlockChain) GetNewDeputyNodes() deputynode.DeputyNodes {
 		dn.Votes = n.GetTotal()
 		acc := bc.am.GetAccount(n.GetAddress())
 		profile := acc.GetCandidate()
-		strAddr := profile[types.CandidateKeyMinerAddress]
-		addr, err := common.StringToAddress(strAddr)
-		if err != nil {
-			log.Errorf("GetNewDeputyNodes: profile error, addr: %s", strAddr)
-			continue
-		}
-		dn.MinerAddress = addr
-		dn.IP = net.ParseIP(profile[types.CandidateKeyHost])
-		port, err := strconv.Atoi(profile[types.CandidateKeyPort])
-		if err != nil || (port < 100 || port > 65535) {
-			log.Errorf("GetNewDeputyNodes: profile error, port: %s", profile[types.CandidateKeyPort])
-			continue
-		}
-		dn.Port = uint32(port)
+		// miner address == candidate node address
+		dn.MinerAddress = n.GetAddress()
 		dn.Rank = uint32(i)
 		strID := profile[types.CandidateKeyNodeID]
 		nID, err := hex.DecodeString(strID)

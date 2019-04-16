@@ -208,7 +208,7 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 			log.Errorf("unmarshal Candidate node error: %s", err)
 			return 0, err
 		}
-
+		// check nodeID host and incomeAddress
 		if nodeId, ok := profile[types.CandidateKeyNodeID]; ok {
 			nodeIdLength := len(nodeId)
 			if nodeIdLength != StandardNodeIdLength {
@@ -388,10 +388,25 @@ func (p *TxProcessor) refundGas(gp *types.GasPool, tx *types.Transaction, restGa
 // chargeForGas change the gas to miner
 func (p *TxProcessor) chargeForGas(charge *big.Int, minerAddress common.Address) {
 	if charge.Cmp(new(big.Int)) != 0 {
+		// find income address
 		miner := p.am.GetAccount(minerAddress)
-		miner.SetBalance(new(big.Int).Add(miner.GetBalance(), charge))
+		profile := miner.GetCandidate()
+		strIncomeAddress, ok := profile[types.CandidateKeyIncomeAddress]
+		if !ok {
+			log.Errorf("incomeAddress is null when charge gas for minerAddress. minerAddress = %s", minerAddress.String())
+			return
+		}
+		incomeAddress, err := common.StringToAddress(strIncomeAddress)
+		if err != nil {
+			log.Errorf("get incomeAddress error by strIncomeAddress or candidateKeyIncomeAddress unavailability; strIncomeAddress = %s,minerAddress = %s", strIncomeAddress, minerAddress)
+			return
+		}
+		// get income account
+		incomeAcc := p.am.GetAccount(incomeAddress)
+		// get charge
+		miner.SetBalance(new(big.Int).Add(incomeAcc.GetBalance(), charge))
 		// change in the number of votes cast by the miner's account to the candidate node
-		p.changeCandidateVotes(minerAddress, charge)
+		p.changeCandidateVotes(incomeAddress, charge)
 	}
 }
 

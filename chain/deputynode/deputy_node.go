@@ -3,7 +3,8 @@ package deputynode
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto/sha3"
 	"github.com/LemoFoundationLtd/lemochain-core/common/hexutil"
@@ -11,7 +12,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common/merkle"
 	"github.com/LemoFoundationLtd/lemochain-core/common/rlp"
 	"math/big"
-	"net"
 )
 
 //go:generate gencodec -type DeputyNode --field-override deputyNodeMarshaling -out gen_deputy_node_json.go
@@ -28,16 +28,12 @@ var (
 type DeputyNode struct {
 	MinerAddress common.Address `json:"minerAddress"   gencodec:"required"`
 	NodeID       []byte         `json:"nodeID"         gencodec:"required"`
-	IP           net.IP         `json:"ip"             gencodec:"required"` // ip
-	Port         uint32         `json:"port"           gencodec:"required"` // 端口
 	Rank         uint32         `json:"rank"           gencodec:"required"` // 排名 从0开始
 	Votes        *big.Int       `json:"votes"          gencodec:"required"` // 得票数
 }
 
 type deputyNodeMarshaling struct {
 	NodeID hexutil.Bytes
-	IP     hexutil.IP
-	Port   hexutil.Uint32
 	Rank   hexutil.Uint32
 	Votes  *hexutil.Big10
 }
@@ -46,8 +42,6 @@ func (d *DeputyNode) Hash() (h common.Hash) {
 	data := []interface{}{
 		d.MinerAddress,
 		d.NodeID,
-		d.IP,
-		d.Port,
 		d.Rank,
 		d.Votes,
 	}
@@ -66,10 +60,6 @@ func (d *DeputyNode) Check() error {
 		log.Errorf("incorrect field: 'NodeID'. value: %s", common.ToHex(d.NodeID))
 		return ErrNodeIDInvalid
 	}
-	if d.Port > 65535 {
-		log.Errorf("incorrect field: 'port'. value: %d", d.Port)
-		return ErrPortInvalid
-	}
 	if d.Rank > 65535 {
 		log.Errorf("incorrect field: 'rank'. value: %d", d.Rank)
 		return ErrRankInvalid
@@ -81,21 +71,32 @@ func (d *DeputyNode) Check() error {
 	return nil
 }
 
-func (d *DeputyNode) NodeAddrString() string {
-	return fmt.Sprintf("%x@%s:%d", d.NodeID, d.IP, d.Port)
-}
-
 func (d *DeputyNode) Copy() *DeputyNode {
 	result := &DeputyNode{
 		MinerAddress: d.MinerAddress,
 		NodeID:       d.NodeID,
-		IP:           d.IP,
-		Port:         d.Port,
 		Rank:         d.Rank,
 		Votes:        new(big.Int).Set(d.Votes),
 	}
 
 	return result
+}
+
+// GetIncomeAddress
+func (d *DeputyNode) GetIncomeAddress(am *account.Manager) common.Address {
+	minerAcc := am.GetAccount(d.MinerAddress)
+	profile := minerAcc.GetCandidate()
+	strIncomeAddress, ok := profile[types.CandidateKeyIncomeAddress]
+	if !ok {
+		log.Errorf("not exist income address; miner address = %s", d.MinerAddress)
+		return common.Address{}
+	}
+	incomeAddress, err := common.StringToAddress(strIncomeAddress)
+	if err != nil {
+		log.Errorf("income address unavailability; incomeAddress = %s", strIncomeAddress)
+		return common.Address{}
+	}
+	return incomeAddress
 }
 
 type DeputyNodes []*DeputyNode

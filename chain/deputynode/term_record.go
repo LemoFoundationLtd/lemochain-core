@@ -1,6 +1,7 @@
 package deputynode
 
 import (
+	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/hexutil"
@@ -13,7 +14,7 @@ var (
 )
 
 type DeputySalary struct {
-	Address common.Address
+	Address common.Address // income address
 	Salary  *big.Int
 }
 
@@ -75,12 +76,12 @@ func (t *TermRecord) GetTotalVotes() *big.Int {
 }
 
 // DivideSalary divide term salary to every node including of candidate nodes
-func (t *TermRecord) DivideSalary(totalSalary *big.Int) []*DeputySalary {
+func (t *TermRecord) DivideSalary(totalSalary *big.Int, am *account.Manager) []*DeputySalary {
 	salaries := make([]*DeputySalary, len(t.Nodes))
 	totalVotes := t.GetTotalVotes()
 	for i, node := range t.Nodes {
 		salaries[i] = &DeputySalary{
-			Address: node.MinerAddress,
+			Address: node.GetIncomeAddress(am),
 			Salary:  divideSalary(totalSalary, node.Votes, totalVotes, minPrecision),
 		}
 	}

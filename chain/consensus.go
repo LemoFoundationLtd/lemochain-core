@@ -193,7 +193,7 @@ func (d *Dpovp) Finalize(height uint32, am *account.Manager) error {
 			log.Warnf("load deputy nodes failed: %v", err)
 			return err
 		}
-		rewards := lastTermRecord.DivideSalary(termRewards)
+		rewards := lastTermRecord.DivideSalary(termRewards, am)
 		for _, item := range rewards {
 			acc := am.GetAccount(item.Address)
 			balance := acc.GetBalance()

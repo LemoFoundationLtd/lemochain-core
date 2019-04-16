@@ -9,7 +9,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto/secp256k1"
 	"github.com/stretchr/testify/assert"
 	"math/big"
-	"net"
 	"testing"
 )
 
@@ -25,8 +24,6 @@ func GenerateDeputies(num int) DeputyNodes {
 		result = append(result, &DeputyNode{
 			MinerAddress: crypto.PubkeyToAddress(private.PublicKey),
 			NodeID:       (crypto.FromECDSAPub(&private.PublicKey))[1:],
-			IP:           net.IPv4(127, 0, 0, byte(i%256)),
-			Port:         uint32(i % 9999),
 			Rank:         uint32(i),
 			Votes:        big.NewInt(int64(10000000000 - i)),
 		})
