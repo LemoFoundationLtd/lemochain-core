@@ -466,7 +466,9 @@ func (database *ChainDatabase) SetBlock(hash common.Hash, block *types.Block) er
 
 	// genesis block
 	if (block.ParentHash() == common.Hash{}) {
-		database.UnConfirmBlocks[hash] = NewGenesisBlock(block, database.Beansdb)
+		newCBlock := NewGenesisBlock(block, database.Beansdb)
+		newCBlock.SetParent(database.LastConfirm)
+		database.UnConfirmBlocks[hash] = newCBlock
 		log.Debug("block is genesis.height: " + strconv.Itoa(int(block.Height())))
 		return nil
 	}
@@ -492,7 +494,7 @@ func (database *ChainDatabase) SetBlock(hash common.Hash, block *types.Block) er
 			return ErrArgInvalid
 		}
 
-		database.UnConfirmBlocks[hash] = NewNormalBlock(block, database.LastConfirm.AccountTrieDB, database.LastConfirm.CandidateTrieDB, database.LastConfirm.Top)
+		pBlock = database.LastConfirm
 	} else {
 		if pBlock.Block.Height()+1 != block.Height() {
 			bheight := strconv.Itoa(int(block.Height()))
@@ -502,9 +504,10 @@ func (database *ChainDatabase) SetBlock(hash common.Hash, block *types.Block) er
 			log.Errorf("4.block'height:" + bheight + "|bhash:" + bhash + "|confirm'height:" + lheight + "|lhash:" + lhash)
 			return ErrArgInvalid
 		}
-
-		database.UnConfirmBlocks[hash] = NewNormalBlock(block, pBlock.AccountTrieDB, pBlock.CandidateTrieDB, pBlock.Top)
 	}
+	newCBlock := NewNormalBlock(block, pBlock.AccountTrieDB, pBlock.CandidateTrieDB, pBlock.Top)
+	newCBlock.SetParent(pBlock)
+	database.UnConfirmBlocks[hash] = newCBlock
 
 	return nil
 }
@@ -596,63 +599,31 @@ func (database *ChainDatabase) SetStableBlock(hash common.Hash) error {
 		return ErrArgInvalid
 	}
 
-	blocks := make([]*CBlock, 0)
-	blocks = append(blocks, cItem)
-	collected := func() []*CBlock {
-		for {
-			cParent := cItem.Block.ParentHash()
-			cItem = database.UnConfirmBlocks[cParent]
-			if (cItem != nil) && (cItem.Block != nil) {
-				blocks = append(blocks, cItem)
-			} else {
-				break
-			}
-		}
-
-		return blocks
+	// clear the branches from root, except one branch
+	clear := func(root, exclude *CBlock) {
+		root.Walk(func(node *CBlock) {
+			delete(database.UnConfirmBlocks, node.Block.Hash())
+		}, exclude)
 	}
 
-	confirm := func(item *CBlock) {
-		last := database.LastConfirm
-		if last == nil || last.Block == nil || last.AccountTrieDB == nil {
-			database.LastConfirm = item
-		} else {
-			// last.Trie.DelDye(last.Block.Height())
-			database.LastConfirm = item
-		}
-	}
-
-	commit := func() error {
+	commit := func(blocks []*CBlock) error {
 		for index := len(blocks) - 1; index >= 0; index-- {
 			cItem := blocks[index]
 			err := database.blockCommit(cItem.Block.Hash())
 			if err != nil {
 				return err
 			} else {
-				confirm(cItem)
+				oldLast := database.LastConfirm
+				database.LastConfirm = cItem
+				clear(oldLast, cItem)
 			}
 		}
 
 		return nil
 	}
 
-	clear := func(max uint32) {
-		for k, v := range database.UnConfirmBlocks {
-			if v.Block.Height() <= database.LastConfirm.Block.Height() {
-				// v.Trie.DelDye(v.Block.Height())
-				delete(database.UnConfirmBlocks, k)
-			}
-		}
-	}
-
-	blocks = collected()
-	err := commit()
-	if err != nil {
-		return err
-	} else {
-		clear(blocks[len(blocks)-1].Block.Height())
-		return nil
-	}
+	blocks := cItem.CollectToParent(database.LastConfirm)
+	return commit(blocks)
 }
 
 // GetAccount loads account from cache or db
