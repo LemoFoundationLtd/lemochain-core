@@ -180,9 +180,19 @@ func (block *CBlock) Ranking() {
 	}
 }
 
-func (block *CBlock) SetParent(parent *CBlock) {
+func (block *CBlock) BeChildOf(parent *CBlock) {
 	block.Parent = parent
-	parent.Children = append(parent.Children, block)
+
+	if parent != nil {
+		// check if exist
+		for _, child := range parent.Children {
+			if child == block {
+				return
+			}
+		}
+
+		parent.Children = append(parent.Children, block)
+	}
 }
 
 func (block *CBlock) IsSameBlock(b *CBlock) bool {
@@ -198,37 +208,38 @@ func (block *CBlock) IsSameBlock(b *CBlock) bool {
 // CollectToParent collect blocks from parent to parent, include itself and exclude the end block
 func (block *CBlock) CollectToParent(end *CBlock) []*CBlock {
 	blocks := make([]*CBlock, 0)
-	for iter := block; iter != end; iter = iter.Parent {
+	for iter := block; iter != end && iter != nil; iter = iter.Parent {
 		blocks = append(blocks, iter)
 	}
 	return blocks
 }
 
 // Walk iterate every child recursively. Not include itself
-func (block *CBlock) Walk(fun func(*CBlock), exclude *CBlock) {
+func (block *CBlock) Walk(fn func(*CBlock), exclude *CBlock) {
 	for _, child := range block.Children {
 		if exclude == nil || !child.IsSameBlock(exclude) {
-			fun(block)
-			child.Walk(fun, exclude)
+			fn(child)
+			child.Walk(fn, exclude)
 		}
 	}
 }
 
 // ChooseBlock compare children and choose one of them, then choose its children recursively
-func (block *CBlock) ChooseChild(comparator func(*CBlock, *CBlock) *CBlock) *CBlock {
+func (block *CBlock) ChooseChild(compareFn func(*types.Block, *types.Block) *types.Block) *types.Block {
 	count := len(block.Children)
 	if count == 0 {
-		return block
+		return block.Block
 	}
 
-	best := 0
+	bestCB := block.Children[0]
 	for i := 1; i < count; i++ {
-		betterOne := comparator(block.Children[best], block.Children[i])
-		if betterOne == block.Children[i] {
-			best = i
-		} else if betterOne != block.Children[best] { // for debug
-			panic("must choose one from the parameters")
+		cb := block.Children[i]
+		betterRawBlock := compareFn(bestCB.Block, cb.Block)
+		if betterRawBlock == cb.Block {
+			bestCB = cb
+		} else if betterRawBlock != bestCB.Block { // for debug
+			panic("compareFn must choose one from the parameters")
 		}
 	}
-	return block.Children[best].ChooseChild(comparator)
+	return bestCB.ChooseChild(compareFn)
 }
