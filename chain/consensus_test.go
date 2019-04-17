@@ -1,6 +1,7 @@
 package chain
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
@@ -37,8 +38,8 @@ func loadDpovp(dm *deputynode.Manager) *Dpovp {
 }
 
 // 初始化代理节点,numNode为选择共识节点数量，取值为[1,5],height为发放奖励高度
-func initDeputyNode(numNode int, height uint32) *deputynode.Manager {
-	manager := deputynode.NewManager(5)
+func initDeputyNode(numNode int, height uint32, dm *deputynode.Manager) *deputynode.Manager {
+	// manager := deputynode.NewManager(5)
 
 	privarte01, err := crypto.ToECDSA(common.FromHex(deputy01Privkey))
 	if err != nil {
@@ -65,40 +66,30 @@ func initDeputyNode(numNode int, height uint32) *deputynode.Manager {
 	nodes[0] = &deputynode.DeputyNode{
 		MinerAddress: common.HexToAddress(block01MinerAddress),
 		NodeID:       (crypto.FromECDSAPub(&privarte01.PublicKey))[1:],
-		IP:           nil,
-		Port:         7001,
 		Rank:         0,
 		Votes:        big.NewInt(120),
 	}
 	nodes[1] = &deputynode.DeputyNode{
 		MinerAddress: common.HexToAddress(block02MinerAddress),
 		NodeID:       (crypto.FromECDSAPub(&privarte02.PublicKey))[1:],
-		IP:           nil,
-		Port:         7002,
 		Rank:         1,
 		Votes:        big.NewInt(110),
 	}
 	nodes[2] = &deputynode.DeputyNode{
 		MinerAddress: common.HexToAddress(block03MinerAddress),
 		NodeID:       (crypto.FromECDSAPub(&privarte03.PublicKey))[1:],
-		IP:           nil,
-		Port:         7003,
 		Rank:         2,
 		Votes:        big.NewInt(100),
 	}
 	nodes[3] = &deputynode.DeputyNode{
 		MinerAddress: common.HexToAddress(block04MinerAddress),
 		NodeID:       (crypto.FromECDSAPub(&privarte04.PublicKey))[1:],
-		IP:           nil,
-		Port:         7004,
 		Rank:         3,
 		Votes:        big.NewInt(90),
 	}
 	nodes[4] = &deputynode.DeputyNode{
 		MinerAddress: common.HexToAddress(block05MinerAddress),
 		NodeID:       (crypto.FromECDSAPub(&privarte05.PublicKey))[1:],
-		IP:           nil,
-		Port:         7005,
 		Rank:         4,
 		Votes:        big.NewInt(80),
 	}
@@ -106,9 +97,9 @@ func initDeputyNode(numNode int, height uint32) *deputynode.Manager {
 	if numNode > 5 || numNode == 0 {
 		panic(fmt.Errorf("overflow index. numNode must be [1,5]"))
 	}
-	manager.SaveSnapshot(height, nodes[:numNode])
+	dm.SaveSnapshot(height, nodes[:numNode])
 
-	return manager
+	return dm
 }
 
 // 对区块进行签名的函数
@@ -222,7 +213,8 @@ func Test_verifyHeaderTime(t *testing.T) {
 
 // Test_verifyHeaderSignData 测试验证区块签名数据函数是否正确
 func Test_verifyHeaderSignData(t *testing.T) {
-	dm := initDeputyNode(3, 0) // 选择前三个共识节点
+	dm := deputynode.NewManager(5)
+	dm = initDeputyNode(3, 0, dm) // 选择前三个共识节点
 	dpovp := loadDpovp(dm)
 	defer dpovp.db.Close()
 	// 创建一个块并用另一个节点来对此区块进行签名
@@ -233,7 +225,8 @@ func Test_verifyHeaderSignData(t *testing.T) {
 
 // // TestDpovp_nodeCount1 nodeCount = 1 的情况下直接返回nil
 func TestDpovp_nodeCount1(t *testing.T) {
-	dm := initDeputyNode(1, 0)
+	dm := deputynode.NewManager(5)
+	dm = initDeputyNode(1, 0, dm)
 	dpovp := loadDpovp(dm)
 	defer dpovp.db.Close()
 
@@ -243,7 +236,8 @@ func TestDpovp_nodeCount1(t *testing.T) {
 
 // 验证区块头Extra字段长度是否正确
 func Test_headerExtra(t *testing.T) {
-	dm := initDeputyNode(3, 0)
+	dm := deputynode.NewManager(5)
+	dm = initDeputyNode(3, 0, dm)
 	dpovp := loadDpovp(dm)
 	defer dpovp.db.Close()
 	// 创建一个标准的区块
@@ -259,7 +253,8 @@ func Test_headerExtra(t *testing.T) {
 
 // TestDpovp_VerifyHeader01 对共识中共识区块与父块关联情况共识的测试
 func TestDpovp_VerifyHeader01(t *testing.T) {
-	dm := initDeputyNode(5, 0)
+	dm := deputynode.NewManager(5)
+	dm = initDeputyNode(5, 0, dm)
 	t.Log(dm.GetDeputiesCount(1))
 	dpovp := loadDpovp(dm)
 	defer dpovp.db.Close()
@@ -278,7 +273,8 @@ func TestDpovp_VerifyHeader01(t *testing.T) {
 func TestDpovp_VerifyHeader02(t *testing.T) {
 	ClearData()
 	// 创建5个代理节点
-	dm := initDeputyNode(5, 0)
+	dm := deputynode.NewManager(5)
+	dm = initDeputyNode(5, 0, dm)
 	dpovp := loadDpovp(dm)
 	defer dpovp.db.Close()
 	// 创世块,随便哪个节点出块在这里没有影响
@@ -332,7 +328,8 @@ func TestDpovp_VerifyHeader02(t *testing.T) {
 // TestDpovp_Seal
 func TestDpovp_Seal(t *testing.T) {
 	// 创建5个代理节点
-	dm := initDeputyNode(5, 0)
+	dm := deputynode.NewManager(5)
+	dm = initDeputyNode(5, 0, dm)
 	dpovp := loadDpovp(dm)
 	defer dpovp.db.Close()
 	// 创世块
@@ -360,44 +357,250 @@ func TestDpovp_Seal(t *testing.T) {
 	assert.Equal(t, deputynode.DeputyNodes(nil), TestBlock.DeputyNodes)
 }
 
-// TestDpovp_Finalize todo
+// TestDpovp_Finalize
 func TestDpovp_Finalize(t *testing.T) {
-	// 添加第一个共识节点列表,设置共识的节点为前两个节点
-	dm := initDeputyNode(2, 0)
-	// 添加第二个共识节点列表,设置共识的节点为前三个节点,并设置发放奖励高度为10000,在挖出高度为10000+1000+1的区块的时候为上一轮共识节点发放奖励
-	dm = initDeputyNode(3, 10000)
-	// 添加第三个共识节点列表,并设置发放奖励高度为20000,在挖出高度为20000+1000+1的区块的时候为上一轮共识节点发放奖励
-	dm = initDeputyNode(5, 20000)
+	dm := deputynode.NewManager(5)
+	// 第0届 一个deputy node
+	dm = initDeputyNode(1, 0, dm)
+	// 第一届
+	dm = initDeputyNode(3, params.TermDuration, dm)
+	// 第二届
+	dm = initDeputyNode(5, 2*params.TermDuration, dm)
 
 	dpovp := loadDpovp(dm)
 	defer dpovp.db.Close()
 	am := account.NewManager(common.Hash{}, dpovp.db)
-	// 测试挖出的块高度不满足发放奖励高度的时候
-	err := dpovp.Finalize(9999, am)
-	assert.NoError(t, err)
-	// dpovp.handOutRewards(9999)
-	err = dpovp.Finalize(19998, am)
-	assert.NoError(t, err)
-	// dpovp.handOutRewards(19998)
-	addr1, err := common.StringToAddress(block01MinerAddress)
-	assert.NoError(t, err)
-	account01 := am.GetAccount(addr1)
-	t.Log("When there is no reward,node01Balance = ", account01.GetBalance())
 
-	addr2, err := common.StringToAddress(block02MinerAddress)
+	// 设置前0,1,2届的矿工换届奖励
+	rewardMap := make(params.RewardsMap)
+	num00, _ := new(big.Int).SetString("55555555555555555555", 10)
+	num01, _ := new(big.Int).SetString("66666666666666666666", 10)
+	num02, _ := new(big.Int).SetString("77777777777777777777", 10)
+	rewardMap[0] = &params.Reward{
+		Term:  0,
+		Value: num00,
+		Times: 1,
+	}
+	rewardMap[1] = &params.Reward{
+		Term:  1,
+		Value: num01,
+		Times: 1,
+	}
+	rewardMap[2] = &params.Reward{
+		Term:  2,
+		Value: num02,
+		Times: 1,
+	}
+	data, err := json.Marshal(rewardMap)
 	assert.NoError(t, err)
-	account02 := am.GetAccount(addr2)
-	t.Log("When there is no reward,node01Balance = ", account02.GetBalance())
-	// 测试挖出的块高度满足发放奖励高度的时候
-	// dpovp.handOutRewards(11001)
-	err = dpovp.Finalize(11001, account.NewManager(common.Hash{}, dpovp.db))
+	rewardAcc := am.GetAccount(params.TermRewardPrecompiledContractAddress)
+	rewardAcc.SetStorageState(params.TermRewardPrecompiledContractAddress.Hash(), data)
+	// 设置deputy node的income address
+	term00, err := dm.GetTermByHeight(0)
 	assert.NoError(t, err)
-	t.Log("When it comes to giving out rewards,node01Balance = ", account01.GetBalance())
-	t.Log("When it comes to giving out rewards,node01Balance = ", account02.GetBalance())
-	// 第二轮发放奖励
-	// dpovp.handOutRewards(21001)
-	err = dpovp.Finalize(21001, account.NewManager(common.Hash{}, dpovp.db))
+	assert.Equal(t, 1, len(term00.Nodes))
+
+	term01, err := dm.GetTermByHeight(params.TermDuration + params.InterimDuration + 1)
 	assert.NoError(t, err)
-	t.Log("When it comes to giving out rewards,node01Balance = ", account01.GetBalance())
-	t.Log("When it comes to giving out rewards,node01Balance = ", account02.GetBalance())
+	assert.Equal(t, 3, len(term01.Nodes))
+
+	term02, err := dm.GetTermByHeight(2*params.TermDuration + params.InterimDuration + 1)
+	assert.NoError(t, err)
+	assert.Equal(t, 5, len(term02.Nodes))
+
+	// miner
+	minerAddr00 := term02.Nodes[0].MinerAddress
+	minerAddr01 := term02.Nodes[1].MinerAddress
+	minerAddr02 := term02.Nodes[2].MinerAddress
+	minerAddr03 := term02.Nodes[3].MinerAddress
+	minerAddr04 := term02.Nodes[4].MinerAddress
+	minerAcc00 := am.GetAccount(minerAddr00)
+	minerAcc01 := am.GetAccount(minerAddr01)
+	minerAcc02 := am.GetAccount(minerAddr02)
+	minerAcc03 := am.GetAccount(minerAddr03)
+	minerAcc04 := am.GetAccount(minerAddr04)
+	// 设置income address
+	incomeAddr00 := common.HexToAddress("0x10000")
+	incomeAddr01 := common.HexToAddress("0x10001")
+	incomeAddr02 := common.HexToAddress("0x10002")
+	incomeAddr03 := common.HexToAddress("0x10003")
+	incomeAddr04 := common.HexToAddress("0x10004")
+	profile := make(map[string]string)
+	profile[types.CandidateKeyIncomeAddress] = incomeAddr00.String()
+	minerAcc00.SetCandidate(profile)
+	profile[types.CandidateKeyIncomeAddress] = incomeAddr01.String()
+	minerAcc01.SetCandidate(profile)
+	profile[types.CandidateKeyIncomeAddress] = incomeAddr02.String()
+	minerAcc02.SetCandidate(profile)
+	profile[types.CandidateKeyIncomeAddress] = incomeAddr03.String()
+	minerAcc03.SetCandidate(profile)
+	profile[types.CandidateKeyIncomeAddress] = incomeAddr04.String()
+	minerAcc04.SetCandidate(profile)
+
+	// 为第0届发放奖励
+	err = dpovp.Finalize(params.InterimDuration+params.TermDuration+1, am)
+	assert.NoError(t, err)
+	// 查看第0届的deputy node 收益地址的balance. 只有第一个deputy node
+	incomeAcc00 := am.GetAccount(incomeAddr00)
+	value1, _ := new(big.Int).SetString("55000000000000000000", 10)
+	assert.Equal(t, value1, incomeAcc00.GetBalance())
+
+	// 	为第二届发放奖励
+	err = dpovp.Finalize(2*params.TermDuration+params.InterimDuration+1, am)
+	assert.NoError(t, err)
+	// 查看第二届的deputy node 收益地址的balance.前三个deputy node
+	value2, _ := new(big.Int).SetString("79000000000000000000", 10)
+	assert.Equal(t, value2, incomeAcc00.GetBalance())
+
+	incomeAcc01 := am.GetAccount(incomeAddr01)
+	value3, _ := new(big.Int).SetString("22000000000000000000", 10)
+	assert.Equal(t, value3, incomeAcc01.GetBalance())
+
+	incomeAcc02 := am.GetAccount(incomeAddr02)
+	value4, _ := new(big.Int).SetString("20000000000000000000", 10)
+	assert.Equal(t, value4, incomeAcc02.GetBalance())
+
+	// 	为第三届的deputy nodes 发放奖励 5个deputy node
+	err = dpovp.Finalize(3*params.TermDuration+params.InterimDuration+1, am)
+	assert.NoError(t, err)
+	//
+	value5, _ := new(big.Int).SetString("97000000000000000000", 10)
+	assert.Equal(t, value5, incomeAcc00.GetBalance())
+
+	value6, _ := new(big.Int).SetString("39000000000000000000", 10)
+	assert.Equal(t, value6, incomeAcc01.GetBalance())
+
+	value7, _ := new(big.Int).SetString("35000000000000000000", 10)
+	assert.Equal(t, value7, incomeAcc02.GetBalance())
+
+	incomeAcc03 := am.GetAccount(incomeAddr03)
+	value8, _ := new(big.Int).SetString("13000000000000000000", 10)
+	assert.Equal(t, value8, incomeAcc03.GetBalance())
+
+	incomeAcc04 := am.GetAccount(incomeAddr04)
+	value9, _ := new(big.Int).SetString("12000000000000000000", 10)
+	assert.Equal(t, value9, incomeAcc04.GetBalance())
+
+}
+
+func Test_calculateSalary(t *testing.T) {
+	tests := []struct {
+		Expect, TotalSalary, DeputyVotes, TotalVotes, Precision int64
+	}{
+		// total votes=100
+		{0, 100, 0, 100, 1},
+		{1, 100, 1, 100, 1},
+		{2, 100, 2, 100, 1},
+		{100, 100, 100, 100, 1},
+		// total votes=100, precision=10
+		{0, 100, 1, 100, 10},
+		{10, 100, 10, 100, 10},
+		{10, 100, 11, 100, 10},
+		// total votes=1000
+		{0, 100, 1, 1000, 1},
+		{0, 100, 9, 1000, 1},
+		{1, 100, 10, 1000, 1},
+		{1, 100, 11, 1000, 1},
+		{100, 100, 1000, 1000, 1},
+		// total votes=1000, precision=10
+		{10, 100, 100, 1000, 10},
+		{10, 100, 120, 1000, 10},
+		{20, 100, 280, 1000, 10},
+		// total votes=10
+		{0, 100, 0, 10, 1},
+		{10, 100, 1, 10, 1},
+		{100, 100, 10, 10, 1},
+		// total votes=10, precision=10
+		{10, 100, 1, 10, 10},
+		{100, 100, 10, 10, 10},
+	}
+	for _, test := range tests {
+		expect := big.NewInt(test.Expect)
+		totalSalary := big.NewInt(test.TotalSalary)
+		deputyVotes := big.NewInt(test.DeputyVotes)
+		totalVotes := big.NewInt(test.TotalVotes)
+		precision := big.NewInt(test.Precision)
+		assert.Equalf(t, 0, calculateSalary(totalSalary, deputyVotes, totalVotes, precision).Cmp(expect), "calculateSalary(%v, %v, %v, %v)", totalSalary, deputyVotes, totalVotes, precision)
+	}
+}
+
+func TestDivideSalary(t *testing.T) {
+	dm := deputynode.NewManager(5)
+	dm = initDeputyNode(1, 0, dm)                   // 第0届，有一个deputy node
+	dm = initDeputyNode(5, params.TermDuration, dm) // 第一届，有5个deputy node
+
+	dpovp := loadDpovp(dm)
+	defer dpovp.db.Close()
+	am := account.NewManager(common.Hash{}, dpovp.db)
+
+	termRecord00, err := dm.GetTermByHeight(0)
+	assert.NoError(t, err)
+	minerAddress00 := termRecord00.Nodes[0].MinerAddress
+	account := am.GetAccount(minerAddress00)
+	profile := make(map[string]string)
+	// 设置income address
+	incomeAddr := common.HexToAddress("0x1111")
+	profile[types.CandidateKeyIncomeAddress] = incomeAddr.String()
+	account.SetCandidate(profile)
+	num, _ := new(big.Int).SetString("2999999999999999991", 10)
+	salarys00 := DivideSalary(num, am, termRecord00) // 发放奖励的totalSalary = 0
+	assert.Equal(t, 1, len(salarys00))
+	assert.Equal(t, incomeAddr, salarys00[0].Address)
+	assert.Equal(t, big.NewInt(2000000000000000000), salarys00[0].Salary)
+
+	//
+	termRecord01, err := dm.GetTermByHeight(params.TermDuration + params.InterimDuration + 1) // 得到第一届的deputynodes
+	assert.Equal(t, uint32(1), termRecord01.TermIndex)
+	nodes := termRecord01.Nodes
+	minerAddr00 := nodes[0].MinerAddress
+	minerAddr01 := nodes[1].MinerAddress
+	minerAddr02 := nodes[2].MinerAddress
+	minerAddr03 := nodes[3].MinerAddress
+	minerAddr04 := nodes[4].MinerAddress
+	acc00 := am.GetAccount(minerAddr00)
+	acc01 := am.GetAccount(minerAddr01)
+	acc02 := am.GetAccount(minerAddr02)
+	acc03 := am.GetAccount(minerAddr03)
+	acc04 := am.GetAccount(minerAddr04)
+	// 	设置income address
+	income00 := common.HexToAddress("0x1000")
+	profile[types.CandidateKeyIncomeAddress] = income00.String()
+	acc00.SetCandidate(profile)
+	//
+	income01 := common.HexToAddress("0x1001")
+	profile[types.CandidateKeyIncomeAddress] = income01.String()
+	acc01.SetCandidate(profile)
+	//
+	income02 := common.HexToAddress("0x1002")
+	profile[types.CandidateKeyIncomeAddress] = income02.String()
+	acc02.SetCandidate(profile)
+	//
+	income03 := common.HexToAddress("0x1003")
+	profile[types.CandidateKeyIncomeAddress] = income03.String()
+	acc03.SetCandidate(profile)
+	//
+	income04 := common.HexToAddress("0x1004")
+	profile[types.CandidateKeyIncomeAddress] = income04.String()
+	acc04.SetCandidate(profile)
+	// 	计算收益
+	totalSalary, _ := new(big.Int).SetString("999999999999999999999999999999", 10)
+	salaries := DivideSalary(totalSalary, am, termRecord01)
+	assert.Equal(t, 5, len(salaries))
+	assert.Equal(t, income00, salaries[0].Address)
+	assert.Equal(t, income01, salaries[1].Address)
+	assert.Equal(t, income02, salaries[2].Address)
+	assert.Equal(t, income03, salaries[3].Address)
+	assert.Equal(t, income04, salaries[4].Address)
+	//
+	num00, _ := new(big.Int).SetString("239999999999000000000000000000", 10)
+	num01, _ := new(big.Int).SetString("219999999999000000000000000000", 10)
+	num02, _ := new(big.Int).SetString("199999999999000000000000000000", 10)
+	num03, _ := new(big.Int).SetString("179999999999000000000000000000", 10)
+	num04, _ := new(big.Int).SetString("159999999999000000000000000000", 10)
+	assert.Equal(t, num00, salaries[0].Salary)
+	assert.Equal(t, num01, salaries[1].Salary)
+	assert.Equal(t, num02, salaries[2].Salary)
+	assert.Equal(t, num03, salaries[3].Salary)
+	assert.Equal(t, num04, salaries[4].Salary)
+
 }

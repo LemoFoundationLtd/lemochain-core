@@ -232,14 +232,14 @@ func DivideSalary(totalSalary *big.Int, am *account.Manager, t *deputynode.TermR
 	totalVotes := t.GetTotalVotes()
 	for i, node := range t.Nodes {
 		salaries[i] = &deputynode.DeputySalary{
-			Address: getIncomeAddress(am, node),
-			Salary:  divideSalary(totalSalary, node.Votes, totalVotes, minPrecision),
+			Address: getIncomeAddressFromDeputyNode(am, node),
+			Salary:  calculateSalary(totalSalary, node.Votes, totalVotes, minPrecision),
 		}
 	}
 	return salaries
 }
 
-func divideSalary(totalSalary, deputyVotes, totalVotes, precision *big.Int) *big.Int {
+func calculateSalary(totalSalary, deputyVotes, totalVotes, precision *big.Int) *big.Int {
 	r := new(big.Int)
 	// totalSalary * deputyVotes / totalVotes
 	r.Mul(totalSalary, deputyVotes)
@@ -250,8 +250,8 @@ func divideSalary(totalSalary, deputyVotes, totalVotes, precision *big.Int) *big
 	return r
 }
 
-// GetIncomeAddress
-func getIncomeAddress(am *account.Manager, node *deputynode.DeputyNode) common.Address {
+// getIncomeAddressFromDeputyNode
+func getIncomeAddressFromDeputyNode(am *account.Manager, node *deputynode.DeputyNode) common.Address {
 	minerAcc := am.GetAccount(node.MinerAddress)
 	profile := minerAcc.GetCandidate()
 	strIncomeAddress, ok := profile[types.CandidateKeyIncomeAddress]
