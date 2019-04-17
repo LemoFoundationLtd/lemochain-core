@@ -136,20 +136,20 @@ func (db *BizDatabase) GetTxByAddr(src common.Address, index int, size int) ([]*
 	return nil, 0, nil
 }
 
-func (db *BizDatabase) AfterCommit(flag uint, key []byte, val []byte) error {
-	if flag == CACHE_FLG_BLOCK {
+func (db *BizDatabase) AfterCommit(flag uint32, key []byte, val []byte) error {
+	if flag == leveldb.ItemFlagBlock {
 		return db.afterBlock(key, val)
-	} else if flag == CACHE_FLG_BLOCK_HEIGHT {
+	} else if flag == leveldb.ItemFlagBlockHeight {
 		return nil
-	} else if flag == CACHE_FLG_TRIE {
+	} else if flag == leveldb.ItemFlagTrie {
 		return nil
-	} else if flag == CACHE_FLG_ACT {
+	} else if flag == leveldb.ItemFlagAct {
 		return nil
-	} else if flag == CACHE_FLG_TX_INDEX {
+	} else if flag == leveldb.ItemFlagTxIndex {
 		return nil
-	} else if flag == CACHE_FLG_CODE {
+	} else if flag == leveldb.ItemFlagCode {
 		return nil
-	} else if flag == CACHE_FLG_KV {
+	} else if flag == leveldb.ItemFlagKV {
 		return nil
 	} else {
 		panic("unknown flag.flag = " + strconv.Itoa(int(flag)))
@@ -181,10 +181,10 @@ func (db *BizDatabase) afterBlock(key []byte, val []byte) error {
 
 		if tx.Type() == params.CreateAssetTx {
 			log.Info("insert account code: " + tx.Hash().Hex() + "|addr: " + from.Hex())
-			return leveldb.Set(db.LevelDB, leveldb.GetAssetCodeKey(tx.Hash()), from.Bytes())
+			//return leveldb.Set(db.LevelDB, leveldb.GetAssetCodeKey(tx.Hash()), from.Bytes())
 		} else if tx.Type() == params.IssueAssetTx {
 			log.Info("insert account id: " + tx.Hash().Hex() + "|addr: " + from.Hex())
-			return leveldb.Set(db.LevelDB, leveldb.GetAssetIdKey(tx.Hash()), from.Bytes())
+			//return leveldb.Set(db.LevelDB, leveldb.GetAssetIdKey(tx.Hash()), from.Bytes())
 		}
 
 		if err != nil {

@@ -17,10 +17,10 @@ type CBlock struct {
 	Children        []*CBlock
 }
 
-func NewGenesisBlock(block *types.Block, reader DatabaseReader) *CBlock {
+func NewGenesisBlock(block *types.Block, beansdb *BeansDB) *CBlock {
 	return &CBlock{
 		Block:           block,
-		AccountTrieDB:   NewEmptyAccountTrieDB(reader),
+		AccountTrieDB:   NewEmptyAccountTrieDB(beansdb),
 		CandidateTrieDB: NewEmptyCandidateTrieDB(),
 		Top:             NewEmptyVoteTop(),
 	}

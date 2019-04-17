@@ -3,7 +3,7 @@ package store
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/common/rlp"
@@ -11,128 +11,74 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
-	"sync"
 	"time"
 )
 
-var (
-	CACHE_FLG_STOP         = uint(0)
-	CACHE_FLG_BLOCK        = uint(1)
-	CACHE_FLG_BLOCK_HEIGHT = uint(2)
-	CACHE_FLG_TRIE         = uint(3)
-	CACHE_FLG_ACT          = uint(4)
-	CACHE_FLG_TX_INDEX     = uint(5)
-	CACHE_FLG_CODE         = uint(6)
-	CACHE_FLG_KV           = uint(7)
-)
-
 type BeansDB struct {
-	height    uint
-	bitcasks  []*BitCask
-	indexDB   *leveldb.LevelDBDatabase
-	route2key sync.Map
-	after     BizAfterScan
+	Home    string
+	LevelDB *leveldb.LevelDBDatabase
+	Queue   *FileQueue
 }
 
-type BizAfterScan func(flag uint, key []byte, val []byte) error
-
-func (beansdb *BeansDB) initBitCasks(home string, count int) {
-	for index := 0; index < count; index++ {
-		pathModule := filepath.Join(home, "/%02d/%02d/")
-		path := fmt.Sprintf(pathModule, index>>4, index&0xf)
-
-		bitcask, err := NewBitCask(path, beansdb.AfterScan, beansdb.indexDB)
-		if err != nil {
-			panic("new bitcask err : " + err.Error())
-		} else {
-			beansdb.bitcasks[index] = bitcask
-		}
+func NewBeansDB(home string, levelDB *leveldb.LevelDBDatabase) *BeansDB {
+	return &BeansDB{
+		Home:    home,
+		LevelDB: levelDB,
 	}
 }
 
-func NewBeansDB(home string, height int, DB *leveldb.LevelDBDatabase, after BizAfterScan) *BeansDB {
-	if height != 2 {
-		panic("beansdb height != 2")
-	}
-
-	count := 1 << (uint(height) * 4)
-	beansdb := &BeansDB{
-		height:   uint(height),
-		bitcasks: make([]*BitCask, count),
-		indexDB:  DB, after: after,
-	}
-
-	beansdb.initBitCasks(home, count)
-	return beansdb
+func (beansdb *BeansDB) Start() {
+	beansdb.Queue = NewFileQueue(beansdb.Home, beansdb.LevelDB, beansdb)
+	beansdb.Queue.Start()
 }
 
-func (beansdb *BeansDB) InitBeansDB() error {
-	for index := 0; index < len(beansdb.bitcasks); index++ {
-		err := beansdb.bitcasks[index].InitBitCask()
+func (beansdb *BeansDB) After(flg uint32, key []byte, val []byte) error {
+	log.Errorf("after. flg: %d, %s", flg, common.ToHex(key))
+	if flg == leveldb.ItemFlagBlock {
+		var block types.Block
+		err := rlp.DecodeBytes(val, &block)
 		if err != nil {
 			return err
+		} else {
+			log.Errorf("after block. height: %d", block.Height())
+			return nil
 		}
 	}
 
 	return nil
 }
 
-func (beansdb *BeansDB) AfterScan(flag uint, route []byte, key []byte, val []byte, offset uint32) error {
-	if beansdb.after == nil {
-		return nil
-	}
-
-	err := beansdb.after(flag, key, val)
-	if err != nil {
-		return err
-	} else {
-		beansdb.route2key.Delete(string(key))
-		return nil
-	}
-}
-
-func (beansdb *BeansDB) route(route []byte) *BitCask {
-	num := Byte2Uint32(route)
-	index := num >> ((8 - beansdb.height) * 4)
-	return beansdb.bitcasks[index]
-}
-
-func (beansdb *BeansDB) NewBatch(route []byte) Batch {
-	batch := &LmDBBatch{
+func (beansdb *BeansDB) NewBatch() Batch {
+	return &LmDBBatch{
 		db:    beansdb,
 		items: make([]*BatchItem, 0),
 		size:  0,
 	}
-
-	batch.route = make([]byte, len(route))
-	copy(batch.route, route)
-	return batch
 }
 
 func (beansdb *BeansDB) Commit(batch Batch) error {
-	route := batch.Route()
-	bitcask := beansdb.route(route)
-	err := bitcask.Commit(batch)
-	if err != nil {
-		return err
-	} else {
-		items := batch.Items()
-		route := batch.Route()
-
-		for index := 0; index < len(items); index++ {
-			beansdb.route2key.Store(string(items[index].Key), route)
-		}
+	items := batch.Items()
+	if len(items) <= 0 {
 		return nil
+	} else {
+		return beansdb.Queue.PutBatch(items)
 	}
 }
 
-func (beansdb *BeansDB) Put(flg uint, route []byte, key []byte, val []byte) error {
-	bitcask := beansdb.route(route)
-	return bitcask.Put(flg, route, key, val)
+func (beansdb *BeansDB) Put(flag uint32, key []byte, val []byte) error {
+	if !leveldb.CheckItemFlag(flag) || len(key) <= 0 || len(val) <= 0 {
+		return ErrArgInvalid
+	}
+
+	return beansdb.Queue.Put(flag, key, val)
 }
 
-func (beansdb *BeansDB) Has(key []byte) (bool, error) {
-	val, err := beansdb.Get(key)
+func (beansdb *BeansDB) Has(flag uint32, key []byte) (bool, error) {
+	if !leveldb.CheckItemFlag(flag) || len(key) <= 0 {
+		return false, ErrArgInvalid
+	}
+
+	val, err := beansdb.Get(flag, key)
 	if err != nil {
 		return false, err
 	}
@@ -144,42 +90,20 @@ func (beansdb *BeansDB) Has(key []byte) (bool, error) {
 	}
 }
 
-func (beansdb *BeansDB) Get(key []byte) ([]byte, error) {
-	route, ok := beansdb.route2key.Load(string(key))
-	if !ok {
-		position, err := leveldb.GetPos(beansdb.indexDB, key)
-		if err != nil {
-			return nil, err
-		}
-
-		if position == nil {
-			return nil, nil
-		}
-
-		bitcask := beansdb.route(position.Route)
-		val, err := bitcask.Get(uint(position.Flag), position.Route, key, int64(position.Offset))
-		if err != nil {
-			log.Error("get data from disk err : " + err.Error())
-			return nil, err
-		} else {
-			return val, nil
-		}
+func (beansdb *BeansDB) Get(flg uint32, key []byte) ([]byte, error) {
+	if !leveldb.CheckItemFlag(flg) || len(key) <= 0 {
+		return nil, ErrArgInvalid
 	} else {
-		bitcask := beansdb.route(route.([]byte))
-		val, err := bitcask.Get4Cache(route.([]byte), key)
-		if err != nil {
-			return nil, err
-		} else {
-			return val, nil
-		}
+		return beansdb.Queue.Get(flg, key)
 	}
 }
 
-func (beansdb *BeansDB) Close() error {
-	for index := 0; index < len(beansdb.bitcasks); index++ {
-		beansdb.bitcasks[index].Close()
-	}
-	return nil
+func (beansdb *BeansDB) Delete(flg uint32, key []byte) error {
+	panic("implement me")
+}
+
+func (beansdb *BeansDB) Close() {
+	beansdb.Queue.Close()
 }
 
 // ///////////////////////

@@ -4,22 +4,11 @@ import (
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
+	"github.com/LemoFoundationLtd/lemochain-core/store/leveldb"
 	"github.com/stretchr/testify/assert"
 	"math/big"
 	"testing"
 )
-
-type TestReader struct {
-}
-
-func (reader *TestReader) Get(key []byte) (value []byte, err error) {
-	return nil, nil
-}
-
-// Has retrieves whether a key is present in the database.
-func (reader *TestReader) Has(key []byte) (bool, error) {
-	return false, nil
-}
 
 func TestPatriciaTrie_Min(t *testing.T) {
 	val := min(10, 11)
@@ -114,8 +103,15 @@ func Interface2AccountData(data types.NodeData) *types.AccountData {
 //	/	\		   ====>  		/ |	\
 // e	 f				   	   c# e  f
 func TestPatriciaTrie_Put1(t *testing.T) {
+	ClearData()
+	levelDB := leveldb.NewLevelDBDatabase(GetStorePath(), 16, 16)
+	defer levelDB.Close()
+	beansdb := NewBeansDB(GetStorePath(), levelDB)
+	beansdb.Start()
+	defer beansdb.Close()
+
 	trie := NewEmptyDatabase()
-	triedb := NewAccountTrieDB(trie, new(TestReader))
+	triedb := NewAccountTrieDB(trie, beansdb)
 	account1 := &types.AccountData{
 		Address: common.HexToAddress("0x1"),
 		Balance: big.NewInt(1),
@@ -135,7 +131,7 @@ func TestPatriciaTrie_Put1(t *testing.T) {
 	triedb.Set(account13)
 
 	tmp1 := NewActDatabase(trie)
-	tmp1db := NewAccountTrieDB(tmp1, new(TestReader))
+	tmp1db := NewAccountTrieDB(tmp1, beansdb)
 
 	account11 := &types.AccountData{
 		Address: common.HexToAddress("0x11"),
@@ -178,8 +174,15 @@ func TestPatriciaTrie_Put1(t *testing.T) {
 //    /  \    =========>    /   \
 //   e    f     		   e     f
 func TestPatriciaTrie_Put2(t *testing.T) {
+	ClearData()
+	levelDB := leveldb.NewLevelDBDatabase(GetStorePath(), 16, 16)
+	defer levelDB.Close()
+	beansdb := NewBeansDB(GetStorePath(), levelDB)
+	beansdb.Start()
+	defer beansdb.Close()
+
 	trie := NewEmptyDatabase()
-	triedb := NewAccountTrieDB(trie, new(TestReader))
+	triedb := NewAccountTrieDB(trie, beansdb)
 
 	account12 := &types.AccountData{
 		Address: common.HexToAddress("0x112"),
@@ -194,7 +197,7 @@ func TestPatriciaTrie_Put2(t *testing.T) {
 	triedb.Set(account13)
 
 	tmp1 := NewActDatabase(trie)
-	tmp1db := NewAccountTrieDB(tmp1, new(TestReader))
+	tmp1db := NewAccountTrieDB(tmp1, beansdb)
 	account1 := &types.AccountData{
 		Address: common.HexToAddress("0x11"),
 		Balance: big.NewInt(1),
@@ -234,8 +237,15 @@ func TestPatriciaTrie_Put2(t *testing.T) {
 //    /  \    =========>    /   \
 //   e    f     		   e     f
 func TestPatriciaTrie_Put3(t *testing.T) {
+	ClearData()
+	levelDB := leveldb.NewLevelDBDatabase(GetStorePath(), 16, 16)
+	defer levelDB.Close()
+	beansdb := NewBeansDB(GetStorePath(), levelDB)
+	beansdb.Start()
+	defer beansdb.Close()
+
 	trie := NewEmptyDatabase()
-	triedb := NewAccountTrieDB(trie, new(TestReader))
+	triedb := NewAccountTrieDB(trie, beansdb)
 
 	account12 := &types.AccountData{
 		Address: common.HexToAddress("0x1112"),
@@ -250,7 +260,7 @@ func TestPatriciaTrie_Put3(t *testing.T) {
 	triedb.Set(account13)
 
 	tmp1 := NewActDatabase(trie)
-	tmp1db := NewAccountTrieDB(tmp1, new(TestReader))
+	tmp1db := NewAccountTrieDB(tmp1, beansdb)
 	account1222 := &types.AccountData{
 		Address: common.HexToAddress("0x1222"),
 		Balance: big.NewInt(1222),
@@ -292,8 +302,15 @@ func TestPatriciaTrie_Put3(t *testing.T) {
 //    /  \    ==========>    / | \
 //   e    f     			c# e  f
 func TestPatriciaTrie_Put4(t *testing.T) {
+	ClearData()
+	levelDB := leveldb.NewLevelDBDatabase(GetStorePath(), 16, 16)
+	defer levelDB.Close()
+	beansdb := NewBeansDB(GetStorePath(), levelDB)
+	beansdb.Start()
+	defer beansdb.Close()
+
 	trie := NewEmptyDatabase()
-	triedb := NewAccountTrieDB(trie, new(TestReader))
+	triedb := NewAccountTrieDB(trie, beansdb)
 
 	account1112 := &types.AccountData{
 		Address: common.HexToAddress("0x1112"),
@@ -319,7 +336,7 @@ func TestPatriciaTrie_Put4(t *testing.T) {
 		Balance: big.NewInt(1111),
 	}
 	tmp1 := NewActDatabase(trie)
-	tmp1db := NewAccountTrieDB(tmp1, new(TestReader))
+	tmp1db := NewAccountTrieDB(tmp1, beansdb)
 	tmp1db.Put(account1111, 1)
 
 	result, _ := triedb.Get(account1111.Address)
@@ -347,8 +364,15 @@ func TestPatriciaTrie_Put4(t *testing.T) {
 //    /  \    ==========>    / | \
 //   e    f     			c# e  f
 func TestPatriciaTrie_Put5(t *testing.T) {
+	ClearData()
+	levelDB := leveldb.NewLevelDBDatabase(GetStorePath(), 16, 16)
+	defer levelDB.Close()
+	beansdb := NewBeansDB(GetStorePath(), levelDB)
+	beansdb.Start()
+	defer beansdb.Close()
+
 	trie := NewEmptyDatabase()
-	triedb := NewAccountTrieDB(trie, new(TestReader))
+	triedb := NewAccountTrieDB(trie, beansdb)
 
 	account1112 := &types.AccountData{
 		Address: common.HexToAddress("0x1112"),
@@ -382,7 +406,7 @@ func TestPatriciaTrie_Put5(t *testing.T) {
 		Balance: big.NewInt(1111),
 	}
 
-	tmp1db := NewAccountTrieDB(tmp1, new(TestReader))
+	tmp1db := NewAccountTrieDB(tmp1, beansdb)
 	tmp1db.Put(account1111, 1)
 	result, _ = triedb.Get(account1111.Address)
 	assert.Nil(t, result)
@@ -406,8 +430,15 @@ func TestPatriciaTrie_Put5(t *testing.T) {
 // 					           /  \
 //                            e    f
 func TestPatriciaTrie_Put6(t *testing.T) {
+	ClearData()
+	levelDB := leveldb.NewLevelDBDatabase(GetStorePath(), 16, 16)
+	defer levelDB.Close()
+	beansdb := NewBeansDB(GetStorePath(), levelDB)
+	beansdb.Start()
+	defer beansdb.Close()
+
 	trie := NewEmptyDatabase()
-	triedb := NewAccountTrieDB(trie, new(TestReader))
+	triedb := NewAccountTrieDB(trie, beansdb)
 
 	account1112 := &types.AccountData{
 		Address: common.HexToAddress("0x1112"),
@@ -448,7 +479,7 @@ func TestPatriciaTrie_Put6(t *testing.T) {
 	result = tmp1.find(tmp1.root, str)
 	assert.Equal(t, result, account11)
 
-	tmp1db := NewAccountTrieDB(tmp1, new(TestReader))
+	tmp1db := NewAccountTrieDB(tmp1, beansdb)
 	result, _ = triedb.Get(account1112.Address)
 	assert.Equal(t, result, account1112)
 	result, _ = triedb.Get(account1113.Address)
@@ -466,8 +497,15 @@ func TestPatriciaTrie_Put6(t *testing.T) {
 // 					           /  \
 //                            e    f
 func TestPatriciaTrie_Put7(t *testing.T) {
+	ClearData()
+	levelDB := leveldb.NewLevelDBDatabase(GetStorePath(), 16, 16)
+	defer levelDB.Close()
+	beansdb := NewBeansDB(GetStorePath(), levelDB)
+	beansdb.Start()
+	defer beansdb.Close()
+
 	trie := NewEmptyDatabase()
-	triedb := NewAccountTrieDB(trie, new(TestReader))
+	triedb := NewAccountTrieDB(trie, beansdb)
 
 	account1112 := &types.AccountData{
 		Address: common.HexToAddress("0x1112"),
@@ -510,7 +548,7 @@ func TestPatriciaTrie_Put7(t *testing.T) {
 	result = tmp1.find(tmp1.root, str)
 	assert.Equal(t, result, account11)
 
-	tmp1db := NewAccountTrieDB(tmp1, new(TestReader))
+	tmp1db := NewAccountTrieDB(tmp1, beansdb)
 	result, _ = triedb.Get(account1112.Address)
 	assert.Equal(t, result, account1112)
 	result, _ = triedb.Get(account1113.Address)
@@ -529,8 +567,15 @@ func TestPatriciaTrie_Put7(t *testing.T) {
 //                          	 e    f
 // split at j
 func TestPatriciaTrie_Put8(t *testing.T) {
+	ClearData()
+	levelDB := leveldb.NewLevelDBDatabase(GetStorePath(), 16, 16)
+	defer levelDB.Close()
+	beansdb := NewBeansDB(GetStorePath(), levelDB)
+	beansdb.Start()
+	defer beansdb.Close()
+
 	trie := NewEmptyDatabase()
-	triedb := NewAccountTrieDB(trie, new(TestReader))
+	triedb := NewAccountTrieDB(trie, beansdb)
 
 	account1112 := &types.AccountData{
 		Address: common.HexToAddress("0x1112"),
@@ -572,7 +617,7 @@ func TestPatriciaTrie_Put8(t *testing.T) {
 	result = tmp1.find(tmp1.root, str)
 	assert.Equal(t, result, account112)
 
-	tmp1db := NewAccountTrieDB(tmp1, new(TestReader))
+	tmp1db := NewAccountTrieDB(tmp1, beansdb)
 	result, _ = triedb.Get(account1112.Address)
 	assert.Equal(t, result, account1112)
 	result, _ = triedb.Get(account1113.Address)
@@ -591,8 +636,15 @@ func TestPatriciaTrie_Put8(t *testing.T) {
 //                          	 	  e    f
 // split at j
 func TestPatriciaTrie_Put9(t *testing.T) {
+	ClearData()
+	levelDB := leveldb.NewLevelDBDatabase(GetStorePath(), 16, 16)
+	defer levelDB.Close()
+	beansdb := NewBeansDB(GetStorePath(), levelDB)
+	beansdb.Start()
+	defer beansdb.Close()
+
 	trie := NewEmptyDatabase()
-	triedb := NewAccountTrieDB(trie, new(TestReader))
+	triedb := NewAccountTrieDB(trie, beansdb)
 
 	account1112 := &types.AccountData{
 		Address: common.HexToAddress("0x1112"),
@@ -634,7 +686,7 @@ func TestPatriciaTrie_Put9(t *testing.T) {
 	result = tmp1.find(tmp1.root, str)
 	assert.Equal(t, result, account110)
 
-	tmp1db := NewAccountTrieDB(tmp1, new(TestReader))
+	tmp1db := NewAccountTrieDB(tmp1, beansdb)
 	result, _ = triedb.Get(account1112.Address)
 	assert.Equal(t, result, account1112)
 	result, _ = triedb.Get(account1113.Address)
@@ -653,8 +705,15 @@ func TestPatriciaTrie_Put9(t *testing.T) {
 //                          	 e    f
 // split at j
 func TestPatriciaTrie_Put10(t *testing.T) {
+	ClearData()
+	levelDB := leveldb.NewLevelDBDatabase(GetStorePath(), 16, 16)
+	defer levelDB.Close()
+	beansdb := NewBeansDB(GetStorePath(), levelDB)
+	beansdb.Start()
+	defer beansdb.Close()
+
 	trie := NewEmptyDatabase()
-	triedb := NewAccountTrieDB(trie, new(TestReader))
+	triedb := NewAccountTrieDB(trie, beansdb)
 
 	account1112 := &types.AccountData{
 		Address: common.HexToAddress("0x1112"),
@@ -699,7 +758,7 @@ func TestPatriciaTrie_Put10(t *testing.T) {
 	result = tmp1.find(tmp1.root, str)
 	assert.Equal(t, result, account112)
 
-	tmp1db := NewAccountTrieDB(tmp1, new(TestReader))
+	tmp1db := NewAccountTrieDB(tmp1, beansdb)
 	result, _ = triedb.Get(account1112.Address)
 	assert.Equal(t, result, account1112)
 	result, _ = triedb.Get(account1113.Address)
@@ -711,10 +770,18 @@ func TestPatriciaTrie_Put10(t *testing.T) {
 }
 
 func TestPatriciaTrie_Put11(t *testing.T) {
+	ClearData()
+	levelDB := leveldb.NewLevelDBDatabase(GetStorePath(), 16, 16)
+	defer levelDB.Close()
+	beansdb := NewBeansDB(GetStorePath(), levelDB)
+	beansdb.Start()
+	defer beansdb.Close()
+
 	trie := NewEmptyDatabase()
-	triedb := NewAccountTrieDB(trie, new(TestReader))
+	triedb := NewAccountTrieDB(trie, beansdb)
+
 	tmp1 := NewActDatabase(trie)
-	tmp1db := NewAccountTrieDB(tmp1, new(TestReader))
+	tmp1db := NewAccountTrieDB(tmp1, beansdb)
 	account1112 := &types.AccountData{
 		Address: common.HexToAddress("0x1112"),
 		Balance: big.NewInt(12),
@@ -762,8 +829,16 @@ func TestPatriciaTrie_Put12(t *testing.T) {
 }
 
 func TestPatriciaTrie_Collected(t *testing.T) {
+	ClearData()
+	levelDB := leveldb.NewLevelDBDatabase(GetStorePath(), 16, 16)
+	defer levelDB.Close()
+	beansdb := NewBeansDB(GetStorePath(), levelDB)
+	beansdb.Start()
+	defer beansdb.Close()
+
 	trie := NewEmptyDatabase()
-	triedb := NewAccountTrieDB(trie, new(TestReader))
+	triedb := NewAccountTrieDB(trie, beansdb)
+
 	addr01, _ := common.StringToAddress("Lemo8888888888888888888888888888884SD4Q6")
 	addr02, _ := common.StringToAddress("Lemo836BQKCBZ8Z7B7N4G4N4SNGBT24ZZSJQD24D")
 	addr03, _ := common.StringToAddress("Lemo8888888888888888888888885PKQARFNQWYR")
@@ -840,7 +915,7 @@ func TestPatriciaTrie_Collected(t *testing.T) {
 	}
 
 	tmp1 := NewActDatabase(trie)
-	tmp1db := NewAccountTrieDB(tmp1, new(TestReader))
+	tmp1db := NewAccountTrieDB(tmp1, beansdb)
 	tmp1db.Put(account1, 3)
 	tmp1db.Put(account2, 3)
 	tmp1db.Put(account3, 3)
@@ -852,8 +927,15 @@ func TestPatriciaTrie_Collected(t *testing.T) {
 }
 
 func TestPatriciaTrie_PutBatch(t *testing.T) {
+	ClearData()
+	levelDB := leveldb.NewLevelDBDatabase(GetStorePath(), 16, 16)
+	defer levelDB.Close()
+	beansdb := NewBeansDB(GetStorePath(), levelDB)
+	beansdb.Start()
+	defer beansdb.Close()
+
 	trie := NewEmptyDatabase()
-	triedb := NewAccountTrieDB(trie, new(TestReader))
+	triedb := NewAccountTrieDB(trie, beansdb)
 
 	result := NewAccountDataBatch(10000)
 	for index := 0; index < 10000; index++ {

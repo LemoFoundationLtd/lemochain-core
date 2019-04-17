@@ -18,6 +18,7 @@ package trie
 
 import (
 	"bytes"
+	"github.com/LemoFoundationLtd/lemochain-core/store/leveldb"
 	"testing"
 
 	"github.com/LemoFoundationLtd/lemochain-core/common"
@@ -353,12 +354,12 @@ func TestIncompleteTrieSync(t *testing.T) {
 	// Sanity check that removing any node from the database is detected
 	for _, node := range added[1:] {
 		key := node.Bytes()
-		value, _ := diskdb.Get(key)
+		value, _ := diskdb.Get(leveldb.ItemFlagTrie, key)
 
-		diskdb.Delete(key)
+		diskdb.Delete(leveldb.ItemFlagTrie, key)
 		if err := checkTrieConsistency(triedb, added[0]); err == nil {
 			t.Fatalf("trie inconsistency not caught, missing: %x", key)
 		}
-		diskdb.Put(key, value)
+		diskdb.Put(leveldb.ItemFlagTrie, key, value)
 	}
 }

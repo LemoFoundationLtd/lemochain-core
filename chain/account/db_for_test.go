@@ -6,6 +6,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
+	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"github.com/LemoFoundationLtd/lemochain-core/store/protocol"
 	"github.com/LemoFoundationLtd/lemochain-core/store/trie"
@@ -131,6 +132,7 @@ func saveBlock(db protocol.ChainDB, blockIndex int, info *blockInfo) {
 		}
 	}
 	hash, err := tr.Commit(nil)
+	log.Errorf("version root: %s", common.ToHex(hash.Bytes()))
 	if err != nil {
 		panic(err)
 	}
@@ -200,6 +202,7 @@ func saveAccount(db protocol.ChainDB) {
 			}
 		}
 		hash, err := tr.Commit(nil)
+		log.Errorf("trie root: %s", common.ToHex(hash.Bytes()))
 		if err != nil {
 			panic(err)
 		}

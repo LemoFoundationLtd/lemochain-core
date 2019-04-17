@@ -58,7 +58,8 @@ func NewChainDataBase(home string, driver string, dns string) *ChainDatabase {
 	}
 
 	db.BizDB = NewBizDatabase(db, db.LevelDB)
-	db.Beansdb = NewBeansDB(home, 2, db.LevelDB, db.AfterScan)
+	db.Beansdb = NewBeansDB(home, db.LevelDB)
+	db.Beansdb.Start()
 
 	stableBlock, err := db.GetStableBlock()
 	if err != nil && err != ErrNotExist {
@@ -79,12 +80,7 @@ func NewChainDataBase(home string, driver string, dns string) *ChainDatabase {
 		db.LastConfirm.Top.Rank(max_candidate_count, candidates)
 	}
 
-	err = db.Beansdb.InitBeansDB()
-	if err != nil {
-		panic("init beansdb err: " + err.Error())
-	} else {
-		return db
-	}
+	return db
 }
 
 func (database *ChainDatabase) GetStableBlock() (*types.Block, error) {
@@ -183,15 +179,15 @@ func (database *ChainDatabase) commitCandidates(val []byte) error {
 	}
 }
 
-func (database *ChainDatabase) AfterScan(flag uint, key []byte, val []byte) error {
-	if flag == CACHE_FLG_BLOCK {
+func (database *ChainDatabase) AfterScan(flag uint32, key []byte, val []byte) error {
+	if flag == leveldb.ItemFlagBlock {
 		err := database.commitStableBlock(val)
 		if err != nil {
 			return err
 		}
 	}
 
-	if flag == CACHE_FLG_ACT {
+	if flag == leveldb.ItemFlagAct {
 		err := database.commitCandidates(val)
 		if err != nil {
 			return err
@@ -224,7 +220,7 @@ func (database *ChainDatabase) blockCommit(hash common.Hash) error {
 		panic("(database.LastConfirm.Block != nil) && (cItem.Block.Height() < database.LastConfirm.Block.Height())")
 	}
 
-	batch := database.Beansdb.NewBatch(hash[:])
+	batch := database.Beansdb.NewBatch()
 
 	// store block
 	buf, err := rlp.EncodeToBytes(cItem.Block)
@@ -232,8 +228,8 @@ func (database *ChainDatabase) blockCommit(hash common.Hash) error {
 		return err
 	}
 
-	batch.Put(CACHE_FLG_BLOCK, leveldb.GetBlockHashKey(hash), buf)
-	batch.Put(CACHE_FLG_BLOCK_HEIGHT, leveldb.GetCanonicalKey(cItem.Block.Height()), hash[:])
+	batch.Put(leveldb.ItemFlagBlock, hash.Bytes(), buf)
+	batch.Put(leveldb.ItemFlagBlockHeight, leveldb.EncodeNumber(cItem.Block.Height()), hash.Bytes())
 
 	// store account
 	decode := func(account *types.AccountData, batch Batch) error {
@@ -241,7 +237,7 @@ func (database *ChainDatabase) blockCommit(hash common.Hash) error {
 		if err != nil {
 			return err
 		} else {
-			batch.Put(CACHE_FLG_ACT, leveldb.GetAddressKey(account.Address), buf)
+			batch.Put(leveldb.ItemFlagAct, account.Address.Bytes(), buf)
 			return nil
 		}
 	}
@@ -307,21 +303,15 @@ func (database *ChainDatabase) getBlock4DB(hash common.Hash) (*types.Block, erro
 		return nil, ErrNotExist
 	}
 
-	val, err := database.Beansdb.Get(leveldb.GetBlockHashKey(hash))
+	block, err := UtilsGetBlockByHash(database.Beansdb, hash)
 	if err != nil {
 		return nil, err
 	}
 
-	if val == nil {
+	if block == nil {
 		return nil, ErrNotExist
-	}
-
-	var block types.Block
-	err = rlp.DecodeBytes(val, &block)
-	if err != nil {
-		return nil, err
 	} else {
-		return &block, nil
+		return block, nil
 	}
 }
 
@@ -334,7 +324,7 @@ func (database *ChainDatabase) setBlock2DB(hash common.Hash, block *types.Block)
 	if err != nil {
 		return err
 	} else {
-		return database.Beansdb.Put(CACHE_FLG_BLOCK, hash[:], leveldb.GetBlockHashKey(hash), buf)
+		return database.Beansdb.Put(leveldb.ItemFlagBlock, hash.Bytes(), buf)
 	}
 }
 
@@ -352,7 +342,7 @@ func (database *ChainDatabase) getBlock(hash common.Hash) (*types.Block, error) 
 }
 
 func (database *ChainDatabase) SizeOfValue(hash common.Hash) (int, error) {
-	val, err := database.Beansdb.Get(hash[:])
+	val, err := database.Beansdb.Get(leveldb.ItemFlagBlock, hash.Bytes())
 	if err != nil {
 		return -1, err
 	} else {
@@ -380,25 +370,16 @@ func (database *ChainDatabase) GetBlockByHeight(height uint32) (*types.Block, er
 	database.RW.Lock()
 	defer database.RW.Unlock()
 
-	val, err := database.Beansdb.Get(leveldb.GetCanonicalKey(height))
+	block, err := UtilsGetBlockByHeight(database.Beansdb, height)
 	if err != nil {
 		return nil, err
 	}
 
-	if val == nil {
+	if block == nil {
 		return nil, ErrNotExist
 	}
 
-	block, err := database.getBlock(common.BytesToHash(val))
-	if err != nil {
-		return nil, err
-	} else {
-		if block.Height() != height {
-			return nil, ErrNotExist
-		} else {
-			return block, nil
-		}
-	}
+	return block, nil
 }
 
 func (database *ChainDatabase) GetBlockByHash(hash common.Hash) (*types.Block, error) {
@@ -418,7 +399,7 @@ func (database *ChainDatabase) isExistByHash(hash common.Hash) (bool, error) {
 		return true, nil
 	}
 
-	return database.Beansdb.Has(leveldb.GetBlockHashKey(hash))
+	return UtilsHashBlock(database.Beansdb, hash)
 }
 
 func (database *ChainDatabase) IsExistByHash(hash common.Hash) (bool, error) {
@@ -629,26 +610,20 @@ func (database *ChainDatabase) SetStableBlock(hash common.Hash) error {
 
 // GetAccount loads account from cache or db
 func (database *ChainDatabase) GetAccount(addr common.Address) (*types.AccountData, error) {
-	val, err := database.Beansdb.Get(leveldb.GetAddressKey(addr))
+	account, err := UtilsGetAccount(database.Beansdb, addr)
 	if err != nil {
 		return nil, err
 	}
 
-	if val == nil {
+	if account == nil {
 		return nil, ErrNotExist
-	}
-
-	var account types.AccountData
-	err = rlp.DecodeBytes(val, &account)
-	if err != nil {
-		return nil, err
 	} else {
-		return &account, nil
+		return account, nil
 	}
 }
 
 func (database *ChainDatabase) GetTrieDatabase() *TrieDatabase {
-	return NewTrieDatabase(NewLDBDatabase(database.Beansdb))
+	return NewTrieDatabase(database.Beansdb)
 }
 
 func (database *ChainDatabase) GetActDatabase(hash common.Hash) (*AccountTrieDB, error) {
@@ -679,7 +654,7 @@ func (database *ChainDatabase) GetActDatabase(hash common.Hash) (*AccountTrieDB,
 
 // GetContractCode loads contract's code from db.
 func (database *ChainDatabase) GetContractCode(hash common.Hash) (types.Code, error) {
-	val, err := database.Beansdb.Get(hash[:])
+	val, err := database.Beansdb.Get(leveldb.ItemFlagCode, hash.Bytes())
 	if err != nil {
 		return nil, err
 	}
@@ -694,7 +669,7 @@ func (database *ChainDatabase) GetContractCode(hash common.Hash) (types.Code, er
 
 // SetContractCode saves contract's code
 func (database *ChainDatabase) SetContractCode(hash common.Hash, code types.Code) error {
-	return database.Beansdb.Put(CACHE_FLG_CODE, hash[:], hash[:], code[:])
+	return database.Beansdb.Put(leveldb.ItemFlagCode, hash.Bytes(), code[:])
 }
 
 func (database *ChainDatabase) GetCandidatesTop(hash common.Hash) []*Candidate {
@@ -746,11 +721,20 @@ func (database *ChainDatabase) CandidatesRanking(hash common.Hash) {
 }
 
 func (database *ChainDatabase) GetAssetCode(code common.Hash) (common.Address, error) {
-	return leveldb.GetAssetCode(database.LevelDB, code)
+	return UtilsGetAssetCode(database.Beansdb, code)
 }
 
 func (database *ChainDatabase) GetAssetID(id common.Hash) (common.Address, error) {
-	return leveldb.GetAssetID(database.LevelDB, id)
+	code, err := UtilsGetAssetId(database.Beansdb, id)
+	if err != nil {
+		return common.Address{}, err
+	}
+
+	if code == (common.Hash{}) {
+		return common.Address{}, nil
+	} else {
+		return UtilsGetAssetCode(database.Beansdb, code)
+	}
 }
 
 func (database *ChainDatabase) ChooseUnConfirmBlock(compareFn func(*types.Block, *types.Block) *types.Block) *types.Block {

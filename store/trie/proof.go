@@ -19,6 +19,7 @@ package trie
 import (
 	"bytes"
 	"fmt"
+	"github.com/LemoFoundationLtd/lemochain-core/store/leveldb"
 
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
@@ -103,7 +104,7 @@ func VerifyProof(rootHash common.Hash, key []byte, proofDb store.DatabaseReader)
 	key = keybytesToHex(key)
 	wantHash := rootHash
 	for i := 0; ; i++ {
-		buf, _ := proofDb.Get(wantHash[:])
+		buf, _ := proofDb.Get(leveldb.ItemFlagTrie, wantHash[:])
 		if buf == nil {
 			return nil, fmt.Errorf("proof node %d (hash %064x) missing", i, wantHash), i
 		}
