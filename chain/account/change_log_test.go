@@ -173,7 +173,7 @@ func getTestLogs(t *testing.T) []testLogConfig {
 		decoded:    "StorageLog{Account: Lemo8888888888888888888888888888888883GH, Version: 1, NewVal: [45 67], Extra: [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 10 170]}",
 	})
 
-	// storage root
+	// 4 storage root
 	account = processor.createAccount(BalanceLog, 0)
 	tests = append(tests, testLogConfig{
 		input:      NewStorageRootLog(account.GetAddress(), processor, common.HexToHash("0x01"), common.HexToHash("0x02")),
@@ -184,7 +184,7 @@ func getTestLogs(t *testing.T) []testLogConfig {
 		decoded:    "StorageRootLog{Account: Lemo8888888888888888888888888888888883WD, Version: 1, NewVal: [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2]}",
 	})
 
-	// 4 CodeLog
+	// 5 CodeLog
 	account = processor.createAccount(CodeLog, 0)
 	tests = append(tests, testLogConfig{
 		input:      NewCodeLog(account.GetAddress(), processor, []byte{0x12, 0x34}),
@@ -194,7 +194,7 @@ func getTestLogs(t *testing.T) []testLogConfig {
 		rlp:        "0xdb0e94000000000000000000000000000000000000000601821234c0",
 	})
 
-	// 5 CodeLog
+	// 6 CodeLog
 	account = processor.createAccount(CodeLog, 0)
 	tests = append(tests, testLogConfig{
 		input:      NewCodeLog(account.GetAddress(), processor, []byte{}),
@@ -204,7 +204,7 @@ func getTestLogs(t *testing.T) []testLogConfig {
 		rlp:        "0xd90e9400000000000000000000000000000000000000070180c0",
 	})
 
-	// 6 AddEventLog
+	// 7 AddEventLog
 	newEvent := &types.Event{
 		Address: common.HexToAddress("0xaaa"),
 		Topics:  []common.Hash{common.HexToHash("bbb"), common.HexToHash("ccc")},
@@ -221,7 +221,7 @@ func getTestLogs(t *testing.T) []testLogConfig {
 	})
 	// It is not possible to set NewVal in AddEventLog to nil. We can't test is because we can't rlp encode a (*types.Event)(nil)
 
-	// 7 SuicideLog
+	// 8 SuicideLog
 	account = processor.createAccount(SuicideLog, 0)
 	tests = append(tests, testLogConfig{
 		input:      NewSuicideLog(account.GetAddress(), processor),
@@ -231,7 +231,7 @@ func getTestLogs(t *testing.T) []testLogConfig {
 		rlp:        "0xd91094000000000000000000000000000000000000000901c0c0",
 		decoded:    "SuicideLog{Account: Lemo8888888888888888888888888888888885CZ, Version: 1}",
 	})
-	// 8 SuicideLog
+	// 9 SuicideLog
 	account = processor.createEmptyAccount()
 	tests = append(tests, testLogConfig{
 		input:      NewSuicideLog(account.GetAddress(), processor),
@@ -242,7 +242,7 @@ func getTestLogs(t *testing.T) []testLogConfig {
 		decoded:    "SuicideLog{Account: Lemo8888888888888888888888888888888885RT, Version: 1}",
 	})
 
-	// 9 VotesLog
+	// 10 VotesLog
 	account = processor.createAccount(VotesLog, 0)
 	tests = append(tests, testLogConfig{
 		input:      NewVotesLog(account.GetAddress(), processor, big.NewInt(1000)),
@@ -252,7 +252,7 @@ func getTestLogs(t *testing.T) []testLogConfig {
 		rlp:        "0xdb1294000000000000000000000000000000000000000b018203e8c0",
 		decoded:    "VotesLog{Account: Lemo88888888888888888888888888888888866Q, Version: 1, NewVal: 1000}",
 	})
-	// 10 VotesLog
+	// 11 VotesLog
 	account = processor.createAccount(VotesLog, 0)
 	tests = append(tests, testLogConfig{
 		input:      NewVotesLog(account.GetAddress(), processor, big.NewInt(200)),
@@ -263,7 +263,7 @@ func getTestLogs(t *testing.T) []testLogConfig {
 		decoded:    "VotesLog{Account: Lemo8888888888888888888888888888888886HK, Version: 1, NewVal: 200}",
 	})
 
-	// 11 VoteForLog
+	// 12 VoteForLog
 	account = processor.createAccount(VoteForLog, 0)
 	tests = append(tests, testLogConfig{
 		input:      NewVoteForLog(account.GetAddress(), processor, common.HexToAddress("0x0002")),
@@ -273,7 +273,7 @@ func getTestLogs(t *testing.T) []testLogConfig {
 		rlp:        "0xed1194000000000000000000000000000000000000000d01940000000000000000000000000000000000000002c0",
 		decoded:    "VoteForLog{Account: Lemo8888888888888888888888888888888886YG, Version: 1, NewVal: Lemo8888888888888888888888888888888888QR}",
 	})
-	// 12 VoteForLog
+	// 13 VoteForLog
 	account = processor.createAccount(VoteForLog, 0)
 	tests = append(tests, testLogConfig{
 		input:      NewVoteForLog(account.GetAddress(), processor, common.HexToAddress("0x0001")),
@@ -284,7 +284,7 @@ func getTestLogs(t *testing.T) []testLogConfig {
 		decoded:    "VoteForLog{Account: Lemo8888888888888888888888888888888887AC, Version: 1, NewVal: Lemo8888888888888888888888888888888888BW}",
 	})
 
-	// 13 AssetCode
+	// 14 AssetCode
 	account = processor.createAccount(AssetCodeLog, 0)
 	log, _ := NewAssetCodeLog(account.GetAddress(), processor, common.HexToHash("0x33"), new(types.Asset))
 	tests = append(tests, testLogConfig{
@@ -296,6 +296,7 @@ func getTestLogs(t *testing.T) []testLogConfig {
 		decoded:    "AssetCodeLog{Account: Lemo8888888888888888888888888888888887P9, Version: 1, NewVal: {Category: 0, IsDivisible: false, AssetCode: 0x0000000000000000000000000000000000000000000000000000000000000000, Decimals: 0, Issuer: Lemo888888888888888888888888888888888888, IsReplenishable: false, TotalSupply: 0, Profile: []}, Extra: [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 51]}",
 	})
 
+	// 15
 	account = processor.createAccount(AssetCodeStateLog, 0)
 	log, _ = NewAssetCodeStateLog(account.GetAddress(), processor, common.HexToHash("0x33"), "key", "new")
 	tests = append(tests, testLogConfig{
@@ -307,6 +308,7 @@ func getTestLogs(t *testing.T) []testLogConfig {
 		decoded:    "AssetCodeStateLog{Account: Lemo888888888888888888888888888888888246, Version: 1, NewVal: new, Extra: {UUID: 0x0000000000000000000000000000000000000000000000000000000000000033, Key: key}}",
 	})
 
+	// 16
 	account = processor.createAccount(AssetCodeRootLog, 0)
 	log, _ = NewAssetCodeRootLog(account.GetAddress(), processor, common.HexToHash("0x01"), common.HexToHash("0x02"))
 	tests = append(tests, testLogConfig{
@@ -411,11 +413,11 @@ func TestChangeLog_EncodeRLP_DecodeRLP(t *testing.T) {
 }
 
 func TestIsValuable(t *testing.T) {
-	// tests := getTestLogs(t)
-	// for i, test := range tests {
-	// 	assert.Equal(t, test.isValuable, IsValuable(test.input), "index=%d %s", i, test.input)
-	// }
-	assert.NotEqual(t, 2, 2)
+	tests := getTestLogs(t)
+	for i, test := range tests {
+		assert.Equal(t, test.isValuable, IsValuable(test.input), "index=%d %s", i, test.input)
+	}
+	// assert.NotEqual(t, 2, 2)
 }
 
 func findEvent(processor *testProcessor, txHash common.Hash) []*types.Event {

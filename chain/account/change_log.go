@@ -99,7 +99,11 @@ func IsValuable(log *types.ChangeLog) bool {
 		newVal := log.NewVal.(common.Address)
 		valuable = oldVal != newVal
 	case AssetCodeStateLog:
-		fallthrough
+		// fallthrough
+	case AssetCodeTotalSupplyLog:
+		oldVal := log.OldVal.(big.Int)
+		newVal := log.NewVal.(big.Int)
+		valuable = oldVal.Cmp(&newVal) != 0
 	default:
 		valuable = log.OldVal != log.NewVal
 	}
