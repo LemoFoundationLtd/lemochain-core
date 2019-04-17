@@ -43,7 +43,7 @@ func NewMemDatabaseWithCap(size int) (*MemDatabase, error) {
 	}, nil
 }
 
-func (db *MemDatabase) Put(key []byte, value []byte) error {
+func (db *MemDatabase) Put(flag uint32, key []byte, value []byte) error {
 	db.lock.Lock()
 	defer db.lock.Unlock()
 
@@ -51,7 +51,7 @@ func (db *MemDatabase) Put(key []byte, value []byte) error {
 	return nil
 }
 
-func (db *MemDatabase) Has(key []byte) (bool, error) {
+func (db *MemDatabase) Has(flag uint32, key []byte) (bool, error) {
 	db.lock.RLock()
 	defer db.lock.RUnlock()
 
@@ -59,7 +59,7 @@ func (db *MemDatabase) Has(key []byte) (bool, error) {
 	return ok, nil
 }
 
-func (db *MemDatabase) Get(key []byte) ([]byte, error) {
+func (db *MemDatabase) Get(flag uint32, key []byte) ([]byte, error) {
 	db.lock.RLock()
 	defer db.lock.RUnlock()
 
@@ -80,7 +80,7 @@ func (db *MemDatabase) Keys() [][]byte {
 	return keys
 }
 
-func (db *MemDatabase) Delete(key []byte) error {
+func (db *MemDatabase) Delete(flag uint32, key []byte) error {
 	db.lock.Lock()
 	defer db.lock.Unlock()
 
@@ -90,7 +90,7 @@ func (db *MemDatabase) Delete(key []byte) error {
 
 func (db *MemDatabase) Close() {}
 
-func (db *MemDatabase) NewBatch(route []byte) Batch {
+func (db *MemDatabase) NewBatch() Batch {
 	return &memBatch{db: db}
 }
 
@@ -104,7 +104,7 @@ type memBatch struct {
 	size   int
 }
 
-func (b *memBatch) Put(flg uint, key, value []byte) error {
+func (b *memBatch) Put(flg uint32, key, value []byte) error {
 	b.writes = append(b.writes, kv{common.CopyBytes(key), common.CopyBytes(value)})
 	b.size += len(value)
 	return nil
@@ -120,9 +120,6 @@ func (b *memBatch) Commit() error {
 	return nil
 }
 
-func (b *memBatch) Route() []byte {
-	return nil
-}
 func (b *memBatch) Items() []*BatchItem {
 	return nil
 }

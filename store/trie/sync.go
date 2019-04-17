@@ -19,6 +19,7 @@ package trie
 import (
 	"errors"
 	"fmt"
+	"github.com/LemoFoundationLtd/lemochain-core/store/leveldb"
 
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
@@ -100,7 +101,7 @@ func (s *TrieSync) AddSubTrie(root common.Hash, depth int, parent common.Hash, c
 		return
 	}
 	key := root.Bytes()
-	blob, _ := s.database.Get(key)
+	blob, _ := s.database.Get(leveldb.ItemFlagTrie, key)
 	if local, err := decodeNode(key, blob, 0); local != nil && err == nil {
 		return
 	}
@@ -134,7 +135,7 @@ func (s *TrieSync) AddRawEntry(hash common.Hash, depth int, parent common.Hash) 
 	if _, ok := s.membatch.batch[hash]; ok {
 		return
 	}
-	if ok, _ := s.database.Has(hash.Bytes()); ok {
+	if ok, _ := s.database.Has(leveldb.ItemFlagTrie, hash.Bytes()); ok {
 		return
 	}
 	// Assemble the new sub-trie sync request
@@ -292,7 +293,7 @@ func (s *TrieSync) children(req *request, object node) ([]*request, error) {
 			if _, ok := s.membatch.batch[hash]; ok {
 				continue
 			}
-			if ok, _ := s.database.Has(node); ok {
+			if ok, _ := s.database.Has(leveldb.ItemFlagTrie, node); ok {
 				continue
 			}
 			// Locally unknown node, schedule for retrieval

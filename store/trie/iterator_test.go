@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
+	"github.com/LemoFoundationLtd/lemochain-core/store/leveldb"
 	"math/rand"
 	"testing"
 )
@@ -335,8 +336,8 @@ func testIteratorContinueAfterError(t *testing.T, memonly bool) {
 			robj = triedb.Nodes4Test()[rkey]
 			delete(triedb.Nodes4Test(), rkey)
 		} else {
-			rval, _ = diskdb.Get(rkey[:])
-			diskdb.Delete(rkey[:])
+			rval, _ = diskdb.Get(leveldb.ItemFlagTrie, rkey[:])
+			diskdb.Delete(leveldb.ItemFlagTrie, rkey[:])
 		}
 		// Iterate until the error is hit.
 		seen := make(map[string]bool)
@@ -351,7 +352,7 @@ func testIteratorContinueAfterError(t *testing.T, memonly bool) {
 		if memonly {
 			triedb.Nodes4Test()[rkey] = robj
 		} else {
-			diskdb.Put(rkey[:], rval)
+			diskdb.Put(leveldb.ItemFlagTrie, rkey[:], rval)
 		}
 		checkIteratorNoDups(t, it, seen)
 		if it.Error() != nil {
@@ -395,8 +396,8 @@ func testIteratorContinueAfterSeekError(t *testing.T, memonly bool) {
 		barNodeObj = triedb.Nodes4Test()[barNodeHash]
 		delete(triedb.Nodes4Test(), barNodeHash)
 	} else {
-		barNodeBlob, _ = diskdb.Get(barNodeHash[:])
-		diskdb.Delete(barNodeHash[:])
+		barNodeBlob, _ = diskdb.Get(leveldb.ItemFlagTrie, barNodeHash[:])
+		diskdb.Delete(leveldb.ItemFlagTrie, barNodeHash[:])
 	}
 	// Create a new iterator that seeks to "bars". Seeking can't proceed because
 	// the node is missing.
@@ -412,7 +413,7 @@ func testIteratorContinueAfterSeekError(t *testing.T, memonly bool) {
 	if memonly {
 		triedb.Nodes4Test()[barNodeHash] = barNodeObj
 	} else {
-		diskdb.Put(barNodeHash[:], barNodeBlob)
+		diskdb.Put(leveldb.ItemFlagTrie, barNodeHash[:], barNodeBlob)
 	}
 	// Check that iteration produces the right set of values.
 	if err := checkIteratorOrder(testdata1[2:], NewIterator(it)); err != nil {

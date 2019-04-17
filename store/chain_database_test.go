@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"strconv"
 	"testing"
+	"time"
 )
 
 func TestChainDatabase_Test(t *testing.T) {
@@ -36,6 +37,10 @@ func TestCacheChain_SetBlock(t *testing.T) {
 	assert.NoError(t, err)
 
 	result, err = cacheChain.GetBlockByHash(block0.Hash())
+	assert.NoError(t, err)
+	assert.Equal(t, block0.ParentHash(), result.ParentHash())
+
+	result, err = cacheChain.GetBlockByHeight(0)
 	assert.NoError(t, err)
 	assert.Equal(t, block0.ParentHash(), result.ParentHash())
 
@@ -77,6 +82,8 @@ func TestCacheChain_SetBlock(t *testing.T) {
 	err = cacheChain.SetStableBlock(block2.Hash())
 	assert.NoError(t, err)
 
+	time.Sleep(5000)
+
 	result, err = cacheChain.GetBlockByHash(block2.Hash())
 	assert.NoError(t, err)
 	assert.Equal(t, block2.ParentHash(), result.ParentHash())
@@ -91,6 +98,7 @@ func TestCacheChain_SetBlock(t *testing.T) {
 
 	result, err = cacheChain.GetBlockByHeight(block3.Height())
 	assert.Equal(t, err, ErrNotExist)
+
 }
 
 func TestCacheChain_SetBlockError(t *testing.T) {

@@ -21,6 +21,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/LemoFoundationLtd/lemochain-core/store/leveldb"
 	"math/big"
 	"math/rand"
 	"reflect"
@@ -121,7 +122,7 @@ func testMissingNode(t *testing.T, memonly bool) {
 	if memonly {
 		delete(triedb.Nodes4Test(), hash)
 	} else {
-		diskdb.Delete(hash[:])
+		diskdb.Delete(leveldb.ItemFlagTrie, hash[:])
 	}
 
 	trie, _ = New(root, triedb)
@@ -324,9 +325,9 @@ type countingDB struct {
 	gets map[string]int
 }
 
-func (db *countingDB) Get(key []byte) ([]byte, error) {
+func (db *countingDB) Get(flag uint32, key []byte) ([]byte, error) {
 	db.gets[string(key)]++
-	return db.Database.Get(key)
+	return db.Database.Get(flag, key)
 }
 
 // TestCacheUnload checks that decoded nodes are unloaded after a

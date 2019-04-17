@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/rlp"
+	"strconv"
 )
 
 type DatabasePutter interface {
@@ -20,31 +21,93 @@ type DatabaseDeleter interface {
 }
 
 var (
-	hashPrefix = []byte("B")
-	hashSuffix = []byte("b")
-
-	heightPrefix = []byte("H")
-	heightSuffix = []byte("h") // // headerPrefix + height (uint64 big endian) + heightSuffix -> hash
-
-	accountPrefix = []byte("A")
-	accountSuffix = []byte("a")
-
-	assetCodePrefix = []byte("C")
-	assetCodeSuffix = []byte("c")
-
-	assetIdPrefix = []byte("I")
-	assetIdSuffix = []byte("i")
-
-	lastScanPosPrefix = []byte("P")
-	lastScanPosSuffix = []byte("p")
-
-	currentBlockKey = []byte("LEMO-CURRENT-BLOCK")
+	ItemFlagStart       = uint32(0)
+	ItemFlagBlock       = uint32(1)
+	ItemFlagBlockHeight = uint32(2)
+	ItemFlagTrie        = uint32(3)
+	ItemFlagAct         = uint32(4)
+	ItemFlagTxIndex     = uint32(5)
+	ItemFlagCode        = uint32(6)
+	ItemFlagKV          = uint32(7)
+	ItemFlagAssetCode   = uint32(8)
+	ItemFlagAssetId     = uint32(9)
+	ItemFlagStop        = uint32(10)
 )
+
+var (
+	BlockPrefix = []byte("B")
+	BlockSuffix = []byte("b")
+
+	BlockHeightPrefix = []byte("BH")
+	BlockHeightSuffix = []byte("bh") // // headerPrefix + height (uint64 big endian) + heightSuffix -> hash
+
+	AccountPrefix = []byte("A")
+	AccountSuffix = []byte("a")
+
+	TxPrefix = []byte("TX")
+	TxSuffix = []byte("tx")
+
+	AssetCodePrefix = []byte("AC")
+	AssetCodeSuffix = []byte("ac")
+
+	AssetIdPrefix = []byte("AI")
+	AssetIdSuffix = []byte("ai")
+
+	TrieNodePrefix = []byte("TN")
+	TrieNodeSuffix = []byte("tn")
+
+	CodePrefix = []byte("CC")
+	CodeSuffix = []byte("cc")
+
+	KVPrefix = []byte("KV")
+	KVSuffix = []byte("kv")
+
+	BitCaskCurrentOffsetPrefix = []byte("OFFSET")
+	BitCaskCurrentOffsetSuffix = []byte("offset")
+
+	StableBlockKey = []byte("LEMO-CURRENT-BLOCK")
+)
+
+func CheckItemFlag(flg uint32) bool {
+	if (flg <= ItemFlagStart) || (flg >= ItemFlagStop) {
+		return false
+	} else {
+		return true
+	}
+}
 
 type Position struct {
 	Flag   uint32
-	Route  []byte
 	Offset uint32
+}
+
+func Key(flag uint32, key []byte) []byte {
+	if len(key) <= 0 {
+		return nil
+	}
+
+	switch flag {
+	case ItemFlagBlock:
+		return append(append(BlockPrefix, key...), BlockSuffix...)
+	case ItemFlagBlockHeight:
+		return append(append(BlockHeightPrefix, key...), BlockHeightSuffix...)
+	case ItemFlagTrie:
+		return append(append(TrieNodePrefix, key...), TrieNodeSuffix...)
+	case ItemFlagAct:
+		return append(append(AccountPrefix, key...), AccountSuffix...)
+	case ItemFlagTxIndex:
+		return append(append(TxPrefix, key...), TxSuffix...)
+	case ItemFlagCode:
+		return append(append(CodePrefix, key...), CodeSuffix...)
+	case ItemFlagKV:
+		return append(append(KVPrefix, key...), KVSuffix...)
+	case ItemFlagAssetCode:
+		return append(append(AssetCodePrefix, key...), AssetCodeSuffix...)
+	case ItemFlagAssetId:
+		return append(append(AssetIdPrefix, key...), AssetIdSuffix...)
+	default:
+		return key
+	}
 }
 
 func toPosition(val []byte) (*Position, error) {
@@ -61,29 +124,35 @@ func toPosition(val []byte) (*Position, error) {
 	}
 }
 
-func GetCurrentBlock(db DatabaseReader) (common.Hash, error) {
-	val, err := db.Get(currentBlockKey)
+func SetPos(db DatabasePutter, flg uint32, key []byte, position *Position) error {
+	val, err := rlp.EncodeToBytes(position)
 	if err != nil {
-		return common.Hash{}, err
+		return err
+	} else {
+		tmp := Key(flg, key)
+		return db.Put(tmp, val)
 	}
+}
 
-	if len(val) <= 0 {
-		return common.Hash{}, nil
+func GetPos(db DatabaseReader, flg uint32, key []byte) (*Position, error) {
+	tmp := Key(flg, key)
+	val, err := db.Get(tmp)
+	if err != nil {
+		return nil, err
+	} else {
+		return toPosition(val)
 	}
-
-	return common.BytesToHash(val), nil
 }
 
-func SetCurrentBlock(db DatabasePutter, hash common.Hash) error {
-	return db.Put(currentBlockKey, hash.Bytes())
+func EncodeNumber(height uint32) []byte {
+	enc := make([]byte, 4)
+	binary.BigEndian.PutUint32(enc, height)
+	return enc
 }
 
-func GetScanPosKey(path string) []byte {
-	return append(append(lastScanPosPrefix, []byte(path)...), lastScanPosSuffix...)
-}
-
-func GetScanPos(db DatabaseReader, path string) (uint32, error) {
-	data, err := db.Get(GetScanPosKey(path))
+func GetCurrentPos(db DatabaseReader, index int) (uint32, error) {
+	key := append(append(BitCaskCurrentOffsetPrefix, []byte(strconv.Itoa(index))...), BitCaskCurrentOffsetSuffix...)
+	data, err := db.Get(key)
 	if err != nil {
 		return 0, err
 	}
@@ -101,121 +170,26 @@ func GetScanPos(db DatabaseReader, path string) (uint32, error) {
 	return pos, nil
 }
 
-func SetScanPos(db DatabasePutter, path string, pos uint32) error {
-	return db.Put(GetScanPosKey(path), encodeNumber(pos))
+func SetCurrentPos(db DatabasePutter, index int, pos uint32) error {
+	key := append(append(BitCaskCurrentOffsetPrefix, []byte(strconv.Itoa(index))...), BitCaskCurrentOffsetSuffix...)
+	return db.Put(key, EncodeNumber(pos))
 }
 
-func encodeNumber(height uint32) []byte {
-	enc := make([]byte, 4)
-	binary.BigEndian.PutUint32(enc, height)
-	return enc
-}
-
-func GetCanonicalKey(height uint32) []byte {
-	return append(append(heightPrefix, encodeNumber(height)...), heightSuffix...)
-}
-
-func GetCanonicalHash(db DatabaseReader, height uint32) (common.Hash, error) {
-	data, err := db.Get(GetCanonicalKey(height))
+func GetCurrentBlock(db DatabaseReader) (common.Hash, error) {
+	val, err := db.Get(StableBlockKey)
 	if err != nil {
 		return common.Hash{}, err
 	}
 
-	if len(data) <= 0 {
+	if len(val) <= 0 {
 		return common.Hash{}, nil
-	} else {
-		return common.BytesToHash(data), nil
-	}
-}
-
-func SetCanonicalHash(db DatabasePutter, height uint32, hash common.Hash) error {
-	return db.Put(GetCanonicalKey(height), hash.Bytes())
-}
-
-func GetBlockHashKey(hash common.Hash) []byte {
-	return append(append(hashPrefix, hash.Bytes()...), hashSuffix...)
-}
-
-func GetBlockHash(db DatabaseReader, hash common.Hash) (*Position, error) {
-	val, err := db.Get(hash[:])
-	if err != nil {
-		return nil, err
-	} else {
-		return toPosition(val)
-	}
-}
-
-func SetBlockHash(db DatabasePutter, hash common.Hash, position *Position) error {
-	val, err := rlp.EncodeToBytes(position)
-	if err != nil {
-		return err
-	} else {
-		return db.Put(hash[:], val)
-	}
-}
-
-func GetAddressKey(addr common.Address) []byte {
-	return append(append(accountPrefix, addr[:]...), accountSuffix...)
-}
-
-func GetAddress(db DatabaseReader, addr common.Address) (*Position, error) {
-	val, err := db.Get(GetAddressKey(addr))
-	if err != nil {
-		return nil, err
-	} else {
-		return toPosition(val)
-	}
-}
-
-func SetAddress(db DatabasePutter, addr common.Address, position *Position) error {
-	val, err := rlp.EncodeToBytes(position)
-	if err != nil {
-		return err
-	} else {
-		return db.Put(GetAddressKey(addr), val)
-	}
-}
-
-func GetAssetIdKey(id common.Hash) []byte {
-	return append(append(assetIdPrefix, id[:]...), assetIdSuffix...)
-}
-
-func GetAssetID(db DatabaseReader, id common.Hash) (common.Address, error) {
-	val, err := db.Get(GetAssetIdKey(id))
-	if err != nil {
-		return common.Address{}, err
 	}
 
-	if len(val) <= 0 {
-		return common.Address{}, nil
-	}
-
-	return common.BytesToAddress(val), nil
+	return common.BytesToHash(val), nil
 }
 
-func SetAssetID(db DatabasePutter, id common.Hash, addr common.Address) error {
-	return db.Put(GetAssetIdKey(id), addr.Bytes())
-}
-
-func GetAssetCodeKey(code common.Hash) []byte {
-	return append(append(assetCodePrefix, code.Bytes()...), assetCodeSuffix...)
-}
-
-func GetAssetCode(db DatabaseReader, code common.Hash) (common.Address, error) {
-	val, err := db.Get(GetAssetCodeKey(code))
-	if err != nil {
-		return common.Address{}, err
-	}
-
-	if len(val) <= 0 {
-		return common.Address{}, nil
-	}
-
-	return common.BytesToAddress(val), nil
-}
-
-func SetAssetCode(db DatabasePutter, code common.Hash, addr common.Address) error {
-	return db.Put(GetAssetCodeKey(code), addr.Bytes())
+func SetCurrentBlock(db DatabasePutter, hash common.Hash) error {
+	return db.Put(StableBlockKey, hash.Bytes())
 }
 
 func Set(db DatabasePutter, key []byte, val []byte) error {
@@ -224,22 +198,4 @@ func Set(db DatabasePutter, key []byte, val []byte) error {
 
 func Get(db DatabaseReader, key []byte) ([]byte, error) {
 	return db.Get(key)
-}
-
-func SetPos(db DatabasePutter, key []byte, position *Position) error {
-	val, err := rlp.EncodeToBytes(position)
-	if err != nil {
-		return err
-	} else {
-		return db.Put(key, val)
-	}
-}
-
-func GetPos(db DatabaseReader, key []byte) (*Position, error) {
-	val, err := db.Get(key)
-	if err != nil {
-		return nil, err
-	} else {
-		return toPosition(val)
-	}
 }

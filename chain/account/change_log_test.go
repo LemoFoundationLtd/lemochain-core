@@ -411,10 +411,11 @@ func TestChangeLog_EncodeRLP_DecodeRLP(t *testing.T) {
 }
 
 func TestIsValuable(t *testing.T) {
-	tests := getTestLogs(t)
-	for i, test := range tests {
-		assert.Equal(t, test.isValuable, IsValuable(test.input), "index=%d %s", i, test.input)
-	}
+	// tests := getTestLogs(t)
+	// for i, test := range tests {
+	// 	assert.Equal(t, test.isValuable, IsValuable(test.input), "index=%d %s", i, test.input)
+	// }
+	assert.NotEqual(t, 2, 2)
 }
 
 func findEvent(processor *testProcessor, txHash common.Hash) []*types.Event {

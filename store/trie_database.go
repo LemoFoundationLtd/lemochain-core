@@ -22,6 +22,7 @@ import (
 
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
+	"github.com/LemoFoundationLtd/lemochain-core/store/leveldb"
 )
 
 // secureKeyPrefix is the database key prefix used to store trie node preimages.
@@ -33,10 +34,10 @@ const secureKeyLength = 11 + 32
 // DatabaseReader wraps the Get and Has method of a backing store for the trie.
 type DatabaseReader interface {
 	// Get retrieves the value associated with key form the database.
-	Get(key []byte) (value []byte, err error)
+	Get(flg uint32, key []byte) (value []byte, err error)
 
 	// Has retrieves whether a key is present in the database.
-	Has(key []byte) (bool, error)
+	Has(flg uint32, key []byte) (bool, error)
 }
 
 // Database is an intermediate write layer between the trie data structures and
@@ -141,7 +142,7 @@ func (db *TrieDatabase) Node(hash common.Hash) ([]byte, error) {
 		return node.Blob, nil
 	}
 	// Content unavailable in memory, attempt to retrieve from disk
-	return db.diskdb.Get(hash[:])
+	return db.diskdb.Get(leveldb.ItemFlagTrie, hash[:])
 }
 
 // preimage retrieves a cached trie node pre-image from memory. If it cannot be
@@ -156,7 +157,7 @@ func (db *TrieDatabase) Preimage(hash common.Hash) ([]byte, error) {
 		return preimage, nil
 	}
 	// Content unavailable in memory, attempt to retrieve from disk
-	return db.diskdb.Get(db.secureKey(hash[:]))
+	return db.diskdb.Get(leveldb.ItemFlagTrie, db.secureKey(hash[:]))
 }
 
 // secureKey returns the database key for the preimage of key, as an ephemeral
@@ -264,11 +265,11 @@ func (db *TrieDatabase) Commit(node common.Hash, report bool) error {
 	db.lock.RLock()
 
 	start := time.Now()
-	batch := db.diskdb.NewBatch(node[:])
+	batch := db.diskdb.NewBatch()
 
 	// Move all of the accumulated preimages into a write batch
 	for hash, preimage := range db.preimages {
-		if err := batch.Put(CACHE_FLG_TRIE, db.secureKey(hash[:]), preimage); err != nil {
+		if err := batch.Put(leveldb.ItemFlagTrie, db.secureKey(hash[:]), preimage); err != nil {
 			log.Error("Failed to commit preimage from trie database", "err", err)
 			db.lock.RUnlock()
 			return err
@@ -329,7 +330,7 @@ func (db *TrieDatabase) commit(hash common.Hash, batch Batch) error {
 			return err
 		}
 	}
-	if err := batch.Put(CACHE_FLG_TRIE, hash[:], node.Blob); err != nil {
+	if err := batch.Put(leveldb.ItemFlagTrie, hash[:], node.Blob); err != nil {
 		return err
 	}
 	// If we've reached an optimal match size, commit and start over

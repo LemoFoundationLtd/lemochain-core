@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
-	"github.com/LemoFoundationLtd/lemochain-core/common/rlp"
-	"github.com/LemoFoundationLtd/lemochain-core/store/leveldb"
 )
 
 func min(first int, args ...int) int {
@@ -641,28 +639,28 @@ func (trie *PatriciaTrie) all(curNode *PatriciaNode, all []types.NodeData) []typ
 
 // AccountAPI
 type AccountTrieDB struct {
-	trie   *PatriciaTrie
-	reader DatabaseReader
+	trie    *PatriciaTrie
+	beansdb *BeansDB
 }
 
-func NewEmptyAccountTrieDB(reader DatabaseReader) *AccountTrieDB {
+func NewEmptyAccountTrieDB(beansdb *BeansDB) *AccountTrieDB {
 	return &AccountTrieDB{
-		trie:   NewEmptyDatabase(),
-		reader: reader,
+		trie:    NewEmptyDatabase(),
+		beansdb: beansdb,
 	}
 }
 
-func NewAccountTrieDB(trie *PatriciaTrie, reader DatabaseReader) *AccountTrieDB {
+func NewAccountTrieDB(trie *PatriciaTrie, beansdb *BeansDB) *AccountTrieDB {
 	return &AccountTrieDB{
-		trie:   trie,
-		reader: reader,
+		trie:    trie,
+		beansdb: beansdb,
 	}
 }
 
 func (db *AccountTrieDB) Clone() *AccountTrieDB {
 	return &AccountTrieDB{
-		reader: db.reader,
-		trie:   NewActDatabase(db.trie),
+		beansdb: db.beansdb,
+		trie:    NewActDatabase(db.trie),
 	}
 }
 
@@ -674,12 +672,12 @@ func (db *AccountTrieDB) GetTrie() *PatriciaTrie {
 	return db.trie
 }
 
-func (db *AccountTrieDB) SetReader(reader DatabaseReader) {
-	db.reader = reader
+func (db *AccountTrieDB) SetReader(beansdb *BeansDB) {
+	db.beansdb = beansdb
 }
 
-func (db *AccountTrieDB) GetReader() DatabaseReader {
-	return db.reader
+func (db *AccountTrieDB) GetReader() *BeansDB {
+	return db.beansdb
 }
 
 func (db *AccountTrieDB) Set(account *types.AccountData) {
@@ -695,22 +693,16 @@ func (db *AccountTrieDB) Get(address common.Address) (*types.AccountData, error)
 	key := address.Hex()
 	data := db.trie.Find(key)
 	if data == nil {
-		val, err := db.reader.Get(leveldb.GetAddressKey(address))
+		account, err := UtilsGetAccount(db.beansdb, address)
 		if err != nil {
 			return nil, err
 		}
-		if val == nil {
+		if account == nil {
 			return nil, nil
 		}
 
-		var account types.AccountData
-		err = rlp.DecodeBytes(val, &account)
-		if err != nil {
-			panic("trie.reader.Get(key):" + err.Error())
-		} else {
-			db.trie.insert(db.trie.root, key, &account)
-			return (&account).Copy(), nil
-		}
+		db.trie.insert(db.trie.root, key, account)
+		return account.Copy(), nil
 	} else {
 		val, ok := data.(*types.AccountData)
 		if !ok {
@@ -750,21 +742,18 @@ func (db *AccountTrieDB) Collect(dye uint32) []*types.AccountData {
 
 // CandidateAPI
 type CandidateTrieDB struct {
-	trie   *PatriciaTrie
-	reader DatabaseReader
+	trie *PatriciaTrie
 }
 
 func NewEmptyCandidateTrieDB() *CandidateTrieDB {
 	return &CandidateTrieDB{
-		trie:   NewEmptyDatabase(),
-		reader: nil,
+		trie: NewEmptyDatabase(),
 	}
 }
 
 func (db *CandidateTrieDB) Clone() *CandidateTrieDB {
 	return &CandidateTrieDB{
-		reader: db.reader,
-		trie:   NewActDatabase(db.trie),
+		trie: NewActDatabase(db.trie),
 	}
 }
 
@@ -774,14 +763,6 @@ func (db *CandidateTrieDB) SetTrie(trie *PatriciaTrie) {
 
 func (db *CandidateTrieDB) GetTrie() *PatriciaTrie {
 	return db.trie
-}
-
-func (db *CandidateTrieDB) SetReader(reader DatabaseReader) {
-	db.reader = reader
-}
-
-func (db *CandidateTrieDB) GetReader() DatabaseReader {
-	return db.reader
 }
 
 func (db *CandidateTrieDB) key(address common.Address) string {

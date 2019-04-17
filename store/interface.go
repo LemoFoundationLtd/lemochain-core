@@ -25,15 +25,14 @@ type Commit interface {
 }
 
 type NewBatch interface {
-	NewBatch(route []byte) Batch
+	NewBatch() Batch
 }
 
 // Batch is a write-only database that commits changes to its host database
 // when Write is called. Batch cannot be used concurrently.
 type Batch interface {
-	Put(flg uint, key, value []byte) error
+	Put(flg uint32, key, value []byte) error
 	Commit() error
-	Route() []byte
 	Items() []*BatchItem
 	ValueSize() int
 	Reset()
@@ -41,28 +40,27 @@ type Batch interface {
 
 // Database wraps all database operations. All methods are safe for concurrent use.
 type Database interface {
-	Put(key, value []byte) error
 	NewBatch
-	Get(key []byte) ([]byte, error)
-	Has(key []byte) (bool, error)
-	Delete(key []byte) error
+	Put(flg uint32, key, value []byte) error
+	Get(flg uint32, key []byte) ([]byte, error)
+	Has(flg uint32, key []byte) (bool, error)
+	Delete(flg uint32, key []byte) error
 	Close()
 }
 
 type BatchItem struct {
-	Flg uint
+	Flg uint32
 	Key []byte
 	Val []byte
 }
 
 type LmDBBatch struct {
 	db    Commit
-	route []byte
 	items []*BatchItem
 	size  int
 }
 
-func (batch *LmDBBatch) Put(flg uint, key, value []byte) error {
+func (batch *LmDBBatch) Put(flg uint32, key, value []byte) error {
 	item := &BatchItem{
 		Flg: flg,
 		Key: key,
@@ -75,10 +73,6 @@ func (batch *LmDBBatch) Put(flg uint, key, value []byte) error {
 
 func (batch *LmDBBatch) Commit() error {
 	return batch.db.Commit(batch)
-}
-
-func (batch *LmDBBatch) Route() []byte {
-	return batch.route
 }
 
 func (batch *LmDBBatch) Items() []*BatchItem {

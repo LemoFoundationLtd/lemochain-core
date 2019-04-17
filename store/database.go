@@ -16,70 +16,65 @@
 
 package store
 
-var OpenFileLimit = 64
-
-type LDBDatabase struct {
-	beansdb *BeansDB
-}
-
-// NewLDBDatabase returns a LevelDB wrapped object.
-func NewLDBDatabase(beansdb *BeansDB) *LDBDatabase {
-	return &LDBDatabase{beansdb: beansdb}
-}
-
-// Put puts the given key / value to the queue
-func (db *LDBDatabase) Put(key []byte, value []byte) error {
-	return db.beansdb.Put(CACHE_FLG_TRIE, key, key, value)
-}
-
-func (db *LDBDatabase) Has(key []byte) (bool, error) {
-	val, err := db.beansdb.Get(key)
-	if err != nil {
-		return false, err
-	}
-
-	if val == nil {
-		return false, nil
-	} else {
-		return true, nil
-	}
-}
-
-// Get returns the given key if it's present.
-func (db *LDBDatabase) Get(key []byte) ([]byte, error) {
-	val, err := db.beansdb.Get(key)
-	if err != nil {
-		return nil, err
-	}
-
-	if val == nil {
-		return nil, ErrNotExist
-	} else {
-		return val, nil
-	}
-}
-
-// Delete deletes the key from the queue and database
-func (db *LDBDatabase) Delete(key []byte) error {
-	return nil
-}
-
-func (db *LDBDatabase) NewBatch(route []byte) Batch {
-	batch := &LmDBBatch{
-		db:    db,
-		items: make([]*BatchItem, 0),
-		size:  0,
-	}
-
-	batch.route = make([]byte, len(route))
-	copy(batch.route, route)
-	return batch
-}
-
-func (db *LDBDatabase) Commit(batch Batch) error {
-	return db.beansdb.Commit(batch)
-}
-
-func (db *LDBDatabase) Close() {
-	// nil
-}
+//
+// var OpenFileLimit = 64
+//
+// type LDBDatabase struct {
+// 	beansdb *BeansDB
+// }
+//
+// func (db *LDBDatabase) NewBatch() Batch {
+// 	return &LmDBBatch{
+// 		db:    db,
+// 		items: make([]*BatchItem, 0),
+// 		size:  0,
+// 	}
+//
+// }
+//
+// func (db *LDBDatabase) Put(flg uint32, key, value []byte) error {
+// 	return db.beansdb.Put(flg, key, value)
+// }
+//
+// func (db *LDBDatabase) Get(flg uint32, key []byte) ([]byte, error) {
+// 	val, err := db.beansdb.Get(flg, key)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+//
+// 	if val == nil {
+// 		return nil, ErrNotExist
+// 	} else {
+// 		return val, nil
+// 	}
+// }
+//
+// func (db *LDBDatabase) Has(flg uint32, key []byte) (bool, error) {
+// 	val, err := db.beansdb.Get(flg, key)
+// 	if err != nil {
+// 		return false, err
+// 	}
+//
+// 	if val == nil {
+// 		return false, nil
+// 	} else {
+// 		return true, nil
+// 	}
+// }
+//
+// func (db *LDBDatabase) Delete(flg uint32, key []byte) error {
+// 	panic("implement me")
+// }
+//
+// // NewLDBDatabase returns a LevelDB wrapped object.
+// func NewLDBDatabase(beansdb *BeansDB) *LDBDatabase {
+// 	return &LDBDatabase{beansdb: beansdb}
+// }
+//
+// func (db *LDBDatabase) Commit(batch Batch) error {
+// 	return db.beansdb.Commit(batch)
+// }
+//
+// func (db *LDBDatabase) Close() {
+// 	// nil
+// }
