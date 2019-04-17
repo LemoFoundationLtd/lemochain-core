@@ -17,8 +17,8 @@ import (
 var max_candidate_count = 20
 
 type ChainDatabase struct {
-	LastConfirm     *CBlock
-	UnConfirmBlocks map[common.Hash]*CBlock
+	LastConfirm     *CBlock                 // the newest confirm block, and the root of unconfirmed block tree
+	UnConfirmBlocks map[common.Hash]*CBlock // unconfirmed block tree nodes
 	Context         *RunContext
 	LevelDB         *leveldb.LevelDBDatabase
 	Beansdb         *BeansDB
@@ -448,7 +448,7 @@ func (database *ChainDatabase) SetBlock(hash common.Hash, block *types.Block) er
 	// genesis block
 	if (block.ParentHash() == common.Hash{}) {
 		newCBlock := NewGenesisBlock(block, database.Beansdb)
-		newCBlock.SetParent(database.LastConfirm)
+		newCBlock.BeChildOf(database.LastConfirm)
 		database.UnConfirmBlocks[hash] = newCBlock
 		log.Debug("block is genesis.height: " + strconv.Itoa(int(block.Height())))
 		return nil
@@ -487,7 +487,7 @@ func (database *ChainDatabase) SetBlock(hash common.Hash, block *types.Block) er
 		}
 	}
 	newCBlock := NewNormalBlock(block, pBlock.AccountTrieDB, pBlock.CandidateTrieDB, pBlock.Top)
-	newCBlock.SetParent(pBlock)
+	newCBlock.BeChildOf(pBlock)
 	database.UnConfirmBlocks[hash] = newCBlock
 
 	return nil
@@ -585,6 +585,7 @@ func (database *ChainDatabase) SetStableBlock(hash common.Hash) error {
 		root.Walk(func(node *CBlock) {
 			delete(database.UnConfirmBlocks, node.Block.Hash())
 		}, exclude)
+		delete(database.UnConfirmBlocks, exclude.Block.Hash())
 	}
 
 	commit := func(blocks []*CBlock) error {
@@ -734,6 +735,10 @@ func (database *ChainDatabase) GetAssetID(id common.Hash) (common.Address, error
 	} else {
 		return UtilsGetAssetCode(database.Beansdb, code)
 	}
+}
+
+func (database *ChainDatabase) ChooseUnConfirmBlock(compareFn func(*types.Block, *types.Block) *types.Block) *types.Block {
+	return database.LastConfirm.ChooseChild(compareFn)
 }
 
 func (database *ChainDatabase) Close() error {

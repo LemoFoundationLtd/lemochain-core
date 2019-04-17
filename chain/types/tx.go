@@ -279,7 +279,7 @@ func (tx *Transaction) Cost() *big.Int {
 
 func (tx *Transaction) String() string {
 	var from, to, gasPayer string
-	if tx.data.Sig != nil {
+	if len(tx.data.Sig) > 0 {
 		if f, err := tx.From(); err != nil { // derive but don't cache
 			from = "[invalid sender: invalid sig]"
 		} else {
@@ -295,7 +295,7 @@ func (tx *Transaction) String() string {
 		to = tx.data.Recipient.String()
 	}
 
-	if tx.data.GasPayerSig != nil {
+	if len(tx.data.GasPayerSig) > 0 {
 		if g, err := tx.GasPayer(); err != nil {
 			gasPayer = "[invalid gasPayer: invalid gasPayerSig]"
 		} else {
