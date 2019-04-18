@@ -92,3 +92,11 @@ func UtilsGetAccount(db *BeansDB, address common.Address) (*types.AccountData, e
 		return &account, nil
 	}
 }
+
+func UtilsSetAssetCode(db *BeansDB, code common.Hash, address common.Address) error {
+	return db.Put(leveldb.ItemFlagAssetCode, code.Bytes(), address.Bytes())
+}
+
+func UtilsSetAssetId(db *BeansDB, id common.Hash, code common.Hash) error {
+	return nil
+}

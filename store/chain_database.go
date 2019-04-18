@@ -28,7 +28,7 @@ type ChainDatabase struct {
 }
 
 func checkHome(home string) error {
-	isExist, err := IsExist(home)
+	isExist, err := FileUtilsIsExist(home)
 	if err != nil {
 		panic("check home is exist error:" + err.Error())
 	}
