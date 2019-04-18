@@ -208,27 +208,9 @@ func isLemoAddress(str string) bool {
 
 // CheckLemoAddress
 func CheckLemoAddress(lemoAddress string) bool {
-	if !isLemoAddress(lemoAddress) {
-		return false
-	}
-	lemoAddress = strings.ToUpper(lemoAddress)
-	// Remove logo
-	address := []byte(lemoAddress)[len(logo):]
-	// Base26 decoding
-	fullPayload := base26.Decode(address)
-	// get the length of the address bytes type
-	length := len(fullPayload)
-	if length == 0 {
-		// LemoAddress == Lemo888888888888888888888888888888888888
-		return true
-	}
-	checkSum := fullPayload[length-1]
-	// get the native address
-	bytesAddress := fullPayload[:length-1]
-	// calculate the check bit by bytesAddress
-	trueCheck := GetCheckSum(bytesAddress)
-	// compare check
-	if checkSum != trueCheck {
+	var a Address
+	err := a.Decode(lemoAddress)
+	if err != nil {
 		return false
 	}
 	return true
