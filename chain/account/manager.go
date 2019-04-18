@@ -108,15 +108,6 @@ func (am *Manager) AddEvent(event *types.Event) {
 		panic("account.Manager.AddEvent() is called without a Address or TxHash")
 	}
 
-	eventIndex := uint(0)
-	logs := am.processor.changeLogs
-	for index := 0; index < len(logs); index++ {
-		if logs[index].LogType == AddEventLog {
-			eventIndex = eventIndex + 1
-		}
-	}
-
-	event.Index = eventIndex
 	account := am.GetAccount(event.Address)
 	account.PushEvent(event)
 }
@@ -256,8 +247,14 @@ func (am *Manager) Finalise() error {
 
 		logs := am.processor.GetLogsByAddress(account.GetAddress())
 
-		// nextVersions := make(map[types.ChangeLogType]uint32)
+		eventIndex := uint(0)
 		for _, changeLog := range logs {
+			if changeLog.LogType == AddEventLog {
+				newVal := changeLog.NewVal.(*types.Event)
+				newVal.Index = eventIndex
+				eventIndex = eventIndex + 1
+			}
+
 			nextVersion := account.rawAccount.GetVersion(changeLog.LogType) + 1
 
 			// set version record in rawAccount.data.NewestRecords

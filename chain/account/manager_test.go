@@ -113,15 +113,17 @@ func TestManager_AddEvent(t *testing.T) {
 	event1 := &types.Event{Address: common.HexToAddress("0x1"), TxHash: th(1)}
 	event2 := &types.Event{Address: common.HexToAddress("0x1"), TxHash: th(1)}
 	manager.AddEvent(event1)
-	assert.Equal(t, uint(0), event1.Index)
 	manager.AddEvent(event2)
-	assert.Equal(t, uint(1), event2.Index)
-	// events := manager.GetEvents()
-	// assert.Equal(t, 2, len(events))
+	manager.Finalise()
+
 	logs := manager.GetChangeLogs()
 	assert.Equal(t, 2, len(logs))
+
 	assert.Equal(t, AddEventLog, logs[0].LogType)
 	assert.Equal(t, event1, logs[0].NewVal.(*types.Event))
+
+	assert.Equal(t, AddEventLog, logs[1].LogType)
+	assert.Equal(t, event2, logs[1].NewVal.(*types.Event))
 }
 
 func TestManager_GetVersionRoot(t *testing.T) {
