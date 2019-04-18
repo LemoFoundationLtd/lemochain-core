@@ -3,9 +3,11 @@ package store
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/json"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
+	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/common/rlp"
 	"github.com/LemoFoundationLtd/lemochain-core/store/leveldb"
 	"math/big"
@@ -35,18 +37,31 @@ func (beansdb *BeansDB) Start() {
 
 func (beansdb *BeansDB) After(flg uint32, key []byte, val []byte) error {
 	if flg == leveldb.ItemFlagBlock {
+		log.Infof("after flag: ItemFlagBlock")
 		return beansdb.afterBlock(key, val)
 	} else if flg == leveldb.ItemFlagBlockHeight {
+		log.Infof("after flag: ItemFlagBlockHeight")
 		return nil
 	} else if flg == leveldb.ItemFlagTrie {
+		log.Infof("after flag: ItemFlagTrie")
 		return nil
 	} else if flg == leveldb.ItemFlagAct {
+		log.Infof("after flag: ItemFlagAct")
 		return nil
 	} else if flg == leveldb.ItemFlagTxIndex {
+		log.Infof("after flag: ItemFlagTxIndex")
 		return nil
 	} else if flg == leveldb.ItemFlagCode {
+		log.Infof("after flag: ItemFlagCode")
 		return nil
 	} else if flg == leveldb.ItemFlagKV {
+		log.Infof("after flag: ItemFlagKV")
+		return nil
+	} else if flg == leveldb.ItemFlagAssetCode {
+		log.Infof("after flag: ItemFlagAssetCode")
+		return nil
+	} else if flg == leveldb.ItemFlagAssetId {
+		log.Infof("after flag: ItemFlagAssetId")
 		return nil
 	} else {
 		panic("after! unknown flag.flag = " + strconv.Itoa(int(flg)))
@@ -82,7 +97,18 @@ func (beansdb *BeansDB) afterBlock(key []byte, val []byte) error {
 				continue
 			}
 		} else if tx.Type() == params.IssueAssetTx {
-			err := UtilsSetAssetId(beansdb, tx.Hash(), tx.Hash())
+			extendData := tx.Data()
+			if len(extendData) <= 0 {
+				panic("tx is issue asset. but data is nil.")
+			}
+
+			issueAsset := &types.IssueAsset{}
+			err := json.Unmarshal(extendData, issueAsset)
+			if err != nil {
+				return err
+			}
+
+			err = UtilsSetAssetId(beansdb, tx.Hash(), issueAsset.AssetCode)
 			if err != nil {
 				return err
 			} else {

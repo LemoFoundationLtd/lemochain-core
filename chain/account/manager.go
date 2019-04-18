@@ -107,12 +107,9 @@ func (am *Manager) AddEvent(event *types.Event) {
 	if (event.Address == common.Address{}) {
 		panic("account.Manager.AddEvent() is called without a Address or TxHash")
 	}
+
 	account := am.GetAccount(event.Address)
 	account.PushEvent(event)
-	// event.Index = uint(len(am.processor.GetEvents()))
-	// newLog := NewAddEventLog(am.processor, account, event)
-	// am.processor.PushChangeLog(newLog)
-	// am.processor.PushEvent(event)
 }
 
 // // GetEvents returns all events since last reset
@@ -124,8 +121,7 @@ func (am *Manager) GetEvents() []*types.Event {
 	return events
 }
 
-//
-// // GetEvents returns all events since last reset
+// GetEvents returns all events since last reset
 // func (am *Manager) GetEventsByTx(txHash common.Hash) []*types.Event {
 // 	result := make([]*types.Event, 0)
 // 	for _, event := range am.processor.GetEvents() {
@@ -251,8 +247,14 @@ func (am *Manager) Finalise() error {
 
 		logs := am.processor.GetLogsByAddress(account.GetAddress())
 
-		// nextVersions := make(map[types.ChangeLogType]uint32)
+		eventIndex := uint(0)
 		for _, changeLog := range logs {
+			if changeLog.LogType == AddEventLog {
+				newVal := changeLog.NewVal.(*types.Event)
+				newVal.Index = eventIndex
+				eventIndex = eventIndex + 1
+			}
+
 			nextVersion := account.rawAccount.GetVersion(changeLog.LogType) + 1
 
 			// set version record in rawAccount.data.NewestRecords
