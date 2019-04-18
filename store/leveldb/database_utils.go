@@ -144,6 +144,11 @@ func GetPos(db DatabaseReader, flg uint32, key []byte) (*Position, error) {
 	}
 }
 
+func DelPos(db DatabaseDeleter, flg uint32, key []byte) error {
+	tmp := Key(flg, key)
+	return db.Delete(tmp)
+}
+
 func EncodeNumber(height uint32) []byte {
 	enc := make([]byte, 4)
 	binary.BigEndian.PutUint32(enc, height)

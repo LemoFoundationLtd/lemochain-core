@@ -3,14 +3,15 @@ package store
 import (
 	"bytes"
 	"encoding/binary"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
-	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/common/rlp"
 	"github.com/LemoFoundationLtd/lemochain-core/store/leveldb"
 	"math/big"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 )
 
@@ -33,15 +34,60 @@ func (beansdb *BeansDB) Start() {
 }
 
 func (beansdb *BeansDB) After(flg uint32, key []byte, val []byte) error {
-	log.Errorf("after. flg: %d, %s", flg, common.ToHex(key))
 	if flg == leveldb.ItemFlagBlock {
-		var block types.Block
-		err := rlp.DecodeBytes(val, &block)
+		return beansdb.afterBlock(key, val)
+	} else if flg == leveldb.ItemFlagBlockHeight {
+		return nil
+	} else if flg == leveldb.ItemFlagTrie {
+		return nil
+	} else if flg == leveldb.ItemFlagAct {
+		return nil
+	} else if flg == leveldb.ItemFlagTxIndex {
+		return nil
+	} else if flg == leveldb.ItemFlagCode {
+		return nil
+	} else if flg == leveldb.ItemFlagKV {
+		return nil
+	} else {
+		panic("after! unknown flag.flag = " + strconv.Itoa(int(flg)))
+	}
+
+	return nil
+}
+
+func (beansdb *BeansDB) afterBlock(key []byte, val []byte) error {
+	var block types.Block
+	err := rlp.DecodeBytes(val, &block)
+	if err != nil {
+		return err
+	}
+
+	txs := block.Txs
+	if len(txs) <= 0 {
+		return nil
+	}
+
+	for index := 0; index < len(txs); index++ {
+		tx := txs[index]
+		from, err := tx.From()
 		if err != nil {
 			return err
-		} else {
-			log.Errorf("after block. height: %d", block.Height())
-			return nil
+		}
+
+		if tx.Type() == params.CreateAssetTx {
+			err := UtilsSetAssetCode(beansdb, tx.Hash(), from)
+			if err != nil {
+				return err
+			} else {
+				continue
+			}
+		} else if tx.Type() == params.IssueAssetTx {
+			err := UtilsSetAssetId(beansdb, tx.Hash(), tx.Hash())
+			if err != nil {
+				return err
+			} else {
+				continue
+			}
 		}
 	}
 
@@ -386,7 +432,7 @@ func (context *RunContext) createFile() error {
 }
 
 func (context *RunContext) Load() error {
-	isExist, err := IsExist(context.Path)
+	isExist, err := FileUtilsIsExist(context.Path)
 	if err != nil {
 		return err
 	}
