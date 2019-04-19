@@ -98,5 +98,5 @@ func UtilsSetAssetCode(db *BeansDB, code common.Hash, address common.Address) er
 }
 
 func UtilsSetAssetId(db *BeansDB, id common.Hash, code common.Hash) error {
-	return nil
+	return db.Put(leveldb.ItemFlagAssetId, id.Bytes(), code.Bytes())
 }

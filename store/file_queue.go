@@ -1,6 +1,7 @@
 package store
 
 import (
+	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/store/leveldb"
@@ -11,6 +12,7 @@ import (
 )
 
 type item struct {
+	flg    uint32
 	key    []byte
 	val    []byte
 	offset int64
@@ -18,20 +20,23 @@ type item struct {
 }
 
 type FileQueue struct {
-	RW         sync.RWMutex
-	Home       string
-	Index      map[string]*item
-	Offset     int64
-	LevelDB    *leveldb.LevelDBDatabase
-	SyncFileDB *SyncFileDB
+	RW     sync.RWMutex
+	Home   string
+	Offset int64
 
-	DoneChan chan *Inject
-	ErrChan  chan *Inject
-	Quit     chan struct{}
+	IndexRW sync.RWMutex
+	Index   map[string]*item
+
+	LevelDB *leveldb.LevelDBDatabase
+
+	SyncFileDB *SyncFileDB
+	DoneChan   chan *Inject
+	ErrChan    chan *Inject
+	Quit       chan struct{}
 }
 
 func (queue *FileQueue) path() string {
-	return filepath.Join(queue.Home, "%tmp.data")
+	return filepath.Join(queue.Home, "tmp.data")
 }
 
 func NewFileQueue(home string, levelDB *leveldb.LevelDBDatabase, extend WriteExtend) *FileQueue {
@@ -80,6 +85,61 @@ func (queue *FileQueue) Close() {
 	close(queue.Quit)
 }
 
+func (queue *FileQueue) setIndex(item *item) {
+	queue.IndexRW.Lock()
+	defer queue.IndexRW.Unlock()
+
+	tmp, ok := queue.Index[common.ToHex(item.key)]
+	if !ok {
+		item.refCnt = 1
+	} else {
+		item.refCnt = tmp.refCnt + 1
+	}
+
+	queue.Index[common.ToHex(item.key)] = item
+}
+
+func (queue *FileQueue) delIndex(flag uint32, key []byte) {
+	queue.IndexRW.Lock()
+	defer queue.IndexRW.Unlock()
+
+	val, ok := queue.Index[common.ToHex(key)]
+	if !ok {
+		log.Errorf("del index.done is not exist.key: %s", common.ToHex(key))
+	} else {
+		if val.flg != flag {
+			panic(fmt.Sprintf("del index.val.flag(%d) != flag(%d)", val.flg, flag))
+		}
+
+		if val.refCnt <= 1 {
+			delete(queue.Index, common.ToHex(key))
+			if len(queue.Index) <= 0 {
+				// del tmp file.
+			}
+		} else {
+			val.refCnt = val.refCnt - 1
+			queue.Index[common.ToHex(key)] = val
+		}
+	}
+}
+
+func (queue *FileQueue) getIndex(flag uint32, key []byte) []byte {
+	queue.IndexRW.Lock()
+	defer queue.IndexRW.Unlock()
+
+	val, ok := queue.Index[common.ToHex(key)]
+	if !ok {
+		return nil
+	} else {
+		if val.flg == flag {
+			return val.val
+		} else {
+			log.Errorf("val.flag(%d) != flag(%d)", val.flg, flag)
+			return nil
+		}
+	}
+}
+
 func (queue *FileQueue) checkFile() error {
 	filePath := queue.path()
 	isExist, err := FileUtilsIsExist(filePath)
@@ -95,7 +155,7 @@ func (queue *FileQueue) checkFile() error {
 			return nil
 		}
 	} else {
-		offset, err := queue.scanFile(queue.path(), 0)
+		offset, err := queue.scanFile(queue.path(), queue.Offset)
 		if err == nil || err == ErrEOF {
 			queue.Offset = offset
 			return nil
@@ -117,35 +177,20 @@ func (queue *FileQueue) scanFile(filePath string, offset int64) (int64, error) {
 		return -1, err
 	}
 
-	next := offset
+	queue.Offset = offset
 	for {
-		head, body, err := FileUtilsRead(file, next)
+		head, body, err := FileUtilsRead(file, queue.Offset)
 		if err == io.EOF {
-			return next, ErrEOF
+			return queue.Offset, ErrEOF
 		}
 
 		if err != nil {
 			return -1, err
 		}
 
-		tmp, ok := queue.Index[common.ToHex(body.Key)]
-		refCnt := 0
-		if !ok {
-			refCnt = 1
-		} else {
-			refCnt = tmp.refCnt + 1
-		}
-
 		length := FileUtilsAlign(uint32(RecordHeadLength) + uint32(head.Len))
-		queue.Index[common.ToHex(body.Key)] = &item{
-			key:    body.Key,
-			val:    body.Val,
-			offset: next,
-			refCnt: refCnt,
-		}
-
 		queue.deliver(head.Flg, body.Key, body.Val)
-		next = next + int64(length)
+		queue.Offset += int64(length)
 	}
 }
 
@@ -187,11 +232,11 @@ func (queue *FileQueue) Get(flag uint32, key []byte) ([]byte, error) {
 	queue.RW.Lock()
 	defer queue.RW.Unlock()
 
-	tmp, ok := queue.Index[common.ToHex(key)]
-	if !ok {
-		return queue.SyncFileDB.Get(flag, key)
+	val := queue.getIndex(flag, key)
+	if val != nil {
+		return val, nil
 	} else {
-		return tmp.val, nil
+		return queue.SyncFileDB.Get(flag, key)
 	}
 }
 
@@ -244,37 +289,16 @@ func (queue *FileQueue) deliverBatch(tmpBuf [][]byte, items []*BatchItem) {
 }
 
 func (queue *FileQueue) deliver(flag uint32, key []byte, val []byte) {
-	tmp, ok := queue.Index[common.ToHex(key)]
-	refCnt := 0
-	if !ok {
-		refCnt = 1
-	} else {
-		refCnt = tmp.refCnt + 1
-	}
-
-	queue.Index[common.ToHex(key)] = &item{
+	queue.SyncFileDB.Put(flag, key, val)
+	queue.setIndex(&item{
+		flg:    flag,
 		key:    key,
 		val:    val,
 		offset: queue.Offset,
-		refCnt: refCnt,
-	}
-
-	queue.SyncFileDB.Put(flag, key, val)
+		refCnt: 1,
+	})
 }
 
 func (queue *FileQueue) afterPut(op *Inject) {
-	queue.RW.Lock()
-	defer queue.RW.Unlock()
-
-	val, ok := queue.Index[common.ToHex(op.Key)]
-	if !ok {
-		log.Errorf("done is not exist.flag: %d", op.Flg)
-	} else {
-		if val.refCnt <= 1 {
-			delete(queue.Index, common.ToHex(op.Key))
-		} else {
-			val.refCnt = val.refCnt - 1
-			queue.Index[common.ToHex(op.Key)] = val
-		}
-	}
+	queue.delIndex(op.Flg, op.Key)
 }

@@ -13,7 +13,7 @@ import (
 )
 
 func GetStorePath() string {
-	return "../testdata/db"
+	return "../testdata/store"
 }
 
 func ClearData() {

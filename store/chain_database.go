@@ -66,11 +66,11 @@ func NewChainDataBase(home string, driver string, dns string) *ChainDatabase {
 		panic("get stable block err: " + err.Error())
 	}
 
-	if stableBlock == nil {
-		log.Errorf("stable block is nil.")
-	} else {
-		log.Errorf("stable block`height: " + strconv.Itoa(int(stableBlock.Height())))
-	}
+	// if stableBlock == nil {
+	// 	log.Errorf("stable block is nil.")
+	// } else {
+	// 	log.Errorf("stable block`height: " + strconv.Itoa(int(stableBlock.Height())))
+	// }
 
 	db.LastConfirm = NewGenesisBlock(stableBlock, db.Beansdb)
 	candidates, err := db.Context.Candidates.GetCandidates()
