@@ -14,4 +14,7 @@ var (
 
 	// ErrBlacklistedHash is returned if a block to import is on the blacklist.
 	ErrBlacklistedHash = errors.New("blacklisted hash")
+
+	ErrInvalidVersion = errors.New("invalid transaction version")
+	ErrInvalidSig     = errors.New("invalid signature")
 )

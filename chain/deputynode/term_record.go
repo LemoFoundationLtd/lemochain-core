@@ -70,6 +70,11 @@ func (t *TermRecord) GetTotalVotes() *big.Int {
 	return totalVotes
 }
 
+// IsSnapshotBlock
+func IsSnapshotBlock(height uint32) bool {
+	return height%params.TermDuration == 0
+}
+
 // IsRewardBlock 是否该发出块奖励了
 func IsRewardBlock(height uint32) bool {
 	if height < params.TermDuration+params.InterimDuration+1 {

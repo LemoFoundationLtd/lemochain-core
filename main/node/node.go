@@ -116,14 +116,6 @@ func getGenesis(db protocol.ChainDB) *types.Block {
 	return block
 }
 
-func (n *Node) setMinerAddress() {
-	nextHeight := n.chain.CurrentBlock().Height() + 1
-	deputyNode := n.chain.DeputyManager().GetDeputyByNodeID(nextHeight, deputynode.GetSelfNodeID())
-	if deputyNode != nil {
-		n.miner.SetMinerAddress(deputyNode.MinerAddress)
-	}
-}
-
 // initDeputyNodes init deputy nodes information
 func initDeputyNodes(dm *deputynode.Manager, db protocol.ChainDB) {
 	for snapshotHeight := uint32(0); ; snapshotHeight += params.TermDuration {
@@ -151,6 +143,7 @@ func New(flags flag.CmdFlags) *Node {
 	// new dpovp consensus engine
 	engine := chain.NewDpovp(int64(configFromFile.Timeout), dm, db)
 	blockChain, err := chain.NewBlockChain(uint16(configFromFile.ChainID), engine, dm, db, flags)
+	engine.SetSnapshoter(blockChain)
 	if err != nil {
 		panic("new block chain failed!!!")
 	}
@@ -181,8 +174,6 @@ func New(flags flag.CmdFlags) *Node {
 		server:       server,
 		genesisBlock: genesisBlock,
 	}
-	// set Founder for next block
-	n.setMinerAddress()
 	return n
 }
 

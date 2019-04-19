@@ -1,7 +1,6 @@
 package types
 
 import (
-	"errors"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/hexutil"
@@ -20,10 +19,8 @@ const (
 //go:generate gencodec -type txdata --field-override txdataMarshaling -out gen_tx_json.go
 
 var (
-	DefaultTTTL       uint64 = 2 * 60 * 60 // Transaction Time To Live, 2hours
-	ErrInvalidSig            = errors.New("invalid transaction sig")
-	ErrInvalidVersion        = errors.New("invalid transaction version")
-	TxVersion         uint8  = 1 // current transaction version. should between 0 and 128
+	DefaultTTTL uint64 = 2 * 60 * 60 // Transaction Time To Live, 2hours
+	TxVersion   uint8  = 1           // current transaction version. should between 0 and 128
 )
 
 type Transactions []*Transaction

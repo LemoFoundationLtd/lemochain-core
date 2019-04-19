@@ -124,11 +124,8 @@ func (m *Miner) IsMining() bool {
 	return atomic.LoadInt32(&m.mining) == 1
 }
 
-func (m *Miner) SetMinerAddress(address common.Address) {
-	m.minerAddress = address
-}
-
 func (m *Miner) GetMinerAddress() common.Address {
+	m.updateMiner(m.chain.CurrentBlock())
 	return m.minerAddress
 }
 
@@ -173,7 +170,7 @@ func (m *Miner) getSleepTime() int {
 	timeDur := m.getTimespan() // 获取当前时间与最新块的时间差
 	myself := m.chain.DeputyManager().GetDeputyByNodeID(curHeight+1, deputynode.GetSelfNodeID())
 	curHeader := m.currentBlock().Header
-	slot, err := m.chain.DeputyManager().GetMinerDistance(curHeader.Height+1, curHeader.MinerAddress, myself.MinerAddress) // 获取新块离本节点索引的距离
+	slot, err := chain.GetMinerDistance(curHeader.Height+1, curHeader.MinerAddress, myself.MinerAddress, m.chain.DeputyManager()) // 获取新块离本节点索引的距离
 	if err != nil {
 		log.Debugf("GetMinerDistance error: %v", err)
 		return -1
@@ -325,7 +322,7 @@ func (m *Miner) loopMiner() {
 				// snapshot block + InterimDuration 换届最后一个区块
 				if block.Height() > params.InterimDuration && block.Height()%params.TermDuration == params.InterimDuration {
 					deputyNode := m.chain.DeputyManager().GetDeputyByAddress(block.Height()+1, m.minerAddress)
-					// TODO deputyNode == nil
+					// TODO if deputyNode == nil
 					if deputyNode.Rank == 0 {
 						timeDur = m.blockInterval
 					} else {
@@ -376,11 +373,14 @@ func (m *Miner) loopMiner() {
 // updateMiner update next term's miner address
 func (m *Miner) updateMiner(block *types.Block) {
 	// Get self deputy info in the term which next block in
-	n := m.chain.DeputyManager().GetDeputyByNodeID(block.Height()+1, deputynode.GetSelfNodeID())
+	deputyNode := m.chain.DeputyManager().GetMyDeputyInfo(block.Height() + 1)
 	// A node can not set minerAddress until it becomes deputy node. And deputy node's minerAddress may changes between terms.
-	if n != nil {
-		m.SetMinerAddress(n.MinerAddress)
-		log.Debugf("set next term miner address: %s", n.MinerAddress.String())
+	if deputyNode != nil {
+		oldMiner := m.minerAddress
+		m.minerAddress = deputyNode.MinerAddress
+		if oldMiner != deputyNode.MinerAddress {
+			log.Info("update miner", "from", oldMiner.String(), "addr", deputyNode.MinerAddress.String())
+		}
 	}
 }
 
@@ -398,7 +398,7 @@ func (m *Miner) sealBlock() {
 		// snapshot block
 		if header.Height > params.InterimDuration && header.Height%params.TermDuration == params.InterimDuration {
 			deputyNode := m.chain.DeputyManager().GetDeputyByAddress(header.Height+1, m.minerAddress)
-			// TODO deputyNode == nil
+			// TODO if deputyNode == nil
 			if deputyNode.Rank == 0 {
 				timeDur = m.blockInterval
 			}
@@ -421,7 +421,7 @@ func (m *Miner) sealBlock() {
 	log.Debug("ApplyTxs ok")
 	// Finalize accounts
 	am := m.chain.AccountManager()
-	if err := m.engine.Finalize(header.Height, am); err != nil {
+	if err := m.engine.Finalize(header.Height, am, m.chain.DeputyManager()); err != nil {
 		log.Errorf("Finalize accounts error: %v", err)
 		return
 	}
@@ -470,18 +470,11 @@ func (m *Miner) sealHead() (*types.Header, deputynode.DeputyNodes) {
 	}
 	log.Info("before miner :", h.MinerAddress.String())
 	var nodes deputynode.DeputyNodes = nil
-	if height%params.TermDuration == 0 {
-		nodes = m.chain.GetNewDeputyNodes()
+	if deputynode.IsSnapshotBlock(height) {
+		nodes = m.chain.SnapshotDeputyNodes()
 		root := nodes.MerkleRootSha()
 		h.DeputyRoot = root[:]
-		m.chain.DeputyManager().SaveSnapshot(height, nodes)
 		log.Debugf("add new term deputy nodes: %s", nodes.String())
-	} else if height%params.TermDuration == params.InterimDuration {
-		n := m.chain.DeputyManager().GetDeputyByNodeID(height, deputynode.GetSelfNodeID())
-		log.Info("setup miner :", n.MinerAddress.String())
-		m.SetMinerAddress(n.MinerAddress)
-		log.Info("after miner :", h.MinerAddress.String())
-		log.Debugf("set next term's miner address: %s", n.MinerAddress.String())
 	}
 
 	// allowable 1 second time error
