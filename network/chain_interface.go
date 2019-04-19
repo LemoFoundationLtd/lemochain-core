@@ -20,8 +20,6 @@ type BlockChain interface {
 	StableBlock() *types.Block
 	// InsertChain insert a block to local chain
 	InsertChain(block *types.Block, isSyncing bool) error
-	// SetStableBlock set local chain's latest stable block
-	SetStableBlock(hash common.Hash, height uint32) error
 	// ReceiveConfirm received a confirm message from remote peer
 	ReceiveConfirm(info *BlockConfirmData) (err error)
 	// GetConfirms get a block's confirms from local chain

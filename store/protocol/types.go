@@ -10,10 +10,11 @@ type ChainDB interface {
 	SizeOfValue(hash common.Hash) (int, error)
 
 	SetBlock(hash common.Hash, block *types.Block) error
-	GetBlock(hash common.Hash, height uint32) (*types.Block, error)
 	GetBlockByHeight(height uint32) (*types.Block, error)
 	GetBlockByHash(hash common.Hash) (*types.Block, error)
 	IsExistByHash(hash common.Hash) (bool, error)
+	GetUnConfirmByHeight(height uint32, leafBlockHash common.Hash) (*types.Block, error)
+	IterateUnConfirms(fn func(*types.Block))
 
 	GetConfirms(hash common.Hash) ([]types.SignData, error)
 	SetConfirm(hash common.Hash, signData types.SignData) error
@@ -35,8 +36,6 @@ type ChainDB interface {
 
 	GetAssetID(id common.Hash) (common.Address, error)
 	GetAssetCode(code common.Hash) (common.Address, error)
-
-	ChooseUnConfirmBlock(compareFn func(*types.Block, *types.Block) *types.Block) *types.Block
 
 	Close() error
 }

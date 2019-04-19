@@ -72,7 +72,7 @@ type Block struct {
 	Header      *Header                `json:"header"        gencodec:"required"`
 	Txs         Transactions           `json:"transactions"  gencodec:"required"`
 	ChangeLogs  ChangeLogSlice         `json:"changeLogs"    gencodec:"required"`
-	Confirms    []SignData             `json:"confirms"`
+	Confirms    []SignData             `json:"confirms"` // no miner's signature inside
 	DeputyNodes deputynode.DeputyNodes `json:"deputyNodes"`
 }
 

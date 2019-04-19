@@ -363,8 +363,8 @@ func TestCBlock_IsSameBlock(t *testing.T) {
 
 // makeBlocks make 4 blocks and setup the tree struct like this:
 //      ┌─2
-// 0──1─┤
-//      └─3
+// 0──1─┼─3
+//      └─4
 func makeBlocks() []*CBlock {
 	rawBlock0 := &types.Block{Header: &types.Header{Height: 100}}
 	block0 := &CBlock{Block: rawBlock0}
@@ -374,11 +374,14 @@ func makeBlocks() []*CBlock {
 	block2 := &CBlock{Block: rawBlock2}
 	rawBlock3 := &types.Block{Header: &types.Header{Height: 102, Time: 234}}
 	block3 := &CBlock{Block: rawBlock3}
+	rawBlock4 := &types.Block{Header: &types.Header{Height: 102, Time: 345}}
+	block4 := &CBlock{Block: rawBlock4}
 
 	block1.BeChildOf(block0)
 	block2.BeChildOf(block1)
 	block3.BeChildOf(block1)
-	return []*CBlock{block0, block1, block2, block3}
+	block4.BeChildOf(block1)
+	return []*CBlock{block0, block1, block2, block3, block4}
 }
 
 func TestCBlock_CollectToParent(t *testing.T) {
@@ -403,41 +406,10 @@ func TestCBlock_Walk(t *testing.T) {
 	}
 	b[3].Walk(makeTestFn([]*CBlock{}), nil)
 	b[3].Walk(makeTestFn([]*CBlock{}), b[3])
-	b[1].Walk(makeTestFn([]*CBlock{b[2], b[3]}), nil)
-	b[1].Walk(makeTestFn([]*CBlock{b[2], b[3]}), b[1])
-	b[1].Walk(makeTestFn([]*CBlock{b[3]}), b[2])
-	b[0].Walk(makeTestFn([]*CBlock{b[1], b[2], b[3]}), nil)
+	b[1].Walk(makeTestFn([]*CBlock{b[2], b[3], b[4]}), nil)
+	b[1].Walk(makeTestFn([]*CBlock{b[2], b[3], b[4]}), b[1])
+	b[1].Walk(makeTestFn([]*CBlock{b[3], b[4]}), b[2])
+	b[0].Walk(makeTestFn([]*CBlock{b[1], b[2], b[3], b[4]}), nil)
 	b[0].Walk(makeTestFn([]*CBlock{}), b[1])
-	b[0].Walk(makeTestFn([]*CBlock{b[1], b[3]}), b[2])
-}
-
-func TestCBlock_ChooseChild(t *testing.T) {
-	b := makeBlocks()
-
-	// choose the one has bigger time
-	compareFn := func(block1, block2 *types.Block) *types.Block {
-		if block1.Time() > block2.Time() {
-			return block1
-		}
-		return block2
-	}
-	assert.Equal(t, b[3].Block, b[0].ChooseChild(compareFn))
-	assert.Equal(t, b[3].Block, b[3].ChooseChild(compareFn))
-
-	// choose the one has smaller time
-	compareFn = func(block1, block2 *types.Block) *types.Block {
-		if block1.Time() < block2.Time() {
-			return block1
-		}
-		return block2
-	}
-	assert.Equal(t, b[2].Block, b[0].ChooseChild(compareFn))
-
-	// choose other block
-	compareFn = func(_, _ *types.Block) *types.Block {
-		return b[0].Block
-	}
-	assert.PanicsWithValue(t, "compareFn must choose one from the parameters", func() {
-		b[0].ChooseChild(compareFn)
-	})
+	b[0].Walk(makeTestFn([]*CBlock{b[1], b[3], b[4]}), b[2])
 }
