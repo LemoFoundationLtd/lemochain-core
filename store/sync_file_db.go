@@ -46,18 +46,22 @@ func NewSyncFileDB(home string, levelDB *leveldb.LevelDBDatabase, doneChan chan 
 	}
 }
 
+func (db *SyncFileDB) newBitCask(index int) *BitCask {
+	path := db.path(index)
+	bitCask, err := NewBitCask(path, index, db.LevelDB)
+	if err != nil {
+		panic("create bit cask err: " + err.Error())
+	} else {
+		return bitCask
+	}
+}
+
 func (db *SyncFileDB) Open() {
 	count := 1 << (uint(db.Height) * 4)
 	db.BitCasks = make([]*BitCask, count)
 
 	for index := 0; index < count; index++ {
-		path := db.path(index)
-		bitCask, err := NewBitCask(path, index, db.LevelDB)
-		if err != nil {
-			panic("create bit cask err: " + err.Error())
-		} else {
-			db.BitCasks[index] = bitCask
-		}
+		db.BitCasks[index] = db.newBitCask(index)
 	}
 
 	go db.start(db.DoneChan, db.ErrChan)
@@ -69,6 +73,7 @@ func (db *SyncFileDB) start(Done chan *Inject, Err chan *Inject) {
 		case <-db.Quit:
 			return
 		case writeOp := <-db.WriteChan:
+			log.Infof("sync file db. write channel flag: %d", writeOp.Flg)
 			err := db.put(writeOp.Flg, writeOp.Key, writeOp.Val)
 			if err != nil {
 				log.Errorf("bitcask put data err: %s", err.Error())
