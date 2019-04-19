@@ -96,7 +96,7 @@ func (m *Miner) Start() {
 	} else {
 		m.resetMinerTimer(-1)
 	}
-	m.recvBlockSub = m.chain.RecvBlockFeed.Subscribe(m.recvNewBlockCh)
+	m.recvBlockSub = m.chain.NewCurrentBlockFeed.Subscribe(m.recvNewBlockCh)
 	log.Info("start mining...")
 }
 
@@ -421,7 +421,7 @@ func (m *Miner) sealBlock() {
 	log.Debug("ApplyTxs ok")
 	// Finalize accounts
 	am := m.chain.AccountManager()
-	if err := m.engine.Finalize(header.Height, am, m.chain.DeputyManager()); err != nil {
+	if err := m.engine.Finalize(header.Height, am); err != nil {
 		log.Errorf("Finalize accounts error: %v", err)
 		return
 	}

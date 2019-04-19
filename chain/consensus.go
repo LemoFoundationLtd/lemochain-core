@@ -11,6 +11,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/store/protocol"
+	"math"
 	"math/big"
 	"time"
 )
@@ -24,9 +25,12 @@ const MaxExtraDataLen = 256
 type Engine interface {
 	VerifyBeforeTxProcess(block *types.Block) error
 	VerifyAfterTxProcess(block, computedBlock *types.Block) error
-	Finalize(height uint32, am *account.Manager, dm *deputynode.Manager) error
+	Finalize(height uint32, am *account.Manager) error
 	Seal(header *types.Header, txProduct *account.TxsProduct, confirms []types.SignData, dNodes deputynode.DeputyNodes) (*types.Block, error)
 	VerifyConfirmPacket(height uint32, blockHash common.Hash, sigList []types.SignData) error
+	TrySwitchFork(stable, oldCurrent *types.Block) *types.Block
+	ChooseNewFork() *types.Block
+	CanBeStable(height uint32, confirmsCount int) bool
 }
 
 type DeputySnapshoter interface {
@@ -237,6 +241,7 @@ func verifyConfirms(block *types.Block, sigList []types.SignData, dm *deputynode
 			log.Warn("Invalid confirm signer", "nodeID", common.ToHex(nodeID))
 			return ErrInvalidConfirmSigner
 		}
+		// TODO every node can sign only once
 	}
 	return nil
 }
@@ -352,17 +357,17 @@ func (d *Dpovp) Seal(header *types.Header, txProduct *account.TxsProduct, confir
 }
 
 // Finalize increases miners' balance and fix all account changes
-func (d *Dpovp) Finalize(height uint32, am *account.Manager, dm *deputynode.Manager) error {
+func (d *Dpovp) Finalize(height uint32, am *account.Manager) error {
 	// Pay miners at the end of their tenure
 	if deputynode.IsRewardBlock(height) {
 		term := (height-params.InterimDuration)/params.TermDuration - 1
 		termRewards, err := getTermRewardValue(am, term)
-		log.Debugf("the %d term's reward value = %s ", term, termRewards.String())
 		if err != nil {
 			log.Warnf("load rewards failed: %v", err)
 			return err
 		}
-		lastTermRecord, err := dm.GetTermByHeight(height - 1)
+		log.Debugf("the %d term's reward value = %s ", term, termRewards.String())
+		lastTermRecord, err := d.dm.GetTermByHeight(height - 1)
 		if err != nil {
 			log.Warnf("load deputy nodes failed: %v", err)
 			return err
@@ -459,4 +464,50 @@ func getTermRewardValue(am *account.Manager, term uint32) (*big.Int, error) {
 	} else {
 		return nil, errors.New("reward value does not exit. ")
 	}
+}
+
+// twoThird calculate num * 2 / 3
+func twoThird(num int) uint32 {
+	return uint32(math.Ceil(float64(num) * 2.0 / 3.0))
+}
+
+// TrySwitchFork switch fork if its length reached to a multiple of "deputy nodes count * 2/3"
+func (d *Dpovp) TrySwitchFork(stable, current *types.Block) *types.Block {
+	maxHeightBlock := d.ChooseNewFork()
+	// make sure the fork is the first one reaching the height
+	if maxHeightBlock != nil && maxHeightBlock.Height() > current.Height() {
+		nodeCount := d.dm.GetDeputiesCount(maxHeightBlock.Height())
+		judgeLength := twoThird(nodeCount)
+		if (maxHeightBlock.Height()-stable.Height())%judgeLength == 0 {
+			return maxHeightBlock
+		}
+	}
+	return current
+}
+
+// ChooseNewFork choose a fork and return the last block on the fork. It would return nil if there is no unstable block
+func (d *Dpovp) ChooseNewFork() *types.Block {
+	var max *types.Block
+	d.db.IterateUnConfirms(func(node *types.Block) {
+		if max == nil || node.Height() > max.Height() {
+			// 1. Choose the longest fork
+			max = node
+		} else if node.Height() == max.Height() {
+			// 2. Choose the one which has smaller hash in dictionary order
+			nodeHash := node.Hash()
+			maxHash := max.Hash()
+			if bytes.Compare(nodeHash[:], maxHash[:]) < 0 {
+				max = node
+			}
+		}
+	})
+	return max
+}
+
+func (d *Dpovp) CanBeStable(height uint32, confirmsCount int) bool {
+	nodeCount := d.dm.GetDeputiesCount(height)
+
+	// nodeCount < 3 means two deputy nodes scene: One node mined a block and broadcasted it. Then it means two confirms after the receiver one's verification
+	// +1 for the miner
+	return nodeCount < 3 || uint32(confirmsCount+1) >= twoThird(nodeCount)
 }
