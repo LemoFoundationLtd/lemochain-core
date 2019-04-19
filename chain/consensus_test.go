@@ -525,105 +525,18 @@ func Test_calculateSalary(t *testing.T) {
 	}
 }
 
-func TestDivideSalary(t *testing.T) {
-	dm := deputynode.NewManager(5)
-	dm = initDeputyNode(1, 0, dm)                   // 第0届，有一个deputy node
-	dm = initDeputyNode(5, params.TermDuration, dm) // 第一届，有5个deputy node
-
-	dpovp := loadDpovp(dm)
-	defer dpovp.db.Close()
-	am := account.NewManager(common.Hash{}, dpovp.db)
-
-	termRecord00, err := dm.GetTermByHeight(0)
-	assert.NoError(t, err)
-	minerAddress00 := termRecord00.Nodes[0].MinerAddress
-	account := am.GetAccount(minerAddress00)
-	profile := make(map[string]string)
-	// 设置income address
-	incomeAddr := common.HexToAddress("0x1111")
-	profile[types.CandidateKeyIncomeAddress] = incomeAddr.String()
-	account.SetCandidate(profile)
-	num, _ := new(big.Int).SetString("2999999999999999991", 10)
-	salarys00 := DivideSalary(num, am, termRecord00) // 发放奖励的totalSalary = 0
-	assert.Equal(t, 1, len(salarys00))
-	assert.Equal(t, incomeAddr, salarys00[0].Address)
-	assert.Equal(t, big.NewInt(2000000000000000000), salarys00[0].Salary)
-
-	termRecord01, err := dm.GetTermByHeight(params.TermDuration + params.InterimDuration + 1) // 得到第一届的deputynodes
-	assert.Equal(t, uint32(1), termRecord01.TermIndex)
-	nodes := termRecord01.Nodes
-	minerAddr00 := nodes[0].MinerAddress
-	minerAddr01 := nodes[1].MinerAddress
-	minerAddr02 := nodes[2].MinerAddress
-	minerAddr03 := nodes[3].MinerAddress
-	minerAddr04 := nodes[4].MinerAddress
-	acc00 := am.GetAccount(minerAddr00)
-	acc01 := am.GetAccount(minerAddr01)
-	acc02 := am.GetAccount(minerAddr02)
-	acc03 := am.GetAccount(minerAddr03)
-	acc04 := am.GetAccount(minerAddr04)
-	// 	设置income address
-	income00 := common.HexToAddress("0x1000")
-	profile[types.CandidateKeyIncomeAddress] = income00.String()
-	acc00.SetCandidate(profile)
-
-	income01 := common.HexToAddress("0x1001")
-	profile[types.CandidateKeyIncomeAddress] = income01.String()
-	acc01.SetCandidate(profile)
-
-	income02 := common.HexToAddress("0x1002")
-	profile[types.CandidateKeyIncomeAddress] = income02.String()
-	acc02.SetCandidate(profile)
-
-	income03 := common.HexToAddress("0x1003")
-	profile[types.CandidateKeyIncomeAddress] = income03.String()
-	acc03.SetCandidate(profile)
-
-	income04 := common.HexToAddress("0x1004")
-	profile[types.CandidateKeyIncomeAddress] = income04.String()
-	acc04.SetCandidate(profile)
-	// 	计算收益
-	totalSalary, _ := new(big.Int).SetString("999999999999999999999999999999", 10)
-	salaries := DivideSalary(totalSalary, am, termRecord01)
-	assert.Equal(t, 5, len(salaries))
-	assert.Equal(t, income00, salaries[0].Address)
-	assert.Equal(t, income01, salaries[1].Address)
-	assert.Equal(t, income02, salaries[2].Address)
-	assert.Equal(t, income03, salaries[3].Address)
-	assert.Equal(t, income04, salaries[4].Address)
-
-	num00, _ := new(big.Int).SetString("239999999999000000000000000000", 10)
-	num01, _ := new(big.Int).SetString("219999999999000000000000000000", 10)
-	num02, _ := new(big.Int).SetString("199999999999000000000000000000", 10)
-	num03, _ := new(big.Int).SetString("179999999999000000000000000000", 10)
-	num04, _ := new(big.Int).SetString("159999999999000000000000000000", 10)
-	assert.Equal(t, num00, salaries[0].Salary)
-	assert.Equal(t, num01, salaries[1].Salary)
-	assert.Equal(t, num02, salaries[2].Salary)
-	assert.Equal(t, num03, salaries[3].Salary)
-	assert.Equal(t, num04, salaries[4].Salary)
-
-}
-
-// test total salary with random data
-func TestTermRecord_DivideSalary2(t *testing.T) {
+// Test_DivideSalary test total salary with random data
+func Test_DivideSalary(t *testing.T) {
 	ClearData()
 	db := store.NewChainDataBase(GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
 	defer db.Close()
 	am := account.NewManager(common.Hash{}, db)
-	profile := make(map[string]string)
 
 	r := rand.New(rand.NewSource(time.Now().Unix()))
 	for i := 0; i < 100; i++ {
 		nodeCount := r.Intn(49) + 1 // [1, 50]
-		nodes := GenerateDeputies(nodeCount)
+		nodes := GenerateDeputies(nodeCount, am)
 		for _, node := range nodes {
-			// 设置deputy node 的income address
-			minerAcc := am.GetAccount(node.MinerAddress)
-			// 设置income address 为minerAddress
-			profile[types.CandidateKeyIncomeAddress] = node.MinerAddress.String()
-			minerAcc.SetCandidate(profile)
-
 			node.Votes = randomBigInt(r)
 		}
 
@@ -633,11 +546,26 @@ func TestTermRecord_DivideSalary2(t *testing.T) {
 		salaries := DivideSalary(totalSalary, am, term)
 		assert.Len(t, salaries, nodeCount)
 
+		// 验证income是否相同
+		for j := 0; j < len(nodes); j++ {
+			if getIncomeAddressFromDeputyNode(am, nodes[j]) != salaries[j].Address {
+				panic("income address no equal")
+			}
+		}
 		actualTotal := new(big.Int)
 		for _, s := range salaries {
 			actualTotal.Add(actualTotal, s.Salary)
 		}
-		// t.Log("count", nodeCount, "totalSalary", totalSalary, "actualTotal", actualTotal)
+		totalVotes := new(big.Int)
+		for _, v := range nodes {
+			totalVotes.Add(totalVotes, v.Votes)
+		}
+		// 比较每个deputy node salary
+		for k := 0; k < len(nodes); k++ {
+			if salaries[k].Salary.Cmp(calculateSalary(totalSalary, nodes[k].Votes, totalVotes, minPrecision)) != 0 {
+				panic("deputy node salary no equal")
+			}
+		}
 
 		// errRange = nodeCount * minPrecision
 		// actualTotal must be in range [totalSalary - errRange, totalSalary]
@@ -648,18 +576,32 @@ func TestTermRecord_DivideSalary2(t *testing.T) {
 }
 
 // GenerateDeputies generate random deputy nodes
-func GenerateDeputies(num int) deputynode.DeputyNodes {
+func GenerateDeputies(num int, am *account.Manager) deputynode.DeputyNodes {
 	var result []*deputynode.DeputyNode
 	for i := 0; i < num; i++ {
 		private, _ := crypto.GenerateKey()
-		result = append(result, &deputynode.DeputyNode{
+		node := &deputynode.DeputyNode{
 			MinerAddress: crypto.PubkeyToAddress(private.PublicKey),
 			NodeID:       (crypto.FromECDSAPub(&private.PublicKey))[1:],
 			Rank:         uint32(i),
 			Votes:        big.NewInt(int64(10000000000 - i)),
-		})
+		}
+		result = append(result, node)
+		private, _ = crypto.GenerateKey()
+		incomeAddress := crypto.PubkeyToAddress(private.PublicKey)
+		setIncomeAddress(am, node, incomeAddress)
 	}
 	return result
+}
+
+func setIncomeAddress(am *account.Manager, node *deputynode.DeputyNode, incomeAddress common.Address) {
+	profile := make(map[string]string)
+	// 设置deputy node 的income address
+	minerAcc := am.GetAccount(node.MinerAddress)
+	// 设置income address 为minerAddress
+	profile[types.CandidateKeyIncomeAddress] = incomeAddress.String()
+	minerAcc.SetCandidate(profile)
+
 }
 
 func randomBigInt(r *rand.Rand) *big.Int {
