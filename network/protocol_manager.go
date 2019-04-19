@@ -767,6 +767,7 @@ func (pm *ProtocolManager) handleConfirmMsg(msg *p2p.Msg) error {
 	if err := msg.Decode(confirm); err != nil {
 		return fmt.Errorf("handleConfirmMsg error: %v", err)
 	}
+	// TODO 如果确认包不够2/3，还是应该保存下来
 	if confirm.Height < pm.chain.StableBlock().Height() {
 		return nil
 	}

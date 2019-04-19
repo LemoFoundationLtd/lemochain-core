@@ -245,7 +245,7 @@ func (engine *EngineTestForMiner) VerifyBeforeTxProcess(block *types.Block) erro
 func (engine *EngineTestForMiner) VerifyAfterTxProcess(block, computedBlock *types.Block) error {
 	return nil
 }
-func (engine *EngineTestForMiner) Finalize(height uint32, am *account.Manager, dm *deputynode.Manager) error {
+func (engine *EngineTestForMiner) Finalize(height uint32, am *account.Manager) error {
 	return nil
 }
 func (engine *EngineTestForMiner) Seal(header *types.Header, txProduct *account.TxsProduct, confirms []types.SignData, dNodes deputynode.DeputyNodes) (*types.Block, error) {
@@ -253,6 +253,15 @@ func (engine *EngineTestForMiner) Seal(header *types.Header, txProduct *account.
 }
 func (engine *EngineTestForMiner) VerifyConfirmPacket(height uint32, blockHash common.Hash, sigList []types.SignData) error {
 	return nil
+}
+func (engine *EngineTestForMiner) TrySwitchFork(stable, oldCurrent *types.Block) *types.Block {
+	return nil
+}
+func (engine *EngineTestForMiner) ChooseNewFork() *types.Block {
+	return nil
+}
+func (engine *EngineTestForMiner) CanBeStable(height uint32, confirmCount int) bool {
+	return true
 }
 
 func newBlockChain() (*chain.BlockChain, chan *types.Block, error) {

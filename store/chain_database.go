@@ -349,22 +349,6 @@ func (database *ChainDatabase) SizeOfValue(hash common.Hash) (int, error) {
 	}
 }
 
-func (database *ChainDatabase) GetBlock(hash common.Hash, height uint32) (*types.Block, error) {
-	database.RW.Lock()
-	defer database.RW.Unlock()
-
-	block, err := database.getBlock(hash)
-	if err != nil {
-		return nil, err
-	} else {
-		if block.Height() != height {
-			return nil, ErrNotExist
-		} else {
-			return block, nil
-		}
-	}
-}
-
 func (database *ChainDatabase) GetBlockByHeight(height uint32) (*types.Block, error) {
 	database.RW.Lock()
 	defer database.RW.Unlock()
@@ -408,6 +392,28 @@ func (database *ChainDatabase) IsExistByHash(hash common.Hash) (bool, error) {
 	return database.isExistByHash(hash)
 }
 
+// GetUnConfirmByHeight find unconfirmed block by height. The leafBlockHash is a son block on the fork
+func (database *ChainDatabase) GetUnConfirmByHeight(height uint32, leafBlockHash common.Hash) (*types.Block, error) {
+	// confirmed block
+	if height <= database.LastConfirm.Block.Height() {
+		return nil, ErrNotExist
+	}
+
+	database.RW.Lock()
+	defer database.RW.Unlock()
+
+	// find the block parent by parent till reach the specific height
+	leaf := database.UnConfirmBlocks[leafBlockHash]
+	for leaf != nil && leaf.Block.Height() > height {
+		leaf = leaf.Parent
+	}
+
+	if leaf == nil {
+		return nil, ErrNotExist
+	}
+	return leaf.Block, nil
+}
+
 func (database *ChainDatabase) SetBlock(hash common.Hash, block *types.Block) error {
 	database.RW.Lock()
 	defer database.RW.Unlock()
@@ -436,7 +442,7 @@ func (database *ChainDatabase) SetBlock(hash common.Hash, block *types.Block) er
 
 		if block.Height() <= database.LastConfirm.Block.Height() {
 			bheight := strconv.Itoa(int(block.Height()))
-			bhash := block.Hash().Hex()
+			bhash := hash.Hex()
 			lheight := strconv.Itoa(int(database.LastConfirm.Block.Height()))
 			lhash := database.LastConfirm.Block.Hash().Hex()
 			log.Errorf("1.block'height:" + bheight + "|bhash:" + bhash + "|confirm'height:" + lheight + "|lhash:" + lhash)
@@ -458,7 +464,7 @@ func (database *ChainDatabase) SetBlock(hash common.Hash, block *types.Block) er
 	if pBlock == nil {
 		if database.LastConfirm.Block.Header.Hash() != pHash {
 			bheight := strconv.Itoa(int(block.Height()))
-			bhash := block.Hash().Hex()
+			bhash := hash.Hex()
 			lheight := strconv.Itoa(int(database.LastConfirm.Block.Height()))
 			lhash := database.LastConfirm.Block.Hash().Hex()
 			log.Errorf("2.block'height:" + bheight + "|bhash:" + bhash + "|confirm'height:" + lheight + "|lhash:" + lhash)
@@ -467,7 +473,7 @@ func (database *ChainDatabase) SetBlock(hash common.Hash, block *types.Block) er
 
 		if database.LastConfirm.Block.Height()+1 != block.Height() {
 			bheight := strconv.Itoa(int(block.Height()))
-			bhash := block.Hash().Hex()
+			bhash := hash.Hex()
 			lheight := strconv.Itoa(int(database.LastConfirm.Block.Height()))
 			lhash := database.LastConfirm.Block.Hash().Hex()
 			log.Errorf("3.block'height:" + bheight + "|bhash:" + bhash + "|confirm'height:" + lheight + "|lhash:" + lhash)
@@ -478,7 +484,7 @@ func (database *ChainDatabase) SetBlock(hash common.Hash, block *types.Block) er
 	} else {
 		if pBlock.Block.Height()+1 != block.Height() {
 			bheight := strconv.Itoa(int(block.Height()))
-			bhash := block.Hash().Hex()
+			bhash := hash.Hex()
 			lheight := strconv.Itoa(int(database.LastConfirm.Block.Height()))
 			lhash := database.LastConfirm.Block.Hash().Hex()
 			log.Errorf("4.block'height:" + bheight + "|bhash:" + bhash + "|confirm'height:" + lheight + "|lhash:" + lhash)
@@ -728,8 +734,10 @@ func (database *ChainDatabase) GetAssetID(id common.Hash) (common.Address, error
 	}
 }
 
-func (database *ChainDatabase) ChooseUnConfirmBlock(compareFn func(*types.Block, *types.Block) *types.Block) *types.Block {
-	return database.LastConfirm.ChooseChild(compareFn)
+func (database *ChainDatabase) IterateUnConfirms(fn func(*types.Block)) {
+	database.LastConfirm.Walk(func(block *CBlock) {
+		fn(block.Block)
+	}, nil)
 }
 
 func (database *ChainDatabase) Close() error {

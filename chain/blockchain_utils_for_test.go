@@ -16,7 +16,7 @@ func (engine *EngineTestForChain) VerifyBeforeTxProcess(block *types.Block) erro
 func (engine *EngineTestForChain) VerifyAfterTxProcess(block, computedBlock *types.Block) error {
 	return nil
 }
-func (engine *EngineTestForChain) Finalize(height uint32, am *account.Manager, dm *deputynode.Manager) error {
+func (engine *EngineTestForChain) Finalize(height uint32, am *account.Manager) error {
 	return nil
 }
 func (engine *EngineTestForChain) Seal(header *types.Header, txProduct *account.TxsProduct, confirms []types.SignData, dNodes deputynode.DeputyNodes) (*types.Block, error) {
@@ -24,6 +24,15 @@ func (engine *EngineTestForChain) Seal(header *types.Header, txProduct *account.
 }
 func (engine *EngineTestForChain) VerifyConfirmPacket(height uint32, blockHash common.Hash, sigList []types.SignData) error {
 	return nil
+}
+func (engine *EngineTestForChain) TrySwitchFork(stable, oldCurrent *types.Block) *types.Block {
+	return nil
+}
+func (engine *EngineTestForChain) ChooseNewFork() *types.Block {
+	return nil
+}
+func (engine *EngineTestForChain) CanBeStable(height uint32, confirmCount int) bool {
+	return true
 }
 
 func broadcastStableBlock(block *types.Block) {}

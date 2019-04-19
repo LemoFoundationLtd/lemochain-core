@@ -531,32 +531,6 @@ func TestChainDatabase_Commit(t *testing.T) {
 	}
 }
 
-func TestChainDatabase_GetBlock(t *testing.T) {
-	ClearData()
-	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
-
-	block0 := GetBlock0()
-	cacheChain.SetBlock(block0.Hash(), block0)
-	cacheChain.SetStableBlock(block0.Hash())
-
-	result, err := cacheChain.GetBlock(block0.Hash(), block0.Height())
-	assert.NoError(t, err)
-	assert.Equal(t, block0.Hash(), result.Hash())
-
-	_, err = cacheChain.GetBlock(block0.Hash(), block0.Height()+1)
-	assert.Equal(t, ErrNotExist, err)
-	cacheChain.Close()
-
-	cacheChain = NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
-	result, err = cacheChain.GetBlock(block0.Hash(), block0.Height())
-	assert.NoError(t, err)
-	assert.Equal(t, block0.Hash(), result.Hash())
-
-	_, err = cacheChain.GetBlock(block0.Hash(), block0.Height()+1)
-	assert.Equal(t, ErrNotExist, err)
-	cacheChain.Close()
-}
-
 func TestChainDatabase_CandidatesRanking(t *testing.T) {
 	ClearData()
 	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
