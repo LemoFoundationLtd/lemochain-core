@@ -12,6 +12,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"github.com/stretchr/testify/assert"
 	"math/big"
+	"math/rand"
 	"testing"
 	"time"
 )
@@ -548,7 +549,6 @@ func TestDivideSalary(t *testing.T) {
 	assert.Equal(t, incomeAddr, salarys00[0].Address)
 	assert.Equal(t, big.NewInt(2000000000000000000), salarys00[0].Salary)
 
-	//
 	termRecord01, err := dm.GetTermByHeight(params.TermDuration + params.InterimDuration + 1) // 得到第一届的deputynodes
 	assert.Equal(t, uint32(1), termRecord01.TermIndex)
 	nodes := termRecord01.Nodes
@@ -566,19 +566,19 @@ func TestDivideSalary(t *testing.T) {
 	income00 := common.HexToAddress("0x1000")
 	profile[types.CandidateKeyIncomeAddress] = income00.String()
 	acc00.SetCandidate(profile)
-	//
+
 	income01 := common.HexToAddress("0x1001")
 	profile[types.CandidateKeyIncomeAddress] = income01.String()
 	acc01.SetCandidate(profile)
-	//
+
 	income02 := common.HexToAddress("0x1002")
 	profile[types.CandidateKeyIncomeAddress] = income02.String()
 	acc02.SetCandidate(profile)
-	//
+
 	income03 := common.HexToAddress("0x1003")
 	profile[types.CandidateKeyIncomeAddress] = income03.String()
 	acc03.SetCandidate(profile)
-	//
+
 	income04 := common.HexToAddress("0x1004")
 	profile[types.CandidateKeyIncomeAddress] = income04.String()
 	acc04.SetCandidate(profile)
@@ -591,7 +591,7 @@ func TestDivideSalary(t *testing.T) {
 	assert.Equal(t, income02, salaries[2].Address)
 	assert.Equal(t, income03, salaries[3].Address)
 	assert.Equal(t, income04, salaries[4].Address)
-	//
+
 	num00, _ := new(big.Int).SetString("239999999999000000000000000000", 10)
 	num01, _ := new(big.Int).SetString("219999999999000000000000000000", 10)
 	num02, _ := new(big.Int).SetString("199999999999000000000000000000", 10)
@@ -603,4 +603,65 @@ func TestDivideSalary(t *testing.T) {
 	assert.Equal(t, num03, salaries[3].Salary)
 	assert.Equal(t, num04, salaries[4].Salary)
 
+}
+
+// test total salary with random data
+func TestTermRecord_DivideSalary2(t *testing.T) {
+	ClearData()
+	db := store.NewChainDataBase(GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
+	defer db.Close()
+	am := account.NewManager(common.Hash{}, db)
+	profile := make(map[string]string)
+
+	r := rand.New(rand.NewSource(time.Now().Unix()))
+	for i := 0; i < 100; i++ {
+		nodeCount := r.Intn(49) + 1 // [1, 50]
+		nodes := GenerateDeputies(nodeCount)
+		for _, node := range nodes {
+			// 设置deputy node 的income address
+			minerAcc := am.GetAccount(node.MinerAddress)
+			// 设置income address 为minerAddress
+			profile[types.CandidateKeyIncomeAddress] = node.MinerAddress.String()
+			minerAcc.SetCandidate(profile)
+
+			node.Votes = randomBigInt(r)
+		}
+
+		totalSalary := randomBigInt(r)
+		term := &deputynode.TermRecord{TermIndex: 0, Nodes: nodes}
+
+		salaries := DivideSalary(totalSalary, am, term)
+		assert.Len(t, salaries, nodeCount)
+
+		actualTotal := new(big.Int)
+		for _, s := range salaries {
+			actualTotal.Add(actualTotal, s.Salary)
+		}
+		// t.Log("count", nodeCount, "totalSalary", totalSalary, "actualTotal", actualTotal)
+
+		// errRange = nodeCount * minPrecision
+		// actualTotal must be in range [totalSalary - errRange, totalSalary]
+		errRange := new(big.Int).Mul(big.NewInt(int64(nodeCount)), minPrecision)
+		assert.Equal(t, true, actualTotal.Cmp(new(big.Int).Sub(totalSalary, errRange)) >= 0)
+		assert.Equal(t, true, actualTotal.Cmp(totalSalary) <= 0)
+	}
+}
+
+// GenerateDeputies generate random deputy nodes
+func GenerateDeputies(num int) deputynode.DeputyNodes {
+	var result []*deputynode.DeputyNode
+	for i := 0; i < num; i++ {
+		private, _ := crypto.GenerateKey()
+		result = append(result, &deputynode.DeputyNode{
+			MinerAddress: crypto.PubkeyToAddress(private.PublicKey),
+			NodeID:       (crypto.FromECDSAPub(&private.PublicKey))[1:],
+			Rank:         uint32(i),
+			Votes:        big.NewInt(int64(10000000000 - i)),
+		})
+	}
+	return result
+}
+
+func randomBigInt(r *rand.Rand) *big.Int {
+	return new(big.Int).Mul(big.NewInt(r.Int63()), big.NewInt(r.Int63()))
 }

@@ -256,13 +256,13 @@ func getIncomeAddressFromDeputyNode(am *account.Manager, node *deputynode.Deputy
 	profile := minerAcc.GetCandidate()
 	strIncomeAddress, ok := profile[types.CandidateKeyIncomeAddress]
 	if !ok {
-		log.Errorf("not exist income address; miner address = %s", node.MinerAddress)
-		return common.Address{}
+		log.Errorf("not exist income address. the salary will be awarded to minerAddress. miner address = %s", node.MinerAddress.String())
+		return node.MinerAddress
 	}
 	incomeAddress, err := common.StringToAddress(strIncomeAddress)
 	if err != nil {
-		log.Errorf("income address unavailability; incomeAddress = %s", strIncomeAddress)
-		return common.Address{}
+		log.Errorf("income address invalid. the salary will be awarded to minerAddress. incomeAddress = %s", strIncomeAddress)
+		return node.MinerAddress
 	}
 	return incomeAddress
 }

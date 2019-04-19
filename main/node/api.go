@@ -65,11 +65,11 @@ func NewPublicAccountAPI(m *account.Manager) *PublicAccountAPI {
 
 // GetBalance get balance in mo
 func (a *PublicAccountAPI) GetBalance(LemoAddress string) (string, error) {
-	accounts, err := a.GetAccount(LemoAddress)
+	lemoAccount, err := a.GetAccount(LemoAddress)
 	if err != nil {
 		return "", err
 	}
-	balance := accounts.GetBalance().String()
+	balance := lemoAccount.GetBalance().String()
 
 	return balance, nil
 }
@@ -158,7 +158,7 @@ func (c *PublicChainAPI) GetDeputyNodeList() []string {
 
 	var result []string
 	for _, n := range nodes {
-		candidateAcc := c.chain.AccountManager().GetAccount(n.MinerAddress)
+		candidateAcc := c.chain.AccountManager().GetCanonicalAccount(n.MinerAddress)
 		profile := candidateAcc.GetCandidate()
 		host := profile[types.CandidateKeyHost]
 		port := profile[types.CandidateKeyPort]
@@ -179,7 +179,7 @@ func (c *PublicChainAPI) GetCandidateTop30() []*CandidateInfo {
 			Profile: make(map[string]string),
 		}
 		CandidateAddress := info.GetAddress()
-		CandidateAccount := c.chain.AccountManager().GetAccount(CandidateAddress)
+		CandidateAccount := c.chain.AccountManager().GetCanonicalAccount(CandidateAddress)
 		profile := CandidateAccount.GetCandidate()
 		candidateInfo.Profile = profile
 		candidateInfo.CandidateAddress = CandidateAddress.String()

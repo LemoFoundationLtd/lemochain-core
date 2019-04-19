@@ -1,4 +1,5 @@
 lemo._createAPI('account', 'getAllRewardValue', 'account_getAllRewardValue');
+lemo._createAPI('account', 'getAssetEquityByAssetId', 'account_getAssetEquityByAssetId');
 
 lemo._createAPI('mine', 'start', 'mine_mineStart');
 lemo._createAPI('mine', 'stop', 'mine_mineStop');

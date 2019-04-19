@@ -443,7 +443,7 @@ func Test_voteAndRegisteTx(t *testing.T) {
 	cand00[types.CandidateKeyIsCandidate] = params.IsCandidateNode
 	cand00[types.CandidateKeyPort] = "0000"
 	cand00[types.CandidateKeyNodeID] = "34f0df789b46e9bc09f23d5315b951bc77bbfeda653ae6f5aab564c9b4619322fddb3b1f28d1c434250e9d4dd8f51aa8334573d7281e4d63baba913e9fa6908f"
-	cand00[types.CandidateKeyIncomeAddress] = "0x10000"
+	cand00[types.CandidateKeyIncomeAddress] = common.HexToAddress("0x10000").String()
 	cand00[types.CandidateKeyHost] = "0.0.0.0"
 	candData00, _ := json.Marshal(cand00)
 
@@ -452,7 +452,7 @@ func Test_voteAndRegisteTx(t *testing.T) {
 	cand02[types.CandidateKeyIsCandidate] = params.IsCandidateNode
 	cand02[types.CandidateKeyPort] = "2222"
 	cand02[types.CandidateKeyNodeID] = "7739f34055d3c0808683dbd77a937f8e28f707d5b1e873bbe61f6f2d0347692f36ef736f342fb5ce4710f7e337f062cc2110d134b63a9575f78cb167bfae2f43"
-	cand02[types.CandidateKeyIncomeAddress] = "0x222222"
+	cand02[types.CandidateKeyIncomeAddress] = common.HexToAddress("0x222222").String()
 	cand02[types.CandidateKeyHost] = "2.2.2.2"
 	candData02, _ := json.Marshal(cand02)
 
@@ -534,7 +534,7 @@ func Test_voteAndRegisteTx(t *testing.T) {
 	changeCand00[types.CandidateKeyIsCandidate] = params.IsCandidateNode
 	changeCand00[types.CandidateKeyPort] = "8080"
 	changeCand00[types.CandidateKeyNodeID] = "34f0df789b46e9bc09f23d5315b951bc77bbfeda653ae6f5aab564c9b4619322fddb3b1f28d1c434250e9d4dd8f51aa8334573d7281e4d63baba913e9fa6908f"
-	changeCand00[types.CandidateKeyIncomeAddress] = "0x222222"
+	changeCand00[types.CandidateKeyIncomeAddress] = common.HexToAddress("0x222222").String()
 	changeCand00[types.CandidateKeyHost] = "www.changeIndo.org"
 
 	changeCandData00, _ := json.Marshal(changeCand00)
@@ -577,8 +577,8 @@ func Test_CreatRegisterTxData(t *testing.T) {
 	pro2 := make(types.Profile)
 	pro2[types.CandidateKeyIsCandidate] = params.IsCandidateNode
 	pro2[types.CandidateKeyPort] = "2222"
-	pro2[types.CandidateKeyNodeID] = "0x222222"
-	pro2[types.CandidateKeyIncomeAddress] = "Lemo2222"
+	pro2[types.CandidateKeyNodeID] = "34f0df789b46e9bc09f23d5315b951bc77bbfeda653ae6f5aab564c9b4619322fddb3b1f28d1c434250e9d4dd8f51aa8334573d7281e4d63baba913e9fa6908f"
+	pro2[types.CandidateKeyIncomeAddress] = common.HexToAddress("0x222").String()
 	pro2[types.CandidateKeyHost] = "2222"
 	marPro2, _ := json.Marshal(pro2)
 	fmt.Println("txData2:", common.ToHex(marPro2))
@@ -586,8 +586,8 @@ func Test_CreatRegisterTxData(t *testing.T) {
 	pro3 := make(types.Profile)
 	pro3[types.CandidateKeyIsCandidate] = params.IsCandidateNode
 	pro3[types.CandidateKeyPort] = "3333"
-	pro3[types.CandidateKeyNodeID] = "0x333333"
-	pro3[types.CandidateKeyIncomeAddress] = "Lemo3333"
+	pro3[types.CandidateKeyNodeID] = "5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0"
+	pro3[types.CandidateKeyIncomeAddress] = common.HexToAddress("0x333").String()
 	pro3[types.CandidateKeyHost] = "3333"
 	marPro3, _ := json.Marshal(pro3)
 	fmt.Println("txData3:", common.ToHex(marPro3))
@@ -595,8 +595,8 @@ func Test_CreatRegisterTxData(t *testing.T) {
 	pro4 := make(types.Profile)
 	pro4[types.CandidateKeyIsCandidate] = params.IsCandidateNode
 	pro4[types.CandidateKeyPort] = "4444"
-	pro4[types.CandidateKeyNodeID] = "0x444444"
-	pro4[types.CandidateKeyIncomeAddress] = "Lemo4444"
+	pro4[types.CandidateKeyNodeID] = "ddb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0"
+	pro4[types.CandidateKeyIncomeAddress] = common.HexToAddress("0x444").String()
 	pro4[types.CandidateKeyHost] = "4444"
 	marPro4, _ := json.Marshal(pro4)
 	fmt.Println("txData4:", common.ToHex(marPro4))
@@ -604,8 +604,8 @@ func Test_CreatRegisterTxData(t *testing.T) {
 	pro5 := make(types.Profile)
 	pro5[types.CandidateKeyIsCandidate] = params.IsCandidateNode
 	pro5[types.CandidateKeyPort] = "5555"
-	pro5[types.CandidateKeyNodeID] = "0x555555"
-	pro5[types.CandidateKeyIncomeAddress] = "Lemo5555"
+	pro5[types.CandidateKeyNodeID] = "7739f34055d3c0808683dbd77a937f8e28f707d5b1e873bbe61f6f2d0347692f36ef736f342fb5ce4710f7e337f062cc2110d134b63a9575f78cb167bfae2f43"
+	pro5[types.CandidateKeyIncomeAddress] = common.HexToAddress("0x555").String()
 	pro5[types.CandidateKeyHost] = "5555"
 	marPro5, _ := json.Marshal(pro5)
 	fmt.Println("txData5:", common.ToHex(marPro5))

@@ -4,7 +4,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/stretchr/testify/assert"
 	"math/big"
-	"math/rand"
 	"testing"
 )
 
@@ -80,14 +79,6 @@ func TestTermRecord_GetTotalVotes(t *testing.T) {
 	nodes[2].Votes = big.NewInt(100)
 	term = &TermRecord{TermIndex: 0, Nodes: nodes}
 	assert.Equal(t, big.NewInt(300), term.GetTotalVotes())
-}
-
-func lemo2mo(lemo int64) *big.Int {
-	return new(big.Int).Mul(big.NewInt(1000000000000000000), big.NewInt(lemo))
-}
-
-func randomBigInt(r *rand.Rand) *big.Int {
-	return new(big.Int).Mul(big.NewInt(r.Int63()), big.NewInt(r.Int63()))
 }
 
 func TestIsRewardBlock(t *testing.T) {
