@@ -16,6 +16,10 @@ import (
 	"time"
 )
 
+var (
+	minPrecision = new(big.Int).SetUint64(uint64(1000000000000000000)) // 1 LEMO
+)
+
 const MaxExtraDataLen = 256
 
 type Engine interface {
@@ -193,7 +197,7 @@ func (d *Dpovp) Finalize(height uint32, am *account.Manager) error {
 			log.Warnf("load deputy nodes failed: %v", err)
 			return err
 		}
-		rewards := lastTermRecord.DivideSalary(termRewards)
+		rewards := DivideSalary(termRewards, am, lastTermRecord)
 		for _, item := range rewards {
 			acc := am.GetAccount(item.Address)
 			balance := acc.GetBalance()
@@ -221,6 +225,46 @@ func (d *Dpovp) Finalize(height uint32, am *account.Manager) error {
 		return err
 	}
 	return nil
+}
+
+func DivideSalary(totalSalary *big.Int, am *account.Manager, t *deputynode.TermRecord) []*deputynode.DeputySalary {
+	salaries := make([]*deputynode.DeputySalary, len(t.Nodes))
+	totalVotes := t.GetTotalVotes()
+	for i, node := range t.Nodes {
+		salaries[i] = &deputynode.DeputySalary{
+			Address: getIncomeAddressFromDeputyNode(am, node),
+			Salary:  calculateSalary(totalSalary, node.Votes, totalVotes, minPrecision),
+		}
+	}
+	return salaries
+}
+
+func calculateSalary(totalSalary, deputyVotes, totalVotes, precision *big.Int) *big.Int {
+	r := new(big.Int)
+	// totalSalary * deputyVotes / totalVotes
+	r.Mul(totalSalary, deputyVotes)
+	r.Div(r, totalVotes)
+	// r - ( r % precision )
+	mod := new(big.Int).Mod(r, precision)
+	r.Sub(r, mod)
+	return r
+}
+
+// getIncomeAddressFromDeputyNode
+func getIncomeAddressFromDeputyNode(am *account.Manager, node *deputynode.DeputyNode) common.Address {
+	minerAcc := am.GetAccount(node.MinerAddress)
+	profile := minerAcc.GetCandidate()
+	strIncomeAddress, ok := profile[types.CandidateKeyIncomeAddress]
+	if !ok {
+		log.Errorf("not exist income address. the salary will be awarded to minerAddress. miner address = %s", node.MinerAddress.String())
+		return node.MinerAddress
+	}
+	incomeAddress, err := common.StringToAddress(strIncomeAddress)
+	if err != nil {
+		log.Errorf("income address invalid. the salary will be awarded to minerAddress. incomeAddress = %s", strIncomeAddress)
+		return node.MinerAddress
+	}
+	return incomeAddress
 }
 
 // getTermRewardValue reward value of miners at the change of term

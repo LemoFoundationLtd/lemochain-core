@@ -206,6 +206,16 @@ func isLemoAddress(str string) bool {
 	return strings.HasPrefix(str, strings.ToUpper(logo))
 }
 
+// CheckLemoAddress
+func CheckLemoAddress(lemoAddress string) bool {
+	var a Address
+	err := a.Decode(lemoAddress)
+	if err != nil {
+		return false
+	}
+	return true
+}
+
 // GetCheckSum get the check digit by doing an exclusive OR operation
 func GetCheckSum(addressToBytes []byte) byte {
 	var temp = byte(0)

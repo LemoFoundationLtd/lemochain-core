@@ -227,7 +227,7 @@ func (evm *EVM) RegisterOrUpdateToCandidate(candidateAddress, to common.Address,
 	if !ok {
 		newIsCandidate = params.IsCandidateNode
 	}
-	minerAddress, ok := candiNode[types.CandidateKeyMinerAddress]
+	minerAddress, ok := candiNode[types.CandidateKeyIncomeAddress]
 	if !ok {
 		minerAddress = candidateAddress.String()
 	}
@@ -267,7 +267,7 @@ func (evm *EVM) RegisterOrUpdateToCandidate(candidateAddress, to common.Address,
 			return gas, nil
 		}
 
-		profile[types.CandidateKeyMinerAddress] = minerAddress
+		profile[types.CandidateKeyIncomeAddress] = minerAddress
 		profile[types.CandidateKeyHost] = host
 		profile[types.CandidateKeyPort] = port
 		nodeAccount.SetCandidate(profile)
@@ -277,7 +277,7 @@ func (evm *EVM) RegisterOrUpdateToCandidate(candidateAddress, to common.Address,
 		// Register candidate nodes
 		newProfile := make(map[string]string, 5)
 		newProfile[types.CandidateKeyIsCandidate] = params.IsCandidateNode
-		newProfile[types.CandidateKeyMinerAddress] = minerAddress
+		newProfile[types.CandidateKeyIncomeAddress] = minerAddress
 		newProfile[types.CandidateKeyNodeID] = nodeID
 		newProfile[types.CandidateKeyHost] = host
 		newProfile[types.CandidateKeyPort] = port

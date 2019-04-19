@@ -10,6 +10,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/vm"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
+	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-core/common/hexutil"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/common/math"
@@ -28,6 +29,9 @@ var (
 	ErrInsufficientBalanceForGas = errors.New("insufficient balance to pay for gas")
 	ErrInvalidTxInBlock          = errors.New("block contains invalid transaction")
 	ErrInvalidGenesis            = errors.New("can't process genesis block")
+	ErrInvalidHost               = errors.New("the length of host field in transaction is out of max length limit")
+	ErrInvalidAddress            = errors.New("invalid address")
+	ErrInvalidNodeId             = errors.New("invalid nodeId")
 )
 
 type TxProcessor struct {
@@ -164,7 +168,6 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 		initialSenderBalance = sender.GetBalance()
 		contractCreation     = tx.To() == nil
 		restGas              = tx.GasLimit()
-		//mergeFrom            = len(p.am.GetChangeLogs())
 	)
 	err = p.buyGas(gp, tx)
 	if err != nil {
@@ -208,22 +211,10 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 			log.Errorf("unmarshal Candidate node error: %s", err)
 			return 0, err
 		}
-
-		if nodeId, ok := profile[types.CandidateKeyNodeID]; ok {
-			nodeIdLength := len(nodeId)
-			if nodeIdLength != StandardNodeIdLength {
-				nodeIdErr := fmt.Errorf("the nodeId length [%d] is not equal the standard length [%d] ", nodeIdLength, StandardNodeIdLength)
-				return 0, nodeIdErr
-			}
+		// check nodeID host and incomeAddress
+		if err = checkRegisterTxProfile(profile); err != nil {
+			return 0, err
 		}
-		if host, ok := profile[types.CandidateKeyHost]; ok {
-			hostLength := len(host)
-			if hostLength > MaxDeputyHostLength {
-				hostErr := fmt.Errorf("the length of host field in transaction is out of max length limit. host length = %d. max length limit = %d. ", hostLength, MaxDeputyHostLength)
-				return 0, hostErr
-			}
-		}
-
 		restGas, vmErr = vmEnv.RegisterOrUpdateToCandidate(senderAddr, params.FeeReceiveAddress, profile, restGas, initialSenderBalance)
 
 	case params.CreateAssetTx:
@@ -388,10 +379,25 @@ func (p *TxProcessor) refundGas(gp *types.GasPool, tx *types.Transaction, restGa
 // chargeForGas change the gas to miner
 func (p *TxProcessor) chargeForGas(charge *big.Int, minerAddress common.Address) {
 	if charge.Cmp(new(big.Int)) != 0 {
+		// find income address
 		miner := p.am.GetAccount(minerAddress)
-		miner.SetBalance(new(big.Int).Add(miner.GetBalance(), charge))
+		profile := miner.GetCandidate()
+		strIncomeAddress, ok := profile[types.CandidateKeyIncomeAddress]
+		if !ok {
+			log.Errorf("incomeAddress is null when charge gas for minerAddress. minerAddress = %s", minerAddress.String())
+			return
+		}
+		incomeAddress, err := common.StringToAddress(strIncomeAddress)
+		if err != nil {
+			log.Errorf("get incomeAddress error by strIncomeAddress or incomeAddress invalid; strIncomeAddress = %s,minerAddress = %s", strIncomeAddress, minerAddress)
+			return
+		}
+		// get income account
+		incomeAcc := p.am.GetAccount(incomeAddress)
+		// get charge
+		incomeAcc.SetBalance(new(big.Int).Add(incomeAcc.GetBalance(), charge))
 		// change in the number of votes cast by the miner's account to the candidate node
-		p.changeCandidateVotes(minerAddress, charge)
+		p.changeCandidateVotes(incomeAddress, charge)
 	}
 }
 
@@ -520,4 +526,36 @@ func getEVM(ctx context.Context, caller common.Address, tx *types.Transaction, h
 	evmContext := NewEVMContext(tx, header, txIndex, txHash, blockHash, chain)
 	vmEnv := vm.NewEVM(evmContext, accM, cfg)
 	return vmEnv, vmError, sender
+}
+
+func checkRegisterTxProfile(profile types.Profile) error {
+	// check income address
+	if strIncomeAddress, ok := profile[types.CandidateKeyIncomeAddress]; ok {
+		if !common.CheckLemoAddress(strIncomeAddress) {
+			log.Errorf("income address failed verification,please check whether the input is correct. incomeAddress = %s", strIncomeAddress)
+			return ErrInvalidAddress
+		}
+	}
+	// check nodeId
+	if nodeId, ok := profile[types.CandidateKeyNodeID]; ok {
+		nodeIdLength := len(nodeId)
+		if nodeIdLength != StandardNodeIdLength {
+			log.Errorf("the nodeId length [%d] is not equal the standard length [%d] ", nodeIdLength, StandardNodeIdLength)
+			return ErrInvalidNodeId
+		}
+		// check nodeId is available
+		if !crypto.CheckPublic(nodeId) {
+			log.Errorf("invalid nodeId, nodeId = %s", nodeId)
+			return ErrInvalidNodeId
+		}
+	}
+
+	if host, ok := profile[types.CandidateKeyHost]; ok {
+		hostLength := len(host)
+		if hostLength > MaxDeputyHostLength {
+			log.Errorf("the length of host field in transaction is out of max length limit. host length = %d. max length limit = %d. ", hostLength, MaxDeputyHostLength)
+			return ErrInvalidHost
+		}
+	}
+	return nil
 }

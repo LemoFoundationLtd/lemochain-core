@@ -8,12 +8,8 @@ import (
 	"math/big"
 )
 
-var (
-	minPrecision = new(big.Int).SetUint64(uint64(1000000000000000000)) // 1 LEMO
-)
-
 type DeputySalary struct {
-	Address common.Address
+	Address common.Address // income address
 	Salary  *big.Int
 }
 
@@ -72,30 +68,6 @@ func (t *TermRecord) GetTotalVotes() *big.Int {
 		totalVotes.Add(totalVotes, node.Votes)
 	}
 	return totalVotes
-}
-
-// DivideSalary divide term salary to every node including of candidate nodes
-func (t *TermRecord) DivideSalary(totalSalary *big.Int) []*DeputySalary {
-	salaries := make([]*DeputySalary, len(t.Nodes))
-	totalVotes := t.GetTotalVotes()
-	for i, node := range t.Nodes {
-		salaries[i] = &DeputySalary{
-			Address: node.MinerAddress,
-			Salary:  divideSalary(totalSalary, node.Votes, totalVotes, minPrecision),
-		}
-	}
-	return salaries
-}
-
-func divideSalary(totalSalary, deputyVotes, totalVotes, precision *big.Int) *big.Int {
-	r := new(big.Int)
-	// totalSalary * deputyVotes / totalVotes
-	r.Mul(totalSalary, deputyVotes)
-	r.Div(r, totalVotes)
-	// r - ( r % precision )
-	mod := new(big.Int).Mod(r, precision)
-	r.Sub(r, mod)
-	return r
 }
 
 // IsRewardBlock 是否该发出块奖励了
