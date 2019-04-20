@@ -7,7 +7,6 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/vm"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
@@ -16,16 +15,15 @@ import (
 // Config is a basic type specifying certain configuration flags for running
 // the EVM.
 type Config struct {
-	ChainConfig *params.ChainConfig
-	Origin      common.Address
-	Coinbase    common.Address
-	BlockHeight uint32
-	Time        uint32
-	GasLimit    uint64
-	GasPrice    *big.Int
-	Value       *big.Int
-	Debug       bool
-	EVMConfig   vm.Config
+	Origin       common.Address
+	MinerAddress common.Address
+	BlockHeight  uint32
+	Time         uint32
+	GasLimit     uint64
+	GasPrice     *big.Int
+	Value        *big.Int
+	Debug        bool
+	EVMConfig    vm.Config
 
 	AccountManager *account.Manager
 	GetHashFn      func(n uint64) common.Hash
@@ -33,12 +31,6 @@ type Config struct {
 
 // sets defaults on the config
 func setDefaults(cfg *Config) {
-	if cfg.ChainConfig == nil {
-		cfg.ChainConfig = &params.ChainConfig{
-			ChainID: 1,
-		}
-	}
-
 	if cfg.Time == 0 {
 		cfg.Time = uint32(time.Now().Unix())
 	}
