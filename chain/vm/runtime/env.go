@@ -13,7 +13,7 @@ func NewEnv(cfg *Config) *vm.EVM {
 		GetHash:     func(uint32) common.Hash { return common.Hash{} },
 
 		Origin:       cfg.Origin,
-		MinerAddress: cfg.Coinbase,
+		MinerAddress: cfg.MinerAddress,
 		BlockHeight:  cfg.BlockHeight,
 		Time:         cfg.Time,
 		GasLimit:     cfg.GasLimit,
