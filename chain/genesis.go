@@ -22,7 +22,7 @@ var (
 )
 
 var (
-	DefaultFounder     = decodeMinerAddress("Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG")
+	DefaultFounder     = decodeMinerAddress("Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG") // Initial LEMO holder
 	DefaultDeputyNodes = deputynode.DeputyNodes{
 		&deputynode.DeputyNode{
 			MinerAddress: DefaultFounder,
