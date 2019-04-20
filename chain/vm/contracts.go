@@ -83,55 +83,37 @@ func (c *setRewardValue) Run(input []byte) ([]byte, error) {
 		return false32Byte, err
 	}
 	rewardMap := make(params.RewardsMap)
-	// first setup
-	if rewardBytes == nil {
+	if rewardBytes != nil {
+		err = json.Unmarshal(rewardBytes, &rewardMap)
+		if err != nil {
+			return false32Byte, err
+		}
+	}
+	// Judge whether to modify the value operation
+	if oldReward, ok := rewardMap[newReward.Term]; ok {
+		// The number of modifications exceeded the limit
+		if oldReward.Times == 2 {
+			err = fmt.Errorf("update %d term deputy node reward false", newReward.Term)
+			return false32Byte, err
+		}
+		// update
+		oldReward.Value = newReward.Value
+		oldReward.Times++
+	} else { // Set up new reward
 		rewardMap[newReward.Term] = &params.Reward{
 			Term:  newReward.Term,
 			Value: newReward.Value,
 			Times: 1,
 		}
-	} else {
-		err = json.Unmarshal(rewardBytes, &rewardMap)
-		if err != nil {
-			return false32Byte, err
-		}
+	}
 
-		// Calculate how many bonuses have been awarded
-		var total = big.NewInt(0)
-		var addValue = big.NewInt(0)
-		for _, v := range rewardMap {
-			total = new(big.Int).Add(total, v.Value)
-		}
-		// Judge whether the reward of the distributed over the total number of bonus pool
-		if re, ok := rewardMap[newReward.Term]; ok {
-			oldValue := re.Value
-			newValue := newReward.Value
-			addValue = new(big.Int).Sub(newValue, oldValue)
-		} else {
-			addValue = newReward.Value
-		}
-
-		if params.RewardPoolTotal.Cmp(new(big.Int).Add(total, addValue)) == -1 {
-			return false32Byte, errors.New("Reward pool balance is insufficient ")
-		}
-
-		// Judge whether to modify the value operation
-		if oldReward, ok := rewardMap[newReward.Term]; ok {
-			// The number of modifications exceeded the limit
-			if oldReward.Times == 2 {
-				err = fmt.Errorf("update %d term deputy node reward false", newReward.Term)
-				return false32Byte, err
-			}
-			// update
-			oldReward.Value = newReward.Value
-			oldReward.Times++
-		} else { // Set up new reward
-			rewardMap[newReward.Term] = &params.Reward{
-				Term:  newReward.Term,
-				Value: newReward.Value,
-				Times: 1,
-			}
-		}
+	// Calculate how many bonuses have been awarded
+	var total = big.NewInt(0)
+	for _, v := range rewardMap {
+		total.Add(total, v.Value)
+	}
+	if params.RewardPoolTotal.Cmp(total) < 0 {
+		return false32Byte, errors.New("Reward pool balance is insufficient")
 	}
 
 	// Save to account

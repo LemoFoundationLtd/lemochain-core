@@ -276,6 +276,7 @@ func (pm *ProtocolManager) insertBlock(b *types.Block) {
 			}
 			pm.txPool.Remove(txsKeys)
 		}
+		// pop the confirms which arrived before block
 		go pm.setConfirmsFromCache(b.Height(), b.Hash())
 	} else {
 		log.Errorf("insertBlock failed: %v", err)
