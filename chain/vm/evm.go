@@ -32,7 +32,7 @@ func run(evm *EVM, contract *Contract, input []byte) ([]byte, error) {
 		precompiles := PrecompiledContracts
 		if p := precompiles[*contract.CodeAddr]; p != nil {
 			// Determine whether the address to set the reward value is correct
-			if *contract.CodeAddr == params.TermRewardPrecompiledContractAddress && contract.caller.GetAddress() != params.RewardAddress {
+			if *contract.CodeAddr == params.TermRewardContract && contract.caller.GetAddress() != evm.vmConfig.RewardManager {
 				return nil, errors.New("Insufficient permission to call this Precompiled contract. ")
 			}
 			return RunPrecompiledContract(p, input, contract, evm)

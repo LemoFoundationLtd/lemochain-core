@@ -394,8 +394,8 @@ func TestDpovp_Finalize(t *testing.T) {
 	}
 	data, err := json.Marshal(rewardMap)
 	assert.NoError(t, err)
-	rewardAcc := am.GetAccount(params.TermRewardPrecompiledContractAddress)
-	rewardAcc.SetStorageState(params.TermRewardPrecompiledContractAddress.Hash(), data)
+	rewardAcc := am.GetAccount(params.TermRewardContract)
+	rewardAcc.SetStorageState(params.TermRewardContract.Hash(), data)
 	// 设置deputy node的income address
 	term00, err := dm.GetTermByHeight(0)
 	assert.NoError(t, err)

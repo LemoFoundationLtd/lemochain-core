@@ -45,7 +45,8 @@ type TxProcessor struct {
 func NewTxProcessor(bc *BlockChain) *TxProcessor {
 	debug := bc.Flags().Bool(common.Debug)
 	cfg := &vm.Config{
-		Debug: debug,
+		Debug:         debug,
+		RewardManager: bc.Founder(),
 	}
 	return &TxProcessor{
 		chain: bc,

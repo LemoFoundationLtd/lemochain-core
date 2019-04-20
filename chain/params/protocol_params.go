@@ -69,10 +69,8 @@ var (
 
 	MaxPackageLength uint32 = 100 * 1024 * 1024 // 100M
 
-	RewardPoolTotal, _                   = new(big.Int).SetString("900000000000000000000000000", 10)          // 奖励池总量
-	RewardAddress, _                     = common.StringToAddress("Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG") // 调用设置换届奖励预编译合约的地址
-	TermRewardPrecompiledContractAddress = common.BytesToAddress([]byte{9})                                   // 换届奖励的预编译合约地址
-
+	TermRewardPoolTotal = common.Lemo2Mo("900000000") // 奖励池总量
+	TermRewardContract  = common.HexToAddress("0x09") // 换届奖励的预编译合约地址
 )
 
 //go:generate gencodec -type Reward --field-override RewardMarshaling -out gen_Reward_json.go
