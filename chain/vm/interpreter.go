@@ -2,6 +2,7 @@ package vm
 
 import (
 	"fmt"
+	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"sync/atomic"
 
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
@@ -21,6 +22,8 @@ type Config struct {
 	// may be left uninitialised and will be set to the default
 	// table.
 	JumpTable [256]operation
+	// RewardManager is the owner of reward setting precompiled contract
+	RewardManager common.Address
 }
 
 // Interpreter is used to run Lemochain based contracts and will utilise the

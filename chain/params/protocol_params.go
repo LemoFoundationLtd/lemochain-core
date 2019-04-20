@@ -69,10 +69,7 @@ var (
 
 	MaxPackageLength uint32 = 100 * 1024 * 1024 // 100M
 
-	DefaultFounder, _ = common.StringToAddress("Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG") // Initial LEMO holder
-
 	TermRewardPoolTotal = common.Lemo2Mo("900000000") // 奖励池总量
-	TermRewardManager   = DefaultFounder              // 调用设置换届奖励预编译合约的地址
 	TermRewardContract  = common.HexToAddress("0x09") // 换届奖励的预编译合约地址
 )
 
