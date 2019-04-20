@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/hexutil"
@@ -22,10 +23,9 @@ var (
 )
 
 var (
-	DefaultFounder     = decodeMinerAddress("Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG")
 	DefaultDeputyNodes = deputynode.DeputyNodes{
 		&deputynode.DeputyNode{
-			MinerAddress: DefaultFounder,
+			MinerAddress: params.DefaultFounder,
 			NodeID:       common.FromHex("0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0"),
 			Rank:         0,
 			Votes:        new(big.Int).SetInt64(5),
@@ -88,7 +88,7 @@ func DefaultGenesisBlock() *Genesis {
 		Time:        uint32(timeSpan.Unix()),
 		ExtraData:   []byte(""),
 		GasLimit:    105000000,
-		Founder:     DefaultFounder,
+		Founder:     params.DefaultFounder,
 		DeputyNodes: DefaultDeputyNodes,
 	}
 }

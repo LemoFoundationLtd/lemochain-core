@@ -270,7 +270,7 @@ func getIncomeAddressFromDeputyNode(am *account.Manager, node *deputynode.Deputy
 // getTermRewardValue reward value of miners at the change of term
 func getTermRewardValue(am *account.Manager, term uint32) (*big.Int, error) {
 	// Precompile the contract address
-	address := params.TermRewardPrecompiledContractAddress
+	address := params.TermRewardContract
 	acc := am.GetAccount(address)
 	// key of db
 	key := address.Hash()

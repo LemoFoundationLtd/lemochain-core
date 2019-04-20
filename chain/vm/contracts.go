@@ -66,7 +66,7 @@ func (c *setRewardValue) Run(input []byte) ([]byte, error) {
 	if err != nil {
 		return false32Byte, err
 	}
-	if newReward.Value.Cmp(params.RewardPoolTotal) >= 0 {
+	if newReward.Value.Cmp(params.TermRewardPoolTotal) >= 0 {
 		return false32Byte, errors.New("set value can't >= Reward pool total")
 	}
 	// It is not allowed to set a old term
@@ -75,7 +75,7 @@ func (c *setRewardValue) Run(input []byte) ([]byte, error) {
 		return false32Byte, err
 	}
 
-	rewardAddress := params.TermRewardPrecompiledContractAddress
+	rewardAddress := params.TermRewardContract
 	rewardAccount := c.am.GetAccount(rewardAddress)
 	Key := rewardAddress.Hash()
 	rewardBytes, err := rewardAccount.GetStorageState(Key)
@@ -112,7 +112,7 @@ func (c *setRewardValue) Run(input []byte) ([]byte, error) {
 	for _, v := range rewardMap {
 		total.Add(total, v.Value)
 	}
-	if params.RewardPoolTotal.Cmp(total) < 0 {
+	if params.TermRewardPoolTotal.Cmp(total) < 0 {
 		return false32Byte, errors.New("Reward pool balance is insufficient")
 	}
 
