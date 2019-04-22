@@ -99,17 +99,17 @@ func TestChainAPI_api(t *testing.T) {
 
 	// get stable block api
 	StaBlock := c.chain.StableBlock()
-	assert.Equal(t, StaBlock, c.LatestStableBlock(true))
+	assert.Equal(t, StaBlock, c.CurrentBlock(true))
 	sBlock := &types.Block{
 		Header: StaBlock.Header,
 	}
-	assert.Equal(t, sBlock, c.LatestStableBlock(false))
+	assert.Equal(t, sBlock, c.CurrentBlock(false))
 
 	// get current chain height api
 	assert.Equal(t, c.chain.CurrentBlock().Height(), c.CurrentHeight())
 
 	// get latest stable block height
-	assert.Equal(t, c.chain.StableBlock().Height(), c.LatestStableHeight())
+	assert.Equal(t, c.chain.StableBlock().Height(), c.CurrentHeight())
 
 	// get suggest gas price
 	// todo
@@ -138,32 +138,6 @@ func TestTxAPI_api(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, tx.Hash(), sendTxHash)
 }
-
-// // TestMineAPI_api miner api test // todo
-// func TestMineAPI_api(t *testing.T) {
-// 	lemoConf := &LemoConfig{
-// 		Genesis:   chain.DefaultGenesisBlock(),
-// 		NetworkId: 1,
-// 		MaxPeers:  1000,
-// 		Port:      7001,
-// 		NodeKey:   "0xc21b6b2fbf230f665b936194d14da67187732bf9d28768aef1a3cbb26608f8aa",
-// 		ExtraData: []byte{},
-// 	}
-// 	testNode, err := New(lemoConf, &DefaultNodeConfig, flag.NewCmdFlags(&cli.Context{}, []cli.Flag{}))
-// 	t.Error(err)
-//
-// 	miner := (*testNode).miner
-// 	m := NewMineAPI(miner)
-// 	t.Log("after:", m.IsMining())
-// 	m.MineStart()
-// 	t.Log("then:", m.IsMining())
-// 	// todo
-// 	m.MineStop()
-// 	t.Log("last:", m.IsMining())
-//
-// 	assert.Equal(t, "0x015780F8456F9c1532645087a19DcF9a7e0c7F97", m.MinerAddress())
-//
-// }
 
 // TestNewPublicTxAPI_EstimateGas
 func TestNewPublicTxAPI_EstimateGas(t *testing.T) {
