@@ -8,7 +8,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/network/p2p"
 	"github.com/stretchr/testify/assert"
 	"math/big"
-	"net"
 	"testing"
 )
 
@@ -75,8 +74,6 @@ func createPm() *ProtocolManager {
 		&deputynode.DeputyNode{
 			MinerAddress: decodeMinerAddress("Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG"),
 			NodeID:       common.FromHex("0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0"),
-			IP:           net.ParseIP("120.78.132.151"),
-			Port:         7003,
 			Rank:         0,
 			Votes:        new(big.Int).SetInt64(5),
 		},
@@ -201,15 +198,30 @@ func Test_stableBlockLoop(t *testing.T) {
 	close(pm.quitCh)
 }
 
-func Test_setConfirmsFromCache(t *testing.T) {
+func Test_mergeConfirmsFromCache(t *testing.T) {
 	pm := createPm()
+	testBlock := &types.Block{Header: &types.Header{Height: 1}}
 	confirm1 := &BlockConfirmData{
-		Height: 1,
-		Hash:   common.Hash{0x01},
+		Height:   testBlock.Height(),
+		Hash:     testBlock.Hash(),
+		SignInfo: types.SignData{0x12},
 	}
 	confirm12 := &BlockConfirmData{
-		Height: 1,
-		Hash:   common.Hash{0x01, 0x02},
+		Height:   testBlock.Height(),
+		Hash:     testBlock.Hash(),
+		SignInfo: types.SignData{0x23},
+	}
+	// other fork block
+	confirm13 := &BlockConfirmData{
+		Height:   testBlock.Height(),
+		Hash:     common.Hash{0x01, 0x02},
+		SignInfo: types.SignData{0x34},
+	}
+	// wrong height
+	confirm14 := &BlockConfirmData{
+		Height:   100,
+		Hash:     testBlock.Hash(),
+		SignInfo: types.SignData{0x45},
 	}
 	confirm2 := &BlockConfirmData{
 		Height: 2,
@@ -219,14 +231,18 @@ func Test_setConfirmsFromCache(t *testing.T) {
 		Height: 3,
 		Hash:   common.Hash{0x03},
 	}
+	// confirm1 is exist
+	testBlock.Confirms = []types.SignData{confirm1.SignInfo}
+
 	pm.confirmsCache.Push(confirm1)
 	pm.confirmsCache.Push(confirm12)
+	pm.confirmsCache.Push(confirm13)
+	pm.confirmsCache.Push(confirm14)
 	pm.confirmsCache.Push(confirm2)
 	pm.confirmsCache.Push(confirm3)
-	go pm.setConfirmsFromCache(1, common.Hash{0x01})
-	res := <-pm.testOutput
-	assert.Equal(t, testSetConfirmFromCache, res)
-	assert.Equal(t, 3, pm.confirmsCache.Size())
+	pm.mergeConfirmsFromCache(testBlock)
+	assert.Equal(t, 4, pm.confirmsCache.Size())
+	assert.Equal(t, 2, len(testBlock.Confirms))
 	close(pm.quitCh)
 }
 

@@ -1,7 +1,6 @@
 package store
 
 import (
-	"bytes"
 	"errors"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
@@ -498,22 +497,7 @@ func (database *ChainDatabase) appendConfirm(block *types.Block, confirms []type
 		return
 	}
 
-	if block.Confirms == nil {
-		block.SetConfirms(confirms)
-	} else {
-		for i := 0; i < len(confirms); i++ {
-			j := 0
-			for ; j < len(block.Confirms); j++ {
-				if bytes.Compare(confirms[i][:], block.Confirms[j][:]) == 0 {
-					break
-				}
-			}
-
-			if j == len(block.Confirms) {
-				block.Confirms = append(block.Confirms, confirms[i])
-			}
-		}
-	}
+	block.AppendConfirm(confirms...)
 }
 
 func (database *ChainDatabase) setConfirm(hash common.Hash, confirms []types.SignData) error {
@@ -581,11 +565,18 @@ func (database *ChainDatabase) SetStableBlock(hash common.Hash) error {
 	}
 
 	// clear the branches from root, except one branch
-	clear := func(root, exclude *CBlock) {
-		root.Walk(func(node *CBlock) {
+	clear := func(oldRoot, newRoot *CBlock) {
+		// remove other brunch nodes
+		oldRoot.Walk(func(node *CBlock) {
 			delete(database.UnConfirmBlocks, node.Block.Hash())
-		}, exclude)
-		delete(database.UnConfirmBlocks, exclude.Block.Hash())
+			node.Parent = nil
+			node.Children = nil
+		}, newRoot)
+		// remove old root from unconfirmed nodes map
+		delete(database.UnConfirmBlocks, newRoot.Block.Hash())
+		// cut the connection between old root and new root
+		newRoot.Parent = nil
+		oldRoot.Children = nil
 	}
 
 	commit := func(blocks []*CBlock) error {

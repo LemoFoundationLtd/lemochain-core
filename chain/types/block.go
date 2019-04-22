@@ -1,6 +1,7 @@
 package types
 
 import (
+	"bytes"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
@@ -228,6 +229,23 @@ func (b *Block) SetConfirms(confirms []SignData) { b.Confirms = confirms }
 func (b *Block) SetChangeLogs(logs []*ChangeLog) { b.ChangeLogs = logs }
 
 func (b *Block) SetDeputyNodes(deputyNodes deputynode.DeputyNodes) { b.DeputyNodes = deputyNodes }
+
+func (b *Block) IsConfirmExist(confirm SignData) bool {
+	for _, oldConfirm := range b.Confirms {
+		if bytes.Compare(oldConfirm[:], confirm[:]) == 0 {
+			return true
+		}
+	}
+	return false
+}
+
+func (b *Block) AppendConfirm(confirms ...SignData) {
+	for _, newConfirm := range confirms {
+		if !b.IsConfirmExist(newConfirm) {
+			b.Confirms = append(b.Confirms, newConfirm)
+		}
+	}
+}
 
 func (b *Block) Size() int {
 	return binary.Size(b)
