@@ -565,11 +565,18 @@ func (database *ChainDatabase) SetStableBlock(hash common.Hash) error {
 	}
 
 	// clear the branches from root, except one branch
-	clear := func(root, exclude *CBlock) {
-		root.Walk(func(node *CBlock) {
+	clear := func(oldRoot, newRoot *CBlock) {
+		// remove other brunch nodes
+		oldRoot.Walk(func(node *CBlock) {
 			delete(database.UnConfirmBlocks, node.Block.Hash())
-		}, exclude)
-		delete(database.UnConfirmBlocks, exclude.Block.Hash())
+			node.Parent = nil
+			node.Children = nil
+		}, newRoot)
+		// remove old root from unconfirmed nodes map
+		delete(database.UnConfirmBlocks, newRoot.Block.Hash())
+		// cut the connection between old root and new root
+		newRoot.Parent = nil
+		oldRoot.Children = nil
 	}
 
 	commit := func(blocks []*CBlock) error {

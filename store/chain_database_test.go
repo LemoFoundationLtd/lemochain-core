@@ -83,8 +83,12 @@ func TestCacheChain_SetBlock(t *testing.T) {
 	assert.NoError(t, err)
 
 	// set 2 blocks stable
+	oldStable := cacheChain.LastConfirm
 	err = cacheChain.SetStableBlock(block2.Hash())
 	assert.NoError(t, err)
+	assert.Empty(t, oldStable.Children)
+	assert.Empty(t, cacheChain.LastConfirm.Parent)
+	assert.NotEqual(t, oldStable, cacheChain.LastConfirm)
 	time.Sleep(1 * time.Second)
 
 	result, err = cacheChain.GetBlockByHash(block2.Hash())
