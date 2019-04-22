@@ -10,12 +10,6 @@ lemo._createAPI('net', 'getConnections', 'net_connections');
 
 lemo._createAPI('tx', 'estimateGas', 'tx_estimateGas');
 lemo._createAPI('tx', 'estimateCreateContractGas', 'tx_estimateCreateContractGas');
-lemo._createAPI('tx', 'sendReimbursedGasTx', 'tx_sendReimbursedGasTx');
-lemo._createAPI('tx', 'createAsset', 'tx_createAsset');
-lemo._createAPI('tx', 'issueAsset', 'tx_issueAsset');
-lemo._createAPI('tx', 'replenishAsset', 'tx_replenishAsset');
-lemo._createAPI('tx', 'modifyAsset', 'tx_modifyAsset');
-lemo._createAPI('tx', 'tradingAsset', 'tx_tradingAsset');
 
 lemo._createAPI('chain', 'getAllDeputyNodesList', 'chain_getAllDeputyNodesList');
 

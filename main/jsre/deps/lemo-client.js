@@ -469,6 +469,36 @@
 	  return _assertThisInitialized(self);
 	}
 
+	function _superPropBase(object, property) {
+	  while (!Object.prototype.hasOwnProperty.call(object, property)) {
+	    object = _getPrototypeOf(object);
+	    if (object === null) break;
+	  }
+
+	  return object;
+	}
+
+	function _get(target, property, receiver) {
+	  if (typeof Reflect !== "undefined" && Reflect.get) {
+	    _get = Reflect.get;
+	  } else {
+	    _get = function _get(target, property, receiver) {
+	      var base = _superPropBase(target, property);
+
+	      if (!base) return;
+	      var desc = Object.getOwnPropertyDescriptor(base, property);
+
+	      if (desc.get) {
+	        return desc.get.call(receiver);
+	      }
+
+	      return desc.value;
+	    };
+	  }
+
+	  return _get(target, property, receiver || target);
+	}
+
 	function _slicedToArray(arr, i) {
 	  return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _nonIterableRest();
 	}
@@ -6066,6 +6096,9 @@
 	  InvalidAddress: function InvalidAddress(address) {
 	    return "Invalid LemoChain address ".concat(address);
 	  },
+	  InvalidAddressConflict: function InvalidAddressConflict(address) {
+	    return "Private key is not match with the payer address ".concat(address);
+	  },
 	  InvalidAddressLength: function InvalidAddressLength(address) {
 	    return "Invalid length of LemoChain address ".concat(address);
 	  },
@@ -6127,6 +6160,15 @@
 	  },
 	  TXNegativeError: function TXNegativeError(param) {
 	    return "The ".concat(param, " in transaction should be positive");
+	  },
+	  TXInfoError: function TXInfoError() {
+	    return 'Edit information cannot be empty';
+	  },
+	  TxInvalidSymbol: function TxInvalidSymbol(parm) {
+	    return "Wrong character, '".concat(parm, "' must be true or false");
+	  },
+	  MoneyFormatError: function MoneyFormatError() {
+	    return 'The value entered is in the wrong format';
 	  }
 	};
 
@@ -7521,30 +7563,6 @@
 	});
 	_addToUnscopables(KEY);
 
-	// true  -> String#at
-	// false -> String#codePointAt
-	var _stringAt = function (TO_STRING) {
-	  return function (that, pos) {
-	    var s = String(_defined(that));
-	    var i = _toInteger(pos);
-	    var l = s.length;
-	    var a, b;
-	    if (i < 0 || i >= l) return TO_STRING ? '' : undefined;
-	    a = s.charCodeAt(i);
-	    return a < 0xd800 || a > 0xdbff || i + 1 === l || (b = s.charCodeAt(i + 1)) < 0xdc00 || b > 0xdfff
-	      ? TO_STRING ? s.charAt(i) : a
-	      : TO_STRING ? s.slice(i, i + 2) : (a - 0xd800 << 10) + (b - 0xdc00) + 0x10000;
-	  };
-	};
-
-	var at = _stringAt(true);
-
-	 // `AdvanceStringIndex` abstract operation
-	// https://tc39.github.io/ecma262/#sec-advancestringindex
-	var _advanceStringIndex = function (S, index, unicode) {
-	  return index + (unicode ? at(S, index).length : 1);
-	};
-
 	// getting tag from 19.1.3.6 Object.prototype.toString()
 
 	var TAG$1 = _wks('toStringTag');
@@ -7568,287 +7586,6 @@
 	    // ES3 arguments fallback
 	    : (B = _cof(O)) == 'Object' && typeof O.callee == 'function' ? 'Arguments' : B;
 	};
-
-	var builtinExec = RegExp.prototype.exec;
-
-	 // `RegExpExec` abstract operation
-	// https://tc39.github.io/ecma262/#sec-regexpexec
-	var _regexpExecAbstract = function (R, S) {
-	  var exec = R.exec;
-	  if (typeof exec === 'function') {
-	    var result = exec.call(R, S);
-	    if (typeof result !== 'object') {
-	      throw new TypeError('RegExp exec method returned something other than an Object or null');
-	    }
-	    return result;
-	  }
-	  if (_classof(R) !== 'RegExp') {
-	    throw new TypeError('RegExp#exec called on incompatible receiver');
-	  }
-	  return builtinExec.call(R, S);
-	};
-
-	var nativeExec = RegExp.prototype.exec;
-	// This always refers to the native implementation, because the
-	// String#replace polyfill uses ./fix-regexp-well-known-symbol-logic.js,
-	// which loads this file before patching the method.
-	var nativeReplace = String.prototype.replace;
-
-	var patchedExec = nativeExec;
-
-	var LAST_INDEX = 'lastIndex';
-
-	var UPDATES_LAST_INDEX_WRONG = (function () {
-	  var re1 = /a/,
-	      re2 = /b*/g;
-	  nativeExec.call(re1, 'a');
-	  nativeExec.call(re2, 'a');
-	  return re1[LAST_INDEX] !== 0 || re2[LAST_INDEX] !== 0;
-	})();
-
-	// nonparticipating capturing group, copied from es5-shim's String#split patch.
-	var NPCG_INCLUDED = /()??/.exec('')[1] !== undefined;
-
-	var PATCH = UPDATES_LAST_INDEX_WRONG || NPCG_INCLUDED;
-
-	if (PATCH) {
-	  patchedExec = function exec(str) {
-	    var re = this;
-	    var lastIndex, reCopy, match, i;
-
-	    if (NPCG_INCLUDED) {
-	      reCopy = new RegExp('^' + re.source + '$(?!\\s)', _flags.call(re));
-	    }
-	    if (UPDATES_LAST_INDEX_WRONG) lastIndex = re[LAST_INDEX];
-
-	    match = nativeExec.call(re, str);
-
-	    if (UPDATES_LAST_INDEX_WRONG && match) {
-	      re[LAST_INDEX] = re.global ? match.index + match[0].length : lastIndex;
-	    }
-	    if (NPCG_INCLUDED && match && match.length > 1) {
-	      // Fix browsers whose `exec` methods don't consistently return `undefined`
-	      // for NPCG, like IE8. NOTE: This doesn' work for /(.?)?/
-	      // eslint-disable-next-line no-loop-func
-	      nativeReplace.call(match[0], reCopy, function () {
-	        for (i = 1; i < arguments.length - 2; i++) {
-	          if (arguments[i] === undefined) match[i] = undefined;
-	        }
-	      });
-	    }
-
-	    return match;
-	  };
-	}
-
-	var _regexpExec = patchedExec;
-
-	_export({
-	  target: 'RegExp',
-	  proto: true,
-	  forced: _regexpExec !== /./.exec
-	}, {
-	  exec: _regexpExec
-	});
-
-	var SPECIES$1 = _wks('species');
-
-	var REPLACE_SUPPORTS_NAMED_GROUPS = !_fails(function () {
-	  // #replace needs built-in support for named groups.
-	  // #match works fine because it just return the exec results, even if it has
-	  // a "grops" property.
-	  var re = /./;
-	  re.exec = function () {
-	    var result = [];
-	    result.groups = { a: '7' };
-	    return result;
-	  };
-	  return ''.replace(re, '$<a>') !== '7';
-	});
-
-	var SPLIT_WORKS_WITH_OVERWRITTEN_EXEC = (function () {
-	  // Chrome 51 has a buggy "split" implementation when RegExp#exec !== nativeExec
-	  var re = /(?:)/;
-	  var originalExec = re.exec;
-	  re.exec = function () { return originalExec.apply(this, arguments); };
-	  var result = 'ab'.split(re);
-	  return result.length === 2 && result[0] === 'a' && result[1] === 'b';
-	})();
-
-	var _fixReWks = function (KEY, length, exec) {
-	  var SYMBOL = _wks(KEY);
-
-	  var DELEGATES_TO_SYMBOL = !_fails(function () {
-	    // String methods call symbol-named RegEp methods
-	    var O = {};
-	    O[SYMBOL] = function () { return 7; };
-	    return ''[KEY](O) != 7;
-	  });
-
-	  var DELEGATES_TO_EXEC = DELEGATES_TO_SYMBOL ? !_fails(function () {
-	    // Symbol-named RegExp methods call .exec
-	    var execCalled = false;
-	    var re = /a/;
-	    re.exec = function () { execCalled = true; return null; };
-	    if (KEY === 'split') {
-	      // RegExp[@@split] doesn't call the regex's exec method, but first creates
-	      // a new one. We need to return the patched regex when creating the new one.
-	      re.constructor = {};
-	      re.constructor[SPECIES$1] = function () { return re; };
-	    }
-	    re[SYMBOL]('');
-	    return !execCalled;
-	  }) : undefined;
-
-	  if (
-	    !DELEGATES_TO_SYMBOL ||
-	    !DELEGATES_TO_EXEC ||
-	    (KEY === 'replace' && !REPLACE_SUPPORTS_NAMED_GROUPS) ||
-	    (KEY === 'split' && !SPLIT_WORKS_WITH_OVERWRITTEN_EXEC)
-	  ) {
-	    var nativeRegExpMethod = /./[SYMBOL];
-	    var fns = exec(
-	      _defined,
-	      SYMBOL,
-	      ''[KEY],
-	      function maybeCallNative(nativeMethod, regexp, str, arg2, forceStringMethod) {
-	        if (regexp.exec === _regexpExec) {
-	          if (DELEGATES_TO_SYMBOL && !forceStringMethod) {
-	            // The native String method already delegates to @@method (this
-	            // polyfilled function), leasing to infinite recursion.
-	            // We avoid it by directly calling the native @@method method.
-	            return { done: true, value: nativeRegExpMethod.call(regexp, str, arg2) };
-	          }
-	          return { done: true, value: nativeMethod.call(str, regexp, arg2) };
-	        }
-	        return { done: false };
-	      }
-	    );
-	    var strfn = fns[0];
-	    var rxfn = fns[1];
-
-	    _redefine(String.prototype, KEY, strfn);
-	    _hide(RegExp.prototype, SYMBOL, length == 2
-	      // 21.2.5.8 RegExp.prototype[@@replace](string, replaceValue)
-	      // 21.2.5.11 RegExp.prototype[@@split](string, limit)
-	      ? function (string, arg) { return rxfn.call(string, this, arg); }
-	      // 21.2.5.6 RegExp.prototype[@@match](string)
-	      // 21.2.5.9 RegExp.prototype[@@search](string)
-	      : function (string) { return rxfn.call(string, this); }
-	    );
-	  }
-	};
-
-	var max$1 = Math.max;
-	var min$2 = Math.min;
-	var floor$1 = Math.floor;
-	var SUBSTITUTION_SYMBOLS = /\$([$&`']|\d\d?|<[^>]*>)/g;
-	var SUBSTITUTION_SYMBOLS_NO_NAMED = /\$([$&`']|\d\d?)/g;
-
-	var maybeToString = function (it) {
-	  return it === undefined ? it : String(it);
-	};
-
-	// @@replace logic
-	_fixReWks('replace', 2, function (defined, REPLACE, $replace, maybeCallNative) {
-	  return [
-	    // `String.prototype.replace` method
-	    // https://tc39.github.io/ecma262/#sec-string.prototype.replace
-	    function replace(searchValue, replaceValue) {
-	      var O = defined(this);
-	      var fn = searchValue == undefined ? undefined : searchValue[REPLACE];
-	      return fn !== undefined
-	        ? fn.call(searchValue, O, replaceValue)
-	        : $replace.call(String(O), searchValue, replaceValue);
-	    },
-	    // `RegExp.prototype[@@replace]` method
-	    // https://tc39.github.io/ecma262/#sec-regexp.prototype-@@replace
-	    function (regexp, replaceValue) {
-	      var res = maybeCallNative($replace, regexp, this, replaceValue);
-	      if (res.done) return res.value;
-
-	      var rx = _anObject(regexp);
-	      var S = String(this);
-	      var functionalReplace = typeof replaceValue === 'function';
-	      if (!functionalReplace) replaceValue = String(replaceValue);
-	      var global = rx.global;
-	      if (global) {
-	        var fullUnicode = rx.unicode;
-	        rx.lastIndex = 0;
-	      }
-	      var results = [];
-	      while (true) {
-	        var result = _regexpExecAbstract(rx, S);
-	        if (result === null) break;
-	        results.push(result);
-	        if (!global) break;
-	        var matchStr = String(result[0]);
-	        if (matchStr === '') rx.lastIndex = _advanceStringIndex(S, _toLength(rx.lastIndex), fullUnicode);
-	      }
-	      var accumulatedResult = '';
-	      var nextSourcePosition = 0;
-	      for (var i = 0; i < results.length; i++) {
-	        result = results[i];
-	        var matched = String(result[0]);
-	        var position = max$1(min$2(_toInteger(result.index), S.length), 0);
-	        var captures = [];
-	        // NOTE: This is equivalent to
-	        //   captures = result.slice(1).map(maybeToString)
-	        // but for some reason `nativeSlice.call(result, 1, result.length)` (called in
-	        // the slice polyfill when slicing native arrays) "doesn't work" in safari 9 and
-	        // causes a crash (https://pastebin.com/N21QzeQA) when trying to debug it.
-	        for (var j = 1; j < result.length; j++) captures.push(maybeToString(result[j]));
-	        var namedCaptures = result.groups;
-	        if (functionalReplace) {
-	          var replacerArgs = [matched].concat(captures, position, S);
-	          if (namedCaptures !== undefined) replacerArgs.push(namedCaptures);
-	          var replacement = String(replaceValue.apply(undefined, replacerArgs));
-	        } else {
-	          replacement = getSubstitution(matched, S, position, captures, namedCaptures, replaceValue);
-	        }
-	        if (position >= nextSourcePosition) {
-	          accumulatedResult += S.slice(nextSourcePosition, position) + replacement;
-	          nextSourcePosition = position + matched.length;
-	        }
-	      }
-	      return accumulatedResult + S.slice(nextSourcePosition);
-	    }
-	  ];
-
-	    // https://tc39.github.io/ecma262/#sec-getsubstitution
-	  function getSubstitution(matched, str, position, captures, namedCaptures, replacement) {
-	    var tailPos = position + matched.length;
-	    var m = captures.length;
-	    var symbols = SUBSTITUTION_SYMBOLS_NO_NAMED;
-	    if (namedCaptures !== undefined) {
-	      namedCaptures = _toObject(namedCaptures);
-	      symbols = SUBSTITUTION_SYMBOLS;
-	    }
-	    return $replace.call(replacement, symbols, function (match, ch) {
-	      var capture;
-	      switch (ch.charAt(0)) {
-	        case '$': return '$';
-	        case '&': return matched;
-	        case '`': return str.slice(0, position);
-	        case "'": return str.slice(tailPos);
-	        case '<':
-	          capture = namedCaptures[ch.slice(1, -1)];
-	          break;
-	        default: // \d\d?
-	          var n = +ch;
-	          if (n === 0) return ch;
-	          if (n > m) {
-	            var f = floor$1(n / 10);
-	            if (f === 0) return ch;
-	            if (f <= m) return captures[f - 1] === undefined ? ch.charAt(1) : captures[f - 1] + ch.charAt(1);
-	            return ch;
-	          }
-	          capture = captures[n - 1];
-	      }
-	      return capture === undefined ? '' : capture;
-	    });
-	  }
-	});
 
 	var _anInstance = function (it, Constructor, name, forbiddenField) {
 	  if (!(it instanceof Constructor) || (forbiddenField !== undefined && forbiddenField in it)) {
@@ -7911,11 +7648,11 @@
 	// 7.3.20 SpeciesConstructor(O, defaultConstructor)
 
 
-	var SPECIES$2 = _wks('species');
+	var SPECIES$1 = _wks('species');
 	var _speciesConstructor = function (O, D) {
 	  var C = _anObject(O).constructor;
 	  var S;
-	  return C === undefined || (S = _anObject(C)[SPECIES$2]) == undefined ? D : _aFunction(S);
+	  return C === undefined || (S = _anObject(C)[SPECIES$1]) == undefined ? D : _aFunction(S);
 	};
 
 	// fast apply, http://jsperf.lnkit.com/fast-apply/5
@@ -8132,11 +7869,11 @@
 	  return target;
 	};
 
-	var SPECIES$3 = _wks('species');
+	var SPECIES$2 = _wks('species');
 
 	var _setSpecies = function (KEY) {
 	  var C = _global[KEY];
-	  if (_descriptors && C && !C[SPECIES$3]) _objectDp.f(C, SPECIES$3, {
+	  if (_descriptors && C && !C[SPECIES$2]) _objectDp.f(C, SPECIES$2, {
 	    configurable: true,
 	    get: function () { return this; }
 	  });
@@ -8457,6 +8194,200 @@
 
 	_addToUnscopables('fill');
 
+	// true  -> String#at
+	// false -> String#codePointAt
+	var _stringAt = function (TO_STRING) {
+	  return function (that, pos) {
+	    var s = String(_defined(that));
+	    var i = _toInteger(pos);
+	    var l = s.length;
+	    var a, b;
+	    if (i < 0 || i >= l) return TO_STRING ? '' : undefined;
+	    a = s.charCodeAt(i);
+	    return a < 0xd800 || a > 0xdbff || i + 1 === l || (b = s.charCodeAt(i + 1)) < 0xdc00 || b > 0xdfff
+	      ? TO_STRING ? s.charAt(i) : a
+	      : TO_STRING ? s.slice(i, i + 2) : (a - 0xd800 << 10) + (b - 0xdc00) + 0x10000;
+	  };
+	};
+
+	var at = _stringAt(true);
+
+	 // `AdvanceStringIndex` abstract operation
+	// https://tc39.github.io/ecma262/#sec-advancestringindex
+	var _advanceStringIndex = function (S, index, unicode) {
+	  return index + (unicode ? at(S, index).length : 1);
+	};
+
+	var builtinExec = RegExp.prototype.exec;
+
+	 // `RegExpExec` abstract operation
+	// https://tc39.github.io/ecma262/#sec-regexpexec
+	var _regexpExecAbstract = function (R, S) {
+	  var exec = R.exec;
+	  if (typeof exec === 'function') {
+	    var result = exec.call(R, S);
+	    if (typeof result !== 'object') {
+	      throw new TypeError('RegExp exec method returned something other than an Object or null');
+	    }
+	    return result;
+	  }
+	  if (_classof(R) !== 'RegExp') {
+	    throw new TypeError('RegExp#exec called on incompatible receiver');
+	  }
+	  return builtinExec.call(R, S);
+	};
+
+	var nativeExec = RegExp.prototype.exec;
+	// This always refers to the native implementation, because the
+	// String#replace polyfill uses ./fix-regexp-well-known-symbol-logic.js,
+	// which loads this file before patching the method.
+	var nativeReplace = String.prototype.replace;
+
+	var patchedExec = nativeExec;
+
+	var LAST_INDEX = 'lastIndex';
+
+	var UPDATES_LAST_INDEX_WRONG = (function () {
+	  var re1 = /a/,
+	      re2 = /b*/g;
+	  nativeExec.call(re1, 'a');
+	  nativeExec.call(re2, 'a');
+	  return re1[LAST_INDEX] !== 0 || re2[LAST_INDEX] !== 0;
+	})();
+
+	// nonparticipating capturing group, copied from es5-shim's String#split patch.
+	var NPCG_INCLUDED = /()??/.exec('')[1] !== undefined;
+
+	var PATCH = UPDATES_LAST_INDEX_WRONG || NPCG_INCLUDED;
+
+	if (PATCH) {
+	  patchedExec = function exec(str) {
+	    var re = this;
+	    var lastIndex, reCopy, match, i;
+
+	    if (NPCG_INCLUDED) {
+	      reCopy = new RegExp('^' + re.source + '$(?!\\s)', _flags.call(re));
+	    }
+	    if (UPDATES_LAST_INDEX_WRONG) lastIndex = re[LAST_INDEX];
+
+	    match = nativeExec.call(re, str);
+
+	    if (UPDATES_LAST_INDEX_WRONG && match) {
+	      re[LAST_INDEX] = re.global ? match.index + match[0].length : lastIndex;
+	    }
+	    if (NPCG_INCLUDED && match && match.length > 1) {
+	      // Fix browsers whose `exec` methods don't consistently return `undefined`
+	      // for NPCG, like IE8. NOTE: This doesn' work for /(.?)?/
+	      // eslint-disable-next-line no-loop-func
+	      nativeReplace.call(match[0], reCopy, function () {
+	        for (i = 1; i < arguments.length - 2; i++) {
+	          if (arguments[i] === undefined) match[i] = undefined;
+	        }
+	      });
+	    }
+
+	    return match;
+	  };
+	}
+
+	var _regexpExec = patchedExec;
+
+	_export({
+	  target: 'RegExp',
+	  proto: true,
+	  forced: _regexpExec !== /./.exec
+	}, {
+	  exec: _regexpExec
+	});
+
+	var SPECIES$3 = _wks('species');
+
+	var REPLACE_SUPPORTS_NAMED_GROUPS = !_fails(function () {
+	  // #replace needs built-in support for named groups.
+	  // #match works fine because it just return the exec results, even if it has
+	  // a "grops" property.
+	  var re = /./;
+	  re.exec = function () {
+	    var result = [];
+	    result.groups = { a: '7' };
+	    return result;
+	  };
+	  return ''.replace(re, '$<a>') !== '7';
+	});
+
+	var SPLIT_WORKS_WITH_OVERWRITTEN_EXEC = (function () {
+	  // Chrome 51 has a buggy "split" implementation when RegExp#exec !== nativeExec
+	  var re = /(?:)/;
+	  var originalExec = re.exec;
+	  re.exec = function () { return originalExec.apply(this, arguments); };
+	  var result = 'ab'.split(re);
+	  return result.length === 2 && result[0] === 'a' && result[1] === 'b';
+	})();
+
+	var _fixReWks = function (KEY, length, exec) {
+	  var SYMBOL = _wks(KEY);
+
+	  var DELEGATES_TO_SYMBOL = !_fails(function () {
+	    // String methods call symbol-named RegEp methods
+	    var O = {};
+	    O[SYMBOL] = function () { return 7; };
+	    return ''[KEY](O) != 7;
+	  });
+
+	  var DELEGATES_TO_EXEC = DELEGATES_TO_SYMBOL ? !_fails(function () {
+	    // Symbol-named RegExp methods call .exec
+	    var execCalled = false;
+	    var re = /a/;
+	    re.exec = function () { execCalled = true; return null; };
+	    if (KEY === 'split') {
+	      // RegExp[@@split] doesn't call the regex's exec method, but first creates
+	      // a new one. We need to return the patched regex when creating the new one.
+	      re.constructor = {};
+	      re.constructor[SPECIES$3] = function () { return re; };
+	    }
+	    re[SYMBOL]('');
+	    return !execCalled;
+	  }) : undefined;
+
+	  if (
+	    !DELEGATES_TO_SYMBOL ||
+	    !DELEGATES_TO_EXEC ||
+	    (KEY === 'replace' && !REPLACE_SUPPORTS_NAMED_GROUPS) ||
+	    (KEY === 'split' && !SPLIT_WORKS_WITH_OVERWRITTEN_EXEC)
+	  ) {
+	    var nativeRegExpMethod = /./[SYMBOL];
+	    var fns = exec(
+	      _defined,
+	      SYMBOL,
+	      ''[KEY],
+	      function maybeCallNative(nativeMethod, regexp, str, arg2, forceStringMethod) {
+	        if (regexp.exec === _regexpExec) {
+	          if (DELEGATES_TO_SYMBOL && !forceStringMethod) {
+	            // The native String method already delegates to @@method (this
+	            // polyfilled function), leasing to infinite recursion.
+	            // We avoid it by directly calling the native @@method method.
+	            return { done: true, value: nativeRegExpMethod.call(regexp, str, arg2) };
+	          }
+	          return { done: true, value: nativeMethod.call(str, regexp, arg2) };
+	        }
+	        return { done: false };
+	      }
+	    );
+	    var strfn = fns[0];
+	    var rxfn = fns[1];
+
+	    _redefine(String.prototype, KEY, strfn);
+	    _hide(RegExp.prototype, SYMBOL, length == 2
+	      // 21.2.5.8 RegExp.prototype[@@replace](string, replaceValue)
+	      // 21.2.5.11 RegExp.prototype[@@split](string, limit)
+	      ? function (string, arg) { return rxfn.call(string, this, arg); }
+	      // 21.2.5.6 RegExp.prototype[@@match](string)
+	      // 21.2.5.9 RegExp.prototype[@@search](string)
+	      : function (string) { return rxfn.call(string, this); }
+	    );
+	  }
+	};
+
 	// @@match logic
 	_fixReWks('match', 1, function (defined, MATCH, $match, maybeCallNative) {
 	  return [
@@ -8491,41 +8422,114 @@
 	  ];
 	});
 
-	var _stringRepeat = function repeat(count) {
-	  var str = String(_defined(this));
-	  var res = '';
-	  var n = _toInteger(count);
-	  if (n < 0 || n == Infinity) throw RangeError("Count can't be negative");
-	  for (;n > 0; (n >>>= 1) && (str += str)) if (n & 1) res += str;
-	  return res;
+	var max$1 = Math.max;
+	var min$2 = Math.min;
+	var floor$1 = Math.floor;
+	var SUBSTITUTION_SYMBOLS = /\$([$&`']|\d\d?|<[^>]*>)/g;
+	var SUBSTITUTION_SYMBOLS_NO_NAMED = /\$([$&`']|\d\d?)/g;
+
+	var maybeToString = function (it) {
+	  return it === undefined ? it : String(it);
 	};
 
-	// https://github.com/tc39/proposal-string-pad-start-end
+	// @@replace logic
+	_fixReWks('replace', 2, function (defined, REPLACE, $replace, maybeCallNative) {
+	  return [
+	    // `String.prototype.replace` method
+	    // https://tc39.github.io/ecma262/#sec-string.prototype.replace
+	    function replace(searchValue, replaceValue) {
+	      var O = defined(this);
+	      var fn = searchValue == undefined ? undefined : searchValue[REPLACE];
+	      return fn !== undefined
+	        ? fn.call(searchValue, O, replaceValue)
+	        : $replace.call(String(O), searchValue, replaceValue);
+	    },
+	    // `RegExp.prototype[@@replace]` method
+	    // https://tc39.github.io/ecma262/#sec-regexp.prototype-@@replace
+	    function (regexp, replaceValue) {
+	      var res = maybeCallNative($replace, regexp, this, replaceValue);
+	      if (res.done) return res.value;
 
+	      var rx = _anObject(regexp);
+	      var S = String(this);
+	      var functionalReplace = typeof replaceValue === 'function';
+	      if (!functionalReplace) replaceValue = String(replaceValue);
+	      var global = rx.global;
+	      if (global) {
+	        var fullUnicode = rx.unicode;
+	        rx.lastIndex = 0;
+	      }
+	      var results = [];
+	      while (true) {
+	        var result = _regexpExecAbstract(rx, S);
+	        if (result === null) break;
+	        results.push(result);
+	        if (!global) break;
+	        var matchStr = String(result[0]);
+	        if (matchStr === '') rx.lastIndex = _advanceStringIndex(S, _toLength(rx.lastIndex), fullUnicode);
+	      }
+	      var accumulatedResult = '';
+	      var nextSourcePosition = 0;
+	      for (var i = 0; i < results.length; i++) {
+	        result = results[i];
+	        var matched = String(result[0]);
+	        var position = max$1(min$2(_toInteger(result.index), S.length), 0);
+	        var captures = [];
+	        // NOTE: This is equivalent to
+	        //   captures = result.slice(1).map(maybeToString)
+	        // but for some reason `nativeSlice.call(result, 1, result.length)` (called in
+	        // the slice polyfill when slicing native arrays) "doesn't work" in safari 9 and
+	        // causes a crash (https://pastebin.com/N21QzeQA) when trying to debug it.
+	        for (var j = 1; j < result.length; j++) captures.push(maybeToString(result[j]));
+	        var namedCaptures = result.groups;
+	        if (functionalReplace) {
+	          var replacerArgs = [matched].concat(captures, position, S);
+	          if (namedCaptures !== undefined) replacerArgs.push(namedCaptures);
+	          var replacement = String(replaceValue.apply(undefined, replacerArgs));
+	        } else {
+	          replacement = getSubstitution(matched, S, position, captures, namedCaptures, replaceValue);
+	        }
+	        if (position >= nextSourcePosition) {
+	          accumulatedResult += S.slice(nextSourcePosition, position) + replacement;
+	          nextSourcePosition = position + matched.length;
+	        }
+	      }
+	      return accumulatedResult + S.slice(nextSourcePosition);
+	    }
+	  ];
 
-
-
-	var _stringPad = function (that, maxLength, fillString, left) {
-	  var S = String(_defined(that));
-	  var stringLength = S.length;
-	  var fillStr = fillString === undefined ? ' ' : String(fillString);
-	  var intMaxLength = _toLength(maxLength);
-	  if (intMaxLength <= stringLength || fillStr == '') return S;
-	  var fillLen = intMaxLength - stringLength;
-	  var stringFiller = _stringRepeat.call(fillStr, Math.ceil(fillLen / fillStr.length));
-	  if (stringFiller.length > fillLen) stringFiller = stringFiller.slice(0, fillLen);
-	  return left ? stringFiller + S : S + stringFiller;
-	};
-
-	// https://github.com/tc39/proposal-string-pad-start-end
-
-
-
-
-	// https://github.com/zloirock/core-js/issues/280
-	_export(_export.P + _export.F * /Version\/10\.\d+(\.\d+)? Safari\//.test(_userAgent), 'String', {
-	  padStart: function padStart(maxLength /* , fillString = ' ' */) {
-	    return _stringPad(this, maxLength, arguments.length > 1 ? arguments[1] : undefined, true);
+	    // https://tc39.github.io/ecma262/#sec-getsubstitution
+	  function getSubstitution(matched, str, position, captures, namedCaptures, replacement) {
+	    var tailPos = position + matched.length;
+	    var m = captures.length;
+	    var symbols = SUBSTITUTION_SYMBOLS_NO_NAMED;
+	    if (namedCaptures !== undefined) {
+	      namedCaptures = _toObject(namedCaptures);
+	      symbols = SUBSTITUTION_SYMBOLS;
+	    }
+	    return $replace.call(replacement, symbols, function (match, ch) {
+	      var capture;
+	      switch (ch.charAt(0)) {
+	        case '$': return '$';
+	        case '&': return matched;
+	        case '`': return str.slice(0, position);
+	        case "'": return str.slice(tailPos);
+	        case '<':
+	          capture = namedCaptures[ch.slice(1, -1)];
+	          break;
+	        default: // \d\d?
+	          var n = +ch;
+	          if (n === 0) return ch;
+	          if (n > m) {
+	            var f = floor$1(n / 10);
+	            if (f === 0) return ch;
+	            if (f <= m) return captures[f - 1] === undefined ? ch.charAt(1) : captures[f - 1] + ch.charAt(1);
+	            return ch;
+	          }
+	          capture = captures[n - 1];
+	      }
+	      return capture === undefined ? '' : capture;
+	    });
 	  }
 	});
 
@@ -10596,7 +10600,7 @@
 
 	  if (mo.length > 12) {
 	    // use LEMO
-	    return moToLemo(mo);
+	    return "".concat(moToLemo(mo), " LEMO");
 	  } // use mo
 
 
@@ -10610,25 +10614,48 @@
 	    return "".concat(mo, " mo");
 	  }
 	}
+	/**
+	 * Takes an input and transforms it into an BigNumber
+	 *
+	 * @method toBigNumber
+	 * @param {number|string|BigNumber} num A number, string, HEX string or BigNumber
+	 * @return {BigNumber} BigNumber
+	 */
+
+	function toBigNumber(num) {
+	  var result;
+
+	  if (num instanceof bignumber || num.constructor && num.constructor.name === 'BigNumber') {
+	    result = num;
+	  } else if (typeof num === 'string' && num.startsWith('0x')) {
+	    result = new bignumber(num.replace('0x', ''), 16);
+	  } else {
+	    result = new bignumber(num.toString(10), 10);
+	  }
+
+	  if (result.isNaN()) {
+	    throw new Error(errors.MoneyFormatError());
+	  }
+
+	  return result;
+	}
+	/**
+	 * 将单位从mo转换为LEMO的个数
+	 * @param {number|string} mo
+	 * @return {BigNumber}
+	 */
+
 	function moToLemo(mo) {
-	  mo = new bignumber(mo).toString(10);
+	  return toBigNumber(mo).dividedBy(new bignumber('1000000000000000000', 10));
+	}
+	/**
+	 * 将单位从LEMO的个数转换为mo
+	 * @param {number|string} ether
+	 * @return {BigNumber}
+	 */
 
-	  if (mo === '0') {
-	    return '0 LEMO';
-	  }
-
-	  if (/0{18}$/.test(mo)) {
-	    // no dot
-	    return "".concat(mo.slice(0, mo.length - 18), " LEMO");
-	  }
-
-	  if (mo.length <= 18) {
-	    mo = mo.padStart(19, '0');
-	  }
-
-	  var int = mo.slice(0, mo.length - 18);
-	  var rest = mo.slice(mo.length - 18).replace(/0+$/, '');
-	  return "".concat(int, ".").concat(rest, " LEMO");
+	function lemoToMo(ether) {
+	  return toBigNumber(ether).times(new bignumber('1000000000000000000', 10));
 	}
 	function toBuffer(v) {
 	  if (safeBuffer_1.isBuffer(v)) {
@@ -10732,6 +10759,10 @@
 	  CREATE_ASSET: 3,
 	  // 发行资产交易
 	  ISSUE_ASSET: 4,
+	  // 增发资产交易
+	  REPLENISH_ASSET: 5,
+	  // 修改资产交易
+	  MODIFY_ASSET: 6,
 	  // 交易资产交易
 	  TRANSFER_ASSET: 7
 	};
@@ -23501,7 +23532,6 @@
 	  var hex = data.toString('hex').replace(/^(00)+/, '');
 	  return "0x".concat(hex);
 	}
-
 	function privateToAddress(privKey) {
 	  privKey = toBuffer(privKey);
 	  var privNum = new bignumber(privKey);
@@ -23588,7 +23618,9 @@
 	    return _objectSpread({
 	      chainID: chainID
 	    }, config);
-	  } else if (config.chainID !== chainID) {
+	  }
+
+	  if (parseInt(config.chainID, 10) !== chainID) {
 	    console.warn("The chainID ".concat(config.chainID, " from transaction is different with ").concat(chainID, " from SDK"));
 	  }
 
@@ -23630,6 +23662,7 @@
 
 	  if (config.gasLimit) {
 	    checkType(config, 'gasLimit', ['number', 'string'], true);
+	    checkNegative(config, 'gasLimit');
 	  }
 
 	  if (config.amount) {
@@ -23653,6 +23686,11 @@
 	  if (config.sig) {
 	    checkType(config, 'sig', ['string', safeBuffer_1], true);
 	    checkMaxBytes(config, 'sig', TX_SIG_BYTE_LENGTH);
+	  }
+
+	  if (config.gasPayerSig) {
+	    checkType(config, 'gasPayerSig', ['string', safeBuffer_1], true);
+	    checkMaxBytes(config, 'gasPayerSig', TX_SIG_BYTE_LENGTH);
 	  }
 	}
 	function verifyCandidateInfo(config) {
@@ -23718,6 +23756,52 @@
 	    throw new Error(errors.TXIsNotDecimalError('supplyAmount'));
 	  }
 	}
+	function verifyReplenishAssetInfo(config) {
+	  checkType(config, 'assetId', ['string'], false);
+
+	  if (config.assetId.length !== TX_ASSET_ID_LENGTH) {
+	    throw new Error(errors.TXInvalidLength('assetId', config.assetId, TX_ASSET_ID_LENGTH));
+	  }
+
+	  checkType(config, 'replenishAmount', ['number', 'string'], true);
+	  checkNegative(config, 'replenishAmount');
+	}
+	function verifyModifyAssetInfo(config) {
+	  checkType(config, 'assetCode', ['string'], false);
+
+	  if (config.assetCode.length !== TX_ASSET_CODE_LENGTH) {
+	    throw new Error(errors.TXInvalidLength('assetCode', config.assetCode, TX_ASSET_CODE_LENGTH));
+	  }
+
+	  if (config.info === undefined) {
+	    throw new Error(errors.TXInfoError());
+	  }
+
+	  if (config.info.name) {
+	    checkType(config.info, 'name', ['string'], false);
+	  }
+
+	  if (config.info.symbol) {
+	    checkType(config.info, 'symbol', ['string'], false);
+	  }
+
+	  if (config.info.description) {
+	    checkType(config.info, 'description', ['string'], false);
+	    checkMaxLength(config.info, 'description', 256);
+	  }
+
+	  if (config.info.suggestedGasLimit) {
+	    checkType(config.info, 'suggestedGasLimit', ['string'], true);
+	  }
+
+	  if (config.info.stop) {
+	    checkType(config.info, 'stop', ['boolean', 'string'], false);
+
+	    if (typeof config.info.stop === 'string' && config.info.stop !== 'true' && config.info.stop !== 'false') {
+	      throw new Error(errors.TxInvalidSymbol('stop'));
+	    }
+	  }
+	}
 	function verifyTransferAssetInfo(config) {
 	  if (config.assetId === undefined) {
 	    throw new Error(errors.TXParamMissingError('assetId'));
@@ -23729,6 +23813,15 @@
 	    throw new Error(errors.TXInvalidLength('assetId', config.assetId, TX_ASSET_ID_LENGTH));
 	  }
 	}
+	function verifyGasInfo(noGasTx, gasPrice, gasLimit) {
+	  checkType(noGasTx, 'payer', ['string'], false); // verify address
+
+	  decodeAddress(noGasTx.payer);
+	  checkType(gasPrice, 'gasPrice', ['number', 'string'], true);
+	  checkNegative(gasPrice, 'gasPrice');
+	  checkType(gasLimit, 'gasLimit', ['number', 'string'], true);
+	  checkNegative(gasLimit, 'gasLimit');
+	}
 	/**
 	 * @param {object} obj
 	 * @param {string} fieldName
@@ -23737,7 +23830,13 @@
 	 */
 
 	function checkType(obj, fieldName, types, isNumber) {
-	  var data = obj[fieldName];
+	  var data;
+
+	  if (_typeof(obj) !== 'object') {
+	    data = obj;
+	  } else {
+	    data = obj[fieldName];
+	  }
 
 	  var typeStr = _typeof(data);
 
@@ -23836,7 +23935,11 @@
 
 
 	function checkNegative(obj, fieldName) {
-	  if (parseInt(obj[fieldName], 10) < 0) {
+	  if (typeof obj[fieldName] === 'number' && obj[fieldName] < 0) {
+	    throw new Error(errors.TXNegativeError(fieldName));
+	  }
+
+	  if (typeof obj[fieldName] === 'string' && obj[fieldName].startsWith('-')) {
 	    throw new Error(errors.TXNegativeError(fieldName));
 	  }
 	}
@@ -23934,6 +24037,7 @@
 	      this.expirationTime = parseInt(txConfig.expirationTime, 10) || Math.floor(Date.now() / 1000) + TTTL;
 	      this.message = txConfig.message || '';
 	      this.sig = txConfig.sig || '';
+	      this.gasPayerSig = txConfig.gasPayerSig || '';
 	      var from = '';
 	      Object.defineProperty(this, 'from', {
 	        get: function get() {
@@ -23967,7 +24071,7 @@
 	  }, {
 	    key: "serialize",
 	    value: function serialize() {
-	      var raw = [toRaw(this, 'type', true), toRaw(this, 'version', true), toRaw(this, 'chainID', true), this.to ? toRaw(this, 'to', false, TX_TO_LENGTH) : '', toRaw(this, 'toName', false), toRaw(this, 'gasPrice', true), toRaw(this, 'gasLimit', true), toRaw(this, 'amount', true), toRaw(this, 'data', true), toRaw(this, 'expirationTime', true), toRaw(this, 'message', false), toRaw(this, 'sig', true)];
+	      var raw = [this.to ? toRaw(this, 'to', false, TX_TO_LENGTH) : '', toRaw(this, 'toName', false), toRaw(this, 'gasPrice', true), toRaw(this, 'gasLimit', true), toRaw(this, 'amount', true), toRaw(this, 'data', true), toRaw(this, 'expirationTime', true), toRaw(this, 'message', false), toRaw(this, 'type', true), toRaw(this, 'version', true), toRaw(this, 'chainID', true), toRaw(this, 'sig', true), toRaw(this, 'gasPayerSig', true)];
 	      return encode$1(raw);
 	    }
 	    /**
@@ -24018,6 +24122,10 @@
 
 	      if (this.sig && this.sig.length) {
 	        result.sig = toHexStr(this, 'sig', TX_SIG_BYTE_LENGTH);
+	      }
+
+	      if (this.gasPayerSig && this.gasPayerSig.length) {
+	        result.gasPayerSig = toHexStr(this, 'gasPayerSig', TX_SIG_BYTE_LENGTH);
 	      }
 
 	      return result;
@@ -24073,7 +24181,7 @@
 	}
 	function parseCandidate(candidate) {
 	  if (candidate.votes) {
-	    candidate.votes = moToLemo(candidate.votes).replace(' LEMO', '');
+	    candidate.votes = moToLemo(candidate.votes).toString(10);
 	  }
 
 	  if (candidate.profile) {
@@ -24162,6 +24270,12 @@
 	  });
 	  return result;
 	}
+	function parseAsset(result) {
+	  result.equities.forEach(function (item) {
+	    item.equity = formatMoney(item.equity);
+	  });
+	  return result;
+	}
 	var parser = {
 	  parseBlock: parseBlock,
 	  parseAccount: parseAccount,
@@ -24170,7 +24284,8 @@
 	  parseTxRes: parseTxRes,
 	  parseTxListRes: parseTxListRes,
 	  parseBigNumber: parseBigNumber,
-	  parseMoney: parseMoney
+	  parseMoney: parseMoney,
+	  parseAsset: parseAsset
 	};
 
 	/**
@@ -24656,7 +24771,43 @@
 	      return _getBalance.apply(this, arguments);
 	    };
 	  }(),
-	  newKeyPair: generateAccount
+	  newKeyPair: generateAccount,
+
+	  /**
+	   * 获取指定账户持有的所有资产权益
+	   * @param {string} address Account address
+	   * @param {number} index Index of equities
+	   * @param {number} limit The count of equities required
+	   * @return {Promise<object>}
+	   */
+	  getAllAssets: function () {
+	    var _getAllAssets = _asyncToGenerator(
+	    /*#__PURE__*/
+	    regeneratorRuntime.mark(function _callee4(address, index, limit) {
+	      var result;
+	      return regeneratorRuntime.wrap(function _callee4$(_context4) {
+	        while (1) {
+	          switch (_context4.prev = _context4.next) {
+	            case 0:
+	              _context4.next = 2;
+	              return this.requester.send("".concat(ACCOUNT_NAME, "_getAssetEquity"), [address, index, limit]);
+
+	            case 2:
+	              result = _context4.sent;
+	              return _context4.abrupt("return", this.parser.parseAsset(result));
+
+	            case 4:
+	            case "end":
+	              return _context4.stop();
+	          }
+	        }
+	      }, _callee4, this);
+	    }));
+
+	    return function getAllAssets(_x4, _x5, _x6) {
+	      return _getAllAssets.apply(this, arguments);
+	    };
+	  }()
 	};
 	var account = {
 	  moduleName: ACCOUNT_NAME,
@@ -24677,11 +24828,10 @@
 	  TxType: TxType,
 
 	  /**
-	   * Stop a watching by watchId. If no watchId specified, stop all
-	   * @param {number?} watchId
+	   * Stop all watching
 	   */
-	  stopWatch: function stopWatch(watchId) {
-	    return this.requester.stopWatch(watchId);
+	  stopWatch: function stopWatch() {
+	    return this.requester.stopWatch();
 	  },
 
 	  /**
@@ -25149,10 +25299,10 @@
 	  return CreateAssetTx;
 	}(Tx);
 
-	var IssueAsset =
+	var IssueAssetTx =
 	/*#__PURE__*/
 	function (_Tx) {
-	  _inherits(IssueAsset, _Tx);
+	  _inherits(IssueAssetTx, _Tx);
 
 	  /**
 	   * 发行资产的交易
@@ -25173,8 +25323,8 @@
 	   * @param {string} issueAssetInfo.metaData 资产中的自定义数据
 	   * @param {string} issueAssetInfo.supplyAmount 发行资产的数量
 	   */
-	  function IssueAsset(txConfig, issueAssetInfo) {
-	    _classCallCheck(this, IssueAsset);
+	  function IssueAssetTx(txConfig, issueAssetInfo) {
+	    _classCallCheck(this, IssueAssetTx);
 
 	    verifyIssueAssetInfo(issueAssetInfo);
 	    var newIssueAsset = {
@@ -25189,16 +25339,16 @@
 	    });
 
 	    delete newTxConfig.amount;
-	    return _possibleConstructorReturn(this, _getPrototypeOf(IssueAsset).call(this, newTxConfig));
+	    return _possibleConstructorReturn(this, _getPrototypeOf(IssueAssetTx).call(this, newTxConfig));
 	  }
 
-	  return IssueAsset;
+	  return IssueAssetTx;
 	}(Tx);
 
-	var TransferAsset =
+	var TransferAssetTx =
 	/*#__PURE__*/
 	function (_Tx) {
-	  _inherits(TransferAsset, _Tx);
+	  _inherits(TransferAssetTx, _Tx);
 
 	  /**
 	   * 交易资产的交易
@@ -25216,10 +25366,11 @@
 	   * @param {string?} txConfig.message Extra value data
 	   * @param {Buffer|string?} txConfig.sig Signature data
 	   * @param {object} transferAssetInfo TransferAsset information
-	   * @param {string} transferAssetInfo.assetId 交易的资产Id
+	   * @param {string} transferAssetInfo.assetId Asset id of the transaction
+	   * @param {string} transferAssetInfo.transferAmount Number of transactions
 	   */
-	  function TransferAsset(txConfig, transferAssetInfo) {
-	    _classCallCheck(this, TransferAsset);
+	  function TransferAssetTx(txConfig, transferAssetInfo) {
+	    _classCallCheck(this, TransferAssetTx);
 
 	    verifyTransferAssetInfo(transferAssetInfo);
 	    var newTransferAsset = {
@@ -25231,10 +25382,274 @@
 	      data: safeBuffer_1.from(JSON.stringify(newTransferAsset))
 	    });
 
-	    return _possibleConstructorReturn(this, _getPrototypeOf(TransferAsset).call(this, newTxConfig));
+	    return _possibleConstructorReturn(this, _getPrototypeOf(TransferAssetTx).call(this, newTxConfig));
 	  }
 
-	  return TransferAsset;
+	  return TransferAssetTx;
+	}(Tx);
+
+	var ReplenishAssetTx =
+	/*#__PURE__*/
+	function (_Tx) {
+	  _inherits(ReplenishAssetTx, _Tx);
+
+	  /**
+	   * 增发资产的交易
+	   * @param {object} txConfig
+	   * @param {number?} txConfig.type The type of transaction
+	   * @param {string?} txConfig.to The transaction recipient address
+	   * @param {string?} txConfig.toName The transaction recipient name
+	   * @param {number?} txConfig.version The version of transaction protocol
+	   * @param {number} txConfig.chainID The LemoChain id
+	   * @param {number|string?} txConfig.gasPrice Gas price for smart contract. Unit is mo/gas
+	   * @param {number|string?} txConfig.gasLimit Max gas limit for smart contract. Unit is gas
+	   * @param {Buffer|string?} txConfig.data Extra data or smart contract calling parameters
+	   * @param {number|string?} txConfig.expirationTime Default value is half hour from now
+	   * @param {string?} txConfig.message Extra value data
+	   * @param {Buffer|string?} txConfig.sig Signature data
+	   * @param {object} replenishInfo replenishAsset information
+	   * @param {string} replenishInfo.assetId Replenish asset id
+	   * @param {string} replenishInfo.ReplenishAmount number of Replenish
+	   */
+	  function ReplenishAssetTx(txConfig, replenishInfo) {
+	    _classCallCheck(this, ReplenishAssetTx);
+
+	    verifyReplenishAssetInfo(replenishInfo);
+	    var newReplenishAsset = {
+	      assetId: replenishInfo.assetId,
+	      replenishAmount: replenishInfo.replenishAmount.toString()
+	    };
+
+	    var newTxConfig = _objectSpread({}, txConfig, {
+	      type: TxType.REPLENISH_ASSET,
+	      data: safeBuffer_1.from(JSON.stringify(newReplenishAsset))
+	    });
+
+	    delete newTxConfig.amount;
+	    return _possibleConstructorReturn(this, _getPrototypeOf(ReplenishAssetTx).call(this, newTxConfig));
+	  }
+
+	  return ReplenishAssetTx;
+	}(Tx);
+
+	var modifyAssetTx =
+	/*#__PURE__*/
+	function (_Tx) {
+	  _inherits(modifyAssetTx, _Tx);
+
+	  /**
+	   * 修改资产的交易
+	   * @param {object} txConfig
+	   * @param {number?} txConfig.type The type of transaction
+	   * @param {string?} txConfig.to The transaction recipient address
+	   * @param {string?} txConfig.toName The transaction recipient name
+	   * @param {number?} txConfig.version The version of transaction protocol
+	   * @param {number} txConfig.chainID The LemoChain id
+	   * @param {number|string?} txConfig.gasPrice Gas price for smart contract. Unit is mo/gas
+	   * @param {number|string?} txConfig.gasLimit Max gas limit for smart contract. Unit is gas
+	   * @param {Buffer|string?} txConfig.data Extra data or smart contract calling parameters
+	   * @param {number|string?} txConfig.expirationTime Default value is half hour from now
+	   * @param {string?} txConfig.message Extra value data
+	   * @param {Buffer|string?} txConfig.sig Signature data
+	   * @param {object} modifyInfo modifyInfo information
+	   * @param {string} modifyInfo.assetCode assetCode that needs to be modified
+	   * @param {object} modifyInfo.info info information
+	   */
+	  function modifyAssetTx(txConfig, modifyInfo) {
+	    _classCallCheck(this, modifyAssetTx);
+
+	    verifyModifyAssetInfo(modifyInfo);
+	    var newModifyAsset = {
+	      assetCode: modifyInfo.assetCode,
+	      info: {
+	        name: modifyInfo.info.name,
+	        symbol: modifyInfo.info.symbol === undefined ? undefined : modifyInfo.info.symbol.toUpperCase(),
+	        description: modifyInfo.info.description,
+	        suggestedGasLimit: modifyInfo.info.suggestedGasLimit,
+	        stop: modifyInfo.info.stop
+	      }
+	    };
+
+	    var newTxConfig = _objectSpread({}, txConfig, {
+	      type: TxType.MODIFY_ASSET,
+	      data: safeBuffer_1.from(JSON.stringify(newModifyAsset))
+	    });
+
+	    delete newTxConfig.to;
+	    delete newTxConfig.amount;
+	    delete newTxConfig.toName;
+	    return _possibleConstructorReturn(this, _getPrototypeOf(modifyAssetTx).call(this, newTxConfig));
+	  }
+
+	  return modifyAssetTx;
+	}(Tx);
+
+	var GasSigner =
+	/*#__PURE__*/
+	function () {
+	  function GasSigner() {
+	    _classCallCheck(this, GasSigner);
+	  }
+
+	  _createClass(GasSigner, [{
+	    key: "signGas",
+
+	    /**
+	     * Recover from address from a signed gas transaction
+	     * @param {Tx} tx
+	     * @param {string|Buffer} privateKey
+	     * @return {string}
+	     */
+	    value: function signGas(tx, privateKey) {
+	      privateKey = toBuffer(privateKey);
+	      var sig = sign$1(privateKey, this.hashForGasSign(tx));
+	      return "0x".concat(sig.toString('hex'));
+	    }
+	    /**
+	     * Recover from address from a signed no gas transaction
+	     * @param {Tx} tx
+	     * @param {string|Buffer} privateKey
+	     * @return {string}
+	     */
+
+	  }, {
+	    key: "signNoGas",
+	    value: function signNoGas(tx, privateKey) {
+	      privateKey = toBuffer(privateKey);
+	      var sig = sign$1(privateKey, this.hashForNoGasSign(tx));
+	      return "0x".concat(sig.toString('hex'));
+	    }
+	  }, {
+	    key: "hashForGasSign",
+	    value: function hashForGasSign(tx) {
+	      var raw = [toRaw(tx, 'noGasTx', false), toRaw(tx, 'gasPrice', true), toRaw(tx, 'gasLimit', true)];
+	      return keccak256(encode$1(raw));
+	    }
+	  }, {
+	    key: "hashForNoGasSign",
+	    value: function hashForNoGasSign(tx) {
+	      var raw = [toRaw(tx, 'type', true), toRaw(tx, 'version', true), toRaw(tx, 'chainID', true), toRaw(tx, 'to', false, TX_TO_LENGTH), toRaw(tx, 'toName', false), toRaw(tx, 'amount', true), toRaw(tx, 'data', true), toRaw(tx, 'expirationTime', true), toRaw(tx, 'message', false), toRaw(tx, 'payer', false)];
+	      return keccak256(encode$1(raw));
+	    }
+	  }]);
+
+	  return GasSigner;
+	}();
+
+	var GasTx =
+	/*#__PURE__*/
+	function (_Tx) {
+	  _inherits(GasTx, _Tx);
+
+	  /**
+	   * free gas transaction
+	   * @param {object} txConfig
+	   * @param {number?} txConfig.type The type of transaction
+	   * @param {string?} txConfig.to The transaction recipient address
+	   * @param {string?} txConfig.toName The transaction recipient name
+	   * @param {number?} txConfig.version The version of transaction protocol
+	   * @param {number} txConfig.chainID The LemoChain id
+	   * @param {Buffer|string?} txConfig.data Extra data or smart contract calling parameters
+	   * @param {number|string?} txConfig.expirationTime Default value is half hour from now
+	   * @param {string?} txConfig.message Extra value data
+	   * @param {Buffer|string?} txConfig.sig Signature data
+	   * @param {string} payer The address is Receiver's account address
+	   */
+	  function GasTx(txConfig, payer) {
+	    var _this;
+
+	    _classCallCheck(this, GasTx);
+
+	    var newTxConfig = _objectSpread({}, txConfig);
+
+	    _this = _possibleConstructorReturn(this, _getPrototypeOf(GasTx).call(this, newTxConfig));
+	    delete newTxConfig.gasLimit;
+	    delete newTxConfig.gasPrice;
+	    _this.payer = payer;
+	    return _this;
+	  }
+	  /**
+	   * Sign no gas transaction with private key
+	   * @param {string|Buffer} privateKey
+	   */
+
+
+	  _createClass(GasTx, [{
+	    key: "signNoGasWith",
+	    value: function signNoGasWith(privateKey) {
+	      this.sig = new GasSigner().signNoGas(this, privateKey);
+	    }
+	    /**
+	     * format for rpc
+	     * @return {object}
+	     */
+
+	  }, {
+	    key: "toJson",
+	    value: function toJson() {
+	      _get(_getPrototypeOf(GasTx.prototype), "toJson", this).call(this);
+
+	      var payer = has0xPrefix(this.payer) ? toHexStr(this, 'payer', TX_TO_LENGTH) : this.payer;
+
+	      if (payer) {
+	        this.payer = payer;
+	      }
+
+	      return this;
+	    }
+	  }]);
+
+	  return GasTx;
+	}(Tx);
+
+	var ReimbursementTx =
+	/*#__PURE__*/
+	function (_Tx) {
+	  _inherits(ReimbursementTx, _Tx);
+
+	  /**
+	   * Reimbursement gas transaction
+	   * @param {object} noGasTx returned by the signNoGas method
+	   * @param {number|string?} noGasTx.type The type of transaction
+	   * @param {number|string?} noGasTx.version The version of transaction protocol
+	   * @param {number|string} noGasTx.chainID The LemoChain id
+	   * @param {string?} noGasTx.to The transaction recipient address
+	   * @param {string?} noGasTx.toName The transaction recipient name
+	   * @param {number|string?} noGasTx.amount Unit is mo
+	   * @param {Buffer|string?} noGasTx.data Extra data or smart contract calling parameters
+	   * @param {number|string?} noGasTx.expirationTime Default value is half hour from now
+	   * @param {string?} noGasTx.message Extra value data
+	   * @param {Buffer|string?} noGasTx.sig Signature data
+	   * @param {number|string} gasPrice Gas price for smart contract. Unit is mo/gas
+	   * @param {number|string} gasLimit Max gas limit for smart contract. Unit is gas
+	   */
+	  function ReimbursementTx(noGasTx, gasPrice, gasLimit) {
+	    _classCallCheck(this, ReimbursementTx);
+
+	    verifyGasInfo(noGasTx, gasPrice, gasLimit);
+
+	    var newTxConfig = _objectSpread({}, noGasTx, {
+	      gasPrice: gasPrice,
+	      gasLimit: gasLimit
+	    });
+
+	    delete newTxConfig.payer;
+	    return _possibleConstructorReturn(this, _getPrototypeOf(ReimbursementTx).call(this, newTxConfig));
+	  }
+	  /**
+	   * Sign a gas transaction with private key
+	   * @param {string|Buffer} privateKey
+	   */
+
+
+	  _createClass(ReimbursementTx, [{
+	    key: "signGasWith",
+	    value: function signGasWith(privateKey) {
+	      this.gasPayerSig = new GasSigner().signGas(this, privateKey);
+	    }
+	  }]);
+
+	  return ReimbursementTx;
 	}(Tx);
 
 	var apis$5 = {
@@ -25339,37 +25754,39 @@
 	    txConfig = checkChainID(txConfig, this.chainID);
 	    var tx = new Tx(txConfig);
 	    tx.signWith(privateKey);
-	    var txHash = tx.hash();
 	    return this.requester.send("".concat(TX_NAME, "_sendTx"), [tx.toJson()]).then(
 	    /*#__PURE__*/
-	    _asyncToGenerator(
-	    /*#__PURE__*/
-	    regeneratorRuntime.mark(function _callee3() {
-	      return regeneratorRuntime.wrap(function _callee3$(_context3) {
-	        while (1) {
-	          switch (_context3.prev = _context3.next) {
-	            case 0:
-	              if (waitConfirm) {
-	                _context3.next = 2;
-	                break;
-	              }
+	    function () {
+	      var _ref = _asyncToGenerator(
+	      /*#__PURE__*/
+	      regeneratorRuntime.mark(function _callee3(txHash) {
+	        return regeneratorRuntime.wrap(function _callee3$(_context3) {
+	          while (1) {
+	            switch (_context3.prev = _context3.next) {
+	              case 0:
+	                if (!waitConfirm) {
+	                  _context3.next = 3;
+	                  break;
+	                }
 
-	              return _context3.abrupt("return", txHash);
+	                _context3.next = 3;
+	                return _this.txWatcher.waitTx(txHash);
 
-	            case 2:
-	              _context3.next = 4;
-	              return _this.txWatcher.waitTx(txHash);
+	              case 3:
+	                return _context3.abrupt("return", txHash);
 
-	            case 4:
-	              return _context3.abrupt("return", txHash);
-
-	            case 5:
-	            case "end":
-	              return _context3.stop();
+	              case 4:
+	              case "end":
+	                return _context3.stop();
+	            }
 	          }
-	        }
-	      }, _callee3, this);
-	    })));
+	        }, _callee3, this);
+	      }));
+
+	      return function (_x5) {
+	        return _ref.apply(this, arguments);
+	      };
+	    }());
 	  },
 
 	  /**
@@ -25387,7 +25804,6 @@
 
 	    txConfig = checkChainID(txConfig, this.chainID);
 	    var tx = new Tx(txConfig);
-	    var txHash = tx.hash();
 
 	    if (!tx.sig) {
 	      throw new Error("can't send an unsigned transaction");
@@ -25395,34 +25811,37 @@
 
 	    return this.requester.send("".concat(TX_NAME, "_sendTx"), [tx.toJson()]).then(
 	    /*#__PURE__*/
-	    _asyncToGenerator(
-	    /*#__PURE__*/
-	    regeneratorRuntime.mark(function _callee4() {
-	      return regeneratorRuntime.wrap(function _callee4$(_context4) {
-	        while (1) {
-	          switch (_context4.prev = _context4.next) {
-	            case 0:
-	              if (waitConfirm) {
-	                _context4.next = 2;
-	                break;
-	              }
+	    function () {
+	      var _ref2 = _asyncToGenerator(
+	      /*#__PURE__*/
+	      regeneratorRuntime.mark(function _callee4(txHash) {
+	        return regeneratorRuntime.wrap(function _callee4$(_context4) {
+	          while (1) {
+	            switch (_context4.prev = _context4.next) {
+	              case 0:
+	                if (!waitConfirm) {
+	                  _context4.next = 3;
+	                  break;
+	                }
 
-	              return _context4.abrupt("return", txHash);
+	                _context4.next = 3;
+	                return _this2.txWatcher.waitTx(txHash);
 
-	            case 2:
-	              _context4.next = 4;
-	              return _this2.txWatcher.waitTx(txHash);
+	              case 3:
+	                return _context4.abrupt("return", txHash);
 
-	            case 4:
-	              return _context4.abrupt("return", txHash);
-
-	            case 5:
-	            case "end":
-	              return _context4.stop();
+	              case 4:
+	              case "end":
+	                return _context4.stop();
+	            }
 	          }
-	        }
-	      }, _callee4, this);
-	    })));
+	        }, _callee4, this);
+	      }));
+
+	      return function (_x6) {
+	        return _ref2.apply(this, arguments);
+	      };
+	    }());
 	  },
 
 	  /**
@@ -25488,7 +25907,7 @@
 	   */
 	  signIssueAsset: function signIssueAsset(privateKey, txConfig, issueAssetInfo) {
 	    txConfig = checkChainID(txConfig, this.chainID);
-	    var tx = new IssueAsset(txConfig, issueAssetInfo);
+	    var tx = new IssueAssetTx(txConfig, issueAssetInfo);
 	    tx.signWith(privateKey);
 	    return JSON.stringify(tx.toJson());
 	  },
@@ -25502,8 +25921,70 @@
 	   */
 	  signTransferAsset: function signTransferAsset(privateKey, txConfig, transferAssetInfo) {
 	    txConfig = checkChainID(txConfig, this.chainID);
-	    var tx = new TransferAsset(txConfig, transferAssetInfo);
+	    var tx = new TransferAssetTx(txConfig, transferAssetInfo);
 	    tx.signWith(privateKey);
+	    return JSON.stringify(tx.toJson());
+	  },
+
+	  /**
+	   * 签名增发资产的交易
+	   * @param {string} privateKey The private key from sender account
+	   * @param {object} txConfig Transaction config
+	   * @param {object} replenishInfo TransferAsset information
+	   * @return {string}
+	   */
+	  signReplenishAsset: function signReplenishAsset(privateKey, txConfig, replenishInfo) {
+	    txConfig = checkChainID(txConfig, this.chainID);
+	    var tx = new ReplenishAssetTx(txConfig, replenishInfo);
+	    tx.signWith(privateKey);
+	    return JSON.stringify(tx.toJson());
+	  },
+
+	  /**
+	   * 签名修改资产
+	   * @param {string} privateKey The private key from sender account
+	   * @param {object} txConfig Transaction config
+	   * @param {object} modifyInfo TransferAsset information
+	   * @return {string}
+	   */
+	  signModifyAsset: function signModifyAsset(privateKey, txConfig, modifyInfo) {
+	    txConfig = checkChainID(txConfig, this.chainID);
+	    var tx = new modifyAssetTx(txConfig, modifyInfo);
+	    tx.signWith(privateKey);
+	    return JSON.stringify(tx.toJson());
+	  },
+
+	  /**
+	   * free gas transaction sign
+	   * @param {string} privateKey The private key from sender account
+	   * @param {object} txConfig Transaction config
+	   * @param {string} payer the address of the transaction gas
+	   * @return {string}
+	   */
+	  signNoGas: function signNoGas(privateKey, txConfig, payer) {
+	    txConfig = checkChainID(txConfig, this.chainID);
+	    var tx = new GasTx(txConfig, payer);
+	    tx.signNoGasWith(privateKey);
+	    return JSON.stringify(tx.toJson());
+	  },
+
+	  /**
+	   * Reimbursement gas transaction
+	   * @param {string} privateKey The private key from sender account
+	   * @param {string} noGasTxStr returned by the signNoGas method
+	   * @param {number|string} gasPrice Gas price for smart contract. Unit is mo/gas
+	   * @param {number|string} gasLimit Max gas limit for smart contract. Unit is gas
+	   * @return {string}
+	   */
+	  signReimbursement: function signReimbursement(privateKey, noGasTxStr, gasPrice, gasLimit) {
+	    var noGasTx = JSON.parse(noGasTxStr);
+
+	    if (privateToAddress(privateKey) !== noGasTx.payer) {
+	      throw new Error(errors.InvalidAddressConflict(noGasTx.payer));
+	    }
+
+	    var tx = new ReimbursementTx(noGasTx, gasPrice, gasLimit);
+	    tx.signGasWith(privateKey);
 	    return JSON.stringify(tx.toJson());
 	  },
 
@@ -25543,7 +26024,21 @@
 	    } catch (e) {
 	      return e.message;
 	    }
-	  }
+	  },
+
+	  /**
+	   * 将单位从mo转换为LEMO的个数
+	   * @param {number|string} mo
+	   * @return {BigNumber}
+	   */
+	  moToLemo: moToLemo,
+
+	  /**
+	   * 将单位从LEMO的个数转换为mo
+	   * @param {number|string} ether
+	   * @return {BigNumber}
+	   */
+	  lemoToMo: lemoToMo
 	};
 	var tool = {
 	  moduleName: TOOL_NAME,
