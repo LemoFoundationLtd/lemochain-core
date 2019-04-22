@@ -29,7 +29,6 @@ const (
 	testRcvBlocks
 	testQueueTimer
 	testStableBlock
-	testSetConfirmFromCache
 	testAddPeer
 	testRemovePeer
 	testForceSync
@@ -268,6 +267,8 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 
 // insertBlock insert block
 func (pm *ProtocolManager) insertBlock(b *types.Block) {
+	// pop the confirms which arrived before block
+	pm.mergeConfirmsFromCache(b)
 	if err := pm.chain.InsertChain(b, true); err == nil {
 		if len(b.Txs) > 0 {
 			txsKeys := make([]common.Hash, len(b.Txs))
@@ -276,8 +277,6 @@ func (pm *ProtocolManager) insertBlock(b *types.Block) {
 			}
 			pm.txPool.Remove(txsKeys)
 		}
-		// pop the confirms which arrived before block
-		go pm.setConfirmsFromCache(b.Height(), b.Hash())
 	} else {
 		log.Errorf("insertBlock failed: %v", err)
 	}
@@ -337,24 +336,12 @@ func (pm *ProtocolManager) fetchConfirmsFromRemote(start, end uint32) {
 	}
 }
 
-// setConfirmsFromCache set confirms from cache
-func (pm *ProtocolManager) setConfirmsFromCache(height uint32, hash common.Hash) {
-	confirms := pm.confirmsCache.Pop(height, hash)
-	if confirms == nil {
-		log.Debug("confirmsCache.Pop confirms == nil")
-		return
-	}
+// mergeConfirmsFromCache merge confirms into block from cache
+func (pm *ProtocolManager) mergeConfirmsFromCache(block *types.Block) {
+	confirms := pm.confirmsCache.Pop(block.Height(), block.Hash())
+	log.Debugf("Pop %d confirms from cache", len(confirms))
 	for _, confirm := range confirms {
-		if err := pm.chain.ReceiveConfirm(confirm); err != nil {
-			log.Debugf("setConfirmsFromCache: %v", err)
-		}
-	}
-	if pm.confirmsCache.Size() > 100 {
-		log.Debugf("confirmsCache's size: %d", pm.confirmsCache.Size())
-	}
-	// for test
-	if pm.test {
-		pm.testOutput <- testSetConfirmFromCache
+		block.AppendConfirm(confirm.SignInfo)
 	}
 }
 
@@ -799,6 +786,9 @@ func (pm *ProtocolManager) handleConfirmMsg(msg *p2p.Msg) error {
 		}()
 	} else {
 		pm.confirmsCache.Push(confirm)
+		if pm.confirmsCache.Size() > 100 {
+			log.Debugf("confirmsCache's size: %d", pm.confirmsCache.Size())
+		}
 	}
 	return nil
 }
