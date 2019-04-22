@@ -75,8 +75,6 @@ func createPm() *ProtocolManager {
 		&deputynode.DeputyNode{
 			MinerAddress: decodeMinerAddress("Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG"),
 			NodeID:       common.FromHex("0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0"),
-			IP:           net.ParseIP("120.78.132.151"),
-			Port:         7003,
 			Rank:         0,
 			Votes:        new(big.Int).SetInt64(5),
 		},
