@@ -203,10 +203,16 @@ func (am *Manager) RevertToSnapshot(revid int) {
 
 // Finalise finalises the state, clears the change caches and update tries.
 func (am *Manager) Finalise() error {
+	logsByAccount := make(map[common.Address]types.ChangeLogSlice)
+	logs := am.processor.changeLogs
+	for _, log := range logs {
+		logsByAccount[log.Address] = append(logsByAccount[log.Address], log)
+	}
+
 	versionTrie := am.getVersionTrie()
 	currentHeight := am.currentBlockHeight()
 	for _, account := range am.accountCache {
-		if !account.IsDirty() {
+		if len(logsByAccount[account.GetAddress()]) <= 0 {
 			continue
 		}
 
@@ -245,8 +251,7 @@ func (am *Manager) Finalise() error {
 			am.processor.PushChangeLog(log)
 		}
 
-		logs := am.processor.GetLogsByAddress(account.GetAddress())
-
+		logs := logsByAccount[account.GetAddress()]
 		eventIndex := uint(0)
 		for _, changeLog := range logs {
 			if changeLog.LogType == AddEventLog {

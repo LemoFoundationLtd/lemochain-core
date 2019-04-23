@@ -85,7 +85,7 @@ func FileUtilsEncode(flag uint32, key []byte, val []byte) ([]byte, error) {
 }
 
 func FileUtilsFlush(path string, offset int64, data []byte) (int64, error) {
-	file, err := os.OpenFile(path, os.O_APPEND, os.ModePerm)
+	file, err := os.OpenFile(path, os.O_WRONLY, os.ModePerm)
 	defer file.Close()
 	if err != nil {
 		return -1, err
