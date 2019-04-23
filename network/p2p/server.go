@@ -241,6 +241,10 @@ func (srv *Server) HandleConn(fd net.Conn, nodeID *NodeID) error {
 		}
 		return err
 	}
+	// is black node
+	if srv.discover.IsBlackNode(peer.RNodeID().String()) {
+		return ErrBlackListNode
+	}
 	// is itself
 	if bytes.Compare(peer.RNodeID()[:], deputynode.GetSelfNodeID()) == 0 {
 		if err = fd.Close(); err != nil {

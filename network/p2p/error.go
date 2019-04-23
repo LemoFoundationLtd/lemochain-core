@@ -6,6 +6,7 @@ import (
 
 var (
 	ErrConnectSelf        = errors.New("can't connect yourself")
+	ErrBlackListNode      = errors.New("can't connect black list node")
 	ErrGenesisNotMatch    = errors.New("can't match genesis block")
 	ErrBadRemoteID        = errors.New("bad remoteID")
 	ErrNilRemoteID        = errors.New("remoteID can't be nil")

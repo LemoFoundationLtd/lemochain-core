@@ -24,6 +24,7 @@ const (
 
 	WhiteFile = "whitelist"
 	FindFile  = "findnode"
+	BlackFile = "blacklist"
 )
 
 var (
@@ -59,6 +60,7 @@ type DiscoverManager struct {
 	sequence    int32
 	foundNodes  map[common.Hash]*RawNode // total nodes. contains: 'add peer', 'receive nodes from nodes find request'
 	whiteNodes  map[common.Hash]*RawNode // white list nodes
+	blackNodes  map[common.Hash]*RawNode // black list nodes
 	deputyNodes map[common.Hash]*RawNode // deputy nodes
 
 	dataDir string
@@ -73,6 +75,7 @@ func NewDiscoverManager(dataDir string) *DiscoverManager {
 		sequence:    0,
 		foundNodes:  make(map[common.Hash]*RawNode, 100),
 		whiteNodes:  make(map[common.Hash]*RawNode, 20),
+		blackNodes:  make(map[common.Hash]*RawNode, 20),
 		deputyNodes: make(map[common.Hash]*RawNode, 20),
 
 		status: 0,
@@ -83,6 +86,7 @@ func NewDiscoverManager(dataDir string) *DiscoverManager {
 // Start
 func (m *DiscoverManager) Start() error {
 	if atomic.CompareAndSwapInt32(&m.status, 0, 1) {
+		m.setBlackList()
 		m.setWhiteList()
 		m.initDiscoverList()
 	} else {
@@ -95,7 +99,10 @@ func (m *DiscoverManager) Start() error {
 // Stop
 func (m *DiscoverManager) Stop() error {
 	if atomic.CompareAndSwapInt32(&m.status, 1, 0) {
+		// write find node to file
 		m.writeFindFile()
+		// write black list node to file
+		m.writeBlackListFile()
 	} else {
 		return ErrNotStart
 	}
@@ -201,6 +208,9 @@ func (m *DiscoverManager) addDiscoverNodes(nodes []string) {
 			continue
 		}
 		key := crypto.Keccak256Hash(nodeID[:])
+		if _, ok := m.blackNodes[key]; ok {
+			continue
+		}
 		if n, ok := m.whiteNodes[key]; ok {
 			if n.Sequence < 0 {
 				m.resetState(n)
@@ -358,6 +368,47 @@ func readFile(path string) []string {
 	return list
 }
 
+// is black list node
+func (m *DiscoverManager) IsBlackNode(node string) bool {
+	nodeID, _ := checkNodeString(node)
+	if nodeID == nil {
+		log.Error("check nodeID string error")
+		return false
+	}
+	key := crypto.Keccak256Hash(nodeID[:])
+	if _, ok := m.blackNodes[key]; ok {
+		return true
+	} else {
+		return false
+	}
+}
+
+// setBlackList set black list nodes
+func (m *DiscoverManager) setBlackList() {
+	path := filepath.Join(m.dataDir, BlackFile)
+	nodes := readFile(path)
+	if nodes == nil || len(nodes) == 0 {
+		return
+	}
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	var n *RawNode
+	for _, node := range nodes {
+		nodeID, endpoint := checkNodeString(node)
+		if nodeID == nil {
+			continue
+		}
+		key := crypto.Keccak256Hash(nodeID[:])
+		if _, ok := m.blackNodes[key]; ok {
+			continue
+		}
+		if n = newRawNode(nodeID, endpoint); n != nil {
+			m.blackNodes[key] = n
+		}
+	}
+}
+
 // setWhiteList set white list nodes
 func (m *DiscoverManager) setWhiteList() {
 	path := filepath.Join(m.dataDir, WhiteFile)
@@ -379,6 +430,9 @@ func (m *DiscoverManager) setWhiteList() {
 		if _, ok := m.whiteNodes[key]; ok {
 			continue
 		}
+		if _, ok := m.blackNodes[key]; ok {
+			continue
+		}
 		if n = newRawNode(nodeID, endpoint); n != nil {
 			m.whiteNodes[key] = n
 		}
@@ -397,14 +451,29 @@ func (m *DiscoverManager) AddNewList(nodes []string) {
 	m.addDiscoverNodes(nodes)
 }
 
+// blackFindFile
+func (m *DiscoverManager) writeBlackListFile() {
+	list := make([]string, 0, MaxNodeCount)
+	for _, node := range m.blackNodes {
+		list = append(list, node.String())
+	}
+	path := filepath.Join(m.dataDir, BlackFile)
+	writeToFile(list, path)
+}
+
 // writeFindFile write invalid node to file
 func (m *DiscoverManager) writeFindFile() {
 	// create list
 	list := m.getAvailableNodes()
 
 	path := filepath.Join(m.dataDir, FindFile)
-	// open file
-	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0666) // read and write
+	writeToFile(list, path)
+}
+
+// write node list to file
+func writeToFile(nodeList []string, path string) {
+	// open or create file
+	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666) // first clear file to read and write
 	if err != nil {
 		return
 	}
@@ -416,7 +485,7 @@ func (m *DiscoverManager) writeFindFile() {
 
 	// write file
 	buf := bufio.NewWriter(f)
-	for _, n := range list {
+	for _, n := range nodeList {
 		if _, err := buf.WriteString(n + "\n"); err != nil {
 			log.Infof("write file failed: %v", err)
 		}

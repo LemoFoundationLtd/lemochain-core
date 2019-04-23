@@ -86,6 +86,10 @@ func (m *DialManager) loop() {
 	for {
 		list := m.discover.connectingNodes()
 		for _, n := range list {
+			if m.discover.IsBlackNode(n) {
+				continue
+			}
+
 			log.Debugf("start dial: %s", n[:16])
 			if atomic.LoadInt32(&m.state) == -1 {
 				return
