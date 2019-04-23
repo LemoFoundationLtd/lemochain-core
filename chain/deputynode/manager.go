@@ -24,16 +24,42 @@ var (
 type Manager struct {
 	DeputyCount int // Max deputy count. Not include candidate nodes
 
-	termList []*TermRecord
-	lock     sync.Mutex
+	termList           []*TermRecord
+	abnormalDeputyNode map[string]struct{}
+	lock               sync.Mutex
 }
 
 // NewManager creates a new Manager. It is used to maintain term record list
 func NewManager(deputyCount int) *Manager {
 	return &Manager{
-		DeputyCount: deputyCount,
-		termList:    make([]*TermRecord, 0),
+		DeputyCount:        deputyCount,
+		termList:           make([]*TermRecord, 0),
+		abnormalDeputyNode: make(map[string]struct{}),
 	}
+}
+
+// IsAbnormalDeputyNode
+func (m *Manager) IsAbnormalDeputyNode(minerAddress string) bool {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	if _, exit := m.abnormalDeputyNode[minerAddress]; exit {
+		return true
+	}
+	return false
+}
+
+// SetAbnormalDeputyNode
+func (m *Manager) PutAbnormalDeputyNode(minerAddress string) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	m.abnormalDeputyNode[minerAddress] = struct{}{}
+}
+
+// DeleteAbnormalDeputyNode
+func (m *Manager) DeleteAbnormalDeputyNode(minerAddress string) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	delete(m.abnormalDeputyNode, minerAddress)
 }
 
 // SaveSnapshot add deputy nodes record by snapshot block data
