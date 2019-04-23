@@ -1,7 +1,6 @@
 package store
 
 import (
-	"bytes"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
@@ -66,7 +65,7 @@ func (queue *FileQueue) Start() {
 }
 
 func (queue *FileQueue) start() {
-	process := func() {
+	go func() {
 		for {
 			select {
 			case <-queue.Quit:
@@ -78,9 +77,7 @@ func (queue *FileQueue) start() {
 				// continue
 			}
 		}
-	}
-
-	go process()
+	}()
 }
 
 func (queue *FileQueue) Close() {
@@ -95,9 +92,6 @@ func (queue *FileQueue) setIndex(item *item) {
 	if !ok {
 		item.refCnt = 1
 	} else {
-		if bytes.Compare(tmp.key, item.key) != 0 {
-			panic("!!")
-		}
 		item.refCnt = tmp.refCnt + 1
 	}
 
@@ -107,10 +101,6 @@ func (queue *FileQueue) setIndex(item *item) {
 func (queue *FileQueue) delIndex(flag uint32, key []byte) {
 	queue.IndexRW.Lock()
 	defer queue.IndexRW.Unlock()
-
-	if queue.Index == nil {
-		log.Errorf("")
-	}
 
 	val, ok := queue.Index[common.ToHex(key)]
 	if !ok {

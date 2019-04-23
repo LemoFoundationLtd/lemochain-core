@@ -6,7 +6,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/store/leveldb"
 	"path/filepath"
-	"sync"
 )
 
 type WriteExtend interface {
@@ -16,7 +15,6 @@ type WriteExtend interface {
 type SyncFileDB struct {
 	Home string
 
-	RW       sync.Mutex
 	Height   uint
 	BitCasks []*BitCask
 
