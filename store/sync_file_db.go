@@ -73,16 +73,14 @@ func (db *SyncFileDB) start(Done chan *Inject, Err chan *Inject) {
 		case <-db.Quit:
 			return
 		case writeOp := <-db.WriteChan:
-			log.Infof("sync file db. write channel flag: %d", writeOp.Flg)
 			err := db.put(writeOp.Flg, writeOp.Key, writeOp.Val)
 			if err != nil {
-				log.Errorf("bitcask put data err: %s", err.Error())
+				log.Errorf("bitcask put data err: %s, flg: %d, key: %s", err.Error(), writeOp.Flg, common.ToHex(writeOp.Key))
 				Err <- writeOp
 			} else {
 				db.afterWriteExtend(writeOp)
 				Done <- writeOp
 			}
-			continue
 		}
 	}
 }
@@ -108,6 +106,8 @@ func (db *SyncFileDB) Put(flag uint32, key []byte, val []byte) {
 		return
 	case db.WriteChan <- op:
 		return
+	default:
+		log.Errorf("channel queue is busy!!")
 	}
 }
 

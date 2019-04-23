@@ -20,7 +20,6 @@ type item struct {
 }
 
 type FileQueue struct {
-	RW     sync.RWMutex
 	Home   string
 	Offset int64
 
@@ -40,7 +39,7 @@ func (queue *FileQueue) path() string {
 }
 
 func NewFileQueue(home string, levelDB *leveldb.LevelDBDatabase, extend WriteExtend) *FileQueue {
-	doneChan := make(chan *Inject)
+	doneChan := make(chan *Inject, 1024*256)
 	errChan := make(chan *Inject)
 	quit := make(chan struct{})
 	return &FileQueue{
@@ -73,9 +72,9 @@ func (queue *FileQueue) start() {
 				return
 			case done := <-queue.DoneChan:
 				queue.afterPut(done)
-				continue
+				// continue
 			case <-queue.ErrChan:
-				continue
+				// continue
 			}
 		}
 	}()
@@ -105,7 +104,7 @@ func (queue *FileQueue) delIndex(flag uint32, key []byte) {
 
 	val, ok := queue.Index[common.ToHex(key)]
 	if !ok {
-		log.Errorf("del index.done is not exist.key: %s", common.ToHex(key))
+		log.Errorf("del index.done is not exist.flg: %d, key: %s", flag, common.ToHex(key))
 	} else {
 		if val.flg != flag {
 			panic(fmt.Sprintf("del index.val.flag(%d) != flag(%d)", val.flg, flag))
@@ -201,6 +200,17 @@ func (queue *FileQueue) encodeBatchItems(items []*BatchItem) ([][]byte, error) {
 
 	tmpBuf := make([][]byte, len(items))
 	for index := 0; index < len(items); index++ {
+		tmp := items[index]
+		item := &BatchItem{
+			Flg: tmp.Flg,
+			Key: make([]byte, len(tmp.Key)),
+			Val: make([]byte, len(tmp.Val)),
+		}
+
+		copy(item.Key, tmp.Key)
+		copy(item.Val, tmp.Val)
+		items[index] = item
+
 		buf, err := FileUtilsEncode(items[index].Flg, items[index].Key, items[index].Val)
 		if err != nil {
 			return nil, err
@@ -229,9 +239,6 @@ func (queue *FileQueue) mergeBatchItems(tmpBuf [][]byte) []byte {
 }
 
 func (queue *FileQueue) Get(flag uint32, key []byte) ([]byte, error) {
-	queue.RW.Lock()
-	defer queue.RW.Unlock()
-
 	val := queue.getIndex(flag, key)
 	if val != nil {
 		return val, nil
@@ -241,9 +248,6 @@ func (queue *FileQueue) Get(flag uint32, key []byte) ([]byte, error) {
 }
 
 func (queue *FileQueue) Put(flag uint32, key []byte, val []byte) error {
-	queue.RW.Lock()
-	defer queue.RW.Unlock()
-
 	buf, err := FileUtilsEncode(flag, key, val)
 	if err != nil {
 		return err
@@ -261,9 +265,6 @@ func (queue *FileQueue) Put(flag uint32, key []byte, val []byte) error {
 }
 
 func (queue *FileQueue) PutBatch(items []*BatchItem) error {
-	queue.RW.Lock()
-	defer queue.RW.Unlock()
-
 	tmpBuf, err := queue.encodeBatchItems(items)
 	if err != nil {
 		return err
@@ -289,7 +290,6 @@ func (queue *FileQueue) deliverBatch(tmpBuf [][]byte, items []*BatchItem) {
 }
 
 func (queue *FileQueue) deliver(flag uint32, key []byte, val []byte) {
-	queue.SyncFileDB.Put(flag, key, val)
 	queue.setIndex(&item{
 		flg:    flag,
 		key:    key,
@@ -297,6 +297,8 @@ func (queue *FileQueue) deliver(flag uint32, key []byte, val []byte) {
 		offset: queue.Offset,
 		refCnt: 1,
 	})
+
+	queue.SyncFileDB.Put(flag, key, val)
 }
 
 func (queue *FileQueue) afterPut(op *Inject) {

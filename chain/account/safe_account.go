@@ -233,8 +233,3 @@ func (a *SafeAccount) SetCode(code types.Code) {
 	a.processor.PushChangeLog(newLog)
 	a.rawAccount.SetCode(code)
 }
-
-func (a *SafeAccount) IsDirty() bool {
-	logs := a.processor.GetLogsByAddress(a.GetAddress())
-	return len(logs) != 0
-}

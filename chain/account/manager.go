@@ -201,12 +201,23 @@ func (am *Manager) RevertToSnapshot(revid int) {
 	am.processor.RevertToSnapshot(revid)
 }
 
+func (am *Manager) logGrouping() map[common.Address]types.ChangeLogSlice {
+	logsByAccount := make(map[common.Address]types.ChangeLogSlice)
+	logs := am.processor.changeLogs
+	for _, log := range logs {
+		logsByAccount[log.Address] = append(logsByAccount[log.Address], log)
+	}
+	return logsByAccount
+}
+
 // Finalise finalises the state, clears the change caches and update tries.
 func (am *Manager) Finalise() error {
+	logsByAccount := am.logGrouping()
+
 	versionTrie := am.getVersionTrie()
 	currentHeight := am.currentBlockHeight()
 	for _, account := range am.accountCache {
-		if !account.IsDirty() {
+		if len(logsByAccount[account.GetAddress()]) <= 0 {
 			continue
 		}
 
@@ -245,8 +256,7 @@ func (am *Manager) Finalise() error {
 			am.processor.PushChangeLog(log)
 		}
 
-		logs := am.processor.GetLogsByAddress(account.GetAddress())
-
+		logs := logsByAccount[account.GetAddress()]
 		eventIndex := uint(0)
 		for _, changeLog := range logs {
 			if changeLog.LogType == AddEventLog {
@@ -277,10 +287,10 @@ func versionTrieKey(address common.Address, logType types.ChangeLogType) []byte 
 
 // Save writes dirty data into db.
 func (am *Manager) Save(newBlockHash common.Hash) error {
-	// dirtyAccounts := make([]*types.AccountData, 0, len(am.accountCache))
+	logsByAccount := am.logGrouping()
 	acctDatabase, _ := am.db.GetActDatabase(newBlockHash)
 	for _, account := range am.accountCache {
-		if !account.IsDirty() {
+		if len(logsByAccount[account.GetAddress()]) <= 0 {
 			continue
 		}
 		if err := account.rawAccount.Save(); err != nil {

@@ -181,7 +181,6 @@ func TestManager_Finalise_Save(t *testing.T) {
 	// nothing to finalise
 	account := manager.GetAccount(common.HexToAddress("0x1"))
 	assert.Equal(t, 1, len(manager.accountCache))
-	assert.Equal(t, false, account.(*SafeAccount).IsDirty())
 	err := manager.Finalise()
 	assert.NoError(t, err)
 	// save
@@ -198,7 +197,6 @@ func TestManager_Finalise_Save(t *testing.T) {
 	err = account.SetStorageState(k(1), []byte{100})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(manager.accountCache))
-	assert.Equal(t, true, account.(*SafeAccount).IsDirty())
 	assert.Equal(t, 2, len(manager.processor.changeLogs))
 	root := manager.GetVersionRoot()
 	assert.Equal(t, newestBlock.VersionRoot(), root)
@@ -233,7 +231,6 @@ func TestManager_Finalise_Save2(t *testing.T) {
 	// nothing to finalise
 	account := manager.GetAccount(common.HexToAddress("0x1"))
 	assert.Equal(t, 1, len(manager.accountCache))
-	assert.Equal(t, false, account.(*SafeAccount).IsDirty())
 	err := manager.Finalise()
 	assert.NoError(t, err)
 	// save
@@ -250,7 +247,6 @@ func TestManager_Finalise_Save2(t *testing.T) {
 	err = account.SetStorageState(k(1), []byte{100})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(manager.accountCache))
-	assert.Equal(t, true, account.(*SafeAccount).IsDirty())
 	assert.Equal(t, 2, len(manager.processor.changeLogs))
 	root := manager.GetVersionRoot()
 	assert.Equal(t, emptyTrieRoot, root)
