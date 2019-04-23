@@ -383,6 +383,18 @@ func (m *DiscoverManager) IsBlackNode(node string) bool {
 	}
 }
 
+// PutBlackNode
+func (m *DiscoverManager) PutBlackNode(nodeID *NodeID, endpoint string) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	key := crypto.Keccak256Hash(nodeID[:])
+	if _, ok := m.blackNodes[key]; ok {
+		return
+	}
+	n := newRawNode(nodeID, endpoint)
+	m.blackNodes[key] = n
+}
+
 // setBlackList set black list nodes
 func (m *DiscoverManager) setBlackList() {
 	path := filepath.Join(m.dataDir, BlackFile)
@@ -473,7 +485,7 @@ func (m *DiscoverManager) writeFindFile() {
 // write node list to file
 func writeToFile(nodeList []string, path string) {
 	// open or create file
-	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666) // first clear file to read and write
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666) // first clear file to read and write
 	if err != nil {
 		return
 	}
