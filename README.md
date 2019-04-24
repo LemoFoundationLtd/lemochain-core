@@ -28,7 +28,6 @@ The lemochain-core project is the Golang implement of this consensus mechanism. 
     git clone https://github.com/LemoFoundationLtd/lemochain-core src\github.com\LemoFoundationLtd\lemochain-core
     ```
 - Install `GCC`, cause ECDSA is required. Install `mingw` if you use windows, otherwise click [here](https://gcc.gnu.org/install) to read the GCC documentation.
-- Download and install [MySQL](https://dev.mysql.com/downloads/installer/) v5.3 or any later version (or you can use cloud database). Create a database named `lemochain`
 
 ### Compiling
 ```
@@ -50,8 +49,6 @@ It defines initial deputy node list and some running configuration about this no
 	"deputyCount": "17",
 	"sleepTime": "3000",
 	"timeout": "10000",
-	"dbUri": "root:123456@tcp(127.0.0.1:3306)/lemochain?charset=utf8mb4",
-	"dbDriver": "mysql",
 	"termDuration": "1000000",
 	"interimDuration":"1000"
 }
@@ -60,8 +57,6 @@ It defines initial deputy node list and some running configuration about this no
 - `deputyCount` The max consensus node count
 - `sleepTime` Wait seconds to generation block for fear that there is no transactions in block
 - `timeout` The maximum limit of block generation for every nodes
-- `dbUri` The connection string of database. It is like `[USER_NAME]:[PASSWORD]@tcp([IP]:[PORT])/[DB_NAME]?charset=utf8mb4`
-- `dbDriver` The type of database driver
 - `termDuration` The block numbers between to snapshot blocks
 - `interimDuration` The block numbers of interim period
 
@@ -78,6 +73,9 @@ Write each node address in a row. The format is `NodeID@IP:Port`. There are some
 34f0df789b46e9bc09f23d5315b951bc77bbfeda653ae6f5aab564c9b4619322fddb3b1f28d1c434250e9d4dd8f51aa8334573d7281e4d63baba913e9fa6908f@45.77.121.107:7003
 c7021a9c903da38ed499f486dba4539fbe12b8878d43e566674beebd36746e77c827a2849db3c1289e0adf25fce294253be5e7c9bb65d0b94cf8a7ec34c91468@149.28.68.93:7007
 ```
+### blacklist file
+The node will refuse to connect all nodes in this file. It is located in `datadir` and named as `blacklist`  
+The configuration is the same as the whitelist file.
 
 ### command line
 Start up LemoChain's built-in interactive JavaScript console, (via the trailing `console` subcommand) through which you can invoke all official [SDK](https://github.com/LemoFoundationLtd/lemo-client) methods. You can simply interact with the LemoChain network; create accounts; transfer funds; deploy and interact with contracts. To do so:
