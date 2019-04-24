@@ -28,7 +28,6 @@ lemochain-core项目是这种共识机制的Go语言实现，其控制台命令�
     git clone https://github.com/LemoFoundationLtd/lemochain-core src\github.com\LemoFoundationLtd\lemochain-core
     ```
 - 因为`ECDSA`算法代码是由C语言编写，所以编译时会用到`GCC`，建议`windows`下安装`mingw`，其他系统请点击[GCC文档](https://gcc.gnu.org/install)
-- 下载安装[MySQL](https://dev.mysql.com/downloads/installer/) v5.3 或以上版本，也可以使用云数据库。然后创建一个名为`lemochain`的库
 
 ### 编译
 ```
@@ -50,8 +49,6 @@ go build
 	"deputyCount": "17",
 	"sleepTime": "3000",
 	"timeout": "10000",
-	"dbUri": "root:123456@tcp(127.0.0.1:3306)/lemochain?charset=utf8mb4",
-	"dbDriver": "mysql",
 	"termDuration": "1000000",
 	"interimDuration":"1000",
 	"connectionLimit":"20"
@@ -61,8 +58,6 @@ go build
 - `deputyCount` 参与共识的最大节点数量
 - `sleepTime` 收到区块后等待一定时间后再出块，以免区块中没有交易（后续版本将会改为根据交易池状态决定是否出块）
 - `timeout` 各节点出块的超时时间，不能小于3秒(3000毫秒)
-- `dbUri` 数据库连接地址。格式为`[用户名]:[密码]@tcp([IP]:[端口号])/[数据库名]?charset=utf8mb4`
-- `dbDriver` 数据库类型
 - `termDuration` 两个快照块之间间隔的区块数
 - `interimDuration` 过渡期区块数
 - `connectionLimit` 最大连接数（代理节点、白名单除外）
@@ -75,6 +70,10 @@ go build
 34f0df789b46e9bc09f23d5315b951bc77bbfeda653ae6f5aab564c9b4619322fddb3b1f28d1c434250e9d4dd8f51aa8334573d7281e4d63baba913e9fa6908f@45.77.121.107:7003
 c7021a9c903da38ed499f486dba4539fbe12b8878d43e566674beebd36746e77c827a2849db3c1289e0adf25fce294253be5e7c9bb65d0b94cf8a7ec34c91468@149.28.68.93:7007
 ```
+### 节点黑名单
+节点启动后会拒绝连接这些节点，位于datadir根目录下，名为：`blacklist`   
+配置方式与以上的节点白名单相同。
+
 
 ### 命令行
 通过`console`命令运行`glemo`可以启动一个内置的JavaScript控制台，通过这个控制台可以运行所有[SDK](https://github.com/LemoFoundationLtd/lemo-client)方法。包括与LemoChain网络进行交互；管理账号；发送交易；部署与执行智能合约，等等。
