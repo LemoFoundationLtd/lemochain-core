@@ -101,8 +101,6 @@ func (m *DiscoverManager) Stop() error {
 	if atomic.CompareAndSwapInt32(&m.status, 1, 0) {
 		// write find node to file
 		m.writeFindFile()
-		// write black list node to file
-		m.writeBlackListFile()
 	} else {
 		return ErrNotStart
 	}
