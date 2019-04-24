@@ -376,11 +376,19 @@ func (m *DiscoverManager) IsBlackNode(node string) bool {
 		return false
 	}
 	key := crypto.Keccak256Hash(nodeID[:])
-	if _, ok := m.blackNodes[key]; ok {
+
+	if n := m.getBlackNode(key); n != nil {
 		return true
 	} else {
 		return false
 	}
+}
+
+// getBlackNode
+func (m *DiscoverManager) getBlackNode(key common.Hash) *RawNode {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	return m.blackNodes[key]
 }
 
 // PutBlackNode
@@ -419,6 +427,16 @@ func (m *DiscoverManager) setBlackList() {
 			m.blackNodes[key] = n
 		}
 	}
+}
+
+// blackFindFile
+func (m *DiscoverManager) writeBlackListFile() {
+	list := make([]string, 0, MaxNodeCount)
+	for _, node := range m.blackNodes {
+		list = append(list, node.String())
+	}
+	path := filepath.Join(m.dataDir, BlackFile)
+	writeToFile(list, path)
 }
 
 // setWhiteList set white list nodes
@@ -461,16 +479,6 @@ func (m *DiscoverManager) initDiscoverList() {
 // AddNewList for discovery
 func (m *DiscoverManager) AddNewList(nodes []string) {
 	m.addDiscoverNodes(nodes)
-}
-
-// blackFindFile
-func (m *DiscoverManager) writeBlackListFile() {
-	list := make([]string, 0, MaxNodeCount)
-	for _, node := range m.blackNodes {
-		list = append(list, node.String())
-	}
-	path := filepath.Join(m.dataDir, BlackFile)
-	writeToFile(list, path)
 }
 
 // writeFindFile write invalid node to file
