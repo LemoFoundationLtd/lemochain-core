@@ -367,12 +367,7 @@ func readFile(path string) []string {
 }
 
 // is black list node
-func (m *DiscoverManager) IsBlackNode(node string) bool {
-	nodeID, _ := checkNodeString(node)
-	if nodeID == nil {
-		log.Error("check nodeID string error")
-		return false
-	}
+func (m *DiscoverManager) IsBlackNode(nodeID *NodeID) bool {
 	key := crypto.Keccak256Hash(nodeID[:])
 
 	if n := m.getBlackNode(key); n != nil {

@@ -615,7 +615,8 @@ func TestDiscoverManager_PutBlackNode_IsBlackNode(t *testing.T) {
 	for i := 0; i < n; i++ {
 		k := dis.getBlackNode(keyList[i])
 		assert.NotEmpty(t, k)
-		b := dis.IsBlackNode(nodes[i])
+		nodeID, _ := checkNodeString(nodes[i])
+		b := dis.IsBlackNode(nodeID)
 		assert.Equal(t, true, b)
 	}
 }
