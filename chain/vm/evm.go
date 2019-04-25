@@ -3,7 +3,6 @@ package vm
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
@@ -24,6 +23,22 @@ type (
 	// GetHashFunc returns the nth block hash in the blockchain
 	// and is used by the BLOCKHASH EVM op code.
 	GetHashFunc func(uint32) common.Hash
+)
+
+var (
+	ErrIssueAssetAmount     = errors.New("issue asset amount can't be 0 or nil")
+	ErrIssueAssetMetaData   = errors.New("the length of metaData more than limit")
+	ErrReplenishAssetAmount = errors.New("replenish asset amount can't be 0 or nil")
+	ErrFrozenAsset          = errors.New("can't replenish the frozen assets")
+	ErrIsReplenishable      = errors.New("asset's IsReplenishable is false")
+	ErrIsDivisible          = errors.New("this 'isDivisible == false' kind of asset can't be replenished")
+	ErrNotEqualAssetCode    = errors.New("assetCode not equal")
+	ErrModifyAssetInfo      = errors.New("the struct of ModifyAssetInfo's Info can't be nil")
+	ErrMarshalAssetLength   = errors.New("the length of data by marshal asset more than max length")
+	ErrAssetEquity          = errors.New("asset equity can't be nil or 0")
+	ErrTransferFrozenAsset  = errors.New("cannot trade frozen assets")
+	ErrAssetCategory        = errors.New("assert's Category not exist")
+	ErrAgainRegister        = errors.New("cannot register again after unregistering")
 )
 
 // run runs the given contract and takes care of running precompiles with a fallback to the byte code interpreter.
@@ -272,7 +287,7 @@ func (evm *EVM) RegisterOrUpdateToCandidate(candidateAddress, to common.Address,
 		profile[types.CandidateKeyPort] = port
 		nodeAccount.SetCandidate(profile)
 	} else if ok && IsCandidate == params.NotCandidateNode {
-		return gas, errors.New("Cannot register again after unregistering. ")
+		return gas, ErrAgainRegister
 	} else {
 		// Register candidate nodes
 		newProfile := make(map[string]string, 5)
@@ -320,8 +335,8 @@ func (evm *EVM) CreateAssetTx(sender common.Address, data []byte, txHash common.
 	}
 	// judge data's length
 	if len(newData) > types.MaxMarshalAssetLength {
-		err = fmt.Errorf("the length of data by marshal asset more than max length,len(data) = %d ", len(newData))
-		return err
+		log.Errorf("the length of data by marshal asset more than max length,len(data) = %d ", len(newData))
+		return ErrMarshalAssetLength
 	}
 	var snapshot = evm.am.Snapshot()
 	err = issuerAcc.SetAssetCode(newAss.AssetCode, newAss)
@@ -341,13 +356,13 @@ func (evm *EVM) IssueAssetTx(sender, receiver common.Address, txHash common.Hash
 	}
 	// metaData length limit
 	if len(issueAsset.MetaData) > types.MaxMetaDataLength {
-		err = fmt.Errorf("the length of metaData more than limit, len(metaData) = %d ", len(issueAsset.MetaData))
-		return err
+		log.Errorf("the length of metaData more than limit, len(metaData) = %d ", len(issueAsset.MetaData))
+		return ErrIssueAssetMetaData
 	}
-	// amount > 0
-	if issueAsset.Amount.Cmp(big.NewInt(0)) <= 0 {
-		err = fmt.Errorf("issue asset amount must > 0 , currentAmount = %s", issueAsset.Amount.String())
-		return err
+	// amount != nil && amount > 0
+	if issueAsset.Amount == nil || issueAsset.Amount.Cmp(big.NewInt(0)) <= 0 {
+		log.Errorf("issue asset amount must > 0 , currentAmount = %s", issueAsset.Amount.String())
+		return ErrIssueAssetAmount
 	}
 	assetCode := issueAsset.AssetCode
 	issuerAcc := evm.am.GetAccount(sender)
@@ -372,8 +387,8 @@ func (evm *EVM) IssueAssetTx(sender, receiver common.Address, txHash common.Hash
 	} else if AssType == types.Asset02 || AssType == types.Asset03 { // ERC721 or ERC721+20
 		equity.AssetId = txHash
 	} else {
-		err = fmt.Errorf("Assert's Category not exist ,Category = %d ", AssType)
-		return err
+		log.Errorf("assert's Category not exist ,Category = %d ", AssType)
+		return ErrAssetCategory
 	}
 	var snapshot = evm.am.Snapshot()
 	newAsset := asset.Clone()
@@ -420,9 +435,9 @@ func (evm *EVM) ReplenishAssetTx(sender, receiver common.Address, data []byte) e
 	newAssetId := repl.AssetId
 	addAmount := repl.Amount
 	// amount > 0
-	if addAmount.Cmp(big.NewInt(0)) <= 0 {
-		err = fmt.Errorf("replenish asset amount must > 0,currentAmount = %s", addAmount.String())
-		return err
+	if addAmount == nil || addAmount.Cmp(big.NewInt(0)) <= 0 {
+		log.Errorf("replenish asset amount must > 0,currentAmount = %s", addAmount.String())
+		return ErrReplenishAssetAmount
 	}
 	// assert issuer account
 	issuerAcc := evm.am.GetAccount(sender)
@@ -433,15 +448,15 @@ func (evm *EVM) ReplenishAssetTx(sender, receiver common.Address, data []byte) e
 	// Determine whether asset is frozen
 	isStop, err := issuerAcc.GetAssetCodeState(newAssetCode, types.AssetStop)
 	if err == nil && isStop == "true" {
-		return errors.New("Can't replenish the frozen assets. ")
+		return ErrFrozenAsset
 	}
 	// judge IsReplenishable
 	if !asset.IsReplenishable {
-		return errors.New("Asset's IsReplenishable is false ")
+		return ErrIsReplenishable
 	}
 	// erc721 asset can't be replenished
 	if !asset.IsDivisible {
-		return errors.New("this 'isDivisible == false' kind of asset can't be replenished ")
+		return ErrIsDivisible
 	}
 	// receiver account
 	recAcc := evm.am.GetAccount(receiver)
@@ -458,8 +473,8 @@ func (evm *EVM) ReplenishAssetTx(sender, receiver common.Address, data []byte) e
 	}
 
 	if newAssetCode != equity.AssetCode {
-		err = fmt.Errorf("assetCode not equal: newAssetCode = %s,originalAssetCode = %s. ", newAssetCode.String(), equity.AssetCode.String())
-		return err
+		log.Errorf("assetCode not equal: newAssetCode = %s,originalAssetCode = %s. ", newAssetCode.String(), equity.AssetCode.String())
+		return ErrNotEqualAssetCode
 	}
 	var snapshot = evm.am.Snapshot()
 	// add amount
@@ -495,6 +510,9 @@ func (evm *EVM) ModifyAssetProfileTx(sender common.Address, data []byte) error {
 	}
 	acc := evm.am.GetAccount(sender)
 	info := modifyInfo.Info
+	if info == nil || len(info) == 0 {
+		return ErrModifyAssetInfo
+	}
 	var snapshot = evm.am.Snapshot()
 	infoSlice := make([]string, 0, len(info))
 	for k, _ := range info {
@@ -529,11 +547,9 @@ func (evm *EVM) ModifyAssetProfileTx(sender common.Address, data []byte) error {
 	}
 	// judge data's length
 	if len(newData) > types.MaxMarshalAssetLength {
-		err = fmt.Errorf("the length of data by marshal asset more than max length,len(data) = %d ", len(data))
-		if err != nil {
-			evm.am.RevertToSnapshot(snapshot)
-			return err
-		}
+		log.Errorf("the length of data by marshal asset more than max length,len(data) = %d ", len(data))
+		evm.am.RevertToSnapshot(snapshot)
+		return ErrMarshalAssetLength
 	}
 	return nil
 }
@@ -554,6 +570,9 @@ func (evm *EVM) TransferAssetTx(caller ContractRef, addr common.Address, gas uin
 	if err != nil {
 		return nil, gas, err
 	}
+	if amount == nil || senderEquity.Equity == nil || senderEquity.Equity.Cmp(big.NewInt(0)) <= 0 {
+		return nil, gas, ErrAssetEquity
+	}
 	// get asset
 	issuer, err := chainDB.GetAssetCode(senderEquity.AssetCode)
 	if err != nil {
@@ -562,7 +581,7 @@ func (evm *EVM) TransferAssetTx(caller ContractRef, addr common.Address, gas uin
 	issuerAcc := evm.am.GetAccount(issuer)
 	isStop, err := issuerAcc.GetAssetCodeState(senderEquity.AssetCode, types.AssetStop)
 	if err == nil && isStop == "true" {
-		return nil, gas, errors.New("Cannot trade frozen assets. ")
+		return nil, gas, ErrTransferFrozenAsset
 	}
 
 	asset, err := issuerAcc.GetAssetCode(senderEquity.AssetCode)
