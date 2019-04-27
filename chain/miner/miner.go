@@ -297,7 +297,7 @@ func (m *Miner) loopMiner() {
 		case <-m.timeToMineCh:
 			m.sealBlock()
 		case block := <-m.recvNewBlockCh:
-			log.Infof("Receive new block. height: %d. hash: %s. Reset timer.", block.Height(), block.Hash().Hex())
+			log.Debug("Got a new block. Reset timer.", "block", block.ShortString())
 			if !m.isSelfDeputyNode() {
 				m.resetMinerTimer(-1)
 				break
@@ -367,7 +367,7 @@ func (m *Miner) updateMiner(block *types.Block) {
 		oldMiner := m.minerAddress
 		m.minerAddress = deputyNode.MinerAddress
 		if oldMiner != deputyNode.MinerAddress {
-			log.Info("update miner", "from", oldMiner.String(), "addr", deputyNode.MinerAddress.String())
+			log.Info("update miner", "from", oldMiner, "to", deputyNode.MinerAddress)
 		}
 	}
 }

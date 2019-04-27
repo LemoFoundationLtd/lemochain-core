@@ -70,7 +70,6 @@ func (m *Manager) SaveSnapshot(snapshotHeight uint32, nodes DeputyNodes) {
 	termCount := len(m.termList)
 	if termCount == 0 {
 		m.termList = append(m.termList, newTerm)
-		log.Info("first term", "nodesCount", len(newTerm.Nodes))
 		return
 	}
 

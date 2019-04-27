@@ -199,7 +199,7 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 			log.Info("BlockLoop finished")
 			return
 		case block := <-pm.newMinedBlockCh:
-			log.Debugf("Current's peers count: %d", len(pm.peers.peers))
+			log.Debugf("Current peers count: %d", len(pm.peers.peers))
 			peers := pm.peers.DeputyNodes(block.Height())
 			go pm.broadcastBlock(peers, block, true)
 		case rcvMsg := <-pm.rcvBlocksCh:
@@ -221,8 +221,7 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 				}
 				// local chain has this block
 				if pm.chain.HasBlock(b.ParentHash()) {
-					log.Debugf("Get block from peer:%s", rcvMsg.p.NodeID().String())
-					log.Debugf("Received block's comfirm length: %d", len(b.Confirms))
+					log.Infof("Got a block %s from peer: %#x", b.ShortString(), rcvMsg.p.NodeID()[:8])
 					go pm.insertBlock(b)
 				} else {
 					pm.blockCache.Add(b)
@@ -329,11 +328,11 @@ func (pm *ProtocolManager) fetchConfirmsFromRemote(start, end uint32) {
 // mergeConfirmsFromCache merge confirms into block from cache
 func (pm *ProtocolManager) mergeConfirmsFromCache(block *types.Block) {
 	confirms := pm.confirmsCache.Pop(block.Height(), block.Hash())
-	log.Debugf("Pop %d confirms from cache", len(confirms))
 	for _, confirm := range confirms {
 		// The duplicates will be remove by consensus validator
 		block.Confirms = append(block.Confirms, confirm.SignInfo)
 	}
+	log.Debugf("Pop %d confirms from cache, now we have %d confirms", len(confirms), len(block.Confirms))
 }
 
 // peerLoop something about peer event

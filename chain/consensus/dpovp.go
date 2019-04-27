@@ -77,12 +77,14 @@ func (dp *DPoVP) SubscribeConfirm(ch chan *network.BlockConfirmData) subscribe.S
 }
 
 func (dp *DPoVP) MineBlock(material *BlockMaterial) (*types.Block, error) {
+	oldCurrent := dp.CurrentBlock()
+
 	// mine and seal
 	block, err := dp.assembler.MineBlock(dp.CurrentBlock(), material.MinerAddr, material.Extra, dp.txPool, material.MineTimeLimit)
 	if err != nil {
 		return nil, err
 	}
-	log.Info("mined a new block", "height", block.Height(), "hash", block.Hash(), "txs count", len(block.Txs))
+	log.Info("Mined a new block", "block", block.ShortString(), "txsCount", len(block.Txs))
 
 	// save
 	if err := dp.saveToStore(block); err != nil {
@@ -90,9 +92,7 @@ func (dp *DPoVP) MineBlock(material *BlockMaterial) (*types.Block, error) {
 	}
 
 	// update current block
-	oldCurrent := dp.CurrentBlock()
 	dp.setCurrent(block)
-	log.Debugf("Current block changed: %d-%s -> %d-%s", oldCurrent.Height(), oldCurrent.Hash().Prefix(), block.Height(), block.Hash().Prefix())
 	dp.txPool.RemoveTxs(block.Txs)
 
 	// update stable block if there are less then 3 deputy nodes
@@ -103,13 +103,21 @@ func (dp *DPoVP) MineBlock(material *BlockMaterial) (*types.Block, error) {
 
 	// Mined block is always on current fork. So there is no need to switch fork
 
+	dp.logCurrentChange(oldCurrent)
+
 	return block, nil
 }
 
 func (dp *DPoVP) InsertBlock(rawBlock *types.Block) (*types.Block, error) {
+	// ignore exist block as soon as possible
+	if ok := dp.isIgnorableBlock(rawBlock); ok {
+		return nil, ErrExistBlock
+	}
+
 	hash := rawBlock.Hash()
 	oldCurrent := dp.CurrentBlock()
 	oldCurrentHash := oldCurrent.Hash()
+	log.Debug("Start insert block to chain", "block", rawBlock.ShortString())
 
 	// verify and create a new block witch filled by transaction products
 	block, err := dp.VerifyAndSeal(rawBlock)
@@ -132,7 +140,6 @@ func (dp *DPoVP) InsertBlock(rawBlock *types.Block) (*types.Block, error) {
 	// update current block
 	if block.ParentHash() == oldCurrentHash {
 		dp.setCurrent(block)
-		log.Debugf("Current block changed: %d-%s -> %d-%s", oldCurrent.Height(), oldCurrentHash.Prefix(), block.Height(), block.Hash().Prefix())
 	}
 	dp.txPool.RemoveTxs(block.Txs)
 	// for security
@@ -160,6 +167,8 @@ func (dp *DPoVP) InsertBlock(rawBlock *types.Block) (*types.Block, error) {
 		dp.TrySwitchFork()
 	}
 
+	dp.logCurrentChange(oldCurrent)
+
 	return block, nil
 }
 
@@ -167,13 +176,13 @@ func (dp *DPoVP) InsertBlock(rawBlock *types.Block) (*types.Block, error) {
 func (dp *DPoVP) saveToStore(block *types.Block) error {
 	hash := block.Hash()
 	if err := dp.db.SetBlock(hash, block); err != nil {
-		log.Error("Insert block to cache fail", "height", block.Height(), "hash", hash.Hex())
+		log.Error("Insert block to cache fail", "block", block.ShortString())
 		return ErrSaveBlock
 	}
-	log.Info("Save block to store", "height", block.Height(), "hash", hash.Prefix(), "time", block.Time(), "parent", block.ParentHash().Prefix())
+	log.Info("Save block to store", "block", block.ShortString(), "time", block.Time(), "parent", block.ParentHash())
 
 	if err := dp.am.Save(hash); err != nil {
-		log.Error("Save account error!", "height", block.Height(), "hash", hash.Prefix(), "err", err)
+		log.Error("Save account error!", "block", block.ShortString(), "err", err)
 		return ErrSaveAccount
 	}
 	return nil
@@ -258,8 +267,6 @@ func (dp *DPoVP) setCurrent(block *types.Block) {
 
 	dp.forkManager.SetHeadBlock(block)
 
-	dp.logCurrentChange(oldCurrent)
-
 	// To confirm a block from another fork, we need a height distance that more than 2/3 deputies count.
 	// But the new current's height is 2/3 deputies count bigger at most, so we don't need to try to confirm the new current block here
 	// dp.confirmer.TryConfirm(block)
@@ -273,17 +280,18 @@ func (dp *DPoVP) setCurrent(block *types.Block) {
 func (dp *DPoVP) logCurrentChange(oldCurrent *types.Block) {
 	newCurrent := dp.CurrentBlock()
 	if newCurrent.Hash() == oldCurrent.Hash() {
-		log.Debugf("Insert to another fork chain. current block is still [%d]%s", oldCurrent.Height(), oldCurrent.Hash().Prefix())
+		log.Debugf("Insert to another fork chain. Current block is still %s", oldCurrent.ShortString())
 	} else if newCurrent.ParentHash() == oldCurrent.Hash() {
-		log.Debugf("Current fork length +1. current block change from [%d]%s to [%d]%s", oldCurrent.Height(), oldCurrent.Hash().Prefix(), newCurrent.Height(), newCurrent.Hash().Prefix())
+		log.Debugf("Current fork length +1. Current block changes from %s to %s", oldCurrent.ShortString(), newCurrent.ShortString())
 	} else {
-		log.Debugf("Switch fork! current block change from [%d]%s to [%d]%s", oldCurrent.Height(), oldCurrent.Hash().Prefix(), newCurrent.Height(), newCurrent.Hash().Prefix())
+		log.Debugf("Switch fork! Current block changes from %s to %s", oldCurrent.ShortString(), newCurrent.ShortString())
 	}
 }
 
 // isIgnorableBlock check the block is exist or not
 func (dp *DPoVP) isIgnorableBlock(block *types.Block) bool {
 	if has, _ := dp.db.IsExistByHash(block.Hash()); has {
+		log.Debug("ignore the existed block")
 		return true
 	}
 	if dp.StableBlock().Height() >= block.Height() {
@@ -296,11 +304,6 @@ func (dp *DPoVP) isIgnorableBlock(block *types.Block) bool {
 
 // VerifyAndSeal verify block then create a new block
 func (dp *DPoVP) VerifyAndSeal(block *types.Block) (*types.Block, error) {
-	// ignore exist block as soon as possible
-	if ok := dp.isIgnorableBlock(block); ok {
-		return nil, ErrExistBlock
-	}
-
 	// verify every things that can be verified before tx processing
 	if err := dp.validator.VerifyBeforeTxProcess(block); err != nil {
 		return nil, ErrInvalidBlock
@@ -309,6 +312,7 @@ func (dp *DPoVP) VerifyAndSeal(block *types.Block) (*types.Block, error) {
 	confirms := block.Confirms
 	block.Confirms = nil
 	block.Confirms, _ = dp.validator.VerifyNewConfirms(block, confirms, dp.dm)
+	log.Debug("Verify confirms done", "validCount", len(block.Confirms))
 
 	// parse block, change local state and seal a new block
 	newBlock, err := dp.assembler.RunBlock(block)
@@ -329,19 +333,16 @@ func (dp *DPoVP) VerifyAndSeal(block *types.Block) (*types.Block, error) {
 }
 
 func (dp *DPoVP) InsertConfirm(info *network.BlockConfirmData) error {
-	validConfirms, err := dp.validator.VerifyConfirmPacket(info.Height, info.Hash, []types.SignData{info.SignInfo})
-	if len(validConfirms) == 0 {
+	oldCurrent := dp.CurrentBlock()
+	log.Debug("Start insert confirm", "height", info.Height, "hash", info.Hash)
+
+	newBlock, err := dp.insertConfirms(info.Height, info.Hash, []types.SignData{info.SignInfo})
+	if err != nil {
+		log.Warnf("InsertConfirm failed: %v", err)
 		return err
 	}
-	block, _ := dp.db.GetBlockByHash(info.Hash)
 
-	// save
-	if err = dp.confirmer.SaveConfirm(block, validConfirms); err != nil {
-		log.Errorf("InsertConfirm failed: %v", err)
-		return nil
-	}
-
-	changed, err := dp.UpdateStable(block)
+	changed, err := dp.UpdateStable(newBlock)
 	if err != nil {
 		log.Errorf("ReceiveConfirm: setStableBlock failed. height: %d, hash:%s, err: %v", info.Height, info.Hash.Hex()[:16], err)
 		return err
@@ -351,24 +352,31 @@ func (dp *DPoVP) InsertConfirm(info *network.BlockConfirmData) error {
 	if changed {
 		dp.CheckFork()
 	}
+	dp.logCurrentChange(oldCurrent)
+
 	return nil
 }
 
 // ReceiveStableConfirms receive confirm package from net connection. The block of these confirms has been confirmed by its son block already
 func (dp *DPoVP) InsertStableConfirms(pack network.BlockConfirms) {
-	if pack.Hash == (common.Hash{}) || pack.Pack == nil || len(pack.Pack) == 0 {
-		return
+	_, err := dp.insertConfirms(pack.Height, pack.Hash, pack.Pack)
+	if err != nil {
+		log.Warnf("InsertStableConfirms fail: %v", err)
 	}
-	validConfirms, err := dp.validator.VerifyConfirmPacket(pack.Height, pack.Hash, pack.Pack)
+}
+
+// insertConfirms save signature list to store, then return a new block
+func (dp *DPoVP) insertConfirms(height uint32, blockHash common.Hash, sigList []types.SignData) (*types.Block, error) {
+	if blockHash == (common.Hash{}) || len(sigList) == 0 {
+		return nil, nil
+	}
+	validConfirms, err := dp.validator.VerifyConfirmPacket(height, blockHash, sigList)
 	if len(validConfirms) == 0 {
-		log.Debugf("InsertStableConfirms: %v", err)
-		return
+		return nil, err
 	}
 
-	block, _ := dp.db.GetBlockByHash(pack.Hash)
-	if err := dp.confirmer.SaveConfirm(block, validConfirms); err != nil {
-		log.Debugf("InsertStableConfirms: %v", err)
-	}
+	block, _ := dp.db.GetBlockByHash(blockHash)
+	return dp.confirmer.SaveConfirm(block, validConfirms)
 }
 
 // SnapshotDeputyNodes get next epoch deputy nodes for snapshot block

@@ -147,29 +147,29 @@ func verifyMineSlot(block *types.Block, parent *types.Block, timeoutTime uint64,
 
 	slot, err := GetMinerDistance(block.Height(), parent.MinerAddress(), block.MinerAddress(), dm)
 	if err != nil {
-		log.Error("Consensus verify fail: can't calculate slot", "block.Height", block.Height(), "parent.MinerAddress", parent.MinerAddress(), "block.MinerAddress", block.MinerAddress())
+		log.Error("Consensus verify fail: can't calculate slot", "block.Height", block.Height(), "parent.MinerAddress", parent.MinerAddress(), "block.MinerAddress", block.MinerAddress(), "err", err)
 		return ErrVerifyHeaderFailed
 	}
 
 	// The time interval between the current block and the parent block. unit：ms
-	timeSpan := uint64(block.Time()-parent.Header.Time) * 1000
-	oldTimeSpan := timeSpan
-	oneLoopTime := uint64(dm.GetDeputiesCount(block.Height())) * timeoutTime // All timeout times for a round of deputy nodes
+	totalTimeSpan := uint64(block.Time()-parent.Header.Time) * 1000
+	nodeCount := dm.GetDeputiesCount(block.Height())
+	oneLoopTime := uint64(nodeCount) * timeoutTime // All timeout times for a round of deputy nodes
 
-	timeSpan %= oneLoopTime
+	timeSpan := totalTimeSpan % oneLoopTime
 	if slot == 0 { // The last block was made by itself
 		if timeSpan < oneLoopTime-timeoutTime {
-			log.Error("Consensus verify fail: mined twice in one loop", "slot", slot, "oldTimeSpan", oldTimeSpan, "timeSpan", timeSpan, "nodeCount", "oneLoopTime", oneLoopTime)
+			log.Error("Consensus verify fail: mined twice in one loop", "slot", slot, "totalTimeSpan", totalTimeSpan, "timeSpan", timeSpan, "nodeCount", nodeCount, "oneLoopTime", oneLoopTime)
 			return ErrVerifyHeaderFailed
 		}
 	} else if slot == 1 {
 		if timeSpan >= timeoutTime {
-			log.Error("Consensus verify fail: time out", "slot", slot, "oldTimeSpan", oldTimeSpan, "timeSpan", timeSpan, "nodeCount", "oneLoopTime", oneLoopTime)
+			log.Error("Consensus verify fail: time out", "slot", slot, "totalTimeSpan", totalTimeSpan, "timeSpan", timeSpan, "nodeCount", nodeCount, "oneLoopTime", oneLoopTime)
 			return ErrVerifyHeaderFailed
 		}
 	} else {
 		if timeSpan/timeoutTime != uint64(slot-1) {
-			log.Error("Consensus verify fail: not in turn", "slot", slot, "oldTimeSpan", oldTimeSpan, "timeSpan", timeSpan, "nodeCount", "oneLoopTime", oneLoopTime)
+			log.Error("Consensus verify fail: not in turn", "slot", slot, "totalTimeSpan", totalTimeSpan, "timeSpan", timeSpan, "nodeCount", nodeCount, "oneLoopTime", oneLoopTime)
 			return ErrVerifyHeaderFailed
 		}
 	}
@@ -198,18 +198,18 @@ func (v *Validator) VerifyNewConfirms(block *types.Block, sigList []types.SignDa
 	for _, sig := range sigList {
 		nodeID, err := sig.RecoverNodeID(hash)
 		if err != nil {
-			log.Warn("Invalid confirm signature", "hash", hash.Hex(), "sig", common.ToHex(sig[:]))
+			log.Warn("Invalid confirm signature", "hash", hash.Hex(), "sig", common.ToHex(sig[:]), "err", err)
 			lastErr = ErrInvalidSignedConfirmInfo
 			continue
 		}
 		// find the signer in deputy nodes
-		if err := dm.GetDeputyByNodeID(block.Height(), nodeID); err != nil {
+		if deputy := dm.GetDeputyByNodeID(block.Height(), nodeID); deputy == nil {
 			log.Warn("Invalid confirm signer", "nodeID", common.ToHex(nodeID))
 			lastErr = ErrInvalidConfirmSigner
 			continue
 		}
 		if block.IsConfirmExist(sig) {
-			log.Warn("Duplicate confirm", "hash", hash.Hex(), "sig", common.ToHex(sig[:]))
+			log.Warn("Duplicate confirm", "hash", hash.Hex(), "signer", common.ToHex(nodeID[:8]))
 			lastErr = ErrInvalidConfirmSigner
 			continue
 		}
@@ -267,17 +267,28 @@ func (v *Validator) VerifyAfterTxProcess(block, computedBlock *types.Block) erro
 
 // JudgeDeputy check if the deputy node is evil by his new block
 func (v *Validator) JudgeDeputy(newBlock *types.Block) bool {
+	newBlockNodeID, err := newBlock.SignerNodeID()
+	if err != nil {
+		log.Error("no NodeID, can't judge the deputy", "err", err)
+		return false
+	}
+
 	isEvil := false
 	// check if the deputy mine two blocks at same height
 	v.db.IterateUnConfirms(func(node *types.Block) {
+		// same height but different block
 		if node.Height() == newBlock.Height() && node.Hash() != newBlock.Hash() {
-			nodeID, err := newBlock.SignerNodeID()
+			nodeID, err := node.SignerNodeID()
 			if err != nil {
 				log.Error("no NodeID, can't judge the deputy", "err", err)
 				return
 			}
-			log.Warnf("The deputy %x is evil !!! It mined block %s and %s at same height %d", nodeID, newBlock.Hash().Prefix(), node.Hash().Prefix(), newBlock.Height())
-			isEvil = true
+
+			// same miner
+			if bytes.Compare(newBlockNodeID, nodeID) == 0 {
+				log.Warnf("The deputy %x is evil !!! It mined block %s and %s at same height %d", nodeID, newBlock.Hash().Prefix(), node.Hash().Prefix(), newBlock.Height())
+				isEvil = true
+			}
 		}
 	})
 	return isEvil

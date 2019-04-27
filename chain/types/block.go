@@ -280,6 +280,11 @@ func (b *Block) String() string {
 	return fmt.Sprintf("{%s}", strings.Join(set, ", "))
 }
 
+func (b *Block) ShortString() string {
+	hash := b.Hash()
+	return fmt.Sprintf("[%d]%x", b.Height(), hash[:8])
+}
+
 func (b *Block) Json() string {
 	buf, err := json.Marshal(b)
 	if err != nil {

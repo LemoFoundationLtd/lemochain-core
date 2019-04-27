@@ -124,20 +124,21 @@ func (c *Confirmer) tryConfirmStable(block *types.Block) *types.SignData {
 		return nil
 	}
 
-	_ = c.SaveConfirm(block, []types.SignData{sig})
+	_, _ = c.SaveConfirm(block, []types.SignData{sig})
 	return &sig
 }
 
-// SaveConfirm save a confirm to store
-func (c *Confirmer) SaveConfirm(block *types.Block, sigList []types.SignData) error {
+// SaveConfirm save a confirm to store, then return a new block
+func (c *Confirmer) SaveConfirm(block *types.Block, sigList []types.SignData) (*types.Block, error) {
 	block.Confirms = append(block.Confirms, sigList...)
 
-	// TODO test whether the block will contains double confirms
 	if err := c.db.SetConfirms(block.Hash(), sigList); err != nil {
 		log.Errorf("SetConfirm failed: %v", err)
-		return err
+		return block, err
 	}
-	return nil
+
+	newBlock, _ := c.db.GetBlockByHash(block.Hash())
+	return newBlock, nil
 }
 
 // signBlock sign a block and return signData
