@@ -195,7 +195,7 @@ func (c *PublicChainAPI) GetDeputyNodeList() []string {
 func (c *PublicChainAPI) GetCandidateTop30() []*CandidateInfo {
 	latestStableBlock := c.chain.StableBlock()
 	stableBlockHash := latestStableBlock.Hash()
-	storeInfos := c.chain.Db().GetCandidatesTop(stableBlockHash)
+	storeInfos := c.chain.GetCandidatesTop(stableBlockHash)
 	candidateList := make([]*CandidateInfo, 0, 30)
 	for _, info := range storeInfos {
 		candidateInfo := &CandidateInfo{

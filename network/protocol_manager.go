@@ -223,7 +223,7 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 				if pm.chain.HasBlock(b.ParentHash()) {
 					log.Debugf("Get block from peer:%s", rcvMsg.p.NodeID().String())
 					log.Debugf("Received block's comfirm length: %d", len(b.Confirms))
-					pm.insertBlock(b)
+					go pm.insertBlock(b)
 				} else {
 					pm.blockCache.Add(b)
 					if rcvMsg.p != nil {
@@ -239,7 +239,7 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 		case <-queueTimer.C:
 			processBlock := func(block *types.Block) bool {
 				if pm.chain.HasBlock(block.ParentHash()) {
-					pm.insertBlock(block)
+					go pm.insertBlock(block)
 					return true
 				}
 				return false
@@ -269,13 +269,7 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 func (pm *ProtocolManager) insertBlock(b *types.Block) {
 	// pop the confirms which arrived before block
 	pm.mergeConfirmsFromCache(b)
-	if err := pm.chain.InsertChain(b, true); err == nil {
-		if len(b.Txs) > 0 {
-			pm.txPool.RecvBlock(b)
-		}
-	} else {
-		log.Errorf("InsertBlock failed: %v", err)
-	}
+	pm.chain.InsertBlock(b)
 }
 
 // stableBlockLoop block has been stable
@@ -337,7 +331,8 @@ func (pm *ProtocolManager) mergeConfirmsFromCache(block *types.Block) {
 	confirms := pm.confirmsCache.Pop(block.Height(), block.Hash())
 	log.Debugf("Pop %d confirms from cache", len(confirms))
 	for _, confirm := range confirms {
-		block.AppendConfirm(confirm.SignInfo)
+		// The duplicates will be remove by consensus validator
+		block.Confirms = append(block.Confirms, confirm.SignInfo)
 	}
 }
 
@@ -741,7 +736,7 @@ func (pm *ProtocolManager) handleConfirmsMsg(msg *p2p.Msg) error {
 	if err := msg.Decode(&confirms); err != nil {
 		return fmt.Errorf("handleConfirmsMsg error: %v", err)
 	}
-	go pm.chain.ReceiveConfirms(confirms)
+	go pm.chain.ReceiveStableConfirms(confirms)
 	return nil
 }
 
@@ -767,16 +762,11 @@ func (pm *ProtocolManager) handleConfirmMsg(msg *p2p.Msg) error {
 	if err := msg.Decode(confirm); err != nil {
 		return fmt.Errorf("handleConfirmMsg error: %v", err)
 	}
-	// TODO 如果确认包不够2/3，还是应该保存下来
-	if confirm.Height < pm.chain.StableBlock().Height() {
-		return nil
-	}
-	if pm.chain.HasBlock(confirm.Hash) {
-		go func() {
-			if err := pm.chain.ReceiveConfirm(confirm); err != nil {
-				log.Debugf("handleTxsMsg: %v", err)
-			}
-		}()
+	block := pm.chain.GetBlockByHash(confirm.Hash)
+	if block != nil {
+		if !pm.chain.IsConfirmEnough(block) {
+			go pm.chain.InsertConfirm(confirm)
+		}
 	} else {
 		pm.confirmsCache.Push(confirm)
 		if pm.confirmsCache.Size() > 100 {

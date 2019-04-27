@@ -503,7 +503,7 @@ func (database *ChainDatabase) appendConfirm(block *types.Block, confirms []type
 		return
 	}
 
-	block.AppendConfirm(confirms...)
+	block.Confirms = append(block.Confirms, confirms...)
 }
 
 func (database *ChainDatabase) setConfirm(hash common.Hash, confirms []types.SignData) error {

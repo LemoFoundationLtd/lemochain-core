@@ -251,21 +251,17 @@ func (b *Block) SetChangeLogs(logs []*ChangeLog) { b.ChangeLogs = logs }
 
 func (b *Block) SetDeputyNodes(deputyNodes deputynode.DeputyNodes) { b.DeputyNodes = deputyNodes }
 
-func (b *Block) IsConfirmExist(confirm SignData) bool {
+// IsConfirmExist test if the signature is exist in Header.SignData or Confirms
+func (b *Block) IsConfirmExist(sig SignData) bool {
+	if bytes.Compare(b.Header.SignData, sig[:]) == 0 {
+		return true
+	}
 	for _, oldConfirm := range b.Confirms {
-		if bytes.Compare(oldConfirm[:], confirm[:]) == 0 {
+		if bytes.Compare(oldConfirm[:], sig[:]) == 0 {
 			return true
 		}
 	}
 	return false
-}
-
-func (b *Block) AppendConfirm(confirms ...SignData) {
-	for _, newConfirm := range confirms {
-		if !b.IsConfirmExist(newConfirm) {
-			b.Confirms = append(b.Confirms, newConfirm)
-		}
-	}
 }
 
 func (b *Block) Size() int {

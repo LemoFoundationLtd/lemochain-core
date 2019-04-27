@@ -73,22 +73,29 @@ type Node struct {
 	lock     sync.RWMutex
 }
 
-func initConfig(flags flag.CmdFlags) (*Config, *config.ConfigFromFile, *miner.MineConfig) {
+func initConfig(flags flag.CmdFlags) (*Config, *config.ConfigFromFile) {
 	cfg := getNodeConfig(flags)
-	deputynode.SetSelfNodeKey(cfg.NodeKey())
-	cfg.P2P.PrivateKey = deputynode.GetSelfNodeKey()
-	log.Infof("Local nodeID: %s", common.ToHex(deputynode.GetSelfNodeID()))
 	configFromFile, err := config.ReadConfigFile(cfg.DataDir)
 	if err != nil {
 		panic(fmt.Sprintf("read config.json error: %v", err))
 	}
 	configFromFile.Check()
 
-	mineCfg := &miner.MineConfig{
+	// P2P
+	deputynode.SetSelfNodeKey(cfg.NodeKey())
+	cfg.P2P.PrivateKey = deputynode.GetSelfNodeKey()
+	log.Infof("Local nodeID: %s", common.ToHex(deputynode.GetSelfNodeID()))
+	// BlockChain
+	cfg.Chain = chain.Config{
+		ChainID:     uint16(configFromFile.ChainID),
+		MineTimeout: configFromFile.Timeout,
+	}
+	// Miner
+	cfg.Miner = miner.MineConfig{
 		SleepTime: int64(configFromFile.SleepTime),
 		Timeout:   int64(configFromFile.Timeout),
 	}
-	return cfg, configFromFile, mineCfg
+	return cfg, configFromFile
 }
 
 func GetChainDataPath(dataDir string) string {
@@ -133,24 +140,21 @@ func initDeputyNodes(dm *deputynode.Manager, db protocol.ChainDB) {
 }
 
 func New(flags flag.CmdFlags) *Node {
-	cfg, configFromFile, mineCfg := initConfig(flags)
+	cfg, configFromFile := initConfig(flags)
 	db := initDb(cfg.DataDir)
 	// read genesis block
 	genesisBlock := getGenesis(db)
 	// read all deputy nodes from snapshot block
 	dm := deputynode.NewManager(int(configFromFile.DeputyCount))
 	initDeputyNodes(dm, db)
-	// new dpovp consensus engine
-	engine := chain.NewDpovp(int64(configFromFile.Timeout), dm, db)
-	blockChain, err := chain.NewBlockChain(uint16(configFromFile.ChainID), engine, dm, db, flags)
-	engine.SetSnapshoter(blockChain)
+	// tx pool
+	txPool := chain.NewTxPool(uint16(configFromFile.ChainID))
+	blockChain, err := chain.NewBlockChain(cfg.Chain, dm, db, flags, txPool)
 	if err != nil {
 		panic("new block chain failed!!!")
 	}
 	// account manager
 	accMan := blockChain.AccountManager()
-	// tx pool
-	txPool := txpool.NewTxPool()
 	// discover manager
 	discover := p2p.NewDiscoverManager(cfg.DataDir)
 	selfNodeID := p2p.NodeID{}
@@ -169,7 +173,7 @@ func New(flags flag.CmdFlags) *Node {
 		accMan:       accMan,
 		chain:        blockChain,
 		txPool:       txPool,
-		miner:        miner.New(mineCfg, blockChain, txPool, engine),
+		miner:        miner.New(cfg.Miner, blockChain, dm, nil),
 		pm:           pm,
 		server:       server,
 		genesisBlock: genesisBlock,

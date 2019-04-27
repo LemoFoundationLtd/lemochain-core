@@ -1,4 +1,4 @@
-package chain
+package consensus
 
 import (
 	"crypto/ecdsa"
@@ -27,8 +27,8 @@ func TestNewTxProcessor(t *testing.T) {
 	chain := newChain()
 	defer chain.db.Close()
 	p := NewTxProcessor(chain)
-	assert.NotEqual(t, (*vm.Config)(nil), p.cfg)
-	assert.Equal(t, false, p.cfg.Debug)
+	assert.NotEqual(t, (*vm.Config)(nil), p.vmConfig)
+	assert.Equal(t, false, p.vmConfig.Debug)
 
 	flags := flag.CmdFlags{}
 	flags.Set(common.Debug, "1")

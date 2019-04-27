@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/consensus"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
@@ -122,7 +123,7 @@ func init() {
 func newChain() *chain.BlockChain {
 	db := newDB()
 	dm := deputynode.NewManager(5)
-	bc, err := chain.NewBlockChain(chainID, chain.NewDpovp(10*1000, dm, db), dm, db, flag.CmdFlags{})
+	bc, err := chain.NewBlockChain(chainID, consensus.NewDpovp(10*1000, dm, db), dm, db, flag.CmdFlags{})
 	if err != nil {
 		panic(err)
 	}

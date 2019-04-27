@@ -1,4 +1,4 @@
-package chain
+package consensus
 
 import (
 	"math/big"
@@ -8,15 +8,8 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 )
 
-// ChainContext supports retrieving headers and consensus parameters from the
-// current blockchain to be used during transaction processing.
-type ChainContext interface {
-	// GetBlockByHash returns the hash corresponding to their hash.
-	GetBlockByHash(hash common.Hash) *types.Block
-}
-
 // NewEVMContext creates a new context for use in the EVM.
-func NewEVMContext(tx *types.Transaction, header *types.Header, txIndex uint, txHash common.Hash, blockHash common.Hash, chain ChainContext) vm.Context {
+func NewEVMContext(tx *types.Transaction, header *types.Header, txIndex uint, txHash common.Hash, blockHash common.Hash, chain BlockLoader) vm.Context {
 	if (header.MinerAddress == common.Address{}) {
 		panic("NewEVMContext is called without author")
 	}
@@ -38,12 +31,13 @@ func NewEVMContext(tx *types.Transaction, header *types.Header, txIndex uint, tx
 }
 
 // GetHashFn returns a GetHashFunc which retrieves header hashes by number
-func GetHashFn(ref *types.Header, chain ChainContext) vm.GetHashFunc {
+func GetHashFn(ref *types.Header, chain BlockLoader) vm.GetHashFunc {
 	var cache map[uint32]common.Hash
 
 	return func(n uint32) common.Hash {
 		// If there's no hash cache yet, make one
 		if cache == nil {
+			// ref references the block we are building now. So we should not use its hash
 			cache = map[uint32]common.Hash{
 				ref.Height - 1: ref.ParentHash,
 			}
@@ -52,12 +46,11 @@ func GetHashFn(ref *types.Header, chain ChainContext) vm.GetHashFunc {
 		if hash, ok := cache[n]; ok {
 			return hash
 		}
-		// Not cached, iterate the blocks and cache the hashes
-		for block := chain.GetBlockByHash(ref.ParentHash); block != nil; block = chain.GetBlockByHash(block.Header.ParentHash) {
-			cache[block.Header.Height-1] = block.Header.ParentHash
-			if n == block.Header.Height-1 {
-				return block.Header.ParentHash
-			}
+		// Not cached, find the block and cache the hash
+		if block := chain.GetParentByHeight(n, ref.ParentHash); block != nil {
+			hash := block.Hash()
+			cache[block.Header.Height] = hash
+			return hash
 		}
 		return common.Hash{}
 	}
