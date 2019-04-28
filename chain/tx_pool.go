@@ -27,14 +27,17 @@ func map2slice(src map[common.Hash]bool) []common.Hash {
 }
 
 type BlocksByTimeItem struct {
-	Time    uint32
+	/* 块时间 */
+	Time uint32
+
+	/* 块列表，以高度索引块列表 */
 	Indexes map[uint32][]common.Hash
 }
 
 type BlockNode struct {
 	Header *types.Header
 
-	/* 该块打包的交易的索引 */
+	/* 该块打包的交易列表的索引 */
 	TxsIndex map[common.Hash]bool
 }
 
@@ -185,6 +188,7 @@ func (trie *BlocksTrie) merge(src map[uint32][]common.Hash) map[common.Hash]bool
 	return result
 }
 
+/* 收到一个新块，并返回过期的块的交易列表，块过期了，块中的交易肯定也过期了 */
 func (trie *BlocksTrie) PushBlock(block *types.Block) map[common.Hash]bool {
 	if block == nil {
 		return make(map[common.Hash]bool)
