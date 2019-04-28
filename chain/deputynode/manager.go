@@ -24,42 +24,41 @@ var (
 type Manager struct {
 	DeputyCount int // Max deputy count. Not include candidate nodes
 
-	termList           []*TermRecord
-	abnormalDeputyNode map[string]struct{}
-	lock               sync.Mutex
+	termList []*TermRecord
+	lock     sync.Mutex
+
+	evilDeputies map[string]uint32
+	edLock       sync.Mutex
 }
 
 // NewManager creates a new Manager. It is used to maintain term record list
 func NewManager(deputyCount int) *Manager {
 	return &Manager{
-		DeputyCount:        deputyCount,
-		termList:           make([]*TermRecord, 0),
-		abnormalDeputyNode: make(map[string]struct{}),
+		DeputyCount:  deputyCount,
+		termList:     make([]*TermRecord, 0),
+		evilDeputies: make(map[string]uint32),
 	}
 }
 
-// IsAbnormalDeputyNode
-func (m *Manager) IsAbnormalDeputyNode(minerAddress string) bool {
-	m.lock.Lock()
-	defer m.lock.Unlock()
-	if _, exit := m.abnormalDeputyNode[minerAddress]; exit {
+// IsEvilDeputyNode
+func (m *Manager) IsEvilDeputyNode(minerAddress string, currentHeight uint32) bool {
+	m.edLock.Lock()
+	defer m.edLock.Unlock()
+	if height, exit := m.evilDeputies[minerAddress]; exit {
+		if currentHeight >= height {
+			delete(m.evilDeputies, minerAddress)
+			return false
+		}
 		return true
 	}
 	return false
 }
 
 // SetAbnormalDeputyNode
-func (m *Manager) PutAbnormalDeputyNode(minerAddress string) {
-	m.lock.Lock()
-	defer m.lock.Unlock()
-	m.abnormalDeputyNode[minerAddress] = struct{}{}
-}
-
-// DeleteAbnormalDeputyNode
-func (m *Manager) DeleteAbnormalDeputyNode(minerAddress string) {
-	m.lock.Lock()
-	defer m.lock.Unlock()
-	delete(m.abnormalDeputyNode, minerAddress)
+func (m *Manager) PutEvilDeputyNode(minerAddress string, height uint32) {
+	m.edLock.Lock()
+	defer m.edLock.Unlock()
+	m.evilDeputies[minerAddress] = height
 }
 
 // SaveSnapshot add deputy nodes record by snapshot block data
