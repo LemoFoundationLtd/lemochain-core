@@ -231,12 +231,12 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 		tradingAsset := &types.TradingAsset{}
 		err = json.Unmarshal(tx.Data(), tradingAsset)
 		if err != nil {
-			log.Errorf("unmarshal trading asset data err: %s", err)
+			log.Errorf("unmarshal transfer asset data err: %s", err)
 			return 0, err
 		}
 		_, restGas, vmErr = vmEnv.TransferAssetTx(sender, recipientAddr, restGas, tradingAsset.AssetId, tradingAsset.Value, tradingAsset.Input, p.chain.db)
 	default:
-		log.Errorf("The type of transaction is not defined. type = %d\n", tx.Type())
+		log.Errorf("The type of transaction is not defined. ErrType = %d\n", tx.Type())
 	}
 	// Candidate node votes change
 	if !contractCreation {

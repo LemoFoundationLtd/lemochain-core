@@ -39,6 +39,7 @@ var (
 	ErrTransferFrozenAsset  = errors.New("cannot trade frozen assets")
 	ErrAssetCategory        = errors.New("assert's Category not exist")
 	ErrAgainRegister        = errors.New("cannot register again after unregistering")
+	ErrTermReward           = errors.New("insufficient permission to call this Precompiled contract")
 )
 
 // run runs the given contract and takes care of running precompiles with a fallback to the byte code interpreter.
@@ -48,7 +49,7 @@ func run(evm *EVM, contract *Contract, input []byte) ([]byte, error) {
 		if p := precompiles[*contract.CodeAddr]; p != nil {
 			// Determine whether the address to set the reward value is correct
 			if *contract.CodeAddr == params.TermRewardContract && contract.caller.GetAddress() != evm.vmConfig.RewardManager {
-				return nil, errors.New("Insufficient permission to call this Precompiled contract. ")
+				return nil, ErrTermReward
 			}
 			return RunPrecompiledContract(p, input, contract, evm)
 		}
@@ -526,14 +527,6 @@ func (evm *EVM) ModifyAssetProfileTx(sender common.Address, data []byte) error {
 			return err
 		}
 	}
-	// modify profile
-	// for k, v := range info {
-	// 	err = acc.SetAssetCodeState(modifyInfo.AssetCode, strings.ToLower(k), v)
-	// 	if err != nil {
-	// 		evm.am.RevertToSnapshot(snapshot)
-	// 		return err
-	// 	}
-	// }
 	// 	judge profile size
 	newAsset, err := acc.GetAssetCode(modifyInfo.AssetCode)
 	if err != nil {

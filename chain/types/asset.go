@@ -17,15 +17,22 @@ const (
 	MaxMetaDataLength     = 256
 )
 
+//go:generate gencodec -type Asset --field-override assetMarshaling -out gen_asset_json.go
 type Asset struct {
-	Category        uint32
-	IsDivisible     bool
-	AssetCode       common.Hash
-	Decimals        uint32
-	TotalSupply     *big.Int
-	IsReplenishable bool
-	Issuer          common.Address
-	Profile         Profile
+	Category        uint32         `json:"category" gencodec:"required"`
+	IsDivisible     bool           `json:"isDivisible" gencodec:"required"`
+	AssetCode       common.Hash    `json:"assetCode" gencodec:"required"`
+	Decimals        uint32         `json:"decimals" gencodec:"required"`
+	TotalSupply     *big.Int       `json:"totalSupply"`
+	IsReplenishable bool           `json:"isReplenishable" gencodec:"required"`
+	Issuer          common.Address `json:"issuer" gencodec:"required"`
+	Profile         Profile        `json:"profile"`
+}
+
+type assetMarshaling struct {
+	Category    hexutil.Uint32
+	Decimals    hexutil.Uint32
+	TotalSupply *hexutil.Big10
 }
 
 // type AssetExtend struct {
