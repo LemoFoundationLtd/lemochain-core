@@ -21,11 +21,11 @@ const (
 type Asset struct {
 	Category        uint32         `json:"category" gencodec:"required"`
 	IsDivisible     bool           `json:"isDivisible" gencodec:"required"`
-	AssetCode       common.Hash    `json:"assetCode" gencodec:"required"`
+	AssetCode       common.Hash    `json:"assetCode"`
 	Decimals        uint32         `json:"decimals" gencodec:"required"`
 	TotalSupply     *big.Int       `json:"totalSupply"`
 	IsReplenishable bool           `json:"isReplenishable" gencodec:"required"`
-	Issuer          common.Address `json:"issuer" gencodec:"required"`
+	Issuer          common.Address `json:"issuer"`
 	Profile         Profile        `json:"profile"`
 }
 

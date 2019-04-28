@@ -17,7 +17,7 @@ var _ = (*issueAssetMarshaling)(nil)
 func (i IssueAsset) MarshalJSON() ([]byte, error) {
 	type IssueAsset struct {
 		AssetCode common.Hash    `json:"assetCode" gencodec:"required"`
-		MetaData  string         `json:"metaData" `
+		MetaData  string         `json:"metaData"`
 		Amount    *hexutil.Big10 `json:"supplyAmount" gencodec:"required"`
 	}
 	var enc IssueAsset
@@ -31,7 +31,7 @@ func (i IssueAsset) MarshalJSON() ([]byte, error) {
 func (i *IssueAsset) UnmarshalJSON(input []byte) error {
 	type IssueAsset struct {
 		AssetCode *common.Hash   `json:"assetCode" gencodec:"required"`
-		MetaData  *string        `json:"metaData" `
+		MetaData  *string        `json:"metaData"`
 		Amount    *hexutil.Big10 `json:"supplyAmount" gencodec:"required"`
 	}
 	var dec IssueAsset

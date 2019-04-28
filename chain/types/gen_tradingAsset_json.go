@@ -17,7 +17,7 @@ var _ = (*tradingAssetMarshaling)(nil)
 func (t TradingAsset) MarshalJSON() ([]byte, error) {
 	type TradingAsset struct {
 		AssetId common.Hash    `json:"assetId" gencodec:"required"`
-		Value   *hexutil.Big10 `json:"transferAsset" gencodec:"required"`
+		Value   *hexutil.Big10 `json:"transferAmount" gencodec:"required"`
 		Input   []byte         `json:"input"`
 	}
 	var enc TradingAsset
@@ -31,7 +31,7 @@ func (t TradingAsset) MarshalJSON() ([]byte, error) {
 func (t *TradingAsset) UnmarshalJSON(input []byte) error {
 	type TradingAsset struct {
 		AssetId *common.Hash   `json:"assetId" gencodec:"required"`
-		Value   *hexutil.Big10 `json:"transferAsset" gencodec:"required"`
+		Value   *hexutil.Big10 `json:"transferAmount" gencodec:"required"`
 		Input   []byte         `json:"input"`
 	}
 	var dec TradingAsset
@@ -43,7 +43,7 @@ func (t *TradingAsset) UnmarshalJSON(input []byte) error {
 	}
 	t.AssetId = *dec.AssetId
 	if dec.Value == nil {
-		return errors.New("missing required field 'transferAsset' for TradingAsset")
+		return errors.New("missing required field 'transferAmount' for TradingAsset")
 	}
 	t.Value = (*big.Int)(dec.Value)
 	if dec.Input != nil {

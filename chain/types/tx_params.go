@@ -11,7 +11,7 @@ import (
 //go:generate gencodec -type IssueAsset --field-override issueAssetMarshaling -out gen_issueAsset_json.go
 type IssueAsset struct {
 	AssetCode common.Hash `json:"assetCode" gencodec:"required"`
-	MetaData  string      `json:"metaData" ` // 用户传进来的数据
+	MetaData  string      `json:"metaData"` // 用户传进来的数据
 	Amount    *big.Int    `json:"supplyAmount" gencodec:"required"`
 }
 
@@ -42,7 +42,7 @@ type ModifyAssetInfo struct {
 //go:generate gencodec -type TradingAsset --field-override tradingAssetMarshaling -out gen_tradingAsset_json.go
 type TradingAsset struct {
 	AssetId common.Hash `json:"assetId" gencodec:"required"`
-	Value   *big.Int    `json:"transferAsset" gencodec:"required"`
+	Value   *big.Int    `json:"transferAmount" gencodec:"required"`
 	Input   []byte      `json:"input"`
 }
 

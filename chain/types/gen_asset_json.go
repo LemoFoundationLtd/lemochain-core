@@ -18,11 +18,11 @@ func (a Asset) MarshalJSON() ([]byte, error) {
 	type Asset struct {
 		Category        hexutil.Uint32 `json:"category" gencodec:"required"`
 		IsDivisible     bool           `json:"isDivisible" gencodec:"required"`
-		AssetCode       common.Hash    `json:"assetCode" gencodec:"required"`
+		AssetCode       common.Hash    `json:"assetCode"`
 		Decimals        hexutil.Uint32 `json:"decimals" gencodec:"required"`
 		TotalSupply     *hexutil.Big10 `json:"totalSupply"`
 		IsReplenishable bool           `json:"isReplenishable" gencodec:"required"`
-		Issuer          common.Address `json:"issuer" gencodec:"required"`
+		Issuer          common.Address `json:"issuer"`
 		Profile         Profile        `json:"profile"`
 	}
 	var enc Asset
@@ -42,11 +42,11 @@ func (a *Asset) UnmarshalJSON(input []byte) error {
 	type Asset struct {
 		Category        *hexutil.Uint32 `json:"category" gencodec:"required"`
 		IsDivisible     *bool           `json:"isDivisible" gencodec:"required"`
-		AssetCode       *common.Hash    `json:"assetCode" gencodec:"required"`
+		AssetCode       *common.Hash    `json:"assetCode"`
 		Decimals        *hexutil.Uint32 `json:"decimals" gencodec:"required"`
 		TotalSupply     *hexutil.Big10  `json:"totalSupply"`
 		IsReplenishable *bool           `json:"isReplenishable" gencodec:"required"`
-		Issuer          *common.Address `json:"issuer" gencodec:"required"`
+		Issuer          *common.Address `json:"issuer"`
 		Profile         *Profile        `json:"profile"`
 	}
 	var dec Asset
@@ -61,10 +61,9 @@ func (a *Asset) UnmarshalJSON(input []byte) error {
 		return errors.New("missing required field 'isDivisible' for Asset")
 	}
 	a.IsDivisible = *dec.IsDivisible
-	if dec.AssetCode == nil {
-		return errors.New("missing required field 'assetCode' for Asset")
+	if dec.AssetCode != nil {
+		a.AssetCode = *dec.AssetCode
 	}
-	a.AssetCode = *dec.AssetCode
 	if dec.Decimals == nil {
 		return errors.New("missing required field 'decimals' for Asset")
 	}
@@ -76,10 +75,9 @@ func (a *Asset) UnmarshalJSON(input []byte) error {
 		return errors.New("missing required field 'isReplenishable' for Asset")
 	}
 	a.IsReplenishable = *dec.IsReplenishable
-	if dec.Issuer == nil {
-		return errors.New("missing required field 'issuer' for Asset")
+	if dec.Issuer != nil {
+		a.Issuer = *dec.Issuer
 	}
-	a.Issuer = *dec.Issuer
 	if dec.Profile != nil {
 		a.Profile = *dec.Profile
 	}
