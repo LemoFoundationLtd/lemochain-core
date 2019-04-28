@@ -30,7 +30,7 @@ var (
 	ErrIssueAssetMetaData   = errors.New("the length of metaData more than limit")
 	ErrReplenishAssetAmount = errors.New("replenish asset amount can't be 0 or nil")
 	ErrFrozenAsset          = errors.New("can't replenish the frozen assets")
-	ErrIsReplenishable      = errors.New("asset's IsReplenishable is false")
+	ErrIsReplenishable      = errors.New("asset's 'IsReplenishable' is false")
 	ErrIsDivisible          = errors.New("this 'isDivisible == false' kind of asset can't be replenished")
 	ErrNotEqualAssetCode    = errors.New("assetCode not equal")
 	ErrModifyAssetInfo      = errors.New("the struct of ModifyAssetInfo's Info can't be nil")
@@ -387,7 +387,7 @@ func (evm *EVM) IssueAssetTx(sender, receiver common.Address, txHash common.Hash
 	} else if AssType == types.Asset02 || AssType == types.Asset03 { // ERC721 or ERC721+20
 		equity.AssetId = txHash
 	} else {
-		log.Errorf("assert's Category not exist ,Category = %d ", AssType)
+		log.Errorf("Assert's Category not exist ,Category = %d ", AssType)
 		return ErrAssetCategory
 	}
 	var snapshot = evm.am.Snapshot()
@@ -436,7 +436,7 @@ func (evm *EVM) ReplenishAssetTx(sender, receiver common.Address, data []byte) e
 	addAmount := repl.Amount
 	// amount > 0
 	if addAmount == nil || addAmount.Cmp(big.NewInt(0)) <= 0 {
-		log.Errorf("replenish asset amount must > 0,currentAmount = %s", addAmount.String())
+		log.Errorf("Replenish asset amount must > 0,currentAmount = %s", addAmount.String())
 		return ErrReplenishAssetAmount
 	}
 	// assert issuer account
@@ -473,7 +473,7 @@ func (evm *EVM) ReplenishAssetTx(sender, receiver common.Address, data []byte) e
 	}
 
 	if newAssetCode != equity.AssetCode {
-		log.Errorf("assetCode not equal: newAssetCode = %s,originalAssetCode = %s. ", newAssetCode.String(), equity.AssetCode.String())
+		log.Errorf("AssetCode not equal: newAssetCode = %s,originalAssetCode = %s. ", newAssetCode.String(), equity.AssetCode.String())
 		return ErrNotEqualAssetCode
 	}
 	var snapshot = evm.am.Snapshot()
@@ -547,7 +547,7 @@ func (evm *EVM) ModifyAssetProfileTx(sender common.Address, data []byte) error {
 	}
 	// judge data's length
 	if len(newData) > types.MaxMarshalAssetLength {
-		log.Errorf("the length of data by marshal asset more than max length,len(data) = %d ", len(data))
+		log.Errorf("The length of marshaling asset data exceed limit, len(data) = %d max = %d", len(data), types.MaxMarshalAssetLength)
 		evm.am.RevertToSnapshot(snapshot)
 		return ErrMarshalAssetLength
 	}
