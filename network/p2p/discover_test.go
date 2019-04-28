@@ -48,32 +48,32 @@ var table = []struct {
 	n *NodeID
 }{
 	{
-		k: crypto.Keccak256Hash(nodeIDs[0][:]),
+		k: nodeIdHash(nodeIDs[0]),
 		v: "127.0.0.1:7001",
 		n: nodeIDs[0],
 	},
 	{
-		k: crypto.Keccak256Hash(nodeIDs[1][:]),
+		k: nodeIdHash(nodeIDs[1]),
 		v: "127.0.0.1:7002",
 		n: nodeIDs[1],
 	},
 	{
-		k: crypto.Keccak256Hash(nodeIDs[2][:]),
+		k: nodeIdHash(nodeIDs[2]),
 		v: "127.0.0.1:7003",
 		n: nodeIDs[2],
 	},
 	{
-		k: crypto.Keccak256Hash(nodeIDs[3][:]),
+		k: nodeIdHash(nodeIDs[3]),
 		v: "127.0.0.1:7004",
 		n: nodeIDs[3],
 	},
 	{
-		k: crypto.Keccak256Hash(nodeIDs[4][:]),
+		k: nodeIdHash(nodeIDs[4]),
 		v: "127.0.0.1:7005",
 		n: nodeIDs[4],
 	},
 	{
-		k: crypto.Keccak256Hash(nodeIDs[5][:]),
+		k: nodeIdHash(nodeIDs[5]),
 		v: "127.0.0.1:7006",
 		n: nodeIDs[5],
 	},
@@ -273,7 +273,7 @@ func Test_getAvailableNodes(t *testing.T) {
 
 		n := BytesToNodeID(common.FromHex(s))
 		v := fmt.Sprintf("160.0.0.1:70%d", i)
-		k := crypto.Keccak256Hash(n[:])
+		k := nodeIdHash(n)
 
 		dis.deputyNodes[k] = newRawNode(n, v)
 		if i%3 == 0 {
@@ -293,7 +293,7 @@ func Test_getAvailableNodes(t *testing.T) {
 
 		n := BytesToNodeID(common.FromHex(s))
 		v := fmt.Sprintf("170.0.0.1:70%d", i)
-		k := crypto.Keccak256Hash(n[:])
+		k := nodeIdHash(n)
 
 		dis.whiteNodes[k] = newRawNode(n, v)
 		if i%3 == 0 {
@@ -313,7 +313,7 @@ func Test_getAvailableNodes(t *testing.T) {
 
 		n := BytesToNodeID(common.FromHex(s))
 		v := fmt.Sprintf("180.0.0.1:70%d", i)
-		k := crypto.Keccak256Hash(n[:])
+		k := nodeIdHash(n)
 
 		dis.foundNodes[k] = newRawNode(n, v)
 		if i%3 == 0 {
@@ -325,7 +325,7 @@ func Test_getAvailableNodes(t *testing.T) {
 	assert.Len(t, list, 200)
 }
 
-func Test_setWhiteList_ok(t *testing.T) {
+func Test_setWhiteList_initBlackeList_ok(t *testing.T) {
 	list := make([]string, 0)
 
 	for i := 0; i < 5; i++ {
@@ -343,7 +343,7 @@ func Test_setWhiteList_ok(t *testing.T) {
 	defer removeFile(WhiteFile)
 	dis := newDiscover()
 	dis.setWhiteList()
-	dis.setBlackList()
+	dis.initBlackList()
 	assert.Len(t, dis.whiteNodes, 5)
 	assert.Len(t, dis.blackNodes, 5)
 
@@ -369,7 +369,7 @@ func Test_writeFindFile(t *testing.T) {
 		prv, _ := crypto.GenerateKey()
 		n := PubKeyToNodeID(&prv.PublicKey)
 		v := fmt.Sprintf("160.0.0.1:110%d", i)
-		k := crypto.Keccak256Hash(n[:])
+		k := nodeIdHash(&n)
 
 		dis.deputyNodes[k] = newRawNode(&n, v)
 
@@ -382,7 +382,7 @@ func Test_writeFindFile(t *testing.T) {
 		prv, _ := crypto.GenerateKey()
 		n := PubKeyToNodeID(&prv.PublicKey)
 		v := fmt.Sprintf("170.0.0.1:110%d", i)
-		k := crypto.Keccak256Hash(n[:])
+		k := nodeIdHash(&n)
 
 		dis.whiteNodes[k] = newRawNode(&n, v)
 		if i%3 == 0 {
@@ -394,7 +394,7 @@ func Test_writeFindFile(t *testing.T) {
 		prv, _ := crypto.GenerateKey()
 		n := PubKeyToNodeID(&prv.PublicKey)
 		v := fmt.Sprintf("180.0.0.1:110%d", i%100)
-		k := crypto.Keccak256Hash(n[:])
+		k := nodeIdHash(&n)
 
 		dis.foundNodes[k] = newRawNode(&n, v)
 		if i%3 == 0 {
@@ -471,7 +471,7 @@ func Test_GetNodesForDiscover(t *testing.T) {
 		prv, _ := crypto.GenerateKey()
 		n := PubKeyToNodeID(&prv.PublicKey)
 		v := fmt.Sprintf("160.0.0.1:110%d", i)
-		k := crypto.Keccak256Hash(n[:])
+		k := nodeIdHash(&n)
 
 		dis.deputyNodes[k] = newRawNode(&n, v)
 
@@ -486,7 +486,7 @@ func Test_GetNodesForDiscover(t *testing.T) {
 		prv, _ := crypto.GenerateKey()
 		n := PubKeyToNodeID(&prv.PublicKey)
 		v := fmt.Sprintf("170.0.0.1:110%d", i%100)
-		k := crypto.Keccak256Hash(n[:])
+		k := nodeIdHash(&n)
 
 		dis.whiteNodes[k] = newRawNode(&n, v)
 		if i%3 == 0 {
@@ -500,7 +500,7 @@ func Test_GetNodesForDiscover(t *testing.T) {
 		prv, _ := crypto.GenerateKey()
 		n := PubKeyToNodeID(&prv.PublicKey)
 		v := fmt.Sprintf("180.0.0.1:110%d", i%100)
-		k := crypto.Keccak256Hash(n[:])
+		k := nodeIdHash(&n)
 
 		dis.foundNodes[k] = newRawNode(&n, v)
 		if i%3 == 0 {
@@ -515,35 +515,36 @@ func Test_GetNodesForDiscover(t *testing.T) {
 	assert.Len(t, nodes, 200)
 }
 
+func setupRawNode(nodes map[common.Hash]*RawNode, i int) {
+	nodes[table[i].k] = newRawNode(table[i].n, table[i].v)
+	nodes[table[i].k].IsReconnect = true
+	nodes[table[i].k].Sequence = -1
+	nodes[table[i].k].ConnCounter = 5
+}
+
 func Test_AddNewList(t *testing.T) {
 	dis := newDiscover()
-	assert.NoError(t, dis.Start())
 	dis.deputyNodes = make(map[common.Hash]*RawNode, 20)
 	dis.foundNodes = make(map[common.Hash]*RawNode, 20)
 	dis.whiteNodes = make(map[common.Hash]*RawNode, 20)
 
+	// 使用table里的node赋值
 	for i := 0; i <= 5; i++ {
 		if i%3 == 0 { // i == 0,3
-			dis.whiteNodes[table[i].k] = newRawNode(table[i].n, table[i].v)
-			dis.whiteNodes[table[i].k].IsReconnect = true
-			dis.whiteNodes[table[i].k].Sequence = -1
-			dis.whiteNodes[table[i].k].ConnCounter = 10
+			// 设置白名单
+			setupRawNode(dis.whiteNodes, i)
 		} else if i%3 == 1 { // i == 1,4
-			dis.deputyNodes[table[i].k] = newRawNode(table[i].n, table[i].v)
-			dis.deputyNodes[table[i].k].IsReconnect = true
-			dis.deputyNodes[table[i].k].Sequence = -2
-			dis.deputyNodes[table[i].k].ConnCounter = 11
+			// 设置deputynodes
+			setupRawNode(dis.deputyNodes, i)
 		} else { // i == 2,5
-			dis.foundNodes[table[i].k] = newRawNode(table[i].n, table[i].v)
-			dis.foundNodes[table[i].k].IsReconnect = true
-			dis.foundNodes[table[i].k].Sequence = -3
-			dis.foundNodes[table[i].k].ConnCounter = 12
+			// 设置节点发现nodes
+			setupRawNode(dis.foundNodes, i)
 		}
 	}
 
-	list01 := make([]string, 0, 10)
-	list02 := make([]string, 0, 10)
-	list03 := make([]string, 0, 5)
+	list01 := make([]string, 0, 10) // 随机生成用于节点发现的nodes
+	list02 := make([]string, 0, 10) // 黑名单nodes
+	list03 := make([]string, 0, 5)  // 存储table中的nodes
 
 	for i := 0; i <= 5; i++ {
 		s := table[i].n.String() + "@" + table[i].v
@@ -558,7 +559,7 @@ func Test_AddNewList(t *testing.T) {
 			list01 = append(list01, hex+"@127.0.0.1:123"+strconv.Itoa(i))
 		} else {
 			// 设置port为基数的为黑名单
-			dis.blackNodes[crypto.Keccak256Hash(nodeid[:])] = newRawNode(&nodeid, "@127.0.0.1:123"+strconv.Itoa(i))
+			dis.blackNodes[nodeIdHash(&nodeid)] = newRawNode(&nodeid, "@127.0.0.1:123"+strconv.Itoa(i))
 			list02 = append(list02, hex+"@127.0.0.1:123"+strconv.Itoa(i))
 		}
 	}
@@ -569,29 +570,31 @@ func Test_AddNewList(t *testing.T) {
 	dis.AddNewList(lists)
 
 	for _, v := range dis.foundNodes {
+		// lists里包含了节点发现的node
 		assert.Contains(t, lists, v.NodeID.String()+"@"+v.Endpoint)
+		// AddNewList节点发现里一定没有黑名单中的node
 		assert.NotContains(t, list02, v.NodeID.String()+"@"+v.Endpoint)
 	}
 	// white nodes
 	for _, v := range dis.whiteNodes {
+		// AddNewList节点发现后更新的最初白名单节点属性
 		assert.Equal(t, 0, int(v.ConnCounter))
 		assert.Equal(t, false, v.IsReconnect)
 	}
 	// deputy nodes
 	for _, v := range dis.deputyNodes {
+		// AddNewList节点发现后更新的最初的deputynode属性
 		assert.Equal(t, uint32(0), uint32(v.Sequence))
 		assert.Equal(t, uint32(0), uint32(v.ConnCounter))
 		assert.Equal(t, false, v.IsReconnect)
 	}
-	// found nodes
+	// 更新的初始的节点发现的node属性
 	assert.Equal(t, 0, int(dis.foundNodes[table[2].k].ConnCounter))
 	assert.Equal(t, 0, int(dis.foundNodes[table[2].k].Sequence))
 	assert.Equal(t, 0, int(dis.foundNodes[table[5].k].ConnCounter))
 	assert.Equal(t, 0, int(dis.foundNodes[table[5].k].Sequence))
 	assert.Equal(t, false, dis.foundNodes[table[2].k].IsReconnect)
 	assert.Equal(t, false, dis.foundNodes[table[5].k].IsReconnect)
-
-	assert.NoError(t, dis.Stop())
 
 	removeFile(FindFile)
 }
@@ -607,17 +610,21 @@ func TestDiscoverManager_PutBlackNode_IsBlackNode(t *testing.T) {
 		nodeID := PubKeyToNodeID(&prv.PublicKey)
 		endpoint := "127.0.0.1:700" + strconv.Itoa(i%10)
 		dis.PutBlackNode(&nodeID, endpoint)
-		key := crypto.Keccak256Hash(nodeID[:])
+		key := nodeIdHash(&nodeID)
 		keyList = append(keyList, key)
 		nodes = append(nodes, nodeID.String()+"@"+endpoint)
 	}
-
+	// is black node
 	for i := 0; i < n; i++ {
 		k := dis.getBlackNode(keyList[i])
 		assert.NotEmpty(t, k)
-		nodeID, _ := checkNodeString(nodes[i])
+		nodeID, _ := parseNodeString(nodes[i])
 		b := dis.IsBlackNode(nodeID)
 		assert.Equal(t, true, b)
+	}
+	// is not black node
+	for i := 0; i <= 5; i++ {
+		assert.Equal(t, false, dis.IsBlackNode(table[i].n))
 	}
 }
 

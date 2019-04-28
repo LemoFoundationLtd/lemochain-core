@@ -405,7 +405,7 @@ func (pm *ProtocolManager) peerLoop() {
 
 func (pm *ProtocolManager) checkConnectionLimit(p p2p.IPeer) bool {
 	height := pm.chain.CurrentBlock().Height() + 1
-	rNodeID := *(p.RNodeID())
+	rNodeID := p.RNodeID()
 	// deputy node
 	if n := pm.dm.GetDeputyByNodeID(height, rNodeID[:]); n != nil {
 		return true
