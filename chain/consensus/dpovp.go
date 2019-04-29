@@ -286,6 +286,7 @@ func (dp *DPoVP) logCurrentChange(oldCurrent *types.Block) {
 	} else {
 		log.Debugf("Switch fork! Current block changes from %s to %s", oldCurrent.ShortString(), newCurrent.ShortString())
 	}
+	dp.db.PrintForks(newCurrent.Hash())
 }
 
 // isIgnorableBlock check the block is exist or not

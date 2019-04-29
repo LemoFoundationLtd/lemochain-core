@@ -740,6 +740,13 @@ func (database *ChainDatabase) IterateUnConfirms(fn func(*types.Block)) {
 	}, nil)
 }
 
+func (database *ChainDatabase) PrintForks(currentHash common.Hash) {
+	database.RW.RLock()
+	defer database.RW.RUnlock()
+
+	PrintForks(database.UnConfirmBlocks, currentHash)
+}
+
 func (database *ChainDatabase) Close() error {
 	database.Beansdb.Close()
 
