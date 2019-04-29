@@ -9,6 +9,11 @@ import (
 
 const (
 	dialTimeout = 3 * time.Second
+	zero        = 0
+	negative01  = -1
+	negative02  = -2
+	negative03  = -3
+	negative04  = -4
 )
 
 type HandleConnFunc func(fd net.Conn, nodeID *NodeID) error
@@ -62,12 +67,12 @@ func (m *DialManager) runDialTask(node string) int {
 	nodeID, endpoint := parseNodeString(node)
 	if nodeID == nil {
 		log.Warnf("dial: invalid node. node: %s", node)
-		return -3
+		return negative04
 	}
 	// black node
 	if m.discover.IsBlackNode(nodeID) {
 		log.Warnf("dial: this node is black node. node: %s", node)
-		return -3
+		return negative03
 	}
 	// dial
 	conn, err := net.DialTimeout("tcp", endpoint, dialTimeout)
@@ -76,14 +81,14 @@ func (m *DialManager) runDialTask(node string) int {
 		if err = m.discover.SetConnectResult(nodeID, false); err != nil {
 			log.Errorf("SetConnectResult failed: %v", err)
 		}
-		return -1
+		return negative01
 	}
 	// handle connection
 	if err = m.handleConn(conn, nodeID); err != nil {
 		log.Warnf("node first connect error: %s", err.Error())
-		return -2
+		return negative02
 	}
-	return 0
+	return zero
 }
 
 // loop

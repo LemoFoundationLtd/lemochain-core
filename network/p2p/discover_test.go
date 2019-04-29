@@ -48,32 +48,32 @@ var table = []struct {
 	n *NodeID
 }{
 	{
-		k: nodeIdHash(nodeIDs[0]),
+		k: nodeIDs[0].Hash(),
 		v: "127.0.0.1:7001",
 		n: nodeIDs[0],
 	},
 	{
-		k: nodeIdHash(nodeIDs[1]),
+		k: nodeIDs[1].Hash(),
 		v: "127.0.0.1:7002",
 		n: nodeIDs[1],
 	},
 	{
-		k: nodeIdHash(nodeIDs[2]),
+		k: nodeIDs[2].Hash(),
 		v: "127.0.0.1:7003",
 		n: nodeIDs[2],
 	},
 	{
-		k: nodeIdHash(nodeIDs[3]),
+		k: nodeIDs[3].Hash(),
 		v: "127.0.0.1:7004",
 		n: nodeIDs[3],
 	},
 	{
-		k: nodeIdHash(nodeIDs[4]),
+		k: nodeIDs[4].Hash(),
 		v: "127.0.0.1:7005",
 		n: nodeIDs[4],
 	},
 	{
-		k: nodeIdHash(nodeIDs[5]),
+		k: nodeIDs[5].Hash(),
 		v: "127.0.0.1:7006",
 		n: nodeIDs[5],
 	},
@@ -273,7 +273,7 @@ func Test_getAvailableNodes(t *testing.T) {
 
 		n := BytesToNodeID(common.FromHex(s))
 		v := fmt.Sprintf("160.0.0.1:70%d", i)
-		k := nodeIdHash(n)
+		k := n.Hash()
 
 		dis.deputyNodes[k] = newRawNode(n, v)
 		if i%3 == 0 {
@@ -293,7 +293,7 @@ func Test_getAvailableNodes(t *testing.T) {
 
 		n := BytesToNodeID(common.FromHex(s))
 		v := fmt.Sprintf("170.0.0.1:70%d", i)
-		k := nodeIdHash(n)
+		k := n.Hash()
 
 		dis.whiteNodes[k] = newRawNode(n, v)
 		if i%3 == 0 {
@@ -313,7 +313,7 @@ func Test_getAvailableNodes(t *testing.T) {
 
 		n := BytesToNodeID(common.FromHex(s))
 		v := fmt.Sprintf("180.0.0.1:70%d", i)
-		k := nodeIdHash(n)
+		k := n.Hash()
 
 		dis.foundNodes[k] = newRawNode(n, v)
 		if i%3 == 0 {
@@ -342,7 +342,7 @@ func Test_setWhiteList_initBlackeList_ok(t *testing.T) {
 	writeFile(BlackFile, content)
 	defer removeFile(WhiteFile)
 	dis := newDiscover()
-	dis.setWhiteList()
+	dis.initWhiteList()
 	dis.initBlackList()
 	assert.Len(t, dis.whiteNodes, 5)
 	assert.Len(t, dis.blackNodes, 5)
@@ -357,7 +357,7 @@ func Test_setWhiteList_initBlackeList_ok(t *testing.T) {
 
 func Test_setWhiteList_err(t *testing.T) {
 	dis := newDiscover()
-	dis.setWhiteList()
+	dis.initWhiteList()
 
 	assert.Len(t, dis.whiteNodes, 0)
 }
@@ -369,7 +369,7 @@ func Test_writeFindFile(t *testing.T) {
 		prv, _ := crypto.GenerateKey()
 		n := PubKeyToNodeID(&prv.PublicKey)
 		v := fmt.Sprintf("160.0.0.1:110%d", i)
-		k := nodeIdHash(&n)
+		k := n.Hash()
 
 		dis.deputyNodes[k] = newRawNode(&n, v)
 
@@ -382,7 +382,7 @@ func Test_writeFindFile(t *testing.T) {
 		prv, _ := crypto.GenerateKey()
 		n := PubKeyToNodeID(&prv.PublicKey)
 		v := fmt.Sprintf("170.0.0.1:110%d", i)
-		k := nodeIdHash(&n)
+		k := n.Hash()
 
 		dis.whiteNodes[k] = newRawNode(&n, v)
 		if i%3 == 0 {
@@ -394,7 +394,7 @@ func Test_writeFindFile(t *testing.T) {
 		prv, _ := crypto.GenerateKey()
 		n := PubKeyToNodeID(&prv.PublicKey)
 		v := fmt.Sprintf("180.0.0.1:110%d", i%100)
-		k := nodeIdHash(&n)
+		k := n.Hash()
 
 		dis.foundNodes[k] = newRawNode(&n, v)
 		if i%3 == 0 {
@@ -402,7 +402,7 @@ func Test_writeFindFile(t *testing.T) {
 		}
 	}
 
-	dis.writeFindFile()
+	dis.writeFindNodeToFile()
 
 	dis = newDiscover()
 	dis.initDiscoverList()
@@ -471,7 +471,7 @@ func Test_GetNodesForDiscover(t *testing.T) {
 		prv, _ := crypto.GenerateKey()
 		n := PubKeyToNodeID(&prv.PublicKey)
 		v := fmt.Sprintf("160.0.0.1:110%d", i)
-		k := nodeIdHash(&n)
+		k := n.Hash()
 
 		dis.deputyNodes[k] = newRawNode(&n, v)
 
@@ -486,7 +486,7 @@ func Test_GetNodesForDiscover(t *testing.T) {
 		prv, _ := crypto.GenerateKey()
 		n := PubKeyToNodeID(&prv.PublicKey)
 		v := fmt.Sprintf("170.0.0.1:110%d", i%100)
-		k := nodeIdHash(&n)
+		k := n.Hash()
 
 		dis.whiteNodes[k] = newRawNode(&n, v)
 		if i%3 == 0 {
@@ -500,7 +500,7 @@ func Test_GetNodesForDiscover(t *testing.T) {
 		prv, _ := crypto.GenerateKey()
 		n := PubKeyToNodeID(&prv.PublicKey)
 		v := fmt.Sprintf("180.0.0.1:110%d", i%100)
-		k := nodeIdHash(&n)
+		k := n.Hash()
 
 		dis.foundNodes[k] = newRawNode(&n, v)
 		if i%3 == 0 {
@@ -542,13 +542,13 @@ func Test_AddNewList(t *testing.T) {
 		}
 	}
 
-	list01 := make([]string, 0, 10) // 随机生成用于节点发现的nodes
-	list02 := make([]string, 0, 10) // 黑名单nodes
-	list03 := make([]string, 0, 5)  // 存储table中的nodes
+	testFindNodes := make([]string, 0, 10)  // 随机生成用于节点发现的nodes
+	testBlackNodes := make([]string, 0, 10) // 黑名单nodes
+	nodesFromTable := make([]string, 0, 5)  // 存储table中的nodes
 
 	for i := 0; i <= 5; i++ {
 		s := table[i].n.String() + "@" + table[i].v
-		list03 = append(list03, s)
+		nodesFromTable = append(nodesFromTable, s)
 	}
 
 	for i := 0; i < 20; i++ {
@@ -556,16 +556,16 @@ func Test_AddNewList(t *testing.T) {
 		nodeid := PubKeyToNodeID(&prv.PublicKey)
 		hex := common.Bytes2Hex(nodeid[:])
 		if i%2 == 0 {
-			list01 = append(list01, hex+"@127.0.0.1:123"+strconv.Itoa(i))
+			testFindNodes = append(testFindNodes, hex+"@127.0.0.1:123"+strconv.Itoa(i))
 		} else {
 			// 设置port为基数的为黑名单
-			dis.blackNodes[nodeIdHash(&nodeid)] = newRawNode(&nodeid, "@127.0.0.1:123"+strconv.Itoa(i))
-			list02 = append(list02, hex+"@127.0.0.1:123"+strconv.Itoa(i))
+			dis.blackNodes[nodeid.Hash()] = newRawNode(&nodeid, "@127.0.0.1:123"+strconv.Itoa(i))
+			testBlackNodes = append(testBlackNodes, hex+"@127.0.0.1:123"+strconv.Itoa(i))
 		}
 	}
 
 	lists := make([]string, 0, 20)
-	lists = append(append(list01, list02...), list03...)
+	lists = append(append(testFindNodes, testBlackNodes...), nodesFromTable...)
 
 	dis.AddNewList(lists)
 
@@ -573,7 +573,7 @@ func Test_AddNewList(t *testing.T) {
 		// lists里包含了节点发现的node
 		assert.Contains(t, lists, v.NodeID.String()+"@"+v.Endpoint)
 		// AddNewList节点发现里一定没有黑名单中的node
-		assert.NotContains(t, list02, v.NodeID.String()+"@"+v.Endpoint)
+		assert.NotContains(t, testBlackNodes, v.NodeID.String()+"@"+v.Endpoint)
 	}
 	// white nodes
 	for _, v := range dis.whiteNodes {
@@ -610,7 +610,7 @@ func TestDiscoverManager_PutBlackNode_IsBlackNode(t *testing.T) {
 		nodeID := PubKeyToNodeID(&prv.PublicKey)
 		endpoint := "127.0.0.1:700" + strconv.Itoa(i%10)
 		dis.PutBlackNode(&nodeID, endpoint)
-		key := nodeIdHash(&nodeID)
+		key := nodeID.Hash()
 		keyList = append(keyList, key)
 		nodes = append(nodes, nodeID.String()+"@"+endpoint)
 	}
