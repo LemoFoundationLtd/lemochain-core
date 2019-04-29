@@ -404,12 +404,12 @@ func VerifyTx(tx *types.Transaction) error {
 	toNameLength := len(tx.ToName())
 	if toNameLength > MaxTxToNameLength {
 
-		log.Errorf("the length of toName field in transaction is out of max length limit. toName length = %d. max length limit = %d. ", toNameLength, MaxTxToNameLength)
+		log.Errorf("The length of toName field in transaction is out of max length limit. toName length = %d. max length limit = %d. ", toNameLength, MaxTxToNameLength)
 		return ErrToName
 	}
 	txMessageLength := len(tx.Message())
 	if txMessageLength > MaxTxMessageLength {
-		log.Errorf("the length of message field in transaction is out of max length limit. message length = %d. max length limit = %d. ", txMessageLength, MaxTxMessageLength)
+		log.Errorf("The length of message field in transaction is out of max length limit. message length = %d. max length limit = %d. ", txMessageLength, MaxTxMessageLength)
 		return ErrTxMessage
 	}
 	switch tx.Type() {
@@ -425,7 +425,7 @@ func VerifyTx(tx *types.Transaction) error {
 			return ErrSpecialTx
 		}
 	default:
-		log.Errorf("the transaction type does not exit . type = %v", tx.Type())
+		log.Errorf("The transaction type does not exit . type = %v", tx.Type())
 		return ErrTxType
 	}
 	return nil
@@ -469,7 +469,7 @@ func (t *PublicTxAPI) doCall(ctx context.Context, to *common.Address, txType uin
 	defer func(start time.Time) { log.Debug("Executing EVM call finished", "runtime", time.Since(start)) }(time.Now())
 	// get latest stableBlock
 	stableBlock := t.node.chain.StableBlock()
-	log.Infof("stable block height = %v", stableBlock.Height())
+	log.Infof("Stable block height = %v", stableBlock.Height())
 	stableHeader := stableBlock.Header
 
 	p := t.node.chain.TxProcessor()

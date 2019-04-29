@@ -89,7 +89,7 @@ func ReadConfigFile(dir string) (*ConfigFromFile, error) {
 	defer file.Close()
 	var config ConfigFromFile
 	if err = json.NewDecoder(file).Decode(&config); err != nil {
-		log.Errorf("decode config fail %v", err)
+		log.Errorf("Decode config fail %v", err)
 		return nil, ErrConfigFormat
 	}
 	return &config, nil

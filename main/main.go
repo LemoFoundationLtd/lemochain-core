@@ -149,7 +149,7 @@ func startNode(ctx *cli.Context, n *node.Node) {
 
 	if ctx.IsSet(node.AutoMineFlag.Name) {
 		if err := n.StartMining(); err != nil {
-			log.Errorf("start mining failed: %v", err)
+			log.Errorf("Start mining failed: %v", err)
 		}
 	}
 }

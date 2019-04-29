@@ -53,18 +53,18 @@ func (m *Manager) SaveSnapshot(snapshotHeight uint32, nodes DeputyNodes) {
 	// expect term index is the last term index +1
 	expectIndex := m.termList[termCount-1].TermIndex + 1
 	if expectIndex < newTerm.TermIndex {
-		log.Warn("missing term", "expectIndex", expectIndex, "newTermIndex", newTerm.TermIndex)
+		log.Warn("Missing term", "expectIndex", expectIndex, "newTermIndex", newTerm.TermIndex)
 		panic(ErrMissingTerm)
 	} else if expectIndex == newTerm.TermIndex {
 		// correct! congratulation~~~
 		m.termList = append(m.termList, newTerm)
-		log.Info("new term", "index", newTerm.TermIndex, "nodesCount", len(newTerm.Nodes))
+		log.Info("New term", "index", newTerm.TermIndex, "nodesCount", len(newTerm.Nodes))
 	} else {
 		// may exist when fork at term snapshot height
 		m.termList[newTerm.TermIndex] = newTerm
-		log.Info("overwrite existed term", "index", newTerm.TermIndex, "nodesCount", len(newTerm.Nodes))
+		log.Info("Overwrite existed term", "index", newTerm.TermIndex, "nodesCount", len(newTerm.Nodes))
 		if termCount > int(newTerm.TermIndex+1) {
-			log.Warnf("drop %d terms because the older term is overwritten", termCount-int(newTerm.TermIndex+1))
+			log.Warnf("Drop %d terms because the older term is overwritten", termCount-int(newTerm.TermIndex+1))
 			m.termList = m.termList[:newTerm.TermIndex+1]
 		}
 	}
@@ -85,7 +85,7 @@ func (m *Manager) GetTermByHeight(height uint32) (*TermRecord, error) {
 		return m.termList[termIndex], nil
 	} else {
 		// the height is after last term
-		log.Warn("query future term", "current term count", termCount, "looking for term index", termIndex)
+		log.Warn("Query future term", "current term count", termCount, "looking for term index", termIndex)
 		return nil, ErrQueryFutureTerm
 	}
 }

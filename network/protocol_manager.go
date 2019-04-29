@@ -184,7 +184,7 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 	pm.wg.Add(1)
 	defer func() {
 		pm.wg.Done()
-		log.Debugf("rcvBlockLoop finished")
+		log.Debugf("RcvBlockLoop finished")
 	}()
 
 	proInterval := 500 * time.Millisecond
@@ -196,10 +196,10 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 	for {
 		select {
 		case <-pm.quitCh:
-			log.Info("blockLoop finished")
+			log.Info("BlockLoop finished")
 			return
 		case block := <-pm.newMinedBlockCh:
-			log.Debugf("current's peers count: %d", len(pm.peers.peers))
+			log.Debugf("Current's peers count: %d", len(pm.peers.peers))
 			peers := pm.peers.DeputyNodes(block.Height())
 			go pm.broadcastBlock(peers, block, true)
 		case rcvMsg := <-pm.rcvBlocksCh:
@@ -221,8 +221,8 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 				}
 				// local chain has this block
 				if pm.chain.HasBlock(b.ParentHash()) {
-					log.Debugf("get block from peer:%s", rcvMsg.p.NodeID().String())
-					log.Debugf("received block's comfirm length: %d", len(b.Confirms))
+					log.Debugf("Get block from peer:%s", rcvMsg.p.NodeID().String())
+					log.Debugf("Received block's comfirm length: %d", len(b.Confirms))
 					pm.insertBlock(b)
 				} else {
 					pm.blockCache.Add(b)
@@ -252,7 +252,7 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 				p := pm.peers.BestToSync(pm.blockCache.FirstHeight())
 				if p != nil {
 					go p.RequestBlocks(pm.blockCache.FirstHeight()-1, pm.blockCache.FirstHeight()-1)
-					log.Debugf("blockCache's size: %d", cacheSize)
+					log.Debugf("BlockCache's size: %d", cacheSize)
 				}
 			}
 			// for test
@@ -278,7 +278,7 @@ func (pm *ProtocolManager) insertBlock(b *types.Block) {
 			pm.txPool.Remove(txsKeys)
 		}
 	} else {
-		log.Errorf("insertBlock failed: %v", err)
+		log.Errorf("InsertBlock failed: %v", err)
 	}
 }
 
@@ -287,7 +287,7 @@ func (pm *ProtocolManager) stableBlockLoop() {
 	pm.wg.Add(1)
 	defer func() {
 		pm.wg.Done()
-		log.Debugf("stableBlockLoop finished")
+		log.Debugf("StableBlockLoop finished")
 	}()
 
 	for {
@@ -306,7 +306,7 @@ func (pm *ProtocolManager) stableBlockLoop() {
 			peers := pm.peers.DelayNodes(block.Height())
 			if len(peers) > 0 {
 				// for debug
-				log.Debug("broadcast stable block to delay node")
+				log.Debug("Broadcast stable block to delay node")
 				go pm.broadcastBlock(peers, block, false)
 			}
 			go func() {
@@ -350,7 +350,7 @@ func (pm *ProtocolManager) peerLoop() {
 	pm.wg.Add(1)
 	defer func() {
 		pm.wg.Done()
-		log.Debugf("peerLoop finished")
+		log.Debugf("PeerLoop finished")
 	}()
 
 	forceSyncTimer := time.NewTimer(ForceSyncInternal)
@@ -358,7 +358,7 @@ func (pm *ProtocolManager) peerLoop() {
 	for {
 		select {
 		case <-pm.quitCh:
-			log.Info("peerLoop finished")
+			log.Info("PeerLoop finished")
 			return
 		case rPeer := <-pm.addPeerCh: // new peer added
 			if pm.checkConnectionLimit(rPeer) {
@@ -474,9 +474,9 @@ func (pm *ProtocolManager) handlePeer(p *peer) {
 	if pm.chain.CurrentBlock().Height() < rStatus.LatestStatus.CurHeight {
 		from, err := pm.findSyncFrom(&rStatus.LatestStatus)
 		if err != nil {
-			log.Warnf("find sync from error: %v", err)
+			log.Warnf("Find sync from error: %v", err)
 			if err = pm.discover.SetConnectResult(p.NodeID(), false); err != nil {
-				log.Debugf("handlePeer: %v", err)
+				log.Debugf("HandlePeer: %v", err)
 			}
 			p.HardForkClose()
 			return
@@ -485,13 +485,13 @@ func (pm *ProtocolManager) handlePeer(p *peer) {
 	}
 	// set connect result
 	if err = pm.discover.SetConnectResult(p.NodeID(), true); err != nil {
-		log.Debugf("handlePeer set connect result: %v", err)
+		log.Debugf("HandlePeer set connect result: %v", err)
 	}
 
 	for {
 		// handle peer net message
 		if err := pm.handleMsg(p); err != nil {
-			log.Debugf("handle message failed: %v", err)
+			log.Debugf("Handle message failed: %v", err)
 			if err != io.EOF {
 				p.conn.Close()
 			}
@@ -532,7 +532,7 @@ func (pm *ProtocolManager) forceSyncBlock(status *LatestStatus, p *peer) {
 
 	from, err := pm.findSyncFrom(status)
 	if err != nil {
-		log.Warnf("find sync from error: %v", err)
+		log.Warnf("Find sync from error: %v", err)
 		p.HardForkClose()
 		pm.peers.UnRegister(p)
 		return
@@ -699,7 +699,7 @@ func (pm *ProtocolManager) respBlocks(from, to uint32, p *peer, hasChangeLog boo
 	if from == to {
 		b := pm.chain.GetBlockByHeight(from)
 		if b == nil {
-			log.Warnf("can't get a block of height %d", from)
+			log.Warnf("Can't get a block of height %d", from)
 			return
 		}
 		if !hasChangeLog {
@@ -725,7 +725,7 @@ func (pm *ProtocolManager) respBlocks(from, to uint32, p *peer, hasChangeLog boo
 		for j := 0; j < eachSize; j++ {
 			b := pm.chain.GetBlockByHeight(height)
 			if b == nil {
-				log.Warnf("can't get a block of height %d", height)
+				log.Warnf("Can't get a block of height %d", height)
 				break
 			}
 			if !hasChangeLog {

@@ -88,7 +88,7 @@ func (m *DiscoverManager) Start() error {
 	} else {
 		return ErrHasStared
 	}
-	log.Info("discover start ok")
+	log.Info("Discover start ok")
 	return nil
 }
 
@@ -99,7 +99,7 @@ func (m *DiscoverManager) Stop() error {
 	} else {
 		return ErrNotStart
 	}
-	log.Info("discover stop ok")
+	log.Info("Discover stop ok")
 	return nil
 }
 
@@ -289,7 +289,7 @@ func (m *DiscoverManager) SetConnectResult(nodeID *NodeID, success bool) error {
 
 // SetReconnect start reconnect
 func (m *DiscoverManager) SetReconnect(nodeID *NodeID) error {
-	log.Debugf("discover: set reconnect: %s", common.ToHex((*nodeID)[:]))
+	log.Debugf("Discover: set reconnect: %s", common.ToHex((*nodeID)[:]))
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -339,7 +339,7 @@ func readFile(path string) []string {
 	}
 	defer func() {
 		if err := f.Close(); err != nil {
-			log.Infof("close file failed: %v", err)
+			log.Infof("Close file failed: %v", err)
 		}
 	}()
 
@@ -410,7 +410,7 @@ func (m *DiscoverManager) writeFindFile() {
 	}
 	defer func() {
 		if err := f.Close(); err != nil {
-			log.Infof("close file failed: %v", err)
+			log.Infof("Close file failed: %v", err)
 		}
 	}()
 
@@ -418,11 +418,11 @@ func (m *DiscoverManager) writeFindFile() {
 	buf := bufio.NewWriter(f)
 	for _, n := range list {
 		if _, err := buf.WriteString(n + "\n"); err != nil {
-			log.Infof("write file failed: %v", err)
+			log.Infof("Write file failed: %v", err)
 		}
 	}
 	if err := buf.Flush(); err != nil {
-		log.Infof("write file failed: %v", err)
+		log.Infof("Write file failed: %v", err)
 	}
 }
 
