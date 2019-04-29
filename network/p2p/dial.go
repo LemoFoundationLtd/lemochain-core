@@ -59,10 +59,15 @@ func (m *DialManager) Stop() error {
 // runDialTask Run dial task
 func (m *DialManager) runDialTask(node string) int {
 	// check
-	nodeID, endpoint := checkNodeString(node)
+	nodeID, endpoint := parseNodeString(node)
 	if nodeID == nil {
 		log.Warnf("dial: invalid node. node: %s", node)
-		return -3
+		return -1
+	}
+	// black node
+	if m.discover.IsBlackNode(nodeID) {
+		log.Warnf("dial: this node is black node. node: %s", node)
+		return -1
 	}
 	// dial
 	conn, err := net.DialTimeout("tcp", endpoint, dialTimeout)
@@ -76,7 +81,7 @@ func (m *DialManager) runDialTask(node string) int {
 	// handle connection
 	if err = m.handleConn(conn, nodeID); err != nil {
 		log.Warnf("node first connect error: %s", err.Error())
-		return -2
+		return -1
 	}
 	return 0
 }
@@ -86,6 +91,7 @@ func (m *DialManager) loop() {
 	for {
 		list := m.discover.connectingNodes()
 		for _, n := range list {
+
 			log.Debugf("start dial: %s", n[:16])
 			if atomic.LoadInt32(&m.state) == -1 {
 				return

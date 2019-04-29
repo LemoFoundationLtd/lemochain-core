@@ -5,6 +5,7 @@ import (
 	"crypto/elliptic"
 	"errors"
 	"fmt"
+	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"math/big"
 )
@@ -24,6 +25,11 @@ func (id NodeID) PubKey() (*ecdsa.PublicKey, error) {
 		return nil, errors.New("invalid secp256k1 curve point")
 	}
 	return p, nil
+}
+
+// Hash return nodeId hash
+func (id NodeID) Hash() common.Hash {
+	return crypto.Keccak256Hash(id[:])
 }
 
 // String

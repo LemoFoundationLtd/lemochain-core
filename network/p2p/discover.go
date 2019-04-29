@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
-	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"net"
 	"os"
@@ -24,6 +23,7 @@ const (
 
 	WhiteFile = "whitelist"
 	FindFile  = "findnode"
+	BlackFile = "blacklist"
 )
 
 var (
@@ -59,6 +59,7 @@ type DiscoverManager struct {
 	sequence    int32
 	foundNodes  map[common.Hash]*RawNode // total nodes. contains: 'add peer', 'receive nodes from nodes find request'
 	whiteNodes  map[common.Hash]*RawNode // white list nodes
+	blackNodes  map[common.Hash]*RawNode // black list nodes
 	deputyNodes map[common.Hash]*RawNode // deputy nodes
 
 	dataDir string
@@ -73,6 +74,7 @@ func NewDiscoverManager(dataDir string) *DiscoverManager {
 		sequence:    0,
 		foundNodes:  make(map[common.Hash]*RawNode, 100),
 		whiteNodes:  make(map[common.Hash]*RawNode, 20),
+		blackNodes:  make(map[common.Hash]*RawNode, 20),
 		deputyNodes: make(map[common.Hash]*RawNode, 20),
 
 		status: 0,
@@ -83,7 +85,8 @@ func NewDiscoverManager(dataDir string) *DiscoverManager {
 // Start
 func (m *DiscoverManager) Start() error {
 	if atomic.CompareAndSwapInt32(&m.status, 0, 1) {
-		m.setWhiteList()
+		m.initBlackList()
+		m.initWhiteList()
 		m.initDiscoverList()
 	} else {
 		return ErrHasStared
@@ -95,7 +98,8 @@ func (m *DiscoverManager) Start() error {
 // Stop
 func (m *DiscoverManager) Stop() error {
 	if atomic.CompareAndSwapInt32(&m.status, 1, 0) {
-		m.writeFindFile()
+		// write find node to file
+		m.writeFindNodeToFile()
 	} else {
 		return ErrNotStart
 	}
@@ -196,11 +200,14 @@ func (m *DiscoverManager) addDiscoverNodes(nodes []string) {
 	defer m.lock.Unlock()
 
 	for _, node := range nodes {
-		nodeID, endpoint := checkNodeString(node)
+		nodeID, endpoint := parseNodeString(node)
 		if nodeID == nil {
 			continue
 		}
-		key := crypto.Keccak256Hash(nodeID[:])
+		key := nodeID.Hash()
+		if _, ok := m.blackNodes[key]; ok {
+			continue
+		}
 		if n, ok := m.whiteNodes[key]; ok {
 			if n.Sequence < 0 {
 				m.resetState(n)
@@ -219,9 +226,8 @@ func (m *DiscoverManager) addDiscoverNodes(nodes []string) {
 			}
 			continue
 		}
-		if n := newRawNode(nodeID, endpoint); n != nil {
-			m.foundNodes[key] = n
-		}
+		m.foundNodes[key] = newRawNode(nodeID, endpoint)
+
 	}
 }
 
@@ -234,19 +240,16 @@ func (m *DiscoverManager) SetDeputyNodes(nodes []string) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
-	var n *RawNode
 	for _, node := range nodes {
-		nodeID, endpoint := checkNodeString(node)
+		nodeID, endpoint := parseNodeString(node)
 		if nodeID == nil {
 			continue
 		}
-		key := crypto.Keccak256Hash(nodeID[:])
+		key := nodeID.Hash()
 		if _, ok := m.deputyNodes[key]; ok {
 			continue
 		}
-		if n = newRawNode(nodeID, endpoint); n != nil {
-			m.deputyNodes[key] = n
-		}
+		m.deputyNodes[key] = newRawNode(nodeID, endpoint)
 	}
 }
 
@@ -255,7 +258,7 @@ func (m *DiscoverManager) SetConnectResult(nodeID *NodeID, success bool) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
-	key := crypto.Keccak256Hash((*nodeID)[:])
+	key := nodeID.Hash()
 	n, ok := m.deputyNodes[key]
 	if !ok {
 		n, ok = m.whiteNodes[key]
@@ -293,7 +296,7 @@ func (m *DiscoverManager) SetReconnect(nodeID *NodeID) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
-	key := crypto.Keccak256Hash((*nodeID)[:])
+	key := nodeID.Hash()
 	n, ok := m.deputyNodes[key]
 	if !ok {
 		n, ok = m.whiteNodes[key]
@@ -358,8 +361,63 @@ func readFile(path string) []string {
 	return list
 }
 
-// setWhiteList set white list nodes
-func (m *DiscoverManager) setWhiteList() {
+// is black list node
+func (m *DiscoverManager) IsBlackNode(nodeID *NodeID) bool {
+	key := nodeID.Hash()
+
+	if n := m.getBlackNode(key); n != nil {
+		return true
+	} else {
+		return false
+	}
+}
+
+// getBlackNode
+func (m *DiscoverManager) getBlackNode(key common.Hash) *RawNode {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	return m.blackNodes[key]
+}
+
+// PutBlackNode
+func (m *DiscoverManager) PutBlackNode(nodeID *NodeID, endpoint string) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	key := nodeID.Hash()
+	if _, ok := m.blackNodes[key]; ok {
+		return
+	}
+	m.blackNodes[key] = newRawNode(nodeID, endpoint)
+}
+
+// initBlackList set black list nodes
+func (m *DiscoverManager) initBlackList() {
+	path := filepath.Join(m.dataDir, BlackFile)
+	nodes := readFile(path)
+	if nodes == nil || len(nodes) == 0 {
+		return
+	}
+
+	for _, node := range nodes {
+		nodeID, endpoint := parseNodeString(node)
+		if nodeID == nil {
+			continue
+		}
+		m.PutBlackNode(nodeID, endpoint)
+	}
+}
+
+// writeBlackListToFile
+func (m *DiscoverManager) writeBlackListToFile() {
+	list := make([]string, 0, MaxNodeCount)
+	for _, node := range m.blackNodes {
+		list = append(list, node.String())
+	}
+	m.writeToFile(list, BlackFile)
+}
+
+// initWhiteList set white list nodes
+func (m *DiscoverManager) initWhiteList() {
 	path := filepath.Join(m.dataDir, WhiteFile)
 	nodes := readFile(path)
 	if nodes == nil || len(nodes) == 0 {
@@ -369,19 +427,19 @@ func (m *DiscoverManager) setWhiteList() {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
-	var n *RawNode
 	for _, node := range nodes {
-		nodeID, endpoint := checkNodeString(node)
+		nodeID, endpoint := parseNodeString(node)
 		if nodeID == nil {
 			continue
 		}
-		key := crypto.Keccak256Hash(nodeID[:])
+		key := nodeID.Hash()
 		if _, ok := m.whiteNodes[key]; ok {
 			continue
 		}
-		if n = newRawNode(nodeID, endpoint); n != nil {
-			m.whiteNodes[key] = n
+		if _, ok := m.blackNodes[key]; ok {
+			continue
 		}
+		m.whiteNodes[key] = newRawNode(nodeID, endpoint)
 	}
 }
 
@@ -397,14 +455,19 @@ func (m *DiscoverManager) AddNewList(nodes []string) {
 	m.addDiscoverNodes(nodes)
 }
 
-// writeFindFile write invalid node to file
-func (m *DiscoverManager) writeFindFile() {
+// writeFindNodeToFile write invalid node to file
+func (m *DiscoverManager) writeFindNodeToFile() {
 	// create list
 	list := m.getAvailableNodes()
+	// write find nodes to "findnode" file
+	m.writeToFile(list, FindFile)
+}
 
-	path := filepath.Join(m.dataDir, FindFile)
-	// open file
-	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0666) // read and write
+// writeToFile write node list to file
+func (m *DiscoverManager) writeToFile(nodeList []string, fileName string) {
+	path := filepath.Join(m.dataDir, fileName)
+	// open or create file
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666) // first clear file to read and write
 	if err != nil {
 		return
 	}
@@ -416,7 +479,7 @@ func (m *DiscoverManager) writeFindFile() {
 
 	// write file
 	buf := bufio.NewWriter(f)
-	for _, n := range list {
+	for _, n := range nodeList {
 		if _, err := buf.WriteString(n + "\n"); err != nil {
 			log.Infof("write file failed: %v", err)
 		}
@@ -427,14 +490,14 @@ func (m *DiscoverManager) writeFindFile() {
 }
 
 // InWhiteList node in white list
-func (m *DiscoverManager) InWhiteList(nodeID NodeID) (ok bool) {
-	key := crypto.Keccak256Hash(nodeID[:])
+func (m *DiscoverManager) InWhiteList(nodeID *NodeID) (ok bool) {
+	key := nodeID.Hash()
 	_, ok = m.whiteNodes[key]
 	return
 }
 
-// checkNodeString verify invalid
-func checkNodeString(node string) (*NodeID, string) {
+// parseNodeString verify invalid
+func parseNodeString(node string) (*NodeID, string) {
 	tmp := strings.Split(node, "@")
 	if len(tmp) != 2 {
 		return nil, ""
