@@ -6,6 +6,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/txpool"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
@@ -26,7 +27,7 @@ type Miner struct {
 	timeoutTime   int64
 	privKey       *ecdsa.PrivateKey
 	minerAddress  common.Address
-	txPool        *chain.TxPool
+	txPool        *txpool.TxPool
 	mining        int32
 	engine        chain.Engine
 	chain         *chain.BlockChain
@@ -45,7 +46,7 @@ type Miner struct {
 	quitCh chan struct{} // 退出
 }
 
-func New(cfg *MineConfig, chain *chain.BlockChain, txPool *chain.TxPool, engine chain.Engine) *Miner {
+func New(cfg *MineConfig, chain *chain.BlockChain, txPool *txpool.TxPool, engine chain.Engine) *Miner {
 	m := &Miner{
 		blockInterval:  cfg.SleepTime,
 		timeoutTime:    cfg.Timeout,

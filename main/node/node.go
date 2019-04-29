@@ -8,6 +8,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/miner"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/txpool"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/flag"
@@ -35,7 +36,7 @@ type Node struct {
 
 	db       protocol.ChainDB
 	accMan   *account.Manager
-	txPool   *chain.TxPool
+	txPool   *txpool.TxPool
 	chain    *chain.BlockChain
 	pm       *network.ProtocolManager
 	miner    *miner.Miner
