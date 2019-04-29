@@ -27,7 +27,7 @@ type Manager struct {
 	termList []*TermRecord
 	lock     sync.Mutex
 
-	evilDeputies map[string]uint32 // key is nodeId, value is cut-off height
+	evilDeputies map[common.Address]uint32 // key is minerAddress, value is release height
 	edLock       sync.Mutex
 }
 
@@ -36,17 +36,17 @@ func NewManager(deputyCount int) *Manager {
 	return &Manager{
 		DeputyCount:  deputyCount,
 		termList:     make([]*TermRecord, 0),
-		evilDeputies: make(map[string]uint32),
+		evilDeputies: make(map[common.Address]uint32),
 	}
 }
 
-// IsEvilDeputyNode
-func (m *Manager) IsEvilDeputyNode(nodeId string, currentHeight uint32) bool {
+// IsEvilDeputyNode currentHeight is current block height
+func (m *Manager) IsEvilDeputyNode(minerAddress common.Address, currentHeight uint32) bool {
 	m.edLock.Lock()
 	defer m.edLock.Unlock()
-	if height, exit := m.evilDeputies[nodeId]; exit {
+	if height, exit := m.evilDeputies[minerAddress]; exit {
 		if currentHeight >= height {
-			delete(m.evilDeputies, nodeId)
+			delete(m.evilDeputies, minerAddress)
 			return false
 		}
 		return true
@@ -54,11 +54,11 @@ func (m *Manager) IsEvilDeputyNode(nodeId string, currentHeight uint32) bool {
 	return false
 }
 
-// SetAbnormalDeputyNode height is cut-off height
-func (m *Manager) PutEvilDeputyNode(nodeId string, height uint32) {
+// SetAbnormalDeputyNode height is release height
+func (m *Manager) PutEvilDeputyNode(minerAddress common.Address, height uint32) {
 	m.edLock.Lock()
 	defer m.edLock.Unlock()
-	m.evilDeputies[nodeId] = height
+	m.evilDeputies[minerAddress] = height
 }
 
 // SaveSnapshot add deputy nodes record by snapshot block data
