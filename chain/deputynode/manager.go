@@ -27,7 +27,7 @@ type Manager struct {
 	termList []*TermRecord
 	lock     sync.Mutex
 
-	evilDeputies map[string]uint32
+	evilDeputies map[string]uint32 // key is nodeId, value is cut-off height
 	edLock       sync.Mutex
 }
 
@@ -54,7 +54,7 @@ func (m *Manager) IsEvilDeputyNode(nodeId string, currentHeight uint32) bool {
 	return false
 }
 
-// SetAbnormalDeputyNode
+// SetAbnormalDeputyNode height is cut-off height
 func (m *Manager) PutEvilDeputyNode(nodeId string, height uint32) {
 	m.edLock.Lock()
 	defer m.edLock.Unlock()
