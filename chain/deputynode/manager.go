@@ -41,12 +41,12 @@ func NewManager(deputyCount int) *Manager {
 }
 
 // IsEvilDeputyNode
-func (m *Manager) IsEvilDeputyNode(minerAddress string, currentHeight uint32) bool {
+func (m *Manager) IsEvilDeputyNode(nodeId string, currentHeight uint32) bool {
 	m.edLock.Lock()
 	defer m.edLock.Unlock()
-	if height, exit := m.evilDeputies[minerAddress]; exit {
+	if height, exit := m.evilDeputies[nodeId]; exit {
 		if currentHeight >= height {
-			delete(m.evilDeputies, minerAddress)
+			delete(m.evilDeputies, nodeId)
 			return false
 		}
 		return true
@@ -55,10 +55,10 @@ func (m *Manager) IsEvilDeputyNode(minerAddress string, currentHeight uint32) bo
 }
 
 // SetAbnormalDeputyNode
-func (m *Manager) PutEvilDeputyNode(minerAddress string, height uint32) {
+func (m *Manager) PutEvilDeputyNode(nodeId string, height uint32) {
 	m.edLock.Lock()
 	defer m.edLock.Unlock()
-	m.evilDeputies[minerAddress] = height
+	m.evilDeputies[nodeId] = height
 }
 
 // SaveSnapshot add deputy nodes record by snapshot block data
