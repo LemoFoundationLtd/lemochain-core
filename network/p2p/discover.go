@@ -397,8 +397,6 @@ func (m *DiscoverManager) initBlackList() {
 	if nodes == nil || len(nodes) == 0 {
 		return
 	}
-	m.lock.Lock()
-	defer m.lock.Unlock()
 
 	for _, node := range nodes {
 		nodeID, endpoint := parseNodeString(node)

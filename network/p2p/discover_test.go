@@ -325,7 +325,7 @@ func Test_getAvailableNodes(t *testing.T) {
 	assert.Len(t, list, 200)
 }
 
-func Test_setWhiteList_initBlackeList_ok(t *testing.T) {
+func Test_initWhiteList_initBlackeList_ok(t *testing.T) {
 	list := make([]string, 0)
 
 	for i := 0; i < 5; i++ {
@@ -340,7 +340,7 @@ func Test_setWhiteList_initBlackeList_ok(t *testing.T) {
 	defer removeFile(WhiteFile)
 
 	writeFile(BlackFile, content)
-	defer removeFile(WhiteFile)
+	defer removeFile(BlackFile)
 	dis := newDiscover()
 	dis.initWhiteList()
 	dis.initBlackList()
@@ -355,7 +355,13 @@ func Test_setWhiteList_initBlackeList_ok(t *testing.T) {
 	}
 }
 
-func Test_setWhiteList_err(t *testing.T) {
+func Test_initBlackList_err(t *testing.T) {
+	dis := newDiscover()
+	dis.initBlackList()
+	assert.Len(t, dis.blackNodes, 0)
+}
+
+func Test_initWhiteList_err(t *testing.T) {
 	dis := newDiscover()
 	dis.initWhiteList()
 
