@@ -336,7 +336,7 @@ func (evm *EVM) CreateAssetTx(sender common.Address, data []byte, txHash common.
 	}
 	// judge data's length
 	if len(newData) > types.MaxMarshalAssetLength {
-		log.Errorf("the length of data by marshal asset more than max length,len(data) = %d ", len(newData))
+		log.Errorf("The length of data by marshal asset more than max length,len(data) = %d ", len(newData))
 		return ErrMarshalAssetLength
 	}
 	var snapshot = evm.am.Snapshot()
@@ -357,12 +357,12 @@ func (evm *EVM) IssueAssetTx(sender, receiver common.Address, txHash common.Hash
 	}
 	// metaData length limit
 	if len(issueAsset.MetaData) > types.MaxMetaDataLength {
-		log.Errorf("the length of metaData more than limit, len(metaData) = %d ", len(issueAsset.MetaData))
+		log.Errorf("The length of metaData more than limit, len(metaData) = %d ", len(issueAsset.MetaData))
 		return ErrIssueAssetMetaData
 	}
 	// amount != nil && amount > 0
 	if issueAsset.Amount == nil || issueAsset.Amount.Cmp(big.NewInt(0)) <= 0 {
-		log.Errorf("issue asset amount must > 0 , currentAmount = %s", issueAsset.Amount.String())
+		log.Errorf("Issue asset amount must > 0 , currentAmount = %s", issueAsset.Amount.String())
 		return ErrIssueAssetAmount
 	}
 	assetCode := issueAsset.AssetCode
@@ -374,7 +374,8 @@ func (evm *EVM) IssueAssetTx(sender, receiver common.Address, txHash common.Hash
 	// Determine whether asset is frozen
 	isStop, err := issuerAcc.GetAssetCodeState(assetCode, types.AssetStop)
 	if err == nil && isStop == "true" {
-		return errors.New("Can't issue the frozen assets. ")
+		log.Errorf("Can't issue the frozen assets.")
+		return ErrFrozenAsset
 	}
 	recAcc := evm.am.GetAccount(receiver)
 	equity := &types.AssetEquity{}
@@ -388,7 +389,7 @@ func (evm *EVM) IssueAssetTx(sender, receiver common.Address, txHash common.Hash
 	} else if AssType == types.Asset02 || AssType == types.Asset03 { // ERC721 or ERC721+20
 		equity.AssetId = txHash
 	} else {
-		log.Errorf("assert's Category not exist ,Category = %d ", AssType)
+		log.Errorf("Assert's Category not exist ,Category = %d ", AssType)
 		return ErrAssetCategory
 	}
 	var snapshot = evm.am.Snapshot()
@@ -437,7 +438,7 @@ func (evm *EVM) ReplenishAssetTx(sender, receiver common.Address, data []byte) e
 	addAmount := repl.Amount
 	// amount > 0
 	if addAmount == nil || addAmount.Cmp(big.NewInt(0)) <= 0 {
-		log.Errorf("replenish asset amount must > 0,currentAmount = %s", addAmount.String())
+		log.Errorf("Replenish asset amount must > 0,currentAmount = %s", addAmount.String())
 		return ErrReplenishAssetAmount
 	}
 	// assert issuer account
@@ -474,7 +475,7 @@ func (evm *EVM) ReplenishAssetTx(sender, receiver common.Address, data []byte) e
 	}
 
 	if newAssetCode != equity.AssetCode {
-		log.Errorf("assetCode not equal: newAssetCode = %s,originalAssetCode = %s. ", newAssetCode.String(), equity.AssetCode.String())
+		log.Errorf("AssetCode not equal: newAssetCode = %s,originalAssetCode = %s. ", newAssetCode.String(), equity.AssetCode.String())
 		return ErrNotEqualAssetCode
 	}
 	var snapshot = evm.am.Snapshot()
@@ -540,7 +541,7 @@ func (evm *EVM) ModifyAssetProfileTx(sender common.Address, data []byte) error {
 	}
 	// judge data's length
 	if len(newData) > types.MaxMarshalAssetLength {
-		log.Errorf("the length of data by marshal asset more than max length,len(data) = %d ", len(data))
+		log.Errorf("The length of data by marshal asset more than max length,len(data) = %d ", len(data))
 		evm.am.RevertToSnapshot(snapshot)
 		return ErrMarshalAssetLength
 	}
