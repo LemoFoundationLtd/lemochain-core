@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
@@ -32,6 +31,8 @@ var (
 	ErrInvalidHost               = errors.New("the length of host field in transaction is out of max length limit")
 	ErrInvalidAddress            = errors.New("invalid address")
 	ErrInvalidNodeId             = errors.New("invalid nodeId")
+	ErrNodeIdLength              = errors.New("the nodeId length is not equal the standard length")
+	ErrHostLength                = errors.New("the length of host field in transaction is out of max length limit")
 )
 
 type TxProcessor struct {
@@ -495,15 +496,15 @@ func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *comm
 		if nodeId, ok := profile[types.CandidateKeyNodeID]; ok {
 			nodeIdLength := len(nodeId)
 			if nodeIdLength != StandardNodeIdLength {
-				nodeIdErr := fmt.Errorf("the nodeId length [%d] is not equal the standard length [%d] ", nodeIdLength, StandardNodeIdLength)
-				return nil, 0, nodeIdErr
+				log.Errorf("the nodeId length [%d] is not equal the standard length [%d]", nodeIdLength, StandardNodeIdLength)
+				return nil, 0, ErrNodeIdLength
 			}
 		}
 		if host, ok := profile[types.CandidateKeyHost]; ok {
 			hostLength := len(host)
 			if hostLength > MaxDeputyHostLength {
-				hostErr := fmt.Errorf("the length of host field in transaction is out of max length limit. host length = %d. max length limit = %d. ", hostLength, MaxDeputyHostLength)
-				return nil, 0, hostErr
+				log.Errorf("the length of host field in transaction is out of max length limit. host length = %d. max length limit = %d.", hostLength, MaxDeputyHostLength)
+				return nil, 0, ErrHostLength
 			}
 		}
 		sender = accM.GetAccount(caller)
