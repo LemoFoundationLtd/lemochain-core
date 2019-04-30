@@ -26,11 +26,11 @@ const (
 )
 
 var (
-	toNameErr         = errors.New("the length of toName field in transaction is out of max length limit")
-	txMessageErr      = errors.New("the length of message field in transaction is out of max length limit")
-	createContractErr = errors.New("the data of create contract transaction can't be null")
-	specialTxErr      = errors.New("the data of special transaction can't be null")
-	txTypeErr         = errors.New("the transaction type does not exit")
+	ErrToName         = errors.New("the length of toName field in transaction is out of max length limit")
+	ErrTxMessage      = errors.New("the length of message field in transaction is out of max length limit")
+	ErrCreateContract = errors.New("the data of create contract transaction can't be null")
+	ErrSpecialTx      = errors.New("the data of special transaction can't be null")
+	ErrTxType         = errors.New("the transaction type does not exit")
 )
 
 // Private
@@ -404,29 +404,29 @@ func VerifyTx(tx *types.Transaction) error {
 	toNameLength := len(tx.ToName())
 	if toNameLength > MaxTxToNameLength {
 
-		log.Errorf("the length of toName field in transaction is out of max length limit. toName length = %d. max length limit = %d. ", toNameLength, MaxTxToNameLength)
-		return toNameErr
+		log.Errorf("The length of toName field in transaction is out of max length limit. toName length = %d. max length limit = %d. ", toNameLength, MaxTxToNameLength)
+		return ErrToName
 	}
 	txMessageLength := len(tx.Message())
 	if txMessageLength > MaxTxMessageLength {
-		log.Errorf("the length of message field in transaction is out of max length limit. message length = %d. max length limit = %d. ", txMessageLength, MaxTxMessageLength)
-		return txMessageErr
+		log.Errorf("The length of message field in transaction is out of max length limit. message length = %d. max length limit = %d. ", txMessageLength, MaxTxMessageLength)
+		return ErrTxMessage
 	}
 	switch tx.Type() {
 	case params.OrdinaryTx:
 		if tx.To() == nil {
 			if len(tx.Data()) == 0 {
-				return createContractErr
+				return ErrCreateContract
 			}
 		}
 	case params.VoteTx:
 	case params.RegisterTx, params.CreateAssetTx, params.IssueAssetTx, params.ReplenishAssetTx, params.ModifyAssetTx, params.TransferAssetTx:
 		if len(tx.Data()) == 0 {
-			return specialTxErr
+			return ErrSpecialTx
 		}
 	default:
-		log.Errorf("the transaction type does not exit . type = %v", tx.Type())
-		return txTypeErr
+		log.Errorf("The transaction type does not exit . type = %v", tx.Type())
+		return ErrTxType
 	}
 	return nil
 }
@@ -469,7 +469,7 @@ func (t *PublicTxAPI) doCall(ctx context.Context, to *common.Address, txType uin
 	defer func(start time.Time) { log.Debug("Executing EVM call finished", "runtime", time.Since(start)) }(time.Now())
 	// get latest stableBlock
 	stableBlock := t.node.chain.StableBlock()
-	log.Infof("stable block height = %v", stableBlock.Height())
+	log.Infof("Stable block height = %v", stableBlock.Height())
 	stableHeader := stableBlock.Header
 
 	p := t.node.chain.TxProcessor()

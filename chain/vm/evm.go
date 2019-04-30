@@ -30,8 +30,8 @@ var (
 	ErrIssueAssetMetaData   = errors.New("the length of metaData more than limit")
 	ErrReplenishAssetAmount = errors.New("replenish asset amount can't be 0 or nil")
 	ErrFrozenAsset          = errors.New("can't replenish the frozen assets")
-	ErrIsReplenishable      = errors.New("asset's \"IsReplenishable\" is false")
-	ErrIsDivisible          = errors.New("this \"isDivisible == false\" kind of asset can't be replenished")
+	ErrIsReplenishable      = errors.New("asset's IsReplenishable is false")
+	ErrIsDivisible          = errors.New("this 'isDivisible == false' kind of asset can't be replenished")
 	ErrNotEqualAssetCode    = errors.New("assetCode not equal")
 	ErrModifyAssetInfo      = errors.New("the struct of ModifyAssetInfo's Info can't be nil")
 	ErrMarshalAssetLength   = errors.New("the length of data by marshal asset more than max length")
@@ -39,6 +39,7 @@ var (
 	ErrTransferFrozenAsset  = errors.New("cannot trade frozen assets")
 	ErrAssetCategory        = errors.New("assert's Category not exist")
 	ErrAgainRegister        = errors.New("cannot register again after unregistering")
+	ErrTermReward           = errors.New("insufficient permission to call this Precompiled contract")
 )
 
 // run runs the given contract and takes care of running precompiles with a fallback to the byte code interpreter.
@@ -48,7 +49,7 @@ func run(evm *EVM, contract *Contract, input []byte) ([]byte, error) {
 		if p := precompiles[*contract.CodeAddr]; p != nil {
 			// Determine whether the address to set the reward value is correct
 			if *contract.CodeAddr == params.TermRewardContract && contract.caller.GetAddress() != evm.vmConfig.RewardManager {
-				return nil, errors.New("Insufficient permission to call this Precompiled contract. ")
+				return nil, ErrTermReward
 			}
 			return RunPrecompiledContract(p, input, contract, evm)
 		}
@@ -335,7 +336,7 @@ func (evm *EVM) CreateAssetTx(sender common.Address, data []byte, txHash common.
 	}
 	// judge data's length
 	if len(newData) > types.MaxMarshalAssetLength {
-		log.Errorf("the length of data by marshal asset more than max length,len(data) = %d ", len(newData))
+		log.Errorf("The length of data by marshal asset more than max length,len(data) = %d ", len(newData))
 		return ErrMarshalAssetLength
 	}
 	var snapshot = evm.am.Snapshot()
@@ -356,12 +357,12 @@ func (evm *EVM) IssueAssetTx(sender, receiver common.Address, txHash common.Hash
 	}
 	// metaData length limit
 	if len(issueAsset.MetaData) > types.MaxMetaDataLength {
-		log.Errorf("the length of metaData more than limit, len(metaData) = %d ", len(issueAsset.MetaData))
+		log.Errorf("The length of metaData more than limit, len(metaData) = %d ", len(issueAsset.MetaData))
 		return ErrIssueAssetMetaData
 	}
 	// amount != nil && amount > 0
 	if issueAsset.Amount == nil || issueAsset.Amount.Cmp(big.NewInt(0)) <= 0 {
-		log.Errorf("issue asset amount must > 0 , currentAmount = %s", issueAsset.Amount.String())
+		log.Errorf("Issue asset amount must > 0 , currentAmount = %s", issueAsset.Amount.String())
 		return ErrIssueAssetAmount
 	}
 	assetCode := issueAsset.AssetCode
@@ -373,7 +374,8 @@ func (evm *EVM) IssueAssetTx(sender, receiver common.Address, txHash common.Hash
 	// Determine whether asset is frozen
 	isStop, err := issuerAcc.GetAssetCodeState(assetCode, types.AssetStop)
 	if err == nil && isStop == "true" {
-		return errors.New("Can't issue the frozen assets. ")
+		log.Errorf("Can't issue the frozen assets.")
+		return ErrFrozenAsset
 	}
 	recAcc := evm.am.GetAccount(receiver)
 	equity := &types.AssetEquity{}
@@ -526,14 +528,6 @@ func (evm *EVM) ModifyAssetProfileTx(sender common.Address, data []byte) error {
 			return err
 		}
 	}
-	// modify profile
-	// for k, v := range info {
-	// 	err = acc.SetAssetCodeState(modifyInfo.AssetCode, strings.ToLower(k), v)
-	// 	if err != nil {
-	// 		evm.am.RevertToSnapshot(snapshot)
-	// 		return err
-	// 	}
-	// }
 	// 	judge profile size
 	newAsset, err := acc.GetAssetCode(modifyInfo.AssetCode)
 	if err != nil {
@@ -547,7 +541,7 @@ func (evm *EVM) ModifyAssetProfileTx(sender common.Address, data []byte) error {
 	}
 	// judge data's length
 	if len(newData) > types.MaxMarshalAssetLength {
-		log.Errorf("The length of marshaling asset data exceed limit, len(data) = %d max = %d", len(data), types.MaxMarshalAssetLength)
+		log.Errorf("The length of data by marshal asset more than max length,len(data) = %d ", len(data))
 		evm.am.RevertToSnapshot(snapshot)
 		return ErrMarshalAssetLength
 	}

@@ -266,7 +266,7 @@ func (b *Block) String() string {
 func (b *Block) Json() string {
 	buf, err := json.Marshal(b)
 	if err != nil {
-		log.Error("block's marshal failed: %v", err)
+		log.Error("Block's marshal failed: %v", err)
 		return ""
 	}
 	return string(buf)
