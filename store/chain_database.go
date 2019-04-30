@@ -2,6 +2,7 @@ package store
 
 import (
 	"errors"
+	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
@@ -572,12 +573,18 @@ func (database *ChainDatabase) SetStableBlock(hash common.Hash) error {
 
 	// clear the branches from root, except one branch
 	clear := func(oldRoot, newRoot *CBlock) {
+		removeList := make([]*CBlock, 0)
 		// remove other brunch nodes
 		oldRoot.Walk(func(node *CBlock) {
+			// The walk method touch tree nodes from parent to child. We can't remove it in walk callback, because the node.Children will be set to nil in remove action
+			removeList = append(removeList, node)
+		}, newRoot)
+		for _, node := range removeList {
 			delete(database.UnConfirmBlocks, node.Block.Hash())
 			node.Parent = nil
 			node.Children = nil
-		}, newRoot)
+		}
+
 		// remove old root from unconfirmed nodes map
 		delete(database.UnConfirmBlocks, newRoot.Block.Hash())
 		// cut the connection between old root and new root
@@ -740,11 +747,20 @@ func (database *ChainDatabase) IterateUnConfirms(fn func(*types.Block)) {
 	}, nil)
 }
 
-func (database *ChainDatabase) PrintForks(currentHash common.Hash) {
+func (database *ChainDatabase) SerializeForks(currentHash common.Hash) string {
 	database.RW.RLock()
 	defer database.RW.RUnlock()
 
-	PrintForks(database.UnConfirmBlocks, currentHash)
+	// Print forks string in a new line
+	forkStr := SerializeForks(database.UnConfirmBlocks, currentHash)
+	if len(forkStr) == 0 {
+		forkStr = "No fork"
+		if database.LastConfirm != nil && database.LastConfirm.Block != nil {
+			hash := database.LastConfirm.Block.Hash()
+			forkStr = fmt.Sprintf("%s. Last stable: [%d]%x", forkStr, database.LastConfirm.Block.Height(), hash[:3])
+		}
+	}
+	return "Print forks\n" + forkStr
 }
 
 func (database *ChainDatabase) Close() error {

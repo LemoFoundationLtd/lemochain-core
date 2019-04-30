@@ -1,6 +1,7 @@
 package store
 
 import (
+	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 )
@@ -45,14 +46,14 @@ func makeForkBlocks() []*CBlock {
 	return []*CBlock{block0, block1, block2, block3, block4, block5, block6, block7, block8, block9}
 }
 
-func ExamplePrintForks() {
+func ExampleSerializeForks() {
 	blocks := makeForkBlocks()
 	blockMap := make(map[common.Hash]*CBlock, len(blocks))
 	for _, block := range blocks {
 		blockMap[block.Block.Hash()] = block
 	}
 
-	PrintForks(blockMap, blocks[9].Block.Hash())
+	fmt.Printf(SerializeForks(blockMap, blocks[9].Block.Hash()))
 
 	// Output: ─[ 99]5bd69f─[100]757227┬[101]1ba62c
 	//                         ├[101]1dc055

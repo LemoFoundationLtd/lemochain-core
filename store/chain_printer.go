@@ -155,7 +155,6 @@ func (t cbTable) String() string {
 		}
 	}
 	var sb strings.Builder
-	sb.WriteString("Print forks\n")
 	for _, row := range flagTable {
 		for _, cell := range row {
 			switch cell.connection {
@@ -203,7 +202,7 @@ func reverse(src []*CBlock) []*CBlock {
 	return result
 }
 
-func PrintForks(unconfirmedBlocks map[common.Hash]*CBlock, currentHash common.Hash) {
+func SerializeForks(unconfirmedBlocks map[common.Hash]*CBlock, currentHash common.Hash) string {
 	leaves := make([]*CBlock, 0, len(unconfirmedBlocks))
 	for _, block := range unconfirmedBlocks {
 		if len(block.Children) == 0 {
@@ -211,10 +210,10 @@ func PrintForks(unconfirmedBlocks map[common.Hash]*CBlock, currentHash common.Ha
 		}
 	}
 	if len(leaves) == 0 {
-		return
+		return ""
 	}
 
 	table := newCbTable(leaves, currentHash)
 	table.Sort(0, len(table.Rows), 0)
-	log.Debug(table.String())
+	return table.String()
 }
