@@ -59,7 +59,7 @@ func (m *DialManager) Stop() error {
 // runDialTask Run dial task
 func (m *DialManager) runDialTask(node string) int {
 	// check
-	nodeID, endpoint := checkNodeString(node)
+	nodeID, endpoint := ParseNodeString(node)
 	if nodeID == nil {
 		log.Warnf("Dial: invalid node. node: %s", node)
 		return -3
