@@ -79,6 +79,7 @@ func (c *Confirmer) needConfirm(block *types.Block) bool {
 		return true
 	}
 
+	log.Debug("can't confirm the block", "lastSig", c.lastSig.Height, "height", block.Height(), "minDistance", signDistance)
 	return false
 }
 
@@ -102,8 +103,17 @@ func (c *Confirmer) BatchConfirmStable(startHeight, endHeight uint32) []*network
 				SignInfo: *sig,
 			})
 		}
+		c.lastSig.Height = block.Height()
+		c.lastSig.Hash = block.Hash()
 	}
+
 	return result
+}
+
+// SetLastSig
+func (c *Confirmer) SetLastSig(block *types.Block) {
+	c.lastSig.Height = block.Height()
+	c.lastSig.Hash = block.Hash()
 }
 
 // TryConfirmStable try to sign and save a confirm into a stable block

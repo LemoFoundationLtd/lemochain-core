@@ -94,6 +94,7 @@ func (dp *DPoVP) MineBlock(material *BlockMaterial) (*types.Block, error) {
 	// update current block
 	dp.setCurrent(block)
 	dp.txPool.RemoveTxs(block.Txs)
+	dp.confirmer.SetLastSig(block)
 
 	// update stable block if there are less then 3 deputy nodes
 	if _, err = dp.UpdateStable(block); err != nil {
@@ -220,7 +221,8 @@ func (dp *DPoVP) UpdateStable(block *types.Block) (bool, error) {
 	// notify
 	if err == nil && changed {
 		go dp.stableFeed.Send(block)
-		go dp.batchConfirmStable(oldStable.Height()+1, dp.StableBlock().Height()-1)
+		// confirm from oldStable to newStable
+		go dp.batchConfirmStable(oldStable.Height()+1, dp.StableBlock().Height())
 	}
 
 	return changed, err
@@ -280,7 +282,7 @@ func (dp *DPoVP) setCurrent(block *types.Block) {
 func (dp *DPoVP) logCurrentChange(oldCurrent *types.Block) {
 	newCurrent := dp.CurrentBlock()
 	if newCurrent.Hash() == oldCurrent.Hash() {
-		log.Debugf("Insert to another fork chain. Current block is still %s", oldCurrent.ShortString())
+		log.Debugf("Current block is still %s", oldCurrent.ShortString())
 	} else if newCurrent.ParentHash() == oldCurrent.Hash() {
 		log.Debugf("Current fork length +1. Current block changes from %s to %s", oldCurrent.ShortString(), newCurrent.ShortString())
 	} else {
@@ -352,8 +354,8 @@ func (dp *DPoVP) InsertConfirm(info *network.BlockConfirmData) error {
 	// maybe the current block is cut
 	if changed {
 		dp.CheckFork()
+		dp.logCurrentChange(oldCurrent)
 	}
-	dp.logCurrentChange(oldCurrent)
 
 	return nil
 }

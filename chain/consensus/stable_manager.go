@@ -59,7 +59,6 @@ func (sm *StableManager) UpdateStable(block *types.Block) (bool, error) {
 	}
 	log.Infof("Stable block changes from %s to %s", oldStable.ShortString(), block.ShortString())
 
-	// TODO confirm from oldStable to newStable in coroutine
 	// This may not the latest state, but it's fine. Because deputy nodes snapshot will be used after the interim duration, it's about 1000 blocks
 	sm.updateDeputyNodes(block)
 

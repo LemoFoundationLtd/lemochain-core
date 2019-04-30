@@ -222,8 +222,9 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 				// local chain has this block
 				if pm.chain.HasBlock(b.ParentHash()) {
 					log.Infof("Got a block %s from peer: %#x", b.ShortString(), rcvMsg.p.NodeID()[:8])
-					go pm.insertBlock(b)
+					pm.insertBlock(b)
 				} else {
+					log.Infof("Got a block %s from peer: %#x. cache it", b.ShortString(), rcvMsg.p.NodeID()[:8])
 					pm.blockCache.Add(b)
 					if rcvMsg.p != nil {
 						// request parent block
