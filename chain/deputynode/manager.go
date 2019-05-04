@@ -43,7 +43,7 @@ func NewManager(deputyCount int) *Manager {
 func (m *Manager) IsEvilDeputyNode(minerAddress common.Address, currentHeight uint32) bool {
 	m.edLock.Lock()
 	defer m.edLock.Unlock()
-	if height, exit := m.evilDeputies[minerAddress]; exit {
+	if height, exist := m.evilDeputies[minerAddress]; exist {
 		if currentHeight >= height {
 			delete(m.evilDeputies, minerAddress)
 			return false

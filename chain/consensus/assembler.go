@@ -2,7 +2,6 @@ package consensus
 
 import (
 	"encoding/json"
-	"errors"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
@@ -169,7 +168,7 @@ func (ba *BlockAssembler) Finalize(height uint32, am *account.Manager) error {
 		term := (height-params.InterimDuration)/params.TermDuration - 1
 		termRewards, err := getTermRewardValue(am, term)
 		if err != nil {
-			log.Warnf("load rewards failed: %v", err)
+			log.Warnf("load term rewards failed: %v", err)
 			return err
 		}
 		log.Debugf("the %d term's reward value = %s ", term, termRewards.String())
@@ -259,6 +258,9 @@ func getTermRewardValue(am *account.Manager, term uint32) (*big.Int, error) {
 	if err != nil {
 		return nil, err
 	}
+	if len(value) == 0 {
+		return nil, ErrNoTermReward
+	}
 
 	rewardMap := make(params.RewardsMap)
 	err = json.Unmarshal(value, &rewardMap)
@@ -268,6 +270,6 @@ func getTermRewardValue(am *account.Manager, term uint32) (*big.Int, error) {
 	if reward, ok := rewardMap[term]; ok {
 		return reward.Value, nil
 	} else {
-		return nil, errors.New("reward value does not exit")
+		return nil, ErrNoTermReward
 	}
 }

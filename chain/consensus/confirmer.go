@@ -140,8 +140,8 @@ func (c *Confirmer) tryConfirmStable(block *types.Block) *types.SignData {
 
 // SaveConfirm save a confirm to store, then return a new block
 func (c *Confirmer) SaveConfirm(block *types.Block, sigList []types.SignData) (*types.Block, error) {
-	block.Confirms = append(block.Confirms, sigList...)
-
+	// TODO use SetBlock to save a GetBlockByHash call
+	// block.Confirms = append(block.Confirms, sigList...)
 	if err := c.db.SetConfirms(block.Hash(), sigList); err != nil {
 		log.Errorf("SetConfirm failed: %v", err)
 		return block, err

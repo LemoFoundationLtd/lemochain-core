@@ -16,4 +16,5 @@ var (
 	ErrMineGenesis              = errors.New("can not mine genesis block")
 	ErrNotDeputy                = errors.New("not a deputy address in specific height")
 	ErrSetStableBlockToDB       = errors.New("set stable block to db error")
+	ErrNoTermReward             = errors.New("reward value has not been set")
 )

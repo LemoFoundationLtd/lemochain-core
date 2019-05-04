@@ -94,7 +94,7 @@ func (m *Miner) Start() {
 
 func (m *Miner) Stop() {
 	if !atomic.CompareAndSwapInt32(&m.mining, 1, 0) {
-		log.Warn("doesn't start mining")
+		log.Warn("stop mining already")
 		return
 	}
 	if m.blockMineTimer != nil {

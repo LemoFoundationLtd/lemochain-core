@@ -30,7 +30,7 @@ var (
 	ErrTxMessage      = errors.New("the length of message field in transaction is out of max length limit")
 	ErrCreateContract = errors.New("the data of create contract transaction can't be null")
 	ErrSpecialTx      = errors.New("the data of special transaction can't be null")
-	ErrTxType         = errors.New("the transaction type does not exit")
+	ErrTxType         = errors.New("the transaction type does not exist")
 	ErrLemoAddress    = errors.New("lemoAddress is incorrect")
 	ErrAssetId        = errors.New("assetid is incorrect")
 	ErrTxExpiration   = errors.New("tx expiration time is out of date")
