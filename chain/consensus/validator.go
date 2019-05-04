@@ -113,17 +113,20 @@ func verifyDeputy(block *types.Block, canLoader CandidateLoader) error {
 
 // verifyChangeLog verify the LogRoot and ChangeLogs in block body
 func verifyChangeLog(block *types.Block, computedLogs types.ChangeLogSlice) error {
-	// Make sure the LogRoot is derived from the change logs in block body
-	hash := block.ChangeLogs.MerkleRootSha()
-	if hash != block.LogRoot() {
-		log.Error("Consensus verify fail: logRoot is incorrect", "logRoot", block.LogRoot().Hex(), "expected", hash.Hex())
-		return ErrVerifyBlockFailed
+	// The block may contains change logs from some protocol
+	if len(block.ChangeLogs) > 0 {
+		// Make sure the LogRoot is derived from the change logs in block body
+		hash := block.ChangeLogs.MerkleRootSha()
+		if hash != block.LogRoot() {
+			log.Error("Consensus verify fail: logRoot is incorrect", "logRoot", block.LogRoot().Hex(), "expected", hash.Hex())
+			return ErrVerifyBlockFailed
+		}
 	}
 	// Make sure the LogRoot is match with local change logs data
-	hash = computedLogs.MerkleRootSha()
+	hash := computedLogs.MerkleRootSha()
 	if hash != block.LogRoot() {
 		log.Error("Consensus verify fail: changeLogs is incorrect", "logRoot", block.LogRoot().Hex(), "expected", hash.Hex())
-		log.Errorf("Logs in body: %s\nlogs in local: %s", block.ChangeLogs, computedLogs)
+		log.Errorf("Local logs: %s", computedLogs)
 		return ErrVerifyBlockFailed
 	}
 	return nil
