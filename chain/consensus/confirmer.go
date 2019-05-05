@@ -118,6 +118,10 @@ func (c *Confirmer) SetLastSig(block *types.Block) {
 
 // TryConfirmStable try to sign and save a confirm into a stable block
 func (c *Confirmer) tryConfirmStable(block *types.Block) *types.SignData {
+	// test if we are deputy node
+	if !c.dm.IsSelfDeputyNode(block.Height()) {
+		return nil
+	}
 	// test if it contains enough confirms
 	if IsConfirmEnough(block, c.dm) {
 		return nil

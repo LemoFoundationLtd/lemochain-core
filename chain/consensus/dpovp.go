@@ -195,14 +195,12 @@ func (dp *DPoVP) broadcastConfirm(block *types.Block, sig types.SignData) {
 		return
 	}
 
-	func() {
-		pack := &network.BlockConfirmData{
-			Hash:     block.Hash(),
-			Height:   block.Height(),
-			SignInfo: sig,
-		}
-		dp.confirmFeed.Send(pack)
-	}()
+	pack := &network.BlockConfirmData{
+		Hash:     block.Hash(),
+		Height:   block.Height(),
+		SignInfo: sig,
+	}
+	dp.confirmFeed.Send(pack)
 }
 
 // BatchConfirm confirm and broadcast unsigned stable blocks one by one
