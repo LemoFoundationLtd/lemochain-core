@@ -71,7 +71,8 @@ func (c *setRewardValue) Run(input []byte) ([]byte, error) {
 	}
 	// It is not allowed to set a old term
 	lastBlockInTerm := (newReward.Term+1)*params.TermDuration + params.InterimDuration
-	if lastBlockInTerm < c.blockHeight {
+	// If someone forgot to set reward, the chain will be stuck in trying produce the first of next term block (the reward block). +1 to make sure the reward setting transaction could be accepted in the reward block at latest.
+	if lastBlockInTerm+1 < c.blockHeight {
 		err = fmt.Errorf("the %d term deputy node reward is overdue", newReward.Term)
 		return false32Byte, err
 	}
