@@ -179,6 +179,13 @@ type BlocksTrie struct {
 	BlocksByTime []*BlocksByTime
 }
 
+func NewBlocksTrie() *BlocksTrie {
+	return &BlocksTrie{
+		BlocksByHash: make(map[uint32]*BlocksByHash),
+		BlocksByTime: make([]*BlocksByTime, TransactionExpiration),
+	}
+}
+
 func (trie *BlocksTrie) delBlocksByHashBatch(delBlocks map[uint32]map[common.Hash]bool) {
 	if len(delBlocks) <= 0 || len(trie.BlocksByHash) <= 0 {
 		return
@@ -222,7 +229,7 @@ func (trie *BlocksTrie) delBlockByHash(block *types.Block) {
 }
 
 func (trie *BlocksTrie) addBlockByTime(block *types.Block) {
-	slot := block.Time() % uint32(2*TransactionExpiration)
+	slot := block.Time() % uint32(TransactionExpiration)
 	if trie.BlocksByTime[slot] == nil {
 		trie.BlocksByTime[slot] = newBlocksByTime(block)
 	} else {
@@ -231,22 +238,16 @@ func (trie *BlocksTrie) addBlockByTime(block *types.Block) {
 }
 
 func (trie *BlocksTrie) delBlockByTime(block *types.Block) {
-	slot := block.Time() % uint32(2*TransactionExpiration)
+	slot := block.Time() % uint32(TransactionExpiration)
 	item := trie.BlocksByTime[slot]
-	if item == nil || len(item.BlocksByHeight) <= 0 {
+	if item == nil {
 		return
 	}
-
-	blocks := item.BlocksByHeight[block.Height()]
-	if len(blocks) <= 0 {
-		return
-	} else {
-		delete(blocks, block.Hash())
-	}
+	item.del(block)
 }
 
 func (trie *BlocksTrie) resetBlockByTime(block *types.Block) {
-	slot := block.Time() % uint32(2*TransactionExpiration)
+	slot := block.Time() % uint32(TransactionExpiration)
 	trie.BlocksByTime[slot] = newBlocksByTime(block)
 }
 
@@ -278,73 +279,31 @@ func (trie *BlocksTrie) Path(hash common.Hash, height uint32, minHeight uint32, 
 	return result
 }
 
-func (trie *BlocksTrie) init() {
-	trie.BlocksByHash = make(map[uint32]*BlocksByHash)
-	trie.BlocksByTime = make([]*BlocksByTime, 2*TransactionExpiration)
-}
-
-func (trie *BlocksTrie) getTxs(blocks map[uint32]map[common.Hash]bool) []common.Hash {
-	result := make([]common.Hash, 0)
-	if len(blocks) <= 0 {
-		return result
-	}
-
-	for height, hashes := range blocks {
-		tmp := trie.BlocksByHash[height]
-		if tmp == nil {
-			continue
-		}
-
-		for hash, _ := range hashes {
-			block := tmp.get(hash)
-			if block != nil {
-				indexes := block.TxsIndex
-				for k, _ := range indexes {
-					result = append(result, k)
-				}
-			}
-		}
-	}
-
-	return result
-}
-
 /* 收到一个新块，并返回过期的块的交易列表，块过期了，块中的交易肯定也过期了 */
-func (trie *BlocksTrie) PushBlock(block *types.Block) []common.Hash {
+func (trie *BlocksTrie) PushBlock(block *types.Block) {
 	if block == nil {
-		return make([]common.Hash, 0)
+		return
 	}
 
-	if (trie.BlocksByTime == nil) || (trie.BlocksByHash == nil) {
-		trie.init()
-	}
-
-	slot := block.Time() % uint32(2*TransactionExpiration)
+	slot := block.Time() % uint32(TransactionExpiration)
 	blocks := trie.BlocksByTime[slot]
 	if blocks == nil {
 		trie.resetBlockByTime(block)
 		trie.addBlockByHash(block)
-		return make([]common.Hash, 0)
 	} else {
 		if blocks.timeOut(block) {
-			result := trie.getTxs(blocks.BlocksByHeight)
 			trie.delBlocksByHashBatch(blocks.BlocksByHeight)
-
 			trie.resetBlockByTime(block)
 			trie.addBlockByHash(block)
-			return result
 		}
 
 		if blocks.notTimeOut(block) {
 			trie.addBlockByHash(block)
 			trie.addBlockByTime(block)
-			return make([]common.Hash, 0)
 		}
 
 		if blocks.before1H(block) {
 			log.Errorf(fmt.Sprintf("item.Time(%d) > block.Time(%d)", blocks.Time, block.Time()))
 		}
-
-		return make([]common.Hash, 0)
 	}
 }

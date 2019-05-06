@@ -1,114 +1,219 @@
 package txpool
 
 import (
-	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/stretchr/testify/assert"
-	"math/big"
 	"testing"
+	"time"
 )
 
 func TestTxRecently_RecvTx(t *testing.T) {
-	var recently TxRecently
-	tx1 := makeTx(testPrivate, common.HexToAddress("0x01"), params.OrdinaryTx, new(big.Int).SetInt64(100))
-	tx2 := makeTx(testPrivate, common.HexToAddress("0x02"), params.OrdinaryTx, new(big.Int).SetInt64(200))
-	tx3 := makeTx(testPrivate, common.HexToAddress("0x03"), params.OrdinaryTx, new(big.Int).SetInt64(300))
+	recently := NewTxRecently()
+	recently.RecvTx(nil)
+	assert.Equal(t, 0, len(recently.TxsByHash))
+
+	tx1 := makeTxRandom(common.HexToAddress("0x01"))
+	tx2 := makeTxRandom(common.HexToAddress("0x02"))
 	recently.RecvTx(tx1)
 	recently.RecvTx(tx2)
-	recently.RecvTx(tx3)
-	assert.Equal(t, 3, len(recently.TxsByHash))
 
-	isExist := recently.IsExist(tx1.Hash())
-	assert.Equal(t, true, isExist)
+	assert.Equal(t, 2, len(recently.TxsByHash))
+	assert.Equal(t, 0, len(recently.TxsByHash[tx1.Hash()].BlocksHash))
+	assert.Equal(t, 0, len(recently.TxsByHash[tx2.Hash()].BlocksHash))
 
-	isExist = recently.IsExist(common.HexToHash("0xABC"))
-	assert.Equal(t, false, isExist)
+	if tx1.Expiration() == tx2.Expiration() {
+		slot := tx1.Expiration() % uint64(TransactionExpiration)
+		assert.Equal(t, 2, len(recently.TxsByTime[slot].TxIndexes))
+	} else {
+		slot1 := tx1.Expiration() % uint64(TransactionExpiration)
+		assert.Equal(t, 1, len(recently.TxsByTime[slot1].TxIndexes))
 
-	recently.RecvTx(tx1)
-	assert.Equal(t, 3, len(recently.TxsByHash))
-
-	val := recently.TxsByHash[tx1.Hash()]
-	assert.Equal(t, int64(-1), val)
-
-	recently.add(5, tx1)
-	val = recently.TxsByHash[tx1.Hash()]
-	assert.Equal(t, int64(5), val)
-
-	recently.add(3, tx1)
-	val = recently.TxsByHash[tx1.Hash()]
-	assert.Equal(t, int64(3), val)
-
-	recently.add(6, tx1)
-	val = recently.TxsByHash[tx1.Hash()]
-	assert.Equal(t, int64(3), val)
+		slot2 := tx2.Expiration() % uint64(TransactionExpiration)
+		assert.Equal(t, 1, len(recently.TxsByTime[slot2].TxIndexes))
+	}
 }
 
 func TestTxRecently_RecvBlock(t *testing.T) {
-	var recently TxRecently
+	recently := NewTxRecently()
+	bhash := common.HexToHash("0xabc")
+	height := int64(100)
 	txs := make([]*types.Transaction, 0)
-	txs = append(txs, makeTx(testPrivate, common.HexToAddress("0x01"), params.OrdinaryTx, new(big.Int).SetInt64(100)))
-	txs = append(txs, makeTx(testPrivate, common.HexToAddress("0x02"), params.OrdinaryTx, new(big.Int).SetInt64(200)))
-	txs = append(txs, makeTx(testPrivate, common.HexToAddress("0x03"), params.OrdinaryTx, new(big.Int).SetInt64(300)))
-	recently.RecvBlock(10, txs)
-	assert.Equal(t, 3, len(recently.TxsByHash))
 
-	txs = append(txs, txs[0])
-	recently.RecvBlock(10, txs)
-	assert.Equal(t, 3, len(recently.TxsByHash))
+	recently.RecvBlock(bhash, height, txs)
+	assert.Equal(t, 0, len(recently.TxsByHash))
 
-	val := recently.TxsByHash[txs[0].Hash()]
-	assert.Equal(t, int64(10), val)
+	txs = append(txs, makeTxRandom(common.HexToAddress("0x01")))
+	txs = append(txs, makeTxRandom(common.HexToAddress("0x02")))
+	recently.RecvBlock(bhash, height, txs)
+
+	assert.Equal(t, 2, len(recently.TxsByHash))
+	assert.Equal(t, height, recently.TxsByHash[txs[0].Hash()].BlocksHash[bhash])
+	assert.Equal(t, height, recently.TxsByHash[txs[1].Hash()].BlocksHash[bhash])
 }
 
-func TestTxRecently_DelBatch(t *testing.T) {
-	var recently TxRecently
+func TestTxRecently_RecvBlockTimeOut(t *testing.T) {
+	recently := NewTxRecently()
+	bhash := common.HexToHash("0xabc")
+	height := int64(100)
 	txs := make([]*types.Transaction, 0)
-	txs = append(txs, makeTx(testPrivate, common.HexToAddress("0x01"), params.OrdinaryTx, new(big.Int).SetInt64(100)))
-	txs = append(txs, makeTx(testPrivate, common.HexToAddress("0x02"), params.OrdinaryTx, new(big.Int).SetInt64(200)))
-	txs = append(txs, makeTx(testPrivate, common.HexToAddress("0x03"), params.OrdinaryTx, new(big.Int).SetInt64(300)))
-	recently.RecvBlock(10, txs)
+	expiration := time.Now().Unix()
 
-	del := make([]common.Hash, 0, 2)
-	del = append(del, txs[0].Hash())
-	del = append(del, txs[1].Hash())
-	recently.DelBatch(del)
+	txs = append(txs, makeTx(common.HexToAddress("0x01"), expiration))
+	txs = append(txs, makeTx(common.HexToAddress("0x02"), expiration))
+	txs = append(txs, makeTx(common.HexToAddress("0x03"), expiration))
+	txs = append(txs, txs[2])
+	txs = append(txs, makeTx(common.HexToAddress("0x04"), expiration))
+	recently.RecvBlock(bhash, height, txs)
+
+	slot := expiration % int64(TransactionExpiration)
+	assert.Equal(t, 4, len(recently.TxsByTime[slot].TxIndexes))
+	assert.Equal(t, 4, len(recently.TxsByHash))
+
+	txs = make([]*types.Transaction, 0)
+	txs = append(txs, makeTx(common.HexToAddress("0x05"), expiration+int64(TransactionExpiration)))
+	recently.RecvBlock(bhash, height, txs)
+
+	slot = expiration % int64(TransactionExpiration)
+	assert.Equal(t, 1, len(recently.TxsByTime[slot].TxIndexes))
 	assert.Equal(t, 1, len(recently.TxsByHash))
 
-	isExist := recently.IsExist(txs[0].Hash())
-	assert.Equal(t, false, isExist)
+	txs = make([]*types.Transaction, 0)
+	txs = append(txs, makeTx(common.HexToAddress("0x06"), expiration))
+	recently.RecvBlock(bhash, height, txs)
 
-	isExist = recently.IsExist(txs[1].Hash())
-	assert.Equal(t, false, isExist)
+	slot = expiration % int64(TransactionExpiration)
+	assert.Equal(t, 1, len(recently.TxsByTime[slot].TxIndexes))
+	assert.Equal(t, 1, len(recently.TxsByHash))
 
-	isExist = recently.IsExist(txs[2].Hash())
-	assert.Equal(t, true, isExist)
+	txs = make([]*types.Transaction, 0)
+	txs = append(txs, makeTx(common.HexToAddress("0x08"), expiration+int64(TransactionExpiration)))
+	recently.RecvBlock(bhash, height, txs)
+
+	slot = expiration % int64(TransactionExpiration)
+	assert.Equal(t, 2, len(recently.TxsByTime[slot].TxIndexes))
+	assert.Equal(t, 2, len(recently.TxsByHash))
 }
 
 func TestTxRecently_GetPath(t *testing.T) {
-	var recently TxRecently
-	tx1 := makeTx(testPrivate, common.HexToAddress("0x01"), params.OrdinaryTx, new(big.Int).SetInt64(100))
-	recently.add(11, tx1)
+	recently := NewTxRecently()
+	expiration := time.Now().Unix()
 
-	tx2 := makeTx(testPrivate, common.HexToAddress("0x02"), params.OrdinaryTx, new(big.Int).SetInt64(200))
-	recently.add(12, tx2)
+	txs1 := make([]*types.Transaction, 0)
+	txs1 = append(txs1, makeTx(common.HexToAddress("0x01"), expiration))
+	txs1 = append(txs1, makeTx(common.HexToAddress("0x02"), expiration))
+	recently.RecvBlock(common.HexToHash("0x01"), 100, txs1)
 
-	tx3 := makeTx(testPrivate, common.HexToAddress("0x03"), params.OrdinaryTx, new(big.Int).SetInt64(300))
-	recently.add(13, tx3)
+	txs2 := make([]*types.Transaction, 0)
+	txs2 = append(txs2, makeTx(common.HexToAddress("0x03"), expiration))
+	txs2 = append(txs2, makeTx(common.HexToAddress("0x04"), expiration))
+	recently.RecvBlock(common.HexToHash("0x02"), 101, txs2)
 
-	tx4 := makeTx(testPrivate, common.HexToAddress("0x04"), params.OrdinaryTx, new(big.Int).SetInt64(400))
-	recently.add(14, tx4)
+	txs3 := make([]*types.Transaction, 0)
+	txs3 = append(txs3, makeTx(common.HexToAddress("0x05"), expiration))
+	txs3 = append(txs3, makeTx(common.HexToAddress("0x06"), expiration))
+	recently.RecvBlock(common.HexToHash("0x03"), 102, txs3)
+
+	txs4 := make([]*types.Transaction, 0)
+	txs4 = append(txs4, makeTx(common.HexToAddress("0x07"), expiration))
+	txs4 = append(txs4, makeTx(common.HexToAddress("0x08"), expiration))
+	recently.RecvBlock(common.HexToHash("0x04"), 103, txs4)
+
+	txs5 := make([]*types.Transaction, 0)
+	txs5 = append(txs5, txs1[0])
+	txs5 = append(txs5, txs2[0])
+	txs5 = append(txs5, txs3[0])
+	recently.RecvBlock(common.HexToHash("0x05"), 104, txs5)
+
+	txs6 := make([]*types.Transaction, 0)
+	txs6 = append(txs6, txs1[0])
+	txs6 = append(txs6, txs2[0])
+	txs6 = append(txs6, txs3[0])
+	recently.RecvBlock(common.HexToHash("0x06"), 105, txs6)
 
 	txs := make([]*types.Transaction, 0)
-	txs = append(txs, tx1)
-	txs = append(txs, tx2)
-	txs = append(txs, tx3)
+	txs = append(txs, txs2[0])
+	txs = append(txs, txs4[0])
+	txs = append(txs, makeTx(common.HexToAddress("0x10"), expiration))
+	txs = append(txs, makeTx(common.HexToAddress("0x11"), expiration))
 
-	tx5 := makeTx(testPrivate, common.HexToAddress("0x05"), params.OrdinaryTx, new(big.Int).SetInt64(500))
-	txs = append(txs, tx5)
+	// get path
+	result := recently.GetPath(txs)
+	assert.Equal(t, 2, len(result))
 
-	minHeight, maxHeight, result := recently.GetPath(txs)
-	assert.Equal(t, int64(11), minHeight)
-	assert.Equal(t, int64(13), maxHeight)
-	assert.Equal(t, 3, len(result))
+	blocks, ok := result[txs4[0].Hash()]
+	assert.Equal(t, true, ok)
+	assert.Equal(t, 1, len(blocks.BlocksHash))
+	assert.Equal(t, int64(103), blocks.BlocksHash[common.HexToHash("0x04")])
+
+	blocks, ok = result[txs2[0].Hash()]
+	assert.Equal(t, true, ok)
+	assert.Equal(t, 3, len(blocks.BlocksHash))
+	assert.Equal(t, int64(101), blocks.BlocksHash[common.HexToHash("0x02")])
+	assert.Equal(t, int64(104), blocks.BlocksHash[common.HexToHash("0x05")])
+	assert.Equal(t, int64(105), blocks.BlocksHash[common.HexToHash("0x06")])
+
+	// distance
+	minHeight, maxHeight, hashes := blocks.distance()
+	assert.Equal(t, int64(101), minHeight)
+	assert.Equal(t, int64(105), maxHeight)
+	assert.Equal(t, 3, len(hashes))
+}
+
+func TestTxRecently_PruneBlock(t *testing.T) {
+	recently := NewTxRecently()
+	expiration := time.Now().Unix()
+
+	txs1 := make([]*types.Transaction, 0)
+	txs1 = append(txs1, makeTx(common.HexToAddress("0x01"), expiration))
+	txs1 = append(txs1, makeTx(common.HexToAddress("0x02"), expiration))
+	recently.RecvBlock(common.HexToHash("0x01"), 100, txs1)
+
+	txs2 := make([]*types.Transaction, 0)
+	txs2 = append(txs2, makeTx(common.HexToAddress("0x03"), expiration))
+	txs2 = append(txs2, makeTx(common.HexToAddress("0x04"), expiration))
+	recently.RecvBlock(common.HexToHash("0x02"), 101, txs2)
+
+	txs3 := make([]*types.Transaction, 0)
+	txs3 = append(txs3, makeTx(common.HexToAddress("0x05"), expiration))
+	txs3 = append(txs3, makeTx(common.HexToAddress("0x06"), expiration))
+	recently.RecvBlock(common.HexToHash("0x03"), 102, txs3)
+
+	txs4 := make([]*types.Transaction, 0)
+	txs4 = append(txs4, makeTx(common.HexToAddress("0x07"), expiration))
+	txs4 = append(txs4, makeTx(common.HexToAddress("0x08"), expiration))
+	recently.RecvBlock(common.HexToHash("0x04"), 103, txs4)
+
+	txs5 := make([]*types.Transaction, 0)
+	txs5 = append(txs5, txs1[0])
+	txs5 = append(txs5, txs2[0])
+	txs5 = append(txs5, txs3[0])
+	recently.RecvBlock(common.HexToHash("0x05"), 104, txs5)
+
+	txs6 := make([]*types.Transaction, 0)
+	txs6 = append(txs6, txs1[0])
+	txs6 = append(txs6, txs2[0])
+	txs6 = append(txs6, txs3[0])
+	recently.RecvBlock(common.HexToHash("0x06"), 105, txs6)
+	slot := expiration % int64(TransactionExpiration)
+	assert.Equal(t, 8, len(recently.TxsByTime[slot].TxIndexes))
+	assert.Equal(t, 3, len(recently.TxsByHash[txs1[0].Hash()].BlocksHash))
+	assert.Equal(t, 3, len(recently.TxsByHash[txs2[0].Hash()].BlocksHash))
+	assert.Equal(t, 3, len(recently.TxsByHash[txs3[0].Hash()].BlocksHash))
+
+	recently.PruneBlock(common.HexToHash("0x05"), 104, txs5)
+	slot = expiration % int64(TransactionExpiration)
+	assert.Equal(t, 8, len(recently.TxsByTime[slot].TxIndexes))
+
+	assert.Equal(t, 2, len(recently.TxsByHash[txs1[0].Hash()].BlocksHash))
+	assert.Equal(t, 2, len(recently.TxsByHash[txs2[0].Hash()].BlocksHash))
+	assert.Equal(t, 2, len(recently.TxsByHash[txs3[0].Hash()].BlocksHash))
+
+	recently.PruneBlock(common.HexToHash("0x06"), 105, txs6)
+	slot = expiration % int64(TransactionExpiration)
+	assert.Equal(t, 8, len(recently.TxsByTime[slot].TxIndexes))
+
+	assert.Equal(t, 1, len(recently.TxsByHash[txs1[0].Hash()].BlocksHash))
+	assert.Equal(t, 1, len(recently.TxsByHash[txs2[0].Hash()].BlocksHash))
+	assert.Equal(t, 1, len(recently.TxsByHash[txs3[0].Hash()].BlocksHash))
 }

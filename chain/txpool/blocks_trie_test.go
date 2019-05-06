@@ -1,11 +1,9 @@
 package txpool
 
 import (
-	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"github.com/stretchr/testify/assert"
-	"math/big"
 	"testing"
 	"time"
 )
@@ -13,16 +11,16 @@ import (
 func TestBlocksTrie_PushBlock(t *testing.T) {
 	curTime := time.Now().Unix()
 
-	var trie BlocksTrie
-	tx1 := makeTx(testPrivate, common.HexToAddress("0x01"), params.OrdinaryTx, new(big.Int).SetInt64(100))
-	tx2 := makeTx(testPrivate, common.HexToAddress("0x02"), params.OrdinaryTx, new(big.Int).SetInt64(200))
-	tx3 := makeTx(testPrivate, common.HexToAddress("0x03"), params.OrdinaryTx, new(big.Int).SetInt64(300))
-	tx4 := makeTx(testPrivate, common.HexToAddress("0x04"), params.OrdinaryTx, new(big.Int).SetInt64(400))
-	tx5 := makeTx(testPrivate, common.HexToAddress("0x05"), params.OrdinaryTx, new(big.Int).SetInt64(500))
-	tx6 := makeTx(testPrivate, common.HexToAddress("0x06"), params.OrdinaryTx, new(big.Int).SetInt64(600))
-	tx7 := makeTx(testPrivate, common.HexToAddress("0x07"), params.OrdinaryTx, new(big.Int).SetInt64(700))
-	tx8 := makeTx(testPrivate, common.HexToAddress("0x08"), params.OrdinaryTx, new(big.Int).SetInt64(800))
-	tx9 := makeTx(testPrivate, common.HexToAddress("0x09"), params.OrdinaryTx, new(big.Int).SetInt64(900))
+	trie := NewBlocksTrie()
+	tx1 := makeTxRandom(common.HexToAddress("0x01"))
+	tx2 := makeTxRandom(common.HexToAddress("0x02"))
+	tx3 := makeTxRandom(common.HexToAddress("0x03"))
+	tx4 := makeTxRandom(common.HexToAddress("0x04"))
+	tx5 := makeTxRandom(common.HexToAddress("0x05"))
+	tx6 := makeTxRandom(common.HexToAddress("0x06"))
+	tx7 := makeTxRandom(common.HexToAddress("0x07"))
+	tx8 := makeTxRandom(common.HexToAddress("0x08"))
+	tx9 := makeTxRandom(common.HexToAddress("0x09"))
 
 	block1 := store.GetBlock1()
 	block1.Header.Time = uint32(curTime)
@@ -32,7 +30,7 @@ func TestBlocksTrie_PushBlock(t *testing.T) {
 	trie.PushBlock(block1)
 	assert.Equal(t, 3, len(trie.BlocksByHash[1].BlocksByHash[block1.Hash()].TxsIndex))
 
-	slot := curTime % int64(2*TransactionExpiration)
+	slot := curTime % int64(TransactionExpiration)
 	assert.Equal(t, 1, len(trie.BlocksByTime[slot].BlocksByHeight))
 
 	block2 := store.GetBlock2()
@@ -45,7 +43,7 @@ func TestBlocksTrie_PushBlock(t *testing.T) {
 	trie.PushBlock(block2)
 	assert.Equal(t, 4, len(trie.BlocksByHash[2].BlocksByHash[block2.Hash()].TxsIndex))
 
-	slot = curTime % int64(2*TransactionExpiration)
+	slot = curTime % int64(TransactionExpiration)
 	assert.Equal(t, 2, len(trie.BlocksByTime[slot].BlocksByHeight))
 
 	block3 := store.GetBlock3()
@@ -54,21 +52,20 @@ func TestBlocksTrie_PushBlock(t *testing.T) {
 	block3.Txs = append(block3.Txs, tx9)
 	block3.Header.Time = uint32(curTime + 3600)
 
-	hashes := trie.PushBlock(block3)
-	assert.Equal(t, 7, len(hashes))
+	trie.PushBlock(block3)
 }
 
 func TestBlocksTrie_DelBlock(t *testing.T) {
 	curTime := time.Now().Unix()
 
-	var trie BlocksTrie
-	tx1 := makeTx(testPrivate, common.HexToAddress("0x01"), params.OrdinaryTx, new(big.Int).SetInt64(100))
-	tx2 := makeTx(testPrivate, common.HexToAddress("0x02"), params.OrdinaryTx, new(big.Int).SetInt64(200))
-	tx3 := makeTx(testPrivate, common.HexToAddress("0x03"), params.OrdinaryTx, new(big.Int).SetInt64(300))
-	tx4 := makeTx(testPrivate, common.HexToAddress("0x04"), params.OrdinaryTx, new(big.Int).SetInt64(400))
-	tx5 := makeTx(testPrivate, common.HexToAddress("0x05"), params.OrdinaryTx, new(big.Int).SetInt64(500))
-	tx6 := makeTx(testPrivate, common.HexToAddress("0x06"), params.OrdinaryTx, new(big.Int).SetInt64(600))
-	tx7 := makeTx(testPrivate, common.HexToAddress("0x07"), params.OrdinaryTx, new(big.Int).SetInt64(700))
+	trie := NewBlocksTrie()
+	tx1 := makeTxRandom(common.HexToAddress("0x01"))
+	tx2 := makeTxRandom(common.HexToAddress("0x02"))
+	tx3 := makeTxRandom(common.HexToAddress("0x03"))
+	tx4 := makeTxRandom(common.HexToAddress("0x04"))
+	tx5 := makeTxRandom(common.HexToAddress("0x05"))
+	tx6 := makeTxRandom(common.HexToAddress("0x06"))
+	tx7 := makeTxRandom(common.HexToAddress("0x07"))
 
 	block1 := store.GetBlock1()
 	block1.Header.Time = uint32(curTime)
@@ -90,7 +87,7 @@ func TestBlocksTrie_DelBlock(t *testing.T) {
 
 	assert.Equal(t, 4, len(trie.BlocksByHash[2].BlocksByHash[block2.Hash()].TxsIndex))
 
-	slot := curTime % int64(2*TransactionExpiration)
+	slot := curTime % int64(TransactionExpiration)
 	assert.Equal(t, 2, len(trie.BlocksByTime[slot].BlocksByHeight))
 
 	item := trie.BlocksByTime[slot].BlocksByHeight[block1.Height()]
@@ -98,7 +95,7 @@ func TestBlocksTrie_DelBlock(t *testing.T) {
 }
 
 func TestBlocksTrie_Path(t *testing.T) {
-	var trie BlocksTrie
+	trie := NewBlocksTrie()
 	block0 := store.GetBlock0()
 	trie.PushBlock(block0)
 

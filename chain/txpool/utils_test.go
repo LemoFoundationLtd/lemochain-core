@@ -2,6 +2,7 @@ package txpool
 
 import (
 	"crypto/ecdsa"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
@@ -15,8 +16,22 @@ var (
 	chainID        uint16 = 200
 )
 
-func makeTx(fromPrivate *ecdsa.PrivateKey, to common.Address, txType uint16, amount *big.Int) *types.Transaction {
-	return makeTransaction(fromPrivate, to, txType, amount, common.Big1, uint64(time.Now().Unix()+300), 1000000)
+func makeTxRandom(to common.Address) *types.Transaction {
+	return makeTx(to, int64(time.Now().Unix()+300))
+}
+
+func makeTx(to common.Address, expiration int64) *types.Transaction {
+	return makeTransaction(testPrivate,
+		to,
+		params.OrdinaryTx,
+		new(big.Int).SetInt64(100),
+		common.Big1,
+		uint64(expiration),
+		1000000)
+}
+
+func makeExpirationTx(to common.Address) *types.Transaction {
+	return makeTx(to, int64(time.Now().Unix()-2*int64(TransactionExpiration)))
 }
 
 func makeTransaction(fromPrivate *ecdsa.PrivateKey, to common.Address, txType uint16, amount, gasPrice *big.Int, expiration uint64, gasLimit uint64) *types.Transaction {
