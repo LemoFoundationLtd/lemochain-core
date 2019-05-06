@@ -141,7 +141,7 @@ func TestTxPool_PruneBlock(t *testing.T) {
 	assert.Equal(t, 9, len(result))
 }
 
-func TestTxPool_BlockIsValid(t *testing.T) {
+func TestTxPool_BlockIsValid1(t *testing.T) {
 	curTime := time.Now().Unix()
 
 	pool := NewTxPool()
@@ -189,4 +189,65 @@ func TestTxPool_BlockIsValid(t *testing.T) {
 
 	isValid = pool.BlockIsValid(block4)
 	assert.Equal(t, true, isValid)
+}
+
+func TestTxPool_BlockIsValid2(t *testing.T) {
+	curTime := time.Now().Unix()
+
+	pool := NewTxPool()
+	tx1 := makeTxRandom(common.HexToAddress("0x01"))
+	tx2 := makeTxRandom(common.HexToAddress("0x02"))
+	tx3 := makeTxRandom(common.HexToAddress("0x03"))
+	tx4 := makeTxRandom(common.HexToAddress("0x04"))
+	tx5 := makeTxRandom(common.HexToAddress("0x05"))
+	tx6 := makeTxRandom(common.HexToAddress("0x06"))
+	tx7 := makeTxRandom(common.HexToAddress("0x07"))
+	tx8 := makeTxRandom(common.HexToAddress("0x08"))
+
+	block1 := store.GetBlock1()
+	block1.Header.Time = uint32(curTime)
+	block1.Txs = append(block1.Txs, tx1)
+	block1.Txs = append(block1.Txs, tx2)
+	pool.RecvBlock(block1)
+
+	block21 := store.GetBlock2()
+	block21.Header.ParentHash = block1.Hash()
+	block21.Header.Time = uint32(curTime)
+	block21.Txs = append(block21.Txs, tx3)
+	block21.Txs = append(block21.Txs, tx4)
+	pool.RecvBlock(block21)
+
+	block22 := store.GetBlock2()
+	block22.Header.ParentHash = block1.Hash()
+	block22.Header.Time = uint32(curTime + 1)
+	block22.Txs = append(block22.Txs, tx5)
+	block22.Txs = append(block22.Txs, tx6)
+	pool.RecvBlock(block22)
+
+	block3 := store.GetBlock3()
+	block3.Header.ParentHash = block21.Hash()
+	block3.Header.Time = uint32(curTime)
+	block3.Txs = append(block3.Txs, tx7)
+	block3.Txs = append(block3.Txs, tx8)
+
+	isValid := pool.BlockIsValid(block3)
+	assert.Equal(t, true, isValid)
+
+	block3 = store.GetBlock3()
+	block3.Header.ParentHash = block21.Hash()
+	block3.Header.Time = uint32(curTime)
+	block3.Txs = append(block3.Txs, tx5)
+	block3.Txs = append(block3.Txs, tx8)
+
+	isValid = pool.BlockIsValid(block3)
+	assert.Equal(t, true, isValid)
+
+	block3 = store.GetBlock3()
+	block3.Header.ParentHash = block22.Hash()
+	block3.Header.Time = uint32(curTime)
+	block3.Txs = append(block3.Txs, tx5)
+	block3.Txs = append(block3.Txs, tx8)
+
+	isValid = pool.BlockIsValid(block3)
+	assert.Equal(t, false, isValid)
 }
