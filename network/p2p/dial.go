@@ -59,7 +59,7 @@ func (m *DialManager) Stop() error {
 // runDialTask Run dial task
 func (m *DialManager) runDialTask(node string) int {
 	// check
-	nodeID, endpoint := parseNodeString(node)
+	nodeID, endpoint := ParseNodeString(node)
 	if nodeID == nil {
 		log.Warnf("Dial: invalid node. node: %s", node)
 		return -1
@@ -91,7 +91,6 @@ func (m *DialManager) loop() {
 	for {
 		list := m.discover.connectingNodes()
 		for _, n := range list {
-
 			log.Debugf("Start dial: %s", n[:16])
 			if atomic.LoadInt32(&m.state) == -1 {
 				return

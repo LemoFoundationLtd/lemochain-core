@@ -200,7 +200,7 @@ func (m *DiscoverManager) addDiscoverNodes(nodes []string) {
 	defer m.lock.Unlock()
 
 	for _, node := range nodes {
-		nodeID, endpoint := parseNodeString(node)
+		nodeID, endpoint := ParseNodeString(node)
 		if nodeID == nil {
 			continue
 		}
@@ -241,7 +241,7 @@ func (m *DiscoverManager) SetDeputyNodes(nodes []string) {
 	defer m.lock.Unlock()
 
 	for _, node := range nodes {
-		nodeID, endpoint := parseNodeString(node)
+		nodeID, endpoint := ParseNodeString(node)
 		if nodeID == nil {
 			continue
 		}
@@ -399,7 +399,7 @@ func (m *DiscoverManager) initBlackList() {
 	}
 
 	for _, node := range nodes {
-		nodeID, endpoint := parseNodeString(node)
+		nodeID, endpoint := ParseNodeString(node)
 		if nodeID == nil {
 			continue
 		}
@@ -428,7 +428,7 @@ func (m *DiscoverManager) initWhiteList() {
 	defer m.lock.Unlock()
 
 	for _, node := range nodes {
-		nodeID, endpoint := parseNodeString(node)
+		nodeID, endpoint := ParseNodeString(node)
 		if nodeID == nil {
 			continue
 		}
@@ -496,8 +496,8 @@ func (m *DiscoverManager) InWhiteList(nodeID *NodeID) (ok bool) {
 	return
 }
 
-// parseNodeString verify invalid
-func parseNodeString(node string) (*NodeID, string) {
+// ParseNodeString verify invalid
+func ParseNodeString(node string) (*NodeID, string) {
 	tmp := strings.Split(node, "@")
 	if len(tmp) != 2 {
 		return nil, ""

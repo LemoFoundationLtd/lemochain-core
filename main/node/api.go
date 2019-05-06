@@ -31,6 +31,11 @@ var (
 	ErrCreateContract = errors.New("the data of create contract transaction can't be null")
 	ErrSpecialTx      = errors.New("the data of special transaction can't be null")
 	ErrTxType         = errors.New("the transaction type does not exit")
+	ErrLemoAddress    = errors.New("lemoAddress is incorrect")
+	ErrAssetId        = errors.New("assetid is incorrect")
+	ErrTxExpiration   = errors.New("tx expiration time is out of date")
+	ErrNegativeValue  = errors.New("negative value")
+	ErrTxChainID      = errors.New("tx chainID is incorrect")
 )
 
 // Private
@@ -64,6 +69,10 @@ func NewPublicAccountAPI(m *account.Manager) *PublicAccountAPI {
 
 // GetBalance get balance in mo
 func (a *PublicAccountAPI) GetBalance(LemoAddress string) (string, error) {
+	if !VerifyLemoAddress(LemoAddress) {
+		log.Warnf("LemoAddress is incorrect. lemoAddress: %s", LemoAddress)
+		return "", ErrLemoAddress
+	}
 	lemoAccount, err := a.GetAccount(LemoAddress)
 	if err != nil {
 		return "", err
@@ -75,6 +84,10 @@ func (a *PublicAccountAPI) GetBalance(LemoAddress string) (string, error) {
 
 // GetAccount return the struct of the &AccountData{}
 func (a *PublicAccountAPI) GetAccount(LemoAddress string) (types.AccountAccessor, error) {
+	if !VerifyLemoAddress(LemoAddress) {
+		log.Warnf("LemoAddress is incorrect. lemoAddress: %s", LemoAddress)
+		return nil, ErrLemoAddress
+	}
 	address, err := common.StringToAddress(LemoAddress)
 	if err != nil {
 		return nil, err
@@ -86,6 +99,10 @@ func (a *PublicAccountAPI) GetAccount(LemoAddress string) (types.AccountAccessor
 
 // GetVoteFor
 func (a *PublicAccountAPI) GetVoteFor(LemoAddress string) (string, error) {
+	if !VerifyLemoAddress(LemoAddress) {
+		log.Warnf("LemoAddress is incorrect. lemoAddress: %s", LemoAddress)
+		return "", ErrLemoAddress
+	}
 	candiAccount, err := a.GetAccount(LemoAddress)
 	if err != nil {
 		return "", err
@@ -127,6 +144,13 @@ func (a *PublicAccountAPI) GetAllRewardValue() ([]*params.Reward, error) {
 
 // GetAssetEquity returns asset equity
 func (a *PublicAccountAPI) GetAssetEquityByAssetId(LemoAddress string, assetId common.Hash) (*types.AssetEquity, error) {
+	if !VerifyLemoAddress(LemoAddress) {
+		log.Warnf("LemoAddress is incorrect. lemoAddress: %s", LemoAddress)
+		return nil, ErrLemoAddress
+	}
+	if len(assetId) != common.HashLength {
+		return nil, ErrAssetId
+	}
 	acc, err := a.GetAccount(LemoAddress)
 	if err != nil {
 		return nil, err
@@ -207,6 +231,10 @@ func (c *PublicChainAPI) GetBlockByHeight(height uint32, withBody bool) *types.B
 
 // GetBlockByHash get block information by hash
 func (c *PublicChainAPI) GetBlockByHash(hash string, withBody bool) *types.Block {
+	if len(common.HexToHash(hash)) != common.HashLength {
+		log.Warnf("Hash is incorrect, Hash: %s", hash)
+		return nil
+	}
 	if withBody {
 		return c.chain.GetBlockByHash(common.HexToHash(hash))
 	} else {
@@ -322,13 +350,21 @@ func NewPrivateNetAPI(node *Node) *PrivateNetAPI {
 	return &PrivateNetAPI{node}
 }
 
-// Connect
+// Connect (node = nodeID@IP:Port)
 func (n *PrivateNetAPI) Connect(node string) {
+	if !VerifyNode(node) {
+		log.Errorf("The node is incorrect, node: %s", node)
+		return
+	}
 	n.node.server.Connect(node)
 }
 
 // Disconnect
 func (n *PrivateNetAPI) Disconnect(node string) bool {
+	if !VerifyNode(node) {
+		log.Errorf("The node is incorrect, node: %s", node)
+		return false
+	}
 	return n.node.server.Disconnect(node)
 }
 
@@ -391,44 +427,12 @@ func NewPublicTxAPI(node *Node) *PublicTxAPI {
 
 // Send send a transaction
 func (t *PublicTxAPI) SendTx(tx *types.Transaction) (common.Hash, error) {
-	err := VerifyTx(tx)
+	err := VerifyTx(tx, t.node.ChainID())
 	if err != nil {
 		return common.Hash{}, err
 	}
 	err = t.node.txPool.AddTx(tx)
 	return tx.Hash(), err
-}
-
-// VerifyTx transaction parameter verification
-func VerifyTx(tx *types.Transaction) error {
-	toNameLength := len(tx.ToName())
-	if toNameLength > MaxTxToNameLength {
-
-		log.Errorf("The length of toName field in transaction is out of max length limit. toName length = %d. max length limit = %d. ", toNameLength, MaxTxToNameLength)
-		return ErrToName
-	}
-	txMessageLength := len(tx.Message())
-	if txMessageLength > MaxTxMessageLength {
-		log.Errorf("The length of message field in transaction is out of max length limit. message length = %d. max length limit = %d. ", txMessageLength, MaxTxMessageLength)
-		return ErrTxMessage
-	}
-	switch tx.Type() {
-	case params.OrdinaryTx:
-		if tx.To() == nil {
-			if len(tx.Data()) == 0 {
-				return ErrCreateContract
-			}
-		}
-	case params.VoteTx:
-	case params.RegisterTx, params.CreateAssetTx, params.IssueAssetTx, params.ReplenishAssetTx, params.ModifyAssetTx, params.TransferAssetTx:
-		if len(tx.Data()) == 0 {
-			return ErrSpecialTx
-		}
-	default:
-		log.Errorf("The transaction type does not exit . type = %v", tx.Type())
-		return ErrTxType
-	}
-	return nil
 }
 
 // PendingTx

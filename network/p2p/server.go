@@ -323,8 +323,11 @@ func (srv *Server) Connect(node string) string {
 }
 
 // Disconnect disconnect a connection for api
-// only support address
-func (srv *Server) Disconnect(rAddr string) bool {
+func (srv *Server) Disconnect(node string) bool {
+	_, rAddr := ParseNodeString(node)
+	if rAddr == "" {
+		return false
+	}
 	for k, v := range srv.connectedNodes {
 		if strings.Compare(rAddr, v.RAddress()) == 0 {
 			v.Close()
