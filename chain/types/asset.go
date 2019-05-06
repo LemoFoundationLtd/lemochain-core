@@ -22,7 +22,7 @@ type Asset struct {
 	Category        uint32         `json:"category" gencodec:"required"`
 	IsDivisible     bool           `json:"isDivisible" gencodec:"required"`
 	AssetCode       common.Hash    `json:"assetCode"`
-	Decimals        uint32         `json:"decimals" gencodec:"required"`
+	Decimal         uint32         `json:"decimal" gencodec:"required"`
 	TotalSupply     *big.Int       `json:"totalSupply"`
 	IsReplenishable bool           `json:"isReplenishable" gencodec:"required"`
 	Issuer          common.Address `json:"issuer"`
@@ -31,7 +31,7 @@ type Asset struct {
 
 type assetMarshaling struct {
 	Category    hexutil.Uint32
-	Decimals    hexutil.Uint32
+	Decimal     hexutil.Uint32
 	TotalSupply *hexutil.Big10
 }
 
@@ -100,7 +100,7 @@ func (asset *Asset) Clone() *Asset {
 		Category:        asset.Category,
 		IsDivisible:     asset.IsDivisible,
 		AssetCode:       asset.AssetCode,
-		Decimals:        asset.Decimals,
+		Decimal:         asset.Decimal,
 		IsReplenishable: asset.IsReplenishable,
 		Issuer:          asset.Issuer,
 		Profile:         clone(asset.Profile),
@@ -120,7 +120,7 @@ func (asset *Asset) String() string {
 		fmt.Sprintf("Category: %d", asset.Category),
 		fmt.Sprintf("IsDivisible: %s", strconv.FormatBool(asset.IsDivisible)),
 		fmt.Sprintf("AssetCode: %s", asset.AssetCode.String()),
-		fmt.Sprintf("Decimals: %d", asset.Decimals),
+		fmt.Sprintf("Decimal: %d", asset.Decimal),
 		fmt.Sprintf("Issuer: %s", asset.Issuer.String()),
 		fmt.Sprintf("IsReplenishable: %s", strconv.FormatBool(asset.IsReplenishable)),
 	}

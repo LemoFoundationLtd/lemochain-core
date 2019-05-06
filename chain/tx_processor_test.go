@@ -756,7 +756,7 @@ func TestCreateAssetTx(t *testing.T) {
 	assert.Equal(t, "Demo Token", asset.Profile[types.AssetName])
 	assert.Equal(t, "DT", asset.Profile[types.AssetSymbol])
 	assert.Equal(t, "test issue token", asset.Profile[types.AssetDescription])
-	assert.Equal(t, "false", asset.Profile[types.AssetStop])
+	assert.Equal(t, "false", asset.Profile[types.AssetFreeze])
 	assert.Equal(t, "60000", asset.Profile[types.AssetSuggestedGasLimit])
 
 }
@@ -768,13 +768,13 @@ func newCreateAssetTx(private *ecdsa.PrivateKey, category uint32, isReplenishabl
 	profile[types.AssetName] = "Demo Token"
 	profile[types.AssetSymbol] = "DT"
 	profile[types.AssetDescription] = "test issue token"
-	profile[types.AssetStop] = "false"
+	profile[types.AssetFreeze] = "false"
 	profile[types.AssetSuggestedGasLimit] = "60000"
 	asset := &types.Asset{
 		Category:        category,
 		IsDivisible:     isDivisible,
 		AssetCode:       common.Hash{},
-		Decimals:        5,
+		Decimal:         5,
 		TotalSupply:     big.NewInt(10000000),
 		IsReplenishable: isReplenishable,
 		Issuer:          issuer,
@@ -1178,7 +1178,7 @@ func TestMaxAssetProfile(t *testing.T) {
 		Category:        1,
 		IsDivisible:     false,
 		AssetCode:       common.StringToHash("702aff687d34228aa696d32cf702844c4cbe619411250e864ea45826d8df6751"),
-		Decimals:        18,
+		Decimal:         18,
 		TotalSupply:     big.NewInt(111111111111111111),
 		IsReplenishable: false,
 		Issuer:          common.HexToAddress("0x702aff687d34228aa69619411250e864ea45826d8df6751"),

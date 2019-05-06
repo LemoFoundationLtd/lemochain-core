@@ -65,7 +65,7 @@ func (p *testProcessor) createAccount(logType types.ChangeLogType, version uint3
 		Category:        1,
 		IsDivisible:     true,
 		AssetCode:       common.HexToHash("0x11"),
-		Decimals:        0,
+		Decimal:         0,
 		TotalSupply:     new(big.Int).SetInt64(1),
 		IsReplenishable: false,
 		Issuer:          common.HexToAddress("0x22"),
@@ -290,10 +290,10 @@ func getTestLogs(t *testing.T) []testLogConfig {
 	tests = append(tests, testLogConfig{
 		input:      log,
 		isValuable: true,
-		str:        "AssetCodeLog{Account: Lemo8888888888888888888888888888888887P9, Version: 1, OldVal: {Category: 1, IsDivisible: true, AssetCode: 0x0000000000000000000000000000000000000000000000000000000000000011, Decimals: 0, Issuer: Lemo888888888888888888888888888888888FY4, IsReplenishable: false, TotalSupply: 1, Profiles: {lemokey => lemoval}}, NewVal: {Category: 0, IsDivisible: false, AssetCode: 0x0000000000000000000000000000000000000000000000000000000000000000, Decimals: 0, Issuer: Lemo888888888888888888888888888888888888, IsReplenishable: false, TotalSupply: 0, Profile: []}, Extra: [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 51]}",
+		str:        "AssetCodeLog{Account: Lemo8888888888888888888888888888888887P9, Version: 1, OldVal: {Category: 1, IsDivisible: true, AssetCode: 0x0000000000000000000000000000000000000000000000000000000000000011, Decimal: 0, Issuer: Lemo888888888888888888888888888888888FY4, IsReplenishable: false, TotalSupply: 1, Profiles: {lemokey => lemoval}}, NewVal: {Category: 0, IsDivisible: false, AssetCode: 0x0000000000000000000000000000000000000000000000000000000000000000, Decimal: 0, Issuer: Lemo888888888888888888888888888888888888, IsReplenishable: false, TotalSupply: 0, Profile: []}, Extra: [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 51]}",
 		hash:       "0x18cff028352d5e0dcf7f0e54b6700de3792959f4dece767acf64e5a2617d44cd",
 		rlp:        "0xf8760494000000000000000000000000000000000000000f01f83c8080a00000000000000000000000000000000000000000000000000000000000000000808080940000000000000000000000000000000000000000c0a00000000000000000000000000000000000000000000000000000000000000033",
-		decoded:    "AssetCodeLog{Account: Lemo8888888888888888888888888888888887P9, Version: 1, NewVal: {Category: 0, IsDivisible: false, AssetCode: 0x0000000000000000000000000000000000000000000000000000000000000000, Decimals: 0, Issuer: Lemo888888888888888888888888888888888888, IsReplenishable: false, TotalSupply: 0, Profile: []}, Extra: [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 51]}",
+		decoded:    "AssetCodeLog{Account: Lemo8888888888888888888888888888888887P9, Version: 1, NewVal: {Category: 0, IsDivisible: false, AssetCode: 0x0000000000000000000000000000000000000000000000000000000000000000, Decimal: 0, Issuer: Lemo888888888888888888888888888888888888, IsReplenishable: false, TotalSupply: 0, Profile: []}, Extra: [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 51]}",
 	})
 
 	// 15

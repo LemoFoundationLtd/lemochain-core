@@ -47,6 +47,9 @@ type Transaction struct {
 }
 
 type txdata struct {
+	Type          uint16          `json:"type" gencodec:"required"`
+	Version       uint8           `json:"version" gencodec:"required"`
+	ChainID       uint16          `json:"chainID" gencodec:"required"`
 	Recipient     *common.Address `json:"to" rlp:"nil"` // nil means contract creation
 	RecipientName string          `json:"toName"`
 	GasPrice      *big.Int        `json:"gasPrice" gencodec:"required"`
@@ -55,9 +58,6 @@ type txdata struct {
 	Data          []byte          `json:"data"`
 	Expiration    uint64          `json:"expirationTime" gencodec:"required"`
 	Message       string          `json:"message"`
-	Type          uint16          `json:"type" gencodec:"required"`
-	Version       uint8           `json:"version" gencodec:"required"`
-	ChainID       uint16          `json:"chainID" gencodec:"required"`
 	Sig           []byte          `json:"sig" gencodec:"required"`
 
 	// This is only used when marshaling to JSON.
@@ -67,14 +67,14 @@ type txdata struct {
 }
 
 type txdataMarshaling struct {
+	Type        hexutil.Uint16
+	Version     hexutil.Uint8
+	ChainID     hexutil.Uint16
 	GasPrice    *hexutil.Big10
 	GasLimit    hexutil.Uint64
 	Amount      *hexutil.Big10
 	Data        hexutil.Bytes
 	Expiration  hexutil.Uint64
-	Type        hexutil.Uint16
-	Version     hexutil.Uint8
-	ChainID     hexutil.Uint16
 	Sig         hexutil.Bytes
 	GasPayerSig hexutil.Bytes
 }
@@ -120,6 +120,9 @@ func newTransaction(txType uint16, version uint8, chainID uint16, to *common.Add
 		panic(fmt.Sprintf("invalid transaction version %d, should < 128", version))
 	}
 	d := txdata{
+		Type:          txType,
+		Version:       version,
+		ChainID:       chainID,
 		Recipient:     to,
 		RecipientName: toName,
 		GasPrice:      new(big.Int),
@@ -128,9 +131,6 @@ func newTransaction(txType uint16, version uint8, chainID uint16, to *common.Add
 		Data:          data,
 		Expiration:    expiration,
 		Message:       message,
-		Type:          txType,
-		Version:       version,
-		ChainID:       chainID,
 		Sig:           make([]byte, 0),
 		GasPayerSig:   make([]byte, 0),
 	}
