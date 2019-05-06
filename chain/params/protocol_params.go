@@ -71,6 +71,7 @@ var (
 
 	TermRewardPoolTotal = common.Lemo2Mo("900000000") // 奖励池总量
 	TermRewardContract  = common.HexToAddress("0x09") // 换届奖励的预编译合约地址
+	MinRewardPrecision  = common.Lemo2Mo("1")         // 1 LEMO
 )
 
 //go:generate gencodec -type Reward --field-override RewardMarshaling -out gen_Reward_json.go

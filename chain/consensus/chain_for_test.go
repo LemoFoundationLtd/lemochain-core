@@ -1,10 +1,11 @@
-package chain
+package consensus
 
 import (
 	"bytes"
 	"crypto/ecdsa"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/consensus"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
@@ -122,7 +123,7 @@ func ClearData() {
 func newChain() *BlockChain {
 	db := newDB()
 	dm := deputynode.NewManager(5)
-	bc, err := NewBlockChain(chainID, NewDpovp(10*1000, dm, db), dm, db, flag.CmdFlags{})
+	bc, err := NewBlockChain(chainID, consensus.NewDpovp(10*1000, dm, db), dm, db, flag.CmdFlags{})
 	if err != nil {
 		panic(err)
 	}

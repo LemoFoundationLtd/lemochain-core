@@ -1,18 +1,14 @@
 package miner
 
 import (
-	"crypto/ecdsa"
 	"fmt"
-	"github.com/LemoFoundationLtd/lemochain-core/chain"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/consensus"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
-	"github.com/LemoFoundationLtd/lemochain-core/chain/txpool"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
-	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/common/subscribe"
-	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -22,18 +18,19 @@ type MineConfig struct {
 	Timeout   int64
 }
 
+type Chain interface {
+	CurrentBlock() *types.Block
+	SubscribeNewBlock(ch chan *types.Block) subscribe.Subscription
+	MineBlock(*consensus.BlockMaterial)
+}
+
 type Miner struct {
 	blockInterval int64
 	timeoutTime   int64
-	privKey       *ecdsa.PrivateKey
 	minerAddress  common.Address
-	txPool        *txpool.TxPool
 	mining        int32
-	engine        chain.Engine
-	chain         *chain.BlockChain
-	txProcessor   *chain.TxProcessor
-	mux           sync.Mutex
-	currentBlock  func() *types.Block
+	chain         Chain
+	dm            *deputynode.Manager
 	extra         []byte // 扩展数据 暂保留 最大256byte
 
 	blockMineTimer *time.Timer // 出块timer
@@ -46,24 +43,19 @@ type Miner struct {
 	quitCh chan struct{} // 退出
 }
 
-func New(cfg *MineConfig, chain *chain.BlockChain, txPool *txpool.TxPool, engine chain.Engine) *Miner {
-	m := &Miner{
+func New(cfg MineConfig, chain Chain, dm *deputynode.Manager, extra []byte) *Miner {
+	return &Miner{
 		blockInterval:  cfg.SleepTime,
 		timeoutTime:    cfg.Timeout,
-		privKey:        deputynode.GetSelfNodeKey(),
 		chain:          chain,
-		txPool:         txPool,
-		engine:         engine,
-		currentBlock:   chain.CurrentBlock,
-		txProcessor:    chain.TxProcessor(),
+		dm:             dm,
+		extra:          extra,
 		recvNewBlockCh: make(chan *types.Block, 1),
 		timeToMineCh:   make(chan struct{}),
 		// startCh:        make(chan struct{}),
 		stopCh: make(chan struct{}),
 		quitCh: make(chan struct{}),
 	}
-	// go m.loopRecvBlock()
-	return m
 }
 
 func (m *Miner) Start() {
@@ -96,13 +88,13 @@ func (m *Miner) Start() {
 	} else {
 		m.resetMinerTimer(-1)
 	}
-	m.recvBlockSub = m.chain.NewCurrentBlockFeed.Subscribe(m.recvNewBlockCh)
+	m.recvBlockSub = m.chain.SubscribeNewBlock(m.recvNewBlockCh)
 	log.Info("start mining...")
 }
 
 func (m *Miner) Stop() {
 	if !atomic.CompareAndSwapInt32(&m.mining, 1, 0) {
-		log.Warn("doesn't start mining")
+		log.Warn("stop mining already")
 		return
 	}
 	if m.blockMineTimer != nil {
@@ -131,7 +123,7 @@ func (m *Miner) GetMinerAddress() common.Address {
 
 // 获取最新区块的时间戳离当前时间的距离 单位：ms
 func (m *Miner) getTimespan() int64 {
-	lstSpan := m.currentBlock().Header.Time
+	lstSpan := m.chain.CurrentBlock().Header.Time
 	if lstSpan == 0 {
 		log.Debug("getTimespan: current block's time is 0")
 		return int64(m.blockInterval)
@@ -142,7 +134,7 @@ func (m *Miner) getTimespan() int64 {
 
 // isSelfDeputyNode 本节点是否为代理节点
 func (m *Miner) isSelfDeputyNode() bool {
-	return m.chain.DeputyManager().IsSelfDeputyNode(m.currentBlock().Height() + 1)
+	return m.dm.IsSelfDeputyNode(m.chain.CurrentBlock().Height() + 1)
 }
 
 // getSleepTime get sleep time to seal block
@@ -151,15 +143,16 @@ func (m *Miner) getSleepTime() int {
 		log.Debugf("self not deputy node. mining forbidden")
 		return -1
 	}
-	curHeight := m.currentBlock().Height()
-	nodeCount := m.chain.DeputyManager().GetDeputiesCount(curHeight + 1)
+	curBlock := m.chain.CurrentBlock()
+	curHeight := curBlock.Height()
+	nodeCount := m.dm.GetDeputiesCount(curHeight + 1)
 	if nodeCount == 1 { // 只有一个主节点
 		waitTime := m.blockInterval
 		log.Debugf("getSleepTime: waitTime:%d", waitTime)
 		return int(waitTime)
 	}
 	if (curHeight > params.InterimDuration) && (curHeight-params.InterimDuration)%params.TermDuration == 0 {
-		if deputyNode := m.chain.DeputyManager().GetDeputyByNodeID(curHeight, deputynode.GetSelfNodeID()); deputyNode != nil {
+		if deputyNode := m.dm.GetDeputyByNodeID(curHeight, deputynode.GetSelfNodeID()); deputyNode != nil {
 			waitTime := int(deputyNode.Rank) * int(m.timeoutTime)
 			log.Debugf("getSleepTime: waitTime:%d", waitTime)
 			return waitTime
@@ -168,9 +161,8 @@ func (m *Miner) getSleepTime() int {
 		return -1
 	}
 	timeDur := m.getTimespan() // 获取当前时间与最新块的时间差
-	myself := m.chain.DeputyManager().GetDeputyByNodeID(curHeight+1, deputynode.GetSelfNodeID())
-	curHeader := m.currentBlock().Header
-	slot, err := chain.GetMinerDistance(curHeader.Height+1, curHeader.MinerAddress, myself.MinerAddress, m.chain.DeputyManager()) // 获取新块离本节点索引的距离
+	myself := m.dm.GetDeputyByNodeID(curHeight+1, deputynode.GetSelfNodeID())
+	slot, err := consensus.GetMinerDistance(curHeight+1, curBlock.Header.MinerAddress, myself.MinerAddress, m.dm) // 获取新块离本节点索引的距离
 	if err != nil {
 		log.Debugf("GetMinerDistance error: %v", err)
 		return -1
@@ -281,10 +273,6 @@ func (m *Miner) getSleepTime() int {
 
 // resetMinerTimer reset timer
 func (m *Miner) resetMinerTimer(timeDur int64) {
-	// for debug
-	if m.currentBlock().Height()%params.TermDuration >= params.InterimDuration && m.currentBlock().Height()%params.TermDuration < params.InterimDuration+20 {
-		log.Debugf("resetMinerTimer: %d", timeDur)
-	}
 	// 停掉之前的定时器
 	if m.blockMineTimer != nil {
 		m.blockMineTimer.Stop()
@@ -309,7 +297,7 @@ func (m *Miner) loopMiner() {
 		case <-m.timeToMineCh:
 			m.sealBlock()
 		case block := <-m.recvNewBlockCh:
-			log.Infof("Receive new block. height: %d. hash: %s. Reset timer.", block.Height(), block.Hash().Hex())
+			log.Debug("Got a new block. Reset timer.", "block", block.ShortString())
 			if !m.isSelfDeputyNode() {
 				m.resetMinerTimer(-1)
 				break
@@ -321,7 +309,7 @@ func (m *Miner) loopMiner() {
 				var timeDur int64
 				// snapshot block + InterimDuration 换届最后一个区块
 				if block.Height() > params.InterimDuration && block.Height()%params.TermDuration == params.InterimDuration {
-					deputyNode := m.chain.DeputyManager().GetDeputyByAddress(block.Height()+1, m.minerAddress)
+					deputyNode := m.dm.GetDeputyByAddress(block.Height()+1, m.minerAddress)
 					// TODO if deputyNode == nil
 					if deputyNode.Rank == 0 {
 						timeDur = m.blockInterval
@@ -329,7 +317,7 @@ func (m *Miner) loopMiner() {
 						timeDur = int64(deputyNode.Rank) * m.timeoutTime
 					}
 				} else {
-					nodeCount := m.chain.DeputyManager().GetDeputiesCount(block.Height() + 1)
+					nodeCount := m.dm.GetDeputiesCount(block.Height() + 1)
 					if nodeCount == 1 {
 						timeDur = m.blockInterval
 					} else {
@@ -341,7 +329,7 @@ func (m *Miner) loopMiner() {
 				var timeDur int64
 				// snapshot block + InterimDuration
 				if block.Height() > params.InterimDuration && block.Height()%params.TermDuration == params.InterimDuration {
-					deputyNode := m.chain.DeputyManager().GetDeputyByAddress(block.Height()+1, m.minerAddress)
+					deputyNode := m.dm.GetDeputyByAddress(block.Height()+1, m.minerAddress)
 					if deputyNode == nil {
 						log.Error("self not deputy node in this term")
 					} else if deputyNode.Rank == 0 {
@@ -373,13 +361,13 @@ func (m *Miner) loopMiner() {
 // updateMiner update next term's miner address
 func (m *Miner) updateMiner(block *types.Block) {
 	// Get self deputy info in the term which next block in
-	deputyNode := m.chain.DeputyManager().GetMyDeputyInfo(block.Height() + 1)
+	deputyNode := m.dm.GetMyDeputyInfo(block.Height() + 1)
 	// A node can not set minerAddress until it becomes deputy node. And deputy node's minerAddress may changes between terms.
 	if deputyNode != nil {
 		oldMiner := m.minerAddress
 		m.minerAddress = deputyNode.MinerAddress
 		if oldMiner != deputyNode.MinerAddress {
-			log.Info("update miner", "from", oldMiner.String(), "addr", deputyNode.MinerAddress.String())
+			log.Info("update miner", "from", oldMiner, "to", deputyNode.MinerAddress)
 		}
 	}
 }
@@ -389,132 +377,36 @@ func (m *Miner) sealBlock() {
 	if !m.isSelfDeputyNode() {
 		return
 	}
-	log.Debug("Start seal")
-	header, dNodes := m.sealHead()
-	txs := m.txPool.Get(header.Time, 1000000)
-	log.Debugf("Pending number of txs from txPool: %d  ", len(txs))
-	defer func() {
-		var timeDur int64
-		// snapshot block
-		if header.Height > params.InterimDuration && header.Height%params.TermDuration == params.InterimDuration {
-			deputyNode := m.chain.DeputyManager().GetDeputyByAddress(header.Height+1, m.minerAddress)
-			// TODO if deputyNode == nil
-			if deputyNode.Rank == 0 {
-				timeDur = m.blockInterval
-			}
+	parent := m.chain.CurrentBlock()
+	log.Debugf("Start seal block %d", parent.Height()+1)
+
+	// mine asynchronously
+	m.chain.MineBlock(&consensus.BlockMaterial{
+		MinerAddr:     m.minerAddress,
+		Extra:         m.extra,
+		MineTimeLimit: m.timeoutTime * 2 / 3,
+	})
+
+	m.resetTimerAfterMine(parent.Height() + 1)
+}
+
+// sealBlock 出块
+func (m *Miner) resetTimerAfterMine(minedHeight uint32) {
+	var timeDur int64
+	// snapshot block
+	if minedHeight > params.InterimDuration && minedHeight%params.TermDuration == params.InterimDuration {
+		deputyNode := m.dm.GetDeputyByAddress(minedHeight+1, m.minerAddress)
+		// TODO if deputyNode == nil
+		if deputyNode.Rank == 0 {
+			timeDur = m.blockInterval
+		}
+	} else {
+		nodeCount := m.dm.GetDeputiesCount(minedHeight + 1)
+		if nodeCount == 1 {
+			timeDur = m.blockInterval
 		} else {
-			nodeCount := m.chain.DeputyManager().GetDeputiesCount(header.Height + 1)
-			if nodeCount == 1 {
-				timeDur = m.blockInterval
-			} else {
-				timeDur = int64(nodeCount-1) * m.timeoutTime
-			}
-		}
-		m.resetMinerTimer(timeDur)
-	}()
-
-	m.chain.Lock().Lock()
-	defer m.chain.Lock().Unlock()
-	// apply transactions
-	outTime := m.timeoutTime * 2 / 3 // not more than 2/3 * timeoutTime
-	packagedTxs, invalidTxs, gasUsed := m.txProcessor.ApplyTxs(header, txs, outTime)
-	log.Debug("ApplyTxs ok")
-	// Finalize accounts
-	am := m.chain.AccountManager()
-	if err := m.engine.Finalize(header.Height, am); err != nil {
-		log.Errorf("Finalize accounts error: %v", err)
-		return
-	}
-	// seal block
-	block, err := m.engine.Seal(header, am.GetTxsProduct(packagedTxs, gasUsed), nil, dNodes)
-	if err != nil {
-		log.Errorf("Seal block error! %v", err)
-		return
-	}
-	if err = m.signBlock(block); err != nil {
-		log.Errorf("Sign for block failed! block hash:%s", block.Hash().Hex())
-		return
-	}
-
-	if err = m.chain.SetMinedBlock(block); err != nil {
-		log.Error("Set mined block failed!")
-		return
-	}
-	// remove txs from pool
-	m.txPool.RecvBlock(block)
-	m.txPool.DelErrTxs(invalidTxs)
-	log.Infof("Mine a new block. height: %d hash: %s, len(txs): %d", block.Height(), block.Hash().String(), len(block.Txs))
-}
-
-// signBlock signed the block and fill in header
-func (m *Miner) signBlock(block *types.Block) (err error) {
-	hash := block.Hash()
-	signData, err := crypto.Sign(hash[:], m.privKey)
-	if err == nil {
-		block.Header.SignData = signData
-	}
-	return
-}
-
-// sealHead 生成区块头
-func (m *Miner) sealHead() (*types.Header, deputynode.DeputyNodes) {
-	// check is need to change minerAddress
-	parent := m.currentBlock()
-	height := parent.Height() + 1
-	h := &types.Header{
-		ParentHash:   parent.Hash(),
-		MinerAddress: m.minerAddress,
-		Height:       height,
-		GasLimit:     calcGasLimit(parent),
-		Extra:        m.extra,
-	}
-	log.Info("before miner :", h.MinerAddress.String())
-	var nodes deputynode.DeputyNodes = nil
-	if deputynode.IsSnapshotBlock(height) {
-		nodes = m.chain.SnapshotDeputyNodes()
-		root := nodes.MerkleRootSha()
-		h.DeputyRoot = root[:]
-		log.Debugf("add new term deputy nodes: %s", nodes.String())
-	}
-
-	// allowable 1 second time error
-	// but next block's time can't be small than parent block
-	parTime := parent.Time()
-	blockTime := uint32(time.Now().Unix())
-	if parTime > blockTime {
-		blockTime = parTime
-	}
-	h.Time = blockTime
-	return h, nodes
-}
-
-// calcGasLimit computes the gas limit of the next block after parent.
-// This is miner strategy, not consensus protocol.
-func calcGasLimit(parent *types.Block) uint64 {
-	// contrib = (parentGasUsed * 3 / 2) / 1024
-	contrib := (parent.GasUsed() + parent.GasUsed()/2) / params.GasLimitBoundDivisor
-
-	// decay = parentGasLimit / 1024 -1
-	decay := parent.GasLimit()/params.GasLimitBoundDivisor - 1
-
-	/*
-		strategy: gasLimit of block-to-mine is set based on parent's
-		gasUsed value.  if parentGasUsed > parentGasLimit * (2/3) then we
-		increase it, otherwise lower it (or leave it unchanged if it's right
-		at that usage) the amount increased/decreased depends on how far away
-		from parentGasLimit * (2/3) parentGasUsed is.
-	*/
-	limit := parent.GasLimit() - decay + contrib
-	if limit < params.MinGasLimit {
-		limit = params.MinGasLimit
-	}
-	// however, if we're now below the target (TargetGasLimit) we increase the
-	// limit as much as we can (parentGasLimit / 1024 -1)
-	if limit < params.TargetGasLimit {
-		limit = parent.GasLimit() + decay
-		if limit > params.TargetGasLimit {
-			limit = params.TargetGasLimit
+			timeDur = int64(nodeCount-1) * m.timeoutTime
 		}
 	}
-	return limit
+	m.resetMinerTimer(timeDur)
 }

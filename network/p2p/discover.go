@@ -91,7 +91,7 @@ func (m *DiscoverManager) Start() error {
 	} else {
 		return ErrHasStared
 	}
-	log.Info("Discover start ok")
+	log.Info("Discover manager start")
 	return nil
 }
 

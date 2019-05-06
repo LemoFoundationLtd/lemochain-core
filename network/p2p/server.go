@@ -189,6 +189,7 @@ func (srv *Server) startListening() error {
 	}
 	srv.listener = listener
 	go srv.listenLoop()
+	log.Info("P2P is listening", "addr", fmt.Sprintf("%x@127.0.0.1:%d", deputynode.GetSelfNodeID(), srv.Config.Port))
 	return nil
 }
 

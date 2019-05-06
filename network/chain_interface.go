@@ -18,14 +18,16 @@ type BlockChain interface {
 	CurrentBlock() *types.Block
 	// StableBlock local chain's latest stable block
 	StableBlock() *types.Block
-	// InsertChain insert a block to local chain
-	InsertChain(block *types.Block, isSyncing bool) error
+	// InsertBlock insert a block to local chain
+	InsertBlock(block *types.Block)
 	// ReceiveConfirm received a confirm message from remote peer
-	ReceiveConfirm(info *BlockConfirmData) (err error)
+	InsertConfirm(info *BlockConfirmData)
 	// GetConfirms get a block's confirms from local chain
 	GetConfirms(query *GetConfirmInfo) []types.SignData
-	// ReceiveConfirms received a block's confirm info
-	ReceiveConfirms(pack BlockConfirms)
+	// IsConfirmEnough test if the confirms in block is enough
+	IsConfirmEnough(block *types.Block) bool
+	// ReceiveStableConfirms received a block's confirm info
+	ReceiveStableConfirms(pack BlockConfirms)
 }
 
 type TxPool interface {

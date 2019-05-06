@@ -22,8 +22,16 @@ import (
 )
 
 var (
-	ErrLemoAddress = errors.New("lemoAddress is incorrect")
-	ErrAssetId     = errors.New("assetid is incorrect")
+	ErrToName         = errors.New("the length of toName field in transaction is out of max length limit")
+	ErrTxMessage      = errors.New("the length of message field in transaction is out of max length limit")
+	ErrCreateContract = errors.New("the data of create contract transaction can't be null")
+	ErrSpecialTx      = errors.New("the data of special transaction can't be null")
+	ErrTxType         = errors.New("the transaction type does not exist")
+	ErrLemoAddress    = errors.New("lemoAddress is incorrect")
+	ErrAssetId        = errors.New("assetid is incorrect")
+	ErrTxExpiration   = errors.New("tx expiration time is out of date")
+	ErrNegativeValue  = errors.New("negative value")
+	ErrTxChainID      = errors.New("tx chainID is incorrect")
 )
 
 // Private
@@ -183,7 +191,7 @@ func (c *PublicChainAPI) GetDeputyNodeList() []string {
 func (c *PublicChainAPI) GetCandidateTop30() []*CandidateInfo {
 	latestStableBlock := c.chain.StableBlock()
 	stableBlockHash := latestStableBlock.Hash()
-	storeInfos := c.chain.Db().GetCandidatesTop(stableBlockHash)
+	storeInfos := c.chain.GetCandidatesTop(stableBlockHash)
 	candidateList := make([]*CandidateInfo, 0, 30)
 	for _, info := range storeInfos {
 		candidateInfo := &CandidateInfo{

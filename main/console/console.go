@@ -135,8 +135,8 @@ func (c *Console) Welcome() {
 	c.jsre.Run(`Promise.all([
 		lemo.getNodeVersion(),
 		lemo.mine.getMiner(),
-		lemo.getCurrentBlock(false, false),
-		lemo.getCurrentBlock(true, false)
+		lemo.getNewestUnstableBlock(),
+		lemo.getNewestBlock(false)
 	]).then(function(results) {
 		var msg = [
 			"node: v" + results[0],

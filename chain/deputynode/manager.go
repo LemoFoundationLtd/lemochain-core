@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
+	"math"
 	"sync"
 )
 
@@ -23,7 +24,7 @@ type Manager struct {
 	DeputyCount int // Max deputy count. Not include candidate nodes
 
 	termList []*TermRecord
-	lock     sync.Mutex
+	lock     sync.RWMutex
 
 	evilDeputies map[common.Address]uint32 // key is minerAddress, value is release height
 	edLock       sync.Mutex
@@ -42,7 +43,7 @@ func NewManager(deputyCount int) *Manager {
 func (m *Manager) IsEvilDeputyNode(minerAddress common.Address, currentHeight uint32) bool {
 	m.edLock.Lock()
 	defer m.edLock.Unlock()
-	if height, exit := m.evilDeputies[minerAddress]; exit {
+	if height, exist := m.evilDeputies[minerAddress]; exist {
 		if currentHeight >= height {
 			delete(m.evilDeputies, minerAddress)
 			return false
@@ -69,7 +70,6 @@ func (m *Manager) SaveSnapshot(snapshotHeight uint32, nodes DeputyNodes) {
 	termCount := len(m.termList)
 	if termCount == 0 {
 		m.termList = append(m.termList, newTerm)
-		log.Info("first term", "nodesCount", len(newTerm.Nodes))
 		return
 	}
 
@@ -95,8 +95,8 @@ func (m *Manager) SaveSnapshot(snapshotHeight uint32, nodes DeputyNodes) {
 
 // GetTermByHeight 通过height获取对应的任期信息
 func (m *Manager) GetTermByHeight(height uint32) (*TermRecord, error) {
-	m.lock.Lock()
-	defer m.lock.Unlock()
+	m.lock.RLock()
+	defer m.lock.RUnlock()
 
 	termCount := len(m.termList)
 	if m.termList == nil || termCount == 0 {
@@ -119,9 +119,9 @@ func (m *Manager) GetDeputiesByHeight(height uint32) DeputyNodes {
 	if err != nil {
 		// TODO
 		panic(err)
-		// m.lock.Lock()
+		// m.lock.RLock()
 		// term = m.termList[len(m.termList)-1]
-		// m.lock.Unlock()
+		// m.lock.RUnlock()
 	}
 	return term.GetDeputies(m.DeputyCount)
 }
@@ -130,6 +130,12 @@ func (m *Manager) GetDeputiesByHeight(height uint32) DeputyNodes {
 func (m *Manager) GetDeputiesCount(height uint32) int {
 	nodes := m.GetDeputiesByHeight(height)
 	return len(nodes)
+}
+
+// TwoThirdDeputyCount return the deputy nodes count * 2/3
+func (m *Manager) TwoThirdDeputyCount(height uint32) uint32 {
+	nodes := m.GetDeputiesByHeight(height)
+	return uint32(math.Ceil(float64(len(nodes)) * 2.0 / 3.0))
 }
 
 // GetDeputyByAddress 获取address对应的节点

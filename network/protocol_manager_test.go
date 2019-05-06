@@ -47,13 +47,13 @@ func (bc *testChain) StableBlock() *types.Block {
 		Header: h,
 	}
 }
-func (bc *testChain) InsertChain(block *types.Block, isSyncing bool) error { return nil }
+func (bc *testChain) InsertChain(block *types.Block) error { return nil }
 
 func (bc *testChain) ReceiveConfirm(info *BlockConfirmData) (err error) { return nil }
 
 func (bc *testChain) GetConfirms(query *GetConfirmInfo) []types.SignData { return nil }
 
-func (bc *testChain) ReceiveConfirms(pack BlockConfirms) {}
+func (bc *testChain) ReceiveStableConfirms(pack BlockConfirms) {}
 
 type testTxPool struct {
 }

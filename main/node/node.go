@@ -10,7 +10,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/txpool"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
-	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/flag"
 	"github.com/LemoFoundationLtd/lemochain-core/common/flock"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
@@ -73,22 +72,29 @@ type Node struct {
 	lock     sync.RWMutex
 }
 
-func initConfig(flags flag.CmdFlags) (*Config, *config.ConfigFromFile, *miner.MineConfig) {
+func initConfig(flags flag.CmdFlags) (*Config, *config.ConfigFromFile) {
 	cfg := getNodeConfig(flags)
-	deputynode.SetSelfNodeKey(cfg.NodeKey())
-	cfg.P2P.PrivateKey = deputynode.GetSelfNodeKey()
-	log.Infof("Local nodeID: %s", common.ToHex(deputynode.GetSelfNodeID()))
 	configFromFile, err := config.ReadConfigFile(cfg.DataDir)
 	if err != nil {
 		panic(fmt.Sprintf("read config.json error: %v", err))
 	}
 	configFromFile.Check()
+	log.Info("Load \"config.json\" success", "ChainID", configFromFile.ChainID, "DeputyCount", configFromFile.DeputyCount)
 
-	mineCfg := &miner.MineConfig{
+	// P2P
+	deputynode.SetSelfNodeKey(cfg.NodeKey())
+	cfg.P2P.PrivateKey = deputynode.GetSelfNodeKey()
+	// BlockChain
+	cfg.Chain = chain.Config{
+		ChainID:     uint16(configFromFile.ChainID),
+		MineTimeout: configFromFile.Timeout,
+	}
+	// Miner
+	cfg.Miner = miner.MineConfig{
 		SleepTime: int64(configFromFile.SleepTime),
 		Timeout:   int64(configFromFile.Timeout),
 	}
-	return cfg, configFromFile, mineCfg
+	return cfg, configFromFile
 }
 
 func GetChainDataPath(dataDir string) string {
@@ -113,12 +119,14 @@ func getGenesis(db protocol.ChainDB) *types.Block {
 	if block == nil {
 		panic("can't get genesis block")
 	}
+	log.Info("Genesis block is ready", "hash", block.Hash())
 	return block
 }
 
 // initDeputyNodes init deputy nodes information
 func initDeputyNodes(dm *deputynode.Manager, db protocol.ChainDB) {
-	for snapshotHeight := uint32(0); ; snapshotHeight += params.TermDuration {
+	snapshotHeight := uint32(0)
+	for ; ; snapshotHeight += params.TermDuration {
 		block, err := db.GetBlockByHeight(snapshotHeight)
 		if err != nil {
 			if err == store.ErrNotExist {
@@ -130,35 +138,36 @@ func initDeputyNodes(dm *deputynode.Manager, db protocol.ChainDB) {
 
 		dm.SaveSnapshot(snapshotHeight, block.DeputyNodes)
 	}
+
+	lastSnapshotHeight := snapshotHeight - params.TermDuration
+	currentDeputyCount := dm.GetDeputiesCount(lastSnapshotHeight + params.TermDuration - 1)
+	log.Info("Deputy manager is ready", "lastSnapshotHeight", lastSnapshotHeight, "deputyCount", currentDeputyCount)
 }
 
 func New(flags flag.CmdFlags) *Node {
-	cfg, configFromFile, mineCfg := initConfig(flags)
+	cfg, configFromFile := initConfig(flags)
 	db := initDb(cfg.DataDir)
 	// read genesis block
 	genesisBlock := getGenesis(db)
 	// read all deputy nodes from snapshot block
 	dm := deputynode.NewManager(int(configFromFile.DeputyCount))
 	initDeputyNodes(dm, db)
-	// new dpovp consensus engine
-	engine := chain.NewDpovp(int64(configFromFile.Timeout), dm, db)
-	blockChain, err := chain.NewBlockChain(uint16(configFromFile.ChainID), engine, dm, db, flags)
-	engine.SetSnapshoter(blockChain)
+	// tx pool
+	txPool := chain.NewTxPool(uint16(configFromFile.ChainID))
+	blockChain, err := chain.NewBlockChain(cfg.Chain, dm, db, flags, txPool)
 	if err != nil {
 		panic("new block chain failed!!!")
 	}
-	// account manager
-	accMan := blockChain.AccountManager()
-	// tx pool
-	txPool := txpool.NewTxPool()
+	log.Info("BlockChain is ready", "stableHeight", blockChain.StableBlock().Height(), "stableHash", blockChain.StableBlock().Hash(), "currentHeight", blockChain.CurrentBlock().Height(), "currentHash", blockChain.CurrentBlock().Hash())
 	// discover manager
 	discover := p2p.NewDiscoverManager(cfg.DataDir)
+	// protocol manager
 	selfNodeID := p2p.NodeID{}
 	copy(selfNodeID[:], deputynode.GetSelfNodeID())
-	// protocol manager
 	pm := network.NewProtocolManager(uint16(configFromFile.ChainID), selfNodeID, blockChain, dm, txPool, discover, int(configFromFile.ConnectionLimit), params.VersionUint())
 	// p2p server
 	server := p2p.NewServer(cfg.P2P, discover)
+
 	n := &Node{
 		config:       cfg,
 		chainID:      uint16(configFromFile.ChainID),
@@ -166,10 +175,10 @@ func New(flags flag.CmdFlags) *Node {
 		httpEndpoint: cfg.HTTPEndpoint(),
 		wsEndpoint:   cfg.WSEndpoint(),
 		db:           db,
-		accMan:       accMan,
+		accMan:       blockChain.AccountManager(),
 		chain:        blockChain,
 		txPool:       txPool,
-		miner:        miner.New(mineCfg, blockChain, txPool, engine),
+		miner:        miner.New(cfg.Miner, blockChain, dm, nil),
 		pm:           pm,
 		server:       server,
 		genesisBlock: genesisBlock,
@@ -535,7 +544,7 @@ func (n *Node) apis() []rpc.API {
 
 func InitLogConfig(logFlag int) {
 	// logLevel is in range 0~4
-	logLevel := log15.Lvl(logFlag - 1)
+	logLevel := log15.Lvl(logFlag)
 	// default level
 	if logLevel < 0 || logLevel > 4 {
 		logLevel = log.LevelError // 1

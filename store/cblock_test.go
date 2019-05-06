@@ -81,7 +81,7 @@ func clone(src []*types.AccountData) []*types.AccountData {
 	return dst
 }
 
-func sort(src []*types.AccountData) []*types.AccountData {
+func sortAccount(src []*types.AccountData) []*types.AccountData {
 	if len(src) <= 0 {
 		return make([]*types.AccountData, 0)
 	}
@@ -118,7 +118,7 @@ func TestSort(t *testing.T) {
 	result[3] = accounts[1]
 	result[4] = accounts[3]
 
-	tmp := sort(accounts)
+	tmp := sortAccount(accounts)
 	for index := 0; index < 5; index++ {
 		assert.Equal(t, result[index].Address, tmp[index].Address)
 	}
@@ -167,7 +167,7 @@ func TestCBlock_RankingNo2(t *testing.T) {
 	cblock1.Ranking()
 	top30 := cblock1.Top.GetTop()
 	assert.Equal(t, count, len(top30))
-	assert.Equal(t, true, equal(sort(candidates), count, top30))
+	assert.Equal(t, true, equal(sortAccount(candidates), count, top30))
 }
 
 func TestCBlock_RankingNo3(t *testing.T) {
@@ -198,13 +198,13 @@ func TestCBlock_RankingNo3(t *testing.T) {
 	cblock2.Ranking()
 
 	block1Top30 := cblock1.Top.GetTop()
-	assert.Equal(t, true, equal(sort(cblock1Candidates), count, block1Top30))
+	assert.Equal(t, true, equal(sortAccount(cblock1Candidates), count, block1Top30))
 	assert.Equal(t, count, len(cblock1.CandidateTrieDB.GetAll()))
 
 	block2Top30 := cblock2.Top.GetTop()
 	assert.Equal(t, max_candidate_count, len(block2Top30))
 	assert.Equal(t, count+2, len(cblock2.CandidateTrieDB.GetAll()))
-	assert.Equal(t, true, equal(sort(candidates), max_candidate_count, block2Top30))
+	assert.Equal(t, true, equal(sortAccount(candidates), max_candidate_count, block2Top30))
 }
 
 //
@@ -248,11 +248,11 @@ func TestCBlock_RankingNo10(t *testing.T) {
 	cblock2.Ranking()
 
 	block1Top30 := cblock1.Top.GetTop()
-	assert.Equal(t, true, equal(sort(cblock1Candidates), max_candidate_count, block1Top30))
+	assert.Equal(t, true, equal(sortAccount(cblock1Candidates), max_candidate_count, block1Top30))
 	assert.Equal(t, count, len(cblock1.CandidateTrieDB.GetAll()))
 
 	block2Top30 := cblock2.Top.GetTop()
-	assert.Equal(t, true, equal(sort(candidates), max_candidate_count, block2Top30))
+	assert.Equal(t, true, equal(sortAccount(candidates), max_candidate_count, block2Top30))
 	assert.Equal(t, count+2, len(cblock2.CandidateTrieDB.GetAll()))
 }
 
@@ -284,11 +284,11 @@ func TestCBlock_RankingNo11(t *testing.T) {
 	cblock2.Ranking()
 
 	block1Top30 := cblock1.Top.GetTop()
-	assert.Equal(t, true, equal(sort(cblock1Candidates), max_candidate_count, block1Top30))
+	assert.Equal(t, true, equal(sortAccount(cblock1Candidates), max_candidate_count, block1Top30))
 	assert.Equal(t, count, len(cblock1.CandidateTrieDB.GetAll()))
 
 	block2Top30 := cblock2.Top.GetTop()
-	assert.Equal(t, true, equal(sort(candidates), max_candidate_count, block2Top30))
+	assert.Equal(t, true, equal(sortAccount(candidates), max_candidate_count, block2Top30))
 	assert.Equal(t, count+2, len(cblock2.CandidateTrieDB.GetAll()))
 }
 
@@ -318,11 +318,11 @@ func TestCBlock_RankingNo12(t *testing.T) {
 	cblock2.Ranking()
 
 	block2Top30 := cblock2.Top.GetTop()
-	assert.Equal(t, true, equal(sort(candidates), max_candidate_count, block2Top30))
+	assert.Equal(t, true, equal(sortAccount(candidates), max_candidate_count, block2Top30))
 	assert.Equal(t, count, len(cblock2.CandidateTrieDB.GetAll()))
 
 	block1Top30 := cblock1.Top.GetTop()
-	assert.Equal(t, true, equal(sort(cblock1Candidates), max_candidate_count, block1Top30))
+	assert.Equal(t, true, equal(sortAccount(cblock1Candidates), max_candidate_count, block1Top30))
 	assert.Equal(t, count, len(cblock1.CandidateTrieDB.GetAll()))
 }
 
@@ -361,7 +361,7 @@ func TestCBlock_IsSameBlock(t *testing.T) {
 	assert.Equal(t, true, (*CBlock)(nil).IsSameBlock(nil))
 }
 
-// makeBlocks make 4 blocks and setup the tree struct like this:
+// makeBlocks make blocks and setup the tree struct like this:
 //      ┌─2
 // 0──1─┼─3
 //      └─4
