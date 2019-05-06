@@ -104,9 +104,9 @@ func (p *Peer) safeClose() {
 
 	close(p.stopCh)
 	subscribe.Send(subscribe.SrvDeletePeer, p)
-	log.Info("close peer connection")
+	log.Info("Close peer connection")
 	if err := p.conn.Close(); err != nil {
-		log.Infof("close peer connection failed: %v", err)
+		log.Infof("Close peer connection failed: %v", err)
 	}
 }
 
@@ -117,7 +117,7 @@ func (p *Peer) Run() (err error) {
 	go p.readLoop()
 	// block this and wait for stop
 	p.wg.Wait()
-	log.Debugf("peer.Run finished.p: %s", p.RAddress())
+	log.Debugf("Peer.Run finished.p: %s", p.RAddress())
 	return err
 }
 
@@ -125,12 +125,12 @@ func (p *Peer) Run() (err error) {
 func (p *Peer) readLoop() {
 	defer func() {
 		p.wg.Done()
-		log.Debugf("readLoop finished: %s", p.RNodeID().String()[:16])
+		log.Debugf("ReadLoop finished: %s", p.RNodeID().String()[:16])
 	}()
 	for {
 		content, err := p.readConn()
 		if err != nil {
-			log.Debugf("read conn err: %v", err)
+			log.Debugf("Read conn err: %v", err)
 			p.Close()
 			return
 		}
@@ -138,7 +138,7 @@ func (p *Peer) readLoop() {
 		// handle content
 		err = p.handle(content)
 		if err != nil {
-			log.Debugf("handle conn content err: %v", err)
+			log.Debugf("Handle conn content err: %v", err)
 			p.Close()
 			return
 		}
@@ -149,7 +149,7 @@ func (p *Peer) readLoop() {
 func (p *Peer) ReadMsg() (msg *Msg, err error) {
 	select {
 	case <-p.stopCh:
-		log.Debug("readMsg <-p.stopCh")
+		log.Debugf("Stop Peer at ReadMsg function, peer nodeId:%s", p.rNodeID.String()[:16])
 		err = io.EOF
 	case msg = <-p.newMsgCh:
 		err = nil
@@ -170,7 +170,7 @@ func (p *Peer) readConn() ([]byte, error) {
 	}
 	// compare PackagePrefix
 	if bytes.Compare(PackagePrefix[:], headBuf[:2]) != 0 {
-		log.Debug("readMsg: recv invalid stream data")
+		log.Debug("ReadMsg: recv invalid stream data")
 		return nil, ErrUnavailablePackage
 	}
 	// package length
@@ -211,10 +211,10 @@ func (p *Peer) handle(content []byte) (err error) {
 	default:
 		select {
 		case <-p.stopCh:
-			log.Info(" read'peer has stopped ")
+			log.Info("Read'peer has stopped")
 			return io.EOF
 		case p.newMsgCh <- msg:
-			log.Debugf("send msg to 'p.newMsgCh' success, msgCode: %d", msg.Code)
+			log.Debugf("Send msg to \"p.newMsgCh\" success, msgCode: %d", msg.Code)
 			return nil
 		}
 	}
@@ -264,14 +264,14 @@ func (p *Peer) heartbeatLoop() {
 	defer func() {
 		heartbeat.Stop()
 		p.wg.Done()
-		log.Debugf("heartbeatLoop finished: %s", p.RNodeID().String()[:16])
+		log.Debugf("HeartbeatLoop finished: %s", p.RNodeID().String()[:16])
 	}()
 
 	var count = 3
 	for {
 		select {
 		case <-p.stopCh:
-			log.Debugf("peer stopch from heartbeat. nodeID:%s", p.RNodeID().String()[:16])
+			log.Debugf("Peer stopch from heartbeat. nodeID:%s", p.RNodeID().String()[:16])
 			return
 		case <-heartbeat.C:
 			for i := 1; ; i++ {
@@ -281,7 +281,7 @@ func (p *Peer) heartbeatLoop() {
 					if i <= count {
 						continue
 					} else {
-						log.Debugf("heartbeatLoop error: nodeID: %s, : %v", p.RNodeID().String()[:16], err)
+						log.Debugf("HeartbeatLoop error: nodeID: %s, err: %v", p.RNodeID().String()[:16], err)
 						p.Close()
 						return
 					}

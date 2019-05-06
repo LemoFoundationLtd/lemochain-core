@@ -109,7 +109,7 @@ func (c *Config) NodeKey() *ecdsa.PrivateKey {
 func parseNodes(path string) []string {
 	content, err := ioutil.ReadFile(path)
 	if err != nil {
-		log.Errorf("can't read file. file name: %s, err: %v", path, err)
+		log.Errorf("Can't read file. file name: %s, err: %v", path, err)
 	}
 	text := string(content)
 	lines := strings.Split(text, "\n")

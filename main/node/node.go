@@ -395,7 +395,7 @@ func (n *Node) Stop() error {
 	}
 	n.lock.Lock()
 	defer n.lock.Unlock()
-	log.Debug("start stopping node...")
+	log.Debug("Start stopping node...")
 	n.stopRPC()
 	if n.server == nil {
 		log.Warn("p2p server not started")
@@ -404,10 +404,10 @@ func (n *Node) Stop() error {
 		n.server = nil
 	}
 	if err := n.accMan.Stop(true); err != nil {
-		log.Errorf("stop account manager failed: %v", err)
+		log.Errorf("Stop account manager failed: %v", err)
 		return err
 	}
-	log.Debug("stop account manager ok...")
+	log.Debug("Stop account manager ok...")
 	if n.instanceDirLock != nil {
 		if err := n.instanceDirLock.Release(); err != nil {
 			log.Errorf("Can't release datadir lock: %v", err)
@@ -415,11 +415,11 @@ func (n *Node) Stop() error {
 		n.instanceDirLock = nil
 	}
 	if err := n.stopChain(); err != nil {
-		log.Errorf("stop chain failed: %v", err)
+		log.Errorf("Stop chain failed: %v", err)
 		return err
 	}
 	close(n.stop)
-	log.Info("stop command execute success.")
+	log.Info("Stop command execute success.")
 	return nil
 }
 
@@ -432,7 +432,7 @@ func (n *Node) stopChain() error {
 	if err := n.db.Close(); err != nil {
 		return err
 	}
-	log.Debug("stop chain ok...")
+	log.Debug("Stop chain ok...")
 	return nil
 }
 

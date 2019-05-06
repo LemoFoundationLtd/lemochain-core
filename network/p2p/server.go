@@ -96,13 +96,13 @@ func (srv *Server) Start() error {
 		panic("start server's listen failed")
 	}
 	if err := srv.discover.Start(); err != nil {
-		log.Warnf("discover.start: %v", err)
+		log.Warnf("Discover.start: %v", err)
 	}
 
 	// start dial task
 	go func() {
 		if err := srv.dialManager.Start(); err != nil {
-			log.Errorf("start dialManager failed: %v", err)
+			log.Errorf("Start dialManager failed: %v", err)
 		}
 	}()
 	// Run receive logic code
@@ -113,13 +113,13 @@ func (srv *Server) Start() error {
 // Stop
 func (srv *Server) Stop() {
 	if !atomic.CompareAndSwapInt32(&srv.running, 1, 0) {
-		log.Debug("server not start, but exec stop command")
+		log.Debug("Server not start, but exec stop command")
 		return
 	}
 	srv.unSub()
 	// close listener
 	if err := srv.listener.Close(); err != nil {
-		log.Infof("stop listener failed: %v", err)
+		log.Infof("Stop listener failed: %v", err)
 	}
 	close(srv.quitCh)
 	// close connected nodes
@@ -129,11 +129,11 @@ func (srv *Server) Stop() {
 	}
 	// stop discover
 	if err := srv.discover.Stop(); err != nil {
-		log.Errorf("discover stop failed: %v", err)
+		log.Errorf("Discover stop failed: %v", err)
 	}
 	// wait for stop
 	srv.wg.Wait()
-	log.Debug("server stop success")
+	log.Debug("Server stop success")
 }
 
 // Run
@@ -172,7 +172,7 @@ func (srv *Server) run() {
 			// notice to protocol_manager delete peer
 			subscribe.Send(subscribe.DeletePeer, p)
 		case <-srv.quitCh:
-			log.Debug("receive server stop signal")
+			log.Debug("Receive server stop signal")
 			return
 		}
 	}
@@ -202,7 +202,7 @@ func (srv *Server) listenLoop() {
 		if err != nil {
 			// server has stopped
 			if atomic.LoadInt32(&srv.running) == 0 {
-				log.Debug("listenLoop finished")
+				log.Debug("ListenLoop finished")
 				return
 			}
 			// server not stopped, but has something else error
@@ -232,7 +232,7 @@ func (srv *Server) HandleConn(fd net.Conn, nodeID *NodeID) error {
 	peer := srv.newPeer(fd)
 	err := peer.DoHandshake(srv.PrivateKey, nodeID)
 	if err != nil {
-		log.Debugf("peer handshake failed: %v", err)
+		log.Debugf("Peer handshake failed: %v", err)
 		if err = fd.Close(); err != nil {
 			log.Errorf("close connections failed", err)
 		}
@@ -248,7 +248,7 @@ func (srv *Server) HandleConn(fd net.Conn, nodeID *NodeID) error {
 	// is itself
 	if bytes.Compare(peer.RNodeID()[:], deputynode.GetSelfNodeID()) == 0 {
 		if err = fd.Close(); err != nil {
-			log.Errorf("close connections failed", err)
+			log.Errorf("Close connections failed", err)
 		}
 		if err = srv.discover.SetConnectResult(peer.RNodeID(), false); err != nil {
 			log.Errorf("SetConnectResult failed: %v", err)
@@ -268,7 +268,7 @@ func (srv *Server) HandleConn(fd net.Conn, nodeID *NodeID) error {
 		case srv.addPeerCh <- peer:
 			log.Info("srv.addPeerCh <- peer from dial")
 		case <-srv.quitCh:
-			log.Debug("server had quit")
+			log.Debug("Server had quit")
 		}
 	}()
 
@@ -277,9 +277,9 @@ func (srv *Server) HandleConn(fd net.Conn, nodeID *NodeID) error {
 
 // runPeer Run peer
 func (srv *Server) runPeer(p IPeer) {
-	log.Debugf("peer(nodeID: %s) start running", common.ToHex(p.RNodeID()[:8]))
+	log.Debugf("Peer(nodeID: %s) start running", common.ToHex(p.RNodeID()[:8]))
 	if err := p.Run(); err != nil { // block this
-		log.Debugf("runPeer error: %v", err)
+		log.Debugf("RunPeer error: %v", err)
 		srv.delPeerCh <- p
 	}
 
@@ -287,7 +287,7 @@ func (srv *Server) runPeer(p IPeer) {
 	if atomic.LoadInt32(&srv.running) == 1 {
 		p.Close()
 	}
-	log.Debugf("peer Run finished: %s", common.ToHex(p.RNodeID()[:8]))
+	log.Debugf("Peer Run finished: %s", common.ToHex(p.RNodeID()[:8]))
 }
 
 //go:generate gencodec -type PeerConnInfo -out gen_peer_conn_info_json.go
@@ -314,12 +314,12 @@ func (srv *Server) Connections() []PeerConnInfo {
 // Connect add new connection for api
 // format must be: "NodeID@ip:port"
 func (srv *Server) Connect(node string) string {
-	log.Infof("start add static peer: %s", node)
+	log.Infof("Start add static peer: %s", node)
 	srv.discover.AddNewList([]string{node})
 	if res := srv.dialManager.runDialTask(node); res < 0 {
-		return "connect node failed: %s" + node
+		return "Connect node failed: %s" + node
 	}
-	return "connect success"
+	return "Connect success"
 }
 
 // Disconnect disconnect a connection for api
