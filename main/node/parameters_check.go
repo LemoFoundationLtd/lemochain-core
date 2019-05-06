@@ -24,15 +24,15 @@ func VerifyNode(node string) bool {
 }
 
 // VerifyTx transaction parameter verification
-func VerifyTx(tx *types.Transaction, chainId uint16) error {
+func VerifyTx(tx *types.Transaction, chainID uint16) error {
 	// verify time
 	if tx.Expiration() < uint64(time.Now().Unix()) {
-		log.Errorf("Tx out of date, tx expiration:%d, nowTime:%d", tx.Expiration(), time.Now().Unix())
+		log.Warnf("Tx out of date. tx expiration:%d, nowTime:%d", tx.Expiration(), time.Now().Unix())
 		return ErrTxExpiration
 	}
 	// verify chainID
-	if tx.ChainID() != chainId {
-		log.Errorf("Tx chainID is incorrect, txChainId:%d, chainId:%d", tx.ChainID(), chainId)
+	if tx.ChainID() != chainID {
+		log.Warnf("Tx chainID is incorrect. txChainId:%d, chainID:%d", tx.ChainID(), chainID)
 		return ErrTxChainID
 	}
 	// verify tx signing
@@ -46,13 +46,12 @@ func VerifyTx(tx *types.Transaction, chainId uint16) error {
 
 	toNameLength := len(tx.ToName())
 	if toNameLength > MaxTxToNameLength {
-
-		log.Errorf("The length of toName field in transaction is out of max length limit. toName length = %d. max length limit = %d. ", toNameLength, MaxTxToNameLength)
+		log.Warnf("The length of toName field in transaction is out of max length limit. toName length = %d. max length limit = %d. ", toNameLength, MaxTxToNameLength)
 		return ErrToName
 	}
 	txMessageLength := len(tx.Message())
 	if txMessageLength > MaxTxMessageLength {
-		log.Errorf("The length of message field in transaction is out of max length limit. message length = %d. max length limit = %d. ", txMessageLength, MaxTxMessageLength)
+		log.Warnf("The length of message field in transaction is out of max length limit. message length = %d. max length limit = %d. ", txMessageLength, MaxTxMessageLength)
 		return ErrTxMessage
 	}
 	switch tx.Type() {
@@ -68,7 +67,7 @@ func VerifyTx(tx *types.Transaction, chainId uint16) error {
 			return ErrSpecialTx
 		}
 	default:
-		log.Errorf("The transaction type does not exit . type = %v", tx.Type())
+		log.Warnf("The transaction type does not exit . type = %v", tx.Type())
 		return ErrTxType
 	}
 	return nil
