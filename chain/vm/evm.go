@@ -372,8 +372,8 @@ func (evm *EVM) IssueAssetTx(sender, receiver common.Address, txHash common.Hash
 		return err
 	}
 	// Determine whether asset is frozen
-	isStop, err := issuerAcc.GetAssetCodeState(assetCode, types.AssetStop)
-	if err == nil && isStop == "true" {
+	freeze, err := issuerAcc.GetAssetCodeState(assetCode, types.AssetFreeze)
+	if err == nil && freeze == "true" {
 		log.Errorf("Can't issue the frozen assets.")
 		return ErrFrozenAsset
 	}
@@ -448,8 +448,8 @@ func (evm *EVM) ReplenishAssetTx(sender, receiver common.Address, data []byte) e
 		return err
 	}
 	// Determine whether asset is frozen
-	isStop, err := issuerAcc.GetAssetCodeState(newAssetCode, types.AssetStop)
-	if err == nil && isStop == "true" {
+	freeze, err := issuerAcc.GetAssetCodeState(newAssetCode, types.AssetFreeze)
+	if err == nil && freeze == "true" {
 		return ErrFrozenAsset
 	}
 	// judge IsReplenishable
@@ -573,8 +573,8 @@ func (evm *EVM) TransferAssetTx(caller ContractRef, addr common.Address, gas uin
 		return nil, gas, err
 	}
 	issuerAcc := evm.am.GetAccount(issuer)
-	isStop, err := issuerAcc.GetAssetCodeState(senderEquity.AssetCode, types.AssetStop)
-	if err == nil && isStop == "true" {
+	freeze, err := issuerAcc.GetAssetCodeState(senderEquity.AssetCode, types.AssetFreeze)
+	if err == nil && freeze == "true" {
 		return nil, gas, ErrTransferFrozenAsset
 	}
 

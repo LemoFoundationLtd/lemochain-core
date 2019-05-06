@@ -19,7 +19,7 @@ func (a Asset) MarshalJSON() ([]byte, error) {
 		Category        hexutil.Uint32 `json:"category" gencodec:"required"`
 		IsDivisible     bool           `json:"isDivisible" gencodec:"required"`
 		AssetCode       common.Hash    `json:"assetCode"`
-		Decimals        hexutil.Uint32 `json:"decimals" gencodec:"required"`
+		Decimal         hexutil.Uint32 `json:"decimal" gencodec:"required"`
 		TotalSupply     *hexutil.Big10 `json:"totalSupply"`
 		IsReplenishable bool           `json:"isReplenishable" gencodec:"required"`
 		Issuer          common.Address `json:"issuer"`
@@ -29,7 +29,7 @@ func (a Asset) MarshalJSON() ([]byte, error) {
 	enc.Category = hexutil.Uint32(a.Category)
 	enc.IsDivisible = a.IsDivisible
 	enc.AssetCode = a.AssetCode
-	enc.Decimals = hexutil.Uint32(a.Decimals)
+	enc.Decimal = hexutil.Uint32(a.Decimal)
 	enc.TotalSupply = (*hexutil.Big10)(a.TotalSupply)
 	enc.IsReplenishable = a.IsReplenishable
 	enc.Issuer = a.Issuer
@@ -43,7 +43,7 @@ func (a *Asset) UnmarshalJSON(input []byte) error {
 		Category        *hexutil.Uint32 `json:"category" gencodec:"required"`
 		IsDivisible     *bool           `json:"isDivisible" gencodec:"required"`
 		AssetCode       *common.Hash    `json:"assetCode"`
-		Decimals        *hexutil.Uint32 `json:"decimals" gencodec:"required"`
+		Decimal         *hexutil.Uint32 `json:"decimal" gencodec:"required"`
 		TotalSupply     *hexutil.Big10  `json:"totalSupply"`
 		IsReplenishable *bool           `json:"isReplenishable" gencodec:"required"`
 		Issuer          *common.Address `json:"issuer"`
@@ -64,10 +64,10 @@ func (a *Asset) UnmarshalJSON(input []byte) error {
 	if dec.AssetCode != nil {
 		a.AssetCode = *dec.AssetCode
 	}
-	if dec.Decimals == nil {
-		return errors.New("missing required field 'decimals' for Asset")
+	if dec.Decimal == nil {
+		return errors.New("missing required field 'decimal' for Asset")
 	}
-	a.Decimals = uint32(*dec.Decimals)
+	a.Decimal = uint32(*dec.Decimal)
 	if dec.TotalSupply != nil {
 		a.TotalSupply = (*big.Int)(dec.TotalSupply)
 	}

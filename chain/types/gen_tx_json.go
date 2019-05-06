@@ -16,6 +16,9 @@ var _ = (*txdataMarshaling)(nil)
 // MarshalJSON marshals as JSON.
 func (t txdata) MarshalJSON() ([]byte, error) {
 	type txdata struct {
+		Type          hexutil.Uint16  `json:"type" gencodec:"required"`
+		Version       hexutil.Uint8   `json:"version" gencodec:"required"`
+		ChainID       hexutil.Uint16  `json:"chainID" gencodec:"required"`
 		Recipient     *common.Address `json:"to" rlp:"nil"`
 		RecipientName string          `json:"toName"`
 		GasPrice      *hexutil.Big10  `json:"gasPrice" gencodec:"required"`
@@ -24,14 +27,14 @@ func (t txdata) MarshalJSON() ([]byte, error) {
 		Data          hexutil.Bytes   `json:"data"`
 		Expiration    hexutil.Uint64  `json:"expirationTime" gencodec:"required"`
 		Message       string          `json:"message"`
-		Type          hexutil.Uint16  `json:"type" gencodec:"required"`
-		Version       hexutil.Uint8   `json:"version" gencodec:"required"`
-		ChainID       hexutil.Uint16  `json:"chainID" gencodec:"required"`
 		Sig           hexutil.Bytes   `json:"sig" gencodec:"required"`
 		Hash          *common.Hash    `json:"hash" rlp:"-"`
 		GasPayerSig   hexutil.Bytes   `json:"gasPayerSig"`
 	}
 	var enc txdata
+	enc.Type = hexutil.Uint16(t.Type)
+	enc.Version = hexutil.Uint8(t.Version)
+	enc.ChainID = hexutil.Uint16(t.ChainID)
 	enc.Recipient = t.Recipient
 	enc.RecipientName = t.RecipientName
 	enc.GasPrice = (*hexutil.Big10)(t.GasPrice)
@@ -40,9 +43,6 @@ func (t txdata) MarshalJSON() ([]byte, error) {
 	enc.Data = t.Data
 	enc.Expiration = hexutil.Uint64(t.Expiration)
 	enc.Message = t.Message
-	enc.Type = hexutil.Uint16(t.Type)
-	enc.Version = hexutil.Uint8(t.Version)
-	enc.ChainID = hexutil.Uint16(t.ChainID)
 	enc.Sig = t.Sig
 	enc.Hash = t.Hash
 	enc.GasPayerSig = t.GasPayerSig
@@ -52,6 +52,9 @@ func (t txdata) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON unmarshals from JSON.
 func (t *txdata) UnmarshalJSON(input []byte) error {
 	type txdata struct {
+		Type          *hexutil.Uint16 `json:"type" gencodec:"required"`
+		Version       *hexutil.Uint8  `json:"version" gencodec:"required"`
+		ChainID       *hexutil.Uint16 `json:"chainID" gencodec:"required"`
 		Recipient     *common.Address `json:"to" rlp:"nil"`
 		RecipientName *string         `json:"toName"`
 		GasPrice      *hexutil.Big10  `json:"gasPrice" gencodec:"required"`
@@ -60,9 +63,6 @@ func (t *txdata) UnmarshalJSON(input []byte) error {
 		Data          *hexutil.Bytes  `json:"data"`
 		Expiration    *hexutil.Uint64 `json:"expirationTime" gencodec:"required"`
 		Message       *string         `json:"message"`
-		Type          *hexutil.Uint16 `json:"type" gencodec:"required"`
-		Version       *hexutil.Uint8  `json:"version" gencodec:"required"`
-		ChainID       *hexutil.Uint16 `json:"chainID" gencodec:"required"`
 		Sig           *hexutil.Bytes  `json:"sig" gencodec:"required"`
 		Hash          *common.Hash    `json:"hash" rlp:"-"`
 		GasPayerSig   *hexutil.Bytes  `json:"gasPayerSig"`
@@ -71,6 +71,18 @@ func (t *txdata) UnmarshalJSON(input []byte) error {
 	if err := json.Unmarshal(input, &dec); err != nil {
 		return err
 	}
+	if dec.Type == nil {
+		return errors.New("missing required field 'type' for txdata")
+	}
+	t.Type = uint16(*dec.Type)
+	if dec.Version == nil {
+		return errors.New("missing required field 'version' for txdata")
+	}
+	t.Version = uint8(*dec.Version)
+	if dec.ChainID == nil {
+		return errors.New("missing required field 'chainID' for txdata")
+	}
+	t.ChainID = uint16(*dec.ChainID)
 	if dec.Recipient != nil {
 		t.Recipient = dec.Recipient
 	}
@@ -99,18 +111,6 @@ func (t *txdata) UnmarshalJSON(input []byte) error {
 	if dec.Message != nil {
 		t.Message = *dec.Message
 	}
-	if dec.Type == nil {
-		return errors.New("missing required field 'type' for txdata")
-	}
-	t.Type = uint16(*dec.Type)
-	if dec.Version == nil {
-		return errors.New("missing required field 'version' for txdata")
-	}
-	t.Version = uint8(*dec.Version)
-	if dec.ChainID == nil {
-		return errors.New("missing required field 'chainID' for txdata")
-	}
-	t.ChainID = uint16(*dec.ChainID)
 	if dec.Sig == nil {
 		return errors.New("missing required field 'sig' for txdata")
 	}

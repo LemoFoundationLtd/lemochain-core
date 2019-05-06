@@ -40,7 +40,7 @@ const (
 	AssetName              string = "name"
 	AssetSymbol            string = "symbol"
 	AssetDescription       string = "description"
-	AssetStop              string = "stop"
+	AssetFreeze            string = "freeze"
 	AssetSuggestedGasLimit string = "suggestedGasLimit"
 )
 
