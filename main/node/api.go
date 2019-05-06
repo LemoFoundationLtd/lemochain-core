@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/miner"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
@@ -412,6 +413,11 @@ func (n *PublicNetAPI) Info() *NetInfo {
 		OS:       runtime.GOOS + "-" + runtime.GOARCH,
 		Go:       runtime.Version(),
 	}
+}
+
+// NodeID
+func (n *PublicNetAPI) NodeID() string {
+	return common.ToHex(deputynode.GetSelfNodeID())
 }
 
 // TXAPI
