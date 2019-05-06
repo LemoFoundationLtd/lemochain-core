@@ -813,18 +813,23 @@ func NewEquityLog(address common.Address, processor types.ChangeLogProcessor, id
 }
 
 func redoEquity(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
-	newVal, ok := c.NewVal.(*types.AssetEquity)
-	if !ok {
-		log.Errorf("redoEquity expected NewVal *types.AssetEquity, got %T", c.NewVal)
-		return types.ErrWrongChangeLogData
-	}
+	accessor := processor.GetAccount(c.Address)
 	id, ok := c.Extra.(common.Hash)
 	if !ok {
 		log.Errorf("redoEquity expected Extra common.Hash, got %T", c.Extra)
 		return types.ErrWrongChangeLogData
 	}
-	accessor := processor.GetAccount(c.Address)
-	return accessor.SetEquityState(id, newVal)
+
+	if c.NewVal == nil {
+		return accessor.SetEquityState(id, nil)
+	} else {
+		newVal, ok := c.NewVal.(*types.AssetEquity)
+		if !ok {
+			log.Errorf("redoEquity expected NewVal *types.AssetEquity, got %T", c.NewVal)
+			return types.ErrWrongChangeLogData
+		}
+		return accessor.SetEquityState(id, newVal)
+	}
 }
 
 func undoEquity(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
