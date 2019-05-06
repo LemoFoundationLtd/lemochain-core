@@ -6,6 +6,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/network/p2p"
+	"time"
 )
 
 // VerifyLemoAddress check lemoAddress
@@ -24,6 +25,20 @@ func VerifyNode(node string) bool {
 
 // VerifyTx transaction parameter verification
 func VerifyTx(tx *types.Transaction) error {
+	// verify time
+	if tx.Expiration() <= uint64(time.Now().Unix()) {
+		log.Error("Tx out of date")
+		return ErrTxExpiration
+	}
+	// verify tx signing
+	_, err := tx.From()
+	if err != nil {
+		return err
+	}
+	if tx.Amount().Sign() < 0 {
+		return ErrNegativeValue
+	}
+
 	toNameLength := len(tx.ToName())
 	if toNameLength > MaxTxToNameLength {
 

@@ -263,20 +263,7 @@ func (pool *TxPool) validateTx(tx *types.Transaction) error {
 	if tx.Amount().Sign() < 0 {
 		return ErrNegativeValue
 	}
-	// Make sure the transaction is signed properly
-	if len(tx.GasPayerSig()) == 0 {
-		_, err = types.MakeSigner().GetSigner(tx)
-	} else {
-		// reimbursement transaction
-		_, err = types.MakeReimbursementTxSigner().GetSigner(tx)
-		_, err = types.MakeGasPayerSigner().GetSigner(tx)
-	}
-
-	if err != nil {
-		return err
-	} else {
-		return nil
-	}
+	return nil
 	// fromAccount := pool.am
 	// balance := fromAccount.GetBalance()
 	// if balance.Cmp(tx.Cost()) < 0 {
