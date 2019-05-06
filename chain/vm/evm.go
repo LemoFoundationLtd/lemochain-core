@@ -25,8 +25,6 @@ type (
 	GetHashFunc func(uint32) common.Hash
 )
 
-
-
 var (
 	ErrIssueAssetAmount     = errors.New("issue asset amount can't be 0 or nil")
 	ErrIssueAssetMetaData   = errors.New("the length of metaData more than limit")
