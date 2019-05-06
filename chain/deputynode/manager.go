@@ -26,14 +26,39 @@ type Manager struct {
 
 	termList []*TermRecord
 	lock     sync.Mutex
+
+	evilDeputies map[common.Address]uint32 // key is minerAddress, value is release height
+	edLock       sync.Mutex
 }
 
 // NewManager creates a new Manager. It is used to maintain term record list
 func NewManager(deputyCount int) *Manager {
 	return &Manager{
-		DeputyCount: deputyCount,
-		termList:    make([]*TermRecord, 0),
+		DeputyCount:  deputyCount,
+		termList:     make([]*TermRecord, 0),
+		evilDeputies: make(map[common.Address]uint32),
 	}
+}
+
+// IsEvilDeputyNode currentHeight is current block height
+func (m *Manager) IsEvilDeputyNode(minerAddress common.Address, currentHeight uint32) bool {
+	m.edLock.Lock()
+	defer m.edLock.Unlock()
+	if height, exit := m.evilDeputies[minerAddress]; exit {
+		if currentHeight >= height {
+			delete(m.evilDeputies, minerAddress)
+			return false
+		}
+		return true
+	}
+	return false
+}
+
+// SetAbnormalDeputyNode height is release height
+func (m *Manager) PutEvilDeputyNode(minerAddress common.Address, height uint32) {
+	m.edLock.Lock()
+	defer m.edLock.Unlock()
+	m.evilDeputies[minerAddress] = height
 }
 
 // SaveSnapshot add deputy nodes record by snapshot block data

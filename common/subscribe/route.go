@@ -123,7 +123,7 @@ func (r *CentralRouteSub) unSub(name string, ch interface{}) error {
 	}
 
 	cases := r.names[name].caseList
-	if chType != reflect.TypeOf(cases[0]) {
+	if chType != cases[0].Chan.Type() {
 		return ErrChType
 	}
 

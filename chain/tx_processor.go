@@ -31,7 +31,7 @@ var (
 	ErrInvalidHost               = errors.New("the length of host field in transaction is out of max length limit")
 	ErrInvalidAddress            = errors.New("invalid address")
 	ErrInvalidNodeId             = errors.New("invalid nodeId")
-	ErrNodeIdLength              = errors.New("the nodeId length  is not equal the standard length")
+	ErrNodeIdLength              = errors.New("the nodeId length is not equal the standard length")
 	ErrHostLength                = errors.New("the length of host field in transaction is out of max length limit")
 )
 

@@ -25,13 +25,15 @@ type (
 	GetHashFunc func(uint32) common.Hash
 )
 
+
+
 var (
 	ErrIssueAssetAmount     = errors.New("issue asset amount can't be 0 or nil")
 	ErrIssueAssetMetaData   = errors.New("the length of metaData more than limit")
 	ErrReplenishAssetAmount = errors.New("replenish asset amount can't be 0 or nil")
 	ErrFrozenAsset          = errors.New("can't replenish the frozen assets")
-	ErrIsReplenishable      = errors.New("asset's IsReplenishable is false")
-	ErrIsDivisible          = errors.New("this 'isDivisible == false' kind of asset can't be replenished")
+	ErrIsReplenishable      = errors.New("asset's \"IsReplenishable\" is false")
+	ErrIsDivisible          = errors.New("this \"isDivisible == false\" kind of asset can't be replenished")
 	ErrNotEqualAssetCode    = errors.New("assetCode not equal")
 	ErrModifyAssetInfo      = errors.New("the struct of ModifyAssetInfo's Info can't be nil")
 	ErrMarshalAssetLength   = errors.New("the length of data by marshal asset more than max length")
@@ -541,7 +543,7 @@ func (evm *EVM) ModifyAssetProfileTx(sender common.Address, data []byte) error {
 	}
 	// judge data's length
 	if len(newData) > types.MaxMarshalAssetLength {
-		log.Errorf("The length of data by marshal asset more than max length,len(data) = %d ", len(data))
+		log.Errorf("The length of marshaling asset data exceed limit, len(data) = %d max = %d", len(data), types.MaxMarshalAssetLength)
 		evm.am.RevertToSnapshot(snapshot)
 		return ErrMarshalAssetLength
 	}
