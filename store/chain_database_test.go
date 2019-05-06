@@ -37,6 +37,7 @@ func TestCacheChain_SetBlock(t *testing.T) {
 	assert.Len(t, cacheChain.LastConfirm.Children, 1)
 	assert.Equal(t, unconfirmCB0, cacheChain.LastConfirm.Children[0])
 
+	// set genesis stable
 	err = cacheChain.SetStableBlock(block0.Hash())
 	assert.NoError(t, err)
 	assert.Len(t, cacheChain.UnConfirmBlocks, 0)
@@ -106,6 +107,41 @@ func TestCacheChain_SetBlock(t *testing.T) {
 	result, err = cacheChain.GetBlockByHeight(block3.Height())
 	assert.Equal(t, err, ErrNotExist)
 
+}
+
+func TestCacheChain_SetStableBlock(t *testing.T) {
+	ClearData()
+	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
+	defer cacheChain.Close()
+
+	// set genesis
+	block0 := GetBlock0()
+	err := cacheChain.SetBlock(block0.Hash(), block0)
+	assert.NoError(t, err)
+	err = cacheChain.SetStableBlock(block0.Hash())
+	assert.NoError(t, err)
+
+	// set fork blocks
+	block1 := GetBlock1()
+	err = cacheChain.SetBlock(block1.Hash(), block1)
+	assert.NoError(t, err)
+	block1OnFork := GetBlock1()
+	block1OnFork.Header.Time = 12345
+	err = cacheChain.SetBlock(block1OnFork.Hash(), block1OnFork)
+	assert.NoError(t, err)
+	block2 := GetBlock2()
+	err = cacheChain.SetBlock(block2.Hash(), block2)
+	assert.NoError(t, err)
+	block2OnFork := GetBlock2()
+	block2OnFork.Header.ParentHash = block1OnFork.Hash()
+	err = cacheChain.SetBlock(block2OnFork.Hash(), block2OnFork)
+	assert.NoError(t, err)
+
+	// set stable
+	err = cacheChain.SetStableBlock(block2OnFork.Hash())
+	assert.NoError(t, err)
+	assert.Equal(t, block2OnFork.Hash(), cacheChain.LastConfirm.Block.Hash())
+	assert.Len(t, cacheChain.UnConfirmBlocks, 0)
 }
 
 func TestCacheChain_SetBlockError(t *testing.T) {

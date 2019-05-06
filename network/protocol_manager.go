@@ -204,7 +204,7 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 			log.Info("BlockLoop finished")
 			return
 		case block := <-pm.newMinedBlockCh:
-			log.Debugf("Current's peers count: %d", len(pm.peers.peers))
+			log.Debugf("Current peers count: %d", len(pm.peers.peers))
 			peers := pm.peers.DeputyNodes(block.Height())
 			go pm.broadcastBlock(peers, block, true)
 		case rcvMsg := <-pm.rcvBlocksCh:
@@ -226,10 +226,10 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 				}
 				// local chain has this block
 				if pm.chain.HasBlock(b.ParentHash()) {
-					log.Debugf("Get block from peer:%s", rcvMsg.p.NodeID().String())
-					log.Debugf("Received block's comfirm length: %d", len(b.Confirms))
+					log.Infof("Got a block %s from peer: %#x", b.ShortString(), rcvMsg.p.NodeID()[:8])
 					pm.insertBlock(b)
 				} else {
+					log.Infof("Got a block %s from peer: %#x. cache it", b.ShortString(), rcvMsg.p.NodeID()[:8])
 					pm.blockCache.Add(b)
 					if rcvMsg.p != nil {
 						// request parent block
@@ -244,7 +244,7 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 		case <-queueTimer.C:
 			processBlock := func(block *types.Block) bool {
 				if pm.chain.HasBlock(block.ParentHash()) {
-					pm.insertBlock(block)
+					go pm.insertBlock(block)
 					return true
 				}
 				return false
@@ -274,13 +274,7 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 func (pm *ProtocolManager) insertBlock(b *types.Block) {
 	// pop the confirms which arrived before block
 	pm.mergeConfirmsFromCache(b)
-	if err := pm.chain.InsertChain(b, true); err == nil {
-		if len(b.Txs) > 0 {
-			pm.txPool.RecvBlock(b)
-		}
-	} else {
-		log.Errorf("InsertBlock failed: %v", err)
-	}
+	pm.chain.InsertBlock(b)
 }
 
 // stableBlockLoop block has been stable
@@ -340,10 +334,11 @@ func (pm *ProtocolManager) fetchConfirmsFromRemote(start, end uint32) {
 // mergeConfirmsFromCache merge confirms into block from cache
 func (pm *ProtocolManager) mergeConfirmsFromCache(block *types.Block) {
 	confirms := pm.confirmsCache.Pop(block.Height(), block.Hash())
-	log.Debugf("Pop %d confirms from cache", len(confirms))
 	for _, confirm := range confirms {
-		block.AppendConfirm(confirm.SignInfo)
+		// The duplicates will be remove by consensus validator
+		block.Confirms = append(block.Confirms, confirm.SignInfo)
 	}
+	log.Debugf("Pop %d confirms from cache, now we have %d confirms", len(confirms), len(block.Confirms))
 }
 
 // peerLoop something about peer event
@@ -754,7 +749,7 @@ func (pm *ProtocolManager) handleConfirmsMsg(msg *p2p.Msg) error {
 	if err := msg.Decode(&confirms); err != nil {
 		return fmt.Errorf("handleConfirmsMsg error: %v", err)
 	}
-	go pm.chain.ReceiveConfirms(confirms)
+	go pm.chain.ReceiveStableConfirms(confirms)
 	return nil
 }
 
@@ -780,16 +775,11 @@ func (pm *ProtocolManager) handleConfirmMsg(msg *p2p.Msg) error {
 	if err := msg.Decode(confirm); err != nil {
 		return fmt.Errorf("handleConfirmMsg error: %v", err)
 	}
-	// TODO 如果确认包不够2/3，还是应该保存下来
-	if confirm.Height < pm.chain.StableBlock().Height() {
-		return nil
-	}
-	if pm.chain.HasBlock(confirm.Hash) {
-		go func() {
-			if err := pm.chain.ReceiveConfirm(confirm); err != nil {
-				log.Debugf("handleTxsMsg: %v", err)
-			}
-		}()
+	block := pm.chain.GetBlockByHash(confirm.Hash)
+	if block != nil {
+		if !pm.chain.IsConfirmEnough(block) {
+			go pm.chain.InsertConfirm(confirm)
+		}
 	} else {
 		pm.confirmsCache.Push(confirm)
 		if pm.confirmsCache.Size() > 100 {

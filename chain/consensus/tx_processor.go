@@ -1,4 +1,4 @@
-package chain
+package consensus
 
 import (
 	"context"
@@ -13,6 +13,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common/hexutil"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/common/math"
+	"github.com/LemoFoundationLtd/lemochain-core/store/protocol"
 	"math/big"
 	"sync"
 	"time"
@@ -36,23 +37,26 @@ var (
 )
 
 type TxProcessor struct {
-	chain *BlockChain
-	am    *account.Manager
-	cfg   *vm.Config // configuration of vm
+	ChainID     uint16
+	blockLoader BlockLoader
+	am          *account.Manager
+	db          protocol.ChainDB
+	cfg         *vm.Config // configuration of vm
 
 	lock sync.Mutex
 }
 
-func NewTxProcessor(bc *BlockChain) *TxProcessor {
-	debug := bc.Flags().Bool(common.Debug)
+func NewTxProcessor(config Config, blockLoader BlockLoader, am *account.Manager, db protocol.ChainDB) *TxProcessor {
 	cfg := &vm.Config{
-		Debug:         debug,
-		RewardManager: bc.Founder(),
+		Debug:         false,
+		RewardManager: config.RewardManager,
 	}
 	return &TxProcessor{
-		chain: bc,
-		am:    bc.am,
-		cfg:   cfg,
+		ChainID:     config.ChainID,
+		blockLoader: blockLoader,
+		am:          am,
+		db:          db,
+		cfg:         cfg,
 	}
 }
 
@@ -68,10 +72,10 @@ func (p *TxProcessor) Process(header *types.Header, txs types.Transactions) (uin
 
 	p.am.Reset(header.ParentHash)
 
-	// genesis
+	// Process genesis block. It's a develop error
 	if header.Height == 0 {
 		log.Warn("It is not necessary to process genesis block.")
-		return gasUsed, ErrInvalidGenesis
+		panic(ErrInvalidGenesis)
 	}
 	// Iterate over and process the individual transactions
 	for i, tx := range txs {
@@ -95,7 +99,7 @@ func (p *TxProcessor) Process(header *types.Header, txs types.Transactions) (uin
 }
 
 // ApplyTxs picks and processes transactions from miner's tx pool.
-func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions, outTime int64) (types.Transactions, types.Transactions, uint64) {
+func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions, timeLimitSecond int64) (types.Transactions, types.Transactions, uint64) {
 	var (
 		gp          = new(types.GasPool).AddGas(header.GasLimit)
 		gasUsed     = uint64(0)
@@ -107,7 +111,7 @@ func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions, out
 	p.am.Reset(header.ParentHash)
 
 	// limit the time to execute txs
-	applyTxsInterval := time.Duration(outTime) * time.Millisecond
+	applyTxsInterval := time.Duration(timeLimitSecond) * time.Millisecond
 	applyTimer := time.NewTimer(applyTxsInterval)
 	// Iterate over and process the individual transactions
 label:
@@ -162,7 +166,7 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 	}
 	var (
 		// Create a new context to be used in the EVM environment
-		context = NewEVMContext(tx, header, txIndex, tx.Hash(), blockHash, p.chain)
+		context = NewEVMContext(tx, header, txIndex, tx.Hash(), blockHash, p.blockLoader)
 		// Create a new environment which holds all relevant information
 		// about the transaction and calling mechanisms.
 		vmEnv                = vm.NewEVM(context, p.am, *p.cfg)
@@ -234,7 +238,7 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 			log.Errorf("Unmarshal transfer asset data err: %s", err)
 			return 0, err
 		}
-		_, restGas, vmErr = vmEnv.TransferAssetTx(sender, recipientAddr, restGas, tradingAsset.AssetId, tradingAsset.Value, tradingAsset.Input, p.chain.db)
+		_, restGas, vmErr = vmEnv.TransferAssetTx(sender, recipientAddr, restGas, tradingAsset.AssetId, tradingAsset.Value, tradingAsset.Input, p.db)
 	default:
 		log.Errorf("The type of transaction is not defined. ErrType = %d\n", tx.Type())
 	}
@@ -408,7 +412,7 @@ func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *comm
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	accM := account.ReadOnlyManager(header.Hash(), p.chain.db)
+	accM := account.ReadOnlyManager(header.Hash(), p.db)
 	accM.Reset(header.ParentHash)
 
 	// A random address is found as our caller address.
@@ -425,24 +429,24 @@ func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *comm
 	switch txType {
 	case params.OrdinaryTx:
 		if to == nil { // avoid null pointer references
-			tx = types.NewContractCreation(big.NewInt(0), gasLimit, gasPrice, data, params.OrdinaryTx, p.chain.chainID, uint64(time.Now().Unix()+30*60), "", "")
+			tx = types.NewContractCreation(big.NewInt(0), gasLimit, gasPrice, data, params.OrdinaryTx, p.ChainID, uint64(time.Now().Unix()+30*60), "", "")
 		} else {
-			tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, params.OrdinaryTx, p.chain.chainID, uint64(time.Now().Unix()+30*60), "", "")
+			tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, params.OrdinaryTx, p.ChainID, uint64(time.Now().Unix()+30*60), "", "")
 		}
 	case params.VoteTx:
-		tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, params.VoteTx, p.chain.chainID, uint64(time.Now().Unix()+30*60), "", "")
+		tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, params.VoteTx, p.ChainID, uint64(time.Now().Unix()+30*60), "", "")
 	case params.RegisterTx:
-		tx = types.NewContractCreation(big.NewInt(0), gasLimit, gasPrice, data, params.RegisterTx, p.chain.chainID, uint64(time.Now().Unix()+30*60), "", "")
+		tx = types.NewContractCreation(big.NewInt(0), gasLimit, gasPrice, data, params.RegisterTx, p.ChainID, uint64(time.Now().Unix()+30*60), "", "")
 	case params.CreateAssetTx:
-		tx = types.NoReceiverTransaction(big.NewInt(0), gasLimit, gasPrice, data, params.CreateAssetTx, p.chain.chainID, uint64(time.Now().Unix()+30*60), "", "")
+		tx = types.NoReceiverTransaction(big.NewInt(0), gasLimit, gasPrice, data, params.CreateAssetTx, p.ChainID, uint64(time.Now().Unix()+30*60), "", "")
 	case params.IssueAssetTx:
-		tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, params.IssueAssetTx, p.chain.chainID, uint64(time.Now().Unix()+30*60), "", "")
+		tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, params.IssueAssetTx, p.ChainID, uint64(time.Now().Unix()+30*60), "", "")
 	case params.ReplenishAssetTx:
-		tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, params.ReplenishAssetTx, p.chain.chainID, uint64(time.Now().Unix()+30*60), "", "")
+		tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, params.ReplenishAssetTx, p.ChainID, uint64(time.Now().Unix()+30*60), "", "")
 	case params.ModifyAssetTx:
-		tx = types.NoReceiverTransaction(big.NewInt(0), gasLimit, gasPrice, data, params.ModifyAssetTx, p.chain.chainID, uint64(time.Now().Unix()+30*60), "", "")
+		tx = types.NoReceiverTransaction(big.NewInt(0), gasLimit, gasPrice, data, params.ModifyAssetTx, p.ChainID, uint64(time.Now().Unix()+30*60), "", "")
 	case params.TransferAssetTx:
-		tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, params.TransferAssetTx, p.chain.chainID, uint64(time.Now().Unix()+30*60), "", "")
+		tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, params.TransferAssetTx, p.ChainID, uint64(time.Now().Unix()+30*60), "", "")
 	default:
 		err = errors.New("tx type error")
 		return nil, 0, err
@@ -457,7 +461,7 @@ func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *comm
 	}
 	defer cancel()
 
-	Evm, vmError, sender := getEVM(ctx, caller, tx, header, 0, tx.Hash(), blockHash, p.chain, *p.cfg, accM)
+	Evm, vmError, sender := getEVM(ctx, caller, tx, header, 0, tx.Hash(), blockHash, p.blockLoader, *p.cfg, accM)
 
 	go func() {
 		<-ctx.Done()
@@ -522,7 +526,7 @@ func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *comm
 }
 
 // getEVM
-func getEVM(ctx context.Context, caller common.Address, tx *types.Transaction, header *types.Header, txIndex uint, txHash common.Hash, blockHash common.Hash, chain ChainContext, cfg vm.Config, accM *account.Manager) (*vm.EVM, func() error, types.AccountAccessor) {
+func getEVM(ctx context.Context, caller common.Address, tx *types.Transaction, header *types.Header, txIndex uint, txHash common.Hash, blockHash common.Hash, chain BlockLoader, cfg vm.Config, accM *account.Manager) (*vm.EVM, func() error, types.AccountAccessor) {
 	sender := accM.GetCanonicalAccount(caller)
 	vmError := func() error { return nil }
 	evmContext := NewEVMContext(tx, header, txIndex, txHash, blockHash, chain)

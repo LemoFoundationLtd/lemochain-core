@@ -3,6 +3,8 @@ package node
 import (
 	"crypto/ecdsa"
 	"fmt"
+	"github.com/LemoFoundationLtd/lemochain-core/chain"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/miner"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/network/p2p"
@@ -37,6 +39,8 @@ type Config struct {
 
 	DataDir string
 	P2P     p2p.Config
+	Chain   chain.Config
+	Miner   miner.MineConfig
 
 	IPCPath          string   `toml:",omitempty"`
 	HTTPHost         string   `toml:",omitempty"`
