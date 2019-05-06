@@ -31,8 +31,10 @@ var (
 	ErrCreateContract = errors.New("the data of create contract transaction can't be null")
 	ErrSpecialTx      = errors.New("the data of special transaction can't be null")
 	ErrTxType         = errors.New("the transaction type does not exit")
-	ErrLemoAddress    = errors.New("lemoAddress is not correct")
-	ErrAssetId        = errors.New("assetid is not correct")
+	ErrLemoAddress    = errors.New("lemoAddress is incorrect")
+	ErrAssetId        = errors.New("assetid is incorrect")
+	ErrTxExpiration   = errors.New("tx expiration time is out of date")
+	ErrNegativeValue  = errors.New("negative value")
 )
 
 // Private
@@ -67,7 +69,7 @@ func NewPublicAccountAPI(m *account.Manager) *PublicAccountAPI {
 // GetBalance get balance in mo
 func (a *PublicAccountAPI) GetBalance(LemoAddress string) (string, error) {
 	if !VerifyLemoAddress(LemoAddress) {
-		log.Errorf("LemoAddress is not correct. lemoAddress: %s", LemoAddress)
+		log.Errorf("LemoAddress is incorrect. lemoAddress: %s", LemoAddress)
 		return "", ErrLemoAddress
 	}
 	lemoAccount, err := a.GetAccount(LemoAddress)
@@ -82,7 +84,7 @@ func (a *PublicAccountAPI) GetBalance(LemoAddress string) (string, error) {
 // GetAccount return the struct of the &AccountData{}
 func (a *PublicAccountAPI) GetAccount(LemoAddress string) (types.AccountAccessor, error) {
 	if !VerifyLemoAddress(LemoAddress) {
-		log.Errorf("LemoAddress is not correct. lemoAddress: %s", LemoAddress)
+		log.Errorf("LemoAddress is incorrect. lemoAddress: %s", LemoAddress)
 		return nil, ErrLemoAddress
 	}
 	address, err := common.StringToAddress(LemoAddress)
@@ -97,7 +99,7 @@ func (a *PublicAccountAPI) GetAccount(LemoAddress string) (types.AccountAccessor
 // GetVoteFor
 func (a *PublicAccountAPI) GetVoteFor(LemoAddress string) (string, error) {
 	if !VerifyLemoAddress(LemoAddress) {
-		log.Errorf("LemoAddress is not correct. lemoAddress: %s", LemoAddress)
+		log.Errorf("LemoAddress is incorrect. lemoAddress: %s", LemoAddress)
 		return "", ErrLemoAddress
 	}
 	candiAccount, err := a.GetAccount(LemoAddress)
@@ -142,7 +144,7 @@ func (a *PublicAccountAPI) GetAllRewardValue() ([]*params.Reward, error) {
 // GetAssetEquity returns asset equity
 func (a *PublicAccountAPI) GetAssetEquityByAssetId(LemoAddress string, assetId common.Hash) (*types.AssetEquity, error) {
 	if !VerifyLemoAddress(LemoAddress) {
-		log.Errorf("LemoAddress is not correct. lemoAddress: %s", LemoAddress)
+		log.Errorf("LemoAddress is incorrect. lemoAddress: %s", LemoAddress)
 		return nil, ErrLemoAddress
 	}
 	if len(assetId) != common.HashLength {
@@ -229,7 +231,7 @@ func (c *PublicChainAPI) GetBlockByHeight(height uint32, withBody bool) *types.B
 // GetBlockByHash get block information by hash
 func (c *PublicChainAPI) GetBlockByHash(hash string, withBody bool) *types.Block {
 	if len(common.HexToHash(hash)) != common.HashLength {
-		log.Errorf("Hash is not correct, Hash: %s", hash)
+		log.Errorf("Hash is incorrect, Hash: %s", hash)
 		return nil
 	}
 	if withBody {
@@ -350,7 +352,7 @@ func NewPrivateNetAPI(node *Node) *PrivateNetAPI {
 // Connect (node = nodeID@IP:Port)
 func (n *PrivateNetAPI) Connect(node string) {
 	if !VerifyNode(node) {
-		log.Errorf("The node is not correct, node: %s", node)
+		log.Errorf("The node is incorrect, node: %s", node)
 		return
 	}
 	n.node.server.Connect(node)
@@ -359,7 +361,7 @@ func (n *PrivateNetAPI) Connect(node string) {
 // Disconnect
 func (n *PrivateNetAPI) Disconnect(node string) bool {
 	if !VerifyNode(node) {
-		log.Errorf("The node is not correct, node: %s", node)
+		log.Errorf("The node is incorrect, node: %s", node)
 		return false
 	}
 	return n.node.server.Disconnect(node)
