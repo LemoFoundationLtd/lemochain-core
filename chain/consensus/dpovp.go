@@ -27,6 +27,9 @@ type DPoVP struct {
 	assembler     *BlockAssembler // block assembler
 	confirmer     *Confirmer      // used to sign block confirm package
 
+	// show chain change detail in log
+	logForks bool
+
 	// all dpovp events are here
 	stableFeed  subscribe.Feed // stable block change event
 	currentFeed subscribe.Feed // head block change event
@@ -43,6 +46,7 @@ func NewDPoVP(config Config, db protocol.ChainDB, dm *deputynode.Manager, am *ac
 		forkManager:   NewForkManager(dm, db, stable),
 		processor:     NewTxProcessor(config, loader, am, db),
 		confirmer:     NewConfirmer(dm, db, stable),
+		logForks:      config.LogForks,
 	}
 	dpovp.validator = NewValidator(config.MineTimeout, db, dm, dpovp)
 	dpovp.assembler = NewBlockAssembler(db, am, dm, dpovp.processor, dpovp)
@@ -161,10 +165,8 @@ func (dp *DPoVP) InsertBlock(rawBlock *types.Block) (*types.Block, error) {
 	// Maybe a block on other fork is stable now. So we need check if the current fork is still there
 	if stableChanged && dp.CheckFork() {
 		// If the current is cut, we will choose a best fork. So no need to try switch fork now
-		return block, nil
-	}
-	// The new block is inserted to other fork. So maybe we need to update fork
-	if block.ParentHash() != oldCurrentHash {
+	} else if block.ParentHash() != oldCurrentHash {
+		// The new block is inserted to other fork. So maybe we need to update fork
 		dp.TrySwitchFork()
 	}
 
@@ -286,7 +288,9 @@ func (dp *DPoVP) logCurrentChange(oldCurrent *types.Block) {
 	} else {
 		log.Debugf("Switch fork! Current block changes from %s to %s", oldCurrent.ShortString(), newCurrent.ShortString())
 	}
-	log.Debug(dp.db.SerializeForks(newCurrent.Hash()))
+	if dp.logForks {
+		log.Debug(dp.db.SerializeForks(newCurrent.Hash()))
+	}
 }
 
 // isIgnorableBlock check the block is exist or not

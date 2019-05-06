@@ -68,7 +68,7 @@ func NewBlockChain(config Config, dm *deputynode.Manager, db db.ChainDB, flags f
 
 	bc.am = account.NewManager(block.Hash(), bc.db)
 	dpovpCfg := consensus.Config{
-		Debug:         bc.Flags().Bool(common.Debug),
+		LogForks:      bc.Flags().Int(common.LogLevel)-1 >= 3,
 		RewardManager: bc.Founder(),
 		ChainID:       bc.chainID,
 		MineTimeout:   config.MineTimeout,

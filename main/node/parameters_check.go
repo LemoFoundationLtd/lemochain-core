@@ -67,7 +67,7 @@ func VerifyTx(tx *types.Transaction, chainID uint16) error {
 			return ErrSpecialTx
 		}
 	default:
-		log.Warnf("The transaction type does not exit . type = %v", tx.Type())
+		log.Warnf("The transaction type does not exist . type = %v", tx.Type())
 		return ErrTxType
 	}
 	return nil

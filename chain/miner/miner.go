@@ -377,9 +377,9 @@ func (m *Miner) sealBlock() {
 	if !m.isSelfDeputyNode() {
 		return
 	}
-	log.Debug("Start seal")
-
 	parent := m.chain.CurrentBlock()
+	log.Debugf("Start seal block %d", parent.Height()+1)
+
 	// mine asynchronously
 	m.chain.MineBlock(&consensus.BlockMaterial{
 		MinerAddr:     m.minerAddress,

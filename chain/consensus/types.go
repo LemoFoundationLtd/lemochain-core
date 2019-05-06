@@ -8,8 +8,8 @@ import (
 
 // Config holds consensus options.
 type Config struct {
-	// Debug enabled debugging Interpreter options
-	Debug bool
+	// Show every forks change
+	LogForks bool
 	// RewardManager is the owner of reward setting precompiled contract
 	RewardManager common.Address
 	ChainID       uint16

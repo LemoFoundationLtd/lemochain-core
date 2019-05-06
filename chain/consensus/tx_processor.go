@@ -48,7 +48,7 @@ type TxProcessor struct {
 
 func NewTxProcessor(config Config, blockLoader BlockLoader, am *account.Manager, db protocol.ChainDB) *TxProcessor {
 	cfg := &vm.Config{
-		Debug:         config.Debug,
+		Debug:         false,
 		RewardManager: config.RewardManager,
 	}
 	return &TxProcessor{

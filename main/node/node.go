@@ -544,7 +544,7 @@ func (n *Node) apis() []rpc.API {
 
 func InitLogConfig(logFlag int) {
 	// logLevel is in range 0~4
-	logLevel := log15.Lvl(logFlag - 1)
+	logLevel := log15.Lvl(logFlag)
 	// default level
 	if logLevel < 0 || logLevel > 4 {
 		logLevel = log.LevelError // 1
