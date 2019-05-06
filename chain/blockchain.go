@@ -89,6 +89,11 @@ func (bc *BlockChain) DeputyManager() *deputynode.Manager {
 	return bc.dm
 }
 
+func (bc *BlockChain) IsInBlackList(b *types.Block) bool {
+	currentHeight := bc.CurrentBlock().Height()
+	return bc.dm.IsEvilDeputyNode(b.MinerAddress(), currentHeight)
+}
+
 // runFeedResendLoop resend dpovp feed to global event bus
 func (bc *BlockChain) runFeedResendLoop() {
 	stableCh := make(chan *types.Block)

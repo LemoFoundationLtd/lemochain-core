@@ -3,6 +3,7 @@ package network
 import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
+	"github.com/LemoFoundationLtd/lemochain-core/network/p2p"
 	"sync"
 )
 
@@ -146,6 +147,7 @@ func (c *BlockCache) Iterate(callback func(*types.Block) bool) {
 	}
 }
 
+// Clear clear blocks of block'Height <= height
 func (c *BlockCache) Clear(height uint32) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
@@ -159,6 +161,32 @@ func (c *BlockCache) Clear(height uint32) {
 		}
 	}
 	c.cache = c.cache[index+1:]
+}
+
+// Remove remove a block
+func (c *BlockCache) Remove(block *types.Block) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	height := block.Height()
+	hash := block.Hash()
+	length := len(c.cache)
+	// cache has not this block'height block
+	if length == 0 || c.cache[0].Height > height || c.cache[length-1].Height < height {
+		return
+	} else {
+		// 	find this block and remove it
+		for i := 0; i < len(c.cache); i++ {
+			if c.cache[i].Height == height {
+				if _, ok := c.cache[i].Blocks[hash]; ok {
+					delete(c.cache[i].Blocks, hash)
+				}
+				// if blocks is nil, then delete this height
+				if len(c.cache[i].Blocks) == 0 {
+					c.cache = append(c.cache[:i], c.cache[i+1:]...)
+				}
+			}
+		}
+	}
 }
 
 func (c *BlockCache) Size() int {
@@ -178,4 +206,60 @@ func (c *BlockCache) FirstHeight() uint32 {
 		return 0
 	}
 	return c.cache[0].Height
+}
+
+// IsExit
+func (c *BlockCache) IsExit(hash common.Hash, height uint32) bool {
+	length := len(c.cache)
+	if length == 0 || height < c.cache[0].Height || height > c.cache[length-1].Height {
+		return false
+	}
+	for i := 0; i < length; i++ {
+		if c.cache[i].Height == height {
+			if _, ok := c.cache[i].Blocks[hash]; ok {
+				return true
+			} else {
+				return false
+			}
+		}
+	}
+	return false
+}
+
+type MsgCache struct {
+	cache []*p2p.Msg
+	lock  sync.Mutex
+}
+
+const cacheCap = 1024
+
+func NewMsgCache() *MsgCache {
+	return &MsgCache{
+		cache: make([]*p2p.Msg, 0, cacheCap),
+	}
+}
+
+// Pop pop index == 0 msg
+func (m *MsgCache) Pop() *p2p.Msg {
+	if m.Size() == 0 {
+		return nil
+	}
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	msg := m.cache[0]
+	m.cache = m.cache[1:]
+	return msg
+}
+
+func (m *MsgCache) Put(msg *p2p.Msg) {
+	if m.Size() >= cacheCap {
+		return
+	}
+	m.lock.Lock()
+	m.cache = append(m.cache, msg)
+	m.lock.Unlock()
+}
+
+func (m *MsgCache) Size() int {
+	return len(m.cache)
 }
