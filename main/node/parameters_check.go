@@ -24,11 +24,16 @@ func VerifyNode(node string) bool {
 }
 
 // VerifyTx transaction parameter verification
-func VerifyTx(tx *types.Transaction) error {
+func VerifyTx(tx *types.Transaction, chainId uint16) error {
 	// verify time
-	if tx.Expiration() <= uint64(time.Now().Unix()) {
-		log.Error("Tx out of date")
+	if tx.Expiration() < uint64(time.Now().Unix()) {
+		log.Errorf("Tx out of date, tx expiration:%d, nowTime:%d", tx.Expiration(), time.Now().Unix())
 		return ErrTxExpiration
+	}
+	// verify chainID
+	if tx.ChainID() != chainId {
+		log.Errorf("Tx chainID is incorrect, txChainId:%d, chainId:%d", tx.ChainID(), chainId)
+		return ErrTxChainID
 	}
 	// verify tx signing
 	_, err := tx.From()

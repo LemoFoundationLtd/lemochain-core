@@ -35,6 +35,7 @@ var (
 	ErrAssetId        = errors.New("assetid is incorrect")
 	ErrTxExpiration   = errors.New("tx expiration time is out of date")
 	ErrNegativeValue  = errors.New("negative value")
+	ErrTxChainID      = errors.New("tx chainID is incorrect")
 )
 
 // Private
@@ -426,7 +427,7 @@ func NewPublicTxAPI(node *Node) *PublicTxAPI {
 
 // Send send a transaction
 func (t *PublicTxAPI) SendTx(tx *types.Transaction) (common.Hash, error) {
-	err := VerifyTx(tx)
+	err := VerifyTx(tx, t.node.ChainID())
 	if err != nil {
 		return common.Hash{}, err
 	}
