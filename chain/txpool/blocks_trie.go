@@ -7,132 +7,124 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 )
 
-type BlocksByTime struct {
+type BlockTimeBucket struct {
 	/* 块时间 */
 	Time uint32
 
 	/* 块列表，以高度索引块列表 */
-	BlocksByHeight map[uint32]map[common.Hash]bool
+	BlocksByHeight map[uint32]HashSet
 }
 
-func newBlocksByTime(block *types.Block) *BlocksByTime {
-	blocksByTime := &BlocksByTime{
+func newBlockTimeBucket(block *types.Block) *BlockTimeBucket {
+	blocksByTime := &BlockTimeBucket{
 		Time:           block.Time(),
-		BlocksByHeight: make(map[uint32]map[common.Hash]bool),
+		BlocksByHeight: make(map[uint32]HashSet),
 	}
 
 	blocksByTime.add(block)
 	return blocksByTime
 }
 
-func (blocks *BlocksByTime) add(block *types.Block) {
-	if blocks.Time != block.Time() {
-		log.Errorf("add block to time queue.err: time(%d) != block.time(%d)", blocks.Time, block.Time())
+func (blockBucket *BlockTimeBucket) add(block *types.Block) {
+	if blockBucket.Time != block.Time() {
+		log.Errorf("add block to time queue.err: time(%d) != block.time(%d)", blockBucket.Time, block.Time())
 		return
 	}
 
 	height := block.Height()
-	_, ok := blocks.BlocksByHeight[height]
+	_, ok := blockBucket.BlocksByHeight[height]
 	if !ok {
-		blocks.BlocksByHeight[height] = make(map[common.Hash]bool)
+		blockBucket.BlocksByHeight[height] = make(HashSet)
 	}
 
-	blocks.BlocksByHeight[height][block.Hash()] = true
+	blockBucket.BlocksByHeight[height].Add(block.Hash())
 }
 
-func (blocks *BlocksByTime) del(block *types.Block) {
-	if blocks.Time != block.Time() {
-		log.Errorf("add block to time queue.err: time(%d) != block.time(%d)", blocks.Time, block.Time())
+func (blockBucket *BlockTimeBucket) del(block *types.Block) {
+	if blockBucket.Time != block.Time() {
+		log.Errorf("add block to time queue.err: time(%d) != block.time(%d)", blockBucket.Time, block.Time())
 		return
 	}
 
-	if len(blocks.BlocksByHeight) <= 0 {
+	if len(blockBucket.BlocksByHeight) <= 0 {
 		return
 	}
 
-	hashes := blocks.BlocksByHeight[block.Height()]
-	if len(hashes) <= 0 {
-		return
-	} else {
-		delete(hashes, block.Hash())
-	}
+	blockSet := blockBucket.BlocksByHeight[block.Height()]
+	blockSet.Del(block.Hash())
 }
 
-func (blocks *BlocksByTime) timeOut(block *types.Block) bool {
-	if blocks.Time < block.Time() {
+func (blockBucket *BlockTimeBucket) timeOut(block *types.Block) bool {
+	if blockBucket.Time < block.Time() {
 		return true
 	} else {
 		return false
 	}
 }
 
-func (blocks *BlocksByTime) notTimeOut(block *types.Block) bool {
-	if blocks.Time == block.Time() {
+func (blockBucket *BlockTimeBucket) notTimeOut(block *types.Block) bool {
+	if blockBucket.Time == block.Time() {
 		return true
 	} else {
 		return false
 	}
 }
 
-func (blocks *BlocksByTime) before1H(block *types.Block) bool {
-	if block.Time() < blocks.Time {
+func (blockBucket *BlockTimeBucket) before1H(block *types.Block) bool {
+	if block.Time() < blockBucket.Time {
 		return true
 	} else {
 		return false
 	}
 }
 
-type BlocksByHash struct {
-	BlocksByHash map[common.Hash]*TrieNode
+type NodeByHash map[common.Hash]*TrieNode
+
+func newNodeByHash(block *types.Block) NodeByHash {
+	nodeByHash := make(map[common.Hash]*TrieNode)
+
+	nodeByHash[block.Hash()] = buildBlockNode(block)
+	return nodeByHash
 }
 
-func newBlocksByHash(block *types.Block) *BlocksByHash {
-	blocks := &BlocksByHash{
-		BlocksByHash: make(map[common.Hash]*TrieNode),
-	}
-
-	blocks.BlocksByHash[block.Hash()] = blocks.buildBlockNode(block)
-	return blocks
-}
-
-func (blocks *BlocksByHash) buildTxsIndex(txs []*types.Transaction) map[common.Hash]bool {
-	txsIndex := make(map[common.Hash]bool)
+func buildTxSet(txs []*types.Transaction) HashSet {
+	txSet := make(HashSet)
 	if len(txs) <= 0 {
-		return txsIndex
+		return txSet
 	}
 
 	for index := 0; index < len(txs); index++ {
-		txsIndex[txs[index].Hash()] = true
+		txSet.Add(txs[index].Hash())
 	}
 
-	return txsIndex
+	return txSet
 }
 
-func (blocks *BlocksByHash) buildBlockNode(block *types.Block) *TrieNode {
+func buildBlockNode(block *types.Block) *TrieNode {
 	if block == nil {
 		return nil
 	}
 
 	return &TrieNode{
-		Header:   block.Header,
-		TxsIndex: blocks.buildTxsIndex(block.Txs),
+		Header:    block.Header,
+		TxHashSet: buildTxSet(block.Txs),
 	}
 }
 
-func (blocks *BlocksByHash) add(block *types.Block) {
+func (nodeByHash NodeByHash) add(block *types.Block) {
 	hash := block.Hash()
-	_, ok := blocks.BlocksByHash[hash]
+	_, ok := nodeByHash[hash]
 	if !ok {
-		blocks.BlocksByHash[hash] = blocks.buildBlockNode(block)
+		nodeByHash[hash] = buildBlockNode(block)
 	}
 }
 
-func (blocks *BlocksByHash) del(hash common.Hash) {
-	delete(blocks.BlocksByHash, hash)
+func (nodeByHash NodeByHash) del(hash common.Hash) {
+	delete(nodeByHash, hash)
 }
 
-func (blocks *BlocksByHash) delBatch(delBlocks map[common.Hash]bool) {
-	if len(blocks.BlocksByHash) <= 0 {
+func (nodeByHash NodeByHash) delBatch(delBlocks HashSet) {
+	if len(nodeByHash) <= 0 {
 		return
 	}
 	if len(delBlocks) <= 0 {
@@ -140,12 +132,12 @@ func (blocks *BlocksByHash) delBatch(delBlocks map[common.Hash]bool) {
 	}
 
 	for k, _ := range delBlocks {
-		delete(blocks.BlocksByHash, k)
+		delete(nodeByHash, k)
 	}
 }
 
-func (blocks *BlocksByHash) get(hash common.Hash) *TrieNode {
-	node, ok := blocks.BlocksByHash[hash]
+func (nodeByHash NodeByHash) get(hash common.Hash) *TrieNode {
+	node, ok := nodeByHash[hash]
 	if !ok {
 		return nil
 	} else {
@@ -157,15 +149,15 @@ type TrieNode struct {
 	Header *types.Header
 
 	/* 该块打包的交易列表的索引 */
-	TxsIndex map[common.Hash]bool
+	TxHashSet HashSet
 }
 
 func (node *TrieNode) hashIsExist(hash common.Hash) bool {
-	if len(node.TxsIndex) <= 0 {
+	if len(node.TxHashSet) <= 0 {
 		return false
 	}
 
-	_, ok := node.TxsIndex[hash]
+	_, ok := node.TxHashSet[hash]
 	return ok
 }
 
@@ -173,30 +165,30 @@ func (node *TrieNode) hashIsExist(hash common.Hash) bool {
 type BlocksTrie struct {
 
 	/* 根据高度对块进行索引 */
-	BlocksByHash map[uint32]*BlocksByHash
+	HeightBuckets map[uint32]NodeByHash
 
 	/* 根据时间刻度对块Hash进行索引，用来回收块 */
-	BlocksByTime []*BlocksByTime
+	TimeBuckets []*BlockTimeBucket
 }
 
 func NewBlocksTrie() *BlocksTrie {
 	return &BlocksTrie{
-		BlocksByHash: make(map[uint32]*BlocksByHash),
-		BlocksByTime: make([]*BlocksByTime, TransactionExpiration),
+		HeightBuckets: make(map[uint32]NodeByHash),
+		TimeBuckets:   make([]*BlockTimeBucket, TransactionExpiration),
 	}
 }
 
-func (trie *BlocksTrie) delBlocksByHashBatch(delBlocks map[uint32]map[common.Hash]bool) {
-	if len(delBlocks) <= 0 || len(trie.BlocksByHash) <= 0 {
+func (trie *BlocksTrie) delFromHeightBucketBatch(delBlocks map[uint32]HashSet) {
+	if len(delBlocks) <= 0 || len(trie.HeightBuckets) <= 0 {
 		return
 	}
 
-	for height, hashes := range delBlocks {
-		blocks := trie.BlocksByHash[height]
+	for height, hashSet := range delBlocks {
+		blocks := trie.HeightBuckets[height]
 		if blocks == nil {
 			continue
 		} else {
-			blocks.delBatch(hashes)
+			blocks.delBatch(hashSet)
 		}
 	}
 }
@@ -205,22 +197,22 @@ func (trie *BlocksTrie) DelBlock(block *types.Block) {
 	if block == nil {
 		return
 	}
-	trie.delBlockByHash(block)
-	trie.delBlockByTime(block)
+	trie.delFromHeightBucket(block)
+	trie.delFromTimeBucket(block)
 }
 
-func (trie *BlocksTrie) addBlockByHash(block *types.Block) {
-	_, ok := trie.BlocksByHash[block.Height()]
+func (trie *BlocksTrie) addToHeightBucket(block *types.Block) {
+	_, ok := trie.HeightBuckets[block.Height()]
 	if !ok {
-		trie.BlocksByHash[block.Height()] = newBlocksByHash(block)
+		trie.HeightBuckets[block.Height()] = newNodeByHash(block)
 	} else {
-		trie.BlocksByHash[block.Height()].add(block)
+		trie.HeightBuckets[block.Height()].add(block)
 	}
 }
 
-func (trie *BlocksTrie) delBlockByHash(block *types.Block) {
+func (trie *BlocksTrie) delFromHeightBucket(block *types.Block) {
 	height := block.Height()
-	blocks := trie.BlocksByHash[height]
+	blocks := trie.HeightBuckets[height]
 	if blocks == nil {
 		return
 	} else {
@@ -228,27 +220,27 @@ func (trie *BlocksTrie) delBlockByHash(block *types.Block) {
 	}
 }
 
-func (trie *BlocksTrie) addBlockByTime(block *types.Block) {
+func (trie *BlocksTrie) addToTimeBucket(block *types.Block) {
 	slot := block.Time() % uint32(TransactionExpiration)
-	if trie.BlocksByTime[slot] == nil {
-		trie.BlocksByTime[slot] = newBlocksByTime(block)
+	if trie.TimeBuckets[slot] == nil {
+		trie.TimeBuckets[slot] = newBlockTimeBucket(block)
 	} else {
-		trie.BlocksByTime[slot].add(block)
+		trie.TimeBuckets[slot].add(block)
 	}
 }
 
-func (trie *BlocksTrie) delBlockByTime(block *types.Block) {
+func (trie *BlocksTrie) delFromTimeBucket(block *types.Block) {
 	slot := block.Time() % uint32(TransactionExpiration)
-	item := trie.BlocksByTime[slot]
-	if item == nil {
+	bucket := trie.TimeBuckets[slot]
+	if bucket == nil {
 		return
 	}
-	item.del(block)
+	bucket.del(block)
 }
 
-func (trie *BlocksTrie) resetBlockByTime(block *types.Block) {
+func (trie *BlocksTrie) resetTimeBucket(block *types.Block) {
 	slot := block.Time() % uint32(TransactionExpiration)
-	trie.BlocksByTime[slot] = newBlocksByTime(block)
+	trie.TimeBuckets[slot] = newBlockTimeBucket(block)
 }
 
 /* 从指定块开始，收集该块所在链指定高度区间的块[minHeight, maxHeight] */
@@ -262,18 +254,18 @@ func (trie *BlocksTrie) Path(hash common.Hash, height uint32, minHeight uint32, 
 	pHash := hash
 	pHeight := height
 	for pHeight >= minHeight {
-		blocks := trie.BlocksByHash[pHeight]
-		block := blocks.get(pHash)
-		if block == nil {
+		nodes := trie.HeightBuckets[pHeight]
+		node := nodes.get(pHash)
+		if node == nil {
 			panic(fmt.Sprintf("get block is nil.hash: %s", common.ToHex(hash.Bytes())))
 		}
 
 		if pHeight <= maxHeight {
-			result = append(result, block)
+			result = append(result, node)
 		}
 
-		pHeight = block.Header.Height - 1
-		pHash = block.Header.ParentHash
+		pHeight = node.Header.Height - 1
+		pHash = node.Header.ParentHash
 	}
 
 	return result
@@ -286,24 +278,24 @@ func (trie *BlocksTrie) PushBlock(block *types.Block) {
 	}
 
 	slot := block.Time() % uint32(TransactionExpiration)
-	blocks := trie.BlocksByTime[slot]
-	if blocks == nil {
-		trie.resetBlockByTime(block)
-		trie.addBlockByHash(block)
+	timeBucket := trie.TimeBuckets[slot]
+	if timeBucket == nil {
+		trie.resetTimeBucket(block)
+		trie.addToHeightBucket(block)
 	} else {
-		if blocks.timeOut(block) {
-			trie.delBlocksByHashBatch(blocks.BlocksByHeight)
-			trie.resetBlockByTime(block)
-			trie.addBlockByHash(block)
+		if timeBucket.timeOut(block) {
+			trie.delFromHeightBucketBatch(timeBucket.BlocksByHeight)
+			trie.resetTimeBucket(block)
+			trie.addToHeightBucket(block)
 		}
 
-		if blocks.notTimeOut(block) {
-			trie.addBlockByHash(block)
-			trie.addBlockByTime(block)
+		if timeBucket.notTimeOut(block) {
+			trie.addToHeightBucket(block)
+			trie.addToTimeBucket(block)
 		}
 
-		if blocks.before1H(block) {
-			log.Errorf(fmt.Sprintf("item.Time(%d) > block.Time(%d)", blocks.Time, block.Time()))
+		if timeBucket.before1H(block) {
+			log.Errorf(fmt.Sprintf("item.Time(%d) > block.Time(%d)", timeBucket.Time, block.Time()))
 		}
 	}
 }

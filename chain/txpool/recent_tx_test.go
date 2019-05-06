@@ -11,16 +11,16 @@ import (
 func TestTxRecently_RecvTx(t *testing.T) {
 	recently := NewTxRecently()
 	recently.RecvTx(nil)
-	assert.Equal(t, 0, len(recently.TxsByHash))
+	assert.Equal(t, 0, len(recently.TraceMap))
 
 	tx1 := makeTxRandom(common.HexToAddress("0x01"))
 	tx2 := makeTxRandom(common.HexToAddress("0x02"))
 	recently.RecvTx(tx1)
 	recently.RecvTx(tx2)
 
-	assert.Equal(t, 2, len(recently.TxsByHash))
-	assert.Equal(t, 0, len(recently.TxsByHash[tx1.Hash()].BlocksHash))
-	assert.Equal(t, 0, len(recently.TxsByHash[tx2.Hash()].BlocksHash))
+	assert.Equal(t, 2, len(recently.TraceMap))
+	assert.Equal(t, 0, len(recently.TraceMap[tx1.Hash()]))
+	assert.Equal(t, 0, len(recently.TraceMap[tx2.Hash()]))
 
 	if tx1.Expiration() == tx2.Expiration() {
 		slot := tx1.Expiration() % uint64(TransactionExpiration)
@@ -41,15 +41,15 @@ func TestTxRecently_RecvBlock(t *testing.T) {
 	txs := make([]*types.Transaction, 0)
 
 	recently.RecvBlock(bhash, height, txs)
-	assert.Equal(t, 0, len(recently.TxsByHash))
+	assert.Equal(t, 0, len(recently.TraceMap))
 
 	txs = append(txs, makeTxRandom(common.HexToAddress("0x01")))
 	txs = append(txs, makeTxRandom(common.HexToAddress("0x02")))
 	recently.RecvBlock(bhash, height, txs)
 
-	assert.Equal(t, 2, len(recently.TxsByHash))
-	assert.Equal(t, height, recently.TxsByHash[txs[0].Hash()].BlocksHash[bhash])
-	assert.Equal(t, height, recently.TxsByHash[txs[1].Hash()].BlocksHash[bhash])
+	assert.Equal(t, 2, len(recently.TraceMap))
+	assert.Equal(t, height, recently.TraceMap[txs[0].Hash()][bhash])
+	assert.Equal(t, height, recently.TraceMap[txs[1].Hash()][bhash])
 }
 
 func TestTxRecently_RecvBlockTimeOut(t *testing.T) {
@@ -68,7 +68,7 @@ func TestTxRecently_RecvBlockTimeOut(t *testing.T) {
 
 	slot := expiration % int64(TransactionExpiration)
 	assert.Equal(t, 4, len(recently.TxsByTime[slot].TxIndexes))
-	assert.Equal(t, 4, len(recently.TxsByHash))
+	assert.Equal(t, 4, len(recently.TraceMap))
 
 	txs = make([]*types.Transaction, 0)
 	txs = append(txs, makeTx(common.HexToAddress("0x05"), expiration+int64(TransactionExpiration)))
@@ -76,7 +76,7 @@ func TestTxRecently_RecvBlockTimeOut(t *testing.T) {
 
 	slot = expiration % int64(TransactionExpiration)
 	assert.Equal(t, 1, len(recently.TxsByTime[slot].TxIndexes))
-	assert.Equal(t, 1, len(recently.TxsByHash))
+	assert.Equal(t, 1, len(recently.TraceMap))
 
 	txs = make([]*types.Transaction, 0)
 	txs = append(txs, makeTx(common.HexToAddress("0x06"), expiration))
@@ -84,7 +84,7 @@ func TestTxRecently_RecvBlockTimeOut(t *testing.T) {
 
 	slot = expiration % int64(TransactionExpiration)
 	assert.Equal(t, 1, len(recently.TxsByTime[slot].TxIndexes))
-	assert.Equal(t, 1, len(recently.TxsByHash))
+	assert.Equal(t, 1, len(recently.TraceMap))
 
 	txs = make([]*types.Transaction, 0)
 	txs = append(txs, makeTx(common.HexToAddress("0x08"), expiration+int64(TransactionExpiration)))
@@ -92,7 +92,7 @@ func TestTxRecently_RecvBlockTimeOut(t *testing.T) {
 
 	slot = expiration % int64(TransactionExpiration)
 	assert.Equal(t, 2, len(recently.TxsByTime[slot].TxIndexes))
-	assert.Equal(t, 2, len(recently.TxsByHash))
+	assert.Equal(t, 2, len(recently.TraceMap))
 }
 
 func TestTxRecently_GetPath(t *testing.T) {
@@ -138,26 +138,25 @@ func TestTxRecently_GetPath(t *testing.T) {
 	txs = append(txs, makeTx(common.HexToAddress("0x11"), expiration))
 
 	// get path
-	result := recently.GetPath(txs)
+	result := recently.GetTrace(txs)
 	assert.Equal(t, 2, len(result))
 
 	blocks, ok := result[txs4[0].Hash()]
 	assert.Equal(t, true, ok)
-	assert.Equal(t, 1, len(blocks.BlocksHash))
-	assert.Equal(t, int64(103), blocks.BlocksHash[common.HexToHash("0x04")])
+	assert.Equal(t, 1, len(blocks))
+	assert.Equal(t, int64(103), blocks[common.HexToHash("0x04")])
 
 	blocks, ok = result[txs2[0].Hash()]
 	assert.Equal(t, true, ok)
-	assert.Equal(t, 3, len(blocks.BlocksHash))
-	assert.Equal(t, int64(101), blocks.BlocksHash[common.HexToHash("0x02")])
-	assert.Equal(t, int64(104), blocks.BlocksHash[common.HexToHash("0x05")])
-	assert.Equal(t, int64(105), blocks.BlocksHash[common.HexToHash("0x06")])
+	assert.Equal(t, 3, len(blocks))
+	assert.Equal(t, int64(101), blocks[common.HexToHash("0x02")])
+	assert.Equal(t, int64(104), blocks[common.HexToHash("0x05")])
+	assert.Equal(t, int64(105), blocks[common.HexToHash("0x06")])
 
 	// distance
-	minHeight, maxHeight, hashes := blocks.distance()
+	minHeight, maxHeight := blocks.heightRange()
 	assert.Equal(t, int64(101), minHeight)
 	assert.Equal(t, int64(105), maxHeight)
-	assert.Equal(t, 3, len(hashes))
 }
 
 func TestTxRecently_PruneBlock(t *testing.T) {
@@ -197,23 +196,23 @@ func TestTxRecently_PruneBlock(t *testing.T) {
 	recently.RecvBlock(common.HexToHash("0x06"), 105, txs6)
 	slot := expiration % int64(TransactionExpiration)
 	assert.Equal(t, 8, len(recently.TxsByTime[slot].TxIndexes))
-	assert.Equal(t, 3, len(recently.TxsByHash[txs1[0].Hash()].BlocksHash))
-	assert.Equal(t, 3, len(recently.TxsByHash[txs2[0].Hash()].BlocksHash))
-	assert.Equal(t, 3, len(recently.TxsByHash[txs3[0].Hash()].BlocksHash))
+	assert.Equal(t, 3, len(recently.TraceMap[txs1[0].Hash()]))
+	assert.Equal(t, 3, len(recently.TraceMap[txs2[0].Hash()]))
+	assert.Equal(t, 3, len(recently.TraceMap[txs3[0].Hash()]))
 
 	recently.PruneBlock(common.HexToHash("0x05"), 104, txs5)
 	slot = expiration % int64(TransactionExpiration)
 	assert.Equal(t, 8, len(recently.TxsByTime[slot].TxIndexes))
 
-	assert.Equal(t, 2, len(recently.TxsByHash[txs1[0].Hash()].BlocksHash))
-	assert.Equal(t, 2, len(recently.TxsByHash[txs2[0].Hash()].BlocksHash))
-	assert.Equal(t, 2, len(recently.TxsByHash[txs3[0].Hash()].BlocksHash))
+	assert.Equal(t, 2, len(recently.TraceMap[txs1[0].Hash()]))
+	assert.Equal(t, 2, len(recently.TraceMap[txs2[0].Hash()]))
+	assert.Equal(t, 2, len(recently.TraceMap[txs3[0].Hash()]))
 
 	recently.PruneBlock(common.HexToHash("0x06"), 105, txs6)
 	slot = expiration % int64(TransactionExpiration)
 	assert.Equal(t, 8, len(recently.TxsByTime[slot].TxIndexes))
 
-	assert.Equal(t, 1, len(recently.TxsByHash[txs1[0].Hash()].BlocksHash))
-	assert.Equal(t, 1, len(recently.TxsByHash[txs2[0].Hash()].BlocksHash))
-	assert.Equal(t, 1, len(recently.TxsByHash[txs3[0].Hash()].BlocksHash))
+	assert.Equal(t, 1, len(recently.TraceMap[txs1[0].Hash()]))
+	assert.Equal(t, 1, len(recently.TraceMap[txs2[0].Hash()]))
+	assert.Equal(t, 1, len(recently.TraceMap[txs3[0].Hash()]))
 }

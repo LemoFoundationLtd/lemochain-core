@@ -1,7 +1,6 @@
 package txpool
 
 import (
-	"errors"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"sync"
@@ -9,16 +8,12 @@ import (
 
 var TransactionExpiration = 30 * 60
 
-var (
-	TxPoolErrExist = errors.New("transaction is exist")
-)
-
 type TxPool struct {
 	/* 还未被打包进块的交易 */
-	TxQueue *TxQueue
+	PendingTxs *TxQueue
 
 	/* 最近1个小时的所有交易 */
-	TxRecently *TxRecently
+	RecentTxs *RecentTx
 
 	/* 从当前高度向后的3600个块 */
 	BlockCache *BlocksTrie
@@ -28,8 +23,8 @@ type TxPool struct {
 
 func NewTxPool() *TxPool {
 	return &TxPool{
-		TxQueue:    NewTxQueue(),
-		TxRecently: NewTxRecently(),
+		PendingTxs: NewTxQueue(),
+		RecentTxs:  NewTxRecently(),
 		BlockCache: NewBlocksTrie(),
 	}
 }
@@ -38,7 +33,7 @@ func NewTxPool() *TxPool {
 func (pool *TxPool) Get(time uint32, size int) []*types.Transaction {
 	pool.RW.Lock()
 	defer pool.RW.Unlock()
-	return pool.TxQueue.Pop(time, size)
+	return pool.PendingTxs.Pop(time, size)
 }
 
 /* 本节点出块时，执行交易后，发现错误的交易通过该接口进行删除 */
@@ -54,17 +49,16 @@ func (pool *TxPool) DelErrTxs(txs []*types.Transaction) {
 	for _, tx := range txs {
 		hashes = append(hashes, tx.Hash())
 	}
-	pool.TxQueue.DelBatch(hashes)
+	pool.PendingTxs.DelBatch(hashes)
 }
 
-func (pool *TxPool) isInBlocks(hashes map[common.Hash]bool, blocks []*TrieNode) bool {
+func (pool *TxPool) isInBlocks(hashes HashSet, blocks []*TrieNode) bool {
 	if len(hashes) <= 0 || len(blocks) <= 0 {
 		return false
 	}
 
 	for _, v := range blocks {
-		_, ok := hashes[v.Header.Hash()]
-		if !ok {
+		if !hashes.Has(v.Header.Hash()) {
 			continue
 		} else {
 			return true
@@ -86,24 +80,24 @@ func (pool *TxPool) BlockIsValid(block *types.Block) bool {
 		return true
 	}
 
-	blocks := pool.TxRecently.GetPath(block.Txs)
-	minHeight, maxHeight, hashes := pool.distance(blocks)
+	traceByHash := pool.RecentTxs.GetTrace(block.Txs)
+	minHeight, maxHeight, blocks := pool.distance(traceByHash)
 	startHash := block.ParentHash()
 	startHeight := block.Height() - 1
 
 	nodes := pool.BlockCache.Path(startHash, startHeight, uint32(minHeight), uint32(maxHeight))
-	return !pool.isInBlocks(hashes, nodes)
+	return !pool.isInBlocks(blocks, nodes)
 }
 
-func (pool *TxPool) distance(hashes map[common.Hash]*TxInBlocks) (int64, int64, map[common.Hash]bool) {
+func (pool *TxPool) distance(traceByHash map[common.Hash]TxTrace) (int64, int64, HashSet) {
 	minHeight := int64(^uint64(0) >> 1)
 	maxHeight := int64(-1)
-	blocks := make(map[common.Hash]bool)
-	for _, v := range hashes {
-		minHeightTmp, maxHeightTmp, blocksTmp := v.distance()
-		if len(blocksTmp) <= 0 {
+	blockSet := make(HashSet)
+	for _, trace := range traceByHash {
+		if len(trace) <= 0 {
 			continue
 		} else {
+			minHeightTmp, maxHeightTmp := trace.heightRange()
 			if minHeight > minHeightTmp {
 				minHeight = minHeightTmp
 			}
@@ -112,13 +106,13 @@ func (pool *TxPool) distance(hashes map[common.Hash]*TxInBlocks) (int64, int64, 
 				maxHeight = maxHeightTmp
 			}
 
-			for k, _ := range blocksTmp {
-				blocks[k] = true
+			for blockHash, _ := range trace {
+				blockSet.Add(blockHash)
 			}
 		}
 	}
 
-	return minHeight, maxHeight, blocks
+	return minHeight, maxHeight, blockSet
 }
 
 /* 新收到一个通过验证的新块（包括本节点出的块），需要从交易池中删除该块中已打包的交易 */
@@ -136,8 +130,8 @@ func (pool *TxPool) RecvBlock(block *types.Block) {
 			hashes = append(hashes, v.Hash())
 		}
 
-		pool.TxQueue.DelBatch(hashes)
-		pool.TxRecently.RecvBlock(block.Hash(), int64(block.Height()), block.Txs)
+		pool.PendingTxs.DelBatch(hashes)
+		pool.RecentTxs.RecvBlock(block.Hash(), int64(block.Height()), block.Txs)
 	}
 
 	pool.BlockCache.PushBlock(block)
@@ -152,8 +146,8 @@ func (pool *TxPool) RecvTx(tx *types.Transaction) {
 		return
 	}
 
-	pool.TxRecently.RecvTx(tx)
-	pool.TxQueue.Push(tx)
+	pool.RecentTxs.RecvTx(tx)
+	pool.PendingTxs.Push(tx)
 }
 
 func (pool *TxPool) RecvTxs(txs []*types.Transaction) {
@@ -176,8 +170,8 @@ func (pool *TxPool) PruneBlock(block *types.Block) {
 	}
 
 	if len(block.Txs) > 0 {
-		pool.TxQueue.PushBatch(block.Txs)
-		pool.TxRecently.PruneBlock(block.Hash(), int64(block.Height()), block.Txs)
+		pool.PendingTxs.PushBatch(block.Txs)
+		pool.RecentTxs.PruneBlock(block.Hash(), int64(block.Height()), block.Txs)
 	}
 
 	pool.BlockCache.DelBlock(block)

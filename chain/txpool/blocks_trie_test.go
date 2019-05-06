@@ -28,10 +28,10 @@ func TestBlocksTrie_PushBlock(t *testing.T) {
 	block1.Txs = append(block1.Txs, tx2)
 	block1.Txs = append(block1.Txs, tx3)
 	trie.PushBlock(block1)
-	assert.Equal(t, 3, len(trie.BlocksByHash[1].BlocksByHash[block1.Hash()].TxsIndex))
+	assert.Equal(t, 3, len(trie.HeightBuckets[1][block1.Hash()].TxHashSet))
 
 	slot := curTime % int64(TransactionExpiration)
-	assert.Equal(t, 1, len(trie.BlocksByTime[slot].BlocksByHeight))
+	assert.Equal(t, 1, len(trie.TimeBuckets[slot].BlocksByHeight))
 
 	block2 := store.GetBlock2()
 	block2.Header.ParentHash = block1.Hash()
@@ -41,10 +41,10 @@ func TestBlocksTrie_PushBlock(t *testing.T) {
 	block2.Txs = append(block2.Txs, tx6)
 	block2.Txs = append(block2.Txs, tx7)
 	trie.PushBlock(block2)
-	assert.Equal(t, 4, len(trie.BlocksByHash[2].BlocksByHash[block2.Hash()].TxsIndex))
+	assert.Equal(t, 4, len(trie.HeightBuckets[2][block2.Hash()].TxHashSet))
 
 	slot = curTime % int64(TransactionExpiration)
-	assert.Equal(t, 2, len(trie.BlocksByTime[slot].BlocksByHeight))
+	assert.Equal(t, 2, len(trie.TimeBuckets[slot].BlocksByHeight))
 
 	block3 := store.GetBlock3()
 	block3.Header.ParentHash = block2.Hash()
@@ -85,12 +85,12 @@ func TestBlocksTrie_DelBlock(t *testing.T) {
 
 	trie.DelBlock(block1)
 
-	assert.Equal(t, 4, len(trie.BlocksByHash[2].BlocksByHash[block2.Hash()].TxsIndex))
+	assert.Equal(t, 4, len(trie.HeightBuckets[2][block2.Hash()].TxHashSet))
 
 	slot := curTime % int64(TransactionExpiration)
-	assert.Equal(t, 2, len(trie.BlocksByTime[slot].BlocksByHeight))
+	assert.Equal(t, 2, len(trie.TimeBuckets[slot].BlocksByHeight))
 
-	item := trie.BlocksByTime[slot].BlocksByHeight[block1.Height()]
+	item := trie.TimeBuckets[slot].BlocksByHeight[block1.Height()]
 	assert.Equal(t, 0, len(item))
 }
 
