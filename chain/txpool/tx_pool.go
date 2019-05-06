@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
+	"sync"
 )
 
 var TransactionExpiration = 30 * 60
@@ -21,6 +22,8 @@ type TxPool struct {
 
 	/* 从当前高度向后的3600个块 */
 	BlockCache *BlocksTrie
+
+	RW sync.RWMutex
 }
 
 func NewTxPool() *TxPool {
@@ -33,11 +36,16 @@ func NewTxPool() *TxPool {
 
 /* 本节点出块时，从交易池中取出交易进行打包，但并不从交易池中删除 */
 func (pool *TxPool) Get(time uint32, size int) []*types.Transaction {
+	pool.RW.Lock()
+	defer pool.RW.Unlock()
 	return pool.TxQueue.Pop(time, size)
 }
 
 /* 本节点出块时，执行交易后，发现错误的交易通过该接口进行删除 */
 func (pool *TxPool) DelErrTxs(txs []*types.Transaction) {
+	pool.RW.Lock()
+	defer pool.RW.Unlock()
+
 	if len(txs) <= 0 {
 		return
 	}
@@ -60,26 +68,31 @@ func (pool *TxPool) isInBlocks(hashes map[common.Hash]bool, blocks []*TrieNode) 
 		if !ok {
 			continue
 		} else {
-			return false
+			return true
 		}
 	}
 
-	return true
+	return false
 }
 
 /* 新收一个块时，验证块中的交易是否被同一条分叉上的其他块打包了 */
 func (pool *TxPool) BlockIsValid(block *types.Block) bool {
+	pool.RW.Lock()
+	defer pool.RW.Unlock()
+
 	if block == nil {
 		return false
 	}
-
 	if len(block.Txs) <= 0 {
 		return true
 	}
 
 	blocks := pool.TxRecently.GetPath(block.Txs)
 	minHeight, maxHeight, hashes := pool.distance(blocks)
-	nodes := pool.BlockCache.Path(block.Hash(), block.Height(), uint32(minHeight), uint32(maxHeight))
+	startHash := block.ParentHash()
+	startHeight := block.Height() - 1
+
+	nodes := pool.BlockCache.Path(startHash, startHeight, uint32(minHeight), uint32(maxHeight))
 	return !pool.isInBlocks(hashes, nodes)
 }
 
@@ -89,14 +102,14 @@ func (pool *TxPool) distance(hashes map[common.Hash]*TxInBlocks) (int64, int64, 
 	blocks := make(map[common.Hash]bool)
 	for _, v := range hashes {
 		minHeightTmp, maxHeightTmp, blocksTmp := v.distance()
-		if len(blocks) <= 0 {
+		if len(blocksTmp) <= 0 {
 			continue
 		} else {
-			if minHeight < minHeightTmp {
+			if minHeight > minHeightTmp {
 				minHeight = minHeightTmp
 			}
 
-			if maxHeight > maxHeightTmp {
+			if maxHeight < maxHeightTmp {
 				maxHeight = maxHeightTmp
 			}
 
@@ -111,6 +124,9 @@ func (pool *TxPool) distance(hashes map[common.Hash]*TxInBlocks) (int64, int64, 
 
 /* 新收到一个通过验证的新块（包括本节点出的块），需要从交易池中删除该块中已打包的交易 */
 func (pool *TxPool) RecvBlock(block *types.Block) {
+	pool.RW.Lock()
+	defer pool.RW.Unlock()
+
 	if block == nil {
 		return
 	}
@@ -130,6 +146,9 @@ func (pool *TxPool) RecvBlock(block *types.Block) {
 
 /* 收到一笔新的交易 */
 func (pool *TxPool) RecvTx(tx *types.Transaction) {
+	pool.RW.Lock()
+	defer pool.RW.Unlock()
+
 	if tx == nil {
 		return
 	}
@@ -140,6 +159,9 @@ func (pool *TxPool) RecvTx(tx *types.Transaction) {
 
 /* 对链进行剪枝，剪下的块中的交易需要回归交易池 */
 func (pool *TxPool) PruneBlock(block *types.Block) {
+	pool.RW.Lock()
+	defer pool.RW.Unlock()
+
 	if block == nil {
 		return
 	}
