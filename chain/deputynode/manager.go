@@ -165,6 +165,15 @@ func (m *Manager) GetMyDeputyInfo(height uint32) *DeputyNode {
 	return m.GetDeputyByNodeID(height, GetSelfNodeID())
 }
 
+// GetMyMinerAddress 获取自己在某一届高度的矿工账号
+func (m *Manager) GetMyMinerAddress(height uint32) (common.Address, bool) {
+	deputy := m.GetDeputyByNodeID(height, GetSelfNodeID())
+	if deputy != nil {
+		return deputy.MinerAddress, true
+	}
+	return common.Address{}, false
+}
+
 // IsSelfDeputyNode
 func (m *Manager) IsSelfDeputyNode(height uint32) bool {
 	return m.IsNodeDeputy(height, GetSelfNodeID())

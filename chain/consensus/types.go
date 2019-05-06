@@ -18,7 +18,6 @@ type Config struct {
 
 // BlockMaterial is used for mine a new block
 type BlockMaterial struct {
-	MinerAddr     common.Address
 	Extra         []byte
 	MineTimeLimit int64
 	Txs           types.Transactions

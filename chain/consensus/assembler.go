@@ -52,7 +52,12 @@ func (ba *BlockAssembler) RunBlock(block *types.Block) (*types.Block, error) {
 }
 
 // MineBlock packages all products into a block
-func (ba *BlockAssembler) MineBlock(parent *types.Block, minerAddress common.Address, extra []byte, txPool TxPool, timeLimitSeconds int64) (*types.Block, error) {
+func (ba *BlockAssembler) MineBlock(parent *types.Block, extra []byte, txPool TxPool, timeLimitSeconds int64) (*types.Block, error) {
+	minerAddress, ok := ba.dm.GetMyMinerAddress(parent.Height() + 1)
+	if !ok {
+		log.Errorf("Not a deputy at height %d. can't mine", parent.Height()+1)
+		return nil, ErrNotDeputy
+	}
 	// create header
 	header := ba.sealHeader(parent, minerAddress, extra)
 	// execute tx
