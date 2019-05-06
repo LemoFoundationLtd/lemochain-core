@@ -391,7 +391,7 @@ func (m *Miner) sealBlock() {
 	}
 	log.Debug("Start seal")
 	header, dNodes := m.sealHead()
-	txs := m.txPool.Pending(1000000)
+	txs := m.txPool.Get(header.Time, 1000000)
 	log.Debugf("Pending number of txs from txPool: %d  ", len(txs))
 	defer func() {
 		var timeDur int64
@@ -441,14 +441,8 @@ func (m *Miner) sealBlock() {
 		return
 	}
 	// remove txs from pool
-	txsKeys := make([]common.Hash, len(packagedTxs)+len(invalidTxs))
-	for i, tx := range packagedTxs {
-		txsKeys[i] = tx.Hash()
-	}
-	for i, tx := range invalidTxs {
-		txsKeys[i+len(packagedTxs)] = tx.Hash()
-	}
-	m.txPool.Remove(txsKeys)
+	m.txPool.RecvBlock(block)
+	m.txPool.DelErrTxs(invalidTxs)
 	log.Infof("Mine a new block. height: %d hash: %s, len(txs): %d", block.Height(), block.Hash().String(), len(block.Txs))
 }
 

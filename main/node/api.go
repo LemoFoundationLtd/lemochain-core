@@ -396,8 +396,8 @@ func (t *PublicTxAPI) SendTx(tx *types.Transaction) (common.Hash, error) {
 	if err != nil {
 		return common.Hash{}, err
 	}
-	err = t.node.txPool.AddTx(tx)
-	return tx.Hash(), err
+	t.node.txPool.RecvTx(tx)
+	return tx.Hash(), nil
 }
 
 // SendReimbursedGasTx gas代付交易 todo 测试使用
@@ -418,8 +418,8 @@ func (t *PublicTxAPI) SendReimbursedGasTx(senderPrivate, gasPayerPrivate string,
 	if err != nil {
 		return common.Hash{}, err
 	}
-	err = t.node.txPool.AddTx(lastSignTx)
-	return lastSignTx.Hash(), err
+	t.node.txPool.RecvTx(lastSignTx)
+	return lastSignTx.Hash(), nil
 }
 
 // CreateAsset 创建资产
@@ -570,7 +570,7 @@ func VerifyTx(tx *types.Transaction) error {
 
 // PendingTx
 func (t *PublicTxAPI) PendingTx(size int) []*types.Transaction {
-	return t.node.txPool.Pending(size)
+	return t.node.txPool.Get(uint32(time.Now().Unix()), size)
 }
 
 // ReadContract read variables in a contract includes the return value of a function.
