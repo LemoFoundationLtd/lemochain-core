@@ -54,7 +54,6 @@ func (pool *TxPool) DelErrTxs(txs []*types.Transaction) {
 	for _, tx := range txs {
 		hashes = append(hashes, tx.Hash())
 	}
-
 	pool.TxQueue.DelBatch(hashes)
 }
 
@@ -155,6 +154,16 @@ func (pool *TxPool) RecvTx(tx *types.Transaction) {
 
 	pool.TxRecently.RecvTx(tx)
 	pool.TxQueue.Push(tx)
+}
+
+func (pool *TxPool) RecvTxs(txs []*types.Transaction) {
+	if len(txs) <= 0 {
+		return
+	}
+
+	for _, v := range txs {
+		pool.RecvTx(v)
+	}
 }
 
 /* 对链进行剪枝，剪下的块中的交易需要回归交易池 */

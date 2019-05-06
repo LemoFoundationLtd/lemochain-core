@@ -16,27 +16,15 @@ func TestTxPool_RecvTx(t *testing.T) {
 	tx1 := makeTxRandom(common.HexToAddress("0x01"))
 	tx2 := makeTxRandom(common.HexToAddress("0x02"))
 	tx3 := makeTxRandom(common.HexToAddress("0x03"))
-	tx4 := makeTxRandom(common.HexToAddress("0x04"))
-	tx5 := makeTxRandom(common.HexToAddress("0x05"))
-	tx6 := makeTxRandom(common.HexToAddress("0x06"))
-	tx7 := makeTxRandom(common.HexToAddress("0x07"))
-	tx8 := makeTxRandom(common.HexToAddress("0x08"))
-	tx9 := makeTxRandom(common.HexToAddress("0x09"))
 	pool.RecvTx(tx1)
 	pool.RecvTx(tx2)
 	pool.RecvTx(tx3)
-	pool.RecvTx(tx4)
-	pool.RecvTx(tx5)
-	pool.RecvTx(tx6)
-	pool.RecvTx(tx7)
-	pool.RecvTx(tx8)
-	pool.RecvTx(tx9)
 
 	result := pool.Get(uint32(curTime), 10)
-	assert.Equal(t, 9, len(result))
+	assert.Equal(t, 3, len(result))
 
 	result = pool.Get(uint32(curTime), 10)
-	assert.Equal(t, 9, len(result))
+	assert.Equal(t, 3, len(result))
 }
 
 func TestTxPool_DelErrTxs(t *testing.T) {
@@ -47,20 +35,10 @@ func TestTxPool_DelErrTxs(t *testing.T) {
 	tx2 := makeTxRandom(common.HexToAddress("0x02"))
 	tx3 := makeTxRandom(common.HexToAddress("0x03"))
 	tx4 := makeTxRandom(common.HexToAddress("0x04"))
-	tx5 := makeTxRandom(common.HexToAddress("0x05"))
-	tx6 := makeTxRandom(common.HexToAddress("0x06"))
-	tx7 := makeTxRandom(common.HexToAddress("0x07"))
-	tx8 := makeTxRandom(common.HexToAddress("0x08"))
-	tx9 := makeTxRandom(common.HexToAddress("0x09"))
 	pool.RecvTx(tx1)
 	pool.RecvTx(tx2)
 	pool.RecvTx(tx3)
 	pool.RecvTx(tx4)
-	pool.RecvTx(tx5)
-	pool.RecvTx(tx6)
-	pool.RecvTx(tx7)
-	pool.RecvTx(tx8)
-	pool.RecvTx(tx9)
 
 	delTxs := make([]*types.Transaction, 0, 3)
 	delTxs = append(delTxs, tx1)
@@ -69,7 +47,7 @@ func TestTxPool_DelErrTxs(t *testing.T) {
 	pool.DelErrTxs(delTxs)
 
 	result := pool.Get(uint32(curTime), 10)
-	assert.Equal(t, 6, len(result))
+	assert.Equal(t, 1, len(result))
 }
 
 func TestTxPool_RecvBlock(t *testing.T) {
