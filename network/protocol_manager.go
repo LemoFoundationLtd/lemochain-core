@@ -662,7 +662,7 @@ func (pm *ProtocolManager) handleTxsMsg(msg *p2p.Msg) error {
 	}
 
 	for _, tx := range txs {
-		if err := tx.VerifyTx(pm.chainID); err != nil {
+		if err := tx.VerifyTx(pm.chainID, uint64(time.Now().Unix())); err != nil {
 			log.Errorf("Received a bad tx. tx:%s, error:%v", tx.String(), err)
 			return err
 		}

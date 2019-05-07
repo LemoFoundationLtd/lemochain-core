@@ -13,7 +13,6 @@ import (
 	"math/big"
 	"strings"
 	"sync/atomic"
-	"time"
 )
 
 const (
@@ -34,9 +33,9 @@ var (
 	ErrCreateContract        = errors.New("the data of create contract transaction can't be null")
 	ErrSpecialTx             = errors.New("the data of special transaction can't be null")
 	ErrTxType                = errors.New("the transaction type does not exit")
-	ErrTxExpiration          = errors.New("tx expiration time is out of date")
-	ErrNegativeValue         = errors.New("negative value")
-	ErrTxChainID             = errors.New("tx chainID is incorrect")
+	ErrTxExpiration          = errors.New("transaction is out of date")
+	ErrNegativeValue         = errors.New("transaction amount can't be negative")
+	ErrTxChainID             = errors.New("transaction chainID is incorrect")
 )
 
 type Transactions []*Transaction
@@ -385,10 +384,10 @@ func (tx *Transaction) Clone() *Transaction {
 }
 
 // VerifyTx transaction parameter verification
-func (tx *Transaction) VerifyTx(chainID uint16) error {
+func (tx *Transaction) VerifyTx(chainID uint16, timeStamp uint64) error {
 	// verify time
-	if tx.Expiration() < uint64(time.Now().Unix()) {
-		log.Warnf("Tx out of date. tx expiration:%d, nowTime:%d", tx.Expiration(), time.Now().Unix())
+	if tx.Expiration() < timeStamp {
+		log.Warnf("Tx out of date. tx expiration:%d, timeStamp:%d", tx.Expiration(), timeStamp)
 		return ErrTxExpiration
 	}
 	// verify chainID

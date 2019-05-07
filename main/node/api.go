@@ -415,7 +415,7 @@ func NewPublicTxAPI(node *Node) *PublicTxAPI {
 
 // Send send a transaction
 func (t *PublicTxAPI) SendTx(tx *types.Transaction) (common.Hash, error) {
-	err := tx.VerifyTx(t.node.ChainID())
+	err := tx.VerifyTx(t.node.ChainID(), uint64(time.Now().Unix()))
 	if err != nil {
 		return common.Hash{}, err
 	}
