@@ -53,7 +53,7 @@ func (sm *StableManager) UpdateStable(block *types.Block) (bool, error) {
 	}
 
 	// update stable block
-	if err := sm.db.SetStableBlock(hash); err != nil {
+	if _, err := sm.db.SetStableBlock(hash); err != nil {
 		log.Errorf("SetStableBlock error. height:%d hash:%s, err:%s", block.Height(), common.ToHex(hash[:]), err.Error())
 		return false, ErrSetStableBlockToDB
 	}

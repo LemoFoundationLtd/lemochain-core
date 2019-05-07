@@ -560,7 +560,8 @@ func (database *ChainDatabase) LoadLatestBlock() (*types.Block, error) {
 	}
 }
 
-func (database *ChainDatabase) SetStableBlock(hash common.Hash) error {
+// SetStableBlock set the state of the block to stable, then return pruned uncle blocks
+func (database *ChainDatabase) SetStableBlock(hash common.Hash) ([]*types.Block, error) {
 	database.RW.Lock()
 	defer database.RW.Unlock()
 
@@ -568,8 +569,9 @@ func (database *ChainDatabase) SetStableBlock(hash common.Hash) error {
 	cItem := database.UnConfirmBlocks[hash]
 	if cItem == nil {
 		log.Errorf("set stable block error:the block is not exist. hash:" + hash.Hex())
-		return ErrArgInvalid
+		return nil, ErrArgInvalid
 	}
+	droppedBlocks := make([]*types.Block, 0)
 
 	// clear the branches from root, except one branch
 	clear := func(oldRoot, newRoot *CBlock) {
@@ -583,6 +585,8 @@ func (database *ChainDatabase) SetStableBlock(hash common.Hash) error {
 			delete(database.UnConfirmBlocks, node.Block.Hash())
 			node.Parent = nil
 			node.Children = nil
+			// collect pruned uncle blocks
+			droppedBlocks = append(droppedBlocks, node.Block)
 		}
 
 		// remove old root from unconfirmed nodes map
@@ -609,7 +613,8 @@ func (database *ChainDatabase) SetStableBlock(hash common.Hash) error {
 	}
 
 	blocks := cItem.CollectToParent(database.LastConfirm)
-	return commit(blocks)
+	err := commit(blocks)
+	return droppedBlocks, err
 }
 
 // GetAccount loads account from cache or db

@@ -38,8 +38,9 @@ func TestCacheChain_SetBlock(t *testing.T) {
 	assert.Equal(t, unconfirmCB0, cacheChain.LastConfirm.Children[0])
 
 	// set genesis stable
-	err = cacheChain.SetStableBlock(block0.Hash())
+	blocks, err := cacheChain.SetStableBlock(block0.Hash())
 	assert.NoError(t, err)
+	assert.Len(t, blocks, 0)
 	assert.Len(t, cacheChain.UnConfirmBlocks, 0)
 	assert.Equal(t, unconfirmCB0, cacheChain.LastConfirm)
 
@@ -85,8 +86,9 @@ func TestCacheChain_SetBlock(t *testing.T) {
 
 	// set 2 blocks stable
 	oldStable := cacheChain.LastConfirm
-	err = cacheChain.SetStableBlock(block2.Hash())
+	blocks, err = cacheChain.SetStableBlock(block2.Hash())
 	assert.NoError(t, err)
+	assert.Empty(t, blocks)
 	assert.Empty(t, oldStable.Children)
 	assert.Empty(t, cacheChain.LastConfirm.Parent)
 	assert.NotEqual(t, oldStable, cacheChain.LastConfirm)
@@ -118,10 +120,14 @@ func TestCacheChain_SetStableBlock(t *testing.T) {
 	block0 := GetBlock0()
 	err := cacheChain.SetBlock(block0.Hash(), block0)
 	assert.NoError(t, err)
-	err = cacheChain.SetStableBlock(block0.Hash())
+	blocks, err := cacheChain.SetStableBlock(block0.Hash())
 	assert.NoError(t, err)
+	assert.Len(t, blocks, 0)
 
 	// set fork blocks
+	//         ┌─1──2
+	// genesis─┤
+	//         └─1OnFork──2OnFork
 	block1 := GetBlock1()
 	err = cacheChain.SetBlock(block1.Hash(), block1)
 	assert.NoError(t, err)
@@ -138,8 +144,9 @@ func TestCacheChain_SetStableBlock(t *testing.T) {
 	assert.NoError(t, err)
 
 	// set stable
-	err = cacheChain.SetStableBlock(block2OnFork.Hash())
+	blocks, err = cacheChain.SetStableBlock(block2OnFork.Hash())
 	assert.NoError(t, err)
+	assert.Len(t, blocks, 2)
 	assert.Equal(t, block2OnFork.Hash(), cacheChain.LastConfirm.Block.Hash())
 	assert.Len(t, cacheChain.UnConfirmBlocks, 0)
 }
@@ -185,7 +192,7 @@ func TestCacheChain_SetBlockError(t *testing.T) {
 	// block3 := GetBlock3()
 
 	cacheChain.SetBlock(block0.Hash(), block0)
-	err = cacheChain.SetStableBlock(block0.Hash())
+	_, err = cacheChain.SetStableBlock(block0.Hash())
 	assert.Equal(t, err, ErrArgInvalid)
 
 	hash := block1.Hash()
@@ -221,7 +228,7 @@ func TestCacheChain_IsExistByHash(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, true, isExist)
 
-	err = cacheChain.SetStableBlock(block.Hash())
+	_, err = cacheChain.SetStableBlock(block.Hash())
 	assert.NoError(t, err)
 
 	isExist, err = cacheChain.IsExistByHash(block.Hash())
@@ -253,7 +260,7 @@ func TestCacheChain_WriteChain(t *testing.T) {
 	log.Errorf("STEP.1")
 	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
 	cacheChain.SetBlock(block0.Hash(), block0)
-	err := cacheChain.SetStableBlock(block0.Hash())
+	_, err := cacheChain.SetStableBlock(block0.Hash())
 	assert.NoError(t, err)
 
 	log.Errorf("STEP.2")
@@ -261,7 +268,7 @@ func TestCacheChain_WriteChain(t *testing.T) {
 	cacheChain.SetBlock(block1.Hash(), block1)
 	cacheChain.SetBlock(block2.Hash(), block2)
 	cacheChain.SetBlock(block3.Hash(), block3)
-	err = cacheChain.SetStableBlock(block2.Hash())
+	_, err = cacheChain.SetStableBlock(block2.Hash())
 	assert.NoError(t, err)
 	result, err := cacheChain.GetBlockByHeight(1)
 	assert.NoError(t, err)
@@ -302,7 +309,7 @@ func TestCacheChain_WriteChain(t *testing.T) {
 	err = cacheChain.SetBlock(block3.Hash(), block3)
 	assert.NoError(t, err)
 
-	err = cacheChain.SetStableBlock(block3.Hash())
+	_, err = cacheChain.SetStableBlock(block3.Hash())
 	assert.NoError(t, err)
 	result, err = cacheChain.GetBlockByHeight(1)
 	assert.NoError(t, err)
@@ -332,13 +339,13 @@ func TestCacheChain_WriteChain(t *testing.T) {
 	assert.Equal(t, result.Hash(), block3.Hash())
 
 	// error block
-	err = cacheChain.SetStableBlock(block1.Hash())
+	_, err = cacheChain.SetStableBlock(block1.Hash())
 	assert.Equal(t, err, ErrArgInvalid)
 
-	err = cacheChain.SetStableBlock(block3.Hash())
+	_, err = cacheChain.SetStableBlock(block3.Hash())
 	assert.Equal(t, err, ErrArgInvalid)
 
-	err = cacheChain.SetStableBlock(block4.Hash())
+	_, err = cacheChain.SetStableBlock(block4.Hash())
 	assert.Equal(t, err, ErrArgInvalid)
 
 	cacheChain.Close()
@@ -420,7 +427,7 @@ func TestCacheChain_SetConfirm1(t *testing.T) {
 	parentBlock := GetBlock0()
 	err = cacheChain.SetBlock(parentBlock.Hash(), parentBlock)
 	assert.NoError(t, err)
-	err = cacheChain.SetStableBlock(parentBlock.Hash())
+	_, err = cacheChain.SetStableBlock(parentBlock.Hash())
 	assert.NoError(t, err)
 	err = cacheChain.SetConfirms(parentBlock.Hash(), signs)
 	log.Errorf("set confirms end!")
@@ -477,7 +484,7 @@ func TestCacheChain_SetConfirm2(t *testing.T) {
 	assert.Equal(t, signs[3], result[3])
 	assert.Equal(t, signs[3], result[3])
 
-	err = cacheChain.SetStableBlock(parentBlock.Hash())
+	_, err = cacheChain.SetStableBlock(parentBlock.Hash())
 	assert.NoError(t, err)
 	result, err = cacheChain.GetConfirms(parentBlock.Hash())
 	assert.NoError(t, err)
@@ -513,7 +520,7 @@ func TestCacheChain_AppendConfirm(t *testing.T) {
 	err = cacheChain.SetConfirm(parentBlock.Hash(), signs[0])
 	assert.NoError(t, err)
 
-	err = cacheChain.SetStableBlock(parentBlock.Hash())
+	_, err = cacheChain.SetStableBlock(parentBlock.Hash())
 	assert.NoError(t, err)
 
 	block, err := cacheChain.GetBlockByHash(parentBlock.Hash())
@@ -550,11 +557,11 @@ func TestChainDatabase_Commit(t *testing.T) {
 	// rand.Seed(time.Now().Unix())
 	blocks := NewBlockBatch(10)
 	chain.SetBlock(blocks[0].Hash(), blocks[0])
-	err := chain.SetStableBlock(blocks[0].Hash())
+	_, err := chain.SetStableBlock(blocks[0].Hash())
 	assert.NoError(t, err)
 	for index := 1; index < 10; index++ {
 		chain.SetBlock(blocks[index].Hash(), blocks[index])
-		err = chain.SetStableBlock(blocks[index].Hash())
+		_, err = chain.SetStableBlock(blocks[index].Hash())
 		assert.NoError(t, err)
 		if index > 10 {
 			val, err := chain.GetBlockByHeight(uint32(index - 7))

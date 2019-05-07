@@ -21,7 +21,7 @@ type ChainDB interface {
 	SetConfirms(hash common.Hash, pack []types.SignData) error
 
 	LoadLatestBlock() (*types.Block, error)
-	SetStableBlock(hash common.Hash) error
+	SetStableBlock(hash common.Hash) ([]*types.Block, error)
 
 	GetAccount(addr common.Address) (*types.AccountData, error)
 
