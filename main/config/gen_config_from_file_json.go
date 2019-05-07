@@ -18,8 +18,6 @@ func (c ConfigFromFile) MarshalJSON() ([]byte, error) {
 		DeputyCount     hexutil.Uint64 `json:"deputyCount"    gencodec:"required"`
 		SleepTime       hexutil.Uint64 `json:"sleepTime"`
 		Timeout         hexutil.Uint64 `json:"timeout"`
-		DbUri           string         `json:"dbUri"          gencodec:"required"`
-		DbDriver        string         `json:"dbDriver"       gencodec:"required"`
 		TermDuration    hexutil.Uint64 `json:"termDuration"`
 		InterimDuration hexutil.Uint64 `json:"interimDuration"`
 		ConnectionLimit hexutil.Uint64 `json:"connectionLimit"`
@@ -29,8 +27,6 @@ func (c ConfigFromFile) MarshalJSON() ([]byte, error) {
 	enc.DeputyCount = hexutil.Uint64(c.DeputyCount)
 	enc.SleepTime = hexutil.Uint64(c.SleepTime)
 	enc.Timeout = hexutil.Uint64(c.Timeout)
-	enc.DbUri = c.DbUri
-	enc.DbDriver = c.DbDriver
 	enc.TermDuration = hexutil.Uint64(c.TermDuration)
 	enc.InterimDuration = hexutil.Uint64(c.InterimDuration)
 	enc.ConnectionLimit = hexutil.Uint64(c.ConnectionLimit)
@@ -44,8 +40,6 @@ func (c *ConfigFromFile) UnmarshalJSON(input []byte) error {
 		DeputyCount     *hexutil.Uint64 `json:"deputyCount"    gencodec:"required"`
 		SleepTime       *hexutil.Uint64 `json:"sleepTime"`
 		Timeout         *hexutil.Uint64 `json:"timeout"`
-		DbUri           *string         `json:"dbUri"          gencodec:"required"`
-		DbDriver        *string         `json:"dbDriver"       gencodec:"required"`
 		TermDuration    *hexutil.Uint64 `json:"termDuration"`
 		InterimDuration *hexutil.Uint64 `json:"interimDuration"`
 		ConnectionLimit *hexutil.Uint64 `json:"connectionLimit"`
@@ -68,14 +62,6 @@ func (c *ConfigFromFile) UnmarshalJSON(input []byte) error {
 	if dec.Timeout != nil {
 		c.Timeout = uint64(*dec.Timeout)
 	}
-	if dec.DbUri == nil {
-		return errors.New("missing required field 'dbUri' for ConfigFromFile")
-	}
-	c.DbUri = *dec.DbUri
-	if dec.DbDriver == nil {
-		return errors.New("missing required field 'dbDriver' for ConfigFromFile")
-	}
-	c.DbDriver = *dec.DbDriver
 	if dec.TermDuration != nil {
 		c.TermDuration = uint64(*dec.TermDuration)
 	}

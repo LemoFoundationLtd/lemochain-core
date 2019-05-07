@@ -26,14 +26,39 @@ type Manager struct {
 
 	termList []*TermRecord
 	lock     sync.Mutex
+
+	evilDeputies map[common.Address]uint32 // key is minerAddress, value is release height
+	edLock       sync.Mutex
 }
 
 // NewManager creates a new Manager. It is used to maintain term record list
 func NewManager(deputyCount int) *Manager {
 	return &Manager{
-		DeputyCount: deputyCount,
-		termList:    make([]*TermRecord, 0),
+		DeputyCount:  deputyCount,
+		termList:     make([]*TermRecord, 0),
+		evilDeputies: make(map[common.Address]uint32),
 	}
+}
+
+// IsEvilDeputyNode currentHeight is current block height
+func (m *Manager) IsEvilDeputyNode(minerAddress common.Address, currentHeight uint32) bool {
+	m.edLock.Lock()
+	defer m.edLock.Unlock()
+	if height, exit := m.evilDeputies[minerAddress]; exit {
+		if currentHeight >= height {
+			delete(m.evilDeputies, minerAddress)
+			return false
+		}
+		return true
+	}
+	return false
+}
+
+// SetAbnormalDeputyNode height is release height
+func (m *Manager) PutEvilDeputyNode(minerAddress common.Address, height uint32) {
+	m.edLock.Lock()
+	defer m.edLock.Unlock()
+	m.evilDeputies[minerAddress] = height
 }
 
 // SaveSnapshot add deputy nodes record by snapshot block data
@@ -53,18 +78,18 @@ func (m *Manager) SaveSnapshot(snapshotHeight uint32, nodes DeputyNodes) {
 	// expect term index is the last term index +1
 	expectIndex := m.termList[termCount-1].TermIndex + 1
 	if expectIndex < newTerm.TermIndex {
-		log.Warn("missing term", "expectIndex", expectIndex, "newTermIndex", newTerm.TermIndex)
+		log.Warn("Missing term", "expectIndex", expectIndex, "newTermIndex", newTerm.TermIndex)
 		panic(ErrMissingTerm)
 	} else if expectIndex == newTerm.TermIndex {
 		// correct! congratulation~~~
 		m.termList = append(m.termList, newTerm)
-		log.Info("new term", "index", newTerm.TermIndex, "nodesCount", len(newTerm.Nodes))
+		log.Info("New term", "index", newTerm.TermIndex, "nodesCount", len(newTerm.Nodes))
 	} else {
 		// may exist when fork at term snapshot height
 		m.termList[newTerm.TermIndex] = newTerm
-		log.Info("overwrite existed term", "index", newTerm.TermIndex, "nodesCount", len(newTerm.Nodes))
+		log.Info("Overwrite existed term", "index", newTerm.TermIndex, "nodesCount", len(newTerm.Nodes))
 		if termCount > int(newTerm.TermIndex+1) {
-			log.Warnf("drop %d terms because the older term is overwritten", termCount-int(newTerm.TermIndex+1))
+			log.Warnf("Drop %d terms because the older term is overwritten", termCount-int(newTerm.TermIndex+1))
 			m.termList = m.termList[:newTerm.TermIndex+1]
 		}
 	}
@@ -85,7 +110,7 @@ func (m *Manager) GetTermByHeight(height uint32) (*TermRecord, error) {
 		return m.termList[termIndex], nil
 	} else {
 		// the height is after last term
-		log.Warn("query future term", "current term count", termCount, "looking for term index", termIndex)
+		log.Warn("Query future term", "current term count", termCount, "looking for term index", termIndex)
 		return nil, ErrQueryFutureTerm
 	}
 }

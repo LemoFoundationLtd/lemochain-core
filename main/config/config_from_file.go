@@ -30,15 +30,11 @@ type ConfigFromFile struct {
 	DeputyCount     uint64 `json:"deputyCount"    gencodec:"required"`
 	SleepTime       uint64 `json:"sleepTime"`
 	Timeout         uint64 `json:"timeout"`
-	DbUri           string `json:"dbUri"          gencodec:"required"` // sample: root:123123@tcp(localhost:3306)/lemochain?charset=utf8mb4
-	DbDriver        string `json:"dbDriver"       gencodec:"required"` // sample: "mysql"
 	TermDuration    uint64 `json:"termDuration"`
 	InterimDuration uint64 `json:"interimDuration"`
 	ConnectionLimit uint64 `json:"connectionLimit"`
 }
 
-// driver = "mysql"
-// dns = root:123123@tcp(localhost:3306)/lemochain?charset=utf8mb4
 type ConfigFromFileMarshaling struct {
 	ChainID         hexutil.Uint64
 	DeputyCount     hexutil.Uint64
@@ -93,7 +89,7 @@ func ReadConfigFile(dir string) (*ConfigFromFile, error) {
 	defer file.Close()
 	var config ConfigFromFile
 	if err = json.NewDecoder(file).Decode(&config); err != nil {
-		log.Errorf("decode config fail %v", err)
+		log.Errorf("Decode config fail %v", err)
 		return nil, ErrConfigFormat
 	}
 	return &config, nil

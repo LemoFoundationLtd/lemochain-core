@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
@@ -32,6 +31,8 @@ var (
 	ErrInvalidHost               = errors.New("the length of host field in transaction is out of max length limit")
 	ErrInvalidAddress            = errors.New("invalid address")
 	ErrInvalidNodeId             = errors.New("invalid nodeId")
+	ErrNodeIdLength              = errors.New("the nodeId length is not equal the standard length")
+	ErrHostLength                = errors.New("the length of host field in transaction is out of max length limit")
 )
 
 type TxProcessor struct {
@@ -88,7 +89,7 @@ func (p *TxProcessor) Process(header *types.Header, txs types.Transactions) (uin
 	p.am.MergeChangeLogs()
 
 	if len(txs) > 0 {
-		log.Infof("process %d transactions", len(txs))
+		log.Infof("Process %d transactions", len(txs))
 	}
 	return gasUsed, nil
 }
@@ -148,7 +149,7 @@ label:
 	p.am.MergeChangeLogs()
 
 	if len(selectedTxs) > 0 {
-		log.Infof("process %d transactions", len(selectedTxs))
+		log.Infof("Process %d transactions", len(selectedTxs))
 	}
 	return selectedTxs, invalidTxs, gasUsed
 }
@@ -209,7 +210,7 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 		profile := make(types.Profile)
 		err = json.Unmarshal(txData, &profile)
 		if err != nil {
-			log.Errorf("unmarshal Candidate node error: %s", err)
+			log.Errorf("Unmarshal Candidate node error: %s", err)
 			return 0, err
 		}
 		// check nodeID host and incomeAddress
@@ -230,12 +231,12 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 		tradingAsset := &types.TradingAsset{}
 		err = json.Unmarshal(tx.Data(), tradingAsset)
 		if err != nil {
-			log.Errorf("unmarshal trading asset data err: %s", err)
+			log.Errorf("Unmarshal transfer asset data err: %s", err)
 			return 0, err
 		}
 		_, restGas, vmErr = vmEnv.TransferAssetTx(sender, recipientAddr, restGas, tradingAsset.AssetId, tradingAsset.Value, tradingAsset.Input, p.chain.db)
 	default:
-		log.Errorf("The type of transaction is not defined. type = %d\n", tx.Type())
+		log.Errorf("The type of transaction is not defined. ErrType = %d\n", tx.Type())
 	}
 	// Candidate node votes change
 	if !contractCreation {
@@ -302,7 +303,7 @@ func (p *TxProcessor) changeCandidateVotes(accountAddress common.Address, change
 
 func (p *TxProcessor) buyGas(gp *types.GasPool, tx *types.Transaction) error {
 	payerAddr, err := tx.GasPayer()
-	log.Infof("tx gas payer address: %s", payerAddr.String())
+	log.Infof("Tx's gas payer address: %s", payerAddr.String())
 	if err != nil {
 		return err
 	}
@@ -385,12 +386,12 @@ func (p *TxProcessor) chargeForGas(charge *big.Int, minerAddress common.Address)
 		profile := miner.GetCandidate()
 		strIncomeAddress, ok := profile[types.CandidateKeyIncomeAddress]
 		if !ok {
-			log.Errorf("incomeAddress is null when charge gas for minerAddress. minerAddress = %s", minerAddress.String())
+			log.Errorf("IncomeAddress is null when charge gas for minerAddress. minerAddress = %s", minerAddress.String())
 			return
 		}
 		incomeAddress, err := common.StringToAddress(strIncomeAddress)
 		if err != nil {
-			log.Errorf("get incomeAddress error by strIncomeAddress or incomeAddress invalid; strIncomeAddress = %s,minerAddress = %s", strIncomeAddress, minerAddress)
+			log.Errorf("Get incomeAddress error by strIncomeAddress or incomeAddress invalid; strIncomeAddress = %s,minerAddress = %s", strIncomeAddress, minerAddress)
 			return
 		}
 		// get income account
@@ -488,22 +489,22 @@ func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *comm
 		profile := make(types.Profile)
 		err = json.Unmarshal(txData, &profile)
 		if err != nil {
-			log.Errorf("unmarshal Candidate node error: %s", err)
+			log.Errorf("Unmarshal Candidate node error: %s", err)
 			return nil, 0, err
 		}
 
 		if nodeId, ok := profile[types.CandidateKeyNodeID]; ok {
 			nodeIdLength := len(nodeId)
 			if nodeIdLength != StandardNodeIdLength {
-				nodeIdErr := fmt.Errorf("the nodeId length [%d] is not equal the standard length [%d] ", nodeIdLength, StandardNodeIdLength)
-				return nil, 0, nodeIdErr
+				log.Errorf("The nodeId length [%d] is not equal the standard length [%d]", nodeIdLength, StandardNodeIdLength)
+				return nil, 0, ErrNodeIdLength
 			}
 		}
 		if host, ok := profile[types.CandidateKeyHost]; ok {
 			hostLength := len(host)
 			if hostLength > MaxDeputyHostLength {
-				hostErr := fmt.Errorf("the length of host field in transaction is out of max length limit. host length = %d. max length limit = %d. ", hostLength, MaxDeputyHostLength)
-				return nil, 0, hostErr
+				log.Errorf("The length of host field in transaction is out of max length limit. host length = %d. max length limit = %d.", hostLength, MaxDeputyHostLength)
+				return nil, 0, ErrHostLength
 			}
 		}
 		sender = accM.GetAccount(caller)
@@ -533,7 +534,7 @@ func checkRegisterTxProfile(profile types.Profile) error {
 	// check income address
 	if strIncomeAddress, ok := profile[types.CandidateKeyIncomeAddress]; ok {
 		if !common.CheckLemoAddress(strIncomeAddress) {
-			log.Errorf("income address failed verification,please check whether the input is correct. incomeAddress = %s", strIncomeAddress)
+			log.Errorf("Income address failed verification,please check whether the input is correct. incomeAddress = %s", strIncomeAddress)
 			return ErrInvalidAddress
 		}
 	}
@@ -541,12 +542,12 @@ func checkRegisterTxProfile(profile types.Profile) error {
 	if nodeId, ok := profile[types.CandidateKeyNodeID]; ok {
 		nodeIdLength := len(nodeId)
 		if nodeIdLength != StandardNodeIdLength {
-			log.Errorf("the nodeId length [%d] is not equal the standard length [%d] ", nodeIdLength, StandardNodeIdLength)
+			log.Errorf("The nodeId length [%d] is not equal the standard length [%d] ", nodeIdLength, StandardNodeIdLength)
 			return ErrInvalidNodeId
 		}
 		// check nodeId is available
 		if !crypto.CheckPublic(nodeId) {
-			log.Errorf("invalid nodeId, nodeId = %s", nodeId)
+			log.Errorf("Invalid nodeId, nodeId = %s", nodeId)
 			return ErrInvalidNodeId
 		}
 	}
@@ -554,7 +555,7 @@ func checkRegisterTxProfile(profile types.Profile) error {
 	if host, ok := profile[types.CandidateKeyHost]; ok {
 		hostLength := len(host)
 		if hostLength > MaxDeputyHostLength {
-			log.Errorf("the length of host field in transaction is out of max length limit. host length = %d. max length limit = %d. ", hostLength, MaxDeputyHostLength)
+			log.Errorf("The length of host field in transaction is out of max length limit. host length = %d. max length limit = %d. ", hostLength, MaxDeputyHostLength)
 			return ErrInvalidHost
 		}
 	}

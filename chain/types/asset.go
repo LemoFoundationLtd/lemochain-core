@@ -17,15 +17,22 @@ const (
 	MaxMetaDataLength     = 256
 )
 
+//go:generate gencodec -type Asset --field-override assetMarshaling -out gen_asset_json.go
 type Asset struct {
-	Category        uint32
-	IsDivisible     bool
-	AssetCode       common.Hash
-	Decimals        uint32
-	TotalSupply     *big.Int
-	IsReplenishable bool
-	Issuer          common.Address
-	Profile         Profile
+	Category        uint32         `json:"category" gencodec:"required"`
+	IsDivisible     bool           `json:"isDivisible" gencodec:"required"`
+	AssetCode       common.Hash    `json:"assetCode"`
+	Decimal         uint32         `json:"decimal" gencodec:"required"`
+	TotalSupply     *big.Int       `json:"totalSupply"`
+	IsReplenishable bool           `json:"isReplenishable" gencodec:"required"`
+	Issuer          common.Address `json:"issuer"`
+	Profile         Profile        `json:"profile"`
+}
+
+type assetMarshaling struct {
+	Category    hexutil.Uint32
+	Decimal     hexutil.Uint32
+	TotalSupply *hexutil.Big10
 }
 
 // type AssetExtend struct {
@@ -93,7 +100,7 @@ func (asset *Asset) Clone() *Asset {
 		Category:        asset.Category,
 		IsDivisible:     asset.IsDivisible,
 		AssetCode:       asset.AssetCode,
-		Decimals:        asset.Decimals,
+		Decimal:         asset.Decimal,
 		IsReplenishable: asset.IsReplenishable,
 		Issuer:          asset.Issuer,
 		Profile:         clone(asset.Profile),
@@ -113,7 +120,7 @@ func (asset *Asset) String() string {
 		fmt.Sprintf("Category: %d", asset.Category),
 		fmt.Sprintf("IsDivisible: %s", strconv.FormatBool(asset.IsDivisible)),
 		fmt.Sprintf("AssetCode: %s", asset.AssetCode.String()),
-		fmt.Sprintf("Decimals: %d", asset.Decimals),
+		fmt.Sprintf("Decimal: %d", asset.Decimal),
 		fmt.Sprintf("Issuer: %s", asset.Issuer.String()),
 		fmt.Sprintf("IsReplenishable: %s", strconv.FormatBool(asset.IsReplenishable)),
 	}

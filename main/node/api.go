@@ -15,7 +15,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common/hexutil"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/network/p2p"
-	"math/big"
 	"runtime"
 	"strconv"
 	"time"
@@ -27,11 +26,16 @@ const (
 )
 
 var (
-	toNameErr         = errors.New("the length of toName field in transaction is out of max length limit")
-	txMessageErr      = errors.New("the length of message field in transaction is out of max length limit")
-	createContractErr = errors.New("the data of create contract transaction can't be null")
-	specialTxErr      = errors.New("the data of special transaction can't be null")
-	txTypeErr         = errors.New("the transaction type does not exit")
+	ErrToName         = errors.New("the length of toName field in transaction is out of max length limit")
+	ErrTxMessage      = errors.New("the length of message field in transaction is out of max length limit")
+	ErrCreateContract = errors.New("the data of create contract transaction can't be null")
+	ErrSpecialTx      = errors.New("the data of special transaction can't be null")
+	ErrTxType         = errors.New("the transaction type does not exit")
+	ErrLemoAddress    = errors.New("lemoAddress is incorrect")
+	ErrAssetId        = errors.New("assetid is incorrect")
+	ErrTxExpiration   = errors.New("tx expiration time is out of date")
+	ErrNegativeValue  = errors.New("negative value")
+	ErrTxChainID      = errors.New("tx chainID is incorrect")
 )
 
 // Private
@@ -65,6 +69,10 @@ func NewPublicAccountAPI(m *account.Manager) *PublicAccountAPI {
 
 // GetBalance get balance in mo
 func (a *PublicAccountAPI) GetBalance(LemoAddress string) (string, error) {
+	if !VerifyLemoAddress(LemoAddress) {
+		log.Warnf("LemoAddress is incorrect. lemoAddress: %s", LemoAddress)
+		return "", ErrLemoAddress
+	}
 	lemoAccount, err := a.GetAccount(LemoAddress)
 	if err != nil {
 		return "", err
@@ -76,6 +84,10 @@ func (a *PublicAccountAPI) GetBalance(LemoAddress string) (string, error) {
 
 // GetAccount return the struct of the &AccountData{}
 func (a *PublicAccountAPI) GetAccount(LemoAddress string) (types.AccountAccessor, error) {
+	if !VerifyLemoAddress(LemoAddress) {
+		log.Warnf("LemoAddress is incorrect. lemoAddress: %s", LemoAddress)
+		return nil, ErrLemoAddress
+	}
 	address, err := common.StringToAddress(LemoAddress)
 	if err != nil {
 		return nil, err
@@ -87,6 +99,10 @@ func (a *PublicAccountAPI) GetAccount(LemoAddress string) (types.AccountAccessor
 
 // GetVoteFor
 func (a *PublicAccountAPI) GetVoteFor(LemoAddress string) (string, error) {
+	if !VerifyLemoAddress(LemoAddress) {
+		log.Warnf("LemoAddress is incorrect. lemoAddress: %s", LemoAddress)
+		return "", ErrLemoAddress
+	}
 	candiAccount, err := a.GetAccount(LemoAddress)
 	if err != nil {
 		return "", err
@@ -128,6 +144,13 @@ func (a *PublicAccountAPI) GetAllRewardValue() ([]*params.Reward, error) {
 
 // GetAssetEquity returns asset equity
 func (a *PublicAccountAPI) GetAssetEquityByAssetId(LemoAddress string, assetId common.Hash) (*types.AssetEquity, error) {
+	if !VerifyLemoAddress(LemoAddress) {
+		log.Warnf("LemoAddress is incorrect. lemoAddress: %s", LemoAddress)
+		return nil, ErrLemoAddress
+	}
+	if len(assetId) != common.HashLength {
+		return nil, ErrAssetId
+	}
 	acc, err := a.GetAccount(LemoAddress)
 	if err != nil {
 		return nil, err
@@ -208,6 +231,10 @@ func (c *PublicChainAPI) GetBlockByHeight(height uint32, withBody bool) *types.B
 
 // GetBlockByHash get block information by hash
 func (c *PublicChainAPI) GetBlockByHash(hash string, withBody bool) *types.Block {
+	if len(common.HexToHash(hash)) != common.HashLength {
+		log.Warnf("Hash is incorrect, Hash: %s", hash)
+		return nil
+	}
 	if withBody {
 		return c.chain.GetBlockByHash(common.HexToHash(hash))
 	} else {
@@ -323,13 +350,21 @@ func NewPrivateNetAPI(node *Node) *PrivateNetAPI {
 	return &PrivateNetAPI{node}
 }
 
-// Connect
+// Connect (node = nodeID@IP:Port)
 func (n *PrivateNetAPI) Connect(node string) {
+	if !VerifyNode(node) {
+		log.Errorf("The node is incorrect, node: %s", node)
+		return
+	}
 	n.node.server.Connect(node)
 }
 
 // Disconnect
 func (n *PrivateNetAPI) Disconnect(node string) bool {
+	if !VerifyNode(node) {
+		log.Errorf("The node is incorrect, node: %s", node)
+		return false
+	}
 	return n.node.server.Disconnect(node)
 }
 
@@ -392,180 +427,12 @@ func NewPublicTxAPI(node *Node) *PublicTxAPI {
 
 // Send send a transaction
 func (t *PublicTxAPI) SendTx(tx *types.Transaction) (common.Hash, error) {
-	err := VerifyTx(tx)
+	err := VerifyTx(tx, t.node.ChainID())
 	if err != nil {
 		return common.Hash{}, err
 	}
 	t.node.txPool.RecvTx(tx)
 	return tx.Hash(), nil
-}
-
-// SendReimbursedGasTx gas代付交易 todo 测试使用
-func (t *PublicTxAPI) SendReimbursedGasTx(senderPrivate, gasPayerPrivate string, to, gasPayer common.Address, amount int64, data []byte, txType uint16, toName, message string) (common.Hash, error) {
-	tx := types.NewReimbursementTransaction(to, gasPayer, big.NewInt(amount), data, txType, t.node.chainID, uint64(time.Now().Unix()+1800), toName, message)
-	senderPriv, _ := crypto.HexToECDSA(senderPrivate)
-	gasPayerPriv, _ := crypto.HexToECDSA(gasPayerPrivate)
-	firstSignTx, err := types.MakeReimbursementTxSigner().SignTx(tx, senderPriv)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	signTx := types.GasPayerSignatureTx(firstSignTx, common.Big1, uint64(60000))
-	lastSignTx, err := types.MakeGasPayerSigner().SignTx(signTx, gasPayerPriv)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	err = VerifyTx(lastSignTx)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	t.node.txPool.RecvTx(lastSignTx)
-	return lastSignTx.Hash(), nil
-}
-
-// CreateAsset 创建资产
-func (t *PublicTxAPI) CreateAsset(prv string, category, decimals uint32, isReplenishable, isDivisible bool) (common.Hash, error) {
-	private, _ := crypto.HexToECDSA(prv)
-	issuer := crypto.PubkeyToAddress(private.PublicKey)
-	profile := make(types.Profile)
-	profile[types.AssetName] = "Demo Token"
-	profile[types.AssetSymbol] = "DT"
-	profile[types.AssetDescription] = "test issue token"
-	profile[types.AssetStop] = "false"
-	profile[types.AssetSuggestedGasLimit] = "60000"
-	asset := &types.Asset{
-		Category:        category,
-		IsDivisible:     isDivisible,
-		AssetCode:       common.Hash{},
-		Decimals:        decimals,
-		TotalSupply:     big.NewInt(100000),
-		IsReplenishable: isReplenishable,
-		Issuer:          issuer,
-		Profile:         profile,
-	}
-	data, err := json.Marshal(asset)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	tx := types.NoReceiverTransaction(nil, uint64(500000), big.NewInt(1), data, params.CreateAssetTx, t.node.chainID, uint64(time.Now().Unix()+30*60), "", "create asset tx")
-	signTx, err := types.MakeSigner().SignTx(tx, private)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	return t.SendTx(signTx)
-}
-
-// 发行资产
-func (t *PublicTxAPI) IssueAsset(prv string, receiver common.Address, assetCode common.Hash, amount *big.Int, metaData string) (common.Hash, error) {
-	issue := &types.IssueAsset{
-		AssetCode: assetCode,
-		MetaData:  metaData,
-		Amount:    amount,
-	}
-	data, err := json.Marshal(issue)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	tx := types.NewTransaction(receiver, nil, uint64(500000), big.NewInt(1), data, params.IssueAssetTx, t.node.chainID, uint64(time.Now().Unix()+30*60), "", "issue asset tx")
-	private, _ := crypto.HexToECDSA(prv)
-	signTx, err := types.MakeSigner().SignTx(tx, private)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	return t.SendTx(signTx)
-}
-
-// 增发资产
-func (t *PublicTxAPI) ReplenishAsset(prv string, receiver common.Address, assetCode, assetId common.Hash, amount *big.Int) (common.Hash, error) {
-	repl := &types.ReplenishAsset{
-		AssetCode: assetCode,
-		AssetId:   assetId,
-		Amount:    amount,
-	}
-	data, err := json.Marshal(repl)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	tx := types.NewTransaction(receiver, nil, uint64(500000), big.NewInt(1), data, params.ReplenishAssetTx, t.node.chainID, uint64(time.Now().Unix()+30*60), "", "replenish asset tx")
-	private, _ := crypto.HexToECDSA(prv)
-	signTx, err := types.MakeSigner().SignTx(tx, private)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	return t.SendTx(signTx)
-}
-
-// ModifyAsset 修改资产信息
-func (t *PublicTxAPI) ModifyAsset(prv string, assetCode common.Hash) (common.Hash, error) {
-	info := make(types.Profile)
-	info["name"] = "Modify"
-	info["stop"] = "true"
-	modify := &types.ModifyAssetInfo{
-		AssetCode: assetCode,
-		Info:      info,
-	}
-	data, err := json.Marshal(modify)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	tx := types.NoReceiverTransaction(nil, uint64(500000), big.NewInt(1), data, params.ModifyAssetTx, t.node.chainID, uint64(time.Now().Unix()+30*60), "", "modify asset tx")
-	private, _ := crypto.HexToECDSA(prv)
-	signTx, err := types.MakeSigner().SignTx(tx, private)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	return t.SendTx(signTx)
-}
-
-// 交易资产
-func (t *PublicTxAPI) TradingAsset(prv string, to common.Address, assetCode, assetId common.Hash, amount *big.Int, input []byte) (common.Hash, error) {
-	trading := &types.TradingAsset{
-		AssetId: assetId,
-		Value:   amount,
-		Input:   input,
-	}
-	data, err := json.Marshal(trading)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	tx := types.NewTransaction(to, amount, uint64(500000), big.NewInt(1), data, params.TransferAssetTx, t.node.chainID, uint64(time.Now().Unix()+30*60), "", "trading asset tx")
-	private, _ := crypto.HexToECDSA(prv)
-	signTx, err := types.MakeSigner().SignTx(tx, private)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	return t.SendTx(signTx)
-}
-
-// VerifyTx transaction parameter verification
-func VerifyTx(tx *types.Transaction) error {
-	toNameLength := len(tx.ToName())
-	if toNameLength > MaxTxToNameLength {
-
-		log.Errorf("the length of toName field in transaction is out of max length limit. toName length = %d. max length limit = %d. ", toNameLength, MaxTxToNameLength)
-		return toNameErr
-	}
-	txMessageLength := len(tx.Message())
-	if txMessageLength > MaxTxMessageLength {
-		log.Errorf("the length of message field in transaction is out of max length limit. message length = %d. max length limit = %d. ", txMessageLength, MaxTxMessageLength)
-		return txMessageErr
-	}
-	switch tx.Type() {
-	case params.OrdinaryTx:
-		if tx.To() == nil {
-			if len(tx.Data()) == 0 {
-				return createContractErr
-			}
-		}
-	case params.VoteTx:
-	case params.RegisterTx, params.CreateAssetTx, params.IssueAssetTx, params.ReplenishAssetTx, params.ModifyAssetTx, params.TransferAssetTx:
-		if len(tx.Data()) == 0 {
-			return specialTxErr
-		}
-	default:
-		log.Errorf("the transaction type does not exit . type = %v", tx.Type())
-		return txTypeErr
-	}
-	return nil
 }
 
 // PendingTx
@@ -606,7 +473,7 @@ func (t *PublicTxAPI) doCall(ctx context.Context, to *common.Address, txType uin
 	defer func(start time.Time) { log.Debug("Executing EVM call finished", "runtime", time.Since(start)) }(time.Now())
 	// get latest stableBlock
 	stableBlock := t.node.chain.StableBlock()
-	log.Infof("stable block height = %v", stableBlock.Height())
+	log.Infof("Stable block height = %v", stableBlock.Height())
 	stableHeader := stableBlock.Header
 
 	p := t.node.chain.TxProcessor()

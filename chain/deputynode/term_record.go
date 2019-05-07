@@ -26,25 +26,25 @@ type termRecordMarshaling struct {
 func NewTermRecord(snapshotHeight uint32, nodes DeputyNodes) *TermRecord {
 	// check snapshot block height
 	if snapshotHeight%params.TermDuration != 0 {
-		log.Error("invalid snapshot block height", "height", snapshotHeight)
+		log.Error("Invalid snapshot block height", "height", snapshotHeight)
 		panic(ErrInvalidSnapshotHeight)
 	}
 	// check nodes to make sure it is not empty
 	if nodes == nil || len(nodes) == 0 {
-		log.Error("there is no deputy nodes in snapshot block", "height", snapshotHeight)
+		log.Error("There is no deputy nodes in snapshot block", "height", snapshotHeight)
 		panic(ErrNoDeputyInBlock)
 	}
 	for i, node := range nodes {
 		// check nodes' rank
 		if uint32(i) != node.Rank {
-			log.Error("invalid deputy rank", "index", i, "rank", node.Rank, "expect", i)
+			log.Error("Invalid deputy rank", "index", i, "rank", node.Rank, "expect", i)
 			panic(ErrInvalidDeputyRank)
 		}
 		// check nodes' votes
 		if i > 0 {
 			lastNode := nodes[i-1]
 			if node.Votes.Cmp(lastNode.Votes) > 0 {
-				log.Error("deputy should sort by votes", "index", i, "votes", node.Votes, "last node votes", lastNode.Votes)
+				log.Error("Deputy should sort by votes", "index", i, "votes", node.Votes, "last node votes", lastNode.Votes)
 				panic(ErrInvalidDeputyVotes)
 			}
 		}
