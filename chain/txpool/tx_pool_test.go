@@ -27,7 +27,7 @@ func TestTxPool_RecvTx(t *testing.T) {
 	assert.Equal(t, 3, len(result))
 }
 
-func TestTxPool_DelErrTxs(t *testing.T) {
+func TestTxPool_DelInvalidTxs(t *testing.T) {
 	curTime := time.Now().Unix()
 	pool := NewTxPool()
 
@@ -44,7 +44,7 @@ func TestTxPool_DelErrTxs(t *testing.T) {
 	delTxs = append(delTxs, tx1)
 	delTxs = append(delTxs, tx2)
 	delTxs = append(delTxs, tx3)
-	pool.DelErrTxs(delTxs)
+	pool.DelInvalidTxs(delTxs)
 
 	result := pool.Get(uint32(curTime), 10)
 	assert.Equal(t, 1, len(result))
@@ -119,7 +119,7 @@ func TestTxPool_PruneBlock(t *testing.T) {
 	assert.Equal(t, 9, len(result))
 }
 
-func TestTxPool_BlockIsValid1(t *testing.T) {
+func TestTxPool_VerifyTxInBlock1(t *testing.T) {
 	curTime := time.Now().Unix()
 
 	pool := NewTxPool()
@@ -156,7 +156,7 @@ func TestTxPool_BlockIsValid1(t *testing.T) {
 	block3.Txs = append(block3.Txs, tx8)
 	block3.Txs = append(block3.Txs, tx9)
 
-	isValid := pool.BlockIsValid(block3)
+	isValid := pool.VerifyTxInBlock(block3)
 	assert.Equal(t, false, isValid)
 
 	tx10 := makeTxRandom(common.HexToAddress("0x10"))
@@ -165,11 +165,11 @@ func TestTxPool_BlockIsValid1(t *testing.T) {
 	block4.Header.Time = uint32(curTime)
 	block4.Txs = append(block4.Txs, tx10)
 
-	isValid = pool.BlockIsValid(block4)
+	isValid = pool.VerifyTxInBlock(block4)
 	assert.Equal(t, true, isValid)
 }
 
-func TestTxPool_BlockIsValid2(t *testing.T) {
+func TestTxPool_VerifyTxInBlock2(t *testing.T) {
 	curTime := time.Now().Unix()
 
 	pool := NewTxPool()
@@ -208,7 +208,7 @@ func TestTxPool_BlockIsValid2(t *testing.T) {
 	block3.Txs = append(block3.Txs, tx7)
 	block3.Txs = append(block3.Txs, tx8)
 
-	isValid := pool.BlockIsValid(block3)
+	isValid := pool.VerifyTxInBlock(block3)
 	assert.Equal(t, true, isValid)
 
 	block3 = store.GetBlock3()
@@ -217,7 +217,7 @@ func TestTxPool_BlockIsValid2(t *testing.T) {
 	block3.Txs = append(block3.Txs, tx5)
 	block3.Txs = append(block3.Txs, tx8)
 
-	isValid = pool.BlockIsValid(block3)
+	isValid = pool.VerifyTxInBlock(block3)
 	assert.Equal(t, true, isValid)
 
 	block3 = store.GetBlock3()
@@ -226,6 +226,6 @@ func TestTxPool_BlockIsValid2(t *testing.T) {
 	block3.Txs = append(block3.Txs, tx5)
 	block3.Txs = append(block3.Txs, tx8)
 
-	isValid = pool.BlockIsValid(block3)
+	isValid = pool.VerifyTxInBlock(block3)
 	assert.Equal(t, false, isValid)
 }

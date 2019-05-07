@@ -16,14 +16,16 @@ type Validator struct {
 	timeoutTime uint64
 	db          protocol.ChainDB
 	dm          *deputynode.Manager
+	txPool      TxPool
 	canLoader   CandidateLoader
 }
 
-func NewValidator(timeout uint64, db protocol.ChainDB, dm *deputynode.Manager, canLoader CandidateLoader) *Validator {
+func NewValidator(timeout uint64, db protocol.ChainDB, dm *deputynode.Manager, txPool TxPool, canLoader CandidateLoader) *Validator {
 	return &Validator{
 		timeoutTime: timeout,
 		db:          db,
 		dm:          dm,
+		txPool:      txPool,
 		canLoader:   canLoader,
 	}
 }
@@ -44,6 +46,21 @@ func verifyTxRoot(block *types.Block) error {
 	if hash != block.TxRoot() {
 		log.Error("Consensus verify fail: txRoot is incorrect", "txRoot", block.TxRoot().Hex(), "expected", hash.Hex())
 		return ErrVerifyBlockFailed
+	}
+	return nil
+}
+
+// verifyTxs verify the Tx list in block body
+func verifyTxs(block *types.Block, txPool TxPool) error {
+	if !txPool.VerifyTxInBlock(block) {
+		log.Error("Consensus verify fail: tx is appeared in parent blocks")
+		return ErrVerifyBlockFailed
+	}
+	for _, tx := range block.Txs {
+		if tx.Expiration() < uint64(block.Time()) {
+			log.Error("Consensus verify fail: tx is out of date", "expiration", tx.Expiration(), "blockTime", block.Time())
+			return ErrVerifyBlockFailed
+		}
 	}
 	return nil
 }
@@ -233,6 +250,9 @@ func (v *Validator) VerifyBeforeTxProcess(block *types.Block) error {
 		return err
 	}
 	if err := verifyTxRoot(block); err != nil {
+		return err
+	}
+	if err := verifyTxs(block, v.txPool); err != nil {
 		return err
 	}
 	if err := verifyHeight(block, parent); err != nil {

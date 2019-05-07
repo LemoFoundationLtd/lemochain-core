@@ -37,7 +37,7 @@ func (pool *TxPool) Get(time uint32, size int) []*types.Transaction {
 }
 
 /* 本节点出块时，执行交易后，发现错误的交易通过该接口进行删除 */
-func (pool *TxPool) DelErrTxs(txs []*types.Transaction) {
+func (pool *TxPool) DelInvalidTxs(txs []*types.Transaction) {
 	pool.RW.Lock()
 	defer pool.RW.Unlock()
 
@@ -69,7 +69,7 @@ func (pool *TxPool) isInBlocks(hashes HashSet, blocks []*TrieNode) bool {
 }
 
 /* 新收一个块时，验证块中的交易是否被同一条分叉上的其他块打包了 */
-func (pool *TxPool) BlockIsValid(block *types.Block) bool {
+func (pool *TxPool) VerifyTxInBlock(block *types.Block) bool {
 	pool.RW.Lock()
 	defer pool.RW.Unlock()
 

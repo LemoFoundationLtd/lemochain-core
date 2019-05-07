@@ -136,7 +136,7 @@ func SetupGenesisBlock(db protocol.ChainDB, genesis *Genesis) *types.Block {
 	if err := am.Save(hash); err != nil {
 		panic(fmt.Errorf("setup genesis block failed: %v", err))
 	}
-	if err := db.SetStableBlock(hash); err != nil {
+	if _, err := db.SetStableBlock(hash); err != nil {
 		panic(fmt.Errorf("setup genesis block failed: %v", err))
 	}
 	return block

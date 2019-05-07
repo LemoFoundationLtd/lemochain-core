@@ -48,7 +48,7 @@ func NewDPoVP(config Config, db protocol.ChainDB, dm *deputynode.Manager, am *ac
 		confirmer:     NewConfirmer(dm, db, stable),
 		logForks:      config.LogForks,
 	}
-	dpovp.validator = NewValidator(config.MineTimeout, db, dm, dpovp)
+	dpovp.validator = NewValidator(config.MineTimeout, db, dm, txPool, dpovp)
 	dpovp.assembler = NewBlockAssembler(db, am, dm, dpovp.processor, dpovp)
 	return dpovp
 }
@@ -97,7 +97,7 @@ func (dp *DPoVP) MineBlock(material *BlockMaterial) (*types.Block, error) {
 
 	// update current block
 	dp.setCurrent(block)
-	dp.txPool.RemoveTxs(block.Txs)
+	dp.txPool.RecvBlock(block)
 	dp.confirmer.SetLastSig(block)
 
 	// update stable block if there are less then 3 deputy nodes
@@ -146,7 +146,7 @@ func (dp *DPoVP) InsertBlock(rawBlock *types.Block) (*types.Block, error) {
 	if block.ParentHash() == oldCurrentHash {
 		dp.setCurrent(block)
 	}
-	dp.txPool.RemoveTxs(block.Txs)
+	dp.txPool.RecvBlock(block)
 	// for security
 	go func() {
 		isEvil := dp.validator.JudgeDeputy(block)
@@ -216,10 +216,17 @@ func (dp *DPoVP) batchConfirmStable(startHeight, endHeight uint32) {
 // UpdateStable check if the block can be stable. Then send notification and return true if the stable block changed
 func (dp *DPoVP) UpdateStable(block *types.Block) (bool, error) {
 	oldStable := dp.StableBlock()
-	changed, err := dp.stableManager.UpdateStable(block)
+	changed, prunedBlocks, err := dp.stableManager.UpdateStable(block)
+	if err != nil {
+		return false, err
+	}
 
 	// notify
-	if err == nil && changed {
+	if changed {
+		// add txs in pruned block back
+		for _, prunedBlock := range prunedBlocks {
+			dp.txPool.PruneBlock(prunedBlock)
+		}
 		go dp.stableFeed.Send(block)
 		// confirm from oldStable to newStable
 		go dp.batchConfirmStable(oldStable.Height()+1, dp.StableBlock().Height())
