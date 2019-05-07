@@ -61,12 +61,12 @@ func (ba *BlockAssembler) MineBlock(parent *types.Block, extra []byte, txPool Tx
 	// create header
 	header := ba.sealHeader(parent, minerAddress, extra)
 	// execute tx
-	txs := txPool.Pending(10000)
+	txs := txPool.Get(header.Time, 10000)
 	log.Debugf("pick %d txs from txPool", len(txs))
 	packagedTxs, invalidTxs, gasUsed := ba.txProcessor.ApplyTxs(header, txs, timeLimitSeconds)
 	log.Debug("ApplyTxs ok")
 	// remove invalid txs from pool
-	txPool.RemoveTxs(invalidTxs)
+	txPool.DelInvalidTxs(invalidTxs)
 	// Finalize accounts
 	if err := ba.Finalize(header.Height, ba.am); err != nil {
 		log.Errorf("Finalize accounts error: %v", err)

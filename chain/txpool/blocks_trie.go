@@ -16,13 +16,13 @@ type BlockTimeBucket struct {
 }
 
 func newBlockTimeBucket(block *types.Block) *BlockTimeBucket {
-	blocksByTime := &BlockTimeBucket{
+	blockBucket := &BlockTimeBucket{
 		Time:           block.Time(),
 		BlocksByHeight: make(map[uint32]HashSet),
 	}
 
-	blocksByTime.add(block)
-	return blocksByTime
+	blockBucket.add(block)
+	return blockBucket
 }
 
 func (blockBucket *BlockTimeBucket) add(block *types.Block) {
@@ -50,8 +50,10 @@ func (blockBucket *BlockTimeBucket) del(block *types.Block) {
 		return
 	}
 
-	blockSet := blockBucket.BlocksByHeight[block.Height()]
-	blockSet.Del(block.Hash())
+	blockSet, ok := blockBucket.BlocksByHeight[block.Height()]
+	if ok {
+		blockSet.Del(block.Hash())
+	}
 }
 
 func (blockBucket *BlockTimeBucket) timeOut(block *types.Block) bool {
@@ -257,7 +259,7 @@ func (trie *BlocksTrie) Path(hash common.Hash, height uint32, minHeight uint32, 
 		nodes := trie.HeightBuckets[pHeight]
 		node := nodes.get(pHash)
 		if node == nil {
-			panic(fmt.Sprintf("get block is nil.hash: %s", common.ToHex(hash.Bytes())))
+			panic(fmt.Sprintf("get block is nil. hash: %#x", hash.Bytes()))
 		}
 
 		if pHeight <= maxHeight {

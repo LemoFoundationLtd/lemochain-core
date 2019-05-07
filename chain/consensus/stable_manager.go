@@ -37,8 +37,8 @@ func (sm *StableManager) StableBlock() *types.Block {
 	return block
 }
 
-// UpdateStable check if the block can be stable. Return true if the stable block changed
-func (sm *StableManager) UpdateStable(block *types.Block) (bool, error) {
+// UpdateStable check if the block can be stable. Return true if the stable block changed, and return the pruned uncle blocks
+func (sm *StableManager) UpdateStable(block *types.Block) (bool, []*types.Block, error) {
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
 
@@ -46,23 +46,24 @@ func (sm *StableManager) UpdateStable(block *types.Block) (bool, error) {
 	oldStable := sm.StableBlock()
 
 	if block.Height() <= oldStable.Height() {
-		return false, nil
+		return false, nil, nil
 	}
 	if !IsConfirmEnough(block, sm.dm) {
-		return false, nil
+		return false, nil, nil
 	}
 
 	// update stable block
-	if _, err := sm.db.SetStableBlock(hash); err != nil {
+	prunedBlocks, err := sm.db.SetStableBlock(hash)
+	if err != nil {
 		log.Errorf("SetStableBlock error. height:%d hash:%s, err:%s", block.Height(), common.ToHex(hash[:]), err.Error())
-		return false, ErrSetStableBlockToDB
+		return false, nil, ErrSetStableBlockToDB
 	}
 	log.Infof("Stable block changes from %s to %s", oldStable.ShortString(), block.ShortString())
 
 	// This may not the latest state, but it's fine. Because deputy nodes snapshot will be used after the interim duration, it's about 1000 blocks
 	sm.updateDeputyNodes(block)
 
-	return true, nil
+	return true, prunedBlocks, nil
 }
 
 // IsConfirmEnough test if the confirms in block is enough

@@ -34,8 +34,11 @@ type BlockLoader interface {
 }
 
 type TxPool interface {
-	Pending(size int) []*types.Transaction
-	RemoveTxs(txs types.Transactions)
+	Get(time uint32, size int) []*types.Transaction
+	DelInvalidTxs(txs []*types.Transaction)
+	VerifyTxInBlock(block *types.Block) bool
+	RecvBlock(block *types.Block)
+	PruneBlock(block *types.Block)
 }
 
 type CandidateLoader interface {
