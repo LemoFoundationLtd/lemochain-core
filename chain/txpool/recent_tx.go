@@ -103,6 +103,7 @@ func (txTrace TxTrace) del(hash common.Hash) {
 
 /* 近一个小时收到的所有交易的集合，用于防止交易重放 */
 type RecentTx struct {
+	// key是交易hash，value是交易所在块的记录
 	TraceMap map[common.Hash]TxTrace
 
 	TxsByTime []*TxTimeBucket
