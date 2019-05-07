@@ -160,38 +160,21 @@ func verifyExtraData(block *types.Block) error {
 
 // verifyMineSlot verify the miner slot of deputy node
 func verifyMineSlot(block *types.Block, parent *types.Block, timeoutTime uint64, dm *deputynode.Manager) error {
-	if block.Height() == 1 {
-		// first block, no need to verify slot
-		return nil
-	}
-
-	slot, err := GetMinerDistance(block.Height(), parent.MinerAddress(), block.MinerAddress(), dm)
+	distance, err := GetMinerDistance(block.Height(), parent.MinerAddress(), block.MinerAddress(), dm)
 	if err != nil {
-		log.Error("Consensus verify fail: can't calculate slot", "block.Height", block.Height(), "parent.MinerAddress", parent.MinerAddress(), "block.MinerAddress", block.MinerAddress(), "err", err)
+		log.Error("Consensus verify fail: can't calculate distance", "block.Height", block.Height(), "parent.MinerAddress", parent.MinerAddress(), "block.MinerAddress", block.MinerAddress(), "err", err)
 		return ErrVerifyHeaderFailed
 	}
 
 	// The time interval between the current block and the parent block. unit：ms
-	totalTimeSpan := uint64(block.Time()-parent.Header.Time) * 1000
+	totalPassTime := uint64(block.Time()-parent.Header.Time) * 1000
 	nodeCount := dm.GetDeputiesCount(block.Height())
 	oneLoopTime := uint64(nodeCount) * timeoutTime // All timeout times for a round of deputy nodes
 
-	timeSpan := totalTimeSpan % oneLoopTime
-	if slot == 0 { // The last block was made by itself
-		if timeSpan < oneLoopTime-timeoutTime {
-			log.Error("Consensus verify fail: mined twice in one loop", "slot", slot, "totalTimeSpan", totalTimeSpan, "timeSpan", timeSpan, "nodeCount", nodeCount, "oneLoopTime", oneLoopTime)
-			return ErrVerifyHeaderFailed
-		}
-	} else if slot == 1 {
-		if timeSpan >= timeoutTime {
-			log.Error("Consensus verify fail: time out", "slot", slot, "totalTimeSpan", totalTimeSpan, "timeSpan", timeSpan, "nodeCount", nodeCount, "oneLoopTime", oneLoopTime)
-			return ErrVerifyHeaderFailed
-		}
-	} else {
-		if timeSpan/timeoutTime != uint64(slot-1) {
-			log.Error("Consensus verify fail: not in turn", "slot", slot, "totalTimeSpan", totalTimeSpan, "timeSpan", timeSpan, "nodeCount", nodeCount, "oneLoopTime", oneLoopTime)
-			return ErrVerifyHeaderFailed
-		}
+	passTime := totalPassTime % oneLoopTime
+	if passTime < (distance-1)*timeoutTime || passTime >= distance*timeoutTime {
+		log.Error("Consensus verify fail: not in turn", "distance", distance, "totalPassTime", totalPassTime, "passTime", passTime, "nodeCount", nodeCount, "oneLoopTime", oneLoopTime)
+		return ErrVerifyHeaderFailed
 	}
 	return nil
 }
