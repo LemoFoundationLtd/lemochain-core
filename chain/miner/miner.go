@@ -3,7 +3,6 @@ package miner
 import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/consensus"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
-	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
@@ -31,7 +30,8 @@ type Miner struct {
 	dm            *deputynode.Manager
 	extra         []byte // 扩展数据 暂保留 最大256byte
 
-	mineTimer *time.Timer // 出块timer
+	mineTimer  *time.Timer // 出块timer
+	retryTimer *time.Timer // 出块失败时重试出块的timer
 
 	recvNewBlockCh chan *types.Block // 收到新块通知
 	recvBlockSub   subscribe.Subscription
@@ -69,13 +69,13 @@ func (m *Miner) Start() {
 
 	// Active the mine timer. To make sure the first miner can start work
 	if m.isSelfDeputyNode() {
-		currentBlock := m.chain.CurrentBlock()
-		m.schedule(currentBlock.Height()+1, currentBlock.MinerAddress())
-		// if waitTime < 0 {
-		// 	log.Error("interval error. start mining failed")
-		// 	m.Stop()
-		// 	return
-		// }
+		if !m.schedule(m.chain.CurrentBlock()) {
+			log.Error("Start mining fail")
+			m.Stop()
+			return
+		}
+	} else {
+		log.Info("Not deputy now. waiting...")
 	}
 
 	m.recvBlockSub = m.chain.SubscribeNewBlock(m.recvNewBlockCh)
@@ -124,140 +124,13 @@ func (m *Miner) isSelfDeputyNode() bool {
 	return m.dm.IsSelfDeputyNode(m.chain.CurrentBlock().Height() + 1)
 }
 
-// getSleepTime get sleep time to seal block
-func (m *Miner) getSleepTime() int {
-	curBlock := m.chain.CurrentBlock()
-	curHeight := curBlock.Height()
-	nodeCount := m.dm.GetDeputiesCount(curHeight + 1)
-	if nodeCount == 1 { // 只有一个主节点
-		waitTime := m.blockInterval
-		log.Debugf("getSleepTime: waitTime:%d", waitTime)
-		return int(waitTime)
-	}
-	if (curHeight > params.InterimDuration) && (curHeight-params.InterimDuration)%params.TermDuration == 0 {
-		if deputyNode := m.dm.GetDeputyByNodeID(curHeight, deputynode.GetSelfNodeID()); deputyNode != nil {
-			waitTime := int(deputyNode.Rank) * int(m.timeoutTime)
-			log.Debugf("getSleepTime: waitTime:%d", waitTime)
-			return waitTime
-		}
-		log.Error("not deputy node")
-		return -1
-	}
-	timeDur := m.getTimespan() // 获取当前时间与最新块的时间差
-	myself := m.dm.GetDeputyByNodeID(curHeight+1, deputynode.GetSelfNodeID())
-	slot, err := consensus.GetMinerDistance(curHeight+1, curBlock.Header.MinerAddress, myself.MinerAddress, m.dm) // 获取新块离本节点索引的距离
-	if err != nil {
-		log.Debugf("GetMinerDistance error: %v", err)
-		return -1
-	}
-	oneLoopTime := int64(nodeCount) * m.timeoutTime
-	// for test
-	if curHeight%params.TermDuration >= params.InterimDuration && curHeight%params.TermDuration < params.InterimDuration+20 {
-		log.Debugf("getSleepTime: timeDur:%d slot:%d oneLoopTime:%d", timeDur, slot, oneLoopTime)
-	}
-	if slot == 0 { // 上一个块为自己出的块
-		minInterval := int64(nodeCount-1) * m.timeoutTime
-		// timeDur = timeDur % oneLoopTime // 求余
-		// if timeDur >=minInterval && timeDur< oneLoopTime{
-		// 	log.Debugf("getSleepTime: timeDur: %d. isTurn=true --1", timeDur)
-		// 	m.timeToMineCh <- struct{}{}
-		// }else{
-		// 	waitTime := minInterval - timeDur
-		// 	m.resetMineTimer(waitTime)
-		// 	log.Debugf("getSleepTime: slot=0. waitTime:%d", waitTime)
-		// }
-		//
-
-		if timeDur < minInterval {
-			waitTime := minInterval - timeDur
-			log.Debugf("getSleepTime: slot=0. waitTime:%d", waitTime)
-			return int(waitTime)
-		} else if timeDur < oneLoopTime {
-			log.Debugf("getSleepTime: timeDur: %d. isTurn=true --1", timeDur)
-			return 0
-		} else { // 间隔大于一轮
-			timeDur = timeDur % oneLoopTime // 求余
-			waitTime := int64(nodeCount-1)*m.timeoutTime - timeDur
-			if waitTime <= 0 {
-				log.Debugf("getSleepTime: waitTime: %d. isTurn=true --2", waitTime)
-				return 0
-			} else {
-				log.Debugf("getSleepTime: slot=0. waitTime:%d", waitTime)
-				return int(waitTime)
-			}
-		}
-	} else if slot == 1 { // 说明下一个区块就该本节点产生了
-		if timeDur > oneLoopTime { // 间隔大于一轮
-			timeDur = timeDur % oneLoopTime // 求余
-			// for test
-			if curHeight%params.TermDuration >= params.InterimDuration && curHeight%params.TermDuration < params.InterimDuration+20 {
-				log.Debugf("getSleepTime: slot:1 timeDur:%d>oneLoopTime:%d ", timeDur, oneLoopTime)
-			}
-			if timeDur < m.timeoutTime { //
-				log.Debugf("getSleepTime: timeDur: %d. isTurn=true --3", timeDur)
-				return 0
-			} else {
-				waitTime := oneLoopTime - timeDur
-				// for test
-				if curHeight%params.TermDuration >= params.InterimDuration && curHeight%params.TermDuration < params.InterimDuration+20 {
-					log.Debugf("ModifyTimer: slot:1 timeDur:%d>=self.timeoutTime:%d resetMineTimer(waitTime:%d)", timeDur, m.timeoutTime, waitTime)
-				}
-				return int(waitTime)
-			}
-		} else { // 间隔不到一轮
-			if timeDur >= m.timeoutTime { // 过了本节点该出块的时机
-				waitTime := oneLoopTime - timeDur
-				// for test
-				if curHeight%params.TermDuration >= params.InterimDuration && curHeight%params.TermDuration < params.InterimDuration+20 {
-					log.Debugf("getSleepTime: slot:1 timeDur<oneLoopTime, timeDur>self.timeoutTime, resetMineTimer(waitTime:%d)", waitTime)
-				}
-				return int(waitTime)
-			} else if timeDur >= m.blockInterval { // 如果上一个区块的时间与当前时间差大或等于3s（区块间的最小间隔为3s），则直接出块无需休眠
-				// for test
-				if curHeight%params.TermDuration >= params.InterimDuration && curHeight%params.TermDuration < params.InterimDuration+20 {
-					log.Debugf("getSleepTime: timeDur: %d. isTurn=true. --4", timeDur)
-				}
-				return 0
-			} else {
-				waitTime := m.blockInterval - timeDur // 如果上一个块时间与当前时间非常近（小于3s），则设置休眠
-				if waitTime <= 0 {
-					log.Warnf("getSleepTime: waitTime: %d", waitTime)
-					return -1
-				}
-				// for test
-				if curHeight%params.TermDuration >= params.InterimDuration && curHeight%params.TermDuration < params.InterimDuration+20 {
-					log.Debugf("getSleepTime: slot:1, else, resetMineTimer(waitTime:%d)", waitTime)
-				}
-				return int(waitTime)
-			}
-		}
-	} else { // 说明还不该自己出块，但是需要修改超时时间了
-		timeDur = timeDur % oneLoopTime
-		if timeDur >= int64(slot-1)*m.timeoutTime && timeDur < int64(slot)*m.timeoutTime {
-			// for test
-			if curHeight%params.TermDuration >= params.InterimDuration && curHeight%params.TermDuration < params.InterimDuration+20 {
-				log.Debugf("getSleepTime: timeDur:%d. isTurn=true. --5", timeDur)
-			}
-			return 0
-		} else {
-			waitTime := (int64(slot-1)*m.timeoutTime - timeDur + oneLoopTime) % oneLoopTime
-			if waitTime <= 0 {
-				log.Warnf("getSleepTime: waitTime: %d", waitTime)
-				return -1
-			}
-			// for test
-			if curHeight%params.TermDuration >= params.InterimDuration && curHeight%params.TermDuration < params.InterimDuration+20 {
-				log.Debugf("getSleepTime: slot:>1, timeDur:%d, resetMineTimer(waitTime:%d)", timeDur, waitTime)
-			}
-			return int(waitTime)
-		}
-	}
-}
-
 // stopMineTimer stop timer
 func (m *Miner) stopMineTimer() {
 	if m.mineTimer != nil {
 		m.mineTimer.Stop()
+	}
+	if m.retryTimer != nil {
+		m.retryTimer.Stop()
 	}
 }
 
@@ -265,13 +138,19 @@ func (m *Miner) stopMineTimer() {
 func (m *Miner) resetMineTimer(timeDur int64) {
 	// 停掉之前的定时器
 	m.stopMineTimer()
-	if timeDur <= 0 {
-		return
-	}
+
 	// 重开新的定时器
+	log.Debugf("Wait %dms to mine", timeDur)
 	m.mineTimer = time.AfterFunc(time.Duration(timeDur*int64(time.Millisecond)), func() {
 		if atomic.LoadInt32(&m.mining) == 1 {
-			log.Debugf("wait %dms to mine", timeDur)
+			// MineBlock may fail. Then the new block event won't come. So we'd better set a new timer in advance to make sure the mine loop will continue
+			// If mine success, the timer will be clear
+			m.retryTimer = time.AfterFunc(time.Duration(m.timeoutTime*int64(time.Millisecond)), func() {
+				// mine the same height block again in next mine loop
+				log.Debug("Last mine failed. Try again")
+				m.schedule(m.chain.CurrentBlock())
+			})
+
 			m.timeToMineCh <- struct{}{}
 		}
 	})
@@ -288,7 +167,8 @@ func (m *Miner) runMineLoop() {
 		case block := <-m.recvNewBlockCh:
 			// include mine block by self and receive other's block
 			log.Debug("Got a new block. Reset timer.", "block", block.ShortString())
-			m.schedule(block.Height()+1, block.MinerAddress())
+			m.stopMineTimer()
+			m.schedule(block)
 
 		case <-m.stopCh:
 			return
@@ -299,50 +179,57 @@ func (m *Miner) runMineLoop() {
 	}
 }
 
-// schedule reset timer or mine block when a new block come
-func (m *Miner) schedule(nextHeight uint32, currentMiner common.Address) {
-	myDeputyNode := m.dm.GetMyDeputyInfo(nextHeight)
-	if myDeputyNode == nil {
-		m.stopMineTimer()
-		return
-	}
+// getSleepTime get sleep time to seal block
+func (m *Miner) getSleepTime(mineHeight uint32, distance uint64, parentBlockTime uint32) int64 {
+	nodeCount := m.dm.GetDeputiesCount(mineHeight)
+	// 所有节点都超时所需要消耗的时间，也可以看作是下一轮出块的开始时间
+	oneLoopTime := int64(nodeCount) * m.timeoutTime
+	// 网络传输耗时，即当前时间减去收到的区块头中的时间戳
+	totalPassTime := (time.Now().UnixNano() / 1e6) - int64(parentBlockTime)*1000
+	// 本轮出块时间表已经经过的时长
+	passTime := totalPassTime % oneLoopTime
+	// 可以出块的时间窗口
+	windowFrom := int64(distance-1) * m.timeoutTime
+	windowTo := int64(distance) * m.timeoutTime
 
-	var timeDur int64
-	// block 是换届的最后一个区块
-	if deputynode.IsRewardBlock(nextHeight) {
-		if myDeputyNode.Rank == 0 {
-			log.Debug("Start a new term, I'm the first miner")
-			timeDur = m.blockInterval
-		} else {
-			timeDur = int64(myDeputyNode.Rank) * m.timeoutTime
+	var waitTime int64
+	if distance == 1 && totalPassTime < m.timeoutTime {
+		// distance == 1表示下一个区块该本节点产生了。时间也合适，没有超时。这时需要确保延迟足够的时间，避免早期交易少时链上全是空块
+		waitTime = m.blockInterval - passTime
+		if waitTime < 0 {
+			waitTime = 0
 		}
-		m.resetMineTimer(timeDur)
-		return
-	}
-
-	// latest block is self mined
-	if currentMiner == myDeputyNode.MinerAddress {
-		log.Debug("Reset timer by the block mined by self")
-		nodeCount := m.dm.GetDeputiesCount(nextHeight)
-		if nodeCount == 1 {
-			timeDur = m.blockInterval
-		} else {
-			timeDur = int64(nodeCount-1) * m.timeoutTime
-		}
-		m.resetMineTimer(timeDur)
-		return
-	}
-
-	// sleep
-	timeDur = int64(m.getSleepTime())
-	if timeDur == 0 {
-		log.Debug("time to mine immediately")
-		m.sealBlock()
-	} else if timeDur > 0 {
-		m.resetMineTimer(timeDur)
+	} else if passTime >= windowFrom && passTime < windowTo {
+		// 到达当前节点的时间窗口内了，可以立即出块
+		waitTime = 0
 	} else {
-		log.Error("getSleepTime interval error.")
+		// 需要等待下个时间窗口
+		waitTime = (windowFrom - passTime + oneLoopTime) % oneLoopTime
 	}
+	log.Debug("getSleepTime", "waitTime", waitTime, "distance", distance, "parentTime", parentBlockTime, "totalPassTime", totalPassTime, "passTime", passTime)
+	log.Debug("getSleepTime", "nodeCount", nodeCount, "blockInterval", m.blockInterval, "timeoutTime", m.timeoutTime, "windowFrom", windowFrom, "windowTo", windowTo)
+	return waitTime
+}
+
+// schedule wait some time to mine next block
+func (m *Miner) schedule(parentBlock *types.Block) bool {
+	mineHeight := parentBlock.Height() + 1
+
+	minerAddress, ok := m.dm.GetMyMinerAddress(mineHeight)
+	if !ok {
+		log.Warnf("Not a deputy at height %d. can't mine", mineHeight)
+		return false
+	}
+	// 获取新块离本节点索引的距离
+	distance, err := consensus.GetMinerDistance(mineHeight, parentBlock.MinerAddress(), minerAddress, m.dm)
+	if err != nil {
+		log.Errorf("GetMinerDistance error: %v", err)
+		return false
+	}
+
+	timeDur := m.getSleepTime(mineHeight, distance, parentBlock.Time())
+	m.resetMineTimer(timeDur)
+	return true
 }
 
 // sealBlock 出块
@@ -350,15 +237,12 @@ func (m *Miner) sealBlock() {
 	if !m.isSelfDeputyNode() {
 		return
 	}
-	parent := m.chain.CurrentBlock()
-	log.Debugf("Start seal block %d", parent.Height()+1)
+	log.Debug("Start seal block")
 
 	// mine asynchronously
 	m.chain.MineBlock(&consensus.BlockMaterial{
-		Extra:         m.extra,
-		MineTimeLimit: m.timeoutTime * 2 / 3,
+		Extra: m.extra,
+		// The time for mining is (m.timeoutTime - m.blockInterval). The rest 1/3 is used to transfer to other nodes
+		MineTimeLimit: (m.timeoutTime - m.blockInterval) * 2 / 3,
 	})
-
-	// MineBlock may fail. Then the new block event won't come. So we'd better set timer in advance
-	m.schedule(parent.Height()+1, m.GetMinerAddress())
 }

@@ -117,11 +117,8 @@ func (m *Manager) GetTermByHeight(height uint32) (*TermRecord, error) {
 func (m *Manager) GetDeputiesByHeight(height uint32) DeputyNodes {
 	term, err := m.GetTermByHeight(height)
 	if err != nil {
-		// TODO
-		panic(err)
-		// m.lock.RLock()
-		// term = m.termList[len(m.termList)-1]
-		// m.lock.RUnlock()
+		// panic(err)
+		return DeputyNodes{}
 	}
 	return term.GetDeputies(m.DeputyCount)
 }

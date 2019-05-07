@@ -176,7 +176,7 @@ func (ba *BlockAssembler) Finalize(height uint32, am *account.Manager) error {
 			log.Warnf("load term rewards failed: %v", err)
 			return err
 		}
-		log.Debugf("the %d term's reward value = %s ", term, termRewards.String())
+		log.Debugf("the reward of term %d is %s ", term, termRewards.String())
 		lastTermRecord, err := ba.dm.GetTermByHeight(height - 1)
 		if err != nil {
 			log.Warnf("load deputy nodes failed: %v", err)
