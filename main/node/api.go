@@ -14,28 +14,16 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-core/common/hexutil"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
+	"github.com/LemoFoundationLtd/lemochain-core/network"
 	"github.com/LemoFoundationLtd/lemochain-core/network/p2p"
 	"runtime"
 	"strconv"
 	"time"
 )
 
-const (
-	MaxTxToNameLength  = 100
-	MaxTxMessageLength = 1024
-)
-
 var (
-	ErrToName         = errors.New("the length of toName field in transaction is out of max length limit")
-	ErrTxMessage      = errors.New("the length of message field in transaction is out of max length limit")
-	ErrCreateContract = errors.New("the data of create contract transaction can't be null")
-	ErrSpecialTx      = errors.New("the data of special transaction can't be null")
-	ErrTxType         = errors.New("the transaction type does not exit")
-	ErrLemoAddress    = errors.New("lemoAddress is incorrect")
-	ErrAssetId        = errors.New("assetid is incorrect")
-	ErrTxExpiration   = errors.New("tx expiration time is out of date")
-	ErrNegativeValue  = errors.New("negative value")
-	ErrTxChainID      = errors.New("tx chainID is incorrect")
+	ErrLemoAddress = errors.New("lemoAddress is incorrect")
+	ErrAssetId     = errors.New("assetid is incorrect")
 )
 
 // Private
@@ -69,7 +57,7 @@ func NewPublicAccountAPI(m *account.Manager) *PublicAccountAPI {
 
 // GetBalance get balance in mo
 func (a *PublicAccountAPI) GetBalance(LemoAddress string) (string, error) {
-	if !VerifyLemoAddress(LemoAddress) {
+	if !network.VerifyLemoAddress(LemoAddress) {
 		log.Warnf("LemoAddress is incorrect. lemoAddress: %s", LemoAddress)
 		return "", ErrLemoAddress
 	}
@@ -84,7 +72,7 @@ func (a *PublicAccountAPI) GetBalance(LemoAddress string) (string, error) {
 
 // GetAccount return the struct of the &AccountData{}
 func (a *PublicAccountAPI) GetAccount(LemoAddress string) (types.AccountAccessor, error) {
-	if !VerifyLemoAddress(LemoAddress) {
+	if !network.VerifyLemoAddress(LemoAddress) {
 		log.Warnf("LemoAddress is incorrect. lemoAddress: %s", LemoAddress)
 		return nil, ErrLemoAddress
 	}
@@ -99,7 +87,7 @@ func (a *PublicAccountAPI) GetAccount(LemoAddress string) (types.AccountAccessor
 
 // GetVoteFor
 func (a *PublicAccountAPI) GetVoteFor(LemoAddress string) (string, error) {
-	if !VerifyLemoAddress(LemoAddress) {
+	if !network.VerifyLemoAddress(LemoAddress) {
 		log.Warnf("LemoAddress is incorrect. lemoAddress: %s", LemoAddress)
 		return "", ErrLemoAddress
 	}
@@ -144,7 +132,7 @@ func (a *PublicAccountAPI) GetAllRewardValue() ([]*params.Reward, error) {
 
 // GetAssetEquity returns asset equity
 func (a *PublicAccountAPI) GetAssetEquityByAssetId(LemoAddress string, assetId common.Hash) (*types.AssetEquity, error) {
-	if !VerifyLemoAddress(LemoAddress) {
+	if !network.VerifyLemoAddress(LemoAddress) {
 		log.Warnf("LemoAddress is incorrect. lemoAddress: %s", LemoAddress)
 		return nil, ErrLemoAddress
 	}
@@ -352,7 +340,7 @@ func NewPrivateNetAPI(node *Node) *PrivateNetAPI {
 
 // Connect (node = nodeID@IP:Port)
 func (n *PrivateNetAPI) Connect(node string) {
-	if !VerifyNode(node) {
+	if !network.VerifyNode(node) {
 		log.Errorf("The node is incorrect, node: %s", node)
 		return
 	}
@@ -361,7 +349,7 @@ func (n *PrivateNetAPI) Connect(node string) {
 
 // Disconnect
 func (n *PrivateNetAPI) Disconnect(node string) bool {
-	if !VerifyNode(node) {
+	if !network.VerifyNode(node) {
 		log.Errorf("The node is incorrect, node: %s", node)
 		return false
 	}
@@ -427,7 +415,7 @@ func NewPublicTxAPI(node *Node) *PublicTxAPI {
 
 // Send send a transaction
 func (t *PublicTxAPI) SendTx(tx *types.Transaction) (common.Hash, error) {
-	err := VerifyTx(tx, t.node.ChainID())
+	err := tx.VerifyTx(t.node.ChainID(), uint64(time.Now().Unix()))
 	if err != nil {
 		return common.Hash{}, err
 	}
