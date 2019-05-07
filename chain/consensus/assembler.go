@@ -52,7 +52,12 @@ func (ba *BlockAssembler) RunBlock(block *types.Block) (*types.Block, error) {
 }
 
 // MineBlock packages all products into a block
-func (ba *BlockAssembler) MineBlock(parent *types.Block, minerAddress common.Address, extra []byte, txPool TxPool, timeLimitSeconds int64) (*types.Block, error) {
+func (ba *BlockAssembler) MineBlock(parent *types.Block, extra []byte, txPool TxPool, timeLimitSeconds int64) (*types.Block, error) {
+	minerAddress, ok := ba.dm.GetMyMinerAddress(parent.Height() + 1)
+	if !ok {
+		log.Errorf("Not a deputy at height %d. can't mine", parent.Height()+1)
+		return nil, ErrNotDeputy
+	}
 	// create header
 	header := ba.sealHeader(parent, minerAddress, extra)
 	// execute tx
@@ -171,7 +176,7 @@ func (ba *BlockAssembler) Finalize(height uint32, am *account.Manager) error {
 			log.Warnf("load term rewards failed: %v", err)
 			return err
 		}
-		log.Debugf("the %d term's reward value = %s ", term, termRewards.String())
+		log.Debugf("the reward of term %d is %s ", term, termRewards.String())
 		lastTermRecord, err := ba.dm.GetTermByHeight(height - 1)
 		if err != nil {
 			log.Warnf("load deputy nodes failed: %v", err)

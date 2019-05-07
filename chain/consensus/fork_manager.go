@@ -44,12 +44,13 @@ func findDeputyByAddress(deputies []*deputynode.DeputyNode, addr common.Address)
 	return nil
 }
 
-// GetMinerDistance get miner index distance in same term
-func GetMinerDistance(targetHeight uint32, lastBlockMiner, targetMiner common.Address, dm *deputynode.Manager) (uint32, error) {
+// GetMinerDistance get miner index distance. It is always greater than 0
+func GetMinerDistance(targetHeight uint32, parentBlockMiner, targetMiner common.Address, dm *deputynode.Manager) (uint64, error) {
 	if targetHeight == 0 {
 		return 0, ErrMineGenesis
 	}
 	deputies := dm.GetDeputiesByHeight(targetHeight)
+	nodeCount := uint64(len(deputies))
 
 	// find target block miner deputy
 	targetDeputy := findDeputyByAddress(deputies, targetMiner)
@@ -57,25 +58,23 @@ func GetMinerDistance(targetHeight uint32, lastBlockMiner, targetMiner common.Ad
 		return 0, ErrNotDeputy
 	}
 
-	// only one deputy
-	nodeCount := uint32(len(deputies))
-	if nodeCount == 1 {
-		return 1, nil
-	}
-
 	// Genesis block is pre-set, not belong to any deputy node. So only blocks start with height 1 is mined by deputies
 	// The reward block changes deputy nodes, so we need recompute the slot
 	if targetHeight == 1 || deputynode.IsRewardBlock(targetHeight) {
-		return targetDeputy.Rank + 1, nil
+		return uint64(targetDeputy.Rank + 1), nil
+	}
+
+	// if they are same miner, then return deputy count
+	if targetMiner == parentBlockMiner {
+		return nodeCount, nil
 	}
 
 	// find last block miner deputy
-	lastDeputy := findDeputyByAddress(deputies, lastBlockMiner)
+	lastDeputy := findDeputyByAddress(deputies, parentBlockMiner)
 	if lastDeputy == nil {
 		return 0, ErrNotDeputy
 	}
-
-	return (targetDeputy.Rank - lastDeputy.Rank + nodeCount) % nodeCount, nil
+	return (nodeCount + uint64(targetDeputy.Rank) - uint64(lastDeputy.Rank)) % nodeCount, nil
 }
 
 // TrySwitchFork switch fork if its length reached to a multiple of "deputy nodes count * 2/3"

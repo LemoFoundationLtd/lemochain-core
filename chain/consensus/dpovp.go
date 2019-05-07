@@ -84,7 +84,7 @@ func (dp *DPoVP) MineBlock(material *BlockMaterial) (*types.Block, error) {
 	oldCurrent := dp.CurrentBlock()
 
 	// mine and seal
-	block, err := dp.assembler.MineBlock(dp.CurrentBlock(), material.MinerAddr, material.Extra, dp.txPool, material.MineTimeLimit)
+	block, err := dp.assembler.MineBlock(dp.CurrentBlock(), material.Extra, dp.txPool, material.MineTimeLimit)
 	if err != nil {
 		return nil, err
 	}

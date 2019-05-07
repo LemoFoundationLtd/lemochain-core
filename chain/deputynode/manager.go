@@ -117,11 +117,8 @@ func (m *Manager) GetTermByHeight(height uint32) (*TermRecord, error) {
 func (m *Manager) GetDeputiesByHeight(height uint32) DeputyNodes {
 	term, err := m.GetTermByHeight(height)
 	if err != nil {
-		// TODO
-		panic(err)
-		// m.lock.RLock()
-		// term = m.termList[len(m.termList)-1]
-		// m.lock.RUnlock()
+		// panic(err)
+		return DeputyNodes{}
 	}
 	return term.GetDeputies(m.DeputyCount)
 }
@@ -163,6 +160,15 @@ func (m *Manager) GetDeputyByNodeID(height uint32, nodeID []byte) *DeputyNode {
 // GetMyDeputyInfo 获取自己在某一届高度的共识节点信息
 func (m *Manager) GetMyDeputyInfo(height uint32) *DeputyNode {
 	return m.GetDeputyByNodeID(height, GetSelfNodeID())
+}
+
+// GetMyMinerAddress 获取自己在某一届高度的矿工账号
+func (m *Manager) GetMyMinerAddress(height uint32) (common.Address, bool) {
+	deputy := m.GetDeputyByNodeID(height, GetSelfNodeID())
+	if deputy != nil {
+		return deputy.MinerAddress, true
+	}
+	return common.Address{}, false
 }
 
 // IsSelfDeputyNode
