@@ -32,7 +32,7 @@ type BlockChain interface {
 
 type TxPool interface {
 	// AddTxs add transaction
-	AddTxs(txs []*types.Transaction) error
+	RecvTxs(tx []*types.Transaction)
 	// Remove remove transaction
-	Remove(keys []common.Hash)
+	RecvBlock(block *types.Block)
 }

@@ -6,6 +6,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/txpool"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
@@ -26,7 +27,7 @@ type Miner struct {
 	timeoutTime   int64
 	privKey       *ecdsa.PrivateKey
 	minerAddress  common.Address
-	txPool        *chain.TxPool
+	txPool        *txpool.TxPool
 	mining        int32
 	engine        chain.Engine
 	chain         *chain.BlockChain
@@ -45,7 +46,7 @@ type Miner struct {
 	quitCh chan struct{} // 退出
 }
 
-func New(cfg *MineConfig, chain *chain.BlockChain, txPool *chain.TxPool, engine chain.Engine) *Miner {
+func New(cfg *MineConfig, chain *chain.BlockChain, txPool *txpool.TxPool, engine chain.Engine) *Miner {
 	m := &Miner{
 		blockInterval:  cfg.SleepTime,
 		timeoutTime:    cfg.Timeout,
@@ -390,7 +391,7 @@ func (m *Miner) sealBlock() {
 	}
 	log.Debug("Start seal")
 	header, dNodes := m.sealHead()
-	txs := m.txPool.Pending(1000000)
+	txs := m.txPool.Get(header.Time, 1000000)
 	log.Debugf("Pending number of txs from txPool: %d  ", len(txs))
 	defer func() {
 		var timeDur int64
@@ -440,14 +441,8 @@ func (m *Miner) sealBlock() {
 		return
 	}
 	// remove txs from pool
-	txsKeys := make([]common.Hash, len(packagedTxs)+len(invalidTxs))
-	for i, tx := range packagedTxs {
-		txsKeys[i] = tx.Hash()
-	}
-	for i, tx := range invalidTxs {
-		txsKeys[i+len(packagedTxs)] = tx.Hash()
-	}
-	m.txPool.Remove(txsKeys)
+	m.txPool.RecvBlock(block)
+	m.txPool.DelErrTxs(invalidTxs)
 	log.Infof("Mine a new block. height: %d hash: %s, len(txs): %d", block.Height(), block.Hash().String(), len(block.Txs))
 }
 

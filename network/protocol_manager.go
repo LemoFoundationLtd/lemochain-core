@@ -271,11 +271,7 @@ func (pm *ProtocolManager) insertBlock(b *types.Block) {
 	pm.mergeConfirmsFromCache(b)
 	if err := pm.chain.InsertChain(b, true); err == nil {
 		if len(b.Txs) > 0 {
-			txsKeys := make([]common.Hash, len(b.Txs))
-			for i, tx := range b.Txs {
-				txsKeys[i] = tx.Hash()
-			}
-			pm.txPool.Remove(txsKeys)
+			pm.txPool.RecvBlock(b)
 		}
 	} else {
 		log.Errorf("InsertBlock failed: %v", err)
@@ -659,11 +655,7 @@ func (pm *ProtocolManager) handleTxsMsg(msg *p2p.Msg) error {
 	if err := msg.Decode(&txs); err != nil {
 		return fmt.Errorf("handleTxsMsg error: %v", err)
 	}
-	go func() {
-		if err := pm.txPool.AddTxs(txs); err != nil {
-			log.Debugf("handleTxsMsg: %v", err)
-		}
-	}()
+	go pm.txPool.RecvTxs(txs)
 	return nil
 }
 

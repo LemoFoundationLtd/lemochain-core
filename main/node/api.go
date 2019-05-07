@@ -431,13 +431,13 @@ func (t *PublicTxAPI) SendTx(tx *types.Transaction) (common.Hash, error) {
 	if err != nil {
 		return common.Hash{}, err
 	}
-	err = t.node.txPool.AddTx(tx)
-	return tx.Hash(), err
+	t.node.txPool.RecvTx(tx)
+	return tx.Hash(), nil
 }
 
 // PendingTx
 func (t *PublicTxAPI) PendingTx(size int) []*types.Transaction {
-	return t.node.txPool.Pending(size)
+	return t.node.txPool.Get(uint32(time.Now().Unix()), size)
 }
 
 // ReadContract read variables in a contract includes the return value of a function.
