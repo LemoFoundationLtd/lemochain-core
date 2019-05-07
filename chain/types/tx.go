@@ -3,27 +3,40 @@ package types
 import (
 	"errors"
 	"fmt"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/hexutil"
+	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/common/merkle"
 	"github.com/LemoFoundationLtd/lemochain-core/common/rlp"
 	"io"
 	"math/big"
 	"strings"
 	"sync/atomic"
+	"time"
 )
 
 const (
-	TxSigLength = 65
+	TxSigLength        = 65
+	MaxTxToNameLength  = 100
+	MaxTxMessageLength = 1024
 )
 
 //go:generate gencodec -type txdata --field-override txdataMarshaling -out gen_tx_json.go
 
 var (
 	DefaultTTTL       uint64 = 2 * 60 * 60 // Transaction Time To Live, 2hours
+	TxVersion         uint8  = 1           // current transaction version. should between 0 and 128
 	ErrInvalidSig            = errors.New("invalid transaction sig")
 	ErrInvalidVersion        = errors.New("invalid transaction version")
-	TxVersion         uint8  = 1 // current transaction version. should between 0 and 128
+	ErrToName                = errors.New("the length of toName field in transaction is out of max length limit")
+	ErrTxMessage             = errors.New("the length of message field in transaction is out of max length limit")
+	ErrCreateContract        = errors.New("the data of create contract transaction can't be null")
+	ErrSpecialTx             = errors.New("the data of special transaction can't be null")
+	ErrTxType                = errors.New("the transaction type does not exit")
+	ErrTxExpiration          = errors.New("tx expiration time is out of date")
+	ErrNegativeValue         = errors.New("negative value")
+	ErrTxChainID             = errors.New("tx chainID is incorrect")
 )
 
 type Transactions []*Transaction
@@ -369,6 +382,56 @@ func (tx *Transaction) Clone() *Transaction {
 		cpy.data.Amount = new(big.Int).Set(tx.data.Amount)
 	}
 	return &cpy
+}
+
+// VerifyTx transaction parameter verification
+func (tx *Transaction) VerifyTx(chainID uint16) error {
+	// verify time
+	if tx.Expiration() < uint64(time.Now().Unix()) {
+		log.Warnf("Tx out of date. tx expiration:%d, nowTime:%d", tx.Expiration(), time.Now().Unix())
+		return ErrTxExpiration
+	}
+	// verify chainID
+	if tx.ChainID() != chainID {
+		log.Warnf("Tx chainID is incorrect. txChainId:%d, chainID:%d", tx.ChainID(), chainID)
+		return ErrTxChainID
+	}
+	// verify tx signing
+	_, err := tx.From()
+	if err != nil {
+		return err
+	}
+	if tx.Amount().Sign() < 0 {
+		return ErrNegativeValue
+	}
+
+	toNameLength := len(tx.ToName())
+	if toNameLength > MaxTxToNameLength {
+		log.Warnf("The length of toName field in transaction is out of max length limit. toName length = %d. max length limit = %d. ", toNameLength, MaxTxToNameLength)
+		return ErrToName
+	}
+	txMessageLength := len(tx.Message())
+	if txMessageLength > MaxTxMessageLength {
+		log.Warnf("The length of message field in transaction is out of max length limit. message length = %d. max length limit = %d. ", txMessageLength, MaxTxMessageLength)
+		return ErrTxMessage
+	}
+	switch tx.Type() {
+	case params.OrdinaryTx:
+		if tx.To() == nil {
+			if len(tx.Data()) == 0 {
+				return ErrCreateContract
+			}
+		}
+	case params.VoteTx:
+	case params.RegisterTx, params.CreateAssetTx, params.IssueAssetTx, params.ReplenishAssetTx, params.ModifyAssetTx, params.TransferAssetTx:
+		if len(tx.Data()) == 0 {
+			return ErrSpecialTx
+		}
+	default:
+		log.Warnf("The transaction type does not exit . type = %v", tx.Type())
+		return ErrTxType
+	}
+	return nil
 }
 
 // SetSecp256k1V merge secp256k1.V into the result of CombineV function

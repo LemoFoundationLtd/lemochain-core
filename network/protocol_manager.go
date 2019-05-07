@@ -15,6 +15,11 @@ import (
 	"time"
 )
 
+var (
+	ErrNodeInvalid   = errors.New("discover node is invalid")
+	ErrRequestBlocks = errors.New("invalid request blocks' param")
+)
+
 const (
 	ForceSyncInternal = 10 * time.Second
 	DiscoverInternal  = 10 * time.Second
@@ -655,6 +660,14 @@ func (pm *ProtocolManager) handleTxsMsg(msg *p2p.Msg) error {
 	if err := msg.Decode(&txs); err != nil {
 		return fmt.Errorf("handleTxsMsg error: %v", err)
 	}
+
+	for _, tx := range txs {
+		if err := tx.VerifyTx(pm.chainID); err != nil {
+			log.Errorf("Received a bad tx. tx:%s, error:%v", tx.String(), err)
+			return err
+		}
+	}
+
 	go pm.txPool.RecvTxs(txs)
 	return nil
 }
@@ -804,6 +817,13 @@ func (pm *ProtocolManager) handleDiscoverResMsg(msg *p2p.Msg) error {
 	if err := msg.Decode(&disRes); err != nil {
 		return fmt.Errorf("handleDiscoverResMsg error: %v", err)
 	}
+	// verify nodes
+	for _, node := range disRes.Nodes {
+		if !VerifyNode(node) {
+			log.Errorf("HandleDiscoverResMsg exists invalid node. error node: %s", node)
+			return ErrNodeInvalid
+		}
+	}
 	pm.discover.AddNewList(disRes.Nodes)
 	return nil
 }
@@ -815,7 +835,7 @@ func (pm *ProtocolManager) handleGetBlocksWithChangeLogMsg(msg *p2p.Msg, p *peer
 		return fmt.Errorf("handleGetBlocksMsg error: %v", err)
 	}
 	if query.From > query.To {
-		return errors.New("invalid request blocks' param")
+		return ErrRequestBlocks
 	}
 	go pm.respBlocks(query.From, query.To, p, true)
 	return nil
