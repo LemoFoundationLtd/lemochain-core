@@ -5,6 +5,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/consensus"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/txpool"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/flag"
@@ -43,7 +44,7 @@ type Config struct {
 	MineTimeout uint64
 }
 
-func NewBlockChain(config Config, dm *deputynode.Manager, db db.ChainDB, flags flag.CmdFlags, txPool *TxPool) (bc *BlockChain, err error) {
+func NewBlockChain(config Config, dm *deputynode.Manager, db db.ChainDB, flags flag.CmdFlags, txPool *txpool.TxPool) (bc *BlockChain, err error) {
 	bc = &BlockChain{
 		chainID:          config.ChainID,
 		db:               db,
@@ -75,7 +76,7 @@ func NewBlockChain(config Config, dm *deputynode.Manager, db db.ChainDB, flags f
 	}
 	bc.engine = consensus.NewDPoVP(dpovpCfg, bc.db, bc.dm, bc.am, bc, txPool, block)
 
-	go bc.runFeedResendLoop()
+	go bc.runFeedTranspondLoop()
 	go bc.runMainLoop()
 
 	return bc, nil
@@ -94,8 +95,8 @@ func (bc *BlockChain) IsInBlackList(b *types.Block) bool {
 	return bc.dm.IsEvilDeputyNode(b.MinerAddress(), currentHeight)
 }
 
-// runFeedResendLoop resend dpovp feed to global event bus
-func (bc *BlockChain) runFeedResendLoop() {
+// runFeedTranspondLoop transpond dpovp feed to global event bus
+func (bc *BlockChain) runFeedTranspondLoop() {
 	stableCh := make(chan *types.Block)
 	stableSub := bc.engine.SubscribeStable(stableCh)
 	confirmCh := make(chan *network.BlockConfirmData)
