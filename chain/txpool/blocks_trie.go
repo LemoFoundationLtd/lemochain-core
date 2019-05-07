@@ -1,11 +1,14 @@
 package txpool
 
 import (
+	"errors"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 )
+
+var ErrTxPoolBlockExpired = errors.New("the block has expired")
 
 type BlockTimeBucket struct {
 	/* 块时间 */
@@ -16,13 +19,13 @@ type BlockTimeBucket struct {
 }
 
 func newBlockTimeBucket(block *types.Block) *BlockTimeBucket {
-	blocksByTime := &BlockTimeBucket{
+	blockBucket := &BlockTimeBucket{
 		Time:           block.Time(),
 		BlocksByHeight: make(map[uint32]HashSet),
 	}
 
-	blocksByTime.add(block)
-	return blocksByTime
+	blockBucket.add(block)
+	return blockBucket
 }
 
 func (blockBucket *BlockTimeBucket) add(block *types.Block) {
@@ -50,11 +53,16 @@ func (blockBucket *BlockTimeBucket) del(block *types.Block) {
 		return
 	}
 
-	blockSet := blockBucket.BlocksByHeight[block.Height()]
-	blockSet.Del(block.Hash())
+	blockSet, ok := blockBucket.BlocksByHeight[block.Height()]
+	if ok {
+		blockSet.Del(block.Hash())
+		if len(blockSet) <= 0 {
+			delete(blockBucket.BlocksByHeight, block.Height())
+		}
+	}
 }
 
-func (blockBucket *BlockTimeBucket) timeOut(block *types.Block) bool {
+func (blockBucket *BlockTimeBucket) blockIsTimeOut(block *types.Block) bool {
 	if blockBucket.Time < block.Time() {
 		return true
 	} else {
@@ -62,7 +70,7 @@ func (blockBucket *BlockTimeBucket) timeOut(block *types.Block) bool {
 	}
 }
 
-func (blockBucket *BlockTimeBucket) notTimeOut(block *types.Block) bool {
+func (blockBucket *BlockTimeBucket) blockIsNotTimeOut(block *types.Block) bool {
 	if blockBucket.Time == block.Time() {
 		return true
 	} else {
@@ -70,7 +78,7 @@ func (blockBucket *BlockTimeBucket) notTimeOut(block *types.Block) bool {
 	}
 }
 
-func (blockBucket *BlockTimeBucket) before1H(block *types.Block) bool {
+func (blockBucket *BlockTimeBucket) halfHourAgo(block *types.Block) bool {
 	if block.Time() < blockBucket.Time {
 		return true
 	} else {
@@ -82,8 +90,7 @@ type NodeByHash map[common.Hash]*TrieNode
 
 func newNodeByHash(block *types.Block) NodeByHash {
 	nodeByHash := make(map[common.Hash]*TrieNode)
-
-	nodeByHash[block.Hash()] = buildBlockNode(block)
+	nodeByHash[block.Hash()] = buildTrieNode(block)
 	return nodeByHash
 }
 
@@ -100,7 +107,7 @@ func buildTxSet(txs []*types.Transaction) HashSet {
 	return txSet
 }
 
-func buildBlockNode(block *types.Block) *TrieNode {
+func buildTrieNode(block *types.Block) *TrieNode {
 	if block == nil {
 		return nil
 	}
@@ -115,7 +122,7 @@ func (nodeByHash NodeByHash) add(block *types.Block) {
 	hash := block.Hash()
 	_, ok := nodeByHash[hash]
 	if !ok {
-		nodeByHash[hash] = buildBlockNode(block)
+		nodeByHash[hash] = buildTrieNode(block)
 	}
 }
 
@@ -152,15 +159,6 @@ type TrieNode struct {
 	TxHashSet HashSet
 }
 
-func (node *TrieNode) hashIsExist(hash common.Hash) bool {
-	if len(node.TxHashSet) <= 0 {
-		return false
-	}
-
-	_, ok := node.TxHashSet[hash]
-	return ok
-}
-
 /* 最近一个小时的所有块 */
 type BlocksTrie struct {
 
@@ -178,6 +176,19 @@ func NewBlocksTrie() *BlocksTrie {
 	}
 }
 
+func (trie *BlocksTrie) delFromHeightBucket(block *types.Block) {
+	height := block.Height()
+	blocks := trie.HeightBuckets[height]
+	if blocks == nil {
+		return
+	}
+
+	blocks.del(block.Hash())
+	if len(blocks) <= 0 {
+		delete(trie.HeightBuckets, height)
+	}
+}
+
 func (trie *BlocksTrie) delFromHeightBucketBatch(delBlocks map[uint32]HashSet) {
 	if len(delBlocks) <= 0 || len(trie.HeightBuckets) <= 0 {
 		return
@@ -187,8 +198,11 @@ func (trie *BlocksTrie) delFromHeightBucketBatch(delBlocks map[uint32]HashSet) {
 		blocks := trie.HeightBuckets[height]
 		if blocks == nil {
 			continue
-		} else {
-			blocks.delBatch(hashSet)
+		}
+
+		blocks.delBatch(hashSet)
+		if len(blocks) <= 0 {
+			delete(trie.HeightBuckets, height)
 		}
 	}
 }
@@ -207,16 +221,6 @@ func (trie *BlocksTrie) addToHeightBucket(block *types.Block) {
 		trie.HeightBuckets[block.Height()] = newNodeByHash(block)
 	} else {
 		trie.HeightBuckets[block.Height()].add(block)
-	}
-}
-
-func (trie *BlocksTrie) delFromHeightBucket(block *types.Block) {
-	height := block.Height()
-	blocks := trie.HeightBuckets[height]
-	if blocks == nil {
-		return
-	} else {
-		blocks.del(block.Hash())
 	}
 }
 
@@ -256,25 +260,33 @@ func (trie *BlocksTrie) Path(hash common.Hash, height uint32, minHeight uint32, 
 	for pHeight >= minHeight {
 		nodes := trie.HeightBuckets[pHeight]
 		node := nodes.get(pHash)
+		/**
+		 * 1、[minHeight, maxHeight]范围内的块存在超时被淘汰，则存在node为空，此为正常现象
+		 * 2、调用PushBlock，添加了错误的块，也会存在，此为异常情况，只能调用的时候小心了
+		 */
 		if node == nil {
-			panic(fmt.Sprintf("get block is nil.hash: %s", common.ToHex(hash.Bytes())))
+			return result
 		}
 
 		if pHeight <= maxHeight {
 			result = append(result, node)
 		}
 
-		pHeight = node.Header.Height - 1
-		pHash = node.Header.ParentHash
+		if pHeight <= 0 { // 防止uint32(-1)溢出
+			break
+		} else {
+			pHeight = node.Header.Height - 1
+			pHash = node.Header.ParentHash
+		}
 	}
 
 	return result
 }
 
 /* 收到一个新块，并返回过期的块的交易列表，块过期了，块中的交易肯定也过期了 */
-func (trie *BlocksTrie) PushBlock(block *types.Block) {
+func (trie *BlocksTrie) PushBlock(block *types.Block) error {
 	if block == nil {
-		return
+		return nil
 	}
 
 	slot := block.Time() % uint32(TransactionExpiration)
@@ -282,20 +294,26 @@ func (trie *BlocksTrie) PushBlock(block *types.Block) {
 	if timeBucket == nil {
 		trie.resetTimeBucket(block)
 		trie.addToHeightBucket(block)
-	} else {
-		if timeBucket.timeOut(block) {
-			trie.delFromHeightBucketBatch(timeBucket.BlocksByHeight)
-			trie.resetTimeBucket(block)
-			trie.addToHeightBucket(block)
-		}
-
-		if timeBucket.notTimeOut(block) {
-			trie.addToHeightBucket(block)
-			trie.addToTimeBucket(block)
-		}
-
-		if timeBucket.before1H(block) {
-			log.Errorf(fmt.Sprintf("item.Time(%d) > block.Time(%d)", timeBucket.Time, block.Time()))
-		}
+		return nil
 	}
+
+	if timeBucket.blockIsTimeOut(block) {
+		trie.delFromHeightBucketBatch(timeBucket.BlocksByHeight)
+		trie.resetTimeBucket(block)
+		trie.addToHeightBucket(block)
+		return nil
+	}
+
+	if timeBucket.blockIsNotTimeOut(block) {
+		trie.addToHeightBucket(block)
+		trie.addToTimeBucket(block)
+		return nil
+	}
+
+	if timeBucket.halfHourAgo(block) {
+		log.Errorf(fmt.Sprintf("item.Time(%d) - block.Time(%d) = %d", timeBucket.Time, block.Time(), timeBucket.Time-block.Time()))
+		return ErrTxPoolBlockExpired
+	}
+
+	return nil
 }
