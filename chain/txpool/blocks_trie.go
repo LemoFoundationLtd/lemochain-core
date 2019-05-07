@@ -196,7 +196,7 @@ func (trie *BlocksTrie) delFromHeightBucketBatch(delBlocks map[uint32]HashSet) {
 
 	for height, hashSet := range delBlocks {
 		blocks := trie.HeightBuckets[height]
-		if blocks == nil {
+		if len(blocks) <= 0 {
 			continue
 		}
 

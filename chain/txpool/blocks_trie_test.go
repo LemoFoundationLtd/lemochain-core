@@ -81,7 +81,7 @@ func TestBlocksTrie_PushBlock(t *testing.T) {
 	assert.Equal(t, 1, len(trie.TimeBuckets[slot].BlocksByHeight))
 }
 
-func TestBlocksTrie_DelBlock(t *testing.T) {
+func TestBlocksTrie_DelBlock1(t *testing.T) {
 	curTime := time.Now().Unix()
 
 	trie := NewBlocksTrie()
@@ -110,20 +110,104 @@ func TestBlocksTrie_DelBlock(t *testing.T) {
 	trie.PushBlock(block2)
 
 	trie.DelBlock(block1)
-
-	assert.Equal(t, 1, len(trie.HeightBuckets))
 	slot := curTime % int64(TransactionExpiration)
 	assert.Equal(t, 1, len(trie.TimeBuckets[slot].BlocksByHeight))
+
 	item := trie.TimeBuckets[slot].BlocksByHeight[block1.Height()]
 	assert.Nil(t, item)
+	item = trie.TimeBuckets[slot].BlocksByHeight[block2.Height()]
+	assert.Equal(t, 1, len(item))
 
 	trie.DelBlock(block2)
-
-	assert.Equal(t, 0, len(trie.HeightBuckets))
-	slot = curTime % int64(TransactionExpiration)
 	assert.Equal(t, 0, len(trie.TimeBuckets[slot].BlocksByHeight))
-	item = trie.TimeBuckets[slot].BlocksByHeight[block2.Height()]
-	assert.Nil(t, item)
+}
+
+func TestBlocksTrie_DelBlock2(t *testing.T) {
+	cur := time.Now().Unix()
+
+	// height 0
+	trie := NewBlocksTrie()
+	block0 := store.GetBlock0()
+	trie.PushBlock(block0)
+
+	// height 1
+	block11 := store.GetBlock1()
+	block11.Header.ParentHash = block0.Hash()
+	block11.Header.Time = uint32(cur + 11)
+	trie.PushBlock(block11)
+
+	block12 := store.GetBlock1()
+	block12.Header.ParentHash = block0.Hash()
+	block12.Header.Time = uint32(cur + 12)
+	trie.PushBlock(block12)
+
+	block13 := store.GetBlock1()
+	block13.Header.ParentHash = block0.Hash()
+	block13.Header.Time = uint32(cur + 13)
+	trie.PushBlock(block13)
+
+	// height 2
+	block1121 := store.GetBlock2()
+	block1121.Header.ParentHash = block11.Hash()
+	block1121.Header.Time = uint32(cur + 1121)
+	trie.PushBlock(block1121)
+
+	block1122 := store.GetBlock2()
+	block1122.Header.ParentHash = block11.Hash()
+	block1122.Header.Time = uint32(cur + 1122)
+	trie.PushBlock(block1122)
+
+	block1221 := store.GetBlock2()
+	block1221.Header.ParentHash = block12.Hash()
+	block1221.Header.Time = uint32(cur + 1221)
+	trie.PushBlock(block1221)
+
+	block1222 := store.GetBlock2()
+	block1222.Header.ParentHash = block12.Hash()
+	block1222.Header.Time = uint32(cur + 1222)
+	trie.PushBlock(block1222)
+
+	// height 3
+	block112131 := store.GetBlock3()
+	block112131.Header.ParentHash = block1121.Hash()
+	block112131.Header.Time = uint32(cur + 112131)
+	trie.PushBlock(block112131)
+
+	block112132 := store.GetBlock3()
+	block112132.Header.ParentHash = block1121.Hash()
+	block112132.Header.Time = uint32(cur + 112132)
+	trie.PushBlock(block112132)
+
+	block122131 := store.GetBlock3()
+	block122131.Header.ParentHash = block1221.Hash()
+	block122131.Header.Time = uint32(cur + 122131)
+	trie.PushBlock(block122131)
+
+	// height 4
+	block11213141 := store.GetBlock4()
+	block11213141.Header.ParentHash = block112131.Hash()
+	block11213141.Header.Time = uint32(cur + 11213141)
+	trie.PushBlock(block11213141)
+
+	assert.Equal(t, 5, len(trie.HeightBuckets))
+
+	trie.DelBlock(block0)
+	assert.Equal(t, 4, len(trie.HeightBuckets))
+	assert.Nil(t, trie.HeightBuckets[0])
+
+	trie.DelBlock(block11)
+	assert.Equal(t, 4, len(trie.HeightBuckets))
+	assert.Equal(t, 2, len(trie.HeightBuckets[1]))
+	trie.DelBlock(block12)
+	assert.Equal(t, 4, len(trie.HeightBuckets))
+	assert.Equal(t, 1, len(trie.HeightBuckets[1]))
+	trie.DelBlock(block13)
+	assert.Equal(t, 3, len(trie.HeightBuckets))
+	assert.Nil(t, trie.HeightBuckets[1])
+
+	trie.DelBlock(block11213141)
+	assert.Equal(t, 2, len(trie.HeightBuckets))
+	assert.Nil(t, trie.HeightBuckets[4])
 }
 
 func TestBlocksTrie_Path1(t *testing.T) {
