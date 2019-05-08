@@ -3,6 +3,7 @@ package deputynode
 import (
 	"bytes"
 	"errors"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"math"
@@ -26,7 +27,7 @@ type Manager struct {
 	termList []*TermRecord
 	lock     sync.RWMutex
 
-	evilDeputies map[common.Address]uint32 // key is minerAddress, value is release height
+	evilDeputies map[common.Address]uint32 // key is minerAddress, value is release height(release height = block height + InterimDuration)
 	edLock       sync.Mutex
 }
 
@@ -53,11 +54,11 @@ func (m *Manager) IsEvilDeputyNode(minerAddress common.Address, currentHeight ui
 	return false
 }
 
-// SetAbnormalDeputyNode height is release height
-func (m *Manager) PutEvilDeputyNode(minerAddress common.Address, height uint32) {
+// SetAbnormalDeputyNode height is block height
+func (m *Manager) PutEvilDeputyNode(minerAddress common.Address, blockHeight uint32) {
 	m.edLock.Lock()
 	defer m.edLock.Unlock()
-	m.evilDeputies[minerAddress] = height
+	m.evilDeputies[minerAddress] = blockHeight + params.ReleaseEvilNodeDuration
 }
 
 // SaveSnapshot add deputy nodes record by snapshot block data

@@ -151,7 +151,7 @@ func (dp *DPoVP) InsertBlock(rawBlock *types.Block) (*types.Block, error) {
 	go func() {
 		isEvil := dp.validator.JudgeDeputy(block)
 		if isEvil {
-			// TODO mark the evil deputy node
+			dp.dm.PutEvilDeputyNode(block.MinerAddress(), block.Height())
 		}
 	}()
 
