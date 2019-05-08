@@ -21,6 +21,8 @@ const (
 	DefaultLimit      = 50 // default connection limit
 )
 
+var TxExpiration uint64 = 30 * 60
+
 // just for test
 const (
 	testBroadcastTxs int = 1 + iota
@@ -37,7 +39,8 @@ const (
 
 var (
 	ErrHandleLstStatusMsg = errors.New("stable height can't > current height")
-	ErrHandleGetBlocksMsg = errors.New("invalid request blocks' param")
+	ErrHandleGetBlocksMsg = errors.New("invalid request blocks'param")
+	ErrTxExpiration       = errors.New("received transaction expiration time illegal")
 )
 
 // var testRcvFlag = false   // for test
@@ -698,6 +701,14 @@ func (pm *ProtocolManager) handleTxsMsg(msg *p2p.Msg) error {
 	var txs types.Transactions
 	if err := msg.Decode(&txs); err != nil {
 		return fmt.Errorf("handleTxsMsg error: %v", err)
+	}
+	// verify tx expiration time
+	nowTime := uint64(time.Now().Unix())
+	for _, tx := range txs {
+		if tx.Expiration() < nowTime || tx.Expiration()-nowTime > TxExpiration {
+			log.Errorf("Received transaction expiration time illegal. Expiration time: %d. The current time: %d", tx.Expiration(), nowTime)
+			return ErrTxExpiration
+		}
 	}
 	go pm.txPool.RecvTxs(txs)
 	return nil
