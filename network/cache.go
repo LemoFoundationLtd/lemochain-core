@@ -227,37 +227,26 @@ func (c *BlockCache) IsExit(hash common.Hash, height uint32) bool {
 }
 
 type MsgCache struct {
-	cache []*p2p.Msg
-	lock  sync.Mutex
+	cache chan *p2p.Msg
 }
 
 const cacheCap = 1024
 
 func NewMsgCache() *MsgCache {
 	return &MsgCache{
-		cache: make([]*p2p.Msg, 0, cacheCap),
+		cache: make(chan *p2p.Msg, cacheCap),
 	}
 }
 
-// Pop pop index == 0 msg
+// Pop
 func (m *MsgCache) Pop() *p2p.Msg {
-	if m.Size() == 0 {
-		return nil
-	}
-	m.lock.Lock()
-	defer m.lock.Unlock()
-	msg := m.cache[0]
-	m.cache = m.cache[1:]
+	msg := <-m.cache
 	return msg
 }
 
-func (m *MsgCache) Put(msg *p2p.Msg) {
-	if m.Size() >= cacheCap {
-		return
-	}
-	m.lock.Lock()
-	m.cache = append(m.cache, msg)
-	m.lock.Unlock()
+// Push
+func (m *MsgCache) Push(msg *p2p.Msg) {
+	m.cache <- msg
 }
 
 func (m *MsgCache) Size() int {
