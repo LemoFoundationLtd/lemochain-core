@@ -621,7 +621,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 				return
 			}
 			// cache msg
-			msgCache.Put(msg)
+			msgCache.Push(msg)
 		}
 	}()
 
@@ -633,10 +633,6 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		}
 
 		msg := msgCache.Pop()
-		if msg == nil {
-			continue
-		}
-
 		err := pm.work(msg, p)
 		if err != nil {
 			return err
