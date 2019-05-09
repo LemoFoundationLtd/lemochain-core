@@ -140,7 +140,6 @@ func (m *Miner) resetMineTimer(timeDur int64) {
 	m.stopMineTimer()
 
 	// 重开新的定时器
-	log.Debugf("Wait %dms to mine", timeDur)
 	m.mineTimer = time.AfterFunc(time.Duration(timeDur*int64(time.Millisecond)), func() {
 		if atomic.LoadInt32(&m.mining) == 1 {
 			// MineBlock may fail. Then the new block event won't come. So we'd better set a new timer in advance to make sure the mine loop will continue
@@ -206,8 +205,7 @@ func (m *Miner) getSleepTime(mineHeight uint32, distance uint64, parentBlockTime
 		// 需要等待下个时间窗口
 		waitTime = (windowFrom - passTime + oneLoopTime) % oneLoopTime
 	}
-	log.Debug("getSleepTime", "waitTime", waitTime, "distance", distance, "parentTime", parentBlockTime, "totalPassTime", totalPassTime, "passTime", passTime)
-	log.Debug("getSleepTime", "nodeCount", nodeCount, "blockInterval", m.blockInterval, "timeoutTime", m.timeoutTime, "windowFrom", windowFrom, "windowTo", windowTo)
+	log.Debug("getSleepTime", "waitTime", waitTime, "distance", distance, "parentTime", parentBlockTime, "totalPassTime", totalPassTime, "passTime", passTime, "nodeCount", nodeCount, "blockInterval", m.blockInterval, "timeoutTime", m.timeoutTime, "windowFrom", windowFrom, "windowTo", windowTo)
 	return waitTime
 }
 

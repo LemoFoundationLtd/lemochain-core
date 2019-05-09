@@ -507,33 +507,24 @@ func (database *ChainDatabase) appendConfirm(block *types.Block, confirms []type
 	block.Confirms = append(block.Confirms, confirms...)
 }
 
-func (database *ChainDatabase) setConfirm(hash common.Hash, confirms []types.SignData) error {
+func (database *ChainDatabase) setConfirm(hash common.Hash, confirms []types.SignData) (*types.Block, error) {
 	item := database.UnConfirmBlocks[hash]
 	if (item != nil) && (item.Block != nil) {
 		database.appendConfirm(item.Block, confirms)
-		return nil
+		return item.Block, nil
 	} else {
 		block, err := database.getBlock4DB(hash)
 		if err != nil {
-			return err
+			return nil, err
 		} else {
 			database.appendConfirm(block, confirms)
-			return database.setBlock2DB(hash, block)
+			return block, database.setBlock2DB(hash, block)
 		}
 	}
 }
 
-// 设置区块的确认信息 每次收到一个
-func (database *ChainDatabase) SetConfirm(hash common.Hash, signData types.SignData) error {
-	database.RW.Lock()
-	defer database.RW.Unlock()
-
-	confirms := make([]types.SignData, 0)
-	confirms = append(confirms, signData)
-	return database.setConfirm(hash, confirms)
-}
-
-func (database *ChainDatabase) SetConfirms(hash common.Hash, pack []types.SignData) error {
+// SetConfirms 设置区块的确认信息
+func (database *ChainDatabase) SetConfirms(hash common.Hash, pack []types.SignData) (*types.Block, error) {
 	database.RW.Lock()
 	defer database.RW.Unlock()
 

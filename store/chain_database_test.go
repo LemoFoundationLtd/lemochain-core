@@ -429,9 +429,9 @@ func TestCacheChain_SetConfirm1(t *testing.T) {
 	assert.NoError(t, err)
 	_, err = cacheChain.SetStableBlock(parentBlock.Hash())
 	assert.NoError(t, err)
-	err = cacheChain.SetConfirms(parentBlock.Hash(), signs)
-	log.Errorf("set confirms end!")
+	newBlock, err := cacheChain.SetConfirms(parentBlock.Hash(), signs)
 	assert.NoError(t, err)
+	assert.Equal(t, 16, len(newBlock.Confirms))
 
 	result, err := cacheChain.GetConfirms(parentBlock.Hash())
 	assert.NoError(t, err)
@@ -459,19 +459,23 @@ func TestCacheChain_SetConfirm2(t *testing.T) {
 	assert.NoError(t, err)
 
 	parentBlock := GetBlock0()
-	err = cacheChain.SetConfirm(parentBlock.Hash(), signs[0])
+	_, err = cacheChain.SetConfirms(parentBlock.Hash(), []types.SignData{signs[0]})
 	assert.Equal(t, err, ErrNotExist)
 
 	err = cacheChain.SetBlock(parentBlock.Hash(), parentBlock)
 	assert.NoError(t, err)
-	err = cacheChain.SetConfirm(parentBlock.Hash(), signs[0])
+	newBlock, err := cacheChain.SetConfirms(parentBlock.Hash(), []types.SignData{signs[0]})
 	assert.NoError(t, err)
-	err = cacheChain.SetConfirm(parentBlock.Hash(), signs[1])
+	assert.Equal(t, 1, len(newBlock.Confirms))
+	newBlock, err = cacheChain.SetConfirms(parentBlock.Hash(), []types.SignData{signs[1]})
 	assert.NoError(t, err)
-	err = cacheChain.SetConfirm(parentBlock.Hash(), signs[2])
+	assert.Equal(t, 2, len(newBlock.Confirms))
+	newBlock, err = cacheChain.SetConfirms(parentBlock.Hash(), []types.SignData{signs[2]})
 	assert.NoError(t, err)
-	err = cacheChain.SetConfirm(parentBlock.Hash(), signs[3])
+	assert.Equal(t, 3, len(newBlock.Confirms))
+	newBlock, err = cacheChain.SetConfirms(parentBlock.Hash(), []types.SignData{signs[3]})
 	assert.NoError(t, err)
+	assert.Equal(t, 4, len(newBlock.Confirms))
 
 	result, err := cacheChain.GetConfirms(parentBlock.Hash())
 	assert.NoError(t, err)
@@ -517,7 +521,7 @@ func TestCacheChain_AppendConfirm(t *testing.T) {
 	err = cacheChain.SetBlock(parentBlock.Hash(), parentBlock)
 	assert.NoError(t, err)
 
-	err = cacheChain.SetConfirm(parentBlock.Hash(), signs[0])
+	_, err = cacheChain.SetConfirms(parentBlock.Hash(), []types.SignData{signs[0]})
 	assert.NoError(t, err)
 
 	_, err = cacheChain.SetStableBlock(parentBlock.Hash())
@@ -528,7 +532,7 @@ func TestCacheChain_AppendConfirm(t *testing.T) {
 	assert.Equal(t, len(block.Confirms), 1)
 	assert.Equal(t, block.Confirms[0], signs[0])
 
-	err = cacheChain.SetConfirm(parentBlock.Hash(), signs[1])
+	_, err = cacheChain.SetConfirms(parentBlock.Hash(), []types.SignData{signs[1]})
 	assert.NoError(t, err)
 
 	block, err = cacheChain.GetBlockByHash(parentBlock.Hash())
@@ -537,7 +541,7 @@ func TestCacheChain_AppendConfirm(t *testing.T) {
 	assert.Equal(t, block.Confirms[0], signs[0])
 	assert.Equal(t, block.Confirms[1], signs[1])
 
-	err = cacheChain.SetConfirms(parentBlock.Hash(), signs)
+	_, err = cacheChain.SetConfirms(parentBlock.Hash(), signs[2:])
 	assert.NoError(t, err)
 
 	block, err = cacheChain.GetBlockByHash(parentBlock.Hash())

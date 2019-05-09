@@ -68,11 +68,6 @@ func (sm *StableManager) UpdateStable(block *types.Block) (bool, []*types.Block,
 
 // IsConfirmEnough test if the confirms in block is enough
 func IsConfirmEnough(block *types.Block, dm *deputynode.Manager) bool {
-	// nodeCount < 3 means two deputy nodes scene: One node mined a block and broadcasted it. Then it means two confirms after the receiver one's verification
-	// if dm.GetDeputiesCount(height) < 3 {
-	// 	return true
-	// }
-
 	// +1 for the miner
 	singerCount := len(block.Confirms) + 1
 
