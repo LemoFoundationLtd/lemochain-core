@@ -70,7 +70,8 @@ func (c *setRewardValue) Run(input []byte) ([]byte, error) {
 		return false32Byte, errors.New("set value can't >= Reward pool total")
 	}
 	// It is not allowed to set a old term
-	if (newReward.Term+1)*params.TermDuration+params.InterimDuration < c.blockHeight {
+	lastBlockInTerm := (newReward.Term+1)*params.TermDuration + params.InterimDuration
+	if lastBlockInTerm < c.blockHeight {
 		err = fmt.Errorf("the %d term deputy node reward is overdue", newReward.Term)
 		return false32Byte, err
 	}

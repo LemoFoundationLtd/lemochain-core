@@ -16,8 +16,6 @@ var (
 	ErrInvalidSnapshotHeight = errors.New("invalid snapshot block height")
 	ErrNoTerms               = errors.New("can't access deputy nodes before SaveSnapshot")
 	ErrQueryFutureTerm       = errors.New("can't query future term")
-	ErrNotDeputy             = errors.New("not a deputy address in specific height")
-	ErrMineGenesis           = errors.New("can not mine genesis block")
 )
 
 // Manager 代理节点管理器
@@ -137,7 +135,12 @@ func (m *Manager) GetDeputiesCount(height uint32) int {
 // GetDeputyByAddress 获取address对应的节点
 func (m *Manager) GetDeputyByAddress(height uint32, addr common.Address) *DeputyNode {
 	nodes := m.GetDeputiesByHeight(height)
-	return findDeputyByAddress(nodes, addr)
+	for _, node := range nodes {
+		if node.MinerAddress == addr {
+			return node
+		}
+	}
+	return nil
 }
 
 // GetDeputyByNodeID 根据nodeID获取对应的节点
@@ -151,47 +154,9 @@ func (m *Manager) GetDeputyByNodeID(height uint32, nodeID []byte) *DeputyNode {
 	return nil
 }
 
-func findDeputyByAddress(deputies []*DeputyNode, addr common.Address) *DeputyNode {
-	for _, node := range deputies {
-		if node.MinerAddress == addr {
-			return node
-		}
-	}
-	return nil
-}
-
-// GetMinerDistance get miner index distance in same term
-func (m *Manager) GetMinerDistance(targetHeight uint32, lastBlockMiner, targetMiner common.Address) (uint32, error) {
-	if targetHeight == 0 {
-		return 0, ErrMineGenesis
-	}
-	termDeputies := m.GetDeputiesByHeight(targetHeight)
-
-	// find target block miner deputy
-	targetDeputy := findDeputyByAddress(termDeputies, targetMiner)
-	if targetDeputy == nil {
-		return 0, ErrNotDeputy
-	}
-
-	// only one deputy
-	nodeCount := uint32(len(termDeputies))
-	if nodeCount == 1 {
-		return 1, nil
-	}
-
-	// Genesis block is pre-set, not belong to any deputy node. So only blocks start with height 1 is mined by deputies
-	// The reward block changes deputy nodes, so we need recompute the slot
-	if targetHeight == 1 || IsRewardBlock(targetHeight) {
-		return targetDeputy.Rank + 1, nil
-	}
-
-	// find last block miner deputy
-	lastDeputy := findDeputyByAddress(termDeputies, lastBlockMiner)
-	if lastDeputy == nil {
-		return 0, ErrNotDeputy
-	}
-
-	return (targetDeputy.Rank - lastDeputy.Rank + nodeCount) % nodeCount, nil
+// GetMyDeputyInfo 获取自己在某一届高度的共识节点信息
+func (m *Manager) GetMyDeputyInfo(height uint32) *DeputyNode {
+	return m.GetDeputyByNodeID(height, GetSelfNodeID())
 }
 
 // IsSelfDeputyNode
