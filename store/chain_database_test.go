@@ -529,28 +529,28 @@ func TestCacheChain_AppendConfirm(t *testing.T) {
 
 	block, err := cacheChain.GetBlockByHash(parentBlock.Hash())
 	assert.NoError(t, err)
-	assert.Equal(t, len(block.Confirms), 1)
-	assert.Equal(t, block.Confirms[0], signs[0])
+	assert.Equal(t, 1, len(block.Confirms))
+	assert.Equal(t, signs[0], block.Confirms[0])
 
 	_, err = cacheChain.SetConfirms(parentBlock.Hash(), []types.SignData{signs[1]})
 	assert.NoError(t, err)
 
 	block, err = cacheChain.GetBlockByHash(parentBlock.Hash())
 	assert.NoError(t, err)
-	assert.Equal(t, len(block.Confirms), 2)
-	assert.Equal(t, block.Confirms[0], signs[0])
-	assert.Equal(t, block.Confirms[1], signs[1])
+	assert.Equal(t, 2, len(block.Confirms))
+	assert.Equal(t, signs[0], block.Confirms[0])
+	assert.Equal(t, signs[1], block.Confirms[1])
 
-	_, err = cacheChain.SetConfirms(parentBlock.Hash(), signs[2:])
+	_, err = cacheChain.SetConfirms(parentBlock.Hash(), signs)
 	assert.NoError(t, err)
 
 	block, err = cacheChain.GetBlockByHash(parentBlock.Hash())
 	assert.NoError(t, err)
-	assert.Equal(t, len(block.Confirms), 16)
-	assert.Equal(t, block.Confirms[0], signs[0])
-	assert.Equal(t, block.Confirms[1], signs[1])
-	assert.Equal(t, block.Confirms[14], signs[14])
-	assert.Equal(t, block.Confirms[15], signs[15])
+	assert.Equal(t, 16, len(block.Confirms))
+	assert.Equal(t, signs[0], block.Confirms[0])
+	assert.Equal(t, signs[1], block.Confirms[1])
+	assert.Equal(t, signs[14], block.Confirms[14])
+	assert.Equal(t, signs[15], block.Confirms[15])
 }
 
 func TestChainDatabase_Commit(t *testing.T) {

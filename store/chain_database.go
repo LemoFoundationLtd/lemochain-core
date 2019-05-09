@@ -504,7 +504,11 @@ func (database *ChainDatabase) appendConfirm(block *types.Block, confirms []type
 		return
 	}
 
-	block.Confirms = append(block.Confirms, confirms...)
+	for _, confirm := range confirms {
+		if !block.IsConfirmExist(confirm) {
+			block.Confirms = append(block.Confirms, confirm)
+		}
+	}
 }
 
 func (database *ChainDatabase) setConfirm(hash common.Hash, confirms []types.SignData) (*types.Block, error) {
