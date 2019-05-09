@@ -222,9 +222,7 @@ func (recent *RecentTx) add(hash common.Hash, height int64, tx *types.Transactio
 	}
 
 	err := recent.add2Time(tx)
-	if err != nil {
-		// TODO
-	} else {
+	if err == nil {
 		recent.add2Hash(hash, height, tx)
 	}
 }

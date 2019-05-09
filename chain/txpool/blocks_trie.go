@@ -62,7 +62,7 @@ func (blockBucket *BlockTimeBucket) del(block *types.Block) {
 	}
 }
 
-func (blockBucket *BlockTimeBucket) blockIsTimeOut(block *types.Block) bool {
+func (blockBucket *BlockTimeBucket) bucketIsTimeOut(block *types.Block) bool {
 	if blockBucket.Time < block.Time() {
 		return true
 	} else {
@@ -70,7 +70,7 @@ func (blockBucket *BlockTimeBucket) blockIsTimeOut(block *types.Block) bool {
 	}
 }
 
-func (blockBucket *BlockTimeBucket) blockIsNotTimeOut(block *types.Block) bool {
+func (blockBucket *BlockTimeBucket) bucketIsNotTimeOut(block *types.Block) bool {
 	if blockBucket.Time == block.Time() {
 		return true
 	} else {
@@ -297,14 +297,14 @@ func (trie *BlocksTrie) PushBlock(block *types.Block) error {
 		return nil
 	}
 
-	if timeBucket.blockIsTimeOut(block) {
+	if timeBucket.bucketIsTimeOut(block) {
 		trie.delFromHeightBucketBatch(timeBucket.BlocksByHeight)
 		trie.resetTimeBucket(block)
 		trie.addToHeightBucket(block)
 		return nil
 	}
 
-	if timeBucket.blockIsNotTimeOut(block) {
+	if timeBucket.bucketIsNotTimeOut(block) {
 		trie.addToHeightBucket(block)
 		trie.addToTimeBucket(block)
 		return nil
