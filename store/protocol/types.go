@@ -17,8 +17,7 @@ type ChainDB interface {
 	IterateUnConfirms(fn func(*types.Block))
 
 	GetConfirms(hash common.Hash) ([]types.SignData, error)
-	SetConfirm(hash common.Hash, signData types.SignData) error
-	SetConfirms(hash common.Hash, pack []types.SignData) error
+	SetConfirms(hash common.Hash, pack []types.SignData) (*types.Block, error)
 
 	LoadLatestBlock() (*types.Block, error)
 	SetStableBlock(hash common.Hash) ([]*types.Block, error)
