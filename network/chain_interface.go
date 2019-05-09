@@ -19,15 +19,11 @@ type BlockChain interface {
 	// StableBlock local chain's latest stable block
 	StableBlock() *types.Block
 	// InsertBlock insert a block to local chain
-	InsertBlock(block *types.Block)
+	InsertBlock(block *types.Block) error
 	// ReceiveConfirm received a confirm message from remote peer
 	InsertConfirm(info *BlockConfirmData)
-	// GetConfirms get a block's confirms from local chain
-	GetConfirms(query *GetConfirmInfo) []types.SignData
-	// IsConfirmEnough test if the confirms in block is enough
-	IsConfirmEnough(block *types.Block) bool
-	// ReceiveStableConfirms received a block's confirm info
-	ReceiveStableConfirms(pack BlockConfirms)
+	// InsertStableConfirms received a block's confirm info
+	InsertStableConfirms(pack BlockConfirms)
 	// IsInBlackList
 	IsInBlackList(b *types.Block) bool
 }
