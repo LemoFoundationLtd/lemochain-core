@@ -224,8 +224,9 @@ func (bc *BlockChain) MineBlock(material *consensus.BlockMaterial) {
 }
 
 // InsertBlock insert block of non-self to chain
-func (bc *BlockChain) InsertBlock(block *types.Block) {
+func (bc *BlockChain) InsertBlock(block *types.Block) error {
 	bc.receiveBlockCh <- block
+	return nil
 }
 
 // IsConfirmEnough test if the confirms in block is enough

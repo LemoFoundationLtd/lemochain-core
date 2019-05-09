@@ -19,7 +19,7 @@ type BlockChain interface {
 	// StableBlock local chain's latest stable block
 	StableBlock() *types.Block
 	// InsertBlock insert a block to local chain
-	InsertBlock(block *types.Block)
+	InsertBlock(block *types.Block) error
 	// ReceiveConfirm received a confirm message from remote peer
 	InsertConfirm(info *BlockConfirmData)
 	// GetConfirms get a block's confirms from local chain
