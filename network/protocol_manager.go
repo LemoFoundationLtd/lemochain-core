@@ -26,6 +26,8 @@ const (
 	DefaultLimit      = 50 // default connection limit
 )
 
+var TxExpiration uint64 = 30 * 60
+
 // just for test
 const (
 	testBroadcastTxs int = 1 + iota
@@ -40,6 +42,12 @@ const (
 	testDiscover
 )
 
+var (
+	ErrHandleLstStatusMsg = errors.New("stable height can't > current height")
+	ErrHandleGetBlocksMsg = errors.New("invalid request blocks'param")
+	ErrTxExpiration       = errors.New("received transaction expiration time illegal")
+)
+
 // var testRcvFlag = false   // for test
 
 type rcvBlockObj struct {
@@ -52,14 +60,15 @@ type ProtocolManager struct {
 	nodeID      p2p.NodeID
 	nodeVersion uint32
 
-	chain         BlockChain
-	dm            *deputynode.Manager
-	discover      *p2p.DiscoverManager
-	txPool        TxPool
-	limit         int
-	peers         *peerSet      // connected peers
-	confirmsCache *ConfirmCache // received confirm info before block, cache them
-	blockCache    *BlockCache
+	chain           BlockChain
+	dm              *deputynode.Manager
+	discover        *p2p.DiscoverManager
+	txPool          TxPool
+	limit           int
+	peers           *peerSet      // connected peers
+	confirmsCache   *ConfirmCache // received confirm info before block, cache them
+	blockCache      *BlockCache
+	insertingBlocks *BlockCache
 
 	oldStableBlock atomic.Value
 
@@ -84,17 +93,18 @@ func NewProtocolManager(chainID uint16, nodeID p2p.NodeID, chain BlockChain, dm 
 		limit = DefaultLimit
 	}
 	pm := &ProtocolManager{
-		chainID:       chainID,
-		nodeID:        nodeID,
-		nodeVersion:   nodeVersion,
-		chain:         chain,
-		dm:            dm,
-		txPool:        txPool,
-		discover:      discover,
-		limit:         limit,
-		peers:         NewPeerSet(discover, dm),
-		confirmsCache: NewConfirmCache(),
-		blockCache:    NewBlockCache(),
+		chainID:         chainID,
+		nodeID:          nodeID,
+		nodeVersion:     nodeVersion,
+		chain:           chain,
+		dm:              dm,
+		txPool:          txPool,
+		discover:        discover,
+		limit:           limit,
+		peers:           NewPeerSet(discover, dm),
+		confirmsCache:   NewConfirmCache(),
+		blockCache:      NewBlockCache(),
+		insertingBlocks: NewBlockCache(),
 
 		addPeerCh:    make(chan p2p.IPeer),
 		removePeerCh: make(chan p2p.IPeer),
@@ -224,8 +234,17 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 				if b.Height() <= pm.chain.StableBlock().Height() || pm.chain.HasBlock(b.Hash()) {
 					continue
 				}
-				// local chain has this block
-				if pm.chain.HasBlock(b.ParentHash()) {
+				// the block is black block
+				if pm.chain.IsInBlackList(b) {
+					pm.blockCache.Remove(b)
+					continue
+				}
+				// this block is inserting chain
+				if pm.insertingBlocks.IsExit(b.Hash(), b.Height()) {
+					continue
+				}
+				// local chain has parent block or parent block will insert chain
+				if pm.chain.HasBlock(b.ParentHash()) || pm.insertingBlocks.IsExit(b.ParentHash(), b.Height()-1) {
 					log.Infof("Got a block %s from peer: %#x", b.ShortString(), rcvMsg.p.NodeID()[:8])
 					pm.insertBlock(b)
 				} else {
@@ -243,7 +262,7 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 			}
 		case <-queueTimer.C:
 			processBlock := func(block *types.Block) bool {
-				if pm.chain.HasBlock(block.ParentHash()) {
+				if pm.chain.HasBlock(block.ParentHash()) || pm.insertingBlocks.IsExit(block.ParentHash(), block.Height()-1) {
 					go pm.insertBlock(block)
 					return true
 				}
@@ -272,6 +291,7 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 
 // insertBlock insert block
 func (pm *ProtocolManager) insertBlock(b *types.Block) {
+	pm.insertingBlocks.Add(b)
 	// pop the confirms which arrived before block
 	pm.mergeConfirmsFromCache(b)
 	pm.chain.InsertBlock(b)
@@ -307,6 +327,7 @@ func (pm *ProtocolManager) stableBlockLoop() {
 			go func() {
 				pm.confirmsCache.Clear(block.Height())
 				pm.blockCache.Clear(block.Height())
+				pm.insertingBlocks.Clear(block.Height())
 			}()
 			// for test
 			if pm.test {
@@ -562,21 +583,8 @@ func (pm *ProtocolManager) findSyncFrom(rStatus *LatestStatus) (uint32, error) {
 	return from, nil
 }
 
-// handleMsg handle net received message
-func (pm *ProtocolManager) handleMsg(p *peer) error {
-	msg, err := p.ReadMsg()
-	if err != nil {
-		return err
-	}
-
-	// if testRcvFlag {
-	// 	if msg.Code == BlocksMsg {
-	// 		log.Debug("handleMsg receive blocks, but not process.")
-	// 	} else {
-	// 		log.Debug("not receive block, but receive other types of message.")
-	// 	}
-	// }
-
+// work return handle msg error
+func (pm *ProtocolManager) work(msg *p2p.Msg, p *peer) error {
 	switch msg.Code {
 	case LstStatusMsg:
 		return pm.handleLstStatusMsg(msg, p)
@@ -608,12 +616,58 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 	}
 }
 
+// handleMsg handle net received message
+func (pm *ProtocolManager) handleMsg(p *peer) error {
+	msgCache := NewMsgCache()
+	errCh := make(chan error, 1)  // 返回error的管道
+	readCh := make(chan struct{}) // 监听退出ReadMsg协程的管道
+	// read msg
+	go func() {
+		for {
+			select {
+			case <-readCh:
+				return
+			default:
+			}
+
+			msg, err := p.ReadMsg()
+			if err != nil {
+				errCh <- err
+				return
+			}
+			// cache msg
+			msgCache.Push(msg)
+		}
+	}()
+
+	for {
+		// listen ReadMsg error
+		if len(errCh) != 0 {
+			err := <-errCh
+			return err
+		}
+
+		msg := msgCache.Pop()
+		err := pm.work(msg, p)
+		if err != nil {
+			close(readCh)
+			return err
+		}
+	}
+
+}
+
 // handleLstStatusMsg handle latest remote status message
 func (pm *ProtocolManager) handleLstStatusMsg(msg *p2p.Msg, p *peer) error {
 	var status LatestStatus
 	if err := msg.Decode(&status); err != nil {
 		return fmt.Errorf("handleLstStatusMsg error: %v", err)
 	}
+
+	if status.StaHeight > status.CurHeight {
+		return ErrHandleLstStatusMsg
+	}
+
 	go pm.forceSyncBlock(&status, p)
 	return nil
 }
@@ -640,9 +694,15 @@ func (pm *ProtocolManager) handleBlockHashMsg(msg *p2p.Msg, p *peer) error {
 	if err := msg.Decode(&hashMsg); err != nil {
 		return fmt.Errorf("handleBlockHashMsg error: %v", err)
 	}
+
 	if pm.chain.HasBlock(hashMsg.Hash) {
 		return nil
 	}
+
+	if pm.chain.StableBlock().Height() >= hashMsg.Height {
+		return nil
+	}
+
 	// update status
 	p.UpdateStatus(hashMsg.Height, hashMsg.Hash)
 	go p.RequestBlocks(hashMsg.Height, hashMsg.Height)
@@ -655,14 +715,14 @@ func (pm *ProtocolManager) handleTxsMsg(msg *p2p.Msg) error {
 	if err := msg.Decode(&txs); err != nil {
 		return fmt.Errorf("handleTxsMsg error: %v", err)
 	}
-
+	// verify tx expiration time
+	nowTime := uint64(time.Now().Unix())
 	for _, tx := range txs {
-		if err := tx.VerifyTx(pm.chainID, uint64(time.Now().Unix())); err != nil {
-			log.Errorf("Received a bad tx. tx:%s, error:%v", tx.String(), err)
-			return err
+		if tx.Expiration() < nowTime || tx.Expiration()-nowTime > TxExpiration {
+			log.Errorf("Received transaction expiration time illegal. Expiration time: %d. The current time: %d", tx.Expiration(), nowTime)
+			return ErrTxExpiration
 		}
 	}
-
 	go pm.txPool.RecvTxs(txs)
 	return nil
 }
@@ -688,7 +748,10 @@ func (pm *ProtocolManager) handleGetBlocksMsg(msg *p2p.Msg, p *peer) error {
 		return fmt.Errorf("handleGetBlocksMsg error: %v", err)
 	}
 	if query.From > query.To {
-		return errors.New("invalid request blocks' param")
+		return ErrHandleGetBlocksMsg
+	}
+	if query.From > pm.chain.CurrentBlock().Height() {
+		return nil
 	}
 	go pm.respBlocks(query.From, query.To, p, false)
 	return nil
@@ -737,7 +800,7 @@ func (pm *ProtocolManager) respBlocks(from, to uint32, p *peer, hasChangeLog boo
 				break
 			}
 		}
-		if p != nil {
+		if p != nil && len(blocks) != 0 {
 			p.SendBlocks(blocks)
 		}
 	}
@@ -827,6 +890,9 @@ func (pm *ProtocolManager) handleGetBlocksWithChangeLogMsg(msg *p2p.Msg, p *peer
 	}
 	if query.From > query.To {
 		return ErrRequestBlocks
+	}
+	if query.From > pm.chain.CurrentBlock().Height() {
+		return nil
 	}
 	go pm.respBlocks(query.From, query.To, p, true)
 	return nil

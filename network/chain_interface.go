@@ -28,6 +28,8 @@ type BlockChain interface {
 	IsConfirmEnough(block *types.Block) bool
 	// ReceiveStableConfirms received a block's confirm info
 	ReceiveStableConfirms(pack BlockConfirms)
+	// IsInBlackList
+	IsInBlackList(b *types.Block) bool
 }
 
 type TxPool interface {
