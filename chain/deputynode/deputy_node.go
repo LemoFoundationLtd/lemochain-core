@@ -1,6 +1,7 @@
 package deputynode
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
@@ -17,23 +18,38 @@ import (
 var (
 	ErrMinerAddressInvalid = errors.New("incorrect field: 'MinerAddress'")
 	ErrNodeIDInvalid       = errors.New("incorrect field: 'NodeID'")
-	ErrPortInvalid         = errors.New("max deputy node's port is 65535")
 	ErrRankInvalid         = errors.New("max deputy node's rank is 65535")
 	ErrVotesInvalid        = errors.New("min deputy node's votes are 0")
 )
 
 // DeputyNode
 type DeputyNode struct {
-	MinerAddress common.Address `json:"minerAddress"   gencodec:"required"`
+	MinerAddress common.Address `json:"minerAddress"   gencodec:"required"` // candidate account address
 	NodeID       []byte         `json:"nodeID"         gencodec:"required"`
-	Rank         uint32         `json:"rank"           gencodec:"required"` // 排名 从0开始
-	Votes        *big.Int       `json:"votes"          gencodec:"required"` // 得票数
+	Rank         uint32         `json:"rank"           gencodec:"required"` // start from 0
+	Votes        *big.Int       `json:"votes"          gencodec:"required"`
 }
 
 type deputyNodeMarshaling struct {
 	NodeID hexutil.Bytes
 	Rank   hexutil.Uint32
 	Votes  *hexutil.Big10
+}
+
+func NewDeputyNode(votes *big.Int, rank uint32, minerAddr common.Address, nodeIDStr string) (*DeputyNode, error) {
+	// nodeID
+	nodeID, err := hex.DecodeString(nodeIDStr)
+	if err != nil {
+		log.Errorf("NewDeputyNode fail", "NodeID", nodeIDStr)
+		return nil, err
+	}
+
+	return &DeputyNode{
+		MinerAddress: minerAddr,
+		Votes:        votes,
+		Rank:         rank,
+		NodeID:       nodeID,
+	}, nil
 }
 
 func (d *DeputyNode) Hash() (h common.Hash) {

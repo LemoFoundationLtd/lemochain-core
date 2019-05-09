@@ -203,11 +203,11 @@ func Test_verifyHeaderTime(t *testing.T) {
 		},
 	}
 
-	err01 := verifyHeaderTime(&blocks[0])
+	err01 := verifyTime(&blocks[0])
 	assert.Equal(t, nil, err01)
-	err02 := verifyHeaderTime(&blocks[1])
+	err02 := verifyTime(&blocks[1])
 	assert.Equal(t, nil, err02)
-	err03 := verifyHeaderTime(&blocks[2])
+	err03 := verifyTime(&blocks[2])
 	assert.Equal(t, ErrVerifyHeaderFailed, err03)
 
 }
@@ -221,7 +221,7 @@ func Test_verifyHeaderSignData(t *testing.T) {
 	// 创建一个块并用另一个节点来对此区块进行签名
 	block01 := newSignedBlock(dpovp, common.Hash{}, common.HexToAddress(block01MinerAddress), nil, uint32(time.Now().Unix()), deputy02Privkey, false)
 	// header := block01.Header
-	assert.Equal(t, ErrVerifyHeaderFailed, verifyHeaderSignData(dm, block01))
+	assert.Equal(t, ErrVerifyHeaderFailed, verifySigner(dm, block01))
 }
 
 // // TestDpovp_nodeCount1 nodeCount = 1 的情况下直接返回nil
@@ -232,7 +232,7 @@ func TestDpovp_nodeCount1(t *testing.T) {
 	defer dpovp.db.Close()
 
 	t.Log(dm.GetDeputiesCount(1))
-	assert.Equal(t, nil, dpovp.VerifyHeader(&types.Block{Header: &types.Header{Height: 1}}))
+	assert.Equal(t, nil, dpovp.VerifyBeforeTxProcess(&types.Block{Header: &types.Header{Height: 1}}))
 }
 
 // 验证区块头Extra字段长度是否正确
@@ -249,7 +249,7 @@ func Test_headerExtra(t *testing.T) {
 	// 重新对区块进行签名
 	signTestBlock(deputy01Privkey, testBlcok)
 	// 验证
-	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyHeader(testBlcok))
+	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyBeforeTxProcess(testBlcok))
 }
 
 // TestDpovp_VerifyHeader01 对共识中共识区块与父块关联情况共识的测试
@@ -262,12 +262,12 @@ func TestDpovp_VerifyHeader01(t *testing.T) {
 	// 验证不存在父区块的情况
 	testBlock00 := newSignedBlock(dpovp, common.Hash{}, common.HexToAddress(block01MinerAddress), nil, uint32(time.Now().Unix()-10), deputy01Privkey, true)
 	// header := testBlock00.Header
-	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyHeader(testBlock00))
+	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyBeforeTxProcess(testBlock00))
 
 	// 验证父区块的高度为0，也就是父区块为创世区块情况
 	testBlock01 := newSignedBlock(dpovp, testBlock00.Hash(), common.HexToAddress(block02MinerAddress), nil, uint32(time.Now().Unix()-5), deputy02Privkey, false)
 
-	assert.Equal(t, nil, dpovp.VerifyHeader(testBlock01))
+	assert.Equal(t, nil, dpovp.VerifyBeforeTxProcess(testBlock01))
 }
 
 // TestDpovp_VerifyHeader03 测试slot == 0,slot == 1,slot > 1的情况
@@ -286,43 +286,43 @@ func TestDpovp_VerifyHeader02(t *testing.T) {
 	// if slot == 0 :
 	// 还是由第一个节点出块,模拟 (if slot == 0 ) 的情况 ,与block01时间差为44s,满足条件(if timeSpan >= oneLoopTime-d.timeoutTime),此区块共识验证通过会返回nil
 	block02 := newSignedBlock(dpovp, block01.Hash(), common.HexToAddress(block01MinerAddress), nil, 2044, deputy01Privkey, false)
-	assert.Equal(t, nil, dpovp.VerifyHeader(block02))
+	assert.Equal(t, nil, dpovp.VerifyBeforeTxProcess(block02))
 	// 与block01时间差为33s,小于40s,验证不通过的情况
 	block03 := newSignedBlock(dpovp, block01.Hash(), common.HexToAddress(block01MinerAddress), nil, 2033, deputy01Privkey, false)
-	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyHeader(block03))
+	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyBeforeTxProcess(block03))
 	// 测试一个临界值，与block01时间差等于40s的情况
 	block04 := newSignedBlock(dpovp, block01.Hash(), common.HexToAddress(block01MinerAddress), nil, 2040, deputy01Privkey, false)
-	assert.Equal(t, nil, dpovp.VerifyHeader(block04))
+	assert.Equal(t, nil, dpovp.VerifyBeforeTxProcess(block04))
 
 	// else if slot == 1 :
 	// 都与block01作为父块, 设置出块代理节点为第二个节点，满足slot == 1,时间差设为第一种小于一轮(50s)的情况,
 	// block05时间满足(timeSpan >= d.blockInterval && timeSpan < d.timeoutTime)的正常情况
 	block05 := newSignedBlock(dpovp, block01.Hash(), common.HexToAddress(block02MinerAddress), nil, 2005, deputy02Privkey, false)
-	assert.Equal(t, nil, dpovp.VerifyHeader(block05))
+	assert.Equal(t, nil, dpovp.VerifyBeforeTxProcess(block05))
 	// block06 不满足(timeSpan >= d.blockInterval && timeSpan < d.timeoutTime)的情况,timeSpan == 11 > 10
 	block06 := newSignedBlock(dpovp, block01.Hash(), common.HexToAddress(block02MinerAddress), nil, 2011, deputy02Privkey, false)
-	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyHeader(block06))
+	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyBeforeTxProcess(block06))
 	// if slot == 1 else 的情况，此情况是timeSpan >= oneLoopTime,时间间隔超过一轮
 	// 首先测试 timeSpan % oneLoopTime < timeoutTime 的正常情况
 	block07 := newSignedBlock(dpovp, block01.Hash(), common.HexToAddress(block02MinerAddress), nil, 2051, deputy02Privkey, false)
-	assert.Equal(t, nil, dpovp.VerifyHeader(block07))
+	assert.Equal(t, nil, dpovp.VerifyBeforeTxProcess(block07))
 	// 异常情况,timeSpan % oneLoopTime = 20 > timeoutTime
 	block08 := newSignedBlock(dpovp, block01.Hash(), common.HexToAddress(block02MinerAddress), nil, 2070, deputy02Privkey, false)
-	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyHeader(block08))
+	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyBeforeTxProcess(block08))
 
 	// else :
 	// slot > 1的情况分析
 	// timeSpan/d.timeoutTime == int64(slot-1) , timeSpan与timeoutTime的除数正好是间隔的代理节点数，为正常情况
 	// 设置block09为第四个节点出块，与block01出块节点中间相隔2个节点,设置时间timeSpan == 20--29都是符合出块的时间
 	block09 := newSignedBlock(dpovp, block01.Hash(), common.HexToAddress(block04MinerAddress), nil, 2025, deputy04Privkey, false)
-	assert.Equal(t, nil, dpovp.VerifyHeader(block09))
+	assert.Equal(t, nil, dpovp.VerifyBeforeTxProcess(block09))
 	// 不符合情况,设置timeSpan >=30 || timeSpan < 20
 	// timeSpan >=30 情况， 满足条件 timeSpan/d.timeoutTime != int64(slot-1)
 	block10 := newSignedBlock(dpovp, block01.Hash(), common.HexToAddress(block04MinerAddress), nil, 2030, deputy04Privkey, false)
-	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyHeader(block10))
+	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyBeforeTxProcess(block10))
 	// timeSpan < 20 情况， 满足条件 timeSpan/d.timeoutTime != int64(slot-1)
 	block11 := newSignedBlock(dpovp, block01.Hash(), common.HexToAddress(block04MinerAddress), nil, 2019, deputy04Privkey, false)
-	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyHeader(block11))
+	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyBeforeTxProcess(block11))
 
 }
 

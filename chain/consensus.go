@@ -9,7 +9,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
-	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/store/protocol"
 	"math/big"
@@ -23,17 +22,23 @@ var (
 const MaxExtraDataLen = 256
 
 type Engine interface {
-	VerifyHeader(block *types.Block) error
-
-	Finalize(height uint32, am *account.Manager) error
-
+	VerifyBeforeTxProcess(block *types.Block) error
+	VerifyAfterTxProcess(block, computedBlock *types.Block) error
+	Finalize(height uint32, am *account.Manager, dm *deputynode.Manager) error
 	Seal(header *types.Header, txProduct *account.TxsProduct, confirms []types.SignData, dNodes deputynode.DeputyNodes) (*types.Block, error)
+	VerifyConfirmPacket(height uint32, blockHash common.Hash, sigList []types.SignData) error
 }
 
+type DeputySnapshoter interface {
+	SnapshotDeputyNodes() deputynode.DeputyNodes
+}
+
+// Dpovp seal and verify block
 type Dpovp struct {
 	timeoutTime int64
 	db          protocol.ChainDB
 	dm          *deputynode.Manager
+	snapshoter  DeputySnapshoter
 }
 
 func NewDpovp(timeout int64, dm *deputynode.Manager, db protocol.ChainDB) *Dpovp {
@@ -45,123 +50,288 @@ func NewDpovp(timeout int64, dm *deputynode.Manager, db protocol.ChainDB) *Dpovp
 	return dpovp
 }
 
-// verifyHeaderTime verify that the block timestamp is less than the current time
-func verifyHeaderTime(block *types.Block) error {
-	header := block.Header
-	blockTime := header.Time
-	timeNow := time.Now().Unix()
-	if int64(blockTime)-timeNow > 1 { // Prevent validation failure due to time error
-		log.Errorf("verifyHeader: block in the future. height:%d", block.Height())
-		return ErrVerifyHeaderFailed
-	}
-	return nil
+func (d *Dpovp) SetSnapshoter(snapshoter DeputySnapshoter) {
+	d.snapshoter = snapshoter
 }
 
-// verifyHeaderSignData verify the block signature data
-func verifyHeaderSignData(dm *deputynode.Manager, block *types.Block) error {
-	header := block.Header
-	hash := block.Hash()
-	pubKey, err := crypto.Ecrecover(hash[:], header.SignData)
+// verifyParentHash verify the parent block hash in header
+func verifyParentHash(block *types.Block, db protocol.ChainDB) (*types.Block, error) {
+	parent, err := db.GetBlockByHash(block.ParentHash())
 	if err != nil {
-		log.Errorf("verifyHeaderSignData: illegal signData. %s. height:%d", err, block.Height())
-		return ErrVerifyHeaderFailed
+		log.Error("Consensus verify fail: can't load parent block", "ParentHash", block.ParentHash(), "err", err)
+		return nil, ErrVerifyBlockFailed
 	}
-	node := dm.GetDeputyByAddress(header.Height, header.MinerAddress)
-	if node == nil {
-		nodes := dm.GetDeputiesByHeight(block.Height())
-		log.Errorf("verifyHeaderSignData: can't get deputy node, height: %d, miner: %s, deputy nodes: %s", header.Height, header.MinerAddress.String(), nodes.String())
-		return ErrVerifyHeaderFailed
+	return parent, nil
+}
+
+// verifyTxRoot verify the TxRoot is derived from the deputy nodes in block body
+func verifyTxRoot(block *types.Block) error {
+	hash := block.Txs.MerkleRootSha()
+	if hash != block.TxRoot() {
+		log.Error("Consensus verify fail: txRoot is incorrect", "txRoot", block.TxRoot().Hex(), "expected", hash.Hex())
+		return ErrVerifyBlockFailed
 	}
-	if node == nil || bytes.Compare(pubKey[1:], node.NodeID) != 0 {
-		log.Errorf("verifyHeaderSignData: illegal block. height:%d, hash:%s", header.Height, header.Hash().Hex())
+	return nil
+}
+
+// verifyHeight verify the hash of parent block
+func verifyHeight(block *types.Block, parent *types.Block) error {
+	if parent.Height()+1 != block.Height() {
+		log.Error("Consensus verify fail: height is incorrect", "expect:%d", parent.Height()+1)
 		return ErrVerifyHeaderFailed
 	}
 	return nil
 }
 
-// VerifyDeputyRoot verify deputy root
-func (d *Dpovp) VerifyDeputyRoot(block *types.Block) error {
-	if block.Height()%params.TermDuration == 0 && block.Height() > 0 {
+// verifyTime verify that the block timestamp is less than the current time
+func verifyTime(block *types.Block) error {
+	timeNow := time.Now().Unix()
+	if int64(block.Time())-timeNow > 1 { // Prevent validation failure due to time error
+		log.Error("Consensus verify fail: block is in the future", "time", block.Time(), "now", timeNow)
+		return ErrVerifyHeaderFailed
+	}
+	return nil
+}
+
+// verifySigner verify miner address and block signature data
+func verifySigner(block *types.Block, dm *deputynode.Manager) error {
+	nodeID, err := block.SignerNodeID()
+	if err != nil {
+		log.Error("Consensus verify fail: signData is incorrect", "err", err)
+		return ErrVerifyHeaderFailed
+	}
+
+	// find the deputy node information of the miner
+	deputy := dm.GetDeputyByNodeID(block.Height(), nodeID)
+	if deputy == nil {
+		log.Errorf("Consensus verify fail: can't find deputy node, nodeID: %s, deputy nodes: %s", common.ToHex(nodeID), dm.GetDeputiesByHeight(block.Height()).String())
+		return ErrVerifyHeaderFailed
+	}
+
+	// verify miner address
+	if deputy.MinerAddress != block.MinerAddress() {
+		log.Error("Consensus verify fail: minerAddress is incorrect", "MinerAddress", block.MinerAddress(), "expected", deputy.MinerAddress)
+		return ErrVerifyHeaderFailed
+	}
+	return nil
+}
+
+// verifyDeputy verify the DeputyRoot and DeputyNodes in block body
+func verifyDeputy(block *types.Block, snapshoter DeputySnapshoter) error {
+	if deputynode.IsSnapshotBlock(block.Height()) {
+		// Make sure the DeputyRoot is derived from the deputy nodes in block body
 		hash := block.DeputyNodes.MerkleRootSha()
-		root := block.Header.DeputyRoot
-		if bytes.Compare(hash[:], root) != 0 {
-			log.Errorf("verify block failed. deputyRoot not match. header's root: %s, check root: %s", common.ToHex(root), hash.String())
+		if bytes.Compare(hash[:], block.DeputyRoot()) != 0 {
+			log.Error("Consensus verify fail: deputyRoot is incorrect", "deputyRoot", common.ToHex(block.DeputyRoot()), "expected", hash.Hex())
+			return ErrVerifyBlockFailed
+		}
+		if snapshoter == nil {
+			log.Error("Snapshoter is nil. Please call \"SetSnapshoter\" first")
+			return ErrSnapshoterIsNil
+		}
+		// Make sure the DeputyRoot is match with local deputy nodes data
+		deputySnapshot := snapshoter.SnapshotDeputyNodes()
+		hash = deputySnapshot.MerkleRootSha()
+		if bytes.Compare(hash[:], block.DeputyRoot()) != 0 {
+			log.Error("Consensus verify fail: deputyNodes is incorrect", "deputyRoot", common.ToHex(block.DeputyRoot()), "expected", hash.Hex())
+			log.Errorf("nodes in body: %s\nnodes in local: %s", block.DeputyNodes, deputySnapshot)
 			return ErrVerifyBlockFailed
 		}
 	}
 	return nil
 }
 
-// VerifyHeader verify block header
-func (d *Dpovp) VerifyHeader(block *types.Block) error {
-	nodeCount := d.dm.GetDeputiesCount(block.Height()) // The total number of nodes
-	// There's only one out block node
-	if nodeCount == 1 {
-		return nil
+// verifyChangeLog verify the LogRoot and ChangeLogs in block body
+func verifyChangeLog(block *types.Block, computedLogs types.ChangeLogSlice) error {
+	// Make sure the LogRoot is derived from the change logs in block body
+	hash := block.ChangeLogs.MerkleRootSha()
+	if hash != block.LogRoot() {
+		log.Error("Consensus verify fail: logRoot is incorrect", "logRoot", block.LogRoot().Hex(), "expected", hash.Hex())
+		return ErrVerifyBlockFailed
 	}
-	// VerifyAndFill that the block timestamp is less than the current time
-	if err := verifyHeaderTime(block); err != nil {
-		return err
+	// Make sure the LogRoot is match with local change logs data
+	hash = computedLogs.MerkleRootSha()
+	if hash != block.LogRoot() {
+		log.Error("Consensus verify fail: changeLogs is incorrect", "logRoot", block.LogRoot().Hex(), "expected", hash.Hex())
+		log.Errorf("Logs in body: %s\nlogs in local: %s", block.ChangeLogs, computedLogs)
+		return ErrVerifyBlockFailed
 	}
-	// VerifyAndFill the block signature data
-	if err := verifyHeaderSignData(d.dm, block); err != nil {
-		return err
-	}
-	// verify deputy node root when height is 100W*N
-	if err := d.VerifyDeputyRoot(block); err != nil {
-		return err
-	}
-	header := block.Header
-	// verify extra data
-	if len(header.Extra) > MaxExtraDataLen {
-		log.Errorf("verifyHeader: extra data's max len is %d bytes, current length is %d", MaxExtraDataLen, len(block.Header.Extra))
+	return nil
+}
+
+// verifyExtraData verify extra data in block header
+func verifyExtraData(block *types.Block) error {
+	if len(block.Extra()) > MaxExtraDataLen {
+		log.Error("Consensus verify fail: extra data is too long", "current", len(block.Extra()), "max", MaxExtraDataLen)
 		return ErrVerifyHeaderFailed
+	}
+	return nil
+}
+
+// verifyMineSlot verify the miner slot of deputy node
+func verifyMineSlot(block *types.Block, parent *types.Block, timeoutTime int64, dm *deputynode.Manager) error {
+	if block.Height() == 1 {
+		// first block, no need to verify slot
+		return nil
 	}
 
-	parent, _ := d.db.GetBlockByHash(header.ParentHash)
-	if parent == nil {
-		log.Errorf("verifyHeader: can't get parent block. height:%d, hash:%s", header.Height-1, header.ParentHash)
+	slot, err := GetMinerDistance(block.Height(), parent.MinerAddress(), block.MinerAddress(), dm)
+	if err != nil {
+		log.Error("Consensus verify fail: can't calculate slot", "block.Height", block.Height(), "parent.MinerAddress", parent.MinerAddress(), "block.MinerAddress", block.MinerAddress())
 		return ErrVerifyHeaderFailed
-	}
-	if parent.Header.Height == 0 {
-		log.Debug("verifyHeader: parent block is genesis block")
-		return nil
-	}
-	var slot uint32
-	if (header.Height > params.InterimDuration+1) && (header.Height-params.InterimDuration-1)%params.TermDuration == 0 {
-		deputyNode := d.dm.GetDeputyByAddress(header.Height, block.MinerAddress())
-		if deputyNode == nil {
-			return ErrVerifyHeaderFailed
-		}
-		slot = deputyNode.Rank + 1
-		log.Debugf("rank: %d", deputyNode.Rank)
-	} else {
-		slot, _ = d.dm.GetMinerDistance(header.Height, parent.Header.MinerAddress, header.MinerAddress)
 	}
 
 	// The time interval between the current block and the parent block. unit：ms
-	timeSpan := int64(header.Time-parent.Header.Time) * 1000
+	timeSpan := int64(block.Time()-parent.Header.Time) * 1000
 	oldTimeSpan := timeSpan
-	oneLoopTime := int64(nodeCount) * d.timeoutTime // All timeout times for a round of deputy nodes
+	oneLoopTime := int64(dm.GetDeputiesCount(block.Height())) * timeoutTime // All timeout times for a round of deputy nodes
 
 	timeSpan %= oneLoopTime
-	if slot == 0 { // The last block was made for itself
-		if timeSpan < oneLoopTime-d.timeoutTime {
-			log.Debugf("verifyHeader: verify failed. height:%d. oldTimeSpan: %d timeSpan:%d nodeCount:%d slot:%d oneLoopTime:%d -2", header.Height, oldTimeSpan, timeSpan, nodeCount, slot, oneLoopTime)
+	if slot == 0 { // The last block was made by itself
+		if timeSpan < oneLoopTime-timeoutTime {
+			log.Error("Consensus verify fail: mined twice in one loop", "slot", slot, "oldTimeSpan", oldTimeSpan, "timeSpan", timeSpan, "nodeCount", "oneLoopTime", oneLoopTime)
 			return ErrVerifyHeaderFailed
 		}
 	} else if slot == 1 {
-		if timeSpan >= d.timeoutTime {
-			log.Debugf("verifyHeader: height: %d. verify failed.timeSpan< oneLoopTime. timeSpan:%d nodeCount:%d slot:%d oneLoopTime:%d -3", block.Height(), timeSpan, nodeCount, slot, oneLoopTime)
+		if timeSpan >= timeoutTime {
+			log.Error("Consensus verify fail: time out", "slot", slot, "oldTimeSpan", oldTimeSpan, "timeSpan", timeSpan, "nodeCount", "oneLoopTime", oneLoopTime)
 			return ErrVerifyHeaderFailed
 		}
 	} else {
-		if timeSpan/d.timeoutTime != int64(slot-1) {
-			log.Debugf("verifyHeader: verify failed. height: %d. oldTimeSpan: %d timeSpan:%d nodeCount:%d slot:%d oneLoopTime:%d -4", header.Height, oldTimeSpan, timeSpan, nodeCount, slot, oneLoopTime)
+		if timeSpan/timeoutTime != int64(slot-1) {
+			log.Error("Consensus verify fail: not in turn", "slot", slot, "oldTimeSpan", oldTimeSpan, "timeSpan", timeSpan, "nodeCount", "oneLoopTime", oneLoopTime)
 			return ErrVerifyHeaderFailed
 		}
 	}
 	return nil
+}
+
+// verifyConfirms verify the confirm data in block body
+func (d *Dpovp) VerifyConfirmPacket(height uint32, blockHash common.Hash, sigList []types.SignData) error {
+	block, err := d.db.GetBlockByHash(blockHash)
+	if err != nil {
+		return ErrBlockNotExist
+	}
+	if block.Height() != height {
+		log.Warn("Unmatched confirm height and hash", "height", height, "hash", blockHash.Hex())
+		return ErrInvalidSignedConfirmInfo
+	}
+	return verifyConfirms(block, sigList, d.dm)
+}
+
+// verifyConfirm verify the confirm data
+func verifyConfirms(block *types.Block, sigList []types.SignData, dm *deputynode.Manager) error {
+	hash := block.Hash()
+	for _, sig := range sigList {
+		nodeID, err := sig.RecoverNodeID(hash)
+		if err != nil {
+			log.Warn("Invalid confirm signature", "hash", hash.Hex(), "sig", common.ToHex(sig[:]))
+			return ErrInvalidSignedConfirmInfo
+		}
+		if bytes.Compare(sig[:], block.SignData()) == 0 {
+			log.Warn("Invalid confirm from miner", "hash", hash.Hex(), "sig", common.ToHex(sig[:]))
+			return ErrInvalidConfirmSigner
+		}
+		// find the signer
+		if err := dm.GetDeputyByNodeID(block.Height(), nodeID); err != nil {
+			log.Warn("Invalid confirm signer", "nodeID", common.ToHex(nodeID))
+			return ErrInvalidConfirmSigner
+		}
+	}
+	return nil
+}
+
+// VerifyBeforeTxProcess verify the block data which has no relationship with the transaction processing result
+func (d *Dpovp) VerifyBeforeTxProcess(block *types.Block) error {
+	// cache parent block
+	parent, err := verifyParentHash(block, d.db)
+	if err != nil {
+		return err
+	}
+	// verify miner address and signData
+	if err := verifySigner(block, d.dm); err != nil {
+		return err
+	}
+	if err := verifyTxRoot(block); err != nil {
+		return err
+	}
+	if err := verifyHeight(block, parent); err != nil {
+		return err
+	}
+	if err := verifyTime(block); err != nil {
+		return err
+	}
+	if err := verifyDeputy(block, d.snapshoter); err != nil {
+		return err
+	}
+	if err := verifyExtraData(block); err != nil {
+		return err
+	}
+	if err := verifyMineSlot(block, parent, d.timeoutTime, d.dm); err != nil {
+		return err
+	}
+	if err := verifyConfirms(block, block.Confirms, d.dm); err != nil {
+		return err
+	}
+	return nil
+}
+
+// VerifyAfterTxProcess verify the block data which computed from transactions
+func (d *Dpovp) VerifyAfterTxProcess(block, computedBlock *types.Block) error {
+	// verify block hash. It also verify the rest fields in header: VersionRoot, LogRoot, GasLimit, GasUsed
+	if computedBlock.Hash() != block.Hash() {
+		// it contains
+		log.Errorf("verify block error! oldHeader: %v, newHeader:%v", block.Header, computedBlock.Header)
+		return ErrVerifyBlockFailed
+	}
+	// verify changeLog
+	if err := verifyChangeLog(block, computedBlock.ChangeLogs); err != nil {
+		return err
+	}
+	return nil
+}
+
+func findDeputyByAddress(deputies []*deputynode.DeputyNode, addr common.Address) *deputynode.DeputyNode {
+	for _, node := range deputies {
+		if node.MinerAddress == addr {
+			return node
+		}
+	}
+	return nil
+}
+
+// GetMinerDistance get miner index distance in same term
+func GetMinerDistance(targetHeight uint32, lastBlockMiner, targetMiner common.Address, dm *deputynode.Manager) (uint32, error) {
+	if targetHeight == 0 {
+		return 0, ErrMineGenesis
+	}
+	deputies := dm.GetDeputiesByHeight(targetHeight)
+
+	// find target block miner deputy
+	targetDeputy := findDeputyByAddress(deputies, targetMiner)
+	if targetDeputy == nil {
+		return 0, ErrNotDeputy
+	}
+
+	// only one deputy
+	nodeCount := uint32(len(deputies))
+	if nodeCount == 1 {
+		return 1, nil
+	}
+
+	// Genesis block is pre-set, not belong to any deputy node. So only blocks start with height 1 is mined by deputies
+	// The reward block changes deputy nodes, so we need recompute the slot
+	if targetHeight == 1 || deputynode.IsRewardBlock(targetHeight) {
+		return targetDeputy.Rank + 1, nil
+	}
+
+	// find last block miner deputy
+	lastDeputy := findDeputyByAddress(deputies, lastBlockMiner)
+	if lastDeputy == nil {
+		return 0, ErrNotDeputy
+	}
+
+	return (targetDeputy.Rank - lastDeputy.Rank + nodeCount) % nodeCount, nil
 }
 
 // Seal packages all products into a block
@@ -182,7 +352,7 @@ func (d *Dpovp) Seal(header *types.Header, txProduct *account.TxsProduct, confir
 }
 
 // Finalize increases miners' balance and fix all account changes
-func (d *Dpovp) Finalize(height uint32, am *account.Manager) error {
+func (d *Dpovp) Finalize(height uint32, am *account.Manager, dm *deputynode.Manager) error {
 	// Pay miners at the end of their tenure
 	if deputynode.IsRewardBlock(height) {
 		term := (height-params.InterimDuration)/params.TermDuration - 1
@@ -192,7 +362,7 @@ func (d *Dpovp) Finalize(height uint32, am *account.Manager) error {
 			log.Warnf("load rewards failed: %v", err)
 			return err
 		}
-		lastTermRecord, err := d.dm.GetTermByHeight(height - 1)
+		lastTermRecord, err := dm.GetTermByHeight(height - 1)
 		if err != nil {
 			log.Warnf("load deputy nodes failed: %v", err)
 			return err

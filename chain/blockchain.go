@@ -2,11 +2,9 @@ package chain
 
 import (
 	"bytes"
-	"encoding/hex"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
-	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
@@ -57,8 +55,8 @@ func NewBlockChain(chainID uint16, engine Engine, dm *deputynode.Manager, db db.
 		chainForksHead: make(map[common.Hash]*types.Block, 16),
 		quitCh:         make(chan struct{}),
 	}
-	bc.genesisBlock = bc.GetBlockByHeight(0)
-	if bc.genesisBlock == nil {
+	bc.genesisBlock, err = bc.db.GetBlockByHeight(0)
+	if err != nil {
 		return nil, ErrNoGenesis
 	}
 	if err := bc.loadLastState(); err != nil {
@@ -125,39 +123,26 @@ func (bc *BlockChain) HasBlock(hash common.Hash) bool {
 	return false
 }
 
-func (bc *BlockChain) getGenesisFromDb() *types.Block {
-	block, err := bc.db.GetBlockByHeight(0)
-	if err != nil {
-		panic("can't get genesis block")
-	}
-	return block
-}
-
 func (bc *BlockChain) GetBlockByHeight(height uint32) *types.Block {
-	// genesis block
-	if height == 0 {
-		return bc.getGenesisFromDb()
-	}
-
-	// not genesis block
-	block := bc.currentBlock.Load().(*types.Block)
-	currentBlockHeight := block.Height()
+	currentBlock := bc.currentBlock.Load().(*types.Block)
+	currentBlockHeight := currentBlock.Height()
 	stableBlockHeight := bc.stableBlock.Load().(*types.Block).Height()
+	var block *types.Block
 	var err error
-	if stableBlockHeight >= height {
+
+	// TODO 如果没有分叉，非稳定块能否直接用hash读？结合数据库实现考虑如何优化
+	if height <= stableBlockHeight {
 		block, err = bc.db.GetBlockByHeight(height)
 		if err != nil {
-			panic(fmt.Sprintf("can't get block. height:%d, err: %v", height, err))
+			log.Error("load stable parent block fail", "height", height, "err", err)
+			panic(err)
 		}
 	} else if height <= currentBlockHeight {
-		for i := currentBlockHeight - height; i > 0; i-- {
-			block, err = bc.db.GetBlockByHash(block.ParentHash())
-			if err != nil {
-				panic(fmt.Sprintf("can't get block. height:%d, err: %v", height, err))
-			}
+		// These part of chain may be forked, so iterate the blocks one by one
+		block, err = FindParentByHeight(height, currentBlock, bc.db)
+		if err != nil {
+			panic(err)
 		}
-	} else {
-		return nil
 	}
 	return block
 }
@@ -165,7 +150,7 @@ func (bc *BlockChain) GetBlockByHeight(height uint32) *types.Block {
 func (bc *BlockChain) GetBlockByHash(hash common.Hash) *types.Block {
 	block, err := bc.db.GetBlockByHash(hash)
 	if err != nil {
-		log.Debugf("can't get block. hash:%s", hash.Hex())
+		log.Debug("load block fail", "hash", hash.Hex(), "err", err)
 		return nil
 	}
 	return block
@@ -185,12 +170,14 @@ func (bc *BlockChain) StableBlock() *types.Block {
 func (bc *BlockChain) SetMinedBlock(block *types.Block) error {
 	sb := bc.stableBlock.Load().(*types.Block)
 	if sb.Height() >= block.Height() {
-		log.Debug("mine a block, but height not large than stable block")
+		log.Debug("mine a block, but height is smaller than stable block")
 		return nil
 	}
 	if ok, _ := bc.db.IsExistByHash(block.ParentHash()); !ok {
 		return ErrParentNotExist
 	}
+
+	// save
 	if err := bc.db.SetBlock(block.Hash(), block); err != nil {
 		log.Errorf("can't insert block to cache. height:%d hash:%s", block.Height(), block.Hash().Hex())
 		return ErrSaveBlock
@@ -201,27 +188,29 @@ func (bc *BlockChain) SetMinedBlock(block *types.Block) error {
 		log.Error("save account error!", "hash", block.Hash().Hex(), "err", err)
 		return ErrSaveAccount
 	}
-	nodeCount := bc.dm.GetDeputiesCount(block.Height())
 	bc.currentBlock.Store(block)
 	delete(bc.chainForksHead, block.ParentHash())
 	bc.chainForksHead[block.Hash()] = block
+
+	// check consensus
+	nodeCount := bc.dm.GetDeputiesCount(block.Height())
 	if nodeCount == 1 {
 		_ = bc.SetStableBlock(block.Hash(), block.Height())
 	}
+	bc.updateDeputyNodes(block)
+
+	// notify
 	go func() {
-		// notify
 		subscribe.Send(subscribe.NewMinedBlock, block)
-		msg := bc.createSignInfo(block.Hash(), block.Height())
-		subscribe.Send(subscribe.NewConfirm, msg)
+		bc.confirmBlock(block.Hash(), block.Height())
 		bc.newBlockNotify(block)
 	}()
-	// bc.updateDeputyNodes(block)
 	return nil
 }
 
 // updateDeputyNodes update deputy nodes map
 func (bc *BlockChain) updateDeputyNodes(block *types.Block) {
-	if block.Height()%params.TermDuration == 0 {
+	if deputynode.IsSnapshotBlock(block.Height()) {
 		bc.dm.SaveSnapshot(block.Height(), block.DeputyNodes)
 		log.Debugf("add new term deputy nodes: %v", block.DeputyNodes)
 	}
@@ -233,27 +222,16 @@ func (bc *BlockChain) newBlockNotify(block *types.Block) {
 }
 
 // InsertChain insert block of non-self to chain
-func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err error) {
+func (bc *BlockChain) InsertChain(rawBlock *types.Block, isSynchronising bool) (err error) {
 	bc.mux.Lock()
 	defer bc.mux.Unlock()
 
-	hash := block.Hash()
-	parentHash := block.ParentHash()
+	hash := rawBlock.Hash()
+	parentHash := rawBlock.ParentHash()
 	oldCurrentBlock := bc.currentBlock.Load().(*types.Block)
-	currentHash := oldCurrentBlock.Hash()
-	sb := bc.stableBlock.Load().(*types.Block)
-	if has, _ := bc.db.IsExistByHash(hash); has {
-		return nil
-	}
-	if ok, _ := bc.db.IsExistByHash(parentHash); !ok {
-		return ErrParentNotExist
-	}
-	if sb.Height() >= block.Height() {
-		log.Debug("mine a block, but height not large than stable block")
-		return nil
-	}
+	oldCurrentHash := oldCurrentBlock.Hash()
 
-	block, err = bc.VerifyAndFill(block)
+	block, err := bc.VerifyAndSeal(rawBlock)
 	if err != nil {
 		log.Errorf("block verify failed: %v", err)
 		return ErrVerifyBlockFailed
@@ -269,14 +247,22 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 		log.Error("save account error!", "height", block.Height(), "hash", hash.Prefix(), "err", err)
 		return err
 	}
-	// is synchronise from net or deputy nodes less than 3
+	// check confirm packages
 	nodeCount := bc.dm.GetDeputiesCount(block.Height())
 	if nodeCount < 3 {
-		defer func() { _ = bc.SetStableBlock(hash, block.Height()) }()
+		// TODO 异常情况也会进入defer
+		// Two deputy nodes scene: One node mined a block and broadcasted it. Then it means two confirms after the receiver one's verification
+		defer func() {
+			_ = bc.SetStableBlock(hash, block.Height())
+			bc.updateDeputyNodes(block)
+		}()
 	} else {
 		minCount := int(math.Ceil(float64(nodeCount) * 2.0 / 3.0))
 		if len(block.Confirms) >= minCount {
-			defer func() { _ = bc.SetStableBlock(hash, block.Height()) }()
+			defer func() {
+				_ = bc.SetStableBlock(hash, block.Height())
+				bc.updateDeputyNodes(block)
+			}()
 		}
 	}
 
@@ -288,36 +274,36 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 			// only broadcast confirm info within 3 minutes
 			currentTime := time.Now().Unix()
 			if currentTime-int64(block.Time()) < 3*60 {
-				time.AfterFunc(500*time.Millisecond, func() {
-					msg := bc.createSignInfo(block.Hash(), block.Height())
-					subscribe.Send(subscribe.NewConfirm, msg)
-					log.Debugf("subscribe.NewConfirm.Send(%d)", msg.Height)
-				})
+				go func() {
+					bc.confirmBlock(block.Hash(), block.Height())
+				}()
 			}
 		}
-		bc.updateDeputyNodes(block)
 		// for debug
 		b := bc.currentBlock.Load().(*types.Block)
 		log.Debugf("current block: %d, %s, parent: %s", b.Height(), b.Hash().String()[:16], b.ParentHash().String()[:16])
 	}()
 
 	// normal, in same chain
-	if parentHash == currentHash {
+	if parentHash == oldCurrentHash {
 		bc.currentBlock.Store(block)
-		delete(bc.chainForksHead, currentHash) // remove old record from fork container
-		bc.chainForksHead[hash] = block        // record new fork
+		delete(bc.chainForksHead, oldCurrentHash) // remove old record from fork container
+		bc.chainForksHead[hash] = block           // record new fork
 		bc.newBlockNotify(block)
 		broadcastConfirm = true
 		return nil
 	}
 
+	// fork
 	fork, err := bc.needFork(block)
 	if err != nil {
 		log.Errorf("InsertChain: needFork failed: %v", err)
+		// TODO should we panic here? Keep running will lead to wrong confirmation
 		return nil
 	}
 	if fork {
 		if block.Height() > oldCurrentBlock.Height() {
+			// TODO 如果先切到较短分支，再切到较长分支，就可能对同一高度确认两次
 			broadcastConfirm = true
 		}
 		bc.currentBlock.Store(block)
@@ -326,6 +312,7 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 		log.Debugf("not update current block. block: %d - %s, parent: %s, current: %d - %s",
 			block.Height(), block.Hash().Prefix(), block.ParentHash().Prefix(), oldCurrentBlock.Height(), oldCurrentBlock.Hash().Prefix())
 	}
+	// update fork's head
 	if _, ok := bc.chainForksHead[parentHash]; ok {
 		delete(bc.chainForksHead, parentHash)
 	}
@@ -335,57 +322,29 @@ func (bc *BlockChain) InsertChain(block *types.Block, isSynchronising bool) (err
 }
 
 // needFork
-func (bc *BlockChain) needFork(b *types.Block) (bool, error) {
-	cB := bc.currentBlock.Load().(*types.Block)
-	sB := bc.stableBlock.Load().(*types.Block)
-	bFB := b  // 新块所在链 父块
-	cFB := cB // 当前链 父块
-	var err error
-	if b.Height() > cB.Height() {
-		// 查找与cB同高度的区块
-		for bFB.Height() > cB.Height() {
-			hash := bFB.ParentHash()
-			height := bFB.Height() + 1
-			if bFB, err = bc.db.GetBlockByHash(hash); err != nil {
-				log.Debugf("needFork: getBlock failed. height: %d, hash: %s", height, hash.Prefix())
-				return false, err
-			}
-		}
-	} else if b.Height() < cB.Height() {
-		// 查找与cB同高度的区块
-		for cFB.Height() > b.Height() {
-			hash := cFB.ParentHash()
-			height := cFB.Height() + 1
-			if cFB, err = bc.db.GetBlockByHash(hash); err != nil {
-				log.Debugf("needFork: getBlock failed. height: %d, hash: %s", height, hash.Prefix())
-				return false, err
-			}
-		}
-	}
+func (bc *BlockChain) needFork(block *types.Block) (bool, error) {
+	cBlock := bc.currentBlock.Load().(*types.Block)
+	sBlock := bc.stableBlock.Load().(*types.Block)
 
-	// find same ancestor
-	for bFB.ParentHash() != cFB.ParentHash() {
-		hashB := bFB.ParentHash()
-		heightB := bFB.Height() + 1
-		hashC := cFB.ParentHash()
-		heightC := cFB.Height() + 1
-		if bFB, err = bc.db.GetBlockByHash(hashB); err != nil {
-			log.Debugf("needFork: getBlock failed. height: %d, hash: %s", heightB, hashB.Prefix())
-			return false, err
-		}
-		if cFB, err = bc.db.GetBlockByHash(hashC); err != nil {
-			log.Debugf("needFork: getBlock failed. height: %d, hash: %s", heightC, hashC.Prefix())
-			return false, err
-		}
+	cParent, parent, err := FindFirstForkBlocks(cBlock, block, bc.db)
+	if err != nil {
+		log.Debug("needFork: find first fork parent blocks fail")
+		return false, err
 	}
 	// ancestor's height can't less than stable block's height
-	if bFB.Height() <= sB.Height() {
-		log.Debugf("bFB.Height(%d) <= sB.Height(%d)", bFB.Height(), sB.Height())
+	if parent.Height() <= sBlock.Height() {
+		log.Debug("needFork: fork block is stable", "ancestorHeight", parent.Height(), "stableHeight", sBlock.Height())
 		return false, nil
 	}
-	bHash := bFB.Hash()
-	cHash := cFB.Hash()
-	if cFB.Time() > bFB.Time() || (cFB.Time() == bFB.Time() && bytes.Compare(cHash[:], bHash[:]) > 0) {
+
+	// 1. choose the one has smaller time
+	if cParent.Time() > parent.Time() {
+		return true, nil
+	}
+	// 2. if times are equal, choose the one has smaller hash in dictionary order
+	hash := parent.Hash()
+	cHash := cParent.Hash()
+	if cParent.Time() == parent.Time() && bytes.Compare(cHash[:], hash[:]) > 0 {
 		return true, nil
 	}
 	return false, nil
@@ -412,10 +371,10 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32) error {
 		return ErrSetStableBlockToDB
 	}
 	bc.stableBlock.Store(block)
+
 	defer func() {
 		log.Infof("Consensus. height:%d hash:%s", block.Height(), block.Hash().Prefix())
 	}()
-
 	if len(bc.chainForksHead) > 1 {
 		res := strings.Builder{}
 		for _, v := range bc.chainForksHead {
@@ -424,8 +383,19 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32) error {
 		log.Debugf("total forks: %s", res.String())
 	}
 
+	if err := bc.checkCurrentBlock(hash, height); err != nil {
+		return err
+	}
+
+	// notify
+	subscribe.Send(subscribe.NewStableBlock, block)
+	log.Infof("stable height reach to: %d", height)
+	return nil
+}
+
+// checkCurrentBlock
+func (bc *BlockChain) checkCurrentBlock(stableHash common.Hash, height uint32) error {
 	curBlock := bc.currentBlock.Load().(*types.Block)
-	// fork
 	bc.chainForksLock.Lock()
 	defer bc.chainForksLock.Unlock()
 
@@ -437,43 +407,41 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32) error {
 			delete(bc.chainForksHead, fHash)
 			continue
 		}
-		if fBlock.Height() == height && fBlock.Hash() != hash {
-			delete(bc.chainForksHead, fHash)
-			continue
-		}
-		// same height and same hash
-		if fBlock.Hash() == hash {
-			tmp[hash] = []*types.Block{}
+		if fBlock.Height() == height {
+			if fBlock.Hash() != stableHash {
+				delete(bc.chainForksHead, fHash)
+			} else {
+				tmp[stableHash] = []*types.Block{}
+			}
 			continue
 		}
 
+		// fBlock.Height()> height
 		length := fBlock.Height() - height - 1
 		if length > maxLength {
 			maxLength = length
 		}
-		if length>>31 == 1 {
-			panic("internal error")
-		}
-		pars := make([]*types.Block, length+1)
-		pars[length] = fBlock
-		length--
-		parBlock := fBlock
 		// get the same height block on current fork
-		for parBlock.Height() > height+1 {
+		pars := make([]*types.Block, length+1)
+		parBlock := fBlock
+		for i := fBlock.Height(); i > height; i-- {
+			pars[i-height-1] = parBlock
 			parBlock = bc.GetBlockByHash(parBlock.ParentHash())
-			pars[length] = parBlock
-			length--
 		}
 		// current chain and stable chain is same
-		if parBlock.ParentHash() != hash {
+		if parBlock.ParentHash() != stableHash {
+			// prune
 			delete(bc.chainForksHead, fHash)
 		} else {
+			// parBlock is son of fBlock
 			tmp[fHash] = pars
 		}
 	}
 	var newCurBlock *types.Block
-	// chose current block
+	// choose current block
 	if maxLength == uint32(0) {
+		// they are same height sons of the stable block
+		// TODO choose randomly
 		for k, _ := range tmp {
 			newCurBlock = bc.GetBlockByHash(k)
 		}
@@ -501,10 +469,15 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32) error {
 			}
 		}
 	}
+	// check if the new or old current block's height is smaller than stable block's
+	if newCurBlock != nil && newCurBlock.Height() < height || newCurBlock == nil && curBlock.Height() < height {
+		log.Debug("current block's height < stable block's height")
+		newCurBlock = bc.stableBlock.Load().(*types.Block)
+	}
 	if newCurBlock != nil {
-		// fork
 		oldCurHash := curBlock.Hash()
 		newCurHash := newCurBlock.Hash()
+		// switch fork
 		if bytes.Compare(newCurHash[:], oldCurHash[:]) != 0 {
 			bc.currentBlock.Store(newCurBlock)
 			bc.newBlockNotify(newCurBlock)
@@ -513,126 +486,106 @@ func (bc *BlockChain) SetStableBlock(hash common.Hash, height uint32) error {
 	} else {
 		log.Debug("not have new current block")
 	}
-	defer func() {
-		sb := bc.stableBlock.Load().(*types.Block)
-		cb := bc.currentBlock.Load().(*types.Block)
-		if cb.Height() < sb.Height() {
-			log.Debug("current block's height < stable block's height")
-			bc.currentBlock.Store(sb)
-		}
-	}()
-	// notify
-	subscribe.Send(subscribe.NewStableBlock, block)
-	log.Infof("stable height reach to: %d", height)
 	return nil
 }
 
-// VerifyAndFill verify block then create a new block
-func (bc *BlockChain) VerifyAndFill(block *types.Block) (*types.Block, error) {
-	// verify header
-	if err := bc.engine.VerifyHeader(block); err != nil {
-		return nil, err
+// isIgnorableBlock check the block is exist or not
+func (bc *BlockChain) isIgnorableBlock(block *types.Block) bool {
+	if has, _ := bc.db.IsExistByHash(block.Hash()); has {
+		return true
 	}
-	// verify body
-	if err := bc.verifyBody(block); err != nil {
-		return nil, err
+	sb := bc.stableBlock.Load().(*types.Block)
+	if sb.Height() >= block.Height() {
+		// the block may not correct, it is dangerous
+		log.Debug("ignore the block whose height is smaller than stable block")
+		return true
+	}
+	return false
+}
+
+// VerifyAndSeal verify block then create a new block
+func (bc *BlockChain) VerifyAndSeal(block *types.Block) (*types.Block, error) {
+	// ignore exist block as soon as possible
+	if ok := bc.isIgnorableBlock(block); ok {
+		return nil, ErrExistBlock
 	}
 
-	hash := block.Hash()
+	// verify every things that can be verified before tx processing
+	if err := bc.engine.VerifyBeforeTxProcess(block); err != nil {
+		return nil, err
+	}
+	// freeze deputy nodes before transaction process
+	var deputySnapshot deputynode.DeputyNodes
+	if deputynode.IsSnapshotBlock(block.Height()) {
+		deputySnapshot = bc.SnapshotDeputyNodes()
+	}
+
 	// execute tx
 	gasUsed, err := bc.processor.Process(block.Header, block.Txs)
-	if err == ErrInvalidTxInBlock {
-		return nil, err
-	} else if err == nil {
-	} else {
+	if err != nil {
+		if err == ErrInvalidTxInBlock {
+			return nil, err
+		}
 		log.Errorf("processor internal error: %v", err)
 		panic("processor internal error")
 	}
 	// Finalize accounts
-	if err = bc.engine.Finalize(block.Header.Height, bc.am); err != nil {
+	if err = bc.engine.Finalize(block.Header.Height, bc.am, bc.dm); err != nil {
 		log.Errorf("Finalize accounts error: %v", err)
 		return nil, err
 	}
-	newBlock, err := bc.engine.Seal(block.Header, bc.am.GetTxsProduct(block.Txs, gasUsed), block.Confirms, block.DeputyNodes)
+	newBlock, err := bc.engine.Seal(block.Header, bc.am.GetTxsProduct(block.Txs, gasUsed), block.Confirms, deputySnapshot)
 	if err != nil {
 		log.Errorf("Seal block error: %v", err)
 		return nil, err
 	}
 
-	// verify block hash
-	if newBlock.Hash() != hash {
-		log.Errorf("verify block error! oldHeader: %v, newHeader:%v", block.Header, newBlock.Header)
-		return nil, ErrVerifyBlockFailed
+	// verify the things computed by tx
+	if err := bc.engine.VerifyAfterTxProcess(block, newBlock); err != nil {
+		return nil, err
 	}
 	return newBlock, nil
 }
 
-// verifyBody verify block body
-func (bc *BlockChain) verifyBody(block *types.Block) error {
-	header := block.Header
-	// verify txRoot
-	if hash := block.Txs.MerkleRootSha(); hash != header.TxRoot {
-		log.Errorf("verify block failed. hash:%s height:%d", block.Hash(), block.Height())
-		return ErrVerifyBlockFailed
-	}
-	// verify deputyRoot
-	if block.Height()%params.TermDuration == 0 {
-		bRoot := block.DeputyNodes.MerkleRootSha()
-		nodes := bc.GetNewDeputyNodes()
-		selfRoot := nodes.MerkleRootSha()
-		if bytes.Compare(bRoot[:], selfRoot[:]) != 0 {
-			log.Errorf("verify block failed. deputyNodes not match.block's nodes: %v, self nodes: %v", block.DeputyNodes, nodes)
-			return ErrVerifyBlockFailed
-		}
-	}
-	return nil
-}
-
-// createSignInfo create sign info for a block
-func (bc *BlockChain) createSignInfo(hash common.Hash, height uint32) *network.BlockConfirmData {
-	data := &network.BlockConfirmData{
-		Hash:   hash,
-		Height: height,
-	}
+// confirmBlock confirm a block and send confirm event
+func (bc *BlockChain) confirmBlock(hash common.Hash, height uint32) {
+	// sign
 	privateKey := deputynode.GetSelfNodeKey()
-	signInfo, err := crypto.Sign(hash[:], privateKey)
+	sig, err := crypto.Sign(hash[:], privateKey)
 	if err != nil {
 		log.Error("sign for confirm data error")
-		return nil
+		return
 	}
-	copy(data.SignInfo[:], signInfo)
+	var signData types.SignData
+	copy(signData[:], sig)
+
+	// save
 	if bc.HasBlock(hash) {
-		if err := bc.db.SetConfirm(hash, data.SignInfo); err != nil {
+		if err := bc.db.SetConfirm(hash, signData); err != nil {
 			log.Errorf("SetConfirm failed: %v", err)
 		}
 	}
-	return data
+
+	// notify
+	subscribe.Send(subscribe.NewConfirm, &network.BlockConfirmData{
+		Hash:     hash,
+		Height:   height,
+		SignInfo: signData,
+	})
+	log.Debugf("subscribe.NewConfirm.Send(%d)", height)
 }
 
 // ReceiveConfirm
 func (bc *BlockChain) ReceiveConfirm(info *network.BlockConfirmData) (err error) {
-	block, err := bc.db.GetBlockByHash(info.Hash)
+	err = bc.engine.VerifyConfirmPacket(info.Height, info.Hash, []types.SignData{info.SignInfo})
 	if err != nil {
-		return ErrBlockNotExist
+		return err
 	}
-	height := block.Height()
 
-	// recover public key
-	pubKey, err := crypto.Ecrecover(info.Hash[:], info.SignInfo[:])
-	if err != nil {
-		log.Warnf("Unavailable confirm info. Can't recover signer. hash:%s SignInfo:%s", info.Hash.Hex(), common.ToHex(info.SignInfo[:]))
-		return ErrInvalidSignedConfirmInfo
-	}
-	// get index of signer
-	index := bc.getSignerIndex(pubKey[1:], height)
-	if index < 0 {
-		log.Warnf("Unavailable confirm info. from: %s", common.ToHex(pubKey[1:]))
-		return ErrInvalidConfirmInfo
-	}
 	// has block consensus
 	stableBlock := bc.stableBlock.Load().(*types.Block)
-	if stableBlock.Height() >= height { // stable block's confirm info
-		if ok, err := bc.hasEnoughConfirmInfo(info.Hash, height); err == nil && !ok {
+	if stableBlock.Height() >= info.Height { // stable block's confirm info
+		if ok, err := bc.hasEnoughConfirmInfo(info.Hash, info.Height); err == nil && !ok {
 			if err = bc.db.SetConfirm(info.Hash, info.SignInfo); err != nil {
 				log.Errorf("SetConfirm failed: %v", err)
 			}
@@ -646,10 +599,10 @@ func (bc *BlockChain) ReceiveConfirm(info *network.BlockConfirmData) (err error)
 		return nil
 	}
 
-	if ok, _ := bc.hasEnoughConfirmInfo(info.Hash, height); ok {
+	if ok, _ := bc.hasEnoughConfirmInfo(info.Hash, info.Height); ok {
 		bc.mux.Lock()
 		defer bc.mux.Unlock()
-		if err = bc.SetStableBlock(info.Hash, height); err != nil {
+		if err = bc.SetStableBlock(info.Hash, info.Height); err != nil {
 			log.Errorf("ReceiveConfirm: setStableBlock failed. height: %d, hash:%s, err: %v", info.Height, info.Hash.Hex()[:16], err)
 		}
 	}
@@ -679,15 +632,6 @@ func (bc *BlockChain) getConfirmCount(hash common.Hash) (int, error) {
 	return len(pack), nil
 }
 
-// get index of signer in deputy nodes list
-func (bc *BlockChain) getSignerIndex(pubKey []byte, height uint32) int {
-	node := bc.dm.GetDeputyByNodeID(height, pubKey)
-	if node != nil {
-		return int(node.Rank)
-	}
-	return -1
-}
-
 // GetConfirms get all confirm info of special block
 func (bc *BlockChain) GetConfirms(query *network.GetConfirmInfo) []types.SignData {
 	res, err := bc.db.GetConfirms(query.Hash)
@@ -700,10 +644,15 @@ func (bc *BlockChain) GetConfirms(query *network.GetConfirmInfo) []types.SignDat
 
 // ReceiveConfirms receive confirm package from net connection
 func (bc *BlockChain) ReceiveConfirms(pack network.BlockConfirms) {
-	if pack.Hash != (common.Hash{}) && pack.Pack != nil && len(pack.Pack) > 0 {
-		if err := bc.db.SetConfirms(pack.Hash, pack.Pack); err != nil {
-			log.Debugf("ReceiveConfirms: %v", err)
-		}
+	if pack.Hash == (common.Hash{}) || pack.Pack == nil || len(pack.Pack) == 0 {
+		return
+	}
+	if err := bc.engine.VerifyConfirmPacket(pack.Height, pack.Hash, pack.Pack); err != nil {
+		log.Debugf("ReceiveConfirms: %v", err)
+		return
+	}
+	if err := bc.db.SetConfirms(pack.Hash, pack.Pack); err != nil {
+		log.Debugf("ReceiveConfirms: %v", err)
 	}
 }
 
@@ -720,8 +669,8 @@ func (bc *BlockChain) Db() db.ChainDB {
 	return bc.db
 }
 
-// GetNewDeputyNodes get next epoch deputy nodes for snapshot block
-func (bc *BlockChain) GetNewDeputyNodes() deputynode.DeputyNodes {
+// SnapshotDeputyNodes get next epoch deputy nodes for snapshot block
+func (bc *BlockChain) SnapshotDeputyNodes() deputynode.DeputyNodes {
 	result := make(deputynode.DeputyNodes, 0, bc.dm.DeputyCount)
 	list := bc.db.GetCandidatesTop(bc.CurrentBlock().Hash())
 	if len(list) > bc.dm.DeputyCount {
@@ -729,20 +678,13 @@ func (bc *BlockChain) GetNewDeputyNodes() deputynode.DeputyNodes {
 	}
 
 	for i, n := range list {
-		dn := new(deputynode.DeputyNode)
-		dn.Votes = n.GetTotal()
 		acc := bc.am.GetAccount(n.GetAddress())
-		profile := acc.GetCandidate()
-		// miner address == candidate node address
-		dn.MinerAddress = n.GetAddress()
-		dn.Rank = uint32(i)
-		strID := profile[types.CandidateKeyNodeID]
-		nID, err := hex.DecodeString(strID)
+		candidate := acc.GetCandidate()
+		strID := candidate[types.CandidateKeyNodeID]
+		dn, err := deputynode.NewDeputyNode(n.GetTotal(), uint32(i), n.GetAddress(), strID)
 		if err != nil {
-			log.Errorf("GetNewDeputyNodes: profile error, NodeID: %s", strID)
 			continue
 		}
-		dn.NodeID = nID
 		result = append(result, dn)
 	}
 	return result

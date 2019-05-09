@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
+	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto/sha3"
 	"github.com/LemoFoundationLtd/lemochain-core/common/hexutil"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
@@ -47,6 +48,15 @@ type headerMarshaling struct {
 
 // 签名信息
 type SignData [65]byte
+
+func (sd SignData) RecoverNodeID(hash common.Hash) ([]byte, error) {
+	pubKey, err := crypto.Ecrecover(hash[:], sd[:])
+	if err != nil {
+		log.Warn("recover fail", "err", err)
+		return nil, ErrInvalidSig
+	}
+	return pubKey[1:], nil
+}
 
 func (sd SignData) MarshalText() ([]byte, error) {
 	str := common.ToHex(sd[:])
@@ -91,6 +101,15 @@ func (h *Header) Hash() common.Hash {
 		h.DeputyRoot,
 		h.Extra,
 	})
+}
+
+func (h *Header) SignerNodeID() ([]byte, error) {
+	hash := h.Hash()
+	pubKey, err := crypto.Ecrecover(hash[:], h.SignData)
+	if err != nil {
+		return nil, err
+	}
+	return pubKey[1:], nil
 }
 
 // Copy 拷贝一份头
@@ -214,14 +233,16 @@ func (b *Block) Height() uint32               { return b.Header.Height }
 func (b *Block) ParentHash() common.Hash      { return b.Header.ParentHash }
 func (b *Block) MinerAddress() common.Address { return b.Header.MinerAddress }
 func (b *Block) VersionRoot() common.Hash     { return b.Header.VersionRoot }
-func (b *Block) TxHash() common.Hash          { return b.Header.TxRoot }
-func (b *Block) LogsHash() common.Hash        { return b.Header.LogRoot }
+func (b *Block) TxRoot() common.Hash          { return b.Header.TxRoot }
+func (b *Block) LogRoot() common.Hash         { return b.Header.LogRoot }
+func (b *Block) DeputyRoot() []byte           { return b.Header.DeputyRoot }
 
-func (b *Block) GasLimit() uint64 { return b.Header.GasLimit }
-func (b *Block) GasUsed() uint64  { return b.Header.GasUsed }
-func (b *Block) Time() uint32     { return b.Header.Time }
-func (b *Block) SignData() []byte { return b.Header.SignData }
-func (b *Block) Extra() []byte    { return b.Header.Extra }
+func (b *Block) GasLimit() uint64              { return b.Header.GasLimit }
+func (b *Block) GasUsed() uint64               { return b.Header.GasUsed }
+func (b *Block) Time() uint32                  { return b.Header.Time }
+func (b *Block) SignData() []byte              { return b.Header.SignData }
+func (b *Block) Extra() []byte                 { return b.Header.Extra }
+func (b *Block) SignerNodeID() ([]byte, error) { return b.Header.SignerNodeID() }
 
 func (b *Block) SetHeader(header *Header)        { b.Header = header }
 func (b *Block) SetTxs(txs []*Transaction)       { b.Txs = txs }
