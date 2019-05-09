@@ -807,7 +807,7 @@ func (pm *ProtocolManager) handleConfirmsMsg(msg *p2p.Msg) error {
 	if err := msg.Decode(&confirms); err != nil {
 		return fmt.Errorf("handleConfirmsMsg error: %v", err)
 	}
-	go pm.chain.ReceiveStableConfirms(confirms)
+	go pm.chain.InsertStableConfirms(confirms)
 	return nil
 }
 
@@ -817,11 +817,18 @@ func (pm *ProtocolManager) handleGetConfirmsMsg(msg *p2p.Msg, p *peer) error {
 	if err := msg.Decode(&condition); err != nil {
 		return fmt.Errorf("handleGetConfirmsMsg error: %v", err)
 	}
-	confirmInfo := pm.chain.GetConfirms(&condition)
+	var block *types.Block
+	if condition.Hash != (common.Hash{}) {
+		block = pm.chain.GetBlockByHash(condition.Hash)
+	} else {
+		block = pm.chain.GetBlockByHeight(condition.Height)
+	}
 	resMsg := &BlockConfirms{
 		Height: condition.Height,
 		Hash:   condition.Hash,
-		Pack:   confirmInfo,
+	}
+	if block != nil {
+		resMsg.Pack = block.Confirms
 	}
 	go p.SendConfirms(resMsg)
 	return nil
@@ -833,11 +840,8 @@ func (pm *ProtocolManager) handleConfirmMsg(msg *p2p.Msg) error {
 	if err := msg.Decode(confirm); err != nil {
 		return fmt.Errorf("handleConfirmMsg error: %v", err)
 	}
-	block := pm.chain.GetBlockByHash(confirm.Hash)
-	if block != nil {
-		if !pm.chain.IsConfirmEnough(block) {
-			go pm.chain.InsertConfirm(confirm)
-		}
+	if pm.chain.HasBlock(confirm.Hash) || pm.insertingBlocks.IsExit(confirm.Hash, confirm.Height) {
+		go pm.chain.InsertConfirm(confirm)
 	} else {
 		pm.confirmsCache.Push(confirm)
 		if pm.confirmsCache.Size() > 100 {
