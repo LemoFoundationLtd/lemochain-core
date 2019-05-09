@@ -32,7 +32,7 @@ func (bucket *TxTimeBucket) timeOut(time uint64) bool {
 	}
 }
 
-func (bucket *TxTimeBucket) unTimeOut(time uint64) bool {
+func (bucket *TxTimeBucket) notTimeOut(time uint64) bool {
 	if bucket.Expiration == time {
 		return true
 	} else {
@@ -40,7 +40,7 @@ func (bucket *TxTimeBucket) unTimeOut(time uint64) bool {
 	}
 }
 
-func (bucket *TxTimeBucket) beforeEx(time uint64) bool {
+func (bucket *TxTimeBucket) halfHourAgo(time uint64) bool {
 	if bucket.Expiration > time {
 		return true
 	} else {
@@ -49,10 +49,6 @@ func (bucket *TxTimeBucket) beforeEx(time uint64) bool {
 }
 
 func (bucket *TxTimeBucket) add(tx *types.Transaction) {
-	if tx == nil {
-		return
-	}
-
 	if bucket.Expiration != tx.Expiration() {
 		log.Errorf("add tx to time.expiration(%d) != tx.expiration(%d)", bucket.Expiration, tx.Expiration())
 	} else {
@@ -175,57 +171,60 @@ func (recent *RecentTx) IsExist(hash common.Hash) bool {
 	}
 }
 
-func (recent *RecentTx) add2Time(tx *types.Transaction) bool {
-	if tx == nil {
-		return false
-	}
-
+func (recent *RecentTx) add2Time(tx *types.Transaction) error {
 	expiration := tx.Expiration()
 	slot := expiration % uint64(TransactionExpiration)
 	bucket := recent.TxsByTime[slot]
 	if bucket == nil {
 		recent.TxsByTime[slot] = newTxTimeBucket(tx)
-		return true
-	} else {
-		if bucket.timeOut(expiration) {
-			recent.delBatch4Txs(bucket.TxIndexes.Collect())
-			recent.TxsByTime[slot] = newTxTimeBucket(tx)
-			return true
-		}
-
-		if bucket.unTimeOut(expiration) {
-			bucket.add(tx)
-			return true
-		}
-
-		if bucket.beforeEx(expiration) {
-			log.Errorf("tx is already time out.expiration: %d", expiration)
-			return false
-		}
-
-		return true
+		return nil
 	}
+
+	if bucket.timeOut(expiration) {
+		recent.delBatch4Txs(bucket.TxIndexes.Collect())
+		recent.TxsByTime[slot] = newTxTimeBucket(tx)
+		return nil
+	}
+
+	if bucket.notTimeOut(expiration) {
+		bucket.add(tx)
+		return nil
+	}
+
+	if bucket.halfHourAgo(expiration) {
+		log.Errorf("tx is already time out.expiration: %d", expiration)
+		return ErrTxPoolBlockExpired
+	}
+
+	return nil
 }
 
 func (recent *RecentTx) add2Hash(hash common.Hash, height int64, tx *types.Transaction) {
-	if (height < -1) || (tx == nil) {
-		return
-	}
-
 	_, ok := recent.TraceMap[tx.Hash()]
 	if !ok {
-		if height == -1 { // 该交易还没有被打包过
+		if height == -1 { // 新收到的交易，还没有被打包过
 			recent.TraceMap[tx.Hash()] = NewEmptyTxTrace()
 		} else {
 			recent.TraceMap[tx.Hash()] = NewTxTrace(hash, height)
 		}
 	} else {
-		recent.TraceMap[tx.Hash()].add(hash, height)
+		if height == -1 { // 其他节点已经把该交易打包了，本节点同步该交易后，才收到该交易(不会发生)
+			return
+		} else {
+			recent.TraceMap[tx.Hash()].add(hash, height)
+		}
 	}
 }
 
 func (recent *RecentTx) add(hash common.Hash, height int64, tx *types.Transaction) {
-	if recent.add2Time(tx) {
+	if (height < -1) || (tx == nil) {
+		return
+	}
+
+	err := recent.add2Time(tx)
+	if err != nil {
+		// TODO
+	} else {
 		recent.add2Hash(hash, height, tx)
 	}
 }
