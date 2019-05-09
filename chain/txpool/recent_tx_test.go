@@ -9,12 +9,15 @@ import (
 )
 
 func TestTxRecently_RecvTx(t *testing.T) {
+	curTime := time.Now().Unix()
+
 	recently := NewTxRecently()
 	recently.RecvTx(nil)
 	assert.Equal(t, 0, len(recently.TraceMap))
 
-	tx1 := makeTxRandom(common.HexToAddress("0x01"))
-	tx2 := makeTxRandom(common.HexToAddress("0x02"))
+	tx1 := makeTx(common.HexToAddress("0x01"), curTime)
+	tx2 := makeTx(common.HexToAddress("0x02"), curTime)
+	recently.RecvTx(tx1)
 	recently.RecvTx(tx1)
 	recently.RecvTx(tx2)
 
@@ -22,16 +25,8 @@ func TestTxRecently_RecvTx(t *testing.T) {
 	assert.Equal(t, 0, len(recently.TraceMap[tx1.Hash()]))
 	assert.Equal(t, 0, len(recently.TraceMap[tx2.Hash()]))
 
-	if tx1.Expiration() == tx2.Expiration() {
-		slot := tx1.Expiration() % uint64(TransactionExpiration)
-		assert.Equal(t, 2, len(recently.TxsByTime[slot].TxIndexes))
-	} else {
-		slot1 := tx1.Expiration() % uint64(TransactionExpiration)
-		assert.Equal(t, 1, len(recently.TxsByTime[slot1].TxIndexes))
-
-		slot2 := tx2.Expiration() % uint64(TransactionExpiration)
-		assert.Equal(t, 1, len(recently.TxsByTime[slot2].TxIndexes))
-	}
+	slot := tx1.Expiration() % uint64(TransactionExpiration)
+	assert.Equal(t, 2, len(recently.TxsByTime[slot].TxIndexes))
 }
 
 func TestTxRecently_RecvBlock(t *testing.T) {
@@ -45,6 +40,7 @@ func TestTxRecently_RecvBlock(t *testing.T) {
 
 	txs = append(txs, makeTxRandom(common.HexToAddress("0x01")))
 	txs = append(txs, makeTxRandom(common.HexToAddress("0x02")))
+	txs = append(txs, txs[0])
 	recently.RecvBlock(bhash, height, txs)
 
 	assert.Equal(t, 2, len(recently.TraceMap))
