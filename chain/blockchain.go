@@ -69,7 +69,7 @@ func NewBlockChain(config Config, dm *deputynode.Manager, db db.ChainDB, flags f
 
 	bc.am = account.NewManager(block.Hash(), bc.db)
 	dpovpCfg := consensus.Config{
-		LogForks:      bc.Flags().Int(common.LogLevel)-1 >= 3,
+		LogForks:      bc.flags.Int(common.LogLevel)-1 >= 3,
 		RewardManager: bc.Founder(),
 		ChainID:       bc.chainID,
 		MineTimeout:   config.MineTimeout,
@@ -137,10 +137,6 @@ func (bc *BlockChain) runMainLoop() {
 			return
 		}
 	}
-}
-
-func (bc *BlockChain) ReceiveConfirmCh() <-chan *network.BlockConfirmData {
-	return bc.receiveConfirmCh
 }
 
 // Genesis genesis block
@@ -224,23 +220,9 @@ func (bc *BlockChain) MineBlock(material *consensus.BlockMaterial) {
 }
 
 // InsertBlock insert block of non-self to chain
-func (bc *BlockChain) InsertBlock(block *types.Block) {
+func (bc *BlockChain) InsertBlock(block *types.Block) error {
 	bc.receiveBlockCh <- block
-}
-
-// IsConfirmEnough test if the confirms in block is enough
-func (bc *BlockChain) IsConfirmEnough(block *types.Block) bool {
-	return consensus.IsConfirmEnough(block, bc.dm)
-}
-
-// GetConfirms get all confirm info of special block
-func (bc *BlockChain) GetConfirms(query *network.GetConfirmInfo) []types.SignData {
-	block := bc.GetBlockByHash(query.Hash)
-	if block == nil {
-		return nil
-	}
-
-	return block.Confirms
+	return nil
 }
 
 // ReceiveConfirm
@@ -248,8 +230,8 @@ func (bc *BlockChain) InsertConfirm(info *network.BlockConfirmData) {
 	bc.receiveConfirmCh <- info
 }
 
-// ReceiveStableConfirms receive confirm package from net connection. The block of these confirms has been confirmed by its son block already
-func (bc *BlockChain) ReceiveStableConfirms(pack network.BlockConfirms) {
+// InsertStableConfirms receive confirm package from net connection. The block of these confirms has been confirmed by its son block already
+func (bc *BlockChain) InsertStableConfirms(pack network.BlockConfirms) {
 	bc.engine.InsertStableConfirms(pack)
 }
 

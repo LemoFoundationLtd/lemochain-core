@@ -369,7 +369,7 @@ func (dp *DPoVP) InsertConfirm(info *network.BlockConfirmData) error {
 	return nil
 }
 
-// ReceiveStableConfirms receive confirm package from net connection. The block of these confirms has been confirmed by its son block already
+// InsertStableConfirms receive confirm package from net connection. The block of these confirms has been confirmed by its son block already
 func (dp *DPoVP) InsertStableConfirms(pack network.BlockConfirms) {
 	_, err := dp.insertConfirms(pack.Height, pack.Hash, pack.Pack)
 	if err != nil {
@@ -379,15 +379,21 @@ func (dp *DPoVP) InsertStableConfirms(pack network.BlockConfirms) {
 
 // insertConfirms save signature list to store, then return a new block
 func (dp *DPoVP) insertConfirms(height uint32, blockHash common.Hash, sigList []types.SignData) (*types.Block, error) {
-	if blockHash == (common.Hash{}) || len(sigList) == 0 {
-		return nil, nil
+	if len(sigList) == 0 {
+		return nil, ErrIgnoreConfirm
+	}
+	block, err := dp.db.GetBlockByHash(blockHash)
+	if err != nil {
+		return nil, ErrBlockNotExist
+	}
+	if IsConfirmEnough(block, dp.dm) {
+		return nil, ErrIgnoreConfirm
 	}
 	validConfirms, err := dp.validator.VerifyConfirmPacket(height, blockHash, sigList)
 	if len(validConfirms) == 0 {
 		return nil, err
 	}
 
-	block, _ := dp.db.GetBlockByHash(blockHash)
 	return dp.confirmer.SaveConfirm(block, validConfirms)
 }
 
