@@ -22,27 +22,55 @@ import (
 	"time"
 )
 
+var config = Config{
+	LogForks:      false,
+	RewardManager: common.HexToAddress("0x11001"),
+	ChainID:       chainID,
+	MineTimeout:   timeOutTime,
+}
+
+// 创世块的hash for test
+var (
+	testBlockHash    = common.HexToHash("0x1111111111")
+	testMinerAddress = common.HexToAddress("0x1111111")
+)
+
+// newDbForTest db for test
+func newDbForTest() protocol.ChainDB {
+	return store.NewChainDataBase(GetStorePath(), "", "")
+}
+
 func TestNewTxProcessor(t *testing.T) {
 	ClearData()
-	chain := newChain()
-	defer chain.db.Close()
-	p := NewTxProcessor(chain)
-	assert.NotEqual(t, (*vm.Config)(nil), p.vmConfig)
-	assert.Equal(t, false, p.vmConfig.Debug)
+	db := newDbForTest()
+	defer db.Close()
+	am := account.NewManager(testBlockHash, db)
 
-	flags := flag.CmdFlags{}
-	flags.Set(common.Debug, "1")
-	dm := deputynode.NewManager(5)
-	chain, _ = NewBlockChain(chainID, NewDpovp(10*1000, dm, chain.db), dm, chain.db, flags)
-	p = NewTxProcessor(chain)
+	p := NewTxProcessor(config, nil, am, db)
+	assert.Equal(t, chainID, p.ChainID)
+	assert.Equal(t, config.RewardManager, p.cfg.RewardManager)
+	assert.False(t, p.cfg.Debug)
 }
 
 // test valid block processing
 func TestTxProcessor_Process(t *testing.T) {
 	ClearData()
-	bc := newChain()
-	defer bc.db.Close()
-	p := NewTxProcessor(bc)
+	db := newDbForTest()
+	defer db.Close()
+	info := blockInfo{
+		parentHash:  testBlockHash,
+		height:      1,
+		author:      testMinerAddress,
+		versionRoot: common.Hash{},
+		txRoot:      common.Hash{},
+		logRoot:     common.Hash{},
+		txList:      nil,
+		gasLimit:    0,
+		time:        0,
+		deputyRoot:  nil,
+		deputyNodes: nil,
+	}
+	block := makeBlock(db)
 
 	p.am.GetAccount(testAddr)
 	// last not stable block

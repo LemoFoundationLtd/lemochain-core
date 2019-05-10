@@ -32,8 +32,6 @@ var (
 	ErrInvalidHost               = errors.New("the length of host field in transaction is out of max length limit")
 	ErrInvalidAddress            = errors.New("invalid address")
 	ErrInvalidNodeId             = errors.New("invalid nodeId")
-	ErrNodeIdLength              = errors.New("the nodeId length is not equal the standard length")
-	ErrHostLength                = errors.New("the length of host field in transaction is out of max length limit")
 )
 
 type TxProcessor struct {
@@ -165,11 +163,9 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 		return 0, err
 	}
 	var (
-		// Create a new context to be used in the EVM environment
-		context = NewEVMContext(tx, header, txIndex, tx.Hash(), blockHash, p.blockLoader)
-		// Create a new environment which holds all relevant information
-		// about the transaction and calling mechanisms.
-		vmEnv                = vm.NewEVM(context, p.am, *p.cfg)
+		vmEnv                *vm.EVM
+		candidateVoteEnv     *CandidateVoteTx
+		assetEnv             *RunAssetTx
 		sender               = p.am.GetAccount(senderAddr)
 		initialSenderBalance = sender.GetBalance()
 		contractCreation     = tx.To() == nil
@@ -183,11 +179,30 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 	if err != nil {
 		return 0, err
 	}
+	// load different Env
+	switch tx.Type() {
+	case params.OrdinaryTx, params.TransferAssetTx: // need use evm environment
+		// Create a new context to be used in the EVM environment
+		newContext := NewEVMContext(tx, header, txIndex, tx.Hash(), blockHash, p.blockLoader)
+		// Create a new environment which holds all relevant information
+		// about the transaction and calling mechanisms.
+		vmEnv = vm.NewEVM(newContext, p.am, *p.cfg)
+
+	case params.VoteTx, params.RegisterTx: // use candidate and vote tx environment
+		candidateVoteEnv = NewCandidateVoteTx(p.am)
+
+	case params.ModifyAssetTx, params.ReplenishAssetTx, params.IssueAssetTx, params.CreateAssetTx: // use asset tx environment
+		assetEnv = NewRunAssetTx(p.am)
+	default:
+		log.Errorf("The type of transaction is not defined. ErrType = %d\n", tx.Type())
+		return 0, types.ErrTxType
+	}
 
 	// vm errors do not effect consensus and are therefor not assigned to err,
 	// except for insufficient balance error.
 	var (
 		vmErr                   error
+		Err                     error
 		recipientAddr           common.Address
 		initialRecipientBalance *big.Int
 		recipientAccount        types.AccountAccessor
@@ -206,7 +221,7 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 			_, restGas, vmErr = vmEnv.Call(sender, recipientAddr, tx.Data(), restGas, tx.Amount())
 		}
 	case params.VoteTx:
-		restGas, vmErr = vmEnv.CallVoteTx(senderAddr, recipientAddr, restGas, initialSenderBalance)
+		Err = candidateVoteEnv.CallVoteTx(senderAddr, recipientAddr, initialSenderBalance)
 
 	case params.RegisterTx:
 		// Unmarshal tx data
@@ -221,27 +236,28 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 		if err = checkRegisterTxProfile(profile); err != nil {
 			return 0, err
 		}
-		restGas, vmErr = vmEnv.RegisterOrUpdateToCandidate(senderAddr, params.FeeReceiveAddress, profile, restGas, initialSenderBalance)
+		Err = candidateVoteEnv.RegisterOrUpdateToCandidate(senderAddr, params.FeeReceiveAddress, profile, initialSenderBalance)
 
 	case params.CreateAssetTx:
-		vmErr = vmEnv.CreateAssetTx(senderAddr, tx.Data(), tx.Hash())
+		Err = assetEnv.CreateAssetTx(senderAddr, tx.Data(), tx.Hash())
 	case params.IssueAssetTx:
-		vmErr = vmEnv.IssueAssetTx(senderAddr, recipientAddr, tx.Hash(), tx.Data())
+		Err = assetEnv.IssueAssetTx(senderAddr, recipientAddr, tx.Hash(), tx.Data())
 	case params.ReplenishAssetTx:
-		vmErr = vmEnv.ReplenishAssetTx(senderAddr, recipientAddr, tx.Data())
+		Err = assetEnv.ReplenishAssetTx(senderAddr, recipientAddr, tx.Data())
 	case params.ModifyAssetTx:
-		vmErr = vmEnv.ModifyAssetProfileTx(senderAddr, tx.Data())
+		Err = assetEnv.ModifyAssetProfileTx(senderAddr, tx.Data())
 	case params.TransferAssetTx:
-		tradingAsset := &types.TradingAsset{}
-		err = json.Unmarshal(tx.Data(), tradingAsset)
-		if err != nil {
-			log.Errorf("Unmarshal transfer asset data err: %s", err)
-			return 0, err
-		}
-		_, restGas, vmErr = vmEnv.TransferAssetTx(sender, recipientAddr, restGas, tradingAsset.AssetId, tradingAsset.Value, tradingAsset.Input, p.db)
+		_, restGas, Err, vmErr = vmEnv.TransferAssetTx(sender, recipientAddr, restGas, tx.Data(), p.db)
 	default:
 		log.Errorf("The type of transaction is not defined. ErrType = %d\n", tx.Type())
+		return 0, types.ErrTxType
 	}
+
+	if Err != nil {
+		log.Errorf("Apply transaction failure. error:%s, transaction: %s.", Err.Error(), tx.String())
+		return 0, Err
+	}
+
 	// Candidate node votes change
 	if !contractCreation {
 		endRecipientBalance := recipientAccount.GetBalance()
@@ -271,18 +287,19 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 
 	// reimbursement transaction
 	if len(tx.GasPayerSig()) != 0 {
-		payer, _ := tx.GasPayer()
-		// balance decrease the amount
-		reduceBalance := new(big.Int).Mul(new(big.Int).SetUint64(tx.GasLimit()-restGas), tx.GasPrice())
-		negativeChangeBalance := new(big.Int).Neg(reduceBalance)
-		p.changeCandidateVotes(payer, negativeChangeBalance)
+		p.gasPayerVotesChange(tx, tx.GasLimit()-restGas)
 	}
 
-	// Merge change logs by transaction will save more transaction execution detail than by block
-	// p.am.MergeChangeLogs(mergeFrom)
-	// mergeFrom = len(p.am.GetChangeLogs())
-
 	return tx.GasLimit() - restGas, nil
+}
+
+// gasPayerVotesChange 修改gas payer 投票的票数
+func (p *TxProcessor) gasPayerVotesChange(tx *types.Transaction, usedGas uint64) {
+	payer, _ := tx.GasPayer()
+	// balance decrease the amount
+	reduceBalance := new(big.Int).Mul(new(big.Int).SetUint64(usedGas), tx.GasPrice())
+	negativeChangeBalance := new(big.Int).Neg(reduceBalance)
+	p.changeCandidateVotes(payer, negativeChangeBalance)
 }
 
 // changeCandidateVotes candidate node vote change corresponding to balance change
@@ -453,7 +470,14 @@ func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *comm
 	}
 
 	// Timeout limit
-	var cancel context.CancelFunc
+	var (
+		cancel           context.CancelFunc
+		candidateVoteEnv *CandidateVoteTx
+		Evm              *vm.EVM
+		vmError          func() error
+		sender           types.AccountAccessor
+	)
+
 	if timeout > 0 {
 		ctx, cancel = context.WithTimeout(ctx, timeout)
 	} else {
@@ -461,7 +485,19 @@ func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *comm
 	}
 	defer cancel()
 
-	Evm, vmError, sender := getEVM(ctx, caller, tx, header, 0, tx.Hash(), blockHash, p.blockLoader, *p.cfg, accM)
+	// load different Env
+	switch tx.Type() {
+	case params.OrdinaryTx, params.TransferAssetTx: // need use evm environment
+		Evm, vmError, sender = getEVM(ctx, caller, tx, header, 0, tx.Hash(), blockHash, p.blockLoader, *p.cfg, accM)
+
+	case params.VoteTx, params.RegisterTx: // use candidate and vote tx environment
+		candidateVoteEnv = NewCandidateVoteTx(p.am)
+
+	// case params.ModifyAssetTx, params.ReplenishAssetTx, params.IssueAssetTx, params.CreateAssetTx: // use asset tx environment
+	// 	assetEnv = NewRunAssetTx(p.am)
+	default:
+		log.Errorf("The type of transaction is not defined. ErrType = %d\n", tx.Type())
+	}
 
 	go func() {
 		<-ctx.Done()
@@ -486,7 +522,7 @@ func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *comm
 		}
 	case params.VoteTx:
 		recipientAddr := *tx.To()
-		restGas, err = Evm.CallVoteTx(sender.GetAddress(), recipientAddr, restGas, sender.GetBalance())
+		err = candidateVoteEnv.CallVoteTx(sender.GetAddress(), recipientAddr, sender.GetBalance())
 	case params.RegisterTx:
 		// Unmarshal tx data
 		txData := tx.Data()
@@ -496,24 +532,13 @@ func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *comm
 			log.Errorf("Unmarshal Candidate node error: %s", err)
 			return nil, 0, err
 		}
-
-		if nodeId, ok := profile[types.CandidateKeyNodeID]; ok {
-			nodeIdLength := len(nodeId)
-			if nodeIdLength != StandardNodeIdLength {
-				log.Errorf("The nodeId length [%d] is not equal the standard length [%d]", nodeIdLength, StandardNodeIdLength)
-				return nil, 0, ErrNodeIdLength
-			}
-		}
-		if host, ok := profile[types.CandidateKeyHost]; ok {
-			hostLength := len(host)
-			if hostLength > MaxDeputyHostLength {
-				log.Errorf("The length of host field in transaction is out of max length limit. host length = %d. max length limit = %d.", hostLength, MaxDeputyHostLength)
-				return nil, 0, ErrHostLength
-			}
+		// check nodeID host and incomeAddress
+		if err = checkRegisterTxProfile(profile); err != nil {
+			return nil, 0, err
 		}
 		sender = accM.GetAccount(caller)
 		sender.SetBalance(params.RegisterCandidateNodeFees)
-		restGas, err = Evm.RegisterOrUpdateToCandidate(sender.GetAddress(), params.FeeReceiveAddress, profile, restGas, sender.GetBalance())
+		err = candidateVoteEnv.RegisterOrUpdateToCandidate(sender.GetAddress(), params.FeeReceiveAddress, profile, sender.GetBalance())
 	case params.CreateAssetTx, params.IssueAssetTx, params.ReplenishAssetTx, params.ModifyAssetTx, params.TransferAssetTx:
 
 	}

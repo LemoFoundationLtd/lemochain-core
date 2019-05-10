@@ -150,12 +150,11 @@ func newDB() protocol.ChainDB {
 	return db
 }
 
+// makeBlock for test
 func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 	start := time.Now().UnixNano()
-	manager := account.NewManager(info.parentHash, db)
-	// sign transactions
-	var err error
-	var gasUsed uint64 = 0
+	am := account.NewManager(info.parentHash, db)
+	// 计算交易root
 	txRoot := info.txList.MerkleRootSha()
 	if txRoot != info.txRoot {
 		if info.txRoot != (common.Hash{}) {
@@ -164,142 +163,230 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 		info.txRoot = txRoot
 	}
 	txMerkleEnd := time.Now().UnixNano()
-
-	// genesis coin
-	if info.height == 0 {
-		owner := manager.GetAccount(testAddr)
-		// 1 million
-		owner.SetBalance(new(big.Int).Set(totalLEMO))
-	}
-	// account
-	salary := new(big.Int)
+	var GasUsed uint64 = 0
+	// 执行交易，这里忽略智能合约交易
 	for _, tx := range info.txList {
-		gas := params.TxGas + params.TxDataNonZeroGas*uint64(len(tx.Data()))
-		fromAddr, err := tx.From()
+		// 	交易发送者
+		from, err := tx.From()
 		if err != nil {
 			panic(err)
 		}
-		from := manager.GetAccount(fromAddr)
-		fee := new(big.Int).Mul(new(big.Int).SetUint64(gas), tx.GasPrice())
-		cost := new(big.Int).Add(tx.Amount(), fee)
-		to := manager.GetAccount(*tx.To())
-		if tx.Type() == params.VoteTx || tx.Type() == params.RegisterTx {
-			newProfile := make(map[string]string, 5)
-			newProfile[types.CandidateKeyIsCandidate] = "true"
-			to.SetCandidate(newProfile)
-			to.SetVotes(big.NewInt(10))
+		fromAcc := am.GetAccount(from)
+		// 取得from的初始balance
+		initFromBalance := fromAcc.GetBalance()
+		// to
+		var (
+			toAcc         types.AccountAccessor
+			initToBalance *big.Int
+		)
+		to := tx.To()
+		if to != nil {
+			toAcc = am.GetAccount(*to)
+			initToBalance = toAcc.GetBalance()
 		}
-		// make sure the change log has right order
-		if fromAddr.Hex() < tx.To().Hex() {
-			from.SetBalance(new(big.Int).Sub(from.GetBalance(), cost))
-			to.SetBalance(new(big.Int).Add(to.GetBalance(), tx.Amount()))
-		} else {
-			to.SetBalance(new(big.Int).Add(to.GetBalance(), tx.Amount()))
-			from.SetBalance(new(big.Int).Sub(from.GetBalance(), cost))
-		}
-		gasUsed += gas
-		salary.Add(salary, fee)
-	}
-	if salary.Cmp(new(big.Int)) != 0 {
-		miner := manager.GetAccount(info.author)
-		miner.SetBalance(new(big.Int).Add(miner.GetBalance(), salary))
-	}
-	editAccountsEnd := time.Now().UnixNano()
 
-	manager.MergeChangeLogs()
-	err = manager.Finalise()
+		// tx消耗的gas
+		gasUsed, err := IntrinsicGas(tx.Data(), false)
+		// 计算总的gas used
+		GasUsed = GasUsed + gasUsed
+		// gas 费用
+		gasFee := new(big.Int).Mul(new(big.Int).SetUint64(gasUsed), tx.GasPrice())
+		if err != nil {
+			panic(err)
+		}
+		// 得到gas payer
+		gasPayer, err := tx.GasPayer()
+		if err != nil {
+			panic(err)
+		}
+		// gas payer支付gas费用
+		gasPayerAcc := am.GetAccount(gasPayer)
+		gasPayerAcc.SetBalance(new(big.Int).Sub(gasPayerAcc.GetBalance(), gasFee))
+
+		// minerAddress
+		minerAddr := info.author
+		minerAcc := am.GetAccount(minerAddr)
+		// 获取打包交易奖励
+		minerAcc.SetBalance(new(big.Int).Add(minerAcc.GetBalance(), gasFee))
+
+		// 转账导致的账户balance变化
+		if tx.Amount().Cmp(big.NewInt(0)) != 0 && to != nil {
+			fromAcc.SetBalance(new(big.Int).Sub(fromAcc.GetBalance(), tx.Amount()))
+			toAcc.SetBalance(new(big.Int).Add(toAcc.GetBalance(), tx.Amount()))
+		}
+		// 对于普通交易，到这里就没有changlog生成了，下面是对特殊交易生成changlog
+		switch tx.Type() {
+		case params.OrdinaryTx:
+			break
+		case params.VoteTx: // 投票交易，to的票数增加，过去投的账户票数减少
+			oldCandidate := fromAcc.GetVoteFor()
+			if (oldCandidate != common.Address{}) {
+				oldCandidateAcc := am.GetAccount(oldCandidate)
+				// 减少oldCandidate票数,票数为from的balance
+				oldCandidateAcc.SetVotes(new(big.Int).Sub(oldCandidateAcc.GetVotes(), initFromBalance))
+			}
+			newCandidateAcc := toAcc
+			// 更新voteFor地址
+			fromAcc.SetVoteFor(*to)
+			// 增加newCandidateAcc的票数
+			newCandidateAcc.SetVotes(new(big.Int).Add(newCandidateAcc.GetVotes(), initFromBalance))
+
+		case params.RegisterTx: // 注册candidate交易
+			data := tx.Data()
+			profile := make(types.Profile)
+			err := json.Unmarshal(data, &profile)
+			if err != nil {
+				panic(err)
+			}
+			// 减去之前投票的票数,此时的票数为初始balance
+			oldCandidate := fromAcc.GetVoteFor()
+			if (oldCandidate != common.Address{}) {
+				oldCandidateAcc := am.GetAccount(oldCandidate)
+				oldCandidateAcc.SetVotes(new(big.Int).Sub(oldCandidateAcc.GetVotes(), initFromBalance))
+			}
+			// 注册费用1000lemo
+			fromAcc.SetBalance(new(big.Int).Sub(fromAcc.GetBalance(), params.RegisterCandidateNodeFees))
+			// 把自己投给自己
+			fromAcc.SetVoteFor(from)
+			fromAcc.SetVotes(initFromBalance)
+			// 设置candidate信息
+			fromAcc.SetCandidate(profile)
+		case params.CreateAssetTx: // 创建资产交易
+			data := tx.Data()
+			asset := &types.Asset{}
+			err = json.Unmarshal(data, asset)
+			if err != nil {
+				panic(err)
+			}
+			asset.Issuer = from
+			asset.AssetCode = tx.Hash()
+			asset.TotalSupply = big.NewInt(0)
+			fromAcc.SetAssetCode(asset.AssetCode, asset)
+		case params.IssueAssetTx: // 发行资产交易
+			issueAsset := &types.IssueAsset{}
+			err := json.Unmarshal(tx.Data(), issueAsset)
+			if err != nil {
+				panic(err)
+			}
+			asset, err := fromAcc.GetAssetCode(issueAsset.AssetCode)
+			// get asset总量
+			oldTotalSupply := asset.TotalSupply
+			var newTotalSupply *big.Int
+			// 判断是否为可分割的资产
+			if !asset.IsDivisible {
+				// 不可分割，则每次发行资产总量加1
+				newTotalSupply = new(big.Int).Add(oldTotalSupply, big.NewInt(1))
+			} else {
+				newTotalSupply = new(big.Int).Add(oldTotalSupply, issueAsset.Amount)
+			}
+			// 设置asset的总量
+			err = fromAcc.SetAssetCodeTotalSupply(asset.AssetCode, newTotalSupply)
+			if err != nil {
+				panic(err)
+			}
+			// 	发行的资产到to账户上
+			equity := &types.AssetEquity{}
+			equity.AssetCode = asset.AssetCode
+			equity.Equity = issueAsset.Amount
+			// 判断资产类型
+			AssType := asset.Category
+			if AssType == types.Asset01 { // ERC20
+				equity.AssetId = asset.AssetCode
+			} else if AssType == types.Asset02 || AssType == types.Asset03 { // ERC721 or ERC721+20
+				equity.AssetId = tx.Hash()
+			}
+			err = toAcc.SetEquityState(equity.AssetId, equity)
+			if err != nil {
+				panic(err)
+			}
+			err = toAcc.SetAssetIdState(equity.AssetId, issueAsset.MetaData)
+			if err != nil {
+				panic(err)
+			}
+		case params.ReplenishAssetTx: // 增发资产
+			break
+		case params.ModifyAssetTx: // 修改资产信息
+			break
+		case params.TransferAssetTx: // 交易资产
+			// todo
+		}
+		// 	一笔交易执行完之后balance的变化导致的候选节点的票数的变化
+		endFromBalance := fromAcc.GetBalance()
+		endToBalance := toAcc.GetBalance()
+		// from 和 to 的banlance变化的值
+		fromChangeBalance := new(big.Int).Sub(endFromBalance, initFromBalance)
+		toChangeBalance := new(big.Int).Sub(endToBalance, initToBalance)
+		// from and to 账户的投票者
+		if (fromAcc.GetVoteFor() != common.Address{}) {
+			fromVoteAcc := am.GetAccount(fromAcc.GetVoteFor())
+			fromVoteAcc.SetVotes(new(big.Int).Add(fromVoteAcc.GetVotes(), fromChangeBalance))
+		}
+		if (toAcc.GetVoteFor() != common.Address{}) {
+			toVoteAcc := am.GetAccount(toAcc.GetVoteFor())
+			toVoteAcc.SetVotes(new(big.Int).Add(toVoteAcc.GetVotes(), toChangeBalance))
+		}
+		// 	如果有代付者，则改变代付者的投票的状态
+		if len(tx.GasPayerSig()) != 0 {
+			if (gasPayerAcc.GetVoteFor() != common.Address{}) {
+				gasPayerVoteAcc := am.GetAccount(gasPayerAcc.GetVoteFor())
+				gasPayerVoteAcc.SetVotes(new(big.Int).Sub(gasPayerVoteAcc.GetVotes(), gasFee))
+			}
+		}
+	}
+
+	editAccountsEnd := time.Now().UnixNano()
+	// 得到所有的changlog之后，merge changlog
+	am.MergeChangeLogs()
+	err := am.Finalise()
 	if err != nil {
 		panic(err)
 	}
 	finaliseEnd := time.Now().UnixNano()
 
-	// header
-	if manager.GetVersionRoot() != info.versionRoot {
-		if info.versionRoot != (common.Hash{}) {
-			fmt.Printf("%d version root error. except: %s, got: %s\n", info.height, info.versionRoot.Hex(), manager.GetVersionRoot().Hex())
-		}
-		info.versionRoot = manager.GetVersionRoot()
-	}
-
-	changeLogs := manager.GetChangeLogs()
-	fmt.Printf("%d changeLogs %v\n", info.height, changeLogs)
-	logRoot := changeLogs.MerkleRootSha()
-	if logRoot != info.logRoot {
-		if info.logRoot != (common.Hash{}) {
-			fmt.Printf("%d change logs root error. except: %s, got: %s\n", info.height, info.logRoot.Hex(), logRoot.Hex())
-		}
-		info.logRoot = logRoot
-	}
-	if info.time == 0 {
-		info.time = uint32(time.Now().Unix())
-	}
-	if info.gasLimit == 0 {
-		info.gasLimit = 1000000
-	}
+	// 生成区块头
+	changlogs := am.GetChangeLogs()
 	header := &types.Header{
 		ParentHash:   info.parentHash,
 		MinerAddress: info.author,
-		VersionRoot:  info.versionRoot,
-		TxRoot:       info.txRoot,
-		LogRoot:      info.logRoot,
+		VersionRoot:  am.GetVersionRoot(),
+		TxRoot:       txRoot,
+		LogRoot:      changlogs.MerkleRootSha(),
 		Height:       info.height,
 		GasLimit:     info.gasLimit,
-		GasUsed:      gasUsed,
+		GasUsed:      GasUsed,
 		Time:         info.time,
-		Extra:        []byte{},
+		SignData:     nil,
+		DeputyRoot:   nil,
+		Extra:        nil,
 	}
-
-	var deputyRoot []byte
-	// if len(info.deputyNodes) > 0 {
-	// 	deputyRoot = types.DeriveDeputyRootSha(info.deputyNodes).Bytes()
-	// 	deputynode.NewManager().SaveSnapshot(params.TermDuration, info.deputyNodes)
-	// }
-	if bytes.Compare(deputyRoot, info.deputyRoot) != 0 {
-		if len(info.deputyNodes) > 0 || len(info.deputyRoot) != 0 {
-			fmt.Printf("%d deputyRoot error. except: %s, got: %s\n", info.height, common.ToHex(info.deputyRoot), common.ToHex(deputyRoot))
-		}
-		info.deputyRoot = deputyRoot
-	}
-	if len(info.deputyRoot) > 0 {
-		header.DeputyRoot = make([]byte, len(info.deputyRoot))
-		copy(header.DeputyRoot[:], info.deputyRoot[:])
-	}
-
-	blockHash := header.Hash()
-	if blockHash != info.hash {
-		if info.hash != (common.Hash{}) {
-			fmt.Printf("%d block hash error. except: %s, got: %s\n", info.height, info.hash.Hex(), blockHash.Hex())
-		}
-		info.hash = blockHash
-	}
-	// block
-	block := &types.Block{
+	newBlock := &types.Block{
+		Header:      header,
 		Txs:         info.txList,
-		ChangeLogs:  changeLogs,
-		DeputyNodes: info.deputyNodes,
+		ChangeLogs:  changlogs,
+		Confirms:    nil,
+		DeputyNodes: nil,
 	}
-	block.SetHeader(header)
-	buildBlockEnd := time.Now().UnixNano()
+	blockHash := newBlock.Hash()
 
+	buildBlockEnd := time.Now().UnixNano()
+	// 设置稳定块
 	if save {
-		err = db.SetBlock(blockHash, block)
-		if err != nil && err != store.ErrExist {
+		err := db.SetBlock(blockHash, newBlock)
+		if err != nil {
 			panic(err)
 		}
-
-		err = manager.Save(blockHash)
+		err = am.Save(blockHash)
 		if err != nil {
 			panic(err)
 		}
 	}
 	saveEnd := time.Now().UnixNano()
-
 	fmt.Printf("Building tx merkle trie cost %dms. %d txs in total\n", (txMerkleEnd-start)/1000000, len(info.txList))
 	fmt.Printf("Editing balance of accounts cost %dms\n", (editAccountsEnd-txMerkleEnd)/1000000)
 	fmt.Printf("Finalising manager cost %dms\n", (finaliseEnd-editAccountsEnd)/1000000)
 	fmt.Printf("Building block cost %dms\n", (buildBlockEnd-finaliseEnd)/1000000)
 	fmt.Printf("Saving block and accounts cost %dms\n\n", (saveEnd-buildBlockEnd)/1000000)
-	return block
+	return newBlock
 }
 
 func makeTx(fromPrivate *ecdsa.PrivateKey, to common.Address, txType uint16, amount *big.Int) *types.Transaction {
