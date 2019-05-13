@@ -136,9 +136,10 @@ func printLemoAccountToConsole(ctx *cli.Context) bool {
 		acc, err := crypto.GenerateAddress()
 		if err == nil {
 			fmt.Println("Please keep your account safe! \nPlease apply again if the private key is divulged!\n ")
-			fmt.Println("Private:", acc.Private)
-			fmt.Println("PubKey:", acc.Public)
-			fmt.Println("LemoAddress:", acc.Address.String())
+			fmt.Printf("Private:\n%s\n", acc.Private)
+			fmt.Printf("PubKey:\n%s\n", acc.Public)
+			fmt.Printf("LemoAddress:\n%s", acc.Address.String())
+			fmt.Println("\n")
 			return true
 		} else {
 			fmt.Println("Create account error:", err.Error())
