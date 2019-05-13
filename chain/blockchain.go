@@ -101,15 +101,20 @@ func (bc *BlockChain) runFeedTranspondLoop() {
 	stableSub := bc.engine.SubscribeStable(stableCh)
 	confirmCh := make(chan *network.BlockConfirmData)
 	confirmSub := bc.engine.SubscribeConfirm(confirmCh)
+	fetchConfirmCh := make(chan *[]network.GetConfirmInfo)
+	fetchConfirmSub := bc.engine.SubscribeFetchConfirm(fetchConfirmCh)
 	for {
 		select {
 		case block := <-stableCh:
 			go subscribe.Send(subscribe.NewStableBlock, block)
 		case confirm := <-confirmCh:
 			go subscribe.Send(subscribe.NewConfirm, confirm)
+		case confirmsInfo := <-fetchConfirmCh:
+			go subscribe.Send(subscribe.FetchConfirms, confirmsInfo)
 		case <-bc.quitCh:
 			stableSub.Unsubscribe()
 			confirmSub.Unsubscribe()
+			fetchConfirmSub.Unsubscribe()
 			return
 		}
 	}

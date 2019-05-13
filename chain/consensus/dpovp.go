@@ -31,10 +31,13 @@ type DPoVP struct {
 	logForks bool
 
 	// all dpovp events are here
-	stableFeed  subscribe.Feed // stable block change event
-	currentFeed subscribe.Feed // head block change event
-	confirmFeed subscribe.Feed // new confirm event
+	stableFeed        subscribe.Feed // stable block change event
+	currentFeed       subscribe.Feed // head block change event
+	confirmFeed       subscribe.Feed // new confirm event
+	fetchConfirmsFeed subscribe.Feed // fetch confirms event
 }
+
+const delayFetchConfirmsTime = time.Second * 30
 
 func NewDPoVP(config Config, db protocol.ChainDB, dm *deputynode.Manager, am *account.Manager, loader BlockLoader, txPool TxPool, stable *types.Block) *DPoVP {
 	dpovp := &DPoVP{
@@ -78,6 +81,11 @@ func (dp *DPoVP) SubscribeCurrent(ch chan *types.Block) subscribe.Subscription {
 // SubscribeConfirm subscribe the new confirm notification
 func (dp *DPoVP) SubscribeConfirm(ch chan *network.BlockConfirmData) subscribe.Subscription {
 	return dp.confirmFeed.Subscribe(ch)
+}
+
+// SubscribeFetchConfirm subscribe fetch block confirms
+func (dp *DPoVP) SubscribeFetchConfirm(ch chan *[]network.GetConfirmInfo) subscribe.Subscription {
+	return dp.fetchConfirmsFeed.Subscribe(ch)
 }
 
 func (dp *DPoVP) MineBlock(material *BlockMaterial) (*types.Block, error) {
@@ -205,6 +213,18 @@ func (dp *DPoVP) broadcastConfirm(block *types.Block, sig types.SignData) {
 	dp.confirmFeed.Send(pack)
 }
 
+// fetchConfirmsFromRemote after 30s fetch confirm from remote peer
+func (dp *DPoVP) fetchConfirmsFromRemote(startHeight, endHeight uint32) {
+	// time.AfterFunc its own goroutine
+	time.AfterFunc(delayFetchConfirmsTime, func() {
+		info := dp.confirmer.NeedFetchedConfirms(startHeight, endHeight)
+		if info == nil || len(*info) == 0 {
+			return
+		}
+		dp.fetchConfirmsFeed.Send(info)
+	})
+}
+
 // BatchConfirm confirm and broadcast unsigned stable blocks one by one
 func (dp *DPoVP) batchConfirmStable(startHeight, endHeight uint32) {
 	result := dp.confirmer.BatchConfirmStable(startHeight, endHeight)
@@ -230,6 +250,8 @@ func (dp *DPoVP) UpdateStable(block *types.Block) (bool, error) {
 		go dp.stableFeed.Send(block)
 		// confirm from oldStable to newStable
 		go dp.batchConfirmStable(oldStable.Height()+1, dp.StableBlock().Height())
+		// after 30s fetch confirms from peer
+		go dp.fetchConfirmsFromRemote(oldStable.Height()+1, dp.StableBlock().Height())
 	}
 
 	return changed, err

@@ -80,6 +80,7 @@ type ProtocolManager struct {
 	stableBlockCh   chan *types.Block
 	rcvBlocksCh     chan *rcvBlockObj
 	confirmCh       chan *BlockConfirmData
+	fetchConfirms   chan *[]GetConfirmInfo
 
 	wg     sync.WaitGroup
 	quitCh chan struct{}
@@ -114,6 +115,7 @@ func NewProtocolManager(chainID uint16, nodeID p2p.NodeID, chain BlockChain, dm 
 		stableBlockCh:   make(chan *types.Block, 10),
 		rcvBlocksCh:     make(chan *rcvBlockObj, 10),
 		confirmCh:       make(chan *BlockConfirmData, 10),
+		fetchConfirms:   make(chan *[]GetConfirmInfo),
 
 		quitCh: make(chan struct{}),
 	}
@@ -134,6 +136,7 @@ func (pm *ProtocolManager) sub() {
 	subscribe.Sub(subscribe.NewStableBlock, pm.stableBlockCh)
 	subscribe.Sub(subscribe.NewTx, pm.txCh)
 	subscribe.Sub(subscribe.NewConfirm, pm.confirmCh)
+	subscribe.Sub(subscribe.FetchConfirms, pm.fetchConfirms)
 }
 
 // unSub unsubscribe channel
@@ -144,6 +147,7 @@ func (pm *ProtocolManager) unSub() {
 	subscribe.UnSub(subscribe.NewStableBlock, pm.stableBlockCh)
 	subscribe.UnSub(subscribe.NewTx, pm.txCh)
 	subscribe.UnSub(subscribe.NewConfirm, pm.confirmCh)
+	subscribe.UnSub(subscribe.FetchConfirms, pm.fetchConfirms)
 }
 
 // Start
@@ -162,7 +166,7 @@ func (pm *ProtocolManager) Stop() {
 	log.Info("ProtocolManager has stopped")
 }
 
-// txConfirmLoop receive transactions and confirm and then broadcast them
+// txConfirmLoop receive transactions and confirm and then broadcast them. request fetch block confirm and send msg
 func (pm *ProtocolManager) txConfirmLoop() {
 	pm.wg.Add(1)
 	defer func() {
@@ -190,6 +194,8 @@ func (pm *ProtocolManager) txConfirmLoop() {
 			peers := pm.peers.DeputyNodes(curHeight)
 			go pm.broadcastConfirm(peers, info)
 			log.Debugf("broadcast confirm, len(peers)=%d, height: %d", len(peers), info.Height)
+		case info := <-pm.fetchConfirms:
+			go pm.fetchConfirmFromRemote(*info)
 		}
 	}
 }
@@ -310,13 +316,6 @@ func (pm *ProtocolManager) stableBlockLoop() {
 		case <-pm.quitCh:
 			return
 		case block := <-pm.stableBlockCh:
-			var oldStableBlock *types.Block
-			if pm.oldStableBlock.Load() != nil {
-				oldStableBlock = pm.oldStableBlock.Load().(*types.Block)
-				if oldStableBlock != nil && oldStableBlock.Height()+1 < block.Height() {
-					go pm.fetchConfirmsFromRemote(oldStableBlock.Height()+1, block.Height()-1)
-				}
-			}
 			pm.oldStableBlock.Store(block)
 			peers := pm.peers.DelayNodes(block.Height())
 			if len(peers) > 0 {
@@ -337,18 +336,30 @@ func (pm *ProtocolManager) stableBlockLoop() {
 	}
 }
 
-// fetchConfirmsFromRemote fetch confirms from remote
-func (pm *ProtocolManager) fetchConfirmsFromRemote(start, end uint32) {
-	p := pm.peers.BestToFetchConfirms(end)
+func (pm *ProtocolManager) fetchConfirmFromRemote(info []GetConfirmInfo) {
+	length := len(info)
+	if length == 0 {
+		return
+	}
+	// get maximal height for find the best peer
+	var maxHeight uint32 = 0
+	for i := 0; i < length; i++ {
+		if info[i].Height > maxHeight {
+			maxHeight = info[i].Height
+		}
+	}
+	// find the best peer to fetch block confirms
+	p := pm.peers.BestToFetchConfirms(maxHeight)
 	if p == nil {
 		return
 	}
-	for h := start; h <= end; h++ {
-		b := pm.chain.GetBlockByHeight(h)
-		if b == nil {
-			continue
+
+	for i := 0; i < length; i++ {
+		num := p.SendGetConfirms(info[i].Height, info[i].Hash)
+		if num != 0 {
+			log.Errorf("Send get confirms message error,errorCode = %d", num)
+			return
 		}
-		p.SendGetConfirms(b.Height(), b.Hash())
 	}
 }
 

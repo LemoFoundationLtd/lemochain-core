@@ -110,6 +110,30 @@ func (c *Confirmer) BatchConfirmStable(startHeight, endHeight uint32) []*network
 	return result
 }
 
+// NeedFetchedConfirms
+func (c *Confirmer) NeedFetchedConfirms(startHeight, endHeight uint32) *[]network.GetConfirmInfo {
+	if startHeight > endHeight {
+		return nil
+	}
+	confirms := make([]network.GetConfirmInfo, 0, endHeight-startHeight+1)
+	for i := startHeight; i <= endHeight; i++ {
+		block, err := c.db.GetBlockByHeight(i)
+		if err != nil {
+			log.Errorf("Load block fail,can't fetch it's confirms, height: %d", i)
+			continue
+		}
+		if IsConfirmEnough(block, c.dm) {
+			continue
+		}
+		info := network.GetConfirmInfo{
+			Height: block.Height(),
+			Hash:   block.Hash(),
+		}
+		confirms = append(confirms, info)
+	}
+	return &confirms
+}
+
 // SetLastSig
 func (c *Confirmer) SetLastSig(block *types.Block) {
 	c.lastSig.Height = block.Height()
