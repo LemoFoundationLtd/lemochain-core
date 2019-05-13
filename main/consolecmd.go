@@ -34,6 +34,11 @@ This command allows to open a console on a running glemo node.`,
 )
 
 func localConsole(ctx *cli.Context) error {
+	// create account for first-time users
+	if printLemoAccountToConsole(ctx) {
+		return nil
+	}
+
 	n := makeFullNode(ctx)
 	startNode(ctx, n)
 	defer n.Stop()

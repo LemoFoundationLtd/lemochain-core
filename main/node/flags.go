@@ -26,6 +26,10 @@ var (
 		Usage: "Data directory for the databases",
 		Value: DefaultDataDir(),
 	}
+	CreateAccountFlag = cli.BoolFlag{
+		Name:  common.CreateAccount,
+		Usage: "print created account in console",
+	}
 	MaxPeersFlag = cli.IntFlag{
 		Name:  common.MaxPeers,
 		Usage: "Maximum number of network peers",

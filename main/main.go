@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
+	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-core/common/flag"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/main/console"
@@ -21,6 +22,7 @@ var (
 	// flags to configure the node
 	nodeFlags = []cli.Flag{
 		node.DataDirFlag,
+		node.CreateAccountFlag,
 		node.MaxPeersFlag,
 		node.ListenPortFlag,
 		node.ExtraDataFlag,
@@ -118,10 +120,33 @@ func makeFullNode(ctx *cli.Context) *node.Node {
 }
 
 func glemo(ctx *cli.Context) error {
+	// create account for first-time users
+	if printLemoAccountToConsole(ctx) {
+		return nil
+	}
 	n := makeFullNode(ctx)
 	startNode(ctx, n)
 	n.Wait()
 	return nil
+}
+
+// printLemoAccountToConsole print created account to console
+func printLemoAccountToConsole(ctx *cli.Context) bool {
+	if ctx.GlobalIsSet(node.CreateAccountFlag.Name) {
+		acc, err := crypto.GenerateAddress()
+		if err == nil {
+			fmt.Println("Please keep your account safe! \nPlease apply again if the private key is divulged!\n ")
+			fmt.Println("Private:", acc.Private)
+			fmt.Println("PubKey:", acc.Public)
+			fmt.Println("LemoAddress:", acc.Address.String())
+			return true
+		} else {
+			fmt.Println("Create account error:", err.Error())
+			fmt.Println("Suggest to retry!!!")
+			return true
+		}
+	}
+	return false
 }
 
 func interrupt(wait func() error) {
