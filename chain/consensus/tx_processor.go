@@ -195,6 +195,7 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 		assetEnv = NewRunAssetTx(p.am)
 	default:
 		log.Errorf("The type of transaction is not defined. ErrType = %d\n", tx.Type())
+		return 0, types.ErrTxType
 	}
 
 	// vm errors do not effect consensus and are therefor not assigned to err,
@@ -249,6 +250,7 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 		_, restGas, Err, vmErr = vmEnv.TransferAssetTx(sender, recipientAddr, restGas, tx.Data(), p.db)
 	default:
 		log.Errorf("The type of transaction is not defined. ErrType = %d\n", tx.Type())
+		return 0, types.ErrTxType
 	}
 
 	if Err != nil {

@@ -23,9 +23,8 @@ type BlockAssembler struct {
 	canLoader   CandidateLoader
 }
 
-func NewBlockAssembler(db protocol.ChainDB, am *account.Manager, dm *deputynode.Manager, txProcessor *TxProcessor, canLoader CandidateLoader) *BlockAssembler {
+func NewBlockAssembler(am *account.Manager, dm *deputynode.Manager, txProcessor *TxProcessor, canLoader CandidateLoader) *BlockAssembler {
 	return &BlockAssembler{
-		db:          db,
 		am:          am,
 		dm:          dm,
 		txProcessor: txProcessor,

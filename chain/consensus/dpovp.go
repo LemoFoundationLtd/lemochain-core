@@ -49,7 +49,7 @@ func NewDPoVP(config Config, db protocol.ChainDB, dm *deputynode.Manager, am *ac
 		logForks:      config.LogForks,
 	}
 	dpovp.validator = NewValidator(config.MineTimeout, db, dm, txPool, dpovp)
-	dpovp.assembler = NewBlockAssembler(db, am, dm, dpovp.processor, dpovp)
+	dpovp.assembler = NewBlockAssembler(am, dm, dpovp.processor, dpovp)
 	return dpovp
 }
 
