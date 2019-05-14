@@ -80,7 +80,7 @@ type ProtocolManager struct {
 	stableBlockCh   chan *types.Block
 	rcvBlocksCh     chan *rcvBlockObj
 	confirmCh       chan *BlockConfirmData
-	fetchConfirms   chan *[]GetConfirmInfo
+	fetchConfirms   chan []GetConfirmInfo
 
 	wg     sync.WaitGroup
 	quitCh chan struct{}
@@ -115,7 +115,7 @@ func NewProtocolManager(chainID uint16, nodeID p2p.NodeID, chain BlockChain, dm 
 		stableBlockCh:   make(chan *types.Block, 10),
 		rcvBlocksCh:     make(chan *rcvBlockObj, 10),
 		confirmCh:       make(chan *BlockConfirmData, 10),
-		fetchConfirms:   make(chan *[]GetConfirmInfo),
+		fetchConfirms:   make(chan []GetConfirmInfo),
 
 		quitCh: make(chan struct{}),
 	}
@@ -194,8 +194,8 @@ func (pm *ProtocolManager) txConfirmLoop() {
 			peers := pm.peers.DeputyNodes(curHeight)
 			go pm.broadcastConfirm(peers, info)
 			log.Debugf("broadcast confirm, len(peers)=%d, height: %d", len(peers), info.Height)
-		case info := <-pm.fetchConfirms:
-			go pm.fetchConfirmFromRemote(*info)
+		case infoes := <-pm.fetchConfirms:
+			go pm.fetchConfirmFromRemote(infoes)
 		}
 	}
 }
@@ -336,16 +336,18 @@ func (pm *ProtocolManager) stableBlockLoop() {
 	}
 }
 
-func (pm *ProtocolManager) fetchConfirmFromRemote(info []GetConfirmInfo) {
-	length := len(info)
+// fetchConfirmFromRemote
+func (pm *ProtocolManager) fetchConfirmFromRemote(infoes []GetConfirmInfo) {
+	length := len(infoes)
 	if length == 0 {
 		return
 	}
+
 	// get maximal height for find the best peer
 	var maxHeight uint32 = 0
 	for i := 0; i < length; i++ {
-		if info[i].Height > maxHeight {
-			maxHeight = info[i].Height
+		if infoes[i].Height > maxHeight {
+			maxHeight = infoes[i].Height
 		}
 	}
 	// find the best peer to fetch block confirms
@@ -355,9 +357,9 @@ func (pm *ProtocolManager) fetchConfirmFromRemote(info []GetConfirmInfo) {
 	}
 
 	for i := 0; i < length; i++ {
-		num := p.SendGetConfirms(info[i].Height, info[i].Hash)
-		if num != 0 {
-			log.Errorf("Send get confirms message error,errorCode = %d", num)
+		err := p.SendGetConfirms(infoes[i].Height, infoes[i].Hash)
+		if err != nil {
+			log.Errorf("Send get confirms message error,errorCode = %d", err)
 			return
 		}
 	}

@@ -84,7 +84,7 @@ func (dp *DPoVP) SubscribeConfirm(ch chan *network.BlockConfirmData) subscribe.S
 }
 
 // SubscribeFetchConfirm subscribe fetch block confirms
-func (dp *DPoVP) SubscribeFetchConfirm(ch chan *[]network.GetConfirmInfo) subscribe.Subscription {
+func (dp *DPoVP) SubscribeFetchConfirm(ch chan []network.GetConfirmInfo) subscribe.Subscription {
 	return dp.fetchConfirmsFeed.Subscribe(ch)
 }
 
@@ -213,12 +213,12 @@ func (dp *DPoVP) broadcastConfirm(block *types.Block, sig types.SignData) {
 	dp.confirmFeed.Send(pack)
 }
 
-// fetchConfirmsFromRemote after 30s fetch confirm from remote peer
+// fetchConfirmsFromRemote fetch confirms from remote peer after 30s
 func (dp *DPoVP) fetchConfirmsFromRemote(startHeight, endHeight uint32) {
 	// time.AfterFunc its own goroutine
 	time.AfterFunc(delayFetchConfirmsTime, func() {
 		info := dp.confirmer.NeedFetchedConfirms(startHeight, endHeight)
-		if info == nil || len(*info) == 0 {
+		if info == nil || len(info) == 0 {
 			return
 		}
 		dp.fetchConfirmsFeed.Send(info)

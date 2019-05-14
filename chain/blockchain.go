@@ -101,7 +101,7 @@ func (bc *BlockChain) runFeedTranspondLoop() {
 	stableSub := bc.engine.SubscribeStable(stableCh)
 	confirmCh := make(chan *network.BlockConfirmData)
 	confirmSub := bc.engine.SubscribeConfirm(confirmCh)
-	fetchConfirmCh := make(chan *[]network.GetConfirmInfo)
+	fetchConfirmCh := make(chan []network.GetConfirmInfo)
 	fetchConfirmSub := bc.engine.SubscribeFetchConfirm(fetchConfirmCh)
 	for {
 		select {

@@ -111,7 +111,7 @@ func (c *Confirmer) BatchConfirmStable(startHeight, endHeight uint32) []*network
 }
 
 // NeedFetchedConfirms
-func (c *Confirmer) NeedFetchedConfirms(startHeight, endHeight uint32) *[]network.GetConfirmInfo {
+func (c *Confirmer) NeedFetchedConfirms(startHeight, endHeight uint32) []network.GetConfirmInfo {
 	if startHeight > endHeight {
 		return nil
 	}
@@ -131,7 +131,7 @@ func (c *Confirmer) NeedFetchedConfirms(startHeight, endHeight uint32) *[]networ
 		}
 		confirms = append(confirms, info)
 	}
-	return &confirms
+	return confirms
 }
 
 // SetLastSig
