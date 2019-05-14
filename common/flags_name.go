@@ -2,7 +2,6 @@ package common
 
 const (
 	DataDir          = "datadir"
-	CreateAccount    = "createaccount"
 	MaxPeers         = "maxpeers"
 	ListenPort       = "port"
 	ExtraData        = "extradata"

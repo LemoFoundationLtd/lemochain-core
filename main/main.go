@@ -21,7 +21,6 @@ var (
 	// flags to configure the node
 	nodeFlags = []cli.Flag{
 		node.DataDirFlag,
-		node.CreateAccountFlag,
 		node.MaxPeersFlag,
 		node.ListenPortFlag,
 		node.ExtraDataFlag,
