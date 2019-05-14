@@ -6,6 +6,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/txpool"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
@@ -30,11 +31,15 @@ const (
 	deputy05Privkey     = "0x56b5fe1b8c40f0dec29b621a16ffcbc7a1bb5c0b0f910c5529f991273cd0569c"
 )
 
-// loadDpovp 加载一个Dpovp实例
-func loadDpovp(dm *deputynode.Manager) *Dpovp {
+// loadDPoVP 加载一个Dpovp实例
+func loadDPoVP(dm *deputynode.Manager) *DPoVP {
 	ClearData()
 	db := store.NewChainDataBase(GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
-	d := NewDpovp(10*1000, dm, db)
+	latestBlock, err := db.LoadLatestBlock()
+	if err != nil {
+		return nil
+	}
+	d := NewDPoVP(config, db, dm, account.NewManager(latestBlock.Hash(), db), NewTestChain(db), txpool.NewTxPool(), latestBlock)
 	return d
 }
 
@@ -118,7 +123,7 @@ func signTestBlock(deputyPrivate string, block *types.Block) {
 }
 
 // newSignedBlock 用来生成符合测试用例所用的区块
-func newSignedBlock(dpovp *Dpovp, parentHash common.Hash, author common.Address, txs []*types.Transaction, time uint32, signPrivate string, save bool) *types.Block {
+func newSignedBlock(dpovp *DPoVP, parentHash common.Hash, author common.Address, txs []*types.Transaction, time uint32, signPrivate string, save bool) *types.Block {
 	newBlockInfo := blockInfo{
 		parentHash: parentHash,
 		author:     author,
@@ -216,7 +221,7 @@ func Test_verifyHeaderTime(t *testing.T) {
 func Test_verifyHeaderSignData(t *testing.T) {
 	dm := deputynode.NewManager(5)
 	dm = initDeputyNode(3, 0, dm) // 选择前三个共识节点
-	dpovp := loadDpovp(dm)
+	dpovp := loadDPoVP(dm)
 	defer dpovp.db.Close()
 	// 创建一个块并用另一个节点来对此区块进行签名
 	block01 := newSignedBlock(dpovp, common.Hash{}, common.HexToAddress(block01MinerAddress), nil, uint32(time.Now().Unix()), deputy02Privkey, false)
@@ -224,11 +229,11 @@ func Test_verifyHeaderSignData(t *testing.T) {
 	assert.Equal(t, ErrVerifyHeaderFailed, verifySigner(dm, block01))
 }
 
-// // TestDpovp_nodeCount1 nodeCount = 1 的情况下直接返回nil
-func TestDpovp_nodeCount1(t *testing.T) {
+// // TestDPoVP_nodeCount1 nodeCount = 1 的情况下直接返回nil
+func TestDPoVP_nodeCount1(t *testing.T) {
 	dm := deputynode.NewManager(5)
 	dm = initDeputyNode(1, 0, dm)
-	dpovp := loadDpovp(dm)
+	dpovp := loadDPoVP(dm)
 	defer dpovp.db.Close()
 
 	t.Log(dm.GetDeputiesCount(1))
@@ -239,7 +244,7 @@ func TestDpovp_nodeCount1(t *testing.T) {
 func Test_headerExtra(t *testing.T) {
 	dm := deputynode.NewManager(5)
 	dm = initDeputyNode(3, 0, dm)
-	dpovp := loadDpovp(dm)
+	dpovp := loadDPoVP(dm)
 	defer dpovp.db.Close()
 	// 创建一个标准的区块
 	testBlcok := newSignedBlock(dpovp, common.Hash{}, common.HexToAddress(block01MinerAddress), nil, uint32(time.Now().Unix()-10), deputy01Privkey, false)
@@ -252,12 +257,12 @@ func Test_headerExtra(t *testing.T) {
 	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyBeforeTxProcess(testBlcok))
 }
 
-// TestDpovp_VerifyHeader01 对共识中共识区块与父块关联情况共识的测试
-func TestDpovp_VerifyHeader01(t *testing.T) {
+// TestDPoVP_VerifyHeader01 对共识中共识区块与父块关联情况共识的测试
+func TestDPoVP_VerifyHeader01(t *testing.T) {
 	dm := deputynode.NewManager(5)
 	dm = initDeputyNode(5, 0, dm)
 	t.Log(dm.GetDeputiesCount(1))
-	dpovp := loadDpovp(dm)
+	dpovp := loadDPoVP(dm)
 	defer dpovp.db.Close()
 	// 验证不存在父区块的情况
 	testBlock00 := newSignedBlock(dpovp, common.Hash{}, common.HexToAddress(block01MinerAddress), nil, uint32(time.Now().Unix()-10), deputy01Privkey, true)
@@ -270,13 +275,13 @@ func TestDpovp_VerifyHeader01(t *testing.T) {
 	assert.Equal(t, nil, dpovp.VerifyBeforeTxProcess(testBlock01))
 }
 
-// TestDpovp_VerifyHeader03 测试slot == 0,slot == 1,slot > 1的情况
-func TestDpovp_VerifyHeader02(t *testing.T) {
+// TestDPoVP_VerifyHeader03 测试slot == 0,slot == 1,slot > 1的情况
+func TestDPoVP_VerifyHeader02(t *testing.T) {
 	ClearData()
 	// 创建5个代理节点
 	dm := deputynode.NewManager(5)
 	dm = initDeputyNode(5, 0, dm)
-	dpovp := loadDpovp(dm)
+	dpovp := loadDPoVP(dm)
 	defer dpovp.db.Close()
 	// 创世块,随便哪个节点出块在这里没有影响
 	block00 := newSignedBlock(dpovp, common.Hash{}, common.HexToAddress(block01MinerAddress), nil, 1995, deputy01Privkey, true)
@@ -326,12 +331,12 @@ func TestDpovp_VerifyHeader02(t *testing.T) {
 
 }
 
-// TestDpovp_Seal
-func TestDpovp_Seal(t *testing.T) {
+// TestDPoVP_Seal
+func TestDPoVP_Seal(t *testing.T) {
 	// 创建5个代理节点
 	dm := deputynode.NewManager(5)
 	dm = initDeputyNode(5, 0, dm)
-	dpovp := loadDpovp(dm)
+	dpovp := loadDPoVP(dm)
 	defer dpovp.db.Close()
 	// 创世块
 	block00 := newSignedBlock(dpovp, common.Hash{}, common.HexToAddress(block01MinerAddress), nil, 995, deputy01Privkey, true)
@@ -358,8 +363,8 @@ func TestDpovp_Seal(t *testing.T) {
 	assert.Equal(t, deputynode.DeputyNodes(nil), TestBlock.DeputyNodes)
 }
 
-// TestDpovp_Finalize
-func TestDpovp_Finalize(t *testing.T) {
+// TestDPoVP_Finalize
+func TestDPoVP_Finalize(t *testing.T) {
 	dm := deputynode.NewManager(5)
 	// 第0届 一个deputy node
 	dm = initDeputyNode(1, 0, dm)
@@ -368,7 +373,7 @@ func TestDpovp_Finalize(t *testing.T) {
 	// 第二届
 	dm = initDeputyNode(5, 2*params.TermDuration, dm)
 
-	dpovp := loadDpovp(dm)
+	dpovp := loadDPoVP(dm)
 	defer dpovp.db.Close()
 	am := account.NewManager(common.Hash{}, dpovp.db)
 

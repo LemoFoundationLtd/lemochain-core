@@ -11,7 +11,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
-	"github.com/LemoFoundationLtd/lemochain-core/common/flag"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/common/merkle"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
@@ -21,6 +20,41 @@ import (
 	"os"
 	"time"
 )
+
+var (
+	ErrNotExist = errors.New("item does not exist")
+)
+
+type testChain struct {
+	Db protocol.ChainDB
+}
+
+func NewTestChain(db protocol.ChainDB) *testChain {
+	return &testChain{
+		Db: db,
+	}
+}
+func (t *testChain) GetBlockByHash(hash common.Hash) *types.Block {
+	block, err := t.Db.GetBlockByHash(hash)
+	if err != nil {
+		return nil
+	}
+	return block
+}
+func (t *testChain) GetParentByHeight(height uint32, sonBlockHash common.Hash) *types.Block {
+	var block *types.Block
+	var err error
+	block, err = t.Db.GetUnConfirmByHeight(height, sonBlockHash)
+	if err == ErrNotExist {
+		block, err = t.Db.GetBlockByHeight(height)
+	}
+
+	if err != nil {
+		log.Error("load block by height fail", "height", height, "err", err)
+		return nil
+	}
+	return block
+}
 
 type blockInfo struct {
 	hash        common.Hash
@@ -163,6 +197,12 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 		info.txRoot = txRoot
 	}
 	txMerkleEnd := time.Now().UnixNano()
+	// genesis coin
+	if info.height == 0 {
+		owner := am.GetAccount(testAddr)
+		// 1 million
+		owner.SetBalance(new(big.Int).Set(totalLEMO))
+	}
 	var GasUsed uint64 = 0
 	// 执行交易，这里忽略智能合约交易
 	for _, tx := range info.txList {

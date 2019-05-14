@@ -1,12 +1,14 @@
-package consensus
+package tx
 
 import (
+	"encoding/json"
 	"errors"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/vm"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
+	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"math/big"
 )
 
@@ -20,43 +22,69 @@ var (
 	ErrInsufficientBalance = errors.New("insufficient balance for transfer")
 )
 
-type CandidateVoteTx struct {
+type CandidateVoteEnv struct {
 	am          *account.Manager
 	CanTransfer func(vm.AccountManager, common.Address, *big.Int) bool
 	Transfer    func(vm.AccountManager, common.Address, common.Address, *big.Int)
 }
 
-func NewCandidateVoteTx(am *account.Manager) *CandidateVoteTx {
-	return &CandidateVoteTx{
+func NewCandidateVoteEnv(am *account.Manager) *CandidateVoteEnv {
+	return &CandidateVoteEnv{
 		am:          am,
 		CanTransfer: CanTransfer,
 		Transfer:    Transfer,
 	}
 }
 
-// RegisterOrUpdateToCandidate candidate node account transaction call
-func (c *CandidateVoteTx) RegisterOrUpdateToCandidate(candidateAddress, to common.Address, candiNode types.Profile, initialSenderBalance *big.Int) error {
+// buildProfile
+func buildProfile(tx *types.Transaction) (types.Profile, error) {
+	// Unmarshal tx data
+	txData := tx.Data()
+	profile := make(types.Profile)
+	err := json.Unmarshal(txData, &profile)
+	if err != nil {
+		log.Errorf("Unmarshal Candidate node error: %s", err)
+		return nil, err
+	}
+	// check nodeID host and incomeAddress
+	if err = checkRegisterTxProfile(profile); err != nil {
+		return nil, err
+	}
+	candidateAddress, _ := tx.From()
 	// Candidate node information
-	newIsCandidate, ok := candiNode[types.CandidateKeyIsCandidate]
+	_, ok := profile[types.CandidateKeyIsCandidate]
 	if !ok {
-		newIsCandidate = params.IsCandidateNode
+		profile[types.CandidateKeyIsCandidate] = params.IsCandidateNode
 	}
-	minerAddress, ok := candiNode[types.CandidateKeyIncomeAddress]
+	_, ok = profile[types.CandidateKeyIncomeAddress]
 	if !ok {
-		minerAddress = candidateAddress.String()
+		profile[types.CandidateKeyIncomeAddress] = candidateAddress.String()
 	}
-	nodeID, ok := candiNode[types.CandidateKeyNodeID]
+	_, ok = profile[types.CandidateKeyNodeID]
 	if !ok {
-		return ErrOfRegisterNodeID
+		return nil, ErrOfRegisterNodeID
 	}
-	host, ok := candiNode[types.CandidateKeyHost]
+	_, ok = profile[types.CandidateKeyHost]
 	if !ok {
-		return ErrOfRegisterHost
+		return nil, ErrOfRegisterHost
 	}
-	port, ok := candiNode[types.CandidateKeyPort]
+	_, ok = profile[types.CandidateKeyPort]
 	if !ok {
-		return ErrOfRegisterPort
+		return nil, ErrOfRegisterPort
 	}
+	return profile, nil
+}
+
+// RegisterOrUpdateToCandidate candidate node account transaction call
+func (c *CandidateVoteEnv) RegisterOrUpdateToCandidate(tx *types.Transaction, initialSenderBalance *big.Int) error {
+	// 解析data并生成新的profile
+	newProfile, err := buildProfile(tx)
+	if err != nil {
+		return err
+	}
+	candidateAddress, _ := tx.From()
+	to := params.FeeReceiveAddress
+
 	// Checking the balance is not enough
 	if !c.CanTransfer(c.am, candidateAddress, params.RegisterCandidateNodeFees) {
 		return ErrInsufficientBalance
@@ -71,7 +99,7 @@ func (c *CandidateVoteTx) RegisterOrUpdateToCandidate(candidateAddress, to commo
 	// Set candidate node information if it is already a candidate node account
 	if ok && IsCandidate == params.IsCandidateNode {
 		// Determine whether to disqualify a candidate node
-		if newIsCandidate == params.NotCandidateNode {
+		if newProfile[types.CandidateKeyIsCandidate] == params.NotCandidateNode {
 			profile[types.CandidateKeyIsCandidate] = params.NotCandidateNode
 			nodeAccount.SetCandidate(profile)
 			// Set the number of votes to 0
@@ -81,21 +109,21 @@ func (c *CandidateVoteTx) RegisterOrUpdateToCandidate(candidateAddress, to commo
 			return nil
 		}
 
-		profile[types.CandidateKeyIncomeAddress] = minerAddress
-		profile[types.CandidateKeyHost] = host
-		profile[types.CandidateKeyPort] = port
+		profile[types.CandidateKeyIncomeAddress] = newProfile[types.CandidateKeyIncomeAddress]
+		profile[types.CandidateKeyHost] = newProfile[types.CandidateKeyHost]
+		profile[types.CandidateKeyPort] = newProfile[types.CandidateKeyPort]
 		nodeAccount.SetCandidate(profile)
 	} else if ok && IsCandidate == params.NotCandidateNode {
 		return ErrAgainRegister
 	} else {
 		// Register candidate nodes
-		newProfile := make(map[string]string, 5)
-		newProfile[types.CandidateKeyIsCandidate] = params.IsCandidateNode
-		newProfile[types.CandidateKeyIncomeAddress] = minerAddress
-		newProfile[types.CandidateKeyNodeID] = nodeID
-		newProfile[types.CandidateKeyHost] = host
-		newProfile[types.CandidateKeyPort] = port
-		nodeAccount.SetCandidate(newProfile)
+		endProfile := make(map[string]string, 5)
+		endProfile[types.CandidateKeyIsCandidate] = params.IsCandidateNode
+		endProfile[types.CandidateKeyIncomeAddress] = newProfile[types.CandidateKeyIncomeAddress]
+		endProfile[types.CandidateKeyNodeID] = newProfile[types.CandidateKeyNodeID]
+		endProfile[types.CandidateKeyHost] = newProfile[types.CandidateKeyHost]
+		endProfile[types.CandidateKeyPort] = newProfile[types.CandidateKeyPort]
+		nodeAccount.SetCandidate(endProfile)
 
 		oldNodeAddress := nodeAccount.GetVoteFor()
 
@@ -113,7 +141,7 @@ func (c *CandidateVoteTx) RegisterOrUpdateToCandidate(candidateAddress, to commo
 }
 
 // CallVoteTx voting transaction call
-func (c *CandidateVoteTx) CallVoteTx(voter, node common.Address, initialBalance *big.Int) error {
+func (c *CandidateVoteEnv) CallVoteTx(voter, node common.Address, initialBalance *big.Int) error {
 	nodeAccount := c.am.GetAccount(node)
 
 	profile := nodeAccount.GetCandidate()

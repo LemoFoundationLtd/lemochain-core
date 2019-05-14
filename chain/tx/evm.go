@@ -1,4 +1,4 @@
-package consensus
+package tx
 
 import (
 	"math/big"
@@ -9,7 +9,7 @@ import (
 )
 
 // NewEVMContext creates a new context for use in the EVM.
-func NewEVMContext(tx *types.Transaction, header *types.Header, txIndex uint, txHash common.Hash, blockHash common.Hash, chain BlockLoader) vm.Context {
+func NewEVMContext(tx *types.Transaction, header *types.Header, txIndex uint, blockHash common.Hash, chain BlockLoader) vm.Context {
 	if (header.MinerAddress == common.Address{}) {
 		panic("NewEVMContext is called without author")
 	}
@@ -19,7 +19,7 @@ func NewEVMContext(tx *types.Transaction, header *types.Header, txIndex uint, tx
 		Transfer:     Transfer,
 		GetHash:      GetHashFn(header, chain),
 		TxIndex:      txIndex,
-		TxHash:       txHash,
+		TxHash:       tx.Hash(),
 		BlockHash:    blockHash,
 		Origin:       from,
 		MinerAddress: header.MinerAddress,
