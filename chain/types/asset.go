@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/hexutil"
+
+	"errors"
 	"math/big"
 	"strconv"
 	"strings"
@@ -15,6 +17,14 @@ const (
 	Asset03               = uint32(3) // erc20+721
 	MaxMarshalAssetLength = 680
 	MaxMetaDataLength     = 256
+)
+
+var (
+	ErrAssetKind            = errors.New("this type of asset does not exist")
+	ErrAsset01Divisible     = errors.New("an asset of type 1 must be divisible")
+	ErrAsset02Divisible     = errors.New("an asset of type 2 must be indivisible")
+	ErrAsset02Replenishable = errors.New("an asset of type 2 must be non-replenishable")
+	ErrAsset03Divisible     = errors.New("an asset of type 3 must be divisible")
 )
 
 //go:generate gencodec -type Asset --field-override assetMarshaling -out gen_asset_json.go
@@ -113,6 +123,34 @@ func (asset *Asset) Clone() *Asset {
 	}
 
 	return result
+}
+
+// VerifyAsset 验证资产设置的增发和分割是否正确
+func (asset *Asset) VerifyAsset() error {
+	category := asset.Category
+	isDivisible := asset.IsDivisible
+	isReplenishable := asset.IsReplenishable
+
+	switch category {
+	case Asset01:
+		if !isDivisible {
+			return ErrAsset01Divisible
+		}
+	case Asset02:
+		if isDivisible {
+			return ErrAsset02Divisible
+		}
+		if isReplenishable {
+			return ErrAsset02Replenishable
+		}
+	case Asset03:
+		if !isDivisible {
+			return ErrAsset03Divisible
+		}
+	default:
+		return ErrAssetKind
+	}
+	return nil
 }
 
 func (asset *Asset) String() string {

@@ -1,4 +1,4 @@
-package consensus
+package tx
 
 import (
 	"context"
@@ -156,6 +156,19 @@ label:
 	return selectedTxs, invalidTxs, gasUsed
 }
 
+// buyAndPayIntrinsicGas
+func (p *TxProcessor) buyAndPayIntrinsicGas(gp *types.GasPool, tx *types.Transaction, gasLimit uint64) (uint64, error) {
+	err := p.buyGas(gp, tx)
+	if err != nil {
+		return 0, err
+	}
+	restGas, err := p.payIntrinsicGas(tx, gasLimit)
+	if err != nil {
+		return 0, err
+	}
+	return restGas, nil
+}
+
 // applyTx processes transaction. Change accounts' data and execute contract codes.
 func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types.Transaction, txIndex uint, blockHash common.Hash) (uint64, error) {
 	senderAddr, err := tx.From()
@@ -163,110 +176,30 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 		return 0, err
 	}
 	var (
-		vmEnv                *vm.EVM
-		candidateVoteEnv     *CandidateVoteTx
-		assetEnv             *RunAssetTx
-		sender               = p.am.GetAccount(senderAddr)
-		initialSenderBalance = sender.GetBalance()
-		contractCreation     = tx.To() == nil
-		restGas              = tx.GasLimit()
-	)
-	err = p.buyGas(gp, tx)
-	if err != nil {
-		return 0, err
-	}
-	restGas, err = p.payIntrinsicGas(tx, restGas)
-	if err != nil {
-		return 0, err
-	}
-	// load different Env
-	switch tx.Type() {
-	case params.OrdinaryTx, params.TransferAssetTx: // need use evm environment
-		// Create a new context to be used in the EVM environment
-		newContext := NewEVMContext(tx, header, txIndex, tx.Hash(), blockHash, p.blockLoader)
-		// Create a new environment which holds all relevant information
-		// about the transaction and calling mechanisms.
-		vmEnv = vm.NewEVM(newContext, p.am, *p.cfg)
-
-	case params.VoteTx, params.RegisterTx: // use candidate and vote tx environment
-		candidateVoteEnv = NewCandidateVoteTx(p.am)
-
-	case params.ModifyAssetTx, params.ReplenishAssetTx, params.IssueAssetTx, params.CreateAssetTx: // use asset tx environment
-		assetEnv = NewRunAssetTx(p.am)
-	default:
-		log.Errorf("The type of transaction is not defined. ErrType = %d\n", tx.Type())
-		return 0, types.ErrTxType
-	}
-
-	// vm errors do not effect consensus and are therefor not assigned to err,
-	// except for insufficient balance error.
-	var (
+		sender                  = p.am.GetAccount(senderAddr)
+		initialSenderBalance    = sender.GetBalance()
+		nullRecipient           = tx.To() == nil
+		restGas                 = tx.GasLimit()
 		vmErr                   error
-		Err                     error
-		recipientAddr           common.Address
+		execErr                 error
 		initialRecipientBalance *big.Int
-		recipientAccount        types.AccountAccessor
 	)
-	if !contractCreation {
-		recipientAddr = *tx.To()
-		recipientAccount = p.am.GetAccount(recipientAddr)
+
+	if !nullRecipient {
+		recipientAddr := *tx.To()
+		recipientAccount := p.am.GetAccount(recipientAddr)
 		initialRecipientBalance = recipientAccount.GetBalance()
 	}
-	// Judge the type of transaction
-	switch tx.Type() {
-	case params.OrdinaryTx:
-		if contractCreation {
-			_, recipientAddr, restGas, vmErr = vmEnv.Create(sender, tx.Data(), restGas, tx.Amount())
-		} else {
-			_, restGas, vmErr = vmEnv.Call(sender, recipientAddr, tx.Data(), restGas, tx.Amount())
-		}
-	case params.VoteTx:
-		Err = candidateVoteEnv.CallVoteTx(senderAddr, recipientAddr, initialSenderBalance)
 
-	case params.RegisterTx:
-		// Unmarshal tx data
-		txData := tx.Data()
-		profile := make(types.Profile)
-		err = json.Unmarshal(txData, &profile)
-		if err != nil {
-			log.Errorf("Unmarshal Candidate node error: %s", err)
-			return 0, err
-		}
-		// check nodeID host and incomeAddress
-		if err = checkRegisterTxProfile(profile); err != nil {
-			return 0, err
-		}
-		Err = candidateVoteEnv.RegisterOrUpdateToCandidate(senderAddr, params.FeeReceiveAddress, profile, initialSenderBalance)
-
-	case params.CreateAssetTx:
-		Err = assetEnv.CreateAssetTx(senderAddr, tx.Data(), tx.Hash())
-	case params.IssueAssetTx:
-		Err = assetEnv.IssueAssetTx(senderAddr, recipientAddr, tx.Hash(), tx.Data())
-	case params.ReplenishAssetTx:
-		Err = assetEnv.ReplenishAssetTx(senderAddr, recipientAddr, tx.Data())
-	case params.ModifyAssetTx:
-		Err = assetEnv.ModifyAssetProfileTx(senderAddr, tx.Data())
-	case params.TransferAssetTx:
-		_, restGas, Err, vmErr = vmEnv.TransferAssetTx(sender, recipientAddr, restGas, tx.Data(), p.db)
-	default:
-		log.Errorf("The type of transaction is not defined. ErrType = %d\n", tx.Type())
-		return 0, types.ErrTxType
+	restGas, err = p.buyAndPayIntrinsicGas(gp, tx, restGas)
+	if err != nil {
+		return 0, err
 	}
-
-	if Err != nil {
-		log.Errorf("Apply transaction failure. error:%s, transaction: %s.", Err.Error(), tx.String())
-		return 0, Err
-	}
-
-	// Candidate node votes change
-	if !contractCreation {
-		endRecipientBalance := recipientAccount.GetBalance()
-		if initialRecipientBalance == nil {
-			p.changeCandidateVotes(recipientAddr, endRecipientBalance)
-		} else {
-			recipientBalanceChange := new(big.Int).Sub(endRecipientBalance, initialRecipientBalance)
-			p.changeCandidateVotes(recipientAddr, recipientBalanceChange)
-		}
+	// 执行交易
+	restGas, vmErr, execErr = p.handleTx(tx, header, txIndex, blockHash, initialSenderBalance, restGas)
+	if execErr != nil {
+		log.Errorf("Apply transaction failure. error:%s, transaction: %s.", execErr.Error(), tx.String())
+		return 0, execErr
 	}
 
 	if vmErr != nil {
@@ -280,6 +213,36 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 	}
 	p.refundGas(gp, tx, restGas)
 
+	gasUsed := tx.GasLimit() - restGas
+	// sender、to、gaspayer的余额变化造成的候选节点的票数变化
+	err = p.votesChange(initialSenderBalance, initialRecipientBalance, tx, gasUsed)
+	if err != nil {
+		return 0, err
+	}
+
+	return gasUsed, nil
+}
+
+// votesChange 修改对应的候选者票数
+func (p *TxProcessor) votesChange(initialSenderBalance, initialRecipientBalance *big.Int, tx *types.Transaction, gasUsed uint64) error {
+	senderAddr, err := tx.From()
+	if err != nil {
+		return err
+	}
+	sender := p.am.GetAccount(senderAddr)
+	// Candidate node votes change
+	if tx.To() != nil {
+		recipientAddr := *tx.To()
+		recipientAccount := p.am.GetAccount(recipientAddr)
+		endRecipientBalance := recipientAccount.GetBalance()
+
+		if initialRecipientBalance == nil {
+			p.changeCandidateVotes(recipientAddr, endRecipientBalance)
+		} else {
+			recipientBalanceChange := new(big.Int).Sub(endRecipientBalance, initialRecipientBalance)
+			p.changeCandidateVotes(recipientAddr, recipientBalanceChange)
+		}
+	}
 	// The number of votes of the candidate nodes corresponding to the sender.
 	endSenderBalance := sender.GetBalance()
 	senderBalanceChange := new(big.Int).Sub(endSenderBalance, initialSenderBalance)
@@ -287,19 +250,87 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 
 	// reimbursement transaction
 	if len(tx.GasPayerSig()) != 0 {
-		p.gasPayerVotesChange(tx, tx.GasLimit()-restGas)
+		err = p.gasPayerVotesChange(tx, gasUsed)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// handleTx 执行交易,返回消耗之后剩余的gas、evm中执行的error和交易执行不成功的error
+func (p *TxProcessor) handleTx(tx *types.Transaction, header *types.Header, txIndex uint, blockHash common.Hash, initialSenderBalance *big.Int, restGas uint64) (gas uint64, vmErr, err error) {
+	senderAddr, err := tx.From()
+	if err != nil {
+		return 0, nil, err
+	}
+	var (
+		recipientAddr common.Address
+		sender        = p.am.GetAccount(senderAddr)
+		nullRecipient = tx.To() == nil
+	)
+	if !nullRecipient {
+		recipientAddr = *tx.To()
 	}
 
-	return tx.GasLimit() - restGas, nil
+	// Judge the type of transaction
+	switch tx.Type() {
+	case params.OrdinaryTx:
+		newContext := NewEVMContext(tx, header, txIndex, blockHash, p.blockLoader)
+		vmEnv := vm.NewEVM(newContext, p.am, *p.cfg)
+		if nullRecipient {
+			_, recipientAddr, restGas, vmErr = vmEnv.Create(sender, tx.Data(), restGas, tx.Amount())
+		} else {
+			_, restGas, vmErr = vmEnv.Call(sender, recipientAddr, tx.Data(), restGas, tx.Amount())
+		}
+
+	case params.VoteTx:
+		candidateVoteEnv := NewCandidateVoteEnv(p.am)
+		err = candidateVoteEnv.CallVoteTx(senderAddr, recipientAddr, initialSenderBalance)
+
+	case params.RegisterTx:
+		candidateVoteEnv := NewCandidateVoteEnv(p.am)
+		err = candidateVoteEnv.RegisterOrUpdateToCandidate(tx, initialSenderBalance)
+
+	case params.CreateAssetTx:
+		assetEnv := NewRunAssetEnv(p.am)
+		err = assetEnv.CreateAssetTx(senderAddr, tx.Data(), tx.Hash())
+
+	case params.IssueAssetTx:
+		assetEnv := NewRunAssetEnv(p.am)
+		err = assetEnv.IssueAssetTx(senderAddr, recipientAddr, tx.Hash(), tx.Data())
+
+	case params.ReplenishAssetTx:
+		assetEnv := NewRunAssetEnv(p.am)
+		err = assetEnv.ReplenishAssetTx(senderAddr, recipientAddr, tx.Data())
+
+	case params.ModifyAssetTx:
+		assetEnv := NewRunAssetEnv(p.am)
+		err = assetEnv.ModifyAssetProfileTx(senderAddr, tx.Data())
+
+	case params.TransferAssetTx:
+		newContext := NewEVMContext(tx, header, txIndex, blockHash, p.blockLoader)
+		vmEnv := vm.NewEVM(newContext, p.am, *p.cfg)
+		_, restGas, err, vmErr = vmEnv.TransferAssetTx(sender, recipientAddr, restGas, tx.Data(), p.db)
+
+	default:
+		log.Errorf("The type of transaction is not defined. ErrType = %d\n", tx.Type())
+		return restGas, vmErr, types.ErrTxType
+	}
+	return restGas, vmErr, err
 }
 
 // gasPayerVotesChange 修改gas payer 投票的票数
-func (p *TxProcessor) gasPayerVotesChange(tx *types.Transaction, usedGas uint64) {
-	payer, _ := tx.GasPayer()
+func (p *TxProcessor) gasPayerVotesChange(tx *types.Transaction, usedGas uint64) error {
+	payer, err := tx.GasPayer()
+	if err != nil {
+		return err
+	}
 	// balance decrease the amount
 	reduceBalance := new(big.Int).Mul(new(big.Int).SetUint64(usedGas), tx.GasPrice())
 	negativeChangeBalance := new(big.Int).Neg(reduceBalance)
 	p.changeCandidateVotes(payer, negativeChangeBalance)
+	return nil
 }
 
 // changeCandidateVotes candidate node vote change corresponding to balance change
@@ -472,7 +503,7 @@ func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *comm
 	// Timeout limit
 	var (
 		cancel           context.CancelFunc
-		candidateVoteEnv *CandidateVoteTx
+		candidateVoteEnv *CandidateVoteEnv
 		Evm              *vm.EVM
 		vmError          func() error
 		sender           types.AccountAccessor
@@ -491,10 +522,10 @@ func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *comm
 		Evm, vmError, sender = getEVM(ctx, caller, tx, header, 0, tx.Hash(), blockHash, p.blockLoader, *p.cfg, accM)
 
 	case params.VoteTx, params.RegisterTx: // use candidate and vote tx environment
-		candidateVoteEnv = NewCandidateVoteTx(p.am)
+		candidateVoteEnv = NewCandidateVoteEnv(p.am)
 
 	// case params.ModifyAssetTx, params.ReplenishAssetTx, params.IssueAssetTx, params.CreateAssetTx: // use asset tx environment
-	// 	assetEnv = NewRunAssetTx(p.am)
+	// 	assetEnv = NewRunAssetEnv(p.am)
 	default:
 		log.Errorf("The type of transaction is not defined. ErrType = %d\n", tx.Type())
 	}
@@ -538,7 +569,7 @@ func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *comm
 		}
 		sender = accM.GetAccount(caller)
 		sender.SetBalance(params.RegisterCandidateNodeFees)
-		err = candidateVoteEnv.RegisterOrUpdateToCandidate(sender.GetAddress(), params.FeeReceiveAddress, profile, sender.GetBalance())
+		err = candidateVoteEnv.RegisterOrUpdateToCandidate(tx, sender.GetBalance())
 	case params.CreateAssetTx, params.IssueAssetTx, params.ReplenishAssetTx, params.ModifyAssetTx, params.TransferAssetTx:
 
 	}
@@ -554,7 +585,7 @@ func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *comm
 func getEVM(ctx context.Context, caller common.Address, tx *types.Transaction, header *types.Header, txIndex uint, txHash common.Hash, blockHash common.Hash, chain BlockLoader, cfg vm.Config, accM *account.Manager) (*vm.EVM, func() error, types.AccountAccessor) {
 	sender := accM.GetCanonicalAccount(caller)
 	vmError := func() error { return nil }
-	evmContext := NewEVMContext(tx, header, txIndex, txHash, blockHash, chain)
+	evmContext := NewEVMContext(tx, header, txIndex, blockHash, chain)
 	vmEnv := vm.NewEVM(evmContext, accM, cfg)
 	return vmEnv, vmError, sender
 }

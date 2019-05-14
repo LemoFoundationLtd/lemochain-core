@@ -24,15 +24,14 @@ import (
 
 var config = Config{
 	LogForks:      false,
-	RewardManager: common.HexToAddress("0x11001"),
+	RewardManager: testAddr,
 	ChainID:       chainID,
 	MineTimeout:   timeOutTime,
 }
 
 // 创世块的hash for test
 var (
-	testBlockHash    = common.HexToHash("0x1111111111")
-	testMinerAddress = common.HexToAddress("0x1111111")
+	testBlockHash = common.HexToHash("0x1111111111")
 )
 
 // newDbForTest db for test
@@ -55,22 +54,12 @@ func TestNewTxProcessor(t *testing.T) {
 // test valid block processing
 func TestTxProcessor_Process(t *testing.T) {
 	ClearData()
-	db := newDbForTest()
+	db := newDB()
 	defer db.Close()
-	info := blockInfo{
-		parentHash:  testBlockHash,
-		height:      1,
-		author:      testMinerAddress,
-		versionRoot: common.Hash{},
-		txRoot:      common.Hash{},
-		logRoot:     common.Hash{},
-		txList:      nil,
-		gasLimit:    0,
-		time:        0,
-		deputyRoot:  nil,
-		deputyNodes: nil,
-	}
-	block := makeBlock(db)
+	latestBlock, err := db.LoadLatestBlock()
+	assert.NoError(t, err)
+	am := account.NewManager(latestBlock.Hash(), db)
+	p := NewTxProcessor(config, NewTestChain(db), am, db)
 
 	p.am.GetAccount(testAddr)
 	// last not stable block
@@ -102,7 +91,7 @@ func TestTxProcessor_Process(t *testing.T) {
 	assert.Equal(t, err, ErrInvalidGenesis)
 
 	// block on fork branch
-	block = createNewBlock(bc.db)
+	block = createNewBlock(db)
 	gasUsed, err = p.Process(block.Header, block.Txs)
 	assert.NoError(t, err)
 	err = p.am.Finalise()
@@ -115,16 +104,19 @@ func TestTxProcessor_Process(t *testing.T) {
 // test invalid block processing
 func TestTxProcessor_Process2(t *testing.T) {
 	ClearData()
-	bc := newChain()
-	defer bc.db.Close()
-	p := NewTxProcessor(bc)
+	db := newDB()
+	defer db.Close()
+	latestBlock, err := db.LoadLatestBlock()
+	assert.NoError(t, err)
+	am := account.NewManager(latestBlock.Hash(), db)
+	p := NewTxProcessor(config, NewTestChain(db), am, db)
 
 	// tamper with amount
-	block := createNewBlock(bc.db)
+	block := createNewBlock(db)
 	rawTx, _ := rlp.EncodeToBytes(block.Txs[0])
 	rawTx[29]++ // amount++
 	cpy := new(types.Transaction)
-	err := rlp.DecodeBytes(rawTx, cpy)
+	err = rlp.DecodeBytes(rawTx, cpy)
 	assert.NoError(t, err)
 	assert.Equal(t, new(big.Int).Add(block.Txs[0].Amount(), big.NewInt(1)), cpy.Amount())
 	block.Txs[0] = cpy
@@ -132,7 +124,7 @@ func TestTxProcessor_Process2(t *testing.T) {
 	assert.Equal(t, ErrInvalidTxInBlock, err)
 
 	// invalid signature
-	block = createNewBlock(bc.db)
+	block = createNewBlock(db)
 	rawTx, _ = rlp.EncodeToBytes(block.Txs[0])
 	rawTx[43] = 0 // invalid S
 	cpy = new(types.Transaction)
@@ -143,7 +135,7 @@ func TestTxProcessor_Process2(t *testing.T) {
 	assert.Equal(t, ErrInvalidTxInBlock, err)
 
 	// not enough gas (resign by another address)
-	block = createNewBlock(bc.db)
+	block = createNewBlock(db)
 	private, _ := crypto.GenerateKey()
 	origFrom, _ := block.Txs[0].From()
 	block.Txs[0] = signTransaction(block.Txs[0], private)
@@ -154,20 +146,20 @@ func TestTxProcessor_Process2(t *testing.T) {
 	assert.Equal(t, ErrInvalidTxInBlock, err)
 
 	// exceed block gas limit
-	block = createNewBlock(bc.db)
+	block = createNewBlock(db)
 	block.Header.GasLimit = 1
 	_, err = p.Process(block.Header, block.Txs)
 	assert.Equal(t, ErrInvalidTxInBlock, err)
 
 	// used gas reach limit in some tx
-	block = createNewBlock(bc.db)
+	block = createNewBlock(db)
 	block.Txs[0] = makeTransaction(testPrivate, defaultAccounts[1], params.OrdinaryTx, big.NewInt(100), common.Big1, 0, 1)
 	block.Header.TxRoot = block.Txs.MerkleRootSha()
 	_, err = p.Process(block.Header, block.Txs)
 	assert.Equal(t, ErrInvalidTxInBlock, err)
 
 	// balance not enough
-	block = createNewBlock(bc.db)
+	block = createNewBlock(db)
 	balance := p.am.GetAccount(testAddr).GetBalance()
 	block.Txs[0] = makeTx(testPrivate, defaultAccounts[1], params.OrdinaryTx, new(big.Int).Add(balance, big.NewInt(1)))
 	block.Header.TxRoot = block.Txs.MerkleRootSha()
@@ -191,9 +183,12 @@ func createNewBlock(db protocol.ChainDB) *types.Block {
 // test tx picking logic
 func TestTxProcessor_ApplyTxs(t *testing.T) {
 	ClearData()
-	bc := newChain()
-	defer bc.db.Close()
-	p := NewTxProcessor(bc)
+	db := newDB()
+	defer db.Close()
+	latestBlock, err := db.LoadLatestBlock()
+	assert.NoError(t, err)
+	am := account.NewManager(latestBlock.Hash(), db)
+	p := NewTxProcessor(config, NewTestChain(db), am, db)
 
 	// 1 txs
 	header := defaultBlocks[2].Header
@@ -306,9 +301,12 @@ func TestTxProcessor_ApplyTxs(t *testing.T) {
 // test different transactions
 func TestTxProcessor_ApplyTxs2(t *testing.T) {
 	ClearData()
-	bc := newChain()
-	defer bc.db.Close()
-	p := NewTxProcessor(bc)
+	db := newDB()
+	defer db.Close()
+	latestBlock, err := db.LoadLatestBlock()
+	assert.NoError(t, err)
+	am := account.NewManager(latestBlock.Hash(), db)
+	p := NewTxProcessor(config, NewTestChain(db), am, db)
 
 	// transfer to other
 	header := defaultBlocks[3].Header
@@ -363,11 +361,15 @@ func TestTxProcessor_ApplyTxs2(t *testing.T) {
 
 func TestApplyTxsTimeoutTime(t *testing.T) {
 	ClearData()
-	bc := newChain()
-	defer bc.db.Close()
-	p := NewTxProcessor(bc)
+	db := newDB()
+	defer db.Close()
+	latestBlock, err := db.LoadLatestBlock()
+	assert.NoError(t, err)
+	am := account.NewManager(latestBlock.Hash(), db)
+	p := NewTxProcessor(config, NewTestChain(db), am, db)
 
-	parentBlock := p.chain.stableBlock.Load().(*types.Block)
+	parentBlock, err := db.LoadLatestBlock()
+	assert.NoError(t, err)
 	header := &types.Header{
 		ParentHash:   parentBlock.Hash(),
 		MinerAddress: parentBlock.MinerAddress(),
@@ -392,9 +394,12 @@ func TestApplyTxsTimeoutTime(t *testing.T) {
 // TestTxProcessor_candidateTX 打包特殊交易测试
 func TestTxProcessor_candidateTX(t *testing.T) {
 	ClearData()
-	bc := newChain()
-	defer bc.db.Close()
-	p := NewTxProcessor(bc)
+	db := newDB()
+	defer db.Close()
+	latestBlock, err := db.LoadLatestBlock()
+	assert.NoError(t, err)
+	am := account.NewManager(latestBlock.Hash(), db)
+	p := NewTxProcessor(config, NewTestChain(db), am, db)
 
 	candData00 := createCandidateData(params.IsCandidateNode, "34f0df789b46e9bc09f23d5315b951bc77bbfeda653ae6f5aab564c9b4619322fddb3b1f28d1c434250e9d4dd8f51aa8334573d7281e4d63baba913e9fa6908f", "0.0.0.0", "0.0.0.0", "0x10000")
 
@@ -404,7 +409,8 @@ func TestTxProcessor_candidateTX(t *testing.T) {
 	//
 	registerTx01 := signTransaction(types.NewTransaction(params.FeeReceiveAddress, params.RegisterCandidateNodeFees, 200000, common.Big1, candData00, params.RegisterTx, chainID, uint64(time.Now().Unix()+300), "", ""), testPrivate)
 
-	parentBlock := p.chain.stableBlock.Load().(*types.Block)
+	parentBlock, err := db.LoadLatestBlock()
+	assert.NoError(t, err)
 	txs01 := types.Transactions{registerTx01, getBalanceTx01}
 	Block01, invalidTxs := newNextBlock(p, parentBlock, txs01, false)
 	if len(invalidTxs) != 0 {
@@ -786,7 +792,6 @@ func TestCreateAssetTx(t *testing.T) {
 	assert.Equal(t, "test issue token", asset.Profile[types.AssetDescription])
 	assert.Equal(t, "false", asset.Profile[types.AssetFreeze])
 	assert.Equal(t, "60000", asset.Profile[types.AssetSuggestedGasLimit])
-
 }
 
 // newCreateAssetTx
