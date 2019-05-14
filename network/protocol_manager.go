@@ -194,8 +194,8 @@ func (pm *ProtocolManager) txConfirmLoop() {
 			peers := pm.peers.DeputyNodes(curHeight)
 			go pm.broadcastConfirm(peers, info)
 			log.Debugf("broadcast confirm, len(peers)=%d, height: %d", len(peers), info.Height)
-		case infoes := <-pm.fetchConfirms:
-			go pm.fetchConfirmFromRemote(infoes)
+		case infoList := <-pm.fetchConfirms:
+			go pm.fetchConfirmFromRemote(infoList)
 		}
 	}
 }
@@ -337,8 +337,8 @@ func (pm *ProtocolManager) stableBlockLoop() {
 }
 
 // fetchConfirmFromRemote
-func (pm *ProtocolManager) fetchConfirmFromRemote(infoes []GetConfirmInfo) {
-	length := len(infoes)
+func (pm *ProtocolManager) fetchConfirmFromRemote(infoList []GetConfirmInfo) {
+	length := len(infoList)
 	if length == 0 {
 		return
 	}
@@ -346,8 +346,8 @@ func (pm *ProtocolManager) fetchConfirmFromRemote(infoes []GetConfirmInfo) {
 	// get maximal height for find the best peer
 	var maxHeight uint32 = 0
 	for i := 0; i < length; i++ {
-		if infoes[i].Height > maxHeight {
-			maxHeight = infoes[i].Height
+		if infoList[i].Height > maxHeight {
+			maxHeight = infoList[i].Height
 		}
 	}
 	// find the best peer to fetch block confirms
@@ -357,7 +357,7 @@ func (pm *ProtocolManager) fetchConfirmFromRemote(infoes []GetConfirmInfo) {
 	}
 
 	for i := 0; i < length; i++ {
-		err := p.SendGetConfirms(infoes[i].Height, infoes[i].Hash)
+		err := p.SendGetConfirms(infoList[i].Height, infoList[i].Hash)
 		if err != nil {
 			log.Errorf("Send get confirms message error,errorCode = %d", err)
 			return
