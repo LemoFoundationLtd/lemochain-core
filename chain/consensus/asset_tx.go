@@ -17,6 +17,7 @@ var (
 	ErrIssueAssetAmount     = errors.New("issue asset amount can't be 0 or nil")
 	ErrIssueAssetMetaData   = errors.New("the length of metaData more than limit")
 	ErrReplenishAssetAmount = errors.New("replenish asset amount can't be 0 or nil")
+	ErrAssetIssuer          = errors.New("issue asset transaction's sender must the asset issuer")
 	ErrFrozenAsset          = errors.New("can't replenish the frozen assets")
 	ErrIsReplenishable      = errors.New("asset's \"IsReplenishable\" is false")
 	ErrIsDivisible          = errors.New("this \"isDivisible == false\" kind of asset can't be replenished")
@@ -89,6 +90,11 @@ func (r *RunAssetTx) IssueAssetTx(sender, receiver common.Address, txHash common
 	asset, err := issuerAcc.GetAssetCode(assetCode)
 	if err != nil {
 		return err
+	}
+	// judge sender is issuer
+	if asset.Issuer != sender {
+		log.Errorf("Transaction sender is not the asset issuer")
+		return ErrAssetIssuer
 	}
 	// Determine whether asset is frozen
 	freeze, err := issuerAcc.GetAssetCodeState(assetCode, types.AssetFreeze)
