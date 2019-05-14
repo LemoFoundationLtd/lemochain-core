@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
-	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-core/common/flag"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/main/console"
@@ -46,7 +45,8 @@ var (
 		node.IPCPathFlag,
 	}
 
-	attachFlags = make([]cli.Flag, 0)
+	attachFlags        = make([]cli.Flag, 0)
+	createaccountFlags = make([]cli.Flag, 0)
 )
 
 func init() {
@@ -57,6 +57,7 @@ func init() {
 		initCommand,
 		consoleCommand,
 		attachCommand,
+		createaccountCommand, // create an account when run "./glemo createaccount"
 	}
 	sort.Sort(cli.CommandsByName(app.Commands))
 	app.Flags = append(app.Flags, nodeFlags...)
@@ -120,34 +121,10 @@ func makeFullNode(ctx *cli.Context) *node.Node {
 }
 
 func glemo(ctx *cli.Context) error {
-	// create account for first-time users
-	if printLemoAccountToConsole(ctx) {
-		return nil
-	}
 	n := makeFullNode(ctx)
 	startNode(ctx, n)
 	n.Wait()
 	return nil
-}
-
-// printLemoAccountToConsole print created account to console
-func printLemoAccountToConsole(ctx *cli.Context) bool {
-	if ctx.GlobalIsSet(node.CreateAccountFlag.Name) {
-		acc, err := crypto.GenerateAddress()
-		if err == nil {
-			fmt.Println("Please keep your account safe! \nPlease apply again if the private key is divulged!\n ")
-			fmt.Printf("Private:\n%s\n", acc.Private)
-			fmt.Printf("PubKey:\n%s\n", acc.Public)
-			fmt.Printf("LemoAddress:\n%s", acc.Address.String())
-			fmt.Println("\n")
-			return true
-		} else {
-			fmt.Println("Create account error:", err.Error())
-			fmt.Println("Suggest to retry!!!")
-			return true
-		}
-	}
-	return false
 }
 
 func interrupt(wait func() error) {

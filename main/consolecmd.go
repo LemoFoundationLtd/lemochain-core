@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/main/console"
 	"github.com/LemoFoundationLtd/lemochain-core/network/rpc"
@@ -31,13 +33,37 @@ The Glemo console is an interactive shell for the JavaScript runtime environment
 which exposes a node admin interface as well as the Dapp JavaScript API.
 This command allows to open a console on a running glemo node.`,
 	}
+
+	createaccountCommand = cli.Command{
+		Action:    createAccount,
+		Name:      "createaccount",
+		Usage:     "createaccount",
+		ArgsUsage: "[endpoint]",
+		Flags:     createaccountFlags,
+		Category:  "BLOCKCHAIN COMMANDS",
+		Description: `
+Create an account when we execute "./glemo createaccount".`,
+	}
 )
 
-func localConsole(ctx *cli.Context) error {
-	// create account for first-time users
-	if printLemoAccountToConsole(ctx) {
+// createAccount
+func createAccount(ctx *cli.Context) error {
+	acc, err := crypto.GenerateAddress()
+	if err == nil {
+		fmt.Println("Please keep your account safe! \nPlease apply again if the private key is divulged!\n ")
+		fmt.Printf("Private:\n%s\n", acc.Private)
+		fmt.Printf("PubKey:\n%s\n", acc.Public)
+		fmt.Printf("LemoAddress:\n%s", acc.Address.String())
+		fmt.Println("\n")
+		return nil
+	} else {
+		fmt.Println("Create account error:", err.Error())
+		fmt.Println("Suggest to retry!!!")
 		return nil
 	}
+}
+
+func localConsole(ctx *cli.Context) error {
 
 	n := makeFullNode(ctx)
 	startNode(ctx, n)
