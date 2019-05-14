@@ -152,80 +152,80 @@ func (p *peer) ReadMsg() (*p2p.Msg, error) {
 }
 
 // SendLstStatus send SyncFailednode's status to remote
-func (p *peer) SendLstStatus(status *LatestStatus) int {
+func (p *peer) SendLstStatus(status *LatestStatus) error {
 	buf, err := rlp.EncodeToBytes(status)
 	if err != nil {
 		log.Warnf("SendLstStatus: rlp encode failed: %v", err)
-		return -1
+		return err
 	}
 	p.conn.SetWriteDeadline(DurShort)
 	if err = p.conn.WriteMsg(LstStatusMsg, buf); err != nil {
 		log.Warnf("SendLstStatus to peer: %s failed: %v", p.NodeID().String()[:16], err)
 		p.conn.Close()
-		return -2
+		return err
 	}
-	return 0
+	return nil
 }
 
 // SendTxs send txs to remote
-func (p *peer) SendTxs(txs types.Transactions) int {
+func (p *peer) SendTxs(txs types.Transactions) error {
 	buf, err := rlp.EncodeToBytes(&txs)
 	if err != nil {
 		log.Warnf("SendTxs: rlp failed: %v", err)
-		return -1
+		return err
 	}
 	if err := p.conn.WriteMsg(TxsMsg, buf); err != nil {
 		log.Warnf("SendTxs to peer: %s failed. disconnect. %v", p.NodeID().String()[:16], err)
 		p.conn.Close()
-		return -2
+		return err
 	}
-	return 0
+	return nil
 }
 
 // SendConfirmInfo send confirm message to deputy nodes
-func (p *peer) SendConfirmInfo(confirmInfo *BlockConfirmData) int {
+func (p *peer) SendConfirmInfo(confirmInfo *BlockConfirmData) error {
 	buf, err := rlp.EncodeToBytes(confirmInfo)
 	if err != nil {
 		log.Warnf("SendConfirmInfo: rlp failed: %v", err)
-		return -1
+		return err
 	}
 	p.conn.SetWriteDeadline(DurShort)
 	if err := p.conn.WriteMsg(ConfirmMsg, buf); err != nil {
 		log.Warnf("SendConfirmInfo to peer: %s failed. disconnect. %v", p.NodeID().String()[:16], err)
 		p.conn.Close()
-		return -2
+		return err
 	}
-	return 0
+	return nil
 }
 
 // SendBlockHash send block hash to remote
-func (p *peer) SendBlockHash(height uint32, hash common.Hash) int {
+func (p *peer) SendBlockHash(height uint32, hash common.Hash) error {
 	msg := &BlockHashData{Height: height, Hash: hash}
 	buf, err := rlp.EncodeToBytes(msg)
 	if err != nil {
 		log.Warnf("SendBlockHash: rlp failed: %v", err)
-		return -1
+		return err
 	}
 	p.conn.SetWriteDeadline(DurShort)
 	if err := p.conn.WriteMsg(BlockHashMsg, buf); err != nil {
 		log.Warnf("SendBlockHash: %s failed. disconnect. %v", p.NodeID().String()[:16], err)
 		p.conn.Close()
-		return -2
+		return err
 	}
-	return 0
+	return nil
 }
 
 // SendBlocks send blocks to remote
-func (p *peer) SendBlocks(blocks types.Blocks) int {
+func (p *peer) SendBlocks(blocks types.Blocks) error {
 	buf, err := rlp.EncodeToBytes(&blocks)
 	if err != nil {
 		log.Warnf("SendBlocks: rlp failed: %v", err)
-		return -1
+		return err
 	}
 	if err := p.conn.WriteMsg(BlocksMsg, buf); err != nil {
 		// log.Warnf("SendBlocks to peer: %s failed. disconnect. %v", p.NodeID().String()[:16], err)
 		p.conn.Close()
-		return -2
+		return err
 	}
 	// for test
 	// block := blocks[0]
@@ -239,90 +239,90 @@ func (p *peer) SendBlocks(blocks types.Blocks) int {
 	// 		}
 	// 	}
 	// }
-	return 0
+	return nil
 }
 
 // SendConfirms send confirms to remote peer
-func (p *peer) SendConfirms(confirms *BlockConfirms) int {
+func (p *peer) SendConfirms(confirms *BlockConfirms) error {
 	buf, err := rlp.EncodeToBytes(confirms)
 	if err != nil {
 		log.Warnf("SendConfirms: rlp failed: %v", err)
-		return -1
+		return err
 	}
 	p.conn.SetWriteDeadline(DurLong)
 	if err := p.conn.WriteMsg(ConfirmsMsg, buf); err != nil {
 		log.Warnf("SendConfirms to peer: %s failed. disconnect. %v", p.NodeID().String()[:16], err)
 		p.conn.Close()
-		return -2
+		return err
 	}
-	return 0
+	return nil
 }
 
 // SendGetConfirms send request of getting confirms
-func (p *peer) SendGetConfirms(height uint32, hash common.Hash) int {
+func (p *peer) SendGetConfirms(height uint32, hash common.Hash) error {
 	msg := &GetConfirmInfo{Height: height, Hash: hash}
 	buf, err := rlp.EncodeToBytes(msg)
 	if err != nil {
 		log.Warnf("SendGetConfirms: rlp failed: %v", err)
-		return -1
+		return err
 	}
 	p.conn.SetWriteDeadline(DurShort)
 	if err := p.conn.WriteMsg(GetConfirmsMsg, buf); err != nil {
 		log.Warnf("SendGetConfirms to peer: %s failed. disconnect. %v", p.NodeID().String()[:16], err)
 		p.conn.Close()
-		return -2
+		return err
 	}
-	return 0
+	return nil
 }
 
 // SendDiscover send discover request
-func (p *peer) SendDiscover() int {
+func (p *peer) SendDiscover() error {
 	msg := &DiscoverReqData{Sequence: 1}
 	buf, err := rlp.EncodeToBytes(msg)
 	if err != nil {
 		log.Warnf("SendDiscover: rlp failed: %v", err)
-		return -1
+		return err
 	}
 	p.discoverCounter++
 	p.conn.SetWriteDeadline(DurShort)
 	if err := p.conn.WriteMsg(DiscoverReqMsg, buf); err != nil {
 		log.Warnf("SendDiscover to peer: %s failed. disconnect. %v", p.NodeID().String()[:16], err)
 		p.conn.Close()
-		return -2
+		return err
 	}
-	return 0
+	return nil
 }
 
 // SendDiscoverResp send response for discover
-func (p *peer) SendDiscoverResp(resp *DiscoverResData) int {
+func (p *peer) SendDiscoverResp(resp *DiscoverResData) error {
 	buf, err := rlp.EncodeToBytes(resp)
 	if err != nil {
 		log.Warnf("SendDiscoverResp: rlp failed: %v", err)
-		return -1
+		return err
 	}
 	if err := p.conn.WriteMsg(DiscoverResMsg, buf); err != nil {
 		log.Warnf("SendDiscoverResp to peer: %s failed. disconnect. %v", p.NodeID().String()[:16], err)
 		p.conn.Close()
-		return -2
+		return err
 	}
-	return 0
+	return nil
 }
 
 // SendReqLatestStatus send request of latest status
-func (p *peer) SendReqLatestStatus() int {
+func (p *peer) SendReqLatestStatus() error {
 	msg := &GetLatestStatus{Revert: uint32(0)}
 	buf, err := rlp.EncodeToBytes(msg)
 	if err != nil {
 		log.Warnf("SendReqLatestStatus: rlp failed: %v", err)
-		return -1
+		return err
 	}
 	p.conn.SetWriteDeadline(DurShort)
 	if err := p.conn.WriteMsg(GetLstStatusMsg, buf); err != nil {
 		log.Warnf("SendReqLatestStatus to peer: %s failed. disconnect. %v", p.NodeID().String()[:16], err)
 		p.conn.Close()
-		return -2
+		return err
 	}
-	return 0
+	return nil
 }
 
 // LatestStatus return record of latest status
