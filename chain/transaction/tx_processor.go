@@ -461,8 +461,8 @@ func (p *TxProcessor) PreExecutionTransaction(ctx context.Context, header *types
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	accM := account.ReadOnlyManager(header.Hash(), p.db)
-	accM.Reset(header.ParentHash)
+	accM := account.NewReadOnlyManager(p.db)
+	accM.Reset(header.Hash())
 
 	// A random address is found as our caller address.
 	strAddress := "0x20190306" // todo Consider letting users pass in their own addresses

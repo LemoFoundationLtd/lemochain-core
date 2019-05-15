@@ -95,13 +95,6 @@ func (am *Manager) getRawAccount(address common.Address) *Account {
 	return safeAccount.(*SafeAccount).rawAccount
 }
 
-// IsExist reports whether the given account address exists in the db.
-// Notably this also returns true for suicided accounts.
-func (am *Manager) IsExist(address common.Address) bool {
-	data, _ := am.acctDb.Get(address)
-	return data != nil
-}
-
 // AddEvent records the event during transaction's execution.
 func (am *Manager) AddEvent(event *types.Event) {
 	if (event.Address == common.Address{}) {
