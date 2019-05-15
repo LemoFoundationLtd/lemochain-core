@@ -258,15 +258,16 @@ func (v *Validator) VerifyBeforeTxProcess(block *types.Block) error {
 
 // VerifyAfterTxProcess verify the block data which computed from transactions
 func (v *Validator) VerifyAfterTxProcess(block, computedBlock *types.Block) error {
+	// verify changeLog first to print more detail if it is incorrect
+	if err := verifyChangeLog(block, computedBlock.ChangeLogs); err != nil {
+		return err
+	}
+
 	// verify block hash. It also verify the rest fields in header: VersionRoot, LogRoot, GasLimit, GasUsed
 	if computedBlock.Hash() != block.Hash() {
 		// it contains
 		log.Errorf("verify block error! oldHeader: %v, newHeader:%v", block.Header, computedBlock.Header)
 		return ErrVerifyBlockFailed
-	}
-	// verify changeLog
-	if err := verifyChangeLog(block, computedBlock.ChangeLogs); err != nil {
-		return err
 	}
 	return nil
 }
