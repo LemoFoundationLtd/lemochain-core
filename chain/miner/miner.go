@@ -18,7 +18,6 @@ type MineConfig struct {
 
 type Chain interface {
 	CurrentBlock() *types.Block
-	SubscribeNewBlock(ch chan *types.Block) subscribe.Subscription
 	MineBlock(int64)
 }
 
@@ -33,10 +32,9 @@ type Miner struct {
 	retryTimer *time.Timer // 出块失败时重试出块的timer
 
 	recvNewBlockCh chan *types.Block // 收到新块通知
-	recvBlockSub   subscribe.Subscription
-	timeToMineCh   chan struct{} // 到出块时间了
-	stopCh         chan struct{} // 停止挖矿
-	quitCh         chan struct{} // 退出
+	timeToMineCh   chan struct{}     // 到出块时间了
+	stopCh         chan struct{}     // 停止挖矿
+	quitCh         chan struct{}     // 退出
 }
 
 func New(cfg MineConfig, chain Chain, dm *deputynode.Manager) *Miner {
@@ -76,7 +74,7 @@ func (m *Miner) Start() {
 		log.Info("Not deputy now. waiting...")
 	}
 
-	m.recvBlockSub = m.chain.SubscribeNewBlock(m.recvNewBlockCh)
+	subscribe.Sub(subscribe.NewCurrentBlock, m.recvNewBlockCh)
 	log.Info("Start mining success")
 }
 
@@ -87,9 +85,7 @@ func (m *Miner) Stop() {
 	}
 	m.stopMineTimer()
 	m.stopCh <- struct{}{}
-	if m.recvBlockSub != nil {
-		m.recvBlockSub.Unsubscribe()
-	}
+	subscribe.UnSub(subscribe.NewCurrentBlock, m.recvNewBlockCh)
 	log.Info("Stop mining success")
 }
 

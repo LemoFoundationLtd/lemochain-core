@@ -267,13 +267,14 @@ func (engine *EngineTestForMiner) CanBeStable(height uint32, confirmCount int) b
 func newBlockChain() (*chain.BlockChain, chan *types.Block, error) {
 	chainID := uint16(99)
 	db := store.NewChainDataBase(GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
-	genesis := chain.DefaultGenesisBlock()
+	genesis := chain.DefaultGenesisConfig()
 	chain.SetupGenesisBlock(db, genesis)
 
 	dm := deputynode.NewManager(5)
 	dm.SaveSnapshot(0, chain.DefaultDeputyNodes)
 	var engine EngineTestForMiner
 	ch := make(chan *types.Block)
+	// TODO defer close it
 	blockChain, err := chain.NewBlockChain(chainID, &engine, dm, db, nil)
 	if err != nil {
 		return nil, nil, err

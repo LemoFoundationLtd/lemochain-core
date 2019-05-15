@@ -42,7 +42,7 @@ type BlockChain struct {
 // Config holds chain options.
 type Config struct {
 	ChainID     uint16
-	MineTimeout uint64
+	MineTimeout uint64 // milliseconds
 }
 
 func NewBlockChain(config Config, dm *deputynode.Manager, db db.ChainDB, flags flag.CmdFlags, txPool *txpool.TxPool) (bc *BlockChain, err error) {
@@ -81,6 +81,7 @@ func NewBlockChain(config Config, dm *deputynode.Manager, db db.ChainDB, flags f
 	go bc.runFeedTranspondLoop()
 	go bc.runMainLoop()
 
+	log.Info("BlockChain is ready", "stableHeight", bc.StableBlock().Height(), "stableHash", bc.StableBlock().Hash(), "currentHeight", bc.CurrentBlock().Height(), "currentHash", bc.CurrentBlock().Hash())
 	return bc, nil
 }
 
@@ -93,12 +94,13 @@ func (bc *BlockChain) DeputyManager() *deputynode.Manager {
 }
 
 func (bc *BlockChain) IsInBlackList(b *types.Block) bool {
-	currentHeight := bc.CurrentBlock().Height()
-	return bc.dm.IsEvilDeputyNode(b.MinerAddress(), currentHeight)
+	return bc.dm.IsEvilDeputyNode(b.MinerAddress(), b.Height())
 }
 
 // runFeedTranspondLoop transpond dpovp feed to global event bus
 func (bc *BlockChain) runFeedTranspondLoop() {
+	currentCh := make(chan *types.Block)
+	currentSub := bc.engine.SubscribeCurrent(currentCh)
 	stableCh := make(chan *types.Block)
 	stableSub := bc.engine.SubscribeStable(stableCh)
 	confirmCh := make(chan *network.BlockConfirmData)
@@ -107,6 +109,8 @@ func (bc *BlockChain) runFeedTranspondLoop() {
 	fetchConfirmSub := bc.engine.SubscribeFetchConfirm(fetchConfirmCh)
 	for {
 		select {
+		case block := <-currentCh:
+			go subscribe.Send(subscribe.NewCurrentBlock, block)
 		case block := <-stableCh:
 			go subscribe.Send(subscribe.NewStableBlock, block)
 		case confirm := <-confirmCh:
@@ -114,6 +118,7 @@ func (bc *BlockChain) runFeedTranspondLoop() {
 		case confirmsInfo := <-fetchConfirmCh:
 			go subscribe.Send(subscribe.FetchConfirms, confirmsInfo)
 		case <-bc.quitCh:
+			currentSub.Unsubscribe()
 			stableSub.Unsubscribe()
 			confirmSub.Unsubscribe()
 			fetchConfirmSub.Unsubscribe()
@@ -171,10 +176,8 @@ func (bc *BlockChain) Flags() flag.CmdFlags {
 
 // HasBlock has special block in local
 func (bc *BlockChain) HasBlock(hash common.Hash) bool {
-	if ok, _ := bc.db.IsExistByHash(hash); ok {
-		return true
-	}
-	return false
+	ok, _ := bc.db.IsExistByHash(hash)
+	return ok
 }
 
 func (bc *BlockChain) GetBlockByHeight(height uint32) *types.Block {
@@ -217,24 +220,25 @@ func (bc *BlockChain) StableBlock() *types.Block {
 	return bc.engine.StableBlock()
 }
 
-// SubscribeNewBlock subscribe the current block update notification
-func (bc *BlockChain) SubscribeNewBlock(ch chan *types.Block) subscribe.Subscription {
-	return bc.engine.SubscribeCurrent(ch)
-}
-
 func (bc *BlockChain) MineBlock(txProcessTimeout int64) {
-	bc.mineBlockCh <- txProcessTimeout
+	if atomic.LoadInt32(&bc.running) == 0 {
+		bc.mineBlockCh <- txProcessTimeout
+	}
 }
 
 // InsertBlock insert block of non-self to chain
 func (bc *BlockChain) InsertBlock(block *types.Block) error {
-	bc.receiveBlockCh <- block
+	if atomic.LoadInt32(&bc.running) == 0 {
+		bc.receiveBlockCh <- block
+	}
 	return nil
 }
 
 // ReceiveConfirm
 func (bc *BlockChain) InsertConfirm(info *network.BlockConfirmData) {
-	bc.receiveConfirmCh <- info
+	if atomic.LoadInt32(&bc.running) == 0 {
+		bc.receiveConfirmCh <- info
+	}
 }
 
 // InsertStableConfirms receive confirm package from net connection. The block of these confirms has been confirmed by its son block already

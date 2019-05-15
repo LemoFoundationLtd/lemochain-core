@@ -110,7 +110,7 @@ func getGenesis(db protocol.ChainDB) *types.Block {
 	block, err := db.GetBlockByHeight(0)
 	if err != nil {
 		if err == store.ErrNotExist {
-			// create genesis block
+			// init genesis block
 			block = chain.SetupGenesisBlock(db, nil)
 		} else {
 			panic(fmt.Sprintf("can't get genesis block. err: %v", err))
@@ -136,7 +136,6 @@ func New(flags flag.CmdFlags) *Node {
 	if err != nil {
 		panic("new block chain failed!!!")
 	}
-	log.Info("BlockChain is ready", "stableHeight", blockChain.StableBlock().Height(), "stableHash", blockChain.StableBlock().Hash(), "currentHeight", blockChain.CurrentBlock().Height(), "currentHash", blockChain.CurrentBlock().Hash())
 	// discover manager
 	discover := p2p.NewDiscoverManager(cfg.DataDir)
 	// protocol manager

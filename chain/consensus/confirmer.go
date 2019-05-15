@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"bytes"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
@@ -143,6 +144,14 @@ func (c *Confirmer) NeedFetchedConfirms(startHeight, endHeight uint32) []network
 func (c *Confirmer) SetLastSig(block *types.Block) {
 	c.lastSig.Height = block.Height()
 	c.lastSig.Hash = block.Hash()
+}
+
+func IsMinedByself(block *types.Block) bool {
+	nodeID, err := block.SignerNodeID()
+	if err != nil {
+		return false
+	}
+	return bytes.Compare(nodeID, deputynode.GetSelfNodeID()) == 0
 }
 
 // TryConfirmStable try to sign and save a confirm into a stable block

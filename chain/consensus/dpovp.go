@@ -166,6 +166,10 @@ func (dp *DPoVP) InsertBlock(rawBlock *types.Block) (*types.Block, error) {
 		dp.setCurrent(block)
 	}
 	dp.txPool.RecvBlock(block)
+	if IsMinedByself(block) {
+		log.Debug("This block is mined by self", "block", block.ShortString())
+		dp.confirmer.SetLastSig(block)
+	}
 	// for security
 	go func() {
 		isEvil := dp.validator.JudgeDeputy(block)

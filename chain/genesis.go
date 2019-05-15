@@ -83,8 +83,8 @@ type genesisSpecMarshaling struct {
 	DeputyNodes []*types.DeputyNode
 }
 
-// DefaultGenesisBlock default genesis block
-func DefaultGenesisBlock() *Genesis {
+// DefaultGenesisConfig default genesis block config
+func DefaultGenesisConfig() *Genesis {
 	timeSpan, _ := time.ParseInLocation("2006-01-02 15:04:05", "2018-08-30 12:00:00", time.UTC)
 	return &Genesis{
 		Time:        uint32(timeSpan.Unix()),
@@ -120,7 +120,7 @@ func (g *Genesis) Verify() error {
 func SetupGenesisBlock(db protocol.ChainDB, genesis *Genesis) *types.Block {
 	if genesis == nil {
 		log.Info("Writing default genesis block.")
-		genesis = DefaultGenesisBlock()
+		genesis = DefaultGenesisConfig()
 	}
 	if err := genesis.Verify(); err != nil {
 		panic(err)

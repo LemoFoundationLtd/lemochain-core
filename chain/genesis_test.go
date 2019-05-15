@@ -7,18 +7,9 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"github.com/stretchr/testify/assert"
 	"math/big"
-	"os"
 	"testing"
 	"time"
 )
-
-func GetStorePath() string {
-	return "../testdata/genesis"
-}
-
-func ClearData() {
-	_ = os.RemoveAll(GetStorePath())
-}
 
 func getTestGenesis() *Genesis {
 	return &Genesis{
@@ -83,8 +74,8 @@ func TestSetupGenesisBlock_Empty(t *testing.T) {
 	block, err := db.GetBlockByHeight(0) // load first stable block
 	assert.NoError(t, err)
 	assert.Equal(t, genesisBlock.Hash(), block.Hash())
-	assert.Equal(t, DefaultGenesisBlock().Time, block.Time())
-	founder, err := db.GetAccount(DefaultGenesisBlock().Founder)
+	assert.Equal(t, DefaultGenesisConfig().Time, block.Time())
+	founder, err := db.GetAccount(DefaultGenesisConfig().Founder)
 	assert.NoError(t, err)
 	assert.Equal(t, true, founder.Balance.Cmp(new(big.Int)) > 0)
 }

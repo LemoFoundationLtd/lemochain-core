@@ -157,8 +157,8 @@ func verifyExtraData(block *types.Block) error {
 	return nil
 }
 
-// verifyMineSlot verify the miner slot of deputy node
-func verifyMineSlot(block *types.Block, parent *types.Block, timeoutTime uint64, dm *deputynode.Manager) error {
+// VerifyMineSlot verify the miner slot of deputy node
+func VerifyMineSlot(block *types.Block, parent *types.Block, timeoutTime uint64, dm *deputynode.Manager) error {
 	distance, err := GetMinerDistance(block.Height(), parent.MinerAddress(), block.MinerAddress(), dm)
 	if err != nil {
 		log.Error("Consensus verify fail: can't calculate distance", "block.Height", block.Height(), "parent.MinerAddress", parent.MinerAddress(), "block.MinerAddress", block.MinerAddress(), "err", err)
@@ -249,7 +249,7 @@ func (v *Validator) VerifyBeforeTxProcess(block *types.Block) error {
 	if err := verifyExtraData(block); err != nil {
 		return err
 	}
-	if err := verifyMineSlot(block, parent, v.timeoutTime, v.dm); err != nil {
+	if err := VerifyMineSlot(block, parent, v.timeoutTime, v.dm); err != nil {
 		return err
 	}
 	return nil
