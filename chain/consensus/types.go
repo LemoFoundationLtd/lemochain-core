@@ -24,13 +24,18 @@ type BlockMaterial struct {
 	Deputies      deputynode.DeputyNodes
 }
 
-// BlockLoader supports retrieving headers and consensus parameters from the
-// current blockchain to be used during transaction processing.
+// BlockLoader is the interface of ChainDB
 type BlockLoader interface {
-	// GetBlockByHash returns the hash corresponding to their hash.
-	GetBlockByHash(hash common.Hash) *types.Block
-	// GetBlockByHash returns the hash corresponding to their hash.
-	GetParentByHeight(height uint32, sonBlockHash common.Hash) *types.Block
+	IterateUnConfirms(fn func(*types.Block))
+	GetBlockByHash(hash common.Hash) (*types.Block, error)
+	// GetBlockByHeight returns stable blocks
+	GetBlockByHeight(height uint32) (*types.Block, error)
+}
+
+// StableBlockStore is the interface of ChainDB
+type StableBlockStore interface {
+	LoadLatestBlock() (*types.Block, error)
+	SetStableBlock(hash common.Hash) ([]*types.Block, error)
 }
 
 type TxPool interface {

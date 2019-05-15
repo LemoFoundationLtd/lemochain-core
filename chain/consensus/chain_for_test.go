@@ -3,6 +3,7 @@ package consensus
 import (
 	"bytes"
 	"crypto/ecdsa"
+	"encoding/json"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/consensus"
@@ -11,6 +12,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
+	"github.com/LemoFoundationLtd/lemochain-core/common/flag"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/common/merkle"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
@@ -36,6 +38,13 @@ func NewTestChain(db protocol.ChainDB) *testChain {
 }
 func (t *testChain) GetBlockByHash(hash common.Hash) *types.Block {
 	block, err := t.Db.GetBlockByHash(hash)
+	if err != nil {
+		return nil
+	}
+	return block
+}
+func (t *testChain) GetBlockByHeight(height uint32) *types.Block {
+	block, err := t.Db.GetBlockByHeight(height)
 	if err != nil {
 		return nil
 	}
@@ -117,7 +126,7 @@ var (
 			time:     1538209758,
 			gasLimit: 20000000,
 		},
-		// block 3 is not store in db
+		// block 3 is not store in blockLoader
 		{
 			height: 3,
 			author: defaultAccounts[0],
@@ -164,7 +173,7 @@ func newChain() *BlockChain {
 	return bc
 }
 
-// newDB creates db for test chain module
+// newDB creates blockLoader for test chain module
 func newDB() protocol.ChainDB {
 	db := store.NewChainDataBase(GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
 	for i, _ := range defaultBlockInfos {

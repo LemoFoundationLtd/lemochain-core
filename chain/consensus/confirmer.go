@@ -7,14 +7,18 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/network"
-	"github.com/LemoFoundationLtd/lemochain-core/store/protocol"
 )
+
+type confirmWriter interface {
+	SetConfirms(hash common.Hash, pack []types.SignData) (*types.Block, error)
+}
 
 // Confirmer process the confirm logic
 type Confirmer struct {
-	db      protocol.ChainDB
-	dm      *deputynode.Manager
-	lastSig blockSig
+	blockLoader  BlockLoader
+	confirmStore confirmWriter
+	dm           *deputynode.Manager
+	lastSig      blockSig
 }
 
 type blockSig struct {
@@ -22,10 +26,11 @@ type blockSig struct {
 	Hash   common.Hash
 }
 
-func NewConfirmer(dm *deputynode.Manager, db protocol.ChainDB, stable *types.Block) *Confirmer {
+func NewConfirmer(dm *deputynode.Manager, blockLoader BlockLoader, confirmStore confirmWriter, stable *types.Block) *Confirmer {
 	confirmer := &Confirmer{
-		db: db,
-		dm: dm,
+		blockLoader:  blockLoader,
+		confirmStore: confirmStore,
+		dm:           dm,
 	}
 	confirmer.lastSig.Height = stable.Height()
 	confirmer.lastSig.Hash = stable.Hash()
@@ -91,7 +96,7 @@ func (c *Confirmer) BatchConfirmStable(startHeight, endHeight uint32) []*network
 
 	result := make([]*network.BlockConfirmData, 0, endHeight-startHeight+1)
 	for i := startHeight; i <= endHeight; i++ {
-		block, err := c.db.GetBlockByHeight(i)
+		block, err := c.blockLoader.GetBlockByHeight(i)
 		if err != nil {
 			log.Error("Load block fail, can't confirm it", "height", i)
 			continue
@@ -117,7 +122,7 @@ func (c *Confirmer) NeedFetchedConfirms(startHeight, endHeight uint32) []network
 	}
 	confirms := make([]network.GetConfirmInfo, 0, endHeight-startHeight+1)
 	for i := startHeight; i <= endHeight; i++ {
-		block, err := c.db.GetBlockByHeight(i)
+		block, err := c.blockLoader.GetBlockByHeight(i)
 		if err != nil {
 			log.Errorf("Load block fail,can't fetch it's confirms, height: %d", i)
 			continue
@@ -168,7 +173,7 @@ func (c *Confirmer) tryConfirmStable(block *types.Block) *types.SignData {
 
 // SaveConfirm save a confirm to store, then return a new block
 func (c *Confirmer) SaveConfirm(block *types.Block, sigList []types.SignData) (*types.Block, error) {
-	newBlock, err := c.db.SetConfirms(block.Hash(), sigList)
+	newBlock, err := c.confirmStore.SetConfirms(block.Hash(), sigList)
 	if err != nil {
 		log.Errorf("SetConfirm failed: %v", err)
 		return nil, err

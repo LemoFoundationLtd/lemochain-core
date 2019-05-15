@@ -75,7 +75,7 @@ func NewBlockChain(config Config, dm *deputynode.Manager, db db.ChainDB, flags f
 		ChainID:       bc.chainID,
 		MineTimeout:   config.MineTimeout,
 	}
-	bc.engine = consensus.NewDpovp(dpovpCfg, bc.db, bc.dm, bc.am, bc, txPool, block)
+	bc.engine = consensus.NewDPoVP(dpovpCfg, bc.db, bc.dm, bc.am, bc, txPool, block)
 
 	go bc.runFeedTranspondLoop()
 	go bc.runMainLoop()

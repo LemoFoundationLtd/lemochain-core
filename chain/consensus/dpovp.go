@@ -40,7 +40,7 @@ type DPoVP struct {
 
 const delayFetchConfirmsTime = time.Second * 30
 
-func NewDpovp(config Config, db protocol.ChainDB, dm *deputynode.Manager, am *account.Manager, loader BlockLoader, txPool TxPool, stable *types.Block) *DPoVP {
+func NewDPoVP(config Config, db protocol.ChainDB, dm *deputynode.Manager, am *account.Manager, loader transaction.ParentBlockLoader, txPool TxPool, stable *types.Block) *DPoVP {
 	dpovp := &DPoVP{
 		db:            db,
 		dm:            dm,
@@ -49,7 +49,7 @@ func NewDpovp(config Config, db protocol.ChainDB, dm *deputynode.Manager, am *ac
 		stableManager: NewStableManager(dm, db),
 		forkManager:   NewForkManager(dm, db, stable),
 		processor:     transaction.NewTxProcessor(config.RewardManager, config.ChainID, loader, am, db),
-		confirmer:     NewConfirmer(dm, db, stable),
+		confirmer:     NewConfirmer(dm, db, db, stable),
 		logForks:      config.LogForks,
 	}
 	dpovp.validator = NewValidator(config.MineTimeout, db, dm, txPool, dpovp)
@@ -184,7 +184,7 @@ func (dp *DPoVP) InsertBlock(rawBlock *types.Block) (*types.Block, error) {
 	return block, nil
 }
 
-// saveToStore save block and account state to db. They are still unstable now
+// saveToStore save block and account state to blockLoader. They are still unstable now
 func (dp *DPoVP) saveToStore(block *types.Block) error {
 	hash := block.Hash()
 	if err := dp.db.SetBlock(hash, block); err != nil {
@@ -275,7 +275,7 @@ func (dp *DPoVP) TrySwitchFork() {
 func (dp *DPoVP) CheckFork() bool {
 	oldCurrent := dp.CurrentBlock()
 
-	// Test if currentBlock is still there. It may be pruned by stable block updating
+	// Test if currentBlock is still in unconfirmed blocks. It may be pruned by stable block updating
 	_, err := dp.db.GetUnConfirmByHeight(oldCurrent.Height(), oldCurrent.Hash())
 	if err == nil || err != store.ErrNotExist {
 		return false
@@ -330,7 +330,7 @@ func (dp *DPoVP) isIgnorableBlock(block *types.Block) bool {
 		return true
 	}
 	if dp.StableBlock().Height() >= block.Height() {
-		// the block may not correct, it is dangerous
+		// the block may not correct, it is not verified
 		log.Debug("ignore the block whose height is smaller than stable block")
 		return true
 	}

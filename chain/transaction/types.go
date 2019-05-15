@@ -13,3 +13,9 @@ type BlockLoader interface {
 	// GetBlockByHash returns the hash corresponding to their hash.
 	GetParentByHeight(height uint32, sonBlockHash common.Hash) *types.Block
 }
+
+// ParentBlockLoader is the interface of BlockChain
+type ParentBlockLoader interface {
+	// GetParentByHeight returns the parent block corresponding to their hash.
+	GetParentByHeight(height uint32, sonBlockHash common.Hash) *types.Block
+}

@@ -10,14 +10,12 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
-	"github.com/LemoFoundationLtd/lemochain-core/store/protocol"
 	"math/big"
 	"time"
 )
 
 // Assembler seal block
 type BlockAssembler struct {
-	db          protocol.ChainDB
 	am          *account.Manager
 	dm          *deputynode.Manager
 	txProcessor *transaction.TxProcessor
@@ -257,7 +255,7 @@ func getTermRewardValue(am *account.Manager, term uint32) (*big.Int, error) {
 	// Precompile the contract address
 	address := params.TermRewardContract
 	acc := am.GetAccount(address)
-	// key of db
+	// key of blockLoader
 	key := address.Hash()
 	value, err := acc.GetStorageState(key)
 	if err != nil {

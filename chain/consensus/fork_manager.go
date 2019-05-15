@@ -5,21 +5,20 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
-	"github.com/LemoFoundationLtd/lemochain-core/store/protocol"
 	"sync/atomic"
 )
 
 // ForkManager process the fork logic
 type ForkManager struct {
-	db   protocol.ChainDB
-	dm   *deputynode.Manager
-	head atomic.Value // the last block on current fork
+	blockLoader BlockLoader
+	dm          *deputynode.Manager
+	head        atomic.Value // the last block on current fork
 }
 
-func NewForkManager(dm *deputynode.Manager, db protocol.ChainDB, stable *types.Block) *ForkManager {
+func NewForkManager(dm *deputynode.Manager, db BlockLoader, stable *types.Block) *ForkManager {
 	dpovp := &ForkManager{
-		db: db,
-		dm: dm,
+		blockLoader: db,
+		dm:          dm,
 	}
 	dpovp.head.Store(stable)
 	return dpovp
@@ -93,7 +92,7 @@ func (fm *ForkManager) TrySwitchFork(stable, current *types.Block) (*types.Block
 // ChooseNewFork choose a fork and return the last block on the fork. It would return nil if there is no unstable block
 func (fm *ForkManager) ChooseNewFork() *types.Block {
 	var max *types.Block
-	fm.db.IterateUnConfirms(func(node *types.Block) {
+	fm.blockLoader.IterateUnConfirms(func(node *types.Block) {
 		if max == nil || node.Height() > max.Height() {
 			// 1. Choose the longest fork
 			max = node
