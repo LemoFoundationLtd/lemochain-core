@@ -7,6 +7,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
+	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"math"
 	"sync"
 )
@@ -21,6 +22,10 @@ var (
 	ErrQueryFutureTerm       = errors.New("can't query future term")
 )
 
+type BlockLoader interface {
+	GetBlockByHeight(height uint32) (*types.Block, error)
+}
+
 // Manager 代理节点管理器
 type Manager struct {
 	DeputyCount int // Max deputy count. Not include candidate nodes
@@ -33,12 +38,35 @@ type Manager struct {
 }
 
 // NewManager creates a new Manager. It is used to maintain term record list
-func NewManager(deputyCount int) *Manager {
-	return &Manager{
+func NewManager(deputyCount int, blockLoader BlockLoader) *Manager {
+	manager := &Manager{
 		DeputyCount:  deputyCount,
 		termList:     make([]*TermRecord, 0),
 		evilDeputies: make(map[common.Address]uint32),
 	}
+	manager.init(blockLoader)
+	return manager
+}
+
+// initDeputyNodes init deputy nodes information
+func (m *Manager) init(blockLoader BlockLoader) {
+	snapshotHeight := uint32(0)
+	for ; ; snapshotHeight += params.TermDuration {
+		block, err := blockLoader.GetBlockByHeight(snapshotHeight)
+		if err != nil {
+			if err == store.ErrNotExist {
+				break
+			}
+			log.Errorf("Load snapshot block error: %v", err)
+			panic(err)
+		}
+
+		m.SaveSnapshot(snapshotHeight, block.DeputyNodes)
+	}
+
+	lastSnapshotHeight := snapshotHeight - params.TermDuration
+	currentDeputyCount := m.GetDeputiesCount(lastSnapshotHeight + params.TermDuration - 1)
+	log.Info("Deputy manager is ready", "lastSnapshotHeight", lastSnapshotHeight, "deputyCount", currentDeputyCount)
 }
 
 // IsEvilDeputyNode currentHeight is current block height

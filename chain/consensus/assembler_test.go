@@ -540,7 +540,8 @@ func Test_DivideSalary(t *testing.T) {
 	r := rand.New(rand.NewSource(time.Now().Unix()))
 	for i := 0; i < 100; i++ {
 		nodeCount := r.Intn(49) + 1 // [1, 50]
-		nodes := GenerateDeputies(nodeCount, am)
+		nodes := GenerateDeputies(nodeCount)
+		registerDeputies(nodes, am)
 		for _, node := range nodes {
 			node.Votes = randomBigInt(r)
 		}
@@ -580,33 +581,15 @@ func Test_DivideSalary(t *testing.T) {
 	}
 }
 
-// GenerateDeputies generate random deputy nodes
-func GenerateDeputies(num int, am *account.Manager) types.DeputyNodes {
-	var result []*types.DeputyNode
-	for i := 0; i < num; i++ {
-		private, _ := crypto.GenerateKey()
-		node := &types.DeputyNode{
-			MinerAddress: crypto.PubkeyToAddress(private.PublicKey),
-			NodeID:       (crypto.FromECDSAPub(&private.PublicKey))[1:],
-			Rank:         uint32(i),
-			Votes:        big.NewInt(int64(10000000000 - i)),
-		}
-		result = append(result, node)
-		private, _ = crypto.GenerateKey()
-		incomeAddress := crypto.PubkeyToAddress(private.PublicKey)
-		setIncomeAddress(am, node, incomeAddress)
+func registerDeputies(deputies types.DeputyNodes, am *account.Manager) {
+	for _, node := range deputies {
+		profile := make(map[string]string)
+		// 设置deputy node 的income address
+		minerAcc := am.GetAccount(node.MinerAddress)
+		// 设置income address 为minerAddress
+		profile[types.CandidateKeyIncomeAddress] = node.MinerAddress.String()
+		minerAcc.SetCandidate(profile)
 	}
-	return result
-}
-
-func setIncomeAddress(am *account.Manager, node *types.DeputyNode, incomeAddress common.Address) {
-	profile := make(map[string]string)
-	// 设置deputy node 的income address
-	minerAcc := am.GetAccount(node.MinerAddress)
-	// 设置income address 为minerAddress
-	profile[types.CandidateKeyIncomeAddress] = incomeAddress.String()
-	minerAcc.SetCandidate(profile)
-
 }
 
 func randomBigInt(r *rand.Rand) *big.Int {

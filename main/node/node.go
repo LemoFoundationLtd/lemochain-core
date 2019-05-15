@@ -123,35 +123,13 @@ func getGenesis(db protocol.ChainDB) *types.Block {
 	return block
 }
 
-// initDeputyNodes init deputy nodes information
-func initDeputyNodes(dm *deputynode.Manager, db protocol.ChainDB) {
-	snapshotHeight := uint32(0)
-	for ; ; snapshotHeight += params.TermDuration {
-		block, err := db.GetBlockByHeight(snapshotHeight)
-		if err != nil {
-			if err == store.ErrNotExist {
-				break
-			}
-			log.Errorf("Load snapshot block error: %v", err)
-			panic(err)
-		}
-
-		dm.SaveSnapshot(snapshotHeight, block.DeputyNodes)
-	}
-
-	lastSnapshotHeight := snapshotHeight - params.TermDuration
-	currentDeputyCount := dm.GetDeputiesCount(lastSnapshotHeight + params.TermDuration - 1)
-	log.Info("Deputy manager is ready", "lastSnapshotHeight", lastSnapshotHeight, "deputyCount", currentDeputyCount)
-}
-
 func New(flags flag.CmdFlags) *Node {
 	cfg, configFromFile := initConfig(flags)
 	db := initDb(cfg.DataDir)
 	// read genesis block
 	genesisBlock := getGenesis(db)
 	// read all deputy nodes from snapshot block
-	dm := deputynode.NewManager(int(configFromFile.DeputyCount))
-	initDeputyNodes(dm, db)
+	dm := deputynode.NewManager(int(configFromFile.DeputyCount), db)
 	// tx pool
 	txPool := txpool.NewTxPool()
 	blockChain, err := chain.NewBlockChain(cfg.Chain, dm, db, flags, txPool)
