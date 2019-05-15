@@ -5,18 +5,16 @@ package types
 import (
 	"encoding/json"
 	"errors"
-
-	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 )
 
 // MarshalJSON marshals as JSON.
 func (b Block) MarshalJSON() ([]byte, error) {
 	type Block struct {
-		Header      *Header                `json:"header"        gencodec:"required"`
-		Txs         []*Transaction         `json:"transactions"  gencodec:"required"`
-		ChangeLogs  []*ChangeLog           `json:"changeLogs"    gencodec:"required"`
-		Confirms    []SignData             `json:"confirms"`
-		DeputyNodes deputynode.DeputyNodes `json:"deputyNodes"`
+		Header      *Header        `json:"header"        gencodec:"required"`
+		Txs         []*Transaction `json:"transactions"  gencodec:"required"`
+		ChangeLogs  []*ChangeLog   `json:"changeLogs"    gencodec:"required"`
+		Confirms    []SignData     `json:"confirms"`
+		DeputyNodes DeputyNodes    `json:"deputyNodes"`
 	}
 	var enc Block
 	enc.Header = b.Header
@@ -30,11 +28,11 @@ func (b Block) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON unmarshals from JSON.
 func (b *Block) UnmarshalJSON(input []byte) error {
 	type Block struct {
-		Header      *Header                 `json:"header"        gencodec:"required"`
-		Txs         []*Transaction          `json:"transactions"  gencodec:"required"`
-		ChangeLogs  []*ChangeLog            `json:"changeLogs"    gencodec:"required"`
-		Confirms    []SignData              `json:"confirms"`
-		DeputyNodes *deputynode.DeputyNodes `json:"deputyNodes"`
+		Header      *Header        `json:"header"        gencodec:"required"`
+		Txs         []*Transaction `json:"transactions"  gencodec:"required"`
+		ChangeLogs  []*ChangeLog   `json:"changeLogs"    gencodec:"required"`
+		Confirms    []SignData     `json:"confirms"`
+		DeputyNodes *DeputyNodes   `json:"deputyNodes"`
 	}
 	var dec Block
 	if err := json.Unmarshal(input, &dec); err != nil {

@@ -69,8 +69,8 @@ func createPm() *ProtocolManager {
 	txPool := new(testTxPool)
 	discover := new(p2p.DiscoverManager)
 	dm := deputynode.NewManager(5)
-	dm.SaveSnapshot(0, deputynode.DeputyNodes{
-		&deputynode.DeputyNode{
+	dm.SaveSnapshot(0, types.DeputyNodes{
+		&types.DeputyNode{
 			MinerAddress: decodeMinerAddress("Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG"),
 			NodeID:       common.FromHex("0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0"),
 			Rank:         0,

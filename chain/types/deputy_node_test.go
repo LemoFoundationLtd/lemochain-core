@@ -1,4 +1,4 @@
-package deputynode
+package types
 
 import (
 	"github.com/LemoFoundationLtd/lemochain-core/common"

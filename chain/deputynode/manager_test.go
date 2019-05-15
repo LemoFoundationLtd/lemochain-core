@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto/secp256k1"
@@ -17,11 +18,11 @@ var (
 )
 
 // GenerateDeputies generate random deputy nodes
-func GenerateDeputies(num int) DeputyNodes {
-	var result []*DeputyNode
+func GenerateDeputies(num int) types.DeputyNodes {
+	var result []*types.DeputyNode
 	for i := 0; i < num; i++ {
 		private, _ := ecdsa.GenerateKey(secp256k1.S256(), rand.Reader)
-		result = append(result, &DeputyNode{
+		result = append(result, &types.DeputyNode{
 			MinerAddress: crypto.PubkeyToAddress(private.PublicKey),
 			NodeID:       (crypto.FromECDSAPub(&private.PublicKey))[1:],
 			Rank:         uint32(i),
@@ -32,8 +33,8 @@ func GenerateDeputies(num int) DeputyNodes {
 }
 
 // pickNodes picks some test deputy nodes by index
-func pickNodes(nodeIndexList ...int) DeputyNodes {
-	var result []*DeputyNode
+func pickNodes(nodeIndexList ...int) types.DeputyNodes {
+	var result []*types.DeputyNode
 	for i, nodeIndex := range nodeIndexList {
 		newDeputy := testDeputies[nodeIndex].Copy()
 		// reset rank

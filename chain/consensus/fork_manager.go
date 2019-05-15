@@ -34,7 +34,7 @@ func (fm *ForkManager) SetHeadBlock(block *types.Block) {
 	fm.head.Store(block)
 }
 
-func findDeputyByAddress(deputies []*deputynode.DeputyNode, addr common.Address) *deputynode.DeputyNode {
+func findDeputyByAddress(deputies []*types.DeputyNode, addr common.Address) *types.DeputyNode {
 	for _, node := range deputies {
 		if node.MinerAddress == addr {
 			return node

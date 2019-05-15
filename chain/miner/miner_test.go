@@ -91,7 +91,7 @@ type blockInfo struct {
 	gasLimit    uint64
 	time        uint32
 	deputyRoot  []byte
-	deputyNodes deputynode.DeputyNodes
+	deputyNodes types.DeputyNodes
 }
 
 func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
@@ -248,7 +248,7 @@ func (engine *EngineTestForMiner) VerifyAfterTxProcess(block, computedBlock *typ
 func (engine *EngineTestForMiner) Finalize(height uint32, am *account.Manager) error {
 	return nil
 }
-func (engine *EngineTestForMiner) Seal(header *types.Header, txProduct *account.TxsProduct, confirms []types.SignData, dNodes deputynode.DeputyNodes) (*types.Block, error) {
+func (engine *EngineTestForMiner) Seal(header *types.Header, txProduct *account.TxsProduct, confirms []types.SignData, dNodes types.DeputyNodes) (*types.Block, error) {
 	return types.NewBlock(header, txProduct.Txs, txProduct.ChangeLogs), nil
 }
 func (engine *EngineTestForMiner) VerifyConfirmPacket(height uint32, blockHash common.Hash, sigList []types.SignData) error {
@@ -370,7 +370,7 @@ func TestMine_GetSleepNotSelf(t *testing.T) {
 func TestMiner_GetSleep1Deputy(t *testing.T) {
 	miner, err := newMiner(Nodes[0].privateKey)
 	// overwrite existed deputy nodes by only one node
-	miner.chain.DeputyManager().SaveSnapshot(0, deputynode.DeputyNodes{chain.DefaultDeputyNodes[0]})
+	miner.chain.DeputyManager().SaveSnapshot(0, types.DeputyNodes{chain.DefaultDeputyNodes[0]})
 	assert.NoError(t, err)
 	defer miner.chain.Db().Close()
 

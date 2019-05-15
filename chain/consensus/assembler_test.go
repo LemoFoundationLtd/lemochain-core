@@ -68,32 +68,32 @@ func initDeputyNode(numNode int, height uint32, dm *deputynode.Manager) *deputyn
 		panic(err)
 	}
 
-	var nodes = make([]*deputynode.DeputyNode, 5)
-	nodes[0] = &deputynode.DeputyNode{
+	var nodes = make([]*types.DeputyNode, 5)
+	nodes[0] = &types.DeputyNode{
 		MinerAddress: common.HexToAddress(block01MinerAddress),
 		NodeID:       (crypto.FromECDSAPub(&privarte01.PublicKey))[1:],
 		Rank:         0,
 		Votes:        big.NewInt(120),
 	}
-	nodes[1] = &deputynode.DeputyNode{
+	nodes[1] = &types.DeputyNode{
 		MinerAddress: common.HexToAddress(block02MinerAddress),
 		NodeID:       (crypto.FromECDSAPub(&privarte02.PublicKey))[1:],
 		Rank:         1,
 		Votes:        big.NewInt(110),
 	}
-	nodes[2] = &deputynode.DeputyNode{
+	nodes[2] = &types.DeputyNode{
 		MinerAddress: common.HexToAddress(block03MinerAddress),
 		NodeID:       (crypto.FromECDSAPub(&privarte03.PublicKey))[1:],
 		Rank:         2,
 		Votes:        big.NewInt(100),
 	}
-	nodes[3] = &deputynode.DeputyNode{
+	nodes[3] = &types.DeputyNode{
 		MinerAddress: common.HexToAddress(block04MinerAddress),
 		NodeID:       (crypto.FromECDSAPub(&privarte04.PublicKey))[1:],
 		Rank:         3,
 		Votes:        big.NewInt(90),
 	}
-	nodes[4] = &deputynode.DeputyNode{
+	nodes[4] = &types.DeputyNode{
 		MinerAddress: common.HexToAddress(block05MinerAddress),
 		NodeID:       (crypto.FromECDSAPub(&privarte05.PublicKey))[1:],
 		Rank:         4,
@@ -360,7 +360,7 @@ func TestDpovp_Seal(t *testing.T) {
 	assert.Equal(t, block01.Hash(), TestBlock.Hash())
 	assert.Equal(t, block01.Txs, TestBlock.Txs)
 	assert.Equal(t, block01.ChangeLogs, TestBlock.ChangeLogs)
-	assert.Equal(t, deputynode.DeputyNodes(nil), TestBlock.DeputyNodes)
+	assert.Equal(t, types.DeputyNodes(nil), TestBlock.DeputyNodes)
 }
 
 // TestDpovp_Finalize
@@ -581,11 +581,11 @@ func Test_DivideSalary(t *testing.T) {
 }
 
 // GenerateDeputies generate random deputy nodes
-func GenerateDeputies(num int, am *account.Manager) deputynode.DeputyNodes {
-	var result []*deputynode.DeputyNode
+func GenerateDeputies(num int, am *account.Manager) types.DeputyNodes {
+	var result []*types.DeputyNode
 	for i := 0; i < num; i++ {
 		private, _ := crypto.GenerateKey()
-		node := &deputynode.DeputyNode{
+		node := &types.DeputyNode{
 			MinerAddress: crypto.PubkeyToAddress(private.PublicKey),
 			NodeID:       (crypto.FromECDSAPub(&private.PublicKey))[1:],
 			Rank:         uint32(i),
@@ -599,7 +599,7 @@ func GenerateDeputies(num int, am *account.Manager) deputynode.DeputyNodes {
 	return result
 }
 
-func setIncomeAddress(am *account.Manager, node *deputynode.DeputyNode, incomeAddress common.Address) {
+func setIncomeAddress(am *account.Manager, node *types.DeputyNode, incomeAddress common.Address) {
 	profile := make(map[string]string)
 	// 设置deputy node 的income address
 	minerAcc := am.GetAccount(node.MinerAddress)

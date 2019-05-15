@@ -421,8 +421,8 @@ func (dp *DPoVP) insertConfirms(height uint32, blockHash common.Hash, sigList []
 }
 
 // SnapshotDeputyNodes get next epoch deputy nodes for snapshot block
-func (dp *DPoVP) LoadTopCandidates(blockHash common.Hash) deputynode.DeputyNodes {
-	result := make(deputynode.DeputyNodes, 0, dp.dm.DeputyCount)
+func (dp *DPoVP) LoadTopCandidates(blockHash common.Hash) types.DeputyNodes {
+	result := make(types.DeputyNodes, 0, dp.dm.DeputyCount)
 	list := dp.db.GetCandidatesTop(blockHash)
 	if len(list) > dp.dm.DeputyCount {
 		list = list[:dp.dm.DeputyCount]
@@ -432,7 +432,7 @@ func (dp *DPoVP) LoadTopCandidates(blockHash common.Hash) deputynode.DeputyNodes
 		acc := dp.am.GetAccount(n.GetAddress())
 		candidate := acc.GetCandidate()
 		strID := candidate[types.CandidateKeyNodeID]
-		dn, err := deputynode.NewDeputyNode(n.GetTotal(), uint32(i), n.GetAddress(), strID)
+		dn, err := types.NewDeputyNode(n.GetTotal(), uint32(i), n.GetAddress(), strID)
 		if err != nil {
 			continue
 		}

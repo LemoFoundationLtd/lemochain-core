@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
-	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/hexutil"
@@ -26,32 +25,32 @@ var (
 var (
 	TotalLEMO          = common.Lemo2Mo("1600000000")                                   // 1.6 billion
 	DefaultFounder     = decodeMinerAddress("Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG") // Initial LEMO holder
-	DefaultDeputyNodes = deputynode.DeputyNodes{
-		&deputynode.DeputyNode{
+	DefaultDeputyNodes = types.DeputyNodes{
+		&types.DeputyNode{
 			MinerAddress: DefaultFounder,
 			NodeID:       common.FromHex("0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0"),
 			Rank:         0,
 			Votes:        new(big.Int).SetInt64(5),
 		},
-		&deputynode.DeputyNode{
+		&types.DeputyNode{
 			MinerAddress: decodeMinerAddress("Lemo83JW7TBPA7P2P6AR9ZC2WCQJYRNHZ4NJD4CY"),
 			NodeID:       common.FromHex("0xddb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0"),
 			Rank:         1,
 			Votes:        new(big.Int).SetInt64(4),
 		},
-		&deputynode.DeputyNode{
+		&types.DeputyNode{
 			MinerAddress: decodeMinerAddress("Lemo842BJZ4DKCC764C63Y6A943775JH6NQ3Z33Y"),
 			NodeID:       common.FromHex("0x7739f34055d3c0808683dbd77a937f8e28f707d5b1e873bbe61f6f2d0347692f36ef736f342fb5ce4710f7e337f062cc2110d134b63a9575f78cb167bfae2f43"),
 			Rank:         2,
 			Votes:        new(big.Int).SetInt64(3),
 		},
-		&deputynode.DeputyNode{
+		&types.DeputyNode{
 			MinerAddress: decodeMinerAddress("Lemo837QGPS3YNTYNF53CD88WA5DR3ABNA95W2DG"),
 			NodeID:       common.FromHex("0x34f0df789b46e9bc09f23d5315b951bc77bbfeda653ae6f5aab564c9b4619322fddb3b1f28d1c434250e9d4dd8f51aa8334573d7281e4d63baba913e9fa6908f"),
 			Rank:         3,
 			Votes:        new(big.Int).SetInt64(2),
 		},
-		&deputynode.DeputyNode{
+		&types.DeputyNode{
 			MinerAddress: decodeMinerAddress("Lemo83HKZK68JQZDRGS5PWT2ZBSKR5CRADCSJB9B"),
 			NodeID:       common.FromHex("0x5b980ffb1b463fce4773a22ebf376c07c6207023b016b36ccfaba7be1cd1ab4a91737741cd43b7fcb10879e0fcf314d69fa953daec0f02be0f8f9cedb0cb3797"),
 			Rank:         4,
@@ -70,18 +69,18 @@ func decodeMinerAddress(input string) common.Address {
 //go:generate gencodec -type Genesis -field-override genesisSpecMarshaling -out gen_genesis_json.go
 
 type Genesis struct {
-	Time        uint32                 `json:"timestamp"     gencodec:"required"`
-	ExtraData   []byte                 `json:"extraData"`
-	GasLimit    uint64                 `json:"gasLimit"      gencodec:"required"`
-	Founder     common.Address         `json:"founder"       gencodec:"required"`
-	DeputyNodes deputynode.DeputyNodes `json:"deputyNodes"   gencodec:"required"`
+	Time        uint32            `json:"timestamp"     gencodec:"required"`
+	ExtraData   []byte            `json:"extraData"`
+	GasLimit    uint64            `json:"gasLimit"      gencodec:"required"`
+	Founder     common.Address    `json:"founder"       gencodec:"required"`
+	DeputyNodes types.DeputyNodes `json:"deputyNodes"   gencodec:"required"`
 }
 
 type genesisSpecMarshaling struct {
 	Time        hexutil.Uint32
 	ExtraData   hexutil.Bytes
 	GasLimit    hexutil.Uint64
-	DeputyNodes []*deputynode.DeputyNode
+	DeputyNodes []*types.DeputyNode
 }
 
 // DefaultGenesisBlock default genesis block

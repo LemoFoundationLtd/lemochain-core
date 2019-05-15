@@ -1,7 +1,6 @@
 package consensus
 
 import (
-	"bytes"
 	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
@@ -77,7 +76,7 @@ type blockInfo struct {
 	gasLimit    uint64
 	time        uint32
 	deputyRoot  []byte
-	deputyNodes deputynode.DeputyNodes
+	deputyNodes types.DeputyNodes
 }
 
 var (

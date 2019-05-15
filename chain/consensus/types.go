@@ -1,7 +1,6 @@
 package consensus
 
 import (
-	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 )
@@ -21,7 +20,7 @@ type BlockMaterial struct {
 	Extra         []byte
 	MineTimeLimit int64
 	Txs           types.Transactions
-	Deputies      deputynode.DeputyNodes
+	Deputies      types.DeputyNodes
 }
 
 // BlockLoader is the interface of ChainDB
@@ -47,5 +46,5 @@ type TxPool interface {
 }
 
 type CandidateLoader interface {
-	LoadTopCandidates(blockHash common.Hash) deputynode.DeputyNodes
+	LoadTopCandidates(blockHash common.Hash) types.DeputyNodes
 }

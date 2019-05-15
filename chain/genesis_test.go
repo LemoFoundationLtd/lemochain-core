@@ -2,7 +2,7 @@ package chain
 
 import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
-	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"github.com/stretchr/testify/assert"
@@ -26,8 +26,8 @@ func getTestGenesis() *Genesis {
 		ExtraData: []byte("abc"),
 		GasLimit:  456,
 		Founder:   common.HexToAddress("0x01"),
-		DeputyNodes: deputynode.DeputyNodes{
-			&deputynode.DeputyNode{
+		DeputyNodes: types.DeputyNodes{
+			&types.DeputyNode{
 				MinerAddress: common.HexToAddress("0x02"),
 				NodeID:       common.FromHex("0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0"),
 				Rank:         0,
@@ -48,7 +48,7 @@ func TestGenesis_Verify(t *testing.T) {
 	assert.Equal(t, ErrGenesisTimeTooLarge, genesis.Verify())
 
 	genesis = getTestGenesis()
-	genesis.DeputyNodes = deputynode.DeputyNodes{}
+	genesis.DeputyNodes = types.DeputyNodes{}
 	assert.Equal(t, ErrNoDeputyNodes, genesis.Verify())
 
 	genesis = getTestGenesis()
