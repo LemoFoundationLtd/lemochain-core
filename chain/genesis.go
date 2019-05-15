@@ -15,6 +15,8 @@ import (
 )
 
 var (
+	ErrBuildGenesisFail    = errors.New("build genesis block failed")
+	ErrSaveGenesisFail     = errors.New("save genesis block failed")
 	ErrGenesisExtraTooLong = errors.New("genesis config's extraData is longer than 256")
 	ErrGenesisTimeTooLarge = errors.New("genesis config's time is larger than current time")
 	ErrNoDeputyNodes       = errors.New("no deputy nodes in genesis")
@@ -22,6 +24,7 @@ var (
 )
 
 var (
+	TotalLEMO          = common.Lemo2Mo("1600000000")                                   // 1.6 billion
 	DefaultFounder     = decodeMinerAddress("Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG") // Initial LEMO holder
 	DefaultDeputyNodes = deputynode.DeputyNodes{
 		&deputynode.DeputyNode{
@@ -93,20 +96,20 @@ func DefaultGenesisBlock() *Genesis {
 	}
 }
 
-func checkGenesisConfig(genesis *Genesis) error {
-	if len(genesis.ExtraData) > 256 {
+func (g *Genesis) Verify() error {
+	if len(g.ExtraData) > 256 {
 		return ErrGenesisExtraTooLong
 	}
 
 	// check genesis block's time
-	if int64(genesis.Time) > time.Now().Unix() {
+	if int64(g.Time) > time.Now().Unix() {
 		return ErrGenesisTimeTooLarge
 	}
 	// check deputy nodes
-	if len(genesis.DeputyNodes) == 0 {
+	if len(g.DeputyNodes) == 0 {
 		return ErrNoDeputyNodes
 	}
-	for _, deputy := range genesis.DeputyNodes {
+	for _, deputy := range g.DeputyNodes {
 		if err := deputy.Check(); err != nil {
 			return ErrInvalidDeputyNodes
 		}
@@ -120,31 +123,36 @@ func SetupGenesisBlock(db protocol.ChainDB, genesis *Genesis) *types.Block {
 		log.Info("Writing default genesis block.")
 		genesis = DefaultGenesisBlock()
 	}
-	if err := checkGenesisConfig(genesis); err != nil {
+	if err := genesis.Verify(); err != nil {
 		panic(err)
 	}
 
 	am := account.NewManager(common.Hash{}, db)
 	block, err := genesis.ToBlock(am)
 	if err != nil {
-		panic(fmt.Errorf("build genesis block failed: %v", err))
+		log.Errorf("build genesis block failed: %v", err)
+		panic(ErrBuildGenesisFail)
 	}
 	hash := block.Hash()
 	if err := db.SetBlock(hash, block); err != nil {
-		panic(fmt.Errorf("setup genesis block failed: %v", err))
+		log.Errorf("setup genesis block failed: %v", err)
+		panic(ErrSaveGenesisFail)
 	}
 	if err := am.Save(hash); err != nil {
-		panic(fmt.Errorf("setup genesis block failed: %v", err))
+		log.Errorf("setup genesis block failed: %v", err)
+		panic(ErrSaveGenesisFail)
 	}
 	if _, err := db.SetStableBlock(hash); err != nil {
-		panic(fmt.Errorf("setup genesis block failed: %v", err))
+		log.Errorf("setup genesis block failed: %v", err)
+		panic(ErrSaveGenesisFail)
 	}
 	return block
 }
 
 // ToBlock
 func (g *Genesis) ToBlock(am *account.Manager) (*types.Block, error) {
-	g.setBalance(am)
+	am.GetAccount(g.Founder).SetBalance(TotalLEMO)
+
 	err := am.Finalise()
 	if err != nil {
 		return nil, err
@@ -166,9 +174,4 @@ func (g *Genesis) ToBlock(am *account.Manager) (*types.Block, error) {
 	block := types.NewBlock(header, nil, logs)
 	block.SetDeputyNodes(g.DeputyNodes)
 	return block, nil
-}
-
-func (g *Genesis) setBalance(am *account.Manager) {
-	total, _ := new(big.Int).SetString("1600000000000000000000000000", 10) // 1.6 billion
-	am.GetAccount(g.Founder).SetBalance(total)
 }

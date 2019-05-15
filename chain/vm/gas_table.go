@@ -108,7 +108,7 @@ func gasSStore(gt params.GasTable, evm *EVM, contract *Contract, stack *Stack, m
 	if err != nil {
 		return 0, err
 	}
-	if len(val) == 0 && !common.EmptyHash(common.BigToHash(y)) {
+	if len(val) == 0 && !common.IsEmptyHash(common.BigToHash(y)) {
 		// NEW VALUE
 		return params.SstoreSetGas, nil
 	} else {

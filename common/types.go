@@ -110,7 +110,7 @@ func (h Hash) Generate(rand *rand.Rand, size int) reflect.Value {
 	return reflect.ValueOf(h)
 }
 
-func EmptyHash(h Hash) bool {
+func IsEmptyHash(h Hash) bool {
 	return h == Hash{}
 }
 
