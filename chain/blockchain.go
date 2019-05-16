@@ -5,6 +5,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/consensus"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/tx"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/txpool"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
@@ -68,7 +69,7 @@ func NewBlockChain(config Config, dm *deputynode.Manager, db db.ChainDB, flags f
 	}
 
 	bc.am = account.NewManager(block.Hash(), bc.db)
-	dpovpCfg := consensus.Config{
+	dpovpCfg := tx.Config{
 		LogForks:      bc.flags.Int(common.LogLevel)-1 >= 3,
 		RewardManager: bc.Founder(),
 		ChainID:       bc.chainID,
@@ -154,7 +155,7 @@ func (bc *BlockChain) ChainID() uint16 {
 	return bc.chainID
 }
 
-func (bc *BlockChain) TxProcessor() *consensus.TxProcessor {
+func (bc *BlockChain) TxProcessor() *tx.TxProcessor {
 	return bc.engine.TxProcessor()
 }
 

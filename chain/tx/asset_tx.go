@@ -1,4 +1,4 @@
-package consensus
+package tx
 
 import (
 	"encoding/json"
@@ -27,18 +27,18 @@ var (
 	ErrAssetCategory        = errors.New("assert's Category not exist")
 )
 
-type RunAssetTx struct {
+type RunAssetEnv struct {
 	am *account.Manager
 }
 
-func NewRunAssetTx(am *account.Manager) *RunAssetTx {
-	return &RunAssetTx{
+func NewRunAssetEnv(am *account.Manager) *RunAssetEnv {
+	return &RunAssetEnv{
 		am: am,
 	}
 }
 
 // CreateAssetTx
-func (r *RunAssetTx) CreateAssetTx(sender common.Address, data []byte, txHash common.Hash) error {
+func (r *RunAssetEnv) CreateAssetTx(sender common.Address, data []byte, txHash common.Hash) error {
 	var err error
 	issuerAcc := r.am.GetAccount(sender)
 	asset := &types.Asset{}
@@ -46,6 +46,12 @@ func (r *RunAssetTx) CreateAssetTx(sender common.Address, data []byte, txHash co
 	if err != nil {
 		return err
 	}
+	// verify
+	err = asset.VerifyAsset()
+	if err != nil {
+		return err
+	}
+
 	newAss := asset.Clone()
 	newAss.Issuer = sender
 	newAss.AssetCode = txHash
@@ -68,7 +74,7 @@ func (r *RunAssetTx) CreateAssetTx(sender common.Address, data []byte, txHash co
 }
 
 // IssueAssetTx
-func (r *RunAssetTx) IssueAssetTx(sender, receiver common.Address, txHash common.Hash, data []byte) error {
+func (r *RunAssetEnv) IssueAssetTx(sender, receiver common.Address, txHash common.Hash, data []byte) error {
 
 	issueAsset := &types.IssueAsset{}
 	err := json.Unmarshal(data, issueAsset)
@@ -152,7 +158,7 @@ func (r *RunAssetTx) IssueAssetTx(sender, receiver common.Address, txHash common
 }
 
 // ReplenishAssetTx
-func (r *RunAssetTx) ReplenishAssetTx(sender, receiver common.Address, data []byte) error {
+func (r *RunAssetEnv) ReplenishAssetTx(sender, receiver common.Address, data []byte) error {
 	repl := &types.ReplenishAsset{}
 	err := json.Unmarshal(data, repl)
 	if err != nil {
@@ -229,7 +235,7 @@ func (r *RunAssetTx) ReplenishAssetTx(sender, receiver common.Address, data []by
 }
 
 // ModifyAssetProfileTx
-func (r *RunAssetTx) ModifyAssetProfileTx(sender common.Address, data []byte) error {
+func (r *RunAssetEnv) ModifyAssetProfileTx(sender common.Address, data []byte) error {
 	modifyInfo := &types.ModifyAssetInfo{}
 	err := json.Unmarshal(data, modifyInfo)
 	if err != nil {

@@ -6,16 +6,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 )
 
-// Config holds consensus options.
-type Config struct {
-	// Show every forks change
-	LogForks bool
-	// RewardManager is the owner of reward setting precompiled contract
-	RewardManager common.Address
-	ChainID       uint16
-	MineTimeout   uint64
-}
-
 // BlockMaterial is used for mine a new block
 type BlockMaterial struct {
 	Extra         []byte

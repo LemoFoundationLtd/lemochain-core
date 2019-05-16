@@ -3,6 +3,7 @@ package consensus
 import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/tx"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
@@ -23,7 +24,7 @@ type DPoVP struct {
 	stableManager *StableManager  // used to process stable logic
 	forkManager   *ForkManager    // forks manager
 	validator     *Validator      // block validator
-	processor     *TxProcessor    // transaction processor
+	processor     *tx.TxProcessor // transaction processor
 	assembler     *BlockAssembler // block assembler
 	confirmer     *Confirmer      // used to sign block confirm package
 
@@ -36,7 +37,7 @@ type DPoVP struct {
 	confirmFeed subscribe.Feed // new confirm event
 }
 
-func NewDPoVP(config Config, db protocol.ChainDB, dm *deputynode.Manager, am *account.Manager, loader BlockLoader, txPool TxPool, stable *types.Block) *DPoVP {
+func NewDPoVP(config tx.Config, db protocol.ChainDB, dm *deputynode.Manager, am *account.Manager, loader BlockLoader, txPool TxPool, stable *types.Block) *DPoVP {
 	dpovp := &DPoVP{
 		db:            db,
 		dm:            dm,
@@ -44,7 +45,7 @@ func NewDPoVP(config Config, db protocol.ChainDB, dm *deputynode.Manager, am *ac
 		txPool:        txPool,
 		stableManager: NewStableManager(dm, db),
 		forkManager:   NewForkManager(dm, db, stable),
-		processor:     NewTxProcessor(config, loader, am, db),
+		processor:     tx.NewTxProcessor(config, loader, am, db),
 		confirmer:     NewConfirmer(dm, db, stable),
 		logForks:      config.LogForks,
 	}
@@ -61,7 +62,7 @@ func (dp *DPoVP) CurrentBlock() *types.Block {
 	return dp.forkManager.GetHeadBlock()
 }
 
-func (dp *DPoVP) TxProcessor() *TxProcessor {
+func (dp *DPoVP) TxProcessor() *tx.TxProcessor {
 	return dp.processor
 }
 
@@ -329,7 +330,7 @@ func (dp *DPoVP) VerifyAndSeal(block *types.Block) (*types.Block, error) {
 	// parse block, change local state and seal a new block
 	newBlock, err := dp.assembler.RunBlock(block)
 	if err != nil {
-		if err == ErrInvalidTxInBlock {
+		if err == tx.ErrInvalidTxInBlock {
 			return nil, ErrInvalidBlock
 		}
 		log.Errorf("RunBlock internal error: %v", err)
