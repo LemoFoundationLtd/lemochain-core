@@ -1,4 +1,4 @@
-package tx
+package txprocessor
 
 import (
 	"math/big"
