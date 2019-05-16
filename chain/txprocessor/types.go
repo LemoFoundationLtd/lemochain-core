@@ -1,4 +1,4 @@
-package tx
+package txprocessor
 
 import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"

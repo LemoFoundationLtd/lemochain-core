@@ -3,7 +3,7 @@ package consensus
 import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
-	"github.com/LemoFoundationLtd/lemochain-core/chain/tx"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/txprocessor"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
@@ -21,12 +21,12 @@ type DPoVP struct {
 	am     *account.Manager
 	txPool TxPool
 
-	stableManager *StableManager  // used to process stable logic
-	forkManager   *ForkManager    // forks manager
-	validator     *Validator      // block validator
-	processor     *tx.TxProcessor // transaction processor
-	assembler     *BlockAssembler // block assembler
-	confirmer     *Confirmer      // used to sign block confirm package
+	stableManager *StableManager           // used to process stable logic
+	forkManager   *ForkManager             // forks manager
+	validator     *Validator               // block validator
+	processor     *txprocessor.TxProcessor // transaction processor
+	assembler     *BlockAssembler          // block assembler
+	confirmer     *Confirmer               // used to sign block confirm package
 
 	// show chain change detail in log
 	logForks bool
@@ -37,7 +37,7 @@ type DPoVP struct {
 	confirmFeed subscribe.Feed // new confirm event
 }
 
-func NewDPoVP(config tx.Config, db protocol.ChainDB, dm *deputynode.Manager, am *account.Manager, loader BlockLoader, txPool TxPool, stable *types.Block) *DPoVP {
+func NewDPoVP(config txprocessor.Config, db protocol.ChainDB, dm *deputynode.Manager, am *account.Manager, loader BlockLoader, txPool TxPool, stable *types.Block) *DPoVP {
 	dpovp := &DPoVP{
 		db:            db,
 		dm:            dm,
@@ -45,7 +45,7 @@ func NewDPoVP(config tx.Config, db protocol.ChainDB, dm *deputynode.Manager, am 
 		txPool:        txPool,
 		stableManager: NewStableManager(dm, db),
 		forkManager:   NewForkManager(dm, db, stable),
-		processor:     tx.NewTxProcessor(config, loader, am, db),
+		processor:     txprocessor.NewTxProcessor(config, loader, am, db),
 		confirmer:     NewConfirmer(dm, db, stable),
 		logForks:      config.LogForks,
 	}
@@ -62,7 +62,7 @@ func (dp *DPoVP) CurrentBlock() *types.Block {
 	return dp.forkManager.GetHeadBlock()
 }
 
-func (dp *DPoVP) TxProcessor() *tx.TxProcessor {
+func (dp *DPoVP) TxProcessor() *txprocessor.TxProcessor {
 	return dp.processor
 }
 
@@ -330,7 +330,7 @@ func (dp *DPoVP) VerifyAndSeal(block *types.Block) (*types.Block, error) {
 	// parse block, change local state and seal a new block
 	newBlock, err := dp.assembler.RunBlock(block)
 	if err != nil {
-		if err == tx.ErrInvalidTxInBlock {
+		if err == txprocessor.ErrInvalidTxInBlock {
 			return nil, ErrInvalidBlock
 		}
 		log.Errorf("RunBlock internal error: %v", err)
