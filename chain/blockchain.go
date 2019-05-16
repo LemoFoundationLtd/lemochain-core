@@ -32,7 +32,7 @@ type BlockChain struct {
 
 	// receive call event from outside
 	receiveBlockCh   chan *types.Block
-	mineBlockCh      chan *consensus.BlockMaterial
+	mineBlockCh      chan int64
 	receiveConfirmCh chan *network.BlockConfirmData
 
 	running int32
@@ -52,7 +52,7 @@ func NewBlockChain(config Config, dm *deputynode.Manager, db db.ChainDB, flags f
 		dm:               dm,
 		flags:            flags,
 		receiveBlockCh:   make(chan *types.Block),
-		mineBlockCh:      make(chan *consensus.BlockMaterial),
+		mineBlockCh:      make(chan int64),
 		receiveConfirmCh: make(chan *network.BlockConfirmData),
 		quitCh:           make(chan struct{}),
 	}
@@ -74,6 +74,7 @@ func NewBlockChain(config Config, dm *deputynode.Manager, db db.ChainDB, flags f
 		RewardManager: bc.Founder(),
 		ChainID:       bc.chainID,
 		MineTimeout:   config.MineTimeout,
+		MinerExtra:    nil,
 	}
 	bc.engine = consensus.NewDPoVP(dpovpCfg, bc.db, bc.dm, bc.am, bc, txPool, block)
 
@@ -130,8 +131,8 @@ func (bc *BlockChain) runMainLoop() {
 			// verify and create a new block witch filled by transaction products
 			_, _ = bc.engine.InsertBlock(block)
 
-		case blockMaterial := <-bc.mineBlockCh:
-			block, err := bc.engine.MineBlock(blockMaterial)
+		case txProcessTimeout := <-bc.mineBlockCh:
+			block, err := bc.engine.MineBlock(txProcessTimeout)
 			if err == nil {
 				go subscribe.Send(subscribe.NewMinedBlock, block)
 			}
@@ -221,8 +222,8 @@ func (bc *BlockChain) SubscribeNewBlock(ch chan *types.Block) subscribe.Subscrip
 	return bc.engine.SubscribeCurrent(ch)
 }
 
-func (bc *BlockChain) MineBlock(material *consensus.BlockMaterial) {
-	bc.mineBlockCh <- material
+func (bc *BlockChain) MineBlock(txProcessTimeout int64) {
+	bc.mineBlockCh <- txProcessTimeout
 }
 
 // InsertBlock insert block of non-self to chain

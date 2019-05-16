@@ -50,65 +50,58 @@ func (ba *BlockAssembler) RunBlock(block *types.Block) (*types.Block, error) {
 }
 
 // MineBlock packages all products into a block
-func (ba *BlockAssembler) MineBlock(parent *types.Block, extra []byte, txPool TxPool, timeLimitSeconds int64) (*types.Block, error) {
-	minerAddress, ok := ba.dm.GetMyMinerAddress(parent.Height() + 1)
-	if !ok {
-		log.Errorf("Not a deputy at height %d. can't mine", parent.Height()+1)
-		return nil, ErrNotDeputy
-	}
-	// create header
-	header := ba.sealHeader(parent, minerAddress, extra)
+func (ba *BlockAssembler) MineBlock(header *types.Header, txs types.Transactions, txProcessTimeout int64) (*types.Block, types.Transactions, error) {
 	// execute tx
-	txs := txPool.Get(header.Time, 10000)
-	log.Debugf("pick %d txs from txPool", len(txs))
-	packagedTxs, invalidTxs, gasUsed := ba.txProcessor.ApplyTxs(header, txs, timeLimitSeconds)
+	packagedTxs, invalidTxs, gasUsed := ba.txProcessor.ApplyTxs(header, txs, txProcessTimeout)
 	log.Debug("ApplyTxs ok")
-	// remove invalid txs from pool
-	txPool.DelInvalidTxs(invalidTxs)
 	// Finalize accounts
 	if err := ba.Finalize(header.Height, ba.am); err != nil {
 		log.Errorf("Finalize accounts error: %v", err)
-		return nil, err
+		return nil, invalidTxs, err
 	}
 	// seal block
 	newBlock := ba.Seal(header, ba.am.GetTxsProduct(packagedTxs, gasUsed), nil)
 	if err := ba.signBlock(newBlock); err != nil {
 		log.Errorf("Sign for block failed! block hash:%s", newBlock.Hash().Hex())
-		return nil, err
+		return nil, invalidTxs, err
 	}
 
-	return newBlock, nil
+	return newBlock, invalidTxs, nil
 }
 
-func (ba *BlockAssembler) sealHeader(parent *types.Block, minerAddress common.Address, extra []byte) *types.Header {
-	height := parent.Height() + 1
+func (ba *BlockAssembler) PrepareHeader(parentHeader *types.Header, extra []byte) (*types.Header, error) {
+	minerAddress, ok := ba.dm.GetMyMinerAddress(parentHeader.Height + 1)
+	if !ok {
+		log.Errorf("Not a deputy at height %d. can't mine", parentHeader.Height+1)
+		return nil, ErrNotDeputy
+	}
 	h := &types.Header{
-		ParentHash:   parent.Hash(),
+		ParentHash:   parentHeader.Hash(),
 		MinerAddress: minerAddress,
-		Height:       height,
-		GasLimit:     calcGasLimit(parent),
+		Height:       parentHeader.Height + 1,
+		GasLimit:     calcGasLimit(parentHeader),
 		Extra:        extra,
 	}
 
 	// allowable 1 second time error
 	// but next block's time can't be small than parent block
-	parTime := parent.Time()
+	parTime := parentHeader.Time
 	blockTime := uint32(time.Now().Unix())
 	if parTime > blockTime {
 		blockTime = parTime
 	}
 	h.Time = blockTime
-	return h
+	return h, nil
 }
 
 // calcGasLimit computes the gas limit of the next block after parent.
 // This is miner strategy, not consensus protocol.
-func calcGasLimit(parent *types.Block) uint64 {
+func calcGasLimit(parentHeader *types.Header) uint64 {
 	// contrib = (parentGasUsed * 3 / 2) / 1024
-	contrib := (parent.GasUsed() + parent.GasUsed()/2) / params.GasLimitBoundDivisor
+	contrib := (parentHeader.GasUsed + parentHeader.GasUsed/2) / params.GasLimitBoundDivisor
 
 	// decay = parentGasLimit / 1024 -1
-	decay := parent.GasLimit()/params.GasLimitBoundDivisor - 1
+	decay := parentHeader.GasLimit/params.GasLimitBoundDivisor - 1
 
 	/*
 		strategy: gasLimit of block-to-mine is set based on parent's
@@ -117,14 +110,14 @@ func calcGasLimit(parent *types.Block) uint64 {
 		at that usage) the amount increased/decreased depends on how far away
 		from parentGasLimit * (2/3) parentGasUsed is.
 	*/
-	limit := parent.GasLimit() - decay + contrib
+	limit := parentHeader.GasLimit - decay + contrib
 	if limit < params.MinGasLimit {
 		limit = params.MinGasLimit
 	}
 	// however, if we're now below the target (TargetGasLimit) we increase the
 	// limit as much as we can (parentGasLimit / 1024 -1)
 	if limit < params.TargetGasLimit {
-		limit = parent.GasLimit() + decay
+		limit = parentHeader.GasLimit + decay
 		if limit > params.TargetGasLimit {
 			limit = params.TargetGasLimit
 		}
@@ -234,7 +227,7 @@ func calculateSalary(totalSalary, deputyVotes, totalVotes, precision *big.Int) *
 }
 
 // getIncomeAddressFromDeputyNode
-func getIncomeAddressFromDeputyNode(am *account.Manager, node *deputynode.DeputyNode) common.Address {
+func getIncomeAddressFromDeputyNode(am *account.Manager, node *types.DeputyNode) common.Address {
 	minerAcc := am.GetAccount(node.MinerAddress)
 	profile := minerAcc.GetCandidate()
 	strIncomeAddress, ok := profile[types.CandidateKeyIncomeAddress]

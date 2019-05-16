@@ -13,14 +13,15 @@ type Config struct {
 	RewardManager common.Address
 	ChainID       uint16
 	MineTimeout   uint64
+	MinerExtra    []byte // Extra data in mined block header. It is short than 256bytes
 }
 
 // BlockMaterial is used for mine a new block
 type BlockMaterial struct {
-	Extra         []byte
-	MineTimeLimit int64
-	Txs           types.Transactions
-	Deputies      types.DeputyNodes
+	ParentHeader *types.Header
+	Time         uint32 // new block time in header
+	Extra        []byte
+	Txs          types.Transactions
 }
 
 // BlockLoader is the interface of ChainDB

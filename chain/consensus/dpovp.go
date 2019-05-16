@@ -16,10 +16,11 @@ import (
 
 // DPoVP process the fork logic
 type DPoVP struct {
-	db     protocol.ChainDB
-	dm     *deputynode.Manager
-	am     *account.Manager
-	txPool TxPool
+	db         protocol.ChainDB
+	dm         *deputynode.Manager
+	am         *account.Manager
+	txPool     TxPool
+	minerExtra []byte // Extra data in mined block header. It is short than 256bytes
 
 	stableManager *StableManager           // used to process stable logic
 	forkManager   *ForkManager             // forks manager
@@ -50,6 +51,7 @@ func NewDPoVP(config Config, db protocol.ChainDB, dm *deputynode.Manager, am *ac
 		forkManager:   NewForkManager(dm, db, stable),
 		processor:     transaction.NewTxProcessor(config.RewardManager, config.ChainID, loader, am, db),
 		confirmer:     NewConfirmer(dm, db, db, stable),
+		minerExtra:    config.MinerExtra,
 		logForks:      config.LogForks,
 	}
 	dpovp.validator = NewValidator(config.MineTimeout, db, dm, txPool, dpovp)
@@ -89,15 +91,23 @@ func (dp *DPoVP) SubscribeFetchConfirm(ch chan []network.GetConfirmInfo) subscri
 	return dp.fetchConfirmsFeed.Subscribe(ch)
 }
 
-func (dp *DPoVP) MineBlock(material *BlockMaterial) (*types.Block, error) {
+func (dp *DPoVP) MineBlock(txProcessTimeout int64) (*types.Block, error) {
 	oldCurrent := dp.CurrentBlock()
 
 	// mine and seal
-	block, err := dp.assembler.MineBlock(dp.CurrentBlock(), material.Extra, dp.txPool, material.MineTimeLimit)
+	header, err := dp.assembler.PrepareHeader(dp.CurrentBlock().Header, dp.minerExtra)
+	if err != nil {
+		return nil, err
+	}
+	txs := dp.txPool.Get(header.Time, 10000)
+	log.Debugf("pick %d txs from txPool", len(txs))
+	block, invalidTxs, err := dp.assembler.MineBlock(header, txs, txProcessTimeout)
 	if err != nil {
 		return nil, err
 	}
 	log.Info("Mined a new block", "block", block.ShortString(), "txsCount", len(block.Txs))
+	// remove invalid txs from pool
+	dp.txPool.DelInvalidTxs(invalidTxs)
 
 	// save
 	if err := dp.saveToStore(block); err != nil {

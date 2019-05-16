@@ -156,7 +156,7 @@ func New(flags flag.CmdFlags) *Node {
 		accMan:       blockChain.AccountManager(),
 		chain:        blockChain,
 		txPool:       txPool,
-		miner:        miner.New(cfg.Miner, blockChain, dm, nil),
+		miner:        miner.New(cfg.Miner, blockChain, dm),
 		pm:           pm,
 		server:       server,
 		genesisBlock: genesisBlock,
