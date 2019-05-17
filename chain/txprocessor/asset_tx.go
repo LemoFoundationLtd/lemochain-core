@@ -25,6 +25,7 @@ var (
 	ErrModifyAssetInfo      = errors.New("the struct of ModifyAssetInfo's Info can't be nil")
 	ErrMarshalAssetLength   = errors.New("the length of data by marshal asset more than max length")
 	ErrAssetCategory        = errors.New("assert's Category not exist")
+	ErrModifyAssetTxSender  = errors.New("the sender does not have permission to modify this asset")
 )
 
 type RunAssetEnv struct {
@@ -246,6 +247,16 @@ func (r *RunAssetEnv) ModifyAssetProfileTx(sender common.Address, data []byte) e
 	if info == nil || len(info) == 0 {
 		return ErrModifyAssetInfo
 	}
+	// determine whether there is modification permission
+	oldAsset, err := acc.GetAssetCode(modifyInfo.AssetCode)
+	if err != nil {
+		return err
+	}
+	if oldAsset.Issuer != sender {
+		log.Errorf("SenderAddress:%s,assetIssuer:%s", sender.String(), oldAsset.Issuer.String())
+		return ErrModifyAssetTxSender
+	}
+
 	var snapshot = r.am.Snapshot()
 	infoSlice := make([]string, 0, len(info))
 	for k, _ := range info {
