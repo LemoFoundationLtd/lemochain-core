@@ -46,6 +46,7 @@ var (
 
 	attachFlags        = make([]cli.Flag, 0)
 	createaccountFlags = make([]cli.Flag, 0)
+	createnodekeyFlags = make([]cli.Flag, 0)
 )
 
 func init() {
@@ -56,7 +57,8 @@ func init() {
 		initCommand,
 		consoleCommand,
 		attachCommand,
-		createaccountCommand, // create an account when run "./glemo createaccount"
+		createaccountCommand,  // create an account when run "./glemo createaccount"
+		createanodekeyCommand, // create nodekey and nodeID when run "./glemo createnodekey"
 	}
 	sort.Sort(cli.CommandsByName(app.Commands))
 	app.Flags = append(app.Flags, nodeFlags...)
