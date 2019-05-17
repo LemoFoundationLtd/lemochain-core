@@ -45,13 +45,22 @@ func NewPrivateAccountAPI(m *account.Manager) *PrivateAccountAPI {
 	return &PrivateAccountAPI{m}
 }
 
+type lemoAccount struct {
+	Private string         `json:"private"`
+	Address common.Address `json:"address"`
+}
+
 // NewAccount get lemo address api
-func (a *PrivateAccountAPI) NewKeyPair() (*crypto.AccountKey, error) {
+func (a *PrivateAccountAPI) NewKeyPair() (*lemoAccount, error) {
 	accountKey, err := crypto.GenerateAddress()
 	if err != nil {
 		return nil, err
 	}
-	return accountKey, nil
+	acc := &lemoAccount{
+		Private: accountKey.Private,
+		Address: accountKey.Address,
+	}
+	return acc, nil
 }
 
 // PublicAccountAPI API for access to account information

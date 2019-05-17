@@ -44,6 +44,17 @@ This command allows to open a console on a running glemo node.`,
 		Description: `
 Create an account when we execute "./glemo createaccount".`,
 	}
+
+	createanodekeyCommand = cli.Command{
+		Action:    createNodekey,
+		Name:      "createnodekey",
+		Usage:     "createnodekey",
+		ArgsUsage: "[endpoint]",
+		Flags:     createnodekeyFlags,
+		Category:  "BLOCKCHAIN COMMANDS",
+		Description: `
+Create nodekey and nodeID when we execute "./glemo createnodekey".`,
+	}
 )
 
 // createAccount
@@ -52,12 +63,29 @@ func createAccount(ctx *cli.Context) error {
 	if err == nil {
 		fmt.Println("Please keep your account safe! \nPlease apply again if the private key is divulged!\n ")
 		fmt.Printf("Private:\n%s\n", acc.Private)
-		fmt.Printf("PubKey:\n%s\n", acc.Public)
 		fmt.Printf("LemoAddress:\n%s", acc.Address.String())
 		fmt.Println("\n")
 		return nil
 	} else {
 		fmt.Println("Create account error:", err.Error())
+		fmt.Println("Suggest to retry!!!")
+		return nil
+	}
+}
+
+// createNodekey create nodekey and nodeID
+func createNodekey(ctx *cli.Context) error {
+	acc, err := crypto.GenerateAddress()
+	if err == nil {
+		nodekey := acc.Private[2:]
+		nodeID := acc.Public[2:]
+		fmt.Println("Please save the generated nodekey and nodeID !!!")
+		fmt.Printf("nodekey:\n%s\n", nodekey)
+		fmt.Printf("nodeID:\n%s\n", nodeID)
+		fmt.Println("\n")
+		return nil
+	} else {
+		fmt.Println("Create nodekey error:", err.Error())
 		fmt.Println("Suggest to retry!!!")
 		return nil
 	}
