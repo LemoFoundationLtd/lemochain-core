@@ -10,6 +10,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"github.com/LemoFoundationLtd/lemochain-core/store/protocol"
 	"math/big"
+	"strconv"
 	"sync/atomic"
 	"time"
 )
@@ -222,6 +223,7 @@ func (evm *EVM) TransferAssetTx(caller ContractRef, addr common.Address, gas uin
 
 	// Fail if we're trying to transfer more than the available balance
 	if senderEquity.Equity.Cmp(amount) < 0 && asset.IsDivisible {
+		log.Errorf("Sender equity:%s, transaction amount:%s, asset.IsDivisible:%s", senderEquity.Equity.String(), amount.String(), strconv.FormatBool(asset.IsDivisible))
 		return nil, gas, ErrInsufficientBalance, nil
 	}
 
