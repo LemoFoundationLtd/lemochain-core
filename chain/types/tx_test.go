@@ -2,7 +2,6 @@ package types
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
@@ -288,36 +287,6 @@ func TestTransaction_MarshalJSON_UnmarshalJSON_bigTx(t *testing.T) {
 
 func TestTransaction_Cost(t *testing.T) {
 	assert.Equal(t, big.NewInt(201), testTx.Cost())
-}
-
-func TestSetSecp256k1V(t *testing.T) {
-	V := big.NewInt(0)
-	assert.Equal(t, big.NewInt(0x10000), SetSecp256k1V(V, 1))
-	assert.Equal(t, big.NewInt(0x00000), SetSecp256k1V(V, 0))
-	V.SetUint64(0xffffffff)
-	assert.Equal(t, big.NewInt(0xffffffff), SetSecp256k1V(V, 1))
-	assert.Equal(t, big.NewInt(0xfffeffff), SetSecp256k1V(V, 0))
-}
-
-func TestCombineV(t *testing.T) {
-	assert.Equal(t, big.NewInt(0x102ffff), CombineV(1, 1, 0xffff))
-	assert.Equal(t, big.NewInt(0), CombineV(0, 0, 0))
-}
-
-func TestParseV(t *testing.T) {
-	txType, version, secp256k1V, chainID := ParseV(big.NewInt(0x103ffff))
-	assert.Equal(t, uint8(1), txType)
-	assert.Equal(t, uint8(1), version)
-	assert.Equal(t, uint8(1), secp256k1V)
-	assert.Equal(t, uint16(0xffff), chainID)
-
-	txType, version, secp256k1V, chainID = ParseV(big.NewInt(0))
-	assert.Equal(t, uint8(0), txType)
-	assert.Equal(t, uint8(0), version)
-	assert.Equal(t, uint8(0), secp256k1V)
-	assert.Equal(t, uint16(0), chainID)
-
-	fmt.Println(crypto.GenerateAddress())
 }
 
 func TestGasPgnatureTx(t *testing.T) {
