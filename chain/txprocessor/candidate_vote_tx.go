@@ -8,6 +8,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/vm"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
+	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"math/big"
 )
@@ -34,6 +35,39 @@ func NewCandidateVoteEnv(am *account.Manager) *CandidateVoteEnv {
 		CanTransfer: CanTransfer,
 		Transfer:    Transfer,
 	}
+}
+
+// checkRegisterTxProfile
+func checkRegisterTxProfile(profile types.Profile) error {
+	// check income address
+	if strIncomeAddress, ok := profile[types.CandidateKeyIncomeAddress]; ok {
+		if !common.CheckLemoAddress(strIncomeAddress) {
+			log.Errorf("Income address failed verification,please check whether the input is correct. incomeAddress = %s", strIncomeAddress)
+			return ErrInvalidAddress
+		}
+	}
+	// check nodeId
+	if nodeId, ok := profile[types.CandidateKeyNodeID]; ok {
+		nodeIdLength := len(nodeId)
+		if nodeIdLength != StandardNodeIdLength {
+			log.Errorf("The nodeId length [%d] is not equal the standard length [%d] ", nodeIdLength, StandardNodeIdLength)
+			return ErrInvalidNodeId
+		}
+		// check nodeId is available
+		if !crypto.CheckPublic(nodeId) {
+			log.Errorf("Invalid nodeId, nodeId = %s", nodeId)
+			return ErrInvalidNodeId
+		}
+	}
+
+	if host, ok := profile[types.CandidateKeyHost]; ok {
+		hostLength := len(host)
+		if hostLength > MaxDeputyHostLength {
+			log.Errorf("The length of host field in transaction is out of max length limit. host length = %d. max length limit = %d. ", hostLength, MaxDeputyHostLength)
+			return ErrInvalidHost
+		}
+	}
+	return nil
 }
 
 // buildProfile

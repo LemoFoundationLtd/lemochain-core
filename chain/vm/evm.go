@@ -8,7 +8,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
-	"github.com/LemoFoundationLtd/lemochain-core/store/protocol"
 	"math/big"
 	"strconv"
 	"sync/atomic"
@@ -176,8 +175,12 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 	return ret, contract.Gas, err
 }
 
+type AssetDb interface {
+	GetAssetCode(code common.Hash) (common.Address, error)
+}
+
 // TransferAssetTx
-func (evm *EVM) TransferAssetTx(caller ContractRef, addr common.Address, gas uint64, txData []byte, chainDB protocol.ChainDB) (ret []byte, leftOverGas uint64, Err, vmErr error) {
+func (evm *EVM) TransferAssetTx(caller ContractRef, addr common.Address, gas uint64, txData []byte, assetDB AssetDb) (ret []byte, leftOverGas uint64, Err, vmErr error) {
 	tradingAsset := &types.TradingAsset{}
 	err := json.Unmarshal(txData, tradingAsset)
 	if err != nil {
@@ -206,7 +209,7 @@ func (evm *EVM) TransferAssetTx(caller ContractRef, addr common.Address, gas uin
 		return nil, gas, ErrAssetEquity, nil
 	}
 	// get asset
-	issuer, err := chainDB.GetAssetCode(senderEquity.AssetCode)
+	issuer, err := assetDB.GetAssetCode(senderEquity.AssetCode)
 	if err != nil {
 		return nil, gas, err, nil
 	}

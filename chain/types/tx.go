@@ -422,23 +422,11 @@ func (tx *Transaction) VerifyTx(chainID uint16, timeStamp uint64) error {
 	return nil
 }
 
-// SetSecp256k1V merge secp256k1.V into the result of CombineV function
-func SetSecp256k1V(V *big.Int, secp256k1V byte) *big.Int {
-	// V = V & ((sig[64] & 1) << 16)
-	return new(big.Int).SetBit(V, 16, uint(secp256k1V&1))
-}
-
-// CombineV combines type, version, chainID together to get V (without secp256k1.V)
-func CombineV(txType uint8, version uint8, chainID uint16) *big.Int {
-	return new(big.Int).SetUint64((uint64(txType) << 24) + (uint64(version&0x7f) << 17) + uint64(chainID))
-}
-
-// ParseV split V to 4 parts
-func ParseV(V *big.Int) (txType uint8, version uint8, secp256k1V uint8, chainID uint16) {
-	uint64V := V.Uint64()
-	txType = uint8((uint64V >> 24) & 0xff)
-	version = uint8((uint64V >> 17) & 0x7f)
-	secp256k1V = uint8((uint64V >> 16) & 1)
-	chainID = uint16(uint64V & 0xffff)
-	return
+// StoreFromForTest
+func (tx *Transaction) StoreFromForTest(addr common.Address) {
+	from := tx.from.Load()
+	if from != nil {
+		return
+	}
+	tx.from.Store(addr)
 }
