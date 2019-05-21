@@ -15,6 +15,8 @@ import (
 
 var (
 	register            = common.HexToAddress("0x19999")
+	register02          = common.HexToAddress("0x9999111")
+	register03          = common.HexToAddress("0x99998888")
 	normalNodeId        = "34f0df789b46e9bc09f23d5315b951bc77bbfeda653ae6f5aab564c9b4619322fddb3b1f28d1c434250e9d4dd8f51aa8334573d7281e4d63baba913e9fa6908f"
 	normalIncomeAddress = common.HexToAddress("0x12212").String()
 	normalHost          = "www.lemochain.com"
@@ -114,7 +116,11 @@ func TestCandidateVoteEnv_RegisterOrUpdateToCandidate(t *testing.T) {
 	initialSenderBalance := big.NewInt(5555)
 	// 足够的balance给注册者
 	registerAcc := c.am.GetAccount(register)
-	registerAcc.SetBalance(new(big.Int).Sub(params.RegisterCandidateNodeFees, big.NewInt(2)))
+	registerAcc.SetBalance(new(big.Int).Mul(params.RegisterCandidateNodeFees, big.NewInt(2)))
+	register02Acc := c.am.GetAccount(register02)
+	register02Acc.SetBalance(new(big.Int).Mul(params.RegisterCandidateNodeFees, big.NewInt(2)))
+	register03Acc := c.am.GetAccount(register03)
+	register03Acc.SetBalance(new(big.Int).Mul(params.RegisterCandidateNodeFees, big.NewInt(2)))
 
 	var snapshot = c.am.Snapshot()
 	// 1. balance不足以支付质押lemo
@@ -124,6 +130,7 @@ func TestCandidateVoteEnv_RegisterOrUpdateToCandidate(t *testing.T) {
 	assert.Equal(t, ErrInsufficientBalance, err)
 
 	c.am.RevertToSnapshot(snapshot)
+	var snap = c.am.Snapshot()
 	// 2. 注销之后的候选节点不能再次注册了
 	// 构造注销状态
 	registerAcc.SetCandidateState(types.CandidateKeyIsCandidate, params.NotCandidateNode)
@@ -132,7 +139,8 @@ func TestCandidateVoteEnv_RegisterOrUpdateToCandidate(t *testing.T) {
 	// 返回已经注销无法再次注册的错误
 	assert.Equal(t, ErrAgainRegister, err)
 
-	c.am.RevertToSnapshot(snapshot)
+	c.am.RevertToSnapshot(snap)
+
 	// 3. 首次注册的正常情况
 	tx03 := newCandidateTx(register, true, normalIncomeAddress, normalNodeId, normalHost, normalPort)
 	err = c.RegisterOrUpdateToCandidate(tx03, initialSenderBalance)
@@ -150,27 +158,25 @@ func TestCandidateVoteEnv_RegisterOrUpdateToCandidate(t *testing.T) {
 	votes := registerAcc.GetVotes()
 	assert.Equal(t, initialSenderBalance, votes)
 
-	c.am.RevertToSnapshot(snapshot)
 	// 4. 已经是候选节点，修改候选节点信息
 	// 注册候选节点
-	rTx := newCandidateTx(register, true, normalIncomeAddress, normalNodeId, normalHost, normalPort)
+	rTx := newCandidateTx(register02, true, normalIncomeAddress, normalNodeId, normalHost, normalPort)
 	err = c.RegisterOrUpdateToCandidate(rTx, initialSenderBalance)
 	assert.NoError(t, err)
 	// 4.1 修改信息为 注销候选节点
-	tx04 := newCandidateTx(register, false, normalIncomeAddress, normalNodeId, normalHost, normalPort)
+	tx04 := newCandidateTx(register02, false, normalIncomeAddress, normalNodeId, normalHost, normalPort)
 	err = c.RegisterOrUpdateToCandidate(tx04, initialSenderBalance)
 	assert.NoError(t, err)
 	// 注销之后
-	pro := registerAcc.GetCandidate()
+	pro := register02Acc.GetCandidate()
 	assert.Equal(t, params.NotCandidateNode, pro[types.CandidateKeyIsCandidate])
-	votes = registerAcc.GetVotes() // 得票数变为0
+	votes = register02Acc.GetVotes() // 得票数变为0
 	assert.Equal(t, big.NewInt(0), votes)
 	// todo 之后如果修改为质押的话，注销候选节点会退还质押的lemo
 
-	c.am.RevertToSnapshot(snapshot)
 	// 4.2 修改包含nodeId信息，测试nodeId是否被修改和其他信息是否修改成功
 	// 注册候选节点
-	nTx := newCandidateTx(register, true, normalIncomeAddress, normalNodeId, normalHost, normalPort)
+	nTx := newCandidateTx(register03, true, normalIncomeAddress, normalNodeId, normalHost, normalPort)
 	err = c.RegisterOrUpdateToCandidate(nTx, initialSenderBalance)
 	assert.NoError(t, err)
 	newNodeId := "5b980ffb1b463fce4773a22ebf376c07c6207023b016b36ccfaba7be1cd1ab4a91737741cd43b7fcb10879e0fcf314d69fa953daec0f02be0f8f9cedb0cb3797"
@@ -178,11 +184,11 @@ func TestCandidateVoteEnv_RegisterOrUpdateToCandidate(t *testing.T) {
 	newHost := "127.0.0.1"
 	newPort := "5001"
 
-	tx05 := newCandidateTx(register, true, newIncomeAddress, newNodeId, newHost, newPort)
+	tx05 := newCandidateTx(register03, true, newIncomeAddress, newNodeId, newHost, newPort)
 	err = c.RegisterOrUpdateToCandidate(tx05, initialSenderBalance)
 	assert.NoError(t, err)
 	// 验证修改后的信息
-	newPro := registerAcc.GetCandidate()
+	newPro := register03Acc.GetCandidate()
 	assert.Equal(t, normalNodeId, newPro[types.CandidateKeyNodeID]) // 验证nodeId不能被修改
 	assert.Equal(t, newIncomeAddress, newPro[types.CandidateKeyIncomeAddress])
 	assert.Equal(t, newHost, newPro[types.CandidateKeyHost])
@@ -234,7 +240,7 @@ func TestCandidateVoteEnv_CallVoteTx(t *testing.T) {
 	err = c.CallVoteTx(voterAddr, candAddr, initialSenderBalance)
 	assert.Equal(t, ErrOfAgainVote, err) // 返回不能再次投同一个候选节点的错误
 
-	c.am.RevertToSnapshot(snapshot)
+	// c.am.RevertToSnapshot(snapshot)
 	// 3.2 从投给的candAddr候选节点转投到其他节点
 	voterAcc.SetVoteFor(candAddr) // 设置投给candAddr候选节点
 

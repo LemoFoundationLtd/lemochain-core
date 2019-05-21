@@ -92,7 +92,7 @@ func TestRunAssetEnv_CreateAssetTx(t *testing.T) {
 	// 交易hash == 资产的assetCode
 	txHash := common.HexToHash("0x222222")
 	// 生成资产信息所占用字节大于规定的大小的情况
-	info := "lemolemolemolemolemolemolemolemolemolemolemolemolemolemolemo"
+	info := "www.lemochain.comlemolemolemolemolemolemolemolemolemolemolemolemolemolemolemowww.lemochain.comlemolemolemolemolemolemolemolemolemolemolemolemolemolemolemowww.lemochain.comlemolemolemolemolemolemolemolemolemolemolemolemolemolemolemo"
 	maxData := newCreateAssetTxData(info, info, info, info, 3, true, true)
 	log.Infof("maxData length: ", len(maxData))
 	err := r.CreateAssetTx(sender, maxData, txHash)
@@ -108,7 +108,7 @@ func TestRunAssetEnv_CreateAssetTx(t *testing.T) {
 	senderAcc := r.am.GetAccount(sender)
 	asset, err := senderAcc.GetAssetCode(txHash)
 	assert.NoError(t, err)
-	assert.Equal(t, 3, asset.Category)
+	assert.Equal(t, uint32(3), asset.Category)
 	assert.Equal(t, big.NewInt(0), asset.TotalSupply)
 	assert.True(t, asset.IsDivisible)
 	assert.True(t, asset.IsDivisible)
@@ -118,6 +118,10 @@ func TestRunAssetEnv_CreateAssetTx(t *testing.T) {
 
 // TestRunAssetEnv_IssueAssetTx 对发行资产中三种资产的特殊逻辑测试
 func TestRunAssetEnv_IssueAssetTx(t *testing.T) {
+	/*
+		1. 发行资产对资产总量的变化
+		2. 发行可分割资产和不可分割资产
+	*/
 	ClearData()
 	db := newDB()
 	defer db.Close()
@@ -133,9 +137,9 @@ func TestRunAssetEnv_IssueAssetTx(t *testing.T) {
 	meta := "a normal erc20 asset"
 	data := newIssuerAssetTxData(assetCode, amount, meta)
 
-	var snapshot = r.am.Snapshot()
+	// var snapshot = r.am.Snapshot()
 
-	// 创建一个erc20可分割资产
+	// 1.1 创建一个可分割资产
 	erc20_asset := buildAsset(issuer, assetCode, big.NewInt(0), "lemotest", "LM", "test lemo", "false", "100000", 1, true, true)
 	err := issuerAcc.SetAssetCode(assetCode, erc20_asset)
 	assert.NoError(t, err)
@@ -159,9 +163,9 @@ func TestRunAssetEnv_IssueAssetTx(t *testing.T) {
 	assert.Equal(t, amount, num)
 
 	// 回滚到初始状态
-	r.am.RevertToSnapshot(snapshot)
+	// r.am.RevertToSnapshot(snapshot)
 
-	// 创建一个不可分割资产来验证TotalSupply只增加1
+	// 1.2 创建一个不可分割资产来验证TotalSupply只增加1
 	notDivisible_asset := buildAsset(issuer, assetCode, big.NewInt(0), "lemotest", "LM", "test lemo", "false", "100000", 2, false, true)
 	err = issuerAcc.SetAssetCode(assetCode, notDivisible_asset)
 	assert.NoError(t, err)
@@ -180,8 +184,8 @@ func TestRunAssetEnv_IssueAssetTx(t *testing.T) {
 	assert.Equal(t, assetId, equity.AssetId)
 
 	// 回滚到初始状态
-	r.am.RevertToSnapshot(snapshot)
-	// 创建erc20+721(第三类)资产,验证发行的资产code和id不同
+	// r.am.RevertToSnapshot(snapshot)
+	// 2. 创建erc20+721(第三类)资产,验证发行的资产code和id不同
 	thirdAsset := buildAsset(issuer, assetCode, big.NewInt(0), "lemotest", "LM", "test lemo", "false", "100000", 3, false, true)
 	err = issuerAcc.SetAssetCode(assetCode, thirdAsset)
 	assert.NoError(t, err)
@@ -214,7 +218,7 @@ func TestRunAssetEnv_ReplenishAssetTx(t *testing.T) {
 	issuerAcc := r.am.GetAccount(issuer)
 	receiverAcc := r.am.GetAccount(receiver)
 
-	var snapshot = r.am.Snapshot()
+	// var snapshot = r.am.Snapshot()
 	// 1. 测试是否可增发. (erc721资产(第二类)一定是不可增发的资产,不可分割的资产一定不可增发)
 	// 1.1 创建一个可以分割但是不可增发的资产
 	notReplenishAsset := buildAsset(issuer, assetCode, big.NewInt(0), "not replenish", "NR", "not replenish asset", "false", "5000000000", 1, true, false)
@@ -227,7 +231,7 @@ func TestRunAssetEnv_ReplenishAssetTx(t *testing.T) {
 	assert.Equal(t, ErrIsReplenishable, err)
 
 	// 回滚到最开始状态
-	r.am.RevertToSnapshot(snapshot)
+	// r.am.RevertToSnapshot(snapshot)
 	// 1.2 测试被冻结的资产是不可以被增发的情况
 	freezeAsset := buildAsset(issuer, assetCode, big.NewInt(0), "not replenish", "NR", "not replenish asset", "true", "5000000000", 1, true, true)
 	err = issuerAcc.SetAssetCode(assetCode, freezeAsset)
@@ -239,7 +243,7 @@ func TestRunAssetEnv_ReplenishAssetTx(t *testing.T) {
 	assert.Equal(t, ErrFrozenAsset, err)
 
 	// 1.3 验证只有资产的issuer才有增发资产的权限
-	r.am.RevertToSnapshot(snapshot)
+	// r.am.RevertToSnapshot(snapshot)
 	// 创建一个可增发的正常资产
 	normalAsset := buildAsset(issuer, assetCode, big.NewInt(0), "normal", "NN", "normal asset", "false", "20000000000", 1, true, true)
 	err = issuerAcc.SetAssetCode(assetCode, normalAsset)
@@ -249,7 +253,7 @@ func TestRunAssetEnv_ReplenishAssetTx(t *testing.T) {
 	// 返回asset不存在的错误
 	assert.Equal(t, store.ErrNotExist, err)
 
-	r.am.RevertToSnapshot(snapshot)
+	// r.am.RevertToSnapshot(snapshot)
 	// 2. 成功执行增发资产交易之后资产总量和交易接收者的资产余额是否增加
 	// 生成一个正常的可增发的资产
 	newAsset := buildAsset(issuer, assetCode, big.NewInt(0), "a", "aa", "aaa", "fasle", "100000000", 1, true, true)
@@ -308,17 +312,20 @@ func TestRunAssetEnv_ModifyAssetProfileTx(t *testing.T) {
 	err := issuerAcc.SetAssetCode(assetCode, asset01)
 	assert.NoError(t, err)
 
-	var snapshot = r.am.Snapshot()
+	// var snapshot = r.am.Snapshot()
 	// 1. 测试修改资产的账户不是资产的issuer
+	errIssuer := common.HexToAddress("0x90999") // 拥有此资产但是不是资产issuer
+	err = am.GetAccount(errIssuer).SetAssetCode(assetCode, asset01)
+	assert.NoError(t, err)
 	// 发起修改资产info交易
 	info01 := make(types.Profile)
 	info01["name"] = "lemoAsset"
 	data01 := newModifyAssetData(assetCode, info01)
-	err = r.ModifyAssetProfileTx(common.HexToAddress("0x90999"), data01)
+	err = r.ModifyAssetProfileTx(errIssuer, data01)
 	// 返回交易调用者为非资产issuer的错误类型
 	assert.Equal(t, ErrModifyAssetTxSender, err)
 
-	r.am.RevertToSnapshot(snapshot)
+	// r.am.RevertToSnapshot(snapshot)
 	// 2. 修改的info为nil的情况
 	data02 := newModifyAssetData(assetCode, nil)
 	err = r.ModifyAssetProfileTx(issuer, data02)
@@ -342,7 +349,7 @@ func TestRunAssetEnv_ModifyAssetProfileTx(t *testing.T) {
 	// 返回info超过最大值的错误
 	assert.Equal(t, ErrMarshalAssetLength, err)
 
-	r.am.RevertToSnapshot(snapshot)
+	// r.am.RevertToSnapshot(snapshot)
 	// 4. 正常情况
 	info04 := make(types.Profile)
 	info04["lemo"] = "lemochain"             // 增加新字段

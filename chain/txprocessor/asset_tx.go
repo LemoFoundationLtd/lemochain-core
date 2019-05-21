@@ -22,7 +22,7 @@ var (
 	ErrIsReplenishable      = errors.New("asset's \"IsReplenishable\" is false")
 	ErrIsDivisible          = errors.New("this \"isDivisible == false\" kind of asset can't be replenished")
 	ErrNotEqualAssetCode    = errors.New("assetCode not equal")
-	ErrModifyAssetInfo      = errors.New("the struct of ModifyAssetInfo's Info can't be nil")
+	ErrModifyAssetInfo      = errors.New("missing required field 'info' for ModifyAssetInfo")
 	ErrMarshalAssetLength   = errors.New("the length of data by marshal asset more than max length")
 	ErrAssetCategory        = errors.New("assert's Category not exist")
 	ErrModifyAssetTxSender  = errors.New("the sender does not have permission to modify this asset")
@@ -283,7 +283,7 @@ func (r *RunAssetEnv) ModifyAssetProfileTx(sender common.Address, data []byte) e
 	}
 	// judge data's length
 	if len(newData) > types.MaxMarshalAssetLength {
-		log.Errorf("The length of marshaling asset data exceed limit, len(data) = %d max = %d", len(data), types.MaxMarshalAssetLength)
+		log.Errorf("The length of marshaling asset data exceed limit, len(data) = %d max = %d", len(newData), types.MaxMarshalAssetLength)
 		r.am.RevertToSnapshot(snapshot)
 		return ErrMarshalAssetLength
 	}
