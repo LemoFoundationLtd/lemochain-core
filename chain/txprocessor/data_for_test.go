@@ -91,7 +91,7 @@ func addBlockToDB(height uint32, txs types.Transactions, am *account.Manager, db
 
 	am.Finalise()
 	logs := am.GetChangeLogs()
-
+	log.Infof("logs: %s", logs)
 	header.GasUsed = gasUsed
 	header.LogRoot = logs.MerkleRootSha()
 	header.VersionRoot = am.GetVersionRoot()
@@ -101,6 +101,7 @@ func addBlockToDB(height uint32, txs types.Transactions, am *account.Manager, db
 	db.SetBlock(hash, block)
 	am.Save(hash)
 	db.SetStableBlock(hash)
+
 	return block
 }
 
