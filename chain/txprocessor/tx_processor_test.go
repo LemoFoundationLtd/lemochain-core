@@ -12,6 +12,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common/rlp"
 	"github.com/stretchr/testify/assert"
 	"math/big"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -28,303 +29,62 @@ func TestNewTxProcessor(t *testing.T) {
 	assert.False(t, p.cfg.Debug)
 }
 
-// test valid block processing
-// func TestTxProcessor_Process(t *testing.T) {
-// 	ClearData()
-// 	db := newDbForTest()
-// 	defer db.Close()
-// 	am := account.NewManager(testBlockHash, db)
-// 	bc := newTestChain(db)
-// 	p := NewTxProcessor(config, bc, am, db)
-//
-// 	p.am.GetAccount(testAddr)
-// 	// last not stable block
-// 	block := defaultBlocks[2]
-// 	gasUsed, err := p.Process(block.Header, block.Txs)
-// 	assert.NoError(t, err)
-// 	assert.Equal(t, block.Header.GasUsed, gasUsed)
-// 	err = p.am.Finalise()
-// 	assert.NoError(t, err)
-// 	assert.Equal(t, block.Header.VersionRoot, p.am.GetVersionRoot())
-// 	assert.Equal(t, len(block.ChangeLogs), len(p.am.GetChangeLogs()))
-// 	p.am.GetAccount(testAddr)
-//
-// 	// block not in db
-// 	block = defaultBlocks[3]
-// 	gasUsed, err = p.Process(block.Header, block.Txs)
-// 	assert.NoError(t, err)
-// 	err = p.am.Finalise()
-// 	assert.NoError(t, err)
-// 	assert.Equal(t, block.Header.GasUsed, gasUsed)
-// 	// TODO these test is fail because Account.GetNextVersion always +1, so that the ChangeLog is not continuous. This will be fixed if we refactor the logic of ChangeLog merging to makes all version continuous in account.
-// 	assert.Equal(t, block.Header.VersionRoot, p.am.GetVersionRoot())
-// 	assert.Equal(t, len(block.ChangeLogs), len(p.am.GetChangeLogs()))
-// 	p.am.GetAccount(testAddr)
-//
-// 	// genesis block
-// 	block = defaultBlocks[0]
-// 	_, err = p.Process(block.Header, block.Txs)
-// 	assert.Equal(t, err, ErrInvalidGenesis)
-//
-// 	// block on fork branch
-// 	block = createNewBlock(db)
-// 	gasUsed, err = p.Process(block.Header, block.Txs)
-// 	assert.NoError(t, err)
-// 	err = p.am.Finalise()
-// 	assert.NoError(t, err)
-// 	assert.Equal(t, block.Header.GasUsed, gasUsed)
-// 	assert.Equal(t, block.Header.VersionRoot, p.am.GetVersionRoot())
-// 	assert.Equal(t, len(block.ChangeLogs), len(p.am.GetChangeLogs()))
-// }
+// TestTxProcessor_Process 测试process异常情况
+func TestTxProcessor_Process(t *testing.T) {
+	ClearData()
+	db, genesisHash := newCoverGenesisDB()
+	defer db.Close()
+	am := account.NewManager(genesisHash, db)
+	p := NewTxProcessor(config, newTestChain(db), am, db)
 
-// test invalid block processing
-// func TestTxProcessor_Process2(t *testing.T) {
-// 	ClearData()
-// 	db := newDB()
-// 	defer db.Close()
-// 	latestBlock, err := db.LoadLatestBlock()
-// 	assert.NoError(t, err)
-// 	am := account.NewManager(latestBlock.Hash(), db)
-// 	p := NewTxProcessor(config, NewTestChain(db), am, db)
-//
-// 	// tamper with amount
-// 	block := createNewBlock(db)
-// 	rawTx, _ := rlp.EncodeToBytes(block.Txs[0])
-// 	rawTx[29]++ // amount++
-// 	cpy := new(types.Transaction)
-// 	err = rlp.DecodeBytes(rawTx, cpy)
-// 	assert.NoError(t, err)
-// 	assert.Equal(t, new(big.Int).Add(block.Txs[0].Amount(), big.NewInt(1)), cpy.Amount())
-// 	block.Txs[0] = cpy
-// 	_, err = p.Process(block.Header, block.Txs)
-// 	assert.Equal(t, ErrInvalidTxInBlock, err)
-//
-// 	// invalid signature
-// 	block = createNewBlock(db)
-// 	rawTx, _ = rlp.EncodeToBytes(block.Txs[0])
-// 	rawTx[43] = 0 // invalid S
-// 	cpy = new(types.Transaction)
-// 	err = rlp.DecodeBytes(rawTx, cpy)
-// 	assert.NoError(t, err)
-// 	block.Txs[0] = cpy
-// 	_, err = p.Process(block.Header, block.Txs)
-// 	assert.Equal(t, ErrInvalidTxInBlock, err)
-//
-// 	// not enough gas (resign by another address)
-// 	block = createNewBlock(db)
-// 	private, _ := crypto.GenerateKey()
-// 	origFrom, _ := block.Txs[0].From()
-// 	block.Txs[0] = signTransaction(block.Txs[0], private)
-// 	newFrom, _ := block.Txs[0].From()
-// 	assert.NotEqual(t, origFrom, newFrom)
-// 	block.Header.TxRoot = block.Txs.MerkleRootSha()
-// 	_, err = p.Process(block.Header, block.Txs)
-// 	assert.Equal(t, ErrInvalidTxInBlock, err)
-//
-// 	// exceed block gas limit
-// 	block = createNewBlock(db)
-// 	block.Header.GasLimit = 1
-// 	_, err = p.Process(block.Header, block.Txs)
-// 	assert.Equal(t, ErrInvalidTxInBlock, err)
-//
-// 	// used gas reach limit in some tx
-// 	block = createNewBlock(db)
-// 	block.Txs[0] = makeTransaction(testPrivate, defaultAccounts[1], params.OrdinaryTx, big.NewInt(100), common.Big1, 0, 1)
-// 	block.Header.TxRoot = block.Txs.MerkleRootSha()
-// 	_, err = p.Process(block.Header, block.Txs)
-// 	assert.Equal(t, ErrInvalidTxInBlock, err)
-//
-// 	// balance not enough
-// 	block = createNewBlock(db)
-// 	balance := p.am.GetAccount(testAddr).GetBalance()
-// 	block.Txs[0] = makeTx(testPrivate, defaultAccounts[1], params.OrdinaryTx, new(big.Int).Add(balance, big.NewInt(1)))
-// 	block.Header.TxRoot = block.Txs.MerkleRootSha()
-// 	_, err = p.Process(block.Header, block.Txs)
-// 	assert.Equal(t, ErrInvalidTxInBlock, err)
-//
-// 	// TODO test create or call contract fail
-// }
+	// 测试执行创世块panic的情况
+	genesisBlock, err := db.LoadLatestBlock()
+	assert.NoError(t, err)
+	assert.PanicsWithValue(t, ErrInvalidGenesis, func() {
+		p.Process(genesisBlock.Header, nil)
+	})
 
-// test tx picking logic
-// func TestTxProcessor_ApplyTxs(t *testing.T) {
-// 	ClearData()
-// 	db := newDB()
-// 	defer db.Close()
-// 	latestBlock, err := db.LoadLatestBlock()
-// 	assert.NoError(t, err)
-// 	am := account.NewManager(latestBlock.Hash(), db)
-// 	p := NewTxProcessor(config, NewTestChain(db), am, db)
-//
-// 	// 1 txs
-// 	header := defaultBlocks[2].Header
-// 	txs := defaultBlocks[2].Txs
-// 	emptyHeader := &types.Header{
-// 		ParentHash:   header.ParentHash,
-// 		MinerAddress: header.MinerAddress,
-// 		Height:       header.Height,
-// 		GasLimit:     header.GasLimit,
-// 		GasUsed:      header.GasUsed,
-// 		Time:         header.Time,
-// 	}
-// 	selectedTxs, invalidTxs, gasUsed := p.ApplyTxs(emptyHeader, txs, int64(10000))
-// 	p.am.MergeChangeLogs()
-// 	p.am.Finalise()
-// 	assert.Equal(t, header.GasUsed, gasUsed)
-// 	assert.Equal(t, header.VersionRoot, p.am.GetVersionRoot())
-// 	assert.Equal(t, defaultBlocks[2].ChangeLogs, p.am.GetChangeLogs())
-// 	assert.Equal(t, len(txs), len(selectedTxs))
-// 	assert.Equal(t, 0, len(invalidTxs))
-//
-// 	// 2 txs
-// 	header = defaultBlocks[3].Header
-// 	txs = defaultBlocks[3].Txs
-// 	emptyHeader = &types.Header{
-// 		ParentHash:   header.ParentHash,
-// 		MinerAddress: header.MinerAddress,
-// 		Height:       header.Height,
-// 		GasLimit:     header.GasLimit,
-// 		GasUsed:      header.GasUsed,
-// 		Time:         header.Time,
-// 	}
-// 	selectedTxs, invalidTxs, gasUsed = p.ApplyTxs(emptyHeader, txs, int64(10000))
-// 	p.am.MergeChangeLogs()
-// 	p.am.Finalise()
-// 	assert.Equal(t, header.GasUsed, gasUsed)
-// 	assert.Equal(t, header.VersionRoot, p.am.GetVersionRoot())
-// 	assert.Equal(t, defaultBlocks[3].ChangeLogs, p.am.GetChangeLogs())
-// 	assert.Equal(t, len(txs), len(selectedTxs))
-// 	assert.Equal(t, 0, len(invalidTxs))
-//
-// 	// 0 txs
-// 	header = defaultBlocks[3].Header
-// 	emptyHeader = &types.Header{
-// 		ParentHash:   header.ParentHash,
-// 		MinerAddress: header.MinerAddress,
-// 		Height:       header.Height,
-// 		GasLimit:     header.GasLimit,
-// 		GasUsed:      header.GasUsed,
-// 		Time:         header.Time,
-// 	}
-// 	p.am.Reset(emptyHeader.ParentHash)
-// 	author := p.am.GetAccount(header.MinerAddress)
-// 	origBalance := author.GetBalance()
-// 	selectedTxs, invalidTxs, gasUsed = p.ApplyTxs(emptyHeader, nil, int64(10000))
-// 	p.am.MergeChangeLogs()
-// 	p.am.Finalise()
-// 	assert.Equal(t, uint64(0), gasUsed)
-// 	assert.Equal(t, defaultBlocks[2].VersionRoot(), p.am.GetVersionRoot()) // last block version root
-// 	assert.Equal(t, 0, len(selectedTxs))
-// 	assert.Equal(t, *origBalance, *author.GetBalance())
-// 	assert.Equal(t, 0, len(p.am.GetChangeLogs()))
-//
-// 	// too many txs
-// 	header = defaultBlocks[3].Header
-// 	txs = defaultBlocks[3].Txs
-// 	emptyHeader = &types.Header{
-// 		ParentHash:   header.ParentHash,
-// 		MinerAddress: header.MinerAddress,
-// 		Height:       header.Height,
-// 		GasLimit:     45000, // Every transaction's gasLimit is 30000. So the block only contains one transaction.
-// 		GasUsed:      header.GasUsed,
-// 		Time:         header.Time,
-// 	}
-// 	selectedTxs, invalidTxs, gasUsed = p.ApplyTxs(emptyHeader, txs, int64(10000))
-// 	p.am.MergeChangeLogs()
-// 	p.am.Finalise()
-// 	assert.NotEqual(t, header.GasUsed, gasUsed)
-// 	assert.NotEqual(t, header.VersionRoot, p.am.GetVersionRoot())
-// 	assert.NotEqual(t, true, len(defaultBlocks[3].ChangeLogs), len(p.am.GetChangeLogs()))
-// 	assert.NotEqual(t, len(txs), len(selectedTxs))
-// 	assert.Equal(t, 0, len(invalidTxs))
-//
-// 	// balance not enough
-// 	header = defaultBlocks[3].Header
-// 	txs = defaultBlocks[3].Txs
-// 	emptyHeader = &types.Header{
-// 		ParentHash:   header.ParentHash,
-// 		MinerAddress: header.MinerAddress,
-// 		Height:       header.Height,
-// 		GasLimit:     header.GasLimit,
-// 		GasUsed:      header.GasUsed,
-// 		Time:         header.Time,
-// 	}
-// 	p.am.Reset(emptyHeader.ParentHash)
-// 	balance := p.am.GetAccount(testAddr).GetBalance()
-// 	txs = types.Transactions{
-// 		txs[0],
-// 		makeTx(testPrivate, defaultAccounts[1], params.OrdinaryTx, new(big.Int).Add(balance, big.NewInt(1))),
-// 		txs[1],
-// 	}
-// 	selectedTxs, invalidTxs, _ = p.ApplyTxs(emptyHeader, txs, int64(10000))
-// 	p.am.MergeChangeLogs()
-// 	p.am.Finalise()
-// 	assert.Equal(t, len(txs)-1, len(selectedTxs))
-// 	assert.Equal(t, 1, len(invalidTxs))
-// }
+	// 测试执行错误交易返回错误的情况
+	block01 := newBlockForTest(1, nil, am, db, false)
+	// 创建一个余额不足的交易
+	randPrivate, _ := crypto.GenerateKey()
+	tx := makeTx(randPrivate, godAddr, params.OrdinaryTx, big.NewInt(4000000))
+	_, err = p.Process(block01.Header, types.Transactions{tx})
+	assert.Equal(t, ErrInvalidTxInBlock, err)
+}
 
-// TODO move these cases to evm
-// test different transactions
-// func TestTxProcessor_ApplyTxs2(t *testing.T) {
-// 	ClearData()
-// 	db := newDB()
-// 	defer db.Close()
-// 	latestBlock, err := db.LoadLatestBlock()
-// 	assert.NoError(t, err)
-// 	am := account.NewManager(latestBlock.Hash(), db)
-// 	p := NewTxProcessor(config, NewTestChain(db), am, db)
-//
-// 	// transfer to other
-// 	header := defaultBlocks[3].Header
-// 	emptyHeader := &types.Header{
-// 		ParentHash:   header.ParentHash,
-// 		MinerAddress: header.MinerAddress,
-// 		Height:       header.Height,
-// 		GasLimit:     header.GasLimit,
-// 		GasUsed:      header.GasUsed,
-// 		Time:         header.Time,
-// 	}
-// 	p.am.Reset(emptyHeader.ParentHash)
-// 	senderBalance := p.am.GetAccount(testAddr).GetBalance()
-// 	minerBalance := p.am.GetAccount(defaultAccounts[0]).GetBalance()
-// 	recipientBalance := p.am.GetAccount(defaultAccounts[1]).GetBalance()
-// 	txs := types.Transactions{
-// 		makeTx(testPrivate, defaultAccounts[1], params.OrdinaryTx, common.Big1),
-// 	}
-// 	_, _, GasUsed := p.ApplyTxs(emptyHeader, txs, int64(10000))
-// 	assert.Equal(t, params.TxGas, GasUsed)
-// 	newSenderBalance := p.am.GetAccount(testAddr).GetBalance()
-// 	newMinerBalance := p.am.GetAccount(defaultAccounts[0]).GetBalance()
-// 	newRecipientBalance := p.am.GetAccount(defaultAccounts[1]).GetBalance()
-// 	cost := txs[0].GasPrice().Mul(txs[0].GasPrice(), big.NewInt(int64(params.TxGas)))
-// 	senderBalance.Sub(senderBalance, cost)
-// 	senderBalance.Sub(senderBalance, common.Big1)
-// 	assert.Equal(t, senderBalance, newSenderBalance)
-// 	assert.Equal(t, minerBalance.Add(minerBalance, cost), newMinerBalance)
-// 	assert.Equal(t, recipientBalance.Add(recipientBalance, common.Big1), newRecipientBalance)
-//
-// 	// transfer to self, only cost gas
-// 	header = defaultBlocks[3].Header
-// 	emptyHeader = &types.Header{
-// 		ParentHash:   header.ParentHash,
-// 		MinerAddress: header.MinerAddress,
-// 		Height:       header.Height,
-// 		GasLimit:     header.GasLimit,
-// 		GasUsed:      header.GasUsed,
-// 		Time:         header.Time,
-// 	}
-// 	p.am.Reset(emptyHeader.ParentHash)
-// 	senderBalance = p.am.GetAccount(testAddr).GetBalance()
-// 	txs = types.Transactions{
-// 		makeTx(testPrivate, testAddr, params.OrdinaryTx, common.Big1),
-// 	}
-// 	_, _, GasUsed = p.ApplyTxs(emptyHeader, txs, int64(10000))
-// 	assert.Equal(t, params.TxGas, GasUsed)
-// 	newSenderBalance = p.am.GetAccount(testAddr).GetBalance()
-// 	cost = txs[0].GasPrice().Mul(txs[0].GasPrice(), big.NewInt(int64(params.TxGas)))
-// 	assert.Equal(t, senderBalance.Sub(senderBalance, cost), newSenderBalance)
-// }
+// TestTxProcessor_Process_applyTxs 测试 process 和 applyTxs结果一致性问题
+func TestTxProcessor_Process_applyTxs(t *testing.T) {
+	ClearData()
+	db, genesisHash := newCoverGenesisDB()
+	defer db.Close()
+	am := account.NewManager(genesisHash, db)
+	p := NewTxProcessor(config, newTestChain(db), am, db)
 
-func TestApplyTxsTimeoutTime(t *testing.T) {
+	// 创建5笔普通交易交易
+	txs := make(types.Transactions, 0)
+	for i := 0; i < 5; i++ {
+		tx := makeTx(godPrivate, common.HexToAddress("0x9910"+strconv.Itoa(i)), params.OrdinaryTx, big.NewInt(50000))
+		txs = append(txs, tx)
+	}
+	// 打包交易进区块
+	block01 := newBlockForTest(1, txs, am, db, false)
+	applyTxsLogs := block01.ChangeLogs
+	gasUsed := block01.GasUsed()
+	applyTxsVersionRoot := block01.VersionRoot()
+	// 执行交易
+	newGasUsed, err := p.Process(block01.Header, txs)
+	assert.NoError(t, err)
+	am.Finalise()
+	processLogs := am.GetChangeLogs()
+	assert.Equal(t, applyTxsLogs, processLogs)                // 验证changlogs一致性
+	assert.Equal(t, gasUsed, newGasUsed)                      // 验证消耗的gas一致性
+	assert.Equal(t, applyTxsVersionRoot, am.GetVersionRoot()) // 验证versionRoot一致性
+
+}
+
+// Test_ApplyTxs_TimeoutTime 测试执行交易超时情况
+func Test_ApplyTxs_TimeoutTime(t *testing.T) {
 	ClearData()
 	db, genesisHash := newCoverGenesisDB()
 	defer db.Close()
@@ -423,7 +183,7 @@ func TestReimbursement_transaction(t *testing.T) {
 	p := NewTxProcessor(config, newTestChain(db), am, db)
 
 	// create a block contains two account which used to make reimbursement transaction
-	_ = addBlockToDB(1, types.Transactions{Tx01, Tx02}, am, db)
+	_ = newBlockForTest(1, types.Transactions{Tx01, Tx02}, am, db, true)
 
 	// p.am.Reset(Block01.Hash())
 	// check their balance
@@ -440,7 +200,7 @@ func TestReimbursement_transaction(t *testing.T) {
 	firstSignTxV = types.GasPayerSignatureTx(firstSignTxV, common.Big1, uint64(60000))
 	lastSignTxV, err := types.MakeGasPayerSigner().SignTx(firstSignTxV, gasPayerPrivate)
 	assert.NoError(t, err)
-	_ = addBlockToDB(2, types.Transactions{lastSignTxV}, am, db)
+	_ = newBlockForTest(2, types.Transactions{lastSignTxV}, am, db, true)
 
 	// check their balance
 	endGasPayerBalance := p.am.GetCanonicalAccount(gasPayerAddr).GetBalance()
@@ -513,7 +273,7 @@ func Test_setRewardTx(t *testing.T) {
 	assert.NoError(t, err)
 	txs := types.Transactions{lastSignTxV}
 
-	Block02 := addBlockToDB(1, txs, am, db)
+	Block02 := newBlockForTest(1, txs, am, db, true)
 	assert.NotEmpty(t, Block02)
 	Acc := p.am.GetAccount(params.TermRewardContract)
 	key := params.TermRewardContract.Hash()

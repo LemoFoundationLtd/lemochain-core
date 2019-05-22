@@ -57,13 +57,13 @@ func newCoverGenesisDB() (db protocol.ChainDB, genesisHash common.Hash) {
 	am := account.NewManager(common.Hash{}, db)
 	total, _ := new(big.Int).SetString("1600000000000000000000000000", 10) // 1.6 billion
 	am.GetAccount(godAddr).SetBalance(total)
-	genesis := addBlockToDB(0, nil, am, db)
+	genesis := newBlockForTest(0, nil, am, db, true)
 	genesisHash = genesis.Hash()
 	return db, genesisHash
 }
 
-// 加入block 到db
-func addBlockToDB(height uint32, txs types.Transactions, am *account.Manager, db protocol.ChainDB) *types.Block {
+// newBlockForTest
+func newBlockForTest(height uint32, txs types.Transactions, am *account.Manager, db protocol.ChainDB, stable bool) *types.Block {
 	var (
 		parentHash common.Hash
 		gasUsed    uint64
@@ -100,7 +100,9 @@ func addBlockToDB(height uint32, txs types.Transactions, am *account.Manager, db
 	hash := block.Hash()
 	db.SetBlock(hash, block)
 	am.Save(hash)
-	db.SetStableBlock(hash)
+	if stable {
+		db.SetStableBlock(hash)
+	}
 
 	return block
 }
