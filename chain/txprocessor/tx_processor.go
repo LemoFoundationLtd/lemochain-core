@@ -1,6 +1,7 @@
 package txprocessor
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -454,8 +455,8 @@ func (p *TxProcessor) chargeForGas(charge *big.Int, minerAddress common.Address)
 	}
 }
 
-// CallTx pre-execute transactions and contracts.
-func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *common.Address, txType uint16, data hexutil.Bytes, blockHash common.Hash, timeout time.Duration) ([]byte, uint64, error) {
+// PreExecutionTransaction pre-execute transactions and contracts.
+func (p *TxProcessor) PreExecutionTransaction(ctx context.Context, header *types.Header, to *common.Address, txType uint16, data hexutil.Bytes, blockHash common.Hash, timeout time.Duration) ([]byte, uint64, error) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
@@ -468,46 +469,18 @@ func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *comm
 	if err != nil {
 		return nil, 0, err
 	}
-	// enough gasLimit
-	gasLimit := uint64(math.MaxUint64 / 2)
-	gasPrice := new(big.Int).SetUint64(defaultGasPrice)
 
-	var tx *types.Transaction
-	switch txType {
-	case params.OrdinaryTx:
-		if to == nil { // avoid null pointer references
-			tx = types.NewContractCreation(big.NewInt(0), gasLimit, gasPrice, data, params.OrdinaryTx, p.ChainID, uint64(time.Now().Unix()+30*60), "", "")
-		} else {
-			tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, params.OrdinaryTx, p.ChainID, uint64(time.Now().Unix()+30*60), "", "")
-		}
-	case params.VoteTx:
-		tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, params.VoteTx, p.ChainID, uint64(time.Now().Unix()+30*60), "", "")
-	case params.RegisterTx:
-		tx = types.NewContractCreation(big.NewInt(0), gasLimit, gasPrice, data, params.RegisterTx, p.ChainID, uint64(time.Now().Unix()+30*60), "", "")
-	case params.CreateAssetTx:
-		tx = types.NoReceiverTransaction(big.NewInt(0), gasLimit, gasPrice, data, params.CreateAssetTx, p.ChainID, uint64(time.Now().Unix()+30*60), "", "")
-	case params.IssueAssetTx:
-		tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, params.IssueAssetTx, p.ChainID, uint64(time.Now().Unix()+30*60), "", "")
-	case params.ReplenishAssetTx:
-		tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, params.ReplenishAssetTx, p.ChainID, uint64(time.Now().Unix()+30*60), "", "")
-	case params.ModifyAssetTx:
-		tx = types.NoReceiverTransaction(big.NewInt(0), gasLimit, gasPrice, data, params.ModifyAssetTx, p.ChainID, uint64(time.Now().Unix()+30*60), "", "")
-	case params.TransferAssetTx:
-		tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, params.TransferAssetTx, p.ChainID, uint64(time.Now().Unix()+30*60), "", "")
-	default:
-		err = errors.New("tx type error")
+	tx, err := newTx(to, txType, data, p.ChainID)
+	if err != nil {
 		return nil, 0, err
 	}
-
 	// Timeout limit
 	var (
-		cancel           context.CancelFunc
-		candidateVoteEnv *CandidateVoteEnv
-		Evm              *vm.EVM
-		vmError          func() error
-		sender           types.AccountAccessor
+		cancel context.CancelFunc
+		vmEvn  *vm.EVM
+		sender types.AccountAccessor
 	)
-
+	sender = accM.GetAccount(caller)
 	if timeout > 0 {
 		ctx, cancel = context.WithTimeout(ctx, timeout)
 	} else {
@@ -518,22 +491,22 @@ func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *comm
 	// load different Env
 	switch tx.Type() {
 	case params.OrdinaryTx, params.TransferAssetTx: // need use evm environment
-		Evm, vmError, sender = getEVM(ctx, caller, tx, header, 0, tx.Hash(), blockHash, p.blockLoader, *p.cfg, accM)
+		vmEvn = getEVM(tx, header, 0, tx.Hash(), blockHash, p.blockLoader, *p.cfg, accM)
 
-	case params.VoteTx, params.RegisterTx: // use candidate and vote tx environment
-		candidateVoteEnv = NewCandidateVoteEnv(p.am)
-
+	case params.RegisterTx, params.VoteTx, params.CreateAssetTx, params.IssueAssetTx, params.ReplenishAssetTx, params.ModifyAssetTx:
 	// case params.ModifyAssetTx, params.ReplenishAssetTx, params.IssueAssetTx, params.CreateAssetTx: // use asset tx environment
 	// 	assetEnv = NewRunAssetEnv(p.am)
 	default:
 		log.Errorf("The type of transaction is not defined. ErrType = %d\n", tx.Type())
 	}
 
+	// listen timeout
 	go func() {
 		<-ctx.Done()
-		Evm.Cancel()
+		vmEvn.Cancel()
 	}()
 
+	gasLimit := tx.GasLimit()
 	restGas := gasLimit
 	// Fixed cost
 	restGas, err = p.payIntrinsicGas(tx, restGas)
@@ -545,46 +518,67 @@ func (p *TxProcessor) CallTx(ctx context.Context, header *types.Header, to *comm
 	switch tx.Type() {
 	case params.OrdinaryTx:
 		if IsContractCreate {
-			ret, _, restGas, err = Evm.Create(sender, tx.Data(), restGas, big.NewInt(0))
+			ret, _, restGas, err = vmEvn.Create(sender, tx.Data(), restGas, big.NewInt(0))
 		} else {
 			recipientAddr := *tx.To()
-			ret, restGas, err = Evm.Call(sender, recipientAddr, tx.Data(), restGas, big.NewInt(0))
+			ret, restGas, err = vmEvn.Call(sender, recipientAddr, tx.Data(), restGas, big.NewInt(0))
 		}
-	case params.VoteTx:
-		recipientAddr := *tx.To()
-		err = candidateVoteEnv.CallVoteTx(sender.GetAddress(), recipientAddr, sender.GetBalance())
-	case params.RegisterTx:
-		// Unmarshal tx data
-		txData := tx.Data()
-		profile := make(types.Profile)
-		err = json.Unmarshal(txData, &profile)
+	case params.TransferAssetTx:
+		tradingAsset := &types.TradingAsset{}
+		err := json.Unmarshal(tx.Data(), tradingAsset)
 		if err != nil {
-			log.Errorf("Unmarshal Candidate node error: %s", err)
+			log.Errorf("Unmarshal transfer asset data err: %s", err)
 			return nil, 0, err
 		}
-		// check nodeID host and incomeAddress
-		if err = checkRegisterTxProfile(profile); err != nil {
-			return nil, 0, err
+		input := tradingAsset.Input
+		if input == nil || bytes.Compare(input, []byte{}) == 0 {
+			break
 		}
-		sender = accM.GetAccount(caller)
-		sender.SetBalance(params.RegisterCandidateNodeFees)
-		err = candidateVoteEnv.RegisterOrUpdateToCandidate(tx, sender.GetBalance())
-	case params.CreateAssetTx, params.IssueAssetTx, params.ReplenishAssetTx, params.ModifyAssetTx, params.TransferAssetTx:
+		ret, restGas, err = vmEvn.CallCode(sender, *tx.To(), input, restGas, big.NewInt(0))
 
+	case params.RegisterTx, params.VoteTx, params.CreateAssetTx, params.IssueAssetTx, params.ReplenishAssetTx, params.ModifyAssetTx:
 	}
-
-	if err := vmError(); err != nil {
-		return nil, 0, err
-	}
-
 	return ret, gasLimit - restGas, err
 }
 
+// newTx return created transaction
+func newTx(to *common.Address, txType uint16, data []byte, chainID uint16) (*types.Transaction, error) {
+	// enough gasLimit
+	gasLimit := uint64(math.MaxUint64 / 2)
+	gasPrice := new(big.Int).SetUint64(defaultGasPrice)
+
+	var tx *types.Transaction
+	switch txType {
+	case params.OrdinaryTx:
+		if to == nil { // avoid null pointer references
+			tx = types.NewContractCreation(big.NewInt(0), gasLimit, gasPrice, data, params.OrdinaryTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
+		} else {
+			tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, params.OrdinaryTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
+		}
+	case params.VoteTx:
+		tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, params.VoteTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
+	case params.RegisterTx:
+		tx = types.NewContractCreation(big.NewInt(0), gasLimit, gasPrice, data, params.RegisterTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
+	case params.CreateAssetTx:
+		tx = types.NoReceiverTransaction(big.NewInt(0), gasLimit, gasPrice, data, params.CreateAssetTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
+	case params.IssueAssetTx:
+		tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, params.IssueAssetTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
+	case params.ReplenishAssetTx:
+		tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, params.ReplenishAssetTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
+	case params.ModifyAssetTx:
+		tx = types.NoReceiverTransaction(big.NewInt(0), gasLimit, gasPrice, data, params.ModifyAssetTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
+	case params.TransferAssetTx:
+		tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, params.TransferAssetTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
+	default:
+		err := errors.New("tx type error")
+		return nil, err
+	}
+	return tx, nil
+}
+
 // getEVM
-func getEVM(ctx context.Context, caller common.Address, tx *types.Transaction, header *types.Header, txIndex uint, txHash common.Hash, blockHash common.Hash, chain BlockLoader, cfg vm.Config, accM *account.Manager) (*vm.EVM, func() error, types.AccountAccessor) {
-	sender := accM.GetCanonicalAccount(caller)
-	vmError := func() error { return nil }
+func getEVM(tx *types.Transaction, header *types.Header, txIndex uint, txHash common.Hash, blockHash common.Hash, chain BlockLoader, cfg vm.Config, accM *account.Manager) *vm.EVM {
 	evmContext := NewEVMContext(tx, header, txIndex, blockHash, chain)
 	vmEnv := vm.NewEVM(evmContext, accM, cfg)
-	return vmEnv, vmError, sender
+	return vmEnv
 }
