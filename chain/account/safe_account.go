@@ -13,6 +13,8 @@ type SafeAccount struct {
 }
 
 func (a *SafeAccount) SetSingers(signers types.Signers) error {
+	newLog, _ := NewSignerLog(a.GetAddress(), a.processor, a.rawAccount.GetSigners(), signers)
+	a.processor.PushChangeLog(newLog)
 	return a.rawAccount.SetSingers(signers)
 }
 
