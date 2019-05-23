@@ -63,7 +63,7 @@ func (am *ReadOnlyManager) Reset(blockHash common.Hash) {
 }
 
 // GetStableAccount return stable account from db
-func (am *ReadOnlyManager) GetStableAccount(address common.Address) types.AccountAccessor {
+func (am *ReadOnlyManager) GetAccount(address common.Address) types.AccountAccessor {
 	data, err := am.db.GetAccount(address)
 	if err != nil && err != store.ErrNotExist {
 		panic(err)
@@ -72,7 +72,7 @@ func (am *ReadOnlyManager) GetStableAccount(address common.Address) types.Accoun
 }
 
 // GetAccount return the latest account
-func (am *ReadOnlyManager) GetAccount(address common.Address) types.AccountAccessor {
+func (am *ReadOnlyManager) GetLatestAccount(address common.Address) types.AccountAccessor {
 	cached := am.accountCache[address]
 	if cached == nil {
 		var data *types.AccountData
