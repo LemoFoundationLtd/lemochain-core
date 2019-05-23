@@ -45,18 +45,19 @@ func NewPrivateAccountAPI(m *account.Manager) *PrivateAccountAPI {
 	return &PrivateAccountAPI{m}
 }
 
-type lemoAccount struct {
+//go:generate gencodec -type LemoAccount -out gen_lemo_account_json.go
+type LemoAccount struct {
 	Private string         `json:"private"`
 	Address common.Address `json:"address"`
 }
 
 // NewAccount get lemo address api
-func (a *PrivateAccountAPI) NewKeyPair() (*lemoAccount, error) {
+func (a *PrivateAccountAPI) NewKeyPair() (*LemoAccount, error) {
 	accountKey, err := crypto.GenerateAddress()
 	if err != nil {
 		return nil, err
 	}
-	acc := &lemoAccount{
+	acc := &LemoAccount{
 		Private: accountKey.Private,
 		Address: accountKey.Address,
 	}
