@@ -12,6 +12,14 @@ type SafeAccount struct {
 	processor  *LogProcessor
 }
 
+func (a *SafeAccount) SetSingers(signers types.Signers) error {
+	return a.rawAccount.SetSingers(signers)
+}
+
+func (a *SafeAccount) GetSigners() types.Signers {
+	return a.rawAccount.GetSigners()
+}
+
 func (a *SafeAccount) GetNextVersion(logType types.ChangeLogType) uint32 {
 	return a.rawAccount.GetNextVersion(logType)
 }

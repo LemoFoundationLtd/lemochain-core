@@ -186,6 +186,15 @@ type Account struct {
 	suicided      bool // will be delete from the trie during the "save" phase
 }
 
+func (a *Account) SetSingers(signers types.Signers) error {
+	a.data.Signers = signers
+	return nil
+}
+
+func (a *Account) GetSigners() types.Signers {
+	return a.data.Signers
+}
+
 func (a *Account) PushEvent(event *types.Event) {
 	a.events = append(a.events, event)
 }
@@ -217,6 +226,10 @@ func NewAccount(db protocol.ChainDB, address common.Address, data *types.Account
 
 	if data.NewestRecords == nil {
 		data.NewestRecords = make(map[types.ChangeLogType]types.VersionRecord)
+	}
+
+	if data.Signers == nil {
+		data.Signers = make([]types.SignAccount, 0)
 	}
 
 	if data.Candidate.Profile == nil {

@@ -26,6 +26,7 @@ func (a AccountData) MarshalJSON() ([]byte, error) {
 		VoteFor       common.Address                  `json:"voteFor"`
 		Candidate     Candidate                       `json:"candidate"`
 		NewestRecords map[ChangeLogType]VersionRecord `json:"records" gencodec:"required"`
+		Signers       Signers
 	}
 	var enc AccountData
 	enc.Address = a.Address
@@ -38,6 +39,13 @@ func (a AccountData) MarshalJSON() ([]byte, error) {
 	enc.VoteFor = a.VoteFor
 	enc.Candidate = a.Candidate
 	enc.NewestRecords = a.NewestRecords
+
+	if a.Signers == nil {
+		enc.Signers = make(Signers, 0)
+	} else {
+		enc.Signers = a.Signers
+	}
+
 	return json.Marshal(&enc)
 }
 

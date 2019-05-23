@@ -27,12 +27,13 @@ const (
 	EquityRootLog
 	CandidateLog
 	CandidateStateLog
-
 	CodeLog
 	AddEventLog
 	SuicideLog
 	VoteForLog
 	VotesLog
+
+	SignerLog
 	LOG_TYPE_STOP
 )
 
@@ -67,6 +68,7 @@ func init() {
 	types.RegisterChangeLog(SuicideLog, "SuicideLog", decodeEmptyInterface, decodeEmptyInterface, redoSuicide, undoSuicide)
 	types.RegisterChangeLog(VoteForLog, "VoteForLog", decodeAddress, decodeEmptyInterface, redoVoteFor, undoVoteFor)
 	types.RegisterChangeLog(VotesLog, "VotesLog", decodeBigInt, decodeEmptyInterface, redoVotes, undoVotes)
+	types.RegisterChangeLog(SignerLog, "SignerLog", decodeSigners, decodeEmptyInterface, redoSigner, undoSigner)
 	types.RegisterChangeLog(CandidateLog, "CandidateLog", decodeCandidate, decodeEmptyInterface, redoCandidate, undoCandidate)
 	types.RegisterChangeLog(CandidateStateLog, "CandidateStateLog", decodeString, decodeString, redoCandidateState, undoCandidateState)
 }
@@ -104,6 +106,8 @@ func IsValuable(log *types.ChangeLog) bool {
 		oldVal := log.OldVal.(big.Int)
 		newVal := log.NewVal.(big.Int)
 		valuable = oldVal.Cmp(&newVal) != 0
+	case SignerLog:
+		return true
 	default:
 		valuable = log.OldVal != log.NewVal
 	}
@@ -217,6 +221,19 @@ func decodeEquity(s *rlp.Stream) (interface{}, error) {
 		result.Equity = new(big.Int)
 		err := s.Decode(&result)
 		return &result, err
+	}
+}
+
+func decodeSigners(s *rlp.Stream) (interface{}, error) {
+	_, size, _ := s.Kind()
+	if size <= 0 {
+		var result interface{}
+		err := s.Decode(&result)
+		return nil, err
+	} else {
+		result := make(types.Signers, 0)
+		err := s.Decode(&result)
+		return result, err
 	}
 }
 
@@ -877,6 +894,41 @@ func undoEquityRoot(c *types.ChangeLog, processor types.ChangeLogProcessor) erro
 	}
 	accessor := processor.GetAccount(c.Address)
 	accessor.SetEquityRoot(oldVal)
+	return nil
+}
+
+func NewSignerLog(address common.Address, processor types.ChangeLogProcessor, oldVal []types.SignAccount, newVal []types.SignAccount) (*types.ChangeLog, error) {
+	account := processor.GetAccount(address)
+	return &types.ChangeLog{
+		LogType: SignerLog,
+		Address: address,
+		Version: account.GetNextVersion(CodeLog),
+		OldVal:  oldVal,
+		NewVal:  newVal,
+	}, nil
+}
+
+func redoSigner(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
+	newVal, ok := c.NewVal.([]types.SignAccount)
+	if !ok {
+		log.Errorf("redoSigner expected NewVal []types.SignAccount, got %T", c.OldVal)
+		return types.ErrWrongChangeLogData
+	}
+
+	accessor := processor.GetAccount(c.Address)
+	accessor.SetSingers(newVal)
+	return nil
+}
+
+func undoSigner(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
+	oldVal, ok := c.OldVal.([]types.SignAccount)
+	if !ok {
+		log.Errorf("undoSigner expected OldVal []types.SignAccount, got %T", c.OldVal)
+		return types.ErrWrongChangeLogData
+	}
+
+	accessor := processor.GetAccount(c.Address)
+	accessor.SetSingers(oldVal)
 	return nil
 }
 

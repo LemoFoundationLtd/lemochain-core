@@ -111,6 +111,33 @@ type candidateMarshaling struct {
 	Votes *hexutil.Big10
 }
 
+type SignAccount struct {
+	Address common.Address
+	Weight  uint8
+}
+
+type Signers []SignAccount
+
+func (signers Signers) Set(address common.Address, weight uint8) {
+	isExist := false
+	for index := 0; index < len(signers); index++ {
+		if signers[index].Address == address {
+			signers[index].Weight = weight
+			isExist = true
+			break
+		}
+	}
+
+	if !isExist {
+		signers[len(signers)] = SignAccount{
+			Address: address,
+			Weight:  weight,
+		}
+	}
+
+	return
+}
+
 type AccountData struct {
 	Address  common.Address `json:"address" gencodec:"required"`
 	Balance  *big.Int       `json:"balance" gencodec:"required"`
@@ -126,6 +153,7 @@ type AccountData struct {
 
 	// It records the block height which contains any type of newest change log. It is updated in finalize step
 	NewestRecords map[ChangeLogType]VersionRecord `json:"records" gencodec:"required"`
+	Signers       Signers                         `json:"signers"`
 }
 
 type accountDataMarshaling struct {
@@ -158,6 +186,7 @@ type rlpAccountData struct {
 	Candidate     rlpCandidate
 	TxCount       uint32
 	NewestRecords []rlpVersionRecord
+	Signers       Signers
 }
 
 // EncodeRLP implements rlp.Encoder.
@@ -183,6 +212,7 @@ func (a *AccountData) EncodeRLP(w io.Writer) error {
 		VoteFor:       a.VoteFor,
 		Candidate:     candidate,
 		NewestRecords: NewestRecords,
+		Signers:       a.Signers,
 	})
 }
 
@@ -195,8 +225,8 @@ func (a *AccountData) DecodeRLP(s *rlp.Stream) error {
 
 	err := s.Decode(&dec)
 	if err == nil {
-		a.Address, a.Balance, a.CodeHash, a.StorageRoot, a.AssetCodeRoot, a.AssetIdRoot, a.EquityRoot, a.VoteFor =
-			dec.Address, dec.Balance, dec.CodeHash, dec.StorageRoot, dec.AssetCodeRoot, dec.AssetIdRoot, dec.EquityRoot, dec.VoteFor
+		a.Address, a.Balance, a.CodeHash, a.StorageRoot, a.AssetCodeRoot, a.AssetIdRoot, a.EquityRoot, a.VoteFor, a.Signers =
+			dec.Address, dec.Balance, dec.CodeHash, dec.StorageRoot, dec.AssetCodeRoot, dec.AssetIdRoot, dec.EquityRoot, dec.VoteFor, dec.Signers
 		a.NewestRecords = make(map[ChangeLogType]VersionRecord)
 
 		a.Candidate.Votes = dec.Candidate.Votes
@@ -346,6 +376,9 @@ type AccountAccessor interface {
 
 	GetEquityState(id common.Hash) (*AssetEquity, error)
 	SetEquityState(id common.Hash, equity *AssetEquity) error
+
+	SetSingers(signers Signers) error
+	GetSigners() Signers
 
 	PushEvent(event *Event)
 	PopEvent() error
