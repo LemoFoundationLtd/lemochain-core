@@ -1,4 +1,4 @@
-package txprocessor
+package transaction
 
 import (
 	"crypto/ecdsa"
@@ -14,14 +14,16 @@ import (
 	"time"
 )
 
+type Config struct {
+	RewardManager common.Address
+	ChainID       uint16
+}
+
 var (
-	chainID     uint16 = 100
-	timeOutTime uint64 = 10
-	config             = Config{
-		LogForks:      false,
+	chainID uint16 = 100
+	config         = Config{
 		RewardManager: godAddr,
 		ChainID:       chainID,
-		MineTimeout:   timeOutTime,
 	}
 	godPrivate, _ = crypto.HexToECDSA("432a86ab8765d82415a803e29864dcfc1ed93dac949abf6f95a583179f27e4bb") // 测试中的16亿lemo地址
 	godAddr       = crypto.PubkeyToAddress(godPrivate.PublicKey)
@@ -68,7 +70,7 @@ func newBlockForTest(height uint32, txs types.Transactions, am *account.Manager,
 		parentHash common.Hash
 		gasUsed    uint64
 	)
-	p := NewTxProcessor(config, newTestChain(db), am, db)
+	p := NewTxProcessor(config.RewardManager, config.ChainID, newTestChain(db), am, db)
 	// 判断创世块
 	if height == 0 {
 		parentHash = common.Hash{}

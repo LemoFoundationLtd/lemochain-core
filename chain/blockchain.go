@@ -5,8 +5,8 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/consensus"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/transaction"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/txpool"
-	"github.com/LemoFoundationLtd/lemochain-core/chain/txprocessor"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/flag"
@@ -28,7 +28,7 @@ type BlockChain struct {
 	db     db.ChainDB
 	am     *account.Manager
 	dm     *deputynode.Manager
-	engine *consensus.Dpovp
+	engine *consensus.DPoVP
 
 	// receive call event from outside
 	receiveBlockCh   chan *types.Block
@@ -69,7 +69,7 @@ func NewBlockChain(config Config, dm *deputynode.Manager, db db.ChainDB, flags f
 	}
 
 	bc.am = account.NewManager(block.Hash(), bc.db)
-	dpovpCfg := txprocessor.Config{
+	dpovpCfg := consensus.Config{
 		LogForks:      bc.flags.Int(common.LogLevel)-1 >= 3,
 		RewardManager: bc.Founder(),
 		ChainID:       bc.chainID,
@@ -160,7 +160,7 @@ func (bc *BlockChain) ChainID() uint16 {
 	return bc.chainID
 }
 
-func (bc *BlockChain) TxProcessor() *txprocessor.TxProcessor {
+func (bc *BlockChain) TxProcessor() *transaction.TxProcessor {
 	return bc.engine.TxProcessor()
 }
 

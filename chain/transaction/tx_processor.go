@@ -1,4 +1,4 @@
-package txprocessor
+package transaction
 
 import (
 	"bytes"
@@ -44,13 +44,13 @@ type TxProcessor struct {
 	lock sync.Mutex
 }
 
-func NewTxProcessor(config Config, blockLoader BlockLoader, am *account.Manager, db protocol.ChainDB) *TxProcessor {
+func NewTxProcessor(reward common.Address, chainID uint16, blockLoader BlockLoader, am *account.Manager, db protocol.ChainDB) *TxProcessor {
 	cfg := &vm.Config{
 		Debug:         false,
-		RewardManager: config.RewardManager,
+		RewardManager: reward,
 	}
 	return &TxProcessor{
-		ChainID:     config.ChainID,
+		ChainID:     chainID,
 		blockLoader: blockLoader,
 		am:          am,
 		db:          db,
