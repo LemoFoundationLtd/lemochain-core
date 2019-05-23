@@ -1,4 +1,4 @@
-package txprocessor
+package transaction
 
 import (
 	"encoding/json"
@@ -23,7 +23,7 @@ func TestNewTxProcessor(t *testing.T) {
 	defer db.Close()
 	am := account.NewManager(common.Hash{}, db)
 	bc := newTestChain(db)
-	p := NewTxProcessor(config, bc, am, db)
+	p := NewTxProcessor(config.RewardManager, config.ChainID, bc, am, db)
 	assert.Equal(t, chainID, p.ChainID)
 	assert.Equal(t, config.RewardManager, p.cfg.RewardManager)
 	assert.False(t, p.cfg.Debug)
@@ -35,7 +35,7 @@ func TestTxProcessor_Process(t *testing.T) {
 	db, genesisHash := newCoverGenesisDB()
 	defer db.Close()
 	am := account.NewManager(genesisHash, db)
-	p := NewTxProcessor(config, newTestChain(db), am, db)
+	p := NewTxProcessor(config.RewardManager, config.ChainID, newTestChain(db), am, db)
 
 	// 测试执行创世块panic的情况
 	genesisBlock, err := db.LoadLatestBlock()
@@ -59,7 +59,7 @@ func TestTxProcessor_Process_applyTxs(t *testing.T) {
 	db, genesisHash := newCoverGenesisDB()
 	defer db.Close()
 	am := account.NewManager(genesisHash, db)
-	p := NewTxProcessor(config, newTestChain(db), am, db)
+	p := NewTxProcessor(config.RewardManager, config.ChainID, newTestChain(db), am, db)
 
 	// 创建5笔普通交易交易
 	txs := make(types.Transactions, 0)
@@ -90,7 +90,7 @@ func Test_ApplyTxs_TimeoutTime(t *testing.T) {
 	defer db.Close()
 	am := account.NewManager(genesisHash, db)
 
-	p := NewTxProcessor(config, newTestChain(db), am, db)
+	p := NewTxProcessor(config.RewardManager, config.ChainID, newTestChain(db), am, db)
 
 	parentBlock, err := db.LoadLatestBlock()
 	assert.NoError(t, err)
@@ -180,7 +180,7 @@ func TestReimbursement_transaction(t *testing.T) {
 	db, genesisHash := newCoverGenesisDB()
 	defer db.Close()
 	am := account.NewManager(genesisHash, db)
-	p := NewTxProcessor(config, newTestChain(db), am, db)
+	p := NewTxProcessor(config.RewardManager, config.ChainID, newTestChain(db), am, db)
 
 	// create a block contains two account which used to make reimbursement transaction
 	_ = newBlockForTest(1, types.Transactions{Tx01, Tx02}, am, db, true)
@@ -259,7 +259,7 @@ func Test_setRewardTx(t *testing.T) {
 	db, genesisHash := newCoverGenesisDB()
 	defer db.Close()
 	am := account.NewManager(genesisHash, db)
-	p := NewTxProcessor(config, newTestChain(db), am, db)
+	p := NewTxProcessor(config.RewardManager, config.ChainID, newTestChain(db), am, db)
 
 	// 设置第0届的矿工奖励
 	data := setRewardTxData(0, new(big.Int).Div(params.TermRewardPoolTotal, common.Big2))

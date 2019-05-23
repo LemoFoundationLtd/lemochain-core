@@ -3,7 +3,7 @@ package consensus
 import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
-	"github.com/LemoFoundationLtd/lemochain-core/chain/txprocessor"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/transaction"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
@@ -14,8 +14,8 @@ import (
 	"time"
 )
 
-// Dpovp process the fork logic
-type Dpovp struct {
+// DPoVP process the fork logic
+type DPoVP struct {
 	db     protocol.ChainDB
 	dm     *deputynode.Manager
 	am     *account.Manager
@@ -24,7 +24,7 @@ type Dpovp struct {
 	stableManager *StableManager           // used to process stable logic
 	forkManager   *ForkManager             // forks manager
 	validator     *Validator               // block validator
-	processor     *txprocessor.TxProcessor // transaction processor
+	processor     *transaction.TxProcessor // transaction processor
 	assembler     *BlockAssembler          // block assembler
 	confirmer     *Confirmer               // used to sign block confirm package
 
@@ -40,15 +40,15 @@ type Dpovp struct {
 
 const delayFetchConfirmsTime = time.Second * 30
 
-func NewDpovp(config txprocessor.Config, db protocol.ChainDB, dm *deputynode.Manager, am *account.Manager, loader BlockLoader, txPool TxPool, stable *types.Block) *Dpovp {
-	dpovp := &Dpovp{
+func NewDpovp(config Config, db protocol.ChainDB, dm *deputynode.Manager, am *account.Manager, loader BlockLoader, txPool TxPool, stable *types.Block) *DPoVP {
+	dpovp := &DPoVP{
 		db:            db,
 		dm:            dm,
 		am:            am,
 		txPool:        txPool,
 		stableManager: NewStableManager(dm, db),
 		forkManager:   NewForkManager(dm, db, stable),
-		processor:     txprocessor.NewTxProcessor(config, loader, am, db),
+		processor:     transaction.NewTxProcessor(config.RewardManager, config.ChainID, loader, am, db),
 		confirmer:     NewConfirmer(dm, db, stable),
 		logForks:      config.LogForks,
 	}
@@ -57,30 +57,30 @@ func NewDpovp(config txprocessor.Config, db protocol.ChainDB, dm *deputynode.Man
 	return dpovp
 }
 
-func (dp *Dpovp) StableBlock() *types.Block {
+func (dp *DPoVP) StableBlock() *types.Block {
 	return dp.stableManager.StableBlock()
 }
 
-func (dp *Dpovp) CurrentBlock() *types.Block {
+func (dp *DPoVP) CurrentBlock() *types.Block {
 	return dp.forkManager.GetHeadBlock()
 }
 
-func (dp *Dpovp) TxProcessor() *txprocessor.TxProcessor {
+func (dp *DPoVP) TxProcessor() *transaction.TxProcessor {
 	return dp.processor
 }
 
 // SubscribeStable subscribe the stable block update notification
-func (dp *Dpovp) SubscribeStable(ch chan *types.Block) subscribe.Subscription {
+func (dp *DPoVP) SubscribeStable(ch chan *types.Block) subscribe.Subscription {
 	return dp.stableFeed.Subscribe(ch)
 }
 
 // SubscribeCurrent subscribe the current block update notification. The blocks may be not continuous
-func (dp *Dpovp) SubscribeCurrent(ch chan *types.Block) subscribe.Subscription {
+func (dp *DPoVP) SubscribeCurrent(ch chan *types.Block) subscribe.Subscription {
 	return dp.currentFeed.Subscribe(ch)
 }
 
 // SubscribeConfirm subscribe the new confirm notification
-func (dp *Dpovp) SubscribeConfirm(ch chan *network.BlockConfirmData) subscribe.Subscription {
+func (dp *DPoVP) SubscribeConfirm(ch chan *network.BlockConfirmData) subscribe.Subscription {
 	return dp.confirmFeed.Subscribe(ch)
 }
 
@@ -122,7 +122,7 @@ func (dp *Dpovp) MineBlock(material *BlockMaterial) (*types.Block, error) {
 	return block, nil
 }
 
-func (dp *Dpovp) InsertBlock(rawBlock *types.Block) (*types.Block, error) {
+func (dp *DPoVP) InsertBlock(rawBlock *types.Block) (*types.Block, error) {
 	// ignore exist block as soon as possible
 	if ok := dp.isIgnorableBlock(rawBlock); ok {
 		return nil, ErrExistBlock
@@ -185,7 +185,7 @@ func (dp *Dpovp) InsertBlock(rawBlock *types.Block) (*types.Block, error) {
 }
 
 // saveToStore save block and account state to db. They are still unstable now
-func (dp *Dpovp) saveToStore(block *types.Block) error {
+func (dp *DPoVP) saveToStore(block *types.Block) error {
 	hash := block.Hash()
 	if err := dp.db.SetBlock(hash, block); err != nil {
 		log.Error("Insert block to cache fail", "block", block.ShortString())
@@ -200,7 +200,7 @@ func (dp *Dpovp) saveToStore(block *types.Block) error {
 	return nil
 }
 
-func (dp *Dpovp) broadcastConfirm(block *types.Block, sig types.SignData) {
+func (dp *DPoVP) broadcastConfirm(block *types.Block, sig types.SignData) {
 	// only broadcast confirm info within 3 minutes
 	if time.Now().Unix()-int64(block.Time()) >= 3*60 {
 		return
@@ -227,7 +227,7 @@ func (dp *DPoVP) fetchConfirmsFromRemote(startHeight, endHeight uint32) {
 }
 
 // BatchConfirm confirm and broadcast unsigned stable blocks one by one
-func (dp *Dpovp) batchConfirmStable(startHeight, endHeight uint32) {
+func (dp *DPoVP) batchConfirmStable(startHeight, endHeight uint32) {
 	result := dp.confirmer.BatchConfirmStable(startHeight, endHeight)
 	for _, confirmPack := range result {
 		dp.confirmFeed.Send(confirmPack)
@@ -235,7 +235,7 @@ func (dp *Dpovp) batchConfirmStable(startHeight, endHeight uint32) {
 }
 
 // UpdateStable check if the block can be stable. Then send notification and return true if the stable block changed
-func (dp *Dpovp) UpdateStable(block *types.Block) (bool, error) {
+func (dp *DPoVP) UpdateStable(block *types.Block) (bool, error) {
 	oldStable := dp.StableBlock()
 	changed, prunedBlocks, err := dp.stableManager.UpdateStable(block)
 	if err != nil {
@@ -259,7 +259,7 @@ func (dp *Dpovp) UpdateStable(block *types.Block) (bool, error) {
 }
 
 // TrySwitchFork try to switch to a better fork
-func (dp *Dpovp) TrySwitchFork() {
+func (dp *DPoVP) TrySwitchFork() {
 	oldCurrent := dp.CurrentBlock()
 
 	// try to switch fork
@@ -272,7 +272,7 @@ func (dp *Dpovp) TrySwitchFork() {
 }
 
 // CheckFork check the current fork and update it if it is cut. Return true if the current fork change
-func (dp *Dpovp) CheckFork() bool {
+func (dp *DPoVP) CheckFork() bool {
 	oldCurrent := dp.CurrentBlock()
 
 	// Test if currentBlock is still there. It may be pruned by stable block updating
@@ -287,7 +287,7 @@ func (dp *Dpovp) CheckFork() bool {
 }
 
 // setCurrent update current block and send a notification
-func (dp *Dpovp) setCurrent(block *types.Block) {
+func (dp *DPoVP) setCurrent(block *types.Block) {
 	if block == nil {
 		block = dp.StableBlock()
 	}
@@ -309,7 +309,7 @@ func (dp *Dpovp) setCurrent(block *types.Block) {
 	}()
 }
 
-func (dp *Dpovp) logCurrentChange(oldCurrent *types.Block) {
+func (dp *DPoVP) logCurrentChange(oldCurrent *types.Block) {
 	newCurrent := dp.CurrentBlock()
 	if newCurrent.Hash() == oldCurrent.Hash() {
 		log.Debugf("Current block is still %s", oldCurrent.ShortString())
@@ -324,7 +324,7 @@ func (dp *Dpovp) logCurrentChange(oldCurrent *types.Block) {
 }
 
 // isIgnorableBlock check the block is exist or not
-func (dp *Dpovp) isIgnorableBlock(block *types.Block) bool {
+func (dp *DPoVP) isIgnorableBlock(block *types.Block) bool {
 	if has, _ := dp.db.IsExistByHash(block.Hash()); has {
 		log.Debug("ignore the existed block")
 		return true
@@ -338,7 +338,7 @@ func (dp *Dpovp) isIgnorableBlock(block *types.Block) bool {
 }
 
 // VerifyAndSeal verify block then create a new block
-func (dp *Dpovp) VerifyAndSeal(block *types.Block) (*types.Block, error) {
+func (dp *DPoVP) VerifyAndSeal(block *types.Block) (*types.Block, error) {
 	// verify every things that can be verified before tx processing
 	if err := dp.validator.VerifyBeforeTxProcess(block); err != nil {
 		return nil, ErrInvalidBlock
@@ -352,7 +352,7 @@ func (dp *Dpovp) VerifyAndSeal(block *types.Block) (*types.Block, error) {
 	// parse block, change local state and seal a new block
 	newBlock, err := dp.assembler.RunBlock(block)
 	if err != nil {
-		if err == txprocessor.ErrInvalidTxInBlock {
+		if err == transaction.ErrInvalidTxInBlock {
 			return nil, ErrInvalidBlock
 		}
 		log.Errorf("RunBlock internal error: %v", err)
@@ -367,7 +367,7 @@ func (dp *Dpovp) VerifyAndSeal(block *types.Block) (*types.Block, error) {
 	return newBlock, nil
 }
 
-func (dp *Dpovp) InsertConfirm(info *network.BlockConfirmData) error {
+func (dp *DPoVP) InsertConfirm(info *network.BlockConfirmData) error {
 	oldCurrent := dp.CurrentBlock()
 	log.Debug("Start insert confirm", "height", info.Height, "hash", info.Hash)
 
@@ -393,7 +393,7 @@ func (dp *Dpovp) InsertConfirm(info *network.BlockConfirmData) error {
 }
 
 // InsertStableConfirms receive confirm package from net connection. The block of these confirms has been confirmed by its son block already
-func (dp *Dpovp) InsertStableConfirms(pack network.BlockConfirms) {
+func (dp *DPoVP) InsertStableConfirms(pack network.BlockConfirms) {
 	_, err := dp.insertConfirms(pack.Height, pack.Hash, pack.Pack)
 	if err != nil {
 		log.Warnf("InsertStableConfirms fail: %v", err)
@@ -401,7 +401,7 @@ func (dp *Dpovp) InsertStableConfirms(pack network.BlockConfirms) {
 }
 
 // insertConfirms save signature list to store, then return a new block
-func (dp *Dpovp) insertConfirms(height uint32, blockHash common.Hash, sigList []types.SignData) (*types.Block, error) {
+func (dp *DPoVP) insertConfirms(height uint32, blockHash common.Hash, sigList []types.SignData) (*types.Block, error) {
 	if len(sigList) == 0 {
 		return nil, ErrIgnoreConfirm
 	}
@@ -421,7 +421,7 @@ func (dp *Dpovp) insertConfirms(height uint32, blockHash common.Hash, sigList []
 }
 
 // SnapshotDeputyNodes get next epoch deputy nodes for snapshot block
-func (dp *Dpovp) LoadTopCandidates(blockHash common.Hash) deputynode.DeputyNodes {
+func (dp *DPoVP) LoadTopCandidates(blockHash common.Hash) deputynode.DeputyNodes {
 	result := make(deputynode.DeputyNodes, 0, dp.dm.DeputyCount)
 	list := dp.db.GetCandidatesTop(blockHash)
 	if len(list) > dp.dm.DeputyCount {

@@ -123,7 +123,7 @@ func TestEVM_TransferAssetTx(t *testing.T) {
 	// 2. 测试资产余额不足的情况
 	// 创建一个可分割的资产
 	profile[types.AssetFreeze] = "false"
-	ass := &types.Asset{
+	asset02 := &types.Asset{
 		Category:        1,
 		IsDivisible:     true,
 		AssetCode:       assetCode,
@@ -133,7 +133,7 @@ func TestEVM_TransferAssetTx(t *testing.T) {
 		Issuer:          issuerAddr,
 		Profile:         profile,
 	}
-	issuerAcc.SetAssetCode(assetCode, ass)
+	issuerAcc.SetAssetCode(assetCode, asset02)
 
 	// 交易资产
 	data = newTransferAssetData(assetCode, new(big.Int).Mul(big.NewInt(2), equity))

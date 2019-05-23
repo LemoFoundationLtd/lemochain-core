@@ -5,7 +5,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
-	"github.com/LemoFoundationLtd/lemochain-core/chain/txprocessor"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/transaction"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
@@ -20,11 +20,11 @@ type BlockAssembler struct {
 	db          protocol.ChainDB
 	am          *account.Manager
 	dm          *deputynode.Manager
-	txProcessor *txprocessor.TxProcessor
+	txProcessor *transaction.TxProcessor
 	canLoader   CandidateLoader
 }
 
-func NewBlockAssembler(am *account.Manager, dm *deputynode.Manager, txProcessor *txprocessor.TxProcessor, canLoader CandidateLoader) *BlockAssembler {
+func NewBlockAssembler(am *account.Manager, dm *deputynode.Manager, txProcessor *transaction.TxProcessor, canLoader CandidateLoader) *BlockAssembler {
 	return &BlockAssembler{
 		am:          am,
 		dm:          dm,

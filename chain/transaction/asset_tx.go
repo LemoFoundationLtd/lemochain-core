@@ -1,4 +1,4 @@
-package txprocessor
+package transaction
 
 import (
 	"encoding/json"
@@ -53,11 +53,11 @@ func (r *RunAssetEnv) CreateAssetTx(sender common.Address, data []byte, txHash c
 		return err
 	}
 
-	newAss := asset.Clone()
-	newAss.Issuer = sender
-	newAss.AssetCode = txHash
-	newAss.TotalSupply = big.NewInt(0) // init 0
-	newData, err := json.Marshal(newAss)
+	newAsset := asset.Clone()
+	newAsset.Issuer = sender
+	newAsset.AssetCode = txHash
+	newAsset.TotalSupply = big.NewInt(0) // init 0
+	newData, err := json.Marshal(newAsset)
 	if err != nil {
 		return err
 	}
@@ -67,7 +67,7 @@ func (r *RunAssetEnv) CreateAssetTx(sender common.Address, data []byte, txHash c
 		return ErrMarshalAssetLength
 	}
 	var snapshot = r.am.Snapshot()
-	err = issuerAcc.SetAssetCode(newAss.AssetCode, newAss)
+	err = issuerAcc.SetAssetCode(newAsset.AssetCode, newAsset)
 	if err != nil {
 		r.am.RevertToSnapshot(snapshot)
 	}
