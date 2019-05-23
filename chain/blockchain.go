@@ -28,7 +28,7 @@ type BlockChain struct {
 	db     db.ChainDB
 	am     *account.Manager
 	dm     *deputynode.Manager
-	engine *consensus.DPoVP
+	engine *consensus.Dpovp
 
 	// receive call event from outside
 	receiveBlockCh   chan *types.Block
@@ -75,7 +75,7 @@ func NewBlockChain(config Config, dm *deputynode.Manager, db db.ChainDB, flags f
 		ChainID:       bc.chainID,
 		MineTimeout:   config.MineTimeout,
 	}
-	bc.engine = consensus.NewDPoVP(dpovpCfg, bc.db, bc.dm, bc.am, bc, txPool, block)
+	bc.engine = consensus.NewDpovp(dpovpCfg, bc.db, bc.dm, bc.am, bc, txPool, block)
 
 	go bc.runFeedTranspondLoop()
 	go bc.runMainLoop()
