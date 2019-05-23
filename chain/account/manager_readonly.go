@@ -62,6 +62,16 @@ func (am *ReadOnlyManager) Reset(blockHash common.Hash) {
 	am.accountCache = make(map[common.Address]*ReadOnlyAccount)
 }
 
+// GetStableAccount return stable account from db
+func (am *ReadOnlyManager) GetStableAccount(address common.Address) types.AccountAccessor {
+	data, err := am.db.GetAccount(address)
+	if err != nil && err != store.ErrNotExist {
+		panic(err)
+	}
+	return NewReadOnlyAccount(am.db, address, data)
+}
+
+// GetAccount return the latest account
 func (am *ReadOnlyManager) GetAccount(address common.Address) types.AccountAccessor {
 	cached := am.accountCache[address]
 	if cached == nil {
