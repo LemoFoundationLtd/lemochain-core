@@ -32,7 +32,7 @@ const (
 )
 
 // loadDpovp 加载一个Dpovp实例
-func loadDpovp(dm *deputynode.Manager) *Dpovp {
+func loadDpovp(dm *deputynode.Manager) *DPoVP {
 	ClearData()
 	db := store.NewChainDataBase(GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
 	latestBlock, err := db.LoadLatestBlock()
@@ -123,7 +123,7 @@ func signTestBlock(deputyPrivate string, block *types.Block) {
 }
 
 // newSignedBlock 用来生成符合测试用例所用的区块
-func newSignedBlock(dpovp *Dpovp, parentHash common.Hash, author common.Address, txs []*types.Transaction, time uint32, signPrivate string, save bool) *types.Block {
+func newSignedBlock(dpovp *DPoVP, parentHash common.Hash, author common.Address, txs []*types.Transaction, time uint32, signPrivate string, save bool) *types.Block {
 	newBlockInfo := blockInfo{
 		parentHash: parentHash,
 		author:     author,

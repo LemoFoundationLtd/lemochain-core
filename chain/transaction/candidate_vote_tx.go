@@ -1,4 +1,4 @@
-package txprocessor
+package transaction
 
 import (
 	"encoding/json"
