@@ -445,7 +445,7 @@ func (t *PublicTxAPI) PendingTx(size int) []*types.Transaction {
 // ReadContract read variables in a contract includes the return value of a function.
 func (t *PublicTxAPI) ReadContract(to *common.Address, data hexutil.Bytes) (string, error) {
 	ctx := context.Background()
-	result, _, err := t.doCall(ctx, to, params.OrdinaryTx, data, 5*time.Second)
+	result, _, err := t.doCallTransaction(ctx, to, params.OrdinaryTx, data, 5*time.Second)
 	return common.ToHex(result), err
 }
 
@@ -454,21 +454,21 @@ func (t *PublicTxAPI) EstimateGas(to *common.Address, txType uint16, data hexuti
 	var costGas uint64
 	var err error
 	ctx := context.Background()
-	_, costGas, err = t.doCall(ctx, to, txType, data, 5*time.Second)
+	_, costGas, err = t.doCallTransaction(ctx, to, txType, data, 5*time.Second)
 	strCostGas := strconv.FormatUint(costGas, 10)
 	return strCostGas, err
 }
 
 // EstimateContractGas returns an estimate of the amount of gas needed to create a smart contract.
-// todo will delete
+// Todo will delete
 func (t *PublicTxAPI) EstimateCreateContractGas(data hexutil.Bytes) (uint64, error) {
 	ctx := context.Background()
-	_, costGas, err := t.doCall(ctx, nil, params.OrdinaryTx, data, 5*time.Second)
+	_, costGas, err := t.doCallTransaction(ctx, nil, params.OrdinaryTx, data, 5*time.Second)
 	return costGas, err
 }
 
-// doCall
-func (t *PublicTxAPI) doCall(ctx context.Context, to *common.Address, txType uint16, data hexutil.Bytes, timeout time.Duration) ([]byte, uint64, error) {
+// doCallTransaction
+func (t *PublicTxAPI) doCallTransaction(ctx context.Context, to *common.Address, txType uint16, data hexutil.Bytes, timeout time.Duration) ([]byte, uint64, error) {
 	t.node.lock.Lock()
 	defer t.node.lock.Unlock()
 
@@ -479,7 +479,7 @@ func (t *PublicTxAPI) doCall(ctx context.Context, to *common.Address, txType uin
 	stableHeader := stableBlock.Header
 
 	p := t.node.chain.TxProcessor()
-	ret, costGas, err := p.CallTx(ctx, stableHeader, to, txType, data, common.Hash{}, timeout)
+	ret, costGas, err := p.PreExecutionTransaction(ctx, stableHeader, to, txType, data, common.Hash{}, timeout)
 
 	return ret, costGas, err
 }
