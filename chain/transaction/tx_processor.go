@@ -44,10 +44,10 @@ type TxProcessor struct {
 	lock sync.Mutex
 }
 
-func NewTxProcessor(reward common.Address, chainID uint16, blockLoader BlockLoader, am *account.Manager, db protocol.ChainDB) *TxProcessor {
+func NewTxProcessor(issueRewardAddress common.Address, chainID uint16, blockLoader BlockLoader, am *account.Manager, db protocol.ChainDB) *TxProcessor {
 	cfg := &vm.Config{
 		Debug:         false,
-		RewardManager: reward,
+		RewardManager: issueRewardAddress,
 	}
 	return &TxProcessor{
 		ChainID:     chainID,
@@ -176,20 +176,11 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 		return 0, err
 	}
 	var (
-		sender                  = p.am.GetAccount(senderAddr)
-		initialSenderBalance    = sender.GetBalance()
-		nullRecipient           = tx.To() == nil
-		restGas                 = tx.GasLimit()
-		vmErr                   error
-		execErr                 error
-		initialRecipientBalance *big.Int
+		sender               = p.am.GetAccount(senderAddr)
+		initialSenderBalance = sender.GetBalance()
+		restGas              = tx.GasLimit()
+		vmErr, execErr       error
 	)
-
-	if !nullRecipient {
-		recipientAddr := *tx.To()
-		recipientAccount := p.am.GetAccount(recipientAddr)
-		initialRecipientBalance = recipientAccount.GetBalance()
-	}
 
 	restGas, err = p.buyAndPayIntrinsicGas(gp, tx, restGas)
 	if err != nil {
@@ -214,48 +205,71 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 	p.refundGas(gp, tx, restGas)
 
 	gasUsed := tx.GasLimit() - restGas
-	// sender、to、gaspayer的余额变化造成的候选节点的票数变化
-	err = p.votesChange(initialSenderBalance, initialRecipientBalance, tx, gasUsed)
-	if err != nil {
-		return 0, err
-	}
+	// 余额变化造成的候选节点的票数变化
+	p.setCandidateVotesByChangeBalance()
 
 	return gasUsed, nil
 }
 
-// votesChange 修改对应的候选者票数
-func (p *TxProcessor) votesChange(initialSenderBalance, initialRecipientBalance *big.Int, tx *types.Transaction, gasUsed uint64) error {
-	senderAddr, err := tx.From()
-	if err != nil {
-		return err
+// setCandidateVotesByChangeBalance 设置余额变化导致的候选节点票数的变化
+func (p *TxProcessor) setCandidateVotesByChangeBalance() {
+	changes := p.getBalanceChangeBychangelog()
+	for addr, changeBalance := range changes {
+		p.changeCandidateVotes(addr, changeBalance)
 	}
-	sender := p.am.GetAccount(senderAddr)
-	// Candidate node votes change
-	if tx.To() != nil {
-		recipientAddr := *tx.To()
-		recipientAccount := p.am.GetAccount(recipientAddr)
-		endRecipientBalance := recipientAccount.GetBalance()
+}
 
-		if initialRecipientBalance == nil {
-			p.changeCandidateVotes(recipientAddr, endRecipientBalance)
+type balanceChange map[common.Address]*big.Int
+
+// 通过changelog获取账户的余额变化
+func (p *TxProcessor) getBalanceChangeBychangelog() balanceChange {
+	copyLogs := make(types.ChangeLogSlice, 0)
+	// 获取所以的changelog
+	logs := p.am.GetChangeLogs()
+	// copy
+	for _, log := range logs {
+		copyLogs = append(copyLogs, log.Copy())
+	}
+	// 筛选出同一个账户的balanceLog
+	balanceLogsByAddress := make(map[common.Address]types.ChangeLogSlice)
+	for _, log := range copyLogs {
+		// BalanceLog
+		if log.LogType == account.BalanceLog {
+			balanceLogsByAddress[log.Address] = append(balanceLogsByAddress[log.Address], log)
+		}
+	}
+	// merge BalanceLogs
+	newBalanceLogByAddr := make(map[common.Address]*types.ChangeLog)
+	for addr, logs := range balanceLogsByAddress {
+		if len(logs) == 1 { // 不用merge
+			newBalanceLogByAddr[addr] = logs[0]
 		} else {
-			recipientBalanceChange := new(big.Int).Sub(endRecipientBalance, initialRecipientBalance)
-			p.changeCandidateVotes(recipientAddr, recipientBalanceChange)
+			newLogs := mergeBalanceLogs(logs)
+			newBalanceLogByAddr[addr] = newLogs[0]
 		}
 	}
-	// The number of votes of the candidate nodes corresponding to the sender.
-	endSenderBalance := sender.GetBalance()
-	senderBalanceChange := new(big.Int).Sub(endSenderBalance, initialSenderBalance)
-	p.changeCandidateVotes(senderAddr, senderBalanceChange)
+	// 获取balance change
+	balanceChange := make(balanceChange)
+	for addr, newLog := range newBalanceLogByAddr {
+		newValue := newLog.NewVal.(big.Int)
+		oldValue := newLog.OldVal.(big.Int)
+		change := new(big.Int).Sub(&newValue, &oldValue)
+		balanceChange[addr] = change
+	}
+	return balanceChange
+}
 
-	// reimbursement transaction
-	if len(tx.GasPayerSig()) != 0 {
-		err = p.gasPayerVotesChange(tx, gasUsed)
-		if err != nil {
-			return err
+// merge balanceLog
+func mergeBalanceLogs(logs types.ChangeLogSlice) types.ChangeLogSlice {
+	newLogs := make(types.ChangeLogSlice, 0, 1)
+	for _, balanceLog := range logs {
+		if len(newLogs) == 0 {
+			newLogs = append(newLogs, balanceLog)
+		} else {
+			newLogs[0].NewVal = balanceLog.NewVal
 		}
 	}
-	return nil
+	return newLogs
 }
 
 // handleTx 执行交易,返回消耗之后剩余的gas、evm中执行的error和交易执行不成功的error
@@ -318,19 +332,6 @@ func (p *TxProcessor) handleTx(tx *types.Transaction, header *types.Header, txIn
 		return restGas, vmErr, types.ErrTxType
 	}
 	return restGas, vmErr, err
-}
-
-// gasPayerVotesChange 修改gas payer 投票的票数
-func (p *TxProcessor) gasPayerVotesChange(tx *types.Transaction, usedGas uint64) error {
-	payer, err := tx.GasPayer()
-	if err != nil {
-		return err
-	}
-	// balance decrease the amount
-	reduceBalance := new(big.Int).Mul(new(big.Int).SetUint64(usedGas), tx.GasPrice())
-	negativeChangeBalance := new(big.Int).Neg(reduceBalance)
-	p.changeCandidateVotes(payer, negativeChangeBalance)
-	return nil
 }
 
 // changeCandidateVotes candidate node vote change corresponding to balance change

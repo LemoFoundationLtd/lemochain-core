@@ -85,11 +85,11 @@ func (dp *DPoVP) SubscribeConfirm(ch chan *network.BlockConfirmData) subscribe.S
 }
 
 // SubscribeFetchConfirm subscribe fetch block confirms
-func (dp *Dpovp) SubscribeFetchConfirm(ch chan []network.GetConfirmInfo) subscribe.Subscription {
+func (dp *DPoVP) SubscribeFetchConfirm(ch chan []network.GetConfirmInfo) subscribe.Subscription {
 	return dp.fetchConfirmsFeed.Subscribe(ch)
 }
 
-func (dp *Dpovp) MineBlock(material *BlockMaterial) (*types.Block, error) {
+func (dp *DPoVP) MineBlock(material *BlockMaterial) (*types.Block, error) {
 	oldCurrent := dp.CurrentBlock()
 
 	// mine and seal
