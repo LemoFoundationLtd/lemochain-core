@@ -214,15 +214,6 @@ func (c *BlockCache) IsExit(hash common.Hash, height uint32) bool {
 	if length == 0 || height < c.cache[0].Height || height > c.cache[length-1].Height {
 		return false
 	}
-	// for i := 0; i < length; i++ {
-	// 	if c.cache[i].Height == height {
-	// 		if _, ok := c.cache[i].Blocks[hash]; ok {
-	// 			return true
-	// 		} else {
-	// 			return false
-	// 		}
-	// 	}
-	// }
 	for _, blocks := range c.cache {
 		if _, ok := blocks.Blocks[hash]; ok {
 			return true

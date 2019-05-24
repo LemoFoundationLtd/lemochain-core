@@ -53,11 +53,10 @@ func (r *RunAssetEnv) CreateAssetTx(sender common.Address, data []byte, txHash c
 		return err
 	}
 
-	newAsset := asset.Clone()
-	newAsset.Issuer = sender
-	newAsset.AssetCode = txHash
-	newAsset.TotalSupply = big.NewInt(0) // init 0
-	newData, err := json.Marshal(newAsset)
+	asset.Issuer = sender
+	asset.AssetCode = txHash
+	asset.TotalSupply = big.NewInt(0) // init 0
+	newData, err := json.Marshal(asset)
 	if err != nil {
 		return err
 	}
@@ -67,30 +66,38 @@ func (r *RunAssetEnv) CreateAssetTx(sender common.Address, data []byte, txHash c
 		return ErrMarshalAssetLength
 	}
 	var snapshot = r.am.Snapshot()
-	err = issuerAcc.SetAssetCode(newAsset.AssetCode, newAsset)
+	err = issuerAcc.SetAssetCode(asset.AssetCode, asset)
 	if err != nil {
 		r.am.RevertToSnapshot(snapshot)
 	}
 	return err
 }
 
-// IssueAssetTx
-func (r *RunAssetEnv) IssueAssetTx(sender, receiver common.Address, txHash common.Hash, data []byte) error {
-
+// unmarshalIssueAssetData
+func unmarshalIssueAssetData(data []byte) (*types.IssueAsset, error) {
 	issueAsset := &types.IssueAsset{}
 	err := json.Unmarshal(data, issueAsset)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	// metaData length limit
 	if len(issueAsset.MetaData) > types.MaxMetaDataLength {
 		log.Errorf("The length of metaData more than limit, len(metaData) = %d ", len(issueAsset.MetaData))
-		return ErrIssueAssetMetaData
+		return nil, ErrIssueAssetMetaData
 	}
 	// amount != nil && amount > 0
 	if issueAsset.Amount == nil || issueAsset.Amount.Cmp(big.NewInt(0)) <= 0 {
 		log.Errorf("Issue asset amount must > 0 , currentAmount = %s", issueAsset.Amount.String())
-		return ErrIssueAssetAmount
+		return nil, ErrIssueAssetAmount
+	}
+	return issueAsset, nil
+}
+
+// IssueAssetTx
+func (r *RunAssetEnv) IssueAssetTx(sender, receiver common.Address, txHash common.Hash, data []byte) error {
+	issueAsset, err := unmarshalIssueAssetData(data)
+	if err != nil {
+		return err
 	}
 	assetCode := issueAsset.AssetCode
 	issuerAcc := r.am.GetAccount(sender)
@@ -158,23 +165,25 @@ func (r *RunAssetEnv) IssueAssetTx(sender, receiver common.Address, txHash commo
 	return nil
 }
 
-// ReplenishAssetTx
-func (r *RunAssetEnv) ReplenishAssetTx(sender, receiver common.Address, data []byte) error {
+// unmarshalReplenishAssetData
+func unmarshalReplenishAssetData(data []byte) (*types.ReplenishAsset, error) {
 	repl := &types.ReplenishAsset{}
 	err := json.Unmarshal(data, repl)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	newAssetCode := repl.AssetCode
-	newAssetId := repl.AssetId
 	addAmount := repl.Amount
 	// amount > 0
 	if addAmount == nil || addAmount.Cmp(big.NewInt(0)) <= 0 {
 		log.Errorf("Replenish asset amount must > 0,currentAmount = %s", addAmount.String())
-		return ErrReplenishAssetAmount
+		return nil, ErrReplenishAssetAmount
 	}
+	return repl, nil
+}
+
+// judgeReplenish 判断满足可增发的条件
+func judgeReplenish(issuerAcc types.AccountAccessor, newAssetCode common.Hash) error {
 	// assert issuer account
-	issuerAcc := r.am.GetAccount(sender)
 	asset, err := issuerAcc.GetAssetCode(newAssetCode)
 	if err != nil {
 		return err
@@ -191,6 +200,25 @@ func (r *RunAssetEnv) ReplenishAssetTx(sender, receiver common.Address, data []b
 	// erc721 asset can't be replenished
 	if !asset.IsDivisible {
 		return ErrIsDivisible
+	}
+	return nil
+}
+
+// ReplenishAssetTx
+func (r *RunAssetEnv) ReplenishAssetTx(sender, receiver common.Address, data []byte) error {
+	repl, err := unmarshalReplenishAssetData(data)
+	if err != nil {
+		return err
+	}
+	newAssetCode := repl.AssetCode
+	newAssetId := repl.AssetId
+	addAmount := repl.Amount
+
+	// assert issuer account
+	issuerAcc := r.am.GetAccount(sender)
+	err = judgeReplenish(issuerAcc, newAssetCode)
+	if err != nil {
+		return err
 	}
 	// receiver account
 	recAcc := r.am.GetAccount(receiver)
@@ -235,18 +263,29 @@ func (r *RunAssetEnv) ReplenishAssetTx(sender, receiver common.Address, data []b
 	return nil
 }
 
-// ModifyAssetProfileTx
-func (r *RunAssetEnv) ModifyAssetProfileTx(sender common.Address, data []byte) error {
+func unmarshalModifyAssetData(data []byte) (*types.ModifyAssetInfo, error) {
 	modifyInfo := &types.ModifyAssetInfo{}
 	err := json.Unmarshal(data, modifyInfo)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	acc := r.am.GetAccount(sender)
 	info := modifyInfo.Info
 	if info == nil || len(info) == 0 {
-		return ErrModifyAssetInfo
+		return nil, ErrModifyAssetInfo
 	}
+	return modifyInfo, nil
+}
+
+// ModifyAssetProfileTx
+func (r *RunAssetEnv) ModifyAssetProfileTx(sender common.Address, data []byte) error {
+	modifyInfo, err := unmarshalModifyAssetData(data)
+	if err != nil {
+		return err
+	}
+	info := modifyInfo.Info
+
+	acc := r.am.GetAccount(sender)
+
 	// determine whether there is modification permission
 	oldAsset, err := acc.GetAssetCode(modifyInfo.AssetCode)
 	if err != nil {
