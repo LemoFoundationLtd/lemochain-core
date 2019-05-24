@@ -44,10 +44,10 @@ type TxProcessor struct {
 	lock sync.Mutex
 }
 
-func NewTxProcessor(reward common.Address, chainID uint16, blockLoader BlockLoader, am *account.Manager, db protocol.ChainDB) *TxProcessor {
+func NewTxProcessor(issueRewardAddress common.Address, chainID uint16, blockLoader BlockLoader, am *account.Manager, db protocol.ChainDB) *TxProcessor {
 	cfg := &vm.Config{
 		Debug:         false,
-		RewardManager: reward,
+		RewardManager: issueRewardAddress,
 	}
 	return &TxProcessor{
 		ChainID:     chainID,

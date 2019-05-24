@@ -53,11 +53,10 @@ func (r *RunAssetEnv) CreateAssetTx(sender common.Address, data []byte, txHash c
 		return err
 	}
 
-	newAsset := asset.Clone()
-	newAsset.Issuer = sender
-	newAsset.AssetCode = txHash
-	newAsset.TotalSupply = big.NewInt(0) // init 0
-	newData, err := json.Marshal(newAsset)
+	asset.Issuer = sender
+	asset.AssetCode = txHash
+	asset.TotalSupply = big.NewInt(0) // init 0
+	newData, err := json.Marshal(asset)
 	if err != nil {
 		return err
 	}
@@ -67,7 +66,7 @@ func (r *RunAssetEnv) CreateAssetTx(sender common.Address, data []byte, txHash c
 		return ErrMarshalAssetLength
 	}
 	var snapshot = r.am.Snapshot()
-	err = issuerAcc.SetAssetCode(newAsset.AssetCode, newAsset)
+	err = issuerAcc.SetAssetCode(asset.AssetCode, asset)
 	if err != nil {
 		r.am.RevertToSnapshot(snapshot)
 	}
