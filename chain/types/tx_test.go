@@ -103,7 +103,7 @@ func TestTransaction_EncodeRLP_DecodeRLP(t *testing.T) {
 	assert.Equal(t, testTx.Message(), result.Message())
 	assert.Equal(t, testTx.data.Hash, result.data.Hash)
 	assert.Equal(t, testTx.GasPayerSig(), result.GasPayerSig())
-	assert.Equal(t, testTx.Sig(), result.Sig())
+	assert.Equal(t, testTx.Sigs(), result.Sigs())
 
 	// with signature
 	txV, err := testSigner.SignTx(testTx, testPrivate)
@@ -125,7 +125,7 @@ func TestTransaction_EncodeRLP_DecodeRLP(t *testing.T) {
 	assert.Equal(t, txV.ChainID(), result.ChainID())
 	assert.Equal(t, txV.Version(), result.Version())
 	assert.Equal(t, txV.Type(), result.Type())
-	assert.Equal(t, txV.Sig(), result.Sig())
+	assert.Equal(t, txV.Sigs(), result.Sigs())
 }
 
 func TestReimbursementTransaction_EncodeRLP_DecodeRLP(t *testing.T) {
@@ -148,7 +148,7 @@ func TestReimbursementTransaction_EncodeRLP_DecodeRLP(t *testing.T) {
 
 	assert.Equal(t, reimbursementTx.data.Hash, result02.data.Hash)
 	assert.Equal(t, reimbursementTx.GasPayerSig(), result02.GasPayerSig())
-	assert.Equal(t, reimbursementTx.Sig(), result02.Sig())
+	assert.Equal(t, reimbursementTx.Sigs(), result02.Sigs())
 
 	// 	two times sign
 	firstSignTx, err := MakeReimbursementTxSigner().SignTx(reimbursementTx, testPrivate)
@@ -172,7 +172,7 @@ func TestReimbursementTransaction_EncodeRLP_DecodeRLP(t *testing.T) {
 	err = rlp.DecodeBytes(rlpdata, &recovered)
 	assert.NoError(t, err)
 	assert.Equal(t, lastSignTx.Data(), recovered.Data())
-	assert.Equal(t, lastSignTx.Sig(), recovered.Sig())
+	assert.Equal(t, lastSignTx.Sigs(), recovered.Sigs())
 	assert.Equal(t, lastSignTx.GasPayerSig(), recovered.GasPayerSig())
 	from02, err := lastSignTx.From()
 	assert.NoError(t, err)
@@ -198,7 +198,7 @@ func TestTransaction_EncodeRLP_DecodeRLP_bigTx(t *testing.T) {
 	assert.Equal(t, testTxBig.Data(), result.Data())
 	assert.Equal(t, testTxBig.Expiration(), result.Expiration())
 	assert.Equal(t, testTxBig.Message(), result.Message())
-	assert.Equal(t, testTxBig.Sig(), result.Sig())
+	assert.Equal(t, testTxBig.Sigs(), result.Sigs())
 	assert.Equal(t, testTxBig.data.Hash, result.data.Hash)
 
 	// with signature
@@ -210,7 +210,7 @@ func TestTransaction_EncodeRLP_DecodeRLP_bigTx(t *testing.T) {
 	result = Transaction{}
 	err = rlp.DecodeBytes(txb, &result)
 	assert.NoError(t, err)
-	assert.Equal(t, txV.Sig(), result.Sig())
+	assert.Equal(t, txV.Sigs(), result.Sigs())
 	assert.Equal(t, txV.data.Hash, result.data.Hash)
 }
 

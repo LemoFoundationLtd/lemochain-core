@@ -9,19 +9,19 @@ import (
 
 func TestSignTx(t *testing.T) {
 
-	assert.Empty(t, testTx.Sig())
+	assert.Empty(t, testTx.Sigs())
 	assert.Empty(t, testTx.GasPayerSig())
 	// the specific testTx and testPrivate makes recovery == 1
 	txV, err := testSigner.SignTx(testTx, testPrivate)
 	assert.NoError(t, err)
-	assert.NotEmpty(t, txV.Sig())
+	assert.NotEmpty(t, txV.Sigs())
 
 	// reimbursed gas transaction
-	assert.Empty(t, reimbursementTx.Sig())
+	assert.Empty(t, reimbursementTx.Sigs())
 	// 	reimbursed gas transaction first times sign
 	txW, err := MakeReimbursementTxSigner().SignTx(reimbursementTx, testPrivate)
 	assert.NoError(t, err)
-	assert.NotEmpty(t, txW.Sig())
+	assert.NotEmpty(t, txW.Sigs())
 }
 
 func TestDefaultSigner_GetSender(t *testing.T) {
