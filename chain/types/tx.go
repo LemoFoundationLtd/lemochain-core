@@ -222,29 +222,6 @@ func (tx *Transaction) From() common.Address {
 	return tx.data.From
 }
 
-// func (tx *Transaction) From() (common.Address, error) {
-// 	from := tx.from.Load()
-// 	if from != nil {
-// 		return from.(common.Address), nil
-// 	}
-//
-// 	// parse type and create signer by self
-// 	// now we have one signer only
-// 	var addr common.Address
-// 	var err error
-// 	if len(tx.data.GasPayerSig) != 0 {
-// 		// reimbursement transaction
-// 		addr, err = MakeReimbursementTxSigner().GetSigner(tx)
-// 	} else {
-// 		addr, err = MakeSigner().GetSigner(tx)
-// 	}
-// 	if err != nil {
-// 		return common.Address{}, err
-// 	}
-// 	tx.from.Store(addr)
-// 	return addr, nil
-// }
-
 // GetSigner returns address of instead of pay transaction gas.
 func (tx *Transaction) GasPayer() (common.Address, error) {
 	gasPayer := tx.gasPayer.Load()
