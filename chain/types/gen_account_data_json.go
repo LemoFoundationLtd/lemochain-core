@@ -26,7 +26,7 @@ func (a AccountData) MarshalJSON() ([]byte, error) {
 		VoteFor       common.Address                  `json:"voteFor"`
 		Candidate     Candidate                       `json:"candidate"`
 		NewestRecords map[ChangeLogType]VersionRecord `json:"records" gencodec:"required"`
-		Signers       Signers
+		Signers       Signers                         `json:"signers"`
 	}
 	var enc AccountData
 	enc.Address = a.Address
@@ -39,13 +39,7 @@ func (a AccountData) MarshalJSON() ([]byte, error) {
 	enc.VoteFor = a.VoteFor
 	enc.Candidate = a.Candidate
 	enc.NewestRecords = a.NewestRecords
-
-	if a.Signers == nil {
-		enc.Signers = make(Signers, 0)
-	} else {
-		enc.Signers = a.Signers
-	}
-
+	enc.Signers = a.Signers
 	return json.Marshal(&enc)
 }
 
@@ -62,6 +56,7 @@ func (a *AccountData) UnmarshalJSON(input []byte) error {
 		VoteFor       *common.Address                 `json:"voteFor"`
 		Candidate     *Candidate                      `json:"candidate"`
 		NewestRecords map[ChangeLogType]VersionRecord `json:"records" gencodec:"required"`
+		Signers       *Signers                        `json:"signers"`
 	}
 	var dec AccountData
 	if err := json.Unmarshal(input, &dec); err != nil {
@@ -105,5 +100,8 @@ func (a *AccountData) UnmarshalJSON(input []byte) error {
 		return errors.New("missing required field 'records' for AccountData")
 	}
 	a.NewestRecords = dec.NewestRecords
+	if dec.Signers != nil {
+		a.Signers = *dec.Signers
+	}
 	return nil
 }

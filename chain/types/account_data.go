@@ -111,12 +111,25 @@ type candidateMarshaling struct {
 	Votes *hexutil.Big10
 }
 
+//go:generate gencodec -type SignAccount  --field-override signAccountMarshaling -out gen_sign_account_json.go
 type SignAccount struct {
-	Address common.Address
-	Weight  uint8
+	Address common.Address `json:"address" gencodec:"required"`
+	Weight  uint8          `json:"weight" gencodec:"required"`
 }
 
 type Signers []SignAccount
+
+func (signers Signers) String() string {
+	if len(signers) > 0 {
+		records := make([]string, 0, len(signers))
+		for index := 0; index < len(signers); index++ {
+			records = append(records, fmt.Sprintf("{Addr: %s, Weight: %d}", signers[index].Address.Hex(), signers[index].Weight))
+		}
+		return fmt.Sprintf("[%s]", strings.Join(records, ", "))
+	} else {
+		return ""
+	}
+}
 
 func (signers Signers) Set(address common.Address, weight uint8) {
 	isExist := false
@@ -303,6 +316,7 @@ func (a *AccountData) String() string {
 		}
 		set = append(set, fmt.Sprintf("NewestRecords: {%s}", strings.Join(records, ", ")))
 	}
+
 	if a.VoteFor != (common.Address{}) {
 		set = append(set, fmt.Sprintf("VoteFor: %s", a.VoteFor.String()))
 	}

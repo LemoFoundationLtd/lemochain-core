@@ -216,6 +216,7 @@ func (c *ChangeLog) Copy() *ChangeLog {
 
 var bigIntType = reflect.TypeOf(big.Int{})
 var addressType = reflect.TypeOf(common.Address{})
+var signersType = reflect.TypeOf(Signers{})
 
 func formatInterface(v interface{}) interface{} {
 	result := v
@@ -224,6 +225,9 @@ func formatInterface(v interface{}) interface{} {
 		result = (&i).Text(10)
 	} else if reflect.TypeOf(result) == addressType {
 		i := v.(common.Address)
+		result = i.String()
+	} else if reflect.TypeOf(result) == signersType {
+		i := v.(Signers)
 		result = i.String()
 	}
 	return result

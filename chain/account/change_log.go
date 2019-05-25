@@ -897,12 +897,12 @@ func undoEquityRoot(c *types.ChangeLog, processor types.ChangeLogProcessor) erro
 	return nil
 }
 
-func NewSignerLog(address common.Address, processor types.ChangeLogProcessor, oldVal []types.SignAccount, newVal []types.SignAccount) (*types.ChangeLog, error) {
+func NewSignerLog(address common.Address, processor types.ChangeLogProcessor, oldVal types.Signers, newVal types.Signers) (*types.ChangeLog, error) {
 	account := processor.GetAccount(address)
 	return &types.ChangeLog{
 		LogType: SignerLog,
 		Address: address,
-		Version: account.GetNextVersion(CodeLog),
+		Version: account.GetNextVersion(SignerLog),
 		OldVal:  oldVal,
 		NewVal:  newVal,
 	}, nil
