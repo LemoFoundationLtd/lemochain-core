@@ -35,6 +35,8 @@ var (
 	ErrTxNotSig                  = errors.New("the transaction is not signed")
 	ErrSignerAndFromUnequally    = errors.New("the signer and from of transaction are not equal")
 	ErrGasPayer                  = errors.New("the gasPayer error")
+	ErrNilGasPayerSigs           = errors.New("gasPayerSigs is nul")
+	ErrGasPayerSigs              = errors.New("gasPayerSigs error")
 )
 
 type TxProcessor struct {
@@ -172,58 +174,105 @@ func (p *TxProcessor) buyAndPayIntrinsicGas(gp *types.GasPool, tx *types.Transac
 	return restGas, nil
 }
 
+// checkSignersBySender 比较得到的签名者是否为预期的签名者
+func (p *TxProcessor) checkSignersBySender(sender common.Address, signers []common.Address) error {
+	length := len(signers)
+	switch {
+	case length == 1: // 非多签账户
+		signer := signers[0]
+		// 判断签名者是否为from
+		if signer != sender {
+			log.Errorf("The signer and from of transaction are not equal. Siger: %s. From: %s", signer.String(), sender.String())
+			return ErrSignerAndFromUnequally
+		}
+		return nil
+
+	case length > 1: // 多签账户
+		fromAcc := p.am.GetAccount(sender)
+		// Todo 通过地址返回多重签名账户的签名者列表以及权重
+		// Todo 获取到之后与signers比较，并计算权重总和
+		return nil
+
+	default: // 交易未被签名
+		return ErrTxNotSig
+	}
+}
+
+// verifyTransactionSigs 验证交易签名
 func (p *TxProcessor) verifyTransactionSigs(tx *types.Transaction) error {
 	from := tx.From()
-	// 非代付交易
-	if len(tx.GasPayerSigs()) == 0 {
+	gasPayerSigsLength := len(tx.GasPayerSigs())
+	switch {
+	case gasPayerSigsLength == 0: // 非代付交易
 		// 判断gasPayer字段是否为默认的from
 		if tx.GasPayer() != from {
 			log.Errorf("The default transaction gasPayer must equal the from. gasPayer: %s. from: %s", tx.GasPayer().String(), from.String())
 			return ErrGasPayer
 		}
-
 		// 验证签名并返回签名者列表
 		signers, err := types.MakeSigner().GetSigners(tx)
 		if err != nil {
 			log.Errorf("Verification signature error")
 			return err
 		}
-
-		if len(signers) > 1 { // 多重签名交易
-			fromAcc := p.am.GetAccount(from)
-			// Todo 通过地址返回多重签名账户的签名者列表以及权重
-			// Todo 获取到之后与signers比较，并计算权重总和
-			return nil
-		} else if len(signers) == 1 { // 普通转账交易
-			signer := signers[0]
-			// 判断签名者是否为from
-			if signer != from {
-				log.Errorf("The signer and from of transaction are not equal. Siger: %s. From: %s", signer.String(), from.String())
-				return ErrSignerAndFromUnequally
-			}
-			return nil
-		} else { // 没有签名数据
-			log.Errorf("The transaction is not signed. Transaction hash: %s", tx.Hash().String())
-			return ErrTxNotSig
+		// 验证签名账户
+		err = p.checkSignersBySender(from, signers)
+		if err != nil {
+			return err
 		}
 
-	} else { // 代付交易
+	case gasPayerSigsLength >= 1: // 代付交易
+		// 验证gasPayer签名
+		gasPayerSigners, err := types.MakeGasPayerSigner().GetSigners(tx)
+		if err != nil {
+			log.Errorf("Verification signature error")
+			return err
+		}
+		if len(gasPayerSigners) == 0 {
+			return ErrGasPayerSigs
+		}
+		// 验证签名账户
+		gasPayer := tx.GasPayer()
+		err = p.checkSignersBySender(gasPayer, gasPayerSigners)
+		if err != nil {
+			return err
+		}
 
+		// 验证from签名
+		signers, err := types.MakeReimbursementTxSigner().GetSigners(tx)
+		if err != nil {
+			log.Errorf("Verification signature error")
+			return err
+		}
+		// 验证签名账户
+		err = p.checkSignersBySender(from, signers)
+		if err != nil {
+			return err
+		}
+	default:
+		log.Errorf("Gas payer sigs is null")
+		return ErrNilGasPayerSigs
 	}
-
+	return nil
 }
 
 // applyTx processes transaction. Change accounts' data and execute contract codes.
 func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types.Transaction, txIndex uint, blockHash common.Hash) (uint64, error) {
-	senderAddr := tx.From()
+	// 验证交易的签名
+	err := p.verifyTransactionSigs(tx)
+	if err != nil {
+		return 0, err
+	}
+
 	var (
+		senderAddr           = tx.From()
 		sender               = p.am.GetAccount(senderAddr)
 		initialSenderBalance = sender.GetBalance()
 		restGas              = tx.GasLimit()
 		vmErr, execErr       error
 	)
 
-	restGas, err := p.buyAndPayIntrinsicGas(gp, tx, restGas)
+	restGas, err = p.buyAndPayIntrinsicGas(gp, tx, restGas)
 	if err != nil {
 		return 0, err
 	}
