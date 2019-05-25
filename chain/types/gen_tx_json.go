@@ -20,6 +20,7 @@ func (t txdata) MarshalJSON() ([]byte, error) {
 		Version       hexutil.Uint8   `json:"version" gencodec:"required"`
 		ChainID       hexutil.Uint16  `json:"chainID" gencodec:"required"`
 		From          common.Address  `json:"from" gencodec:"required"`
+		GasPayer      *common.Address `json:"gasPayer" rlp:"nil"`
 		Recipient     *common.Address `json:"to" rlp:"nil"`
 		RecipientName string          `json:"toName"`
 		GasPrice      *hexutil.Big10  `json:"gasPrice" gencodec:"required"`
@@ -30,13 +31,14 @@ func (t txdata) MarshalJSON() ([]byte, error) {
 		Message       string          `json:"message"`
 		Sigs          []hexutil.Bytes `json:"sigs" gencodec:"required"`
 		Hash          *common.Hash    `json:"hash" rlp:"-"`
-		GasPayerSig   hexutil.Bytes   `json:"gasPayerSig"`
+		GasPayerSigs  []hexutil.Bytes `json:"gasPayerSigs"`
 	}
 	var enc txdata
 	enc.Type = hexutil.Uint16(t.Type)
 	enc.Version = hexutil.Uint8(t.Version)
 	enc.ChainID = hexutil.Uint16(t.ChainID)
 	enc.From = t.From
+	enc.GasPayer = t.GasPayer
 	enc.Recipient = t.Recipient
 	enc.RecipientName = t.RecipientName
 	enc.GasPrice = (*hexutil.Big10)(t.GasPrice)
@@ -52,7 +54,12 @@ func (t txdata) MarshalJSON() ([]byte, error) {
 		}
 	}
 	enc.Hash = t.Hash
-	enc.GasPayerSig = t.GasPayerSig
+	if t.GasPayerSigs != nil {
+		enc.GasPayerSigs = make([]hexutil.Bytes, len(t.GasPayerSigs))
+		for k, v := range t.GasPayerSigs {
+			enc.GasPayerSigs[k] = v
+		}
+	}
 	return json.Marshal(&enc)
 }
 
@@ -63,6 +70,7 @@ func (t *txdata) UnmarshalJSON(input []byte) error {
 		Version       *hexutil.Uint8  `json:"version" gencodec:"required"`
 		ChainID       *hexutil.Uint16 `json:"chainID" gencodec:"required"`
 		From          *common.Address `json:"from" gencodec:"required"`
+		GasPayer      *common.Address `json:"gasPayer" rlp:"nil"`
 		Recipient     *common.Address `json:"to" rlp:"nil"`
 		RecipientName *string         `json:"toName"`
 		GasPrice      *hexutil.Big10  `json:"gasPrice" gencodec:"required"`
@@ -73,7 +81,7 @@ func (t *txdata) UnmarshalJSON(input []byte) error {
 		Message       *string         `json:"message"`
 		Sigs          []hexutil.Bytes `json:"sigs" gencodec:"required"`
 		Hash          *common.Hash    `json:"hash" rlp:"-"`
-		GasPayerSig   *hexutil.Bytes  `json:"gasPayerSig"`
+		GasPayerSigs  []hexutil.Bytes `json:"gasPayerSigs"`
 	}
 	var dec txdata
 	if err := json.Unmarshal(input, &dec); err != nil {
@@ -95,6 +103,9 @@ func (t *txdata) UnmarshalJSON(input []byte) error {
 		return errors.New("missing required field 'from' for txdata")
 	}
 	t.From = *dec.From
+	if dec.GasPayer != nil {
+		t.GasPayer = dec.GasPayer
+	}
 	if dec.Recipient != nil {
 		t.Recipient = dec.Recipient
 	}
@@ -133,8 +144,11 @@ func (t *txdata) UnmarshalJSON(input []byte) error {
 	if dec.Hash != nil {
 		t.Hash = dec.Hash
 	}
-	if dec.GasPayerSig != nil {
-		t.GasPayerSig = *dec.GasPayerSig
+	if dec.GasPayerSigs != nil {
+		t.GasPayerSigs = make([][]byte, len(dec.GasPayerSigs))
+		for k, v := range dec.GasPayerSigs {
+			t.GasPayerSigs[k] = v
+		}
 	}
 	return nil
 }

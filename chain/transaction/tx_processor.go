@@ -32,6 +32,9 @@ var (
 	ErrInvalidHost               = errors.New("the length of host field in transaction is out of max length limit")
 	ErrInvalidAddress            = errors.New("invalid address")
 	ErrInvalidNodeId             = errors.New("invalid nodeId")
+	ErrTxNotSig                  = errors.New("the transaction is not signed")
+	ErrSignerAndFromUnequally    = errors.New("the signer and from of transaction are not equal")
+	ErrGasPayer                  = errors.New("the gasPayer error")
 )
 
 type TxProcessor struct {
@@ -169,12 +172,50 @@ func (p *TxProcessor) buyAndPayIntrinsicGas(gp *types.GasPool, tx *types.Transac
 	return restGas, nil
 }
 
+func (p *TxProcessor) verifyTransactionSigs(tx *types.Transaction) error {
+	from := tx.From()
+	// 非代付交易
+	if len(tx.GasPayerSigs()) == 0 {
+		// 判断gasPayer字段是否为默认的from
+		if tx.GasPayer() != from {
+			log.Errorf("The default transaction gasPayer must equal the from. gasPayer: %s. from: %s", tx.GasPayer().String(), from.String())
+			return ErrGasPayer
+		}
+
+		// 验证签名并返回签名者列表
+		signers, err := types.MakeSigner().GetSigners(tx)
+		if err != nil {
+			log.Errorf("Verification signature error")
+			return err
+		}
+
+		if len(signers) > 1 { // 多重签名交易
+			fromAcc := p.am.GetAccount(from)
+			// Todo 通过地址返回多重签名账户的签名者列表以及权重
+			// Todo 获取到之后与signers比较，并计算权重总和
+			return nil
+		} else if len(signers) == 1 { // 普通转账交易
+			signer := signers[0]
+			// 判断签名者是否为from
+			if signer != from {
+				log.Errorf("The signer and from of transaction are not equal. Siger: %s. From: %s", signer.String(), from.String())
+				return ErrSignerAndFromUnequally
+			}
+			return nil
+		} else { // 没有签名数据
+			log.Errorf("The transaction is not signed. Transaction hash: %s", tx.Hash().String())
+			return ErrTxNotSig
+		}
+
+	} else { // 代付交易
+
+	}
+
+}
+
 // applyTx processes transaction. Change accounts' data and execute contract codes.
 func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types.Transaction, txIndex uint, blockHash common.Hash) (uint64, error) {
-	senderAddr, err := tx.From()
-	if err != nil {
-		return 0, err
-	}
+	senderAddr := tx.From()
 	var (
 		sender               = p.am.GetAccount(senderAddr)
 		initialSenderBalance = sender.GetBalance()
@@ -182,7 +223,7 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 		vmErr, execErr       error
 	)
 
-	restGas, err = p.buyAndPayIntrinsicGas(gp, tx, restGas)
+	restGas, err := p.buyAndPayIntrinsicGas(gp, tx, restGas)
 	if err != nil {
 		return 0, err
 	}
@@ -274,10 +315,7 @@ func mergeBalanceLogs(logs types.ChangeLogSlice) types.ChangeLogSlice {
 
 // handleTx 执行交易,返回消耗之后剩余的gas、evm中执行的error和交易执行不成功的error
 func (p *TxProcessor) handleTx(tx *types.Transaction, header *types.Header, txIndex uint, blockHash common.Hash, initialSenderBalance *big.Int, restGas uint64) (gas uint64, vmErr, err error) {
-	senderAddr, err := tx.From()
-	if err != nil {
-		return 0, nil, err
-	}
+	senderAddr := tx.From()
 	var (
 		recipientAddr common.Address
 		sender        = p.am.GetAccount(senderAddr)
@@ -355,18 +393,16 @@ func (p *TxProcessor) changeCandidateVotes(accountAddress common.Address, change
 }
 
 func (p *TxProcessor) buyGas(gp *types.GasPool, tx *types.Transaction) error {
-	payerAddr, err := tx.GasPayer()
+	payerAddr := tx.GasPayer()
 	log.Infof("Tx's gas payer address: %s", payerAddr.String())
-	if err != nil {
-		return err
-	}
+
 	payer := p.am.GetAccount(payerAddr)
 
 	maxFee := new(big.Int).Mul(new(big.Int).SetUint64(tx.GasLimit()), tx.GasPrice())
 	if payer.GetBalance().Cmp(maxFee) < 0 {
 		return ErrInsufficientBalanceForGas
 	}
-	if err = gp.SubGas(tx.GasLimit()); err != nil {
+	if err := gp.SubGas(tx.GasLimit()); err != nil {
 		return err
 	}
 	payer.SetBalance(new(big.Int).Sub(payer.GetBalance(), maxFee))
@@ -419,7 +455,7 @@ func IntrinsicGas(data []byte, contractCreation bool) (uint64, error) {
 
 func (p *TxProcessor) refundGas(gp *types.GasPool, tx *types.Transaction, restGas uint64) {
 	// ignore the error because it is checked in buyGas
-	payerAddr, _ := tx.GasPayer()
+	payerAddr := tx.GasPayer()
 	payer := p.am.GetAccount(payerAddr)
 
 	// Return LEMO for remaining gas, exchanged at the original rate.
@@ -471,7 +507,7 @@ func (p *TxProcessor) PreExecutionTransaction(ctx context.Context, header *types
 		return nil, 0, err
 	}
 
-	tx, err := newTx(to, txType, data, p.ChainID)
+	tx, err := newTx(caller, to, txType, data, p.ChainID)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -543,7 +579,7 @@ func (p *TxProcessor) PreExecutionTransaction(ctx context.Context, header *types
 }
 
 // newTx return created transaction
-func newTx(to *common.Address, txType uint16, data []byte, chainID uint16) (*types.Transaction, error) {
+func newTx(from common.Address, to *common.Address, txType uint16, data []byte, chainID uint16) (*types.Transaction, error) {
 	// enough gasLimit
 	gasLimit := uint64(math.MaxUint64 / 2)
 	gasPrice := new(big.Int).SetUint64(defaultGasPrice)
@@ -552,24 +588,24 @@ func newTx(to *common.Address, txType uint16, data []byte, chainID uint16) (*typ
 	switch txType {
 	case params.OrdinaryTx:
 		if to == nil { // avoid null pointer references
-			tx = types.NewContractCreation(big.NewInt(0), gasLimit, gasPrice, data, params.OrdinaryTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
+			tx = types.NewContractCreation(from, big.NewInt(0), gasLimit, gasPrice, data, params.OrdinaryTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
 		} else {
-			tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, params.OrdinaryTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
+			tx = types.NewTransaction(from, *to, big.NewInt(0), gasLimit, gasPrice, data, params.OrdinaryTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
 		}
 	case params.VoteTx:
-		tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, params.VoteTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
+		tx = types.NewTransaction(from, *to, big.NewInt(0), gasLimit, gasPrice, data, params.VoteTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
 	case params.RegisterTx:
-		tx = types.NewContractCreation(big.NewInt(0), gasLimit, gasPrice, data, params.RegisterTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
+		tx = types.NewContractCreation(from, big.NewInt(0), gasLimit, gasPrice, data, params.RegisterTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
 	case params.CreateAssetTx:
-		tx = types.NoReceiverTransaction(big.NewInt(0), gasLimit, gasPrice, data, params.CreateAssetTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
+		tx = types.NoReceiverTransaction(from, big.NewInt(0), gasLimit, gasPrice, data, params.CreateAssetTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
 	case params.IssueAssetTx:
-		tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, params.IssueAssetTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
+		tx = types.NewTransaction(from, *to, big.NewInt(0), gasLimit, gasPrice, data, params.IssueAssetTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
 	case params.ReplenishAssetTx:
-		tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, params.ReplenishAssetTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
+		tx = types.NewTransaction(from, *to, big.NewInt(0), gasLimit, gasPrice, data, params.ReplenishAssetTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
 	case params.ModifyAssetTx:
-		tx = types.NoReceiverTransaction(big.NewInt(0), gasLimit, gasPrice, data, params.ModifyAssetTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
+		tx = types.NoReceiverTransaction(from, big.NewInt(0), gasLimit, gasPrice, data, params.ModifyAssetTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
 	case params.TransferAssetTx:
-		tx = types.NewTransaction(*to, big.NewInt(0), gasLimit, gasPrice, data, params.TransferAssetTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
+		tx = types.NewTransaction(from, *to, big.NewInt(0), gasLimit, gasPrice, data, params.TransferAssetTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
 	default:
 		err := errors.New("tx type error")
 		return nil, err

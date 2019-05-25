@@ -174,7 +174,7 @@ func TestReimbursement_transaction(t *testing.T) {
 		Tx02               = makeTx(godPrivate, senderAddr, params.OrdinaryTx, params.RegisterCandidateNodeFees)   // 转账1000LEMO给senderAddr
 
 		amountReceiver = common.HexToAddress("0x1234")
-		TxV01          = types.NewReimbursementTransaction(amountReceiver, gasPayerAddr, params.RegisterCandidateNodeFees, []byte{}, params.OrdinaryTx, chainID, uint64(time.Now().Unix()+300), "", "")
+		TxV01          = types.NewReimbursementTransaction(senderAddr, amountReceiver, gasPayerAddr, params.RegisterCandidateNodeFees, []byte{}, params.OrdinaryTx, chainID, uint64(time.Now().Unix()+300), "", "")
 	)
 	ClearData()
 	db, genesisHash := newCoverGenesisDB()
@@ -265,7 +265,7 @@ func Test_setRewardTx(t *testing.T) {
 	data := setRewardTxData(0, new(big.Int).Div(params.TermRewardPoolTotal, common.Big2))
 	// private, err := crypto.HexToECDSA("c21b6b2fbf230f665b936194d14da67187732bf9d28768aef1a3cbb26608f8aa")
 	// assert.NoError(t, err)
-	TxV01 := types.NewReimbursementTransaction(params.TermRewardContract, godAddr, nil, data, params.OrdinaryTx, chainID, uint64(time.Now().Unix()+300), "", "")
+	TxV01 := types.NewReimbursementTransaction(godAddr, params.TermRewardContract, godAddr, nil, data, params.OrdinaryTx, chainID, uint64(time.Now().Unix()+300), "", "")
 	firstSignTxV, err := types.MakeReimbursementTxSigner().SignTx(TxV01, godPrivate)
 	assert.NoError(t, err)
 	firstSignTxV = types.GasPayerSignatureTx(firstSignTxV, common.Big1, uint64(60000))
