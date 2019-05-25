@@ -375,6 +375,28 @@ func getTestLogs(t *testing.T) []testLogConfig {
 		decoded:    "AssetCodeTotalSupplyLog{Account: Lemo888888888888888888888888888888888ABF, Version: 1, NewVal: 10, Extra: [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 51]}",
 	})
 
+	account = processor.createAccount(SignerLog, 0)
+
+	signers := make(types.Signers, 0)
+	signers = append(signers, types.SignAccount{
+		Address: common.HexToAddress("0x01"),
+		Weight:  99,
+	})
+	log, _ = NewSignerLog(account.GetAddress(), processor, nil, signers)
+
+	enc, _ := rlp.EncodeToBytes(log)
+	decodeResult := new(types.ChangeLog)
+	rlp.DecodeBytes(enc, decodeResult) // 不知道怎么为NewSignerLog赋nil
+
+	tests = append(tests, testLogConfig{
+		input:      decodeResult,
+		isValuable: true,
+		str:        "SignerLog{Account: Lemo888888888888888888888888888888888AQB, Version: 1, NewVal: [{Addr: 0x0000000000000000000000000000000000000001, Weight: 99}]}",
+		hash:       "0xc9773be0b6d8eda739a5593ba9280d23e6c48763ee79ec7226cdeb3d4bd1ce08",
+		rlp:        "0xf01394000000000000000000000000000000000000001701d7d694000000000000000000000000000000000000000163c0",
+		decoded:    "SignerLog{Account: Lemo888888888888888888888888888888888AQB, Version: 1, NewVal: [{Addr: 0x0000000000000000000000000000000000000001, Weight: 99}]}",
+	})
+
 	return tests
 }
 
@@ -469,6 +491,14 @@ func TestChangeLog_Undo(t *testing.T) {
 	account9 := processor.createAccount(VoteForLog, 1)
 	account10 := processor.createAccount(VotesLog, 1)
 	account11 := processor.createAccount(VotesLog, 1)
+
+	signers := make(types.Signers, 0)
+	signers = append(signers, types.SignAccount{
+		Address: common.HexToAddress("0x01"),
+		Weight:  99,
+	})
+	signerLog, _ := NewSignerLog(account.GetAddress(), processor, make(types.Signers, 0), signers)
+
 	tests := []struct {
 		input      *types.ChangeLog
 		undoErr    error
@@ -635,6 +665,22 @@ func TestChangeLog_Undo(t *testing.T) {
 				assert.Equal(t, new(big.Int).SetInt64(1), result)
 			},
 		},
+		// 19 AssetCodeTotalSupplyLog
+		{
+			input: assetCodeTotalSupplyLog,
+			afterCheck: func(accessor types.AccountAccessor) {
+				result, _ := accessor.GetAssetCodeTotalSupply(common.HexToHash("0x33"))
+				assert.Equal(t, new(big.Int).SetInt64(1), result)
+			},
+		},
+		// 20 signerLog
+		{
+			input: signerLog,
+			afterCheck: func(accessor types.AccountAccessor) {
+				result := accessor.GetSigners()
+				assert.Equal(t, 0, len(result))
+			},
+		},
 	}
 
 	for i, test := range tests {
@@ -686,6 +732,14 @@ func TestChangeLog_Redo(t *testing.T) {
 	account10 := processor.createAccount(VoteForLog, 1)
 	account12 := processor.createAccount(VotesLog, 1)
 	account13 := processor.createAccount(VotesLog, 1)
+
+	signers := make(types.Signers, 0)
+	signers = append(signers, types.SignAccount{
+		Address: common.HexToAddress("0x01"),
+		Weight:  99,
+	})
+	signerLog, _ := NewSignerLog(account.GetAddress(), processor, make(types.Signers, 0), signers)
+
 	tests := []struct {
 		input      *types.ChangeLog
 		redoErr    error
@@ -861,6 +915,15 @@ func TestChangeLog_Redo(t *testing.T) {
 			afterCheck: func(accessor types.AccountAccessor) {
 				result, _ := accessor.GetAssetCodeTotalSupply(common.HexToHash("0x33"))
 				assert.Equal(t, new(big.Int).SetInt64(500), result)
+			},
+		},
+		// 20 signer log
+		{
+			input: signerLog,
+			afterCheck: func(accessor types.AccountAccessor) {
+				result := accessor.GetSigners()
+				assert.Equal(t, 1, len(result))
+				assert.Equal(t, signers[0], result[0])
 			},
 		},
 	}

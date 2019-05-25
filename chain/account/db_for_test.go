@@ -104,7 +104,7 @@ func newDB() protocol.ChainDB {
 			saveAccount(db)
 		}
 		if i <= 1 {
-			if err := db.SetStableBlock(defaultBlockInfos[i].hash); err != nil {
+			if _, err := db.SetStableBlock(defaultBlockInfos[i].hash); err != nil {
 				panic(err)
 			}
 		}
