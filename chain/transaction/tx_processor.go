@@ -176,9 +176,10 @@ func (p *TxProcessor) buyAndPayIntrinsicGas(gp *types.GasPool, tx *types.Transac
 
 // checkSignersBySender 比较得到的签名者是否为预期的签名者
 func (p *TxProcessor) checkSignersBySender(sender common.Address, signers []common.Address) error {
-	length := len(signers)
+	accSigners := p.am.GetAccount(sender).GetSigners() // 账户的签名者列表
+	length := len(accSigners)
 	switch {
-	case length == 1: // 非多签账户
+	case length == 0: // 非多签账户
 		signer := signers[0]
 		// 判断签名者是否为from
 		if signer != sender {
@@ -187,7 +188,7 @@ func (p *TxProcessor) checkSignersBySender(sender common.Address, signers []comm
 		}
 		return nil
 
-	case length > 1: // 多签账户
+	case length > 0: // 多签账户
 		fromAcc := p.am.GetAccount(sender)
 		// Todo 通过地址返回多重签名账户的签名者列表以及权重
 		// Todo 获取到之后与signers比较，并计算权重总和
