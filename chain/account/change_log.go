@@ -909,9 +909,9 @@ func NewSignerLog(address common.Address, processor types.ChangeLogProcessor, ol
 }
 
 func redoSigner(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
-	newVal, ok := c.NewVal.([]types.SignAccount)
+	newVal, ok := c.NewVal.(types.Signers)
 	if !ok {
-		log.Errorf("redoSigner expected NewVal []types.SignAccount, got %T", c.OldVal)
+		log.Errorf("redoSigner expected NewVal types.Signers, got %T", c.OldVal)
 		return types.ErrWrongChangeLogData
 	}
 
@@ -921,9 +921,9 @@ func redoSigner(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
 }
 
 func undoSigner(c *types.ChangeLog, processor types.ChangeLogProcessor) error {
-	oldVal, ok := c.OldVal.([]types.SignAccount)
+	oldVal, ok := c.OldVal.(types.Signers)
 	if !ok {
-		log.Errorf("undoSigner expected OldVal []types.SignAccount, got %T", c.OldVal)
+		log.Errorf("undoSigner expected OldVal types.Signers, got %T", c.OldVal)
 		return types.ErrWrongChangeLogData
 	}
 

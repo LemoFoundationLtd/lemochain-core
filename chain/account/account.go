@@ -187,12 +187,23 @@ type Account struct {
 }
 
 func (a *Account) SetSingers(signers types.Signers) error {
-	a.data.Signers = signers
+	if len(signers) <= 0 {
+		a.data.Signers = make(types.Signers, 0)
+	} else {
+		a.data.Signers = make(types.Signers, 0, len(signers))
+		a.data.Signers = append(a.data.Signers, signers...)
+	}
+
 	return nil
 }
 
 func (a *Account) GetSigners() types.Signers {
-	return a.data.Signers
+	if len(a.data.Signers) <= 0 {
+		return make(types.Signers, 0)
+	} else {
+		result := make(types.Signers, 0, len(a.data.Signers))
+		return append(result, a.data.Signers...)
+	}
 }
 
 func (a *Account) PushEvent(event *types.Event) {
@@ -229,7 +240,7 @@ func NewAccount(db protocol.ChainDB, address common.Address, data *types.Account
 	}
 
 	if data.Signers == nil {
-		data.Signers = make([]types.SignAccount, 0)
+		data.Signers = make(types.Signers, 0)
 	}
 
 	if data.Candidate.Profile == nil {

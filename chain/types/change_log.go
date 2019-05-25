@@ -238,6 +238,7 @@ func (c *ChangeLog) String() string {
 		fmt.Sprintf("Account: %s", c.Address.String()),
 		fmt.Sprintf("Version: %d", c.Version),
 	}
+
 	if c.OldVal != nil {
 		set = append(set, fmt.Sprintf("OldVal: %v", formatInterface(c.OldVal)))
 	}

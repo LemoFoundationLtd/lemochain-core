@@ -111,7 +111,7 @@ type candidateMarshaling struct {
 	Votes *hexutil.Big10
 }
 
-//go:generate gencodec -type SignAccount  --field-override signAccountMarshaling -out gen_sign_account_json.go
+//go:generate gencodec -type SignAccount   -out gen_sign_account_json.go
 type SignAccount struct {
 	Address common.Address `json:"address" gencodec:"required"`
 	Weight  uint8          `json:"weight" gencodec:"required"`
@@ -127,7 +127,7 @@ func (signers Signers) String() string {
 		}
 		return fmt.Sprintf("[%s]", strings.Join(records, ", "))
 	} else {
-		return ""
+		return "[]"
 	}
 }
 

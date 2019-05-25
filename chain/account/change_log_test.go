@@ -383,13 +383,18 @@ func getTestLogs(t *testing.T) []testLogConfig {
 		Weight:  99,
 	})
 	log, _ = NewSignerLog(account.GetAddress(), processor, nil, signers)
+
+	enc, _ := rlp.EncodeToBytes(log)
+	decodeResult := new(types.ChangeLog)
+	rlp.DecodeBytes(enc, decodeResult) // 不知道怎么为NewSignerLog赋nil
+
 	tests = append(tests, testLogConfig{
-		input:      log,
+		input:      decodeResult,
 		isValuable: true,
-		str:        "SignerLog{Account: Lemo888888888888888888888888888888888AQB, Version: 1, OldVal: , NewVal: [{Addr: 0x0000000000000000000000000000000000000001, Weight: 99}]}",
+		str:        "SignerLog{Account: Lemo888888888888888888888888888888888AQB, Version: 1, NewVal: [{Addr: 0x0000000000000000000000000000000000000001, Weight: 99}]}",
 		hash:       "0xc9773be0b6d8eda739a5593ba9280d23e6c48763ee79ec7226cdeb3d4bd1ce08",
 		rlp:        "0xf01394000000000000000000000000000000000000001701d7d694000000000000000000000000000000000000000163c0",
-		decoded:    "SignerLog{Account: Lemo888888888888888888888888888888888AQB, Version: 1, OldVal: , NewVal: [{Addr: 0x0000000000000000000000000000000000000001, Weight: 99}]}",
+		decoded:    "SignerLog{Account: Lemo888888888888888888888888888888888AQB, Version: 1, NewVal: [{Addr: 0x0000000000000000000000000000000000000001, Weight: 99}]}",
 	})
 
 	return tests
