@@ -20,6 +20,17 @@ build/_vendor/pkg
 /build/_workspace/
 /build/bin/
 
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+# Test binary, build with `go test -c`
+*.test
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
 # travis
 profile.tmp
 profile.cov
@@ -30,6 +41,4 @@ profile.cov
 # VS Code
 .vscode
 
-**/yarn-error.log
-log.json
 /testdata

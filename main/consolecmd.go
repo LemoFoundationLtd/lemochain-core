@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/main/console"
 	"github.com/LemoFoundationLtd/lemochain-core/network/rpc"
@@ -31,9 +33,66 @@ The Glemo console is an interactive shell for the JavaScript runtime environment
 which exposes a node admin interface as well as the Dapp JavaScript API.
 This command allows to open a console on a running glemo node.`,
 	}
+
+	createaccountCommand = cli.Command{
+		Action:    createAccount,
+		Name:      "createaccount",
+		Usage:     "createaccount",
+		ArgsUsage: "[endpoint]",
+		Flags:     createaccountFlags,
+		Category:  "BLOCKCHAIN COMMANDS",
+		Description: `
+Create an account when we execute "./glemo createaccount".`,
+	}
+
+	createanodekeyCommand = cli.Command{
+		Action:    createNodekey,
+		Name:      "createnodekey",
+		Usage:     "createnodekey",
+		ArgsUsage: "[endpoint]",
+		Flags:     createnodekeyFlags,
+		Category:  "BLOCKCHAIN COMMANDS",
+		Description: `
+Create nodekey and nodeID when we execute "./glemo createnodekey".`,
+	}
 )
 
+// createAccount
+func createAccount(ctx *cli.Context) error {
+	acc, err := crypto.GenerateAddress()
+	if err == nil {
+		fmt.Println("Please keep your account safe! \nPlease apply again if the private key is divulged!\n ")
+		fmt.Printf("Private:\n%s\n", acc.Private)
+		fmt.Printf("LemoAddress:\n%s", acc.Address.String())
+		fmt.Println("\n")
+		return nil
+	} else {
+		fmt.Println("Create account error:", err.Error())
+		fmt.Println("Suggest to retry!!!")
+		return nil
+	}
+}
+
+// createNodekey create nodekey and nodeID
+func createNodekey(ctx *cli.Context) error {
+	acc, err := crypto.GenerateAddress()
+	if err == nil {
+		nodekey := acc.Private[2:]
+		nodeID := acc.Public[2:]
+		fmt.Println("Please save the generated nodekey and nodeID !!!")
+		fmt.Printf("nodekey:\n%s\n", nodekey)
+		fmt.Printf("nodeID:\n%s\n", nodeID)
+		fmt.Println("\n")
+		return nil
+	} else {
+		fmt.Println("Create nodekey error:", err.Error())
+		fmt.Println("Suggest to retry!!!")
+		return nil
+	}
+}
+
 func localConsole(ctx *cli.Context) error {
+
 	n := makeFullNode(ctx)
 	startNode(ctx, n)
 	defer n.Stop()

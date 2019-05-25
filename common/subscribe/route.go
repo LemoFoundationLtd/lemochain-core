@@ -15,6 +15,7 @@ const (
 	NewStableBlock = "newStableBlock"
 	NewTx          = "newTx"
 	NewConfirm     = "newConfirm"
+	FetchConfirms  = "fetchConfirm"
 )
 
 var (

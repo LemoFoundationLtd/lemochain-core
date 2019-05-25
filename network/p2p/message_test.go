@@ -1,7 +1,7 @@
 package p2p
 
 import (
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/LemoFoundationLtd/lemochain-core/common/rlp"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )

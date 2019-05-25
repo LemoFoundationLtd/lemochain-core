@@ -14,6 +14,14 @@ type testAccount struct {
 	AccountData
 }
 
+func (f *testAccount) SetSingers(signers Signers) error {
+	panic("implement me")
+}
+
+func (f *testAccount) GetSigners() Signers {
+	panic("implement me")
+}
+
 func (f *testAccount) GetCandidate() Profile {
 	panic("implement me")
 }
@@ -125,6 +133,7 @@ func (f *testAccount) SetCandidateProfile(profile Profile) {
 func (f *testAccount) GetAddress() common.Address  { return f.AccountData.Address }
 func (f *testAccount) GetBalance() *big.Int        { return f.AccountData.Balance }
 func (f *testAccount) SetBalance(balance *big.Int) { f.AccountData.Balance = balance }
+
 // GetBaseVersion returns the version of specific change log from the base block. It is not changed by tx processing until the finalised
 func (f *testAccount) GetBaseVersion(logType ChangeLogType) uint32 {
 	return f.AccountData.NewestRecords[logType].Version

@@ -57,6 +57,7 @@ func (a *PrivateAccountAPI) NewKeyPair() (*LemoAccount, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	acc := &LemoAccount{
 		Private: accountKey.Private,
 		Address: accountKey.Address,
