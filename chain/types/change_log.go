@@ -239,13 +239,13 @@ func (c *ChangeLog) String() string {
 		fmt.Sprintf("Version: %d", c.Version),
 	}
 
-	if c.OldVal != nil {
+	if !common.IsNil(c.OldVal) {
 		set = append(set, fmt.Sprintf("OldVal: %v", formatInterface(c.OldVal)))
 	}
-	if c.NewVal != nil {
+	if !common.IsNil(c.NewVal) {
 		set = append(set, fmt.Sprintf("NewVal: %v", formatInterface(c.NewVal)))
 	}
-	if c.Extra != nil {
+	if !common.IsNil(c.Extra) {
 		set = append(set, fmt.Sprintf("Extra: %v", formatInterface(c.Extra)))
 	}
 

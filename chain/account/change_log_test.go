@@ -1,6 +1,7 @@
 package account
 
 import (
+	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
@@ -384,12 +385,13 @@ func getTestLogs(t *testing.T) []testLogConfig {
 	})
 	log, _ = NewSignerLog(account.GetAddress(), processor, nil, signers)
 
-	enc, _ := rlp.EncodeToBytes(log)
-	decodeResult := new(types.ChangeLog)
-	rlp.DecodeBytes(enc, decodeResult) // 不知道怎么为NewSignerLog赋nil
+	// enc, _ := rlp.EncodeToBytes(log)
+	// decodeResult := new(types.ChangeLog)
+	// rlp.DecodeBytes(enc, decodeResult) // 不知道怎么为NewSignerLog赋nil
 
 	tests = append(tests, testLogConfig{
-		input:      decodeResult,
+		// input:      decodeResult,
+		input:      log,
 		isValuable: true,
 		str:        "SignerLog{Account: Lemo888888888888888888888888888888888AQB, Version: 1, NewVal: [{Addr: 0x0000000000000000000000000000000000000001, Weight: 99}]}",
 		hash:       "0xc9773be0b6d8eda739a5593ba9280d23e6c48763ee79ec7226cdeb3d4bd1ce08",
@@ -432,6 +434,30 @@ func TestChangeLog_EncodeRLP_DecodeRLP(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestNil(t *testing.T) {
+	decodeResult := new(types.ChangeLog)
+	if decodeResult.OldVal == nil {
+		fmt.Println("SUCCESS")
+	} else {
+		fmt.Println("FAIL")
+	}
+
+	var b types.Signers = nil
+	decodeResult.OldVal = b
+	if decodeResult.OldVal == nil {
+		fmt.Println("SUCCESS")
+	} else {
+		fmt.Println("FAIL")
+	}
+
+	// if decodeResult.OldVal == b {
+	// 	fmt.Println("SUCCESS")
+	// }else{
+	// 	fmt.Println("FAIL")
+	// }
+	// assert.Equal(t, decodeResult.OldVal, nil)
 }
 
 func TestIsValuable(t *testing.T) {
