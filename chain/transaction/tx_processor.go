@@ -23,6 +23,7 @@ const (
 	defaultGasPrice      = 1e9
 	MaxDeputyHostLength  = 128
 	StandardNodeIdLength = 128
+	SignersWeight        = 100
 )
 
 var (
@@ -33,6 +34,7 @@ var (
 	ErrInvalidAddress            = errors.New("invalid address")
 	ErrInvalidNodeId             = errors.New("invalid nodeId")
 	ErrTxNotSig                  = errors.New("the transaction is not signed")
+	ErrTotalWeight               = errors.New("insufficient total weight of signatories")
 	ErrSignerAndFromUnequally    = errors.New("the signer and from of transaction are not equal")
 	ErrGasPayer                  = errors.New("the gasPayer error")
 	ErrNilGasPayerSigs           = errors.New("gasPayerSigs is nul")
@@ -190,8 +192,21 @@ func (p *TxProcessor) checkSignersBySender(sender common.Address, signers []comm
 
 	case length > 0: // 多签账户
 		fromAcc := p.am.GetAccount(sender)
-		// Todo 通过地址返回多重签名账户的签名者列表以及权重
-		// Todo 获取到之后与signers比较，并计算权重总和
+		// 获取多重签名账户的签名者列表
+		totalSigners := fromAcc.GetSigners()
+		signersMap := make(map[common.Address]uint8)
+		for _, v := range totalSigners {
+			signersMap[v.Address] = v.Weight
+		}
+		// 计算签名者权重总和
+		var totalWeight uint8 = 0
+		for _, Addr := range signers {
+			totalWeight = totalWeight + signersMap[Addr]
+		}
+		// 比较签名权重总和大小
+		if totalWeight < SignersWeight {
+			return ErrTotalWeight
+		}
 		return nil
 
 	default: // 交易未被签名
@@ -414,6 +429,9 @@ func (p *TxProcessor) handleTx(tx *types.Transaction, header *types.Header, txIn
 		newContext := NewEVMContext(tx, header, txIndex, blockHash, p.blockLoader)
 		vmEnv := vm.NewEVM(newContext, p.am, *p.cfg)
 		_, restGas, err, vmErr = vmEnv.TransferAssetTx(sender, recipientAddr, restGas, tx.Data(), p.db)
+	case params.SetMultisigAccountTx:
+		multisigEnv := NewSetMultisigAccountEnv(p.am)
+		err = multisigEnv.CreateOrModifyMultisigTx(senderAddr, recipientAddr, tx.Data())
 
 	default:
 		log.Errorf("The type of transaction is not defined. ErrType = %d\n", tx.Type())
@@ -580,7 +598,7 @@ func (p *TxProcessor) PreExecutionTransaction(ctx context.Context, header *types
 	case params.OrdinaryTx, params.TransferAssetTx: // need use evm environment
 		vmEvn = getEVM(tx, header, 0, tx.Hash(), blockHash, p.blockLoader, *p.cfg, accM)
 
-	case params.RegisterTx, params.VoteTx, params.CreateAssetTx, params.IssueAssetTx, params.ReplenishAssetTx, params.ModifyAssetTx:
+	case params.RegisterTx, params.VoteTx, params.CreateAssetTx, params.IssueAssetTx, params.ReplenishAssetTx, params.ModifyAssetTx, params.SetMultisigAccountTx:
 	// case params.ModifyAssetTx, params.ReplenishAssetTx, params.IssueAssetTx, params.CreateAssetTx: // use asset tx environment
 	// 	assetEnv = NewRunAssetEnv(p.am)
 	default:
@@ -623,7 +641,7 @@ func (p *TxProcessor) PreExecutionTransaction(ctx context.Context, header *types
 		}
 		ret, restGas, err = vmEvn.CallCode(sender, *tx.To(), input, restGas, big.NewInt(0))
 
-	case params.RegisterTx, params.VoteTx, params.CreateAssetTx, params.IssueAssetTx, params.ReplenishAssetTx, params.ModifyAssetTx:
+	case params.RegisterTx, params.VoteTx, params.CreateAssetTx, params.IssueAssetTx, params.ReplenishAssetTx, params.ModifyAssetTx, params.SetMultisigAccountTx:
 	}
 	return ret, gasLimit - restGas, err
 }
@@ -656,6 +674,8 @@ func newTx(from common.Address, to *common.Address, txType uint16, data []byte, 
 		tx = types.NoReceiverTransaction(from, big.NewInt(0), gasLimit, gasPrice, data, params.ModifyAssetTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
 	case params.TransferAssetTx:
 		tx = types.NewTransaction(from, *to, big.NewInt(0), gasLimit, gasPrice, data, params.TransferAssetTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
+	case params.SetMultisigAccountTx:
+		tx = types.NewTransaction(from, *to, big.NewInt(0), gasLimit, gasPrice, data, params.SetMultisigAccountTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
 	default:
 		err := errors.New("tx type error")
 		return nil, err
