@@ -47,8 +47,8 @@ func newReplenishAssetData(assetCode, assetId common.Hash, amount *big.Int) []by
 // newModifyAssetData
 func newModifyAssetData(code common.Hash, info types.Profile) []byte {
 	modify := &types.ModifyAssetInfo{
-		AssetCode: code,
-		Info:      info,
+		AssetCode:     code,
+		UpdateProfile: info,
 	}
 	data, err := json.Marshal(modify)
 	if err != nil {

@@ -269,7 +269,7 @@ func unmarshalModifyAssetData(data []byte) (*types.ModifyAssetInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	info := modifyInfo.Info
+	info := modifyInfo.UpdateProfile
 	if info == nil || len(info) == 0 {
 		return nil, ErrModifyAssetInfo
 	}
@@ -282,7 +282,7 @@ func (r *RunAssetEnv) ModifyAssetProfileTx(sender common.Address, data []byte) e
 	if err != nil {
 		return err
 	}
-	info := modifyInfo.Info
+	info := modifyInfo.UpdateProfile
 
 	acc := r.am.GetAccount(sender)
 
