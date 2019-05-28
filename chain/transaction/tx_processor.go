@@ -199,9 +199,9 @@ func (p *TxProcessor) checkSignersBySender(sender common.Address, signers []comm
 			signersMap[v.Address] = v.Weight
 		}
 		// 计算签名者权重总和
-		var totalWeight uint8 = 0
+		var totalWeight int64 = 0
 		for _, Addr := range signers {
-			totalWeight = totalWeight + signersMap[Addr]
+			totalWeight = totalWeight + int64(signersMap[Addr])
 		}
 		// 比较签名权重总和大小
 		if totalWeight < SignersWeight {
