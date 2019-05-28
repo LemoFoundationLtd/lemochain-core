@@ -111,7 +111,7 @@ func Test_ApplyTxs_TimeoutTime(t *testing.T) {
 	assert.NotEqual(t, len(selectedTxs01), txNum)
 	selectedTxs02, _, _ := p.ApplyTxs(header, txs, int64(2))
 	assert.NotEqual(t, len(selectedTxs02), txNum)
-	selectedTxs03, _, _ := p.ApplyTxs(header, txs, int64(100))
+	selectedTxs03, _, _ := p.ApplyTxs(header, txs, int64(300))
 	assert.Equal(t, len(selectedTxs03), txNum)
 }
 

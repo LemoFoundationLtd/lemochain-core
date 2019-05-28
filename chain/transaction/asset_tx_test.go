@@ -326,8 +326,8 @@ func TestRunAssetEnv_ModifyAssetProfileTx(t *testing.T) {
 	assert.Equal(t, ErrModifyAssetTxSender, err)
 
 	// r.am.RevertToSnapshot(snapshot)
-	// 2. 修改的info为nil的情况
-	data02 := newModifyAssetData(assetCode, nil)
+	// 2. 修改的info长度为0的情况
+	data02 := newModifyAssetData(assetCode, make(types.Profile))
 	err = r.ModifyAssetProfileTx(issuer, data02)
 	assert.Equal(t, ErrModifyAssetInfo, err)
 
