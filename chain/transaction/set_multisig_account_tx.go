@@ -15,6 +15,7 @@ var (
 	ErrAddressRepeat = errors.New("cannot set two identical addresses")
 	ErrWeight        = errors.New("signer weight error")
 	ErrTempAccount   = errors.New("temp account format error")
+	ErrSignersNumber = errors.New("cannot exceed the maximum number of signers")
 )
 
 type SetMultisigAccountEnv struct {
@@ -34,6 +35,12 @@ func unmarshalAndVerifyData(data []byte) (types.Signers, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	if len(newSigners) > MaxNumberSigners {
+		log.Errorf("Cannot exceed the maximum number of signers. signers number: %d,MaxNumberSigners: %d", len(newSigners), MaxNumberSigners)
+		return nil, ErrSignersNumber
+	}
+
 	m := make(map[common.Address]uint8)
 	for _, v := range newSigners {
 		// 验证每一个weight的取值范围
@@ -42,7 +49,7 @@ func unmarshalAndVerifyData(data []byte) (types.Signers, error) {
 			return nil, ErrWeight
 		}
 		// 验证不能有相同的地址
-		if m[v.Address] != 0 {
+		if _, ok := m[v.Address]; ok {
 			return nil, ErrAddressRepeat
 		}
 		m[v.Address] = v.Weight
@@ -65,6 +72,11 @@ func judgeTotalWeight(signers types.Signers) error {
 
 // setMultisigAccount 设置多签账户
 func setMultisigAccount(signers types.Signers, toAcc types.AccountAccessor) error {
+
+	if len(signers) > MaxNumberSigners {
+		log.Errorf("Cannot exceed the maximum number of signers. signers number: %d,MaxNumberSigners: %d", len(signers), MaxNumberSigners)
+		return ErrSignersNumber
+	}
 	// 验证多签账户的总的weight必须大于100
 	err := judgeTotalWeight(signers)
 	if err != nil {
@@ -89,7 +101,7 @@ func modifyMultisigAccount(modifySigners, oldSigners types.Signers, toAcc types.
 	}
 	// 修改已存在的signer,并从map中删除已存在的signer
 	for i := 0; i < len(oldSigners); i++ {
-		if tempMap[oldSigners[i].Address] != 0 {
+		if _, ok := tempMap[oldSigners[i].Address]; ok {
 			oldSigners[i].Weight = tempMap[oldSigners[i].Address]
 			delete(tempMap, oldSigners[i].Address)
 		}

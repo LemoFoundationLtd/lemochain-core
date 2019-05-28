@@ -24,6 +24,7 @@ const (
 	MaxDeputyHostLength  = 128
 	StandardNodeIdLength = 128
 	SignersWeight        = 100
+	MaxNumberSigners     = 100
 )
 
 var (
