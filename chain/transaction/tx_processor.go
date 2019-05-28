@@ -578,7 +578,7 @@ func newTx(to *common.Address, txType uint16, data []byte, chainID uint16) (*typ
 }
 
 // getEVM
-func getEVM(tx *types.Transaction, header *types.Header, txIndex uint, txHash common.Hash, blockHash common.Hash, chain BlockLoader, cfg vm.Config, accM *account.Manager) *vm.EVM {
+func getEVM(tx *types.Transaction, header *types.Header, txIndex uint, txHash common.Hash, blockHash common.Hash, chain BlockLoader, cfg vm.Config, accM vm.AccountManager) *vm.EVM {
 	evmContext := NewEVMContext(tx, header, txIndex, blockHash, chain)
 	vmEnv := vm.NewEVM(evmContext, accM, cfg)
 	return vmEnv
