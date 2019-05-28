@@ -48,7 +48,7 @@ func TestTxProcessor_Process(t *testing.T) {
 	block01 := newBlockForTest(1, nil, am, db, false)
 	// 创建一个余额不足的交易
 	randPrivate, _ := crypto.GenerateKey()
-	tx := makeTx(randPrivate, godAddr, params.OrdinaryTx, big.NewInt(4000000))
+	tx := makeTx(randPrivate, crypto.PubkeyToAddress(randPrivate.PublicKey), godAddr, params.OrdinaryTx, big.NewInt(4000000))
 	_, err = p.Process(block01.Header, types.Transactions{tx})
 	assert.Equal(t, ErrInvalidTxInBlock, err)
 }
@@ -64,7 +64,7 @@ func TestTxProcessor_Process_applyTxs(t *testing.T) {
 	// 创建5笔普通交易交易
 	txs := make(types.Transactions, 0)
 	for i := 0; i < 5; i++ {
-		tx := makeTx(godPrivate, common.HexToAddress("0x9910"+strconv.Itoa(i)), params.OrdinaryTx, big.NewInt(50000))
+		tx := makeTx(godPrivate, godAddr, common.HexToAddress("0x9910"+strconv.Itoa(i)), params.OrdinaryTx, big.NewInt(50000))
 		txs = append(txs, tx)
 	}
 	// 打包交易进区块
@@ -101,7 +101,7 @@ func Test_ApplyTxs_TimeoutTime(t *testing.T) {
 		GasLimit:     parentBlock.GasLimit(),
 	}
 
-	tx01 := makeTx(godPrivate, common.HexToAddress("0x11223"), params.OrdinaryTx, common.Big1)
+	tx01 := makeTx(godPrivate, godAddr, common.HexToAddress("0x11223"), params.OrdinaryTx, common.Big1)
 	txNum := 500
 	txs := make([]*types.Transaction, 0, txNum)
 	for i := 0; i < txNum; i++ {
@@ -170,8 +170,8 @@ func TestReimbursement_transaction(t *testing.T) {
 		senderAddr         = crypto.PubkeyToAddress(senderPrivate.PublicKey)
 		gasPayerPrivate, _ = crypto.HexToECDSA("57a0b0be5616e74c4315882e3649ade12c775db3b5023dcaa168d01825612c9b")
 		gasPayerAddr       = crypto.PubkeyToAddress(gasPayerPrivate.PublicKey)
-		Tx01               = makeTx(godPrivate, gasPayerAddr, params.OrdinaryTx, params.RegisterCandidateNodeFees) // 转账1000LEMO给gasPayerAddr
-		Tx02               = makeTx(godPrivate, senderAddr, params.OrdinaryTx, params.RegisterCandidateNodeFees)   // 转账1000LEMO给senderAddr
+		Tx01               = makeTx(godPrivate, godAddr, gasPayerAddr, params.OrdinaryTx, params.RegisterCandidateNodeFees) // 转账1000LEMO给gasPayerAddr
+		Tx02               = makeTx(godPrivate, godAddr, senderAddr, params.OrdinaryTx, params.RegisterCandidateNodeFees)   // 转账1000LEMO给senderAddr
 
 		amountReceiver = common.HexToAddress("0x1234")
 		TxV01          = types.NewReimbursementTransaction(senderAddr, amountReceiver, gasPayerAddr, params.RegisterCandidateNodeFees, []byte{}, params.OrdinaryTx, chainID, uint64(time.Now().Unix()+300), "", "")

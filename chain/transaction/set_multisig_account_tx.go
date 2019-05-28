@@ -8,6 +8,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
+	"sort"
 )
 
 var (
@@ -28,14 +29,14 @@ func NewSetMultisigAccountEnv(am *account.Manager) *SetMultisigAccountEnv {
 
 // unmarshalAndVerifyData
 func unmarshalAndVerifyData(data []byte) (types.Signers, error) {
-	newAcc := make(types.Signers, 0)
-	err := json.Unmarshal(data, newAcc)
+	newSigners := make(types.Signers, 0)
+	err := json.Unmarshal(data, &newSigners)
 	if err != nil {
 		return nil, err
 	}
 
 	temp := common.Address{}
-	for _, v := range newAcc {
+	for _, v := range newSigners {
 		// 验证每一个weight的取值范围
 		if v.Weight < 1 || v.Weight > SignersWeight {
 			log.Errorf("Weight should be in range [1, 100]. signerAddress: %s, weight: %d", v.Address.String(), v.Weight)
@@ -48,7 +49,7 @@ func unmarshalAndVerifyData(data []byte) (types.Signers, error) {
 		temp = v.Address
 	}
 
-	return newAcc, nil
+	return newSigners, nil
 }
 
 // judgeTotalWeight
@@ -65,12 +66,14 @@ func judgeTotalWeight(signers types.Signers) error {
 
 // setMultisigAccount 设置多签账户
 func setMultisigAccount(signers types.Signers, toAcc types.AccountAccessor) error {
-	// 1.1 验证多签账户的总的weight必须大于100
+	// 验证多签账户的总的weight必须大于100
 	err := judgeTotalWeight(signers)
 	if err != nil {
 		return err
 	}
-	// 1.2 设置
+	// 按照字典序排序
+	sort.Sort(signers)
+	// 设置
 	err = toAcc.SetSingers(signers)
 	if err != nil {
 		return err
@@ -79,13 +82,13 @@ func setMultisigAccount(signers types.Signers, toAcc types.AccountAccessor) erro
 }
 
 // modifyMultisigAccount 修改多重签名账户中的签名者列表
-func modifyMultisigAccount(txSigners, oldSigners types.Signers, toAcc types.AccountAccessor) (err error) {
-	// 2.1 把交易传入的签名者列表放入map中
+func modifyMultisigAccount(modifySigners, oldSigners types.Signers, toAcc types.AccountAccessor) (err error) {
+	// 把交易传入的签名者列表放入map中
 	tempMap := make(map[common.Address]uint8)
-	for _, v := range txSigners {
+	for _, v := range modifySigners {
 		tempMap[v.Address] = v.Weight
 	}
-	// 2.2 修改已存在的signer,并从map中删除已存在的signer
+	// 修改已存在的signer,并从map中删除已存在的signer
 	for i := 0; i < len(oldSigners); i++ {
 		if tempMap[oldSigners[i].Address] != 0 {
 			oldSigners[i].Weight = tempMap[oldSigners[i].Address]
@@ -94,7 +97,7 @@ func modifyMultisigAccount(txSigners, oldSigners types.Signers, toAcc types.Acco
 	}
 
 	newSigners := oldSigners
-	// 2.3 遍历剩下map中的新加的signers
+	// 遍历剩下map中新加的signers
 	if len(tempMap) != 0 {
 		endSignerAcc := make(types.Signers, 0)
 		for k, v := range tempMap {
