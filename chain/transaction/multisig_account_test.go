@@ -43,6 +43,7 @@ func Test_unmarshalAndVerifyData(t *testing.T) {
 	// 2. 验证有相同地址的情况
 	m2 := make(testMap)
 	m2[2] = common.HexToAddress("0x11")
+	m2[4] = common.HexToAddress("0x12")
 	m2[3] = common.HexToAddress("0x11")
 	data2 := newSignersData(m2)
 	signers2, err := unmarshalAndVerifyData(data2)
@@ -161,7 +162,7 @@ func Test_modifyMultisigAccount(t *testing.T) {
 }
 
 // TestSetMultisigAccountEnv_CreateOrModifyMultisigTx
-func TestSetMultisigAccountEnv_CreateOrModifyMultisigTx(t *testing.T) {
+func TestSetMultisigAccountEnv_ModifyMultisigTx(t *testing.T) {
 	ClearData()
 	db := newDB()
 	defer db.Close()

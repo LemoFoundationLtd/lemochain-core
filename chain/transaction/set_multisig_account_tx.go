@@ -34,8 +34,7 @@ func unmarshalAndVerifyData(data []byte) (types.Signers, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	temp := common.Address{}
+	m := make(map[common.Address]uint8)
 	for _, v := range newSigners {
 		// 验证每一个weight的取值范围
 		if v.Weight < 1 || v.Weight > SignersWeight {
@@ -43,10 +42,10 @@ func unmarshalAndVerifyData(data []byte) (types.Signers, error) {
 			return nil, ErrWeight
 		}
 		// 验证不能有相同的地址
-		if v.Address == temp {
+		if m[v.Address] != 0 {
 			return nil, ErrAddressRepeat
 		}
-		temp = v.Address
+		m[v.Address] = v.Weight
 	}
 
 	return newSigners, nil
@@ -54,11 +53,11 @@ func unmarshalAndVerifyData(data []byte) (types.Signers, error) {
 
 // judgeTotalWeight
 func judgeTotalWeight(signers types.Signers) error {
-	var totalWeight uint8 = 0
+	var totalWeight int64 = 0
 	for _, v := range signers {
-		totalWeight = totalWeight + v.Weight
+		totalWeight = totalWeight + int64(v.Weight)
 	}
-	if totalWeight <= SignersWeight {
+	if totalWeight < SignersWeight {
 		return ErrTotalWeight
 	}
 	return nil
@@ -120,16 +119,7 @@ func (s *SetMultisigAccountEnv) ModifyMultisigTx(from, to common.Address, data [
 		return err
 	}
 
-	switch from == to {
-	case false: // 临时账户
-		// 验证临时账户to
-		if bytes.Compare(to[1:10], from[11:20]) != 0 {
-			return ErrTempAccount
-		}
-		// todo 临时账户逻辑
-		return nil
-
-	case true: // 普通账户
+	if from == to { // 普通账户
 		toAcc := s.am.GetAccount(to)
 		oldSigners := toAcc.GetSigners()
 
@@ -139,13 +129,19 @@ func (s *SetMultisigAccountEnv) ModifyMultisigTx(from, to common.Address, data [
 			if err != nil {
 				return err
 			}
-
 		} else { // 2. 修改签名者信息
 			err = modifyMultisigAccount(txSigners, oldSigners, toAcc)
 			if err != nil {
 				return err
 			}
 		}
+	} else { // 临时账户
+		// 验证临时账户to
+		if bytes.Compare(to[1:10], from[11:20]) != 0 {
+			return ErrTempAccount
+		}
+		// todo 临时账户逻辑
+		return nil
 	}
 	return nil
 }
