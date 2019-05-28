@@ -431,7 +431,7 @@ func (p *TxProcessor) handleTx(tx *types.Transaction, header *types.Header, txIn
 		_, restGas, err, vmErr = vmEnv.TransferAssetTx(sender, recipientAddr, restGas, tx.Data(), p.db)
 	case params.SetMultisigAccountTx:
 		multisigEnv := NewSetMultisigAccountEnv(p.am)
-		err = multisigEnv.CreateOrModifyMultisigTx(senderAddr, recipientAddr, tx.Data())
+		err = multisigEnv.ModifyMultisigTx(senderAddr, recipientAddr, tx.Data())
 
 	default:
 		log.Errorf("The type of transaction is not defined. ErrType = %d\n", tx.Type())

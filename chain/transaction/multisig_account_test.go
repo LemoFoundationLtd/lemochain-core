@@ -180,7 +180,7 @@ func TestSetMultisigAccountEnv_CreateOrModifyMultisigTx(t *testing.T) {
 	data01 := newSignersData(m1)
 
 	// 1. 创建多重签名账户测试
-	err := muEnv.CreateOrModifyMultisigTx(from, to, data01)
+	err := muEnv.ModifyMultisigTx(from, to, data01)
 	assert.NoError(t, err)
 	toAcc := am.GetAccount(to)
 	mm := make(testMap)
@@ -199,7 +199,7 @@ func TestSetMultisigAccountEnv_CreateOrModifyMultisigTx(t *testing.T) {
 	m2[50] = signer02
 	m2[60] = signer03
 	data02 := newSignersData(m2)
-	err = muEnv.CreateOrModifyMultisigTx(from, to, data02)
+	err = muEnv.ModifyMultisigTx(from, to, data02)
 	assert.NoError(t, err)
 
 	signers02 := toAcc.GetSigners()

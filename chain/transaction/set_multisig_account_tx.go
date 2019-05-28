@@ -113,8 +113,8 @@ func modifyMultisigAccount(modifySigners, oldSigners types.Signers, toAcc types.
 	return err
 }
 
-// CreateOrModifyMultisigTx
-func (s *SetMultisigAccountEnv) CreateOrModifyMultisigTx(from, to common.Address, data []byte) error {
+// ModifyMultisigTx
+func (s *SetMultisigAccountEnv) ModifyMultisigTx(from, to common.Address, data []byte) error {
 	txSigners, err := unmarshalAndVerifyData(data)
 	if err != nil {
 		return err
