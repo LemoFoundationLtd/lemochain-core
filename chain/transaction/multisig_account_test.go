@@ -100,67 +100,6 @@ func Test_setMultisigAccount(t *testing.T) {
 	assert.Equal(t, signers, getSigners)
 }
 
-// Test_modifyMultisigAccount
-func Test_modifyMultisigAccount(t *testing.T) {
-	ClearData()
-	db := newDB()
-	defer db.Close()
-	am := account.NewManager(common.Hash{}, db)
-	toAcc := am.GetAccount(common.HexToAddress("0x999"))
-	// 签名者
-	signer01 := common.HexToAddress("0x111")
-	signer02 := common.HexToAddress("0x112")
-	signer03 := common.HexToAddress("0x113")
-	signer04 := common.HexToAddress("0x114")
-	signer05 := common.HexToAddress("0x115")
-	signer06 := common.HexToAddress("0x116")
-	signer07 := common.HexToAddress("0x117")
-	signer08 := common.HexToAddress("0x118")
-	// 测流程
-	m1 := make(testMap)
-	m1[10] = signer01
-	m1[20] = signer02
-	m1[30] = signer03
-	m1[40] = signer04
-	m1[50] = signer05
-	// 1. 构造一个多重签名账户
-	data01 := newSignersData(m1)
-	oldSigners, err := unmarshalAndVerifyData(data01)
-	assert.NoError(t, err)
-	err = toAcc.SetSingers(oldSigners)
-	assert.NoError(t, err)
-
-	m2 := make(testMap)
-	m2[60] = signer04
-	m2[70] = signer05
-	m2[80] = signer06
-	m2[90] = signer07
-	m2[100] = signer08
-	// 2. 修改多重签名账户
-	data02 := newSignersData(m2)
-	modifySigners, err := unmarshalAndVerifyData(data02)
-	assert.NoError(t, err)
-	err = modifyMultisigAccount(modifySigners, oldSigners, toAcc)
-	assert.NoError(t, err)
-	newSigners := toAcc.GetSigners()
-
-	// 测试修改结果
-	mm := make(testMap)
-	for _, v := range newSigners {
-		mm[v.Weight] = v.Address
-	}
-	assert.Equal(t, mm[10], signer01)
-	assert.Equal(t, mm[20], signer02)
-	assert.Equal(t, mm[30], signer03)
-	assert.Equal(t, mm[40], common.Address{})
-	assert.Equal(t, mm[50], common.Address{})
-	assert.Equal(t, mm[60], signer04)
-	assert.Equal(t, mm[70], signer05)
-	assert.Equal(t, mm[80], signer06)
-	assert.Equal(t, mm[90], signer07)
-	assert.Equal(t, mm[100], signer08)
-}
-
 // TestSetMultisigAccountEnv_CreateOrModifyMultisigTx
 func TestSetMultisigAccountEnv_ModifyMultisigTx(t *testing.T) {
 	ClearData()

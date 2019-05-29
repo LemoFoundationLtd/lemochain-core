@@ -72,11 +72,6 @@ func judgeTotalWeight(signers types.Signers) error {
 
 // setMultisigAccount 设置多签账户
 func setMultisigAccount(signers types.Signers, toAcc types.AccountAccessor) error {
-
-	if len(signers) > MaxNumberSigners {
-		log.Errorf("Cannot exceed the maximum number of signers. signers number: %d,MaxNumberSigners: %d", len(signers), MaxNumberSigners)
-		return ErrSignersNumber
-	}
 	// 验证多签账户的总的weight必须大于100
 	err := judgeTotalWeight(signers)
 	if err != nil {
@@ -92,38 +87,6 @@ func setMultisigAccount(signers types.Signers, toAcc types.AccountAccessor) erro
 	return nil
 }
 
-// modifyMultisigAccount 修改多重签名账户中的签名者列表
-func modifyMultisigAccount(modifySigners, oldSigners types.Signers, toAcc types.AccountAccessor) (err error) {
-	// 把交易传入的签名者列表放入map中
-	tempMap := make(map[common.Address]uint8)
-	for _, v := range modifySigners {
-		tempMap[v.Address] = v.Weight
-	}
-	// 修改已存在的signer,并从map中删除已存在的signer
-	for i := 0; i < len(oldSigners); i++ {
-		if _, ok := tempMap[oldSigners[i].Address]; ok {
-			oldSigners[i].Weight = tempMap[oldSigners[i].Address]
-			delete(tempMap, oldSigners[i].Address)
-		}
-	}
-
-	newSigners := oldSigners
-	// 遍历剩下map中新加的signers
-	if len(tempMap) != 0 {
-		endSignerAcc := make(types.Signers, 0)
-		for k, v := range tempMap {
-			endSignerAcc = append(endSignerAcc, types.SignAccount{
-				Address: k,
-				Weight:  v,
-			})
-		}
-		newSigners = append(newSigners, endSignerAcc...)
-	}
-
-	err = setMultisigAccount(newSigners, toAcc)
-	return err
-}
-
 // ModifyMultisigTx
 func (s *SetMultisigAccountEnv) ModifyMultisigTx(from, to common.Address, data []byte) error {
 	txSigners, err := unmarshalAndVerifyData(data)
@@ -133,19 +96,10 @@ func (s *SetMultisigAccountEnv) ModifyMultisigTx(from, to common.Address, data [
 
 	if from == to { // 普通账户
 		toAcc := s.am.GetAccount(to)
-		oldSigners := toAcc.GetSigners()
-
 		// 1. 创建多签账户
-		if len(oldSigners) == 0 {
-			err = setMultisigAccount(txSigners, toAcc)
-			if err != nil {
-				return err
-			}
-		} else { // 2. 修改签名者信息
-			err = modifyMultisigAccount(txSigners, oldSigners, toAcc)
-			if err != nil {
-				return err
-			}
+		err = setMultisigAccount(txSigners, toAcc)
+		if err != nil {
+			return err
 		}
 	} else { // 临时账户
 		// 验证临时账户to
