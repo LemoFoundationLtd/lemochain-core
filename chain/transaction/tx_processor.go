@@ -20,11 +20,11 @@ import (
 )
 
 const (
-	defaultGasPrice      = 1e9
-	MaxDeputyHostLength  = 128
-	StandardNodeIdLength = 128
-	SignersWeight        = 100
-	MaxNumberSigners     = 100
+	defaultGasPrice       = 1e9
+	MaxDeputyHostLength   = 128
+	StandardNodeIdLength  = 128
+	SignerWeightThreshold = 100
+	MaxNumberSigners      = 100
 )
 
 var (
@@ -177,98 +177,75 @@ func (p *TxProcessor) buyAndPayIntrinsicGas(gp *types.GasPool, tx *types.Transac
 	return restGas, nil
 }
 
-// checkSignersBySender 比较得到的签名者是否为预期的签名者
-func (p *TxProcessor) checkSignersBySender(sender common.Address, signers []common.Address) error {
-	accSigners := p.am.GetAccount(sender).GetSigners() // 账户的签名者列表
+// checkSignersWeight 比较得到的签名者是否为预期的签名者
+func (p *TxProcessor) checkSignersWeight(sender common.Address, tx *types.Transaction, interfaceSigner types.Signer) error {
+	// 获取交易的签名者列表
+	signers, err := interfaceSigner.GetSigners(tx)
+	if err != nil {
+		log.Errorf("Verification signature error")
+		return err
+	}
+	if len(signers) == 0 {
+		return ErrTxNotSig
+	}
+	// 获取账户的签名者列表
+	accSigners := p.am.GetAccount(sender).GetSigners()
 	length := len(accSigners)
-	switch {
-	case length == 0: // 非多签账户
+	if length == 0 { // 非多签账户
 		signer := signers[0]
 		// 判断签名者是否为from
 		if signer != sender {
 			log.Errorf("The signer and from of transaction are not equal. Siger: %s. From: %s", signer.String(), sender.String())
 			return ErrSignerAndFromUnequally
 		}
-		return nil
-
-	case length > 0: // 多签账户
-		fromAcc := p.am.GetAccount(sender)
-		// 获取多重签名账户的签名者列表
-		totalSigners := fromAcc.GetSigners()
+	} else { // 多签账户
 		signersMap := make(map[common.Address]uint8)
-		for _, v := range totalSigners {
+		for _, v := range accSigners {
 			signersMap[v.Address] = v.Weight
 		}
 		// 计算签名者权重总和
 		var totalWeight int64 = 0
-		for _, Addr := range signers {
-			totalWeight = totalWeight + int64(signersMap[Addr])
+		for _, addr := range signers {
+			totalWeight = totalWeight + int64(signersMap[addr])
 		}
 		// 比较签名权重总和大小
-		if totalWeight < SignersWeight {
+		if totalWeight < SignerWeightThreshold {
 			return ErrTotalWeight
 		}
-		return nil
-
-	default: // 交易未被签名
-		return ErrTxNotSig
 	}
+	return nil
 }
 
 // verifyTransactionSigs 验证交易签名
 func (p *TxProcessor) verifyTransactionSigs(tx *types.Transaction) error {
 	from := tx.From()
 	gasPayerSigsLength := len(tx.GasPayerSigs())
-	switch {
-	case gasPayerSigsLength == 0: // 非代付交易
+
+	// 验证gasPayer签名
+	if gasPayerSigsLength >= 1 {
+		// 验证签名账户
+		gasPayer := tx.GasPayer()
+		err := p.checkSignersWeight(gasPayer, tx, types.MakeGasPayerSigner())
+		if err != nil {
+			return err
+		}
+	}
+	// 验证from签名
+	var fromSigner types.Signer
+	if gasPayerSigsLength >= 1 {
+		fromSigner = types.MakeReimbursementTxSigner()
+	} else {
 		// 判断gasPayer字段是否为默认的from
 		if tx.GasPayer() != from {
 			log.Errorf("The default transaction gasPayer must equal the from. gasPayer: %s. from: %s", tx.GasPayer().String(), from.String())
 			return ErrGasPayer
 		}
-		// 验证签名并返回签名者列表
-		signers, err := types.MakeSigner().GetSigners(tx)
-		if err != nil {
-			log.Errorf("Verification signature error")
-			return err
-		}
-		// 验证签名账户
-		err = p.checkSignersBySender(from, signers)
-		if err != nil {
-			return err
-		}
+		fromSigner = types.MakeSigner()
+	}
 
-	case gasPayerSigsLength >= 1: // 代付交易
-		// 验证gasPayer签名
-		gasPayerSigners, err := types.MakeGasPayerSigner().GetSigners(tx)
-		if err != nil {
-			log.Errorf("Verification signature error")
-			return err
-		}
-		if len(gasPayerSigners) == 0 {
-			return ErrGasPayerSigs
-		}
-		// 验证签名账户
-		gasPayer := tx.GasPayer()
-		err = p.checkSignersBySender(gasPayer, gasPayerSigners)
-		if err != nil {
-			return err
-		}
-
-		// 验证from签名
-		signers, err := types.MakeReimbursementTxSigner().GetSigners(tx)
-		if err != nil {
-			log.Errorf("Verification signature error")
-			return err
-		}
-		// 验证签名账户
-		err = p.checkSignersBySender(from, signers)
-		if err != nil {
-			return err
-		}
-	default:
-		log.Errorf("Gas payer sigs is null")
-		return ErrNilGasPayerSigs
+	err := p.checkSignersWeight(from, tx, fromSigner)
+	if err != nil {
+		return err
 	}
 	return nil
 }

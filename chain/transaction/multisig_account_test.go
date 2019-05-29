@@ -52,7 +52,7 @@ func Test_unmarshalAndVerifyData(t *testing.T) {
 
 	// 3. 正常情况
 	m3 := make(testMap)
-	for i := 1; i <= SignersWeight; i++ {
+	for i := 1; i <= SignerWeightThreshold; i++ {
 		m3[uint8(i)] = common.HexToAddress(strconv.Itoa(i))
 	}
 	data3 := newSignersData(m3)

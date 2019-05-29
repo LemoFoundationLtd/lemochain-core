@@ -1,7 +1,6 @@
 package transaction
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
@@ -44,7 +43,7 @@ func unmarshalAndVerifyData(data []byte) (types.Signers, error) {
 	m := make(map[common.Address]uint8)
 	for _, v := range newSigners {
 		// 验证每一个weight的取值范围
-		if v.Weight < 1 || v.Weight > SignersWeight {
+		if v.Weight < 1 || v.Weight > SignerWeightThreshold {
 			log.Errorf("Weight should be in range [1, 100]. signerAddress: %s, weight: %d", v.Address.String(), v.Weight)
 			return nil, ErrWeight
 		}
@@ -64,7 +63,7 @@ func judgeTotalWeight(signers types.Signers) error {
 	for _, v := range signers {
 		totalWeight = totalWeight + int64(v.Weight)
 	}
-	if totalWeight < SignersWeight {
+	if totalWeight < SignerWeightThreshold {
 		return ErrTotalWeight
 	}
 	return nil
@@ -93,21 +92,12 @@ func (s *SetMultisigAccountEnv) ModifyMultisigTx(from, to common.Address, data [
 	if err != nil {
 		return err
 	}
-
-	if from == to { // 普通账户
-		toAcc := s.am.GetAccount(to)
-		// 1. 创建多签账户
-		err = setMultisigAccount(txSigners, toAcc)
-		if err != nil {
-			return err
-		}
-	} else { // 临时账户
-		// 验证临时账户to
-		if bytes.Compare(to[1:10], from[11:20]) != 0 {
-			return ErrTempAccount
-		}
-		// todo 临时账户逻辑
-		return nil
+	toAcc := s.am.GetAccount(to)
+	// 1. 创建多签账户
+	err = setMultisigAccount(txSigners, toAcc)
+	if err != nil {
+		return err
 	}
+
 	return nil
 }
