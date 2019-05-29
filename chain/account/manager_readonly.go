@@ -32,21 +32,21 @@ func (a *ReadOnlyAccount) Save() error {
 
 // ReadOnlyManager is used to access the newest readonly account data
 type ReadOnlyManager struct {
-	stableAccount bool // 是否只读稳定account
-	db            protocol.ChainDB
-	acctDb        *store.AccountTrieDB
-	accountCache  map[common.Address]*ReadOnlyAccount
+	stableOnly   bool // 是否只读稳定account
+	db           protocol.ChainDB
+	acctDb       *store.AccountTrieDB
+	accountCache map[common.Address]*ReadOnlyAccount
 }
 
 // NewManager creates a new Manager. It is used to maintain account changes based on the block environment which specified by blockHash
-func NewReadOnlyManager(db protocol.ChainDB, stableAccount bool) *ReadOnlyManager {
+func NewReadOnlyManager(db protocol.ChainDB, stableOnly bool) *ReadOnlyManager {
 	if db == nil {
 		panic("account.NewManager is called without a database")
 	}
 	manager := &ReadOnlyManager{
-		stableAccount: stableAccount,
-		db:            db,
-		accountCache:  make(map[common.Address]*ReadOnlyAccount),
+		stableOnly:   stableOnly,
+		db:           db,
+		accountCache: make(map[common.Address]*ReadOnlyAccount),
 	}
 
 	return manager
@@ -64,41 +64,43 @@ func (am *ReadOnlyManager) Reset(blockHash common.Hash) {
 	am.accountCache = make(map[common.Address]*ReadOnlyAccount)
 }
 
-// GetStableAccount return stable account from db
-func (am *ReadOnlyManager) getStableAccount(address common.Address) types.AccountAccessor {
-	data, err := am.db.GetAccount(address)
+// getAccount return stable account from db
+func (am *ReadOnlyManager) getAccount(address common.Address, stable bool) types.AccountAccessor {
+	var data *types.AccountData
+	var err error
+	if stable {
+		data, err = am.db.GetAccount(address)
+	} else {
+		data, err = am.acctDb.Get(address)
+	}
 	if err != nil && err != store.ErrNotExist {
 		panic(err)
 	}
-	return NewReadOnlyAccount(am.db, address, data)
+	account := NewReadOnlyAccount(am.db, address, data)
+	// cache it
+	am.accountCache[address] = account
+	return account
 }
 
 // GetAccount
 func (am *ReadOnlyManager) GetAccount(address common.Address) types.AccountAccessor {
 
-	if am.stableAccount { // 只读稳定的account
-		return am.getStableAccount(address)
-	}
-
-	// 只读最新的account
-	cached := am.accountCache[address]
-	if cached == nil {
-		var data *types.AccountData
-		var err error
-		// If acctDB is exist, then we use the newest unstable account, otherwise the newest stable account
-		if am.acctDb != nil {
-			data, err = am.acctDb.Get(address)
+	if am.stableOnly { // 只读稳定的account
+		return am.getAccount(address, true)
+	} else {
+		// 只读最新的account
+		cached := am.accountCache[address]
+		if cached == nil {
+			// If acctDB is exist, then we use the newest unstable account, otherwise the newest stable account
+			if am.acctDb != nil {
+				return am.getAccount(address, false)
+			} else {
+				return am.getAccount(address, true)
+			}
 		} else {
-			data, err = am.db.GetAccount(address)
+			return cached
 		}
-		if err != nil && err != store.ErrNotExist {
-			log.Error("Load read only account fail", "err", err)
-		}
-		cached = NewReadOnlyAccount(am.db, address, data)
-		// cache it
-		am.accountCache[address] = cached
 	}
-	return cached
 }
 
 func (am *ReadOnlyManager) RevertToSnapshot(int) {
