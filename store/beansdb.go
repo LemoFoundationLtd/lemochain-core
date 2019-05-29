@@ -84,11 +84,7 @@ func (beansdb *BeansDB) afterBlock(key []byte, val []byte) error {
 
 	for index := 0; index < len(txs); index++ {
 		tx := txs[index]
-		from, err := tx.From()
-		if err != nil {
-			return err
-		}
-
+		from := tx.From()
 		if tx.Type() == params.CreateAssetTx {
 			err := UtilsSetAssetCode(beansdb, tx.Hash(), from)
 			if err != nil {

@@ -40,17 +40,16 @@ func (ts Transactions) MerkleRootSha() common.Hash {
 
 type Transaction struct {
 	data txdata
-
-	hash     atomic.Value
-	size     atomic.Value
-	from     atomic.Value
-	gasPayer atomic.Value
+	hash atomic.Value
+	size atomic.Value
 }
 
 type txdata struct {
 	Type          uint16          `json:"type" gencodec:"required"`
 	Version       uint8           `json:"version" gencodec:"required"`
 	ChainID       uint16          `json:"chainID" gencodec:"required"`
+	From          common.Address  `json:"from" gencodec:"required"`
+	GasPayer      *common.Address `json:"gasPayer" rlp:"nil"`
 	Recipient     *common.Address `json:"to" rlp:"nil"` // nil means contract creation
 	RecipientName string          `json:"toName"`
 	GasPrice      *big.Int        `json:"gasPrice" gencodec:"required"`
@@ -59,38 +58,36 @@ type txdata struct {
 	Data          []byte          `json:"data"`
 	Expiration    uint64          `json:"expirationTime" gencodec:"required"`
 	Message       string          `json:"message"`
-	Sig           []byte          `json:"sig" gencodec:"required"`
+	Sigs          [][]byte        `json:"sigs" gencodec:"required"`
 
 	// This is only used when marshaling to JSON.
 	Hash *common.Hash `json:"hash" rlp:"-"`
 	// gas payer signature
-	GasPayerSig []byte `json:"gasPayerSig"`
+	GasPayerSigs [][]byte `json:"gasPayerSigs"`
 }
 
 type txdataMarshaling struct {
-	Type        hexutil.Uint16
-	Version     hexutil.Uint8
-	ChainID     hexutil.Uint16
-	GasPrice    *hexutil.Big10
-	GasLimit    hexutil.Uint64
-	Amount      *hexutil.Big10
-	Data        hexutil.Bytes
-	Expiration  hexutil.Uint64
-	Sig         hexutil.Bytes
-	GasPayerSig hexutil.Bytes
+	Type         hexutil.Uint16
+	Version      hexutil.Uint8
+	ChainID      hexutil.Uint16
+	GasPrice     *hexutil.Big10
+	GasLimit     hexutil.Uint64
+	Amount       *hexutil.Big10
+	Data         hexutil.Bytes
+	Expiration   hexutil.Uint64
+	Sigs         []hexutil.Bytes
+	GasPayerSigs []hexutil.Bytes
 }
 
 // NewReimbursementTransaction new instead of paying gas transaction
-func NewReimbursementTransaction(to, gasPayer common.Address, amount *big.Int, data []byte, TxType uint16, chainID uint16, expiration uint64, toName string, message string) *Transaction {
-	tx := newTransaction(TxType, TxVersion, chainID, &to, amount, 0, nil, data, expiration, toName, message)
-	tx.gasPayer.Store(gasPayer)
+func NewReimbursementTransaction(from common.Address, to, gasPayer common.Address, amount *big.Int, data []byte, TxType uint16, chainID uint16, expiration uint64, toName string, message string) *Transaction {
+	tx := newTransaction(from, TxType, TxVersion, chainID, &gasPayer, &to, amount, 0, nil, data, expiration, toName, message)
 	return tx
 }
 
 // NewReimbursementContractCreation
-func NewReimbursementContractCreation(gasPayer common.Address, amount *big.Int, data []byte, TxType uint16, chainID uint16, expiration uint64, toName string, message string) *Transaction {
-	tx := newTransaction(TxType, TxVersion, chainID, nil, amount, 0, nil, data, expiration, toName, message)
-	tx.gasPayer.Store(gasPayer)
+func NewReimbursementContractCreation(from common.Address, gasPayer common.Address, amount *big.Int, data []byte, TxType uint16, chainID uint16, expiration uint64, toName string, message string) *Transaction {
+	tx := newTransaction(from, TxType, TxVersion, chainID, &gasPayer, nil, amount, 0, nil, data, expiration, toName, message)
 	return tx
 }
 
@@ -102,28 +99,33 @@ func GasPayerSignatureTx(tx *Transaction, gasPrice *big.Int, gasLimit uint64) *T
 }
 
 // 注：TxType：0为普通交易，1为节点投票交易，2为注册成为代理节点交易
-func NewTransaction(to common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte, TxType uint16, chainID uint16, expiration uint64, toName string, message string) *Transaction {
-	return newTransaction(TxType, TxVersion, chainID, &to, amount, gasLimit, gasPrice, data, expiration, toName, message)
+func NewTransaction(from common.Address, to common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte, TxType uint16, chainID uint16, expiration uint64, toName string, message string) *Transaction {
+	return newTransaction(from, TxType, TxVersion, chainID, nil, &to, amount, gasLimit, gasPrice, data, expiration, toName, message)
 }
 
 // 创建智能合约交易
-func NewContractCreation(amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte, TxType uint16, chainID uint16, expiration uint64, toName string, message string) *Transaction {
-	return newTransaction(TxType, TxVersion, chainID, nil, amount, gasLimit, gasPrice, data, expiration, toName, message)
+func NewContractCreation(from common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte, TxType uint16, chainID uint16, expiration uint64, toName string, message string) *Transaction {
+	return newTransaction(from, TxType, TxVersion, chainID, nil, nil, amount, gasLimit, gasPrice, data, expiration, toName, message)
 }
 
 // 实例化一个to == nil的交易
-func NoReceiverTransaction(amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte, TxType uint16, chainID uint16, expiration uint64, toName string, message string) *Transaction {
-	return newTransaction(TxType, TxVersion, chainID, nil, amount, gasLimit, gasPrice, data, expiration, toName, message)
+func NoReceiverTransaction(from common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte, TxType uint16, chainID uint16, expiration uint64, toName string, message string) *Transaction {
+	return newTransaction(from, TxType, TxVersion, chainID, nil, nil, amount, gasLimit, gasPrice, data, expiration, toName, message)
 }
 
-func newTransaction(txType uint16, version uint8, chainID uint16, to *common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte, expiration uint64, toName string, message string) *Transaction {
+func newTransaction(from common.Address, txType uint16, version uint8, chainID uint16, gasPayer, to *common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte, expiration uint64, toName string, message string) *Transaction {
 	if version >= 128 {
 		panic(fmt.Sprintf("invalid transaction version %d, should < 128", version))
+	}
+	if gasPayer == nil {
+		gasPayer = &from
 	}
 	d := txdata{
 		Type:          txType,
 		Version:       version,
 		ChainID:       chainID,
+		From:          from,
+		GasPayer:      gasPayer,
 		Recipient:     to,
 		RecipientName: toName,
 		GasPrice:      new(big.Int),
@@ -132,8 +134,9 @@ func newTransaction(txType uint16, version uint8, chainID uint16, to *common.Add
 		Data:          data,
 		Expiration:    expiration,
 		Message:       message,
-		Sig:           make([]byte, 0),
-		GasPayerSig:   make([]byte, 0),
+		Sigs:          make([][]byte, 0),
+		Hash:          nil,
+		GasPayerSigs:  make([][]byte, 0),
 	}
 	if amount != nil {
 		d.Amount.Set(amount)
@@ -174,14 +177,15 @@ func (tx *Transaction) UnmarshalJSON(input []byte) error {
 	if err := dec.UnmarshalJSON(input); err != nil {
 		return err
 	}
-	// _, version, V, _ := ParseV(dec.V)
 	version := dec.Version
 	if version != TxVersion {
 		return ErrInvalidVersion
 	}
 
-	if len(dec.Sig) != TxSigLength {
-		return ErrInvalidSig
+	for _, sig := range dec.Sigs {
+		if len(sig) != TxSigLength {
+			return ErrInvalidSig
+		}
 	}
 
 	*tx = Transaction{data: dec}
@@ -206,60 +210,21 @@ func (tx *Transaction) To() *common.Address {
 	return &to
 }
 
-func (tx *Transaction) Sig() []byte {
-	return tx.data.Sig
+func (tx *Transaction) Sigs() [][]byte {
+	return tx.data.Sigs
 }
 
-func (tx *Transaction) GasPayerSig() []byte {
-	return tx.data.GasPayerSig
+func (tx *Transaction) GasPayerSigs() [][]byte {
+	return tx.data.GasPayerSigs
 }
 
-func (tx *Transaction) From() (common.Address, error) {
-	from := tx.from.Load()
-	if from != nil {
-		return from.(common.Address), nil
-	}
-
-	// parse type and create signer by self
-	// now we have one signer only
-	var addr common.Address
-	var err error
-	if len(tx.data.GasPayerSig) != 0 {
-		// reimbursement transaction
-		addr, err = MakeReimbursementTxSigner().GetSigner(tx)
-	} else {
-		addr, err = MakeSigner().GetSigner(tx)
-	}
-	if err != nil {
-		return common.Address{}, err
-	}
-	tx.from.Store(addr)
-	return addr, nil
+func (tx *Transaction) From() common.Address {
+	return tx.data.From
 }
 
-// GetSigner returns address of instead of pay transaction gas.
-func (tx *Transaction) GasPayer() (common.Address, error) {
-	gasPayer := tx.gasPayer.Load()
-	if gasPayer != nil {
-		return gasPayer.(common.Address), nil
-	}
-
-	var addr common.Address
-	var err error
-	if len(tx.data.GasPayerSig) == 0 {
-		addr, err = tx.From()
-		if err != nil {
-			return common.Address{}, err
-		}
-
-	} else {
-		addr, err = MakeGasPayerSigner().GetSigner(tx)
-		if err != nil {
-			return common.Address{}, err
-		}
-		tx.gasPayer.Store(addr)
-	}
-	return addr, nil
+// GetSigners returns address of instead of pay transaction gas.
+func (tx *Transaction) GasPayer() common.Address {
+	return *tx.data.GasPayer
 }
 
 func (tx *Transaction) Hash() common.Hash {
@@ -279,31 +244,17 @@ func (tx *Transaction) Cost() *big.Int {
 }
 
 func (tx *Transaction) String() string {
-	var from, to, gasPayer string
-	if len(tx.data.Sig) > 0 {
-		if f, err := tx.From(); err != nil { // derive but don't cache
-			from = "[invalid sender: invalid sig]"
-		} else {
-			from = f.String()
-		}
+	var from, to string
+	if len(tx.data.Sigs) > 0 {
+		from = tx.From().String()
 	} else {
-		from = "[invalid sender: nil Sig field]"
+		from = "[invalid sender: nil Sigs field]"
 	}
 
 	if tx.data.Recipient == nil {
 		to = "[contract creation]"
 	} else {
 		to = tx.data.Recipient.String()
-	}
-
-	if len(tx.data.GasPayerSig) > 0 {
-		if g, err := tx.GasPayer(); err != nil {
-			gasPayer = "[invalid gasPayer: invalid gasPayerSig]"
-		} else {
-			gasPayer = g.String()
-		}
-	} else {
-		gasPayer = from
 	}
 
 	set := []string{
@@ -314,7 +265,7 @@ func (tx *Transaction) String() string {
 		fmt.Sprintf("ChainID: %d", tx.ChainID()),
 		fmt.Sprintf("From: %s", from),
 		fmt.Sprintf("To: %s", to),
-		fmt.Sprintf("GasPayer: %s", gasPayer),
+		fmt.Sprintf("GasPayer: %s", tx.GasPayer()),
 	}
 	if len(tx.data.RecipientName) > 0 {
 		set = append(set, fmt.Sprintf("ToName: %s", tx.data.RecipientName))
@@ -329,11 +280,21 @@ func (tx *Transaction) String() string {
 	if len(tx.data.Message) > 0 {
 		set = append(set, fmt.Sprintf("Message: %s", tx.data.Message))
 	}
-	if len(tx.Sig()) > 0 {
-		set = append(set, fmt.Sprintf("Sig: %s", common.ToHex(tx.Sig())))
+	if len(tx.Sigs()) > 0 {
+		str := make([]string, 0)
+		for _, sig := range tx.Sigs() {
+			str = append(str, common.ToHex(sig))
+		}
+		sigs := strings.Join(str, ", ")
+		set = append(set, fmt.Sprintf("Sigs: {%s}", sigs))
 	}
-	if len(tx.GasPayerSig()) > 0 {
-		set = append(set, fmt.Sprintf("gasPayerSig: %s", common.ToHex(tx.GasPayerSig())))
+	if len(tx.GasPayerSigs()) > 0 {
+		str := make([]string, 0)
+		for _, sig := range tx.GasPayerSigs() {
+			str = append(str, common.ToHex(sig))
+		}
+		sigs := strings.Join(str, ", ")
+		set = append(set, fmt.Sprintf("GasPayerSigs: {%s}", sigs))
 	}
 	return fmt.Sprintf("{%s}", strings.Join(set, ", "))
 }
@@ -343,18 +304,19 @@ func (tx *Transaction) Clone() *Transaction {
 	cpy := *tx
 	// Clear old hash. So we can change any field in the new tx. It will be created again when Hash() is called
 	cpy.hash = atomic.Value{}
-	cpy.from = atomic.Value{}
 
 	if tx.data.Recipient != nil {
 		*cpy.data.Recipient = *tx.data.Recipient
 	}
-	if tx.data.Sig != nil {
-		cpy.data.Sig = make([]byte, len(tx.data.Sig), len(tx.data.Sig))
-		copy(cpy.data.Sig, tx.data.Sig)
+	*cpy.data.GasPayer = *tx.data.GasPayer
+
+	if tx.data.Sigs != nil {
+		cpy.data.Sigs = make([][]byte, len(tx.data.Sigs), len(tx.data.Sigs))
+		copy(cpy.data.Sigs, tx.data.Sigs)
 	}
-	if tx.data.GasPayerSig != nil {
-		cpy.data.GasPayerSig = make([]byte, len(tx.data.GasPayerSig), len(tx.data.GasPayerSig))
-		copy(cpy.data.GasPayerSig, tx.data.GasPayerSig)
+	if tx.data.GasPayerSigs != nil {
+		cpy.data.GasPayerSigs = make([][]byte, len(tx.data.GasPayerSigs), len(tx.data.GasPayerSigs))
+		copy(cpy.data.GasPayerSigs, tx.data.GasPayerSigs)
 	}
 	if tx.data.Data != nil {
 		cpy.data.Data = make([]byte, len(tx.data.Data), len(tx.data.Data))
@@ -383,11 +345,6 @@ func (tx *Transaction) VerifyTx(chainID uint16, timeStamp uint64) error {
 	if tx.ChainID() != chainID {
 		log.Warnf("Tx chainID is incorrect. txChainId:%d, chainID:%d", tx.ChainID(), chainID)
 		return ErrTxChainID
-	}
-	// verify tx signing
-	_, err := tx.From()
-	if err != nil {
-		return err
 	}
 	if tx.Amount().Sign() < 0 {
 		return ErrNegativeValue
@@ -420,13 +377,4 @@ func (tx *Transaction) VerifyTx(chainID uint16, timeStamp uint64) error {
 		return ErrTxType
 	}
 	return nil
-}
-
-// StoreFromForTest
-func (tx *Transaction) StoreFromForTest(addr common.Address) {
-	from := tx.from.Load()
-	if from != nil {
-		return
-	}
-	tx.from.Store(addr)
 }

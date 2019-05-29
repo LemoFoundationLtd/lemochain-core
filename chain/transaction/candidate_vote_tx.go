@@ -84,7 +84,7 @@ func buildProfile(tx *types.Transaction) (types.Profile, error) {
 	if err = checkRegisterTxProfile(profile); err != nil {
 		return nil, err
 	}
-	candidateAddress, _ := tx.From()
+	candidateAddress := tx.From()
 	// Candidate node information
 	_, ok := profile[types.CandidateKeyIsCandidate]
 	if !ok {
@@ -116,7 +116,7 @@ func (c *CandidateVoteEnv) RegisterOrUpdateToCandidate(tx *types.Transaction, in
 	if err != nil {
 		return err
 	}
-	candidateAddress, _ := tx.From()
+	candidateAddress := tx.From()
 	to := params.FeeReceiveAddress
 
 	// Checking the balance is not enough

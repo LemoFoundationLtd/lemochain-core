@@ -133,12 +133,12 @@ func (t *testChain) GetParentByHeight(height uint32, sonBlockHash common.Hash) *
 	return block
 }
 
-func makeTx(fromPrivate *ecdsa.PrivateKey, to common.Address, txType uint16, amount *big.Int) *types.Transaction {
-	return makeTransaction(fromPrivate, to, txType, amount, common.Big1, uint64(time.Now().Unix()+300), 1000000)
+func makeTx(fromPrivate *ecdsa.PrivateKey, from, to common.Address, txType uint16, amount *big.Int) *types.Transaction {
+	return makeTransaction(fromPrivate, from, to, txType, amount, common.Big1, uint64(time.Now().Unix()+300), 1000000)
 }
 
-func makeTransaction(fromPrivate *ecdsa.PrivateKey, to common.Address, txType uint16, amount *big.Int, gasPrice *big.Int, expiration uint64, gasLimit uint64) *types.Transaction {
-	tx := types.NewTransaction(to, amount, gasLimit, gasPrice, []byte{}, txType, chainID, expiration, "", string("aaa"))
+func makeTransaction(fromPrivate *ecdsa.PrivateKey, from, to common.Address, txType uint16, amount *big.Int, gasPrice *big.Int, expiration uint64, gasLimit uint64) *types.Transaction {
+	tx := types.NewTransaction(from, to, amount, gasLimit, gasPrice, []byte{}, txType, chainID, expiration, "", string("aaa"))
 	return signTransaction(tx, fromPrivate)
 }
 

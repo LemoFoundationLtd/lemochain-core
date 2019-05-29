@@ -34,8 +34,8 @@ type replenishAssetMarshaling struct {
 // 修改资产profile
 //go:generate gencodec -type ModifyAssetInfo -out gen_modifyAssetInfo_json.go
 type ModifyAssetInfo struct {
-	AssetCode common.Hash `json:"assetCode" gencodec:"required"`
-	Info      Profile     `json:"info" gencodec:"required"`
+	AssetCode     common.Hash `json:"assetCode" gencodec:"required"`
+	UpdateProfile Profile     `json:"updateProfile" gencodec:"required"`
 }
 
 // 交易资产

@@ -12,20 +12,20 @@ import (
 // MarshalJSON marshals as JSON.
 func (m ModifyAssetInfo) MarshalJSON() ([]byte, error) {
 	type ModifyAssetInfo struct {
-		AssetCode common.Hash `json:"assetCode" gencodec:"required"`
-		Info      Profile     `json:"info" gencodec:"required"`
+		AssetCode     common.Hash `json:"assetCode" gencodec:"required"`
+		UpdateProfile Profile     `json:"updateProfile" gencodec:"required"`
 	}
 	var enc ModifyAssetInfo
 	enc.AssetCode = m.AssetCode
-	enc.Info = m.Info
+	enc.UpdateProfile = m.UpdateProfile
 	return json.Marshal(&enc)
 }
 
 // UnmarshalJSON unmarshals from JSON.
 func (m *ModifyAssetInfo) UnmarshalJSON(input []byte) error {
 	type ModifyAssetInfo struct {
-		AssetCode *common.Hash `json:"assetCode" gencodec:"required"`
-		Info      *Profile     `json:"info" gencodec:"required"`
+		AssetCode     *common.Hash `json:"assetCode" gencodec:"required"`
+		UpdateProfile *Profile     `json:"updateProfile" gencodec:"required"`
 	}
 	var dec ModifyAssetInfo
 	if err := json.Unmarshal(input, &dec); err != nil {
@@ -35,9 +35,9 @@ func (m *ModifyAssetInfo) UnmarshalJSON(input []byte) error {
 		return errors.New("missing required field 'assetCode' for ModifyAssetInfo")
 	}
 	m.AssetCode = *dec.AssetCode
-	if dec.Info == nil {
-		return errors.New("missing required field 'info' for ModifyAssetInfo")
+	if dec.UpdateProfile == nil {
+		return errors.New("missing required field 'updateProfile' for ModifyAssetInfo")
 	}
-	m.Info = *dec.Info
+	m.UpdateProfile = *dec.UpdateProfile
 	return nil
 }
