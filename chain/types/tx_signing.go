@@ -27,9 +27,7 @@ func MakeGasPayerSigner() Signer {
 }
 
 // recoverSigners
-func recoverSigners(s Signer, tx *Transaction) ([]common.Address, error) {
-	sigHash := s.Hash(tx)
-	sigs := s.Sigs(tx)
+func recoverSigners(sigHash common.Hash, sigs [][]byte) ([]common.Address, error) {
 	length := len(sigs)
 	signers := make([]common.Address, length, length)
 	for i := 0; i < length; i++ {
@@ -57,17 +55,10 @@ type Signer interface {
 
 	// Hash returns the hash to be signed.
 	Hash(tx *Transaction) common.Hash
-
-	// get transaction sigs or gasPayerSigs
-	Sigs(tx *Transaction) [][]byte
 }
 
 // DefaultSigner implements Signer.
 type DefaultSigner struct {
-}
-
-func (s DefaultSigner) Sigs(tx *Transaction) [][]byte {
-	return tx.Sigs()
 }
 
 func (s DefaultSigner) SignTx(tx *Transaction, prv *ecdsa.PrivateKey) (*Transaction, error) {
@@ -82,7 +73,9 @@ func (s DefaultSigner) SignTx(tx *Transaction, prv *ecdsa.PrivateKey) (*Transact
 }
 
 func (s DefaultSigner) GetSigners(tx *Transaction) ([]common.Address, error) {
-	signers, err := recoverSigners(s, tx)
+	sigHash := s.Hash(tx)
+	sigs := tx.data.Sigs
+	signers, err := recoverSigners(sigHash, sigs)
 	return signers, err
 }
 
@@ -107,10 +100,6 @@ func (s DefaultSigner) Hash(tx *Transaction) common.Hash {
 }
 
 type ReimbursementTxSigner struct {
-}
-
-func (s ReimbursementTxSigner) Sigs(tx *Transaction) [][]byte {
-	return tx.Sigs()
 }
 
 // SignTx returns first signature to reimbursement gas transaction
@@ -144,15 +133,13 @@ func (s ReimbursementTxSigner) Hash(tx *Transaction) common.Hash {
 
 // GetSigners
 func (s ReimbursementTxSigner) GetSigners(tx *Transaction) ([]common.Address, error) {
-	signers, err := recoverSigners(s, tx)
+	sigHash := s.Hash(tx)
+	sigs := tx.data.Sigs
+	signers, err := recoverSigners(sigHash, sigs)
 	return signers, err
 }
 
 type GasPayerSigner struct {
-}
-
-func (g GasPayerSigner) Sigs(tx *Transaction) [][]byte {
-	return tx.GasPayerSigs()
 }
 
 // SignTx returns last signature to reimbursement gas transaction
@@ -170,7 +157,9 @@ func (g GasPayerSigner) SignTx(tx *Transaction, prv *ecdsa.PrivateKey) (*Transac
 
 // GetGasPayer returns gas payer address
 func (g GasPayerSigner) GetSigners(tx *Transaction) ([]common.Address, error) {
-	signers, err := recoverSigners(g, tx)
+	sigHash := g.Hash(tx)
+	sigs := tx.data.GasPayerSigs
+	signers, err := recoverSigners(sigHash, sigs)
 	return signers, err
 }
 
