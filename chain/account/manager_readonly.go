@@ -65,14 +65,15 @@ func (am *ReadOnlyManager) Reset(blockHash common.Hash) {
 }
 
 // getAccount return stable account from db
-func (am *ReadOnlyManager) getAccount(address common.Address, stable bool) types.AccountAccessor {
+func (am *ReadOnlyManager) getAccount(address common.Address, stableOnly bool) types.AccountAccessor {
 	var data *types.AccountData
 	var err error
-	if stable {
+	if stableOnly || am.acctDb == nil {
 		data, err = am.db.GetAccount(address)
 	} else {
 		data, err = am.acctDb.Get(address)
 	}
+
 	if err != nil && err != store.ErrNotExist {
 		panic(err)
 	}
@@ -84,23 +85,12 @@ func (am *ReadOnlyManager) getAccount(address common.Address, stable bool) types
 
 // GetAccount
 func (am *ReadOnlyManager) GetAccount(address common.Address) types.AccountAccessor {
-
-	if am.stableOnly { // 只读稳定的account
-		return am.getAccount(address, true)
-	} else {
-		// 只读最新的account
-		cached := am.accountCache[address]
-		if cached == nil {
-			// If acctDB is exist, then we use the newest unstable account, otherwise the newest stable account
-			if am.acctDb != nil {
-				return am.getAccount(address, false)
-			} else {
-				return am.getAccount(address, true)
-			}
-		} else {
-			return cached
-		}
+	// 从缓存中读取account
+	if cached, ok := am.accountCache[address]; ok {
+		return cached
 	}
+
+	return am.getAccount(address, am.stableOnly)
 }
 
 func (am *ReadOnlyManager) RevertToSnapshot(int) {
