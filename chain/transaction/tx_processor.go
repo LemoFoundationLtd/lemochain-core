@@ -24,7 +24,7 @@ const (
 	MaxDeputyHostLength   = 128
 	StandardNodeIdLength  = 128
 	SignerWeightThreshold = 100
-	MaxNumberSigners      = 100
+	MaxSignersNumber      = 100
 )
 
 var (
@@ -34,12 +34,11 @@ var (
 	ErrInvalidHost               = errors.New("the length of host field in transaction is out of max length limit")
 	ErrInvalidAddress            = errors.New("invalid address")
 	ErrInvalidNodeId             = errors.New("invalid nodeId")
-	ErrTxNotSig                  = errors.New("the transaction is not signed")
+	ErrTxNotSign                 = errors.New("the transaction is not signed")
 	ErrTotalWeight               = errors.New("insufficient total weight of signatories")
 	ErrSignerAndFromUnequally    = errors.New("the signer and from of transaction are not equal")
 	ErrGasPayer                  = errors.New("the gasPayer error")
-	ErrNilGasPayerSigs           = errors.New("gasPayerSigs is nul")
-	ErrGasPayerSigs              = errors.New("gasPayerSigs error")
+	ErrSetMulisig                = errors.New("from and to must be equal")
 )
 
 type TxProcessor struct {
@@ -186,7 +185,7 @@ func (p *TxProcessor) checkSignersWeight(sender common.Address, tx *types.Transa
 		return err
 	}
 	if len(signers) == 0 {
-		return ErrTxNotSig
+		return ErrTxNotSign
 	}
 	// 获取账户的签名者列表
 	accSigners := p.am.GetAccount(sender).GetSigners()

@@ -35,8 +35,8 @@ func unmarshalAndVerifyData(data []byte) (types.Signers, error) {
 		return nil, err
 	}
 
-	if len(newSigners) > MaxNumberSigners {
-		log.Errorf("Cannot exceed the maximum number of signers. signers number: %d,MaxNumberSigners: %d", len(newSigners), MaxNumberSigners)
+	if len(newSigners) > MaxSignersNumber {
+		log.Errorf("Cannot exceed the maximum number of signers. signers number: %d,MaxSignersNumber: %d", len(newSigners), MaxSignersNumber)
 		return nil, ErrSignersNumber
 	}
 
@@ -93,11 +93,14 @@ func (s *SetMultisigAccountEnv) ModifyMultisigTx(from, to common.Address, data [
 		return err
 	}
 	toAcc := s.am.GetAccount(to)
-	// 1. 创建多签账户
-	err = setMultisigAccount(txSigners, toAcc)
-	if err != nil {
-		return err
+	if from == to {
+		// 1. 创建多签账户
+		err = setMultisigAccount(txSigners, toAcc)
+		if err != nil {
+			return err
+		}
+	} else {
+		return ErrSetMulisig
 	}
-
 	return nil
 }
