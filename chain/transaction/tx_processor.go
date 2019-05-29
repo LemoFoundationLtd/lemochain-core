@@ -205,7 +205,9 @@ func (p *TxProcessor) checkSignersWeight(sender common.Address, tx *types.Transa
 		// 计算签名者权重总和
 		var totalWeight int64 = 0
 		for _, addr := range signers {
-			totalWeight = totalWeight + int64(signersMap[addr])
+			if w, ok := signersMap[addr]; ok {
+				totalWeight = totalWeight + int64(w)
+			}
 		}
 		// 比较签名权重总和大小
 		if totalWeight < SignerWeightThreshold {
@@ -221,24 +223,26 @@ func (p *TxProcessor) verifyTransactionSigs(tx *types.Transaction) error {
 	gasPayerSigsLength := len(tx.GasPayerSigs())
 
 	// 验证gasPayer签名
+	gasPayer := tx.GasPayer()
 	if gasPayerSigsLength >= 1 {
 		// 验证签名账户
-		gasPayer := tx.GasPayer()
 		err := p.checkSignersWeight(gasPayer, tx, types.MakeGasPayerSigner())
 		if err != nil {
 			return err
 		}
+	} else {
+		// 判断gasPayer字段是否为默认的from
+		if gasPayer != from {
+			log.Errorf("The default transaction gasPayer must equal the from. gasPayer: %s. from: %s", tx.GasPayer().String(), from.String())
+			return ErrGasPayer
+		}
 	}
+
 	// 验证from签名
 	var fromSigner types.Signer
 	if gasPayerSigsLength >= 1 {
 		fromSigner = types.MakeReimbursementTxSigner()
 	} else {
-		// 判断gasPayer字段是否为默认的from
-		if tx.GasPayer() != from {
-			log.Errorf("The default transaction gasPayer must equal the from. gasPayer: %s. from: %s", tx.GasPayer().String(), from.String())
-			return ErrGasPayer
-		}
 		fromSigner = types.MakeSigner()
 	}
 
