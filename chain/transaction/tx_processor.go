@@ -198,10 +198,7 @@ func (p *TxProcessor) checkSignersWeight(sender common.Address, tx *types.Transa
 			return ErrSignerAndFromUnequally
 		}
 	} else { // 多签账户
-		signersMap := make(map[common.Address]uint8)
-		for _, v := range accSigners {
-			signersMap[v.Address] = v.Weight
-		}
+		signersMap := accSigners.ToSignerMap()
 		// 计算签名者权重总和
 		var totalWeight int64 = 0
 		for _, addr := range signers {

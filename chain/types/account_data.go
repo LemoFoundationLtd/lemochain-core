@@ -133,6 +133,16 @@ func (signers Signers) Swap(i, j int) {
 	signers[i], signers[j] = signers[j], signers[i]
 }
 
+type SignerMap map[common.Address]uint8
+
+func (signers Signers) ToSignerMap() SignerMap {
+	m := make(SignerMap)
+	for _, v := range signers {
+		m[v.Address] = v.Weight
+	}
+	return m
+}
+
 func (signers Signers) String() string {
 	if len(signers) > 0 {
 		records := make([]string, 0, len(signers))
