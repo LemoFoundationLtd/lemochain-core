@@ -23,9 +23,6 @@ var (
 	secp256k1_halfN = new(big.Int).Div(secp256k1_N, big.NewInt(2))
 )
 
-// lemochain 版本号
-const addressVersion = 0x01
-
 // Keccak256 calculates and returns the Keccak256 hash of the input data.
 func Keccak256(data ...[]byte) []byte {
 	d := sha3.NewKeccak256()
@@ -56,14 +53,27 @@ func Keccak512(data ...[]byte) []byte {
 }
 
 // Creates an lemochain address given the bytes and the hash
-func CreateAddress(b common.Address, hash common.Hash) common.Address {
+func CreateContractAddress(b common.Address, hash common.Hash) common.Address {
 	// TODO If we deploy contract A many times in contract B function. We will get same contract addresses. So we need another verifiable address seed, such as new address counter for transaction execution?
 	data, _ := rlp.EncodeToBytes([]interface{}{b, hash})
-	return encodeAddress(data)
+	return encodeDataToAddress(data, common.LemoAddressVersion)
 }
 
-// encodeAddress encodes a data to lemo address
-func encodeAddress(data []byte) common.Address {
+// CreateTempAddress return a temp account address
+func CreateTempAddress(creator common.Address, userId [10]byte) common.Address {
+	tempAddress := make([]byte, common.AddressLength)
+	// add version
+	tempAddress[0] = common.TempAddressVersion
+	// add creator end of 9 bytes
+	sameBytes := creator[common.AddressLength-common.TempSameBytesLength:]
+	copy(tempAddress[1:10], sameBytes)
+	// add user id
+	copy(tempAddress[10:], userId[:])
+	return common.BytesToAddress(tempAddress)
+}
+
+// encodeDataToAddress encode data to lemo address
+func encodeDataToAddress(data []byte, addressVersion byte) common.Address {
 	// Get the first 19 bits of the hash
 	hashData := Keccak256(data)[:19]
 	// Add version number
@@ -195,7 +205,7 @@ func PubkeyToAddress(p ecdsa.PublicKey) common.Address {
 }
 
 func PubToAddress(pub []byte) common.Address {
-	return encodeAddress(pub[1:])
+	return encodeDataToAddress(pub[1:], common.LemoAddressVersion)
 }
 
 func zeroBytes(bytes []byte) {

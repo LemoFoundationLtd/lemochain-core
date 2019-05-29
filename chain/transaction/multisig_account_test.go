@@ -1,6 +1,7 @@
 package transaction
 
 import (
+	"bytes"
 	"encoding/json"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
@@ -150,4 +151,11 @@ func TestSetMultisigAccountEnv_ModifyMultisigTx(t *testing.T) {
 	assert.Equal(t, mmm[40], m1[50])
 	assert.Equal(t, mmm[50], m1[60])
 	assert.Equal(t, mmm[60], m1[70])
+}
+
+func TestNewEVMContext(t *testing.T) {
+	addr1 := common.Address{2, 1, 6, 7, 8}
+	addr2 := common.Address{2, 5, 6, 7, 8}
+	t.Log(bytes.Compare(addr1[2:4], addr2[2:4]))
+	t.Logf("%d", addr2[2:4])
 }

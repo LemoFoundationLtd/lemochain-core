@@ -39,6 +39,8 @@ var (
 	ErrSignerAndFromUnequally    = errors.New("the signer and from of transaction are not equal")
 	ErrGasPayer                  = errors.New("the gasPayer error")
 	ErrSetMulisig                = errors.New("from and to must be equal")
+	ErrAddressVersion            = errors.New("address version wrong")
+	ErrTempAddress               = errors.New("the same bytes error")
 )
 
 type TxProcessor struct {
