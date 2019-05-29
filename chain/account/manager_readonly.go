@@ -32,19 +32,21 @@ func (a *ReadOnlyAccount) Save() error {
 
 // ReadOnlyManager is used to access the newest readonly account data
 type ReadOnlyManager struct {
-	db           protocol.ChainDB
-	acctDb       *store.AccountTrieDB
-	accountCache map[common.Address]*ReadOnlyAccount
+	stableAccount bool // 是否只读稳定account
+	db            protocol.ChainDB
+	acctDb        *store.AccountTrieDB
+	accountCache  map[common.Address]*ReadOnlyAccount
 }
 
 // NewManager creates a new Manager. It is used to maintain account changes based on the block environment which specified by blockHash
-func NewReadOnlyManager(db protocol.ChainDB) *ReadOnlyManager {
+func NewReadOnlyManager(db protocol.ChainDB, stableAccount bool) *ReadOnlyManager {
 	if db == nil {
 		panic("account.NewManager is called without a database")
 	}
 	manager := &ReadOnlyManager{
-		db:           db,
-		accountCache: make(map[common.Address]*ReadOnlyAccount),
+		stableAccount: stableAccount,
+		db:            db,
+		accountCache:  make(map[common.Address]*ReadOnlyAccount),
 	}
 
 	return manager
@@ -63,7 +65,7 @@ func (am *ReadOnlyManager) Reset(blockHash common.Hash) {
 }
 
 // GetStableAccount return stable account from db
-func (am *ReadOnlyManager) GetLatestAccount(address common.Address) types.AccountAccessor {
+func (am *ReadOnlyManager) getStableAccount(address common.Address) types.AccountAccessor {
 	data, err := am.db.GetAccount(address)
 	if err != nil && err != store.ErrNotExist {
 		panic(err)
@@ -71,8 +73,14 @@ func (am *ReadOnlyManager) GetLatestAccount(address common.Address) types.Accoun
 	return NewReadOnlyAccount(am.db, address, data)
 }
 
-// GetAccount return the latest account
+// GetAccount
 func (am *ReadOnlyManager) GetAccount(address common.Address) types.AccountAccessor {
+
+	if am.stableAccount { // 只读稳定的account
+		return am.getStableAccount(address)
+	}
+
+	// 只读最新的account
 	cached := am.accountCache[address]
 	if cached == nil {
 		var data *types.AccountData
@@ -86,9 +94,9 @@ func (am *ReadOnlyManager) GetAccount(address common.Address) types.AccountAcces
 		if err != nil && err != store.ErrNotExist {
 			log.Error("Load read only account fail", "err", err)
 		}
-		account := NewReadOnlyAccount(am.db, address, data)
+		cached = NewReadOnlyAccount(am.db, address, data)
 		// cache it
-		am.accountCache[address] = account
+		am.accountCache[address] = cached
 	}
 	return cached
 }
