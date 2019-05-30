@@ -154,8 +154,14 @@ func (a Address) Bytes() []byte { return a[:] }
 func (a Address) Big() *big.Int { return new(big.Int).SetBytes(a[:]) }
 func (a Address) Hash() Hash    { return BytesToHash(a[:]) }
 
+// IsTempAddress judge temp address
 func (a Address) IsTempAddress() bool {
 	return a[0] == TempAddressVersion
+}
+
+// IsContractAddress judge contract address
+func (a Address) IsContractAddress() bool {
+	return a[0] == LemoContractAddressVersion
 }
 
 // Hex returns an EIP55-compliant hex string representation of the address.

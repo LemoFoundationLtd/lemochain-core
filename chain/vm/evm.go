@@ -142,10 +142,14 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		to       = AccountRef(addr)
 		snapshot = evm.am.Snapshot()
 	)
-	if len(code) == 0 && PrecompiledContracts[addr] == nil && value.Sign() == 0 {
+	if len(code) == 0 && PrecompiledContracts[addr] == nil {
+		evm.Transfer(evm.am, caller.GetAddress(), to.GetAddress(), value)
 		return nil, gas, nil
 	}
-	evm.Transfer(evm.am, caller.GetAddress(), to.GetAddress(), value)
+
+	if value.Sign() > 0 {
+		evm.Transfer(evm.am, caller.GetAddress(), to.GetAddress(), value)
+	}
 	// Initialise a new contract and set the code that is to be used by the EVM.
 	// The contract is a scoped environment for this execution context only.
 	contract := NewContract(caller, to, value, gas)
