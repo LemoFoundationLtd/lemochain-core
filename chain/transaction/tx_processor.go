@@ -539,12 +539,11 @@ func (p *TxProcessor) chargeForGas(charge *big.Int, minerAddress common.Address)
 }
 
 // PreExecutionTransaction pre-execute transactions and contracts.
-func (p *TxProcessor) PreExecutionTransaction(ctx context.Context, header *types.Header, to *common.Address, txType uint16, data hexutil.Bytes, blockHash common.Hash, timeout time.Duration) ([]byte, uint64, error) {
+func (p *TxProcessor) PreExecutionTransaction(ctx context.Context, accM *account.ReadOnlyManager, header *types.Header, to *common.Address, txType uint16, data hexutil.Bytes, blockHash common.Hash, timeout time.Duration) ([]byte, uint64, error) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	accM := account.ReadOnlyManager(header.Hash(), p.db)
-	accM.Reset(header.ParentHash)
+	accM.Reset(header.Hash())
 
 	// A random address is found as our caller address.
 	strAddress := "0x20190306" // todo Consider letting users pass in their own addresses
@@ -662,7 +661,7 @@ func newTx(from common.Address, to *common.Address, txType uint16, data []byte, 
 }
 
 // getEVM
-func getEVM(tx *types.Transaction, header *types.Header, txIndex uint, txHash common.Hash, blockHash common.Hash, chain BlockLoader, cfg vm.Config, accM *account.Manager) *vm.EVM {
+func getEVM(tx *types.Transaction, header *types.Header, txIndex uint, txHash common.Hash, blockHash common.Hash, chain BlockLoader, cfg vm.Config, accM vm.AccountManager) *vm.EVM {
 	evmContext := NewEVMContext(tx, header, txIndex, blockHash, chain)
 	vmEnv := vm.NewEVM(evmContext, accM, cfg)
 	return vmEnv

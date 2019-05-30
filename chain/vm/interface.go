@@ -10,7 +10,6 @@ import (
 // AccountManager is an EVM database for full account querying.
 type AccountManager interface {
 	GetAccount(common.Address) types.AccountAccessor
-	IsExist(common.Address) bool
 
 	RevertToSnapshot(int)
 	Snapshot() int

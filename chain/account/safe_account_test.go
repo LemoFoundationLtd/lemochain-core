@@ -21,7 +21,7 @@ func loadSafeAccount(address common.Address) *SafeAccount {
 	return NewSafeAccount(NewManager(newestBlock.Hash(), db).processor, NewAccount(db, address, data))
 }
 
-func TestSafeAccount_SetBalance_IsDirty(t *testing.T) {
+func TestSafeAccount_SetBalance(t *testing.T) {
 	account := loadSafeAccount(defaultAccounts[0].Address)
 	defer account.rawAccount.db.Close()
 
@@ -32,7 +32,7 @@ func TestSafeAccount_SetBalance_IsDirty(t *testing.T) {
 	assert.Equal(t, *big.NewInt(200), account.processor.changeLogs[0].NewVal.(big.Int))
 }
 
-func TestSafeAccount_SetCode_IsDirty(t *testing.T) {
+func TestSafeAccount_SetCode(t *testing.T) {
 	account := loadSafeAccount(defaultAccounts[0].Address)
 	defer account.rawAccount.db.Close()
 
@@ -42,7 +42,7 @@ func TestSafeAccount_SetCode_IsDirty(t *testing.T) {
 	assert.Equal(t, types.Code{0x12}, account.processor.changeLogs[0].NewVal.(types.Code))
 }
 
-func TestSafeAccount_SetStorageState_IsDirty(t *testing.T) {
+func TestSafeAccount_SetStorageState(t *testing.T) {
 	account := loadSafeAccount(defaultAccounts[0].Address)
 	defer account.rawAccount.db.Close()
 
