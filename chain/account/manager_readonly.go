@@ -64,11 +64,16 @@ func (am *ReadOnlyManager) Reset(blockHash common.Hash) {
 	am.accountCache = make(map[common.Address]*ReadOnlyAccount)
 }
 
-// getAccount return stable account from db
-func (am *ReadOnlyManager) getAccount(address common.Address, stableOnly bool) types.AccountAccessor {
+// GetAccount
+func (am *ReadOnlyManager) GetAccount(address common.Address) types.AccountAccessor {
+	// 从缓存中读取account
+	if cached, ok := am.accountCache[address]; ok {
+		return cached
+	}
+
 	var data *types.AccountData
 	var err error
-	if stableOnly || am.acctDb == nil {
+	if am.stableOnly || am.acctDb == nil {
 		data, err = am.db.GetAccount(address)
 	} else {
 		data, err = am.acctDb.Get(address)
@@ -81,16 +86,6 @@ func (am *ReadOnlyManager) getAccount(address common.Address, stableOnly bool) t
 	// cache it
 	am.accountCache[address] = account
 	return account
-}
-
-// GetAccount
-func (am *ReadOnlyManager) GetAccount(address common.Address) types.AccountAccessor {
-	// 从缓存中读取account
-	if cached, ok := am.accountCache[address]; ok {
-		return cached
-	}
-
-	return am.getAccount(address, am.stableOnly)
 }
 
 func (am *ReadOnlyManager) RevertToSnapshot(int) {
