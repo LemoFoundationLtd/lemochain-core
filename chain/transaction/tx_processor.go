@@ -456,7 +456,7 @@ func (p *TxProcessor) buyGas(gp *types.GasPool, tx *types.Transaction) error {
 }
 
 func (p *TxProcessor) payIntrinsicGas(tx *types.Transaction, restGas uint64) (uint64, error) {
-	gas, err := IntrinsicGas(tx.Type(), tx.To() == nil, tx.Data())
+	gas, err := IntrinsicGas(tx.Type(), tx.To() == nil, tx.Data(), tx.Message())
 	if err != nil {
 		return restGas, err
 	}
@@ -467,14 +467,14 @@ func (p *TxProcessor) payIntrinsicGas(tx *types.Transaction, restGas uint64) (ui
 }
 
 // IntrinsicGas computes the 'intrinsic gas' for a message with the given data.
-func IntrinsicGas(txType uint16, contractCreation bool, data []byte) (uint64, error) {
+func IntrinsicGas(txType uint16, contractCreation bool, data []byte, txMessage string) (uint64, error) {
 	// Set the starting gas for the raw transaction
 	gas, err := getTxBaseSpendGas(txType, contractCreation)
 	if err != nil {
 		return 0, err
 	}
 	// calculate txData spend gas and  add it and return
-	return addTxDataSpendGas(data, gas)
+	return addTxDataSpendGas(data, txMessage, gas)
 }
 
 // getTxBaseSpendGas 获取不同类型的交易需要花费的基础固定gas
@@ -511,7 +511,13 @@ func getTxBaseSpendGas(txType uint16, contractCreation bool) (uint64, error) {
 }
 
 // addTxDataSpendGas 加上交易data消耗的固定gas
-func addTxDataSpendGas(data []byte, gas uint64) (uint64, error) {
+func addTxDataSpendGas(data []byte, message string, gas uint64) (uint64, error) {
+	// 计算tx中message消耗的gas
+	messageLen := len(message)
+	if messageLen > 0 {
+		gas += uint64(messageLen) * params.TxMessageGas
+	}
+
 	// Bump the required gas by the amount of transactional data
 	if len(data) > 0 {
 		// Zero and non-zero bytes are priced differently

@@ -224,7 +224,7 @@ func TestBlockChain_data(t *testing.T) {
 func TestIntrinsicGas(t *testing.T) {
 	var gas uint64
 	for i := 0; i <= 8; i++ {
-		gas, _ = IntrinsicGas(uint16(i), false, nil)
+		gas, _ = IntrinsicGas(uint16(i), false, nil, "")
 		switch i {
 		case 0:
 			assert.Equal(t, params.OrdinaryTxGas, gas)
@@ -249,22 +249,29 @@ func TestIntrinsicGas(t *testing.T) {
 		}
 	}
 	// 创建合约
-	gas, _ = IntrinsicGas(params.OrdinaryTx, true, nil)
+	gas, _ = IntrinsicGas(params.OrdinaryTx, true, nil, "")
 	assert.Equal(t, params.TxGasContractCreation, gas)
+
+	// 测试交易message消耗的gas
+	message := "test message spend gas"
+	messLen := uint64(len(message))
+	gas, _ = IntrinsicGas(params.OrdinaryTx, false, nil, message)
+	assert.Equal(t, params.OrdinaryTxGas+messLen*params.TxMessageGas, gas)
+
 	// 测试data中字节全为0
 	zeroData := make([]byte, 10)
 	zeroData = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-	gas, _ = IntrinsicGas(params.OrdinaryTx, false, zeroData)
+	gas, _ = IntrinsicGas(params.OrdinaryTx, false, zeroData, "")
 	assert.Equal(t, params.OrdinaryTxGas+10*params.TxDataZeroGas, gas)
 	// 测试data 中字节全不为0的情况
 	notZeroData := make([]byte, 10)
 	notZeroData = []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
-	gas, _ = IntrinsicGas(params.OrdinaryTx, false, notZeroData)
+	gas, _ = IntrinsicGas(params.OrdinaryTx, false, notZeroData, "")
 	assert.Equal(t, params.OrdinaryTxGas+10*params.TxDataNonZeroGas, gas)
 	// 测试data一半为0的情况
 	halfZeroData := make([]byte, 10)
 	halfZeroData = []byte{1, 0, 2, 0, 3, 0, 4, 0, 5, 0}
-	gas, _ = IntrinsicGas(params.OrdinaryTx, false, halfZeroData)
+	gas, _ = IntrinsicGas(params.OrdinaryTx, false, halfZeroData, "")
 	assert.Equal(t, params.OrdinaryTxGas+5*(params.TxDataNonZeroGas+params.TxDataZeroGas), gas)
 }
 
@@ -295,7 +302,7 @@ func TestMaxAssetProfile(t *testing.T) {
 	assert.NoError(t, err)
 	t.Logf("data length : %d", len(data))
 
-	gasUsed, err := IntrinsicGas(params.OrdinaryTx, false, data)
+	gasUsed, err := IntrinsicGas(params.OrdinaryTx, false, data, "")
 	assert.NoError(t, err)
 	t.Logf("max gasUsed : %d", gasUsed)
 }
