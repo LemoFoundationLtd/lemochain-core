@@ -96,17 +96,17 @@ func (s *SetMultisigAccountEnv) ModifyMultisigTx(from, to common.Address, data [
 	}
 	toAcc := s.am.GetAccount(to)
 
-	if from != to { // 为设置临时账户to为多签账户
-		// 1. 查看临时账户是否已经存在
+	if from != to { // 设置临时账户to为多签账户
+		// 1. 校验临时账户地址
+		err = verifyTempAddress(from, to)
+		if err != nil {
+			return err
+		}
+		// 2. 查看临时账户是否已经存在
 		signers := toAcc.GetSigners()
 		if len(signers) != 0 {
 			log.Errorf("The temp address's multisig has been set up. Multiple signers: %s", signers.String())
 			return ErrRepeatSetTempAddress
-		}
-		// 2. 校验临时账户地址
-		err = verifyTempAddress(from, to)
-		if err != nil {
-			return err
 		}
 	}
 
@@ -122,13 +122,13 @@ func (s *SetMultisigAccountEnv) ModifyMultisigTx(from, to common.Address, data [
 func verifyTempAddress(creator, tempAddress common.Address) error {
 	// 验证是否为临时地址
 	if !tempAddress.IsTempAddress() {
-		log.Errorf("Address version wrong. Error version: %d. TempAddress version: %d", tempAddress[0], common.TempAddressVersion)
-		return ErrAddressVersion
+		log.Errorf("Address version wrong. Error version: %d. TempAddress version: %d", tempAddress[0], common.TempAddressType)
+		return ErrAddressType
 	}
 
 	// 验证 creator[11:] == tempAddress[1:10]
-	if bytes.Compare(creator[common.AddressLength-common.TempSameBytesLength:], tempAddress[1:1+common.TempSameBytesLength]) != 0 {
-		log.Errorf("The same bytes error. Same bytes of create address: %d. Temp address: %d", creator[common.AddressLength-common.TempSameBytesLength:], tempAddress[1:1+common.TempSameBytesLength])
+	if bytes.Compare(creator[common.AddressLength-common.TempIssuerBytesLength:], tempAddress[1:1+common.TempIssuerBytesLength]) != 0 {
+		log.Errorf("The same bytes error. Same bytes of create address: %d. Temp address: %d", creator[common.AddressLength-common.TempIssuerBytesLength:], tempAddress[1:1+common.TempIssuerBytesLength])
 		return ErrTempAddress
 	}
 	return nil

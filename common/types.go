@@ -13,14 +13,16 @@ import (
 )
 
 const (
-	HashLength                 = 32
-	AddressLength              = 20
-	TempSameBytesLength        = 9
-	TokenLength                = 32
-	logo                       = "Lemo"
-	LemoAddressVersion         = 0x01 // lemochain 普通地址版本号
-	LemoContractAddressVersion = 0x02 // lemochain 智能合约地址
-	TempAddressVersion         = 0x03 // 临时地址版本号
+	HashLength            = 32
+	AddressLength         = 20
+	TempIssuerBytesLength = 9
+	TokenLength           = 32
+	logo                  = "Lemo"
+)
+const (
+	NormalAddressType   byte = 0x01 + iota // lemochain 普通地址版本号0x01
+	ContractAddressType                    // lemochain 智能合约地址 0x02
+	TempAddressType                        // 临时地址版本号 0x03
 )
 
 var (
@@ -156,12 +158,12 @@ func (a Address) Hash() Hash    { return BytesToHash(a[:]) }
 
 // IsTempAddress judge temp address
 func (a Address) IsTempAddress() bool {
-	return a[0] == TempAddressVersion
+	return a[0] == TempAddressType
 }
 
 // IsContractAddress judge contract address
 func (a Address) IsContractAddress() bool {
-	return a[0] == LemoContractAddressVersion
+	return a[0] == ContractAddressType
 }
 
 // Hex returns an EIP55-compliant hex string representation of the address.

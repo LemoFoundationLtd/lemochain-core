@@ -167,12 +167,12 @@ func TestSetMultisigAccountEnv_ModifyMultisigTx(t *testing.T) {
 func Test_verifyTempAddress(t *testing.T) {
 	versionErrTempAddr := common.Address{99, 1, 2, 3, 4, 5, 6, 7, 8, 9, 9, 8, 7, 5, 3, 4, 3, 3, 3, 3}
 
-	creator := common.Address{common.LemoAddressVersion, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
-	fieldErrTempAddr := common.Address{common.TempAddressVersion, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 8, 7, 5, 3, 4, 3, 3, 3, 3}
+	creator := common.Address{common.NormalAddressType, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
+	fieldErrTempAddr := common.Address{common.TempAddressType, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 8, 7, 5, 3, 4, 3, 3, 3, 3}
 	trueTempAddr := crypto.CreateTempAddress(creator, [10]byte{8, 8, 8, 8, 8, 8, 8, 8, 8, 8})
 
 	err := verifyTempAddress(creator, versionErrTempAddr)
-	assert.Equal(t, ErrAddressVersion, err)
+	assert.Equal(t, ErrAddressType, err)
 
 	err = verifyTempAddress(creator, fieldErrTempAddr)
 	assert.Equal(t, ErrTempAddress, err)
