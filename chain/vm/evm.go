@@ -487,7 +487,7 @@ func (evm *EVM) Create(caller ContractRef, code []byte, gas uint64, value *big.I
 		return nil, common.Address{}, gas, ErrInsufficientBalance
 	}
 	// Ensure there's no existing contract already at the designated address
-	contractAddr = crypto.CreateAddress(caller.GetAddress(), evm.TxHash)
+	contractAddr = crypto.CreateContractAddress(caller.GetAddress(), evm.TxHash)
 	// print out the contract address
 	log.Warnf("Created the contract address = %v", contractAddr.String())
 	contractAccount := evm.am.GetAccount(contractAddr)

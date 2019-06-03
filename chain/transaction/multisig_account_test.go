@@ -5,6 +5,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
+	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"github.com/stretchr/testify/assert"
 	"strconv"
 	"testing"
@@ -100,7 +101,7 @@ func Test_setMultisigAccount(t *testing.T) {
 	assert.Equal(t, signers, getSigners)
 }
 
-// TestSetMultisigAccountEnv_CreateOrModifyMultisigTx
+// TestSetMultisigAccountEnv_ModifyMultisigTx
 func TestSetMultisigAccountEnv_ModifyMultisigTx(t *testing.T) {
 	ClearData()
 	db := newDB()
@@ -109,45 +110,73 @@ func TestSetMultisigAccountEnv_ModifyMultisigTx(t *testing.T) {
 	muEnv := NewSetMultisigAccountEnv(am)
 	// 测流程
 	from := common.HexToAddress("0x112")
-	to := from // todo 当测试临时账户的时候from不等于to
-	signer01 := common.HexToAddress("0x111")
-	signer02 := common.HexToAddress("0x112")
-	signer03 := common.HexToAddress("0x113")
-	m1 := make(testMap)
-	m1[50] = signer01
-	m1[60] = signer02
-	m1[70] = signer03
-	data01 := newSignersData(m1)
+	var to common.Address
 
-	// 1. 创建多重签名账户测试
-	err := muEnv.ModifyMultisigTx(from, to, data01)
-	assert.NoError(t, err)
-	toAcc := am.GetAccount(to)
-	mm := make(testMap)
-	signers01 := toAcc.GetSigners()
-	for _, v := range signers01 {
-		mm[v.Weight] = v.Address
+	for i := 0; i < 2; i++ {
+		if i == 0 {
+			to = from // 普通账户
+		} else {
+			to = crypto.CreateTempAddress(from, [10]byte{9, 9, 9, 9, 9, 9, 9, 9, 9, 9}) // 临时账户
+		}
+
+		signer01 := common.HexToAddress("0x111")
+		signer02 := common.HexToAddress("0x112")
+		signer03 := common.HexToAddress("0x113")
+		m1 := make(testMap)
+		m1[50] = signer01
+		m1[60] = signer02
+		m1[70] = signer03
+		data01 := newSignersData(m1)
+
+		// 1. 创建多重签名账户测试
+		err := muEnv.ModifyMultisigTx(from, to, data01)
+		assert.NoError(t, err)
+		toAcc := am.GetAccount(to)
+		mm := make(testMap)
+		signers01 := toAcc.GetSigners()
+		for _, v := range signers01 {
+			mm[v.Weight] = v.Address
+		}
+		assert.Equal(t, mm[50], m1[50])
+		assert.Equal(t, mm[60], m1[60])
+		assert.Equal(t, mm[70], m1[70])
+
+		// 2. 修改多重签名账户测试
+		m2 := make(testMap)
+		// 所有权重减10
+		m2[40] = signer01
+		m2[50] = signer02
+		m2[60] = signer03
+		data02 := newSignersData(m2)
+		err = muEnv.ModifyMultisigTx(to, to, data02)
+		assert.NoError(t, err)
+
+		signers02 := toAcc.GetSigners()
+		mmm := make(testMap)
+		for _, v := range signers02 {
+			mmm[v.Weight] = v.Address
+		}
+		assert.Equal(t, mmm[40], m1[50])
+		assert.Equal(t, mmm[50], m1[60])
+		assert.Equal(t, mmm[60], m1[70])
 	}
-	assert.Equal(t, mm[50], m1[50])
-	assert.Equal(t, mm[60], m1[60])
-	assert.Equal(t, mm[70], m1[70])
 
-	// 2. 修改多重签名账户测试
-	m2 := make(testMap)
-	// 所有权重减10
-	m2[40] = signer01
-	m2[50] = signer02
-	m2[60] = signer03
-	data02 := newSignersData(m2)
-	err = muEnv.ModifyMultisigTx(from, to, data02)
+}
+
+// Test_verifyTempAddress
+func Test_verifyTempAddress(t *testing.T) {
+	versionErrTempAddr := common.Address{99, 1, 2, 3, 4, 5, 6, 7, 8, 9, 9, 8, 7, 5, 3, 4, 3, 3, 3, 3}
+
+	creator := common.Address{common.NormalAddressType, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
+	fieldErrTempAddr := common.Address{common.TempAddressType, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 8, 7, 5, 3, 4, 3, 3, 3, 3}
+	trueTempAddr := crypto.CreateTempAddress(creator, [10]byte{8, 8, 8, 8, 8, 8, 8, 8, 8, 8})
+
+	err := verifyTempAddress(creator, versionErrTempAddr)
+	assert.Equal(t, ErrAddressType, err)
+
+	err = verifyTempAddress(creator, fieldErrTempAddr)
+	assert.Equal(t, ErrTempAddress, err)
+
+	err = verifyTempAddress(creator, trueTempAddr)
 	assert.NoError(t, err)
-
-	signers02 := toAcc.GetSigners()
-	mmm := make(testMap)
-	for _, v := range signers02 {
-		mmm[v.Weight] = v.Address
-	}
-	assert.Equal(t, mmm[40], m1[50])
-	assert.Equal(t, mmm[50], m1[60])
-	assert.Equal(t, mmm[60], m1[70])
 }

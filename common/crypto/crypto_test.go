@@ -6,8 +6,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"math/big"
+	"math/rand"
 	"os"
+	"strconv"
 	"testing"
+	"time"
 
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
@@ -87,9 +90,9 @@ func TestNewContractAddress(t *testing.T) {
 	// sanity check before using addr to create contract address
 	assert.Equal(t, genAddr, addr)
 
-	caddr0 := CreateAddress(addr, common.HexToHash("0"))
-	caddr1 := CreateAddress(addr, common.HexToHash("1"))
-	caddr2 := CreateAddress(addr, common.HexToHash("2"))
+	caddr0 := CreateContractAddress(addr, common.HexToHash("0"))
+	caddr1 := CreateContractAddress(addr, common.HexToHash("1"))
+	caddr2 := CreateContractAddress(addr, common.HexToHash("2"))
 
 	assert.Equal(t, common.HexToAddress("0x01208Cc79767dD9559EE43A673daA13f0eaE2737"), caddr0)
 	assert.Equal(t, common.HexToAddress("0x012A6a88F9cfa542A805d2F6941a4c9faf793957"), caddr1)
@@ -202,4 +205,26 @@ func TestCreateAddress(t *testing.T) {
 	fmt.Println(common.ToHex(pribytes))
 	fmt.Println(common.ToHex(pubbytes[1:]))
 	fmt.Println(addr.String())
+}
+
+func TestCreateTempAddress(t *testing.T) {
+	rand.Seed(time.Now().UnixNano())
+	for i := 0; i <= 20; i++ {
+		// 随机address
+		var hex = "0x"
+		for len(hex) <= 42 {
+			hex = hex + strconv.Itoa(rand.Intn(10))
+		}
+		creator := common.HexToAddress(hex)
+		// 随机user id
+		userId := [10]byte{}
+		for i := 0; i < len(userId); i++ {
+			userId[i] = uint8(rand.Int())
+		}
+		tempAddr := CreateTempAddress(creator, userId)
+		assert.Equal(t, common.TempAddressType, int(tempAddr[0]))
+		assert.Equal(t, userId[:], tempAddr[10:])
+		assert.Equal(t, creator[11:], tempAddr[1:10])
+	}
+
 }
