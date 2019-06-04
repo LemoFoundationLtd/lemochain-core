@@ -314,6 +314,8 @@ func (am *Manager) Save(newBlockHash common.Hash) error {
 
 // GetTxProduct get the product of transaction execution
 func (am *Manager) GetTxsProduct(txs types.Transactions, gasUsed uint64) *TxsProduct {
+	// for test
+	log.Warnf(">>>changeLogs: %s", am.GetChangeLogs())
 	return &TxsProduct{
 		Txs:         txs,
 		GasUsed:     gasUsed,
