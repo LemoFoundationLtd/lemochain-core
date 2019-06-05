@@ -206,7 +206,7 @@ func TestReimbursement_transaction(t *testing.T) {
 	endGasPayerBalance := p.am.GetCanonicalAccount(gasPayerAddr).GetBalance()
 	endTxSenderBalance := p.am.GetCanonicalAccount(senderAddr).GetBalance()
 	assert.Equal(t, big.NewInt(0), endTxSenderBalance)
-	assert.Equal(t, endGasPayerBalance, new(big.Int).Sub(initGasPayerBalance, big.NewInt(int64(params.TxGas))))
+	assert.Equal(t, endGasPayerBalance, new(big.Int).Sub(initGasPayerBalance, big.NewInt(int64(params.OrdinaryTxGas))))
 	assert.Equal(t, params.RegisterCandidateNodeFees, p.am.GetAccount(amountReceiver).GetBalance())
 }
 
@@ -219,6 +219,51 @@ func TestBlockChain_data(t *testing.T) {
 	by, _ := json.Marshal(re)
 	fmt.Println("tx data", common.ToHex(by))
 	fmt.Println("预编译合约地址", common.BytesToAddress([]byte{9}).String())
+}
+
+func TestIntrinsicGas(t *testing.T) {
+	var gas uint64
+	mm := make(map[uint16]uint64) // k == txType; v == 正确的gas花费
+	mm[params.OrdinaryTx] = params.OrdinaryTxGas
+	mm[params.VoteTx] = params.VoteTxGas
+	mm[params.RegisterTx] = params.RegisterTxGas
+	mm[params.CreateAssetTx] = params.CreateAssetTxGas
+	mm[params.IssueAssetTx] = params.IssueAssetTxGas
+	mm[params.ReplenishAssetTx] = params.ReplenishAssetTxGas
+	mm[params.ModifyAssetTx] = params.ModifyAssetTxGas
+	mm[params.TransferAssetTx] = params.TransferAssetTxGas
+	mm[params.SetMultisigAccountTx] = params.SetMultisigAccountTxGas
+
+	for k, v := range mm {
+		gas, _ = IntrinsicGas(k, false, nil, "")
+		assert.Equal(t, v, gas)
+	}
+
+	// 创建合约
+	gas, _ = IntrinsicGas(params.OrdinaryTx, true, nil, "")
+	assert.Equal(t, params.TxGasContractCreation, gas)
+
+	// 测试交易message消耗的gas
+	message := "test message spend gas"
+	messLen := uint64(len(message))
+	gas, _ = IntrinsicGas(params.OrdinaryTx, false, nil, message)
+	assert.Equal(t, params.OrdinaryTxGas+messLen*params.TxMessageGas, gas)
+
+	// 测试data中字节全为0
+	zeroData := make([]byte, 10)
+	zeroData = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+	gas, _ = IntrinsicGas(params.OrdinaryTx, false, zeroData, "")
+	assert.Equal(t, params.OrdinaryTxGas+10*params.TxDataZeroGas, gas)
+	// 测试data 中字节全不为0的情况
+	notZeroData := make([]byte, 10)
+	notZeroData = []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+	gas, _ = IntrinsicGas(params.OrdinaryTx, false, notZeroData, "")
+	assert.Equal(t, params.OrdinaryTxGas+10*params.TxDataNonZeroGas, gas)
+	// 测试data一半为0的情况
+	halfZeroData := make([]byte, 10)
+	halfZeroData = []byte{1, 0, 2, 0, 3, 0, 4, 0, 5, 0}
+	gas, _ = IntrinsicGas(params.OrdinaryTx, false, halfZeroData, "")
+	assert.Equal(t, params.OrdinaryTxGas+5*(params.TxDataNonZeroGas+params.TxDataZeroGas), gas)
 }
 
 // 测试获取资产data最大字节数标准值
@@ -248,7 +293,7 @@ func TestMaxAssetProfile(t *testing.T) {
 	assert.NoError(t, err)
 	t.Logf("data length : %d", len(data))
 
-	gasUsed, err := IntrinsicGas(data, false)
+	gasUsed, err := IntrinsicGas(params.OrdinaryTx, false, data, "")
 	assert.NoError(t, err)
 	t.Logf("max gasUsed : %d", gasUsed)
 }
@@ -429,7 +474,7 @@ func Test_rlpBlock(t *testing.T) {
 // 	amount, _ := new(big.Int).SetString("1234857462837462918237", 10)
 // 	tx := makeTx(testPrivate, common.HexToAddress("0x123"), params.OrdinaryTx, amount)
 // 	for i := 0; i < b.N; i++ {
-// 		gas := params.TxGas + params.TxDataNonZeroGas*uint64(len("abc"))
+// 		gas := params.OrdinaryTxGas + params.TxDataNonZeroGas*uint64(len("abc"))
 // 		// fromAddr, err := tx.From()
 // 		// if err != nil {
 // 		// 	panic(err)

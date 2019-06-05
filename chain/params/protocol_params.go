@@ -15,15 +15,26 @@ const (
 	MinGasLimit          uint64 = 200000  // Minimum the gas limit may ever be.
 	GenesisGasLimit      uint64 = 4712388 // Gas limit of the Genesis block.
 
-	CallValueTransferGas  uint64 = 9000  // Paid for CALL when the value transfer is non-zero.
-	CallNewAccountGas     uint64 = 25000 // Paid for CALL when the destination address didn't exist prior.
-	TxGas                 uint64 = 21000 // Per transaction not creating a contract. NOTE: Not payable on data of calls between transactions.
-	TxGasContractCreation uint64 = 53000 // Per transaction that creates a contract. NOTE: Not payable on data of calls between transactions.
-	TxDataZeroGas         uint64 = 4     // Per byte of data attached to a transaction that equals zero. NOTE: Not payable on data of calls between transactions.
-	QuadCoeffDiv          uint64 = 512   // Divisor for the quadratic particle of the memory cost equation.
-	SstoreSetGas          uint64 = 20000 // Once per SLOAD operation.
-	EventDataGas          uint64 = 8     // Per byte in a LOG* operation's data.
-	CallStipend           uint64 = 2300  // Free gas given at beginning of call.
+	CallValueTransferGas uint64 = 9000  // Paid for CALL when the value transfer is non-zero.
+	CallNewAccountGas    uint64 = 25000 // Paid for CALL when the destination address didn't exist prior.
+
+	OrdinaryTxGas           uint64 = 21000 // Per transaction not creating a contract. NOTE: Not payable on data of calls between transactions.
+	TxGasContractCreation   uint64 = 53000 // Per transaction that creates a contract. NOTE: Not payable on data of calls between transactions.
+	VoteTxGas               uint64 = 35000 // 投票交易固定gas消耗
+	RegisterTxGas           uint64 = 92000 // 注册候选节点固定gas消耗
+	CreateAssetTxGas        uint64 = 67000 // 创建资产固定gas消耗
+	IssueAssetTxGas         uint64 = 55000 // 发行资产固定gas消耗
+	ReplenishAssetTxGas     uint64 = 25000 // 增发资产固定gas消耗
+	ModifyAssetTxGas        uint64 = 35000 // 修改资产info固定gas消耗
+	TransferAssetTxGas      uint64 = 30000 // 交易资产固定gas消耗
+	SetMultisigAccountTxGas uint64 = 67000 // 设置多重签名账户交易固定gas消耗
+
+	TxMessageGas  uint64 = 68    // 交易中的message字段消耗gas
+	TxDataZeroGas uint64 = 4     // Per byte of data attached to a transaction that equals zero. NOTE: Not payable on data of calls between transactions.
+	QuadCoeffDiv  uint64 = 512   // Divisor for the quadratic particle of the memory cost equation.
+	SstoreSetGas  uint64 = 20000 // Once per SLOAD operation.
+	EventDataGas  uint64 = 8     // Per byte in a LOG* operation's data.
+	CallStipend   uint64 = 2300  // Free gas given at beginning of call.
 
 	Sha3Gas          uint64 = 30    // Once per SHA3 operation.
 	Sha3WordGas      uint64 = 6     // Once per word of the SHA3 operation's data.

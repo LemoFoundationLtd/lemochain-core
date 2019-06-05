@@ -125,7 +125,7 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 	// account
 	salary := new(big.Int)
 	for _, tx := range info.txList {
-		gas := params.TxGas + params.TxDataNonZeroGas*uint64(len(tx.Data()))
+		gas := params.OrdinaryTxGas + params.TxDataNonZeroGas*uint64(len(tx.Data()))
 		fromAddr := tx.From()
 		from := manager.GetAccount(fromAddr)
 		fee := new(big.Int).Mul(new(big.Int).SetUint64(gas), tx.GasPrice())

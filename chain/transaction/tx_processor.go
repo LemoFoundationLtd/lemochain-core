@@ -130,7 +130,7 @@ label:
 		default:
 		}
 		// If we don't have enough gas for any further transactions then we're done
-		if gp.Gas() < params.TxGas {
+		if gp.Gas() < params.OrdinaryTxGas {
 			log.Info("Not enough gas for further transactions", "gp", gp)
 			break
 		}
@@ -458,7 +458,7 @@ func (p *TxProcessor) buyGas(gp *types.GasPool, tx *types.Transaction) error {
 }
 
 func (p *TxProcessor) payIntrinsicGas(tx *types.Transaction, restGas uint64) (uint64, error) {
-	gas, err := IntrinsicGas(tx.Data(), tx.To() == nil)
+	gas, err := IntrinsicGas(tx.Type(), tx.To() == nil, tx.Data(), tx.Message())
 	if err != nil {
 		return restGas, err
 	}
@@ -469,14 +469,57 @@ func (p *TxProcessor) payIntrinsicGas(tx *types.Transaction, restGas uint64) (ui
 }
 
 // IntrinsicGas computes the 'intrinsic gas' for a message with the given data.
-func IntrinsicGas(data []byte, contractCreation bool) (uint64, error) {
+func IntrinsicGas(txType uint16, contractCreation bool, data []byte, txMessage string) (uint64, error) {
 	// Set the starting gas for the raw transaction
-	var gas uint64
-	if contractCreation {
-		gas = params.TxGasContractCreation
-	} else {
-		gas = params.TxGas
+	gas, err := getTxBaseSpendGas(txType, contractCreation)
+	if err != nil {
+		return 0, err
 	}
+	// calculate txData spend gas and  add it and return
+	return addTxDataSpendGas(data, txMessage, gas)
+}
+
+// getTxBaseSpendGas 获取不同类型的交易需要花费的基础固定gas
+func getTxBaseSpendGas(txType uint16, contractCreation bool) (uint64, error) {
+	var gas uint64
+	switch txType {
+	case params.OrdinaryTx:
+		if contractCreation {
+			gas = params.TxGasContractCreation
+		} else {
+			gas = params.OrdinaryTxGas
+		}
+	case params.VoteTx:
+		gas = params.VoteTxGas
+	case params.RegisterTx:
+		gas = params.RegisterTxGas
+	case params.CreateAssetTx:
+		gas = params.CreateAssetTxGas
+	case params.IssueAssetTx:
+		gas = params.IssueAssetTxGas
+	case params.ReplenishAssetTx:
+		gas = params.ReplenishAssetTxGas
+	case params.ModifyAssetTx:
+		gas = params.ModifyAssetTxGas
+	case params.TransferAssetTx:
+		gas = params.TransferAssetTxGas
+	case params.SetMultisigAccountTx:
+		gas = params.SetMultisigAccountTxGas
+	default:
+		log.Errorf("Transaction type is not exist. error type: %d", txType)
+		return 0, types.ErrTxType
+	}
+	return gas, nil
+}
+
+// addTxDataSpendGas 加上交易data消耗的固定gas
+func addTxDataSpendGas(data []byte, message string, gas uint64) (uint64, error) {
+	// 计算tx中message消耗的gas
+	messageLen := len(message)
+	if messageLen > 0 {
+		gas += uint64(messageLen) * params.TxMessageGas
+	}
+
 	// Bump the required gas by the amount of transactional data
 	if len(data) > 0 {
 		// Zero and non-zero bytes are priced differently

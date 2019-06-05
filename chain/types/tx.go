@@ -244,12 +244,7 @@ func (tx *Transaction) Cost() *big.Int {
 }
 
 func (tx *Transaction) String() string {
-	var from, to string
-	if len(tx.data.Sigs) > 0 {
-		from = tx.From().String()
-	} else {
-		from = "[invalid sender: nil Sigs field]"
-	}
+	var to string
 
 	if tx.data.Recipient == nil {
 		to = "[contract creation]"
@@ -263,9 +258,9 @@ func (tx *Transaction) String() string {
 		fmt.Sprintf("Type: %d", tx.Type()),
 		fmt.Sprintf("Version: %d", tx.Version()),
 		fmt.Sprintf("ChainID: %d", tx.ChainID()),
-		fmt.Sprintf("From: %s", from),
+		fmt.Sprintf("From: %s", tx.From().String()),
 		fmt.Sprintf("To: %s", to),
-		fmt.Sprintf("GasPayer: %s", tx.GasPayer()),
+		fmt.Sprintf("GasPayer: %s", tx.GasPayer().String()),
 	}
 	if len(tx.data.RecipientName) > 0 {
 		set = append(set, fmt.Sprintf("ToName: %s", tx.data.RecipientName))
