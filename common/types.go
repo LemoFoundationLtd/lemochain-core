@@ -387,3 +387,16 @@ func (t Token) Generate(rand *rand.Rand, size int) reflect.Value {
 func EmptyToken(t Token) bool {
 	return t == Token{}
 }
+
+func IsNil(i interface{}) bool {
+	vi := reflect.ValueOf(i)
+	if vi.Kind() == reflect.Invalid { // empty interface nil.
+		return true
+	}
+
+	if vi.Kind() == reflect.Ptr || vi.Kind() == reflect.Map || vi.Kind() == reflect.Slice || vi.Kind() == reflect.Chan {
+		return vi.IsNil()
+	}
+
+	return false
+}
