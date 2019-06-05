@@ -223,20 +223,21 @@ func TestBlockChain_data(t *testing.T) {
 
 func TestIntrinsicGas(t *testing.T) {
 	var gas uint64
-	m := make(map[uint16]uint64)
-	for i := 0; i <= 8; i++ {
-		gas, _ = IntrinsicGas(uint16(i), false, nil, "")
-		m[uint16(i)] = gas
+	mm := make(map[uint16]uint64) // k == txType; v == 正确的gas花费
+	mm[params.OrdinaryTx] = params.OrdinaryTxGas
+	mm[params.VoteTx] = params.VoteTxGas
+	mm[params.RegisterTx] = params.RegisterTxGas
+	mm[params.CreateAssetTx] = params.CreateAssetTxGas
+	mm[params.IssueAssetTx] = params.IssueAssetTxGas
+	mm[params.ReplenishAssetTx] = params.ReplenishAssetTxGas
+	mm[params.ModifyAssetTx] = params.ModifyAssetTxGas
+	mm[params.TransferAssetTx] = params.TransferAssetTxGas
+	mm[params.SetMultisigAccountTx] = params.SetMultisigAccountTxGas
+
+	for k, v := range mm {
+		gas, _ = IntrinsicGas(k, false, nil, "")
+		assert.Equal(t, v, gas)
 	}
-	assert.Equal(t, m[params.OrdinaryTx], params.OrdinaryTxGas)
-	assert.Equal(t, m[params.VoteTx], params.VoteTxGas)
-	assert.Equal(t, m[params.RegisterTx], params.RegisterTxGas)
-	assert.Equal(t, m[params.CreateAssetTx], params.CreateAssetTxGas)
-	assert.Equal(t, m[params.IssueAssetTx], params.IssueAssetTxGas)
-	assert.Equal(t, m[params.ReplenishAssetTx], params.ReplenishAssetTxGas)
-	assert.Equal(t, m[params.ModifyAssetTx], params.ModifyAssetTxGas)
-	assert.Equal(t, m[params.TransferAssetTx], params.TransferAssetTxGas)
-	assert.Equal(t, m[params.SetMultisigAccountTx], params.SetMultisigAccountTxGas)
 
 	// 创建合约
 	gas, _ = IntrinsicGas(params.OrdinaryTx, true, nil, "")
