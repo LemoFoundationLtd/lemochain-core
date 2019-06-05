@@ -29,7 +29,7 @@ const (
 	TransferAssetTxGas      uint64 = 30000 // 交易资产固定gas消耗
 	SetMultisigAccountTxGas uint64 = 67000 // 设置多重签名账户交易固定gas消耗
 
-	TxMessageGas  uint64 = 50    // 交易中的message字段消耗gas
+	TxMessageGas  uint64 = 68    // 交易中的message字段消耗gas
 	TxDataZeroGas uint64 = 4     // Per byte of data attached to a transaction that equals zero. NOTE: Not payable on data of calls between transactions.
 	QuadCoeffDiv  uint64 = 512   // Divisor for the quadratic particle of the memory cost equation.
 	SstoreSetGas  uint64 = 20000 // Once per SLOAD operation.

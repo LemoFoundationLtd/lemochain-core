@@ -265,7 +265,7 @@ func (tx *Transaction) String() string {
 		fmt.Sprintf("ChainID: %d", tx.ChainID()),
 		fmt.Sprintf("From: %s", from),
 		fmt.Sprintf("To: %s", to),
-		fmt.Sprintf("GasPayer: %s", tx.GasPayer()),
+		fmt.Sprintf("GasPayer: %s", tx.GasPayer().String()),
 	}
 	if len(tx.data.RecipientName) > 0 {
 		set = append(set, fmt.Sprintf("ToName: %s", tx.data.RecipientName))
