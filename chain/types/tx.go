@@ -363,10 +363,11 @@ func (tx *Transaction) VerifyTx(chainID uint16, timeStamp uint64) error {
 			}
 		}
 	case params.VoteTx:
-	case params.RegisterTx, params.CreateAssetTx, params.IssueAssetTx, params.ReplenishAssetTx, params.ModifyAssetTx, params.TransferAssetTx:
+	case params.RegisterTx, params.CreateAssetTx, params.IssueAssetTx, params.ReplenishAssetTx, params.ModifyAssetTx, params.TransferAssetTx, params.SetMultisigAccountTx:
 		if len(tx.Data()) == 0 {
 			return ErrSpecialTx
 		}
+
 	default:
 		log.Warnf("The transaction type does not exit . type = %v", tx.Type())
 		return ErrTxType
