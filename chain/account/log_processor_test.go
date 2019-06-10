@@ -282,6 +282,27 @@ func TestLogProcessor_Snapshot_RevertToSnapshot2(t *testing.T) {
 	})
 }
 
+func TestLogProcessor_Snapshot_RevertToSnapshot3(t *testing.T) {
+	ClearData()
+	db := newDB()
+	defer db.Close()
+
+	manager := NewManager(newestBlock.Hash(), db)
+	processor := manager.processor
+
+	safeAccount := manager.GetAccount(common.HexToAddress("0x2"))
+	safeAccount.SetBalance(big.NewInt(999))
+	newId := processor.Snapshot()
+	safeAccount.SetBalance(big.NewInt(1))
+
+	safeAccount.SetAssetCode(common.HexToHash("0xabc"), &types.Asset{
+		AssetCode: common.HexToHash("0xabc"),
+	})
+
+	processor.RevertToSnapshot(newId)
+	assert.Equal(t, big.NewInt(999), safeAccount.GetBalance())
+}
+
 func TestLogProcessor_MergeChangeLogs1(t *testing.T) {
 	ClearData()
 	db := newDB()
