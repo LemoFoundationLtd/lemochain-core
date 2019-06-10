@@ -11,4 +11,5 @@ const (
 	ModifyAssetTx        uint16 = 6 // 修改资产交易
 	TransferAssetTx      uint16 = 7 // 交易资产
 	SetMultisigAccountTx uint16 = 8 // 设置多重签名账户的签名者交易
+	BoxTx                uint16 = 9 // 箱子交易
 )

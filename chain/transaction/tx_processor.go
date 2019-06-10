@@ -266,6 +266,7 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 		initialSenderBalance = sender.GetBalance()
 		restGas              = tx.GasLimit()
 		vmErr, execErr       error
+		gasUsed              uint64
 	)
 
 	restGas, err = p.buyAndPayIntrinsicGas(gp, tx, restGas)
@@ -273,7 +274,7 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 		return 0, err
 	}
 	// 执行交易
-	restGas, vmErr, execErr = p.handleTx(tx, header, txIndex, blockHash, initialSenderBalance, restGas)
+	restGas, gasUsed, vmErr, execErr = p.handleTx(tx, header, txIndex, blockHash, initialSenderBalance, restGas, gp)
 	if execErr != nil {
 		log.Errorf("Apply transaction failure. error:%s, transaction: %s.", execErr.Error(), tx.String())
 		return 0, execErr
@@ -290,7 +291,6 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 	}
 	p.refundGas(gp, tx, restGas)
 
-	gasUsed := tx.GasLimit() - restGas
 	// 余额变化造成的候选节点的票数变化
 	p.setCandidateVotesByChangeBalance()
 
@@ -359,12 +359,14 @@ func mergeBalanceLogs(logs types.ChangeLogSlice) types.ChangeLogSlice {
 }
 
 // handleTx 执行交易,返回消耗之后剩余的gas、evm中执行的error和交易执行不成功的error
-func (p *TxProcessor) handleTx(tx *types.Transaction, header *types.Header, txIndex uint, blockHash common.Hash, initialSenderBalance *big.Int, restGas uint64) (gas uint64, vmErr, err error) {
+func (p *TxProcessor) handleTx(tx *types.Transaction, header *types.Header, txIndex uint, blockHash common.Hash, initialSenderBalance *big.Int, restGas uint64, gp *types.GasPool) (gas, gasUsed uint64, vmErr, err error) {
 	senderAddr := tx.From()
 	var (
 		recipientAddr common.Address
 		sender        = p.am.GetAccount(senderAddr)
 		nullRecipient = tx.To() == nil
+		gasLimit      = tx.GasLimit()
+		boxGasUsed    uint64 // 箱子中的交易gas used
 	)
 	if !nullRecipient {
 		recipientAddr = *tx.To()
@@ -412,12 +414,20 @@ func (p *TxProcessor) handleTx(tx *types.Transaction, header *types.Header, txIn
 	case params.SetMultisigAccountTx:
 		multisigEnv := NewSetMultisigAccountEnv(p.am)
 		err = multisigEnv.ModifyMultisigTx(senderAddr, recipientAddr, tx.Data())
+	case params.BoxTx:
+		boxEnv := NewBoxTxEnv(p)
+		boxGasUsed, err = boxEnv.RunBoxTxs(gp, tx, header, txIndex)
 
 	default:
 		log.Errorf("The type of transaction is not defined. ErrType = %d\n", tx.Type())
-		return restGas, vmErr, types.ErrTxType
+		return 0, 0, nil, types.ErrTxType
 	}
-	return restGas, vmErr, err
+	if tx.Type() == params.BoxTx {
+		gasUsed = gasLimit - restGas + boxGasUsed
+	} else {
+		gasUsed = gasLimit - restGas
+	}
+	return restGas, gasUsed, vmErr, err
 }
 
 // changeCandidateVotes candidate node vote change corresponding to balance change
