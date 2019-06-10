@@ -146,6 +146,12 @@ func (cache *StorageCache) SetState(key common.Hash, value []byte) error {
 	return nil
 }
 
+func (cache *StorageCache) DelState(key common.Hash) error {
+	delete(cache.cached, key)
+	delete(cache.dirty, key)
+	return nil
+}
+
 func (cache *StorageCache) GetState(root common.Hash, key common.Hash) ([]byte, error) {
 	value, exists := cache.cached[key]
 	if exists {
@@ -478,7 +484,8 @@ func (a *Account) GetAssetCode(code common.Hash) (*types.Asset, error) {
 
 func (a *Account) SetAssetCode(code common.Hash, asset *types.Asset) error {
 	if asset == nil {
-		panic("asset is nil.")
+		a.assetCode.DelState(code)
+		return nil
 	}
 
 	val, err := rlp.EncodeToBytes(asset)
