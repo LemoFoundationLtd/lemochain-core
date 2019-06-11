@@ -11,8 +11,13 @@ import (
 	"time"
 )
 
+const (
+	applyBoxTxsTimeout = 4 // 执行箱子交易超时时间4s
+)
+
 var (
-	ErrVerifyBoxTxs = errors.New("not container box tx")
+	ErrVerifyBoxTxs       = errors.New("not container box tx")
+	ErrApplyBoxTxsTimeout = errors.New("apply box txs timeout")
 )
 
 type BoxTxsMap map[common.Hash]*types.Transaction // 箱子中的交易索引
@@ -62,7 +67,12 @@ func (b *BoxTxEnv) RunBoxTxs(gp *types.GasPool, boxTx *types.Transaction, header
 		totalGasFee = new(big.Int)
 	)
 	txsHashMap := make(BoxTxsMap)
+	now := time.Now() // 设置执行箱子中的交易时间限制
 	for _, tx := range box.Txs {
+		if time.Since(now).Seconds() > applyBoxTxsTimeout {
+			log.Errorf("Box txs runtime: %fs", time.Since(now).Seconds())
+			return 0, ErrApplyBoxTxsTimeout
+		}
 		gas, err := b.p.applyTx(gp, header, tx, txIndex, header.Hash())
 		if err != nil {
 			return 0, err
