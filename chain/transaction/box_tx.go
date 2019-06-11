@@ -6,6 +6,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
+	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"math/big"
 	"time"
 )
@@ -13,6 +14,8 @@ import (
 var (
 	ErrVerifyBoxTxs = errors.New("not container box tx")
 )
+
+type BoxTxsMap map[common.Hash]*types.Transaction // 箱子中的交易索引
 
 //go:generate gencodec -type Box -out gen_box_json.go
 type Box struct {
@@ -22,8 +25,6 @@ type Box struct {
 type BoxTxEnv struct {
 	p *TxProcessor
 }
-
-type BoxTxsMap map[common.Hash]*types.Transaction
 
 func NewBoxTxEnv(p *TxProcessor) *BoxTxEnv {
 	return &BoxTxEnv{p}
@@ -60,7 +61,7 @@ func (b *BoxTxEnv) RunBoxTxs(gp *types.GasPool, boxTx *types.Transaction, header
 		gasUsed     = uint64(0)
 		totalGasFee = new(big.Int)
 	)
-	mm := make(BoxTxsMap)
+	txsHashMap := make(BoxTxsMap)
 	for _, tx := range box.Txs {
 		gas, err := b.p.applyTx(gp, header, tx, txIndex, header.Hash())
 		if err != nil {
@@ -69,9 +70,25 @@ func (b *BoxTxEnv) RunBoxTxs(gp *types.GasPool, boxTx *types.Transaction, header
 		gasUsed += gas
 		fee := new(big.Int).Mul(new(big.Int).SetUint64(gas), tx.GasPrice())
 		totalGasFee.Add(totalGasFee, fee)
-		mm[tx.Hash()] = tx
+		txsHashMap[tx.Hash()] = tx
 	}
 	// 为矿工执行箱子交易中的交易发放奖励
 	b.p.chargeForGas(totalGasFee, header.MinerAddress)
+	// 保存箱子中的交易到from账户中
+	from := boxTx.From()
+	fromAcc := b.p.am.GetAccount(from)
+	storeKey := boxTx.Hash()
+	storeValue, err := json.Marshal(txsHashMap)
+	if err != nil {
+		log.Errorf("Json marshal box txs error:", err)
+		return 0, err
+	}
+
+	err = fromAcc.SetStorageState(storeKey, storeValue) // key为箱子本身交易的交易hash, value为箱子中txs的hashMap
+	if err != nil {
+		log.Errorf("SetStorageState to box transaction from account error: ", err)
+		return 0, err
+	}
+
 	return gasUsed, nil
 }

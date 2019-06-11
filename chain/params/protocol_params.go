@@ -28,6 +28,7 @@ const (
 	ModifyAssetTxGas        uint64 = 35000 // 修改资产info固定gas消耗
 	TransferAssetTxGas      uint64 = 30000 // 交易资产固定gas消耗
 	SetMultisigAccountTxGas uint64 = 67000 // 设置多重签名账户交易固定gas消耗
+	BoxTxGas                uint64 = 40000 // 设置箱子交易固定gas消耗
 
 	TxMessageGas  uint64 = 68    // 交易中的message字段消耗gas
 	TxDataZeroGas uint64 = 4     // Per byte of data attached to a transaction that equals zero. NOTE: Not payable on data of calls between transactions.

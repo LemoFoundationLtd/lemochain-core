@@ -363,7 +363,7 @@ func (tx *Transaction) VerifyTx(chainID uint16, timeStamp uint64) error {
 			}
 		}
 	case params.VoteTx:
-	case params.RegisterTx, params.CreateAssetTx, params.IssueAssetTx, params.ReplenishAssetTx, params.ModifyAssetTx, params.TransferAssetTx, params.SetMultisigAccountTx:
+	case params.RegisterTx, params.CreateAssetTx, params.IssueAssetTx, params.ReplenishAssetTx, params.ModifyAssetTx, params.TransferAssetTx, params.SetMultisigAccountTx, params.BoxTx:
 		if len(tx.Data()) == 0 {
 			return ErrSpecialTx
 		}
