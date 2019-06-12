@@ -377,12 +377,11 @@ func (p *TxProcessor) handleTx(tx *types.Transaction, header *types.Header, txIn
 	case params.OrdinaryTx:
 		newContext := NewEVMContext(tx, header, txIndex, blockHash, p.blockLoader)
 		vmEnv := vm.NewEVM(newContext, p.am, *p.cfg)
-		if nullRecipient {
-			_, recipientAddr, restGas, vmErr = vmEnv.Create(sender, tx.Data(), restGas, tx.Amount())
-		} else {
-			_, restGas, vmErr = vmEnv.Call(sender, recipientAddr, tx.Data(), restGas, tx.Amount())
-		}
-
+		_, restGas, vmErr = vmEnv.Call(sender, recipientAddr, tx.Data(), restGas, tx.Amount())
+	case params.CreateContractTx:
+		newContext := NewEVMContext(tx, header, txIndex, blockHash, p.blockLoader)
+		vmEnv := vm.NewEVM(newContext, p.am, *p.cfg)
+		_, recipientAddr, restGas, vmErr = vmEnv.Create(sender, tx.Data(), restGas, tx.Amount())
 	case params.VoteTx:
 		candidateVoteEnv := NewCandidateVoteEnv(p.am)
 		err = candidateVoteEnv.CallVoteTx(senderAddr, recipientAddr, initialSenderBalance)
@@ -422,6 +421,7 @@ func (p *TxProcessor) handleTx(tx *types.Transaction, header *types.Header, txIn
 		log.Errorf("The type of transaction is not defined. ErrType = %d\n", tx.Type())
 		return 0, 0, nil, types.ErrTxType
 	}
+	// 如果此交易为box交易，则gasUsed为box交易本身的gas消耗与box中的子交易的gas消耗之和
 	if tx.Type() == params.BoxTx {
 		gasUsed = gasLimit - restGas + boxGasUsed
 	} else {
@@ -468,7 +468,7 @@ func (p *TxProcessor) buyGas(gp *types.GasPool, tx *types.Transaction) error {
 }
 
 func (p *TxProcessor) payIntrinsicGas(tx *types.Transaction, restGas uint64) (uint64, error) {
-	gas, err := IntrinsicGas(tx.Type(), tx.To() == nil, tx.Data(), tx.Message())
+	gas, err := IntrinsicGas(tx.Type(), tx.Data(), tx.Message())
 	if err != nil {
 		return restGas, err
 	}
@@ -479,9 +479,9 @@ func (p *TxProcessor) payIntrinsicGas(tx *types.Transaction, restGas uint64) (ui
 }
 
 // IntrinsicGas computes the 'intrinsic gas' for a message with the given data.
-func IntrinsicGas(txType uint16, contractCreation bool, data []byte, txMessage string) (uint64, error) {
+func IntrinsicGas(txType uint16, data []byte, txMessage string) (uint64, error) {
 	// Set the starting gas for the raw transaction
-	gas, err := getTxBaseSpendGas(txType, contractCreation)
+	gas, err := getTxBaseSpendGas(txType)
 	if err != nil {
 		return 0, err
 	}
@@ -490,15 +490,13 @@ func IntrinsicGas(txType uint16, contractCreation bool, data []byte, txMessage s
 }
 
 // getTxBaseSpendGas 获取不同类型的交易需要花费的基础固定gas
-func getTxBaseSpendGas(txType uint16, contractCreation bool) (uint64, error) {
+func getTxBaseSpendGas(txType uint16) (uint64, error) {
 	var gas uint64
 	switch txType {
 	case params.OrdinaryTx:
-		if contractCreation {
-			gas = params.TxGasContractCreation
-		} else {
-			gas = params.OrdinaryTxGas
-		}
+		gas = params.OrdinaryTxGas
+	case params.CreateContractTx:
+		gas = params.TxGasContractCreation
 	case params.VoteTx:
 		gas = params.VoteTxGas
 	case params.RegisterTx:
@@ -629,7 +627,7 @@ func (p *TxProcessor) PreExecutionTransaction(ctx context.Context, accM *account
 
 	// load different Env
 	switch tx.Type() {
-	case params.OrdinaryTx, params.TransferAssetTx: // need use evm environment
+	case params.OrdinaryTx, params.CreateContractTx, params.TransferAssetTx: // need use evm environment
 		vmEvn = getEVM(tx, header, 0, tx.Hash(), blockHash, p.blockLoader, *p.cfg, accM)
 
 	case params.RegisterTx, params.VoteTx, params.CreateAssetTx, params.IssueAssetTx, params.ReplenishAssetTx, params.ModifyAssetTx, params.SetMultisigAccountTx, params.BoxTx:
@@ -652,16 +650,14 @@ func (p *TxProcessor) PreExecutionTransaction(ctx context.Context, accM *account
 	if err != nil {
 		return nil, 0, err
 	}
-	IsContractCreate := tx.To() == nil
+
 	var ret []byte
 	switch tx.Type() {
 	case params.OrdinaryTx:
-		if IsContractCreate {
-			ret, _, restGas, err = vmEvn.Create(sender, tx.Data(), restGas, big.NewInt(0))
-		} else {
-			recipientAddr := *tx.To()
-			ret, restGas, err = vmEvn.Call(sender, recipientAddr, tx.Data(), restGas, big.NewInt(0))
-		}
+		recipientAddr := *tx.To()
+		ret, restGas, err = vmEvn.Call(sender, recipientAddr, tx.Data(), restGas, big.NewInt(0))
+	case params.CreateContractTx:
+		ret, _, restGas, err = vmEvn.Create(sender, tx.Data(), restGas, big.NewInt(0))
 	case params.TransferAssetTx:
 		tradingAsset := &types.TradingAsset{}
 		err := json.Unmarshal(tx.Data(), tradingAsset)
@@ -689,11 +685,9 @@ func newTx(from common.Address, to *common.Address, txType uint16, data []byte, 
 	var tx *types.Transaction
 	switch txType {
 	case params.OrdinaryTx:
-		if to == nil { // avoid null pointer references
-			tx = types.NewContractCreation(from, big.NewInt(0), gasLimit, gasPrice, data, params.OrdinaryTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
-		} else {
-			tx = types.NewTransaction(from, *to, big.NewInt(0), gasLimit, gasPrice, data, params.OrdinaryTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
-		}
+		tx = types.NewTransaction(from, *to, big.NewInt(0), gasLimit, gasPrice, data, params.OrdinaryTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
+	case params.CreateContractTx:
+		tx = types.NewContractCreation(from, big.NewInt(0), gasLimit, gasPrice, data, params.CreateContractTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
 	case params.VoteTx:
 		tx = types.NewTransaction(from, *to, big.NewInt(0), gasLimit, gasPrice, data, params.VoteTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
 	case params.RegisterTx:

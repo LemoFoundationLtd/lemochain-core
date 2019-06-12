@@ -23,8 +23,9 @@ const (
 //go:generate gencodec -type txdata --field-override txdataMarshaling -out gen_tx_json.go
 
 var (
-	DefaultTTTL uint64 = 2 * 60 * 60 // Transaction Time To Live, 2hours
-	TxVersion   uint8  = 1           // current transaction version. should between 0 and 128
+	DefaultTTTL  uint64 = 2 * 60 * 60 // Transaction Time To Live, 2hours
+	TxVersion    uint8  = 1           // current transaction version. should between 0 and 128
+	TxExpiration uint64 = 30 * 60
 )
 
 type Transactions []*Transaction
@@ -332,8 +333,8 @@ func (tx *Transaction) Clone() *Transaction {
 // VerifyTx transaction parameter verification
 func (tx *Transaction) VerifyTx(chainID uint16, timeStamp uint64) error {
 	// verify time
-	if tx.Expiration() < timeStamp {
-		log.Warnf("Tx out of date. tx expiration:%d, timeStamp:%d", tx.Expiration(), timeStamp)
+	if tx.Expiration() < timeStamp || tx.Expiration()-timeStamp > TxExpiration {
+		log.Errorf("Received transaction expiration time illegal. Expiration time: %d. The current time: %d", tx.Expiration(), timeStamp)
 		return ErrTxExpiration
 	}
 	// verify chainID
@@ -355,22 +356,32 @@ func (tx *Transaction) VerifyTx(chainID uint16, timeStamp uint64) error {
 		log.Warnf("The length of message field in transaction is out of max length limit. message length = %d. max length limit = %d. ", txMessageLength, MaxTxMessageLength)
 		return ErrTxMessage
 	}
+	// 校验data是否应该存在
 	switch tx.Type() {
-	case params.OrdinaryTx:
-		if tx.To() == nil {
-			if len(tx.Data()) == 0 {
-				return ErrCreateContract
-			}
-		}
-	case params.VoteTx:
-	case params.RegisterTx, params.CreateAssetTx, params.IssueAssetTx, params.ReplenishAssetTx, params.ModifyAssetTx, params.TransferAssetTx, params.SetMultisigAccountTx, params.BoxTx:
+	case params.OrdinaryTx, params.VoteTx:
+	case params.CreateContractTx, params.RegisterTx, params.CreateAssetTx, params.IssueAssetTx, params.ReplenishAssetTx, params.ModifyAssetTx, params.TransferAssetTx, params.SetMultisigAccountTx, params.BoxTx:
 		if len(tx.Data()) == 0 {
 			return ErrSpecialTx
 		}
-
 	default:
 		log.Warnf("The transaction type does not exit . type = %v", tx.Type())
 		return ErrTxType
 	}
+	// to 存在判断
+	if !CheckTo(tx.Type(), tx.To()) {
+		return ErrTxTo
+	}
 	return nil
+}
+
+// CheckTo
+func CheckTo(txType uint16, to *common.Address) bool {
+	switch txType {
+	case params.OrdinaryTx, params.VoteTx, params.IssueAssetTx, params.ReplenishAssetTx, params.TransferAssetTx, params.SetMultisigAccountTx:
+		return to != nil
+	case params.CreateContractTx, params.RegisterTx, params.CreateAssetTx, params.ModifyAssetTx, params.BoxTx:
+		return to == nil
+	default:
+		return false
+	}
 }

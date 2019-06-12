@@ -3,7 +3,6 @@ package txpool
 import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
-	"github.com/LemoFoundationLtd/lemochain-core/common/subscribe"
 	"sync"
 )
 
@@ -149,8 +148,7 @@ func (pool *TxPool) RecvTx(tx *types.Transaction) {
 
 	pool.RecentTxs.RecvTx(tx)
 	pool.PendingTxs.Push(tx)
-	// 广播交易
-	go subscribe.Send(subscribe.NewTx, tx)
+
 }
 
 func (pool *TxPool) RecvTxs(txs []*types.Transaction) {

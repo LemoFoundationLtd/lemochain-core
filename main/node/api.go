@@ -15,6 +15,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-core/common/hexutil"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
+	"github.com/LemoFoundationLtd/lemochain-core/common/subscribe"
 	"github.com/LemoFoundationLtd/lemochain-core/network"
 	"github.com/LemoFoundationLtd/lemochain-core/network/p2p"
 	"runtime"
@@ -33,6 +34,7 @@ var (
 	ErrTxExpiration   = errors.New("tx expiration time is out of date")
 	ErrNegativeValue  = errors.New("negative value")
 	ErrTxChainID      = errors.New("tx chainID is incorrect")
+	ErrInputParams    = errors.New("input params incorrect")
 )
 
 // Private
@@ -444,6 +446,8 @@ func (t *PublicTxAPI) SendTx(tx *types.Transaction) (common.Hash, error) {
 		return common.Hash{}, err
 	}
 	t.node.txPool.RecvTx(tx)
+	// 广播交易
+	go subscribe.Send(subscribe.NewTx, tx)
 	return tx.Hash(), nil
 }
 
@@ -454,6 +458,9 @@ func (t *PublicTxAPI) PendingTx(size int) []*types.Transaction {
 
 // ReadContract read variables in a contract includes the return value of a function.
 func (t *PublicTxAPI) ReadContract(to *common.Address, data hexutil.Bytes) (string, error) {
+	if to == nil {
+		return "", ErrInputParams
+	}
 	ctx := context.Background()
 	accM := account.NewReadOnlyManager(t.node.Db(), true)
 	result, _, err := t.doCallTransaction(ctx, to, accM, params.OrdinaryTx, data, 5*time.Second)
@@ -462,6 +469,10 @@ func (t *PublicTxAPI) ReadContract(to *common.Address, data hexutil.Bytes) (stri
 
 // EstimateGas returns an estimate of the amount of gas needed to execute the given transaction.
 func (t *PublicTxAPI) EstimateGas(to *common.Address, txType uint16, data hexutil.Bytes) (string, error) {
+	if !types.CheckTo(txType, to) {
+		return "", ErrInputParams
+	}
+
 	var costGas uint64
 	var err error
 	ctx := context.Background()
@@ -476,7 +487,7 @@ func (t *PublicTxAPI) EstimateGas(to *common.Address, txType uint16, data hexuti
 func (t *PublicTxAPI) EstimateCreateContractGas(data hexutil.Bytes) (uint64, error) {
 	ctx := context.Background()
 	accM := account.NewReadOnlyManager(t.node.Db(), false)
-	_, costGas, err := t.doCallTransaction(ctx, nil, accM, params.OrdinaryTx, data, 5*time.Second)
+	_, costGas, err := t.doCallTransaction(ctx, nil, accM, params.CreateContractTx, data, 5*time.Second)
 	return costGas, err
 }
 

@@ -25,4 +25,5 @@ var (
 	ErrTxExpiration   = errors.New("transaction is out of date")
 	ErrNegativeValue  = errors.New("transaction amount can't be negative")
 	ErrTxChainID      = errors.New("transaction chainID is incorrect")
+	ErrTxTo           = errors.New("the to of transaction is incorrect")
 )
