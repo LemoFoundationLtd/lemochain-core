@@ -94,7 +94,7 @@ func TestRunAssetEnv_CreateAssetTx(t *testing.T) {
 	// 生成资产信息所占用字节大于规定的大小的情况
 	info := "www.lemochain.comlemolemolemolemolemolemolemolemolemolemolemolemolemolemolemowww.lemochain.comlemolemolemolemolemolemolemolemolemolemolemolemolemolemolemowww.lemochain.comlemolemolemolemolemolemolemolemolemolemolemolemolemolemolemo"
 	maxData := newCreateAssetTxData(info, info, info, info, 3, true, true)
-	log.Infof("maxData length: ", len(maxData))
+	log.Infof("maxData length: %d", len(maxData))
 	err := r.CreateAssetTx(sender, maxData, txHash)
 	assert.Equal(t, ErrMarshalAssetLength, err)
 

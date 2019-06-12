@@ -35,7 +35,7 @@ func (b *BoxTxEnv) unmarshalBoxTxs(data []byte) (*types.Box, error) {
 		return nil, err
 	}
 	// 验证箱子中的交易
-	for _, tx := range box.Txs {
+	for _, tx := range box.SubTxList {
 		if tx.Type() == params.BoxTx {
 			return nil, ErrVerifyBoxTxs
 		}
@@ -60,7 +60,7 @@ func (b *BoxTxEnv) RunBoxTxs(gp *types.GasPool, boxTx *types.Transaction, header
 	)
 	txsHashMap := make(types.BoxTxsMap)
 	now := time.Now() // 设置执行箱子中的交易时间限制
-	for _, tx := range box.Txs {
+	for _, tx := range box.SubTxList {
 		if time.Since(now).Seconds() > applyBoxTxsTimeout {
 			log.Errorf("Box txs runtime: %fs", time.Since(now).Seconds())
 			return 0, ErrApplyBoxTxsTimeout
@@ -82,13 +82,13 @@ func (b *BoxTxEnv) RunBoxTxs(gp *types.GasPool, boxTx *types.Transaction, header
 	storeKey := boxTx.Hash()
 	storeValue, err := json.Marshal(txsHashMap)
 	if err != nil {
-		log.Errorf("Json marshal box txs error:", err)
+		log.Errorf("Json marshal box txs error: %s", err)
 		return 0, err
 	}
 
 	err = fromAcc.SetStorageState(storeKey, storeValue) // key为箱子本身交易的交易hash, value为箱子中txs的hashMap
 	if err != nil {
-		log.Errorf("SetStorageState to box transaction from account error: ", err)
+		log.Errorf("SetStorageState to box transaction from account error: %s", err)
 		return 0, err
 	}
 

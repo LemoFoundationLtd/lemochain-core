@@ -40,7 +40,7 @@ func getBoxTx(length int, containBoxTx bool) *types.Transaction {
 	}
 
 	box := &types.Box{
-		Txs: txs,
+		SubTxList: txs,
 	}
 	data, err := json.Marshal(box)
 	if err != nil {
@@ -125,7 +125,7 @@ func TestBoxTxEnv_RunBoxTxs(t *testing.T) {
 		panic(err)
 	}
 	// 对比box中的交易和map中的交易是否一样
-	for _, tx := range box.Txs {
+	for _, tx := range box.SubTxList {
 		assert.Equal(t, boxTxsMap[tx.Hash()].Hash(), tx.Hash())
 	}
 }

@@ -383,7 +383,7 @@ func checkBoxTx(txdata []byte, chainID uint16, txTime, nowTime uint64) error {
 		return err
 	}
 	// 遍历子交易并验证
-	for _, sonTx := range box.Txs {
+	for _, sonTx := range box.SubTxList {
 		// 确保tx的expiration time小于或者等于箱子中的所有子交易的expiration time
 		if txTime > sonTx.Expiration() {
 			log.Errorf("Exist a son transaction expiration time less than box transaction. boxTx time: %d, sonTx time: %d", txTime, sonTx.Expiration())
