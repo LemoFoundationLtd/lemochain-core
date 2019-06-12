@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/json"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/hexutil"
 	"math/big"
@@ -55,4 +56,14 @@ type BoxTxsMap map[common.Hash]*Transaction // 箱子中的交易索引
 //go:generate gencodec -type Box -out gen_box_json.go
 type Box struct {
 	SubTxList Transactions `json:"subTxList"  gencodec:"required"`
+}
+
+// GetBox
+func GetBox(txData []byte) (*Box, error) {
+	box := &Box{}
+	err := json.Unmarshal(txData, box)
+	if err != nil {
+		return nil, err
+	}
+	return box, nil
 }
