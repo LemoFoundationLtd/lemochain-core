@@ -3,7 +3,6 @@ package transaction
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
@@ -659,8 +658,7 @@ func (p *TxProcessor) PreExecutionTransaction(ctx context.Context, accM *account
 	case params.CreateContractTx:
 		ret, _, restGas, err = vmEvn.Create(sender, tx.Data(), restGas, big.NewInt(0))
 	case params.TransferAssetTx:
-		tradingAsset := &types.TradingAsset{}
-		err := json.Unmarshal(tx.Data(), tradingAsset)
+		tradingAsset, err := types.GetTradingAsset(tx.Data())
 		if err != nil {
 			log.Errorf("Unmarshal transfer asset data err: %s", err)
 			return nil, 0, err

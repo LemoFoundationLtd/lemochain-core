@@ -3,7 +3,6 @@ package store
 import (
 	"bytes"
 	"encoding/binary"
-	"encoding/json"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
@@ -98,8 +97,7 @@ func (beansdb *BeansDB) afterBlock(key []byte, val []byte) error {
 				panic("tx is issue asset. but data is nil.")
 			}
 
-			issueAsset := &types.IssueAsset{}
-			err := json.Unmarshal(extendData, issueAsset)
+			issueAsset, err := types.GetIssueAsset(extendData)
 			if err != nil {
 				return err
 			}

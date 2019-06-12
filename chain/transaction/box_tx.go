@@ -29,8 +29,7 @@ func NewBoxTxEnv(p *TxProcessor) *BoxTxEnv {
 
 // unmarshalBoxTxs
 func (b *BoxTxEnv) unmarshalBoxTxs(data []byte) (*types.Box, error) {
-	box := &types.Box{}
-	err := json.Unmarshal(data, box)
+	box, err := types.GetBox(data)
 	if err != nil {
 		return nil, err
 	}

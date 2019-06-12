@@ -1,7 +1,6 @@
 package types
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
@@ -377,8 +376,7 @@ func (tx *Transaction) VerifyTx(chainID uint16, timeStamp uint64) error {
 // checkBoxTx
 func checkBoxTx(txdata []byte, chainID uint16, txTime, nowTime uint64) error {
 	// 验证箱子交易中的子交易
-	box := &Box{}
-	err := json.Unmarshal(txdata, box)
+	box, err := GetBox(txdata)
 	if err != nil {
 		return err
 	}
