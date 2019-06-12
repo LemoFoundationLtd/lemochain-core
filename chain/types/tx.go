@@ -105,7 +105,8 @@ func NewTransaction(from common.Address, to common.Address, amount *big.Int, gas
 }
 
 // 创建智能合约交易
-func NewContractCreation(from common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte, TxType uint16, chainID uint16, expiration uint64, toName string, message string) *Transaction {
+func NewContractCreation(from common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int, code, constructorArgs string, TxType uint16, chainID uint16, expiration uint64, toName string, message string) *Transaction {
+	data := append(common.FromHex(code), common.FromHex(constructorArgs)...)
 	return newTransaction(from, TxType, TxVersion, chainID, nil, nil, amount, gasLimit, gasPrice, data, expiration, toName, message)
 }
 

@@ -83,7 +83,7 @@ func newBlockForTest(height uint32, txs types.Transactions, am *account.Manager,
 		ParentHash:   parentHash,
 		MinerAddress: common.HexToAddress("0x1100"),
 		Height:       height,
-		GasLimit:     510000000,
+		GasLimit:     5100000000,
 		TxRoot:       txs.MerkleRootSha(),
 	}
 	// 执行交易

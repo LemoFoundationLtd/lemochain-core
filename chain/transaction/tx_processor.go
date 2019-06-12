@@ -685,11 +685,11 @@ func newTx(from common.Address, to *common.Address, txType uint16, data []byte, 
 	case params.OrdinaryTx:
 		tx = types.NewTransaction(from, *to, big.NewInt(0), gasLimit, gasPrice, data, params.OrdinaryTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
 	case params.CreateContractTx:
-		tx = types.NewContractCreation(from, big.NewInt(0), gasLimit, gasPrice, data, params.CreateContractTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
+		tx = types.NoReceiverTransaction(from, big.NewInt(0), gasLimit, gasPrice, data, params.CreateContractTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
 	case params.VoteTx:
 		tx = types.NewTransaction(from, *to, big.NewInt(0), gasLimit, gasPrice, data, params.VoteTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
 	case params.RegisterTx:
-		tx = types.NewContractCreation(from, big.NewInt(0), gasLimit, gasPrice, data, params.RegisterTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
+		tx = types.NoReceiverTransaction(from, big.NewInt(0), gasLimit, gasPrice, data, params.RegisterTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
 	case params.CreateAssetTx:
 		tx = types.NoReceiverTransaction(from, big.NewInt(0), gasLimit, gasPrice, data, params.CreateAssetTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
 	case params.IssueAssetTx:
