@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
-	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"math/big"
 	"time"
@@ -20,13 +19,6 @@ var (
 	ErrApplyBoxTxsTimeout = errors.New("apply box txs timeout")
 )
 
-type BoxTxsMap map[common.Hash]*types.Transaction // 箱子中的交易索引
-
-//go:generate gencodec -type Box -out gen_box_json.go
-type Box struct {
-	Txs types.Transactions `json:"txs"  gencodec:"required"`
-}
-
 type BoxTxEnv struct {
 	p *TxProcessor
 }
@@ -35,9 +27,9 @@ func NewBoxTxEnv(p *TxProcessor) *BoxTxEnv {
 	return &BoxTxEnv{p}
 }
 
-// unmarshalBoxTxs 解析并校验箱子中的交易
-func (b *BoxTxEnv) unmarshalBoxTxs(data []byte) (*Box, error) {
-	box := &Box{}
+// unmarshalBoxTxs
+func (b *BoxTxEnv) unmarshalBoxTxs(data []byte) (*types.Box, error) {
+	box := &types.Box{}
 	err := json.Unmarshal(data, box)
 	if err != nil {
 		return nil, err
@@ -66,7 +58,7 @@ func (b *BoxTxEnv) RunBoxTxs(gp *types.GasPool, boxTx *types.Transaction, header
 		gasUsed     = uint64(0)
 		totalGasFee = new(big.Int)
 	)
-	txsHashMap := make(BoxTxsMap)
+	txsHashMap := make(types.BoxTxsMap)
 	now := time.Now() // 设置执行箱子中的交易时间限制
 	for _, tx := range box.Txs {
 		if time.Since(now).Seconds() > applyBoxTxsTimeout {

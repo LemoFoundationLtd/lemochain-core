@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
@@ -25,7 +26,7 @@ const (
 var (
 	DefaultTTTL  uint64 = 2 * 60 * 60 // Transaction Time To Live, 2hours
 	TxVersion    uint8  = 1           // current transaction version. should between 0 and 128
-	TxExpiration uint64 = 30 * 60
+	TxExpiration uint64 = 30 * 60     // tx expiration time 限制在30分钟
 )
 
 type Transactions []*Transaction
@@ -356,20 +357,61 @@ func (tx *Transaction) VerifyTx(chainID uint16, timeStamp uint64) error {
 		log.Warnf("The length of message field in transaction is out of max length limit. message length = %d. max length limit = %d. ", txMessageLength, MaxTxMessageLength)
 		return ErrTxMessage
 	}
-	// 校验data是否应该存在
-	switch tx.Type() {
-	case params.OrdinaryTx, params.VoteTx:
-	case params.CreateContractTx, params.RegisterTx, params.CreateAssetTx, params.IssueAssetTx, params.ReplenishAssetTx, params.ModifyAssetTx, params.TransferAssetTx, params.SetMultisigAccountTx, params.BoxTx:
-		if len(tx.Data()) == 0 {
-			return ErrSpecialTx
-		}
-	default:
-		log.Warnf("The transaction type does not exit . type = %v", tx.Type())
-		return ErrTxType
+	// data 存在校验
+	if err := checkTxData(tx.Type(), tx.Data()); err != nil {
+		return err
 	}
 	// to 存在判断
 	if !CheckTo(tx.Type(), tx.To()) {
 		return ErrTxTo
+	}
+	// 检验箱子交易
+	if tx.Type() == params.BoxTx {
+		if err := checkBoxTx(tx.Data(), chainID, tx.Expiration(), timeStamp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// checkBoxTx
+func checkBoxTx(txdata []byte, chainID uint16, txTime, nowTime uint64) error {
+	// 验证箱子交易中的子交易
+	box := &Box{}
+	err := json.Unmarshal(txdata, box)
+	if err != nil {
+		return err
+	}
+	// 遍历子交易并验证
+	for _, sonTx := range box.Txs {
+		// 确保tx的expiration time小于或者等于箱子中的所有子交易的expiration time
+		if txTime > sonTx.Expiration() {
+			log.Errorf("Exist a son transaction expiration time less than box transaction. boxTx time: %d, sonTx time: %d", txTime, sonTx.Expiration())
+			return ErrBoxTx
+		}
+		// 箱子中的子交易不能有箱子类型交易
+		if sonTx.Type() == params.BoxTx {
+			return ErrVerifyBoxTxs
+		}
+		// verify sonTx
+		if err := sonTx.VerifyTx(chainID, nowTime); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// checkTxData
+func checkTxData(txType uint16, data []byte) error {
+	switch txType {
+	case params.OrdinaryTx, params.VoteTx:
+	case params.CreateContractTx, params.RegisterTx, params.CreateAssetTx, params.IssueAssetTx, params.ReplenishAssetTx, params.ModifyAssetTx, params.TransferAssetTx, params.SetMultisigAccountTx, params.BoxTx:
+		if len(data) == 0 {
+			return ErrSpecialTx
+		}
+	default:
+		log.Warnf("The transaction type does not exit . type = %v", txType)
+		return ErrTxType
 	}
 	return nil
 }

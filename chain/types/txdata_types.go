@@ -49,3 +49,10 @@ type TradingAsset struct {
 type tradingAssetMarshaling struct {
 	Value *hexutil.Big10
 }
+
+// 箱子交易
+type BoxTxsMap map[common.Hash]*Transaction // 箱子中的交易索引
+//go:generate gencodec -type Box -out gen_box_json.go
+type Box struct {
+	Txs Transactions `json:"txs"  gencodec:"required"`
+}

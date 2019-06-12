@@ -39,7 +39,7 @@ func getBoxTx(length int, containBoxTx bool) *types.Transaction {
 		txs = append(txs, signBoxTx)
 	}
 
-	box := &Box{
+	box := &types.Box{
 		Txs: txs,
 	}
 	data, err := json.Marshal(box)
@@ -113,13 +113,13 @@ func TestBoxTxEnv_RunBoxTxs(t *testing.T) {
 		panic(err)
 	}
 	// unmarshal value
-	boxTxsMap := make(BoxTxsMap)
+	boxTxsMap := make(types.BoxTxsMap)
 	err = json.Unmarshal(value, &boxTxsMap)
 	if err != nil {
 		panic(err)
 	}
 	// 获取箱子中的交易
-	box := &Box{}
+	box := &types.Box{}
 	err = json.Unmarshal(boxTx.Data(), box)
 	if err != nil {
 		panic(err)
