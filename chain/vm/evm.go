@@ -1,7 +1,6 @@
 package vm
 
 import (
-	"encoding/json"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
@@ -182,8 +181,7 @@ type AssetDb interface {
 
 // TransferAssetTx
 func (evm *EVM) TransferAssetTx(caller ContractRef, addr common.Address, gas uint64, txData []byte, assetDB AssetDb) (ret []byte, leftOverGas uint64, Err, vmErr error) {
-	tradingAsset := &types.TradingAsset{}
-	err := json.Unmarshal(txData, tradingAsset)
+	tradingAsset, err := types.GetTradingAsset(txData)
 	if err != nil {
 		log.Errorf("Unmarshal transfer asset data err: %s", err)
 		return nil, gas, err, nil

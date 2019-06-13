@@ -3,7 +3,6 @@ package transaction
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
@@ -659,8 +658,7 @@ func (p *TxProcessor) PreExecutionTransaction(ctx context.Context, accM *account
 	case params.CreateContractTx:
 		ret, _, restGas, err = vmEvn.Create(sender, tx.Data(), restGas, big.NewInt(0))
 	case params.TransferAssetTx:
-		tradingAsset := &types.TradingAsset{}
-		err := json.Unmarshal(tx.Data(), tradingAsset)
+		tradingAsset, err := types.GetTradingAsset(tx.Data())
 		if err != nil {
 			log.Errorf("Unmarshal transfer asset data err: %s", err)
 			return nil, 0, err
@@ -687,11 +685,11 @@ func newTx(from common.Address, to *common.Address, txType uint16, data []byte, 
 	case params.OrdinaryTx:
 		tx = types.NewTransaction(from, *to, big.NewInt(0), gasLimit, gasPrice, data, params.OrdinaryTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
 	case params.CreateContractTx:
-		tx = types.NewContractCreation(from, big.NewInt(0), gasLimit, gasPrice, data, params.CreateContractTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
+		tx = types.NoReceiverTransaction(from, big.NewInt(0), gasLimit, gasPrice, data, params.CreateContractTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
 	case params.VoteTx:
 		tx = types.NewTransaction(from, *to, big.NewInt(0), gasLimit, gasPrice, data, params.VoteTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
 	case params.RegisterTx:
-		tx = types.NewContractCreation(from, big.NewInt(0), gasLimit, gasPrice, data, params.RegisterTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
+		tx = types.NoReceiverTransaction(from, big.NewInt(0), gasLimit, gasPrice, data, params.RegisterTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
 	case params.CreateAssetTx:
 		tx = types.NoReceiverTransaction(from, big.NewInt(0), gasLimit, gasPrice, data, params.CreateAssetTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
 	case params.IssueAssetTx:

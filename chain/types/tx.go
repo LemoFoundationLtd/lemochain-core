@@ -1,7 +1,6 @@
 package types
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
@@ -106,7 +105,8 @@ func NewTransaction(from common.Address, to common.Address, amount *big.Int, gas
 }
 
 // 创建智能合约交易
-func NewContractCreation(from common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte, TxType uint16, chainID uint16, expiration uint64, toName string, message string) *Transaction {
+func NewContractCreation(from common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int, code, constructorArgs string, TxType uint16, chainID uint16, expiration uint64, toName string, message string) *Transaction {
+	data := append(common.FromHex(code), common.FromHex(constructorArgs)...)
 	return newTransaction(from, TxType, TxVersion, chainID, nil, nil, amount, gasLimit, gasPrice, data, expiration, toName, message)
 }
 
@@ -377,8 +377,7 @@ func (tx *Transaction) VerifyTx(chainID uint16, timeStamp uint64) error {
 // checkBoxTx
 func checkBoxTx(txdata []byte, chainID uint16, txTime, nowTime uint64) error {
 	// 验证箱子交易中的子交易
-	box := &Box{}
-	err := json.Unmarshal(txdata, box)
+	box, err := GetBox(txdata)
 	if err != nil {
 		return err
 	}

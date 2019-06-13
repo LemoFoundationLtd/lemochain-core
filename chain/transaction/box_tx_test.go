@@ -46,7 +46,7 @@ func getBoxTx(length int, containBoxTx bool) *types.Transaction {
 	if err != nil {
 		panic(err)
 	}
-	boxTx := types.NewContractCreation(godFrom, nil, uint64(900000), common.Big1, data, params.BoxTx, chainID, uint64(time.Now().Unix()+60*30), "box txs", "")
+	boxTx := types.NoReceiverTransaction(godFrom, nil, uint64(900000), common.Big1, data, params.BoxTx, chainID, uint64(time.Now().Unix()+60*30), "box txs", "")
 	signBoxTx, err := types.MakeSigner().SignTx(boxTx, godPriv)
 	if err != nil {
 		panic(err)
