@@ -3,6 +3,7 @@ package txpool
 import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
+	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"sync"
 )
 
@@ -76,6 +77,7 @@ func (pool *TxPool) VerifyTxInBlock(block *types.Block) bool {
 	if block == nil {
 		return false
 	}
+
 	if len(block.Txs) <= 0 {
 		return true
 	}
@@ -124,42 +126,67 @@ func (pool *TxPool) RecvBlock(block *types.Block) {
 		return
 	}
 
-	if len(block.Txs) > 0 {
-		hashes := make([]common.Hash, 0, len(block.Txs))
-		for _, v := range block.Txs {
-			hashes = append(hashes, v.Hash())
-		}
-
-		pool.PendingTxs.DelBatch(hashes)
-		pool.RecentTxs.RecvBlock(block.Hash(), int64(block.Height()), block.Txs)
+	txs := block.Txs
+	if len(txs) <= 0 {
+		return
 	}
+
+	hashes := make([]common.Hash, 0, len(txs))
+	for _, v := range txs {
+		hashes = append(hashes, v.Hash())
+	}
+
+	pool.PendingTxs.DelBatch(hashes)
+	pool.RecentTxs.RecvBlock(block.Hash(), int64(block.Height()), txs)
 
 	pool.BlockCache.PushBlock(block)
 }
 
 /* 收到一笔新的交易 */
-func (pool *TxPool) RecvTx(tx *types.Transaction) {
+func (pool *TxPool) RecvTx(tx *types.Transaction) bool {
 	pool.RW.Lock()
 	defer pool.RW.Unlock()
 
 	if tx == nil {
-		return
+		return false
 	}
 
-	pool.RecentTxs.RecvTx(tx)
-	pool.PendingTxs.Push(tx)
-
-}
-
-func (pool *TxPool) RecvTxs(txs []*types.Transaction) {
-	if len(txs) <= 0 {
-		return
-	}
-
-	for _, v := range txs {
-		pool.RecvTx(v)
+	isExist := pool.RecentTxs.IsExist(tx)
+	if isExist {
+		log.Debug("tx is already exist. hash: " + tx.Hash().Hex())
+		return false
+	} else {
+		pool.RecentTxs.RecvTx(tx)
+		pool.PendingTxs.Push(tx)
+		return true
 	}
 }
+
+// func (pool *TxPool) RecvTxs(txs []*types.Transaction) bool {
+// 	pool.RW.Lock()
+// 	defer pool.RW.Unlock()
+//
+// 	if len(txs) <= 0 {
+// 		return false
+// 	}
+//
+// 	for _, v := range txs {
+// 		isExist := pool.RecentTxs.IsExist(v)
+// 		if !isExist {
+// 			continue
+// 		}else{
+// 			log.Debug("tx is already exist. hash: " + v.Hash().Hex())
+// 			return false
+// 		}
+// 	}
+//
+// 	for _, v := range txs {
+// 		pool.RecentTxs.RecvTx(v)
+// 		pool.PendingTxs.Push(v)
+// 	}
+//
+// 	return true
+// }
 
 /* 对链进行剪枝，剪下的块中的交易需要回归交易池 */
 func (pool *TxPool) PruneBlock(block *types.Block) {

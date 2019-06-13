@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func TestTxRecently_RecvTx(t *testing.T) {
+func TestTxRecently_RecvTx1(t *testing.T) {
 	curTime := time.Now().Unix()
 
 	recently := NewTxRecently()
@@ -27,6 +27,54 @@ func TestTxRecently_RecvTx(t *testing.T) {
 
 	slot := tx1.Expiration() % uint64(TransactionExpiration)
 	assert.Equal(t, 2, len(recently.TxsByTime[slot].TxIndexes))
+}
+
+func TestTxRecently_RecvTx2(t *testing.T) {
+	recently := NewTxRecently()
+
+	curTime := time.Now().Unix()
+	tx := createBoxTxRandom(common.HexToAddress("0xabcde"), 5, uint64(curTime))
+
+	recently.RecvTx(tx)
+	assert.Equal(t, 6, len(recently.TraceMap))
+	assert.Equal(t, 0, len(recently.TraceMap[tx.Hash()]))
+
+	recently.RecvTx(tx)
+	assert.Equal(t, 6, len(recently.TraceMap))
+	assert.Equal(t, 0, len(recently.TraceMap[tx.Hash()]))
+}
+
+func TestRecentTx_IsExist(t *testing.T) {
+	recently := NewTxRecently()
+
+	// box tx
+	curTime := time.Now().Unix()
+	tx := createBoxTxRandom(common.HexToAddress("0xabcde"), 5, uint64(curTime)+100)
+
+	isExist := recently.IsExist(tx)
+	assert.Equal(t, false, isExist)
+
+	recently.RecvTx(tx)
+	isExist = recently.IsExist(tx)
+	assert.Equal(t, true, isExist)
+
+	// normal tx
+	tx1 := makeTx(common.HexToAddress("0x01"), curTime+200)
+	isExist = recently.IsExist(tx1)
+	assert.Equal(t, false, isExist)
+
+	recently.RecvTx(tx1)
+	isExist = recently.IsExist(tx)
+	assert.Equal(t, true, isExist)
+
+	// box tx
+	dtx1, dtx2 := createDoubleBoxTxRandom(common.HexToAddress("0xabcde"), 5, uint64(curTime)+300)
+	isExist = recently.IsExist(dtx1)
+	assert.Equal(t, false, isExist)
+
+	recently.RecvTx(dtx1)
+	isExist = recently.IsExist(dtx2)
+	assert.Equal(t, true, isExist)
 }
 
 func TestTxRecently_RecvBlock(t *testing.T) {
@@ -211,4 +259,15 @@ func TestTxRecently_PruneBlock(t *testing.T) {
 	assert.Equal(t, 1, len(recently.TraceMap[txs1[0].Hash()]))
 	assert.Equal(t, 1, len(recently.TraceMap[txs2[0].Hash()]))
 	assert.Equal(t, 1, len(recently.TraceMap[txs3[0].Hash()]))
+
+	// box tx
+	assert.Equal(t, 8, len(recently.TraceMap))
+	curTime := time.Now().Unix()
+	boxTxs := make([]*types.Transaction, 1)
+	boxTxs[0] = createBoxTxRandom(common.HexToAddress("0xabcde"), 5, uint64(curTime)+100)
+	recently.RecvBlock(common.HexToHash("0x06"), 106, boxTxs)
+	assert.Equal(t, 14, len(recently.TraceMap))
+
+	recently.PruneBlock(common.HexToHash("0x06"), 106, boxTxs)
+	assert.Equal(t, 14, len(recently.TraceMap))
 }

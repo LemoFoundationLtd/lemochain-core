@@ -1,6 +1,7 @@
 package txpool
 
 import (
+	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
@@ -122,19 +123,39 @@ func (recent *RecentTx) delBatch4Txs(hashes []common.Hash) {
 	}
 }
 
-func (recent *RecentTx) del4block(bHash common.Hash, tHash common.Hash) {
-	trace, ok := recent.TraceMap[tHash]
-	if ok {
-		trace.del(bHash)
+func (recent *RecentTx) delBox4Block(bHash common.Hash, tx *types.Transaction) {
+	box, err := types.GetBox(tx.Data())
+	if err != nil {
+		log.Debug("get box from tx err: " + err.Error())
+	} else {
+		txs := box.SubTxList
+		for _, v := range txs {
+			trace, ok := recent.TraceMap[v.Hash()]
+			if ok {
+				trace.del(bHash)
+			}
+		}
 	}
 }
 
-func (recent *RecentTx) delBatch4Block(bHash common.Hash, thashes []common.Hash) {
-	if len(thashes) <= 0 {
+func (recent *RecentTx) del4Block(bHash common.Hash, tx *types.Transaction) {
+	trace, ok := recent.TraceMap[tx.Hash()]
+	if ok {
+		trace.del(bHash)
+	}
+
+	if tx.Type() == params.BoxTx {
+		recent.delBox4Block(bHash, tx)
+	}
+}
+
+func (recent *RecentTx) delBatch4Block(bHash common.Hash, txs []*types.Transaction) {
+	if len(txs) <= 0 {
 		return
 	}
-	for _, tHash := range thashes {
-		recent.del4block(bHash, tHash)
+
+	for _, tx := range txs {
+		recent.del4Block(bHash, tx)
 	}
 }
 
@@ -158,16 +179,47 @@ func (recent *RecentTx) GetTrace(txs []*types.Transaction) map[common.Hash]TxTra
 	return result
 }
 
-func (recent *RecentTx) IsExist(hash common.Hash) bool {
-	if len(recent.TraceMap) <= 0 {
-		return false
-	}
-
-	_, ok := recent.TraceMap[hash]
+func (recent *RecentTx) isExist(tx *types.Transaction) bool {
+	_, ok := recent.TraceMap[tx.Hash()]
 	if !ok {
 		return false
 	} else {
 		return true
+	}
+}
+
+func (recent *RecentTx) boxIsExist(tx *types.Transaction) bool {
+	box, err := types.GetBox(tx.Data())
+	if err != nil {
+		log.Error("unmarshal box err: " + err.Error())
+		return false
+	}
+
+	txs := box.SubTxList
+	for _, v := range txs {
+		isExist := recent.isExist(v)
+		if isExist {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (recent *RecentTx) IsExist(tx *types.Transaction) bool {
+	if len(recent.TraceMap) <= 0 {
+		return false
+	}
+
+	isExist := recent.isExist(tx)
+	if isExist {
+		return true
+	}
+
+	if tx.Type() == params.BoxTx {
+		return recent.boxIsExist(tx)
+	} else {
+		return false
 	}
 }
 
@@ -216,6 +268,22 @@ func (recent *RecentTx) add2Hash(hash common.Hash, height int64, tx *types.Trans
 	}
 }
 
+func (recent *RecentTx) addBox(hash common.Hash, height int64, tx *types.Transaction) {
+	box, err := types.GetBox(tx.Data())
+	if err != nil {
+		log.Error("unmarshal box err: " + err.Error())
+		return
+	}
+
+	txs := box.SubTxList
+	for _, v := range txs {
+		err := recent.add2Time(v)
+		if err == nil {
+			recent.add2Hash(hash, height, v)
+		}
+	}
+}
+
 func (recent *RecentTx) add(hash common.Hash, height int64, tx *types.Transaction) {
 	if (height < -1) || (tx == nil) {
 		return
@@ -224,6 +292,10 @@ func (recent *RecentTx) add(hash common.Hash, height int64, tx *types.Transactio
 	err := recent.add2Time(tx)
 	if err == nil {
 		recent.add2Hash(hash, height, tx)
+	}
+
+	if tx.Type() == params.BoxTx {
+		recent.addBox(hash, height, tx)
 	}
 }
 
@@ -239,11 +311,7 @@ func (recent *RecentTx) RecvTx(tx *types.Transaction) {
 		return
 	}
 
-	if recent.IsExist(tx.Hash()) {
-		return
-	} else {
-		recent.add(common.Hash{}, -1, tx) // 没在块上的交易， 设置其高度为-1
-	}
+	recent.add(common.Hash{}, -1, tx) // 没在块上的交易， 设置其高度为-1
 }
 
 /* 收到一个新块，把该块种的交易放入最近交易列表 */
@@ -260,10 +328,5 @@ func (recent *RecentTx) PruneBlock(hash common.Hash, height int64, txs []*types.
 		return
 	}
 
-	hashes := make([]common.Hash, 0, len(txs))
-	for _, v := range txs {
-		hashes = append(hashes, v.Hash())
-	}
-
-	recent.delBatch4Block(hash, hashes)
+	recent.delBatch4Block(hash, txs)
 }
