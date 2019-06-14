@@ -35,6 +35,7 @@ var (
 	ErrNegativeValue  = errors.New("negative value")
 	ErrTxChainID      = errors.New("tx chainID is incorrect")
 	ErrInputParams    = errors.New("input params incorrect")
+	ErrTxTo           = errors.New("transaction to is incorrect")
 )
 
 // Private
@@ -446,9 +447,10 @@ func (t *PublicTxAPI) SendTx(tx *types.Transaction) (common.Hash, error) {
 		log.Errorf("VerifyTx error: %s", err)
 		return common.Hash{}, err
 	}
-	t.node.txPool.RecvTx(tx)
-	// 广播交易
-	go subscribe.Send(subscribe.NewTx, tx)
+	if t.node.txPool.RecvTx(tx) {
+		// 广播交易
+		go subscribe.Send(subscribe.NewTx, tx)
+	}
 	return tx.Hash(), nil
 }
 
@@ -470,8 +472,8 @@ func (t *PublicTxAPI) ReadContract(to *common.Address, data hexutil.Bytes) (stri
 
 // EstimateGas returns an estimate of the amount of gas needed to execute the given transaction.
 func (t *PublicTxAPI) EstimateGas(to *common.Address, txType uint16, data hexutil.Bytes) (string, error) {
-	if err := types.IsToExist(txType, to); err != nil {
-		return "", err
+	if !types.IsToExist(txType, to) {
+		return "", types.ErrToExist
 	}
 	var costGas uint64
 	var err error

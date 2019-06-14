@@ -338,12 +338,12 @@ func (tx *Transaction) Clone() *Transaction {
 func (tx *Transaction) VerifyTx(chainID uint16, timeStamp uint64) error {
 	// verify time
 	if tx.Expiration() < timeStamp {
-		log.Errorf("Received transaction expiration time less than current time . Expiration time: %d. The current time: %d", tx.Expiration(), timeStamp)
-		return ErrTxExpiration
+		log.Errorf("Received transaction expiration time less than current time. Expiration time: %d. The current time: %d", tx.Expiration(), timeStamp)
+		return ErrTxExpiration01
 	}
 	if tx.Expiration()-timeStamp > uint64(params.TransactionExpiration) {
-		log.Errorf("Received transaction expiration time can't more than 30 minutes")
-		return ErrTxExpiration
+		log.Errorf("Received transaction expiration time can't more than 30 minutes. expiration time: %d", tx.Expiration()-timeStamp)
+		return ErrTxExpiration02
 	}
 	// verify chainID
 	if tx.ChainID() != chainID {
@@ -370,8 +370,8 @@ func (tx *Transaction) VerifyTx(chainID uint16, timeStamp uint64) error {
 		return err
 	}
 	// to 存在判断
-	if err := IsToExist(tx.Type(), tx.To()); err != nil {
-		return err
+	if !IsToExist(tx.Type(), tx.To()) {
+		return ErrToExist
 	}
 	// 检验箱子交易
 	if tx.Type() == params.BoxTx {
@@ -424,17 +424,13 @@ func checkTxData(txType uint16, data []byte) error {
 }
 
 // IsToExist
-func IsToExist(txType uint16, to *common.Address) error {
-	var temp bool
+func IsToExist(txType uint16, to *common.Address) bool {
 	switch txType {
 	case params.OrdinaryTx, params.VoteTx, params.IssueAssetTx, params.ReplenishAssetTx, params.TransferAssetTx, params.ModifySignersTx:
-		temp = to != nil
+		return to != nil
 	case params.CreateContractTx, params.RegisterTx, params.CreateAssetTx, params.ModifyAssetTx, params.BoxTx:
-		temp = to == nil
+		return to == nil
 	default:
+		return false
 	}
-	if !temp {
-		return ErrToExist
-	}
-	return nil
 }

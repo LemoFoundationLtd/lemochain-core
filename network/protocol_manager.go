@@ -732,10 +732,15 @@ func (pm *ProtocolManager) handleTxsMsg(msg *p2p.Msg) error {
 		if err := tx.VerifyTx(pm.chainID, nowTime); err != nil {
 			continue
 		}
-		// 广播交易
-		go subscribe.Send(subscribe.NewTx, tx)
+
+		go func() {
+			if pm.txPool.RecvTx(tx) {
+				// 广播交易
+				subscribe.Send(subscribe.NewTx, tx)
+			}
+		}()
 	}
-	go pm.txPool.RecvTxs(txs)
+
 	return nil
 }
 
