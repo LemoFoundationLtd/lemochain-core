@@ -226,7 +226,13 @@ func (tx *Transaction) From() common.Address {
 
 // GetSigners returns address of instead of pay transaction gas.
 func (tx *Transaction) GasPayer() common.Address {
-	return *tx.data.GasPayer
+	var gasPayer common.Address
+	if tx.data.GasPayer == nil {
+		gasPayer = tx.From()
+	} else {
+		gasPayer = *tx.data.GasPayer
+	}
+	return gasPayer
 }
 
 func (tx *Transaction) Hash() common.Hash {
@@ -249,7 +255,7 @@ func (tx *Transaction) String() string {
 	var to string
 
 	if tx.data.Recipient == nil {
-		to = "[contract creation]"
+		to = "[No Recipient Transaction]"
 	} else {
 		to = tx.data.Recipient.String()
 	}
@@ -267,7 +273,7 @@ func (tx *Transaction) String() string {
 	if len(tx.data.RecipientName) > 0 {
 		set = append(set, fmt.Sprintf("ToName: %s", tx.data.RecipientName))
 	}
-	set = append(set, fmt.Sprintf("GasPrice: %v", tx.data.GasPrice))
+	set = append(set, fmt.Sprintf("GasPrice: %v", tx.data.GasPayer))
 	set = append(set, fmt.Sprintf("GasLimit: %v", tx.data.GasLimit))
 	set = append(set, fmt.Sprintf("Amount: %v", tx.data.Amount))
 	if len(tx.data.Data) > 0 {
