@@ -339,11 +339,11 @@ func (tx *Transaction) VerifyTx(chainID uint16, timeStamp uint64) error {
 	// verify time
 	if tx.Expiration() < timeStamp {
 		log.Errorf("Received transaction expiration time less than current time. Expiration time: %d. The current time: %d", tx.Expiration(), timeStamp)
-		return ErrTxExpiration01
+		return ErrTxExpired
 	}
 	if tx.Expiration()-timeStamp > uint64(params.TransactionExpiration) {
 		log.Errorf("Received transaction expiration time can't more than 30 minutes. expiration time: %d", tx.Expiration()-timeStamp)
-		return ErrTxExpiration02
+		return ErrTxExpiration
 	}
 	// verify chainID
 	if tx.ChainID() != chainID {
