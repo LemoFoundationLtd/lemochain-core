@@ -1,6 +1,7 @@
 package txpool
 
 import (
+	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/stretchr/testify/assert"
@@ -8,7 +9,7 @@ import (
 	"time"
 )
 
-func TestTxRecently_RecvTx(t *testing.T) {
+func TestTxRecently_RecvTx1(t *testing.T) {
 	curTime := time.Now().Unix()
 
 	recently := NewTxRecently()
@@ -25,8 +26,56 @@ func TestTxRecently_RecvTx(t *testing.T) {
 	assert.Equal(t, 0, len(recently.TraceMap[tx1.Hash()]))
 	assert.Equal(t, 0, len(recently.TraceMap[tx2.Hash()]))
 
-	slot := tx1.Expiration() % uint64(TransactionExpiration)
+	slot := tx1.Expiration() % uint64(params.TransactionExpiration)
 	assert.Equal(t, 2, len(recently.TxsByTime[slot].TxIndexes))
+}
+
+func TestTxRecently_RecvTx2(t *testing.T) {
+	recently := NewTxRecently()
+
+	curTime := time.Now().Unix()
+	tx := createBoxTxRandom(common.HexToAddress("0xabcde"), 5, uint64(curTime))
+
+	recently.RecvTx(tx)
+	assert.Equal(t, 6, len(recently.TraceMap))
+	assert.Equal(t, 0, len(recently.TraceMap[tx.Hash()]))
+
+	recently.RecvTx(tx)
+	assert.Equal(t, 6, len(recently.TraceMap))
+	assert.Equal(t, 0, len(recently.TraceMap[tx.Hash()]))
+}
+
+func TestRecentTx_IsExist(t *testing.T) {
+	recently := NewTxRecently()
+
+	// box tx
+	curTime := time.Now().Unix()
+	tx := createBoxTxRandom(common.HexToAddress("0xabcde"), 5, uint64(curTime)+100)
+
+	isExist := recently.IsExist(tx)
+	assert.Equal(t, false, isExist)
+
+	recently.RecvTx(tx)
+	isExist = recently.IsExist(tx)
+	assert.Equal(t, true, isExist)
+
+	// normal tx
+	tx1 := makeTx(common.HexToAddress("0x01"), curTime+200)
+	isExist = recently.IsExist(tx1)
+	assert.Equal(t, false, isExist)
+
+	recently.RecvTx(tx1)
+	isExist = recently.IsExist(tx)
+	assert.Equal(t, true, isExist)
+
+	// box tx
+	dtx1, dtx2 := createDoubleBoxTxRandom(common.HexToAddress("0xabcde"), 5, uint64(curTime)+300)
+	isExist = recently.IsExist(dtx1)
+	assert.Equal(t, false, isExist)
+
+	recently.RecvTx(dtx1)
+	isExist = recently.IsExist(dtx2)
+	assert.Equal(t, true, isExist)
 }
 
 func TestTxRecently_RecvBlock(t *testing.T) {
@@ -62,15 +111,15 @@ func TestTxRecently_RecvBlockTimeOut(t *testing.T) {
 	txs = append(txs, makeTx(common.HexToAddress("0x04"), expiration))
 	recently.RecvBlock(bhash, height, txs)
 
-	slot := expiration % int64(TransactionExpiration)
+	slot := expiration % int64(params.TransactionExpiration)
 	assert.Equal(t, 4, len(recently.TxsByTime[slot].TxIndexes))
 	assert.Equal(t, 4, len(recently.TraceMap))
 
 	txs = make([]*types.Transaction, 0)
-	txs = append(txs, makeTx(common.HexToAddress("0x05"), expiration+int64(TransactionExpiration)))
+	txs = append(txs, makeTx(common.HexToAddress("0x05"), expiration+int64(params.TransactionExpiration)))
 	recently.RecvBlock(bhash, height, txs)
 
-	slot = expiration % int64(TransactionExpiration)
+	slot = expiration % int64(params.TransactionExpiration)
 	assert.Equal(t, 1, len(recently.TxsByTime[slot].TxIndexes))
 	assert.Equal(t, 1, len(recently.TraceMap))
 
@@ -78,15 +127,15 @@ func TestTxRecently_RecvBlockTimeOut(t *testing.T) {
 	txs = append(txs, makeTx(common.HexToAddress("0x06"), expiration))
 	recently.RecvBlock(bhash, height, txs)
 
-	slot = expiration % int64(TransactionExpiration)
+	slot = expiration % int64(params.TransactionExpiration)
 	assert.Equal(t, 1, len(recently.TxsByTime[slot].TxIndexes))
 	assert.Equal(t, 1, len(recently.TraceMap))
 
 	txs = make([]*types.Transaction, 0)
-	txs = append(txs, makeTx(common.HexToAddress("0x08"), expiration+int64(TransactionExpiration)))
+	txs = append(txs, makeTx(common.HexToAddress("0x08"), expiration+int64(params.TransactionExpiration)))
 	recently.RecvBlock(bhash, height, txs)
 
-	slot = expiration % int64(TransactionExpiration)
+	slot = expiration % int64(params.TransactionExpiration)
 	assert.Equal(t, 2, len(recently.TxsByTime[slot].TxIndexes))
 	assert.Equal(t, 2, len(recently.TraceMap))
 }
@@ -190,14 +239,14 @@ func TestTxRecently_PruneBlock(t *testing.T) {
 	txs6 = append(txs6, txs2[0])
 	txs6 = append(txs6, txs3[0])
 	recently.RecvBlock(common.HexToHash("0x06"), 105, txs6)
-	slot := expiration % int64(TransactionExpiration)
+	slot := expiration % int64(params.TransactionExpiration)
 	assert.Equal(t, 8, len(recently.TxsByTime[slot].TxIndexes))
 	assert.Equal(t, 3, len(recently.TraceMap[txs1[0].Hash()]))
 	assert.Equal(t, 3, len(recently.TraceMap[txs2[0].Hash()]))
 	assert.Equal(t, 3, len(recently.TraceMap[txs3[0].Hash()]))
 
 	recently.PruneBlock(common.HexToHash("0x05"), 104, txs5)
-	slot = expiration % int64(TransactionExpiration)
+	slot = expiration % int64(params.TransactionExpiration)
 	assert.Equal(t, 8, len(recently.TxsByTime[slot].TxIndexes))
 
 	assert.Equal(t, 2, len(recently.TraceMap[txs1[0].Hash()]))
@@ -205,10 +254,21 @@ func TestTxRecently_PruneBlock(t *testing.T) {
 	assert.Equal(t, 2, len(recently.TraceMap[txs3[0].Hash()]))
 
 	recently.PruneBlock(common.HexToHash("0x06"), 105, txs6)
-	slot = expiration % int64(TransactionExpiration)
+	slot = expiration % int64(params.TransactionExpiration)
 	assert.Equal(t, 8, len(recently.TxsByTime[slot].TxIndexes))
 
 	assert.Equal(t, 1, len(recently.TraceMap[txs1[0].Hash()]))
 	assert.Equal(t, 1, len(recently.TraceMap[txs2[0].Hash()]))
 	assert.Equal(t, 1, len(recently.TraceMap[txs3[0].Hash()]))
+
+	// box tx
+	assert.Equal(t, 8, len(recently.TraceMap))
+	curTime := time.Now().Unix()
+	boxTxs := make([]*types.Transaction, 1)
+	boxTxs[0] = createBoxTxRandom(common.HexToAddress("0xabcde"), 5, uint64(curTime)+100)
+	recently.RecvBlock(common.HexToHash("0x06"), 106, boxTxs)
+	assert.Equal(t, 14, len(recently.TraceMap))
+
+	recently.PruneBlock(common.HexToHash("0x06"), 106, boxTxs)
+	assert.Equal(t, 14, len(recently.TraceMap))
 }

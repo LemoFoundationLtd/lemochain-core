@@ -1,7 +1,6 @@
 package vm
 
 import (
-	"encoding/json"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
@@ -167,6 +166,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 	// above we revert to the snapshot and consume any gas remaining. Additionally
 	// when we're in homestead this also counts for code storage gas errors.
 	if err != nil {
+		log.Errorf("evm error:", err)
 		evm.am.RevertToSnapshot(snapshot)
 		if err != errExecutionReverted {
 			contract.UseGas(contract.Gas)
@@ -181,8 +181,7 @@ type AssetDb interface {
 
 // TransferAssetTx
 func (evm *EVM) TransferAssetTx(caller ContractRef, addr common.Address, gas uint64, txData []byte, assetDB AssetDb) (ret []byte, leftOverGas uint64, Err, vmErr error) {
-	tradingAsset := &types.TradingAsset{}
-	err := json.Unmarshal(txData, tradingAsset)
+	tradingAsset, err := types.GetTradingAsset(txData)
 	if err != nil {
 		log.Errorf("Unmarshal transfer asset data err: %s", err)
 		return nil, gas, err, nil

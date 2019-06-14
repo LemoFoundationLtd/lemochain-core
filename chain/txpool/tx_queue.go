@@ -40,6 +40,7 @@ func (queue *TxQueue) softDel(hash common.Hash) {
 }
 
 func (queue *TxQueue) isTimeOut(tx *types.Transaction, time uint32) bool {
+	// TODO: box tx
 	if tx.Expiration() < uint64(time) {
 		return true
 	} else {

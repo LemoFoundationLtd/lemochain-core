@@ -25,8 +25,10 @@ var (
 		RewardManager: godAddr,
 		ChainID:       chainID,
 	}
-	godPrivate, _ = crypto.HexToECDSA("432a86ab8765d82415a803e29864dcfc1ed93dac949abf6f95a583179f27e4bb") // 测试中的16亿lemo地址
+	godPrivate, _ = crypto.HexToECDSA("c21b6b2fbf230f665b936194d14da67187732bf9d28768aef1a3cbb26608f8aa") // 测试中的16亿lemo地址
 	godAddr       = crypto.PubkeyToAddress(godPrivate.PublicKey)
+	godRawAddr    = "0x015780F8456F9c1532645087a19DcF9a7e0c7F97"
+	godLemoAddr   = "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG"
 )
 
 func init() {
@@ -83,7 +85,7 @@ func newBlockForTest(height uint32, txs types.Transactions, am *account.Manager,
 		ParentHash:   parentHash,
 		MinerAddress: common.HexToAddress("0x1100"),
 		Height:       height,
-		GasLimit:     510000000,
+		GasLimit:     5100000000,
 		TxRoot:       txs.MerkleRootSha(),
 	}
 	// 执行交易
@@ -133,12 +135,12 @@ func (t *testChain) GetParentByHeight(height uint32, sonBlockHash common.Hash) *
 	return block
 }
 
-func makeTx(fromPrivate *ecdsa.PrivateKey, from, to common.Address, txType uint16, amount *big.Int) *types.Transaction {
-	return makeTransaction(fromPrivate, from, to, txType, amount, common.Big1, uint64(time.Now().Unix()+300), 1000000)
+func makeTx(fromPrivate *ecdsa.PrivateKey, from, to common.Address, data []byte, txType uint16, amount *big.Int) *types.Transaction {
+	return makeTransaction(fromPrivate, from, to, data, txType, amount, common.Big1, uint64(time.Now().Unix()+30*60), 1000000)
 }
 
-func makeTransaction(fromPrivate *ecdsa.PrivateKey, from, to common.Address, txType uint16, amount *big.Int, gasPrice *big.Int, expiration uint64, gasLimit uint64) *types.Transaction {
-	tx := types.NewTransaction(from, to, amount, gasLimit, gasPrice, []byte{}, txType, chainID, expiration, "", string("aaa"))
+func makeTransaction(fromPrivate *ecdsa.PrivateKey, from, to common.Address, data []byte, txType uint16, amount *big.Int, gasPrice *big.Int, expiration uint64, gasLimit uint64) *types.Transaction {
+	tx := types.NewTransaction(from, to, amount, gasLimit, gasPrice, data, txType, chainID, expiration, "", string("aaa"))
 	return signTransaction(tx, fromPrivate)
 }
 

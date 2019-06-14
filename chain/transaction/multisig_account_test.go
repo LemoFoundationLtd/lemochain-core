@@ -23,8 +23,10 @@ func newSignersData(mm testMap) []byte {
 		}
 		signers = append(signers, signerAcc)
 	}
-
-	data, err := json.Marshal(signers)
+	s := &ModifySigners{
+		Signers: signers,
+	}
+	data, err := json.Marshal(s)
 	if err != nil {
 		panic(err)
 	}

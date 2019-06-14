@@ -224,7 +224,13 @@ func (tx *Transaction) From() common.Address {
 
 // GetSigners returns address of instead of pay transaction gas.
 func (tx *Transaction) GasPayer() common.Address {
-	return *tx.data.GasPayer
+	var gasPayer common.Address
+	if tx.data.GasPayer == nil {
+		gasPayer = tx.From()
+	} else {
+		gasPayer = *tx.data.GasPayer
+	}
+	return gasPayer
 }
 
 func (tx *Transaction) Hash() common.Hash {
@@ -247,14 +253,13 @@ func (tx *Transaction) String() string {
 	var to string
 
 	if tx.data.Recipient == nil {
-		to = "[contract creation]"
+		to = "[No Recipient Transaction]"
 	} else {
 		to = tx.data.Recipient.String()
 	}
 
 	set := []string{
 		fmt.Sprintf("Hash: %s", tx.Hash().Hex()),
-		fmt.Sprintf("CreateContract: %v", tx.data.Recipient == nil),
 		fmt.Sprintf("Type: %d", tx.Type()),
 		fmt.Sprintf("Version: %d", tx.Version()),
 		fmt.Sprintf("ChainID: %d", tx.ChainID()),
@@ -333,7 +338,11 @@ func (tx *Transaction) Clone() *Transaction {
 func (tx *Transaction) VerifyTx(chainID uint16, timeStamp uint64) error {
 	// verify time
 	if tx.Expiration() < timeStamp {
-		log.Warnf("Tx out of date. tx expiration:%d, timeStamp:%d", tx.Expiration(), timeStamp)
+		log.Errorf("Received transaction expiration time less than current time. Expiration time: %d. The current time: %d", tx.Expiration(), timeStamp)
+		return ErrTxExpired
+	}
+	if tx.Expiration()-timeStamp > uint64(params.TransactionExpiration) {
+		log.Errorf("Received transaction expiration time can't more than 30 minutes. expiration time: %d", tx.Expiration()-timeStamp)
 		return ErrTxExpiration
 	}
 	// verify chainID
@@ -355,22 +364,73 @@ func (tx *Transaction) VerifyTx(chainID uint16, timeStamp uint64) error {
 		log.Warnf("The length of message field in transaction is out of max length limit. message length = %d. max length limit = %d. ", txMessageLength, MaxTxMessageLength)
 		return ErrTxMessage
 	}
-	switch tx.Type() {
-	case params.OrdinaryTx:
-		if tx.To() == nil {
-			if len(tx.Data()) == 0 {
-				return ErrCreateContract
-			}
+	// data 存在校验
+	if err := checkTxData(tx.Type(), tx.Data()); err != nil {
+		log.Errorf("checkTxData error: %s", err)
+		return err
+	}
+	// to 存在判断
+	if !IsToExist(tx.Type(), tx.To()) {
+		return ErrToExist
+	}
+	// 检验箱子交易
+	if tx.Type() == params.BoxTx {
+		if err := checkBoxTx(tx.Data(), chainID, tx.Expiration(), timeStamp); err != nil {
+			return err
 		}
-	case params.VoteTx:
-	case params.RegisterTx, params.CreateAssetTx, params.IssueAssetTx, params.ReplenishAssetTx, params.ModifyAssetTx, params.TransferAssetTx, params.SetMultisigAccountTx:
-		if len(tx.Data()) == 0 {
+	}
+	return nil
+}
+
+// checkBoxTx
+func checkBoxTx(txdata []byte, chainID uint16, txTime, nowTime uint64) error {
+	// 验证箱子交易中的子交易
+	box, err := GetBox(txdata)
+	if err != nil {
+		return err
+	}
+	// 遍历子交易并验证
+	for _, sonTx := range box.SubTxList {
+		// 确保tx的expiration time小于或者等于箱子中的所有子交易的expiration time
+		if txTime > sonTx.Expiration() {
+			log.Errorf("Exist a son transaction expiration time less than box transaction. boxTx time: %d, sonTx time: %d", txTime, sonTx.Expiration())
+			return ErrBoxTx
+		}
+		// 箱子中的子交易不能有箱子类型交易
+		if sonTx.Type() == params.BoxTx {
+			return ErrVerifyBoxTx
+		}
+		// verify sonTx
+		if err := sonTx.VerifyTx(chainID, nowTime); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// checkTxData
+func checkTxData(txType uint16, data []byte) error {
+	switch txType {
+	case params.OrdinaryTx, params.VoteTx:
+	case params.CreateContractTx, params.RegisterTx, params.CreateAssetTx, params.IssueAssetTx, params.ReplenishAssetTx, params.ModifyAssetTx, params.TransferAssetTx, params.ModifySignersTx, params.BoxTx:
+		if len(data) == 0 {
 			return ErrSpecialTx
 		}
-
 	default:
-		log.Warnf("The transaction type does not exit . type = %v", tx.Type())
+		log.Warnf("The transaction type does not exit . type = %v", txType)
 		return ErrTxType
 	}
 	return nil
+}
+
+// IsToExist
+func IsToExist(txType uint16, to *common.Address) bool {
+	switch txType {
+	case params.OrdinaryTx, params.VoteTx, params.IssueAssetTx, params.ReplenishAssetTx, params.TransferAssetTx, params.ModifySignersTx:
+		return to != nil
+	case params.CreateContractTx, params.RegisterTx, params.CreateAssetTx, params.ModifyAssetTx, params.BoxTx:
+		return to == nil
+	default:
+		return false
+	}
 }
