@@ -5,4 +5,4 @@ const (
 	MaxExtraDataLen = 256
 )
 
-var TransactionExpiration = 30 * 60
+var TransactionExpiration = 30 * 60 // 交易过期最大时间
