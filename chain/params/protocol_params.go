@@ -11,9 +11,9 @@ var (
 )
 
 const (
-	GasLimitBoundDivisor uint64 = 1024    // The bound divisor of the gas limit, used in update calculations.
-	MinGasLimit          uint64 = 200000  // Minimum the gas limit may ever be.
-	GenesisGasLimit      uint64 = 4712388 // Gas limit of the Genesis block.
+	GasLimitBoundDivisor uint64 = 1024      // The bound divisor of the gas limit, used in update calculations.
+	MinGasLimit          uint64 = 200000    // Minimum the gas limit may ever be.
+	GenesisGasLimit      uint64 = 105000000 // Gas limit of the Genesis block.
 
 	CallValueTransferGas uint64 = 9000  // Paid for CALL when the value transfer is non-zero.
 	CallNewAccountGas    uint64 = 25000 // Paid for CALL when the destination address didn't exist prior.
