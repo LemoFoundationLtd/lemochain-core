@@ -409,7 +409,7 @@ func (p *TxProcessor) handleTx(tx *types.Transaction, header *types.Header, txIn
 		newContext := NewEVMContext(tx, header, txIndex, blockHash, p.blockLoader)
 		vmEnv := vm.NewEVM(newContext, p.am, *p.cfg)
 		_, restGas, err, vmErr = vmEnv.TransferAssetTx(sender, recipientAddr, restGas, tx.Data(), p.db)
-	case params.SetMultisigAccountTx:
+	case params.ModifySigsTx:
 		multisigEnv := NewSetMultisigAccountEnv(p.am)
 		err = multisigEnv.ModifyMultisigTx(senderAddr, recipientAddr, tx.Data())
 	case params.BoxTx:
@@ -510,8 +510,8 @@ func getTxBaseSpendGas(txType uint16) (uint64, error) {
 		gas = params.ModifyAssetTxGas
 	case params.TransferAssetTx:
 		gas = params.TransferAssetTxGas
-	case params.SetMultisigAccountTx:
-		gas = params.SetMultisigAccountTxGas
+	case params.ModifySigsTx:
+		gas = params.ModifySigsTxGas
 	case params.BoxTx:
 		gas = params.BoxTxGas
 	default:
@@ -629,7 +629,7 @@ func (p *TxProcessor) PreExecutionTransaction(ctx context.Context, accM *account
 	case params.OrdinaryTx, params.CreateContractTx, params.TransferAssetTx: // need use evm environment
 		vmEvn = getEVM(tx, header, 0, tx.Hash(), blockHash, p.blockLoader, *p.cfg, accM)
 
-	case params.RegisterTx, params.VoteTx, params.CreateAssetTx, params.IssueAssetTx, params.ReplenishAssetTx, params.ModifyAssetTx, params.SetMultisigAccountTx, params.BoxTx:
+	case params.RegisterTx, params.VoteTx, params.CreateAssetTx, params.IssueAssetTx, params.ReplenishAssetTx, params.ModifyAssetTx, params.ModifySigsTx, params.BoxTx:
 	// case params.ModifyAssetTx, params.ReplenishAssetTx, params.IssueAssetTx, params.CreateAssetTx: // use asset tx environment
 	// 	assetEnv = NewRunAssetEnv(p.am)
 	default:
@@ -669,7 +669,7 @@ func (p *TxProcessor) PreExecutionTransaction(ctx context.Context, accM *account
 		}
 		ret, restGas, err = vmEvn.CallCode(sender, *tx.To(), input, restGas, big.NewInt(0))
 
-	case params.RegisterTx, params.VoteTx, params.CreateAssetTx, params.IssueAssetTx, params.ReplenishAssetTx, params.ModifyAssetTx, params.SetMultisigAccountTx, params.BoxTx:
+	case params.RegisterTx, params.VoteTx, params.CreateAssetTx, params.IssueAssetTx, params.ReplenishAssetTx, params.ModifyAssetTx, params.ModifySigsTx, params.BoxTx:
 	}
 	return ret, gasLimit - restGas, err
 }
@@ -700,8 +700,8 @@ func newTx(from common.Address, to *common.Address, txType uint16, data []byte, 
 		tx = types.NoReceiverTransaction(from, big.NewInt(0), gasLimit, gasPrice, data, params.ModifyAssetTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
 	case params.TransferAssetTx:
 		tx = types.NewTransaction(from, *to, big.NewInt(0), gasLimit, gasPrice, data, params.TransferAssetTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
-	case params.SetMultisigAccountTx:
-		tx = types.NewTransaction(from, *to, big.NewInt(0), gasLimit, gasPrice, data, params.SetMultisigAccountTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
+	case params.ModifySigsTx:
+		tx = types.NewTransaction(from, *to, big.NewInt(0), gasLimit, gasPrice, data, params.ModifySigsTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
 	case params.BoxTx:
 		tx = types.NewTransaction(from, *to, big.NewInt(0), gasLimit, gasPrice, data, params.BoxTx, chainID, uint64(time.Now().Unix()+30*60), "", "")
 	default:

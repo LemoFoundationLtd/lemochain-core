@@ -404,7 +404,7 @@ func checkBoxTx(txdata []byte, chainID uint16, txTime, nowTime uint64) error {
 func checkTxData(txType uint16, data []byte) error {
 	switch txType {
 	case params.OrdinaryTx, params.VoteTx:
-	case params.CreateContractTx, params.RegisterTx, params.CreateAssetTx, params.IssueAssetTx, params.ReplenishAssetTx, params.ModifyAssetTx, params.TransferAssetTx, params.SetMultisigAccountTx, params.BoxTx:
+	case params.CreateContractTx, params.RegisterTx, params.CreateAssetTx, params.IssueAssetTx, params.ReplenishAssetTx, params.ModifyAssetTx, params.TransferAssetTx, params.ModifySigsTx, params.BoxTx:
 		if len(data) == 0 {
 			return ErrSpecialTx
 		}
@@ -418,7 +418,7 @@ func checkTxData(txType uint16, data []byte) error {
 // CheckTo
 func CheckTo(txType uint16, to *common.Address) bool {
 	switch txType {
-	case params.OrdinaryTx, params.VoteTx, params.IssueAssetTx, params.ReplenishAssetTx, params.TransferAssetTx, params.SetMultisigAccountTx:
+	case params.OrdinaryTx, params.VoteTx, params.IssueAssetTx, params.ReplenishAssetTx, params.TransferAssetTx, params.ModifySigsTx:
 		return to != nil
 	case params.CreateContractTx, params.RegisterTx, params.CreateAssetTx, params.ModifyAssetTx, params.BoxTx:
 		return to == nil

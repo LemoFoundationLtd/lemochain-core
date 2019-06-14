@@ -29,21 +29,27 @@ func NewSetMultisigAccountEnv(am *account.Manager) *SetMultisigAccountEnv {
 	}
 }
 
+//go:generate gencodec -type ModifySigners -out gen_modify_signers_json.go
+type ModifySigners struct {
+	Signers types.Signers `json:"signers"  gencodec:"required"`
+}
+
 // unmarshalAndVerifyData
 func unmarshalAndVerifyData(data []byte) (types.Signers, error) {
-	newSigners := make(types.Signers, 0)
+	// newSigners := make(types.Signers, 0)
+	newSigners := &ModifySigners{}
 	err := json.Unmarshal(data, &newSigners)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(newSigners) > MaxSignersNumber {
-		log.Errorf("Cannot exceed the maximum number of signers. signers number: %d,MaxSignersNumber: %d", len(newSigners), MaxSignersNumber)
+	if len(newSigners.Signers) > MaxSignersNumber {
+		log.Errorf("Cannot exceed the maximum number of signers. signers number: %d,MaxSignersNumber: %d", len(newSigners.Signers), MaxSignersNumber)
 		return nil, ErrSignersNumber
 	}
 
 	m := make(map[common.Address]uint8)
-	for _, v := range newSigners {
+	for _, v := range newSigners.Signers {
 		// 验证每一个weight的取值范围
 		if v.Weight < 1 || v.Weight > SignerWeightThreshold {
 			log.Errorf("Weight should be in range [1, 100]. signerAddress: %s, weight: %d", v.Address.String(), v.Weight)
@@ -56,7 +62,7 @@ func unmarshalAndVerifyData(data []byte) (types.Signers, error) {
 		m[v.Address] = v.Weight
 	}
 
-	return newSigners, nil
+	return newSigners.Signers, nil
 }
 
 // judgeTotalWeight
