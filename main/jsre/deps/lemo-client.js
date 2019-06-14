@@ -503,8 +503,24 @@
 	  return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _nonIterableRest();
 	}
 
+	function _toConsumableArray(arr) {
+	  return _arrayWithoutHoles(arr) || _iterableToArray(arr) || _nonIterableSpread();
+	}
+
+	function _arrayWithoutHoles(arr) {
+	  if (Array.isArray(arr)) {
+	    for (var i = 0, arr2 = new Array(arr.length); i < arr.length; i++) arr2[i] = arr[i];
+
+	    return arr2;
+	  }
+	}
+
 	function _arrayWithHoles(arr) {
 	  if (Array.isArray(arr)) return arr;
+	}
+
+	function _iterableToArray(iter) {
+	  if (Symbol.iterator in Object(iter) || Object.prototype.toString.call(iter) === "[object Arguments]") return Array.from(iter);
 	}
 
 	function _iterableToArrayLimit(arr, i) {
@@ -531,6 +547,10 @@
 	  }
 
 	  return _arr;
+	}
+
+	function _nonIterableSpread() {
+	  throw new TypeError("Invalid attempt to spread non-iterable instance");
 	}
 
 	function _nonIterableRest() {
@@ -3720,9 +3740,9 @@
 	// The id of chain network.should between 0 to 128
 	var CHAIN_ID_MAIN_NET = 1;
 
-	var TX_VERSION = 1; // Transaction Time To Live, 2hours. It is set on chain
+	var TX_VERSION = 1; // Transaction Time To Live. It is set on chain
 
-	var TTTL = 2 * 60 * 60; // Gas price for smart contract. Unit is mo/gas
+	var TTTL = 30 * 60; // Gas price for smart contract. Unit is mo/gas
 
 	var TX_DEFAULT_GAS_PRICE = 3000000000; // Max gas limit for smart contract. Unit is gas
 
@@ -6149,8 +6169,8 @@
 	  InvalidPollTxTimeOut: function InvalidPollTxTimeOut() {
 	    return 'Error: transaction query timeout';
 	  },
-	  TXCanNotChangeFrom: function TXCanNotChangeFrom() {
-	    return 'Change of account address is not allowed';
+	  TXFromCanNotEmpty: function TXFromCanNotEmpty() {
+	    return 'The from field cannot be empty';
 	  },
 	  TXParamMissingError: function TXParamMissingError(param) {
 	    return "The ".concat(param, " in transaction can not be missing");
@@ -6169,6 +6189,18 @@
 	  },
 	  MoneyFormatError: function MoneyFormatError() {
 	    return 'The value entered is in the wrong format';
+	  },
+	  NotSupportedType: function NotSupportedType() {
+	    return 'The type of input value is not supported';
+	  },
+	  TXInvalidUserIdLength: function TXInvalidUserIdLength() {
+	    return 'The length of the userId cannot be more than 10';
+	  },
+	  WeightNotReach: function WeightNotReach() {
+	    return 'The total weight of signers does not reach 100';
+	  },
+	  InvalidUserId: function InvalidUserId() {
+	    return 'Invalid userID';
 	  }
 	};
 
@@ -8173,6 +8205,44 @@
 	    });
 	    if (result.e) reject(result.v);
 	    return capability.promise;
+	  }
+	});
+
+	var _stringRepeat = function repeat(count) {
+	  var str = String(_defined(this));
+	  var res = '';
+	  var n = _toInteger(count);
+	  if (n < 0 || n == Infinity) throw RangeError("Count can't be negative");
+	  for (;n > 0; (n >>>= 1) && (str += str)) if (n & 1) res += str;
+	  return res;
+	};
+
+	// https://github.com/tc39/proposal-string-pad-start-end
+
+
+
+
+	var _stringPad = function (that, maxLength, fillString, left) {
+	  var S = String(_defined(that));
+	  var stringLength = S.length;
+	  var fillStr = fillString === undefined ? ' ' : String(fillString);
+	  var intMaxLength = _toLength(maxLength);
+	  if (intMaxLength <= stringLength || fillStr == '') return S;
+	  var fillLen = intMaxLength - stringLength;
+	  var stringFiller = _stringRepeat.call(fillStr, Math.ceil(fillLen / fillStr.length));
+	  if (stringFiller.length > fillLen) stringFiller = stringFiller.slice(0, fillLen);
+	  return left ? stringFiller + S : S + stringFiller;
+	};
+
+	// https://github.com/tc39/proposal-string-pad-start-end
+
+
+
+
+	// https://github.com/zloirock/core-js/issues/280
+	_export(_export.P + _export.F * /Version\/10\.\d+(\.\d+)? Safari\//.test(_userAgent), 'String', {
+	  padStart: function padStart(maxLength /* , fillString = ' ' */) {
+	    return _stringPad(this, maxLength, arguments.length > 1 ? arguments[1] : undefined, true);
 	  }
 	});
 
@@ -10584,333 +10654,6 @@
 	};
 	});
 	var safeBuffer_1 = safeBuffer.Buffer;
-
-	function isHash(hashOrHeight) {
-	  return typeof hashOrHeight === 'string' && hashOrHeight.toLowerCase().startsWith('0x');
-	}
-	function has0xPrefix(str) {
-	  return typeof str === 'string' && str.slice(0, 2).toLowerCase() === '0x';
-	}
-	function formatMoney(mo) {
-	  mo = new bignumber(mo).toString(10);
-
-	  if (mo === '0') {
-	    return '0 LEMO';
-	  }
-
-	  if (mo.length > 12) {
-	    // use LEMO
-	    return "".concat(moToLemo(mo), " LEMO");
-	  } // use mo
-
-
-	  if (/0{9}$/.test(mo)) {
-	    return "".concat(mo.slice(0, mo.length - 9), "G mo");
-	  } else if (/0{6}$/.test(mo)) {
-	    return "".concat(mo.slice(0, mo.length - 6), "M mo");
-	  } else if (/0{3}$/.test(mo)) {
-	    return "".concat(mo.slice(0, mo.length - 3), "K mo");
-	  } else {
-	    return "".concat(mo, " mo");
-	  }
-	}
-	/**
-	 * Takes an input and transforms it into an BigNumber
-	 *
-	 * @method toBigNumber
-	 * @param {number|string|BigNumber} num A number, string, HEX string or BigNumber
-	 * @return {BigNumber} BigNumber
-	 */
-
-	function toBigNumber(num) {
-	  var result;
-
-	  if (num instanceof bignumber || num.constructor && num.constructor.name === 'BigNumber') {
-	    result = num;
-	  } else if (typeof num === 'string' && num.startsWith('0x')) {
-	    result = new bignumber(num.replace('0x', ''), 16);
-	  } else {
-	    result = new bignumber(num.toString(10), 10);
-	  }
-
-	  if (result.isNaN()) {
-	    throw new Error(errors.MoneyFormatError());
-	  }
-
-	  return result;
-	}
-	/**
-	 * 将单位从mo转换为LEMO的个数
-	 * @param {number|string} mo
-	 * @return {BigNumber}
-	 */
-
-	function moToLemo(mo) {
-	  return toBigNumber(mo).dividedBy(new bignumber('1000000000000000000', 10));
-	}
-	/**
-	 * 将单位从LEMO的个数转换为mo
-	 * @param {number|string} ether
-	 * @return {BigNumber}
-	 */
-
-	function lemoToMo(ether) {
-	  return toBigNumber(ether).times(new bignumber('1000000000000000000', 10));
-	}
-	function toBuffer(v) {
-	  if (safeBuffer_1.isBuffer(v)) {
-	    return v;
-	  }
-
-	  if (v === null || v === undefined) {
-	    return safeBuffer_1.allocUnsafe(0);
-	  }
-
-	  if (Array.isArray(v)) {
-	    return safeBuffer_1.from(v);
-	  }
-
-	  if (typeof v === 'string') {
-	    // is Hex String
-	    if (v.match(/^0x[0-9A-Fa-f]*$/)) {
-	      return hexStringToBuffer(v);
-	    } else {
-	      // encode string as utf8
-	      return safeBuffer_1.from(v);
-	    }
-	  }
-
-	  if (typeof v === 'number') {
-	    v = v.toString(16);
-	    return hexStringToBuffer(v);
-	  } // BigNumber object
-
-
-	  if (bignumber.isBigNumber(v)) {
-	    v = v.toString(16);
-	    return hexStringToBuffer(v);
-	  } // BN object
-
-
-	  if (v.toArray) {
-	    return safeBuffer_1.from(v.toArray());
-	  }
-
-	  throw new Error('invalid type');
-	}
-
-	function hexStringToBuffer(hex) {
-	  if (hex.slice(0, 2).toLowerCase() === '0x') {
-	    hex = hex.slice(2);
-	  }
-
-	  if (hex.length % 2) {
-	    hex = "0".concat(hex);
-	  }
-
-	  return safeBuffer_1.from(hex, 'hex');
-	}
-
-	function bufferTrimLeft(buffer) {
-	  var i = 0;
-
-	  for (; i < buffer.length; i++) {
-	    if (buffer[i].toString() !== '0') {
-	      buffer = buffer.slice(i);
-	      break;
-	    }
-	  }
-
-	  if (i === buffer.length) {
-	    buffer = safeBuffer_1.allocUnsafe(0);
-	  }
-
-	  return buffer;
-	}
-	function setBufferLength(buffer, length, right) {
-	  if (right) {
-	    if (buffer.length < length) {
-	      var buf = safeBuffer_1.allocUnsafe(length).fill(0);
-	      buffer.copy(buf);
-	      return buf;
-	    }
-
-	    return buffer.slice(0, length);
-	  } else {
-	    if (buffer.length < length) {
-	      var _buf = safeBuffer_1.allocUnsafe(length).fill(0);
-
-	      buffer.copy(_buf, length - buffer.length);
-	      return _buf;
-	    }
-
-	    return buffer.slice(-length);
-	  }
-	}
-
-	var TxType = {
-	  // Ordinary transaction for transfer LEMO or call smart contract
-	  ORDINARY: 0,
-	  // Vote transaction for set vote target
-	  VOTE: 1,
-	  // Candidate transaction for register or edit candidate information
-	  CANDIDATE: 2,
-	  // 创建资产交易
-	  CREATE_ASSET: 3,
-	  // 发行资产交易
-	  ISSUE_ASSET: 4,
-	  // 增发资产交易
-	  REPLENISH_ASSET: 5,
-	  // 修改资产交易
-	  MODIFY_ASSET: 6,
-	  // 交易资产交易
-	  TRANSFER_ASSET: 7
-	};
-	var CreateAssetType = {
-	  // 通证资产
-	  TokenAsset: 1,
-	  // 非同质化资产
-	  NonFungibleAsset: 2,
-	  // 通用资产
-	  CommonAsset: 3
-	};
-	var ChangeLogTypes = {
-	  BalanceLog: 1,
-	  StorageLog: 2,
-	  CodeLog: 3,
-	  AddEventLog: 4,
-	  SuicideLog: 5,
-	  VoteForLog: 6,
-	  VotesLog: 7,
-	  CandidateProfileLog: 8,
-	  TxCountLog: 9 // The length of nodeID
-
-	};
-	var NODE_ID_LENGTH = 128; // The length of hex address bytes (without checksum)
-
-	var ADDRESS_BYTE_LENGTH = 20; // The max length limit of toName field in transaction
-
-	var MAX_TX_TO_NAME_LENGTH = 100; // The max length limit of message field in transaction
-
-	var MAX_TX_MESSAGE_LENGTH = 1024; // The max length limit of host field in deputy
-
-	var MAX_DEPUTY_HOST_LENGTH = 128; // The length of hash string (with 0x)
-
-	var TX_TO_LENGTH = 20; // The length of signature bytes in transaction
-
-	var TX_SIG_BYTE_LENGTH = 65; // 发行资产的唯一标识长度
-
-	var TX_ASSET_CODE_LENGTH = 66; // 交易的资产Id长度
-
-	var TX_ASSET_ID_LENGTH = 66; // module name
-
-	var ACCOUNT_NAME = 'account';
-	var CHAIN_NAME = 'chain';
-	var GLOBAL_NAME = '';
-	var MINE_NAME = 'mine';
-	var NET_NAME = 'net';
-	var TOOL_NAME = 'tool';
-	var TX_NAME = 'tx';
-
-	/**
-	 * RLP Encoding based on: https://github.com/ethereum/wiki/wiki/%5BEnglish%5D-RLP
-	 * This function takes in a data, convert it to buffer if not, and a length for recursion
-	 *
-	 * @param {Buffer,String,Integer,Array} data - will be converted to buffer
-	 * @returns {Buffer} - returns buffer of encoded data
-	 * */
-
-	function encode$1(input) {
-	  if (input instanceof Array) {
-	    var output = [];
-
-	    for (var i = 0; i < input.length; i++) {
-	      output.push(encode$1(input[i]));
-	    }
-
-	    var buf = safeBuffer_1.concat(output);
-	    return safeBuffer_1.concat([encodeLength(buf.length, 192), buf]);
-	  } else {
-	    input = toBuffer$1(input);
-
-	    if (input.length === 1 && input[0] < 128) {
-	      return input;
-	    } else {
-	      return safeBuffer_1.concat([encodeLength(input.length, 128), input]);
-	    }
-	  }
-	}
-
-	function encodeLength(len, offset) {
-	  if (len < 56) {
-	    return safeBuffer_1.from([len + offset]);
-	  } else {
-	    var hexLength = intToHex(len);
-	    var lLength = hexLength.length / 2;
-	    var firstByte = intToHex(offset + 55 + lLength);
-	    return safeBuffer_1.from(firstByte + hexLength, 'hex');
-	  }
-	}
-
-	function isHexPrefixed(str) {
-	  return str.slice(0, 2) === '0x';
-	} // Removes 0x from a given String
-
-
-	function stripHexPrefix(str) {
-	  if (typeof str !== 'string') {
-	    return str;
-	  }
-
-	  return isHexPrefixed(str) ? str.slice(2) : str;
-	}
-
-	function intToHex(i) {
-	  var hex = i.toString(16);
-
-	  if (hex.length % 2) {
-	    hex = "0".concat(hex);
-	  }
-
-	  return hex;
-	}
-
-	function padToEven(a) {
-	  if (a.length % 2) a = "0".concat(a);
-	  return a;
-	}
-
-	function intToBuffer(i) {
-	  var hex = intToHex(i);
-	  return safeBuffer_1.from(hex, 'hex');
-	}
-
-	function toBuffer$1(v) {
-	  if (!safeBuffer_1.isBuffer(v)) {
-	    if (typeof v === 'string') {
-	      if (isHexPrefixed(v)) {
-	        v = safeBuffer_1.from(padToEven(stripHexPrefix(v)), 'hex');
-	      } else {
-	        v = safeBuffer_1.from(v);
-	      }
-	    } else if (typeof v === 'number') {
-	      if (!v) {
-	        v = safeBuffer_1.from([]);
-	      } else {
-	        v = intToBuffer(v);
-	      }
-	    } else if (v === null || v === undefined) {
-	      v = safeBuffer_1.from([]);
-	    } else if (v.toArray) {
-	      // converts a BN to a Buffer
-	      v = safeBuffer_1.from(v.toArray());
-	    } else {
-	      throw new Error('invalid type');
-	    }
-	  }
-
-	  return v;
-	}
 
 	var gOPD = Object.getOwnPropertyDescriptor;
 
@@ -20405,7 +20148,7 @@
 	}
 	var shr64_lo_1 = shr64_lo;
 
-	var utils$2 = {
+	var utils$1 = {
 		inherits: inherits_1,
 		toArray: toArray_1,
 		toHex: toHex_1,
@@ -20450,7 +20193,7 @@
 
 	BlockHash.prototype.update = function update(msg, enc) {
 	  // Convert message to array, pad it, and join into 32bit blocks
-	  msg = utils$2.toArray(msg, enc);
+	  msg = utils$1.toArray(msg, enc);
 	  if (!this.pending)
 	    this.pending = msg;
 	  else
@@ -20467,7 +20210,7 @@
 	    if (this.pending.length === 0)
 	      this.pending = null;
 
-	    msg = utils$2.join32(msg, 0, msg.length - r, this.endian);
+	    msg = utils$1.join32(msg, 0, msg.length - r, this.endian);
 	    for (var i = 0; i < msg.length; i += this._delta32)
 	      this._update(msg, i, i + this._delta32);
 	  }
@@ -20526,7 +20269,7 @@
 		BlockHash: BlockHash_1
 	};
 
-	var rotr32$1 = utils$2.rotr32;
+	var rotr32$1 = utils$1.rotr32;
 
 	function ft_1(s, x, y, z) {
 	  if (s === 0)
@@ -20584,9 +20327,9 @@
 		g1_256: g1_256_1
 	};
 
-	var rotl32$1 = utils$2.rotl32;
-	var sum32$1 = utils$2.sum32;
-	var sum32_5$1 = utils$2.sum32_5;
+	var rotl32$1 = utils$1.rotl32;
+	var sum32$1 = utils$1.sum32;
+	var sum32_5$1 = utils$1.sum32_5;
 	var ft_1$1 = common$1.ft_1;
 	var BlockHash$1 = common.BlockHash;
 
@@ -20606,7 +20349,7 @@
 	  this.W = new Array(80);
 	}
 
-	utils$2.inherits(SHA1, BlockHash$1);
+	utils$1.inherits(SHA1, BlockHash$1);
 	var _1 = SHA1;
 
 	SHA1.blockSize = 512;
@@ -20648,14 +20391,14 @@
 
 	SHA1.prototype._digest = function digest(enc) {
 	  if (enc === 'hex')
-	    return utils$2.toHex32(this.h, 'big');
+	    return utils$1.toHex32(this.h, 'big');
 	  else
-	    return utils$2.split32(this.h, 'big');
+	    return utils$1.split32(this.h, 'big');
 	};
 
-	var sum32$2 = utils$2.sum32;
-	var sum32_4$1 = utils$2.sum32_4;
-	var sum32_5$2 = utils$2.sum32_5;
+	var sum32$2 = utils$1.sum32;
+	var sum32_4$1 = utils$1.sum32_4;
+	var sum32_5$2 = utils$1.sum32_5;
 	var ch32$1 = common$1.ch32;
 	var maj32$1 = common$1.maj32;
 	var s0_256$1 = common$1.s0_256;
@@ -20696,7 +20439,7 @@
 	  this.k = sha256_K;
 	  this.W = new Array(64);
 	}
-	utils$2.inherits(SHA256, BlockHash$2);
+	utils$1.inherits(SHA256, BlockHash$2);
 	var _256 = SHA256;
 
 	SHA256.blockSize = 512;
@@ -20747,9 +20490,9 @@
 
 	SHA256.prototype._digest = function digest(enc) {
 	  if (enc === 'hex')
-	    return utils$2.toHex32(this.h, 'big');
+	    return utils$1.toHex32(this.h, 'big');
 	  else
-	    return utils$2.split32(this.h, 'big');
+	    return utils$1.split32(this.h, 'big');
 	};
 
 	function SHA224() {
@@ -20761,7 +20504,7 @@
 	    0xc1059ed8, 0x367cd507, 0x3070dd17, 0xf70e5939,
 	    0xffc00b31, 0x68581511, 0x64f98fa7, 0xbefa4fa4 ];
 	}
-	utils$2.inherits(SHA224, _256);
+	utils$1.inherits(SHA224, _256);
 	var _224 = SHA224;
 
 	SHA224.blockSize = 512;
@@ -20772,22 +20515,22 @@
 	SHA224.prototype._digest = function digest(enc) {
 	  // Just truncate output
 	  if (enc === 'hex')
-	    return utils$2.toHex32(this.h.slice(0, 7), 'big');
+	    return utils$1.toHex32(this.h.slice(0, 7), 'big');
 	  else
-	    return utils$2.split32(this.h.slice(0, 7), 'big');
+	    return utils$1.split32(this.h.slice(0, 7), 'big');
 	};
 
-	var rotr64_hi$1 = utils$2.rotr64_hi;
-	var rotr64_lo$1 = utils$2.rotr64_lo;
-	var shr64_hi$1 = utils$2.shr64_hi;
-	var shr64_lo$1 = utils$2.shr64_lo;
-	var sum64$1 = utils$2.sum64;
-	var sum64_hi$1 = utils$2.sum64_hi;
-	var sum64_lo$1 = utils$2.sum64_lo;
-	var sum64_4_hi$1 = utils$2.sum64_4_hi;
-	var sum64_4_lo$1 = utils$2.sum64_4_lo;
-	var sum64_5_hi$1 = utils$2.sum64_5_hi;
-	var sum64_5_lo$1 = utils$2.sum64_5_lo;
+	var rotr64_hi$1 = utils$1.rotr64_hi;
+	var rotr64_lo$1 = utils$1.rotr64_lo;
+	var shr64_hi$1 = utils$1.shr64_hi;
+	var shr64_lo$1 = utils$1.shr64_lo;
+	var sum64$1 = utils$1.sum64;
+	var sum64_hi$1 = utils$1.sum64_hi;
+	var sum64_lo$1 = utils$1.sum64_lo;
+	var sum64_4_hi$1 = utils$1.sum64_4_hi;
+	var sum64_4_lo$1 = utils$1.sum64_4_lo;
+	var sum64_5_hi$1 = utils$1.sum64_5_hi;
+	var sum64_5_lo$1 = utils$1.sum64_5_lo;
 
 	var BlockHash$3 = common.BlockHash;
 
@@ -20851,7 +20594,7 @@
 	  this.k = sha512_K;
 	  this.W = new Array(160);
 	}
-	utils$2.inherits(SHA512, BlockHash$3);
+	utils$1.inherits(SHA512, BlockHash$3);
 	var _512 = SHA512;
 
 	SHA512.blockSize = 1024;
@@ -20981,9 +20724,9 @@
 
 	SHA512.prototype._digest = function digest(enc) {
 	  if (enc === 'hex')
-	    return utils$2.toHex32(this.h, 'big');
+	    return utils$1.toHex32(this.h, 'big');
 	  else
-	    return utils$2.split32(this.h, 'big');
+	    return utils$1.split32(this.h, 'big');
 	};
 
 	function ch64_hi(xh, xl, yh, yl, zh) {
@@ -21117,7 +20860,7 @@
 	    0xdb0c2e0d, 0x64f98fa7,
 	    0x47b5481d, 0xbefa4fa4 ];
 	}
-	utils$2.inherits(SHA384, _512);
+	utils$1.inherits(SHA384, _512);
 	var _384 = SHA384;
 
 	SHA384.blockSize = 1024;
@@ -21127,9 +20870,9 @@
 
 	SHA384.prototype._digest = function digest(enc) {
 	  if (enc === 'hex')
-	    return utils$2.toHex32(this.h.slice(0, 12), 'big');
+	    return utils$1.toHex32(this.h.slice(0, 12), 'big');
 	  else
-	    return utils$2.split32(this.h.slice(0, 12), 'big');
+	    return utils$1.split32(this.h.slice(0, 12), 'big');
 	};
 
 	var sha1 = _1;
@@ -21146,10 +20889,10 @@
 		sha512: sha512
 	};
 
-	var rotl32$2 = utils$2.rotl32;
-	var sum32$3 = utils$2.sum32;
-	var sum32_3$1 = utils$2.sum32_3;
-	var sum32_4$2 = utils$2.sum32_4;
+	var rotl32$2 = utils$1.rotl32;
+	var sum32$3 = utils$1.sum32;
+	var sum32_3$1 = utils$1.sum32_3;
+	var sum32_4$2 = utils$1.sum32_4;
 	var BlockHash$4 = common.BlockHash;
 
 	function RIPEMD160() {
@@ -21161,7 +20904,7 @@
 	  this.h = [ 0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476, 0xc3d2e1f0 ];
 	  this.endian = 'little';
 	}
-	utils$2.inherits(RIPEMD160, BlockHash$4);
+	utils$1.inherits(RIPEMD160, BlockHash$4);
 	var ripemd160 = RIPEMD160;
 
 	RIPEMD160.blockSize = 512;
@@ -21212,9 +20955,9 @@
 
 	RIPEMD160.prototype._digest = function digest(enc) {
 	  if (enc === 'hex')
-	    return utils$2.toHex32(this.h, 'little');
+	    return utils$1.toHex32(this.h, 'little');
 	  else
-	    return utils$2.split32(this.h, 'little');
+	    return utils$1.split32(this.h, 'little');
 	};
 
 	function f$5(j, x, y, z) {
@@ -21301,7 +21044,7 @@
 	  this.inner = null;
 	  this.outer = null;
 
-	  this._init(utils$2.toArray(key, enc));
+	  this._init(utils$1.toArray(key, enc));
 	}
 	var hmac = Hmac;
 
@@ -21338,7 +21081,7 @@
 	var hash_1 = createCommonjsModule(function (module, exports) {
 	var hash = exports;
 
-	hash.utils = utils$2;
+	hash.utils = utils$1;
 	hash.common = common;
 	hash.sha = sha;
 	hash.ripemd = ripemd;
@@ -22588,7 +22331,7 @@
 	  this.place = 0;
 	}
 
-	function getLength$1(buf, p) {
+	function getLength(buf, p) {
 	  var initial = buf[p.place++];
 	  if (!(initial & 0x80)) {
 	    return initial;
@@ -22621,20 +22364,20 @@
 	  if (data[p.place++] !== 0x30) {
 	    return false;
 	  }
-	  var len = getLength$1(data, p);
+	  var len = getLength(data, p);
 	  if ((len + p.place) !== data.length) {
 	    return false;
 	  }
 	  if (data[p.place++] !== 0x02) {
 	    return false;
 	  }
-	  var rlen = getLength$1(data, p);
+	  var rlen = getLength(data, p);
 	  var r = data.slice(p.place, rlen + p.place);
 	  p.place += rlen;
 	  if (data[p.place++] !== 0x02) {
 	    return false;
 	  }
-	  var slen = getLength$1(data, p);
+	  var slen = getLength(data, p);
 	  if (data.length !== slen + p.place) {
 	    return false;
 	  }
@@ -23216,6 +22959,85 @@
 	elliptic.eddsa = eddsa;
 	});
 
+	var TxType = {
+	  // Ordinary transaction for transfer LEMO or call smart contract
+	  ORDINARY: 0,
+	  // 创建智能合约交易
+	  CREATE_CONTRACT: 1,
+	  // Vote transaction for set vote target
+	  VOTE: 2,
+	  // Candidate transaction for register or edit candidate information
+	  CANDIDATE: 3,
+	  // 创建资产交易
+	  CREATE_ASSET: 4,
+	  // 发行资产交易
+	  ISSUE_ASSET: 5,
+	  // 增发资产交易
+	  REPLENISH_ASSET: 6,
+	  // 修改资产交易
+	  MODIFY_ASSET: 7,
+	  // 交易资产交易
+	  TRANSFER_ASSET: 8,
+	  // 修改多重签名
+	  MODIFY_SIGNER: 9,
+	  // 箱子交易
+	  BOX_TX: 10
+	};
+	var CreateAssetType = {
+	  // 通证资产
+	  TokenAsset: 1,
+	  // 非同质化资产
+	  NonFungibleAsset: 2,
+	  // 通用资产
+	  CommonAsset: 3
+	};
+	var ChangeLogTypes = {
+	  BalanceLog: 1,
+	  StorageLog: 2,
+	  CodeLog: 3,
+	  AddEventLog: 4,
+	  SuicideLog: 5,
+	  VoteForLog: 6,
+	  VotesLog: 7,
+	  CandidateProfileLog: 8,
+	  TxCountLog: 9,
+	  SignersLog: 10 // The length of nodeID
+
+	};
+	var NODE_ID_LENGTH = 128; // The length of hex address bytes (without checksum)
+
+	var ADDRESS_BYTE_LENGTH = 20; // The max length limit of toName field in transaction
+
+	var MAX_TX_TO_NAME_LENGTH = 100; // The max length limit of message field in transaction
+
+	var MAX_TX_MESSAGE_LENGTH = 1024; // The max length limit of host field in deputy
+
+	var MAX_DEPUTY_HOST_LENGTH = 128; // The length of hash string (with 0x)
+
+	var TX_ADDRESS_LENGTH = 20; // The length of signature bytes in transaction
+
+	var TX_SIG_BYTE_LENGTH = 65; // 发行资产的唯一标识长度
+
+	var TX_ASSET_CODE_LENGTH = 66; // 交易的资产Id长度
+
+	var TX_ASSET_ID_LENGTH = 66; // 创建临时账户userID十六进制的长度
+
+	var USER_ID_LENGTH = 20; // 创建临时账户时，从from截取出来的十六进制长度
+
+	var SLICE_FROM_LENGTH = 18; // 合约账户的标识
+
+	var CONTRACT_ACCOUNT_TYPE = '02'; // 临时账户的标识
+
+	var TEMP_ACCOUNT_TYPE = '03'; // module name
+
+	var ACCOUNT_NAME = 'account';
+	var CHAIN_NAME = 'chain';
+	var GLOBAL_NAME = '';
+	var MINE_NAME = 'mine';
+	var NET_NAME = 'net';
+	var TOOL_NAME = 'tool';
+	var TX_NAME = 'tx';
+
 	var toString$3 = Object.prototype.toString; // TypeError
 
 	function isArray$3(value, message) {
@@ -23446,12 +23268,24 @@
 	  return js('keccak256').update(data).digest();
 	}
 	/**
-	 * Decode hex address to LemoChain address
-	 * @param {Buffer} data
+	 * @param {string} addr
+	 * @return {boolean}
+	 */
+
+	function isLemoAddress(addr) {
+	  return typeof addr === 'string' && addr.toLowerCase().startsWith(ADDRESS_LOGO.toLowerCase());
+	}
+	/**
+	 * Encode hex address to LemoChain address
+	 * @param {string|Buffer} data
 	 * @return {string}
 	 */
 
 	function encodeAddress(data) {
+	  if (isLemoAddress(data)) {
+	    return data;
+	  }
+
 	  data = toBuffer(data);
 	  var checkSum = 0;
 
@@ -23517,7 +23351,7 @@
 	  }
 
 	  var data = fullPayload.slice(0, fullPayload.length - 1);
-	  var checkSum = fullPayload[fullPayload.length - 1];
+	  var checkSum = fullPayload[fullPayload.length - 1] || 0;
 	  var realCheckSum = 0;
 
 	  for (var i = 0; i < data.length; i++) {
@@ -23579,22 +23413,319 @@
 	  };
 	}
 
+	function isHash(hashOrHeight) {
+	  return typeof hashOrHeight === 'string' && hashOrHeight.toLowerCase().startsWith('0x');
+	}
+	function has0xPrefix(str) {
+	  return typeof str === 'string' && str.slice(0, 2).toLowerCase() === '0x';
+	}
+	function formatMoney(mo) {
+	  mo = new bignumber(mo).toString(10);
+
+	  if (mo === '0') {
+	    return '0 LEMO';
+	  }
+
+	  if (mo.length > 12) {
+	    // use LEMO
+	    return "".concat(moToLemo(mo), " LEMO");
+	  } // use mo
+
+
+	  if (/0{9}$/.test(mo)) {
+	    return "".concat(mo.slice(0, mo.length - 9), "G mo");
+	  } else if (/0{6}$/.test(mo)) {
+	    return "".concat(mo.slice(0, mo.length - 6), "M mo");
+	  } else if (/0{3}$/.test(mo)) {
+	    return "".concat(mo.slice(0, mo.length - 3), "K mo");
+	  } else {
+	    return "".concat(mo, " mo");
+	  }
+	}
+	/**
+	 * Takes an input and transforms it into an BigNumber
+	 *
+	 * @method toBigNumber
+	 * @param {number|string|BigNumber} num A number, string, HEX string or BigNumber
+	 * @return {BigNumber} BigNumber
+	 */
+
+	function toBigNumber(num) {
+	  var result;
+
+	  if (num instanceof bignumber || num.constructor && num.constructor.name === 'BigNumber') {
+	    result = num;
+	  } else if (typeof num === 'string' && num.startsWith('0x')) {
+	    result = new bignumber(num.replace('0x', ''), 16);
+	  } else {
+	    result = new bignumber(num.toString(10), 10);
+	  }
+
+	  if (result.isNaN()) {
+	    throw new Error(errors.MoneyFormatError());
+	  }
+
+	  return result;
+	}
+	/**
+	 * 将单位从mo转换为LEMO的个数
+	 * @param {number|string} mo
+	 * @return {BigNumber}
+	 */
+
+	function moToLemo(mo) {
+	  return toBigNumber(mo).dividedBy(new bignumber('1000000000000000000', 10));
+	}
+	/**
+	 * 将单位从LEMO的个数转换为mo
+	 * @param {number|string} ether
+	 * @return {BigNumber}
+	 */
+
+	function lemoToMo(ether) {
+	  return toBigNumber(ether).times(new bignumber('1000000000000000000', 10));
+	}
+	function toBuffer(v) {
+	  if (safeBuffer_1.isBuffer(v)) {
+	    return v;
+	  }
+
+	  if (v === null || v === undefined) {
+	    return safeBuffer_1.allocUnsafe(0);
+	  }
+
+	  if (Array.isArray(v)) {
+	    return safeBuffer_1.from(v);
+	  }
+
+	  if (typeof v === 'string') {
+	    // is Hex String
+	    if (v.match(/^0x[0-9A-Fa-f]*$/)) {
+	      return hexStringToBuffer(v);
+	    } else {
+	      // encode string as utf8
+	      return safeBuffer_1.from(v);
+	    }
+	  }
+
+	  if (typeof v === 'number') {
+	    v = v.toString(16);
+	    return hexStringToBuffer(v);
+	  } // BigNumber object
+
+
+	  if (bignumber.isBigNumber(v)) {
+	    v = v.toString(16);
+	    return hexStringToBuffer(v);
+	  } // BN object
+
+
+	  if (v.toArray) {
+	    return safeBuffer_1.from(v.toArray());
+	  }
+
+	  throw new Error(errors.NotSupportedType());
+	}
+
+	function hexStringToBuffer(hex) {
+	  if (hex.slice(0, 2).toLowerCase() === '0x') {
+	    hex = hex.slice(2);
+	  }
+
+	  if (hex.length % 2) {
+	    hex = "0".concat(hex);
+	  }
+
+	  return safeBuffer_1.from(hex, 'hex');
+	}
+	function bufferTrimLeft(buffer) {
+	  var i = 0;
+
+	  for (; i < buffer.length; i++) {
+	    if (buffer[i].toString() !== '0') {
+	      buffer = buffer.slice(i);
+	      break;
+	    }
+	  }
+
+	  if (i === buffer.length) {
+	    buffer = safeBuffer_1.allocUnsafe(0);
+	  }
+
+	  return buffer;
+	}
+	function setBufferLength(buffer, length, right) {
+	  if (right) {
+	    if (buffer.length < length) {
+	      var buf = safeBuffer_1.allocUnsafe(length).fill(0);
+	      buffer.copy(buf);
+	      return buf;
+	    }
+
+	    return buffer.slice(0, length);
+	  } else {
+	    if (buffer.length < length) {
+	      var _buf = safeBuffer_1.allocUnsafe(length).fill(0);
+
+	      buffer.copy(_buf, length - buffer.length);
+	      return _buf;
+	    }
+
+	    return buffer.slice(-length);
+	  }
+	}
+	/**
+	 * Create temp address
+	 * @param {string} from Creator address
+	 * @param {string} userId User id
+	 * @return {string}
+	 */
+
+	function createTempAddress(from, userId) {
+	  if (typeof userId === 'string') {
+	    userId = safeBuffer_1.from(userId).toString('hex');
+	  } else if (typeof userId === 'number') {
+	    userId = userId.toString(16);
+	  } else {
+	    throw new Error(errors.InvalidUserId());
+	  }
+
+	  if (userId.length > USER_ID_LENGTH) {
+	    throw new Error(errors.TXInvalidUserIdLength());
+	  }
+
+	  userId = userId.padStart(USER_ID_LENGTH, '0');
+	  var codeAddress = decodeAddress(from);
+	  var sender = codeAddress.substring(codeAddress.length - SLICE_FROM_LENGTH);
+	  return encodeAddress("0x".concat(TEMP_ACCOUNT_TYPE).concat(sender).concat(userId));
+	}
+
+	// https://github.com/tc39/Array.prototype.includes
+
+	var $includes = _arrayIncludes(true);
+
+	_export(_export.P, 'Array', {
+	  includes: function includes(el /* , fromIndex = 0 */) {
+	    return $includes(this, el, arguments.length > 1 ? arguments[1] : undefined);
+	  }
+	});
+
+	_addToUnscopables('includes');
+
+	var INCLUDES = 'includes';
+
+	_export(_export.P + _export.F * _failsIsRegexp(INCLUDES), 'String', {
+	  includes: function includes(searchString /* , position = 0 */) {
+	    return !!~_stringContext(this, searchString, INCLUDES)
+	      .indexOf(searchString, arguments.length > 1 ? arguments[1] : undefined);
+	  }
+	});
+
+	/**
+	 * RLP Encoding based on: https://github.com/ethereum/wiki/wiki/%5BEnglish%5D-RLP
+	 * This function takes in a data, convert it to buffer if not, and a length for recursion
+	 *
+	 * @param {Buffer,String,Integer,Array} data - will be converted to buffer
+	 * @returns {Buffer} - returns buffer of encoded data
+	 * */
+
+	function encode$1(input) {
+	  if (input instanceof Array) {
+	    var output = [];
+
+	    for (var i = 0; i < input.length; i++) {
+	      output.push(encode$1(input[i]));
+	    }
+
+	    var buf = safeBuffer_1.concat(output);
+	    return safeBuffer_1.concat([encodeLength(buf.length, 192), buf]);
+	  } else {
+	    input = toBuffer$1(input);
+
+	    if (input.length === 1 && input[0] < 128) {
+	      return input;
+	    } else {
+	      return safeBuffer_1.concat([encodeLength(input.length, 128), input]);
+	    }
+	  }
+	}
+
+	function encodeLength(len, offset) {
+	  if (len < 56) {
+	    return safeBuffer_1.from([len + offset]);
+	  } else {
+	    var hexLength = intToHex(len);
+	    var lLength = hexLength.length / 2;
+	    var firstByte = intToHex(offset + 55 + lLength);
+	    return safeBuffer_1.from(firstByte + hexLength, 'hex');
+	  }
+	}
+
+	function isHexPrefixed(str) {
+	  return str.slice(0, 2) === '0x';
+	} // Removes 0x from a given String
+
+
+	function stripHexPrefix(str) {
+	  if (typeof str !== 'string') {
+	    return str;
+	  }
+
+	  return isHexPrefixed(str) ? str.slice(2) : str;
+	}
+
+	function intToHex(i) {
+	  var hex = i.toString(16);
+
+	  if (hex.length % 2) {
+	    hex = "0".concat(hex);
+	  }
+
+	  return hex;
+	}
+
+	function padToEven(a) {
+	  if (a.length % 2) a = "0".concat(a);
+	  return a;
+	}
+
+	function intToBuffer(i) {
+	  var hex = intToHex(i);
+	  return safeBuffer_1.from(hex, 'hex');
+	}
+
+	function toBuffer$1(v) {
+	  if (!safeBuffer_1.isBuffer(v)) {
+	    if (typeof v === 'string') {
+	      if (isHexPrefixed(v)) {
+	        v = safeBuffer_1.from(padToEven(stripHexPrefix(v)), 'hex');
+	      } else {
+	        v = safeBuffer_1.from(v);
+	      }
+	    } else if (typeof v === 'number') {
+	      if (!v) {
+	        v = safeBuffer_1.from([]);
+	      } else {
+	        v = intToBuffer(v);
+	      }
+	    } else if (v === null || v === undefined) {
+	      v = safeBuffer_1.from([]);
+	    } else if (v.toArray) {
+	      // converts a BN to a Buffer
+	      v = safeBuffer_1.from(v.toArray());
+	    } else {
+	      throw new Error('invalid type');
+	    }
+	  }
+
+	  return v;
+	}
+
 	/**
 	 * @return {Buffer}
 	 */
 
-	function toRaw(tx, fieldName, isNumber, length) {
-	  var data = tx[fieldName];
-
-	  if (fieldName === 'to') {
-	    data = decodeAddress(data);
-	  }
-
-	  if (isNumber && !safeBuffer_1.isBuffer(data)) {
-	    // parse number in string (e.g. "0x10" or "16") to real number. or else it will be encode by ascii
-	    data = new bignumber(data);
-	  }
-
+	function toRaw(data, fieldName, length) {
 	  data = toBuffer(data);
 
 	  if (length) {
@@ -23609,9 +23740,40 @@
 
 	  return data;
 	}
-	function toHexStr(tx, fieldName, length) {
-	  var str = toRaw(tx, fieldName, true, length).toString('hex');
-	  return str ? "0x".concat(str) : '';
+	/**
+	 * Array to buffer
+	 * @param {Array} data
+	 * @param {string} fieldName
+	 * @return {Array}
+	 */
+
+	function arrayToRaw(data, fieldName) {
+	  return data.map(function (item) {
+	    return toRaw(item, fieldName);
+	  });
+	}
+	/**
+	 * Change string or Buffer object to a hex string which start with "0x"
+	 * @param {string|Buffer} data
+	 * @return {string}
+	 */
+
+	function toHexStr(data) {
+	  if (!data) {
+	    return '';
+	  }
+
+	  if (typeof data === 'string') {
+	    if (has0xPrefix(data)) {
+	      return data;
+	    }
+
+	    return "0x".concat(data);
+	  } else if (safeBuffer_1.isBuffer(data)) {
+	    return "0x".concat(data.toString('hex'));
+	  } else {
+	    throw new Error(errors.NotSupportedType());
+	  }
 	}
 	function checkChainID(config, chainID) {
 	  if (!config.chainID) {
@@ -23631,82 +23793,95 @@
 	    throw new Error(errors.TXInvalidChainID());
 	  }
 
-	  checkType(config, 'chainID', ['number', 'string'], true);
+	  checkFieldType(config, 'chainID', ['number', 'string'], true);
 	  checkRange(config, 'chainID', 1, 0xffff);
 
+	  if (!config.from) {
+	    throw new Error(errors.TXFromCanNotEmpty());
+	  }
+
+	  checkFieldType(config, 'from', ['string'], false);
+	  decodeAddress(config.from);
+
 	  if (config.type) {
-	    checkType(config, 'type', ['number', 'string'], true);
+	    checkFieldType(config, 'type', ['number', 'string'], true);
 	    checkRange(config, 'type', 0, 0xffff);
 	  }
 
 	  if (config.version) {
-	    checkType(config, 'version', ['number', 'string'], true);
+	    checkFieldType(config, 'version', ['number', 'string'], true);
 	    checkRange(config, 'version', 0, 0xff);
 	  }
 
 	  if (config.to) {
-	    checkType(config, 'to', ['string'], false); // verify address
+	    checkFieldType(config, 'to', ['string'], false); // verify address
 
 	    decodeAddress(config.to);
 	  }
 
 	  if (config.toName) {
-	    checkType(config, 'toName', ['string'], false);
+	    checkFieldType(config, 'toName', ['string'], false);
 	    checkMaxLength(config, 'toName', MAX_TX_TO_NAME_LENGTH);
 	  }
 
 	  if (config.gasPrice) {
-	    checkType(config, 'gasPrice', ['number', 'string'], true);
+	    checkFieldType(config, 'gasPrice', ['number', 'string'], true);
 	    checkNegative(config, 'gasPrice');
 	  }
 
 	  if (config.gasLimit) {
-	    checkType(config, 'gasLimit', ['number', 'string'], true);
+	    checkFieldType(config, 'gasLimit', ['number', 'string'], true);
 	    checkNegative(config, 'gasLimit');
 	  }
 
 	  if (config.amount) {
-	    checkType(config, 'amount', ['number', 'string'], true);
+	    checkFieldType(config, 'amount', ['number', 'string'], true);
 	    checkNegative(config, 'amount');
 	  }
 
 	  if (config.data) {
-	    checkType(config, 'data', ['string', safeBuffer_1], true);
+	    checkFieldType(config, 'data', ['string', 'object'], true);
 	  }
 
 	  if (config.expirationTime) {
-	    checkType(config, 'expirationTime', ['number', 'string'], true);
+	    checkFieldType(config, 'expirationTime', ['number', 'string'], true);
 	  }
 
 	  if (config.message) {
-	    checkType(config, 'message', ['string'], false);
+	    checkFieldType(config, 'message', ['string'], false);
 	    checkMaxLength(config, 'message', MAX_TX_MESSAGE_LENGTH);
 	  }
 
-	  if (config.sig) {
-	    checkType(config, 'sig', ['string', safeBuffer_1], true);
-	    checkMaxBytes(config, 'sig', TX_SIG_BYTE_LENGTH);
+	  if (config.sigs) {
+	    checkFieldType(config, 'sigs', ['array'], false);
+	    config.sigs.forEach(function (sig, index) {
+	      checkType(sig, "sigs[".concat(index, "]"), ['string'], false);
+	      checkBytesLength(sig, "sigs[".concat(index, "]"), TX_SIG_BYTE_LENGTH);
+	    });
 	  }
 
-	  if (config.gasPayerSig) {
-	    checkType(config, 'gasPayerSig', ['string', safeBuffer_1], true);
-	    checkMaxBytes(config, 'gasPayerSig', TX_SIG_BYTE_LENGTH);
+	  if (config.gasPayerSigs) {
+	    checkFieldType(config, 'gasPayerSigs', ['array'], false);
+	    config.gasPayerSigs.forEach(function (gasPayerSig, index) {
+	      checkType(gasPayerSig, "gasPayerSigs[".concat(index, "]"), ['string'], false);
+	      checkBytesLength(gasPayerSig, "gasPayerSigs[".concat(index, "]"), TX_SIG_BYTE_LENGTH);
+	    });
 	  }
 	}
 	function verifyCandidateInfo(config) {
-	  checkType(config, 'isCandidate', ['undefined', 'boolean'], false);
-	  checkType(config, 'minerAddress', ['string'], false); // verify address
+	  checkFieldType(config, 'isCandidate', ['undefined', 'boolean'], false);
+	  checkFieldType(config, 'minerAddress', ['string'], false); // verify address
 
 	  decodeAddress(config.minerAddress);
-	  checkType(config, 'nodeID', ['string'], false);
+	  checkFieldType(config, 'nodeID', ['string'], false);
 
 	  if (config.nodeID.length !== NODE_ID_LENGTH) {
 	    throw new Error(errors.TXInvalidLength('nodeID', config.nodeID, NODE_ID_LENGTH));
 	  }
 
-	  checkType(config, 'host', ['string'], false);
+	  checkFieldType(config, 'host', ['string'], false);
 	  checkMaxLength(config, 'host', MAX_DEPUTY_HOST_LENGTH);
-	  checkType(config, 'port', ['string', 'number'], true);
+	  checkFieldType(config, 'port', ['string', 'number'], true);
 	  checkRange(config, 'port', 1, 0xffff);
 	}
 	function verifyCreateAssetInfo(config) {
@@ -23714,19 +23889,19 @@
 	    throw new Error(errors.TXParamMissingError('category'));
 	  }
 
-	  checkType(config, 'category', ['number'], true);
+	  checkFieldType(config, 'category', ['number'], true);
 	  checkRange(config, 'category', 1, 3);
-	  checkType(config, 'decimals', ['number'], true);
-	  checkRange(config, 'decimals', 0, 0xffff);
-	  checkType(config, 'isReplenishable', ['boolean'], false);
-	  checkType(config, 'isDivisible', ['boolean'], false);
-	  checkType(config.profile, 'name', ['string'], false);
-	  checkType(config.profile, 'symbol', ['string'], false);
-	  checkType(config.profile, 'description', ['string'], false);
+	  checkFieldType(config, 'decimal', ['number'], true);
+	  checkRange(config, 'decimal', 0, 0xffff);
+	  checkFieldType(config, 'isReplenishable', ['boolean'], false);
+	  checkFieldType(config, 'isDivisible', ['boolean'], false);
+	  checkFieldType(config.profile, 'name', ['string'], false);
+	  checkFieldType(config.profile, 'symbol', ['string'], false);
+	  checkFieldType(config.profile, 'description', ['string'], false);
 	  checkMaxLength(config.profile, 'description', 256);
 
 	  if (config.profile.suggestedGasLimit) {
-	    checkType(config.profile, 'suggestedGasLimit', ['string'], true);
+	    checkFieldType(config.profile, 'suggestedGasLimit', ['string'], true);
 	  }
 	}
 	function verifyIssueAssetInfo(config) {
@@ -23734,14 +23909,14 @@
 	    throw new Error(errors.TXParamMissingError('assetCode'));
 	  }
 
-	  checkType(config, 'assetCode', ['string'], false);
+	  checkFieldType(config, 'assetCode', ['string'], false);
 
 	  if (config.assetCode.length !== TX_ASSET_CODE_LENGTH) {
 	    throw new Error(errors.TXInvalidLength('assetCode', config.assetCode, TX_ASSET_CODE_LENGTH));
 	  }
 
 	  if (config.metaData) {
-	    checkType(config, 'metaData', ['string'], false);
+	    checkFieldType(config, 'metaData', ['string'], false);
 	    checkMaxLength(config, 'metaData', 256);
 	  }
 
@@ -23750,55 +23925,61 @@
 	  }
 
 	  checkNegative(config, 'supplyAmount');
-	  checkType(config, 'supplyAmount', ['string'], true);
+	  checkFieldType(config, 'supplyAmount', ['string'], true);
 
 	  if (/^0x/i.test(config.supplyAmount)) {
 	    throw new Error(errors.TXIsNotDecimalError('supplyAmount'));
 	  }
 	}
 	function verifyReplenishAssetInfo(config) {
-	  checkType(config, 'assetId', ['string'], false);
-
-	  if (config.assetId.length !== TX_ASSET_ID_LENGTH) {
-	    throw new Error(errors.TXInvalidLength('assetId', config.assetId, TX_ASSET_ID_LENGTH));
-	  }
-
-	  checkType(config, 'replenishAmount', ['number', 'string'], true);
-	  checkNegative(config, 'replenishAmount');
-	}
-	function verifyModifyAssetInfo(config) {
-	  checkType(config, 'assetCode', ['string'], false);
+	  checkFieldType(config, 'assetCode', ['string'], false);
 
 	  if (config.assetCode.length !== TX_ASSET_CODE_LENGTH) {
 	    throw new Error(errors.TXInvalidLength('assetCode', config.assetCode, TX_ASSET_CODE_LENGTH));
 	  }
 
-	  if (config.info === undefined) {
+	  checkFieldType(config, 'assetId', ['string'], false);
+
+	  if (config.assetId.length !== TX_ASSET_ID_LENGTH) {
+	    throw new Error(errors.TXInvalidLength('assetId', config.assetId, TX_ASSET_ID_LENGTH));
+	  }
+
+	  checkFieldType(config, 'replenishAmount', ['number', 'string'], true);
+	  checkNegative(config, 'replenishAmount');
+	}
+	function verifyModifyAssetInfo(config) {
+	  checkFieldType(config, 'assetCode', ['string'], false);
+
+	  if (config.assetCode.length !== TX_ASSET_CODE_LENGTH) {
+	    throw new Error(errors.TXInvalidLength('assetCode', config.assetCode, TX_ASSET_CODE_LENGTH));
+	  }
+
+	  if (config.updateProfile === undefined) {
 	    throw new Error(errors.TXInfoError());
 	  }
 
-	  if (config.info.name) {
-	    checkType(config.info, 'name', ['string'], false);
+	  if (config.updateProfile.name) {
+	    checkFieldType(config.updateProfile, 'name', ['string'], false);
 	  }
 
-	  if (config.info.symbol) {
-	    checkType(config.info, 'symbol', ['string'], false);
+	  if (config.updateProfile.symbol) {
+	    checkFieldType(config.updateProfile, 'symbol', ['string'], false);
 	  }
 
-	  if (config.info.description) {
-	    checkType(config.info, 'description', ['string'], false);
-	    checkMaxLength(config.info, 'description', 256);
+	  if (config.updateProfile.description) {
+	    checkFieldType(config.updateProfile, 'description', ['string'], false);
+	    checkMaxLength(config.updateProfile, 'description', 256);
 	  }
 
-	  if (config.info.suggestedGasLimit) {
-	    checkType(config.info, 'suggestedGasLimit', ['string'], true);
+	  if (config.updateProfile.suggestedGasLimit) {
+	    checkFieldType(config.updateProfile, 'suggestedGasLimit', ['string'], true);
 	  }
 
-	  if (config.info.stop) {
-	    checkType(config.info, 'stop', ['boolean', 'string'], false);
+	  if (config.updateProfile.freeze) {
+	    checkFieldType(config.updateProfile, 'freeze', ['boolean', 'string'], false);
 
-	    if (typeof config.info.stop === 'string' && config.info.stop !== 'true' && config.info.stop !== 'false') {
-	      throw new Error(errors.TxInvalidSymbol('stop'));
+	    if (typeof config.updateProfile.freeze === 'string' && config.updateProfile.freeze !== 'true' && config.updateProfile.freeze !== 'false') {
+	      throw new Error(errors.TxInvalidSymbol('freeze'));
 	    }
 	  }
 	}
@@ -23807,20 +23988,39 @@
 	    throw new Error(errors.TXParamMissingError('assetId'));
 	  }
 
-	  checkType(config, 'assetId', ['string'], false);
+	  checkFieldType(config, 'assetId', ['string'], false);
 
 	  if (config.assetId.length !== TX_ASSET_ID_LENGTH) {
 	    throw new Error(errors.TXInvalidLength('assetId', config.assetId, TX_ASSET_ID_LENGTH));
 	  }
+
+	  checkFieldType(config, 'transferAmount', ['string'], true);
+	  checkNegative(config, 'transferAmount');
 	}
 	function verifyGasInfo(noGasTx, gasPrice, gasLimit) {
-	  checkType(noGasTx, 'payer', ['string'], false); // verify address
+	  checkFieldType(noGasTx, 'gasPayer', ['string'], false); // verify address
 
-	  decodeAddress(noGasTx.payer);
+	  decodeAddress(noGasTx.gasPayer);
 	  checkType(gasPrice, 'gasPrice', ['number', 'string'], true);
 	  checkNegative(gasPrice, 'gasPrice');
 	  checkType(gasLimit, 'gasLimit', ['number', 'string'], true);
 	  checkNegative(gasLimit, 'gasLimit');
+	}
+	function verifymodifySignersInfo(modifySignersInfo) {
+	  checkFieldType(modifySignersInfo, 'signers', ['array'], false);
+	  modifySignersInfo.signers.forEach(function (signer, index) {
+	    checkType(signer.address, "signers[".concat(index, "].address"), ['string'], false);
+	    decodeAddress(signer.address);
+	    checkType(signer.weight, "signers[".concat(index, "].weight"), ['number'], true);
+	    checkNegative(signer.weight, "signers[".concat(index, "].weight"));
+	  });
+	}
+	function verifyBoxTXInfo(subTxList) {
+	  checkType(subTxList, 'subTxList', ['array'], false);
+	}
+	function verifyContractCreationInfo(code, constructorArgs) {
+	  checkType(code, 'codeHex', ['string'], true);
+	  checkType(constructorArgs, 'constructorArgsHex', ['string'], true);
 	}
 	/**
 	 * @param {object} obj
@@ -23829,29 +24029,36 @@
 	 * @param {boolean} isNumber If the type is string, then it must be a number string
 	 */
 
-	function checkType(obj, fieldName, types, isNumber) {
-	  var data;
+	function checkFieldType(obj, fieldName, types, isNumber) {
+	  return checkType(obj[fieldName], fieldName, types, isNumber);
+	}
+	/**
+	 * @param {object} data
+	 * @param {string} dataName
+	 * @param {Array} types
+	 * @param {boolean} isNumber If the type is string, then it must be a number string
+	 */
 
-	  if (_typeof(obj) !== 'object') {
-	    data = obj;
-	  } else {
-	    data = obj[fieldName];
-	  }
 
+	function checkType(data, dataName, types, isNumber) {
 	  var typeStr = _typeof(data);
 
 	  for (var i = 0; i < types.length; i++) {
+	    if (types[i] === 'array' && Array.isArray(data)) {
+	      return;
+	    }
+
 	    if (typeStr === types[i]) {
 	      // Type is correct now. Check number characters before we leave
 	      if (typeStr === 'string' && isNumber) {
 	        var isHex = has0xPrefix(data);
 
 	        if (isHex && !/^0x[0-9a-f]*$/i.test(data)) {
-	          throw new Error(errors.TXMustBeNumber(fieldName, data));
+	          throw new Error(errors.TXMustBeNumber(dataName, data));
 	        }
 
 	        if (!isHex && !/^\d+$/.test(data)) {
-	          throw new Error(errors.TXMustBeNumber(fieldName, data));
+	          throw new Error(errors.TXMustBeNumber(dataName, data));
 	        }
 	      }
 
@@ -23865,7 +24072,7 @@
 	    }
 	  }
 
-	  throw new Error(errors.TXInvalidType(fieldName, data, types));
+	  throw new Error(errors.TXInvalidType(dataName, data, types));
 	}
 	/**
 	 * @param {object} obj
@@ -23910,22 +24117,18 @@
 	  }
 	}
 	/**
-	 * @param {object} obj
-	 * @param {string} fieldName
+	 * @param {string} str
+	 * @param {string} strName
 	 * @param {number} maxBytesLength
 	 */
 
 
-	function checkMaxBytes(obj, fieldName, maxBytesLength) {
-	  var data = obj[fieldName];
-	  var dataLen = data.length;
-
-	  if (typeof data === 'string') {
-	    dataLen = Math.ceil(dataLen / 2 - (has0xPrefix(data) ? 1 : 0));
-	  }
+	function checkBytesLength(str, strName, maxBytesLength) {
+	  var dataLen = str.length;
+	  dataLen = Math.ceil(dataLen / 2 - (has0xPrefix(str) ? 1 : 0));
 
 	  if (dataLen > maxBytesLength) {
-	    throw new Error(errors.TXInvalidMaxBytes(fieldName, obj[fieldName], maxBytesLength, dataLen));
+	    throw new Error(errors.TXInvalidMaxBytes(strName, str, maxBytesLength, dataLen));
 	  }
 	}
 	/**
@@ -23968,26 +24171,30 @@
 	      return "0x".concat(sig.toString('hex'));
 	    }
 	    /**
-	     * Recover from address from a signed transaction
+	     * Recover from sigs address from a signed transaction
 	     * @param {Tx} tx
-	     * @return {string}
+	     * @return {[string]}
 	     */
 
 	  }, {
 	    key: "recover",
 	    value: function recover$$1(tx) {
-	      var pubKey = recover$1(this.hashForSign(tx), toBuffer(tx.sig));
+	      var _this = this;
 
-	      if (!pubKey) {
-	        throw new Error('invalid signature');
-	      }
+	      return tx.sigs.map(function (sig) {
+	        var pubKey = recover$1(_this.hashForSign(tx), toBuffer(sig));
 
-	      return pubKeyToAddress(pubKey);
+	        if (!pubKey) {
+	          throw new Error('invalid signature');
+	        }
+
+	        return pubKeyToAddress(pubKey);
+	      });
 	    }
 	  }, {
 	    key: "hashForSign",
 	    value: function hashForSign(tx) {
-	      var raw = [toRaw(tx, 'type', true), toRaw(tx, 'version', true), toRaw(tx, 'chainID', true), tx.to ? toRaw(tx, 'to', false, TX_TO_LENGTH) : '', toRaw(tx, 'toName', false), toRaw(tx, 'gasPrice', true), toRaw(tx, 'gasLimit', true), toRaw(tx, 'amount', true), toRaw(tx, 'data', true), toRaw(tx, 'expirationTime', true), toRaw(tx, 'message', false)];
+	      var raw = [toRaw(tx.type, 'type'), toRaw(tx.version, 'version'), toRaw(tx.chainID, 'chainID'), toRaw(decodeAddress(tx.from), 'from', TX_ADDRESS_LENGTH), tx.gasPayer ? toRaw(decodeAddress(tx.gasPayer), 'gasPayer', TX_ADDRESS_LENGTH) : '', tx.to ? toRaw(decodeAddress(tx.to), 'to', TX_ADDRESS_LENGTH) : '', toRaw(tx.toName, 'toName'), toRaw(tx.gasPrice, 'gasPrice'), toRaw(tx.gasLimit, 'gasLimit'), toRaw(tx.amount, 'amount'), toRaw(tx.data, 'data'), toRaw(tx.expirationTime, 'expirationTime'), toRaw(tx.message, 'message')];
 	      return keccak256(encode$1(raw));
 	    }
 	  }]);
@@ -24005,14 +24212,16 @@
 	   * @param {number|string?} txConfig.version The version of transaction protocol
 	   * @param {number|string} txConfig.chainID The LemoChain id
 	   * @param {string?} txConfig.to The transaction recipient address
+	   * @param {string?} txConfig.from The transaction sender address
 	   * @param {string?} txConfig.toName The transaction recipient name
 	   * @param {number|string?} txConfig.gasPrice Gas price for smart contract. Unit is mo/gas
 	   * @param {number|string?} txConfig.gasLimit Max gas limit for smart contract. Unit is gas
 	   * @param {number|string?} txConfig.amount Unit is mo
-	   * @param {Buffer|string?} txConfig.data Extra data or smart contract calling parameters
+	   * @param {object|string?} txConfig.data Extra data or smart contract calling parameters
 	   * @param {number|string?} txConfig.expirationTime Default value is half hour from now
 	   * @param {string?} txConfig.message Extra value data
-	   * @param {Buffer|string?} txConfig.sig Signature data
+	   * @param {Array?} txConfig.sigs Signature hex data list
+	   * @param {Array?} txConfig.gasPayerSigs Gas payer signature hex data list
 	   */
 	  function Tx(txConfig) {
 	    _classCallCheck(this, Tx);
@@ -24024,34 +24233,73 @@
 	  _createClass(Tx, [{
 	    key: "normalize",
 	    value: function normalize(txConfig) {
-	      this.type = parseInt(txConfig.type || TxType.ORDINARY, 10);
-	      this.version = parseInt(txConfig.version || TX_VERSION, 10);
-	      this.chainID = parseInt(txConfig.chainID, 10) || CHAIN_ID_MAIN_NET;
-	      this.to = txConfig.to || '';
-	      this.toName = txConfig.toName || '';
-	      this.gasPrice = txConfig.gasPrice || TX_DEFAULT_GAS_PRICE;
-	      this.gasLimit = parseInt(txConfig.gasLimit || TX_DEFAULT_GAS_LIMIT, 10);
-	      this.amount = txConfig.amount || 0;
-	      this.data = txConfig.data || ''; // seconds
+	      // type number
+	      this.type = parseInt(txConfig.type || TxType.ORDINARY, 10); // version number
 
-	      this.expirationTime = parseInt(txConfig.expirationTime, 10) || Math.floor(Date.now() / 1000) + TTTL;
-	      this.message = txConfig.message || '';
-	      this.sig = txConfig.sig || '';
-	      this.gasPayerSig = txConfig.gasPayerSig || '';
-	      var from = '';
-	      Object.defineProperty(this, 'from', {
-	        get: function get() {
-	          if (!from && this.sig) {
-	            from = new Signer().recover(this);
-	          }
+	      this.version = parseInt(txConfig.version || TX_VERSION, 10); // chainID number
 
-	          return from;
-	        },
-	        set: function set() {
-	          throw new Error(errors.TXCanNotChangeFrom());
-	        },
-	        enumerable: true
-	      });
+	      this.chainID = parseInt(txConfig.chainID, 10) || CHAIN_ID_MAIN_NET; // to string
+
+	      if (!txConfig.to) {
+	        this.to = '';
+	      } else if (isLemoAddress(txConfig.to)) {
+	        this.to = txConfig.to;
+	      } else {
+	        this.to = encodeAddress(txConfig.to);
+	      } // toName string
+
+
+	      this.toName = (txConfig.toName || '').toString(); // gasPrice BigNumber
+
+	      this.gasPrice = new bignumber(txConfig.gasPrice || TX_DEFAULT_GAS_PRICE); // gasLimit number
+
+	      this.gasLimit = parseInt(txConfig.gasLimit || TX_DEFAULT_GAS_LIMIT, 10); // amount BigNumber
+
+	      this.amount = new bignumber(txConfig.amount || 0); // expirationTime number. seconds
+
+	      this.expirationTime = parseInt(txConfig.expirationTime, 10) || Math.floor(Date.now() / 1000) + TTTL; // data string
+
+	      if (txConfig.data && _typeof(txConfig.data) === 'object') {
+	        this.data = toHexStr(safeBuffer_1.from(JSON.stringify(txConfig.data)));
+	      } else {
+	        this.data = toHexStr(txConfig.data);
+	      } // message string
+
+
+	      this.message = (txConfig.message || '').toString(); // sigs Array
+
+	      if (txConfig.sigs && Array.isArray(txConfig.sigs)) {
+	        this.sigs = txConfig.sigs.map(function (item) {
+	          return toHexStr(item);
+	        });
+	      } else {
+	        this.sigs = [];
+	      } // gasPayerSig Array
+
+
+	      if (txConfig.gasPayerSigs && Array.isArray(txConfig.gasPayerSigs)) {
+	        this.gasPayerSigs = txConfig.gasPayerSigs.map(function (item) {
+	          return toHexStr(item);
+	        });
+	      } else {
+	        this.gasPayerSigs = [];
+	      } // from string
+
+
+	      if (isLemoAddress(txConfig.from)) {
+	        this.from = txConfig.from;
+	      } else {
+	        this.from = encodeAddress(txConfig.from);
+	      } // gasPayer
+
+
+	      if (!txConfig.gasPayer) {
+	        this.gasPayer = '';
+	      } else if (isLemoAddress(txConfig.gasPayer)) {
+	        this.gasPayer = txConfig.gasPayer;
+	      } else {
+	        this.gasPayer = encodeAddress(txConfig.gasPayer);
+	      }
 	    }
 	    /**
 	     * Sign a transaction with private key
@@ -24061,7 +24309,11 @@
 	  }, {
 	    key: "signWith",
 	    value: function signWith(privateKey) {
-	      this.sig = new Signer().sign(this, privateKey);
+	      var sig = new Signer().sign(this, privateKey);
+
+	      if (!this.sigs.includes(sig)) {
+	        this.sigs.push(sig);
+	      }
 	    }
 	    /**
 	     * rlp encode for hash
@@ -24071,7 +24323,7 @@
 	  }, {
 	    key: "serialize",
 	    value: function serialize() {
-	      var raw = [this.to ? toRaw(this, 'to', false, TX_TO_LENGTH) : '', toRaw(this, 'toName', false), toRaw(this, 'gasPrice', true), toRaw(this, 'gasLimit', true), toRaw(this, 'amount', true), toRaw(this, 'data', true), toRaw(this, 'expirationTime', true), toRaw(this, 'message', false), toRaw(this, 'type', true), toRaw(this, 'version', true), toRaw(this, 'chainID', true), toRaw(this, 'sig', true), toRaw(this, 'gasPayerSig', true)];
+	      var raw = [toRaw(this.type, 'type'), toRaw(this.version, 'version'), toRaw(this.chainID, 'chainID'), toRaw(decodeAddress(this.from), 'from', TX_ADDRESS_LENGTH), this.gasPayer ? toRaw(decodeAddress(this.gasPayer), 'gasPayer', TX_ADDRESS_LENGTH) : '', this.to ? toRaw(decodeAddress(this.to), 'to', TX_ADDRESS_LENGTH) : '', toRaw(this.toName, 'toName'), toRaw(this.gasPrice, 'gasPrice'), toRaw(this.gasLimit, 'gasLimit'), toRaw(this.amount, 'amount'), toRaw(this.data, 'data'), toRaw(this.expirationTime, 'expirationTime'), toRaw(this.message, 'message'), arrayToRaw(this.sigs, 'sigs'), arrayToRaw(this.gasPayerSigs, 'gasPayerSigs')];
 	      return encode$1(raw);
 	    }
 	    /**
@@ -24094,46 +24346,33 @@
 	    key: "toJson",
 	    value: function toJson() {
 	      var result = {
-	        type: new bignumber(this.type).toString(10),
-	        version: new bignumber(this.version).toString(10),
-	        chainID: new bignumber(this.chainID).toString(10),
-	        gasPrice: new bignumber(this.gasPrice).toString(10),
-	        gasLimit: new bignumber(this.gasLimit).toString(10),
-	        amount: new bignumber(this.amount).toString(10),
-	        expirationTime: new bignumber(this.expirationTime).toString(10)
+	        type: this.type.toString(10),
+	        version: this.version.toString(10),
+	        chainID: this.chainID.toString(10),
+	        gasPrice: this.gasPrice.toString(10),
+	        gasLimit: this.gasLimit.toString(10),
+	        amount: this.amount.toString(10),
+	        expirationTime: this.expirationTime.toString(10)
 	      };
-	      var to = has0xPrefix(this.to) ? toHexStr(this, 'to', TX_TO_LENGTH) : this.to;
-
-	      if (to) {
-	        result.to = to;
-	      }
-
-	      if (this.toName) {
-	        result.toName = this.toName;
-	      }
-
-	      if (this.data && this.data.length) {
-	        result.data = toHexStr(this, 'data');
-	      }
-
-	      if (this.message) {
-	        result.message = this.message;
-	      }
-
-	      if (this.sig && this.sig.length) {
-	        result.sig = toHexStr(this, 'sig', TX_SIG_BYTE_LENGTH);
-	      }
-
-	      if (this.gasPayerSig && this.gasPayerSig.length) {
-	        result.gasPayerSig = toHexStr(this, 'gasPayerSig', TX_SIG_BYTE_LENGTH);
-	      }
-
+	      setIfExist(result, 'from', this.from);
+	      setIfExist(result, 'to', this.to);
+	      setIfExist(result, 'toName', this.toName);
+	      setIfExist(result, 'data', this.data);
+	      setIfExist(result, 'message', this.message);
+	      setIfExist(result, 'sigs', this.sigs);
+	      setIfExist(result, 'gasPayerSigs', this.gasPayerSigs);
 	      return result;
 	    }
 	  }]);
 
 	  return Tx;
 	}();
+
+	function setIfExist(obj, fieldName, value) {
+	  if (value) {
+	    obj[fieldName] = value;
+	  }
+	}
 
 	function parseBlock(chainID, block, withBody) {
 	  if (block) {
@@ -24276,6 +24515,18 @@
 	  });
 	  return result;
 	}
+	function parseAssetInfo(result) {
+	  result.decimal = parseNumber(result.decimal);
+	  result.totalSupply = parseBigNumber(result.totalSupply);
+	  return result;
+	}
+	function parseMetaData(result) {
+	  if (result.metaData === undefined) {
+	    result.metaData = '';
+	  }
+
+	  return result;
+	}
 	var parser = {
 	  parseBlock: parseBlock,
 	  parseAccount: parseAccount,
@@ -24285,7 +24536,9 @@
 	  parseTxListRes: parseTxListRes,
 	  parseBigNumber: parseBigNumber,
 	  parseMoney: parseMoney,
-	  parseAsset: parseAsset
+	  parseAsset: parseAsset,
+	  parseAssetInfo: parseAssetInfo,
+	  parseMetaData: parseMetaData
 	};
 
 	/**
@@ -24807,6 +25060,150 @@
 	    return function getAllAssets(_x4, _x5, _x6) {
 	      return _getAllAssets.apply(this, arguments);
 	    };
+	  }(),
+
+	  /**
+	   * 获取指定资产类型的发行信息
+	   * @param {string} assetCode Account address
+	   * @return {Promise<object>}
+	   */
+	  getAssetInfo: function () {
+	    var _getAssetInfo = _asyncToGenerator(
+	    /*#__PURE__*/
+	    regeneratorRuntime.mark(function _callee5(assetCode) {
+	      var result;
+	      return regeneratorRuntime.wrap(function _callee5$(_context5) {
+	        while (1) {
+	          switch (_context5.prev = _context5.next) {
+	            case 0:
+	              _context5.next = 2;
+	              return this.requester.send("".concat(ACCOUNT_NAME, "_getAsset"), [assetCode]);
+
+	            case 2:
+	              result = _context5.sent;
+	              return _context5.abrupt("return", this.parser.parseAssetInfo(result));
+
+	            case 4:
+	            case "end":
+	              return _context5.stop();
+	          }
+	        }
+	      }, _callee5, this);
+	    }));
+
+	    return function getAssetInfo(_x7) {
+	      return _getAssetInfo.apply(this, arguments);
+	    };
+	  }(),
+
+	  /**
+	   * 获取指定资产中保存的自定义数据
+	   * @param {string} assetId Asset Id
+	   * @return {Promise<object>}
+	   */
+	  getAssetMetaData: function () {
+	    var _getAssetMetaData = _asyncToGenerator(
+	    /*#__PURE__*/
+	    regeneratorRuntime.mark(function _callee6(assetId) {
+	      var result;
+	      return regeneratorRuntime.wrap(function _callee6$(_context6) {
+	        while (1) {
+	          switch (_context6.prev = _context6.next) {
+	            case 0:
+	              _context6.next = 2;
+	              return this.requester.send("".concat(ACCOUNT_NAME, "_getMetaData"), [assetId]);
+
+	            case 2:
+	              result = _context6.sent;
+	              return _context6.abrupt("return", this.parser.parseMetaData(result));
+
+	            case 4:
+	            case "end":
+	              return _context6.stop();
+	          }
+	        }
+	      }, _callee6, this);
+	    }));
+
+	    return function getAssetMetaData(_x8) {
+	      return _getAssetMetaData.apply(this, arguments);
+	    };
+	  }(),
+
+	  /**
+	   * Create temp address
+	   * @param {string} from Creator address
+	   * @param {string} userId User id
+	   * @return {string}
+	   */
+	  createTempAddress: createTempAddress,
+
+	  /**
+	   * 判断当前账户是否为临时账户
+	   * @param {string} address
+	   * @return {boolean}
+	   */
+	  isTempAddress: function () {
+	    var _isTempAddress = _asyncToGenerator(
+	    /*#__PURE__*/
+	    regeneratorRuntime.mark(function _callee7(address) {
+	      var codeAddress;
+	      return regeneratorRuntime.wrap(function _callee7$(_context7) {
+	        while (1) {
+	          switch (_context7.prev = _context7.next) {
+	            case 0:
+	              _context7.next = 2;
+	              return decodeAddress(address);
+
+	            case 2:
+	              codeAddress = _context7.sent;
+	              return _context7.abrupt("return", codeAddress.slice(2, 4) === TEMP_ACCOUNT_TYPE);
+
+	            case 4:
+	            case "end":
+	              return _context7.stop();
+	          }
+	        }
+	      }, _callee7, this);
+	    }));
+
+	    return function isTempAddress(_x9) {
+	      return _isTempAddress.apply(this, arguments);
+	    };
+	  }(),
+
+	  /**
+	   * 判断当前账户是否为合约账户
+	   * @param {string} address
+	   * @return {boolean}
+	   */
+	  isContractAddress: function () {
+	    var _isContractAddress = _asyncToGenerator(
+	    /*#__PURE__*/
+	    regeneratorRuntime.mark(function _callee8(address) {
+	      var codeAddress;
+	      return regeneratorRuntime.wrap(function _callee8$(_context8) {
+	        while (1) {
+	          switch (_context8.prev = _context8.next) {
+	            case 0:
+	              _context8.next = 2;
+	              return decodeAddress(address);
+
+	            case 2:
+	              codeAddress = _context8.sent;
+	              return _context8.abrupt("return", codeAddress.slice(2, 4) === CONTRACT_ACCOUNT_TYPE);
+
+	            case 4:
+	            case "end":
+	              return _context8.stop();
+	          }
+	        }
+	      }, _callee8, this);
+	    }));
+
+	    return function isContractAddress(_x10) {
+	      return _isContractAddress.apply(this, arguments);
+	    };
 	  }()
 	};
 	var account = {
@@ -24845,7 +25242,7 @@
 
 	function getSdkVersion() {
 
-	  return "0.9.9";
+	  return "0.10.0";
 	}
 
 	var global$2 = {
@@ -25167,12 +25564,13 @@
 	   * @param {number?} txConfig.version The version of transaction protocol
 	   * @param {number} txConfig.chainID The LemoChain id
 	   * @param {string?} txConfig.to The transaction recipient address
+	   * @param {string?} txConfig.from The transaction sender address
 	   * @param {string?} txConfig.toName The transaction recipient name
 	   * @param {number|string?} txConfig.gasPrice Gas price for smart contract. Unit is mo/gas
 	   * @param {number|string?} txConfig.gasLimit Max gas limit for smart contract. Unit is gas
 	   * @param {number|string?} txConfig.expirationTime Default value is half hour from now
 	   * @param {string?} txConfig.message Extra value data
-	   * @param {Buffer|string?} txConfig.sig Signature data
+	   * @param {Array?} txConfig.sigs Signature data list
 	   */
 	  function VoteTx(txConfig) {
 	    _classCallCheck(this, VoteTx);
@@ -25200,12 +25598,12 @@
 	   * @param {number?} txConfig.type The type of transaction. 0: normal
 	   * @param {number?} txConfig.version The version of transaction protocol
 	   * @param {number} txConfig.chainID The LemoChain id
+	   * @param {string?} txConfig.from The transaction sender address
 	   * @param {number|string?} txConfig.gasPrice Gas price for smart contract. Unit is mo/gas
 	   * @param {number|string?} txConfig.gasLimit Max gas limit for smart contract. Unit is gas
-	   * @param {Buffer|string?} txConfig.data Extra data or smart contract calling parameters
 	   * @param {number|string?} txConfig.expirationTime Default value is half hour from now
 	   * @param {string?} txConfig.message Extra value data
-	   * @param {Buffer|string?} txConfig.sig Signature data
+	   * @param {Array?} txConfig.sigs Signature data list
 	   * @param {object} candidateInfo Candidate information
 	   * @param {boolean?} candidateInfo.isCandidate Set this account to be or not to be a candidate
 	   * @param {string} candidateInfo.minerAddress The address of miner account who receive miner benefit
@@ -25227,7 +25625,7 @@
 
 	    var newTxConfig = _objectSpread({}, txConfig, {
 	      type: TxType.CANDIDATE,
-	      data: safeBuffer_1.from(JSON.stringify(newCandidateInfo))
+	      data: newCandidateInfo
 	    });
 
 	    delete newTxConfig.to;
@@ -25252,10 +25650,10 @@
 	   * @param {number} txConfig.chainID The LemoChain id
 	   * @param {number|string?} txConfig.gasPrice Gas price for smart contract. Unit is mo/gas
 	   * @param {number|string?} txConfig.gasLimit Max gas limit for smart contract. Unit is gas
-	   * @param {Buffer|string?} txConfig.data Extra data or smart contract calling parameters
 	   * @param {number|string?} txConfig.expirationTime Default value is half hour from now
 	   * @param {string?} txConfig.message Extra value data
-	   * @param {Buffer|string?} txConfig.sig Signature data
+	   * @param {Array?} txConfig.sigs Signature data list
+	   * @param {string?} txConfig.from The transaction sender address
 	   * @param {object} createAssetInfo CreateAsset information
 	   * @param {number} createAssetInfo.category 资产类型，如CreateAssetType的TokenAsset、NonFungibleAsset、CommonAsset等
 	   * @param {number} createAssetInfo.decimals 发行资产的小数位，默认为18位
@@ -25273,7 +25671,7 @@
 	    verifyCreateAssetInfo(createAssetInfo);
 	    var newCreateAsset = {
 	      category: createAssetInfo.category === undefined ? CreateAssetType.TokenAsset : createAssetInfo.category,
-	      decimals: createAssetInfo.decimals === undefined ? 18 : createAssetInfo.decimals,
+	      decimal: createAssetInfo.decimal === undefined ? 18 : createAssetInfo.decimal,
 	      isReplenishable: createAssetInfo.isReplenishable === undefined ? true : createAssetInfo.isReplenishable,
 	      isDivisible: createAssetInfo.isDivisible === undefined ? true : createAssetInfo.isDivisible,
 	      profile: {
@@ -25281,13 +25679,13 @@
 	        symbol: createAssetInfo.profile.symbol.toUpperCase(),
 	        description: createAssetInfo.profile.description,
 	        suggestedGasLimit: createAssetInfo.profile.suggestedGasLimit || '60000',
-	        stop: 'false'
+	        freeze: 'false'
 	      }
 	    };
 
 	    var newTxConfig = _objectSpread({}, txConfig, {
 	      type: TxType.CREATE_ASSET,
-	      data: safeBuffer_1.from(JSON.stringify(newCreateAsset))
+	      data: newCreateAsset
 	    });
 
 	    delete newTxConfig.to;
@@ -25309,15 +25707,15 @@
 	   * @param {object} txConfig
 	   * @param {number?} txConfig.type The type of transaction
 	   * @param {string?} txConfig.to The transaction recipient address
+	   * @param {string?} txConfig.from The transaction sender address
 	   * @param {string?} txConfig.toName The transaction recipient name
 	   * @param {number?} txConfig.version The version of transaction protocol
 	   * @param {number} txConfig.chainID The LemoChain id
 	   * @param {number|string?} txConfig.gasPrice Gas price for smart contract. Unit is mo/gas
 	   * @param {number|string?} txConfig.gasLimit Max gas limit for smart contract. Unit is gas
-	   * @param {Buffer|string?} txConfig.data Extra data or smart contract calling parameters
 	   * @param {number|string?} txConfig.expirationTime Default value is half hour from now
 	   * @param {string?} txConfig.message Extra value data
-	   * @param {Buffer|string?} txConfig.sig Signature data
+	   * @param {Array?} txConfig.sigs Signature data list
 	   * @param {object} issueAssetInfo IssueAsset information
 	   * @param {string} issueAssetInfo.assetCode 发行资产的唯一标识
 	   * @param {string} issueAssetInfo.metaData 资产中的自定义数据
@@ -25335,7 +25733,7 @@
 
 	    var newTxConfig = _objectSpread({}, txConfig, {
 	      type: TxType.ISSUE_ASSET,
-	      data: safeBuffer_1.from(JSON.stringify(newIssueAsset))
+	      data: newIssueAsset
 	    });
 
 	    delete newTxConfig.amount;
@@ -25355,16 +25753,16 @@
 	   * @param {object} txConfig
 	   * @param {number?} txConfig.type The type of transaction
 	   * @param {string?} txConfig.to The transaction recipient address
+	   * @param {string?} txConfig.from The transaction sender address
 	   * @param {string?} txConfig.toName The transaction recipient name
 	   * @param {number?} txConfig.version The version of transaction protocol
 	   * @param {number} txConfig.chainID The LemoChain id
 	   * @param {number|string?} txConfig.gasPrice Gas price for smart contract. Unit is mo/gas
 	   * @param {number|string?} txConfig.gasLimit Max gas limit for smart contract. Unit is gas
-	   * @param {Buffer|string?} txConfig.data Extra data or smart contract calling parameters
 	   * @param {number|string?} txConfig.expirationTime Default value is half hour from now
 	   * @param {number|string?} txConfig.amount Unit is mo
 	   * @param {string?} txConfig.message Extra value data
-	   * @param {Buffer|string?} txConfig.sig Signature data
+	   * @param {Array?} txConfig.sigs Signature data list
 	   * @param {object} transferAssetInfo TransferAsset information
 	   * @param {string} transferAssetInfo.assetId Asset id of the transaction
 	   * @param {string} transferAssetInfo.transferAmount Number of transactions
@@ -25374,14 +25772,16 @@
 
 	    verifyTransferAssetInfo(transferAssetInfo);
 	    var newTransferAsset = {
-	      assetId: transferAssetInfo.assetId
+	      assetId: transferAssetInfo.assetId,
+	      transferAmount: transferAssetInfo.transferAmount
 	    };
 
 	    var newTxConfig = _objectSpread({}, txConfig, {
 	      type: TxType.TRANSFER_ASSET,
-	      data: safeBuffer_1.from(JSON.stringify(newTransferAsset))
+	      data: newTransferAsset
 	    });
 
+	    delete newTxConfig.amount;
 	    return _possibleConstructorReturn(this, _getPrototypeOf(TransferAssetTx).call(this, newTxConfig));
 	  }
 
@@ -25398,31 +25798,33 @@
 	   * @param {object} txConfig
 	   * @param {number?} txConfig.type The type of transaction
 	   * @param {string?} txConfig.to The transaction recipient address
+	   * @param {string?} txConfig.from The transaction sender address
 	   * @param {string?} txConfig.toName The transaction recipient name
 	   * @param {number?} txConfig.version The version of transaction protocol
 	   * @param {number} txConfig.chainID The LemoChain id
 	   * @param {number|string?} txConfig.gasPrice Gas price for smart contract. Unit is mo/gas
 	   * @param {number|string?} txConfig.gasLimit Max gas limit for smart contract. Unit is gas
-	   * @param {Buffer|string?} txConfig.data Extra data or smart contract calling parameters
 	   * @param {number|string?} txConfig.expirationTime Default value is half hour from now
 	   * @param {string?} txConfig.message Extra value data
-	   * @param {Buffer|string?} txConfig.sig Signature data
+	   * @param {Array?} txConfig.sigs Signature data list
 	   * @param {object} replenishInfo replenishAsset information
+	   * @param {string} replenishInfo.assetCode 发行资产的唯一标识
 	   * @param {string} replenishInfo.assetId Replenish asset id
-	   * @param {string} replenishInfo.ReplenishAmount number of Replenish
+	   * @param {string} replenishInfo.replenishAmount number of Replenish
 	   */
 	  function ReplenishAssetTx(txConfig, replenishInfo) {
 	    _classCallCheck(this, ReplenishAssetTx);
 
 	    verifyReplenishAssetInfo(replenishInfo);
 	    var newReplenishAsset = {
+	      assetCode: replenishInfo.assetCode,
 	      assetId: replenishInfo.assetId,
 	      replenishAmount: replenishInfo.replenishAmount.toString()
 	    };
 
 	    var newTxConfig = _objectSpread({}, txConfig, {
 	      type: TxType.REPLENISH_ASSET,
-	      data: safeBuffer_1.from(JSON.stringify(newReplenishAsset))
+	      data: newReplenishAsset
 	    });
 
 	    delete newTxConfig.amount;
@@ -25442,18 +25844,18 @@
 	   * @param {object} txConfig
 	   * @param {number?} txConfig.type The type of transaction
 	   * @param {string?} txConfig.to The transaction recipient address
+	   * @param {string?} txConfig.from The transaction sender address
 	   * @param {string?} txConfig.toName The transaction recipient name
 	   * @param {number?} txConfig.version The version of transaction protocol
 	   * @param {number} txConfig.chainID The LemoChain id
 	   * @param {number|string?} txConfig.gasPrice Gas price for smart contract. Unit is mo/gas
 	   * @param {number|string?} txConfig.gasLimit Max gas limit for smart contract. Unit is gas
-	   * @param {Buffer|string?} txConfig.data Extra data or smart contract calling parameters
 	   * @param {number|string?} txConfig.expirationTime Default value is half hour from now
 	   * @param {string?} txConfig.message Extra value data
-	   * @param {Buffer|string?} txConfig.sig Signature data
+	   * @param {Array?} txConfig.sigs Signature data list
 	   * @param {object} modifyInfo modifyInfo information
 	   * @param {string} modifyInfo.assetCode assetCode that needs to be modified
-	   * @param {object} modifyInfo.info info information
+	   * @param {object} modifyInfo.updateProfile updateProfile information
 	   */
 	  function modifyAssetTx(txConfig, modifyInfo) {
 	    _classCallCheck(this, modifyAssetTx);
@@ -25461,18 +25863,18 @@
 	    verifyModifyAssetInfo(modifyInfo);
 	    var newModifyAsset = {
 	      assetCode: modifyInfo.assetCode,
-	      info: {
-	        name: modifyInfo.info.name,
-	        symbol: modifyInfo.info.symbol === undefined ? undefined : modifyInfo.info.symbol.toUpperCase(),
-	        description: modifyInfo.info.description,
-	        suggestedGasLimit: modifyInfo.info.suggestedGasLimit,
-	        stop: modifyInfo.info.stop
+	      updateProfile: {
+	        name: modifyInfo.updateProfile.name,
+	        symbol: modifyInfo.updateProfile.symbol === undefined ? undefined : modifyInfo.updateProfile.symbol.toUpperCase(),
+	        description: modifyInfo.updateProfile.description,
+	        suggestedGasLimit: modifyInfo.updateProfile.suggestedGasLimit,
+	        freeze: modifyInfo.updateProfile.freeze
 	      }
 	    };
 
 	    var newTxConfig = _objectSpread({}, txConfig, {
 	      type: TxType.MODIFY_ASSET,
-	      data: safeBuffer_1.from(JSON.stringify(newModifyAsset))
+	      data: newModifyAsset
 	    });
 
 	    delete newTxConfig.to;
@@ -25522,13 +25924,13 @@
 	  }, {
 	    key: "hashForGasSign",
 	    value: function hashForGasSign(tx) {
-	      var raw = [toRaw(tx, 'noGasTx', false), toRaw(tx, 'gasPrice', true), toRaw(tx, 'gasLimit', true)];
+	      var raw = [arrayToRaw(tx.sigs, 'sigs'), toRaw(tx.gasPrice, 'gasPrice'), toRaw(tx.gasLimit, 'gasLimit')];
 	      return keccak256(encode$1(raw));
 	    }
 	  }, {
 	    key: "hashForNoGasSign",
 	    value: function hashForNoGasSign(tx) {
-	      var raw = [toRaw(tx, 'type', true), toRaw(tx, 'version', true), toRaw(tx, 'chainID', true), toRaw(tx, 'to', false, TX_TO_LENGTH), toRaw(tx, 'toName', false), toRaw(tx, 'amount', true), toRaw(tx, 'data', true), toRaw(tx, 'expirationTime', true), toRaw(tx, 'message', false), toRaw(tx, 'payer', false)];
+	      var raw = [toRaw(tx.type, 'type'), toRaw(tx.version, 'version'), toRaw(tx.chainID, 'chainID'), toRaw(decodeAddress(tx.from), 'from', TX_ADDRESS_LENGTH), tx.gasPayer ? toRaw(decodeAddress(tx.gasPayer), 'gasPayer', TX_ADDRESS_LENGTH) : '', tx.to ? toRaw(decodeAddress(tx.to), 'to', TX_ADDRESS_LENGTH) : '', toRaw(tx.toName, 'toName'), toRaw(tx.amount, 'amount'), toRaw(tx.data, 'data'), toRaw(tx.expirationTime, 'expirationTime'), toRaw(tx.message, 'message'), toRaw(tx.payer, 'payer')];
 	      return keccak256(encode$1(raw));
 	    }
 	  }]);
@@ -25546,13 +25948,14 @@
 	   * @param {object} txConfig
 	   * @param {number?} txConfig.type The type of transaction
 	   * @param {string?} txConfig.to The transaction recipient address
+	   * @param {string?} txConfig.from The transaction sender address
 	   * @param {string?} txConfig.toName The transaction recipient name
 	   * @param {number?} txConfig.version The version of transaction protocol
 	   * @param {number} txConfig.chainID The LemoChain id
-	   * @param {Buffer|string?} txConfig.data Extra data or smart contract calling parameters
+	   * @param {string?} txConfig.data Extra data or smart contract calling parameters
 	   * @param {number|string?} txConfig.expirationTime Default value is half hour from now
 	   * @param {string?} txConfig.message Extra value data
-	   * @param {Buffer|string?} txConfig.sig Signature data
+	   * @param {Array?} txConfig.sigs Signature data list
 	   * @param {string} payer The address is Receiver's account address
 	   */
 	  function GasTx(txConfig, payer) {
@@ -25560,12 +25963,13 @@
 
 	    _classCallCheck(this, GasTx);
 
-	    var newTxConfig = _objectSpread({}, txConfig);
+	    var newTxConfig = _objectSpread({}, txConfig, {
+	      gasPayer: payer
+	    });
 
 	    _this = _possibleConstructorReturn(this, _getPrototypeOf(GasTx).call(this, newTxConfig));
 	    delete newTxConfig.gasLimit;
 	    delete newTxConfig.gasPrice;
-	    _this.payer = payer;
 	    return _this;
 	  }
 	  /**
@@ -25577,7 +25981,11 @@
 	  _createClass(GasTx, [{
 	    key: "signNoGasWith",
 	    value: function signNoGasWith(privateKey) {
-	      this.sig = new GasSigner().signNoGas(this, privateKey);
+	      var sig = new GasSigner().signNoGas(this, privateKey);
+
+	      if (!this.sigs.includes(sig)) {
+	        this.sigs.push(sig);
+	      }
 	    }
 	    /**
 	     * format for rpc
@@ -25587,15 +25995,13 @@
 	  }, {
 	    key: "toJson",
 	    value: function toJson() {
-	      _get(_getPrototypeOf(GasTx.prototype), "toJson", this).call(this);
+	      var result = _get(_getPrototypeOf(GasTx.prototype), "toJson", this).call(this);
 
-	      var payer = has0xPrefix(this.payer) ? toHexStr(this, 'payer', TX_TO_LENGTH) : this.payer;
-
-	      if (payer) {
-	        this.payer = payer;
+	      if (this.gasPayer) {
+	        result.gasPayer = this.gasPayer;
 	      }
 
-	      return this;
+	      return result;
 	    }
 	  }]);
 
@@ -25614,12 +26020,13 @@
 	   * @param {number|string?} noGasTx.version The version of transaction protocol
 	   * @param {number|string} noGasTx.chainID The LemoChain id
 	   * @param {string?} noGasTx.to The transaction recipient address
+	   * @param {string?} noGasTx.from The transaction sender address
 	   * @param {string?} noGasTx.toName The transaction recipient name
 	   * @param {number|string?} noGasTx.amount Unit is mo
-	   * @param {Buffer|string?} noGasTx.data Extra data or smart contract calling parameters
+	   * @param {string?} noGasTx.data Extra data or smart contract calling parameters
 	   * @param {number|string?} noGasTx.expirationTime Default value is half hour from now
 	   * @param {string?} noGasTx.message Extra value data
-	   * @param {Buffer|string?} noGasTx.sig Signature data
+	   * @param {Array?} noGasTx.sigs Signature data list
 	   * @param {number|string} gasPrice Gas price for smart contract. Unit is mo/gas
 	   * @param {number|string} gasLimit Max gas limit for smart contract. Unit is gas
 	   */
@@ -25633,7 +26040,7 @@
 	      gasLimit: gasLimit
 	    });
 
-	    delete newTxConfig.payer;
+	    delete newTxConfig.gasPayer;
 	    return _possibleConstructorReturn(this, _getPrototypeOf(ReimbursementTx).call(this, newTxConfig));
 	  }
 	  /**
@@ -25645,11 +26052,146 @@
 	  _createClass(ReimbursementTx, [{
 	    key: "signGasWith",
 	    value: function signGasWith(privateKey) {
-	      this.gasPayerSig = new GasSigner().signGas(this, privateKey);
+	      var gasPayerSig = new GasSigner().signGas(this, privateKey);
+
+	      if (!this.gasPayerSigs.includes(gasPayerSig)) {
+	        this.gasPayerSigs.push(gasPayerSig);
+	      }
 	    }
 	  }]);
 
 	  return ReimbursementTx;
+	}(Tx);
+
+	var modifySignersTx =
+	/*#__PURE__*/
+	function (_Tx) {
+	  _inherits(modifySignersTx, _Tx);
+
+	  /**
+	   * @param {object} txConfig
+	   * @param {number?} txConfig.type The type of transaction
+	   * @param {string?} txConfig.to The transaction recipient address
+	   * @param {string?} txConfig.from The transaction sender address
+	   * @param {string?} txConfig.toName The transaction recipient name
+	   * @param {number?} txConfig.version The version of transaction protocol
+	   * @param {number} txConfig.chainID The LemoChain id
+	   * @param {number|string?} txConfig.gasPrice Gas price for smart contract. Unit is mo/gas
+	   * @param {number|string?} txConfig.gasLimit Max gas limit for smart contract. Unit is gas
+	   * @param {number|string?} txConfig.expirationTime Default value is half hour from now
+	   * @param {string?} txConfig.message Extra value data
+	   * @param {Array?} txConfig.sigs Signature data list
+	   * @param {object} modifySignersInfo modify signers information
+	   * @param {Array} modifySignersInfo.signers modify signers
+	   */
+	  function modifySignersTx(txConfig, modifySignersInfo) {
+	    _classCallCheck(this, modifySignersTx);
+
+	    verifymodifySignersInfo(modifySignersInfo);
+	    var newModifySigners = {
+	      signers: modifySignersInfo.signers
+	    };
+
+	    var newTxConfig = _objectSpread({}, txConfig, {
+	      type: TxType.MODIFY_SIGNER,
+	      data: newModifySigners
+	    });
+
+	    return _possibleConstructorReturn(this, _getPrototypeOf(modifySignersTx).call(this, newTxConfig));
+	  }
+
+	  return modifySignersTx;
+	}(Tx);
+
+	var BoxTx =
+	/*#__PURE__*/
+	function (_Tx) {
+	  _inherits(BoxTx, _Tx);
+
+	  /**
+	   * 箱子的交易
+	   * @param {object} txConfig
+	   * @param {number?} txConfig.type The type of transaction
+	   * @param {number?} txConfig.version The version of transaction protocol
+	   * @param {number} txConfig.chainID The LemoChain id
+	   * @param {number|string?} txConfig.gasPrice Gas price for smart contract. Unit is mo/gas
+	   * @param {number|string?} txConfig.gasLimit Max gas limit for smart contract. Unit is gas
+	   * @param {number|string?} txConfig.expirationTime Default value is half hour from now
+	   * @param {string?} txConfig.message Extra value data
+	   * @param {Array?} txConfig.sigs Signature data list
+	   * @param {string?} txConfig.from The transaction sender address
+	   * @param {object} subTxList boxTx information
+	   * @param {Array} subTxList.subTxList information
+	   */
+	  function BoxTx(txConfig, subTxList) {
+	    _classCallCheck(this, BoxTx);
+
+	    verifyBoxTXInfo(subTxList); // Determine data type
+
+	    subTxList = subTxList.map(function (item) {
+	      if (typeof item === 'string') {
+	        item = JSON.parse(item);
+	      }
+
+	      return item;
+	    }); // get the expirationTime of the boxTx
+
+	    var timeList = subTxList.map(function (item) {
+	      return item.expirationTime;
+	    });
+	    var newBoxTx = {
+	      subTxList: subTxList
+	    };
+
+	    var newTxConfig = _objectSpread({}, txConfig, {
+	      expirationTime: Math.min.apply(Math, _toConsumableArray(timeList)),
+	      type: TxType.BOX_TX,
+	      data: newBoxTx
+	    });
+
+	    delete newTxConfig.to;
+	    delete newTxConfig.amount;
+	    return _possibleConstructorReturn(this, _getPrototypeOf(BoxTx).call(this, newTxConfig));
+	  }
+
+	  return BoxTx;
+	}(Tx);
+
+	var ContractCreationTx =
+	/*#__PURE__*/
+	function (_Tx) {
+	  _inherits(ContractCreationTx, _Tx);
+
+	  /**
+	   * @param {object} txConfig
+	   * @param {number?} txConfig.type The type of transaction
+	   * @param {string?} txConfig.to The transaction recipient address
+	   * @param {string?} txConfig.from The transaction sender address
+	   * @param {string?} txConfig.toName The transaction recipient name
+	   * @param {number?} txConfig.version The version of transaction protocol
+	   * @param {number} txConfig.chainID The LemoChain id
+	   * @param {number|string?} txConfig.gasPrice Gas price for smart contract. Unit is mo/gas
+	   * @param {number|string?} txConfig.gasLimit Max gas limit for smart contract. Unit is gas
+	   * @param {number|string?} txConfig.expirationTime Default value is half hour from now
+	   * @param {string?} txConfig.message Extra value data
+	   * @param {Array?} txConfig.sigs Signature data list
+	   * @param {string} codeHex
+	   * @param {string} constructorArgsHex
+	   */
+	  function ContractCreationTx(txConfig, codeHex, constructorArgsHex) {
+	    _classCallCheck(this, ContractCreationTx);
+
+	    verifyContractCreationInfo(codeHex, constructorArgsHex);
+
+	    var newTxConfig = _objectSpread({}, txConfig, {
+	      type: TxType.CREATE_CONTRACT,
+	      data: codeHex + constructorArgsHex.slice(2)
+	    });
+
+	    return _possibleConstructorReturn(this, _getPrototypeOf(ContractCreationTx).call(this, newTxConfig));
+	  }
+
+	  return ContractCreationTx;
 	}(Tx);
 
 	var apis$5 = {
@@ -25805,7 +26347,7 @@
 	    txConfig = checkChainID(txConfig, this.chainID);
 	    var tx = new Tx(txConfig);
 
-	    if (!tx.sig) {
+	    if (!tx.sigs && !tx.sigs.length) {
 	      throw new Error("can't send an unsigned transaction");
 	    }
 
@@ -25979,12 +26521,65 @@
 	  signReimbursement: function signReimbursement(privateKey, noGasTxStr, gasPrice, gasLimit) {
 	    var noGasTx = JSON.parse(noGasTxStr);
 
-	    if (privateToAddress(privateKey) !== noGasTx.payer) {
-	      throw new Error(errors.InvalidAddressConflict(noGasTx.payer));
+	    if (privateToAddress(privateKey) !== noGasTx.gasPayer) {
+	      throw new Error(errors.InvalidAddressConflict(noGasTx.gasPayer));
 	    }
 
 	    var tx = new ReimbursementTx(noGasTx, gasPrice, gasLimit);
 	    tx.signGasWith(privateKey);
+	    return JSON.stringify(tx.toJson());
+	  },
+
+	  /**
+	   * Create temp address
+	   * @param {string} privateKey The private key from sender account
+	   * @param {object} txConfig Transaction config
+	   * @param {string} userId User id
+	   * @return {string}
+	   */
+	  signCreateTempAddress: function signCreateTempAddress(privateKey, txConfig, userId) {
+	    var tempConfig = _objectSpread({}, txConfig, {
+	      to: createTempAddress(txConfig.from, userId)
+	    });
+
+	    tempConfig = checkChainID(tempConfig, this.chainID);
+	    var modifySignersInfo = {
+	      signers: [{
+	        address: tempConfig.from,
+	        weight: 100
+	      }]
+	    };
+	    var tx = new modifySignersTx(tempConfig, modifySignersInfo);
+	    tx.signWith(privateKey);
+	    return JSON.stringify(tx.toJson());
+	  },
+
+	  /**
+	   * Sign a special transaction to set box target
+	   * @param {string} privateKey The private key from sender account
+	   * @param {object} txConfig Transaction config
+	   * @param {Array} subTxList Box transaction information
+	   * @return {string}
+	   */
+	  signBoxTx: function signBoxTx(privateKey, txConfig, subTxList) {
+	    txConfig = checkChainID(txConfig, this.chainID);
+	    var tx = new BoxTx(txConfig, subTxList);
+	    tx.signWith(privateKey);
+	    return JSON.stringify(tx.toJson());
+	  },
+
+	  /**
+	   * Sign a special transaction to set box target
+	   * @param {string} privateKey The private key from sender account
+	   * @param {object} txConfig Transaction config
+	   * @param {string} codeHex contract contract hexadecimal code
+	   * @param {string} constructorArgsHex contract contract hexadecimal params
+	   * @return {string}
+	   */
+	  signContractCreation: function signContractCreation(privateKey, txConfig, codeHex, constructorArgsHex) {
+	    txConfig = checkChainID(txConfig, this.chainID);
+	    var tx = new ContractCreationTx(txConfig, codeHex, constructorArgsHex);
+	    tx.signWith(privateKey);
 	    return JSON.stringify(tx.toJson());
 	  },
 
@@ -26038,7 +26633,14 @@
 	   * @param {number|string} ether
 	   * @return {BigNumber}
 	   */
-	  lemoToMo: lemoToMo
+	  lemoToMo: lemoToMo,
+
+	  /**
+	   * 将数据转换为Buffer类型
+	   * @param {number|string|BigNumber|Buffer|null} ether
+	   * @return {Buffer}
+	   */
+	  toBuffer: toBuffer
 	};
 	var tool = {
 	  moduleName: TOOL_NAME,
