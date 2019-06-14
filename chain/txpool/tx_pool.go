@@ -162,31 +162,31 @@ func (pool *TxPool) RecvTx(tx *types.Transaction) bool {
 	}
 }
 
-// func (pool *TxPool) RecvTxs(txs []*types.Transaction) bool {
-// 	pool.RW.Lock()
-// 	defer pool.RW.Unlock()
-//
-// 	if len(txs) <= 0 {
-// 		return false
-// 	}
-//
-// 	for _, v := range txs {
-// 		isExist := pool.RecentTxs.IsExist(v)
-// 		if !isExist {
-// 			continue
-// 		}else{
-// 			log.Debug("tx is already exist. hash: " + v.Hash().Hex())
-// 			return false
-// 		}
-// 	}
-//
-// 	for _, v := range txs {
-// 		pool.RecentTxs.RecvTx(v)
-// 		pool.PendingTxs.Push(v)
-// 	}
-//
-// 	return true
-// }
+func (pool *TxPool) RecvTxs(txs []*types.Transaction) bool {
+	pool.RW.Lock()
+	defer pool.RW.Unlock()
+
+	if len(txs) <= 0 {
+		return false
+	}
+
+	for _, v := range txs {
+		isExist := pool.RecentTxs.IsExist(v)
+		if !isExist {
+			continue
+		} else {
+			log.Debug("tx is already exist. hash: " + v.Hash().Hex())
+			return false
+		}
+	}
+
+	for _, v := range txs {
+		pool.RecentTxs.RecvTx(v)
+		pool.PendingTxs.Push(v)
+	}
+
+	return true
+}
 
 /* 对链进行剪枝，剪下的块中的交易需要回归交易池 */
 func (pool *TxPool) PruneBlock(block *types.Block) {

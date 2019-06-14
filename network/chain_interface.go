@@ -44,6 +44,8 @@ type TxPool interface {
 	/* 收到一笔新的交易 */
 	RecvTx(tx *types.Transaction) bool
 
+	RecvTxs(txs []*types.Transaction) bool
+
 	/* 对链进行剪枝，剪下的块中的交易需要回归交易池 */
 	PruneBlock(block *types.Block)
 }
