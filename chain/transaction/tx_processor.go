@@ -120,7 +120,7 @@ func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions, tim
 	// limit the time to execute txs
 	applyTxsInterval := time.Duration(timeLimitSecond) * time.Millisecond
 	// Iterate over and process the individual transactions
-label:
+txsLoop:
 	for _, tx := range txs {
 
 		// 打包交易已用时间
@@ -130,7 +130,7 @@ label:
 
 		// 判断打包交易剩余时间
 		if restApplyTime <= 0 {
-			break label
+			break txsLoop
 		}
 
 		// If we don't have enough gas for any further transactions then we're done

@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	ErrVerifyBoxTxs       = errors.New("not container box tx")
+	ErrNestedBoxTx        = errors.New("box transaction cannot be a sub transaction")
 	ErrApplyBoxTxsTimeout = errors.New("apply box txs timeout")
 )
 
