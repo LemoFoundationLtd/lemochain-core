@@ -273,7 +273,7 @@ func (tx *Transaction) String() string {
 	if len(tx.data.RecipientName) > 0 {
 		set = append(set, fmt.Sprintf("ToName: %s", tx.data.RecipientName))
 	}
-	set = append(set, fmt.Sprintf("GasPrice: %v", tx.data.GasPayer))
+	set = append(set, fmt.Sprintf("GasPrice: %v", tx.data.GasPrice))
 	set = append(set, fmt.Sprintf("GasLimit: %v", tx.data.GasLimit))
 	set = append(set, fmt.Sprintf("Amount: %v", tx.data.Amount))
 	if len(tx.data.Data) > 0 {
