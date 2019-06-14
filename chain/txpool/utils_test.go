@@ -81,7 +81,7 @@ func makeTx(to common.Address, expiration int64) *types.Transaction {
 }
 
 func makeExpirationTx(to common.Address) *types.Transaction {
-	return makeTx(to, int64(time.Now().Unix()-2*int64(TransactionExpiration)))
+	return makeTx(to, int64(time.Now().Unix()-2*int64(params.TransactionExpiration)))
 }
 
 func makeBoxTransaction(from common.Address, data []byte, expiration uint64) *types.Transaction {

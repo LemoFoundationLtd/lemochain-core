@@ -109,7 +109,7 @@ type RecentTx struct {
 func NewTxRecently() *RecentTx {
 	return &RecentTx{
 		TraceMap:  make(map[common.Hash]TxTrace),
-		TxsByTime: make([]*TxTimeBucket, TransactionExpiration),
+		TxsByTime: make([]*TxTimeBucket, params.TransactionExpiration),
 	}
 }
 
@@ -225,7 +225,7 @@ func (recent *RecentTx) IsExist(tx *types.Transaction) bool {
 
 func (recent *RecentTx) add2Time(tx *types.Transaction) error {
 	expiration := tx.Expiration()
-	slot := expiration % uint64(TransactionExpiration)
+	slot := expiration % uint64(params.TransactionExpiration)
 	bucket := recent.TxsByTime[slot]
 	if bucket == nil {
 		recent.TxsByTime[slot] = newTxTimeBucket(tx)

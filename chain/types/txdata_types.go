@@ -88,7 +88,6 @@ func GetTradingAsset(txData []byte) (*TradingAsset, error) {
 }
 
 // 箱子交易
-type BoxTxsMap map[common.Hash]*Transaction // 箱子中的交易索引
 //go:generate gencodec -type Box -out gen_box_json.go
 type Box struct {
 	SubTxList Transactions `json:"subTxList"  gencodec:"required"`

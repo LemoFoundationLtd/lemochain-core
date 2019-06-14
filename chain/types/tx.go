@@ -23,9 +23,8 @@ const (
 //go:generate gencodec -type txdata --field-override txdataMarshaling -out gen_tx_json.go
 
 var (
-	DefaultTTTL  uint64 = 2 * 60 * 60 // Transaction Time To Live, 2hours
-	TxVersion    uint8  = 1           // current transaction version. should between 0 and 128
-	TxExpiration uint64 = 30 * 60     // tx expiration time 限制在30分钟
+	DefaultTTTL uint64 = 2 * 60 * 60 // Transaction Time To Live, 2hours
+	TxVersion   uint8  = 1           // current transaction version. should between 0 and 128
 )
 
 type Transactions []*Transaction
@@ -105,8 +104,7 @@ func NewTransaction(from common.Address, to common.Address, amount *big.Int, gas
 }
 
 // 创建智能合约交易
-func NewContractCreation(from common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int, code, constructorArgs string, TxType uint16, chainID uint16, expiration uint64, toName string, message string) *Transaction {
-	data := append(common.FromHex(code), common.FromHex(constructorArgs)...)
+func NewContractCreation(from common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte, TxType uint16, chainID uint16, expiration uint64, toName string, message string) *Transaction {
 	return newTransaction(from, TxType, TxVersion, chainID, nil, nil, amount, gasLimit, gasPrice, data, expiration, toName, message)
 }
 
@@ -262,7 +260,6 @@ func (tx *Transaction) String() string {
 
 	set := []string{
 		fmt.Sprintf("Hash: %s", tx.Hash().Hex()),
-		fmt.Sprintf("CreateContract: %v", tx.data.Recipient == nil),
 		fmt.Sprintf("Type: %d", tx.Type()),
 		fmt.Sprintf("Version: %d", tx.Version()),
 		fmt.Sprintf("ChainID: %d", tx.ChainID()),
@@ -340,8 +337,12 @@ func (tx *Transaction) Clone() *Transaction {
 // VerifyTx transaction parameter verification
 func (tx *Transaction) VerifyTx(chainID uint16, timeStamp uint64) error {
 	// verify time
-	if tx.Expiration() < timeStamp || tx.Expiration()-timeStamp > TxExpiration {
-		log.Errorf("Received transaction expiration time illegal. Expiration time: %d. The current time: %d", tx.Expiration(), timeStamp)
+	if tx.Expiration() < timeStamp {
+		log.Errorf("Received transaction expiration time less than current time . Expiration time: %d. The current time: %d", tx.Expiration(), timeStamp)
+		return ErrTxExpiration
+	}
+	if tx.Expiration()-timeStamp > uint64(params.TransactionExpiration) {
+		log.Errorf("Received transaction expiration time can't more than 30 minutes")
 		return ErrTxExpiration
 	}
 	// verify chainID
@@ -365,11 +366,12 @@ func (tx *Transaction) VerifyTx(chainID uint16, timeStamp uint64) error {
 	}
 	// data 存在校验
 	if err := checkTxData(tx.Type(), tx.Data()); err != nil {
+		log.Errorf("checkTxData error: %s", err)
 		return err
 	}
 	// to 存在判断
-	if !CheckTo(tx.Type(), tx.To()) {
-		return ErrTxTo
+	if err := IsToExist(tx.Type(), tx.To()); err != nil {
+		return err
 	}
 	// 检验箱子交易
 	if tx.Type() == params.BoxTx {
@@ -396,7 +398,7 @@ func checkBoxTx(txdata []byte, chainID uint16, txTime, nowTime uint64) error {
 		}
 		// 箱子中的子交易不能有箱子类型交易
 		if sonTx.Type() == params.BoxTx {
-			return ErrVerifyBoxTxs
+			return ErrVerifyBoxTx
 		}
 		// verify sonTx
 		if err := sonTx.VerifyTx(chainID, nowTime); err != nil {
@@ -410,7 +412,7 @@ func checkBoxTx(txdata []byte, chainID uint16, txTime, nowTime uint64) error {
 func checkTxData(txType uint16, data []byte) error {
 	switch txType {
 	case params.OrdinaryTx, params.VoteTx:
-	case params.CreateContractTx, params.RegisterTx, params.CreateAssetTx, params.IssueAssetTx, params.ReplenishAssetTx, params.ModifyAssetTx, params.TransferAssetTx, params.ModifySigsTx, params.BoxTx:
+	case params.CreateContractTx, params.RegisterTx, params.CreateAssetTx, params.IssueAssetTx, params.ReplenishAssetTx, params.ModifyAssetTx, params.TransferAssetTx, params.ModifySignersTx, params.BoxTx:
 		if len(data) == 0 {
 			return ErrSpecialTx
 		}
@@ -421,14 +423,18 @@ func checkTxData(txType uint16, data []byte) error {
 	return nil
 }
 
-// CheckTo
-func CheckTo(txType uint16, to *common.Address) bool {
+// IsToExist
+func IsToExist(txType uint16, to *common.Address) error {
+	var temp bool
 	switch txType {
-	case params.OrdinaryTx, params.VoteTx, params.IssueAssetTx, params.ReplenishAssetTx, params.TransferAssetTx, params.ModifySigsTx:
-		return to != nil
+	case params.OrdinaryTx, params.VoteTx, params.IssueAssetTx, params.ReplenishAssetTx, params.TransferAssetTx, params.ModifySignersTx:
+		temp = to != nil
 	case params.CreateContractTx, params.RegisterTx, params.CreateAssetTx, params.ModifyAssetTx, params.BoxTx:
-		return to == nil
+		temp = to == nil
 	default:
-		return false
 	}
+	if !temp {
+		return ErrToExist
+	}
+	return nil
 }

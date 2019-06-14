@@ -443,6 +443,7 @@ func NewPublicTxAPI(node *Node) *PublicTxAPI {
 func (t *PublicTxAPI) SendTx(tx *types.Transaction) (common.Hash, error) {
 	err := tx.VerifyTx(t.node.ChainID(), uint64(time.Now().Unix()))
 	if err != nil {
+		log.Errorf("VerifyTx error: %s", err)
 		return common.Hash{}, err
 	}
 	t.node.txPool.RecvTx(tx)
@@ -469,10 +470,9 @@ func (t *PublicTxAPI) ReadContract(to *common.Address, data hexutil.Bytes) (stri
 
 // EstimateGas returns an estimate of the amount of gas needed to execute the given transaction.
 func (t *PublicTxAPI) EstimateGas(to *common.Address, txType uint16, data hexutil.Bytes) (string, error) {
-	if !types.CheckTo(txType, to) {
-		return "", ErrInputParams
+	if err := types.IsToExist(txType, to); err != nil {
+		return "", err
 	}
-
 	var costGas uint64
 	var err error
 	ctx := context.Background()

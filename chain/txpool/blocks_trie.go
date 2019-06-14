@@ -3,6 +3,7 @@ package txpool
 import (
 	"errors"
 	"fmt"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
@@ -172,7 +173,7 @@ type BlocksTrie struct {
 func NewBlocksTrie() *BlocksTrie {
 	return &BlocksTrie{
 		HeightBuckets: make(map[uint32]NodeByHash),
-		TimeBuckets:   make([]*BlockTimeBucket, TransactionExpiration),
+		TimeBuckets:   make([]*BlockTimeBucket, params.TransactionExpiration),
 	}
 }
 
@@ -225,7 +226,7 @@ func (trie *BlocksTrie) addToHeightBucket(block *types.Block) {
 }
 
 func (trie *BlocksTrie) addToTimeBucket(block *types.Block) {
-	slot := block.Time() % uint32(TransactionExpiration)
+	slot := block.Time() % uint32(params.TransactionExpiration)
 	if trie.TimeBuckets[slot] == nil {
 		trie.TimeBuckets[slot] = newBlockTimeBucket(block)
 	} else {
@@ -234,7 +235,7 @@ func (trie *BlocksTrie) addToTimeBucket(block *types.Block) {
 }
 
 func (trie *BlocksTrie) delFromTimeBucket(block *types.Block) {
-	slot := block.Time() % uint32(TransactionExpiration)
+	slot := block.Time() % uint32(params.TransactionExpiration)
 	bucket := trie.TimeBuckets[slot]
 	if bucket == nil {
 		return
@@ -243,7 +244,7 @@ func (trie *BlocksTrie) delFromTimeBucket(block *types.Block) {
 }
 
 func (trie *BlocksTrie) resetTimeBucket(block *types.Block) {
-	slot := block.Time() % uint32(TransactionExpiration)
+	slot := block.Time() % uint32(params.TransactionExpiration)
 	trie.TimeBuckets[slot] = newBlockTimeBucket(block)
 }
 
@@ -289,7 +290,7 @@ func (trie *BlocksTrie) PushBlock(block *types.Block) error {
 		return nil
 	}
 
-	slot := block.Time() % uint32(TransactionExpiration)
+	slot := block.Time() % uint32(params.TransactionExpiration)
 	timeBucket := trie.TimeBuckets[slot]
 	if timeBucket == nil {
 		trie.resetTimeBucket(block)

@@ -94,33 +94,10 @@ func TestBoxTxEnv_RunBoxTxs(t *testing.T) {
 	gp := new(types.GasPool).AddGas(header.GasLimit)
 	txNum := 5 // 箱子装入5笔交易
 	boxTx := getBoxTx(txNum, false)
-	gasUsed, err := b.RunBoxTxs(gp, boxTx, header, 1)
+	gasUsed, err := b.RunBoxTxs(gp, boxTx, header, 1, int64(1*time.Millisecond))
 	if err != nil {
 		panic(err)
 	}
 	assert.Equal(t, uint64(txNum)*params.OrdinaryTxGas, gasUsed)                                                      // 测试盒子中的交易花费的gas
 	assert.Equal(t, new(big.Int).Mul(big.NewInt(int64(gasUsed)), common.Big1), am.GetAccount(minerAddr).GetBalance()) // 测试盒子交易执行完之后给矿工的交易打包费用
-	// 查看交易from账户中是否有箱子中的交易索引map
-	fromAcc := am.GetAccount(boxTx.From())
-	key := boxTx.Hash()
-	value, err := fromAcc.GetStorageState(key)
-	if err != nil {
-		panic(err)
-	}
-	// unmarshal value
-	boxTxsMap := make(types.BoxTxsMap)
-	err = json.Unmarshal(value, &boxTxsMap)
-	if err != nil {
-		panic(err)
-	}
-	// 获取箱子中的交易
-	box := &types.Box{}
-	err = json.Unmarshal(boxTx.Data(), box)
-	if err != nil {
-		panic(err)
-	}
-	// 对比box中的交易和map中的交易是否一样
-	for _, tx := range box.SubTxList {
-		assert.Equal(t, boxTxsMap[tx.Hash()].Hash(), tx.Hash())
-	}
 }

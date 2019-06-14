@@ -7,8 +7,6 @@ import (
 	"sync"
 )
 
-var TransactionExpiration = 30 * 60
-
 type TxPool struct {
 	/* 还未被打包进块的交易 */
 	PendingTxs *TxQueue
