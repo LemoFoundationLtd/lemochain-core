@@ -881,7 +881,7 @@ func (pm *ProtocolManager) handleDiscoverReqMsg(msg *p2p.Msg, p *peer) error {
 	}
 	res := new(DiscoverResData)
 	res.Sequence = condition.Sequence
-	res.Nodes = pm.discover.GetNodesForDiscover(res.Sequence)
+	res.Nodes = pm.discover.GetNodesForDiscover(res.Sequence, p.NodeID().String())
 	go p.SendDiscoverResp(res)
 	return nil
 }

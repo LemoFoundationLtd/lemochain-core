@@ -235,7 +235,7 @@ func (srv *Server) HandleConn(fd net.Conn, nodeID *NodeID) error {
 	if err != nil {
 		log.Debugf("Peer handshake failed: %v", err)
 		if err = fd.Close(); err != nil {
-			log.Errorf("close connections failed", err)
+			log.Errorf("close connections failed: %s", err)
 		}
 		if err = srv.discover.SetConnectResult(peer.RNodeID(), false); err != nil {
 			log.Errorf("SetConnectResult failed: %v", err)
@@ -249,7 +249,7 @@ func (srv *Server) HandleConn(fd net.Conn, nodeID *NodeID) error {
 	// is itself
 	if bytes.Compare(peer.RNodeID()[:], deputynode.GetSelfNodeID()) == 0 {
 		if err = fd.Close(); err != nil {
-			log.Errorf("Close connections failed", err)
+			log.Errorf("Close connections failed: %s", err)
 		}
 		if err = srv.discover.SetConnectResult(peer.RNodeID(), false); err != nil {
 			log.Errorf("SetConnectResult failed: %v", err)
