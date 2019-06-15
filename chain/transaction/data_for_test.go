@@ -71,6 +71,7 @@ func newBlockForTest(height uint32, txs types.Transactions, am *account.Manager,
 	var (
 		parentHash common.Hash
 		gasUsed    uint64
+		selectTxs  types.Transactions
 	)
 	p := NewTxProcessor(config.RewardManager, config.ChainID, newTestChain(db), am, db)
 	// 判断创世块
@@ -90,7 +91,7 @@ func newBlockForTest(height uint32, txs types.Transactions, am *account.Manager,
 	}
 	// 执行交易
 	if len(txs) != 0 {
-		_, _, gasUsed = p.ApplyTxs(header, txs, 10)
+		selectTxs, _, gasUsed = p.ApplyTxs(header, txs, 10)
 	}
 
 	am.Finalise()
@@ -100,7 +101,7 @@ func newBlockForTest(height uint32, txs types.Transactions, am *account.Manager,
 	header.LogRoot = logs.MerkleRootSha()
 	header.VersionRoot = am.GetVersionRoot()
 
-	block := types.NewBlock(header, txs, logs)
+	block := types.NewBlock(header, selectTxs, logs)
 	hash := block.Hash()
 	db.SetBlock(hash, block)
 	am.Save(hash)

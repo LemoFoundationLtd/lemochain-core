@@ -483,9 +483,21 @@ func Test_Contract(t *testing.T) {
 	// 2.2 测试合约stop功能
 	stopContractData := common.FromHex("0x07da68f5")
 	tx03 := makeTx(godPrivate, godAddr, contractAddr, stopContractData, params.OrdinaryTx, nil)
-	// 通过打包区块来执行交易
+	// 打包区块来执行交易
 	block03 := newBlockForTest(3, types.Transactions{tx03}, am, db, true)
-	t.Log(block03.Hash()) // todo ...
+	assert.Equal(t, types.Transactions{tx03}, block03.Txs)
+	// 通过测试合约内转账功能是否能成功来判断stop合约是否成功
+	data = common.FromHex("0xa9059cbb000000000000000000000000016ad4fc7e1608685bf5fe5573973bf2b1ef9b8a0000000000000000000000000000000000000000000000000000000000000005")
+	// 创建transfer交易
+	tx04 := makeTx(godPrivate, godAddr, contractAddr, data, params.OrdinaryTx, nil)
+	block04 := newBlockForTest(4, types.Transactions{tx04}, am, db, true)
+	assert.Equal(t, types.Transactions{tx04}, block04.Txs)
+	// 从合约中读取转账之后代币接收者的代币余额(期望值是没变的)
+	reciverAddrGetbalanceFunc = common.FromHex("0x70a08231000000000000000000000000016ad4fc7e1608685bf5fe5573973bf2b1ef9b8a")
+	ret, _, err = readContraction(p, db, block04.Header, &contractAddr, reciverAddrGetbalanceFunc)
+	balance, err = strconv.ParseInt(common.ToHex(ret), 0, 64)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(5), balance)
 }
 
 // regexMatchLetter 正则配置出字符串中的字母字符串
