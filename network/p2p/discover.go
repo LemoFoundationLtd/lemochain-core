@@ -329,9 +329,22 @@ func (m *DiscoverManager) getAvailableNodes() []string {
 }
 
 // GetNodesForDiscover get available nodes for node discovery
-func (m *DiscoverManager) GetNodesForDiscover(sequence uint) []string {
+func (m *DiscoverManager) GetNodesForDiscover(sequence uint, rPeerNodeID string) []string {
 	// sequence for revert
-	return m.getAvailableNodes()
+	nodes := m.getAvailableNodes()
+	newNodes := make([]string, 0)
+	// judge that sending nodes for discovery cannot contain the remote peer node
+	for _, node := range nodes {
+		tmp := strings.Split(node, "@")
+		if len(tmp) != 2 {
+			continue
+		}
+		if tmp[0] == rPeerNodeID {
+			continue
+		}
+		newNodes = append(newNodes, node)
+	}
+	return newNodes
 }
 
 // readFile read file function

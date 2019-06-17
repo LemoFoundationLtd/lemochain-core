@@ -516,7 +516,7 @@ func Test_GetNodesForDiscover(t *testing.T) {
 		}
 	}
 
-	nodes := dis.GetNodesForDiscover(1)
+	nodes := dis.GetNodesForDiscover(1, "")
 
 	assert.Len(t, nodes, 200)
 }
