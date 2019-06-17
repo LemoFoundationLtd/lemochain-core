@@ -454,31 +454,74 @@ func Test_Contract(t *testing.T) {
 	assert.Equal(t, expectAuthorityAddr, common.BytesToAddress(ret))
 
 	// 2. 调用合约中的方法
-	// 2.1 调用转账方法
+	// 2.1 批量调用转账方法
 	/*
-		接收者Lemo地址：Lemo83JW7TBPA7P2P6AR9ZC2WCQJYRNHZ4NJD4CY
-		接收者原生地址：0x016ad4Fc7e1608685Bf5fe5573973BF2B1Ef9B8A
-		接收者私钥：0x9c3c4a327ce214f0a1bf9cfa756fbf74f1c7322399ffff925efd8c15c49953eb
-		转账balance = 5
+		合约发送者godAddr 的初始代币数量为500
+		向10个账户每个账户转100个代币
+		只有前面五个账户转账才会成功，后面五个账户由于余额不足转账会失败
 	*/
-	transferData := common.FromHex("0xa9059cbb000000000000000000000000016ad4fc7e1608685bf5fe5573973bf2b1ef9b8a0000000000000000000000000000000000000000000000000000000000000005")
+	transferFun := "0xa9059cbb"
+	amount := "0000000000000000000000000000000000000000000000000000000000000064" // 转币数量100
+	zero := "000000000000000000000000"
+	receiver01 := "0x016ad4Fc7e1608685Bf5fe5573973BF2B1Ef9B8A"
+	receiver02 := "0x01f98855Be9ecc5c23A28Ce345D2Cc04686f2c61"
+	receiver03 := "0x0112fDDcF0C08132A5dcd9ED77e1a3348ff378D2"
+	receiver04 := "0x016017aF50F4bB67101CE79298ACBdA1A3c12C15"
+	receiver05 := "0x01a8dc6e69fb32b7cb7fd62e4930780fc8fab5f6"
+	receiver06 := "0x017d6d2b40e08a8e49f6acf622402f879ef23655"
+	receiver07 := "0x0198fe5aea5ef9daa6eed84111af535139d42ec0"
+	receiver08 := "0x01118d0d17e3640b7123443594ce7619ea36ec57"
+	receiver09 := "0x01eb5f2b936e3eb97a44c52d5abb913f8895444e"
+	receiver10 := "0x016447f248d0528eb1fda7dc032159b73da9c091"
+
+	var tests = []struct {
+		Input    []byte // 转账方法"0xa9059cbb" + 转入地址"000000000000000000000000016ad4fc7e1608685bf5fe5573973bf2b1ef9b8a" + 转入数量"0000000000000000000000000000000000000000000000000000000000000064"
+		Receiver string // 转账执行成功之后接收者的代币数量
+	}{
+		{common.FromHex(transferFun + zero + receiver01[2:] + amount), receiver01}, // success
+		{common.FromHex(transferFun + zero + receiver02[2:] + amount), receiver02}, // success
+		{common.FromHex(transferFun + zero + receiver03[2:] + amount), receiver03}, // success
+		{common.FromHex(transferFun + zero + receiver04[2:] + amount), receiver04}, // success
+		{common.FromHex(transferFun + zero + receiver05[2:] + amount), receiver05}, // success
+		{common.FromHex(transferFun + zero + receiver06[2:] + amount), receiver06}, // insufficient balance
+		{common.FromHex(transferFun + zero + receiver07[2:] + amount), receiver07}, // insufficient balance
+		{common.FromHex(transferFun + zero + receiver08[2:] + amount), receiver08}, // insufficient balance
+		{common.FromHex(transferFun + zero + receiver09[2:] + amount), receiver09}, // insufficient balance
+		{common.FromHex(transferFun + zero + receiver10[2:] + amount), receiver10}, // insufficient balance
+	}
+
 	// 创建transfer交易
-	tx02 := makeTx(godPrivate, godAddr, contractAddr, transferData, params.OrdinaryTx, nil)
+	txs = make(types.Transactions, 0)
+	for _, test := range tests {
+		tx := makeTx(godPrivate, godAddr, contractAddr, test.Input, params.OrdinaryTx, nil)
+		txs = append(txs, tx)
+	}
+
 	// 通过打包区块来执行交易
-	block02 := newBlockForTest(2, types.Transactions{tx02}, am, db, true)
-	// 从合约中读取转账之后发送者(godAddr)的代币余额 (期望值为495)
+	block02 := newBlockForTest(2, txs, am, db, true)
+	// 验证只打包了10条交易进去
+	assert.Equal(t, 10, len(block02.Txs))
+
+	// 从合约中读取转账之后发送者(godAddr)的代币余额 (期望值为0)
 	godAddrGetBalanceFunc := common.FromHex("0x70a08231000000000000000000000000015780f8456f9c1532645087a19dcf9a7e0c7f97")
 	ret, _, err = readContraction(p, db, block02.Header, &contractAddr, godAddrGetBalanceFunc)
 	balance, err = strconv.ParseInt(common.ToHex(ret), 0, 64)
 	assert.NoError(t, err)
-	assert.Equal(t, int64(495), balance)
+	assert.Equal(t, int64(0), balance)
 
-	// 从合约中读取转账之后代币接收者的代币余额 (期望值为5)
-	reciverAddrGetbalanceFunc := common.FromHex("0x70a08231000000000000000000000000016ad4fc7e1608685bf5fe5573973bf2b1ef9b8a")
-	ret, _, err = readContraction(p, db, block02.Header, &contractAddr, reciverAddrGetbalanceFunc)
-	balance, err = strconv.ParseInt(common.ToHex(ret), 0, 64)
-	assert.NoError(t, err)
-	assert.Equal(t, int64(5), balance)
+	getBalanceFunc := "0x70a08231"
+	for index, test := range tests {
+		// 从合约中读取转账之后代币接收者的代币余额 (期望值为5)
+		reciverAddrGetbalanceData := common.FromHex(getBalanceFunc + zero + test.Receiver[2:])
+		ret, _, err = readContraction(p, db, block02.Header, &contractAddr, reciverAddrGetbalanceData)
+		balance, err = strconv.ParseInt(common.ToHex(ret), 0, 64)
+		assert.NoError(t, err)
+		if index <= 4 { // 前5条转账成功
+			assert.Equal(t, int64(100), balance)
+		} else { // 后面5条代币余额不足转账失败
+			assert.Equal(t, int64(0), balance)
+		}
+	}
 
 	// 2.2 测试合约stop功能
 	stopContractData := common.FromHex("0x07da68f5")
@@ -493,11 +536,11 @@ func Test_Contract(t *testing.T) {
 	block04 := newBlockForTest(4, types.Transactions{tx04}, am, db, true)
 	assert.Equal(t, types.Transactions{tx04}, block04.Txs)
 	// 从合约中读取转账之后代币接收者的代币余额(期望值是没变的)
-	reciverAddrGetbalanceFunc = common.FromHex("0x70a08231000000000000000000000000016ad4fc7e1608685bf5fe5573973bf2b1ef9b8a")
-	ret, _, err = readContraction(p, db, block04.Header, &contractAddr, reciverAddrGetbalanceFunc)
+	reciverAddrGetbalanceData := common.FromHex("0x70a08231000000000000000000000000016ad4fc7e1608685bf5fe5573973bf2b1ef9b8a")
+	ret, _, err = readContraction(p, db, block04.Header, &contractAddr, reciverAddrGetbalanceData)
 	balance, err = strconv.ParseInt(common.ToHex(ret), 0, 64)
 	assert.NoError(t, err)
-	assert.Equal(t, int64(5), balance)
+	assert.Equal(t, int64(100), balance)
 }
 
 // regexMatchLetter 正则配置出字符串中的字母字符串
