@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/hexutil"
@@ -20,6 +21,16 @@ var (
 	ErrNoDeputyNodes       = errors.New("no deputy nodes in genesis")
 	ErrInvalidDeputyNodes  = errors.New("genesis config's deputy nodes are invalid")
 )
+
+type infos []*candidateInfo
+
+type candidateInfo struct {
+	MinerAddress  common.Address
+	IncomeAddress common.Address
+	NodeID        []byte
+	Host          string
+	Port          string
+}
 
 var (
 	DefaultFounder     = decodeMinerAddress("Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG") // Initial LEMO holder
@@ -53,6 +64,44 @@ var (
 			NodeID:       common.FromHex("0x5b980ffb1b463fce4773a22ebf376c07c6207023b016b36ccfaba7be1cd1ab4a91737741cd43b7fcb10879e0fcf314d69fa953daec0f02be0f8f9cedb0cb3797"),
 			Rank:         4,
 			Votes:        new(big.Int).SetInt64(1),
+		},
+	}
+
+	DefaultDeputyNodesInfo = infos{
+		&candidateInfo{
+			MinerAddress:  DefaultDeputyNodes[0].MinerAddress,
+			IncomeAddress: DefaultDeputyNodes[0].MinerAddress,
+			NodeID:        DefaultDeputyNodes[0].NodeID,
+			Host:          "www.lemochain.com",
+			Port:          "7001",
+		},
+		&candidateInfo{
+			MinerAddress:  DefaultDeputyNodes[1].MinerAddress,
+			IncomeAddress: DefaultDeputyNodes[1].MinerAddress,
+			NodeID:        DefaultDeputyNodes[1].NodeID,
+			Host:          "www.lemolabs.com",
+			Port:          "7002",
+		},
+		&candidateInfo{
+			MinerAddress:  DefaultDeputyNodes[2].MinerAddress,
+			IncomeAddress: DefaultDeputyNodes[2].MinerAddress,
+			NodeID:        DefaultDeputyNodes[2].NodeID,
+			Host:          "10.0.22.24",
+			Port:          "7003",
+		},
+		&candidateInfo{
+			MinerAddress:  DefaultDeputyNodes[3].MinerAddress,
+			IncomeAddress: DefaultDeputyNodes[3].MinerAddress,
+			NodeID:        DefaultDeputyNodes[3].NodeID,
+			Host:          "10.0.23.24",
+			Port:          "7004",
+		},
+		&candidateInfo{
+			MinerAddress:  DefaultDeputyNodes[4].MinerAddress,
+			IncomeAddress: DefaultDeputyNodes[4].MinerAddress,
+			NodeID:        DefaultDeputyNodes[4].NodeID,
+			Host:          "10.0.22.23",
+			Port:          "7005",
 		},
 	}
 )
@@ -144,6 +193,7 @@ func SetupGenesisBlock(db protocol.ChainDB, genesis *Genesis) *types.Block {
 
 // ToBlock
 func (g *Genesis) ToBlock(am *account.Manager) (*types.Block, error) {
+	g.setInitalCandidatelistsInfo(am)
 	g.setBalance(am)
 	err := am.Finalise()
 	if err != nil {
@@ -171,4 +221,17 @@ func (g *Genesis) ToBlock(am *account.Manager) (*types.Block, error) {
 func (g *Genesis) setBalance(am *account.Manager) {
 	total, _ := new(big.Int).SetString("1600000000000000000000000000", 10) // 1.6 billion
 	am.GetAccount(g.Founder).SetBalance(total)
+}
+
+// setInitalCandidatelistsInfo 设置初始的候选节点列表的info
+func (g *Genesis) setInitalCandidatelistsInfo(am *account.Manager) {
+	profile := make(types.Profile)
+	for _, v := range DefaultDeputyNodesInfo {
+		profile[types.CandidateKeyIsCandidate] = params.IsCandidateNode
+		profile[types.CandidateKeyIncomeAddress] = v.IncomeAddress.String()
+		profile[types.CandidateKeyNodeID] = common.ToHex(v.NodeID)
+		profile[types.CandidateKeyHost] = v.Host
+		profile[types.CandidateKeyPort] = v.Port
+		am.GetAccount(v.MinerAddress).SetCandidate(profile)
+	}
 }
