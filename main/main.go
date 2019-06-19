@@ -7,6 +7,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/main/console"
 	"github.com/LemoFoundationLtd/lemochain-core/main/node"
+	"github.com/LemoFoundationLtd/lemochain-core/metrics"
 	"github.com/inconshreveable/log15"
 	"gopkg.in/urfave/cli.v1"
 	"os"
@@ -14,6 +15,7 @@ import (
 	"runtime"
 	"sort"
 	"syscall"
+	"time"
 )
 
 var (
@@ -69,6 +71,10 @@ func init() {
 		// if err := debug.Setup(ctx); err != nil {
 		// 	return err
 		// }
+
+		// Start system runtime metrics collection
+		go metrics.CollectProcessMetrics(3 * time.Second)
+
 		return nil
 	}
 
