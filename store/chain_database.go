@@ -56,6 +56,8 @@ func NewChainDataBase(home string, driver string, dns string) *ChainDatabase {
 		Context:         NewRunContext(home),
 		LevelDB:         leveldb.NewLevelDBDatabase(filepath.Join(home, "index"), 16, 16),
 	}
+	// 启动leveldb的metrics数据统计功能
+	db.LevelDB.Meter("glemo/db/chaindata/")
 
 	db.BizDB = NewBizDatabase(db, db.LevelDB)
 	db.Beansdb = NewBeansDB(home, db.LevelDB)

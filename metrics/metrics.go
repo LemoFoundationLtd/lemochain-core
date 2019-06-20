@@ -2,12 +2,14 @@
 package metrics
 
 import (
-	"runtime"
-	"time"
-
-	"github.com/ethereum/go-ethereum/log"
+	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/rcrowley/go-metrics"
 	"github.com/rcrowley/go-metrics/exp"
+	logger "log"
+	"os"
+	"runtime"
+	"strings"
+	"time"
 )
 
 // MetricsEnabledFlag is the CLI flag name to use to enable metrics collections.
@@ -20,12 +22,12 @@ var Enabled = false
 // any other code gets to create meters and timers, we'll actually do an ugly hack
 // and peek into the command line args for the metrics flag.
 func init() {
-	// for _, arg := range os.Args {
-	// 	if strings.TrimLeft(arg, "-") == MetricsEnabledFlag {
-	// 		log.Info("Enabling metrics collection")
-	// 		Enabled = true
-	// 	}
-	// }
+	for _, arg := range os.Args {
+		if strings.TrimLeft(arg, "-") == MetricsEnabledFlag {
+			log.Info("Enabling metrics collection")
+			Enabled = true
+		}
+	}
 	Enabled = true
 	exp.Exp(metrics.DefaultRegistry)
 }
@@ -109,4 +111,8 @@ func CollectProcessMetrics(refresh time.Duration) {
 		}
 		time.Sleep(refresh)
 	}
+}
+
+func PointMetricsLog() {
+	metrics.Log(metrics.DefaultRegistry, 10*time.Second, logger.New(os.Stderr, "metrics: ", logger.Lmicroseconds))
 }

@@ -12,18 +12,20 @@ func TestNewCounter(t *testing.T) {
 	// counter := NewCounter("co:")
 	// meter := NewMeter("me:")
 	timer := NewTimer("metrics")
-	start := time.Now()
+
 	// g := NewGauge("gu")
 	go func() {
+		start := time.Now()
 		for {
+			// start := time.Now()
 			time.Sleep(1 * time.Second)
-			// counter.Inc(2)
-			// meter.Mark(2)
+			// counter.Inc(1)
+			// meter.Mark(1)
 			timer.UpdateSince(start)
 			// g.Update(1)
 		}
 	}()
-	go metrics.Log(metrics.DefaultRegistry, 4*time.Second, log.New(os.Stderr, "metrics: ", log.Lmicroseconds))
+	go metrics.Log(metrics.DefaultRegistry, 5*time.Second, log.New(os.Stderr, "metrics: ", log.Lmicroseconds))
 
 	select {}
 }

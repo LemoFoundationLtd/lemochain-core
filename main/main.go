@@ -30,6 +30,7 @@ var (
 		node.JSpathFlag,
 		node.DebugFlag,
 		node.LogLevelFlag,
+		node.MetricsEnabledFlag,
 	}
 
 	rpcFlags = []cli.Flag{
@@ -154,6 +155,7 @@ func startNode(ctx *cli.Context, n *node.Node) {
 	if err := n.Start(); err != nil {
 		log.Critf("Error starting node: %v", err)
 	}
+	go metrics.PointMetricsLog()
 
 	go interrupt(n.Stop)
 

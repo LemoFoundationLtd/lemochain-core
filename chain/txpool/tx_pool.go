@@ -4,7 +4,14 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
+	"github.com/LemoFoundationLtd/lemochain-core/metrics"
 	"sync"
+)
+
+var (
+	recvTxMeter            = metrics.NewMeter("txpool/receiveTx")     // 接收交易的速率统计
+	invalidTxCounter       = metrics.NewCounter("txpool/invalid")     // 执行失败的交易
+	txpoolTotalNumberGauge = metrics.NewGauge("txpool/totalTxNumber") // 交易池中剩下的总交易数量
 )
 
 type TxPool struct {
@@ -49,6 +56,7 @@ func (pool *TxPool) DelInvalidTxs(txs []*types.Transaction) {
 		hashes = append(hashes, tx.Hash())
 	}
 	pool.PendingTxs.DelBatch(hashes)
+	invalidTxCounter.Inc(int64(len(txs)))
 }
 
 func (pool *TxPool) isInBlocks(hashes HashSet, blocks []*TrieNode) bool {
@@ -156,6 +164,7 @@ func (pool *TxPool) RecvTx(tx *types.Transaction) bool {
 	} else {
 		pool.RecentTxs.RecvTx(tx)
 		pool.PendingTxs.Push(tx)
+		recvTxMeter.Mark(1)
 		return true
 	}
 }

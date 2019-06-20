@@ -8,6 +8,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/common/merkle"
 	"github.com/LemoFoundationLtd/lemochain-core/common/rlp"
+	"github.com/LemoFoundationLtd/lemochain-core/metrics"
 	"io"
 	"math/big"
 	"strings"
@@ -25,6 +26,10 @@ const (
 var (
 	DefaultTTTL uint64 = 2 * 60 * 60 // Transaction Time To Live, 2hours
 	TxVersion   uint8  = 1           // current transaction version. should between 0 and 128
+)
+
+var (
+	verifyFailedTxMeter = metrics.NewMeter("tx/verifyFailed") // 交易验证失败的数量统计
 )
 
 type Transactions []*Transaction
@@ -335,7 +340,13 @@ func (tx *Transaction) Clone() *Transaction {
 }
 
 // VerifyTx transaction parameter verification
-func (tx *Transaction) VerifyTx(chainID uint16, timeStamp uint64) error {
+func (tx *Transaction) VerifyTx(chainID uint16, timeStamp uint64) (err error) {
+	defer func() {
+		if err != nil {
+			verifyFailedTxMeter.Mark(1)
+		}
+	}()
+
 	// verify time
 	if tx.Expiration() < timeStamp {
 		log.Errorf("Received transaction expiration time less than current time. Expiration time: %d. The current time: %d", tx.Expiration(), timeStamp)

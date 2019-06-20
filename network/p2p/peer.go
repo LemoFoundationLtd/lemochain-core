@@ -9,6 +9,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/common/mclock"
 	"github.com/LemoFoundationLtd/lemochain-core/common/subscribe"
+	"github.com/LemoFoundationLtd/lemochain-core/metrics"
 	"io"
 	"net"
 	"sync"
@@ -23,6 +24,13 @@ const (
 	StatusManualDisconnect
 	StatusFailedHandshake
 	StatusBadData
+)
+
+var (
+	readMsgSuccessTimer  = metrics.NewTimer("p2p/peer/readMsgSuccess")  // 统计成功读取msg的timer
+	readMsgFailedTimer   = metrics.NewTimer("p2p/peer/readMsgFailed")   // 统计读取msg失败的timer
+	writeMsgSuccessTimer = metrics.NewTimer("p2p/peer/writeMsgSuccess") // 统计写msg成功的timer
+	writeMsgFailedTimer  = metrics.NewTimer("p2p/peer/writeMsgFailed")  // 统计写msg失败的timer
 )
 
 type IPeer interface {
@@ -128,9 +136,11 @@ func (p *Peer) readLoop() {
 		log.Debugf("ReadLoop finished: %s", p.RNodeID().String()[:16])
 	}()
 	for {
+		start := time.Now()
 		content, err := p.readConn()
 		if err != nil {
 			log.Debugf("Read conn err: %v", err)
+			readMsgFailedTimer.UpdateSince(start)
 			p.Close()
 			return
 		}
@@ -139,9 +149,11 @@ func (p *Peer) readLoop() {
 		err = p.handle(content)
 		if err != nil {
 			log.Debugf("Handle conn content err: %v", err)
+			readMsgFailedTimer.UpdateSince(start)
 			p.Close()
 			return
 		}
+		readMsgSuccessTimer.UpdateSince(start)
 	}
 }
 
@@ -225,6 +237,16 @@ func (p *Peer) handle(content []byte) (err error) {
 func (p *Peer) WriteMsg(code uint32, msg []byte) (err error) {
 	p.wmu.Lock()
 	defer p.wmu.Unlock()
+
+	start := time.Now()
+	defer func() {
+		if err != nil {
+			writeMsgFailedTimer.UpdateSince(start)
+		} else {
+			writeMsgSuccessTimer.UpdateSince(start)
+		}
+	}()
+
 	// pack message frame
 	buf, err := p.packFrame(code, msg)
 	if err != nil {

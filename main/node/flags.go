@@ -4,6 +4,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/flag"
+	"github.com/LemoFoundationLtd/lemochain-core/metrics"
 	"github.com/LemoFoundationLtd/lemochain-core/network/p2p"
 	"gopkg.in/urfave/cli.v1"
 	"os"
@@ -108,6 +109,10 @@ var (
 		Name:  common.LogLevel,
 		Usage: "Output log level",
 		Value: 4,
+	}
+	MetricsEnabledFlag = cli.BoolFlag{
+		Name:  metrics.MetricsEnabledFlag,
+		Usage: "Enable metrics collection and reporting",
 	}
 )
 

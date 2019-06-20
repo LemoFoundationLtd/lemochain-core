@@ -64,6 +64,7 @@ func (queue *TxQueue) DelBatch(hashes []common.Hash) {
 	for _, hash := range hashes {
 		queue.Del(hash)
 	}
+	txpoolTotalNumberGauge.Update(int64(len(queue.TxsQueue)))
 }
 
 func (queue *TxQueue) Pop(time uint32, size int) []*types.Transaction {
@@ -89,7 +90,6 @@ func (queue *TxQueue) Pop(time uint32, size int) []*types.Transaction {
 		count++
 		index++
 	}
-
 	return result
 }
 
