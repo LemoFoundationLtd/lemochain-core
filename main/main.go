@@ -155,7 +155,7 @@ func startNode(ctx *cli.Context, n *node.Node) {
 	if err := n.Start(); err != nil {
 		log.Critf("Error starting node: %v", err)
 	}
-	go metrics.PointMetricsLog()
+	go metrics.PointMetricsLog() // 打印出系统内存和磁盘的占用情况 todo
 
 	go interrupt(n.Stop)
 

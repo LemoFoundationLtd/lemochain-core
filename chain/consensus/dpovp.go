@@ -16,8 +16,8 @@ import (
 )
 
 var (
-	blockInsertTimer = metrics.NewTimer("chain/insertBlock") // 统计区块插入链中的速率和所用时间的分布情况
-	mineBlockTimer   = metrics.NewTimer("chain/mineBlock")   // 统计出块速率和时间分布
+	blockInsertTimer = metrics.NewTimer("consensus/InsertBlock/insertBlock") // 统计区块插入链中的速率和所用时间的分布情况
+	mineBlockTimer   = metrics.NewTimer("consensus/MineBlock/mineBlock")     // 统计出块速率和时间分布
 )
 
 // DPoVP process the fork logic
@@ -135,9 +135,7 @@ func (dp *DPoVP) MineBlock(material *BlockMaterial) (*types.Block, error) {
 
 func (dp *DPoVP) InsertBlock(rawBlock *types.Block) (*types.Block, error) {
 	start := time.Now()
-	defer func() {
-		blockInsertTimer.UpdateSince(start)
-	}()
+	defer blockInsertTimer.UpdateSince(start)
 
 	// ignore exist block as soon as possible
 	if ok := dp.isIgnorableBlock(rawBlock); ok {

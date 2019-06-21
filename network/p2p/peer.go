@@ -27,10 +27,10 @@ const (
 )
 
 var (
-	readMsgSuccessTimer  = metrics.NewTimer("p2p/peer/readMsgSuccess")  // 统计成功读取msg的timer
-	readMsgFailedTimer   = metrics.NewTimer("p2p/peer/readMsgFailed")   // 统计读取msg失败的timer
-	writeMsgSuccessTimer = metrics.NewTimer("p2p/peer/writeMsgSuccess") // 统计写msg成功的timer
-	writeMsgFailedTimer  = metrics.NewTimer("p2p/peer/writeMsgFailed")  // 统计写msg失败的timer
+	readMsgSuccessTimer  = metrics.NewTimer("p2p/readLoop/readMsgSuccess")  // 统计成功读取msg的timer
+	readMsgFailedTimer   = metrics.NewTimer("p2p/readLoop/readMsgFailed")   // 统计读取msg失败的timer
+	writeMsgSuccessTimer = metrics.NewTimer("p2p/WriteMsg/writeMsgSuccess") // 统计写msg成功的timer
+	writeMsgFailedTimer  = metrics.NewTimer("p2p/WriteMsg/writeMsgFailed")  // 统计写msg失败的timer
 )
 
 type IPeer interface {
