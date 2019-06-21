@@ -5,7 +5,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/rcrowley/go-metrics"
 	"github.com/rcrowley/go-metrics/exp"
-	logger "log"
 	"os"
 	"runtime"
 	"strings"
@@ -114,5 +113,62 @@ func CollectProcessMetrics(refresh time.Duration) {
 }
 
 func PointMetricsLog() {
-	metrics.Log(metrics.DefaultRegistry, 10*time.Second, logger.New(os.Stderr, "metrics: ", logger.Lmicroseconds))
+	// metrics.Log(metrics.DefaultRegistry, 10*time.Second, logger.New(os.Stderr, "metrics: ", logger.Lmicroseconds))
+	WriteMetricsData(metrics.DefaultRegistry, 5*time.Second)
+}
+
+// WriteMetricsData 收集统计数据
+func WriteMetricsData(r metrics.Registry, refresh time.Duration) {
+	du := float64(time.Nanosecond)
+	duSuffix := time.Nanosecond.String()[1:]
+
+	for range time.Tick(refresh) {
+		r.Each(func(name string, i interface{}) {
+			switch metric := i.(type) {
+			case metrics.Gauge:
+				log.Infof("gauge %s\n", name)
+				log.Infof("  value:       %9d\n", metric.Value())
+			case metrics.Counter:
+				log.Infof("counter %s\n", name)
+				log.Infof("  count:       %9d\n", metric.Count())
+			case metrics.Meter:
+				m := metric.Snapshot()
+				log.Infof("meter %s\n", name)
+				log.Infof("  count:       %9d\n", m.Count())
+				log.Infof("  1-min rate:  %12.2f\n", m.Rate1())
+				log.Infof("  5-min rate:  %12.2f\n", m.Rate5())
+				log.Infof("  15-min rate: %12.2f\n", m.Rate15())
+				log.Infof("  mean rate:   %12.2f\n", m.RateMean())
+			case metrics.Timer:
+				t := metric.Snapshot()
+				ps := t.Percentiles([]float64{0.5, 0.75, 0.95, 0.99, 0.999})
+				log.Infof("timer %s\n", name)
+				log.Infof("  count:       %9d\n", t.Count())
+				log.Infof("  min:         %12.2f%s\n", float64(t.Min())/du, duSuffix)
+				log.Infof("  max:         %12.2f%s\n", float64(t.Max())/du, duSuffix)
+				log.Infof("  mean:        %12.2f%s\n", t.Mean()/du, duSuffix)
+				log.Infof("  stddev:      %12.2f%s\n", t.StdDev()/du, duSuffix)
+				log.Infof("  median:      %12.2f%s\n", ps[0]/du, duSuffix)
+				log.Infof("  75%%:         %12.2f%s\n", ps[1]/du, duSuffix)
+				log.Infof("  95%%:         %12.2f%s\n", ps[2]/du, duSuffix)
+				log.Infof("  99%%:         %12.2f%s\n", ps[3]/du, duSuffix)
+				log.Infof("  99.9%%:       %12.2f%s\n", ps[4]/du, duSuffix)
+				log.Infof("  1-min rate:  %12.2f\n", t.Rate1())
+				log.Infof("  5-min rate:  %12.2f\n", t.Rate5())
+				log.Infof("  15-min rate: %12.2f\n", t.Rate15())
+				log.Infof("  mean rate:   %12.2f\n", t.RateMean())
+			}
+		})
+	}
+}
+
+// GetModuleMetrics 返回指定模块的的metrics
+func GetModuleMetrics(moduleName string) map[string]interface{} {
+	m := make(map[string]interface{})
+	metrics.DefaultRegistry.Each(func(name string, i interface{}) {
+		if strings.HasPrefix(name, moduleName) {
+			m[name] = i
+		}
+	})
+	return m
 }

@@ -16,6 +16,8 @@ import (
 
 var max_candidate_count = 20
 
+const Prefix = "glemo/db/chaindata/"
+
 type ChainDatabase struct {
 	LastConfirm     *CBlock                 // the newest confirm block, and the root of unconfirmed block tree
 	UnConfirmBlocks map[common.Hash]*CBlock // unconfirmed block tree nodes
@@ -57,7 +59,7 @@ func NewChainDataBase(home string, driver string, dns string) *ChainDatabase {
 		LevelDB:         leveldb.NewLevelDBDatabase(filepath.Join(home, "index"), 16, 16),
 	}
 	// 启动leveldb的metrics数据统计功能
-	db.LevelDB.Meter("glemo/db/chaindata/")
+	db.LevelDB.Meter(Prefix)
 
 	db.BizDB = NewBizDatabase(db, db.LevelDB)
 	db.Beansdb = NewBeansDB(home, db.LevelDB)

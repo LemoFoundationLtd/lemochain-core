@@ -12,6 +12,7 @@ var (
 	recvTxMeter            = metrics.NewMeter("txpool/RecvTx/receiveTx")        // 接收交易的速率统计
 	invalidTxCounter       = metrics.NewCounter("txpool/DelInvalidTxs/invalid") // 执行失败的交易
 	txpoolTotalNumberGauge = metrics.NewGauge("txpool/totalTxNumber")           // 交易池中剩下的总交易数量
+
 )
 
 type TxPool struct {
