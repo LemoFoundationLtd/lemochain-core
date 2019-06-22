@@ -425,7 +425,7 @@ func Test_Contract(t *testing.T) {
 		token_symbol: Lemo
 	*/
 	// 文件中读取合约code
-	filePath, _ := filepath.Abs("../transaction/test_data.txt")
+	filePath, _ := filepath.Abs("../transaction/contract_code.txt")
 	f, err := os.Open(filePath)
 	assert.NoError(t, err)
 	defer f.Close()
