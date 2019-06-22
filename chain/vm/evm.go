@@ -171,6 +171,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		if err != errExecutionReverted {
 			contract.UseGas(contract.Gas)
 		}
+		evm.AddEvent(addr, []common.Hash{types.TopicRunFail}, []byte{})
 	}
 	return ret, contract.Gas, err
 }
@@ -495,8 +496,7 @@ func (evm *EVM) Create(caller ContractRef, code []byte, gas uint64, value *big.I
 	}
 	// Create a new account on the state
 	snapshot := evm.am.Snapshot()
-	// Add event to store the creation address.
-	evm.AddEvent(contractAddr, []common.Hash{types.TopicContractCreation}, []byte{})
+
 	evm.Transfer(evm.am, caller.GetAddress(), contractAddr, value)
 
 	// initialise a new contract and set the code that is to be used by the
@@ -546,6 +546,9 @@ func (evm *EVM) Create(caller ContractRef, code []byte, gas uint64, value *big.I
 	if err != nil && err != ErrInsufficientBalance {
 		// Add event to record the error information.
 		evm.AddEvent(contractAddr, []common.Hash{types.TopicRunFail}, []byte{})
+	} else {
+		// Add event to store the creation address.
+		evm.AddEvent(contractAddr, []common.Hash{types.TopicContractCreation}, []byte{})
 	}
 	if evm.vmConfig.Debug && evm.depth == 0 {
 		evm.vmConfig.Tracer.CaptureEnd(ret, gas-contract.Gas, time.Since(start), err)

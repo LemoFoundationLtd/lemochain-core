@@ -398,10 +398,15 @@ func getContractFunctionCode(funcName string) []byte {
 	return h.Bytes()[:4]
 }
 
-// formatArgs 把参数转换成hash
+// formatArgs 把参数转换成[32]byte的数组类型
 func formatArgs(args string) []byte {
-	hash := common.HexToHash(args)
-	return hash.Bytes()
+	b := common.FromHex(args)
+	var h [32]byte
+	if len(b) > len(h) {
+		b = b[len(b)-32:]
+	}
+	copy(h[32-len(b):], b)
+	return h[:]
 }
 
 // Test_Contract 合约测试
@@ -546,7 +551,7 @@ func Test_Contract(t *testing.T) {
 			count++
 		}
 	}
-	assert.Equal(t, 100, count)
+	assert.Equal(t, 150, count)
 	// 验证只打包交易条数
 	assert.Equal(t, len(txs), len(block02.Txs))
 
