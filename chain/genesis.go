@@ -82,7 +82,7 @@ func InitDeputyNodes() deputynode.DeputyNodes {
 			MinerAddress: info.MinerAddress,
 			NodeID:       info.NodeID,
 			Rank:         uint32(i),
-			Votes:        new(big.Int).SetInt64(0),
+			Votes:        new(big.Int).SetInt64(0), // 初始的代理节点列表中的votes都为0，因为初始的时候没有一个账户中有lemo.
 		}
 		deputyNodes = append(deputyNodes, node)
 	}
@@ -179,7 +179,7 @@ func (g *Genesis) ToBlock(am *account.Manager) (*types.Block, error) {
 	// set balance for some account
 	g.setBalance(am)
 	// register candidate node for first term deputy nodes
-	g.setInitalCandidatelistsInfo(am)
+	g.initCandidateListInfo(am)
 
 	err := am.Finalise()
 	if err != nil {
@@ -209,8 +209,8 @@ func (g *Genesis) setBalance(am *account.Manager) {
 	am.GetAccount(g.Founder).SetBalance(total)
 }
 
-// setInitalCandidatelistsInfo 设置初始的候选节点列表的info
-func (g *Genesis) setInitalCandidatelistsInfo(am *account.Manager) {
+// initCandidateListInfo 设置初始的候选节点列表的info
+func (g *Genesis) initCandidateListInfo(am *account.Manager) {
 	profile := make(types.Profile)
 	for _, v := range DefaultDeputyNodesInfo {
 		profile[types.CandidateKeyIsCandidate] = params.IsCandidateNode
