@@ -1,6 +1,8 @@
 package transaction
 
 import (
+	"context"
+	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
@@ -10,8 +12,13 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/common/rlp"
+	"github.com/LemoFoundationLtd/lemochain-core/store/protocol"
 	"github.com/stretchr/testify/assert"
+	"io/ioutil"
 	"math/big"
+	"os"
+	"path/filepath"
+	"regexp"
 	"strconv"
 	"testing"
 	"time"
@@ -48,7 +55,7 @@ func TestTxProcessor_Process(t *testing.T) {
 	block01 := newBlockForTest(1, nil, am, db, false)
 	// 创建一个余额不足的交易
 	randPrivate, _ := crypto.GenerateKey()
-	tx := makeTx(randPrivate, crypto.PubkeyToAddress(randPrivate.PublicKey), godAddr, params.OrdinaryTx, big.NewInt(4000000))
+	tx := makeTx(randPrivate, crypto.PubkeyToAddress(randPrivate.PublicKey), godAddr, nil, params.OrdinaryTx, big.NewInt(4000000))
 	_, err = p.Process(block01.Header, types.Transactions{tx})
 	assert.Equal(t, ErrInvalidTxInBlock, err)
 }
@@ -64,7 +71,7 @@ func TestTxProcessor_Process_applyTxs(t *testing.T) {
 	// 创建5笔普通交易交易
 	txs := make(types.Transactions, 0)
 	for i := 0; i < 5; i++ {
-		tx := makeTx(godPrivate, godAddr, common.HexToAddress("0x9910"+strconv.Itoa(i)), params.OrdinaryTx, big.NewInt(50000))
+		tx := makeTx(godPrivate, godAddr, common.HexToAddress("0x9910"+strconv.Itoa(i)), nil, params.OrdinaryTx, big.NewInt(50000))
 		txs = append(txs, tx)
 	}
 	// 打包交易进区块
@@ -101,7 +108,7 @@ func Test_ApplyTxs_TimeoutTime(t *testing.T) {
 		GasLimit:     parentBlock.GasLimit(),
 	}
 
-	tx01 := makeTx(godPrivate, godAddr, common.HexToAddress("0x11223"), params.OrdinaryTx, common.Big1)
+	tx01 := makeTx(godPrivate, godAddr, common.HexToAddress("0x11223"), nil, params.OrdinaryTx, common.Big1)
 	txNum := 500
 	txs := make([]*types.Transaction, 0, txNum)
 	for i := 0; i < txNum; i++ {
@@ -170,8 +177,8 @@ func TestReimbursement_transaction(t *testing.T) {
 		senderAddr         = crypto.PubkeyToAddress(senderPrivate.PublicKey)
 		gasPayerPrivate, _ = crypto.HexToECDSA("57a0b0be5616e74c4315882e3649ade12c775db3b5023dcaa168d01825612c9b")
 		gasPayerAddr       = crypto.PubkeyToAddress(gasPayerPrivate.PublicKey)
-		Tx01               = makeTx(godPrivate, godAddr, gasPayerAddr, params.OrdinaryTx, params.RegisterCandidateNodeFees) // 转账1000LEMO给gasPayerAddr
-		Tx02               = makeTx(godPrivate, godAddr, senderAddr, params.OrdinaryTx, params.RegisterCandidateNodeFees)   // 转账1000LEMO给senderAddr
+		Tx01               = makeTx(godPrivate, godAddr, gasPayerAddr, nil, params.OrdinaryTx, params.RegisterCandidateNodeFees) // 转账1000LEMO给gasPayerAddr
+		Tx02               = makeTx(godPrivate, godAddr, senderAddr, nil, params.OrdinaryTx, params.RegisterCandidateNodeFees)   // 转账1000LEMO给senderAddr
 
 		amountReceiver = common.HexToAddress("0x1234")
 		TxV01          = types.NewReimbursementTransaction(senderAddr, amountReceiver, gasPayerAddr, params.RegisterCandidateNodeFees, []byte{}, params.OrdinaryTx, chainID, uint64(time.Now().Unix()+300), "", "")
@@ -232,7 +239,7 @@ func TestIntrinsicGas(t *testing.T) {
 	mm[params.ReplenishAssetTx] = params.ReplenishAssetTxGas
 	mm[params.ModifyAssetTx] = params.ModifyAssetTxGas
 	mm[params.TransferAssetTx] = params.TransferAssetTxGas
-	mm[params.SetMultisigAccountTx] = params.SetMultisigAccountTxGas
+	mm[params.ModifySignersTx] = params.ModifySigsTxGas
 
 	for k, v := range mm {
 		gas, _ = IntrinsicGas(k, nil, "")
@@ -383,6 +390,238 @@ func Test_rlpBlock(t *testing.T) {
 	err = rlp.DecodeBytes(buf, &decBlock)
 	assert.NoError(t, err)
 	assert.Equal(t, block.Header.Hash(), decBlock.Header.Hash())
+}
+
+// getContractFunctionCode 计算合约函数code
+func getContractFunctionCode(funcName string) []byte {
+	h := crypto.Keccak256Hash([]byte(funcName))
+	return h.Bytes()[:4]
+}
+
+// formatArgs 把参数转换成[32]byte的数组类型
+func formatArgs(args string) []byte {
+	b := common.FromHex(args)
+	var h [32]byte
+	if len(b) > len(h) {
+		b = b[len(b)-32:]
+	}
+	copy(h[32-len(b):], b)
+	return h[:]
+}
+
+// Test_Contract 合约测试
+func Test_Contract(t *testing.T) {
+	ClearData()
+	db, genesisHash := newCoverGenesisDB()
+	defer db.Close()
+	am := account.NewManager(genesisHash, db)
+	p := NewTxProcessor(config.RewardManager, config.ChainID, newTestChain(db), am, db)
+
+	// 创建一个发行erc20代币的合约
+	/*
+		构造函数参数为：
+		token_supply: 500
+		token_name: LemoCoin
+		token_symbol: Lemo
+	*/
+	// 文件中读取合约code
+	filePath, _ := filepath.Abs("../transaction/contract_code.txt")
+	f, err := os.Open(filePath)
+	assert.NoError(t, err)
+	defer f.Close()
+	by, err := ioutil.ReadAll(f)
+	assert.NoError(t, err)
+
+	code := string(by)
+	data := common.FromHex(code)
+	createContractTx := signTransaction(types.NewContractCreation(godAddr, nil, uint64(5000000), common.Big1, data, params.CreateContractTx, chainID, uint64(time.Now().Unix()+30*60), "", ""), godPrivate)
+	txs := types.Transactions{createContractTx}
+	block01 := newBlockForTest(1, txs, am, db, true)
+	// godAcc := am.GetAccount(godAddr)
+	contractAddr := crypto.CreateContractAddress(godAddr, createContractTx.Hash()) // 合约地址
+
+	// 1. 读取部署的智能合约
+	// 1.1 读取合约发行代币的name
+	funcName := "name()"
+	funcCode := getContractFunctionCode(funcName)
+	ret, _, err := readContraction(p, db, block01.Header, &contractAddr, funcCode)
+	assert.NoError(t, err)
+	// 通过正则匹配，筛选出返回的name
+	name := regexMatchLetter(string(ret))
+	assert.Equal(t, "LemoCoin", name)
+
+	// 1.2 读取合约的symbol
+	funcName = "symbol()"
+	funcCode = getContractFunctionCode(funcName)
+	ret, _, err = readContraction(p, db, block01.Header, &contractAddr, funcCode)
+	symbol := regexMatchLetter(string(ret))
+	assert.Equal(t, "Lemo", symbol)
+
+	// 1.3 读取合约的totalSupply
+	funcName = "totalSupply()"
+	funcCode = getContractFunctionCode(funcName)
+	ret, _, err = readContraction(p, db, block01.Header, &contractAddr, funcCode)
+	totalSpply, err := strconv.ParseInt(common.ToHex(ret), 0, 64)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(500), totalSpply)
+
+	// 1.4 读取合约拥有者owner
+	funcName = "owner()"
+	funcCode = getContractFunctionCode(funcName)
+	ret, _, err = readContraction(p, db, block01.Header, &contractAddr, funcCode)
+	assert.Equal(t, godLemoAddr, common.BytesToAddress(ret).String())
+
+	// 1.5 读取合约拥有者的持有代币balance
+	funcName = "balanceOf(address)"
+	funcCode = getContractFunctionCode(funcName)
+	ownerAddr := "0x015780f8456f9c1532645087a19dcf9a7e0c7f97"
+	codeBytes := make([]byte, 0)
+	codeBytes = append(funcCode, formatArgs(ownerAddr)...)
+	ret, _, err = readContraction(p, db, block01.Header, &contractAddr, codeBytes)
+	balance := new(big.Int).SetBytes(ret)
+	assert.Equal(t, big.NewInt(500), balance)
+
+	// 1.6 读取合约的authority账户
+	funcName = "authority()"
+	funcCode = getContractFunctionCode(funcName)
+	ret, _, err = readContraction(p, db, block01.Header, &contractAddr, funcCode)
+	expectAuthorityAddr := crypto.CreateContractAddress(contractAddr, createContractTx.Hash())
+	assert.Equal(t, expectAuthorityAddr, common.BytesToAddress(ret))
+
+	// 2. 调用合约中的方法
+	// 2.1 批量调用转账方法
+	/*
+		合约发送者godAddr 的初始代币数量为500
+		向10个账户每个账户转10个代币
+		只有前面五个账户转账才会成功，后面五个账户由于余额不足转账会失败
+	*/
+	funcName = "transfer(address,uint256)"
+	funcCode = getContractFunctionCode(funcName)
+	amount01 := formatArgs(fmt.Sprintf("%x", 10)) // 转币数量10
+	// transferFun := "0xa9059cbb"
+	// amount := "0000000000000000000000000000000000000000000000000000000000000064" // 转币数量100
+
+	txs = make(types.Transactions, 0)
+	// 存储随机的100个账户的私钥
+	randKey := make(map[int]*ecdsa.PrivateKey, 0)
+	// 给100个随机账户转代币10，由于总代币只有500，所以只有前50个随机账户才会转成功
+	for i := 1; i <= 100; i++ {
+		input := make([]byte, 0)
+		private, _ := crypto.GenerateKey()
+		randKey[i] = private
+
+		rawAddrBytes := formatArgs(crypto.PubkeyToAddress(private.PublicKey).Hex())
+		input = append(append(funcCode, rawAddrBytes...), amount01...)
+		// 转代币给这100个随机账户
+		tx := makeTx(godPrivate, godAddr, contractAddr, input, params.OrdinaryTx, nil)
+		txs = append(txs, tx)
+	}
+
+	// 给前50个账户转lemo用于后面发送交易消耗gas
+	for index, key := range randKey {
+		if index <= 50 {
+			to := crypto.PubkeyToAddress(key.PublicKey)
+			tx := makeTx(godPrivate, godAddr, to, nil, params.OrdinaryTx, big.NewInt(5000000)) // 转lemo交易
+			txs = append(txs, tx)
+		}
+	}
+
+	// 把前50个转成功的账户分别转5个代币给后面转失败的50个账户中，这样到最后这一百个账户都有5个代币
+	amount02 := formatArgs(fmt.Sprintf("%x", 5)) // 转5个代币
+	for i := 1; i <= 50; i++ {
+		input := make([]byte, 0)
+
+		fromPriv := randKey[i]
+		fromAddr := crypto.PubkeyToAddress(fromPriv.PublicKey)
+		toPriv := randKey[100-i+1]
+		toAddrBytes := formatArgs(crypto.PubkeyToAddress(toPriv.PublicKey).Hex())
+
+		input = append(append(funcCode, toAddrBytes...), amount02...)
+		tx := makeTx(fromPriv, fromAddr, contractAddr, input, params.OrdinaryTx, nil)
+		txs = append(txs, tx)
+	}
+
+	// 通过打包区块来执行交易
+	block02 := newBlockForTest(2, txs, am, db, true)
+	// event changlog
+	changeLogs := block02.ChangeLogs
+	count := 0
+	for _, log := range changeLogs {
+		if log.LogType == account.AddEventLog {
+			count++
+		}
+	}
+	assert.Equal(t, 150, count)
+	// 验证只打包交易条数
+	assert.Equal(t, len(txs), len(block02.Txs))
+
+	// 从合约中读取转账之后发送者(godAddr)的代币余额 (期望值为0)
+	godAddrGetBalanceFunc := common.FromHex("0x70a08231000000000000000000000000015780f8456f9c1532645087a19dcf9a7e0c7f97")
+	ret, _, err = readContraction(p, db, block02.Header, &contractAddr, godAddrGetBalanceFunc)
+	balance = new(big.Int).SetBytes(ret)
+	assert.Equal(t, big.NewInt(0).String(), balance.String())
+
+	// 读取这100个账户拥有的代币数量，期望值是都为5个
+	funcName = "balanceOf(address)"
+	funcCode = getContractFunctionCode(funcName)
+	for _, key := range randKey {
+		codeBytes := make([]byte, 0)
+		owner := formatArgs(crypto.PubkeyToAddress(key.PublicKey).Hex())
+		codeBytes = append(funcCode, owner...)
+		ret, _, err = readContraction(p, db, block02.Header, &contractAddr, codeBytes)
+		balance = new(big.Int).SetBytes(ret)
+		// 每个地址代币数都为5
+		assert.Equal(t, big.NewInt(5).String(), balance.String())
+	}
+
+	// 2.2 测试合约stop功能
+	funcName = "stop()"
+	stopContractData := getContractFunctionCode(funcName)
+	tx03 := makeTx(godPrivate, godAddr, contractAddr, stopContractData, params.OrdinaryTx, nil)
+	// 打包区块来执行交易
+	block03 := newBlockForTest(3, types.Transactions{tx03}, am, db, true)
+	assert.Equal(t, types.Transactions{tx03}, block03.Txs)
+	// 通过测试合约内转账功能是否能成功来判断stop合约是否成功
+	funcName = "transfer(address,uint256)"
+	funcCode = getContractFunctionCode(funcName)
+	coinReceiver := "0x016ad4fc7e1608685bf5fe5573973bf2b1ef9b8a"
+	num := formatArgs(fmt.Sprintf("%x", 5)) // 转账5个代币
+	input := make([]byte, 0)
+	input = append(append(funcCode, formatArgs(coinReceiver)...), num...)
+
+	// 创建transfer交易
+	fromPriv := randKey[1] // 交易发送者为上面100个随机地址中的第一个，因为已经有足够的lemo和5个代币
+	from := crypto.PubkeyToAddress(fromPriv.PublicKey)
+	tx04 := makeTx(fromPriv, from, contractAddr, input, params.OrdinaryTx, nil)
+	block04 := newBlockForTest(4, types.Transactions{tx04}, am, db, true)
+	assert.Equal(t, types.Transactions{tx04}, block04.Txs)
+	assert.Equal(t, 1, len(block04.Txs))
+	// 从合约中读取转账之后代币接收者的代币余额(期望值是没变的)
+	funcName = "balanceOf(address)"
+	funcCode = getContractFunctionCode(funcName)
+	readInput := make([]byte, 0)
+	readInput = append(funcCode, formatArgs(coinReceiver)...)
+	ret, _, err = readContraction(p, db, block04.Header, &contractAddr, readInput)
+	balance = new(big.Int).SetBytes(ret)
+	assert.Equal(t, big.NewInt(0).String(), balance.String())
+	// 读取发送者的代币余额
+	ret, _, err = readContraction(p, db, block04.Header, &contractAddr, append(funcCode, formatArgs(from.Hex())...))
+	number := new(big.Int).SetBytes(ret)
+	assert.Equal(t, big.NewInt(5).String(), number.String())
+}
+
+// regexMatchLetter 正则配置出字符串中的字母字符串
+func regexMatchLetter(src string) string {
+	reg := regexp.MustCompile(`[a-zA-Z0-9]+`)
+	result := reg.FindAllString(src, -1)
+	return result[0]
+}
+
+// readContraction 读取合约中的数据
+func readContraction(p *TxProcessor, db protocol.ChainDB, currentHeader *types.Header, contractAddr *common.Address, data []byte) (reslut []byte, gasUsed uint64, err error) {
+	ctx := context.Background()
+	accM := account.NewReadOnlyManager(db, false)
+	return p.PreExecutionTransaction(ctx, accM, currentHeader, contractAddr, params.OrdinaryTx, data, common.Hash{}, 5*time.Second)
 }
 
 // func BenchmarkApplyTxs(b *testing.B) {

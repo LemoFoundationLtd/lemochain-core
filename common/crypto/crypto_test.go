@@ -94,9 +94,9 @@ func TestNewContractAddress(t *testing.T) {
 	caddr1 := CreateContractAddress(addr, common.HexToHash("1"))
 	caddr2 := CreateContractAddress(addr, common.HexToHash("2"))
 
-	assert.Equal(t, common.HexToAddress("0x01208Cc79767dD9559EE43A673daA13f0eaE2737"), caddr0)
-	assert.Equal(t, common.HexToAddress("0x012A6a88F9cfa542A805d2F6941a4c9faf793957"), caddr1)
-	assert.Equal(t, common.HexToAddress("0x018CadC3967854c060268084256A9c8A7C1B7c20"), caddr2)
+	assert.Equal(t, common.HexToAddress("0x02208Cc79767dD9559EE43A673daA13f0eaE2737"), caddr0)
+	assert.Equal(t, common.HexToAddress("0x022A6a88F9cfa542A805d2F6941a4c9faf793957"), caddr1)
+	assert.Equal(t, common.HexToAddress("0x028CadC3967854c060268084256A9c8A7C1B7c20"), caddr2)
 }
 
 func TestLoadECDSAFile(t *testing.T) {
