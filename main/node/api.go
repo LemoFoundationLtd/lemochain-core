@@ -195,7 +195,7 @@ func (c *PublicChainAPI) GetDeputyNodeList() []string {
 		profile := candidateAcc.GetCandidate()
 		host := profile[types.CandidateKeyHost]
 		port := profile[types.CandidateKeyPort]
-		nodeAddrString := fmt.Sprintf("%x@%s:%s", n.NodeID, host, port)
+		nodeAddrString := fmt.Sprintf("%x@%s:%s; votes: %s, rank: %d", n.NodeID, host, port, n.Votes.String(), n.Rank)
 		result = append(result, nodeAddrString)
 	}
 	return result
