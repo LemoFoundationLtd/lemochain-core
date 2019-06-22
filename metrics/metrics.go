@@ -2,6 +2,7 @@
 package metrics
 
 import (
+	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/rcrowley/go-metrics"
 	"github.com/rcrowley/go-metrics/exp"
@@ -171,4 +172,61 @@ func GetModuleMetrics(moduleName string) map[string]interface{} {
 		}
 	})
 	return m
+}
+
+// 返回出给定name的metrics的[]string
+func SprintMetrics(metricsName string, i interface{}) []string {
+	du := float64(time.Nanosecond)
+	duSuffix := time.Nanosecond.String()[1:]
+
+	switch metric := i.(type) {
+	case metrics.Gauge:
+		str0 := fmt.Sprintf("gauge %s\n", metricsName)
+		str1 := fmt.Sprintf("  value:		%9d\n", metric.Value())
+		return ToStrings(str0, str1)
+	case metrics.Counter:
+		str0 := fmt.Sprintf("counter %s", metricsName)
+		str1 := fmt.Sprintf("  count:		%9d\n", metric.Count())
+		return ToStrings(str0, str1)
+	case metrics.Meter:
+		m := metric.Snapshot()
+		str0 := fmt.Sprintf("meter %s\n", metricsName)
+		str1 := fmt.Sprintf("  count:     %9d\n", m.Count())
+		str2 := fmt.Sprintf("  1-min rate:  %12.2f\n", m.Rate1())
+		str3 := fmt.Sprintf("  5-min rate:  %12.2f\n", m.Rate5())
+		str4 := fmt.Sprintf("  15-min rate: %12.2f\n", m.Rate15())
+		str5 := fmt.Sprintf("  mean rate:   %12.2f\n", m.RateMean())
+		return ToStrings(str0, str1, str2, str3, str4, str5)
+	case metrics.Timer:
+		t := metric.Snapshot()
+		ps := t.Percentiles([]float64{0.5, 0.75, 0.95, 0.99, 0.999})
+		str0 := fmt.Sprintf("timer %s\n", metricsName)
+		str1 := fmt.Sprintf("  count:       %9d\n", t.Count())
+		str2 := fmt.Sprintf("  min:         %12.2f%s\n", float64(t.Min())/du, duSuffix)
+		str3 := fmt.Sprintf("  max:         %12.2f%s\n", float64(t.Max())/du, duSuffix)
+		str4 := fmt.Sprintf("  mean:        %12.2f%s\n", t.Mean()/du, duSuffix)
+		str5 := fmt.Sprintf("  stddev:      %12.2f%s\n", t.StdDev()/du, duSuffix)
+		str6 := fmt.Sprintf("  median:      %12.2f%s\n", ps[0]/du, duSuffix)
+		str7 := fmt.Sprintf("  75%%:         %12.2f%s\n", ps[1]/du, duSuffix)
+		str8 := fmt.Sprintf("  95%%:         %12.2f%s\n", ps[2]/du, duSuffix)
+		str9 := fmt.Sprintf("  99%%:         %12.2f%s\n", ps[3]/du, duSuffix)
+		str10 := fmt.Sprintf("  99.9%%:       %12.2f%s\n", ps[4]/du, duSuffix)
+		str11 := fmt.Sprintf("  1-min rate:  %12.2f\n", t.Rate1())
+		str12 := fmt.Sprintf("  5-min rate:  %12.2f\n", t.Rate5())
+		str13 := fmt.Sprintf("  15-min rate: %12.2f\n", t.Rate15())
+		str14 := fmt.Sprintf("  mean rate:   %12.2f\n", t.RateMean())
+		return ToStrings(str0, str1, str2, str3, str4, str5, str6, str7, str8, str9, str10, str11, str12, str13, str14)
+	default:
+		return nil
+	}
+	return nil
+}
+
+// ToStrings 把多个string拼接成一个[]string
+func ToStrings(str ...string) []string {
+	var ss = make([]string, 0)
+	for _, s := range str {
+		ss = append(ss, s)
+	}
+	return ss
 }
