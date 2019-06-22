@@ -7,6 +7,7 @@ import (
 	"errors"
 
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
+	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/hexutil"
 )
 
