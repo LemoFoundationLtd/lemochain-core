@@ -99,7 +99,7 @@ func (bc *BlockChain) initTxPool(block *types.Block, txPool *txpool.TxPool) {
 		txPool.RecvBlock(block)
 
 		height = height - 1
-		block := bc.GetBlockByHeight(height)
+		block = bc.GetBlockByHeight(height)
 		if block == nil {
 			panic("get block by height. result is nil. height: " + strconv.Itoa(int(height)))
 		} else {
