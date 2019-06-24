@@ -15,7 +15,9 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/network"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	db "github.com/LemoFoundationLtd/lemochain-core/store/protocol"
+	"strconv"
 	"sync/atomic"
+	"time"
 )
 
 var ErrNoGenesis = errors.New("can't get genesis block")
@@ -68,6 +70,7 @@ func NewBlockChain(config Config, dm *deputynode.Manager, db db.ChainDB, flags f
 		return nil, err
 	}
 
+	bc.initTxPool(block, txPool)
 	bc.am = account.NewManager(block.Hash(), bc.db)
 	dpovpCfg := consensus.Config{
 		LogForks:      bc.flags.Int(common.LogLevel)-1 >= 3,
@@ -81,6 +84,28 @@ func NewBlockChain(config Config, dm *deputynode.Manager, db db.ChainDB, flags f
 	go bc.runMainLoop()
 
 	return bc, nil
+}
+
+func (bc *BlockChain) initTxPool(block *types.Block, txPool *txpool.TxPool) {
+	if block == nil {
+		log.Debug("init tx pool. block is nil.")
+		return
+	}
+
+	startTime := time.Now().Unix()
+	blockTime := int64(block.Time())
+	height := block.Height()
+	for (startTime-blockTime <= 30*60) && (height > 0) {
+		txPool.RecvBlock(block)
+
+		height = height - 1
+		block := bc.GetBlockByHeight(height)
+		if block == nil {
+			panic("get block by height. result is nil. height: " + strconv.Itoa(int(height)))
+		} else {
+			blockTime = int64(block.Time())
+		}
+	}
 }
 
 func (bc *BlockChain) AccountManager() *account.Manager {
