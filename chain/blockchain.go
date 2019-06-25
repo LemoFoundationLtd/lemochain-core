@@ -5,6 +5,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/consensus"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/transaction"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/txpool"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
@@ -95,7 +96,7 @@ func (bc *BlockChain) initTxPool(block *types.Block, txPool *txpool.TxPool) {
 	startTime := time.Now().Unix()
 	blockTime := int64(block.Time())
 	height := block.Height()
-	for (startTime-blockTime <= 30*60) && (height > 0) {
+	for (startTime-blockTime <= int64(params.TransactionExpiration)) && (height > 0) {
 		txPool.RecvBlock(block)
 
 		height = height - 1
