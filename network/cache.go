@@ -210,6 +210,9 @@ func (c *BlockCache) FirstHeight() uint32 {
 
 // IsExit
 func (c *BlockCache) IsExit(hash common.Hash, height uint32) bool {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
 	length := len(c.cache)
 	if length == 0 || height < c.cache[0].Height || height > c.cache[length-1].Height {
 		return false
