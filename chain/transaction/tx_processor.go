@@ -225,7 +225,7 @@ func (p *TxProcessor) verifyTransactionSigs(tx *types.Transaction) error {
 	from := tx.From()
 	gasPayerSigsLength := len(tx.GasPayerSigs())
 
-	log.Info("tx: ", tx.String())
+	log.Infof("tx: %s", tx.String())
 	// 验证gasPayer签名
 	gasPayer := tx.GasPayer()
 	if gasPayerSigsLength >= 1 {

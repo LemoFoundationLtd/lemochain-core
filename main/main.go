@@ -155,8 +155,10 @@ func startNode(ctx *cli.Context, n *node.Node) {
 	if err := n.Start(); err != nil {
 		log.Critf("Error starting node: %v", err)
 	}
-	go metrics.PointMetricsLog() // 打印出系统内存和磁盘的占用情况 todo
 
+	// go metrics.PointMetricsLog() // 打印出系统内存和磁盘的占用情况 todo
+	// 启动告警系统
+	go metrics.NewAlarmManager().Start()
 	go interrupt(n.Stop)
 
 	if ctx.IsSet(node.AutoMineFlag.Name) {

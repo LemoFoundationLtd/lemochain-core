@@ -28,7 +28,6 @@ func init() {
 			Enabled = true
 		}
 	}
-	Enabled = true
 	exp.Exp(metrics.DefaultRegistry)
 }
 
@@ -176,21 +175,21 @@ func GetModuleMetrics(moduleName string) map[string]interface{} {
 
 // 返回出给定name的metrics的[]string
 func SprintMetrics(metricsName string, i interface{}) []string {
-	du := float64(time.Nanosecond)
-	duSuffix := time.Nanosecond.String()[1:]
+	du := float64(time.Second)
+	duSuffix := time.Second.String()[1:]
 
 	switch metric := i.(type) {
 	case metrics.Gauge:
-		str0 := fmt.Sprintf("gauge %s\n", metricsName)
+		str0 := fmt.Sprintf("\ngauge %s\n", metricsName)
 		str1 := fmt.Sprintf("  value:		%9d\n", metric.Value())
 		return ToStrings(str0, str1)
 	case metrics.Counter:
-		str0 := fmt.Sprintf("counter %s", metricsName)
+		str0 := fmt.Sprintf("\ncounter %s\n", metricsName)
 		str1 := fmt.Sprintf("  count:		%9d\n", metric.Count())
 		return ToStrings(str0, str1)
 	case metrics.Meter:
 		m := metric.Snapshot()
-		str0 := fmt.Sprintf("meter %s\n", metricsName)
+		str0 := fmt.Sprintf("\nmeter %s\n", metricsName)
 		str1 := fmt.Sprintf("  count:     %9d\n", m.Count())
 		str2 := fmt.Sprintf("  1-min rate:  %12.2f\n", m.Rate1())
 		str3 := fmt.Sprintf("  5-min rate:  %12.2f\n", m.Rate5())
@@ -200,7 +199,7 @@ func SprintMetrics(metricsName string, i interface{}) []string {
 	case metrics.Timer:
 		t := metric.Snapshot()
 		ps := t.Percentiles([]float64{0.5, 0.75, 0.95, 0.99, 0.999})
-		str0 := fmt.Sprintf("timer %s\n", metricsName)
+		str0 := fmt.Sprintf("\ntimer %s\n", metricsName)
 		str1 := fmt.Sprintf("  count:       %9d\n", t.Count())
 		str2 := fmt.Sprintf("  min:         %12.2f%s\n", float64(t.Min())/du, duSuffix)
 		str3 := fmt.Sprintf("  max:         %12.2f%s\n", float64(t.Max())/du, duSuffix)

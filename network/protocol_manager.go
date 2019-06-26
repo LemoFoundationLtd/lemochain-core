@@ -245,15 +245,18 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 				}
 				// block is stale
 				if b.Height() <= pm.chain.StableBlock().Height() || pm.chain.HasBlock(b.Hash()) {
+					log.Debugf("This block has exist. blockHeight: %d", b.Height())
 					continue
 				}
 				// the block is black block
 				if pm.chain.IsInBlackList(b) {
+					log.Debug("This block minerAddress is in BlackList")
 					pm.blockCache.Remove(b)
 					continue
 				}
 				// this block is inserting chain
 				if pm.insertingBlocks.IsExit(b.Hash(), b.Height()) {
+					log.Debugf("The block is inserting chain. blockHeight: %d", b.Height())
 					continue
 				}
 				// local chain has parent block or parent block will insert chain
