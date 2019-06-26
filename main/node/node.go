@@ -507,7 +507,7 @@ func (n *Node) apis() []rpc.API {
 			Namespace: "mine",
 			Version:   "1.0",
 			Service:   NewPrivateMinerAPI(n.miner),
-			Public:    true,
+			Public:    false,
 		},
 		{
 			Namespace: "account",
@@ -519,7 +519,7 @@ func (n *Node) apis() []rpc.API {
 			Namespace: "account",
 			Version:   "1.0",
 			Service:   NewPrivateAccountAPI(n.accMan),
-			Public:    true,
+			Public:    false,
 		},
 		{
 			Namespace: "net",
@@ -531,7 +531,7 @@ func (n *Node) apis() []rpc.API {
 			Namespace: "net",
 			Version:   "1.0",
 			Service:   NewPrivateNetAPI(n),
-			Public:    true,
+			Public:    false,
 		},
 		{
 			Namespace: "tx",
