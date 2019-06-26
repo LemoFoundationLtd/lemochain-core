@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"encoding/binary"
+	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	gometrics "github.com/rcrowley/go-metrics"
 	"net"
@@ -61,6 +62,19 @@ type client struct {
 	sync.RWMutex
 }
 
+func (c *client) run() {
+	c.wg.Add(7)
+	log.Info("start run alarm system")
+	go c.heartbeatLoop()
+	go c.txpoolAlarm()
+	go c.handleMsgAlarm()
+	go c.p2pAlarm()
+	go c.verifyTxAlarm()
+	go c.consensusAlarm()
+	go c.leveldbAlarm()
+	c.wg.Wait()
+}
+
 func (c *client) Close() {
 	c.Lock()
 	defer c.Unlock()
@@ -93,8 +107,9 @@ func (c *client) heartbeatLoop() {
 				return
 			}
 			log.Info("send a heartbeat msg to alarm server")
+			// for test
 			time.Sleep(1 * time.Second)
-			textMsg := "你好,\nlemochain alarm system"
+			textMsg := fmt.Sprintf("你好,\nlemochain alarm system.")
 			err = c.WriteMsg(textMsgCode, []byte(textMsg))
 			if err != nil {
 				log.Errorf("write msg error. err: %v", err)
@@ -150,19 +165,6 @@ func (c *client) sendMsgToAlarmServer(msgCode uint32, content []byte) {
 			return
 		}
 	}
-}
-
-func (c *client) run() {
-	c.wg.Add(7)
-	log.Info("start run alarm system")
-	go c.heartbeatLoop()
-	go c.txpoolAlarm()
-	go c.handleMsgAlarm()
-	go c.p2pAlarm()
-	go c.verifyTxAlarm()
-	go c.consensusAlarm()
-	go c.leveldbAlarm()
-	c.wg.Wait()
 }
 
 // txpoolAlarm 对交易池报警
