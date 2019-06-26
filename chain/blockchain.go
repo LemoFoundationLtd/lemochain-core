@@ -81,6 +81,7 @@ func NewBlockChain(config Config, dm *deputynode.Manager, db db.ChainDB, flags f
 	}
 	bc.engine = consensus.NewDpovp(dpovpCfg, bc.db, bc.dm, bc.am, bc, txPool, block)
 
+	bc.initTxPool(block, txPool)
 	go bc.runFeedTranspondLoop()
 	go bc.runMainLoop()
 
