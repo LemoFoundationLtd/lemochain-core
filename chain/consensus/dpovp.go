@@ -8,10 +8,16 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/common/subscribe"
+	"github.com/LemoFoundationLtd/lemochain-core/metrics"
 	"github.com/LemoFoundationLtd/lemochain-core/network"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"github.com/LemoFoundationLtd/lemochain-core/store/protocol"
 	"time"
+)
+
+var (
+	blockInsertTimer = metrics.NewTimer("consensus/InsertBlock/insertBlock") // 统计区块插入链中的速率和所用时间的分布情况
+	mineBlockTimer   = metrics.NewTimer("consensus/MineBlock/mineBlock")     // 统计出块速率和时间分布
 )
 
 // DPoVP process the fork logic
@@ -90,6 +96,11 @@ func (dp *DPoVP) SubscribeFetchConfirm(ch chan []network.GetConfirmInfo) subscri
 }
 
 func (dp *DPoVP) MineBlock(material *BlockMaterial) (*types.Block, error) {
+	start := time.Now()
+	defer func() {
+		mineBlockTimer.UpdateSince(start)
+	}()
+
 	oldCurrent := dp.CurrentBlock()
 
 	// mine and seal
@@ -123,6 +134,10 @@ func (dp *DPoVP) MineBlock(material *BlockMaterial) (*types.Block, error) {
 }
 
 func (dp *DPoVP) InsertBlock(rawBlock *types.Block) (*types.Block, error) {
+	start := time.Now()
+	log.Error("insert chain Timer update start")
+	defer blockInsertTimer.UpdateSince(start)
+
 	// ignore exist block as soon as possible
 	if ok := dp.isIgnorableBlock(rawBlock); ok {
 		return nil, ErrExistBlock
