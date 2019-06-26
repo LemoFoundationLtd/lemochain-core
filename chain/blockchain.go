@@ -71,7 +71,6 @@ func NewBlockChain(config Config, dm *deputynode.Manager, db db.ChainDB, flags f
 		return nil, err
 	}
 
-	bc.initTxPool(block, txPool)
 	bc.am = account.NewManager(block.Hash(), bc.db)
 	dpovpCfg := consensus.Config{
 		LogForks:      bc.flags.Int(common.LogLevel)-1 >= 3,
@@ -81,6 +80,7 @@ func NewBlockChain(config Config, dm *deputynode.Manager, db db.ChainDB, flags f
 	}
 	bc.engine = consensus.NewDpovp(dpovpCfg, bc.db, bc.dm, bc.am, bc, txPool, block)
 
+	bc.initTxPool(block, txPool)
 	go bc.runFeedTranspondLoop()
 	go bc.runMainLoop()
 
