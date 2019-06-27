@@ -17,12 +17,13 @@ const (
 	heartbeatInterval = 5 * time.Second  // 发送心跳包间隔时间
 
 	// 报警监听间隔时间
-	alarmTxpoolInterval    = 3 * time.Second
-	alarmHandleMsgInterval = 4 * time.Second
-	alarmP2pInterval       = 5 * time.Second
-	alarmTxInterval        = 6 * time.Second
-	alarmConsensusInterval = 5 * time.Second
-	alarmDBInterval        = 5 * time.Second
+	alarmTxpoolInterval       = 3 * time.Second
+	alarmHandleMsgInterval    = 4 * time.Second
+	alarmP2pInterval          = 5 * time.Second
+	alarmTxInterval           = 6 * time.Second
+	alarmConsensusInterval    = 5 * time.Second
+	alarmLeveldbStateInterval = 5 * time.Second
+	alarmSystemStateInterval  = 5 * time.Second
 
 	CodeHeartbeat = uint32(0x01) // 心跳包msg code
 	textMsgCode   = uint32(0x02) // 普通文本msg code
@@ -80,7 +81,7 @@ type client struct {
 }
 
 func (c *client) run() {
-	c.wg.Add(7)
+	c.wg.Add(8)
 	log.Info("Start run alarm system")
 	go c.heartbeatLoop()
 	go c.txpoolAlarm(alarmTxpoolInterval)
@@ -88,7 +89,8 @@ func (c *client) run() {
 	go c.p2pAlarm(alarmP2pInterval)
 	go c.verifyTxAlarm(alarmTxInterval)
 	go c.consensusAlarm(alarmConsensusInterval)
-	go c.leveldbAlarm(alarmDBInterval)
+	go c.leveldbStateAlarm(alarmLeveldbStateInterval)
+	go c.systemStateAlarm(alarmSystemStateInterval)
 	c.wg.Wait()
 }
 
@@ -194,9 +196,9 @@ func (c *client) txpoolAlarm(alarmTimeInterval time.Duration) {
 	}()
 
 	var (
-		metricsName01 = "txpool/totalTxNumber"
-		metricsName02 = "txpool/RecvTx/receiveTx"
-		metricsName03 = "txpool/DelInvalidTxs/invalid"
+		metricsName01 = TxpoolNumber_gaugeName
+		metricsName02 = RecvTx_meterName
+		metricsName03 = InvalidTx_counterName
 
 		count int64 = 2000       // 交易执行失败的累计交易数量
 		incr  int64 = 1000       // 增量
@@ -209,7 +211,7 @@ func (c *client) txpoolAlarm(alarmTimeInterval time.Duration) {
 		case <-c.stopCh:
 			return
 		case <-ticker.C:
-			m := GetModuleMetrics("txpool")
+			m := GetModuleMetrics(txpoolModule)
 			if len(m) == 0 {
 				break
 			}
@@ -218,10 +220,11 @@ func (c *client) txpoolAlarm(alarmTimeInterval time.Duration) {
 				txpoolTotalNumberGauge := m[metricsName01].(gometrics.Gauge).Snapshot()
 
 				if txpoolTotalNumberGauge.Value() > int64(10000) && time.Since(now01).Seconds() > 10 { // 告警条件,并满足距离上次告警时间间隔必须大于10s
-					alarmTime := fmt.Sprintf("\nAlarmTime: %s\n", time.Now().UTC().String())
+
 					alarmReason := "AlarmReason: 交易池中的交易大于10000笔了\n"
 					metricsDetails := "Detail: " + strings.Join(SprintMetrics(metricsName01, txpoolTotalNumberGauge), "")
-					content := alarmTime + alarmReason + metricsDetails
+					alarmTime := fmt.Sprintf("AlarmTime: \n%s\n", time.Now().UTC().String())
+					content := alarmReason + metricsDetails + alarmTime
 
 					go c.sendMsgToAlarmServer(textMsgCode, []byte(content))
 					now01 = time.Now()
@@ -232,10 +235,11 @@ func (c *client) txpoolAlarm(alarmTimeInterval time.Duration) {
 			if _, ok := m[metricsName02]; ok {
 				recvTxMeter := m[metricsName02].(gometrics.Meter).Snapshot()
 				if recvTxMeter.Rate1() > float64(50) && time.Since(now02).Seconds() > 60 { // 最近一分钟的平均速度,并满足距离上次告警时间间隔为60s
-					alarmTime := fmt.Sprintf("\nAlarmTime: %s\n", time.Now().UTC().String())
+
 					alarmReason := "AlarmReason: 最近一分钟平均每秒调用接收交易进交易池的次数大于50次了\n"
 					metricsDetails := "Detail: " + strings.Join(SprintMetrics(metricsName02, recvTxMeter), "")
-					content := alarmTime + alarmReason + metricsDetails
+					alarmTime := fmt.Sprintf("AlarmTime: \n%s\n", time.Now().UTC().String())
+					content := alarmReason + metricsDetails + alarmTime
 
 					go c.sendMsgToAlarmServer(textMsgCode, []byte(content))
 					now02 = time.Now()
@@ -246,10 +250,11 @@ func (c *client) txpoolAlarm(alarmTimeInterval time.Duration) {
 			if _, ok := m[metricsName03]; ok {
 				invalidTxCounter := m[metricsName03].(gometrics.Counter)
 				if invalidTxCounter.Count() > count { // count为动态调整参数，每报警一次则增加一定的增量值
-					alarmTime := fmt.Sprintf("\nAlarmTime: %s\n", time.Now().UTC().String())
+
 					alarmReason := fmt.Sprintf("AlarmReason: 此节点执行失败的交易数量累计大于%d笔了", count)
 					metricsDetails := "Detail: " + strings.Join(SprintMetrics(metricsName03, invalidTxCounter), "")
-					content := alarmTime + alarmReason + metricsDetails
+					alarmTime := fmt.Sprintf("AlarmTime: \n%s\n", time.Now().UTC().String())
+					content := alarmReason + metricsDetails + alarmTime
 
 					go c.sendMsgToAlarmServer(textMsgCode, []byte(content))
 					// 修改告警参数值
@@ -270,14 +275,14 @@ func (c *client) handleMsgAlarm(alarmTimeInterval time.Duration) {
 	}()
 
 	var (
-		metricsName01 = "network/protocol_manager/handleBlocksMsg"
-		metricsName02 = "network/protocol_manager/handleGetBlocksMsg"
-		metricsName03 = "network/protocol_manager/handleBlockHashMsg"
-		metricsName04 = "network/protocol_manager/handleGetConfirmsMsg"
-		metricsName05 = "network/protocol_manager/handleConfirmMsg"
-		metricsName06 = "network/protocol_manager/handleGetBlocksWithChangeLogMsg"
-		metricsName07 = "network/protocol_manager/handleDiscoverReqMsg"
-		metricsName08 = "network/protocol_manager/handleDiscoverResMsg"
+		metricsName01 = HandleBlocksMsg_meterName
+		metricsName02 = HandleGetBlocksMsg_meterName
+		metricsName03 = HandleBlockHashMsg_meterName
+		metricsName04 = HandleGetConfirmsMsg_meterName
+		metricsName05 = HandleConfirmMsg_meterName
+		metricsName06 = HandleGetBlocksWithChangeLogMsg_meterName
+		metricsName07 = HandleDiscoverReqMsg_meterName
+		metricsName08 = HandleDiscoverResMsg_meterName
 		now01         = time.Now()
 		now02         = time.Now()
 		now03         = time.Now()
@@ -293,7 +298,7 @@ func (c *client) handleMsgAlarm(alarmTimeInterval time.Duration) {
 		case <-c.stopCh:
 			return
 		case <-ticker.C:
-			m := GetModuleMetrics("network")
+			m := GetModuleMetrics(networkModule)
 			if len(m) == 0 {
 				break
 			}
@@ -302,10 +307,11 @@ func (c *client) handleMsgAlarm(alarmTimeInterval time.Duration) {
 			if _, ok := m[metricsName01]; ok {
 				handleBlocksMsgMeter := m[metricsName01].(gometrics.Meter).Snapshot()
 				if handleBlocksMsgMeter.Rate1() > float64(50) && time.Since(now01).Seconds() > 60 { // 调用速率要大于50并且距离上次告警时间间隔必须大于60s
-					alarmTime := fmt.Sprintf("\nAlarmTime: %s\n", time.Now().UTC().String())
+
 					alarmReason := "AlarmReason: 调用handleBlocksMsg的速率大于50次/s\n"
 					metricsDetails := "Detail: " + strings.Join(SprintMetrics(metricsName01, handleBlocksMsgMeter), "")
-					content := alarmTime + alarmReason + metricsDetails
+					alarmTime := fmt.Sprintf("AlarmTime: \n%s\n", time.Now().UTC().String())
+					content := alarmReason + metricsDetails + alarmTime
 
 					go c.sendMsgToAlarmServer(textMsgCode, []byte(content))
 					now01 = time.Now()
@@ -316,10 +322,11 @@ func (c *client) handleMsgAlarm(alarmTimeInterval time.Duration) {
 			if _, ok := m[metricsName02]; ok {
 				handleGetBlocksMsgMeter := m[metricsName02].(gometrics.Meter).Snapshot()
 				if handleGetBlocksMsgMeter.Rate1() > float64(100) && time.Since(now02).Seconds() > 60 {
-					alarmTime := fmt.Sprintf("\nAlarmTime: %s\n", time.Now().UTC().String())
+
 					alarmReason := "AlarmReason: 调用handleGetBlocksMsg的速率大于100次/s\n"
 					metricsDetails := "Detail: " + strings.Join(SprintMetrics(metricsName02, handleGetBlocksMsgMeter), "")
-					content := alarmTime + alarmReason + metricsDetails
+					alarmTime := fmt.Sprintf("AlarmTime:\n %s\n", time.Now().UTC().String())
+					content := alarmReason + metricsDetails + alarmTime
 
 					go c.sendMsgToAlarmServer(textMsgCode, []byte(content))
 					now02 = time.Now()
@@ -330,10 +337,11 @@ func (c *client) handleMsgAlarm(alarmTimeInterval time.Duration) {
 			if _, ok := m[metricsName03]; ok {
 				handleBlockHashMsgMeter := m[metricsName03].(gometrics.Meter).Snapshot()
 				if handleBlockHashMsgMeter.Rate1() > float64(5) && time.Since(now03).Seconds() > 60 {
-					alarmTime := fmt.Sprintf("\nAlarmTime: %s\n", time.Now().UTC().String())
+
 					alarmReason := "AlarmReason: 调用handleBlockHashMsg的速率大于5次/s\n"
 					metricsDetails := "Detail: " + strings.Join(SprintMetrics(metricsName03, handleBlockHashMsgMeter), "")
-					content := alarmTime + alarmReason + metricsDetails
+					alarmTime := fmt.Sprintf("AlarmTime:\n %s\n", time.Now().UTC().String())
+					content := alarmReason + metricsDetails + alarmTime
 
 					go c.sendMsgToAlarmServer(textMsgCode, []byte(content))
 					now03 = time.Now()
@@ -344,10 +352,11 @@ func (c *client) handleMsgAlarm(alarmTimeInterval time.Duration) {
 			if _, ok := m[metricsName04]; ok {
 				handleGetConfirmsMsgMeter := m[metricsName04].(gometrics.Meter).Snapshot()
 				if handleGetConfirmsMsgMeter.Rate1() > float64(50) && time.Since(now04).Seconds() > 60 {
-					alarmTime := fmt.Sprintf("\nAlarmTime: %s\n", time.Now().UTC().String())
+
 					alarmReason := "AlarmReason: 调用handleGetConfirmsMsg的速率大于50次/s\n"
 					metricsDetails := "Detail: " + strings.Join(SprintMetrics(metricsName04, handleGetConfirmsMsgMeter), "")
-					content := alarmTime + alarmReason + metricsDetails
+					alarmTime := fmt.Sprintf("AlarmTime: \n%s\n", time.Now().UTC().String())
+					content := alarmReason + metricsDetails + alarmTime
 
 					go c.sendMsgToAlarmServer(textMsgCode, []byte(content))
 					now04 = time.Now()
@@ -358,10 +367,11 @@ func (c *client) handleMsgAlarm(alarmTimeInterval time.Duration) {
 			if _, ok := m[metricsName05]; ok {
 				handleConfirmMsgMeter := m[metricsName05].(gometrics.Meter).Snapshot()
 				if handleConfirmMsgMeter.Rate1() > float64(10) && time.Since(now05).Seconds() > 60 {
-					alarmTime := fmt.Sprintf("\nAlarmTime: %s\n", time.Now().UTC().String())
+
 					alarmReason := "AlarmReason: 调用handleConfirmMsg的速率大于10次/s\n"
 					metricsDetails := "Detail: " + strings.Join(SprintMetrics(metricsName05, handleConfirmMsgMeter), "")
-					content := alarmTime + alarmReason + metricsDetails
+					alarmTime := fmt.Sprintf("AlarmTime: \n%s\n", time.Now().UTC().String())
+					content := alarmReason + metricsDetails + alarmTime
 
 					go c.sendMsgToAlarmServer(textMsgCode, []byte(content))
 					now05 = time.Now()
@@ -372,10 +382,11 @@ func (c *client) handleMsgAlarm(alarmTimeInterval time.Duration) {
 			if _, ok := m[metricsName06]; ok {
 				handleGetBlocksWithChangeLogMsgMeter := m[metricsName06].(gometrics.Meter).Snapshot()
 				if handleGetBlocksWithChangeLogMsgMeter.Rate1() > float64(50) && time.Since(now06).Seconds() > 60 {
-					alarmTime := fmt.Sprintf("\nAlarmTime: %s\n", time.Now().UTC().String())
+
 					alarmReason := "AlarmReason: 调用handleGetBlocksWithChangeLogMsg的速率大于50次/s\n"
 					metricsDetails := "Detail: " + strings.Join(SprintMetrics(metricsName06, handleGetBlocksWithChangeLogMsgMeter), "")
-					content := alarmTime + alarmReason + metricsDetails
+					alarmTime := fmt.Sprintf("AlarmTime:\n %s\n", time.Now().UTC().String())
+					content := alarmReason + metricsDetails + alarmTime
 
 					go c.sendMsgToAlarmServer(textMsgCode, []byte(content))
 					now06 = time.Now()
@@ -386,10 +397,11 @@ func (c *client) handleMsgAlarm(alarmTimeInterval time.Duration) {
 			if _, ok := m[metricsName07]; ok {
 				handleDiscoverReqMsgMeter := m[metricsName07].(gometrics.Meter).Snapshot()
 				if handleDiscoverReqMsgMeter.Rate1() > float64(5) && time.Since(now07).Seconds() > 60 {
-					alarmTime := fmt.Sprintf("\nAlarmTime: %s\n", time.Now().UTC().String())
+
 					alarmReason := "AlarmReason: 调用handleDiscoverReqMsg的速率大于5次/s\n"
 					metricsDetails := "Detail: " + strings.Join(SprintMetrics(metricsName07, handleDiscoverReqMsgMeter), "")
-					content := alarmTime + alarmReason + metricsDetails
+					alarmTime := fmt.Sprintf("AlarmTime: \n%s\n", time.Now().UTC().String())
+					content := alarmReason + metricsDetails + alarmTime
 
 					go c.sendMsgToAlarmServer(textMsgCode, []byte(content))
 					now07 = time.Now()
@@ -400,10 +412,11 @@ func (c *client) handleMsgAlarm(alarmTimeInterval time.Duration) {
 			if _, ok := m[metricsName08]; ok {
 				handleDiscoverResMsgMeter := m[metricsName08].(gometrics.Meter).Snapshot()
 				if handleDiscoverResMsgMeter.Rate1() > float64(5) && time.Since(now08).Seconds() > 60 {
-					alarmTime := fmt.Sprintf("\nAlarmTime: %s\n", time.Now().UTC().String())
+
 					alarmReason := "AlarmReason: 调用handleDiscoverReqMsg的速率大于5次/s\n"
 					metricsDetails := "Detail: " + strings.Join(SprintMetrics(metricsName08, handleDiscoverResMsgMeter), "")
-					content := alarmTime + alarmReason + metricsDetails
+					alarmTime := fmt.Sprintf("AlarmTime: \n%s\n", time.Now().UTC().String())
+					content := alarmReason + metricsDetails + alarmTime
 
 					go c.sendMsgToAlarmServer(textMsgCode, []byte(content))
 					now08 = time.Now()
@@ -423,11 +436,11 @@ func (c *client) p2pAlarm(alarmTimeInterval time.Duration) {
 	}()
 
 	var (
-		metricsName01 = "p2p/listenLoop/failedHandleConn"
-		metricsName02 = "p2p/readLoop/readMsgSuccess"
-		metricsName03 = "p2p/readLoop/readMsgFailed"
-		metricsName04 = "p2p/WriteMsg/writeMsgSuccess"
-		metricsName05 = "p2p/WriteMsg/writeMsgFailed"
+		metricsName01 = PeerConnFailed_meterName
+		metricsName02 = ReadMsgSuccess_timerName
+		metricsName03 = ReadMsgFailed_timerName
+		metricsName04 = WriteMsgSuccess_timerName
+		metricsName05 = WriteMsgFailed_timerName
 
 		now01 = time.Now()
 		now03 = time.Now()
@@ -438,7 +451,7 @@ func (c *client) p2pAlarm(alarmTimeInterval time.Duration) {
 		case <-c.stopCh:
 			return
 		case <-ticker.C:
-			m := GetModuleMetrics("p2p")
+			m := GetModuleMetrics(p2pModule)
 			if len(m) == 0 {
 				break
 			}
@@ -447,10 +460,11 @@ func (c *client) p2pAlarm(alarmTimeInterval time.Duration) {
 			if _, ok := m[metricsName01]; ok {
 				handleConnFailedMeter := m[metricsName01].(gometrics.Meter).Snapshot()
 				if handleConnFailedMeter.Rate1() > float64(5) && time.Since(now01).Seconds() > 30 {
-					alarmTime := fmt.Sprintf("\nAlarmTime: %s\n", time.Now().UTC().String())
+
 					alarmReason := "AlarmReason: 远程peer连接失败的频率大于5次/s\n"
 					metricsDetails := "Detail: " + strings.Join(SprintMetrics(metricsName01, handleConnFailedMeter), "")
-					content := alarmTime + alarmReason + metricsDetails
+					alarmTime := fmt.Sprintf("AlarmTime: \n%s\n", time.Now().UTC().String())
+					content := alarmReason + metricsDetails + alarmTime
 
 					go c.sendMsgToAlarmServer(textMsgCode, []byte(content))
 					now01 = time.Now()
@@ -461,10 +475,11 @@ func (c *client) p2pAlarm(alarmTimeInterval time.Duration) {
 			if _, ok := m[metricsName02]; ok {
 				readMsgSuccessTimer := m[metricsName02].(gometrics.Timer).Snapshot()
 				if readMsgSuccessTimer.Mean()/float64(time.Second) > float64(20) { // 读取msg所用平均时间大于20s则报警
-					alarmTime := fmt.Sprintf("\nAlarmTime: %s\n", time.Now().UTC().String())
+
 					alarmReason := "AlarmReason: 读取接收到的message所用的平均时间大于20s\n"
 					metricsDetails := "Detail: " + strings.Join(SprintMetrics(metricsName02, readMsgSuccessTimer), "")
-					content := alarmTime + alarmReason + metricsDetails
+					alarmTime := fmt.Sprintf("AlarmTime: \n%s\n", time.Now().UTC().String())
+					content := alarmReason + metricsDetails + alarmTime
 
 					go c.sendMsgToAlarmServer(textMsgCode, []byte(content))
 				}
@@ -474,10 +489,11 @@ func (c *client) p2pAlarm(alarmTimeInterval time.Duration) {
 			if _, ok := m[metricsName03]; ok {
 				readMsgFailedTimer := m[metricsName03].(gometrics.Timer).Snapshot()
 				if readMsgFailedTimer.Rate1() > float64(5) && time.Since(now03).Seconds() > 30 {
-					alarmTime := fmt.Sprintf("\nAlarmTime: %s\n", time.Now().UTC().String())
+
 					alarmReason := "AlarmReason: 读取接收到的message失败的频率大于5次/s\n"
 					metricsDetails := "Detail: " + strings.Join(SprintMetrics(metricsName03, readMsgFailedTimer), "")
-					content := alarmTime + alarmReason + metricsDetails
+					alarmTime := fmt.Sprintf("AlarmTime: \n%s\n", time.Now().UTC().String())
+					content := alarmReason + metricsDetails + alarmTime
 
 					go c.sendMsgToAlarmServer(textMsgCode, []byte(content))
 					now03 = time.Now()
@@ -488,10 +504,11 @@ func (c *client) p2pAlarm(alarmTimeInterval time.Duration) {
 			if _, ok := m[metricsName04]; ok {
 				writeMsgSuccessTimer := m[metricsName04].(gometrics.Timer).Snapshot()
 				if writeMsgSuccessTimer.Mean()/float64(time.Second) > float64(15) { // 如果写入操作所用平均时间超过15s则需要报警
-					alarmTime := fmt.Sprintf("\nAlarmTime: %s\n", time.Now().UTC().String())
+
 					alarmReason := "AlarmReason: 写操作的平均用时超过15s\n"
 					metricsDetails := "Detail: " + strings.Join(SprintMetrics(metricsName04, writeMsgSuccessTimer), "")
-					content := alarmTime + alarmReason + metricsDetails
+					alarmTime := fmt.Sprintf("AlarmTime: \n%s\n", time.Now().UTC().String())
+					content := alarmReason + metricsDetails + alarmTime
 
 					go c.sendMsgToAlarmServer(textMsgCode, []byte(content))
 				}
@@ -501,10 +518,11 @@ func (c *client) p2pAlarm(alarmTimeInterval time.Duration) {
 			if _, ok := m[metricsName05]; ok {
 				writeMsgFailedTimer := m[metricsName05].(gometrics.Timer).Snapshot()
 				if writeMsgFailedTimer.Rate1() > float64(5) && time.Since(now05).Seconds() > 60 {
-					alarmTime := fmt.Sprintf("\nAlarmTime: %s\n", time.Now().UTC().String())
+
 					alarmReason := "AlarmReason: 写操作失败的频率超过了5次/s\n"
 					metricsDetails := "Detail: " + strings.Join(SprintMetrics(metricsName05, writeMsgFailedTimer), "")
-					content := alarmTime + alarmReason + metricsDetails
+					alarmTime := fmt.Sprintf("AlarmTime:\n %s\n", time.Now().UTC().String())
+					content := alarmReason + metricsDetails + alarmTime
 
 					go c.sendMsgToAlarmServer(textMsgCode, []byte(content))
 					now05 = time.Now()
@@ -524,14 +542,14 @@ func (c *client) verifyTxAlarm(alarmTimeInterval time.Duration) {
 	}()
 
 	var (
-		metricsName01 = "types/VerifyTx/verifyFailed"
+		metricsName01 = VerifyFailedTx_meterName
 	)
 	for {
 		select {
 		case <-c.stopCh:
 			return
 		case <-ticker.C:
-			m := GetModuleMetrics("types")
+			m := GetModuleMetrics(txModule)
 			if len(m) == 0 {
 				break
 			}
@@ -539,10 +557,11 @@ func (c *client) verifyTxAlarm(alarmTimeInterval time.Duration) {
 			if _, ok := m[metricsName01]; ok {
 				verifyFailedTxMeter := m[metricsName01].(gometrics.Meter).Snapshot()
 				if verifyFailedTxMeter.Rate1() > float64(0.5) { // 最近一分钟中每秒有0.5次交易验证失败的情况则报警
-					alarmTime := fmt.Sprintf("\nAlarmTime: %s\n", time.Now().UTC().String())
+
 					alarmReason := "AlarmReason: 验证交易失败的频率超过了0.5次/s\n"
 					metricsDetails := "Detail: " + strings.Join(SprintMetrics(metricsName01, verifyFailedTxMeter), "")
-					content := alarmTime + alarmReason + metricsDetails
+					alarmTime := fmt.Sprintf("AlarmTime:\n %s\n", time.Now().UTC().String())
+					content := alarmReason + metricsDetails + alarmTime
 
 					go c.sendMsgToAlarmServer(textMsgCode, []byte(content))
 				}
@@ -561,8 +580,8 @@ func (c *client) consensusAlarm(alarmTimeInterval time.Duration) {
 	}()
 
 	var (
-		metricsName01 = "consensus/InsertBlock/insertBlock"
-		metricsName02 = "consensus/MineBlock/mineBlock"
+		metricsName01 = BlockInsert_timerName
+		metricsName02 = MineBlock_timerName
 	)
 
 	for {
@@ -570,7 +589,7 @@ func (c *client) consensusAlarm(alarmTimeInterval time.Duration) {
 		case <-c.stopCh:
 			return
 		case <-ticker.C:
-			m := GetModuleMetrics("consensus")
+			m := GetModuleMetrics(consensusModule)
 			if len(m) == 0 {
 				break
 			}
@@ -579,10 +598,11 @@ func (c *client) consensusAlarm(alarmTimeInterval time.Duration) {
 			if _, ok := m[metricsName01]; ok {
 				blockInsertTimer := m[metricsName01].(gometrics.Timer).Snapshot()
 				if blockInsertTimer.Mean()/float64(time.Second) > float64(0.01) { // insertChain所用平均时间大于3秒则报警
-					alarmTime := fmt.Sprintf("\nAlarmTime: %s\n", time.Now().UTC().String())
+
 					alarmReason := "AlarmReason: Insert chain 所用平均时间大于3s\n"
 					metricsDetails := "Detail: " + strings.Join(SprintMetrics(metricsName01, blockInsertTimer), "")
-					content := alarmTime + alarmReason + metricsDetails
+					alarmTime := fmt.Sprintf("AlarmTime:\n %s\n", time.Now().UTC().String())
+					content := alarmReason + metricsDetails + alarmTime
 
 					go c.sendMsgToAlarmServer(textMsgCode, []byte(content))
 				}
@@ -592,10 +612,11 @@ func (c *client) consensusAlarm(alarmTimeInterval time.Duration) {
 			if _, ok := m[metricsName02]; ok {
 				mineBlockTimer := m[metricsName02].(gometrics.Timer).Snapshot() // 挖块所用平均时间大于8s则报警
 				if mineBlockTimer.Mean()/float64(time.Second) > 8 {
-					alarmTime := fmt.Sprintf("\nAlarmTime: %s\n", time.Now().UTC().String())
+
 					alarmReason := "AlarmReason: Mine Block 所用平均时间大于3s\n"
 					metricsDetails := "Detail: " + strings.Join(SprintMetrics(metricsName02, mineBlockTimer), "")
-					content := alarmTime + alarmReason + metricsDetails
+					alarmTime := fmt.Sprintf("AlarmTime: \n%s\n", time.Now().UTC().String())
+					content := alarmReason + metricsDetails + alarmTime
 
 					go c.sendMsgToAlarmServer(textMsgCode, []byte(content))
 				}
@@ -605,25 +626,85 @@ func (c *client) consensusAlarm(alarmTimeInterval time.Duration) {
 }
 
 // 对leveldb的状态进行报警
-func (c *client) leveldbAlarm(alarmTimeInterval time.Duration) {
+func (c *client) leveldbStateAlarm(alarmTimeInterval time.Duration) {
 	ticker := time.NewTicker(alarmTimeInterval)
 	defer func() {
 		c.wg.Done()
 		ticker.Stop()
-		log.Debug("leveldb alarm end.")
+		log.Debug("Leveldb state alarm end.")
 	}()
+
+	var (
+		metricsName01       = LevelDb_miss_meterName
+		temp          int64 = 0
+	)
+	for {
+		select {
+		case <-c.stopCh:
+			return
+		case <-ticker.C:
+			m := GetModuleMetrics(leveldbModule)
+			if len(m) == 0 {
+				break
+			}
+
+			// 1. 对leveldb进行get操作失败进行告警
+			if _, ok := m[metricsName01]; ok {
+				missDBMeter := m[metricsName01].(gometrics.Meter).Snapshot()
+				if missDBMeter.Count() > temp { // 此次快照的count大于上一次，表示有get db失败，则告警
+
+					alarmReason := "AlarmReason: 从leveldb中读取数据失败\n"
+					metricsDetails := "Detail: " + strings.Join(SprintMetrics(metricsName01, missDBMeter), "")
+					alarmTime := fmt.Sprintf("AlarmTime:\n %s\n", time.Now().UTC().String())
+					content := alarmReason + metricsDetails + alarmTime
+
+					go c.sendMsgToAlarmServer(textMsgCode, []byte(content))
+					temp = missDBMeter.Count() // 更新temp
+				}
+			}
+			// todo 暂时还没有leveldb的其他参数告警需求
+		}
+	}
+}
+
+// 对system状态进行告警
+func (c *client) systemStateAlarm(alarmTimeInterval time.Duration) {
+	ticker := time.NewTicker(alarmTimeInterval)
+	defer func() {
+		c.wg.Done()
+		ticker.Stop()
+		log.Debug("System state alarm end.")
+	}()
+
+	var (
+		metricsName01 = System__memory_frees
+		now           = time.Now()
+	)
 
 	for {
 		select {
 		case <-c.stopCh:
 			return
 		case <-ticker.C:
-			m := GetModuleMetrics("glemo/db/chaindata/")
+			m := GetModuleMetrics(systemModule)
 			if len(m) == 0 {
 				break
 			}
 
-			// todo
+			// 1. 对系统内存不足进行告警
+			if _, ok := m[metricsName01]; ok {
+				freesMemMeter := m[metricsName01].(gometrics.Meter).Snapshot()
+				if freesMemMeter.Count() < 100*1024*1024 && time.Since(now).Seconds() > 60 { // 内存小于100M并且距离上次报警时间间隔1分钟则报警
+
+					alarmReason := "AlarmReason: 系统内存小于100M\n"
+					metricsDetails := "Detail: " + strings.Join(SprintMetrics(metricsName01, freesMemMeter), "")
+					alarmTime := fmt.Sprintf("AlarmTime:\n %s\n", time.Now().UTC().String())
+					content := alarmReason + metricsDetails + alarmTime
+
+					go c.sendMsgToAlarmServer(textMsgCode, []byte(content))
+					now = time.Now()
+				}
+			}
 		}
 	}
 }

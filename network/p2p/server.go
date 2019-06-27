@@ -25,7 +25,7 @@ const (
 )
 
 var (
-	handleConnFailedMeter = metrics.NewMeter("p2p/listenLoop/failedHandleConn") // 统计连接失败的速率
+	handleConnFailedMeter = metrics.NewMeter(metrics.PeerConnFailed_meterName) // 统计连接失败的速率
 )
 
 // Config holds Server options.

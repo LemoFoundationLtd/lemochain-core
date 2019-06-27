@@ -16,8 +16,8 @@ import (
 )
 
 var (
-	blockInsertTimer = metrics.NewTimer("consensus/InsertBlock/insertBlock") // 统计区块插入链中的速率和所用时间的分布情况
-	mineBlockTimer   = metrics.NewTimer("consensus/MineBlock/mineBlock")     // 统计出块速率和时间分布
+	blockInsertTimer = metrics.NewTimer(metrics.BlockInsert_timerName) // 统计区块插入链中的速率和所用时间的分布情况
+	mineBlockTimer   = metrics.NewTimer(metrics.MineBlock_timerName)   // 统计出块速率和时间分布
 )
 
 // DPoVP process the fork logic

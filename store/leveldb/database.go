@@ -186,21 +186,21 @@ func (db *LevelDBDatabase) LDB() *leveldb.DB {
 }
 
 // Meter configures the database metrics collectors and
-func (db *LevelDBDatabase) Meter(prefix string) {
+func (db *LevelDBDatabase) Meter() {
 	// Short circuit metering if the metrics system is disabled
 	if !metrics.Enabled {
 		return
 	}
 	// Initialize all the metrics collector at the requested prefix
-	db.getTimer = metrics.NewTimer(prefix + "user/gets")
-	db.putTimer = metrics.NewTimer(prefix + "user/puts")
-	db.delTimer = metrics.NewTimer(prefix + "user/dels")
-	db.missMeter = metrics.NewMeter(prefix + "user/misses")
-	db.readMeter = metrics.NewMeter(prefix + "user/reads")
-	db.writeMeter = metrics.NewMeter(prefix + "user/writes")
-	db.compTimeMeter = metrics.NewMeter(prefix + "compact/time")
-	db.compReadMeter = metrics.NewMeter(prefix + "compact/input")
-	db.compWriteMeter = metrics.NewMeter(prefix + "compact/output")
+	db.getTimer = metrics.NewTimer(metrics.LevelDb_get_timerName)
+	db.putTimer = metrics.NewTimer(metrics.LevelDb_put_timerName)
+	db.delTimer = metrics.NewTimer(metrics.LevelDb_del_timerName)
+	db.missMeter = metrics.NewMeter(metrics.LevelDb_miss_meterName)
+	db.readMeter = metrics.NewMeter(metrics.LevelDb_read_meterName)
+	db.writeMeter = metrics.NewMeter(metrics.LevelDb_write_meterName)
+	db.compTimeMeter = metrics.NewMeter(metrics.LevelDb_compTime_meteName)
+	db.compReadMeter = metrics.NewMeter(metrics.LevelDb_compRead_meterName)
+	db.compWriteMeter = metrics.NewMeter(metrics.LevelDb_compWrite_meterName)
 	// Create a quit channel for the periodic collector and run it
 	db.quitLock.Lock()
 	db.quitChan = make(chan chan error)

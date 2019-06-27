@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"github.com/rcrowley/go-metrics"
+	"strings"
 	"testing"
 	"time"
 )
@@ -32,4 +33,14 @@ func TestNewCounter(t *testing.T) {
 	// falcon := falconmetrics.NewFalcon(&cfg)
 	// go falcon.ReportRegistry(metrics.DefaultRegistry)
 	select {}
+}
+
+func TestCollectProcessMetrics(t *testing.T) {
+	str := "\n中和asc\n转\n换\n\n\n"
+	sstr := strings.SplitAfter(str, "\n")
+	for _, v := range sstr {
+		if v != "\n" {
+			t.Log(v)
+		}
+	}
 }

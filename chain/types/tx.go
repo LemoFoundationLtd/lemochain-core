@@ -29,7 +29,7 @@ var (
 )
 
 var (
-	verifyFailedTxMeter = metrics.NewMeter("types/VerifyTx/verifyFailed") // 交易验证失败的数量统计
+	verifyFailedTxMeter = metrics.NewMeter(metrics.VerifyFailedTx_meterName) // 交易验证失败的数量统计
 )
 
 type Transactions []*Transaction

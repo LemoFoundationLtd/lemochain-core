@@ -25,14 +25,14 @@ var (
 )
 
 var (
-	handleBlocksMsgMeter                 = metrics.NewMeter("network/protocol_manager/handleBlocksMsg")                 // 统计调用handleBlocksMsg的频率
-	handleGetBlocksMsgMeter              = metrics.NewMeter("network/protocol_manager/handleGetBlocksMsg")              // 统计调用handleGetBlocksMsg的频率
-	handleBlockHashMsgMeter              = metrics.NewMeter("network/protocol_manager/handleBlockHashMsg")              // 统计调用handleBlockHashMsg的频率
-	handleGetConfirmsMsgMeter            = metrics.NewMeter("network/protocol_manager/handleGetConfirmsMsg")            // 统计调用handleGetConfirmsMsg的频率
-	handleConfirmMsgMeter                = metrics.NewMeter("network/protocol_manager/handleConfirmMsg")                // 统计调用handleConfirmMsg的频率
-	handleGetBlocksWithChangeLogMsgMeter = metrics.NewMeter("network/protocol_manager/handleGetBlocksWithChangeLogMsg") // 统计调用handleGetBlocksWithChangeLogMsg的频率
-	handleDiscoverReqMsgMeter            = metrics.NewMeter("network/protocol_manager/handleDiscoverReqMsg")            // 统计调用handleDiscoverReqMsg的频率
-	handleDiscoverResMsgMeter            = metrics.NewMeter("network/protocol_manager/handleDiscoverResMsg")            // 统计调用handleDiscoverResMsg的频率
+	handleBlocksMsgMeter                 = metrics.NewMeter(metrics.HandleBlocksMsg_meterName)                 // 统计调用handleBlocksMsg的频率
+	handleGetBlocksMsgMeter              = metrics.NewMeter(metrics.HandleGetBlocksMsg_meterName)              // 统计调用handleGetBlocksMsg的频率
+	handleBlockHashMsgMeter              = metrics.NewMeter(metrics.HandleBlockHashMsg_meterName)              // 统计调用handleBlockHashMsg的频率
+	handleGetConfirmsMsgMeter            = metrics.NewMeter(metrics.HandleGetConfirmsMsg_meterName)            // 统计调用handleGetConfirmsMsg的频率
+	handleConfirmMsgMeter                = metrics.NewMeter(metrics.HandleConfirmMsg_meterName)                // 统计调用handleConfirmMsg的频率
+	handleGetBlocksWithChangeLogMsgMeter = metrics.NewMeter(metrics.HandleGetBlocksWithChangeLogMsg_meterName) // 统计调用handleGetBlocksWithChangeLogMsg的频率
+	handleDiscoverReqMsgMeter            = metrics.NewMeter(metrics.HandleDiscoverReqMsg_meterName)            // 统计调用handleDiscoverReqMsg的频率
+	handleDiscoverResMsgMeter            = metrics.NewMeter(metrics.HandleDiscoverResMsg_meterName)            // 统计调用handleDiscoverResMsg的频率
 )
 
 const (
