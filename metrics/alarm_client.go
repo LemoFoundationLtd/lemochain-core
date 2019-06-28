@@ -30,7 +30,7 @@ const (
 )
 
 var (
-	alarmServerIP = "127.0.0.1:8088"
+	// AlarmUrl = "127.0.0.1:8088"
 	PackagePrefix = []byte{0x77, 0x88} // package flag
 	PackageLength = 4                  // msg长度所占字节的个数
 )
@@ -50,7 +50,7 @@ func (m *alarmManager) Start() {
 	}
 
 	for {
-		m.dialAlarmServer(alarmServerIP) // 阻塞
+		m.dialAlarmServer(AlarmUrl) // 阻塞
 		// 如果与server端断开，休眠5s再连接
 		time.Sleep(5 * time.Second)
 		log.Debug("Restart alarm system")
@@ -58,10 +58,11 @@ func (m *alarmManager) Start() {
 }
 
 // dialAlarmServer
-func (m *alarmManager) dialAlarmServer(ip string) {
-	conn, err := net.DialTimeout("tcp", ip, dialTimeOut)
+func (m *alarmManager) dialAlarmServer(alarmUrl string) {
+	log.Debugf("Start dial alarm server. alarmUrl: %s", alarmUrl)
+	conn, err := net.DialTimeout("tcp", alarmUrl, dialTimeOut)
 	if err != nil {
-		log.Errorf("Dial alarm system server error. err: %v", err)
+		log.Errorf("Dial alarm system server error. Please check alarm url configuration correct. err: %v. alarmUrl: %s.", err, alarmUrl)
 		return
 	}
 	c := &client{

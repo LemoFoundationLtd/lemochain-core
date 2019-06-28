@@ -30,7 +30,6 @@ var (
 		node.JSpathFlag,
 		node.DebugFlag,
 		node.LogLevelFlag,
-		node.MetricsEnabledFlag,
 	}
 
 	rpcFlags = []cli.Flag{
@@ -72,9 +71,6 @@ func init() {
 		// if err := debug.Setup(ctx); err != nil {
 		// 	return err
 		// }
-
-		// Start system runtime metrics collection
-		go metrics.CollectProcessMetrics(3 * time.Second)
 
 		return nil
 	}
@@ -156,9 +152,12 @@ func startNode(ctx *cli.Context, n *node.Node) {
 		log.Critf("Error starting node: %v", err)
 	}
 
-	// go metrics.PointMetricsLog() // 打印出系统内存和磁盘的占用情况 todo
+	// go metrics.PointMetricsLog() // 打印出系统内存和磁盘的占用情况
+	// Start system runtime metrics collection
+	go metrics.CollectProcessMetrics(3 * time.Second)
 	// 启动告警系统
 	go metrics.NewAlarmManager().Start()
+
 	go interrupt(n.Stop)
 
 	if ctx.IsSet(node.AutoMineFlag.Name) {

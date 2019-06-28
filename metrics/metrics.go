@@ -6,28 +6,30 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/rcrowley/go-metrics"
 	"github.com/rcrowley/go-metrics/exp"
-	"os"
 	"runtime"
 	"strings"
 	"time"
 )
 
 // MetricsEnabledFlag is the CLI flag name to use to enable metrics collections.
-var MetricsEnabledFlag = "metrics"
+// var MetricsEnabledFlag = "metrics"
 
 // Enabled is the flag specifying if metrics are enable or not.
-var Enabled = false
+var (
+	Enabled  = false // 是否激活metrics,通过检测到配置文件是否配置了告警server的url来判断是否激活
+	AlarmUrl string  // 告警系统server的url,通过配置文件传进来
+)
 
 // Init enables or disables the metrics system. Since we need this to run before
 // any other code gets to create meters and timers, we'll actually do an ugly hack
 // and peek into the command line args for the metrics flag.
 func init() {
-	for _, arg := range os.Args {
-		if strings.TrimLeft(arg, "-") == MetricsEnabledFlag {
-			log.Info("Enabling metrics collection")
-			Enabled = true
-		}
-	}
+	// for _, arg := range os.Args {
+	// 	if strings.TrimLeft(arg, "-") == MetricsEnabledFlag {
+	// 		log.Info("Enabling metrics collection")
+	// 		Enabled = true
+	// 	}
+	// }
 	exp.Exp(metrics.DefaultRegistry)
 }
 
@@ -70,8 +72,12 @@ func NewTimer(name string) metrics.Timer {
 func CollectProcessMetrics(refresh time.Duration) {
 	// Short circuit if the metrics system is disabled
 	if !Enabled {
+		log.Info("Metrics is not start, cannot collect process metrics.")
 		return
+	} else {
+		log.Infof("Start collect process Metrics. Refresh time: %f", refresh.Seconds())
 	}
+
 	// Create the various data collectors
 	memstats := make([]*runtime.MemStats, 2)
 	diskstats := make([]*DiskStats, 2)
