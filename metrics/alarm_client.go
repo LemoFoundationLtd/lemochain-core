@@ -663,7 +663,6 @@ func (c *client) leveldbStateAlarm(alarmTimeInterval time.Duration) {
 					temp = missDBMeter.Count() // 更新temp
 				}
 			}
-			// todo 暂时还没有leveldb的其他参数告警需求
 		}
 	}
 }
@@ -678,7 +677,8 @@ func (c *client) systemStateAlarm(alarmTimeInterval time.Duration) {
 	}()
 
 	var (
-		metricsName01 = System__memory_frees
+		metricsName01 = System_memory_allocs // 申请内存次数统计
+		metricsName02 = System__memory_frees // 释放内存次数统计
 		now           = time.Now()
 	)
 
@@ -692,13 +692,17 @@ func (c *client) systemStateAlarm(alarmTimeInterval time.Duration) {
 				break
 			}
 
-			// 1. 对系统内存不足进行告警
-			if _, ok := m[metricsName01]; ok {
-				freesMemMeter := m[metricsName01].(gometrics.Meter).Snapshot()
-				if freesMemMeter.Count() < 100*1024*1024 && time.Since(now).Seconds() > 60 { // 内存小于100M并且距离上次报警时间间隔1分钟则报警
+			// 1. 申请内存次数和释放内存次数比较
+			_, ok := m[metricsName01]
+			_, ook := m[metricsName02]
 
-					alarmReason := "AlarmReason: 系统内存小于100M\n"
-					metricsDetails := "Detail: " + strings.Join(SprintMetrics(metricsName01, freesMemMeter), "")
+			if ok && ook {
+				allocsMemMeter := m[metricsName01].(gometrics.Meter).Snapshot()
+				freesMemMeter := m[metricsName02].(gometrics.Meter).Snapshot()
+				if allocsMemMeter.Count() > freesMemMeter.Count()*3/2 && time.Since(now).Seconds() > 60 { // 申请内存次数大于释放内存次数1.5倍并且距离上次报警时间间隔1分钟则报警
+
+					alarmReason := "AlarmReason: 申请内存次数超过了释放内存次数的1.5倍\n"
+					metricsDetails := "Detail: " + strings.Join(SprintMetrics(metricsName01, allocsMemMeter), "") + strings.Join(SprintMetrics(metricsName02, freesMemMeter), "")
 					alarmTime := fmt.Sprintf("AlarmTime:\n %s\n", time.Now().UTC().String())
 					content := alarmReason + metricsDetails + alarmTime
 

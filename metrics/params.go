@@ -51,10 +51,10 @@ var (
 
 	// system meter
 	systemModule           = "system"
-	System_memory_allocs   = "system/memory/allocs"   // 系统内存分配累计计数
-	System__memory_frees   = "system/memory/frees"    // 可用内存
-	System_memory_inuse    = "system/memory/inuse"    // 已使用内存
-	System_memory_pauses   = "system/memory/pauses"   //
+	System_memory_allocs   = "system/memory/allocs"   // 申请内存的次数
+	System__memory_frees   = "system/memory/frees"    // 释放内存的次数
+	System_memory_inuse    = "system/memory/inuse"    // 已申请且仍在使用的字节数
+	System_memory_pauses   = "system/memory/pauses"   // GC总的暂停时间的循环缓冲
 	System_disk_readCount  = "system/disk/readcount"  // 读磁盘操作次数
 	System_disk_readData   = "system/disk/readdata"   // 读取的字节总数
 	System_disk_writeCount = "system/disk/writecount" // 写磁盘操作次数
