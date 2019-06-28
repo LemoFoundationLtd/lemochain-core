@@ -201,8 +201,8 @@ func (c *client) txpoolAlarm(alarmTimeInterval time.Duration) {
 		metricsName02 = RecvTx_meterName
 		metricsName03 = InvalidTx_counterName
 
-		count int64 = 2000       // 交易执行失败的累计交易数量
-		incr  int64 = 1000       // 增量
+		count int64 = 100        // 交易执行失败的累计交易数量
+		incr  int64 = 100        // 增量
 		now01       = time.Now() // 限制交易池交易数量告警的时间间隔
 		now02       = time.Now() // 限制调用接收交易的交易池函数的速率的时间间隔
 	)
@@ -247,7 +247,7 @@ func (c *client) txpoolAlarm(alarmTimeInterval time.Duration) {
 				}
 			}
 
-			// 3. 对交易池中对执行失败的交易累计总数大于2000笔进行报警
+			// 3. 对交易池中对执行失败的交易每增加100笔报警一次
 			if _, ok := m[metricsName03]; ok {
 				invalidTxCounter := m[metricsName03].(gometrics.Counter)
 				if invalidTxCounter.Count() > count { // count为动态调整参数，每报警一次则增加一定的增量值
@@ -598,9 +598,9 @@ func (c *client) consensusAlarm(alarmTimeInterval time.Duration) {
 			// 1. inertChain时间分布和频率
 			if _, ok := m[metricsName01]; ok {
 				blockInsertTimer := m[metricsName01].(gometrics.Timer).Snapshot()
-				if blockInsertTimer.Mean()/float64(time.Second) > float64(0.01) { // insertChain所用平均时间大于3秒则报警
+				if blockInsertTimer.Mean()/float64(time.Second) > float64(5) { // insertChain所用平均时间大于5秒则报警
 
-					alarmReason := "AlarmReason: Insert chain 所用平均时间大于3s\n"
+					alarmReason := "AlarmReason: Insert chain 所用平均时间大于5s\n"
 					metricsDetails := "Detail: " + strings.Join(SprintMetrics(metricsName01, blockInsertTimer), "")
 					alarmTime := fmt.Sprintf("AlarmTime:\n %s\n", time.Now().UTC().String())
 					content := alarmReason + metricsDetails + alarmTime
@@ -614,7 +614,7 @@ func (c *client) consensusAlarm(alarmTimeInterval time.Duration) {
 				mineBlockTimer := m[metricsName02].(gometrics.Timer).Snapshot() // 挖块所用平均时间大于8s则报警
 				if mineBlockTimer.Mean()/float64(time.Second) > 8 {
 
-					alarmReason := "AlarmReason: Mine Block 所用平均时间大于3s\n"
+					alarmReason := "AlarmReason: Mine Block 所用平均时间大于8s\n"
 					metricsDetails := "Detail: " + strings.Join(SprintMetrics(metricsName02, mineBlockTimer), "")
 					alarmTime := fmt.Sprintf("AlarmTime: \n%s\n", time.Now().UTC().String())
 					content := alarmReason + metricsDetails + alarmTime
