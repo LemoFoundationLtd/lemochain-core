@@ -248,7 +248,7 @@ func (c *client) ListenAndAlarm(m map[string]interface{}, metricsName string, al
 	// 发送告警消息到告警server
 	if enabled {
 		alarmReason := fmt.Sprintf("AlarmReason: %s\n", alarmReason)
-		alarmTime := fmt.Sprintf("AlarmTime: \n%s\n", time.Now().UTC().String())
+		alarmTime := fmt.Sprintf("AlarmTime: \n%s\n", time.Now().Format("2006/01/02 15:04:05"))
 		content := alarmReason + metricsDetails + alarmTime
 
 		go c.sendMsgToAlarmServer(alarmMsgCode, []byte(content))
