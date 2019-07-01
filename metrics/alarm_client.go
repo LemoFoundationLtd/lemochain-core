@@ -266,9 +266,8 @@ func (c *client) txpoolAlarm(alarmTimeInterval time.Duration) {
 	}()
 
 	var (
-		count int64 = 100        // 交易执行失败的累计交易数量
-		incr  int64 = 100        // 增量
-		now01       = time.Now() // 限制交易池交易数量告警的时间间隔
+		count = Alarm_InvalidTx // 交易执行失败的累计交易数量
+		now01 = time.Now()      // 限制交易池交易数量告警的时间间隔
 	)
 
 	for {
@@ -283,14 +282,14 @@ func (c *client) txpoolAlarm(alarmTimeInterval time.Duration) {
 
 			// 1. 对交易池中剩下的交易数量大于10000进行报警
 			if time.Since(now01).Seconds() > 30 {
-				if c.ListenAndAlarm(m, TxpoolNumber_counterName, "交易池中的交易大于10000笔了", int64(10000), textMsgCode) {
+				if c.ListenAndAlarm(m, TxpoolNumber_counterName, "交易池中的交易大于10000笔了", Alarm_TxpoolNumber, textMsgCode) {
 					now01 = time.Now()
 				}
 			}
 
 			// 2. 对交易池中对执行失败的交易每增加100笔报警一次
 			if c.ListenAndAlarm(m, InvalidTx_counterName, fmt.Sprintf("此节点执行失败的交易数量累计大于%d笔了", count), count, textMsgCode) {
-				count = count + incr
+				count = count + Alarm_InvalidTx
 			}
 		}
 	}
@@ -328,56 +327,56 @@ func (c *client) handleMsgAlarm(alarmTimeInterval time.Duration) {
 
 			// 1. 对调用handleBlocksMsg的速率大于50次/秒进行报警
 			if time.Since(now01).Seconds() > 60 {
-				if c.ListenAndAlarm(m, HandleBlocksMsg_meterName, "调用handleBlocksMsg的速率大于50次/s", float64(50), textMsgCode) {
+				if c.ListenAndAlarm(m, HandleBlocksMsg_meterName, "调用handleBlocksMsg的速率大于50次/s", Alarm_HandleBlocksMsg, textMsgCode) {
 					now01 = time.Now()
 				}
 			}
 
 			// 2. 对调用handleGetBlocksMsg的速率大于100次/秒进行报警
 			if time.Since(now02).Seconds() > 60 {
-				if c.ListenAndAlarm(m, HandleGetBlocksMsg_meterName, "调用handleGetBlocksMsg的速率大于100次/s", float64(100), textMsgCode) {
+				if c.ListenAndAlarm(m, HandleGetBlocksMsg_meterName, "调用handleGetBlocksMsg的速率大于100次/s", Alarm_HandleGetBlocksMsg, textMsgCode) {
 					now02 = time.Now()
 				}
 			}
 
 			// 3. 对调用handleBlockHashMsg的速率大于5次/每秒进行报警
 			if time.Since(now03).Seconds() > 60 {
-				if c.ListenAndAlarm(m, HandleBlockHashMsg_meterName, "调用handleBlockHashMsg的速率大于5次/s", float64(5), textMsgCode) {
+				if c.ListenAndAlarm(m, HandleBlockHashMsg_meterName, "调用handleBlockHashMsg的速率大于5次/s", Alarm_HandleBlockHashMsg, textMsgCode) {
 					now03 = time.Now()
 				}
 			}
 
 			// 4. 对调用handleGetConfirmsMsg的速率大于50次/秒进行报警
 			if time.Since(now04).Seconds() > 60 {
-				if c.ListenAndAlarm(m, HandleGetConfirmsMsg_meterName, "调用handleGetConfirmsMsg的速率大于50次/s", float64(50), textMsgCode) {
+				if c.ListenAndAlarm(m, HandleGetConfirmsMsg_meterName, "调用handleGetConfirmsMsg的速率大于50次/s", Alarm_HandleGetConfirmsMsg, textMsgCode) {
 					now04 = time.Now()
 				}
 			}
 
 			// 5. 对调用handleConfirmMsg的速率大于10次/秒进行报警
 			if time.Since(now05).Seconds() > 60 {
-				if c.ListenAndAlarm(m, HandleConfirmMsg_meterName, "调用handleConfirmMsg的速率大于10次/s", float64(10), textMsgCode) {
+				if c.ListenAndAlarm(m, HandleConfirmMsg_meterName, "调用handleConfirmMsg的速率大于10次/s", Alarm_HandleConfirmMsg, textMsgCode) {
 					now05 = time.Now()
 				}
 			}
 
 			// 6. 对调用handleGetBlocksWithChangeLogMsg的速率大于50次/秒进行报警
 			if time.Since(now06).Seconds() > 60 {
-				if c.ListenAndAlarm(m, HandleGetBlocksWithChangeLogMsg_meterName, "调用handleGetBlocksWithChangeLogMsg的速率大于50次/s", float64(50), textMsgCode) {
+				if c.ListenAndAlarm(m, HandleGetBlocksWithChangeLogMsg_meterName, "调用handleGetBlocksWithChangeLogMsg的速率大于50次/s", Alarm_HandleGetBlocksWithChangeLogMsg, textMsgCode) {
 					now06 = time.Now()
 				}
 			}
 
 			// 7. 对调用handleDiscoverReqMsg的速率大于5次/秒进行报警
 			if time.Since(now07).Seconds() > 60 {
-				if c.ListenAndAlarm(m, HandleDiscoverReqMsg_meterName, "调用handleDiscoverReqMsg的速率大于5次/s", float64(5), textMsgCode) {
+				if c.ListenAndAlarm(m, HandleDiscoverReqMsg_meterName, "调用handleDiscoverReqMsg的速率大于5次/s", Alarm_HandleDiscoverReqMsg, textMsgCode) {
 					now07 = time.Now()
 				}
 			}
 
 			// 8. 对调用handleDiscoverResMsg的速率大于5次/秒进行报警
 			if time.Since(now08).Seconds() > 60 {
-				if c.ListenAndAlarm(m, HandleDiscoverResMsg_meterName, "调用handleDiscoverReqMsg的速率大于5次/s", float64(5), textMsgCode) {
+				if c.ListenAndAlarm(m, HandleDiscoverResMsg_meterName, "调用handleDiscoverReqMsg的速率大于5次/s", Alarm_HandleDiscoverResMsg, textMsgCode) {
 					now08 = time.Now()
 				}
 			}
@@ -413,35 +412,35 @@ func (c *client) p2pAlarm(alarmTimeInterval time.Duration) {
 
 			// 1. 统计peer连接失败的频率,当每秒钟连接失败的频率大于5次，则报警
 			if time.Since(now01).Seconds() > 30 {
-				if c.ListenAndAlarm(m, PeerConnFailed_meterName, "远程peer连接失败的频率大于5次/s", float64(5), textMsgCode) {
+				if c.ListenAndAlarm(m, PeerConnFailed_meterName, "远程peer连接失败的频率大于5次/s", Alarm_PeerConnFailed, textMsgCode) {
 					now01 = time.Now()
 				}
 			}
 
 			// 2. 统计成功读取一次msg所用时间的分布情况和调用读取msg的频率
 			if time.Since(now02).Seconds() > 60 {
-				if c.ListenAndAlarm(m, ReadMsgSuccess_timerName, "读取接收到的message所用的平均时间大于20s", float64(20), textMsgCode) {
+				if c.ListenAndAlarm(m, ReadMsgSuccess_timerName, "读取接收到的message所用的平均时间大于20s", Alarm_ReadMsgSuccess, textMsgCode) {
 					now02 = time.Now()
 				}
 			}
 
 			// 3. 统计读取失败msg的时间分布和频率情况
 			if time.Since(now03).Seconds() > 30 {
-				if c.ListenAndAlarm(m, ReadMsgFailed_timerName, "读取接收到的message失败的频率大于5次/s", float64(5), textMsgCode) {
+				if c.ListenAndAlarm(m, ReadMsgFailed_timerName, "读取接收到的message失败的频率大于5次/s", Alarm_ReadMsgFailed, textMsgCode) {
 					now03 = time.Now()
 				}
 			}
 
 			// 4. 统计写入操作成功的时间分布和频率
 			if time.Since(now04).Seconds() > 60 {
-				if c.ListenAndAlarm(m, WriteMsgSuccess_timerName, "写操作的平均用时超过15s", float64(15), textMsgCode) {
+				if c.ListenAndAlarm(m, WriteMsgSuccess_timerName, "写操作的平均用时超过15s", Alarm_WriteMsgSuccess, textMsgCode) {
 					now04 = time.Now()
 				}
 			}
 
 			// 5. 统计写入操作失败的时间分布和频率
 			if time.Since(now05).Seconds() > 60 {
-				if c.ListenAndAlarm(m, WriteMsgFailed_timerName, "写操作失败的频率超过了5次/s", float64(5), textMsgCode) {
+				if c.ListenAndAlarm(m, WriteMsgFailed_timerName, "写操作失败的频率超过了5次/s", Alarm_WriteMsgFailed, textMsgCode) {
 					now05 = time.Now()
 				}
 			}
@@ -472,7 +471,7 @@ func (c *client) verifyTxAlarm(alarmTimeInterval time.Duration) {
 			}
 			// 1. 验证交易失败的频率
 			if time.Since(now01).Seconds() > 60 {
-				if c.ListenAndAlarm(m, VerifyFailedTx_meterName, "验证交易失败的频率超过了0.5次/s", float64(0.5), textMsgCode) {
+				if c.ListenAndAlarm(m, VerifyFailedTx_meterName, "验证交易失败的频率超过了0.5次/s", Alarm_verifyFailedTx, textMsgCode) {
 					now01 = time.Now()
 				}
 			}
@@ -506,14 +505,14 @@ func (c *client) consensusAlarm(alarmTimeInterval time.Duration) {
 
 			// 1. inertChain时间分布和频率
 			if time.Since(now01).Seconds() > 60 {
-				if c.ListenAndAlarm(m, BlockInsert_timerName, "Insert chain 所用平均时间大于5s", float64(5), textMsgCode) {
+				if c.ListenAndAlarm(m, BlockInsert_timerName, "Insert chain 所用平均时间大于5s", Alarm_BlockInsert, textMsgCode) {
 					now01 = time.Now()
 				}
 			}
 
 			// 2. miner
 			if time.Since(now02).Seconds() > 60 {
-				if c.ListenAndAlarm(m, MineBlock_timerName, "Mine Block 所用平均时间大于8s", float64(8), textMsgCode) {
+				if c.ListenAndAlarm(m, MineBlock_timerName, "Mine Block 所用平均时间大于8s", Alarm_MineBlock, textMsgCode) {
 					now02 = time.Now()
 				}
 			}
