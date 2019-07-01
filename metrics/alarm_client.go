@@ -197,14 +197,12 @@ func (c *client) txpoolAlarm(alarmTimeInterval time.Duration) {
 	}()
 
 	var (
-		metricsName01 = TxpoolNumber_gaugeName
-		metricsName02 = RecvTx_meterName
-		metricsName03 = InvalidTx_counterName
+		metricsName01 = TxpoolNumber_counterName
+		metricsName02 = InvalidTx_counterName
 
 		count int64 = 100        // 交易执行失败的累计交易数量
 		incr  int64 = 100        // 增量
 		now01       = time.Now() // 限制交易池交易数量告警的时间间隔
-		now02       = time.Now() // 限制调用接收交易的交易池函数的速率的时间间隔
 	)
 
 	for {
@@ -218,12 +216,12 @@ func (c *client) txpoolAlarm(alarmTimeInterval time.Duration) {
 			}
 			// 1. 对交易池中剩下的交易数量大于10000进行报警
 			if _, ok := m[metricsName01]; ok {
-				txpoolTotalNumberGauge := m[metricsName01].(gometrics.Gauge).Snapshot()
+				txpoolTotalNumberCounter := m[metricsName01].(gometrics.Counter).Snapshot()
 
-				if txpoolTotalNumberGauge.Value() > int64(10000) && time.Since(now01).Seconds() > 10 { // 告警条件,并满足距离上次告警时间间隔必须大于10s
+				if txpoolTotalNumberCounter.Count() > int64(10000) && time.Since(now01).Seconds() > 10 { // 告警条件,并满足距离上次告警时间间隔必须大于10s
 
 					alarmReason := "AlarmReason: 交易池中的交易大于10000笔了\n"
-					metricsDetails := "Detail: " + strings.Join(SprintMetrics(metricsName01, txpoolTotalNumberGauge), "")
+					metricsDetails := "Detail: " + strings.Join(SprintMetrics(metricsName01, txpoolTotalNumberCounter), "")
 					alarmTime := fmt.Sprintf("AlarmTime: \n%s\n", time.Now().UTC().String())
 					content := alarmReason + metricsDetails + alarmTime
 
@@ -232,28 +230,13 @@ func (c *client) txpoolAlarm(alarmTimeInterval time.Duration) {
 				}
 			}
 
-			// 2. 对交易池中接收到的交易速率进行报警处理，当每1秒超过50次调用则进行报警
+			// 2. 对交易池中对执行失败的交易每增加100笔报警一次
 			if _, ok := m[metricsName02]; ok {
-				recvTxMeter := m[metricsName02].(gometrics.Meter).Snapshot()
-				if recvTxMeter.Rate1() > float64(50) && time.Since(now02).Seconds() > 60 { // 最近一分钟的平均速度,并满足距离上次告警时间间隔为60s
-
-					alarmReason := "AlarmReason: 最近一分钟平均每秒调用接收交易进交易池的次数大于50次了\n"
-					metricsDetails := "Detail: " + strings.Join(SprintMetrics(metricsName02, recvTxMeter), "")
-					alarmTime := fmt.Sprintf("AlarmTime: \n%s\n", time.Now().UTC().String())
-					content := alarmReason + metricsDetails + alarmTime
-
-					go c.sendMsgToAlarmServer(textMsgCode, []byte(content))
-					now02 = time.Now()
-				}
-			}
-
-			// 3. 对交易池中对执行失败的交易每增加100笔报警一次
-			if _, ok := m[metricsName03]; ok {
-				invalidTxCounter := m[metricsName03].(gometrics.Counter)
+				invalidTxCounter := m[metricsName02].(gometrics.Counter)
 				if invalidTxCounter.Count() > count { // count为动态调整参数，每报警一次则增加一定的增量值
 
 					alarmReason := fmt.Sprintf("AlarmReason: 此节点执行失败的交易数量累计大于%d笔了", count)
-					metricsDetails := "Detail: " + strings.Join(SprintMetrics(metricsName03, invalidTxCounter), "")
+					metricsDetails := "Detail: " + strings.Join(SprintMetrics(metricsName02, invalidTxCounter), "")
 					alarmTime := fmt.Sprintf("AlarmTime: \n%s\n", time.Now().UTC().String())
 					content := alarmReason + metricsDetails + alarmTime
 

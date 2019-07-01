@@ -4,10 +4,9 @@ const LevelDBPrefix = "glemo/db/chaindata/"
 
 var (
 	// txpool
-	txpoolModule           = "txpool"
-	RecvTx_meterName       = "txpool/RecvTx/receiveTx"
-	InvalidTx_counterName  = "txpool/DelInvalidTxs/invalid"
-	TxpoolNumber_gaugeName = "txpool/totalTxNumber"
+	txpoolModule             = "txpool"
+	InvalidTx_counterName    = "txpool/DelInvalidTxs/invalid"
+	TxpoolNumber_counterName = "txpool/totalTxNumber"
 
 	// tx
 	txModule                 = "tx"

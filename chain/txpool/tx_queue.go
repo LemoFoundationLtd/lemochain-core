@@ -53,6 +53,7 @@ func (queue *TxQueue) Del(hash common.Hash) {
 		return
 	} else {
 		queue.softDel(hash)
+		txpoolTotalNumberCounter.Dec(1) // 删除交易池中的交易
 	}
 }
 
@@ -64,7 +65,6 @@ func (queue *TxQueue) DelBatch(hashes []common.Hash) {
 	for _, hash := range hashes {
 		queue.Del(hash)
 	}
-	txpoolTotalNumberGauge.Update(int64(len(queue.TxsQueue)))
 }
 
 func (queue *TxQueue) Pop(time uint32, size int) []*types.Transaction {

@@ -9,9 +9,8 @@ import (
 )
 
 var (
-	recvTxMeter            = metrics.NewMeter(metrics.RecvTx_meterName)        // 接收交易的速率统计
-	invalidTxCounter       = metrics.NewCounter(metrics.InvalidTx_counterName) // 执行失败的交易
-	txpoolTotalNumberGauge = metrics.NewGauge(metrics.TxpoolNumber_gaugeName)  // 交易池中剩下的总交易数量
+	invalidTxCounter         = metrics.NewCounter(metrics.InvalidTx_counterName)    // 执行失败的交易
+	txpoolTotalNumberCounter = metrics.NewCounter(metrics.TxpoolNumber_counterName) // 交易池中剩下的总交易数量
 )
 
 type TxPool struct {
@@ -164,7 +163,7 @@ func (pool *TxPool) RecvTx(tx *types.Transaction) bool {
 	} else {
 		pool.RecentTxs.RecvTx(tx)
 		pool.PendingTxs.Push(tx)
-		recvTxMeter.Mark(1)
+		txpoolTotalNumberCounter.Inc(1) // 记录收到一笔交易
 		return true
 	}
 }
