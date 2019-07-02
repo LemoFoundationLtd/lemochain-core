@@ -20,7 +20,7 @@ var (
 	ErrOfRegisterHost      = errors.New("can't get host of RegisterInfo")
 	ErrOfRegisterPort      = errors.New("can't get port of RegisterInfo")
 	ErrAgainRegister       = errors.New("cannot register again after unregistering")
-	ErrInsufficientBalance = errors.New("the balance is insufficient to deduct the deposit for the registered candidate node")
+	ErrInsufficientBalance = errors.New("the balance is insufficient to deduct the deposit for candidate register")
 )
 
 type CandidateVoteEnv struct {
@@ -137,7 +137,7 @@ func (c *CandidateVoteEnv) RegisterOrUpdateToCandidate(tx *types.Transaction, in
 			} else {
 				// Insufficient deposit pool balance
 				remainBalance := c.am.GetAccount(params.CandidateDepositAddress).GetBalance()
-				log.Errorf("Insufficient deposit pool balance. deposit pool address: %s; deposit pool remain balance: %s; ", params.CandidateDepositAddress.String(), remainBalance.String())
+				log.Errorf("Insufficient deposit pool balance. deposit pool address: %s. deposit pool remain balance: %s ", params.CandidateDepositAddress.String(), remainBalance.String())
 			}
 			return nil
 		}
