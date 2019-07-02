@@ -167,15 +167,6 @@ func WriteMetricsData(r metrics.Registry, refresh time.Duration) {
 	}
 }
 
-// GetMapMetrics 返回所有注册是metrics方法
-func GetMapMetrics() MapMetr {
-	m := make(MapMetr)
-	metrics.DefaultRegistry.Each(func(name string, i interface{}) {
-		m[name] = i
-	})
-	return m
-}
-
 // 返回出给定name的metrics的[]string
 func SprintMetrics(metricsName string, i interface{}) []string {
 	du := float64(time.Second)
