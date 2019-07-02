@@ -117,13 +117,6 @@ func (c *CandidateVoteEnv) RegisterOrUpdateToCandidate(tx *types.Transaction, in
 		return err
 	}
 	candidateAddress := tx.From()
-	to := params.FeeReceiveAddress
-
-	// Checking the balance is not enough
-	if !c.CanTransfer(c.am, candidateAddress, params.RegisterCandidateNodeFees) {
-		return ErrInsufficientBalance
-	}
-	// var snapshot = evm.am.Snapshot()
 
 	// Register as a candidate node account
 	nodeAccount := c.am.GetAccount(candidateAddress)
@@ -138,8 +131,8 @@ func (c *CandidateVoteEnv) RegisterOrUpdateToCandidate(tx *types.Transaction, in
 			nodeAccount.SetCandidate(profile)
 			// Set the number of votes to 0
 			nodeAccount.SetVotes(big.NewInt(0))
-			// Transaction costs
-			c.Transfer(c.am, candidateAddress, to, params.RegisterCandidateNodeFees)
+			// deposit refund
+			c.Transfer(c.am, params.FeeReceiveAddress, candidateAddress, params.RegisterCandidateNodeFees)
 			return nil
 		}
 
@@ -151,6 +144,11 @@ func (c *CandidateVoteEnv) RegisterOrUpdateToCandidate(tx *types.Transaction, in
 		return ErrAgainRegister
 	} else {
 		// Register candidate nodes
+		// Checking the balance is not enough
+		if !c.CanTransfer(c.am, candidateAddress, params.RegisterCandidateNodeFees) {
+			return ErrInsufficientBalance
+		}
+
 		endProfile := make(map[string]string, 5)
 		endProfile[types.CandidateKeyIsCandidate] = params.IsCandidateNode
 		endProfile[types.CandidateKeyIncomeAddress] = newProfile[types.CandidateKeyIncomeAddress]
@@ -168,9 +166,10 @@ func (c *CandidateVoteEnv) RegisterOrUpdateToCandidate(tx *types.Transaction, in
 		}
 		nodeAccount.SetVoteFor(candidateAddress)
 		nodeAccount.SetVotes(initialSenderBalance)
-
+		// cash pledge
+		c.Transfer(c.am, candidateAddress, params.FeeReceiveAddress, params.RegisterCandidateNodeFees)
 	}
-	c.Transfer(c.am, candidateAddress, to, params.RegisterCandidateNodeFees)
+
 	return nil
 }
 

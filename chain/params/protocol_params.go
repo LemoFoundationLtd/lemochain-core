@@ -76,7 +76,7 @@ var (
 	ReleaseEvilNodeDuration uint32 = 1000    // 释放作恶节点的过度期高度
 	// RegisterCandidateNodeFees        = new(big.Int).Mul(big.NewInt(1000), oneLEMO) // Register Candidate node fees = 1000LEMO
 	RegisterCandidateNodeFees = common.Lemo2Mo("1000")
-	FeeReceiveAddress, _      = common.StringToAddress("0x1001") // 设置接收注册费用1000LEMO的地址
+	FeeReceiveAddress, _      = common.StringToAddress("0x1001") // 设置接收注册候选节点押金费用1000LEMO的地址
 	IsCandidateNode           = "true"
 	NotCandidateNode          = "false"
 

@@ -171,7 +171,8 @@ func TestCandidateVoteEnv_RegisterOrUpdateToCandidate(t *testing.T) {
 	assert.Equal(t, params.NotCandidateNode, pro[types.CandidateKeyIsCandidate])
 	votes = register02Acc.GetVotes() // 得票数变为0
 	assert.Equal(t, big.NewInt(0), votes)
-	// todo 之后如果修改为质押的话，注销候选节点会退还质押的lemo
+	// 注销之后退回押金,此时的balance为初始化的balance
+	assert.Equal(t, register02Acc.GetBalance(), new(big.Int).Mul(params.RegisterCandidateNodeFees, big.NewInt(2)))
 
 	// 4.2 修改包含nodeId信息，测试nodeId是否被修改和其他信息是否修改成功
 	// 注册候选节点
