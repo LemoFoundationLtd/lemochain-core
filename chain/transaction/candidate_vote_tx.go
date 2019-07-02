@@ -20,7 +20,7 @@ var (
 	ErrOfRegisterHost      = errors.New("can't get host of RegisterInfo")
 	ErrOfRegisterPort      = errors.New("can't get port of RegisterInfo")
 	ErrAgainRegister       = errors.New("cannot register again after unregistering")
-	ErrInsufficientBalance = errors.New("insufficient balance for transfer")
+	ErrInsufficientBalance = errors.New("the balance is insufficient to deduct the deposit for the registered candidate node")
 )
 
 type CandidateVoteEnv struct {
@@ -132,7 +132,13 @@ func (c *CandidateVoteEnv) RegisterOrUpdateToCandidate(tx *types.Transaction, in
 			// Set the number of votes to 0
 			nodeAccount.SetVotes(big.NewInt(0))
 			// deposit refund
-			c.Transfer(c.am, params.FeeReceiveAddress, candidateAddress, params.RegisterCandidateNodeFees)
+			if c.CanTransfer(c.am, params.CandidateDepositAddress, params.RegisterCandidateNodeFees) {
+				c.Transfer(c.am, params.CandidateDepositAddress, candidateAddress, params.RegisterCandidateNodeFees)
+			} else {
+				// Insufficient deposit pool balance
+				remainBalance := c.am.GetAccount(params.CandidateDepositAddress).GetBalance()
+				log.Errorf("Insufficient deposit pool balance. deposit pool address: %s; deposit pool remain balance: %s; ", params.CandidateDepositAddress.String(), remainBalance.String())
+			}
 			return nil
 		}
 
@@ -167,7 +173,7 @@ func (c *CandidateVoteEnv) RegisterOrUpdateToCandidate(tx *types.Transaction, in
 		nodeAccount.SetVoteFor(candidateAddress)
 		nodeAccount.SetVotes(initialSenderBalance)
 		// cash pledge
-		c.Transfer(c.am, candidateAddress, params.FeeReceiveAddress, params.RegisterCandidateNodeFees)
+		c.Transfer(c.am, candidateAddress, params.CandidateDepositAddress, params.RegisterCandidateNodeFees)
 	}
 
 	return nil

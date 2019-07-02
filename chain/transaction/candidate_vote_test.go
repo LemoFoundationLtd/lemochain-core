@@ -39,7 +39,7 @@ func newCandidateTx(register common.Address, isCandidate bool, incomeAddress, no
 	}
 	data, _ := json.Marshal(profile)
 
-	tx := types.NewTransaction(register, params.FeeReceiveAddress, params.RegisterCandidateNodeFees, 200000, common.Big1, data, params.RegisterTx, chainID, uint64(time.Now().Unix()+300), "", "")
+	tx := types.NewTransaction(register, params.CandidateDepositAddress, params.RegisterCandidateNodeFees, 200000, common.Big1, data, params.RegisterTx, chainID, uint64(time.Now().Unix()+300), "", "")
 
 	return tx
 }
