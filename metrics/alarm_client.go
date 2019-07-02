@@ -15,15 +15,7 @@ const (
 	dialTimeOut       = 3 * time.Second  // 拨号超时时间
 	frameWriteTimeout = 20 * time.Second // 写socket超时时间
 	heartbeatInterval = 5 * time.Second  // 发送心跳包间隔时间
-
-	// 报警监听间隔时间
-	alarmTxpoolInterval       = 3 * time.Second
-	alarmHandleMsgInterval    = 4 * time.Second
-	alarmP2pInterval          = 5 * time.Second
-	alarmTxInterval           = 6 * time.Second
-	alarmConsensusInterval    = 5 * time.Second
-	alarmLeveldbStateInterval = 5 * time.Second
-	alarmSystemStateInterval  = 5 * time.Second
+	alarmInterval     = 5 * time.Second  // 报警监听间隔时间
 
 	CodeHeartbeat = uint32(0x01) // 心跳包msg code
 	textMsgCode   = uint32(0x02) // 普通文本msg code
@@ -81,16 +73,10 @@ type client struct {
 }
 
 func (c *client) run() {
-	c.wg.Add(8)
+	c.wg.Add(2)
 	log.Info("Start run alarm system")
 	go c.heartbeatLoop()
-	go c.txpoolAlarm(alarmTxpoolInterval)
-	go c.handleMsgAlarm(alarmHandleMsgInterval)
-	go c.p2pAlarm(alarmP2pInterval)
-	go c.verifyTxAlarm(alarmTxInterval)
-	go c.consensusAlarm(alarmConsensusInterval)
-	go c.leveldbStateAlarm(alarmLeveldbStateInterval)
-	go c.systemStateAlarm(alarmSystemStateInterval)
+	go c.alarmLoop(alarmInterval)
 	c.wg.Wait()
 }
 
@@ -127,6 +113,35 @@ func (c *client) heartbeatLoop() {
 				return
 			}
 			log.Info("send a heartbeat msg to alarm server")
+		}
+	}
+}
+
+// alarmLoop 告警
+func (c *client) alarmLoop(alarmTimeInterval time.Duration) {
+	ticker := time.NewTicker(alarmTimeInterval)
+	defer func() {
+		c.wg.Done()
+		ticker.Stop()
+		log.Debug("Alarm loop close")
+	}()
+
+	for {
+		select {
+		case <-c.stopCh:
+			return
+		case <-ticker.C:
+			mm := GetMapMetrics() // 获取所有的注册metrics方法
+			if len(mm) == 0 {
+				break
+			}
+			for name, condition := range AlarmRuleTable {
+				if time.Since(condition.TimeStamp).Seconds() > 60 {
+					if c.listenAndAlarm(mm, name, condition) {
+						condition.TimeStamp = time.Now()
+					}
+				}
+			}
 		}
 	}
 }
@@ -180,8 +195,8 @@ func (c *client) sendMsgToAlarmServer(msgCode uint32, content []byte) {
 	}
 }
 
-// ListenAndAlarm 参数说明 m: 注册的metrics方法; metricsName: 注册的metrics方法名; alarmReason: 告警理由; alarmCondition: 告警触发条件; alarmMsgCode: 发送告警消息的类型
-func (c *client) ListenAndAlarm(m map[string]interface{}, metricsName string, alarmReason string, alarmCondition interface{}, alarmMsgCode uint32) bool {
+// listenAndAlarm
+func (c *client) listenAndAlarm(m map[string]interface{}, metricsName string, condition *Condition) bool {
 	var (
 		enabled        = false
 		metricsDetails string
@@ -191,420 +206,109 @@ func (c *client) ListenAndAlarm(m map[string]interface{}, metricsName string, al
 		switch metr := i.(type) {
 		case gometrics.Gauge:
 			gauge := metr.Snapshot()
-			if value, ok := alarmCondition.(int64); ok {
-				if gauge.Value() > value {
-					// 满足告警条件
-					enabled = true
-					metricsDetails = "Detail: " + strings.Join(SprintMetrics(metricsName, gauge), "")
-				}
+			// float64转int64
+			if gauge.Value() > int64(condition.AlarmValue) {
+				// 满足告警条件
+				enabled = true
+				metricsDetails = "Detail: " + strings.Join(SprintMetrics(metricsName, gauge), "")
 			}
 
 		case gometrics.Counter:
 			counter := metr.Snapshot()
-			if value, ok := alarmCondition.(int64); ok {
-				if counter.Count() > value {
-					// 满足告警条件
-					enabled = true
-					metricsDetails = "Detail: " + strings.Join(SprintMetrics(metricsName, counter), "")
-				}
+
+			if counter.Count() > int64(condition.AlarmValue) {
+				// 满足告警条件
+				enabled = true
+				metricsDetails = "Detail: " + strings.Join(SprintMetrics(metricsName, counter), "")
 			}
+
 		case gometrics.Meter:
 			meter := metr.Snapshot()
-			if value, ok := alarmCondition.(int64); ok {
-				if meter.Count() > value {
+
+			if condition.MetricsType == CountFunc {
+				if meter.Count() > int64(condition.AlarmValue) {
 					// 满足告警条件
 					enabled = true
 				}
-			}
-			if value, ok := alarmCondition.(float64); ok {
-				if meter.Rate1() > value {
+			} else if condition.MetricsType == Rate1Func {
+				if meter.Rate1() > condition.AlarmValue {
 					// 满足告警条件
 					enabled = true
 				}
+			} else {
+				log.Errorf("This type of measurement is not currently supported. error metricsType: %s", condition.MetricsType)
+				return false
 			}
+
 			metricsDetails = "Detail: " + strings.Join(SprintMetrics(metricsName, meter), "")
 
 		case gometrics.Timer:
 			timer := metr.Snapshot()
-			if value, ok := alarmCondition.(float64); ok {
-				if timer.Mean()/float64(time.Second) > value {
-					// 满足告警条件
-					enabled = true
-
-				}
-			}
-			if value, ok := alarmCondition.(int64); ok {
-				if timer.Count() > value {
+			if condition.MetricsType == MeanFunc {
+				if timer.Mean()/float64(time.Second) > condition.AlarmValue {
 					// 满足告警条件
 					enabled = true
 				}
+			} else if condition.MetricsType == CountFunc {
+				if timer.Count() > int64(condition.AlarmValue) {
+					// 满足告警条件
+					enabled = true
+				}
+			} else {
+				log.Errorf("This type of measurement is not currently supported. error metricsType: %s", condition.MetricsType)
+				return false
 			}
 			metricsDetails = "Detail: " + strings.Join(SprintMetrics(metricsName, timer), "")
 
 		default:
+			log.Errorf("Metrics Type error. error type: %T", metr)
+			return false
 		}
 	}
 
 	// 发送告警消息到告警server
 	if enabled {
-		alarmReason := fmt.Sprintf("AlarmReason: %s\n", alarmReason)
+		alarmReason := fmt.Sprintf("AlarmReason: %s\n", condition.AlarmReason)
 		alarmTime := fmt.Sprintf("AlarmTime: \n%s\n", time.Now().Format("2006/01/02 15:04:05"))
 		content := alarmReason + metricsDetails + alarmTime
 
-		go c.sendMsgToAlarmServer(alarmMsgCode, []byte(content))
+		go c.sendMsgToAlarmServer(condition.AlarmMsgCode, []byte(content))
 	}
 	return enabled
 }
 
-// alarmLoop
-func (c *client) alarmLoop(alarmTimeInterval time.Duration) {
-	ticker := time.NewTicker(alarmTimeInterval)
-	defer func() {
-		c.wg.Done()
-		ticker.Stop()
-		log.Debug("Alarm loop close")
-	}()
-
-	for {
-		select {
-		case <-c.stopCh:
-			return
-		case <-ticker.C:
-			mm := GetMapMetrics() // 获取所有的注册metrics方法
-			if len(mm) == 0 {
-				break
-			}
-
-		}
-	}
-}
-
-// txpoolAlarm 对交易池报警
-func (c *client) txpoolAlarm(alarmTimeInterval time.Duration) {
-	ticker := time.NewTicker(alarmTimeInterval)
-	defer func() {
-		c.wg.Done()
-		ticker.Stop()
-		log.Debug("Txpool alarm end.")
-	}()
-
-	var (
-		now01 = time.Now() // 限制交易池交易数量告警的时间间隔
-	)
-
-	for {
-		select {
-		case <-c.stopCh:
-			return
-		case <-ticker.C:
-			m := GetMapMetrics(txpoolModule)
-			if len(m) == 0 {
-				break
-			}
-
-			// 1. 对交易池中剩下的交易数量大于10000进行报警
-			if time.Since(now01).Seconds() > 30 {
-				if c.ListenAndAlarm(m, TxpoolNumber_counterName, "交易池中的交易大于10000笔了", Alarm_TxpoolNumber, textMsgCode) {
-					now01 = time.Now()
-				}
-			}
-
-			// 2. 对交易池中对执行失败的交易每增加100笔报警一次
-			if c.ListenAndAlarm(m, InvalidTx_meterName, "平均两秒有1笔交易执行失败了", float64(0.5), textMsgCode) {
-			}
-		}
-	}
-}
-
-// handleMsgAlarm 对处理网络模块的message进行报警
-func (c *client) handleMsgAlarm(alarmTimeInterval time.Duration) {
-	ticker := time.NewTicker(alarmTimeInterval)
-	defer func() {
-		c.wg.Done()
-		ticker.Stop()
-		log.Debug("HandleMsg alarm end.")
-	}()
-
-	var (
-		now01 = time.Now()
-		now02 = time.Now()
-		now03 = time.Now()
-		now04 = time.Now()
-		now05 = time.Now()
-		now06 = time.Now()
-		now07 = time.Now()
-		now08 = time.Now()
-	)
-
-	for {
-		select {
-		case <-c.stopCh:
-			return
-		case <-ticker.C:
-			m := GetMapMetrics(networkModule)
-			if len(m) == 0 {
-				break
-			}
-
-			// 1. 对调用handleBlocksMsg的速率大于50次/秒进行报警
-			if time.Since(now01).Seconds() > 60 {
-				if c.ListenAndAlarm(m, HandleBlocksMsg_meterName, "调用handleBlocksMsg的速率大于50次/s", Alarm_HandleBlocksMsg, textMsgCode) {
-					now01 = time.Now()
-				}
-			}
-
-			// 2. 对调用handleGetBlocksMsg的速率大于100次/秒进行报警
-			if time.Since(now02).Seconds() > 60 {
-				if c.ListenAndAlarm(m, HandleGetBlocksMsg_meterName, "调用handleGetBlocksMsg的速率大于100次/s", Alarm_HandleGetBlocksMsg, textMsgCode) {
-					now02 = time.Now()
-				}
-			}
-
-			// 3. 对调用handleBlockHashMsg的速率大于5次/每秒进行报警
-			if time.Since(now03).Seconds() > 60 {
-				if c.ListenAndAlarm(m, HandleBlockHashMsg_meterName, "调用handleBlockHashMsg的速率大于5次/s", Alarm_HandleBlockHashMsg, textMsgCode) {
-					now03 = time.Now()
-				}
-			}
-
-			// 4. 对调用handleGetConfirmsMsg的速率大于50次/秒进行报警
-			if time.Since(now04).Seconds() > 60 {
-				if c.ListenAndAlarm(m, HandleGetConfirmsMsg_meterName, "调用handleGetConfirmsMsg的速率大于50次/s", Alarm_HandleGetConfirmsMsg, textMsgCode) {
-					now04 = time.Now()
-				}
-			}
-
-			// 5. 对调用handleConfirmMsg的速率大于10次/秒进行报警
-			if time.Since(now05).Seconds() > 60 {
-				if c.ListenAndAlarm(m, HandleConfirmMsg_meterName, "调用handleConfirmMsg的速率大于10次/s", Alarm_HandleConfirmMsg, textMsgCode) {
-					now05 = time.Now()
-				}
-			}
-
-			// 6. 对调用handleGetBlocksWithChangeLogMsg的速率大于50次/秒进行报警
-			if time.Since(now06).Seconds() > 60 {
-				if c.ListenAndAlarm(m, HandleGetBlocksWithChangeLogMsg_meterName, "调用handleGetBlocksWithChangeLogMsg的速率大于50次/s", Alarm_HandleGetBlocksWithChangeLogMsg, textMsgCode) {
-					now06 = time.Now()
-				}
-			}
-
-			// 7. 对调用handleDiscoverReqMsg的速率大于5次/秒进行报警
-			if time.Since(now07).Seconds() > 60 {
-				if c.ListenAndAlarm(m, HandleDiscoverReqMsg_meterName, "调用handleDiscoverReqMsg的速率大于5次/s", Alarm_HandleDiscoverReqMsg, textMsgCode) {
-					now07 = time.Now()
-				}
-			}
-
-			// 8. 对调用handleDiscoverResMsg的速率大于5次/秒进行报警
-			if time.Since(now08).Seconds() > 60 {
-				if c.ListenAndAlarm(m, HandleDiscoverResMsg_meterName, "调用handleDiscoverReqMsg的速率大于5次/s", Alarm_HandleDiscoverResMsg, textMsgCode) {
-					now08 = time.Now()
-				}
-			}
-		}
-	}
-}
-
-// p2pAlarm 对p2p模块的报警
-func (c *client) p2pAlarm(alarmTimeInterval time.Duration) {
-	ticker := time.NewTicker(alarmTimeInterval)
-	defer func() {
-		c.wg.Done()
-		ticker.Stop()
-		log.Debug("P2p alarm end.")
-	}()
-
-	var (
-		now01 = time.Now()
-		now02 = time.Now()
-		now03 = time.Now()
-		now04 = time.Now()
-		now05 = time.Now()
-	)
-	for {
-		select {
-		case <-c.stopCh:
-			return
-		case <-ticker.C:
-			m := GetMapMetrics(p2pModule)
-			if len(m) == 0 {
-				break
-			}
-
-			// 1. 统计peer连接失败的频率,当每秒钟连接失败的频率大于5次，则报警
-			if time.Since(now01).Seconds() > 30 {
-				if c.ListenAndAlarm(m, PeerConnFailed_meterName, "远程peer连接失败的频率大于5次/s", Alarm_PeerConnFailed, textMsgCode) {
-					now01 = time.Now()
-				}
-			}
-
-			// 2. 统计成功读取一次msg所用时间的分布情况和调用读取msg的频率
-			if time.Since(now02).Seconds() > 60 {
-				if c.ListenAndAlarm(m, ReadMsgSuccess_timerName, "读取接收到的message所用的平均时间大于20s", Alarm_ReadMsgSuccess, textMsgCode) {
-					now02 = time.Now()
-				}
-			}
-
-			// 3. 统计读取失败msg的时间分布和频率情况
-			if time.Since(now03).Seconds() > 30 {
-				if c.ListenAndAlarm(m, ReadMsgFailed_timerName, "读取接收到的message失败的频率大于5次/s", Alarm_ReadMsgFailed, textMsgCode) {
-					now03 = time.Now()
-				}
-			}
-
-			// 4. 统计写入操作成功的时间分布和频率
-			if time.Since(now04).Seconds() > 60 {
-				if c.ListenAndAlarm(m, WriteMsgSuccess_timerName, "写操作的平均用时超过15s", Alarm_WriteMsgSuccess, textMsgCode) {
-					now04 = time.Now()
-				}
-			}
-
-			// 5. 统计写入操作失败的时间分布和频率
-			if time.Since(now05).Seconds() > 60 {
-				if c.ListenAndAlarm(m, WriteMsgFailed_timerName, "写操作失败的频率超过了5次/s", Alarm_WriteMsgFailed, textMsgCode) {
-					now05 = time.Now()
-				}
-			}
-		}
-	}
-}
-
-// 交易验证失败报警
-func (c *client) verifyTxAlarm(alarmTimeInterval time.Duration) {
-	ticker := time.NewTicker(alarmTimeInterval)
-	defer func() {
-		c.wg.Done()
-		ticker.Stop()
-		log.Debug("VerifyTx alarm end.")
-	}()
-
-	var (
-		now01 = time.Now()
-	)
-	for {
-		select {
-		case <-c.stopCh:
-			return
-		case <-ticker.C:
-			m := GetMapMetrics(txModule)
-			if len(m) == 0 {
-				break
-			}
-			// 1. 验证交易失败的频率
-			if time.Since(now01).Seconds() > 60 {
-				if c.ListenAndAlarm(m, VerifyFailedTx_meterName, "验证交易失败的频率超过了0.5次/s", Alarm_verifyFailedTx, textMsgCode) {
-					now01 = time.Now()
-				}
-			}
-		}
-	}
-}
-
-// 共识模块中mineBlock和insertChain
-func (c *client) consensusAlarm(alarmTimeInterval time.Duration) {
-	ticker := time.NewTicker(alarmTimeInterval)
-	defer func() {
-		c.wg.Done()
-		ticker.Stop()
-		log.Debug("Consensus alarm end.")
-	}()
-
-	var (
-		now01 = time.Now()
-		now02 = time.Now()
-	)
-
-	for {
-		select {
-		case <-c.stopCh:
-			return
-		case <-ticker.C:
-			m := GetMapMetrics(consensusModule)
-			if len(m) == 0 {
-				break
-			}
-
-			// 1. inertChain时间分布和频率
-			if time.Since(now01).Seconds() > 60 {
-				if c.ListenAndAlarm(m, BlockInsert_timerName, "Insert chain 所用平均时间大于5s", Alarm_BlockInsert, textMsgCode) {
-					now01 = time.Now()
-				}
-			}
-
-			// 2. miner
-			if time.Since(now02).Seconds() > 60 {
-				if c.ListenAndAlarm(m, MineBlock_timerName, "Mine Block 所用平均时间大于8s", Alarm_MineBlock, textMsgCode) {
-					now02 = time.Now()
-				}
-			}
-		}
-	}
-}
-
-// 对leveldb的状态进行报警
-func (c *client) leveldbStateAlarm(alarmTimeInterval time.Duration) {
-	ticker := time.NewTicker(alarmTimeInterval)
-	defer func() {
-		c.wg.Done()
-		ticker.Stop()
-		log.Debug("Leveldb state alarm end.")
-	}()
-
-	var (
-		temp int64 = 0
-	)
-
-	for {
-		select {
-		case <-c.stopCh:
-			return
-		case <-ticker.C:
-			m := GetMapMetrics(leveldbModule)
-			if len(m) == 0 {
-				break
-			}
-
-			// 1. 对leveldb进行get操作失败进行告警
-			if c.ListenAndAlarm(m, LevelDb_miss_meterName, "从leveldb中读取数据失败", temp, textMsgCode) {
-				missDBMeter := m[LevelDb_miss_meterName].(gometrics.Meter).Snapshot()
-				temp = missDBMeter.Count() // 更新temp
-			}
-		}
-	}
-}
-
-// 对system状态进行告警
-func (c *client) systemStateAlarm(alarmTimeInterval time.Duration) {
-	ticker := time.NewTicker(alarmTimeInterval)
-	defer func() {
-		c.wg.Done()
-		ticker.Stop()
-		log.Debug("System state alarm end.")
-	}()
-
-	var (
-		now = time.Now()
-	)
-
-	for {
-		select {
-		case <-c.stopCh:
-			return
-		case <-ticker.C:
-			m := GetMapMetrics(systemModule)
-			if len(m) == 0 {
-				break
-			}
-
-			// 1. 申请内存次数和释放内存次数比较
-			if _, ok := m[System__memory_frees]; ok {
-				freesMemMeter := m[System__memory_frees].(gometrics.Meter).Snapshot()
-				if time.Since(now).Seconds() > 60 {
-					if c.ListenAndAlarm(m, System_memory_allocs, "申请内存次数超过了释放内存次数的1.5倍", freesMemMeter.Count()*3/2, textMsgCode) {
-						now = time.Now()
-					}
-				}
-			}
-		}
-	}
-}
+// // 对system状态进行告警 todo
+// func (c *client) systemStateAlarm(alarmTimeInterval time.Duration) {
+// 	ticker := time.NewTicker(alarmTimeInterval)
+// 	defer func() {
+// 		c.wg.Done()
+// 		ticker.Stop()
+// 		log.Debug("System state alarm end.")
+// 	}()
+//
+// 	var (
+// 		now = time.Now()
+// 	)
+//
+// 	for {
+// 		select {
+// 		case <-c.stopCh:
+// 			return
+// 		case <-ticker.C:
+// 			m := GetMapMetrics(systemModule)
+// 			if len(m) == 0 {
+// 				break
+// 			}
+//
+// 			// 1. 申请内存次数和释放内存次数比较
+// 			if _, ok := m[System__memory_frees]; ok {
+// 				freesMemMeter := m[System__memory_frees].(gometrics.Meter).Snapshot()
+// 				if time.Since(now).Seconds() > 60 {
+// 					if c.listenAndAlarm(m, System_memory_allocs, "申请内存次数超过了释放内存次数的1.5倍", freesMemMeter.Count()*3/2, textMsgCode) {
+// 						now = time.Now()
+// 					}
+// 				}
+// 			}
+// 		}
+// 	}
+// }
