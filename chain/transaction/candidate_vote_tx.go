@@ -124,7 +124,7 @@ func (c *CandidateVoteEnv) RegisterOrUpdateToCandidate(tx *types.Transaction, in
 	profile := nodeAccount.GetCandidate()
 	IsCandidate, ok := profile[types.CandidateKeyIsCandidate]
 	// Set candidate node information if it is already a candidate node account
-	if ok && IsCandidate == params.IsCandidateNode { // 1. 当申请账户已经是候选节点
+	if ok && IsCandidate == params.IsCandidateNode {
 		// Determine whether to disqualify a candidate node
 		if newProfile[types.CandidateKeyIsCandidate] == params.NotCandidateNode { // 此账户为注销候选节点操作
 			profile[types.CandidateKeyIsCandidate] = params.NotCandidateNode
@@ -146,9 +146,9 @@ func (c *CandidateVoteEnv) RegisterOrUpdateToCandidate(tx *types.Transaction, in
 		profile[types.CandidateKeyHost] = newProfile[types.CandidateKeyHost]
 		profile[types.CandidateKeyPort] = newProfile[types.CandidateKeyPort]
 		nodeAccount.SetCandidate(profile)
-	} else if ok && IsCandidate == params.NotCandidateNode { // 2. 申请账户已经注销过候选节点
+	} else if ok && IsCandidate == params.NotCandidateNode {
 		return ErrAgainRegister
-	} else { // 3. 申请账户第一次注册候选节点
+	} else { // 注：IsCandidate 是直接从数据库返回的account状态,在存储IsCandidate到数据库的时候只会存储"true"或"false",所以读取IsCandidate出来只会有三种情况："true"、"false"和空(ok == false)。
 		// Register candidate nodes
 		// Checking the balance is not enough
 		if !c.CanTransfer(c.am, candidateAddress, params.RegisterCandidateNodeFees) {
