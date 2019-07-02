@@ -20,7 +20,7 @@ var (
 	ErrOfRegisterHost      = errors.New("can't get host of RegisterInfo")
 	ErrOfRegisterPort      = errors.New("can't get port of RegisterInfo")
 	ErrAgainRegister       = errors.New("cannot register again after unregistering")
-	ErrInsufficientBalance = errors.New("insufficient balance for transfer")
+	ErrInsufficientBalance = errors.New("the balance is insufficient to deduct the deposit for candidate register")
 )
 
 type CandidateVoteEnv struct {
@@ -117,13 +117,6 @@ func (c *CandidateVoteEnv) RegisterOrUpdateToCandidate(tx *types.Transaction, in
 		return err
 	}
 	candidateAddress := tx.From()
-	to := params.FeeReceiveAddress
-
-	// Checking the balance is not enough
-	if !c.CanTransfer(c.am, candidateAddress, params.RegisterCandidateNodeFees) {
-		return ErrInsufficientBalance
-	}
-	// var snapshot = evm.am.Snapshot()
 
 	// Register as a candidate node account
 	nodeAccount := c.am.GetAccount(candidateAddress)
@@ -133,13 +126,19 @@ func (c *CandidateVoteEnv) RegisterOrUpdateToCandidate(tx *types.Transaction, in
 	// Set candidate node information if it is already a candidate node account
 	if ok && IsCandidate == params.IsCandidateNode {
 		// Determine whether to disqualify a candidate node
-		if newProfile[types.CandidateKeyIsCandidate] == params.NotCandidateNode {
+		if newProfile[types.CandidateKeyIsCandidate] == params.NotCandidateNode { // 此账户为注销候选节点操作
 			profile[types.CandidateKeyIsCandidate] = params.NotCandidateNode
 			nodeAccount.SetCandidate(profile)
 			// Set the number of votes to 0
 			nodeAccount.SetVotes(big.NewInt(0))
-			// Transaction costs
-			c.Transfer(c.am, candidateAddress, to, params.RegisterCandidateNodeFees)
+			// deposit refund
+			if c.CanTransfer(c.am, params.CandidateDepositAddress, params.RegisterCandidateNodeFees) {
+				c.Transfer(c.am, params.CandidateDepositAddress, candidateAddress, params.RegisterCandidateNodeFees)
+			} else {
+				// Insufficient deposit pool balance
+				remainBalance := c.am.GetAccount(params.CandidateDepositAddress).GetBalance()
+				log.Errorf("Insufficient deposit pool balance. Deposit pool address: %s; Deposit pool remain balance: %s ", params.CandidateDepositAddress.String(), remainBalance.String())
+			}
 			return nil
 		}
 
@@ -149,8 +148,13 @@ func (c *CandidateVoteEnv) RegisterOrUpdateToCandidate(tx *types.Transaction, in
 		nodeAccount.SetCandidate(profile)
 	} else if ok && IsCandidate == params.NotCandidateNode {
 		return ErrAgainRegister
-	} else {
+	} else { // 注：IsCandidate 是直接从数据库返回的account状态,在存储IsCandidate到数据库的时候只会存储"true"或"false",所以读取IsCandidate出来只会有三种情况："true"、"false"和空(ok == false)。
 		// Register candidate nodes
+		// Checking the balance is not enough
+		if !c.CanTransfer(c.am, candidateAddress, params.RegisterCandidateNodeFees) {
+			return ErrInsufficientBalance
+		}
+
 		endProfile := make(map[string]string, 5)
 		endProfile[types.CandidateKeyIsCandidate] = params.IsCandidateNode
 		endProfile[types.CandidateKeyIncomeAddress] = newProfile[types.CandidateKeyIncomeAddress]
@@ -168,9 +172,10 @@ func (c *CandidateVoteEnv) RegisterOrUpdateToCandidate(tx *types.Transaction, in
 		}
 		nodeAccount.SetVoteFor(candidateAddress)
 		nodeAccount.SetVotes(initialSenderBalance)
-
+		// cash pledge
+		c.Transfer(c.am, candidateAddress, params.CandidateDepositAddress, params.RegisterCandidateNodeFees)
 	}
-	c.Transfer(c.am, candidateAddress, to, params.RegisterCandidateNodeFees)
+
 	return nil
 }
 
