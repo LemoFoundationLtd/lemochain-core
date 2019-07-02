@@ -177,29 +177,32 @@ func (ba *BlockAssembler) Finalize(height uint32, am *account.Manager) error {
 			return err
 		}
 		log.Debugf("the reward of term %d is %s ", term, termRewards.String())
-		lastTermRecord, err := ba.dm.GetTermByHeight(height - 1)
-		if err != nil {
-			log.Warnf("load deputy nodes failed: %v", err)
-			return err
-		}
-		rewards := DivideSalary(termRewards, am, lastTermRecord)
-		for _, item := range rewards {
-			acc := am.GetAccount(item.Address)
-			balance := acc.GetBalance()
-			balance.Add(balance, item.Salary)
-			acc.SetBalance(balance)
-			// 	candidate node vote change corresponding to balance change
-			candidateAddr := acc.GetVoteFor()
-			if (candidateAddr == common.Address{}) {
-				continue
+		// issue reward if reward greater than 0
+		if termRewards.Cmp(big.NewInt(0)) > 0 {
+			lastTermRecord, err := ba.dm.GetTermByHeight(height - 1)
+			if err != nil {
+				log.Warnf("load deputy nodes failed: %v", err)
+				return err
 			}
-			candidateAcc := am.GetAccount(candidateAddr)
-			profile := candidateAcc.GetCandidate()
-			if profile[types.CandidateKeyIsCandidate] == params.NotCandidateNode {
-				continue
+			rewards := DivideSalary(termRewards, am, lastTermRecord)
+			for _, item := range rewards {
+				acc := am.GetAccount(item.Address)
+				balance := acc.GetBalance()
+				balance.Add(balance, item.Salary)
+				acc.SetBalance(balance)
+				// 	candidate node vote change corresponding to balance change
+				candidateAddr := acc.GetVoteFor()
+				if (candidateAddr == common.Address{}) {
+					continue
+				}
+				candidateAcc := am.GetAccount(candidateAddr)
+				profile := candidateAcc.GetCandidate()
+				if profile[types.CandidateKeyIsCandidate] == params.NotCandidateNode {
+					continue
+				}
+				// set votes
+				candidateAcc.SetVotes(new(big.Int).Add(candidateAcc.GetVotes(), item.Salary))
 			}
-			// set votes
-			candidateAcc.SetVotes(new(big.Int).Add(candidateAcc.GetVotes(), item.Salary))
 		}
 	}
 
@@ -264,7 +267,7 @@ func getTermRewardValue(am *account.Manager, term uint32) (*big.Int, error) {
 		return nil, err
 	}
 	if len(value) == 0 {
-		return nil, ErrNoTermReward
+		return big.NewInt(0), nil
 	}
 
 	rewardMap := make(params.RewardsMap)
@@ -275,6 +278,6 @@ func getTermRewardValue(am *account.Manager, term uint32) (*big.Int, error) {
 	if reward, ok := rewardMap[term]; ok {
 		return reward.Value, nil
 	} else {
-		return nil, ErrNoTermReward
+		return big.NewInt(0), nil
 	}
 }
