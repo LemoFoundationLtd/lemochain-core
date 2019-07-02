@@ -256,6 +256,29 @@ func (c *client) ListenAndAlarm(m map[string]interface{}, metricsName string, al
 	return enabled
 }
 
+// alarmLoop
+func (c *client) alarmLoop(alarmTimeInterval time.Duration) {
+	ticker := time.NewTicker(alarmTimeInterval)
+	defer func() {
+		c.wg.Done()
+		ticker.Stop()
+		log.Debug("Alarm loop close")
+	}()
+
+	for {
+		select {
+		case <-c.stopCh:
+			return
+		case <-ticker.C:
+			mm := GetMapMetrics() // 获取所有的注册metrics方法
+			if len(mm) == 0 {
+				break
+			}
+
+		}
+	}
+}
+
 // txpoolAlarm 对交易池报警
 func (c *client) txpoolAlarm(alarmTimeInterval time.Duration) {
 	ticker := time.NewTicker(alarmTimeInterval)
@@ -266,8 +289,7 @@ func (c *client) txpoolAlarm(alarmTimeInterval time.Duration) {
 	}()
 
 	var (
-		count = Alarm_InvalidTx // 交易执行失败的累计交易数量
-		now01 = time.Now()      // 限制交易池交易数量告警的时间间隔
+		now01 = time.Now() // 限制交易池交易数量告警的时间间隔
 	)
 
 	for {
@@ -275,7 +297,7 @@ func (c *client) txpoolAlarm(alarmTimeInterval time.Duration) {
 		case <-c.stopCh:
 			return
 		case <-ticker.C:
-			m := GetModuleMetrics(txpoolModule)
+			m := GetMapMetrics(txpoolModule)
 			if len(m) == 0 {
 				break
 			}
@@ -288,8 +310,7 @@ func (c *client) txpoolAlarm(alarmTimeInterval time.Duration) {
 			}
 
 			// 2. 对交易池中对执行失败的交易每增加100笔报警一次
-			if c.ListenAndAlarm(m, InvalidTx_counterName, fmt.Sprintf("此节点执行失败的交易数量累计大于%d笔了", count), count, textMsgCode) {
-				count = count + Alarm_InvalidTx
+			if c.ListenAndAlarm(m, InvalidTx_meterName, "平均两秒有1笔交易执行失败了", float64(0.5), textMsgCode) {
 			}
 		}
 	}
@@ -320,7 +341,7 @@ func (c *client) handleMsgAlarm(alarmTimeInterval time.Duration) {
 		case <-c.stopCh:
 			return
 		case <-ticker.C:
-			m := GetModuleMetrics(networkModule)
+			m := GetMapMetrics(networkModule)
 			if len(m) == 0 {
 				break
 			}
@@ -405,7 +426,7 @@ func (c *client) p2pAlarm(alarmTimeInterval time.Duration) {
 		case <-c.stopCh:
 			return
 		case <-ticker.C:
-			m := GetModuleMetrics(p2pModule)
+			m := GetMapMetrics(p2pModule)
 			if len(m) == 0 {
 				break
 			}
@@ -465,7 +486,7 @@ func (c *client) verifyTxAlarm(alarmTimeInterval time.Duration) {
 		case <-c.stopCh:
 			return
 		case <-ticker.C:
-			m := GetModuleMetrics(txModule)
+			m := GetMapMetrics(txModule)
 			if len(m) == 0 {
 				break
 			}
@@ -498,7 +519,7 @@ func (c *client) consensusAlarm(alarmTimeInterval time.Duration) {
 		case <-c.stopCh:
 			return
 		case <-ticker.C:
-			m := GetModuleMetrics(consensusModule)
+			m := GetMapMetrics(consensusModule)
 			if len(m) == 0 {
 				break
 			}
@@ -538,7 +559,7 @@ func (c *client) leveldbStateAlarm(alarmTimeInterval time.Duration) {
 		case <-c.stopCh:
 			return
 		case <-ticker.C:
-			m := GetModuleMetrics(leveldbModule)
+			m := GetMapMetrics(leveldbModule)
 			if len(m) == 0 {
 				break
 			}
@@ -570,7 +591,7 @@ func (c *client) systemStateAlarm(alarmTimeInterval time.Duration) {
 		case <-c.stopCh:
 			return
 		case <-ticker.C:
-			m := GetModuleMetrics(systemModule)
+			m := GetMapMetrics(systemModule)
 			if len(m) == 0 {
 				break
 			}

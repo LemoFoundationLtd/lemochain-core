@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	invalidTxCounter         = metrics.NewCounter(metrics.InvalidTx_counterName)    // 执行失败的交易
+	invalidTxMeter           = metrics.NewMeter(metrics.InvalidTx_meterName)        // 执行失败的交易的频率
 	txpoolTotalNumberCounter = metrics.NewCounter(metrics.TxpoolNumber_counterName) // 交易池中剩下的总交易数量
 )
 
@@ -55,7 +55,6 @@ func (pool *TxPool) DelInvalidTxs(txs []*types.Transaction) {
 		hashes = append(hashes, tx.Hash())
 	}
 	pool.PendingTxs.DelBatch(hashes)
-	invalidTxCounter.Inc(int64(len(txs)))
 }
 
 func (pool *TxPool) isInBlocks(hashes HashSet, blocks []*TrieNode) bool {

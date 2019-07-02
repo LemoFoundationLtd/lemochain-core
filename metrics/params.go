@@ -5,10 +5,9 @@ const LevelDBPrefix = "glemo/db/chaindata/"
 var (
 	// txpool
 	txpoolModule             = "txpool"
-	InvalidTx_counterName    = "txpool/DelInvalidTxs/invalid"
+	InvalidTx_meterName      = "txpool/DelInvalidTxs/invalid"
 	TxpoolNumber_counterName = "txpool/totalTxNumber"
 	// 告警条件
-	Alarm_InvalidTx    int64 = 100   // 累计每隔100个错误交易则告警一次
 	Alarm_TxpoolNumber int64 = 10000 // 交易池中的总交易数达到10000笔之后告警一次
 
 	// tx

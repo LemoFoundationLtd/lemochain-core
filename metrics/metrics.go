@@ -7,7 +7,6 @@ import (
 	"github.com/rcrowley/go-metrics"
 	"github.com/rcrowley/go-metrics/exp"
 	"runtime"
-	"strings"
 	"time"
 )
 
@@ -168,13 +167,11 @@ func WriteMetricsData(r metrics.Registry, refresh time.Duration) {
 	}
 }
 
-// GetModuleMetrics 返回指定模块的的metrics
-func GetModuleMetrics(moduleName string) map[string]interface{} {
-	m := make(map[string]interface{})
+// GetMapMetrics 返回所有注册是metrics方法
+func GetMapMetrics() MapMetr {
+	m := make(MapMetr)
 	metrics.DefaultRegistry.Each(func(name string, i interface{}) {
-		if strings.HasPrefix(name, moduleName) {
-			m[name] = i
-		}
+		m[name] = i
 	})
 	return m
 }
