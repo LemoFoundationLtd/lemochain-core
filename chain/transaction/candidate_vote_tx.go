@@ -124,9 +124,9 @@ func (c *CandidateVoteEnv) RegisterOrUpdateToCandidate(tx *types.Transaction, in
 	profile := nodeAccount.GetCandidate()
 	IsCandidate, ok := profile[types.CandidateKeyIsCandidate]
 	// Set candidate node information if it is already a candidate node account
-	if ok && IsCandidate == params.IsCandidateNode {
+	if ok && IsCandidate == params.IsCandidateNode { // 1. 当申请账户已经是候选节点
 		// Determine whether to disqualify a candidate node
-		if newProfile[types.CandidateKeyIsCandidate] == params.NotCandidateNode {
+		if newProfile[types.CandidateKeyIsCandidate] == params.NotCandidateNode { // 此账户为注销候选节点操作
 			profile[types.CandidateKeyIsCandidate] = params.NotCandidateNode
 			nodeAccount.SetCandidate(profile)
 			// Set the number of votes to 0
@@ -137,7 +137,7 @@ func (c *CandidateVoteEnv) RegisterOrUpdateToCandidate(tx *types.Transaction, in
 			} else {
 				// Insufficient deposit pool balance
 				remainBalance := c.am.GetAccount(params.CandidateDepositAddress).GetBalance()
-				log.Errorf("Insufficient deposit pool balance. deposit pool address: %s. deposit pool remain balance: %s ", params.CandidateDepositAddress.String(), remainBalance.String())
+				log.Errorf("Insufficient deposit pool balance. Deposit pool address: %s; Deposit pool remain balance: %s ", params.CandidateDepositAddress.String(), remainBalance.String())
 			}
 			return nil
 		}
@@ -146,9 +146,9 @@ func (c *CandidateVoteEnv) RegisterOrUpdateToCandidate(tx *types.Transaction, in
 		profile[types.CandidateKeyHost] = newProfile[types.CandidateKeyHost]
 		profile[types.CandidateKeyPort] = newProfile[types.CandidateKeyPort]
 		nodeAccount.SetCandidate(profile)
-	} else if ok && IsCandidate == params.NotCandidateNode {
+	} else if ok && IsCandidate == params.NotCandidateNode { // 2. 申请账户已经注销过候选节点
 		return ErrAgainRegister
-	} else {
+	} else { // 3. 申请账户第一次注册候选节点
 		// Register candidate nodes
 		// Checking the balance is not enough
 		if !c.CanTransfer(c.am, candidateAddress, params.RegisterCandidateNodeFees) {
