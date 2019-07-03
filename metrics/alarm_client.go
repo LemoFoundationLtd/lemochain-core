@@ -225,12 +225,12 @@ func (c *client) listenAndAlarm(m map[string]interface{}, metricsName string, co
 		case gometrics.Meter:
 			meter := metr.Snapshot()
 
-			if condition.MetricsType == Count {
+			if condition.MetricsType == TypeCount {
 				if meter.Count() > int64(condition.AlarmValue) {
 					// 满足告警条件
 					enabled = true
 				}
-			} else if condition.MetricsType == Rate1 {
+			} else if condition.MetricsType == TypeRate1 {
 				if meter.Rate1() > condition.AlarmValue {
 					// 满足告警条件
 					enabled = true
@@ -244,12 +244,12 @@ func (c *client) listenAndAlarm(m map[string]interface{}, metricsName string, co
 
 		case gometrics.Timer:
 			timer := metr.Snapshot()
-			if condition.MetricsType == Mean {
+			if condition.MetricsType == TypeMean {
 				if timer.Mean()/float64(time.Second) > condition.AlarmValue {
 					// 满足告警条件
 					enabled = true
 				}
-			} else if condition.MetricsType == Count {
+			} else if condition.MetricsType == TypeCount {
 				if timer.Count() > int64(condition.AlarmValue) {
 					// 满足告警条件
 					enabled = true
@@ -304,7 +304,7 @@ func (c *client) listenAndAlarm(m map[string]interface{}, metricsName string, co
 // 			if _, ok := m[System__memory_frees]; ok {
 // 				freesMemMeter := m[System__memory_frees].(gometrics.Meter).Snapshot()
 // 				if time.Since(now).Seconds() > 60 {
-// 					if c.listenAndAlarm(m, System_memory_allocs, "申请内存次数超过了释放内存次数的1.5倍", freesMemMeter.Count()*3/2, textMsgCode) {
+// 					if c.listenAndAlarm(m, System_memory_allocs, "申请内存次数超过了释放内存次数的1.5倍", freesMemMeter.TypeCount()*3/2, textMsgCode) {
 // 						now = time.Now()
 // 					}
 // 				}
