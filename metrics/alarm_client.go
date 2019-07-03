@@ -225,12 +225,12 @@ func (c *client) listenAndAlarm(m map[string]interface{}, metricsName string, co
 		case gometrics.Meter:
 			meter := metr.Snapshot()
 
-			if condition.MetricsType == CountFunc {
+			if condition.MetricsType == Count {
 				if meter.Count() > int64(condition.AlarmValue) {
 					// 满足告警条件
 					enabled = true
 				}
-			} else if condition.MetricsType == Rate1Func {
+			} else if condition.MetricsType == Rate1 {
 				if meter.Rate1() > condition.AlarmValue {
 					// 满足告警条件
 					enabled = true
@@ -244,12 +244,12 @@ func (c *client) listenAndAlarm(m map[string]interface{}, metricsName string, co
 
 		case gometrics.Timer:
 			timer := metr.Snapshot()
-			if condition.MetricsType == MeanFunc {
+			if condition.MetricsType == Mean {
 				if timer.Mean()/float64(time.Second) > condition.AlarmValue {
 					// 满足告警条件
 					enabled = true
 				}
-			} else if condition.MetricsType == CountFunc {
+			} else if condition.MetricsType == Count {
 				if timer.Count() > int64(condition.AlarmValue) {
 					// 满足告警条件
 					enabled = true
