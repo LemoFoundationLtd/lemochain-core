@@ -4,7 +4,13 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
+	"github.com/LemoFoundationLtd/lemochain-core/metrics"
 	"sync"
+)
+
+var (
+	invalidTxMeter           = metrics.NewMeter(metrics.InvalidTx_meterName)        // 执行失败的交易的频率
+	txpoolTotalNumberCounter = metrics.NewCounter(metrics.TxpoolNumber_counterName) // 交易池中剩下的总交易数量
 )
 
 type TxPool struct {
@@ -156,6 +162,7 @@ func (pool *TxPool) RecvTx(tx *types.Transaction) bool {
 	} else {
 		pool.RecentTxs.RecvTx(tx)
 		pool.PendingTxs.Push(tx)
+		txpoolTotalNumberCounter.Inc(1) // 记录收到一笔交易
 		return true
 	}
 }

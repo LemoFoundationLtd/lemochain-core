@@ -8,6 +8,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/common/subscribe"
+	"github.com/LemoFoundationLtd/lemochain-core/metrics"
 	"github.com/LemoFoundationLtd/lemochain-core/network/p2p"
 	"io"
 	"sync"
@@ -16,8 +17,22 @@ import (
 )
 
 var (
-	ErrNodeInvalid   = errors.New("discover node is invalid")
-	ErrRequestBlocks = errors.New("invalid request blocks' param")
+	ErrNodeInvalid        = errors.New("discover node is invalid")
+	ErrRequestBlocks      = errors.New("invalid request blocks' param")
+	ErrHandleLstStatusMsg = errors.New("stable height can't > current height")
+	ErrHandleGetBlocksMsg = errors.New("invalid request blocks'param")
+	ErrTxExpiration       = errors.New("received transaction expiration time illegal")
+)
+
+var (
+	handleBlocksMsgMeter                 = metrics.NewMeter(metrics.HandleBlocksMsg_meterName)                 // 统计调用handleBlocksMsg的频率
+	handleGetBlocksMsgMeter              = metrics.NewMeter(metrics.HandleGetBlocksMsg_meterName)              // 统计调用handleGetBlocksMsg的频率
+	handleBlockHashMsgMeter              = metrics.NewMeter(metrics.HandleBlockHashMsg_meterName)              // 统计调用handleBlockHashMsg的频率
+	handleGetConfirmsMsgMeter            = metrics.NewMeter(metrics.HandleGetConfirmsMsg_meterName)            // 统计调用handleGetConfirmsMsg的频率
+	handleConfirmMsgMeter                = metrics.NewMeter(metrics.HandleConfirmMsg_meterName)                // 统计调用handleConfirmMsg的频率
+	handleGetBlocksWithChangeLogMsgMeter = metrics.NewMeter(metrics.HandleGetBlocksWithChangeLogMsg_meterName) // 统计调用handleGetBlocksWithChangeLogMsg的频率
+	handleDiscoverReqMsgMeter            = metrics.NewMeter(metrics.HandleDiscoverReqMsg_meterName)            // 统计调用handleDiscoverReqMsg的频率
+	handleDiscoverResMsgMeter            = metrics.NewMeter(metrics.HandleDiscoverResMsg_meterName)            // 统计调用handleDiscoverResMsg的频率
 )
 
 const (
@@ -38,12 +53,6 @@ const (
 	testRemovePeer
 	testForceSync
 	testDiscover
-)
-
-var (
-	ErrHandleLstStatusMsg = errors.New("stable height can't > current height")
-	ErrHandleGetBlocksMsg = errors.New("invalid request blocks'param")
-	ErrTxExpiration       = errors.New("received transaction expiration time illegal")
 )
 
 // var testRcvFlag = false   // for test
@@ -236,15 +245,18 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 				}
 				// block is stale
 				if b.Height() <= pm.chain.StableBlock().Height() || pm.chain.HasBlock(b.Hash()) {
+					log.Debugf("This block has exist. blockHeight: %d", b.Height())
 					continue
 				}
 				// the block is black block
 				if pm.chain.IsInBlackList(b) {
+					log.Debug("This block minerAddress is in BlackList")
 					pm.blockCache.Remove(b)
 					continue
 				}
 				// this block is inserting chain
 				if pm.insertingBlocks.IsExit(b.Hash(), b.Height()) {
+					log.Debugf("The block is inserting chain. blockHeight: %d", b.Height())
 					continue
 				}
 				// local chain has parent block or parent block will insert chain
@@ -701,6 +713,7 @@ func (pm *ProtocolManager) handleGetLstStatusMsg(msg *p2p.Msg, p *peer) error {
 
 // handleBlockHashMsg handle receiving block's hash message
 func (pm *ProtocolManager) handleBlockHashMsg(msg *p2p.Msg, p *peer) error {
+	defer handleBlockHashMsgMeter.Mark(1)
 	var hashMsg BlockHashData
 	if err := msg.Decode(&hashMsg); err != nil {
 		return fmt.Errorf("handleBlockHashMsg error: %v", err)
@@ -746,6 +759,7 @@ func (pm *ProtocolManager) handleTxsMsg(msg *p2p.Msg) error {
 
 // handleBlocksMsg handle receiving blocks message
 func (pm *ProtocolManager) handleBlocksMsg(msg *p2p.Msg, p *peer) error {
+	defer handleBlocksMsgMeter.Mark(1)
 	var blocks types.Blocks
 	if err := msg.Decode(&blocks); err != nil {
 		return fmt.Errorf("handleBlocksMsg error: %v", err)
@@ -760,6 +774,7 @@ func (pm *ProtocolManager) handleBlocksMsg(msg *p2p.Msg, p *peer) error {
 
 // handleGetBlocksMsg handle get blocks message
 func (pm *ProtocolManager) handleGetBlocksMsg(msg *p2p.Msg, p *peer) error {
+	defer handleGetBlocksMsgMeter.Mark(1)
 	var query GetBlocksData
 	if err := msg.Decode(&query); err != nil {
 		return fmt.Errorf("handleGetBlocksMsg error: %v", err)
@@ -835,6 +850,7 @@ func (pm *ProtocolManager) handleConfirmsMsg(msg *p2p.Msg) error {
 
 // handleGetConfirmsMsg handle remote request of block's confirm package message
 func (pm *ProtocolManager) handleGetConfirmsMsg(msg *p2p.Msg, p *peer) error {
+	defer handleGetConfirmsMsgMeter.Mark(1)
 	var condition GetConfirmInfo
 	if err := msg.Decode(&condition); err != nil {
 		return fmt.Errorf("handleGetConfirmsMsg error: %v", err)
@@ -858,6 +874,7 @@ func (pm *ProtocolManager) handleGetConfirmsMsg(msg *p2p.Msg, p *peer) error {
 
 // handleConfirmMsg handle confirm broadcast info
 func (pm *ProtocolManager) handleConfirmMsg(msg *p2p.Msg) error {
+	defer handleConfirmMsgMeter.Mark(1)
 	confirm := new(BlockConfirmData)
 	if err := msg.Decode(confirm); err != nil {
 		return fmt.Errorf("handleConfirmMsg error: %v", err)
@@ -875,6 +892,7 @@ func (pm *ProtocolManager) handleConfirmMsg(msg *p2p.Msg) error {
 
 // handleDiscoverReqMsg handle discover nodes request
 func (pm *ProtocolManager) handleDiscoverReqMsg(msg *p2p.Msg, p *peer) error {
+	defer handleDiscoverReqMsgMeter.Mark(1)
 	var condition DiscoverReqData
 	if err := msg.Decode(&condition); err != nil {
 		return fmt.Errorf("handleDiscoverReqMsg error: %v", err)
@@ -888,6 +906,7 @@ func (pm *ProtocolManager) handleDiscoverReqMsg(msg *p2p.Msg, p *peer) error {
 
 // handleDiscoverResMsg handle discover nodes response
 func (pm *ProtocolManager) handleDiscoverResMsg(msg *p2p.Msg) error {
+	defer handleDiscoverResMsgMeter.Mark(1)
 	var disRes DiscoverResData
 	if err := msg.Decode(&disRes); err != nil {
 		return fmt.Errorf("handleDiscoverResMsg error: %v", err)
@@ -905,6 +924,7 @@ func (pm *ProtocolManager) handleDiscoverResMsg(msg *p2p.Msg) error {
 
 // handleGetBlocksWithChangeLogMsg for
 func (pm *ProtocolManager) handleGetBlocksWithChangeLogMsg(msg *p2p.Msg, p *peer) error {
+	defer handleGetBlocksWithChangeLogMsgMeter.Mark(1)
 	var query GetBlocksData
 	if err := msg.Decode(&query); err != nil {
 		return fmt.Errorf("handleGetBlocksMsg error: %v", err)

@@ -7,6 +7,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/common/hexutil"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
+	"github.com/LemoFoundationLtd/lemochain-core/metrics"
 	"os"
 	"path/filepath"
 )
@@ -33,6 +34,7 @@ type ConfigFromFile struct {
 	TermDuration    uint64 `json:"termDuration"`
 	InterimDuration uint64 `json:"interimDuration"`
 	ConnectionLimit uint64 `json:"connectionLimit"`
+	AlarmUrl        string `json:"alarmUrl"`
 }
 
 type ConfigFromFileMarshaling struct {
@@ -122,5 +124,9 @@ func (c *ConfigFromFile) Check() {
 	}
 	if c.InterimDuration > 0 {
 		params.InterimDuration = uint32(c.InterimDuration)
+	}
+	if len(c.AlarmUrl) > 0 { // if configured, then start metrics and alarm system client
+		metrics.Enabled = true
+		metrics.AlarmUrl = c.AlarmUrl
 	}
 }
