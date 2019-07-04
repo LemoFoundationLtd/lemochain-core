@@ -44,7 +44,7 @@ func (b *BoxTxEnv) RunBoxTxs(gp *types.GasPool, boxTx *types.Transaction, header
 	)
 	now := time.Now() // 设置执行箱子中的交易时间限制
 	for _, tx := range box.SubTxList {
-		if int64(time.Since(now)/time.Millisecond) > restApplyTime {
+		if int64(time.Since(now)) > restApplyTime {
 			log.Errorf("Box txs runtime: %fs", time.Since(now).Seconds())
 			return 0, ErrApplyBoxTxsTimeout
 		}
