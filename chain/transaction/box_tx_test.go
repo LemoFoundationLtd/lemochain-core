@@ -94,7 +94,7 @@ func TestBoxTxEnv_RunBoxTxs(t *testing.T) {
 	gp := new(types.GasPool).AddGas(header.GasLimit)
 	txNum := 5 // 箱子装入5笔交易
 	boxTx := getBoxTx(txNum, false)
-	gasUsed, err := b.RunBoxTxs(gp, boxTx, header, 1, int64(1*time.Millisecond))
+	gasUsed, err := b.RunBoxTxs(gp, boxTx, header, 1, int64(10*time.Millisecond))
 	if err != nil {
 		panic(err)
 	}

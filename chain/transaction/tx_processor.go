@@ -118,13 +118,13 @@ func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions, tim
 
 	now := time.Now() // 当前时间，用于计算箱子交易中执行子交易的限制时间
 	// limit the time to execute txs
-	applyTxsInterval := time.Duration(timeLimitSecond) * time.Millisecond
+	applyTxsInterval := time.Duration(timeLimitSecond) * time.Millisecond // 单位: 纳秒
 	// Iterate over and process the individual transactions
 txsLoop:
 	for _, tx := range txs {
 
 		// 打包交易已用时间
-		usedTime := time.Since(now) / time.Millisecond
+		usedTime := time.Since(now) // 单位：纳秒
 		// 计算还剩下多少时间来打包交易
 		restApplyTime := int64(applyTxsInterval) - int64(usedTime)
 
