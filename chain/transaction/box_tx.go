@@ -10,7 +10,6 @@ import (
 )
 
 var (
-	ErrNestedBoxTx        = errors.New("box transaction cannot be a sub transaction")
 	ErrApplyBoxTxsTimeout = errors.New("apply box txs timeout")
 )
 

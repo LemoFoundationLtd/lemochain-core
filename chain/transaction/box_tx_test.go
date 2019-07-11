@@ -65,10 +65,6 @@ func Test_unmarshalBoxTxs(t *testing.T) {
 		panic(err)
 	}
 	assert.Equal(t, normalBoxTx.Data(), data)
-	// box中含有boxTx
-	errBoxTx := getBoxTx(5, true)
-	_, err = b.unmarshalBoxTxs(errBoxTx.Data())
-	assert.Equal(t, ErrNestedBoxTx, err)
 }
 
 // TestBoxTxEnv_RunBoxTxs
