@@ -95,6 +95,8 @@ func (p *TxProcessor) Process(header *types.Header, txs types.Transactions) (uin
 		totalGasFee.Add(totalGasFee, fee)
 	}
 	p.chargeForGas(totalGasFee, header.MinerAddress)
+	// 余额变化造成的候选节点的票数变化
+	p.setCandidateVotesByChangeBalance()
 
 	p.am.MergeChangeLogs()
 
@@ -161,6 +163,9 @@ txsLoop:
 		totalGasFee.Add(totalGasFee, fee)
 	}
 	p.chargeForGas(totalGasFee, header.MinerAddress)
+	// 余额变化造成的候选节点的票数变化
+	p.setCandidateVotesByChangeBalance()
+
 	p.am.MergeChangeLogs()
 
 	if len(selectedTxs) > 0 {
@@ -298,9 +303,6 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 	}
 	p.refundGas(gp, tx, restGas)
 
-	// 余额变化造成的候选节点的票数变化
-	p.setCandidateVotesByChangeBalance()
-
 	return gasUsed, nil
 }
 
@@ -324,7 +326,7 @@ func (p *TxProcessor) getBalanceChangeBychangelog() balanceChange {
 		copyLogs = append(copyLogs, log.Copy())
 	}
 	// 筛选出同一个账户的balanceLog
-	balanceLogsByAddress := make(map[common.Address]types.ChangeLogSlice)
+	balanceLogsByAddress := make(map[common.Address]types.ChangeLogSlice, len(logs))
 	for _, log := range copyLogs {
 		// BalanceLog
 		if log.LogType == account.BalanceLog {
@@ -332,7 +334,7 @@ func (p *TxProcessor) getBalanceChangeBychangelog() balanceChange {
 		}
 	}
 	// merge BalanceLogs
-	newBalanceLogByAddr := make(map[common.Address]*types.ChangeLog)
+	newBalanceLogByAddr := make(map[common.Address]*types.ChangeLog, len(balanceLogsByAddress))
 	for addr, logs := range balanceLogsByAddress {
 		if len(logs) == 1 { // 不用merge
 			newBalanceLogByAddr[addr] = logs[0]
@@ -342,7 +344,7 @@ func (p *TxProcessor) getBalanceChangeBychangelog() balanceChange {
 		}
 	}
 	// 获取balance change
-	balanceChange := make(balanceChange)
+	balanceChange := make(balanceChange, len(newBalanceLogByAddr))
 	for addr, newLog := range newBalanceLogByAddr {
 		newValue := newLog.NewVal.(big.Int)
 		oldValue := newLog.OldVal.(big.Int)
@@ -593,8 +595,6 @@ func (p *TxProcessor) chargeForGas(charge *big.Int, minerAddress common.Address)
 		incomeAcc := p.am.GetAccount(incomeAddress)
 		// get charge
 		incomeAcc.SetBalance(new(big.Int).Add(incomeAcc.GetBalance(), charge))
-		// change in the number of votes cast by the miner's account to the candidate node
-		p.changeCandidateVotes(incomeAddress, charge)
 	}
 }
 
