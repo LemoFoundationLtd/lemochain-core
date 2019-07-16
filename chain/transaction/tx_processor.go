@@ -319,33 +319,28 @@ type balanceChange map[common.Address]*big.Int
 // 通过changelog获取账户的余额变化
 func (p *TxProcessor) getBalanceChangeBychangelog() balanceChange {
 	copyLogs := make(types.ChangeLogSlice, 0)
-	// 获取所以的changelog
+	// 获取所有的changelog
 	logs := p.am.GetChangeLogs()
 	// copy
 	for _, log := range logs {
 		copyLogs = append(copyLogs, log.Copy())
 	}
-	// 筛选出同一个账户的balanceLog
-	balanceLogsByAddress := make(map[common.Address]types.ChangeLogSlice, len(logs))
+	// 筛选出同一个账户的balanceLog并merge
+	balanceLogsByAddress := make(map[common.Address]*types.ChangeLog, len(logs))
 	for _, log := range copyLogs {
 		// BalanceLog
 		if log.LogType == account.BalanceLog {
-			balanceLogsByAddress[log.Address] = append(balanceLogsByAddress[log.Address], log)
-		}
-	}
-	// merge BalanceLogs
-	newBalanceLogByAddr := make(map[common.Address]*types.ChangeLog, len(balanceLogsByAddress))
-	for addr, logs := range balanceLogsByAddress {
-		if len(logs) == 1 { // 不用merge
-			newBalanceLogByAddr[addr] = logs[0]
-		} else {
-			newLogs := mergeBalanceLogs(logs)
-			newBalanceLogByAddr[addr] = newLogs[0]
+			// merge
+			if _, ok := balanceLogsByAddress[log.Address]; !ok {
+				balanceLogsByAddress[log.Address] = log
+			} else {
+				balanceLogsByAddress[log.Address].NewVal = log.NewVal
+			}
 		}
 	}
 	// 获取balance change
-	balanceChange := make(balanceChange, len(newBalanceLogByAddr))
-	for addr, newLog := range newBalanceLogByAddr {
+	balanceChange := make(balanceChange, len(balanceLogsByAddress))
+	for addr, newLog := range balanceLogsByAddress {
 		newValue := newLog.NewVal.(big.Int)
 		oldValue := newLog.OldVal.(big.Int)
 		change := new(big.Int).Sub(&newValue, &oldValue)
