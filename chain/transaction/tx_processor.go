@@ -349,19 +349,6 @@ func (p *TxProcessor) getBalanceChangeBychangelog() balanceChange {
 	return balanceChange
 }
 
-// merge balanceLog
-func mergeBalanceLogs(logs types.ChangeLogSlice) types.ChangeLogSlice {
-	newLogs := make(types.ChangeLogSlice, 0, 1)
-	for _, balanceLog := range logs {
-		if len(newLogs) == 0 {
-			newLogs = append(newLogs, balanceLog)
-		} else {
-			newLogs[0].NewVal = balanceLog.NewVal
-		}
-	}
-	return newLogs
-}
-
 // handleTx 执行交易,返回消耗之后剩余的gas、evm中执行的error和交易执行不成功的error
 func (p *TxProcessor) handleTx(tx *types.Transaction, header *types.Header, txIndex uint, blockHash common.Hash, initialSenderBalance *big.Int, restGas uint64, gp *types.GasPool, restApplyTime int64) (gas, gasUsed uint64, vmErr, err error) {
 	senderAddr := tx.From()
