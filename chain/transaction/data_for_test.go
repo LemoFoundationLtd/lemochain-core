@@ -91,7 +91,7 @@ func newBlockForTest(height uint32, txs types.Transactions, am *account.Manager,
 	}
 	// 执行交易
 	if len(txs) != 0 {
-		selectTxs, _, gasUsed = p.ApplyTxs(header, txs, 10)
+		selectTxs, _, gasUsed = p.ApplyTxs(header, txs, 1000)
 	}
 
 	am.Finalise()

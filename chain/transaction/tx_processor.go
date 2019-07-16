@@ -95,6 +95,8 @@ func (p *TxProcessor) Process(header *types.Header, txs types.Transactions) (uin
 		totalGasFee.Add(totalGasFee, fee)
 	}
 	p.chargeForGas(totalGasFee, header.MinerAddress)
+	// 余额变化造成的候选节点的票数变化
+	p.setCandidateVotesByChangeBalance()
 
 	p.am.MergeChangeLogs()
 
@@ -161,6 +163,9 @@ txsLoop:
 		totalGasFee.Add(totalGasFee, fee)
 	}
 	p.chargeForGas(totalGasFee, header.MinerAddress)
+	// 余额变化造成的候选节点的票数变化
+	p.setCandidateVotesByChangeBalance()
+
 	p.am.MergeChangeLogs()
 
 	if len(selectedTxs) > 0 {
@@ -298,9 +303,6 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 	}
 	p.refundGas(gp, tx, restGas)
 
-	// 余额变化造成的候选节点的票数变化
-	p.setCandidateVotesByChangeBalance()
-
 	return gasUsed, nil
 }
 
@@ -316,53 +318,30 @@ type balanceChange map[common.Address]*big.Int
 
 // 通过changelog获取账户的余额变化
 func (p *TxProcessor) getBalanceChangeBychangelog() balanceChange {
-	copyLogs := make(types.ChangeLogSlice, 0)
-	// 获取所以的changelog
+	// 获取所有的changelog
 	logs := p.am.GetChangeLogs()
-	// copy
+
+	// 筛选出同一个账户的balanceLog并merge
+	balanceLogsByAddress := make(map[common.Address]*types.ChangeLog, len(logs))
 	for _, log := range logs {
-		copyLogs = append(copyLogs, log.Copy())
-	}
-	// 筛选出同一个账户的balanceLog
-	balanceLogsByAddress := make(map[common.Address]types.ChangeLogSlice)
-	for _, log := range copyLogs {
-		// BalanceLog
 		if log.LogType == account.BalanceLog {
-			balanceLogsByAddress[log.Address] = append(balanceLogsByAddress[log.Address], log)
-		}
-	}
-	// merge BalanceLogs
-	newBalanceLogByAddr := make(map[common.Address]*types.ChangeLog)
-	for addr, logs := range balanceLogsByAddress {
-		if len(logs) == 1 { // 不用merge
-			newBalanceLogByAddr[addr] = logs[0]
-		} else {
-			newLogs := mergeBalanceLogs(logs)
-			newBalanceLogByAddr[addr] = newLogs[0]
+			// merge
+			if _, ok := balanceLogsByAddress[log.Address]; !ok {
+				balanceLogsByAddress[log.Address] = log.Copy()
+			} else {
+				balanceLogsByAddress[log.Address].NewVal = log.NewVal
+			}
 		}
 	}
 	// 获取balance change
-	balanceChange := make(balanceChange)
-	for addr, newLog := range newBalanceLogByAddr {
+	balanceChange := make(balanceChange, len(balanceLogsByAddress))
+	for addr, newLog := range balanceLogsByAddress {
 		newValue := newLog.NewVal.(big.Int)
 		oldValue := newLog.OldVal.(big.Int)
 		change := new(big.Int).Sub(&newValue, &oldValue)
 		balanceChange[addr] = change
 	}
 	return balanceChange
-}
-
-// merge balanceLog
-func mergeBalanceLogs(logs types.ChangeLogSlice) types.ChangeLogSlice {
-	newLogs := make(types.ChangeLogSlice, 0, 1)
-	for _, balanceLog := range logs {
-		if len(newLogs) == 0 {
-			newLogs = append(newLogs, balanceLog)
-		} else {
-			newLogs[0].NewVal = balanceLog.NewVal
-		}
-	}
-	return newLogs
 }
 
 // handleTx 执行交易,返回消耗之后剩余的gas、evm中执行的error和交易执行不成功的error
@@ -593,8 +572,6 @@ func (p *TxProcessor) chargeForGas(charge *big.Int, minerAddress common.Address)
 		incomeAcc := p.am.GetAccount(incomeAddress)
 		// get charge
 		incomeAcc.SetBalance(new(big.Int).Add(incomeAcc.GetBalance(), charge))
-		// change in the number of votes cast by the miner's account to the candidate node
-		p.changeCandidateVotes(incomeAddress, charge)
 	}
 }
 
