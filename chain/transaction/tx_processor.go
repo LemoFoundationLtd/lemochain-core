@@ -316,26 +316,31 @@ func (p *TxProcessor) setCandidateVotesByChangeBalance() {
 
 type balanceChange map[common.Address]*big.Int
 
+// copyBalanceChangeLog
+func copyBalanceChangeLog(logs types.ChangeLogSlice) types.ChangeLogSlice {
+	balanceLogs := make(types.ChangeLogSlice, 0, len(logs))
+	for _, log := range logs {
+		if log.LogType == account.BalanceLog {
+			balanceLogs = append(balanceLogs, log.Copy())
+		}
+	}
+	return balanceLogs
+}
+
 // 通过changelog获取账户的余额变化
 func (p *TxProcessor) getBalanceChangeBychangelog() balanceChange {
-	copyLogs := make(types.ChangeLogSlice, 0)
 	// 获取所有的changelog
 	logs := p.am.GetChangeLogs()
-	// copy
-	for _, log := range logs {
-		copyLogs = append(copyLogs, log.Copy())
-	}
+	balanceLogs := copyBalanceChangeLog(logs)
+
 	// 筛选出同一个账户的balanceLog并merge
 	balanceLogsByAddress := make(map[common.Address]*types.ChangeLog, len(logs))
-	for _, log := range copyLogs {
-		// BalanceLog
-		if log.LogType == account.BalanceLog {
-			// merge
-			if _, ok := balanceLogsByAddress[log.Address]; !ok {
-				balanceLogsByAddress[log.Address] = log
-			} else {
-				balanceLogsByAddress[log.Address].NewVal = log.NewVal
-			}
+	for _, log := range balanceLogs {
+		// merge
+		if _, ok := balanceLogsByAddress[log.Address]; !ok {
+			balanceLogsByAddress[log.Address] = log
+		} else {
+			balanceLogsByAddress[log.Address].NewVal = log.NewVal
 		}
 	}
 	// 获取balance change
