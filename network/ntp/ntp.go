@@ -7,9 +7,9 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"os/user"
 	"runtime"
 	"sort"
-	"strings"
 	"time"
 )
 
@@ -148,14 +148,14 @@ func modifySysTime(overTimestamp int64) error {
 
 // IsRoot 是否为root用户
 func IsRoot() bool {
-	cmd := exec.Command("whoami") // 通过whoani来查看用户
-	out, err := cmd.CombinedOutput()
+	u, err := user.Current()
 	if err != nil {
-		log.Errorf("cmd.CombinedOutput() func error: %v", err)
+		log.Errorf("Get system user name error: %v", err)
 		return false
 	}
-	if strings.Contains(string(out), "root") {
+	if u.Username == "root" { // 不支持windows
 		return true
+	} else {
+		return false
 	}
-	return false
 }
