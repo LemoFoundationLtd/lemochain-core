@@ -15,7 +15,7 @@ const (
 	fPrefix              = "glemo"
 	logFileName          = "glemo.log"
 	RotateLogSize        = 64 * 1024 * 1024 // 64M
-	BackUp_Count         = 20               // 滚动日志文件数
+	BackUp_Count         = 19               // 滚动日志文件数
 
 )
 
