@@ -542,6 +542,7 @@ func (n *Node) apis() []rpc.API {
 	}
 }
 
+// InitLogConfig start log server for lemochain-distribution
 func InitLogConfig(logFlag int) {
 	// logLevel is in range 0~4
 	logLevel := log15.Lvl(logFlag)
@@ -551,4 +552,7 @@ func InitLogConfig(logFlag int) {
 	}
 	showCodeLine := logLevel >= 3 // LevelInfo, LevelDebug
 	log.Setup(logLevel, true, showCodeLine)
+	go func() {
+		log.DoRotate(logLevel, true, showCodeLine)
+	}()
 }
