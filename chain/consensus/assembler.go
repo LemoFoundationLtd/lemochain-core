@@ -187,21 +187,48 @@ func (ba *BlockAssembler) Finalize(height uint32, am *account.Manager) error {
 			rewards := DivideSalary(termRewards, am, lastTermRecord)
 			for _, item := range rewards {
 				acc := am.GetAccount(item.Address)
-				balance := acc.GetBalance()
-				balance.Add(balance, item.Salary)
-				acc.SetBalance(balance)
+				oldBalance := acc.GetBalance()
+				newBalance := new(big.Int).Add(oldBalance, item.Salary)
+				acc.SetBalance(newBalance)
+
 				// 	candidate node vote change corresponding to balance change
-				candidateAddr := acc.GetVoteFor()
-				if (candidateAddr == common.Address{}) {
-					continue
+				oldNum := new(big.Int).Div(oldBalance, params.VoteExchangeRate)
+				newNum := new(big.Int).Div(newBalance, params.VoteExchangeRate)
+				changeVotes := new(big.Int).Sub(newNum, oldNum)
+				if changeVotes.Cmp(big.NewInt(0)) != 0 {
+					transaction.ChangeCandidateVotes(am, item.Address, changeVotes)
 				}
-				candidateAcc := am.GetAccount(candidateAddr)
-				profile := candidateAcc.GetCandidate()
-				if profile[types.CandidateKeyIsCandidate] == params.NotCandidateNode {
-					continue
+			}
+
+			// todo 退还取消候选节点的质押金额
+			// 获取所有的候选节点列表
+			currentBlock, err := ba.db.GetBlockByHeight(height - 1)
+			if err != nil {
+				panic(err)
+			}
+			allCandidateList := ba.db.GetCandidatesTop(currentBlock.Hash()) // todo 到时候替换成此接口： ba.db.GetAllCandidates(currentBlock.Hash())
+			for _, candi := range allCandidateList {
+				// 判断addr的candidate信息
+				candidateAcc := am.GetAccount(candi.Address)
+				pledgAmountString := candidateAcc.GetCandidateState(types.CandidateKeyPledgeAmount)
+				if candidateAcc.GetCandidateState(types.CandidateKeyIsCandidate) == params.NotCandidateNode && pledgAmountString != "" { // 满足退还押金的条件
+					if pledgeAmount, success := new(big.Int).SetString(pledgAmountString, 10); !success {
+						panic("Big.Int SetString function failed")
+					} else {
+						// 退还押金
+						candidatePledgePoolAcc := am.GetAccount(params.CandidateDepositAddress)
+						if candidatePledgePoolAcc.GetBalance().Cmp(pledgeAmount) < 0 { // 判断押金池中的押金是否足够，如果不足直接panic
+							panic("candidate pledge pool account balance insufficient.")
+						}
+						// 减少押金池中的余额
+						candidatePledgePoolAcc.SetBalance(new(big.Int).Sub(candidatePledgePoolAcc.GetBalance(), pledgeAmount))
+						// 退还押金到取消的候选节点账户
+						candidateAcc.SetBalance(new(big.Int).Add(candidateAcc.GetBalance(), pledgeAmount))
+						// 设置候选节点info中的押金余额为nil
+						candidateAcc.SetCandidateState(types.CandidateKeyPledgeAmount, "")
+					}
+
 				}
-				// set votes
-				candidateAcc.SetVotes(new(big.Int).Add(candidateAcc.GetVotes(), item.Salary))
 			}
 		}
 	}

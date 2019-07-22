@@ -14,13 +14,17 @@ import (
 )
 
 var (
-	ErrOfAgainVote         = errors.New("already voted the same as candidate node")
-	ErrOfNotCandidateNode  = errors.New("node address is not candidate account")
-	ErrOfRegisterNodeID    = errors.New("can't get nodeId of RegisterInfo")
-	ErrOfRegisterHost      = errors.New("can't get host of RegisterInfo")
-	ErrOfRegisterPort      = errors.New("can't get port of RegisterInfo")
-	ErrAgainRegister       = errors.New("cannot register again after unregistering")
-	ErrInsufficientBalance = errors.New("the balance is insufficient to deduct the deposit for candidate register")
+	ErrOfAgainVote              = errors.New("already voted the same as candidate node")
+	ErrOfNotCandidateNode       = errors.New("node address is not candidate account")
+	ErrOfRegisterNodeID         = errors.New("can't get nodeId of RegisterInfo")
+	ErrOfRegisterHost           = errors.New("can't get host of RegisterInfo")
+	ErrOfRegisterPort           = errors.New("can't get port of RegisterInfo")
+	ErrAgainRegister            = errors.New("cannot register again after unregistering")
+	ErrInsufficientBalance      = errors.New("the balance is insufficient to deduct the deposit for candidate register")
+	ErrInsufficientPledgeAmount = errors.New("the pledge amount is insufficient for candidate register")
+	ErrParsePledgeAmount        = errors.New("parse pledge amount failed")
+	ErrDepositPoolInsufficient  = errors.New("insufficient deposit pool balance")
+	ErrFailedGetPledgeBalacne   = errors.New("failed to get pledge balance")
 )
 
 type CandidateVoteEnv struct {
@@ -117,66 +121,118 @@ func (c *CandidateVoteEnv) RegisterOrUpdateToCandidate(tx *types.Transaction, in
 		return err
 	}
 	candidateAddress := tx.From()
-
 	// Register as a candidate node account
 	nodeAccount := c.am.GetAccount(candidateAddress)
 	// Check if the application address is already a candidate proxy node.
 	profile := nodeAccount.GetCandidate()
-	IsCandidate, ok := profile[types.CandidateKeyIsCandidate]
+	candidateState, ok := profile[types.CandidateKeyIsCandidate]
 	// Set candidate node information if it is already a candidate node account
-	if ok && IsCandidate == params.IsCandidateNode {
+	if ok && candidateState == params.IsCandidateNode {
 		// Determine whether to disqualify a candidate node
-		if newProfile[types.CandidateKeyIsCandidate] == params.NotCandidateNode { // 此账户为注销候选节点操作
+		if newProfile[types.CandidateKeyIsCandidate] == params.NotCandidateNode { // 此账户为注销候选节点操作,注：注销之后不能再次注册
 			profile[types.CandidateKeyIsCandidate] = params.NotCandidateNode
 			nodeAccount.SetCandidate(profile)
 			// Set the number of votes to 0
 			nodeAccount.SetVotes(big.NewInt(0))
-			// deposit refund
-			if c.CanTransfer(c.am, params.CandidateDepositAddress, params.RegisterCandidateNodeFees) {
-				c.Transfer(c.am, params.CandidateDepositAddress, candidateAddress, params.RegisterCandidateNodeFees)
-			} else {
-				// Insufficient deposit pool balance
-				remainBalance := c.am.GetAccount(params.CandidateDepositAddress).GetBalance()
-				log.Errorf("Insufficient deposit pool balance. Deposit pool address: %s; Deposit pool remain balance: %s ", params.CandidateDepositAddress.String(), remainBalance.String())
-			}
+
+			// 退还质押金额
+			// 为了防止出块节点作恶，延迟退还质押押金，统一在发放换届奖励的区块中退还押金。//todo
+
+			// if pledgeBalance, ok := profile[types.CandidateKeyPledgeAmount]; ok {
+			// 	refundBalance, success := new(big.Int).SetString(pledgeBalance, 10)
+			// 	if !success {
+			// 		log.Errorf("Fatal error!!! Parse pledge balance failed. CandidateAddress: %s", candidateAddress.String())
+			// 		return ErrParsePledgeAmount
+			// 	}
+			// 	if c.CanTransfer(c.am, params.CandidateDepositAddress, refundBalance) {
+			// 		c.Transfer(c.am, params.CandidateDepositAddress, candidateAddress, refundBalance)
+			// 	} else {
+			// 		// Insufficient deposit pool balance
+			// 		remainBalance := c.am.GetAccount(params.CandidateDepositAddress).GetBalance()
+			// 		log.Errorf("Fatal error!!! Insufficient deposit pool balance. Deposit pool address: %s; Deposit pool remain balance: %s ", params.CandidateDepositAddress.String(), remainBalance.String())
+			// 		return ErrDepositPoolInsufficient
+			// 	}
+			// }
 			return nil
 		}
-
+		// 修改候选节点注册信息
+		// 判断交易的amount字段的值是否大于0,大于0则为追加质押金额
+		addBalance := tx.Amount()
+		if addBalance.Cmp(big.NewInt(0)) > 0 {
+			if c.CanTransfer(c.am, candidateAddress, addBalance) {
+				c.Transfer(c.am, candidateAddress, params.CandidateDepositAddress, addBalance)
+			} else {
+				return ErrInsufficientBalance
+			}
+			// 修改质押押金和对应的票数变化
+			if pledgeAmount, ok := profile[types.CandidateKeyPledgeAmount]; ok {
+				oldPledge, success := new(big.Int).SetString(pledgeAmount, 10)
+				if !success {
+					log.Errorf("Fatal error!!! Parse pledge balance failed. CandidateAddress: %s", candidateAddress.String())
+					return ErrParsePledgeAmount
+				}
+				newPledge := new(big.Int).Add(oldPledge, addBalance)
+				// 修改质押押金
+				profile[types.CandidateKeyPledgeAmount] = newPledge.String()
+				// 修改votes
+				// 新老质押的金额与75Lemo求模，把求的数比较如果增加了则增加相应的票数
+				oldNum := new(big.Int).Div(oldPledge, params.PledgeExchangeRate)
+				newNum := new(big.Int).Div(newPledge, params.PledgeExchangeRate)
+				addVotes := new(big.Int).Sub(newNum, oldNum)
+				if addVotes.Cmp(big.NewInt(0)) > 0 { // 达到增加vote的条件
+					newVotes := new(big.Int).Add(nodeAccount.GetVotes(), addVotes)
+					nodeAccount.SetVotes(newVotes)
+				}
+			} else {
+				log.Errorf("Failed to get pledge balance. CandidateAddress: %s", candidateAddress.String())
+				return ErrFailedGetPledgeBalacne
+			}
+		}
 		profile[types.CandidateKeyIncomeAddress] = newProfile[types.CandidateKeyIncomeAddress]
 		profile[types.CandidateKeyHost] = newProfile[types.CandidateKeyHost]
 		profile[types.CandidateKeyPort] = newProfile[types.CandidateKeyPort]
 		nodeAccount.SetCandidate(profile)
-	} else if ok && IsCandidate == params.NotCandidateNode {
+		return nil
+	} else if ok && candidateState == params.NotCandidateNode { // 注册之后的候选节点不能再次注册
 		return ErrAgainRegister
-	} else { // 注：IsCandidate 是直接从数据库返回的account状态,在存储IsCandidate到数据库的时候只会存储"true"或"false",所以读取IsCandidate出来只会有三种情况："true"、"false"和空(ok == false)。
+	} else { // 注：candidateState 是直接从数据库返回的account状态,在存储candidateState到数据库的时候只会存储"true"或"false",所以读取candidateState出来只会有三种情况："true"、"false"和空(ok == false)。
 		// Register candidate nodes
+		// 1. 判断注册的押金必须要大于等于规定的押金限制(500万LEMO)
+		if tx.Amount().Cmp(params.RegisterCandidatePledgeAmount) < 0 {
+			return ErrInsufficientPledgeAmount
+		}
+
 		// Checking the balance is not enough
-		if !c.CanTransfer(c.am, candidateAddress, params.RegisterCandidateNodeFees) {
+		if !c.CanTransfer(c.am, candidateAddress, params.RegisterCandidatePledgeAmount) {
 			return ErrInsufficientBalance
 		}
 
-		endProfile := make(map[string]string, 5)
+		endProfile := make(map[string]string, 6)
 		endProfile[types.CandidateKeyIsCandidate] = params.IsCandidateNode
 		endProfile[types.CandidateKeyIncomeAddress] = newProfile[types.CandidateKeyIncomeAddress]
 		endProfile[types.CandidateKeyNodeID] = newProfile[types.CandidateKeyNodeID]
 		endProfile[types.CandidateKeyHost] = newProfile[types.CandidateKeyHost]
 		endProfile[types.CandidateKeyPort] = newProfile[types.CandidateKeyPort]
+		endProfile[types.CandidateKeyPledgeAmount] = tx.Amount().String()
 		nodeAccount.SetCandidate(endProfile)
 
 		oldNodeAddress := nodeAccount.GetVoteFor()
+		initialVoteNum := new(big.Int).Div(initialSenderBalance, params.VoteExchangeRate) // 当前账户投票票数
+		initialPledgeVoteNum := new(big.Int).Div(tx.Amount(), params.PledgeExchangeRate)  // 质押金额兑换所得票数
 
-		if (oldNodeAddress != common.Address{}) {
+		if (oldNodeAddress != common.Address{}) { // 因为注册候选节点之后当前账户默认投票给自己，所以要进行修改投票人的操作
 			oldNodeAccount := c.am.GetAccount(oldNodeAddress)
-			oldNodeVoters := new(big.Int).Sub(oldNodeAccount.GetVotes(), initialSenderBalance)
+			oldNodeVoters := new(big.Int).Sub(oldNodeAccount.GetVotes(), initialVoteNum)
 			oldNodeAccount.SetVotes(oldNodeVoters)
 		}
+		// 设置当前账户的投票者为自己并设置自己所得到的初始票数,初始票数为 投票票数 + 质押所得票数
 		nodeAccount.SetVoteFor(candidateAddress)
-		nodeAccount.SetVotes(initialSenderBalance)
+		initialTotalVotes := new(big.Int).Add(initialVoteNum, initialPledgeVoteNum)
+		nodeAccount.SetVotes(initialTotalVotes)
 		// cash pledge
-		c.Transfer(c.am, candidateAddress, params.CandidateDepositAddress, params.RegisterCandidateNodeFees)
+		c.Transfer(c.am, candidateAddress, params.CandidateDepositAddress, tx.Amount())
+		return nil
 	}
-
-	return nil
 }
 
 // CallVoteTx voting transaction call
@@ -190,6 +246,14 @@ func (c *CandidateVoteEnv) CallVoteTx(voter, node common.Address, initialBalance
 	}
 	// var snapshot = evm.am.Snapshot()
 	voterAccount := c.am.GetAccount(voter)
+	exchangeVotes := new(big.Int).Div(initialBalance, params.VoteExchangeRate)
+	// 如果票数小于等于0则没必要对candidate的票数进行修改
+	if exchangeVotes.Cmp(big.NewInt(0)) <= 0 {
+		// Set up voter account
+		voterAccount.SetVoteFor(node)
+		return nil
+	}
+
 	// Determine if the account has already voted
 	if (voterAccount.GetVoteFor() != common.Address{}) {
 		if voterAccount.GetVoteFor() == node {
@@ -200,15 +264,15 @@ func (c *CandidateVoteEnv) CallVoteTx(voter, node common.Address, initialBalance
 			// Change in votes
 			oldNodeAccount := c.am.GetAccount(oldNode)
 			// reduce the number of votes for old candidate nodes
-			oldNodeVoters := new(big.Int).Sub(oldNodeAccount.GetVotes(), initialBalance)
+			oldNodeVoters := new(big.Int).Sub(oldNodeAccount.GetVotes(), exchangeVotes)
 			oldNodeAccount.SetVotes(oldNodeVoters)
 			// Increase the number of votes for new candidate nodes
-			newNodeVoters := new(big.Int).Add(newNodeAccount.GetVotes(), initialBalance)
+			newNodeVoters := new(big.Int).Add(newNodeAccount.GetVotes(), exchangeVotes)
 			newNodeAccount.SetVotes(newNodeVoters)
 		}
 	} else { // First vote
 		// Increase the number of votes for candidate nodes
-		nodeVoters := new(big.Int).Add(nodeAccount.GetVotes(), initialBalance)
+		nodeVoters := new(big.Int).Add(nodeAccount.GetVotes(), exchangeVotes)
 		nodeAccount.SetVotes(nodeVoters)
 	}
 	// Set up voter account
