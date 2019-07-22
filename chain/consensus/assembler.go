@@ -200,16 +200,15 @@ func (ba *BlockAssembler) Finalize(height uint32, am *account.Manager) error {
 				}
 			}
 
-			// todo 退还取消候选节点的质押金额
-			// 获取所有的候选节点列表
-			currentBlock, err := ba.db.GetBlockByHeight(height - 1)
+			// 退还取消候选节点的质押金额
+			allCandidateAddressList, err := ba.db.GetAllCandidates()
 			if err != nil {
 				panic(err)
 			}
-			allCandidateList := ba.db.GetCandidatesTop(currentBlock.Hash()) // todo 到时候替换成此接口： ba.db.GetAllCandidates(currentBlock.Hash())
-			for _, candi := range allCandidateList {
+
+			for _, candidateAddress := range allCandidateAddressList {
 				// 判断addr的candidate信息
-				candidateAcc := am.GetAccount(candi.Address)
+				candidateAcc := am.GetAccount(candidateAddress)
 				pledgAmountString := candidateAcc.GetCandidateState(types.CandidateKeyPledgeAmount)
 				if candidateAcc.GetCandidateState(types.CandidateKeyIsCandidate) == params.NotCandidateNode && pledgAmountString != "" { // 满足退还押金的条件
 					if pledgeAmount, success := new(big.Int).SetString(pledgAmountString, 10); !success {

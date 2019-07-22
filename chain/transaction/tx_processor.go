@@ -308,16 +308,16 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 
 // setCandidateVotesByChangeBalance 设置余额变化导致的候选节点票数的变化
 func (p *TxProcessor) setCandidateVotesByChangeBalance() {
-	changes := p.getBalanceChangeBychangelog()
+	changes := p.votesChangeByBalanceChangelog()
 	for addr, changeVotes := range changes {
 		ChangeCandidateVotes(p.am, addr, changeVotes)
 	}
 }
 
-type votesChange map[common.Address]*big.Int
+type votesChange map[common.Address]*big.Int // 记录账户balance变化之后换算出的票数变化
 
-// 通过changelog获取账户的余额变化
-func (p *TxProcessor) getBalanceChangeBychangelog() votesChange {
+// 通过changelog获取账户的余额变化,并进行计算出票数的变化
+func (p *TxProcessor) votesChangeByBalanceChangelog() votesChange {
 	// 获取所有的changelog
 	logs := p.am.GetChangeLogs()
 
