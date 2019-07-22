@@ -130,29 +130,9 @@ func (c *CandidateVoteEnv) RegisterOrUpdateToCandidate(tx *types.Transaction, in
 	if ok && candidateState == params.IsCandidateNode {
 		// Determine whether to disqualify a candidate node
 		if newProfile[types.CandidateKeyIsCandidate] == params.NotCandidateNode { // 此账户为注销候选节点操作,注：注销之后不能再次注册
-			profile[types.CandidateKeyIsCandidate] = params.NotCandidateNode
-			nodeAccount.SetCandidate(profile)
+			nodeAccount.SetCandidateState(types.CandidateKeyIsCandidate, params.NotCandidateNode)
 			// Set the number of votes to 0
 			nodeAccount.SetVotes(big.NewInt(0))
-
-			// 退还质押金额
-			// 为了防止出块节点作恶，延迟退还质押押金，统一在发放换届奖励的区块中退还押金。//todo
-
-			// if pledgeBalance, ok := profile[types.CandidateKeyPledgeAmount]; ok {
-			// 	refundBalance, success := new(big.Int).SetString(pledgeBalance, 10)
-			// 	if !success {
-			// 		log.Errorf("Fatal error!!! Parse pledge balance failed. CandidateAddress: %s", candidateAddress.String())
-			// 		return ErrParsePledgeAmount
-			// 	}
-			// 	if c.CanTransfer(c.am, params.CandidateDepositAddress, refundBalance) {
-			// 		c.Transfer(c.am, params.CandidateDepositAddress, candidateAddress, refundBalance)
-			// 	} else {
-			// 		// Insufficient deposit pool balance
-			// 		remainBalance := c.am.GetAccount(params.CandidateDepositAddress).GetBalance()
-			// 		log.Errorf("Fatal error!!! Insufficient deposit pool balance. Deposit pool address: %s; Deposit pool remain balance: %s ", params.CandidateDepositAddress.String(), remainBalance.String())
-			// 		return ErrDepositPoolInsufficient
-			// 	}
-			// }
 			return nil
 		}
 		// 修改候选节点注册信息
@@ -247,9 +227,12 @@ func (c *CandidateVoteEnv) CallVoteTx(voter, node common.Address, initialBalance
 	// var snapshot = evm.am.Snapshot()
 	voterAccount := c.am.GetAccount(voter)
 	exchangeVotes := new(big.Int).Div(initialBalance, params.VoteExchangeRate)
-	// 如果票数小于等于0则没必要对candidate的票数进行修改
+	// 如果票数等于0则没必要对candidate的票数进行修改
 	if exchangeVotes.Cmp(big.NewInt(0)) <= 0 {
 		// Set up voter account
+		if voterAccount.GetVoteFor() == node {
+			return ErrOfAgainVote
+		}
 		voterAccount.SetVoteFor(node)
 		return nil
 	}

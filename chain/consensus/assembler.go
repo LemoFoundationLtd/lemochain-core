@@ -232,7 +232,6 @@ func (ba *BlockAssembler) Finalize(height uint32, am *account.Manager) error {
 			}
 		}
 	}
-
 	// finalize accounts
 	err := am.Finalise()
 	if err != nil {
