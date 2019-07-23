@@ -624,6 +624,40 @@ func readContraction(p *TxProcessor, db protocol.ChainDB, currentHeader *types.H
 	return p.PreExecutionTransaction(ctx, accM, currentHeader, contractAddr, params.OrdinaryTx, data, common.Hash{}, 5*time.Second)
 }
 
+// TestTxProcessor_votesChangeByBalanceChangelog
+func TestTxProcessor_votesChangeByBalanceChangelog(t *testing.T) {
+	ClearData()
+	db, genesisHash := newCoverGenesisDB()
+	defer db.Close()
+	am := account.NewManager(genesisHash, db)
+	p := NewTxProcessor(config.RewardManager, config.ChainID, newTestChain(db), am, db)
+
+	// 1. 为地址初始化balance
+	txs := make(types.Transactions, 0)
+	addrBalanceMap := make(map[common.Address]*big.Int) // key: 地址，value: 余额
+	for i := 0; i < 10; i++ {
+		addr := common.HexToAddress("0x1" + strconv.Itoa(i))
+		amount := common.Lemo2Mo("500" + strconv.Itoa(i*50))
+		addrBalanceMap[addr] = amount
+
+		tx := makeTx(godPrivate, godAddr, common.HexToAddress("0x1"+strconv.Itoa(i)), nil, params.OrdinaryTx, amount)
+		txs = append(txs, tx)
+	}
+	_ = newBlockForTest(1, txs, am, db, true)
+
+	// 修改balance，让10个地址余额都变成700LEMO
+	diffVotes := make(map[common.Address]*big.Int)
+	for addr, balance := range addrBalanceMap {
+		diffVotes[addr] = new(big.Int).Sub(big.NewInt(7), new(big.Int).Div(balance, params.VoteExchangeRate))
+		am.GetAccount(addr).SetBalance(common.Lemo2Mo("700"))
+	}
+
+	voteChange := p.votesChangeByBalanceChangelog()
+	for addr, votes := range voteChange {
+		assert.Equal(t, diffVotes[addr], votes)
+	}
+}
+
 // func BenchmarkApplyTxs(b *testing.B) {
 // 	ClearData()
 // 	bc := newChain()
