@@ -19,8 +19,8 @@ const (
 )
 
 var (
-	ErrModifyPermission = errors.New("currently only modify Linux system time is supported.\nplease enable network time synchronisation in system settings.\n")
-	ErrNotRootUser      = errors.New("user no permission to modify system time.\nplease enable network time synchronisation in system settings.\n")
+	ErrModifyPermission = errors.New("only the time modification for Linux system is supported")
+	ErrNotRootUser      = errors.New("user has no permission to modify system time")
 )
 
 type durationSlice []time.Duration
@@ -54,64 +54,15 @@ func TimeProof() error {
 	diffs := make([]time.Duration, 0, measurements)
 
 	for i := 0; i < measurements+2; i++ {
-		conn, err := net.Dial("udp", host)
+		// 拨号并获取本地时间和标准时间的差值
+		diffTime, err := dialNtpServerAndGetDiffTime(host)
 		if err != nil {
-			log.Errorf("UDP dial error: %vPlease restart glemo.", err)
 			return err
 		}
-
-		send := time.Now()
-		if err := conn.SetDeadline(time.Now().Add(15 * time.Second)); err != nil {
-			log.Errorf("set deadline error: %s", err)
-			return err
-		}
-		req := &Packet{Settings: 0x1B}
-
-		// 写入请求
-		if err := binary.Write(conn, binary.BigEndian, req); err != nil {
-			log.Errorf("Write conn error: %s", err)
-			return err
-		}
-
-		// 读取socket
-		resp := &Packet{}
-		if err := binary.Read(conn, binary.BigEndian, resp); err != nil {
-			log.Errorf("read socket error: %s", err)
-			return err
-		}
-		conn.Close()
-		elapsed := time.Since(send)
-		/*
-			Unix 时间是一个开始于 1970 年的纪元（或者说从 1970 年开始的秒数）。
-			然而 NTP 使用的是另外一个纪元，从 1900 年开始的秒数。
-			因此，从 NTP 服务端获取到的值要正确地转成 Unix 时间必须减掉这 70 年间的秒数 (1970-1900)
-		*/
-		sec := int64(resp.TxTimeSec)                                                          // 秒数
-		frac := (int64(resp.TxTimeFrac) * 1e9) >> 32                                          // 纳秒位
-		nanosec := sec*1e9 + frac                                                             // 纳秒时间戳
-		tt := time.Date(1900, 1, 1, 0, 0, 0, 0, time.UTC).Add(time.Duration(nanosec)).Local() // 获得从1900年1月1日开始的纳秒时间戳
-
-		// 时间差
-		diffTime := send.Sub(tt) + elapsed/2 // 与返回回来的时间差,本地时间 - 标准时间
-		diffs = append(diffs, time.Duration(diffTime))
+		diffs = append(diffs, diffTime)
 	}
-	// 排序
-	sort.Sort(durationSlice(diffs))
-	// 去掉最高位和最低位求平均值
-	var finalDiff time.Duration = 0
-	temp := diffs[1]
-	for i := 2; i < len(diffs)-1; i++ {
-		next := temp + diffs[i]
-		if temp^next < 0 { // 符号相反，说明溢出了
-			finalDiff = diffs[1]
-			break
-		}
-		temp = next
-	}
-
-	if finalDiff == time.Duration(0) {
-		finalDiff = temp / time.Duration(measurements)
-	}
+	// 计算最终的时间差
+	finalDiff := calcDiffTime(durationSlice(diffs), measurements)
 	// 如果差值在允许的误差范围之内，则不用修改系统时间
 	if finalDiff > -driftThreshold && finalDiff < driftThreshold {
 		return nil
@@ -122,6 +73,71 @@ func TimeProof() error {
 		return err
 	}
 	return nil
+}
+
+// dialNtpServerAndGetDiffTime 拨号ntp服务并获取时间差
+func dialNtpServerAndGetDiffTime(host string) (time.Duration, error) {
+	conn, err := net.Dial("udp", host)
+	if err != nil {
+		log.Errorf("UDP dial error: %vPlease restart glemo.", err)
+		return 0, err
+	}
+
+	send := time.Now()
+	if err := conn.SetDeadline(time.Now().Add(15 * time.Second)); err != nil {
+		log.Errorf("set deadline error: %s", err)
+		return 0, err
+	}
+	req := &Packet{Settings: 0x1B}
+
+	// 写入请求
+	if err := binary.Write(conn, binary.BigEndian, req); err != nil {
+		log.Errorf("Write conn error: %s", err)
+		return 0, err
+	}
+
+	// 读取socket
+	resp := &Packet{}
+	if err := binary.Read(conn, binary.BigEndian, resp); err != nil {
+		log.Errorf("read socket error: %s", err)
+		return 0, err
+	}
+	conn.Close()
+	elapsed := time.Since(send) // 网络传输时间
+	/*
+		Unix 时间是一个开始于 1970 年的纪元（或者说从 1970 年开始的秒数）。
+		然而 NTP 使用的是另外一个纪元，从 1900 年开始的秒数。
+		因此，从 NTP 服务端获取到的值要正确地转成 Unix 时间必须减掉这 70 年间的秒数 (1970-1900)
+	*/
+	sec := int64(resp.TxTimeSec)                                                          // 秒数
+	frac := (int64(resp.TxTimeFrac) * 1e9) >> 32                                          // 纳秒位
+	nanosec := sec*1e9 + frac                                                             // 纳秒时间戳
+	tt := time.Date(1900, 1, 1, 0, 0, 0, 0, time.UTC).Add(time.Duration(nanosec)).Local() // 获得从1900年1月1日开始的纳秒时间戳
+	// 时间差
+	diffTime := send.Sub(tt) + elapsed/2 // 与返回回来的时间差,本地时间 - 标准时间
+	return diffTime, nil
+}
+
+// calcDiffTime 计算出最终的时间差
+func calcDiffTime(diffs durationSlice, measurements int) time.Duration {
+	// 排序
+	sort.Sort(diffs)
+	// 去掉最高位和最低位求平均值
+	var finalDiff time.Duration = 0
+	sum := diffs[1]
+	for i := 2; i < len(diffs)-1; i++ {
+		next := sum + diffs[i]
+		if sum^next < 0 { // 符号相反，说明溢出了
+			finalDiff = diffs[1]
+			break
+		}
+		sum = next
+	}
+
+	if finalDiff == time.Duration(0) {
+		finalDiff = sum / time.Duration(measurements)
+	}
+	return finalDiff
 }
 
 // modifySysTime 传入参数为本地超过标准时间的时间戳数，可为正数和负数
