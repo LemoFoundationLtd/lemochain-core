@@ -222,7 +222,7 @@ func TestCreateTempAddress(t *testing.T) {
 			userId[i] = uint8(rand.Int())
 		}
 		tempAddr := CreateTempAddress(creator, userId)
-		assert.Equal(t, common.TempAddressType, int(tempAddr[0]))
+		assert.Equal(t, common.TempAddressType, uint8(tempAddr[0]))
 		assert.Equal(t, userId[:], tempAddr[10:])
 		assert.Equal(t, creator[11:], tempAddr[1:10])
 	}
