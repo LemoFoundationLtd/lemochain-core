@@ -8,6 +8,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/main/console"
 	"github.com/LemoFoundationLtd/lemochain-core/main/node"
 	"github.com/LemoFoundationLtd/lemochain-core/metrics"
+	"github.com/LemoFoundationLtd/lemochain-core/network/ntp"
 	"github.com/inconshreveable/log15"
 	"gopkg.in/urfave/cli.v1"
 	"os"
@@ -117,6 +118,13 @@ func initLog(ctx *cli.Context) {
 
 func makeFullNode(ctx *cli.Context) *node.Node {
 	initLog(ctx)
+	// 校对系统时间,目前只针对linux系统
+	if err := ntp.TimeProof(); err != nil {
+		log.Errorf("Time proof failed. Error details:%vPlease synchronize the system time correctly before starting the glemo", err)
+		if runtime.GOOS == "linux" {
+			panic(err)
+		}
+	}
 	// process flags
 	totalFlags := append(nodeFlags, rpcFlags...)
 	flags := flag.NewCmdFlags(ctx, totalFlags)
