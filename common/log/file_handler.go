@@ -19,8 +19,8 @@ var (
 	logFilePath = filepath.Join(logDir, logFileName) // 日志文件路径
 )
 
-// fileUtilsExist 查看log目录是否存在
-func fileUtilsExist(dir string) (bool, error) {
+// fileExist 查看log目录是否存在
+func fileExist(dir string) (bool, error) {
 	_, err := os.Stat(dir)
 	if err == nil {
 		return true, nil
@@ -36,7 +36,7 @@ func fileUtilsExist(dir string) (bool, error) {
 func openLogFile(logFilePath string) (*os.File, error) {
 	// 查看log目录是否存在
 	logDir := filepath.Dir(logFilePath)
-	isExist, err := fileUtilsExist(logDir)
+	isExist, err := fileExist(logDir)
 	if err != nil {
 		panic(err)
 	}
