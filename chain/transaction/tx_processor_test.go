@@ -652,7 +652,7 @@ func TestTxProcessor_votesChangeByBalanceChangelog(t *testing.T) {
 		am.GetAccount(addr).SetBalance(common.Lemo2Mo("700"))
 	}
 
-	voteChange := p.votesChangeByBalanceChangelog()
+	voteChange := votesChangeByBalanceChangelog(p.am)
 	for addr, votes := range voteChange {
 		assert.Equal(t, diffVotes[addr], votes)
 	}

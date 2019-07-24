@@ -155,7 +155,7 @@ func (c *CandidateVoteEnv) RegisterOrUpdateToCandidate(tx *types.Transaction) er
 				// 修改质押押金
 				profile[types.CandidateKeyPledgeAmount] = newPledge.String()
 				// 修改votes
-				// 新老质押的金额与75Lemo求模，把求的数比较如果增加了则增加相应的票数
+				// 新老质押的金额与75Lemo相除，把求的数比较如果增加了则增加相应的票数
 				oldNum := new(big.Int).Div(oldPledge, params.PledgeExchangeRate)
 				newNum := new(big.Int).Div(newPledge, params.PledgeExchangeRate)
 				addVotes := new(big.Int).Sub(newNum, oldNum)
@@ -182,7 +182,7 @@ func (c *CandidateVoteEnv) RegisterOrUpdateToCandidate(tx *types.Transaction) er
 			return ErrInsufficientPledgeAmount
 		}
 
-		// Checking the balance is not enough
+		// Check if the balance is not enough
 		if !c.CanTransfer(c.am, candidateAddress, params.RegisterCandidatePledgeAmount) {
 			return ErrInsufficientBalance
 		}
@@ -196,11 +196,13 @@ func (c *CandidateVoteEnv) RegisterOrUpdateToCandidate(tx *types.Transaction) er
 		endProfile[types.CandidateKeyPledgeAmount] = tx.Amount().String()
 		nodeAccount.SetCandidate(endProfile)
 
+		// cash pledge
+		c.Transfer(c.am, candidateAddress, params.CandidateDepositAddress, tx.Amount())
+
 		initialPledgeVoteNum := new(big.Int).Div(tx.Amount(), params.PledgeExchangeRate) // 质押金额兑换所得票数
 		// 设置自己所得到的初始票数,初始票数为 质押所得票数
 		nodeAccount.SetVotes(initialPledgeVoteNum)
-		// cash pledge
-		c.Transfer(c.am, candidateAddress, params.CandidateDepositAddress, tx.Amount())
+
 		return nil
 	}
 }

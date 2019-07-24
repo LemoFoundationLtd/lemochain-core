@@ -190,14 +190,6 @@ func (ba *BlockAssembler) Finalize(height uint32, am *account.Manager) error {
 				oldBalance := acc.GetBalance()
 				newBalance := new(big.Int).Add(oldBalance, item.Salary)
 				acc.SetBalance(newBalance)
-
-				// 	candidate node vote change corresponding to balance change
-				oldNum := new(big.Int).Div(oldBalance, params.VoteExchangeRate)
-				newNum := new(big.Int).Div(newBalance, params.VoteExchangeRate)
-				changeVotes := new(big.Int).Sub(newNum, oldNum)
-				if changeVotes.Cmp(big.NewInt(0)) != 0 {
-					transaction.ChangeCandidateVotes(am, item.Address, changeVotes)
-				}
 			}
 
 			// 退还取消候选节点的质押金额
@@ -231,6 +223,12 @@ func (ba *BlockAssembler) Finalize(height uint32, am *account.Manager) error {
 			}
 		}
 	}
+
+	// 设置执行此block之后余额变化造成的候选节点的票数变化
+	transaction.SetCandidateVotesByChangeBalance(am)
+	// merge
+	am.MergeChangeLogs()
+
 	// finalize accounts
 	err := am.Finalise()
 	if err != nil {

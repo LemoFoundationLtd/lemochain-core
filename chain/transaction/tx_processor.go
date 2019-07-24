@@ -95,10 +95,6 @@ func (p *TxProcessor) Process(header *types.Header, txs types.Transactions) (uin
 		totalGasFee.Add(totalGasFee, fee)
 	}
 	p.chargeForGas(totalGasFee, header.MinerAddress)
-	// 余额变化造成的候选节点的票数变化
-	p.setCandidateVotesByChangeBalance()
-
-	p.am.MergeChangeLogs()
 
 	if len(txs) > 0 {
 		log.Infof("Process %d transactions", len(txs))
@@ -163,10 +159,6 @@ txsLoop:
 		totalGasFee.Add(totalGasFee, fee)
 	}
 	p.chargeForGas(totalGasFee, header.MinerAddress)
-	// 余额变化造成的候选节点的票数变化
-	p.setCandidateVotesByChangeBalance()
-
-	p.am.MergeChangeLogs()
 
 	if len(selectedTxs) > 0 {
 		log.Infof("Process %d transactions", len(selectedTxs))
@@ -275,7 +267,7 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 	var (
 		senderAddr           = tx.From()
 		sender               = p.am.GetAccount(senderAddr)
-		initialSenderBalance = sender.GetBalance()
+		initialSenderBalance = sender.GetBalance() // initialSenderBalance参数代表的是sender执行交易之前的balance值，为投票交易中计算初始票数使用
 		restGas              = tx.GasLimit()
 		vmErr, execErr       error
 		gasUsed              uint64
@@ -304,50 +296,6 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 	p.refundGas(gp, tx, restGas)
 
 	return gasUsed, nil
-}
-
-// setCandidateVotesByChangeBalance 设置余额变化导致的候选节点票数的变化
-func (p *TxProcessor) setCandidateVotesByChangeBalance() {
-	changes := p.votesChangeByBalanceChangelog()
-	for addr, changeVotes := range changes {
-		ChangeCandidateVotes(p.am, addr, changeVotes)
-	}
-}
-
-type votesChange map[common.Address]*big.Int // 记录账户balance变化之后换算出的票数变化
-
-// 通过changelog获取账户的余额变化,并进行计算出票数的变化
-func (p *TxProcessor) votesChangeByBalanceChangelog() votesChange {
-	// 获取所有的changelog
-	logs := p.am.GetChangeLogs()
-
-	// 筛选出同一个账户的balanceLog并merge
-	balanceLogsByAddress := make(map[common.Address]*types.ChangeLog, len(logs))
-	for _, log := range logs {
-		if log.LogType == account.BalanceLog {
-			// merge
-			if _, ok := balanceLogsByAddress[log.Address]; !ok {
-				balanceLogsByAddress[log.Address] = log.Copy()
-			} else {
-				balanceLogsByAddress[log.Address].NewVal = log.NewVal
-			}
-		}
-	}
-	// 根据balance变化得到vote变化
-	votesChange := make(votesChange, len(balanceLogsByAddress))
-	for addr, newLog := range balanceLogsByAddress {
-		newValue := newLog.NewVal.(big.Int)
-		oldValue := newLog.OldVal.(big.Int)
-		oldNum := new(big.Int).Div(&oldValue, params.VoteExchangeRate) // oldBalance兑换出来的票数
-		newNum := new(big.Int).Div(&newValue, params.VoteExchangeRate) // newBalance兑换出来的票数
-		// 如果余额变化未能导致票数的变化则不进行修改票数的操作
-		if newNum.Cmp(oldNum) == 0 {
-			continue
-		}
-		changeNum := new(big.Int).Sub(newNum, oldNum)
-		votesChange[addr] = changeNum
-	}
-	return votesChange
 }
 
 // handleTx 执行交易,返回消耗之后剩余的gas、evm中执行的error和交易执行不成功的error，注：initialSenderBalance参数代表的是sender执行交易之前的balance值，为投票交易中计算初始票数使用
@@ -418,26 +366,6 @@ func (p *TxProcessor) handleTx(tx *types.Transaction, header *types.Header, txIn
 	gasUsed = gasLimit - restGas + subTxsGasUsed
 
 	return restGas, gasUsed, vmErr, err
-}
-
-// ChangeCandidateVotes candidate node vote change corresponding to votes change
-func ChangeCandidateVotes(am *account.Manager, accountAddress common.Address, changeVotes *big.Int) {
-	if changeVotes.Sign() == 0 {
-		return
-	}
-	acc := am.GetAccount(accountAddress)
-	candidataAddress := acc.GetVoteFor()
-
-	if (candidataAddress == common.Address{}) {
-		return
-	}
-	candidateAccount := am.GetAccount(candidataAddress)
-	profile := candidateAccount.GetCandidate()
-	if profile[types.CandidateKeyIsCandidate] == params.NotCandidateNode {
-		return
-	}
-	// set votes
-	candidateAccount.SetVotes(new(big.Int).Add(candidateAccount.GetVotes(), changeVotes))
 }
 
 func (p *TxProcessor) buyGas(gp *types.GasPool, tx *types.Transaction) error {
@@ -683,4 +611,66 @@ func getEVM(tx *types.Transaction, header *types.Header, txIndex uint, txHash co
 	evmContext := NewEVMContext(tx, header, txIndex, blockHash, chain)
 	vmEnv := vm.NewEVM(evmContext, accM, cfg)
 	return vmEnv
+}
+
+// SetCandidateVotesByChangeBalance 设置余额变化导致的候选节点票数的变化
+func SetCandidateVotesByChangeBalance(am *account.Manager) {
+	changes := votesChangeByBalanceChangelog(am)
+	for addr, changeVotes := range changes {
+		changeCandidateVotes(am, addr, changeVotes)
+	}
+}
+
+// changeCandidateVotes candidate node vote change corresponding to votes change
+func changeCandidateVotes(am *account.Manager, accountAddress common.Address, changeVotes *big.Int) {
+	if changeVotes.Sign() == 0 {
+		return
+	}
+	acc := am.GetAccount(accountAddress)
+	candidataAddress := acc.GetVoteFor()
+
+	if (candidataAddress == common.Address{}) {
+		return
+	}
+	candidateAccount := am.GetAccount(candidataAddress)
+	// 判断是否为候选节点
+	if candidateAccount.GetCandidateState(types.CandidateKeyIsCandidate) == params.IsCandidateNode {
+		// set votes
+		candidateAccount.SetVotes(new(big.Int).Add(candidateAccount.GetVotes(), changeVotes))
+	}
+}
+
+type votesChange map[common.Address]*big.Int // 记录账户balance变化之后换算出的票数变化
+// 通过changelog获取账户的余额变化,并进行计算出票数的变化
+func votesChangeByBalanceChangelog(am *account.Manager) votesChange {
+	// 获取所有的changelog
+	logs := am.GetChangeLogs()
+
+	// 筛选出同一个账户的balanceLog并merge
+	balanceLogsByAddress := make(map[common.Address]*types.ChangeLog, len(logs))
+	for _, log := range logs {
+		if log.LogType == account.BalanceLog {
+			// merge
+			if _, ok := balanceLogsByAddress[log.Address]; !ok {
+				balanceLogsByAddress[log.Address] = log.Copy()
+			} else {
+				balanceLogsByAddress[log.Address].NewVal = log.NewVal
+			}
+		}
+	}
+	// 根据balance变化得到vote变化
+	votesChange := make(votesChange, len(balanceLogsByAddress))
+	for addr, newLog := range balanceLogsByAddress {
+		newValue := newLog.NewVal.(big.Int)
+		oldValue := newLog.OldVal.(big.Int)
+		oldNum := new(big.Int).Div(&oldValue, params.VoteExchangeRate) // oldBalance兑换出来的票数
+		newNum := new(big.Int).Div(&newValue, params.VoteExchangeRate) // newBalance兑换出来的票数
+		// 如果余额变化未能导致票数的变化则不进行修改票数的操作
+		if newNum.Cmp(oldNum) == 0 {
+			continue
+		}
+		changeNum := new(big.Int).Sub(newNum, oldNum)
+		votesChange[addr] = changeNum
+	}
+	return votesChange
 }
