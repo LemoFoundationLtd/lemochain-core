@@ -552,7 +552,4 @@ func InitLogConfig(logFlag int) {
 	}
 	showCodeLine := logLevel >= 3 // LevelInfo, LevelDebug
 	log.Setup(logLevel, true, showCodeLine)
-	go func() {
-		log.DoRotate(logLevel, true, showCodeLine)
-	}()
 }

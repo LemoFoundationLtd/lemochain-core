@@ -113,11 +113,6 @@ func initLog(ctx *cli.Context) {
 	}
 	showCodeLine := logLevel >= 3 // LevelInfo, LevelDebug
 	log.Setup(logLevel, true, showCodeLine)
-
-	// Start the rolling logging service
-	go func() {
-		log.DoRotate(logLevel, true, showCodeLine)
-	}()
 }
 
 func makeFullNode(ctx *cli.Context) *node.Node {
