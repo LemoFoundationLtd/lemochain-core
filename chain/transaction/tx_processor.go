@@ -350,7 +350,7 @@ func (p *TxProcessor) votesChangeByBalanceChangelog() votesChange {
 	return votesChange
 }
 
-// handleTx 执行交易,返回消耗之后剩余的gas、evm中执行的error和交易执行不成功的error
+// handleTx 执行交易,返回消耗之后剩余的gas、evm中执行的error和交易执行不成功的error，注：initialSenderBalance参数代表的是sender执行交易之前的balance值，为投票交易中计算初始票数使用
 func (p *TxProcessor) handleTx(tx *types.Transaction, header *types.Header, txIndex uint, blockHash common.Hash, initialSenderBalance *big.Int, restGas uint64, gp *types.GasPool, restApplyTime int64) (gas, gasUsed uint64, vmErr, err error) {
 	senderAddr := tx.From()
 	var (
@@ -380,7 +380,7 @@ func (p *TxProcessor) handleTx(tx *types.Transaction, header *types.Header, txIn
 
 	case params.RegisterTx:
 		candidateVoteEnv := NewCandidateVoteEnv(p.am)
-		err = candidateVoteEnv.RegisterOrUpdateToCandidate(tx, initialSenderBalance)
+		err = candidateVoteEnv.RegisterOrUpdateToCandidate(tx)
 
 	case params.CreateAssetTx:
 		assetEnv := NewRunAssetEnv(p.am)

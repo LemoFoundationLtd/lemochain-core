@@ -112,7 +112,6 @@ func TestCandidateVoteEnv_RegisterOrUpdateToCandidate(t *testing.T) {
 	defer db.Close()
 	am := account.NewManager(common.Hash{}, db)
 	c := NewCandidateVoteEnv(am)
-	initialSenderBalance := common.Lemo2Mo("1000") // 1000LEMO,能换算成10票
 	// 足够的balance给注册者
 	registerAcc := c.am.GetAccount(register)
 	registerAcc.SetBalance(new(big.Int).Mul(params.RegisterCandidatePledgeAmount, big.NewInt(2)))
@@ -125,7 +124,7 @@ func TestCandidateVoteEnv_RegisterOrUpdateToCandidate(t *testing.T) {
 	// 1. balance不足以支付质押lemo
 	registerAcc.SetBalance(big.NewInt(0))
 	tx01 := newCandidateTx(register, params.RegisterCandidatePledgeAmount, true, normalIncomeAddress, normalNodeId, normalHost, normalPort)
-	err := c.RegisterOrUpdateToCandidate(tx01, initialSenderBalance)
+	err := c.RegisterOrUpdateToCandidate(tx01)
 	assert.Equal(t, ErrInsufficientBalance, err)
 
 	c.am.RevertToSnapshot(snapshot)
@@ -134,7 +133,7 @@ func TestCandidateVoteEnv_RegisterOrUpdateToCandidate(t *testing.T) {
 	// 构造注销状态
 	registerAcc.SetCandidateState(types.CandidateKeyIsCandidate, params.NotCandidateNode)
 	tx02 := newCandidateTx(register, nil, true, normalIncomeAddress, normalNodeId, normalHost, normalPort)
-	err = c.RegisterOrUpdateToCandidate(tx02, initialSenderBalance)
+	err = c.RegisterOrUpdateToCandidate(tx02)
 	// 返回已经注销无法再次注册的错误
 	assert.Equal(t, ErrAgainRegister, err)
 
@@ -142,7 +141,7 @@ func TestCandidateVoteEnv_RegisterOrUpdateToCandidate(t *testing.T) {
 
 	// 3. 首次注册的正常情况
 	tx03 := newCandidateTx(register, params.RegisterCandidatePledgeAmount, true, normalIncomeAddress, normalNodeId, normalHost, normalPort)
-	err = c.RegisterOrUpdateToCandidate(tx03, initialSenderBalance)
+	err = c.RegisterOrUpdateToCandidate(tx03)
 	assert.NoError(t, err)
 	// 验证注册的候选节点信息
 	p := registerAcc.GetCandidate()
@@ -152,21 +151,19 @@ func TestCandidateVoteEnv_RegisterOrUpdateToCandidate(t *testing.T) {
 	assert.Equal(t, normalPort, p[types.CandidateKeyPort])
 	assert.Equal(t, "true", p[types.CandidateKeyIsCandidate])
 	assert.Equal(t, params.RegisterCandidatePledgeAmount.String(), p[types.CandidateKeyPledgeAmount])
-	// 验证投票给自己，并且自己此时的票数为 initialSenderBalance / 100LEMO + params.RegisterCandidatePledgeAmount / 75LEMO
-	voteFor := registerAcc.GetVoteFor()
-	assert.Equal(t, register, voteFor)
+	// 自己此时的票数为 params.RegisterCandidatePledgeAmount / 75LEMO
 	votes := registerAcc.GetVotes()
-	realVotes := new(big.Int).Add(new(big.Int).Div(initialSenderBalance, params.VoteExchangeRate), new(big.Int).Div(params.RegisterCandidatePledgeAmount, params.PledgeExchangeRate))
+	realVotes := new(big.Int).Div(params.RegisterCandidatePledgeAmount, params.PledgeExchangeRate)
 	assert.Equal(t, realVotes, votes)
 
 	// 4. 已经是候选节点，修改候选节点信息
 	// 注册候选节点
 	rTx := newCandidateTx(register02, params.RegisterCandidatePledgeAmount, true, normalIncomeAddress, normalNodeId, normalHost, normalPort)
-	err = c.RegisterOrUpdateToCandidate(rTx, initialSenderBalance)
+	err = c.RegisterOrUpdateToCandidate(rTx)
 	assert.NoError(t, err)
 	// 4.1 修改信息为 注销候选节点
 	tx04 := newCandidateTx(register02, nil, false, normalIncomeAddress, normalNodeId, normalHost, normalPort)
-	err = c.RegisterOrUpdateToCandidate(tx04, initialSenderBalance)
+	err = c.RegisterOrUpdateToCandidate(tx04)
 	assert.NoError(t, err)
 	// 注销之后，不会立即退回押金，要等到换届发放奖励的区块中退回押金。
 	pro := register02Acc.GetCandidate()
@@ -178,7 +175,7 @@ func TestCandidateVoteEnv_RegisterOrUpdateToCandidate(t *testing.T) {
 	// 注册候选节点
 	PledgeAmount := common.Lemo2Mo("7500050") // 质押的金额为750万零50 LEMO,换算为票数为10万票
 	nTx := newCandidateTx(register03, PledgeAmount, true, normalIncomeAddress, normalNodeId, normalHost, normalPort)
-	err = c.RegisterOrUpdateToCandidate(nTx, big.NewInt(0))
+	err = c.RegisterOrUpdateToCandidate(nTx)
 	assert.NoError(t, err)
 	assert.Equal(t, big.NewInt(100000), register03Acc.GetVotes())
 	// 测试修改注册候选节点的信息中的所有字段，包括质押金额的追加
@@ -188,7 +185,7 @@ func TestCandidateVoteEnv_RegisterOrUpdateToCandidate(t *testing.T) {
 	newPort := "5001"
 	addPledgeAmount := common.Lemo2Mo("50") // 追加50LEMO,加上之前的质押金额，换算为票数为100001票
 	tx05 := newCandidateTx(register03, addPledgeAmount, true, newIncomeAddress, newNodeId, newHost, newPort)
-	err = c.RegisterOrUpdateToCandidate(tx05, nil)
+	err = c.RegisterOrUpdateToCandidate(tx05)
 	assert.NoError(t, err)
 	// 验证修改后的信息
 	newPro := register03Acc.GetCandidate()

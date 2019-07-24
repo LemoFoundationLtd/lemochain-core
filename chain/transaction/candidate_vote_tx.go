@@ -114,7 +114,7 @@ func buildProfile(tx *types.Transaction) (types.Profile, error) {
 }
 
 // RegisterOrUpdateToCandidate candidate node account transaction call
-func (c *CandidateVoteEnv) RegisterOrUpdateToCandidate(tx *types.Transaction, initialSenderBalance *big.Int) error {
+func (c *CandidateVoteEnv) RegisterOrUpdateToCandidate(tx *types.Transaction) error {
 	// 解析data并生成新的profile
 	newProfile, err := buildProfile(tx)
 	if err != nil {
@@ -196,19 +196,9 @@ func (c *CandidateVoteEnv) RegisterOrUpdateToCandidate(tx *types.Transaction, in
 		endProfile[types.CandidateKeyPledgeAmount] = tx.Amount().String()
 		nodeAccount.SetCandidate(endProfile)
 
-		oldNodeAddress := nodeAccount.GetVoteFor()
-		initialVoteNum := new(big.Int).Div(initialSenderBalance, params.VoteExchangeRate) // 当前账户投票票数
-		initialPledgeVoteNum := new(big.Int).Div(tx.Amount(), params.PledgeExchangeRate)  // 质押金额兑换所得票数
-
-		if (oldNodeAddress != common.Address{}) { // 因为注册候选节点之后当前账户默认投票给自己，所以要进行修改投票人的操作
-			oldNodeAccount := c.am.GetAccount(oldNodeAddress)
-			oldNodeVoters := new(big.Int).Sub(oldNodeAccount.GetVotes(), initialVoteNum)
-			oldNodeAccount.SetVotes(oldNodeVoters)
-		}
-		// 设置当前账户的投票者为自己并设置自己所得到的初始票数,初始票数为 投票票数 + 质押所得票数
-		nodeAccount.SetVoteFor(candidateAddress)
-		initialTotalVotes := new(big.Int).Add(initialVoteNum, initialPledgeVoteNum)
-		nodeAccount.SetVotes(initialTotalVotes)
+		initialPledgeVoteNum := new(big.Int).Div(tx.Amount(), params.PledgeExchangeRate) // 质押金额兑换所得票数
+		// 设置自己所得到的初始票数,初始票数为 质押所得票数
+		nodeAccount.SetVotes(initialPledgeVoteNum)
 		// cash pledge
 		c.Transfer(c.am, candidateAddress, params.CandidateDepositAddress, tx.Amount())
 		return nil
@@ -246,9 +236,12 @@ func (c *CandidateVoteEnv) CallVoteTx(voter, node common.Address, initialBalance
 			newNodeAccount := nodeAccount
 			// Change in votes
 			oldNodeAccount := c.am.GetAccount(oldNode)
-			// reduce the number of votes for old candidate nodes
-			oldNodeVoters := new(big.Int).Sub(oldNodeAccount.GetVotes(), exchangeVotes)
-			oldNodeAccount.SetVotes(oldNodeVoters)
+			// 判断前一个投票的候选节点是否已经取消候选节点列表
+			if oldNodeAccount.GetCandidateState(types.CandidateKeyIsCandidate) == params.IsCandidateNode {
+				// reduce the number of votes for old candidate nodes
+				oldNodeVoters := new(big.Int).Sub(oldNodeAccount.GetVotes(), exchangeVotes)
+				oldNodeAccount.SetVotes(oldNodeVoters)
+			}
 			// Increase the number of votes for new candidate nodes
 			newNodeVoters := new(big.Int).Add(newNodeAccount.GetVotes(), exchangeVotes)
 			newNodeAccount.SetVotes(newNodeVoters)
