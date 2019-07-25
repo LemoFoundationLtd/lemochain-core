@@ -90,6 +90,18 @@ func Critf(format string, values ...interface{}) {
 	os.Exit(1)
 }
 
+// 用于事件推送
+var eventLogTag = "[event log]"
+
+func Eventf(format string, values ...interface{}) {
+	msg := fmt.Sprintf(format, values...)
+	srvLog.Warn(eventLogTag + msg)
+}
+
+func Event(msg string, ctx ...interface{}) {
+	srvLog.Warn(eventLogTag+msg, ctx...)
+}
+
 // Lazy allows you to defer calculation of a logged value that is expensive
 // to compute until it is certain that it must be evaluated with the given filters.
 //

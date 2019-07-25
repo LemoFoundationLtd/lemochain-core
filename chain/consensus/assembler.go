@@ -162,6 +162,12 @@ func (ba *BlockAssembler) Seal(header *types.Header, txProduct *account.TxsProdu
 		log.Debug("snapshot new term", "deputies", log.Lazy{Fn: func() string {
 			return deputies.String()
 		}})
+		// 查询本届是否设置了换届奖励
+		termIndex := deputynode.GetTermIndexByHeight(header.Height)
+		termRewards, _ := getTermRewardValue(ba.am, termIndex)
+		if termRewards.Cmp(big.NewInt(0)) == 0 { // 本届还未设置换届奖励，事件推送通知
+			log.Eventf("There was no consensus node award in the [%d] term. The current block height is %d.", termIndex, header.Height)
+		}
 	}
 	return block
 }

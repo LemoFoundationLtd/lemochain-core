@@ -261,7 +261,7 @@ func (v *Validator) VerifyAfterTxProcess(block, computedBlock *types.Block) erro
 	// verify block hash. It also verify the rest fields in header: VersionRoot, LogRoot, GasLimit, GasUsed
 	if computedBlock.Hash() != block.Hash() {
 		// it contains
-		log.Errorf("verify block error! oldHeader: %v, newHeader:%v", block.Header, computedBlock.Header)
+		log.Errorf("verify block error! oldBlock: %s, newBlock:%s", block.String(), computedBlock.String())
 		return ErrVerifyBlockFailed
 	}
 	// verify changeLog
