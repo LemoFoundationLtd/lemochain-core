@@ -71,7 +71,7 @@ func WriteFileHandler(logFilePath string, f *os.File, fmtr log15.Format) log15.H
 	h := log15.FuncHandler(func(r *log15.Record) error {
 		// 判断log文件是否需要滚动
 		if info, err := f.Stat(); err == nil {
-			if info.Size() >= 1024 {
+			if info.Size() >= RotateLogSize {
 				f.Close()
 				rotateLogFile(filepath.Dir(logFilePath)) // 滚动日志
 				// 重新打开log文件句柄
@@ -84,7 +84,7 @@ func WriteFileHandler(logFilePath string, f *os.File, fmtr log15.Format) log15.H
 		_, err := f.Write(fmtr.Format(r))
 		return err
 	})
-	return log15.LazyHandler(log15.SyncHandler(h))
+	return log15.LazyHandler(log15.BufferedHandler(20480, h)) // 缓存20k
 }
 
 // rotateLogFile 滚动日志文件
