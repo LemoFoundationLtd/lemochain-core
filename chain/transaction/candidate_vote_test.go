@@ -136,9 +136,11 @@ func TestCandidateVoteEnv_RegisterOrUpdateToCandidate(t *testing.T) {
 	err = c.RegisterOrUpdateToCandidate(tx02)
 	// 返回已经注销无法再次注册的错误
 	assert.Equal(t, ErrAgainRegister, err)
-
+	acc := c.am.GetAccount(register)
+	t.Log(acc.GetCandidateState(types.CandidateKeyIsCandidate))
 	c.am.RevertToSnapshot(snap)
-
+	accc := c.am.GetAccount(register)
+	t.Log(accc.GetCandidateState(types.CandidateKeyIsCandidate))
 	// 3. 首次注册的正常情况
 	tx03 := newCandidateTx(register, params.RegisterCandidatePledgeAmount, true, normalIncomeAddress, normalNodeId, normalHost, normalPort)
 	err = c.RegisterOrUpdateToCandidate(tx03)
