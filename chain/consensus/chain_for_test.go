@@ -3,6 +3,7 @@ package consensus
 import (
 	"bytes"
 	"crypto/ecdsa"
+	"encoding/json"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/consensus"
@@ -11,6 +12,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
+	"github.com/LemoFoundationLtd/lemochain-core/common/flag"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/common/merkle"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
@@ -284,8 +286,8 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 				oldCandidateAcc := am.GetAccount(oldCandidate)
 				oldCandidateAcc.SetVotes(new(big.Int).Sub(oldCandidateAcc.GetVotes(), initFromBalance))
 			}
-			// 注册费用1000lemo
-			fromAcc.SetBalance(new(big.Int).Sub(fromAcc.GetBalance(), params.RegisterCandidateNodeFees))
+			// 设置from的balance
+			fromAcc.SetBalance(new(big.Int).Sub(fromAcc.GetBalance(), params.RegisterCandidatePledgeAmount))
 			// 把自己投给自己
 			fromAcc.SetVoteFor(from)
 			fromAcc.SetVotes(initFromBalance)

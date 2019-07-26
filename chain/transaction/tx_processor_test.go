@@ -177,11 +177,11 @@ func TestReimbursement_transaction(t *testing.T) {
 		senderAddr         = crypto.PubkeyToAddress(senderPrivate.PublicKey)
 		gasPayerPrivate, _ = crypto.HexToECDSA("57a0b0be5616e74c4315882e3649ade12c775db3b5023dcaa168d01825612c9b")
 		gasPayerAddr       = crypto.PubkeyToAddress(gasPayerPrivate.PublicKey)
-		Tx01               = makeTx(godPrivate, godAddr, gasPayerAddr, nil, params.OrdinaryTx, params.RegisterCandidateNodeFees) // 转账1000LEMO给gasPayerAddr
-		Tx02               = makeTx(godPrivate, godAddr, senderAddr, nil, params.OrdinaryTx, params.RegisterCandidateNodeFees)   // 转账1000LEMO给senderAddr
+		Tx01               = makeTx(godPrivate, godAddr, gasPayerAddr, nil, params.OrdinaryTx, params.RegisterCandidatePledgeAmount) // 转账1000LEMO给gasPayerAddr
+		Tx02               = makeTx(godPrivate, godAddr, senderAddr, nil, params.OrdinaryTx, params.RegisterCandidatePledgeAmount)   // 转账1000LEMO给senderAddr
 
 		amountReceiver = common.HexToAddress("0x1234")
-		TxV01          = types.NewReimbursementTransaction(senderAddr, amountReceiver, gasPayerAddr, params.RegisterCandidateNodeFees, []byte{}, params.OrdinaryTx, chainID, uint64(time.Now().Unix()+300), "", "")
+		TxV01          = types.NewReimbursementTransaction(senderAddr, amountReceiver, gasPayerAddr, params.RegisterCandidatePledgeAmount, []byte{}, params.OrdinaryTx, chainID, uint64(time.Now().Unix()+300), "", "")
 	)
 	ClearData()
 	db, genesisHash := newCoverGenesisDB()
@@ -198,8 +198,8 @@ func TestReimbursement_transaction(t *testing.T) {
 	senderAcc := p.am.GetAccount(senderAddr)
 	initGasPayerBalance := gasPayerAcc.GetBalance()
 	initTxSenderBalance := senderAcc.GetBalance()
-	assert.Equal(t, params.RegisterCandidateNodeFees, initGasPayerBalance)
-	assert.Equal(t, params.RegisterCandidateNodeFees, initTxSenderBalance)
+	assert.Equal(t, params.RegisterCandidatePledgeAmount, initGasPayerBalance)
+	assert.Equal(t, params.RegisterCandidatePledgeAmount, initTxSenderBalance)
 
 	// sender transfer LEMO to receiver, payer pay for that transaction
 	firstSignTxV, err := types.MakeReimbursementTxSigner().SignTx(TxV01, senderPrivate)
@@ -214,7 +214,7 @@ func TestReimbursement_transaction(t *testing.T) {
 	endTxSenderBalance := p.am.GetCanonicalAccount(senderAddr).GetBalance()
 	assert.Equal(t, big.NewInt(0), endTxSenderBalance)
 	assert.Equal(t, endGasPayerBalance, new(big.Int).Sub(initGasPayerBalance, big.NewInt(int64(params.OrdinaryTxGas))))
-	assert.Equal(t, params.RegisterCandidateNodeFees, p.am.GetAccount(amountReceiver).GetBalance())
+	assert.Equal(t, params.RegisterCandidatePledgeAmount, p.am.GetAccount(amountReceiver).GetBalance())
 }
 
 // TestBlockChain_txData 构造生成调用设置换届奖励的预编译合约交易的data
@@ -622,6 +622,40 @@ func readContraction(p *TxProcessor, db protocol.ChainDB, currentHeader *types.H
 	ctx := context.Background()
 	accM := account.NewReadOnlyManager(db, false)
 	return p.PreExecutionTransaction(ctx, accM, currentHeader, contractAddr, params.OrdinaryTx, data, common.Hash{}, 5*time.Second)
+}
+
+// TestTxProcessor_votesChangeByBalanceChangelog
+func TestTxProcessor_votesChangeByBalanceChangelog(t *testing.T) {
+	ClearData()
+	db, genesisHash := newCoverGenesisDB()
+	defer db.Close()
+	am := account.NewManager(genesisHash, db)
+	p := NewTxProcessor(config.RewardManager, config.ChainID, newTestChain(db), am, db)
+
+	// 1. 为地址初始化balance
+	txs := make(types.Transactions, 0)
+	addrBalanceMap := make(map[common.Address]*big.Int) // key: 地址，value: 余额
+	for i := 0; i < 10; i++ {
+		addr := common.HexToAddress("0x1" + strconv.Itoa(i))
+		amount := common.Lemo2Mo("500" + strconv.Itoa(i*50))
+		addrBalanceMap[addr] = amount
+
+		tx := makeTx(godPrivate, godAddr, common.HexToAddress("0x1"+strconv.Itoa(i)), nil, params.OrdinaryTx, amount)
+		txs = append(txs, tx)
+	}
+	_ = newBlockForTest(1, txs, am, db, true)
+
+	// 修改balance，让10个地址余额都变成700LEMO
+	diffVotes := make(map[common.Address]*big.Int)
+	for addr, balance := range addrBalanceMap {
+		diffVotes[addr] = new(big.Int).Sub(big.NewInt(7), new(big.Int).Div(balance, params.VoteExchangeRate))
+		am.GetAccount(addr).SetBalance(common.Lemo2Mo("700"))
+	}
+
+	voteChange := votesChangeByBalanceLog(p.am)
+	for addr, votes := range voteChange {
+		assert.Equal(t, diffVotes[addr], votes)
+	}
 }
 
 // func BenchmarkApplyTxs(b *testing.B) {

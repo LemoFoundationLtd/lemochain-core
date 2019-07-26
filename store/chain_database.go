@@ -707,6 +707,18 @@ func (database *ChainDatabase) GetCandidatesPage(index int, size int) ([]common.
 	}
 }
 
+func (database *ChainDatabase) GetAllCandidates() ([]common.Address, error) {
+	c, err := database.Context.GetCandidates()
+	if err != nil {
+		return nil, err
+	}
+	addresses := make([]common.Address, 0, len(c))
+	for i := 0; i < len(c); i++ {
+		addresses = append(addresses, c[i].Address)
+	}
+	return addresses, nil
+}
+
 func (database *ChainDatabase) CandidatesRanking(hash common.Hash) {
 	cItem := database.UnConfirmBlocks[hash]
 	if (cItem == nil) || (cItem.Block == nil) {

@@ -36,6 +36,8 @@ const (
 	CandidateKeyHost          string = "host"
 	CandidateKeyPort          string = "port"
 	CandidateKeyIncomeAddress string = "incomeAddress"
+	CandidateKeyPledgeAmount  string = "pledgeBalance" // 质押金额
+	CandidateKeyIntroduction  string = "introduction"  // 候选节点自我介绍
 	// asset profile
 	AssetName              string = "name"
 	AssetSymbol            string = "symbol"
