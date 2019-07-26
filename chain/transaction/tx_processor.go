@@ -622,14 +622,14 @@ type balanceLogAddressMap map[common.Address]*types.ChangeLog
 
 // ChangeVotesByBalance 设置余额变化导致的候选节点票数的变化
 func ChangeVotesByBalance(am *account.Manager) {
-	changes := votesChangeByBalanceChangelog(am)
+	changes := votesChangeByBalanceLog(am)
 	for addr, changeVotes := range changes {
 		changeCandidateVotes(am, addr, changeVotes)
 	}
 }
 
-// 通过changelog获取账户的余额变化,并进行计算出票数的变化
-func votesChangeByBalanceChangelog(am *account.Manager) votesChange {
+// votesChangeByBalanceLog 通过changelog获取账户的余额变化,并进行计算出票数的变化
+func votesChangeByBalanceLog(am *account.Manager) votesChange {
 	// 获取所有的changelog
 	logs := am.GetChangeLogs()
 	// 筛选出同一个账户的balanceLog并merge
