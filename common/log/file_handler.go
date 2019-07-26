@@ -12,7 +12,7 @@ const (
 	logFileName   = "glemo.log" // 最新日志存储文件
 	fPrefix       = "glemo"
 	RotateLogSize = 64 * 1024 * 1024 // 64M
-	BackUp_Count  = 19               // 滚动日志文件数
+	BackUpCount   = 19               // 滚动日志文件数
 )
 
 var (
@@ -90,7 +90,7 @@ func WriteFileHandler(logFilePath string, f *os.File, fmtr log15.Format) log15.H
 // rotateLogFile 滚动日志文件
 func rotateLogFile(logDir string) {
 	// 开始滚动日志文件
-	for j := BackUp_Count; j >= 1; j-- {
+	for j := BackUpCount; j >= 1; j-- {
 		curFileName := filepath.Join(logDir, fmt.Sprintf("%s_%d.log", fPrefix, j))
 		k := j - 1
 		preFileName := filepath.Join(logDir, fmt.Sprintf("%s_%d.log", fPrefix, k))
