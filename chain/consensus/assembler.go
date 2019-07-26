@@ -162,14 +162,23 @@ func (ba *BlockAssembler) Seal(header *types.Header, txProduct *account.TxsProdu
 		log.Debug("snapshot new term", "deputies", log.Lazy{Fn: func() string {
 			return deputies.String()
 		}})
-		// 查询本届是否设置了换届奖励
-		termIndex := deputynode.GetTermIndexByHeight(header.Height)
+	}
+	// 在设定的区块高度检查本届是否设置了换届奖励，如果未设置则进行事件通知
+	ba.checkSetTermReward(header.Height)
+
+	return block
+}
+
+// checkSetTermReward 在设定的区块高度检查本届是否设置了换届奖励并进行事件推送
+func (ba *BlockAssembler) checkSetTermReward(height uint32) {
+	var distance uint32 = 100000 // 距离发放奖励区块的前一个区块高度
+	if (height+distance)%(params.TermDuration+params.InterimDuration) == 0 {
+		termIndex := deputynode.GetTermIndexByHeight(height)
 		termRewards, _ := getTermRewardValue(ba.am, termIndex)
 		if termRewards.Cmp(big.NewInt(0)) == 0 { // 本届还未设置换届奖励，事件推送通知
-			log.Eventf("There was no consensus node award in the [%d] term. The current block height is %d.", termIndex, header.Height)
+			log.Eventf(log.TxEvent, "There was no consensus node award in the [%d] term. The current block height is %d.", termIndex, height)
 		}
 	}
-	return block
 }
 
 // refundCandidatePledge 退还取消候选节点的质押押金

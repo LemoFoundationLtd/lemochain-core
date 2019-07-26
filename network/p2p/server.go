@@ -158,7 +158,7 @@ func (srv *Server) run() {
 				}
 				break
 			} else {
-				log.Eventf("Add peer event. nodeID: %s", p.RNodeID().String()[:16])
+				log.Eventf(log.NetworkEvent, "Add peer event. nodeID: %s", p.RNodeID().String()[:16])
 			}
 			// record
 			srv.peersMux.Lock()
@@ -170,7 +170,7 @@ func (srv *Server) run() {
 			subscribe.Send(subscribe.AddNewPeer, p)
 		case p := <-srv.delPeerCh:
 			// 事件推送
-			log.Eventf("Remove peer event. nodeID: %s", p.RNodeID().String()[:16])
+			log.Eventf(log.NetworkEvent, "Remove peer event. nodeID: %s", p.RNodeID().String()[:16])
 			// remove
 			srv.peersMux.Lock()
 			delete(srv.connectedNodes, *p.RNodeID())

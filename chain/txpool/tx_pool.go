@@ -166,7 +166,7 @@ func (pool *TxPool) RecvTx(tx *types.Transaction) bool {
 		txpoolTotalNumberCounter.Inc(1) // 记录收到一笔交易
 		// 如果此交易为大额转账交易，则进行事件告知
 		if tx.Amount().Cmp(maxTxAmount) >= 0 {
-			log.Eventf("There's a large transfer transaction. Transaction detail: %s", tx.String())
+			log.Eventf(log.TxEvent, "There's a large transfer transaction. Transaction detail: %s", tx.String())
 		}
 		return true
 	}
