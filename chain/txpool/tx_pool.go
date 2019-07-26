@@ -11,7 +11,7 @@ import (
 var (
 	invalidTxMeter           = metrics.NewMeter(metrics.InvalidTx_meterName)        // 执行失败的交易的频率
 	txpoolTotalNumberCounter = metrics.NewCounter(metrics.TxpoolNumber_counterName) // 交易池中剩下的总交易数量
-	maxTxAmount              = common.Lemo2Mo("1000000")                            // 如果交易的amount 大于此值则进行事件通知
+	maxTxAmount              = common.Lemo2Mo("500000")                             // 如果交易的amount 大于此值则进行事件通知
 )
 
 type TxPool struct {
