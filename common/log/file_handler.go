@@ -67,20 +67,27 @@ func fileHandler(logFilePath string, fmtr log15.Format) (log15.Handler, error) {
 	return WriteFileHandler(logFilePath, f, fmtr), nil
 }
 
+// listeningRotateLog
+func listeningRotateLog(logFilePath string, f *os.File) *os.File {
+	// 判断log文件是否需要滚动
+	if info, err := f.Stat(); err == nil {
+		if info.Size() >= 1024 {
+			f.Close()
+			rotateLogFile(filepath.Dir(logFilePath)) // 滚动日志
+			// 重新打开log文件句柄
+			f, err = openLogFile(logFilePath)
+			if err != nil {
+				panic(err)
+			}
+			return f
+		}
+	}
+	return f
+}
+
 func WriteFileHandler(logFilePath string, f *os.File, fmtr log15.Format) log15.Handler {
 	h := log15.FuncHandler(func(r *log15.Record) error {
-		// 判断log文件是否需要滚动
-		if info, err := f.Stat(); err == nil {
-			if info.Size() >= RotateLogSize {
-				f.Close()
-				rotateLogFile(filepath.Dir(logFilePath)) // 滚动日志
-				// 重新打开log文件句柄
-				f, err = openLogFile(logFilePath)
-				if err != nil {
-					panic(err)
-				}
-			}
-		}
+		f = listeningRotateLog(logFilePath, f)
 		_, err := f.Write(fmtr.Format(r))
 		return err
 	})
