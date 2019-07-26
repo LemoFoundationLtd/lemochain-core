@@ -181,15 +181,8 @@ func (c *CandidateVoteEnv) modifyCandidateInfo(amount *big.Int, senderAddr commo
 			newPledge := new(big.Int).Add(oldPledge, amount)
 			// 修改质押押金
 			candidateProfile[types.CandidateKeyPledgeAmount] = newPledge.String()
-			// 修改votes
-			// 新老质押的金额与75Lemo相除，把求的数比较如果增加了则增加相应的票数
-			oldNum := new(big.Int).Div(oldPledge, params.PledgeExchangeRate)
-			newNum := new(big.Int).Div(newPledge, params.PledgeExchangeRate)
-			addVotes := new(big.Int).Sub(newNum, oldNum)
-			if addVotes.Cmp(big.NewInt(0)) > 0 { // 达到增加vote的条件
-				newVotes := new(big.Int).Add(senderAcc.GetVotes(), addVotes)
-				senderAcc.SetVotes(newVotes)
-			}
+			// 修改押金增加导致的票数的增加
+			addPledgeChangeVotes(oldPledge, newPledge, senderAcc)
 		} else {
 			log.Errorf("Failed to get pledge balance. CandidateAddress: %s", senderAddr.String())
 			return ErrFailedGetPledgeBalacne
@@ -202,6 +195,18 @@ func (c *CandidateVoteEnv) modifyCandidateInfo(amount *big.Int, senderAddr commo
 	candidateProfile[types.CandidateKeyIntroduction] = txBuildProfile[types.CandidateKeyIntroduction]
 	senderAcc.SetCandidate(candidateProfile)
 	return nil
+}
+
+// addPledgeChangeVotes 押金变化导致的票数变化
+func addPledgeChangeVotes(oldPledge, newPledge *big.Int, senderAcc types.AccountAccessor) {
+	// 新老质押的金额与75Lemo相除，把求的数比较如果增加了则增加相应的票数
+	oldNum := new(big.Int).Div(oldPledge, params.PledgeExchangeRate)
+	newNum := new(big.Int).Div(newPledge, params.PledgeExchangeRate)
+	addVotes := new(big.Int).Sub(newNum, oldNum)
+	if addVotes.Cmp(big.NewInt(0)) > 0 { // 达到增加vote的条件
+		newVotes := new(big.Int).Add(senderAcc.GetVotes(), addVotes)
+		senderAcc.SetVotes(newVotes)
+	}
 }
 
 // RegisterOrUpdateToCandidate candidate node account transaction call
