@@ -14,12 +14,12 @@ import (
 )
 
 var (
-	ErrOfAgainVote              = errors.New("already voted the same as candidate node")
+	ErrAlreadyVoted             = errors.New("already voted the same as candidate node")
 	ErrOfNotCandidateNode       = errors.New("node address is not candidate account")
 	ErrOfRegisterNodeID         = errors.New("can't get nodeId of RegisterInfo")
 	ErrOfRegisterHost           = errors.New("can't get host of RegisterInfo")
 	ErrOfRegisterPort           = errors.New("can't get port of RegisterInfo")
-	ErrAgainRegister            = errors.New("cannot register again after unregistering")
+	ErrRegisterAgain            = errors.New("cannot register again after unregistering")
 	ErrIsCandidate              = errors.New("get an unexpected character")
 	ErrInsufficientBalance      = errors.New("the balance is insufficient to deduct the deposit for candidate register")
 	ErrInsufficientPledgeAmount = errors.New("the pledge amount is insufficient for candidate register")
@@ -72,15 +72,21 @@ func checkRegisterTxProfile(profile types.Profile) error {
 			return ErrInvalidHost
 		}
 	}
+	// check introduction length
+	if introduction, ok := profile[types.CandidateKeyIntroduction]; ok {
+		if len(introduction) > MaxIntroductionLength {
+			log.Errorf("The length of introduction field in transaction is out of max length limit. introduction length = %d. max length limit = %d.", len(introduction), MaxIntroductionLength)
+			return ErrInvalidIntroduction
+		}
+	}
 	return nil
 }
 
 // buildProfile
 func buildProfile(tx *types.Transaction) (types.Profile, error) {
 	// Unmarshal tx data
-	txData := tx.Data()
 	profile := make(types.Profile)
-	err := json.Unmarshal(txData, &profile)
+	err := json.Unmarshal(tx.Data(), &profile)
 	if err != nil {
 		log.Errorf("Unmarshal Candidate node error: %s", err)
 		return nil, err
@@ -89,33 +95,30 @@ func buildProfile(tx *types.Transaction) (types.Profile, error) {
 	if err = checkRegisterTxProfile(profile); err != nil {
 		return nil, err
 	}
-	candidateAddress := tx.From()
 	// Candidate node information
-	_, ok := profile[types.CandidateKeyIsCandidate]
-	if !ok {
-		profile[types.CandidateKeyIsCandidate] = params.IsCandidateNode
-	}
-	_, ok = profile[types.CandidateKeyIncomeAddress]
-	if !ok {
-		profile[types.CandidateKeyIncomeAddress] = candidateAddress.String()
-	}
-	_, ok = profile[types.CandidateKeyNodeID]
-	if !ok {
+	if _, ok := profile[types.CandidateKeyNodeID]; !ok {
 		return nil, ErrOfRegisterNodeID
 	}
-	_, ok = profile[types.CandidateKeyHost]
-	if !ok {
+	if _, ok := profile[types.CandidateKeyHost]; !ok {
 		return nil, ErrOfRegisterHost
 	}
-	_, ok = profile[types.CandidateKeyPort]
-	if !ok {
+	if _, ok := profile[types.CandidateKeyPort]; !ok {
 		return nil, ErrOfRegisterPort
+	}
+	if _, ok := profile[types.CandidateKeyIsCandidate]; !ok {
+		profile[types.CandidateKeyIsCandidate] = params.IsCandidateNode
+	}
+	if _, ok := profile[types.CandidateKeyIncomeAddress]; !ok {
+		profile[types.CandidateKeyIncomeAddress] = tx.From().String()
+	}
+	if _, ok := profile[types.CandidateKeyIntroduction]; !ok {
+		profile[types.CandidateKeyIntroduction] = ""
 	}
 	return profile, nil
 }
 
-// firstRegisterCandidate 第一次注册候选节点处理逻辑
-func (c *CandidateVoteEnv) firstRegisterCandidate(pledgeAmount *big.Int, register common.Address, txBuildProfile types.Profile) error {
+// registerCandidate 注册候选节点处理逻辑
+func (c *CandidateVoteEnv) registerCandidate(pledgeAmount *big.Int, register common.Address, txBuildProfile types.Profile) error {
 	// 1. 判断注册的押金必须要大于等于规定的押金限制(500万LEMO)
 	if pledgeAmount.Cmp(params.RegisterCandidatePledgeAmount) < 0 {
 		return ErrInsufficientPledgeAmount
@@ -134,6 +137,7 @@ func (c *CandidateVoteEnv) firstRegisterCandidate(pledgeAmount *big.Int, registe
 	endProfile[types.CandidateKeyNodeID] = txBuildProfile[types.CandidateKeyNodeID]
 	endProfile[types.CandidateKeyHost] = txBuildProfile[types.CandidateKeyHost]
 	endProfile[types.CandidateKeyPort] = txBuildProfile[types.CandidateKeyPort]
+	endProfile[types.CandidateKeyIntroduction] = txBuildProfile[types.CandidateKeyIntroduction]
 	endProfile[types.CandidateKeyPledgeAmount] = pledgeAmount.String()
 	registerAcc.SetCandidate(endProfile)
 
@@ -195,6 +199,7 @@ func (c *CandidateVoteEnv) modifyCandidateInfo(amount *big.Int, senderAddr commo
 	candidateProfile[types.CandidateKeyIncomeAddress] = txBuildProfile[types.CandidateKeyIncomeAddress]
 	candidateProfile[types.CandidateKeyHost] = txBuildProfile[types.CandidateKeyHost]
 	candidateProfile[types.CandidateKeyPort] = txBuildProfile[types.CandidateKeyPort]
+	candidateProfile[types.CandidateKeyIntroduction] = txBuildProfile[types.CandidateKeyIntroduction]
 	senderAcc.SetCandidate(candidateProfile)
 	return nil
 }
@@ -215,12 +220,12 @@ func (c *CandidateVoteEnv) RegisterOrUpdateToCandidate(tx *types.Transaction) er
 	candidateState, ok := candidateProfile[types.CandidateKeyIsCandidate]
 
 	if !ok || candidateState == "" { // 表示第一次注册候选节点，等于""为如果一个账户第一次注册候选交易失败之后，回滚会让map中的值回滚为零值，string类型的0值为"".箱子交易中容易出现此情况。
-		if err := c.firstRegisterCandidate(tx.Amount(), senderAddr, txBuildProfile); err != nil {
+		if err := c.registerCandidate(tx.Amount(), senderAddr, txBuildProfile); err != nil {
 			return err
 		}
 	} else { // 已经注册过候选节点的情况
 		if candidateState == params.NotCandidateNode { // 如果此账户注册之后又注销了候选节点，则不能重新注册
-			return ErrAgainRegister
+			return ErrRegisterAgain
 		} else if candidateState == params.IsCandidateNode { // 此账户已经是一个候选节点账户
 			if err := c.modifyCandidateInfo(tx.Amount(), senderAddr, txBuildProfile); err != nil {
 				return err
@@ -248,7 +253,7 @@ func (c *CandidateVoteEnv) CallVoteTx(voter, newCandidateAddr common.Address, in
 
 	// 不能再次投同一个候选节点
 	if voterAccount.GetVoteFor() == newCandidateAddr {
-		return ErrOfAgainVote
+		return ErrAlreadyVoted
 	}
 
 	c.modifyCandidateVotes(voterAccount, newCandidateAcc, exchangeVotes)

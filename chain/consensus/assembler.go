@@ -166,66 +166,79 @@ func (ba *BlockAssembler) Seal(header *types.Header, txProduct *account.TxsProdu
 	return block
 }
 
-// Finalize increases miners' balance and fix all account changes
-func (ba *BlockAssembler) Finalize(height uint32, am *account.Manager) error {
-	// Pay miners at the end of their tenure
-	if deputynode.IsRewardBlock(height) {
-		term := (height-params.InterimDuration)/params.TermDuration - 1
-		termRewards, err := getTermRewardValue(am, term)
-		if err != nil {
-			log.Warnf("load term rewards failed: %v", err)
-			return err
-		}
-		log.Debugf("the reward of term %d is %s ", term, termRewards.String())
-		// issue reward if reward greater than 0
-		if termRewards.Cmp(big.NewInt(0)) > 0 {
-			lastTermRecord, err := ba.dm.GetTermByHeight(height - 1)
-			if err != nil {
-				log.Warnf("load deputy nodes failed: %v", err)
-				return err
-			}
-			rewards := DivideSalary(termRewards, am, lastTermRecord)
-			for _, item := range rewards {
-				acc := am.GetAccount(item.Address)
-				oldBalance := acc.GetBalance()
-				newBalance := new(big.Int).Add(oldBalance, item.Salary)
-				acc.SetBalance(newBalance)
-			}
-
-			// 退还取消候选节点的质押金额
-			allCandidateAddressList, err := ba.db.GetAllCandidates()
-			if err != nil {
-				panic(err)
-			}
-
-			for _, candidateAddress := range allCandidateAddressList {
-				// 判断addr的candidate信息
-				candidateAcc := am.GetAccount(candidateAddress)
-				pledgAmountString := candidateAcc.GetCandidateState(types.CandidateKeyPledgeAmount)
-				if candidateAcc.GetCandidateState(types.CandidateKeyIsCandidate) == params.NotCandidateNode && pledgAmountString != "" { // 满足退还押金的条件
-					if pledgeAmount, success := new(big.Int).SetString(pledgAmountString, 10); !success {
-						panic("Big.Int SetString function failed")
-					} else {
-						// 退还押金
-						candidatePledgePoolAcc := am.GetAccount(params.CandidateDepositAddress)
-						if candidatePledgePoolAcc.GetBalance().Cmp(pledgeAmount) < 0 { // 判断押金池中的押金是否足够，如果不足直接panic
-							panic("candidate pledge pool account balance insufficient.")
-						}
-						// 减少押金池中的余额
-						candidatePledgePoolAcc.SetBalance(new(big.Int).Sub(candidatePledgePoolAcc.GetBalance(), pledgeAmount))
-						// 退还押金到取消的候选节点账户
-						candidateAcc.SetBalance(new(big.Int).Add(candidateAcc.GetBalance(), pledgeAmount))
-						// 设置候选节点info中的押金余额为nil
-						candidateAcc.SetCandidateState(types.CandidateKeyPledgeAmount, "")
-					}
-
+// refundCandidatePledge 退还取消候选节点的质押押金
+func (ba *BlockAssembler) refundCandidatePledge(am *account.Manager) {
+	// 退还取消候选节点的质押金额
+	allCandidateAddressList, err := ba.db.GetAllCandidates()
+	if err != nil {
+		panic(err)
+	}
+	for _, candidateAddress := range allCandidateAddressList {
+		// 判断addr的candidate信息
+		candidateAcc := am.GetAccount(candidateAddress)
+		pledgAmountString := candidateAcc.GetCandidateState(types.CandidateKeyPledgeAmount)
+		if candidateAcc.GetCandidateState(types.CandidateKeyIsCandidate) == params.NotCandidateNode && pledgAmountString != "" { // 满足退还押金的条件
+			if pledgeAmount, success := new(big.Int).SetString(pledgAmountString, 10); !success {
+				panic("Big.Int SetString function failed")
+			} else {
+				// 退还押金
+				candidatePledgePoolAcc := am.GetAccount(params.CandidateDepositAddress)
+				if candidatePledgePoolAcc.GetBalance().Cmp(pledgeAmount) < 0 { // 判断押金池中的押金是否足够，如果不足直接panic
+					panic("candidate pledge pool account balance insufficient.")
 				}
+				// 减少押金池中的余额
+				candidatePledgePoolAcc.SetBalance(new(big.Int).Sub(candidatePledgePoolAcc.GetBalance(), pledgeAmount))
+				// 退还押金到取消的候选节点账户
+				candidateAcc.SetBalance(new(big.Int).Add(candidateAcc.GetBalance(), pledgeAmount))
+				// 设置候选节点info中的押金余额为nil
+				candidateAcc.SetCandidateState(types.CandidateKeyPledgeAmount, "")
 			}
 		}
 	}
+}
 
-	// 设置执行此block之后余额变化造成的候选节点的票数变化
-	transaction.SetCandidateVotesByChangeBalance(am)
+// issueTermReward 发放换届奖励
+func (ba *BlockAssembler) issueTermReward(am *account.Manager, height uint32) error {
+	term := (height-params.InterimDuration)/params.TermDuration - 1
+	termRewards, err := getTermRewardValue(am, term)
+	if err != nil {
+		log.Warnf("load term rewards failed: %v", err)
+		return err
+	}
+	log.Debugf("the reward of term %d is %s ", term, termRewards.String())
+	// issue reward if reward greater than 0
+	if termRewards.Cmp(big.NewInt(0)) > 0 {
+		lastTermRecord, err := ba.dm.GetTermByHeight(height - 1)
+		if err != nil {
+			log.Warnf("load deputy nodes failed: %v", err)
+			return err
+		}
+		rewards := DivideSalary(termRewards, am, lastTermRecord)
+		for _, item := range rewards {
+			acc := am.GetAccount(item.Address)
+			oldBalance := acc.GetBalance()
+			newBalance := new(big.Int).Add(oldBalance, item.Salary)
+			acc.SetBalance(newBalance)
+		}
+	}
+
+	return nil
+}
+
+// Finalize increases miners' balance and fix all account changes
+func (ba *BlockAssembler) Finalize(height uint32, am *account.Manager) error {
+	// 判断是否到了发放换届奖励的区块高度
+	if deputynode.IsRewardBlock(height) {
+		// 发放奖励
+		if err := ba.issueTermReward(am, height); err != nil {
+			return err
+		}
+		// 退还取消候选节点的质押金额
+		ba.refundCandidatePledge(am)
+	}
+
+	// 设置执行区块之后余额变化造成的候选节点的票数变化
+	transaction.ChangeVotesByBalance(am)
 	// merge
 	am.MergeChangeLogs()
 

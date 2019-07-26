@@ -135,7 +135,7 @@ func TestCandidateVoteEnv_RegisterOrUpdateToCandidate(t *testing.T) {
 	tx02 := newCandidateTx(register, nil, true, normalIncomeAddress, normalNodeId, normalHost, normalPort)
 	err = c.RegisterOrUpdateToCandidate(tx02)
 	// 返回已经注销无法再次注册的错误
-	assert.Equal(t, ErrAgainRegister, err)
+	assert.Equal(t, ErrRegisterAgain, err)
 	acc := c.am.GetAccount(register)
 	t.Log(acc.GetCandidateState(types.CandidateKeyIsCandidate))
 	c.am.RevertToSnapshot(snap)
@@ -241,7 +241,7 @@ func TestCandidateVoteEnv_CallVoteTx(t *testing.T) {
 	voterAcc.SetVoteFor(candAddr) // 设置已经投过了candAddr候选节点
 	// 给candAddr投票
 	err = c.CallVoteTx(voterAddr, candAddr, initialSenderBalance)
-	assert.Equal(t, ErrOfAgainVote, err) // 返回不能再次投同一个候选节点的错误
+	assert.Equal(t, ErrAlreadyVoted, err) // 返回不能再次投同一个候选节点的错误
 
 	// 3.2 从投给的candAddr候选节点转投到其他节点
 	voterAcc.SetVoteFor(candAddr)    // 设置投给candAddr候选节点

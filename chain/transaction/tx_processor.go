@@ -21,6 +21,7 @@ import (
 const (
 	defaultGasPrice       = 1e9
 	MaxDeputyHostLength   = 128
+	MaxIntroductionLength = 1024
 	StandardNodeIdLength  = 128
 	SignerWeightThreshold = 100
 	MaxSignersNumber      = 100
@@ -31,6 +32,7 @@ var (
 	ErrInvalidTxInBlock          = errors.New("block contains invalid transaction")
 	ErrInvalidGenesis            = errors.New("can't process genesis block")
 	ErrInvalidHost               = errors.New("the length of host field in transaction is out of max length limit")
+	ErrInvalidIntroduction       = errors.New("the length of introduction field in transaction is out of max length limit")
 	ErrInvalidAddress            = errors.New("invalid address")
 	ErrInvalidNodeId             = errors.New("invalid nodeId")
 	ErrTxNotSign                 = errors.New("the transaction is not signed")
@@ -265,9 +267,10 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 	}
 
 	var (
-		senderAddr           = tx.From()
-		sender               = p.am.GetAccount(senderAddr)
-		initialSenderBalance = sender.GetBalance() // initialSenderBalance参数代表的是sender执行交易之前的balance值，为投票交易中计算初始票数使用
+		senderAddr = tx.From()
+		sender     = p.am.GetAccount(senderAddr)
+		// initialSenderBalance参数代表的是sender执行交易之前的balance值，为投票交易中计算初始票数使用
+		initialSenderBalance = sender.GetBalance()
 		restGas              = tx.GasLimit()
 		vmErr, execErr       error
 		gasUsed              uint64
@@ -298,7 +301,10 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 	return gasUsed, nil
 }
 
-// handleTx 执行交易,返回消耗之后剩余的gas、evm中执行的error和交易执行不成功的error，注：initialSenderBalance参数代表的是sender执行交易之前的balance值，为投票交易中计算初始票数使用
+/*
+	handleTx 执行交易,返回消耗之后剩余的gas、evm中执行的error和交易执行不成功的error.
+	注：initialSenderBalance参数代表的是sender执行交易之前的balance值，为投票交易中计算初始票数使用
+*/
 func (p *TxProcessor) handleTx(tx *types.Transaction, header *types.Header, txIndex uint, blockHash common.Hash, initialSenderBalance *big.Int, restGas uint64, gp *types.GasPool, restApplyTime int64) (gas, gasUsed uint64, vmErr, err error) {
 	senderAddr := tx.From()
 	var (
@@ -613,12 +619,60 @@ func getEVM(tx *types.Transaction, header *types.Header, txIndex uint, txHash co
 	return vmEnv
 }
 
-// SetCandidateVotesByChangeBalance 设置余额变化导致的候选节点票数的变化
-func SetCandidateVotesByChangeBalance(am *account.Manager) {
+type votesChange map[common.Address]*big.Int // 记录账户balance变化之后换算出的票数变化
+type balanceLogAddressMap map[common.Address]*types.ChangeLog
+
+// ChangeVotesByBalance 设置余额变化导致的候选节点票数的变化
+func ChangeVotesByBalance(am *account.Manager) {
 	changes := votesChangeByBalanceChangelog(am)
 	for addr, changeVotes := range changes {
 		changeCandidateVotes(am, addr, changeVotes)
 	}
+}
+
+// 通过changelog获取账户的余额变化,并进行计算出票数的变化
+func votesChangeByBalanceChangelog(am *account.Manager) votesChange {
+	// 获取所有的changelog
+	logs := am.GetChangeLogs()
+	// 筛选出同一个账户的balanceLog并merge
+	balanceLogsByAddress := filterLogs(logs, account.BalanceLog)
+
+	// 根据balance变化得到vote变化
+	return getVotesChangesByLogs(balanceLogsByAddress)
+}
+
+// getVotesChangesByLogs
+func getVotesChangesByLogs(balanceLogs balanceLogAddressMap) votesChange {
+	votesChange := make(votesChange, len(balanceLogs))
+	for addr, newLog := range balanceLogs {
+		newValue := newLog.NewVal.(big.Int)
+		oldValue := newLog.OldVal.(big.Int)
+		oldNum := new(big.Int).Div(&oldValue, params.VoteExchangeRate) // oldBalance兑换出来的票数
+		newNum := new(big.Int).Div(&newValue, params.VoteExchangeRate) // newBalance兑换出来的票数
+		// 如果余额变化未能导致票数的变化则不进行修改票数的操作
+		if newNum.Cmp(oldNum) == 0 {
+			continue
+		}
+		changeNum := new(big.Int).Sub(newNum, oldNum)
+		votesChange[addr] = changeNum
+	}
+	return votesChange
+}
+
+// filterLogs
+func filterLogs(logs types.ChangeLogSlice, logType types.ChangeLogType) balanceLogAddressMap {
+	logsByAddress := make(balanceLogAddressMap, len(logs))
+	for _, log := range logs {
+		if log.LogType == logType {
+			// merge
+			if _, ok := logsByAddress[log.Address]; !ok {
+				logsByAddress[log.Address] = log.Copy()
+			} else {
+				logsByAddress[log.Address].NewVal = log.NewVal
+			}
+		}
+	}
+	return logsByAddress
 }
 
 // changeCandidateVotes candidate node vote change corresponding to votes change
@@ -638,39 +692,4 @@ func changeCandidateVotes(am *account.Manager, accountAddress common.Address, ch
 		// set votes
 		candidateAccount.SetVotes(new(big.Int).Add(candidateAccount.GetVotes(), changeVotes))
 	}
-}
-
-type votesChange map[common.Address]*big.Int // 记录账户balance变化之后换算出的票数变化
-// 通过changelog获取账户的余额变化,并进行计算出票数的变化
-func votesChangeByBalanceChangelog(am *account.Manager) votesChange {
-	// 获取所有的changelog
-	logs := am.GetChangeLogs()
-
-	// 筛选出同一个账户的balanceLog并merge
-	balanceLogsByAddress := make(map[common.Address]*types.ChangeLog, len(logs))
-	for _, log := range logs {
-		if log.LogType == account.BalanceLog {
-			// merge
-			if _, ok := balanceLogsByAddress[log.Address]; !ok {
-				balanceLogsByAddress[log.Address] = log.Copy()
-			} else {
-				balanceLogsByAddress[log.Address].NewVal = log.NewVal
-			}
-		}
-	}
-	// 根据balance变化得到vote变化
-	votesChange := make(votesChange, len(balanceLogsByAddress))
-	for addr, newLog := range balanceLogsByAddress {
-		newValue := newLog.NewVal.(big.Int)
-		oldValue := newLog.OldVal.(big.Int)
-		oldNum := new(big.Int).Div(&oldValue, params.VoteExchangeRate) // oldBalance兑换出来的票数
-		newNum := new(big.Int).Div(&newValue, params.VoteExchangeRate) // newBalance兑换出来的票数
-		// 如果余额变化未能导致票数的变化则不进行修改票数的操作
-		if newNum.Cmp(oldNum) == 0 {
-			continue
-		}
-		changeNum := new(big.Int).Sub(newNum, oldNum)
-		votesChange[addr] = changeNum
-	}
-	return votesChange
 }
