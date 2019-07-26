@@ -301,10 +301,8 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 	return gasUsed, nil
 }
 
-/*
-	handleTx 执行交易,返回消耗之后剩余的gas、evm中执行的error和交易执行不成功的error.
-	注：initialSenderBalance参数代表的是sender执行交易之前的balance值，为投票交易中计算初始票数使用
-*/
+// handleTx 执行交易,返回消耗之后剩余的gas、evm中执行的error和交易执行不成功的error.
+// 注：initialSenderBalance参数代表的是sender执行交易之前的balance值，为投票交易中计算初始票数使用
 func (p *TxProcessor) handleTx(tx *types.Transaction, header *types.Header, txIndex uint, blockHash common.Hash, initialSenderBalance *big.Int, restGas uint64, gp *types.GasPool, restApplyTime int64) (gas, gasUsed uint64, vmErr, err error) {
 	senderAddr := tx.From()
 	var (
