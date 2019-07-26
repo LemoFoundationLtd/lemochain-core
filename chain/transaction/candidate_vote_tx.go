@@ -151,16 +151,23 @@ func (c *CandidateVoteEnv) registerCandidate(pledgeAmount *big.Int, register com
 	return nil
 }
 
+// unRegisterCandidate 注销候选节点操作, 注：注销之后不能再次注册，质押押金退还会在换届奖励块中进行
+func (c *CandidateVoteEnv) unRegisterCandidate(candidateAcc types.AccountAccessor, txBuildProfile types.Profile) bool {
+	if txBuildProfile[types.CandidateKeyIsCandidate] == params.NotCandidateNode {
+		candidateAcc.SetCandidateState(types.CandidateKeyIsCandidate, params.NotCandidateNode)
+		// Set the number of votes to 0
+		candidateAcc.SetVotes(big.NewInt(0))
+		return true
+	}
+	return false
+}
+
 // modifyCandidateInfo 修改candidate info 操作
 func (c *CandidateVoteEnv) modifyCandidateInfo(amount *big.Int, senderAddr common.Address, txBuildProfile types.Profile) error {
 	senderAcc := c.am.GetAccount(senderAddr)
 	candidateProfile := senderAcc.GetCandidate()
 
-	// 注销候选节点操作,注：注销之后不能再次注册，质押押金退还会在换届奖励块中进行
-	if txBuildProfile[types.CandidateKeyIsCandidate] == params.NotCandidateNode {
-		senderAcc.SetCandidateState(types.CandidateKeyIsCandidate, params.NotCandidateNode)
-		// Set the number of votes to 0
-		senderAcc.SetVotes(big.NewInt(0))
+	if c.unRegisterCandidate(senderAcc, txBuildProfile) {
 		return nil
 	}
 	// 修改候选节点注册信息
