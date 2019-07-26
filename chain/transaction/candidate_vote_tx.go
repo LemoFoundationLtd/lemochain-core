@@ -167,9 +167,6 @@ func (c *CandidateVoteEnv) modifyCandidateInfo(amount *big.Int, senderAddr commo
 	senderAcc := c.am.GetAccount(senderAddr)
 	candidateProfile := senderAcc.GetCandidate()
 
-	if c.unRegisterCandidate(senderAcc, txBuildProfile) {
-		return nil
-	}
 	// 修改候选节点注册信息
 	// 判断交易的amount字段的值是否大于0,大于0则为追加质押金额
 	if amount.Cmp(big.NewInt(0)) > 0 {
@@ -239,6 +236,11 @@ func (c *CandidateVoteEnv) RegisterOrUpdateToCandidate(tx *types.Transaction) er
 		if candidateState == params.NotCandidateNode { // 如果此账户注册之后又注销了候选节点，则不能重新注册
 			return ErrRegisterAgain
 		} else if candidateState == params.IsCandidateNode { // 此账户已经是一个候选节点账户
+			// 是否为注销 candidate 交易
+			if c.unRegisterCandidate(senderAcc, txBuildProfile) {
+				return nil
+			}
+			// 修改candidate info 交易
 			if err := c.modifyCandidateInfo(tx.Amount(), senderAddr, txBuildProfile); err != nil {
 				return err
 			}
