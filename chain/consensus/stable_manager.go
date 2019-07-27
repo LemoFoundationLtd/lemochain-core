@@ -59,9 +59,6 @@ func (sm *StableManager) UpdateStable(block *types.Block) (bool, []*types.Block,
 	}
 	log.Infof("Stable block changes from %s to %s", oldStable.ShortString(), block.ShortString())
 
-	// This may not the latest state, but it's fine. Because deputy nodes snapshot will be used after the interim duration, it's about 1000 blocks
-	sm.updateDeputyNodes(block)
-
 	return true, prunedBlocks, nil
 }
 
@@ -76,14 +73,4 @@ func IsConfirmEnough(block *types.Block, dm *deputynode.Manager) bool {
 	}
 
 	return uint32(singerCount) >= dm.TwoThirdDeputyCount(block.Height())
-}
-
-// updateDeputyNodes update deputy nodes map
-func (sm *StableManager) updateDeputyNodes(block *types.Block) {
-	if deputynode.IsSnapshotBlock(block.Height()) {
-		sm.dm.SaveSnapshot(block.Height(), block.DeputyNodes)
-		log.Debug("save new term", "deputies", log.Lazy{Fn: func() string {
-			return block.DeputyNodes.String()
-		}})
-	}
 }

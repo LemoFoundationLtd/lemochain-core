@@ -121,6 +121,9 @@ func (m *Manager) SaveSnapshot(snapshotHeight uint32, nodes types.DeputyNodes) {
 			m.termList = m.termList[:newTerm.TermIndex+1]
 		}
 	}
+	log.Debug("save new term", "deputies", log.Lazy{Fn: func() string {
+		return nodes.String()
+	}})
 }
 
 // GetTermByHeight 通过height获取对应的任期信息

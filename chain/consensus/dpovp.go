@@ -3,6 +3,7 @@ package consensus
 import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/transaction"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
@@ -104,6 +105,8 @@ func (dp *DPoVP) MineBlock(txProcessTimeout int64) (*types.Block, error) {
 	start := time.Now()
 	defer mineBlockTimer.UpdateSince(start)
 
+	dp.chainLock.Lock()
+	defer dp.chainLock.Unlock()
 	oldCurrent := dp.CurrentBlock()
 
 	// mine and seal
@@ -112,8 +115,6 @@ func (dp *DPoVP) MineBlock(txProcessTimeout int64) (*types.Block, error) {
 		return nil, err
 	}
 
-	dp.chainLock.Lock()
-	defer dp.chainLock.Unlock()
 	txs := dp.txPool.Get(header.Time, 10000)
 	log.Debugf("pick %d txs from txPool", len(txs))
 	block, invalidTxs, err := dp.assembler.MineBlock(header, txs, txProcessTimeout)
@@ -156,13 +157,14 @@ func (dp *DPoVP) InsertBlock(rawBlock *types.Block) (*types.Block, error) {
 		return nil, ErrExistBlock
 	}
 
+	dp.chainLock.Lock()
+	defer dp.chainLock.Unlock()
+
 	hash := rawBlock.Hash()
 	oldCurrent := dp.CurrentBlock()
 	oldCurrentHash := oldCurrent.Hash()
 	log.Debug("Start insert block to chain", "block", rawBlock.ShortString())
 
-	dp.chainLock.Lock()
-	defer dp.chainLock.Unlock()
 	// verify and create a new block witch filled by transaction products
 	block, err := dp.VerifyAndSeal(rawBlock)
 	if err != nil {
@@ -170,7 +172,7 @@ func (dp *DPoVP) InsertBlock(rawBlock *types.Block) (*types.Block, error) {
 		return nil, ErrVerifyBlockFailed
 	}
 
-	// sign confirm before save to store. So that we can save the block and confirm in same time
+	// sign confirm before save to store. So that we can save and confirm the block in the same time
 	sig, ok := dp.confirmer.TryConfirm(block)
 	if ok {
 		go dp.broadcastConfirm(block, sig)
@@ -276,12 +278,18 @@ func (dp *DPoVP) UpdateStable(block *types.Block) (bool, error) {
 		return false, err
 	}
 
-	// notify
 	if changed {
+		// Update deputy nodes map
+		// This may not the latest state, but it's fine. Because deputy nodes snapshot will be used after the interim duration, it's about 1000 blocks
+		if deputynode.IsSnapshotBlock(block.Height()) {
+			dp.dm.SaveSnapshot(block.Height(), block.DeputyNodes)
+		}
+
 		// add txs in pruned block back
 		for _, prunedBlock := range prunedBlocks {
 			dp.txPool.PruneBlock(prunedBlock)
 		}
+		// notify new stable
 		go dp.stableFeed.Send(block)
 		// confirm from oldStable to newStable
 		go dp.batchConfirmStable(oldStable.Height()+1, dp.StableBlock().Height())
@@ -298,18 +306,16 @@ func (dp *DPoVP) TrySwitchFork() {
 
 	// try to switch fork
 	newCurrent, switched := dp.forkManager.TrySwitchFork(dp.StableBlock(), oldCurrent)
-	if !switched {
-		return
+	if switched {
+		dp.setCurrent(newCurrent)
 	}
-
-	dp.setCurrent(newCurrent)
 }
 
-// CheckFork check the current fork and update it if it is cut. Return true if the current fork change
+// CheckFork check the current fork and update it if it is cut. Return true if the current fork is changed
 func (dp *DPoVP) CheckFork() bool {
 	oldCurrent := dp.CurrentBlock()
 
-	// Test if currentBlock is still in unconfirmed blocks. It may be pruned by stable block updating
+	// Test if currentBlock is still in unconfirmed blocks. It must has be pruned by stable block updating
 	_, err := dp.db.GetUnConfirmByHeight(oldCurrent.Height(), oldCurrent.Hash())
 	if err == nil || err != store.ErrNotExist {
 		return false
@@ -402,11 +408,11 @@ func (dp *DPoVP) VerifyAndSeal(block *types.Block) (*types.Block, error) {
 }
 
 func (dp *DPoVP) InsertConfirm(info *network.BlockConfirmData) error {
+	dp.chainLock.Lock()
+	defer dp.chainLock.Unlock()
 	oldCurrent := dp.CurrentBlock()
 	log.Debug("Start insert confirm", "height", info.Height, "hash", info.Hash)
 
-	dp.chainLock.Lock()
-	defer dp.chainLock.Unlock()
 	newBlock, err := dp.insertConfirms(info.Height, info.Hash, []types.SignData{info.SignInfo})
 	if err != nil {
 		log.Warnf("InsertConfirm failed: %v", err)
@@ -475,4 +481,23 @@ func (dp *DPoVP) LoadTopCandidates(blockHash common.Hash) types.DeputyNodes {
 		result = append(result, dn)
 	}
 	return result
+}
+
+// LoadRefundCandidates get the address list of candidates who need to refund
+func (dp *DPoVP) LoadRefundCandidates() ([]common.Address, error) {
+	result := make([]common.Address, 0)
+	addrList, err := dp.db.GetAllCandidates()
+	if err != nil {
+		log.Errorf("Load all candidates fail: %v", err)
+		return nil, err
+	}
+	for _, addr := range addrList {
+		// 判断addr的candidate信息
+		candidateAcc := dp.am.GetAccount(addr)
+		pledgeString := candidateAcc.GetCandidateState(types.CandidateKeyPledgeAmount)
+		if candidateAcc.GetCandidateState(types.CandidateKeyIsCandidate) == params.NotCandidateNode && pledgeString != "" { // 满足退还押金的条件
+			result = append(result, addr)
+		}
+	}
+	return result, nil
 }

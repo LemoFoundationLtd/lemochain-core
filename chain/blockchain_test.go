@@ -2,15 +2,16 @@ package chain
 
 import (
 	"crypto/ecdsa"
-	"encoding/hex"
 	"errors"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/consensus"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/transaction"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/txpool"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-core/common/flag"
+	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/common/subscribe"
 	"github.com/LemoFoundationLtd/lemochain-core/network"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
@@ -22,11 +23,12 @@ import (
 )
 
 var (
-	ErrChannelTimeout = errors.New("channel is timeout")
-	blockType         = reflect.TypeOf(&types.Block{})
-	confirmType       = reflect.TypeOf(&network.BlockConfirmData{})
-	mineTimeout       = 10000
-	nodeKeys          = []*ecdsa.PrivateKey{
+	ErrChannelTimeout        = errors.New("channel is timeout")
+	blockType                = reflect.TypeOf(&types.Block{})
+	confirmType              = reflect.TypeOf(&network.BlockConfirmData{})
+	testChainID       uint16 = 99
+	mineTimeout              = 10000
+	nodeKeys                 = []*ecdsa.PrivateKey{
 		parseKey("c21b6b2fbf230f665b936194d14da67187732bf9d28768aef1a3cbb26608f8aa"),
 		parseKey("9c3c4a327ce214f0a1bf9cfa756fbf74f1c7322399ffff925efd8c15c49953eb"),
 		parseKey("ba9b51e59ec57d66b30b9b868c76d6f4d386ce148d9c6c1520360d92ef0f27ae"),
@@ -41,22 +43,22 @@ func ClearData() {
 	_ = os.RemoveAll(GetStorePath())
 }
 
-func newTestBlockChain(deputyCount int) *BlockChain {
+func newTestBlockChain(attendedDeputyCount int) *BlockChain {
 	ClearData()
 	db := store.NewChainDataBase(GetStorePath(), "", "")
 
 	// init nodeKey
-	key, _ := hex.DecodeString("c21b6b2fbf230f665b936194d14da67187732bf9d28768aef1a3cbb26608f8aa")
-	priv, _ := crypto.ToECDSA(key)
+	priv := parseKey("c21b6b2fbf230f665b936194d14da67187732bf9d28768aef1a3cbb26608f8aa")
 	deputynode.SetSelfNodeKey(priv)
 
 	// init genesis block
 	genesis := DefaultGenesisConfig()
-	genesis.DeputyNodes = genesis.DeputyNodes[:deputyCount]
+	genesis.DeputyNodes = genesis.DeputyNodes[:attendedDeputyCount]
 	SetupGenesisBlock(db, genesis)
 
+	// max deputy count is 5
 	dm := deputynode.NewManager(5, db)
-	blockChain, err := NewBlockChain(Config{99, 10000}, dm, db, flag.CmdFlags{}, txpool.NewTxPool())
+	blockChain, err := NewBlockChain(Config{testChainID, 10000}, dm, db, flag.CmdFlags{}, txpool.NewTxPool())
 	if err != nil {
 		panic(err)
 	}
@@ -82,8 +84,9 @@ func getTestNodeID(deputyIndex int) []byte {
 
 func createTestTx() *types.Transaction {
 	testPrivate, _ := crypto.HexToECDSA("432a86ab8765d82415a803e29864dcfc1ed93dac949abf6f95a583179f27e4bb")
+	testAddr := crypto.PubkeyToAddress(testPrivate.PublicKey) // 0x0107134b9cdd7d89f83efa6175f9b3552f29094c
 	testSigner := types.DefaultSigner{}
-	tx := types.NewTransaction(common.HexToAddress("0x1"), common.Big1, 100, common.Big2, []byte{12}, 0, 200, 1544584596, "aa", "aaa")
+	tx := types.NewTransaction(testAddr, common.HexToAddress("0x1"), common.Big1, 100, common.Big2, []byte{12}, 0, testChainID, 1544584596, "aa", "aaa")
 	tx, err := testSigner.SignTx(tx, testPrivate)
 	if err != nil {
 		panic(err)
@@ -92,7 +95,7 @@ func createTestTx() *types.Transaction {
 }
 
 func newTestBlock(bc *BlockChain) *types.Block {
-	processor := consensus.NewTxProcessor(consensus.Config{RewardManager: bc.Founder()}, bc, bc.am, bc.db)
+	processor := transaction.NewTxProcessor(bc.Founder(), testChainID, bc, bc.am, bc.db)
 	assembler := consensus.NewBlockAssembler(bc.am, bc.dm, processor, bc.engine)
 	parent := bc.CurrentBlock()
 	header, err := assembler.PrepareHeader(parent.Header, nil)
@@ -111,6 +114,7 @@ func newTestBlock(bc *BlockChain) *types.Block {
 		hash := block.Hash()
 		block.Header.SignData, err = crypto.Sign(hash[:], nodeKeys[i])
 		if err := consensus.VerifyMineSlot(block, parent, uint64(mineTimeout), bc.dm); err == nil {
+			log.Info("sign a new block", "deputyIndex", i, "height", block.Height())
 			return block
 		}
 	}
@@ -124,19 +128,18 @@ func TestNewBlockChain(t *testing.T) {
 
 	// no genesis
 	dm := deputynode.NewManager(5, db)
-	_, err := NewBlockChain(Config{99, 10000}, dm, db, flag.CmdFlags{}, txpool.NewTxPool())
+	_, err := NewBlockChain(Config{testChainID, 10000}, dm, db, flag.CmdFlags{}, txpool.NewTxPool())
 	assert.Equal(t, ErrNoGenesis, err)
 
 	// success
 	genesisBlock := SetupGenesisBlock(db, nil)
-	chainID := uint16(99)
-	blockChain, err := NewBlockChain(Config{chainID, 10000}, dm, db, flag.CmdFlags{}, txpool.NewTxPool())
+	blockChain, err := NewBlockChain(Config{testChainID, 10000}, dm, db, flag.CmdFlags{}, txpool.NewTxPool())
 	assert.NoError(t, err)
 	assert.Equal(t, genesisBlock, blockChain.engine.StableBlock())
 	assert.Equal(t, genesisBlock, blockChain.engine.CurrentBlock())
 	assert.Equal(t, genesisBlock.Hash(), blockChain.Genesis().Hash())
 	assert.Equal(t, genesisBlock.MinerAddress(), blockChain.Founder())
-	assert.Equal(t, chainID, blockChain.ChainID())
+	assert.Equal(t, testChainID, blockChain.ChainID())
 
 	blockChain.Stop()
 }
@@ -237,7 +240,10 @@ func TestBlockChain_InsertBlock(t *testing.T) {
 	currentEvent := subscribeEvent(subscribe.NewCurrentBlock, blockType)
 	stableEvent := subscribeEvent(subscribe.NewStableBlock, blockType)
 	confirmEvent := subscribeEvent(subscribe.NewConfirm, confirmType)
-	_ = bc.InsertBlock(newBlock)
+	go func() {
+		err := bc.InsertBlock(newBlock)
+		assert.NoError(t, err)
+	}()
 
 	assert.Equal(t, ErrChannelTimeout, (<-mineEvent).err)
 	assertBlockChannel(t, currentEvent, newBlock)
@@ -255,20 +261,24 @@ func TestBlockChain_InsertBlock(t *testing.T) {
 	currentEvent = subscribeEvent(subscribe.NewCurrentBlock, blockType)
 	stableEvent = subscribeEvent(subscribe.NewStableBlock, blockType)
 	confirmEvent = subscribeEvent(subscribe.NewConfirm, confirmType)
-	_ = bc.InsertBlock(newBlockFork)
+	go func() {
+		err := bc.InsertBlock(newBlockFork)
+		assert.Equal(t, consensus.ErrExistBlock, err)
+	}()
 
 	assert.Equal(t, ErrChannelTimeout, (<-mineEvent).err)
 	assert.Equal(t, ErrChannelTimeout, (<-currentEvent).err)
 	assert.Equal(t, ErrChannelTimeout, (<-stableEvent).err)
 	assert.Equal(t, ErrChannelTimeout, (<-confirmEvent).err)
 
-	// mined by next miner
+	// mined by next miner and insert synchronously
 	newBlock = newTestBlock(bc)
 	mineEvent = subscribeEvent(subscribe.NewMinedBlock, blockType)
 	currentEvent = subscribeEvent(subscribe.NewCurrentBlock, blockType)
 	stableEvent = subscribeEvent(subscribe.NewStableBlock, blockType)
 	confirmEvent = subscribeEvent(subscribe.NewConfirm, confirmType)
-	_ = bc.InsertBlock(newBlock)
+	err := bc.InsertBlock(newBlock)
+	assert.NoError(t, err)
 
 	assert.Equal(t, ErrChannelTimeout, (<-mineEvent).err)
 	assertBlockChannel(t, currentEvent, newBlock)

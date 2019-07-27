@@ -83,7 +83,7 @@ func (ba *BlockAssembler) PrepareHeader(parentHeader *types.Header, extra []byte
 		Extra:        extra,
 	}
 
-	// allowable 1 second time error
+	// allow 1 second time error
 	// but next block's time can't be small than parent block
 	parTime := parentHeader.Time
 	blockTime := uint32(time.Now().Unix())
@@ -159,32 +159,31 @@ func (ba *BlockAssembler) Seal(header *types.Header, txProduct *account.TxsProdu
 
 // refundCandidatePledge 退还取消候选节点的质押押金
 func (ba *BlockAssembler) refundCandidatePledge(am *account.Manager) {
-	// 退还取消候选节点的质押金额
-	allCandidateAddressList, err := ba.db.GetAllCandidates()
+	// the address list of candidates who need to refund
+	addrList, err := ba.canLoader.LoadRefundCandidates()
 	if err != nil {
 		panic(err)
 	}
-	for _, candidateAddress := range allCandidateAddressList {
+	for _, candidateAddress := range addrList {
 		// 判断addr的candidate信息
 		candidateAcc := am.GetAccount(candidateAddress)
-		pledgAmountString := candidateAcc.GetCandidateState(types.CandidateKeyPledgeAmount)
-		if candidateAcc.GetCandidateState(types.CandidateKeyIsCandidate) == params.NotCandidateNode && pledgAmountString != "" { // 满足退还押金的条件
-			if pledgeAmount, success := new(big.Int).SetString(pledgAmountString, 10); !success {
-				panic("Big.Int SetString function failed")
-			} else {
-				// 退还押金
-				candidatePledgePoolAcc := am.GetAccount(params.CandidateDepositAddress)
-				if candidatePledgePoolAcc.GetBalance().Cmp(pledgeAmount) < 0 { // 判断押金池中的押金是否足够，如果不足直接panic
-					panic("candidate pledge pool account balance insufficient.")
-				}
-				// 减少押金池中的余额
-				candidatePledgePoolAcc.SetBalance(new(big.Int).Sub(candidatePledgePoolAcc.GetBalance(), pledgeAmount))
-				// 退还押金到取消的候选节点账户
-				candidateAcc.SetBalance(new(big.Int).Add(candidateAcc.GetBalance(), pledgeAmount))
-				// 设置候选节点info中的押金余额为nil
-				candidateAcc.SetCandidateState(types.CandidateKeyPledgeAmount, "")
-			}
+		pledgeAmountString := candidateAcc.GetCandidateState(types.CandidateKeyPledgeAmount)
+		pledgeAmount, ok := new(big.Int).SetString(pledgeAmountString, 10)
+		if !ok {
+			panic("Big.Int SetString function failed")
 		}
+
+		// 退还押金
+		candidatePledgePoolAcc := am.GetAccount(params.CandidateDepositAddress)
+		if candidatePledgePoolAcc.GetBalance().Cmp(pledgeAmount) < 0 { // 判断押金池中的押金是否足够，如果不足直接panic
+			panic("candidate pledge pool account balance insufficient.")
+		}
+		// 减少押金池中的余额
+		candidatePledgePoolAcc.SetBalance(new(big.Int).Sub(candidatePledgePoolAcc.GetBalance(), pledgeAmount))
+		// 退还押金到取消的候选节点账户
+		candidateAcc.SetBalance(new(big.Int).Add(candidateAcc.GetBalance(), pledgeAmount))
+		// 设置候选节点info中的押金余额为nil
+		candidateAcc.SetCandidateState(types.CandidateKeyPledgeAmount, "")
 	}
 }
 

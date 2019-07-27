@@ -48,4 +48,5 @@ type TxPool interface {
 
 type CandidateLoader interface {
 	LoadTopCandidates(blockHash common.Hash) types.DeputyNodes
+	LoadRefundCandidates() ([]common.Address, error)
 }

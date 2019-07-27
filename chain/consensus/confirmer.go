@@ -142,8 +142,10 @@ func (c *Confirmer) NeedFetchedConfirms(startHeight, endHeight uint32) []network
 
 // SetLastSig
 func (c *Confirmer) SetLastSig(block *types.Block) {
-	c.lastSig.Height = block.Height()
-	c.lastSig.Hash = block.Hash()
+	if block.Height() > c.lastSig.Height {
+		c.lastSig.Height = block.Height()
+		c.lastSig.Hash = block.Hash()
+	}
 }
 
 func IsMinedByself(block *types.Block) bool {
