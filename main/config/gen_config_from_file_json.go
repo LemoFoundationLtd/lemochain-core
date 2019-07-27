@@ -21,6 +21,7 @@ func (c ConfigFromFile) MarshalJSON() ([]byte, error) {
 		TermDuration    hexutil.Uint64 `json:"termDuration"`
 		InterimDuration hexutil.Uint64 `json:"interimDuration"`
 		ConnectionLimit hexutil.Uint64 `json:"connectionLimit"`
+		AlarmUrl        string         `json:"alarmUrl"`
 	}
 	var enc ConfigFromFile
 	enc.ChainID = hexutil.Uint64(c.ChainID)
@@ -30,6 +31,7 @@ func (c ConfigFromFile) MarshalJSON() ([]byte, error) {
 	enc.TermDuration = hexutil.Uint64(c.TermDuration)
 	enc.InterimDuration = hexutil.Uint64(c.InterimDuration)
 	enc.ConnectionLimit = hexutil.Uint64(c.ConnectionLimit)
+	enc.AlarmUrl = c.AlarmUrl
 	return json.Marshal(&enc)
 }
 
@@ -43,6 +45,7 @@ func (c *ConfigFromFile) UnmarshalJSON(input []byte) error {
 		TermDuration    *hexutil.Uint64 `json:"termDuration"`
 		InterimDuration *hexutil.Uint64 `json:"interimDuration"`
 		ConnectionLimit *hexutil.Uint64 `json:"connectionLimit"`
+		AlarmUrl        *string         `json:"alarmUrl"`
 	}
 	var dec ConfigFromFile
 	if err := json.Unmarshal(input, &dec); err != nil {
@@ -70,6 +73,9 @@ func (c *ConfigFromFile) UnmarshalJSON(input []byte) error {
 	}
 	if dec.ConnectionLimit != nil {
 		c.ConnectionLimit = uint64(*dec.ConnectionLimit)
+	}
+	if dec.AlarmUrl != nil {
+		c.AlarmUrl = *dec.AlarmUrl
 	}
 	return nil
 }

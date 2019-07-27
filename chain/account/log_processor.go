@@ -107,7 +107,7 @@ func (h *LogProcessor) RevertToSnapshot(revid int) {
 	}
 	snapshot := h.revisions[idx].journalIndex
 
-	lastVersions := make(map[common.Address]uint32)
+	lastVersions := make(map[common.Address]map[types.ChangeLogType]uint32)
 	// Replay the change log to undo changes.
 	for i := len(h.changeLogs) - 1; i >= snapshot; i-- {
 		changeLog := h.changeLogs[i]
@@ -115,10 +115,15 @@ func (h *LogProcessor) RevertToSnapshot(revid int) {
 
 		// Make sure the sequence of changelog is correct. And the change log's version is bigger than in account, because the version in account is only updated at the end of block process
 		accountVersion := account.(*Account).GetVersion(changeLog.LogType)
-		last, ok := lastVersions[changeLog.Address]
+		_, ok := lastVersions[changeLog.Address]
+		if !ok {
+			lastVersions[changeLog.Address] = make(map[types.ChangeLogType]uint32)
+		}
+
 		// Check change log's version
+		last, ok := lastVersions[changeLog.Address][changeLog.LogType]
 		if (!ok || last-1 == changeLog.Version) && accountVersion < changeLog.Version {
-			lastVersions[changeLog.Address] = changeLog.Version
+			lastVersions[changeLog.Address][changeLog.LogType] = changeLog.Version
 		} else {
 			log.Errorf("expected undo version %d, got %d", last-1, changeLog.Version)
 			panic(types.ErrWrongChangeLogVersion)

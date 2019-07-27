@@ -9,38 +9,38 @@ import (
 
 func TestSignTx(t *testing.T) {
 
-	assert.Empty(t, testTx.Sig())
-	assert.Empty(t, testTx.GasPayerSig())
+	assert.Empty(t, testTx.Sigs())
+	assert.Empty(t, testTx.GasPayerSigs())
 	// the specific testTx and testPrivate makes recovery == 1
 	txV, err := testSigner.SignTx(testTx, testPrivate)
 	assert.NoError(t, err)
-	assert.NotEmpty(t, txV.Sig())
+	assert.NotEmpty(t, txV.Sigs())
 
 	// reimbursed gas transaction
-	assert.Empty(t, reimbursementTx.Sig())
+	assert.Empty(t, reimbursementTx.Sigs())
 	// 	reimbursed gas transaction first times sign
 	txW, err := MakeReimbursementTxSigner().SignTx(reimbursementTx, testPrivate)
 	assert.NoError(t, err)
-	assert.NotEmpty(t, txW.Sig())
+	assert.NotEmpty(t, txW.Sigs())
 }
 
 func TestDefaultSigner_GetSender(t *testing.T) {
 	txV, err := testSigner.SignTx(testTx, testPrivate)
 	assert.NoError(t, err)
 
-	addr, err := testSigner.GetSigner(txV)
+	addr, err := testSigner.GetSigners(txV)
 	assert.NoError(t, err)
-	assert.Equal(t, testAddr, addr)
+	assert.Equal(t, testAddr, addr[0])
 
 	// longer sig
 	tx := &Transaction{data: txV.data}
-	tx.data.Sig = common.FromHex("3de7cbaaff085cfc1db7d1f31bea6819413d2391d9c5f81684faaeb9835df8774727d43924a0eb18621076607211edd7062c413d1663f29eadda0b0ee3c467fe0100")
+	tx.data.Sigs = append(tx.data.Sigs, common.FromHex("3de7cbaaff085cfc1db7d1f31bea6819413d2391d9c5f81684faaeb9835df8774727d43924a0eb18621076607211edd7062c413d1663f29eadda0b0ee3c467fe0100"))
 
-	addr, err = testSigner.GetSigner(tx)
+	addr, err = testSigner.GetSigners(tx)
 	assert.Equal(t, secp256k1.ErrInvalidSignatureLen, err)
 
 	// empty sig
-	addr, err = testSigner.GetSigner(testTx)
+	addr, err = testSigner.GetSigners(testTx)
 	assert.Equal(t, secp256k1.ErrInvalidSignatureLen, err)
 }
 
@@ -52,9 +52,9 @@ func TestReimbursementTxSigner_GetSender(t *testing.T) {
 	txW, err := MakeReimbursementTxSigner().SignTx(reimbursementTx, testPrivate)
 	assert.NoError(t, err)
 
-	addr, err := MakeReimbursementTxSigner().GetSigner(txW)
+	addr, err := MakeReimbursementTxSigner().GetSigners(txW)
 	assert.NoError(t, err)
-	assert.Equal(t, testAddr, addr)
+	assert.Equal(t, testAddr, addr[0])
 }
 func TestReimbursementTxSigner_Hash(t *testing.T) {
 	assert.Equal(t, "0x92771cb37ca07d610e88d8d3beb2cdc86c4ba9e45b249ed7af39165c1e755644", MakeReimbursementTxSigner().Hash(reimbursementTx).Hex())
@@ -63,14 +63,14 @@ func TestReimbursementTxSigner_Hash(t *testing.T) {
 func TestGasPayerSigner_GasPayerSignTx(t *testing.T) {
 	firstSignTx, err := MakeReimbursementTxSigner().SignTx(reimbursementTx, testPrivate)
 	assert.NoError(t, err)
-	assert.Equal(t, []byte{}, firstSignTx.GasPayerSig())
+	assert.Equal(t, []byte{}, firstSignTx.GasPayerSigs())
 	assert.Empty(t, firstSignTx.GasPrice())
 	assert.Empty(t, firstSignTx.GasLimit())
 	firstSignTx = GasPayerSignatureTx(firstSignTx, common.Big2, 2222)
 	lastSignTx, err := MakeGasPayerSigner().SignTx(firstSignTx, gasPayerPrivate)
 	assert.NoError(t, err)
-	assert.NotEmpty(t, lastSignTx.GasPayerSig())
-	assert.Equal(t, 65, len(lastSignTx.GasPayerSig()))
+	assert.NotEmpty(t, lastSignTx.GasPayerSigs())
+	assert.Equal(t, 65, len(lastSignTx.GasPayerSigs()))
 	assert.Equal(t, common.Big2, lastSignTx.GasPrice())
 	assert.Equal(t, uint64(2222), lastSignTx.GasLimit())
 
@@ -88,9 +88,8 @@ func TestGasPayerSigner_GasPayer(t *testing.T) {
 	firstSignTx = GasPayerSignatureTx(firstSignTx, common.Big2, 2222)
 	lastSignTx, err := MakeGasPayerSigner().SignTx(firstSignTx, gasPayerPrivate)
 	assert.NoError(t, err)
-	tx_gasPayer, err := lastSignTx.GasPayer()
+	tx_gasPayer := lastSignTx.GasPayer()
+	payer, err := MakeGasPayerSigner().GetSigners(lastSignTx)
 	assert.NoError(t, err)
-	payer, err := MakeGasPayerSigner().GetSigner(lastSignTx)
-	assert.NoError(t, err)
-	assert.Equal(t, gasPayerAddr, tx_gasPayer, payer)
+	assert.Equal(t, gasPayerAddr, tx_gasPayer, payer[0])
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-core/common/hexutil"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
+	"github.com/LemoFoundationLtd/lemochain-core/common/subscribe"
 	"github.com/LemoFoundationLtd/lemochain-core/network"
 	"github.com/LemoFoundationLtd/lemochain-core/network/p2p"
 	"runtime"
@@ -33,6 +34,8 @@ var (
 	ErrTxExpiration   = errors.New("tx expiration time is out of date")
 	ErrNegativeValue  = errors.New("negative value")
 	ErrTxChainID      = errors.New("tx chainID is incorrect")
+	ErrInputParams    = errors.New("input params incorrect")
+	ErrTxTo           = errors.New("transaction to is incorrect")
 )
 
 // Private
@@ -192,7 +195,7 @@ func (c *PublicChainAPI) GetDeputyNodeList() []string {
 		profile := candidateAcc.GetCandidate()
 		host := profile[types.CandidateKeyHost]
 		port := profile[types.CandidateKeyPort]
-		nodeAddrString := fmt.Sprintf("%x@%s:%s", n.NodeID, host, port)
+		nodeAddrString := fmt.Sprintf("%x@%s:%s; votes: %s, rank: %d", n.NodeID, host, port, n.Votes.String(), n.Rank)
 		result = append(result, nodeAddrString)
 	}
 	return result
@@ -441,9 +444,13 @@ func NewPublicTxAPI(node *Node) *PublicTxAPI {
 func (t *PublicTxAPI) SendTx(tx *types.Transaction) (common.Hash, error) {
 	err := tx.VerifyTx(t.node.ChainID(), uint64(time.Now().Unix()))
 	if err != nil {
+		log.Errorf("VerifyTx error: %s", err)
 		return common.Hash{}, err
 	}
-	t.node.txPool.RecvTx(tx)
+	if t.node.txPool.RecvTx(tx) {
+		// 广播交易
+		go subscribe.Send(subscribe.NewTx, tx)
+	}
 	return tx.Hash(), nil
 }
 
@@ -454,17 +461,25 @@ func (t *PublicTxAPI) PendingTx(size int) []*types.Transaction {
 
 // ReadContract read variables in a contract includes the return value of a function.
 func (t *PublicTxAPI) ReadContract(to *common.Address, data hexutil.Bytes) (string, error) {
+	if to == nil {
+		return "", ErrInputParams
+	}
 	ctx := context.Background()
-	result, _, err := t.doCallTransaction(ctx, to, params.OrdinaryTx, data, 5*time.Second)
+	accM := account.NewReadOnlyManager(t.node.Db(), true)
+	result, _, err := t.doCallTransaction(ctx, to, accM, params.OrdinaryTx, data, 5*time.Second)
 	return common.ToHex(result), err
 }
 
 // EstimateGas returns an estimate of the amount of gas needed to execute the given transaction.
 func (t *PublicTxAPI) EstimateGas(to *common.Address, txType uint16, data hexutil.Bytes) (string, error) {
+	if !types.IsToExist(txType, to) {
+		return "", types.ErrToExist
+	}
 	var costGas uint64
 	var err error
 	ctx := context.Background()
-	_, costGas, err = t.doCallTransaction(ctx, to, txType, data, 5*time.Second)
+	accM := account.NewReadOnlyManager(t.node.Db(), false)
+	_, costGas, err = t.doCallTransaction(ctx, to, accM, txType, data, 5*time.Second)
 	strCostGas := strconv.FormatUint(costGas, 10)
 	return strCostGas, err
 }
@@ -473,23 +488,23 @@ func (t *PublicTxAPI) EstimateGas(to *common.Address, txType uint16, data hexuti
 // Todo will delete
 func (t *PublicTxAPI) EstimateCreateContractGas(data hexutil.Bytes) (uint64, error) {
 	ctx := context.Background()
-	_, costGas, err := t.doCallTransaction(ctx, nil, params.OrdinaryTx, data, 5*time.Second)
+	accM := account.NewReadOnlyManager(t.node.Db(), false)
+	_, costGas, err := t.doCallTransaction(ctx, nil, accM, params.CreateContractTx, data, 5*time.Second)
 	return costGas, err
 }
 
 // doCallTransaction
-func (t *PublicTxAPI) doCallTransaction(ctx context.Context, to *common.Address, txType uint16, data hexutil.Bytes, timeout time.Duration) ([]byte, uint64, error) {
+func (t *PublicTxAPI) doCallTransaction(ctx context.Context, to *common.Address, accM *account.ReadOnlyManager, txType uint16, data hexutil.Bytes, timeout time.Duration) ([]byte, uint64, error) {
 	t.node.lock.Lock()
 	defer t.node.lock.Unlock()
 
 	defer func(start time.Time) { log.Debug("Executing EVM call finished", "runtime", time.Since(start)) }(time.Now())
-	// get latest stableBlock
-	stableBlock := t.node.chain.StableBlock()
-	log.Infof("Stable block height = %v", stableBlock.Height())
-	stableHeader := stableBlock.Header
-
+	// get current stableBlock
+	currentBlock := t.node.chain.CurrentBlock()
+	log.Infof("Current block height = %v", currentBlock.Height())
+	currentHeader := currentBlock.Header
 	p := t.node.chain.TxProcessor()
-	ret, costGas, err := p.PreExecutionTransaction(ctx, stableHeader, to, txType, data, common.Hash{}, timeout)
+	ret, costGas, err := p.PreExecutionTransaction(ctx, accM, currentHeader, to, txType, data, common.Hash{}, timeout)
 
 	return ret, costGas, err
 }

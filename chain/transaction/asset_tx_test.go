@@ -47,8 +47,8 @@ func newReplenishAssetData(assetCode, assetId common.Hash, amount *big.Int) []by
 // newModifyAssetData
 func newModifyAssetData(code common.Hash, info types.Profile) []byte {
 	modify := &types.ModifyAssetInfo{
-		AssetCode: code,
-		Info:      info,
+		AssetCode:     code,
+		UpdateProfile: info,
 	}
 	data, err := json.Marshal(modify)
 	if err != nil {
@@ -94,7 +94,7 @@ func TestRunAssetEnv_CreateAssetTx(t *testing.T) {
 	// 生成资产信息所占用字节大于规定的大小的情况
 	info := "www.lemochain.comlemolemolemolemolemolemolemolemolemolemolemolemolemolemolemowww.lemochain.comlemolemolemolemolemolemolemolemolemolemolemolemolemolemolemowww.lemochain.comlemolemolemolemolemolemolemolemolemolemolemolemolemolemolemo"
 	maxData := newCreateAssetTxData(info, info, info, info, 3, true, true)
-	log.Infof("maxData length: ", len(maxData))
+	log.Infof("maxData length: %d", len(maxData))
 	err := r.CreateAssetTx(sender, maxData, txHash)
 	assert.Equal(t, ErrMarshalAssetLength, err)
 
@@ -326,8 +326,8 @@ func TestRunAssetEnv_ModifyAssetProfileTx(t *testing.T) {
 	assert.Equal(t, ErrModifyAssetTxSender, err)
 
 	// r.am.RevertToSnapshot(snapshot)
-	// 2. 修改的info为nil的情况
-	data02 := newModifyAssetData(assetCode, nil)
+	// 2. 修改的info长度为0的情况
+	data02 := newModifyAssetData(assetCode, make(types.Profile))
 	err = r.ModifyAssetProfileTx(issuer, data02)
 	assert.Equal(t, ErrModifyAssetInfo, err)
 

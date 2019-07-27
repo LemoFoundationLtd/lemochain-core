@@ -7,6 +7,7 @@ import (
 	"errors"
 
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
+	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/hexutil"
 )
 
@@ -15,20 +16,23 @@ var _ = (*vTransactionMarshaling)(nil)
 // MarshalJSON marshals as JSON.
 func (v VTransaction) MarshalJSON() ([]byte, error) {
 	type VTransaction struct {
-		Tx *types.Transaction `json:"tx" gencodec:"required"`
-		St hexutil.Uint64     `json:"time" gencodec:"required"`
+		Tx          *types.Transaction `json:"tx" gencodec:"required"`
+		PHash       common.Hash        `json:"pHash" gencodec:"required"`
+		PackageTime hexutil.Uint32     `json:"time" gencodec:"required"`
 	}
 	var enc VTransaction
 	enc.Tx = v.Tx
-	enc.St = hexutil.Uint64(v.St)
+	enc.PHash = v.PHash
+	enc.PackageTime = hexutil.Uint32(v.PackageTime)
 	return json.Marshal(&enc)
 }
 
 // UnmarshalJSON unmarshals from JSON.
 func (v *VTransaction) UnmarshalJSON(input []byte) error {
 	type VTransaction struct {
-		Tx *types.Transaction `json:"tx" gencodec:"required"`
-		St *hexutil.Uint64    `json:"time" gencodec:"required"`
+		Tx          *types.Transaction `json:"tx" gencodec:"required"`
+		PHash       *common.Hash       `json:"pHash"`
+		PackageTime *hexutil.Uint32    `json:"time" gencodec:"required"`
 	}
 	var dec VTransaction
 	if err := json.Unmarshal(input, &dec); err != nil {
@@ -38,9 +42,13 @@ func (v *VTransaction) UnmarshalJSON(input []byte) error {
 		return errors.New("missing required field 'tx' for VTransaction")
 	}
 	v.Tx = dec.Tx
-	if dec.St == nil {
+	if dec.PHash == nil {
+		return errors.New("missing required field 'pHash' for VTransaction")
+	}
+	v.PHash = *dec.PHash
+	if dec.PackageTime == nil {
 		return errors.New("missing required field 'time' for VTransaction")
 	}
-	v.St = int64(*dec.St)
+	v.PackageTime = uint32(*dec.PackageTime)
 	return nil
 }

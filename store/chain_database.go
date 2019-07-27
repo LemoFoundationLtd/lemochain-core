@@ -56,6 +56,8 @@ func NewChainDataBase(home string, driver string, dns string) *ChainDatabase {
 		Context:         NewRunContext(home),
 		LevelDB:         leveldb.NewLevelDBDatabase(filepath.Join(home, "index"), 16, 16),
 	}
+	// 启动leveldb的metrics数据统计功能
+	db.LevelDB.Meter()
 
 	db.BizDB = NewBizDatabase(db, db.LevelDB)
 	db.Beansdb = NewBeansDB(home, db.LevelDB)
@@ -703,6 +705,18 @@ func (database *ChainDatabase) GetCandidatesPage(index int, size int) ([]common.
 	} else {
 		return database.Context.GetCandidatePage(index, size)
 	}
+}
+
+func (database *ChainDatabase) GetAllCandidates() ([]common.Address, error) {
+	c, err := database.Context.GetCandidates()
+	if err != nil {
+		return nil, err
+	}
+	addresses := make([]common.Address, 0, len(c))
+	for i := 0; i < len(c); i++ {
+		addresses = append(addresses, c[i].Address)
+	}
+	return addresses, nil
 }
 
 func (database *ChainDatabase) CandidatesRanking(hash common.Hash) {

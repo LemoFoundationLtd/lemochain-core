@@ -29,8 +29,8 @@ type BlockChain interface {
 }
 
 type TxPool interface {
-	// AddTxs add transaction
-	RecvTxs(tx []*types.Transaction)
-	// Remove remove transaction
-	RecvBlock(block *types.Block)
+	/* 本节点出块时，从交易池中取出交易进行打包，但并不从交易池中删除 */
+	Get(time uint32, size int) []*types.Transaction
+	/* 收到一笔新的交易 */
+	RecvTx(tx *types.Transaction) bool
 }

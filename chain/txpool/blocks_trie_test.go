@@ -1,6 +1,7 @@
 package txpool
 
 import (
+	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"github.com/stretchr/testify/assert"
@@ -35,7 +36,7 @@ func TestBlocksTrie_PushBlock(t *testing.T) {
 	assert.Equal(t, 1, len(trie.HeightBuckets))
 	assert.Equal(t, 3, len(trie.HeightBuckets[1][block1.Hash()].TxHashSet))
 
-	slot := curTime % int64(TransactionExpiration)
+	slot := curTime % int64(params.TransactionExpiration)
 	assert.Equal(t, 1, len(trie.TimeBuckets[slot].BlocksByHeight))
 
 	block2 := store.GetBlock2()
@@ -46,7 +47,7 @@ func TestBlocksTrie_PushBlock(t *testing.T) {
 	block2.Txs = append(block2.Txs, tx6)
 	block2.Txs = append(block2.Txs, tx7)
 	trie.PushBlock(block2)
-	slot = curTime % int64(TransactionExpiration)
+	slot = curTime % int64(params.TransactionExpiration)
 	assert.Equal(t, 2, len(trie.TimeBuckets[slot].BlocksByHeight))
 
 	assert.Equal(t, 2, len(trie.HeightBuckets))
@@ -63,7 +64,7 @@ func TestBlocksTrie_PushBlock(t *testing.T) {
 	assert.Equal(t, 1, len(trie.HeightBuckets))
 	assert.Equal(t, 2, len(trie.HeightBuckets[3][block3.Hash()].TxHashSet))
 
-	slot = (curTime + 3600) % int64(TransactionExpiration)
+	slot = (curTime + 3600) % int64(params.TransactionExpiration)
 	assert.Equal(t, 1, len(trie.TimeBuckets[slot].BlocksByHeight))
 
 	// 添加过期块
@@ -77,7 +78,7 @@ func TestBlocksTrie_PushBlock(t *testing.T) {
 
 	assert.Equal(t, 1, len(trie.HeightBuckets))
 	assert.Equal(t, 2, len(trie.HeightBuckets[3][block3.Hash()].TxHashSet))
-	slot = (curTime + 3600) % int64(TransactionExpiration)
+	slot = (curTime + 3600) % int64(params.TransactionExpiration)
 	assert.Equal(t, 1, len(trie.TimeBuckets[slot].BlocksByHeight))
 }
 
@@ -110,7 +111,7 @@ func TestBlocksTrie_DelBlock1(t *testing.T) {
 	trie.PushBlock(block2)
 
 	trie.DelBlock(block1)
-	slot := curTime % int64(TransactionExpiration)
+	slot := curTime % int64(params.TransactionExpiration)
 	assert.Equal(t, 1, len(trie.TimeBuckets[slot].BlocksByHeight))
 
 	item := trie.TimeBuckets[slot].BlocksByHeight[block1.Height()]

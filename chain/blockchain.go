@@ -5,6 +5,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/consensus"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/transaction"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/txpool"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
@@ -15,7 +16,9 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/network"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	db "github.com/LemoFoundationLtd/lemochain-core/store/protocol"
+	"strconv"
 	"sync/atomic"
+	"time"
 )
 
 var ErrNoGenesis = errors.New("can't get genesis block")
@@ -78,11 +81,34 @@ func NewBlockChain(config Config, dm *deputynode.Manager, db db.ChainDB, flags f
 	}
 	bc.engine = consensus.NewDPoVP(dpovpCfg, bc.db, bc.dm, bc.am, bc, txPool, block)
 
+	bc.initTxPool(block, txPool)
 	go bc.runFeedTranspondLoop()
 	go bc.runMainLoop()
 
 	log.Info("BlockChain is ready", "stableHeight", bc.StableBlock().Height(), "stableHash", bc.StableBlock().Hash(), "currentHeight", bc.CurrentBlock().Height(), "currentHash", bc.CurrentBlock().Hash())
 	return bc, nil
+}
+
+func (bc *BlockChain) initTxPool(block *types.Block, txPool *txpool.TxPool) {
+	if block == nil {
+		log.Debug("init tx pool. block is nil.")
+		return
+	}
+
+	startTime := time.Now().Unix()
+	blockTime := int64(block.Time())
+	height := block.Height()
+	for (startTime-blockTime <= int64(params.TransactionExpiration)) && (height > 0) {
+		txPool.RecvBlock(block)
+
+		height = height - 1
+		block = bc.GetBlockByHeight(height)
+		if block == nil {
+			panic("get block by height. result is nil. height: " + strconv.Itoa(int(height)))
+		} else {
+			blockTime = int64(block.Time())
+		}
+	}
 }
 
 func (bc *BlockChain) AccountManager() *account.Manager {

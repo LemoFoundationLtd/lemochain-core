@@ -26,13 +26,32 @@ func MakeGasPayerSigner() Signer {
 	return GasPayerSigner{}
 }
 
+// recoverSigners
+func recoverSigners(sigHash common.Hash, sigs [][]byte) ([]common.Address, error) {
+	length := len(sigs)
+	signers := make([]common.Address, length, length)
+	for i := 0; i < length; i++ {
+		// recover the public key from the signature
+		pub, err := crypto.Ecrecover(sigHash[:], sigs[i])
+		if err != nil {
+			return nil, err
+		}
+		if len(pub) == 0 || pub[0] != 4 {
+			return nil, ErrPublicKey
+		}
+		addr := crypto.PubToAddress(pub)
+		signers[i] = addr
+	}
+	return signers, nil
+}
+
 // Signer encapsulates transaction signature handling.
 type Signer interface {
 	// SignTx returns transaction after signature
 	SignTx(tx *Transaction, prv *ecdsa.PrivateKey) (*Transaction, error)
 
-	// GetSigner returns the sender address of the transaction.
-	GetSigner(tx *Transaction) (common.Address, error)
+	// GetSigners returns the sender address of the transaction.
+	GetSigners(tx *Transaction) ([]common.Address, error)
 
 	// Hash returns the hash to be signed.
 	Hash(tx *Transaction) common.Hash
@@ -49,23 +68,15 @@ func (s DefaultSigner) SignTx(tx *Transaction, prv *ecdsa.PrivateKey) (*Transact
 		return nil, err
 	}
 	cpy := tx.Clone()
-	cpy.data.Sig = sig
+	cpy.data.Sigs = append(cpy.data.Sigs, sig)
 	return cpy, nil
 }
 
-func (s DefaultSigner) GetSigner(tx *Transaction) (common.Address, error) {
+func (s DefaultSigner) GetSigners(tx *Transaction) ([]common.Address, error) {
 	sigHash := s.Hash(tx)
-	sig := tx.data.Sig
-	// recover the public key from the signature
-	pub, err := crypto.Ecrecover(sigHash[:], sig)
-	if err != nil {
-		return common.Address{}, err
-	}
-	if len(pub) == 0 || pub[0] != 4 {
-		return common.Address{}, ErrPublicKey
-	}
-	addr := crypto.PubToAddress(pub)
-	return addr, nil
+	sigs := tx.data.Sigs
+	signers, err := recoverSigners(sigHash, sigs)
+	return signers, err
 }
 
 // Hash returns the hash to be signed by the sender.
@@ -75,6 +86,8 @@ func (s DefaultSigner) Hash(tx *Transaction) common.Hash {
 		tx.Type(),
 		tx.Version(),
 		tx.ChainID(),
+		tx.data.From,
+		tx.data.GasPayer,
 		tx.data.Recipient,
 		tx.data.RecipientName,
 		tx.data.GasPrice,
@@ -97,44 +110,33 @@ func (s ReimbursementTxSigner) SignTx(tx *Transaction, prv *ecdsa.PrivateKey) (*
 		return nil, err
 	}
 	cpy := tx.Clone()
-	cpy.data.Sig = sig
+	cpy.data.Sigs = append(cpy.data.Sigs, sig)
 	return cpy, nil
 }
 
 // Hash excluding gasLimit and gasPrice
 func (s ReimbursementTxSigner) Hash(tx *Transaction) common.Hash {
-	gasPayer, err := tx.GasPayer()
-	if err != nil {
-		return common.Hash{}
-	}
 	return rlpHash([]interface{}{
 		tx.Type(),
 		tx.Version(),
 		tx.ChainID(),
+		tx.data.From,
+		tx.data.GasPayer,
 		tx.data.Recipient,
 		tx.data.RecipientName,
 		tx.data.Amount,
 		tx.data.Data,
 		tx.data.Expiration,
 		tx.data.Message,
-		gasPayer,
 	})
 }
 
-// GetSigner
-func (s ReimbursementTxSigner) GetSigner(tx *Transaction) (common.Address, error) {
+// GetSigners
+func (s ReimbursementTxSigner) GetSigners(tx *Transaction) ([]common.Address, error) {
 	sigHash := s.Hash(tx)
-	sig := tx.data.Sig
-	// recover the public key from the signature
-	pub, err := crypto.Ecrecover(sigHash[:], sig)
-	if err != nil {
-		return common.Address{}, err
-	}
-	if len(pub) == 0 || pub[0] != 4 {
-		return common.Address{}, ErrPublicKey
-	}
-	addr := crypto.PubToAddress(pub)
-	return addr, nil
+	sigs := tx.data.Sigs
+	signers, err := recoverSigners(sigHash, sigs)
+	return signers, err
 }
 
 type GasPayerSigner struct {
@@ -142,15 +144,6 @@ type GasPayerSigner struct {
 
 // SignTx returns last signature to reimbursement gas transaction
 func (g GasPayerSigner) SignTx(tx *Transaction, prv *ecdsa.PrivateKey) (*Transaction, error) {
-	gasPayer, err := tx.GasPayer()
-	if err != nil {
-		return nil, err
-	}
-	addr := crypto.PubkeyToAddress(prv.PublicKey)
-	if gasPayer != addr {
-		return nil, errors.New("not expect gas payer")
-	}
-
 	h := g.Hash(tx)
 
 	lastSignData, err := crypto.Sign(h[:], prv)
@@ -158,30 +151,21 @@ func (g GasPayerSigner) SignTx(tx *Transaction, prv *ecdsa.PrivateKey) (*Transac
 		return nil, err
 	}
 	cpy := tx.Clone()
-	cpy.data.GasPayerSig = lastSignData
+	cpy.data.GasPayerSigs = append(cpy.data.GasPayerSigs, lastSignData)
 	return cpy, nil
 }
 
 // GetGasPayer returns gas payer address
-func (g GasPayerSigner) GetSigner(tx *Transaction) (common.Address, error) {
+func (g GasPayerSigner) GetSigners(tx *Transaction) ([]common.Address, error) {
 	sigHash := g.Hash(tx)
-
-	sig := tx.data.GasPayerSig
-	// recover the public key from the signature
-	pub, err := crypto.Ecrecover(sigHash[:], sig)
-	if err != nil {
-		return common.Address{}, err
-	}
-	if len(pub) == 0 || pub[0] != 4 {
-		return common.Address{}, ErrPublicKey
-	}
-	addr := crypto.PubToAddress(pub)
-	return addr, nil
+	sigs := tx.data.GasPayerSigs
+	signers, err := recoverSigners(sigHash, sigs)
+	return signers, err
 }
 
 // Hash returns sign hash
 func (g GasPayerSigner) Hash(tx *Transaction) common.Hash {
-	firstSignData := tx.data.Sig
+	firstSignData := tx.data.Sigs
 	return rlpHash([]interface{}{
 		firstSignData,
 		tx.GasPrice(),

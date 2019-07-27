@@ -40,6 +40,7 @@ func (queue *TxQueue) softDel(hash common.Hash) {
 }
 
 func (queue *TxQueue) isTimeOut(tx *types.Transaction, time uint32) bool {
+	// TODO: box tx
 	if tx.Expiration() < uint64(time) {
 		return true
 	} else {
@@ -52,6 +53,7 @@ func (queue *TxQueue) Del(hash common.Hash) {
 		return
 	} else {
 		queue.softDel(hash)
+		txpoolTotalNumberCounter.Dec(1) // 删除交易池中的交易
 	}
 }
 
@@ -62,6 +64,7 @@ func (queue *TxQueue) DelBatch(hashes []common.Hash) {
 
 	for _, hash := range hashes {
 		queue.Del(hash)
+		invalidTxMeter.Mark(1)
 	}
 }
 
@@ -88,7 +91,6 @@ func (queue *TxQueue) Pop(time uint32, size int) []*types.Transaction {
 		count++
 		index++
 	}
-
 	return result
 }
 

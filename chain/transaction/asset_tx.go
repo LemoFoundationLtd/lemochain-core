@@ -75,8 +75,7 @@ func (r *RunAssetEnv) CreateAssetTx(sender common.Address, data []byte, txHash c
 
 // unmarshalIssueAssetData
 func unmarshalIssueAssetData(data []byte) (*types.IssueAsset, error) {
-	issueAsset := &types.IssueAsset{}
-	err := json.Unmarshal(data, issueAsset)
+	issueAsset, err := types.GetIssueAsset(data)
 	if err != nil {
 		return nil, err
 	}
@@ -167,8 +166,7 @@ func (r *RunAssetEnv) IssueAssetTx(sender, receiver common.Address, txHash commo
 
 // unmarshalReplenishAssetData
 func unmarshalReplenishAssetData(data []byte) (*types.ReplenishAsset, error) {
-	repl := &types.ReplenishAsset{}
-	err := json.Unmarshal(data, repl)
+	repl, err := types.GetReplenishAsset(data)
 	if err != nil {
 		return nil, err
 	}
@@ -264,12 +262,11 @@ func (r *RunAssetEnv) ReplenishAssetTx(sender, receiver common.Address, data []b
 }
 
 func unmarshalModifyAssetData(data []byte) (*types.ModifyAssetInfo, error) {
-	modifyInfo := &types.ModifyAssetInfo{}
-	err := json.Unmarshal(data, modifyInfo)
+	modifyInfo, err := types.GetModifyAssetInfo(data)
 	if err != nil {
 		return nil, err
 	}
-	info := modifyInfo.Info
+	info := modifyInfo.UpdateProfile
 	if info == nil || len(info) == 0 {
 		return nil, ErrModifyAssetInfo
 	}
@@ -282,7 +279,7 @@ func (r *RunAssetEnv) ModifyAssetProfileTx(sender common.Address, data []byte) e
 	if err != nil {
 		return err
 	}
-	info := modifyInfo.Info
+	info := modifyInfo.UpdateProfile
 
 	acc := r.am.GetAccount(sender)
 

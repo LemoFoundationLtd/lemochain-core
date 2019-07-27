@@ -14,24 +14,26 @@ import (
 
 //go:generate gencodec -type VTransaction --field-override vTransactionMarshaling -out gen_vTransaction_info_json.go
 type VTransaction struct {
-	Tx *types.Transaction `json:"tx" gencodec:"required"`
-	St int64              `json:"time" gencodec:"required"`
+	Tx          *types.Transaction `json:"tx" gencodec:"required"`
+	PHash       common.Hash        `json:"pHash" gencodec:"required"`
+	PackageTime uint32             `json:"time" gencodec:"required"`
 }
 type vTransactionMarshaling struct {
-	St hexutil.Uint64
+	PackageTime hexutil.Uint32
 }
 
 //go:generate gencodec -type VTransactionDetail --field-override vTransactionDetailMarshaling -out gen_vTransactionDetail_info_json.go
 type VTransactionDetail struct {
-	BlockHash common.Hash        `json:"blockHash" gencodec:"required"`
-	Height    uint32             `json:"height" gencodec:"required"`
-	Tx        *types.Transaction `json:"tx"  gencodec:"required"`
-	St        int64              `json:"time" gencodec:"required"`
+	BlockHash   common.Hash        `json:"blockHash" gencodec:"required"`
+	PHash       common.Hash        `json:"pHash" gencodec:"required"`
+	Height      uint32             `json:"height" gencodec:"required"`
+	Tx          *types.Transaction `json:"tx"  gencodec:"required"`
+	PackageTime uint32             `json:"time" gencodec:"required"`
 }
 
 type vTransactionDetailMarshaling struct {
-	Height hexutil.Uint32
-	St     hexutil.Uint64
+	Height      hexutil.Uint32
+	PackageTime hexutil.Uint32
 }
 
 type BizDb interface {
@@ -174,10 +176,7 @@ func (db *BizDatabase) afterBlock(key []byte, val []byte) error {
 	for index := 0; index < len(txs); index++ {
 		tx := txs[index]
 		// hash := tx.Hash()
-		from, err := tx.From()
-		if err != nil {
-			return err
-		}
+		from := tx.From()
 
 		if tx.Type() == params.CreateAssetTx {
 			log.Info("insert account code: " + tx.Hash().Hex() + "|addr: " + from.Hex())

@@ -32,6 +32,7 @@ type ChainDB interface {
 
 	CandidatesRanking(hash common.Hash)
 	GetCandidatesTop(hash common.Hash) []*store.Candidate
+	GetAllCandidates() ([]common.Address, error)
 
 	GetAssetID(id common.Hash) (common.Address, error)
 	GetAssetCode(code common.Hash) (common.Address, error)

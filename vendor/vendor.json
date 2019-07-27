@@ -75,6 +75,16 @@
 			"revisionTime": "2016-01-10T10:55:54Z"
 		},
 		{
+			"checksumSHA1": "DIjooF5+DLH5JSOjqnBlfNh9dFU=",
+			"path": "github.com/rcrowley/go-metrics",
+			"revision": ""
+		},
+		{
+			"checksumSHA1": "QlvtCyj0PXhSzPXO4o3EQGRTjy0=",
+			"path": "github.com/rcrowley/go-metrics/exp",
+			"revision": ""
+		},
+		{
 			"checksumSHA1": "ow73Ky0YHQisASkKFU4ZozzOdZo=",
 			"path": "github.com/robertkrimen/otto",
 			"revision": "15f95af6e78dcd2030d8195a138bd88d4f403546",

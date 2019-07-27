@@ -36,6 +36,8 @@ const (
 	CandidateKeyHost          string = "host"
 	CandidateKeyPort          string = "port"
 	CandidateKeyIncomeAddress string = "incomeAddress"
+	CandidateKeyPledgeAmount  string = "pledgeBalance" // 质押金额
+	CandidateKeyIntroduction  string = "introduction"  // 候选节点自我介绍
 	// asset profile
 	AssetName              string = "name"
 	AssetSymbol            string = "symbol"
@@ -111,13 +113,37 @@ type candidateMarshaling struct {
 	Votes *hexutil.Big10
 }
 
-//go:generate gencodec -type SignAccount   -out gen_sign_account_json.go
+//go:generate gencodec -type SignAccount --field-override signAccountMarshaling -out gen_sign_account_json.go
 type SignAccount struct {
 	Address common.Address `json:"address" gencodec:"required"`
 	Weight  uint8          `json:"weight" gencodec:"required"`
 }
-
+type signAccountMarshaling struct {
+	Weight hexutil.Uint8
+}
 type Signers []SignAccount
+
+func (signers Signers) Len() int {
+	return len(signers)
+}
+
+func (signers Signers) Less(i, j int) bool {
+	return signers[i].Address.Hex() < signers[j].Address.Hex()
+}
+
+func (signers Signers) Swap(i, j int) {
+	signers[i], signers[j] = signers[j], signers[i]
+}
+
+type SignerMap map[common.Address]uint8
+
+func (signers Signers) ToSignerMap() SignerMap {
+	m := make(SignerMap)
+	for _, v := range signers {
+		m[v.Address] = v.Weight
+	}
+	return m
+}
 
 func (signers Signers) String() string {
 	if len(signers) > 0 {

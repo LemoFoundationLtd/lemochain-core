@@ -292,8 +292,8 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 				oldCandidateAcc := am.GetAccount(oldCandidate)
 				oldCandidateAcc.SetVotes(new(big.Int).Sub(oldCandidateAcc.GetVotes(), initFromBalance))
 			}
-			// 注册费用1000lemo
-			fromAcc.SetBalance(new(big.Int).Sub(fromAcc.GetBalance(), params.RegisterCandidateNodeFees))
+			// 设置from的balance
+			fromAcc.SetBalance(new(big.Int).Sub(fromAcc.GetBalance(), params.RegisterCandidatePledgeAmount))
 			// 把自己投给自己
 			fromAcc.SetVoteFor(from)
 			fromAcc.SetVotes(initFromBalance)

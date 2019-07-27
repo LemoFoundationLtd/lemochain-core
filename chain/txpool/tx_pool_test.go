@@ -3,6 +3,7 @@ package txpool
 import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
+	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -228,4 +229,21 @@ func TestTxPool_VerifyTxInBlock2(t *testing.T) {
 
 	isValid = pool.VerifyTxInBlock(block3)
 	assert.Equal(t, false, isValid)
+}
+
+func TestTxPool_Box(t *testing.T) {
+	log.Setup(log.LevelDebug, false, false)
+
+	curTime := time.Now().Unix()
+	tx := createBoxTxRandom(common.HexToAddress("0xabcde"), 5, uint64(curTime))
+
+	pool := NewTxPool()
+	pool.RecvTx(tx)
+
+	result := pool.Get(uint32(curTime), 10)
+	assert.Equal(t, 1, len(result))
+
+	pool.RecvTx(tx)
+	result = pool.Get(uint32(curTime), 10)
+	assert.Equal(t, 1, len(result))
 }

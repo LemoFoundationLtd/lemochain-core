@@ -19,6 +19,8 @@ func (t txdata) MarshalJSON() ([]byte, error) {
 		Type          hexutil.Uint16  `json:"type" gencodec:"required"`
 		Version       hexutil.Uint8   `json:"version" gencodec:"required"`
 		ChainID       hexutil.Uint16  `json:"chainID" gencodec:"required"`
+		From          common.Address  `json:"from" gencodec:"required"`
+		GasPayer      *common.Address `json:"gasPayer" rlp:"nil"`
 		Recipient     *common.Address `json:"to" rlp:"nil"`
 		RecipientName string          `json:"toName"`
 		GasPrice      *hexutil.Big10  `json:"gasPrice" gencodec:"required"`
@@ -27,14 +29,16 @@ func (t txdata) MarshalJSON() ([]byte, error) {
 		Data          hexutil.Bytes   `json:"data"`
 		Expiration    hexutil.Uint64  `json:"expirationTime" gencodec:"required"`
 		Message       string          `json:"message"`
-		Sig           hexutil.Bytes   `json:"sig" gencodec:"required"`
+		Sigs          []hexutil.Bytes `json:"sigs" gencodec:"required"`
 		Hash          *common.Hash    `json:"hash" rlp:"-"`
-		GasPayerSig   hexutil.Bytes   `json:"gasPayerSig"`
+		GasPayerSigs  []hexutil.Bytes `json:"gasPayerSigs"`
 	}
 	var enc txdata
 	enc.Type = hexutil.Uint16(t.Type)
 	enc.Version = hexutil.Uint8(t.Version)
 	enc.ChainID = hexutil.Uint16(t.ChainID)
+	enc.From = t.From
+	enc.GasPayer = t.GasPayer
 	enc.Recipient = t.Recipient
 	enc.RecipientName = t.RecipientName
 	enc.GasPrice = (*hexutil.Big10)(t.GasPrice)
@@ -43,9 +47,19 @@ func (t txdata) MarshalJSON() ([]byte, error) {
 	enc.Data = t.Data
 	enc.Expiration = hexutil.Uint64(t.Expiration)
 	enc.Message = t.Message
-	enc.Sig = t.Sig
+	if t.Sigs != nil {
+		enc.Sigs = make([]hexutil.Bytes, len(t.Sigs))
+		for k, v := range t.Sigs {
+			enc.Sigs[k] = v
+		}
+	}
 	enc.Hash = t.Hash
-	enc.GasPayerSig = t.GasPayerSig
+	if t.GasPayerSigs != nil {
+		enc.GasPayerSigs = make([]hexutil.Bytes, len(t.GasPayerSigs))
+		for k, v := range t.GasPayerSigs {
+			enc.GasPayerSigs[k] = v
+		}
+	}
 	return json.Marshal(&enc)
 }
 
@@ -55,6 +69,8 @@ func (t *txdata) UnmarshalJSON(input []byte) error {
 		Type          *hexutil.Uint16 `json:"type" gencodec:"required"`
 		Version       *hexutil.Uint8  `json:"version" gencodec:"required"`
 		ChainID       *hexutil.Uint16 `json:"chainID" gencodec:"required"`
+		From          *common.Address `json:"from" gencodec:"required"`
+		GasPayer      *common.Address `json:"gasPayer" rlp:"nil"`
 		Recipient     *common.Address `json:"to" rlp:"nil"`
 		RecipientName *string         `json:"toName"`
 		GasPrice      *hexutil.Big10  `json:"gasPrice" gencodec:"required"`
@@ -63,9 +79,9 @@ func (t *txdata) UnmarshalJSON(input []byte) error {
 		Data          *hexutil.Bytes  `json:"data"`
 		Expiration    *hexutil.Uint64 `json:"expirationTime" gencodec:"required"`
 		Message       *string         `json:"message"`
-		Sig           *hexutil.Bytes  `json:"sig" gencodec:"required"`
+		Sigs          []hexutil.Bytes `json:"sigs" gencodec:"required"`
 		Hash          *common.Hash    `json:"hash" rlp:"-"`
-		GasPayerSig   *hexutil.Bytes  `json:"gasPayerSig"`
+		GasPayerSigs  []hexutil.Bytes `json:"gasPayerSigs"`
 	}
 	var dec txdata
 	if err := json.Unmarshal(input, &dec); err != nil {
@@ -83,6 +99,13 @@ func (t *txdata) UnmarshalJSON(input []byte) error {
 		return errors.New("missing required field 'chainID' for txdata")
 	}
 	t.ChainID = uint16(*dec.ChainID)
+	if dec.From == nil {
+		return errors.New("missing required field 'from' for txdata")
+	}
+	t.From = *dec.From
+	if dec.GasPayer != nil {
+		t.GasPayer = dec.GasPayer
+	}
 	if dec.Recipient != nil {
 		t.Recipient = dec.Recipient
 	}
@@ -111,15 +134,21 @@ func (t *txdata) UnmarshalJSON(input []byte) error {
 	if dec.Message != nil {
 		t.Message = *dec.Message
 	}
-	if dec.Sig == nil {
-		return errors.New("missing required field 'sig' for txdata")
+	if dec.Sigs == nil {
+		return errors.New("missing required field 'sigs' for txdata")
 	}
-	t.Sig = *dec.Sig
+	t.Sigs = make([][]byte, len(dec.Sigs))
+	for k, v := range dec.Sigs {
+		t.Sigs[k] = v
+	}
 	if dec.Hash != nil {
 		t.Hash = dec.Hash
 	}
-	if dec.GasPayerSig != nil {
-		t.GasPayerSig = *dec.GasPayerSig
+	if dec.GasPayerSigs != nil {
+		t.GasPayerSigs = make([][]byte, len(dec.GasPayerSigs))
+		for k, v := range dec.GasPayerSigs {
+			t.GasPayerSigs[k] = v
+		}
 	}
 	return nil
 }

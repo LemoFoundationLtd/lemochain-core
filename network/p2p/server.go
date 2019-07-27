@@ -10,6 +10,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/common/subscribe"
+	"github.com/LemoFoundationLtd/lemochain-core/metrics"
 	"net"
 	"strings"
 	"sync"
@@ -21,6 +22,10 @@ const (
 	heartbeatInterval = 5 * time.Second
 	frameReadTimeout  = 25 * time.Second
 	frameWriteTimeout = 20 * time.Second
+)
+
+var (
+	handleConnFailedMeter = metrics.NewMeter(metrics.PeerConnFailed_meterName) // 统计连接失败的速率
 )
 
 // Config holds Server options.
@@ -212,6 +217,7 @@ func (srv *Server) listenLoop() {
 		}
 		go func() {
 			if err := srv.HandleConn(fd, nil); err != nil {
+				handleConnFailedMeter.Mark(1)
 				log.Errorf("HandleConn failed: %v", err)
 			}
 		}()
@@ -235,7 +241,7 @@ func (srv *Server) HandleConn(fd net.Conn, nodeID *NodeID) error {
 	if err != nil {
 		log.Debugf("Peer handshake failed: %v", err)
 		if err = fd.Close(); err != nil {
-			log.Errorf("close connections failed", err)
+			log.Errorf("close connections failed: %s", err)
 		}
 		if err = srv.discover.SetConnectResult(peer.RNodeID(), false); err != nil {
 			log.Errorf("SetConnectResult failed: %v", err)
@@ -249,7 +255,7 @@ func (srv *Server) HandleConn(fd net.Conn, nodeID *NodeID) error {
 	// is itself
 	if bytes.Compare(peer.RNodeID()[:], deputynode.GetSelfNodeID()) == 0 {
 		if err = fd.Close(); err != nil {
-			log.Errorf("Close connections failed", err)
+			log.Errorf("Close connections failed: %s", err)
 		}
 		if err = srv.discover.SetConnectResult(peer.RNodeID(), false); err != nil {
 			log.Errorf("SetConnectResult failed: %v", err)

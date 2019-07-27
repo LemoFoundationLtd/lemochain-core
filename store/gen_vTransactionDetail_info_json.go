@@ -16,26 +16,29 @@ var _ = (*vTransactionDetailMarshaling)(nil)
 // MarshalJSON marshals as JSON.
 func (v VTransactionDetail) MarshalJSON() ([]byte, error) {
 	type VTransactionDetail struct {
-		BlockHash common.Hash        `json:"blockHash" gencodec:"required"`
-		Height    hexutil.Uint32     `json:"height" gencodec:"required"`
-		Tx        *types.Transaction `json:"tx"  gencodec:"required"`
-		St        hexutil.Uint64     `json:"time" gencodec:"required"`
+		BlockHash   common.Hash        `json:"blockHash" gencodec:"required"`
+		PHash       common.Hash        `json:"pHash" gencodec:"required"`
+		Height      hexutil.Uint32     `json:"height" gencodec:"required"`
+		Tx          *types.Transaction `json:"tx"  gencodec:"required"`
+		PackageTime hexutil.Uint32     `json:"time" gencodec:"required"`
 	}
 	var enc VTransactionDetail
 	enc.BlockHash = v.BlockHash
+	enc.PHash = v.PHash
 	enc.Height = hexutil.Uint32(v.Height)
 	enc.Tx = v.Tx
-	enc.St = hexutil.Uint64(v.St)
+	enc.PackageTime = hexutil.Uint32(v.PackageTime)
 	return json.Marshal(&enc)
 }
 
 // UnmarshalJSON unmarshals from JSON.
 func (v *VTransactionDetail) UnmarshalJSON(input []byte) error {
 	type VTransactionDetail struct {
-		BlockHash *common.Hash       `json:"blockHash" gencodec:"required"`
-		Height    *hexutil.Uint32    `json:"height" gencodec:"required"`
-		Tx        *types.Transaction `json:"tx"  gencodec:"required"`
-		St        *hexutil.Uint64    `json:"time" gencodec:"required"`
+		BlockHash   *common.Hash       `json:"blockHash" gencodec:"required"`
+		PHash       *common.Hash       `json:"pHash" gencodec:"required"`
+		Height      *hexutil.Uint32    `json:"height" gencodec:"required"`
+		Tx          *types.Transaction `json:"tx"  gencodec:"required"`
+		PackageTime *hexutil.Uint32    `json:"time" gencodec:"required"`
 	}
 	var dec VTransactionDetail
 	if err := json.Unmarshal(input, &dec); err != nil {
@@ -45,6 +48,10 @@ func (v *VTransactionDetail) UnmarshalJSON(input []byte) error {
 		return errors.New("missing required field 'blockHash' for VTransactionDetail")
 	}
 	v.BlockHash = *dec.BlockHash
+	if dec.PHash == nil {
+		return errors.New("missing required field 'pHash' for VTransactionDetail")
+	}
+	v.PHash = *dec.PHash
 	if dec.Height == nil {
 		return errors.New("missing required field 'height' for VTransactionDetail")
 	}
@@ -53,9 +60,9 @@ func (v *VTransactionDetail) UnmarshalJSON(input []byte) error {
 		return errors.New("missing required field 'tx' for VTransactionDetail")
 	}
 	v.Tx = dec.Tx
-	if dec.St == nil {
+	if dec.PackageTime == nil {
 		return errors.New("missing required field 'time' for VTransactionDetail")
 	}
-	v.St = int64(*dec.St)
+	v.PackageTime = uint32(*dec.PackageTime)
 	return nil
 }

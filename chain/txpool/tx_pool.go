@@ -3,10 +3,15 @@ package txpool
 import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
+	"github.com/LemoFoundationLtd/lemochain-core/common/log"
+	"github.com/LemoFoundationLtd/lemochain-core/metrics"
 	"sync"
 )
 
-var TransactionExpiration = 30 * 60
+var (
+	invalidTxMeter           = metrics.NewMeter(metrics.InvalidTx_meterName)        // 执行失败的交易的频率
+	txpoolTotalNumberCounter = metrics.NewCounter(metrics.TxpoolNumber_counterName) // 交易池中剩下的总交易数量
+)
 
 type TxPool struct {
 	/* 还未被打包进块的交易 */
@@ -76,6 +81,7 @@ func (pool *TxPool) VerifyTxInBlock(block *types.Block) bool {
 	if block == nil {
 		return false
 	}
+
 	if len(block.Txs) <= 0 {
 		return true
 	}
@@ -124,40 +130,67 @@ func (pool *TxPool) RecvBlock(block *types.Block) {
 		return
 	}
 
-	if len(block.Txs) > 0 {
-		hashes := make([]common.Hash, 0, len(block.Txs))
-		for _, v := range block.Txs {
-			hashes = append(hashes, v.Hash())
-		}
-
-		pool.PendingTxs.DelBatch(hashes)
-		pool.RecentTxs.RecvBlock(block.Hash(), int64(block.Height()), block.Txs)
+	txs := block.Txs
+	if len(txs) <= 0 {
+		return
 	}
+
+	hashes := make([]common.Hash, 0, len(txs))
+	for _, v := range txs {
+		hashes = append(hashes, v.Hash())
+	}
+
+	pool.PendingTxs.DelBatch(hashes)
+	pool.RecentTxs.RecvBlock(block.Hash(), int64(block.Height()), txs)
 
 	pool.BlockCache.PushBlock(block)
 }
 
 /* 收到一笔新的交易 */
-func (pool *TxPool) RecvTx(tx *types.Transaction) {
+func (pool *TxPool) RecvTx(tx *types.Transaction) bool {
 	pool.RW.Lock()
 	defer pool.RW.Unlock()
 
 	if tx == nil {
-		return
+		return false
 	}
 
-	pool.RecentTxs.RecvTx(tx)
-	pool.PendingTxs.Push(tx)
+	isExist := pool.RecentTxs.IsExist(tx)
+	if isExist {
+		log.Debug("tx is already exist. hash: " + tx.Hash().Hex())
+		return false
+	} else {
+		pool.RecentTxs.RecvTx(tx)
+		pool.PendingTxs.Push(tx)
+		txpoolTotalNumberCounter.Inc(1) // 记录收到一笔交易
+		return true
+	}
 }
 
-func (pool *TxPool) RecvTxs(txs []*types.Transaction) {
+func (pool *TxPool) RecvTxs(txs []*types.Transaction) bool {
+	pool.RW.Lock()
+	defer pool.RW.Unlock()
+
 	if len(txs) <= 0 {
-		return
+		return false
 	}
 
 	for _, v := range txs {
-		pool.RecvTx(v)
+		isExist := pool.RecentTxs.IsExist(v)
+		if !isExist {
+			continue
+		} else {
+			log.Debug("tx is already exist. hash: " + v.Hash().Hex())
+			return false
+		}
 	}
+
+	for _, v := range txs {
+		pool.RecentTxs.RecvTx(v)
+		pool.PendingTxs.Push(v)
+	}
+
+	return true
 }
 
 /* 对链进行剪枝，剪下的块中的交易需要回归交易池 */

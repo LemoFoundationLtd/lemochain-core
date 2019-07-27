@@ -1,7 +1,6 @@
 package vm
 
 import (
-	"encoding/json"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
@@ -167,10 +166,12 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 	// above we revert to the snapshot and consume any gas remaining. Additionally
 	// when we're in homestead this also counts for code storage gas errors.
 	if err != nil {
+		log.Errorf("evm error:", err)
 		evm.am.RevertToSnapshot(snapshot)
 		if err != errExecutionReverted {
 			contract.UseGas(contract.Gas)
 		}
+		evm.AddEvent(addr, []common.Hash{types.TopicRunFail}, []byte{})
 	}
 	return ret, contract.Gas, err
 }
@@ -181,8 +182,7 @@ type AssetDb interface {
 
 // TransferAssetTx
 func (evm *EVM) TransferAssetTx(caller ContractRef, addr common.Address, gas uint64, txData []byte, assetDB AssetDb) (ret []byte, leftOverGas uint64, Err, vmErr error) {
-	tradingAsset := &types.TradingAsset{}
-	err := json.Unmarshal(txData, tradingAsset)
+	tradingAsset, err := types.GetTradingAsset(txData)
 	if err != nil {
 		log.Errorf("Unmarshal transfer asset data err: %s", err)
 		return nil, gas, err, nil
@@ -487,7 +487,7 @@ func (evm *EVM) Create(caller ContractRef, code []byte, gas uint64, value *big.I
 		return nil, common.Address{}, gas, ErrInsufficientBalance
 	}
 	// Ensure there's no existing contract already at the designated address
-	contractAddr = crypto.CreateAddress(caller.GetAddress(), evm.TxHash)
+	contractAddr = crypto.CreateContractAddress(caller.GetAddress(), evm.TxHash)
 	// print out the contract address
 	log.Warnf("Created the contract address = %v", contractAddr.String())
 	contractAccount := evm.am.GetAccount(contractAddr)
@@ -496,8 +496,7 @@ func (evm *EVM) Create(caller ContractRef, code []byte, gas uint64, value *big.I
 	}
 	// Create a new account on the state
 	snapshot := evm.am.Snapshot()
-	// Add event to store the creation address.
-	evm.AddEvent(contractAddr, []common.Hash{types.TopicContractCreation}, []byte{})
+
 	evm.Transfer(evm.am, caller.GetAddress(), contractAddr, value)
 
 	// initialise a new contract and set the code that is to be used by the
@@ -547,6 +546,9 @@ func (evm *EVM) Create(caller ContractRef, code []byte, gas uint64, value *big.I
 	if err != nil && err != ErrInsufficientBalance {
 		// Add event to record the error information.
 		evm.AddEvent(contractAddr, []common.Hash{types.TopicRunFail}, []byte{})
+	} else {
+		// Add event to store the creation address.
+		evm.AddEvent(contractAddr, []common.Hash{types.TopicContractCreation}, []byte{})
 	}
 	if evm.vmConfig.Debug && evm.depth == 0 {
 		evm.vmConfig.Tracer.CaptureEnd(ret, gas-contract.Gas, time.Since(start), err)

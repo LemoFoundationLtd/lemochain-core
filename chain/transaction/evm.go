@@ -13,7 +13,7 @@ func NewEVMContext(tx *types.Transaction, header *types.Header, txIndex uint, bl
 	if (header.MinerAddress == common.Address{}) {
 		panic("NewEVMContext is called without author")
 	}
-	from, _ := tx.From()
+	from := tx.From()
 	return vm.Context{
 		CanTransfer:  CanTransfer,
 		Transfer:     Transfer,
