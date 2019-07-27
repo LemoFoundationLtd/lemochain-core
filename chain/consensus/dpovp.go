@@ -3,6 +3,7 @@ package consensus
 import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/transaction"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
@@ -467,4 +468,23 @@ func (dp *DPoVP) LoadTopCandidates(blockHash common.Hash) types.DeputyNodes {
 		result = append(result, dn)
 	}
 	return result
+}
+
+// LoadRefundCandidates get the address list of candidates who need to refund
+func (dp *DPoVP) LoadRefundCandidates() ([]common.Address, error) {
+	result := make([]common.Address, 0)
+	addrList, err := dp.db.GetAllCandidates()
+	if err != nil {
+		log.Errorf("Load all candidates fail: %v", err)
+		return nil, err
+	}
+	for _, addr := range addrList {
+		// 判断addr的candidate信息
+		candidateAcc := dp.am.GetAccount(addr)
+		pledgeString := candidateAcc.GetCandidateState(types.CandidateKeyPledgeAmount)
+		if candidateAcc.GetCandidateState(types.CandidateKeyIsCandidate) == params.NotCandidateNode && pledgeString != "" { // 满足退还押金的条件
+			result = append(result, addr)
+		}
+	}
+	return result, nil
 }
