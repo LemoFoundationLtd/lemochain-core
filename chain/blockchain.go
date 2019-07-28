@@ -33,11 +33,6 @@ type BlockChain struct {
 	dm     *deputynode.Manager
 	engine *consensus.DPoVP
 
-	// receive call event from outside
-	receiveBlockCh   chan *types.Block
-	mineBlockCh      chan int64
-	receiveConfirmCh chan *network.BlockConfirmData
-
 	running int32
 	quitCh  chan struct{}
 }
@@ -50,14 +45,11 @@ type Config struct {
 
 func NewBlockChain(config Config, dm *deputynode.Manager, db db.ChainDB, flags flag.CmdFlags, txPool *txpool.TxPool) (bc *BlockChain, err error) {
 	bc = &BlockChain{
-		chainID:          config.ChainID,
-		db:               db,
-		dm:               dm,
-		flags:            flags,
-		receiveBlockCh:   make(chan *types.Block),
-		mineBlockCh:      make(chan int64),
-		receiveConfirmCh: make(chan *network.BlockConfirmData),
-		quitCh:           make(chan struct{}),
+		chainID: config.ChainID,
+		db:      db,
+		dm:      dm,
+		flags:   flags,
+		quitCh:  make(chan struct{}),
 	}
 	bc.genesisBlock, err = bc.db.GetBlockByHeight(0)
 	if err != nil {
@@ -83,7 +75,6 @@ func NewBlockChain(config Config, dm *deputynode.Manager, db db.ChainDB, flags f
 
 	bc.initTxPool(block, txPool)
 	go bc.runFeedTranspondLoop()
-	go bc.runMainLoop()
 
 	log.Info("BlockChain is ready", "stableHeight", bc.StableBlock().Height(), "stableHash", bc.StableBlock().Hash(), "currentHeight", bc.CurrentBlock().Height(), "currentHash", bc.CurrentBlock().Hash())
 	return bc, nil
@@ -148,30 +139,6 @@ func (bc *BlockChain) runFeedTranspondLoop() {
 			stableSub.Unsubscribe()
 			confirmSub.Unsubscribe()
 			fetchConfirmSub.Unsubscribe()
-			return
-		}
-	}
-}
-
-// runMainLoop handle the call events from outside
-func (bc *BlockChain) runMainLoop() {
-	for {
-		// These cases should be executed mutually. So we must not use coroutine
-		select {
-		case block := <-bc.receiveBlockCh:
-			// verify and create a new block witch filled by transaction products
-			_, _ = bc.engine.InsertBlock(block)
-
-		case txProcessTimeout := <-bc.mineBlockCh:
-			block, err := bc.engine.MineBlock(txProcessTimeout)
-			if err == nil {
-				go subscribe.Send(subscribe.NewMinedBlock, block)
-			}
-
-		case confirm := <-bc.receiveConfirmCh:
-			_ = bc.engine.InsertConfirm(confirm)
-
-		case <-bc.quitCh:
 			return
 		}
 	}
@@ -247,24 +214,31 @@ func (bc *BlockChain) StableBlock() *types.Block {
 }
 
 func (bc *BlockChain) MineBlock(txProcessTimeout int64) {
-	if atomic.LoadInt32(&bc.running) == 0 {
-		bc.mineBlockCh <- txProcessTimeout
+	if atomic.LoadInt32(&bc.running) != 0 {
+		return
+	}
+	block, err := bc.engine.MineBlock(txProcessTimeout)
+	if err == nil {
+		go subscribe.Send(subscribe.NewMinedBlock, block)
 	}
 }
 
 // InsertBlock insert block of non-self to chain
 func (bc *BlockChain) InsertBlock(block *types.Block) error {
 	if atomic.LoadInt32(&bc.running) == 0 {
-		bc.receiveBlockCh <- block
+		return nil
 	}
-	return nil
+	// verify and create a new block witch filled by transaction products
+	_, err := bc.engine.InsertBlock(block)
+	return err
 }
 
-// ReceiveConfirm
+// InsertConfirm
 func (bc *BlockChain) InsertConfirm(info *network.BlockConfirmData) {
 	if atomic.LoadInt32(&bc.running) == 0 {
-		bc.receiveConfirmCh <- info
+		return
 	}
+	_ = bc.engine.InsertConfirm(info)
 }
 
 // InsertStableConfirms receive confirm package from net connection. The block of these confirms has been confirmed by its son block already
