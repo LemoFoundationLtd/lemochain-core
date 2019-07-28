@@ -13,6 +13,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/network"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"github.com/LemoFoundationLtd/lemochain-core/store/protocol"
+	"sync"
 	"time"
 )
 
@@ -38,6 +39,8 @@ type DPoVP struct {
 
 	// show chain change detail in log
 	logForks bool
+	// lock if need change chain state
+	chainLock sync.Mutex
 
 	// all dpovp events are here
 	stableFeed        subscribe.Feed // stable block change event
@@ -100,17 +103,18 @@ func (dp *DPoVP) SubscribeFetchConfirm(ch chan []network.GetConfirmInfo) subscri
 
 func (dp *DPoVP) MineBlock(txProcessTimeout int64) (*types.Block, error) {
 	start := time.Now()
-	defer func() {
-		mineBlockTimer.UpdateSince(start)
-	}()
+	defer mineBlockTimer.UpdateSince(start)
 
 	oldCurrent := dp.CurrentBlock()
 
 	// mine and seal
-	header, err := dp.assembler.PrepareHeader(dp.CurrentBlock().Header, dp.minerExtra)
+	header, err := dp.assembler.PrepareHeader(oldCurrent.Header, dp.minerExtra)
 	if err != nil {
 		return nil, err
 	}
+
+	dp.chainLock.Lock()
+	defer dp.chainLock.Unlock()
 	txs := dp.txPool.Get(header.Time, 10000)
 	log.Debugf("pick %d txs from txPool", len(txs))
 	block, invalidTxs, err := dp.assembler.MineBlock(header, txs, txProcessTimeout)
@@ -158,6 +162,8 @@ func (dp *DPoVP) InsertBlock(rawBlock *types.Block) (*types.Block, error) {
 	oldCurrentHash := oldCurrent.Hash()
 	log.Debug("Start insert block to chain", "block", rawBlock.ShortString())
 
+	dp.chainLock.Lock()
+	defer dp.chainLock.Unlock()
 	// verify and create a new block witch filled by transaction products
 	block, err := dp.VerifyAndSeal(rawBlock)
 	if err != nil {
@@ -400,6 +406,8 @@ func (dp *DPoVP) InsertConfirm(info *network.BlockConfirmData) error {
 	oldCurrent := dp.CurrentBlock()
 	log.Debug("Start insert confirm", "height", info.Height, "hash", info.Hash)
 
+	dp.chainLock.Lock()
+	defer dp.chainLock.Unlock()
 	newBlock, err := dp.insertConfirms(info.Height, info.Hash, []types.SignData{info.SignInfo})
 	if err != nil {
 		log.Warnf("InsertConfirm failed: %v", err)
