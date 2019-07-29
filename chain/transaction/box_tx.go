@@ -36,7 +36,7 @@ func (b *BoxTxEnv) RunBoxTxs(gp *types.GasPool, boxTx *types.Transaction, header
 	if err != nil {
 		return 0, err
 	}
-
+	newBoxTxList := make(types.Transactions, 0, len(box.SubTxList))
 	var (
 		gasUsed     = uint64(0)
 		totalGasFee = new(big.Int)
@@ -51,10 +51,17 @@ func (b *BoxTxEnv) RunBoxTxs(gp *types.GasPool, boxTx *types.Transaction, header
 		if err != nil {
 			return 0, err
 		}
+		tx.SetGasUsed(gas)
+		newBoxTxList = append(newBoxTxList, tx)
 		gasUsed += gas
 		fee := new(big.Int).Mul(new(big.Int).SetUint64(gas), tx.GasPrice())
 		totalGasFee.Add(totalGasFee, fee)
 	}
+	txData, err := types.SetBoxTxData(newBoxTxList)
+	if err != nil {
+		return 0, err
+	}
+	boxTx.ResetBoxTxData(txData)
 	// 为矿工执行箱子交易中的交易发放奖励
 	b.p.chargeForGas(totalGasFee, header.MinerAddress)
 

@@ -25,6 +25,7 @@ func (t txdata) MarshalJSON() ([]byte, error) {
 		RecipientName string          `json:"toName"`
 		GasPrice      *hexutil.Big10  `json:"gasPrice" gencodec:"required"`
 		GasLimit      hexutil.Uint64  `json:"gasLimit" gencodec:"required"`
+		GasUsed       hexutil.Uint64  `json:"gasUsed" `
 		Amount        *hexutil.Big10  `json:"amount" gencodec:"required"`
 		Data          hexutil.Bytes   `json:"data"`
 		Expiration    hexutil.Uint64  `json:"expirationTime" gencodec:"required"`
@@ -43,6 +44,7 @@ func (t txdata) MarshalJSON() ([]byte, error) {
 	enc.RecipientName = t.RecipientName
 	enc.GasPrice = (*hexutil.Big10)(t.GasPrice)
 	enc.GasLimit = hexutil.Uint64(t.GasLimit)
+	enc.GasUsed = hexutil.Uint64(t.GasUsed)
 	enc.Amount = (*hexutil.Big10)(t.Amount)
 	enc.Data = t.Data
 	enc.Expiration = hexutil.Uint64(t.Expiration)
@@ -75,6 +77,7 @@ func (t *txdata) UnmarshalJSON(input []byte) error {
 		RecipientName *string         `json:"toName"`
 		GasPrice      *hexutil.Big10  `json:"gasPrice" gencodec:"required"`
 		GasLimit      *hexutil.Uint64 `json:"gasLimit" gencodec:"required"`
+		GasUsed       *hexutil.Uint64 `json:"gasUsed"`
 		Amount        *hexutil.Big10  `json:"amount" gencodec:"required"`
 		Data          *hexutil.Bytes  `json:"data"`
 		Expiration    *hexutil.Uint64 `json:"expirationTime" gencodec:"required"`
@@ -120,6 +123,7 @@ func (t *txdata) UnmarshalJSON(input []byte) error {
 		return errors.New("missing required field 'gasLimit' for txdata")
 	}
 	t.GasLimit = uint64(*dec.GasLimit)
+	t.GasUsed = uint64(*dec.GasUsed)
 	if dec.Amount == nil {
 		return errors.New("missing required field 'amount' for txdata")
 	}

@@ -102,3 +102,11 @@ func GetBox(txData []byte) (*Box, error) {
 	}
 	return box, nil
 }
+
+// SetBoxTxData
+func SetBoxTxData(txs Transactions) ([]byte, error) {
+	box := &Box{
+		SubTxList: txs,
+	}
+	return json.Marshal(box)
+}

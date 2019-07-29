@@ -59,7 +59,7 @@ func TestNewTransaction(t *testing.T) {
 
 func TestNewContractCreation(t *testing.T) {
 	expiration := ExpirationFromNow()
-	tx := NewContractCreation(testAddr, common.Big1, 100, common.Big2, "0x01", "0x02", params.CreateContractTx, 200, expiration, "aa", "")
+	tx := NewContractCreation(testAddr, common.Big1, 100, common.Big2, []byte{0x01, 0x02}, params.CreateContractTx, 200, expiration, "aa", "")
 	assert.Equal(t, params.CreateContractTx, tx.Type())
 	assert.Equal(t, TxVersion, tx.Version())
 	assert.Equal(t, uint16(200), tx.ChainID())
