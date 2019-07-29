@@ -9,9 +9,9 @@ import (
 var eventTag = "[event log]"
 
 const (
-	TxEvent        = "[tx event]"
-	ConsensusEvent = "[consensus event]"
-	NetworkEvent   = "[network event]"
+	TxEvent        = "[tx]"
+	ConsensusEvent = "[consensus]"
+	NetworkEvent   = "[network]"
 )
 
 func Eventf(eventType, formatMsg string, values ...interface{}) {

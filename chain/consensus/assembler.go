@@ -163,8 +163,6 @@ func (ba *BlockAssembler) Seal(header *types.Header, txProduct *account.TxsProdu
 			return deputies.String()
 		}})
 	}
-	// 在设定的区块高度检查本届是否设置了换届奖励，如果未设置则进行事件通知
-	ba.checkSetTermReward(header.Height)
 
 	return block
 }
@@ -242,6 +240,10 @@ func (ba *BlockAssembler) issueTermReward(am *account.Manager, height uint32) er
 
 // Finalize increases miners' balance and fix all account changes
 func (ba *BlockAssembler) Finalize(height uint32, am *account.Manager) error {
+
+	// 在设定的区块高度检查本届是否设置了换届奖励，如果未设置则进行事件通知
+	ba.checkSetTermReward(height)
+
 	// 判断是否到了发放换届奖励的区块高度
 	if deputynode.IsRewardBlock(height) {
 		// 发放奖励
