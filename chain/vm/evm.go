@@ -299,19 +299,9 @@ func (evm *EVM) TransferAssetTx(caller ContractRef, addr common.Address, gas uin
 	// reduce sender's asset
 	newSenderEquity := senderEquity.Clone()
 	newSenderEquity.Equity = new(big.Int).Sub(newSenderEquity.Equity, amount)
-	if newSenderEquity.Equity.Cmp(big.NewInt(0)) == 0 {
-		// if assetId's balance == 0,then delete this kind of assetId
-		err = senderAcc.SetEquityState(assetId, nil)
-		if err != nil {
-			evm.am.RevertToSnapshot(snapshot)
-			return nil, gas, err, nil
-		}
-	} else { // set new assetEquity for sender
-		err = senderAcc.SetEquityState(assetId, newSenderEquity)
-		if err != nil {
-			evm.am.RevertToSnapshot(snapshot)
-			return nil, gas, err, nil
-		}
+	if err := senderAcc.SetEquityState(assetId, newSenderEquity); err != nil {
+		evm.am.RevertToSnapshot(snapshot)
+		return nil, gas, err, nil
 	}
 
 	// Initialise a new contract and set the code that is to be used by the EVM.
