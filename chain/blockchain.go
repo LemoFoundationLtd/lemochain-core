@@ -154,24 +154,17 @@ func (bc *BlockChain) runMainLoop() {
 		select {
 		case block := <-bc.receiveBlockCh:
 			// verify and create a new block witch filled by transaction products
-			_, err := bc.engine.InsertBlock(block)
-			if err != nil { // 事件推送
-				log.Eventf(log.ConsensusEvent, "Insert block failed. Error: %s, block detail: %s", err.Error(), block.String())
-			}
+			_, _ = bc.engine.InsertBlock(block)
 
 		case blockMaterial := <-bc.mineBlockCh:
 			block, err := bc.engine.MineBlock(blockMaterial)
 			if err == nil {
 				go subscribe.Send(subscribe.NewMinedBlock, block)
-			} else { // 事件推送
-				log.Eventf(log.ConsensusEvent, "Mine block failed. Error: %s, mine height: %d, detail: %v", err.Error(), bc.CurrentBlock().Height()+1, blockMaterial)
 			}
 
 		case confirm := <-bc.receiveConfirmCh:
-			err := bc.engine.InsertConfirm(confirm)
-			if err != nil { // 事件推送
-				log.Eventf(log.ConsensusEvent, "Insert confirm failed. Error: %s. Confirm height: %d", err.Error(), confirm.Height)
-			}
+			_ = bc.engine.InsertConfirm(confirm)
+
 		case <-bc.quitCh:
 			return
 		}
