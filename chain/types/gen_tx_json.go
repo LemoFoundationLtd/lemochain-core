@@ -123,7 +123,9 @@ func (t *txdata) UnmarshalJSON(input []byte) error {
 		return errors.New("missing required field 'gasLimit' for txdata")
 	}
 	t.GasLimit = uint64(*dec.GasLimit)
-	t.GasUsed = uint64(*dec.GasUsed)
+	if dec.GasUsed != nil {
+		t.GasUsed = uint64(*dec.GasUsed)
+	}
 	if dec.Amount == nil {
 		return errors.New("missing required field 'amount' for txdata")
 	}
