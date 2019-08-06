@@ -19,10 +19,14 @@ func (v VTransaction) MarshalJSON() ([]byte, error) {
 		Tx          *types.Transaction `json:"tx" gencodec:"required"`
 		PHash       common.Hash        `json:"pHash" gencodec:"required"`
 		PackageTime hexutil.Uint32     `json:"time" gencodec:"required"`
+		AssetCode   common.Hash        `json:"assetCode"`
+		AssetId     common.Hash        `json:"assetId"`
 	}
 	var enc VTransaction
 	enc.Tx = v.Tx
 	enc.PHash = v.PHash
+	enc.AssetCode = v.AssetCode
+	enc.AssetId = v.AssetId
 	enc.PackageTime = hexutil.Uint32(v.PackageTime)
 	return json.Marshal(&enc)
 }
@@ -33,6 +37,8 @@ func (v *VTransaction) UnmarshalJSON(input []byte) error {
 		Tx          *types.Transaction `json:"tx" gencodec:"required"`
 		PHash       *common.Hash       `json:"pHash"`
 		PackageTime *hexutil.Uint32    `json:"time" gencodec:"required"`
+		AssetCode   *common.Hash       `json:"assetCode"`
+		AssetId     *common.Hash       `json:"assetId"`
 	}
 	var dec VTransaction
 	if err := json.Unmarshal(input, &dec); err != nil {
@@ -50,5 +56,11 @@ func (v *VTransaction) UnmarshalJSON(input []byte) error {
 		return errors.New("missing required field 'time' for VTransaction")
 	}
 	v.PackageTime = uint32(*dec.PackageTime)
+	if dec.AssetCode != nil {
+		v.AssetCode = *dec.AssetCode
+	}
+	if dec.AssetId != nil {
+		v.AssetId = *dec.AssetId
+	}
 	return nil
 }
