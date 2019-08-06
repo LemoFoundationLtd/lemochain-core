@@ -16,12 +16,12 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/network"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	db "github.com/LemoFoundationLtd/lemochain-core/store/protocol"
-	"strconv"
 	"sync/atomic"
 	"time"
 )
 
 var ErrNoGenesis = errors.New("can't get genesis block")
+var ErrLoadBlock = errors.New("load block fail")
 
 type BlockChain struct {
 	chainID      uint16
@@ -33,7 +33,7 @@ type BlockChain struct {
 	dm     *deputynode.Manager
 	engine *consensus.DPoVP
 
-	running int32
+	stopped int32
 	quitCh  chan struct{}
 }
 
@@ -95,7 +95,8 @@ func (bc *BlockChain) initTxPool(block *types.Block, txPool *txpool.TxPool) {
 		height = height - 1
 		block = bc.GetBlockByHeight(height)
 		if block == nil {
-			panic("get block by height. result is nil. height: " + strconv.Itoa(int(height)))
+			log.Error("get block by height fail", "height", height)
+			panic(ErrLoadBlock)
 		} else {
 			blockTime = int64(block.Time())
 		}
@@ -214,10 +215,11 @@ func (bc *BlockChain) StableBlock() *types.Block {
 }
 
 func (bc *BlockChain) MineBlock(txProcessTimeout int64) {
-	if atomic.LoadInt32(&bc.running) != 0 {
+	if atomic.LoadInt32(&bc.stopped) != 0 {
 		return
 	}
 	block, err := bc.engine.MineBlock(txProcessTimeout)
+	// broadcast
 	if err == nil {
 		go subscribe.Send(subscribe.NewMinedBlock, block)
 	}
@@ -225,7 +227,7 @@ func (bc *BlockChain) MineBlock(txProcessTimeout int64) {
 
 // InsertBlock insert block of non-self to chain
 func (bc *BlockChain) InsertBlock(block *types.Block) error {
-	if atomic.LoadInt32(&bc.running) == 0 {
+	if atomic.LoadInt32(&bc.stopped) != 0 {
 		return nil
 	}
 	// verify and create a new block witch filled by transaction products
@@ -235,7 +237,7 @@ func (bc *BlockChain) InsertBlock(block *types.Block) error {
 
 // InsertConfirm
 func (bc *BlockChain) InsertConfirm(info *network.BlockConfirmData) {
-	if atomic.LoadInt32(&bc.running) == 0 {
+	if atomic.LoadInt32(&bc.stopped) != 0 {
 		return
 	}
 	_ = bc.engine.InsertConfirm(info)
@@ -252,7 +254,7 @@ func (bc *BlockChain) GetCandidatesTop(hash common.Hash) []*store.Candidate {
 
 // Stop stop block chain
 func (bc *BlockChain) Stop() {
-	if !atomic.CompareAndSwapInt32(&bc.running, 0, 1) {
+	if !atomic.CompareAndSwapInt32(&bc.stopped, 0, 1) {
 		return
 	}
 	close(bc.quitCh)
