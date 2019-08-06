@@ -117,6 +117,19 @@ func buildProfile(tx *types.Transaction) (types.Profile, error) {
 	return profile, nil
 }
 
+func InitCandidateProfile(registerAcc types.AccountAccessor, IncomeAddress, NodeID, Host, Port, Introduction string, PledgeAmount *big.Int) {
+	// 设置candidate info
+	newProfile := make(map[string]string, 7)
+	newProfile[types.CandidateKeyIsCandidate] = params.IsCandidateNode
+	newProfile[types.CandidateKeyIncomeAddress] = IncomeAddress
+	newProfile[types.CandidateKeyNodeID] = NodeID
+	newProfile[types.CandidateKeyHost] = Host
+	newProfile[types.CandidateKeyPort] = Port
+	newProfile[types.CandidateKeyIntroduction] = Introduction
+	newProfile[types.CandidateKeyPledgeAmount] = PledgeAmount.String()
+	registerAcc.SetCandidate(newProfile)
+}
+
 // registerCandidate 注册候选节点处理逻辑
 func (c *CandidateVoteEnv) registerCandidate(pledgeAmount *big.Int, register common.Address, txBuildProfile types.Profile) error {
 	// 1. 判断注册的押金必须要大于等于规定的押金限制(500万LEMO)
@@ -130,16 +143,9 @@ func (c *CandidateVoteEnv) registerCandidate(pledgeAmount *big.Int, register com
 	}
 
 	registerAcc := c.am.GetAccount(register)
+
 	// 设置candidate info
-	endProfile := make(map[string]string, 6)
-	endProfile[types.CandidateKeyIsCandidate] = params.IsCandidateNode
-	endProfile[types.CandidateKeyIncomeAddress] = txBuildProfile[types.CandidateKeyIncomeAddress]
-	endProfile[types.CandidateKeyNodeID] = txBuildProfile[types.CandidateKeyNodeID]
-	endProfile[types.CandidateKeyHost] = txBuildProfile[types.CandidateKeyHost]
-	endProfile[types.CandidateKeyPort] = txBuildProfile[types.CandidateKeyPort]
-	endProfile[types.CandidateKeyIntroduction] = txBuildProfile[types.CandidateKeyIntroduction]
-	endProfile[types.CandidateKeyPledgeAmount] = pledgeAmount.String()
-	registerAcc.SetCandidate(endProfile)
+	InitCandidateProfile(registerAcc, txBuildProfile[types.CandidateKeyIncomeAddress], txBuildProfile[types.CandidateKeyNodeID], txBuildProfile[types.CandidateKeyHost], txBuildProfile[types.CandidateKeyPort], txBuildProfile[types.CandidateKeyIntroduction], pledgeAmount)
 
 	// cash pledge
 	c.Transfer(c.am, register, params.CandidateDepositAddress, pledgeAmount)

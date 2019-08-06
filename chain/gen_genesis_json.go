@@ -5,7 +5,6 @@ package chain
 import (
 	"encoding/json"
 	"errors"
-	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/hexutil"
@@ -16,29 +15,29 @@ var _ = (*genesisSpecMarshaling)(nil)
 // MarshalJSON marshals as JSON.
 func (g Genesis) MarshalJSON() ([]byte, error) {
 	type Genesis struct {
-		Time        hexutil.Uint32      `json:"timestamp"     gencodec:"required"`
-		ExtraData   hexutil.Bytes       `json:"extraData"`
-		GasLimit    hexutil.Uint64      `json:"gasLimit"      gencodec:"required"`
-		Founder     common.Address      `json:"founder"       gencodec:"required"`
-		DeputyNodes []*types.DeputyNode `json:"deputyNodes"   gencodec:"required"`
+		Time            hexutil.Uint32   `json:"timestamp"     gencodec:"required"`
+		ExtraData       hexutil.Bytes    `json:"extraData"`
+		GasLimit        hexutil.Uint64   `json:"gasLimit"      gencodec:"required"`
+		Founder         common.Address   `json:"founder"       gencodec:"required"`
+		DeputyNodesInfo []*CandidateInfo `json:"deputyNodesInfo"   gencodec:"required"`
 	}
 	var enc Genesis
 	enc.Time = hexutil.Uint32(g.Time)
 	enc.ExtraData = g.ExtraData
 	enc.GasLimit = hexutil.Uint64(g.GasLimit)
 	enc.Founder = g.Founder
-	enc.DeputyNodes = g.DeputyNodes
+	enc.DeputyNodesInfo = g.DeputyNodesInfo
 	return json.Marshal(&enc)
 }
 
 // UnmarshalJSON unmarshals from JSON.
 func (g *Genesis) UnmarshalJSON(input []byte) error {
 	type Genesis struct {
-		Time        *hexutil.Uint32     `json:"timestamp"     gencodec:"required"`
-		ExtraData   *hexutil.Bytes      `json:"extraData"`
-		GasLimit    *hexutil.Uint64     `json:"gasLimit"      gencodec:"required"`
-		Founder     *common.Address     `json:"founder"       gencodec:"required"`
-		DeputyNodes []*types.DeputyNode `json:"deputyNodes"   gencodec:"required"`
+		Time            *hexutil.Uint32  `json:"timestamp"     gencodec:"required"`
+		ExtraData       *hexutil.Bytes   `json:"extraData"`
+		GasLimit        *hexutil.Uint64  `json:"gasLimit"      gencodec:"required"`
+		Founder         *common.Address  `json:"founder"       gencodec:"required"`
+		DeputyNodesInfo []*CandidateInfo `json:"deputyNodesInfo"   gencodec:"required"`
 	}
 	var dec Genesis
 	if err := json.Unmarshal(input, &dec); err != nil {
@@ -59,9 +58,9 @@ func (g *Genesis) UnmarshalJSON(input []byte) error {
 		return errors.New("missing required field 'founder' for Genesis")
 	}
 	g.Founder = *dec.Founder
-	if dec.DeputyNodes == nil {
-		return errors.New("missing required field 'deputyNodes' for Genesis")
+	if dec.DeputyNodesInfo == nil {
+		return errors.New("missing required field 'deputyNodesInfo' for Genesis")
 	}
-	g.DeputyNodes = dec.DeputyNodes
+	g.DeputyNodesInfo = dec.DeputyNodesInfo
 	return nil
 }
