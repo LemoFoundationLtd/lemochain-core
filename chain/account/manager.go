@@ -9,6 +9,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/store/protocol"
 	"github.com/LemoFoundationLtd/lemochain-core/store/trie"
 	"math/big"
+	"sort"
 )
 
 // Trie cache generation limit after which to evict trie nodes from memory.
@@ -209,7 +210,16 @@ func (am *Manager) Finalise() error {
 
 	versionTrie := am.getVersionTrie()
 	currentHeight := am.currentBlockHeight()
-	for _, account := range am.accountCache {
+	// 排序
+	addressList := make(common.AddressSlice, 0, len(am.accountCache))
+	for addr := range am.accountCache {
+		addressList = append(addressList, addr)
+	}
+	sort.Sort(addressList)
+
+	var account *SafeAccount
+	for _, addr := range addressList {
+		account = am.accountCache[addr]
 		if len(logsByAccount[account.GetAddress()]) <= 0 {
 			continue
 		}
