@@ -83,7 +83,7 @@ func (ba *BlockAssembler) PrepareHeader(parentHeader *types.Header, extra []byte
 		Extra:        extra,
 	}
 
-	// allowable 1 second time error
+	// allow 1 second time error
 	// but next block's time can't be small than parent block
 	parTime := parentHeader.Time
 	blockTime := uint32(time.Now().Unix())

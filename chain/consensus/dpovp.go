@@ -105,6 +105,8 @@ func (dp *DPoVP) MineBlock(txProcessTimeout int64) (*types.Block, error) {
 	start := time.Now()
 	defer mineBlockTimer.UpdateSince(start)
 
+	dp.chainLock.Lock()
+	defer dp.chainLock.Unlock()
 	oldCurrent := dp.CurrentBlock()
 
 	// mine and seal
@@ -113,8 +115,6 @@ func (dp *DPoVP) MineBlock(txProcessTimeout int64) (*types.Block, error) {
 		return nil, err
 	}
 
-	dp.chainLock.Lock()
-	defer dp.chainLock.Unlock()
 	txs := dp.txPool.Get(header.Time, 10000)
 	log.Debugf("pick %d txs from txPool", len(txs))
 	block, invalidTxs, err := dp.assembler.MineBlock(header, txs, txProcessTimeout)
@@ -157,13 +157,14 @@ func (dp *DPoVP) InsertBlock(rawBlock *types.Block) (*types.Block, error) {
 		return nil, ErrExistBlock
 	}
 
+	dp.chainLock.Lock()
+	defer dp.chainLock.Unlock()
+
 	hash := rawBlock.Hash()
 	oldCurrent := dp.CurrentBlock()
 	oldCurrentHash := oldCurrent.Hash()
 	log.Debug("Start insert block to chain", "block", rawBlock.ShortString())
 
-	dp.chainLock.Lock()
-	defer dp.chainLock.Unlock()
 	// verify and create a new block witch filled by transaction products
 	block, err := dp.VerifyAndSeal(rawBlock)
 	if err != nil {
@@ -171,7 +172,7 @@ func (dp *DPoVP) InsertBlock(rawBlock *types.Block) (*types.Block, error) {
 		return nil, ErrVerifyBlockFailed
 	}
 
-	// sign confirm before save to store. So that we can save the block and confirm in same time
+	// sign confirm before save to store. So that we can save and confirm the block in the same time
 	sig, ok := dp.confirmer.TryConfirm(block)
 	if ok {
 		go dp.broadcastConfirm(block, sig)
@@ -403,11 +404,11 @@ func (dp *DPoVP) VerifyAndSeal(block *types.Block) (*types.Block, error) {
 }
 
 func (dp *DPoVP) InsertConfirm(info *network.BlockConfirmData) error {
+	dp.chainLock.Lock()
+	defer dp.chainLock.Unlock()
 	oldCurrent := dp.CurrentBlock()
 	log.Debug("Start insert confirm", "height", info.Height, "hash", info.Hash)
 
-	dp.chainLock.Lock()
-	defer dp.chainLock.Unlock()
 	newBlock, err := dp.insertConfirms(info.Height, info.Hash, []types.SignData{info.SignInfo})
 	if err != nil {
 		log.Warnf("InsertConfirm failed: %v", err)
