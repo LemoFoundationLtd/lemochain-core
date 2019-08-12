@@ -62,11 +62,11 @@ type Packet struct {
 // TimeProof 同步时间并进行修改系统时间
 func TimeProof() error {
 	log.Info("Start system time proof.")
-	measurements := 10 // 获取ntp服务器上的时间的次数
+	measurements := 12 // 获取ntp服务器上的时间的次数
 	diffs := make([]time.Duration, 0, measurements)
 	index := 0
 	dialHost := ntpHosts[index] // 从第一个ntp服务器开始
-	for i := 0; i < measurements+2; {
+	for i := 0; i < measurements; {
 		// 拨号并获取本地时间和标准时间的差值
 		diffTime, err := dialNtpServerAndGetDiffTime(dialHost)
 		if err != nil {
