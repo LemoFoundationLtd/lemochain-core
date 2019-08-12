@@ -73,7 +73,7 @@ func TimeProof() error {
 			index++ // 拨号失败则换下一个ntp服务器进行拨号
 			if index < len(ntpHosts) {
 				dialHost = ntpHosts[index]
-				log.Warnf("Again dial ntp dialHost: %s", dialHost)
+				log.Warnf("Dial ntp again. dialHost: %s", dialHost)
 
 			} else {
 				return err
