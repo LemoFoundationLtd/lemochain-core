@@ -144,18 +144,20 @@ func dialNtpServerAndGetDiffTime(host string) (time.Duration, error) {
 func calcDiffTime(diffs durationSlice) time.Duration {
 	// 排序
 	sort.Sort(diffs)
-	// 去掉最高位和最低位求平均值
+
 	var finalDiff time.Duration = 0
 	sum := diffs[1]
+	// 去掉最高位和最低位求和
 	for i := 2; i < len(diffs)-1; i++ {
 		next := sum + diffs[i]
+		// 判断时间和是否会溢出
 		if sum^next < 0 { // 符号相反，说明溢出了
 			finalDiff = diffs[1]
 			break
 		}
 		sum = next
 	}
-
+	// 求去掉最高位和最低位的平均值
 	if finalDiff == time.Duration(0) {
 		finalDiff = sum / time.Duration(len(diffs)-2)
 	}
