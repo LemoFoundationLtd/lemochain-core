@@ -11,6 +11,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"math/big"
+	"strconv"
 )
 
 var (
@@ -42,8 +43,8 @@ func NewCandidateVoteEnv(am *account.Manager) *CandidateVoteEnv {
 	}
 }
 
-// checkRegisterTxProfile
-func checkRegisterTxProfile(profile types.Profile) error {
+// CheckRegisterTxProfile
+func CheckRegisterTxProfile(profile types.Profile) error {
 	// check income address
 	if strIncomeAddress, ok := profile[types.CandidateKeyIncomeAddress]; ok {
 		if !common.CheckLemoAddress(strIncomeAddress) {
@@ -51,6 +52,7 @@ func checkRegisterTxProfile(profile types.Profile) error {
 			return ErrInvalidAddress
 		}
 	}
+
 	// check nodeId
 	if nodeId, ok := profile[types.CandidateKeyNodeID]; ok {
 		nodeIdLength := len(nodeId)
@@ -63,15 +65,35 @@ func checkRegisterTxProfile(profile types.Profile) error {
 			log.Errorf("Invalid nodeId, nodeId = %s", nodeId)
 			return ErrInvalidNodeId
 		}
+	} else {
+		return ErrOfRegisterNodeID
 	}
 
+	// check host
 	if host, ok := profile[types.CandidateKeyHost]; ok {
 		hostLength := len(host)
 		if hostLength > MaxDeputyHostLength {
 			log.Errorf("The length of host field in transaction is out of max length limit. host length = %d. max length limit = %d. ", hostLength, MaxDeputyHostLength)
 			return ErrInvalidHost
 		}
+	} else {
+		return ErrOfRegisterHost
 	}
+
+	// check port
+	if port, ok := profile[types.CandidateKeyPort]; ok {
+		if portNum, err := strconv.Atoi(port); err == nil {
+			if portNum > 65535 || portNum < 1024 {
+				return ErrInvalidPort
+			}
+		} else {
+			log.Errorf("Strconv.Atoi(port) error. port: %s, error: %v", port, err)
+			return ErrInvalidPort
+		}
+	} else {
+		return ErrOfRegisterPort
+	}
+
 	// check introduction length
 	if introduction, ok := profile[types.CandidateKeyIntroduction]; ok {
 		if len(introduction) > MaxIntroductionLength {
@@ -92,18 +114,8 @@ func buildProfile(tx *types.Transaction) (types.Profile, error) {
 		return nil, err
 	}
 	// check nodeID host and incomeAddress
-	if err = checkRegisterTxProfile(profile); err != nil {
+	if err = CheckRegisterTxProfile(profile); err != nil {
 		return nil, err
-	}
-	// Candidate node information
-	if _, ok := profile[types.CandidateKeyNodeID]; !ok {
-		return nil, ErrOfRegisterNodeID
-	}
-	if _, ok := profile[types.CandidateKeyHost]; !ok {
-		return nil, ErrOfRegisterHost
-	}
-	if _, ok := profile[types.CandidateKeyPort]; !ok {
-		return nil, ErrOfRegisterPort
 	}
 	if _, ok := profile[types.CandidateKeyIsCandidate]; !ok {
 		profile[types.CandidateKeyIsCandidate] = params.IsCandidateNode
@@ -117,8 +129,22 @@ func buildProfile(tx *types.Transaction) (types.Profile, error) {
 	return profile, nil
 }
 
+// InitCandidateProfile
+func InitCandidateProfile(registerAcc types.AccountAccessor, IncomeAddress, NodeID, Host, Port, Introduction string, PledgeAmount *big.Int) {
+	// 设置candidate info
+	newProfile := make(map[string]string, 7)
+	newProfile[types.CandidateKeyIsCandidate] = params.IsCandidateNode
+	newProfile[types.CandidateKeyIncomeAddress] = IncomeAddress
+	newProfile[types.CandidateKeyNodeID] = NodeID
+	newProfile[types.CandidateKeyHost] = Host
+	newProfile[types.CandidateKeyPort] = Port
+	newProfile[types.CandidateKeyIntroduction] = Introduction
+	newProfile[types.CandidateKeyPledgeAmount] = PledgeAmount.String()
+	registerAcc.SetCandidate(newProfile)
+}
+
 // registerCandidate 注册候选节点处理逻辑
-func (c *CandidateVoteEnv) registerCandidate(pledgeAmount *big.Int, register common.Address, txBuildProfile types.Profile) error {
+func (c *CandidateVoteEnv) registerCandidate(pledgeAmount *big.Int, register common.Address, p types.Profile) error {
 	// 1. 判断注册的押金必须要大于等于规定的押金限制(500万LEMO)
 	if pledgeAmount.Cmp(params.RegisterCandidatePledgeAmount) < 0 {
 		return ErrInsufficientPledgeAmount
@@ -130,16 +156,9 @@ func (c *CandidateVoteEnv) registerCandidate(pledgeAmount *big.Int, register com
 	}
 
 	registerAcc := c.am.GetAccount(register)
+
 	// 设置candidate info
-	endProfile := make(map[string]string, 6)
-	endProfile[types.CandidateKeyIsCandidate] = params.IsCandidateNode
-	endProfile[types.CandidateKeyIncomeAddress] = txBuildProfile[types.CandidateKeyIncomeAddress]
-	endProfile[types.CandidateKeyNodeID] = txBuildProfile[types.CandidateKeyNodeID]
-	endProfile[types.CandidateKeyHost] = txBuildProfile[types.CandidateKeyHost]
-	endProfile[types.CandidateKeyPort] = txBuildProfile[types.CandidateKeyPort]
-	endProfile[types.CandidateKeyIntroduction] = txBuildProfile[types.CandidateKeyIntroduction]
-	endProfile[types.CandidateKeyPledgeAmount] = pledgeAmount.String()
-	registerAcc.SetCandidate(endProfile)
+	InitCandidateProfile(registerAcc, p[types.CandidateKeyIncomeAddress], p[types.CandidateKeyNodeID], p[types.CandidateKeyHost], p[types.CandidateKeyPort], p[types.CandidateKeyIntroduction], pledgeAmount)
 
 	// cash pledge
 	c.Transfer(c.am, register, params.CandidateDepositAddress, pledgeAmount)

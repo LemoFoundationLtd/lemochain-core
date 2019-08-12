@@ -2,7 +2,6 @@ package chain
 
 import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
-	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"github.com/stretchr/testify/assert"
@@ -17,12 +16,14 @@ func getTestGenesis() *Genesis {
 		ExtraData: []byte("abc"),
 		GasLimit:  456,
 		Founder:   common.HexToAddress("0x01"),
-		DeputyNodes: types.DeputyNodes{
-			&types.DeputyNode{
-				MinerAddress: common.HexToAddress("0x02"),
-				NodeID:       common.FromHex("0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0"),
-				Rank:         0,
-				Votes:        new(big.Int).SetInt64(5),
+		DeputyNodesInfo: infos{
+			&CandidateInfo{
+				MinerAddress:  common.HexToAddress("0x02"),
+				IncomeAddress: decodeMinerAddress("Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG"),
+				NodeID:        common.FromHex("0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0"),
+				Host:          "10.0.22.23",
+				Port:          "7001",
+				Introduction:  "the first node",
 			},
 		},
 	}
@@ -39,11 +40,11 @@ func TestGenesis_Verify(t *testing.T) {
 	assert.Equal(t, ErrGenesisTimeTooLarge, genesis.Verify())
 
 	genesis = getTestGenesis()
-	genesis.DeputyNodes = types.DeputyNodes{}
+	genesis.DeputyNodesInfo = infos{}
 	assert.Equal(t, ErrNoDeputyNodes, genesis.Verify())
 
 	genesis = getTestGenesis()
-	genesis.DeputyNodes[0].NodeID = genesis.DeputyNodes[0].NodeID[1:]
+	genesis.DeputyNodesInfo[0].NodeID = genesis.DeputyNodesInfo[0].NodeID[1:]
 	assert.Equal(t, ErrInvalidDeputyNodes, genesis.Verify())
 }
 
@@ -106,8 +107,8 @@ func TestGenesis_ToBlock(t *testing.T) {
 	assert.Equal(t, genesis.ExtraData, block.Extra())
 	assert.Equal(t, genesis.GasLimit, block.GasLimit())
 	assert.Equal(t, genesis.Founder, block.MinerAddress())
-	assert.Equal(t, genesis.DeputyNodes, block.DeputyNodes)
-	assert.Len(t, block.ChangeLogs, 1)
+	assert.Equal(t, len(genesis.DeputyNodesInfo), len(block.DeputyNodes))
+	assert.Len(t, block.ChangeLogs, 2) // 初始化的16亿的balanceLog和初始化的候选节点的candidateLog
 	assert.Len(t, block.Txs, 0)
 	assert.Equal(t, common.Sha3Nil, block.TxRoot())
 	assert.NotEqual(t, 0, block.Height())

@@ -18,6 +18,7 @@ import (
 var (
 	ErrMinerAddressInvalid = errors.New("incorrect field: 'MinerAddress'")
 	ErrNodeIDInvalid       = errors.New("incorrect field: 'NodeID'")
+	ErrIntroductionInvalid = errors.New("incorrect field: 'Introduction'")
 	ErrRankInvalid         = errors.New("max deputy node's rank is 65535")
 	ErrVotesInvalid        = errors.New("min deputy node's votes are 0")
 )

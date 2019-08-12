@@ -53,7 +53,7 @@ func newTestBlockChain(attendedDeputyCount int) *BlockChain {
 
 	// init genesis block
 	genesis := DefaultGenesisConfig()
-	genesis.DeputyNodes = genesis.DeputyNodes[:attendedDeputyCount]
+	genesis.DeputyNodesInfo = genesis.DeputyNodesInfo[:attendedDeputyCount]
 	SetupGenesisBlock(db, genesis)
 
 	// max deputy count is 5
