@@ -17,6 +17,8 @@ type VTransaction struct {
 	Tx          *types.Transaction `json:"tx" gencodec:"required"`
 	PHash       common.Hash        `json:"pHash" gencodec:"required"`
 	PackageTime uint32             `json:"time" gencodec:"required"`
+	AssetCode   common.Hash        `json:"assetCode"`
+	AssetId     common.Hash        `json:"assetId"`
 }
 type vTransactionMarshaling struct {
 	PackageTime hexutil.Uint32
@@ -29,6 +31,8 @@ type VTransactionDetail struct {
 	Height      uint32             `json:"height" gencodec:"required"`
 	Tx          *types.Transaction `json:"tx"  gencodec:"required"`
 	PackageTime uint32             `json:"time" gencodec:"required"`
+	AssetCode   common.Hash        `json:"assetCode"`
+	AssetId     common.Hash        `json:"assetId"`
 }
 
 type vTransactionDetailMarshaling struct {
