@@ -253,6 +253,13 @@ func (tx *Transaction) Hash() common.Hash {
 	if hash := tx.hash.Load(); hash != nil {
 		return hash.(common.Hash)
 	}
+	// 箱子交易类型的hash特殊处理
+	if tx.Type() == params.BoxTx {
+		if box, err := GetBox(tx.data); err != nil {
+
+		}
+	}
+
 	v := rlpHash([]interface{}{
 		tx.Type(),
 		tx.Version(),
