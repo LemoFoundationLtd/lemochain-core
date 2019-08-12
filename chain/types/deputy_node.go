@@ -1,4 +1,4 @@
-package deputynode
+package types
 
 import (
 	"encoding/hex"

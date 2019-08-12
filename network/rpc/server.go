@@ -123,6 +123,7 @@ func (s *Server) serveRequest(codec ServerCodec, singleShot bool) error {
 			buf := make([]byte, size)
 			buf = buf[:runtime.Stack(buf, false)]
 			log.Error(string(buf))
+			log.Errorf("%v", err)
 		}
 		s.codecsMu.Lock()
 		s.codecs.Remove(codec)

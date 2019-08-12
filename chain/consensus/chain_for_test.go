@@ -1,7 +1,6 @@
 package consensus
 
 import (
-	"bytes"
 	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
@@ -43,6 +42,13 @@ func (t *testChain) GetBlockByHash(hash common.Hash) *types.Block {
 	}
 	return block
 }
+func (t *testChain) GetBlockByHeight(height uint32) *types.Block {
+	block, err := t.Db.GetBlockByHeight(height)
+	if err != nil {
+		return nil
+	}
+	return block
+}
 func (t *testChain) GetParentByHeight(height uint32, sonBlockHash common.Hash) *types.Block {
 	var block *types.Block
 	var err error
@@ -70,7 +76,7 @@ type blockInfo struct {
 	gasLimit    uint64
 	time        uint32
 	deputyRoot  []byte
-	deputyNodes deputynode.DeputyNodes
+	deputyNodes types.DeputyNodes
 }
 
 var (
@@ -119,7 +125,7 @@ var (
 			time:     1538209758,
 			gasLimit: 20000000,
 		},
-		// block 3 is not store in db
+		// block 3 is not store in blockLoader
 		{
 			height: 3,
 			author: defaultAccounts[0],
@@ -141,7 +147,7 @@ func init() {
 }
 
 func GetStorePath() string {
-	return "../testdata/blockchain"
+	return "../testdata/consensus"
 }
 
 func ClearData() {
@@ -166,7 +172,7 @@ func newChain() *BlockChain {
 	return bc
 }
 
-// newDB creates db for test chain module
+// newDB creates blockLoader for test chain module
 func newDB() protocol.ChainDB {
 	db := store.NewChainDataBase(GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
 	for i, _ := range defaultBlockInfos {

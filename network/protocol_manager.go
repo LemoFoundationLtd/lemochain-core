@@ -21,7 +21,6 @@ var (
 	ErrRequestBlocks      = errors.New("invalid request blocks' param")
 	ErrHandleLstStatusMsg = errors.New("stable height can't > current height")
 	ErrHandleGetBlocksMsg = errors.New("invalid request blocks'param")
-	ErrTxExpiration       = errors.New("received transaction expiration time illegal")
 )
 
 var (
@@ -67,15 +66,14 @@ type ProtocolManager struct {
 	nodeID      p2p.NodeID
 	nodeVersion uint32
 
-	chain           BlockChain
-	dm              *deputynode.Manager
-	discover        *p2p.DiscoverManager
-	txPool          TxPool
-	limit           int
-	peers           *peerSet      // connected peers
-	confirmsCache   *ConfirmCache // received confirm info before block, cache them
-	blockCache      *BlockCache
-	insertingBlocks *BlockCache
+	chain         BlockChain
+	dm            *deputynode.Manager
+	discover      *p2p.DiscoverManager
+	txPool        TxPool
+	limit         int
+	peers         *peerSet      // connected peers
+	confirmsCache *ConfirmCache // received confirm info before block, cache them
+	blockCache    *BlockCache
 
 	oldStableBlock atomic.Value
 
@@ -101,18 +99,17 @@ func NewProtocolManager(chainID uint16, nodeID p2p.NodeID, chain BlockChain, dm 
 		limit = DefaultLimit
 	}
 	pm := &ProtocolManager{
-		chainID:         chainID,
-		nodeID:          nodeID,
-		nodeVersion:     nodeVersion,
-		chain:           chain,
-		dm:              dm,
-		txPool:          txPool,
-		discover:        discover,
-		limit:           limit,
-		peers:           NewPeerSet(discover, dm),
-		confirmsCache:   NewConfirmCache(),
-		blockCache:      NewBlockCache(),
-		insertingBlocks: NewBlockCache(),
+		chainID:       chainID,
+		nodeID:        nodeID,
+		nodeVersion:   nodeVersion,
+		chain:         chain,
+		dm:            dm,
+		txPool:        txPool,
+		discover:      discover,
+		limit:         limit,
+		peers:         NewPeerSet(discover, dm),
+		confirmsCache: NewConfirmCache(),
+		blockCache:    NewBlockCache(),
 
 		addPeerCh:    make(chan p2p.IPeer),
 		removePeerCh: make(chan p2p.IPeer),
@@ -254,13 +251,8 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 					pm.blockCache.Remove(b)
 					continue
 				}
-				// this block is inserting chain
-				if pm.insertingBlocks.IsExit(b.Hash(), b.Height()) {
-					log.Debugf("The block is inserting chain. blockHeight: %d", b.Height())
-					continue
-				}
 				// local chain has parent block or parent block will insert chain
-				if pm.chain.HasBlock(b.ParentHash()) || pm.insertingBlocks.IsExit(b.ParentHash(), b.Height()-1) {
+				if pm.chain.HasBlock(b.ParentHash()) {
 					log.Infof("Got a block %s from peer: %#x", b.ShortString(), rcvMsg.p.NodeID()[:8])
 					pm.insertBlock(b)
 				} else {
@@ -278,7 +270,7 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 			}
 		case <-queueTimer.C:
 			processBlock := func(block *types.Block) bool {
-				if pm.chain.HasBlock(block.ParentHash()) || pm.insertingBlocks.IsExit(block.ParentHash(), block.Height()-1) {
+				if pm.chain.HasBlock(block.ParentHash()) {
 					go pm.insertBlock(block)
 					return true
 				}
@@ -307,7 +299,6 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 
 // insertBlock insert block
 func (pm *ProtocolManager) insertBlock(b *types.Block) {
-	pm.insertingBlocks.Add(b)
 	// pop the confirms which arrived before block
 	pm.mergeConfirmsFromCache(b)
 	pm.chain.InsertBlock(b)
@@ -336,7 +327,6 @@ func (pm *ProtocolManager) stableBlockLoop() {
 			go func() {
 				pm.confirmsCache.Clear(block.Height())
 				pm.blockCache.Clear(block.Height())
-				pm.insertingBlocks.Clear(block.Height())
 			}()
 			// for test
 			if pm.test {
@@ -879,7 +869,7 @@ func (pm *ProtocolManager) handleConfirmMsg(msg *p2p.Msg) error {
 	if err := msg.Decode(confirm); err != nil {
 		return fmt.Errorf("handleConfirmMsg error: %v", err)
 	}
-	if pm.chain.HasBlock(confirm.Hash) || pm.insertingBlocks.IsExit(confirm.Hash, confirm.Height) {
+	if pm.chain.HasBlock(confirm.Hash) {
 		go pm.chain.InsertConfirm(confirm)
 	} else {
 		pm.confirmsCache.Push(confirm)

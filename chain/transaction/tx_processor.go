@@ -46,7 +46,7 @@ var (
 
 type TxProcessor struct {
 	ChainID     uint16
-	blockLoader BlockLoader
+	blockLoader ParentBlockLoader
 	am          *account.Manager
 	db          protocol.ChainDB
 	cfg         *vm.Config // configuration of vm
@@ -54,7 +54,7 @@ type TxProcessor struct {
 	lock sync.Mutex
 }
 
-func NewTxProcessor(issueRewardAddress common.Address, chainID uint16, blockLoader BlockLoader, am *account.Manager, db protocol.ChainDB) *TxProcessor {
+func NewTxProcessor(issueRewardAddress common.Address, chainID uint16, blockLoader ParentBlockLoader, am *account.Manager, db protocol.ChainDB) *TxProcessor {
 	cfg := &vm.Config{
 		Debug:         false,
 		RewardManager: issueRewardAddress,
@@ -611,7 +611,7 @@ func newTx(from common.Address, to *common.Address, txType uint16, data []byte, 
 }
 
 // getEVM
-func getEVM(tx *types.Transaction, header *types.Header, txIndex uint, txHash common.Hash, blockHash common.Hash, chain BlockLoader, cfg vm.Config, accM vm.AccountManager) *vm.EVM {
+func getEVM(tx *types.Transaction, header *types.Header, txIndex uint, txHash common.Hash, blockHash common.Hash, chain ParentBlockLoader, cfg vm.Config, accM vm.AccountManager) *vm.EVM {
 	evmContext := NewEVMContext(tx, header, txIndex, blockHash, chain)
 	vmEnv := vm.NewEVM(evmContext, accM, cfg)
 	return vmEnv

@@ -4,9 +4,11 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto/secp256k1"
+	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"github.com/stretchr/testify/assert"
 	"math/big"
 	"testing"
@@ -16,12 +18,22 @@ var (
 	testDeputies = GenerateDeputies(17)
 )
 
+type testBlockLoader map[uint32]*types.Block
+
+func (loader testBlockLoader) GetBlockByHeight(height uint32) (*types.Block, error) {
+	block, ok := loader[height]
+	if !ok {
+		return nil, store.ErrNotExist
+	}
+	return block, nil
+}
+
 // GenerateDeputies generate random deputy nodes
-func GenerateDeputies(num int) DeputyNodes {
-	var result []*DeputyNode
+func GenerateDeputies(num int) types.DeputyNodes {
+	var result []*types.DeputyNode
 	for i := 0; i < num; i++ {
 		private, _ := ecdsa.GenerateKey(secp256k1.S256(), rand.Reader)
-		result = append(result, &DeputyNode{
+		result = append(result, &types.DeputyNode{
 			MinerAddress: crypto.PubkeyToAddress(private.PublicKey),
 			NodeID:       (crypto.FromECDSAPub(&private.PublicKey))[1:],
 			Rank:         uint32(i),
@@ -32,8 +44,8 @@ func GenerateDeputies(num int) DeputyNodes {
 }
 
 // pickNodes picks some test deputy nodes by index
-func pickNodes(nodeIndexList ...int) DeputyNodes {
-	var result []*DeputyNode
+func pickNodes(nodeIndexList ...int) types.DeputyNodes {
+	var result []*types.DeputyNode
 	for i, nodeIndex := range nodeIndexList {
 		newDeputy := testDeputies[nodeIndex].Copy()
 		// reset rank
@@ -43,8 +55,36 @@ func pickNodes(nodeIndexList ...int) DeputyNodes {
 	return result
 }
 
+func TestNewManager(t *testing.T) {
+	// no blocks
+	loader := testBlockLoader{}
+	m := NewManager(5, loader)
+	assert.Len(t, m.termList, 0)
+
+	// invalid term
+	loader = testBlockLoader{}
+	loader[0] = &types.Block{Header: &types.Header{Height: 0, Time: 100}}
+	assert.PanicsWithValue(t, ErrNoDeputyInBlock, func() {
+		m = NewManager(5, loader)
+	})
+
+	// 2 terms
+	loader = testBlockLoader{}
+	block0 := &types.Block{Header: &types.Header{Height: 0, Time: 100}, DeputyNodes: pickNodes(0, 1)}
+	loader[0] = block0
+	loader[1] = &types.Block{Header: &types.Header{Height: 1, Time: 101}}
+	block2 := &types.Block{Header: &types.Header{Height: params.TermDuration, Time: 200}, DeputyNodes: pickNodes(0, 1, 2)}
+	loader[params.TermDuration] = block2
+	m = NewManager(5, loader)
+	assert.Len(t, m.termList, 2)
+	assert.Equal(t, uint32(0), m.termList[0].TermIndex)
+	assert.Equal(t, block0.DeputyNodes, m.termList[0].Nodes)
+	assert.Equal(t, uint32(1), m.termList[1].TermIndex)
+	assert.Equal(t, block2.DeputyNodes, m.termList[1].Nodes)
+}
+
 func TestManager_SaveSnapshot(t *testing.T) {
-	m := NewManager(5)
+	m := NewManager(5, testBlockLoader{})
 
 	// save genesis
 	height := uint32(0)
@@ -100,7 +140,7 @@ func TestManager_SaveSnapshot(t *testing.T) {
 }
 
 func TestManager_GetTermByHeight(t *testing.T) {
-	m := NewManager(5)
+	m := NewManager(5, testBlockLoader{})
 
 	// no any terms
 	_, err := m.GetTermByHeight(0)
@@ -149,7 +189,7 @@ func TestManager_GetTermByHeight(t *testing.T) {
 }
 
 func TestManager_GetDeputyByAddress(t *testing.T) {
-	m := NewManager(5)
+	m := NewManager(5, testBlockLoader{})
 
 	nodes := pickNodes(0, 1, 2)
 	m.SaveSnapshot(0, nodes)
@@ -162,7 +202,7 @@ func TestManager_GetDeputyByAddress(t *testing.T) {
 }
 
 func TestManager_GetDeputyByNodeID(t *testing.T) {
-	m := NewManager(5)
+	m := NewManager(5, testBlockLoader{})
 
 	nodes := pickNodes(0, 1, 2)
 	m.SaveSnapshot(0, nodes)
@@ -173,103 +213,4 @@ func TestManager_GetDeputyByNodeID(t *testing.T) {
 	assert.Nil(t, m.GetDeputyByNodeID(0, testDeputies[5].NodeID))
 	assert.Nil(t, m.GetDeputyByNodeID(0, []byte{}))
 	assert.Nil(t, m.GetDeputyByNodeID(0, nil))
-}
-
-// test special cases
-func TestManager_GetSlot(t *testing.T) {
-	m := NewManager(5)
-
-	nodes0 := pickNodes(0, 1, 2)
-	m.SaveSnapshot(0, nodes0)
-	nodes1 := pickNodes(1)
-	m.SaveSnapshot(params.TermDuration, nodes1)
-	nodes2 := pickNodes(2, 3, 4, 5)
-	m.SaveSnapshot(params.TermDuration*2, nodes2)
-	term0Height := uint32(10)
-	term1RewardHeight := params.TermDuration + params.InterimDuration + 1
-	term2RewardHeight := params.TermDuration*2 + params.InterimDuration + 1
-
-	// height is 0
-	_, err := m.GetMinerDistance(0, common.Address{}, common.Address{})
-	assert.Equal(t, ErrMineGenesis, err)
-
-	// not exist target miner
-	_, err = m.GetMinerDistance(term0Height, common.Address{}, common.Address{})
-	assert.Equal(t, ErrNotDeputy, err)
-	_, err = m.GetMinerDistance(term0Height, common.Address{}, testDeputies[5].MinerAddress)
-	assert.Equal(t, ErrNotDeputy, err)
-
-	// not exist last miner
-	_, err = m.GetMinerDistance(term0Height, common.Address{}, testDeputies[0].MinerAddress)
-	assert.Equal(t, ErrNotDeputy, err)
-	_, err = m.GetMinerDistance(term0Height, testDeputies[5].MinerAddress, testDeputies[0].MinerAddress)
-	assert.Equal(t, ErrNotDeputy, err)
-
-	// only one deputy
-	dis, err := m.GetMinerDistance(term1RewardHeight, common.Address{}, testDeputies[1].MinerAddress)
-	assert.NoError(t, err)
-	assert.Equal(t, uint32(1), dis)
-
-	// first block
-	dis, err = m.GetMinerDistance(1, common.Address{}, testDeputies[0].MinerAddress)
-	assert.NoError(t, err)
-	assert.Equal(t, uint32(1), dis)
-	dis, err = m.GetMinerDistance(1, common.Address{}, testDeputies[2].MinerAddress)
-	assert.NoError(t, err)
-	assert.Equal(t, uint32(3), dis)
-
-	// reward block
-	dis, err = m.GetMinerDistance(term2RewardHeight, common.Address{}, testDeputies[2].MinerAddress)
-	assert.NoError(t, err)
-	assert.Equal(t, uint32(1), dis)
-	dis, err = m.GetMinerDistance(term2RewardHeight, common.Address{}, testDeputies[5].MinerAddress)
-	assert.NoError(t, err)
-	assert.Equal(t, uint32(4), dis)
-}
-
-// test normal cases
-func TestManager_GetSlot2(t *testing.T) {
-	m := NewManager(5)
-
-	nodes0 := pickNodes(0, 1, 2)
-	m.SaveSnapshot(0, nodes0)
-	nodes1 := pickNodes(1)
-	m.SaveSnapshot(params.TermDuration, nodes1)
-	nodes2 := pickNodes(2, 3, 4, 5)
-	m.SaveSnapshot(params.TermDuration*2, nodes2)
-	term0Height := uint32(10)
-	term2RewardHeight := params.TermDuration*2 + params.InterimDuration + 1
-	term2Height := term2RewardHeight + 10
-
-	type testDistanceData struct {
-		CaseName          string
-		TargetHeight      uint32
-		LastDeputyIndex   int
-		TargetDeputyIndex int
-		ExpectDis         uint32
-	}
-	var tests = []testDistanceData{
-		{"[0,1,2] 2-0=2", term0Height, 0, 2, 2},
-		{"[0,1,2] 0-2=1", term0Height, 2, 0, 1},
-		{"[0,1,2] 2-2=0", term0Height, 2, 2, 0},
-		{"[2,3,4,5] 3-2=1", term2Height, 2, 3, 1},
-		{"[2,3,4,5] 4-2=2", term2Height, 2, 4, 2},
-		{"[2,3,4,5] 4-4=0", term2Height, 4, 4, 0},
-		{"[2,3,4,5] 2-5=1", term2Height, 5, 2, 1},
-		{"[2,3,4,5] 2-3=3", term2Height, 3, 2, 3},
-		{"[2,3,4,5] 2-2=0", term2Height, 2, 2, 0},
-	}
-
-	for _, test := range tests {
-		t.Run(test.CaseName, func(t *testing.T) {
-			test := test // capture range variable
-			t.Parallel()
-
-			lastBlockMiner := testDeputies[test.LastDeputyIndex].MinerAddress
-			targetMiner := testDeputies[test.TargetDeputyIndex].MinerAddress
-			dis, err := m.GetMinerDistance(test.TargetHeight, lastBlockMiner, targetMiner)
-			assert.NoError(t, err)
-			assert.Equal(t, test.ExpectDis, dis)
-		})
-	}
 }

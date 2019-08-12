@@ -18,8 +18,7 @@ type MineConfig struct {
 
 type Chain interface {
 	CurrentBlock() *types.Block
-	SubscribeNewBlock(ch chan *types.Block) subscribe.Subscription
-	MineBlock(*consensus.BlockMaterial)
+	MineBlock(int64)
 }
 
 type Miner struct {
@@ -28,25 +27,22 @@ type Miner struct {
 	mining        int32
 	chain         Chain
 	dm            *deputynode.Manager
-	extra         []byte // 扩展数据 暂保留 最大256byte
 
 	mineTimer  *time.Timer // 出块timer
 	retryTimer *time.Timer // 出块失败时重试出块的timer
 
 	recvNewBlockCh chan *types.Block // 收到新块通知
-	recvBlockSub   subscribe.Subscription
-	timeToMineCh   chan struct{} // 到出块时间了
-	stopCh         chan struct{} // 停止挖矿
-	quitCh         chan struct{} // 退出
+	timeToMineCh   chan struct{}     // 到出块时间了
+	stopCh         chan struct{}     // 停止挖矿
+	quitCh         chan struct{}     // 退出
 }
 
-func New(cfg MineConfig, chain Chain, dm *deputynode.Manager, extra []byte) *Miner {
+func New(cfg MineConfig, chain Chain, dm *deputynode.Manager) *Miner {
 	return &Miner{
 		blockInterval:  cfg.SleepTime,
 		timeoutTime:    cfg.Timeout,
 		chain:          chain,
 		dm:             dm,
-		extra:          extra,
 		recvNewBlockCh: make(chan *types.Block, 1),
 		timeToMineCh:   make(chan struct{}),
 		stopCh:         make(chan struct{}),
@@ -78,7 +74,7 @@ func (m *Miner) Start() {
 		log.Info("Not deputy now. waiting...")
 	}
 
-	m.recvBlockSub = m.chain.SubscribeNewBlock(m.recvNewBlockCh)
+	subscribe.Sub(subscribe.NewCurrentBlock, m.recvNewBlockCh)
 	log.Info("Start mining success")
 }
 
@@ -89,9 +85,7 @@ func (m *Miner) Stop() {
 	}
 	m.stopMineTimer()
 	m.stopCh <- struct{}{}
-	if m.recvBlockSub != nil {
-		m.recvBlockSub.Unsubscribe()
-	}
+	subscribe.UnSub(subscribe.NewCurrentBlock, m.recvNewBlockCh)
 	log.Info("Stop mining success")
 }
 
@@ -238,9 +232,6 @@ func (m *Miner) sealBlock() {
 	log.Debug("Start seal block")
 
 	// mine asynchronously
-	m.chain.MineBlock(&consensus.BlockMaterial{
-		Extra: m.extra,
-		// The time for mining is (m.timeoutTime - m.blockInterval). The rest 1/3 is used to transfer to other nodes
-		MineTimeLimit: (m.timeoutTime - m.blockInterval) * 2 / 3,
-	})
+	// The time limit for mining is (m.timeoutTime - m.blockInterval). The rest 1/3 is used to transfer to other nodes
+	m.chain.MineBlock((m.timeoutTime - m.blockInterval) * 2 / 3)
 }

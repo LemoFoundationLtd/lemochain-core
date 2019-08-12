@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto/sha3"
@@ -69,11 +68,11 @@ func (sd SignData) String() string {
 
 // Block
 type Block struct {
-	Header      *Header                `json:"header"        gencodec:"required"`
-	Txs         Transactions           `json:"transactions"  gencodec:"required"`
-	ChangeLogs  ChangeLogSlice         `json:"changeLogs"    gencodec:"required"`
-	Confirms    []SignData             `json:"confirms"` // no miner's signature inside
-	DeputyNodes deputynode.DeputyNodes `json:"deputyNodes"`
+	Header      *Header        `json:"header"        gencodec:"required"`
+	Txs         Transactions   `json:"transactions"  gencodec:"required"`
+	ChangeLogs  ChangeLogSlice `json:"changeLogs"    gencodec:"required"`
+	Confirms    []SignData     `json:"confirms"` // no miner's signature inside
+	DeputyNodes DeputyNodes    `json:"deputyNodes"`
 }
 
 func NewBlock(header *Header, txs []*Transaction, changeLog []*ChangeLog) *Block {
@@ -249,7 +248,7 @@ func (b *Block) SetTxs(txs []*Transaction)       { b.Txs = txs }
 func (b *Block) SetConfirms(confirms []SignData) { b.Confirms = confirms }
 func (b *Block) SetChangeLogs(logs []*ChangeLog) { b.ChangeLogs = logs }
 
-func (b *Block) SetDeputyNodes(deputyNodes deputynode.DeputyNodes) { b.DeputyNodes = deputyNodes }
+func (b *Block) SetDeputyNodes(deputyNodes DeputyNodes) { b.DeputyNodes = deputyNodes }
 
 // IsConfirmExist test if the signature is exist in Header.SignData or Confirms
 func (b *Block) IsConfirmExist(sig SignData) bool {

@@ -1,7 +1,6 @@
 package consensus
 
 import (
-	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 )
@@ -14,23 +13,29 @@ type Config struct {
 	RewardManager common.Address
 	ChainID       uint16
 	MineTimeout   uint64
+	MinerExtra    []byte // Extra data in mined block header. It is short than 256bytes
 }
 
 // BlockMaterial is used for mine a new block
 type BlockMaterial struct {
-	Extra         []byte
-	MineTimeLimit int64
-	Txs           types.Transactions
-	Deputies      deputynode.DeputyNodes
+	ParentHeader *types.Header
+	Time         uint32 // new block time in header
+	Extra        []byte
+	Txs          types.Transactions
 }
 
-// BlockLoader supports retrieving headers and consensus parameters from the
-// current blockchain to be used during transaction processing.
+// BlockLoader is the interface of ChainDB
 type BlockLoader interface {
-	// GetBlockByHash returns the hash corresponding to their hash.
-	GetBlockByHash(hash common.Hash) *types.Block
-	// GetBlockByHash returns the hash corresponding to their hash.
-	GetParentByHeight(height uint32, sonBlockHash common.Hash) *types.Block
+	IterateUnConfirms(fn func(*types.Block))
+	GetBlockByHash(hash common.Hash) (*types.Block, error)
+	// GetBlockByHeight returns stable blocks
+	GetBlockByHeight(height uint32) (*types.Block, error)
+}
+
+// StableBlockStore is the interface of ChainDB
+type StableBlockStore interface {
+	LoadLatestBlock() (*types.Block, error)
+	SetStableBlock(hash common.Hash) ([]*types.Block, error)
 }
 
 type TxPool interface {
@@ -42,5 +47,6 @@ type TxPool interface {
 }
 
 type CandidateLoader interface {
-	LoadTopCandidates(blockHash common.Hash) deputynode.DeputyNodes
+	LoadTopCandidates(blockHash common.Hash) types.DeputyNodes
+	LoadRefundCandidates() ([]common.Address, error)
 }

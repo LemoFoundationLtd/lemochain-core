@@ -9,7 +9,7 @@ import (
 )
 
 // NewEVMContext creates a new context for use in the EVM.
-func NewEVMContext(tx *types.Transaction, header *types.Header, txIndex uint, blockHash common.Hash, chain BlockLoader) vm.Context {
+func NewEVMContext(tx *types.Transaction, header *types.Header, txIndex uint, blockHash common.Hash, chain ParentBlockLoader) vm.Context {
 	if (header.MinerAddress == common.Address{}) {
 		panic("NewEVMContext is called without author")
 	}
@@ -31,7 +31,7 @@ func NewEVMContext(tx *types.Transaction, header *types.Header, txIndex uint, bl
 }
 
 // GetHashFn returns a GetHashFunc which retrieves header hashes by number
-func GetHashFn(ref *types.Header, chain BlockLoader) vm.GetHashFunc {
+func GetHashFn(ref *types.Header, chain ParentBlockLoader) vm.GetHashFunc {
 	var cache map[uint32]common.Hash
 
 	return func(n uint32) common.Hash {

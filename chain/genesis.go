@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
-	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
@@ -16,6 +15,8 @@ import (
 )
 
 var (
+	ErrBuildGenesisFail    = errors.New("build genesis block failed")
+	ErrSaveGenesisFail     = errors.New("save genesis block failed")
 	ErrGenesisExtraTooLong = errors.New("genesis config's extraData is longer than 256")
 	ErrGenesisTimeTooLarge = errors.New("genesis config's time is larger than current time")
 	ErrNoDeputyNodes       = errors.New("no deputy nodes in genesis")
@@ -33,6 +34,7 @@ type candidateInfo struct {
 }
 
 var (
+	TotalLEMO              = common.Lemo2Mo("1600000000")                                   // 1.6 billion
 	DefaultFounder         = decodeMinerAddress("Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG") // Initial LEMO holder
 	DefaultDeputyNodes     = InitDeputyNodes()
 	DefaultDeputyNodesInfo = infos{
@@ -75,10 +77,10 @@ var (
 )
 
 // InitDeputyNodes 初始化第一届出块节点列表
-func InitDeputyNodes() deputynode.DeputyNodes {
-	deputyNodes := make(deputynode.DeputyNodes, 0)
+func InitDeputyNodes() types.DeputyNodes {
+	deputyNodes := make(types.DeputyNodes, 0)
 	for i, info := range DefaultDeputyNodesInfo {
-		node := &deputynode.DeputyNode{
+		node := &types.DeputyNode{
 			MinerAddress: info.MinerAddress,
 			NodeID:       info.NodeID,
 			Rank:         uint32(i),
@@ -99,22 +101,22 @@ func decodeMinerAddress(input string) common.Address {
 //go:generate gencodec -type Genesis -field-override genesisSpecMarshaling -out gen_genesis_json.go
 
 type Genesis struct {
-	Time        uint32                 `json:"timestamp"     gencodec:"required"`
-	ExtraData   []byte                 `json:"extraData"`
-	GasLimit    uint64                 `json:"gasLimit"      gencodec:"required"`
-	Founder     common.Address         `json:"founder"       gencodec:"required"`
-	DeputyNodes deputynode.DeputyNodes `json:"deputyNodes"   gencodec:"required"`
+	Time        uint32            `json:"timestamp"     gencodec:"required"`
+	ExtraData   []byte            `json:"extraData"`
+	GasLimit    uint64            `json:"gasLimit"      gencodec:"required"`
+	Founder     common.Address    `json:"founder"       gencodec:"required"`
+	DeputyNodes types.DeputyNodes `json:"deputyNodes"   gencodec:"required"`
 }
 
 type genesisSpecMarshaling struct {
 	Time        hexutil.Uint32
 	ExtraData   hexutil.Bytes
 	GasLimit    hexutil.Uint64
-	DeputyNodes []*deputynode.DeputyNode
+	DeputyNodes []*types.DeputyNode
 }
 
-// DefaultGenesisBlock default genesis block
-func DefaultGenesisBlock() *Genesis {
+// DefaultGenesisConfig default genesis block config
+func DefaultGenesisConfig() *Genesis {
 	timeSpan, _ := time.ParseInLocation("2006-01-02 15:04:05", "2018-08-30 12:00:00", time.UTC)
 	return &Genesis{
 		Time:        uint32(timeSpan.Unix()),
@@ -125,20 +127,20 @@ func DefaultGenesisBlock() *Genesis {
 	}
 }
 
-func checkGenesisConfig(genesis *Genesis) error {
-	if len(genesis.ExtraData) > 256 {
+func (g *Genesis) Verify() error {
+	if len(g.ExtraData) > 256 {
 		return ErrGenesisExtraTooLong
 	}
 
 	// check genesis block's time
-	if int64(genesis.Time) > time.Now().Unix() {
+	if int64(g.Time) > time.Now().Unix() {
 		return ErrGenesisTimeTooLarge
 	}
 	// check deputy nodes
-	if len(genesis.DeputyNodes) == 0 {
+	if len(g.DeputyNodes) == 0 {
 		return ErrNoDeputyNodes
 	}
-	for _, deputy := range genesis.DeputyNodes {
+	for _, deputy := range g.DeputyNodes {
 		if err := deputy.Check(); err != nil {
 			return ErrInvalidDeputyNodes
 		}
@@ -150,26 +152,30 @@ func checkGenesisConfig(genesis *Genesis) error {
 func SetupGenesisBlock(db protocol.ChainDB, genesis *Genesis) *types.Block {
 	if genesis == nil {
 		log.Info("Writing default genesis block.")
-		genesis = DefaultGenesisBlock()
+		genesis = DefaultGenesisConfig()
 	}
-	if err := checkGenesisConfig(genesis); err != nil {
+	if err := genesis.Verify(); err != nil {
 		panic(err)
 	}
 
 	am := account.NewManager(common.Hash{}, db)
 	block, err := genesis.ToBlock(am)
 	if err != nil {
-		panic(fmt.Errorf("build genesis block failed: %v", err))
+		log.Errorf("build genesis block failed: %v", err)
+		panic(ErrBuildGenesisFail)
 	}
 	hash := block.Hash()
 	if err := db.SetBlock(hash, block); err != nil {
-		panic(fmt.Errorf("setup genesis block failed: %v", err))
+		log.Errorf("setup genesis block failed: %v", err)
+		panic(ErrSaveGenesisFail)
 	}
 	if err := am.Save(hash); err != nil {
-		panic(fmt.Errorf("setup genesis block failed: %v", err))
+		log.Errorf("setup genesis block failed: %v", err)
+		panic(ErrSaveGenesisFail)
 	}
 	if _, err := db.SetStableBlock(hash); err != nil {
-		panic(fmt.Errorf("setup genesis block failed: %v", err))
+		log.Errorf("setup genesis block failed: %v", err)
+		panic(ErrSaveGenesisFail)
 	}
 	return block
 }
@@ -177,7 +183,7 @@ func SetupGenesisBlock(db protocol.ChainDB, genesis *Genesis) *types.Block {
 // ToBlock
 func (g *Genesis) ToBlock(am *account.Manager) (*types.Block, error) {
 	// set balance for some account
-	g.setBalance(am)
+	am.GetAccount(g.Founder).SetBalance(TotalLEMO)
 	// register candidate node for first term deputy nodes
 	g.initCandidateListInfo(am)
 
@@ -202,11 +208,6 @@ func (g *Genesis) ToBlock(am *account.Manager) (*types.Block, error) {
 	block := types.NewBlock(header, nil, logs)
 	block.SetDeputyNodes(g.DeputyNodes)
 	return block, nil
-}
-
-func (g *Genesis) setBalance(am *account.Manager) {
-	total, _ := new(big.Int).SetString("1600000000000000000000000000", 10) // 1.6 billion
-	am.GetAccount(g.Founder).SetBalance(total)
 }
 
 // initCandidateListInfo 设置初始的候选节点列表的info

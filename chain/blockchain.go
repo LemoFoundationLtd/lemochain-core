@@ -16,12 +16,12 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/network"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	db "github.com/LemoFoundationLtd/lemochain-core/store/protocol"
-	"strconv"
 	"sync/atomic"
 	"time"
 )
 
 var ErrNoGenesis = errors.New("can't get genesis block")
+var ErrLoadBlock = errors.New("load block fail")
 
 type BlockChain struct {
 	chainID      uint16
@@ -33,31 +33,23 @@ type BlockChain struct {
 	dm     *deputynode.Manager
 	engine *consensus.DPoVP
 
-	// receive call event from outside
-	receiveBlockCh   chan *types.Block
-	mineBlockCh      chan *consensus.BlockMaterial
-	receiveConfirmCh chan *network.BlockConfirmData
-
-	running int32
+	stopped int32
 	quitCh  chan struct{}
 }
 
 // Config holds chain options.
 type Config struct {
 	ChainID     uint16
-	MineTimeout uint64
+	MineTimeout uint64 // milliseconds
 }
 
 func NewBlockChain(config Config, dm *deputynode.Manager, db db.ChainDB, flags flag.CmdFlags, txPool *txpool.TxPool) (bc *BlockChain, err error) {
 	bc = &BlockChain{
-		chainID:          config.ChainID,
-		db:               db,
-		dm:               dm,
-		flags:            flags,
-		receiveBlockCh:   make(chan *types.Block),
-		mineBlockCh:      make(chan *consensus.BlockMaterial),
-		receiveConfirmCh: make(chan *network.BlockConfirmData),
-		quitCh:           make(chan struct{}),
+		chainID: config.ChainID,
+		db:      db,
+		dm:      dm,
+		flags:   flags,
+		quitCh:  make(chan struct{}),
 	}
 	bc.genesisBlock, err = bc.db.GetBlockByHeight(0)
 	if err != nil {
@@ -77,13 +69,14 @@ func NewBlockChain(config Config, dm *deputynode.Manager, db db.ChainDB, flags f
 		RewardManager: bc.Founder(),
 		ChainID:       bc.chainID,
 		MineTimeout:   config.MineTimeout,
+		MinerExtra:    nil,
 	}
-	bc.engine = consensus.NewDpovp(dpovpCfg, bc.db, bc.dm, bc.am, bc, txPool, block)
+	bc.engine = consensus.NewDPoVP(dpovpCfg, bc.db, bc.dm, bc.am, bc, txPool, block)
 
 	bc.initTxPool(block, txPool)
 	go bc.runFeedTranspondLoop()
-	go bc.runMainLoop()
 
+	log.Info("BlockChain is ready", "stableHeight", bc.StableBlock().Height(), "stableHash", bc.StableBlock().Hash(), "currentHeight", bc.CurrentBlock().Height(), "currentHash", bc.CurrentBlock().Hash())
 	return bc, nil
 }
 
@@ -102,7 +95,8 @@ func (bc *BlockChain) initTxPool(block *types.Block, txPool *txpool.TxPool) {
 		height = height - 1
 		block = bc.GetBlockByHeight(height)
 		if block == nil {
-			panic("get block by height. result is nil. height: " + strconv.Itoa(int(height)))
+			log.Error("get block by height fail", "height", height)
+			panic(ErrLoadBlock)
 		} else {
 			blockTime = int64(block.Time())
 		}
@@ -118,12 +112,13 @@ func (bc *BlockChain) DeputyManager() *deputynode.Manager {
 }
 
 func (bc *BlockChain) IsInBlackList(b *types.Block) bool {
-	currentHeight := bc.CurrentBlock().Height()
-	return bc.dm.IsEvilDeputyNode(b.MinerAddress(), currentHeight)
+	return bc.dm.IsEvilDeputyNode(b.MinerAddress(), b.Height())
 }
 
 // runFeedTranspondLoop transpond dpovp feed to global event bus
 func (bc *BlockChain) runFeedTranspondLoop() {
+	currentCh := make(chan *types.Block)
+	currentSub := bc.engine.SubscribeCurrent(currentCh)
 	stableCh := make(chan *types.Block)
 	stableSub := bc.engine.SubscribeStable(stableCh)
 	confirmCh := make(chan *network.BlockConfirmData)
@@ -132,6 +127,8 @@ func (bc *BlockChain) runFeedTranspondLoop() {
 	fetchConfirmSub := bc.engine.SubscribeFetchConfirm(fetchConfirmCh)
 	for {
 		select {
+		case block := <-currentCh:
+			go subscribe.Send(subscribe.NewCurrentBlock, block)
 		case block := <-stableCh:
 			go subscribe.Send(subscribe.NewStableBlock, block)
 		case confirm := <-confirmCh:
@@ -139,33 +136,10 @@ func (bc *BlockChain) runFeedTranspondLoop() {
 		case confirmsInfo := <-fetchConfirmCh:
 			go subscribe.Send(subscribe.FetchConfirms, confirmsInfo)
 		case <-bc.quitCh:
+			currentSub.Unsubscribe()
 			stableSub.Unsubscribe()
 			confirmSub.Unsubscribe()
 			fetchConfirmSub.Unsubscribe()
-			return
-		}
-	}
-}
-
-// runMainLoop handle the call events from outside
-func (bc *BlockChain) runMainLoop() {
-	for {
-		// These cases should be executed mutually. So we must not use coroutine
-		select {
-		case block := <-bc.receiveBlockCh:
-			// verify and create a new block witch filled by transaction products
-			_, _ = bc.engine.InsertBlock(block)
-
-		case blockMaterial := <-bc.mineBlockCh:
-			block, err := bc.engine.MineBlock(blockMaterial)
-			if err == nil {
-				go subscribe.Send(subscribe.NewMinedBlock, block)
-			}
-
-		case confirm := <-bc.receiveConfirmCh:
-			_ = bc.engine.InsertConfirm(confirm)
-
-		case <-bc.quitCh:
 			return
 		}
 	}
@@ -196,10 +170,8 @@ func (bc *BlockChain) Flags() flag.CmdFlags {
 
 // HasBlock has special block in local
 func (bc *BlockChain) HasBlock(hash common.Hash) bool {
-	if ok, _ := bc.db.IsExistByHash(hash); ok {
-		return true
-	}
-	return false
+	ok, _ := bc.db.IsExistByHash(hash)
+	return ok
 }
 
 func (bc *BlockChain) GetBlockByHeight(height uint32) *types.Block {
@@ -242,24 +214,33 @@ func (bc *BlockChain) StableBlock() *types.Block {
 	return bc.engine.StableBlock()
 }
 
-// SubscribeNewBlock subscribe the current block update notification
-func (bc *BlockChain) SubscribeNewBlock(ch chan *types.Block) subscribe.Subscription {
-	return bc.engine.SubscribeCurrent(ch)
-}
-
-func (bc *BlockChain) MineBlock(material *consensus.BlockMaterial) {
-	bc.mineBlockCh <- material
+func (bc *BlockChain) MineBlock(txProcessTimeout int64) {
+	if atomic.LoadInt32(&bc.stopped) != 0 {
+		return
+	}
+	block, err := bc.engine.MineBlock(txProcessTimeout)
+	// broadcast
+	if err == nil {
+		go subscribe.Send(subscribe.NewMinedBlock, block)
+	}
 }
 
 // InsertBlock insert block of non-self to chain
 func (bc *BlockChain) InsertBlock(block *types.Block) error {
-	bc.receiveBlockCh <- block
-	return nil
+	if atomic.LoadInt32(&bc.stopped) != 0 {
+		return nil
+	}
+	// verify and create a new block witch filled by transaction products
+	_, err := bc.engine.InsertBlock(block)
+	return err
 }
 
-// ReceiveConfirm
+// InsertConfirm
 func (bc *BlockChain) InsertConfirm(info *network.BlockConfirmData) {
-	bc.receiveConfirmCh <- info
+	if atomic.LoadInt32(&bc.stopped) != 0 {
+		return
+	}
+	_ = bc.engine.InsertConfirm(info)
 }
 
 // InsertStableConfirms receive confirm package from net connection. The block of these confirms has been confirmed by its son block already
@@ -273,7 +254,7 @@ func (bc *BlockChain) GetCandidatesTop(hash common.Hash) []*store.Candidate {
 
 // Stop stop block chain
 func (bc *BlockChain) Stop() {
-	if !atomic.CompareAndSwapInt32(&bc.running, 0, 1) {
+	if !atomic.CompareAndSwapInt32(&bc.stopped, 0, 1) {
 		return
 	}
 	close(bc.quitCh)

@@ -4,6 +4,7 @@ package deputynode
 
 import (
 	"encoding/json"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 
 	"github.com/LemoFoundationLtd/lemochain-core/common/hexutil"
 )
@@ -13,8 +14,8 @@ var _ = (*termRecordMarshaling)(nil)
 // MarshalJSON marshals as JSON.
 func (t TermRecord) MarshalJSON() ([]byte, error) {
 	type TermRecord struct {
-		TermIndex hexutil.Uint32 `json:"termIndex"`
-		Nodes     DeputyNodes    `json:"nodes"`
+		TermIndex hexutil.Uint32    `json:"termIndex"`
+		Nodes     types.DeputyNodes `json:"nodes"`
 	}
 	var enc TermRecord
 	enc.TermIndex = hexutil.Uint32(t.TermIndex)
@@ -25,8 +26,8 @@ func (t TermRecord) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON unmarshals from JSON.
 func (t *TermRecord) UnmarshalJSON(input []byte) error {
 	type TermRecord struct {
-		TermIndex *hexutil.Uint32 `json:"termIndex"`
-		Nodes     *DeputyNodes    `json:"nodes"`
+		TermIndex *hexutil.Uint32    `json:"termIndex"`
+		Nodes     *types.DeputyNodes `json:"nodes"`
 	}
 	var dec TermRecord
 	if err := json.Unmarshal(input, &dec); err != nil {

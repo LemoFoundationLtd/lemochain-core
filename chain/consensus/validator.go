@@ -7,23 +7,22 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
-	"github.com/LemoFoundationLtd/lemochain-core/store/protocol"
 	"time"
 )
 
 // Validator verify block
 type Validator struct {
 	timeoutTime uint64
-	db          protocol.ChainDB
+	blockLoader BlockLoader
 	dm          *deputynode.Manager
 	txPool      TxPool
 	canLoader   CandidateLoader
 }
 
-func NewValidator(timeout uint64, db protocol.ChainDB, dm *deputynode.Manager, txPool TxPool, canLoader CandidateLoader) *Validator {
+func NewValidator(timeout uint64, blockLoader BlockLoader, dm *deputynode.Manager, txPool TxPool, canLoader CandidateLoader) *Validator {
 	return &Validator{
 		timeoutTime: timeout,
-		db:          db,
+		blockLoader: blockLoader,
 		dm:          dm,
 		txPool:      txPool,
 		canLoader:   canLoader,
@@ -31,8 +30,8 @@ func NewValidator(timeout uint64, db protocol.ChainDB, dm *deputynode.Manager, t
 }
 
 // verifyParentHash verify the parent block hash in header
-func verifyParentHash(block *types.Block, db protocol.ChainDB) (*types.Block, error) {
-	parent, err := db.GetBlockByHash(block.ParentHash())
+func verifyParentHash(block *types.Block, blockLoader BlockLoader) (*types.Block, error) {
+	parent, err := blockLoader.GetBlockByHash(block.ParentHash())
 	if err != nil {
 		log.Error("Consensus verify fail: can't load parent block", "ParentHash", block.ParentHash(), "err", err)
 		return nil, ErrVerifyBlockFailed
@@ -158,8 +157,8 @@ func verifyExtraData(block *types.Block) error {
 	return nil
 }
 
-// verifyMineSlot verify the miner slot of deputy node
-func verifyMineSlot(block *types.Block, parent *types.Block, timeoutTime uint64, dm *deputynode.Manager) error {
+// VerifyMineSlot verify the miner slot of deputy node
+func VerifyMineSlot(block *types.Block, parent *types.Block, timeoutTime uint64, dm *deputynode.Manager) error {
 	distance, err := GetMinerDistance(block.Height(), parent.MinerAddress(), block.MinerAddress(), dm)
 	if err != nil {
 		log.Error("Consensus verify fail: can't calculate distance", "block.Height", block.Height(), "parent.MinerAddress", parent.MinerAddress(), "block.MinerAddress", block.MinerAddress(), "err", err)
@@ -181,7 +180,7 @@ func verifyMineSlot(block *types.Block, parent *types.Block, timeoutTime uint64,
 
 // VerifyConfirmPacket verify the confirm data in block body, return valid new confirms and last confirm verification error
 func (v *Validator) VerifyConfirmPacket(height uint32, blockHash common.Hash, sigList []types.SignData) ([]types.SignData, error) {
-	block, err := v.db.GetBlockByHash(blockHash)
+	block, err := v.blockLoader.GetBlockByHash(blockHash)
 	if err != nil {
 		return nil, ErrBlockNotExist
 	}
@@ -224,7 +223,7 @@ func (v *Validator) VerifyNewConfirms(block *types.Block, sigList []types.SignDa
 // VerifyBeforeTxProcess verify the block data which has no relationship with the transaction processing result
 func (v *Validator) VerifyBeforeTxProcess(block *types.Block) error {
 	// cache parent block
-	parent, err := verifyParentHash(block, v.db)
+	parent, err := verifyParentHash(block, v.blockLoader)
 	if err != nil {
 		return err
 	}
@@ -250,7 +249,7 @@ func (v *Validator) VerifyBeforeTxProcess(block *types.Block) error {
 	if err := verifyExtraData(block); err != nil {
 		return err
 	}
-	if err := verifyMineSlot(block, parent, v.timeoutTime, v.dm); err != nil {
+	if err := VerifyMineSlot(block, parent, v.timeoutTime, v.dm); err != nil {
 		return err
 	}
 	return nil
@@ -258,15 +257,16 @@ func (v *Validator) VerifyBeforeTxProcess(block *types.Block) error {
 
 // VerifyAfterTxProcess verify the block data which computed from transactions
 func (v *Validator) VerifyAfterTxProcess(block, computedBlock *types.Block) error {
+	// verify changeLog first to print more detail if it is incorrect
+	if err := verifyChangeLog(block, computedBlock.ChangeLogs); err != nil {
+		return err
+	}
+
 	// verify block hash. It also verify the rest fields in header: VersionRoot, LogRoot, GasLimit, GasUsed
 	if computedBlock.Hash() != block.Hash() {
 		// it contains
 		log.Errorf("verify block error! oldHeader: %v, newHeader:%v", block.Header, computedBlock.Header)
 		return ErrVerifyBlockFailed
-	}
-	// verify changeLog
-	if err := verifyChangeLog(block, computedBlock.ChangeLogs); err != nil {
-		return err
 	}
 	return nil
 }
@@ -281,7 +281,7 @@ func (v *Validator) JudgeDeputy(newBlock *types.Block) bool {
 
 	isEvil := false
 	// check if the deputy mine two blocks at same height
-	v.db.IterateUnConfirms(func(node *types.Block) {
+	v.blockLoader.IterateUnConfirms(func(node *types.Block) {
 		// same height but different block
 		if node.Height() == newBlock.Height() && node.Hash() != newBlock.Hash() {
 			nodeID, err := node.SignerNodeID()

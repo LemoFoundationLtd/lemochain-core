@@ -5,30 +5,29 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
-	"github.com/LemoFoundationLtd/lemochain-core/store/protocol"
 	"math"
 	"sync"
 )
 
 // StableManager process the fork logic
 type StableManager struct {
-	db protocol.ChainDB
-	dm *deputynode.Manager
+	store StableBlockStore
+	dm    *deputynode.Manager
 
 	lock sync.Mutex
 }
 
-func NewStableManager(dm *deputynode.Manager, db protocol.ChainDB) *StableManager {
+func NewStableManager(dm *deputynode.Manager, store StableBlockStore) *StableManager {
 	dpovp := &StableManager{
-		db: db,
-		dm: dm,
+		store: store,
+		dm:    dm,
 	}
 	return dpovp
 }
 
 // StableBlock get latest stable block
 func (sm *StableManager) StableBlock() *types.Block {
-	block, err := sm.db.LoadLatestBlock()
+	block, err := sm.store.LoadLatestBlock()
 	if err != nil {
 		log.Warn("load stable block fail")
 		// We would make sure genesis is available at least. So err is not tolerable
@@ -53,15 +52,12 @@ func (sm *StableManager) UpdateStable(block *types.Block) (bool, []*types.Block,
 	}
 
 	// update stable block
-	prunedBlocks, err := sm.db.SetStableBlock(hash)
+	prunedBlocks, err := sm.store.SetStableBlock(hash)
 	if err != nil {
 		log.Errorf("SetStableBlock error. height:%d hash:%s, err:%s", block.Height(), common.ToHex(hash[:]), err.Error())
 		return false, nil, ErrSetStableBlockToDB
 	}
 	log.Infof("Stable block changes from %s to %s", oldStable.ShortString(), block.ShortString())
-
-	// This may not the latest state, but it's fine. Because deputy nodes snapshot will be used after the interim duration, it's about 1000 blocks
-	sm.updateDeputyNodes(block)
 
 	return true, prunedBlocks, nil
 }
@@ -77,14 +73,4 @@ func IsConfirmEnough(block *types.Block, dm *deputynode.Manager) bool {
 	}
 
 	return uint32(singerCount) >= dm.TwoThirdDeputyCount(block.Height())
-}
-
-// updateDeputyNodes update deputy nodes map
-func (sm *StableManager) updateDeputyNodes(block *types.Block) {
-	if deputynode.IsSnapshotBlock(block.Height()) {
-		sm.dm.SaveSnapshot(block.Height(), block.DeputyNodes)
-		log.Debug("save new term", "deputies", log.Lazy{Fn: func() string {
-			return block.DeputyNodes.String()
-		}})
-	}
 }

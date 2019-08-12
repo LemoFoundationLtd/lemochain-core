@@ -8,20 +8,21 @@ import (
 )
 
 const (
-	AddNewPeer     = "addNewPeer"
-	DeletePeer     = "deletePeer" // protocol_manager delete peer
-	SrvDeletePeer  = "delPeer"    // server delete peer
-	NewMinedBlock  = "newMinedBlock"
-	NewStableBlock = "newStableBlock"
-	NewTx          = "newTx"
-	NewConfirm     = "newConfirm"
-	FetchConfirms  = "fetchConfirm"
+	AddNewPeer      = "addNewPeer"
+	DeletePeer      = "deletePeer" // protocol_manager delete peer
+	SrvDeletePeer   = "delPeer"    // server delete peer
+	NewMinedBlock   = "newMinedBlock"
+	NewCurrentBlock = "newCurrentBlock"
+	NewStableBlock  = "newStableBlock"
+	NewTx           = "newTx"
+	NewConfirm      = "newConfirm"
+	FetchConfirms   = "fetchConfirm"
 )
 
 var (
 	ErrChType       = errors.New("error of channel type")
 	ErrDataType     = errors.New("the type of data can not match with channel")
-	ErrNotExistName = errors.New("not exist special subscription")
+	ErrNotExistName = errors.New("subscriptions not exist")
 )
 
 type CaseListItem struct {
@@ -56,8 +57,8 @@ func (r *CentralRouteSub) sub(name string, ch interface{}) error {
 	}
 
 	if item, ok := r.names[name]; ok {
-		if item.eType != chType {
-			log.Errorf("it's not allowed to setup different type of channel for name: %d", name)
+		if item.eType != chType.Elem() {
+			log.Errorf("it's not allowed to setup [%s] channel for name: %s, cause the last channel type is [%s]", chType, name, item.eType)
 			return ErrChType
 		}
 	} else {
@@ -129,7 +130,7 @@ func (r *CentralRouteSub) unSub(name string, ch interface{}) error {
 	}
 
 	for i := 0; i < len(cases); i++ {
-		if chValue == reflect.ValueOf(cases[i]) {
+		if chValue == cases[i].Chan {
 			r.names[name].caseList = append(cases[:i], cases[i+1:]...)
 			break
 		}

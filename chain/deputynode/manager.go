@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"errors"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
+	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"math"
 	"sync"
 )
@@ -20,6 +22,10 @@ var (
 	ErrQueryFutureTerm       = errors.New("can't query future term")
 )
 
+type BlockLoader interface {
+	GetBlockByHeight(height uint32) (*types.Block, error)
+}
+
 // Manager 代理节点管理器
 type Manager struct {
 	DeputyCount int // Max deputy count. Not include candidate nodes
@@ -32,12 +38,35 @@ type Manager struct {
 }
 
 // NewManager creates a new Manager. It is used to maintain term record list
-func NewManager(deputyCount int) *Manager {
-	return &Manager{
+func NewManager(deputyCount int, blockLoader BlockLoader) *Manager {
+	manager := &Manager{
 		DeputyCount:  deputyCount,
 		termList:     make([]*TermRecord, 0),
 		evilDeputies: make(map[common.Address]uint32),
 	}
+	manager.init(blockLoader)
+	return manager
+}
+
+// initDeputyNodes init deputy nodes information
+func (m *Manager) init(blockLoader BlockLoader) {
+	snapshotHeight := uint32(0)
+	for ; ; snapshotHeight += params.TermDuration {
+		block, err := blockLoader.GetBlockByHeight(snapshotHeight)
+		if err != nil {
+			if err == store.ErrNotExist {
+				break
+			}
+			log.Errorf("Load snapshot block error: %v", err)
+			panic(err)
+		}
+
+		m.SaveSnapshot(snapshotHeight, block.DeputyNodes)
+	}
+
+	lastSnapshotHeight := snapshotHeight - params.TermDuration
+	currentDeputyCount := m.GetDeputiesCount(lastSnapshotHeight + params.TermDuration - 1)
+	log.Info("Deputy manager is ready", "lastSnapshotHeight", lastSnapshotHeight, "deputyCount", currentDeputyCount)
 }
 
 // IsEvilDeputyNode currentHeight is current block height
@@ -62,7 +91,7 @@ func (m *Manager) PutEvilDeputyNode(minerAddress common.Address, blockHeight uin
 }
 
 // SaveSnapshot add deputy nodes record by snapshot block data
-func (m *Manager) SaveSnapshot(snapshotHeight uint32, nodes DeputyNodes) {
+func (m *Manager) SaveSnapshot(snapshotHeight uint32, nodes types.DeputyNodes) {
 	newTerm := NewTermRecord(snapshotHeight, nodes)
 
 	m.lock.Lock()
@@ -92,6 +121,9 @@ func (m *Manager) SaveSnapshot(snapshotHeight uint32, nodes DeputyNodes) {
 			m.termList = m.termList[:newTerm.TermIndex+1]
 		}
 	}
+	log.Debug("save new term", "deputies", log.Lazy{Fn: func() string {
+		return nodes.String()
+	}})
 }
 
 // GetTermByHeight 通过height获取对应的任期信息
@@ -115,11 +147,11 @@ func (m *Manager) GetTermByHeight(height uint32) (*TermRecord, error) {
 }
 
 // GetDeputiesByHeight 通过height获取对应的节点列表
-func (m *Manager) GetDeputiesByHeight(height uint32) DeputyNodes {
+func (m *Manager) GetDeputiesByHeight(height uint32) types.DeputyNodes {
 	term, err := m.GetTermByHeight(height)
 	if err != nil {
 		// panic(err)
-		return DeputyNodes{}
+		return types.DeputyNodes{}
 	}
 	return term.GetDeputies(m.DeputyCount)
 }
@@ -137,7 +169,7 @@ func (m *Manager) TwoThirdDeputyCount(height uint32) uint32 {
 }
 
 // GetDeputyByAddress 获取address对应的节点
-func (m *Manager) GetDeputyByAddress(height uint32, addr common.Address) *DeputyNode {
+func (m *Manager) GetDeputyByAddress(height uint32, addr common.Address) *types.DeputyNode {
 	nodes := m.GetDeputiesByHeight(height)
 	for _, node := range nodes {
 		if node.MinerAddress == addr {
@@ -148,7 +180,7 @@ func (m *Manager) GetDeputyByAddress(height uint32, addr common.Address) *Deputy
 }
 
 // GetDeputyByNodeID 根据nodeID获取对应的节点
-func (m *Manager) GetDeputyByNodeID(height uint32, nodeID []byte) *DeputyNode {
+func (m *Manager) GetDeputyByNodeID(height uint32, nodeID []byte) *types.DeputyNode {
 	nodes := m.GetDeputiesByHeight(height)
 	for _, node := range nodes {
 		if bytes.Compare(node.NodeID, nodeID) == 0 {
@@ -159,7 +191,7 @@ func (m *Manager) GetDeputyByNodeID(height uint32, nodeID []byte) *DeputyNode {
 }
 
 // GetMyDeputyInfo 获取自己在某一届高度的共识节点信息
-func (m *Manager) GetMyDeputyInfo(height uint32) *DeputyNode {
+func (m *Manager) GetMyDeputyInfo(height uint32) *types.DeputyNode {
 	return m.GetDeputyByNodeID(height, GetSelfNodeID())
 }
 

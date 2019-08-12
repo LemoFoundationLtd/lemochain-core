@@ -91,7 +91,7 @@ type blockInfo struct {
 	gasLimit    uint64
 	time        uint32
 	deputyRoot  []byte
-	deputyNodes deputynode.DeputyNodes
+	deputyNodes types.DeputyNodes
 }
 
 func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
@@ -245,7 +245,7 @@ func (engine *EngineTestForMiner) VerifyAfterTxProcess(block, computedBlock *typ
 func (engine *EngineTestForMiner) Finalize(height uint32, am *account.Manager) error {
 	return nil
 }
-func (engine *EngineTestForMiner) Seal(header *types.Header, txProduct *account.TxsProduct, confirms []types.SignData, dNodes deputynode.DeputyNodes) (*types.Block, error) {
+func (engine *EngineTestForMiner) Seal(header *types.Header, txProduct *account.TxsProduct, confirms []types.SignData, dNodes types.DeputyNodes) (*types.Block, error) {
 	return types.NewBlock(header, txProduct.Txs, txProduct.ChangeLogs), nil
 }
 func (engine *EngineTestForMiner) VerifyConfirmPacket(height uint32, blockHash common.Hash, sigList []types.SignData) error {
@@ -264,13 +264,14 @@ func (engine *EngineTestForMiner) CanBeStable(height uint32, confirmCount int) b
 func newBlockChain() (*chain.BlockChain, chan *types.Block, error) {
 	chainID := uint16(99)
 	db := store.NewChainDataBase(GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
-	genesis := chain.DefaultGenesisBlock()
+	genesis := chain.DefaultGenesisConfig()
 	chain.SetupGenesisBlock(db, genesis)
 
 	dm := deputynode.NewManager(5)
 	dm.SaveSnapshot(0, chain.DefaultDeputyNodes)
 	var engine EngineTestForMiner
 	ch := make(chan *types.Block)
+	// TODO defer close it
 	blockChain, err := chain.NewBlockChain(chainID, &engine, dm, db, nil)
 	if err != nil {
 		return nil, nil, err
@@ -367,7 +368,7 @@ func TestMine_GetSleepNotSelf(t *testing.T) {
 func TestMiner_GetSleep1Deputy(t *testing.T) {
 	miner, err := newMiner(Nodes[0].privateKey)
 	// overwrite existed deputy nodes by only one node
-	miner.chain.DeputyManager().SaveSnapshot(0, deputynode.DeputyNodes{chain.DefaultDeputyNodes[0]})
+	miner.chain.DeputyManager().SaveSnapshot(0, types.DeputyNodes{chain.DefaultDeputyNodes[0]})
 	assert.NoError(t, err)
 	defer miner.chain.Db().Close()
 

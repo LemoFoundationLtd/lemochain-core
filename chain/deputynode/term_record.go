@@ -2,6 +2,7 @@ package deputynode
 
 import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/hexutil"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
@@ -15,15 +16,15 @@ type DeputySalary struct {
 
 //go:generate gencodec -type TermRecord --field-override termRecordMarshaling -out gen_term_record_json.go
 type TermRecord struct {
-	TermIndex uint32      `json:"termIndex"` // start from 0
-	Nodes     DeputyNodes `json:"nodes"`     // include deputy nodes and candidate nodes
+	TermIndex uint32            `json:"termIndex"` // start from 0
+	Nodes     types.DeputyNodes `json:"nodes"`     // include deputy nodes and candidate nodes
 }
 
 type termRecordMarshaling struct {
 	TermIndex hexutil.Uint32
 }
 
-func NewTermRecord(snapshotHeight uint32, nodes DeputyNodes) *TermRecord {
+func NewTermRecord(snapshotHeight uint32, nodes types.DeputyNodes) *TermRecord {
 	// check snapshot block height
 	if snapshotHeight%params.TermDuration != 0 {
 		log.Error("Invalid snapshot block height", "height", snapshotHeight)
@@ -54,7 +55,7 @@ func NewTermRecord(snapshotHeight uint32, nodes DeputyNodes) *TermRecord {
 }
 
 // GetDeputies return deputy nodes. They are top items in t.Nodes
-func (t *TermRecord) GetDeputies(count int) DeputyNodes {
+func (t *TermRecord) GetDeputies(count int) types.DeputyNodes {
 	if len(t.Nodes) > count {
 		return t.Nodes[:count]
 	} else {
