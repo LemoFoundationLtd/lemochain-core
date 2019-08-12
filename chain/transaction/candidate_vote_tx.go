@@ -144,7 +144,7 @@ func InitCandidateProfile(registerAcc types.AccountAccessor, IncomeAddress, Node
 }
 
 // registerCandidate 注册候选节点处理逻辑
-func (c *CandidateVoteEnv) registerCandidate(pledgeAmount *big.Int, register common.Address, txBuildProfile types.Profile) error {
+func (c *CandidateVoteEnv) registerCandidate(pledgeAmount *big.Int, register common.Address, p types.Profile) error {
 	// 1. 判断注册的押金必须要大于等于规定的押金限制(500万LEMO)
 	if pledgeAmount.Cmp(params.RegisterCandidatePledgeAmount) < 0 {
 		return ErrInsufficientPledgeAmount
@@ -158,7 +158,7 @@ func (c *CandidateVoteEnv) registerCandidate(pledgeAmount *big.Int, register com
 	registerAcc := c.am.GetAccount(register)
 
 	// 设置candidate info
-	InitCandidateProfile(registerAcc, txBuildProfile[types.CandidateKeyIncomeAddress], txBuildProfile[types.CandidateKeyNodeID], txBuildProfile[types.CandidateKeyHost], txBuildProfile[types.CandidateKeyPort], txBuildProfile[types.CandidateKeyIntroduction], pledgeAmount)
+	InitCandidateProfile(registerAcc, p[types.CandidateKeyIncomeAddress], p[types.CandidateKeyNodeID], p[types.CandidateKeyHost], p[types.CandidateKeyPort], p[types.CandidateKeyIntroduction], pledgeAmount)
 
 	// cash pledge
 	c.Transfer(c.am, register, params.CandidateDepositAddress, pledgeAmount)
