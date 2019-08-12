@@ -40,19 +40,14 @@ type candidateInfoMarshaling struct {
 }
 
 func (info *CandidateInfo) check() error {
-	if info.MinerAddress == (common.Address{}) {
-		log.Errorf("Incorrect field: 'MinerAddress'. value: %s", info.MinerAddress.String())
-		return types.ErrMinerAddressInvalid
-	}
-	if len(info.NodeID) != 64 {
-		log.Errorf("Incorrect field: 'NodeID'. value: %s", common.ToHex(info.NodeID))
-		return types.ErrNodeIDInvalid
-	}
-	if len(info.Introduction) > 2048 {
-		log.Errorf("Incorrect field: 'Introduction'. value: %s", info.Introduction)
-		return types.ErrIntroductionInvalid
-	}
-	return nil
+	profile := make(types.Profile)
+	profile[types.CandidateKeyIncomeAddress] = info.IncomeAddress.String()
+	profile[types.CandidateKeyNodeID] = string(info.NodeID)
+	profile[types.CandidateKeyHost] = info.Host
+	profile[types.CandidateKeyPort] = info.Port
+	profile[types.CandidateKeyIntroduction] = info.Introduction
+	// check
+	return transaction.CheckRegisterTxProfile(profile)
 }
 
 var (

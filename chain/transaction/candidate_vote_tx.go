@@ -11,6 +11,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"math/big"
+	"strconv"
 )
 
 var (
@@ -42,8 +43,8 @@ func NewCandidateVoteEnv(am *account.Manager) *CandidateVoteEnv {
 	}
 }
 
-// checkRegisterTxProfile
-func checkRegisterTxProfile(profile types.Profile) error {
+// CheckRegisterTxProfile
+func CheckRegisterTxProfile(profile types.Profile) error {
 	// check income address
 	if strIncomeAddress, ok := profile[types.CandidateKeyIncomeAddress]; ok {
 		if !common.CheckLemoAddress(strIncomeAddress) {
@@ -51,6 +52,7 @@ func checkRegisterTxProfile(profile types.Profile) error {
 			return ErrInvalidAddress
 		}
 	}
+
 	// check nodeId
 	if nodeId, ok := profile[types.CandidateKeyNodeID]; ok {
 		nodeIdLength := len(nodeId)
@@ -64,7 +66,7 @@ func checkRegisterTxProfile(profile types.Profile) error {
 			return ErrInvalidNodeId
 		}
 	}
-
+	// check host
 	if host, ok := profile[types.CandidateKeyHost]; ok {
 		hostLength := len(host)
 		if hostLength > MaxDeputyHostLength {
@@ -72,6 +74,17 @@ func checkRegisterTxProfile(profile types.Profile) error {
 			return ErrInvalidHost
 		}
 	}
+	// check port
+	if port, ok := profile[types.CandidateKeyPort]; ok {
+		if portNum, err := strconv.Atoi(port); err == nil {
+			if portNum > 65535 || portNum < 1024 {
+				return ErrInvalidPort
+			}
+		} else {
+			return err
+		}
+	}
+
 	// check introduction length
 	if introduction, ok := profile[types.CandidateKeyIntroduction]; ok {
 		if len(introduction) > MaxIntroductionLength {
@@ -92,7 +105,7 @@ func buildProfile(tx *types.Transaction) (types.Profile, error) {
 		return nil, err
 	}
 	// check nodeID host and incomeAddress
-	if err = checkRegisterTxProfile(profile); err != nil {
+	if err = CheckRegisterTxProfile(profile); err != nil {
 		return nil, err
 	}
 	// Candidate node information

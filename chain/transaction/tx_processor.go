@@ -32,6 +32,7 @@ var (
 	ErrInvalidTxInBlock          = errors.New("block contains invalid transaction")
 	ErrInvalidGenesis            = errors.New("can't process genesis block")
 	ErrInvalidHost               = errors.New("the length of host field in transaction is out of max length limit")
+	ErrInvalidPort               = errors.New("invalid port")
 	ErrInvalidIntroduction       = errors.New("the length of introduction field in transaction is out of max length limit")
 	ErrInvalidAddress            = errors.New("invalid address")
 	ErrInvalidNodeId             = errors.New("invalid nodeId")
