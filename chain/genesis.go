@@ -97,8 +97,8 @@ var (
 	}
 )
 
-// buildDeputyNodesByCandidateInfo 通过candidate info 来构建出deputy node
-func buildDeputyNodesByCandidateInfo(DeputyNodesInfo []*CandidateInfo) types.DeputyNodes {
+// buildDeputyNodes 通过candidate info 来构建出deputy node
+func buildDeputyNodes(DeputyNodesInfo []*CandidateInfo) types.DeputyNodes {
 	deputyNodes := make(types.DeputyNodes, 0)
 	for i, info := range DeputyNodesInfo {
 		node := &types.DeputyNode{
@@ -207,7 +207,7 @@ func (g *Genesis) ToBlock(am *account.Manager) (*types.Block, error) {
 	// 注册第一届候选节点info
 	g.initCandidateListInfo(am)
 	// register candidate node for first term deputy nodes
-	deputyNodes := buildDeputyNodesByCandidateInfo(g.DeputyNodesInfo)
+	deputyNodes := buildDeputyNodes(g.DeputyNodesInfo)
 	err := am.Finalise()
 	if err != nil {
 		return nil, err

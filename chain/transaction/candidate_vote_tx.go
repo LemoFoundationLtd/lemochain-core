@@ -129,6 +129,7 @@ func buildProfile(tx *types.Transaction) (types.Profile, error) {
 	return profile, nil
 }
 
+// InitCandidateProfile
 func InitCandidateProfile(registerAcc types.AccountAccessor, IncomeAddress, NodeID, Host, Port, Introduction string, PledgeAmount *big.Int) {
 	// 设置candidate info
 	newProfile := make(map[string]string, 7)
