@@ -14,9 +14,21 @@ import (
 )
 
 const (
-	host           = "cn.ntp.org.cn:123"    // ntp服务器
 	driftThreshold = 500 * time.Millisecond // 允许的时间误差范围
 )
+
+var ntpHosts = []string{
+	"cn.ntp.org.cn:123",  // 大陆
+	"hk.ntp.org.cn:123",  // 香港
+	"tw.ntp.org.cn:123",  // 台湾
+	"us.ntp.org.cn:123",  // 美国
+	"sgp.ntp.org.cn:123", // 新加坡
+	"kr.ntp.org.cn:123",  // 韩国
+	"jp.ntp.org.cn:123",  // 日本
+	"de.ntp.org.cn:123",  // 德国
+	"ina.ntp.org.cn:123", // 印度尼西亚
+	"pool.ntp.org:123",   // 法国
+}
 
 var (
 	ErrModifyPermission = errors.New("only the time modification for Linux system is supported")
@@ -50,19 +62,29 @@ type Packet struct {
 // TimeProof 同步时间并进行修改系统时间
 func TimeProof() error {
 	log.Info("Start system time proof.")
-	measurements := 10 // 获取ntp服务器上的时间的次数
+	measurements := 12 // 获取ntp服务器上的时间的次数
 	diffs := make([]time.Duration, 0, measurements)
-
-	for i := 0; i < measurements+2; i++ {
+	index := 0
+	dialHost := ntpHosts[index] // 从第一个ntp服务器开始
+	for i := 0; i < measurements; {
 		// 拨号并获取本地时间和标准时间的差值
-		diffTime, err := dialNtpServerAndGetDiffTime(host)
+		diffTime, err := dialNtpServerAndGetDiffTime(dialHost)
 		if err != nil {
-			return err
+			index++ // 拨号失败则换下一个ntp服务器进行拨号
+			if index < len(ntpHosts) {
+				dialHost = ntpHosts[index]
+				log.Warnf("Dial ntp again. dialHost: %s", dialHost)
+
+			} else {
+				return err
+			}
+			continue
 		}
 		diffs = append(diffs, diffTime)
+		i++
 	}
 	// 计算最终的时间差
-	finalDiff := calcDiffTime(durationSlice(diffs), measurements)
+	finalDiff := calcDiffTime(durationSlice(diffs))
 	// 如果差值在允许的误差范围之内，则不用修改系统时间
 	if finalDiff > -driftThreshold && finalDiff < driftThreshold {
 		return nil
@@ -119,23 +141,26 @@ func dialNtpServerAndGetDiffTime(host string) (time.Duration, error) {
 }
 
 // calcDiffTime 计算出最终的时间差
-func calcDiffTime(diffs durationSlice, measurements int) time.Duration {
+func calcDiffTime(diffs durationSlice) time.Duration {
 	// 排序
 	sort.Sort(diffs)
-	// 去掉最高位和最低位求平均值
+	// 去掉最高位和最低位求和
 	var finalDiff time.Duration = 0
 	sum := diffs[1]
 	for i := 2; i < len(diffs)-1; i++ {
 		next := sum + diffs[i]
+		// 判断时间和是否会溢出
 		if sum^next < 0 { // 符号相反，说明溢出了
 			finalDiff = diffs[1]
 			break
 		}
 		sum = next
 	}
-
+	// 去掉最高位和最低位的有效长度值
+	effectLength := len(diffs) - 2
+	// 求平均值
 	if finalDiff == time.Duration(0) {
-		finalDiff = sum / time.Duration(measurements)
+		finalDiff = sum / time.Duration(effectLength)
 	}
 	return finalDiff
 }

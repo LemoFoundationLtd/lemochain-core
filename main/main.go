@@ -120,7 +120,7 @@ func makeFullNode(ctx *cli.Context) *node.Node {
 	initLog(ctx)
 	// 校对系统时间,目前只针对linux系统
 	if err := ntp.TimeProof(); err != nil {
-		log.Errorf("Time proof failed. Error details:%vPlease synchronize the system time correctly before starting the glemo", err)
+		log.Errorf("Time proof failed. Error details:%v. Please synchronize the system time correctly before starting the glemo", err)
 		if runtime.GOOS == "linux" {
 			panic(err)
 		}
