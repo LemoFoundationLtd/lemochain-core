@@ -65,7 +65,10 @@ func CheckRegisterTxProfile(profile types.Profile) error {
 			log.Errorf("Invalid nodeId, nodeId = %s", nodeId)
 			return ErrInvalidNodeId
 		}
+	} else {
+		return ErrOfRegisterNodeID
 	}
+
 	// check host
 	if host, ok := profile[types.CandidateKeyHost]; ok {
 		hostLength := len(host)
@@ -73,7 +76,10 @@ func CheckRegisterTxProfile(profile types.Profile) error {
 			log.Errorf("The length of host field in transaction is out of max length limit. host length = %d. max length limit = %d. ", hostLength, MaxDeputyHostLength)
 			return ErrInvalidHost
 		}
+	} else {
+		return ErrOfRegisterHost
 	}
+
 	// check port
 	if port, ok := profile[types.CandidateKeyPort]; ok {
 		if portNum, err := strconv.Atoi(port); err == nil {
@@ -81,8 +87,11 @@ func CheckRegisterTxProfile(profile types.Profile) error {
 				return ErrInvalidPort
 			}
 		} else {
-			return err
+			log.Errorf("Strconv.Atoi(port) error. port: %s, error: %v", port, err)
+			return ErrInvalidPort
 		}
+	} else {
+		return ErrOfRegisterPort
 	}
 
 	// check introduction length
@@ -107,16 +116,6 @@ func buildProfile(tx *types.Transaction) (types.Profile, error) {
 	// check nodeID host and incomeAddress
 	if err = CheckRegisterTxProfile(profile); err != nil {
 		return nil, err
-	}
-	// Candidate node information
-	if _, ok := profile[types.CandidateKeyNodeID]; !ok {
-		return nil, ErrOfRegisterNodeID
-	}
-	if _, ok := profile[types.CandidateKeyHost]; !ok {
-		return nil, ErrOfRegisterHost
-	}
-	if _, ok := profile[types.CandidateKeyPort]; !ok {
-		return nil, ErrOfRegisterPort
 	}
 	if _, ok := profile[types.CandidateKeyIsCandidate]; !ok {
 		profile[types.CandidateKeyIsCandidate] = params.IsCandidateNode
