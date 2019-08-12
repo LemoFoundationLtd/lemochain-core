@@ -11,6 +11,7 @@ import (
 var (
 	invalidTxMeter           = metrics.NewMeter(metrics.InvalidTx_meterName)        // 执行失败的交易的频率
 	txpoolTotalNumberCounter = metrics.NewCounter(metrics.TxpoolNumber_counterName) // 交易池中剩下的总交易数量
+	blockTradeAmount         = common.Lemo2Mo("500000")                             // 如果交易的amount 大于此值则进行事件通知
 )
 
 type TxPool struct {
@@ -163,6 +164,9 @@ func (pool *TxPool) RecvTx(tx *types.Transaction) bool {
 		pool.RecentTxs.RecvTx(tx)
 		pool.PendingTxs.Push(tx)
 		txpoolTotalNumberCounter.Inc(1) // 记录收到一笔交易
+		if tx.Amount().Cmp(blockTradeAmount) >= 0 {
+			log.Eventf(log.TxEvent, "Block trade appear. %s send %s to %s", tx.From, tx.Amount().String(), tx.To)
+		}
 		return true
 	}
 }

@@ -21,3 +21,12 @@ func TestWarn(t *testing.T) {
 
 	// Crit("critical error")
 }
+
+func TestEventf(t *testing.T) {
+	Setup(LevelWarn, false, false)
+	for i := 0; i < 10; i++ {
+		Eventf(TxEvent, "test log %d", i)
+		Event(TxEvent, "test")
+	}
+
+}

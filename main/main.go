@@ -165,9 +165,9 @@ func startNode(ctx *cli.Context, n *node.Node) {
 	go metrics.CollectProcessMetrics(3 * time.Second)
 	// 启动告警系统
 	go metrics.NewAlarmManager().Start()
-
+	// 监听主程序中断请求
 	go interrupt(n.Stop)
-
+	// 如果启动参数中配置了 --mine true 则自动启动mining服务
 	if ctx.IsSet(node.AutoMineFlag.Name) {
 		if err := n.StartMining(); err != nil {
 			log.Errorf("Start mining failed: %v", err)
