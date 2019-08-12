@@ -204,12 +204,77 @@ func (am *Manager) logGrouping() map[common.Address]types.ChangeLogSlice {
 	return logsByAccount
 }
 
+// createRootLog
+func (am *Manager) createRootLog(account *SafeAccount) error {
+
+	oldStorageRoot := account.rawAccount.GetStorageRoot()
+	oldAssetCodeRoot := account.rawAccount.GetAssetCodeRoot()
+	oldAssetIdRoot := account.rawAccount.GetAssetIdRoot()
+	oldEquityRoot := account.rawAccount.GetEquityRoot()
+
+	// update account and contract storage
+	if err := account.rawAccount.Finalise(); err != nil {
+		return err
+	}
+
+	newStorageRoot := account.rawAccount.GetStorageRoot()
+	newAssetCodeRoot := account.rawAccount.GetAssetCodeRoot()
+	newAssetIdRoot := account.rawAccount.GetAssetIdRoot()
+	newEquityRoot := account.rawAccount.GetEquityRoot()
+
+	if newStorageRoot != oldStorageRoot {
+		log := NewStorageRootLog(account.GetAddress(), am.processor, oldStorageRoot, newStorageRoot)
+		am.processor.PushChangeLog(log)
+	}
+
+	if newAssetCodeRoot != oldAssetCodeRoot {
+		log, _ := NewAssetCodeRootLog(account.GetAddress(), am.processor, oldAssetCodeRoot, newAssetCodeRoot)
+		am.processor.PushChangeLog(log)
+	}
+
+	if newAssetIdRoot != oldAssetIdRoot {
+		log, _ := NewAssetIdRootLog(account.GetAddress(), am.processor, oldAssetIdRoot, newAssetIdRoot)
+		am.processor.PushChangeLog(log)
+	}
+
+	if newEquityRoot != oldEquityRoot {
+		log, _ := NewEquityRootLog(account.GetAddress(), am.processor, oldEquityRoot, newEquityRoot)
+		am.processor.PushChangeLog(log)
+	}
+	return nil
+}
+
+// updateVersion
+func (am *Manager) updateVersion(logs types.ChangeLogSlice, account *SafeAccount) error {
+	currentHeight := am.currentBlockHeight()
+	versionTrie := am.getVersionTrie()
+	eventIndex := uint(0)
+	for _, changeLog := range logs {
+		if changeLog.LogType == AddEventLog {
+			newVal := changeLog.NewVal.(*types.Event)
+			newVal.Index = eventIndex
+			eventIndex = eventIndex + 1
+		}
+
+		nextVersion := account.rawAccount.GetVersion(changeLog.LogType) + 1
+
+		// set version record in rawAccount.data.NewestRecords
+		changeLog.Version = nextVersion
+		account.rawAccount.SetVersion(changeLog.LogType, nextVersion, currentHeight)
+
+		// update version trie
+		k := versionTrieKey(account.GetAddress(), changeLog.LogType)
+		if err := versionTrie.TryUpdate(k, big.NewInt(int64(changeLog.Version)).Bytes()); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Finalise finalises the state, clears the change caches and update tries.
 func (am *Manager) Finalise() error {
 	logsByAccount := am.logGrouping()
 
-	versionTrie := am.getVersionTrie()
-	currentHeight := am.currentBlockHeight()
 	// 排序
 	addressList := make(common.AddressSlice, 0, len(am.accountCache))
 	for addr := range am.accountCache {
@@ -223,63 +288,14 @@ func (am *Manager) Finalise() error {
 		if len(logsByAccount[account.GetAddress()]) <= 0 {
 			continue
 		}
-
-		oldStorageRoot := account.rawAccount.GetStorageRoot()
-		oldAssetCodeRoot := account.rawAccount.GetAssetCodeRoot()
-		oldAssetIdRoot := account.rawAccount.GetAssetIdRoot()
-		oldEquityRoot := account.rawAccount.GetEquityRoot()
-
-		// update account and contract storage
-		if err := account.rawAccount.Finalise(); err != nil {
+		// 更新root log
+		if err := am.createRootLog(account); err != nil {
 			return err
 		}
 
-		newStorageRoot := account.rawAccount.GetStorageRoot()
-		newAssetCodeRoot := account.rawAccount.GetAssetCodeRoot()
-		newAssetIdRoot := account.rawAccount.GetAssetIdRoot()
-		newEquityRoot := account.rawAccount.GetEquityRoot()
-
-		if newStorageRoot != oldStorageRoot {
-			log := NewStorageRootLog(account.GetAddress(), am.processor, oldStorageRoot, newStorageRoot)
-			am.processor.PushChangeLog(log)
-		}
-
-		if newAssetCodeRoot != oldAssetCodeRoot {
-			log, _ := NewAssetCodeRootLog(account.GetAddress(), am.processor, oldAssetCodeRoot, newAssetCodeRoot)
-			am.processor.PushChangeLog(log)
-		}
-
-		if newAssetIdRoot != oldAssetIdRoot {
-			log, _ := NewAssetIdRootLog(account.GetAddress(), am.processor, oldAssetIdRoot, newAssetIdRoot)
-			am.processor.PushChangeLog(log)
-		}
-
-		if newEquityRoot != oldEquityRoot {
-			log, _ := NewEquityRootLog(account.GetAddress(), am.processor, oldEquityRoot, newEquityRoot)
-			am.processor.PushChangeLog(log)
-		}
-
 		logs := logsByAccount[account.GetAddress()]
-		eventIndex := uint(0)
-		for _, changeLog := range logs {
-			if changeLog.LogType == AddEventLog {
-				newVal := changeLog.NewVal.(*types.Event)
-				newVal.Index = eventIndex
-				eventIndex = eventIndex + 1
-			}
-
-			nextVersion := account.rawAccount.GetVersion(changeLog.LogType) + 1
-
-			// set version record in rawAccount.data.NewestRecords
-			changeLog.Version = nextVersion
-			account.rawAccount.SetVersion(changeLog.LogType, nextVersion, currentHeight)
-
-			// update version trie
-			k := versionTrieKey(account.GetAddress(), changeLog.LogType)
-			if err := versionTrie.TryUpdate(k, big.NewInt(int64(changeLog.Version)).Bytes()); err != nil {
-				return err
-			}
-		}
+		// 更新change log的版本号
+		am.updateVersion(logs, account)
 	}
 	return nil
 }
