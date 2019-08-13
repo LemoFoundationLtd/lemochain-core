@@ -253,14 +253,13 @@ func (tx *Transaction) Hash() common.Hash {
 	if hash := tx.hash.Load(); hash != nil {
 		return hash.(common.Hash)
 	}
-	// 箱子交易类型的hash特殊处理
-	if tx.Type() == params.BoxTx {
-		if box, err := GetBox(tx.data); err != nil {
 
-		}
+	hashData, err := getHashData(tx)
+	if err != nil {
+		return common.Hash{}
 	}
 
-	v := rlpHash([]interface{}{
+	result := rlpHash([]interface{}{
 		tx.Type(),
 		tx.Version(),
 		tx.ChainID(),
@@ -271,15 +270,43 @@ func (tx *Transaction) Hash() common.Hash {
 		tx.data.GasPrice,
 		tx.data.GasLimit,
 		tx.data.Amount,
-		tx.data.Data,
+		hashData,
 		tx.data.Expiration,
 		tx.data.Message,
 		tx.data.Sigs,
 		tx.data.GasPayerSigs,
 	})
 
-	tx.hash.Store(v)
-	return v
+	tx.hash.Store(result)
+	return result
+}
+
+// getHashData
+func getHashData(tx *Transaction) (interface{}, error) {
+	if tx.Type() == params.BoxTx {
+		box, err := GetBox(tx.Data())
+		if err != nil {
+			log.Errorf("Get box tx sign hash error. err: %v", err)
+			return common.Hash{}, err
+		}
+		return calcBoxSubTxHashSet(box.SubTxList), nil
+	} else {
+		return tx.data.Data, nil
+	}
+}
+
+// calcBoxSubTxHashSet 计算子交易的hash集合,返回对集合的hash值
+func calcBoxSubTxHashSet(subTxList Transactions) common.Hash {
+	if len(subTxList) == 0 {
+		return common.Hash{}
+	}
+	// 计算子交易的交易hash集合
+	subTxHashSet := make([]common.Hash, 0, len(subTxList))
+	for _, subTx := range subTxList {
+		subTxHashSet = append(subTxHashSet, subTx.Hash())
+	}
+	// 对子交易的交易hash集合进行hash 作为计算box交易hash 的data
+	return rlpHash(subTxHashSet)
 }
 
 // Cost returns amount + gasprice * gaslimit.
