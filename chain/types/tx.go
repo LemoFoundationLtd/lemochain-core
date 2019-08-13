@@ -168,7 +168,7 @@ func (tx *Transaction) DecodeRLP(s *rlp.Stream) error {
 	return err
 }
 
-// MarshalJSON encodes the lemoClient RPC transaction format.
+// MarshalJSON encodes the client RPC transaction format.
 func (tx *Transaction) MarshalJSON() ([]byte, error) {
 	hash := tx.Hash()
 	data := tx.data
@@ -176,7 +176,7 @@ func (tx *Transaction) MarshalJSON() ([]byte, error) {
 	return data.MarshalJSON()
 }
 
-// UnmarshalJSON decodes the lemoClient RPC transaction format.
+// UnmarshalJSON decodes the client RPC transaction format.
 func (tx *Transaction) UnmarshalJSON(input []byte) error {
 	var dec txdata
 	if err := dec.UnmarshalJSON(input); err != nil {

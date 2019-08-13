@@ -100,10 +100,10 @@ func (c *Console) init(chainID uint16) error {
 	if err := c.jsre.Compile("babel-polyfill.js", jsre.BabelPolyfillJS); err != nil {
 		return fmt.Errorf("babel-polyfill.js: %v", err)
 	}
-	if err := c.jsre.Compile("lemo-client.js", jsre.LemoClientJS); err != nil {
-		return fmt.Errorf("lemo-client.js: %v", err)
+	if err := c.jsre.Compile("lemo-core-sdk.js", jsre.LemoCoreSdkJS); err != nil {
+		return fmt.Errorf("lemo-core-sdk.js: %v", err)
 	}
-	if _, err := c.jsre.Run("var lemo = new LemoClient(lemoConfig);"); err != nil {
+	if _, err := c.jsre.Run("var lemo = new LemoCore(lemoConfig);"); err != nil {
 		return fmt.Errorf("lemo lemoConfig: %v", err)
 	}
 	if _, err := c.jsre.Run("BigNumber = lemo.BigNumber;"); err != nil {
@@ -135,12 +135,12 @@ func (c *Console) Welcome() {
 	c.jsre.Run(`Promise.all([
 		lemo.getNodeVersion(),
 		lemo.mine.getMiner(),
-		lemo.getNewestUnstableBlock(),
+		lemo.getNewestUnstableBlock(false),
 		lemo.getNewestBlock(false)
 	]).then(function(results) {
 		var msg = [
 			"node: v" + results[0],
-			"sdk: v" + lemo.SDK_VERSION,
+			"sdk: v" + LemoCore.SDK_VERSION,
 			"minerAddress: " + results[1],
 			"current block: " + results[2].header.height + " " + results[2].header.hash + " (" + new Date(1000 * results[2].header.timestamp).toLocaleString() + ")",
 			"latest stable block: " + results[3].header.height + " " + results[3].header.hash + " (" + new Date(1000 * results[3].header.timestamp).toLocaleString() + ")"
