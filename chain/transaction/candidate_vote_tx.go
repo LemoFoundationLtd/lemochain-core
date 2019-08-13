@@ -55,7 +55,7 @@ func CheckRegisterTxProfile(profile types.Profile) error {
 
 	// check nodeId
 	if nodeId, ok := profile[types.CandidateKeyNodeID]; ok {
-		nodeIdLength := len(nodeId)
+		nodeIdLength := len(common.FromHex(nodeId)) // nodeId转换为[]byte始终为64位
 		if nodeIdLength != StandardNodeIdLength {
 			log.Errorf("The nodeId length [%d] is not equal the standard length [%d] ", nodeIdLength, StandardNodeIdLength)
 			return ErrInvalidNodeId

@@ -42,7 +42,7 @@ type candidateInfoMarshaling struct {
 func (info *CandidateInfo) check() error {
 	profile := make(types.Profile)
 	profile[types.CandidateKeyIncomeAddress] = info.IncomeAddress.String()
-	profile[types.CandidateKeyNodeID] = string(info.NodeID)
+	profile[types.CandidateKeyNodeID] = common.ToHex(info.NodeID)
 	profile[types.CandidateKeyHost] = info.Host
 	profile[types.CandidateKeyPort] = info.Port
 	profile[types.CandidateKeyIntroduction] = info.Introduction
