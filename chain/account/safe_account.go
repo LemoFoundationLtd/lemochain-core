@@ -94,12 +94,12 @@ func NewSafeAccount(processor *LogProcessor, account *Account) *SafeAccount {
 	}
 }
 
-// MarshalJSON encodes the lemoClient RPC safeAccount format.
+// MarshalJSON encodes the client RPC safeAccount format.
 func (a *SafeAccount) MarshalJSON() ([]byte, error) {
 	return a.rawAccount.MarshalJSON()
 }
 
-// UnmarshalJSON decodes the lemoClient RPC safeAccount format.
+// UnmarshalJSON decodes the client RPC safeAccount format.
 func (a *SafeAccount) UnmarshalJSON(input []byte) error {
 	var dec Account
 	if err := dec.UnmarshalJSON(input); err != nil {

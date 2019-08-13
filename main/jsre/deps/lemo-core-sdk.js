@@ -1,7 +1,7 @@
 (function (global, factory) {
 	typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
 	typeof define === 'function' && define.amd ? define(factory) :
-	(global = global || self, global.LemoClient = factory());
+	(global = global || self, global.LemoCore = factory());
 }(this, function () { 'use strict';
 
 	var commonjsGlobal = typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
@@ -467,36 +467,6 @@
 	  }
 
 	  return _assertThisInitialized(self);
-	}
-
-	function _superPropBase(object, property) {
-	  while (!Object.prototype.hasOwnProperty.call(object, property)) {
-	    object = _getPrototypeOf(object);
-	    if (object === null) break;
-	  }
-
-	  return object;
-	}
-
-	function _get(target, property, receiver) {
-	  if (typeof Reflect !== "undefined" && Reflect.get) {
-	    _get = Reflect.get;
-	  } else {
-	    _get = function _get(target, property, receiver) {
-	      var base = _superPropBase(target, property);
-
-	      if (!base) return;
-	      var desc = Object.getOwnPropertyDescriptor(base, property);
-
-	      if (desc.get) {
-	        return desc.get.call(receiver);
-	      }
-
-	      return desc.value;
-	    };
-	  }
-
-	  return _get(target, property, receiver || target);
 	}
 
 	function _slicedToArray(arr, i) {
@@ -6169,8 +6139,8 @@
 	  InvalidPollTxTimeOut: function InvalidPollTxTimeOut() {
 	    return 'Error: transaction query timeout';
 	  },
-	  TXFromCanNotEmpty: function TXFromCanNotEmpty() {
-	    return 'The from field cannot be empty';
+	  TXFieldCanNotEmpty: function TXFieldCanNotEmpty(value) {
+	    return "The ".concat(value, " cannot be empty");
 	  },
 	  TXParamMissingError: function TXParamMissingError(param) {
 	    return "The ".concat(param, " in transaction can not be missing");
@@ -6201,6 +6171,9 @@
 	  },
 	  InvalidUserId: function InvalidUserId() {
 	    return 'Invalid userID';
+	  },
+	  InvalidBoxTransaction: function InvalidBoxTransaction() {
+	    return 'This is an incorrect transaction information or contains box transaction';
 	  }
 	};
 
@@ -23035,7 +23008,6 @@
 	var GLOBAL_NAME = '';
 	var MINE_NAME = 'mine';
 	var NET_NAME = 'net';
-	var TOOL_NAME = 'tool';
 	var TX_NAME = 'tx';
 
 	var toString$3 = Object.prototype.toString; // TypeError
@@ -23538,6 +23510,10 @@
 
 	  return safeBuffer_1.from(hex, 'hex');
 	}
+
+	function decodeUtf8Hex(hex) {
+	  return hexStringToBuffer(hex).toString();
+	}
 	function bufferTrimLeft(buffer) {
 	  var i = 0;
 
@@ -23797,11 +23773,11 @@
 	  checkRange(config, 'chainID', 1, 0xffff);
 
 	  if (!config.from) {
-	    throw new Error(errors.TXFromCanNotEmpty());
+	    throw new Error(errors.TXFieldCanNotEmpty('from'));
 	  }
 
 	  checkFieldType(config, 'from', ['string'], false);
-	  decodeAddress(config.from);
+	  checkAddress(config.from);
 
 	  if (config.type) {
 	    checkFieldType(config, 'type', ['number', 'string'], true);
@@ -23816,7 +23792,13 @@
 	  if (config.to) {
 	    checkFieldType(config, 'to', ['string'], false); // verify address
 
-	    decodeAddress(config.to);
+	    checkAddress(config.to);
+	  }
+
+	  if (config.gasPayer) {
+	    checkFieldType(config, 'gasPayer', ['string'], false); // verify address
+
+	    checkAddress(config.gasPayer);
 	  }
 
 	  if (config.toName) {
@@ -23872,17 +23854,23 @@
 	  checkFieldType(config, 'isCandidate', ['undefined', 'boolean'], false);
 	  checkFieldType(config, 'minerAddress', ['string'], false); // verify address
 
-	  decodeAddress(config.minerAddress);
+	  checkAddress(config.minerAddress);
 	  checkFieldType(config, 'nodeID', ['string'], false);
 
 	  if (config.nodeID.length !== NODE_ID_LENGTH) {
 	    throw new Error(errors.TXInvalidLength('nodeID', config.nodeID, NODE_ID_LENGTH));
 	  }
 
+	  if (config.host === '') {
+	    throw new Error(errors.TXFieldCanNotEmpty('host'));
+	  }
+
 	  checkFieldType(config, 'host', ['string'], false);
 	  checkMaxLength(config, 'host', MAX_DEPUTY_HOST_LENGTH);
 	  checkFieldType(config, 'port', ['string', 'number'], true);
 	  checkRange(config, 'port', 1, 0xffff);
+	  checkFieldType(config, 'introduction', ['string'], false);
+	  checkMaxLength(config, 'introduction', 1024);
 	}
 	function verifyCreateAssetInfo(config) {
 	  if (config.category === undefined) {
@@ -24000,23 +23988,86 @@
 	function verifyGasInfo(noGasTx, gasPrice, gasLimit) {
 	  checkFieldType(noGasTx, 'gasPayer', ['string'], false); // verify address
 
-	  decodeAddress(noGasTx.gasPayer);
+	  checkAddress(noGasTx.gasPayer);
 	  checkType(gasPrice, 'gasPrice', ['number', 'string'], true);
 	  checkNegative(gasPrice, 'gasPrice');
 	  checkType(gasLimit, 'gasLimit', ['number', 'string'], true);
 	  checkNegative(gasLimit, 'gasLimit');
 	}
-	function verifymodifySignersInfo(modifySignersInfo) {
+	function verifyModifySignersInfo(modifySignersInfo) {
+	  if (!modifySignersInfo.signers || modifySignersInfo.signers.length === 0) {
+	    throw new Error(errors.TXFieldCanNotEmpty('signers'));
+	  }
+
 	  checkFieldType(modifySignersInfo, 'signers', ['array'], false);
 	  modifySignersInfo.signers.forEach(function (signer, index) {
 	    checkType(signer.address, "signers[".concat(index, "].address"), ['string'], false);
-	    decodeAddress(signer.address);
+	    checkAddress(signer.address);
 	    checkType(signer.weight, "signers[".concat(index, "].weight"), ['number'], true);
 	    checkNegative(signer.weight, "signers[".concat(index, "].weight"));
 	  });
 	}
 	function verifyBoxTXInfo(subTxList) {
 	  checkType(subTxList, 'subTxList', ['array'], false);
+	  subTxList.forEach(function (item) {
+	    var obj;
+
+	    if (typeof item === 'string') {
+	      obj = JSON.parse(item);
+	    } else {
+	      obj = item;
+	    }
+
+	    if (obj.data) {
+	      obj.data = JSON.parse(decodeUtf8Hex(obj.data));
+	    }
+
+	    verifyTxConfig(obj);
+
+	    switch (parseInt(obj.type, 10)) {
+	      case TxType.ORDINARY:
+	        verifyTxConfig(obj);
+	        break;
+
+	      case TxType.CREATE_CONTRACT:
+	        verifyContractCreationInfo(obj.data);
+	        break;
+
+	      case TxType.CANDIDATE:
+	        verifyCandidateInfo(obj.data);
+	        break;
+
+	      case TxType.CREATE_ASSET:
+	        verifyCreateAssetInfo(obj.data);
+	        break;
+
+	      case TxType.ISSUE_ASSET:
+	        verifyIssueAssetInfo(obj.data);
+	        break;
+
+	      case TxType.REPLENISH_ASSET:
+	        verifyReplenishAssetInfo(obj.data);
+	        break;
+
+	      case TxType.MODIFY_ASSET:
+	        verifyModifyAssetInfo(obj.data);
+	        break;
+
+	      case TxType.TRANSFER_ASSET:
+	        verifyTransferAssetInfo(obj.data);
+	        break;
+
+	      case TxType.MODIFY_SIGNER:
+	        verifyModifySignersInfo(obj.data);
+	        break;
+
+	      case TxType.BOX_TX:
+	        throw new Error(errors.InvalidBoxTransaction());
+
+	      default:
+	        verifyTxConfig(obj);
+	    }
+	  });
 	}
 	function verifyContractCreationInfo(code, constructorArgs) {
 	  checkType(code, 'codeHex', ['string'], true);
@@ -24145,6 +24196,14 @@
 	  if (typeof obj[fieldName] === 'string' && obj[fieldName].startsWith('-')) {
 	    throw new Error(errors.TXNegativeError(fieldName));
 	  }
+	}
+
+	function checkAddress(address) {
+	  if (!isLemoAddress(address)) {
+	    throw new Error(errors.InvalidAddress(address));
+	  }
+
+	  decodeAddress(address);
 	}
 
 	var Signer =
@@ -24349,12 +24408,13 @@
 	        type: this.type.toString(10),
 	        version: this.version.toString(10),
 	        chainID: this.chainID.toString(10),
+	        from: this.from,
 	        gasPrice: this.gasPrice.toString(10),
 	        gasLimit: this.gasLimit.toString(10),
 	        amount: this.amount.toString(10),
 	        expirationTime: this.expirationTime.toString(10)
 	      };
-	      setIfExist(result, 'from', this.from);
+	      setIfExist(result, 'gasPayer', this.gasPayer);
 	      setIfExist(result, 'to', this.to);
 	      setIfExist(result, 'toName', this.toName);
 	      setIfExist(result, 'data', this.data);
@@ -24374,7 +24434,7 @@
 	  }
 	}
 
-	function parseBlock(chainID, block, withBody) {
+	function parseBlock(block, withBody) {
 	  if (block) {
 	    if (block.header) {
 	      block.header.height = parseNumber(block.header.height);
@@ -24385,7 +24445,7 @@
 
 	    if (withBody) {
 	      block.changeLogs = (block.changeLogs || []).map(parseChangeLog);
-	      block.transactions = (block.transactions || []).map(parseTx.bind(null, chainID));
+	      block.transactions = (block.transactions || []).map(parseTx);
 	    } else {
 	      delete block.changeLogs;
 	      delete block.transactions;
@@ -24447,17 +24507,18 @@
 
 	  return typeInfo[0];
 	}
-	function parseTxRes(chainID, res) {
-	  var tx = parseTx(chainID, res.tx);
+	function parseTxRes(res) {
+	  var tx = parseTx(res.tx);
 	  tx.minedTime = parseNumber(res.time);
 	  tx.blockHeight = parseNumber(res.height);
 	  tx.blockHash = res.blockHash;
+	  tx.gasUsed = parseNumber(res.gasUsed);
 	  return tx;
 	}
-	function parseTxListRes(chainID, res) {
+	function parseTxListRes(res) {
 	  var txList = res.txList || [];
 	  txList = txList.map(function (item) {
-	    var tx = parseTx(chainID, item.tx);
+	    var tx = parseTx(item.tx);
 	    tx.minedTime = parseNumber(item.time);
 	    return tx;
 	  });
@@ -24467,7 +24528,7 @@
 	  };
 	}
 
-	function parseTx(chainID, tx) {
+	function parseTx(tx) {
 	  // new Tx will fill default fields such as gasPrice. So we couldn't return it directly
 	  var txObj = new Tx(tx);
 	  tx.from = txObj.from;
@@ -24478,6 +24539,7 @@
 	  tx.expirationTime = parseNumber(tx.expirationTime);
 	  tx.gasPrice = parseMoney(tx.gasPrice);
 	  tx.gasLimit = parseNumber(tx.gasLimit);
+	  tx.data = parseTxData(tx.type, tx.data);
 	  return tx;
 	}
 
@@ -24498,6 +24560,28 @@
 	  return parseInt(str, 10) || 0;
 	}
 
+	function parseTxData(type, data) {
+	  type = parseNumber(type);
+
+	  switch (type) {
+	    case TxType.ORDINARY:
+	      break;
+
+	    case TxType.CREATE_CONTRACT:
+	      break;
+
+	    case TxType.BOX_TX:
+	      data = JSON.parse(toBuffer(data).toString());
+	      data = data.map(parseTx);
+	      break;
+
+	    default:
+	      data = JSON.parse(toBuffer(data).toString());
+	      break;
+	  }
+
+	  return data;
+	}
 	function parseBigNumber(str) {
 	  return new bignumber(str);
 	}
@@ -24575,17 +24659,17 @@
 	    key: "subscribe",
 	    value: function subscribe(withBody, callback) {
 	      var subscribeId = this.idGenerator++;
-	      var oldWithBody = this.getWidthBody();
+	      var oldWithBody = this.getWithBody();
 	      this.callbackInfos[subscribeId] = {
 	        withBody: withBody,
 	        callback: callback
 	      };
 
 	      if (Object.keys(this.callbackInfos).length === 1) {
-	        this.watchId = this.requester.watch("".concat(CHAIN_NAME, "_currentBlock"), [!!this.getWidthBody()], this.watchHandler.bind(this));
+	        this.watchId = this.requester.watch("".concat(CHAIN_NAME, "_currentBlock"), [!!this.getWithBody()], this.watchHandler.bind(this));
 	      } else if (withBody && !oldWithBody) {
 	        this.requester.stopWatch(this.watchId);
-	        this.watchId = this.requester.watch("".concat(CHAIN_NAME, "_currentBlock"), [!!this.getWidthBody()], this.watchHandler.bind(this));
+	        this.watchId = this.requester.watch("".concat(CHAIN_NAME, "_currentBlock"), [!!this.getWithBody()], this.watchHandler.bind(this));
 	      }
 
 	      return subscribeId;
@@ -24614,8 +24698,8 @@
 	      }
 	    }
 	  }, {
-	    key: "getWidthBody",
-	    value: function getWidthBody() {
+	    key: "getWithBody",
+	    value: function getWithBody() {
 	      return Object.values(this.callbackInfos).some(function (item) {
 	        return item.withBody;
 	      });
@@ -24635,13 +24719,14 @@
 	    value: function fetchBlock(height) {
 	      var _this = this;
 
-	      return this.requester.send("".concat(CHAIN_NAME, "_chain_getBlockByHeight"), [height, !!this.getWidthBody()]).then(function (result) {
-	        return parseBlock(_this.chainID, result, _this.getWidthBody());
+	      return this.requester.send("".concat(CHAIN_NAME, "_getBlockByHeight"), [height, !!this.getWithBody()]).then(function (result) {
+	        return parseBlock(result, _this.getWithBody());
 	      });
 	    }
 	    /**
 	     *  requester's watch  callback
 	     * @param {Object} block
+	     * @param {Error} error
 	     */
 
 	  }, {
@@ -24652,8 +24737,8 @@
 	        return;
 	      }
 
-	      var newBlock = parseBlock(this.chainID, block, this.getWidthBody());
-	      this.processBlock(this.fetchBlock, newBlock);
+	      var newBlock = parseBlock(block, this.getWithBody());
+	      this.processBlock(this.fetchBlock.bind(this), newBlock);
 	    }
 	  }, {
 	    key: "notify",
@@ -24747,26 +24832,25 @@
 	        // 新块变小抛异常
 	        throw new Error('block height must be bigger than the height of current block');
 	      } else if (block.header.height < nextHeight) {
+	        // 补齐中间的块
 	        this.insert(block);
 	        this.checkNotifiedBlock();
-	      } else {
-	        // 出现块不连续情况
-	        if (nextHeight === 0) {
-	          this.pendingBlocks.push(block);
-	          this.checkNotifiedBlock();
-	          return;
-	        }
-
+	      } else if (this.pendingBlocks.length) {
+	        // 收到的新块高度比任何pending块的都大，说明出现了新的漏块情况
 	        this.pendingBlocks.push(block);
 
 	        for (var i = nextHeight; i < block.header.height; i++) {
-	          var newBlockPromise = fetchBlock(i);
-	          newBlockPromise.then(function (result) {
+	          // 并发拉取
+	          fetchBlock(i).then(function (result) {
 	            _this2.insert(result);
 
 	            _this2.checkNotifiedBlock();
 	          });
 	        }
+	      } else {
+	        // 正常按顺序收到块（pending列表为空），或创始块
+	        this.pendingBlocks.push(block);
+	        this.checkNotifiedBlock();
 	      }
 	    }
 	  }]);
@@ -24937,14 +25021,22 @@
 	        while (1) {
 	          switch (_context.prev = _context.next) {
 	            case 0:
-	              _context.next = 2;
-	              return this.requester.send("".concat(ACCOUNT_NAME, "_getAccount"), [address]);
+	              if (isLemoAddress(address)) {
+	                _context.next = 2;
+	                break;
+	              }
+
+	              throw new Error(errors.InvalidAddress(address));
 
 	            case 2:
+	              _context.next = 4;
+	              return this.requester.send("".concat(ACCOUNT_NAME, "_getAccount"), [address]);
+
+	            case 4:
 	              result = _context.sent;
 	              return _context.abrupt("return", this.parser.parseAccount(result));
 
-	            case 4:
+	            case 6:
 	            case "end":
 	              return _context.stop();
 	          }
@@ -24971,14 +25063,22 @@
 	        while (1) {
 	          switch (_context2.prev = _context2.next) {
 	            case 0:
-	              _context2.next = 2;
-	              return this.requester.send("".concat(ACCOUNT_NAME, "_getAccount"), [address]);
+	              if (isLemoAddress(address)) {
+	                _context2.next = 2;
+	                break;
+	              }
+
+	              throw new Error(errors.InvalidAddress(address));
 
 	            case 2:
+	              _context2.next = 4;
+	              return this.requester.send("".concat(ACCOUNT_NAME, "_getAccount"), [address]);
+
+	            case 4:
 	              result = _context2.sent;
 	              return _context2.abrupt("return", this.parser.parseAccount(result).candidate);
 
-	            case 4:
+	            case 6:
 	            case "end":
 	              return _context2.stop();
 	          }
@@ -25005,14 +25105,22 @@
 	        while (1) {
 	          switch (_context3.prev = _context3.next) {
 	            case 0:
-	              _context3.next = 2;
-	              return this.requester.send("".concat(ACCOUNT_NAME, "_getBalance"), [address]);
+	              if (isLemoAddress(address)) {
+	                _context3.next = 2;
+	                break;
+	              }
+
+	              throw new Error(errors.InvalidAddress(address));
 
 	            case 2:
+	              _context3.next = 4;
+	              return this.requester.send("".concat(ACCOUNT_NAME, "_getBalance"), [address]);
+
+	            case 4:
 	              result = _context3.sent;
 	              return _context3.abrupt("return", this.parser.parseMoney(result));
 
-	            case 4:
+	            case 6:
 	            case "end":
 	              return _context3.stop();
 	          }
@@ -25027,110 +25135,6 @@
 	  newKeyPair: generateAccount,
 
 	  /**
-	   * 获取指定账户持有的所有资产权益
-	   * @param {string} address Account address
-	   * @param {number} index Index of equities
-	   * @param {number} limit The count of equities required
-	   * @return {Promise<object>}
-	   */
-	  getAllAssets: function () {
-	    var _getAllAssets = _asyncToGenerator(
-	    /*#__PURE__*/
-	    regeneratorRuntime.mark(function _callee4(address, index, limit) {
-	      var result;
-	      return regeneratorRuntime.wrap(function _callee4$(_context4) {
-	        while (1) {
-	          switch (_context4.prev = _context4.next) {
-	            case 0:
-	              _context4.next = 2;
-	              return this.requester.send("".concat(ACCOUNT_NAME, "_getAssetEquity"), [address, index, limit]);
-
-	            case 2:
-	              result = _context4.sent;
-	              return _context4.abrupt("return", this.parser.parseAsset(result));
-
-	            case 4:
-	            case "end":
-	              return _context4.stop();
-	          }
-	        }
-	      }, _callee4, this);
-	    }));
-
-	    return function getAllAssets(_x4, _x5, _x6) {
-	      return _getAllAssets.apply(this, arguments);
-	    };
-	  }(),
-
-	  /**
-	   * 获取指定资产类型的发行信息
-	   * @param {string} assetCode Account address
-	   * @return {Promise<object>}
-	   */
-	  getAssetInfo: function () {
-	    var _getAssetInfo = _asyncToGenerator(
-	    /*#__PURE__*/
-	    regeneratorRuntime.mark(function _callee5(assetCode) {
-	      var result;
-	      return regeneratorRuntime.wrap(function _callee5$(_context5) {
-	        while (1) {
-	          switch (_context5.prev = _context5.next) {
-	            case 0:
-	              _context5.next = 2;
-	              return this.requester.send("".concat(ACCOUNT_NAME, "_getAsset"), [assetCode]);
-
-	            case 2:
-	              result = _context5.sent;
-	              return _context5.abrupt("return", this.parser.parseAssetInfo(result));
-
-	            case 4:
-	            case "end":
-	              return _context5.stop();
-	          }
-	        }
-	      }, _callee5, this);
-	    }));
-
-	    return function getAssetInfo(_x7) {
-	      return _getAssetInfo.apply(this, arguments);
-	    };
-	  }(),
-
-	  /**
-	   * 获取指定资产中保存的自定义数据
-	   * @param {string} assetId Asset Id
-	   * @return {Promise<object>}
-	   */
-	  getAssetMetaData: function () {
-	    var _getAssetMetaData = _asyncToGenerator(
-	    /*#__PURE__*/
-	    regeneratorRuntime.mark(function _callee6(assetId) {
-	      var result;
-	      return regeneratorRuntime.wrap(function _callee6$(_context6) {
-	        while (1) {
-	          switch (_context6.prev = _context6.next) {
-	            case 0:
-	              _context6.next = 2;
-	              return this.requester.send("".concat(ACCOUNT_NAME, "_getMetaData"), [assetId]);
-
-	            case 2:
-	              result = _context6.sent;
-	              return _context6.abrupt("return", this.parser.parseMetaData(result));
-
-	            case 4:
-	            case "end":
-	              return _context6.stop();
-	          }
-	        }
-	      }, _callee6, this);
-	    }));
-
-	    return function getAssetMetaData(_x8) {
-	      return _getAssetMetaData.apply(this, arguments);
-	    };
-	  }(),
-
-	  /**
 	   * Create temp address
 	   * @param {string} from Creator address
 	   * @param {string} userId User id
@@ -25143,68 +25147,22 @@
 	   * @param {string} address
 	   * @return {boolean}
 	   */
-	  isTempAddress: function () {
-	    var _isTempAddress = _asyncToGenerator(
-	    /*#__PURE__*/
-	    regeneratorRuntime.mark(function _callee7(address) {
-	      var codeAddress;
-	      return regeneratorRuntime.wrap(function _callee7$(_context7) {
-	        while (1) {
-	          switch (_context7.prev = _context7.next) {
-	            case 0:
-	              _context7.next = 2;
-	              return decodeAddress(address);
+	  isTempAddress: function isTempAddress(address) {
+	    var codeAddress = decodeAddress(address); // 截取0x开头的地址第三位和第四位， 用来判断账户类型
 
-	            case 2:
-	              codeAddress = _context7.sent;
-	              return _context7.abrupt("return", codeAddress.slice(2, 4) === TEMP_ACCOUNT_TYPE);
-
-	            case 4:
-	            case "end":
-	              return _context7.stop();
-	          }
-	        }
-	      }, _callee7, this);
-	    }));
-
-	    return function isTempAddress(_x9) {
-	      return _isTempAddress.apply(this, arguments);
-	    };
-	  }(),
+	    return codeAddress.slice(2, 4) === TEMP_ACCOUNT_TYPE;
+	  },
 
 	  /**
 	   * 判断当前账户是否为合约账户
 	   * @param {string} address
 	   * @return {boolean}
 	   */
-	  isContractAddress: function () {
-	    var _isContractAddress = _asyncToGenerator(
-	    /*#__PURE__*/
-	    regeneratorRuntime.mark(function _callee8(address) {
-	      var codeAddress;
-	      return regeneratorRuntime.wrap(function _callee8$(_context8) {
-	        while (1) {
-	          switch (_context8.prev = _context8.next) {
-	            case 0:
-	              _context8.next = 2;
-	              return decodeAddress(address);
+	  isContractAddress: function isContractAddress(address) {
+	    var codeAddress = decodeAddress(address); // 截取0x开头的地址第三位和第四位， 用来判断账户类型
 
-	            case 2:
-	              codeAddress = _context8.sent;
-	              return _context8.abrupt("return", codeAddress.slice(2, 4) === CONTRACT_ACCOUNT_TYPE);
-
-	            case 4:
-	            case "end":
-	              return _context8.stop();
-	          }
-	        }
-	      }, _callee8, this);
-	    }));
-
-	    return function isContractAddress(_x10) {
-	      return _isContractAddress.apply(this, arguments);
-	    };
-	  }()
+	    return codeAddress.slice(2, 4) === CONTRACT_ACCOUNT_TYPE;
+	  }
 	};
 	var account = {
 	  moduleName: ACCOUNT_NAME,
@@ -25212,18 +25170,6 @@
 	};
 
 	var apis$1 = {
-	  /**
-	   * The version of sdk
-	   * @return {string}
-	   */
-	  SDK_VERSION: getSdkVersion(),
-
-	  /**
-	   * The type enum of transaction
-	   * @return {object}
-	   */
-	  TxType: TxType,
-
 	  /**
 	   * Stop all watching
 	   */
@@ -25239,12 +25185,6 @@
 	    return this.requester.isWatching();
 	  }
 	};
-
-	function getSdkVersion() {
-
-	  return "0.10.0";
-	}
-
 	var global$2 = {
 	  moduleName: GLOBAL_NAME,
 	  apis: apis$1
@@ -25270,7 +25210,7 @@
 
 	            case 2:
 	              block = _context.sent;
-	              return _context.abrupt("return", this.parser.parseBlock(this.chainID, block, withBody));
+	              return _context.abrupt("return", this.parser.parseBlock(block, withBody));
 
 	            case 4:
 	            case "end":
@@ -25286,6 +25226,40 @@
 	  }(),
 
 	  /**
+	   * Get Unstable block information
+	   * @param {boolean?} withBody Get the body detail if true
+	   * @return {Promise<object>}
+	   */
+	  getNewestUnstableBlock: function () {
+	    var _getNewestUnstableBlock = _asyncToGenerator(
+	    /*#__PURE__*/
+	    regeneratorRuntime.mark(function _callee2(withBody) {
+	      var block;
+	      return regeneratorRuntime.wrap(function _callee2$(_context2) {
+	        while (1) {
+	          switch (_context2.prev = _context2.next) {
+	            case 0:
+	              _context2.next = 2;
+	              return this.requester.send("".concat(CHAIN_NAME, "_unstableBlock"), [!!withBody]);
+
+	            case 2:
+	              block = _context2.sent;
+	              return _context2.abrupt("return", this.parser.parseBlock(block, withBody));
+
+	            case 4:
+	            case "end":
+	              return _context2.stop();
+	          }
+	        }
+	      }, _callee2, this);
+	    }));
+
+	    return function getNewestUnstableBlock(_x2) {
+	      return _getNewestUnstableBlock.apply(this, arguments);
+	    };
+	  }(),
+
+	  /**
 	   * Get the specific block information
 	   * @param {string|number} hashOrHeight Hash or height which used to find the block
 	   * @param {boolean?} withBody Get the body detail if true
@@ -25294,29 +25268,29 @@
 	  getBlock: function () {
 	    var _getBlock = _asyncToGenerator(
 	    /*#__PURE__*/
-	    regeneratorRuntime.mark(function _callee2(hashOrHeight, withBody) {
+	    regeneratorRuntime.mark(function _callee3(hashOrHeight, withBody) {
 	      var apiName, block;
-	      return regeneratorRuntime.wrap(function _callee2$(_context2) {
+	      return regeneratorRuntime.wrap(function _callee3$(_context3) {
 	        while (1) {
-	          switch (_context2.prev = _context2.next) {
+	          switch (_context3.prev = _context3.next) {
 	            case 0:
 	              apiName = isHash(hashOrHeight) ? 'getBlockByHash' : 'getBlockByHeight';
-	              _context2.next = 3;
+	              _context3.next = 3;
 	              return this.requester.send("".concat(CHAIN_NAME, "_").concat(apiName), [hashOrHeight, !!withBody]);
 
 	            case 3:
-	              block = _context2.sent;
-	              return _context2.abrupt("return", this.parser.parseBlock(this.chainID, block, withBody));
+	              block = _context3.sent;
+	              return _context3.abrupt("return", this.parser.parseBlock(block, withBody));
 
 	            case 5:
 	            case "end":
-	              return _context2.stop();
+	              return _context3.stop();
 	          }
 	        }
-	      }, _callee2, this);
+	      }, _callee3, this);
 	    }));
 
-	    return function getBlock(_x2, _x3) {
+	    return function getBlock(_x3, _x4) {
 	      return _getBlock.apply(this, arguments);
 	    };
 	  }(),
@@ -25330,31 +25304,39 @@
 	  },
 
 	  /**
+	   * Get the Unstable height of chain head block
+	   * @return {Promise<number>}
+	   */
+	  getNewestUnstableHeight: function getNewestUnstableHeight() {
+	    return this.requester.send("".concat(CHAIN_NAME, "_unstableHeight"));
+	  },
+
+	  /**
 	   * Get the information of genesis block, whose height is 0
 	   * @return {Promise<object>}
 	   */
 	  getGenesis: function () {
 	    var _getGenesis = _asyncToGenerator(
 	    /*#__PURE__*/
-	    regeneratorRuntime.mark(function _callee3() {
+	    regeneratorRuntime.mark(function _callee4() {
 	      var result;
-	      return regeneratorRuntime.wrap(function _callee3$(_context3) {
+	      return regeneratorRuntime.wrap(function _callee4$(_context4) {
 	        while (1) {
-	          switch (_context3.prev = _context3.next) {
+	          switch (_context4.prev = _context4.next) {
 	            case 0:
-	              _context3.next = 2;
+	              _context4.next = 2;
 	              return this.requester.send("".concat(CHAIN_NAME, "_genesis"), []);
 
 	            case 2:
-	              result = _context3.sent;
-	              return _context3.abrupt("return", this.parser.parseBlock(this.chainID, result, true));
+	              result = _context4.sent;
+	              return _context4.abrupt("return", this.parser.parseBlock(result, true));
 
 	            case 4:
 	            case "end":
-	              return _context3.stop();
+	              return _context4.stop();
 	          }
 	        }
-	      }, _callee3, this);
+	      }, _callee4, this);
 	    }));
 
 	    return function getGenesis() {
@@ -25369,39 +25351,6 @@
 	  getChainID: function getChainID() {
 	    return this.requester.send("".concat(CHAIN_NAME, "_chainID"), []);
 	  },
-
-	  /**
-	   * Get the gas price advice. It is used to make sure the transaction will be packaged in a few seconds
-	   * @return {Promise<BigNumber>}
-	   */
-	  getGasPriceAdvice: function () {
-	    var _getGasPriceAdvice = _asyncToGenerator(
-	    /*#__PURE__*/
-	    regeneratorRuntime.mark(function _callee4() {
-	      var result;
-	      return regeneratorRuntime.wrap(function _callee4$(_context4) {
-	        while (1) {
-	          switch (_context4.prev = _context4.next) {
-	            case 0:
-	              _context4.next = 2;
-	              return this.requester.send("".concat(CHAIN_NAME, "_gasPriceAdvice"), []);
-
-	            case 2:
-	              result = _context4.sent;
-	              return _context4.abrupt("return", this.parser.parseMoney(result));
-
-	            case 4:
-	            case "end":
-	              return _context4.stop();
-	          }
-	        }
-	      }, _callee4, this);
-	    }));
-
-	    return function getGasPriceAdvice() {
-	      return _getGasPriceAdvice.apply(this, arguments);
-	    };
-	  }(),
 
 	  /**
 	   * Get the version of lemochain node
@@ -25425,29 +25374,24 @@
 	  },
 
 	  /**
-	   * Get paged candidates information
-	   * @param {number} index Index of candidates
-	   * @param {number} limit Max count of required candidates
+	   * Get top 30 candidates information
 	   * @return {Promise<object>}
 	   */
-	  getCandidateList: function () {
-	    var _getCandidateList = _asyncToGenerator(
+	  getCandidateTop30: function () {
+	    var _getCandidateTop = _asyncToGenerator(
 	    /*#__PURE__*/
-	    regeneratorRuntime.mark(function _callee5(index, limit) {
+	    regeneratorRuntime.mark(function _callee5() {
 	      var result;
 	      return regeneratorRuntime.wrap(function _callee5$(_context5) {
 	        while (1) {
 	          switch (_context5.prev = _context5.next) {
 	            case 0:
 	              _context5.next = 2;
-	              return this.requester.send("".concat(CHAIN_NAME, "_getCandidateList"), [index, limit]);
+	              return this.requester.send("".concat(CHAIN_NAME, "_getCandidateTop30"), []);
 
 	            case 2:
 	              result = _context5.sent;
-	              return _context5.abrupt("return", {
-	                candidateList: (result.candidateList || []).map(this.parser.parseCandidate),
-	                total: parseInt(result.total, 10) || 0
-	              });
+	              return _context5.abrupt("return", (result || []).map(this.parser.parseCandidate));
 
 	            case 4:
 	            case "end":
@@ -25455,39 +25399,6 @@
 	          }
 	        }
 	      }, _callee5, this);
-	    }));
-
-	    return function getCandidateList(_x4, _x5) {
-	      return _getCandidateList.apply(this, arguments);
-	    };
-	  }(),
-
-	  /**
-	   * Get top 30 candidates information
-	   * @return {Promise<object>}
-	   */
-	  getCandidateTop30: function () {
-	    var _getCandidateTop = _asyncToGenerator(
-	    /*#__PURE__*/
-	    regeneratorRuntime.mark(function _callee6() {
-	      var result;
-	      return regeneratorRuntime.wrap(function _callee6$(_context6) {
-	        while (1) {
-	          switch (_context6.prev = _context6.next) {
-	            case 0:
-	              _context6.next = 2;
-	              return this.requester.send("".concat(CHAIN_NAME, "_getCandidateTop30"), []);
-
-	            case 2:
-	              result = _context6.sent;
-	              return _context6.abrupt("return", (result || []).map(this.parser.parseCandidate));
-
-	            case 4:
-	            case "end":
-	              return _context6.stop();
-	          }
-	        }
-	      }, _callee6, this);
 	    }));
 
 	    return function getCandidateTop30() {
@@ -25599,6 +25510,7 @@
 	   * @param {number?} txConfig.version The version of transaction protocol
 	   * @param {number} txConfig.chainID The LemoChain id
 	   * @param {string?} txConfig.from The transaction sender address
+	   * @param {number|string?} txConfig.amount Unit is mo
 	   * @param {number|string?} txConfig.gasPrice Gas price for smart contract. Unit is mo/gas
 	   * @param {number|string?} txConfig.gasLimit Max gas limit for smart contract. Unit is gas
 	   * @param {number|string?} txConfig.expirationTime Default value is half hour from now
@@ -25609,7 +25521,7 @@
 	   * @param {string} candidateInfo.minerAddress The address of miner account who receive miner benefit
 	   * @param {string} candidateInfo.nodeID The public key of the keypair which used to sign block
 	   * @param {string} candidateInfo.host Ip or domain of the candidate node server
-	   * @param {number|string} candidateInfo.port Port of the candidate node server
+	   * @param {number|string} candidateInfo.introduction introduction information
 	   */
 	  function CandidateTx(txConfig, candidateInfo) {
 	    _classCallCheck(this, CandidateTx);
@@ -25620,7 +25532,8 @@
 	      minerAddress: candidateInfo.minerAddress,
 	      nodeID: candidateInfo.nodeID,
 	      host: candidateInfo.host,
-	      port: candidateInfo.port
+	      port: candidateInfo.port,
+	      introduction: candidateInfo.introduction
 	    };
 
 	    var newTxConfig = _objectSpread({}, txConfig, {
@@ -25630,7 +25543,6 @@
 
 	    delete newTxConfig.to;
 	    delete newTxConfig.toName;
-	    delete newTxConfig.amount;
 	    return _possibleConstructorReturn(this, _getPrototypeOf(CandidateTx).call(this, newTxConfig));
 	  }
 
@@ -25930,7 +25842,7 @@
 	  }, {
 	    key: "hashForNoGasSign",
 	    value: function hashForNoGasSign(tx) {
-	      var raw = [toRaw(tx.type, 'type'), toRaw(tx.version, 'version'), toRaw(tx.chainID, 'chainID'), toRaw(decodeAddress(tx.from), 'from', TX_ADDRESS_LENGTH), tx.gasPayer ? toRaw(decodeAddress(tx.gasPayer), 'gasPayer', TX_ADDRESS_LENGTH) : '', tx.to ? toRaw(decodeAddress(tx.to), 'to', TX_ADDRESS_LENGTH) : '', toRaw(tx.toName, 'toName'), toRaw(tx.amount, 'amount'), toRaw(tx.data, 'data'), toRaw(tx.expirationTime, 'expirationTime'), toRaw(tx.message, 'message'), toRaw(tx.payer, 'payer')];
+	      var raw = [toRaw(tx.type, 'type'), toRaw(tx.version, 'version'), toRaw(tx.chainID, 'chainID'), toRaw(decodeAddress(tx.from), 'from', TX_ADDRESS_LENGTH), tx.gasPayer ? toRaw(decodeAddress(tx.gasPayer), 'gasPayer', TX_ADDRESS_LENGTH) : '', tx.to ? toRaw(decodeAddress(tx.to), 'to', TX_ADDRESS_LENGTH) : '', toRaw(tx.toName, 'toName'), toRaw(tx.amount, 'amount'), toRaw(tx.data, 'data'), toRaw(tx.expirationTime, 'expirationTime'), toRaw(tx.message, 'message')];
 	      return keccak256(encode$1(raw));
 	    }
 	  }]);
@@ -25987,22 +25899,6 @@
 	        this.sigs.push(sig);
 	      }
 	    }
-	    /**
-	     * format for rpc
-	     * @return {object}
-	     */
-
-	  }, {
-	    key: "toJson",
-	    value: function toJson() {
-	      var result = _get(_getPrototypeOf(GasTx.prototype), "toJson", this).call(this);
-
-	      if (this.gasPayer) {
-	        result.gasPayer = this.gasPayer;
-	      }
-
-	      return result;
-	    }
 	  }]);
 
 	  return GasTx;
@@ -26040,7 +25936,6 @@
 	      gasLimit: gasLimit
 	    });
 
-	    delete newTxConfig.gasPayer;
 	    return _possibleConstructorReturn(this, _getPrototypeOf(ReimbursementTx).call(this, newTxConfig));
 	  }
 	  /**
@@ -26087,7 +25982,7 @@
 	  function modifySignersTx(txConfig, modifySignersInfo) {
 	    _classCallCheck(this, modifySignersTx);
 
-	    verifymodifySignersInfo(modifySignersInfo);
+	    verifyModifySignersInfo(modifySignersInfo);
 	    var newModifySigners = {
 	      signers: modifySignersInfo.signers
 	    };
@@ -26196,150 +26091,24 @@
 
 	var apis$5 = {
 	  /**
-	   * Get transaction's information by hash
-	   * @param {string|number} txHash Hash of transaction
-	   * @return {Promise<object>}
-	   */
-	  getTx: function () {
-	    var _getTx = _asyncToGenerator(
-	    /*#__PURE__*/
-	    regeneratorRuntime.mark(function _callee(txHash) {
-	      var result;
-	      return regeneratorRuntime.wrap(function _callee$(_context) {
-	        while (1) {
-	          switch (_context.prev = _context.next) {
-	            case 0:
-	              _context.next = 2;
-	              return this.requester.send("".concat(TX_NAME, "_getTxByHash"), [txHash]);
-
-	            case 2:
-	              result = _context.sent;
-
-	              if (result) {
-	                _context.next = 5;
-	                break;
-	              }
-
-	              return _context.abrupt("return", null);
-
-	            case 5:
-	              return _context.abrupt("return", this.parser.parseTxRes(this.chainID, result));
-
-	            case 6:
-	            case "end":
-	              return _context.stop();
-	          }
-	        }
-	      }, _callee, this);
-	    }));
-
-	    return function getTx(_x) {
-	      return _getTx.apply(this, arguments);
-	    };
-	  }(),
-
-	  /**
-	   * Get transactions' information in account
-	   * @param {string} address Account address
-	   * @param {number} index Index of transactions
-	   * @param {number} limit The count of transactions required
-	   * @return {Promise<object>}
-	   */
-	  getTxListByAddress: function () {
-	    var _getTxListByAddress = _asyncToGenerator(
-	    /*#__PURE__*/
-	    regeneratorRuntime.mark(function _callee2(address, index, limit) {
-	      var result;
-	      return regeneratorRuntime.wrap(function _callee2$(_context2) {
-	        while (1) {
-	          switch (_context2.prev = _context2.next) {
-	            case 0:
-	              _context2.next = 2;
-	              return this.requester.send("".concat(TX_NAME, "_getTxListByAddress"), [address, index, limit]);
-
-	            case 2:
-	              result = _context2.sent;
-
-	              if (result) {
-	                _context2.next = 5;
-	                break;
-	              }
-
-	              return _context2.abrupt("return", null);
-
-	            case 5:
-	              return _context2.abrupt("return", this.parser.parseTxListRes(this.chainID, result));
-
-	            case 6:
-	            case "end":
-	              return _context2.stop();
-	          }
-	        }
-	      }, _callee2, this);
-	    }));
-
-	    return function getTxListByAddress(_x2, _x3, _x4) {
-	      return _getTxListByAddress.apply(this, arguments);
-	    };
-	  }(),
-
-	  /**
 	   * Sign and send transaction
 	   * @param {string} privateKey The private key from sender account
 	   * @param {object} txConfig Transaction config
-	   * @param {boolean?} waitConfirm 等待交易共识
 	   * @return {Promise<object>}
 	   */
-	  sendTx: function sendTx(privateKey, txConfig, waitConfirm) {
-	    var _this = this;
-
+	  sendTx: function sendTx(privateKey, txConfig) {
 	    txConfig = checkChainID(txConfig, this.chainID);
 	    var tx = new Tx(txConfig);
 	    tx.signWith(privateKey);
-	    return this.requester.send("".concat(TX_NAME, "_sendTx"), [tx.toJson()]).then(
-	    /*#__PURE__*/
-	    function () {
-	      var _ref = _asyncToGenerator(
-	      /*#__PURE__*/
-	      regeneratorRuntime.mark(function _callee3(txHash) {
-	        return regeneratorRuntime.wrap(function _callee3$(_context3) {
-	          while (1) {
-	            switch (_context3.prev = _context3.next) {
-	              case 0:
-	                if (!waitConfirm) {
-	                  _context3.next = 3;
-	                  break;
-	                }
-
-	                _context3.next = 3;
-	                return _this.txWatcher.waitTx(txHash);
-
-	              case 3:
-	                return _context3.abrupt("return", txHash);
-
-	              case 4:
-	              case "end":
-	                return _context3.stop();
-	            }
-	          }
-	        }, _callee3, this);
-	      }));
-
-	      return function (_x5) {
-	        return _ref.apply(this, arguments);
-	      };
-	    }());
+	    return this.requester.send("".concat(TX_NAME, "_sendTx"), [tx.toJson()]);
 	  },
 
 	  /**
 	   * Send a signed transaction
 	   * @param {object|string} txConfig Transaction config returned by lemo.tx.sign
-	   * @param {boolean} waitConfirm 等待交易共识
 	   * @return {Promise<object>}
 	   */
-	  send: function send(txConfig, waitConfirm) {
-	    var _this2 = this;
-
+	  send: function send(txConfig) {
 	    if (typeof txConfig === 'string') {
 	      txConfig = JSON.parse(txConfig);
 	    }
@@ -26351,39 +26120,16 @@
 	      throw new Error("can't send an unsigned transaction");
 	    }
 
-	    return this.requester.send("".concat(TX_NAME, "_sendTx"), [tx.toJson()]).then(
-	    /*#__PURE__*/
-	    function () {
-	      var _ref2 = _asyncToGenerator(
-	      /*#__PURE__*/
-	      regeneratorRuntime.mark(function _callee4(txHash) {
-	        return regeneratorRuntime.wrap(function _callee4$(_context4) {
-	          while (1) {
-	            switch (_context4.prev = _context4.next) {
-	              case 0:
-	                if (!waitConfirm) {
-	                  _context4.next = 3;
-	                  break;
-	                }
+	    return this.requester.send("".concat(TX_NAME, "_sendTx"), [tx.toJson()]);
+	  },
 
-	                _context4.next = 3;
-	                return _this2.txWatcher.waitTx(txHash);
-
-	              case 3:
-	                return _context4.abrupt("return", txHash);
-
-	              case 4:
-	              case "end":
-	                return _context4.stop();
-	            }
-	          }
-	        }, _callee4, this);
-	      }));
-
-	      return function (_x6) {
-	        return _ref2.apply(this, arguments);
-	      };
-	    }());
+	  /**
+	   * wait for the transaction to be confirmed
+	   * @param {boolean} txHash 交易hash
+	   * @return {Promise<object>} transaction information
+	   */
+	  waitConfirm: function waitConfirm(txHash) {
+	    return this.txWatcher.waitTx(txHash);
 	  },
 
 	  /**
@@ -26555,6 +26301,23 @@
 	  },
 
 	  /**
+	   * 签名修改多重签名
+	   * @param {string} privateKey The private key from sender account
+	   * @param {object} txConfig Transaction config
+	   * @param {Array} signers list
+	   * @return {string}
+	   */
+	  signModifySigners: function signModifySigners(privateKey, txConfig, signers) {
+	    txConfig = checkChainID(txConfig, this.chainID);
+	    var modifySignersInfo = {
+	      signers: signers
+	    };
+	    var tx = new modifySignersTx(txConfig, modifySignersInfo);
+	    tx.signWith(privateKey);
+	    return JSON.stringify(tx.toJson());
+	  },
+
+	  /**
 	   * Sign a special transaction to set box target
 	   * @param {string} privateKey The private key from sender account
 	   * @param {object} txConfig Transaction config
@@ -26606,7 +26369,19 @@
 	  apis: apis$5
 	};
 
-	var apis$6 = {
+	var StaticProperties = {
+	  /**
+	   * The version of sdk
+	   * @return {string}
+	   */
+	  SDK_VERSION: getSdkVersion(),
+
+	  /**
+	   * The type enum of transaction
+	   * @return {object}
+	   */
+	  TxType: TxType,
+
 	  /**
 	   * Verify a LemoChain address
 	   * @param {string} address
@@ -26640,12 +26415,25 @@
 	   * @param {number|string|BigNumber|Buffer|null} ether
 	   * @return {Buffer}
 	   */
-	  toBuffer: toBuffer
+	  toBuffer: toBuffer,
+
+	  /**
+	   * Sign transaction and return the config which used to call lemo.tx.send
+	   * @param {string} privateKey The private key from sender account
+	   * @param {object} txConfig Transaction config
+	   * @return {string}
+	   */
+	  signTx: function signTx(privateKey, txConfig) {
+	    var tx = new Tx(txConfig);
+	    tx.signWith(privateKey);
+	    return JSON.stringify(tx.toJson());
+	  }
 	};
-	var tool = {
-	  moduleName: TOOL_NAME,
-	  apis: apis$6
-	};
+
+	function getSdkVersion() {
+
+	  return "0.10.4";
+	}
 
 	var Api =
 	/*#__PURE__*/
@@ -26708,26 +26496,26 @@
 	  return Api;
 	}();
 
-	var LemoClient = function LemoClient() {
+	var LemoCore = function LemoCore() {
 	  var config = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
 
-	  _classCallCheck(this, LemoClient);
+	  _classCallCheck(this, LemoCore);
 
 	  this.config = {
 	    chainID: config.chainID || 1,
-	    // 1: LemoChain main net, 100 LemoChain test net
+	    // 1: LemoCore main net, 100 LemoCore test net
 	    conn: {
 	      send: config.send,
 	      // Custom requester. If this property is set, other conn config below will be ignored
 	      host: config.host || 'http://127.0.0.1:8001',
-	      // LemoChain node HTTP RPC address
+	      // LemoCore node HTTP RPC address
 	      timeout: config.timeout,
-	      // LemoChain node HTTP RPC timeout
+	      // LemoCore node HTTP RPC timeout
 	      username: config.username,
-	      // LemoChain node HTTP RPC authorise
+	      // LemoCore node HTTP RPC authorise
 	      password: config.password,
-	      // LemoChain node HTTP RPC authorise
-	      headers: config.headers // LemoChain node HTTP RPC Headers
+	      // LemoCore node HTTP RPC authorise
+	      headers: config.headers // LemoCore node HTTP RPC Headers
 
 	    },
 	    requester: {
@@ -26741,7 +26529,7 @@
 	  this.config.conn.host = /^http/.test(this.config.conn.host) ? this.config.conn.host : "http://".concat(this.config.conn.host);
 	  defineInvisibleProps(this);
 	  attachModules(this);
-	  exposeUtils(this);
+	  exposeStaticProperties(this);
 	};
 
 	function defineInvisibleProps(lemo) {
@@ -26776,15 +26564,21 @@
 	  createModule(lemo, mine.moduleName, mine.apis);
 	  createModule(lemo, net.moduleName, net.apis);
 	  createModule(lemo, tx.moduleName, tx.apis);
-	  createModule(lemo, tool.moduleName, tool.apis);
 	}
 
-	function exposeUtils(lemo) {
-	  lemo.BigNumber = bignumber;
+	function exposeStaticProperties() {
+	  LemoCore.BigNumber = bignumber;
+	  LemoCore.TxType = StaticProperties.TxType;
+	  LemoCore.SDK_VERSION = StaticProperties.SDK_VERSION;
+	  LemoCore.verifyAddress = StaticProperties.verifyAddress;
+	  LemoCore.moToLemo = StaticProperties.moToLemo;
+	  LemoCore.lemoToMo = StaticProperties.lemoToMo;
+	  LemoCore.toBuffer = StaticProperties.toBuffer;
+	  LemoCore.signTx = StaticProperties.signTx;
 	}
 	/**
 	 * Create an module and attach to lemo object
-	 * @param {LemoClient} lemo
+	 * @param {LemoCore} lemo
 	 * @param {string} moduleName Attach api methods to the sub module object of lemo. If moduleName is empty, then attach to lemo object
 	 * @param {Array|object} apis Api constructor config list
 	 */
@@ -26811,7 +26605,7 @@
 	}
 	/**
 	 * Create an remote call API and attach to lemo object
-	 * @param {LemoClient} lemo
+	 * @param {LemoCore} lemo
 	 * @param {string} moduleName Attach api methods to the sub module object of lemo. If moduleName is empty, then attach to lemo object
 	 * @param {string} apiName Final api name you can call on lemo object
 	 * @param {string|Function} methodNameOrFunc The method name for remote API or customized function.
@@ -26871,6 +26665,6 @@
 	  throw new Error(errors.invalidConnConfig(config));
 	}
 
-	return LemoClient;
+	return LemoCore;
 
 }));

@@ -274,12 +274,12 @@ func NewAccount(db protocol.ChainDB, address common.Address, data *types.Account
 	return account
 }
 
-// MarshalJSON encodes the lemoClient RPC account format.
+// MarshalJSON encodes the client RPC account format.
 func (a *Account) MarshalJSON() ([]byte, error) {
 	return a.data.MarshalJSON()
 }
 
-// UnmarshalJSON decodes the lemoClient RPC account format.
+// UnmarshalJSON decodes the client RPC account format.
 func (a *Account) UnmarshalJSON(input []byte) error {
 	dec := new(types.AccountData)
 	if err := dec.UnmarshalJSON(input); err != nil {

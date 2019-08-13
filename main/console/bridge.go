@@ -48,7 +48,7 @@ type jsonrpcCall struct {
 	Params []interface{}
 }
 
-// Send implements the lemoClient provider "send" method.
+// Send implements the lemoCore provider "send" method.
 func (b *bridge) Send(call otto.FunctionCall) (response otto.Value) {
 	// Remarshal the request into a Go value.
 	JSON, _ := call.Otto.Object("JSON")
