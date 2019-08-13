@@ -22,7 +22,7 @@ const (
 	defaultGasPrice       = 1e9
 	MaxDeputyHostLength   = 128
 	MaxIntroductionLength = 1024
-	StandardNodeIdLength  = 128
+	StandardNodeIdLength  = 64
 	SignerWeightThreshold = 100
 	MaxSignersNumber      = 100
 )
