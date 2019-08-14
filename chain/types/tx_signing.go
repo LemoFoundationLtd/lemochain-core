@@ -8,7 +8,8 @@ import (
 )
 
 var (
-	ErrPublicKey = errors.New("invalid public key")
+	ErrPublicKey   = errors.New("invalid public key")
+	ErrNoSignsData = errors.New("no signature data")
 )
 
 // MakeSigner returns a Signer based on the given version and chainID.
@@ -29,6 +30,9 @@ func MakeGasPayerSigner() Signer {
 // recoverSigners
 func recoverSigners(sigHash common.Hash, sigs [][]byte) ([]common.Address, error) {
 	length := len(sigs)
+	if length == 0 {
+		return nil, ErrNoSignsData
+	}
 	signers := make([]common.Address, length, length)
 	for i := 0; i < length; i++ {
 		// recover the public key from the signature

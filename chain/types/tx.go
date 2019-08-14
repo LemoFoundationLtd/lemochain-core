@@ -281,7 +281,7 @@ func (tx *Transaction) Hash() common.Hash {
 	return result
 }
 
-// getHashData
+// getHashData 获取计算交易hash 的交易data
 func getHashData(tx *Transaction) (interface{}, error) {
 	if tx.Type() == params.BoxTx {
 		box, err := GetBox(tx.Data())
