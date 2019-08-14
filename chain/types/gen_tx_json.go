@@ -25,7 +25,7 @@ func (t txdata) MarshalJSON() ([]byte, error) {
 		RecipientName string          `json:"toName"`
 		GasPrice      *hexutil.Big10  `json:"gasPrice" gencodec:"required"`
 		GasLimit      hexutil.Uint64  `json:"gasLimit" gencodec:"required"`
-		GasUsed       hexutil.Uint64  `json:"gasUsed" `
+		GasUsed       hexutil.Uint64  `json:"gasUsed"`
 		Amount        *hexutil.Big10  `json:"amount" gencodec:"required"`
 		Data          hexutil.Bytes   `json:"data"`
 		Expiration    hexutil.Uint64  `json:"expirationTime" gencodec:"required"`
