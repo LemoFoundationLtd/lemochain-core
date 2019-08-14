@@ -74,7 +74,7 @@ func TestNewContractCreation(t *testing.T) {
 }
 
 func TestTransaction_WithSignature_From_Raw(t *testing.T) {
-	h, _ := testSigner.Hash(testTx)
+	h := testSigner.Hash(testTx)
 	sig, err := crypto.Sign(h[:], testPrivate)
 	assert.NoError(t, err)
 	txV := &Transaction{data: testTx.data}
@@ -217,7 +217,7 @@ func TestTransaction_Hash(t *testing.T) {
 	assert.Equal(t, common.HexToHash("0xcb624bd921214763e1fe7fdbe7f573eff66575e4649916cac12f88775abfa0f7"), testTx.Hash())
 
 	// hash for sign
-	h, _ := testSigner.Hash(testTx)
+	h := testSigner.Hash(testTx)
 	assert.Equal(t, common.HexToHash("0x12c59cd1ba635a8a673e2276c870c912ce82a1157fae8dbed651a711682c260b"), h)
 
 	// hash with signature
@@ -231,7 +231,7 @@ func TestReimbursementTransaction(t *testing.T) {
 	// without sign
 	assert.Equal(t, "0x2a39026fb2ca9e5bf5e9c966a7f481e2e17d485f9bb65c04d07e8e3d5a1fe579", reimbursementTx.Hash().String())
 	// two times sign
-	h, _ := MakeReimbursementTxSigner().Hash(reimbursementTx)
+	h := MakeReimbursementTxSigner().Hash(reimbursementTx)
 	// first sign
 	sigData, err := crypto.Sign(h[:], testPrivate)
 	assert.NoError(t, err)

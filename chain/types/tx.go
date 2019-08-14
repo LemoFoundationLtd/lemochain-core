@@ -203,10 +203,8 @@ func (tx *Transaction) Type() uint16    { return tx.data.Type }
 func (tx *Transaction) Version() uint8  { return tx.data.Version }
 func (tx *Transaction) ChainID() uint16 { return tx.data.ChainID }
 func (tx *Transaction) Data() []byte    { return common.CopyBytes(tx.data.Data) }
-func (tx *Transaction) ResetBoxTxData(newData []byte) {
-	if tx.Type() == params.BoxTx {
-		tx.data.Data = common.CopyBytes(newData)
-	}
+func (tx *Transaction) SetData(newData []byte) {
+	tx.data.Data = common.CopyBytes(newData)
 }
 func (tx *Transaction) GasLimit() uint64 { return tx.data.GasLimit }
 func (tx *Transaction) GasUsed() uint64  { return tx.data.GasUsed }
@@ -249,16 +247,13 @@ func (tx *Transaction) GasPayer() common.Address {
 	return gasPayer
 }
 
+// Hash
 func (tx *Transaction) Hash() common.Hash {
 	if hash := tx.hash.Load(); hash != nil {
 		return hash.(common.Hash)
 	}
 
-	hashData, err := getHashData(tx)
-	if err != nil {
-		return common.Hash{}
-	}
-
+	hashData := getHashData(tx)
 	result := rlpHash([]interface{}{
 		tx.Type(),
 		tx.Version(),
@@ -282,24 +277,24 @@ func (tx *Transaction) Hash() common.Hash {
 }
 
 // getHashData 获取计算交易hash 的交易data
-func getHashData(tx *Transaction) (interface{}, error) {
+func getHashData(tx *Transaction) interface{} {
 	if tx.Type() == params.BoxTx {
-		box, err := GetBox(tx.Data())
+		box, err := GetBox(tx.data.Data)
 		if err != nil {
 			log.Errorf("Get box tx sign hash error. err: %v", err)
-			return common.Hash{}, err
+			// 箱子交易反序列化失败，把它当做普通交易处理
+			return tx.data.Data
 		}
-		return calcBoxSubTxHashSet(box.SubTxList), nil
-	} else {
-		return tx.data.Data, nil
+		// 箱子中存在子交易
+		if len(box.SubTxList) > 0 {
+			return calcBoxSubTxHashSet(box.SubTxList)
+		}
 	}
+	return tx.data.Data
 }
 
 // calcBoxSubTxHashSet 计算子交易的hash集合,返回对集合的hash值
 func calcBoxSubTxHashSet(subTxList Transactions) common.Hash {
-	if len(subTxList) == 0 {
-		return common.Hash{}
-	}
 	// 计算子交易的交易hash集合
 	subTxHashSet := make([]common.Hash, 0, len(subTxList))
 	for _, subTx := range subTxList {

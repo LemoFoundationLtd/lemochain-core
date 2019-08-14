@@ -58,7 +58,7 @@ type Signer interface {
 	GetSigners(tx *Transaction) ([]common.Address, error)
 
 	// Hash returns the hash to be signed.
-	Hash(tx *Transaction) (common.Hash, error)
+	Hash(tx *Transaction) common.Hash
 }
 
 // DefaultSigner implements Signer.
@@ -66,10 +66,8 @@ type DefaultSigner struct {
 }
 
 func (s DefaultSigner) SignTx(tx *Transaction, prv *ecdsa.PrivateKey) (*Transaction, error) {
-	h, err := s.Hash(tx)
-	if err != nil {
-		return nil, err
-	}
+	h := s.Hash(tx)
+
 	sig, err := crypto.Sign(h[:], prv)
 	if err != nil {
 		return nil, err
@@ -80,10 +78,8 @@ func (s DefaultSigner) SignTx(tx *Transaction, prv *ecdsa.PrivateKey) (*Transact
 }
 
 func (s DefaultSigner) GetSigners(tx *Transaction) ([]common.Address, error) {
-	sigHash, err := s.Hash(tx)
-	if err != nil {
-		return nil, err
-	}
+	sigHash := s.Hash(tx)
+
 	sigs := tx.data.Sigs
 	signers, err := recoverSigners(sigHash, sigs)
 	return signers, err
@@ -91,11 +87,9 @@ func (s DefaultSigner) GetSigners(tx *Transaction) ([]common.Address, error) {
 
 // Hash returns the hash to be signed by the sender.
 // It does not uniquely identify the transaction.
-func (s DefaultSigner) Hash(tx *Transaction) (common.Hash, error) {
-	hashData, err := getHashData(tx)
-	if err != nil {
-		return common.Hash{}, err
-	}
+func (s DefaultSigner) Hash(tx *Transaction) common.Hash {
+	hashData := getHashData(tx)
+
 	return rlpHash([]interface{}{
 		tx.Type(),
 		tx.Version(),
@@ -110,7 +104,7 @@ func (s DefaultSigner) Hash(tx *Transaction) (common.Hash, error) {
 		hashData,
 		tx.data.Expiration,
 		tx.data.Message,
-	}), nil
+	})
 }
 
 type ReimbursementTxSigner struct {
@@ -118,10 +112,8 @@ type ReimbursementTxSigner struct {
 
 // SignTx returns first signature to reimbursement gas transaction
 func (s ReimbursementTxSigner) SignTx(tx *Transaction, prv *ecdsa.PrivateKey) (*Transaction, error) {
-	h, err := s.Hash(tx)
-	if err != nil {
-		return nil, err
-	}
+	h := s.Hash(tx)
+
 	sig, err := crypto.Sign(h[:], prv)
 	if err != nil {
 		return nil, err
@@ -132,11 +124,8 @@ func (s ReimbursementTxSigner) SignTx(tx *Transaction, prv *ecdsa.PrivateKey) (*
 }
 
 // Hash excluding gasLimit and gasPrice
-func (s ReimbursementTxSigner) Hash(tx *Transaction) (common.Hash, error) {
-	hashData, err := getHashData(tx)
-	if err != nil {
-		return common.Hash{}, err
-	}
+func (s ReimbursementTxSigner) Hash(tx *Transaction) common.Hash {
+	hashData := getHashData(tx)
 
 	return rlpHash([]interface{}{
 		tx.Type(),
@@ -150,15 +139,13 @@ func (s ReimbursementTxSigner) Hash(tx *Transaction) (common.Hash, error) {
 		hashData,
 		tx.data.Expiration,
 		tx.data.Message,
-	}), nil
+	})
 }
 
 // GetSigners
 func (s ReimbursementTxSigner) GetSigners(tx *Transaction) ([]common.Address, error) {
-	sigHash, err := s.Hash(tx)
-	if err != nil {
-		return nil, err
-	}
+	sigHash := s.Hash(tx)
+
 	sigs := tx.data.Sigs
 	signers, err := recoverSigners(sigHash, sigs)
 	return signers, err
@@ -169,7 +156,7 @@ type GasPayerSigner struct {
 
 // SignTx returns last signature to reimbursement gas transaction
 func (g GasPayerSigner) SignTx(tx *Transaction, prv *ecdsa.PrivateKey) (*Transaction, error) {
-	h, _ := g.Hash(tx)
+	h := g.Hash(tx)
 
 	lastSignData, err := crypto.Sign(h[:], prv)
 	if err != nil {
@@ -182,18 +169,18 @@ func (g GasPayerSigner) SignTx(tx *Transaction, prv *ecdsa.PrivateKey) (*Transac
 
 // GetGasPayer returns gas payer address
 func (g GasPayerSigner) GetSigners(tx *Transaction) ([]common.Address, error) {
-	sigHash, _ := g.Hash(tx)
+	sigHash := g.Hash(tx)
 	sigs := tx.data.GasPayerSigs
 	signers, err := recoverSigners(sigHash, sigs)
 	return signers, err
 }
 
 // Hash returns sign hash
-func (g GasPayerSigner) Hash(tx *Transaction) (common.Hash, error) {
+func (g GasPayerSigner) Hash(tx *Transaction) common.Hash {
 	firstSignData := tx.data.Sigs
 	return rlpHash([]interface{}{
 		firstSignData,
 		tx.GasPrice(),
 		tx.GasLimit(),
-	}), nil
+	})
 }

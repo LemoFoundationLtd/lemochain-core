@@ -45,7 +45,7 @@ func TestDefaultSigner_GetSender(t *testing.T) {
 }
 
 func TestDefaultSigner_Hash(t *testing.T) {
-	hash, _ := testSigner.Hash(testTx)
+	hash := testSigner.Hash(testTx)
 	assert.Equal(t, "0x12c59cd1ba635a8a673e2276c870c912ce82a1157fae8dbed651a711682c260b", hash.Hex())
 }
 func TestReimbursementTxSigner_GetSender(t *testing.T) {
@@ -57,7 +57,7 @@ func TestReimbursementTxSigner_GetSender(t *testing.T) {
 	assert.Equal(t, testAddr, addr[0])
 }
 func TestReimbursementTxSigner_Hash(t *testing.T) {
-	hash, _ := MakeReimbursementTxSigner().Hash(reimbursementTx)
+	hash := MakeReimbursementTxSigner().Hash(reimbursementTx)
 	assert.Equal(t, "0xc12595d1e15d445edd5b8653b69c8071794be7a8139cb21c2b0725c437803740", hash.Hex())
 }
 
@@ -79,7 +79,7 @@ func TestGasPayerSigner_GasPayerSignTx(t *testing.T) {
 func TestGasPayerSigner_SignHash(t *testing.T) {
 	firstSignTx, err := MakeReimbursementTxSigner().SignTx(reimbursementTx, testPrivate)
 	assert.NoError(t, err)
-	hash, _ := MakeGasPayerSigner().Hash(firstSignTx)
+	hash := MakeGasPayerSigner().Hash(firstSignTx)
 	assert.NoError(t, err)
 	assert.Equal(t, "0x91f21881c990ef7a14fc1d77fd0da95c96daa53573a85b6a2e208e3e9d75e7cd", hash.String())
 }
