@@ -204,46 +204,6 @@ func (am *Manager) logGrouping() map[common.Address]types.ChangeLogSlice {
 	return logsByAccount
 }
 
-// createRootLog
-func (am *Manager) createRootLog(account *SafeAccount) error {
-
-	oldStorageRoot := account.rawAccount.GetStorageRoot()
-	oldAssetCodeRoot := account.rawAccount.GetAssetCodeRoot()
-	oldAssetIdRoot := account.rawAccount.GetAssetIdRoot()
-	oldEquityRoot := account.rawAccount.GetEquityRoot()
-
-	// update account and contract storage
-	if err := account.rawAccount.Finalise(); err != nil {
-		return err
-	}
-
-	newStorageRoot := account.rawAccount.GetStorageRoot()
-	newAssetCodeRoot := account.rawAccount.GetAssetCodeRoot()
-	newAssetIdRoot := account.rawAccount.GetAssetIdRoot()
-	newEquityRoot := account.rawAccount.GetEquityRoot()
-
-	if newStorageRoot != oldStorageRoot {
-		log := NewStorageRootLog(account.GetAddress(), am.processor, oldStorageRoot, newStorageRoot)
-		am.processor.PushChangeLog(log)
-	}
-
-	if newAssetCodeRoot != oldAssetCodeRoot {
-		log, _ := NewAssetCodeRootLog(account.GetAddress(), am.processor, oldAssetCodeRoot, newAssetCodeRoot)
-		am.processor.PushChangeLog(log)
-	}
-
-	if newAssetIdRoot != oldAssetIdRoot {
-		log, _ := NewAssetIdRootLog(account.GetAddress(), am.processor, oldAssetIdRoot, newAssetIdRoot)
-		am.processor.PushChangeLog(log)
-	}
-
-	if newEquityRoot != oldEquityRoot {
-		log, _ := NewEquityRootLog(account.GetAddress(), am.processor, oldEquityRoot, newEquityRoot)
-		am.processor.PushChangeLog(log)
-	}
-	return nil
-}
-
 // updateVersion
 func (am *Manager) updateVersion(logs types.ChangeLogSlice, account *SafeAccount) error {
 	currentHeight := am.currentBlockHeight()
@@ -285,17 +245,49 @@ func (am *Manager) Finalise() error {
 	var account *SafeAccount
 	for _, addr := range addressList {
 		account = am.accountCache[addr]
-		if len(logsByAccount[account.GetAddress()]) <= 0 {
+		logs := logsByAccount[account.GetAddress()]
+		if len(logs) <= 0 {
 			continue
 		}
 		// 更新root log
-		if err := am.createRootLog(account); err != nil {
+		oldStorageRoot := account.rawAccount.GetStorageRoot()
+		oldAssetCodeRoot := account.rawAccount.GetAssetCodeRoot()
+		oldAssetIdRoot := account.rawAccount.GetAssetIdRoot()
+		oldEquityRoot := account.rawAccount.GetEquityRoot()
+
+		// update account and contract storage
+		if err := account.rawAccount.Finalise(); err != nil {
 			return err
 		}
 
-		logs := logsByAccount[account.GetAddress()]
+		newStorageRoot := account.rawAccount.GetStorageRoot()
+		newAssetCodeRoot := account.rawAccount.GetAssetCodeRoot()
+		newAssetIdRoot := account.rawAccount.GetAssetIdRoot()
+		newEquityRoot := account.rawAccount.GetEquityRoot()
+
+		if newStorageRoot != oldStorageRoot {
+			log := NewStorageRootLog(account.GetAddress(), am.processor, oldStorageRoot, newStorageRoot)
+			am.processor.PushChangeLog(log)
+		}
+
+		if newAssetCodeRoot != oldAssetCodeRoot {
+			log, _ := NewAssetCodeRootLog(account.GetAddress(), am.processor, oldAssetCodeRoot, newAssetCodeRoot)
+			am.processor.PushChangeLog(log)
+		}
+
+		if newAssetIdRoot != oldAssetIdRoot {
+			log, _ := NewAssetIdRootLog(account.GetAddress(), am.processor, oldAssetIdRoot, newAssetIdRoot)
+			am.processor.PushChangeLog(log)
+		}
+
+		if newEquityRoot != oldEquityRoot {
+			log, _ := NewEquityRootLog(account.GetAddress(), am.processor, oldEquityRoot, newEquityRoot)
+			am.processor.PushChangeLog(log)
+		}
 		// 更新change log的版本号
-		am.updateVersion(logs, account)
+		if err := am.updateVersion(logs, account); err != nil {
+			return err
+		}
 	}
 	return nil
 }
