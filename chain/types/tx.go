@@ -59,6 +59,7 @@ type txdata struct {
 	RecipientName string          `json:"toName"`
 	GasPrice      *big.Int        `json:"gasPrice" gencodec:"required"`
 	GasLimit      uint64          `json:"gasLimit" gencodec:"required"`
+	GasUsed       uint64          `json:"gasUsed"`
 	Amount        *big.Int        `json:"amount" gencodec:"required"`
 	Data          []byte          `json:"data"`
 	Expiration    uint64          `json:"expirationTime" gencodec:"required"`
@@ -77,6 +78,7 @@ type txdataMarshaling struct {
 	ChainID      hexutil.Uint16
 	GasPrice     *hexutil.Big10
 	GasLimit     hexutil.Uint64
+	GasUsed      hexutil.Uint64
 	Amount       *hexutil.Big10
 	Data         hexutil.Bytes
 	Expiration   hexutil.Uint64
@@ -197,11 +199,18 @@ func (tx *Transaction) UnmarshalJSON(input []byte) error {
 	return nil
 }
 
-func (tx *Transaction) Type() uint16       { return tx.data.Type }
-func (tx *Transaction) Version() uint8     { return tx.data.Version }
-func (tx *Transaction) ChainID() uint16    { return tx.data.ChainID }
-func (tx *Transaction) Data() []byte       { return common.CopyBytes(tx.data.Data) }
-func (tx *Transaction) GasLimit() uint64   { return tx.data.GasLimit }
+func (tx *Transaction) Type() uint16    { return tx.data.Type }
+func (tx *Transaction) Version() uint8  { return tx.data.Version }
+func (tx *Transaction) ChainID() uint16 { return tx.data.ChainID }
+func (tx *Transaction) Data() []byte    { return common.CopyBytes(tx.data.Data) }
+func (tx *Transaction) SetData(newData []byte) {
+	tx.data.Data = common.CopyBytes(newData)
+}
+func (tx *Transaction) GasLimit() uint64 { return tx.data.GasLimit }
+func (tx *Transaction) GasUsed() uint64  { return tx.data.GasUsed }
+func (tx *Transaction) SetGasUsed(gasUsed uint64) {
+	tx.data.GasUsed = gasUsed
+}
 func (tx *Transaction) GasPrice() *big.Int { return new(big.Int).Set(tx.data.GasPrice) }
 func (tx *Transaction) Amount() *big.Int   { return new(big.Int).Set(tx.data.Amount) }
 func (tx *Transaction) Expiration() uint64 { return tx.data.Expiration }
@@ -238,13 +247,61 @@ func (tx *Transaction) GasPayer() common.Address {
 	return gasPayer
 }
 
+// Hash
 func (tx *Transaction) Hash() common.Hash {
 	if hash := tx.hash.Load(); hash != nil {
 		return hash.(common.Hash)
 	}
-	v := rlpHash(tx)
-	tx.hash.Store(v)
-	return v
+
+	hashData := getHashData(tx)
+	result := rlpHash([]interface{}{
+		tx.Type(),
+		tx.Version(),
+		tx.ChainID(),
+		tx.data.From,
+		tx.data.GasPayer,
+		tx.data.Recipient,
+		tx.data.RecipientName,
+		tx.data.GasPrice,
+		tx.data.GasLimit,
+		tx.data.Amount,
+		hashData,
+		tx.data.Expiration,
+		tx.data.Message,
+		tx.data.Sigs,
+		tx.data.GasPayerSigs,
+	})
+
+	tx.hash.Store(result)
+	return result
+}
+
+// getHashData 获取计算交易hash 的交易data
+func getHashData(tx *Transaction) interface{} {
+	if tx.Type() == params.BoxTx {
+		box, err := GetBox(tx.data.Data)
+		if err != nil {
+			log.Errorf("Get box tx sign hash error. err: %v", err)
+			// 箱子交易反序列化失败，把它当做普通交易处理
+			return tx.data.Data
+		}
+		// 箱子中存在子交易
+		if len(box.SubTxList) > 0 {
+			return calcBoxSubTxHashSet(box.SubTxList)
+		}
+	}
+	return tx.data.Data
+}
+
+// calcBoxSubTxHashSet 计算子交易的hash集合,返回对集合的hash值
+func calcBoxSubTxHashSet(subTxList Transactions) common.Hash {
+	// 计算子交易的交易hash集合
+	subTxHashSet := make([]common.Hash, 0, len(subTxList))
+	for _, subTx := range subTxList {
+		subTxHashSet = append(subTxHashSet, subTx.Hash())
+	}
+	// 对子交易的交易hash集合进行hash 作为计算box交易hash 的data
+	return rlpHash(subTxHashSet)
 }
 
 // Cost returns amount + gasprice * gaslimit.
@@ -277,6 +334,7 @@ func (tx *Transaction) String() string {
 	}
 	set = append(set, fmt.Sprintf("GasPrice: %v", tx.data.GasPrice))
 	set = append(set, fmt.Sprintf("GasLimit: %v", tx.data.GasLimit))
+	set = append(set, fmt.Sprintf("GasUsed: %v", tx.data.GasUsed))
 	set = append(set, fmt.Sprintf("Amount: %v", tx.data.Amount))
 	if len(tx.data.Data) > 0 {
 		set = append(set, fmt.Sprintf("Data: %#x", tx.data.Data))

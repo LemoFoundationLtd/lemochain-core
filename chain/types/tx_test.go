@@ -59,7 +59,7 @@ func TestNewTransaction(t *testing.T) {
 
 func TestNewContractCreation(t *testing.T) {
 	expiration := ExpirationFromNow()
-	tx := NewContractCreation(testAddr, common.Big1, 100, common.Big2, "0x01", "0x02", params.CreateContractTx, 200, expiration, "aa", "")
+	tx := NewContractCreation(testAddr, common.Big1, 100, common.Big2, []byte{0x01, 0x02}, params.CreateContractTx, 200, expiration, "aa", "")
 	assert.Equal(t, params.CreateContractTx, tx.Type())
 	assert.Equal(t, TxVersion, tx.Version())
 	assert.Equal(t, uint16(200), tx.ChainID())
@@ -87,7 +87,7 @@ func TestTransaction_WithSignature_From_Raw(t *testing.T) {
 func TestTransaction_EncodeRLP_DecodeRLP(t *testing.T) {
 	txb, err := rlp.EncodeToBytes(testTx)
 	assert.NoError(t, err)
-	assert.Equal(t, "0xeb800181c89400000000000000000000000000000000000000018261610264010c845c107d94836161618080", common.ToHex(txb))
+	assert.Equal(t, "0xf856800181c8940107134b9cdd7d89f83efa6175f9b3552f29094c940107134b9cdd7d89f83efa6175f9b3552f29094c940000000000000000000000000000000000000001826161026480010c845c107d9483616161c0c0", common.ToHex(txb))
 	result := Transaction{}
 	err = rlp.DecodeBytes(txb, &result)
 	assert.NoError(t, err)
@@ -104,13 +104,14 @@ func TestTransaction_EncodeRLP_DecodeRLP(t *testing.T) {
 	assert.Equal(t, testTx.data.Hash, result.data.Hash)
 	assert.Equal(t, testTx.GasPayerSigs(), result.GasPayerSigs())
 	assert.Equal(t, testTx.Sigs(), result.Sigs())
+	assert.Equal(t, uint64(0), result.GasUsed())
 
 	// with signature
 	txV, err := testSigner.SignTx(testTx, testPrivate)
 	assert.NoError(t, err)
 	txb, err = rlp.EncodeToBytes(txV)
 	assert.NoError(t, err)
-	assert.Equal(t, "0xf86d800181c89400000000000000000000000000000000000000018261610264010c845c107d9483616161b8418c0499083cb3d27bead4f21994aeebf8e75fa11df6bfe01c71cad583fc9a3c70778a437607d072540719a866adb630001fabbfb6b032d1a8dfbffac7daed8f020180", common.ToHex(txb))
+	assert.Equal(t, "0xf89a800181c8940107134b9cdd7d89f83efa6175f9b3552f29094c940107134b9cdd7d89f83efa6175f9b3552f29094c940000000000000000000000000000000000000001826161026480010c845c107d9483616161f843b841df998b9e98778c5b54e9c8c104b9841c34979f81ffa3c0bdac6c2d63a8b85e1001e6841ea0e9bbe43da601e81a5817a9b0a95b0e2a156d42f0863bb26aff2d0c00c0", common.ToHex(txb))
 	result = Transaction{}
 	err = rlp.DecodeBytes(txb, &result)
 	assert.NoError(t, err)
@@ -143,6 +144,7 @@ func TestReimbursementTransaction_EncodeRLP_DecodeRLP(t *testing.T) {
 	assert.Equal(t, reimbursementTx.Data(), result02.Data())
 	assert.Equal(t, reimbursementTx.Expiration(), result02.Expiration())
 	assert.Equal(t, reimbursementTx.Message(), result02.Message())
+	assert.Equal(t, uint64(0), result02.GasUsed())
 
 	assert.Equal(t, reimbursementTx.data.Hash, result02.data.Hash)
 	assert.Equal(t, reimbursementTx.GasPayerSigs(), result02.GasPayerSigs())
@@ -161,10 +163,10 @@ func TestReimbursementTransaction_EncodeRLP_DecodeRLP(t *testing.T) {
 	assert.Equal(t, uint64(3333), lastSignTx.GasLimit())
 	actualPayer := lastSignTx.GasPayer()
 	assert.Equal(t, gasPayerAddr, actualPayer)
-	assert.Equal(t, "0x178516469e49899aeb2e97572d1ebd4576b45d32767c94bfdcedc0511ff89a58158e13736a7bffecf233c86e439e595081676e6ee1ab8696b5e28cbd34806c6901", common.ToHex(lastSignTx.GasPayerSigs()[0]))
+	assert.Equal(t, "0xca1d67ca4f9c6e1cef1e8b918beb18f0a34d1604b6a249bee79e213bdea16c533d84d1e461804da20fe8e66e548e2078b78adb49e4eb7eb15c75ab957a432da100", common.ToHex(lastSignTx.GasPayerSigs()[0]))
 	rlpdata, err := rlp.EncodeToBytes(lastSignTx)
 	assert.NoError(t, err)
-	assert.Equal(t, "0xf8e9800181c89400000000000000000000000000000000000000028003820d0502b83c383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838845c107d9480b841470024fba0158a446082242da8e0b97e6898d0605e1bb62627c3c703dd4a90b93ad5767e3cea6084a2036f1580815ea9bca594b3dc7c8a14ac06b45e6740cc5c01b841178516469e49899aeb2e97572d1ebd4576b45d32767c94bfdcedc0511ff89a58158e13736a7bffecf233c86e439e595081676e6ee1ab8696b5e28cbd34806c6901", common.ToHex(rlpdata))
+	assert.Equal(t, "0xf90118800181c8940107134b9cdd7d89f83efa6175f9b3552f29094c9401989568a87e92e82a609891bd9de3d7f22e16289400000000000000000000000000000000000000028003820d058002b83c383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838845c107d9480f843b8411f951f2f3d7c3fa558a928e0e546b2a1d2b2e687cedd35fd77d730f6c62c71c21899f23a3e07ea1647c0d9fa00d10f3cde622ce2ecd321dfbb029c6bc7d471de00f843b841ca1d67ca4f9c6e1cef1e8b918beb18f0a34d1604b6a249bee79e213bdea16c533d84d1e461804da20fe8e66e548e2078b78adb49e4eb7eb15c75ab957a432da100", common.ToHex(rlpdata))
 	recovered := Transaction{}
 	err = rlp.DecodeBytes(rlpdata, &recovered)
 	assert.NoError(t, err)
@@ -176,10 +178,11 @@ func TestReimbursementTransaction_EncodeRLP_DecodeRLP(t *testing.T) {
 	payer02 := lastSignTx.GasPayer()
 	assert.Equal(t, gasPayerAddr, payer02)
 }
+
 func TestTransaction_EncodeRLP_DecodeRLP_bigTx(t *testing.T) {
 	txb, err := rlp.EncodeToBytes(testTxBig)
 	assert.NoError(t, err)
-	assert.Equal(t, "0xf90119800181c8941000000000000000000000000000000000000000b83c3838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838389e111111111111111111111111111111111111111111111111111111111111649e111111111111111111111111111111111111111111111111111111111111b83c383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838845c107d94b83c3838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838388080", common.ToHex(txb))
+	assert.Equal(t, "0xf90144800181c8940107134b9cdd7d89f83efa6175f9b3552f29094c940107134b9cdd7d89f83efa6175f9b3552f29094c941000000000000000000000000000000000000000b83c3838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838389e11111111111111111111111111111111111111111111111111111111111164809e111111111111111111111111111111111111111111111111111111111111b83c383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838845c107d94b83c383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838c0c0", common.ToHex(txb))
 	result := Transaction{}
 	err = rlp.DecodeBytes(txb, &result)
 	assert.NoError(t, err)
@@ -201,7 +204,7 @@ func TestTransaction_EncodeRLP_DecodeRLP_bigTx(t *testing.T) {
 	assert.NoError(t, err)
 	txb, err = rlp.EncodeToBytes(txV)
 	assert.NoError(t, err)
-	assert.Equal(t, "0xf9015b800181c8941000000000000000000000000000000000000000b83c3838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838389e111111111111111111111111111111111111111111111111111111111111649e111111111111111111111111111111111111111111111111111111111111b83c383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838845c107d94b83c383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838b841956da7af3519f957e1281e8f41735aa965e6a712e828856fe95bdbd31c787d760f235ae3ed6ff4ea8198d2528b4561b68544c5691de58aa974b7b6cc791f78d50180", common.ToHex(txb))
+	assert.Equal(t, "0xf90188800181c8940107134b9cdd7d89f83efa6175f9b3552f29094c940107134b9cdd7d89f83efa6175f9b3552f29094c941000000000000000000000000000000000000000b83c3838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838389e11111111111111111111111111111111111111111111111111111111111164809e111111111111111111111111111111111111111111111111111111111111b83c383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838845c107d94b83c383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838f843b841ef73ebcc558f2e3ab791e9f81100abc3d3b17aa89d65d3915398ba090788b9680dfcb343be4519fd9a9199d6c0bbc6ebfef686722c2a63e507637a09ce4cbcd601c0", common.ToHex(txb))
 	result = Transaction{}
 	err = rlp.DecodeBytes(txb, &result)
 	assert.NoError(t, err)
@@ -211,22 +214,22 @@ func TestTransaction_EncodeRLP_DecodeRLP_bigTx(t *testing.T) {
 
 func TestTransaction_Hash(t *testing.T) {
 	// hash without signature
-	assert.Equal(t, common.HexToHash("0xa2818bd2b84f64df106d67e92fac6103c1a1a5f5333d81761e36efb3e0f374f2"), testTx.Hash())
+	assert.Equal(t, common.HexToHash("0xcb624bd921214763e1fe7fdbe7f573eff66575e4649916cac12f88775abfa0f7"), testTx.Hash())
 
 	// hash for sign
 	h := testSigner.Hash(testTx)
-	assert.Equal(t, common.HexToHash("0x81f8b8f725a9342a9ad85f31d2a6009afd52e43c5f86199a2089a32ea81913e6"), h)
+	assert.Equal(t, common.HexToHash("0x12c59cd1ba635a8a673e2276c870c912ce82a1157fae8dbed651a711682c260b"), h)
 
 	// hash with signature
 	sig, err := crypto.Sign(h[:], testPrivate)
 	assert.NoError(t, err)
 	txV := testTx.Clone()
 	txV.data.Sigs = append(txV.data.Sigs, sig)
-	assert.Equal(t, common.HexToHash("0xa14ba16fec094ceae0d60fe6b7464e0d7fc3c26e85c9638f4f6928d7c5ac7f1e"), txV.Hash())
+	assert.Equal(t, common.HexToHash("0x32b1f4bfe3193a04539c5f4850d503a4f7dcd484d29dc088b511ce19e2554ff4"), txV.Hash())
 }
 func TestReimbursementTransaction(t *testing.T) {
 	// without sign
-	assert.Equal(t, "0xce5f35b03b4f2269c2a0f765a1b08295076de9f727019f6782469a3b32a43244", reimbursementTx.Hash().String())
+	assert.Equal(t, "0x2a39026fb2ca9e5bf5e9c966a7f481e2e17d485f9bb65c04d07e8e3d5a1fe579", reimbursementTx.Hash().String())
 	// two times sign
 	h := MakeReimbursementTxSigner().Hash(reimbursementTx)
 	// first sign
@@ -239,7 +242,7 @@ func TestReimbursementTransaction(t *testing.T) {
 	txV = GasPayerSignatureTx(txV, common.Big3, 3333)
 	txW, err := MakeGasPayerSigner().SignTx(txV, gasPayerPrivate)
 	assert.NoError(t, err)
-	assert.Equal(t, "0x833ffd0cfc95dea9411c889ac3e6fcc18f732ef497aad95b61d21d7f8fc1014d", txW.Hash().String())
+	assert.Equal(t, "0x83497d3a0cdb4b0b22d45f28f490ccb3b7e964cc7d6c2215b1ccd0173ffd324a", txW.Hash().String())
 }
 
 func TestTransaction_MarshalJSON_UnmarshalJSON(t *testing.T) {
@@ -248,7 +251,7 @@ func TestTransaction_MarshalJSON_UnmarshalJSON(t *testing.T) {
 	assert.NoError(t, err)
 	data, err := json.Marshal(txV)
 	assert.NoError(t, err)
-	assert.Equal(t, `{"type":"0","version":"1","chainID":"200","to":"Lemo8888888888888888888888888888888888BW","toName":"aa","gasPrice":"2","gasLimit":"100","amount":"1","data":"0x0c","expirationTime":"1544584596","message":"aaa","sig":"0x8c0499083cb3d27bead4f21994aeebf8e75fa11df6bfe01c71cad583fc9a3c70778a437607d072540719a866adb630001fabbfb6b032d1a8dfbffac7daed8f0201","hash":"0xa14ba16fec094ceae0d60fe6b7464e0d7fc3c26e85c9638f4f6928d7c5ac7f1e","gasPayerSig":"0x"}`, string(data))
+	assert.Equal(t, `{"type":"0","version":"1","chainID":"200","from":"Lemo836BQKCBZ8Z7B7N4G4N4SNGBT24ZZSJQD24D","gasPayer":"Lemo836BQKCBZ8Z7B7N4G4N4SNGBT24ZZSJQD24D","to":"Lemo8888888888888888888888888888888888BW","toName":"aa","gasPrice":"2","gasLimit":"100","gasUsed":"0","amount":"1","data":"0x0c","expirationTime":"1544584596","message":"aaa","sigs":["0xdf998b9e98778c5b54e9c8c104b9841c34979f81ffa3c0bdac6c2d63a8b85e1001e6841ea0e9bbe43da601e81a5817a9b0a95b0e2a156d42f0863bb26aff2d0c00"],"hash":"0x32b1f4bfe3193a04539c5f4850d503a4f7dcd484d29dc088b511ce19e2554ff4","gasPayerSigs":[]}`, string(data))
 	var parsedTx *Transaction
 	err = json.Unmarshal(data, &parsedTx)
 	assert.NoError(t, err)
@@ -261,7 +264,7 @@ func TestTransaction_MarshalJSON_UnmarshalJSON(t *testing.T) {
 	lastSignTx, err := MakeGasPayerSigner().SignTx(firstSignTx, gasPayerPrivate)
 	data02, err := json.Marshal(lastSignTx)
 	assert.NoError(t, err)
-	assert.Equal(t, `{"type":"0","version":"1","chainID":"200","to":"Lemo8888888888888888888888888888888888QR","toName":"","gasPrice":"2","gasLimit":"2222","amount":"2","data":"0x383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838","expirationTime":"1544584596","message":"","sig":"0x470024fba0158a446082242da8e0b97e6898d0605e1bb62627c3c703dd4a90b93ad5767e3cea6084a2036f1580815ea9bca594b3dc7c8a14ac06b45e6740cc5c01","hash":"0x9aab86ad9ec5711c0a32a14fea895531523b324149535dd25a8e4dac674c501c","gasPayerSig":"0x2c9ebcdfa25fd74a54ab84257da567d529493dec102c45d1b63b8dcf55c373ae2b6dd0834de849bfca63686a84bc430aea14a709852ff4e3a2b06cfbd2bbb7c201"}`, string(data02))
+	assert.Equal(t, `{"type":"0","version":"1","chainID":"200","from":"Lemo836BQKCBZ8Z7B7N4G4N4SNGBT24ZZSJQD24D","gasPayer":"Lemo83S6HTWD6TW3KWFF465YSTJ7PJ7JNPBTYYGD","to":"Lemo8888888888888888888888888888888888QR","toName":"","gasPrice":"2","gasLimit":"2222","gasUsed":"0","amount":"2","data":"0x383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838","expirationTime":"1544584596","message":"","sigs":["0x1f951f2f3d7c3fa558a928e0e546b2a1d2b2e687cedd35fd77d730f6c62c71c21899f23a3e07ea1647c0d9fa00d10f3cde622ce2ecd321dfbb029c6bc7d471de00"],"hash":"0x619b93ac7694a5563441d3bc3cd8b2c22504db5b45ec81f7d256834ed44f7767","gasPayerSigs":["0xed9efa8a0977a5870417ca3b1a9c7f69a5886e55f3d03dd77ae05e08cbea5c9249aff8e8255b325a4508d686416aec65cc7380467f66ae85784a8c379ad9e55501"]}`, string(data02))
 	var txW *Transaction
 	err = json.Unmarshal(data02, &txW)
 	assert.NoError(t, err)
@@ -273,7 +276,7 @@ func TestTransaction_MarshalJSON_UnmarshalJSON_bigTx(t *testing.T) {
 	assert.NoError(t, err)
 	data, err := json.Marshal(txV)
 	assert.NoError(t, err)
-	assert.Equal(t, `{"type":"0","version":"1","chainID":"200","to":"Lemo8P6Y24SZ2JPY7AFQD4HJWWRQ6DJ6TW2Y9CCF","toName":"888888888888888888888888888888888888888888888888888888888888","gasPrice":"117789804318558955305553166716194567721832259791707930541440413419507985","gasLimit":"100","amount":"117789804318558955305553166716194567721832259791707930541440413419507985","data":"0x383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838","expirationTime":"1544584596","message":"888888888888888888888888888888888888888888888888888888888888","sig":"0x956da7af3519f957e1281e8f41735aa965e6a712e828856fe95bdbd31c787d760f235ae3ed6ff4ea8198d2528b4561b68544c5691de58aa974b7b6cc791f78d501","hash":"0xcd74fe3f3e5bd900162a34bf756406fbf73dd1e164f98ba24404f43fa8e7f449","gasPayerSig":"0x"}`, string(data))
+	assert.Equal(t, `{"type":"0","version":"1","chainID":"200","from":"Lemo836BQKCBZ8Z7B7N4G4N4SNGBT24ZZSJQD24D","gasPayer":"Lemo836BQKCBZ8Z7B7N4G4N4SNGBT24ZZSJQD24D","to":"Lemo8P6Y24SZ2JPY7AFQD4HJWWRQ6DJ6TW2Y9CCF","toName":"888888888888888888888888888888888888888888888888888888888888","gasPrice":"117789804318558955305553166716194567721832259791707930541440413419507985","gasLimit":"100","gasUsed":"0","amount":"117789804318558955305553166716194567721832259791707930541440413419507985","data":"0x383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838383838","expirationTime":"1544584596","message":"888888888888888888888888888888888888888888888888888888888888","sigs":["0xef73ebcc558f2e3ab791e9f81100abc3d3b17aa89d65d3915398ba090788b9680dfcb343be4519fd9a9199d6c0bbc6ebfef686722c2a63e507637a09ce4cbcd601"],"hash":"0x96f755393e975f932a613b88a47decf1eeba387ef377cd4b175e394e660053a6","gasPayerSigs":[]}`, string(data))
 	var parsedTx *Transaction
 	err = json.Unmarshal(data, &parsedTx)
 	assert.NoError(t, err)

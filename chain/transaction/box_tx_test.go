@@ -94,6 +94,12 @@ func TestBoxTxEnv_RunBoxTxs(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
+	// 验证子交易中的gasUsed是否修改成功
+	box, err := types.GetBox(boxTx.Data())
+	assert.NoError(t, err)
+	for _, tx := range box.SubTxList {
+		assert.Equal(t, params.OrdinaryTxGas, tx.GasUsed())
+	}
 	assert.Equal(t, uint64(txNum)*params.OrdinaryTxGas, gasUsed)                                                      // 测试盒子中的交易花费的gas
 	assert.Equal(t, new(big.Int).Mul(big.NewInt(int64(gasUsed)), common.Big1), am.GetAccount(minerAddr).GetBalance()) // 测试盒子交易执行完之后给矿工的交易打包费用
 }

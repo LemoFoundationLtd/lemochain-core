@@ -102,3 +102,11 @@ func GetBox(txData []byte) (*Box, error) {
 	}
 	return box, nil
 }
+
+// MarshalBoxData 通过传入的子交易序列化出箱子data
+func MarshalBoxData(txs Transactions) ([]byte, error) {
+	box := &Box{
+		SubTxList: txs,
+	}
+	return json.Marshal(box)
+}

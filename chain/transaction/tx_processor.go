@@ -30,6 +30,7 @@ const (
 var (
 	ErrInsufficientBalanceForGas = errors.New("insufficient balance to pay for gas")
 	ErrInvalidTxInBlock          = errors.New("block contains invalid transaction")
+	ErrTxGasUsedNotEqual         = errors.New("tx gas used not equal")
 	ErrInvalidGenesis            = errors.New("can't process genesis block")
 	ErrInvalidHost               = errors.New("the length of host field in transaction is out of max length limit")
 	ErrInvalidPort               = errors.New("invalid port")
@@ -93,6 +94,10 @@ func (p *TxProcessor) Process(header *types.Header, txs types.Transactions) (uin
 			log.Info("Invalid transaction", "hash", tx.Hash(), "err", err)
 			return gasUsed, ErrInvalidTxInBlock
 		}
+		if tx.GasUsed() != gas {
+			log.Errorf("Transaction gas used not equal.oldGasUsed: %d, newGasUsed: %d", tx.GasUsed(), gas)
+			return gasUsed, ErrTxGasUsedNotEqual
+		}
 		gasUsed = gasUsed + gas
 		fee := new(big.Int).Mul(new(big.Int).SetUint64(gas), tx.GasPrice())
 		totalGasFee.Add(totalGasFee, fee)
@@ -111,7 +116,7 @@ func (p *TxProcessor) ApplyTxs(header *types.Header, txs types.Transactions, tim
 		gp          = new(types.GasPool).AddGas(header.GasLimit)
 		gasUsed     = uint64(0)
 		totalGasFee = new(big.Int)
-		selectedTxs = make(types.Transactions, 0)
+		selectedTxs = make(types.Transactions, 0, len(txs))
 		invalidTxs  = make(types.Transactions, 0)
 	)
 
@@ -155,6 +160,7 @@ txsLoop:
 			}
 			continue
 		}
+		tx.SetGasUsed(gas)
 		selectedTxs = append(selectedTxs, tx)
 
 		gasUsed = gasUsed + gas
