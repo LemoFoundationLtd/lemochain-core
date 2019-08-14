@@ -9,6 +9,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/store/protocol"
 	"github.com/LemoFoundationLtd/lemochain-core/store/trie"
 	"math/big"
+	"sort"
 )
 
 // Trie cache generation limit after which to evict trie nodes from memory.
@@ -203,17 +204,52 @@ func (am *Manager) logGrouping() map[common.Address]types.ChangeLogSlice {
 	return logsByAccount
 }
 
+// updateVersion
+func (am *Manager) updateVersion(logs types.ChangeLogSlice, account *SafeAccount) error {
+	currentHeight := am.currentBlockHeight()
+	versionTrie := am.getVersionTrie()
+	eventIndex := uint(0)
+	for _, changeLog := range logs {
+		if changeLog.LogType == AddEventLog {
+			newVal := changeLog.NewVal.(*types.Event)
+			newVal.Index = eventIndex
+			eventIndex = eventIndex + 1
+		}
+
+		nextVersion := account.rawAccount.GetVersion(changeLog.LogType) + 1
+
+		// set version record in rawAccount.data.NewestRecords
+		changeLog.Version = nextVersion
+		account.rawAccount.SetVersion(changeLog.LogType, nextVersion, currentHeight)
+
+		// update version trie
+		k := versionTrieKey(account.GetAddress(), changeLog.LogType)
+		if err := versionTrie.TryUpdate(k, big.NewInt(int64(changeLog.Version)).Bytes()); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Finalise finalises the state, clears the change caches and update tries.
 func (am *Manager) Finalise() error {
 	logsByAccount := am.logGrouping()
 
-	versionTrie := am.getVersionTrie()
-	currentHeight := am.currentBlockHeight()
-	for _, account := range am.accountCache {
-		if len(logsByAccount[account.GetAddress()]) <= 0 {
+	// 排序
+	addressList := make(common.AddressSlice, 0, len(am.accountCache))
+	for addr := range am.accountCache {
+		addressList = append(addressList, addr)
+	}
+	sort.Sort(addressList)
+
+	var account *SafeAccount
+	for _, addr := range addressList {
+		account = am.accountCache[addr]
+		logs := logsByAccount[account.GetAddress()]
+		if len(logs) <= 0 {
 			continue
 		}
-
+		// 更新root log
 		oldStorageRoot := account.rawAccount.GetStorageRoot()
 		oldAssetCodeRoot := account.rawAccount.GetAssetCodeRoot()
 		oldAssetIdRoot := account.rawAccount.GetAssetIdRoot()
@@ -248,27 +284,9 @@ func (am *Manager) Finalise() error {
 			log, _ := NewEquityRootLog(account.GetAddress(), am.processor, oldEquityRoot, newEquityRoot)
 			am.processor.PushChangeLog(log)
 		}
-
-		logs := logsByAccount[account.GetAddress()]
-		eventIndex := uint(0)
-		for _, changeLog := range logs {
-			if changeLog.LogType == AddEventLog {
-				newVal := changeLog.NewVal.(*types.Event)
-				newVal.Index = eventIndex
-				eventIndex = eventIndex + 1
-			}
-
-			nextVersion := account.rawAccount.GetVersion(changeLog.LogType) + 1
-
-			// set version record in rawAccount.data.NewestRecords
-			changeLog.Version = nextVersion
-			account.rawAccount.SetVersion(changeLog.LogType, nextVersion, currentHeight)
-
-			// update version trie
-			k := versionTrieKey(account.GetAddress(), changeLog.LogType)
-			if err := versionTrie.TryUpdate(k, big.NewInt(int64(changeLog.Version)).Bytes()); err != nil {
-				return err
-			}
+		// 更新change log的版本号
+		if err := am.updateVersion(logs, account); err != nil {
+			return err
 		}
 	}
 	return nil
