@@ -2,11 +2,14 @@ package consensus
 
 import (
 	"bytes"
+	"errors"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"sync/atomic"
 )
+
+var ErrNoHeadBlock = errors.New("head block is required")
 
 // ForkManager process the fork logic
 type ForkManager struct {
@@ -16,12 +19,12 @@ type ForkManager struct {
 }
 
 func NewForkManager(dm *deputynode.Manager, db BlockLoader, stable *types.Block) *ForkManager {
-	dpovp := &ForkManager{
+	fm := &ForkManager{
 		blockLoader: db,
 		dm:          dm,
 	}
-	dpovp.head.Store(stable)
-	return dpovp
+	fm.SetHeadBlock(stable)
+	return fm
 }
 
 // CurrentBlock get latest block on current fork
@@ -31,6 +34,9 @@ func (fm *ForkManager) GetHeadBlock() *types.Block {
 
 // CurrentBlock get latest block on current fork
 func (fm *ForkManager) SetHeadBlock(block *types.Block) {
+	if block == nil {
+		panic(ErrNoHeadBlock)
+	}
 	fm.head.Store(block)
 }
 
@@ -77,7 +83,8 @@ func GetMinerDistance(targetHeight uint32, parentBlockMiner, targetMiner common.
 }
 
 // TrySwitchFork switch fork if its length reached to a multiple of "deputy nodes count * 2/3"
-func (fm *ForkManager) TrySwitchFork(stable, current *types.Block) (*types.Block, bool) {
+func (fm *ForkManager) TrySwitchFork(stable *types.Block) (*types.Block, bool) {
+	current := fm.GetHeadBlock()
 	maxHeightBlock := fm.ChooseNewFork()
 	// make sure the fork is the first one reaching the height
 	if maxHeightBlock != nil && maxHeightBlock.Height() > current.Height() {

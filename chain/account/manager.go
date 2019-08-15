@@ -106,7 +106,7 @@ func (am *Manager) AddEvent(event *types.Event) {
 	account.PushEvent(event)
 }
 
-// // GetEvents returns all events since last reset
+// GetEvents returns all events since last reset
 func (am *Manager) GetEvents() []*types.Event {
 	events := make([]*types.Event, 0)
 	for _, v := range am.accountCache {
