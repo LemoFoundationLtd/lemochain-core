@@ -304,10 +304,8 @@ func (dp *DPoVP) UpdateStable(block *types.Block) (bool, error) {
 
 // TrySwitchFork try to switch to a better fork
 func (dp *DPoVP) TrySwitchFork() {
-	oldCurrent := dp.CurrentBlock()
-
 	// try to switch fork
-	newCurrent, switched := dp.forkManager.TrySwitchFork(dp.StableBlock(), oldCurrent)
+	newCurrent, switched := dp.forkManager.TrySwitchFork(dp.StableBlock())
 	if switched {
 		dp.setCurrent(newCurrent)
 	}
