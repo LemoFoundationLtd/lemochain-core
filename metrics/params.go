@@ -7,14 +7,10 @@ var (
 	txpoolModule             = "txpool"
 	InvalidTx_meterName      = "txpool/DelInvalidTxs/invalid"
 	TxpoolNumber_counterName = "txpool/totalTxNumber"
-	// 告警条件
-	Alarm_TxpoolNumber int64 = 10000 // 交易池中的总交易数达到10000笔之后告警一次
 
 	// tx
 	txModule                 = "tx"
 	VerifyFailedTx_meterName = "tx/VerifyTx/verifyFailed"
-	// 告警条件
-	Alarm_verifyFailedTx float64 = 0.5 // 验证交易失败的速率超过2秒1笔则开始报警
 
 	// network
 	networkModule                             = "network"
@@ -26,15 +22,6 @@ var (
 	HandleGetBlocksWithChangeLogMsg_meterName = "network/protocol_manager/handleGetBlocksWithChangeLogMsg" // 统计调用handleGetBlocksWithChangeLogMsg的频率
 	HandleDiscoverReqMsg_meterName            = "network/protocol_manager/handleDiscoverReqMsg"            // 统计调用handleDiscoverReqMsg的频率
 	HandleDiscoverResMsg_meterName            = "network/protocol_manager/handleDiscoverResMsg"            // 统计调用handleDiscoverResMsg的频率
-	// 告警条件
-	Alarm_HandleBlocksMsg                 float64 = 50  // 调用handleBlocksMsg的速率大于50次/s
-	Alarm_HandleGetBlocksMsg              float64 = 100 // 调用handleGetBlocksMsg的速率大于100次/s
-	Alarm_HandleBlockHashMsg              float64 = 5   // 调用handleBlockHashMsg的速率大于5次/s
-	Alarm_HandleGetConfirmsMsg            float64 = 50  // 调用handleGetConfirmsMsg的速率大于50次/s
-	Alarm_HandleConfirmMsg                float64 = 10  // 调用handleConfirmMsg的速率大于10次/s
-	Alarm_HandleGetBlocksWithChangeLogMsg float64 = 50  // 调用handleGetBlocksWithChangeLogMsg的速率大于50次/s
-	Alarm_HandleDiscoverReqMsg            float64 = 5   // 调用handleDiscoverReqMsg的速率大于5次/s
-	Alarm_HandleDiscoverResMsg            float64 = 5   // 调用handleDiscoverReqMsg的速率大于5次/s
 
 	// leveldb
 	leveldbModule               = LevelDBPrefix
@@ -52,6 +39,7 @@ var (
 	consensusModule       = "consensus"
 	BlockInsert_timerName = "consensus/InsertBlock/insertBlock" // 统计区块插入链中的速率和所用时间的分布情况
 	MineBlock_timerName   = "consensus/MineBlock/mineBlock"     // 统计出块速率和时间分布
+	VerifyBlock_meterName = "consensus/dpovp"                   // 校验收到的区块失败的频率
 	// 告警条件
 	Alarm_BlockInsert float64 = 5 // Insert chain 所用平均时间大于5s
 	Alarm_MineBlock   float64 = 8 // Mine Block 所用平均时间大于8s
@@ -63,12 +51,6 @@ var (
 	ReadMsgFailed_timerName   = "p2p/readLoop/readMsgFailed"   // 统计读取msg失败的timer
 	WriteMsgSuccess_timerName = "p2p/WriteMsg/writeMsgSuccess" // 统计写msg成功的timer
 	WriteMsgFailed_timerName  = "p2p/WriteMsg/writeMsgFailed"  // 统计写msg失败的timer
-	// 告警条件
-	Alarm_PeerConnFailed  float64 = 5  // 远程peer连接失败的频率大于5次/s
-	Alarm_ReadMsgSuccess  float64 = 20 // 读取接收到的message所用的平均时间大于20s
-	Alarm_ReadMsgFailed   float64 = 5  // 读取接收到的message失败的频率大于5次/s
-	Alarm_WriteMsgSuccess float64 = 15 // 写操作的平均用时超过15s
-	Alarm_WriteMsgFailed  float64 = 5  // 写操作失败的频率超过了5次/s
 
 	// system meter
 	systemModule           = "system"
