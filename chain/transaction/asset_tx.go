@@ -117,15 +117,27 @@ func (r *RunAssetEnv) IssueAssetTx(sender, receiver common.Address, txHash commo
 	}
 	recAcc := r.am.GetAccount(receiver)
 	equity := &types.AssetEquity{}
-	equity.AssetCode = asset.AssetCode
-	equity.Equity = issueAsset.Amount
+	equity.AssetCode = assetCode
+	// equity.Equity = issueAsset.Amount
 
 	// judge assert type
 	AssType := asset.Category
 	if AssType == types.Asset01 { // ERC20
-		equity.AssetId = asset.AssetCode
+		equity.AssetId = asset.AssetCode // assetId == assetCode
+		// 第一类资产由于assetCode和assetId相等，所以要判断receiver是否已经拥有了此类资产，如果已经拥有了，我们对equity采取增加而不是错误的覆盖
+		oldAssetEquity, err := recAcc.GetEquityState(asset.AssetCode)
+		if err != nil && err != store.ErrNotExist {
+			return err
+		}
+		if err == store.ErrNotExist { // 未拥有过此类资产
+			equity.Equity = issueAsset.Amount
+		} else { // 已经拥有过此资产,资产余额则相加
+			equity.Equity = new(big.Int).Add(issueAsset.Amount, oldAssetEquity.Equity)
+		}
+
 	} else if AssType == types.Asset02 || AssType == types.Asset03 { // ERC721 or ERC721+20
-		equity.AssetId = txHash
+		equity.AssetId = txHash           // assetId == 当前交易的hash
+		equity.Equity = issueAsset.Amount // asset 余额为发行金额
 	} else {
 		log.Errorf("Assert's Category not exist ,Category = %d ", AssType)
 		return ErrAssetCategory
