@@ -338,9 +338,9 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 			equity.Equity = issueAsset.Amount
 			// 判断资产类型
 			AssType := asset.Category
-			if AssType == types.Asset01 { // ERC20
+			if AssType == types.TokenAsset { // ERC20
 				equity.AssetId = asset.AssetCode
-			} else if AssType == types.Asset02 || AssType == types.Asset03 { // ERC721 or ERC721+20
+			} else if AssType == types.NonFungibleAsset || AssType == types.CommonAsset { // ERC721 or ERC721+20
 				equity.AssetId = tx.Hash()
 			}
 			err = toAcc.SetEquityState(equity.AssetId, equity)

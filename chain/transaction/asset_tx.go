@@ -122,7 +122,7 @@ func (r *RunAssetEnv) IssueAssetTx(sender, receiver common.Address, txHash commo
 
 	// judge assert type
 	AssType := asset.Category
-	if AssType == types.Asset01 { // ERC20
+	if AssType == types.TokenAsset { // ERC20
 		equity.AssetId = asset.AssetCode // assetId == assetCode
 		// 第一类资产由于assetCode和assetId相等，所以要判断receiver是否已经拥有了此类资产，如果已经拥有了，我们对equity采取增加而不是错误的覆盖
 		oldAssetEquity, err := recAcc.GetEquityState(asset.AssetCode)
@@ -135,7 +135,7 @@ func (r *RunAssetEnv) IssueAssetTx(sender, receiver common.Address, txHash commo
 			equity.Equity = new(big.Int).Add(issueAsset.Amount, oldAssetEquity.Equity)
 		}
 
-	} else if AssType == types.Asset02 || AssType == types.Asset03 { // ERC721 or ERC721+20
+	} else if AssType == types.NonFungibleAsset || AssType == types.CommonAsset { // ERC721 or ERC721+20
 		equity.AssetId = txHash           // assetId == 当前交易的hash
 		equity.Equity = issueAsset.Amount // asset 余额为发行金额
 	} else {
