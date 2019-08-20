@@ -25,9 +25,9 @@ func (v VTransaction) MarshalJSON() ([]byte, error) {
 	var enc VTransaction
 	enc.Tx = v.Tx
 	enc.PHash = v.PHash
+	enc.PackageTime = hexutil.Uint32(v.PackageTime)
 	enc.AssetCode = v.AssetCode
 	enc.AssetId = v.AssetId
-	enc.PackageTime = hexutil.Uint32(v.PackageTime)
 	return json.Marshal(&enc)
 }
 
@@ -35,7 +35,7 @@ func (v VTransaction) MarshalJSON() ([]byte, error) {
 func (v *VTransaction) UnmarshalJSON(input []byte) error {
 	type VTransaction struct {
 		Tx          *types.Transaction `json:"tx" gencodec:"required"`
-		PHash       *common.Hash       `json:"pHash"`
+		PHash       *common.Hash       `json:"pHash" gencodec:"required"`
 		PackageTime *hexutil.Uint32    `json:"time" gencodec:"required"`
 		AssetCode   *common.Hash       `json:"assetCode"`
 		AssetId     *common.Hash       `json:"assetId"`
