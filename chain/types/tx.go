@@ -11,6 +11,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/metrics"
 	"io"
 	"math/big"
+	"regexp"
 	"strings"
 	"sync/atomic"
 )
@@ -422,12 +423,20 @@ func (tx *Transaction) VerifyTx(chainID uint16, timeStamp uint64) (err error) {
 	if tx.Amount().Sign() < 0 {
 		return ErrNegativeValue
 	}
-
 	toNameLength := len(tx.ToName())
-	if toNameLength > MaxTxToNameLength {
-		log.Warnf("The length of toName field in transaction is out of max length limit. toName length = %d. max length limit = %d. ", toNameLength, MaxTxToNameLength)
-		return ErrToName
+	if toNameLength > 0 {
+		if toNameLength > MaxTxToNameLength {
+			log.Warnf("The length of toName field in transaction is out of max length limit. toName length = %d. max length limit = %d. ", toNameLength, MaxTxToNameLength)
+			return ErrToNameLength
+		}
+		// 检查toName是否包含非法字符,能匹配出则返回true
+		res := regexp.MustCompile(`^[\w\-.]+$`).MatchString(tx.ToName())
+		if !res {
+			log.Warnf("Transaction ToName contains illegal characters. toName: %s", tx.ToName())
+			return ErrToNameCharacter
+		}
 	}
+
 	txMessageLength := len(tx.Message())
 	if txMessageLength > MaxTxMessageLength {
 		log.Warnf("The length of message field in transaction is out of max length limit. message length = %d. max length limit = %d. ", txMessageLength, MaxTxMessageLength)
