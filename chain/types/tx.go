@@ -423,15 +423,15 @@ func (tx *Transaction) VerifyTx(chainID uint16, timeStamp uint64) (err error) {
 	if tx.Amount().Sign() < 0 {
 		return ErrNegativeValue
 	}
-
-	if len(tx.ToName()) > 0 {
-		if len(tx.ToName()) > MaxTxToNameLength {
-			log.Warnf("The length of toName field in transaction is out of max length limit. toName length = %d. max length limit = %d. ", len(tx.ToName()), MaxTxToNameLength)
+	toNameLength := len(tx.ToName())
+	if toNameLength > 0 {
+		if toNameLength > MaxTxToNameLength {
+			log.Warnf("The length of toName field in transaction is out of max length limit. toName length = %d. max length limit = %d. ", toNameLength, MaxTxToNameLength)
 			return ErrToNameLength
 		}
-		// 检查toName是否包含非法字符,如果包含非法字符则返回空字符串
-		res := regexp.MustCompile(`^[\w\-.]+$`).FindString(tx.ToName())
-		if len(res) == 0 {
+		// 检查toName是否包含非法字符,能匹配出则返回true
+		res := regexp.MustCompile(`^[\w\-.]+$`).MatchString(tx.ToName())
+		if !res {
 			log.Warnf("Transaction ToName contains illegal characters. toName: %s", tx.ToName())
 			return ErrToNameCharacter
 		}
