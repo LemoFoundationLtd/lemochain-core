@@ -12,9 +12,10 @@ import (
 )
 
 const (
-	Asset01               = uint32(1) // erc20
-	Asset02               = uint32(2) // erc721
-	Asset03               = uint32(3) // erc20+721
+	Asset01               = uint32(1)  // erc20
+	Asset02               = uint32(2)  // erc721
+	Asset03               = uint32(3)  // erc20+721
+	MaxAssetDecimal       = uint32(18) // 资产小数位最大值
 	MaxMarshalAssetLength = 680
 	MaxMetaDataLength     = 256
 )
@@ -25,6 +26,7 @@ var (
 	ErrAsset02Divisible     = errors.New("an asset of type 2 must be indivisible")
 	ErrAsset02Replenishable = errors.New("an asset of type 2 must be non-replenishable")
 	ErrAsset03Divisible     = errors.New("an asset of type 3 must be divisible")
+	ErrAssetDecimal         = errors.New("asset decimal must be less than 18")
 )
 
 //go:generate gencodec -type Asset --field-override assetMarshaling -out gen_asset_json.go
@@ -125,12 +127,18 @@ func (asset *Asset) Clone() *Asset {
 	return result
 }
 
-// VerifyAsset 验证资产设置的增发和分割是否正确
+// VerifyAsset 验证资产设置
 func (asset *Asset) VerifyAsset() error {
 	category := asset.Category
 	isDivisible := asset.IsDivisible
 	isReplenishable := asset.IsReplenishable
+	decimal := asset.Decimal
+	// 资产设置的小数位不能大于18位
+	if decimal > MaxAssetDecimal {
+		return ErrAssetDecimal
+	}
 
+	// 验证资产设置的分割和增发是否符合此类资产
 	switch category {
 	case Asset01:
 		if !isDivisible {
