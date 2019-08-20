@@ -12,20 +12,20 @@ import (
 )
 
 const (
-	Asset01               = uint32(1)  // erc20
-	Asset02               = uint32(2)  // erc721
-	Asset03               = uint32(3)  // erc20+721
+	TokenAsset            = uint32(1) // erc20
+	NonFungibleAsset      = uint32(2) // erc721
+	CommonAsset           = uint32(3) // erc20+721
 	MaxAssetDecimal       = uint32(18) // 资产小数位最大值
 	MaxMarshalAssetLength = 680
 	MaxMetaDataLength     = 256
 )
 
 var (
-	ErrAssetKind            = errors.New("this type of asset does not exist")
-	ErrAsset01Divisible     = errors.New("an asset of type 1 must be divisible")
-	ErrAsset02Divisible     = errors.New("an asset of type 2 must be indivisible")
-	ErrAsset02Replenishable = errors.New("an asset of type 2 must be non-replenishable")
-	ErrAsset03Divisible     = errors.New("an asset of type 3 must be divisible")
+	ErrAssetKind                     = errors.New("this type of asset does not exist")
+	ErrTokenAssetDivisible           = errors.New("an asset of type 1 must be divisible")
+	ErrNonFungibleAssetDivisible     = errors.New("an asset of type 2 must be indivisible")
+	ErrNonFungibleAssetReplenishable = errors.New("an asset of type 2 must be non-replenishable")
+	ErrCommonAssetDivisible          = errors.New("an asset of type 3 must be divisible")
 	ErrAssetDecimal         = errors.New("asset decimal must be less than 18")
 )
 
@@ -140,20 +140,20 @@ func (asset *Asset) VerifyAsset() error {
 
 	// 验证资产设置的分割和增发是否符合此类资产
 	switch category {
-	case Asset01:
+	case TokenAsset:
 		if !isDivisible {
-			return ErrAsset01Divisible
+			return ErrTokenAssetDivisible
 		}
-	case Asset02:
+	case NonFungibleAsset:
 		if isDivisible {
-			return ErrAsset02Divisible
+			return ErrNonFungibleAssetDivisible
 		}
 		if isReplenishable {
-			return ErrAsset02Replenishable
+			return ErrNonFungibleAssetReplenishable
 		}
-	case Asset03:
+	case CommonAsset:
 		if !isDivisible {
-			return ErrAsset03Divisible
+			return ErrCommonAssetDivisible
 		}
 	default:
 		return ErrAssetKind
