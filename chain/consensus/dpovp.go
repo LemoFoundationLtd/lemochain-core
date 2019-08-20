@@ -20,6 +20,7 @@ import (
 var (
 	blockInsertTimer = metrics.NewTimer(metrics.BlockInsert_timerName) // 统计区块插入链中的速率和所用时间的分布情况
 	mineBlockTimer   = metrics.NewTimer(metrics.MineBlock_timerName)   // 统计出块速率和时间分布
+	verifyBlockMeter = metrics.NewMeter(metrics.VerifyBlock_meterName) // 统计验证区块失败的频率
 )
 
 // DPoVP process the fork logic
@@ -168,6 +169,7 @@ func (dp *DPoVP) InsertBlock(rawBlock *types.Block) (*types.Block, error) {
 	// verify and create a new block witch filled by transaction products
 	block, err := dp.VerifyAndSeal(rawBlock)
 	if err != nil {
+		verifyBlockMeter.Mark(1) // 统计调用频率用
 		log.Errorf("block verify failed: %v", err)
 		return nil, ErrVerifyBlockFailed
 	}

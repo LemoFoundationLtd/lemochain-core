@@ -159,11 +159,17 @@ var AlarmRuleTable = map[string]*Condition{
 		AlarmValue:   8,
 		AlarmMsgCode: textMsgCode,
 	},
+	VerifyBlock_meterName: {
+		AlarmReason:  "VerifyAndSeal 校验收到的block失败的频率大于5s一次",
+		MetricsType:  TypeRate15,
+		AlarmValue:   0.2,
+		AlarmMsgCode: textMsgCode,
+	},
 	// levelDB
 	LevelDb_miss_meterName: {
-		AlarmReason:  "从leveldb中读取数据失败的频率大于2次/s",
+		AlarmReason:  "从leveldb中读取数据失败的频率大于10次/s",
 		MetricsType:  TypeRate1,
-		AlarmValue:   2,
+		AlarmValue:   10,
 		AlarmMsgCode: textMsgCode,
 	},
 	// system
