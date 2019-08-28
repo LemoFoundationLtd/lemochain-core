@@ -287,3 +287,27 @@ func assembleBlockForVerifyMineSlot(passTime, oneLoopTime uint32, parentMiner, c
 	currentBlock = newBlockForVerifyMineSlot(2, currentMiner, blockTime)
 	return
 }
+
+func newBlockForVerifyChangeLog(logs types.ChangeLogSlice, logRoot common.Hash) *types.Block {
+	block := &types.Block{
+		Header: &types.Header{
+			LogRoot: logRoot,
+		},
+	}
+	block.SetChangeLogs(logs)
+	return block
+}
+
+func newBlockForJudgeDeputy(height uint32, private, extra string) *types.Block {
+	block := &types.Block{
+		Header: &types.Header{
+			Height: height,
+			Extra:  []byte(extra),
+		},
+	}
+	hash := block.Hash()
+	privateKey, _ := crypto.HexToECDSA(private)
+	signData, _ := crypto.Sign(hash.Bytes(), privateKey)
+	block.Header.SignData = signData
+	return block
+}

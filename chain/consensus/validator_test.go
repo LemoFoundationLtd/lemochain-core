@@ -7,6 +7,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/stretchr/testify/assert"
 	"math/big"
+	"math/rand"
 	"strconv"
 	"testing"
 	"time"
@@ -205,4 +206,97 @@ func Test_VerifyMineSlot(t *testing.T) {
 			assert.Error(t, ErrVerifyHeaderFailed, VerifyMineSlot(currentBlock, parentBlock, uint64(timeoutTime*1000), dm))
 		}
 	}
+}
+
+func Test_verifyChangeLog(t *testing.T) {
+	// 1. 验证block的changeLogs为null时候的正常情况
+	nullchangeLogs := make(types.ChangeLogSlice, 0)
+	nullLogRoot := nullchangeLogs.MerkleRootSha()
+	block01 := newBlockForVerifyChangeLog(nullchangeLogs, nullLogRoot)
+	assert.NoError(t, verifyChangeLog(block01, nullchangeLogs))
+	// 2. new changeLogs
+	logs := make(types.ChangeLogSlice, 0, 10)
+	rand.Seed(time.Now().UnixNano())
+	for i := 0; i < 10; i++ {
+		log := &types.ChangeLog{
+			LogType: types.ChangeLogType(uint32(i)),
+			Address: common.HexToAddress("0x11" + strconv.Itoa(i)),
+			Version: uint32(i % 3),
+			OldVal:  rand.Intn(100),
+			NewVal:  rand.Intn(100),
+			Extra:   strconv.Itoa(i),
+		}
+		logs = append(logs, log)
+	}
+
+	// 3. 验证正常情况
+	block02 := newBlockForVerifyChangeLog(logs, logs.MerkleRootSha())
+	computedLogs := logs // 验证节点执行区块交易生成的changeLogs与需要验证的区块中的changeLogs相等
+	assert.NoError(t, verifyChangeLog(block02, computedLogs))
+
+	// 4. 需要验证的区块中的changeLogs算出的默克尔hash与区块头中的logRoot不相等的情况
+	incorrectLogRoot := common.HexToHash("0x9999999999")          // 构造一个错误的logRoot
+	block03 := newBlockForVerifyChangeLog(logs, incorrectLogRoot) // 构造一个logRoot错误的block
+	assert.Error(t, ErrVerifyBlockFailed, verifyChangeLog(block03, computedLogs))
+
+	// 5. 验证区块中的changeLogs与验证节点执行区块之后产生的changeLogs不相等的情况
+	block04 := newBlockForVerifyChangeLog(logs, logs.MerkleRootSha())
+	computedLogs = logs[:5] // 计算出来的logs
+	assert.Error(t, ErrVerifyBlockFailed, verifyChangeLog(block04, computedLogs))
+}
+
+func TestValidator_VerifyAfterTxProcess(t *testing.T) {
+	dm := deputynode.NewManager(5, testBlockLoader{})
+	v := NewValidator(1000, testBlockLoader{}, dm, txPoolForValidator{}, testCandidateLoader{})
+	// 计算changeLogs 为null的logRoot
+	nullchangeLogs := make(types.ChangeLogSlice, 0)
+	nullLogRoot := nullchangeLogs.MerkleRootSha()
+
+	block := &types.Block{
+		Header: &types.Header{
+			ParentHash:   common.Hash{},
+			MinerAddress: common.HexToAddress("0x111"),
+			LogRoot:      nullLogRoot,
+		},
+	}
+	// 1. 验证正常情况
+	assert.NoError(t, v.VerifyAfterTxProcess(block, block))
+	// 2. 验证两个block计算出的hash不等的情况，这里构造两个块的MinerAddress不同
+	computedBlock := &types.Block{
+		Header: &types.Header{
+			ParentHash:   common.Hash{},
+			MinerAddress: common.HexToAddress("0x222"),
+			LogRoot:      nullLogRoot,
+		},
+	}
+	assert.Error(t, ErrVerifyBlockFailed, v.VerifyAfterTxProcess(block, computedBlock))
+}
+
+func TestValidator_JudgeDeputy(t *testing.T) {
+	private01 := "c21b6b2fbf230f665b936194d14da67187732bf9d28768aef1a3cbb26608f8aa"
+	private02 := "9c3c4a327ce214f0a1bf9cfa756fbf74f1c7322399ffff925efd8c15c49953eb"
+	dm := deputynode.NewManager(5, testBlockLoader{})
+	v1 := NewValidator(1000, testBlockLoader{}, dm, txPoolForValidator{}, testCandidateLoader{})
+
+	// 1. 测试newBlock.SignerNodeID()返回error的情况
+	block01 := newBlockForJudgeDeputy(0, private01, "")
+	// 修改block的signData长度不合法
+	block01.Header.SignData = common.FromHex("11111")
+	assert.False(t, v1.JudgeDeputy(block01))
+
+	// 2. 测试同一高度的两个不同的区块是由同一个节点签名的情况
+	block02 := newBlockForJudgeDeputy(1, private01, "我签名了高度为1的区块")
+	// 构造一个testBlockLoader中存储着block02的validator对象
+	v2 := NewValidator(1000, testBlockLoader([]*types.Block{block02}), dm, txPoolForValidator{}, testCandidateLoader{})
+	block03 := newBlockForJudgeDeputy(1, private01, "我又签名了高度为1的区块")
+	// 返回true
+	assert.True(t, v2.JudgeDeputy(block03))
+
+	// 3. 测试非稳定块中没有同一个节点签名同一高度的区块的情况
+	block04 := newBlockForJudgeDeputy(100, private01, "我是private01，我签名了高度为100的区块")
+	// 构造一个testBlockLoader中存储着block04的validator对象
+	v3 := NewValidator(1000, testBlockLoader([]*types.Block{block04}), dm, txPoolForValidator{}, testCandidateLoader{})
+	block05 := newBlockForJudgeDeputy(100, private02, "我是private02，我签名了高度为100的区块")
+	// 返回false
+	assert.False(t, v3.JudgeDeputy(block05))
 }
