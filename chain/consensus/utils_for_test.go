@@ -298,6 +298,7 @@ func newBlockForVerifyChangeLog(logs types.ChangeLogSlice, logRoot common.Hash) 
 	return block
 }
 
+// newBlockForJudgeDeputy extra用于改变交易的hash
 func newBlockForJudgeDeputy(height uint32, private, extra string) *types.Block {
 	block := &types.Block{
 		Header: &types.Header{

@@ -198,6 +198,10 @@ func (v *Validator) VerifyNewConfirms(block *types.Block, sigList []types.SignDa
 	var lastErr error = nil
 
 	for _, sig := range sigList {
+		// 判断validConfirms中是否已经存在sig了
+		if IsValidConfirmsExist(validConfirms, sig) {
+			continue
+		}
 		nodeID, err := sig.RecoverNodeID(hash)
 		if err != nil {
 			log.Warn("Invalid confirm signature", "hash", hash.Hex(), "sig", common.ToHex(sig[:]), "err", err)
@@ -218,6 +222,19 @@ func (v *Validator) VerifyNewConfirms(block *types.Block, sigList []types.SignDa
 		validConfirms = append(validConfirms, sig)
 	}
 	return validConfirms, lastErr
+}
+
+// IsValidConfirmsExist
+func IsValidConfirmsExist(validConfirms []types.SignData, sig types.SignData) bool {
+	if len(validConfirms) == 0 {
+		return false
+	}
+	for _, oldSig := range validConfirms {
+		if bytes.Compare(oldSig[:], sig[:]) == 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // VerifyBeforeTxProcess verify the block data which has no relationship with the transaction processing result
