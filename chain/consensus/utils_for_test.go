@@ -3,6 +3,7 @@ package consensus
 import (
 	"crypto/ecdsa"
 	"crypto/rand"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
@@ -170,7 +171,7 @@ type loader struct {
 }
 
 func (l loader) GetBlockByHeight(height uint32) (*types.Block, error) {
-	if height > 0 {
+	if height >= params.TermDuration {
 		return nil, store.ErrNotExist
 	}
 	return &types.Block{
@@ -311,4 +312,29 @@ func newBlockForJudgeDeputy(height uint32, private, extra string) *types.Block {
 	signData, _ := crypto.Sign(hash.Bytes(), privateKey)
 	block.Header.SignData = signData
 	return block
+}
+
+func newBlockForVerifyNewConfirms(private string) *types.Block {
+	privateKey, _ := crypto.HexToECDSA(private)
+	minerAddress := crypto.PubkeyToAddress(privateKey.PublicKey)
+
+	block := &types.Block{
+		Header: &types.Header{
+			MinerAddress: minerAddress,
+			Height:       0,
+		},
+	}
+	hash := block.Hash()
+	signData, _ := crypto.Sign(hash[:], privateKey)
+	block.Header.SignData = signData
+	return block
+}
+
+func signBlock(block *types.Block, private string) types.SignData {
+	privateKey, _ := crypto.HexToECDSA(private)
+	hash := block.Hash()
+	signData, _ := crypto.Sign(hash[:], privateKey)
+	var sig types.SignData
+	copy(sig[:], signData)
+	return sig
 }
