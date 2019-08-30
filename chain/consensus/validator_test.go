@@ -216,17 +216,16 @@ func Test_verifyDeputy(t *testing.T) {
 
 	// 区块为deputyNodes快照块
 	height := params.TermDuration * 10
-	deputyCount := 10
-	deputies := pickNodes(deputyCount)
+	deputies := pickNodes(0, 1, 2, 3, 4)
 	// 2. 验证快照块中的deputyNodes是我们预期的nodes
 	block02 := newBlockForVerifyDeputy(height, deputies, deputies.MerkleRootSha().Bytes())
-	assert.NoError(t, verifyDeputy(block02, createCandidateLoader(deputyCount)))
+	assert.NoError(t, verifyDeputy(block02, createCandidateLoader(0, 1, 2, 3, 4)))
 	// 3. block中的deputyNodeRoot不正确的情况
 	block03 := newBlockForVerifyDeputy(height, deputies, common.FromHex("0x99999999999999999999999999"))
-	assert.Equal(t, ErrVerifyBlockFailed, verifyDeputy(block03, createCandidateLoader(deputyCount)))
+	assert.Equal(t, ErrVerifyBlockFailed, verifyDeputy(block03, createCandidateLoader(0, 1, 2, 3, 4)))
 	// 4. 验证block中的deputyNodes和链上直接获取的deputyNodes不相等的情况
 	block04 := newBlockForVerifyDeputy(height, deputies, deputies.MerkleRootSha().Bytes())
-	assert.Equal(t, ErrVerifyBlockFailed, verifyDeputy(block04, createCandidateLoader(deputyCount/2))) // 链上获取到的deputyNodes为deputies中的一半
+	assert.Equal(t, ErrVerifyBlockFailed, verifyDeputy(block04, createCandidateLoader(5/2))) // 链上获取到的deputyNodes为deputies中的一半
 }
 
 func newBlockForVerifyExtraData(extraData []byte) *types.Block {
@@ -297,9 +296,11 @@ func Test_VerifyMineSlot(t *testing.T) {
 	oneLoopTime := uint32(len(deputyNodes)) * timeoutTime // 单位： s
 	// 测试两个区块的出块者不同的distance的出块时间间隔情况
 	for i := 0; i < deputyCount; i++ {
-		for j := i + 1; j < deputyCount; j++ {
-			minPassTime := uint32(j-i-1) * timeoutTime
-			maxPassTime := uint32(j-i) * timeoutTime
+		for j := 0; j < deputyCount; j++ {
+			distance, err := GetMinerDistance(2, minerAddrs[i], minerAddrs[j], dm)
+			assert.NoError(t, err)
+			minPassTime := uint32(distance-1) * timeoutTime
+			maxPassTime := uint32(distance) * timeoutTime
 			// 1. 验证正确的区块出块时间间隔
 			correctPassTime := minPassTime + (timeoutTime - uint32(1)) // parentBlock和block的正确的时间差为： (j-i-1)*timeoutTime < passTime < (j-i)*timeoutTime
 			parentBlock, currentBlock := assembleBlockForVerifyMineSlot(correctPassTime, oneLoopTime, minerAddrs[i], minerAddrs[j])
