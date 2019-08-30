@@ -100,10 +100,6 @@ func Test_verifySigner(t *testing.T) {
 	assert.Equal(t, ErrVerifyHeaderFailed, verifySigner(block03, dm))
 }
 
-func makeTxForVerifyTxRoot(from, to common.Address, txTime uint64) *types.Transaction {
-	return types.NewTransaction(from, to, big.NewInt(100), uint64(1000), big.NewInt(100), nil, 0, 1, txTime, "", "")
-}
-
 // newBlockForVerifyTxRoot
 func newBlockForVerifyTxRoot(txs types.Transactions, txRoot common.Hash) *types.Block {
 	header := &types.Header{
@@ -115,12 +111,16 @@ func newBlockForVerifyTxRoot(txs types.Transactions, txRoot common.Hash) *types.
 	}
 }
 
+func makeTx(from, to common.Address, txTime uint64) *types.Transaction {
+	return types.NewTransaction(from, to, big.NewInt(100), uint64(1000), big.NewInt(100), nil, 0, 1, txTime, "", "")
+}
+
 // 验证block中的txs和txRoot
 func Test_verifyTxRoot(t *testing.T) {
 	// 构造txs
 	txs := make(types.Transactions, 0, 10)
 	for i := 0; i < 10; i++ {
-		tx := makeTxForVerifyTxRoot(common.HexToAddress("0x"+strconv.Itoa(i)), common.HexToAddress("0x88"), uint64(time.Now().Unix()))
+		tx := makeTx(common.HexToAddress("0x"+strconv.Itoa(i)), common.HexToAddress("0x88"), uint64(time.Now().Unix()))
 		txs = append(txs, tx)
 	}
 	correctTxRoot := txs.MerkleRootSha()
@@ -145,7 +145,7 @@ func newBlockForVerifyTxs(txs types.Transactions, time uint32) *types.Block {
 
 func Test_verifyTxs(t *testing.T) {
 	txs := types.Transactions{
-		makeTxForVerifyTxRoot(common.HexToAddress("0x11"), common.HexToAddress("0x12"), uint64(90000)),
+		makeTx(common.HexToAddress("0x11"), common.HexToAddress("0x12"), uint64(90000)),
 	}
 	txPool := txPoolForValidator{true} // 交易池中返回的状态为true
 	// 1. 正确情况
