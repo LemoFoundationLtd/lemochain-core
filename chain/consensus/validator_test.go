@@ -225,7 +225,7 @@ func Test_verifyDeputy(t *testing.T) {
 	assert.Equal(t, ErrVerifyBlockFailed, verifyDeputy(block03, createCandidateLoader(0, 1, 2, 3, 4)))
 	// 4. 验证block中的deputyNodes和链上直接获取的deputyNodes不相等的情况
 	block04 := newBlockForVerifyDeputy(height, deputies, deputies.MerkleRootSha().Bytes())
-	assert.Equal(t, ErrVerifyBlockFailed, verifyDeputy(block04, createCandidateLoader(5/2))) // 链上获取到的deputyNodes为deputies中的一半
+	assert.Equal(t, ErrVerifyBlockFailed, verifyDeputy(block04, createCandidateLoader(0, 1, 2))) // 链上获取到的deputyNodes为deputies中的一半
 }
 
 func newBlockForVerifyExtraData(extraData []byte) *types.Block {
