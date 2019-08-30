@@ -3,9 +3,9 @@ package consensus
 import (
 	"crypto/ecdsa"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
-	"github.com/LemoFoundationLtd/lemochain-core/chain/consensus"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
@@ -251,7 +251,7 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 		gasPayerAcc := am.GetAccount(gasPayer)
 		gasPayerAcc.SetBalance(new(big.Int).Sub(gasPayerAcc.GetBalance(), gasFee))
 
-		// minerAddress
+		// minerAddr
 		minerAddr := info.author
 		minerAcc := am.GetAccount(minerAddr)
 		// 获取打包交易奖励
@@ -437,7 +437,7 @@ func makeBlock(db protocol.ChainDB, info blockInfo, save bool) *types.Block {
 	return newBlock
 }
 
-func makeTx(fromPrivate *ecdsa.PrivateKey, to common.Address, txType uint16, amount *big.Int) *types.Transaction {
+func newTx(fromPrivate *ecdsa.PrivateKey, to common.Address, txType uint16, amount *big.Int) *types.Transaction {
 	return makeTransaction(fromPrivate, to, txType, amount, common.Big1, uint64(time.Now().Unix()+300), 1000000)
 }
 
@@ -467,7 +467,7 @@ func createAccounts(n int, db protocol.ChainDB) (common.Hash, []*crypto.AccountK
 			panic(err)
 		}
 		accountKeys[i] = accountKey
-		txs[i] = makeTx(testPrivate, accountKey.Address, params.OrdinaryTx, new(big.Int).Rand(r, maxAmount))
+		txs[i] = newTx(testPrivate, accountKey.Address, params.OrdinaryTx, new(big.Int).Rand(r, maxAmount))
 	}
 	newBlock := makeBlock(db, blockInfo{
 		height:     3,
