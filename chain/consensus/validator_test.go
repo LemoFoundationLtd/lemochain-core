@@ -6,6 +6,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
+	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"github.com/stretchr/testify/assert"
 	"math/big"
 	"math/rand"
@@ -59,6 +60,20 @@ func newBlockForVerifySigner(height uint32, private string) *types.Block {
 	signData, _ := crypto.Sign(hash[:], privateKey)
 	block.Header.SignData = signData
 	return block
+}
+
+// 用于New deputyNode manager初始化deputy
+type snapshotLoader struct {
+	Nodes types.DeputyNodes
+}
+
+func (l snapshotLoader) GetBlockByHeight(height uint32) (*types.Block, error) {
+	if height >= params.TermDuration {
+		return nil, store.ErrNotExist
+	}
+	return &types.Block{
+		DeputyNodes: l.Nodes,
+	}, nil
 }
 
 func Test_verifySigner(t *testing.T) {

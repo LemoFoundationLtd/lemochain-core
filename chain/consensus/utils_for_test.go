@@ -3,7 +3,6 @@ package consensus
 import (
 	"crypto/ecdsa"
 	"crypto/rand"
-	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
@@ -161,18 +160,4 @@ func (txPoolForValidator) RecvBlock(block *types.Block) {
 
 func (txPoolForValidator) PruneBlock(block *types.Block) {
 	panic("implement me")
-}
-
-// 用于New deputyNode manager初始化deputy
-type snapshotLoader struct {
-	Nodes types.DeputyNodes
-}
-
-func (l snapshotLoader) GetBlockByHeight(height uint32) (*types.Block, error) {
-	if height >= params.TermDuration {
-		return nil, store.ErrNotExist
-	}
-	return &types.Block{
-		DeputyNodes: l.Nodes,
-	}, nil
 }
