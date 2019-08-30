@@ -216,35 +216,17 @@ func Test_verifyDeputy(t *testing.T) {
 
 	// 区块为deputyNodes快照块
 	height := params.TermDuration * 10
-	deputies := types.DeputyNodes{
-		&types.DeputyNode{
-			MinerAddress: minerAddr,
-			NodeID:       minerNodeId,
-			Rank:         0,
-			Votes:        big.NewInt(10000),
-		},
-		&types.DeputyNode{
-			MinerAddress: addr02,
-			NodeID:       nodeId02,
-			Rank:         1,
-			Votes:        big.NewInt(1000),
-		},
-		&types.DeputyNode{
-			MinerAddress: addr02,
-			NodeID:       nodeId02,
-			Rank:         2,
-			Votes:        big.NewInt(100),
-		},
-	}
+	deputyCount := 10
+	deputies := pickNodes(deputyCount)
 	// 2. 验证快照块中的deputyNodes是我们预期的nodes
 	block02 := newBlockForVerifyDeputy(height, deputies, deputies.MerkleRootSha().Bytes())
-	assert.NoError(t, verifyDeputy(block02, testCandidateLoader(deputies)))
+	assert.NoError(t, verifyDeputy(block02, createCandidateLoader(deputyCount)))
 	// 3. block中的deputyNodeRoot不正确的情况
 	block03 := newBlockForVerifyDeputy(height, deputies, common.FromHex("0x99999999999999999999999999"))
-	assert.Equal(t, ErrVerifyBlockFailed, verifyDeputy(block03, testCandidateLoader(deputies)))
+	assert.Equal(t, ErrVerifyBlockFailed, verifyDeputy(block03, createCandidateLoader(deputyCount)))
 	// 4. 验证block中的deputyNodes和链上直接获取的deputyNodes不相等的情况
 	block04 := newBlockForVerifyDeputy(height, deputies, deputies.MerkleRootSha().Bytes())
-	assert.Equal(t, ErrVerifyBlockFailed, verifyDeputy(block04, testCandidateLoader(deputies[:1]))) // 链上获取到的deputyNodes为deputies[:1]
+	assert.Equal(t, ErrVerifyBlockFailed, verifyDeputy(block04, createCandidateLoader(deputyCount/2))) // 链上获取到的deputyNodes为deputies中的一半
 }
 
 func newBlockForVerifyExtraData(extraData []byte) *types.Block {
@@ -316,18 +298,20 @@ func Test_VerifyMineSlot(t *testing.T) {
 	// 测试两个区块的出块者不同的distance的出块时间间隔情况
 	for i := 0; i < deputyCount; i++ {
 		for j := i + 1; j < deputyCount; j++ {
+			minPassTime := uint32(j-i-1) * timeoutTime
+			maxPassTime := uint32(j-i) * timeoutTime
 			// 1. 验证正确的区块出块时间间隔
-			correctPassTime := uint32(j-i-1)*timeoutTime + (timeoutTime - uint32(1)) // parentBlock和block的正确的时间差为： (j-i-1)*timeoutTime < passTime < (j-i)*timeoutTime
+			correctPassTime := minPassTime + (timeoutTime - uint32(1)) // parentBlock和block的正确的时间差为： (j-i-1)*timeoutTime < passTime < (j-i)*timeoutTime
 			parentBlock, currentBlock := assembleBlockForVerifyMineSlot(correctPassTime, oneLoopTime, minerAddrs[i], minerAddrs[j])
 			assert.NoError(t, VerifyMineSlot(currentBlock, parentBlock, uint64(timeoutTime*1000), dm))
 
 			// 2. 验证时间间隔小于规定的最小时间间隔的情况
-			underPassTime := uint32(j-i-1)*timeoutTime - 1
+			underPassTime := minPassTime - 1
 			parentBlock, currentBlock = assembleBlockForVerifyMineSlot(underPassTime, oneLoopTime, minerAddrs[i], minerAddrs[j])
 			assert.Equal(t, ErrVerifyHeaderFailed, VerifyMineSlot(currentBlock, parentBlock, uint64(timeoutTime*1000), dm))
 
 			// 3. 验证时间间隔大于规定的最大出块间隔时间
-			oversizePassTime := uint32(j-i)*timeoutTime + 1
+			oversizePassTime := maxPassTime + 1
 			parentBlock, currentBlock = assembleBlockForVerifyMineSlot(oversizePassTime, oneLoopTime, minerAddrs[i], minerAddrs[j])
 			assert.Equal(t, ErrVerifyHeaderFailed, VerifyMineSlot(currentBlock, parentBlock, uint64(timeoutTime*1000), dm))
 		}
@@ -379,6 +363,10 @@ func Test_verifyChangeLog(t *testing.T) {
 	block04 := newBlockForVerifyChangeLog(logs, logs.MerkleRootSha())
 	computedLogs = logs[:5] // 计算出来的logs
 	assert.Equal(t, ErrVerifyBlockFailed, verifyChangeLog(block04, computedLogs))
+
+	// 6. 验证区块changeLogs为空，但是logRoot是预期的正确值
+	block05 := newBlockForVerifyChangeLog(nil, logs.MerkleRootSha())
+	assert.NoError(t, verifyChangeLog(block05, logs))
 }
 
 func TestValidator_VerifyAfterTxProcess(t *testing.T) {
@@ -397,8 +385,25 @@ func TestValidator_VerifyAfterTxProcess(t *testing.T) {
 	}
 	// 1. 验证正常情况
 	assert.NoError(t, v.VerifyAfterTxProcess(block, block))
-	// 2. 验证两个block计算出的hash不等的情况，这里构造两个块的MinerAddress不同
+
+	// 2. 验证verifyChangeLog()返回err, 待验证的区块中的changeLogs和重新计算出来的block中的changeLogs不相等
 	computedBlock := &types.Block{
+		Header: block.Header,
+		ChangeLogs: types.ChangeLogSlice{
+			&types.ChangeLog{
+				LogType: types.ChangeLogType(uint32(1)),
+				Address: common.HexToAddress("0x11" + strconv.Itoa(1)),
+				Version: uint32(1),
+				OldVal:  rand.Intn(100),
+				NewVal:  rand.Intn(100),
+				Extra:   strconv.Itoa(1),
+			},
+		},
+	}
+	assert.Error(t, ErrVerifyBlockFailed, v.VerifyAfterTxProcess(block, computedBlock))
+
+	// 3. 验证两个block计算出的hash不等的情况，这里构造两个块的MinerAddress不同
+	computedBlock = &types.Block{
 		Header: &types.Header{
 			ParentHash:   common.Hash{},
 			MinerAddress: common.HexToAddress("0x222"),
@@ -450,6 +455,12 @@ func TestValidator_JudgeDeputy(t *testing.T) {
 	block05 := newBlockForJudgeDeputy(100, private02, "我是private02，我签名了高度为100的区块")
 	// 返回false
 	assert.False(t, v3.JudgeDeputy(block05))
+
+	// 4. 测试v.blockLoader.IterateUnConfirms迭代器还原nodeId出错的情况
+	errBlock := block05
+	errBlock.Header.SignData = common.FromHex("122") // 签名长度不为65位
+	v4 := NewValidator(1000, testBlockLoader([]*types.Block{errBlock}), dm, txPoolForValidator{}, testCandidateLoader{})
+	assert.False(t, v4.JudgeDeputy(block03)) // block03中的signData是正常的,但是迭代器中迭代出的block的signData有误,直接返回
 }
 
 func newBlockForVerifyNewConfirms(private string) *types.Block {
@@ -529,8 +540,10 @@ func TestValidator_VerifyNewConfirms(t *testing.T) {
 
 	// 3. 验证区块中的Confirms中存在需要验证的确认包
 	sig01 := signBlock(block01, private01) // 验证minerAddress签名的确认信息
-	_, err = v.VerifyNewConfirms(block01, []types.SignData{sig01}, dm)
+	validConfirms, err = v.VerifyNewConfirms(block01, []types.SignData{sig01}, dm)
 	assert.Equal(t, ErrInvalidConfirmSigner, err)
+	length := len(validConfirms) // 返回值长度为0
+	assert.Equal(t, 0, length)
 
 	block01.Confirms = []types.SignData{sig02}  // 把第二个deputy的区块签名信息放在区块的confirms中
 	sigList03 := []types.SignData{sig02, sig03} // 验证确认包中包含了block的confirms中的sig2
@@ -553,4 +566,20 @@ func TestValidator_VerifyNewConfirms(t *testing.T) {
 	// 拿对block02的确认包去对block03中验证，在解析签名后会返回一个新的nodeId，此nodeId是不会在deputy nodes中的
 	_, err = v.VerifyNewConfirms(block03, []types.SignData{sigBlock02}, dm)
 	assert.Equal(t, ErrInvalidConfirmSigner, err)
+}
+
+func TestValidator_VerifyConfirmPacket(t *testing.T) {
+	dm := deputynode.NewManager(5, testBlockLoader{})
+	// 1. 测试通过blockHash得不到block的情况
+	v1 := NewValidator(1000, testBlockLoader{}, dm, txPoolForValidator{}, testCandidateLoader{})
+	hash := testBlocks[0].Hash()
+	confirms, err := v1.VerifyConfirmPacket(0, hash, nil)
+	assert.Nil(t, confirms)
+	assert.Error(t, ErrBlockNotExist, err)
+	// 2. 测试区块高度不对的情况
+	block := testBlocks[1]
+	v2 := NewValidator(1000, testBlockLoader(testBlocks), dm, txPoolForValidator{}, testCandidateLoader{})
+	confirms, err = v2.VerifyConfirmPacket(block.Height()+1, block.Hash(), nil)
+	assert.Nil(t, confirms)
+	assert.Error(t, ErrInvalidSignedConfirmInfo, err)
 }
