@@ -438,7 +438,7 @@ package consensus
 // 	return newBlock
 // }
 //
-// func makeTx(fromPrivate *ecdsa.PrivateKey, to common.Address, txType uint16, amount *big.Int) *types.Transaction {
+// func makeTxForVerifyTxRoot(fromPrivate *ecdsa.PrivateKey, to common.Address, txType uint16, amount *big.Int) *types.Transaction {
 // 	return makeTransaction(fromPrivate, to, txType, amount, common.Big1, uint64(time.Now().Unix()+300), 1000000)
 // }
 //
@@ -468,7 +468,7 @@ package consensus
 // 			panic(err)
 // 		}
 // 		accountKeys[i] = accountKey
-// 		txs[i] = makeTx(testPrivate, accountKey.Address, params.OrdinaryTx, new(big.Int).Rand(r, maxAmount))
+// 		txs[i] = makeTxForVerifyTxRoot(testPrivate, accountKey.Address, params.OrdinaryTx, new(big.Int).Rand(r, maxAmount))
 // 	}
 // 	newBlock := makeBlock(db, blockInfo{
 // 		height:     3,

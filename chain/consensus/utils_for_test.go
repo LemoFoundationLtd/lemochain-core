@@ -10,8 +10,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto/secp256k1"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"math/big"
-	mathRand "math/rand"
-	"time"
 )
 
 var (
@@ -166,175 +164,15 @@ func (txPoolForValidator) PruneBlock(block *types.Block) {
 }
 
 // 用于New deputyNode manager初始化deputy
-type loader struct {
+type snapshotLoader struct {
 	Nodes types.DeputyNodes
 }
 
-func (l loader) GetBlockByHeight(height uint32) (*types.Block, error) {
+func (l snapshotLoader) GetBlockByHeight(height uint32) (*types.Block, error) {
 	if height >= params.TermDuration {
 		return nil, store.ErrNotExist
 	}
 	return &types.Block{
 		DeputyNodes: l.Nodes,
 	}, nil
-}
-
-var (
-	minerAddr, _ = common.StringToAddress("Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG")
-	minerPrivate = "c21b6b2fbf230f665b936194d14da67187732bf9d28768aef1a3cbb26608f8aa"
-	minerNodeId  = common.FromHex("0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0")
-
-	addr02, _ = common.StringToAddress("Lemo83JW7TBPA7P2P6AR9ZC2WCQJYRNHZ4NJD4CY")
-	private02 = "9c3c4a327ce214f0a1bf9cfa756fbf74f1c7322399ffff925efd8c15c49953eb"
-	nodeId02  = common.FromHex("0xddb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0")
-)
-
-// newBlockForVerifySigner 需要构造出区块签名数据、MinerAddress、区块高度
-func newBlockForVerifySigner(height uint32, private string) *types.Block {
-	privateKey, _ := crypto.HexToECDSA(private)
-	minerAddress := crypto.PubkeyToAddress(privateKey.PublicKey)
-	header := &types.Header{
-		MinerAddress: minerAddress,
-		Height:       height,
-	}
-	block := &types.Block{
-		Header: header,
-	}
-	hash := block.Hash()
-	signData, _ := crypto.Sign(hash[:], privateKey)
-	block.Header.SignData = signData
-	return block
-}
-
-func makeTx(from, to common.Address, txTime uint64) *types.Transaction {
-	return types.NewTransaction(from, to, big.NewInt(100), uint64(1000), big.NewInt(100), nil, 0, 1, txTime, "", "")
-}
-
-// newBlockForVerifyTxRoot
-func newBlockForVerifyTxRoot(txs types.Transactions, txRoot common.Hash) *types.Block {
-	header := &types.Header{
-		TxRoot: txRoot,
-	}
-	return &types.Block{
-		Header: header,
-		Txs:    txs,
-	}
-}
-
-func newBlockForVerifyTxs(txs types.Transactions, time uint32) *types.Block {
-	header := &types.Header{
-		Time: time,
-	}
-	return &types.Block{
-		Header: header,
-		Txs:    txs,
-	}
-}
-
-func newBlockForVerifyHeight(height uint32) *types.Block {
-	header := &types.Header{
-		Height: height,
-	}
-	return &types.Block{
-		Header: header,
-	}
-}
-
-func newBlockForVerifyTime(time uint32) *types.Block {
-	header := &types.Header{
-		Time: time,
-	}
-	return &types.Block{
-		Header: header,
-	}
-}
-
-func newBlockForVerifyDeputy(height uint32, deputyNodes types.DeputyNodes, deputyRoot []byte) *types.Block {
-	header := &types.Header{
-		Height:     height,
-		DeputyRoot: deputyRoot,
-	}
-	return &types.Block{
-		Header:      header,
-		DeputyNodes: deputyNodes,
-	}
-}
-
-func newBlockForVerifyExtraData(extraData []byte) *types.Block {
-	return &types.Block{
-		Header: &types.Header{
-			Extra: extraData,
-		},
-	}
-}
-
-// time单位:s
-func newBlockForVerifyMineSlot(height uint32, minerAddress common.Address, time uint32) *types.Block {
-	return &types.Block{
-		Header: &types.Header{
-			MinerAddress: minerAddress,
-			Height:       height,
-			Time:         time,
-		},
-	}
-}
-
-// assembleBlockForVerifyMineSlot
-func assembleBlockForVerifyMineSlot(passTime, oneLoopTime uint32, parentMiner, currentMiner common.Address) (parentBlock *types.Block, currentBlock *types.Block) {
-	mathRand.Seed(time.Now().UnixNano())
-	parentTime := uint32(mathRand.Intn(500)) + 1
-	blockTime := parentTime + passTime + oneLoopTime*uint32(mathRand.Intn(5)) // blockTime为parentTime + 正确的相差时间 + 随机的轮数
-	parentBlock = newBlockForVerifyMineSlot(1, parentMiner, parentTime)
-	currentBlock = newBlockForVerifyMineSlot(2, currentMiner, blockTime)
-	return
-}
-
-func newBlockForVerifyChangeLog(logs types.ChangeLogSlice, logRoot common.Hash) *types.Block {
-	block := &types.Block{
-		Header: &types.Header{
-			LogRoot: logRoot,
-		},
-	}
-	block.SetChangeLogs(logs)
-	return block
-}
-
-// newBlockForJudgeDeputy extra用于改变交易的hash
-func newBlockForJudgeDeputy(height uint32, private, extra string) *types.Block {
-	block := &types.Block{
-		Header: &types.Header{
-			Height: height,
-			Extra:  []byte(extra),
-		},
-	}
-	hash := block.Hash()
-	privateKey, _ := crypto.HexToECDSA(private)
-	signData, _ := crypto.Sign(hash.Bytes(), privateKey)
-	block.Header.SignData = signData
-	return block
-}
-
-func newBlockForVerifyNewConfirms(private string) *types.Block {
-	privateKey, _ := crypto.HexToECDSA(private)
-	minerAddress := crypto.PubkeyToAddress(privateKey.PublicKey)
-
-	block := &types.Block{
-		Header: &types.Header{
-			MinerAddress: minerAddress,
-			Height:       0,
-		},
-	}
-	hash := block.Hash()
-	signData, _ := crypto.Sign(hash[:], privateKey)
-	block.Header.SignData = signData
-	return block
-}
-
-func signBlock(block *types.Block, private string) types.SignData {
-	privateKey, _ := crypto.HexToECDSA(private)
-	hash := block.Hash()
-	signData, _ := crypto.Sign(hash[:], privateKey)
-	var sig types.SignData
-	copy(sig[:], signData)
-	return sig
 }

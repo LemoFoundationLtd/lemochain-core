@@ -5,12 +5,23 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
+	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"github.com/stretchr/testify/assert"
 	"math/big"
 	"math/rand"
 	"strconv"
 	"testing"
 	"time"
+)
+
+var (
+	minerAddr, _ = common.StringToAddress("Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG")
+	minerPrivate = "c21b6b2fbf230f665b936194d14da67187732bf9d28768aef1a3cbb26608f8aa"
+	minerNodeId  = common.FromHex("0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0")
+
+	addr02, _ = common.StringToAddress("Lemo83JW7TBPA7P2P6AR9ZC2WCQJYRNHZ4NJD4CY")
+	private02 = "9c3c4a327ce214f0a1bf9cfa756fbf74f1c7322399ffff925efd8c15c49953eb"
+	nodeId02  = common.FromHex("0xddb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0")
 )
 
 func TestNewValidator(t *testing.T) {
@@ -33,8 +44,25 @@ func Test_verifyParentHash(t *testing.T) {
 	assert.Equal(t, testBlocks[0], parent)
 }
 
+// newBlockForVerifySigner 需要构造出区块签名数据、MinerAddress、区块高度
+func newBlockForVerifySigner(height uint32, private string) *types.Block {
+	privateKey, _ := crypto.HexToECDSA(private)
+	minerAddress := crypto.PubkeyToAddress(privateKey.PublicKey)
+	header := &types.Header{
+		MinerAddress: minerAddress,
+		Height:       height,
+	}
+	block := &types.Block{
+		Header: header,
+	}
+	hash := block.Hash()
+	signData, _ := crypto.Sign(hash[:], privateKey)
+	block.Header.SignData = signData
+	return block
+}
+
 func Test_verifySigner(t *testing.T) {
-	dm := deputynode.NewManager(5, loader{
+	dm := deputynode.NewManager(5, snapshotLoader{
 		Nodes: types.DeputyNodes{&types.DeputyNode{
 			MinerAddress: minerAddr,
 			NodeID:       minerNodeId,
@@ -57,12 +85,27 @@ func Test_verifySigner(t *testing.T) {
 	assert.Equal(t, ErrVerifyHeaderFailed, verifySigner(block03, dm))
 }
 
+func makeTxForVerifyTxRoot(from, to common.Address, txTime uint64) *types.Transaction {
+	return types.NewTransaction(from, to, big.NewInt(100), uint64(1000), big.NewInt(100), nil, 0, 1, txTime, "", "")
+}
+
+// newBlockForVerifyTxRoot
+func newBlockForVerifyTxRoot(txs types.Transactions, txRoot common.Hash) *types.Block {
+	header := &types.Header{
+		TxRoot: txRoot,
+	}
+	return &types.Block{
+		Header: header,
+		Txs:    txs,
+	}
+}
+
 // 验证block中的txs和txRoot
 func Test_verifyTxRoot(t *testing.T) {
 	// 构造txs
 	txs := make(types.Transactions, 0, 10)
 	for i := 0; i < 10; i++ {
-		tx := makeTx(common.HexToAddress("0x"+strconv.Itoa(i)), common.HexToAddress("0x88"), uint64(time.Now().Unix()))
+		tx := makeTxForVerifyTxRoot(common.HexToAddress("0x"+strconv.Itoa(i)), common.HexToAddress("0x88"), uint64(time.Now().Unix()))
 		txs = append(txs, tx)
 	}
 	correctTxRoot := txs.MerkleRootSha()
@@ -75,9 +118,19 @@ func Test_verifyTxRoot(t *testing.T) {
 	assert.Equal(t, ErrVerifyBlockFailed, verifyTxRoot(incorrectBlock))
 }
 
+func newBlockForVerifyTxs(txs types.Transactions, time uint32) *types.Block {
+	header := &types.Header{
+		Time: time,
+	}
+	return &types.Block{
+		Header: header,
+		Txs:    txs,
+	}
+}
+
 func Test_verifyTxs(t *testing.T) {
 	txs := types.Transactions{
-		makeTx(common.HexToAddress("0x11"), common.HexToAddress("0x12"), uint64(90000)),
+		makeTxForVerifyTxRoot(common.HexToAddress("0x11"), common.HexToAddress("0x12"), uint64(90000)),
 	}
 	txPool := txPoolForValidator{true} // 交易池中返回的状态为true
 	// 1. 正确情况
@@ -92,12 +145,30 @@ func Test_verifyTxs(t *testing.T) {
 	assert.Equal(t, ErrVerifyBlockFailed, verifyTxs(block02, txPool))
 }
 
+func newBlockForVerifyHeight(height uint32) *types.Block {
+	header := &types.Header{
+		Height: height,
+	}
+	return &types.Block{
+		Header: header,
+	}
+}
+
 func Test_verifyHeight(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		// 1. 正确情况
 		assert.NoError(t, verifyHeight(newBlockForVerifyHeight(uint32(i+1)), newBlockForVerifyHeight(uint32(i))))
 		// 2. 错误情况
 		assert.Equal(t, ErrVerifyHeaderFailed, verifyHeight(newBlockForVerifyHeight(uint32(i+2)), newBlockForVerifyHeight(uint32(i))))
+	}
+}
+
+func newBlockForVerifyTime(time uint32) *types.Block {
+	header := &types.Header{
+		Time: time,
+	}
+	return &types.Block{
+		Header: header,
 	}
 }
 
@@ -109,6 +180,17 @@ func Test_verifyTime(t *testing.T) {
 	assert.NoError(t, verifyTime(newBlockForVerifyTime(now+1)))
 	// 3. 异常情况
 	assert.Equal(t, ErrVerifyHeaderFailed, verifyTime(newBlockForVerifyTime(now+2)))
+}
+
+func newBlockForVerifyDeputy(height uint32, deputyNodes types.DeputyNodes, deputyRoot []byte) *types.Block {
+	header := &types.Header{
+		Height:     height,
+		DeputyRoot: deputyRoot,
+	}
+	return &types.Block{
+		Header:      header,
+		DeputyNodes: deputyNodes,
+	}
 }
 
 func Test_verifyDeputy(t *testing.T) {
@@ -150,6 +232,14 @@ func Test_verifyDeputy(t *testing.T) {
 	assert.Equal(t, ErrVerifyBlockFailed, verifyDeputy(block04, testCandidateLoader(deputies[:1]))) // 链上获取到的deputyNodes为deputies[:1]
 }
 
+func newBlockForVerifyExtraData(extraData []byte) *types.Block {
+	return &types.Block{
+		Header: &types.Header{
+			Extra: extraData,
+		},
+	}
+}
+
 func Test_verifyExtraData(t *testing.T) {
 	// 验证block中的额外数据长度
 	for i := 1; i <= params.MaxExtraDataLen*2; i++ {
@@ -160,6 +250,27 @@ func Test_verifyExtraData(t *testing.T) {
 			assert.NoError(t, verifyExtraData(block))
 		}
 	}
+}
+
+// time单位:s
+func newBlockForVerifyMineSlot(height uint32, minerAddress common.Address, time uint32) *types.Block {
+	return &types.Block{
+		Header: &types.Header{
+			MinerAddress: minerAddress,
+			Height:       height,
+			Time:         time,
+		},
+	}
+}
+
+// assembleBlockForVerifyMineSlot
+func assembleBlockForVerifyMineSlot(passTime, oneLoopTime uint32, parentMiner, currentMiner common.Address) (parentBlock *types.Block, currentBlock *types.Block) {
+	rand.Seed(time.Now().UnixNano())
+	parentTime := uint32(rand.Intn(500)) + 1
+	blockTime := parentTime + passTime + oneLoopTime*uint32(rand.Intn(5)) // blockTime为parentTime + 正确的相差时间 + 随机的轮数
+	parentBlock = newBlockForVerifyMineSlot(1, parentMiner, parentTime)
+	currentBlock = newBlockForVerifyMineSlot(2, currentMiner, blockTime)
+	return
 }
 
 func Test_VerifyMineSlot(t *testing.T) {
@@ -182,7 +293,7 @@ func Test_VerifyMineSlot(t *testing.T) {
 		deputyNodes = append(deputyNodes, deputy)
 	}
 
-	dm := deputynode.NewManager(len(deputyNodes), loader{
+	dm := deputynode.NewManager(len(deputyNodes), snapshotLoader{
 		Nodes: deputyNodes,
 	})
 	// 一轮时间
@@ -206,6 +317,16 @@ func Test_VerifyMineSlot(t *testing.T) {
 			assert.Equal(t, ErrVerifyHeaderFailed, VerifyMineSlot(currentBlock, parentBlock, uint64(timeoutTime*1000), dm))
 		}
 	}
+}
+
+func newBlockForVerifyChangeLog(logs types.ChangeLogSlice, logRoot common.Hash) *types.Block {
+	block := &types.Block{
+		Header: &types.Header{
+			LogRoot: logRoot,
+		},
+	}
+	block.SetChangeLogs(logs)
+	return block
 }
 
 func Test_verifyChangeLog(t *testing.T) {
@@ -272,6 +393,21 @@ func TestValidator_VerifyAfterTxProcess(t *testing.T) {
 	assert.Equal(t, ErrVerifyBlockFailed, v.VerifyAfterTxProcess(block, computedBlock))
 }
 
+// newBlockForJudgeDeputy extra用于改变交易的hash
+func newBlockForJudgeDeputy(height uint32, private, extra string) *types.Block {
+	block := &types.Block{
+		Header: &types.Header{
+			Height: height,
+			Extra:  []byte(extra),
+		},
+	}
+	hash := block.Hash()
+	privateKey, _ := crypto.HexToECDSA(private)
+	signData, _ := crypto.Sign(hash.Bytes(), privateKey)
+	block.Header.SignData = signData
+	return block
+}
+
 func TestValidator_JudgeDeputy(t *testing.T) {
 	private01 := "c21b6b2fbf230f665b936194d14da67187732bf9d28768aef1a3cbb26608f8aa"
 	private02 := "9c3c4a327ce214f0a1bf9cfa756fbf74f1c7322399ffff925efd8c15c49953eb"
@@ -299,6 +435,31 @@ func TestValidator_JudgeDeputy(t *testing.T) {
 	block05 := newBlockForJudgeDeputy(100, private02, "我是private02，我签名了高度为100的区块")
 	// 返回false
 	assert.False(t, v3.JudgeDeputy(block05))
+}
+
+func newBlockForVerifyNewConfirms(private string) *types.Block {
+	privateKey, _ := crypto.HexToECDSA(private)
+	minerAddress := crypto.PubkeyToAddress(privateKey.PublicKey)
+
+	block := &types.Block{
+		Header: &types.Header{
+			MinerAddress: minerAddress,
+			Height:       0,
+		},
+	}
+	hash := block.Hash()
+	signData, _ := crypto.Sign(hash[:], privateKey)
+	block.Header.SignData = signData
+	return block
+}
+
+func signBlock(block *types.Block, private string) types.SignData {
+	privateKey, _ := crypto.HexToECDSA(private)
+	hash := block.Hash()
+	signData, _ := crypto.Sign(hash[:], privateKey)
+	var sig types.SignData
+	copy(sig[:], signData)
+	return sig
 }
 
 func TestValidator_VerifyNewConfirms(t *testing.T) {
@@ -331,7 +492,7 @@ func TestValidator_VerifyNewConfirms(t *testing.T) {
 		},
 	}
 
-	dm := deputynode.NewManager(3, loader{
+	dm := deputynode.NewManager(3, snapshotLoader{
 		Nodes: deputyNodes,
 	})
 	v := NewValidator(1000, testBlockLoader{}, dm, txPoolForValidator{}, testCandidateLoader{})
