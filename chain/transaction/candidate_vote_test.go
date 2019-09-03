@@ -7,6 +7,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
+	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"github.com/stretchr/testify/assert"
 	"math/big"
 	"strconv"
@@ -131,6 +132,67 @@ func Test_Refund(t *testing.T) {
 	assert.Panics(t, func() {
 		Refund(candidateAddress, am)
 	})
+}
+
+type testDeputyBlock struct {
+}
+
+var candidateAddress, _ = common.StringToAddress("Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG")
+var nodeId = common.FromHex("0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0")
+
+func (l *testDeputyBlock) GetBlockByHeight(height uint32) (*types.Block, error) {
+	// 只记录前四期的共识节点
+	if height > params.TermDuration*2 {
+		return nil, store.ErrNotExist
+	}
+
+	block := &types.Block{
+		Header: &types.Header{
+			Height: height,
+		},
+	}
+	// 如果高度为共识节点快照块高度则返回带有共识节点的区块
+	if height%params.TermDuration == 0 {
+		block.DeputyNodes = types.DeputyNodes{
+			&types.DeputyNode{
+				MinerAddress: candidateAddress,
+				NodeID:       nodeId,
+				Rank:         0,
+				Votes:        big.NewInt(100),
+			},
+		}
+	}
+	return block, nil
+}
+
+func Test_refundDeposit(t *testing.T) {
+	// pubkey := "0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0"
+	ClearData()
+	db := newDB()
+	defer db.Close()
+	am := account.NewManager(common.Hash{}, db)
+	dm := deputynode.NewManager(5, &testDeputyBlock{})
+	c := NewCandidateVoteEnv(am, dm)
+	// 1. 测试当前高度为过渡期，则直接返回
+	// 注册candidate
+	acc01 := am.GetAccount(candidateAddress)
+	acc01.SetCandidateState(types.CandidateKeyPledgeAmount, "999")
+	acc01.SetCandidateState(types.CandidateKeyNodeID, common.ToHex(nodeId))
+	// 由于在过渡期直接返回，不做转账处理
+	c.refundDeposit(candidateAddress, params.TermDuration+500)
+	// 验证candidateAddress中并没有增加退的押金
+	assert.Equal(t, big.NewInt(0), acc01.GetBalance())
+	// 2. 不在过渡期并且此账户为当前的共识节点则直接返回不做退还处理
+	c.refundDeposit(candidateAddress, 100)
+	// 验证candidateAddress中并没有增加退的押金
+	assert.Equal(t, big.NewInt(0), acc01.GetBalance())
+	// 3. 不在过度期并且此账户不为共识节点则立即退还押金
+	poolAcc := am.GetAccount(params.CandidateDepositAddress)
+	poolNum := big.NewInt(999) // 这里设置奖励池中的数量刚好和需要退还的押金相等
+	poolAcc.SetBalance(poolNum)
+	c.refundDeposit(candidateAddress, params.TermDuration*100+1500) // 传入的height远大于构造出的最大快照块的高度，用于模拟满足立即退押金的情况
+	assert.Equal(t, big.NewInt(999), acc01.GetBalance())            // 退还押金之后的balance
+	assert.Equal(t, big.NewInt(0), poolAcc.GetBalance())            // 奖励池中的余额为0
 }
 
 // TestCandidateVoteEnv_RegisterOrUpdateToCandidate 注册候选节点交易测试

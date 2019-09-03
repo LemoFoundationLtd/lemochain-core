@@ -180,23 +180,22 @@ func (c *CandidateVoteEnv) unRegisterCandidate(candidateAcc types.AccountAccesso
 		// Set the number of votes to 0
 		candidateAcc.SetVotes(big.NewInt(0))
 		// 退还候选节点的押金
-		c.refundDeposit(candidateAcc.GetAddress())
+		currentHeight := c.am.CurrentBlockHeight() + 1
+		c.refundDeposit(candidateAcc.GetAddress(), currentHeight)
 		return true
 	}
 	return false
 }
 
 // refundDeposit
-func (c *CandidateVoteEnv) refundDeposit(candidateAddress common.Address) {
-	// 获取当前打包的区块的height
-	height := c.am.CurrentBlockHeight() + 1
+func (c *CandidateVoteEnv) refundDeposit(candidateAddress common.Address, height uint32) {
 	// 判断当前是否在过度期，过度期不得退款
 	num := height % params.TermDuration
 	// 1. 在过渡期,延后到过渡期之后发放奖励区块中退款,如果他已经被选成了下一届的共识节点的情况，发放奖励区块中退押金的时候会判断这种情况。
 	if num <= params.InterimDuration && height > params.InterimDuration {
 		return
 	}
-	// 2. 不在过度期
+	// 2. 不在过渡期
 	candidateAcc := c.am.GetAccount(candidateAddress)
 	nodeId := candidateAcc.GetCandidateState(types.CandidateKeyNodeID)
 	if nodeId == "" {

@@ -80,7 +80,23 @@ func newCoverGenesisDB() (db protocol.ChainDB, genesisHash common.Hash) {
 	return db, genesisHash
 }
 
-// newBlockForTest
+func createBlock(height uint32, am *account.Manager, db protocol.ChainDB) *types.Block {
+	block := &types.Block{
+		Header: &types.Header{
+			MinerAddress: common.HexToAddress("0x1100"),
+			Height:       height,
+			GasLimit:     5100000000,
+		},
+	}
+	// 保存db
+	hash := block.Hash()
+	db.SetBlock(hash, block)
+	// am.Save(hash)
+	db.SetStableBlock(hash)
+	return block
+}
+
+// newBlockForTest 只能按照高度顺序创建区块
 func newBlockForTest(height uint32, txs types.Transactions, am *account.Manager, dm *deputynode.Manager, db protocol.ChainDB, stable bool) *types.Block {
 	var (
 		parentHash common.Hash
