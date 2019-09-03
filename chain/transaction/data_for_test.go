@@ -3,6 +3,8 @@ package transaction
 import (
 	"crypto/ecdsa"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
@@ -55,25 +57,37 @@ func newDB() protocol.ChainDB {
 	return store.NewChainDataBase(GetStorePath(), "", "")
 }
 
+// newDBToBlockHeight 返回存储了指定高度个稳定区块的db和当前状态的account manager
+func newDBToBlockHeight(height uint32) (db protocol.ChainDB, am *account.Manager) {
+	db, _ = newCoverGenesisDB()
+	dm := deputynode.NewManager(5, db)
+	for i := uint32(1); i <= height; i++ {
+		parentBlock, _ := db.GetBlockByHeight(i - 1)
+		am = account.NewManager(parentBlock.Hash(), db)
+		newBlockForTest(i, nil, am, dm, db, true)
+	}
+	return db, am
+}
+
 // 新建一个初始化了创世块的db
 func newCoverGenesisDB() (db protocol.ChainDB, genesisHash common.Hash) {
 	db = newDB()
 	am := account.NewManager(common.Hash{}, db)
 	total, _ := new(big.Int).SetString("1600000000000000000000000000", 10) // 1.6 billion
 	am.GetAccount(godAddr).SetBalance(total)
-	genesis := newBlockForTest(0, nil, am, db, true)
+	genesis := newBlockForTest(0, nil, am, nil, db, true)
 	genesisHash = genesis.Hash()
 	return db, genesisHash
 }
 
 // newBlockForTest
-func newBlockForTest(height uint32, txs types.Transactions, am *account.Manager, db protocol.ChainDB, stable bool) *types.Block {
+func newBlockForTest(height uint32, txs types.Transactions, am *account.Manager, dm *deputynode.Manager, db protocol.ChainDB, stable bool) *types.Block {
 	var (
 		parentHash common.Hash
 		gasUsed    uint64
 		selectTxs  types.Transactions
 	)
-	p := NewTxProcessor(config.RewardManager, config.ChainID, newTestChain(db), am, db)
+	p := NewTxProcessor(config.RewardManager, config.ChainID, newTestChain(db), am, db, dm)
 	// 判断创世块
 	if height == 0 {
 		parentHash = common.Hash{}
@@ -102,6 +116,20 @@ func newBlockForTest(height uint32, txs types.Transactions, am *account.Manager,
 	header.VersionRoot = am.GetVersionRoot()
 
 	block := types.NewBlock(header, selectTxs, logs)
+	// 给快照块添加共识节点列表
+	if block.Height()%params.TermDuration == 0 {
+		deputyNodes := make(types.DeputyNodes, 0)
+		for i := 0; i < 5; i++ {
+			node := &types.DeputyNode{
+				MinerAddress: godAddr,
+				NodeID:       common.FromHex("0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0"),
+				Rank:         uint32(i),
+				Votes:        new(big.Int).SetInt64(int64(5 - i)), // 初始的代理节点列表中的votes都为0，因为初始的时候没有一个账户中有lemo.
+			}
+			deputyNodes = append(deputyNodes, node)
+		}
+		block.DeputyNodes = deputyNodes
+	}
 	hash := block.Hash()
 	db.SetBlock(hash, block)
 	am.Save(hash)

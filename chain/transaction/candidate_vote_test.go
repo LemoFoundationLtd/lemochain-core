@@ -3,6 +3,7 @@ package transaction
 import (
 	"encoding/json"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
@@ -99,6 +100,39 @@ func Test_buildProfile(t *testing.T) {
 	assert.Equal(t, normalPort, newProfile[types.CandidateKeyPort])
 }
 
+func Test_Refund(t *testing.T) {
+	ClearData()
+	db := newDB()
+	defer db.Close()
+	am := account.NewManager(common.Hash{}, db)
+
+	// 押金池账户
+	candidatePledgePoolAcc := am.GetAccount(params.CandidateDepositAddress)
+	// 设置押金池中的账户为9亿
+	pool := common.Lemo2Mo("900000000")
+	candidatePledgePoolAcc.SetBalance(pool)
+
+	// 1. 正常退押金的情况
+	candidateAddress := common.HexToAddress("0x1223")
+	candidateAcc := am.GetAccount(candidateAddress)
+	pledgeAmount := "99999999999999"
+	candidateAcc.SetCandidateState(types.CandidateKeyPledgeAmount, pledgeAmount) // 设置此账户中的押金数量
+	Refund(candidateAddress, am)
+	// 验证退还之后的账户余额增加
+	refundAmount, _ := new(big.Int).SetString(pledgeAmount, 10)
+	assert.Equal(t, refundAmount, candidateAcc.GetBalance())
+	// 验证押金池的减少
+	newPool := new(big.Int).Sub(pool, refundAmount)
+	assert.Equal(t, newPool, candidatePledgePoolAcc.GetBalance())
+
+	// 2. 验证押金池中的押金余额不足直接panic的情况
+	maxPledgeAmount := common.Lemo2Mo("9000000000").String()                        // 押金为90亿，远大于押金池中的数量
+	candidateAcc.SetCandidateState(types.CandidateKeyPledgeAmount, maxPledgeAmount) // 设置此账户中的押金数量
+	assert.Panics(t, func() {
+		Refund(candidateAddress, am)
+	})
+}
+
 // TestCandidateVoteEnv_RegisterOrUpdateToCandidate 注册候选节点交易测试
 func TestCandidateVoteEnv_RegisterOrUpdateToCandidate(t *testing.T) {
 	/*
@@ -111,7 +145,8 @@ func TestCandidateVoteEnv_RegisterOrUpdateToCandidate(t *testing.T) {
 	db := newDB()
 	defer db.Close()
 	am := account.NewManager(common.Hash{}, db)
-	c := NewCandidateVoteEnv(am)
+	dm := deputynode.NewManager(5, db)
+	c := NewCandidateVoteEnv(am, dm)
 	// 足够的balance给注册者
 	registerAcc := c.am.GetAccount(register)
 	registerAcc.SetBalance(new(big.Int).Mul(params.RegisterCandidatePledgeAmount, big.NewInt(2)))
@@ -167,7 +202,7 @@ func TestCandidateVoteEnv_RegisterOrUpdateToCandidate(t *testing.T) {
 	tx04 := newCandidateTx(register02, nil, false, normalIncomeAddress, normalNodeId, normalHost, normalPort)
 	err = c.RegisterOrUpdateToCandidate(tx04)
 	assert.NoError(t, err)
-	// 注销之后，不会立即退回押金，要等到换届发放奖励的区块中退回押金。
+	// 注销之后
 	pro := register02Acc.GetCandidate()
 	assert.Equal(t, params.NotCandidateNode, pro[types.CandidateKeyIsCandidate])
 	votes = register02Acc.GetVotes() // 得票数变为0
@@ -210,7 +245,8 @@ func TestCandidateVoteEnv_CallVoteTx(t *testing.T) {
 	db := newDB()
 	defer db.Close()
 	am := account.NewManager(common.Hash{}, db)
-	c := NewCandidateVoteEnv(am)
+	dm := deputynode.NewManager(5, db)
+	c := NewCandidateVoteEnv(am, dm)
 	initialSenderBalance := common.Lemo2Mo("2090") // 兑换为票数为20票
 	// 构造一个候选节点，该候选节点原本的票数为两倍于 initialSenderBalance
 	candAddr := common.HexToAddress("0x13333000")

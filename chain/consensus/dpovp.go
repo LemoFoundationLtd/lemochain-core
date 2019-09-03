@@ -503,7 +503,6 @@ func (dp *DPoVP) LoadRefundCandidates() ([]common.Address, error) {
 			if !dp.dm.IsNodeDeputy(dp.CurrentBlock().Height(), common.FromHex(nodeId)) {
 				result = append(result, addr)
 			}
-
 		}
 	}
 	return result, nil

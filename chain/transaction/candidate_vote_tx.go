@@ -208,10 +208,9 @@ func (c *CandidateVoteEnv) refundDeposit(candidateAddress common.Address) {
 	} else { // 不是共识节点，则立即退款
 		Refund(candidateAddress, c.am)
 	}
-
 }
 
-// Refund
+// Refund 进行退款操作
 func Refund(candidateAddress common.Address, am *account.Manager) {
 	// 判断addr的candidate信息
 	candidateAcc := am.GetAccount(candidateAddress)
