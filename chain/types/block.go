@@ -14,6 +14,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common/rlp"
 	"io"
 	"strings"
+	"sync/atomic"
 )
 
 //go:generate gencodec -type Header -field-override headerMarshaling -out gen_header_json.go
@@ -32,6 +33,7 @@ type Header struct {
 	SignData     []byte         `json:"signData"         gencodec:"required"`
 	DeputyRoot   []byte         `json:"deputyRoot"`
 	Extra        []byte         `json:"extraData"` // max length is 256 bytes
+	signerNodeID atomic.Value   // it is a cache
 }
 
 type headerMarshaling struct {
@@ -64,6 +66,12 @@ func (sd SignData) MarshalText() ([]byte, error) {
 
 func (sd SignData) String() string {
 	return common.ToHex(sd[:])
+}
+
+func BytesToSignData(bytes []byte) SignData {
+	sd := SignData{}
+	copy(sd[:], bytes)
+	return sd
 }
 
 // Block
@@ -103,12 +111,19 @@ func (h *Header) Hash() common.Hash {
 }
 
 func (h *Header) SignerNodeID() ([]byte, error) {
+	if cache := h.signerNodeID.Load(); cache != nil {
+		return cache.([]byte), nil
+	}
+
 	hash := h.Hash()
 	pubKey, err := crypto.Ecrecover(hash[:], h.SignData)
 	if err != nil {
 		return nil, err
 	}
-	return pubKey[1:], nil
+	nodeID := pubKey[1:]
+
+	h.signerNodeID.Store(nodeID)
+	return nodeID, nil
 }
 
 // Copy 拷贝一份头

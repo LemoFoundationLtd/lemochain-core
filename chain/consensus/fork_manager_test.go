@@ -221,7 +221,7 @@ func TestForkManager_TrySwitchFork(t *testing.T) {
 			dm := deputynode.NewManager(test.DeputiesCount, testBlockLoader{})
 			setTermDeputiesCount(dm, 0, test.DeputiesCount)
 			fm := NewForkManager(dm, createUnconfirmBlockLoader(test.PickBlockIndexes), currentBlock)
-			newBlock, switched := fm.TrySwitchFork(stableBlock)
+			newBlock, switched := fm.UpdateFork(stableBlock)
 			assert.Equal(t, test.ExpectSwitched, switched)
 			assert.Equal(t, test.ExpectBlockIndex, getTestBlockIndex(newBlock))
 		})

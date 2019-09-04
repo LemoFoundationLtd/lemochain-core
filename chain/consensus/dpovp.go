@@ -11,7 +11,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common/subscribe"
 	"github.com/LemoFoundationLtd/lemochain-core/metrics"
 	"github.com/LemoFoundationLtd/lemochain-core/network"
-	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"github.com/LemoFoundationLtd/lemochain-core/store/protocol"
 	"sync"
 	"time"
@@ -103,15 +102,15 @@ func (dp *DPoVP) SubscribeFetchConfirm(ch chan []network.GetConfirmInfo) subscri
 }
 
 func (dp *DPoVP) MineBlock(txProcessTimeout int64) (*types.Block, error) {
-	start := time.Now()
-	defer mineBlockTimer.UpdateSince(start)
+	defer mineBlockTimer.UpdateSince(time.Now())
 
 	dp.chainLock.Lock()
 	defer dp.chainLock.Unlock()
-	oldCurrent := dp.CurrentBlock()
+	parentHeader := dp.CurrentBlock().Header
+	log.Debug("Start mine block", "height", parentHeader.Height+1)
 
 	// mine and seal
-	header, err := dp.assembler.PrepareHeader(oldCurrent.Header, dp.minerExtra)
+	header, err := dp.assembler.PrepareHeader(parentHeader, dp.minerExtra)
 	if err != nil {
 		return nil, err
 	}
@@ -127,31 +126,15 @@ func (dp *DPoVP) MineBlock(txProcessTimeout int64) (*types.Block, error) {
 	dp.txPool.DelInvalidTxs(invalidTxs)
 
 	// save
-	if err := dp.saveToStore(block); err != nil {
+	if err = dp.saveNewBlock(block); err != nil {
 		return nil, err
 	}
-
-	// update current block
-	dp.setCurrent(block)
-	dp.txPool.RecvBlock(block)
-	dp.confirmer.SetLastSig(block)
-
-	// update stable block if there are less then 3 deputy nodes
-	if _, err = dp.UpdateStable(block); err != nil {
-		log.Errorf("can't update stable block. height:%d hash:%s", block.Height(), block.Hash().Prefix())
-		return nil, ErrSaveBlock
-	}
-
-	// Mined block is always on current fork. So there is no need to switch fork
-
-	dp.logCurrentChange(oldCurrent)
 
 	return block, nil
 }
 
 func (dp *DPoVP) InsertBlock(rawBlock *types.Block) (*types.Block, error) {
-	start := time.Now()
-	defer blockInsertTimer.UpdateSince(start)
+	defer blockInsertTimer.UpdateSince(time.Now())
 
 	// ignore exist block as soon as possible
 	if ok := dp.isIgnorableBlock(rawBlock); ok {
@@ -160,10 +143,6 @@ func (dp *DPoVP) InsertBlock(rawBlock *types.Block) (*types.Block, error) {
 
 	dp.chainLock.Lock()
 	defer dp.chainLock.Unlock()
-
-	hash := rawBlock.Hash()
-	oldCurrent := dp.CurrentBlock()
-	oldCurrentHash := oldCurrent.Hash()
 	log.Debug("Start insert block to chain", "block", rawBlock.ShortString())
 
 	// verify and create a new block witch filled by transaction products
@@ -181,48 +160,56 @@ func (dp *DPoVP) InsertBlock(rawBlock *types.Block) (*types.Block, error) {
 	}
 
 	// save
-	if err := dp.saveToStore(block); err != nil {
+	if err = dp.saveNewBlock(block); err != nil {
 		return nil, err
 	}
 
-	// update current block
-	if block.ParentHash() == oldCurrentHash {
-		dp.setCurrent(block)
-	}
-	dp.txPool.RecvBlock(block)
-	if IsMinedByself(block) {
-		log.Debug("This block is mined by self", "block", block.ShortString())
-		dp.confirmer.SetLastSig(block)
-	}
 	// for security
 	go func() {
-		isEvil := dp.validator.JudgeDeputy(block)
-		if isEvil {
+		if isEvil := dp.validator.JudgeDeputy(block); isEvil {
 			dp.dm.PutEvilDeputyNode(block.MinerAddress(), block.Height())
 		}
 	}()
 
-	// try update stable block if there are enough confirms
-	stableChanged, err := dp.UpdateStable(block)
-	if err != nil {
-		log.Errorf("can't check stable block. height:%d hash:%s", block.Height(), hash.Prefix())
-		return nil, ErrSaveBlock
-	}
-
-	// Maybe a block on other fork is stable now. So we need check if the current fork is still there
-	if stableChanged && dp.CheckFork() {
-		// If the current is cut, we will choose a best fork. So no need to try switch fork now
-	} else if block.ParentHash() != oldCurrentHash {
-		// The new block is inserted to other fork. So maybe we need to update fork
-		dp.TrySwitchFork()
-	}
-
-	dp.logCurrentChange(oldCurrent)
-
 	return block, nil
 }
 
-// saveToStore save block and account state to blockLoader. They are still unstable now
+// saveNewBlock save block then update the current and stable block
+func (dp *DPoVP) saveNewBlock(block *types.Block) error {
+	// save
+	if err := dp.saveToStore(block); err != nil {
+		return err
+	}
+
+	// remove txs in block
+	dp.txPool.RecvBlock(block)
+
+	// save last sig because we are the miner. If we clear db and restart, this will be useful
+	if IsMinedByself(block) {
+		dp.confirmer.SetLastSig(block)
+	}
+	// try update stable block if there are enough confirms
+	if err := dp.UpdateStable(block); err != nil {
+		log.Errorf("update stable block %s fail", block.ShortString())
+		return ErrSaveBlock
+	}
+
+	// try update current block or switch to another fork
+	oldCurrent := dp.CurrentBlock()
+	newCurrent := dp.forkManager.UpdateFork(block, dp.StableBlock())
+	if newCurrent != nil {
+		go dp.currentFeed.Send(newCurrent)
+	}
+	// To confirm a block from another fork, we need a height distance that more than 2/3 deputies count.
+	// But the new current's height is 2/3 deputies count bigger at most, so we don't need to try to confirm the new current block here
+	// dp.confirmer.TryConfirm(block)
+
+	dp.logCurrentChange(oldCurrent)
+
+	return nil
+}
+
+// saveToStore save block and account state to db. They are still unstable now
 func (dp *DPoVP) saveToStore(block *types.Block) error {
 	hash := block.Hash()
 	if err := dp.db.SetBlock(hash, block); err != nil {
@@ -256,7 +243,7 @@ func (dp *DPoVP) broadcastConfirm(block *types.Block, sig types.SignData) {
 func (dp *DPoVP) fetchConfirmsFromRemote(startHeight, endHeight uint32) {
 	// time.AfterFunc its own goroutine
 	time.AfterFunc(delayFetchConfirmsTime, func() {
-		info := dp.confirmer.NeedFetchedConfirms(startHeight, endHeight)
+		info := dp.confirmer.NeedConfirmList(startHeight, endHeight)
 		if info == nil || len(info) == 0 {
 			return
 		}
@@ -273,11 +260,11 @@ func (dp *DPoVP) batchConfirmStable(startHeight, endHeight uint32) {
 }
 
 // UpdateStable check if the block can be stable. Then send notification and return true if the stable block changed
-func (dp *DPoVP) UpdateStable(block *types.Block) (bool, error) {
+func (dp *DPoVP) UpdateStable(block *types.Block) error {
 	oldStable := dp.StableBlock()
 	changed, prunedBlocks, err := dp.stableManager.UpdateStable(block)
 	if err != nil {
-		return false, err
+		return err
 	}
 
 	if changed {
@@ -299,54 +286,7 @@ func (dp *DPoVP) UpdateStable(block *types.Block) (bool, error) {
 		go dp.fetchConfirmsFromRemote(oldStable.Height()+1, dp.StableBlock().Height())
 	}
 
-	return changed, err
-}
-
-// TrySwitchFork try to switch to a better fork
-func (dp *DPoVP) TrySwitchFork() {
-	// try to switch fork
-	newCurrent, switched := dp.forkManager.TrySwitchFork(dp.StableBlock())
-	if switched {
-		dp.setCurrent(newCurrent)
-	}
-}
-
-// CheckFork check the current fork and update it if it is cut. Return true if the current fork is changed
-func (dp *DPoVP) CheckFork() bool {
-	oldCurrent := dp.CurrentBlock()
-
-	// Test if currentBlock is still in unconfirmed blocks. It must has be pruned by stable block updating
-	_, err := dp.db.GetUnConfirmByHeight(oldCurrent.Height(), oldCurrent.Hash())
-	if err == nil || err != store.ErrNotExist {
-		return false
-	}
-
-	// The current block is cut. Choose the longest fork to be new current block
-	dp.setCurrent(dp.forkManager.ChooseNewFork())
-	return true
-}
-
-// setCurrent update current block and send a notification
-func (dp *DPoVP) setCurrent(block *types.Block) {
-	if block == nil {
-		block = dp.StableBlock()
-	}
-
-	oldCurrent := dp.CurrentBlock()
-	if oldCurrent.Hash() == block.Hash() {
-		return
-	}
-
-	dp.forkManager.SetHeadBlock(block)
-
-	// To confirm a block from another fork, we need a height distance that more than 2/3 deputies count.
-	// But the new current's height is 2/3 deputies count bigger at most, so we don't need to try to confirm the new current block here
-	// dp.confirmer.TryConfirm(block)
-
-	// notify
-	go func() {
-		dp.currentFeed.Send(block)
-	}()
+	return err
 }
 
 func (dp *DPoVP) logCurrentChange(oldCurrent *types.Block) {
@@ -419,15 +359,15 @@ func (dp *DPoVP) InsertConfirm(info *network.BlockConfirmData) error {
 		return err
 	}
 
-	changed, err := dp.UpdateStable(newBlock)
-	if err != nil {
+	if err := dp.UpdateStable(newBlock); err != nil {
 		log.Errorf("ReceiveConfirm: setStableBlock failed. height: %d, hash:%s, err: %v", info.Height, info.Hash.Hex()[:16], err)
 		return err
 	}
 
-	// maybe the current block is cut
-	if changed {
-		dp.CheckFork()
+	// update the current block
+	newCurrent := dp.forkManager.UpdateForkForConfirm(dp.StableBlock())
+	if newCurrent != nil {
+		go dp.currentFeed.Send(newCurrent)
 		dp.logCurrentChange(oldCurrent)
 	}
 
