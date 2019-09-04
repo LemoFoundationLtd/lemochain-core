@@ -182,6 +182,12 @@ func Test_refundDeposit(t *testing.T) {
 	c.refundDeposit(candidateAddress, params.TermDuration+500)
 	// 验证candidateAddress中并没有增加退的押金
 	assert.Equal(t, big.NewInt(0), acc01.GetBalance())
+	// 测试高度临界值,刚好在快照快的高度,直接返回
+	c.refundDeposit(candidateAddress, params.TermDuration*2)
+	assert.Equal(t, big.NewInt(0), acc01.GetBalance())
+	// 刚好在发放奖励的区块高度，直接返回
+	c.refundDeposit(candidateAddress, params.TermDuration*2+params.InterimDuration)
+	assert.Equal(t, big.NewInt(0), acc01.GetBalance())
 	// 2. 不在过渡期并且此账户为当前的共识节点则直接返回不做退还处理
 	c.refundDeposit(candidateAddress, 100)
 	// 验证candidateAddress中并没有增加退的押金
