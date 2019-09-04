@@ -6,6 +6,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
+	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"sync/atomic"
 )
 
@@ -82,23 +83,83 @@ func GetMinerDistance(targetHeight uint32, parentBlockMiner, targetMiner common.
 	return (nodeCount + uint64(targetDeputy.Rank) - uint64(lastDeputy.Rank)) % nodeCount, nil
 }
 
-// TrySwitchFork switch fork if its length reached to a multiple of "deputy nodes count * 2/3"
-func (fm *ForkManager) TrySwitchFork(stable *types.Block) (*types.Block, bool) {
-	current := fm.GetHeadBlock()
-	maxHeightBlock := fm.ChooseNewFork()
-	// make sure the fork is the first one reaching the height
-	if maxHeightBlock != nil && maxHeightBlock.Height() > current.Height() {
-		signDistance := fm.dm.TwoThirdDeputyCount(maxHeightBlock.Height())
-		if (maxHeightBlock.Height()-stable.Height())%signDistance == 0 {
-			return maxHeightBlock, true
+// UpdateFork check if the current fork can be update, or switch to a better fork. Return the new current block or nil
+func (fm *ForkManager) UpdateFork(newBlock, stableBlock *types.Block) *types.Block {
+	var (
+		oldHead = fm.GetHeadBlock()
+		newHead *types.Block
+	)
+
+	// Maybe a block on other fork is stable now. So we need to check if the current fork is still there
+	if fm.isCurrentForkCut() {
+		//   ┌─2 [oldHead]
+		// 1─┴─3───4 [newBlock] [became stable]
+		// or
+		//   ┌─2 [oldHead]───4 [newBlock] [became stable]
+		// 1─┴─3
+		// or
+		//   ┌─2 [oldHead]
+		// 1─┴─3
+		//   └─4 [newBlock] [became stable]
+		// Choose the longest fork to be new current block
+		newHead = fm.ChooseNewFork(stableBlock)
+	} else if newBlock.ParentHash() == oldHead.Hash() {
+		//            ┌─2
+		// 1 [stable]─┴─3 [oldHead]───4 [newBlock]
+		// A block after last head (best fork), it must make a new best fork
+		newHead = newBlock
+	} else {
+		//            ┌─2 [oldHead]
+		// 1 [stable]─┴─3───4 [newBlock]
+		// or
+		//            ┌─2───3 [oldHead]
+		// 1 [stable]─┴─4 [newBlock]
+		// or
+		//            ┌─2 [oldHead]
+		// 1 [stable]─┼─3
+		//            └─4 [newBlock]
+		// The new block is inserted to other fork. So maybe we need to update fork
+		// candidateHead must not be the stableBlock, or it means the current fork is cut
+		candidateHead := fm.ChooseNewFork(stableBlock)
+		if fm.needSwitchFork(oldHead, candidateHead, stableBlock) {
+			newHead = candidateHead
 		}
 	}
-	return current, false
+
+	if newHead != nil {
+		fm.SetHeadBlock(newHead)
+	}
+	return newHead
 }
 
-// ChooseNewFork choose a fork and return the last block on the fork. It would return nil if there is no unstable block
-func (fm *ForkManager) ChooseNewFork() *types.Block {
-	var max *types.Block
+// UpdateForkForConfirm switch to a better fork if the current fork is not exist. Return the new current block or nil
+func (fm *ForkManager) UpdateForkForConfirm(stableBlock *types.Block) *types.Block {
+	// Maybe a block on other fork is stable now. So we need to check if the current fork is still there
+	if fm.isCurrentForkCut() {
+		// Choose the longest fork to be new current block
+		newHead := fm.ChooseNewFork(stableBlock)
+		fm.SetHeadBlock(newHead)
+		return newHead
+	}
+
+	return nil
+}
+
+// needSwitchFork test if the new fork's head distance reached to a multiple of "deputy nodes count * 2/3"
+func (fm *ForkManager) needSwitchFork(oldHead, newHead, stable *types.Block) bool {
+	// make sure the fork is the first one reaching the height
+	if newHead != nil && newHead.Height() > oldHead.Height() {
+		signDistance := fm.dm.TwoThirdDeputyCount(newHead.Height())
+		if (newHead.Height()-stable.Height())%signDistance == 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// ChooseNewFork choose a fork and return the last block on the fork. It would return the current stable block if there is no unstable block
+func (fm *ForkManager) ChooseNewFork(stableBlock *types.Block) *types.Block {
+	var max = stableBlock
 	fm.blockLoader.IterateUnConfirms(func(node *types.Block) {
 		if max == nil || node.Height() > max.Height() {
 			// 1. Choose the longest fork
@@ -113,4 +174,13 @@ func (fm *ForkManager) ChooseNewFork() *types.Block {
 		}
 	})
 	return max
+}
+
+// isCurrentForkCut check whether or not the current fork is cut
+func (fm *ForkManager) isCurrentForkCut() bool {
+	oldHead := fm.GetHeadBlock()
+
+	// Test if currentBlock is still in unconfirmed blocks. It must has be pruned by stable block updating
+	_, err := fm.blockLoader.GetUnConfirmByHeight(oldHead.Height(), oldHead.Hash())
+	return err == store.ErrNotExist
 }

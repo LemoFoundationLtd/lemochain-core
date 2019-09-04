@@ -5,7 +5,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
-	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/network"
 )
@@ -19,10 +18,10 @@ type Confirmer struct {
 	blockLoader  BlockLoader
 	confirmStore confirmWriter
 	dm           *deputynode.Manager
-	lastSig      blockSig
+	lastSig      blockSignRecord
 }
 
-type blockSig struct {
+type blockSignRecord struct {
 	Height uint32
 	Hash   common.Hash
 }
@@ -44,11 +43,8 @@ func (c *Confirmer) TryConfirm(block *types.Block) (types.SignData, bool) {
 		return types.SignData{}, false
 	}
 
-	hash := block.Hash()
-
-	sig, err := c.signBlock(hash)
+	sig, err := c.confirmBlock(block)
 	if err != nil {
-		log.Error("sign for confirm data error", "err", err)
 		return types.SignData{}, false
 	}
 
@@ -57,8 +53,6 @@ func (c *Confirmer) TryConfirm(block *types.Block) (types.SignData, bool) {
 	}
 
 	block.Confirms = append(block.Confirms, sig)
-	c.lastSig.Height = block.Height()
-	c.lastSig.Hash = hash
 
 	return sig, true
 }
@@ -109,23 +103,21 @@ func (c *Confirmer) BatchConfirmStable(startHeight, endHeight uint32) []*network
 				SignInfo: *sig,
 			})
 		}
-		c.lastSig.Height = block.Height()
-		c.lastSig.Hash = block.Hash()
 	}
 
 	return result
 }
 
-// NeedFetchedConfirms
-func (c *Confirmer) NeedFetchedConfirms(startHeight, endHeight uint32) []network.GetConfirmInfo {
+// NeedConfirmList
+func (c *Confirmer) NeedConfirmList(startHeight, endHeight uint32) []network.GetConfirmInfo {
 	if startHeight > endHeight {
 		return nil
 	}
-	confirms := make([]network.GetConfirmInfo, 0, endHeight-startHeight+1)
+	fetchList := make([]network.GetConfirmInfo, 0, endHeight-startHeight+1)
 	for i := startHeight; i <= endHeight; i++ {
 		block, err := c.blockLoader.GetBlockByHeight(i)
 		if err != nil {
-			log.Errorf("Load block fail,can't fetch it's confirms, height: %d", i)
+			log.Errorf("Load block fail, can't fetch it's confirms, height: %d", i)
 			continue
 		}
 		if IsConfirmEnough(block, c.dm) {
@@ -135,9 +127,9 @@ func (c *Confirmer) NeedFetchedConfirms(startHeight, endHeight uint32) []network
 			Height: block.Height(),
 			Hash:   block.Hash(),
 		}
-		confirms = append(confirms, info)
+		fetchList = append(fetchList, info)
 	}
-	return confirms
+	return fetchList
 }
 
 // SetLastSig
@@ -167,10 +159,8 @@ func (c *Confirmer) tryConfirmStable(block *types.Block) *types.SignData {
 		return nil
 	}
 
-	hash := block.Hash()
-	sig, err := c.signBlock(hash)
+	sig, err := c.confirmBlock(block)
 	if err != nil {
-		log.Error("sign for confirm data error", "err", err)
 		return nil
 	}
 
@@ -192,16 +182,13 @@ func (c *Confirmer) SaveConfirm(block *types.Block, sigList []types.SignData) (*
 	return newBlock, nil
 }
 
-// signBlock sign a block and return signData
-func (c *Confirmer) signBlock(hash common.Hash) (types.SignData, error) {
-	// TODO make a cache. share with assembler
-	// sign
-	privateKey := deputynode.GetSelfNodeKey()
-	sig, err := crypto.Sign(hash[:], privateKey)
+// confirmBlock sign a block and return signData
+func (c *Confirmer) confirmBlock(block *types.Block) (types.SignData, error) {
+	sig, err := SignBlock(block.Hash())
 	if err != nil {
+		log.Error("sign for confirm data error", "err", err)
 		return types.SignData{}, err
 	}
-	var signData types.SignData
-	copy(signData[:], sig)
-	return signData, nil
+	c.SetLastSig(block)
+	return types.BytesToSignData(sig), nil
 }

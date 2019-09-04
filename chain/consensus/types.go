@@ -27,6 +27,7 @@ type BlockMaterial struct {
 // BlockLoader is the interface of ChainDB
 type BlockLoader interface {
 	IterateUnConfirms(fn func(*types.Block))
+	GetUnConfirmByHeight(height uint32, leafBlockHash common.Hash) (*types.Block, error)
 	GetBlockByHash(hash common.Hash) (*types.Block, error)
 	// GetBlockByHeight returns stable blocks
 	GetBlockByHeight(height uint32) (*types.Block, error)

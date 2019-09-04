@@ -8,7 +8,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/transaction"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
-	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"math/big"
 	"time"
@@ -61,10 +60,13 @@ func (ba *BlockAssembler) MineBlock(header *types.Header, txs types.Transactions
 	}
 	// seal block
 	newBlock := ba.Seal(header, ba.am.GetTxsProduct(packagedTxs, gasUsed), nil)
-	if err := ba.signBlock(newBlock); err != nil {
+	// sign block
+	signData, err := SignBlock(newBlock.Hash())
+	if err != nil {
 		log.Errorf("Sign for block failed! block hash:%s", newBlock.Hash().Hex())
 		return nil, invalidTxs, err
 	}
+	newBlock.Header.SignData = signData
 
 	return newBlock, invalidTxs, nil
 }
@@ -123,16 +125,6 @@ func calcGasLimit(parentHeader *types.Header) uint64 {
 		}
 	}
 	return limit
-}
-
-// signBlock signed the block and fill in header
-func (ba *BlockAssembler) signBlock(block *types.Block) (err error) {
-	hash := block.Hash()
-	signData, err := crypto.Sign(hash[:], deputynode.GetSelfNodeKey())
-	if err == nil {
-		block.Header.SignData = signData
-	}
-	return
 }
 
 // Seal packages all products into a block
