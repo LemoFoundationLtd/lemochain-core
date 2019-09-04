@@ -66,15 +66,15 @@ type ProtocolManager struct {
 	nodeID      p2p.NodeID
 	nodeVersion uint32
 
-	chain         BlockChain
-	dm            *deputynode.Manager
-	discover      *p2p.DiscoverManager
-	txPool        TxPool
-	limit         int
-	peers         *peerSet      // connected peers
-	confirmsCache *ConfirmCache // received confirm info before block, cache them
-	blockCache    *BlockCache
-
+	chain          BlockChain
+	dm             *deputynode.Manager
+	discover       *p2p.DiscoverManager
+	txPool         TxPool
+	limit          int
+	peers          *peerSet      // connected peers
+	confirmsCache  *ConfirmCache // received confirm info before block, cache them
+	blockCache     *BlockCache
+	dataDir        string
 	oldStableBlock atomic.Value
 
 	addPeerCh    chan p2p.IPeer
@@ -94,7 +94,7 @@ type ProtocolManager struct {
 	testOutput chan int
 }
 
-func NewProtocolManager(chainID uint16, nodeID p2p.NodeID, chain BlockChain, dm *deputynode.Manager, txPool TxPool, discover *p2p.DiscoverManager, limit int, nodeVersion uint32) *ProtocolManager {
+func NewProtocolManager(chainID uint16, nodeID p2p.NodeID, chain BlockChain, dm *deputynode.Manager, txPool TxPool, discover *p2p.DiscoverManager, limit int, nodeVersion uint32, dataDir string) *ProtocolManager {
 	if limit == 0 {
 		limit = DefaultLimit
 	}
@@ -110,6 +110,7 @@ func NewProtocolManager(chainID uint16, nodeID p2p.NodeID, chain BlockChain, dm 
 		peers:         NewPeerSet(discover, dm),
 		confirmsCache: NewConfirmCache(),
 		blockCache:    NewBlockCache(),
+		dataDir:       dataDir,
 		addPeerCh:     make(chan p2p.IPeer),
 		removePeerCh:  make(chan p2p.IPeer),
 
@@ -215,8 +216,7 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 	queueTimer := time.NewTimer(proInterval)
 
 	// 初始化区块黑名单
-	dataDir := pm.discover.GetDataDir()
-	bbc := InitBlockBlackCache(dataDir)
+	bbc := InitBlockBlackCache(pm.dataDir)
 
 	// just for test
 	// testRcvTimer := time.NewTimer(8 * time.Second)
@@ -253,7 +253,7 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 					log.Debugf("This block has exist. blockHeight: %d", b.Height())
 					continue
 				}
-				// is black minerAddress
+				// The block mined by minerAddress in blackList
 				if pm.chain.IsInBlackList(b) {
 					log.Debug("This block minerAddress is in BlackList")
 					pm.blockCache.Remove(b)

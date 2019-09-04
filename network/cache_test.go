@@ -281,8 +281,10 @@ func TestBlockBlackCache_IsBlackBlock(t *testing.T) {
 	cache := make(map[common.Hash]struct{})
 	cache[blackHash] = struct{}{}
 	bbc := &BlockBlackCache{
-		cache: cache,
-		Mutex: sync.Mutex{},
+		HashSet: &HashSet{
+			cache: cache,
+			Mutex: sync.Mutex{},
+		},
 	}
 	// 1. 验证当前区块为黑名单的情况
 	assert.True(t, bbc.IsBlackBlock(blackHash, common.HexToHash("0x222")))

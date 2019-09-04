@@ -27,7 +27,7 @@ func NewConfirmCache() *ConfirmCache {
 	}
 }
 
-// Push push block confirm data to cache
+// Push set block confirm data to cache
 func (c *ConfirmCache) Push(data *BlockConfirmData) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
@@ -258,25 +258,29 @@ func (m *MsgCache) Size() int {
 	return len(m.cache)
 }
 
-// 区块黑名单cache
-const BlackBlockFile = "blackblocklist"
-
-type BlockBlackCache struct {
+type HashSet struct {
 	cache map[common.Hash]struct{}
 	sync.Mutex
 }
 
-func (bbc *BlockBlackCache) push(hash common.Hash) {
-	bbc.cache[hash] = struct{}{}
+func (s *HashSet) set(hash common.Hash) {
+	s.cache[hash] = struct{}{}
 }
 
-func (bbc *BlockBlackCache) size() int {
-	return len(bbc.cache)
+func (s *HashSet) size() int {
+	return len(s.cache)
 }
 
-func (bbc *BlockBlackCache) isExist(hash common.Hash) bool {
-	_, ok := bbc.cache[hash]
+func (s *HashSet) isExist(hash common.Hash) bool {
+	_, ok := s.cache[hash]
 	return ok
+}
+
+// 区块黑名单cache
+const BlackBlockFile = "blackblocklist"
+
+type BlockBlackCache struct {
+	*HashSet
 }
 
 func (bbc *BlockBlackCache) IsBlackBlock(blockHash, parentHash common.Hash) bool {
@@ -291,7 +295,7 @@ func (bbc *BlockBlackCache) IsBlackBlock(blockHash, parentHash common.Hash) bool
 	// 查找父块是否为黑名单
 	if bbc.isExist(parentHash) {
 		// 查找到父块为黑名单，则保存此块为黑名单块
-		bbc.push(blockHash)
+		bbc.set(blockHash)
 		return true
 	}
 	return false
@@ -300,8 +304,10 @@ func (bbc *BlockBlackCache) IsBlackBlock(blockHash, parentHash common.Hash) bool
 func InitBlockBlackCache(dataDir string) *BlockBlackCache {
 	cache := readBlockBlacklistFile(dataDir)
 	return &BlockBlackCache{
-		cache: cache,
-		Mutex: sync.Mutex{},
+		HashSet: &HashSet{
+			cache: cache,
+			Mutex: sync.Mutex{},
+		},
 	}
 }
 

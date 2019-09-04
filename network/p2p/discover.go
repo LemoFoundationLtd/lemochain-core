@@ -550,7 +550,3 @@ func verifyIP(input string) bool {
 	}
 	return true
 }
-
-func (m *DiscoverManager) GetDataDir() string {
-	return m.dataDir
-}

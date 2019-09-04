@@ -99,7 +99,7 @@ func createPm() *ProtocolManager {
 			Votes:        new(big.Int).SetInt64(5),
 		},
 	})
-	pm := NewProtocolManager(1, p2p.NodeID{}, bc, dm, txPool, discover, 1, params.VersionUint())
+	pm := NewProtocolManager(1, p2p.NodeID{}, bc, dm, txPool, discover, 1, params.VersionUint(), "")
 	pm.setTest()
 	return pm
 }
