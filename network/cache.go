@@ -1,9 +1,13 @@
 package network
 
 import (
+	"bufio"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
+	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/network/p2p"
+	"os"
+	"path/filepath"
 	"sync"
 )
 
@@ -252,4 +256,83 @@ func (m *MsgCache) Push(msg *p2p.Msg) {
 
 func (m *MsgCache) Size() int {
 	return len(m.cache)
+}
+
+// 区块黑名单cache
+const BlackBlockFile = "blackblocklist"
+
+type BlockBlackCache struct {
+	cache map[common.Hash]struct{}
+	sync.Mutex
+}
+
+func (bbc *BlockBlackCache) push(hash common.Hash) {
+	bbc.cache[hash] = struct{}{}
+}
+
+func (bbc *BlockBlackCache) size() int {
+	return len(bbc.cache)
+}
+
+func (bbc *BlockBlackCache) isExist(hash common.Hash) bool {
+	_, ok := bbc.cache[hash]
+	return ok
+}
+
+func (bbc *BlockBlackCache) IsBlackBlock(blockHash, parentHash common.Hash) bool {
+	bbc.Lock()
+	defer bbc.Unlock()
+	if bbc.size() == 0 {
+		return false
+	}
+	if bbc.isExist(blockHash) {
+		return true
+	}
+	// 查找父块是否为黑名单
+	if bbc.isExist(parentHash) {
+		// 查找到父块为黑名单，则保存此块为黑名单块
+		bbc.push(blockHash)
+		return true
+	}
+	return false
+}
+
+func InitBlockBlackCache(dataDir string) *BlockBlackCache {
+	cache := readBlockBlacklistFile(dataDir)
+	return &BlockBlackCache{
+		cache: cache,
+		Mutex: sync.Mutex{},
+	}
+}
+
+// readBlockBlacklistFile 读取文件中的区块黑名单到缓存里面
+func readBlockBlacklistFile(dataDir string) map[common.Hash]struct{} {
+	cache := make(map[common.Hash]struct{}, 0)
+	filePath := filepath.Join(dataDir, BlackBlockFile)
+	f, err := os.OpenFile(filePath, os.O_RDONLY, 666)
+	if err != nil {
+		return cache
+	}
+	defer func() {
+		if err := f.Close(); err != nil {
+			log.Errorf("Close file failed: %v", err)
+		}
+	}()
+
+	buf := bufio.NewReader(f)
+	line, _, err := buf.ReadLine()
+	for err == nil {
+		hash := common.HexToHash(string(line))
+		cache[hash] = struct{}{}
+		line, _, err = buf.ReadLine()
+	}
+	// 打印日志
+
+	list := make([]string, 0, len(cache))
+	for k := range cache {
+		list = append(list, k.String())
+	}
+	log.Infof("Black block list: %v", list)
+
+	return cache
 }

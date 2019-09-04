@@ -110,9 +110,8 @@ func NewProtocolManager(chainID uint16, nodeID p2p.NodeID, chain BlockChain, dm 
 		peers:         NewPeerSet(discover, dm),
 		confirmsCache: NewConfirmCache(),
 		blockCache:    NewBlockCache(),
-
-		addPeerCh:    make(chan p2p.IPeer),
-		removePeerCh: make(chan p2p.IPeer),
+		addPeerCh:     make(chan p2p.IPeer),
+		removePeerCh:  make(chan p2p.IPeer),
 
 		txCh:            make(chan *types.Transaction, 10),
 		newMinedBlockCh: make(chan *types.Block),
@@ -215,6 +214,10 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 	proInterval := 500 * time.Millisecond
 	queueTimer := time.NewTimer(proInterval)
 
+	// 初始化区块黑名单
+	dataDir := pm.discover.GetDataDir()
+	bbc := InitBlockBlackCache(dataDir)
+
 	// just for test
 	// testRcvTimer := time.NewTimer(8 * time.Second)
 
@@ -236,6 +239,11 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 			pLstHeight := rcvMsg.p.LatestStatus().CurHeight
 
 			for _, b := range rcvMsg.blocks {
+				// 判断收到的区块是否为黑名单区块
+				if bbc.IsBlackBlock(b.Hash(), b.ParentHash()) {
+					log.Warnf("This block is black block. block: %s", b.String())
+					continue
+				}
 				// update latest status
 				if b.Height() > pLstHeight && rcvMsg.p != nil {
 					rcvMsg.p.UpdateStatus(b.Height(), b.Hash())
@@ -245,7 +253,7 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 					log.Debugf("This block has exist. blockHeight: %d", b.Height())
 					continue
 				}
-				// the block is black block
+				// is black minerAddress
 				if pm.chain.IsInBlackList(b) {
 					log.Debug("This block minerAddress is in BlackList")
 					pm.blockCache.Remove(b)
@@ -270,6 +278,10 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 			}
 		case <-queueTimer.C:
 			processBlock := func(block *types.Block) bool {
+				// 检查缓存中的黑名单区块
+				if bbc.IsBlackBlock(block.Hash(), block.ParentHash()) {
+					return true
+				}
 				if pm.chain.HasBlock(block.ParentHash()) {
 					go pm.insertBlock(block)
 					return true

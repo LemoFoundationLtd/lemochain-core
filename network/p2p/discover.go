@@ -21,9 +21,9 @@ const (
 	MaxReconnectCount int8 = 5
 	MaxNodeCount           = 200
 
-	WhiteFile = "whitelist"
+	WhiteFile = "nodewhitelist"
 	FindFile  = "findnode"
-	BlackFile = "blacklist"
+	BlackFile = "nodeblacklist"
 )
 
 var (
@@ -549,4 +549,8 @@ func verifyIP(input string) bool {
 		return false
 	}
 	return true
+}
+
+func (m *DiscoverManager) GetDataDir() string {
+	return m.dataDir
 }
