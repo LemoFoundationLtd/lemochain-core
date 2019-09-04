@@ -13,7 +13,7 @@ import (
 
 func newTestPeerSet() *peerSet {
 	discover := new(p2p.DiscoverManager)
-	dm := deputynode.NewManager(5)
+	dm := deputynode.NewManager(5, testBlockLoader{})
 	dm.SaveSnapshot(0, deputyNodes)
 	ps := NewPeerSet(discover, dm)
 	return ps
