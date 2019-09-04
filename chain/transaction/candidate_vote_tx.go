@@ -180,7 +180,7 @@ func (c *CandidateVoteEnv) unRegisterCandidate(candidateAcc types.AccountAccesso
 		// Set the number of votes to 0
 		candidateAcc.SetVotes(big.NewInt(0))
 		// 退还候选节点的押金
-		currentHeight := c.am.CurrentBlockHeight() + 1
+		currentHeight := c.am.CurrentBlockHeight()
 		c.refundDeposit(candidateAcc.GetAddress(), currentHeight)
 		return true
 	}
