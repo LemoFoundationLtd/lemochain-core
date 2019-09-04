@@ -178,25 +178,8 @@ func (ba *BlockAssembler) refundCandidatePledge(am *account.Manager) {
 		panic(err)
 	}
 	for _, candidateAddress := range addrList {
-		// 判断addr的candidate信息
-		candidateAcc := am.GetAccount(candidateAddress)
-		pledgeAmountString := candidateAcc.GetCandidateState(types.CandidateKeyPledgeAmount)
-		pledgeAmount, ok := new(big.Int).SetString(pledgeAmountString, 10)
-		if !ok {
-			panic("Big.Int SetString function failed")
-		}
-
-		// 退还押金
-		candidatePledgePoolAcc := am.GetAccount(params.CandidateDepositAddress)
-		if candidatePledgePoolAcc.GetBalance().Cmp(pledgeAmount) < 0 { // 判断押金池中的押金是否足够，如果不足直接panic
-			panic("candidate pledge pool account balance insufficient.")
-		}
-		// 减少押金池中的余额
-		candidatePledgePoolAcc.SetBalance(new(big.Int).Sub(candidatePledgePoolAcc.GetBalance(), pledgeAmount))
-		// 退还押金到取消的候选节点账户
-		candidateAcc.SetBalance(new(big.Int).Add(candidateAcc.GetBalance(), pledgeAmount))
-		// 设置候选节点info中的押金余额为nil
-		candidateAcc.SetCandidateState(types.CandidateKeyPledgeAmount, "")
+		// 退押金操作
+		transaction.Refund(candidateAddress, ba.am)
 	}
 }
 

@@ -60,7 +60,7 @@ func NewDPoVP(config Config, db protocol.ChainDB, dm *deputynode.Manager, am *ac
 		txPool:        txPool,
 		stableManager: NewStableManager(dm, db),
 		forkManager:   NewForkManager(dm, db, stable),
-		processor:     transaction.NewTxProcessor(config.RewardManager, config.ChainID, loader, am, db),
+		processor:     transaction.NewTxProcessor(config.RewardManager, config.ChainID, loader, am, db, dm),
 		confirmer:     NewConfirmer(dm, db, db, stable),
 		minerExtra:    config.MinerExtra,
 		logForks:      config.LogForks,
@@ -497,8 +497,12 @@ func (dp *DPoVP) LoadRefundCandidates() ([]common.Address, error) {
 		// 判断addr的candidate信息
 		candidateAcc := dp.am.GetAccount(addr)
 		pledgeString := candidateAcc.GetCandidateState(types.CandidateKeyPledgeAmount)
+		nodeId := candidateAcc.GetCandidateState(types.CandidateKeyNodeID)
 		if candidateAcc.GetCandidateState(types.CandidateKeyIsCandidate) == params.NotCandidateNode && pledgeString != "" { // 满足退还押金的条件
-			result = append(result, addr)
+			// 判断该地址是否为本届的共识节点
+			if !dp.dm.IsNodeDeputy(dp.CurrentBlock().Height(), common.FromHex(nodeId)) {
+				result = append(result, addr)
+			}
 		}
 	}
 	return result, nil

@@ -95,7 +95,7 @@ func createTestTx() *types.Transaction {
 }
 
 func newTestBlock(bc *BlockChain) *types.Block {
-	processor := transaction.NewTxProcessor(bc.Founder(), testChainID, bc, bc.am, bc.db)
+	processor := transaction.NewTxProcessor(bc.Founder(), testChainID, bc, bc.am, bc.db, bc.dm)
 	assembler := consensus.NewBlockAssembler(bc.am, bc.dm, processor, bc.engine)
 	parent := bc.CurrentBlock()
 	header, err := assembler.PrepareHeader(parent.Header, nil)

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
@@ -30,7 +31,8 @@ func TestNewTxProcessor(t *testing.T) {
 	defer db.Close()
 	am := account.NewManager(common.Hash{}, db)
 	bc := newTestChain(db)
-	p := NewTxProcessor(config.RewardManager, config.ChainID, bc, am, db)
+	dm := deputynode.NewManager(5, db)
+	p := NewTxProcessor(config.RewardManager, config.ChainID, bc, am, db, dm)
 	assert.Equal(t, chainID, p.ChainID)
 	assert.Equal(t, config.RewardManager, p.cfg.RewardManager)
 	assert.False(t, p.cfg.Debug)
@@ -42,7 +44,8 @@ func TestTxProcessor_Process(t *testing.T) {
 	db, genesisHash := newCoverGenesisDB()
 	defer db.Close()
 	am := account.NewManager(genesisHash, db)
-	p := NewTxProcessor(config.RewardManager, config.ChainID, newTestChain(db), am, db)
+	dm := deputynode.NewManager(5, db)
+	p := NewTxProcessor(config.RewardManager, config.ChainID, newTestChain(db), am, db, dm)
 
 	// 测试执行创世块panic的情况
 	genesisBlock, err := db.LoadLatestBlock()
@@ -52,7 +55,7 @@ func TestTxProcessor_Process(t *testing.T) {
 	})
 
 	// 测试执行错误交易返回错误的情况
-	block01 := newBlockForTest(1, nil, am, db, false)
+	block01 := newBlockForTest(1, nil, am, nil, db, false)
 	// 创建一个余额不足的交易
 	randPrivate, _ := crypto.GenerateKey()
 	tx := makeTx(randPrivate, crypto.PubkeyToAddress(randPrivate.PublicKey), godAddr, nil, params.OrdinaryTx, big.NewInt(4000000))
@@ -66,7 +69,8 @@ func TestTxProcessor_Process_applyTxs(t *testing.T) {
 	db, genesisHash := newCoverGenesisDB()
 	defer db.Close()
 	am := account.NewManager(genesisHash, db)
-	p := NewTxProcessor(config.RewardManager, config.ChainID, newTestChain(db), am, db)
+	dm := deputynode.NewManager(5, db)
+	p := NewTxProcessor(config.RewardManager, config.ChainID, newTestChain(db), am, db, dm)
 
 	// 创建5笔普通交易交易
 	txs := make(types.Transactions, 0)
@@ -75,7 +79,7 @@ func TestTxProcessor_Process_applyTxs(t *testing.T) {
 		txs = append(txs, tx)
 	}
 	// 打包交易进区块
-	block01 := newBlockForTest(1, txs, am, db, false)
+	block01 := newBlockForTest(1, txs, am, nil, db, false)
 	applyTxsLogs := block01.ChangeLogs
 	gasUsed := block01.GasUsed()
 	applyTxsVersionRoot := block01.VersionRoot()
@@ -96,8 +100,8 @@ func Test_ApplyTxs_TimeoutTime(t *testing.T) {
 	db, genesisHash := newCoverGenesisDB()
 	defer db.Close()
 	am := account.NewManager(genesisHash, db)
-
-	p := NewTxProcessor(config.RewardManager, config.ChainID, newTestChain(db), am, db)
+	dm := deputynode.NewManager(5, db)
+	p := NewTxProcessor(config.RewardManager, config.ChainID, newTestChain(db), am, db, dm)
 
 	parentBlock, err := db.LoadLatestBlock()
 	assert.NoError(t, err)
@@ -118,7 +122,7 @@ func Test_ApplyTxs_TimeoutTime(t *testing.T) {
 	assert.NotEqual(t, len(selectedTxs01), txNum)
 	selectedTxs02, _, _ := p.ApplyTxs(header, txs, int64(2))
 	assert.NotEqual(t, len(selectedTxs02), txNum)
-	selectedTxs03, _, _ := p.ApplyTxs(header, txs, int64(300))
+	selectedTxs03, _, _ := p.ApplyTxs(header, txs, int64(500))
 	assert.Equal(t, len(selectedTxs03), txNum)
 }
 
@@ -187,10 +191,11 @@ func TestReimbursement_transaction(t *testing.T) {
 	db, genesisHash := newCoverGenesisDB()
 	defer db.Close()
 	am := account.NewManager(genesisHash, db)
-	p := NewTxProcessor(config.RewardManager, config.ChainID, newTestChain(db), am, db)
+	dm := deputynode.NewManager(5, db)
+	p := NewTxProcessor(config.RewardManager, config.ChainID, newTestChain(db), am, db, dm)
 
 	// create a block contains two account which used to make reimbursement transaction
-	_ = newBlockForTest(1, types.Transactions{Tx01, Tx02}, am, db, true)
+	_ = newBlockForTest(1, types.Transactions{Tx01, Tx02}, am, nil, db, true)
 
 	// p.am.Reset(Block01.Hash())
 	// check their balance
@@ -207,7 +212,7 @@ func TestReimbursement_transaction(t *testing.T) {
 	firstSignTxV = types.GasPayerSignatureTx(firstSignTxV, common.Big1, uint64(60000))
 	lastSignTxV, err := types.MakeGasPayerSigner().SignTx(firstSignTxV, gasPayerPrivate)
 	assert.NoError(t, err)
-	_ = newBlockForTest(2, types.Transactions{lastSignTxV}, am, db, true)
+	_ = newBlockForTest(2, types.Transactions{lastSignTxV}, am, nil, db, true)
 
 	// check their balance
 	endGasPayerBalance := p.am.GetCanonicalAccount(gasPayerAddr).GetBalance()
@@ -311,7 +316,8 @@ func Test_setRewardTx(t *testing.T) {
 	db, genesisHash := newCoverGenesisDB()
 	defer db.Close()
 	am := account.NewManager(genesisHash, db)
-	p := NewTxProcessor(config.RewardManager, config.ChainID, newTestChain(db), am, db)
+	dm := deputynode.NewManager(5, db)
+	p := NewTxProcessor(config.RewardManager, config.ChainID, newTestChain(db), am, db, dm)
 
 	// 设置第0届的矿工奖励
 	data := setRewardTxData(0, new(big.Int).Div(params.TermRewardPoolTotal, common.Big2))
@@ -325,7 +331,7 @@ func Test_setRewardTx(t *testing.T) {
 	assert.NoError(t, err)
 	txs := types.Transactions{lastSignTxV}
 
-	Block02 := newBlockForTest(1, txs, am, db, true)
+	Block02 := newBlockForTest(1, txs, am, nil, db, true)
 	assert.NotEmpty(t, Block02)
 	Acc := p.am.GetAccount(params.TermRewardContract)
 	key := params.TermRewardContract.Hash()
@@ -415,7 +421,8 @@ func Test_Contract(t *testing.T) {
 	db, genesisHash := newCoverGenesisDB()
 	defer db.Close()
 	am := account.NewManager(genesisHash, db)
-	p := NewTxProcessor(config.RewardManager, config.ChainID, newTestChain(db), am, db)
+	dm := deputynode.NewManager(5, db)
+	p := NewTxProcessor(config.RewardManager, config.ChainID, newTestChain(db), am, db, dm)
 
 	// 创建一个发行erc20代币的合约
 	/*
@@ -436,7 +443,7 @@ func Test_Contract(t *testing.T) {
 	data := common.FromHex(code)
 	createContractTx := signTransaction(types.NewContractCreation(godAddr, nil, uint64(5000000), common.Big1, data, params.CreateContractTx, chainID, uint64(time.Now().Unix()+30*60), "", ""), godPrivate)
 	txs := types.Transactions{createContractTx}
-	block01 := newBlockForTest(1, txs, am, db, true)
+	block01 := newBlockForTest(1, txs, am, nil, db, true)
 	// godAcc := am.GetAccount(godAddr)
 	contractAddr := crypto.CreateContractAddress(godAddr, createContractTx.Hash()) // 合约地址
 
@@ -542,7 +549,7 @@ func Test_Contract(t *testing.T) {
 	}
 
 	// 通过打包区块来执行交易
-	block02 := newBlockForTest(2, txs, am, db, true)
+	block02 := newBlockForTest(2, txs, am, nil, db, true)
 	// event changlog
 	changeLogs := block02.ChangeLogs
 	count := 0
@@ -579,7 +586,7 @@ func Test_Contract(t *testing.T) {
 	stopContractData := getContractFunctionCode(funcName)
 	tx03 := makeTx(godPrivate, godAddr, contractAddr, stopContractData, params.OrdinaryTx, nil)
 	// 打包区块来执行交易
-	block03 := newBlockForTest(3, types.Transactions{tx03}, am, db, true)
+	block03 := newBlockForTest(3, types.Transactions{tx03}, am, nil, db, true)
 	assert.Equal(t, types.Transactions{tx03}, block03.Txs)
 	// 通过测试合约内转账功能是否能成功来判断stop合约是否成功
 	funcName = "transfer(address,uint256)"
@@ -593,7 +600,7 @@ func Test_Contract(t *testing.T) {
 	fromPriv := randKey[1] // 交易发送者为上面100个随机地址中的第一个，因为已经有足够的lemo和5个代币
 	from := crypto.PubkeyToAddress(fromPriv.PublicKey)
 	tx04 := makeTx(fromPriv, from, contractAddr, input, params.OrdinaryTx, nil)
-	block04 := newBlockForTest(4, types.Transactions{tx04}, am, db, true)
+	block04 := newBlockForTest(4, types.Transactions{tx04}, am, nil, db, true)
 	assert.Equal(t, types.Transactions{tx04}, block04.Txs)
 	assert.Equal(t, 1, len(block04.Txs))
 	// 从合约中读取转账之后代币接收者的代币余额(期望值是没变的)
@@ -630,7 +637,8 @@ func TestTxProcessor_votesChangeByBalanceChangelog(t *testing.T) {
 	db, genesisHash := newCoverGenesisDB()
 	defer db.Close()
 	am := account.NewManager(genesisHash, db)
-	p := NewTxProcessor(config.RewardManager, config.ChainID, newTestChain(db), am, db)
+	dm := deputynode.NewManager(5, db)
+	p := NewTxProcessor(config.RewardManager, config.ChainID, newTestChain(db), am, db, dm)
 
 	// 1. 为地址初始化balance
 	txs := make(types.Transactions, 0)
@@ -643,7 +651,7 @@ func TestTxProcessor_votesChangeByBalanceChangelog(t *testing.T) {
 		tx := makeTx(godPrivate, godAddr, common.HexToAddress("0x1"+strconv.Itoa(i)), nil, params.OrdinaryTx, amount)
 		txs = append(txs, tx)
 	}
-	_ = newBlockForTest(1, txs, am, db, true)
+	_ = newBlockForTest(1, txs, am, nil, db, true)
 
 	// 修改balance，让10个地址余额都变成700LEMO
 	diffVotes := make(map[common.Address]*big.Int)

@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/vm"
@@ -50,13 +51,14 @@ type TxProcessor struct {
 	ChainID     uint16
 	blockLoader ParentBlockLoader
 	am          *account.Manager
+	dm          *deputynode.Manager
 	db          protocol.ChainDB
 	cfg         *vm.Config // configuration of vm
 
 	lock sync.Mutex
 }
 
-func NewTxProcessor(issueRewardAddress common.Address, chainID uint16, blockLoader ParentBlockLoader, am *account.Manager, db protocol.ChainDB) *TxProcessor {
+func NewTxProcessor(issueRewardAddress common.Address, chainID uint16, blockLoader ParentBlockLoader, am *account.Manager, db protocol.ChainDB, dm *deputynode.Manager) *TxProcessor {
 	cfg := &vm.Config{
 		Debug:         false,
 		RewardManager: issueRewardAddress,
@@ -65,6 +67,7 @@ func NewTxProcessor(issueRewardAddress common.Address, chainID uint16, blockLoad
 		ChainID:     chainID,
 		blockLoader: blockLoader,
 		am:          am,
+		dm:          dm,
 		db:          db,
 		cfg:         cfg,
 	}
@@ -334,11 +337,11 @@ func (p *TxProcessor) handleTx(tx *types.Transaction, header *types.Header, txIn
 		vmEnv := vm.NewEVM(newContext, p.am, *p.cfg)
 		_, recipientAddr, restGas, vmErr = vmEnv.Create(sender, tx.Data(), restGas, tx.Amount())
 	case params.VoteTx:
-		candidateVoteEnv := NewCandidateVoteEnv(p.am)
+		candidateVoteEnv := NewCandidateVoteEnv(p.am, p.dm)
 		err = candidateVoteEnv.CallVoteTx(senderAddr, recipientAddr, initialSenderBalance)
 
 	case params.RegisterTx:
-		candidateVoteEnv := NewCandidateVoteEnv(p.am)
+		candidateVoteEnv := NewCandidateVoteEnv(p.am, p.dm)
 		err = candidateVoteEnv.RegisterOrUpdateToCandidate(tx)
 
 	case params.CreateAssetTx:

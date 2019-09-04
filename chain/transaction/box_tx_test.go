@@ -3,6 +3,7 @@ package transaction
 import (
 	"encoding/json"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
@@ -74,7 +75,8 @@ func TestBoxTxEnv_RunBoxTxs(t *testing.T) {
 	defer db.Close()
 	am := account.NewManager(common.Hash{}, db)
 	bc := newTestChain(db)
-	p := NewTxProcessor(godAddr, chainID, bc, am, db)
+	dm := deputynode.NewManager(5, db)
+	p := NewTxProcessor(godAddr, chainID, bc, am, db, dm)
 	b := NewBoxTxEnv(p)
 
 	total, _ := new(big.Int).SetString("1600000000000000000000000000", 10)

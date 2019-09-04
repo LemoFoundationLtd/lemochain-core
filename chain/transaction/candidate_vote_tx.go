@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/vm"
@@ -31,13 +32,15 @@ var (
 
 type CandidateVoteEnv struct {
 	am          *account.Manager
+	dm          *deputynode.Manager
 	CanTransfer func(vm.AccountManager, common.Address, *big.Int) bool
 	Transfer    func(vm.AccountManager, common.Address, common.Address, *big.Int)
 }
 
-func NewCandidateVoteEnv(am *account.Manager) *CandidateVoteEnv {
+func NewCandidateVoteEnv(am *account.Manager, dm *deputynode.Manager) *CandidateVoteEnv {
 	return &CandidateVoteEnv{
 		am:          am,
+		dm:          dm,
 		CanTransfer: CanTransfer,
 		Transfer:    Transfer,
 	}
@@ -176,9 +179,57 @@ func (c *CandidateVoteEnv) unRegisterCandidate(candidateAcc types.AccountAccesso
 		candidateAcc.SetCandidateState(types.CandidateKeyIsCandidate, params.NotCandidateNode)
 		// Set the number of votes to 0
 		candidateAcc.SetVotes(big.NewInt(0))
+		// 退还候选节点的押金
+		currentHeight := c.am.CurrentBlockHeight()
+		c.refundDeposit(candidateAcc.GetAddress(), currentHeight)
 		return true
 	}
 	return false
+}
+
+// refundDeposit
+func (c *CandidateVoteEnv) refundDeposit(candidateAddress common.Address, height uint32) {
+	// 判断当前是否在过度期，过度期不得退款
+	num := height % params.TermDuration
+	// 1. 在过渡期,延后到过渡期之后发放奖励区块中退款,如果他已经被选成了下一届的共识节点的情况，发放奖励区块中退押金的时候会判断这种情况。
+	if num <= params.InterimDuration && height > params.InterimDuration {
+		return
+	}
+	// 2. 不在过渡期
+	candidateAcc := c.am.GetAccount(candidateAddress)
+	nodeId := candidateAcc.GetCandidateState(types.CandidateKeyNodeID)
+	if nodeId == "" {
+		panic("Can not get candidate profile!!!")
+	}
+
+	if c.dm.IsNodeDeputy(height, common.FromHex(nodeId)) { // 为当前共识节点，则在发放奖励区块退款
+		return
+	} else { // 不是共识节点，则立即退款
+		Refund(candidateAddress, c.am)
+	}
+}
+
+// Refund 进行退款操作
+func Refund(candidateAddress common.Address, am *account.Manager) {
+	// 判断addr的candidate信息
+	candidateAcc := am.GetAccount(candidateAddress)
+	pledgeAmountString := candidateAcc.GetCandidateState(types.CandidateKeyPledgeAmount)
+	pledgeAmount, ok := new(big.Int).SetString(pledgeAmountString, 10)
+	if !ok {
+		panic("Big.Int SetString function failed")
+	}
+
+	// 退还押金
+	candidatePledgePoolAcc := am.GetAccount(params.CandidateDepositAddress)
+	if candidatePledgePoolAcc.GetBalance().Cmp(pledgeAmount) < 0 { // 判断押金池中的押金是否足够，如果不足直接panic
+		panic("candidate pledge pool account balance insufficient.")
+	}
+	// 减少押金池中的余额
+	candidatePledgePoolAcc.SetBalance(new(big.Int).Sub(candidatePledgePoolAcc.GetBalance(), pledgeAmount))
+	// 退还押金到取消的候选节点账户
+	candidateAcc.SetBalance(new(big.Int).Add(candidateAcc.GetBalance(), pledgeAmount))
+	// 设置候选节点info中的押金余额为nil
+	candidateAcc.SetCandidateState(types.CandidateKeyPledgeAmount, "")
 }
 
 // modifyCandidateInfo 修改candidate info 操作

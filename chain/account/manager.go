@@ -206,7 +206,7 @@ func (am *Manager) logGrouping() map[common.Address]types.ChangeLogSlice {
 
 // updateVersion
 func (am *Manager) updateVersion(logs types.ChangeLogSlice, account *SafeAccount) error {
-	currentHeight := am.currentBlockHeight()
+	currentHeight := am.CurrentBlockHeight()
 	versionTrie := am.getVersionTrie()
 	eventIndex := uint(0)
 	for _, changeLog := range logs {
@@ -309,7 +309,7 @@ func (am *Manager) Save(newBlockHash common.Hash) error {
 		}
 
 		// save accounts to db
-		acctDatabase.Put(account.rawAccount.data, am.currentBlockHeight())
+		acctDatabase.Put(account.rawAccount.data, am.CurrentBlockHeight())
 	}
 
 	am.db.CandidatesRanking(newBlockHash)
@@ -360,7 +360,7 @@ func (am *Manager) Stop(graceful bool) error {
 	return nil
 }
 
-func (am *Manager) currentBlockHeight() uint32 {
+func (am *Manager) CurrentBlockHeight() uint32 {
 	if am.baseBlock == nil {
 		return 0
 	}
