@@ -280,8 +280,8 @@ func TestBlockBlackCache_IsBlackBlock(t *testing.T) {
 	blackHash := common.HexToHash("0x111")
 	cache := make(map[common.Hash]struct{})
 	cache[blackHash] = struct{}{}
-	bbc := &BlockBlackCache{
-		HashSet: &HashSet{
+	bbc := &invalidBlockCache{
+		HashSet: HashSet{
 			cache: cache,
 			Mutex: sync.Mutex{},
 		},

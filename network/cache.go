@@ -279,11 +279,11 @@ func (s *HashSet) isExist(hash common.Hash) bool {
 // 区块黑名单cache
 const BlackBlockFile = "blackblocklist"
 
-type BlockBlackCache struct {
-	*HashSet
+type invalidBlockCache struct {
+	HashSet
 }
 
-func (bbc *BlockBlackCache) IsBlackBlock(blockHash, parentHash common.Hash) bool {
+func (bbc *invalidBlockCache) IsBlackBlock(blockHash, parentHash common.Hash) bool {
 	bbc.Lock()
 	defer bbc.Unlock()
 	if bbc.size() == 0 {
@@ -301,10 +301,10 @@ func (bbc *BlockBlackCache) IsBlackBlock(blockHash, parentHash common.Hash) bool
 	return false
 }
 
-func InitBlockBlackCache(dataDir string) *BlockBlackCache {
+func InitBlockBlackCache(dataDir string) *invalidBlockCache {
 	cache := readBlockBlacklistFile(dataDir)
-	return &BlockBlackCache{
-		HashSet: &HashSet{
+	return &invalidBlockCache{
+		HashSet: HashSet{
 			cache: cache,
 			Mutex: sync.Mutex{},
 		},
