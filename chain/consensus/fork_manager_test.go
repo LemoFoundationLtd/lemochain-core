@@ -1,36 +1,53 @@
 package consensus
 
 import (
+	"fmt"
+	"testing"
+
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestNewForkManager(t *testing.T) {
-	dm := deputynode.NewManager(5, testBlockLoader{})
+	dm := deputynode.NewManager(5, &testBlockLoader{})
 
 	// not set stable
 	assert.PanicsWithValue(t, ErrNoHeadBlock, func() {
-		NewForkManager(dm, createUnconfirmBlockLoader([]int{}), nil)
+		NewForkManager(dm, createBlockLoader([]int{}, 0), nil)
 	})
 
-	fm := NewForkManager(dm, createUnconfirmBlockLoader([]int{}), testBlocks[0])
+	fm := NewForkManager(dm, createBlockLoader([]int{}, -1), testBlocks[0])
 	assert.Equal(t, testBlocks[0], fm.GetHeadBlock())
 }
 
 func TestForkManager_SetHeadBlock_GetHeadBlock(t *testing.T) {
-	dm := deputynode.NewManager(5, testBlockLoader{})
+	dm := deputynode.NewManager(5, &testBlockLoader{})
 
-	fm := NewForkManager(dm, createUnconfirmBlockLoader([]int{}), testBlocks[0])
+	fm := NewForkManager(dm, createBlockLoader([]int{}, -1), testBlocks[0])
 	fm.SetHeadBlock(testBlocks[1])
 	assert.Equal(t, testBlocks[1], fm.GetHeadBlock())
 }
 
+func Test_findDeputyByAddress(t *testing.T) {
+	// no deputies
+	node := findDeputyByAddress([]*types.DeputyNode{}, testDeputies[0].MinerAddress)
+	assert.Nil(t, node)
+
+	// not match any one
+	node = findDeputyByAddress(pickNodes(0), testDeputies[1].MinerAddress)
+	assert.Nil(t, node)
+
+	// match one
+	node = findDeputyByAddress(pickNodes(0, 1, 2), testDeputies[1].MinerAddress)
+	assert.Equal(t, testDeputies[1], node)
+}
+
 // test special cases
 func TestGetMinerDistance_Error(t *testing.T) {
-	dm := deputynode.NewManager(5, testBlockLoader{})
+	dm := deputynode.NewManager(5, &testBlockLoader{})
 
 	nodes0 := pickNodes(0, 1, 2)
 	dm.SaveSnapshot(0, nodes0)
@@ -80,14 +97,14 @@ func TestGetMinerDistance_Error(t *testing.T) {
 	assert.Equal(t, uint64(4), dis)
 
 	// no deputies
-	dm = deputynode.NewManager(0, testBlockLoader{})
+	dm = deputynode.NewManager(0, &testBlockLoader{})
 	_, err = GetMinerDistance(10, common.Address{}, common.Address{}, dm)
 	assert.Equal(t, ErrNotDeputy, err)
 }
 
 // test normal cases
 func TestGetMinerDistance(t *testing.T) {
-	dm := deputynode.NewManager(5, testBlockLoader{})
+	dm := deputynode.NewManager(5, &testBlockLoader{})
 
 	nodes0 := pickNodes(0, 1, 2)
 	dm.SaveSnapshot(0, nodes0)
@@ -134,17 +151,17 @@ func TestGetMinerDistance(t *testing.T) {
 
 // test normal cases
 func TestForkManager_ChooseNewFork_Error(t *testing.T) {
-	dm := deputynode.NewManager(5, testBlockLoader{})
+	dm := deputynode.NewManager(5, &testBlockLoader{})
 
 	// no blocks
-	fm := NewForkManager(dm, createUnconfirmBlockLoader([]int{}), testBlocks[0])
-	newBlock := fm.ChooseNewFork()
+	fm := NewForkManager(dm, createBlockLoader([]int{}, -1), testBlocks[0])
+	newBlock := fm.ChooseNewFork(nil)
 	assert.Nil(t, newBlock)
 }
 
 // test normal cases
 func TestForkManager_ChooseNewFork(t *testing.T) {
-	dm := deputynode.NewManager(5, testBlockLoader{})
+	dm := deputynode.NewManager(5, &testBlockLoader{})
 
 	type testChooseForkData struct {
 		CaseName         string
@@ -163,9 +180,9 @@ func TestForkManager_ChooseNewFork(t *testing.T) {
 		{"[0,1,2,3] 2", []int{0, 1, 2, 3}, 2},
 		{"[0,1,3,2,4] 2", []int{0, 1, 3, 2, 4}, 2},
 		{"[0,1,2,3,6] 6", []int{0, 1, 2, 3, 6}, 6},
-		{"[1,2,3,5,6,7,8] 6", []int{1, 2, 3, 5, 6, 7, 8}, 6},
-		{"[1,8,6,5,7,2,3] 6", []int{1, 8, 6, 5, 7, 2, 3}, 6},
-		{"[1,2,3,5,6,7,8,9] 9", []int{1, 2, 3, 5, 6, 7, 8, 9}, 9},
+		{"[1,2,3,4,5,6,7,8] 6", []int{1, 2, 3, 4, 5, 6, 7, 8}, 6},
+		{"[1,8,6,5,4,7,2,3] 6", []int{1, 8, 6, 5, 4, 7, 2, 3}, 6},
+		{"[1,2,3,4,5,6,7,8,9] 9", []int{1, 2, 3, 4, 5, 6, 7, 8, 9}, 9},
 	}
 
 	for _, test := range tests {
@@ -173,8 +190,8 @@ func TestForkManager_ChooseNewFork(t *testing.T) {
 			test := test // capture range variable
 			t.Parallel()
 
-			fm := NewForkManager(dm, createUnconfirmBlockLoader(test.PickBlockIndexes), testBlocks[0])
-			newBlock := fm.ChooseNewFork()
+			fm := NewForkManager(dm, createBlockLoader(test.PickBlockIndexes, test.PickBlockIndexes[0]), testBlocks[0])
+			newBlock := fm.ChooseNewFork(testBlocks[0])
 			assert.Equal(t, test.ExpectBlockIndex, getTestBlockIndex(newBlock))
 		})
 	}
@@ -190,12 +207,178 @@ func setTermDeputiesCount(dm *deputynode.Manager, snapshotHeight uint32, deputyC
 }
 
 // test normal cases
-func TestForkManager_TrySwitchFork(t *testing.T) {
+func TestForkManager_UpdateFork(t *testing.T) {
+	type testChooseForkData struct {
+		PickBlockIndexes []int
+		CurrentHeadIndex int
+		NewHeadIndex     int
+		StableBlockIndex int
+		ExpectHeadIndex  int
+	}
+	//       ┌─2
+	// 0───1─┼─3───6
+	//       ├─4─┬─7───9
+	//       │   └─8
+	//       └─5
+	var tests = []testChooseForkData{
+		// current=2 new=3
+		{[]int{0, 1, 2, 3}, 2, 3, 0, -1},
+		{[]int{0, 1, 2, 3}, 2, 3, 1, -1},
+		{[]int{0, 1, 2, 3}, 2, 3, 3, 3},
+		// current=3 new=2
+		{[]int{0, 1, 2, 3}, 3, 2, 0, -1},
+		{[]int{0, 1, 2, 3}, 3, 2, 1, -1},
+		{[]int{0, 1, 2, 3}, 3, 2, 2, 2},
+		// current=2 new=6
+		{[]int{0, 1, 2, 3, 6}, 2, 6, 0, -1},
+		{[]int{0, 1, 2, 3, 6}, 2, 6, 1, 6},
+		{[]int{0, 1, 2, 3, 6}, 2, 6, 6, 6},
+		// current=3 new=6
+		{[]int{0, 1, 2, 3, 6}, 3, 6, 0, 6},
+		{[]int{0, 1, 2, 3, 6}, 3, 6, 1, 6},
+		{[]int{0, 1, 2, 3, 6}, 3, 6, 6, 6},
+		// current=6 new=2
+		{[]int{0, 1, 2, 3, 6}, 6, 2, 0, -1},
+		{[]int{0, 1, 2, 3, 6}, 6, 2, 1, -1},
+		{[]int{0, 1, 2, 3, 6}, 6, 2, 2, 2},
+		// current=2 new=6
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8}, 2, 6, 0, -1},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8}, 2, 6, 2, -1},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8}, 2, 6, 6, 6},
+		// current=2 new=9
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, 2, 9, 0, 9},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, 2, 9, 2, -1},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, 2, 9, 9, 9},
+		// current=6 new=9
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, 6, 9, 0, 9},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, 6, 9, 1, -1},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, 6, 9, 3, -1},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, 6, 9, 6, -1},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, 6, 9, 9, 9},
+		// current=6 new=8
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8}, 6, 8, 0, -1},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8}, 6, 8, 1, -1},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8}, 6, 8, 3, -1},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8}, 6, 8, 6, -1},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8}, 6, 8, 8, 8},
+		// current=8 new=6
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8}, 8, 6, 0, -1},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8}, 8, 6, 1, -1},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8}, 8, 6, 4, -1},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8}, 8, 6, 6, 6},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8}, 8, 6, 8, -1},
+	}
+
+	for _, test := range tests {
+		caseName := fmt.Sprintf("current=%d,new=%d,stable=%d,blockCount=%d,newHead=%d", test.CurrentHeadIndex, test.NewHeadIndex, test.StableBlockIndex, len(test.PickBlockIndexes), test.ExpectHeadIndex)
+		t.Run(caseName, func(t *testing.T) {
+			test := test // capture range variable
+			t.Parallel()
+
+			dm := deputynode.NewManager(3, &testBlockLoader{})
+			setTermDeputiesCount(dm, 0, 3)
+
+			fm := NewForkManager(dm, createBlockLoader(test.PickBlockIndexes, test.StableBlockIndex), testBlocks[test.CurrentHeadIndex])
+			newBlock := fm.UpdateFork(testBlocks[test.NewHeadIndex], testBlocks[test.StableBlockIndex])
+			assert.Equal(t, test.ExpectHeadIndex, getTestBlockIndex(newBlock))
+		})
+	}
+}
+
+func TestForkManager_UpdateForkForConfirm(t *testing.T) {
+	type testChooseForkData struct {
+		PickBlockIndexes []int
+		CurrentHeadIndex int
+		StableBlockIndex int
+		ExpectHeadIndex  int
+	}
+	//       ┌─2
+	// 0───1─┼─3───6
+	//       ├─4─┬─7───9
+	//       │   └─8
+	//       └─5
+	var tests = []testChooseForkData{
+		// current=2
+		{[]int{0, 1, 2, 3}, 2, 0, -1},
+		{[]int{0, 1, 2, 3}, 2, 1, -1},
+		{[]int{0, 1, 2, 3}, 2, 2, -1},
+		{[]int{0, 1, 2, 3}, 2, 3, 3},
+		// current=2
+		{[]int{0, 1, 2, 3, 6}, 2, 0, -1},
+		{[]int{0, 1, 2, 3, 6}, 2, 1, -1},
+		{[]int{0, 1, 2, 3, 6}, 2, 2, -1},
+		{[]int{0, 1, 2, 3, 6}, 2, 3, 6},
+		{[]int{0, 1, 2, 3, 6}, 2, 6, 6},
+		// current=6
+		{[]int{0, 1, 2, 3, 6}, 6, 0, -1},
+		{[]int{0, 1, 2, 3, 6}, 6, 1, -1},
+		{[]int{0, 1, 2, 3, 6}, 6, 2, 2},
+		{[]int{0, 1, 2, 3, 6}, 6, 3, -1},
+		{[]int{0, 1, 2, 3, 6}, 6, 6, -1},
+		// current=2
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8}, 2, 0, -1},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8}, 2, 1, -1},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8}, 2, 2, -1},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8}, 2, 3, 6},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8}, 2, 4, 7},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8}, 2, 5, 5},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8}, 2, 6, 6},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8}, 2, 7, 7},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8}, 2, 8, 8},
+		// current=6
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8}, 6, 0, -1},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8}, 6, 1, -1},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8}, 6, 2, 2},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8}, 6, 3, -1},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8}, 6, 4, 7},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8}, 6, 5, 5},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8}, 6, 6, -1},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8}, 6, 7, 7},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8}, 6, 8, 8},
+		// current=8
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8}, 8, 0, -1},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8}, 8, 1, -1},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8}, 8, 2, 2},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8}, 8, 3, 6},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8}, 8, 4, -1},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8}, 8, 5, 5},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8}, 8, 6, 6},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8}, 8, 7, 7},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8}, 8, 8, -1},
+		// current=6
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, 6, 0, -1},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, 6, 1, -1},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, 6, 2, 2},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, 6, 3, -1},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, 6, 6, -1},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, 6, 7, 9},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, 6, 8, 8},
+		{[]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, 6, 9, 9},
+	}
+
+	for _, test := range tests {
+		caseName := fmt.Sprintf("current=%d,stable=%d,blockCount=%d,newHead=%d", test.CurrentHeadIndex, test.StableBlockIndex, len(test.PickBlockIndexes), test.ExpectHeadIndex)
+		t.Run(caseName, func(t *testing.T) {
+			test := test // capture range variable
+			t.Parallel()
+
+			dm := deputynode.NewManager(3, &testBlockLoader{})
+			setTermDeputiesCount(dm, 0, 3)
+
+			fm := NewForkManager(dm, createBlockLoader(test.PickBlockIndexes, test.StableBlockIndex), testBlocks[test.CurrentHeadIndex])
+			newBlock := fm.UpdateForkForConfirm(testBlocks[test.StableBlockIndex])
+			assert.Equal(t, test.ExpectHeadIndex, getTestBlockIndex(newBlock))
+		})
+	}
+}
+
+func TestForkManager_needSwitchFork(t *testing.T) {
 	type testChooseForkData struct {
 		CaseName         string
 		DeputiesCount    int
 		PickBlockIndexes []int
-		ExpectBlockIndex int
+		CurrentHeadIndex int
+		NewHeadIndex     int
 		ExpectSwitched   bool
 	}
 	//       ┌─2
@@ -204,13 +387,15 @@ func TestForkManager_TrySwitchFork(t *testing.T) {
 	//       │   └─8
 	//       └─5
 	stableBlock := testBlocks[0]
-	currentBlock := testBlocks[5]
 	var tests = []testChooseForkData{
-		{"not choose new fork", 5, []int{0, 1, 5}, 5, false},
-		{"not switch if no higher block", 1, []int{0, 1, 2, 5}, 5, false},
-		{"not switch for distance 3 and 2 deputies", 2, []int{0, 1, 2, 4, 5, 8}, 5, false},
-		{"switch for distance 4 and 2 deputies", 2, []int{0, 1, 4, 5, 7, 8, 9}, 9, true},
-		{"switch for distance 4 and 3 deputies", 3, []int{0, 1, 4, 5, 7, 8, 9}, 9, true},
+		{"not switch for same head", 1, []int{0, 1, 2}, 2, 2, false},
+		{"not switch for same height head", 1, []int{0, 1, 2, 3}, 2, 3, false},
+		{"not switch for lower height head", 1, []int{0, 1, 2, 3, 6}, 6, 2, false},
+		{"switch for higher head", 1, []int{0, 1, 2, 3, 6}, 2, 6, true},
+		{"not switch for distance 3 and 2 deputies", 2, []int{0, 1, 2, 3, 6}, 2, 6, false},
+		{"switch for distance 4 and 2 deputies", 2, []int{0, 1, 2, 4, 7, 8, 9}, 2, 9, true},
+		{"switch for distance 4 and 3 deputies", 3, []int{0, 1, 2, 4, 7, 8, 9}, 2, 9, true},
+		{"not switch for distance 3 and 3 deputies", 3, []int{0, 1, 2, 3, 6}, 2, 6, false},
 	}
 
 	for _, test := range tests {
@@ -218,12 +403,33 @@ func TestForkManager_TrySwitchFork(t *testing.T) {
 			test := test // capture range variable
 			t.Parallel()
 
-			dm := deputynode.NewManager(test.DeputiesCount, testBlockLoader{})
+			dm := deputynode.NewManager(test.DeputiesCount, &testBlockLoader{})
 			setTermDeputiesCount(dm, 0, test.DeputiesCount)
-			fm := NewForkManager(dm, createUnconfirmBlockLoader(test.PickBlockIndexes), currentBlock)
-			newBlock, switched := fm.UpdateFork(stableBlock)
-			assert.Equal(t, test.ExpectSwitched, switched)
-			assert.Equal(t, test.ExpectBlockIndex, getTestBlockIndex(newBlock))
+			currentBlock := testBlocks[test.CurrentHeadIndex]
+			fm := NewForkManager(dm, createBlockLoader(test.PickBlockIndexes, 0), currentBlock)
+			needSwitch := fm.needSwitchFork(currentBlock, testBlocks[test.NewHeadIndex], stableBlock)
+			assert.Equal(t, test.ExpectSwitched, needSwitch)
 		})
 	}
+}
+
+func TestForkManager_isCurrentForkCut(t *testing.T) {
+	dm := deputynode.NewManager(3, &testBlockLoader{})
+
+	//       ┌─2
+	// 0───1─┼─3───6
+	//       ├─4─┬─7───9
+	//       │   └─8
+	//       └─5
+	fm := NewForkManager(dm, createBlockLoader([]int{0, 1, 2, 3, 6}, 3), testBlocks[2])
+	cut := fm.isCurrentForkCut()
+	assert.Equal(t, true, cut)
+
+	fm.SetHeadBlock(testBlocks[3])
+	cut = fm.isCurrentForkCut()
+	assert.Equal(t, true, cut)
+
+	fm.SetHeadBlock(testBlocks[6])
+	cut = fm.isCurrentForkCut()
+	assert.Equal(t, false, cut)
 }

@@ -308,7 +308,7 @@ func (b *Block) Json() string {
 	return string(buf)
 }
 
-func (b *Block) Copy() *Block {
+func (b *Block) ShallowCopy() *Block {
 	return &Block{
 		Header:      b.Header,
 		Txs:         b.Txs,

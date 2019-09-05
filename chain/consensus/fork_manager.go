@@ -93,19 +93,15 @@ func (fm *ForkManager) UpdateFork(newBlock, stableBlock *types.Block) *types.Blo
 	// Maybe a block on other fork is stable now. So we need to check if the current fork is still there
 	if fm.isCurrentForkCut() {
 		//   ┌─2 [oldHead]
-		// 1─┴─3───4 [newBlock] [became stable]
+		// 1─┴─3 [newBlock] [became stable]
 		// or
 		//   ┌─2 [oldHead]───4 [newBlock] [became stable]
 		// 1─┴─3
-		// or
-		//   ┌─2 [oldHead]
-		// 1─┴─3
-		//   └─4 [newBlock] [became stable]
 		// Choose the longest fork to be new current block
 		newHead = fm.ChooseNewFork(stableBlock)
 	} else if newBlock.ParentHash() == oldHead.Hash() {
-		//            ┌─2
-		// 1 [stable]─┴─3 [oldHead]───4 [newBlock]
+		//            ┌─2 [oldHead]───4 [newBlock]
+		// 1 [stable]─┴─3
 		// A block after last head (best fork), it must make a new best fork
 		newHead = newBlock
 	} else {
@@ -126,29 +122,37 @@ func (fm *ForkManager) UpdateFork(newBlock, stableBlock *types.Block) *types.Blo
 		}
 	}
 
-	if newHead != nil {
+	if newHead != nil && newHead.Hash() != oldHead.Hash() {
 		fm.SetHeadBlock(newHead)
+		return newHead
 	}
-	return newHead
+	return nil
 }
 
 // UpdateForkForConfirm switch to a better fork if the current fork is not exist. Return the new current block or nil
 func (fm *ForkManager) UpdateForkForConfirm(stableBlock *types.Block) *types.Block {
+	var (
+		oldHead = fm.GetHeadBlock()
+		newHead *types.Block
+	)
+
 	// Maybe a block on other fork is stable now. So we need to check if the current fork is still there
 	if fm.isCurrentForkCut() {
 		// Choose the longest fork to be new current block
-		newHead := fm.ChooseNewFork(stableBlock)
+		newHead = fm.ChooseNewFork(stableBlock)
+	}
+
+	if newHead != nil && newHead.Hash() != oldHead.Hash() {
 		fm.SetHeadBlock(newHead)
 		return newHead
 	}
-
 	return nil
 }
 
 // needSwitchFork test if the new fork's head distance reached to a multiple of "deputy nodes count * 2/3"
 func (fm *ForkManager) needSwitchFork(oldHead, newHead, stable *types.Block) bool {
 	// make sure the fork is the first one reaching the height
-	if newHead != nil && newHead.Height() > oldHead.Height() {
+	if newHead.Height() > oldHead.Height() {
 		signDistance := fm.dm.TwoThirdDeputyCount(newHead.Height())
 		if (newHead.Height()-stable.Height())%signDistance == 0 {
 			return true

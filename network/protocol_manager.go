@@ -800,7 +800,7 @@ func (pm *ProtocolManager) respBlocks(from, to uint32, p *peer, hasChangeLog boo
 			return
 		}
 		if !hasChangeLog {
-			b = b.Copy()
+			b = b.ShallowCopy()
 		}
 		if b != nil && p != nil {
 			p.SendBlocks([]*types.Block{b})
@@ -826,7 +826,7 @@ func (pm *ProtocolManager) respBlocks(from, to uint32, p *peer, hasChangeLog boo
 				break
 			}
 			if !hasChangeLog {
-				b = b.Copy()
+				b = b.ShallowCopy()
 			}
 			blocks = append(blocks, b)
 			height++

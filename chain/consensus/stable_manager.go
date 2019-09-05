@@ -6,15 +6,12 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"math"
-	"sync"
 )
 
 // StableManager process the fork logic
 type StableManager struct {
 	store StableBlockStore
 	dm    *deputynode.Manager
-
-	lock sync.Mutex
 }
 
 func NewStableManager(dm *deputynode.Manager, store StableBlockStore) *StableManager {
@@ -38,9 +35,6 @@ func (sm *StableManager) StableBlock() *types.Block {
 
 // UpdateStable check if the block can be stable. Return true if the stable block changed, and return the pruned uncle blocks
 func (sm *StableManager) UpdateStable(block *types.Block) (bool, []*types.Block, error) {
-	sm.lock.Lock()
-	defer sm.lock.Unlock()
-
 	hash := block.Hash()
 	oldStable := sm.StableBlock()
 
