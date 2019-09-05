@@ -33,20 +33,20 @@ func (txPoolForValidator) PruneBlock(block *types.Block) {
 }
 
 func TestNewValidator(t *testing.T) {
-	dm := deputynode.NewManager(5, testBlockLoader{})
+	dm := deputynode.NewManager(5, &testBlockLoader{})
 
-	fm := NewValidator(1000, testBlockLoader{}, dm, txPoolForValidator{}, testCandidateLoader{})
+	fm := NewValidator(1000, &testBlockLoader{}, dm, txPoolForValidator{}, testCandidateLoader{})
 	assert.Equal(t, uint64(1000), fm.timeoutTime)
 }
 
 func Test_verifyParentHash(t *testing.T) {
 	// no parent
-	loader := createUnconfirmBlockLoader([]int{})
+	loader := createBlockLoader([]int{}, -1)
 	parent, err := verifyParentHash(testBlocks[0], loader)
 	assert.Equal(t, ErrVerifyBlockFailed, err)
 
 	// exist parent
-	loader = createUnconfirmBlockLoader([]int{0, 1})
+	loader = createBlockLoader([]int{0, 1}, 0)
 	parent, err = verifyParentHash(testBlocks[1], loader)
 	assert.NoError(t, err)
 	assert.Equal(t, testBlocks[0], parent)
