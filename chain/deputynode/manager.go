@@ -64,9 +64,13 @@ func (m *Manager) init(blockLoader BlockLoader) {
 		m.SaveSnapshot(snapshotHeight, block.DeputyNodes)
 	}
 
-	lastSnapshotHeight := snapshotHeight - params.TermDuration
-	currentDeputyCount := m.GetDeputiesCount(lastSnapshotHeight + params.TermDuration - 1)
-	log.Info("Deputy manager is ready", "lastSnapshotHeight", lastSnapshotHeight, "deputyCount", currentDeputyCount)
+	if snapshotHeight == 0 {
+		log.Warn("Deputy manager is ready. But there is no genesis block, so no deputies")
+	} else {
+		lastSnapshotHeight := snapshotHeight - params.TermDuration
+		currentDeputyCount := m.GetDeputiesCount(lastSnapshotHeight + params.InterimDuration + 1)
+		log.Info("Deputy manager is ready", "lastSnapshotHeight", snapshotHeight, "deputyCount", currentDeputyCount)
+	}
 }
 
 // IsEvilDeputyNode currentHeight is current block height
