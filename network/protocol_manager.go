@@ -66,15 +66,15 @@ type ProtocolManager struct {
 	nodeID      p2p.NodeID
 	nodeVersion uint32
 
-	chain         BlockChain
-	dm            *deputynode.Manager
-	discover      *p2p.DiscoverManager
-	txPool        TxPool
-	limit         int
-	peers         *peerSet      // connected peers
-	confirmsCache *ConfirmCache // received confirm info before block, cache them
-	blockCache    *BlockCache
-
+	chain          BlockChain
+	dm             *deputynode.Manager
+	discover       *p2p.DiscoverManager
+	txPool         TxPool
+	limit          int
+	peers          *peerSet      // connected peers
+	confirmsCache  *ConfirmCache // received confirm info before block, cache them
+	blockCache     *BlockCache
+	dataDir        string
 	oldStableBlock atomic.Value
 
 	addPeerCh    chan p2p.IPeer
@@ -94,7 +94,7 @@ type ProtocolManager struct {
 	testOutput chan int
 }
 
-func NewProtocolManager(chainID uint16, nodeID p2p.NodeID, chain BlockChain, dm *deputynode.Manager, txPool TxPool, discover *p2p.DiscoverManager, limit int, nodeVersion uint32) *ProtocolManager {
+func NewProtocolManager(chainID uint16, nodeID p2p.NodeID, chain BlockChain, dm *deputynode.Manager, txPool TxPool, discover *p2p.DiscoverManager, limit int, nodeVersion uint32, dataDir string) *ProtocolManager {
 	if limit == 0 {
 		limit = DefaultLimit
 	}
@@ -110,9 +110,9 @@ func NewProtocolManager(chainID uint16, nodeID p2p.NodeID, chain BlockChain, dm 
 		peers:         NewPeerSet(discover, dm),
 		confirmsCache: NewConfirmCache(),
 		blockCache:    NewBlockCache(),
-
-		addPeerCh:    make(chan p2p.IPeer),
-		removePeerCh: make(chan p2p.IPeer),
+		dataDir:       dataDir,
+		addPeerCh:     make(chan p2p.IPeer),
+		removePeerCh:  make(chan p2p.IPeer),
 
 		txCh:            make(chan *types.Transaction, 10),
 		newMinedBlockCh: make(chan *types.Block),
@@ -215,6 +215,9 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 	proInterval := 500 * time.Millisecond
 	queueTimer := time.NewTimer(proInterval)
 
+	// 初始化区块黑名单
+	bbc := InitBlockBlackCache(pm.dataDir)
+
 	// just for test
 	// testRcvTimer := time.NewTimer(8 * time.Second)
 
@@ -236,6 +239,11 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 			pLstHeight := rcvMsg.p.LatestStatus().CurHeight
 
 			for _, b := range rcvMsg.blocks {
+				// 判断收到的区块是否为黑名单区块
+				if bbc.IsBlackBlock(b.Hash(), b.ParentHash()) {
+					log.Warnf("This block is black block. block: %s", b.String())
+					continue
+				}
 				// update latest status
 				if b.Height() > pLstHeight && rcvMsg.p != nil {
 					rcvMsg.p.UpdateStatus(b.Height(), b.Hash())
@@ -245,7 +253,7 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 					log.Debugf("This block has exist. blockHeight: %d", b.Height())
 					continue
 				}
-				// the block is black block
+				// The block mined by minerAddress in blackList
 				if pm.chain.IsInBlackList(b) {
 					log.Debug("This block minerAddress is in BlackList")
 					pm.blockCache.Remove(b)
@@ -270,6 +278,10 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 			}
 		case <-queueTimer.C:
 			processBlock := func(block *types.Block) bool {
+				// 检查缓存中的黑名单区块
+				if bbc.IsBlackBlock(block.Hash(), block.ParentHash()) {
+					return true
+				}
 				if pm.chain.HasBlock(block.ParentHash()) {
 					go pm.insertBlock(block)
 					return true

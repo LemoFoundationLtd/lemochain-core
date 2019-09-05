@@ -21,9 +21,9 @@ const (
 	MaxReconnectCount int8 = 5
 	MaxNodeCount           = 200
 
-	WhiteFile = "whitelist"
+	WhiteFile = "nodewhitelist"
 	FindFile  = "findnode"
-	BlackFile = "blacklist"
+	BlackFile = "nodeblacklist"
 )
 
 var (

@@ -1,9 +1,13 @@
 package network
 
 import (
+	"bufio"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
+	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/network/p2p"
+	"os"
+	"path/filepath"
 	"sync"
 )
 
@@ -23,7 +27,7 @@ func NewConfirmCache() *ConfirmCache {
 	}
 }
 
-// Push push block confirm data to cache
+// Push set block confirm data to cache
 func (c *ConfirmCache) Push(data *BlockConfirmData) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
@@ -252,4 +256,89 @@ func (m *MsgCache) Push(msg *p2p.Msg) {
 
 func (m *MsgCache) Size() int {
 	return len(m.cache)
+}
+
+type HashSet struct {
+	cache map[common.Hash]struct{}
+	sync.Mutex
+}
+
+func (s *HashSet) set(hash common.Hash) {
+	s.cache[hash] = struct{}{}
+}
+
+func (s *HashSet) size() int {
+	return len(s.cache)
+}
+
+func (s *HashSet) isExist(hash common.Hash) bool {
+	_, ok := s.cache[hash]
+	return ok
+}
+
+// 区块黑名单cache
+const BlackBlockFile = "blackblocklist"
+
+type invalidBlockCache struct {
+	HashSet
+}
+
+func (bbc *invalidBlockCache) IsBlackBlock(blockHash, parentHash common.Hash) bool {
+	bbc.Lock()
+	defer bbc.Unlock()
+	if bbc.size() == 0 {
+		return false
+	}
+	if bbc.isExist(blockHash) {
+		return true
+	}
+	// 查找父块是否为黑名单
+	if bbc.isExist(parentHash) {
+		// 查找到父块为黑名单，则保存此块为黑名单块
+		bbc.set(blockHash)
+		return true
+	}
+	return false
+}
+
+func InitBlockBlackCache(dataDir string) *invalidBlockCache {
+	cache := readBlockBlacklistFile(dataDir)
+	return &invalidBlockCache{
+		HashSet: HashSet{
+			cache: cache,
+			Mutex: sync.Mutex{},
+		},
+	}
+}
+
+// readBlockBlacklistFile 读取文件中的区块黑名单到缓存里面
+func readBlockBlacklistFile(dataDir string) map[common.Hash]struct{} {
+	cache := make(map[common.Hash]struct{}, 0)
+	filePath := filepath.Join(dataDir, BlackBlockFile)
+	f, err := os.OpenFile(filePath, os.O_RDONLY, 666)
+	if err != nil {
+		return cache
+	}
+	defer func() {
+		if err := f.Close(); err != nil {
+			log.Errorf("Close file failed: %v", err)
+		}
+	}()
+
+	buf := bufio.NewReader(f)
+	line, _, err := buf.ReadLine()
+	for err == nil {
+		hash := common.HexToHash(string(line))
+		cache[hash] = struct{}{}
+		line, _, err = buf.ReadLine()
+	}
+	// 打印日志
+
+	list := make([]string, 0, len(cache))
+	for k := range cache {
+		list = append(list, k.String())
+	}
+	log.Infof("Black block list: %v", list)
+
+	return cache
 }

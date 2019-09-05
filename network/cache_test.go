@@ -5,6 +5,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/stretchr/testify/assert"
 	"math/rand"
+	"sync"
 	"testing"
 	"time"
 )
@@ -273,4 +274,28 @@ func Test_Block_Clear(t *testing.T) {
 
 	assert.Equal(t, 3, cache.Size())
 	assert.Equal(t, uint32(6), cache.FirstHeight())
+}
+
+func TestBlockBlackCache_IsBlackBlock(t *testing.T) {
+	blackHash := common.HexToHash("0x111")
+	cache := make(map[common.Hash]struct{})
+	cache[blackHash] = struct{}{}
+	bbc := &invalidBlockCache{
+		HashSet: HashSet{
+			cache: cache,
+			Mutex: sync.Mutex{},
+		},
+	}
+	// 1. 验证当前区块为黑名单的情况
+	assert.True(t, bbc.IsBlackBlock(blackHash, common.HexToHash("0x222")))
+	// 2. 验证父块为黑名单块
+	assert.True(t, bbc.IsBlackBlock(common.HexToHash("0x222"), blackHash))
+	// 此时common.HexToHash("0x222")也会被加入到黑名单列表中
+	_, ok := bbc.cache[common.HexToHash("0x222")]
+	assert.True(t, ok)
+	// 3. 验证都不在黑名单列表中的情况
+	assert.False(t, bbc.IsBlackBlock(common.HexToHash("0x333"), common.HexToHash("0x444")))
+	// 4. 验证黑名单为空的情况
+	bbc.cache = make(map[common.Hash]struct{})
+	assert.False(t, bbc.IsBlackBlock(blackHash, common.HexToHash("0x222")))
 }

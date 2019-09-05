@@ -6,6 +6,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/network/p2p"
+	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"github.com/stretchr/testify/assert"
 	"math/big"
 	"testing"
@@ -13,6 +14,22 @@ import (
 
 type testChain struct {
 	hasBlock bool
+}
+
+func (bc *testChain) InsertBlock(block *types.Block) error {
+	panic("implement me")
+}
+
+func (bc *testChain) InsertConfirm(info *BlockConfirmData) {
+	panic("implement me")
+}
+
+func (bc *testChain) InsertStableConfirms(pack BlockConfirms) {
+	panic("implement me")
+}
+
+func (bc *testChain) IsInBlackList(b *types.Block) bool {
+	panic("implement me")
 }
 
 func (bc *testChain) Genesis() *types.Block {
@@ -47,28 +64,33 @@ func (bc *testChain) StableBlock() *types.Block {
 		Header: h,
 	}
 }
-func (bc *testChain) InsertChain(block *types.Block) error { return nil }
-
-func (bc *testChain) ReceiveConfirm(info *BlockConfirmData) (err error) { return nil }
-
-func (bc *testChain) GetConfirms(query *GetConfirmInfo) []types.SignData { return nil }
-
-func (bc *testChain) ReceiveStableConfirms(pack BlockConfirms) {}
 
 type testTxPool struct {
 }
 
-// AddTxs add transaction
-func (p *testTxPool) AddTxs(txs []*types.Transaction) error { return nil }
+func (p *testTxPool) Get(time uint32, size int) []*types.Transaction {
+	panic("implement me")
+}
 
-// Remove remove transaction
-func (p *testTxPool) Remove(keys []common.Hash) {}
+func (p *testTxPool) RecvTx(tx *types.Transaction) bool {
+	panic("implement me")
+}
+
+type testBlockLoader map[uint32]*types.Block
+
+func (loader testBlockLoader) GetBlockByHeight(height uint32) (*types.Block, error) {
+	block, ok := loader[height]
+	if !ok {
+		return nil, store.ErrNotExist
+	}
+	return block, nil
+}
 
 func createPm() *ProtocolManager {
 	bc := new(testChain)
 	txPool := new(testTxPool)
 	discover := new(p2p.DiscoverManager)
-	dm := deputynode.NewManager(5)
+	dm := deputynode.NewManager(5, testBlockLoader{})
 	dm.SaveSnapshot(0, types.DeputyNodes{
 		&types.DeputyNode{
 			MinerAddress: decodeMinerAddress("Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG"),
@@ -77,7 +99,7 @@ func createPm() *ProtocolManager {
 			Votes:        new(big.Int).SetInt64(5),
 		},
 	})
-	pm := NewProtocolManager(1, p2p.NodeID{}, bc, dm, txPool, discover, 1, params.VersionUint())
+	pm := NewProtocolManager(1, p2p.NodeID{}, bc, dm, txPool, discover, 1, params.VersionUint(), "")
 	pm.setTest()
 	return pm
 }
