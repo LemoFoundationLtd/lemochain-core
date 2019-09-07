@@ -23,7 +23,7 @@ func TestSignBlock(t *testing.T) {
 	block.Header.SignData = sig
 	nodeID, err := block.SignerNodeID()
 	assert.NoError(t, err)
-	assert.Equal(t, crypto.FromECDSAPub(&key.PublicKey)[1:], nodeID)
+	assert.Equal(t, crypto.PrivateKeyToNodeID(key), nodeID)
 
 	// sign another hash
 	block.Header.Height++

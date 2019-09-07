@@ -208,6 +208,10 @@ func PubToAddress(pub []byte) common.Address {
 	return encodeDataToAddress(pub[1:], common.NormalAddressType)
 }
 
+func PrivateKeyToNodeID(private *ecdsa.PrivateKey) []byte {
+	return FromECDSAPub(&private.PublicKey)[1:]
+}
+
 func zeroBytes(bytes []byte) {
 	for i := range bytes {
 		bytes[i] = 0

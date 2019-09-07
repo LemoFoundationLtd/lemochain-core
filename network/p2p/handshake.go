@@ -148,7 +148,7 @@ func (h *encHandshake) makeAuthReqMsg(prv *ecdsa.PrivateKey) ([]byte, error) {
 	// msg
 	msg := new(authReqMsg)
 	copy(msg.InitNonce[:], h.initNonce)
-	copy(msg.ClientPubKey[:], crypto.FromECDSAPub(&prv.PublicKey)[1:])
+	copy(msg.ClientPubKey[:], crypto.PrivateKeyToNodeID(prv))
 	copy(msg.Signature[:], signature)
 	buf, err := rlp.EncodeToBytes(&msg)
 	if err != nil {
