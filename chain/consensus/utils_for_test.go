@@ -127,7 +127,7 @@ func generateDeputies(num int) types.DeputyNodes {
 		private, _ := ecdsa.GenerateKey(secp256k1.S256(), rand.Reader)
 		result = append(result, &types.DeputyNode{
 			MinerAddress: crypto.PubkeyToAddress(private.PublicKey),
-			NodeID:       (crypto.FromECDSAPub(&private.PublicKey))[1:],
+			NodeID:       crypto.PrivateKeyToNodeID(private),
 			Rank:         uint32(i),
 			Votes:        big.NewInt(int64(10000000000 - i)),
 		})

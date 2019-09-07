@@ -79,7 +79,7 @@ func parseKey(key string) *ecdsa.PrivateKey {
 }
 
 func getTestNodeID(deputyIndex int) []byte {
-	return (crypto.FromECDSAPub(&nodeKeys[deputyIndex].PublicKey))[1:]
+	return crypto.PrivateKeyToNodeID(nodeKeys[deputyIndex])
 }
 
 func createTestTx() *types.Transaction {

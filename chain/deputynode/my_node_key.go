@@ -20,5 +20,5 @@ func GetSelfNodeID() []byte {
 
 func SetSelfNodeKey(key *ecdsa.PrivateKey) {
 	selfNodeKey = key
-	selfNodeID = (crypto.FromECDSAPub(&selfNodeKey.PublicKey))[1:]
+	selfNodeID = crypto.PrivateKeyToNodeID(selfNodeKey)
 }
