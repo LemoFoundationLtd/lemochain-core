@@ -1,7 +1,6 @@
 package crypto
 
 import (
-	"bytes"
 	"crypto/ecdsa"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
@@ -29,12 +28,10 @@ func TestKeccak256Hash(t *testing.T) {
 }
 
 func TestToECDSAErrors(t *testing.T) {
-	if _, err := HexToECDSA("0000000000000000000000000000000000000000000000000000000000000000"); err == nil {
-		t.Fatal("HexToECDSA should've returned error")
-	}
-	if _, err := HexToECDSA("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"); err == nil {
-		t.Fatal("HexToECDSA should've returned error")
-	}
+	_, err := HexToECDSA("0000000000000000000000000000000000000000000000000000000000000000")
+	assert.Equal(t, fmt.Errorf("invalid private key, zero or negative"), err)
+	_, err = HexToECDSA("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
+	assert.Equal(t, fmt.Errorf("invalid private key, >=N"), err)
 }
 
 func BenchmarkSha3(b *testing.B) {
@@ -50,37 +47,25 @@ func TestSign(t *testing.T) {
 
 	msg := Keccak256([]byte("foo"))
 	sig, err := Sign(msg, key)
-	if err != nil {
-		t.Errorf("Sign error: %s", err)
-	}
+	assert.NoError(t, err)
 	recoveredPub, err := Ecrecover(msg, sig)
-	if err != nil {
-		t.Errorf("ECRecover error: %s", err)
-	}
+	assert.NoError(t, err)
 	pubKey := ToECDSAPub(recoveredPub)
 	recoveredAddr := PubkeyToAddress(*pubKey)
-	if addr != recoveredAddr {
-		t.Errorf("Address mismatch: want: %x have: %x", addr, recoveredAddr)
-	}
+	assert.Equal(t, addr, recoveredAddr)
 
 	// should be equal to SigToPub
 	recoveredPub2, err := SigToPub(msg, sig)
-	if err != nil {
-		t.Errorf("ECRecover error: %s", err)
-	}
+	assert.NoError(t, err)
 	recoveredAddr2 := PubkeyToAddress(*recoveredPub2)
-	if addr != recoveredAddr2 {
-		t.Errorf("Address mismatch: want: %x have: %x", addr, recoveredAddr2)
-	}
+	assert.Equal(t, addr, recoveredAddr2)
 }
 
 func TestInvalidSign(t *testing.T) {
-	if _, err := Sign(make([]byte, 1), nil); err == nil {
-		t.Errorf("expected sign with hash 1 byte to error")
-	}
-	if _, err := Sign(make([]byte, 33), nil); err == nil {
-		t.Errorf("expected sign with hash 33 byte to error")
-	}
+	_, err := Sign(make([]byte, 1), nil)
+	assert.Equal(t, fmt.Errorf("hash is required to be exactly 32 bytes (1)"), err)
+	_, err = Sign(make([]byte, 33), nil)
+	assert.Equal(t, fmt.Errorf("hash is required to be exactly 32 bytes (33)"), err)
 }
 
 func TestNewContractAddress(t *testing.T) {
@@ -106,31 +91,23 @@ func TestLoadECDSAFile(t *testing.T) {
 	checkKey := func(k *ecdsa.PrivateKey) {
 		assert.Equal(t, PubkeyToAddress(k.PublicKey), common.HexToAddress(testAddrHex))
 		loadedKeyBytes := FromECDSA(k)
-		if !bytes.Equal(loadedKeyBytes, keyBytes) {
-			t.Fatalf("private key mismatch: want: %x have: %x", keyBytes, loadedKeyBytes)
-		}
+		assert.Equal(t, keyBytes, loadedKeyBytes)
 	}
 
 	ioutil.WriteFile(fileName0, []byte(testPrivHex), 0600)
 	defer os.Remove(fileName0)
 
 	key0, err := LoadECDSA(fileName0)
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NoError(t, err)
 	checkKey(key0)
 
 	// again, this time with SaveECDSA instead of manual save:
 	err = SaveECDSA(fileName1, key0)
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NoError(t, err)
 	defer os.Remove(fileName1)
 
 	key1, err := LoadECDSA(fileName1)
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NoError(t, err)
 	checkKey(key1)
 }
 
@@ -180,31 +157,34 @@ func TestValidateSignatureValues(t *testing.T) {
 	check(false, 0, one, minusOne)
 }
 
-// test to help Python team with integration of libsecp256k1
-// skip but keep it after they are done
-func TestPythonIntegration(t *testing.T) {
-	kh := "289c2857d4598e37fb9647507e47a309d6133539bf21a8b9cb6df88fd5232032"
-	k0, _ := HexToECDSA(kh)
-
-	msg0 := Keccak256([]byte("foo"))
-	sig0, _ := Sign(msg0, k0)
-
-	msg1 := common.FromHex("00000000000000000000000000000000")
-	sig1, _ := Sign(msg0, k0)
-
-	t.Logf("msg: %x, privkey: %s sig: %x\n", msg0, kh, sig0)
-	t.Logf("msg: %x, privkey: %s sig: %x\n", msg1, kh, sig1)
-}
-
 func TestCreateAddress(t *testing.T) {
-	priKey, _ := GenerateKey()
+	// keypair1
+	priKey, err := GenerateKey()
+	assert.NoError(t, err)
 	pubKey := priKey.PublicKey
-	addr := PubkeyToAddress(pubKey)
-	pribytes := FromECDSA(priKey)
-	pubbytes := FromECDSAPub(&pubKey)
-	fmt.Println(common.ToHex(pribytes))
-	fmt.Println(common.ToHex(pubbytes[1:]))
-	fmt.Println(addr.String())
+	addr1 := PubkeyToAddress(pubKey)
+	pribytes1 := FromECDSA(priKey)
+	pubbytes1 := FromECDSAPub(&pubKey)
+
+	// sign and recover test
+	msg := Keccak256([]byte("foo"))
+	sig, err := Sign(msg, priKey)
+	assert.NoError(t, err)
+	recoveredPub, err := Ecrecover(msg, sig)
+	assert.NoError(t, err)
+	assert.Equal(t, pubKey, *ToECDSAPub(recoveredPub))
+
+	// keypair2
+	priKey, err = GenerateKey()
+	assert.NoError(t, err)
+	pubKey = priKey.PublicKey
+	addr2 := PubkeyToAddress(pubKey)
+	pribytes2 := FromECDSA(priKey)
+	pubbytes2 := FromECDSAPub(&pubKey)
+	// they are different
+	assert.NotEqual(t, addr1, addr2)
+	assert.NotEqual(t, pribytes1, pribytes2)
+	assert.NotEqual(t, pubbytes1, pubbytes2)
 }
 
 func TestCreateTempAddress(t *testing.T) {
@@ -226,5 +206,4 @@ func TestCreateTempAddress(t *testing.T) {
 		assert.Equal(t, userId[:], tempAddr[10:])
 		assert.Equal(t, creator[11:], tempAddr[1:10])
 	}
-
 }
