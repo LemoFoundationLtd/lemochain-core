@@ -22,7 +22,6 @@ var (
 
 	addr02, _ = common.StringToAddress("Lemo83JW7TBPA7P2P6AR9ZC2WCQJYRNHZ4NJD4CY")
 	private02 = "9c3c4a327ce214f0a1bf9cfa756fbf74f1c7322399ffff925efd8c15c49953eb"
-	nodeId02  = common.FromHex("0xddb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0")
 )
 
 func TestNewValidator(t *testing.T) {
@@ -89,6 +88,7 @@ func Test_verifySigner(t *testing.T) {
 	block01 := newBlockForVerifySigner(0, minerPrivate)
 	assert.NoError(t, verifySigner(block01, dm))
 	// 2. 验证block的签名数据不正确的情况
+	block01 = newBlockForVerifySigner(0, minerPrivate)
 	block01.Header.SignData = common.FromHex("0x123456") // 赋值错误的sign data
 	assert.Equal(t, ErrVerifyHeaderFailed, verifySigner(block01, dm))
 	// 3. 验证区块签名者不是出块节点的情况
@@ -371,8 +371,8 @@ func Test_verifyChangeLog(t *testing.T) {
 }
 
 func TestValidator_VerifyAfterTxProcess(t *testing.T) {
-	dm := deputynode.NewManager(5, testBlockLoader{})
-	v := NewValidator(1000, testBlockLoader{}, dm, txPoolForValidator{}, testCandidateLoader{})
+	dm := deputynode.NewManager(5, createBlockLoader([]int{}, -1))
+	v := NewValidator(1000, createBlockLoader([]int{}, -1), dm, txPoolForValidator{}, testCandidateLoader{})
 	// 计算changeLogs 为null的logRoot
 	nullchangeLogs := make(types.ChangeLogSlice, 0)
 	nullLogRoot := nullchangeLogs.MerkleRootSha()
@@ -432,8 +432,8 @@ func newBlockForJudgeDeputy(height uint32, private, extra string) *types.Block {
 func TestValidator_JudgeDeputy(t *testing.T) {
 	private01 := "c21b6b2fbf230f665b936194d14da67187732bf9d28768aef1a3cbb26608f8aa"
 	private02 := "9c3c4a327ce214f0a1bf9cfa756fbf74f1c7322399ffff925efd8c15c49953eb"
-	dm := deputynode.NewManager(5, testBlockLoader{})
-	v1 := NewValidator(1000, testBlockLoader{}, dm, txPoolForValidator{}, testCandidateLoader{})
+	dm := deputynode.NewManager(5, createBlockLoader([]int{}, -1))
+	v1 := NewValidator(1000, createBlockLoader([]int{}, -1), dm, txPoolForValidator{}, testCandidateLoader{})
 
 	// 1. 测试newBlock.SignerNodeID()返回error的情况
 	block01 := newBlockForJudgeDeputy(0, private01, "")
@@ -444,7 +444,7 @@ func TestValidator_JudgeDeputy(t *testing.T) {
 	// 2. 测试同一高度的两个不同的区块是由同一个节点签名的情况
 	block02 := newBlockForJudgeDeputy(1, private01, "我签名了高度为1的区块")
 	// 构造一个testBlockLoader中存储着block02的validator对象
-	v2 := NewValidator(1000, testBlockLoader([]*types.Block{block02}), dm, txPoolForValidator{}, testCandidateLoader{})
+	v2 := NewValidator(1000, createUnstableLoader(block02), dm, txPoolForValidator{}, testCandidateLoader{})
 	block03 := newBlockForJudgeDeputy(1, private01, "我又签名了高度为1的区块")
 	// 返回true
 	assert.True(t, v2.JudgeDeputy(block03))
@@ -452,7 +452,7 @@ func TestValidator_JudgeDeputy(t *testing.T) {
 	// 3. 测试非稳定块中没有同一个节点签名同一高度的区块的情况
 	block04 := newBlockForJudgeDeputy(100, private01, "我是private01，我签名了高度为100的区块")
 	// 构造一个testBlockLoader中存储着block04的validator对象
-	v3 := NewValidator(1000, testBlockLoader([]*types.Block{block04}), dm, txPoolForValidator{}, testCandidateLoader{})
+	v3 := NewValidator(1000, createUnstableLoader(block04), dm, txPoolForValidator{}, testCandidateLoader{})
 	block05 := newBlockForJudgeDeputy(100, private02, "我是private02，我签名了高度为100的区块")
 	// 返回false
 	assert.False(t, v3.JudgeDeputy(block05))
@@ -460,7 +460,7 @@ func TestValidator_JudgeDeputy(t *testing.T) {
 	// 4. 测试v.blockLoader.IterateUnConfirms迭代器还原nodeId出错的情况
 	errBlock := block05
 	errBlock.Header.SignData = common.FromHex("122") // 签名长度不为65位
-	v4 := NewValidator(1000, testBlockLoader([]*types.Block{errBlock}), dm, txPoolForValidator{}, testCandidateLoader{})
+	v4 := NewValidator(1000, createUnstableLoader(errBlock), dm, txPoolForValidator{}, testCandidateLoader{})
 	assert.False(t, v4.JudgeDeputy(block03)) // block03中的signData是正常的,但是迭代器中迭代出的block的signData有误,直接返回
 }
 
@@ -522,7 +522,7 @@ func TestValidator_VerifyNewConfirms(t *testing.T) {
 	dm := deputynode.NewManager(3, snapshotLoader{
 		Nodes: deputyNodes,
 	})
-	v := NewValidator(1000, testBlockLoader{}, dm, txPoolForValidator{}, testCandidateLoader{})
+	v := NewValidator(1000, createBlockLoader([]int{}, -1), dm, txPoolForValidator{}, testCandidateLoader{})
 	// 1. 验证正常情况
 	block01 := newBlockForVerifyNewConfirms(private01) // 创建一个第一个代理节点出的区块并且区块中的确认包为空
 	sig02 := signBlock(block01, private02)
@@ -570,16 +570,16 @@ func TestValidator_VerifyNewConfirms(t *testing.T) {
 }
 
 func TestValidator_VerifyConfirmPacket(t *testing.T) {
-	dm := deputynode.NewManager(5, testBlockLoader{})
+	dm := deputynode.NewManager(5, createBlockLoader([]int{}, -1))
 	// 1. 测试通过blockHash得不到block的情况
-	v1 := NewValidator(1000, testBlockLoader{}, dm, txPoolForValidator{}, testCandidateLoader{})
+	v1 := NewValidator(1000, createBlockLoader([]int{}, -1), dm, txPoolForValidator{}, testCandidateLoader{})
 	hash := testBlocks[0].Hash()
 	confirms, err := v1.VerifyConfirmPacket(0, hash, nil)
 	assert.Nil(t, confirms)
 	assert.Error(t, ErrBlockNotExist, err)
 	// 2. 测试区块高度不对的情况
 	block := testBlocks[1]
-	v2 := NewValidator(1000, testBlockLoader(testBlocks), dm, txPoolForValidator{}, testCandidateLoader{})
+	v2 := NewValidator(1000, createBlockLoader([]int{0, 1}, 0), dm, txPoolForValidator{}, testCandidateLoader{})
 	confirms, err = v2.VerifyConfirmPacket(block.Height()+1, block.Hash(), nil)
 	assert.Nil(t, confirms)
 	assert.Error(t, ErrInvalidSignedConfirmInfo, err)
