@@ -40,6 +40,9 @@ func (bl *testBlockLoader) GetUnConfirmByHeight(height uint32, leafBlockHash com
 }
 
 func (bl *testBlockLoader) isUnstable(block *types.Block) bool {
+	if bl.Stable == nil {
+		return true
+	}
 	if block == nil || block.Height() <= bl.Stable.Height() {
 		return false
 	}
@@ -91,6 +94,11 @@ func createBlockLoader(blockIndexList []int, stableIndex int) *testBlockLoader {
 		result.Stable = testBlocks[stableIndex]
 	}
 	return result
+}
+
+// createUnstableLoader create a block loader
+func createUnstableLoader(blocks ...*types.Block) *testBlockLoader {
+	return &testBlockLoader{Blocks: blocks}
 }
 
 type testCandidateLoader types.DeputyNodes
