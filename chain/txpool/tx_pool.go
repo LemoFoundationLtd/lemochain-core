@@ -5,6 +5,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/metrics"
+	"math/big"
 	"sync"
 )
 
@@ -27,9 +28,9 @@ type TxPool struct {
 	RW sync.RWMutex
 }
 
-func NewTxPool() *TxPool {
+func NewTxPool(leastGasPrice *big.Int) *TxPool {
 	return &TxPool{
-		PendingTxs: NewTxQueue(),
+		PendingTxs: NewTxQueue(leastGasPrice),
 		RecentTxs:  NewTxRecently(),
 		BlockCache: NewBlocksTrie(),
 	}
@@ -165,7 +166,7 @@ func (pool *TxPool) RecvTx(tx *types.Transaction) bool {
 		pool.PendingTxs.Push(tx)
 		txpoolTotalNumberCounter.Inc(1) // 记录收到一笔交易
 		if tx.Amount().Cmp(blockTradeAmount) >= 0 {
-			log.Eventf(log.TxEvent, "Block trade appear. %s send %s to %s", tx.From, tx.Amount().String(), tx.To)
+			log.Eventf(log.TxEvent, "Block trade appear. %s send %s to %s", tx.From(), tx.Amount().String(), tx.To())
 		}
 		return true
 	}

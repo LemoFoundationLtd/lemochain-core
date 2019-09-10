@@ -35,6 +35,7 @@ type ConfigFromFile struct {
 	InterimDuration uint64 `json:"interimDuration"`
 	ConnectionLimit uint64 `json:"connectionLimit"`
 	AlarmUrl        string `json:"alarmUrl"`
+	GasPrice        string `json:"gasPrice"`
 }
 
 type ConfigFromFileMarshaling struct {
@@ -128,5 +129,8 @@ func (c *ConfigFromFile) Check() {
 	if len(c.AlarmUrl) > 0 { // if configured, then start metrics and alarm system client
 		metrics.Enabled = true
 		metrics.AlarmUrl = c.AlarmUrl
+	}
+	if len(c.GasPrice) == 0 {
+		c.GasPrice = "0"
 	}
 }

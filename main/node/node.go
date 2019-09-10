@@ -89,10 +89,15 @@ func initConfig(flags flag.CmdFlags) (*Config, *config.ConfigFromFile) {
 		ChainID:     uint16(configFromFile.ChainID),
 		MineTimeout: configFromFile.Timeout,
 	}
+	priceLimit, success := new(big.Int).SetString(configFromFile.GasPrice, 10)
+	if !success {
+		panic(fmt.Sprintf("get miner gasPrice failed. %s", configFromFile.GasPrice))
+	}
 	// Miner
 	cfg.Miner = miner.MineConfig{
-		SleepTime: int64(configFromFile.SleepTime),
-		Timeout:   int64(configFromFile.Timeout),
+		SleepTime:     int64(configFromFile.SleepTime),
+		Timeout:       int64(configFromFile.Timeout),
+		GasPriceLimit: priceLimit,
 	}
 	return cfg, configFromFile
 }
@@ -131,7 +136,7 @@ func New(flags flag.CmdFlags) *Node {
 	// read all deputy nodes from snapshot block
 	dm := deputynode.NewManager(int(configFromFile.DeputyCount), db)
 	// tx pool
-	txPool := txpool.NewTxPool()
+	txPool := txpool.NewTxPool(cfg.Miner.GasPriceLimit)
 	blockChain, err := chain.NewBlockChain(cfg.Chain, dm, db, flags, txPool)
 	if err != nil {
 		panic("new block chain failed!!!")

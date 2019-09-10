@@ -3,6 +3,7 @@ package txpool
 import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
+	"math/big"
 )
 
 type TxQueue struct {
@@ -10,12 +11,15 @@ type TxQueue struct {
 	TxsStatus map[common.Hash]bool
 
 	TxsQueue []*types.Transaction
+
+	LeastGasPrice *big.Int // pop给miner打包的最低的交易gas price
 }
 
-func NewTxQueue() *TxQueue {
+func NewTxQueue(leastGasPrice *big.Int) *TxQueue {
 	return &TxQueue{
-		TxsStatus: make(map[common.Hash]bool),
-		TxsQueue:  make([]*types.Transaction, 0),
+		TxsStatus:     make(map[common.Hash]bool),
+		TxsQueue:      make([]*types.Transaction, 0),
+		LeastGasPrice: leastGasPrice,
 	}
 }
 
@@ -83,6 +87,11 @@ func (queue *TxQueue) Pop(time uint32, size int) []*types.Transaction {
 		}
 
 		if queue.isTimeOut(queue.TxsQueue[index], time) {
+			queue.hardDel(index)
+			continue
+		}
+		// 判断交易gas price是否大于miner设置的最小值
+		if queue.LeastGasPrice.Cmp(queue.TxsQueue[index].GasPrice()) > 0 {
 			queue.hardDel(index)
 			continue
 		}

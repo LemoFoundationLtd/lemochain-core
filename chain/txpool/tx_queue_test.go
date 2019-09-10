@@ -4,12 +4,13 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/stretchr/testify/assert"
+	"math/big"
 	"testing"
 	"time"
 )
 
 func TestTxQueue_Pop(t *testing.T) {
-	queue := NewTxQueue()
+	queue := NewTxQueue(big.NewInt(0))
 	txs := make([]*types.Transaction, 0)
 	txs = append(txs, makeTxRandom(common.HexToAddress("0x01")))
 	txs = append(txs, makeTxRandom(common.HexToAddress("0x02")))
@@ -26,7 +27,7 @@ func TestTxQueue_Pop(t *testing.T) {
 	assert.Equal(t, 6, len(queue.TxsStatus))
 
 	// 超时交易
-	queue = NewTxQueue()
+	queue = NewTxQueue(big.NewInt(0))
 	txs = make([]*types.Transaction, 0)
 	txs = append(txs, makeExpirationTx(common.HexToAddress("0x01")))
 	txs = append(txs, makeExpirationTx(common.HexToAddress("0x02")))
@@ -47,7 +48,7 @@ func TestTxQueue_Pop(t *testing.T) {
 	assert.Equal(t, false, ok)
 
 	// 删除交易
-	queue = NewTxQueue()
+	queue = NewTxQueue(big.NewInt(0))
 	txs = make([]*types.Transaction, 0)
 	txs = append(txs, makeExpirationTx(common.HexToAddress("0x01")))
 	txs = append(txs, makeExpirationTx(common.HexToAddress("0x02")))
@@ -77,7 +78,7 @@ func TestTxQueue_Pop(t *testing.T) {
 }
 
 func TestTxQueue_PushBatch(t *testing.T) {
-	queue := NewTxQueue()
+	queue := NewTxQueue(big.NewInt(0))
 	txs := make([]*types.Transaction, 0)
 	queue.PushBatch(txs)
 	assert.Equal(t, 0, len(queue.TxsQueue))
@@ -107,7 +108,7 @@ func TestTxQueue_PushBatch(t *testing.T) {
 }
 
 func TestTxQueue_Del(t *testing.T) {
-	queue := NewTxQueue()
+	queue := NewTxQueue(big.NewInt(0))
 	tx := makeTxRandom(common.HexToAddress("0x01"))
 	queue.Push(tx)
 	assert.Equal(t, 1, len(queue.TxsQueue))
@@ -126,7 +127,7 @@ func TestTxQueue_Del(t *testing.T) {
 }
 
 func TestTxQueue_DelBatch(t *testing.T) {
-	queue := NewTxQueue()
+	queue := NewTxQueue(big.NewInt(0))
 	txs := make([]*types.Transaction, 0)
 	txs = append(txs, makeTxRandom(common.HexToAddress("0x01")))
 	txs = append(txs, makeTxRandom(common.HexToAddress("0x02")))

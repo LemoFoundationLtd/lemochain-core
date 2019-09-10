@@ -7,13 +7,15 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/common/subscribe"
+	"math/big"
 	"sync/atomic"
 	"time"
 )
 
 type MineConfig struct {
-	SleepTime int64
-	Timeout   int64
+	SleepTime     int64
+	Timeout       int64
+	GasPriceLimit *big.Int // 打包的最小交易gasPrice
 }
 
 type Chain interface {

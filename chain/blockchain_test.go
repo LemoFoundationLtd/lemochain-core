@@ -16,6 +16,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/network"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"github.com/stretchr/testify/assert"
+	"math/big"
 	"os"
 	"reflect"
 	"testing"
@@ -58,7 +59,7 @@ func newTestBlockChain(attendedDeputyCount int) *BlockChain {
 
 	// max deputy count is 5
 	dm := deputynode.NewManager(5, db)
-	blockChain, err := NewBlockChain(Config{testChainID, 10000}, dm, db, flag.CmdFlags{}, txpool.NewTxPool())
+	blockChain, err := NewBlockChain(Config{testChainID, 10000}, dm, db, flag.CmdFlags{}, txpool.NewTxPool(big.NewInt(0)))
 	if err != nil {
 		panic(err)
 	}
@@ -128,12 +129,12 @@ func TestNewBlockChain(t *testing.T) {
 
 	// no genesis
 	dm := deputynode.NewManager(5, db)
-	_, err := NewBlockChain(Config{testChainID, 10000}, dm, db, flag.CmdFlags{}, txpool.NewTxPool())
+	_, err := NewBlockChain(Config{testChainID, 10000}, dm, db, flag.CmdFlags{}, txpool.NewTxPool(big.NewInt(0)))
 	assert.Equal(t, ErrNoGenesis, err)
 
 	// success
 	genesisBlock := SetupGenesisBlock(db, nil)
-	blockChain, err := NewBlockChain(Config{testChainID, 10000}, dm, db, flag.CmdFlags{}, txpool.NewTxPool())
+	blockChain, err := NewBlockChain(Config{testChainID, 10000}, dm, db, flag.CmdFlags{}, txpool.NewTxPool(big.NewInt(0)))
 	assert.NoError(t, err)
 	assert.Equal(t, genesisBlock, blockChain.engine.StableBlock())
 	assert.Equal(t, genesisBlock, blockChain.engine.CurrentBlock())

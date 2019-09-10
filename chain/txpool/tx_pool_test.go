@@ -6,13 +6,14 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"github.com/stretchr/testify/assert"
+	"math/big"
 	"testing"
 	"time"
 )
 
 func TestTxPool_RecvTx(t *testing.T) {
 	curTime := time.Now().Unix()
-	pool := NewTxPool()
+	pool := NewTxPool(big.NewInt(0))
 
 	tx1 := makeTxRandom(common.HexToAddress("0x01"))
 	tx2 := makeTxRandom(common.HexToAddress("0x02"))
@@ -30,7 +31,7 @@ func TestTxPool_RecvTx(t *testing.T) {
 
 func TestTxPool_DelInvalidTxs(t *testing.T) {
 	curTime := time.Now().Unix()
-	pool := NewTxPool()
+	pool := NewTxPool(big.NewInt(0))
 
 	tx1 := makeTxRandom(common.HexToAddress("0x01"))
 	tx2 := makeTxRandom(common.HexToAddress("0x02"))
@@ -54,7 +55,7 @@ func TestTxPool_DelInvalidTxs(t *testing.T) {
 func TestTxPool_RecvBlock(t *testing.T) {
 	curTime := time.Now().Unix()
 
-	pool := NewTxPool()
+	pool := NewTxPool(big.NewInt(0))
 	tx1 := makeTxRandom(common.HexToAddress("0x01"))
 	tx2 := makeTxRandom(common.HexToAddress("0x02"))
 	tx3 := makeTxRandom(common.HexToAddress("0x03"))
@@ -92,7 +93,7 @@ func TestTxPool_RecvBlock(t *testing.T) {
 func TestTxPool_PruneBlock(t *testing.T) {
 	curTime := time.Now().Unix()
 
-	pool := NewTxPool()
+	pool := NewTxPool(big.NewInt(0))
 	tx1 := makeTxRandom(common.HexToAddress("0x01"))
 	tx2 := makeTxRandom(common.HexToAddress("0x02"))
 	tx3 := makeTxRandom(common.HexToAddress("0x03"))
@@ -123,7 +124,7 @@ func TestTxPool_PruneBlock(t *testing.T) {
 func TestTxPool_VerifyTxInBlock1(t *testing.T) {
 	curTime := time.Now().Unix()
 
-	pool := NewTxPool()
+	pool := NewTxPool(big.NewInt(0))
 	tx1 := makeTxRandom(common.HexToAddress("0x01"))
 	tx2 := makeTxRandom(common.HexToAddress("0x02"))
 	tx3 := makeTxRandom(common.HexToAddress("0x03"))
@@ -173,7 +174,7 @@ func TestTxPool_VerifyTxInBlock1(t *testing.T) {
 func TestTxPool_VerifyTxInBlock2(t *testing.T) {
 	curTime := time.Now().Unix()
 
-	pool := NewTxPool()
+	pool := NewTxPool(big.NewInt(0))
 	tx1 := makeTxRandom(common.HexToAddress("0x01"))
 	tx2 := makeTxRandom(common.HexToAddress("0x02"))
 	tx3 := makeTxRandom(common.HexToAddress("0x03"))
@@ -237,7 +238,7 @@ func TestTxPool_Box(t *testing.T) {
 	curTime := time.Now().Unix()
 	tx := createBoxTxRandom(common.HexToAddress("0xabcde"), 5, uint64(curTime))
 
-	pool := NewTxPool()
+	pool := NewTxPool(big.NewInt(0))
 	pool.RecvTx(tx)
 
 	result := pool.Get(uint32(curTime), 10)
