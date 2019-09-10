@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/hexutil"
@@ -12,9 +13,9 @@ import (
 )
 
 const (
-	TokenAsset            = uint32(1) // erc20
-	NonFungibleAsset      = uint32(2) // erc721
-	CommonAsset           = uint32(3) // erc20+721
+	TokenAsset            = uint32(1)  // erc20
+	NonFungibleAsset      = uint32(2)  // erc721
+	CommonAsset           = uint32(3)  // erc20+721
 	MaxAssetDecimal       = uint32(18) // 资产小数位最大值
 	MaxMarshalAssetLength = 680
 	MaxMetaDataLength     = 256
@@ -26,7 +27,7 @@ var (
 	ErrNonFungibleAssetDivisible     = errors.New("an asset of type 2 must be indivisible")
 	ErrNonFungibleAssetReplenishable = errors.New("an asset of type 2 must be non-replenishable")
 	ErrCommonAssetDivisible          = errors.New("an asset of type 3 must be divisible")
-	ErrAssetDecimal         = errors.New("asset decimal must be less than 18")
+	ErrAssetDecimal                  = errors.New("asset decimal must be less than 18")
 )
 
 //go:generate gencodec -type Asset --field-override assetMarshaling -out gen_asset_json.go
@@ -47,9 +48,6 @@ type assetMarshaling struct {
 	TotalSupply *hexutil.Big10
 }
 
-// type AssetExtend struct {
-// 	MateData  map[common.Hash]string
-// }
 //go:generate gencodec -type AssetEquity --field-override assetEquityMarshaling -out gen_assetEquity_json.go
 type AssetEquity struct {
 	AssetCode common.Hash `json:"assetCode" gencodec:"required"`
@@ -188,4 +186,13 @@ func (asset *Asset) String() string {
 	}
 
 	return fmt.Sprintf("{%s}", strings.Join(set, ", "))
+}
+
+// GetAsset
+func GetAsset(txData []byte) (*Asset, error) {
+	asset := &Asset{}
+	if err := json.Unmarshal(txData, asset); err != nil {
+		return nil, err
+	}
+	return asset, nil
 }
