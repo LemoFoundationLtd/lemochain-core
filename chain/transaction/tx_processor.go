@@ -268,8 +268,8 @@ func (p *TxProcessor) verifyTransactionSigs(tx *types.Transaction) error {
 	return nil
 }
 
-// assetTxRelyVerify
-func (p *TxProcessor) assetTxRelyVerify(tx *types.Transaction) error {
+// VerifyAssetTx
+func (p *TxProcessor) VerifyAssetTx(tx *types.Transaction) error {
 	// 获取资产code
 	assetCode := common.Hash{}
 	switch tx.Type() {
@@ -317,7 +317,7 @@ func (p *TxProcessor) assetTxRelyVerify(tx *types.Transaction) error {
 // VerifyTxBeforeApply 执行交易之前的交易校验
 func (p *TxProcessor) VerifyTxBeforeApply(tx *types.Transaction) error {
 	// 验证资产交易依赖
-	if err := p.assetTxRelyVerify(tx); err != nil {
+	if err := p.VerifyAssetTx(tx); err != nil {
 		return err
 	}
 	// 验证交易的签名
