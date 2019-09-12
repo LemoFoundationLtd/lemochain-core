@@ -406,8 +406,8 @@ func (tx *Transaction) VerifyTxBeforeTxPool(chainID uint16, timeStamp uint64) (e
 		}
 	}()
 	// verify gas price
-	if params.LeastGasPrice.Cmp(tx.GasPrice()) > 0 {
-		log.Errorf("Tx gas price insufficient. tx gas price: %s. least gas price: %s", tx.GasPrice().String(), params.LeastGasPrice.String())
+	if params.MinGasPrice.Cmp(tx.GasPrice()) > 0 {
+		log.Errorf("Tx gas price is too low. tx gas price: %s. least gas price: %s", tx.GasPrice().String(), params.MinGasPrice.String())
 		return ErrGasPrice
 	}
 

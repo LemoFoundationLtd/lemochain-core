@@ -332,7 +332,7 @@ func (m *PrivateMineAPI) MineStop() {
 
 // SetLeastGasPrice
 func (m *PrivateMineAPI) SetLeastGasPrice(price *big.Int) {
-	params.LeastGasPrice = price
+	params.MinGasPrice = price
 }
 
 // PublicMineAPI
@@ -347,7 +347,7 @@ func NewPublicMineAPI(miner *miner.Miner) *PublicMineAPI {
 
 // GetLeastGasPrice
 func (m *PublicMineAPI) GetLeastGasPrice() string {
-	return params.LeastGasPrice.String()
+	return params.MinGasPrice.String()
 }
 
 // IsMining

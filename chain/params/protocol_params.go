@@ -71,10 +71,10 @@ const (
 )
 
 var (
-	TermDuration            uint32 = 1000000                       // 每届间隔
-	InterimDuration         uint32 = 1000                          // 过渡期
-	ReleaseEvilNodeDuration uint32 = 1000                          // 释放作恶节点的过度期高度
-	LeastGasPrice                  = common.Lemo2Mo("0.000000001") // 默认的最低gas price 为1G mo
+	TermDuration            uint32 = 1000000                // 每届间隔
+	InterimDuration         uint32 = 1000                   // 过渡期
+	ReleaseEvilNodeDuration uint32 = 1000                   // 释放作恶节点的过度期高度
+	MinGasPrice                    = big.NewInt(1000000000) // 默认的最低gas price 为1G mo
 	// RegisterCandidatePledgeAmount        = new(big.Int).Mul(big.NewInt(1000), oneLEMO) // Register Candidate node fees = 1000LEMO
 	RegisterCandidatePledgeAmount = common.Lemo2Mo("5000000")        // 注册成为候选节点的质押金额最小值
 	CandidateDepositAddress, _    = common.StringToAddress("0x1001") // 设置接收注册候选节点押金费用1000LEMO的地址

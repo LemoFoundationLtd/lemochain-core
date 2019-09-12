@@ -22,7 +22,7 @@ var (
 	ErrCreateContract  = errors.New("the data of create contract transaction can't be null")
 	ErrSpecialTx       = errors.New("the data of special transaction can't be null")
 	ErrTxType          = errors.New("the transaction type does not exit")
-	ErrGasPrice        = errors.New("the transaction gas price insufficient")
+	ErrGasPrice        = errors.New("the transaction gas price is to low")
 	ErrTxExpired       = errors.New("received transaction expiration time less than current time")
 	ErrTxExpiration    = errors.New("received transaction expiration time can't more than 30 minutes")
 	ErrNegativeValue   = errors.New("transaction amount can't be negative")
