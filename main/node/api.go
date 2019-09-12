@@ -18,6 +18,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common/subscribe"
 	"github.com/LemoFoundationLtd/lemochain-core/network"
 	"github.com/LemoFoundationLtd/lemochain-core/network/p2p"
+	"math/big"
 	"runtime"
 	"strconv"
 	"time"
@@ -329,6 +330,11 @@ func (m *PrivateMineAPI) MineStop() {
 	m.miner.Stop()
 }
 
+// SetLeastGasPrice
+func (m *PrivateMineAPI) SetLeastGasPrice(price *big.Int) {
+	params.LeastGasPrice = price
+}
+
 // PublicMineAPI
 type PublicMineAPI struct {
 	miner *miner.Miner
@@ -337,6 +343,11 @@ type PublicMineAPI struct {
 // NewPublicMineAPI
 func NewPublicMineAPI(miner *miner.Miner) *PublicMineAPI {
 	return &PublicMineAPI{miner}
+}
+
+// GetLeastGasPrice
+func (m *PublicMineAPI) GetLeastGasPrice() string {
+	return params.LeastGasPrice.String()
 }
 
 // IsMining

@@ -405,6 +405,11 @@ func (tx *Transaction) VerifyTxBeforeTxPool(chainID uint16, timeStamp uint64) (e
 			verifyFailedTxMeter.Mark(1)
 		}
 	}()
+	// verify gas price
+	if params.LeastGasPrice.Cmp(tx.GasPrice()) > 0 {
+		log.Errorf("Tx gas price insufficient. tx gas price: %s. least gas price: %s", tx.GasPrice().String(), params.LeastGasPrice.String())
+		return ErrGasPrice
+	}
 
 	// verify time
 	if tx.Expiration() < timeStamp {
