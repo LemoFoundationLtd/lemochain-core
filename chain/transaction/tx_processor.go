@@ -268,10 +268,69 @@ func (p *TxProcessor) verifyTransactionSigs(tx *types.Transaction) error {
 	return nil
 }
 
+// VerifyAssetTx
+func (p *TxProcessor) VerifyAssetTx(tx *types.Transaction) error {
+	// 获取资产code
+	assetCode := common.Hash{}
+	switch tx.Type() {
+	case params.IssueAssetTx:
+		issueAsset, err := types.GetIssueAsset(tx.Data())
+		if err != nil {
+			return err
+		}
+		assetCode = issueAsset.AssetCode
+	case params.ReplenishAssetTx:
+		repl, err := types.GetReplenishAsset(tx.Data())
+		if err != nil {
+			return err
+		}
+		assetCode = repl.AssetCode
+	case params.ModifyAssetTx:
+		modifyInfo, err := types.GetModifyAssetInfo(tx.Data())
+		if err != nil {
+			return err
+		}
+		assetCode = modifyInfo.AssetCode
+	case params.TransferAssetTx:
+		TradingAssetInfo, err := types.GetTradingAsset(tx.Data())
+		if err != nil {
+			return err
+		}
+		assetId := TradingAssetInfo.AssetId
+		// 查询是否存在此资产
+		issueAcc := p.am.GetCanonicalAccount(tx.From())
+		_, err = issueAcc.GetAssetIdState(assetId)
+		return err
+	default:
+		return nil
+	}
+
+	if (assetCode != common.Hash{}) {
+		// 在稳定块中查询此资产是否已经被创建上链
+		issueAcc := p.am.GetCanonicalAccount(tx.From())
+		_, err := issueAcc.GetAssetCode(assetCode)
+		return err
+	}
+	return nil
+}
+
+// VerifyTxBeforeApply 执行交易之前的交易校验
+func (p *TxProcessor) VerifyTxBeforeApply(tx *types.Transaction) error {
+	// 验证资产交易依赖
+	if err := p.VerifyAssetTx(tx); err != nil {
+		return err
+	}
+	// 验证交易的签名
+	if err := p.verifyTransactionSigs(tx); err != nil {
+		return err
+	}
+	return nil
+}
+
 // applyTx processes transaction. Change accounts' data and execute contract codes.
 func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types.Transaction, txIndex uint, blockHash common.Hash, restApplyTime int64) (uint64, error) {
-	// 验证交易的签名
-	err := p.verifyTransactionSigs(tx)
+	// 执行交易之前的交易校验
+	err := p.VerifyTxBeforeApply(tx)
 	if err != nil {
 		return 0, err
 	}

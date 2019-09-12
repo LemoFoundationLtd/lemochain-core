@@ -744,7 +744,7 @@ func (pm *ProtocolManager) handleTxsMsg(msg *p2p.Msg) error {
 	// verify tx expiration time
 	nowTime := uint64(time.Now().Unix())
 	for _, tx := range txs {
-		if err := tx.VerifyTx(pm.chainID, nowTime); err != nil {
+		if err := tx.VerifyTxBeforeTxPool(pm.chainID, nowTime); err != nil {
 			continue
 		}
 

@@ -42,8 +42,7 @@ func NewRunAssetEnv(am *account.Manager) *RunAssetEnv {
 func (r *RunAssetEnv) CreateAssetTx(sender common.Address, data []byte, txHash common.Hash) error {
 	var err error
 	issuerAcc := r.am.GetAccount(sender)
-	asset := &types.Asset{}
-	err = json.Unmarshal(data, asset)
+	asset, err := types.GetAsset(data)
 	if err != nil {
 		return err
 	}

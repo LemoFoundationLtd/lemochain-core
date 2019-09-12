@@ -398,8 +398,8 @@ func (tx *Transaction) Clone() *Transaction {
 	return &cpy
 }
 
-// VerifyTx transaction parameter verification
-func (tx *Transaction) VerifyTx(chainID uint16, timeStamp uint64) (err error) {
+// VerifyTxBeforeTxPool 对收到的交易进入交易池之前的验证
+func (tx *Transaction) VerifyTxBeforeTxPool(chainID uint16, timeStamp uint64) (err error) {
 	defer func() {
 		if err != nil {
 			verifyFailedTxMeter.Mark(1)
@@ -457,6 +457,16 @@ func (tx *Transaction) VerifyTx(chainID uint16, timeStamp uint64) (err error) {
 			return err
 		}
 	}
+	// 验证创建资产交易的时候设置的分割和增发是否符合发行的资产类型
+	if tx.Type() == params.CreateAssetTx {
+		if asset, err := GetAsset(tx.Data()); err == nil {
+			if err := asset.VerifyAsset(); err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -479,7 +489,7 @@ func checkBoxTx(txdata []byte, chainID uint16, txTime, nowTime uint64) error {
 			return ErrVerifyBoxTx
 		}
 		// verify sonTx
-		if err := sonTx.VerifyTx(chainID, nowTime); err != nil {
+		if err := sonTx.VerifyTxBeforeTxPool(chainID, nowTime); err != nil {
 			return err
 		}
 	}
