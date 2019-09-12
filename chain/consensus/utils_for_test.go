@@ -8,14 +8,33 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto/secp256k1"
+	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"math/big"
+	"os"
+	"time"
 )
 
 var (
+	// The first deputy's private is set to "selfNodeKey" which means my miner private
 	testDeputies = generateDeputies(17)
 	testBlocks   = generateBlocks()
 )
+
+func GetStorePath() string {
+	return "../../testdata/consensus"
+}
+
+func ClearData() {
+	err := os.RemoveAll(GetStorePath())
+	failCnt := 1
+	for err != nil {
+		log.Errorf("CLEAR DATA BASE FAIL.%s, SLEEP(%ds) AND CONTINUE", err.Error(), failCnt)
+		time.Sleep(time.Duration(failCnt) * time.Second)
+		err = os.RemoveAll(GetStorePath())
+		failCnt++
+	}
+}
 
 type testBlockLoader struct {
 	Blocks []*types.Block
@@ -132,6 +151,10 @@ func generateDeputies(num int) types.DeputyNodes {
 			Rank:         uint32(i),
 			Votes:        big.NewInt(int64(10000000000 - i)),
 		})
+		// let me to be the first deputy
+		if i == 0 {
+			deputynode.SetSelfNodeKey(private)
+		}
 	}
 	return result
 }
@@ -149,7 +172,7 @@ func pickNodes(nodeIndexList ...int) types.DeputyNodes {
 }
 
 func initDeputyManager(deputyCount int) *deputynode.Manager {
-	dm := deputynode.NewManager(3, &testBlockLoader{})
+	dm := deputynode.NewManager(deputyCount, &testBlockLoader{})
 	nodeIndexList := make([]int, deputyCount)
 	for i := range nodeIndexList {
 		nodeIndexList[i] = i

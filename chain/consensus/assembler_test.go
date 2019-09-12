@@ -1,13 +1,17 @@
 package consensus
 
 import (
+	"crypto/ecdsa"
+	cryptoRand "crypto/rand"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
-	"github.com/LemoFoundationLtd/lemochain-core/chain/test"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/transaction"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
+	"github.com/LemoFoundationLtd/lemochain-core/common/crypto/secp256k1"
+	"github.com/LemoFoundationLtd/lemochain-core/common/merkle"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"github.com/stretchr/testify/assert"
 	"math/big"
@@ -22,39 +26,57 @@ const (
 )
 
 func TestNewBlockAssembler(t *testing.T) {
-	test.ClearData()
-	db := store.NewChainDataBase(test.GetStorePath(), "", "")
-	defer db.Close()
-	am := account.NewManager(common.Hash{}, db)
 	dm := deputynode.NewManager(5, &testBlockLoader{})
 
-	ba := NewBlockAssembler(am, dm, &transaction.TxProcessor{}, createCandidateLoader())
-	assert.Equal(t, am, ba.am)
+	ba := NewBlockAssembler(nil, dm, &transaction.TxProcessor{}, createCandidateLoader())
+	assert.Equal(t, dm, ba.dm)
 }
 
 func TestBlockAssembler_PrepareHeader(t *testing.T) {
-	test.ClearData()
-	db := store.NewChainDataBase(test.GetStorePath(), "", "")
+	ClearData()
+	db := store.NewChainDataBase(GetStorePath(), "", "")
 	defer db.Close()
 	am := account.NewManager(common.Hash{}, db)
-	dm := deputynode.NewManager(5, &testBlockLoader{})
+	dm := initDeputyManager(5)
 
 	ba := NewBlockAssembler(am, dm, &transaction.TxProcessor{}, createCandidateLoader())
 	parentHeader := &types.Header{Height: 100, Time: 1001}
 
-	// not miner
-	newHeader, err := ba.PrepareHeader(parentHeader, nil)
-	assert.Equal(t, ErrNotDeputy, err)
-
+	// I'm a miner
 	now := uint32(time.Now().Unix())
-	newHeader, err = ba.PrepareHeader(parentHeader, []byte{12, 34})
+	newHeader, err := ba.PrepareHeader(parentHeader, []byte{12, 34})
 	assert.NoError(t, err)
 	assert.Equal(t, parentHeader.Hash(), newHeader.ParentHash)
-	assert.Equal(t, nil, newHeader.MinerAddress)
+	assert.Equal(t, testDeputies[0].MinerAddress, newHeader.MinerAddress)
 	assert.Equal(t, parentHeader.Height+1, newHeader.Height)
-	assert.Equal(t, parentHeader.Height+1, newHeader.GasLimit)
+	assert.Equal(t, params.GenesisGasLimit, newHeader.GasLimit)
 	assert.Equal(t, []byte{12, 34}, newHeader.Extra)
 	assert.Equal(t, true, newHeader.Time >= now)
+
+	// I'm not miner
+	privateBackup := deputynode.GetSelfNodeKey()
+	private, _ := ecdsa.GenerateKey(secp256k1.S256(), cryptoRand.Reader)
+	deputynode.SetSelfNodeKey(private)
+	_, err = ba.PrepareHeader(parentHeader, nil)
+	assert.Equal(t, ErrNotDeputy, err)
+	deputynode.SetSelfNodeKey(privateBackup)
+}
+
+func TestCalcGasLimit(t *testing.T) {
+	parentHeader := &types.Header{GasLimit: 0, GasUsed: 0}
+	limit := calcGasLimit(parentHeader)
+	assert.Equal(t, true, limit > params.MinGasLimit)
+	assert.Equal(t, params.TargetGasLimit, limit)
+
+	parentHeader = &types.Header{GasLimit: params.TargetGasLimit + 100000000000, GasUsed: params.TargetGasLimit + 100000000000}
+	limit = calcGasLimit(parentHeader)
+	assert.Equal(t, true, limit > params.MinGasLimit)
+	assert.Equal(t, true, limit > params.TargetGasLimit)
+
+	parentHeader = &types.Header{GasLimit: params.TargetGasLimit + 100000000000, GasUsed: 0}
+	limit = calcGasLimit(parentHeader)
+	assert.Equal(t, true, limit > params.MinGasLimit)
+	assert.Equal(t, true, limit > params.TargetGasLimit)
 }
 
 // 对区块进行签名的函数
@@ -71,66 +93,51 @@ func signTestBlock(deputyPrivate string, block *types.Block) {
 	block.Header.SignData = signBlock
 }
 
-// newSignedBlock 用来生成符合测试用例所用的区块
-func newSignedBlock(dpovp *DPoVP, parentHash common.Hash, author common.Address, txs []*types.Transaction, time uint32, signPrivate string, save bool) *types.Block {
-	newBlockInfo := test.blockInfo{
-		parentHash: parentHash,
-		author:     author,
-		txList:     txs,
-		gasLimit:   500000000,
-		time:       time,
+func TestBlockAssembler_Seal(t *testing.T) {
+	canLoader := createCandidateLoader(0, 1, 3)
+	ba := NewBlockAssembler(nil, nil, nil, canLoader)
+
+	// not snapshot block
+	header := &types.Header{Height: 100}
+	txs := []*types.Transaction{
+		types.NewTransaction(common.HexToAddress("0x123"), common.Address{}, common.Big1, 2000000, common.Big2, []byte{12}, 0, 100, 1538210391, "aa", "aaa"),
+		{},
 	}
-	parent, err := dpovp.db.GetBlockByHash(parentHash)
-	if err != nil {
-		// genesis block
-		newBlockInfo.height = 0
-	} else {
-		newBlockInfo.height = parent.Height() + 1
+	product := &account.TxsProduct{
+		Txs:         txs,
+		GasUsed:     123,
+		ChangeLogs:  types.ChangeLogSlice{{LogType: 101}, {}},
+		VersionRoot: common.HexToHash("0x124"),
 	}
-	testBlock := test.makeBlock(dpovp.db, newBlockInfo, save)
-	if save {
-		if err := dpovp.UpdateStable(testBlock); err != nil {
-			panic(err)
-		}
-	}
-	// 对区块进行签名
-	signTestBlock(signPrivate, testBlock)
-	return testBlock
+	confirms := []types.SignData{{0x12}, {0x34}}
+	block01 := ba.Seal(header, product, confirms)
+	assert.Equal(t, product.VersionRoot, block01.VersionRoot())
+	assert.Equal(t, product.ChangeLogs.MerkleRootSha(), block01.LogRoot())
+	assert.Equal(t, product.Txs.MerkleRootSha(), block01.TxRoot())
+	assert.Equal(t, product.GasUsed, block01.GasUsed())
+	assert.Equal(t, product.Txs, block01.Txs)
+	assert.Equal(t, product.ChangeLogs, block01.ChangeLogs)
+	assert.Equal(t, confirms, block01.Confirms)
+
+	// snapshot block
+	header = &types.Header{Height: params.TermDuration}
+	product = &account.TxsProduct{}
+	confirms = []types.SignData{}
+	block02 := ba.Seal(header, product, confirms)
+	assert.NotEqual(t, block01.Hash(), block02.Hash())
+	deputies := types.DeputyNodes(canLoader)
+	assert.Equal(t, deputies, block02.DeputyNodes)
+	deputyRoot := deputies.MerkleRootSha()
+	assert.Equal(t, deputyRoot[:], block02.DeputyRoot())
+	assert.Equal(t, merkle.EmptyTrieHash, block02.LogRoot())
+	assert.Equal(t, merkle.EmptyTrieHash, block02.TxRoot())
+	assert.Equal(t, uint64(0), block02.GasUsed())
+	assert.Empty(t, block02.Txs)
+	assert.Empty(t, block02.ChangeLogs)
+	assert.Empty(t, block02.Confirms)
 }
 
-// TestDpovp_Seal
-// func TestDpovp_Seal(t *testing.T) {
-// 	// 创建5个代理节点
-// 	dm := initDeputyManager(5)
-// 	dpovp := loadDpovp(dm)
-// 	defer dpovp.db.Close()
-// 	// 创世块
-// 	block00 := newSignedBlock(dpovp, common.Hash{}, common.HexToAddress(block01MinerAddress), nil, 995, deputy01Privkey, true)
-//
-// 	txs := []*types.Transaction{
-// 		signTransaction(types.NewTransaction(defaultAccounts[0], common.Big1, 2000000, common.Big2, []byte{12}, 0, chainID, 1538210391, "aa", "aaa"), testPrivate),
-// 		makeTransaction(testPrivate, defaultAccounts[1], params.OrdinaryTx, common.Big1, common.Big2, 1538210491, 2000000),
-// 	}
-// 	// parent is genesis block,此区块是作为测试区块的参照区块
-// 	block01 := newSignedBlock(dpovp, block00.Hash(), common.HexToAddress(block01MinerAddress), txs, 1000, deputy01Privkey, true)
-//
-// 	TestBlockHeader := block01.Header // 得到block01头，为生成TestBlock所用
-// 	product := &account.TxsProduct{
-// 		Txs:         txs,
-// 		GasUsed:     block01.GasUsed(),
-// 		ChangeLogs:  block01.ChangeLogs,
-// 		VersionRoot: block01.VersionRoot(),
-// 	}
-// 	TestBlock, err := dpovp.Seal(TestBlockHeader, product, block01.Confirms, nil)
-// 	assert.NoError(t, err)
-// 	assert.Equal(t, block01.Hash(), TestBlock.Hash())
-// 	assert.Equal(t, block01.Txs, TestBlock.Txs)
-// 	assert.Equal(t, block01.ChangeLogs, TestBlock.ChangeLogs)
-// 	assert.Equal(t, types.DeputyNodes(nil), TestBlock.DeputyNodes)
-// }
-//
-// // TestDpovp_Finalize
-// func TestDpovp_Finalize(t *testing.T) {
+// func TestBlockAssembler_Finalize(t *testing.T) {
 // 	dm := deputynode.NewManager(5, &testBlockLoader{})
 //
 // 	// 第0届 一个deputy node
@@ -349,6 +356,33 @@ func newSignedBlock(dpovp *DPoVP, parentHash common.Hash, author common.Address,
 // 		assert.Equal(t, true, actualTotal.Cmp(new(big.Int).Sub(totalSalary, errRange)) >= 0)
 // 		assert.Equal(t, true, actualTotal.Cmp(totalSalary) <= 0)
 // 	}
+// }
+
+// newSignedBlock 用来生成符合测试用例所用的区块
+// func newSignedBlock(dpovp *DPoVP, parentHash common.Hash, author common.Address, txs []*types.Transaction, time uint32, signPrivate string, save bool) *types.Block {
+// 	newBlockInfo := test.blockInfo{
+// 		parentHash: parentHash,
+// 		author:     author,
+// 		txList:     txs,
+// 		gasLimit:   500000000,
+// 		time:       time,
+// 	}
+// 	parent, err := dpovp.db.GetBlockByHash(parentHash)
+// 	if err != nil {
+// 		// genesis block
+// 		newBlockInfo.height = 0
+// 	} else {
+// 		newBlockInfo.height = parent.Height() + 1
+// 	}
+// 	testBlock := test.makeBlock(dpovp.db, newBlockInfo, save)
+// 	if save {
+// 		if err := dpovp.UpdateStable(testBlock); err != nil {
+// 			panic(err)
+// 		}
+// 	}
+// 	// 对区块进行签名
+// 	signTestBlock(signPrivate, testBlock)
+// 	return testBlock
 // }
 
 func registerDeputies(deputies types.DeputyNodes, am *account.Manager) {

@@ -95,6 +95,7 @@ func ClearData() {
 
 // newDB creates db for test account module
 func newDB() protocol.ChainDB {
+	defaultBlocks = make([]*types.Block, 0)
 	db := store.NewChainDataBase(GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
 	for i, _ := range defaultBlockInfos {
 		// use pointer for repairing incorrect hash

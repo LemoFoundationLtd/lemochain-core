@@ -69,8 +69,7 @@ func TestStableManager_StableBlock(t *testing.T) {
 }
 
 func TestStableManager_UpdateStable(t *testing.T) {
-	dm := deputynode.NewManager(3, &testBlockLoader{})
-	setTermDeputiesCount(dm, 0, 3)
+	dm := initDeputyManager(3)
 	block0 := testBlocks[0].ShallowCopy() // stable block
 	block1 := block0.ShallowCopy()        // unstable block (enough confirm)
 	block1.Header = &types.Header{Height: block1.Height() + 1}
@@ -140,8 +139,7 @@ func TestIsConfirmEnough(t *testing.T) {
 			test := test // capture range variable
 			t.Parallel()
 
-			dm := deputynode.NewManager(test.DeputyCount, &testBlockLoader{})
-			setTermDeputiesCount(dm, 0, test.DeputyCount)
+			dm := initDeputyManager(test.DeputyCount)
 			block := testBlocks[0].ShallowCopy()
 			block.Confirms = make([]types.SignData, test.ConfirmCount)
 			assert.Equal(t, test.Want, IsConfirmEnough(block, dm))

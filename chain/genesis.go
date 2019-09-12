@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/transaction"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
@@ -97,8 +98,8 @@ var (
 	}
 )
 
-// BuildDeputyNodes 通过candidate info 来构建出deputy node
-func BuildDeputyNodes(DeputyNodesInfo []*CandidateInfo) types.DeputyNodes {
+// buildDeputyNodes 通过candidate info 来构建出deputy node
+func buildDeputyNodes(DeputyNodesInfo []*CandidateInfo) types.DeputyNodes {
 	deputyNodes := make(types.DeputyNodes, 0)
 	for i, info := range DeputyNodesInfo {
 		node := &types.DeputyNode{
@@ -141,7 +142,7 @@ func DefaultGenesisConfig() *Genesis {
 	return &Genesis{
 		Time:            uint32(timeSpan.Unix()),
 		ExtraData:       []byte(""),
-		GasLimit:        105000000,
+		GasLimit:        params.GenesisGasLimit,
 		Founder:         DefaultFounder,
 		DeputyNodesInfo: DefaultDeputyNodesInfo,
 	}
@@ -207,7 +208,7 @@ func (g *Genesis) ToBlock(am *account.Manager) (*types.Block, error) {
 	// 注册第一届候选节点info
 	g.initCandidateListInfo(am)
 	// register candidate node for first term deputy nodes
-	deputyNodes := BuildDeputyNodes(g.DeputyNodesInfo)
+	deputyNodes := buildDeputyNodes(g.DeputyNodesInfo)
 	err := am.Finalise()
 	if err != nil {
 		return nil, err

@@ -54,34 +54,13 @@ func (t *parentLoader) GetParentByHeight(height uint32, sonBlockHash common.Hash
 	return block
 }
 
-type candidateLoader struct {
-	db protocol.ChainDB
-	dm *deputynode.Manager
-	am *account.Manager
+type candidateLoader types.DeputyNodes
+
+func (cl candidateLoader) LoadTopCandidates(blockHash common.Hash) types.DeputyNodes {
+	return types.DeputyNodes(cl)
 }
 
-func (cl *candidateLoader) LoadTopCandidates(blockHash common.Hash) types.DeputyNodes {
-	// TODO simplify
-	result := make(types.DeputyNodes, 0, cl.dm.DeputyCount)
-	list := cl.db.GetCandidatesTop(blockHash)
-	if len(list) > cl.dm.DeputyCount {
-		list = list[:cl.dm.DeputyCount]
-	}
-
-	for i, n := range list {
-		acc := cl.am.GetAccount(n.GetAddress())
-		candidate := acc.GetCandidate()
-		strID := candidate[types.CandidateKeyNodeID]
-		dn, err := types.NewDeputyNode(n.GetTotal(), uint32(i), n.GetAddress(), strID)
-		if err != nil {
-			continue
-		}
-		result = append(result, dn)
-	}
-	return result
-}
-
-func (dp *candidateLoader) LoadRefundCandidates() ([]common.Address, error) {
+func (cl candidateLoader) LoadRefundCandidates() ([]common.Address, error) {
 	return []common.Address{}, nil
 }
 
@@ -94,13 +73,12 @@ const (
 )
 
 type blockInfo struct {
-	height      uint32
-	author      common.Address
-	txList      types.Transactions
-	gasLimit    uint64
-	time        uint32
-	deputyNodes types.DeputyNodes
-	status      dbStatus
+	height   uint32
+	author   common.Address
+	txList   types.Transactions
+	gasLimit uint64
+	time     uint32
+	status   dbStatus
 }
 
 var (
@@ -116,11 +94,10 @@ var (
 	defaultBlockInfos = []blockInfo{
 		// genesis block must no transactions
 		{
-			height:      0,
-			author:      defaultAccounts[0],
-			time:        1538209751,
-			deputyNodes: chain.BuildDeputyNodes(chain.DefaultDeputyNodesInfo),
-			status:      Stable,
+			height: 0,
+			author: defaultAccounts[0],
+			time:   1538209751,
+			status: Stable,
 		},
 		// block 1
 		{
@@ -201,14 +178,20 @@ func CloseTestChain(bc *chain.BlockChain, db protocol.ChainDB) {
 func initGenesis(db protocol.ChainDB) {
 	am := account.NewManager(common.Hash{}, db)
 
-	genesis := chain.DefaultGenesisConfig()
-	genesis.Time = defaultBlockInfos[0].time
-	genesis.Founder = defaultBlockInfos[0].author
 	// copy and set first miner address
-	firstCandidate := *genesis.DeputyNodesInfo[0]
-	firstCandidate.MinerAddress = FounderAddr
-	firstCandidate.NodeID = crypto.PrivateKeyToNodeID(FounderPrivate)
-	genesis.DeputyNodesInfo[0] = &firstCandidate
+	deputies := chain.DefaultDeputyNodesInfo
+	firstDeputy := *deputies[0]
+	firstDeputy.MinerAddress = FounderAddr
+	firstDeputy.NodeID = crypto.PrivateKeyToNodeID(FounderPrivate)
+	deputies = append([]*chain.CandidateInfo{&firstDeputy}, deputies[1:]...)
+
+	genesis := &chain.Genesis{
+		Time:            defaultBlockInfos[0].time,
+		ExtraData:       []byte("test chain"),
+		GasLimit:        params.GenesisGasLimit,
+		Founder:         defaultBlockInfos[0].author,
+		DeputyNodesInfo: deputies,
+	}
 	block, err := genesis.ToBlock(am)
 	if err != nil {
 		panic(err)
@@ -232,7 +215,8 @@ func initBlocks(db protocol.ChainDB, dm *deputynode.Manager) {
 func makeBlock(db protocol.ChainDB, dm *deputynode.Manager, info blockInfo, parentHeader *types.Header) *types.Block {
 	am := account.NewManager(parentHeader.Hash(), db)
 	processor := transaction.NewTxProcessor(FounderAddr, chainID, &parentLoader{db}, am, db, dm)
-	assembler := consensus.NewBlockAssembler(am, dm, processor, &candidateLoader{db, dm, am})
+	canLoader := candidateLoader(defaultBlocks[0].DeputyNodes)
+	assembler := consensus.NewBlockAssembler(am, dm, processor, canLoader)
 	// account
 	header, err := assembler.PrepareHeader(parentHeader, nil)
 	if err != nil {
@@ -243,7 +227,12 @@ func makeBlock(db protocol.ChainDB, dm *deputynode.Manager, info blockInfo, pare
 		panic(err)
 	}
 	if len(validTxs) != len(info.txList) {
-		panic("invalid tx")
+		for i, tx := range validTxs {
+			if tx != info.txList[i] {
+				log.Errorf("invalid tx %v", info.txList[i])
+				panic("there is a invalid tx")
+			}
+		}
 	}
 
 	saveBlock(db, am, block, info.status)
