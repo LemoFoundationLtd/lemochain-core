@@ -272,7 +272,6 @@ func (p *TxProcessor) verifyTransactionSigs(tx *types.Transaction) error {
 func (p *TxProcessor) assetTxRelyVerify(tx *types.Transaction) error {
 	// 获取资产code
 	assetCode := common.Hash{}
-	assetId := common.Hash{}
 	switch tx.Type() {
 	case params.IssueAssetTx:
 		issueAsset, err := types.GetIssueAsset(tx.Data())
@@ -297,8 +296,11 @@ func (p *TxProcessor) assetTxRelyVerify(tx *types.Transaction) error {
 		if err != nil {
 			return err
 		}
-		assetId = TradingAssetInfo.AssetId
-
+		assetId := TradingAssetInfo.AssetId
+		// 查询是否存在此资产
+		issueAcc := p.am.GetCanonicalAccount(tx.From())
+		_, err = issueAcc.GetAssetIdState(assetId)
+		return err
 	default:
 		return nil
 	}
@@ -307,13 +309,6 @@ func (p *TxProcessor) assetTxRelyVerify(tx *types.Transaction) error {
 		// 在稳定块中查询此资产是否已经被创建上链
 		issueAcc := p.am.GetCanonicalAccount(tx.From())
 		_, err := issueAcc.GetAssetCode(assetCode)
-		return err
-	}
-
-	if (assetId != common.Hash{}) {
-		// 查询是否存在此资产
-		issueAcc := p.am.GetCanonicalAccount(tx.From())
-		_, err := issueAcc.GetAssetIdState(assetId)
 		return err
 	}
 	return nil
