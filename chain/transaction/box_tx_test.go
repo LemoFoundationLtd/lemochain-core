@@ -19,8 +19,7 @@ func getBoxTx(length int, containBoxTx bool) *types.Transaction {
 	txs := make(types.Transactions, 0)
 	for i := 0; i < length; i++ {
 		randPriv, _ := crypto.GenerateKey()
-		by := crypto.FromECDSA(randPriv)
-		to := common.BytesToAddress(by)
+		to := crypto.PubkeyToAddress(randPriv.PublicKey)
 
 		tx := types.NewTransaction(godAddr, to, big.NewInt(100), uint64(21000), common.Big1, nil, params.OrdinaryTx, chainID, uint64(time.Now().Unix()+60*30), "", "")
 		signTx, err := types.MakeSigner().SignTx(tx, godPrivate)
