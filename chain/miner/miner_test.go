@@ -7,9 +7,11 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/txpool"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
+	"github.com/LemoFoundationLtd/lemochain-core/common/flag"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"github.com/LemoFoundationLtd/lemochain-core/store/protocol"
@@ -234,50 +236,14 @@ func makeSignBlock(key string, db protocol.ChainDB, info blockInfo, save bool) (
 	return block, nil
 }
 
-type EngineTestForMiner struct{}
+type testChain struct{}
 
-func (engine *EngineTestForMiner) VerifyBeforeTxProcess(block *types.Block) error {
-	return nil
-}
-func (engine *EngineTestForMiner) VerifyAfterTxProcess(block, computedBlock *types.Block) error {
-	return nil
-}
-func (engine *EngineTestForMiner) Finalize(height uint32, am *account.Manager) error {
-	return nil
-}
-func (engine *EngineTestForMiner) Seal(header *types.Header, txProduct *account.TxsProduct, confirms []types.SignData, dNodes types.DeputyNodes) (*types.Block, error) {
-	return types.NewBlock(header, txProduct.Txs, txProduct.ChangeLogs), nil
-}
-func (engine *EngineTestForMiner) VerifyConfirmPacket(height uint32, blockHash common.Hash, sigList []types.SignData) error {
-	return nil
-}
-func (engine *EngineTestForMiner) TrySwitchFork(stable, oldCurrent *types.Block) *types.Block {
-	return nil
-}
-func (engine *EngineTestForMiner) ChooseNewFork() *types.Block {
-	return nil
-}
-func (engine *EngineTestForMiner) CanBeStable(height uint32, confirmCount int) bool {
-	return true
+func (tc *testChain) CurrentBlock() *types.Block {
+	panic("implement me")
 }
 
-func newBlockChain() (*chain.BlockChain, chan *types.Block, error) {
-	chainID := uint16(99)
-	db := store.NewChainDataBase(GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
-	genesis := chain.DefaultGenesisConfig()
-	chain.SetupGenesisBlock(db, genesis)
-
-	dm := deputynode.NewManager(5)
-	dm.SaveSnapshot(0, chain.DefaultDeputyNodes)
-	var engine EngineTestForMiner
-	ch := make(chan *types.Block)
-	// TODO defer close it
-	blockChain, err := chain.NewBlockChain(chainID, &engine, dm, db, nil)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return blockChain, ch, nil
+func (tc *testChain) MineBlock(int64) {
+	panic("implement me")
 }
 
 func setSelfNodeKey(key string) {
@@ -285,17 +251,23 @@ func setSelfNodeKey(key string) {
 	deputynode.SetSelfNodeKey(tmp)
 }
 
-func newMiner(key string) (*Miner, error) {
+func newMiner(nodeKey string) (*Miner, *chain.BlockChain, *store.ChainDatabase) {
 	ClearData()
-	setSelfNodeKey(key)
+	setSelfNodeKey(nodeKey)
 
-	blockChain, _, err := newBlockChain()
+	chainID := uint16(99)
+	db := store.NewChainDataBase(GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
+	genesis := chain.DefaultGenesisConfig()
+	chain.SetupGenesisBlock(db, genesis)
+
+	dm := deputynode.NewManager(5, db)
+	// TODO defer close it
+	blockChain, err := chain.NewBlockChain(chain.Config{chainID, 10000}, dm, db, flag.CmdFlags{}, txpool.NewTxPool())
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 
-	txPool := chain.NewTxPool(100)
-	return New(Cnf, blockChain, txPool, new(EngineTestForMiner)), nil
+	return New(Cnf, blockChain, blockChain.DeputyManager()), blockChain, db
 }
 
 func calDeviation(ex int, src int) bool {
@@ -319,10 +291,10 @@ func init() {
 }
 
 func TestMiner_GetSleepGenesis(t *testing.T) {
-	me := Nodes[0].privateKey
-	miner, err := newMiner(me)
-	assert.NoError(t, err)
-	defer miner.chain.Db().Close()
+	miner, bc, db := newMiner(Nodes[0].privateKey)
+	defer miner.Stop()
+	defer bc.Stop()
+	defer db.Close()
 
 	reset0 := miner.getSleepTime()
 
@@ -346,9 +318,10 @@ func TestMiner_GetSleepGenesis(t *testing.T) {
 }
 
 func TestMine_GetSleepNotSelf(t *testing.T) {
-	miner, err := newMiner(Nodes[0].privateKey)
-	assert.NoError(t, err)
-	defer miner.chain.Db().Close()
+	miner, bc, db := newMiner(Nodes[0].privateKey)
+	defer miner.Stop()
+	defer bc.Stop()
+	defer db.Close()
 
 	genesis := miner.chain.GetBlockByHeight(0)
 	info := blockInfo{parentHash: genesis.Hash(), height: 1, author: common.HexToAddress(Nodes[0].address)}
@@ -366,20 +339,22 @@ func TestMine_GetSleepNotSelf(t *testing.T) {
 }
 
 func TestMiner_GetSleep1Deputy(t *testing.T) {
-	miner, err := newMiner(Nodes[0].privateKey)
+	miner, bc, db := newMiner(Nodes[0].privateKey)
+	defer miner.Stop()
+	defer bc.Stop()
+	defer db.Close()
 	// overwrite existed deputy nodes by only one node
-	miner.chain.DeputyManager().SaveSnapshot(0, types.DeputyNodes{chain.DefaultDeputyNodes[0]})
-	assert.NoError(t, err)
-	defer miner.chain.Db().Close()
+	bc.DeputyManager().SaveSnapshot(0, types.DeputyNodes{chain.DefaultDeputyNodes[0]})
 
 	reset := miner.getSleepTime()
 	assert.Equal(t, int(Cnf.SleepTime), reset)
 }
 
 func TestMiner_GetSleepValidAuthor(t *testing.T) {
-	miner, err := newMiner(Nodes[0].privateKey)
-	assert.NoError(t, err)
-	defer miner.chain.Db().Close()
+	miner, bc, db := newMiner(Nodes[0].privateKey)
+	defer miner.Stop()
+	defer bc.Stop()
+	defer db.Close()
 
 	genesis := miner.chain.GetBlockByHeight(0)
 	info := blockInfo{parentHash: genesis.Hash(), height: 1, author: common.HexToAddress(Nodes[5].address)}
@@ -395,9 +370,10 @@ func TestMiner_GetSleepValidAuthor(t *testing.T) {
 }
 
 func TestMiner_GetSleepSlot1(t *testing.T) {
-	miner, err := newMiner(Nodes[0].privateKey)
-	assert.NoError(t, err)
-	defer miner.chain.Db().Close()
+	miner, bc, db := newMiner(Nodes[0].privateKey)
+	defer miner.Stop()
+	defer bc.Stop()
+	defer db.Close()
 
 	genesis := miner.chain.GetBlockByHeight(0)
 	wait := 1
@@ -441,9 +417,10 @@ func TestMiner_GetSleepSlot1(t *testing.T) {
 }
 
 func TestMiner_GetSleepSlot2(t *testing.T) {
-	miner, err := newMiner(Nodes[0].privateKey)
-	assert.NoError(t, err)
-	defer miner.chain.Db().Close()
+	miner, bc, db := newMiner(Nodes[0].privateKey)
+	defer miner.Stop()
+	defer bc.Stop()
+	defer db.Close()
 
 	genesis := miner.chain.GetBlockByHeight(0)
 	wait := 31
@@ -487,9 +464,10 @@ func TestMiner_GetSleepSlot2(t *testing.T) {
 }
 
 func TestMiner_GetSleepSlot3(t *testing.T) {
-	miner, err := newMiner(Nodes[0].privateKey)
-	assert.NoError(t, err)
-	defer miner.chain.Db().Close()
+	miner, bc, db := newMiner(Nodes[0].privateKey)
+	defer miner.Stop()
+	defer bc.Stop()
+	defer db.Close()
 
 	genesis := miner.chain.GetBlockByHeight(0)
 	wait := 45
@@ -533,9 +511,10 @@ func TestMiner_GetSleepSlot3(t *testing.T) {
 }
 
 func TestMiner_GetSleepSlot4(t *testing.T) {
-	miner, err := newMiner(Nodes[0].privateKey)
-	assert.NoError(t, err)
-	defer miner.chain.Db().Close()
+	miner, bc, db := newMiner(Nodes[0].privateKey)
+	defer miner.Stop()
+	defer bc.Stop()
+	defer db.Close()
 
 	genesis := miner.chain.GetBlockByHeight(0)
 	wait := 45
@@ -579,8 +558,10 @@ func TestMiner_GetSleepSlot4(t *testing.T) {
 }
 
 // func TestMiner_GetSleepSlot5(t *testing.T) {
-// 	miner, err := newMiner(Nodes[0].privateKey)
-// 	assert.NoError(t, err)
+// miner,bc,db := newMiner(Nodes[0].privateKey)
+// defer miner.Stop()
+// defer bc.Stop()
+// defer db.Close()
 //
 // 	genesis := miner.chain.GetBlockByHeight(0)
 // 	wait := 95
@@ -625,10 +606,10 @@ func TestMiner_GetSleepSlot4(t *testing.T) {
 // }
 
 func TestMiner_GetSleepNormal(t *testing.T) {
-	me := Nodes[0].privateKey
-	miner, err := newMiner(me)
-	assert.NoError(t, err)
-	defer miner.chain.Db().Close()
+	miner, bc, db := newMiner(Nodes[0].privateKey)
+	defer miner.Stop()
+	defer bc.Stop()
+	defer db.Close()
 
 	genesis := miner.chain.GetBlockByHeight(0)
 	info := blockInfo{parentHash: genesis.Hash(), height: 1, author: common.HexToAddress(Nodes[0].address)}

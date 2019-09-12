@@ -3,6 +3,7 @@ package consensus
 import (
 	"crypto/ecdsa"
 	"crypto/rand"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
@@ -145,6 +146,17 @@ func pickNodes(nodeIndexList ...int) types.DeputyNodes {
 		result = append(result, newDeputy)
 	}
 	return result
+}
+
+func initDeputyManager(deputyCount int) *deputynode.Manager {
+	dm := deputynode.NewManager(3, &testBlockLoader{})
+	nodeIndexList := make([]int, deputyCount)
+	for i := range nodeIndexList {
+		nodeIndexList[i] = i
+	}
+	nodes := pickNodes(nodeIndexList...)
+	dm.SaveSnapshot(0, nodes)
+	return dm
 }
 
 // generateBlocks generate block forks like this:

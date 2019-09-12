@@ -21,6 +21,7 @@ type Chain interface {
 	MineBlock(int64)
 }
 
+// Miner 负责出块调度算法，决定什么时候该出块。本身并不负责区块封装的逻辑
 type Miner struct {
 	blockInterval int64
 	timeoutTime   int64

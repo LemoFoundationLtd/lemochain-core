@@ -162,8 +162,8 @@ func (ba *BlockAssembler) checkSetTermReward(height uint32) {
 	}
 }
 
-// refundCandidatePledge 退还取消候选节点的质押押金
-func (ba *BlockAssembler) refundCandidatePledge(am *account.Manager) {
+// refundCandidateDeposit 退还取消候选节点的质押押金
+func (ba *BlockAssembler) refundCandidateDeposit(am *account.Manager) {
 	// the address list of candidates who need to refund
 	addrList, err := ba.canLoader.LoadRefundCandidates()
 	if err != nil {
@@ -216,7 +216,7 @@ func (ba *BlockAssembler) Finalize(height uint32, am *account.Manager) error {
 			return err
 		}
 		// 退还取消候选节点的质押金额
-		ba.refundCandidatePledge(am)
+		ba.refundCandidateDeposit(am)
 	}
 
 	// 设置执行区块之后余额变化造成的候选节点的票数变化
