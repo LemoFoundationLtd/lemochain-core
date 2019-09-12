@@ -3,11 +3,12 @@ package node
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/LemoFoundationLtd/lemochain-core/chain"
-	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/testchain"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/txpool"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
+	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
@@ -15,16 +16,16 @@ import (
 
 // TestAccountAPI_api account api test
 func TestAccountAPI_api(t *testing.T) {
-	ClearData()
-	db := newDB()
-	defer db.Close()
-	am := account.NewManager(common.Hash{}, db)
+	bc, db := testchain.NewTestChain()
+	defer testchain.CloseTestChain(bc, db)
+
+	am := bc.AccountManager()
 	acc := NewPublicAccountAPI(am)
 	priAcc := NewPrivateAccountAPI(am)
 	// Create key pair
 	addressKeyPair, err := priAcc.NewKeyPair()
 	assert.NoError(t, err)
-	t.Log(addressKeyPair)
+	assert.NotNil(t, addressKeyPair.Private)
 
 	// getBalance api
 	b01 := acc.manager.GetCanonicalAccount(common.HexToAddress("0x015780F8456F9c1532645087a19DcF9a7e0c7F97")).GetBalance().String()
@@ -39,8 +40,8 @@ func TestAccountAPI_api(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, b02, bb02)
 
-	b03 := acc.manager.GetCanonicalAccount(testAddr).GetBalance().String()
-	bb03, err := acc.GetBalance(testAddr.String())
+	b03 := acc.manager.GetCanonicalAccount(testchain.FounderAddr).GetBalance().String()
+	bb03, err := acc.GetBalance(testchain.FounderAddr.String())
 	assert.NoError(t, err)
 	assert.Equal(t, b03, bb03)
 
@@ -50,24 +51,23 @@ func TestAccountAPI_api(t *testing.T) {
 	addr, err := common.StringToAddress("0x015780F8456F9c1532645087a19DcF9a7e0c7F97")
 	assert.NoError(t, err)
 	assert.Equal(t, acc.manager.GetCanonicalAccount(addr), account01)
-
 }
 
 // TestChainAPI_api chain api test
 func TestChainAPI_api(t *testing.T) {
-	ClearData()
-	bc := newChain()
-	defer bc.Db().Close()
+	bc, db := testchain.NewTestChain()
+	defer testchain.CloseTestChain(bc, db)
 	c := NewPublicChainAPI(bc)
 
 	// getBlockByHash
-	exBlock1 := c.chain.GetBlockByHash(common.HexToHash("0x0bee913d964dea2142789d13b2df9c156fb3097c432762e9cceefa9814a0ebb1"))
+	targetBlock := testchain.LoadDefaultBlock(1)
+	exBlock1 := c.chain.GetBlockByHash(targetBlock.Hash())
 
-	assert.Equal(t, exBlock1.VersionRoot(), defaultBlocks[1].VersionRoot())
-	assert.Equal(t, exBlock1.Height(), defaultBlocks[1].Height())
-	assert.Equal(t, exBlock1.ParentHash(), defaultBlocks[1].ParentHash())
-	assert.Equal(t, exBlock1.Header.LogRoot, defaultBlocks[1].Header.LogRoot)
-	assert.Equal(t, exBlock1.Header.TxRoot, defaultBlocks[1].Header.TxRoot)
+	assert.Equal(t, exBlock1.VersionRoot(), targetBlock.VersionRoot())
+	assert.Equal(t, exBlock1.Height(), targetBlock.Height())
+	assert.Equal(t, exBlock1.ParentHash(), targetBlock.ParentHash())
+	assert.Equal(t, exBlock1.Header.LogRoot, targetBlock.Header.LogRoot)
+	assert.Equal(t, exBlock1.Header.TxRoot, targetBlock.Header.TxRoot)
 
 	assert.Equal(t, exBlock1, c.GetBlockByHash("0x0bee913d964dea2142789d13b2df9c156fb3097c432762e9cceefa9814a0ebb1", true))
 	Block1 := &types.Block{
@@ -116,45 +116,26 @@ func TestChainAPI_api(t *testing.T) {
 
 	// get nodeVersion
 	// todo
-
 }
 
 // TestTxAPI_api send tx api test
 func TestTxAPI_api(t *testing.T) {
-	ClearData()
-	testTx := types.NewTransaction(common.HexToAddress("0x1"), common.Big1, 100, common.Big2, []byte{12}, 0, chainID, uint64(time.Now().Unix()+60*30), "aa", string("send a Tx"))
-	tx := signTransaction(testTx, testPrivate)
-	// signTx := signTransaction(testTx, testPrivate)
-	// txCh := make(chan types.Transactions, 100)
-	Chain := newChain()
-	defer Chain.Db().Close()
+	bc, db := testchain.NewTestChain()
+	defer testchain.CloseTestChain(bc, db)
+
+	from := crypto.PubkeyToAddress(testchain.FounderPrivate.PublicKey)
+	testTx := types.NewTransaction(from, common.HexToAddress("0x1"), common.Big1, 100, common.Big2, []byte{12}, 0, 100, uint64(time.Now().Unix()+60*30), "aa", string("send a Tx"))
+	tx := testchain.SignTx(testTx, testchain.FounderPrivate)
 	node := &Node{
-		chain:  Chain,
-		txPool: chain.NewTxPool(chainID),
+		chainID: 100,
+		chain:   bc,
+		txPool:  txpool.NewTxPool(),
 	}
 	txAPI := NewPublicTxAPI(node)
 
 	sendTxHash, err := txAPI.SendTx(tx)
 	assert.Nil(t, err)
 	assert.Equal(t, tx.Hash(), sendTxHash)
-}
-
-// TestNewPublicTxAPI_EstimateGas
-func TestNewPublicTxAPI_EstimateGas(t *testing.T) {
-	ClearData()
-	Chain := newChain()
-	defer Chain.Db().Close()
-	node := &Node{
-		chain:  Chain,
-		txPool: chain.NewTxPool(chainID),
-	}
-	p := NewPublicTxAPI(node)
-	// from, _ := common.StringToAddress("Lemo837QGPS3YNTYNF53CD88WA5DR3ABNA95W2DG")
-	sdata := "608060405234801561001057600080fd5b506040516040806105e983398101806040528101908080519060200190929190805190602001909291905050508160028190555042600181905550806000806101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff160217905550505061054d8061009c6000396000f300608060405260043610610083576000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff168063167fb50e146100955780631998aeef146100c057806338af3eed146100ca5780634f245ef714610121578063996657af1461014c578063b7db7e64146101a3578063d074a38d146101ba575b34801561008f57600080fd5b50600080fd5b3480156100a157600080fd5b506100aa6101e5565b6040518082815260200191505060405180910390f35b6100c86101eb565b005b3480156100d657600080fd5b506100df610371565b604051808273ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200191505060405180910390f35b34801561012d57600080fd5b50610136610396565b6040518082815260200191505060405180910390f35b34801561015857600080fd5b5061016161039c565b604051808273ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200191505060405180910390f35b3480156101af57600080fd5b506101b86103c2565b005b3480156101c657600080fd5b506101cf61051b565b6040518082815260200191505060405180910390f35b60045481565b600254600154014211156101fe57600080fd5b6004543411151561020e57600080fd5b6000600360009054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff1614151561036f57600360009054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff166108fc6004549081150290604051600060405180830381858888f193505050501580156102ba573d6000803e3d6000fd5b5033600360006101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff160217905550346004819055507fdfea07ab8527bd08519bfa633240757a7bb0a7f3c7adc98e30604ba73c70f4293334604051808373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff1681526020018281526020019250505060405180910390a15b565b6000809054906101000a900473ffffffffffffffffffffffffffffffffffffffff1681565b60015481565b600360009054906101000a900473ffffffffffffffffffffffffffffffffffffffff1681565b60025460015401421115156103d657600080fd5b600560009054906101000a900460ff16156103f057600080fd5b7f917fd6d893e435f61cf143a3149d8db6cd1e06c6367f7448bda8e98d75e202f6600360009054906101000a900473ffffffffffffffffffffffffffffffffffffffff16600454604051808373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff1681526020018281526020019250505060405180910390a16000809054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff166108fc3073ffffffffffffffffffffffffffffffffffffffff16319081150290604051600060405180830381858888f193505050501580156104fd573d6000803e3d6000fd5b506001600560006101000a81548160ff021916908315150217905550565b600254815600a165627a7a72305820a78d48dd525392b97d4830068c7fc783e921cf9fa197849dc35e18c1726f19c20029"
-	data := common.FromHex(sdata)
-	// args := NewCallArgs(from, nil, 0, big.NewInt(0), big.NewInt(0), data)
-	gas, err := p.EstimateGas(nil, params.OrdinaryTx, data)
-	t.Log(gas, err)
 }
 
 // 序列化注册候选节点所用data

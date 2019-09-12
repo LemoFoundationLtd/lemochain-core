@@ -396,7 +396,7 @@ func (a *Account) SetEquityRoot(root common.Hash) {
 
 func (a *Account) SetBalance(balance *big.Int) {
 	if balance.Sign() < 0 {
-		log.Errorf("can't set negative balance %v to account %06x", balance, a.data.Address)
+		log.Errorf("can't set negative balance %v to account %s", balance, a.data.Address.String())
 		panic(ErrNegativeBalance)
 	}
 	a.data.Balance.Set(balance)
