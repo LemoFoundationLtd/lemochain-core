@@ -46,11 +46,8 @@ func TestAccountAPI_api(t *testing.T) {
 	assert.Equal(t, b03, bb03)
 
 	// get account api
-	account01, err := acc.GetAccount("0x015780F8456F9c1532645087a19DcF9a7e0c7F97")
-	assert.NoError(t, err)
-	addr, err := common.StringToAddress("0x015780F8456F9c1532645087a19DcF9a7e0c7F97")
-	assert.NoError(t, err)
-	assert.Equal(t, acc.manager.GetCanonicalAccount(addr), account01)
+	_, err = acc.GetAccount("0x015780F8456F9c1532645087a19DcF9a7e0c7F97")
+	assert.Equal(t, ErrLemoAddress, err)
 }
 
 // TestChainAPI_api chain api test

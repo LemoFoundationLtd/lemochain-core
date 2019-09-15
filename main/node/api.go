@@ -79,12 +79,12 @@ func NewPublicAccountAPI(m *account.Manager) *PublicAccountAPI {
 }
 
 // GetBalance get balance in mo
-func (a *PublicAccountAPI) GetBalance(LemoAddress string) (string, error) {
-	if !network.VerifyLemoAddress(LemoAddress) {
-		log.Warnf("LemoAddress is incorrect. lemoAddress: %s", LemoAddress)
+func (a *PublicAccountAPI) GetBalance(lemoAddress string) (string, error) {
+	if !network.VerifyLemoAddress(lemoAddress) {
+		log.Warnf("lemoAddress is incorrect. lemoAddress: %s", lemoAddress)
 		return "", ErrLemoAddress
 	}
-	lemoAccount, err := a.GetAccount(LemoAddress)
+	lemoAccount, err := a.GetAccount(lemoAddress)
 	if err != nil {
 		return "", err
 	}
@@ -94,12 +94,12 @@ func (a *PublicAccountAPI) GetBalance(LemoAddress string) (string, error) {
 }
 
 // GetAccount return the struct of the &AccountData{}
-func (a *PublicAccountAPI) GetAccount(LemoAddress string) (types.AccountAccessor, error) {
-	if !network.VerifyLemoAddress(LemoAddress) {
-		log.Warnf("LemoAddress is incorrect. lemoAddress: %s", LemoAddress)
+func (a *PublicAccountAPI) GetAccount(lemoAddress string) (types.AccountAccessor, error) {
+	if !network.VerifyLemoAddress(lemoAddress) {
+		log.Warnf("lemoAddress is incorrect. lemoAddress: %s", lemoAddress)
 		return nil, ErrLemoAddress
 	}
-	address, err := common.StringToAddress(LemoAddress)
+	address, err := common.StringToAddress(lemoAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -109,12 +109,12 @@ func (a *PublicAccountAPI) GetAccount(LemoAddress string) (types.AccountAccessor
 }
 
 // GetVoteFor
-func (a *PublicAccountAPI) GetVoteFor(LemoAddress string) (string, error) {
-	if !network.VerifyLemoAddress(LemoAddress) {
-		log.Warnf("LemoAddress is incorrect. lemoAddress: %s", LemoAddress)
+func (a *PublicAccountAPI) GetVoteFor(lemoAddress string) (string, error) {
+	if !network.VerifyLemoAddress(lemoAddress) {
+		log.Warnf("lemoAddress is incorrect. lemoAddress: %s", lemoAddress)
 		return "", ErrLemoAddress
 	}
-	candiAccount, err := a.GetAccount(LemoAddress)
+	candiAccount, err := a.GetAccount(lemoAddress)
 	if err != nil {
 		return "", err
 	}
@@ -154,12 +154,12 @@ func (a *PublicAccountAPI) GetAllRewardValue() ([]*params.Reward, error) {
 }
 
 // GetAssetEquity returns asset equity
-func (a *PublicAccountAPI) GetAssetEquityByAssetId(LemoAddress string, assetId common.Hash) (*types.AssetEquity, error) {
-	if !network.VerifyLemoAddress(LemoAddress) {
-		log.Warnf("LemoAddress is incorrect. lemoAddress: %s", LemoAddress)
+func (a *PublicAccountAPI) GetAssetEquityByAssetId(lemoAddress string, assetId common.Hash) (*types.AssetEquity, error) {
+	if !network.VerifyLemoAddress(lemoAddress) {
+		log.Warnf("lemoAddress is incorrect. lemoAddress: %s", lemoAddress)
 		return nil, ErrLemoAddress
 	}
-	acc, err := a.GetAccount(LemoAddress)
+	acc, err := a.GetAccount(lemoAddress)
 	if err != nil {
 		return nil, err
 	}

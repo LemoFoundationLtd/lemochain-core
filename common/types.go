@@ -31,7 +31,7 @@ var (
 	tokenT   = reflect.TypeOf(Token{})
 	Sha3Nil  = HexToHash("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470") // crypto.Keccak256Hash(nil)
 
-	ErrInvalidAddress         = errors.New("address decode fail")
+	ErrInvalidAddress         = errors.New("invalid LemoChain address")
 	ErrInvalidAddressChecksum = errors.New("address checksum error")
 )
 
@@ -134,15 +134,12 @@ func BytesToAddress(b []byte) Address {
 	return a
 }
 func StringToAddress(s string) (Address, error) {
+	var a Address
 	if isLemoAddress(s) {
-		var a Address
 		err := a.Decode(s)
 		return a, err
 	}
-	if s[0:2] == "0x" || s[0:2] == "0X" {
-		return HexToAddress(s), nil
-	}
-	return Address{}, ErrInvalidAddress
+	return a, ErrInvalidAddress
 }
 func BigToAddress(b *big.Int) Address { return BytesToAddress(b.Bytes()) }
 func HexToAddress(s string) Address   { return BytesToAddress(FromHex(s)) }
