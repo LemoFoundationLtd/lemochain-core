@@ -60,7 +60,7 @@ func (cl candidateLoader) LoadTopCandidates(blockHash common.Hash) types.DeputyN
 	return types.DeputyNodes(cl)
 }
 
-func (cl candidateLoader) LoadRefundCandidates() ([]common.Address, error) {
+func (cl candidateLoader) LoadRefundCandidates(height uint32) ([]common.Address, error) {
 	return []common.Address{}, nil
 }
 
@@ -150,7 +150,8 @@ func init() {
 func NewTestChain() (*chain.BlockChain, protocol.ChainDB) {
 	deputynode.SetSelfNodeKey(FounderPrivate)
 	db := store.NewChainDataBase(GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
-	initGenesis(db)
+	genesis := InitGenesis(db)
+	defaultBlocks = []*types.Block{genesis}
 	// must save genesis before new deputy manager
 	dm := deputynode.NewManager(5, db)
 	initBlocks(db, dm)
@@ -175,7 +176,7 @@ func CloseTestChain(bc *chain.BlockChain, db protocol.ChainDB) {
 	ClearData()
 }
 
-func initGenesis(db protocol.ChainDB) {
+func InitGenesis(db protocol.ChainDB) *types.Block {
 	am := account.NewManager(common.Hash{}, db)
 
 	// copy and set first miner address
@@ -197,8 +198,7 @@ func initGenesis(db protocol.ChainDB) {
 		panic(err)
 	}
 	saveBlock(db, am, block, defaultBlockInfos[0].status)
-
-	defaultBlocks = []*types.Block{block}
+	return block
 }
 
 func initBlocks(db protocol.ChainDB, dm *deputynode.Manager) {

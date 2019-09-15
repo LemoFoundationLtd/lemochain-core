@@ -36,8 +36,8 @@ const (
 	CandidateKeyHost          string = "host"
 	CandidateKeyPort          string = "port"
 	CandidateKeyIncomeAddress string = "incomeAddress"
-	CandidateKeyPledgeAmount  string = "pledgeBalance" // 质押金额
-	CandidateKeyIntroduction  string = "introduction"  // 候选节点自我介绍
+	CandidateKeyDepositAmount string = "depositBalance" // 质押金额
+	CandidateKeyIntroduction  string = "introduction"   // 候选节点自我介绍
 	// asset profile
 	AssetName              string = "name"
 	AssetSymbol            string = "symbol"
@@ -71,7 +71,7 @@ func (a *Profile) EncodeRLP(w io.Writer) error {
 		return rlp.Encode(w, tmp)
 	} else {
 		keys := make([]string, 0, len(*a))
-		for k, _ := range *a {
+		for k := range *a {
 			keys = append(keys, k)
 		}
 		sort.Strings(keys)

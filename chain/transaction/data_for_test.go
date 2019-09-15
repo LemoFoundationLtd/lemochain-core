@@ -164,13 +164,6 @@ type testChain struct {
 func newTestChain(db protocol.ChainDB) *testChain {
 	return &testChain{db}
 }
-func (t *testChain) GetBlockByHash(hash common.Hash) *types.Block {
-	block, err := t.db.GetBlockByHash(hash)
-	if err != nil {
-		return nil
-	}
-	return block
-}
 
 func (t *testChain) GetParentByHeight(height uint32, sonBlockHash common.Hash) *types.Block {
 	block, err := t.db.GetBlockByHeight(height)

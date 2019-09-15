@@ -98,7 +98,7 @@ func Test_loop(t *testing.T) {
 
 	dial := NewDialManager(handleConn, dis)
 	assert.NoError(t, dial.Start())
-	assert.Error(t, dial.Start(), ErrHasStared)
+	assert.Equal(t, ErrHasStared, dial.Start())
 
 	list := []string{
 		"fe6c44dc5e2f690e6b087ed094875d8f3e49ce03cab9782b1ea25fe676abf3fa81b508929cb13f4cf412ee7150c6a92dc65b86adb5a2e40ad8fe25efbdd12312@127.0.0.1:7002",
@@ -115,7 +115,7 @@ func Test_loop(t *testing.T) {
 	}
 
 	assert.NoError(t, dial.Stop())
-	assert.Error(t, dial.Stop(), ErrNotStart)
+	assert.Equal(t, ErrNotStart, dial.Stop())
 
 	time.Sleep(3 * time.Second)
 }

@@ -46,6 +46,7 @@ func needMerge(logType types.ChangeLogType) bool {
 		(logType == EquityRootLog) {
 		return true
 	} else {
+		// CandidateLog, CandidateStateLog are associated with same data in account. If they are merged, the sequence will be changed and the result will be different
 		return false
 	}
 }

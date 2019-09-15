@@ -2,14 +2,14 @@ package consensus
 
 import (
 	"crypto/ecdsa"
-	"crypto/rand"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
-	"github.com/LemoFoundationLtd/lemochain-core/common/crypto/secp256k1"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
+	"github.com/LemoFoundationLtd/lemochain-core/store/protocol"
 	"math/big"
 	"os"
 	"time"
@@ -127,7 +127,7 @@ func (cl testCandidateLoader) LoadTopCandidates(blockHash common.Hash) types.Dep
 	return types.DeputyNodes(cl)
 }
 
-func (cl testCandidateLoader) LoadRefundCandidates() ([]common.Address, error) {
+func (cl testCandidateLoader) LoadRefundCandidates(height uint32) ([]common.Address, error) {
 	var result []common.Address
 	for i := 0; i < len(cl); i++ {
 		result = append(result, cl[i].MinerAddress)
@@ -144,7 +144,7 @@ func createCandidateLoader(nodeIndexList ...int) testCandidateLoader {
 func generateDeputies(num int) types.DeputyNodes {
 	var result []*types.DeputyNode
 	for i := 0; i < num; i++ {
-		private, _ := ecdsa.GenerateKey(secp256k1.S256(), rand.Reader)
+		private, _ := crypto.GenerateKey()
 		result = append(result, &types.DeputyNode{
 			MinerAddress: crypto.PubkeyToAddress(private.PublicKey),
 			NodeID:       crypto.PrivateKeyToNodeID(private),
@@ -235,4 +235,35 @@ func (txPoolForValidator) RecvBlock(block *types.Block) {
 
 func (txPoolForValidator) PruneBlock(block *types.Block) {
 	panic("implement me")
+}
+
+type parentLoader struct {
+	Db protocol.ChainDB
+}
+
+func (t *parentLoader) GetParentByHeight(height uint32, sonBlockHash common.Hash) *types.Block {
+	block, err := t.Db.GetUnConfirmByHeight(height, sonBlockHash)
+	if err == store.ErrNotExist {
+		block, err = t.Db.GetBlockByHeight(height)
+	}
+
+	if err != nil {
+		log.Error("load block by height fail", "height", height, "err", err)
+		return nil
+	}
+	return block
+}
+
+func MakeTx(fromPrivate *ecdsa.PrivateKey, to common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int, expiration uint64) *types.Transaction {
+	from := crypto.PubkeyToAddress(fromPrivate.PublicKey)
+	tx := types.NewTransaction(from, to, amount, gasLimit, gasPrice, []byte{}, params.OrdinaryTx, 100, expiration, "", string("aaa"))
+	return SignTx(tx, fromPrivate)
+}
+
+func SignTx(tx *types.Transaction, private *ecdsa.PrivateKey) *types.Transaction {
+	tx, err := types.DefaultSigner{}.SignTx(tx, private)
+	if err != nil {
+		panic(err)
+	}
+	return tx
 }

@@ -1,8 +1,8 @@
 package consensus
 
 import (
-	"crypto/ecdsa"
-	cryptoRand "crypto/rand"
+	"encoding/json"
+	"errors"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
@@ -10,7 +10,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
-	"github.com/LemoFoundationLtd/lemochain-core/common/crypto/secp256k1"
 	"github.com/LemoFoundationLtd/lemochain-core/common/merkle"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"github.com/stretchr/testify/assert"
@@ -18,11 +17,6 @@ import (
 	"math/rand"
 	"testing"
 	"time"
-)
-
-const (
-	block01MinerAddress = "0x015780F8456F9c1532645087a19DcF9a7e0c7F97"
-	deputy01Privkey     = "0xc21b6b2fbf230f665b936194d14da67187732bf9d28768aef1a3cbb26608f8aa"
 )
 
 func TestNewBlockAssembler(t *testing.T) {
@@ -55,7 +49,8 @@ func TestBlockAssembler_PrepareHeader(t *testing.T) {
 
 	// I'm not miner
 	privateBackup := deputynode.GetSelfNodeKey()
-	private, _ := ecdsa.GenerateKey(secp256k1.S256(), cryptoRand.Reader)
+	private, err := crypto.GenerateKey()
+	assert.NoError(t, err)
 	deputynode.SetSelfNodeKey(private)
 	_, err = ba.PrepareHeader(parentHeader, nil)
 	assert.Equal(t, ErrNotDeputy, err)
@@ -77,20 +72,6 @@ func TestCalcGasLimit(t *testing.T) {
 	limit = calcGasLimit(parentHeader)
 	assert.Equal(t, true, limit > params.MinGasLimit)
 	assert.Equal(t, true, limit > params.TargetGasLimit)
-}
-
-// 对区块进行签名的函数
-func signTestBlock(deputyPrivate string, block *types.Block) {
-	// 对区块签名
-	private, err := crypto.ToECDSA(common.FromHex(deputyPrivate))
-	if err != nil {
-		panic(err)
-	}
-	signBlock, err := crypto.Sign(block.Hash().Bytes(), private)
-	if err != nil {
-		panic(err)
-	}
-	block.Header.SignData = signBlock
 }
 
 func TestBlockAssembler_Seal(t *testing.T) {
@@ -137,225 +118,308 @@ func TestBlockAssembler_Seal(t *testing.T) {
 	assert.Empty(t, block02.Confirms)
 }
 
-// func TestBlockAssembler_Finalize(t *testing.T) {
-// 	dm := deputynode.NewManager(5, &testBlockLoader{})
-//
-// 	// 第0届 一个deputy node
-// 	nodes := pickNodes(0)
-// 	dm.SaveSnapshot(0, nodes)
-// 	// 第一届
-// 	nodes = pickNodes(1, 2, 3)
-// 	dm.SaveSnapshot(params.TermDuration, nodes)
-// 	// 第二届
-// 	nodes = pickNodes(1, 3, 4, 5, 0)
-// 	dm.SaveSnapshot(params.TermDuration*2, nodes)
-//
-// 	dpovp := loadDpovp(dm)
-// 	defer dpovp.db.Close()
-// 	am := account.NewManager(common.Hash{}, dpovp.db)
-//
-// 	// 设置前0,1,2届的矿工换届奖励
-// 	rewardMap := make(params.RewardsMap)
-// 	num00, _ := new(big.Int).SetString("55555555555555555555", 10)
-// 	num01, _ := new(big.Int).SetString("66666666666666666666", 10)
-// 	num02, _ := new(big.Int).SetString("77777777777777777777", 10)
-// 	rewardMap[0] = &params.Reward{
-// 		Term:  0,
-// 		Value: num00,
-// 		Times: 1,
+// createAssembler clear account manager then make some new change logs
+func createAssembler(db *store.ChainDatabase, fillSomeLogs bool) *BlockAssembler {
+	am := account.NewManager(common.Hash{}, db)
+
+	deputyCount := 5
+	dm := deputynode.NewManager(deputyCount, db)
+	deputies := generateDeputies(deputyCount)
+	dm.SaveSnapshot(0, deputies)
+	dm.SaveSnapshot(params.TermDuration, deputies)
+
+	if fillSomeLogs {
+		// This will make 5 CandidateLogs and 5 VotesLogs
+		for _, deputy := range deputies {
+			profile := types.Profile{
+				types.CandidateKeyIsCandidate:   params.IsCandidateNode,
+				types.CandidateKeyDepositAmount: "100",
+			}
+			deputyAccount := am.GetAccount(deputy.MinerAddress)
+			deputyAccount.SetCandidate(profile)
+			deputyAccount.SetVotes(deputy.Votes)
+		}
+		// set reward pool balance. It will make 1 BalanceLog
+		am.GetAccount(params.DepositPoolAddress).SetBalance(big.NewInt(int64(100 * deputyCount)))
+
+		// make balance logs. It will make 3 BalanceLogs, but they could be merged to 2 logs
+		account1 := am.GetAccount(common.HexToAddress("0x123"))
+		account1.SetBalance(big.NewInt(10000))
+		account1.SetBalance(big.NewInt(9999))
+		account2 := am.GetAccount(common.HexToAddress("234"))
+		account2.SetBalance(big.NewInt(100))
+
+		// set reward for term 0. It will make 1 StorageLog. And 1 StorageRootLog after accountManager.Finalise()
+		rewardAccont := am.GetAccount(params.TermRewardContract)
+		rewardsMap := params.RewardsMap{
+			0: &params.Reward{Term: 0, Value: common.Lemo2Mo("10000")},
+			1: &params.Reward{Term: 1, Value: common.Lemo2Mo("0")},
+		}
+		storageVal, err := json.Marshal(rewardsMap)
+		if err != nil {
+			panic(err)
+		}
+		err = rewardAccont.SetStorageState(params.TermRewardContract.Hash(), storageVal)
+		if err != nil {
+			panic(err)
+		}
+
+		// unregister first deputy It will make 1 CandidateStateLog
+		deputy := deputies[0]
+		am.GetAccount(deputy.MinerAddress).SetCandidateState(types.CandidateKeyIsCandidate, params.NotCandidateNode)
+	}
+
+	return NewBlockAssembler(am, dm, &transaction.TxProcessor{}, testCandidateLoader{deputies[0]})
+}
+
+func TestBlockAssembler_Finalize(t *testing.T) {
+	ClearData()
+	db := store.NewChainDataBase(GetStorePath(), "", "")
+	defer db.Close()
+
+	finalizeAndCountLogs := func(ba *BlockAssembler, height uint32, logsCount int) {
+		err := ba.Finalize(height) // genesis block
+		assert.NoError(t, err)
+		logs := ba.am.GetChangeLogs()
+		assert.Equal(t, logsCount, len(logs))
+	}
+	checkReward := func(am *account.Manager, dm *deputynode.Manager) {
+		deputy := dm.GetDeputiesByHeight(1)[1]
+		deputyAccount := am.GetAccount(deputy.MinerAddress)
+		assert.Equal(t, -1, big.NewInt(0).Cmp(deputyAccount.GetBalance()))
+	}
+	checkRefund := func(am *account.Manager, dm *deputynode.Manager) {
+		deputy := dm.GetDeputiesByHeight(1)[0]
+		deputyAccount := am.GetAccount(deputy.MinerAddress)
+		assert.Equal(t, params.NotCandidateNode, deputyAccount.GetCandidateState(types.CandidateKeyIsCandidate))
+		assert.Equal(t, "", deputyAccount.GetCandidateState(types.CandidateKeyDepositAmount))
+		assert.Equal(t, -1, big.NewInt(0).Cmp(deputyAccount.GetVotes()))
+	}
+
+	// nothing to finalize and no reward
+	ba := createAssembler(db, false)
+	finalizeAndCountLogs(ba, 0, 0) // genesis block
+	ba = createAssembler(db, false)
+	finalizeAndCountLogs(ba, 1, 0) // normal block
+
+	// many change logs
+	ba = createAssembler(db, true)
+	finalizeAndCountLogs(ba, 0, 16) // genesis block
+	ba = createAssembler(db, true)
+	finalizeAndCountLogs(ba, 1, 16) // normal block
+	ba = createAssembler(db, true)
+	finalizeAndCountLogs(ba, params.TermDuration+params.InterimDuration+1-params.RewardCheckHeight, 16) // check reward block
+	ba = createAssembler(db, true)
+	finalizeAndCountLogs(ba, params.TermDuration, 16) // snapshot block
+	ba = createAssembler(db, true)
+	finalizeAndCountLogs(ba, params.TermDuration+params.InterimDuration+1, 22) // reward and deposit refund block
+	checkReward(ba.am, ba.dm)
+	checkRefund(ba.am, ba.dm)
+	ba = createAssembler(db, true)
+	finalizeAndCountLogs(ba, params.TermDuration*2-100, 16) // 2st term normal block
+	ba = createAssembler(db, true)
+	finalizeAndCountLogs(ba, params.TermDuration*2+params.InterimDuration+1, 18) // 2st term reward block
+	checkRefund(ba.am, ba.dm)
+}
+
+type errCanLoader struct {
+}
+
+func (cl errCanLoader) LoadTopCandidates(blockHash common.Hash) types.DeputyNodes {
+	return types.DeputyNodes{}
+}
+
+func (cl errCanLoader) LoadRefundCandidates(height uint32) ([]common.Address, error) {
+	return []common.Address{}, errors.New("refund error")
+}
+
+func TestBlockAssembler_Finalize2(t *testing.T) {
+	ClearData()
+	db := store.NewChainDataBase(GetStorePath(), "", "")
+	defer db.Close()
+
+	// issue term reward failed
+	ba := createAssembler(db, true)
+	rewardAccont := ba.am.GetAccount(params.TermRewardContract)
+	err := rewardAccont.SetStorageState(params.TermRewardContract.Hash(), []byte{0x12})
+	assert.NoError(t, err)
+	err = ba.Finalize(params.TermDuration + params.InterimDuration + 1)
+	assert.EqualError(t, err, "invalid character '\\x12' looking for beginning of value")
+
+	// refund deposit failed
+	ba = createAssembler(db, true)
+	ba.canLoader = errCanLoader{}
+	err = ba.Finalize(params.TermDuration + params.InterimDuration + 1)
+	assert.Equal(t, errors.New("refund error"), err)
+
+	// account manager finalise failed
+	ba = createAssembler(db, true)
+	storageRootLog := &types.ChangeLog{
+		Version: 1,
+		Address: params.TermRewardContract,
+		LogType: account.StorageRootLog,
+		NewVal:  common.HexToHash("0x12"),
+	}
+	err = ba.am.Rebuild(params.TermRewardContract, types.ChangeLogSlice{storageRootLog}) // break the storage root
+	assert.NoError(t, err)
+	err = ba.Finalize(1)
+	assert.Equal(t, account.ErrTrieFail, err)
+}
+
+func TestCheckTermReward(t *testing.T) {
+	ClearData()
+	db := store.NewChainDataBase(GetStorePath(), "", "")
+	defer db.Close()
+
+	// TODO
+}
+
+func TestIssueTermReward(t *testing.T) {
+	ClearData()
+	db := store.NewChainDataBase(GetStorePath(), "", "")
+	defer db.Close()
+
+	// TODO
+}
+
+func TestRefundCandidateDeposit(t *testing.T) {
+	ClearData()
+	db := store.NewChainDataBase(GetStorePath(), "", "")
+	defer db.Close()
+
+	// TODO
+}
+
+func TestCalculateSalary(t *testing.T) {
+	tests := []struct {
+		Expect, TotalSalary, DeputyVotes, TotalVotes, Precision int64
+	}{
+		// total votes=100
+		{0, 100, 0, 100, 1},
+		{1, 100, 1, 100, 1},
+		{2, 100, 2, 100, 1},
+		{100, 100, 100, 100, 1},
+		// total votes=100, precision=10
+		{0, 100, 1, 100, 10},
+		{10, 100, 10, 100, 10},
+		{10, 100, 11, 100, 10},
+		// total votes=1000
+		{0, 100, 1, 1000, 1},
+		{0, 100, 9, 1000, 1},
+		{1, 100, 10, 1000, 1},
+		{1, 100, 11, 1000, 1},
+		{100, 100, 1000, 1000, 1},
+		// total votes=1000, precision=10
+		{10, 100, 100, 1000, 10},
+		{10, 100, 120, 1000, 10},
+		{20, 100, 280, 1000, 10},
+		// total votes=10
+		{0, 100, 0, 10, 1},
+		{10, 100, 1, 10, 1},
+		{100, 100, 10, 10, 1},
+		// total votes=10, precision=10
+		{10, 100, 1, 10, 10},
+		{100, 100, 10, 10, 10},
+	}
+	for _, test := range tests {
+		expect := big.NewInt(test.Expect)
+		totalSalary := big.NewInt(test.TotalSalary)
+		deputyVotes := big.NewInt(test.DeputyVotes)
+		totalVotes := big.NewInt(test.TotalVotes)
+		precision := big.NewInt(test.Precision)
+		assert.Equalf(t, 0, calculateSalary(totalSalary, deputyVotes, totalVotes, precision).Cmp(expect), "calculateSalary(%v, %v, %v, %v)", totalSalary, deputyVotes, totalVotes, precision)
+	}
+}
+
+func TestGetDeputyIncomeAddress(t *testing.T) {
+	ClearData()
+	db := store.NewChainDataBase(GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
+	defer db.Close()
+	am := account.NewManager(common.Hash{}, db)
+
+	// no set income address
+	minerAddr := common.HexToAddress("0x123")
+	deputy := &types.DeputyNode{MinerAddress: minerAddr}
+	incomeAddr := getDeputyIncomeAddress(am, deputy)
+	assert.Equal(t, minerAddr, incomeAddr)
+
+	// invalid income address
+	candidate := am.GetAccount(minerAddr)
+	candidate.SetCandidate(types.Profile{types.CandidateKeyIncomeAddress: "0x234"})
+	incomeAddr = getDeputyIncomeAddress(am, deputy)
+	assert.Equal(t, minerAddr, incomeAddr)
+
+	// valid income address
+	incomeAddrStr := "lemoqr"
+	validIncomeAddr, _ := common.StringToAddress(incomeAddrStr)
+	candidate.SetCandidate(types.Profile{types.CandidateKeyIncomeAddress: incomeAddrStr})
+	incomeAddr = getDeputyIncomeAddress(am, deputy)
+	assert.Equal(t, validIncomeAddr, incomeAddr)
+}
+
+// TestDivideSalary test total salary with random data
+func TestDivideSalary(t *testing.T) {
+	ClearData()
+	db := store.NewChainDataBase(GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
+	defer db.Close()
+	am := account.NewManager(common.Hash{}, db)
+
+	r := rand.New(rand.NewSource(time.Now().Unix()))
+	for i := 0; i < 100; i++ {
+		nodeCount := r.Intn(49) + 1 // [1, 50]
+		nodes := generateDeputies(nodeCount)
+		registerDeputies(nodes, am)
+		for _, node := range nodes {
+			node.Votes = randomBigInt(r)
+		}
+
+		totalSalary := randomBigInt(r)
+		term := &deputynode.TermRecord{TermIndex: 0, Nodes: nodes}
+
+		salaries := DivideSalary(totalSalary, am, term)
+		assert.Len(t, salaries, nodeCount)
+
+		// 验证income是否相同
+		for j := 0; j < len(nodes); j++ {
+			if getDeputyIncomeAddress(am, nodes[j]) != salaries[j].Address {
+				panic("income address no equal")
+			}
+		}
+		actualTotal := new(big.Int)
+		for _, s := range salaries {
+			actualTotal.Add(actualTotal, s.Salary)
+		}
+		totalVotes := new(big.Int)
+		for _, v := range nodes {
+			totalVotes.Add(totalVotes, v.Votes)
+		}
+		// 比较每个deputy node salary
+		for k := 0; k < len(nodes); k++ {
+			if salaries[k].Salary.Cmp(calculateSalary(totalSalary, nodes[k].Votes, totalVotes, params.MinRewardPrecision)) != 0 {
+				panic("deputy node salary no equal")
+			}
+		}
+
+		// errRange = nodeCount * minPrecision
+		// actualTotal must be in range [totalSalary - errRange, totalSalary]
+		errRange := new(big.Int).Mul(big.NewInt(int64(nodeCount)), params.MinRewardPrecision)
+		assert.Equal(t, true, actualTotal.Cmp(new(big.Int).Sub(totalSalary, errRange)) >= 0)
+		assert.Equal(t, true, actualTotal.Cmp(totalSalary) <= 0)
+	}
+}
+
+// 对区块进行签名的函数
+// func signTestBlock(deputyPrivate string, block *types.Block) {
+// 	// 对区块签名
+// 	private, err := crypto.ToECDSA(common.FromHex(deputyPrivate))
+// 	if err != nil {
+// 		panic(err)
 // 	}
-// 	rewardMap[1] = &params.Reward{
-// 		Term:  1,
-// 		Value: num01,
-// 		Times: 1,
+// 	signBlock, err := crypto.Sign(block.Hash().Bytes(), private)
+// 	if err != nil {
+// 		panic(err)
 // 	}
-// 	rewardMap[2] = &params.Reward{
-// 		Term:  2,
-// 		Value: num02,
-// 		Times: 1,
-// 	}
-// 	data, err := json.Marshal(rewardMap)
-// 	assert.NoError(t, err)
-// 	rewardAcc := am.GetAccount(params.TermRewardContract)
-// 	rewardAcc.SetStorageState(params.TermRewardContract.Hash(), data)
-// 	// 设置deputy node的income address
-// 	term00, err := dm.GetTermByHeight(0)
-// 	assert.NoError(t, err)
-// 	assert.Equal(t, 1, len(term00.Nodes))
-//
-// 	term01, err := dm.GetTermByHeight(params.TermDuration + params.InterimDuration + 1)
-// 	assert.NoError(t, err)
-// 	assert.Equal(t, 3, len(term01.Nodes))
-//
-// 	term02, err := dm.GetTermByHeight(2*params.TermDuration + params.InterimDuration + 1)
-// 	assert.NoError(t, err)
-// 	assert.Equal(t, 5, len(term02.Nodes))
-//
-// 	// miner
-// 	minerAddr00 := term02.Nodes[0].MinerAddress
-// 	minerAddr01 := term02.Nodes[1].MinerAddress
-// 	minerAddr02 := term02.Nodes[2].MinerAddress
-// 	minerAddr03 := term02.Nodes[3].MinerAddress
-// 	minerAddr04 := term02.Nodes[4].MinerAddress
-// 	minerAcc00 := am.GetAccount(minerAddr00)
-// 	minerAcc01 := am.GetAccount(minerAddr01)
-// 	minerAcc02 := am.GetAccount(minerAddr02)
-// 	minerAcc03 := am.GetAccount(minerAddr03)
-// 	minerAcc04 := am.GetAccount(minerAddr04)
-// 	// 设置income address
-// 	incomeAddr00 := common.HexToAddress("0x10000")
-// 	incomeAddr01 := common.HexToAddress("0x10001")
-// 	incomeAddr02 := common.HexToAddress("0x10002")
-// 	incomeAddr03 := common.HexToAddress("0x10003")
-// 	incomeAddr04 := common.HexToAddress("0x10004")
-// 	profile := make(map[string]string)
-// 	profile[types.CandidateKeyIncomeAddress] = incomeAddr00.String()
-// 	minerAcc00.SetCandidate(profile)
-// 	profile[types.CandidateKeyIncomeAddress] = incomeAddr01.String()
-// 	minerAcc01.SetCandidate(profile)
-// 	profile[types.CandidateKeyIncomeAddress] = incomeAddr02.String()
-// 	minerAcc02.SetCandidate(profile)
-// 	profile[types.CandidateKeyIncomeAddress] = incomeAddr03.String()
-// 	minerAcc03.SetCandidate(profile)
-// 	profile[types.CandidateKeyIncomeAddress] = incomeAddr04.String()
-// 	minerAcc04.SetCandidate(profile)
-//
-// 	// 为第0届发放奖励
-// 	err = dpovp.Finalize(params.InterimDuration+params.TermDuration+1, am)
-// 	assert.NoError(t, err)
-// 	// 查看第0届的deputy node 收益地址的balance. 只有第一个deputy node
-// 	incomeAcc00 := am.GetAccount(incomeAddr00)
-// 	value1, _ := new(big.Int).SetString("55000000000000000000", 10)
-// 	assert.Equal(t, value1, incomeAcc00.GetBalance())
-//
-// 	// 	为第二届发放奖励
-// 	err = dpovp.Finalize(2*params.TermDuration+params.InterimDuration+1, am)
-// 	assert.NoError(t, err)
-// 	// 查看第二届的deputy node 收益地址的balance.前三个deputy node
-// 	value2, _ := new(big.Int).SetString("79000000000000000000", 10)
-// 	assert.Equal(t, value2, incomeAcc00.GetBalance())
-//
-// 	incomeAcc01 := am.GetAccount(incomeAddr01)
-// 	value3, _ := new(big.Int).SetString("22000000000000000000", 10)
-// 	assert.Equal(t, value3, incomeAcc01.GetBalance())
-//
-// 	incomeAcc02 := am.GetAccount(incomeAddr02)
-// 	value4, _ := new(big.Int).SetString("20000000000000000000", 10)
-// 	assert.Equal(t, value4, incomeAcc02.GetBalance())
-//
-// 	// 	为第三届的deputy nodes 发放奖励 5个deputy node
-// 	err = dpovp.Finalize(3*params.TermDuration+params.InterimDuration+1, am)
-// 	assert.NoError(t, err)
-// 	//
-// 	value5, _ := new(big.Int).SetString("97000000000000000000", 10)
-// 	assert.Equal(t, value5, incomeAcc00.GetBalance())
-//
-// 	value6, _ := new(big.Int).SetString("39000000000000000000", 10)
-// 	assert.Equal(t, value6, incomeAcc01.GetBalance())
-//
-// 	value7, _ := new(big.Int).SetString("35000000000000000000", 10)
-// 	assert.Equal(t, value7, incomeAcc02.GetBalance())
-//
-// 	incomeAcc03 := am.GetAccount(incomeAddr03)
-// 	value8, _ := new(big.Int).SetString("13000000000000000000", 10)
-// 	assert.Equal(t, value8, incomeAcc03.GetBalance())
-//
-// 	incomeAcc04 := am.GetAccount(incomeAddr04)
-// 	value9, _ := new(big.Int).SetString("12000000000000000000", 10)
-// 	assert.Equal(t, value9, incomeAcc04.GetBalance())
-//
-// }
-//
-// func Test_calculateSalary(t *testing.T) {
-// 	tests := []struct {
-// 		Expect, TotalSalary, DeputyVotes, TotalVotes, Precision int64
-// 	}{
-// 		// total votes=100
-// 		{0, 100, 0, 100, 1},
-// 		{1, 100, 1, 100, 1},
-// 		{2, 100, 2, 100, 1},
-// 		{100, 100, 100, 100, 1},
-// 		// total votes=100, precision=10
-// 		{0, 100, 1, 100, 10},
-// 		{10, 100, 10, 100, 10},
-// 		{10, 100, 11, 100, 10},
-// 		// total votes=1000
-// 		{0, 100, 1, 1000, 1},
-// 		{0, 100, 9, 1000, 1},
-// 		{1, 100, 10, 1000, 1},
-// 		{1, 100, 11, 1000, 1},
-// 		{100, 100, 1000, 1000, 1},
-// 		// total votes=1000, precision=10
-// 		{10, 100, 100, 1000, 10},
-// 		{10, 100, 120, 1000, 10},
-// 		{20, 100, 280, 1000, 10},
-// 		// total votes=10
-// 		{0, 100, 0, 10, 1},
-// 		{10, 100, 1, 10, 1},
-// 		{100, 100, 10, 10, 1},
-// 		// total votes=10, precision=10
-// 		{10, 100, 1, 10, 10},
-// 		{100, 100, 10, 10, 10},
-// 	}
-// 	for _, test := range tests {
-// 		expect := big.NewInt(test.Expect)
-// 		totalSalary := big.NewInt(test.TotalSalary)
-// 		deputyVotes := big.NewInt(test.DeputyVotes)
-// 		totalVotes := big.NewInt(test.TotalVotes)
-// 		precision := big.NewInt(test.Precision)
-// 		assert.Equalf(t, 0, calculateSalary(totalSalary, deputyVotes, totalVotes, precision).Cmp(expect), "calculateSalary(%v, %v, %v, %v)", totalSalary, deputyVotes, totalVotes, precision)
-// 	}
-// }
-//
-// // Test_DivideSalary test total salary with random data
-// func Test_DivideSalary(t *testing.T) {
-// 	ClearData()
-// 	db := store.NewChainDataBase(GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
-// 	defer db.Close()
-// 	am := account.NewManager(common.Hash{}, db)
-//
-// 	r := rand.New(rand.NewSource(time.Now().Unix()))
-// 	for i := 0; i < 100; i++ {
-// 		nodeCount := r.Intn(49) + 1 // [1, 50]
-// 		nodes := GenerateDeputies(nodeCount)
-// 		registerDeputies(nodes, am)
-// 		for _, node := range nodes {
-// 			node.Votes = randomBigInt(r)
-// 		}
-//
-// 		totalSalary := randomBigInt(r)
-// 		term := &deputynode.TermRecord{TermIndex: 0, Nodes: nodes}
-//
-// 		salaries := DivideSalary(totalSalary, am, term)
-// 		assert.Len(t, salaries, nodeCount)
-//
-// 		// 验证income是否相同
-// 		for j := 0; j < len(nodes); j++ {
-// 			if getIncomeAddressFromDeputyNode(am, nodes[j]) != salaries[j].Address {
-// 				panic("income address no equal")
-// 			}
-// 		}
-// 		actualTotal := new(big.Int)
-// 		for _, s := range salaries {
-// 			actualTotal.Add(actualTotal, s.Salary)
-// 		}
-// 		totalVotes := new(big.Int)
-// 		for _, v := range nodes {
-// 			totalVotes.Add(totalVotes, v.Votes)
-// 		}
-// 		// 比较每个deputy node salary
-// 		for k := 0; k < len(nodes); k++ {
-// 			if salaries[k].Salary.Cmp(calculateSalary(totalSalary, nodes[k].Votes, totalVotes, minPrecision)) != 0 {
-// 				panic("deputy node salary no equal")
-// 			}
-// 		}
-//
-// 		// errRange = nodeCount * minPrecision
-// 		// actualTotal must be in range [totalSalary - errRange, totalSalary]
-// 		errRange := new(big.Int).Mul(big.NewInt(int64(nodeCount)), minPrecision)
-// 		assert.Equal(t, true, actualTotal.Cmp(new(big.Int).Sub(totalSalary, errRange)) >= 0)
-// 		assert.Equal(t, true, actualTotal.Cmp(totalSalary) <= 0)
-// 	}
+// 	block.Header.SignData = signBlock
 // }
 
 // newSignedBlock 用来生成符合测试用例所用的区块
@@ -398,4 +462,96 @@ func registerDeputies(deputies types.DeputyNodes, am *account.Manager) {
 
 func randomBigInt(r *rand.Rand) *big.Int {
 	return new(big.Int).Mul(big.NewInt(r.Int63()), big.NewInt(r.Int63()))
+}
+
+func TestGetTermRewards(t *testing.T) {
+	ClearData()
+	db := store.NewChainDataBase(GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
+	defer db.Close()
+	am := account.NewManager(common.Hash{}, db)
+	rewardAccont := am.GetAccount(params.TermRewardContract)
+
+	// no reward
+	result, err := getTermRewards(am, 0)
+	assert.NoError(t, err)
+	assert.Equal(t, *big.NewInt(0), *result)
+
+	// load fail (account storage root is invalid)
+	storageRootLog := &types.ChangeLog{
+		Version: 1,
+		Address: params.TermRewardContract,
+		LogType: account.StorageRootLog,
+		NewVal:  common.HexToHash("0x12"),
+	}
+	err = am.Rebuild(params.TermRewardContract, types.ChangeLogSlice{storageRootLog})
+	assert.NoError(t, err)
+	_, err = getTermRewards(am, 0)
+	assert.Equal(t, account.ErrTrieFail, err)
+	am.Reset(common.Hash{})
+	rewardAccont = am.GetAccount(params.TermRewardContract)
+
+	// set invalid reward
+	err = rewardAccont.SetStorageState(params.TermRewardContract.Hash(), []byte{0x12})
+	assert.NoError(t, err)
+	result, err = getTermRewards(am, 0)
+	assert.EqualError(t, err, "invalid character '\\x12' looking for beginning of value")
+	am.Reset(common.Hash{})
+	rewardAccont = am.GetAccount(params.TermRewardContract)
+
+	// set rewards
+	rewardAmount := big.NewInt(100)
+	rewardsMap := params.RewardsMap{0: &params.Reward{Term: 0, Value: rewardAmount}}
+	storageVal, err := json.Marshal(rewardsMap)
+	assert.NoError(t, err)
+	err = rewardAccont.SetStorageState(params.TermRewardContract.Hash(), storageVal)
+	assert.NoError(t, err)
+	result, err = getTermRewards(am, 0)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, rewardAmount.Cmp(result))
+	// set rewards but not the term
+	result, err = getTermRewards(am, 1)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, big.NewInt(0).Cmp(result))
+	am.Reset(common.Hash{})
+	rewardAccont = am.GetAccount(params.TermRewardContract)
+
+	// set empty rewards
+	storageVal, err = json.Marshal(params.RewardsMap{})
+	assert.NoError(t, err)
+	err = rewardAccont.SetStorageState(params.TermRewardContract.Hash(), storageVal)
+	assert.NoError(t, err)
+	result, err = getTermRewards(am, 0)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, big.NewInt(0).Cmp(result))
+}
+
+func TestBlockAssembler_RunBlock(t *testing.T) {
+	ClearData()
+	db := store.NewChainDataBase(GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
+	defer db.Close()
+	am := account.NewManager(common.Hash{}, db)
+	dm := deputynode.NewManager(5, db)
+	deputies := generateDeputies(5)
+	dm.SaveSnapshot(0, deputies)
+	dm.SaveSnapshot(params.TermDuration, deputies)
+
+	// genesis block
+	processor := transaction.NewTxProcessor(deputies[0].MinerAddress, 100, &parentLoader{db}, am, db, dm)
+	ba := NewBlockAssembler(am, dm, processor, testCandidateLoader{deputies[0]})
+	tx := makeTx(deputies[0].MinerAddress, common.HexToAddress("0x88"), uint64(time.Now().Unix()))
+	rawBlock := &types.Block{Header: &types.Header{Height: 1}, Txs: types.Transactions{tx}}
+	newBlock, err := ba.RunBlock(rawBlock)
+	assert.NoError(t, err)
+	assert.NotEqual(t, rawBlock, newBlock)
+	// TODO check gasused
+}
+
+func TestBlockAssembler_MineBlock(t *testing.T) {
+	ClearData()
+	db := store.NewChainDataBase(GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
+	defer db.Close()
+	am := account.NewManager(common.Hash{}, db)
+
+	// TODO
+	am.GetAccount(common.HexToAddress("0x"))
 }
