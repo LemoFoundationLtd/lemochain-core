@@ -159,9 +159,6 @@ func (a *PublicAccountAPI) GetAssetEquityByAssetId(LemoAddress string, assetId c
 		log.Warnf("LemoAddress is incorrect. lemoAddress: %s", LemoAddress)
 		return nil, ErrLemoAddress
 	}
-	if len(assetId) != common.HashLength {
-		return nil, ErrAssetId
-	}
 	acc, err := a.GetAccount(LemoAddress)
 	if err != nil {
 		return nil, err
@@ -242,7 +239,7 @@ func (c *PublicChainAPI) GetBlockByHeight(height uint32, withBody bool) *types.B
 
 // GetBlockByHash get block information by hash
 func (c *PublicChainAPI) GetBlockByHash(hash string, withBody bool) *types.Block {
-	if len(common.HexToHash(hash)) != common.HashLength {
+	if len(common.FromHex(hash)) != common.HashLength {
 		log.Warnf("Hash is incorrect, Hash: %s", hash)
 		return nil
 	}
