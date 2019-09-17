@@ -18,6 +18,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common/subscribe"
 	"github.com/LemoFoundationLtd/lemochain-core/network"
 	"github.com/LemoFoundationLtd/lemochain-core/network/p2p"
+	"math/big"
 	"runtime"
 	"strconv"
 	"time"
@@ -158,9 +159,6 @@ func (a *PublicAccountAPI) GetAssetEquityByAssetId(LemoAddress string, assetId c
 		log.Warnf("LemoAddress is incorrect. lemoAddress: %s", LemoAddress)
 		return nil, ErrLemoAddress
 	}
-	if len(assetId) != common.HashLength {
-		return nil, ErrAssetId
-	}
 	acc, err := a.GetAccount(LemoAddress)
 	if err != nil {
 		return nil, err
@@ -241,7 +239,7 @@ func (c *PublicChainAPI) GetBlockByHeight(height uint32, withBody bool) *types.B
 
 // GetBlockByHash get block information by hash
 func (c *PublicChainAPI) GetBlockByHash(hash string, withBody bool) *types.Block {
-	if len(common.HexToHash(hash)) != common.HashLength {
+	if len(common.FromHex(hash)) != common.HashLength {
 		log.Warnf("Hash is incorrect, Hash: %s", hash)
 		return nil
 	}
@@ -329,6 +327,11 @@ func (m *PrivateMineAPI) MineStop() {
 	m.miner.Stop()
 }
 
+// SetLeastGasPrice
+func (m *PrivateMineAPI) SetLeastGasPrice(price *big.Int) {
+	params.MinGasPrice = price
+}
+
 // PublicMineAPI
 type PublicMineAPI struct {
 	miner *miner.Miner
@@ -337,6 +340,11 @@ type PublicMineAPI struct {
 // NewPublicMineAPI
 func NewPublicMineAPI(miner *miner.Miner) *PublicMineAPI {
 	return &PublicMineAPI{miner}
+}
+
+// GetLeastGasPrice
+func (m *PublicMineAPI) GetLeastGasPrice() string {
+	return params.MinGasPrice.String()
 }
 
 // IsMining
@@ -442,9 +450,8 @@ func NewPublicTxAPI(node *Node) *PublicTxAPI {
 
 // Send send a transaction
 func (t *PublicTxAPI) SendTx(tx *types.Transaction) (common.Hash, error) {
-	err := tx.VerifyTxBeforeTxPool(t.node.ChainID(), uint64(time.Now().Unix()))
-	if err != nil {
-		log.Errorf("VerifyTxBeforeTxPool error: %s", err)
+	if err := tx.VerifyTxBody(t.node.ChainID(), uint64(time.Now().Unix()), false); err != nil {
+		log.Errorf("VerifyTxBody error: %s", err)
 		return common.Hash{}, err
 	}
 	if t.node.txPool.RecvTx(tx) {

@@ -10,7 +10,7 @@ var (
 
 	// tx
 	txModule                 = "tx"
-	VerifyFailedTx_meterName = "tx/VerifyTxBeforeTxPool/verifyFailed"
+	VerifyFailedTx_meterName = "tx/VerifyTxBody/verifyFailed"
 
 	// network
 	networkModule                             = "network"

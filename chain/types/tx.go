@@ -398,14 +398,21 @@ func (tx *Transaction) Clone() *Transaction {
 	return &cpy
 }
 
-// VerifyTxBeforeTxPool 对收到的交易进入交易池之前的验证
-func (tx *Transaction) VerifyTxBeforeTxPool(chainID uint16, timeStamp uint64) (err error) {
+// VerifyTxBody isBlockTx 为true表示验证block中的tx, 为false表示验证收到的交易
+func (tx *Transaction) VerifyTxBody(chainID uint16, timeStamp uint64, isBlockTx bool) (err error) {
 	defer func() {
 		if err != nil {
 			verifyFailedTxMeter.Mark(1)
 		}
 	}()
-
+	// 如果不是验证收到区块中的交易则需要交易交易的gasPrice
+	if !isBlockTx {
+		if params.MinGasPrice.Cmp(tx.GasPrice()) > 0 {
+			log.Errorf("Tx gas price is too low. tx gas price: %s. least gas price: %s", tx.GasPrice().String(), params.MinGasPrice.String())
+			verifyFailedTxMeter.Mark(1)
+			return ErrGasPrice
+		}
+	}
 	// verify time
 	if tx.Expiration() < timeStamp {
 		log.Errorf("Received transaction expiration time less than current time. Expiration time: %d. The current time: %d", tx.Expiration(), timeStamp)
@@ -453,7 +460,7 @@ func (tx *Transaction) VerifyTxBeforeTxPool(chainID uint16, timeStamp uint64) (e
 	}
 	// 检验箱子交易
 	if tx.Type() == params.BoxTx {
-		if err := checkBoxTx(tx.Data(), chainID, tx.Expiration(), timeStamp); err != nil {
+		if err := checkBoxTx(tx.Data(), chainID, tx.Expiration(), timeStamp, isBlockTx); err != nil {
 			return err
 		}
 	}
@@ -471,7 +478,7 @@ func (tx *Transaction) VerifyTxBeforeTxPool(chainID uint16, timeStamp uint64) (e
 }
 
 // checkBoxTx
-func checkBoxTx(txdata []byte, chainID uint16, txTime, nowTime uint64) error {
+func checkBoxTx(txdata []byte, chainID uint16, txTime, nowTime uint64, isBlockTx bool) error {
 	// 验证箱子交易中的子交易
 	box, err := GetBox(txdata)
 	if err != nil {
@@ -488,8 +495,7 @@ func checkBoxTx(txdata []byte, chainID uint16, txTime, nowTime uint64) error {
 		if sonTx.Type() == params.BoxTx {
 			return ErrVerifyBoxTx
 		}
-		// verify sonTx
-		if err := sonTx.VerifyTxBeforeTxPool(chainID, nowTime); err != nil {
+		if err := sonTx.VerifyTxBody(chainID, nowTime, isBlockTx); err != nil {
 			return err
 		}
 	}

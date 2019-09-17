@@ -3,6 +3,8 @@ lemo._createAPI('account', 'getAssetEquityByAssetId', 'account_getAssetEquityByA
 
 lemo._createAPI('mine', 'start', 'mine_mineStart');
 lemo._createAPI('mine', 'stop', 'mine_mineStop');
+lemo._createAPI('mine', 'setLeastGasPrice', 'mine_setLeastGasPrice');
+lemo._createAPI('mine', 'getLeastGasPrice', 'mine_getLeastGasPrice');
 
 lemo._createAPI('net', 'connect', 'net_connect');
 lemo._createAPI('net', 'disconnect', 'net_disconnect');

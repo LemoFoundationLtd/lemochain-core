@@ -320,7 +320,7 @@ func (dp *DPoVP) isIgnorableBlock(block *types.Block) bool {
 // VerifyAndSeal verify block then create a new block
 func (dp *DPoVP) VerifyAndSeal(block *types.Block) (*types.Block, error) {
 	// verify every things that can be verified before tx processing
-	if err := dp.validator.VerifyBeforeTxProcess(block); err != nil {
+	if err := dp.validator.VerifyBeforeTxProcess(block, dp.processor.ChainID); err != nil {
 		return nil, ErrInvalidBlock
 	}
 	// filter the valid confirms
