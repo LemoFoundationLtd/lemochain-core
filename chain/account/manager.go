@@ -195,13 +195,14 @@ func (am *Manager) RevertToSnapshot(revid int) {
 	am.processor.RevertToSnapshot(revid)
 }
 
+// logGrouping 过滤出每个address对应的changelog
 func (am *Manager) logGrouping() map[common.Address]types.ChangeLogSlice {
-	logsByAccount := make(map[common.Address]types.ChangeLogSlice)
+	logsByAddress := make(map[common.Address]types.ChangeLogSlice)
 	logs := am.processor.changeLogs
 	for _, log := range logs {
-		logsByAccount[log.Address] = append(logsByAccount[log.Address], log)
+		logsByAddress[log.Address] = append(logsByAddress[log.Address], log)
 	}
-	return logsByAccount
+	return logsByAddress
 }
 
 // updateVersion
@@ -233,9 +234,9 @@ func (am *Manager) updateVersion(logs types.ChangeLogSlice, account *SafeAccount
 
 // Finalise finalises the state, clears the change caches and update tries.
 func (am *Manager) Finalise() error {
-	logsByAccount := am.logGrouping()
+	logsByAddress := am.logGrouping()
 
-	// 排序
+	// 对缓存里面的address进行排序
 	addressList := make(common.AddressSlice, 0, len(am.accountCache))
 	for addr := range am.accountCache {
 		addressList = append(addressList, addr)
@@ -245,7 +246,7 @@ func (am *Manager) Finalise() error {
 	var account *SafeAccount
 	for _, addr := range addressList {
 		account = am.accountCache[addr]
-		logs := logsByAccount[account.GetAddress()]
+		logs := logsByAddress[account.GetAddress()]
 		if len(logs) <= 0 {
 			continue
 		}
