@@ -270,8 +270,33 @@ func TestCheckTermReward(t *testing.T) {
 	ClearData()
 	db := store.NewChainDataBase(GetStorePath(), "", "")
 	defer db.Close()
+	am := account.NewManager(common.Hash{}, db)
+	rewardAccont := am.GetAccount(params.TermRewardContract)
 
-	// TODO
+	// no reward and not the height for checking
+	dm := deputynode.NewManager(5, db)
+	ba := NewBlockAssembler(am, dm, &transaction.TxProcessor{}, testCandidateLoader{})
+	assert.Equal(t, true, ba.checkTermReward(0))
+
+	// no reward and the height for checking
+	assert.Equal(t, false, ba.checkTermReward(params.TermDuration+params.InterimDuration+1-params.RewardCheckHeight))
+
+	// set rewards
+	rewardAmount := big.NewInt(100)
+	rewardsMap := params.RewardsMap{0: &params.Reward{Term: 0, Value: rewardAmount}}
+	storageVal, err := json.Marshal(rewardsMap)
+	assert.NoError(t, err)
+	err = rewardAccont.SetStorageState(params.TermRewardContract.Hash(), storageVal)
+	assert.NoError(t, err)
+	assert.Equal(t, true, ba.checkTermReward(params.TermDuration+params.InterimDuration+1-params.RewardCheckHeight))
+
+	// ignore getTermRewards error
+	// set invalid reward
+	err = rewardAccont.SetStorageState(params.TermRewardContract.Hash(), []byte{0x12})
+	assert.NoError(t, err)
+	assert.Equal(t, true, ba.checkTermReward(params.TermDuration+params.InterimDuration+1-params.RewardCheckHeight))
+	am.Reset(common.Hash{})
+	rewardAccont = am.GetAccount(params.TermRewardContract)
 }
 
 func TestIssueTermReward(t *testing.T) {

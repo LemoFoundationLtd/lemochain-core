@@ -155,8 +155,8 @@ func (ba *BlockAssembler) checkTermReward(height uint32) bool {
 	// 在奖励块前第100000个区块进行校验
 	if deputynode.IsRewardBlock(height + params.RewardCheckHeight) {
 		termIndex := deputynode.GetTermIndexByHeight(height)
-		termRewards, _ := getTermRewards(ba.am, termIndex)
-		if termRewards.Cmp(big.NewInt(0)) == 0 { // 本届还未设置换届奖励，事件推送通知
+		termRewards, err := getTermRewards(ba.am, termIndex)
+		if err == nil && termRewards.Cmp(big.NewInt(0)) == 0 { // 本届还未设置换届奖励，事件推送通知
 			log.Eventf(log.TxEvent, "There was no consensus node award in the [%d] term. The current block height is %d.", termIndex, height)
 			return false
 		}
