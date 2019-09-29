@@ -17,16 +17,13 @@ func Test_merge(t *testing.T) {
 	*/
 	logs := make(types.ChangeLogSlice, 0)
 	// 需要merge类型
-	needMergeType := []types.ChangeLogType{BalanceLog, VoteForLog, VotesLog, StorageRootLog, AssetCodeLog, AssetCodeRootLog, AssetCodeTotalSupplyLog, AssetIdRootLog, EquityLog, EquityRootLog}
-	// 转换成map形式
-	needMap := make(map[types.ChangeLogType]struct{})
-	for _, v := range needMergeType {
-		needMap[v] = struct{}{}
-	}
+	needMergeType := make([]types.ChangeLogType, 0)
 	// 不需要merge类型
 	needlessMergeType := make([]types.ChangeLogType, 0)
 	for typ := types.ChangeLogType(1); typ < LOG_TYPE_STOP; typ++ {
-		if _, ok := needMap[typ]; !ok {
+		if needMerge(typ) {
+			needMergeType = append(needMergeType, typ)
+		} else {
 			needlessMergeType = append(needlessMergeType, typ)
 		}
 	}
