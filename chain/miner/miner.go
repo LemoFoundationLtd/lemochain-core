@@ -23,8 +23,8 @@ type Chain interface {
 
 // Miner 负责出块调度算法，决定什么时候该出块。本身并不负责区块封装的逻辑
 type Miner struct {
-	blockInterval int64
-	timeoutTime   int64
+	blockInterval int64 // millisecond
+	timeoutTime   int64 // millisecond
 	mining        int32
 	chain         Chain
 	dm            *deputynode.Manager
@@ -107,13 +107,6 @@ func (m *Miner) GetMinerAddress() common.Address {
 	return minerAddress
 }
 
-// 获取最新区块的时间戳离当前时间的距离 单位：ms
-func (m *Miner) getTimespan() int64 {
-	lastTime := m.chain.CurrentBlock().Header.Time
-	now := time.Now().UnixNano() / 1e6
-	return now - int64(lastTime)*1000
-}
-
 // isSelfDeputyNode 本节点是否为代理节点
 func (m *Miner) isSelfDeputyNode() bool {
 	return m.dm.IsSelfDeputyNode(m.chain.CurrentBlock().Height() + 1)
@@ -173,13 +166,19 @@ func (m *Miner) runMineLoop() {
 	}
 }
 
-// getSleepTime get sleep time to seal block
-func (m *Miner) getSleepTime(mineHeight uint32, distance uint64, parentBlockTime uint32) int64 {
+// getSleepTime get sleep time (millisecond) to seal block
+func (m *Miner) getSleepTime(mineHeight uint32, distance uint64, parentTime int64, currentTime int64) int64 {
 	nodeCount := m.dm.GetDeputiesCount(mineHeight)
 	// 所有节点都超时所需要消耗的时间，也可以看作是下一轮出块的开始时间
 	oneLoopTime := int64(nodeCount) * m.timeoutTime
 	// 网络传输耗时，即当前时间减去收到的区块头中的时间戳
-	totalPassTime := (time.Now().UnixNano() / 1e6) - int64(parentBlockTime)*1000
+	totalPassTime := currentTime - parentTime
+	// 机器时间不同步导致收到了未来的区块。需要额外的对齐时间
+	offset := int64(0)
+	if totalPassTime < 0 {
+		offset = -totalPassTime
+		totalPassTime = 0
+	}
 	// 本轮出块时间表已经经过的时长
 	passTime := totalPassTime % oneLoopTime
 	// 可以出块的时间窗口
@@ -200,8 +199,8 @@ func (m *Miner) getSleepTime(mineHeight uint32, distance uint64, parentBlockTime
 		// 需要等待下个时间窗口
 		waitTime = (windowFrom - passTime + oneLoopTime) % oneLoopTime
 	}
-	log.Debug("getSleepTime", "waitTime", waitTime, "distance", distance, "parentTime", parentBlockTime, "totalPassTime", totalPassTime, "passTime", passTime, "nodeCount", nodeCount, "blockInterval", m.blockInterval, "timeoutTime", m.timeoutTime, "windowFrom", windowFrom, "windowTo", windowTo)
-	return waitTime
+	log.Debug("getSleepTime", "waitTime", waitTime, "distance", distance, "parentTime", parentTime, "totalPassTime", totalPassTime, "passTime", passTime, "offset", offset, "nodeCount", nodeCount, "blockInterval", m.blockInterval, "timeoutTime", m.timeoutTime, "windowFrom", windowFrom, "windowTo", windowTo)
+	return offset + waitTime
 }
 
 // schedule wait some time to mine next block
@@ -213,14 +212,17 @@ func (m *Miner) schedule(parentBlock *types.Block) bool {
 		log.Warnf("Not a deputy at height %d. can't mine", mineHeight)
 		return false
 	}
-	// 获取新块离本节点索引的距离
+	// 获取新块离本节点索引的距离，永远在(0,DeputyCount]区间中
 	distance, err := consensus.GetMinerDistance(mineHeight, parentBlock.MinerAddress(), minerAddress, m.dm)
 	if err != nil {
 		log.Errorf("GetMinerDistance error: %v", err)
 		return false
 	}
 
-	timeDur := m.getSleepTime(mineHeight, distance, parentBlock.Time())
+	// wait if the time from last miner is bigger with mine
+	parentTime := int64(parentBlock.Time()) * 1000
+	now := time.Now().UnixNano() / 1e6
+	timeDur := m.getSleepTime(mineHeight, distance, parentTime, now)
 	m.resetMineTimer(timeDur)
 	return true
 }

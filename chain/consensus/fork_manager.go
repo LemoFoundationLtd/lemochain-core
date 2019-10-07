@@ -50,7 +50,7 @@ func findDeputyByAddress(deputies []*types.DeputyNode, addr common.Address) *typ
 	return nil
 }
 
-// GetMinerDistance get miner index distance. It is always greater than 0
+// GetMinerDistance get miner index distance. It is always greater than 0 and not greater than deputy count
 func GetMinerDistance(targetHeight uint32, parentBlockMiner, targetMiner common.Address, dm *deputynode.Manager) (uint64, error) {
 	if targetHeight == 0 {
 		return 0, ErrMineGenesis
