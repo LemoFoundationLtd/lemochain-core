@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
@@ -392,12 +393,9 @@ func TestValidator_VerifyAfterTxProcess(t *testing.T) {
 		Header: block.Header,
 		ChangeLogs: types.ChangeLogSlice{
 			&types.ChangeLog{
-				LogType: types.ChangeLogType(uint32(1)),
+				LogType: account.BalanceLog,
 				Address: common.HexToAddress("0x11" + strconv.Itoa(1)),
-				Version: uint32(1),
-				OldVal:  rand.Intn(100),
-				NewVal:  rand.Intn(100),
-				Extra:   strconv.Itoa(1),
+				Version: uint32(100),
 			},
 		},
 	}

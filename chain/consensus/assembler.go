@@ -273,9 +273,8 @@ func calculateSalary(totalSalary, deputyVotes, totalVotes, precision *big.Int) *
 // getDeputyIncomeAddress
 func getDeputyIncomeAddress(am *account.Manager, node *types.DeputyNode) common.Address {
 	minerAcc := am.GetAccount(node.MinerAddress)
-	profile := minerAcc.GetCandidate()
-	strIncomeAddress, ok := profile[types.CandidateKeyIncomeAddress]
-	if !ok {
+	strIncomeAddress := minerAcc.GetCandidateState(types.CandidateKeyIncomeAddress)
+	if strIncomeAddress == "" {
 		log.Errorf("Not exist income address. the salary will be awarded to minerAddress %s", node.MinerAddress.String())
 		return node.MinerAddress
 	}

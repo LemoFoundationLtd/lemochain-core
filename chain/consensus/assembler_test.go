@@ -169,7 +169,8 @@ func createAssembler(db *store.ChainDatabase, fillSomeLogs bool) *BlockAssembler
 		am.GetAccount(deputy.MinerAddress).SetCandidateState(types.CandidateKeyIsCandidate, params.NotCandidateNode)
 	}
 
-	return NewBlockAssembler(am, dm, &transaction.TxProcessor{}, testCandidateLoader{deputies[0]})
+	processor := transaction.NewTxProcessor(deputies[0].MinerAddress, 100, &parentLoader{db}, am, db, dm)
+	return NewBlockAssembler(am, dm, processor, testCandidateLoader{deputies[0]})
 }
 
 func TestBlockAssembler_Finalize(t *testing.T) {
@@ -282,7 +283,7 @@ func TestCheckTermReward(t *testing.T) {
 	assert.Equal(t, false, ba.checkTermReward(params.TermDuration+params.InterimDuration+1-params.RewardCheckHeight))
 
 	// set rewards
-	rewardAmount := big.NewInt(100)
+	rewardAmount := common.Lemo2Mo("100")
 	rewardsMap := params.RewardsMap{0: &params.Reward{Term: 0, Value: rewardAmount}}
 	storageVal, err := json.Marshal(rewardsMap)
 	assert.NoError(t, err)
@@ -303,16 +304,77 @@ func TestIssueTermReward(t *testing.T) {
 	ClearData()
 	db := store.NewChainDataBase(GetStorePath(), "", "")
 	defer db.Close()
+	ba := createAssembler(db, false)
+	firstTerm, err := ba.dm.GetTermByHeight(1)
+	assert.NoError(t, err)
+	rewardAmount := common.Lemo2Mo("100")
+	// choose a miner
+	minerAddress1 := firstTerm.Nodes[1].MinerAddress
 
-	// TODO
+	initRewardData := func() {
+		ba.am.Reset(common.Hash{})
+		rewardAccont := ba.am.GetAccount(params.TermRewardContract)
+		rewardsMap := params.RewardsMap{0: &params.Reward{Term: 0, Value: rewardAmount}}
+		storageVal, err := json.Marshal(rewardsMap)
+		assert.NoError(t, err)
+		err = rewardAccont.SetStorageState(params.TermRewardContract.Hash(), storageVal)
+		assert.NoError(t, err)
+	}
+
+	// not reward block
+	initRewardData()
+	err = ba.issueTermReward(ba.am, params.TermDuration)
+	assert.NoError(t, err)
+	assert.Equal(t, big.NewInt(0), ba.am.GetAccount(minerAddress1).GetBalance())
+
+	// reward block
+	initRewardData()
+	err = ba.issueTermReward(ba.am, params.TermDuration+params.InterimDuration+1)
+	assert.NoError(t, err)
+	deputyCount := len(firstTerm.Nodes)
+	assert.Equal(t, big.NewInt(0).Div(rewardAmount, big.NewInt(int64(deputyCount))), ba.am.GetAccount(minerAddress1).GetBalance())
+
+	// not set reward yet
+	initRewardData()
+	err = ba.issueTermReward(ba.am, params.TermDuration*2+params.InterimDuration+1)
+	assert.NoError(t, err)
+	assert.Equal(t, big.NewInt(0), ba.am.GetAccount(minerAddress1).GetBalance())
 }
 
 func TestRefundCandidateDeposit(t *testing.T) {
 	ClearData()
 	db := store.NewChainDataBase(GetStorePath(), "", "")
 	defer db.Close()
+	ba := createAssembler(db, false)
+	firstTerm, err := ba.dm.GetTermByHeight(1)
+	assert.NoError(t, err)
+	depositAmount := common.Lemo2Mo("100")
+	// refund account is set in createAssembler
+	refundAddress := firstTerm.Nodes[0].MinerAddress
+	initDepositData := func() {
+		ba.am.Reset(common.Hash{})
+		ba.am.GetAccount(refundAddress).SetCandidateState(types.CandidateKeyDepositAmount, depositAmount.String())
+		depositPoolAccount := ba.am.GetAccount(params.DepositPoolAddress)
+		depositPoolAccount.SetBalance(depositAmount)
+	}
 
-	// TODO
+	// not reward block
+	initDepositData()
+	err = ba.refundCandidateDeposit(ba.am, params.TermDuration)
+	assert.NoError(t, err)
+	assert.Equal(t, big.NewInt(0), ba.am.GetAccount(refundAddress).GetBalance())
+
+	// not set reward yet
+	initDepositData()
+	err = ba.refundCandidateDeposit(ba.am, params.TermDuration*2+params.InterimDuration+1)
+	assert.NoError(t, err)
+	assert.Equal(t, depositAmount, ba.am.GetAccount(refundAddress).GetBalance())
+
+	// reward block
+	initDepositData()
+	err = ba.refundCandidateDeposit(ba.am, params.TermDuration+params.InterimDuration+1)
+	assert.NoError(t, err)
+	assert.Equal(t, depositAmount, ba.am.GetAccount(refundAddress).GetBalance())
 }
 
 func TestCalculateSalary(t *testing.T) {
@@ -370,14 +432,14 @@ func TestGetDeputyIncomeAddress(t *testing.T) {
 
 	// invalid income address
 	candidate := am.GetAccount(minerAddr)
-	candidate.SetCandidate(types.Profile{types.CandidateKeyIncomeAddress: "0x234"})
+	candidate.SetCandidateState(types.CandidateKeyIncomeAddress, "random text")
 	incomeAddr = getDeputyIncomeAddress(am, deputy)
 	assert.Equal(t, minerAddr, incomeAddr)
 
 	// valid income address
 	incomeAddrStr := "lemoqr"
 	validIncomeAddr, _ := common.StringToAddress(incomeAddrStr)
-	candidate.SetCandidate(types.Profile{types.CandidateKeyIncomeAddress: incomeAddrStr})
+	candidate.SetCandidateState(types.CandidateKeyIncomeAddress, incomeAddrStr)
 	incomeAddr = getDeputyIncomeAddress(am, deputy)
 	assert.Equal(t, validIncomeAddr, incomeAddr)
 }
@@ -524,7 +586,7 @@ func TestGetTermRewards(t *testing.T) {
 	rewardAccont = am.GetAccount(params.TermRewardContract)
 
 	// set rewards
-	rewardAmount := big.NewInt(100)
+	rewardAmount := common.Lemo2Mo("100")
 	rewardsMap := params.RewardsMap{0: &params.Reward{Term: 0, Value: rewardAmount}}
 	storageVal, err := json.Marshal(rewardsMap)
 	assert.NoError(t, err)
@@ -552,31 +614,55 @@ func TestGetTermRewards(t *testing.T) {
 
 func TestBlockAssembler_RunBlock(t *testing.T) {
 	ClearData()
-	db := store.NewChainDataBase(GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
+	db := store.NewChainDataBase(GetStorePath(), "", "")
 	defer db.Close()
-	am := account.NewManager(common.Hash{}, db)
-	dm := deputynode.NewManager(5, db)
-	deputies := generateDeputies(5)
-	dm.SaveSnapshot(0, deputies)
-	dm.SaveSnapshot(params.TermDuration, deputies)
+	ba := createAssembler(db, false)
+	firstTerm, err := ba.dm.GetTermByHeight(1)
+	assert.NoError(t, err)
+	tx := MakeTx(deputynode.GetSelfNodeKey(), common.HexToAddress("0x88"), common.Lemo2Mo("100"), uint64(time.Now().Unix()+300))
+	tx.SetGasUsed(21204)
 
 	// genesis block
-	processor := transaction.NewTxProcessor(deputies[0].MinerAddress, 100, &parentLoader{db}, am, db, dm)
-	ba := NewBlockAssembler(am, dm, processor, testCandidateLoader{deputies[0]})
-	tx := makeTx(deputies[0].MinerAddress, common.HexToAddress("0x88"), uint64(time.Now().Unix()))
-	rawBlock := &types.Block{Header: &types.Header{Height: 1}, Txs: types.Transactions{tx}}
+	rawBlock := &types.Block{Header: &types.Header{Height: 0}, Txs: types.Transactions{}}
+	assert.PanicsWithValue(t, transaction.ErrInvalidGenesis, func() {
+		_, _ = ba.RunBlock(rawBlock)
+	})
+
+	// prepare a genesis block (and balance) for test
+	genesisBlock := initGenesis(db, ba.am, firstTerm.Nodes[0].MinerAddress)
+
+	// process block fail
+	rawBlock = &types.Block{Header: &types.Header{Height: 1}, Txs: types.Transactions{tx}}
+	_, err = ba.RunBlock(rawBlock)
+	assert.Equal(t, transaction.ErrInvalidTxInBlock, err)
+
+	// process block success
+	rawBlock = &types.Block{Header: &types.Header{Height: 1, ParentHash: genesisBlock.Hash(), GasLimit: 10000000, MinerAddress: firstTerm.Nodes[0].MinerAddress}, Txs: types.Transactions{tx}}
 	newBlock, err := ba.RunBlock(rawBlock)
 	assert.NoError(t, err)
-	assert.NotEqual(t, rawBlock, newBlock)
-	// TODO check gasused
+	assert.Equal(t, rawBlock.Txs, newBlock.Txs)
+	assert.Equal(t, rawBlock.MinerAddress(), newBlock.MinerAddress())
+	assert.Equal(t, uint64(21204), newBlock.GasUsed())
+	assert.NotEqual(t, 0, len(newBlock.ChangeLogs))
 }
 
 func TestBlockAssembler_MineBlock(t *testing.T) {
 	ClearData()
-	db := store.NewChainDataBase(GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
+	db := store.NewChainDataBase(GetStorePath(), "", "")
 	defer db.Close()
-	am := account.NewManager(common.Hash{}, db)
+	ba := createAssembler(db, false)
+	firstTerm, err := ba.dm.GetTermByHeight(1)
+	assert.NoError(t, err)
+	genesisBlock := initGenesis(db, ba.am, firstTerm.Nodes[0].MinerAddress)
 
-	// TODO
-	am.GetAccount(common.HexToAddress("0x"))
+	tx := MakeTx(deputynode.GetSelfNodeKey(), common.HexToAddress("0x88"), common.Lemo2Mo("100"), uint64(time.Now().Unix()+300))
+	invalidTx := MakeTx(deputynode.GetSelfNodeKey(), common.HexToAddress("0x88"), common.Lemo2Mo("100000000000000"), uint64(time.Now().Unix()+300))
+
+	header := &types.Header{Height: 1, ParentHash: genesisBlock.Hash(), GasLimit: 10000000, MinerAddress: firstTerm.Nodes[0].MinerAddress}
+	txs := types.Transactions{tx, invalidTx}
+	newBlock, invalidTxs, err := ba.MineBlock(header, txs, 1000)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(newBlock.Txs))
+	assert.Equal(t, 1, len(invalidTxs))
+	assert.NotEqual(t, nil, newBlock.Header.SignData)
 }

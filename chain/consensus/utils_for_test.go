@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"crypto/ecdsa"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
@@ -254,9 +255,9 @@ func (t *parentLoader) GetParentByHeight(height uint32, sonBlockHash common.Hash
 	return block
 }
 
-func MakeTx(fromPrivate *ecdsa.PrivateKey, to common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int, expiration uint64) *types.Transaction {
+func MakeTx(fromPrivate *ecdsa.PrivateKey, to common.Address, amount *big.Int, expiration uint64) *types.Transaction {
 	from := crypto.PubkeyToAddress(fromPrivate.PublicKey)
-	tx := types.NewTransaction(from, to, amount, gasLimit, gasPrice, []byte{}, params.OrdinaryTx, 100, expiration, "", string("aaa"))
+	tx := types.NewTransaction(from, to, amount, 1000000, big.NewInt(100), []byte{}, params.OrdinaryTx, 100, expiration, "", string("aaa"))
 	return SignTx(tx, fromPrivate)
 }
 
@@ -266,4 +267,24 @@ func SignTx(tx *types.Transaction, private *ecdsa.PrivateKey) *types.Transaction
 		panic(err)
 	}
 	return tx
+}
+
+// initGenesis create and save a genesis block to db, then set some balance to the address
+func initGenesis(db *store.ChainDatabase, am *account.Manager, address common.Address) *types.Block {
+	genesisBlock := &types.Block{Header: &types.Header{}}
+	am.Reset(common.Hash{})
+	am.GetAccount(address).SetBalance(common.Lemo2Mo("10000"))
+	err := am.Finalise()
+	if err != nil {
+		panic(err)
+	}
+	err = db.SetBlock(genesisBlock.Hash(), genesisBlock)
+	if err != nil {
+		panic(err)
+	}
+	err = am.Save(genesisBlock.Hash())
+	if err != nil {
+		panic(err)
+	}
+	return genesisBlock
 }

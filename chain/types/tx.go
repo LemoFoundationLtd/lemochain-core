@@ -138,6 +138,7 @@ func newTransaction(from common.Address, txType uint16, version uint8, chainID u
 		RecipientName: toName,
 		GasPrice:      new(big.Int),
 		GasLimit:      gasLimit,
+		GasUsed:       0,
 		Amount:        new(big.Int),
 		Data:          data,
 		Expiration:    expiration,

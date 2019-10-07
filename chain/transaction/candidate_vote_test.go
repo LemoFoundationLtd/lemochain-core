@@ -66,7 +66,7 @@ func Test_buildProfile(t *testing.T) {
 	assert.Equal(t, ErrInvalidNodeId, err02)
 
 	// 1.3 传入的incomeAddress 地址不是标准的地址
-	errAddress := "LemoDD7777777777777777EFFFDSDDCCCCCAAAAA"
+	errAddress := "0x123"
 	tx03 := newCandidateTx(register, params.MinCandidateDeposit, true, errAddress, normalNodeId, normalHost, normalPort)
 	_, err = buildProfile(tx03)
 	assert.Equal(t, ErrInvalidAddress, err)
