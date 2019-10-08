@@ -1,13 +1,10 @@
 package deputynode
 
 import (
-	"crypto/ecdsa"
-	"crypto/rand"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
-	"github.com/LemoFoundationLtd/lemochain-core/common/crypto/secp256k1"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"github.com/stretchr/testify/assert"
 	"math/big"
@@ -32,7 +29,7 @@ func (loader testBlockLoader) GetBlockByHeight(height uint32) (*types.Block, err
 func GenerateDeputies(num int) types.DeputyNodes {
 	var result []*types.DeputyNode
 	for i := 0; i < num; i++ {
-		private, _ := ecdsa.GenerateKey(secp256k1.S256(), rand.Reader)
+		private, _ := crypto.GenerateKey()
 		result = append(result, &types.DeputyNode{
 			MinerAddress: crypto.PubkeyToAddress(private.PublicKey),
 			NodeID:       crypto.PrivateKeyToNodeID(private),

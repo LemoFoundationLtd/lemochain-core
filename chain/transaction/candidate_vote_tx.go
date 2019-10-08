@@ -16,18 +16,18 @@ import (
 )
 
 var (
-	ErrAlreadyVoted             = errors.New("already voted the same as candidate node")
-	ErrOfNotCandidateNode       = errors.New("node address is not candidate account")
-	ErrOfRegisterNodeID         = errors.New("can't get nodeId of RegisterInfo")
-	ErrOfRegisterHost           = errors.New("can't get host of RegisterInfo")
-	ErrOfRegisterPort           = errors.New("can't get port of RegisterInfo")
-	ErrRegisterAgain            = errors.New("cannot register again after unregistering")
-	ErrIsCandidate              = errors.New("get an unexpected character")
-	ErrInsufficientBalance      = errors.New("the balance is insufficient to deduct the deposit for candidate register")
-	ErrInsufficientPledgeAmount = errors.New("the pledge amount is insufficient for candidate register")
-	ErrParsePledgeAmount        = errors.New("parse pledge amount failed")
-	ErrDepositPoolInsufficient  = errors.New("insufficient deposit pool balance")
-	ErrFailedGetPledgeBalacne   = errors.New("failed to get pledge balance")
+	ErrAlreadyVoted              = errors.New("already voted the same as candidate node")
+	ErrOfNotCandidateNode        = errors.New("node address is not candidate account")
+	ErrOfRegisterNodeID          = errors.New("can't get nodeId of RegisterInfo")
+	ErrOfRegisterHost            = errors.New("can't get host of RegisterInfo")
+	ErrOfRegisterPort            = errors.New("can't get port of RegisterInfo")
+	ErrRegisterAgain             = errors.New("cannot register again after unregistering")
+	ErrIsCandidate               = errors.New("get an unexpected character")
+	ErrInsufficientBalance       = errors.New("the balance is insufficient to deduct the deposit for candidate register")
+	ErrInsufficientDepositAmount = errors.New("the deposit amount is not enough for candidate register")
+	ErrParseDepositAmount        = errors.New("parse deposit amount failed")
+	ErrDepositPoolInsufficient   = errors.New("insufficient deposit pool balance")
+	ErrFailedGetDepositBalacne   = errors.New("failed to get deposit balance")
 )
 
 type CandidateVoteEnv struct {
@@ -133,7 +133,7 @@ func buildProfile(tx *types.Transaction) (types.Profile, error) {
 }
 
 // InitCandidateProfile
-func InitCandidateProfile(registerAcc types.AccountAccessor, IncomeAddress, NodeID, Host, Port, Introduction string, PledgeAmount *big.Int) {
+func InitCandidateProfile(registerAcc types.AccountAccessor, IncomeAddress, NodeID, Host, Port, Introduction string, DepositAmount *big.Int) {
 	// 设置candidate info
 	newProfile := make(map[string]string, 7)
 	newProfile[types.CandidateKeyIsCandidate] = params.IsCandidateNode
@@ -142,33 +142,33 @@ func InitCandidateProfile(registerAcc types.AccountAccessor, IncomeAddress, Node
 	newProfile[types.CandidateKeyHost] = Host
 	newProfile[types.CandidateKeyPort] = Port
 	newProfile[types.CandidateKeyIntroduction] = Introduction
-	newProfile[types.CandidateKeyPledgeAmount] = PledgeAmount.String()
+	newProfile[types.CandidateKeyDepositAmount] = DepositAmount.String()
 	registerAcc.SetCandidate(newProfile)
 }
 
 // registerCandidate 注册候选节点处理逻辑
-func (c *CandidateVoteEnv) registerCandidate(pledgeAmount *big.Int, register common.Address, p types.Profile) error {
+func (c *CandidateVoteEnv) registerCandidate(depositAmount *big.Int, register common.Address, p types.Profile) error {
 	// 1. 判断注册的押金必须要大于等于规定的押金限制(500万LEMO)
-	if pledgeAmount.Cmp(params.RegisterCandidatePledgeAmount) < 0 {
-		return ErrInsufficientPledgeAmount
+	if depositAmount.Cmp(params.MinCandidateDeposit) < 0 {
+		return ErrInsufficientDepositAmount
 	}
 
 	// Check if the balance is not enough
-	if !c.CanTransfer(c.am, register, params.RegisterCandidatePledgeAmount) {
+	if !c.CanTransfer(c.am, register, params.MinCandidateDeposit) {
 		return ErrInsufficientBalance
 	}
 
 	registerAcc := c.am.GetAccount(register)
 
 	// 设置candidate info
-	InitCandidateProfile(registerAcc, p[types.CandidateKeyIncomeAddress], p[types.CandidateKeyNodeID], p[types.CandidateKeyHost], p[types.CandidateKeyPort], p[types.CandidateKeyIntroduction], pledgeAmount)
+	InitCandidateProfile(registerAcc, p[types.CandidateKeyIncomeAddress], p[types.CandidateKeyNodeID], p[types.CandidateKeyHost], p[types.CandidateKeyPort], p[types.CandidateKeyIntroduction], depositAmount)
 
-	// cash pledge
-	c.Transfer(c.am, register, params.CandidateDepositAddress, pledgeAmount)
+	// cash deposit
+	c.Transfer(c.am, register, params.DepositPoolAddress, depositAmount)
 
-	initialPledgeVoteNum := new(big.Int).Div(pledgeAmount, params.PledgeExchangeRate) // 质押金额兑换所得票数
+	initialDepositVoteNum := new(big.Int).Div(depositAmount, params.DepositExchangeRate) // 质押金额兑换所得票数
 	// 设置自己所得到的初始票数,初始票数为 质押所得票数
-	registerAcc.SetVotes(initialPledgeVoteNum)
+	registerAcc.SetVotes(initialDepositVoteNum)
 
 	return nil
 }
@@ -213,23 +213,23 @@ func (c *CandidateVoteEnv) refundDeposit(candidateAddress common.Address, height
 func Refund(candidateAddress common.Address, am *account.Manager) {
 	// 判断addr的candidate信息
 	candidateAcc := am.GetAccount(candidateAddress)
-	pledgeAmountString := candidateAcc.GetCandidateState(types.CandidateKeyPledgeAmount)
-	pledgeAmount, ok := new(big.Int).SetString(pledgeAmountString, 10)
+	depositAmountString := candidateAcc.GetCandidateState(types.CandidateKeyDepositAmount)
+	depositAmount, ok := new(big.Int).SetString(depositAmountString, 10)
 	if !ok {
 		panic("Big.Int SetString function failed")
 	}
 
 	// 退还押金
-	candidatePledgePoolAcc := am.GetAccount(params.CandidateDepositAddress)
-	if candidatePledgePoolAcc.GetBalance().Cmp(pledgeAmount) < 0 { // 判断押金池中的押金是否足够，如果不足直接panic
-		panic("candidate pledge pool account balance insufficient.")
+	candidateDepositPoolAcc := am.GetAccount(params.DepositPoolAddress)
+	if candidateDepositPoolAcc.GetBalance().Cmp(depositAmount) < 0 { // 判断押金池中的押金是否足够，如果不足直接panic
+		panic("The balance of candidate deposit pool account is insufficient.")
 	}
 	// 减少押金池中的余额
-	candidatePledgePoolAcc.SetBalance(new(big.Int).Sub(candidatePledgePoolAcc.GetBalance(), pledgeAmount))
+	candidateDepositPoolAcc.SetBalance(new(big.Int).Sub(candidateDepositPoolAcc.GetBalance(), depositAmount))
 	// 退还押金到取消的候选节点账户
-	candidateAcc.SetBalance(new(big.Int).Add(candidateAcc.GetBalance(), pledgeAmount))
+	candidateAcc.SetBalance(new(big.Int).Add(candidateAcc.GetBalance(), depositAmount))
 	// 设置候选节点info中的押金余额为nil
-	candidateAcc.SetCandidateState(types.CandidateKeyPledgeAmount, "")
+	candidateAcc.SetCandidateState(types.CandidateKeyDepositAmount, "")
 }
 
 // modifyCandidateInfo 修改candidate info 操作
@@ -241,25 +241,25 @@ func (c *CandidateVoteEnv) modifyCandidateInfo(amount *big.Int, senderAddr commo
 	// 判断交易的amount字段的值是否大于0,大于0则为追加质押金额
 	if amount.Cmp(big.NewInt(0)) > 0 {
 		if c.CanTransfer(c.am, senderAddr, amount) {
-			c.Transfer(c.am, senderAddr, params.CandidateDepositAddress, amount)
+			c.Transfer(c.am, senderAddr, params.DepositPoolAddress, amount)
 		} else {
 			return ErrInsufficientBalance
 		}
 		// 修改质押押金和对应的票数变化
-		if pledgeAmount, ok := candidateProfile[types.CandidateKeyPledgeAmount]; ok {
-			oldPledge, success := new(big.Int).SetString(pledgeAmount, 10)
+		if depositAmount, ok := candidateProfile[types.CandidateKeyDepositAmount]; ok {
+			oldDeposit, success := new(big.Int).SetString(depositAmount, 10)
 			if !success {
-				log.Errorf("Fatal error!!! Parse pledge balance failed. CandidateAddress: %s", senderAddr.String())
-				return ErrParsePledgeAmount
+				log.Errorf("Fatal error!!! Parse deposit balance failed. CandidateAddress: %s", senderAddr.String())
+				return ErrParseDepositAmount
 			}
-			newPledge := new(big.Int).Add(oldPledge, amount)
+			newDeposit := new(big.Int).Add(oldDeposit, amount)
 			// 修改质押押金
-			candidateProfile[types.CandidateKeyPledgeAmount] = newPledge.String()
+			candidateProfile[types.CandidateKeyDepositAmount] = newDeposit.String()
 			// 修改押金增加导致的票数的增加
-			addPledgeChangeVotes(oldPledge, newPledge, senderAcc)
+			addDepositChangeVotes(oldDeposit, newDeposit, senderAcc)
 		} else {
-			log.Errorf("Failed to get pledge balance. CandidateAddress: %s", senderAddr.String())
-			return ErrFailedGetPledgeBalacne
+			log.Errorf("Failed to get deposit balance. CandidateAddress: %s", senderAddr.String())
+			return ErrFailedGetDepositBalacne
 		}
 	}
 	// nodeId不能修改
@@ -271,11 +271,11 @@ func (c *CandidateVoteEnv) modifyCandidateInfo(amount *big.Int, senderAddr commo
 	return nil
 }
 
-// addPledgeChangeVotes 押金变化导致的票数变化
-func addPledgeChangeVotes(oldPledge, newPledge *big.Int, senderAcc types.AccountAccessor) {
+// addDepositChangeVotes 押金变化导致的票数变化
+func addDepositChangeVotes(oldDeposit, newDeposit *big.Int, senderAcc types.AccountAccessor) {
 	// 新老质押的金额与75Lemo相除，把求的数比较如果增加了则增加相应的票数
-	oldNum := new(big.Int).Div(oldPledge, params.PledgeExchangeRate)
-	newNum := new(big.Int).Div(newPledge, params.PledgeExchangeRate)
+	oldNum := new(big.Int).Div(oldDeposit, params.DepositExchangeRate)
+	newNum := new(big.Int).Div(newDeposit, params.DepositExchangeRate)
 	addVotes := new(big.Int).Sub(newNum, oldNum)
 	if addVotes.Cmp(big.NewInt(0)) > 0 { // 达到增加vote的条件
 		newVotes := new(big.Int).Add(senderAcc.GetVotes(), addVotes)

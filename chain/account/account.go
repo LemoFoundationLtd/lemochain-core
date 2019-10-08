@@ -484,8 +484,7 @@ func (a *Account) GetAssetCode(code common.Hash) (*types.Asset, error) {
 
 func (a *Account) SetAssetCode(code common.Hash, asset *types.Asset) error {
 	if asset == nil {
-		a.assetCode.DelState(code)
-		return nil
+		return a.assetCode.DelState(code)
 	}
 
 	val, err := rlp.EncodeToBytes(asset)

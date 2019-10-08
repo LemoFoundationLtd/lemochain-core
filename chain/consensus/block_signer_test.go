@@ -1,18 +1,15 @@
 package consensus
 
 import (
-	"crypto/ecdsa"
-	"crypto/rand"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
-	"github.com/LemoFoundationLtd/lemochain-core/common/crypto/secp256k1"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 func TestSignBlock(t *testing.T) {
-	key, _ := ecdsa.GenerateKey(secp256k1.S256(), rand.Reader)
+	key, _ := crypto.GenerateKey()
 	deputynode.SetSelfNodeKey(key)
 	block := types.Block{Header: &types.Header{}}
 	hash := block.Hash()
@@ -33,7 +30,7 @@ func TestSignBlock(t *testing.T) {
 }
 
 func BenchmarkSignBlock(b *testing.B) {
-	key, _ := ecdsa.GenerateKey(secp256k1.S256(), rand.Reader)
+	key, _ := crypto.GenerateKey()
 	deputynode.SetSelfNodeKey(key)
 	block := types.Block{Header: &types.Header{}}
 	hash := block.Hash()

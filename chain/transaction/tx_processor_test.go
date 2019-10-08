@@ -181,11 +181,11 @@ func TestReimbursement_transaction(t *testing.T) {
 		senderAddr         = crypto.PubkeyToAddress(senderPrivate.PublicKey)
 		gasPayerPrivate, _ = crypto.HexToECDSA("57a0b0be5616e74c4315882e3649ade12c775db3b5023dcaa168d01825612c9b")
 		gasPayerAddr       = crypto.PubkeyToAddress(gasPayerPrivate.PublicKey)
-		Tx01               = makeTx(godPrivate, godAddr, gasPayerAddr, nil, params.OrdinaryTx, params.RegisterCandidatePledgeAmount) // 转账1000LEMO给gasPayerAddr
-		Tx02               = makeTx(godPrivate, godAddr, senderAddr, nil, params.OrdinaryTx, params.RegisterCandidatePledgeAmount)   // 转账1000LEMO给senderAddr
+		Tx01               = makeTx(godPrivate, godAddr, gasPayerAddr, nil, params.OrdinaryTx, params.MinCandidateDeposit) // 转账1000LEMO给gasPayerAddr
+		Tx02               = makeTx(godPrivate, godAddr, senderAddr, nil, params.OrdinaryTx, params.MinCandidateDeposit)   // 转账1000LEMO给senderAddr
 
 		amountReceiver = common.HexToAddress("0x1234")
-		TxV01          = types.NewReimbursementTransaction(senderAddr, amountReceiver, gasPayerAddr, params.RegisterCandidatePledgeAmount, []byte{}, params.OrdinaryTx, chainID, uint64(time.Now().Unix()+300), "", "")
+		TxV01          = types.NewReimbursementTransaction(senderAddr, amountReceiver, gasPayerAddr, params.MinCandidateDeposit, []byte{}, params.OrdinaryTx, chainID, uint64(time.Now().Unix()+300), "", "")
 	)
 	ClearData()
 	db, genesisHash := newCoverGenesisDB()
@@ -203,8 +203,8 @@ func TestReimbursement_transaction(t *testing.T) {
 	senderAcc := p.am.GetAccount(senderAddr)
 	initGasPayerBalance := gasPayerAcc.GetBalance()
 	initTxSenderBalance := senderAcc.GetBalance()
-	assert.Equal(t, params.RegisterCandidatePledgeAmount, initGasPayerBalance)
-	assert.Equal(t, params.RegisterCandidatePledgeAmount, initTxSenderBalance)
+	assert.Equal(t, params.MinCandidateDeposit, initGasPayerBalance)
+	assert.Equal(t, params.MinCandidateDeposit, initTxSenderBalance)
 
 	// sender transfer LEMO to receiver, payer pay for that transaction
 	firstSignTxV, err := types.MakeReimbursementTxSigner().SignTx(TxV01, senderPrivate)
@@ -219,7 +219,7 @@ func TestReimbursement_transaction(t *testing.T) {
 	endTxSenderBalance := p.am.GetCanonicalAccount(senderAddr).GetBalance()
 	assert.Equal(t, big.NewInt(0), endTxSenderBalance)
 	assert.Equal(t, endGasPayerBalance, new(big.Int).Sub(initGasPayerBalance, big.NewInt(int64(params.OrdinaryTxGas))))
-	assert.Equal(t, params.RegisterCandidatePledgeAmount, p.am.GetAccount(amountReceiver).GetBalance())
+	assert.Equal(t, params.MinCandidateDeposit, p.am.GetAccount(amountReceiver).GetBalance())
 }
 
 // TestBlockChain_txData 构造生成调用设置换届奖励的预编译合约交易的data

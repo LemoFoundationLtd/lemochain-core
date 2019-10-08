@@ -41,7 +41,7 @@ func newCandidateTx(register common.Address, amount *big.Int, isCandidate bool, 
 	}
 	data, _ := json.Marshal(profile)
 
-	tx := types.NewTransaction(register, params.CandidateDepositAddress, amount, 200000, common.Big1, data, params.RegisterTx, chainID, uint64(time.Now().Unix()+300), "", "")
+	tx := types.NewTransaction(register, params.DepositPoolAddress, amount, 200000, common.Big1, data, params.RegisterTx, chainID, uint64(time.Now().Unix()+300), "", "")
 
 	return tx
 }
@@ -55,44 +55,44 @@ func Test_buildProfile(t *testing.T) {
 	*/
 	// 1.1 传入长度不对的nodeID
 	nodeId_lengthErr := "7739f34055d3c0808683dbd77a937f8e28f707d5b1e873bbe61f6f2"
-	tx01 := newCandidateTx(register, params.RegisterCandidatePledgeAmount, true, normalIncomeAddress, nodeId_lengthErr, normalHost, normalPort)
+	tx01 := newCandidateTx(register, params.MinCandidateDeposit, true, normalIncomeAddress, nodeId_lengthErr, normalHost, normalPort)
 	_, err := buildProfile(tx01)
 	assert.Equal(t, ErrInvalidNodeId, err)
 
 	// 1.2 传入的nodeId不是通过链生成的标准的nodeId
 	nodeId_invaliable := "444444444444444444444444444444444444444qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqfffffffffffffffffffffffffffffffffffsssssssssssss55555555"
-	tx02 := newCandidateTx(register, params.RegisterCandidatePledgeAmount, true, normalIncomeAddress, nodeId_invaliable, normalHost, normalPort)
+	tx02 := newCandidateTx(register, params.MinCandidateDeposit, true, normalIncomeAddress, nodeId_invaliable, normalHost, normalPort)
 	_, err02 := buildProfile(tx02)
 	assert.Equal(t, ErrInvalidNodeId, err02)
 
 	// 1.3 传入的incomeAddress 地址不是标准的地址
-	errAddress := "LemoDD7777777777777777EFFFDSDDCCCCCAAAAA"
-	tx03 := newCandidateTx(register, params.RegisterCandidatePledgeAmount, true, errAddress, normalNodeId, normalHost, normalPort)
+	errAddress := "0x123"
+	tx03 := newCandidateTx(register, params.MinCandidateDeposit, true, errAddress, normalNodeId, normalHost, normalPort)
 	_, err = buildProfile(tx03)
 	assert.Equal(t, ErrInvalidAddress, err)
 
 	// 1.4 传入的host长度超过了限制(128)
 	errHost := "www.lemoSDDCCCCCAAAAA51bc77bbfeda653ae6f5aab564c9b4619322fddb3b1f28d1c434250e9d4dd8f51aa8334573d72814f0df789b46e9bc09f23SDDCCCCCAAAAAchain.com"
-	tx04 := newCandidateTx(register, params.RegisterCandidatePledgeAmount, true, normalIncomeAddress, normalNodeId, errHost, normalPort)
+	tx04 := newCandidateTx(register, params.MinCandidateDeposit, true, normalIncomeAddress, normalNodeId, errHost, normalPort)
 	_, err = buildProfile(tx04)
 	assert.Equal(t, ErrInvalidHost, err)
 
 	// 2.1 未传入nodeId
-	tx05 := newCandidateTx(register, params.RegisterCandidatePledgeAmount, true, normalIncomeAddress, "", normalHost, normalPort)
+	tx05 := newCandidateTx(register, params.MinCandidateDeposit, true, normalIncomeAddress, "", normalHost, normalPort)
 	_, err = buildProfile(tx05)
 	assert.Equal(t, ErrOfRegisterNodeID, err)
 
 	// 2.2 未传入host
-	tx06 := newCandidateTx(register, params.RegisterCandidatePledgeAmount, true, normalIncomeAddress, normalNodeId, "", normalPort)
+	tx06 := newCandidateTx(register, params.MinCandidateDeposit, true, normalIncomeAddress, normalNodeId, "", normalPort)
 	_, err = buildProfile(tx06)
 	assert.Equal(t, ErrOfRegisterHost, err)
 	// 2.3 未传入port
-	tx07 := newCandidateTx(register, params.RegisterCandidatePledgeAmount, true, normalIncomeAddress, normalNodeId, normalHost, "")
+	tx07 := newCandidateTx(register, params.MinCandidateDeposit, true, normalIncomeAddress, normalNodeId, normalHost, "")
 	_, err = buildProfile(tx07)
 	assert.Equal(t, ErrOfRegisterPort, err)
 
 	// 3.1 正常情况
-	normalTx := newCandidateTx(register, params.RegisterCandidatePledgeAmount, true, normalIncomeAddress, normalNodeId, normalHost, normalPort)
+	normalTx := newCandidateTx(register, params.MinCandidateDeposit, true, normalIncomeAddress, normalNodeId, normalHost, normalPort)
 	newProfile, err := buildProfile(normalTx)
 	assert.NoError(t, err)
 	assert.Equal(t, normalIncomeAddress, newProfile[types.CandidateKeyIncomeAddress])
@@ -108,7 +108,7 @@ func Test_Refund(t *testing.T) {
 	am := account.NewManager(common.Hash{}, db)
 
 	// 押金池账户
-	candidatePledgePoolAcc := am.GetAccount(params.CandidateDepositAddress)
+	candidatePledgePoolAcc := am.GetAccount(params.DepositPoolAddress)
 	// 设置押金池中的账户为9亿
 	pool := common.Lemo2Mo("900000000")
 	candidatePledgePoolAcc.SetBalance(pool)
@@ -117,7 +117,7 @@ func Test_Refund(t *testing.T) {
 	candidateAddress := common.HexToAddress("0x1223")
 	candidateAcc := am.GetAccount(candidateAddress)
 	pledgeAmount := "99999999999999"
-	candidateAcc.SetCandidateState(types.CandidateKeyPledgeAmount, pledgeAmount) // 设置此账户中的押金数量
+	candidateAcc.SetCandidateState(types.CandidateKeyDepositAmount, pledgeAmount) // 设置此账户中的押金数量
 	Refund(candidateAddress, am)
 	// 验证退还之后的账户余额增加
 	refundAmount, _ := new(big.Int).SetString(pledgeAmount, 10)
@@ -127,8 +127,8 @@ func Test_Refund(t *testing.T) {
 	assert.Equal(t, newPool, candidatePledgePoolAcc.GetBalance())
 
 	// 2. 验证押金池中的押金余额不足直接panic的情况
-	maxPledgeAmount := common.Lemo2Mo("9000000000").String()                        // 押金为90亿，远大于押金池中的数量
-	candidateAcc.SetCandidateState(types.CandidateKeyPledgeAmount, maxPledgeAmount) // 设置此账户中的押金数量
+	maxPledgeAmount := common.Lemo2Mo("9000000000").String()                         // 押金为90亿，远大于押金池中的数量
+	candidateAcc.SetCandidateState(types.CandidateKeyDepositAmount, maxPledgeAmount) // 设置此账户中的押金数量
 	assert.Panics(t, func() {
 		Refund(candidateAddress, am)
 	})
@@ -176,7 +176,7 @@ func Test_refundDeposit(t *testing.T) {
 	// 1. 测试当前高度为过渡期，则直接返回
 	// 注册candidate
 	acc01 := am.GetAccount(candidateAddress)
-	acc01.SetCandidateState(types.CandidateKeyPledgeAmount, "999")
+	acc01.SetCandidateState(types.CandidateKeyDepositAmount, "999")
 	acc01.SetCandidateState(types.CandidateKeyNodeID, common.ToHex(nodeId))
 	// 由于在过渡期直接返回，不做转账处理
 	c.refundDeposit(candidateAddress, params.TermDuration+500)
@@ -193,7 +193,7 @@ func Test_refundDeposit(t *testing.T) {
 	// 验证candidateAddress中并没有增加退的押金
 	assert.Equal(t, big.NewInt(0), acc01.GetBalance())
 	// 3. 不在过度期并且此账户不为共识节点则立即退还押金
-	poolAcc := am.GetAccount(params.CandidateDepositAddress)
+	poolAcc := am.GetAccount(params.DepositPoolAddress)
 	poolNum := big.NewInt(999) // 这里设置奖励池中的数量刚好和需要退还的押金相等
 	poolAcc.SetBalance(poolNum)
 	c.refundDeposit(candidateAddress, params.TermDuration*100+1500) // 传入的height远大于构造出的最大快照块的高度，用于模拟满足立即退押金的情况
@@ -217,16 +217,16 @@ func TestCandidateVoteEnv_RegisterOrUpdateToCandidate(t *testing.T) {
 	c := NewCandidateVoteEnv(am, dm)
 	// 足够的balance给注册者
 	registerAcc := c.am.GetAccount(register)
-	registerAcc.SetBalance(new(big.Int).Mul(params.RegisterCandidatePledgeAmount, big.NewInt(2)))
+	registerAcc.SetBalance(new(big.Int).Mul(params.MinCandidateDeposit, big.NewInt(2)))
 	register02Acc := c.am.GetAccount(register02)
-	register02Acc.SetBalance(new(big.Int).Mul(params.RegisterCandidatePledgeAmount, big.NewInt(2)))
+	register02Acc.SetBalance(new(big.Int).Mul(params.MinCandidateDeposit, big.NewInt(2)))
 	register03Acc := c.am.GetAccount(register03)
-	register03Acc.SetBalance(new(big.Int).Mul(params.RegisterCandidatePledgeAmount, big.NewInt(2)))
+	register03Acc.SetBalance(new(big.Int).Mul(params.MinCandidateDeposit, big.NewInt(2)))
 
 	var snapshot = c.am.Snapshot()
 	// 1. balance不足以支付质押lemo
 	registerAcc.SetBalance(big.NewInt(0))
-	tx01 := newCandidateTx(register, params.RegisterCandidatePledgeAmount, true, normalIncomeAddress, normalNodeId, normalHost, normalPort)
+	tx01 := newCandidateTx(register, params.MinCandidateDeposit, true, normalIncomeAddress, normalNodeId, normalHost, normalPort)
 	err := c.RegisterOrUpdateToCandidate(tx01)
 	assert.Equal(t, ErrInsufficientBalance, err)
 
@@ -245,7 +245,7 @@ func TestCandidateVoteEnv_RegisterOrUpdateToCandidate(t *testing.T) {
 	accc := c.am.GetAccount(register)
 	t.Log(accc.GetCandidateState(types.CandidateKeyIsCandidate))
 	// 3. 首次注册的正常情况
-	tx03 := newCandidateTx(register, params.RegisterCandidatePledgeAmount, true, normalIncomeAddress, normalNodeId, normalHost, normalPort)
+	tx03 := newCandidateTx(register, params.MinCandidateDeposit, true, normalIncomeAddress, normalNodeId, normalHost, normalPort)
 	err = c.RegisterOrUpdateToCandidate(tx03)
 	assert.NoError(t, err)
 	// 验证注册的候选节点信息
@@ -255,15 +255,15 @@ func TestCandidateVoteEnv_RegisterOrUpdateToCandidate(t *testing.T) {
 	assert.Equal(t, normalHost, p[types.CandidateKeyHost])
 	assert.Equal(t, normalPort, p[types.CandidateKeyPort])
 	assert.Equal(t, "true", p[types.CandidateKeyIsCandidate])
-	assert.Equal(t, params.RegisterCandidatePledgeAmount.String(), p[types.CandidateKeyPledgeAmount])
-	// 自己此时的票数为 params.RegisterCandidatePledgeAmount / 75LEMO
+	assert.Equal(t, params.MinCandidateDeposit.String(), p[types.CandidateKeyDepositAmount])
+	// 自己此时的票数为 params.MinCandidateDeposit / 75LEMO
 	votes := registerAcc.GetVotes()
-	realVotes := new(big.Int).Div(params.RegisterCandidatePledgeAmount, params.PledgeExchangeRate)
+	realVotes := new(big.Int).Div(params.MinCandidateDeposit, params.DepositExchangeRate)
 	assert.Equal(t, realVotes, votes)
 
 	// 4. 已经是候选节点，修改候选节点信息
 	// 注册候选节点
-	rTx := newCandidateTx(register02, params.RegisterCandidatePledgeAmount, true, normalIncomeAddress, normalNodeId, normalHost, normalPort)
+	rTx := newCandidateTx(register02, params.MinCandidateDeposit, true, normalIncomeAddress, normalNodeId, normalHost, normalPort)
 	err = c.RegisterOrUpdateToCandidate(rTx)
 	assert.NoError(t, err)
 	// 4.1 修改信息为 注销候选节点
@@ -298,7 +298,7 @@ func TestCandidateVoteEnv_RegisterOrUpdateToCandidate(t *testing.T) {
 	assert.Equal(t, newIncomeAddress, newPro[types.CandidateKeyIncomeAddress])
 	assert.Equal(t, newHost, newPro[types.CandidateKeyHost])
 	assert.Equal(t, newPort, newPro[types.CandidateKeyPort])
-	assert.Equal(t, common.Lemo2Mo("7500100").String(), newPro[types.CandidateKeyPledgeAmount])
+	assert.Equal(t, common.Lemo2Mo("7500100").String(), newPro[types.CandidateKeyDepositAmount])
 	assert.Equal(t, big.NewInt(100001), register03Acc.GetVotes())
 }
 

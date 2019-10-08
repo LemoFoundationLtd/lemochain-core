@@ -106,7 +106,7 @@ func GasPayerSignatureTx(tx *Transaction, gasPrice *big.Int, gasLimit uint64) *T
 	return tx
 }
 
-// 注：TxType：0为普通交易，1为节点投票交易，2为注册成为代理节点交易
+// NewTransaction TxType取值为OrdinaryTx等
 func NewTransaction(from common.Address, to common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte, TxType uint16, chainID uint16, expiration uint64, toName string, message string) *Transaction {
 	return newTransaction(from, TxType, TxVersion, chainID, nil, &to, amount, gasLimit, gasPrice, data, expiration, toName, message)
 }
@@ -138,6 +138,7 @@ func newTransaction(from common.Address, txType uint16, version uint8, chainID u
 		RecipientName: toName,
 		GasPrice:      new(big.Int),
 		GasLimit:      gasLimit,
+		GasUsed:       0,
 		Amount:        new(big.Int),
 		Data:          data,
 		Expiration:    expiration,

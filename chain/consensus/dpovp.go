@@ -115,7 +115,7 @@ func (dp *DPoVP) MineBlock(txProcessTimeout int64) (*types.Block, error) {
 		return nil, err
 	}
 
-	txs := dp.txPool.Get(header.Time, 10000)
+	txs := dp.txPool.Get(header.Time, params.MaxTxsForMiner)
 	log.Debugf("pick %d txs from txPool", len(txs))
 	block, invalidTxs, err := dp.assembler.MineBlock(header, txs, txProcessTimeout)
 	if err != nil {
@@ -421,7 +421,7 @@ func (dp *DPoVP) LoadTopCandidates(blockHash common.Hash) types.DeputyNodes {
 }
 
 // LoadRefundCandidates get the address list of candidates who need to refund
-func (dp *DPoVP) LoadRefundCandidates() ([]common.Address, error) {
+func (dp *DPoVP) LoadRefundCandidates(height uint32) ([]common.Address, error) {
 	result := make([]common.Address, 0)
 	addrList, err := dp.db.GetAllCandidates()
 	if err != nil {
@@ -431,11 +431,11 @@ func (dp *DPoVP) LoadRefundCandidates() ([]common.Address, error) {
 	for _, addr := range addrList {
 		// 判断addr的candidate信息
 		candidateAcc := dp.am.GetAccount(addr)
-		pledgeString := candidateAcc.GetCandidateState(types.CandidateKeyPledgeAmount)
+		pledgeString := candidateAcc.GetCandidateState(types.CandidateKeyDepositAmount)
 		nodeId := candidateAcc.GetCandidateState(types.CandidateKeyNodeID)
 		if candidateAcc.GetCandidateState(types.CandidateKeyIsCandidate) == params.NotCandidateNode && pledgeString != "" { // 满足退还押金的条件
 			// 判断该地址是否为本届的共识节点
-			if !dp.dm.IsNodeDeputy(dp.CurrentBlock().Height(), common.FromHex(nodeId)) {
+			if !dp.dm.IsNodeDeputy(height, common.FromHex(nodeId)) {
 				result = append(result, addr)
 			}
 		}

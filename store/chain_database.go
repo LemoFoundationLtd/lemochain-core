@@ -641,7 +641,7 @@ func (database *ChainDatabase) GetActDatabase(hash common.Hash) (*AccountTrieDB,
 	if item == nil {
 		_, err := database.getBlock4DB(hash)
 		if err == ErrNotExist {
-			panic("the block not exist. check the block is set.")
+			panic("the block not exist. check if the block is set.")
 		}
 
 		if err != nil {

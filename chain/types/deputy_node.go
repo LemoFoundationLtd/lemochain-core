@@ -55,7 +55,9 @@ func (d *DeputyNode) Hash() (h common.Hash) {
 		d.Votes,
 	}
 	hw := sha3.NewKeccak256()
-	rlp.Encode(hw, data)
+	if err := rlp.Encode(hw, data); err != nil {
+		log.Error("hash deputy node fail", "err", err)
+	}
 	hw.Sum(h[:0])
 	return h
 }

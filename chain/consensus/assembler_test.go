@@ -2,14 +2,15 @@ package consensus
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
-	"github.com/LemoFoundationLtd/lemochain-core/chain/txpool"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/transaction"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
+	"github.com/LemoFoundationLtd/lemochain-core/common/merkle"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"github.com/stretchr/testify/assert"
 	"math/big"
@@ -18,478 +19,365 @@ import (
 	"time"
 )
 
-const (
-	block01MinerAddress = "0x015780F8456F9c1532645087a19DcF9a7e0c7F97"
-	deputy01Privkey     = "0xc21b6b2fbf230f665b936194d14da67187732bf9d28768aef1a3cbb26608f8aa"
-	block02MinerAddress = "0x016ad4Fc7e1608685Bf5fe5573973BF2B1Ef9B8A"
-	deputy02Privkey     = "0x9c3c4a327ce214f0a1bf9cfa756fbf74f1c7322399ffff925efd8c15c49953eb"
-	block03MinerAddress = "0x01f98855Be9ecc5c23A28Ce345D2Cc04686f2c61"
-	deputy03Privkey     = "0xba9b51e59ec57d66b30b9b868c76d6f4d386ce148d9c6c1520360d92ef0f27ae"
-	block04MinerAddress = "0x0112fDDcF0C08132A5dcd9ED77e1a3348ff378D2"
-	deputy04Privkey     = "0xb381bad69ad4b200462a0cc08fcb8ba64d26efd4f49933c2c2448cb23f2cd9d0"
-	block05MinerAddress = "0x016017aF50F4bB67101CE79298ACBdA1A3c12C15"
-	deputy05Privkey     = "0x56b5fe1b8c40f0dec29b621a16ffcbc7a1bb5c0b0f910c5529f991273cd0569c"
-)
+func TestNewBlockAssembler(t *testing.T) {
+	dm := deputynode.NewManager(5, &testBlockLoader{})
 
-// loadDpovp 加载一个Dpovp实例
-func loadDpovp(dm *deputynode.Manager) *DPoVP {
+	ba := NewBlockAssembler(nil, dm, &transaction.TxProcessor{}, createCandidateLoader())
+	assert.Equal(t, dm, ba.dm)
+}
+
+func TestBlockAssembler_PrepareHeader(t *testing.T) {
 	ClearData()
-	db := store.NewChainDataBase(GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
-	latestBlock, err := db.LoadLatestBlock()
-	if err != nil {
-		return nil
-	}
-	d := NewDpovp(config, db, dm, account.NewManager(latestBlock.Hash(), db), NewTestChain(db), txpool.NewTxPool(), latestBlock)
-	return d
+	db := store.NewChainDataBase(GetStorePath(), "", "")
+	defer db.Close()
+	am := account.NewManager(common.Hash{}, db)
+	dm := initDeputyManager(5)
+
+	ba := NewBlockAssembler(am, dm, &transaction.TxProcessor{}, createCandidateLoader())
+	parentHeader := &types.Header{Height: 100, Time: 1001}
+
+	// I'm a miner
+	now := uint32(time.Now().Unix())
+	newHeader, err := ba.PrepareHeader(parentHeader, []byte{12, 34})
+	assert.NoError(t, err)
+	assert.Equal(t, parentHeader.Hash(), newHeader.ParentHash)
+	assert.Equal(t, testDeputies[0].MinerAddress, newHeader.MinerAddress)
+	assert.Equal(t, parentHeader.Height+1, newHeader.Height)
+	assert.Equal(t, params.GenesisGasLimit, newHeader.GasLimit)
+	assert.Equal(t, []byte{12, 34}, newHeader.Extra)
+	assert.Equal(t, true, newHeader.Time >= now)
+
+	// I'm not miner
+	privateBackup := deputynode.GetSelfNodeKey()
+	private, err := crypto.GenerateKey()
+	assert.NoError(t, err)
+	deputynode.SetSelfNodeKey(private)
+	_, err = ba.PrepareHeader(parentHeader, nil)
+	assert.Equal(t, ErrNotDeputy, err)
+	deputynode.SetSelfNodeKey(privateBackup)
 }
 
-// 初始化代理节点,numNode为选择共识节点数量，取值为[1,5],height为发放奖励高度
-func initDeputyNode(numNode int, height uint32, dm *deputynode.Manager) *deputynode.Manager {
-	// manager := deputynode.NewManager(5)
+func TestCalcGasLimit(t *testing.T) {
+	parentHeader := &types.Header{GasLimit: 0, GasUsed: 0}
+	limit := calcGasLimit(parentHeader)
+	assert.Equal(t, true, limit > params.MinGasLimit)
+	assert.Equal(t, params.TargetGasLimit, limit)
 
-	privarte01, err := crypto.ToECDSA(common.FromHex(deputy01Privkey))
-	if err != nil {
-		panic(err)
-	}
-	privarte02, err := crypto.ToECDSA(common.FromHex(deputy02Privkey))
-	if err != nil {
-		panic(err)
-	}
-	privarte03, err := crypto.ToECDSA(common.FromHex(deputy03Privkey))
-	if err != nil {
-		panic(err)
-	}
-	privarte04, err := crypto.ToECDSA(common.FromHex(deputy04Privkey))
-	if err != nil {
-		panic(err)
-	}
-	privarte05, err := crypto.ToECDSA(common.FromHex(deputy05Privkey))
-	if err != nil {
-		panic(err)
-	}
+	parentHeader = &types.Header{GasLimit: params.TargetGasLimit + 100000000000, GasUsed: params.TargetGasLimit + 100000000000}
+	limit = calcGasLimit(parentHeader)
+	assert.Equal(t, true, limit > params.MinGasLimit)
+	assert.Equal(t, true, limit > params.TargetGasLimit)
 
-	var nodes = make([]*types.DeputyNode, 5)
-	nodes[0] = &types.DeputyNode{
-		MinerAddress: common.HexToAddress(block01MinerAddress),
-		NodeID:       (crypto.FromECDSAPub(&privarte01.PublicKey))[1:],
-		Rank:         0,
-		Votes:        big.NewInt(120),
-	}
-	nodes[1] = &types.DeputyNode{
-		MinerAddress: common.HexToAddress(block02MinerAddress),
-		NodeID:       (crypto.FromECDSAPub(&privarte02.PublicKey))[1:],
-		Rank:         1,
-		Votes:        big.NewInt(110),
-	}
-	nodes[2] = &types.DeputyNode{
-		MinerAddress: common.HexToAddress(block03MinerAddress),
-		NodeID:       (crypto.FromECDSAPub(&privarte03.PublicKey))[1:],
-		Rank:         2,
-		Votes:        big.NewInt(100),
-	}
-	nodes[3] = &types.DeputyNode{
-		MinerAddress: common.HexToAddress(block04MinerAddress),
-		NodeID:       (crypto.FromECDSAPub(&privarte04.PublicKey))[1:],
-		Rank:         3,
-		Votes:        big.NewInt(90),
-	}
-	nodes[4] = &types.DeputyNode{
-		MinerAddress: common.HexToAddress(block05MinerAddress),
-		NodeID:       (crypto.FromECDSAPub(&privarte05.PublicKey))[1:],
-		Rank:         4,
-		Votes:        big.NewInt(80),
-	}
-
-	if numNode > 5 || numNode == 0 {
-		panic(fmt.Errorf("overflow index. numNode must be [1,5]"))
-	}
-	dm.SaveSnapshot(height, nodes[:numNode])
-
-	return dm
+	parentHeader = &types.Header{GasLimit: params.TargetGasLimit + 100000000000, GasUsed: 0}
+	limit = calcGasLimit(parentHeader)
+	assert.Equal(t, true, limit > params.MinGasLimit)
+	assert.Equal(t, true, limit > params.TargetGasLimit)
 }
 
-// 对区块进行签名的函数
-func signTestBlock(deputyPrivate string, block *types.Block) {
-	// 对区块签名
-	private, err := crypto.ToECDSA(common.FromHex(deputyPrivate))
-	if err != nil {
-		panic(err)
-	}
-	signBlock, err := crypto.Sign(block.Hash().Bytes(), private)
-	if err != nil {
-		panic(err)
-	}
-	block.Header.SignData = signBlock
-}
+func TestBlockAssembler_Seal(t *testing.T) {
+	canLoader := createCandidateLoader(0, 1, 3)
+	ba := NewBlockAssembler(nil, nil, nil, canLoader)
 
-// newSignedBlock 用来生成符合测试用例所用的区块
-func newSignedBlock(dpovp *DPoVP, parentHash common.Hash, author common.Address, txs []*types.Transaction, time uint32, signPrivate string, save bool) *types.Block {
-	newBlockInfo := blockInfo{
-		parentHash: parentHash,
-		author:     author,
-		txList:     txs,
-		gasLimit:   500000000,
-		time:       time,
-	}
-	parent, err := dpovp.db.GetBlockByHash(parentHash)
-	if err != nil {
-		// genesis block
-		newBlockInfo.height = 0
-	} else {
-		newBlockInfo.height = parent.Height() + 1
-	}
-	testBlock := makeBlock(dpovp.db, newBlockInfo, save)
-	if save {
-		if err := dpovp.db.SetStableBlock(testBlock.Hash()); err != nil {
-			panic(err)
-		}
-	}
-	// 对区块进行签名
-	signTestBlock(signPrivate, testBlock)
-	return testBlock
-}
-
-// Test_verifyHeaderTime 测试验证区块时间戳函数是否正确
-func Test_verifyHeaderTime(t *testing.T) {
-	blocks := []types.Block{
-		{
-			Header: &types.Header{
-				ParentHash:   common.Hash{},
-				MinerAddress: common.Address{},
-				VersionRoot:  common.Hash{},
-				TxRoot:       common.Hash{},
-				LogRoot:      common.Hash{},
-				Height:       0,
-				GasLimit:     0,
-				GasUsed:      0,
-				Time:         uint32(time.Now().Unix() - 2), // 正确时间
-				SignData:     nil,
-				Extra:        nil,
-			},
-			Txs:        nil,
-			ChangeLogs: nil,
-			Confirms:   nil,
-		},
-		{
-			Header: &types.Header{
-				ParentHash:   common.Hash{},
-				MinerAddress: common.Address{},
-				VersionRoot:  common.Hash{},
-				TxRoot:       common.Hash{},
-				LogRoot:      common.Hash{},
-				Height:       0,
-				GasLimit:     0,
-				GasUsed:      0,
-				Time:         uint32(time.Now().Unix() - 1), // 临界点时间
-				SignData:     nil,
-				Extra:        nil,
-			},
-			Txs:        nil,
-			ChangeLogs: nil,
-			Confirms:   nil,
-		},
-		{
-			Header: &types.Header{
-				ParentHash:   common.Hash{},
-				MinerAddress: common.Address{},
-				VersionRoot:  common.Hash{},
-				TxRoot:       common.Hash{},
-				LogRoot:      common.Hash{},
-				Height:       0,
-				GasLimit:     0,
-				GasUsed:      0,
-				Time:         uint32(time.Now().Unix() + 2), // 不正确时间
-				SignData:     nil,
-				Extra:        nil,
-			},
-			Txs:        nil,
-			ChangeLogs: nil,
-			Confirms:   nil,
-		},
-	}
-
-	err01 := verifyTime(&blocks[0])
-	assert.Equal(t, nil, err01)
-	err02 := verifyTime(&blocks[1])
-	assert.Equal(t, nil, err02)
-	err03 := verifyTime(&blocks[2])
-	assert.Equal(t, ErrVerifyHeaderFailed, err03)
-
-}
-
-// Test_verifyHeaderSignData 测试验证区块签名数据函数是否正确
-func Test_verifyHeaderSignData(t *testing.T) {
-	dm := deputynode.NewManager(5)
-	dm = initDeputyNode(3, 0, dm) // 选择前三个共识节点
-	dpovp := loadDpovp(dm)
-	defer dpovp.db.Close()
-	// 创建一个块并用另一个节点来对此区块进行签名
-	block01 := newSignedBlock(dpovp, common.Hash{}, common.HexToAddress(block01MinerAddress), nil, uint32(time.Now().Unix()), deputy02Privkey, false)
-	// header := block01.Header
-	assert.Equal(t, ErrVerifyHeaderFailed, verifySigner(dm, block01))
-}
-
-// // TestDpovp_nodeCount1 nodeCount = 1 的情况下直接返回nil
-func TestDpovp_nodeCount1(t *testing.T) {
-	dm := deputynode.NewManager(5)
-	dm = initDeputyNode(1, 0, dm)
-	dpovp := loadDpovp(dm)
-	defer dpovp.db.Close()
-
-	t.Log(dm.GetDeputiesCount(1))
-	assert.Equal(t, nil, dpovp.VerifyBeforeTxProcess(&types.Block{Header: &types.Header{Height: 1}}))
-}
-
-// 验证区块头Extra字段长度是否正确
-func Test_headerExtra(t *testing.T) {
-	dm := deputynode.NewManager(5)
-	dm = initDeputyNode(3, 0, dm)
-	dpovp := loadDpovp(dm)
-	defer dpovp.db.Close()
-	// 创建一个标准的区块
-	testBlcok := newSignedBlock(dpovp, common.Hash{}, common.HexToAddress(block01MinerAddress), nil, uint32(time.Now().Unix()-10), deputy01Privkey, false)
-	// 设置区块头中的extra字段长度大于标准长度
-	extra := make([]byte, 257)
-	testBlcok.Header.Extra = extra
-	// 重新对区块进行签名
-	signTestBlock(deputy01Privkey, testBlcok)
-	// 验证
-	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyBeforeTxProcess(testBlcok))
-}
-
-// TestDpovp_VerifyHeader01 对共识中共识区块与父块关联情况共识的测试
-func TestDpovp_VerifyHeader01(t *testing.T) {
-	dm := deputynode.NewManager(5)
-	dm = initDeputyNode(5, 0, dm)
-	t.Log(dm.GetDeputiesCount(1))
-	dpovp := loadDpovp(dm)
-	defer dpovp.db.Close()
-	// 验证不存在父区块的情况
-	testBlock00 := newSignedBlock(dpovp, common.Hash{}, common.HexToAddress(block01MinerAddress), nil, uint32(time.Now().Unix()-10), deputy01Privkey, true)
-	// header := testBlock00.Header
-	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyBeforeTxProcess(testBlock00))
-
-	// 验证父区块的高度为0，也就是父区块为创世区块情况
-	testBlock01 := newSignedBlock(dpovp, testBlock00.Hash(), common.HexToAddress(block02MinerAddress), nil, uint32(time.Now().Unix()-5), deputy02Privkey, false)
-
-	assert.Equal(t, nil, dpovp.VerifyBeforeTxProcess(testBlock01))
-}
-
-// TestDpovp_VerifyHeader03 测试slot == 0,slot == 1,slot > 1的情况
-func TestDpovp_VerifyHeader02(t *testing.T) {
-	ClearData()
-	// 创建5个代理节点
-	dm := deputynode.NewManager(5)
-	dm = initDeputyNode(5, 0, dm)
-	dpovp := loadDpovp(dm)
-	defer dpovp.db.Close()
-	// 创世块,随便哪个节点出块在这里没有影响
-	block00 := newSignedBlock(dpovp, common.Hash{}, common.HexToAddress(block01MinerAddress), nil, 1995, deputy01Privkey, true)
-	// parent is genesis block,由第一个节点出块,此区块是作为测试区块的参照区块
-	block01 := newSignedBlock(dpovp, block00.Hash(), common.HexToAddress(block01MinerAddress), nil, 2000, deputy01Privkey, true)
-
-	// if slot == 0 :
-	// 还是由第一个节点出块,模拟 (if slot == 0 ) 的情况 ,与block01时间差为44s,满足条件(if timeSpan >= oneLoopTime-d.timeoutTime),此区块共识验证通过会返回nil
-	block02 := newSignedBlock(dpovp, block01.Hash(), common.HexToAddress(block01MinerAddress), nil, 2044, deputy01Privkey, false)
-	assert.Equal(t, nil, dpovp.VerifyBeforeTxProcess(block02))
-	// 与block01时间差为33s,小于40s,验证不通过的情况
-	block03 := newSignedBlock(dpovp, block01.Hash(), common.HexToAddress(block01MinerAddress), nil, 2033, deputy01Privkey, false)
-	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyBeforeTxProcess(block03))
-	// 测试一个临界值，与block01时间差等于40s的情况
-	block04 := newSignedBlock(dpovp, block01.Hash(), common.HexToAddress(block01MinerAddress), nil, 2040, deputy01Privkey, false)
-	assert.Equal(t, nil, dpovp.VerifyBeforeTxProcess(block04))
-
-	// else if slot == 1 :
-	// 都与block01作为父块, 设置出块代理节点为第二个节点，满足slot == 1,时间差设为第一种小于一轮(50s)的情况,
-	// block05时间满足(timeSpan >= d.blockInterval && timeSpan < d.timeoutTime)的正常情况
-	block05 := newSignedBlock(dpovp, block01.Hash(), common.HexToAddress(block02MinerAddress), nil, 2005, deputy02Privkey, false)
-	assert.Equal(t, nil, dpovp.VerifyBeforeTxProcess(block05))
-	// block06 不满足(timeSpan >= d.blockInterval && timeSpan < d.timeoutTime)的情况,timeSpan == 11 > 10
-	block06 := newSignedBlock(dpovp, block01.Hash(), common.HexToAddress(block02MinerAddress), nil, 2011, deputy02Privkey, false)
-	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyBeforeTxProcess(block06))
-	// if slot == 1 else 的情况，此情况是timeSpan >= oneLoopTime,时间间隔超过一轮
-	// 首先测试 timeSpan % oneLoopTime < timeoutTime 的正常情况
-	block07 := newSignedBlock(dpovp, block01.Hash(), common.HexToAddress(block02MinerAddress), nil, 2051, deputy02Privkey, false)
-	assert.Equal(t, nil, dpovp.VerifyBeforeTxProcess(block07))
-	// 异常情况,timeSpan % oneLoopTime = 20 > timeoutTime
-	block08 := newSignedBlock(dpovp, block01.Hash(), common.HexToAddress(block02MinerAddress), nil, 2070, deputy02Privkey, false)
-	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyBeforeTxProcess(block08))
-
-	// else :
-	// slot > 1的情况分析
-	// timeSpan/d.timeoutTime == int64(slot-1) , timeSpan与timeoutTime的除数正好是间隔的代理节点数，为正常情况
-	// 设置block09为第四个节点出块，与block01出块节点中间相隔2个节点,设置时间timeSpan == 20--29都是符合出块的时间
-	block09 := newSignedBlock(dpovp, block01.Hash(), common.HexToAddress(block04MinerAddress), nil, 2025, deputy04Privkey, false)
-	assert.Equal(t, nil, dpovp.VerifyBeforeTxProcess(block09))
-	// 不符合情况,设置timeSpan >=30 || timeSpan < 20
-	// timeSpan >=30 情况， 满足条件 timeSpan/d.timeoutTime != int64(slot-1)
-	block10 := newSignedBlock(dpovp, block01.Hash(), common.HexToAddress(block04MinerAddress), nil, 2030, deputy04Privkey, false)
-	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyBeforeTxProcess(block10))
-	// timeSpan < 20 情况， 满足条件 timeSpan/d.timeoutTime != int64(slot-1)
-	block11 := newSignedBlock(dpovp, block01.Hash(), common.HexToAddress(block04MinerAddress), nil, 2019, deputy04Privkey, false)
-	assert.Equal(t, ErrVerifyHeaderFailed, dpovp.VerifyBeforeTxProcess(block11))
-
-}
-
-// TestDpovp_Seal
-func TestDpovp_Seal(t *testing.T) {
-	// 创建5个代理节点
-	dm := deputynode.NewManager(5)
-	dm = initDeputyNode(5, 0, dm)
-	dpovp := loadDpovp(dm)
-	defer dpovp.db.Close()
-	// 创世块
-	block00 := newSignedBlock(dpovp, common.Hash{}, common.HexToAddress(block01MinerAddress), nil, 995, deputy01Privkey, true)
-
+	// not snapshot block
+	header := &types.Header{Height: 100}
 	txs := []*types.Transaction{
-		signTransaction(types.NewTransaction(defaultAccounts[0], common.Big1, 2000000, common.Big2, []byte{12}, 0, chainID, 1538210391, "aa", "aaa"), testPrivate),
-		makeTransaction(testPrivate, defaultAccounts[1], params.OrdinaryTx, common.Big1, common.Big2, 1538210491, 2000000),
+		types.NewTransaction(common.HexToAddress("0x123"), common.Address{}, common.Big1, 2000000, common.Big2, []byte{12}, 0, 100, 1538210391, "aa", "aaa"),
+		{},
 	}
-	// parent is genesis block,此区块是作为测试区块的参照区块
-	block01 := newSignedBlock(dpovp, block00.Hash(), common.HexToAddress(block01MinerAddress), txs, 1000, deputy01Privkey, true)
-
-	TestBlockHeader := block01.Header // 得到block01头，为生成TestBlock所用
 	product := &account.TxsProduct{
 		Txs:         txs,
-		GasUsed:     block01.GasUsed(),
-		ChangeLogs:  block01.ChangeLogs,
-		VersionRoot: block01.VersionRoot(),
+		GasUsed:     123,
+		ChangeLogs:  types.ChangeLogSlice{{LogType: 101}, {}},
+		VersionRoot: common.HexToHash("0x124"),
 	}
-	TestBlock, err := dpovp.Seal(TestBlockHeader, product, block01.Confirms, nil)
-	assert.NoError(t, err)
-	assert.Equal(t, block01.Hash(), TestBlock.Hash())
-	assert.Equal(t, block01.Txs, TestBlock.Txs)
-	assert.Equal(t, block01.ChangeLogs, TestBlock.ChangeLogs)
-	assert.Equal(t, types.DeputyNodes(nil), TestBlock.DeputyNodes)
+	confirms := []types.SignData{{0x12}, {0x34}}
+	block01 := ba.Seal(header, product, confirms)
+	assert.Equal(t, product.VersionRoot, block01.VersionRoot())
+	assert.Equal(t, product.ChangeLogs.MerkleRootSha(), block01.LogRoot())
+	assert.Equal(t, product.Txs.MerkleRootSha(), block01.TxRoot())
+	assert.Equal(t, product.GasUsed, block01.GasUsed())
+	assert.Equal(t, product.Txs, block01.Txs)
+	assert.Equal(t, product.ChangeLogs, block01.ChangeLogs)
+	assert.Equal(t, confirms, block01.Confirms)
+
+	// snapshot block
+	header = &types.Header{Height: params.TermDuration}
+	product = &account.TxsProduct{}
+	confirms = []types.SignData{}
+	block02 := ba.Seal(header, product, confirms)
+	assert.NotEqual(t, block01.Hash(), block02.Hash())
+	deputies := types.DeputyNodes(canLoader)
+	assert.Equal(t, deputies, block02.DeputyNodes)
+	deputyRoot := deputies.MerkleRootSha()
+	assert.Equal(t, deputyRoot[:], block02.DeputyRoot())
+	assert.Equal(t, merkle.EmptyTrieHash, block02.LogRoot())
+	assert.Equal(t, merkle.EmptyTrieHash, block02.TxRoot())
+	assert.Equal(t, uint64(0), block02.GasUsed())
+	assert.Empty(t, block02.Txs)
+	assert.Empty(t, block02.ChangeLogs)
+	assert.Empty(t, block02.Confirms)
 }
 
-// TestDpovp_Finalize
-func TestDpovp_Finalize(t *testing.T) {
-	dm := deputynode.NewManager(5)
-	// 第0届 一个deputy node
-	dm = initDeputyNode(1, 0, dm)
-	// 第一届
-	dm = initDeputyNode(3, params.TermDuration, dm)
-	// 第二届
-	dm = initDeputyNode(5, 2*params.TermDuration, dm)
+// createAssembler clear account manager then make some new change logs
+func createAssembler(db *store.ChainDatabase, fillSomeLogs bool) *BlockAssembler {
+	am := account.NewManager(common.Hash{}, db)
 
-	dpovp := loadDpovp(dm)
-	defer dpovp.db.Close()
-	am := account.NewManager(common.Hash{}, dpovp.db)
+	deputyCount := 5
+	dm := deputynode.NewManager(deputyCount, db)
+	deputies := generateDeputies(deputyCount)
+	dm.SaveSnapshot(0, deputies)
+	dm.SaveSnapshot(params.TermDuration, deputies)
 
-	// 设置前0,1,2届的矿工换届奖励
-	rewardMap := make(params.RewardsMap)
-	num00, _ := new(big.Int).SetString("55555555555555555555", 10)
-	num01, _ := new(big.Int).SetString("66666666666666666666", 10)
-	num02, _ := new(big.Int).SetString("77777777777777777777", 10)
-	rewardMap[0] = &params.Reward{
-		Term:  0,
-		Value: num00,
-		Times: 1,
+	if fillSomeLogs {
+		// This will make 5 CandidateLogs and 5 VotesLogs
+		for _, deputy := range deputies {
+			profile := types.Profile{
+				types.CandidateKeyIsCandidate:   params.IsCandidateNode,
+				types.CandidateKeyDepositAmount: "100",
+			}
+			deputyAccount := am.GetAccount(deputy.MinerAddress)
+			deputyAccount.SetCandidate(profile)
+			deputyAccount.SetVotes(deputy.Votes)
+		}
+		// set reward pool balance. It will make 1 BalanceLog
+		am.GetAccount(params.DepositPoolAddress).SetBalance(big.NewInt(int64(100 * deputyCount)))
+
+		// make balance logs. It will make 3 BalanceLogs, but they could be merged to 2 logs
+		account1 := am.GetAccount(common.HexToAddress("0x123"))
+		account1.SetBalance(big.NewInt(10000))
+		account1.SetBalance(big.NewInt(9999))
+		account2 := am.GetAccount(common.HexToAddress("234"))
+		account2.SetBalance(big.NewInt(100))
+
+		// set reward for term 0. It will make 1 StorageLog. And 1 StorageRootLog after accountManager.Finalise()
+		rewardAccont := am.GetAccount(params.TermRewardContract)
+		rewardsMap := params.RewardsMap{
+			0: &params.Reward{Term: 0, Value: common.Lemo2Mo("10000")},
+			1: &params.Reward{Term: 1, Value: common.Lemo2Mo("0")},
+		}
+		storageVal, err := json.Marshal(rewardsMap)
+		if err != nil {
+			panic(err)
+		}
+		err = rewardAccont.SetStorageState(params.TermRewardContract.Hash(), storageVal)
+		if err != nil {
+			panic(err)
+		}
+
+		// unregister first deputy It will make 1 CandidateStateLog
+		deputy := deputies[0]
+		am.GetAccount(deputy.MinerAddress).SetCandidateState(types.CandidateKeyIsCandidate, params.NotCandidateNode)
 	}
-	rewardMap[1] = &params.Reward{
-		Term:  1,
-		Value: num01,
-		Times: 1,
-	}
-	rewardMap[2] = &params.Reward{
-		Term:  2,
-		Value: num02,
-		Times: 1,
-	}
-	data, err := json.Marshal(rewardMap)
-	assert.NoError(t, err)
-	rewardAcc := am.GetAccount(params.TermRewardContract)
-	rewardAcc.SetStorageState(params.TermRewardContract.Hash(), data)
-	// 设置deputy node的income address
-	term00, err := dm.GetTermByHeight(0)
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(term00.Nodes))
 
-	term01, err := dm.GetTermByHeight(params.TermDuration + params.InterimDuration + 1)
-	assert.NoError(t, err)
-	assert.Equal(t, 3, len(term01.Nodes))
-
-	term02, err := dm.GetTermByHeight(2*params.TermDuration + params.InterimDuration + 1)
-	assert.NoError(t, err)
-	assert.Equal(t, 5, len(term02.Nodes))
-
-	// miner
-	minerAddr00 := term02.Nodes[0].MinerAddress
-	minerAddr01 := term02.Nodes[1].MinerAddress
-	minerAddr02 := term02.Nodes[2].MinerAddress
-	minerAddr03 := term02.Nodes[3].MinerAddress
-	minerAddr04 := term02.Nodes[4].MinerAddress
-	minerAcc00 := am.GetAccount(minerAddr00)
-	minerAcc01 := am.GetAccount(minerAddr01)
-	minerAcc02 := am.GetAccount(minerAddr02)
-	minerAcc03 := am.GetAccount(minerAddr03)
-	minerAcc04 := am.GetAccount(minerAddr04)
-	// 设置income address
-	incomeAddr00 := common.HexToAddress("0x10000")
-	incomeAddr01 := common.HexToAddress("0x10001")
-	incomeAddr02 := common.HexToAddress("0x10002")
-	incomeAddr03 := common.HexToAddress("0x10003")
-	incomeAddr04 := common.HexToAddress("0x10004")
-	profile := make(map[string]string)
-	profile[types.CandidateKeyIncomeAddress] = incomeAddr00.String()
-	minerAcc00.SetCandidate(profile)
-	profile[types.CandidateKeyIncomeAddress] = incomeAddr01.String()
-	minerAcc01.SetCandidate(profile)
-	profile[types.CandidateKeyIncomeAddress] = incomeAddr02.String()
-	minerAcc02.SetCandidate(profile)
-	profile[types.CandidateKeyIncomeAddress] = incomeAddr03.String()
-	minerAcc03.SetCandidate(profile)
-	profile[types.CandidateKeyIncomeAddress] = incomeAddr04.String()
-	minerAcc04.SetCandidate(profile)
-
-	// 为第0届发放奖励
-	err = dpovp.Finalize(params.InterimDuration+params.TermDuration+1, am)
-	assert.NoError(t, err)
-	// 查看第0届的deputy node 收益地址的balance. 只有第一个deputy node
-	incomeAcc00 := am.GetAccount(incomeAddr00)
-	value1, _ := new(big.Int).SetString("55000000000000000000", 10)
-	assert.Equal(t, value1, incomeAcc00.GetBalance())
-
-	// 	为第二届发放奖励
-	err = dpovp.Finalize(2*params.TermDuration+params.InterimDuration+1, am)
-	assert.NoError(t, err)
-	// 查看第二届的deputy node 收益地址的balance.前三个deputy node
-	value2, _ := new(big.Int).SetString("79000000000000000000", 10)
-	assert.Equal(t, value2, incomeAcc00.GetBalance())
-
-	incomeAcc01 := am.GetAccount(incomeAddr01)
-	value3, _ := new(big.Int).SetString("22000000000000000000", 10)
-	assert.Equal(t, value3, incomeAcc01.GetBalance())
-
-	incomeAcc02 := am.GetAccount(incomeAddr02)
-	value4, _ := new(big.Int).SetString("20000000000000000000", 10)
-	assert.Equal(t, value4, incomeAcc02.GetBalance())
-
-	// 	为第三届的deputy nodes 发放奖励 5个deputy node
-	err = dpovp.Finalize(3*params.TermDuration+params.InterimDuration+1, am)
-	assert.NoError(t, err)
-	//
-	value5, _ := new(big.Int).SetString("97000000000000000000", 10)
-	assert.Equal(t, value5, incomeAcc00.GetBalance())
-
-	value6, _ := new(big.Int).SetString("39000000000000000000", 10)
-	assert.Equal(t, value6, incomeAcc01.GetBalance())
-
-	value7, _ := new(big.Int).SetString("35000000000000000000", 10)
-	assert.Equal(t, value7, incomeAcc02.GetBalance())
-
-	incomeAcc03 := am.GetAccount(incomeAddr03)
-	value8, _ := new(big.Int).SetString("13000000000000000000", 10)
-	assert.Equal(t, value8, incomeAcc03.GetBalance())
-
-	incomeAcc04 := am.GetAccount(incomeAddr04)
-	value9, _ := new(big.Int).SetString("12000000000000000000", 10)
-	assert.Equal(t, value9, incomeAcc04.GetBalance())
-
+	processor := transaction.NewTxProcessor(deputies[0].MinerAddress, 100, &parentLoader{db}, am, db, dm)
+	return NewBlockAssembler(am, dm, processor, testCandidateLoader{deputies[0]})
 }
 
-func Test_calculateSalary(t *testing.T) {
+func TestBlockAssembler_Finalize(t *testing.T) {
+	ClearData()
+	db := store.NewChainDataBase(GetStorePath(), "", "")
+	defer db.Close()
+
+	finalizeAndCountLogs := func(ba *BlockAssembler, height uint32, logsCount int) {
+		err := ba.Finalize(height) // genesis block
+		assert.NoError(t, err)
+		logs := ba.am.GetChangeLogs()
+		assert.Equal(t, logsCount, len(logs))
+	}
+	checkReward := func(am *account.Manager, dm *deputynode.Manager) {
+		deputy := dm.GetDeputiesByHeight(1)[1]
+		deputyAccount := am.GetAccount(deputy.MinerAddress)
+		assert.Equal(t, -1, big.NewInt(0).Cmp(deputyAccount.GetBalance()))
+	}
+	checkRefund := func(am *account.Manager, dm *deputynode.Manager) {
+		deputy := dm.GetDeputiesByHeight(1)[0]
+		deputyAccount := am.GetAccount(deputy.MinerAddress)
+		assert.Equal(t, params.NotCandidateNode, deputyAccount.GetCandidateState(types.CandidateKeyIsCandidate))
+		assert.Equal(t, "", deputyAccount.GetCandidateState(types.CandidateKeyDepositAmount))
+		assert.Equal(t, -1, big.NewInt(0).Cmp(deputyAccount.GetVotes()))
+	}
+
+	// nothing to finalize and no reward
+	ba := createAssembler(db, false)
+	finalizeAndCountLogs(ba, 0, 0) // genesis block
+	ba = createAssembler(db, false)
+	finalizeAndCountLogs(ba, 1, 0) // normal block
+
+	// many change logs
+	ba = createAssembler(db, true)
+	finalizeAndCountLogs(ba, 0, 16) // genesis block
+	ba = createAssembler(db, true)
+	finalizeAndCountLogs(ba, 1, 16) // normal block
+	ba = createAssembler(db, true)
+	finalizeAndCountLogs(ba, params.TermDuration+params.InterimDuration+1-params.RewardCheckHeight, 16) // check reward block
+	ba = createAssembler(db, true)
+	finalizeAndCountLogs(ba, params.TermDuration, 16) // snapshot block
+	ba = createAssembler(db, true)
+	finalizeAndCountLogs(ba, params.TermDuration+params.InterimDuration+1, 22) // reward and deposit refund block
+	checkReward(ba.am, ba.dm)
+	checkRefund(ba.am, ba.dm)
+	ba = createAssembler(db, true)
+	finalizeAndCountLogs(ba, params.TermDuration*2-100, 16) // 2st term normal block
+	ba = createAssembler(db, true)
+	finalizeAndCountLogs(ba, params.TermDuration*2+params.InterimDuration+1, 18) // 2st term reward block
+	checkRefund(ba.am, ba.dm)
+}
+
+type errCanLoader struct {
+}
+
+func (cl errCanLoader) LoadTopCandidates(blockHash common.Hash) types.DeputyNodes {
+	return types.DeputyNodes{}
+}
+
+func (cl errCanLoader) LoadRefundCandidates(height uint32) ([]common.Address, error) {
+	return []common.Address{}, errors.New("refund error")
+}
+
+func TestBlockAssembler_Finalize2(t *testing.T) {
+	ClearData()
+	db := store.NewChainDataBase(GetStorePath(), "", "")
+	defer db.Close()
+
+	// issue term reward failed
+	ba := createAssembler(db, true)
+	rewardAccont := ba.am.GetAccount(params.TermRewardContract)
+	err := rewardAccont.SetStorageState(params.TermRewardContract.Hash(), []byte{0x12})
+	assert.NoError(t, err)
+	err = ba.Finalize(params.TermDuration + params.InterimDuration + 1)
+	assert.EqualError(t, err, "invalid character '\\x12' looking for beginning of value")
+
+	// refund deposit failed
+	ba = createAssembler(db, true)
+	ba.canLoader = errCanLoader{}
+	err = ba.Finalize(params.TermDuration + params.InterimDuration + 1)
+	assert.Equal(t, errors.New("refund error"), err)
+
+	// account manager finalise failed
+	ba = createAssembler(db, true)
+	storageRootLog := &types.ChangeLog{
+		Version: 1,
+		Address: params.TermRewardContract,
+		LogType: account.StorageRootLog,
+		NewVal:  common.HexToHash("0x12"),
+	}
+	err = ba.am.Rebuild(params.TermRewardContract, types.ChangeLogSlice{storageRootLog}) // break the storage root
+	assert.NoError(t, err)
+	err = ba.Finalize(1)
+	assert.Equal(t, account.ErrTrieFail, err)
+}
+
+func TestCheckTermReward(t *testing.T) {
+	ClearData()
+	db := store.NewChainDataBase(GetStorePath(), "", "")
+	defer db.Close()
+	am := account.NewManager(common.Hash{}, db)
+	rewardAccont := am.GetAccount(params.TermRewardContract)
+
+	// no reward and not the height for checking
+	dm := deputynode.NewManager(5, db)
+	ba := NewBlockAssembler(am, dm, &transaction.TxProcessor{}, testCandidateLoader{})
+	assert.Equal(t, true, ba.checkTermReward(0))
+
+	// no reward and the height for checking
+	assert.Equal(t, false, ba.checkTermReward(params.TermDuration+params.InterimDuration+1-params.RewardCheckHeight))
+
+	// set rewards
+	rewardAmount := common.Lemo2Mo("100")
+	rewardsMap := params.RewardsMap{0: &params.Reward{Term: 0, Value: rewardAmount}}
+	storageVal, err := json.Marshal(rewardsMap)
+	assert.NoError(t, err)
+	err = rewardAccont.SetStorageState(params.TermRewardContract.Hash(), storageVal)
+	assert.NoError(t, err)
+	assert.Equal(t, true, ba.checkTermReward(params.TermDuration+params.InterimDuration+1-params.RewardCheckHeight))
+
+	// ignore getTermRewards error
+	// set invalid reward
+	err = rewardAccont.SetStorageState(params.TermRewardContract.Hash(), []byte{0x12})
+	assert.NoError(t, err)
+	assert.Equal(t, true, ba.checkTermReward(params.TermDuration+params.InterimDuration+1-params.RewardCheckHeight))
+	am.Reset(common.Hash{})
+	rewardAccont = am.GetAccount(params.TermRewardContract)
+}
+
+func TestIssueTermReward(t *testing.T) {
+	ClearData()
+	db := store.NewChainDataBase(GetStorePath(), "", "")
+	defer db.Close()
+	ba := createAssembler(db, false)
+	firstTerm, err := ba.dm.GetTermByHeight(1)
+	assert.NoError(t, err)
+	rewardAmount := common.Lemo2Mo("100")
+	// choose a miner
+	minerAddress1 := firstTerm.Nodes[1].MinerAddress
+
+	initRewardData := func() {
+		ba.am.Reset(common.Hash{})
+		rewardAccont := ba.am.GetAccount(params.TermRewardContract)
+		rewardsMap := params.RewardsMap{0: &params.Reward{Term: 0, Value: rewardAmount}}
+		storageVal, err := json.Marshal(rewardsMap)
+		assert.NoError(t, err)
+		err = rewardAccont.SetStorageState(params.TermRewardContract.Hash(), storageVal)
+		assert.NoError(t, err)
+	}
+
+	// not reward block
+	initRewardData()
+	err = ba.issueTermReward(ba.am, params.TermDuration)
+	assert.NoError(t, err)
+	assert.Equal(t, big.NewInt(0), ba.am.GetAccount(minerAddress1).GetBalance())
+
+	// reward block
+	initRewardData()
+	err = ba.issueTermReward(ba.am, params.TermDuration+params.InterimDuration+1)
+	assert.NoError(t, err)
+	deputyCount := len(firstTerm.Nodes)
+	assert.Equal(t, big.NewInt(0).Div(rewardAmount, big.NewInt(int64(deputyCount))), ba.am.GetAccount(minerAddress1).GetBalance())
+
+	// not set reward yet
+	initRewardData()
+	err = ba.issueTermReward(ba.am, params.TermDuration*2+params.InterimDuration+1)
+	assert.NoError(t, err)
+	assert.Equal(t, big.NewInt(0), ba.am.GetAccount(minerAddress1).GetBalance())
+}
+
+func TestRefundCandidateDeposit(t *testing.T) {
+	ClearData()
+	db := store.NewChainDataBase(GetStorePath(), "", "")
+	defer db.Close()
+	ba := createAssembler(db, false)
+	firstTerm, err := ba.dm.GetTermByHeight(1)
+	assert.NoError(t, err)
+	depositAmount := common.Lemo2Mo("100")
+	// refund account is set in createAssembler
+	refundAddress := firstTerm.Nodes[0].MinerAddress
+	initDepositData := func() {
+		ba.am.Reset(common.Hash{})
+		ba.am.GetAccount(refundAddress).SetCandidateState(types.CandidateKeyDepositAmount, depositAmount.String())
+		depositPoolAccount := ba.am.GetAccount(params.DepositPoolAddress)
+		depositPoolAccount.SetBalance(depositAmount)
+	}
+
+	// not reward block
+	initDepositData()
+	err = ba.refundCandidateDeposit(ba.am, params.TermDuration)
+	assert.NoError(t, err)
+	assert.Equal(t, big.NewInt(0), ba.am.GetAccount(refundAddress).GetBalance())
+
+	// not set reward yet
+	initDepositData()
+	err = ba.refundCandidateDeposit(ba.am, params.TermDuration*2+params.InterimDuration+1)
+	assert.NoError(t, err)
+	assert.Equal(t, depositAmount, ba.am.GetAccount(refundAddress).GetBalance())
+
+	// reward block
+	initDepositData()
+	err = ba.refundCandidateDeposit(ba.am, params.TermDuration+params.InterimDuration+1)
+	assert.NoError(t, err)
+	assert.Equal(t, depositAmount, ba.am.GetAccount(refundAddress).GetBalance())
+}
+
+func TestCalculateSalary(t *testing.T) {
 	tests := []struct {
 		Expect, TotalSalary, DeputyVotes, TotalVotes, Precision int64
 	}{
@@ -530,8 +418,34 @@ func Test_calculateSalary(t *testing.T) {
 	}
 }
 
-// Test_DivideSalary test total salary with random data
-func Test_DivideSalary(t *testing.T) {
+func TestGetDeputyIncomeAddress(t *testing.T) {
+	ClearData()
+	db := store.NewChainDataBase(GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
+	defer db.Close()
+	am := account.NewManager(common.Hash{}, db)
+
+	// no set income address
+	minerAddr := common.HexToAddress("0x123")
+	deputy := &types.DeputyNode{MinerAddress: minerAddr}
+	incomeAddr := getDeputyIncomeAddress(am, deputy)
+	assert.Equal(t, minerAddr, incomeAddr)
+
+	// invalid income address
+	candidate := am.GetAccount(minerAddr)
+	candidate.SetCandidateState(types.CandidateKeyIncomeAddress, "random text")
+	incomeAddr = getDeputyIncomeAddress(am, deputy)
+	assert.Equal(t, minerAddr, incomeAddr)
+
+	// valid income address
+	incomeAddrStr := "lemoqr"
+	validIncomeAddr, _ := common.StringToAddress(incomeAddrStr)
+	candidate.SetCandidateState(types.CandidateKeyIncomeAddress, incomeAddrStr)
+	incomeAddr = getDeputyIncomeAddress(am, deputy)
+	assert.Equal(t, validIncomeAddr, incomeAddr)
+}
+
+// TestDivideSalary test total salary with random data
+func TestDivideSalary(t *testing.T) {
 	ClearData()
 	db := store.NewChainDataBase(GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
 	defer db.Close()
@@ -540,7 +454,7 @@ func Test_DivideSalary(t *testing.T) {
 	r := rand.New(rand.NewSource(time.Now().Unix()))
 	for i := 0; i < 100; i++ {
 		nodeCount := r.Intn(49) + 1 // [1, 50]
-		nodes := GenerateDeputies(nodeCount)
+		nodes := generateDeputies(nodeCount)
 		registerDeputies(nodes, am)
 		for _, node := range nodes {
 			node.Votes = randomBigInt(r)
@@ -554,7 +468,7 @@ func Test_DivideSalary(t *testing.T) {
 
 		// 验证income是否相同
 		for j := 0; j < len(nodes); j++ {
-			if getIncomeAddressFromDeputyNode(am, nodes[j]) != salaries[j].Address {
+			if getDeputyIncomeAddress(am, nodes[j]) != salaries[j].Address {
 				panic("income address no equal")
 			}
 		}
@@ -568,18 +482,59 @@ func Test_DivideSalary(t *testing.T) {
 		}
 		// 比较每个deputy node salary
 		for k := 0; k < len(nodes); k++ {
-			if salaries[k].Salary.Cmp(calculateSalary(totalSalary, nodes[k].Votes, totalVotes, minPrecision)) != 0 {
+			if salaries[k].Salary.Cmp(calculateSalary(totalSalary, nodes[k].Votes, totalVotes, params.MinRewardPrecision)) != 0 {
 				panic("deputy node salary no equal")
 			}
 		}
 
 		// errRange = nodeCount * minPrecision
 		// actualTotal must be in range [totalSalary - errRange, totalSalary]
-		errRange := new(big.Int).Mul(big.NewInt(int64(nodeCount)), minPrecision)
+		errRange := new(big.Int).Mul(big.NewInt(int64(nodeCount)), params.MinRewardPrecision)
 		assert.Equal(t, true, actualTotal.Cmp(new(big.Int).Sub(totalSalary, errRange)) >= 0)
 		assert.Equal(t, true, actualTotal.Cmp(totalSalary) <= 0)
 	}
 }
+
+// 对区块进行签名的函数
+// func signTestBlock(deputyPrivate string, block *types.Block) {
+// 	// 对区块签名
+// 	private, err := crypto.ToECDSA(common.FromHex(deputyPrivate))
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	signBlock, err := crypto.Sign(block.Hash().Bytes(), private)
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	block.Header.SignData = signBlock
+// }
+
+// newSignedBlock 用来生成符合测试用例所用的区块
+// func newSignedBlock(dpovp *DPoVP, parentHash common.Hash, author common.Address, txs []*types.Transaction, time uint32, signPrivate string, save bool) *types.Block {
+// 	newBlockInfo := test.blockInfo{
+// 		parentHash: parentHash,
+// 		author:     author,
+// 		txList:     txs,
+// 		gasLimit:   500000000,
+// 		time:       time,
+// 	}
+// 	parent, err := dpovp.db.GetBlockByHash(parentHash)
+// 	if err != nil {
+// 		// genesis block
+// 		newBlockInfo.height = 0
+// 	} else {
+// 		newBlockInfo.height = parent.Height() + 1
+// 	}
+// 	testBlock := test.makeBlock(dpovp.db, newBlockInfo, save)
+// 	if save {
+// 		if err := dpovp.UpdateStable(testBlock); err != nil {
+// 			panic(err)
+// 		}
+// 	}
+// 	// 对区块进行签名
+// 	signTestBlock(signPrivate, testBlock)
+// 	return testBlock
+// }
 
 func registerDeputies(deputies types.DeputyNodes, am *account.Manager) {
 	for _, node := range deputies {
@@ -594,4 +549,120 @@ func registerDeputies(deputies types.DeputyNodes, am *account.Manager) {
 
 func randomBigInt(r *rand.Rand) *big.Int {
 	return new(big.Int).Mul(big.NewInt(r.Int63()), big.NewInt(r.Int63()))
+}
+
+func TestGetTermRewards(t *testing.T) {
+	ClearData()
+	db := store.NewChainDataBase(GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
+	defer db.Close()
+	am := account.NewManager(common.Hash{}, db)
+	rewardAccont := am.GetAccount(params.TermRewardContract)
+
+	// no reward
+	result, err := getTermRewards(am, 0)
+	assert.NoError(t, err)
+	assert.Equal(t, *big.NewInt(0), *result)
+
+	// load fail (account storage root is invalid)
+	storageRootLog := &types.ChangeLog{
+		Version: 1,
+		Address: params.TermRewardContract,
+		LogType: account.StorageRootLog,
+		NewVal:  common.HexToHash("0x12"),
+	}
+	err = am.Rebuild(params.TermRewardContract, types.ChangeLogSlice{storageRootLog})
+	assert.NoError(t, err)
+	_, err = getTermRewards(am, 0)
+	assert.Equal(t, account.ErrTrieFail, err)
+	am.Reset(common.Hash{})
+	rewardAccont = am.GetAccount(params.TermRewardContract)
+
+	// set invalid reward
+	err = rewardAccont.SetStorageState(params.TermRewardContract.Hash(), []byte{0x12})
+	assert.NoError(t, err)
+	result, err = getTermRewards(am, 0)
+	assert.EqualError(t, err, "invalid character '\\x12' looking for beginning of value")
+	am.Reset(common.Hash{})
+	rewardAccont = am.GetAccount(params.TermRewardContract)
+
+	// set rewards
+	rewardAmount := common.Lemo2Mo("100")
+	rewardsMap := params.RewardsMap{0: &params.Reward{Term: 0, Value: rewardAmount}}
+	storageVal, err := json.Marshal(rewardsMap)
+	assert.NoError(t, err)
+	err = rewardAccont.SetStorageState(params.TermRewardContract.Hash(), storageVal)
+	assert.NoError(t, err)
+	result, err = getTermRewards(am, 0)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, rewardAmount.Cmp(result))
+	// set rewards but not the term
+	result, err = getTermRewards(am, 1)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, big.NewInt(0).Cmp(result))
+	am.Reset(common.Hash{})
+	rewardAccont = am.GetAccount(params.TermRewardContract)
+
+	// set empty rewards
+	storageVal, err = json.Marshal(params.RewardsMap{})
+	assert.NoError(t, err)
+	err = rewardAccont.SetStorageState(params.TermRewardContract.Hash(), storageVal)
+	assert.NoError(t, err)
+	result, err = getTermRewards(am, 0)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, big.NewInt(0).Cmp(result))
+}
+
+func TestBlockAssembler_RunBlock(t *testing.T) {
+	ClearData()
+	db := store.NewChainDataBase(GetStorePath(), "", "")
+	defer db.Close()
+	ba := createAssembler(db, false)
+	firstTerm, err := ba.dm.GetTermByHeight(1)
+	assert.NoError(t, err)
+	tx := MakeTx(deputynode.GetSelfNodeKey(), common.HexToAddress("0x88"), common.Lemo2Mo("100"), uint64(time.Now().Unix()+300))
+	tx.SetGasUsed(21204)
+
+	// genesis block
+	rawBlock := &types.Block{Header: &types.Header{Height: 0}, Txs: types.Transactions{}}
+	assert.PanicsWithValue(t, transaction.ErrInvalidGenesis, func() {
+		_, _ = ba.RunBlock(rawBlock)
+	})
+
+	// prepare a genesis block (and balance) for test
+	genesisBlock := initGenesis(db, ba.am, firstTerm.Nodes[0].MinerAddress)
+
+	// process block fail
+	rawBlock = &types.Block{Header: &types.Header{Height: 1}, Txs: types.Transactions{tx}}
+	_, err = ba.RunBlock(rawBlock)
+	assert.Equal(t, transaction.ErrInvalidTxInBlock, err)
+
+	// process block success
+	rawBlock = &types.Block{Header: &types.Header{Height: 1, ParentHash: genesisBlock.Hash(), GasLimit: 10000000, MinerAddress: firstTerm.Nodes[0].MinerAddress}, Txs: types.Transactions{tx}}
+	newBlock, err := ba.RunBlock(rawBlock)
+	assert.NoError(t, err)
+	assert.Equal(t, rawBlock.Txs, newBlock.Txs)
+	assert.Equal(t, rawBlock.MinerAddress(), newBlock.MinerAddress())
+	assert.Equal(t, uint64(21204), newBlock.GasUsed())
+	assert.NotEqual(t, 0, len(newBlock.ChangeLogs))
+}
+
+func TestBlockAssembler_MineBlock(t *testing.T) {
+	ClearData()
+	db := store.NewChainDataBase(GetStorePath(), "", "")
+	defer db.Close()
+	ba := createAssembler(db, false)
+	firstTerm, err := ba.dm.GetTermByHeight(1)
+	assert.NoError(t, err)
+	genesisBlock := initGenesis(db, ba.am, firstTerm.Nodes[0].MinerAddress)
+
+	tx := MakeTx(deputynode.GetSelfNodeKey(), common.HexToAddress("0x88"), common.Lemo2Mo("100"), uint64(time.Now().Unix()+300))
+	invalidTx := MakeTx(deputynode.GetSelfNodeKey(), common.HexToAddress("0x88"), common.Lemo2Mo("100000000000000"), uint64(time.Now().Unix()+300))
+
+	header := &types.Header{Height: 1, ParentHash: genesisBlock.Hash(), GasLimit: 10000000, MinerAddress: firstTerm.Nodes[0].MinerAddress}
+	txs := types.Transactions{tx, invalidTx}
+	newBlock, invalidTxs, err := ba.MineBlock(header, txs, 1000)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(newBlock.Txs))
+	assert.Equal(t, 1, len(invalidTxs))
+	assert.NotEqual(t, nil, newBlock.Header.SignData)
 }

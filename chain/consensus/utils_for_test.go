@@ -2,19 +2,40 @@ package consensus
 
 import (
 	"crypto/ecdsa"
-	"crypto/rand"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
-	"github.com/LemoFoundationLtd/lemochain-core/common/crypto/secp256k1"
+	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
+	"github.com/LemoFoundationLtd/lemochain-core/store/protocol"
 	"math/big"
+	"os"
+	"time"
 )
 
 var (
+	// The first deputy's private is set to "selfNodeKey" which means my miner private
 	testDeputies = generateDeputies(17)
 	testBlocks   = generateBlocks()
 )
+
+func GetStorePath() string {
+	return "../../testdata/consensus"
+}
+
+func ClearData() {
+	err := os.RemoveAll(GetStorePath())
+	failCnt := 1
+	for err != nil {
+		log.Errorf("CLEAR DATA BASE FAIL.%s, SLEEP(%ds) AND CONTINUE", err.Error(), failCnt)
+		time.Sleep(time.Duration(failCnt) * time.Second)
+		err = os.RemoveAll(GetStorePath())
+		failCnt++
+	}
+}
 
 type testBlockLoader struct {
 	Blocks []*types.Block
@@ -107,7 +128,7 @@ func (cl testCandidateLoader) LoadTopCandidates(blockHash common.Hash) types.Dep
 	return types.DeputyNodes(cl)
 }
 
-func (cl testCandidateLoader) LoadRefundCandidates() ([]common.Address, error) {
+func (cl testCandidateLoader) LoadRefundCandidates(height uint32) ([]common.Address, error) {
 	var result []common.Address
 	for i := 0; i < len(cl); i++ {
 		result = append(result, cl[i].MinerAddress)
@@ -124,13 +145,17 @@ func createCandidateLoader(nodeIndexList ...int) testCandidateLoader {
 func generateDeputies(num int) types.DeputyNodes {
 	var result []*types.DeputyNode
 	for i := 0; i < num; i++ {
-		private, _ := ecdsa.GenerateKey(secp256k1.S256(), rand.Reader)
+		private, _ := crypto.GenerateKey()
 		result = append(result, &types.DeputyNode{
 			MinerAddress: crypto.PubkeyToAddress(private.PublicKey),
 			NodeID:       crypto.PrivateKeyToNodeID(private),
 			Rank:         uint32(i),
 			Votes:        big.NewInt(int64(10000000000 - i)),
 		})
+		// let me to be the first deputy
+		if i == 0 {
+			deputynode.SetSelfNodeKey(private)
+		}
 	}
 	return result
 }
@@ -145,6 +170,17 @@ func pickNodes(nodeIndexList ...int) types.DeputyNodes {
 		result = append(result, newDeputy)
 	}
 	return result
+}
+
+func initDeputyManager(deputyCount int) *deputynode.Manager {
+	dm := deputynode.NewManager(deputyCount, &testBlockLoader{})
+	nodeIndexList := make([]int, deputyCount)
+	for i := range nodeIndexList {
+		nodeIndexList[i] = i
+	}
+	nodes := pickNodes(nodeIndexList...)
+	dm.SaveSnapshot(0, nodes)
+	return dm
 }
 
 // generateBlocks generate block forks like this:
@@ -200,4 +236,55 @@ func (txPoolForValidator) RecvBlock(block *types.Block) {
 
 func (txPoolForValidator) PruneBlock(block *types.Block) {
 	panic("implement me")
+}
+
+type parentLoader struct {
+	Db protocol.ChainDB
+}
+
+func (t *parentLoader) GetParentByHeight(height uint32, sonBlockHash common.Hash) *types.Block {
+	block, err := t.Db.GetUnConfirmByHeight(height, sonBlockHash)
+	if err == store.ErrNotExist {
+		block, err = t.Db.GetBlockByHeight(height)
+	}
+
+	if err != nil {
+		log.Error("load block by height fail", "height", height, "err", err)
+		return nil
+	}
+	return block
+}
+
+func MakeTx(fromPrivate *ecdsa.PrivateKey, to common.Address, amount *big.Int, expiration uint64) *types.Transaction {
+	from := crypto.PubkeyToAddress(fromPrivate.PublicKey)
+	tx := types.NewTransaction(from, to, amount, 1000000, big.NewInt(100), []byte{}, params.OrdinaryTx, 100, expiration, "", string("aaa"))
+	return SignTx(tx, fromPrivate)
+}
+
+func SignTx(tx *types.Transaction, private *ecdsa.PrivateKey) *types.Transaction {
+	tx, err := types.DefaultSigner{}.SignTx(tx, private)
+	if err != nil {
+		panic(err)
+	}
+	return tx
+}
+
+// initGenesis create and save a genesis block to db, then set some balance to the address
+func initGenesis(db *store.ChainDatabase, am *account.Manager, address common.Address) *types.Block {
+	genesisBlock := &types.Block{Header: &types.Header{}}
+	am.Reset(common.Hash{})
+	am.GetAccount(address).SetBalance(common.Lemo2Mo("10000"))
+	err := am.Finalise()
+	if err != nil {
+		panic(err)
+	}
+	err = db.SetBlock(genesisBlock.Hash(), genesisBlock)
+	if err != nil {
+		panic(err)
+	}
+	err = am.Save(genesisBlock.Hash())
+	if err != nil {
+		panic(err)
+	}
+	return genesisBlock
 }

@@ -1,17 +1,14 @@
 package deputynode
 
 import (
-	"crypto/ecdsa"
-	"crypto/rand"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
-	"github.com/LemoFoundationLtd/lemochain-core/common/crypto/secp256k1"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 func Test_SelfNodeKey_GetSelfNodeKey(t *testing.T) {
-	key, _ := ecdsa.GenerateKey(secp256k1.S256(), rand.Reader)
+	key, _ := crypto.GenerateKey()
 	SetSelfNodeKey(key)
 	assert.Equal(t, key, GetSelfNodeKey())
 }
@@ -19,7 +16,7 @@ func Test_SelfNodeKey_GetSelfNodeKey(t *testing.T) {
 func Test_GetSelfNodeID(t *testing.T) {
 	hash := common.HexToHash("0x1234567890")
 	for i := 0; i < 100; i++ {
-		key, _ := ecdsa.GenerateKey(secp256k1.S256(), rand.Reader)
+		key, _ := crypto.GenerateKey()
 		SetSelfNodeKey(key)
 
 		signInfo, err := crypto.Sign(hash[:], GetSelfNodeKey())

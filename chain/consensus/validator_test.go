@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
@@ -393,16 +394,13 @@ func TestValidator_VerifyAfterTxProcess(t *testing.T) {
 		Header: block.Header,
 		ChangeLogs: types.ChangeLogSlice{
 			&types.ChangeLog{
-				LogType: types.ChangeLogType(uint32(1)),
+				LogType: account.BalanceLog,
 				Address: common.HexToAddress("0x11" + strconv.Itoa(1)),
-				Version: uint32(1),
-				OldVal:  rand.Intn(100),
-				NewVal:  rand.Intn(100),
-				Extra:   strconv.Itoa(1),
+				Version: uint32(100),
 			},
 		},
 	}
-	assert.Error(t, ErrVerifyBlockFailed, v.VerifyAfterTxProcess(block, computedBlock))
+	assert.Equal(t, ErrVerifyBlockFailed, v.VerifyAfterTxProcess(block, computedBlock))
 
 	// 3. 验证两个block计算出的hash不等的情况，这里构造两个块的MinerAddress不同
 	computedBlock = &types.Block{
@@ -551,7 +549,7 @@ func TestValidator_VerifyNewConfirms(t *testing.T) {
 	sigList03 := []types.SignData{sig02, sig03} // 验证确认包中包含了block的confirms中的sig2
 	expectReturn := []types.SignData{sig03}     // 期望的返回确认包会除去重复的sig2
 	validConfirms, err = v.VerifyNewConfirms(block01, sigList03, dm)
-	assert.Error(t, ErrInvalidConfirmSigner, err)
+	assert.Equal(t, ErrInvalidConfirmSigner, err)
 	assert.Equal(t, expectReturn, validConfirms)
 
 	// 4. 验证确认包中包含非deputy node的签名确认信息的情况
@@ -577,11 +575,11 @@ func TestValidator_VerifyConfirmPacket(t *testing.T) {
 	hash := testBlocks[0].Hash()
 	confirms, err := v1.VerifyConfirmPacket(0, hash, nil)
 	assert.Nil(t, confirms)
-	assert.Error(t, ErrBlockNotExist, err)
+	assert.Equal(t, ErrBlockNotExist, err)
 	// 2. 测试区块高度不对的情况
 	block := testBlocks[1]
 	v2 := NewValidator(1000, createBlockLoader([]int{0, 1}, 0), dm, txPoolForValidator{}, testCandidateLoader{})
 	confirms, err = v2.VerifyConfirmPacket(block.Height()+1, block.Hash(), nil)
 	assert.Nil(t, confirms)
-	assert.Error(t, ErrInvalidSignedConfirmInfo, err)
+	assert.Equal(t, ErrInvalidSignedConfirmInfo, err)
 }

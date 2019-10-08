@@ -3,6 +3,7 @@ package types
 import (
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto/sha3"
+	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"io"
 
 	"github.com/LemoFoundationLtd/lemochain-core/common"
@@ -68,7 +69,9 @@ type rlpStorageEvent struct {
 func (l *Event) Hash() (h common.Hash) {
 	hw := sha3.NewKeccak256()
 	// this will call EncodeRLP
-	rlp.Encode(hw, l)
+	if err := rlp.Encode(hw, l); err != nil {
+		log.Error("hash event fail", "err", err)
+	}
 	hw.Sum(h[:0])
 	return h
 }

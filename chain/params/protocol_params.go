@@ -67,23 +67,23 @@ const (
 	Bn256ScalarMulGas       uint64 = 40000  // Gas needed for an elliptic curve scalar multiplication
 	Bn256PairingBaseGas     uint64 = 100000 // Base price for an elliptic curve pairing check
 	Bn256PairingPerPointGas uint64 = 80000  // Per-point price for an elliptic curve pairing check
-
 )
 
 var (
-	TermDuration            uint32 = 1000000                // 每届间隔
-	InterimDuration         uint32 = 1000                   // 过渡期
-	ReleaseEvilNodeDuration uint32 = 1000                   // 释放作恶节点的过度期高度
-	MinGasPrice                    = big.NewInt(1000000000) // 默认的最低gas price 为1G mo
-	// RegisterCandidatePledgeAmount        = new(big.Int).Mul(big.NewInt(1000), oneLEMO) // Register Candidate node fees = 1000LEMO
-	RegisterCandidatePledgeAmount = common.Lemo2Mo("5000000")        // 注册成为候选节点的质押金额最小值
-	CandidateDepositAddress, _    = common.StringToAddress("0x1001") // 设置接收注册候选节点押金费用1000LEMO的地址
-	PledgeExchangeRate            = common.Lemo2Mo("75")             // 质押金额兑换票数兑换率 75LEMO换1票
-	VoteExchangeRate              = common.Lemo2Mo("100")            // 投票票数兑换率 100LEMO换1票
-	IsCandidateNode               = "true"
-	NotCandidateNode              = "false"
+	TermDuration            uint32 = 1000000                       // 每届间隔
+	InterimDuration         uint32 = 1000                          // 过渡期
+	RewardCheckHeight       uint32 = 100000                        // The height to check if miners' reward is set
+	ReleaseEvilNodeDuration uint32 = 1000                          // 释放作恶节点的过度期高度
+  MinGasPrice                    = big.NewInt(1000000000)        // 默认的最低gas price 为1G mo
+	MinCandidateDeposit            = common.Lemo2Mo("5000000")     // 注册成为候选节点的质押金额最小值
+	DepositPoolAddress             = common.HexToAddress("0x1001") // 设置接收注册候选节点押金费用1000LEMO的地址
+	DepositExchangeRate            = common.Lemo2Mo("75")          // 质押金额兑换票数兑换率 75LEMO换1票
+	VoteExchangeRate               = common.Lemo2Mo("100")         // 投票票数兑换率 100LEMO换1票
+	IsCandidateNode                = "true"
+	NotCandidateNode               = "false"
 
 	MaxPackageLength uint32 = 100 * 1024 * 1024 // 100M
+	MaxTxsForMiner   int    = 10000             // max transactions when mining a block
 
 	TermRewardPoolTotal = common.Lemo2Mo("900000000") // 奖励池总量
 	TermRewardContract  = common.HexToAddress("0x09") // 换届奖励的预编译合约地址

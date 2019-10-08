@@ -197,15 +197,6 @@ func TestForkManager_ChooseNewFork(t *testing.T) {
 	}
 }
 
-func setTermDeputiesCount(dm *deputynode.Manager, snapshotHeight uint32, deputyCount int) {
-	nodeIndexList := make([]int, deputyCount)
-	for i := range nodeIndexList {
-		nodeIndexList[i] = i
-	}
-	nodes := pickNodes(nodeIndexList...)
-	dm.SaveSnapshot(snapshotHeight, nodes)
-}
-
 // test normal cases
 func TestForkManager_UpdateFork(t *testing.T) {
 	type testChooseForkData struct {
@@ -275,8 +266,7 @@ func TestForkManager_UpdateFork(t *testing.T) {
 			test := test // capture range variable
 			t.Parallel()
 
-			dm := deputynode.NewManager(3, &testBlockLoader{})
-			setTermDeputiesCount(dm, 0, 3)
+			dm := initDeputyManager(3)
 
 			fm := NewForkManager(dm, createBlockLoader(test.PickBlockIndexes, test.StableBlockIndex), testBlocks[test.CurrentHeadIndex])
 			newBlock := fm.UpdateFork(testBlocks[test.NewHeadIndex], testBlocks[test.StableBlockIndex])
@@ -362,8 +352,7 @@ func TestForkManager_UpdateForkForConfirm(t *testing.T) {
 			test := test // capture range variable
 			t.Parallel()
 
-			dm := deputynode.NewManager(3, &testBlockLoader{})
-			setTermDeputiesCount(dm, 0, 3)
+			dm := initDeputyManager(3)
 
 			fm := NewForkManager(dm, createBlockLoader(test.PickBlockIndexes, test.StableBlockIndex), testBlocks[test.CurrentHeadIndex])
 			newBlock := fm.UpdateForkForConfirm(testBlocks[test.StableBlockIndex])
@@ -403,8 +392,7 @@ func TestForkManager_needSwitchFork(t *testing.T) {
 			test := test // capture range variable
 			t.Parallel()
 
-			dm := deputynode.NewManager(test.DeputiesCount, &testBlockLoader{})
-			setTermDeputiesCount(dm, 0, test.DeputiesCount)
+			dm := initDeputyManager(test.DeputiesCount)
 			currentBlock := testBlocks[test.CurrentHeadIndex]
 			fm := NewForkManager(dm, createBlockLoader(test.PickBlockIndexes, 0), currentBlock)
 			needSwitch := fm.needSwitchFork(currentBlock, testBlocks[test.NewHeadIndex], stableBlock)

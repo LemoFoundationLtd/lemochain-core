@@ -39,7 +39,7 @@ func (ba *BlockAssembler) RunBlock(block *types.Block) (*types.Block, error) {
 		return nil, err
 	}
 	// Finalize accounts
-	if err = ba.Finalize(block.Header.Height, ba.am); err != nil {
+	if err = ba.Finalize(block.Header.Height); err != nil {
 		log.Errorf("Finalize accounts error: %v", err)
 		return nil, err
 	}
@@ -54,7 +54,7 @@ func (ba *BlockAssembler) MineBlock(header *types.Header, txs types.Transactions
 	packagedTxs, invalidTxs, gasUsed := ba.txProcessor.ApplyTxs(header, txs, txProcessTimeout)
 	log.Debug("ApplyTxs ok")
 	// Finalize accounts
-	if err := ba.Finalize(header.Height, ba.am); err != nil {
+	if err := ba.Finalize(header.Height); err != nil {
 		log.Errorf("Finalize accounts error: %v", err)
 		return nil, invalidTxs, err
 	}
@@ -150,48 +150,62 @@ func (ba *BlockAssembler) Seal(header *types.Header, txProduct *account.TxsProdu
 	return block
 }
 
-// checkSetTermReward 在设定的区块高度检查本届是否设置了换届奖励并进行事件推送
-func (ba *BlockAssembler) checkSetTermReward(height uint32) {
-	var distance uint32 = 100000 // 距离发放奖励区块的前一个区块高度
-	if (height+distance)%(params.TermDuration+params.InterimDuration) == 0 {
+// checkTermReward 在设定的区块高度检查本届是否设置了换届奖励并进行事件推送，返回值表示是否已正确设置
+func (ba *BlockAssembler) checkTermReward(height uint32) bool {
+	// 在奖励块前第100000个区块进行校验
+	if deputynode.IsRewardBlock(height + params.RewardCheckHeight) {
 		termIndex := deputynode.GetTermIndexByHeight(height)
-		termRewards, _ := getTermRewardValue(ba.am, termIndex)
-		if termRewards.Cmp(big.NewInt(0)) == 0 { // 本届还未设置换届奖励，事件推送通知
+		termRewards, err := getTermRewards(ba.am, termIndex)
+		if err == nil && termRewards.Cmp(big.NewInt(0)) == 0 { // 本届还未设置换届奖励，事件推送通知
 			log.Eventf(log.TxEvent, "There was no consensus node award in the [%d] term. The current block height is %d.", termIndex, height)
+			return false
 		}
 	}
+	return true
 }
 
-// refundCandidatePledge 退还取消候选节点的质押押金
-func (ba *BlockAssembler) refundCandidatePledge(am *account.Manager) {
+// refundCandidateDeposit 退还取消候选节点的质押押金
+func (ba *BlockAssembler) refundCandidateDeposit(am *account.Manager, height uint32) error {
+	// 判断是否到了发放换届奖励的区块高度
+	if !deputynode.IsRewardBlock(height) {
+		return nil
+	}
+
 	// the address list of candidates who need to refund
-	addrList, err := ba.canLoader.LoadRefundCandidates()
+	addrList, err := ba.canLoader.LoadRefundCandidates(height)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	for _, candidateAddress := range addrList {
 		// 退押金操作
 		transaction.Refund(candidateAddress, ba.am)
 	}
+	return nil
 }
 
 // issueTermReward 发放换届奖励
 func (ba *BlockAssembler) issueTermReward(am *account.Manager, height uint32) error {
-	term := (height-params.InterimDuration)/params.TermDuration - 1
-	termRewards, err := getTermRewardValue(am, term)
+	// 判断是否到了发放换届奖励的区块高度
+	if !deputynode.IsRewardBlock(height) {
+		return nil
+	}
+
+	// 奖励块是新一届开始的第一个块，这里应该发放前一届的奖励
+	term, err := ba.dm.GetTermByHeight(height - 1)
+	if err != nil {
+		log.Warnf("load term information failed: %v", err)
+		return err
+	}
+	totalRewards, err := getTermRewards(am, term.TermIndex)
 	if err != nil {
 		log.Warnf("load term rewards failed: %v", err)
 		return err
 	}
-	log.Debugf("the reward of term %d is %s ", term, termRewards.String())
+
+	log.Debugf("the reward of term %d is %s", term.TermIndex, totalRewards.String())
 	// issue reward if reward greater than 0
-	if termRewards.Cmp(big.NewInt(0)) > 0 {
-		lastTermRecord, err := ba.dm.GetTermByHeight(height - 1)
-		if err != nil {
-			log.Warnf("load deputy nodes failed: %v", err)
-			return err
-		}
-		rewards := DivideSalary(termRewards, am, lastTermRecord)
+	if totalRewards.Cmp(big.NewInt(0)) > 0 {
+		rewards := DivideSalary(totalRewards, am, term)
 		for _, item := range rewards {
 			acc := am.GetAccount(item.Address)
 			oldBalance := acc.GetBalance()
@@ -204,28 +218,28 @@ func (ba *BlockAssembler) issueTermReward(am *account.Manager, height uint32) er
 }
 
 // Finalize increases miners' balance and fix all account changes
-func (ba *BlockAssembler) Finalize(height uint32, am *account.Manager) error {
-
+func (ba *BlockAssembler) Finalize(height uint32) error {
 	// 在设定的区块高度检查本届是否设置了换届奖励，如果未设置则进行事件通知
-	ba.checkSetTermReward(height)
+	ba.checkTermReward(height)
 
-	// 判断是否到了发放换届奖励的区块高度
-	if deputynode.IsRewardBlock(height) {
-		// 发放奖励
-		if err := ba.issueTermReward(am, height); err != nil {
-			return err
-		}
-		// 退还取消候选节点的质押金额
-		ba.refundCandidatePledge(am)
+	// 发放换届奖励
+	if err := ba.issueTermReward(ba.am, height); err != nil {
+		log.Warnf("issue term reward failed: %v", err)
+		return err
+	}
+	// 退还取消候选节点的质押金额
+	if err := ba.refundCandidateDeposit(ba.am, height); err != nil {
+		log.Warnf("refund deposit failed: %v", err)
+		return err
 	}
 
 	// 设置执行区块之后余额变化造成的候选节点的票数变化
-	transaction.ChangeVotesByBalance(am)
+	transaction.ChangeVotesByBalance(ba.am)
 	// merge
-	am.MergeChangeLogs()
+	ba.am.MergeChangeLogs()
 
 	// finalize accounts
-	err := am.Finalise()
+	err := ba.am.Finalise()
 	if err != nil {
 		log.Warnf("finalise manager failed: %v", err)
 		return err
@@ -238,7 +252,7 @@ func DivideSalary(totalSalary *big.Int, am *account.Manager, t *deputynode.TermR
 	totalVotes := t.GetTotalVotes()
 	for i, node := range t.Nodes {
 		salaries[i] = &deputynode.DeputySalary{
-			Address: getIncomeAddressFromDeputyNode(am, node),
+			Address: getDeputyIncomeAddress(am, node),
 			Salary:  calculateSalary(totalSalary, node.Votes, totalVotes, params.MinRewardPrecision),
 		}
 	}
@@ -256,29 +270,28 @@ func calculateSalary(totalSalary, deputyVotes, totalVotes, precision *big.Int) *
 	return r
 }
 
-// getIncomeAddressFromDeputyNode
-func getIncomeAddressFromDeputyNode(am *account.Manager, node *types.DeputyNode) common.Address {
+// getDeputyIncomeAddress
+func getDeputyIncomeAddress(am *account.Manager, node *types.DeputyNode) common.Address {
 	minerAcc := am.GetAccount(node.MinerAddress)
-	profile := minerAcc.GetCandidate()
-	strIncomeAddress, ok := profile[types.CandidateKeyIncomeAddress]
-	if !ok {
-		log.Errorf("not exist income address. the salary will be awarded to minerAddress. miner address = %s", node.MinerAddress.String())
+	strIncomeAddress := minerAcc.GetCandidateState(types.CandidateKeyIncomeAddress)
+	if strIncomeAddress == "" {
+		log.Errorf("Not exist income address. the salary will be awarded to minerAddress %s", node.MinerAddress.String())
 		return node.MinerAddress
 	}
 	incomeAddress, err := common.StringToAddress(strIncomeAddress)
 	if err != nil {
-		log.Errorf("income address invalid. the salary will be awarded to minerAddress. incomeAddress = %s", strIncomeAddress)
+		log.Errorf("Income address invalid. the salary will be awarded to minerAddress. Candidate income address = %s", strIncomeAddress)
 		return node.MinerAddress
 	}
 	return incomeAddress
 }
 
-// getTermRewardValue reward value of miners at the change of term
-func getTermRewardValue(am *account.Manager, term uint32) (*big.Int, error) {
+// getTermRewards load the rewards of miners at the end of a term
+func getTermRewards(am *account.Manager, term uint32) (*big.Int, error) {
 	// Precompile the contract address
 	address := params.TermRewardContract
 	acc := am.GetAccount(address)
-	// key of blockLoader
+	// key for db
 	key := address.Hash()
 	value, err := acc.GetStorageState(key)
 	if err != nil {

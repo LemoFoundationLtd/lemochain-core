@@ -30,6 +30,9 @@ var (
 	addressT = reflect.TypeOf(Address{})
 	tokenT   = reflect.TypeOf(Token{})
 	Sha3Nil  = HexToHash("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470") // crypto.Keccak256Hash(nil)
+
+	ErrInvalidAddress         = errors.New("address decode fail")
+	ErrInvalidAddressChecksum = errors.New("address checksum error")
 )
 
 // Hash represents the 32 byte Keccak256 hash of arbitrary data.
@@ -136,7 +139,10 @@ func StringToAddress(s string) (Address, error) {
 		err := a.Decode(s)
 		return a, err
 	}
-	return BytesToAddress([]byte(s)), nil
+	if s[0:2] == "0x" || s[0:2] == "0X" {
+		return HexToAddress(s), nil
+	}
+	return Address{}, ErrInvalidAddress
 }
 func BigToAddress(b *big.Int) Address { return BytesToAddress(b.Bytes()) }
 func HexToAddress(s string) Address   { return BytesToAddress(FromHex(s)) }
@@ -189,7 +195,7 @@ func (a Address) String() string {
 // Decode decodes original address by the LemoAddress format.
 func (a *Address) Decode(lemoAddress string) error {
 	if !isLemoAddress(lemoAddress) {
-		return errors.New("address decode fail")
+		return ErrInvalidAddress
 	}
 	lemoAddress = strings.ToUpper(lemoAddress)
 	// Remove logo
@@ -210,7 +216,7 @@ func (a *Address) Decode(lemoAddress string) error {
 		trueCheck := GetCheckSum(bytesAddress)
 		// compare check
 		if checkSum != trueCheck {
-			return errors.New("lemo address check fail")
+			return ErrInvalidAddressChecksum
 		}
 		a.SetBytes(bytesAddress)
 	}
@@ -226,10 +232,7 @@ func isLemoAddress(str string) bool {
 func CheckLemoAddress(lemoAddress string) bool {
 	var a Address
 	err := a.Decode(lemoAddress)
-	if err != nil {
-		return false
-	}
-	return true
+	return err == nil
 }
 
 // GetCheckSum get the check digit by doing an exclusive OR operation

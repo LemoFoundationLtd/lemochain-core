@@ -82,7 +82,9 @@ type rlpChangeLog struct {
 func (c *ChangeLog) Hash() (h common.Hash) {
 	hw := sha3.NewKeccak256()
 	// this will call EncodeRLP
-	rlp.Encode(hw, c)
+	if err := rlp.Encode(hw, c); err != nil {
+		log.Error("hash changelog fail", "err", err)
+	}
 	hw.Sum(h[:0])
 	return h
 }

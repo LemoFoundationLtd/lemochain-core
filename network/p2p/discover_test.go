@@ -467,7 +467,7 @@ func Test_SetReconnect(t *testing.T) {
 	}
 	assert.Equal(t, ErrMaxReconnect, dis.SetConnectResult(table[0].n, false))
 
-	assert.Error(t, dis.SetReconnect(&NodeID{}), ErrNoSpecialNode)
+	assert.Equal(t, ErrNoSpecialNode, dis.SetReconnect(&NodeID{}))
 }
 
 func Test_GetNodesForDiscover(t *testing.T) {
@@ -637,12 +637,12 @@ func TestDiscoverManager_PutBlackNode_IsBlackNode(t *testing.T) {
 func Test_Start_err(t *testing.T) {
 	dis := newDiscover()
 	assert.NoError(t, dis.Start())
-	assert.Error(t, dis.Start(), ErrHasStared)
+	assert.Equal(t, ErrHasStared, dis.Start())
 }
 
 func Test_Stop_err(t *testing.T) {
 	dis := newDiscover()
-	assert.Error(t, dis.Stop(), ErrNotStart)
+	assert.Equal(t, ErrNotStart, dis.Stop())
 	removeFile(FindFile)
 }
 
@@ -680,5 +680,5 @@ func Test_SetConnectResult(t *testing.T) {
 	assert.NoError(t, dis.SetConnectResult(dis.foundNodes[table[3].k].NodeID, false))
 	assert.Equal(t, dis.foundNodes[table[3].k].Sequence, int32(0))
 
-	assert.Error(t, dis.SetConnectResult(new(NodeID), false), ErrNoSpecialNode)
+	assert.Equal(t, ErrNoSpecialNode, dis.SetConnectResult(new(NodeID), false))
 }
