@@ -1,7 +1,6 @@
 package types
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
@@ -37,20 +36,15 @@ type deputyNodeMarshaling struct {
 	Votes  *hexutil.Big10
 }
 
-func NewDeputyNode(votes *big.Int, rank uint32, minerAddr common.Address, nodeIDStr string) (*DeputyNode, error) {
+func NewDeputyNode(votes *big.Int, rank uint32, minerAddr common.Address, nodeIDStr string) *DeputyNode {
 	// nodeID
-	nodeID, err := hex.DecodeString(nodeIDStr)
-	if err != nil {
-		log.Errorf("NewDeputyNode fail", "NodeID", nodeIDStr)
-		return nil, err
-	}
-
+	nodeID := common.FromHex(nodeIDStr)
 	return &DeputyNode{
 		MinerAddress: minerAddr,
 		Votes:        votes,
 		Rank:         rank,
 		NodeID:       nodeID,
-	}, nil
+	}
 }
 
 func (d *DeputyNode) Hash() (h common.Hash) {

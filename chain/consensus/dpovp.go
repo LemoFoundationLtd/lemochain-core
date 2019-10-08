@@ -414,10 +414,7 @@ func (dp *DPoVP) LoadTopCandidates(blockHash common.Hash) types.DeputyNodes {
 		acc := dp.am.GetAccount(n.GetAddress())
 		candidate := acc.GetCandidate()
 		strID := candidate[types.CandidateKeyNodeID]
-		dn, err := types.NewDeputyNode(n.GetTotal(), uint32(i), n.GetAddress(), strID)
-		if err != nil {
-			continue
-		}
+		dn := types.NewDeputyNode(n.GetTotal(), uint32(i), n.GetAddress(), strID)
 		result = append(result, dn)
 	}
 	return result
