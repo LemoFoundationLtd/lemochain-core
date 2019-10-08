@@ -3,7 +3,6 @@ package node
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/testchain"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/txpool"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
@@ -30,7 +29,7 @@ func TestAccountAPI_api(t *testing.T) {
 
 	// getBalance api
 	_, err = acc.GetBalance("0x015780F8456F9c1532645087a19DcF9a7e0c7F97")
-	assert.Equal(t, ErrLemoAddress, err)
+	assert.Equal(t, common.ErrInvalidAddress, err)
 
 	address, err := common.StringToAddress("Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG")
 	assert.NoError(t, err)
@@ -46,7 +45,7 @@ func TestAccountAPI_api(t *testing.T) {
 
 	// get account api
 	_, err = acc.GetAccount("0x015780F8456F9c1532645087a19DcF9a7e0c7F97")
-	assert.Equal(t, ErrLemoAddress, err)
+	assert.Equal(t, common.ErrInvalidAddress, err)
 }
 
 // TestChainAPI_api chain api test

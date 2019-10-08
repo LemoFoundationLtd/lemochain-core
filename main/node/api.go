@@ -1,7 +1,6 @@
 package node
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -30,7 +29,6 @@ var (
 	ErrCreateContract = errors.New("the data of create contract transaction can't be null")
 	ErrSpecialTx      = errors.New("the data of special transaction can't be null")
 	ErrTxType         = errors.New("the transaction type does not exist")
-	ErrLemoAddress    = errors.New("lemoAddress is incorrect")
 	ErrAssetId        = errors.New("assetid is incorrect")
 	ErrTxExpiration   = errors.New("tx expiration time is out of date")
 	ErrNegativeValue  = errors.New("negative value")
@@ -80,10 +78,6 @@ func NewPublicAccountAPI(m *account.Manager) *PublicAccountAPI {
 
 // GetBalance get balance in mo
 func (a *PublicAccountAPI) GetBalance(lemoAddress string) (string, error) {
-	if !network.VerifyLemoAddress(lemoAddress) {
-		log.Warnf("lemoAddress is incorrect. lemoAddress: %s", lemoAddress)
-		return "", ErrLemoAddress
-	}
 	lemoAccount, err := a.GetAccount(lemoAddress)
 	if err != nil {
 		return "", err
@@ -95,12 +89,9 @@ func (a *PublicAccountAPI) GetBalance(lemoAddress string) (string, error) {
 
 // GetAccount return the struct of the &AccountData{}
 func (a *PublicAccountAPI) GetAccount(lemoAddress string) (types.AccountAccessor, error) {
-	if !network.VerifyLemoAddress(lemoAddress) {
-		log.Warnf("lemoAddress is incorrect. lemoAddress: %s", lemoAddress)
-		return nil, ErrLemoAddress
-	}
 	address, err := common.StringToAddress(lemoAddress)
 	if err != nil {
+		log.Warnf("lemoAddress is incorrect. lemoAddress: %s", lemoAddress)
 		return nil, err
 	}
 	accountData := a.manager.GetCanonicalAccount(address)
@@ -110,10 +101,6 @@ func (a *PublicAccountAPI) GetAccount(lemoAddress string) (types.AccountAccessor
 
 // GetVoteFor
 func (a *PublicAccountAPI) GetVoteFor(lemoAddress string) (string, error) {
-	if !network.VerifyLemoAddress(lemoAddress) {
-		log.Warnf("lemoAddress is incorrect. lemoAddress: %s", lemoAddress)
-		return "", ErrLemoAddress
-	}
 	candiAccount, err := a.GetAccount(lemoAddress)
 	if err != nil {
 		return "", err
@@ -155,10 +142,6 @@ func (a *PublicAccountAPI) GetAllRewardValue() ([]*params.Reward, error) {
 
 // GetAssetEquity returns asset equity
 func (a *PublicAccountAPI) GetAssetEquityByAssetId(lemoAddress string, assetId common.Hash) (*types.AssetEquity, error) {
-	if !network.VerifyLemoAddress(lemoAddress) {
-		log.Warnf("lemoAddress is incorrect. lemoAddress: %s", lemoAddress)
-		return nil, ErrLemoAddress
-	}
 	acc, err := a.GetAccount(lemoAddress)
 	if err != nil {
 		return nil, err
@@ -471,47 +454,25 @@ func (t *PublicTxAPI) ReadContract(to *common.Address, data hexutil.Bytes) (stri
 	if to == nil {
 		return "", ErrInputParams
 	}
-	ctx := context.Background()
 	accM := account.NewReadOnlyManager(t.node.Db(), true)
-	result, _, err := t.doCallTransaction(ctx, to, accM, params.OrdinaryTx, data, 5*time.Second)
+	result, err := t.doCallTransaction(to, accM, data, 5*time.Second)
 	return common.ToHex(result), err
 }
 
-// EstimateGas returns an estimate of the amount of gas needed to execute the given transaction.
-func (t *PublicTxAPI) EstimateGas(to *common.Address, txType uint16, data hexutil.Bytes) (string, error) {
-	if !types.IsToExist(txType, to) {
-		return "", types.ErrToExist
-	}
-	var costGas uint64
-	var err error
-	ctx := context.Background()
-	accM := account.NewReadOnlyManager(t.node.Db(), false)
-	_, costGas, err = t.doCallTransaction(ctx, to, accM, txType, data, 5*time.Second)
-	strCostGas := strconv.FormatUint(costGas, 10)
-	return strCostGas, err
-}
-
-// EstimateContractGas returns an estimate of the amount of gas needed to create a smart contract.
-// Todo will delete
-func (t *PublicTxAPI) EstimateCreateContractGas(data hexutil.Bytes) (uint64, error) {
-	ctx := context.Background()
-	accM := account.NewReadOnlyManager(t.node.Db(), false)
-	_, costGas, err := t.doCallTransaction(ctx, nil, accM, params.CreateContractTx, data, 5*time.Second)
-	return costGas, err
-}
-
 // doCallTransaction
-func (t *PublicTxAPI) doCallTransaction(ctx context.Context, to *common.Address, accM *account.ReadOnlyManager, txType uint16, data hexutil.Bytes, timeout time.Duration) ([]byte, uint64, error) {
+func (t *PublicTxAPI) doCallTransaction(to *common.Address, accM *account.ReadOnlyManager, data hexutil.Bytes, timeout time.Duration) ([]byte, error) {
 	t.node.lock.Lock()
 	defer t.node.lock.Unlock()
 
-	defer func(start time.Time) { log.Debug("Executing EVM call finished", "runtime", time.Since(start)) }(time.Now())
+	defer func(start time.Time) {
+		log.Debug("Executing EVM call finished", "cost time", time.Since(start))
+	}(time.Now())
 	// get current stableBlock
 	currentBlock := t.node.chain.CurrentBlock()
 	log.Infof("Current block height = %v", currentBlock.Height())
 	currentHeader := currentBlock.Header
 	p := t.node.chain.TxProcessor()
-	ret, costGas, err := p.PreExecutionTransaction(ctx, accM, currentHeader, to, txType, data, common.Hash{}, timeout)
+	ret, err := p.ReadContract(accM, currentHeader, *to, data, timeout)
 
-	return ret, costGas, err
+	return ret, err
 }
