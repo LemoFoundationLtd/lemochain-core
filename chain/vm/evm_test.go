@@ -16,7 +16,7 @@ import (
 )
 
 func GetStorePath() string {
-	return "../testdata/blockchain"
+	return "../../testdata/vm"
 }
 
 func ClearData() {

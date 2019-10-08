@@ -1,7 +1,6 @@
 package transaction
 
 import (
-	"context"
 	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
@@ -451,7 +450,7 @@ func Test_Contract(t *testing.T) {
 	// 1.1 读取合约发行代币的name
 	funcName := "name()"
 	funcCode := getContractFunctionCode(funcName)
-	ret, _, err := readContraction(p, db, block01.Header, &contractAddr, funcCode)
+	ret, err := readContraction(p, db, block01.Header, contractAddr, funcCode)
 	assert.NoError(t, err)
 	// 通过正则匹配，筛选出返回的name
 	name := regexMatchLetter(string(ret))
@@ -460,14 +459,14 @@ func Test_Contract(t *testing.T) {
 	// 1.2 读取合约的symbol
 	funcName = "symbol()"
 	funcCode = getContractFunctionCode(funcName)
-	ret, _, err = readContraction(p, db, block01.Header, &contractAddr, funcCode)
+	ret, err = readContraction(p, db, block01.Header, contractAddr, funcCode)
 	symbol := regexMatchLetter(string(ret))
 	assert.Equal(t, "Lemo", symbol)
 
 	// 1.3 读取合约的totalSupply
 	funcName = "totalSupply()"
 	funcCode = getContractFunctionCode(funcName)
-	ret, _, err = readContraction(p, db, block01.Header, &contractAddr, funcCode)
+	ret, err = readContraction(p, db, block01.Header, contractAddr, funcCode)
 	totalSpply, err := strconv.ParseInt(common.ToHex(ret), 0, 64)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(500), totalSpply)
@@ -475,7 +474,7 @@ func Test_Contract(t *testing.T) {
 	// 1.4 读取合约拥有者owner
 	funcName = "owner()"
 	funcCode = getContractFunctionCode(funcName)
-	ret, _, err = readContraction(p, db, block01.Header, &contractAddr, funcCode)
+	ret, err = readContraction(p, db, block01.Header, contractAddr, funcCode)
 	assert.Equal(t, godLemoAddr, common.BytesToAddress(ret).String())
 
 	// 1.5 读取合约拥有者的持有代币balance
@@ -484,14 +483,14 @@ func Test_Contract(t *testing.T) {
 	ownerAddr := "0x015780f8456f9c1532645087a19dcf9a7e0c7f97"
 	codeBytes := make([]byte, 0)
 	codeBytes = append(funcCode, formatArgs(ownerAddr)...)
-	ret, _, err = readContraction(p, db, block01.Header, &contractAddr, codeBytes)
+	ret, err = readContraction(p, db, block01.Header, contractAddr, codeBytes)
 	balance := new(big.Int).SetBytes(ret)
 	assert.Equal(t, big.NewInt(500), balance)
 
 	// 1.6 读取合约的authority账户
 	funcName = "authority()"
 	funcCode = getContractFunctionCode(funcName)
-	ret, _, err = readContraction(p, db, block01.Header, &contractAddr, funcCode)
+	ret, err = readContraction(p, db, block01.Header, contractAddr, funcCode)
 	expectAuthorityAddr := crypto.CreateContractAddress(contractAddr, createContractTx.Hash())
 	assert.Equal(t, expectAuthorityAddr, common.BytesToAddress(ret))
 
@@ -564,7 +563,7 @@ func Test_Contract(t *testing.T) {
 
 	// 从合约中读取转账之后发送者(godAddr)的代币余额 (期望值为0)
 	godAddrGetBalanceFunc := common.FromHex("0x70a08231000000000000000000000000015780f8456f9c1532645087a19dcf9a7e0c7f97")
-	ret, _, err = readContraction(p, db, block02.Header, &contractAddr, godAddrGetBalanceFunc)
+	ret, err = readContraction(p, db, block02.Header, contractAddr, godAddrGetBalanceFunc)
 	balance = new(big.Int).SetBytes(ret)
 	assert.Equal(t, big.NewInt(0).String(), balance.String())
 
@@ -575,7 +574,7 @@ func Test_Contract(t *testing.T) {
 		codeBytes := make([]byte, 0)
 		owner := formatArgs(crypto.PubkeyToAddress(key.PublicKey).Hex())
 		codeBytes = append(funcCode, owner...)
-		ret, _, err = readContraction(p, db, block02.Header, &contractAddr, codeBytes)
+		ret, err = readContraction(p, db, block02.Header, contractAddr, codeBytes)
 		balance = new(big.Int).SetBytes(ret)
 		// 每个地址代币数都为5
 		assert.Equal(t, big.NewInt(5).String(), balance.String())
@@ -608,11 +607,11 @@ func Test_Contract(t *testing.T) {
 	funcCode = getContractFunctionCode(funcName)
 	readInput := make([]byte, 0)
 	readInput = append(funcCode, formatArgs(coinReceiver)...)
-	ret, _, err = readContraction(p, db, block04.Header, &contractAddr, readInput)
+	ret, err = readContraction(p, db, block04.Header, contractAddr, readInput)
 	balance = new(big.Int).SetBytes(ret)
 	assert.Equal(t, big.NewInt(0).String(), balance.String())
 	// 读取发送者的代币余额
-	ret, _, err = readContraction(p, db, block04.Header, &contractAddr, append(funcCode, formatArgs(from.Hex())...))
+	ret, err = readContraction(p, db, block04.Header, contractAddr, append(funcCode, formatArgs(from.Hex())...))
 	number := new(big.Int).SetBytes(ret)
 	assert.Equal(t, big.NewInt(5).String(), number.String())
 }
@@ -625,10 +624,9 @@ func regexMatchLetter(src string) string {
 }
 
 // readContraction 读取合约中的数据
-func readContraction(p *TxProcessor, db protocol.ChainDB, currentHeader *types.Header, contractAddr *common.Address, data []byte) (reslut []byte, gasUsed uint64, err error) {
-	ctx := context.Background()
+func readContraction(p *TxProcessor, db protocol.ChainDB, currentHeader *types.Header, contractAddr common.Address, data []byte) (reslut []byte, err error) {
 	accM := account.NewReadOnlyManager(db, false)
-	return p.PreExecutionTransaction(ctx, accM, currentHeader, contractAddr, params.OrdinaryTx, data, common.Hash{}, 5*time.Second)
+	return p.ReadContract(accM, currentHeader, contractAddr, data, 5*time.Second)
 }
 
 // TestTxProcessor_votesChangeByBalanceChangelog

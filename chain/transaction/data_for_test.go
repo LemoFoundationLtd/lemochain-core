@@ -38,7 +38,7 @@ func init() {
 }
 
 func GetStorePath() string {
-	return "../testdata/blockchain"
+	return "../../testdata/transaction"
 }
 
 func ClearData() {

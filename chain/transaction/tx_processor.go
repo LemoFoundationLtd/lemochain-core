@@ -1,7 +1,6 @@
 package transaction
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
@@ -582,46 +581,33 @@ func (p *TxProcessor) chargeForGas(charge *big.Int, minerAddress common.Address)
 	}
 }
 
-// PreExecutionTransaction pre-execute transactions and contracts.
-func (p *TxProcessor) PreExecutionTransaction(ctx context.Context, accM *account.ReadOnlyManager, header *types.Header, to *common.Address, txType uint16, data hexutil.Bytes, blockHash common.Hash, timeout time.Duration) ([]byte, uint64, error) {
+// ReadContract pre-execute transactions and contracts.
+func (p *TxProcessor) ReadContract(accM *account.ReadOnlyManager, header *types.Header, to common.Address, data hexutil.Bytes, timeout time.Duration) ([]byte, error) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
 	accM.Reset(header.Hash())
 
 	// A random address is found as our caller address.
-	strAddress := "0x20190306" // todo Consider letting users pass in their own addresses
-	caller, err := common.StringToAddress(strAddress)
-	if err != nil {
-		return nil, 0, err
-	}
+	// todo Consider let users pass in their own address
+	caller := common.HexToAddress("0x20190306")
 
-	tx := newTx(caller, to, txType, data, p.ChainID)
-	// Timeout limit
+	// enough gasLimit
+	gasLimit := uint64(math.MaxUint64 / 2)
+	tx := types.NewTransaction(caller, to, big.NewInt(0), gasLimit, big.NewInt(defaultGasPrice), data, params.OrdinaryTx, p.ChainID, uint64(time.Now().Unix())+uint64(params.TransactionExpiration), "", "")
+
 	var (
+		ctx    context.Context
 		cancel context.CancelFunc
-		vmEvn  *vm.EVM
-		sender types.AccountAccessor
+		sender = accM.GetAccount(caller)
+		vmEvn  = getEVM(tx, header, 0, common.Hash{}, p.blockLoader, *p.cfg, accM)
 	)
-	sender = accM.GetAccount(caller)
 	if timeout > 0 {
-		ctx, cancel = context.WithTimeout(ctx, timeout)
+		ctx, cancel = context.WithTimeout(context.Background(), timeout)
 	} else {
-		ctx, cancel = context.WithCancel(ctx)
+		ctx, cancel = context.WithCancel(context.Background())
 	}
 	defer cancel()
-
-	// load different Env
-	switch tx.Type() {
-	case params.OrdinaryTx, params.CreateContractTx, params.TransferAssetTx: // need use evm environment
-		vmEvn = getEVM(tx, header, 0, tx.Hash(), blockHash, p.blockLoader, *p.cfg, accM)
-
-	case params.RegisterTx, params.VoteTx, params.CreateAssetTx, params.IssueAssetTx, params.ReplenishAssetTx, params.ModifyAssetTx, params.ModifySignersTx, params.BoxTx:
-		// 	todo 箱子交易的预估gas需要执行交易来预估，待做...
-
-	default:
-		log.Errorf("The type of transaction is not defined. ErrType = %d\n", tx.Type())
-	}
 
 	// listen timeout
 	go func() {
@@ -629,58 +615,12 @@ func (p *TxProcessor) PreExecutionTransaction(ctx context.Context, accM *account
 		vmEvn.Cancel()
 	}()
 
-	gasLimit := tx.GasLimit()
-	restGas := gasLimit
-	// Fixed cost
-	restGas, err = p.payIntrinsicGas(tx, restGas)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	var ret []byte
-	switch tx.Type() {
-	case params.OrdinaryTx:
-		recipientAddr := *tx.To()
-		ret, restGas, err = vmEvn.Call(sender, recipientAddr, tx.Data(), restGas, big.NewInt(0))
-	case params.CreateContractTx:
-		ret, _, restGas, err = vmEvn.Create(sender, tx.Data(), restGas, big.NewInt(0))
-	case params.TransferAssetTx:
-		tradingAsset, err := types.GetTradingAsset(tx.Data())
-		if err != nil {
-			log.Errorf("Unmarshal transfer asset data err: %s", err)
-			return nil, 0, err
-		}
-		input := tradingAsset.Input
-		if input == nil || bytes.Compare(input, []byte{}) == 0 {
-			break
-		}
-		ret, restGas, err = vmEvn.CallCode(sender, *tx.To(), input, restGas, big.NewInt(0))
-
-	case params.RegisterTx, params.VoteTx, params.CreateAssetTx, params.IssueAssetTx, params.ReplenishAssetTx, params.ModifyAssetTx, params.ModifySignersTx, params.BoxTx:
-
-	default:
-		log.Errorf("The type of transaction is not defined. ErrType = %d\n", tx.Type())
-	}
-	return ret, gasLimit - restGas, err
-}
-
-// newTx return created transaction
-func newTx(from common.Address, to *common.Address, txType uint16, data []byte, chainID uint16) *types.Transaction {
-	// enough gasLimit
-	gasLimit := uint64(math.MaxUint64 / 2)
-	gasPrice := new(big.Int).SetUint64(defaultGasPrice)
-	var tx *types.Transaction
-	if to == nil {
-		tx = types.NoReceiverTransaction(from, big.NewInt(0), gasLimit, gasPrice, data, txType, chainID, uint64(time.Now().Unix())+uint64(params.TransactionExpiration), "", "")
-	} else {
-		tx = types.NewTransaction(from, *to, big.NewInt(0), gasLimit, gasPrice, data, txType, chainID, uint64(time.Now().Unix())+uint64(params.TransactionExpiration), "", "")
-	}
-
-	return tx
+	ret, _, err := vmEvn.Call(sender, to, tx.Data(), gasLimit, big.NewInt(0))
+	return ret, err
 }
 
 // getEVM
-func getEVM(tx *types.Transaction, header *types.Header, txIndex uint, txHash common.Hash, blockHash common.Hash, chain ParentBlockLoader, cfg vm.Config, accM vm.AccountManager) *vm.EVM {
+func getEVM(tx *types.Transaction, header *types.Header, txIndex uint, blockHash common.Hash, chain ParentBlockLoader, cfg vm.Config, accM vm.AccountManager) *vm.EVM {
 	evmContext := NewEVMContext(tx, header, txIndex, blockHash, chain)
 	vmEnv := vm.NewEVM(evmContext, accM, cfg)
 	return vmEnv
