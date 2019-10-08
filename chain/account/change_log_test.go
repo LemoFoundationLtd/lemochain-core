@@ -1,7 +1,6 @@
 package account
 
 import (
-	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/hexutil"
@@ -91,7 +90,7 @@ func (p *testProcessor) createAccount(logType types.ChangeLogType, version uint3
 	}
 
 	account.data.Candidate.Votes = big.NewInt(200)
-	account.data.Candidate.Profile[types.CandidateKeyIsCandidate] = params.IsCandidateNode
+	account.data.Candidate.Profile[types.CandidateKeyIsCandidate] = types.IsCandidateNode
 	return account
 }
 

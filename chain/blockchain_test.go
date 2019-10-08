@@ -45,7 +45,7 @@ func ClearData() {
 
 func newTestBlockChain(attendedDeputyCount int) *BlockChain {
 	ClearData()
-	db := store.NewChainDataBase(GetStorePath(), "", "")
+	db := store.NewChainDataBase(GetStorePath())
 
 	// init nodeKey
 	priv := parseKey("c21b6b2fbf230f665b936194d14da67187732bf9d28768aef1a3cbb26608f8aa")
@@ -123,7 +123,7 @@ func newTestBlock(bc *BlockChain) *types.Block {
 
 func TestNewBlockChain(t *testing.T) {
 	ClearData()
-	db := store.NewChainDataBase(GetStorePath(), "", "")
+	db := store.NewChainDataBase(GetStorePath())
 	defer db.Close()
 
 	// no genesis

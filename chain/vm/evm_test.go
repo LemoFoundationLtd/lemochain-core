@@ -32,7 +32,7 @@ func ClearData() {
 
 // newDB db for test
 func newDB() protocol.ChainDB {
-	return store.NewChainDataBase(GetStorePath(), "", "")
+	return store.NewChainDataBase(GetStorePath())
 }
 
 // newTransferAssetData

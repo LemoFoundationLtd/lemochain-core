@@ -47,7 +47,7 @@ func TestEVM(t *testing.T) {
 		}
 	}()
 
-	db := store.NewChainDataBase("../../../testdata/vm_TestEVM", store.DRIVER_MYSQL, store.DNS_MYSQL)
+	db := store.NewChainDataBase("../../../testdata/vm_TestEVM")
 	defer clearDB(db, "../../../testdata/vm_TestEVM")
 	cfg := &Config{
 		AccountManager: account.NewManager(common.Hash{}, db),
@@ -65,7 +65,7 @@ func TestEVM(t *testing.T) {
 }
 
 func TestExecute(t *testing.T) {
-	db := store.NewChainDataBase("../../../testdata/vm_TestExecute", store.DRIVER_MYSQL, store.DNS_MYSQL)
+	db := store.NewChainDataBase("../../../testdata/vm_TestExecute")
 	defer clearDB(db, "../../../testdata/vm_TestExecute")
 	cfg := &Config{
 		AccountManager: account.NewManager(common.Hash{}, db),
@@ -89,7 +89,7 @@ func TestExecute(t *testing.T) {
 }
 
 func TestCall(t *testing.T) {
-	db := store.NewChainDataBase("../../../testdata/vm_TestCall", store.DRIVER_MYSQL, store.DNS_MYSQL)
+	db := store.NewChainDataBase("../../../testdata/vm_TestCall")
 	defer clearDB(db, "../../../testdata/vm_TestCall")
 	am := account.NewManager(common.Hash{}, db)
 	address := common.HexToAddress("0x0a")
@@ -134,7 +134,7 @@ func BenchmarkCall(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	db := store.NewChainDataBase("../../../testdata/vm_BenchmarkCall", store.DRIVER_MYSQL, store.DNS_MYSQL)
+	db := store.NewChainDataBase("../../../testdata/vm_BenchmarkCall")
 	defer clearDB(db, "../../../testdata/vm_BenchmarkCall")
 	cfg := &Config{
 		AccountManager: account.NewManager(common.Hash{}, db),

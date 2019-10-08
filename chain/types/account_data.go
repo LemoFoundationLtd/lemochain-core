@@ -38,6 +38,8 @@ const (
 	CandidateKeyIncomeAddress string = "incomeAddress"
 	CandidateKeyDepositAmount string = "depositBalance" // 质押金额
 	CandidateKeyIntroduction  string = "introduction"   // 候选节点自我介绍
+	IsCandidateNode                  = "true"
+	NotCandidateNode                 = "false"
 	// asset profile
 	AssetName              string = "name"
 	AssetSymbol            string = "symbol"

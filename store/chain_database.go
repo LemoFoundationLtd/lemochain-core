@@ -45,7 +45,7 @@ func checkHome(home string) error {
 	}
 }
 
-func NewChainDataBase(home string, driver string, dns string) *ChainDatabase {
+func NewChainDataBase(home string) *ChainDatabase {
 	err := checkHome(home)
 	if err != nil {
 		panic("check home: " + home + "|error: " + err.Error())

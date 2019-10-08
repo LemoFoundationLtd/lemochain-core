@@ -50,7 +50,7 @@ func TestGenesis_Verify(t *testing.T) {
 
 func TestSetupGenesisBlock(t *testing.T) {
 	ClearData()
-	db := store.NewChainDataBase(GetStorePath(), "", "")
+	db := store.NewChainDataBase(GetStorePath())
 	defer db.Close()
 
 	// customised genesis
@@ -67,7 +67,7 @@ func TestSetupGenesisBlock(t *testing.T) {
 
 func TestSetupGenesisBlock_Empty(t *testing.T) {
 	ClearData()
-	db := store.NewChainDataBase(GetStorePath(), "", "")
+	db := store.NewChainDataBase(GetStorePath())
 	defer db.Close()
 
 	// no genesis
@@ -83,7 +83,7 @@ func TestSetupGenesisBlock_Empty(t *testing.T) {
 
 func TestSetupGenesisBlock_Exist(t *testing.T) {
 	ClearData()
-	db := store.NewChainDataBase(GetStorePath(), "", "")
+	db := store.NewChainDataBase(GetStorePath())
 	defer db.Close()
 
 	SetupGenesisBlock(db, nil)
@@ -95,7 +95,7 @@ func TestSetupGenesisBlock_Exist(t *testing.T) {
 
 func TestGenesis_ToBlock(t *testing.T) {
 	ClearData()
-	db := store.NewChainDataBase(GetStorePath(), "", "")
+	db := store.NewChainDataBase(GetStorePath())
 	defer db.Close()
 	am := account.NewManager(common.Hash{}, db)
 

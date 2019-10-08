@@ -116,11 +116,11 @@ func Test_Refund(t *testing.T) {
 	// 1. 正常退押金的情况
 	candidateAddress := common.HexToAddress("0x1223")
 	candidateAcc := am.GetAccount(candidateAddress)
-	pledgeAmount := "99999999999999"
-	candidateAcc.SetCandidateState(types.CandidateKeyDepositAmount, pledgeAmount) // 设置此账户中的押金数量
+	depositAmount := "99999999999999"
+	candidateAcc.SetCandidateState(types.CandidateKeyDepositAmount, depositAmount) // 设置此账户中的押金数量
 	Refund(candidateAddress, am)
 	// 验证退还之后的账户余额增加
-	refundAmount, _ := new(big.Int).SetString(pledgeAmount, 10)
+	refundAmount, _ := new(big.Int).SetString(depositAmount, 10)
 	assert.Equal(t, refundAmount, candidateAcc.GetBalance())
 	// 验证押金池的减少
 	newPool := new(big.Int).Sub(pool, refundAmount)
@@ -234,7 +234,7 @@ func TestCandidateVoteEnv_RegisterOrUpdateToCandidate(t *testing.T) {
 	var snap = c.am.Snapshot()
 	// 2. 注销之后的候选节点不能再次注册了
 	// 构造注销状态
-	registerAcc.SetCandidateState(types.CandidateKeyIsCandidate, params.NotCandidateNode)
+	registerAcc.SetCandidateState(types.CandidateKeyIsCandidate, types.NotCandidateNode)
 	tx02 := newCandidateTx(register, nil, true, normalIncomeAddress, normalNodeId, normalHost, normalPort)
 	err = c.RegisterOrUpdateToCandidate(tx02)
 	// 返回已经注销无法再次注册的错误
@@ -272,7 +272,7 @@ func TestCandidateVoteEnv_RegisterOrUpdateToCandidate(t *testing.T) {
 	assert.NoError(t, err)
 	// 注销之后
 	pro := register02Acc.GetCandidate()
-	assert.Equal(t, params.NotCandidateNode, pro[types.CandidateKeyIsCandidate])
+	assert.Equal(t, types.NotCandidateNode, pro[types.CandidateKeyIsCandidate])
 	votes = register02Acc.GetVotes() // 得票数变为0
 	assert.Equal(t, big.NewInt(0), votes)
 
@@ -319,7 +319,7 @@ func TestCandidateVoteEnv_CallVoteTx(t *testing.T) {
 	// 构造一个候选节点，该候选节点原本的票数为两倍于 initialSenderBalance
 	candAddr := common.HexToAddress("0x13333000")
 	candAcc := c.am.GetAccount(candAddr)
-	candAcc.SetCandidateState(types.CandidateKeyIsCandidate, params.IsCandidateNode) // 设置为候选节点
+	candAcc.SetCandidateState(types.CandidateKeyIsCandidate, types.IsCandidateNode) // 设置为候选节点
 	// 构造一个投票者voter,balance数量为 initialSenderBalance
 	voterAddr := common.HexToAddress("0x91191")
 	voterAcc := c.am.GetAccount(voterAddr)
@@ -353,7 +353,7 @@ func TestCandidateVoteEnv_CallVoteTx(t *testing.T) {
 	// 构造一个新的候选节点,初始得票数为0
 	newCandAddr := common.HexToAddress("0x6666")
 	newCandAcc := c.am.GetAccount(newCandAddr)
-	newCandAcc.SetCandidateState(types.CandidateKeyIsCandidate, params.IsCandidateNode)
+	newCandAcc.SetCandidateState(types.CandidateKeyIsCandidate, types.IsCandidateNode)
 
 	// voter给newCandAddr投票,20 票
 	err = c.CallVoteTx(voterAddr, newCandAddr, initialSenderBalance)
