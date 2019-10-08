@@ -147,18 +147,18 @@ func newBlockForVerifyTxs(txs types.Transactions, time uint32) *types.Block {
 
 func Test_verifyTxs(t *testing.T) {
 	txs := types.Transactions{
-		makeTx(common.HexToAddress("0x11"), common.HexToAddress("0x12"), uint64(90000)),
+		makeTx(common.HexToAddress("0x11"), common.HexToAddress("0x12"), uint64(90)),
 	}
 	txPool := txPoolForValidator{true} // 交易池中返回的状态为true
 	// 1. 正确情况
-	block01 := newBlockForVerifyTxs(txs, uint32(80000)) // block的时间小于tx的时间
+	block01 := newBlockForVerifyTxs(txs, uint32(80)) // block的时间小于tx的时间
 	assert.NoError(t, verifyTxs(block01, txPool, TestChainID))
 
 	// 2. 交易池返回状态为false的情况
 	assert.Equal(t, ErrVerifyBlockFailed, verifyTxs(block01, txPoolForValidator{false}, TestChainID))
 
 	// 3. 交易时间小于block时间的情况
-	block02 := newBlockForVerifyTxs(txs, uint32(90001))
+	block02 := newBlockForVerifyTxs(txs, uint32(91))
 	assert.Equal(t, ErrVerifyBlockFailed, verifyTxs(block02, txPool, TestChainID))
 }
 

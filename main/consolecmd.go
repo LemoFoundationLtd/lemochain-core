@@ -63,8 +63,7 @@ func createAccount(ctx *cli.Context) error {
 	if err == nil {
 		fmt.Println("Please keep your account safe! \nPlease apply again if the private key is divulged!\n ")
 		fmt.Printf("Private:\n%s\n", acc.Private)
-		fmt.Printf("LemoAddress:\n%s", acc.Address.String())
-		fmt.Println("\n")
+		fmt.Printf("LemoAddress:\n%s\n\n", acc.Address.String())
 		return nil
 	} else {
 		fmt.Println("Create account error:", err.Error())
@@ -81,8 +80,7 @@ func createNodekey(ctx *cli.Context) error {
 		nodeID := acc.Public[2:]
 		fmt.Println("Please save the generated nodekey and nodeID !!!")
 		fmt.Printf("nodekey:\n%s\n", nodekey)
-		fmt.Printf("nodeID:\n%s\n", nodeID)
-		fmt.Println("\n")
+		fmt.Printf("nodeID:\n%s\n\n", nodeID)
 		return nil
 	} else {
 		fmt.Println("Create nodekey error:", err.Error())

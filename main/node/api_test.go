@@ -10,6 +10,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"github.com/stretchr/testify/assert"
+	"math/big"
 	"testing"
 	"time"
 )
@@ -28,10 +29,8 @@ func TestAccountAPI_api(t *testing.T) {
 	assert.NotNil(t, addressKeyPair.Private)
 
 	// getBalance api
-	b01 := acc.manager.GetCanonicalAccount(common.HexToAddress("0x015780F8456F9c1532645087a19DcF9a7e0c7F97")).GetBalance().String()
-	bb01, err := acc.GetBalance("0x015780F8456F9c1532645087a19DcF9a7e0c7F97")
-	assert.NoError(t, err)
-	assert.Equal(t, b01, bb01)
+	_, err = acc.GetBalance("0x015780F8456F9c1532645087a19DcF9a7e0c7F97")
+	assert.Equal(t, ErrLemoAddress, err)
 
 	address, err := common.StringToAddress("Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG")
 	assert.NoError(t, err)
@@ -66,11 +65,11 @@ func TestChainAPI_api(t *testing.T) {
 	assert.Equal(t, exBlock1.Header.LogRoot, targetBlock.Header.LogRoot)
 	assert.Equal(t, exBlock1.Header.TxRoot, targetBlock.Header.TxRoot)
 
-	assert.Equal(t, exBlock1, c.GetBlockByHash("0x0bee913d964dea2142789d13b2df9c156fb3097c432762e9cceefa9814a0ebb1", true))
+	assert.Equal(t, exBlock1, c.GetBlockByHash(targetBlock.Hash().String(), true))
 	Block1 := &types.Block{
 		Header: exBlock1.Header,
 	}
-	assert.Equal(t, Block1, c.GetBlockByHash("0x0bee913d964dea2142789d13b2df9c156fb3097c432762e9cceefa9814a0ebb1", false))
+	assert.Equal(t, Block1, c.GetBlockByHash(targetBlock.Hash().String(), false))
 
 	// getBlockByHeight
 	exBlock2 := c.chain.GetBlockByHeight(1)
@@ -121,7 +120,7 @@ func TestTxAPI_api(t *testing.T) {
 	defer testchain.CloseTestChain(bc, db)
 
 	from := crypto.PubkeyToAddress(testchain.FounderPrivate.PublicKey)
-	testTx := types.NewTransaction(from, common.HexToAddress("0x1"), common.Big1, 100, common.Big2, []byte{12}, 0, 100, uint64(time.Now().Unix()+60*30), "aa", string("send a Tx"))
+	testTx := types.NewTransaction(from, common.HexToAddress("0x1"), common.Big1, 100, big.NewInt(1000000000), []byte{12}, 0, 100, uint64(time.Now().Unix()+60*30), "aa", string("send a Tx"))
 	tx := testchain.SignTx(testTx, testchain.FounderPrivate)
 	node := &Node{
 		chainID: 100,
@@ -131,7 +130,7 @@ func TestTxAPI_api(t *testing.T) {
 	txAPI := NewPublicTxAPI(node)
 
 	sendTxHash, err := txAPI.SendTx(tx)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, tx.Hash(), sendTxHash)
 }
 
