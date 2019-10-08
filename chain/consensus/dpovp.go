@@ -259,6 +259,20 @@ func (dp *DPoVP) batchConfirmStable(startHeight, endHeight uint32) {
 	}
 }
 
+// saveSnapshot find snapshot block than save its deputy nodes
+func (dp *DPoVP) saveSnapshot(startHeight, endHeight uint32) {
+	for i := startHeight; i <= endHeight; i++ {
+		if deputynode.IsSnapshotBlock(i) {
+			block, err := dp.db.GetBlockByHeight(i)
+			if err != nil {
+				log.Error("load block for snapshot fail", "height", i)
+			} else {
+				dp.dm.SaveSnapshot(i, block.DeputyNodes)
+			}
+		}
+	}
+}
+
 // UpdateStable check if the block can be stable. Then send notification and return true if the stable block changed
 func (dp *DPoVP) UpdateStable(block *types.Block) error {
 	oldStable := dp.StableBlock()
@@ -269,10 +283,8 @@ func (dp *DPoVP) UpdateStable(block *types.Block) error {
 
 	if changed {
 		// Update deputy nodes map
-		// This may not the latest state, but it's fine. Because deputy nodes snapshot will be used after the interim duration, it's about 1000 blocks
-		if deputynode.IsSnapshotBlock(block.Height()) {
-			dp.dm.SaveSnapshot(block.Height(), block.DeputyNodes)
-		}
+		// This may not be a litter late, but it's fine. Because deputy nodes snapshot will be used after the interim duration, it's about 1000 blocks
+		dp.saveSnapshot(oldStable.Height()+1, dp.StableBlock().Height())
 
 		// add txs in pruned block back
 		for _, prunedBlock := range prunedBlocks {
