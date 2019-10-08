@@ -11,8 +11,8 @@ import (
 func (b Block) MarshalJSON() ([]byte, error) {
 	type Block struct {
 		Header      *Header        `json:"header"        gencodec:"required"`
-		Txs         []*Transaction `json:"transactions"  gencodec:"required"`
-		ChangeLogs  []*ChangeLog   `json:"changeLogs"    gencodec:"required"`
+		Txs         Transactions   `json:"transactions"  gencodec:"required"`
+		ChangeLogs  ChangeLogSlice `json:"changeLogs"    gencodec:"required"`
 		Confirms    []SignData     `json:"confirms"`
 		DeputyNodes DeputyNodes    `json:"deputyNodes"`
 	}
@@ -28,11 +28,11 @@ func (b Block) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON unmarshals from JSON.
 func (b *Block) UnmarshalJSON(input []byte) error {
 	type Block struct {
-		Header      *Header        `json:"header"        gencodec:"required"`
-		Txs         []*Transaction `json:"transactions"  gencodec:"required"`
-		ChangeLogs  []*ChangeLog   `json:"changeLogs"    gencodec:"required"`
-		Confirms    []SignData     `json:"confirms"`
-		DeputyNodes *DeputyNodes   `json:"deputyNodes"`
+		Header      *Header         `json:"header"        gencodec:"required"`
+		Txs         *Transactions   `json:"transactions"  gencodec:"required"`
+		ChangeLogs  *ChangeLogSlice `json:"changeLogs"    gencodec:"required"`
+		Confirms    []SignData      `json:"confirms"`
+		DeputyNodes *DeputyNodes    `json:"deputyNodes"`
 	}
 	var dec Block
 	if err := json.Unmarshal(input, &dec); err != nil {
@@ -45,11 +45,11 @@ func (b *Block) UnmarshalJSON(input []byte) error {
 	if dec.Txs == nil {
 		return errors.New("missing required field 'transactions' for Block")
 	}
-	b.Txs = dec.Txs
+	b.Txs = *dec.Txs
 	if dec.ChangeLogs == nil {
 		return errors.New("missing required field 'changeLogs' for Block")
 	}
-	b.ChangeLogs = dec.ChangeLogs
+	b.ChangeLogs = *dec.ChangeLogs
 	if dec.Confirms != nil {
 		b.Confirms = dec.Confirms
 	}

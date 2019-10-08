@@ -4,8 +4,8 @@ package deputynode
 
 import (
 	"encoding/json"
-	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 
+	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common/hexutil"
 )
 
