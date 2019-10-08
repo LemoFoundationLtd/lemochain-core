@@ -50,14 +50,13 @@ func verifyTxRoot(block *types.Block) error {
 }
 
 // verifyTxs verify the Tx list in block body
-func verifyTxs(block *types.Block, txPool TxPool) error {
+func verifyTxs(block *types.Block, txPool TxPool, chainId uint16) error {
 	if !txPool.VerifyTxInBlock(block) {
 		log.Error("Consensus verify fail: tx is appeared in parent blocks")
 		return ErrVerifyBlockFailed
 	}
 	for _, tx := range block.Txs {
-		if tx.Expiration() < uint64(block.Time()) {
-			log.Error("Consensus verify fail: tx is out of date", "expiration", tx.Expiration(), "blockTime", block.Time())
+		if err := tx.VerifyTxBody(chainId, uint64(block.Time()), true); err != nil {
 			return ErrVerifyBlockFailed
 		}
 	}
@@ -238,7 +237,7 @@ func IsValidConfirmsExist(validConfirms []types.SignData, sig types.SignData) bo
 }
 
 // VerifyBeforeTxProcess verify the block data which has no relationship with the transaction processing result
-func (v *Validator) VerifyBeforeTxProcess(block *types.Block) error {
+func (v *Validator) VerifyBeforeTxProcess(block *types.Block, chainId uint16) error {
 	// cache parent block
 	parent, err := verifyParentHash(block, v.blockLoader)
 	if err != nil {
@@ -251,7 +250,7 @@ func (v *Validator) VerifyBeforeTxProcess(block *types.Block) error {
 	if err := verifyTxRoot(block); err != nil {
 		return err
 	}
-	if err := verifyTxs(block, v.txPool); err != nil {
+	if err := verifyTxs(block, v.txPool, chainId); err != nil {
 		return err
 	}
 	if err := verifyHeight(block, parent); err != nil {

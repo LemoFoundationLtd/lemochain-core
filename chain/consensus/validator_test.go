@@ -17,9 +17,10 @@ import (
 )
 
 var (
-	minerAddr, _ = common.StringToAddress("Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG")
-	minerPrivate = "c21b6b2fbf230f665b936194d14da67187732bf9d28768aef1a3cbb26608f8aa"
-	minerNodeId  = common.FromHex("0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0")
+	TestChainID  uint16 = 1
+	minerAddr, _        = common.StringToAddress("Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG")
+	minerPrivate        = "c21b6b2fbf230f665b936194d14da67187732bf9d28768aef1a3cbb26608f8aa"
+	minerNodeId         = common.FromHex("0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0")
 
 	addr02, _ = common.StringToAddress("Lemo83JW7TBPA7P2P6AR9ZC2WCQJYRNHZ4NJD4CY")
 	private02 = "9c3c4a327ce214f0a1bf9cfa756fbf74f1c7322399ffff925efd8c15c49953eb"
@@ -113,7 +114,7 @@ func newBlockForVerifyTxRoot(txs types.Transactions, txRoot common.Hash) *types.
 }
 
 func makeTx(from, to common.Address, txTime uint64) *types.Transaction {
-	return types.NewTransaction(from, to, big.NewInt(100), uint64(1000), big.NewInt(100), nil, 0, 1, txTime, "", "")
+	return types.NewTransaction(from, to, big.NewInt(100), uint64(1000), big.NewInt(100), nil, 0, TestChainID, txTime, "", "")
 }
 
 // 验证block中的txs和txRoot
@@ -151,14 +152,14 @@ func Test_verifyTxs(t *testing.T) {
 	txPool := txPoolForValidator{true} // 交易池中返回的状态为true
 	// 1. 正确情况
 	block01 := newBlockForVerifyTxs(txs, uint32(80000)) // block的时间小于tx的时间
-	assert.NoError(t, verifyTxs(block01, txPool))
+	assert.NoError(t, verifyTxs(block01, txPool, TestChainID))
 
 	// 2. 交易池返回状态为false的情况
-	assert.Equal(t, ErrVerifyBlockFailed, verifyTxs(block01, txPoolForValidator{false}))
+	assert.Equal(t, ErrVerifyBlockFailed, verifyTxs(block01, txPoolForValidator{false}, TestChainID))
 
 	// 3. 交易时间小于block时间的情况
 	block02 := newBlockForVerifyTxs(txs, uint32(90001))
-	assert.Equal(t, ErrVerifyBlockFailed, verifyTxs(block02, txPool))
+	assert.Equal(t, ErrVerifyBlockFailed, verifyTxs(block02, txPool, TestChainID))
 }
 
 func newBlockForVerifyHeight(height uint32) *types.Block {

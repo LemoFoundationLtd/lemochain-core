@@ -64,32 +64,29 @@ func needDel(logType types.ChangeLogType) bool {
 
 // merge traverses change logs and merges change log into the same type one which in front of it
 func merge(logs types.ChangeLogSlice) types.ChangeLogSlice {
+	// 缓存数组中的需要merge的数据和下标的索引
+	indexMap := make(map[types.ChangeLogType]int)
+	// 缓存merge后的changelog
 	result := make(types.ChangeLogSlice, 0)
-
-	combineResult := make([][]*types.ChangeLog, LOG_TYPE_STOP)
 	for _, log := range logs {
+		// 判断是否需要merge,如果不需要merge则直接保存到结果数组中
 		if needMerge(log.LogType) {
-			if combineResult[log.LogType] == nil {
-				combineResult[log.LogType] = make([]*types.ChangeLog, 1)
-				combineResult[log.LogType][0] = log
+			// 通过map查找数组中是否已经存放了此类log
+			if i, ok := indexMap[log.LogType]; ok {
+				// 存在则进行merge
+				result[i].NewVal = log.NewVal
+				result[i].Extra = log.Extra
 			} else {
-				combineResult[log.LogType][0].NewVal = log.NewVal
-				combineResult[log.LogType][0].Extra = log.Extra
+				// 不存在则表示第一次出现,push到数组并建立索引
+				result = append(result, log.Copy())
+				// 缓存数组index索引
+				indexMap[log.LogType] = len(result) - 1
 			}
 		} else {
-			if combineResult[log.LogType] == nil {
-				combineResult[log.LogType] = make([]*types.ChangeLog, 0)
-			}
-			combineResult[log.LogType] = append(combineResult[log.LogType], log.Copy())
+			// 不需要merge的changelog就直接按照顺序push到数组中
+			result = append(result, log.Copy())
 		}
 	}
-
-	for i := 0; i < len(combineResult); i++ {
-		for j := 0; j < len(combineResult[i]); j++ {
-			result = append(result, combineResult[i][j].Copy())
-		}
-	}
-
 	return result
 }
 

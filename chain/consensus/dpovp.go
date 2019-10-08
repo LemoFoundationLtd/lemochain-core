@@ -320,7 +320,7 @@ func (dp *DPoVP) isIgnorableBlock(block *types.Block) bool {
 // VerifyAndSeal verify block then create a new block
 func (dp *DPoVP) VerifyAndSeal(block *types.Block) (*types.Block, error) {
 	// verify every things that can be verified before tx processing
-	if err := dp.validator.VerifyBeforeTxProcess(block); err != nil {
+	if err := dp.validator.VerifyBeforeTxProcess(block, dp.processor.ChainID); err != nil {
 		return nil, ErrInvalidBlock
 	}
 	// filter the valid confirms
@@ -414,10 +414,7 @@ func (dp *DPoVP) LoadTopCandidates(blockHash common.Hash) types.DeputyNodes {
 		acc := dp.am.GetAccount(n.GetAddress())
 		candidate := acc.GetCandidate()
 		strID := candidate[types.CandidateKeyNodeID]
-		dn, err := types.NewDeputyNode(n.GetTotal(), uint32(i), n.GetAddress(), strID)
-		if err != nil {
-			continue
-		}
+		dn := types.NewDeputyNode(n.GetTotal(), uint32(i), n.GetAddress(), strID)
 		result = append(result, dn)
 	}
 	return result
