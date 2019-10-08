@@ -54,7 +54,7 @@ func ClearData() {
 
 // newDB db for test
 func newDB() protocol.ChainDB {
-	return store.NewChainDataBase(GetStorePath(), "", "")
+	return store.NewChainDataBase(GetStorePath())
 }
 
 // newDBToBlockHeight 返回存储了指定高度个稳定区块的db和当前状态的account manager

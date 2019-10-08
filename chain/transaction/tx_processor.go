@@ -755,7 +755,7 @@ func changeCandidateVotes(am *account.Manager, accountAddress common.Address, ch
 	}
 	candidateAccount := am.GetAccount(candidataAddress)
 	// 判断是否为候选节点
-	if candidateAccount.GetCandidateState(types.CandidateKeyIsCandidate) == params.IsCandidateNode {
+	if candidateAccount.GetCandidateState(types.CandidateKeyIsCandidate) == types.IsCandidateNode {
 		// set votes
 		candidateAccount.SetVotes(new(big.Int).Add(candidateAccount.GetVotes(), changeVotes))
 	}

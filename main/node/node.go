@@ -103,7 +103,7 @@ func GetChainDataPath(dataDir string) string {
 
 func initDb(dataDir string) protocol.ChainDB {
 	dir := GetChainDataPath(dataDir)
-	return store.NewChainDataBase(dir, "", "")
+	return store.NewChainDataBase(dir)
 }
 
 func getGenesis(db protocol.ChainDB) *types.Block {

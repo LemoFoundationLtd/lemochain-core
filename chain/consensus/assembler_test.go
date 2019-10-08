@@ -28,7 +28,7 @@ func TestNewBlockAssembler(t *testing.T) {
 
 func TestBlockAssembler_PrepareHeader(t *testing.T) {
 	ClearData()
-	db := store.NewChainDataBase(GetStorePath(), "", "")
+	db := store.NewChainDataBase(GetStorePath())
 	defer db.Close()
 	am := account.NewManager(common.Hash{}, db)
 	dm := initDeputyManager(5)
@@ -132,7 +132,7 @@ func createAssembler(db *store.ChainDatabase, fillSomeLogs bool) *BlockAssembler
 		// This will make 5 CandidateLogs and 5 VotesLogs
 		for _, deputy := range deputies {
 			profile := types.Profile{
-				types.CandidateKeyIsCandidate:   params.IsCandidateNode,
+				types.CandidateKeyIsCandidate:   types.IsCandidateNode,
 				types.CandidateKeyDepositAmount: "100",
 			}
 			deputyAccount := am.GetAccount(deputy.MinerAddress)
@@ -166,7 +166,7 @@ func createAssembler(db *store.ChainDatabase, fillSomeLogs bool) *BlockAssembler
 
 		// unregister first deputy It will make 1 CandidateStateLog
 		deputy := deputies[0]
-		am.GetAccount(deputy.MinerAddress).SetCandidateState(types.CandidateKeyIsCandidate, params.NotCandidateNode)
+		am.GetAccount(deputy.MinerAddress).SetCandidateState(types.CandidateKeyIsCandidate, types.NotCandidateNode)
 	}
 
 	processor := transaction.NewTxProcessor(deputies[0].MinerAddress, 100, &parentLoader{db}, am, db, dm)
@@ -175,7 +175,7 @@ func createAssembler(db *store.ChainDatabase, fillSomeLogs bool) *BlockAssembler
 
 func TestBlockAssembler_Finalize(t *testing.T) {
 	ClearData()
-	db := store.NewChainDataBase(GetStorePath(), "", "")
+	db := store.NewChainDataBase(GetStorePath())
 	defer db.Close()
 
 	finalizeAndCountLogs := func(ba *BlockAssembler, height uint32, logsCount int) {
@@ -192,7 +192,7 @@ func TestBlockAssembler_Finalize(t *testing.T) {
 	checkRefund := func(am *account.Manager, dm *deputynode.Manager) {
 		deputy := dm.GetDeputiesByHeight(1)[0]
 		deputyAccount := am.GetAccount(deputy.MinerAddress)
-		assert.Equal(t, params.NotCandidateNode, deputyAccount.GetCandidateState(types.CandidateKeyIsCandidate))
+		assert.Equal(t, types.NotCandidateNode, deputyAccount.GetCandidateState(types.CandidateKeyIsCandidate))
 		assert.Equal(t, "", deputyAccount.GetCandidateState(types.CandidateKeyDepositAmount))
 		assert.Equal(t, -1, big.NewInt(0).Cmp(deputyAccount.GetVotes()))
 	}
@@ -236,7 +236,7 @@ func (cl errCanLoader) LoadRefundCandidates(height uint32) ([]common.Address, er
 
 func TestBlockAssembler_Finalize2(t *testing.T) {
 	ClearData()
-	db := store.NewChainDataBase(GetStorePath(), "", "")
+	db := store.NewChainDataBase(GetStorePath())
 	defer db.Close()
 
 	// issue term reward failed
@@ -269,7 +269,7 @@ func TestBlockAssembler_Finalize2(t *testing.T) {
 
 func TestCheckTermReward(t *testing.T) {
 	ClearData()
-	db := store.NewChainDataBase(GetStorePath(), "", "")
+	db := store.NewChainDataBase(GetStorePath())
 	defer db.Close()
 	am := account.NewManager(common.Hash{}, db)
 	rewardAccont := am.GetAccount(params.TermRewardContract)
@@ -302,7 +302,7 @@ func TestCheckTermReward(t *testing.T) {
 
 func TestIssueTermReward(t *testing.T) {
 	ClearData()
-	db := store.NewChainDataBase(GetStorePath(), "", "")
+	db := store.NewChainDataBase(GetStorePath())
 	defer db.Close()
 	ba := createAssembler(db, false)
 	firstTerm, err := ba.dm.GetTermByHeight(1)
@@ -343,7 +343,7 @@ func TestIssueTermReward(t *testing.T) {
 
 func TestRefundCandidateDeposit(t *testing.T) {
 	ClearData()
-	db := store.NewChainDataBase(GetStorePath(), "", "")
+	db := store.NewChainDataBase(GetStorePath())
 	defer db.Close()
 	ba := createAssembler(db, false)
 	firstTerm, err := ba.dm.GetTermByHeight(1)
@@ -420,7 +420,7 @@ func TestCalculateSalary(t *testing.T) {
 
 func TestGetDeputyIncomeAddress(t *testing.T) {
 	ClearData()
-	db := store.NewChainDataBase(GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
+	db := store.NewChainDataBase(GetStorePath())
 	defer db.Close()
 	am := account.NewManager(common.Hash{}, db)
 
@@ -447,7 +447,7 @@ func TestGetDeputyIncomeAddress(t *testing.T) {
 // TestDivideSalary test total salary with random data
 func TestDivideSalary(t *testing.T) {
 	ClearData()
-	db := store.NewChainDataBase(GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
+	db := store.NewChainDataBase(GetStorePath())
 	defer db.Close()
 	am := account.NewManager(common.Hash{}, db)
 
@@ -553,7 +553,7 @@ func randomBigInt(r *rand.Rand) *big.Int {
 
 func TestGetTermRewards(t *testing.T) {
 	ClearData()
-	db := store.NewChainDataBase(GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
+	db := store.NewChainDataBase(GetStorePath())
 	defer db.Close()
 	am := account.NewManager(common.Hash{}, db)
 	rewardAccont := am.GetAccount(params.TermRewardContract)
@@ -614,7 +614,7 @@ func TestGetTermRewards(t *testing.T) {
 
 func TestBlockAssembler_RunBlock(t *testing.T) {
 	ClearData()
-	db := store.NewChainDataBase(GetStorePath(), "", "")
+	db := store.NewChainDataBase(GetStorePath())
 	defer db.Close()
 	ba := createAssembler(db, false)
 	firstTerm, err := ba.dm.GetTermByHeight(1)
@@ -648,7 +648,7 @@ func TestBlockAssembler_RunBlock(t *testing.T) {
 
 func TestBlockAssembler_MineBlock(t *testing.T) {
 	ClearData()
-	db := store.NewChainDataBase(GetStorePath(), "", "")
+	db := store.NewChainDataBase(GetStorePath())
 	defer db.Close()
 	ba := createAssembler(db, false)
 	firstTerm, err := ba.dm.GetTermByHeight(1)

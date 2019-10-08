@@ -126,7 +126,7 @@ func TestSort(t *testing.T) {
 
 func TestCBlock_RankingNo1(t *testing.T) {
 	ClearData()
-	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
+	cacheChain := NewChainDataBase(GetStorePath())
 	defer cacheChain.Close()
 
 	cblock1 := NewGenesisBlock(GetBlock1(), cacheChain.Beansdb)
@@ -151,7 +151,7 @@ func TestCBlock_RankingNo1(t *testing.T) {
 
 func TestCBlock_RankingNo2(t *testing.T) {
 	ClearData()
-	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
+	cacheChain := NewChainDataBase(GetStorePath())
 	defer cacheChain.Close()
 
 	cblock1 := NewGenesisBlock(GetBlock1(), cacheChain.Beansdb)
@@ -172,7 +172,7 @@ func TestCBlock_RankingNo2(t *testing.T) {
 
 func TestCBlock_RankingNo3(t *testing.T) {
 	ClearData()
-	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
+	cacheChain := NewChainDataBase(GetStorePath())
 	defer cacheChain.Close()
 
 	cblock1 := NewGenesisBlock(GetBlock1(), cacheChain.Beansdb)
@@ -210,7 +210,7 @@ func TestCBlock_RankingNo3(t *testing.T) {
 //
 func TestCBlock_RankingNo10(t *testing.T) {
 	ClearData()
-	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
+	cacheChain := NewChainDataBase(GetStorePath())
 	defer cacheChain.Close()
 
 	cblock1 := NewGenesisBlock(GetBlock1(), cacheChain.Beansdb)
@@ -258,7 +258,7 @@ func TestCBlock_RankingNo10(t *testing.T) {
 
 func TestCBlock_RankingNo11(t *testing.T) {
 	ClearData()
-	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
+	cacheChain := NewChainDataBase(GetStorePath())
 	defer cacheChain.Close()
 
 	cblock1 := NewGenesisBlock(GetBlock1(), cacheChain.Beansdb)
@@ -294,7 +294,7 @@ func TestCBlock_RankingNo11(t *testing.T) {
 
 func TestCBlock_RankingNo12(t *testing.T) {
 	ClearData()
-	cacheChain := NewChainDataBase(GetStorePath(), DRIVER_MYSQL, DNS_MYSQL)
+	cacheChain := NewChainDataBase(GetStorePath())
 	defer cacheChain.Close()
 
 	cblock1 := NewGenesisBlock(GetBlock1(), cacheChain.Beansdb)

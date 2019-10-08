@@ -129,7 +129,7 @@ func Test_ApplyTxs_TimeoutTime(t *testing.T) {
 // Test_CreatRegisterTxData 构造注册候选节点所用交易data
 func Test_CreatRegisterTxData(t *testing.T) {
 	pro1 := make(types.Profile)
-	pro1[types.CandidateKeyIsCandidate] = params.IsCandidateNode
+	pro1[types.CandidateKeyIsCandidate] = types.IsCandidateNode
 	pro1[types.CandidateKeyPort] = "1111"
 	pro1[types.CandidateKeyNodeID] = "5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0"
 	pro1[types.CandidateKeyIncomeAddress] = "Lemo83JZRYPYF97CFSZBBQBH4GW42PD8CFHT5ARN"
@@ -138,7 +138,7 @@ func Test_CreatRegisterTxData(t *testing.T) {
 	fmt.Println("txData1:", common.ToHex(marPro1))
 
 	pro2 := make(types.Profile)
-	pro2[types.CandidateKeyIsCandidate] = params.IsCandidateNode
+	pro2[types.CandidateKeyIsCandidate] = types.IsCandidateNode
 	pro2[types.CandidateKeyPort] = "2222"
 	pro2[types.CandidateKeyNodeID] = "34f0df789b46e9bc09f23d5315b951bc77bbfeda653ae6f5aab564c9b4619322fddb3b1f28d1c434250e9d4dd8f51aa8334573d7281e4d63baba913e9fa6908f"
 	pro2[types.CandidateKeyIncomeAddress] = common.HexToAddress("0x222").String()
@@ -147,7 +147,7 @@ func Test_CreatRegisterTxData(t *testing.T) {
 	fmt.Println("txData2:", common.ToHex(marPro2))
 
 	pro3 := make(types.Profile)
-	pro3[types.CandidateKeyIsCandidate] = params.IsCandidateNode
+	pro3[types.CandidateKeyIsCandidate] = types.IsCandidateNode
 	pro3[types.CandidateKeyPort] = "3333"
 	pro3[types.CandidateKeyNodeID] = "5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0"
 	pro3[types.CandidateKeyIncomeAddress] = common.HexToAddress("0x333").String()
@@ -156,7 +156,7 @@ func Test_CreatRegisterTxData(t *testing.T) {
 	fmt.Println("txData3:", common.ToHex(marPro3))
 
 	pro4 := make(types.Profile)
-	pro4[types.CandidateKeyIsCandidate] = params.IsCandidateNode
+	pro4[types.CandidateKeyIsCandidate] = types.IsCandidateNode
 	pro4[types.CandidateKeyPort] = "4444"
 	pro4[types.CandidateKeyNodeID] = "ddb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0"
 	pro4[types.CandidateKeyIncomeAddress] = common.HexToAddress("0x444").String()
@@ -165,7 +165,7 @@ func Test_CreatRegisterTxData(t *testing.T) {
 	fmt.Println("txData4:", common.ToHex(marPro4))
 
 	pro5 := make(types.Profile)
-	pro5[types.CandidateKeyIsCandidate] = params.IsCandidateNode
+	pro5[types.CandidateKeyIsCandidate] = types.IsCandidateNode
 	pro5[types.CandidateKeyPort] = "5555"
 	pro5[types.CandidateKeyNodeID] = "7739f34055d3c0808683dbd77a937f8e28f707d5b1e873bbe61f6f2d0347692f36ef736f342fb5ce4710f7e337f062cc2110d134b63a9575f78cb167bfae2f43"
 	pro5[types.CandidateKeyIncomeAddress] = common.HexToAddress("0x555").String()

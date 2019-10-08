@@ -431,9 +431,9 @@ func (dp *DPoVP) LoadRefundCandidates(height uint32) ([]common.Address, error) {
 	for _, addr := range addrList {
 		// 判断addr的candidate信息
 		candidateAcc := dp.am.GetAccount(addr)
-		pledgeString := candidateAcc.GetCandidateState(types.CandidateKeyDepositAmount)
+		depositString := candidateAcc.GetCandidateState(types.CandidateKeyDepositAmount)
 		nodeId := candidateAcc.GetCandidateState(types.CandidateKeyNodeID)
-		if candidateAcc.GetCandidateState(types.CandidateKeyIsCandidate) == params.NotCandidateNode && pledgeString != "" { // 满足退还押金的条件
+		if candidateAcc.GetCandidateState(types.CandidateKeyIsCandidate) == types.NotCandidateNode && depositString != "" { // 满足退还押金的条件
 			// 判断该地址是否为本届的共识节点
 			if !dp.dm.IsNodeDeputy(height, common.FromHex(nodeId)) {
 				result = append(result, addr)

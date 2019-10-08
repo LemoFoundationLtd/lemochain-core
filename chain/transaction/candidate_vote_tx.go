@@ -121,7 +121,7 @@ func buildProfile(tx *types.Transaction) (types.Profile, error) {
 		return nil, err
 	}
 	if _, ok := profile[types.CandidateKeyIsCandidate]; !ok {
-		profile[types.CandidateKeyIsCandidate] = params.IsCandidateNode
+		profile[types.CandidateKeyIsCandidate] = types.IsCandidateNode
 	}
 	if _, ok := profile[types.CandidateKeyIncomeAddress]; !ok {
 		profile[types.CandidateKeyIncomeAddress] = tx.From().String()
@@ -136,7 +136,7 @@ func buildProfile(tx *types.Transaction) (types.Profile, error) {
 func InitCandidateProfile(registerAcc types.AccountAccessor, IncomeAddress, NodeID, Host, Port, Introduction string, DepositAmount *big.Int) {
 	// 设置candidate info
 	newProfile := make(map[string]string, 7)
-	newProfile[types.CandidateKeyIsCandidate] = params.IsCandidateNode
+	newProfile[types.CandidateKeyIsCandidate] = types.IsCandidateNode
 	newProfile[types.CandidateKeyIncomeAddress] = IncomeAddress
 	newProfile[types.CandidateKeyNodeID] = NodeID
 	newProfile[types.CandidateKeyHost] = Host
@@ -175,8 +175,8 @@ func (c *CandidateVoteEnv) registerCandidate(depositAmount *big.Int, register co
 
 // unRegisterCandidate 注销候选节点操作, 注：注销之后不能再次注册，质押押金退还会在换届奖励块中进行
 func (c *CandidateVoteEnv) unRegisterCandidate(candidateAcc types.AccountAccessor, txBuildProfile types.Profile) bool {
-	if txBuildProfile[types.CandidateKeyIsCandidate] == params.NotCandidateNode {
-		candidateAcc.SetCandidateState(types.CandidateKeyIsCandidate, params.NotCandidateNode)
+	if txBuildProfile[types.CandidateKeyIsCandidate] == types.NotCandidateNode {
+		candidateAcc.SetCandidateState(types.CandidateKeyIsCandidate, types.NotCandidateNode)
 		// Set the number of votes to 0
 		candidateAcc.SetVotes(big.NewInt(0))
 		// 退还候选节点的押金
@@ -303,9 +303,9 @@ func (c *CandidateVoteEnv) RegisterOrUpdateToCandidate(tx *types.Transaction) er
 			return err
 		}
 	} else { // 已经注册过候选节点的情况
-		if candidateState == params.NotCandidateNode { // 如果此账户注册之后又注销了候选节点，则不能重新注册
+		if candidateState == types.NotCandidateNode { // 如果此账户注册之后又注销了候选节点，则不能重新注册
 			return ErrRegisterAgain
-		} else if candidateState == params.IsCandidateNode { // 此账户已经是一个候选节点账户
+		} else if candidateState == types.IsCandidateNode { // 此账户已经是一个候选节点账户
 			// 是否为注销 candidate 交易
 			if c.unRegisterCandidate(senderAcc, txBuildProfile) {
 				return nil
@@ -315,7 +315,7 @@ func (c *CandidateVoteEnv) RegisterOrUpdateToCandidate(tx *types.Transaction) er
 				return err
 			}
 		} else {
-			log.Errorf("Get an unexpected character [%s] when we call \"candidateProfile[types.CandidateKeyIsCandidate]\". Expected value: [%s] and [%s]", candidateState, params.NotCandidateNode, params.IsCandidateNode)
+			log.Errorf("Get an unexpected character [%s] when we call \"candidateProfile[types.CandidateKeyIsCandidate]\". Expected value: [%s] and [%s]", candidateState, types.NotCandidateNode, types.IsCandidateNode)
 			return ErrIsCandidate
 		}
 	}
@@ -328,7 +328,7 @@ func (c *CandidateVoteEnv) CallVoteTx(voter, newCandidateAddr common.Address, in
 
 	profile := newCandidateAcc.GetCandidate()
 	IsCandidate, ok := profile[types.CandidateKeyIsCandidate]
-	if !ok || IsCandidate == params.NotCandidateNode || IsCandidate == "" {
+	if !ok || IsCandidate == types.NotCandidateNode || IsCandidate == "" {
 		return ErrOfNotCandidateNode
 	}
 
@@ -358,7 +358,7 @@ func (c *CandidateVoteEnv) modifyCandidateVotes(voterAccount, newCandidateAccoun
 	if (oldCandidateAddr != common.Address{}) {
 		oldCandidateAccount := c.am.GetAccount(oldCandidateAddr)
 		// 判断前一个投票的候选节点是否已经取消候选节点列表
-		if oldCandidateAccount.GetCandidateState(types.CandidateKeyIsCandidate) == params.IsCandidateNode {
+		if oldCandidateAccount.GetCandidateState(types.CandidateKeyIsCandidate) == types.IsCandidateNode {
 			// reduce the number of votes for old candidate nodes
 			oldNodeVoters := new(big.Int).Sub(oldCandidateAccount.GetVotes(), modifyVotes)
 			oldCandidateAccount.SetVotes(oldNodeVoters)

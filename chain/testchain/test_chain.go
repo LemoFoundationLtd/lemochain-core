@@ -149,7 +149,7 @@ func init() {
 // NewTestChain creates chain for test
 func NewTestChain() (*chain.BlockChain, protocol.ChainDB) {
 	deputynode.SetSelfNodeKey(FounderPrivate)
-	db := store.NewChainDataBase(GetStorePath(), store.DRIVER_MYSQL, store.DNS_MYSQL)
+	db := store.NewChainDataBase(GetStorePath())
 	genesis := InitGenesis(db)
 	defaultBlocks = []*types.Block{genesis}
 	// must save genesis before new deputy manager

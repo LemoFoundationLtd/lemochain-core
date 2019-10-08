@@ -62,7 +62,7 @@ func setupGenesisBlock(genesisFile, datadir string) *types.Block {
 // saveBlock save block to db
 func saveBlock(datadir string, genesis *chain.Genesis) *types.Block {
 	chaindata := node.GetChainDataPath(datadir)
-	db := store.NewChainDataBase(chaindata, "", "")
+	db := store.NewChainDataBase(chaindata)
 	defer func() {
 		if err := db.Close(); err != nil {
 			log.Errorf("close db failed. %v", err)
