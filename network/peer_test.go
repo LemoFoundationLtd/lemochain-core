@@ -185,16 +185,16 @@ func Test_SendLstStatus(t *testing.T) {
 	rawP.readStatus = 3
 
 	res := p.SendLstStatus(nil)
-	assert.Equal(t, 0, res)
+	assert.NoError(t, res)
 
 	status := new(LatestStatus)
 	rawP.writeStatus = 1
 	res = p.SendLstStatus(status)
-	assert.Equal(t, -2, res)
+	assert.Error(t, res)
 
 	rawP.writeStatus = 0
 	res = p.SendLstStatus(status)
-	assert.Equal(t, 0, res)
+	assert.NoError(t, res)
 }
 
 func Test_SendTxs(t *testing.T) {
@@ -202,16 +202,16 @@ func Test_SendTxs(t *testing.T) {
 	p := newPeer(rawP)
 	rawP.writeStatus = 0
 	res := p.SendTxs(nil)
-	assert.Equal(t, 0, res)
+	assert.NoError(t, res)
 
 	rawP.writeStatus = 1
 	res = p.SendTxs(nil)
-	assert.Equal(t, -2, res)
+	assert.Error(t, res)
 
 	txs := make([]*types.Transaction, 0)
 	rawP.writeStatus = 0
 	res = p.SendTxs(txs)
-	assert.Equal(t, 0, res)
+	assert.NoError(t, res)
 }
 
 func Test_SendConfirmInfo(t *testing.T) {
@@ -219,16 +219,16 @@ func Test_SendConfirmInfo(t *testing.T) {
 	p := newPeer(rawP)
 	rawP.writeStatus = 0
 	res := p.SendConfirmInfo(nil)
-	assert.Equal(t, 0, res)
+	assert.NoError(t, res)
 
 	rawP.writeStatus = 1
 	res = p.SendConfirmInfo(nil)
-	assert.Equal(t, -2, res)
+	assert.Error(t, res)
 
 	confirm := new(BlockConfirmData)
 	rawP.writeStatus = 0
 	res = p.SendConfirmInfo(confirm)
-	assert.Equal(t, 0, res)
+	assert.NoError(t, res)
 }
 
 func Test_SendBlockHash(t *testing.T) {
@@ -236,11 +236,11 @@ func Test_SendBlockHash(t *testing.T) {
 	p := newPeer(rawP)
 	rawP.writeStatus = 0
 	res := p.SendBlockHash(222, common.Hash{})
-	assert.Equal(t, 0, res)
+	assert.NoError(t, res)
 
 	rawP.writeStatus = 1
 	res = p.SendBlockHash(222, common.Hash{})
-	assert.Equal(t, -2, res)
+	assert.Error(t, res)
 }
 
 func Test_SendBlocks(t *testing.T) {
@@ -248,16 +248,16 @@ func Test_SendBlocks(t *testing.T) {
 	p := newPeer(rawP)
 	rawP.writeStatus = 0
 	res := p.SendBlocks(nil)
-	assert.Equal(t, 0, res)
+	assert.NoError(t, res)
 
 	rawP.writeStatus = 1
 	res = p.SendBlocks(nil)
-	assert.Equal(t, -2, res)
+	assert.Error(t, res)
 
 	blocks := make([]*types.Block, 0)
 	rawP.writeStatus = 0
 	res = p.SendBlocks(blocks)
-	assert.Equal(t, 0, res)
+	assert.NoError(t, res)
 }
 
 func Test_SendConfirms(t *testing.T) {
@@ -265,16 +265,16 @@ func Test_SendConfirms(t *testing.T) {
 	p := newPeer(rawP)
 	rawP.writeStatus = 0
 	res := p.SendConfirms(nil)
-	assert.Equal(t, 0, res)
+	assert.NoError(t, res)
 
 	rawP.writeStatus = 1
 	res = p.SendConfirms(nil)
-	assert.Equal(t, -2, res)
+	assert.Error(t, res)
 
 	confirms := new(BlockConfirms)
 	rawP.writeStatus = 0
 	res = p.SendConfirms(confirms)
-	assert.Equal(t, 0, res)
+	assert.NoError(t, res)
 }
 
 func Test_SendGetConfirms(t *testing.T) {
@@ -282,15 +282,15 @@ func Test_SendGetConfirms(t *testing.T) {
 	p := newPeer(rawP)
 	rawP.writeStatus = 0
 	res := p.SendGetConfirms(10, common.Hash{})
-	assert.Equal(t, 0, res)
+	assert.NoError(t, res)
 
 	rawP.writeStatus = 1
 	res = p.SendGetConfirms(10, common.Hash{})
-	assert.Equal(t, -2, res)
+	assert.Error(t, res)
 
 	rawP.writeStatus = 0
 	res = p.SendGetConfirms(10, common.Hash{})
-	assert.Equal(t, 0, res)
+	assert.NoError(t, res)
 }
 
 func Test_SendDiscover(t *testing.T) {
@@ -298,15 +298,15 @@ func Test_SendDiscover(t *testing.T) {
 	p := newPeer(rawP)
 	rawP.writeStatus = 0
 	res := p.SendDiscover()
-	assert.Equal(t, 0, res)
+	assert.NoError(t, res)
 
 	rawP.writeStatus = 1
 	res = p.SendDiscover()
-	assert.Equal(t, -2, res)
+	assert.Error(t, res)
 
 	rawP.writeStatus = 0
 	res = p.SendDiscover()
-	assert.Equal(t, 0, res)
+	assert.NoError(t, res)
 }
 
 func Test_SendDiscoverResp(t *testing.T) {
@@ -314,16 +314,16 @@ func Test_SendDiscoverResp(t *testing.T) {
 	p := newPeer(rawP)
 	rawP.writeStatus = 0
 	res := p.SendDiscoverResp(nil)
-	assert.Equal(t, 0, res)
+	assert.NoError(t, res)
 
 	rawP.writeStatus = 1
 	res = p.SendDiscoverResp(nil)
-	assert.Equal(t, -2, res)
+	assert.Error(t, res)
 
 	resp := new(DiscoverResData)
 	rawP.writeStatus = 0
 	res = p.SendDiscoverResp(resp)
-	assert.Equal(t, 0, res)
+	assert.NoError(t, res)
 }
 
 func Test_SendReqLatestStatus(t *testing.T) {
@@ -331,15 +331,15 @@ func Test_SendReqLatestStatus(t *testing.T) {
 	p := newPeer(rawP)
 	rawP.writeStatus = 0
 	res := p.SendReqLatestStatus()
-	assert.Equal(t, 0, res)
+	assert.NoError(t, res)
 
 	rawP.writeStatus = 1
 	res = p.SendReqLatestStatus()
-	assert.Equal(t, -2, res)
+	assert.Error(t, res)
 
 	rawP.writeStatus = 0
 	res = p.SendReqLatestStatus()
-	assert.Equal(t, 0, res)
+	assert.NoError(t, res)
 }
 
 func Test_UpdateStatus(t *testing.T) {
