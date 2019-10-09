@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/LemoFoundationLtd/lemochain-core/chain"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
@@ -44,28 +43,27 @@ func editDefaultTestContent(fieldName, fieldContent string) string {
 	deputyNodesStr := `[
 		{
 			"minerAddress": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
+			"incomeAddress": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
 			"nodeID": "0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0",
-			"ip": "127.0.0.1",
-			"port": "65535",
-			"rank": "0",
-			"votes": "17"
+			"host": "127.0.0.1",
+			"port": "65534",
+			"introduction": "genesis"
 		},
 		{
 			"minerAddress": "Lemo83JW7TBPA7P2P6AR9ZC2WCQJYRNHZ4NJD4CY",
-			"nodeID": "0xddb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0",
-			"ip": "127.0.0.1",
-			"port": "7002",
-			"rank": "1",
-			"votes": "16"
+			"incomeAddress": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
+			"nodeID": "0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0",
+			"host": "127.0.0.2",
+			"port": "65535",
+			"introduction": "genesis"
 		}
 	]`
 	baseContents := []kv{
 		{"founder", "\"Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG\""},
 		{"extraData", "\"\""},
-		{"parentHash", "\"0x0000000000000000000000000000000000000000000000000000000000000000\""},
 		{"gasLimit", "105000000"},
 		{"timestamp", "1539051657"},
-		{"deputyNodes", deputyNodesStr},
+		{"deputyNodesInfo", deputyNodesStr},
 	}
 	lines := make([]string, 0, len(baseContents))
 	for _, item := range baseContents {
@@ -86,81 +84,10 @@ func editDefaultTestContent(fieldName, fieldContent string) string {
 func getTestCases() []genesisTestData {
 	return []genesisTestData{
 		{"empty_genesis_file", ErrInvalidGenesisFile, ""},
-		{"invalid_json_format", ErrInvalidGenesisFile, editDefaultTestContent("deputyNodes", `[
-		{
-			"minerAddress": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
-			"nodeID": "0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0",
-			"ip": "127.0.0.1",
-			"port": "65535",
-			"rank": "0",
-			"votes": "17"
-		},
-	]`)},
-		{"no_deputy", chain.ErrNoDeputyNodes, editDefaultTestContent("deputyNodes", "[]")},
 		{"lack_necessary_field", ErrInvalidGenesisFile, editDefaultTestContent("gasLimit", "")},
 		{"invalid_founder", ErrInvalidGenesisFile, editDefaultTestContent("founder", "Lemo84GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG")}, // correct: Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG
 		{"invalid_extraData", ErrInvalidGenesisFile, editDefaultTestContent("extraData", "0x123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890")},
 		{"invalid_timestamp", ErrInvalidGenesisFile, editDefaultTestContent("timestamp", "1539051657aaa")},
-		{"invalid_deputy_minerAddress", ErrInvalidGenesisFile, editDefaultTestContent("deputyNodes", `[
-		{
-			"minerAddress": "Lemo84GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
-			"nodeID": "0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0",
-			"ip": "432.0.0.1",
-			"port": "7001",
-			"rank": "0",
-			"votes": "17"
-		}
-	]`)},
-		{"invalid_deputy_nodeID", chain.ErrInvalidDeputyNodes, editDefaultTestContent("deputyNodes", `[
-		{
-			"minerAddress": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
-			"nodeID": "0x5e360073cd9a3c02",
-			"ip": "127.0.0.1",
-			"port": "7001",
-			"rank": "0",
-			"votes": "17"
-		}
-	]`)},
-		{"invalid_deputy_ip", ErrInvalidGenesisFile, editDefaultTestContent("deputyNodes", `[
-		{
-			"minerAddress": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
-			"nodeID": "0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0",
-			"ip": "432.0.0.1",
-			"port": "7001",
-			"rank": "0",
-			"votes": "17"
-		}
-	]`)},
-		{"invalid_deputy_port", chain.ErrInvalidDeputyNodes, editDefaultTestContent("deputyNodes", `[
-		{
-			"minerAddress": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
-			"nodeID": "0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0",
-			"ip": "127.0.0.1",
-			"port": "65536",
-			"rank": "0",
-			"votes": "17"
-		}
-	]`)},
-		{"invalid_deputy_rank", chain.ErrInvalidDeputyNodes, editDefaultTestContent("deputyNodes", `[
-		{
-			"minerAddress": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
-			"nodeID": "0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0",
-			"ip": "127.0.0.1",
-			"port": "7001",
-			"rank": 65536,
-			"votes": "17"
-		}
-	]`)},
-		{"invalid_deputy_votes", ErrInvalidGenesisFile, editDefaultTestContent("deputyNodes", `[
-		{
-			"minerAddress": "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG",
-			"nodeID": "0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0",
-			"ip": "127.0.0.1",
-			"port": "7001",
-			"rank": "0",
-			"votes": 12
-		}
-	]`)},
 	}
 }
 
@@ -173,7 +100,7 @@ func Test_setupGenesisBlock_valid(t *testing.T) {
 
 	block := setupGenesisBlock(fileName, datadir)
 	assert.Equal(t, uint32(0), block.Height())
-	assert.Equal(t, common.HexToHash("0x2a25c706ef4b7fbe478d38d50a634f70d01257d535f74c5241c4a5cdaf791e90"), block.Hash())
+	assert.Equal(t, common.HexToHash("0xd9381375f4ffa643eec35231e3c319fcdb7cd2aa6dbf4fcb45daa4b87a117868"), block.Hash())
 }
 
 // test invalid file content

@@ -1,15 +1,15 @@
 package runtime
 
 import (
-	"github.com/LemoFoundationLtd/lemochain-core/chain/consensus"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/transaction"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/vm"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 )
 
 func NewEnv(cfg *Config) *vm.EVM {
 	context := vm.Context{
-		CanTransfer: consensus.CanTransfer,
-		Transfer:    consensus.Transfer,
+		CanTransfer: transaction.CanTransfer,
+		Transfer:    transaction.Transfer,
 		GetHash:     func(uint32) common.Hash { return common.Hash{} },
 
 		Origin:       cfg.Origin,

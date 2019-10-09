@@ -79,7 +79,7 @@ func Test_runDialTask_err_handle(t *testing.T) {
 
 	<-startCh
 	res := m.runDialTask("fe6c44dc5e2f690e6b087ed094875d8f3e49ce03cab9782b1ea25fe676abf3fa81b508929cb13f4cf412ee7150c6a92dc65b86adb5a2e40ad8fe25efbdd12312@127.0.0.1:7007")
-	assert.Equal(t, -2, res)
+	assert.Equal(t, -1, res)
 }
 
 func Test_loop(t *testing.T) {
