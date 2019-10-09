@@ -442,7 +442,7 @@ func (p *TxProcessor) handleTx(tx *types.Transaction, header *types.Header, txIn
 
 func (p *TxProcessor) buyGas(gp *types.GasPool, tx *types.Transaction) error {
 	payerAddr := tx.GasPayer()
-	log.Infof("Tx's gas payer address: %s", payerAddr.String())
+	log.Debugf("Tx's gas payer address: %s", payerAddr.String())
 
 	payer := p.am.GetAccount(payerAddr)
 
