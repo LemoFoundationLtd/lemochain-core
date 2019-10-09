@@ -17,10 +17,10 @@ const (
 func Eventf(eventType, formatMsg string, values ...interface{}) {
 	detail := fmt.Sprintf(formatMsg, values...)
 	msg := strings.Join([]string{eventTag, eventType, detail}, "\t")
-	srvLog.Crit(msg)
+	srvLog.Info(msg)
 }
 
 func Event(eventType, msg string, ctx ...interface{}) {
 	m := strings.Join([]string{eventTag, eventType, msg}, "\t")
-	srvLog.Crit(m, ctx...)
+	srvLog.Info(m, ctx...)
 }
