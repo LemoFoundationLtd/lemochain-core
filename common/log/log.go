@@ -32,13 +32,13 @@ func Setup(lv log15.Lvl, toFile bool, showCodeLine bool) {
 	if useColor {
 		output = colorable.NewColorableStderr()
 	}
-	handler := log15.StreamHandler(output, TerminalFormat(useColor, showCodeLine))
-	if toFile {
-		handler = log15.MultiHandler(
-			handler,
-			FileHandler(logFilePath, log15.JsonFormat()), // 日志文件存储路径: ./log/glemo.log
-		)
+	handlers := []log15.Handler{
+		log15.StreamHandler(output, TerminalFormat(useColor, showCodeLine)),
 	}
+	if toFile {
+		handlers = append(handlers, FileHandler(logFilePath, log15.JsonFormat())) // 日志文件存储路径: ./log/glemo.log
+	}
+	handler := log15.MultiHandler(handlers...)
 	handler = log15.LvlFilterHandler(outputLv, handler)
 	srvLog.SetHandler(handler)
 }
