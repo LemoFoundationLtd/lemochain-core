@@ -199,6 +199,9 @@ func (v *Validator) VerifyNewConfirms(block *types.Block, sigList []types.SignDa
 	for _, sig := range sigList {
 		// 判断validConfirms中是否已经存在sig了
 		if IsValidConfirmsExist(validConfirms, sig) {
+			if lastErr == nil {
+				lastErr = ErrExistedConfirm
+			}
 			continue
 		}
 		nodeID, err := sig.RecoverNodeID(hash)
