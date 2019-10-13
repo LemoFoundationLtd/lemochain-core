@@ -237,5 +237,6 @@ func (g *Genesis) initCandidateListInfo(am *account.Manager) {
 	for _, v := range g.DeputyNodesInfo {
 		acc := am.GetAccount(v.MinerAddress)
 		transaction.InitCandidateProfile(acc, v.IncomeAddress.String(), common.ToHex(v.NodeID), v.Host, v.Port, v.Introduction, big.NewInt(0))
+		acc.SetVotes(big.NewInt(0))
 	}
 }
