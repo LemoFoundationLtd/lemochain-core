@@ -688,12 +688,12 @@ func changeCandidateVotes(am *account.Manager, accountAddress common.Address, ch
 		return
 	}
 	acc := am.GetAccount(accountAddress)
-	candidataAddress := acc.GetVoteFor()
+	candidateAddress := acc.GetVoteFor()
 
-	if (candidataAddress == common.Address{}) {
+	if (candidateAddress == common.Address{}) {
 		return
 	}
-	candidateAccount := am.GetAccount(candidataAddress)
+	candidateAccount := am.GetAccount(candidateAddress)
 	// 判断是否为候选节点
 	if candidateAccount.GetCandidateState(types.CandidateKeyIsCandidate) == types.IsCandidateNode {
 		// set votes

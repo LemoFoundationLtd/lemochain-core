@@ -36,7 +36,7 @@ func MergeChangeLogs(logs types.ChangeLogSlice) types.ChangeLogSlice {
 func needMerge(logType types.ChangeLogType) bool {
 	if (logType == BalanceLog) ||
 		(logType == VoteForLog) ||
-		(logType == VotesLog) ||
+		(logType == VotesLog) || // must merge because the candidate ranking logic find changed candidates by logs
 		(logType == StorageRootLog) ||
 		(logType == AssetCodeLog) ||
 		(logType == AssetCodeRootLog) ||
@@ -47,17 +47,6 @@ func needMerge(logType types.ChangeLogType) bool {
 		return true
 	} else {
 		// CandidateLog, CandidateStateLog are associated with same data in account. If they are merged, the sequence will be changed and the result will be different
-		return false
-	}
-}
-
-func needDel(logType types.ChangeLogType) bool {
-	if (logType == StorageLog) ||
-		(logType == AssetCodeLog) ||
-		(logType == AssetIdLog) ||
-		(logType == EquityLog) {
-		return false
-	} else {
 		return false
 	}
 }

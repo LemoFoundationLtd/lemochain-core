@@ -30,7 +30,7 @@ type ChainDB interface {
 	GetContractCode(hash common.Hash) (types.Code, error)
 	SetContractCode(hash common.Hash, code types.Code) error
 
-	CandidatesRanking(hash common.Hash)
+	CandidatesRanking(hash common.Hash, voteLogs types.ChangeLogSlice)
 	GetCandidatesTop(hash common.Hash) []*store.Candidate
 	GetAllCandidates() ([]common.Address, error)
 

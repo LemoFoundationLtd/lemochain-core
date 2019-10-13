@@ -59,6 +59,16 @@ func (h *LogProcessor) GetLogsByAddress(address common.Address) []*types.ChangeL
 	return result
 }
 
+func (h *LogProcessor) filterLogsByType(logType types.ChangeLogType) types.ChangeLogSlice {
+	result := make(types.ChangeLogSlice, 0)
+	for _, changelog := range h.changeLogs {
+		if changelog.LogType == logType {
+			result = append(result, changelog)
+		}
+	}
+	return result
+}
+
 // GetNextVersion generate new version for change log
 // func (h *LogProcessor) GetNextVersion(logType types.ChangeLogType, addr common.Address) uint32 {
 // 	// read current version in account

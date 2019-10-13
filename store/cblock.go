@@ -121,7 +121,7 @@ func (block *CBlock) dye(candidates []*Candidate) {
 	}
 }
 
-func (block *CBlock) less30(in []*Candidate, out []*Candidate) {
+func (block *CBlock) lessThan30(in []*Candidate, out []*Candidate) {
 	block.Top.Rank(max_candidate_count, append(in, out...))
 }
 
@@ -144,7 +144,7 @@ func (block *CBlock) canPick(src *Candidate, dst *Candidate) bool {
 	}
 }
 
-func (block *CBlock) greater30(in []*Candidate, out []*Candidate) {
+func (block *CBlock) moreThan30(in []*Candidate, out []*Candidate) {
 	top := NewEmptyVoteTop()
 	top.Rank(max_candidate_count, in)
 	newMin := top.Min()
@@ -163,20 +163,24 @@ func (block *CBlock) greater30(in []*Candidate, out []*Candidate) {
 	}
 }
 
-func (block *CBlock) Ranking() {
-	height := block.Block.Height()
-	accounts := block.AccountTrieDB.Collect(height)
-	if len(accounts) <= 0 {
+func (block *CBlock) Ranking(voteLogs types.ChangeLogSlice) {
+	if len(voteLogs) <= 0 {
 		return
 	}
-
-	candidates := block.filterCandidates(accounts)
+	candidates := make([]*Candidate, 0)
+	for _, changelog := range voteLogs {
+		newVote := changelog.NewVal.(big.Int)
+		candidates = append(candidates, &Candidate{
+			Address: changelog.Address,
+			Total:   new(big.Int).Set(&newVote),
+		})
+	}
 	block.dye(candidates)
 	in, out := block.data(candidates)
 	if block.Top.Count() < max_candidate_count {
-		block.less30(in, out)
+		block.lessThan30(in, out)
 	} else {
-		block.greater30(in, out)
+		block.moreThan30(in, out)
 	}
 }
 
