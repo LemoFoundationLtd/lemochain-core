@@ -138,6 +138,7 @@ func (m *Miner) resetMineTimer(timeDur int64) {
 				m.schedule(m.chain.CurrentBlock())
 			})
 
+			log.Debug("Time to mine")
 			m.timeToMineCh <- struct{}{}
 		}
 	})

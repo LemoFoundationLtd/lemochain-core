@@ -156,17 +156,17 @@ func verifyExtraData(block *types.Block) error {
 	return nil
 }
 
-// VerifyMineSlot verify the miner slot of deputy node
-func VerifyMineSlot(block *types.Block, parent *types.Block, timeoutTime uint64, dm *deputynode.Manager) error {
-	distance, err := GetMinerDistance(block.Height(), parent.MinerAddress(), block.MinerAddress(), dm)
+// verifyMineSlot verify the miner slot of deputy node
+func VerifyMineSlot(header *types.Header, parent *types.Header, timeoutTime uint64, dm *deputynode.Manager) error {
+	distance, err := GetMinerDistance(header.Height, parent.MinerAddress, header.MinerAddress, dm)
 	if err != nil {
-		log.Error("Consensus verify fail: can't calculate distance", "block.Height", block.Height(), "parent.MinerAddress", parent.MinerAddress(), "block.MinerAddress", block.MinerAddress(), "err", err)
+		log.Error("Consensus verify fail: can't calculate distance", "block.Height", header.Height, "parent.MinerAddress", parent.MinerAddress, "block.MinerAddress", header.MinerAddress, "err", err)
 		return ErrVerifyHeaderFailed
 	}
 
 	// The time interval between the current block and the parent block. unit：ms
-	totalPassTime := uint64(block.Time()-parent.Header.Time) * 1000
-	nodeCount := dm.GetDeputiesCount(block.Height())
+	totalPassTime := uint64(header.Time-parent.Time) * 1000
+	nodeCount := dm.GetDeputiesCount(header.Height)
 	oneLoopTime := uint64(nodeCount) * timeoutTime // All timeout times for a round of deputy nodes
 
 	passTime := totalPassTime % oneLoopTime
@@ -175,6 +175,11 @@ func VerifyMineSlot(block *types.Block, parent *types.Block, timeoutTime uint64,
 		return ErrVerifyHeaderFailed
 	}
 	return nil
+}
+
+// verifyMineSlot verify the miner slot of deputy node
+func (v *Validator) VerifyMineSlot(header *types.Header, parent *types.Header) error {
+	return VerifyMineSlot(header, parent, v.timeoutTime, v.dm)
 }
 
 // VerifyConfirmPacket verify the confirm data in block body, return valid new confirms and last confirm verification error
@@ -268,7 +273,7 @@ func (v *Validator) VerifyBeforeTxProcess(block *types.Block, chainId uint16) er
 	if err := verifyExtraData(block); err != nil {
 		return err
 	}
-	if err := VerifyMineSlot(block, parent, v.timeoutTime, v.dm); err != nil {
+	if err := VerifyMineSlot(block.Header, parent.Header, v.timeoutTime, v.dm); err != nil {
 		return err
 	}
 	return nil

@@ -107,11 +107,16 @@ func (dp *DPoVP) MineBlock(txProcessTimeout int64) (*types.Block, error) {
 	dp.chainLock.Lock()
 	defer dp.chainLock.Unlock()
 	parentHeader := dp.CurrentBlock().Header
-	log.Debug("Start mine block", "height", parentHeader.Height+1)
+	log.Debug("🔨 Start mine block", "height", parentHeader.Height+1)
 
 	// mine and seal
 	header, err := dp.assembler.PrepareHeader(parentHeader, dp.minerExtra)
 	if err != nil {
+		return nil, err
+	}
+	err = dp.validator.VerifyMineSlot(header, parentHeader)
+	if err != nil {
+		log.Warn("Mining is stuck by something. we have to wait to next loop")
 		return nil, err
 	}
 
@@ -143,7 +148,7 @@ func (dp *DPoVP) InsertBlock(rawBlock *types.Block) (*types.Block, error) {
 
 	dp.chainLock.Lock()
 	defer dp.chainLock.Unlock()
-	log.Debug("Start insert block to chain", "block", rawBlock.ShortString())
+	log.Debug("🎁 Start insert block to chain", "block", rawBlock.ShortString())
 
 	// verify and create a new block witch filled by transaction products
 	block, err := dp.VerifyAndSeal(rawBlock)
@@ -363,7 +368,7 @@ func (dp *DPoVP) InsertConfirm(info *network.BlockConfirmData) error {
 	dp.chainLock.Lock()
 	defer dp.chainLock.Unlock()
 	oldCurrent := dp.CurrentBlock()
-	log.Debug("Start insert confirm", "height", info.Height, "hash", info.Hash)
+	log.Debug("👍 Start insert confirm", "height", info.Height, "hash", info.Hash)
 
 	newBlock, err := dp.insertConfirms(info.Height, info.Hash, []types.SignData{info.SignInfo})
 	if err != nil {

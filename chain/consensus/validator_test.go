@@ -297,17 +297,17 @@ func Test_VerifyMineSlot(t *testing.T) {
 
 			// 1. 验证时间间隔小于规定的最小时间间隔的情况
 			parentBlock, currentBlock := assembleBlockForVerifyMineSlot(minPassTime-1, oneLoopTime, getMiner(i), getMiner(j))
-			assert.Equal(t, ErrVerifyHeaderFailed, VerifyMineSlot(currentBlock, parentBlock, timeoutStamp, dm))
+			assert.Equal(t, ErrVerifyHeaderFailed, VerifyMineSlot(currentBlock.Header, parentBlock.Header, timeoutStamp, dm))
 			// 2. 验证正确的区块出块时间间隔
 			parentBlock, currentBlock = assembleBlockForVerifyMineSlot(minPassTime, oneLoopTime, getMiner(i), getMiner(j))
-			assert.NoError(t, VerifyMineSlot(currentBlock, parentBlock, timeoutStamp, dm))
+			assert.NoError(t, VerifyMineSlot(currentBlock.Header, parentBlock.Header, timeoutStamp, dm))
 			parentBlock, currentBlock = assembleBlockForVerifyMineSlot(minPassTime+1, oneLoopTime, getMiner(i), getMiner(j))
-			assert.NoError(t, VerifyMineSlot(currentBlock, parentBlock, timeoutStamp, dm))
+			assert.NoError(t, VerifyMineSlot(currentBlock.Header, parentBlock.Header, timeoutStamp, dm))
 			parentBlock, currentBlock = assembleBlockForVerifyMineSlot(maxPassTime, oneLoopTime, getMiner(i), getMiner(j))
-			assert.Equal(t, ErrVerifyHeaderFailed, VerifyMineSlot(currentBlock, parentBlock, timeoutStamp, dm))
+			assert.Equal(t, ErrVerifyHeaderFailed, VerifyMineSlot(currentBlock.Header, parentBlock.Header, timeoutStamp, dm))
 			// 3. 验证时间间隔大于规定的最大出块间隔时间
 			parentBlock, currentBlock = assembleBlockForVerifyMineSlot(maxPassTime+1, oneLoopTime, getMiner(i), getMiner(j))
-			assert.Equal(t, ErrVerifyHeaderFailed, VerifyMineSlot(currentBlock, parentBlock, timeoutStamp, dm))
+			assert.Equal(t, ErrVerifyHeaderFailed, VerifyMineSlot(currentBlock.Header, parentBlock.Header, timeoutStamp, dm))
 		}
 	}
 }
@@ -523,10 +523,10 @@ func TestValidator_VerifyNewConfirms(t *testing.T) {
 	assert.Equal(t, sigList01, validConfirms) // 返回的确认包列表与输入验证的确认包列表相同
 
 	// 2. 测试验证的确认包中有相同的确认包信息
-	sigList02 := []types.SignData{sig02, sig02, sig03, sig03} // 验证的确认包列表中中有两个相同的确认包
+	sigList02 := []types.SignData{sig02, sig02, sig03, sig03} // 验证的确认包列表中有两个相同的确认包
 	expectReturnList := []types.SignData{sig02, sig03}        // 预期返回的确认包列表为查重之后的确认包列表
 	validConfirms, err = v.VerifyNewConfirms(block01, sigList02, dm)
-	assert.NoError(t, err)
+	assert.Equal(t, ErrExistedConfirm, err)
 	assert.Equal(t, expectReturnList, validConfirms)
 
 	// 3. 验证区块中的Confirms中存在需要验证的确认包
