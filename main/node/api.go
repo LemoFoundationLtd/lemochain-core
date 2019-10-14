@@ -121,20 +121,8 @@ func (a *PublicAccountAPI) GetAllRewardValue() ([]*params.Reward, error) {
 	rewardMap := make(params.RewardsMap)
 	json.Unmarshal(value, &rewardMap)
 	var result = make([]*params.Reward, 0)
-	// var maxTerm uint32 = 0
-	// for _, v := range rewardMap {
-	// 	if v.Term == maxTerm {
-	// 		result = append(result, v)
-	// 		maxTerm++
-	// 	}
-	// }
-	var i uint32
-	for i = 0; ; i++ {
-		if v, ok := rewardMap[i]; ok {
-			result = append(result, v)
-		} else {
-			break
-		}
+	for _, v := range rewardMap {
+		result = append(result, v)
 	}
 
 	return result, nil
