@@ -20,7 +20,8 @@ import (
 
 const (
 	defaultGasPrice       = 1e9
-	MaxProfileFieldLength = 130
+	NodeIDFieldLength     = 130
+	MaxProfileFieldLength = 128
 	MaxIntroductionLength = 1024
 	StandardNodeIdLength  = 64
 	SignerWeightThreshold = 100

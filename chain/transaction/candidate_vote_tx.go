@@ -61,10 +61,15 @@ func CheckRegisterTxProfile(profile types.Profile) error {
 				log.Errorf("The length of introduction field in transaction is out of max length limit. introduction length = %d. max length limit = %d.", len(val), MaxIntroductionLength)
 				return ErrInvalidIntroduction
 			}
+		} else if key == types.CandidateKeyNodeID {
+			if len(val) > NodeIDFieldLength {
+				log.Errorf("The length of candidate nodeId field in transaction is out of max length limit. fieldName: %s, field length = %d. max length limit = %d. ", key, len(val), NodeIDFieldLength)
+				return ErrInvalidNodeId
+			}
 		} else {
-			// 其他字段长度不能大于130
+			// 其他字段长度不能大于128
 			if len(val) > MaxProfileFieldLength {
-				log.Errorf("The length of candidate profile field in transaction is out of max length limit. field length = %d. max length limit = %d. ", len(val), MaxProfileFieldLength)
+				log.Errorf("The length of candidate profile field in transaction is out of max length limit. fieldName: %s, field length = %d. max length limit = %d. ", key, len(val), MaxProfileFieldLength)
 				return ErrInvalidProfile
 			}
 		}
