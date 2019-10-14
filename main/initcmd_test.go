@@ -100,7 +100,7 @@ func Test_setupGenesisBlock_valid(t *testing.T) {
 
 	block := setupGenesisBlock(fileName, datadir)
 	assert.Equal(t, uint32(0), block.Height())
-	assert.Equal(t, common.HexToHash("0xd9381375f4ffa643eec35231e3c319fcdb7cd2aa6dbf4fcb45daa4b87a117868"), block.Hash())
+	assert.Equal(t, common.HexToHash("0x2d9cd33d77e199c6ae7a657a9758ec58003ee2f82c811155152bf863de870251"), block.Hash())
 }
 
 // test invalid file content
