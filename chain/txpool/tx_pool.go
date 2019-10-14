@@ -165,7 +165,11 @@ func (pool *TxPool) RecvTx(tx *types.Transaction) bool {
 		pool.PendingTxs.Push(tx)
 		txpoolTotalNumberCounter.Inc(1) // 记录收到一笔交易
 		if tx.Amount().Cmp(blockTradeAmount) >= 0 {
-			log.Eventf(log.TxEvent, "Block trade appear. %s send %s to %s", tx.From(), tx.Amount().String(), tx.To())
+			toString := "[nil]"
+			if tx.To() != nil {
+				toString = tx.To().String()
+			}
+			log.Eventf(log.TxEvent, "Block trade appear. %s send %s to %s", tx.From().String(), tx.Amount().String(), toString)
 		}
 		return true
 	}
