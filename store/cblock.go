@@ -175,13 +175,46 @@ func (block *CBlock) Ranking(voteLogs types.ChangeLogSlice) {
 			Total:   new(big.Int).Set(&newVote),
 		})
 	}
+	// update global candidates
 	block.dye(candidates)
-	in, out := block.data(candidates)
+	unregisters := block.collectUnregisters()
+	block.Top.Top = filterUnregisters(block.Top.Top, unregisters)
+	candidates = filterUnregisters(candidates, unregisters)
+
+	updated30, changedOut30 := block.data(candidates)
 	if block.Top.Count() < max_candidate_count {
-		block.lessThan30(in, out)
+		block.lessThan30(updated30, changedOut30)
 	} else {
-		block.moreThan30(in, out)
+		block.moreThan30(updated30, changedOut30)
 	}
+}
+
+func filterUnregisters(candidates []*Candidate, unregisters map[common.Address]bool) []*Candidate {
+	if len(unregisters) <= 0 {
+		return candidates
+	}
+
+	newCandidates := make([]*Candidate, 0, len(candidates))
+	for _, candidate := range candidates {
+		if _, ok := unregisters[candidate.Address]; !ok {
+			newCandidates = append(newCandidates, candidate)
+		}
+	}
+	return newCandidates
+}
+
+func (block *CBlock) collectUnregisters() map[common.Address]bool {
+	height := block.Block.Height()
+	accounts := block.AccountTrieDB.Collect(height)
+	unregisterMap := make(map[common.Address]bool, 0)
+	for _, account := range accounts {
+		result, ok := account.Candidate.Profile[types.CandidateKeyIsCandidate]
+		if ok && result == types.NotCandidateNode {
+			unregisterMap[account.Address] = true
+		}
+	}
+
+	return unregisterMap
 }
 
 func (block *CBlock) BeChildOf(parent *CBlock) {

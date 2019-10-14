@@ -156,7 +156,7 @@ func verifyExtraData(block *types.Block) error {
 	return nil
 }
 
-// verifyMineSlot verify the miner slot of deputy node
+// VerifyMineSlot verify the miner slot of deputy node
 func VerifyMineSlot(header *types.Header, parent *types.Header, timeoutTime uint64, dm *deputynode.Manager) error {
 	distance, err := GetMinerDistance(header.Height, parent.MinerAddress, header.MinerAddress, dm)
 	if err != nil {
@@ -177,7 +177,7 @@ func VerifyMineSlot(header *types.Header, parent *types.Header, timeoutTime uint
 	return nil
 }
 
-// verifyMineSlot verify the miner slot of deputy node
+// VerifyMineSlot verify the miner slot of deputy node
 func (v *Validator) VerifyMineSlot(header *types.Header, parent *types.Header) error {
 	return VerifyMineSlot(header, parent, v.timeoutTime, v.dm)
 }

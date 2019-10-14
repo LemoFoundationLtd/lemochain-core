@@ -245,6 +245,7 @@ func (g *Genesis) initCandidateListInfo(am *account.Manager) {
 		newProfile[types.CandidateKeyIntroduction] = v.Introduction
 		newProfile[types.CandidateKeyDepositAmount] = big.NewInt(0).String()
 		transaction.InitCandidateProfile(acc, newProfile)
+		// make a changelog so the vote logic can be init correctly
 		acc.SetVotes(big.NewInt(0))
 	}
 }

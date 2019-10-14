@@ -215,6 +215,7 @@ func (c *CandidateVoteEnv) refundDeposit(candidateAddress common.Address, height
 
 // Refund 进行退款操作
 func Refund(candidateAddress common.Address, am *account.Manager) {
+	log.Info("Refund candidate deposit", "address", candidateAddress)
 	// 判断addr的candidate信息
 	candidateAcc := am.GetAccount(candidateAddress)
 	depositAmountString := candidateAcc.GetCandidateState(types.CandidateKeyDepositAmount)
