@@ -224,8 +224,8 @@ func TestReimbursement_transaction(t *testing.T) {
 // TestBlockChain_txData 构造生成调用设置换届奖励的预编译合约交易的data
 func TestBlockChain_data(t *testing.T) {
 	re := params.RewardJson{
-		Term:  3,
-		Value: big.NewInt(3330),
+		Term:  14,
+		Value: big.NewInt(100000),
 	}
 	by, _ := json.Marshal(re)
 	fmt.Println("tx data", common.ToHex(by))

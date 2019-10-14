@@ -20,7 +20,8 @@ import (
 
 const (
 	defaultGasPrice       = 1e9
-	MaxDeputyHostLength   = 128
+	NodeIDFieldLength     = 130
+	MaxProfileFieldLength = 128
 	MaxIntroductionLength = 1024
 	StandardNodeIdLength  = 64
 	SignerWeightThreshold = 100
@@ -32,7 +33,7 @@ var (
 	ErrInvalidTxInBlock          = errors.New("block contains invalid transaction")
 	ErrTxGasUsedNotEqual         = errors.New("tx gas used not equal")
 	ErrInvalidGenesis            = errors.New("can't process genesis block")
-	ErrInvalidHost               = errors.New("the length of host field in transaction is out of max length limit")
+	ErrInvalidProfile            = errors.New("the length of candidate profile field in transaction is out of max length limit")
 	ErrInvalidPort               = errors.New("invalid port")
 	ErrInvalidIntroduction       = errors.New("the length of introduction field in transaction is out of max length limit")
 	ErrInvalidAddress            = errors.New("invalid address")
