@@ -129,7 +129,6 @@ func (asset *Asset) Clone() *Asset {
 func (asset *Asset) VerifyAsset() error {
 	category := asset.Category
 	isDivisible := asset.IsDivisible
-	isReplenishable := asset.IsReplenishable
 	decimal := asset.Decimal
 	// 资产设置的小数位不能大于18位
 	if decimal > MaxAssetDecimal {
@@ -146,13 +145,7 @@ func (asset *Asset) VerifyAsset() error {
 		if isDivisible {
 			return ErrNonFungibleAssetDivisible
 		}
-		if isReplenishable {
-			return ErrNonFungibleAssetReplenishable
-		}
 	case CommonAsset:
-		if !isDivisible {
-			return ErrCommonAssetDivisible
-		}
 	default:
 		return ErrAssetKind
 	}
