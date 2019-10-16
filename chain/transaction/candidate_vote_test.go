@@ -217,11 +217,11 @@ func TestCandidateVoteEnv_RegisterOrUpdateToCandidate(t *testing.T) {
 	c := NewCandidateVoteEnv(am, dm)
 	// 足够的balance给注册者
 	registerAcc := c.am.GetAccount(register)
-	registerAcc.SetBalance(new(big.Int).Mul(params.MinCandidateDeposit, big.NewInt(2)))
+	registerAcc.SetBalance(new(big.Int).Mul(params.MinCandidateDeposit, big.NewInt(3)))
 	register02Acc := c.am.GetAccount(register02)
-	register02Acc.SetBalance(new(big.Int).Mul(params.MinCandidateDeposit, big.NewInt(2)))
+	register02Acc.SetBalance(new(big.Int).Mul(params.MinCandidateDeposit, big.NewInt(3)))
 	register03Acc := c.am.GetAccount(register03)
-	register03Acc.SetBalance(new(big.Int).Mul(params.MinCandidateDeposit, big.NewInt(2)))
+	register03Acc.SetBalance(new(big.Int).Mul(params.MinCandidateDeposit, big.NewInt(3)))
 
 	var snapshot = c.am.Snapshot()
 	// 1. balance不足以支付质押lemo
@@ -278,7 +278,7 @@ func TestCandidateVoteEnv_RegisterOrUpdateToCandidate(t *testing.T) {
 
 	// 4.2 修改包含nodeId信息，测试nodeId是否被修改和其他信息是否修改成功
 	// 注册候选节点
-	PledgeAmount := common.Lemo2Mo("7500050") // 质押的金额为750万零50 LEMO,换算为票数为10万票
+	PledgeAmount := common.Lemo2Mo("10000050") // 质押的金额为1000万零50 LEMO,换算为票数为10万票
 	nTx := newCandidateTx(register03, PledgeAmount, true, normalIncomeAddress, normalNodeId, normalHost, normalPort)
 	err = c.RegisterOrUpdateToCandidate(nTx)
 	assert.NoError(t, err)
@@ -298,7 +298,7 @@ func TestCandidateVoteEnv_RegisterOrUpdateToCandidate(t *testing.T) {
 	assert.Equal(t, newIncomeAddress, newPro[types.CandidateKeyIncomeAddress])
 	assert.Equal(t, newHost, newPro[types.CandidateKeyHost])
 	assert.Equal(t, newPort, newPro[types.CandidateKeyPort])
-	assert.Equal(t, common.Lemo2Mo("7500100").String(), newPro[types.CandidateKeyDepositAmount])
+	assert.Equal(t, common.Lemo2Mo("10000100").String(), newPro[types.CandidateKeyDepositAmount])
 	assert.Equal(t, big.NewInt(100001), register03Acc.GetVotes())
 }
 
@@ -315,7 +315,7 @@ func TestCandidateVoteEnv_CallVoteTx(t *testing.T) {
 	am := account.NewManager(common.Hash{}, db)
 	dm := deputynode.NewManager(5, db)
 	c := NewCandidateVoteEnv(am, dm)
-	initialSenderBalance := common.Lemo2Mo("2090") // 兑换为票数为20票
+	initialSenderBalance := common.Lemo2Mo("4190") // 兑换为票数为20票
 	// 构造一个候选节点，该候选节点原本的票数为两倍于 initialSenderBalance
 	candAddr := common.HexToAddress("0x13333000")
 	candAcc := c.am.GetAccount(candAddr)
@@ -355,7 +355,7 @@ func TestCandidateVoteEnv_CallVoteTx(t *testing.T) {
 	newCandAcc := c.am.GetAccount(newCandAddr)
 	newCandAcc.SetCandidateState(types.CandidateKeyIsCandidate, types.IsCandidateNode)
 
-	// voter给newCandAddr投票,20 票
+	// voter给newCandAddr投票
 	err = c.CallVoteTx(voterAddr, newCandAddr, initialSenderBalance)
 	assert.NoError(t, err)
 
