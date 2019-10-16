@@ -28,9 +28,9 @@ type Miner struct {
 	mining        int32
 	chain         Chain
 	dm            *deputynode.Manager
-
-	mineTimer  *time.Timer // 出块timer
-	retryTimer *time.Timer // 出块失败时重试出块的timer
+	txPool        consensus.TxPool
+	mineTimer     *time.Timer // 出块timer
+	retryTimer    *time.Timer // 出块失败时重试出块的timer
 
 	recvNewBlockCh chan *types.Block // 收到新块通知
 	timeToMineCh   chan struct{}     // 到出块时间了
@@ -38,12 +38,13 @@ type Miner struct {
 	quitCh         chan struct{}     // 退出
 }
 
-func New(cfg MineConfig, chain Chain, dm *deputynode.Manager) *Miner {
+func New(cfg MineConfig, chain Chain, dm *deputynode.Manager, txPool consensus.TxPool) *Miner {
 	return &Miner{
 		blockInterval:  cfg.SleepTime,
 		timeoutTime:    cfg.Timeout,
 		chain:          chain,
 		dm:             dm,
+		txPool:         txPool,
 		recvNewBlockCh: make(chan *types.Block, 1),
 		timeToMineCh:   make(chan struct{}),
 		stopCh:         make(chan struct{}),
@@ -233,8 +234,33 @@ func (m *Miner) sealBlock() {
 		return
 	}
 	log.Debug("Start seal block")
-
+	txProcessTimeout := m.waitCanPackageTx()
 	// mine asynchronously
 	// The time limit for mining is (m.timeoutTime - m.blockInterval). The rest 1/3 is used to transfer to other nodes
-	m.chain.MineBlock((m.timeoutTime - m.blockInterval) * 2 / 3)
+	m.chain.MineBlock(txProcessTimeout)
+}
+
+// waitCanPackageTx 等待交易池中存在可以打包的交易并返回给执行交易允许消耗的最多时间
+func (m *Miner) waitCanPackageTx() int64 {
+	// 当交易池中没有交易的时候，每隔一秒钟轮询一次，直到get到交易或者即将超过规定的出块时间之后退出
+	txProcessTimeout := (m.timeoutTime - m.blockInterval) * 2 / 3
+	now := time.Now()
+	for {
+		usedTime := int64(time.Since(now) / time.Millisecond) // 单位：毫秒
+		if usedTime >= txProcessTimeout {
+			txProcessTimeout = 0
+			break
+		}
+		if m.txPool.ExistCanPackageTx(uint32(time.Now().Unix())) {
+			txProcessTimeout = txProcessTimeout - usedTime
+			if txProcessTimeout < 0 {
+				txProcessTimeout = 0
+			}
+			break
+		} else {
+			// 休眠1秒
+			time.Sleep(1 * time.Second)
+		}
+	}
+	return txProcessTimeout
 }

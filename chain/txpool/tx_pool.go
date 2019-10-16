@@ -42,6 +42,13 @@ func (pool *TxPool) Get(time uint32, size int) []*types.Transaction {
 	return pool.PendingTxs.Pop(time, size)
 }
 
+// ExistCanPackageTx 存在可以打包的交易
+func (pool *TxPool) ExistCanPackageTx(time uint32) bool {
+	pool.RW.Lock()
+	defer pool.RW.Unlock()
+	return pool.PendingTxs.ExistCanPackageTx(time)
+}
+
 /* 本节点出块时，执行交易后，发现错误的交易通过该接口进行删除 */
 func (pool *TxPool) DelInvalidTxs(txs []*types.Transaction) {
 	pool.RW.Lock()

@@ -45,6 +45,7 @@ type TxPool interface {
 	VerifyTxInBlock(block *types.Block) bool
 	RecvBlock(block *types.Block)
 	PruneBlock(block *types.Block)
+	ExistCanPackageTx(time uint32) bool
 }
 
 type CandidateLoader interface {

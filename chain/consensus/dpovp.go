@@ -109,25 +109,7 @@ func (dp *DPoVP) MineBlock(txProcessTimeout int64) (*types.Block, error) {
 	parentHeader := dp.CurrentBlock().Header
 	log.Debug("Start mine block", "height", parentHeader.Height+1)
 
-	// 当交易池中没有交易的时候，每隔一秒钟轮询一次，直到get到交易或者即将超过规定的出块时间之后退出
-	now := time.Now()
-	txs := make([]*types.Transaction, 0)
-	var applyTxTimeout int64 = 0 // 执行交易所给定的最多时间,单位：毫秒
-	for {
-		usedTime := int64(time.Since(now) / time.Millisecond) // 单位：毫秒
-		if usedTime >= txProcessTimeout {
-			break
-		}
-		txs = dp.txPool.Get(uint32(time.Now().Unix()), params.MaxTxsForMiner)
-		if len(txs) != 0 {
-			applyTxTimeout = txProcessTimeout - usedTime
-			break
-		} else {
-			// 休眠1秒
-			time.Sleep(1 * time.Second)
-		}
-	}
-
+	txs := dp.txPool.Get(uint32(time.Now().Unix()), params.MaxTxsForMiner)
 	// mine and seal
 	header, err := dp.assembler.PrepareHeader(parentHeader, dp.minerExtra)
 	if err != nil {
@@ -136,7 +118,7 @@ func (dp *DPoVP) MineBlock(txProcessTimeout int64) (*types.Block, error) {
 
 	// txs := dp.txPool.Get(header.Time, params.MaxTxsForMiner)
 	log.Debugf("pick %d txs from txPool", len(txs))
-	block, invalidTxs, err := dp.assembler.MineBlock(header, txs, applyTxTimeout)
+	block, invalidTxs, err := dp.assembler.MineBlock(header, txs, txProcessTimeout)
 	if err != nil {
 		return nil, err
 	}

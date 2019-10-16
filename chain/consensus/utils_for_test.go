@@ -222,6 +222,10 @@ func (txPoolForValidator) Get(time uint32, size int) []*types.Transaction {
 	panic("implement me")
 }
 
+func (txPoolForValidator) ExistCanPackageTx(time uint32) bool {
+	panic("implement me")
+}
+
 func (txPoolForValidator) DelInvalidTxs(txs []*types.Transaction) {
 	panic("implement me")
 }
