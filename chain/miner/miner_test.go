@@ -115,8 +115,8 @@ func TestMiner_GetSleepTime(t *testing.T) {
 		t.Run(caseName, func(t *testing.T) {
 			test := test // capture range variable
 			t.Parallel()
-
-			assert.Equal(t, test.output, miner.getSleepTime(1, test.distance, parentBlockTime, parentBlockTime+test.timeDistance))
+			waitTime, _ := miner.getSleepTime(1, test.distance, parentBlockTime, parentBlockTime+test.timeDistance)
+			assert.Equal(t, test.output, waitTime)
 		})
 	}
 }
@@ -124,23 +124,27 @@ func TestMiner_GetSleepTime(t *testing.T) {
 func TestMiner_waitCanPackageTx(t *testing.T) {
 	var blockInterval int64 = 3000
 	var mineTimeout int64 = 10000
-	maxTxProcessTime := (mineTimeout - blockInterval) * 2 / 3
 	miner := New(MineConfig{SleepTime: blockInterval, Timeout: mineTimeout}, nil, nil, &testTxpool{})
 
 	// 1. 交易池中一开始就有可以打包的交易的情况
 	isExistCanPackageTx = true
-	txProcessTimeout := miner.waitCanPackageTx()
-	// 不用等待直接返回txProcessTimeout == maxTxProcessTime
-	assert.Equal(t, maxTxProcessTime, txProcessTimeout)
+	start := time.Now()
+	minerTimeoutStamp := time.Now().UnixNano()/1e6 + 100000000
+	miner.waitCanPackageTx(minerTimeoutStamp)
+	// 不用等待直接返回
+	assert.Equal(t, int64(0), time.Since(start).Nanoseconds()/1e9)
 
 	// 2. 交易池中始终没有可以打包的交易情况
 	isExistCanPackageTx = false
-	txProcessTimeout = miner.waitCanPackageTx()
-	// 等待并返回txProcessTimeout == 0
-	assert.Equal(t, int64(0), txProcessTimeout)
+	start = time.Now()
+	minerTimeoutStamp = time.Now().UnixNano()/1e6 + 2000
+	miner.waitCanPackageTx(minerTimeoutStamp)
+	// 等待超时
+	assert.Equal(t, int64(2), time.Since(start).Nanoseconds()/1e9)
 
 	// 3. 交易池中等一会儿就有交易的情况
 	isExistCanPackageTx = false
+	start = time.Now()
 	setTime := time.Millisecond * 3000 // 3000毫秒之后交易池中有可以打包的交易了
 	go func() {
 		time.AfterFunc(setTime, func() {
@@ -148,35 +152,16 @@ func TestMiner_waitCanPackageTx(t *testing.T) {
 			isExistCanPackageTx = true
 		})
 	}()
-	txProcessTimeout = miner.waitCanPackageTx()
-	// 3000毫秒之后发现交易池中存在可以打包的交易然后就退出，最后比较返回的txProcessTimeout == maxTxProcessTime - 等待的3000毫秒
-	assert.Equal(t, txProcessTimeout/1000, (maxTxProcessTime-int64(setTime/time.Millisecond))/1000)
+	minerTimeoutStamp = time.Now().UnixNano()/1e6 + 5000
+	miner.waitCanPackageTx(minerTimeoutStamp)
+	// 3000毫秒之后发现交易池中存在可以打包的交易然后就退出
+	assert.Equal(t, int64(3), time.Since(start).Nanoseconds()/1e9)
 }
 
 // 控制测试中的交易池中是否有可以打包的交易，true表示有，false表示没有
 var isExistCanPackageTx = false
 
 type testTxpool struct {
-}
-
-func (p *testTxpool) Get(time uint32, size int) []*types.Transaction {
-	panic("implement me")
-}
-
-func (p *testTxpool) DelInvalidTxs(txs []*types.Transaction) {
-	panic("implement me")
-}
-
-func (p *testTxpool) VerifyTxInBlock(block *types.Block) bool {
-	panic("implement me")
-}
-
-func (p *testTxpool) RecvBlock(block *types.Block) {
-	panic("implement me")
-}
-
-func (p *testTxpool) PruneBlock(block *types.Block) {
-	panic("implement me")
 }
 
 func (p *testTxpool) ExistCanPackageTx(time uint32) bool {

@@ -108,15 +108,13 @@ func (dp *DPoVP) MineBlock(txProcessTimeout int64) (*types.Block, error) {
 	defer dp.chainLock.Unlock()
 	parentHeader := dp.CurrentBlock().Header
 	log.Debug("Start mine block", "height", parentHeader.Height+1)
-
-	txs := dp.txPool.Get(uint32(time.Now().Unix()), params.MaxTxsForMiner)
 	// mine and seal
 	header, err := dp.assembler.PrepareHeader(parentHeader, dp.minerExtra)
 	if err != nil {
 		return nil, err
 	}
 
-	// txs := dp.txPool.Get(header.Time, params.MaxTxsForMiner)
+	txs := dp.txPool.Get(header.Time, params.MaxTxsForMiner)
 	log.Debugf("pick %d txs from txPool", len(txs))
 	block, invalidTxs, err := dp.assembler.MineBlock(header, txs, txProcessTimeout)
 	if err != nil {
