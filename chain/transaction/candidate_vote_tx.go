@@ -157,7 +157,7 @@ func (c *CandidateVoteEnv) registerCandidate(depositAmount *big.Int, register co
 	}
 
 	// Check if the balance is not enough
-	if !c.CanTransfer(c.am, register, params.MinCandidateDeposit) {
+	if !c.CanTransfer(c.am, register, depositAmount) {
 		return ErrInsufficientBalance
 	}
 
