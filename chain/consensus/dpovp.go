@@ -128,7 +128,6 @@ func (dp *DPoVP) MineBlock(txProcessTimeout int64) (*types.Block, error) {
 	if err = dp.saveNewBlock(block); err != nil {
 		return nil, err
 	}
-	log.Warnf("区块高度：%d, 区块时间戳：%d", block.Height(), block.Header.Time)
 	return block, nil
 }
 
