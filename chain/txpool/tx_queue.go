@@ -68,6 +68,17 @@ func (queue *TxQueue) DelBatch(hashes []common.Hash) {
 	}
 }
 
+// ExistCanPackageTx 存在可以打包的交易
+func (queue *TxQueue) ExistCanPackageTx(time uint32) bool {
+	for _, tx := range queue.TxsQueue {
+		// 此交易没有超时并且没有被软删除掉
+		if queue.isExist(tx.Hash()) && !queue.isTimeOut(tx, time) {
+			return true
+		}
+	}
+	return false
+}
+
 func (queue *TxQueue) Pop(time uint32, size int) []*types.Transaction {
 	result := make([]*types.Transaction, 0)
 	if size <= 0 {

@@ -91,8 +91,9 @@ func initConfig(flags flag.CmdFlags) (*Config, *config.ConfigFromFile) {
 	}
 	// Miner
 	cfg.Miner = miner.MineConfig{
-		SleepTime: int64(configFromFile.SleepTime),
-		Timeout:   int64(configFromFile.Timeout),
+		SleepTime:               int64(configFromFile.SleepTime),
+		Timeout:                 int64(configFromFile.Timeout),
+		ReservedPropagationTime: (int64(configFromFile.Timeout) - int64(configFromFile.SleepTime)) * 1 / 3,
 	}
 	return cfg, configFromFile
 }
@@ -155,7 +156,7 @@ func New(flags flag.CmdFlags) *Node {
 		accMan:       blockChain.AccountManager(),
 		chain:        blockChain,
 		txPool:       txPool,
-		miner:        miner.New(cfg.Miner, blockChain, dm),
+		miner:        miner.New(cfg.Miner, blockChain, dm, txPool),
 		pm:           pm,
 		server:       server,
 		genesisBlock: genesisBlock,

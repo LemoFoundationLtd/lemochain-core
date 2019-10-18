@@ -304,7 +304,7 @@ func (b *Block) ShortString() string {
 func (b *Block) Json() string {
 	buf, err := json.Marshal(b)
 	if err != nil {
-		log.Error("Block's marshal failed: %v", err)
+		log.Error("Block's marshal failed", "error", err)
 		return ""
 	}
 	return string(buf)
