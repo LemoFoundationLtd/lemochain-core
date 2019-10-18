@@ -211,7 +211,7 @@ func (m *Miner) getSleepTime(mineHeight uint32, distance uint64, parentTime int6
 		waitTime = (windowFrom - passTime + oneLoopTime) % oneLoopTime
 	}
 	log.Debug("getSleepTime", "waitTime", waitTime, "distance", distance, "parentTime", parentTime, "totalPassTime", totalPassTime, "passTime", passTime, "offset", offset, "nodeCount", nodeCount, "blockInterval", m.blockInterval, "timeoutTime", m.timeoutTime, "windowFrom", windowFrom, "windowTo", windowTo)
-	return offset + waitTime, offset + parentTime + windowTo
+	return offset + waitTime, parentTime + windowTo
 }
 
 // schedule wait some time to mine next block
