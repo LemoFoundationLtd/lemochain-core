@@ -115,7 +115,14 @@ func TestMiner_GetSleepTime(t *testing.T) {
 		t.Run(caseName, func(t *testing.T) {
 			test := test // capture range variable
 			t.Parallel()
-			waitTime, _ := miner.getSleepTime(1, test.distance, parentBlockTime, parentBlockTime+test.timeDistance)
+			waitTime, endOfMineWindow := miner.getSleepTime(1, test.distance, parentBlockTime, parentBlockTime+test.timeDistance)
+			offSet := int64(0)
+			if test.timeDistance < 0 {
+				offSet = -test.timeDistance
+			}
+			currentTime := parentBlockTime + test.timeDistance
+			windowTo := int64(test.distance) * mineTimeout
+			assert.Equal(t, offSet+currentTime+windowTo, endOfMineWindow)
 			assert.Equal(t, test.output, waitTime)
 		})
 	}
