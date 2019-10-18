@@ -77,11 +77,11 @@ func TestMiner_GetSleepTime(t *testing.T) {
 		{1, 10, blockInterval - 10, mineTimeout*1 + parentBlockTime},
 		{1, blockInterval, 0, mineTimeout*1 + parentBlockTime},
 		{1, blockInterval + 10, 0, mineTimeout*1 + parentBlockTime},
-		{1, mineTimeout, oneLoopTime - (mineTimeout), mineTimeout*1 + parentBlockTime},
-		{1, mineTimeout + 10, oneLoopTime - (mineTimeout + 10), mineTimeout*1 + parentBlockTime},
-		{1, mineTimeout*2 + 10, oneLoopTime - (mineTimeout*2 + 10), mineTimeout*1 + parentBlockTime},
-		{1, oneLoopTime, 0, mineTimeout*1 + parentBlockTime},
-		{1, oneLoopTime + 10, 0, mineTimeout*1 + parentBlockTime},
+		{1, mineTimeout, oneLoopTime - (mineTimeout), mineTimeout*1 + oneLoopTime + parentBlockTime},
+		{1, mineTimeout + 10, oneLoopTime - (mineTimeout + 10), mineTimeout*1 + parentBlockTime + oneLoopTime},
+		{1, mineTimeout*2 + 10, oneLoopTime - (mineTimeout*2 + 10), mineTimeout*1 + parentBlockTime + oneLoopTime},
+		{1, oneLoopTime, 0, mineTimeout*1 + parentBlockTime + oneLoopTime},
+		{1, oneLoopTime + 10, 0, mineTimeout*1 + parentBlockTime + oneLoopTime},
 
 		// second miner
 		{2, 10, mineTimeout - 10, mineTimeout*2 + parentBlockTime},
@@ -89,9 +89,9 @@ func TestMiner_GetSleepTime(t *testing.T) {
 		{2, blockInterval + 10, mineTimeout - (blockInterval + 10), mineTimeout*2 + parentBlockTime},
 		{2, mineTimeout, 0, mineTimeout*2 + parentBlockTime},
 		{2, mineTimeout + 10, 0, mineTimeout*2 + parentBlockTime},
-		{2, mineTimeout*2 + 10, oneLoopTime - (mineTimeout + 10), mineTimeout*2 + parentBlockTime},
-		{2, oneLoopTime, mineTimeout, mineTimeout*2 + parentBlockTime},
-		{2, oneLoopTime + 10, mineTimeout - 10, mineTimeout*2 + parentBlockTime},
+		{2, mineTimeout*2 + 10, oneLoopTime - (mineTimeout + 10), mineTimeout*2 + parentBlockTime + oneLoopTime},
+		{2, oneLoopTime, mineTimeout, mineTimeout*2 + parentBlockTime + oneLoopTime},
+		{2, oneLoopTime + 10, mineTimeout - 10, mineTimeout*2 + parentBlockTime + oneLoopTime},
 
 		// self miner
 		{3, 10, mineTimeout*2 - 10, mineTimeout*3 + parentBlockTime},
@@ -100,16 +100,16 @@ func TestMiner_GetSleepTime(t *testing.T) {
 		{3, mineTimeout, mineTimeout, mineTimeout*3 + parentBlockTime},
 		{3, mineTimeout + 10, mineTimeout - 10, mineTimeout*3 + parentBlockTime},
 		{3, mineTimeout*2 + 10, 0, mineTimeout*3 + parentBlockTime},
-		{3, oneLoopTime, mineTimeout * 2, mineTimeout*3 + parentBlockTime},
-		{3, oneLoopTime + 10, mineTimeout*2 - 10, mineTimeout*3 + parentBlockTime},
+		{3, oneLoopTime, mineTimeout * 2, mineTimeout*3 + parentBlockTime + oneLoopTime},
+		{3, oneLoopTime + 10, mineTimeout*2 - 10, mineTimeout*3 + parentBlockTime + oneLoopTime},
 
 		// parent block is future block
-		{1, -10, blockInterval - (-10), mineTimeout*1 + parentBlockTime - (-10)},
-		{1, -10000, blockInterval - (-10000), mineTimeout*1 + parentBlockTime - (-10000)},
-		{2, -10, mineTimeout - (-10), mineTimeout*2 + parentBlockTime - (-10)},
-		{2, -10000, mineTimeout - (-10000), mineTimeout*2 + parentBlockTime - (-10000)},
-		{3, -10, mineTimeout*2 - (-10), mineTimeout*3 + parentBlockTime - (-10)},
-		{3, -10000, mineTimeout*2 - (-10000), mineTimeout*3 + parentBlockTime - (-10000)},
+		{1, -10, blockInterval - (-10), mineTimeout*1 + parentBlockTime},
+		{1, -10000, blockInterval - (-10000), mineTimeout*1 + parentBlockTime},
+		{2, -10, mineTimeout - (-10), mineTimeout*2 + parentBlockTime},
+		{2, -10000, mineTimeout - (-10000), mineTimeout*2 + parentBlockTime},
+		{3, -10, mineTimeout*2 - (-10), mineTimeout*3 + parentBlockTime},
+		{3, -10000, mineTimeout*2 - (-10000), mineTimeout*3 + parentBlockTime},
 	}
 	for _, test := range tests {
 		caseName := fmt.Sprintf("distance=%d,timeDistance=%d", test.distance, test.timeDistance)
