@@ -56,9 +56,10 @@ func TestMiner_GetSleepTime(t *testing.T) {
 	dm := deputynode.NewManager(deputyCount, &testChain{})
 	dm.SaveSnapshot(0, testDeputies[:deputyCount])
 	type testInfo struct {
-		distance     uint64
-		timeDistance int64
-		output       int64
+		distance        uint64
+		timeDistance    int64
+		output          int64
+		endOfMineWindow int64
 	}
 
 	var blockInterval int64 = 1000
@@ -68,47 +69,47 @@ func TestMiner_GetSleepTime(t *testing.T) {
 	miner := New(MineConfig{SleepTime: blockInterval, Timeout: mineTimeout}, nil, dm, nil)
 	tests := []testInfo{
 		// fastest
-		{1, 0, blockInterval},
-		{2, 0, mineTimeout},
-		{3, 0, mineTimeout * 2},
+		{1, 0, blockInterval, mineTimeout*1 + parentBlockTime},
+		{2, 0, mineTimeout, mineTimeout*2 + parentBlockTime},
+		{3, 0, mineTimeout * 2, mineTimeout*3 + parentBlockTime},
 
 		// next miner
-		{1, 10, blockInterval - 10},
-		{1, blockInterval, 0},
-		{1, blockInterval + 10, 0},
-		{1, mineTimeout, oneLoopTime - (mineTimeout)},
-		{1, mineTimeout + 10, oneLoopTime - (mineTimeout + 10)},
-		{1, mineTimeout*2 + 10, oneLoopTime - (mineTimeout*2 + 10)},
-		{1, oneLoopTime, 0},
-		{1, oneLoopTime + 10, 0},
+		{1, 10, blockInterval - 10, mineTimeout*1 + parentBlockTime + 10},
+		{1, blockInterval, 0, mineTimeout*1 + parentBlockTime + blockInterval},
+		{1, blockInterval + 10, 0, mineTimeout*1 + parentBlockTime + blockInterval + 10},
+		{1, mineTimeout, oneLoopTime - (mineTimeout), mineTimeout*1 + parentBlockTime + mineTimeout},
+		{1, mineTimeout + 10, oneLoopTime - (mineTimeout + 10), mineTimeout*1 + parentBlockTime + mineTimeout + 10},
+		{1, mineTimeout*2 + 10, oneLoopTime - (mineTimeout*2 + 10), mineTimeout*1 + parentBlockTime + mineTimeout*2 + 10},
+		{1, oneLoopTime, 0, mineTimeout*1 + parentBlockTime + oneLoopTime},
+		{1, oneLoopTime + 10, 0, mineTimeout*1 + parentBlockTime + oneLoopTime + 10},
 
 		// second miner
-		{2, 10, mineTimeout - 10},
-		{2, blockInterval, mineTimeout - blockInterval},
-		{2, blockInterval + 10, mineTimeout - (blockInterval + 10)},
-		{2, mineTimeout, 0},
-		{2, mineTimeout + 10, 0},
-		{2, mineTimeout*2 + 10, oneLoopTime - (mineTimeout + 10)},
-		{2, oneLoopTime, mineTimeout},
-		{2, oneLoopTime + 10, mineTimeout - 10},
+		{2, 10, mineTimeout - 10, mineTimeout*2 + parentBlockTime + 10},
+		{2, blockInterval, mineTimeout - blockInterval, mineTimeout*2 + parentBlockTime + blockInterval},
+		{2, blockInterval + 10, mineTimeout - (blockInterval + 10), mineTimeout*2 + parentBlockTime + blockInterval + 10},
+		{2, mineTimeout, 0, mineTimeout*2 + parentBlockTime + mineTimeout},
+		{2, mineTimeout + 10, 0, mineTimeout*2 + parentBlockTime + mineTimeout + 10},
+		{2, mineTimeout*2 + 10, oneLoopTime - (mineTimeout + 10), mineTimeout*2 + parentBlockTime + mineTimeout*2 + 10},
+		{2, oneLoopTime, mineTimeout, mineTimeout*2 + parentBlockTime + oneLoopTime},
+		{2, oneLoopTime + 10, mineTimeout - 10, mineTimeout*2 + parentBlockTime + oneLoopTime + 10},
 
 		// self miner
-		{3, 10, mineTimeout*2 - 10},
-		{3, blockInterval, mineTimeout*2 - blockInterval},
-		{3, blockInterval + 10, mineTimeout*2 - (blockInterval + 10)},
-		{3, mineTimeout, mineTimeout},
-		{3, mineTimeout + 10, mineTimeout - 10},
-		{3, mineTimeout*2 + 10, 0},
-		{3, oneLoopTime, mineTimeout * 2},
-		{3, oneLoopTime + 10, mineTimeout*2 - 10},
+		{3, 10, mineTimeout*2 - 10, mineTimeout*3 + parentBlockTime + 10},
+		{3, blockInterval, mineTimeout*2 - blockInterval, mineTimeout*3 + parentBlockTime + blockInterval},
+		{3, blockInterval + 10, mineTimeout*2 - (blockInterval + 10), mineTimeout*3 + parentBlockTime + blockInterval + 10},
+		{3, mineTimeout, mineTimeout, mineTimeout*3 + parentBlockTime + mineTimeout},
+		{3, mineTimeout + 10, mineTimeout - 10, mineTimeout*3 + parentBlockTime + mineTimeout + 10},
+		{3, mineTimeout*2 + 10, 0, mineTimeout*3 + parentBlockTime + mineTimeout*2 + 10},
+		{3, oneLoopTime, mineTimeout * 2, mineTimeout*3 + parentBlockTime + oneLoopTime},
+		{3, oneLoopTime + 10, mineTimeout*2 - 10, mineTimeout*3 + parentBlockTime + oneLoopTime + 10},
 
 		// parent block is future block
-		{1, -10, blockInterval - (-10)},
-		{1, -10000, blockInterval - (-10000)},
-		{2, -10, mineTimeout - (-10)},
-		{2, -10000, mineTimeout - (-10000)},
-		{3, -10, mineTimeout*2 - (-10)},
-		{3, -10000, mineTimeout*2 - (-10000)},
+		{1, -10, blockInterval - (-10), mineTimeout*1 + parentBlockTime},
+		{1, -10000, blockInterval - (-10000), mineTimeout*1 + parentBlockTime},
+		{2, -10, mineTimeout - (-10), mineTimeout*2 + parentBlockTime},
+		{2, -10000, mineTimeout - (-10000), mineTimeout*2 + parentBlockTime},
+		{3, -10, mineTimeout*2 - (-10), mineTimeout*3 + parentBlockTime},
+		{3, -10000, mineTimeout*2 - (-10000), mineTimeout*3 + parentBlockTime},
 	}
 	for _, test := range tests {
 		caseName := fmt.Sprintf("distance=%d,timeDistance=%d", test.distance, test.timeDistance)
@@ -116,13 +117,7 @@ func TestMiner_GetSleepTime(t *testing.T) {
 			test := test // capture range variable
 			t.Parallel()
 			waitTime, endOfMineWindow := miner.getSleepTime(1, test.distance, parentBlockTime, parentBlockTime+test.timeDistance)
-			offSet := int64(0)
-			if test.timeDistance < 0 {
-				offSet = -test.timeDistance
-			}
-			currentTime := parentBlockTime + test.timeDistance
-			windowTo := int64(test.distance) * mineTimeout
-			assert.Equal(t, offSet+currentTime+windowTo, endOfMineWindow)
+			assert.Equal(t, test.endOfMineWindow, endOfMineWindow)
 			assert.Equal(t, test.output, waitTime)
 		})
 	}
