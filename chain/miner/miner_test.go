@@ -161,9 +161,6 @@ func TestMiner_waitCanPackageTx(t *testing.T) {
 	assert.Equal(t, int64(3), time.Since(start).Nanoseconds()/1e9)
 }
 
-// 控制测试中的交易池中是否有可以打包的交易，true表示有，false表示没有
-// var isExistCanPackageTx = false
-
 type testTxpool struct {
 	IsExist bool
 }
