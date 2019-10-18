@@ -236,7 +236,7 @@ func (c *client) listenAndAlarm(m map[string]interface{}, metricsName string, co
 					enabled = true
 				}
 			} else {
-				log.Errorf("This type of measurement is not currently supported. error metricsType: %s", condition.MetricsType)
+				log.Errorf("This type of measurement is not currently supported. error metricsType: %d", condition.MetricsType)
 				return false
 			}
 
@@ -255,7 +255,7 @@ func (c *client) listenAndAlarm(m map[string]interface{}, metricsName string, co
 					enabled = true
 				}
 			} else {
-				log.Errorf("This type of measurement is not currently supported. error metricsType: %s", condition.MetricsType)
+				log.Errorf("This type of measurement is not currently supported. error metricsType: %d", condition.MetricsType)
 				return false
 			}
 			metricsDetails = "Detail: " + strings.Join(SprintMetrics(metricsName, timer), "")

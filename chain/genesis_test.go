@@ -108,7 +108,7 @@ func TestGenesis_ToBlock(t *testing.T) {
 	assert.Equal(t, genesis.GasLimit, block.GasLimit())
 	assert.Equal(t, genesis.Founder, block.MinerAddress())
 	assert.Equal(t, len(genesis.DeputyNodesInfo), len(block.DeputyNodes))
-	assert.Len(t, block.ChangeLogs, 2) // 初始化的16亿的balanceLog和初始化的候选节点的candidateLog
+	assert.Len(t, block.ChangeLogs, 3) // 初始化的16亿的balanceLog和初始化的候选节点的candidateLog
 	assert.Len(t, block.Txs, 0)
 	assert.Equal(t, common.Sha3Nil, block.TxRoot())
 	assert.NotEqual(t, 0, block.Height())

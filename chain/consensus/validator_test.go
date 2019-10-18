@@ -240,14 +240,17 @@ func newBlockForVerifyExtraData(extraData []byte) *types.Block {
 
 func Test_verifyExtraData(t *testing.T) {
 	// 验证block中的额外数据长度
-	for i := 1; i <= params.MaxExtraDataLen*2; i++ {
-		block := newBlockForVerifyExtraData(make([]byte, i))
-		if i > params.MaxExtraDataLen {
-			assert.Equal(t, ErrVerifyHeaderFailed, verifyExtraData(block))
-		} else {
-			assert.NoError(t, verifyExtraData(block))
-		}
-	}
+	block := newBlockForVerifyExtraData(make([]byte, 0))
+	assert.NoError(t, verifyExtraData(block))
+
+	block = newBlockForVerifyExtraData(make([]byte, params.MaxExtraDataLen-1))
+	assert.NoError(t, verifyExtraData(block))
+
+	block = newBlockForVerifyExtraData(make([]byte, params.MaxExtraDataLen))
+	assert.NoError(t, verifyExtraData(block))
+
+	block = newBlockForVerifyExtraData(make([]byte, params.MaxExtraDataLen+1))
+	assert.Equal(t, ErrVerifyHeaderFailed, verifyExtraData(block))
 }
 
 // time单位:s
@@ -273,50 +276,38 @@ func assembleBlockForVerifyMineSlot(passTime, oneLoopTime uint32, parentMiner, c
 
 func Test_VerifyMineSlot(t *testing.T) {
 	timeoutTime := uint32(10) // unit: s
-	deputyCount := 100
-	// 创建100个miner地址
-	minerAddrs := make([]common.Address, 0, deputyCount)
-	for i := 0; i < 100; i++ {
-		minerAddrs = append(minerAddrs, common.HexToAddress("0x1"+strconv.Itoa(i)))
+	timeoutStamp := uint64(timeoutTime * 1000)
+	deputyCount := 17
+	dm := initDeputyManager(deputyCount)
+	firstTerm, err := dm.GetTermByHeight(1)
+	assert.NoError(t, err)
+	getMiner := func(index int) common.Address {
+		return firstTerm.Nodes[index].MinerAddress
 	}
-	// 创建100个deputy node
-	deputyNodes := make(types.DeputyNodes, 0, deputyCount)
-	for i := 0; i < deputyCount; i++ {
-		deputy := &types.DeputyNode{
-			MinerAddress: minerAddrs[i],
-			NodeID:       nil,
-			Rank:         uint32(i),
-			Votes:        big.NewInt(int64(1000 / (i + 1))),
-		}
-		deputyNodes = append(deputyNodes, deputy)
-	}
-
-	dm := deputynode.NewManager(len(deputyNodes), snapshotLoader{
-		Nodes: deputyNodes,
-	})
 	// 一轮时间
-	oneLoopTime := uint32(len(deputyNodes)) * timeoutTime // 单位： s
+	oneLoopTime := uint32(deputyCount) * timeoutTime // 单位： s
 	// 测试两个区块的出块者不同的distance的出块时间间隔情况
 	for i := 0; i < deputyCount; i++ {
 		for j := 0; j < deputyCount; j++ {
-			distance, err := GetMinerDistance(2, minerAddrs[i], minerAddrs[j], dm)
+			distance, err := GetMinerDistance(2, getMiner(i), getMiner(j), dm)
 			assert.NoError(t, err)
 			minPassTime := uint32(distance-1) * timeoutTime
 			maxPassTime := uint32(distance) * timeoutTime
-			// 1. 验证正确的区块出块时间间隔
-			correctPassTime := minPassTime + (timeoutTime - uint32(1)) // parentBlock和block的正确的时间差为： (j-i-1)*timeoutTime < passTime < (j-i)*timeoutTime
-			parentBlock, currentBlock := assembleBlockForVerifyMineSlot(correctPassTime, oneLoopTime, minerAddrs[i], minerAddrs[j])
-			assert.NoError(t, VerifyMineSlot(currentBlock, parentBlock, uint64(timeoutTime*1000), dm))
+			// parentBlock和block的正确的时间差为： minPassTime < passTime < maxPassTime
 
-			// 2. 验证时间间隔小于规定的最小时间间隔的情况
-			underPassTime := minPassTime - 1
-			parentBlock, currentBlock = assembleBlockForVerifyMineSlot(underPassTime, oneLoopTime, minerAddrs[i], minerAddrs[j])
-			assert.Equal(t, ErrVerifyHeaderFailed, VerifyMineSlot(currentBlock, parentBlock, uint64(timeoutTime*1000), dm))
-
+			// 1. 验证时间间隔小于规定的最小时间间隔的情况
+			parentBlock, currentBlock := assembleBlockForVerifyMineSlot(minPassTime-1, oneLoopTime, getMiner(i), getMiner(j))
+			assert.Equal(t, ErrVerifyHeaderFailed, VerifyMineSlot(currentBlock.Header, parentBlock.Header, timeoutStamp, dm))
+			// 2. 验证正确的区块出块时间间隔
+			parentBlock, currentBlock = assembleBlockForVerifyMineSlot(minPassTime, oneLoopTime, getMiner(i), getMiner(j))
+			assert.NoError(t, VerifyMineSlot(currentBlock.Header, parentBlock.Header, timeoutStamp, dm))
+			parentBlock, currentBlock = assembleBlockForVerifyMineSlot(minPassTime+1, oneLoopTime, getMiner(i), getMiner(j))
+			assert.NoError(t, VerifyMineSlot(currentBlock.Header, parentBlock.Header, timeoutStamp, dm))
+			parentBlock, currentBlock = assembleBlockForVerifyMineSlot(maxPassTime, oneLoopTime, getMiner(i), getMiner(j))
+			assert.Equal(t, ErrVerifyHeaderFailed, VerifyMineSlot(currentBlock.Header, parentBlock.Header, timeoutStamp, dm))
 			// 3. 验证时间间隔大于规定的最大出块间隔时间
-			oversizePassTime := maxPassTime + 1
-			parentBlock, currentBlock = assembleBlockForVerifyMineSlot(oversizePassTime, oneLoopTime, minerAddrs[i], minerAddrs[j])
-			assert.Equal(t, ErrVerifyHeaderFailed, VerifyMineSlot(currentBlock, parentBlock, uint64(timeoutTime*1000), dm))
+			parentBlock, currentBlock = assembleBlockForVerifyMineSlot(maxPassTime+1, oneLoopTime, getMiner(i), getMiner(j))
+			assert.Equal(t, ErrVerifyHeaderFailed, VerifyMineSlot(currentBlock.Header, parentBlock.Header, timeoutStamp, dm))
 		}
 	}
 }
@@ -532,10 +523,10 @@ func TestValidator_VerifyNewConfirms(t *testing.T) {
 	assert.Equal(t, sigList01, validConfirms) // 返回的确认包列表与输入验证的确认包列表相同
 
 	// 2. 测试验证的确认包中有相同的确认包信息
-	sigList02 := []types.SignData{sig02, sig02, sig03, sig03} // 验证的确认包列表中中有两个相同的确认包
+	sigList02 := []types.SignData{sig02, sig02, sig03, sig03} // 验证的确认包列表中有两个相同的确认包
 	expectReturnList := []types.SignData{sig02, sig03}        // 预期返回的确认包列表为查重之后的确认包列表
 	validConfirms, err = v.VerifyNewConfirms(block01, sigList02, dm)
-	assert.NoError(t, err)
+	assert.Equal(t, ErrExistedConfirm, err)
 	assert.Equal(t, expectReturnList, validConfirms)
 
 	// 3. 验证区块中的Confirms中存在需要验证的确认包

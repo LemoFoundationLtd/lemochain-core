@@ -107,10 +107,15 @@ func (dp *DPoVP) MineBlock(txProcessTimeout int64) (*types.Block, error) {
 	dp.chainLock.Lock()
 	defer dp.chainLock.Unlock()
 	parentHeader := dp.CurrentBlock().Header
-	log.Debug("Start mine block", "height", parentHeader.Height+1)
+	log.Debug("🔨 Start mine block", "height", parentHeader.Height+1)
 	// mine and seal
 	header, err := dp.assembler.PrepareHeader(parentHeader, dp.minerExtra)
 	if err != nil {
+		return nil, err
+	}
+	err = dp.validator.VerifyMineSlot(header, parentHeader)
+	if err != nil {
+		log.Warn("Mining is stuck by something or stable block changed. we have to wait to next mine window")
 		return nil, err
 	}
 
@@ -141,7 +146,7 @@ func (dp *DPoVP) InsertBlock(rawBlock *types.Block) (*types.Block, error) {
 
 	dp.chainLock.Lock()
 	defer dp.chainLock.Unlock()
-	log.Debug("Start insert block to chain", "block", rawBlock.ShortString())
+	log.Debug("🎁 Start insert block to chain", "block", rawBlock.ShortString())
 
 	// verify and create a new block witch filled by transaction products
 	block, err := dp.VerifyAndSeal(rawBlock)
@@ -257,6 +262,20 @@ func (dp *DPoVP) batchConfirmStable(startHeight, endHeight uint32) {
 	}
 }
 
+// saveSnapshot find snapshot block than save its deputy nodes
+func (dp *DPoVP) saveSnapshot(startHeight, endHeight uint32) {
+	for i := startHeight; i <= endHeight; i++ {
+		if deputynode.IsSnapshotBlock(i) {
+			block, err := dp.db.GetBlockByHeight(i)
+			if err != nil {
+				log.Error("load block for snapshot fail", "height", i)
+			} else {
+				dp.dm.SaveSnapshot(i, block.DeputyNodes)
+			}
+		}
+	}
+}
+
 // UpdateStable check if the block can be stable. Then send notification and return true if the stable block changed
 func (dp *DPoVP) UpdateStable(block *types.Block) error {
 	oldStable := dp.StableBlock()
@@ -267,10 +286,8 @@ func (dp *DPoVP) UpdateStable(block *types.Block) error {
 
 	if changed {
 		// Update deputy nodes map
-		// This may not the latest state, but it's fine. Because deputy nodes snapshot will be used after the interim duration, it's about 1000 blocks
-		if deputynode.IsSnapshotBlock(block.Height()) {
-			dp.dm.SaveSnapshot(block.Height(), block.DeputyNodes)
-		}
+		// This may not be a litter late, but it's fine. Because deputy nodes snapshot will be used after the interim duration, it's about 1000 blocks
+		dp.saveSnapshot(oldStable.Height()+1, dp.StableBlock().Height())
 
 		// add txs in pruned block back
 		for _, prunedBlock := range prunedBlocks {
@@ -349,7 +366,7 @@ func (dp *DPoVP) InsertConfirm(info *network.BlockConfirmData) error {
 	dp.chainLock.Lock()
 	defer dp.chainLock.Unlock()
 	oldCurrent := dp.CurrentBlock()
-	log.Debug("Start insert confirm", "height", info.Height, "hash", info.Hash)
+	log.Debug("👍 Start insert confirm", "height", info.Height, "hash", info.Hash)
 
 	newBlock, err := dp.insertConfirms(info.Height, info.Hash, []types.SignData{info.SignInfo})
 	if err != nil {

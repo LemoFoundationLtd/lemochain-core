@@ -313,7 +313,7 @@ func (am *Manager) Save(newBlockHash common.Hash) error {
 		acctDatabase.Put(account.rawAccount.data, am.CurrentBlockHeight())
 	}
 
-	am.db.CandidatesRanking(newBlockHash)
+	am.db.CandidatesRanking(newBlockHash, am.processor.filterLogsByType(VotesLog))
 
 	// update version trie nodes' hash
 	root, err := am.getVersionTrie().Commit(nil)

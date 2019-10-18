@@ -75,7 +75,7 @@ func Test_buildProfile(t *testing.T) {
 	errHost := "www.lemoSDDCCCCCAAAAA51bc77bbfeda653ae6f5aab564c9b4619322fddb3b1f28d1c434250e9d4dd8f51aa8334573d72814f0df789b46e9bc09f23SDDCCCCCAAAAAchain.com"
 	tx04 := newCandidateTx(register, params.MinCandidateDeposit, true, normalIncomeAddress, normalNodeId, errHost, normalPort)
 	_, err = buildProfile(tx04)
-	assert.Equal(t, ErrInvalidHost, err)
+	assert.Equal(t, ErrInvalidProfile, err)
 
 	// 2.1 未传入nodeId
 	tx05 := newCandidateTx(register, params.MinCandidateDeposit, true, normalIncomeAddress, "", normalHost, normalPort)

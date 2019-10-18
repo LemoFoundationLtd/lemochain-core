@@ -38,6 +38,11 @@ type Batch interface {
 	Reset()
 }
 
+// Putter wraps the database write operation supported by both batches and regular databases.
+type Putter interface {
+	Put(flg uint32, key, value []byte) error
+}
+
 // Database wraps all database operations. All methods are safe for concurrent use.
 type Database interface {
 	NewBatch

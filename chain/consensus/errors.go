@@ -14,6 +14,7 @@ var (
 	ErrSnapshotIsNil            = errors.New("local deputy nodes snapshot is nil")
 	ErrInvalidConfirmSigner     = errors.New("invalid confirm signer")
 	ErrInvalidSignedConfirmInfo = errors.New("invalid signed data of confirm info")
+	ErrExistedConfirm           = errors.New("existed confirm info")
 	ErrMineGenesis              = errors.New("can not mine genesis block")
 	ErrNotDeputy                = errors.New("not a deputy address in specific height")
 	ErrSetStableBlockToDB       = errors.New("set stable block to db error")

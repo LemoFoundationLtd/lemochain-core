@@ -719,7 +719,7 @@ func (database *ChainDatabase) GetAllCandidates() ([]common.Address, error) {
 	return addresses, nil
 }
 
-func (database *ChainDatabase) CandidatesRanking(hash common.Hash) {
+func (database *ChainDatabase) CandidatesRanking(hash common.Hash, voteLogs types.ChangeLogSlice) {
 	cItem := database.UnConfirmBlocks[hash]
 	if (cItem == nil) || (cItem.Block == nil) {
 		panic("item or item'block is nil.")
@@ -735,7 +735,7 @@ func (database *ChainDatabase) CandidatesRanking(hash common.Hash) {
 		panic("(database.LastConfirm.Block != nil) && (cItem.Block.Height() < database.LastConfirm.Block.Height())")
 	}
 
-	cItem.Ranking()
+	cItem.Ranking(voteLogs)
 }
 
 func (database *ChainDatabase) GetAssetCode(code common.Hash) (common.Address, error) {

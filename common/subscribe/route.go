@@ -76,7 +76,8 @@ func (r *CentralRouteSub) send(name string, value interface{}) error {
 	defer r.mux.RUnlock()
 
 	if _, ok := r.names[name]; !ok {
-		return ErrNotExistName
+		log.Debugf("[%s] event is not subscribed", name)
+		return nil
 	}
 
 	r.names[name].lock <- struct{}{}

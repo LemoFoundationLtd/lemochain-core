@@ -111,9 +111,9 @@ func newTestBlock(bc *BlockChain) *types.Block {
 	// maybe it is not in our turn to mine now, so try to find the correct miner
 	for i := range nodeKeys {
 		block.Header.MinerAddress = bc.dm.GetDeputyByNodeID(block.Height(), getTestNodeID(i)).MinerAddress
-		hash := block.Hash()
-		block.Header.SignData, err = crypto.Sign(hash[:], nodeKeys[i])
-		if err := consensus.VerifyMineSlot(block, parent, uint64(mineTimeout), bc.dm); err == nil {
+		if err := consensus.VerifyMineSlot(block.Header, parent.Header, uint64(mineTimeout), bc.dm); err == nil {
+			hash := block.Hash()
+			block.Header.SignData, err = crypto.Sign(hash[:], nodeKeys[i])
 			log.Info("sign a new block", "deputyIndex", i, "height", block.Height())
 			return block
 		}

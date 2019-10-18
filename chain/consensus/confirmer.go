@@ -179,6 +179,7 @@ func (c *Confirmer) SaveConfirm(block *types.Block, sigList []types.SignData) (*
 		log.Errorf("SetConfirm failed: %v", err)
 		return nil, err
 	}
+	log.Debugf("Now block %s contains %d confirms", newBlock.ShortString(), len(newBlock.Confirms))
 	return newBlock, nil
 }
 

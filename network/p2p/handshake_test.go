@@ -79,7 +79,7 @@ func Test_clientEncHandshake_error(t *testing.T) {
 }
 
 func TestNewDialManager(t *testing.T) {
-	data := common.FromHex("ddb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb1")
+	data := common.FromHex("ddb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0")
 	_, err := importPubKey(data)
 	assert.NoError(t, err)
 }

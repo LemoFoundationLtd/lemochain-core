@@ -22,8 +22,6 @@ func TestReadConfigFile(t *testing.T) {
 		DeputyCount:     5,
 		SleepTime:       10000,
 		Timeout:         3000,
-		DbUri:           "127.0.0.1:8080",
-		DbDriver:        "mysql",
 		TermDuration:    50,
 		InterimDuration: 50,
 		ConnectionLimit: 50,

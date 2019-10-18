@@ -20,7 +20,8 @@ import (
 
 const (
 	defaultGasPrice       = 1e9
-	MaxDeputyHostLength   = 128
+	NodeIDFieldLength     = 130
+	MaxProfileFieldLength = 128
 	MaxIntroductionLength = 1024
 	StandardNodeIdLength  = 64
 	SignerWeightThreshold = 100
@@ -32,7 +33,7 @@ var (
 	ErrInvalidTxInBlock          = errors.New("block contains invalid transaction")
 	ErrTxGasUsedNotEqual         = errors.New("tx gas used not equal")
 	ErrInvalidGenesis            = errors.New("can't process genesis block")
-	ErrInvalidHost               = errors.New("the length of host field in transaction is out of max length limit")
+	ErrInvalidProfile            = errors.New("the length of candidate profile field in transaction is out of max length limit")
 	ErrInvalidPort               = errors.New("invalid port")
 	ErrInvalidIntroduction       = errors.New("the length of introduction field in transaction is out of max length limit")
 	ErrInvalidAddress            = errors.New("invalid address")
@@ -442,7 +443,7 @@ func (p *TxProcessor) handleTx(tx *types.Transaction, header *types.Header, txIn
 
 func (p *TxProcessor) buyGas(gp *types.GasPool, tx *types.Transaction) error {
 	payerAddr := tx.GasPayer()
-	log.Infof("Tx's gas payer address: %s", payerAddr.String())
+	log.Debugf("Tx's gas payer address: %s", payerAddr.String())
 
 	payer := p.am.GetAccount(payerAddr)
 
@@ -688,12 +689,12 @@ func changeCandidateVotes(am *account.Manager, accountAddress common.Address, ch
 		return
 	}
 	acc := am.GetAccount(accountAddress)
-	candidataAddress := acc.GetVoteFor()
+	candidateAddress := acc.GetVoteFor()
 
-	if (candidataAddress == common.Address{}) {
+	if (candidateAddress == common.Address{}) {
 		return
 	}
-	candidateAccount := am.GetAccount(candidataAddress)
+	candidateAccount := am.GetAccount(candidateAddress)
 	// 判断是否为候选节点
 	if candidateAccount.GetCandidateState(types.CandidateKeyIsCandidate) == types.IsCandidateNode {
 		// set votes

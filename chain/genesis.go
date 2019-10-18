@@ -236,6 +236,16 @@ func (g *Genesis) ToBlock(am *account.Manager) (*types.Block, error) {
 func (g *Genesis) initCandidateListInfo(am *account.Manager) {
 	for _, v := range g.DeputyNodesInfo {
 		acc := am.GetAccount(v.MinerAddress)
-		transaction.InitCandidateProfile(acc, v.IncomeAddress.String(), common.ToHex(v.NodeID), v.Host, v.Port, v.Introduction, big.NewInt(0))
+		newProfile := make(map[string]string, 7)
+		newProfile[types.CandidateKeyIsCandidate] = types.IsCandidateNode
+		newProfile[types.CandidateKeyIncomeAddress] = v.IncomeAddress.String()
+		newProfile[types.CandidateKeyNodeID] = common.ToHex(v.NodeID)
+		newProfile[types.CandidateKeyHost] = v.Host
+		newProfile[types.CandidateKeyPort] = v.Port
+		newProfile[types.CandidateKeyIntroduction] = v.Introduction
+		newProfile[types.CandidateKeyDepositAmount] = big.NewInt(0).String()
+		transaction.InitCandidateProfile(acc, newProfile)
+		// make a changelog so the vote logic can be init correctly
+		acc.SetVotes(big.NewInt(0))
 	}
 }

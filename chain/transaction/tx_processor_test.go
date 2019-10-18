@@ -121,7 +121,7 @@ func Test_ApplyTxs_TimeoutTime(t *testing.T) {
 	assert.NotEqual(t, len(selectedTxs01), txNum)
 	selectedTxs02, _, _ := p.ApplyTxs(header, txs, int64(2))
 	assert.NotEqual(t, len(selectedTxs02), txNum)
-	selectedTxs03, _, _ := p.ApplyTxs(header, txs, int64(500))
+	selectedTxs03, _, _ := p.ApplyTxs(header, txs, int64(5000))
 	assert.Equal(t, len(selectedTxs03), txNum)
 }
 
@@ -224,8 +224,8 @@ func TestReimbursement_transaction(t *testing.T) {
 // TestBlockChain_txData 构造生成调用设置换届奖励的预编译合约交易的data
 func TestBlockChain_data(t *testing.T) {
 	re := params.RewardJson{
-		Term:  3,
-		Value: big.NewInt(3330),
+		Term:  14,
+		Value: big.NewInt(100000),
 	}
 	by, _ := json.Marshal(re)
 	fmt.Println("tx data", common.ToHex(by))

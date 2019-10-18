@@ -17,7 +17,7 @@ type testChain struct {
 }
 
 func (bc *testChain) InsertBlock(block *types.Block) error {
-	panic("implement me")
+	return nil
 }
 
 func (bc *testChain) InsertConfirm(info *BlockConfirmData) {
@@ -29,7 +29,7 @@ func (bc *testChain) InsertStableConfirms(pack BlockConfirms) {
 }
 
 func (bc *testChain) IsInBlackList(b *types.Block) bool {
-	panic("implement me")
+	return false
 }
 
 func (bc *testChain) Genesis() *types.Block {
@@ -263,7 +263,7 @@ func Test_mergeConfirmsFromCache(t *testing.T) {
 	pm.confirmsCache.Push(confirm3)
 	pm.mergeConfirmsFromCache(testBlock)
 	assert.Equal(t, 4, pm.confirmsCache.Size())
-	assert.Equal(t, 2, len(testBlock.Confirms))
+	assert.Equal(t, 3, len(testBlock.Confirms))
 	close(pm.quitCh)
 }
 

@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"syscall"
 	"testing"
 )
@@ -35,11 +36,11 @@ func TestMain_interrupt(t *testing.T) {
 	}()
 	// stdout, _ := cmd.StdoutPipe()
 	// stderr, _ := cmd.StderrPipe()
-
-	assert.PanicsWithValue(t, "boom", func() {
-		go interrupt(stop)
-	})
-
-	os.Getegid()
-	cmd.Process.Signal(syscall.SIGTERM)
+	if runtime.GOOS == "linux" {
+		assert.PanicsWithValue(t, "boom", func() {
+			go interrupt(stop)
+		})
+		os.Getegid()
+		cmd.Process.Signal(syscall.SIGINT)
+	}
 }

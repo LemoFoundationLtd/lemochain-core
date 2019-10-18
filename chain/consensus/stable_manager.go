@@ -51,7 +51,7 @@ func (sm *StableManager) UpdateStable(block *types.Block) (bool, []*types.Block,
 		log.Errorf("SetStableBlock error. height:%d hash:%s, err:%s", block.Height(), common.ToHex(hash[:]), err.Error())
 		return false, nil, ErrSetStableBlockToDB
 	}
-	log.Infof("Stable block changes from %s to %s", oldStable.ShortString(), block.ShortString())
+	log.Infof("🎉 Stable block changes from %s to %s", oldStable.ShortString(), block.ShortString())
 
 	return true, prunedBlocks, nil
 }

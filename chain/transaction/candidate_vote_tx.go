@@ -46,8 +46,34 @@ func NewCandidateVoteEnv(am *account.Manager, dm *deputynode.Manager) *Candidate
 	}
 }
 
+/*
+检查：
+1. nodeID必须存在并检验是否可用。
+2. 如果有introduction长度必须小于10245，其他字段长度必须小于130.
+3. incomeAddress host port 限制性判断
+*/
 // CheckRegisterTxProfile
 func CheckRegisterTxProfile(profile types.Profile) error {
+	// 检查传入profile信息的长度大小
+	for key, val := range profile {
+		if key == types.CandidateKeyIntroduction { // 检查introduction
+			if len(val) > MaxIntroductionLength {
+				log.Errorf("The length of introduction field in transaction is out of max length limit. introduction length = %d. max length limit = %d.", len(val), MaxIntroductionLength)
+				return ErrInvalidIntroduction
+			}
+		} else if key == types.CandidateKeyNodeID {
+			if len(val) > NodeIDFieldLength {
+				log.Errorf("The length of candidate nodeId field in transaction is out of max length limit. fieldName: %s, field length = %d. max length limit = %d. ", key, len(val), NodeIDFieldLength)
+				return ErrInvalidNodeId
+			}
+		} else {
+			// 其他字段长度不能大于128
+			if len(val) > MaxProfileFieldLength {
+				log.Errorf("The length of candidate profile field in transaction is out of max length limit. fieldName: %s, field length = %d. max length limit = %d. ", key, len(val), MaxProfileFieldLength)
+				return ErrInvalidProfile
+			}
+		}
+	}
 	// check income address
 	if strIncomeAddress, ok := profile[types.CandidateKeyIncomeAddress]; ok {
 		if !common.CheckLemoAddress(strIncomeAddress) {
@@ -72,14 +98,8 @@ func CheckRegisterTxProfile(profile types.Profile) error {
 		return ErrOfRegisterNodeID
 	}
 
-	// check host
-	if host, ok := profile[types.CandidateKeyHost]; ok {
-		hostLength := len(host)
-		if hostLength > MaxDeputyHostLength {
-			log.Errorf("The length of host field in transaction is out of max length limit. host length = %d. max length limit = %d. ", hostLength, MaxDeputyHostLength)
-			return ErrInvalidHost
-		}
-	} else {
+	// check host 必须存在
+	if _, ok := profile[types.CandidateKeyHost]; !ok {
 		return ErrOfRegisterHost
 	}
 
@@ -95,14 +115,6 @@ func CheckRegisterTxProfile(profile types.Profile) error {
 		}
 	} else {
 		return ErrOfRegisterPort
-	}
-
-	// check introduction length
-	if introduction, ok := profile[types.CandidateKeyIntroduction]; ok {
-		if len(introduction) > MaxIntroductionLength {
-			log.Errorf("The length of introduction field in transaction is out of max length limit. introduction length = %d. max length limit = %d.", len(introduction), MaxIntroductionLength)
-			return ErrInvalidIntroduction
-		}
 	}
 	return nil
 }
@@ -133,16 +145,7 @@ func buildProfile(tx *types.Transaction) (types.Profile, error) {
 }
 
 // InitCandidateProfile
-func InitCandidateProfile(registerAcc types.AccountAccessor, IncomeAddress, NodeID, Host, Port, Introduction string, DepositAmount *big.Int) {
-	// 设置candidate info
-	newProfile := make(map[string]string, 7)
-	newProfile[types.CandidateKeyIsCandidate] = types.IsCandidateNode
-	newProfile[types.CandidateKeyIncomeAddress] = IncomeAddress
-	newProfile[types.CandidateKeyNodeID] = NodeID
-	newProfile[types.CandidateKeyHost] = Host
-	newProfile[types.CandidateKeyPort] = Port
-	newProfile[types.CandidateKeyIntroduction] = Introduction
-	newProfile[types.CandidateKeyDepositAmount] = DepositAmount.String()
+func InitCandidateProfile(registerAcc types.AccountAccessor, newProfile types.Profile) {
 	registerAcc.SetCandidate(newProfile)
 }
 
@@ -161,7 +164,8 @@ func (c *CandidateVoteEnv) registerCandidate(depositAmount *big.Int, register co
 	registerAcc := c.am.GetAccount(register)
 
 	// 设置candidate info
-	InitCandidateProfile(registerAcc, p[types.CandidateKeyIncomeAddress], p[types.CandidateKeyNodeID], p[types.CandidateKeyHost], p[types.CandidateKeyPort], p[types.CandidateKeyIntroduction], depositAmount)
+	p[types.CandidateKeyDepositAmount] = depositAmount.String()
+	InitCandidateProfile(registerAcc, p)
 
 	// cash deposit
 	c.Transfer(c.am, register, params.DepositPoolAddress, depositAmount)
@@ -211,6 +215,7 @@ func (c *CandidateVoteEnv) refundDeposit(candidateAddress common.Address, height
 
 // Refund 进行退款操作
 func Refund(candidateAddress common.Address, am *account.Manager) {
+	log.Info("Refund candidate deposit", "address", candidateAddress)
 	// 判断addr的candidate信息
 	candidateAcc := am.GetAccount(candidateAddress)
 	depositAmountString := candidateAcc.GetCandidateState(types.CandidateKeyDepositAmount)
@@ -262,11 +267,12 @@ func (c *CandidateVoteEnv) modifyCandidateInfo(amount *big.Int, senderAddr commo
 			return ErrFailedGetDepositBalacne
 		}
 	}
-	// nodeId不能修改
-	candidateProfile[types.CandidateKeyIncomeAddress] = txBuildProfile[types.CandidateKeyIncomeAddress]
-	candidateProfile[types.CandidateKeyHost] = txBuildProfile[types.CandidateKeyHost]
-	candidateProfile[types.CandidateKeyPort] = txBuildProfile[types.CandidateKeyPort]
-	candidateProfile[types.CandidateKeyIntroduction] = txBuildProfile[types.CandidateKeyIntroduction]
+	// nodeId和质押金额不能通过传入的参数修改，其他都可以修改
+	for key, val := range txBuildProfile {
+		if key != types.CandidateKeyNodeID && key != types.CandidateKeyDepositAmount {
+			candidateProfile[key] = val
+		}
+	}
 	senderAcc.SetCandidate(candidateProfile)
 	return nil
 }

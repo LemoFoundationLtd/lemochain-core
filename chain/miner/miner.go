@@ -149,6 +149,7 @@ func (m *Miner) resetMineTimer(timeDur, endOfMineWindow int64) {
 				log.Debug("Last mine failed. Try again")
 				m.schedule(m.chain.CurrentBlock())
 			})
+log.Debug("Time to mine")
 			m.timeToMineCh <- &MineInfo{endOfMineWindow}
 		}
 	})
