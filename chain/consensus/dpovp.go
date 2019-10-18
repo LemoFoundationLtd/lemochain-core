@@ -108,7 +108,6 @@ func (dp *DPoVP) MineBlock(txProcessTimeout int64) (*types.Block, error) {
 	defer dp.chainLock.Unlock()
 	parentHeader := dp.CurrentBlock().Header
 	log.Debug("🔨 Start mine block", "height", parentHeader.Height+1)
-
 	// mine and seal
 	header, err := dp.assembler.PrepareHeader(parentHeader, dp.minerExtra)
 	if err != nil {
@@ -134,7 +133,6 @@ func (dp *DPoVP) MineBlock(txProcessTimeout int64) (*types.Block, error) {
 	if err = dp.saveNewBlock(block); err != nil {
 		return nil, err
 	}
-
 	return block, nil
 }
 

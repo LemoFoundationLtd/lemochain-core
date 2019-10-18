@@ -49,9 +49,9 @@ func (ba *BlockAssembler) RunBlock(block *types.Block) (*types.Block, error) {
 }
 
 // MineBlock packages all products into a block
-func (ba *BlockAssembler) MineBlock(header *types.Header, txs types.Transactions, txProcessTimeout int64) (*types.Block, types.Transactions, error) {
+func (ba *BlockAssembler) MineBlock(header *types.Header, txs types.Transactions, applyTxTimeout int64) (*types.Block, types.Transactions, error) {
 	// execute tx
-	packagedTxs, invalidTxs, gasUsed := ba.txProcessor.ApplyTxs(header, txs, txProcessTimeout)
+	packagedTxs, invalidTxs, gasUsed := ba.txProcessor.ApplyTxs(header, txs, applyTxTimeout)
 	log.Debug("ApplyTxs ok")
 	// Finalize accounts
 	if err := ba.Finalize(header.Height); err != nil {

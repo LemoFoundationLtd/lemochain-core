@@ -12,8 +12,9 @@ import (
 )
 
 type MineConfig struct {
-	SleepTime int64
-	Timeout   int64
+	SleepTime               int64 // 区块最小间隔时间
+	Timeout                 int64 // 区块最大间隔时间
+	ReservedPropagationTime int64 // 用于传播区块的最小预留时间
 }
 
 type Chain interface {
@@ -21,33 +22,44 @@ type Chain interface {
 	MineBlock(int64)
 }
 
+type TxPool interface {
+	ExistCanPackageTx(time uint32) bool
+}
+
+type MineInfo struct {
+	endOfMineWindow int64
+}
+
 // Miner 负责出块调度算法，决定什么时候该出块。本身并不负责区块封装的逻辑
 type Miner struct {
-	blockInterval int64 // millisecond
-	timeoutTime   int64 // millisecond
-	mining        int32
-	chain         Chain
-	dm            *deputynode.Manager
-
-	mineTimer  *time.Timer // 出块timer
-	retryTimer *time.Timer // 出块失败时重试出块的timer
+	blockInterval           int64 // millisecond
+	timeoutTime             int64 // millisecond
+	reservedPropagationTime int64 // 打包区块之后预留给传播区块的最小时间。单位：millisecond
+	mining                  int32
+	chain                   Chain
+	dm                      *deputynode.Manager
+	txPool                  TxPool
+	mineTimer               *time.Timer // 出块timer
+	retryTimer              *time.Timer // 出块失败时重试出块的timer
 
 	recvNewBlockCh chan *types.Block // 收到新块通知
-	timeToMineCh   chan struct{}     // 到出块时间了
+	timeToMineCh   chan *MineInfo    // 到出块时间了
 	stopCh         chan struct{}     // 停止挖矿
 	quitCh         chan struct{}     // 退出
 }
 
-func New(cfg MineConfig, chain Chain, dm *deputynode.Manager) *Miner {
+func New(cfg MineConfig, chain Chain, dm *deputynode.Manager, txPool TxPool) *Miner {
 	return &Miner{
-		blockInterval:  cfg.SleepTime,
-		timeoutTime:    cfg.Timeout,
-		chain:          chain,
-		dm:             dm,
-		recvNewBlockCh: make(chan *types.Block, 1),
-		timeToMineCh:   make(chan struct{}),
-		stopCh:         make(chan struct{}),
-		quitCh:         make(chan struct{}),
+		blockInterval:           cfg.SleepTime,
+		timeoutTime:             cfg.Timeout,
+		reservedPropagationTime: cfg.ReservedPropagationTime,
+		chain:                   chain,
+		dm:                      dm,
+		txPool:                  txPool,
+		recvNewBlockCh:          make(chan *types.Block, 1),
+		timeToMineCh:            make(chan *MineInfo),
+		stopCh:                  make(chan struct{}),
+		quitCh:                  make(chan struct{}),
 	}
 }
 
@@ -123,7 +135,7 @@ func (m *Miner) stopMineTimer() {
 }
 
 // resetMineTimer reset timer
-func (m *Miner) resetMineTimer(timeDur int64) {
+func (m *Miner) resetMineTimer(timeDur, endOfMineWindow int64) {
 	// 停掉之前的定时器
 	m.stopMineTimer()
 
@@ -137,9 +149,8 @@ func (m *Miner) resetMineTimer(timeDur int64) {
 				log.Debug("Last mine failed. Try again")
 				m.schedule(m.chain.CurrentBlock())
 			})
-
 			log.Debug("Time to mine")
-			m.timeToMineCh <- struct{}{}
+			m.timeToMineCh <- &MineInfo{endOfMineWindow}
 		}
 	})
 }
@@ -149,8 +160,8 @@ func (m *Miner) runMineLoop() {
 	defer log.Debug("Stop mine loop")
 	for {
 		select {
-		case <-m.timeToMineCh:
-			m.sealBlock()
+		case mineCh := <-m.timeToMineCh:
+			m.sealBlock(mineCh.endOfMineWindow)
 
 		case block := <-m.recvNewBlockCh:
 			// include mine block by self and receive other's block
@@ -167,41 +178,42 @@ func (m *Miner) runMineLoop() {
 	}
 }
 
-// getSleepTime get sleep time (millisecond) to seal block
-func (m *Miner) getSleepTime(mineHeight uint32, distance uint64, parentTime int64, currentTime int64) int64 {
+// getSleepTime get sleep time (millisecond) to seal block, return waitTime and absolute time of block timeout
+func (m *Miner) getSleepTime(mineHeight uint32, distance uint64, parentTime int64, currentTime int64) (int64, int64) {
 	nodeCount := m.dm.GetDeputiesCount(mineHeight)
 	// 所有节点都超时所需要消耗的时间，也可以看作是下一轮出块的开始时间
 	oneLoopTime := int64(nodeCount) * m.timeoutTime
-	// 网络传输耗时，即当前时间减去收到的区块头中的时间戳
-	totalPassTime := currentTime - parentTime
-	// 机器时间不同步导致收到了未来的区块。需要额外的对齐时间
+	// 网络传输耗时，即当前时间减去父块区块头中的时间戳
+	passTime := currentTime - parentTime
+	// 机器时间不同步导致收到了未来的区块。需要额外的对齐时间，为了让本机时间延迟offSet，与链上时间对齐
 	offset := int64(0)
-	if totalPassTime < 0 {
-		offset = -totalPassTime
-		totalPassTime = 0
+	if passTime < 0 {
+		offset = -passTime
+		passTime = 0
 	}
-	// 本轮出块时间表已经经过的时长
-	passTime := totalPassTime % oneLoopTime
+	// 从父块开始，经过整轮数的超时时间，值为0或者oneLoopTime的整数倍
+	passLoopTime := passTime - (passTime % oneLoopTime)
 	// 可以出块的时间窗口
-	windowFrom := int64(distance-1) * m.timeoutTime
-	windowTo := int64(distance) * m.timeoutTime
+	windowFrom := int64(distance-1)*m.timeoutTime + passLoopTime
+	windowTo := int64(distance)*m.timeoutTime + passLoopTime
+	if (parentTime + windowTo) <= currentTime {
+		windowFrom += oneLoopTime
+		windowTo += oneLoopTime
+	}
 
 	var waitTime int64
-	if distance == 1 && totalPassTime < m.timeoutTime {
+	if distance == 1 && passTime < m.timeoutTime {
 		// distance == 1表示下一个区块该本节点产生了。时间也合适，没有超时。这时需要确保延迟足够的时间，避免早期交易少时链上全是空块
 		waitTime = m.blockInterval - passTime
-		if waitTime < 0 {
-			waitTime = 0
-		}
-	} else if passTime >= windowFrom && passTime < windowTo {
-		// 到达当前节点的时间窗口内了，可以立即出块
-		waitTime = 0
 	} else {
 		// 需要等待下个时间窗口
-		waitTime = (windowFrom - passTime + oneLoopTime) % oneLoopTime
+		waitTime = windowFrom - passTime
 	}
-	log.Debug("getSleepTime", "waitTime", waitTime, "distance", distance, "parentTime", parentTime, "totalPassTime", totalPassTime, "passTime", passTime, "offset", offset, "nodeCount", nodeCount, "blockInterval", m.blockInterval, "timeoutTime", m.timeoutTime, "windowFrom", windowFrom, "windowTo", windowTo)
-	return offset + waitTime
+	if waitTime < 0 {
+		waitTime = 0
+	}
+	log.Debug("getSleepTime", "waitTime", waitTime, "distance", distance, "parentTime", parentTime, "passTime", passTime, "passLoopTime", passLoopTime, "offset", offset, "nodeCount", nodeCount, "blockInterval", m.blockInterval, "timeoutTime", m.timeoutTime, "windowFrom", windowFrom, "windowTo", windowTo)
+	return offset + waitTime, parentTime + windowTo
 }
 
 // schedule wait some time to mine next block
@@ -223,19 +235,43 @@ func (m *Miner) schedule(parentBlock *types.Block) bool {
 	// wait if the time from last miner is bigger with mine
 	parentTime := int64(parentBlock.Time()) * 1000
 	now := time.Now().UnixNano() / 1e6
-	timeDur := m.getSleepTime(mineHeight, distance, parentTime, now)
-	m.resetMineTimer(timeDur)
+	timeDur, endOfMineWindow := m.getSleepTime(mineHeight, distance, parentTime, now)
+	m.resetMineTimer(timeDur, endOfMineWindow)
 	return true
 }
 
 // sealBlock 出块
-func (m *Miner) sealBlock() {
+func (m *Miner) sealBlock(endOfMineWindow int64) {
 	if !m.isSelfDeputyNode() {
 		return
 	}
 	log.Debug("Start seal block")
-
+	endOfWaitWindow := endOfMineWindow - m.reservedPropagationTime // 允许矿工等待的超时时间
+	m.waitCanPackageTx(endOfWaitWindow)
 	// mine asynchronously
 	// The time limit for mining is (m.timeoutTime - m.blockInterval). The rest 1/3 is used to transfer to other nodes
-	m.chain.MineBlock((m.timeoutTime - m.blockInterval) * 2 / 3)
+	nowTimestamp := time.Now().UnixNano() / 1e6        // 当前时间戳 单位为毫秒
+	txProcessTimeout := endOfWaitWindow - nowTimestamp // 允许矿工使用执行交易的最大时间
+	if txProcessTimeout < 0 {
+		txProcessTimeout = 0
+	}
+	m.chain.MineBlock(txProcessTimeout)
+}
+
+// waitCanPackageTx 等待交易池中存在可以打包的交易
+func (m *Miner) waitCanPackageTx(endOfWaitWindow int64) {
+	// 当交易池中没有交易的时候，每隔一秒钟轮询一次，直到get到交易或者即将超过规定的出块时间之后退出
+	for {
+		now := time.Now().UnixNano() / 1e6 // 当前时间戳单位为毫秒
+		// 如果当前时间已经超过了允许挖矿到的最大时间戳则退出
+		if now >= endOfWaitWindow {
+			break
+		}
+		if m.txPool.ExistCanPackageTx(uint32(now / 1e3)) {
+			break
+		} else {
+			// 休眠500毫秒
+			time.Sleep(500 * time.Millisecond)
+		}
+	}
 }
