@@ -110,6 +110,9 @@ func GetNextMineWindow(nextHeight uint32, distance uint32, parentTime int64, cur
 
 // GetCorrectMiner get the correct miner to mine a block after parent block
 func GetCorrectMiner(parent *types.Header, mineTime int64, mineTimeout int64, dm *deputynode.Manager) (common.Address, error) {
+	if mineTime < 1e10 {
+		panic("mineTime should be milliseconds")
+	}
 	passTime := mineTime - int64(parent.Time)*1000
 	if passTime < 0 {
 		return common.Address{}, ErrSmallerMineTime
@@ -123,5 +126,6 @@ func GetCorrectMiner(parent *types.Header, mineTime int64, mineTimeout int64, dm
 	if err != nil {
 		return common.Address{}, err
 	}
+	log.Debug("GetCorrectMiner", "correctMiner", deputy.MinerAddress, "parent", parent.MinerAddress, "mineTime", mineTime, "mineTimeout", mineTimeout, "passTime", passTime, "nodeCount", nodeCount)
 	return deputy.MinerAddress, nil
 }

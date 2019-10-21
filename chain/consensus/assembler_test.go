@@ -124,7 +124,7 @@ func createAssembler(db *store.ChainDatabase, fillSomeLogs bool) *BlockAssembler
 
 	deputyCount := 5
 	dm := deputynode.NewManager(deputyCount, db)
-	deputies := generateDeputies(deputyCount)
+	deputies := generateDeputies(deputyCount).ToDeputyNodes()
 	dm.SaveSnapshot(0, deputies)
 	dm.SaveSnapshot(params.TermDuration, deputies)
 
@@ -454,7 +454,7 @@ func TestDivideSalary(t *testing.T) {
 	r := rand.New(rand.NewSource(time.Now().Unix()))
 	for i := 0; i < 100; i++ {
 		nodeCount := r.Intn(49) + 1 // [1, 50]
-		nodes := generateDeputies(nodeCount)
+		nodes := generateDeputies(nodeCount).ToDeputyNodes()
 		registerDeputies(nodes, am)
 		for _, node := range nodes {
 			node.Votes = randomBigInt(r)
@@ -629,7 +629,7 @@ func TestBlockAssembler_RunBlock(t *testing.T) {
 	})
 
 	// prepare a genesis block (and balance) for test
-	genesisBlock := initGenesis(db, ba.am, firstTerm.Nodes[0].MinerAddress)
+	genesisBlock := initGenesis(db, ba.am, firstTerm.Nodes)
 
 	// process block fail
 	rawBlock = &types.Block{Header: &types.Header{Height: 1}, Txs: types.Transactions{tx}}
@@ -653,7 +653,7 @@ func TestBlockAssembler_MineBlock(t *testing.T) {
 	ba := createAssembler(db, false)
 	firstTerm, err := ba.dm.GetTermByHeight(1)
 	assert.NoError(t, err)
-	genesisBlock := initGenesis(db, ba.am, firstTerm.Nodes[0].MinerAddress)
+	genesisBlock := initGenesis(db, ba.am, firstTerm.Nodes)
 
 	tx := MakeTx(deputynode.GetSelfNodeKey(), common.HexToAddress("0x88"), common.Lemo2Mo("100"), uint64(time.Now().Unix()+300))
 	invalidTx := MakeTx(deputynode.GetSelfNodeKey(), common.HexToAddress("0x88"), common.Lemo2Mo("100000000000000"), uint64(time.Now().Unix()+300))

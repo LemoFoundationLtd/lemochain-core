@@ -160,7 +160,7 @@ func verifyExtraData(block *types.Block) error {
 func verifyMiner(header *types.Header, parent *types.Header, timeoutTime uint64, dm *deputynode.Manager) error {
 	expectedMiner, err := GetCorrectMiner(parent, int64(header.Time)*1000, int64(timeoutTime), dm)
 	if err != nil {
-		log.Error("Consensus verify fail: can't calculate distance", "block.Height", header.Height, "parent.MinerAddress", parent.MinerAddress, "block.MinerAddress", header.MinerAddress, "err", err)
+		log.Error("Consensus verify fail: can't find correct miner", "block.Height", header.Height, "parent.MinerAddress", parent.MinerAddress, "block.MinerAddress", header.MinerAddress, "err", err)
 		return ErrVerifyHeaderFailed
 	}
 
