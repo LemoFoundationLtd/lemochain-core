@@ -56,7 +56,7 @@ func TestMiner_GetSleepTime(t *testing.T) {
 	dm := deputynode.NewManager(deputyCount, &testChain{})
 	dm.SaveSnapshot(0, testDeputies[:deputyCount])
 	type testInfo struct {
-		distance        uint64
+		distance        uint32
 		timeDistance    int64
 		output          int64
 		endOfMineWindow int64
@@ -117,8 +117,8 @@ func TestMiner_GetSleepTime(t *testing.T) {
 			test := test // capture range variable
 			t.Parallel()
 			waitTime, endOfMineWindow := miner.getSleepTime(1, test.distance, parentBlockTime, parentBlockTime+test.timeDistance)
-			assert.Equal(t, test.endOfMineWindow, endOfMineWindow)
 			assert.Equal(t, test.output, waitTime)
+			assert.Equal(t, test.endOfMineWindow, endOfMineWindow)
 		})
 	}
 }

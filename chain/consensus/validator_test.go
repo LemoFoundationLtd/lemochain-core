@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
@@ -297,17 +298,17 @@ func Test_VerifyMineSlot(t *testing.T) {
 
 			// 1. 验证时间间隔小于规定的最小时间间隔的情况
 			parentBlock, currentBlock := assembleBlockForVerifyMineSlot(minPassTime-1, oneLoopTime, getMiner(i), getMiner(j))
-			assert.Equal(t, ErrVerifyHeaderFailed, VerifyMineSlot(currentBlock.Header, parentBlock.Header, timeoutStamp, dm))
+			assert.Equal(t, ErrVerifyHeaderFailed, verifyMiner(currentBlock.Header, parentBlock.Header, timeoutStamp, dm), fmt.Sprintf("i=%d,j=%d", i, j))
 			// 2. 验证正确的区块出块时间间隔
 			parentBlock, currentBlock = assembleBlockForVerifyMineSlot(minPassTime, oneLoopTime, getMiner(i), getMiner(j))
-			assert.NoError(t, VerifyMineSlot(currentBlock.Header, parentBlock.Header, timeoutStamp, dm))
+			assert.NoError(t, verifyMiner(currentBlock.Header, parentBlock.Header, timeoutStamp, dm))
 			parentBlock, currentBlock = assembleBlockForVerifyMineSlot(minPassTime+1, oneLoopTime, getMiner(i), getMiner(j))
-			assert.NoError(t, VerifyMineSlot(currentBlock.Header, parentBlock.Header, timeoutStamp, dm))
+			assert.NoError(t, verifyMiner(currentBlock.Header, parentBlock.Header, timeoutStamp, dm))
 			parentBlock, currentBlock = assembleBlockForVerifyMineSlot(maxPassTime, oneLoopTime, getMiner(i), getMiner(j))
-			assert.Equal(t, ErrVerifyHeaderFailed, VerifyMineSlot(currentBlock.Header, parentBlock.Header, timeoutStamp, dm))
+			assert.Equal(t, ErrVerifyHeaderFailed, verifyMiner(currentBlock.Header, parentBlock.Header, timeoutStamp, dm))
 			// 3. 验证时间间隔大于规定的最大出块间隔时间
 			parentBlock, currentBlock = assembleBlockForVerifyMineSlot(maxPassTime+1, oneLoopTime, getMiner(i), getMiner(j))
-			assert.Equal(t, ErrVerifyHeaderFailed, VerifyMineSlot(currentBlock.Header, parentBlock.Header, timeoutStamp, dm))
+			assert.Equal(t, ErrVerifyHeaderFailed, verifyMiner(currentBlock.Header, parentBlock.Header, timeoutStamp, dm))
 		}
 	}
 }

@@ -53,13 +53,13 @@ func New(cfg MineConfig, chain Chain, dm *deputynode.Manager, txPool TxPool) *Mi
 		blockInterval:           cfg.SleepTime,
 		timeoutTime:             cfg.Timeout,
 		reservedPropagationTime: cfg.ReservedPropagationTime,
-		chain:                   chain,
-		dm:                      dm,
-		txPool:                  txPool,
-		recvNewBlockCh:          make(chan *types.Block, 1),
-		timeToMineCh:            make(chan *MineInfo),
-		stopCh:                  make(chan struct{}),
-		quitCh:                  make(chan struct{}),
+		chain:          chain,
+		dm:             dm,
+		txPool:         txPool,
+		recvNewBlockCh: make(chan *types.Block, 1),
+		timeToMineCh:   make(chan *MineInfo),
+		stopCh:         make(chan struct{}),
+		quitCh:         make(chan struct{}),
 	}
 }
 
@@ -179,41 +179,24 @@ func (m *Miner) runMineLoop() {
 }
 
 // getSleepTime get sleep time (millisecond) to seal block, return waitTime and absolute time of block timeout
-func (m *Miner) getSleepTime(mineHeight uint32, distance uint64, parentTime int64, currentTime int64) (int64, int64) {
-	nodeCount := m.dm.GetDeputiesCount(mineHeight)
-	// 所有节点都超时所需要消耗的时间，也可以看作是下一轮出块的开始时间
-	oneLoopTime := int64(nodeCount) * m.timeoutTime
+func (m *Miner) getSleepTime(mineHeight uint32, distance uint32, parentTime int64, currentTime int64) (int64, int64) {
 	// 网络传输耗时，即当前时间减去父块区块头中的时间戳
 	passTime := currentTime - parentTime
-	// 机器时间不同步导致收到了未来的区块。需要额外的对齐时间，为了让本机时间延迟offSet，与链上时间对齐
-	offset := int64(0)
-	if passTime < 0 {
-		offset = -passTime
-		passTime = 0
-	}
-	// 从父块开始，经过整轮数的超时时间，值为0或者oneLoopTime的整数倍
-	passLoopTime := passTime - (passTime % oneLoopTime)
 	// 可以出块的时间窗口
-	windowFrom := int64(distance-1)*m.timeoutTime + passLoopTime
-	windowTo := int64(distance)*m.timeoutTime + passLoopTime
-	if (parentTime + windowTo) <= currentTime {
-		windowFrom += oneLoopTime
-		windowTo += oneLoopTime
+	windowFrom, windowTo := consensus.GetNextMineWindow(mineHeight, distance, parentTime, currentTime, m.timeoutTime, m.dm)
+
+	if distance == 1 && passTime < m.timeoutTime {
+		// distance == 1表示下一个区块该本节点产生了，也没有超时，windowFrom为0。这时需要确保延迟足够的时间，避免早期交易少时链上全是空块
+		windowFrom = parentTime + m.blockInterval
 	}
 
-	var waitTime int64
-	if distance == 1 && passTime < m.timeoutTime {
-		// distance == 1表示下一个区块该本节点产生了。时间也合适，没有超时。这时需要确保延迟足够的时间，避免早期交易少时链上全是空块
-		waitTime = m.blockInterval - passTime
-	} else {
-		// 需要等待下个时间窗口
-		waitTime = windowFrom - passTime
-	}
+	// 等到下个时间窗口
+	waitTime := windowFrom - currentTime
 	if waitTime < 0 {
 		waitTime = 0
 	}
-	log.Debug("getSleepTime", "waitTime", waitTime, "distance", distance, "parentTime", parentTime, "passTime", passTime, "passLoopTime", passLoopTime, "offset", offset, "nodeCount", nodeCount, "blockInterval", m.blockInterval, "timeoutTime", m.timeoutTime, "windowFrom", windowFrom, "windowTo", windowTo)
-	return offset + waitTime, parentTime + windowTo
+	log.Debug("getSleepTime", "waitTime", waitTime, "distance", distance, "parentTime", parentTime, "passTime", passTime, "blockInterval", m.blockInterval, "timeoutTime", m.timeoutTime, "windowFrom", windowFrom, "windowTo", windowTo)
+	return waitTime, windowTo
 }
 
 // schedule wait some time to mine next block
