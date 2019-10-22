@@ -651,11 +651,11 @@ func TestTxProcessor_votesChangeByBalanceChangelog(t *testing.T) {
 	}
 	_ = newBlockForTest(1, txs, am, nil, db, true)
 
-	// 修改balance，让10个地址余额都变成700LEMO
+	// 修改balance，让10个地址余额都变成1400LEMO
 	diffVotes := make(map[common.Address]*big.Int)
 	for addr, balance := range addrBalanceMap {
 		diffVotes[addr] = new(big.Int).Sub(big.NewInt(7), new(big.Int).Div(balance, params.VoteExchangeRate))
-		am.GetAccount(addr).SetBalance(common.Lemo2Mo("700"))
+		am.GetAccount(addr).SetBalance(common.Lemo2Mo("1400"))
 	}
 
 	voteChange := votesChangeByBalanceLog(p.am)
