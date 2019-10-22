@@ -80,8 +80,8 @@ var (
 	DepositExchangeRate            = common.Lemo2Mo("100")         // 质押金额兑换票数兑换率 100LEMO换1票
 	VoteExchangeRate               = common.Lemo2Mo("200")         // 投票票数兑换率 200LEMO换1票
 
-	MaxPackageLength uint32 = 100 * 1024 * 1024 // 100M
-	MaxTxsForMiner   int    = 10000             // max transactions when mining a block
+	MaxPackageLength uint32 = 25 * 1024 * 1024 // 25M
+	MaxTxsForMiner   int    = 10000            // max transactions when mining a block
 
 	TermRewardPoolTotal = common.Lemo2Mo("900000000") // 奖励池总量
 	TermRewardContract  = common.HexToAddress("0x09") // 换届奖励的预编译合约地址
