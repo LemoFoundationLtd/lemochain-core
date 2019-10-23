@@ -113,7 +113,7 @@ func (dp *DPoVP) MineBlock(txProcessTimeout int64) (*types.Block, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = dp.validator.VerifyMineSlot(header, parentHeader)
+	err = dp.validator.VerifyMiner(header, parentHeader)
 	if err != nil {
 		log.Warn("Mining is stuck by something or stable block changed. we have to wait to next mine window")
 		return nil, err

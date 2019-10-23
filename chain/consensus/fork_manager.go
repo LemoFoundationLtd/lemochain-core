@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
-	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"sync/atomic"
 )
@@ -39,48 +38,6 @@ func (fm *ForkManager) SetHeadBlock(block *types.Block) {
 		panic(ErrNoHeadBlock)
 	}
 	fm.head.Store(block)
-}
-
-func findDeputyByAddress(deputies []*types.DeputyNode, addr common.Address) *types.DeputyNode {
-	for _, node := range deputies {
-		if node.MinerAddress == addr {
-			return node
-		}
-	}
-	return nil
-}
-
-// GetMinerDistance get miner index distance. It is always greater than 0 and not greater than deputy count
-func GetMinerDistance(targetHeight uint32, parentBlockMiner, targetMiner common.Address, dm *deputynode.Manager) (uint64, error) {
-	if targetHeight == 0 {
-		return 0, ErrMineGenesis
-	}
-	deputies := dm.GetDeputiesByHeight(targetHeight)
-	nodeCount := uint64(len(deputies))
-
-	// find target block miner deputy
-	targetDeputy := findDeputyByAddress(deputies, targetMiner)
-	if targetDeputy == nil {
-		return 0, ErrNotDeputy
-	}
-
-	// Genesis block is pre-set, not belong to any deputy node. So only blocks start with height 1 is mined by deputies
-	// The reward block changes deputy nodes, so we need recompute the slot
-	if targetHeight == 1 || deputynode.IsRewardBlock(targetHeight) {
-		return uint64(targetDeputy.Rank + 1), nil
-	}
-
-	// if they are same miner, then return deputy count
-	if targetMiner == parentBlockMiner {
-		return nodeCount, nil
-	}
-
-	// find last block miner deputy
-	lastDeputy := findDeputyByAddress(deputies, parentBlockMiner)
-	if lastDeputy == nil {
-		return 0, ErrNotDeputy
-	}
-	return (nodeCount + uint64(targetDeputy.Rank) - uint64(lastDeputy.Rank)) % nodeCount, nil
 }
 
 // UpdateFork check if the current fork can be update, or switch to a better fork. Return the new current block or nil

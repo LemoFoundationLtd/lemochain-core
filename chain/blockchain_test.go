@@ -11,7 +11,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-core/common/flag"
-	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/common/subscribe"
 	"github.com/LemoFoundationLtd/lemochain-core/network"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
@@ -33,6 +32,7 @@ var (
 		parseKey("9c3c4a327ce214f0a1bf9cfa756fbf74f1c7322399ffff925efd8c15c49953eb"),
 		parseKey("ba9b51e59ec57d66b30b9b868c76d6f4d386ce148d9c6c1520360d92ef0f27ae"),
 	}
+	nodeInfos = initTestDeputyNodesInfo(nodeKeys)
 )
 
 func GetStorePath() string {
@@ -48,12 +48,15 @@ func newTestBlockChain(attendedDeputyCount int) *BlockChain {
 	db := store.NewChainDataBase(GetStorePath())
 
 	// init nodeKey
-	priv := parseKey("c21b6b2fbf230f665b936194d14da67187732bf9d28768aef1a3cbb26608f8aa")
-	deputynode.SetSelfNodeKey(priv)
+	deputynode.SetSelfNodeKey(nodeKeys[0])
+
+	if attendedDeputyCount > len(nodeKeys) {
+		panic("no so many nodeKeys")
+	}
 
 	// init genesis block
 	genesis := DefaultGenesisConfig()
-	genesis.DeputyNodesInfo = genesis.DeputyNodesInfo[:attendedDeputyCount]
+	genesis.DeputyNodesInfo = nodeInfos[:attendedDeputyCount]
 	SetupGenesisBlock(db, genesis)
 
 	// max deputy count is 5
@@ -63,6 +66,18 @@ func newTestBlockChain(attendedDeputyCount int) *BlockChain {
 		panic(err)
 	}
 	return blockChain
+}
+
+func initTestDeputyNodesInfo(privKeys []*ecdsa.PrivateKey) []*CandidateInfo {
+	result := make([]*CandidateInfo, len(privKeys))
+	defaultNodesInfo := DefaultGenesisConfig().DeputyNodesInfo
+	for i := 0; i < len(privKeys); i++ {
+		info := *defaultNodesInfo[i]
+		info.MinerAddress = crypto.PubkeyToAddress(privKeys[i].PublicKey)
+		info.NodeID = crypto.PrivateKeyToNodeID(privKeys[i])
+		result[i] = &info
+	}
+	return result
 }
 
 type resultWithErr struct {
@@ -109,12 +124,17 @@ func newTestBlock(bc *BlockChain) *types.Block {
 	}
 
 	// maybe it is not in our turn to mine now, so try to find the correct miner
-	for i := range nodeKeys {
-		block.Header.MinerAddress = bc.dm.GetDeputyByNodeID(block.Height(), getTestNodeID(i)).MinerAddress
-		if err := consensus.VerifyMineSlot(block.Header, parent.Header, uint64(mineTimeout), bc.dm); err == nil {
+	miner, err := consensus.GetCorrectMiner(parent.Header, int64(header.Time)*1000, int64(mineTimeout), bc.dm)
+	if err != nil {
+		panic(err)
+	}
+
+	// find deputy index
+	for i, deputy := range nodeInfos {
+		if deputy.MinerAddress == miner {
+			block.Header.MinerAddress = miner
 			hash := block.Hash()
 			block.Header.SignData, err = crypto.Sign(hash[:], nodeKeys[i])
-			log.Info("sign a new block", "deputyIndex", i, "height", block.Height())
 			return block
 		}
 	}
