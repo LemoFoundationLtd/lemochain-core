@@ -109,53 +109,6 @@ func (a *PublicAccountAPI) GetVoteFor(lemoAddress string) (string, error) {
 	return forAddress, nil
 }
 
-// GetAllRewardValue get the value for each bonus
-func (a *PublicAccountAPI) GetAllRewardValue() (params.RewardsMap, error) {
-	address := params.TermRewardContract
-	acc, err := a.GetAccount(address.String())
-	if err != nil {
-		return nil, err
-	}
-	key := address.Hash()
-	value, err := acc.GetStorageState(key)
-	if err != nil {
-		return nil, err
-	}
-	rewardMap := make(params.RewardsMap)
-	err = json.Unmarshal(value, &rewardMap)
-	return rewardMap, err
-}
-
-//go:generate gencodec -type TermRewardInfo --field-override termRewardInfoMarshaling -out gen_termReward_info_json.go
-type TermRewardInfo struct {
-	Term         uint32   `json:"term" gencodec:"required"`
-	Value        *big.Int `json:"value" gencodec:"required"`
-	RewardHeight uint32   `json:"rewardHeight" gencodec:"required"`
-}
-type termRewardInfoMarshaling struct {
-	Term         hexutil.Uint32
-	Value        *hexutil.Big10
-	RewardHeight hexutil.Uint32
-}
-
-// GetTermReward get term reward info by height
-func (a *PublicAccountAPI) GetTermReward(height uint32) (*TermRewardInfo, error) {
-	term := deputynode.GetTermIndexByHeight(height)
-	termValueMaplist, err := a.GetAllRewardValue()
-	if err != nil {
-		return nil, err
-	}
-	if reward, ok := termValueMaplist[term]; ok {
-		return &TermRewardInfo{
-			Term:         reward.Term,
-			Value:        reward.Value,
-			RewardHeight: (term+1)*params.TermDuration + params.InterimDuration + 1,
-		}, nil
-	} else {
-		return nil, nil
-	}
-}
-
 // GetAssetEquity returns asset equity
 func (a *PublicAccountAPI) GetAssetEquityByAssetId(lemoAddress string, assetId common.Hash) (*types.AssetEquity, error) {
 	acc, err := a.GetAccount(lemoAddress)
@@ -182,20 +135,101 @@ func NewPublicChainAPI(chain *chain.BlockChain) *PublicChainAPI {
 	return &PublicChainAPI{chain}
 }
 
+//go:generate gencodec -type DeputyNodeInfo --field-override deputyNodeInfoMarshaling -out gen_deputyNode_info_json.go
+type DeputyNodeInfo struct {
+	MinerAddress  common.Address `json:"minerAddress"   gencodec:"required"` // candidate account address
+	IncomeAddress common.Address `json:"incomeAddress" gencodec:"required"`
+	NodeID        []byte         `json:"nodeID"         gencodec:"required"`
+	Rank          uint32         `json:"rank"           gencodec:"required"` // start from 0
+	Votes         *big.Int       `json:"votes"          gencodec:"required"`
+	Host          string         `json:"host"          gencodec:"required"`
+	Port          string         `json:"port"          gencodec:"required"`
+	DepositAmount string         `json:"depositAmount"  gencodec:"required"` // 质押金额
+	Introduction  string         `json:"introduction"  gencodec:"required"`  // 节点介绍
+	P2pUri        string         `json:"p2pUri"  gencodec:"required"`        // p2p 连接用的定位符
+}
+
+type deputyNodeInfoMarshaling struct {
+	NodeID hexutil.Bytes
+	Rank   hexutil.Uint32
+	Votes  *hexutil.Big10
+}
+
 // GetDeputyNodeList
-func (c *PublicChainAPI) GetDeputyNodeList() []string {
+func (c *PublicChainAPI) GetDeputyNodeList() []*DeputyNodeInfo {
 	nodes := c.chain.DeputyManager().GetDeputiesByHeight(c.chain.CurrentBlock().Height())
 
-	var result []string
+	var result []*DeputyNodeInfo
 	for _, n := range nodes {
 		candidateAcc := c.chain.AccountManager().GetCanonicalAccount(n.MinerAddress)
 		profile := candidateAcc.GetCandidate()
+		incomeAddress, err := common.StringToAddress(profile[types.CandidateKeyIncomeAddress])
+		if err != nil {
+			log.Errorf("incomeAddress string to address type.incomeAddress: %s.error: %v", profile[types.CandidateKeyIncomeAddress], err)
+			continue
+		}
 		host := profile[types.CandidateKeyHost]
 		port := profile[types.CandidateKeyPort]
-		nodeAddrString := fmt.Sprintf("%x@%s:%s; votes: %s, rank: %d", n.NodeID, host, port, n.Votes.String(), n.Rank)
-		result = append(result, nodeAddrString)
+		nodeAddrString := fmt.Sprintf("%x@%s:%s", n.NodeID, host, port)
+		deputyNodeInfo := &DeputyNodeInfo{
+			MinerAddress:  n.MinerAddress,
+			IncomeAddress: incomeAddress,
+			NodeID:        n.NodeID,
+			Rank:          n.Rank,
+			Votes:         n.Votes,
+			Host:          host,
+			Port:          port,
+			DepositAmount: profile[types.CandidateKeyDepositAmount],
+			Introduction:  profile[types.CandidateKeyIntroduction],
+			P2pUri:        nodeAddrString,
+		}
+		result = append(result, deputyNodeInfo)
 	}
 	return result
+}
+
+// GetAllRewardValue get the value for each bonus
+func (a *PublicChainAPI) GetAllRewardValue() (params.RewardsMap, error) {
+	address := params.TermRewardContract
+	acc := a.chain.AccountManager().GetCanonicalAccount(address)
+	key := address.Hash()
+	value, err := acc.GetStorageState(key)
+	if err != nil {
+		return nil, err
+	}
+	rewardMap := make(params.RewardsMap)
+	err = json.Unmarshal(value, &rewardMap)
+	return rewardMap, err
+}
+
+//go:generate gencodec -type TermRewardInfo --field-override termRewardInfoMarshaling -out gen_termReward_info_json.go
+type TermRewardInfo struct {
+	Term         uint32   `json:"term" gencodec:"required"`
+	Value        *big.Int `json:"value" gencodec:"required"`
+	RewardHeight uint32   `json:"rewardHeight" gencodec:"required"`
+}
+type termRewardInfoMarshaling struct {
+	Term         hexutil.Uint32
+	Value        *hexutil.Big10
+	RewardHeight hexutil.Uint32
+}
+
+// GetTermReward get term reward info by height
+func (a *PublicChainAPI) GetTermReward(height uint32) (*TermRewardInfo, error) {
+	term := deputynode.GetTermIndexByHeight(height)
+	termValueMaplist, err := a.GetAllRewardValue()
+	if err != nil {
+		return nil, err
+	}
+	if reward, ok := termValueMaplist[term]; ok {
+		return &TermRewardInfo{
+			Term:         reward.Term,
+			Value:        reward.Value,
+			RewardHeight: (term+1)*params.TermDuration + params.InterimDuration + 1,
+		}, nil
+	} else {
+		return nil, nil
+	}
 }
 
 // GetCandidateTop30 get top 30 candidate node
