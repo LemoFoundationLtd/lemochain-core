@@ -188,6 +188,18 @@ func (c *PublicChainAPI) GetDeputyNodeList() []*DeputyNodeInfo {
 	return result
 }
 
+//go:generate gencodec -type TermRewardInfo --field-override termRewardInfoMarshaling -out gen_termReward_info_json.go
+type TermRewardInfo struct {
+	Term         uint32   `json:"term" gencodec:"required"`
+	Value        *big.Int `json:"value" gencodec:"required"`
+	RewardHeight uint32   `json:"rewardHeight" gencodec:"required"`
+}
+type termRewardInfoMarshaling struct {
+	Term         hexutil.Uint32
+	Value        *hexutil.Big10
+	RewardHeight hexutil.Uint32
+}
+
 // GetAllRewardValue get the value for each bonus
 func (a *PublicChainAPI) GetAllRewardValue() (params.RewardsMap, error) {
 	address := params.TermRewardContract
@@ -200,18 +212,6 @@ func (a *PublicChainAPI) GetAllRewardValue() (params.RewardsMap, error) {
 	rewardMap := make(params.RewardsMap)
 	err = json.Unmarshal(value, &rewardMap)
 	return rewardMap, err
-}
-
-//go:generate gencodec -type TermRewardInfo --field-override termRewardInfoMarshaling -out gen_termReward_info_json.go
-type TermRewardInfo struct {
-	Term         uint32   `json:"term" gencodec:"required"`
-	Value        *big.Int `json:"value" gencodec:"required"`
-	RewardHeight uint32   `json:"rewardHeight" gencodec:"required"`
-}
-type termRewardInfoMarshaling struct {
-	Term         hexutil.Uint32
-	Value        *hexutil.Big10
-	RewardHeight hexutil.Uint32
 }
 
 // GetTermReward get term reward info by height
