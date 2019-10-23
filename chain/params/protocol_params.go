@@ -73,15 +73,15 @@ var (
 	TermDuration            uint32 = 1000000                       // 每届间隔
 	InterimDuration         uint32 = 1000                          // 过渡期
 	RewardCheckHeight       uint32 = 100000                        // The height to check if miners' reward is set
-	ReleaseEvilNodeDuration uint32 = 1000                          // 释放作恶节点的过度期高度
+	ReleaseEvilNodeDuration uint32 = 30000                         // 释放作恶节点的过度期高度30000个区块，按照3秒出块大概24h
 	MinGasPrice                    = big.NewInt(1000000000)        // 默认的最低gas price 为1G mo
 	MinCandidateDeposit            = common.Lemo2Mo("5000000")     // 注册成为候选节点的质押金额最小值
 	DepositPoolAddress             = common.HexToAddress("0x1001") // 设置接收注册候选节点押金费用1000LEMO的地址
 	DepositExchangeRate            = common.Lemo2Mo("100")         // 质押金额兑换票数兑换率 100LEMO换1票
 	VoteExchangeRate               = common.Lemo2Mo("200")         // 投票票数兑换率 200LEMO换1票
 
-	MaxPackageLength uint32 = 100 * 1024 * 1024 // 100M
-	MaxTxsForMiner   int    = 10000             // max transactions when mining a block
+	MaxPackageLength uint32 = 25 * 1024 * 1024 // 25M
+	MaxTxsForMiner   int    = 10000            // max transactions when mining a block
 
 	TermRewardPoolTotal = common.Lemo2Mo("900000000") // 奖励池总量
 	TermRewardContract  = common.HexToAddress("0x09") // 换届奖励的预编译合约地址
