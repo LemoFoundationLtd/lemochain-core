@@ -110,7 +110,7 @@ func (a *PublicAccountAPI) GetVoteFor(lemoAddress string) (string, error) {
 }
 
 // GetAllRewardValue get the value for each bonus
-func (a *PublicAccountAPI) GetAllRewardValue() ([]*params.Reward, error) {
+func (a *PublicAccountAPI) GetAllRewardValue() (params.RewardsMap, error) {
 	address := params.TermRewardContract
 	acc, err := a.GetAccount(address.String())
 	if err != nil {
@@ -118,14 +118,42 @@ func (a *PublicAccountAPI) GetAllRewardValue() ([]*params.Reward, error) {
 	}
 	key := address.Hash()
 	value, err := acc.GetStorageState(key)
-	rewardMap := make(params.RewardsMap)
-	json.Unmarshal(value, &rewardMap)
-	var result = make([]*params.Reward, 0)
-	for _, v := range rewardMap {
-		result = append(result, v)
+	if err != nil {
+		return nil, err
 	}
+	rewardMap := make(params.RewardsMap)
+	err = json.Unmarshal(value, &rewardMap)
+	return rewardMap, err
+}
 
-	return result, nil
+//go:generate gencodec -type TermRewardInfo --field-override termRewardInfoMarshaling -out gen_termReward_info_json.go
+type TermRewardInfo struct {
+	Term         uint32   `json:"term" gencodec:"required"`
+	Value        *big.Int `json:"value" gencodec:"required"`
+	RewardHeight uint32   `json:"rewardHeight" gencodec:"required"`
+}
+type termRewardInfoMarshaling struct {
+	Term         hexutil.Uint32
+	Value        *hexutil.Big10
+	RewardHeight hexutil.Uint32
+}
+
+// GetTermReward get term reward info by height
+func (a *PublicAccountAPI) GetTermReward(height uint32) (*TermRewardInfo, error) {
+	term := deputynode.GetTermIndexByHeight(height)
+	termValueMaplist, err := a.GetAllRewardValue()
+	if err != nil {
+		return nil, err
+	}
+	if reward, ok := termValueMaplist[term]; ok {
+		return &TermRewardInfo{
+			Term:         reward.Term,
+			Value:        reward.Value,
+			RewardHeight: (term+1)*params.TermDuration + params.InterimDuration + 1,
+		}, nil
+	} else {
+		return nil, nil
+	}
 }
 
 // GetAssetEquity returns asset equity
