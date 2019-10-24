@@ -1,7 +1,6 @@
 package types
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -146,14 +145,14 @@ func (c ChangeLog) MarshalJSON() ([]byte, error) {
 	enc.Address = c.Address
 	enc.Version = hexutil.Uint32(c.Version)
 	if c.NewVal != nil {
-		NewVal, err := rlp.EncodeToBytes(c.NewVal)
+		NewVal, err := json.Marshal(c.NewVal)
 		if err != nil {
 			return nil, err
 		}
 		enc.NewVal = common.ToHex(NewVal)
 	}
 	if c.Extra != nil {
-		Extra, err := rlp.EncodeToBytes(c.Extra)
+		Extra, err := json.Marshal(c.Extra)
 		if err != nil {
 			return nil, err
 		}
@@ -187,26 +186,16 @@ func (c *ChangeLog) UnmarshalJSON(input []byte) error {
 		return errors.New("missing required field 'version' for ChangeLog")
 	}
 	c.Version = uint32(*dec.Version)
-	// decode the interface{}
-	config, ok := logConfigs[c.LogType]
+	_, ok := logConfigs[c.LogType]
 	if !ok {
 		log.Errorf("unexpected LogType %T", c.LogType)
 		return ErrUnknownChangeLogType
 	}
-	var err error
 	if dec.NewVal != "" {
-		r := bytes.NewReader(common.FromHex(dec.NewVal))
-		s := rlp.NewStream(r, uint64(len(dec.NewVal)))
-		if c.NewVal, err = config.NewValDecoder(s); err != nil {
-			return err
-		}
+		c.NewVal = dec.NewVal
 	}
 	if dec.Extra != "" {
-		r := bytes.NewReader(common.FromHex(dec.Extra))
-		s := rlp.NewStream(r, uint64(len(dec.Extra)))
-		if c.Extra, err = config.ExtraDecoder(s); err != nil {
-			return err
-		}
+		c.Extra = dec.Extra
 	}
 	return nil
 }
