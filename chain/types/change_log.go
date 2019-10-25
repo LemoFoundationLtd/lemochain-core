@@ -137,26 +137,27 @@ func (c ChangeLog) MarshalJSON() ([]byte, error) {
 		LogType hexutil.Uint32 `json:"type"       gencodec:"required"`
 		Address common.Address `json:"address"    gencodec:"required"`
 		Version hexutil.Uint32 `json:"version"    gencodec:"required"`
-		NewVal  string         `json:"newValue"`
-		Extra   string         `json:"extra"`
+		NewVal  interface{}    `json:"newValue"`
+		Extra   interface{}    `json:"extra"`
 	}
 	var enc jsonChangeLog
 	enc.LogType = hexutil.Uint32(c.LogType)
 	enc.Address = c.Address
 	enc.Version = hexutil.Uint32(c.Version)
 	if c.NewVal != nil {
-		NewVal, err := json.Marshal(c.NewVal)
-		if err != nil {
-			return nil, err
+		// big.Int结构体没有实现Marshaler接口，所以需要直接转字符串
+		if val, ok := c.NewVal.(big.Int); ok {
+			enc.NewVal = val.String()
+		} else {
+			enc.NewVal = c.NewVal
 		}
-		enc.NewVal = common.ToHex(NewVal)
 	}
 	if c.Extra != nil {
-		Extra, err := json.Marshal(c.Extra)
-		if err != nil {
-			return nil, err
+		if val, ok := c.Extra.(big.Int); ok {
+			enc.Extra = val.String()
+		} else {
+			enc.Extra = c.Extra
 		}
-		enc.Extra = common.ToHex(Extra)
 	}
 	return json.Marshal(&enc)
 }
@@ -167,8 +168,8 @@ func (c *ChangeLog) UnmarshalJSON(input []byte) error {
 		LogType *hexutil.Uint32 `json:"type"       gencodec:"required"`
 		Address *common.Address `json:"address"    gencodec:"required"`
 		Version *hexutil.Uint32 `json:"version"    gencodec:"required"`
-		NewVal  string          `json:"newValue"`
-		Extra   string          `json:"extra"`
+		NewVal  interface{}     `json:"newValue"`
+		Extra   interface{}     `json:"extra"`
 	}
 	var dec jsonChangeLog
 	if err := json.Unmarshal(input, &dec); err != nil {
@@ -191,10 +192,10 @@ func (c *ChangeLog) UnmarshalJSON(input []byte) error {
 		log.Errorf("unexpected LogType %T", c.LogType)
 		return ErrUnknownChangeLogType
 	}
-	if dec.NewVal != "" {
+	if dec.NewVal != nil {
 		c.NewVal = dec.NewVal
 	}
-	if dec.Extra != "" {
+	if dec.Extra != nil {
 		c.Extra = dec.Extra
 	}
 	return nil
