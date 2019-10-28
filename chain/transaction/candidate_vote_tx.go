@@ -24,6 +24,7 @@ var (
 	ErrRegisterAgain             = errors.New("cannot register again after unregistering")
 	ErrIsCandidate               = errors.New("get an unexpected character")
 	ErrInsufficientBalance       = errors.New("the balance is insufficient to deduct the deposit for candidate register")
+	ErrMarshalProfileLength      = errors.New("the length of data by marshal candidate profile more than max length 1200")
 	ErrInsufficientDepositAmount = errors.New("the deposit amount is not enough for candidate register")
 	ErrParseDepositAmount        = errors.New("parse deposit amount failed")
 	ErrDepositPoolInsufficient   = errors.New("insufficient deposit pool balance")
@@ -151,6 +152,16 @@ func InitCandidateProfile(registerAcc types.AccountAccessor, newProfile types.Pr
 
 // registerCandidate 注册候选节点处理逻辑
 func (c *CandidateVoteEnv) registerCandidate(depositAmount *big.Int, register common.Address, p types.Profile) error {
+	// 检查profile大小是否已经超过了规定的最大值
+	profileByte, err := json.Marshal(p)
+	if err != nil {
+		return err
+	}
+	if len(profileByte) > MaxMarshalCandidateProfileLength {
+		log.Errorf("Register candidate profile oversize. size limit: %d, new candidate profile size: %d", MaxMarshalCandidateProfileLength, len(profileByte))
+		return ErrMarshalProfileLength
+	}
+
 	// 1. 判断注册的押金必须要大于等于规定的押金限制(500万LEMO)
 	if depositAmount.Cmp(params.MinCandidateDeposit) < 0 {
 		return ErrInsufficientDepositAmount
@@ -242,6 +253,22 @@ func (c *CandidateVoteEnv) modifyCandidateInfo(amount *big.Int, senderAddr commo
 	senderAcc := c.am.GetAccount(senderAddr)
 	candidateProfile := senderAcc.GetCandidate()
 
+	// nodeId和质押金额不能通过传入的参数修改，其他都可以修改
+	for key, val := range txBuildProfile {
+		if key != types.CandidateKeyNodeID && key != types.CandidateKeyDepositAmount {
+			candidateProfile[key] = val
+		}
+	}
+	// 检查修改之后的profile大小是否已经超过了规定的最大值
+	profileByte, err := json.Marshal(candidateProfile)
+	if err != nil {
+		return err
+	}
+	if len(profileByte) > MaxMarshalCandidateProfileLength {
+		log.Errorf("Modify candidate profile oversize. size limit: %d, new candidate profile size: %d", MaxMarshalCandidateProfileLength, len(profileByte))
+		return ErrMarshalProfileLength
+	}
+
 	// 修改候选节点注册信息
 	// 判断交易的amount字段的值是否大于0,大于0则为追加质押金额
 	if amount.Cmp(big.NewInt(0)) > 0 {
@@ -265,12 +292,6 @@ func (c *CandidateVoteEnv) modifyCandidateInfo(amount *big.Int, senderAddr commo
 		} else {
 			log.Errorf("Failed to get deposit balance. CandidateAddress: %s", senderAddr.String())
 			return ErrFailedGetDepositBalacne
-		}
-	}
-	// nodeId和质押金额不能通过传入的参数修改，其他都可以修改
-	for key, val := range txBuildProfile {
-		if key != types.CandidateKeyNodeID && key != types.CandidateKeyDepositAmount {
-			candidateProfile[key] = val
 		}
 	}
 	senderAcc.SetCandidate(candidateProfile)

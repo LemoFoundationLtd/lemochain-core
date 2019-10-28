@@ -364,3 +364,22 @@ func TestCandidateVoteEnv_CallVoteTx(t *testing.T) {
 	assert.Equal(t, big.NewInt(30), candAcc.GetVotes())                                                     // candAddr候选节点票数为50 -20 = 30
 
 }
+
+// 计算candidate profile的限制的最大长度
+func TestCandidateProfile(t *testing.T) {
+	newProfile := make(types.Profile)
+	newProfile["isCandidate"] = "true"
+	newProfile["nodeID"] = "0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0"
+	newProfile["host"] = "www.lemochain.com"
+	newProfile["port"] = "65534"
+	newProfile["incomeAddress"] = "Lemo846Q4NQCKJ2YWY6GHTSQHC7K24JDC7CPCWYH"
+	newProfile["depositBalance"] = "160000000000000000000000000"
+	newProfile["introduction"] = "5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0"
+	newProfile["other01"] = "5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0"
+	newProfile["other02"] = "5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0"
+	newProfile["other03"] = "5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0"
+	newProfile["other04"] = "5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0"
+	newProfile["other05"] = "5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0"
+	bb, _ := json.Marshal(newProfile)
+	t.Log(len(bb)) // 1163 ≈ 1200
+}
