@@ -141,7 +141,7 @@ func (dp *DPoVP) InsertBlock(rawBlock *types.Block) (*types.Block, error) {
 
 	// ignore exist block as soon as possible
 	if ok := dp.isIgnorableBlock(rawBlock); ok {
-		return nil, ErrExistBlock
+		return nil, ErrIgnoreBlock
 	}
 
 	dp.chainLock.Lock()
@@ -321,12 +321,12 @@ func (dp *DPoVP) logCurrentChange(oldCurrent *types.Block) {
 // isIgnorableBlock check the block is exist or not
 func (dp *DPoVP) isIgnorableBlock(block *types.Block) bool {
 	if has, _ := dp.db.IsExistByHash(block.Hash()); has {
-		log.Debug("ignore the existed block")
+		log.Debug("Ignore the existed block")
 		return true
 	}
 	if dp.StableBlock().Height() >= block.Height() {
 		// the block may not correct, it is not verified
-		log.Debug("ignore the block whose height is smaller than stable block")
+		log.Debug("Ignore the block whose height is not greater than the stable block")
 		return true
 	}
 	return false

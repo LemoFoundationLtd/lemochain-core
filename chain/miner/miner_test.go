@@ -65,10 +65,10 @@ func TestMiner_GetSleepTime(t *testing.T) {
 	var blockInterval int64 = 1000
 	var mineTimeout int64 = 2000
 	oneLoopTime := mineTimeout * int64(deputyCount)
-	parentBlockTime := int64(1000)
+	parentBlockTime := int64(time.Now().Unix()) * 1000
 	miner := New(MineConfig{SleepTime: blockInterval, Timeout: mineTimeout}, nil, dm, nil)
 	tests := []testInfo{
-		// fastest
+		// no network delay
 		{1, 0, blockInterval, mineTimeout*1 + parentBlockTime},
 		{2, 0, mineTimeout, mineTimeout*2 + parentBlockTime},
 		{3, 0, mineTimeout * 2, mineTimeout*3 + parentBlockTime},

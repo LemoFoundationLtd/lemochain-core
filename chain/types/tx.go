@@ -63,7 +63,7 @@ type txdata struct {
 	GasUsed       uint64          `json:"gasUsed"`
 	Amount        *big.Int        `json:"amount" gencodec:"required"`
 	Data          []byte          `json:"data"`
-	Expiration    uint64          `json:"expirationTime" gencodec:"required"`
+	Expiration    uint64          `json:"expirationTime" gencodec:"required"` // seconds
 	Message       string          `json:"message"`
 	Sigs          [][]byte        `json:"sigs" gencodec:"required"`
 
