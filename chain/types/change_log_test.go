@@ -255,7 +255,7 @@ func getCustomTypeData() []testCustomTypeConfig {
 	tests = append(tests, testCustomTypeConfig{
 		input:     &ChangeLog{LogType: ChangeLogType(0), Address: common.Address{}, Version: 1888, OldVal: "str", NewVal: []byte{128, 0xff}},
 		str:       "ChangeLogType(0){Account: Lemo888888888888888888888888888888888888, Version: 1888, OldVal: str, NewVal: [128 255]}",
-		json:      `{"type":"0","address":"Lemo888888888888888888888888888888888888","version":"1888","newValue":"0x8280ff","extra":""}`,
+		json:      `{"type":"0","address":"Lemo888888888888888888888888888888888888","version":"1888","newValue":"gP8=","extra":null}`,
 		hash:      "0xafee1464750a367208437ec1061ddbf793b2120588445389610d8143ad5d1035",
 		rlp:       "0xdd809400000000000000000000000000000000000000008207608280ffc0",
 		decodeErr: ErrUnknownChangeLogType,
@@ -267,17 +267,17 @@ func getCustomTypeData() []testCustomTypeConfig {
 	tests = append(tests, testCustomTypeConfig{
 		input:   &ChangeLog{LogType: ChangeLogType(10001), Extra: structData},
 		str:     "ChangeLogType(10001){Account: Lemo888888888888888888888888888888888888, Version: 0, Extra: {11 abc}}",
-		json:    `{"type":"10001","address":"Lemo888888888888888888888888888888888888","version":"0","newValue":"","extra":"0xc50b83616263"}`,
+		json:    `{"type":"10001","address":"Lemo888888888888888888888888888888888888","version":"0","newValue":null,"extra":{"A":11,"B":"abc"}}`,
 		hash:    "0xc2f5e2f55f2d6be2ef0e6b2f826bd2c1d9fcb4c2cd88a5b39677eb7564ff5629",
 		rlp:     "0xe082271194000000000000000000000000000000000000000080c0c50b83616263",
-		decoded: "ChangeLogType(10001){Account: Lemo888888888888888888888888888888888888, Version: 0, Extra: {11 abc}}",
+		decoded: "ChangeLogType(10001){Account: Lemo888888888888888888888888888888888888, Version: 0, map[A:11 B:abc]}",
 	})
 
 	// 2 empty ChangeLog
 	tests = append(tests, testCustomTypeConfig{
 		input:     &ChangeLog{},
 		str:       "ChangeLogType(0){Account: Lemo888888888888888888888888888888888888, Version: 0}",
-		json:      `{"type":"0","address":"Lemo888888888888888888888888888888888888","version":"0","newValue":"","extra":""}`,
+		json:      `{"type":"0","address":"Lemo888888888888888888888888888888888888","version":"0","newValue":null,"extra":null}`,
 		hash:      "0xae191db75787cf40e7a29c1287c1e65ab4b24e8a9bc7c7037e49575241943f65",
 		rlp:       "0xd98094000000000000000000000000000000000000000080c0c0",
 		decodeErr: ErrUnknownChangeLogType,
@@ -327,10 +327,165 @@ func TestChangeLog_MarshalJSON_UnmarshalJSON(t *testing.T) {
 		decodeResult := new(ChangeLog)
 		err = decodeResult.UnmarshalJSON(json)
 		assert.Equal(t, test.decodeErr, err, "index=%d %s", i, test.input)
-		if test.decodeErr == nil {
-			test.input.OldVal = nil
-			assert.Equal(t, test.input, decodeResult, "index=%d %s", i, test.input)
-		}
+	}
+}
+
+type testMarshalChangeLog struct {
+	changeLog *ChangeLog
+	json      string
+}
+
+type testProfileChangeLogExtra struct {
+	UUID common.Hash
+	Key  string
+}
+
+// testMarshal 生成changeLog marshal的数据
+func testMarshal() []*testMarshalChangeLog {
+	tests := make([]*testMarshalChangeLog, 0, 19)
+	// balanceLog
+	test01 := &testMarshalChangeLog{
+		changeLog: &ChangeLog{LogType: ChangeLogType(1), Address: common.HexToAddress("0x111"), Version: 0, NewVal: *big.NewInt(999)},
+		json:      `{"type":"1","address":"Lemo888888888888888888888888888888885ZCK","version":"0","newValue":"999","extra":null}`,
+	}
+	// StorageLog
+	test02 := &testMarshalChangeLog{
+		changeLog: &ChangeLog{LogType: ChangeLogType(2), Address: common.HexToAddress("0x111"), Version: 0, NewVal: []byte{1, 2, 3, 4}, Extra: common.HexToHash("0x583ecc2aa7344eb26d2a78c66989f9fa2ef6b207d3a6d3a91bd5f71747a5cbad")},
+		json:      `{"type":"2","address":"Lemo888888888888888888888888888888885ZCK","version":"0","newValue":"AQIDBA==","extra":"0x583ecc2aa7344eb26d2a78c66989f9fa2ef6b207d3a6d3a91bd5f71747a5cbad"}`,
+	}
+	// StorageRootLog
+	test03 := &testMarshalChangeLog{
+		changeLog: &ChangeLog{LogType: ChangeLogType(3), Address: common.HexToAddress("0x111"), Version: 0, NewVal: common.HexToHash("0x583ecc2aa7344eb26d2a78c66989f9fa2ef6b207d3a6d3a91bd5f71747a5cbad")},
+		json:      `{"type":"3","address":"Lemo888888888888888888888888888888885ZCK","version":"0","newValue":"0x583ecc2aa7344eb26d2a78c66989f9fa2ef6b207d3a6d3a91bd5f71747a5cbad","extra":null}`,
+	}
+
+	// AssetCodeLog
+	profile := make(Profile)
+	profile["description"] = "test asset"
+	profile["freeze"] = "false"
+	newValue := &Asset{
+		Category:        1,
+		IsDivisible:     false,
+		AssetCode:       common.HexToHash("0x0f061d7e4a210df4231e2b6f5f87ac1c35cdc9cb50f31269f3dc0cd741101db6"),
+		Decimal:         18,
+		TotalSupply:     big.NewInt(1000),
+		IsReplenishable: false,
+		Issuer:          common.HexToAddress("0x222"),
+		Profile:         profile,
+	}
+	test04 := &testMarshalChangeLog{
+		changeLog: &ChangeLog{LogType: ChangeLogType(4), Address: common.HexToAddress("0x111"), Version: 0, NewVal: newValue, Extra: common.HexToHash("0x583ecc2aa7344eb26d2a78c66989f9fa2ef6b207d3a6d3a91bd5f71747a5cbad")},
+		json:      `{"type":"4","address":"Lemo888888888888888888888888888888885ZCK","version":"0","newValue":{"category":"1","isDivisible":false,"assetCode":"0x0f061d7e4a210df4231e2b6f5f87ac1c35cdc9cb50f31269f3dc0cd741101db6","decimal":"18","totalSupply":"1000","isReplenishable":false,"issuer":"Lemo888888888888888888888888888888889YS2","profile":{"description":"test asset","freeze":"false"}},"extra":"0x583ecc2aa7344eb26d2a78c66989f9fa2ef6b207d3a6d3a91bd5f71747a5cbad"}`,
+	}
+	// AssetCodeStateLog
+	extra := &testProfileChangeLogExtra{
+		UUID: common.HexToHash("0x9999"),
+		Key:  "aaabbb",
+	}
+	test05 := &testMarshalChangeLog{
+		changeLog: &ChangeLog{LogType: ChangeLogType(5), Address: common.HexToAddress("0x111"), Version: 0, NewVal: "aaabbb", Extra: extra},
+		json:      `{"type":"5","address":"Lemo888888888888888888888888888888885ZCK","version":"0","newValue":"aaabbb","extra":{"UUID":"0x0000000000000000000000000000000000000000000000000000000000009999","Key":"aaabbb"}}`,
+	}
+	// AssetCodeRootLog
+	test06 := &testMarshalChangeLog{
+		changeLog: &ChangeLog{LogType: ChangeLogType(6), Address: common.HexToAddress("0x111"), Version: 0, NewVal: common.HexToHash("0x888")},
+		json:      `{"type":"6","address":"Lemo888888888888888888888888888888885ZCK","version":"0","newValue":"0x0000000000000000000000000000000000000000000000000000000000000888","extra":null}`,
+	}
+	// AssetCodeTotalSupplyLog
+	test07 := &testMarshalChangeLog{
+		changeLog: &ChangeLog{LogType: ChangeLogType(7), Address: common.HexToAddress("0x111"), Version: 0, NewVal: *(big.NewInt(800000)), Extra: common.HexToHash("0x888")},
+		json:      `{"type":"7","address":"Lemo888888888888888888888888888888885ZCK","version":"0","newValue":"800000","extra":"0x0000000000000000000000000000000000000000000000000000000000000888"}`,
+	}
+	// AssetIdLog
+	test08 := &testMarshalChangeLog{
+		changeLog: &ChangeLog{LogType: ChangeLogType(8), Address: common.HexToAddress("0x111"), Version: 0, NewVal: "asset code log", Extra: common.HexToHash("0x777")},
+		json:      `{"type":"8","address":"Lemo888888888888888888888888888888885ZCK","version":"0","newValue":"asset code log","extra":"0x0000000000000000000000000000000000000000000000000000000000000777"}`,
+	}
+	// AssetIdRootLog
+	test09 := &testMarshalChangeLog{
+		changeLog: &ChangeLog{LogType: ChangeLogType(9), Address: common.HexToAddress("0x111"), Version: 0, NewVal: common.HexToHash("0x777")},
+		json:      `{"type":"9","address":"Lemo888888888888888888888888888888885ZCK","version":"0","newValue":"0x0000000000000000000000000000000000000000000000000000000000000777","extra":null}`,
+	}
+	// EquityLog
+	equity := &AssetEquity{
+		AssetCode: common.HexToHash("0x11"),
+		AssetId:   common.HexToHash("0x11"),
+		Equity:    big.NewInt(5000),
+	}
+	test10 := &testMarshalChangeLog{
+		changeLog: &ChangeLog{LogType: ChangeLogType(10), Address: common.HexToAddress("0x111"), Version: 0, NewVal: equity, Extra: common.HexToHash("0x777")},
+		json:      `{"type":"10","address":"Lemo888888888888888888888888888888885ZCK","version":"0","newValue":{"assetCode":"0x0000000000000000000000000000000000000000000000000000000000000011","assetId":"0x0000000000000000000000000000000000000000000000000000000000000011","equity":"5000"},"extra":"0x0000000000000000000000000000000000000000000000000000000000000777"}`,
+	}
+	// EquityRootLog
+	test11 := &testMarshalChangeLog{
+		changeLog: &ChangeLog{LogType: ChangeLogType(11), Address: common.HexToAddress("0x111"), Version: 0, NewVal: common.HexToHash("0x111")},
+		json:      `{"type":"11","address":"Lemo888888888888888888888888888888885ZCK","version":"0","newValue":"0x0000000000000000000000000000000000000000000000000000000000000111","extra":null}`,
+	}
+	// CandidateLog
+	candidateProfile := make(Profile)
+	candidateProfile[CandidateKeyPort] = "8001"
+	candidateProfile[CandidateKeyHost] = "www.lemochain.com"
+	test12 := &testMarshalChangeLog{
+		changeLog: &ChangeLog{LogType: ChangeLogType(12), Address: common.HexToAddress("0x111"), Version: 0, NewVal: &candidateProfile},
+		json:      `{"type":"12","address":"Lemo888888888888888888888888888888885ZCK","version":"0","newValue":{"host":"www.lemochain.com","port":"8001"},"extra":null}`,
+	}
+	// CandidateStateLog
+	test13 := &testMarshalChangeLog{
+		changeLog: &ChangeLog{LogType: ChangeLogType(13), Address: common.HexToAddress("0x111"), Version: 0, NewVal: "Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG", Extra: "incommeAddress"},
+		json:      `{"type":"13","address":"Lemo888888888888888888888888888888885ZCK","version":"0","newValue":"Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG","extra":"incommeAddress"}`,
+	}
+	// CodeLog
+	test14 := &testMarshalChangeLog{
+		changeLog: &ChangeLog{LogType: ChangeLogType(14), Address: common.HexToAddress("0x111"), Version: 0, NewVal: Code{1, 2, 3, 4, 5}},
+		json:      `{"type":"14","address":"Lemo888888888888888888888888888888885ZCK","version":"0","newValue":"AQIDBAU=","extra":null}`,
+	}
+	// AddEventLog
+	test15 := &testMarshalChangeLog{
+		changeLog: &ChangeLog{LogType: ChangeLogType(15), Address: common.HexToAddress("0x111"), Version: 0, NewVal: &Event{
+			Address: common.HexToAddress("0x333"),
+			Topics:  []common.Hash{common.HexToHash("0x11"), common.HexToHash("0x22")},
+			Data:    []byte{1, 2, 3, 4, 5, 6, 7},
+			TxHash:  common.HexToHash("0x444"),
+			TxIndex: 1,
+			Index:   2,
+			Removed: false,
+		}},
+		json: `{"type":"15","address":"Lemo888888888888888888888888888888885ZCK","version":"0","newValue":{"address":"Lemo88888888888888888888888888888888DY7T","topics":["0x0000000000000000000000000000000000000000000000000000000000000011","0x0000000000000000000000000000000000000000000000000000000000000022"],"data":"0x01020304050607","transactionHash":"0x0000000000000000000000000000000000000000000000000000000000000444","transactionIndex":"1","eventIndex":"2","removed":false},"extra":null}`,
+	}
+	// SuicideLog
+	test16 := &testMarshalChangeLog{
+		changeLog: &ChangeLog{LogType: ChangeLogType(16), Address: common.HexToAddress("0x111"), Version: 0},
+		json:      `{"type":"16","address":"Lemo888888888888888888888888888888885ZCK","version":"0","newValue":null,"extra":null}`,
+	}
+	// VoteForLog
+	test17 := &testMarshalChangeLog{
+		changeLog: &ChangeLog{LogType: ChangeLogType(17), Address: common.HexToAddress("0x111"), Version: 0, NewVal: common.HexToAddress("0x122")},
+		json:      `{"type":"17","address":"Lemo888888888888888888888888888888885ZCK","version":"0","newValue":"Lemo8888888888888888888888888888888867TQ","extra":null}`,
+	}
+	// VotesLog
+	test18 := &testMarshalChangeLog{
+		changeLog: &ChangeLog{LogType: ChangeLogType(18), Address: common.HexToAddress("0x111"), Version: 0, NewVal: *(big.NewInt(9999))},
+		json:      `{"type":"18","address":"Lemo888888888888888888888888888888885ZCK","version":"0","newValue":"9999","extra":null}`,
+	}
+	// SignerLog
+	signers := make(Signers, 0)
+	signAccount01 := SignAccount{Address: common.HexToAddress("0x456"), Weight: 20}
+	signAccount02 := SignAccount{Address: common.HexToAddress("0x666"), Weight: 60}
+	signers = append(signers, signAccount01, signAccount02)
+	test19 := &testMarshalChangeLog{
+		changeLog: &ChangeLog{LogType: ChangeLogType(19), Address: common.HexToAddress("0x111"), Version: 0, NewVal: signers},
+		json:      `{"type":"19","address":"Lemo888888888888888888888888888888885ZCK","version":"0","newValue":[{"address":"Lemo88888888888888888888888888888888K6FC","weight":"20"},{"address":"Lemo88888888888888888888888888888888WTDP","weight":"60"}],"extra":null}`,
+	}
+	return append(tests, test01, test02, test03, test04, test05, test06, test07, test08, test09, test10,
+		test11, test12, test13, test14, test15, test16, test17, test18, test19)
+}
+
+func TestChangeLog_MarshalJSON(t *testing.T) {
+	tests := testMarshal()
+	for _, test := range tests {
+		js, err := test.changeLog.MarshalJSON()
+		assert.NoError(t, err)
+		assert.Equal(t, test.json, string(js))
 	}
 }
 
@@ -362,9 +517,4 @@ func TestChangeLog_Redo(t *testing.T) {
 	log = processor.createChangeLog(ChangeLogType(10003))
 	err = log.Redo(processor)
 	assert.NoError(t, err)
-}
-
-// TODO
-func TestChangeLogSlice(t *testing.T) {
-
 }
