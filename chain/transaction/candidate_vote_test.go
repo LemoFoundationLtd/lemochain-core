@@ -383,3 +383,40 @@ func TestCandidateProfile(t *testing.T) {
 	bb, _ := json.Marshal(newProfile)
 	t.Log(len(bb)) // 1163 ≈ 1200
 }
+
+func TestModifyProfile(t *testing.T) {
+	ClearData()
+	db := newDB()
+	defer db.Close()
+	am := account.NewManager(common.Hash{}, db)
+	dm := deputynode.NewManager(5, db)
+	c := NewCandidateVoteEnv(am, dm)
+	candidateAddr := common.HexToAddress("0x112")
+	candidateAcc := c.am.GetAccount(candidateAddr)
+	// 设置candidate
+	oldProfile := make(types.Profile)
+	for i := 0; i < 3; i++ {
+		key := "lemo" + strconv.Itoa(i)
+		oldProfile[key] = "5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0" + strconv.Itoa(i)
+	}
+	candidateAcc.SetCandidate(oldProfile)
+	addProfile := make(types.Profile)
+	for i := 3; i < 5; i++ {
+		key := "lemo" + strconv.Itoa(i)
+		addProfile[key] = "5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0" + strconv.Itoa(i)
+	}
+	// 正常情况下
+	err := c.modifyCandidateInfo(big.NewInt(0), candidateAddr, addProfile)
+	assert.NoError(t, err)
+	// 修改之后的profile
+	newProfile := candidateAcc.GetCandidate()
+	assert.Equal(t, 5, len(newProfile))
+	// 修改之后的profile大小大于最大限制
+	maxProfile := make(types.Profile)
+	for i := 5; i < 10; i++ {
+		key := "lemo" + strconv.Itoa(i)
+		maxProfile[key] = "5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0" + strconv.Itoa(i)
+	}
+	err = c.modifyCandidateInfo(big.NewInt(0), candidateAddr, maxProfile)
+	assert.Equal(t, ErrMarshalProfileLength, err)
+}

@@ -24,7 +24,7 @@ var (
 	ErrRegisterAgain             = errors.New("cannot register again after unregistering")
 	ErrIsCandidate               = errors.New("get an unexpected character")
 	ErrInsufficientBalance       = errors.New("the balance is insufficient to deduct the deposit for candidate register")
-	ErrMarshalProfileLength      = errors.New("the length of data by marshal candidate profile more than max length 1200")
+	ErrMarshalProfileLength      = errors.New("the data of candidate profile exceed the length limit 1200 Bytes")
 	ErrInsufficientDepositAmount = errors.New("the deposit amount is not enough for candidate register")
 	ErrParseDepositAmount        = errors.New("parse deposit amount failed")
 	ErrDepositPoolInsufficient   = errors.New("insufficient deposit pool balance")
