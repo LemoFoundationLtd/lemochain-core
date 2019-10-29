@@ -493,6 +493,21 @@ func TestDivideSalary(t *testing.T) {
 		assert.Equal(t, true, actualTotal.Cmp(new(big.Int).Sub(totalSalary, errRange)) >= 0)
 		assert.Equal(t, true, actualTotal.Cmp(totalSalary) <= 0)
 	}
+	// 测试所有的votes都为0的情况
+	nodes := generateDeputies(5).ToDeputyNodes()
+	// 设置nodes的votes为0
+	newNodes := make(types.DeputyNodes, 0)
+	for _, node := range nodes {
+		node.Votes = big.NewInt(0)
+		newNodes = append(newNodes, node)
+	}
+	registerDeputies(newNodes, am)
+	term := &deputynode.TermRecord{TermIndex: 0, Nodes: newNodes}
+	salarySlice := DivideSalary(common.Lemo2Mo("10004"), am, term)
+	for _, salary := range salarySlice {
+		// 均分10004LEMO,奖励最小值限制为1LEMO，所以均分后的奖励为2000LEMO
+		assert.Equal(t, salary.Salary, common.Lemo2Mo("2000"))
+	}
 }
 
 // 对区块进行签名的函数

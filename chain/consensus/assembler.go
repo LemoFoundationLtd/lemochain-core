@@ -253,7 +253,17 @@ func DivideSalary(totalSalary *big.Int, am *account.Manager, t *deputynode.TermR
 	for i, node := range t.Nodes {
 		salaries[i] = &deputynode.DeputySalary{
 			Address: getDeputyIncomeAddress(am, node),
-			Salary:  calculateSalary(totalSalary, node.Votes, totalVotes, params.MinRewardPrecision),
+			Salary: func() *big.Int {
+				if totalVotes.Cmp(big.NewInt(0)) == 0 {
+					// 由于创世块中初始化的deputyNode的votes都为0，导致在发放换届奖励的时候totalVotes为0，这个时候奖励平均分
+					r := new(big.Int).Div(totalSalary, big.NewInt(int64(len(t.Nodes))))
+					mod := new(big.Int).Mod(r, params.MinRewardPrecision)
+					r.Sub(r, mod)
+					return r
+				} else {
+					return calculateSalary(totalSalary, node.Votes, totalVotes, params.MinRewardPrecision)
+				}
+			}(),
 		}
 	}
 	return salaries
