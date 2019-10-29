@@ -12,15 +12,21 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"github.com/LemoFoundationLtd/lemochain-core/store/protocol"
 	"math/big"
+	"math/rand"
 	"os"
 	"time"
 )
 
 var (
 	// The first deputy's private is set to "selfNodeKey" which means my miner private
-	testDeputies = generateDeputies(17)
-	testBlocks   = generateBlocks()
+	testDeputies        = generateDeputies(17)
+	testBlocks          = generateBlocks()
+	testChainID  uint16 = 123
 )
+
+func init() {
+	log.Setup(log.LevelDebug, false, false)
+}
 
 func GetStorePath() string {
 	return "../../testdata/consensus"
@@ -35,6 +41,30 @@ func ClearData() {
 		err = os.RemoveAll(GetStorePath())
 		failCnt++
 	}
+}
+
+type deputyTestData struct {
+	types.DeputyNode
+	*ecdsa.PrivateKey
+}
+
+type deputyTestDatas []deputyTestData
+
+func (dta deputyTestDatas) ToDeputyNodes() types.DeputyNodes {
+	result := make(types.DeputyNodes, len(dta))
+	for i := range dta {
+		result[i] = &dta[i].DeputyNode
+	}
+	return result
+}
+
+func (dta deputyTestDatas) FindByMiner(miner common.Address) *deputyTestData {
+	for _, deputy := range dta {
+		if deputy.MinerAddress == miner {
+			return &deputy
+		}
+	}
+	return nil
 }
 
 type testBlockLoader struct {
@@ -142,16 +172,17 @@ func createCandidateLoader(nodeIndexList ...int) testCandidateLoader {
 }
 
 // GenerateDeputies generate random deputy nodes
-func generateDeputies(num int) types.DeputyNodes {
-	var result []*types.DeputyNode
+func generateDeputies(num int) deputyTestDatas {
+	var result deputyTestDatas
 	for i := 0; i < num; i++ {
 		private, _ := crypto.GenerateKey()
-		result = append(result, &types.DeputyNode{
+		node := types.DeputyNode{
 			MinerAddress: crypto.PubkeyToAddress(private.PublicKey),
 			NodeID:       crypto.PrivateKeyToNodeID(private),
 			Rank:         uint32(i),
 			Votes:        big.NewInt(int64(10000000000 - i)),
-		})
+		}
+		result = append(result, deputyTestData{DeputyNode: node, PrivateKey: private})
 		// let me to be the first deputy
 		if i == 0 {
 			deputynode.SetSelfNodeKey(private)
@@ -255,9 +286,17 @@ func (t *parentLoader) GetParentByHeight(height uint32, sonBlockHash common.Hash
 	return block
 }
 
+func MakeTxFast(fromPrivate *ecdsa.PrivateKey) *types.Transaction {
+	from := crypto.PubkeyToAddress(fromPrivate.PublicKey)
+	r := rand.New(rand.NewSource(1234))
+	expiration := uint64(time.Now().Unix() + 100 + r.Int63n(200))
+	tx := types.NewTransaction(from, from, common.Lemo2Mo("100"), 1000000, big.NewInt(100), []byte{}, params.OrdinaryTx, testChainID, expiration, "", string("aaa"))
+	return SignTx(tx, fromPrivate)
+}
+
 func MakeTx(fromPrivate *ecdsa.PrivateKey, to common.Address, amount *big.Int, expiration uint64) *types.Transaction {
 	from := crypto.PubkeyToAddress(fromPrivate.PublicKey)
-	tx := types.NewTransaction(from, to, amount, 1000000, big.NewInt(100), []byte{}, params.OrdinaryTx, 100, expiration, "", string("aaa"))
+	tx := types.NewTransaction(from, to, amount, 1000000, big.NewInt(100), []byte{}, params.OrdinaryTx, testChainID, expiration, "", string("aaa"))
 	return SignTx(tx, fromPrivate)
 }
 
@@ -270,10 +309,13 @@ func SignTx(tx *types.Transaction, private *ecdsa.PrivateKey) *types.Transaction
 }
 
 // initGenesis create and save a genesis block to db, then set some balance to the address
-func initGenesis(db *store.ChainDatabase, am *account.Manager, address common.Address) *types.Block {
-	genesisBlock := &types.Block{Header: &types.Header{}}
+func initGenesis(db *store.ChainDatabase, am *account.Manager, deputies types.DeputyNodes) *types.Block {
+	genesisBlock := &types.Block{
+		Header:      &types.Header{MinerAddress: deputies[0].MinerAddress},
+		DeputyNodes: deputies,
+	}
 	am.Reset(common.Hash{})
-	am.GetAccount(address).SetBalance(common.Lemo2Mo("10000"))
+	am.GetAccount(deputies[0].MinerAddress).SetBalance(common.Lemo2Mo("10000"))
 	err := am.Finalise()
 	if err != nil {
 		panic(err)
@@ -284,6 +326,10 @@ func initGenesis(db *store.ChainDatabase, am *account.Manager, address common.Ad
 	}
 	err = am.Save(genesisBlock.Hash())
 	if err != nil {
+		panic(err)
+	}
+	if _, err := db.SetStableBlock(genesisBlock.Hash()); err != nil {
+		log.Errorf("setup genesis block failed: %v", err)
 		panic(err)
 	}
 	return genesisBlock

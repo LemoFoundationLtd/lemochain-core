@@ -268,7 +268,7 @@ func newBlockForVerifyMineSlot(height uint32, minerAddress common.Address, time 
 // assembleBlockForVerifyMineSlot
 func assembleBlockForVerifyMineSlot(passTime, oneLoopTime uint32, parentMiner, currentMiner common.Address) (parentBlock *types.Block, currentBlock *types.Block) {
 	rand.Seed(time.Now().UnixNano())
-	parentTime := uint32(rand.Intn(500)) + 1
+	parentTime := uint32(time.Now().Unix()) + uint32(rand.Intn(500))
 	blockTime := parentTime + passTime + oneLoopTime*uint32(rand.Intn(5)) // blockTime为parentTime + 正确的相差时间 + 随机的轮数
 	parentBlock = newBlockForVerifyMineSlot(1, parentMiner, parentTime)
 	currentBlock = newBlockForVerifyMineSlot(2, currentMiner, blockTime)

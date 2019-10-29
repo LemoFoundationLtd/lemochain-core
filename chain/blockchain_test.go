@@ -5,16 +5,19 @@ import (
 	"errors"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/consensus"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/transaction"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/txpool"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-core/common/flag"
+	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/common/subscribe"
 	"github.com/LemoFoundationLtd/lemochain-core/network"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"github.com/stretchr/testify/assert"
+	"math/big"
 	"os"
 	"reflect"
 	"testing"
@@ -27,13 +30,13 @@ var (
 	confirmType              = reflect.TypeOf(&network.BlockConfirmData{})
 	testChainID       uint16 = 99
 	mineTimeout              = 10000
-	nodeKeys                 = []*ecdsa.PrivateKey{
-		parseKey("c21b6b2fbf230f665b936194d14da67187732bf9d28768aef1a3cbb26608f8aa"),
-		parseKey("9c3c4a327ce214f0a1bf9cfa756fbf74f1c7322399ffff925efd8c15c49953eb"),
-		parseKey("ba9b51e59ec57d66b30b9b868c76d6f4d386ce148d9c6c1520360d92ef0f27ae"),
-	}
-	nodeInfos = initTestDeputyNodesInfo(nodeKeys)
+	// The first deputy's private is set to "selfNodeKey" which means my miner private
+	testDeputies = generateDeputies(17)
 )
+
+func init() {
+	log.Setup(log.LevelDebug, false, false)
+}
 
 func GetStorePath() string {
 	return "../testdata/blockchain"
@@ -43,20 +46,80 @@ func ClearData() {
 	_ = os.RemoveAll(GetStorePath())
 }
 
+type deputyTestData struct {
+	types.DeputyNode
+	*ecdsa.PrivateKey
+}
+
+type deputyTestDatas []deputyTestData
+
+func (dta deputyTestDatas) ToDeputyNodes() types.DeputyNodes {
+	result := make(types.DeputyNodes, len(dta))
+	for i, info := range dta {
+		result[i] = &info.DeputyNode
+	}
+	return result
+}
+
+func (dta deputyTestDatas) ToDeputyNodesInfo() []*CandidateInfo {
+	result := make([]*CandidateInfo, len(dta))
+	for i, info := range dta {
+		result[i] = &CandidateInfo{
+			MinerAddress: info.MinerAddress,
+			NodeID:       info.NodeID,
+			Host:         "10.0.22.23",
+			Port:         "7001",
+			Introduction: "the first node",
+		}
+	}
+	return result
+}
+
+func (dta deputyTestDatas) FindByMiner(miner common.Address) *deputyTestData {
+	for _, deputy := range dta {
+		if deputy.MinerAddress == miner {
+			return &deputy
+		}
+	}
+	return nil
+}
+
+// GenerateDeputies generate random deputy nodes
+func generateDeputies(num int) deputyTestDatas {
+	var result deputyTestDatas
+	for i := 0; i < num; i++ {
+		private, _ := crypto.GenerateKey()
+		node := types.DeputyNode{
+			MinerAddress: crypto.PubkeyToAddress(private.PublicKey),
+			NodeID:       crypto.PrivateKeyToNodeID(private),
+			Rank:         uint32(i),
+			Votes:        big.NewInt(int64(10000000000 - i)),
+		}
+		result = append(result, deputyTestData{DeputyNode: node, PrivateKey: private})
+		// let me to be the first deputy
+		if i == 0 {
+			deputynode.SetSelfNodeKey(private)
+		}
+	}
+	return result
+}
+
 func newTestBlockChain(attendedDeputyCount int) *BlockChain {
 	ClearData()
 	db := store.NewChainDataBase(GetStorePath())
 
-	// init nodeKey
-	deputynode.SetSelfNodeKey(nodeKeys[0])
-
-	if attendedDeputyCount > len(nodeKeys) {
-		panic("no so many nodeKeys")
+	if attendedDeputyCount > len(testDeputies) {
+		panic("no so many deputies")
 	}
 
 	// init genesis block
-	genesis := DefaultGenesisConfig()
-	genesis.DeputyNodesInfo = nodeInfos[:attendedDeputyCount]
+	genesis := &Genesis{
+		Time:            uint32(time.Now().Unix()),
+		ExtraData:       []byte(""),
+		GasLimit:        params.GenesisGasLimit,
+		Founder:         testDeputies[0].MinerAddress,
+		DeputyNodesInfo: testDeputies.ToDeputyNodesInfo()[:attendedDeputyCount],
+	}
 	SetupGenesisBlock(db, genesis)
 
 	// max deputy count is 5
@@ -85,18 +148,6 @@ type resultWithErr struct {
 	err  error
 }
 
-func parseKey(key string) *ecdsa.PrivateKey {
-	private, err := crypto.HexToECDSA(key)
-	if err != nil {
-		panic(err)
-	}
-	return private
-}
-
-func getTestNodeID(deputyIndex int) []byte {
-	return crypto.PrivateKeyToNodeID(nodeKeys[deputyIndex])
-}
-
 func createTestTx() *types.Transaction {
 	testPrivate, _ := crypto.HexToECDSA("432a86ab8765d82415a803e29864dcfc1ed93dac949abf6f95a583179f27e4bb")
 	testAddr := crypto.PubkeyToAddress(testPrivate.PublicKey) // 0x0107134b9cdd7d89f83efa6175f9b3552f29094c
@@ -117,28 +168,25 @@ func newTestBlock(bc *BlockChain) *types.Block {
 	if err != nil {
 		panic(err)
 	}
+
+	// if it is not in our turn to mine now, then replace the sig
+	miner, err := consensus.GetCorrectMiner(parent.Header, int64(header.Time)*1000, int64(mineTimeout), bc.dm)
+	if err != nil {
+		panic(err)
+	}
+	deputy := testDeputies.FindByMiner(miner)
+	if deputy == nil {
+		panic("can't find a proper miner")
+	}
+	header.MinerAddress = miner
+	deputynode.SetSelfNodeKey(deputy.PrivateKey)
+
 	// testTx := createTestTx()
 	block, _, err := assembler.MineBlock(header, nil, 1000)
 	if err != nil {
 		panic(err)
 	}
-
-	// maybe it is not in our turn to mine now, so try to find the correct miner
-	miner, err := consensus.GetCorrectMiner(parent.Header, int64(header.Time)*1000, int64(mineTimeout), bc.dm)
-	if err != nil {
-		panic(err)
-	}
-
-	// find deputy index
-	for i, deputy := range nodeInfos {
-		if deputy.MinerAddress == miner {
-			block.Header.MinerAddress = miner
-			hash := block.Hash()
-			block.Header.SignData, err = crypto.Sign(hash[:], nodeKeys[i])
-			return block
-		}
-	}
-	panic("can't find a proper miner")
+	return block
 }
 
 func TestNewBlockChain(t *testing.T) {
@@ -255,7 +303,15 @@ func TestBlockChain_InsertBlock(t *testing.T) {
 
 	// insert and become stable
 	newBlock := newTestBlock(bc)
+	time.Sleep(1 * time.Second)
 	newBlockFork := newTestBlock(bc)
+	assert.NotEqual(t, newBlock.SignData(), newBlockFork.SignData())
+	// let me be the other miner
+	myPrivate := testDeputies[0].PrivateKey
+	if testDeputies[0].MinerAddress == newBlock.MinerAddress() {
+		myPrivate = testDeputies[1].PrivateKey
+	}
+	deputynode.SetSelfNodeKey(myPrivate)
 	mineEvent := subscribeEvent(subscribe.NewMinedBlock, blockType)
 	currentEvent := subscribeEvent(subscribe.NewCurrentBlock, blockType)
 	stableEvent := subscribeEvent(subscribe.NewStableBlock, blockType)
@@ -283,7 +339,7 @@ func TestBlockChain_InsertBlock(t *testing.T) {
 	confirmEvent = subscribeEvent(subscribe.NewConfirm, confirmType)
 	go func() {
 		err := bc.InsertBlock(newBlockFork)
-		assert.Equal(t, consensus.ErrExistBlock, err)
+		assert.Equal(t, consensus.ErrIgnoreBlock, err)
 	}()
 
 	assert.Equal(t, ErrChannelTimeout, (<-mineEvent).err)
