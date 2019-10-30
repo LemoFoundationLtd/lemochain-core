@@ -396,24 +396,35 @@ func TestModifyProfile(t *testing.T) {
 	// 设置candidate
 	oldProfile := make(types.Profile)
 	for i := 0; i < 3; i++ {
-		key := "lemo" + strconv.Itoa(i)
+		key := "lemo1" + strconv.Itoa(i)
 		oldProfile[key] = "5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0" + strconv.Itoa(i)
 	}
 	candidateAcc.SetCandidate(oldProfile)
 	addProfile := make(types.Profile)
 	for i := 3; i < 5; i++ {
-		key := "lemo" + strconv.Itoa(i)
+		key := "lemo1" + strconv.Itoa(i)
 		addProfile[key] = "5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0" + strconv.Itoa(i)
 	}
-	// 正常情况下
+	// 1. 修改之后的profile大小小于最大限制
 	err := c.modifyCandidateInfo(big.NewInt(0), candidateAddr, addProfile)
 	assert.NoError(t, err)
 	// 修改之后的profile
 	newProfile := candidateAcc.GetCandidate()
 	assert.Equal(t, 5, len(newProfile))
-	// 修改之后的profile大小大于最大限制
+	// 2. 修改之后的profile大小等于最大限制
+	otherProfile := make(types.Profile)
+	for i := 5; i < 11; i++ {
+		key := "lemochain" + strconv.Itoa(i)
+		otherProfile[key] = "1003600755f9b512ab65603b38e5c98cbac70259c3235c9b3f42e9a898e563b48" + strconv.Itoa(i)
+	}
+	err = c.modifyCandidateInfo(big.NewInt(0), candidateAddr, otherProfile)
+	assert.NoError(t, err)
+	newProfile = candidateAcc.GetCandidate()
+	bb, _ := json.Marshal(newProfile)
+	assert.Equal(t, MaxMarshalCandidateProfileLength, len(bb))
+	// 3. 修改之后的profile大小大于最大限制
 	maxProfile := make(types.Profile)
-	for i := 5; i < 10; i++ {
+	for i := 11; i < 15; i++ {
 		key := "lemo" + strconv.Itoa(i)
 		maxProfile[key] = "5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0" + strconv.Itoa(i)
 	}
