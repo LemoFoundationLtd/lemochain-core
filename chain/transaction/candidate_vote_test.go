@@ -1,12 +1,14 @@
 package transaction
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
+	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"github.com/stretchr/testify/assert"
 	"math/big"
@@ -393,41 +395,42 @@ func TestModifyProfile(t *testing.T) {
 	c := NewCandidateVoteEnv(am, dm)
 	candidateAddr := common.HexToAddress("0x112")
 	candidateAcc := c.am.GetAccount(candidateAddr)
+
 	// 设置candidate
-	oldProfile := make(types.Profile)
-	for i := 0; i < 3; i++ {
-		key := "lemo1" + strconv.Itoa(i)
-		oldProfile[key] = "5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0" + strconv.Itoa(i)
-	}
+	oldProfile := makeTestProfile(3)
 	candidateAcc.SetCandidate(oldProfile)
-	addProfile := make(types.Profile)
-	for i := 3; i < 5; i++ {
-		key := "lemo1" + strconv.Itoa(i)
-		addProfile[key] = "5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0" + strconv.Itoa(i)
-	}
+
 	// 1. 修改之后的profile大小小于最大限制
+	addProfile := makeTestProfile(2)
 	err := c.modifyCandidateInfo(big.NewInt(0), candidateAddr, addProfile)
 	assert.NoError(t, err)
 	// 修改之后的profile
 	newProfile := candidateAcc.GetCandidate()
 	assert.Equal(t, 5, len(newProfile))
+
 	// 2. 修改之后的profile大小等于最大限制
-	otherProfile := make(types.Profile)
-	for i := 5; i < 11; i++ {
-		key := "lemochain" + strconv.Itoa(i)
-		otherProfile[key] = "1003600755f9b512ab65603b38e5c98cbac70259c3235c9b3f42e9a898e563b48" + strconv.Itoa(i)
-	}
+	otherProfile := makeTestProfile(5)
+	otherProfile["aa"] = "bbbbbbbbbbb" // 调节profile长度所用
 	err = c.modifyCandidateInfo(big.NewInt(0), candidateAddr, otherProfile)
 	assert.NoError(t, err)
 	newProfile = candidateAcc.GetCandidate()
 	bb, _ := json.Marshal(newProfile)
 	assert.Equal(t, MaxMarshalCandidateProfileLength, len(bb))
 	// 3. 修改之后的profile大小大于最大限制
-	maxProfile := make(types.Profile)
-	for i := 11; i < 15; i++ {
-		key := "lemo" + strconv.Itoa(i)
-		maxProfile[key] = "5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0" + strconv.Itoa(i)
-	}
+	maxProfile := makeTestProfile(5)
 	err = c.modifyCandidateInfo(big.NewInt(0), candidateAddr, maxProfile)
 	assert.Equal(t, ErrMarshalProfileLength, err)
+}
+
+func makeTestProfile(num int) types.Profile {
+	newProfile := make(types.Profile)
+	for i := 0; i < num; i++ {
+		// rand.Seed(time.Now().UnixNano())
+		n, _ := rand.Int(rand.Reader, big.NewInt(10000))
+		r := new(big.Int).Sub(big.NewInt(20000), n)
+		key := "lemochain11" + r.String()
+		log.Warn(key)
+		newProfile[key] = "0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5dbb"
+	}
+	return newProfile
 }
