@@ -53,47 +53,31 @@ func needMerge(logType types.ChangeLogType) bool {
 // merge traverses change logs and merges change log into the same type one which in front of it
 func merge(logs types.ChangeLogSlice) types.ChangeLogSlice {
 	// 缓存数组中的需要merge的数据和changeLog的extra与数组下标
-	indexMap := make(map[types.ChangeLogType]map[interface{}]int)
-	defaultKey := struct{}{}
+	typeMap := make(map[types.ChangeLogType]map[interface{}]int)
 	// 缓存merge后的changelog
 	result := make(types.ChangeLogSlice, 0)
 	for _, log := range logs {
 		// 判断是否需要merge,如果不需要merge则直接保存到结果数组中
-		if needMerge(log.LogType) {
-			// 通过map查找数组中是否已经存放了此类log
-			if m, ok := indexMap[log.LogType]; ok {
-				// 通过判断changeLog中是否有extra来获取index
-				var index int
-				if log.Extra == nil {
-					index = m[defaultKey]
-				} else {
-					if i, ok := m[log.Extra]; ok {
-						index = i
-					} else {
-						// 表示在本类型的changeLog下出现了新的extra，不能被merge，直接保存到数组里
-						result = append(result, log.Copy())
-						m[log.Extra] = len(result) - 1
-						indexMap[log.LogType] = m
-						continue
-					}
-				}
-				result[index].NewVal = log.NewVal
-			} else {
-				// 不存在则表示第一次出现,push到数组并建立索引
-				result = append(result, log.Copy())
-				// 缓存数组index索引
-				mmap := make(map[interface{}]int)
-				// 如果changeLog存在extra,则使用extra来作为key
-				if log.Extra != nil {
-					mmap[log.Extra] = len(result) - 1
-				} else {
-					mmap[defaultKey] = len(result) - 1
-				}
-				indexMap[log.LogType] = mmap
-			}
-		} else {
+		if !needMerge(log.LogType) {
 			// 不需要merge的changelog就直接按照顺序push到数组中
 			result = append(result, log.Copy())
+			continue
+		}
+
+		// 根据type获取extra到index的映射表
+		extraMap, ok := typeMap[log.LogType]
+		if !ok {
+			extraMap = make(map[interface{}]int)
+			typeMap[log.LogType] = extraMap
+		}
+
+		// 取出上次出现该extra的index。map支持用nil做key
+		if lastLogIndex, ok := extraMap[log.Extra]; ok {
+			result[lastLogIndex].NewVal = log.NewVal
+		} else {
+			// 表示在本类型的changeLog下出现了新的extra，不能被merge，直接保存到数组里
+			result = append(result, log.Copy())
+			extraMap[log.Extra] = len(result) - 1
 		}
 	}
 	return result
