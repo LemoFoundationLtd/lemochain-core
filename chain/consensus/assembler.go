@@ -253,17 +253,21 @@ func DivideSalary(totalSalary *big.Int, am *account.Manager, t *deputynode.TermR
 	for i, node := range t.Nodes {
 		salaries[i] = &deputynode.DeputySalary{
 			Address: getDeputyIncomeAddress(am, node),
-			Salary:  calculateSalary(totalSalary, node.Votes, totalVotes, params.MinRewardPrecision),
+			Salary:  calculateSalary(totalSalary, node.Votes, totalVotes, params.MinRewardPrecision, len(t.Nodes)),
 		}
 	}
 	return salaries
 }
 
-func calculateSalary(totalSalary, deputyVotes, totalVotes, precision *big.Int) *big.Int {
+func calculateSalary(totalSalary, deputyVotes, totalVotes, precision *big.Int, nodesNum int) *big.Int {
 	r := new(big.Int)
-	// totalSalary * deputyVotes / totalVotes
-	r.Mul(totalSalary, deputyVotes)
-	r.Div(r, totalVotes)
+	if totalVotes.Cmp(big.NewInt(0)) == 0 {
+		r.Div(totalSalary, big.NewInt(int64(nodesNum)))
+	} else {
+		// totalSalary * deputyVotes / totalVotes
+		r.Mul(totalSalary, deputyVotes)
+		r.Div(r, totalVotes)
+	}
 	// r - ( r % precision )
 	mod := new(big.Int).Mod(r, precision)
 	r.Sub(r, mod)

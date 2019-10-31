@@ -379,34 +379,38 @@ func TestRefundCandidateDeposit(t *testing.T) {
 
 func TestCalculateSalary(t *testing.T) {
 	tests := []struct {
-		Expect, TotalSalary, DeputyVotes, TotalVotes, Precision int64
+		Expect, TotalSalary, DeputyVotes, TotalVotes, Precision, deputyNodesNum int64
 	}{
 		// total votes=100
-		{0, 100, 0, 100, 1},
-		{1, 100, 1, 100, 1},
-		{2, 100, 2, 100, 1},
-		{100, 100, 100, 100, 1},
+		{0, 100, 0, 100, 1, 5},
+		{1, 100, 1, 100, 1, 5},
+		{2, 100, 2, 100, 1, 5},
+		{100, 100, 100, 100, 1, 5},
 		// total votes=100, precision=10
-		{0, 100, 1, 100, 10},
-		{10, 100, 10, 100, 10},
-		{10, 100, 11, 100, 10},
+		{0, 100, 1, 100, 10, 5},
+		{10, 100, 10, 100, 10, 5},
+		{10, 100, 11, 100, 10, 5},
 		// total votes=1000
-		{0, 100, 1, 1000, 1},
-		{0, 100, 9, 1000, 1},
-		{1, 100, 10, 1000, 1},
-		{1, 100, 11, 1000, 1},
-		{100, 100, 1000, 1000, 1},
+		{0, 100, 1, 1000, 1, 5},
+		{0, 100, 9, 1000, 1, 5},
+		{1, 100, 10, 1000, 1, 5},
+		{1, 100, 11, 1000, 1, 5},
+		{100, 100, 1000, 1000, 1, 5},
 		// total votes=1000, precision=10
-		{10, 100, 100, 1000, 10},
-		{10, 100, 120, 1000, 10},
-		{20, 100, 280, 1000, 10},
+		{10, 100, 100, 1000, 10, 5},
+		{10, 100, 120, 1000, 10, 5},
+		{20, 100, 280, 1000, 10, 5},
 		// total votes=10
-		{0, 100, 0, 10, 1},
-		{10, 100, 1, 10, 1},
-		{100, 100, 10, 10, 1},
+		{0, 100, 0, 10, 1, 5},
+		{10, 100, 1, 10, 1, 5},
+		{100, 100, 10, 10, 1, 5},
 		// total votes=10, precision=10
-		{10, 100, 1, 10, 10},
-		{100, 100, 10, 10, 10},
+		{10, 100, 1, 10, 10, 5},
+		{100, 100, 10, 10, 10, 5},
+		// total votes = 0
+		{100, 100, 0, 0, 1, 1},
+		{50, 100, 0, 0, 1, 2},
+		{33, 100, 0, 0, 1, 3},
 	}
 	for _, test := range tests {
 		expect := big.NewInt(test.Expect)
@@ -414,7 +418,8 @@ func TestCalculateSalary(t *testing.T) {
 		deputyVotes := big.NewInt(test.DeputyVotes)
 		totalVotes := big.NewInt(test.TotalVotes)
 		precision := big.NewInt(test.Precision)
-		assert.Equalf(t, 0, calculateSalary(totalSalary, deputyVotes, totalVotes, precision).Cmp(expect), "calculateSalary(%v, %v, %v, %v)", totalSalary, deputyVotes, totalVotes, precision)
+		nodesNum := int(test.deputyNodesNum)
+		assert.Equalf(t, 0, calculateSalary(totalSalary, deputyVotes, totalVotes, precision, nodesNum).Cmp(expect), "calculateSalary(%v, %v, %v, %v)", totalSalary, deputyVotes, totalVotes, precision)
 	}
 }
 
@@ -482,7 +487,7 @@ func TestDivideSalary(t *testing.T) {
 		}
 		// 比较每个deputy node salary
 		for k := 0; k < len(nodes); k++ {
-			if salaries[k].Salary.Cmp(calculateSalary(totalSalary, nodes[k].Votes, totalVotes, params.MinRewardPrecision)) != 0 {
+			if salaries[k].Salary.Cmp(calculateSalary(totalSalary, nodes[k].Votes, totalVotes, params.MinRewardPrecision, len(nodes))) != 0 {
 				panic("deputy node salary no equal")
 			}
 		}
@@ -492,6 +497,19 @@ func TestDivideSalary(t *testing.T) {
 		errRange := new(big.Int).Mul(big.NewInt(int64(nodeCount)), params.MinRewardPrecision)
 		assert.Equal(t, true, actualTotal.Cmp(new(big.Int).Sub(totalSalary, errRange)) >= 0)
 		assert.Equal(t, true, actualTotal.Cmp(totalSalary) <= 0)
+	}
+	// 测试所有的votes都为0的情况
+	nodes := generateDeputies(5).ToDeputyNodes()
+	// 设置nodes的votes为0
+	for _, node := range nodes {
+		node.Votes = big.NewInt(0)
+	}
+	registerDeputies(nodes, am)
+	term := &deputynode.TermRecord{TermIndex: 0, Nodes: nodes}
+	salarySlice := DivideSalary(common.Lemo2Mo("10004"), am, term)
+	for _, salary := range salarySlice {
+		// 均分10004LEMO,奖励最小值限制为1LEMO，所以均分后的奖励为2000LEMO
+		assert.Equal(t, salary.Salary, common.Lemo2Mo("2000"))
 	}
 }
 
