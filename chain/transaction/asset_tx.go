@@ -10,7 +10,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"math/big"
 	"sort"
-	"strings"
 )
 
 var (
@@ -306,8 +305,8 @@ func (r *RunAssetEnv) ModifyAssetProfileTx(sender common.Address, data []byte) e
 
 	var snapshot = r.am.Snapshot()
 	infoSlice := make([]string, 0, len(info))
-	for k, _ := range info {
-		infoSlice = append(infoSlice, strings.ToLower(k))
+	for k := range info {
+		infoSlice = append(infoSlice, k)
 	}
 	sort.Strings(infoSlice)
 	for i := 0; i < len(infoSlice); i++ {

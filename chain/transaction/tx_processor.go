@@ -19,13 +19,14 @@ import (
 )
 
 const (
-	defaultGasPrice       = 1e9
-	NodeIDFieldLength     = 130
-	MaxProfileFieldLength = 128
-	MaxIntroductionLength = 1024
-	StandardNodeIdLength  = 64
-	SignerWeightThreshold = 100
-	MaxSignersNumber      = 100
+	defaultGasPrice                  = 1e9
+	NodeIDFieldLength                = 130
+	MaxProfileFieldLength            = 128
+	MaxIntroductionLength            = 1024
+	MaxMarshalCandidateProfileLength = 1200 // candidate 中profile marshal之后得到的byte数组的最大长度
+	StandardNodeIdLength             = 64
+	SignerWeightThreshold            = 100
+	MaxSignersNumber                 = 100
 )
 
 var (
