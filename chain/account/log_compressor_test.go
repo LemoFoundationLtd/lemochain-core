@@ -5,10 +5,10 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/stretchr/testify/assert"
 	"testing"
-	"time"
 )
 
-func Test_merge(t *testing.T) {
+// Test_merge_noExtra 不存在extra的merge测试
+func Test_merge_noExtra(t *testing.T) {
 	/**
 	测试思路：
 	1. 前面按照顺序10个一组构造了5组可以merge的changeLog，
@@ -30,7 +30,7 @@ func Test_merge(t *testing.T) {
 	// 创建一组需要merge的changelog
 	for i := 0; i < 5; i++ {
 		for i, typ := range needMergeType {
-			log := newChangeLog(common.HexToAddress("0x112"), typ, time.Now().String(), i)
+			log := newChangeLog(common.HexToAddress("0x112"), typ, nil, i)
 			logs = append(logs, log)
 		}
 	}
@@ -39,7 +39,7 @@ func Test_merge(t *testing.T) {
 	// 追加一组不需要merge的changelog
 	for j := 0; j < 2; j++ {
 		for i, typ := range needlessMergeType {
-			log := newChangeLog(common.HexToAddress("0x112"), typ, time.Now().String(), i)
+			log := newChangeLog(common.HexToAddress("0x112"), typ, nil, i)
 			logs = append(logs, log)
 		}
 	}
@@ -61,6 +61,50 @@ func Test_merge(t *testing.T) {
 	for k := len(needMergeType) + len(needlessMergeType); k < len(newLogs); k++ { // 第二轮
 		assert.Equal(t, needlessMergeType[k-len(needlessMergeType)-len(needMergeType)], newLogs[k].LogType)
 	}
+}
+
+// Test_merge_extra 存在extra的merge测试
+func Test_merge_extra(t *testing.T) {
+	logs := make(types.ChangeLogSlice, 0)
+	// 创建一组能merge但是存在extra的changeLog
+	// 需要merge类型
+	needMergeType := make([]types.ChangeLogType, 0)
+	for typ := types.ChangeLogType(1); typ < LOG_TYPE_STOP; typ++ {
+		if needMerge(typ) {
+			needMergeType = append(needMergeType, typ)
+		}
+	}
+
+	// changeLog类型相同extra相同会merge
+	log01 := newChangeLog(common.HexToAddress("0x111"), needMergeType[0], common.HexToHash("0x222"), 111)
+	log02 := newChangeLog(common.HexToAddress("0x111"), needMergeType[0], common.HexToHash("0x222"), 222)
+
+	// changeLog类型相同但是extra不相同则不会被merge
+	log03 := newChangeLog(common.HexToAddress("0x111"), needMergeType[0], common.HexToHash("0x333"), 333)
+
+	// changeLog类型不同extra相同不会被merge
+	log04 := newChangeLog(common.HexToAddress("0x111"), needMergeType[1], common.HexToHash("0x333"), 444)
+
+	// changeLog类型和extra都不相同不会被merge
+	log05 := newChangeLog(common.HexToAddress("0x111"), needMergeType[2], common.HexToHash("0x555"), 555)
+
+	logs = append(logs, log01, log02, log03, log04, log05)
+	newLogs := merge(logs)
+
+	// merge之后的第一条和log02相等，第二条和log03相等,第三条为log04
+	assert.Equal(t, 4, len(newLogs))
+	assert.Equal(t, newLogs[0].Extra, common.HexToHash("0x222"))
+	assert.Equal(t, newLogs[0].NewVal, 222)
+
+	assert.Equal(t, newLogs[1].Extra, common.HexToHash("0x333"))
+	assert.Equal(t, newLogs[1].NewVal, 333)
+
+	assert.Equal(t, newLogs[2].Extra, common.HexToHash("0x333"))
+	assert.Equal(t, newLogs[2].NewVal, 444)
+
+	assert.Equal(t, newLogs[3].Extra, common.HexToHash("0x555"))
+	assert.Equal(t, newLogs[3].NewVal, 555)
+
 }
 
 func newChangeLog(address common.Address, logType types.ChangeLogType, extra, newVal interface{}) *types.ChangeLog {

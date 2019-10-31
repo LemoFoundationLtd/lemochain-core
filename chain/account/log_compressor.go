@@ -38,7 +38,6 @@ func needMerge(logType types.ChangeLogType) bool {
 		(logType == VoteForLog) ||
 		(logType == VotesLog) || // must merge because the candidate ranking logic find changed candidates by logs
 		(logType == StorageRootLog) ||
-		(logType == AssetCodeLog) ||
 		(logType == AssetCodeRootLog) ||
 		(logType == AssetCodeTotalSupplyLog) ||
 		(logType == AssetIdRootLog) ||
@@ -46,34 +45,39 @@ func needMerge(logType types.ChangeLogType) bool {
 		(logType == EquityRootLog) {
 		return true
 	} else {
-		// CandidateLog, CandidateStateLog are associated with same data in account. If they are merged, the sequence will be changed and the result will be different
+		// AssetCodeLog, CandidateLog, CandidateStateLog are associated with same data in account. If they are merged, the sequence will be changed and the result will be different
 		return false
 	}
 }
 
 // merge traverses change logs and merges change log into the same type one which in front of it
 func merge(logs types.ChangeLogSlice) types.ChangeLogSlice {
-	// 缓存数组中的需要merge的数据和下标的索引
-	indexMap := make(map[types.ChangeLogType]int)
+	// 缓存数组中的需要merge的数据和changeLog的extra与数组下标
+	typeMap := make(map[types.ChangeLogType]map[interface{}]int)
 	// 缓存merge后的changelog
 	result := make(types.ChangeLogSlice, 0)
 	for _, log := range logs {
 		// 判断是否需要merge,如果不需要merge则直接保存到结果数组中
-		if needMerge(log.LogType) {
-			// 通过map查找数组中是否已经存放了此类log
-			if i, ok := indexMap[log.LogType]; ok {
-				// 存在则进行merge
-				result[i].NewVal = log.NewVal
-				result[i].Extra = log.Extra
-			} else {
-				// 不存在则表示第一次出现,push到数组并建立索引
-				result = append(result, log.Copy())
-				// 缓存数组index索引
-				indexMap[log.LogType] = len(result) - 1
-			}
-		} else {
+		if !needMerge(log.LogType) {
 			// 不需要merge的changelog就直接按照顺序push到数组中
 			result = append(result, log.Copy())
+			continue
+		}
+
+		// 根据type获取extra到index的映射表
+		extraMap, ok := typeMap[log.LogType]
+		if !ok {
+			extraMap = make(map[interface{}]int)
+			typeMap[log.LogType] = extraMap
+		}
+
+		// 取出上次出现该extra的index。map支持用nil做key
+		if lastLogIndex, ok := extraMap[log.Extra]; ok {
+			result[lastLogIndex].NewVal = log.NewVal
+		} else {
+			// 表示在本类型的changeLog下出现了新的extra，不能被merge，直接保存到数组里
+			result = append(result, log.Copy())
+			extraMap[log.Extra] = len(result) - 1
 		}
 	}
 	return result
