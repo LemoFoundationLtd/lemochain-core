@@ -17,7 +17,7 @@ const (
 	NonFungibleAsset      = uint32(2)  // erc721
 	CommonAsset           = uint32(3)  // erc20+721
 	MaxAssetDecimal       = uint32(18) // 资产小数位最大值
-	MaxMarshalAssetLength = 680
+	MaxMarshalAssetLength = 680        // asset序列化之后的最大长度线坠
 	MaxMetaDataLength     = 256
 )
 

@@ -61,6 +61,9 @@ type Packet struct {
 
 // TimeProof 同步时间并进行修改系统时间
 func TimeProof() error {
+	if runtime.GOOS == "windows" {
+		return nil
+	}
 	log.Info("Start system time proof.")
 	measurements := 12 // 获取ntp服务器上的时间的次数
 	diffs := make([]time.Duration, 0, measurements)
