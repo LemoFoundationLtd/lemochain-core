@@ -414,7 +414,7 @@ func TestCalculateSalary(t *testing.T) {
 		deputyVotes := big.NewInt(test.DeputyVotes)
 		totalVotes := big.NewInt(test.TotalVotes)
 		precision := big.NewInt(test.Precision)
-		assert.Equalf(t, 0, calculateSalary(totalSalary, deputyVotes, totalVotes, precision).Cmp(expect), "calculateSalary(%v, %v, %v, %v)", totalSalary, deputyVotes, totalVotes, precision)
+		assert.Equalf(t, 0, calculateSalary(totalSalary, deputyVotes, totalVotes, precision, len(tests)).Cmp(expect), "calculateSalary(%v, %v, %v, %v)", totalSalary, deputyVotes, totalVotes, precision)
 	}
 }
 
@@ -482,7 +482,7 @@ func TestDivideSalary(t *testing.T) {
 		}
 		// 比较每个deputy node salary
 		for k := 0; k < len(nodes); k++ {
-			if salaries[k].Salary.Cmp(calculateSalary(totalSalary, nodes[k].Votes, totalVotes, params.MinRewardPrecision)) != 0 {
+			if salaries[k].Salary.Cmp(calculateSalary(totalSalary, nodes[k].Votes, totalVotes, params.MinRewardPrecision, len(nodes))) != 0 {
 				panic("deputy node salary no equal")
 			}
 		}
