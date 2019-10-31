@@ -297,7 +297,7 @@ func (evm *EVM) TransferAssetTx(caller ContractRef, addr common.Address, gas uin
 	}
 
 	// reduce sender's asset
-	// 这里重新在account中获取一次sender的equity信息是为了防止from和to相等的情况
+	// 这里重新在account中获取一次sender的equity信息,解决from == to的时候前面to变化了和这里的from变化产生冲突的问题。
 	newSenderEquity, err := senderAcc.GetEquityState(assetId)
 	if err != nil {
 		return nil, gas, err, nil
