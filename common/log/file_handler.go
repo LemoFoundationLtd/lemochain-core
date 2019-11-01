@@ -71,7 +71,7 @@ func fileHandler(logFilePath string, fmtr log15.Format) (log15.Handler, error) {
 func listenAndRotateLog(logFilePath string, f *os.File) *os.File {
 	// 判断log文件是否需要滚动
 	if info, err := f.Stat(); err == nil {
-		if info.Size() >= 1024 {
+		if info.Size() >= RotateLogSize {
 			f.Close()
 			rotateLogFile(filepath.Dir(logFilePath)) // 滚动日志
 			// 重新打开log文件句柄
