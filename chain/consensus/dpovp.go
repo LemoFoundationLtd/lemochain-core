@@ -366,7 +366,7 @@ func (dp *DPoVP) InsertConfirm(info *network.BlockConfirmData) error {
 	dp.chainLock.Lock()
 	defer dp.chainLock.Unlock()
 	oldCurrent := dp.CurrentBlock()
-	log.Debug("👍 Start insert confirm", "height", info.Height, "hash", info.Hash)
+	log.Debug("👍 Start insert confirm", "height", info.Height, "hash", info.Hash[:3])
 
 	newBlock, err := dp.insertConfirms(info.Height, info.Hash, []types.SignData{info.SignInfo})
 	if err != nil {
