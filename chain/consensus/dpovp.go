@@ -51,7 +51,8 @@ type DPoVP struct {
 
 const delayFetchConfirmsTime = time.Second * 30
 
-func NewDPoVP(config Config, db protocol.ChainDB, dm *deputynode.Manager, am *account.Manager, loader transaction.ParentBlockLoader, txPool TxPool, stable *types.Block) *DPoVP {
+func NewDPoVP(config Config, db protocol.ChainDB, dm *deputynode.Manager, am *account.Manager, loader transaction.ParentBlockLoader, txPool TxPool) *DPoVP {
+	stable, _ := db.LoadLatestBlock()
 	dpovp := &DPoVP{
 		db:            db,
 		dm:            dm,
@@ -60,7 +61,7 @@ func NewDPoVP(config Config, db protocol.ChainDB, dm *deputynode.Manager, am *ac
 		stableManager: NewStableManager(dm, db),
 		forkManager:   NewForkManager(dm, db, stable),
 		processor:     transaction.NewTxProcessor(config.RewardManager, config.ChainID, loader, am, db, dm),
-		confirmer:     NewConfirmer(dm, db, db, stable),
+		confirmer:     NewConfirmer(dm, db, db, db),
 		minerExtra:    config.MinerExtra,
 		logForks:      config.LogForks,
 	}
@@ -301,7 +302,7 @@ func (dp *DPoVP) UpdateStable(block *types.Block) error {
 		go dp.fetchConfirmsFromRemote(oldStable.Height()+1, dp.StableBlock().Height())
 	}
 
-	return err
+	return nil
 }
 
 func (dp *DPoVP) logCurrentChange(oldCurrent *types.Block) {

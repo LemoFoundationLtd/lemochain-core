@@ -36,13 +36,21 @@ func newTestDPoVP(attendedDeputyCount int) (*DPoVP, deputyTestDatas) {
 	// max deputy count is 5
 	dm := deputynode.NewManager(5, db)
 
-	dp := NewDPoVP(testDpovpCfg, db, dm, am, &parentLoader{db}, txpool.NewTxPool(), stable)
+	dp := NewDPoVP(testDpovpCfg, db, dm, am, &parentLoader{db}, txpool.NewTxPool())
 	return dp, deputyInfos
 }
 
 func TestNewDPoVP(t *testing.T) {
-	stable := &types.Block{Header: &types.Header{Height: 123}}
-	dp := NewDPoVP(testDpovpCfg, nil, nil, nil, nil, nil, stable)
+	ClearData()
+	db := store.NewChainDataBase(GetStorePath())
+	defer db.Close()
+	stable := &types.Block{Header: &types.Header{Height: 0, Time: 123}}
+	err := db.SetBlock(stable.Hash(), stable)
+	assert.NoError(t, err)
+	_, err = db.SetStableBlock(stable.Hash())
+	assert.NoError(t, err)
+
+	dp := NewDPoVP(testDpovpCfg, db, nil, nil, nil, nil)
 	assert.Equal(t, testDpovpCfg.ChainID, dp.processor.ChainID)
 	assert.Equal(t, testDpovpCfg.MinerExtra, dp.minerExtra)
 	assert.Equal(t, testDpovpCfg.LogForks, dp.logForks)
