@@ -16,6 +16,7 @@ type confirmWriter interface {
 // Confirmer process the confirm logic
 type Confirmer struct {
 	blockLoader  BlockLoader
+	stableLoader StableBlockStore
 	confirmStore confirmWriter
 	dm           *deputynode.Manager
 	lastSig      blockSignRecord
@@ -26,12 +27,14 @@ type blockSignRecord struct {
 	Hash   common.Hash
 }
 
-func NewConfirmer(dm *deputynode.Manager, blockLoader BlockLoader, confirmStore confirmWriter, stable *types.Block) *Confirmer {
+func NewConfirmer(dm *deputynode.Manager, blockLoader BlockLoader, confirmStore confirmWriter, stableLoader StableBlockStore) *Confirmer {
 	confirmer := &Confirmer{
 		blockLoader:  blockLoader,
+		stableLoader: stableLoader,
 		confirmStore: confirmStore,
 		dm:           dm,
 	}
+	stable, _ := stableLoader.LoadLatestBlock()
 	confirmer.lastSig.Height = stable.Height()
 	confirmer.lastSig.Hash = stable.Hash()
 	return confirmer
@@ -66,20 +69,29 @@ func (c *Confirmer) needConfirm(block *types.Block) bool {
 	if IsConfirmEnough(block, c.dm) {
 		return false
 	}
-	// It's not necessary to test if the block has mined or been confirmed by myself. Because confirmed blocks must be in database. So they will be dropped by network module at the beginning
+	// It's not necessary to test if the block was mined or been confirmed by myself. Because confirmed blocks must be in database. So they will be dropped by network module at the beginning
+
+	// load last confirmed block
+	lastConfirmHeight := c.lastSig.Height
+	lastConfirmHash := c.lastSig.Hash
+	stable, _ := c.stableLoader.LoadLatestBlock()
+	if lastConfirmHeight < stable.Height() {
+		lastConfirmHeight = stable.Height()
+		lastConfirmHash = stable.Hash()
+	}
 
 	// the block is at same fork with last signed block
-	if block.ParentHash() == c.lastSig.Hash {
+	if block.ParentHash() == lastConfirmHash {
 		return true
 	}
 	// the block is deputyCount*2/3 far from signed block
 	signDistance := c.dm.TwoThirdDeputyCount(block.Height())
 	// not ">=" so that we would never need to confirm a new block after switch fork
-	if block.Height() > c.lastSig.Height+signDistance {
+	if block.Height() > lastConfirmHeight+signDistance {
 		return true
 	}
 
-	log.Debug("can't confirm the block", "lastSig", c.lastSig.Height, "height", block.Height(), "minDistance", signDistance)
+	log.Debug("can't confirm the block", "lastConfirm", lastConfirmHeight, "height", block.Height(), "minDistance", signDistance)
 	return false
 }
 
