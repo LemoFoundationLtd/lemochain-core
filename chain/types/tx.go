@@ -296,14 +296,14 @@ func getHashData(tx *Transaction) interface{} {
 }
 
 // calcBoxSubTxHashSet 计算子交易的hash集合,返回对集合的hash值
-func calcBoxSubTxHashSet(subTxList Transactions) common.Hash {
+func calcBoxSubTxHashSet(subTxList Transactions) []common.Hash {
 	// 计算子交易的交易hash集合
 	subTxHashSet := make([]common.Hash, 0, len(subTxList))
 	for _, subTx := range subTxList {
 		subTxHashSet = append(subTxHashSet, subTx.Hash())
 	}
-	// 对子交易的交易hash集合进行hash 作为计算box交易hash 的data
-	return rlpHash(subTxHashSet)
+	// 返回子交易的hash集合作为交易的data字段
+	return subTxHashSet
 }
 
 // Cost returns amount + gasprice * gaslimit.

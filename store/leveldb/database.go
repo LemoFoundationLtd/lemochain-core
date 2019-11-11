@@ -123,11 +123,11 @@ func (db *LevelDBDatabase) Get(key []byte) ([]byte, error) {
 	// Retrieve the key and increment the miss counter if not found
 	dat, err := db.db.Get(key, nil)
 	if err != nil {
-		if db.missMeter != nil {
-			db.missMeter.Mark(1)
-		}
 		if err == leveldb.ErrNotFound {
 			return nil, nil
+		}
+		if db.missMeter != nil {
+			db.missMeter.Mark(1)
 		}
 		return nil, err
 	}
