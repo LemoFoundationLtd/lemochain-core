@@ -444,7 +444,6 @@ func (p *TxProcessor) handleTx(tx *types.Transaction, header *types.Header, txIn
 
 func (p *TxProcessor) buyGas(gp *types.GasPool, tx *types.Transaction) error {
 	payerAddr := tx.GasPayer()
-	log.Debugf("Tx's gas payer address: %s", payerAddr.String())
 
 	payer := p.am.GetAccount(payerAddr)
 
@@ -476,6 +475,11 @@ func IntrinsicGas(txType uint16, data []byte, txMessage string) (uint64, error) 
 	gas, err := getTxBaseSpendGas(txType)
 	if err != nil {
 		return 0, err
+	}
+	// 如果为箱子交易，则不计算箱子交易的data。因为如果是进行验证区块中的箱子交易操作，箱子交易已经被执行过了，其data会改变(子交易的gasUsed被赋值).
+	// 而且箱子中的子交易本身自己会扣除相应的gas，所以箱子本身就没有必要再次扣除data字段的gas了
+	if txType == params.BoxTx {
+		data = []byte{}
 	}
 	// calculate txData spend gas and  add it and return
 	return addTxDataSpendGas(data, txMessage, gas)
