@@ -444,7 +444,6 @@ func (p *TxProcessor) handleTx(tx *types.Transaction, header *types.Header, txIn
 
 func (p *TxProcessor) buyGas(gp *types.GasPool, tx *types.Transaction) error {
 	payerAddr := tx.GasPayer()
-	log.Debugf("Tx's gas payer address: %s", payerAddr.String())
 
 	payer := p.am.GetAccount(payerAddr)
 
@@ -476,6 +475,11 @@ func IntrinsicGas(txType uint16, data []byte, txMessage string) (uint64, error) 
 	gas, err := getTxBaseSpendGas(txType)
 	if err != nil {
 		return 0, err
+	}
+	// 如果为箱子交易，则不计算箱子交易的data。因为箱子交易的data会由于执行而改变，导致执行前和执行之后的data不一致。
+	// 而且如果是这里手动去修改data和执行之前的一致是不行的，传进来的外界序列化的子交易结果和这里序列化字面量相同的子交易的结果是不相同的。
+	if txType == params.BoxTx {
+		data = []byte{}
 	}
 	// calculate txData spend gas and  add it and return
 	return addTxDataSpendGas(data, txMessage, gas)
