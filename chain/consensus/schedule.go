@@ -48,18 +48,17 @@ func getDeputyByDistance(targetHeight uint32, parentBlockMiner common.Address, d
 	deputies := dm.GetDeputiesByHeight(targetHeight)
 	nodeCount := uint32(len(deputies))
 
-	// find target block miner deputy
-	parentMinerDeputy := findDeputyByAddress(deputies, parentBlockMiner)
-	if parentMinerDeputy == nil {
-		return nil, ErrNotDeputy
-	}
-
 	var targetRank uint32
 	if targetHeight == 1 || deputynode.IsRewardBlock(targetHeight) {
 		// Genesis block is pre-set, not belong to any deputy node. So only blocks start with height 1 is mined by deputies
 		// The reward block changes deputy nodes, so we need recompute the slot
 		targetRank = distance - 1
 	} else {
+		// find parent block miner deputy after the IsRewardBlock logic, to make the distance calculation correct in the scene of crossing terms
+		parentMinerDeputy := findDeputyByAddress(deputies, parentBlockMiner)
+		if parentMinerDeputy == nil {
+			return nil, ErrNotDeputy
+		}
 		// find last block miner deputy
 		targetRank = (nodeCount + parentMinerDeputy.Rank + distance) % nodeCount
 	}

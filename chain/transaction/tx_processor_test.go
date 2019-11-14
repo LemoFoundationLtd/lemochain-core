@@ -275,6 +275,12 @@ func TestIntrinsicGas(t *testing.T) {
 	halfZeroData = []byte{1, 0, 2, 0, 3, 0, 4, 0, 5, 0}
 	gas, _ = IntrinsicGas(params.OrdinaryTx, halfZeroData, "")
 	assert.Equal(t, params.OrdinaryTxGas+5*(params.TxDataNonZeroGas+params.TxDataZeroGas), gas)
+	// 测试箱子交易
+	boxData := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9}
+	gas01, _ := IntrinsicGas(params.BoxTx, boxData, "")
+	gas02, _ := IntrinsicGas(params.BoxTx, []byte{}, "")
+	assert.Equal(t, gas01, params.BoxTxGas)
+	assert.Equal(t, gas01, gas02)
 }
 
 // 测试获取资产data最大字节数标准值
