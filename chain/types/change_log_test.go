@@ -270,7 +270,7 @@ func getCustomTypeData() []testCustomTypeConfig {
 		json:    `{"type":"10001","address":"Lemo888888888888888888888888888888888888","version":"0","newValue":null,"extra":{"A":11,"B":"abc"}}`,
 		hash:    "0xc2f5e2f55f2d6be2ef0e6b2f826bd2c1d9fcb4c2cd88a5b39677eb7564ff5629",
 		rlp:     "0xe082271194000000000000000000000000000000000000000080c0c50b83616263",
-		decoded: "ChangeLogType(10001){Account: Lemo888888888888888888888888888888888888, Version: 0, map[A:11 B:abc]}",
+		decoded: "ChangeLogType(10001){Account: Lemo888888888888888888888888888888888888, Version: 0, Extra: {11 abc}}",
 	})
 
 	// 2 empty ChangeLog
