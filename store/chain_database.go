@@ -8,6 +8,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/common/rlp"
 	"github.com/LemoFoundationLtd/lemochain-core/store/leveldb"
+	"math/big"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -79,9 +80,15 @@ func NewChainDataBase(home string) *ChainDatabase {
 	if err != nil {
 		panic("get candidates err: " + err.Error())
 	} else {
-		db.LastConfirm.Top.Rank(max_candidate_count, candidates)
+		// 把票数为0的candidate筛选掉，默认票数为0的candidate为注销的candidate
+		newCandidate := make([]*Candidate, 0, len(candidates))
+		for _, val := range candidates {
+			if val.Total.Cmp(big.NewInt(0)) == 1 {
+				newCandidate = append(newCandidate, val)
+			}
+		}
+		db.LastConfirm.Top.Rank(max_candidate_count, newCandidate)
 	}
-
 	return db
 }
 
@@ -172,6 +179,7 @@ func (database *ChainDatabase) commitCandidates(val []byte) error {
 			Address: account.Address,
 			Total:   account.Candidate.Votes,
 		}
+		log.Warnf("////: %s, %s", account.Address.String(), account.Candidate.Votes.String())
 		err := database.Context.SetCandidates(candidates)
 		if err != nil {
 			return err

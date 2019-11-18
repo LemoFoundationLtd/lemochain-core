@@ -5,7 +5,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"math/big"
-	"strconv"
 )
 
 type CBlock struct {
@@ -60,18 +59,8 @@ func (block *CBlock) isCandidate(account *types.AccountData) bool {
 		(len(account.Candidate.Profile) <= 0) {
 		return false
 	}
-
-	result, ok := account.Candidate.Profile[types.CandidateKeyIsCandidate]
-	if !ok {
-		return false
-	}
-
-	val, err := strconv.ParseBool(result)
-	if err != nil {
-		panic("to bool err : " + err.Error())
-	} else {
-		return val
-	}
+	// 注意这里即使是为注销候选节点不能删除记录，这里保存进去只是修改票数为0，因为在退还候选节点押金的地方要拉取所有的候选节点来判断注销的候选节点是否没有退还押金。
+	return true
 }
 
 func (block *CBlock) filterCandidates(accounts []*types.AccountData) []*Candidate {
