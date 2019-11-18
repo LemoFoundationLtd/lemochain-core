@@ -179,7 +179,6 @@ func (database *ChainDatabase) commitCandidates(val []byte) error {
 			Address: account.Address,
 			Total:   account.Candidate.Votes,
 		}
-		log.Warnf("////: %s, %s", account.Address.String(), account.Candidate.Votes.String())
 		err := database.Context.SetCandidates(candidates)
 		if err != nil {
 			return err
