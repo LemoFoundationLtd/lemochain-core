@@ -585,24 +585,33 @@ func (pm *ProtocolManager) forceSyncBlock(status *LatestStatus, p *peer) {
 // findSyncFrom find height of which sync from
 func (pm *ProtocolManager) findSyncFrom(rStatus *LatestStatus) (uint32, error) {
 	var from uint32
-	curBlock := pm.chain.CurrentBlock()
+	outSyncFrom := rStatus.CurHeight + 1 // 不需要同步远程节点区块的from请求
 	staBlock := pm.chain.StableBlock()
-
-	if staBlock.Height() < rStatus.StaHeight {
-		if curBlock.Height() < rStatus.StaHeight {
-			from = staBlock.Height() + 1
-		} else {
-			if pm.chain.HasBlock(rStatus.StaHash) {
-				from = rStatus.StaHeight + 1
-			} else {
-				from = staBlock.Height() + 1
-			}
-		}
-	} else {
-		if pm.chain.HasBlock(rStatus.StaHash) {
-			from = staBlock.Height() + 1
-		} else {
+	// 1. 本地稳定块高度大于等待远程稳定块高度的情况
+	if staBlock.Height() > rStatus.StaHeight {
+		// 判断如果远程稳定块不在本地的当前链上，则表示链硬分叉了
+		if !pm.chain.HasBlock(rStatus.StaHash) {
 			return 0, errors.New("error: CHAIN FORK")
+		}
+		// 即使极端情况远程节点刚好在它的这个稳定块软分叉，我们都不去同步它的区块了，没意义，因为本地稳定块高度大于远程稳定块高度，没有机会切分叉到远程节点所在分支了
+		// 至于如果存在远程节点和本地在同一个分支上并且远程节点的current高度大于本地的current高度的情况，我们选择放弃同步。
+		// 第一判断不了这种情况。第二本地稳定块高度大于远程稳定块默认为本地的网络环境好于远程节点，
+		// 所以默认为远程current高度大于本地current高度并还在同一个分支的概率太小，没必要花费大量网络带宽去拉取大概率重复的区块
+		return outSyncFrom, nil
+	}
+	// 2. 本地稳定块高度小于等于远程稳定块高度的情况
+	if staBlock.Height() <= rStatus.StaHeight {
+		// 2.1 首先判断远程current是否已经存在本地链,存在则没必要去同步了
+		if pm.chain.HasBlock(rStatus.CurHash) {
+			return outSyncFrom, nil
+		}
+		// 2.2 判断远程稳定区块是否存在本地链上，如果存在则从远程稳定块高度开始同步，如果不存在则从本地稳定块高度开始同步
+		if pm.chain.HasBlock(rStatus.StaHash) {
+			// 从远程稳定块高度开始同步
+			from = rStatus.StaHeight + 1
+		} else {
+			// 从本地区块高度开始同步
+			from = staBlock.Height() + 1
 		}
 	}
 	return from, nil
