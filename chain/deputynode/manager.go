@@ -217,3 +217,24 @@ func (m *Manager) IsSelfDeputyNode(height uint32) bool {
 func (m *Manager) IsNodeDeputy(height uint32, nodeID []byte) bool {
 	return m.GetDeputyByNodeID(height, nodeID) != nil
 }
+
+// GetNextBlockMineDeputy 获取下一个区块的出块节点
+func (m *Manager) GetNextBlockMineDeputy(currentHeight uint32, currentMiner common.Address) *types.DeputyNode {
+	nodes := m.GetDeputiesByHeight(currentHeight + 1)
+	count := len(nodes)
+	if count == 0 {
+		return nil
+	}
+	// 如果current刚好为本届最后一个区块,则下一个出块deputy为deputyNodes的第一个deputy
+	if IsTermEndBlock(currentHeight) {
+		return nodes[0]
+	}
+	// 不是换届块则通过currentMiner定位到下一个deputy
+	for index, node := range nodes {
+		if node.MinerAddress == currentMiner {
+			targetIndex := (index + 1 + count) % count
+			return nodes[targetIndex]
+		}
+	}
+	return nil
+}

@@ -76,13 +76,27 @@ func IsSnapshotBlock(height uint32) bool {
 	return height%params.TermDuration == 0
 }
 
-// IsRewardBlock 是否该发出块奖励了
+// IsRewardBlock 是否该发出块奖励了. 1001001,2001001,3001001,4001001。。。
 func IsRewardBlock(height uint32) bool {
 	if height < params.TermDuration+params.InterimDuration+1 {
 		// in genesis term
 		return false
 	} else if height%params.TermDuration == params.InterimDuration+1 {
 		// term start block
+		return true
+	} else {
+		// other normal block
+		return false
+	}
+}
+
+// IsTermEndBlock 为本届最后一个区块。1001000,2001000,3001000,4001000。。。
+func IsTermEndBlock(height uint32) bool {
+	if height < params.TermDuration+params.InterimDuration {
+		// in genesis term
+		return false
+	} else if height%params.TermDuration == params.InterimDuration {
+		// term end block
 		return true
 	} else {
 		// other normal block

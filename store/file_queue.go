@@ -258,6 +258,7 @@ func (queue *FileQueue) Put(flag uint32, key []byte, val []byte) error {
 	if err != nil {
 		return err
 	} else {
+		// 触发写入leveldb中
 		queue.deliver(flag, key, val)
 		queue.Offset += length
 		return nil

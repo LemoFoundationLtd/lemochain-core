@@ -184,11 +184,8 @@ func (pm *ProtocolManager) txConfirmLoop() {
 			log.Info("txConfirmLoop finished")
 			return
 		case tx := <-pm.txCh:
-			nextHeight := pm.chain.CurrentBlock().Height() + 1
-			peers := pm.peers.DeputyNodes(nextHeight)
-			if !pm.dm.IsSelfDeputyNode(nextHeight) && len(peers) == 0 {
-				peers = pm.peers.DelayNodes(nextHeight)
-			}
+			currentBlock := pm.chain.CurrentBlock()
+			peers := pm.peers.NeedBroadcastTxsNodes(currentBlock.Height(), currentBlock.MinerAddress())
 			go pm.broadcastTxs(peers, types.Transactions{tx})
 		case info := <-pm.confirmCh:
 			if pm.peers.LatestStableHeight() > info.Height {
