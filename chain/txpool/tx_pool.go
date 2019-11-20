@@ -46,7 +46,7 @@ func (pool *TxPool) Get(time uint32, size int) []*types.Transaction {
 func (pool *TxPool) ExistCanPackageTx(time uint32) bool {
 	pool.RW.Lock()
 	defer pool.RW.Unlock()
-	return pool.PendingTxs.ExistCanPackageTx(time)
+	return pool.PendingTxs.IsExistCanPackageTx(time)
 }
 
 /* 本节点出块时，执行交易后，发现错误的交易通过该接口进行删除 */
