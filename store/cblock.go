@@ -54,7 +54,7 @@ func (block *CBlock) toSlice(src map[common.Address]*Candidate) []*Candidate {
 	}
 }
 
-func (block *CBlock) isCandidate(account *types.AccountData) bool {
+func (block *CBlock) existCandidateProfile(account *types.AccountData) bool {
 	if (account == nil) ||
 		(len(account.Candidate.Profile) <= 0) {
 		return false
@@ -67,7 +67,7 @@ func (block *CBlock) filterCandidates(accounts []*types.AccountData) []*Candidat
 	candidates := make([]*Candidate, 0)
 	for index := 0; index < len(accounts); index++ {
 		account := accounts[index]
-		if block.isCandidate(account) {
+		if block.existCandidateProfile(account) {
 			candidates = append(candidates, &Candidate{
 				Address: account.Address,
 				Total:   new(big.Int).Set(account.Candidate.Votes),
