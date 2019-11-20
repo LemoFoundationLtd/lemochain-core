@@ -59,7 +59,6 @@ func (block *CBlock) existCandidateProfile(account *types.AccountData) bool {
 		(len(account.Candidate.Profile) <= 0) {
 		return false
 	}
-	// 注意这里即使是为注销候选节点不能删除记录，这里保存进去只是修改票数为0，因为在退还候选节点押金的地方要拉取所有的候选节点来判断注销的候选节点是否没有退还押金。
 	return true
 }
 
