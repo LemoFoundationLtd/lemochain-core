@@ -109,6 +109,10 @@ var (
 		Usage: "Output log level",
 		Value: 4,
 	}
+	MetricsEnabledFlag = cli.BoolFlag{
+		Name:  common.MetricsEnabled,
+		Usage: "start metrics",
+	}
 )
 
 // setListenPort set listen port

@@ -31,6 +31,7 @@ var (
 		node.JSpathFlag,
 		node.DebugFlag,
 		node.LogLevelFlag,
+		node.MetricsEnabledFlag,
 	}
 
 	rpcFlags = []cli.Flag{

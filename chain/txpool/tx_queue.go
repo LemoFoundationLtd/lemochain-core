@@ -64,7 +64,6 @@ func (queue *TxQueue) DelBatch(hashes []common.Hash) {
 
 	for _, hash := range hashes {
 		queue.Del(hash)
-		invalidTxMeter.Mark(1)
 	}
 }
 
