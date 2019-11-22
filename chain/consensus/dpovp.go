@@ -20,6 +20,7 @@ var (
 	blockInsertTimer = metrics.NewTimer(metrics.BlockInsert_timerName) // 统计区块插入链中的速率和所用时间的分布情况
 	mineBlockTimer   = metrics.NewTimer(metrics.MineBlock_timerName)   // 统计出块速率和时间分布
 	verifyBlockMeter = metrics.NewMeter(metrics.VerifyBlock_meterName) // 统计验证区块失败的频率
+	chainForkMeter   = metrics.NewMeter(metrics.ChainFork_meterName)   // 链分叉统计
 )
 
 // DPoVP process the fork logic
@@ -312,6 +313,7 @@ func (dp *DPoVP) logCurrentChange(oldCurrent *types.Block) {
 	} else if newCurrent.ParentHash() == oldCurrent.Hash() {
 		log.Debugf("Current fork length +1. Current block changes from %s to %s", oldCurrent.ShortString(), newCurrent.ShortString())
 	} else {
+		chainForkMeter.Mark(1) // 统计调用频率用
 		log.Debugf("Switch fork! Current block changes from %s to %s", oldCurrent.ShortString(), newCurrent.ShortString())
 	}
 	if dp.logForks {

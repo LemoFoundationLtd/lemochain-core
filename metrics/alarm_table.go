@@ -165,6 +165,12 @@ var AlarmRuleTable = map[string]*Condition{
 		AlarmValue:   0.033,
 		AlarmMsgCode: textMsgCode,
 	},
+	ChainFork_meterName: {
+		AlarmReason:  "链软分叉了",
+		MetricsType:  TypeRate1,
+		AlarmValue:   0.016,
+		AlarmMsgCode: textMsgCode,
+	},
 	// levelDB
 	LevelDb_miss_meterName: {
 		AlarmReason:  "最近一分钟时间内从leveldb中读取数据失败次数大于10次",

@@ -40,6 +40,7 @@ var (
 	BlockInsert_timerName = "consensus/InsertBlock/insertBlock" // 统计区块插入链中的速率和所用时间的分布情况
 	MineBlock_timerName   = "consensus/MineBlock/mineBlock"     // 统计出块速率和时间分布
 	VerifyBlock_meterName = "consensus/dpovp"                   // 校验收到的区块失败的频率
+	ChainFork_meterName   = "consensus/dpovp/logCurrentChange"  // 链分叉
 	// 告警条件
 	Alarm_BlockInsert float64 = 5 // Insert chain 所用平均时间大于5s
 	Alarm_MineBlock   float64 = 8 // Mine Block 所用平均时间大于8s
