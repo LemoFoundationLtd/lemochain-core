@@ -79,9 +79,9 @@ var AlarmRuleTable = map[string]*Condition{
 		AlarmMsgCode: textMsgCode,
 	},
 	HandleGetConfirmsMsg_meterName: {
-		AlarmReason:  "最近一分钟时间内收到其他节点请求拉取block确认包消息次数大于10672次", // 链上最多允许不稳定的连续区块为667个，极端情况另外16个deputy都来拉,则一次性最多为10672
+		AlarmReason:  "最近一分钟时间内收到其他节点请求拉取block确认包消息次数大于1600次", // 极端情况另外16个deputy都来拉,每个节点请求100次，则最多请求1600次
 		MetricsType:  TypeRate1,
-		AlarmValue:   177.86,
+		AlarmValue:   26.6,
 		AlarmMsgCode: textMsgCode,
 	},
 	HandleConfirmMsg_meterName: {
@@ -91,9 +91,9 @@ var AlarmRuleTable = map[string]*Condition{
 		AlarmMsgCode: textMsgCode,
 	},
 	HandleGetBlocksWithChangeLogMsg_meterName: {
-		AlarmReason:  "最近一分钟时间内收到调用handleGetBlocksWithChangeLogMsg请求的次数大于2000次", // lemochain-distribution端同步区块调用的接口，按照连接100个distribution节点计算
+		AlarmReason:  "最近一分钟时间内收到调用handleGetBlocksWithChangeLogMsg请求的次数大于100次", // lemochain-distribution端同步区块调用的接口，按照连接5个distribution节点计算
 		MetricsType:  TypeRate1,
-		AlarmValue:   33.33,
+		AlarmValue:   1.66,
 		AlarmMsgCode: textMsgCode,
 	},
 	HandleDiscoverReqMsg_meterName: {
@@ -110,33 +110,33 @@ var AlarmRuleTable = map[string]*Condition{
 	},
 	// p2p
 	PeerConnFailed_meterName: {
-		AlarmReason:  "最近一分钟时间内节点连接断开的次数大于100次",
+		AlarmReason:  "最近一分钟时间内节点连接断开的次数大于5次",
 		MetricsType:  TypeRate1,
-		AlarmValue:   1.66,
+		AlarmValue:   0.083,
 		AlarmMsgCode: textMsgCode,
 	},
 	ReadMsgSuccess_timerName: {
-		AlarmReason:  "读取接收节点的Msg所用的平均时间大于20s，有必要升级网络带宽", // 因为读取msg的超时时间为25s，当读取平均时间大于20s之后说明网络环境太差，告警升级带宽。
+		AlarmReason:  "读取接收节点的Msg所用的平均时间大于6s，有必要升级网络带宽", // 节点之间的心跳包是每隔5s发送一次，最多允许1s的传输时间。
 		MetricsType:  TypeMean,
-		AlarmValue:   20,
+		AlarmValue:   6,
 		AlarmMsgCode: textMsgCode,
 	},
 	ReadMsgFailed_timerName: {
-		AlarmReason:  "最近一分钟时间内读取接收节点的Msg失败的次数大于100次",
+		AlarmReason:  "最近一分钟时间内读取接收节点的Msg失败的次数大于5次", // 读取节点消息失败会断开连接，允许一分钟内重连失败次数为5
 		MetricsType:  TypeRate1,
-		AlarmValue:   1.66,
+		AlarmValue:   0.083,
 		AlarmMsgCode: textMsgCode,
 	},
 	WriteMsgSuccess_timerName: {
-		AlarmReason:  "发送Msg给其他节点的平均用时超过15s，有必要升级网络带宽", // 写操作超时时间为20s，当发送Msg平均用时超过15s，则要考虑网络阻塞问题
+		AlarmReason:  "发送Msg给其他节点的平均用时超过5s，有必要升级网络带宽",
 		MetricsType:  TypeMean,
-		AlarmValue:   15,
+		AlarmValue:   5,
 		AlarmMsgCode: textMsgCode,
 	},
 	WriteMsgFailed_timerName: {
-		AlarmReason:  "最近一分钟时间内发送Msg给其他节点失败的次数超过100次",
+		AlarmReason:  "最近一分钟时间内发送Msg给其他节点失败的次数超过5次",
 		MetricsType:  TypeRate1,
-		AlarmValue:   1.66,
+		AlarmValue:   0.083,
 		AlarmMsgCode: textMsgCode,
 	},
 	// tx
