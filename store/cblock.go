@@ -5,7 +5,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"math/big"
-	"strconv"
 )
 
 type CBlock struct {
@@ -55,30 +54,19 @@ func (block *CBlock) toSlice(src map[common.Address]*Candidate) []*Candidate {
 	}
 }
 
-func (block *CBlock) isCandidate(account *types.AccountData) bool {
+func (block *CBlock) existCandidateProfile(account *types.AccountData) bool {
 	if (account == nil) ||
 		(len(account.Candidate.Profile) <= 0) {
 		return false
 	}
-
-	result, ok := account.Candidate.Profile[types.CandidateKeyIsCandidate]
-	if !ok {
-		return false
-	}
-
-	val, err := strconv.ParseBool(result)
-	if err != nil {
-		panic("to bool err : " + err.Error())
-	} else {
-		return val
-	}
+	return true
 }
 
 func (block *CBlock) filterCandidates(accounts []*types.AccountData) []*Candidate {
 	candidates := make([]*Candidate, 0)
 	for index := 0; index < len(accounts); index++ {
 		account := accounts[index]
-		if block.isCandidate(account) {
+		if block.existCandidateProfile(account) {
 			candidates = append(candidates, &Candidate{
 				Address: account.Address,
 				Total:   new(big.Int).Set(account.Candidate.Votes),
