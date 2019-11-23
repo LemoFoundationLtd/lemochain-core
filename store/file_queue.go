@@ -114,6 +114,7 @@ func (queue *FileQueue) delIndex(flag uint32, key []byte) {
 			delete(queue.Index, common.ToHex(key))
 			if len(queue.Index) <= 0 {
 				// del tmp file.
+
 			}
 		} else {
 			val.refCnt = val.refCnt - 1

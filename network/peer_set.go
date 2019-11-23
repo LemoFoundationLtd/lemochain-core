@@ -159,17 +159,18 @@ func (ps *peerSet) NeedBroadcastTxsNodes(currentHeight uint32, currentMiner comm
 	if len(deputyNodePeers) == 0 {
 		return ps.DelayNodes(currentHeight + 1)
 	}
+
 	// 2. 获取下一个区块的出块者的deputy信息
-	nextMineDeputy := ps.dm.GetNextBlockMineDeputy(currentHeight, currentMiner)
+	nextMineDeputy, err := ps.dm.GetDeputyByDistance(currentHeight+1, currentMiner, 1)
 	// 获取下一个出块deputy失败则返回所有的连接的peers
-	if nextMineDeputy == nil {
+	if err != nil || nextMineDeputy == nil {
 		return deputyNodePeers
 	}
 
 	// 3. 获取下下个区块的出块者的deputy信息
-	thirdMineDeputy := ps.dm.GetNextBlockMineDeputy(currentHeight+1, nextMineDeputy.MinerAddress)
+	thirdMineDeputy, err := ps.dm.GetDeputyByDistance(currentHeight+1, currentMiner, 2)
 	// 3.1 获取下下个出块deputy失败则返回所有的连接的peers
-	if thirdMineDeputy == nil {
+	if err != nil || thirdMineDeputy == nil {
 		return deputyNodePeers
 	}
 	// 3.2 如果下下个即将出块的deputy为自己，则不用再广播出去了,防止nextMineDeputy 和thirdMineDeputy相互转,即使是通过api传过来的交易，交易执行等待时间最多为30s。

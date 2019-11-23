@@ -20,6 +20,8 @@ var (
 	ErrInvalidSnapshotHeight = errors.New("invalid snapshot block height")
 	ErrNoTerms               = errors.New("can't access deputy nodes before SaveSnapshot")
 	ErrQueryFutureTerm       = errors.New("can't query future term")
+	ErrMineGenesis           = errors.New("can not mine genesis block")
+	ErrNotDeputy             = errors.New("not a deputy address in specific height")
 )
 
 type BlockLoader interface {
@@ -218,23 +220,29 @@ func (m *Manager) IsNodeDeputy(height uint32, nodeID []byte) bool {
 	return m.GetDeputyByNodeID(height, nodeID) != nil
 }
 
-// GetNextBlockMineDeputy 获取下一个区块的出块节点
-func (m *Manager) GetNextBlockMineDeputy(currentHeight uint32, currentMiner common.Address) *types.DeputyNode {
-	nodes := m.GetDeputiesByHeight(currentHeight + 1)
-	count := len(nodes)
-	if count == 0 {
-		return nil
+// GetDeputyByDistance find a deputy from parent block miner by miner index distance. The distance should always greater than 0
+func (m *Manager) GetDeputyByDistance(targetHeight uint32, parentBlockMiner common.Address, distance uint32) (*types.DeputyNode, error) {
+	if targetHeight == 0 {
+		return nil, ErrMineGenesis
 	}
-	// 如果current刚好为本届最后一个区块,则下一个出块deputy为deputyNodes的第一个deputy
-	if IsTermEndBlock(currentHeight) {
-		return nodes[0]
+	deputies := m.GetDeputiesByHeight(targetHeight)
+	nodeCount := uint32(len(deputies))
+	if nodeCount == 0 {
+		return nil, ErrNotDeputy
 	}
-	// 不是换届块则通过currentMiner定位到下一个deputy
-	for index, node := range nodes {
-		if node.MinerAddress == currentMiner {
-			targetIndex := (index + 1 + count) % count
-			return nodes[targetIndex]
+
+	if targetHeight == 1 || IsRewardBlock(targetHeight) {
+		// Genesis block is pre-set, not belong to any deputy node. So only blocks start with height 1 is mined by deputies
+		// The reward block changes deputy nodes, so we need recompute the slot
+		return deputies[distance-1], nil
+	} else {
+		// find parent block miner deputy after the IsRewardBlock logic, to make the distance calculation correct in the scene of crossing terms
+		for index, node := range deputies {
+			if node.MinerAddress == parentBlockMiner {
+				targetIndex := (uint32(index) + distance + nodeCount) % nodeCount
+				return deputies[targetIndex], nil
+			}
 		}
 	}
-	return nil
+	return nil, ErrNotDeputy
 }

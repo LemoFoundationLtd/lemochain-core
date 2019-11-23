@@ -90,20 +90,6 @@ func IsRewardBlock(height uint32) bool {
 	}
 }
 
-// IsTermEndBlock 为本届最后一个区块。1001000,2001000,3001000,4001000。。。
-func IsTermEndBlock(height uint32) bool {
-	if height < params.TermDuration+params.InterimDuration {
-		// in genesis term
-		return false
-	} else if height%params.TermDuration == params.InterimDuration {
-		// term end block
-		return true
-	} else {
-		// other normal block
-		return false
-	}
-}
-
 // GetTermIndexByHeight return the index of the term which in charge of consensus the specific block
 //
 //   0 term start at height 0

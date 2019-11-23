@@ -40,31 +40,6 @@ func GetMinerDistance(targetHeight uint32, parentBlockMiner, targetMiner common.
 	return (nodeCount + targetDeputy.Rank - lastDeputy.Rank) % nodeCount, nil
 }
 
-// getDeputyByDistance find a deputy from parent block miner by miner index distance. The distance should always greater than 0
-func getDeputyByDistance(targetHeight uint32, parentBlockMiner common.Address, distance uint32, dm *deputynode.Manager) (*types.DeputyNode, error) {
-	if targetHeight == 0 {
-		return nil, ErrMineGenesis
-	}
-	deputies := dm.GetDeputiesByHeight(targetHeight)
-	nodeCount := uint32(len(deputies))
-
-	var targetRank uint32
-	if targetHeight == 1 || deputynode.IsRewardBlock(targetHeight) {
-		// Genesis block is pre-set, not belong to any deputy node. So only blocks start with height 1 is mined by deputies
-		// The reward block changes deputy nodes, so we need recompute the slot
-		targetRank = distance - 1
-	} else {
-		// find parent block miner deputy after the IsRewardBlock logic, to make the distance calculation correct in the scene of crossing terms
-		parentMinerDeputy := findDeputyByAddress(deputies, parentBlockMiner)
-		if parentMinerDeputy == nil {
-			return nil, ErrNotDeputy
-		}
-		// find last block miner deputy
-		targetRank = (nodeCount + parentMinerDeputy.Rank + distance) % nodeCount
-	}
-	return findDeputyByRank(deputies, targetRank), nil
-}
-
 func findDeputyByAddress(deputies []*types.DeputyNode, addr common.Address) *types.DeputyNode {
 	for _, node := range deputies {
 		if node.MinerAddress == addr {
@@ -121,7 +96,7 @@ func GetCorrectMiner(parent *types.Header, mineTime int64, mineTimeout int64, dm
 	oneLoopTime := int64(nodeCount) * mineTimeout
 	minerDistance := (passTime%oneLoopTime)/mineTimeout + 1
 
-	deputy, err := getDeputyByDistance(parent.Height+1, parent.MinerAddress, uint32(minerDistance), dm)
+	deputy, err := dm.GetDeputyByDistance(parent.Height+1, parent.MinerAddress, uint32(minerDistance))
 	if err != nil {
 		return common.Address{}, err
 	}
