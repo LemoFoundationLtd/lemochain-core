@@ -586,7 +586,7 @@ func (pm *ProtocolManager) forceSyncBlock(status *LatestStatus, p *peer) {
 func (pm *ProtocolManager) findSyncFrom(rStatus *LatestStatus) (uint32, error) {
 	var from uint32
 	staBlock := pm.chain.StableBlock()
-	// 1. 本地稳定块高度大于等待远程稳定块高度的情况。本地稳定块高度大于远程稳定块默认为本地的网络环境好于远程节点
+	// 1. 本地稳定块高度大于等待远程稳定块高度的情况。本地稳定块高度大于远程稳定块默认为本地的网络环境好于远程节点，从而本地的区块多余远程节点，所以不去同步区块。
 	if staBlock.Height() > rStatus.StaHeight {
 		// 判断如果远程稳定块不在本地的当前链上，则表示链硬分叉了
 		if !pm.chain.HasBlock(rStatus.StaHash) {
