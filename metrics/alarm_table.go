@@ -61,9 +61,9 @@ var AlarmRuleTable = map[string]*Condition{
 	},
 	// network
 	HandleBlocksMsg_meterName: {
-		AlarmReason:  "最近一分钟时间内收到其他节点广播过来的blocks消息次数大于20次",
+		AlarmReason:  "最近一分钟时间内收到其他节点广播过来的blocks消息次数大于60次",
 		MetricsType:  TypeRate1,
-		AlarmValue:   0.33,
+		AlarmValue:   1,
 		AlarmMsgCode: textMsgCode,
 	},
 	HandleGetBlocksMsg_meterName: {
@@ -73,9 +73,9 @@ var AlarmRuleTable = map[string]*Condition{
 		AlarmMsgCode: textMsgCode,
 	},
 	HandleBlockHashMsg_meterName: {
-		AlarmReason:  "最近一分钟时间内普通节点收到广播的稳定块hash的次数大于2000次", // 普通节点收到广播的稳定块hash，按照连接100个peer和一分钟出20个块来计算
+		AlarmReason:  "最近一分钟时间内普通节点收到广播的稳定块hash的次数大于6000次", // 普通节点收到广播的稳定块hash，按照连接100个peer和一分钟出60个块来计算
 		MetricsType:  TypeRate1,
-		AlarmValue:   33.33,
+		AlarmValue:   100,
 		AlarmMsgCode: textMsgCode,
 	},
 	HandleGetConfirmsMsg_meterName: {
@@ -85,9 +85,9 @@ var AlarmRuleTable = map[string]*Condition{
 		AlarmMsgCode: textMsgCode,
 	},
 	HandleConfirmMsg_meterName: {
-		AlarmReason:  "最近一分钟时间内收到其他节点广播过来的区块确认包的次数大于320", // 按照一分钟最多出块20个，16个deputyNode peers计算
+		AlarmReason:  "最近一分钟时间内收到其他节点广播过来的区块确认包的次数大于960", // 按照一分钟最多出块60个，16个deputyNode peers计算
 		MetricsType:  TypeRate1,
-		AlarmValue:   5.33,
+		AlarmValue:   16,
 		AlarmMsgCode: textMsgCode,
 	},
 	HandleGetBlocksWithChangeLogMsg_meterName: {
