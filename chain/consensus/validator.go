@@ -158,7 +158,7 @@ func verifyExtraData(block *types.Block) error {
 
 // verifyMiner verify the miner slot of deputy node
 func verifyMiner(header *types.Header, parent *types.Header, timeoutTime uint64, dm *deputynode.Manager) error {
-	expectedMiner, err := GetCorrectMiner(parent, int64(header.Time)*1000, int64(timeoutTime), dm)
+	expectedMiner, err := dm.GetCorrectMiner(parent, int64(header.Time)*1000, int64(timeoutTime))
 	if err != nil {
 		log.Error("Consensus verify fail: can't find correct miner", "block.Height", header.Height, "parent.MinerAddress", parent.MinerAddress, "block.MinerAddress", header.MinerAddress, "err", err)
 		return ErrVerifyHeaderFailed
