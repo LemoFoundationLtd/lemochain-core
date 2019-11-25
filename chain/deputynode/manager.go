@@ -246,3 +246,45 @@ func (m *Manager) GetDeputyByDistance(targetHeight uint32, parentBlockMiner comm
 	}
 	return nil, ErrNotDeputy
 }
+
+// GetMinerDistance get miner index distance. It is always greater than 0 and not greater than deputy count
+func (m *Manager) GetMinerDistance(targetHeight uint32, parentBlockMiner, targetMiner common.Address) (uint32, error) {
+	if targetHeight == 0 {
+		return 0, ErrMineGenesis
+	}
+	deputies := m.GetDeputiesByHeight(targetHeight)
+	nodeCount := uint32(len(deputies))
+
+	// find target block miner deputy
+	targetDeputy := findDeputyByAddress(deputies, targetMiner)
+	if targetDeputy == nil {
+		return 0, ErrNotDeputy
+	}
+
+	// Genesis block is pre-set, not belong to any deputy node. So only blocks start with height 1 is mined by deputies
+	// The reward block changes deputy nodes, so we need recompute the slot
+	if targetHeight == 1 || IsRewardBlock(targetHeight) {
+		return targetDeputy.Rank + 1, nil
+	}
+
+	// if they are same miner, then return deputy count
+	if targetMiner == parentBlockMiner {
+		return nodeCount, nil
+	}
+
+	// find last block miner deputy
+	lastDeputy := findDeputyByAddress(deputies, parentBlockMiner)
+	if lastDeputy == nil {
+		return 0, ErrNotDeputy
+	}
+	return (nodeCount + targetDeputy.Rank - lastDeputy.Rank) % nodeCount, nil
+}
+
+func findDeputyByAddress(deputies []*types.DeputyNode, addr common.Address) *types.DeputyNode {
+	for _, node := range deputies {
+		if node.MinerAddress == addr {
+			return node
+		}
+	}
+	return nil
+}
