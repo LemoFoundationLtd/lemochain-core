@@ -7,15 +7,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 )
 
-func findDeputyByRank(deputies []*types.DeputyNode, rank uint32) *types.DeputyNode {
-	for _, node := range deputies {
-		if node.Rank == rank {
-			return node
-		}
-	}
-	return nil
-}
-
 // GetNextMineWindow get next time window to mine block. The times are timestamps in millisecond
 func GetNextMineWindow(nextHeight uint32, distance uint32, parentTime int64, currentTime int64, mineTimeout int64, dm *deputynode.Manager) (int64, int64) {
 	nodeCount := dm.GetDeputiesCount(nextHeight)

@@ -11,20 +11,6 @@ import (
 	"time"
 )
 
-func Test_findDeputyByRank(t *testing.T) {
-	// no deputies
-	node := findDeputyByRank([]*types.DeputyNode{}, testDeputies[0].Rank)
-	assert.Nil(t, node)
-
-	// not match any one
-	node = findDeputyByRank(pickNodes(0), testDeputies[1].Rank)
-	assert.Nil(t, node)
-
-	// match one
-	node = findDeputyByRank(pickNodes(0, 1, 2), testDeputies[1].Rank)
-	assert.Equal(t, testDeputies[1].DeputyNode, *node)
-}
-
 func TestGetNextMineWindow(t *testing.T) {
 	deputyCount := 3
 	dm := deputynode.NewManager(deputyCount, &testBlockLoader{})
