@@ -290,7 +290,7 @@ func Test_VerifyMineSlot(t *testing.T) {
 	// 测试两个区块的出块者不同的distance的出块时间间隔情况
 	for i := 0; i < deputyCount; i++ {
 		for j := 0; j < deputyCount; j++ {
-			distance, err := GetMinerDistance(2, getMiner(i), getMiner(j), dm)
+			distance, err := dm.GetMinerDistance(2, getMiner(i), getMiner(j))
 			assert.NoError(t, err)
 			minPassTime := uint32(distance-1) * timeoutTime
 			maxPassTime := uint32(distance) * timeoutTime

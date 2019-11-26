@@ -1,8 +1,10 @@
 package network
 
 import (
+	"bytes"
 	"crypto/rand"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
+	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/network/p2p"
 	"math/big"
@@ -147,6 +149,52 @@ func (ps *peerSet) DeputyNodes(height uint32) []*peer {
 		}
 	}
 	return peers
+}
+
+// NeedBroadcastTxsNodes 获取需要广播交易的peer列表。首选广播给正在出高度为currentHeight + 1的节点和即将出高度为currentHeight + 2的节点
+func (ps *peerSet) NeedBroadcastTxsNodes(currentHeight uint32, currentMiner common.Address) []*peer {
+	// 1. 获取本节点相连的所有出块节点
+	deputyNodePeers := ps.DeputyNodes(currentHeight + 1)
+	// 如果获取到的出块节点为空则返回未出块的peer
+	if len(deputyNodePeers) == 0 {
+		return ps.DelayNodes(currentHeight + 1)
+	}
+	var err error
+	peers := make([]*peer, 0, 2)
+	peers, err = ps.appendPeerByDistance(peers, deputyNodePeers, currentHeight, currentMiner, 1)
+	if err != nil {
+		return deputyNodePeers
+	}
+	peers, err = ps.appendPeerByDistance(peers, deputyNodePeers, currentHeight, currentMiner, 2)
+	if err != nil {
+		return deputyNodePeers
+	}
+
+	// 5. 如果本节点没有与nextMineDeputy和thirdMineDeputy节点相连则返回本节点连接的所有的peers
+	if len(peers) == 0 {
+		return deputyNodePeers
+	} else {
+		return peers
+	}
+}
+
+// appendPeerByDistance
+func (ps *peerSet) appendPeerByDistance(peers, deputyNodePeers []*peer, currentHeight uint32, currentMiner common.Address, distance uint32) ([]*peer, error) {
+	deputy, err := ps.dm.GetDeputyByDistance(currentHeight+1, currentMiner, distance)
+	if err != nil {
+		return nil, err
+	}
+	// 如果下下个即将出块的deputy为自己，则不用再广播出去了,防止nextMineDeputy 和thirdMineDeputy相互转,即使是通过api传过来的交易，交易执行等待时间最多为30s。
+	if distance == 2 && bytes.Compare(deputynode.GetSelfNodeID(), deputy.NodeID) == 0 {
+		return peers, nil
+	}
+	// 4. 通过nodeId判断deputy是否在deputyNodePeers中
+	for _, p := range deputyNodePeers {
+		if bytes.Compare(p.NodeID()[:], deputy.NodeID) == 0 {
+			peers = append(peers, p)
+		}
+	}
+	return peers, nil
 }
 
 // DelayNodes filter delay node

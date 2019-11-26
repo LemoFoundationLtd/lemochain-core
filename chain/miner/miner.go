@@ -53,13 +53,13 @@ func New(cfg MineConfig, chain Chain, dm *deputynode.Manager, txPool TxPool) *Mi
 		blockInterval:           cfg.SleepTime,
 		timeoutTime:             cfg.Timeout,
 		reservedPropagationTime: cfg.ReservedPropagationTime,
-		chain:          chain,
-		dm:             dm,
-		txPool:         txPool,
-		recvNewBlockCh: make(chan *types.Block, 1),
-		timeToMineCh:   make(chan *MineInfo),
-		stopCh:         make(chan struct{}),
-		quitCh:         make(chan struct{}),
+		chain:                   chain,
+		dm:                      dm,
+		txPool:                  txPool,
+		recvNewBlockCh:          make(chan *types.Block, 1),
+		timeToMineCh:            make(chan *MineInfo),
+		stopCh:                  make(chan struct{}),
+		quitCh:                  make(chan struct{}),
 	}
 }
 
@@ -209,7 +209,7 @@ func (m *Miner) schedule(parentBlock *types.Block) bool {
 		return false
 	}
 	// 获取新块离本节点索引的距离，永远在(0,DeputyCount]区间中
-	distance, err := consensus.GetMinerDistance(mineHeight, parentBlock.MinerAddress(), minerAddress, m.dm)
+	distance, err := m.dm.GetMinerDistance(mineHeight, parentBlock.MinerAddress(), minerAddress)
 	if err != nil {
 		log.Errorf("GetMinerDistance error: %v", err)
 		return false

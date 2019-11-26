@@ -76,7 +76,7 @@ func IsSnapshotBlock(height uint32) bool {
 	return height%params.TermDuration == 0
 }
 
-// IsRewardBlock 是否该发出块奖励了
+// IsRewardBlock 是否该发出块奖励了. 1001001,2001001,3001001,4001001。。。
 func IsRewardBlock(height uint32) bool {
 	if height < params.TermDuration+params.InterimDuration+1 {
 		// in genesis term
