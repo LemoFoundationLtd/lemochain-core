@@ -1,6 +1,7 @@
 package miner
 
 import (
+	"github.com/LemoFoundationLtd/lemochain-core/chain/consensus"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
@@ -182,7 +183,7 @@ func (m *Miner) getSleepTime(mineHeight uint32, distance uint32, parentTime int6
 	// 网络传输耗时，即当前时间减去父块区块头中的时间戳
 	passTime := currentTime - parentTime
 	// 可以出块的时间窗口
-	windowFrom, windowTo := m.dm.GetNextMineWindow(mineHeight, distance, parentTime, currentTime, m.timeoutTime)
+	windowFrom, windowTo := consensus.GetNextMineWindow(mineHeight, distance, parentTime, currentTime, m.timeoutTime, m.dm)
 
 	if distance == 1 && passTime < m.timeoutTime {
 		// distance == 1表示下一个区块该本节点产生了，也没有超时，windowFrom为0。这时需要确保延迟足够的时间，避免早期交易少时链上全是空块

@@ -159,37 +159,42 @@ func (ps *peerSet) NeedBroadcastTxsNodes(currentHeight uint32, currentMiner comm
 	if len(deputyNodePeers) == 0 {
 		return ps.DelayNodes(currentHeight + 1)
 	}
-
-	// 2. 获取下一个区块的出块者的deputy信息
-	nextMineDeputy, err := ps.dm.GetDeputyByDistance(currentHeight+1, currentMiner, 1)
-	// 获取下一个出块deputy失败则返回所有的连接的peers
-	if err != nil || nextMineDeputy == nil {
-		return deputyNodePeers
-	}
-
-	// 3. 获取下下个区块的出块者的deputy信息
-	thirdMineDeputy, err := ps.dm.GetDeputyByDistance(currentHeight+1, currentMiner, 2)
-	// 3.1 获取下下个出块deputy失败则返回所有的连接的peers
-	if err != nil || thirdMineDeputy == nil {
-		return deputyNodePeers
-	}
-	// 3.2 如果下下个即将出块的deputy为自己，则不用再广播出去了,防止nextMineDeputy 和thirdMineDeputy相互转,即使是通过api传过来的交易，交易执行等待时间最多为30s。
-	if bytes.Compare(deputynode.GetSelfNodeID(), thirdMineDeputy.NodeID) == 0 {
-		return nil
-	}
-	// 4. 通过nodeId判断nextMineDeputy和 thirdMineDeputy是否在deputyNodePeers中
+	var err error
 	peers := make([]*peer, 0, 2)
-	for _, p := range deputyNodePeers {
-		if (bytes.Compare(p.NodeID()[:], nextMineDeputy.NodeID) == 0) || (bytes.Compare(p.NodeID()[:], thirdMineDeputy.NodeID) == 0) {
-			peers = append(peers, p)
-		}
+	peers, err = ps.appendPeerByDistance(peers, deputyNodePeers, currentHeight, currentMiner, 1)
+	if err != nil {
+		return deputyNodePeers
 	}
+	peers, err = ps.appendPeerByDistance(peers, deputyNodePeers, currentHeight, currentMiner, 2)
+	if err != nil {
+		return deputyNodePeers
+	}
+
 	// 5. 如果本节点没有与nextMineDeputy和thirdMineDeputy节点相连则返回本节点连接的所有的peers
 	if len(peers) == 0 {
 		return deputyNodePeers
 	} else {
 		return peers
 	}
+}
+
+// appendPeerByDistance
+func (ps *peerSet) appendPeerByDistance(peers, deputyNodePeers []*peer, currentHeight uint32, currentMiner common.Address, distance uint32) ([]*peer, error) {
+	deputy, err := ps.dm.GetDeputyByDistance(currentHeight+1, currentMiner, distance)
+	if err != nil {
+		return nil, err
+	}
+	// 如果下下个即将出块的deputy为自己，则不用再广播出去了,防止nextMineDeputy 和thirdMineDeputy相互转,即使是通过api传过来的交易，交易执行等待时间最多为30s。
+	if distance == 2 && bytes.Compare(deputynode.GetSelfNodeID(), deputy.NodeID) == 0 {
+		return peers, nil
+	}
+	// 4. 通过nodeId判断deputy是否在deputyNodePeers中
+	for _, p := range deputyNodePeers {
+		if bytes.Compare(p.NodeID()[:], deputy.NodeID) == 0 {
+			peers = append(peers, p)
+		}
+	}
+	return peers, nil
 }
 
 // DelayNodes filter delay node
