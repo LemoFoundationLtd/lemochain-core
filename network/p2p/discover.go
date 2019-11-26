@@ -19,7 +19,7 @@ import (
 
 const (
 	MaxReconnectCount int8 = 5
-	MaxNodeCount           = 200
+	MaxNodeCount           = 100
 
 	WhiteFile = "nodewhitelist"
 	FindFile  = "findnode"

@@ -20,4 +20,5 @@ const (
 	Debug            = "debug"
 	JSpath           = "jspath"
 	LogLevel         = "loglevel"
+	MetricsEnabled   = "metrics"
 )

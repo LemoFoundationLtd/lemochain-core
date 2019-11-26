@@ -48,100 +48,100 @@ type Condition struct {
 var AlarmRuleTable = map[string]*Condition{
 	// txpool
 	InvalidTx_meterName: {
-		AlarmReason:  "平均两秒有1笔交易执行失败了",
+		AlarmReason:  "最近的一分钟时间内有大于30笔交易执行失败了",
 		MetricsType:  TypeRate1,
 		AlarmValue:   0.5,
 		AlarmMsgCode: textMsgCode,
 	},
 	TxpoolNumber_counterName: {
-		AlarmReason:  "交易池中的交易大于10000笔了",
+		AlarmReason:  "交易池中的交易大于5000笔了",
 		MetricsType:  TypeCount,
-		AlarmValue:   10000,
+		AlarmValue:   5000,
 		AlarmMsgCode: textMsgCode,
 	},
 	// network
 	HandleBlocksMsg_meterName: {
-		AlarmReason:  "调用handleBlocksMsg的速率大于50次/s",
+		AlarmReason:  "最近一分钟时间内收到其他节点广播过来的blocks消息次数大于60次",
 		MetricsType:  TypeRate1,
-		AlarmValue:   50,
+		AlarmValue:   1,
 		AlarmMsgCode: textMsgCode,
 	},
 	HandleGetBlocksMsg_meterName: {
-		AlarmReason:  "调用handleGetBlocksMsg的速率大于100次/s",
+		AlarmReason:  "最近一分钟时间内收到其他节点请求拉取block消息次数大于60次",
+		MetricsType:  TypeRate1,
+		AlarmValue:   1,
+		AlarmMsgCode: textMsgCode,
+	},
+	HandleBlockHashMsg_meterName: {
+		AlarmReason:  "最近一分钟时间内普通节点收到广播的稳定块hash的次数大于6000次", // 普通节点收到广播的稳定块hash，按照连接100个peer和一分钟出60个块来计算
 		MetricsType:  TypeRate1,
 		AlarmValue:   100,
 		AlarmMsgCode: textMsgCode,
 	},
-	HandleBlockHashMsg_meterName: {
-		AlarmReason:  "调用handleBlockHashMsg的速率大于5次/s",
-		MetricsType:  TypeRate1,
-		AlarmValue:   5,
-		AlarmMsgCode: textMsgCode,
-	},
 	HandleGetConfirmsMsg_meterName: {
-		AlarmReason:  "调用handleGetConfirmsMsg的速率大于50次/s",
+		AlarmReason:  "最近一分钟时间内收到其他节点请求拉取block确认包消息次数大于960次", // 极端情况另外16个deputy都来拉,每个节点请求60次，则最多请求960次
 		MetricsType:  TypeRate1,
-		AlarmValue:   50,
+		AlarmValue:   16,
 		AlarmMsgCode: textMsgCode,
 	},
 	HandleConfirmMsg_meterName: {
-		AlarmReason:  "调用handleConfirmMsg的速率大于10次/s",
+		AlarmReason:  "最近一分钟时间内收到其他节点广播过来的区块确认包的次数大于960", // 按照一分钟最多出块60个，16个deputyNode peers计算
+		MetricsType:  TypeRate1,
+		AlarmValue:   16,
+		AlarmMsgCode: textMsgCode,
+	},
+	HandleGetBlocksWithChangeLogMsg_meterName: {
+		AlarmReason:  "最近一分钟时间内收到调用handleGetBlocksWithChangeLogMsg请求的次数大于600次", // lemochain-distribution端同步区块调用的接口，按照连接10个distribution节点计算
 		MetricsType:  TypeRate1,
 		AlarmValue:   10,
 		AlarmMsgCode: textMsgCode,
 	},
-	HandleGetBlocksWithChangeLogMsg_meterName: {
-		AlarmReason:  "调用handleGetBlocksWithChangeLogMsg的速率大于50次/s",
-		MetricsType:  TypeRate1,
-		AlarmValue:   50,
-		AlarmMsgCode: textMsgCode,
-	},
 	HandleDiscoverReqMsg_meterName: {
-		AlarmReason:  "调用handleDiscoverReqMsg的速率大于5次/s",
+		AlarmReason:  "最近一分钟时间内收到调用handleDiscoverReqMsg的次数大于600次", // 节点发现请求为10s发送一次，按照连接100个peer来算一分钟最多收到600次
 		MetricsType:  TypeRate1,
-		AlarmValue:   5,
+		AlarmValue:   10,
 		AlarmMsgCode: textMsgCode,
 	},
 	HandleDiscoverResMsg_meterName: {
-		AlarmReason:  "调用handleDiscoverReqMsg的速率大于5次/s",
+		AlarmReason:  "最近一分钟时间内收到调用handleDiscoverReqMsg的次数大于600次", // 同上
 		MetricsType:  TypeRate1,
-		AlarmValue:   5,
+		AlarmValue:   10,
 		AlarmMsgCode: textMsgCode,
 	},
 	// p2p
 	PeerConnFailed_meterName: {
-		AlarmReason:  "远程peer连接失败的频率大于5次/s",
+		AlarmReason:  "最近一分钟时间内节点连接断开的次数大于5次",
 		MetricsType:  TypeRate1,
-		AlarmValue:   5,
+		AlarmValue:   0.083,
 		AlarmMsgCode: textMsgCode,
 	},
 	ReadMsgSuccess_timerName: {
-		AlarmReason:  "读取接收到的message所用的平均时间大于20s",
+		AlarmReason:  "读取接收节点的Msg所用的平均时间大于6s，有必要升级网络带宽", // 节点之间的心跳包是每隔5s发送一次，最多允许1s的传输时间。
 		MetricsType:  TypeMean,
-		AlarmValue:   20,
+		AlarmValue:   6,
 		AlarmMsgCode: textMsgCode,
 	},
 	ReadMsgFailed_timerName: {
-		AlarmReason:  "读取接收到的message失败的频率大于5次/s",
+		AlarmReason:  "最近一分钟时间内读取接收节点的Msg失败的次数大于5次", // 读取节点消息失败会断开连接，允许一分钟内重连失败次数为5
 		MetricsType:  TypeRate1,
-		AlarmValue:   5,
+		AlarmValue:   0.083,
 		AlarmMsgCode: textMsgCode,
 	},
 	WriteMsgSuccess_timerName: {
-		AlarmReason:  "写操作的平均用时超过15s",
+		AlarmReason:  "发送Msg给其他节点的平均用时超过5s，有必要升级网络带宽",
 		MetricsType:  TypeMean,
-		AlarmValue:   15,
+		AlarmValue:   5,
 		AlarmMsgCode: textMsgCode,
 	},
 	WriteMsgFailed_timerName: {
-		AlarmReason:  "写操作失败的频率超过了5次/s",
+		AlarmReason:  "最近一分钟时间内发送Msg给其他节点失败的次数超过5次",
 		MetricsType:  TypeRate1,
-		AlarmValue:   5,
+		AlarmValue:   0.083,
 		AlarmMsgCode: textMsgCode,
 	},
 	// tx
 	VerifyFailedTx_meterName: {
-		AlarmReason:  "验证交易失败的频率超过了0.5次/s",
+		AlarmReason:  "最近一分钟时间内交易验证失败的的次数超过了30笔",
 		MetricsType:  TypeRate1,
 		AlarmValue:   0.5,
 		AlarmMsgCode: textMsgCode,
@@ -154,22 +154,28 @@ var AlarmRuleTable = map[string]*Condition{
 		AlarmMsgCode: textMsgCode,
 	},
 	MineBlock_timerName: {
-		AlarmReason:  "Mine Block 所用平均时间大于8s",
+		AlarmReason:  "Mine Block 所用平均时间大于15s",
 		MetricsType:  TypeMean,
-		AlarmValue:   8,
+		AlarmValue:   15,
 		AlarmMsgCode: textMsgCode,
 	},
 	VerifyBlock_meterName: {
-		AlarmReason:  "VerifyAndSeal 校验收到的block失败的频率大于5s一次",
-		MetricsType:  TypeRate15,
-		AlarmValue:   0.2,
+		AlarmReason:  "最近一分钟时间内收到2个以上InsertBlock校验不通过的block",
+		MetricsType:  TypeRate1,
+		AlarmValue:   0.033,
+		AlarmMsgCode: textMsgCode,
+	},
+	UnStableBlock_meterName: {
+		AlarmReason:  "未稳定块已经超过了设置的过度期区块总数的十分之九了",
+		MetricsType:  TypeRate1,
+		AlarmValue:   0.016,
 		AlarmMsgCode: textMsgCode,
 	},
 	// levelDB
 	LevelDb_miss_meterName: {
-		AlarmReason:  "从leveldb中读取数据失败的频率大于10次/s",
+		AlarmReason:  "最近一分钟时间内从leveldb中读取数据失败次数大于10次",
 		MetricsType:  TypeRate1,
-		AlarmValue:   10,
+		AlarmValue:   0.16,
 		AlarmMsgCode: textMsgCode,
 	},
 	// system

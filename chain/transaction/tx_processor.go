@@ -3,6 +3,7 @@ package transaction
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
@@ -30,6 +31,8 @@ const (
 )
 
 var (
+	invalidTxMeter = metrics.NewMeter(metrics.InvalidTx_meterName) // 执行失败的交易的频率
+
 	ErrInsufficientBalanceForGas = errors.New("insufficient balance to pay for gas")
 	ErrInvalidTxInBlock          = errors.New("block contains invalid transaction")
 	ErrTxGasUsedNotEqual         = errors.New("tx gas used not equal")
@@ -158,6 +161,7 @@ txsLoop:
 				// block is full
 				log.Info("Not enough gas for further transactions", "gp", gp, "lastTxGasLimit", tx.GasLimit())
 			} else {
+				invalidTxMeter.Mark(1) // 标记一笔交易执行失败
 				// Strange error, discard the transaction and get the next in line.
 				log.Info("Skipped invalid transaction", "hash", tx.Hash(), "err", err)
 				invalidTxs = append(invalidTxs, tx)

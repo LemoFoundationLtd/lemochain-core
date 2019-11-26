@@ -34,8 +34,8 @@ func NewAlarmManager() *alarmManager {
 }
 
 func (m *alarmManager) Start() {
-	// 如果metrics未开启，则不能启动alarm system
-	if !Enabled {
+	// 如果metrics未开启或者AlarmUrl为空，则不能启动alarm system
+	if !Enabled || AlarmUrl == "" {
 		log.Info("The metrics not open. So alarm system start failed.")
 		return
 	}
@@ -254,6 +254,11 @@ func (c *client) listenAndAlarm(m map[string]interface{}, metricsName string, co
 					// 满足告警条件
 					enabled = true
 				}
+			} else if condition.MetricsType == TypeRate1 {
+				if timer.Rate1() > condition.AlarmValue {
+					// 满足告警条件
+					enabled = true
+				}
 			} else {
 				log.Errorf("This type of measurement is not currently supported. error metricsType: %d", condition.MetricsType)
 				return false
@@ -271,7 +276,7 @@ func (c *client) listenAndAlarm(m map[string]interface{}, metricsName string, co
 		alarmReason := fmt.Sprintf("AlarmReason: %s\n", condition.AlarmReason)
 		alarmTime := fmt.Sprintf("AlarmTime: \n%s\n", time.Now().Format("2006/01/02 15:04:05"))
 		content := alarmReason + metricsDetails + alarmTime
-
+		log.Errorf("告警信息：%s", content)
 		go c.sendMsgToAlarmServer(condition.AlarmMsgCode, []byte(content))
 	}
 	return enabled
