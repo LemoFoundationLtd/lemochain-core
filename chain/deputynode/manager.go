@@ -20,6 +20,8 @@ var (
 	ErrInvalidSnapshotHeight = errors.New("invalid snapshot block height")
 	ErrNoTerms               = errors.New("can't access deputy nodes before SaveSnapshot")
 	ErrQueryFutureTerm       = errors.New("can't query future term")
+	ErrMineGenesis           = errors.New("can not mine genesis block")
+	ErrNotDeputy             = errors.New("not a deputy address in specific height")
 )
 
 type BlockLoader interface {
@@ -216,4 +218,73 @@ func (m *Manager) IsSelfDeputyNode(height uint32) bool {
 // IsNodeDeputy
 func (m *Manager) IsNodeDeputy(height uint32, nodeID []byte) bool {
 	return m.GetDeputyByNodeID(height, nodeID) != nil
+}
+
+// GetDeputyByDistance find a deputy from parent block miner by miner index distance. The distance should always greater than 0
+func (m *Manager) GetDeputyByDistance(targetHeight uint32, parentBlockMiner common.Address, distance uint32) (*types.DeputyNode, error) {
+	if targetHeight == 0 {
+		return nil, ErrMineGenesis
+	}
+	deputies := m.GetDeputiesByHeight(targetHeight)
+	nodeCount := uint32(len(deputies))
+	if nodeCount == 0 {
+		return nil, ErrNotDeputy
+	}
+
+	if targetHeight == 1 || IsRewardBlock(targetHeight) {
+		// Genesis block is pre-set, not belong to any deputy node. So only blocks start with height 1 is mined by deputies
+		// The reward block changes deputy nodes, so we need recompute the slot
+		return deputies[distance-1], nil
+	} else {
+		// find parent block miner deputy after the IsRewardBlock logic, to make the distance calculation correct in the scene of crossing terms
+		for index, node := range deputies {
+			if node.MinerAddress == parentBlockMiner {
+				targetIndex := (uint32(index) + distance + nodeCount) % nodeCount
+				return deputies[targetIndex], nil
+			}
+		}
+	}
+	return nil, ErrNotDeputy
+}
+
+// GetMinerDistance get miner index distance. It is always greater than 0 and not greater than deputy count
+func (m *Manager) GetMinerDistance(targetHeight uint32, parentBlockMiner, targetMiner common.Address) (uint32, error) {
+	if targetHeight == 0 {
+		return 0, ErrMineGenesis
+	}
+	deputies := m.GetDeputiesByHeight(targetHeight)
+	nodeCount := uint32(len(deputies))
+
+	// find target block miner deputy
+	targetDeputy := findDeputyByAddress(deputies, targetMiner)
+	if targetDeputy == nil {
+		return 0, ErrNotDeputy
+	}
+
+	// Genesis block is pre-set, not belong to any deputy node. So only blocks start with height 1 is mined by deputies
+	// The reward block changes deputy nodes, so we need recompute the slot
+	if targetHeight == 1 || IsRewardBlock(targetHeight) {
+		return targetDeputy.Rank + 1, nil
+	}
+
+	// if they are same miner, then return deputy count
+	if targetMiner == parentBlockMiner {
+		return nodeCount, nil
+	}
+
+	// find last block miner deputy
+	lastDeputy := findDeputyByAddress(deputies, parentBlockMiner)
+	if lastDeputy == nil {
+		return 0, ErrNotDeputy
+	}
+	return (nodeCount + targetDeputy.Rank - lastDeputy.Rank) % nodeCount, nil
+}
+
+func findDeputyByAddress(deputies []*types.DeputyNode, addr common.Address) *types.DeputyNode {
+	for _, node := range deputies {
+		if node.MinerAddress == addr {
+			return node
+		}
+	}
+	return nil
 }

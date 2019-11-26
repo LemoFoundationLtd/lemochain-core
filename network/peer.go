@@ -122,6 +122,7 @@ func (p *peer) Handshake(content []byte) (*ProtocolHandshake, error) {
 		if msg, err := p.conn.ReadMsg(); err == nil {
 			msgCh <- msg
 		} else {
+			log.Errorf("Handshake ReadMsg error: %v", err)
 			msgCh <- nil
 		}
 	}()
