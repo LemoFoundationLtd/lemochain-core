@@ -261,9 +261,6 @@ func (v *Validator) VerifyBeforeTxProcess(block *types.Block, chainId uint16) er
 	if err := verifyTime(block); err != nil {
 		return err
 	}
-	if err := verifyDeputy(block, v.canLoader); err != nil {
-		return err
-	}
 	if err := verifyExtraData(block); err != nil {
 		return err
 	}
@@ -275,6 +272,10 @@ func (v *Validator) VerifyBeforeTxProcess(block *types.Block, chainId uint16) er
 
 // VerifyAfterTxProcess verify the block data which computed from transactions
 func (v *Validator) VerifyAfterTxProcess(block, computedBlock *types.Block) error {
+	// verify deputy nodes
+	if err := verifyDeputy(block, v.canLoader); err != nil {
+		return err
+	}
 	// verify changeLog first to print more detail if it is incorrect
 	if err := verifyChangeLog(block, computedBlock.ChangeLogs); err != nil {
 		return err
