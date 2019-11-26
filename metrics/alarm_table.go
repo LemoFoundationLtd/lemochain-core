@@ -79,7 +79,7 @@ var AlarmRuleTable = map[string]*Condition{
 		AlarmMsgCode: textMsgCode,
 	},
 	HandleGetConfirmsMsg_meterName: {
-		AlarmReason:  "最近一分钟时间内收到其他节点请求拉取block确认包消息次数大于1600次", // 极端情况另外16个deputy都来拉,每个节点请求60次，则最多请求960次
+		AlarmReason:  "最近一分钟时间内收到其他节点请求拉取block确认包消息次数大于960次", // 极端情况另外16个deputy都来拉,每个节点请求60次，则最多请求960次
 		MetricsType:  TypeRate1,
 		AlarmValue:   16,
 		AlarmMsgCode: textMsgCode,
