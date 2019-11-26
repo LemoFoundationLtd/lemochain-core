@@ -17,10 +17,10 @@ import (
 )
 
 var (
-	blockInsertTimer = metrics.NewTimer(metrics.BlockInsert_timerName) // 统计区块插入链中的速率和所用时间的分布情况
-	mineBlockTimer   = metrics.NewTimer(metrics.MineBlock_timerName)   // 统计出块速率和时间分布
-	verifyBlockMeter = metrics.NewMeter(metrics.VerifyBlock_meterName) // 统计验证区块失败的频率
-	chainForkMeter   = metrics.NewMeter(metrics.ChainFork_meterName)   // 链分叉统计
+	blockInsertTimer   = metrics.NewTimer(metrics.BlockInsert_timerName)   // 统计区块插入链中的速率和所用时间的分布情况
+	mineBlockTimer     = metrics.NewTimer(metrics.MineBlock_timerName)     // 统计出块速率和时间分布
+	verifyBlockMeter   = metrics.NewMeter(metrics.VerifyBlock_meterName)   // 统计验证区块失败的频率
+	unStableBlockMeter = metrics.NewMeter(metrics.UnStableBlock_meterName) // 未稳定区块过多，可能影响到换届
 )
 
 // DPoVP process the fork logic
@@ -209,6 +209,10 @@ func (dp *DPoVP) saveNewBlock(block *types.Block) error {
 	// But the new current's height is 2/3 deputies count bigger at most, so we don't need to try to confirm the new current block here
 	// dp.confirmer.TryConfirm(block)
 
+	// 当前分支未稳定区块个数等于过渡期区块的十分之九则需要告警
+	if dp.CurrentBlock().Height()-dp.StableBlock().Height() == params.InterimDuration*9/10 {
+		unStableBlockMeter.Mark(1)
+	}
 	dp.logCurrentChange(oldCurrent)
 
 	return nil
@@ -313,7 +317,6 @@ func (dp *DPoVP) logCurrentChange(oldCurrent *types.Block) {
 	} else if newCurrent.ParentHash() == oldCurrent.Hash() {
 		log.Debugf("Current fork length +1. Current block changes from %s to %s", oldCurrent.ShortString(), newCurrent.ShortString())
 	} else {
-		chainForkMeter.Mark(1) // 统计调用频率用
 		log.Debugf("Switch fork! Current block changes from %s to %s", oldCurrent.ShortString(), newCurrent.ShortString())
 	}
 	if dp.logForks {

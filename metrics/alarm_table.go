@@ -67,9 +67,9 @@ var AlarmRuleTable = map[string]*Condition{
 		AlarmMsgCode: textMsgCode,
 	},
 	HandleGetBlocksMsg_meterName: {
-		AlarmReason:  "最近一分钟时间内收到其他节点请求拉取指定高度的block消息次数大于100次",
+		AlarmReason:  "最近一分钟时间内收到其他节点请求拉取block消息次数大于60次",
 		MetricsType:  TypeRate1,
-		AlarmValue:   1.66,
+		AlarmValue:   1,
 		AlarmMsgCode: textMsgCode,
 	},
 	HandleBlockHashMsg_meterName: {
@@ -79,9 +79,9 @@ var AlarmRuleTable = map[string]*Condition{
 		AlarmMsgCode: textMsgCode,
 	},
 	HandleGetConfirmsMsg_meterName: {
-		AlarmReason:  "最近一分钟时间内收到其他节点请求拉取block确认包消息次数大于1600次", // 极端情况另外16个deputy都来拉,每个节点请求100次，则最多请求1600次
+		AlarmReason:  "最近一分钟时间内收到其他节点请求拉取block确认包消息次数大于1600次", // 极端情况另外16个deputy都来拉,每个节点请求60次，则最多请求960次
 		MetricsType:  TypeRate1,
-		AlarmValue:   26.6,
+		AlarmValue:   16,
 		AlarmMsgCode: textMsgCode,
 	},
 	HandleConfirmMsg_meterName: {
@@ -91,9 +91,9 @@ var AlarmRuleTable = map[string]*Condition{
 		AlarmMsgCode: textMsgCode,
 	},
 	HandleGetBlocksWithChangeLogMsg_meterName: {
-		AlarmReason:  "最近一分钟时间内收到调用handleGetBlocksWithChangeLogMsg请求的次数大于100次", // lemochain-distribution端同步区块调用的接口，按照连接5个distribution节点计算
+		AlarmReason:  "最近一分钟时间内收到调用handleGetBlocksWithChangeLogMsg请求的次数大于600次", // lemochain-distribution端同步区块调用的接口，按照连接10个distribution节点计算
 		MetricsType:  TypeRate1,
-		AlarmValue:   1.66,
+		AlarmValue:   10,
 		AlarmMsgCode: textMsgCode,
 	},
 	HandleDiscoverReqMsg_meterName: {
@@ -165,8 +165,8 @@ var AlarmRuleTable = map[string]*Condition{
 		AlarmValue:   0.033,
 		AlarmMsgCode: textMsgCode,
 	},
-	ChainFork_meterName: {
-		AlarmReason:  "链软分叉了",
+	UnStableBlock_meterName: {
+		AlarmReason:  "未稳定块已经超过了设置的过度期区块总数的十分之九了",
 		MetricsType:  TypeRate1,
 		AlarmValue:   0.016,
 		AlarmMsgCode: textMsgCode,
