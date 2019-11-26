@@ -79,9 +79,23 @@ func NewChainDataBase(home string) *ChainDatabase {
 	if err != nil {
 		panic("get candidates err: " + err.Error())
 	} else {
-		db.LastConfirm.Top.Rank(max_candidate_count, candidates)
-	}
 
+		// 把票数为0的candidate筛选掉，默认票数为0的candidate为注销的candidate
+		newCandidate := make([]*Candidate, 0, len(candidates))
+		for _, val := range candidates {
+			accData, err := db.GetAccount(val.GetAddress())
+			if err != nil {
+				log.Errorf("getAccount from database. address: %s, error: %v", val.Address.String(), err)
+				continue
+			}
+			if result, ok := accData.Candidate.Profile[types.CandidateKeyIsCandidate]; ok {
+				if result == types.IsCandidateNode {
+					newCandidate = append(newCandidate, val)
+				}
+			}
+		}
+		db.LastConfirm.Top.Rank(max_candidate_count, newCandidate)
+	}
 	return db
 }
 
@@ -284,6 +298,7 @@ func (database *ChainDatabase) blockCommit(hash common.Hash) error {
 	}
 
 	candidates := cItem.filterCandidates(accounts)
+	// 注意这里即使是为注销候选节点不能删除记录，这里保存进去只是修改票数为0，因为在退还候选节点押金的地方要拉取所有的候选节点来判断注销的候选节点是否没有退还押金。
 	return commitContext(cItem.Block, candidates)
 }
 

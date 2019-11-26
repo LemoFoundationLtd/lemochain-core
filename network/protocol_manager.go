@@ -588,24 +588,28 @@ func (pm *ProtocolManager) forceSyncBlock(status *LatestStatus, p *peer) {
 // findSyncFrom find height of which sync from
 func (pm *ProtocolManager) findSyncFrom(rStatus *LatestStatus) (uint32, error) {
 	var from uint32
-	curBlock := pm.chain.CurrentBlock()
 	staBlock := pm.chain.StableBlock()
-
-	if staBlock.Height() < rStatus.StaHeight {
-		if curBlock.Height() < rStatus.StaHeight {
-			from = staBlock.Height() + 1
-		} else {
-			if pm.chain.HasBlock(rStatus.StaHash) {
-				from = rStatus.StaHeight + 1
-			} else {
-				from = staBlock.Height() + 1
-			}
-		}
-	} else {
-		if pm.chain.HasBlock(rStatus.StaHash) {
-			from = staBlock.Height() + 1
-		} else {
+	// 1. 本地稳定块高度大于等待远程稳定块高度的情况。本地稳定块高度大于远程稳定块默认为本地的网络环境好于远程节点，从而本地的区块多余远程节点，所以不去同步区块。
+	if staBlock.Height() > rStatus.StaHeight {
+		// 判断如果远程稳定块不在本地的当前链上，则表示链硬分叉了
+		if !pm.chain.HasBlock(rStatus.StaHash) {
 			return 0, errors.New("error: CHAIN FORK")
+		}
+		return rStatus.CurHeight + 1, nil
+	}
+	// 2. 本地稳定块高度小于等于远程稳定块高度的情况
+	if staBlock.Height() <= rStatus.StaHeight {
+		// 2.1 首先判断远程current是否已经存在本地链,存在则没必要去同步了
+		if pm.chain.HasBlock(rStatus.CurHash) {
+			return rStatus.CurHeight + 1, nil
+		}
+		// 2.2 判断远程稳定区块是否存在本地链上，如果存在则从远程稳定块高度开始同步，如果不存在则从本地稳定块高度开始同步
+		if pm.chain.HasBlock(rStatus.StaHash) {
+			// 从远程稳定块高度开始同步
+			from = rStatus.StaHeight + 1
+		} else {
+			// 从本地区块高度开始同步
+			from = staBlock.Height() + 1
 		}
 	}
 	return from, nil
