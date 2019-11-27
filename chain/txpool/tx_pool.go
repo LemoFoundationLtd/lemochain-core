@@ -95,15 +95,16 @@ func (pool *TxPool) VerifyTxInBlock(block *types.Block) bool {
 	}
 
 	traceByHash := pool.RecentTxs.GetTrace(block.Txs)
-	minHeight, maxHeight, blocks := pool.distance(traceByHash)
+	// conflictBlocks中的所有区块都与block有至少一条相同交易，不能与block共存于同一个分叉上
+	minHeight, maxHeight, conflictBlocks := pool.heightRange(traceByHash)
 	startHash := block.ParentHash()
 	startHeight := block.Height() - 1
 
-	nodes := pool.BlockCache.Path(startHash, startHeight, uint32(minHeight), uint32(maxHeight))
-	return !pool.isInBlocks(blocks, nodes)
+	parents := pool.BlockCache.CollectForkSlice(startHash, startHeight, uint32(minHeight), uint32(maxHeight))
+	return !pool.isInBlocks(conflictBlocks, parents)
 }
 
-func (pool *TxPool) distance(traceByHash map[common.Hash]TxTrace) (int64, int64, HashSet) {
+func (pool *TxPool) heightRange(traceByHash map[common.Hash]TxTrace) (int64, int64, HashSet) {
 	minHeight := int64(^uint64(0) >> 1)
 	maxHeight := int64(-1)
 	blockSet := make(HashSet)

@@ -248,8 +248,8 @@ func (trie *BlocksTrie) resetTimeBucket(block *types.Block) {
 	trie.TimeBuckets[slot] = newBlockTimeBucket(block)
 }
 
-/* 从指定块开始，收集该块所在链指定高度区间的块[minHeight, maxHeight] */
-func (trie *BlocksTrie) Path(hash common.Hash, height uint32, minHeight uint32, maxHeight uint32) []*TrieNode {
+/* 从指定块开始，收集该块所在分支上指定高度区间的块[minHeight, maxHeight] */
+func (trie *BlocksTrie) CollectForkSlice(hash common.Hash, height uint32, minHeight uint32, maxHeight uint32) []*TrieNode {
 	if hash == (common.Hash{}) || (minHeight > maxHeight) {
 		return make([]*TrieNode, 0)
 	}

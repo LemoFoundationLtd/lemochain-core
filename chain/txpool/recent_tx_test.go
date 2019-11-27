@@ -198,7 +198,7 @@ func TestTxRecently_GetPath(t *testing.T) {
 	assert.Equal(t, int64(104), blocks[common.HexToHash("0x05")])
 	assert.Equal(t, int64(105), blocks[common.HexToHash("0x06")])
 
-	// distance
+	// heightRange
 	minHeight, maxHeight := blocks.heightRange()
 	assert.Equal(t, int64(101), minHeight)
 	assert.Equal(t, int64(105), maxHeight)
