@@ -412,13 +412,13 @@ func (database *ChainDatabase) IsExistByHash(hash common.Hash) (bool, error) {
 
 // GetUnConfirmByHeight find unconfirmed block by height. The leafBlockHash is a son block on the fork
 func (database *ChainDatabase) GetUnConfirmByHeight(height uint32, leafBlockHash common.Hash) (*types.Block, error) {
+	database.RW.Lock()
+	defer database.RW.Unlock()
+
 	// confirmed block
 	if height <= database.LastConfirm.Block.Height() {
 		return nil, ErrNotExist
 	}
-
-	database.RW.Lock()
-	defer database.RW.Unlock()
 
 	// find the block parent by parent till reach the specific height
 	leaf := database.UnConfirmBlocks[leafBlockHash]
@@ -694,6 +694,9 @@ func (database *ChainDatabase) SetContractCode(hash common.Hash, code types.Code
 }
 
 func (database *ChainDatabase) GetCandidatesTop(hash common.Hash) []*Candidate {
+	database.RW.Lock()
+	defer database.RW.Unlock()
+
 	cItem := database.UnConfirmBlocks[hash]
 	if (cItem != nil) && (cItem.Block != nil) {
 		if cItem.Top == nil {
