@@ -63,7 +63,7 @@ func TestDPoVP_MineBlock(t *testing.T) {
 
 	// mine success
 	parentBlock := dp.CurrentBlock()
-	miner, err := dp.dm.GetCorrectMiner(parentBlock.Header, time.Now().Unix()*1000, int64(testDpovpCfg.MineTimeout))
+	miner, err := GetCorrectMiner(parentBlock.Header, time.Now().Unix()*1000, int64(testDpovpCfg.MineTimeout), dp.dm)
 	assert.NoError(t, err)
 	deputynode.SetSelfNodeKey(deputyInfos.FindByMiner(miner).PrivateKey)
 	block, err := dp.MineBlock(3000)
@@ -77,7 +77,7 @@ func TestDPoVP_MineBlock(t *testing.T) {
 	tx2 := MakeTxFast(deputyInfos[0].PrivateKey)
 	dp.txPool.(*txpool.TxPool).RecvTxs(types.Transactions{tx1, tx2})
 	parentBlock = dp.CurrentBlock()
-	miner, err = dp.dm.GetCorrectMiner(parentBlock.Header, time.Now().Unix()*1000, int64(testDpovpCfg.MineTimeout))
+	miner, err = GetCorrectMiner(parentBlock.Header, time.Now().Unix()*1000, int64(testDpovpCfg.MineTimeout), dp.dm)
 	assert.NoError(t, err)
 	deputynode.SetSelfNodeKey(deputyInfos.FindByMiner(miner).PrivateKey)
 	block, err = dp.MineBlock(3000)
@@ -101,7 +101,7 @@ func TestDPoVP_MineBlock_Stable(t *testing.T) {
 
 	// mine success and become stable block
 	parentBlock := dp.CurrentBlock()
-	miner, err := dp.dm.GetCorrectMiner(parentBlock.Header, time.Now().Unix()*1000, int64(testDpovpCfg.MineTimeout))
+	miner, err := GetCorrectMiner(parentBlock.Header, time.Now().Unix()*1000, int64(testDpovpCfg.MineTimeout), dp.dm)
 	assert.NoError(t, err)
 	deputynode.SetSelfNodeKey(deputyInfos.FindByMiner(miner).PrivateKey)
 	block, err := dp.MineBlock(3000)
@@ -113,7 +113,7 @@ func TestDPoVP_MineBlock_Stable(t *testing.T) {
 
 func newTestBlock(dp *DPoVP, parentHeader *types.Header, deputyInfos deputyTestDatas, txs types.Transactions) *types.Block {
 	// find correct miner
-	miner, err := dp.dm.GetCorrectMiner(parentHeader, time.Now().Unix()*1000, int64(testDpovpCfg.MineTimeout))
+	miner, err := GetCorrectMiner(parentHeader, time.Now().Unix()*1000, int64(testDpovpCfg.MineTimeout), dp.dm)
 	if err != nil {
 		panic(err)
 	}
