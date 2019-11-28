@@ -17,7 +17,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	db "github.com/LemoFoundationLtd/lemochain-core/store/protocol"
 	"sync/atomic"
-	"time"
 )
 
 var ErrNoGenesis = errors.New("can't get genesis block")
@@ -56,14 +55,14 @@ func NewBlockChain(config Config, dm *deputynode.Manager, db db.ChainDB, flags f
 		return nil, ErrNoGenesis
 	}
 
-	// stable block
-	block, err := bc.db.LoadLatestBlock()
+	// stable latestStableBlock
+	latestStableBlock, err := bc.db.LoadLatestBlock()
 	if err != nil {
 		log.Errorf("Can't load last state: %v", err)
 		return nil, err
 	}
 
-	bc.am = account.NewManager(block.Hash(), bc.db)
+	bc.am = account.NewManager(latestStableBlock.Hash(), bc.db)
 	dpovpCfg := consensus.Config{
 		LogForks:      bc.flags.Int(common.LogLevel)-1 >= 3,
 		RewardManager: bc.Founder(),
@@ -73,7 +72,7 @@ func NewBlockChain(config Config, dm *deputynode.Manager, db db.ChainDB, flags f
 	}
 	bc.engine = consensus.NewDPoVP(dpovpCfg, bc.db, bc.dm, bc.am, bc, txPool)
 
-	bc.initTxPool(block, txPool)
+	bc.initTxPool(latestStableBlock, txPool)
 	go bc.runFeedTranspondLoop()
 
 	log.Info("BlockChain is ready", "stableHeight", bc.StableBlock().Height(), "stableHash", bc.StableBlock().Hash(), "currentHeight", bc.CurrentBlock().Height(), "currentHash", bc.CurrentBlock().Hash())
@@ -86,19 +85,18 @@ func (bc *BlockChain) initTxPool(block *types.Block, txPool *txpool.TxPool) {
 		return
 	}
 
-	startTime := time.Now().Unix()
-	blockTime := int64(block.Time())
+	latestTime := block.Time()
 	height := block.Height()
-	for (startTime-blockTime <= int64(params.TransactionExpiration)) && (height > 0) {
-		txPool.RecvBlock(block)
-
+	initBlock := block
+	// 需要初始化的block交易条件为，height大于0并且区块时间戳距离最新的稳定区块的时间戳不大于30分钟
+	for height > 0 && (latestTime-initBlock.Time() <= uint32(params.TransactionExpiration)) {
+		txPool.RecvBlock(initBlock)
 		height = height - 1
-		block = bc.GetBlockByHeight(height)
-		if block == nil {
-			log.Error("get block by height fail", "height", height)
+		// 设置initBlock为前一个区块
+		initBlock = bc.GetBlockByHeight(height)
+		if initBlock == nil {
+			log.Errorf("get block by height error when init tx pool. height: %d.", height)
 			panic(ErrLoadBlock)
-		} else {
-			blockTime = int64(block.Time())
 		}
 	}
 }
