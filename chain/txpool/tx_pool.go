@@ -103,6 +103,33 @@ func (pool *TxPool) VerifyTxInBlock(block *types.Block) bool {
 	return !pool.isInBlocks(blocks, nodes)
 }
 
+func (pool *TxPool) GetTrace(tx *types.Transaction) []common.Hash {
+	pool.RW.Lock()
+	defer pool.RW.Unlock()
+
+	if tx == nil {
+		return make([]common.Hash, 0)
+	}
+
+	txs := make([]*types.Transaction, 1)
+	txs[0] = tx
+	allTxTraces := pool.RecentTxs.GetTrace(txs)
+	if len(allTxTraces) <= 0 {
+		return make([]common.Hash, 0)
+	}
+
+	txTrace := allTxTraces[tx.Hash()]
+	if len(txTrace) <= 0 {
+		return make([]common.Hash, 0)
+	}
+
+	blockHashes := make([]common.Hash, 0, len(txTrace))
+	for blockHash := range txTrace {
+		blockHashes = append(blockHashes, blockHash)
+	}
+	return blockHashes
+}
+
 func (pool *TxPool) distance(traceByHash map[common.Hash]TxTrace) (int64, int64, HashSet) {
 	minHeight := int64(^uint64(0) >> 1)
 	maxHeight := int64(-1)
