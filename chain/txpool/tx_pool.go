@@ -73,7 +73,7 @@ func (pool *TxPool) isInBlocks(hashes HashSet, blocks []*TrieNode) bool {
 		if !hashes.Has(v.Header.Hash()) {
 			continue
 		} else {
-			log.Errorf("isInBlocks equal BlockHash: %s", v.Header.Hash())
+			log.Errorf("isInBlocks equal BlockHash: %s, blockHeight: %d ", v.Header.Hash().String(), v.Header.Height)
 			return true
 		}
 	}
