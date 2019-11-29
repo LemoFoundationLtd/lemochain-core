@@ -4,6 +4,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
+	"github.com/LemoFoundationLtd/lemochain-core/common/math"
 )
 
 /** 一个区块包含的交易Hash */
@@ -33,8 +34,8 @@ type BlocksInTime struct {
 
 // SaveBlock
 func (timer *BlocksInTime) SaveBlock(block *types.Block) {
-	// 此区块时间小于LastMaxTime或者此区块中没有交易则不保存此block
-	if block.Time() < timer.LastMaxTime || len(block.Txs) == 0 {
+	// 此区块时间小于LastMaxTime
+	if block.Time() < timer.LastMaxTime {
 		// 不保存
 		return
 	}
@@ -65,8 +66,8 @@ func (timer *BlocksInTime) SaveBlock(block *types.Block) {
 
 // DelBlock
 func (timer *BlocksInTime) DelBlock(block *types.Block) {
-	// block时间是否小于LastMaxTime或者block中的交易数量为0则不处理
-	if block.Time() < timer.LastMaxTime || len(block.Txs) == 0 {
+	// block时间是否小于LastMaxTime
+	if block.Time() < timer.LastMaxTime {
 		return
 	}
 	differTime := block.Time() - timer.LastMaxTime
@@ -187,15 +188,126 @@ func (guard *TxGuard) SaveBlock(block *types.Block) {
 	}
 }
 
-func (guard *TxGuard) IsTxExist(startBlockHash common.Hash, tx *types.Transaction) {
-	// TODO
+func (guard *TxGuard) IsTxExist(startBlockHash common.Hash, startBlockHeight uint32, tx *types.Transaction) bool {
+	// 1. 查找交易是否在Traces中存在
+	if _, ok := guard.Traces[tx.Hash()]; !ok {
+		return false
+	}
+	// 2. 存在则取出那些区块打包了此交易
+	trace := guard.Traces[tx.Hash()]
+	// 3. 找出trace中的mineHeight和maxHeight
+	minHeight := uint32(math.MaxUint32)
+	maxHeight := uint32(0)
+	for _, height := range trace {
+		if height < minHeight {
+			minHeight = height
+		}
+		if height > maxHeight {
+			maxHeight = height
+		}
+	}
+	// 4. 从startHeight开始逐个往前遍历当前分支的区块是否在trace中
+	startBlock := guard.HeightBuckets[startBlockHeight][startBlockHash]
+	pHash := startBlock.Header.Hash()
+	pHeight := startBlock.Header.Height
+	pBlock := startBlock
+	for pHeight >= minHeight {
+		if pHeight <= maxHeight {
+			// 判断是否在trace中
+			if _, ok := trace[pHash]; ok {
+				return true
+			}
+		}
+		// 前移动一个block
+		pHash = pBlock.Header.ParentHash
+		pHeight = pHeight - 1
+		pBlock = guard.HeightBuckets[pHeight][pHash]
+	}
+	return false
 }
 
-func (guard *TxGuard) IsTxsExist(block *types.Block) {
-	/**
-	 * (1) 根据block中的交易，从Traces获取这些交易所在的区块
-	 * (2) 根据这些区块，计算这些区块的最大高度和最小高度
-	 * (3) 从HeightBuckets中，从最小高度和最小高度的区块开始，截止最大高度，找出所有的路径区块
-	 * (4) 判断所有的路径区块，是否在这些交易的区块中，如果存在，则存在；否则不存在
-	 */
+func (guard *TxGuard) IsTxsExist(block *types.Block) bool {
+	// 1. 获取block中的交易存在的所有区块
+	traces := make(Trace)
+	for _, tx := range block.Txs {
+		if trace, ok := guard.Traces[tx.Hash()]; ok {
+			for bHash, height := range trace {
+				traces[bHash] = height
+			}
+		}
+	}
+	// 不存在
+	if len(traces) == 0 {
+		return false
+	}
+	// 2. 找出traces中的最大高度和最小高度
+	minHeight := uint32(math.MaxUint32)
+	maxHeight := uint32(0)
+	for _, height := range traces {
+		if height < minHeight {
+			minHeight = height
+		}
+		if height > maxHeight {
+			maxHeight = height
+		}
+	}
+	// 3. 从block的父块开始，往前查找block所在的分支上的区块，直到找到高度为minHeight为止，并判断本分支高度在minHeight--maxHeight的区块是否在traces中
+	pHash := block.ParentHash()
+	pHeight := block.Height() - 1
+	pBlock := guard.HeightBuckets[pHeight][pHash]
+	for pHeight >= minHeight {
+		if pHeight <= maxHeight {
+			// 判断是否在traces中
+			if _, ok := traces[pHash]; ok {
+				return true
+			}
+		}
+		// 前移动一个block
+		pHash = pBlock.Header.ParentHash
+		pHeight = pHeight - 1
+		pBlock = guard.HeightBuckets[pHeight][pHash]
+	}
+	return false
+}
+
+// GetTxsByBranch 根据两个区块的叶子节点，获取它们到共同父节点之间的两个分支上的交易列表
+func (guard *TxGuard) GetTxsByBranch(block01, block02 *types.Block) (txs1, txs2 []common.Hash) {
+	// 1. 设置block01的高度要小于block02的高度
+	if block01.Height() > block02.Height() {
+		temp := block01
+		block01 = block02
+		block02 = temp
+	}
+	// 2. 先收集block02分支高度差多出的区块的交易
+	bHash := block02.Hash()
+	for i := block02.Height(); i > block01.Height(); i-- {
+		// 找到对应的区块
+		block := guard.HeightBuckets[i][bHash]
+		for tHash := range block.TxHashes {
+			txs2 = append(txs2, tHash)
+		}
+		// 设置下一个区块的hash
+		bHash = block.Header.ParentHash
+	}
+	// 3. 此时block02分支高于block01分支的区块的交易已经收集完成，并此时bHash代表的block02分支的区块高度正好等于block01区块的高度
+	pBlock01 := guard.HeightBuckets[block01.Height()][block01.Hash()]
+	pBlock02 := guard.HeightBuckets[block01.Height()][bHash]
+	for j := block01.Height(); j > 0; j-- {
+		// 表示找到了共同的父块
+		if pBlock01 == pBlock02 {
+			break
+		}
+		// 收集交易
+		for tHash := range pBlock01.TxHashes {
+			txs1 = append(txs1, tHash)
+		}
+		for tHash := range pBlock02.TxHashes {
+			txs2 = append(txs2, tHash)
+		}
+		// 修改pBlock01，pBlock01为前一个高度的区块
+		pBlock01 = guard.HeightBuckets[pBlock01.Header.Height-1][pBlock01.Header.ParentHash]
+		pBlock02 = guard.HeightBuckets[pBlock02.Header.Height-1][pBlock02.Header.ParentHash]
+	}
+
+	return txs1, txs2
 }
