@@ -37,6 +37,14 @@ type BlocksInTime struct {
 	BlockSet []BlocksByHash
 }
 
+// newBlocksInTime
+func newBlocksInTime(lastMaxTime uint32) *BlocksInTime {
+	return &BlocksInTime{
+		LastMaxTime: lastMaxTime,
+		BlockSet:    make([]BlocksByHash, 0),
+	}
+}
+
 // SaveBlock
 func (timer *BlocksInTime) SaveBlock(block *types.Block) {
 	// 此区块时间小于LastMaxTime
@@ -78,7 +86,7 @@ func (timer *BlocksInTime) DelBlock(block *types.Block) {
 	differTime := block.Time() - timer.LastMaxTime
 	index := differTime / 60
 
-	// 不能删除一个未保存的block
+	// block时间超过保存的区块的最大时间
 	if len(timer.BlockSet) < int(index+1) {
 		return
 	}
@@ -151,6 +159,14 @@ type TxGuard struct {
 
 	/** 所有交易，由于链存在分支，所以一个交易可能存在于多个区块中。 */
 	Traces map[common.Hash]Trace
+}
+
+func NewTxGuard(lastMaxTime uint32) *TxGuard {
+	return &TxGuard{
+		BlocksInTime:  newBlocksInTime(lastMaxTime),
+		HeightBuckets: make(map[uint32]BlocksByHash),
+		Traces:        make(map[common.Hash]Trace),
+	}
 }
 
 func (guard *TxGuard) DelOldBlocks(maxTime uint32) {
