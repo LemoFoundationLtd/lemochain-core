@@ -1,10 +1,15 @@
 package txpool
 
 import (
+	"errors"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/common/math"
+)
+
+var (
+	ErrNotFoundBlock = errors.New("not found block in TxGuard'HeightBuckets")
 )
 
 /** 一个区块包含的交易Hash */
@@ -120,6 +125,24 @@ func (timer *BlocksInTime) DelOldBlocks(maxTime uint32) []*Block {
 /** 根据区块Hash对应区块高度， */
 type Trace map[common.Hash]uint32
 
+// getMaxAndMinHeight
+func (t Trace) getMaxAndMinHeight() (minHeight, maxHeight uint32) {
+	if len(t) == 0 {
+		return
+	}
+	minHeight = uint32(math.MaxUint32)
+	maxHeight = uint32(0)
+	for _, height := range t {
+		if height < minHeight {
+			minHeight = height
+		}
+		if height > maxHeight {
+			maxHeight = height
+		}
+	}
+	return
+}
+
 type TxGuard struct {
 	BlocksInTime *BlocksInTime
 
@@ -188,90 +211,89 @@ func (guard *TxGuard) SaveBlock(block *types.Block) {
 	}
 }
 
-func (guard *TxGuard) IsTxExist(startBlockHash common.Hash, startBlockHeight uint32, tx *types.Transaction) bool {
+// IsTxExist 判断tx是否已经在当前分支存在，startBlockHash和startBlockHeight为指定分支的子节点的区块hash和height
+func (guard *TxGuard) IsTxExist(startBlockHash common.Hash, startBlockHeight uint32, tx *types.Transaction) (bool, error) {
 	// 1. 查找交易是否在Traces中存在
 	if _, ok := guard.Traces[tx.Hash()]; !ok {
-		return false
+		return false, nil
 	}
 	// 2. 存在则取出那些区块打包了此交易
 	trace := guard.Traces[tx.Hash()]
 	// 3. 找出trace中的mineHeight和maxHeight
-	minHeight := uint32(math.MaxUint32)
-	maxHeight := uint32(0)
-	for _, height := range trace {
-		if height < minHeight {
-			minHeight = height
-		}
-		if height > maxHeight {
-			maxHeight = height
-		}
-	}
+	minHeight, maxHeight := trace.getMaxAndMinHeight()
 	// 4. 从startHeight开始逐个往前遍历当前分支的区块是否在trace中
-	startBlock := guard.HeightBuckets[startBlockHeight][startBlockHash]
-	pHash := startBlock.Header.Hash()
-	pHeight := startBlock.Header.Height
-	pBlock := startBlock
-	for pHeight >= minHeight {
-		if pHeight <= maxHeight {
-			// 判断是否在trace中
-			if _, ok := trace[pHash]; ok {
-				return true
-			}
-		}
-		// 前移动一个block
-		pHash = pBlock.Header.ParentHash
-		pHeight = pHeight - 1
-		pBlock = guard.HeightBuckets[pHeight][pHash]
-	}
-	return false
+	return guard.existBlock(minHeight, maxHeight, trace, startBlockHash, startBlockHeight)
 }
 
-func (guard *TxGuard) IsTxsExist(block *types.Block) bool {
+// IsTxsExist 判断传入block中的交易是否已经被block所在分支的其他区块打包了
+func (guard *TxGuard) IsTxsExist(block *types.Block) (bool, error) {
 	// 1. 获取block中的交易存在的所有区块
-	traces := make(Trace)
+	trace := make(Trace)
 	for _, tx := range block.Txs {
 		if trace, ok := guard.Traces[tx.Hash()]; ok {
 			for bHash, height := range trace {
-				traces[bHash] = height
+				trace[bHash] = height
 			}
 		}
 	}
 	// 不存在
-	if len(traces) == 0 {
-		return false
+	if len(trace) == 0 {
+		return false, nil
 	}
-	// 2. 找出traces中的最大高度和最小高度
-	minHeight := uint32(math.MaxUint32)
-	maxHeight := uint32(0)
-	for _, height := range traces {
-		if height < minHeight {
-			minHeight = height
-		}
-		if height > maxHeight {
-			maxHeight = height
-		}
+	// 2. 找出trace中的最大高度和最小高度
+	minHeight, maxHeight := trace.getMaxAndMinHeight()
+	// 3. 从block的父块开始，往前查找block所在的分支上的区块，直到找到高度为minHeight为止，并判断本分支高度在minHeight--maxHeight的区块是否在trace中
+	return guard.existBlock(minHeight, maxHeight, trace, block.ParentHash(), block.Height()-1)
+
+}
+
+// existBlock 判断给定高度区间内指定分支上的区块是否在区块集合trace中
+func (guard *TxGuard) existBlock(minHeight, maxHeight uint32, trace Trace, startBlockHash common.Hash, startBlockHeight uint32) (bool, error) {
+	// 判断传入的startBlock是否在HeightBuckets中
+	if blocks, ok := guard.HeightBuckets[startBlockHeight]; !ok {
+		log.Errorf("Not found block in TxGuard by startBlockHeight. startBlockHeight: %d", startBlockHeight)
+		return false, ErrNotFoundBlock
+	} else if _, exist := blocks[startBlockHash]; !exist {
+		log.Errorf("Not found block in TxGuard by startBlockHash. startBlockHash: %s", startBlockHash.String())
+		return false, ErrNotFoundBlock
 	}
-	// 3. 从block的父块开始，往前查找block所在的分支上的区块，直到找到高度为minHeight为止，并判断本分支高度在minHeight--maxHeight的区块是否在traces中
-	pHash := block.ParentHash()
-	pHeight := block.Height() - 1
-	pBlock := guard.HeightBuckets[pHeight][pHash]
+	pHash := startBlockHash
+	pHeight := startBlockHeight
+	var pBlock *Block
 	for pHeight >= minHeight {
 		if pHeight <= maxHeight {
-			// 判断是否在traces中
-			if _, ok := traces[pHash]; ok {
-				return true
+			// 判断是否在trace中
+			if _, ok := trace[pHash]; ok {
+				return true, nil
 			}
 		}
 		// 前移动一个block
+		pBlock = guard.HeightBuckets[pHeight][pHash]
 		pHash = pBlock.Header.ParentHash
 		pHeight = pHeight - 1
-		pBlock = guard.HeightBuckets[pHeight][pHash]
 	}
-	return false
+	return false, nil
 }
 
 // GetTxsByBranch 根据两个区块的叶子节点，获取它们到共同父节点之间的两个分支上的交易列表
-func (guard *TxGuard) GetTxsByBranch(block01, block02 *types.Block) (txs1, txs2 []common.Hash) {
+func (guard *TxGuard) GetTxsByBranch(block01, block02 *types.Block) (txs1, txs2 []common.Hash, err error) {
+	// 0. 判断block01和 block02是否存在
+	if blocks, ok := guard.HeightBuckets[block01.Height()]; !ok {
+		log.Errorf("Not found block in TxGuard by blockHeight. blockHeight: %d", block01.Height())
+		return nil, nil, ErrNotFoundBlock
+	} else if _, exist := blocks[block01.Hash()]; !exist {
+		log.Errorf("Not found block in TxGuard by blockHash. blockHash: %s", block01.Hash().String())
+		return nil, nil, ErrNotFoundBlock
+	}
+
+	if blocks, ok := guard.HeightBuckets[block02.Height()]; !ok {
+		log.Errorf("Not found block in TxGuard by blockHeight. blockHeight: %d", block02.Height())
+		return nil, nil, ErrNotFoundBlock
+	} else if _, exist := blocks[block02.Hash()]; !exist {
+		log.Errorf("Not found block in TxGuard by blockHash. blockHash: %s", block02.Hash().String())
+		return nil, nil, ErrNotFoundBlock
+	}
+
 	// 1. 设置block01的高度要小于block02的高度
 	if block01.Height() > block02.Height() {
 		temp := block01
@@ -309,5 +331,5 @@ func (guard *TxGuard) GetTxsByBranch(block01, block02 *types.Block) (txs1, txs2 
 		pBlock02 = guard.HeightBuckets[pBlock02.Header.Height-1][pBlock02.Header.ParentHash]
 	}
 
-	return txs1, txs2
+	return txs1, txs2, nil
 }
