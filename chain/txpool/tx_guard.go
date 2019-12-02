@@ -10,6 +10,7 @@ import (
 
 var (
 	ErrNotFoundBlock = errors.New("not found block in TxGuard'HeightBuckets")
+	ErrBlockTime     = errors.New("block timestamp error")
 )
 
 /** 一个区块包含的交易Hash */
@@ -46,11 +47,11 @@ func newBlocksInTime(lastMaxTime uint32) *BlocksInTime {
 }
 
 // SaveBlock
-func (timer *BlocksInTime) SaveBlock(block *types.Block) {
+func (timer *BlocksInTime) SaveBlock(block *types.Block) error {
 	// 此区块时间小于LastMaxTime
 	if block.Time() < timer.LastMaxTime {
 		// 不保存
-		return
+		return ErrBlockTime
 	}
 	// 保存区块
 	differTime := block.Time() - timer.LastMaxTime
@@ -75,40 +76,41 @@ func (timer *BlocksInTime) SaveBlock(block *types.Block) {
 		Header:   block.Header,
 		TxHashes: txHashes,
 	}
+	return nil
 }
 
 // DelBlock
-func (timer *BlocksInTime) DelBlock(block *types.Block) {
+func (timer *BlocksInTime) DelBlock(block *types.Block) error {
 	// block时间是否小于LastMaxTime
 	if block.Time() < timer.LastMaxTime {
-		return
+		return ErrBlockTime
 	}
 	differTime := block.Time() - timer.LastMaxTime
 	index := differTime / 60
 
 	// block时间超过保存的区块的最大时间
 	if len(timer.BlockSet) < int(index+1) {
-		return
+		return ErrBlockTime
 	}
 	// 存在则删除
 	delete(timer.BlockSet[index], block.Hash())
+	return nil
 }
 
 // DelOldBlocks
 func (timer *BlocksInTime) DelOldBlocks(maxTime uint32) []*Block {
-
-	if timer.LastMaxTime > maxTime-60 {
+	// 加60s是因为lastMaxTime变化的基本单位的1分钟
+	if timer.LastMaxTime+60 > maxTime {
 		return nil
 	}
 	differTime := maxTime - timer.LastMaxTime
 	// 计算需要删除的index组数
 	cnt := int(differTime / 60)
-	// 如果需要删除的组数量大于总的数量，说明maxTime为未来的时间了，不合法
+	// 如果需要删除的组数量大于总的数量，说明需要删除所有缓存中的block
 	if cnt > len(timer.BlockSet) {
-		log.Errorf("maxTime incorrect. maxTime: %d", maxTime)
-		return nil
+		cnt = len(timer.BlockSet)
 	}
-	blocksByHashes := make([]BlocksByHash, 0, cnt-1)
+	blocksByHashes := make([]BlocksByHash, 0, cnt)
 	// 获取需要删除的block的index
 	for i := 0; i < cnt; i++ {
 		blocksByHashes = append(blocksByHashes, timer.BlockSet[i])
@@ -123,8 +125,14 @@ func (timer *BlocksInTime) DelOldBlocks(maxTime uint32) []*Block {
 			blocks = append(blocks, block)
 		}
 	}
-	// 修改LastMaxTime并移动数组BlockSet
-	timer.LastMaxTime = timer.LastMaxTime + uint32(cnt*60)
+	// 修改LastMaxTime
+	if cnt == len(timer.BlockSet) {
+		// 这里表示要删除所有的缓存block，所以可以从新的时间开始每隔60s进行分割时间片段
+		timer.LastMaxTime = maxTime
+	} else {
+		timer.LastMaxTime = timer.LastMaxTime + uint32(cnt*60)
+	}
+	// 移动数组BlockSet
 	timer.BlockSet = timer.BlockSet[cnt:]
 
 	return blocks
@@ -185,15 +193,26 @@ func (guard *TxGuard) DelOldBlocks(maxTime uint32) {
 		// 2. 删除区块中的交易在Traces中的记录
 		for txHash := range b.TxHashes {
 			delete(guard.Traces[txHash], b.Header.Hash())
+			// 交易hash对应的区块删除完了则删除交易hash的索引
+			if len(guard.Traces[txHash]) == 0 {
+				delete(guard.Traces, txHash)
+			}
 		}
 		// 3. 删除HeightBuckets中的block
 		delete(guard.HeightBuckets[b.Header.Height], b.Header.Hash())
+		// 高度对应的区块都被删除完了之后则可以删除高度索引
+		if len(guard.HeightBuckets[b.Header.Height]) == 0 {
+			delete(guard.HeightBuckets, b.Header.Height)
+		}
 	}
 }
 
 func (guard *TxGuard) SaveBlock(block *types.Block) {
 	// 1. 存入区块到BlocksInTime中
-	guard.BlocksInTime.SaveBlock(block)
+	if err := guard.BlocksInTime.SaveBlock(block); err != nil {
+		log.Errorf("save block error for TxGuard, error: %v", err)
+		return
+	}
 	// 2. 保存Traces
 	for _, tx := range block.Txs {
 		if trace, ok := guard.Traces[tx.Hash()]; ok {
