@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	txpoolTotalNumberCounter = metrics.NewCounter(metrics.TxpoolNumber_counterName) // 交易池中剩下的总交易数量
+	txPoolTotalNumberCounter = metrics.NewCounter(metrics.TxpoolNumber_counterName) // 交易池中剩下的总交易数量
 	blockTradeAmount         = common.Lemo2Mo("500000")                             // 如果交易的amount 大于此值则进行事件通知
 )
 
@@ -20,9 +20,6 @@ type TxPool struct {
 	/* 最近1个小时的所有交易 */
 	RecentTxs *RecentTx
 
-	/* 从当前高度向后的3600个块 */
-	BlockCache *BlocksTrie
-
 	RW sync.RWMutex
 }
 
@@ -30,7 +27,6 @@ func NewTxPool() *TxPool {
 	return &TxPool{
 		PendingTxs: NewTxQueue(),
 		RecentTxs:  NewTxRecently(),
-		BlockCache: NewBlocksTrie(),
 	}
 }
 
@@ -42,10 +38,10 @@ func (pool *TxPool) Get(time uint32, size int) []*types.Transaction {
 }
 
 // ExistCanPackageTx 存在可以打包的交易
-func (pool *TxPool) ExistCanPackageTx(time uint32) bool {
+func (pool *TxPool) ExistPendingTx(time uint32) bool {
 	pool.RW.Lock()
 	defer pool.RW.Unlock()
-	return pool.PendingTxs.IsExistCanPackageTx(time)
+	return pool.PendingTxs.ExistPendingTx(time)
 }
 
 /* 本节点出块时，执行交易后，发现错误的交易通过该接口进行删除 */
@@ -62,98 +58,6 @@ func (pool *TxPool) DelInvalidTxs(txs []*types.Transaction) {
 		hashes = append(hashes, tx.Hash())
 	}
 	pool.PendingTxs.DelBatch(hashes)
-}
-
-func (pool *TxPool) isInBlocks(hashes HashSet, blocks []*TrieNode) bool {
-	if len(hashes) <= 0 || len(blocks) <= 0 {
-		return false
-	}
-
-	for _, v := range blocks {
-		if !hashes.Has(v.Header.Hash()) {
-			continue
-		} else {
-			log.Errorf("isInBlocks equal BlockHash: %s", v.Header.Hash())
-			return true
-		}
-	}
-
-	return false
-}
-
-/* 新收一个块时，验证块中的交易是否被同一条分叉上的其他块打包了 */
-func (pool *TxPool) VerifyTxInBlock(block *types.Block) bool {
-	pool.RW.Lock()
-	defer pool.RW.Unlock()
-
-	if block == nil {
-		return false
-	}
-
-	if len(block.Txs) <= 0 {
-		return true
-	}
-
-	traceByHash := pool.RecentTxs.GetTrace(block.Txs)
-	minHeight, maxHeight, blocks := pool.distance(traceByHash)
-	startHash := block.ParentHash()
-	startHeight := block.Height() - 1
-
-	nodes := pool.BlockCache.Path(startHash, startHeight, uint32(minHeight), uint32(maxHeight))
-	return !pool.isInBlocks(blocks, nodes)
-}
-
-func (pool *TxPool) GetTrace(tx *types.Transaction) []common.Hash {
-	pool.RW.Lock()
-	defer pool.RW.Unlock()
-
-	if tx == nil {
-		return make([]common.Hash, 0)
-	}
-
-	txs := make([]*types.Transaction, 1)
-	txs[0] = tx
-	allTxTraces := pool.RecentTxs.GetTrace(txs)
-	if len(allTxTraces) <= 0 {
-		return make([]common.Hash, 0)
-	}
-
-	txTrace := allTxTraces[tx.Hash()]
-	if len(txTrace) <= 0 {
-		return make([]common.Hash, 0)
-	}
-
-	blockHashes := make([]common.Hash, 0, len(txTrace))
-	for blockHash := range txTrace {
-		blockHashes = append(blockHashes, blockHash)
-	}
-	return blockHashes
-}
-
-func (pool *TxPool) distance(traceByHash map[common.Hash]TxTrace) (int64, int64, HashSet) {
-	minHeight := int64(^uint64(0) >> 1)
-	maxHeight := int64(-1)
-	blockSet := make(HashSet)
-	for _, trace := range traceByHash {
-		if len(trace) <= 0 {
-			continue
-		} else {
-			minHeightTmp, maxHeightTmp := trace.heightRange()
-			if minHeight > minHeightTmp {
-				minHeight = minHeightTmp
-			}
-
-			if maxHeight < maxHeightTmp {
-				maxHeight = maxHeightTmp
-			}
-
-			for blockHash, _ := range trace {
-				blockSet.Add(blockHash)
-			}
-		}
-	}
-
-	return minHeight, maxHeight, blockSet
 }
 
 /* 新收到一个通过验证的新块（包括本节点出的块），需要从交易池中删除该块中已打包的交易 */
@@ -177,18 +81,16 @@ func (pool *TxPool) RecvBlock(block *types.Block) {
 
 	pool.PendingTxs.DelBatch(hashes)
 	pool.RecentTxs.RecvBlock(block.Hash(), int64(block.Height()), txs)
-
-	pool.BlockCache.PushBlock(block)
 }
 
 /* 收到一笔新的交易 */
-func (pool *TxPool) RecvTx(tx *types.Transaction) bool {
-	pool.RW.Lock()
-	defer pool.RW.Unlock()
-
+func (pool *TxPool) PushTx(tx *types.Transaction) bool {
 	if tx == nil {
 		return false
 	}
+
+	pool.RW.Lock()
+	defer pool.RW.Unlock()
 
 	isExist := pool.RecentTxs.IsExist(tx)
 	if isExist {
@@ -197,7 +99,7 @@ func (pool *TxPool) RecvTx(tx *types.Transaction) bool {
 	} else {
 		pool.RecentTxs.RecvTx(tx)
 		pool.PendingTxs.Push(tx)
-		txpoolTotalNumberCounter.Inc(1) // 记录收到一笔交易
+		txPoolTotalNumberCounter.Inc(1) // 记录收到一笔交易
 		if tx.Amount().Cmp(blockTradeAmount) >= 0 {
 			toString := "[nil]"
 			if tx.To() != nil {
@@ -209,7 +111,7 @@ func (pool *TxPool) RecvTx(tx *types.Transaction) bool {
 	}
 }
 
-func (pool *TxPool) RecvTxs(txs []*types.Transaction) bool {
+func (pool *TxPool) SetTxsFlag(txs []*types.Transaction, isPending bool) bool {
 	pool.RW.Lock()
 	defer pool.RW.Unlock()
 
@@ -218,36 +120,18 @@ func (pool *TxPool) RecvTxs(txs []*types.Transaction) bool {
 	}
 
 	for _, v := range txs {
-		isExist := pool.RecentTxs.IsExist(v)
-		if !isExist {
-			continue
-		} else {
-			log.Debug("tx is already exist. hash: " + v.Hash().Hex())
-			return false
-		}
-	}
-
-	for _, v := range txs {
 		pool.RecentTxs.RecvTx(v)
 		pool.PendingTxs.Push(v)
 	}
 
+	if isPending {
+		return true
+	}
+
+	// 这样组合操作的目的是，不想改PendingTxs的接口导致引入新bug
+	for _, v := range txs {
+		pool.PendingTxs.Del(v.Hash())
+	}
+
 	return true
-}
-
-/* 对链进行剪枝，剪下的块中的交易需要回归交易池 */
-func (pool *TxPool) PruneBlock(block *types.Block) {
-	pool.RW.Lock()
-	defer pool.RW.Unlock()
-
-	if block == nil {
-		return
-	}
-
-	if len(block.Txs) > 0 {
-		pool.PendingTxs.PushBatch(block.Txs)
-		pool.RecentTxs.PruneBlock(block.Hash(), int64(block.Height()), block.Txs)
-	}
-
-	pool.BlockCache.DelBlock(block)
 }

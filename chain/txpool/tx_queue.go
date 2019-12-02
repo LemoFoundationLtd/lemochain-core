@@ -53,7 +53,6 @@ func (queue *TxQueue) Del(hash common.Hash) {
 		return
 	} else {
 		queue.softDel(hash)
-		txpoolTotalNumberCounter.Dec(1) // 删除交易池中的交易
 	}
 }
 
@@ -68,7 +67,7 @@ func (queue *TxQueue) DelBatch(hashes []common.Hash) {
 }
 
 // IsExistCanPackageTx 存在可以打包的交易
-func (queue *TxQueue) IsExistCanPackageTx(time uint32) bool {
+func (queue *TxQueue) ExistPendingTx(time uint32) bool {
 	for _, tx := range queue.TxsQueue {
 		// 此交易没有超时并且没有被软删除掉
 		if queue.isExist(tx.Hash()) && !queue.isTimeOut(tx, time) {
