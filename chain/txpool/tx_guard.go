@@ -246,6 +246,10 @@ func (guard *TxGuard) SaveBlock(block *types.Block) {
 	}
 }
 
+func (guard *TxGuard) DelBlock(block *types.Block) error {
+	return guard.BlocksInTime.DelBlock(block)
+}
+
 // IsTxExist 判断tx是否已经在当前分支存在，startBlockHash和startBlockHeight为指定分支的子节点的区块hash和height
 func (guard *TxGuard) IsTxExist(startBlockHash common.Hash, startBlockHeight uint32, tx *types.Transaction) (bool, error) {
 	// 1. 查找交易是否在Traces中存在
