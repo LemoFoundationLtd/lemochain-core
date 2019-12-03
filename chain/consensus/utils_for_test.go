@@ -249,6 +249,18 @@ type txPoolForValidator struct {
 	blockIsValid bool
 }
 
+func (tp txPoolForValidator) ExistPendingTx(time uint32) bool {
+	panic("implement me")
+}
+
+func (tp txPoolForValidator) PushTx(tx *types.Transaction) bool {
+	panic("implement me")
+}
+
+func (tp txPoolForValidator) SetTxsFlag(txs []*types.Transaction, isPending bool) bool {
+	panic("implement me")
+}
+
 func (txPoolForValidator) Get(time uint32, size int) []*types.Transaction {
 	panic("implement me")
 }
@@ -257,15 +269,7 @@ func (txPoolForValidator) DelInvalidTxs(txs []*types.Transaction) {
 	panic("implement me")
 }
 
-func (tp txPoolForValidator) VerifyTxInBlock(block *types.Block) bool {
-	return tp.blockIsValid
-}
-
 func (txPoolForValidator) RecvBlock(block *types.Block) {
-	panic("implement me")
-}
-
-func (txPoolForValidator) PruneBlock(block *types.Block) {
 	panic("implement me")
 }
 

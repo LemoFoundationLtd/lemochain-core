@@ -41,10 +41,11 @@ type StableBlockStore interface {
 
 type TxPool interface {
 	Get(time uint32, size int) []*types.Transaction
+	ExistPendingTx(time uint32) bool
 	DelInvalidTxs(txs []*types.Transaction)
-	VerifyTxInBlock(block *types.Block) bool
+	PushTx(tx *types.Transaction) bool
 	RecvBlock(block *types.Block)
-	PruneBlock(block *types.Block)
+	SetTxsFlag(txs []*types.Transaction, isPending bool) bool
 }
 
 type CandidateLoader interface {

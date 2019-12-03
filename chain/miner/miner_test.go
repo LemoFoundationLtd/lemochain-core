@@ -165,6 +165,6 @@ type testTxpool struct {
 	IsExist bool
 }
 
-func (p *testTxpool) ExistCanPackageTx(time uint32) bool {
+func (p *testTxpool) ExistPendingTx(time uint32) bool {
 	return p.IsExist
 }
