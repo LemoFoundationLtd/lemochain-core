@@ -503,13 +503,336 @@ func TestTxGuard_DelOldBlocks(t *testing.T) {
 }
 
 func TestTxGuard_IsTxExist(t *testing.T) {
+	/**
+	测试要点：
+	1. 测试检查的tx没有在内存中存在过
+	2. 测试tx存在但是不在当前分支的block中
+	3. 测试tx存在并在当前分支上的block中
+	4. 测试startBlock不存在的情况
+	*/
+	//
+	tx01 := makeTxRandom(common.HexToAddress("0x111"))
+	tx02 := makeTxRandom(common.HexToAddress("0x222"))
+	tx03 := makeTxRandom(common.HexToAddress("0x333"))
+	tx04 := makeTxRandom(common.HexToAddress("0x444"))
+	tx05 := makeTxRandom(common.HexToAddress("0x555"))
+	tx06 := makeTxRandom(common.HexToAddress("0x666"))
 
+	// 生成current分支
+	curBlock01 := newBlockForBranch(1, common.HexToHash("0x999"), types.Transactions{tx01})
+	curBlock02 := newBlockForBranch(2, curBlock01.Hash(), types.Transactions{tx02})
+	curBlock03 := newBlockForBranch(3, curBlock02.Hash(), types.Transactions{tx03})
+	// 生成分支1
+	block11 := newBlockForBranch(1, common.HexToHash("0x888"), types.Transactions{tx01})
+	block12 := newBlockForBranch(2, block11.Hash(), types.Transactions{tx04, tx05})
+	block13 := newBlockForBranch(3, block12.Hash(), types.Transactions{tx06})
+	// 生成分支2
+	block21 := newBlockForBranch(1, common.HexToHash("0x777"), types.Transactions{tx01})
+	block22 := newBlockForBranch(2, block21.Hash(), types.Transactions{tx04, tx05})
+	block23 := newBlockForBranch(3, block22.Hash(), types.Transactions{tx06})
+	guard := NewTxGuard(100)
+	// 把所有分支上的区块都保存进去
+	guard.SaveBlock(curBlock01)
+	guard.SaveBlock(curBlock02)
+	guard.SaveBlock(curBlock03)
+	guard.SaveBlock(block11)
+	guard.SaveBlock(block12)
+	guard.SaveBlock(block13)
+	guard.SaveBlock(block21)
+	guard.SaveBlock(block22)
+	guard.SaveBlock(block23)
+	// 1. 测试检查的tx没有在内存中存在过
+	newTx := makeTxRandom(common.HexToAddress("0x99"))
+	isExist, err := guard.IsTxExist(curBlock03.Hash(), curBlock03.Height(), newTx)
+	assert.NoError(t, err)
+	assert.False(t, isExist)
+
+	// 2. 测试tx存在但是不在当前分支的block中
+	// 当前分支有交易tx01，tx02，tx03
+	newTx = tx04
+	isExist, err = guard.IsTxExist(curBlock03.Hash(), curBlock03.Height(), newTx)
+	assert.NoError(t, err)
+	assert.False(t, isExist)
+	// 3. 测试tx存在并在当前分支上的block中
+	newTx = tx03
+	isExist, err = guard.IsTxExist(curBlock03.Hash(), curBlock03.Height(), newTx)
+	assert.NoError(t, err)
+	assert.True(t, isExist)
+
+	// 4. 测试startBlockHash不存在的情况
+	newTx = tx01
+	isExist, err = guard.IsTxExist(common.HexToHash("0x987"), curBlock03.Height(), newTx)
+	assert.Error(t, err)
+	assert.False(t, isExist)
+
+	// 5. 测试startBlockHeight不存在的情况
+	newTx = tx01
+	isExist, err = guard.IsTxExist(curBlock03.Hash(), 99999, newTx)
+	assert.Error(t, err)
+	assert.False(t, isExist)
+}
+
+func newBlockForBranch(height uint32, parentHash common.Hash, txs types.Transactions) *types.Block {
+	return &types.Block{
+		Header: &types.Header{
+			TxRoot:     txs.MerkleRootSha(),
+			Height:     height,
+			ParentHash: parentHash,
+			Time:       100,
+		},
+		Txs: txs,
+	}
 }
 
 func TestTxGuard_IsTxsExist(t *testing.T) {
+	/**
+	测试要点：
+	1. 测试block中没有交易的情况
+	2. 测试block不是任何分支的子块的情况
+	3. 测试block中的交易存在本分支其他block中的情况
+	4. 测试block中的交易只存在其他分支的情况
+	5. 测试block中的交易不在任何分支上的情况
+	*/
+	tx01 := makeTxRandom(common.HexToAddress("0x111"))
+	tx02 := makeTxRandom(common.HexToAddress("0x222"))
+	tx03 := makeTxRandom(common.HexToAddress("0x333"))
+	tx04 := makeTxRandom(common.HexToAddress("0x444"))
+	tx05 := makeTxRandom(common.HexToAddress("0x555"))
+	tx06 := makeTxRandom(common.HexToAddress("0x666"))
 
+	// 生成current分支
+	curBlock01 := newBlockForBranch(1, common.HexToHash("0x999"), types.Transactions{tx01})
+	curBlock02 := newBlockForBranch(2, curBlock01.Hash(), types.Transactions{tx02})
+	curBlock03 := newBlockForBranch(3, curBlock02.Hash(), types.Transactions{tx03})
+	// 生成分支1
+	block11 := newBlockForBranch(1, common.HexToHash("0x888"), types.Transactions{tx01})
+	block12 := newBlockForBranch(2, block11.Hash(), types.Transactions{tx04, tx05})
+	block13 := newBlockForBranch(3, block12.Hash(), types.Transactions{tx06})
+	// 生成分支2
+	block21 := newBlockForBranch(1, common.HexToHash("0x777"), types.Transactions{tx01})
+	block22 := newBlockForBranch(2, block21.Hash(), types.Transactions{tx04, tx05})
+	block23 := newBlockForBranch(3, block22.Hash(), types.Transactions{tx06})
+	guard := NewTxGuard(100)
+	// 把所有分支上的区块都保存进去
+	guard.SaveBlock(curBlock01)
+	guard.SaveBlock(curBlock02)
+	guard.SaveBlock(curBlock03)
+	guard.SaveBlock(block11)
+	guard.SaveBlock(block12)
+	guard.SaveBlock(block13)
+	guard.SaveBlock(block21)
+	guard.SaveBlock(block22)
+	guard.SaveBlock(block23)
+
+	// 1. 测试block中没有交易的情况
+	newBlock := newBlockForBranch(curBlock03.Height()+1, curBlock03.Hash(), nil)
+	isExist, err := guard.IsTxsExist(newBlock)
+	assert.False(t, isExist)
+	assert.NoError(t, err)
+
+	// 2. 测试block不是任何分支的子块的情况
+	newBlock = newBlockForBranch(9999, common.HexToHash("123"), types.Transactions{tx01, tx02, tx03, tx04})
+	isExist, err = guard.IsTxsExist(newBlock)
+	assert.False(t, isExist)
+	assert.Error(t, err)
+
+	// 3. 测试block中的交易只存在本分支中的情况
+	newBlock = newBlockForBranch(curBlock03.Height()+1, curBlock03.Hash(), types.Transactions{tx03})
+	isExist, err = guard.IsTxsExist(newBlock)
+	assert.True(t, isExist)
+	assert.NoError(t, err)
+	// 3.1 测试block中的交易存在本分支和其他分支都存在的情况
+	newBlock = newBlockForBranch(curBlock03.Height()+1, curBlock03.Hash(), types.Transactions{tx01, tx04})
+	isExist, err = guard.IsTxsExist(newBlock)
+	assert.True(t, isExist)
+	assert.NoError(t, err)
+
+	// 4. 测试block中的交易只存在其他分支的情况
+	newBlock = newBlockForBranch(curBlock03.Height()+1, curBlock03.Hash(), types.Transactions{tx04, tx05, tx06})
+	isExist, err = guard.IsTxsExist(newBlock)
+	assert.False(t, isExist)
+	assert.NoError(t, err)
+
+	// 5. 测试block中的交易不在任何分支上的情况
+	newTx01 := makeTxRandom(common.HexToAddress("0x123"))
+	newTx02 := makeTxRandom(common.HexToAddress("0x456"))
+	newTx03 := makeTxRandom(common.HexToAddress("0x789"))
+	newBlock = newBlockForBranch(curBlock03.Height()+1, curBlock03.Hash(), types.Transactions{newTx01, newTx02, newTx03})
+	isExist, err = guard.IsTxsExist(newBlock)
+	assert.False(t, isExist)
+	assert.NoError(t, err)
 }
 
 func TestTxGuard_GetTxsByBranch(t *testing.T) {
+	/**
+	测试要点：
+	1. 测试两个分支上高度相同的区块返回回来的交易hash
+	2. 测试两个分支上高度不相同的区块返回回来的交易hash
+	3. 验证有一个子块正好是共同的父块的异常情况
+	4. 验证输入的两个block不存在内存中的异常情况
+	*/
+	// 构造两个分支
+	tx00 := makeTxRandom(common.HexToAddress("0x100"))
+	tx01 := makeTxRandom(common.HexToAddress("0x111"))
+	tx02 := makeTxRandom(common.HexToAddress("0x222"))
+	tx03 := makeTxRandom(common.HexToAddress("0x333"))
+	tx04 := makeTxRandom(common.HexToAddress("0x444"))
+	tx05 := makeTxRandom(common.HexToAddress("0x555"))
+	tx06 := makeTxRandom(common.HexToAddress("0x666"))
+	tx07 := makeTxRandom(common.HexToAddress("0x777"))
+	block00 := newBlockForBranch(0, common.HexToHash("987"), types.Transactions{tx00}) // 共同的父节点
+	// 生成分支1,此分支上所拥有的交易为：tx01，tx02，tx03，tx04
+	block11 := newBlockForBranch(1, block00.Hash(), types.Transactions{tx01})
+	block12 := newBlockForBranch(2, block11.Hash(), types.Transactions{tx02})
+	block13 := newBlockForBranch(3, block12.Hash(), types.Transactions{tx03})
+	block14 := newBlockForBranch(4, block13.Hash(), types.Transactions{tx04})
+	// 生成分支2，此分支上所拥有的交易为：tx01，tx02，tx03，tx04，tx05，tx06，tx07
+	block21 := newBlockForBranch(1, block00.Hash(), types.Transactions{tx02, tx05})
+	block22 := newBlockForBranch(2, block21.Hash(), types.Transactions{tx01, tx04})
+	block23 := newBlockForBranch(3, block22.Hash(), types.Transactions{tx03, tx06})
+	block24 := newBlockForBranch(4, block23.Hash(), types.Transactions{tx07})
+	guard := NewTxGuard(100)
+	// 保存进缓存
+	guard.SaveBlock(block00)
+	guard.SaveBlock(block11)
+	guard.SaveBlock(block12)
+	guard.SaveBlock(block13)
+	guard.SaveBlock(block14)
+	guard.SaveBlock(block21)
+	guard.SaveBlock(block22)
+	guard.SaveBlock(block23)
+	guard.SaveBlock(block24)
 
+	// 1. 测试两个分支上高度相同的区块返回回来的交易hash
+	type hashMap map[common.Hash]struct{}
+	block1 := block14
+	txs1 := hashMap{
+		tx04.Hash(): struct{}{},
+		tx03.Hash(): struct{}{},
+		tx02.Hash(): struct{}{},
+		tx01.Hash(): struct{}{},
+	}
+	block2 := block24
+	txs2 := hashMap{
+		tx07.Hash(): struct{}{},
+		tx06.Hash(): struct{}{},
+		tx05.Hash(): struct{}{},
+		tx04.Hash(): struct{}{},
+		tx03.Hash(): struct{}{},
+		tx02.Hash(): struct{}{},
+		tx01.Hash(): struct{}{},
+	}
+
+	txHashes1, txHashes2, err := guard.GetTxsByBranch(block1, block2)
+	assert.NoError(t, err)
+	// 交易数量验证
+	assert.Equal(t, 4, len(txHashes1))
+	assert.Equal(t, 7, len(txHashes2))
+	// 交易hash验证
+	for _, txHash := range txHashes1 {
+		_, ok := txs1[txHash]
+		assert.True(t, ok)
+	}
+	for _, txHash := range txHashes2 {
+		_, ok := txs2[txHash]
+		assert.True(t, ok)
+	}
+
+	// 2. 测试两个分支上高度不相同的区块返回回来的交易hash
+	// 2.1 block1小于block2高度的情况
+	block1 = block12
+	txs1 = hashMap{
+		tx02.Hash(): struct{}{},
+		tx01.Hash(): struct{}{},
+	}
+	block2 = block24
+	txs2 = hashMap{
+		tx07.Hash(): struct{}{},
+		tx06.Hash(): struct{}{},
+		tx05.Hash(): struct{}{},
+		tx04.Hash(): struct{}{},
+		tx03.Hash(): struct{}{},
+		tx02.Hash(): struct{}{},
+		tx01.Hash(): struct{}{},
+	}
+
+	txHashes1, txHashes2, err = guard.GetTxsByBranch(block1, block2)
+	assert.NoError(t, err)
+	// 交易数量验证
+	assert.Equal(t, 2, len(txHashes1))
+	assert.Equal(t, 7, len(txHashes2))
+	// 交易hash验证
+	for _, txHash := range txHashes1 {
+		_, ok := txs1[txHash]
+		assert.True(t, ok)
+	}
+	for _, txHash := range txHashes2 {
+		_, ok := txs2[txHash]
+		assert.True(t, ok)
+	}
+	// 2.1 block1大于block2高度的情况
+	block1 = block14
+	txs1 = hashMap{
+		tx04.Hash(): struct{}{},
+		tx03.Hash(): struct{}{},
+		tx02.Hash(): struct{}{},
+		tx01.Hash(): struct{}{},
+	}
+	block2 = block21
+	txs2 = hashMap{
+		tx05.Hash(): struct{}{},
+		tx02.Hash(): struct{}{},
+	}
+	txHashes1, txHashes2, err = guard.GetTxsByBranch(block1, block2)
+	assert.NoError(t, err)
+	// 交易数量验证
+	assert.Equal(t, 4, len(txHashes1))
+	assert.Equal(t, 2, len(txHashes2))
+	// 交易hash验证
+	for _, txHash := range txHashes1 {
+		_, ok := txs1[txHash]
+		assert.True(t, ok)
+	}
+	for _, txHash := range txHashes2 {
+		_, ok := txs2[txHash]
+		assert.True(t, ok)
+	}
+
+	// 3. 验证有一个子块正好是共同的父块的异常情况
+	block1 = block13
+	txs1 = hashMap{
+		tx03.Hash(): struct{}{},
+		tx02.Hash(): struct{}{},
+		tx01.Hash(): struct{}{},
+	}
+	block2 = block00
+	txs2 = make(hashMap, 0)
+
+	txHashes1, txHashes2, err = guard.GetTxsByBranch(block1, block2)
+	assert.NoError(t, err)
+	// 交易数量验证
+	assert.Equal(t, 3, len(txHashes1))
+	assert.Equal(t, 0, len(txHashes2))
+	// 交易hash验证
+	for _, txHash := range txHashes1 {
+		_, ok := txs1[txHash]
+		assert.True(t, ok)
+	}
+
+	// 4. 验证输入的两个block不存在内存中的异常情况
+	// 4.1 block1不存在，block2存在的情况
+	block1 = newBlockForBranch(3, common.HexToHash("0x988"), nil)
+	block2 = block23
+	_, _, err = guard.GetTxsByBranch(block1, block2)
+	assert.Equal(t, ErrNotFoundBlock, err)
+	// 4.2 block1存在，block2不存在的情况
+	block1 = block13
+	block2 = newBlockForBranch(10, common.HexToHash("0x766"), nil)
+	_, _, err = guard.GetTxsByBranch(block1, block2)
+	assert.Equal(t, ErrNotFoundBlock, err)
+	// 4.3 block1和block2都不存在的情况
+	block1 = newBlockForBranch(10, common.HexToHash("0x988"), nil)
+	block2 = newBlockForBranch(2, common.HexToHash("0x766"), nil)
+	_, _, err = guard.GetTxsByBranch(block1, block2)
+	assert.Equal(t, ErrNotFoundBlock, err)
 }

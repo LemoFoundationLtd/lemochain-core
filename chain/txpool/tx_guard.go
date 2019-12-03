@@ -265,8 +265,8 @@ func (guard *TxGuard) IsTxsExist(block *types.Block) (bool, error) {
 	// 1. 获取block中的交易存在的所有区块
 	trace := make(Trace)
 	for _, tx := range block.Txs {
-		if trace, ok := guard.Traces[tx.Hash()]; ok {
-			for bHash, height := range trace {
+		if t, ok := guard.Traces[tx.Hash()]; ok {
+			for bHash, height := range t {
 				trace[bHash] = height
 			}
 		}
@@ -311,7 +311,7 @@ func (guard *TxGuard) existBlock(minHeight, maxHeight uint32, trace Trace, start
 }
 
 // GetTxsByBranch 根据两个区块的叶子节点，获取它们到共同父节点之间的两个分支上的交易列表
-func (guard *TxGuard) GetTxsByBranch(block01, block02 *types.Block) (txs1, txs2 []common.Hash, err error) {
+func (guard *TxGuard) GetTxsByBranch(block01, block02 *types.Block) (txHashes1, txHashes2 []common.Hash, err error) {
 	// 0. 判断block01和 block02是否存在
 	if blocks, ok := guard.HeightBuckets[block01.Height()]; !ok {
 		log.Errorf("Not found block in TxGuard by blockHeight. blockHeight: %d", block01.Height())
@@ -329,11 +329,14 @@ func (guard *TxGuard) GetTxsByBranch(block01, block02 *types.Block) (txs1, txs2 
 		return nil, nil, ErrNotFoundBlock
 	}
 
+	// 标记block01和block02是否交换了
+	swap := false
 	// 1. 设置block01的高度要小于block02的高度
 	if block01.Height() > block02.Height() {
 		temp := block01
 		block01 = block02
 		block02 = temp
+		swap = true // 标记交换为true
 	}
 	// 2. 先收集block02分支高度差多出的区块的交易
 	bHash := block02.Hash()
@@ -341,7 +344,7 @@ func (guard *TxGuard) GetTxsByBranch(block01, block02 *types.Block) (txs1, txs2 
 		// 找到对应的区块
 		block := guard.HeightBuckets[i][bHash]
 		for tHash := range block.TxHashes {
-			txs2 = append(txs2, tHash)
+			txHashes2 = append(txHashes2, tHash)
 		}
 		// 设置下一个区块的hash
 		bHash = block.Header.ParentHash
@@ -356,15 +359,20 @@ func (guard *TxGuard) GetTxsByBranch(block01, block02 *types.Block) (txs1, txs2 
 		}
 		// 收集交易
 		for tHash := range pBlock01.TxHashes {
-			txs1 = append(txs1, tHash)
+			txHashes1 = append(txHashes1, tHash)
 		}
 		for tHash := range pBlock02.TxHashes {
-			txs2 = append(txs2, tHash)
+			txHashes2 = append(txHashes2, tHash)
 		}
 		// 修改pBlock01，pBlock01为前一个高度的区块
 		pBlock01 = guard.HeightBuckets[pBlock01.Header.Height-1][pBlock01.Header.ParentHash]
 		pBlock02 = guard.HeightBuckets[pBlock02.Header.Height-1][pBlock02.Header.ParentHash]
 	}
 
-	return txs1, txs2, nil
+	// 如果block01和block02交换了，最后输出的值要交换回来，实现输入值和输出值一一对应的效果
+	if swap {
+		return txHashes2, txHashes1, nil
+	} else {
+		return txHashes1, txHashes2, nil
+	}
 }
