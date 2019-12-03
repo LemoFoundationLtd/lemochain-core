@@ -29,6 +29,7 @@ type DPoVP struct {
 	dm         *deputynode.Manager
 	am         *account.Manager
 	txPool     TxPool
+	txGuard    TxGuard
 	minerExtra []byte // Extra data in mined block header. It is short than 256bytes
 
 	stableManager *StableManager           // used to process stable logic
@@ -52,13 +53,14 @@ type DPoVP struct {
 
 const delayFetchConfirmsTime = time.Second * 30
 
-func NewDPoVP(config Config, db protocol.ChainDB, dm *deputynode.Manager, am *account.Manager, loader transaction.ParentBlockLoader, txPool TxPool) *DPoVP {
+func NewDPoVP(config Config, db protocol.ChainDB, dm *deputynode.Manager, am *account.Manager, loader transaction.ParentBlockLoader, txPool TxPool, txGuard TxGuard) *DPoVP {
 	stable, _ := db.LoadLatestBlock()
 	dpovp := &DPoVP{
 		db:            db,
 		dm:            dm,
 		am:            am,
 		txPool:        txPool,
+		txGuard:       txGuard,
 		stableManager: NewStableManager(dm, db),
 		forkManager:   NewForkManager(dm, db, stable),
 		processor:     transaction.NewTxProcessor(config.RewardManager, config.ChainID, loader, am, db, dm),

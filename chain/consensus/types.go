@@ -48,6 +48,14 @@ type TxPool interface {
 	SetTxsFlag(txs []*types.Transaction, isPending bool) bool
 }
 
+type TxGuard interface {
+	DelOldBlocks(maxTime uint32)
+	SaveBlock(block *types.Block)
+	DelBlock(block *types.Block) error
+	IsTxExist(startBlockHash common.Hash, startBlockHeight uint32, tx *types.Transaction) (bool, error)
+	IsTxsExist(block *types.Block) (bool, error)
+	GetTxsByBranch(block01, block02 *types.Block) (txHashes1, txHashes2 []common.Hash, err error)
+}
 type CandidateLoader interface {
 	LoadTopCandidates(blockHash common.Hash) types.DeputyNodes
 	LoadRefundCandidates(height uint32) ([]common.Address, error)

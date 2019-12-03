@@ -756,7 +756,7 @@ func (pm *ProtocolManager) handleTxsMsg(msg *p2p.Msg) error {
 		}
 
 		go func() {
-			if pm.txPool.RecvTx(tx) {
+			if pm.txPool.PushTx(tx) {
 				// 广播交易
 				subscribe.Send(subscribe.NewTx, tx)
 			}
