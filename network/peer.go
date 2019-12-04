@@ -230,8 +230,8 @@ func (p *peer) SendBlocks(blocks types.Blocks) error {
 	}
 	// for test
 	// block := blocks[0]
-	// if len(block.TxSet) > 0 {
-	// 	for _, tx := range block.TxSet {
+	// if len(block.Txs) > 0 {
+	// 	for _, tx := range block.Txs {
 	// 		if tx.Type() == uint8(2) { // 0: common tx; 1: vote tx; 2: register for cand*
 	// 			log.Debugf("block: %s", block.Json())
 	// 			// log.Debugf("block rlp: %s", common.ToHex(buf))
