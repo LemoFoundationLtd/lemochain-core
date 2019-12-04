@@ -5,6 +5,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/transaction"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/txpool"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
@@ -28,8 +29,8 @@ type DPoVP struct {
 	db         protocol.ChainDB
 	dm         *deputynode.Manager
 	am         *account.Manager
-	txPool     TxPool
-	txGuard    TxGuard
+	txPool     *txpool.TxPool
+	txGuard    *txpool.TxGuard
 	minerExtra []byte // Extra data in mined block header. It is short than 256bytes
 
 	stableManager *StableManager           // used to process stable logic
@@ -53,7 +54,7 @@ type DPoVP struct {
 
 const delayFetchConfirmsTime = time.Second * 30
 
-func NewDPoVP(config Config, db protocol.ChainDB, dm *deputynode.Manager, am *account.Manager, loader transaction.ParentBlockLoader, txPool TxPool, txGuard TxGuard) *DPoVP {
+func NewDPoVP(config Config, db protocol.ChainDB, dm *deputynode.Manager, am *account.Manager, loader transaction.ParentBlockLoader, txPool *txpool.TxPool, txGuard *txpool.TxGuard) *DPoVP {
 	stable, _ := db.LoadLatestBlock()
 	dpovp := &DPoVP{
 		db:            db,
@@ -68,7 +69,7 @@ func NewDPoVP(config Config, db protocol.ChainDB, dm *deputynode.Manager, am *ac
 		minerExtra:    config.MinerExtra,
 		logForks:      config.LogForks,
 	}
-	dpovp.validator = NewValidator(config.MineTimeout, db, dm, txPool, dpovp)
+	dpovp.validator = NewValidator(config.MineTimeout, db, dm, txGuard, dpovp)
 	dpovp.assembler = NewBlockAssembler(am, dm, dpovp.processor, dpovp)
 	return dpovp
 }
@@ -79,6 +80,9 @@ func (dp *DPoVP) StableBlock() *types.Block {
 
 func (dp *DPoVP) CurrentBlock() *types.Block {
 	return dp.forkManager.GetHeadBlock()
+}
+func (dp *DPoVP) TxGuard() *txpool.TxGuard {
+	return dp.txGuard
 }
 
 func (dp *DPoVP) TxProcessor() *transaction.TxProcessor {
@@ -188,15 +192,27 @@ func (dp *DPoVP) saveNewBlock(block *types.Block) error {
 		return err
 	}
 
-	// remove txs in block
-	dp.txPool.RecvBlock(block)
+	// save block to txGuard
+	dp.txGuard.SaveBlock(block)
+	// 判断此block是否为当前分支的子块
+	currentBlockHash := dp.CurrentBlock().Hash()
+	if currentBlockHash == block.ParentHash() {
+		// 为当前分支
+		dp.txPool.SetTxsFlag(block.Txs, false) // 设置block中的交易在交易池中的状态
+	} else {
+		// 为其他分支上的block则把该block中的交易push到本分支状态的交易池中
+		for _, tx := range block.Txs {
+			dp.txPool.PushTx(tx)
+		}
+	}
 
 	// save last sig because we are the miner. If we clear db and restart, this will be useful
 	if IsMinedByself(block) {
 		dp.confirmer.SetLastSig(block)
 	}
 	// try update stable block if there are enough confirms
-	if err := dp.UpdateStable(block); err != nil {
+	changed, prunedBlocks, err := dp.UpdateStable(block)
+	if err != nil {
 		log.Errorf("update stable block %s fail", block.ShortString())
 		return ErrSaveBlock
 	}
@@ -204,9 +220,31 @@ func (dp *DPoVP) saveNewBlock(block *types.Block) error {
 	// try update current block or switch to another fork
 	oldCurrent := dp.CurrentBlock()
 	newCurrent := dp.forkManager.UpdateFork(block, dp.StableBlock())
-	if newCurrent != nil {
+	if newCurrent != nil { // 说明切分叉了
+		// 1. 获取新分叉和旧的分叉的current到共同祖先的区块中的交易列表
+		oldForkTxs, newForkTxs, err := dp.txGuard.GetTxsByBranch(oldCurrent, newCurrent)
+		if err != nil {
+			log.Errorf("Get branch txs error. error: %v", err)
+		}
+		// 2. 把旧分叉上的交易标记为未打包
+		dp.txPool.SetTxsFlag(oldForkTxs, true)
+		// 3. 把新分叉上的交易标记为已打包
+		dp.txPool.SetTxsFlag(newForkTxs, false)
+
 		go dp.currentFeed.Send(newCurrent)
 	}
+
+	// 如果是出现了新的稳定块
+	if changed {
+		// 1. 在tx guard中删除剪枝下来的blocks
+		for _, b := range prunedBlocks {
+			dp.txGuard.DelBlock(b)
+		}
+		// 2. 移动tx guard的lastMaxTime
+		maxTime := block.Time() - uint32(params.TransactionExpiration)
+		dp.txGuard.DelOldBlocks(maxTime)
+	}
+
 	// To confirm a block from another fork, we need a height distance that more than 2/3 deputies count.
 	// But the new current's height is 2/3 deputies count bigger at most, so we don't need to try to confirm the new current block here
 	// dp.confirmer.TryConfirm(block)
@@ -285,11 +323,11 @@ func (dp *DPoVP) saveSnapshot(startHeight, endHeight uint32) {
 }
 
 // UpdateStable check if the block can be stable. Then send notification and return true if the stable block changed
-func (dp *DPoVP) UpdateStable(block *types.Block) error {
+func (dp *DPoVP) UpdateStable(block *types.Block) (bool, []*types.Block, error) {
 	oldStable := dp.StableBlock()
 	changed, prunedBlocks, err := dp.stableManager.UpdateStable(block)
 	if err != nil {
-		return err
+		return false, nil, err
 	}
 
 	if changed {
@@ -297,10 +335,6 @@ func (dp *DPoVP) UpdateStable(block *types.Block) error {
 		// This may not be a litter late, but it's fine. Because deputy nodes snapshot will be used after the interim duration, it's about 1000 blocks
 		dp.saveSnapshot(oldStable.Height()+1, dp.StableBlock().Height())
 
-		// add txs in pruned block back
-		for _, prunedBlock := range prunedBlocks {
-			dp.txPool.PruneBlock(prunedBlock)
-		}
 		// notify new stable
 		go dp.stableFeed.Send(block)
 		// confirm from oldStable to newStable
@@ -309,7 +343,7 @@ func (dp *DPoVP) UpdateStable(block *types.Block) error {
 		go dp.fetchConfirmsFromRemote(oldStable.Height()+1, dp.StableBlock().Height())
 	}
 
-	return nil
+	return changed, prunedBlocks, nil
 }
 
 func (dp *DPoVP) logCurrentChange(oldCurrent *types.Block) {
@@ -382,7 +416,8 @@ func (dp *DPoVP) InsertConfirm(info *network.BlockConfirmData) error {
 		return err
 	}
 
-	if err := dp.UpdateStable(newBlock); err != nil {
+	changed, prunedBlocks, err := dp.UpdateStable(newBlock)
+	if err != nil {
 		log.Errorf("ReceiveConfirm: setStableBlock failed. height: %d, hash:%s, err: %v", info.Height, info.Hash.Hex()[:16], err)
 		return err
 	}
@@ -390,8 +425,29 @@ func (dp *DPoVP) InsertConfirm(info *network.BlockConfirmData) error {
 	// update the current block
 	newCurrent := dp.forkManager.UpdateForkForConfirm(dp.StableBlock())
 	if newCurrent != nil {
+		// 1. 获取新分叉和旧的分叉的current到共同祖先的区块中的交易列表
+		oldForkTxs, newForkTxs, err := dp.txGuard.GetTxsByBranch(oldCurrent, newCurrent)
+		if err != nil {
+			log.Errorf("Get branch txs error. error: %v", err)
+		}
+		// 2. 把旧分叉上的交易标记为未打包
+		dp.txPool.SetTxsFlag(oldForkTxs, true)
+		// 3. 把新分叉上的交易标记为已打包
+		dp.txPool.SetTxsFlag(newForkTxs, false)
+
 		go dp.currentFeed.Send(newCurrent)
 		dp.logCurrentChange(oldCurrent)
+	}
+
+	// 如果是出现了新的稳定块
+	if changed {
+		// 1. 在tx guard中删除剪枝下来的blocks
+		for _, b := range prunedBlocks {
+			dp.txGuard.DelBlock(b)
+		}
+		// 2. 移动tx guard的lastMaxTime
+		maxTime := newBlock.Time() - uint32(params.TransactionExpiration)
+		dp.txGuard.DelOldBlocks(maxTime)
 	}
 
 	return nil

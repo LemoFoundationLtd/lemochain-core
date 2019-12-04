@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/txpool"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
@@ -15,16 +16,16 @@ type Validator struct {
 	timeoutTime uint64
 	blockLoader BlockLoader
 	dm          *deputynode.Manager
-	txPool      TxPool
+	txGuard     *txpool.TxGuard
 	canLoader   CandidateLoader
 }
 
-func NewValidator(timeout uint64, blockLoader BlockLoader, dm *deputynode.Manager, txPool TxPool, canLoader CandidateLoader) *Validator {
+func NewValidator(timeout uint64, blockLoader BlockLoader, dm *deputynode.Manager, txGuard *txpool.TxGuard, canLoader CandidateLoader) *Validator {
 	return &Validator{
 		timeoutTime: timeout,
 		blockLoader: blockLoader,
 		dm:          dm,
-		txPool:      txPool,
+		txGuard:     txGuard,
 		canLoader:   canLoader,
 	}
 }
@@ -50,8 +51,9 @@ func verifyTxRoot(block *types.Block) error {
 }
 
 // verifyTxs verify the Tx list in block body
-func verifyTxs(block *types.Block, txPool TxPool, chainId uint16) error {
-	if !txPool.VerifyTxInBlock(block) {
+func verifyTxs(block *types.Block, txGuard *txpool.TxGuard, chainId uint16) error {
+	isExist, err := txGuard.IsTxsExist(block)
+	if isExist || err != nil {
 		log.Error("Consensus verify fail: tx is appeared in parent blocks")
 		return ErrVerifyBlockFailed
 	}
@@ -252,7 +254,7 @@ func (v *Validator) VerifyBeforeTxProcess(block *types.Block, chainId uint16) er
 	if err := verifyTxRoot(block); err != nil {
 		return err
 	}
-	if err := verifyTxs(block, v.txPool, chainId); err != nil {
+	if err := verifyTxs(block, v.txGuard, chainId); err != nil {
 		return err
 	}
 	if err := verifyHeight(block, parent); err != nil {

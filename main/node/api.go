@@ -487,9 +487,16 @@ func (t *PublicTxAPI) SendTx(tx *types.Transaction) (common.Hash, error) {
 		log.Errorf("VerifyTxBody error: %s", err)
 		return common.Hash{}, err
 	}
-	if t.node.txPool.RecvTx(tx) {
-		// 广播交易
-		go subscribe.Send(subscribe.NewTx, tx)
+	// 判断tx是否在当前分支已经存在了
+	currentBlock := t.node.chain.CurrentBlock()
+	guard := t.node.chain.TxGuard()
+	isExist, err := guard.IsTxExist(currentBlock.Hash(), currentBlock.Height(), tx)
+	if err == nil && !isExist {
+		// 加入交易池
+		if t.node.txPool.PushTx(tx) {
+			// 广播交易
+			go subscribe.Send(subscribe.NewTx, tx)
+		}
 	}
 	return tx.Hash(), nil
 }

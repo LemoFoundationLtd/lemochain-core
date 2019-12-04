@@ -6,6 +6,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/common/math"
+	"sync"
 )
 
 var (
@@ -167,6 +168,11 @@ type TxGuard struct {
 
 	/** 所有交易，由于链存在分支，所以一个交易可能存在于多个区块中。 */
 	Traces map[common.Hash]Trace
+
+	// 记录当前缓存区块中的交易
+	TxSet map[common.Hash]*types.Transaction
+
+	RW sync.RWMutex
 }
 
 func NewTxGuard(lastMaxTime uint32) *TxGuard {
@@ -174,6 +180,7 @@ func NewTxGuard(lastMaxTime uint32) *TxGuard {
 		BlocksInTime:  newBlocksInTime(lastMaxTime),
 		HeightBuckets: make(map[uint32]BlocksByHash),
 		Traces:        make(map[common.Hash]Trace),
+		TxSet:         make(map[common.Hash]*types.Transaction),
 	}
 }
 
@@ -193,9 +200,10 @@ func (guard *TxGuard) DelOldBlocks(maxTime uint32) {
 		// 2. 删除区块中的交易在Traces中的记录
 		for txHash := range b.TxHashes {
 			delete(guard.Traces[txHash], b.Header.Hash())
-			// 交易hash对应的区块删除完了则删除交易hash的索引
+			// 交易hash对应的区块删除完了则删除交易hash的索引,还要删除交易集合中的交易
 			if len(guard.Traces[txHash]) == 0 {
 				delete(guard.Traces, txHash)
+				delete(guard.TxSet, txHash)
 			}
 		}
 		// 3. 删除HeightBuckets中的block
@@ -223,6 +231,8 @@ func (guard *TxGuard) SaveBlock(block *types.Block) {
 			trace := make(Trace)
 			trace[block.Hash()] = block.Height()
 			guard.Traces[tx.Hash()] = trace
+			// 记录此交易在交易集合中
+			guard.TxSet[tx.Hash()] = tx
 		}
 	}
 	// 3. 保存进HeightBuckets
@@ -247,11 +257,33 @@ func (guard *TxGuard) SaveBlock(block *types.Block) {
 }
 
 func (guard *TxGuard) DelBlock(block *types.Block) error {
-	return guard.BlocksInTime.DelBlock(block)
+	err := guard.BlocksInTime.DelBlock(block)
+	if err != nil {
+		return err
+	}
+	// 删除block中的交易记录
+	for _, tx := range block.Txs {
+		// 删除traces中的记录
+		delete(guard.Traces[tx.Hash()], block.Hash())
+		// 交易hash对应的区块删除完了则删除交易hash的索引,还要删除交易集合中的交易
+		if len(guard.Traces[tx.Hash()]) == 0 {
+			delete(guard.Traces, tx.Hash())
+			delete(guard.TxSet, tx.Hash())
+		}
+	}
+	// 删除HeightBuckets中的block记录
+	delete(guard.HeightBuckets[block.Height()], block.Hash())
+	if len(guard.HeightBuckets[block.Height()]) == 0 {
+		delete(guard.HeightBuckets, block.Height())
+	}
+	return nil
 }
 
 // IsTxExist 判断tx是否已经在当前分支存在，startBlockHash和startBlockHeight为指定分支的子节点的区块hash和height
 func (guard *TxGuard) IsTxExist(startBlockHash common.Hash, startBlockHeight uint32, tx *types.Transaction) (bool, error) {
+	guard.RW.Lock()
+	defer guard.RW.Unlock()
+
 	// 1. 查找交易是否在Traces中存在
 	if _, ok := guard.Traces[tx.Hash()]; !ok {
 		return false, nil
@@ -266,6 +298,9 @@ func (guard *TxGuard) IsTxExist(startBlockHash common.Hash, startBlockHeight uin
 
 // IsTxsExist 判断传入block中的交易是否已经被block所在分支的其他区块打包了
 func (guard *TxGuard) IsTxsExist(block *types.Block) (bool, error) {
+	guard.RW.Lock()
+	defer guard.RW.Unlock()
+
 	// 1. 获取block中的交易存在的所有区块
 	trace := make(Trace)
 	for _, tx := range block.Txs {
@@ -315,7 +350,10 @@ func (guard *TxGuard) existBlock(minHeight, maxHeight uint32, trace Trace, start
 }
 
 // GetTxsByBranch 根据两个区块的叶子节点，获取它们到共同父节点之间的两个分支上的交易列表
-func (guard *TxGuard) GetTxsByBranch(block01, block02 *types.Block) (txHashes1, txHashes2 []common.Hash, err error) {
+func (guard *TxGuard) GetTxsByBranch(block01, block02 *types.Block) (txs01, txs02 types.Transactions, err error) {
+	guard.RW.Lock()
+	defer guard.RW.Unlock()
+
 	// 0. 判断block01和 block02是否存在
 	if blocks, ok := guard.HeightBuckets[block01.Height()]; !ok {
 		log.Errorf("Not found block in TxGuard by blockHeight. blockHeight: %d", block01.Height())
@@ -342,6 +380,9 @@ func (guard *TxGuard) GetTxsByBranch(block01, block02 *types.Block) (txHashes1, 
 		block02 = temp
 		swap = true // 标记交换为true
 	}
+	txHashes1 := make([]common.Hash, 0, 10)
+	txHashes2 := make([]common.Hash, 0, 10)
+
 	// 2. 先收集block02分支高度差多出的区块的交易
 	bHash := block02.Hash()
 	for i := block02.Height(); i > block01.Height(); i-- {
@@ -373,10 +414,26 @@ func (guard *TxGuard) GetTxsByBranch(block01, block02 *types.Block) (txHashes1, 
 		pBlock02 = guard.HeightBuckets[pBlock02.Header.Height-1][pBlock02.Header.ParentHash]
 	}
 
+	// 通过交易hash获取交易
+	for _, txHash := range txHashes1 {
+		if tx, ok := guard.TxSet[txHash]; ok {
+			txs01 = append(txs01, tx)
+		} else {
+			log.Errorf("Traces and txSet of tx guard are inconsistent. txHash: %s. ", txHash.String())
+		}
+	}
+	for _, txHash := range txHashes2 {
+		if tx, ok := guard.TxSet[txHash]; ok {
+			txs02 = append(txs02, tx)
+		} else {
+			log.Errorf("Traces and txSet of tx guard are inconsistent. txHash: %s. ", txHash.String())
+		}
+	}
+
 	// 如果block01和block02交换了，最后输出的值要交换回来，实现输入值和输出值一一对应的效果
 	if swap {
-		return txHashes2, txHashes1, nil
+		return txs02, txs01, nil
 	} else {
-		return txHashes1, txHashes2, nil
+		return txs01, txs02, nil
 	}
 }

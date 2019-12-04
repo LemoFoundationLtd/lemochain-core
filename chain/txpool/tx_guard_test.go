@@ -723,18 +723,18 @@ func TestTxGuard_GetTxsByBranch(t *testing.T) {
 		tx01.Hash(): struct{}{},
 	}
 
-	txHashes1, txHashes2, err := guard.GetTxsByBranch(block1, block2)
+	txs01, txs02, err := guard.GetTxsByBranch(block1, block2)
 	assert.NoError(t, err)
 	// 交易数量验证
-	assert.Equal(t, 4, len(txHashes1))
-	assert.Equal(t, 7, len(txHashes2))
+	assert.Equal(t, 4, len(txs01))
+	assert.Equal(t, 7, len(txs02))
 	// 交易hash验证
-	for _, txHash := range txHashes1 {
-		_, ok := txs1[txHash]
+	for _, tx := range txs01 {
+		_, ok := txs1[tx.Hash()]
 		assert.True(t, ok)
 	}
-	for _, txHash := range txHashes2 {
-		_, ok := txs2[txHash]
+	for _, tx := range txs02 {
+		_, ok := txs2[tx.Hash()]
 		assert.True(t, ok)
 	}
 
@@ -756,18 +756,18 @@ func TestTxGuard_GetTxsByBranch(t *testing.T) {
 		tx01.Hash(): struct{}{},
 	}
 
-	txHashes1, txHashes2, err = guard.GetTxsByBranch(block1, block2)
+	txs01, txs02, err = guard.GetTxsByBranch(block1, block2)
 	assert.NoError(t, err)
 	// 交易数量验证
-	assert.Equal(t, 2, len(txHashes1))
-	assert.Equal(t, 7, len(txHashes2))
+	assert.Equal(t, 2, len(txs01))
+	assert.Equal(t, 7, len(txs02))
 	// 交易hash验证
-	for _, txHash := range txHashes1 {
-		_, ok := txs1[txHash]
+	for _, tx := range txs01 {
+		_, ok := txs1[tx.Hash()]
 		assert.True(t, ok)
 	}
-	for _, txHash := range txHashes2 {
-		_, ok := txs2[txHash]
+	for _, tx := range txs02 {
+		_, ok := txs2[tx.Hash()]
 		assert.True(t, ok)
 	}
 	// 2.1 block1大于block2高度的情况
@@ -783,18 +783,18 @@ func TestTxGuard_GetTxsByBranch(t *testing.T) {
 		tx05.Hash(): struct{}{},
 		tx02.Hash(): struct{}{},
 	}
-	txHashes1, txHashes2, err = guard.GetTxsByBranch(block1, block2)
+	txs01, txs02, err = guard.GetTxsByBranch(block1, block2)
 	assert.NoError(t, err)
 	// 交易数量验证
-	assert.Equal(t, 4, len(txHashes1))
-	assert.Equal(t, 2, len(txHashes2))
+	assert.Equal(t, 4, len(txs01))
+	assert.Equal(t, 2, len(txs02))
 	// 交易hash验证
-	for _, txHash := range txHashes1 {
-		_, ok := txs1[txHash]
+	for _, tx := range txs01 {
+		_, ok := txs1[tx.Hash()]
 		assert.True(t, ok)
 	}
-	for _, txHash := range txHashes2 {
-		_, ok := txs2[txHash]
+	for _, tx := range txs02 {
+		_, ok := txs2[tx.Hash()]
 		assert.True(t, ok)
 	}
 
@@ -808,14 +808,14 @@ func TestTxGuard_GetTxsByBranch(t *testing.T) {
 	block2 = block00
 	txs2 = make(hashMap, 0)
 
-	txHashes1, txHashes2, err = guard.GetTxsByBranch(block1, block2)
+	txs01, txs02, err = guard.GetTxsByBranch(block1, block2)
 	assert.NoError(t, err)
 	// 交易数量验证
-	assert.Equal(t, 3, len(txHashes1))
-	assert.Equal(t, 0, len(txHashes2))
+	assert.Equal(t, 3, len(txs01))
+	assert.Equal(t, 0, len(txs02))
 	// 交易hash验证
-	for _, txHash := range txHashes1 {
-		_, ok := txs1[txHash]
+	for _, tx := range txs01 {
+		_, ok := txs1[tx.Hash()]
 		assert.True(t, ok)
 	}
 

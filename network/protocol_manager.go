@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/txpool"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
@@ -70,6 +71,7 @@ type ProtocolManager struct {
 	dm             *deputynode.Manager
 	discover       *p2p.DiscoverManager
 	txPool         TxPool
+	txGuard        *txpool.TxGuard
 	limit          int
 	peers          *peerSet      // connected peers
 	confirmsCache  *ConfirmCache // received confirm info before block, cache them
@@ -94,7 +96,7 @@ type ProtocolManager struct {
 	testOutput chan int
 }
 
-func NewProtocolManager(chainID uint16, nodeID p2p.NodeID, chain BlockChain, dm *deputynode.Manager, txPool TxPool, discover *p2p.DiscoverManager, limit int, nodeVersion uint32, dataDir string) *ProtocolManager {
+func NewProtocolManager(chainID uint16, nodeID p2p.NodeID, chain BlockChain, dm *deputynode.Manager, txPool TxPool, txGuard *txpool.TxGuard, discover *p2p.DiscoverManager, limit int, nodeVersion uint32, dataDir string) *ProtocolManager {
 	if limit == 0 {
 		limit = DefaultLimit
 	}
@@ -105,6 +107,7 @@ func NewProtocolManager(chainID uint16, nodeID p2p.NodeID, chain BlockChain, dm 
 		chain:         chain,
 		dm:            dm,
 		txPool:        txPool,
+		txGuard:       txGuard,
 		discover:      discover,
 		limit:         limit,
 		peers:         NewPeerSet(discover, dm),
@@ -756,13 +759,17 @@ func (pm *ProtocolManager) handleTxsMsg(msg *p2p.Msg) error {
 		}
 
 		go func() {
-			if pm.txPool.PushTx(tx) {
-				// 广播交易
-				subscribe.Send(subscribe.NewTx, tx)
+			// 判断接收到的交易是否在本分支已经存在
+			currentBlock := pm.chain.CurrentBlock()
+			isExist, err := pm.txGuard.IsTxExist(currentBlock.Hash(), currentBlock.Height(), tx)
+			if err == nil && !isExist {
+				if pm.txPool.PushTx(tx) { // 加入交易池
+					// 广播交易
+					subscribe.Send(subscribe.NewTx, tx)
+				}
 			}
 		}()
 	}
-
 	return nil
 }
 

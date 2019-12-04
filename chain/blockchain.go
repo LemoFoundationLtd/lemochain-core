@@ -70,35 +70,45 @@ func NewBlockChain(config Config, dm *deputynode.Manager, db db.ChainDB, flags f
 		MineTimeout:   config.MineTimeout,
 		MinerExtra:    nil,
 	}
-	bc.engine = consensus.NewDPoVP(dpovpCfg, bc.db, bc.dm, bc.am, bc, txPool)
+	lastMaxTime := latestStableBlock.Time() - uint32(params.TransactionExpiration) // 开始时间为稳定块前30分钟
+	txGuard := txpool.NewTxGuard(lastMaxTime)
+	bc.engine = consensus.NewDPoVP(dpovpCfg, bc.db, bc.dm, bc.am, bc, txPool, txGuard)
 
-	bc.initTxPool(latestStableBlock, txPool)
+	bc.initTxPool(latestStableBlock, txPool, txGuard)
 	go bc.runFeedTranspondLoop()
 
 	log.Info("BlockChain is ready", "stableHeight", bc.StableBlock().Height(), "stableHash", bc.StableBlock().Hash(), "currentHeight", bc.CurrentBlock().Height(), "currentHash", bc.CurrentBlock().Hash())
 	return bc, nil
 }
 
-func (bc *BlockChain) initTxPool(block *types.Block, txPool *txpool.TxPool) {
+func (bc *BlockChain) initTxPool(block *types.Block, txPool *txpool.TxPool, txGuard *txpool.TxGuard) {
 	if block == nil {
 		log.Debug("init tx pool. block is nil.")
 		return
 	}
 
 	latestTime := block.Time()
-	height := block.Height()
+	height := int64(block.Height())
 	initBlock := block
 	// 需要初始化的block交易条件为，height大于0并且区块时间戳距离最新的稳定区块的时间戳不大于30分钟
-	for height > 0 && (latestTime-initBlock.Time() <= uint32(params.TransactionExpiration)) {
+	for latestTime-initBlock.Time() <= uint32(params.TransactionExpiration) {
 		txPool.RecvBlock(initBlock)
+		txGuard.SaveBlock(initBlock)
 		height = height - 1
 		// 设置initBlock为前一个区块
-		initBlock = bc.GetBlockByHeight(height)
+		if height < 0 {
+			break
+		}
+		initBlock = bc.GetBlockByHeight(uint32(height))
 		if initBlock == nil {
 			log.Errorf("get block by height error when init tx pool. height: %d.", height)
 			panic(ErrLoadBlock)
 		}
 	}
+}
+
+func (bc *BlockChain) TxGuard() *txpool.TxGuard {
+	return bc.engine.TxGuard()
 }
 
 func (bc *BlockChain) AccountManager() *account.Manager {

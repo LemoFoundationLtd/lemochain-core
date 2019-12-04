@@ -287,7 +287,7 @@ func (b *Block) Size() int {
 func (b *Block) String() string {
 	set := []string{
 		fmt.Sprintf("Header: %v", b.Header),
-		fmt.Sprintf("Txs: %v", b.Txs),
+		fmt.Sprintf("TxSet: %v", b.Txs),
 		fmt.Sprintf("ChangeLogs: %v", b.ChangeLogs),
 		fmt.Sprintf("Confirms: %v", b.Confirms),
 		fmt.Sprintf("DeputyNodes: %v", b.DeputyNodes),
