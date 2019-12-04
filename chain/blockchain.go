@@ -105,6 +105,7 @@ func (bc *BlockChain) initTxPool(block *types.Block, txPool *txpool.TxPool, txGu
 			panic(ErrLoadBlock)
 		}
 	}
+	log.Debugf("Finish init tx pool, start block height: %d timestamp: %d to end block height: %d timestamp: %d. ", initBlock.Height(), initBlock.Time(), block.Height(), block.Time())
 }
 
 func (bc *BlockChain) TxGuard() *txpool.TxGuard {
