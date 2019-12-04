@@ -3,6 +3,7 @@ package network
 import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/txpool"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/network/p2p"
@@ -68,11 +69,11 @@ func (bc *testChain) StableBlock() *types.Block {
 type testTxPool struct {
 }
 
-func (p *testTxPool) Get(time uint32, size int) []*types.Transaction {
+func (testTxPool) Get(time uint32, size int) []*types.Transaction {
 	panic("implement me")
 }
 
-func (p *testTxPool) RecvTx(tx *types.Transaction) bool {
+func (testTxPool) PushTx(tx *types.Transaction) bool {
 	panic("implement me")
 }
 
@@ -99,7 +100,7 @@ func createPm() *ProtocolManager {
 			Votes:        new(big.Int).SetInt64(5),
 		},
 	})
-	pm := NewProtocolManager(1, p2p.NodeID{}, bc, dm, txPool, discover, 1, params.VersionUint(), "")
+	pm := NewProtocolManager(1, p2p.NodeID{}, bc, dm, txPool, txpool.NewTxGuard(100), discover, 1, params.VersionUint(), "")
 	pm.setTest()
 	return pm
 }

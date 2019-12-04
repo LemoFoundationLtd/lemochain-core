@@ -244,33 +244,13 @@ func getTestBlockIndex(targetBlock *types.Block) int {
 	return -1
 }
 
-// txPoolForValidator is a txPool for test. It only contains a bool which will be returned by VerifyTxInBlock
-type txPoolForValidator struct {
+// txGuardForValidator is a txPool for test. It only contains a bool which will be returned by VerifyTxInBlock
+type txGuardForValidator struct {
 	blockIsValid bool
 }
 
-func (tp txPoolForValidator) ExistPendingTx(time uint32) bool {
-	panic("implement me")
-}
-
-func (tp txPoolForValidator) PushTx(tx *types.Transaction) bool {
-	panic("implement me")
-}
-
-func (tp txPoolForValidator) SetTxsFlag(txs []*types.Transaction, isPending bool) bool {
-	panic("implement me")
-}
-
-func (txPoolForValidator) Get(time uint32, size int) []*types.Transaction {
-	panic("implement me")
-}
-
-func (txPoolForValidator) DelInvalidTxs(txs []*types.Transaction) {
-	panic("implement me")
-}
-
-func (txPoolForValidator) RecvBlock(block *types.Block) {
-	panic("implement me")
+func (t txGuardForValidator) IsTxsExist(block *types.Block) (bool, error) {
+	return t.blockIsValid, nil
 }
 
 type parentLoader struct {
