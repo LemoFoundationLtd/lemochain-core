@@ -95,6 +95,14 @@ var (
 			Port:          "7005",
 			Introduction:  "the fifth node",
 		},
+		&CandidateInfo{
+			MinerAddress:  decodeMinerAddress("Lemo83W3DBN8QASNAR2D5386QSNGC8DAN8TSRK53"),
+			IncomeAddress: decodeMinerAddress("Lemo83W3DBN8QASNAR2D5386QSNGC8DAN8TSRK53"),
+			NodeID:        common.FromHex("0x0e53292ab5a51286d64422344c6b0751dc1429497fe72820a0a273c70e35bbbe8196af0c5526588fee62f1b68558773501d32e5d552fd9863d740f30ed41f4b0"),
+			Host:          "10.0.22.25",
+			Port:          "7006",
+			Introduction:  "the sixth node",
+		},
 	}
 )
 

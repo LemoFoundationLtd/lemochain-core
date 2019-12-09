@@ -261,7 +261,7 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 				}
 				// The block mined by minerAddress in blackList
 				if pm.chain.IsInBlackList(b) {
-					log.Debug("This block minerAddress is in BlackList")
+					log.Debug("This block minerAddress is in BlackList, black miner: %s, block height: %d, block hash: %s.", b.MinerAddress().String(), b.Height(), b.Hash().String())
 					pm.blockCache.Remove(b)
 					continue
 				}
