@@ -23,6 +23,7 @@ func NewAccountData(address common.Address, isCandidate bool) *types.AccountData
 		account.Candidate.Votes = new(big.Int).SetInt64(500)
 		account.Candidate.Profile[types.CandidateKeyIsCandidate] = "true"
 	} else {
+		account.Candidate.Profile[types.CandidateKeyIsCandidate] = "false"
 		account.Candidate.Votes = new(big.Int)
 	}
 
@@ -124,206 +125,110 @@ func TestSort(t *testing.T) {
 	}
 }
 
-func TestCBlock_RankingNo1(t *testing.T) {
-	ClearData()
-	cacheChain := NewChainDataBase(GetStorePath())
-	defer cacheChain.Close()
-
-	cblock1 := NewGenesisBlock(GetBlock1(), cacheChain.Beansdb)
-
-	account1 := NewAccountData(common.HexToAddress(strconv.Itoa(0x1000)), false)
-	cblock1.AccountTrieDB.Put(account1, 1)
-	account2 := NewAccountData(common.HexToAddress(strconv.Itoa(0x1001)), false)
-	cblock1.AccountTrieDB.Put(account2, 1)
-
-	count := 19
-	candidates := NewAccountDataBatch(count)
-	for index := 0; index < count; index++ {
-		cblock1.AccountTrieDB.Put(candidates[index], 1)
+func newVoteLog(addr common.Address, vote *big.Int) *types.ChangeLog {
+	return &types.ChangeLog{
+		LogType: 18,
+		Address: addr,
+		NewVal:  *vote,
 	}
-
-	cblock1.Ranking()
-	top30 := cblock1.Top.GetTop()
-	assert.Equal(t, count, len(top30))
-	assert.Equal(t, true, equal(candidates, count, top30))
-
 }
 
-func TestCBlock_RankingNo2(t *testing.T) {
+func TestCBlock_Ranking(t *testing.T) {
 	ClearData()
 	cacheChain := NewChainDataBase(GetStorePath())
 	defer cacheChain.Close()
+	addr01 := common.HexToAddress("0x110")
+	addr02 := common.HexToAddress("0x220")
+	addr03 := common.HexToAddress("0x330")
+	addr04 := common.HexToAddress("0x440")
 
 	cblock1 := NewGenesisBlock(GetBlock1(), cacheChain.Beansdb)
+	// 注册候选节点
+	cblock1.AccountTrieDB.Put(NewAccountData(addr01, true), 1)
+	cblock1.AccountTrieDB.Put(NewAccountData(addr02, true), 1)
+	cblock1.AccountTrieDB.Put(NewAccountData(addr03, true), 1)
+	cblock1.AccountTrieDB.Put(NewAccountData(addr04, true), 1)
 
-	count := 19
-	candidates := NewAccountDataBatch(count)
-	candidates[0].Candidate.Votes.SetInt64(50000)
-	candidates[9].Candidate.Votes.SetInt64(40000)
-	for index := 0; index < count; index++ {
-		cblock1.AccountTrieDB.Put(candidates[index], 1)
+	// 构造changeLog
+	log01 := newVoteLog(addr01, big.NewInt(110))
+	log02 := newVoteLog(addr02, big.NewInt(220))
+	log03 := newVoteLog(addr03, big.NewInt(330))
+	log04 := newVoteLog(addr04, big.NewInt(440))
+
+	// 1. 初始化top中的值
+	votelogs := types.ChangeLogSlice{log01, log02, log03, log04}
+	cblock1.Ranking(votelogs)
+	// 判断top中的值
+	assert.Equal(t, 4, len(cblock1.Top.Top))
+	assert.Equal(t, log04.Address, cblock1.Top.Top[0].GetAddress())
+	assert.Equal(t, log04.NewVal, *cblock1.Top.Top[0].GetTotal())
+	assert.Equal(t, log03.Address, cblock1.Top.Top[1].GetAddress())
+	assert.Equal(t, log03.NewVal, *cblock1.Top.Top[1].GetTotal())
+	assert.Equal(t, log02.Address, cblock1.Top.Top[2].GetAddress())
+	assert.Equal(t, log02.NewVal, *cblock1.Top.Top[2].GetTotal())
+	assert.Equal(t, log01.Address, cblock1.Top.Top[3].GetAddress())
+	assert.Equal(t, log01.NewVal, *cblock1.Top.Top[3].GetTotal())
+
+	// 2. 测试注销候选节点的情况
+	cblock2 := &CBlock{
+		Block:           GetBlock2(),
+		AccountTrieDB:   cblock1.AccountTrieDB,
+		CandidateTrieDB: cblock1.CandidateTrieDB,
+		Top:             cblock1.Top,
+		Parent:          cblock1,
 	}
+	unregisterAcc1 := NewAccountData(addr01, false)
+	cblock2.AccountTrieDB.Put(unregisterAcc1, 2)
 
-	cblock1.Ranking()
-	top30 := cblock1.Top.GetTop()
-	assert.Equal(t, count, len(top30))
-	assert.Equal(t, true, equal(sortAccount(candidates), count, top30))
-}
+	log := newVoteLog(addr01, big.NewInt(0))
+	cblock2.Ranking(types.ChangeLogSlice{log})
+	// 验证
+	assert.Equal(t, 3, len(cblock2.Top.Top))
+	assert.Equal(t, log04.Address, cblock2.Top.Top[0].GetAddress())
+	assert.Equal(t, log03.Address, cblock2.Top.Top[1].GetAddress())
+	assert.Equal(t, log02.Address, cblock2.Top.Top[2].GetAddress())
 
-func TestCBlock_RankingNo3(t *testing.T) {
-	ClearData()
-	cacheChain := NewChainDataBase(GetStorePath())
-	defer cacheChain.Close()
+	// 3. 测试top中的排序发生了变化
+	log = newVoteLog(addr02, big.NewInt(9999))
+	cblock2.Ranking(types.ChangeLogSlice{log})
 
-	cblock1 := NewGenesisBlock(GetBlock1(), cacheChain.Beansdb)
+	// 验证
+	assert.Equal(t, addr02, cblock2.Top.Top[0].GetAddress())
+	assert.Equal(t, addr04, cblock2.Top.Top[1].GetAddress())
+	assert.Equal(t, addr03, cblock2.Top.Top[2].GetAddress())
 
-	count := 19
-	candidates := NewAccountDataBatch(count)
-	candidates[0].Candidate.Votes.SetInt64(50000)
-	candidates[9].Candidate.Votes.SetInt64(40000)
-	for index := 0; index < count; index++ {
-		cblock1.AccountTrieDB.Put(candidates[index], 1)
+	// 4. 测试candidate超过20之后top最多有20个的情况
+	logs := make(types.ChangeLogSlice, 0, 20)
+	for i := 0; i < 20; i++ {
+		log := newVoteLog(common.HexToAddress(strconv.Itoa(i*1000+1)), big.NewInt(int64(i+10)))
+		logs = append(logs, log)
 	}
-	cblock1.Ranking()
-	cblock1Candidates := clone(candidates)
+	cblock2.Ranking(logs)
+	// 验证top中只有20个candidate
+	assert.Equal(t, max_candidate_count, len(cblock2.Top.Top))
+	// 此时票数最多的还是addr02有9999票
+	assert.Equal(t, addr02, cblock2.Top.Top[0].GetAddress())
+	assert.Equal(t, big.NewInt(9999), cblock2.Top.Top[0].GetTotal())
 
-	cblock2 := NewNormalBlock(GetBlock2(), cblock1.AccountTrieDB, cblock1.CandidateTrieDB, cblock1.Top)
-	candidates = append(candidates, NewAccountData(common.HexToAddress(strconv.Itoa(count+1)), true))
-	candidates[count].Candidate.Votes.SetInt64(30000)
-	cblock2.AccountTrieDB.Put(candidates[count], 2)
+	// 5. 测试candidate票数变化之后影响的排名
+	log = newVoteLog(addr04, big.NewInt(10000)) // 把addr04对应的票数修改为10000
+	cblock2.Ranking(types.ChangeLogSlice{log})
+	// 此时票数最多的为addr04
+	assert.Equal(t, addr04, cblock2.Top.Top[0].GetAddress())
+	assert.Equal(t, addr02, cblock2.Top.Top[1].GetAddress())
 
-	candidates = append(candidates, NewAccountData(common.HexToAddress(strconv.Itoa(count+2)), true))
-	candidates[count+1].Candidate.Votes.SetInt64(30000)
-	cblock2.AccountTrieDB.Put(candidates[count+1], 2)
-	cblock2.Ranking()
+	// 6. 验证新增加一个candidate进top，此时最后一个top会被挤出去
+	top20Total := cblock2.Top.Top[19].GetTotal()
+	log = newVoteLog(common.HexToAddress("0x8887777"), new(big.Int).Add(top20Total, big.NewInt(1)))
+	cblock2.Ranking(types.ChangeLogSlice{log})
+	assert.Equal(t, common.HexToAddress("0x8887777"), cblock2.Top.Top[19].GetAddress())
 
-	block1Top30 := cblock1.Top.GetTop()
-	assert.Equal(t, true, equal(sortAccount(cblock1Candidates), count, block1Top30))
-	assert.Equal(t, count, len(cblock1.CandidateTrieDB.GetAll()))
-
-	block2Top30 := cblock2.Top.GetTop()
-	assert.Equal(t, max_candidate_count, len(block2Top30))
-	assert.Equal(t, count+2, len(cblock2.CandidateTrieDB.GetAll()))
-	assert.Equal(t, true, equal(sortAccount(candidates), max_candidate_count, block2Top30))
-}
-
-//
-func TestCBlock_RankingNo10(t *testing.T) {
-	ClearData()
-	cacheChain := NewChainDataBase(GetStorePath())
-	defer cacheChain.Close()
-
-	cblock1 := NewGenesisBlock(GetBlock1(), cacheChain.Beansdb)
-
-	count := 50
-	candidates := NewAccountDataBatch(count)
-
-	account1 := NewAccountData(common.HexToAddress(strconv.Itoa(0x1000)), false)
-	account1.VoteFor = candidates[0].Address
-	account1.Balance.SetInt64(50000)
-	cblock1.AccountTrieDB.Put(account1, 1)
-	candidates[0].Candidate.Votes.SetInt64(50000)
-
-	account2 := NewAccountData(common.HexToAddress(strconv.Itoa(0x1001)), false)
-	account2.VoteFor = candidates[9].Address
-	account2.Balance.SetInt64(40000)
-	cblock1.AccountTrieDB.Put(account2, 1)
-	candidates[9].Candidate.Votes.SetInt64(50000)
-
-	for index := 0; index < count; index++ {
-		cblock1.AccountTrieDB.Put(candidates[index], 1)
+	// 验证前20是否按照票数由大到小顺序排序的
+	for i := 0; i < len(cblock2.Top.Top)-1; i++ {
+		for j := i + 1; j < len(cblock2.Top.Top); j++ {
+			assert.True(t, cblock2.Top.Top[i].Total.Cmp(cblock2.Top.Top[j].Total) >= 0)
+		}
 	}
-
-	cblock1.Ranking()
-	cblock1Candidates := clone(candidates)
-
-	cblock2 := NewNormalBlock(GetBlock2(), cblock1.AccountTrieDB, cblock1.CandidateTrieDB, cblock1.Top)
-	candidates = append(candidates, NewAccountData(common.HexToAddress(strconv.Itoa(count)), true))
-	candidates[count].Candidate.Votes.SetInt64(50000)
-	cblock2.AccountTrieDB.Put(candidates[count], 2)
-
-	candidates = append(candidates, NewAccountData(common.HexToAddress(strconv.Itoa(count+1)), true))
-	candidates[count+1].Candidate.Votes.SetInt64(50000)
-	cblock2.AccountTrieDB.Put(candidates[count+1], 2)
-	cblock2.Ranking()
-
-	block1Top30 := cblock1.Top.GetTop()
-	assert.Equal(t, true, equal(sortAccount(cblock1Candidates), max_candidate_count, block1Top30))
-	assert.Equal(t, count, len(cblock1.CandidateTrieDB.GetAll()))
-
-	block2Top30 := cblock2.Top.GetTop()
-	assert.Equal(t, true, equal(sortAccount(candidates), max_candidate_count, block2Top30))
-	assert.Equal(t, count+2, len(cblock2.CandidateTrieDB.GetAll()))
-}
-
-func TestCBlock_RankingNo11(t *testing.T) {
-	ClearData()
-	cacheChain := NewChainDataBase(GetStorePath())
-	defer cacheChain.Close()
-
-	cblock1 := NewGenesisBlock(GetBlock1(), cacheChain.Beansdb)
-
-	count := 50
-	candidates := NewAccountDataBatch(count)
-	candidates[0].Candidate.Votes.SetInt64(50000)
-	candidates[9].Candidate.Votes.SetInt64(40000)
-	for index := 0; index < count; index++ {
-		cblock1.AccountTrieDB.Put(candidates[index], 1)
-	}
-	cblock1.Ranking()
-	cblock1Candidates := clone(candidates)
-
-	cblock2 := NewNormalBlock(GetBlock2(), cblock1.AccountTrieDB, cblock1.CandidateTrieDB, cblock1.Top)
-	candidates = append(candidates, NewAccountData(common.HexToAddress(strconv.Itoa(count)), true))
-	candidates[count].Candidate.Votes.SetInt64(20)
-	cblock2.AccountTrieDB.Put(candidates[count], 2)
-
-	candidates = append(candidates, NewAccountData(common.HexToAddress(strconv.Itoa(count+1)), true))
-	candidates[count+1].Candidate.Votes.SetInt64(20)
-	cblock2.AccountTrieDB.Put(candidates[count+1], 2)
-	cblock2.Ranking()
-
-	block1Top30 := cblock1.Top.GetTop()
-	assert.Equal(t, true, equal(sortAccount(cblock1Candidates), max_candidate_count, block1Top30))
-	assert.Equal(t, count, len(cblock1.CandidateTrieDB.GetAll()))
-
-	block2Top30 := cblock2.Top.GetTop()
-	assert.Equal(t, true, equal(sortAccount(candidates), max_candidate_count, block2Top30))
-	assert.Equal(t, count+2, len(cblock2.CandidateTrieDB.GetAll()))
-}
-
-func TestCBlock_RankingNo12(t *testing.T) {
-	ClearData()
-	cacheChain := NewChainDataBase(GetStorePath())
-	defer cacheChain.Close()
-
-	cblock1 := NewGenesisBlock(GetBlock1(), cacheChain.Beansdb)
-
-	count := 50
-	candidates := NewAccountDataBatch(count)
-	candidates[0].Candidate.Votes.SetInt64(50000)
-	candidates[9].Candidate.Votes.SetInt64(40000)
-	for index := 0; index < count; index++ {
-		cblock1.AccountTrieDB.Put(candidates[index], 1)
-	}
-	cblock1.Ranking()
-	cblock1Candidates := clone(candidates)
-
-	cblock2 := NewNormalBlock(GetBlock2(), cblock1.AccountTrieDB, cblock1.CandidateTrieDB, cblock1.Top)
-	candidates[18].Candidate.Votes.SetInt64(40)
-	cblock2.AccountTrieDB.Put(candidates[18], 2)
-
-	candidates[19].Candidate.Votes.SetInt64(30)
-	cblock2.AccountTrieDB.Put(candidates[19], 2)
-	cblock2.Ranking()
-
-	block2Top30 := cblock2.Top.GetTop()
-	assert.Equal(t, true, equal(sortAccount(candidates), max_candidate_count, block2Top30))
-	assert.Equal(t, count, len(cblock2.CandidateTrieDB.GetAll()))
-
-	block1Top30 := cblock1.Top.GetTop()
-	assert.Equal(t, true, equal(sortAccount(cblock1Candidates), max_candidate_count, block1Top30))
-	assert.Equal(t, count, len(cblock1.CandidateTrieDB.GetAll()))
 }
 
 func TestCBlock_BeChildOf(t *testing.T) {
