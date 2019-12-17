@@ -185,13 +185,8 @@ func (dp *DPoVP) InsertBlock(rawBlock *types.Block) (*types.Block, error) {
 	return block, nil
 }
 
-// saveNewBlock save block then update the current and stable block
-func (dp *DPoVP) saveNewBlock(block *types.Block) error {
-	// save
-	if err := dp.saveToStore(block); err != nil {
-		return err
-	}
-
+// handleBlockTxs
+func (dp *DPoVP) handleBlockTxs(block *types.Block) {
 	// save block to txGuard
 	dp.txGuard.SaveBlock(block)
 	// 判断此block是否为当前分支的子块
@@ -205,6 +200,16 @@ func (dp *DPoVP) saveNewBlock(block *types.Block) error {
 			dp.txPool.PushTx(tx)
 		}
 	}
+}
+
+// saveNewBlock save block then update the current and stable block
+func (dp *DPoVP) saveNewBlock(block *types.Block) error {
+	// save
+	if err := dp.saveToStore(block); err != nil {
+		return err
+	}
+	// 设置区块中的交易在交易池中的状态
+	dp.handleBlockTxs(block)
 
 	// save last sig because we are the miner. If we clear db and restart, this will be useful
 	if IsMinedByself(block) {
@@ -221,28 +226,15 @@ func (dp *DPoVP) saveNewBlock(block *types.Block) error {
 	oldCurrent := dp.CurrentBlock()
 	newCurrent := dp.forkManager.UpdateFork(block, dp.StableBlock())
 	if newCurrent != nil { // 说明切分叉了
-		// 1. 获取新分叉和旧的分叉的current到共同祖先的区块中的交易列表
-		oldForkTxs, newForkTxs, err := dp.txGuard.GetTxsByBranch(oldCurrent, newCurrent)
-		if err != nil {
-			log.Errorf("Get branch txs error. error: %v", err)
-		}
-		// 2. 把旧分叉上的交易标记为未打包
-		dp.txPool.SetTxsFlag(oldForkTxs, true)
-		// 3. 把新分叉上的交易标记为已打包
-		dp.txPool.SetTxsFlag(newForkTxs, false)
+		// 处理分叉之后的交易
+		dp.handleForkTxs(oldCurrent, newCurrent)
 
 		go dp.currentFeed.Send(newCurrent)
 	}
 
 	// 如果是出现了新的稳定块
 	if changed {
-		// 1. 在tx guard中删除剪枝下来的blocks
-		for _, b := range prunedBlocks {
-			dp.txGuard.DelBlock(b)
-		}
-		// 2. 移动tx guard的lastMaxTime
-		maxTime := block.Time() - uint32(params.TransactionExpiration)
-		dp.txGuard.DelOldBlocks(maxTime)
+		dp.handlePrunedBlocks(prunedBlocks, block)
 	}
 
 	// To confirm a block from another fork, we need a height distance that more than 2/3 deputies count.
@@ -256,6 +248,30 @@ func (dp *DPoVP) saveNewBlock(block *types.Block) error {
 	dp.logCurrentChange(oldCurrent)
 
 	return nil
+}
+
+// handleForkTxs
+func (dp *DPoVP) handleForkTxs(oldCurrent, newCurrent *types.Block) {
+	// 1. 获取新分叉和旧的分叉的current到共同祖先的区块中的交易列表
+	oldForkTxs, newForkTxs, err := dp.txGuard.GetTxsByBranch(oldCurrent, newCurrent)
+	if err != nil {
+		log.Errorf("Get branch txs error. error: %v", err)
+	}
+	// 2. 把旧分叉上的交易标记为需打包
+	dp.txPool.SetTxsFlag(oldForkTxs, true)
+	// 3. 把新分叉上的交易标记为不需打包
+	dp.txPool.SetTxsFlag(newForkTxs, false)
+}
+
+// handlePrunedBlocks
+func (dp *DPoVP) handlePrunedBlocks(prunedBlocks []*types.Block, stableBlock *types.Block) {
+	// 1. 在tx guard中删除剪枝下来的blocks
+	for _, b := range prunedBlocks {
+		dp.txGuard.DelBlock(b)
+	}
+	// 2. 移动tx guard的lastMaxTime
+	maxTime := stableBlock.Time() - uint32(params.TransactionExpiration)
+	dp.txGuard.DelOldBlocks(maxTime)
 }
 
 // saveToStore save block and account state to db. They are still unstable now
@@ -425,15 +441,7 @@ func (dp *DPoVP) InsertConfirm(info *network.BlockConfirmData) error {
 	// update the current block
 	newCurrent := dp.forkManager.UpdateForkForConfirm(dp.StableBlock())
 	if newCurrent != nil {
-		// 1. 获取新分叉和旧的分叉的current到共同祖先的区块中的交易列表
-		oldForkTxs, newForkTxs, err := dp.txGuard.GetTxsByBranch(oldCurrent, newCurrent)
-		if err != nil {
-			log.Errorf("Get branch txs error. error: %v", err)
-		}
-		// 2. 把旧分叉上的交易标记为未打包
-		dp.txPool.SetTxsFlag(oldForkTxs, true)
-		// 3. 把新分叉上的交易标记为已打包
-		dp.txPool.SetTxsFlag(newForkTxs, false)
+		dp.handleForkTxs(oldCurrent, newCurrent)
 
 		go dp.currentFeed.Send(newCurrent)
 		dp.logCurrentChange(oldCurrent)
@@ -441,13 +449,7 @@ func (dp *DPoVP) InsertConfirm(info *network.BlockConfirmData) error {
 
 	// 如果是出现了新的稳定块
 	if changed {
-		// 1. 在tx guard中删除剪枝下来的blocks
-		for _, b := range prunedBlocks {
-			dp.txGuard.DelBlock(b)
-		}
-		// 2. 移动tx guard的lastMaxTime
-		maxTime := newBlock.Time() - uint32(params.TransactionExpiration)
-		dp.txGuard.DelOldBlocks(maxTime)
+		dp.handlePrunedBlocks(prunedBlocks, newBlock)
 	}
 
 	return nil

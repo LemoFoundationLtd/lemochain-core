@@ -161,6 +161,10 @@ func Test_verifyTxs(t *testing.T) {
 	// 3. 交易时间小于block时间的情况
 	block02 := newBlockForVerifyTxs(txs, uint32(91))
 	assert.Equal(t, ErrVerifyBlockFailed, verifyTxs(block02, txGuard, TestChainID))
+
+	// 4. 交易时间等于block时间的情况
+	block04 := newBlockForVerifyTxs(txs, uint32(90))
+	assert.NoError(t, verifyTxs(block04, txGuard, TestChainID))
 }
 
 func newBlockForVerifyHeight(height uint32) *types.Block {
