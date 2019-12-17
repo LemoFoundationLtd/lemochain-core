@@ -278,20 +278,20 @@ func TestBlocksTrie_Path1(t *testing.T) {
 	block11213141.Header.Time = uint32(cur + 11213141)
 	trie.PushBlock(block11213141)
 
-	nodes := trie.Path(block13.Hash(), block13.Height(), 0, 1)
+	nodes := trie.CollectForkSlice(block13.Hash(), block13.Height(), 0, 1)
 	assert.Equal(t, 2, len(nodes))
 	assert.Equal(t, block13.Header, nodes[0].Header)
 	assert.Equal(t, block0.Header, nodes[1].Header)
 
-	nodes = trie.Path(block13.Hash(), block13.Height(), 0, 0)
+	nodes = trie.CollectForkSlice(block13.Hash(), block13.Height(), 0, 0)
 	assert.Equal(t, 1, len(nodes))
 	assert.Equal(t, block0.Header, nodes[0].Header)
 
-	nodes = trie.Path(block13.Hash(), block13.Height(), 1, 1)
+	nodes = trie.CollectForkSlice(block13.Hash(), block13.Height(), 1, 1)
 	assert.Equal(t, 1, len(nodes))
 	assert.Equal(t, block13.Header, nodes[0].Header)
 
-	nodes = trie.Path(block11213141.Hash(), block11213141.Height(), 0, 15)
+	nodes = trie.CollectForkSlice(block11213141.Hash(), block11213141.Height(), 0, 15)
 	assert.Equal(t, 5, len(nodes))
 	assert.Equal(t, block11213141.Header, nodes[0].Header)
 	assert.Equal(t, block112131.Header, nodes[1].Header)
@@ -299,13 +299,13 @@ func TestBlocksTrie_Path1(t *testing.T) {
 	assert.Equal(t, block11.Header, nodes[3].Header)
 	assert.Equal(t, block0.Header, nodes[4].Header)
 
-	nodes = trie.Path(block11213141.Hash(), block11213141.Height(), 0, 2)
+	nodes = trie.CollectForkSlice(block11213141.Hash(), block11213141.Height(), 0, 2)
 	assert.Equal(t, 3, len(nodes))
 	assert.Equal(t, block1121.Header, nodes[0].Header)
 	assert.Equal(t, block11.Header, nodes[1].Header)
 	assert.Equal(t, block0.Header, nodes[2].Header)
 
-	nodes = trie.Path(block11213141.Hash(), block11213141.Height(), 2, 2)
+	nodes = trie.CollectForkSlice(block11213141.Hash(), block11213141.Height(), 2, 2)
 	assert.Equal(t, 1, len(nodes))
 	assert.Equal(t, block1121.Header, nodes[0].Header)
 
@@ -314,7 +314,7 @@ func TestBlocksTrie_Path1(t *testing.T) {
 	block11213142.Header.ParentHash = block112131.Hash()
 	block11213142.Header.Time = uint32(cur + 11213142)
 
-	nodes = trie.Path(block11213142.Hash(), block11213142.Height(), 2, 2)
+	nodes = trie.CollectForkSlice(block11213142.Hash(), block11213142.Height(), 2, 2)
 	assert.Equal(t, 0, len(nodes))
 }
 
@@ -358,7 +358,7 @@ func TestBlocksTrie_Path2(t *testing.T) {
 	block11213141.Header.Time = uint32(cur + 11213141)
 	trie.PushBlock(block11213141)
 
-	nodes := trie.Path(block11213141.Hash(), block11213141.Height(), 0, 15)
+	nodes := trie.CollectForkSlice(block11213141.Hash(), block11213141.Height(), 0, 15)
 	assert.Equal(t, 4, len(nodes))
 	assert.Equal(t, block11213141.Header, nodes[0].Header)
 	assert.Equal(t, block112131.Header, nodes[1].Header)
