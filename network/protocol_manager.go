@@ -761,9 +761,9 @@ func (pm *ProtocolManager) handleTxsMsg(msg *p2p.Msg) error {
 		go func() {
 			// 判断接收到的交易是否在本分支已经存在
 			currentBlock := pm.chain.CurrentBlock()
-			isExist, err := pm.txGuard.IsTxExist(currentBlock.Hash(), currentBlock.Height(), tx)
-			if err == nil && !isExist {
-				if pm.txPool.PushTx(tx) { // 加入交易池
+			isExist := pm.txGuard.ExistTx(currentBlock.Hash(), tx)
+			if !isExist {
+				if err := pm.txPool.AddTx(tx); err == nil { // 加入交易池
 					// 广播交易
 					subscribe.Send(subscribe.NewTx, tx)
 				}

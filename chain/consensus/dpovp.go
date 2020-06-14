@@ -127,7 +127,7 @@ func (dp *DPoVP) MineBlock(txProcessTimeout int64) (*types.Block, error) {
 		return nil, err
 	}
 
-	txs := dp.txPool.Get(header.Time, params.MaxTxsForMiner)
+	txs := dp.txPool.GetTxs(header.Time, params.MaxTxsForMiner)
 	log.Debugf("pick %d txs from txPool", len(txs))
 	block, invalidTxs, err := dp.assembler.MineBlock(header, txs, txProcessTimeout)
 	if err != nil {
@@ -135,7 +135,7 @@ func (dp *DPoVP) MineBlock(txProcessTimeout int64) (*types.Block, error) {
 	}
 	log.Info("Mined a new block", "block", block.ShortString(), "txsCount", len(block.Txs))
 	// remove invalid txs from pool
-	dp.txPool.DelInvalidTxs(invalidTxs)
+	dp.txPool.DelTxs(invalidTxs)
 
 	// save
 	if err = dp.saveNewBlock(block); err != nil {
@@ -185,20 +185,18 @@ func (dp *DPoVP) InsertBlock(rawBlock *types.Block) (*types.Block, error) {
 	return block, nil
 }
 
-// handleBlockTxs
-func (dp *DPoVP) handleBlockTxs(block *types.Block) {
-	// save block to txGuard
+// updateTxPool
+func (dp *DPoVP) updateTxPool(block *types.Block) {
 	dp.txGuard.SaveBlock(block)
+
 	// 判断此block是否为当前分支的子块
 	currentBlockHash := dp.CurrentBlock().Hash()
 	if currentBlockHash == block.ParentHash() {
 		// 为当前分支
-		dp.txPool.SetTxsFlag(block.Txs, false) // 设置block中的交易在交易池中的状态
+		dp.txPool.DelTxs(block.Txs)
 	} else {
 		// 为其他分支上的block则把该block中的交易push到本分支状态的交易池中
-		for _, tx := range block.Txs {
-			dp.txPool.PushTx(tx)
-		}
+		dp.txPool.AddTxs(block.Txs)
 	}
 }
 
@@ -209,14 +207,14 @@ func (dp *DPoVP) saveNewBlock(block *types.Block) error {
 		return err
 	}
 	// 设置区块中的交易在交易池中的状态
-	dp.handleBlockTxs(block)
+	dp.updateTxPool(block)
 
 	// save last sig because we are the miner. If we clear db and restart, this will be useful
 	if IsMinedByself(block) {
 		dp.confirmer.SetLastSig(block)
 	}
 	// try update stable block if there are enough confirms
-	changed, prunedBlocks, err := dp.UpdateStable(block)
+	changed, _, err := dp.UpdateStable(block)
 	if err != nil {
 		log.Errorf("update stable block %s fail", block.ShortString())
 		return ErrSaveBlock
@@ -234,7 +232,7 @@ func (dp *DPoVP) saveNewBlock(block *types.Block) error {
 
 	// 如果是出现了新的稳定块
 	if changed {
-		dp.handlePrunedBlocks(prunedBlocks, block)
+		dp.txGuard.DelOldBlocks(block.Time())
 	}
 
 	// To confirm a block from another fork, we need a height distance that more than 2/3 deputies count.
@@ -257,21 +255,10 @@ func (dp *DPoVP) handleForkTxs(oldCurrent, newCurrent *types.Block) {
 	if err != nil {
 		log.Errorf("Get branch txs error. error: %v", err)
 	}
-	// 2. 把旧分叉上的交易标记为需打包
-	dp.txPool.SetTxsFlag(oldForkTxs, true)
-	// 3. 把新分叉上的交易标记为不需打包
-	dp.txPool.SetTxsFlag(newForkTxs, false)
-}
-
-// handlePrunedBlocks
-func (dp *DPoVP) handlePrunedBlocks(prunedBlocks []*types.Block, stableBlock *types.Block) {
-	// 1. 在tx guard中删除剪枝下来的blocks
-	for _, b := range prunedBlocks {
-		dp.txGuard.DelBlock(b)
-	}
-	// 2. 移动tx guard的lastMaxTime
-	maxTime := stableBlock.Time() - uint32(params.TransactionExpiration)
-	dp.txGuard.DelOldBlocks(maxTime)
+	// 2. 把旧分叉上的交易放回交易池
+	dp.txPool.AddTxs(oldForkTxs)
+	// 3. 把新分叉上的交易从交易池删掉
+	dp.txPool.DelTxs(newForkTxs)
 }
 
 // saveToStore save block and account state to db. They are still unstable now
@@ -432,7 +419,7 @@ func (dp *DPoVP) InsertConfirm(info *network.BlockConfirmData) error {
 		return err
 	}
 
-	changed, prunedBlocks, err := dp.UpdateStable(newBlock)
+	changed, _, err := dp.UpdateStable(newBlock)
 	if err != nil {
 		log.Errorf("ReceiveConfirm: setStableBlock failed. height: %d, hash:%s, err: %v", info.Height, info.Hash.Hex()[:16], err)
 		return err
@@ -449,7 +436,7 @@ func (dp *DPoVP) InsertConfirm(info *network.BlockConfirmData) error {
 
 	// 如果是出现了新的稳定块
 	if changed {
-		dp.handlePrunedBlocks(prunedBlocks, newBlock)
+		dp.txGuard.DelOldBlocks(newBlock.Time())
 	}
 
 	return nil

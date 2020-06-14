@@ -23,7 +23,7 @@ type Chain interface {
 }
 
 type TxPool interface {
-	ExistPendingTx(time uint32) bool
+	IsEmpty() bool
 }
 
 type MineInfo struct {
@@ -250,7 +250,7 @@ func (m *Miner) waitCanPackageTx(endOfWaitWindow int64) {
 		if now >= endOfWaitWindow {
 			break
 		}
-		if m.txPool.ExistPendingTx(uint32(now / 1e3)) {
+		if !m.txPool.IsEmpty() {
 			break
 		} else {
 			// 休眠500毫秒

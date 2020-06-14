@@ -51,8 +51,8 @@ func verifyTxRoot(block *types.Block) error {
 
 // verifyTxs verify the Tx list in block body
 func verifyTxs(block *types.Block, txGuard TxGuard, chainId uint16) error {
-	isExist, err := txGuard.IsTxsExist(block)
-	if isExist || err != nil {
+	isExist := txGuard.ExistTxs(block.ParentHash(), block.Txs)
+	if isExist {
 		log.Error("Consensus verify fail: tx is appeared in parent blocks")
 		return ErrVerifyBlockFailed
 	}
@@ -253,9 +253,6 @@ func (v *Validator) VerifyBeforeTxProcess(block *types.Block, chainId uint16) er
 	if err := verifyTxRoot(block); err != nil {
 		return err
 	}
-	if err := verifyTxs(block, v.txGuard, chainId); err != nil {
-		return err
-	}
 	if err := verifyHeight(block, parent); err != nil {
 		return err
 	}
@@ -263,6 +260,9 @@ func (v *Validator) VerifyBeforeTxProcess(block *types.Block, chainId uint16) er
 		return err
 	}
 	if err := verifyExtraData(block); err != nil {
+		return err
+	}
+	if err := verifyTxs(block, v.txGuard, chainId); err != nil {
 		return err
 	}
 	if err := verifyMiner(block.Header, parent.Header, v.timeoutTime, v.dm); err != nil {

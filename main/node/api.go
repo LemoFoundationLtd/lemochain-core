@@ -490,20 +490,23 @@ func (t *PublicTxAPI) SendTx(tx *types.Transaction) (common.Hash, error) {
 	// 判断tx是否在当前分支已经存在了
 	currentBlock := t.node.chain.CurrentBlock()
 	guard := t.node.chain.TxGuard()
-	isExist, err := guard.IsTxExist(currentBlock.Hash(), currentBlock.Height(), tx)
-	if err == nil && !isExist {
+	isExist := guard.ExistTx(currentBlock.Hash(), tx)
+	if !isExist {
 		// 加入交易池
-		if t.node.txPool.PushTx(tx) {
-			// 广播交易
-			go subscribe.Send(subscribe.NewTx, tx)
+		err := t.node.txPool.AddTx(tx)
+		if err != nil {
+			log.Errorf("AddTx error: %s", err)
+			return common.Hash{}, err
 		}
+		// 广播交易
+		go subscribe.Send(subscribe.NewTx, tx)
 	}
 	return tx.Hash(), nil
 }
 
 // PendingTx
 func (t *PublicTxAPI) PendingTx(size int) []*types.Transaction {
-	return t.node.txPool.Get(uint32(time.Now().Unix()), size)
+	return t.node.txPool.GetTxs(uint32(time.Now().Unix()), size)
 }
 
 // ReadContract read variables in a contract includes the return value of a function.

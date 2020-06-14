@@ -70,8 +70,7 @@ func NewBlockChain(config Config, dm *deputynode.Manager, db db.ChainDB, flags f
 		MineTimeout:   config.MineTimeout,
 		MinerExtra:    nil,
 	}
-	lastMaxTime := latestStableBlock.Time() - uint32(params.TransactionExpiration) // 开始时间为稳定块前30分钟
-	txGuard := txpool.NewTxGuard(lastMaxTime)
+	txGuard := txpool.NewTxGuard(latestStableBlock.Time())
 	bc.engine = consensus.NewDPoVP(dpovpCfg, bc.db, bc.dm, bc.am, bc, txPool, txGuard)
 
 	bc.initTxPool(latestStableBlock, txPool, txGuard)
@@ -87,25 +86,24 @@ func (bc *BlockChain) initTxPool(block *types.Block, txPool *txpool.TxPool, txGu
 		return
 	}
 
-	latestTime := block.Time()
-	height := int64(block.Height())
-	initBlock := block
-	// 需要初始化的block交易条件为，height大于0并且区块时间戳距离最新的稳定区块的时间戳不大于30分钟
-	for latestTime-initBlock.Time() <= uint32(params.TransactionExpiration) {
-		txPool.RecvBlock(initBlock)
-		txGuard.SaveBlock(initBlock)
-		height = height - 1
-		// 设置initBlock为前一个区块
-		if height < 0 {
+	stableTime := block.Time()
+	height := block.Height()
+	iter := block
+	// 需要初始化的block交易条件为，区块时间戳距离最新的稳定区块的时间戳不大于30分钟
+	for stableTime-iter.Time() <= uint32(params.MaxTxLifeTime) {
+		txGuard.SaveBlock(iter)
+		if height <= 0 {
 			break
 		}
-		initBlock = bc.GetBlockByHeight(uint32(height))
-		if initBlock == nil {
+		// be careful height is a uint32
+		height--
+		iter = bc.GetBlockByHeight(height)
+		if iter == nil {
 			log.Errorf("get block by height error when init tx pool. height: %d.", height)
 			panic(ErrLoadBlock)
 		}
 	}
-	log.Debugf("Finish init tx pool, start block height: %d timestamp: %d to end block height: %d timestamp: %d. ", initBlock.Height(), initBlock.Time(), block.Height(), block.Time())
+	log.Debugf("Finish init tx pool, start block height: %d timestamp: %d to end block height: %d timestamp: %d. ", iter.Height(), iter.Time(), block.Height(), block.Time())
 }
 
 func (bc *BlockChain) TxGuard() *txpool.TxGuard {

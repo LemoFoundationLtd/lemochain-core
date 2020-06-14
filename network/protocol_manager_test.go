@@ -66,17 +66,6 @@ func (bc *testChain) StableBlock() *types.Block {
 	}
 }
 
-type testTxPool struct {
-}
-
-func (testTxPool) Get(time uint32, size int) []*types.Transaction {
-	panic("implement me")
-}
-
-func (testTxPool) PushTx(tx *types.Transaction) bool {
-	panic("implement me")
-}
-
 type testBlockLoader map[uint32]*types.Block
 
 func (loader testBlockLoader) GetBlockByHeight(height uint32) (*types.Block, error) {
@@ -89,7 +78,6 @@ func (loader testBlockLoader) GetBlockByHeight(height uint32) (*types.Block, err
 
 func createPm() *ProtocolManager {
 	bc := new(testChain)
-	txPool := new(testTxPool)
 	discover := new(p2p.DiscoverManager)
 	dm := deputynode.NewManager(5, testBlockLoader{})
 	dm.SaveSnapshot(0, types.DeputyNodes{
@@ -100,7 +88,7 @@ func createPm() *ProtocolManager {
 			Votes:        new(big.Int).SetInt64(5),
 		},
 	})
-	pm := NewProtocolManager(1, p2p.NodeID{}, bc, dm, txPool, txpool.NewTxGuard(100), discover, 1, params.VersionUint(), "")
+	pm := NewProtocolManager(1, p2p.NodeID{}, bc, dm, nil, txpool.NewTxGuard(100), discover, 1, params.VersionUint(), "")
 	pm.setTest()
 	return pm
 }

@@ -249,8 +249,8 @@ type txGuardForValidator struct {
 	blockIsValid bool
 }
 
-func (t txGuardForValidator) IsTxsExist(block *types.Block) (bool, error) {
-	return t.blockIsValid, nil
+func (t txGuardForValidator) ExistTxs(startBlockHash common.Hash, txs types.Transactions) bool {
+	return t.blockIsValid
 }
 
 type parentLoader struct {

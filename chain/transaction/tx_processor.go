@@ -3,7 +3,6 @@ package transaction
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
@@ -47,7 +46,6 @@ var (
 	ErrTotalWeight               = errors.New("insufficient total weight of signatories")
 	ErrSignerAndFromUnequally    = errors.New("the signer and from of transaction are not equal")
 	ErrGasPayer                  = errors.New("the gasPayer error")
-	ErrSetMulisig                = errors.New("from and to must be equal")
 	ErrAddressType               = errors.New("address type wrong")
 	ErrTempAddress               = errors.New("the issuer part in temp address is incorrect")
 )
@@ -604,7 +602,7 @@ func (p *TxProcessor) ReadContract(accM *account.ReadOnlyManager, header *types.
 
 	// enough gasLimit
 	gasLimit := uint64(math.MaxUint64 / 2)
-	tx := types.NewTransaction(caller, to, big.NewInt(0), gasLimit, big.NewInt(defaultGasPrice), data, params.OrdinaryTx, p.ChainID, uint64(time.Now().Unix())+uint64(params.TransactionExpiration), "", "")
+	tx := types.NewTransaction(caller, to, big.NewInt(0), gasLimit, big.NewInt(defaultGasPrice), data, params.OrdinaryTx, p.ChainID, uint64(time.Now().Unix())+uint64(params.MaxTxLifeTime), "", "")
 
 	var (
 		ctx    context.Context

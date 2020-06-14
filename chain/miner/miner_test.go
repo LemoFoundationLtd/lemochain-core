@@ -130,7 +130,7 @@ func TestMiner_waitCanPackageTx(t *testing.T) {
 	miner := New(MineConfig{SleepTime: blockInterval, Timeout: mineTimeout}, nil, nil, pool)
 
 	// 1. 交易池中一开始就有可以打包的交易的情况
-	pool.IsExist = true
+	pool.isEmpty = false
 	start := time.Now()
 	minerTimeoutStamp := time.Now().UnixNano()/1e6 + 100000000
 	miner.waitCanPackageTx(minerTimeoutStamp)
@@ -138,7 +138,7 @@ func TestMiner_waitCanPackageTx(t *testing.T) {
 	assert.Equal(t, int64(0), time.Since(start).Nanoseconds()/1e9)
 
 	// 2. 交易池中始终没有可以打包的交易情况
-	pool.IsExist = false
+	pool.isEmpty = true
 	start = time.Now()
 	minerTimeoutStamp = time.Now().UnixNano()/1e6 + 2000
 	miner.waitCanPackageTx(minerTimeoutStamp)
@@ -146,13 +146,13 @@ func TestMiner_waitCanPackageTx(t *testing.T) {
 	assert.Equal(t, int64(2), time.Since(start).Nanoseconds()/1e9)
 
 	// 3. 交易池中等一会儿就有交易的情况
-	pool.IsExist = false
+	pool.isEmpty = true
 	start = time.Now()
 	setTime := time.Millisecond * 3000 // 3000毫秒之后交易池中有可以打包的交易了
 	go func() {
 		time.AfterFunc(setTime, func() {
 			// 3s之后设置交易池中有交易
-			pool.IsExist = true
+			pool.isEmpty = false
 		})
 	}()
 	minerTimeoutStamp = time.Now().UnixNano()/1e6 + 5000
@@ -162,9 +162,9 @@ func TestMiner_waitCanPackageTx(t *testing.T) {
 }
 
 type testTxpool struct {
-	IsExist bool
+	isEmpty bool
 }
 
-func (p *testTxpool) ExistPendingTx(time uint32) bool {
-	return p.IsExist
+func (p *testTxpool) IsEmpty() bool {
+	return p.isEmpty
 }

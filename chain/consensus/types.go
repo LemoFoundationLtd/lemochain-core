@@ -49,7 +49,7 @@ type TxPool interface {
 }
 
 type TxGuard interface {
-	IsTxsExist(block *types.Block) (bool, error)
+	ExistTxs(startBlockHash common.Hash, txs types.Transactions) bool
 }
 
 type CandidateLoader interface {

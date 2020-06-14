@@ -75,8 +75,8 @@ func TestDPoVP_MineBlock(t *testing.T) {
 	// mine success with tx
 	tx1 := MakeTxFast(deputyInfos[0].PrivateKey)
 	tx2 := MakeTxFast(deputyInfos[0].PrivateKey)
-	dp.txPool.PushTx(tx1)
-	dp.txPool.PushTx(tx2)
+	dp.txPool.AddTx(tx1)
+	dp.txPool.AddTx(tx2)
 	parentBlock = dp.CurrentBlock()
 	miner, err = GetCorrectMiner(parentBlock.Header, time.Now().Unix()*1000, int64(testDpovpCfg.MineTimeout), dp.dm)
 	assert.NoError(t, err)
@@ -231,51 +231,4 @@ func TestDPoVP_InsertBlock2(t *testing.T) {
 	newBlock2, err := dp.InsertBlock(block2) // insert new block on current fork
 	assert.NoError(t, err)
 	assert.Equal(t, newBlock2.Hash(), dp.CurrentBlock().Hash())
-}
-
-func TestDPoVP_handleBlockTxs(t *testing.T) {
-	dp, deputyInfos := newTestDPoVP(5)
-	defer dp.db.Close()
-
-	tx01 := MakeTxFast(deputyInfos[0].PrivateKey)
-	tx02 := MakeTxFast(deputyInfos[1].PrivateKey)
-	tx03 := MakeTxFast(deputyInfos[2].PrivateKey)
-	tx04 := MakeTxFast(deputyInfos[3].PrivateKey)
-	// 0. 测试block中没有交易的情况
-	block00 := newBlock(dp.CurrentBlock().Hash(), 1, nil, 3600)
-	dp.handleBlockTxs(block00)
-	assert.Equal(t, 0, len(dp.txPool.PendingTxs.TxsQueue))
-	assert.Equal(t, 0, len(dp.txPool.RecentTxs.TraceMap))
-
-	block00 = newBlock(common.HexToHash("0x111"), 1, nil, 3600)
-	dp.handleBlockTxs(block00)
-	assert.Equal(t, 0, len(dp.txPool.PendingTxs.TxsQueue))
-	assert.Equal(t, 0, len(dp.txPool.RecentTxs.TraceMap))
-
-	// 1. 测试block为当前分支的情况
-	txs := types.Transactions{tx01, tx02}
-	block01 := newBlock(dp.CurrentBlock().Hash(), 1, txs, 3600)
-	dp.handleBlockTxs(block01)
-	// 验证区块中的交易状态已经被删除
-	assert.False(t, dp.txPool.PendingTxs.TxsStatus[tx01.Hash()])
-	assert.False(t, dp.txPool.PendingTxs.TxsStatus[tx02.Hash()])
-
-	// 2. 测试block不在当前分支的情况
-	txs = types.Transactions{tx03, tx04}
-	block02 := newBlock(common.HexToHash("0x111"), 1, txs, 3600)
-	dp.handleBlockTxs(block02)
-	assert.True(t, dp.txPool.PendingTxs.TxsStatus[tx03.Hash()])
-	assert.True(t, dp.txPool.PendingTxs.TxsStatus[tx04.Hash()])
-}
-
-func newBlock(parentHash common.Hash, height uint32, txs types.Transactions, timestamp uint32) *types.Block {
-	return &types.Block{
-		Header: &types.Header{
-			ParentHash:   parentHash,
-			MinerAddress: common.Address{},
-			Height:       height,
-			Time:         timestamp,
-		},
-		Txs: txs,
-	}
 }
