@@ -402,21 +402,22 @@ func NewPrivateNetAPI(node *Node) *PrivateNetAPI {
 }
 
 // Connect (node = nodeID@IP:Port)
-func (n *PrivateNetAPI) Connect(node string) {
-	if !network.VerifyNode(node) {
-		log.Errorf("The node is incorrect, node: %s", node)
-		return
+func (n *PrivateNetAPI) Connect(node string) error {
+	if err := network.VerifyNode(node); err != nil {
+		log.Errorf("The node uri is incorrect: %s", node)
+		return err
 	}
 	n.node.server.Connect(node)
+	return nil
 }
 
 // Disconnect
-func (n *PrivateNetAPI) Disconnect(node string) bool {
-	if !network.VerifyNode(node) {
-		log.Errorf("The node is incorrect, node: %s", node)
-		return false
+func (n *PrivateNetAPI) Disconnect(node string) (bool, error) {
+	if err := network.VerifyNode(node); err != nil {
+		log.Errorf("The node uri is incorrect: %s", node)
+		return false, err
 	}
-	return n.node.server.Disconnect(node)
+	return n.node.server.Disconnect(node), nil
 }
 
 // Connections
@@ -495,7 +496,7 @@ func (t *PublicTxAPI) SendTx(tx *types.Transaction) (common.Hash, error) {
 		// 加入交易池
 		err := t.node.txPool.AddTx(tx)
 		if err != nil {
-			log.Errorf("AddTx error: %s", err)
+			log.Warnf("AddTx error: %s", err)
 			return common.Hash{}, err
 		}
 		// 广播交易

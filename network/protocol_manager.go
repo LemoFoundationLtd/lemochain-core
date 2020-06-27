@@ -929,7 +929,7 @@ func (pm *ProtocolManager) handleDiscoverResMsg(msg *p2p.Msg) error {
 	}
 	// verify nodes
 	for _, node := range disRes.Nodes {
-		if !VerifyNode(node) {
+		if err := VerifyNode(node); err != nil {
 			log.Errorf("HandleDiscoverResMsg exists invalid node. error node: %s", node)
 			return ErrNodeInvalid
 		}

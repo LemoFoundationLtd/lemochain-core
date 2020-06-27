@@ -1,8 +1,13 @@
 package network
 
 import (
+	"errors"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/network/p2p"
+)
+
+var (
+	ErrInvalidNodeUri = errors.New("invalid node uri")
 )
 
 // VerifyLemoAddress check lemoAddress
@@ -11,10 +16,10 @@ func VerifyLemoAddress(lemoAddress string) bool {
 }
 
 // VerifyNode check string node (node = nodeID@IP:Port)
-func VerifyNode(node string) bool {
+func VerifyNode(node string) error {
 	nodeId, endpoint := p2p.ParseNodeString(node)
 	if nodeId == nil || endpoint == "" {
-		return false
+		return ErrInvalidNodeUri
 	}
-	return true
+	return nil
 }
