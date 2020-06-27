@@ -8,6 +8,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
+	"github.com/LemoFoundationLtd/lemochain-core/common/merkle"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"github.com/stretchr/testify/assert"
 	"math/big"
@@ -380,6 +381,7 @@ func TestValidator_VerifyAfterTxProcess(t *testing.T) {
 			ParentHash:   common.Hash{},
 			MinerAddress: common.HexToAddress("0x111"),
 			LogRoot:      nullLogRoot,
+			DeputyRoot:   merkle.EmptyTrieHash[:],
 		},
 	}
 	// 1. 验证正常情况
