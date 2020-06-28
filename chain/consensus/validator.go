@@ -309,7 +309,8 @@ func (v *Validator) JudgeDeputy(newBlock *types.Block) bool {
 				return
 			}
 
-			// 两个区块的miner相同并且具有共同的父块，则认为出块miner是在作恶
+			// same miner and same parent block
+			// it's notable that if a miner reboot and lost its unstable blocks, it will mine again and active the evil judgment logic
 			if bytes.Compare(newBlockNodeID, nodeID) == 0 && node.ParentHash() == newBlock.ParentHash() {
 				log.Warnf("The deputy %x is evil !!! It mined block %s and %s at same height %d", nodeID, newBlock.Hash().Prefix(), node.Hash().Prefix(), newBlock.Height())
 				isEvil = true
