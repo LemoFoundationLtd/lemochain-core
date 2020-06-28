@@ -8,7 +8,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"math/big"
-	"strconv"
 	"time"
 )
 
@@ -18,81 +17,31 @@ var (
 	chainID        uint16 = 200
 )
 
-func createBoxTxRandom(from common.Address, childCnt int, expiration uint64) *types.Transaction {
-	box := &types.Box{SubTxList: make(types.Transactions, 0)}
-
-	for index := 0; index < childCnt; index++ {
-		tmp := makeTx(common.HexToAddress(strconv.Itoa(index)), int64(expiration))
-		box.SubTxList = append(box.SubTxList, tmp)
-	}
-
+func makeBoxTx(amount int64, nowOffset int64, txs ...*types.Transaction) *types.Transaction {
+	box := &types.Box{SubTxList: txs}
 	data, err := json.Marshal(box)
 	if err != nil {
 		panic(err)
 	}
 
-	return makeBoxTransaction(from, data, expiration)
+	from := crypto.PubkeyToAddress(testPrivate.PublicKey)
+	tx := types.NoReceiverTransaction(from, big.NewInt(amount), 20000, big.NewInt(30000), data, params.BoxTx, chainID, uint64(time.Now().Unix()+nowOffset), "", "")
+	return signTransaction(tx, testPrivate)
 }
 
-func createDoubleBoxTxRandom(from common.Address, childCnt int, expiration uint64) (*types.Transaction, *types.Transaction) {
-	box1 := &types.Box{SubTxList: make(types.Transactions, 0)}
-	box2 := &types.Box{SubTxList: make(types.Transactions, 0)}
-
-	box := &types.Box{SubTxList: make(types.Transactions, 0)}
-	for index := 0; index < childCnt; index++ {
-		tmp := makeTx(common.HexToAddress(strconv.Itoa(index)), int64(expiration))
-		if index%4 == 0 {
-			box1.SubTxList = append(box.SubTxList, tmp)
-			box2.SubTxList = append(box.SubTxList, tmp)
-		} else {
-			if index%2 == 0 {
-				box1.SubTxList = append(box.SubTxList, tmp)
-			} else {
-				box2.SubTxList = append(box.SubTxList, tmp)
-			}
-		}
-	}
-
-	data1, err := json.Marshal(box1)
-	if err != nil {
-		panic(err)
-	}
-
-	data2, err := json.Marshal(box2)
-	if err != nil {
-		panic(err)
-	}
-
-	return makeBoxTransaction(from, data1, expiration+1), makeBoxTransaction(from, data2, expiration+2)
-}
-
-func makeTxRandom(to common.Address) *types.Transaction {
-	return makeTx(to, int64(time.Now().Unix()+300))
-}
-
-func makeTx(to common.Address, expiration int64) *types.Transaction {
-	return makeTransaction(testPrivate,
-		to,
+func makeTx(amount int64, nowOffset int64) *types.Transaction {
+	return makeTransaction(
 		params.OrdinaryTx,
-		new(big.Int).SetInt64(100),
-		common.Big1,
-		uint64(expiration),
-		1000000)
+		new(big.Int).SetInt64(amount),
+		uint64(time.Now().Unix()+nowOffset),
+	)
 }
 
-func makeExpirationTx(to common.Address) *types.Transaction {
-	return makeTx(to, int64(time.Now().Unix()-2*int64(params.TransactionExpiration)))
-}
-
-func makeBoxTransaction(from common.Address, data []byte, expiration uint64) *types.Transaction {
-	return types.NoReceiverTransaction(from, new(big.Int).SetInt64(10000), 20000, new(big.Int).SetInt64(30000), data, params.BoxTx, chainID, expiration, "", "")
-}
-
-func makeTransaction(fromPrivate *ecdsa.PrivateKey, to common.Address, txType uint16, amount, gasPrice *big.Int, expiration uint64, gasLimit uint64) *types.Transaction {
-	pubKey := fromPrivate.PublicKey
+func makeTransaction(txType uint16, amount *big.Int, expiration uint64) *types.Transaction {
+	pubKey := testPrivate.PublicKey
 	from := crypto.PubkeyToAddress(pubKey)
-	tx := types.NewTransaction(from, to, amount, gasLimit, gasPrice, []byte{}, txType, chainID, expiration, "", "")
-	return signTransaction(tx, fromPrivate)
+	tx := types.NewTransaction(from, common.HexToAddress("12AB"), amount, 1000000, common.Big1, []byte{}, txType, chainID, expiration, "", "")
+	return signTransaction(tx, testPrivate)
 }
 
 func signTransaction(tx *types.Transaction, private *ecdsa.PrivateKey) *types.Transaction {
@@ -101,4 +50,57 @@ func signTransaction(tx *types.Transaction, private *ecdsa.PrivateKey) *types.Tr
 		panic(err)
 	}
 	return tx
+}
+
+func makeBlock(height, timestamp uint32, txs ...*types.Transaction) *types.Block {
+	txsTmp := (types.Transactions)(txs)
+	return &types.Block{
+		Header: &types.Header{
+			TxRoot: txsTmp.MerkleRootSha(),
+			Time:   timestamp,
+			Height: height,
+		},
+		Txs: txs,
+	}
+}
+
+// generateBlocks generate block forks like this: (the number in bracket is transaction name)
+//          ┌─2(c)
+// 0───1(a)─┼─3(b)───6(c)
+//          ├─4────┬─7───9(bc)
+//          │      └─8
+//          └─5(box[cd])
+// the blocks' time bucket belonging like this: (the number in bracket is index of time bucket)
+//             ┌─2(1)
+// 0(0)───1(1)─┼─3(2)───6(3)
+//             ├─4(1)─┬─7(4)───9(4)
+//             │      └─8(3)
+//             └─5(2)
+func generateBlocks() []*types.Block {
+	cur := uint32(time.Now().Unix())
+	blocks := make([]*types.Block, 0)
+	txa := makeTx(0xa, 100)
+	txb := makeTx(0xb, 100)
+	txc := makeTx(0xc, 100)
+	txd := makeTx(0xd, 100)
+
+	appendBlock := func(index int, height, time uint32, parentIndex int, txs ...*types.Transaction) {
+		block := makeBlock(height, time, txs...)
+		block.Header.Extra = []byte{byte(index)}
+		if parentIndex >= 0 {
+			block.Header.ParentHash = blocks[parentIndex].Hash()
+		}
+		blocks = append(blocks, block)
+	}
+	appendBlock(0, 100, cur, -1)
+	appendBlock(1, 101, cur+BucketDuration, 0, txa)
+	appendBlock(2, 102, cur+BucketDuration, 1, txc)
+	appendBlock(3, 102, cur+BucketDuration*2, 1, txb)
+	appendBlock(4, 102, cur+BucketDuration, 1)
+	appendBlock(5, 102, cur+BucketDuration*2, 1, makeBoxTx(0x105, 100, txc, txd))
+	appendBlock(6, 103, cur+BucketDuration*3, 3, txc)
+	appendBlock(7, 103, cur+BucketDuration*4, 4)
+	appendBlock(8, 103, cur+BucketDuration*3, 4)
+	appendBlock(9, 104, cur+BucketDuration*4, 7, txb, txc)
+	return blocks
 }

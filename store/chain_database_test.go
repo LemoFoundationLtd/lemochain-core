@@ -5,6 +5,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/stretchr/testify/assert"
+	"math/big"
 	"strconv"
 	"testing"
 	"time"
@@ -592,10 +593,13 @@ func TestChainDatabase_CandidatesRanking(t *testing.T) {
 	count := 100
 	candidates := NewAccountDataBatch(100)
 	actDatabase, _ := cacheChain.GetActDatabase(block1.Hash())
+	voteLogs := make(types.ChangeLogSlice, 0, 100)
 	for index := 0; index < count; index++ {
 		actDatabase.Put(candidates[index], 1)
+		log := newVoteLog(candidates[index].Address, big.NewInt(int64(index)))
+		voteLogs = append(voteLogs, log)
 	}
-	cacheChain.CandidatesRanking(block1.Hash())
+	cacheChain.CandidatesRanking(block1.Hash(), voteLogs)
 	cacheChain.SetStableBlock(block1.Hash())
 
 	top := cacheChain.GetCandidatesTop(block1.Hash())

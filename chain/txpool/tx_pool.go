@@ -1,6 +1,7 @@
 package txpool
 
 import (
+	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
@@ -9,219 +10,216 @@ import (
 )
 
 var (
-	txpoolTotalNumberCounter = metrics.NewCounter(metrics.TxpoolNumber_counterName) // 交易池中剩下的总交易数量
+	txPoolTotalNumberCounter = metrics.NewCounter(metrics.TxpoolNumber_counterName) // 交易池中剩下的总交易数量
 	blockTradeAmount         = common.Lemo2Mo("500000")                             // 如果交易的amount 大于此值则进行事件通知
+	defaultPoolCap           = 128
 )
 
+// TxPool saves the transactions which could be packaged in current fork
 type TxPool struct {
-	/* 还未被打包进块的交易 */
-	PendingTxs *TxQueue
+	txs types.Transactions
+	cap int
 
-	/* 最近1个小时的所有交易 */
-	RecentTxs *RecentTx
-
-	/* 从当前高度向后的3600个块 */
-	BlockCache *BlocksTrie
+	// it is used to find the index of txs by tx hash. sub tx hash will be point to its box tx index
+	hashIndexMap map[common.Hash]int
 
 	RW sync.RWMutex
 }
 
 func NewTxPool() *TxPool {
-	return &TxPool{
-		PendingTxs: NewTxQueue(),
-		RecentTxs:  NewTxRecently(),
-		BlockCache: NewBlocksTrie(),
+	pool := &TxPool{}
+	pool.cap = defaultPoolCap
+	pool.txs = make(types.Transactions, 0, pool.cap)
+	pool.hashIndexMap = make(map[common.Hash]int)
+	return pool
+}
+
+func (pool *TxPool) IsEmpty() bool {
+	pool.RW.Lock()
+	defer pool.RW.Unlock()
+
+	return len(pool.hashIndexMap) <= 0
+}
+
+func (pool *TxPool) addTx(tx *types.Transaction) error {
+	if tx == nil {
+		return ErrInvalidTx
 	}
+	if pool.isTxExist(tx) {
+		return ErrTxIsExist
+	}
+
+	// extend storage
+	if pool.cap-len(pool.txs) < 1 {
+		pool.cap *= 2
+		tmp := make(types.Transactions, 0, pool.cap)
+		copy(tmp, pool.txs)
+		pool.txs = tmp
+	}
+
+	// save transaction
+	index := len(pool.txs)
+	pool.txs = append(pool.txs, tx)
+	pool.hashIndexMap[tx.Hash()] = index
+	// save sub transactions in box transaction
+	if tx.Type() == params.BoxTx {
+		for _, subTx := range getSubTxs(tx) {
+			pool.hashIndexMap[subTx.Hash()] = index
+		}
+	}
+
+	// report tx count increase
+	txPoolTotalNumberCounter.Inc(1)
+	if tx.Amount().Cmp(blockTradeAmount) >= 0 {
+		toString := "[nil]"
+		if tx.To() != nil {
+			toString = tx.To().String()
+		}
+		log.Eventf(log.TxEvent, "Block trade appear. %s send %s to %s", tx.From().String(), tx.Amount().String(), toString)
+	}
+
+	return nil
+}
+
+func (pool *TxPool) AddTx(tx *types.Transaction) error {
+	pool.RW.Lock()
+	defer pool.RW.Unlock()
+
+	return pool.addTx(tx)
+}
+
+// AddTxs push txs into pool and return the number of new txs
+func (pool *TxPool) AddTxs(txs types.Transactions) int {
+	pool.RW.Lock()
+	defer pool.RW.Unlock()
+
+	count := 0
+	for _, tx := range txs {
+		if err := pool.addTx(tx); err == nil {
+			count++
+		}
+	}
+	return count
 }
 
 /* 本节点出块时，从交易池中取出交易进行打包，但并不从交易池中删除 */
-func (pool *TxPool) Get(time uint32, size int) []*types.Transaction {
+func (pool *TxPool) GetTxs(time uint32, size int) types.Transactions {
+	result := make([]*types.Transaction, 0, size)
+	if size <= 0 {
+		return result
+	}
+
 	pool.RW.Lock()
 	defer pool.RW.Unlock()
-	return pool.PendingTxs.Pop(time, size)
+
+	for _, tx := range pool.txs {
+		if tx == nil {
+			continue
+		}
+		if isTxTimeOut(tx, time) {
+			pool.delTx(tx)
+			continue
+		}
+		result = append(result, tx)
+		if len(result) >= size {
+			break
+		}
+	}
+	return result
 }
 
-// ExistCanPackageTx 存在可以打包的交易
-func (pool *TxPool) ExistCanPackageTx(time uint32) bool {
-	pool.RW.Lock()
-	defer pool.RW.Unlock()
-	return pool.PendingTxs.IsExistCanPackageTx(time)
+func (pool *TxPool) delTx(tx *types.Transaction) {
+	if tx == nil {
+		return
+	}
+
+	hash := tx.Hash()
+	if index, ok := pool.hashIndexMap[hash]; ok {
+		// If tx is a sub tx (from other miner's block). This will delete the box tx. So the box tx would not be packaged, it will be deleted when expired
+		// There is a small problem is that the other sub txs in the box could not be add into pool, because they are already in hashIndexMap, but they are not in txs
+		pool.txs[index] = nil
+		delete(pool.hashIndexMap, hash)
+
+		// report tx count decrease
+		txPoolTotalNumberCounter.Dec(1)
+	}
+
+	// delete indexes of sub transactions in box transaction
+	if tx.Type() == params.BoxTx {
+		for _, subTx := range getSubTxs(tx) {
+			delete(pool.hashIndexMap, subTx.Hash())
+		}
+	}
 }
 
-/* 本节点出块时，执行交易后，发现错误的交易通过该接口进行删除 */
-func (pool *TxPool) DelInvalidTxs(txs []*types.Transaction) {
-	pool.RW.Lock()
-	defer pool.RW.Unlock()
-
+/* 新收到一个通过验证的新块（包括本节点出的块），需要从交易池中删除该块中已打包的交易 */
+func (pool *TxPool) DelTxs(txs types.Transactions) {
 	if len(txs) <= 0 {
 		return
 	}
 
-	hashes := make([]common.Hash, 0, len(txs))
+	pool.RW.Lock()
+	defer pool.RW.Unlock()
+
 	for _, tx := range txs {
-		hashes = append(hashes, tx.Hash())
+		pool.delTx(tx)
 	}
-	pool.PendingTxs.DelBatch(hashes)
+
+	pool.gc()
 }
 
-func (pool *TxPool) isInBlocks(hashes HashSet, blocks []*TrieNode) bool {
-	if len(hashes) <= 0 || len(blocks) <= 0 {
-		return false
+func (pool *TxPool) isTxExist(tx *types.Transaction) bool {
+	hash := tx.Hash()
+	if _, ok := pool.hashIndexMap[hash]; ok {
+		return true
 	}
 
-	for _, v := range blocks {
-		if !hashes.Has(v.Header.Hash()) {
-			continue
-		} else {
-			log.Errorf("isInBlocks equal BlockHash: %s", v.Header.Hash())
-			return true
+	// check sub transactions in box transaction
+	if tx.Type() == params.BoxTx {
+		for _, subTx := range getSubTxs(tx) {
+			if _, ok := pool.hashIndexMap[subTx.Hash()]; ok {
+				return true
+			}
 		}
 	}
 
 	return false
 }
 
-/* 新收一个块时，验证块中的交易是否被同一条分叉上的其他块打包了 */
-func (pool *TxPool) VerifyTxInBlock(block *types.Block) bool {
-	pool.RW.Lock()
-	defer pool.RW.Unlock()
-
-	if block == nil {
-		return false
+func (pool *TxPool) gc() {
+	log.Debug("TxPool gc", "indexesLength", len(pool.hashIndexMap))
+	if len(pool.hashIndexMap) <= 0 {
+		if pool.cap > defaultPoolCap {
+			pool.cap--
+		}
+		pool.txs = make(types.Transactions, 0, pool.cap)
+		pool.hashIndexMap = make(map[common.Hash]int)
 	}
+}
 
-	if len(block.Txs) <= 0 {
+func isTxTimeOut(tx *types.Transaction, time uint32) bool {
+	if tx.Expiration() < uint64(time) {
 		return true
 	}
 
-	traceByHash := pool.RecentTxs.GetTrace(block.Txs)
-	// conflictBlocks中的所有区块都与block有至少一条相同交易，不能与block共存于同一个分叉上
-	minHeight, maxHeight, conflictBlocks := pool.heightRange(traceByHash)
-	startHash := block.ParentHash()
-	startHeight := block.Height() - 1
-
-	parents := pool.BlockCache.CollectForkSlice(startHash, startHeight, uint32(minHeight), uint32(maxHeight))
-	return !pool.isInBlocks(conflictBlocks, parents)
-}
-
-func (pool *TxPool) heightRange(traceByHash map[common.Hash]TxTrace) (int64, int64, HashSet) {
-	minHeight := int64(^uint64(0) >> 1)
-	maxHeight := int64(-1)
-	blockSet := make(HashSet)
-	for _, trace := range traceByHash {
-		if len(trace) <= 0 {
-			continue
-		} else {
-			minHeightTmp, maxHeightTmp := trace.heightRange()
-			if minHeight > minHeightTmp {
-				minHeight = minHeightTmp
-			}
-
-			if maxHeight < maxHeightTmp {
-				maxHeight = maxHeightTmp
-			}
-
-			for blockHash, _ := range trace {
-				blockSet.Add(blockHash)
+	// check sub transactions in box transaction
+	if tx.Type() == params.BoxTx {
+		for _, subTx := range getSubTxs(tx) {
+			if subTx.Expiration() < uint64(time) {
+				return true
 			}
 		}
 	}
 
-	return minHeight, maxHeight, blockSet
+	return false
 }
 
-/* 新收到一个通过验证的新块（包括本节点出的块），需要从交易池中删除该块中已打包的交易 */
-func (pool *TxPool) RecvBlock(block *types.Block) {
-	pool.RW.Lock()
-	defer pool.RW.Unlock()
-
-	if block == nil {
-		return
-	}
-
-	txs := block.Txs
-	if len(txs) <= 0 {
-		return
-	}
-
-	hashes := make([]common.Hash, 0, len(txs))
-	for _, v := range txs {
-		hashes = append(hashes, v.Hash())
-	}
-
-	pool.PendingTxs.DelBatch(hashes)
-	pool.RecentTxs.RecvBlock(block.Hash(), int64(block.Height()), txs)
-
-	pool.BlockCache.PushBlock(block)
-}
-
-/* 收到一笔新的交易 */
-func (pool *TxPool) RecvTx(tx *types.Transaction) bool {
-	pool.RW.Lock()
-	defer pool.RW.Unlock()
-
-	if tx == nil {
-		return false
-	}
-
-	isExist := pool.RecentTxs.IsExist(tx)
-	if isExist {
-		log.Debug("tx is already exist. hash: " + tx.Hash().Hex())
-		return false
+func getSubTxs(tx *types.Transaction) types.Transactions {
+	box, err := types.GetBox(tx.Data())
+	if err != nil {
+		log.Debug("get box from tx err: " + err.Error())
+		return make(types.Transactions, 0)
 	} else {
-		pool.RecentTxs.RecvTx(tx)
-		pool.PendingTxs.Push(tx)
-		txpoolTotalNumberCounter.Inc(1) // 记录收到一笔交易
-		if tx.Amount().Cmp(blockTradeAmount) >= 0 {
-			toString := "[nil]"
-			if tx.To() != nil {
-				toString = tx.To().String()
-			}
-			log.Eventf(log.TxEvent, "Block trade appear. %s send %s to %s", tx.From().String(), tx.Amount().String(), toString)
-		}
-		return true
+		return box.SubTxList
 	}
-}
-
-func (pool *TxPool) RecvTxs(txs []*types.Transaction) bool {
-	pool.RW.Lock()
-	defer pool.RW.Unlock()
-
-	if len(txs) <= 0 {
-		return false
-	}
-
-	for _, v := range txs {
-		isExist := pool.RecentTxs.IsExist(v)
-		if !isExist {
-			continue
-		} else {
-			log.Debug("tx is already exist. hash: " + v.Hash().Hex())
-			return false
-		}
-	}
-
-	for _, v := range txs {
-		pool.RecentTxs.RecvTx(v)
-		pool.PendingTxs.Push(v)
-	}
-
-	return true
-}
-
-/* 对链进行剪枝，剪下的块中的交易需要回归交易池 */
-func (pool *TxPool) PruneBlock(block *types.Block) {
-	pool.RW.Lock()
-	defer pool.RW.Unlock()
-
-	if block == nil {
-		return
-	}
-
-	if len(block.Txs) > 0 {
-		pool.PendingTxs.PushBatch(block.Txs)
-		pool.RecentTxs.PruneBlock(block.Hash(), int64(block.Height()), block.Txs)
-	}
-
-	pool.BlockCache.DelBlock(block)
 }

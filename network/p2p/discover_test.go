@@ -322,7 +322,7 @@ func Test_getAvailableNodes(t *testing.T) {
 	}
 
 	list := dis.getAvailableNodes()
-	assert.Len(t, list, 200)
+	assert.Len(t, list, 100)
 }
 
 func Test_initWhiteList_initBlackeList_ok(t *testing.T) {
@@ -414,7 +414,7 @@ func Test_writeFindFile(t *testing.T) {
 	dis.initDiscoverList()
 
 	list := dis.getAvailableNodes()
-	assert.Len(t, list, 200)
+	assert.Len(t, list, 100)
 	removeFile(FindFile)
 }
 
@@ -518,7 +518,7 @@ func Test_GetNodesForDiscover(t *testing.T) {
 
 	nodes := dis.GetNodesForDiscover(1, "")
 
-	assert.Len(t, nodes, 200)
+	assert.Len(t, nodes, 100)
 }
 
 func setupRawNode(nodes map[common.Hash]*RawNode, i int) {

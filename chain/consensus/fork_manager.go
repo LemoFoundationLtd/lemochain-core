@@ -40,8 +40,8 @@ func (fm *ForkManager) SetHeadBlock(block *types.Block) {
 	fm.head.Store(block)
 }
 
-// UpdateFork check if the current fork can be update, or switch to a better fork. Return the new current block or nil
-func (fm *ForkManager) UpdateFork(newBlock, stableBlock *types.Block) *types.Block {
+// UpdateFork check if the current fork can be update, or switch to a better fork. Return true if the current block changed
+func (fm *ForkManager) UpdateFork(newBlock, stableBlock *types.Block) bool {
 	var (
 		oldHead = fm.GetHeadBlock()
 		newHead *types.Block
@@ -81,13 +81,13 @@ func (fm *ForkManager) UpdateFork(newBlock, stableBlock *types.Block) *types.Blo
 
 	if newHead != nil && newHead.Hash() != oldHead.Hash() {
 		fm.SetHeadBlock(newHead)
-		return newHead
+		return true
 	}
-	return nil
+	return false
 }
 
-// UpdateForkForConfirm switch to a better fork if the current fork is not exist. Return the new current block or nil
-func (fm *ForkManager) UpdateForkForConfirm(stableBlock *types.Block) *types.Block {
+// UpdateForkForConfirm switch to a better fork if the current fork is not exist. Return true if the new current block changed
+func (fm *ForkManager) UpdateForkForConfirm(stableBlock *types.Block) bool {
 	var (
 		oldHead = fm.GetHeadBlock()
 		newHead *types.Block
@@ -101,9 +101,9 @@ func (fm *ForkManager) UpdateForkForConfirm(stableBlock *types.Block) *types.Blo
 
 	if newHead != nil && newHead.Hash() != oldHead.Hash() {
 		fm.SetHeadBlock(newHead)
-		return newHead
+		return true
 	}
-	return nil
+	return false
 }
 
 // needSwitchFork test if the new fork's head distance reached to a multiple of "deputy nodes count * 2/3"
