@@ -51,8 +51,7 @@ func verifyTxRoot(block *types.Block) error {
 
 // verifyTxs verify the Tx list in block body
 func verifyTxs(block *types.Block, txGuard TxGuard, chainId uint16) error {
-	isExist := txGuard.ExistTxs(block.ParentHash(), block.Txs)
-	if isExist {
+	if txGuard.ExistTxs(block.ParentHash(), block.Txs) {
 		log.Error("Consensus verify fail: tx is appeared in parent blocks")
 		return ErrVerifyBlockFailed
 	}

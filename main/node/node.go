@@ -133,7 +133,6 @@ func New(flags flag.CmdFlags) *Node {
 	dm := deputynode.NewManager(int(configFromFile.DeputyCount), db)
 	// tx pool
 	txPool := txpool.NewTxPool()
-	// tx guard
 	blockChain, err := chain.NewBlockChain(cfg.Chain, dm, db, flags, txPool)
 	if err != nil {
 		panic("new block chain failed!!!")

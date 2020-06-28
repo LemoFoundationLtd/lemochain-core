@@ -151,12 +151,12 @@ func Test_verifyTxs(t *testing.T) {
 	txs := types.Transactions{
 		makeTx(common.HexToAddress("0x11"), common.HexToAddress("0x12"), uint64(90)),
 	}
-	txGuard := txGuardForValidator{false} // 交易池中返回的状态为false
+	txGuard := txGuardForValidator{false} // 交易未打包过的状态
 	// 1. 正确情况
 	block01 := newBlockForVerifyTxs(txs, uint32(80)) // block的时间小于tx的时间
 	assert.NoError(t, verifyTxs(block01, txGuard, TestChainID))
 
-	// 2. 交易池返回状态为true的情况
+	// 2. 交易已打包过的状态
 	assert.Equal(t, ErrVerifyBlockFailed, verifyTxs(block01, txGuardForValidator{true}, TestChainID))
 
 	// 3. 交易时间小于block时间的情况

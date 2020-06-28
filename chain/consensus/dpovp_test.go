@@ -75,8 +75,7 @@ func TestDPoVP_MineBlock(t *testing.T) {
 	// mine success with tx
 	tx1 := MakeTxFast(deputyInfos[0].PrivateKey)
 	tx2 := MakeTxFast(deputyInfos[0].PrivateKey)
-	dp.txPool.AddTx(tx1)
-	dp.txPool.AddTx(tx2)
+	dp.txPool.AddTxs(types.Transactions{tx1, tx2})
 	parentBlock = dp.CurrentBlock()
 	miner, err = GetCorrectMiner(parentBlock.Header, time.Now().Unix()*1000, int64(testDpovpCfg.MineTimeout), dp.dm)
 	assert.NoError(t, err)

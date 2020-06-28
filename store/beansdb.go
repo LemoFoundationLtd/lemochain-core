@@ -36,31 +36,31 @@ func (beansdb *BeansDB) Start() {
 
 func (beansdb *BeansDB) After(flg uint32, key []byte, val []byte) error {
 	if flg == leveldb.ItemFlagBlock {
-		log.Infof("after flag: ItemFlagBlock")
+		log.Debugf("after flag: ItemFlagBlock")
 		return beansdb.afterBlock(key, val)
 	} else if flg == leveldb.ItemFlagBlockHeight {
-		// log.Infof("after flag: ItemFlagBlockHeight")
+		// log.Debugf("after flag: ItemFlagBlockHeight")
 		return nil
 	} else if flg == leveldb.ItemFlagTrie {
-		// log.Infof("after flag: ItemFlagTrie")
+		// log.Debugf("after flag: ItemFlagTrie")
 		return nil
 	} else if flg == leveldb.ItemFlagAct {
-		// log.Infof("after flag: ItemFlagAct")
+		// log.Debugf("after flag: ItemFlagAct")
 		return nil
 	} else if flg == leveldb.ItemFlagTxIndex {
-		// log.Infof("after flag: ItemFlagTxIndex")
+		// log.Debugf("after flag: ItemFlagTxIndex")
 		return nil
 	} else if flg == leveldb.ItemFlagCode {
-		// log.Infof("after flag: ItemFlagCode")
+		// log.Debugf("after flag: ItemFlagCode")
 		return nil
 	} else if flg == leveldb.ItemFlagKV {
-		// log.Infof("after flag: ItemFlagKV")
+		// log.Debugf("after flag: ItemFlagKV")
 		return nil
 	} else if flg == leveldb.ItemFlagAssetCode {
-		// log.Infof("after flag: ItemFlagAssetCode")
+		// log.Debugf("after flag: ItemFlagAssetCode")
 		return nil
 	} else if flg == leveldb.ItemFlagAssetId {
-		// log.Infof("after flag: ItemFlagAssetId")
+		// log.Debugf("after flag: ItemFlagAssetId")
 		return nil
 	} else {
 		panic("after! unknown flag.flag = " + strconv.Itoa(int(flg)))

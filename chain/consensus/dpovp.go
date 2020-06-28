@@ -214,7 +214,7 @@ func (dp *DPoVP) saveNewBlock(block *types.Block) error {
 		dp.confirmer.SetLastSig(block)
 	}
 	// try update stable block if there are enough confirms
-	changed, _, err := dp.UpdateStable(block)
+	stableChanged, err := dp.UpdateStable(block)
 	if err != nil {
 		log.Errorf("update stable block %s fail", block.ShortString())
 		return ErrSaveBlock
@@ -222,17 +222,14 @@ func (dp *DPoVP) saveNewBlock(block *types.Block) error {
 
 	// try update current block or switch to another fork
 	oldCurrent := dp.CurrentBlock()
-	newCurrent := dp.forkManager.UpdateFork(block, dp.StableBlock())
-	if newCurrent != nil { // 说明切分叉了
-		// 处理分叉之后的交易
-		dp.handleForkTxs(oldCurrent, newCurrent)
-
-		go dp.currentFeed.Send(newCurrent)
+	currentChanged := dp.forkManager.UpdateFork(block, dp.StableBlock())
+	if currentChanged {
+		dp.onCurrentChanged(oldCurrent, dp.CurrentBlock())
 	}
 
 	// 如果是出现了新的稳定块
-	if changed {
-		dp.txGuard.DelOldBlocks(block.Time())
+	if stableChanged {
+		dp.onStableChanged(block)
 	}
 
 	// To confirm a block from another fork, we need a height distance that more than 2/3 deputies count.
@@ -248,17 +245,28 @@ func (dp *DPoVP) saveNewBlock(block *types.Block) error {
 	return nil
 }
 
-// handleForkTxs
-func (dp *DPoVP) handleForkTxs(oldCurrent, newCurrent *types.Block) {
-	// 1. 获取新分叉和旧的分叉的current到共同祖先的区块中的交易列表
-	oldForkTxs, newForkTxs, err := dp.txGuard.GetTxsByBranch(oldCurrent, newCurrent)
-	if err != nil {
-		log.Errorf("Get branch txs error. error: %v", err)
+// onCurrentChanged
+func (dp *DPoVP) onCurrentChanged(oldCurrent, newCurrent *types.Block) {
+	if newCurrent.ParentHash() != oldCurrent.Hash() {
+		// get the transactions from old fork and new fork to the same parent of them
+		oldForkTxs, newForkTxs, err := dp.txGuard.GetTxsByBranch(oldCurrent, newCurrent)
+		if err != nil {
+			log.Errorf("Get branch txs error. error: %v", err)
+		}
+		// TODO diff transaction lists
+		// put the transactions on old fork to tx pool
+		dp.txPool.AddTxs(oldForkTxs)
+		// remove the transactions on new fork from tx pool
+		dp.txPool.DelTxs(newForkTxs)
 	}
-	// 2. 把旧分叉上的交易放回交易池
-	dp.txPool.AddTxs(oldForkTxs)
-	// 3. 把新分叉上的交易从交易池删掉
-	dp.txPool.DelTxs(newForkTxs)
+
+	// send current block change event
+	go dp.currentFeed.Send(newCurrent)
+}
+
+// onStableChanged
+func (dp *DPoVP) onStableChanged(newStable *types.Block) {
+	dp.txGuard.DelOldBlocks(newStable.Time())
 }
 
 // saveToStore save block and account state to db. They are still unstable now
@@ -326,11 +334,11 @@ func (dp *DPoVP) saveSnapshot(startHeight, endHeight uint32) {
 }
 
 // UpdateStable check if the block can be stable. Then send notification and return true if the stable block changed
-func (dp *DPoVP) UpdateStable(block *types.Block) (bool, []*types.Block, error) {
+func (dp *DPoVP) UpdateStable(block *types.Block) (bool, error) {
 	oldStable := dp.StableBlock()
-	changed, prunedBlocks, err := dp.stableManager.UpdateStable(block)
+	changed, _, err := dp.stableManager.UpdateStable(block)
 	if err != nil {
-		return false, nil, err
+		return false, err
 	}
 
 	if changed {
@@ -346,7 +354,7 @@ func (dp *DPoVP) UpdateStable(block *types.Block) (bool, []*types.Block, error) 
 		go dp.fetchConfirmsFromRemote(oldStable.Height()+1, dp.StableBlock().Height())
 	}
 
-	return changed, prunedBlocks, nil
+	return changed, nil
 }
 
 func (dp *DPoVP) logCurrentChange(oldCurrent *types.Block) {
@@ -419,24 +427,21 @@ func (dp *DPoVP) InsertConfirm(info *network.BlockConfirmData) error {
 		return err
 	}
 
-	changed, _, err := dp.UpdateStable(newBlock)
+	stableChanged, err := dp.UpdateStable(newBlock)
 	if err != nil {
 		log.Errorf("ReceiveConfirm: setStableBlock failed. height: %d, hash:%s, err: %v", info.Height, info.Hash.Hex()[:16], err)
 		return err
 	}
 
 	// update the current block
-	newCurrent := dp.forkManager.UpdateForkForConfirm(dp.StableBlock())
-	if newCurrent != nil {
-		dp.handleForkTxs(oldCurrent, newCurrent)
-
-		go dp.currentFeed.Send(newCurrent)
+	currentChanged := dp.forkManager.UpdateForkForConfirm(dp.StableBlock())
+	if currentChanged {
+		dp.onCurrentChanged(oldCurrent, dp.CurrentBlock())
 		dp.logCurrentChange(oldCurrent)
 	}
 
-	// 如果是出现了新的稳定块
-	if changed {
-		dp.txGuard.DelOldBlocks(newBlock.Time())
+	if stableChanged {
+		dp.onStableChanged(newBlock)
 	}
 
 	return nil

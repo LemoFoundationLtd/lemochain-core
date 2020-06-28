@@ -235,6 +235,7 @@ func TestTxGuard_GetTxsByBranch(t *testing.T) {
 		{3, 5, types.Transactions{txb}, types.Transactions{boxTx}},
 		{3, 2, types.Transactions{txb}, types.Transactions{txc}},
 		{3, 1, types.Transactions{txb}, types.Transactions{}},
+		{3, 6, types.Transactions{}, types.Transactions{txc}},
 	}
 
 	for i, test := range tests {

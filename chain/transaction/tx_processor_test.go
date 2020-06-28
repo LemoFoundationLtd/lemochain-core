@@ -743,7 +743,7 @@ func TestTxProcessor_votesChangeByBalanceChangelog(t *testing.T) {
 // 		gasLimit:   2100000000,
 // 	}, true)
 // 	fmt.Printf("BenchmarkMakeBlock cost %dms\n", (time.Now().UnixNano()-start)/1000000)
-// 	fmt.Printf("%d transactions success, %d transactions fail\n", len(newBlock.txs), b.N-len(newBlock.txs))
+// 	fmt.Printf("%d transactions success, %d transactions fail\n", len(newBlock.Txs), b.N-len(newBlock.Txs))
 //
 // 	startSave := time.Now().UnixNano()
 // 	bc.db.SetStableBlock(newBlock.Hash())
