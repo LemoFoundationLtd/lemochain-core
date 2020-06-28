@@ -511,14 +511,14 @@ func (m *DiscoverManager) InWhiteList(nodeID *NodeID) (ok bool) {
 
 // ParseNodeString verify invalid
 func ParseNodeString(node string) (*NodeID, string) {
-	tmp := strings.Split(node, "@")
-	if len(tmp) != 2 {
+	trunks := strings.Split(node, "@")
+	if len(trunks) != 2 {
 		return nil, ""
 	}
-	if len(tmp[0]) != 128 {
+	if len(trunks[0]) != 128 {
 		return nil, ""
 	}
-	nodeID := BytesToNodeID(common.FromHex(tmp[0]))
+	nodeID := BytesToNodeID(common.FromHex(trunks[0]))
 	_, err := nodeID.PubKey()
 	if err != nil {
 		return nil, ""
@@ -526,22 +526,22 @@ func ParseNodeString(node string) (*NodeID, string) {
 	if bytes.Compare(nodeID[:], deputynode.GetSelfNodeID()) == 0 {
 		return nil, ""
 	}
-	if !verifyIP(tmp[1]) {
+	if !verifyIP(trunks[1]) {
 		return nil, ""
 	}
-	return nodeID, tmp[1]
+	return nodeID, trunks[1]
 }
 
 // verifyIP  verify ipv4
 func verifyIP(input string) bool {
-	tmp := strings.Split(input, ":")
-	if len(tmp) != 2 {
+	trunks := strings.Split(input, ":")
+	if len(trunks) != 2 {
 		return false
 	}
-	if ip := net.ParseIP(tmp[0]); ip == nil {
+	if ip := net.ParseIP(trunks[0]); ip == nil {
 		return false
 	}
-	p, err := strconv.Atoi(tmp[1])
+	p, err := strconv.Atoi(trunks[1])
 	if err != nil {
 		return false
 	}

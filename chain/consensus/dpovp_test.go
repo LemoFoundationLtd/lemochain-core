@@ -36,7 +36,7 @@ func newTestDPoVP(attendedDeputyCount int) (*DPoVP, deputyTestDatas) {
 	// max deputy count is 5
 	dm := deputynode.NewManager(5, db)
 
-	dp := NewDPoVP(testDpovpCfg, db, dm, am, &parentLoader{db}, txpool.NewTxPool())
+	dp := NewDPoVP(testDpovpCfg, db, dm, am, &parentLoader{db}, txpool.NewTxPool(), txpool.NewTxGuard(100))
 	return dp, deputyInfos
 }
 
@@ -50,7 +50,7 @@ func TestNewDPoVP(t *testing.T) {
 	_, err = db.SetStableBlock(stable.Hash())
 	assert.NoError(t, err)
 
-	dp := NewDPoVP(testDpovpCfg, db, nil, nil, nil, nil)
+	dp := NewDPoVP(testDpovpCfg, db, nil, nil, nil, nil, nil)
 	assert.Equal(t, testDpovpCfg.ChainID, dp.processor.ChainID)
 	assert.Equal(t, testDpovpCfg.MinerExtra, dp.minerExtra)
 	assert.Equal(t, testDpovpCfg.LogForks, dp.logForks)
@@ -75,7 +75,7 @@ func TestDPoVP_MineBlock(t *testing.T) {
 	// mine success with tx
 	tx1 := MakeTxFast(deputyInfos[0].PrivateKey)
 	tx2 := MakeTxFast(deputyInfos[0].PrivateKey)
-	dp.txPool.(*txpool.TxPool).RecvTxs(types.Transactions{tx1, tx2})
+	dp.txPool.AddTxs(types.Transactions{tx1, tx2})
 	parentBlock = dp.CurrentBlock()
 	miner, err = GetCorrectMiner(parentBlock.Header, time.Now().Unix()*1000, int64(testDpovpCfg.MineTimeout), dp.dm)
 	assert.NoError(t, err)

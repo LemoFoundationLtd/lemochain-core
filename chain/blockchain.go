@@ -17,7 +17,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	db "github.com/LemoFoundationLtd/lemochain-core/store/protocol"
 	"sync/atomic"
-	"time"
 )
 
 var ErrNoGenesis = errors.New("can't get genesis block")
@@ -56,14 +55,14 @@ func NewBlockChain(config Config, dm *deputynode.Manager, db db.ChainDB, flags f
 		return nil, ErrNoGenesis
 	}
 
-	// stable block
-	block, err := bc.db.LoadLatestBlock()
+	// stable latestStableBlock
+	latestStableBlock, err := bc.db.LoadLatestBlock()
 	if err != nil {
 		log.Errorf("Can't load last state: %v", err)
 		return nil, err
 	}
 
-	bc.am = account.NewManager(block.Hash(), bc.db)
+	bc.am = account.NewManager(latestStableBlock.Hash(), bc.db)
 	dpovpCfg := consensus.Config{
 		LogForks:      bc.flags.Int(common.LogLevel)-1 >= 3,
 		RewardManager: bc.Founder(),
@@ -71,36 +70,44 @@ func NewBlockChain(config Config, dm *deputynode.Manager, db db.ChainDB, flags f
 		MineTimeout:   config.MineTimeout,
 		MinerExtra:    nil,
 	}
-	bc.engine = consensus.NewDPoVP(dpovpCfg, bc.db, bc.dm, bc.am, bc, txPool)
+	txGuard := txpool.NewTxGuard(latestStableBlock.Time())
+	bc.engine = consensus.NewDPoVP(dpovpCfg, bc.db, bc.dm, bc.am, bc, txPool, txGuard)
 
-	bc.initTxPool(block, txPool)
+	bc.initTxPool(latestStableBlock, txPool, txGuard)
 	go bc.runFeedTranspondLoop()
 
 	log.Info("BlockChain is ready", "stableHeight", bc.StableBlock().Height(), "stableHash", bc.StableBlock().Hash(), "currentHeight", bc.CurrentBlock().Height(), "currentHash", bc.CurrentBlock().Hash())
 	return bc, nil
 }
 
-func (bc *BlockChain) initTxPool(block *types.Block, txPool *txpool.TxPool) {
+func (bc *BlockChain) initTxPool(block *types.Block, txPool *txpool.TxPool, txGuard *txpool.TxGuard) {
 	if block == nil {
 		log.Debug("init tx pool. block is nil.")
 		return
 	}
 
-	startTime := time.Now().Unix()
-	blockTime := int64(block.Time())
+	stableTime := block.Time()
 	height := block.Height()
-	for (startTime-blockTime <= int64(params.TransactionExpiration)) && (height > 0) {
-		txPool.RecvBlock(block)
-
-		height = height - 1
-		block = bc.GetBlockByHeight(height)
-		if block == nil {
-			log.Error("get block by height fail", "height", height)
+	iter := block
+	// 需要初始化的block交易条件为，区块时间戳距离最新的稳定区块的时间戳不大于30分钟
+	for stableTime-iter.Time() <= uint32(params.MaxTxLifeTime) {
+		txGuard.SaveBlock(iter)
+		if height <= 0 {
+			break
+		}
+		// be careful height is a uint32
+		height--
+		iter = bc.GetBlockByHeight(height)
+		if iter == nil {
+			log.Errorf("get block by height error when init tx pool. height: %d.", height)
 			panic(ErrLoadBlock)
-		} else {
-			blockTime = int64(block.Time())
 		}
 	}
+	log.Debugf("Finish init tx pool, start block height: %d timestamp: %d to end block height: %d timestamp: %d. ", iter.Height(), iter.Time(), block.Height(), block.Time())
+}
+
+func (bc *BlockChain) TxGuard() *txpool.TxGuard {
+	return bc.engine.TxGuard()
 }
 
 func (bc *BlockChain) AccountManager() *account.Manager {

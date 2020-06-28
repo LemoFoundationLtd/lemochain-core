@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/txpool"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
@@ -70,6 +71,7 @@ type ProtocolManager struct {
 	dm             *deputynode.Manager
 	discover       *p2p.DiscoverManager
 	txPool         TxPool
+	txGuard        *txpool.TxGuard
 	limit          int
 	peers          *peerSet      // connected peers
 	confirmsCache  *ConfirmCache // received confirm info before block, cache them
@@ -94,7 +96,7 @@ type ProtocolManager struct {
 	testOutput chan int
 }
 
-func NewProtocolManager(chainID uint16, nodeID p2p.NodeID, chain BlockChain, dm *deputynode.Manager, txPool TxPool, discover *p2p.DiscoverManager, limit int, nodeVersion uint32, dataDir string) *ProtocolManager {
+func NewProtocolManager(chainID uint16, nodeID p2p.NodeID, chain BlockChain, dm *deputynode.Manager, txPool TxPool, txGuard *txpool.TxGuard, discover *p2p.DiscoverManager, limit int, nodeVersion uint32, dataDir string) *ProtocolManager {
 	if limit == 0 {
 		limit = DefaultLimit
 	}
@@ -105,6 +107,7 @@ func NewProtocolManager(chainID uint16, nodeID p2p.NodeID, chain BlockChain, dm 
 		chain:         chain,
 		dm:            dm,
 		txPool:        txPool,
+		txGuard:       txGuard,
 		discover:      discover,
 		limit:         limit,
 		peers:         NewPeerSet(discover, dm),
@@ -258,7 +261,7 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 				}
 				// The block mined by minerAddress in blackList
 				if pm.chain.IsInBlackList(b) {
-					log.Debug("This block minerAddress is in BlackList")
+					log.Debug("This block minerAddress is in BlackList, black miner: %s, block height: %d, block hash: %s.", b.MinerAddress().String(), b.Height(), b.Hash().String())
 					pm.blockCache.Remove(b)
 					continue
 				}
@@ -756,13 +759,17 @@ func (pm *ProtocolManager) handleTxsMsg(msg *p2p.Msg) error {
 		}
 
 		go func() {
-			if pm.txPool.RecvTx(tx) {
-				// 广播交易
-				subscribe.Send(subscribe.NewTx, tx)
+			// 判断接收到的交易是否在本分支已经存在
+			currentBlock := pm.chain.CurrentBlock()
+			isExist := pm.txGuard.ExistTx(currentBlock.Hash(), tx)
+			if !isExist {
+				if err := pm.txPool.AddTx(tx); err == nil { // 加入交易池
+					// 广播交易
+					subscribe.Send(subscribe.NewTx, tx)
+				}
 			}
 		}()
 	}
-
 	return nil
 }
 
@@ -922,7 +929,7 @@ func (pm *ProtocolManager) handleDiscoverResMsg(msg *p2p.Msg) error {
 	}
 	// verify nodes
 	for _, node := range disRes.Nodes {
-		if !VerifyNode(node) {
+		if err := VerifyNode(node); err != nil {
 			log.Errorf("HandleDiscoverResMsg exists invalid node. error node: %s", node)
 			return ErrNodeInvalid
 		}

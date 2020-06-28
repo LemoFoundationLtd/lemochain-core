@@ -406,7 +406,7 @@ func (tx *Transaction) VerifyTxBody(chainID uint16, timeStamp uint64, isBlockTx 
 			verifyFailedTxMeter.Mark(1)
 		}
 	}()
-	// 如果不是验证收到区块中的交易则需要交易交易的gasPrice
+	// 如果不是验证收到区块中的交易则需要校验交易的gasPrice
 	if !isBlockTx {
 		if params.MinGasPrice.Cmp(tx.GasPrice()) > 0 {
 			log.Errorf("Tx gas price is too low. tx gas price: %s. least gas price: %s", tx.GasPrice().String(), params.MinGasPrice.String())
@@ -416,11 +416,11 @@ func (tx *Transaction) VerifyTxBody(chainID uint16, timeStamp uint64, isBlockTx 
 	}
 	// verify time
 	if tx.Expiration() < timeStamp {
-		log.Errorf("Received transaction expiration time less than current time. Expiration time: %d. The current time: %d", tx.Expiration(), timeStamp)
+		log.Errorf("Received transaction expiration time is less than current time. Expiration time: %d. The current time: %d", tx.Expiration(), timeStamp)
 		return ErrTxExpired
 	}
-	if tx.Expiration()-timeStamp > uint64(params.TransactionExpiration) {
-		log.Errorf("Received transaction expiration time can't more than 30 minutes. expiration time: %d", tx.Expiration()-timeStamp)
+	if tx.Expiration()-timeStamp > uint64(params.MaxTxLifeTime) {
+		log.Errorf("Received transaction expiration time can't be greater than 30 minutes. expiration time: %d", tx.Expiration()-timeStamp)
 		return ErrTxExpiration
 	}
 	// verify chainID
@@ -486,17 +486,17 @@ func checkBoxTx(txdata []byte, chainID uint16, txTime, nowTime uint64, isBlockTx
 		return err
 	}
 	// 遍历子交易并验证
-	for _, sonTx := range box.SubTxList {
+	for _, subTx := range box.SubTxList {
 		// 确保tx的expiration time小于或者等于箱子中的所有子交易的expiration time
-		if txTime > sonTx.Expiration() {
-			log.Errorf("Exist a son transaction expiration time less than box transaction. boxTx time: %d, sonTx time: %d", txTime, sonTx.Expiration())
+		if txTime > subTx.Expiration() {
+			log.Errorf("Sub transaction's expiration time is less than box transaction. boxTx time: %d, subTx time: %d", txTime, subTx.Expiration())
 			return ErrBoxTx
 		}
 		// 箱子中的子交易不能有箱子类型交易
-		if sonTx.Type() == params.BoxTx {
+		if subTx.Type() == params.BoxTx {
 			return ErrVerifyBoxTx
 		}
-		if err := sonTx.VerifyTxBody(chainID, nowTime, isBlockTx); err != nil {
+		if err := subTx.VerifyTxBody(chainID, nowTime, isBlockTx); err != nil {
 			return err
 		}
 	}

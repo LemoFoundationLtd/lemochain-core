@@ -39,12 +39,8 @@ type StableBlockStore interface {
 	SetStableBlock(hash common.Hash) ([]*types.Block, error)
 }
 
-type TxPool interface {
-	Get(time uint32, size int) []*types.Transaction
-	DelInvalidTxs(txs []*types.Transaction)
-	VerifyTxInBlock(block *types.Block) bool
-	RecvBlock(block *types.Block)
-	PruneBlock(block *types.Block)
+type TxGuard interface {
+	ExistTxs(startBlockHash common.Hash, txs types.Transactions) bool
 }
 
 type CandidateLoader interface {

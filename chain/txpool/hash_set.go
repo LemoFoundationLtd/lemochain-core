@@ -27,3 +27,9 @@ func (set HashSet) Has(hash common.Hash) bool {
 	_, ok := set[hash]
 	return ok
 }
+
+func (set HashSet) Merge(set2 HashSet) {
+	for k, v := range set2 {
+		set[k] = v
+	}
+}
