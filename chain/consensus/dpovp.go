@@ -185,29 +185,13 @@ func (dp *DPoVP) InsertBlock(rawBlock *types.Block) (*types.Block, error) {
 	return block, nil
 }
 
-// updateTxPool
-func (dp *DPoVP) updateTxPool(block *types.Block) {
-	dp.txGuard.SaveBlock(block)
-
-	// 判断此block是否为当前分支的子块
-	currentBlockHash := dp.CurrentBlock().Hash()
-	if currentBlockHash == block.ParentHash() {
-		// 为当前分支
-		dp.txPool.DelTxs(block.Txs)
-	} else {
-		// 为其他分支上的block则把该block中的交易push到本分支状态的交易池中
-		dp.txPool.AddTxs(block.Txs)
-	}
-}
-
 // saveNewBlock save block then update the current and stable block
 func (dp *DPoVP) saveNewBlock(block *types.Block) error {
 	// save
 	if err := dp.saveToStore(block); err != nil {
 		return err
 	}
-	// 设置区块中的交易在交易池中的状态
-	dp.updateTxPool(block)
+	dp.txGuard.SaveBlock(block)
 
 	// save last sig because we are the miner. If we clear db and restart, this will be useful
 	if IsMinedByself(block) {
@@ -225,6 +209,9 @@ func (dp *DPoVP) saveNewBlock(block *types.Block) error {
 	currentChanged := dp.forkManager.UpdateFork(block, dp.StableBlock())
 	if currentChanged {
 		dp.onCurrentChanged(oldCurrent, dp.CurrentBlock())
+	} else {
+		// 该块插入到了其他分支上，把该block中的交易push到本分支状态的交易池中
+		dp.txPool.AddTxs(block.Txs)
 	}
 
 	// 如果是出现了新的稳定块
@@ -247,7 +234,11 @@ func (dp *DPoVP) saveNewBlock(block *types.Block) error {
 
 // onCurrentChanged
 func (dp *DPoVP) onCurrentChanged(oldCurrent, newCurrent *types.Block) {
-	if newCurrent.ParentHash() != oldCurrent.Hash() {
+	if newCurrent.ParentHash() == oldCurrent.Hash() {
+		// remove the transactions on new current block
+		dp.txPool.DelTxs(newCurrent.Txs)
+	} else {
+		// fork switched!
 		// get the transactions from old fork and new fork to the same parent of them
 		oldForkTxs, newForkTxs, err := dp.txGuard.GetTxsByBranch(oldCurrent, newCurrent)
 		if err != nil {

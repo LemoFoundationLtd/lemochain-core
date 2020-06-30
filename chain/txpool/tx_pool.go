@@ -90,6 +90,9 @@ func (pool *TxPool) AddTx(tx *types.Transaction) error {
 
 // AddTxs push txs into pool and return the number of new txs
 func (pool *TxPool) AddTxs(txs types.Transactions) int {
+	if len(txs) == 0 {
+		return 0
+	}
 	pool.RW.Lock()
 	defer pool.RW.Unlock()
 

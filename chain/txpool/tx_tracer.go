@@ -1,6 +1,7 @@
 package txpool
 
 import (
+	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 )
@@ -16,8 +17,10 @@ func (t TxTracer) AddTrace(tx *types.Transaction, blockHash common.Hash) {
 	t.addTrace(tx.Hash(), blockHash)
 
 	// add sub transactions in box transaction
-	for _, subTx := range getSubTxs(tx) {
-		t.addTrace(subTx.Hash(), blockHash)
+	if tx.Type() == params.BoxTx {
+		for _, subTx := range getSubTxs(tx) {
+			t.addTrace(subTx.Hash(), blockHash)
+		}
 	}
 }
 
@@ -37,8 +40,10 @@ func (t TxTracer) DelTrace(tx *types.Transaction) {
 
 	// delete sub transactions in box transaction
 	// the sub transactions must be expired cause the box transaction is expired
-	for _, subTx := range getSubTxs(tx) {
-		delete(t, subTx.Hash())
+	if tx.Type() == params.BoxTx {
+		for _, subTx := range getSubTxs(tx) {
+			delete(t, subTx.Hash())
+		}
 	}
 }
 
@@ -50,9 +55,11 @@ func (t TxTracer) LoadTraces(txs types.Transactions) HashSet {
 			trace.Merge(t)
 		}
 		// load sub transactions in box transaction
-		for _, subTx := range getSubTxs(tx) {
-			if t, ok := t[subTx.Hash()]; ok {
-				trace.Merge(t)
+		if tx.Type() == params.BoxTx {
+			for _, subTx := range getSubTxs(tx) {
+				if t, ok := t[subTx.Hash()]; ok {
+					trace.Merge(t)
+				}
 			}
 		}
 	}
