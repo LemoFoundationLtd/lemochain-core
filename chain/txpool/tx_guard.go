@@ -85,6 +85,7 @@ func (guard *TxGuard) DelOldBlocks(newStableBlockTime uint32) {
 	if blockHashes == nil {
 		return
 	}
+	log.Errorf("Expire %d blocks in txGuard", len(blockHashes))
 
 	for _, hash := range blockHashes {
 		// 2. 删除区块缓存

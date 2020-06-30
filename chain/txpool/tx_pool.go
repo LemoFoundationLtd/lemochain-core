@@ -93,6 +93,7 @@ func (pool *TxPool) AddTxs(txs types.Transactions) int {
 	pool.RW.Lock()
 	defer pool.RW.Unlock()
 
+	log.Debugf("Put %d transactions into pool", len(txs))
 	count := 0
 	for _, tx := range txs {
 		if err := pool.addTx(tx); err == nil {
@@ -160,6 +161,8 @@ func (pool *TxPool) DelTxs(txs types.Transactions) {
 
 	pool.RW.Lock()
 	defer pool.RW.Unlock()
+
+	log.Debugf("Delete %d transactions from pool", len(txs))
 
 	for _, tx := range txs {
 		pool.delTx(tx)

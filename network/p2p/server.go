@@ -337,7 +337,8 @@ func (srv *Server) Disconnect(node string) bool {
 		return false
 	}
 	for k, v := range srv.connectedNodes {
-		if strings.Compare(rAddr, v.RAddress()) == 0 {
+		nodeAddr := v.RAddress()
+		if strings.Compare(rAddr, nodeAddr) == 0 {
 			v.Close()
 			srv.peersMux.Lock()
 			delete(srv.connectedNodes, k)
