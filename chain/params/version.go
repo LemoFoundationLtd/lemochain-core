@@ -5,7 +5,7 @@ import "fmt"
 const (
 	VersionMajor = 1 // Major version component of the current release
 	VersionMinor = 3 // Minor version component of the current release
-	VersionPatch = 0 // Patch version component of the current release
+	VersionPatch = 1 // Patch version component of the current release
 )
 
 var Version = func() string {
