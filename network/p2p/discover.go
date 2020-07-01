@@ -545,7 +545,7 @@ func verifyIP(input string) bool {
 	if err != nil {
 		return false
 	}
-	if p < 1024 || p > 65535 {
+	if p < 0 || p > 65535 {
 		return false
 	}
 	return true

@@ -221,7 +221,7 @@ func (database *ChainDatabase) AfterScan(flag uint32, key []byte, val []byte) er
  * 5. height => block's hash(chain)
  */
 func (database *ChainDatabase) blockCommit(hash common.Hash) error {
-	// log.Error("block commit : " + hash.Hex())
+	log.Debugf("block commit : " + hash.Hex())
 	cItem := database.UnConfirmBlocks[hash]
 	if (cItem == nil) || (cItem.Block == nil) {
 		panic("item or item'block is nil.")
