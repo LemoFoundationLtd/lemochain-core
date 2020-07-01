@@ -103,7 +103,7 @@ func (p *peer) RequestBlocks(from, to uint32) int {
 		return -2
 	}
 	p.conn.SetWriteDeadline(DurShort)
-	if err = p.conn.WriteMsg(GetBlocksMsg, buf); err != nil {
+	if err = p.conn.WriteMsg(p2p.GetBlocksMsg, buf); err != nil {
 		log.Warnf("RequestBlocks: write message failed: %v", err)
 		return -3
 	}
@@ -113,7 +113,7 @@ func (p *peer) RequestBlocks(from, to uint32) int {
 // Handshake protocol handshake
 func (p *peer) Handshake(content []byte) (*ProtocolHandshake, error) {
 	// write to remote
-	if err := p.conn.WriteMsg(ProHandshakeMsg, content); err != nil {
+	if err := p.conn.WriteMsg(p2p.ProHandshakeMsg, content); err != nil {
 		return nil, err
 	}
 	// read from remote
@@ -160,7 +160,7 @@ func (p *peer) SendLstStatus(status *LatestStatus) error {
 		return err
 	}
 	p.conn.SetWriteDeadline(DurShort)
-	if err = p.conn.WriteMsg(LstStatusMsg, buf); err != nil {
+	if err = p.conn.WriteMsg(p2p.LstStatusMsg, buf); err != nil {
 		log.Warnf("SendLstStatus to peer: %s failed: %v", p.NodeID().String()[:16], err)
 		p.conn.Close()
 		return err
@@ -175,7 +175,7 @@ func (p *peer) SendTxs(txs types.Transactions) error {
 		log.Warnf("SendTxs: rlp failed: %v", err)
 		return err
 	}
-	if err := p.conn.WriteMsg(TxsMsg, buf); err != nil {
+	if err := p.conn.WriteMsg(p2p.TxsMsg, buf); err != nil {
 		log.Warnf("SendTxs to peer: %s failed. disconnect. %v", p.NodeID().String()[:16], err)
 		p.conn.Close()
 		return err
@@ -191,7 +191,7 @@ func (p *peer) SendConfirmInfo(confirmInfo *BlockConfirmData) error {
 		return err
 	}
 	p.conn.SetWriteDeadline(DurShort)
-	if err := p.conn.WriteMsg(ConfirmMsg, buf); err != nil {
+	if err := p.conn.WriteMsg(p2p.ConfirmMsg, buf); err != nil {
 		log.Warnf("SendConfirmInfo to peer: %s failed. disconnect. %v", p.NodeID().String()[:16], err)
 		p.conn.Close()
 		return err
@@ -208,7 +208,7 @@ func (p *peer) SendBlockHash(height uint32, hash common.Hash) error {
 		return err
 	}
 	p.conn.SetWriteDeadline(DurShort)
-	if err := p.conn.WriteMsg(BlockHashMsg, buf); err != nil {
+	if err := p.conn.WriteMsg(p2p.BlockHashMsg, buf); err != nil {
 		log.Warnf("SendBlockHash: %s failed. disconnect. %v", p.NodeID().String()[:16], err)
 		p.conn.Close()
 		return err
@@ -223,7 +223,7 @@ func (p *peer) SendBlocks(blocks types.Blocks) error {
 		log.Warnf("SendBlocks: rlp failed: %v", err)
 		return err
 	}
-	if err := p.conn.WriteMsg(BlocksMsg, buf); err != nil {
+	if err := p.conn.WriteMsg(p2p.BlocksMsg, buf); err != nil {
 		// log.Warnf("SendBlocks to peer: %s failed. disconnect. %v", p.NodeID().String()[:16], err)
 		p.conn.Close()
 		return err
@@ -251,7 +251,7 @@ func (p *peer) SendConfirms(confirms *BlockConfirms) error {
 		return err
 	}
 	p.conn.SetWriteDeadline(DurLong)
-	if err := p.conn.WriteMsg(ConfirmsMsg, buf); err != nil {
+	if err := p.conn.WriteMsg(p2p.ConfirmsMsg, buf); err != nil {
 		log.Warnf("SendConfirms to peer: %s failed. disconnect. %v", p.NodeID().String()[:16], err)
 		p.conn.Close()
 		return err
@@ -268,7 +268,7 @@ func (p *peer) SendGetConfirms(height uint32, hash common.Hash) error {
 		return err
 	}
 	p.conn.SetWriteDeadline(DurShort)
-	if err := p.conn.WriteMsg(GetConfirmsMsg, buf); err != nil {
+	if err := p.conn.WriteMsg(p2p.GetConfirmsMsg, buf); err != nil {
 		log.Warnf("SendGetConfirms to peer: %s failed. disconnect. %v", p.NodeID().String()[:16], err)
 		p.conn.Close()
 		return err
@@ -286,7 +286,7 @@ func (p *peer) SendDiscover() error {
 	}
 	p.discoverCounter++
 	p.conn.SetWriteDeadline(DurShort)
-	if err := p.conn.WriteMsg(DiscoverReqMsg, buf); err != nil {
+	if err := p.conn.WriteMsg(p2p.DiscoverReqMsg, buf); err != nil {
 		log.Warnf("SendDiscover to peer: %s failed. disconnect. %v", p.NodeID().String()[:16], err)
 		p.conn.Close()
 		return err
@@ -301,7 +301,7 @@ func (p *peer) SendDiscoverResp(resp *DiscoverResData) error {
 		log.Warnf("SendDiscoverResp: rlp failed: %v", err)
 		return err
 	}
-	if err := p.conn.WriteMsg(DiscoverResMsg, buf); err != nil {
+	if err := p.conn.WriteMsg(p2p.DiscoverResMsg, buf); err != nil {
 		log.Warnf("SendDiscoverResp to peer: %s failed. disconnect. %v", p.NodeID().String()[:16], err)
 		p.conn.Close()
 		return err
@@ -318,7 +318,7 @@ func (p *peer) SendReqLatestStatus() error {
 		return err
 	}
 	p.conn.SetWriteDeadline(DurShort)
-	if err := p.conn.WriteMsg(GetLstStatusMsg, buf); err != nil {
+	if err := p.conn.WriteMsg(p2p.GetLstStatusMsg, buf); err != nil {
 		log.Warnf("SendReqLatestStatus to peer: %s failed. disconnect. %v", p.NodeID().String()[:16], err)
 		p.conn.Close()
 		return err

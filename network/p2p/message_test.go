@@ -41,10 +41,10 @@ func Test_Decode(t *testing.T) {
 
 func Test_CheckCode(t *testing.T) {
 	msg := &Msg{
-		Code: uint32(2),
+		Code: MsgCode(2),
 	}
 	assert.Equal(t, true, msg.CheckCode())
 
-	msg.Code = uint32(100000)
+	msg.Code = MsgCode(100000)
 	assert.Equal(t, false, msg.CheckCode())
 }

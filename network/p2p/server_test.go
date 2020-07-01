@@ -38,7 +38,7 @@ func newTestPeerErrHandshake(conn net.Conn) IPeer {
 func (p *testPeer) ReadMsg() (msg *Msg, err error) {
 	return nil, nil
 }
-func (p *testPeer) WriteMsg(code uint32, msg []byte) (err error) {
+func (p *testPeer) WriteMsg(code MsgCode, msg []byte) (err error) {
 	return nil
 }
 func (p *testPeer) SetWriteDeadline(duration time.Duration) {

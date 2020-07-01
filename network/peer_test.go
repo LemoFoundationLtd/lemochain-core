@@ -25,14 +25,14 @@ func (p *testPeer) ReadMsg() (msg *p2p.Msg, err error) {
 	if p.readStatus == 1 {
 		msg = new(p2p.Msg)
 		msg.Content = []byte{1, 2, 3}
-		msg.Code = 2
+		msg.Code = p2p.ProHandshakeMsg
 		msg.ReceivedAt = time.Now()
 	} else if p.readStatus == 2 {
 		time.Sleep(9 * time.Second)
 	} else if p.readStatus == 3 {
 		h := ProtocolHandshake{ChainID: 100, NodeVersion: 12}
 		msg = new(p2p.Msg)
-		msg.Code = 2
+		msg.Code = p2p.ProHandshakeMsg
 		msg.ReceivedAt = time.Now()
 		buf, _ := rlp.EncodeToBytes(&h)
 		msg.Content = buf
@@ -41,7 +41,7 @@ func (p *testPeer) ReadMsg() (msg *p2p.Msg, err error) {
 	}
 	return
 }
-func (p *testPeer) WriteMsg(code uint32, msg []byte) (err error) {
+func (p *testPeer) WriteMsg(code p2p.MsgCode, msg []byte) (err error) {
 	if p.writeStatus == 0 {
 		return nil
 	} else if p.writeStatus == 1 {

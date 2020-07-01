@@ -267,10 +267,10 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 				}
 				// local chain has parent block or parent block will insert chain
 				if pm.chain.HasBlock(b.ParentHash()) {
-					log.Infof("Got a block %s from peer: %#x", b.ShortString(), rcvMsg.p.NodeID()[:8])
+					log.Infof("Got a block %s from peer: %#x", b.ShortString(), rcvMsg.p.NodeID()[:4])
 					pm.insertBlock(b)
 				} else {
-					log.Infof("Got a block %s from peer: %#x. cache it", b.ShortString(), rcvMsg.p.NodeID()[:8])
+					log.Infof("Got a block %s from peer: %#x. cache it", b.ShortString(), rcvMsg.p.NodeID()[:4])
 					pm.blockCache.Add(b)
 					if rcvMsg.p != nil {
 						// request parent block
@@ -620,33 +620,34 @@ func (pm *ProtocolManager) findSyncFrom(rStatus *LatestStatus) (uint32, error) {
 
 // work return handle msg error
 func (pm *ProtocolManager) work(msg *p2p.Msg, p *peer) error {
+	// log.Debug("Process received message", "Code", msg.Code, "NodeID", common.ToHex(p.NodeID()[:4]))
 	switch msg.Code {
-	case LstStatusMsg:
+	case p2p.LstStatusMsg:
 		return pm.handleLstStatusMsg(msg, p)
-	case GetLstStatusMsg:
+	case p2p.GetLstStatusMsg:
 		return pm.handleGetLstStatusMsg(msg, p)
-	case BlockHashMsg:
+	case p2p.BlockHashMsg:
 		return pm.handleBlockHashMsg(msg, p)
-	case TxsMsg:
+	case p2p.TxsMsg:
 		return pm.handleTxsMsg(msg)
-	case BlocksMsg:
+	case p2p.BlocksMsg:
 		return pm.handleBlocksMsg(msg, p)
-	case GetBlocksMsg:
+	case p2p.GetBlocksMsg:
 		return pm.handleGetBlocksMsg(msg, p)
-	case GetConfirmsMsg:
+	case p2p.GetConfirmsMsg:
 		return pm.handleGetConfirmsMsg(msg, p)
-	case ConfirmsMsg:
+	case p2p.ConfirmsMsg:
 		return pm.handleConfirmsMsg(msg)
-	case ConfirmMsg:
+	case p2p.ConfirmMsg:
 		return pm.handleConfirmMsg(msg)
-	case DiscoverReqMsg:
+	case p2p.DiscoverReqMsg:
 		return pm.handleDiscoverReqMsg(msg, p)
-	case DiscoverResMsg:
+	case p2p.DiscoverResMsg:
 		return pm.handleDiscoverResMsg(msg)
-	case GetBlocksWithChangeLogMsg:
+	case p2p.GetBlocksWithChangeLogMsg:
 		return pm.handleGetBlocksWithChangeLogMsg(msg, p)
 	default:
-		log.Debugf("invalid code: %d, from: %s", msg.Code, common.ToHex(p.NodeID()[:8]))
+		log.Debugf("invalid code: %s, from: %s", msg.Code, common.ToHex(p.NodeID()[:4]))
 		return ErrInvalidCode
 	}
 }

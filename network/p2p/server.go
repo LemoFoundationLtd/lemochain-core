@@ -265,9 +265,9 @@ func (srv *Server) HandleConn(fd net.Conn, nodeID *NodeID) error {
 	}
 	// output log
 	if nodeID == nil {
-		log.Debugf("First handshake as server ok, IP: %s. ID: %s ", peer.RAddress(), common.ToHex(peer.RNodeID()[:8]))
+		log.Debugf("First handshake as server ok, IP: %s. ID: %s ", peer.RAddress(), common.ToHex(peer.RNodeID()[:4]))
 	} else {
-		log.Debugf("First handshake as client ok: %s. id: %s", peer.RAddress(), common.ToHex(peer.RNodeID()[:8]))
+		log.Debugf("First handshake as client ok: %s. id: %s", peer.RAddress(), common.ToHex(peer.RNodeID()[:4]))
 	}
 	// notice other goroutine
 	// srv.addPeerCh <- peer
@@ -285,7 +285,7 @@ func (srv *Server) HandleConn(fd net.Conn, nodeID *NodeID) error {
 
 // runPeer Run peer
 func (srv *Server) runPeer(p IPeer) {
-	log.Debugf("Peer(nodeID: %s) start running", common.ToHex(p.RNodeID()[:8]))
+	log.Debugf("Peer(nodeID: %s) start running", common.ToHex(p.RNodeID()[:4]))
 	if err := p.Run(); err != nil { // block this
 		log.Debugf("RunPeer error: %v", err)
 		srv.delPeerCh <- p
@@ -295,7 +295,7 @@ func (srv *Server) runPeer(p IPeer) {
 	if atomic.LoadInt32(&srv.running) == 1 {
 		p.Close()
 	}
-	log.Debugf("Peer Run finished: %s", common.ToHex(p.RNodeID()[:8]))
+	log.Debugf("Peer Run finished: %s", common.ToHex(p.RNodeID()[:4]))
 }
 
 //go:generate gencodec -type PeerConnInfo -out gen_peer_conn_info_json.go

@@ -227,7 +227,7 @@ func (m *DiscoverManager) addDiscoverNodes(nodes []string) {
 			continue
 		}
 		m.foundNodes[key] = newRawNode(nodeID, endpoint)
-
+		log.Debug("Found new node", "nodeID", common.ToHex(nodeID[:4]), "endpoint", endpoint)
 	}
 }
 

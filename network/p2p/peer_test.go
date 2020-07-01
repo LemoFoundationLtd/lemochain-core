@@ -109,7 +109,7 @@ func Test_totalLogic(t *testing.T) {
 	buf := []byte{0x01, 0x02, 0x03, 0x04, 0x05}
 	// client
 	go func() {
-		err := pCli.WriteMsg(uint32(2), buf)
+		err := pCli.WriteMsg(MsgCode(2), buf)
 		assert.Nil(t, err)
 	}()
 

@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"encoding/binary"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
+	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"github.com/LemoFoundationLtd/lemochain-core/common/mclock"
@@ -15,8 +16,6 @@ import (
 	"sync"
 	"time"
 )
-
-const CodeHeartbeat = uint32(0x01)
 
 const (
 	StatusNormal int32 = iota
@@ -35,7 +34,7 @@ var (
 
 type IPeer interface {
 	ReadMsg() (msg *Msg, err error)
-	WriteMsg(code uint32, msg []byte) (err error)
+	WriteMsg(code MsgCode, msg []byte) (err error)
 	SetWriteDeadline(duration time.Duration)
 	RNodeID() *NodeID
 	RAddress() string
@@ -218,7 +217,7 @@ func (p *Peer) handle(content []byte) (err error) {
 		return ErrUnavailablePackage
 	}
 	switch {
-	case msg.Code == CodeHeartbeat:
+	case msg.Code == HeartbeatMsg:
 		return nil
 	default:
 		select {
@@ -226,7 +225,7 @@ func (p *Peer) handle(content []byte) (err error) {
 			log.Info("Read'peer has stopped")
 			return io.EOF
 		case p.newMsgCh <- msg:
-			log.Debugf("Send msg to \"p.newMsgCh\" success, msgCode: %d", msg.Code)
+			log.Debug("← Receive network message success", "Code", msg.Code, "NodeID", common.ToHex(p.rNodeID[:4]))
 			return nil
 		}
 	}
@@ -234,7 +233,7 @@ func (p *Peer) handle(content []byte) (err error) {
 }
 
 // WriteMsg send message to net stream
-func (p *Peer) WriteMsg(code uint32, msg []byte) (err error) {
+func (p *Peer) WriteMsg(code MsgCode, msg []byte) (err error) {
 	p.wmu.Lock()
 	defer p.wmu.Unlock()
 
@@ -255,6 +254,8 @@ func (p *Peer) WriteMsg(code uint32, msg []byte) (err error) {
 	p.conn.SetWriteDeadline(time.Now().Add(p.writeDeadline))
 	_, err = p.conn.Write(buf)
 	p.writeDeadline = frameWriteTimeout
+
+	log.Debug("→ Send network message success", "Code", code, "NodeID", common.ToHex(p.rNodeID[:4]))
 	return err
 }
 
@@ -298,7 +299,7 @@ func (p *Peer) heartbeatLoop() {
 		case <-heartbeat.C:
 			for i := 1; ; i++ {
 				// send heartbeat data
-				err := p.WriteMsg(CodeHeartbeat, nil)
+				err := p.WriteMsg(HeartbeatMsg, nil)
 				if err != nil {
 					if i <= count {
 						continue
@@ -316,10 +317,10 @@ func (p *Peer) heartbeatLoop() {
 }
 
 // packFrame pack message to net stream
-func (p *Peer) packFrame(code uint32, msg []byte) ([]byte, error) {
+func (p *Peer) packFrame(code MsgCode, msg []byte) ([]byte, error) {
 	// message code to bytes
 	buf := make([]byte, 4)
-	binary.BigEndian.PutUint32(buf, code)
+	binary.BigEndian.PutUint32(buf, uint32(code))
 	// combine code and message buffer
 	if msg != nil {
 		buf = append(buf, msg...)
@@ -340,7 +341,7 @@ func (p *Peer) packFrame(code uint32, msg []byte) ([]byte, error) {
 }
 
 // unpackFrame unpack net stream
-func (p *Peer) unpackFrame(content []byte) (uint32, []byte, error) {
+func (p *Peer) unpackFrame(content []byte) (MsgCode, []byte, error) {
 	// AES Decrypt
 	originData, err := crypto.AesDecrypt(content, p.aes)
 	if err != nil {
@@ -348,9 +349,9 @@ func (p *Peer) unpackFrame(content []byte) (uint32, []byte, error) {
 	}
 	code := binary.BigEndian.Uint32(originData[:4])
 	if len(originData) == 4 {
-		return code, nil, nil
+		return MsgCode(code), nil, nil
 	}
-	return code, originData[4:], nil
+	return MsgCode(code), originData[4:], nil
 }
 
 // SetStatus set peer's status
