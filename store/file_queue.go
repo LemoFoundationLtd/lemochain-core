@@ -155,6 +155,7 @@ func (queue *FileQueue) checkFile() error {
 			return nil
 		}
 	} else {
+		log.Debugf("load file %s", queue.path())
 		offset, err := queue.scanFile(queue.path(), queue.Offset)
 		if err == nil || err == ErrEOF {
 			queue.Offset = offset
@@ -176,7 +177,12 @@ func (queue *FileQueue) scanFile(filePath string, offset int64) (int64, error) {
 	if err != nil {
 		return -1, err
 	}
+	fileInfo, err := os.Stat(filePath)
+	if err != nil {
+		return -1, err
+	}
 
+	fileSize := fileInfo.Size()
 	queue.Offset = offset
 	for {
 		head, body, err := FileUtilsRead(file, queue.Offset)
@@ -191,6 +197,7 @@ func (queue *FileQueue) scanFile(filePath string, offset int64) (int64, error) {
 		length := FileUtilsAlign(uint32(RecordHeadLength) + uint32(head.Len))
 		queue.deliver(head.Flg, body.Key, body.Val)
 		queue.Offset += int64(length)
+		log.Debugf("load file progress: %d/%d", queue.Offset, fileSize)
 	}
 }
 
