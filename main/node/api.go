@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/consensus"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/miner"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
@@ -423,6 +424,34 @@ func (n *PrivateNetAPI) Disconnect(node string) (bool, error) {
 // Connections
 func (n *PrivateNetAPI) Connections() []p2p.PeerConnInfo {
 	return n.node.server.Connections()
+}
+
+// Connections
+func (n *PrivateNetAPI) BroadcastConfirm(hash string) (bool, error) {
+	// load block
+	block := n.node.chain.GetBlockByHash(common.HexToHash(hash))
+	if block == nil {
+		return false, fmt.Errorf("block is not exist for hash: %s", hash)
+	}
+
+	// find my confirm in block
+	sigBytes, err := consensus.SignBlock(block.Hash())
+	if err != nil {
+		return false, fmt.Errorf("the miner can't confirm block")
+	}
+	sig := types.BytesToSignData(sigBytes)
+	if !block.IsConfirmExist(sig) {
+		return false, fmt.Errorf("block has not been confirmed by the miner")
+	}
+
+	// broadcast
+	pack := &network.BlockConfirmData{
+		Hash:     block.Hash(),
+		Height:   block.Height(),
+		SignInfo: sig,
+	}
+	subscribe.Send(subscribe.NewConfirm, pack)
+	return true, nil
 }
 
 // PublicNetAPI
