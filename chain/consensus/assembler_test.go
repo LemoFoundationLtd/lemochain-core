@@ -513,47 +513,6 @@ func TestDivideSalary(t *testing.T) {
 	}
 }
 
-// 对区块进行签名的函数
-// func signTestBlock(deputyPrivate string, block *types.Block) {
-// 	// 对区块签名
-// 	private, err := crypto.ToECDSA(common.FromHex(deputyPrivate))
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	signBlock, err := crypto.Sign(block.Hash().Bytes(), private)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	block.Header.SignData = signBlock
-// }
-
-// newSignedBlock 用来生成符合测试用例所用的区块
-// func newSignedBlock(dpovp *DPoVP, parentHash common.Hash, author common.Address, txs []*types.Transaction, time uint32, signPrivate string, save bool) *types.Block {
-// 	newBlockInfo := test.blockInfo{
-// 		parentHash: parentHash,
-// 		author:     author,
-// 		txList:     txs,
-// 		gasLimit:   500000000,
-// 		time:       time,
-// 	}
-// 	parent, err := dpovp.db.GetBlockByHash(parentHash)
-// 	if err != nil {
-// 		// genesis block
-// 		newBlockInfo.height = 0
-// 	} else {
-// 		newBlockInfo.height = parent.Height() + 1
-// 	}
-// 	testBlock := test.makeBlock(dpovp.db, newBlockInfo, save)
-// 	if save {
-// 		if err := dpovp.UpdateStable(testBlock); err != nil {
-// 			panic(err)
-// 		}
-// 	}
-// 	// 对区块进行签名
-// 	signTestBlock(signPrivate, testBlock)
-// 	return testBlock
-// }
-
 func registerDeputies(deputies types.DeputyNodes, am *account.Manager) {
 	for _, node := range deputies {
 		profile := make(map[string]string)

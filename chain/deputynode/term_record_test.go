@@ -91,6 +91,16 @@ func TestGetLastSnapshotHeight(t *testing.T) {
 	assert.Equal(t, params.TermDuration*3, GetLastSnapshotHeight(params.TermDuration*3+1))
 }
 
+func TestIsSnapshotBlock(t *testing.T) {
+	assert.Equal(t, true, IsSnapshotBlock(0))
+	assert.Equal(t, false, IsSnapshotBlock(1))
+	assert.Equal(t, true, IsSnapshotBlock(params.TermDuration))
+	assert.Equal(t, false, IsSnapshotBlock(params.TermDuration+params.InterimDuration+1))
+	assert.Equal(t, true, IsSnapshotBlock(params.TermDuration*2))
+	assert.Equal(t, false, IsSnapshotBlock(params.TermDuration*2+2))
+	assert.Equal(t, false, IsSnapshotBlock(params.TermDuration*3+params.InterimDuration+1))
+}
+
 func TestIsRewardBlock(t *testing.T) {
 	assert.Equal(t, false, IsRewardBlock(0))
 	assert.Equal(t, false, IsRewardBlock(1))
