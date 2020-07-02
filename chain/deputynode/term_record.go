@@ -71,6 +71,11 @@ func (t *TermRecord) GetTotalVotes() *big.Int {
 	return totalVotes
 }
 
+// GetLastSnapshotHeight
+func GetLastSnapshotHeight(height uint32) uint32 {
+	return height - height%params.TermDuration
+}
+
 // IsSnapshotBlock
 func IsSnapshotBlock(height uint32) bool {
 	return height%params.TermDuration == 0

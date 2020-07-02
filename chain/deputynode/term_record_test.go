@@ -81,6 +81,16 @@ func TestTermRecord_GetTotalVotes(t *testing.T) {
 	assert.Equal(t, big.NewInt(300), term.GetTotalVotes())
 }
 
+func TestGetLastSnapshotHeight(t *testing.T) {
+	assert.Equal(t, uint32(0), GetLastSnapshotHeight(0))
+	assert.Equal(t, uint32(0), GetLastSnapshotHeight(1))
+	assert.Equal(t, params.TermDuration, GetLastSnapshotHeight(params.TermDuration))
+	assert.Equal(t, params.TermDuration, GetLastSnapshotHeight(params.TermDuration+params.InterimDuration+1))
+	assert.Equal(t, params.TermDuration, GetLastSnapshotHeight(params.TermDuration*2-1))
+	assert.Equal(t, params.TermDuration*2, GetLastSnapshotHeight(params.TermDuration*2))
+	assert.Equal(t, params.TermDuration*3, GetLastSnapshotHeight(params.TermDuration*3+1))
+}
+
 func TestIsRewardBlock(t *testing.T) {
 	assert.Equal(t, false, IsRewardBlock(0))
 	assert.Equal(t, false, IsRewardBlock(1))

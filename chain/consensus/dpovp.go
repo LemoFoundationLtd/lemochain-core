@@ -132,7 +132,8 @@ func (dp *DPoVP) MineBlock(txProcessTimeout int64) (*types.Block, error) {
 	block, invalidTxs, err := dp.assembler.MineBlock(header, txs, txProcessTimeout)
 	if err != nil {
 		if err == deputynode.ErrNoStableTerm {
-			// TODO fetch last snapshot block's confirm
+			// fetch last snapshot block's confirm
+			go dp.fetchLastSnapshotConfirms()
 		}
 		return nil, err
 	}
@@ -293,6 +294,16 @@ func (dp *DPoVP) broadcastConfirm(block *types.Block, sig types.SignData) {
 	dp.confirmFeed.Send(pack)
 }
 
+// fetchLastSnapshotConfirms fetch confirms of the last snapshot block from remote peer
+func (dp *DPoVP) fetchLastSnapshotConfirms() {
+	snapshotHeight := deputynode.GetLastSnapshotHeight(dp.CurrentBlock().Height())
+	info := dp.confirmer.NeedConfirmList(snapshotHeight, snapshotHeight)
+	if info == nil || len(info) == 0 {
+		return
+	}
+	dp.fetchConfirmsFeed.Send(info)
+}
+
 // fetchConfirmsFromRemote fetch confirms from remote peer after 30s
 func (dp *DPoVP) fetchConfirmsFromRemote(startHeight, endHeight uint32) {
 	// time.AfterFunc its own goroutine
@@ -398,7 +409,8 @@ func (dp *DPoVP) VerifyAndSeal(block *types.Block) (*types.Block, error) {
 			return nil, ErrInvalidBlock
 		}
 		if err == deputynode.ErrNoStableTerm {
-			// TODO fetch last snapshot block's confirm
+			// fetch last snapshot block's confirm
+			go dp.fetchLastSnapshotConfirms()
 		}
 		log.Errorf("RunBlock internal error: %v", err)
 		// panic("processor internal error")
