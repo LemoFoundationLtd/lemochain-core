@@ -131,6 +131,9 @@ func (dp *DPoVP) MineBlock(txProcessTimeout int64) (*types.Block, error) {
 	log.Debugf("pick %d txs from txPool", len(txs))
 	block, invalidTxs, err := dp.assembler.MineBlock(header, txs, txProcessTimeout)
 	if err != nil {
+		if err == deputynode.ErrNoStableTerm {
+			// TODO fetch last snapshot block's confirm
+		}
 		return nil, err
 	}
 	log.Info("Mined a new block", "block", block.ShortString(), "txsCount", len(block.Txs))
@@ -393,6 +396,9 @@ func (dp *DPoVP) VerifyAndSeal(block *types.Block) (*types.Block, error) {
 	if err != nil {
 		if err == transaction.ErrInvalidTxInBlock {
 			return nil, ErrInvalidBlock
+		}
+		if err == deputynode.ErrNoStableTerm {
+			// TODO fetch last snapshot block's confirm
 		}
 		log.Errorf("RunBlock internal error: %v", err)
 		// panic("processor internal error")

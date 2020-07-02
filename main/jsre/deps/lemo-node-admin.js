@@ -13,5 +13,4 @@ lemo._createAPI('net', 'broadcastConfirm', 'net_broadcastConfirm');
 lemo._createAPI('tx', 'estimateGas', 'tx_estimateGas');
 lemo._createAPI('tx', 'estimateCreateContractGas', 'tx_estimateCreateContractGas');
 
-lemo._createAPI('chain', 'getDeputyNodesList', 'chain_getDeputyNodesList');
 lemo._createAPI('chain', 'getAllRewardValue', 'chain_getAllRewardValue');

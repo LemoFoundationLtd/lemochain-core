@@ -18,8 +18,7 @@ var (
 	ErrInvalidDeputyVotes    = errors.New("there is a conflict between deputy node' rank and votes")
 	ErrMissingTerm           = errors.New("some term is missing")
 	ErrInvalidSnapshotHeight = errors.New("invalid snapshot block height")
-	ErrNoTerms               = errors.New("can't access deputy nodes before SaveSnapshot")
-	ErrQueryFutureTerm       = errors.New("can't query future term")
+	ErrNoStableTerm          = errors.New("term is not stable")
 	ErrMineGenesis           = errors.New("can not mine genesis block")
 	ErrNotDeputy             = errors.New("not a deputy address in specific height")
 )
@@ -139,7 +138,8 @@ func (m *Manager) GetTermByHeight(height uint32) (*TermRecord, error) {
 
 	termCount := len(m.termList)
 	if m.termList == nil || termCount == 0 {
-		return nil, ErrNoTerms
+		log.Warn("No terms", "query height", height)
+		return nil, ErrNoStableTerm
 	}
 
 	termIndex := GetTermIndexByHeight(height)
@@ -148,7 +148,7 @@ func (m *Manager) GetTermByHeight(height uint32) (*TermRecord, error) {
 	} else {
 		// the height is after last term
 		log.Warn("Term is not stable", "current stable term count", termCount, "looking for term index", termIndex, "query height", height)
-		return nil, ErrQueryFutureTerm
+		return nil, ErrNoStableTerm
 	}
 }
 

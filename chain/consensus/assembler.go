@@ -301,6 +301,7 @@ func getTermRewards(am *account.Manager, term uint32) (*big.Int, error) {
 	if err != nil {
 		return nil, err
 	}
+	// return 0 if the reward not exist
 	if len(value) == 0 {
 		return big.NewInt(0), nil
 	}

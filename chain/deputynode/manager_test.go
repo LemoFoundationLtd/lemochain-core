@@ -141,7 +141,7 @@ func TestManager_GetTermByHeight(t *testing.T) {
 
 	// no any terms
 	_, err := m.GetTermByHeight(0)
-	assert.Equal(t, ErrNoTerms, err)
+	assert.Equal(t, ErrNoStableTerm, err)
 
 	nodes0 := pickNodes(0, 1)
 	m.SaveSnapshot(0, nodes0)
@@ -182,7 +182,7 @@ func TestManager_GetTermByHeight(t *testing.T) {
 
 	// not exist term
 	term, err = m.GetTermByHeight(1000000000)
-	assert.Equal(t, ErrQueryFutureTerm, err)
+	assert.Equal(t, ErrNoStableTerm, err)
 }
 
 func TestManager_GetDeputyByAddress(t *testing.T) {
