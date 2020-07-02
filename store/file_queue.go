@@ -166,8 +166,20 @@ func (queue *FileQueue) checkFile() error {
 	}
 }
 
-func (queue *FileQueue) emptyFile(path string) error {
-	return nil
+func (queue *FileQueue) emptyFile(path string) {
+	queue.IndexRW.Lock()
+	defer queue.IndexRW.Unlock()
+
+	if len(queue.Index) <= 0 {
+		err := os.Remove(path)
+		log.Errorf("del file: %s", path)
+		if err != nil {
+			log.Errorf("del file: %s err", path)
+		} else {
+			FileUtilsCreateFile(path)
+			queue.Offset = 0
+		}
+	}
 }
 
 func (queue *FileQueue) scanFile(filePath string, offset int64) (int64, error) {
@@ -262,6 +274,9 @@ func (queue *FileQueue) Put(flag uint32, key []byte, val []byte) error {
 	}
 
 	path := queue.path()
+
+	// TODO del tmp file.
+	queue.emptyFile(path)
 	length, err := FileUtilsFlush(path, queue.Offset, buf)
 	if err != nil {
 		return err
@@ -281,6 +296,7 @@ func (queue *FileQueue) PutBatch(items []*BatchItem) error {
 
 	path := queue.path()
 	totalBuf := queue.mergeBatchItems(tmpBuf)
+	queue.emptyFile(path)
 	_, err = FileUtilsFlush(path, queue.Offset, totalBuf)
 	if err != nil {
 		return err
@@ -312,4 +328,49 @@ func (queue *FileQueue) deliver(flag uint32, key []byte, val []byte) {
 
 func (queue *FileQueue) afterPut(op *Inject) {
 	queue.delIndex(op.Flg, op.Key)
+}
+
+type OffsetItem struct {
+	FlushOffset  uint64
+	AppendOffset uint64
+}
+
+type Offset struct {
+	IndexRW sync.RWMutex
+
+	Home string
+
+	/** 当前刷到磁盘的位置 */
+	FlushOffset int64
+
+	/** 当前文件追加写的位置，还未写入的长度为：AppendOffset - FlushOffset */
+	AppendOffset int64
+}
+
+func (offset *Offset) path() string {
+	return filepath.Join(offset.Home, "tmp.offset")
+}
+
+func (offset *Offset) loading() {
+	// TODO
+}
+
+func (offset *Offset) flush() {
+	// TODO
+}
+
+func (offset *Offset) getFlushOffset() int64 {
+	// TODO
+
+	return 0
+}
+
+func (offset *Offset) getAppendOffset() int64 {
+	// TODO
+
+	return 0
+}
+
+func (offset *Offset) set(flushOffset, appendOffset int64) {
+	// TODO
 }
