@@ -106,8 +106,6 @@ func (db *SyncFileDB) Put(flag uint32, key []byte, val []byte) {
 		return
 	case db.WriteChan <- op:
 		return
-	default:
-		log.Errorf("channel queue is busy!!")
 	}
 }
 
