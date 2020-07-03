@@ -426,7 +426,7 @@ func (n *PrivateNetAPI) Connections() []p2p.PeerConnInfo {
 	return n.node.server.Connections()
 }
 
-// Connections
+// BroadcastConfirm
 func (n *PrivateNetAPI) BroadcastConfirm(hash string) (bool, error) {
 	// load block
 	var block *types.Block
@@ -457,6 +457,11 @@ func (n *PrivateNetAPI) BroadcastConfirm(hash string) (bool, error) {
 	}
 	subscribe.Send(subscribe.NewConfirm, pack)
 	return true, nil
+}
+
+// FetchConfirm
+func (n *PrivateNetAPI) FetchConfirm(height uint32) {
+	n.node.chain.FetchConfirm(height)
 }
 
 // PublicNetAPI

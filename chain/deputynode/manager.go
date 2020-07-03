@@ -146,8 +146,7 @@ func (m *Manager) GetTermByHeight(height uint32) (*TermRecord, error) {
 	if termCount > int(termIndex) {
 		return m.termList[termIndex], nil
 	} else {
-		// the height is after last term
-		log.Warn("Term is not stable", "current stable term count", termCount, "looking for term index", termIndex, "query height", height)
+		log.Warn("Term is not stable", "stableTermCount", termCount, "queryTermIndex", termIndex, "queryHeight", height)
 		return nil, ErrNoStableTerm
 	}
 }

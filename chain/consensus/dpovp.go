@@ -132,7 +132,8 @@ func (dp *DPoVP) MineBlock(txProcessTimeout int64) (*types.Block, error) {
 	if err != nil {
 		if err == deputynode.ErrNoStableTerm {
 			// fetch last snapshot block's confirm
-			go dp.fetchLastSnapshotConfirms()
+			snapshotHeight := deputynode.GetLastSnapshotHeight(parentHeader.Height)
+			go dp.FetchRemoteConfirms(snapshotHeight, snapshotHeight, 0)
 		}
 		return nil, err
 	}
@@ -293,20 +294,10 @@ func (dp *DPoVP) broadcastConfirm(block *types.Block, sig types.SignData) {
 	dp.confirmFeed.Send(pack)
 }
 
-// fetchLastSnapshotConfirms fetch confirms of the last snapshot block from remote peer
-func (dp *DPoVP) fetchLastSnapshotConfirms() {
-	snapshotHeight := deputynode.GetLastSnapshotHeight(dp.CurrentBlock().Height())
-	info := dp.confirmer.NeedConfirmList(snapshotHeight, snapshotHeight)
-	if info == nil || len(info) == 0 {
-		return
-	}
-	dp.fetchConfirmsFeed.Send(info)
-}
-
-// fetchConfirmsFromRemote fetch confirms from remote peer after 30s
-func (dp *DPoVP) fetchConfirmsFromRemote(startHeight, endHeight uint32) {
+// FetchRemoteConfirms fetch confirms from remote peer after the [delay] seconds
+func (dp *DPoVP) FetchRemoteConfirms(startHeight, endHeight uint32, delay time.Duration) {
 	// time.AfterFunc its own goroutine
-	time.AfterFunc(delayFetchConfirmsTime, func() {
+	time.AfterFunc(delay, func() {
 		info := dp.confirmer.NeedConfirmList(startHeight, endHeight)
 		if info == nil || len(info) == 0 {
 			return
@@ -355,7 +346,7 @@ func (dp *DPoVP) UpdateStable(block *types.Block) (bool, error) {
 		// confirm from oldStable to newStable
 		go dp.batchConfirmStable(oldStable.Height()+1, dp.StableBlock().Height())
 		// after 30s fetch confirms from peer
-		go dp.fetchConfirmsFromRemote(oldStable.Height()+1, dp.StableBlock().Height())
+		go dp.FetchRemoteConfirms(oldStable.Height()+1, dp.StableBlock().Height(), delayFetchConfirmsTime)
 	}
 
 	return changed, nil
@@ -409,7 +400,8 @@ func (dp *DPoVP) VerifyAndSeal(block *types.Block) (*types.Block, error) {
 		}
 		if err == deputynode.ErrNoStableTerm {
 			// fetch last snapshot block's confirm
-			go dp.fetchLastSnapshotConfirms()
+			snapshotHeight := deputynode.GetLastSnapshotHeight(block.Height() - 1)
+			go dp.FetchRemoteConfirms(snapshotHeight, snapshotHeight, 0)
 		}
 		log.Errorf("RunBlock internal error: %v", err)
 		// panic("processor internal error")

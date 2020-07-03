@@ -259,6 +259,10 @@ func (bc *BlockChain) GetCandidatesTop(hash common.Hash) []*store.Candidate {
 	return bc.db.GetCandidatesTop(hash)
 }
 
+func (bc *BlockChain) FetchConfirm(height uint32) {
+	bc.engine.FetchRemoteConfirms(height, height, 0)
+}
+
 // Stop stop block chain
 func (bc *BlockChain) Stop() {
 	if !atomic.CompareAndSwapInt32(&bc.stopped, 0, 1) {
