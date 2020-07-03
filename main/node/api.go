@@ -429,7 +429,12 @@ func (n *PrivateNetAPI) Connections() []p2p.PeerConnInfo {
 // Connections
 func (n *PrivateNetAPI) BroadcastConfirm(hash string) (bool, error) {
 	// load block
-	block := n.node.chain.GetBlockByHash(common.HexToHash(hash))
+	var block *types.Block
+	if len(hash) == 0 {
+		block = n.node.chain.CurrentBlock()
+	} else {
+		block = n.node.chain.GetBlockByHash(common.HexToHash(hash))
+	}
 	if block == nil {
 		return false, fmt.Errorf("block is not exist for hash: %s", hash)
 	}

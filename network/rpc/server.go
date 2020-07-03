@@ -248,7 +248,7 @@ func (s *Server) handle(ctx context.Context, codec ServerCodec, req *serverReque
 	if req.err != nil {
 		return codec.CreateErrorResponse(req.id, req.err), nil
 	}
-	// tmp
+	log.Debugf("rpc req: %s%s%s", req.svcname, serviceMethodSeparator, req.callb.method.Name)
 	// log.Debug("rpc", "req", log.Lazy{Fn: func() string {
 	// 	msg := make([]string, 0, len(req.args))
 	// 	for i := 0; i < len(req.args); i++ {
