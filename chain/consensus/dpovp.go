@@ -419,7 +419,7 @@ func (dp *DPoVP) InsertConfirms(height uint32, blockHash common.Hash, sigList []
 	dp.chainLock.Lock()
 	defer dp.chainLock.Unlock()
 	oldCurrent := dp.CurrentBlock()
-	log.Debug("👍 Start insert confirms", "height", height, "hash", blockHash[:3], "sigCount", len(sigList))
+	log.Debug("👍 Start insert confirms", "height", height, "hash", blockHash.Hex()[:16], "sigCount", len(sigList))
 
 	newBlock, err := dp.insertConfirms(height, blockHash, sigList)
 	if err != nil {
@@ -453,20 +453,20 @@ func (dp *DPoVP) InsertConfirms(height uint32, blockHash common.Hash, sigList []
 // insertConfirms save signature list to store, then return a new block
 func (dp *DPoVP) insertConfirms(height uint32, blockHash common.Hash, sigList []types.SignData) (*types.Block, error) {
 	if len(sigList) == 0 {
-		return nil, ErrIgnoreConfirm
+		return nil, ErrNoNewConfirm
 	}
 	block, err := dp.db.GetBlockByHash(blockHash)
 	if err != nil {
 		return nil, ErrBlockNotExist
 	}
 	if IsConfirmEnough(block, dp.dm) {
-		return nil, ErrIgnoreConfirm
+		return nil, ErrConfirmsEnough
 	}
 	validConfirms, err := dp.validator.VerifyConfirmPacket(height, blockHash, sigList)
 	if len(validConfirms) == 0 {
 		if err == nil {
 			// all confirms are existed
-			return nil, ErrIgnoreConfirm
+			return nil, ErrNoNewConfirm
 		} else {
 			return nil, err
 		}

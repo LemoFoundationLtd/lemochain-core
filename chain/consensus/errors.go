@@ -4,7 +4,8 @@ import "errors"
 
 var (
 	ErrBlockNotExist            = errors.New("block not exist in local")
-	ErrIgnoreConfirm            = errors.New("confirms is enough")
+	ErrConfirmsEnough           = errors.New("confirms are enough")
+	ErrNoNewConfirm             = errors.New("no useful confirm")
 	ErrIgnoreBlock              = errors.New("block exist in local or the height of block is too small")
 	ErrInvalidBlock             = errors.New("invalid block")
 	ErrSaveBlock                = errors.New("save block to db error")
