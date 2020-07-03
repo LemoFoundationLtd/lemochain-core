@@ -116,12 +116,14 @@ func (pool *TxPool) GetTxs(time uint32, size int) types.Transactions {
 	pool.RW.Lock()
 	defer pool.RW.Unlock()
 
+	timeoutCount := 0
 	for _, tx := range pool.txs {
 		if tx == nil {
 			continue
 		}
 		if isTxTimeOut(tx, time) {
 			pool.delTx(tx)
+			timeoutCount++
 			continue
 		}
 		result = append(result, tx)
@@ -129,6 +131,8 @@ func (pool *TxPool) GetTxs(time uint32, size int) types.Transactions {
 			break
 		}
 	}
+
+	log.Debugf("pick %d txs from txPool. timeoutCount=%d, txInPool=%d", len(result), timeoutCount, len(pool.txs))
 	return result
 }
 

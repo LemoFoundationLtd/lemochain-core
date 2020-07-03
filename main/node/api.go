@@ -534,8 +534,8 @@ func (t *PublicTxAPI) SendTx(tx *types.Transaction) (common.Hash, error) {
 	return tx.Hash(), nil
 }
 
-// PendingTx
-func (t *PublicTxAPI) PendingTx(size int) []*types.Transaction {
+// GetPendingTx
+func (t *PublicTxAPI) GetPendingTx(size int) []*types.Transaction {
 	return t.node.txPool.GetTxs(uint32(time.Now().Unix()), size)
 }
 

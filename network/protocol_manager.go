@@ -655,13 +655,13 @@ func (pm *ProtocolManager) work(msg *p2p.Msg, p *peer) error {
 // handleMsg handle net received message
 func (pm *ProtocolManager) handleMsg(p *peer) error {
 	msgCache := NewMsgCache()
-	errCh := make(chan error, 1)  // 返回error的管道
-	readCh := make(chan struct{}) // 监听退出ReadMsg协程的管道
+	errCh := make(chan error, 1)   // 返回error的管道
+	closeCh := make(chan struct{}) // 监听退出ReadMsg协程的管道
 	// read msg
 	go func() {
 		for {
 			select {
-			case <-readCh:
+			case <-closeCh:
 				return
 			default:
 			}
@@ -686,7 +686,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		msg := msgCache.Pop()
 		err := pm.work(msg, p)
 		if err != nil {
-			close(readCh)
+			close(closeCh)
 			return err
 		}
 	}

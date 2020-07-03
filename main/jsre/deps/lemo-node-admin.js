@@ -10,7 +10,6 @@ lemo._createAPI('net', 'disconnect', 'net_disconnect');
 lemo._createAPI('net', 'getConnections', 'net_connections');
 lemo._createAPI('net', 'broadcastConfirm', 'net_broadcastConfirm');
 
-lemo._createAPI('tx', 'estimateGas', 'tx_estimateGas');
-lemo._createAPI('tx', 'estimateCreateContractGas', 'tx_estimateCreateContractGas');
+lemo._createAPI('tx', 'getPendingTx', 'tx_getPendingTx');
 
 lemo._createAPI('chain', 'getAllRewardValue', 'chain_getAllRewardValue');

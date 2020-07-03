@@ -128,7 +128,6 @@ func (dp *DPoVP) MineBlock(txProcessTimeout int64) (*types.Block, error) {
 	}
 
 	txs := dp.txPool.GetTxs(header.Time, params.MaxTxsForMiner)
-	log.Debugf("pick %d txs from txPool", len(txs))
 	block, invalidTxs, err := dp.assembler.MineBlock(header, txs, txProcessTimeout)
 	if err != nil {
 		if err == deputynode.ErrNoStableTerm {
