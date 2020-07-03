@@ -21,11 +21,7 @@ func (bc *testChain) InsertBlock(block *types.Block) error {
 	return nil
 }
 
-func (bc *testChain) InsertConfirm(info *BlockConfirmData) {
-	panic("implement me")
-}
-
-func (bc *testChain) InsertConfirms(pack BlockConfirms) {
+func (bc *testChain) InsertConfirms(height uint32, blockHash common.Hash, sigList []types.SignData) {
 	panic("implement me")
 }
 

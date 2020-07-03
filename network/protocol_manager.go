@@ -857,11 +857,11 @@ func (pm *ProtocolManager) respBlocks(from, to uint32, p *peer, hasChangeLog boo
 
 // handleConfirmsMsg handle received block's confirm package message
 func (pm *ProtocolManager) handleConfirmsMsg(msg *p2p.Msg) error {
-	var confirms BlockConfirms
-	if err := msg.Decode(&confirms); err != nil {
+	var info BlockConfirms
+	if err := msg.Decode(&info); err != nil {
 		return fmt.Errorf("handleConfirmsMsg error: %v", err)
 	}
-	go pm.chain.InsertConfirms(confirms)
+	go pm.chain.InsertConfirms(info.Height, info.Hash, info.Pack)
 	return nil
 }
 
@@ -897,7 +897,7 @@ func (pm *ProtocolManager) handleConfirmMsg(msg *p2p.Msg) error {
 		return fmt.Errorf("handleConfirmMsg error: %v", err)
 	}
 	if pm.chain.HasBlock(confirm.Hash) {
-		go pm.chain.InsertConfirm(confirm)
+		go pm.chain.InsertConfirms(confirm.Height, confirm.Hash, []types.SignData{confirm.SignInfo})
 	} else {
 		pm.confirmsCache.Push(confirm)
 		if pm.confirmsCache.Size() > 100 {

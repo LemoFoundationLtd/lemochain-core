@@ -242,17 +242,12 @@ func (bc *BlockChain) InsertBlock(block *types.Block) error {
 	return err
 }
 
-// InsertConfirm
-func (bc *BlockChain) InsertConfirm(info *network.BlockConfirmData) {
+// InsertConfirms receive confirm package from net connection
+func (bc *BlockChain) InsertConfirms(height uint32, blockHash common.Hash, sigList []types.SignData) {
 	if atomic.LoadInt32(&bc.stopped) != 0 {
 		return
 	}
-	_ = bc.engine.InsertConfirm(info)
-}
-
-// InsertConfirms receive confirm package from net connection. The block of these confirms has been confirmed by its son block already
-func (bc *BlockChain) InsertConfirms(pack network.BlockConfirms) {
-	bc.engine.InsertConfirms(pack)
+	_ = bc.engine.InsertConfirms(height, blockHash, sigList)
 }
 
 func (bc *BlockChain) GetCandidatesTop(hash common.Hash) []*store.Candidate {

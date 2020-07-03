@@ -415,44 +415,39 @@ func (dp *DPoVP) VerifyAndSeal(block *types.Block) (*types.Block, error) {
 	return newBlock, nil
 }
 
-func (dp *DPoVP) InsertConfirm(info *network.BlockConfirmData) error {
+func (dp *DPoVP) InsertConfirms(height uint32, blockHash common.Hash, sigList []types.SignData) error {
 	dp.chainLock.Lock()
 	defer dp.chainLock.Unlock()
 	oldCurrent := dp.CurrentBlock()
-	log.Debug("👍 Start insert confirm", "height", info.Height, "hash", info.Hash[:3])
+	log.Debug("👍 Start insert confirms", "height", height, "hash", blockHash[:3], "sigCount", len(sigList))
 
-	newBlock, err := dp.insertConfirms(info.Height, info.Hash, []types.SignData{info.SignInfo})
+	newBlock, err := dp.insertConfirms(height, blockHash, sigList)
 	if err != nil {
-		log.Warnf("InsertConfirm failed: %v", err)
+		log.Warnf("InsertConfirms failed: %v", err)
 		return err
 	}
 
-	stableChanged, err := dp.UpdateStable(newBlock)
-	if err != nil {
-		log.Errorf("ReceiveConfirm: setStableBlock failed. height: %d, hash:%s, err: %v", info.Height, info.Hash.Hex()[:16], err)
-		return err
-	}
+	// check stable status
+	if height > dp.StableBlock().Height() {
+		stableChanged, err := dp.UpdateStable(newBlock)
+		if err != nil {
+			log.Errorf("InsertConfirms failed. height: %d, hash:%s, err: %v", height, blockHash.Hex()[:16], err)
+			return err
+		}
 
-	// update the current block
-	currentChanged := dp.forkManager.UpdateForkForConfirm(dp.StableBlock())
-	if currentChanged {
-		dp.onCurrentChanged(oldCurrent, dp.CurrentBlock())
-		dp.logCurrentChange(oldCurrent)
-	}
+		// update the current block
+		currentChanged := dp.forkManager.UpdateForkForConfirm(dp.StableBlock())
+		if currentChanged {
+			dp.onCurrentChanged(oldCurrent, dp.CurrentBlock())
+			dp.logCurrentChange(oldCurrent)
+		}
 
-	if stableChanged {
-		dp.onStableChanged(newBlock)
+		if stableChanged {
+			dp.onStableChanged(newBlock)
+		}
 	}
 
 	return nil
-}
-
-// InsertConfirms receive confirm package from net connection
-func (dp *DPoVP) InsertConfirms(pack network.BlockConfirms) {
-	_, err := dp.insertConfirms(pack.Height, pack.Hash, pack.Pack)
-	if err != nil {
-		log.Warnf("InsertConfirms fail: %v", err)
-	}
 }
 
 // insertConfirms save signature list to store, then return a new block

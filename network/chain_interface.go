@@ -20,10 +20,8 @@ type BlockChain interface {
 	StableBlock() *types.Block
 	// InsertBlock insert a block to local chain. Return error for distribution project
 	InsertBlock(block *types.Block) error
-	// ReceiveConfirm received a confirm message from remote peer
-	InsertConfirm(info *BlockConfirmData)
 	// InsertConfirms received a block's confirm info
-	InsertConfirms(pack BlockConfirms)
+	InsertConfirms(height uint32, blockHash common.Hash, sigList []types.SignData)
 	// IsInBlackList
 	IsInBlackList(b *types.Block) bool
 }
