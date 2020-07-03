@@ -259,8 +259,17 @@ func (bc *BlockChain) GetCandidatesTop(hash common.Hash) []*store.Candidate {
 	return bc.db.GetCandidatesTop(hash)
 }
 
-func (bc *BlockChain) FetchConfirm(height uint32) {
-	bc.engine.FetchRemoteConfirms(height, height, 0)
+func (bc *BlockChain) FetchConfirm(height uint32) error {
+	block := bc.GetBlockByHeight(height)
+	if block == nil {
+		return ErrLoadBlock
+	}
+
+	fetchList := []network.GetConfirmInfo{
+		{Height: height, Hash: block.Hash()},
+	}
+	go subscribe.Send(subscribe.FetchConfirms, fetchList)
+	return nil
 }
 
 // Stop stop block chain

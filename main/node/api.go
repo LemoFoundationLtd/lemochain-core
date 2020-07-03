@@ -460,8 +460,8 @@ func (n *PrivateNetAPI) BroadcastConfirm(hash string) (bool, error) {
 }
 
 // FetchConfirm
-func (n *PrivateNetAPI) FetchConfirm(height uint32) {
-	n.node.chain.FetchConfirm(height)
+func (n *PrivateNetAPI) FetchConfirm(height uint32) error {
+	return n.node.chain.FetchConfirm(height)
 }
 
 // PublicNetAPI
