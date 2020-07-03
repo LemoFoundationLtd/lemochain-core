@@ -861,7 +861,7 @@ func (pm *ProtocolManager) handleConfirmsMsg(msg *p2p.Msg) error {
 	if err := msg.Decode(&confirms); err != nil {
 		return fmt.Errorf("handleConfirmsMsg error: %v", err)
 	}
-	go pm.chain.InsertStableConfirms(confirms)
+	go pm.chain.InsertConfirms(confirms)
 	return nil
 }
 

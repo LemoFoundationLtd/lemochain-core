@@ -22,8 +22,8 @@ type BlockChain interface {
 	InsertBlock(block *types.Block) error
 	// ReceiveConfirm received a confirm message from remote peer
 	InsertConfirm(info *BlockConfirmData)
-	// InsertStableConfirms received a block's confirm info
-	InsertStableConfirms(pack BlockConfirms)
+	// InsertConfirms received a block's confirm info
+	InsertConfirms(pack BlockConfirms)
 	// IsInBlackList
 	IsInBlackList(b *types.Block) bool
 }

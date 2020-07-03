@@ -25,7 +25,7 @@ func (bc *testChain) InsertConfirm(info *BlockConfirmData) {
 	panic("implement me")
 }
 
-func (bc *testChain) InsertStableConfirms(pack BlockConfirms) {
+func (bc *testChain) InsertConfirms(pack BlockConfirms) {
 	panic("implement me")
 }
 

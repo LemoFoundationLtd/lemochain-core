@@ -250,9 +250,9 @@ func (bc *BlockChain) InsertConfirm(info *network.BlockConfirmData) {
 	_ = bc.engine.InsertConfirm(info)
 }
 
-// InsertStableConfirms receive confirm package from net connection. The block of these confirms has been confirmed by its son block already
-func (bc *BlockChain) InsertStableConfirms(pack network.BlockConfirms) {
-	bc.engine.InsertStableConfirms(pack)
+// InsertConfirms receive confirm package from net connection. The block of these confirms has been confirmed by its son block already
+func (bc *BlockChain) InsertConfirms(pack network.BlockConfirms) {
+	bc.engine.InsertConfirms(pack)
 }
 
 func (bc *BlockChain) GetCandidatesTop(hash common.Hash) []*store.Candidate {

@@ -384,6 +384,11 @@ func (dp *DPoVP) isIgnorableBlock(block *types.Block) bool {
 func (dp *DPoVP) VerifyAndSeal(block *types.Block) (*types.Block, error) {
 	// verify every things that can be verified before tx processing
 	if err := dp.validator.VerifyBeforeTxProcess(block, dp.processor.ChainID); err != nil {
+		if err == deputynode.ErrNoStableTerm {
+			// fetch last snapshot block's confirm
+			snapshotHeight := deputynode.GetLastSnapshotHeight(block.Height() - 1)
+			go dp.FetchRemoteConfirms(snapshotHeight, snapshotHeight, 0)
+		}
 		return nil, ErrInvalidBlock
 	}
 	// filter the valid confirms
@@ -397,11 +402,6 @@ func (dp *DPoVP) VerifyAndSeal(block *types.Block) (*types.Block, error) {
 	if err != nil {
 		if err == transaction.ErrInvalidTxInBlock {
 			return nil, ErrInvalidBlock
-		}
-		if err == deputynode.ErrNoStableTerm {
-			// fetch last snapshot block's confirm
-			snapshotHeight := deputynode.GetLastSnapshotHeight(block.Height() - 1)
-			go dp.FetchRemoteConfirms(snapshotHeight, snapshotHeight, 0)
 		}
 		log.Errorf("RunBlock internal error: %v", err)
 		// panic("processor internal error")
@@ -447,11 +447,11 @@ func (dp *DPoVP) InsertConfirm(info *network.BlockConfirmData) error {
 	return nil
 }
 
-// InsertStableConfirms receive confirm package from net connection. The block of these confirms has been confirmed by its son block already
-func (dp *DPoVP) InsertStableConfirms(pack network.BlockConfirms) {
+// InsertConfirms receive confirm package from net connection
+func (dp *DPoVP) InsertConfirms(pack network.BlockConfirms) {
 	_, err := dp.insertConfirms(pack.Height, pack.Hash, pack.Pack)
 	if err != nil {
-		log.Warnf("InsertStableConfirms fail: %v", err)
+		log.Warnf("InsertConfirms fail: %v", err)
 	}
 }
 
@@ -469,7 +469,12 @@ func (dp *DPoVP) insertConfirms(height uint32, blockHash common.Hash, sigList []
 	}
 	validConfirms, err := dp.validator.VerifyConfirmPacket(height, blockHash, sigList)
 	if len(validConfirms) == 0 {
-		return nil, err
+		if err == nil {
+			// all confirms are existed
+			return nil, ErrIgnoreConfirm
+		} else {
+			return nil, err
+		}
 	}
 
 	return dp.confirmer.SaveConfirm(block, validConfirms)

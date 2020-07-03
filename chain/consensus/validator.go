@@ -217,7 +217,6 @@ func (v *Validator) VerifyNewConfirms(block *types.Block, sigList []types.SignDa
 		}
 		if block.IsConfirmExist(sig) {
 			log.Warn("Duplicate confirm", "hash", hash.Hex(), "signer", common.ToHex(nodeID[:4]))
-			lastErr = ErrInvalidConfirmSigner
 			continue
 		}
 		validConfirms = append(validConfirms, sig)
