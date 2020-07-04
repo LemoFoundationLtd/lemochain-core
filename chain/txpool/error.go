@@ -10,5 +10,6 @@ var (
 	ErrDifferentGenesis   = errors.New("found different genesis block")
 	ErrInvalidTx          = errors.New("the transaction is broken")
 	ErrTxIsExist          = errors.New("the transaction is exist in txPool")
+	ErrTxPoolExtendFail   = errors.New("txPool extend fail")
 	ErrInvalidBaseTime    = errors.New("invalid stable block time")
 )

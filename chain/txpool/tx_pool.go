@@ -50,10 +50,14 @@ func (pool *TxPool) addTx(tx *types.Transaction) error {
 	}
 
 	// extend storage
-	if pool.cap-len(pool.txs) < 1 {
+	txCount := len(pool.txs)
+	if pool.cap-txCount < 1 {
 		pool.cap *= 2
-		tmp := make(types.Transactions, 0, pool.cap)
-		copy(tmp, pool.txs)
+		tmp := make(types.Transactions, txCount, pool.cap)
+		copiedCount := copy(tmp, pool.txs)
+		if copiedCount != txCount {
+			return ErrTxPoolExtendFail
+		}
 		pool.txs = tmp
 	}
 

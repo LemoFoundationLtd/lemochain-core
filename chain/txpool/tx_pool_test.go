@@ -68,10 +68,12 @@ func TestTxPool_AddTx(t *testing.T) {
 		assert.Equal(t, defaultPoolCap, pool.cap)
 		assert.Equal(t, i+1, len(pool.txs))
 	}
-	err = pool.AddTx(makeTx(0, 1))
+	tx := makeTx(0, 1)
+	err = pool.AddTx(tx)
 	assert.NoError(t, err)
 	assert.Equal(t, defaultPoolCap*2, pool.cap)
-	assert.Equal(t, 1, len(pool.txs))
+	assert.Equal(t, defaultPoolCap+1, len(pool.txs))
+	assert.Equal(t, tx, pool.txs[defaultPoolCap])
 }
 
 func TestTxPool_AddTxs1(t *testing.T) {
