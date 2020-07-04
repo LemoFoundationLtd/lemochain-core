@@ -153,6 +153,7 @@ txsLoop:
 		// Start executing the transaction
 		snap := p.am.Snapshot()
 
+		log.Debug("applyTx", "hash", tx.Hash(), "from", tx.From())
 		gas, err := p.applyTx(gp, header, tx, uint(len(selectedTxs)), common.Hash{}, restApplyTime)
 		if err != nil {
 			p.am.RevertToSnapshot(snap)
@@ -300,7 +301,7 @@ func (p *TxProcessor) VerifyAssetTx(tx *types.Transaction) error {
 			return err
 		}
 		assetId := TradingAssetInfo.AssetId
-		// 查询是否存在此资产
+		// 分发节点中只能从数据库中查询数据，因此如果在一个区块中发行资产后又对资产进行了操作，在分发节点的执行区块过程中会查询失败。简单起见，直接在这里保证资产发行交易必须稳定
 		issueAcc := p.am.GetCanonicalAccount(tx.From())
 		_, err = issueAcc.GetAssetIdState(assetId)
 		return err
@@ -309,7 +310,7 @@ func (p *TxProcessor) VerifyAssetTx(tx *types.Transaction) error {
 	}
 
 	if (assetCode != common.Hash{}) {
-		// 在稳定块中查询此资产是否已经被创建上链
+		// 分发节点中只能从数据库中查询数据，因此如果在一个区块中发行资产后又对资产进行了操作，在分发节点的执行区块过程中会查询失败。简单起见，直接在这里保证资产发行交易必须稳定
 		issueAcc := p.am.GetCanonicalAccount(tx.From())
 		_, err := issueAcc.GetAssetCode(assetCode)
 		return err

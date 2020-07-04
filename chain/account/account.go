@@ -18,6 +18,8 @@ import (
 var (
 	ErrNegativeBalance = errors.New("balance can't be negative")
 	ErrLoadCodeFail    = errors.New("can't load contract code")
+	ErrAssetNotExist   = errors.New("asset dose not exist")
+	ErrEquityNotExist  = errors.New("equity dose not exist")
 	ErrTrieFail        = errors.New("can't load contract storage trie")
 	ErrTrieChanged     = errors.New("the trie has changed after Finalise")
 )
@@ -468,7 +470,7 @@ func (a *Account) GetAssetCode(code common.Hash) (*types.Asset, error) {
 	}
 
 	if val == nil {
-		return nil, store.ErrNotExist
+		return nil, ErrAssetNotExist
 	}
 
 	var asset types.Asset
@@ -558,7 +560,7 @@ func (a *Account) GetEquityState(id common.Hash) (*types.AssetEquity, error) {
 	}
 
 	if val == nil {
-		return nil, store.ErrNotExist
+		return nil, ErrEquityNotExist
 	}
 
 	var equity types.AssetEquity

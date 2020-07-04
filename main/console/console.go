@@ -18,6 +18,11 @@ package console
 
 import (
 	"fmt"
+	"github.com/LemoFoundationLtd/lemochain-core/main/jsre"
+	"github.com/LemoFoundationLtd/lemochain-core/network/rpc"
+	"github.com/mattn/go-colorable"
+	"github.com/peterh/liner"
+	"github.com/robertkrimen/otto"
 	"io"
 	"os"
 	"os/signal"
@@ -25,12 +30,6 @@ import (
 	"sort"
 	"strings"
 	"syscall"
-
-	"github.com/LemoFoundationLtd/lemochain-core/main/jsre"
-	"github.com/LemoFoundationLtd/lemochain-core/network/rpc"
-	"github.com/mattn/go-colorable"
-	"github.com/peterh/liner"
-	"github.com/robertkrimen/otto"
 )
 
 var (
@@ -100,6 +99,7 @@ func (c *Console) init(chainID uint16) error {
 	if err := c.jsre.Compile("babel-polyfill.js", jsre.BabelPolyfillJS); err != nil {
 		return fmt.Errorf("babel-polyfill.js: %v", err)
 	}
+	// TODO it costs 4 seconds!!
 	if err := c.jsre.Compile("lemo-core-sdk.js", jsre.LemoCoreSdkJS); err != nil {
 		return fmt.Errorf("lemo-core-sdk.js: %v", err)
 	}
