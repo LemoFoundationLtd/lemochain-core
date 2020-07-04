@@ -172,7 +172,7 @@ func (queue *FileQueue) emptyFile(path string) {
 
 	if len(queue.Index) <= 0 {
 		err := os.Remove(path)
-		log.Errorf("del file: %s", path)
+		log.Infof("del file: %s", path)
 		if err != nil {
 			log.Errorf("del file: %s err", path)
 		} else {

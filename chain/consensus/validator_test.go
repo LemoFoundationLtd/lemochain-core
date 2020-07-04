@@ -539,7 +539,7 @@ func TestValidator_VerifyNewConfirms(t *testing.T) {
 	// 3. 验证区块中的Confirms中存在需要验证的确认包
 	sig01 := signBlock(block01, private01) // 验证minerAddress签名的确认信息
 	validConfirms, err = v.VerifyNewConfirms(block01, []types.SignData{sig01}, dm)
-	assert.Equal(t, ErrInvalidConfirmSigner, err)
+	assert.NoError(t, err)
 	length := len(validConfirms) // 返回值长度为0
 	assert.Equal(t, 0, length)
 
@@ -547,7 +547,7 @@ func TestValidator_VerifyNewConfirms(t *testing.T) {
 	sigList03 := []types.SignData{sig02, sig03} // 验证确认包中包含了block的confirms中的sig2
 	expectReturn := []types.SignData{sig03}     // 期望的返回确认包会除去重复的sig2
 	validConfirms, err = v.VerifyNewConfirms(block01, sigList03, dm)
-	assert.Equal(t, ErrInvalidConfirmSigner, err)
+	assert.NoError(t, err)
 	assert.Equal(t, expectReturn, validConfirms)
 
 	// 4. 验证确认包中包含非deputy node的签名确认信息的情况
