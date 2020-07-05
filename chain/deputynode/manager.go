@@ -74,7 +74,14 @@ func (m *Manager) init(blockLoader BlockLoader) {
 	}
 }
 
-// IsEvilDeputyNode currentHeight is current block height
+// PutEvilDeputyNode put a deputy node into blacklist for a while
+func (m *Manager) PutEvilDeputyNode(minerAddress common.Address, blockHeight uint32) {
+	m.edLock.Lock()
+	defer m.edLock.Unlock()
+	m.evilDeputies[minerAddress] = blockHeight + params.ReleaseEvilNodeDuration
+}
+
+// IsEvilDeputyNode test if a deputy node is in blacklist
 func (m *Manager) IsEvilDeputyNode(minerAddress common.Address, currentHeight uint32) bool {
 	m.edLock.Lock()
 	defer m.edLock.Unlock()
@@ -86,13 +93,6 @@ func (m *Manager) IsEvilDeputyNode(minerAddress common.Address, currentHeight ui
 		return true
 	}
 	return false
-}
-
-// SetAbnormalDeputyNode height is block height
-func (m *Manager) PutEvilDeputyNode(minerAddress common.Address, blockHeight uint32) {
-	m.edLock.Lock()
-	defer m.edLock.Unlock()
-	m.evilDeputies[minerAddress] = blockHeight + params.ReleaseEvilNodeDuration
 }
 
 // SaveSnapshot add deputy nodes record by snapshot block data

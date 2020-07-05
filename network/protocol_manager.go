@@ -39,6 +39,7 @@ const (
 	ForceSyncInternal = 10 * time.Second
 	DiscoverInternal  = 10 * time.Second
 	DefaultLimit      = 50 // default connection limit
+	MinSafePeersNum   = 5  // start to discover if the number of peers is less than this
 )
 
 // just for test
@@ -436,7 +437,7 @@ func (pm *ProtocolManager) peerLoop() {
 				pm.testOutput <- testForceSync
 			}
 		case <-discoverTimer.C: // time to discover
-			if len(pm.peers.peers) < 5 {
+			if len(pm.peers.peers) < MinSafePeersNum {
 				p := pm.peers.BestToDiscover()
 				if p != nil {
 					go p.SendDiscover()

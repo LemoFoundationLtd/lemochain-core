@@ -80,6 +80,42 @@ func TestNewManager(t *testing.T) {
 	assert.Equal(t, block2.DeputyNodes, m.termList[1].Nodes)
 }
 
+func TestManager_PutEvilDeputyNode(t *testing.T) {
+	m := NewManager(5, testBlockLoader{})
+
+	a1 := common.HexToAddress("1")
+	a2 := common.HexToAddress("2")
+	m.PutEvilDeputyNode(a1, 0)
+	m.PutEvilDeputyNode(a1, 10)
+	m.PutEvilDeputyNode(a2, 100)
+
+	assert.Equal(t, params.ReleaseEvilNodeDuration+10, m.evilDeputies[a1])
+	assert.Equal(t, params.ReleaseEvilNodeDuration+100, m.evilDeputies[a2])
+	_, ok := m.evilDeputies[common.HexToAddress("3")]
+	assert.Equal(t, false, ok)
+}
+
+func TestManager_IsEvilDeputyNode(t *testing.T) {
+	m := NewManager(5, testBlockLoader{})
+
+	a1 := common.HexToAddress("1")
+	a2 := common.HexToAddress("2")
+	m.PutEvilDeputyNode(a1, 0)
+	m.PutEvilDeputyNode(a1, 10)
+	m.PutEvilDeputyNode(a2, 100)
+
+	assert.Equal(t, true, m.IsEvilDeputyNode(a1, 0))
+	assert.Equal(t, true, m.IsEvilDeputyNode(a1, params.ReleaseEvilNodeDuration+9))
+	assert.Equal(t, false, m.IsEvilDeputyNode(a1, params.ReleaseEvilNodeDuration+10))
+	_, ok := m.evilDeputies[common.HexToAddress("1")]
+	assert.Equal(t, false, ok)
+
+	assert.Equal(t, true, m.IsEvilDeputyNode(a2, params.ReleaseEvilNodeDuration+10))
+	assert.Equal(t, false, m.IsEvilDeputyNode(a2, params.ReleaseEvilNodeDuration+101))
+	_, ok = m.evilDeputies[a2]
+	assert.Equal(t, false, ok)
+}
+
 func TestManager_SaveSnapshot(t *testing.T) {
 	m := NewManager(5, testBlockLoader{})
 
@@ -185,6 +221,64 @@ func TestManager_GetTermByHeight(t *testing.T) {
 	assert.Equal(t, ErrNoStableTerm, err)
 }
 
+func TestManager_GetDeputiesByHeight(t *testing.T) {
+	m := NewManager(5, testBlockLoader{})
+
+	nodes0 := pickNodes(0, 1)
+	m.SaveSnapshot(0, nodes0)
+	nodes1 := pickNodes(1, 2, 3)
+	m.SaveSnapshot(params.TermDuration, nodes1)
+
+	nodes := m.GetDeputiesByHeight(0)
+	assert.Equal(t, nodes0, nodes)
+	nodes = m.GetDeputiesByHeight(params.TermDuration + params.InterimDuration)
+	assert.Equal(t, nodes0, nodes)
+	nodes = m.GetDeputiesByHeight(params.TermDuration + params.InterimDuration + 1)
+	assert.Equal(t, nodes1, nodes)
+	nodes = m.GetDeputiesByHeight(params.TermDuration*2 + params.InterimDuration + 1)
+	assert.Empty(t, nodes)
+}
+
+func TestManager_GetDeputiesCount(t *testing.T) {
+	m := NewManager(5, testBlockLoader{})
+
+	nodes0 := pickNodes(0, 1)
+	m.SaveSnapshot(0, nodes0)
+	nodes1 := pickNodes(1, 2, 3)
+	m.SaveSnapshot(params.TermDuration, nodes1)
+
+	length := m.GetDeputiesCount(0)
+	assert.Equal(t, 2, length)
+	length = m.GetDeputiesCount(params.TermDuration + params.InterimDuration)
+	assert.Equal(t, 2, length)
+	length = m.GetDeputiesCount(params.TermDuration + params.InterimDuration + 1)
+	assert.Equal(t, 3, length)
+	length = m.GetDeputiesCount(params.TermDuration*2 + params.InterimDuration + 1)
+	assert.Equal(t, 0, length)
+}
+
+func TestManager_TwoThirdDeputyCount(t *testing.T) {
+	m := NewManager(5, testBlockLoader{})
+
+	nodes0 := pickNodes(1)
+	m.SaveSnapshot(0, nodes0)
+	nodes1 := pickNodes(0, 1)
+	m.SaveSnapshot(params.TermDuration*1, nodes1)
+	nodes2 := pickNodes(2, 3, 4)
+	m.SaveSnapshot(params.TermDuration*2, nodes2)
+
+	count := m.TwoThirdDeputyCount(0)
+	assert.Equal(t, uint32(1), count)
+	count = m.TwoThirdDeputyCount(params.TermDuration + params.InterimDuration)
+	assert.Equal(t, uint32(1), count)
+	count = m.TwoThirdDeputyCount(params.TermDuration + params.InterimDuration + 1)
+	assert.Equal(t, uint32(2), count)
+	count = m.TwoThirdDeputyCount(params.TermDuration*2 + params.InterimDuration + 1)
+	assert.Equal(t, uint32(2), count)
+	count = m.TwoThirdDeputyCount(params.TermDuration*3 + params.InterimDuration + 1)
+	assert.Equal(t, uint32(0), count)
+}
+
 func TestManager_GetDeputyByAddress(t *testing.T) {
 	m := NewManager(5, testBlockLoader{})
 
@@ -210,6 +304,46 @@ func TestManager_GetDeputyByNodeID(t *testing.T) {
 	assert.Nil(t, m.GetDeputyByNodeID(0, testDeputies[5].NodeID))
 	assert.Nil(t, m.GetDeputyByNodeID(0, []byte{}))
 	assert.Nil(t, m.GetDeputyByNodeID(0, nil))
+}
+
+func TestManager_GetMyMinerAddress(t *testing.T) {
+	m := NewManager(5, testBlockLoader{})
+
+	private, err := crypto.GenerateKey()
+	assert.NoError(t, err)
+	SetSelfNodeKey(private)
+
+	nodes1 := pickNodes(0, 1, 2)
+	myNode := &types.DeputyNode{
+		MinerAddress: crypto.PubkeyToAddress(private.PublicKey),
+		NodeID:       crypto.PrivateKeyToNodeID(private),
+		Rank:         nodes1[2].Rank,
+		Votes:        nodes1[2].Votes,
+	}
+	nodes1[2] = myNode
+	m.SaveSnapshot(0, nodes1)
+	nodes2 := pickNodes(0, 1, 3)
+	m.SaveSnapshot(params.TermDuration, nodes2)
+
+	addr, success := m.GetMyMinerAddress(0)
+	assert.Equal(t, myNode.MinerAddress, addr)
+	assert.Equal(t, true, success)
+
+	addr, success = m.GetMyMinerAddress(params.TermDuration + params.InterimDuration)
+	assert.Equal(t, myNode.MinerAddress, addr)
+	assert.Equal(t, true, success)
+
+	addr, success = m.GetMyMinerAddress(params.TermDuration + params.InterimDuration + 1)
+	assert.Equal(t, common.Address{}, addr)
+	assert.Equal(t, false, success)
+
+	addr, success = m.GetMyMinerAddress(params.TermDuration*2 + params.InterimDuration + 1)
+	assert.Equal(t, common.Address{}, addr)
+	assert.Equal(t, false, success)
+}
+
+func TestManager_GetDeputyByDistance(t *testing.T) {
+	// m := NewManager(5, testBlockLoader{})
 }
 
 func Test_findDeputyByAddress(t *testing.T) {
