@@ -20,7 +20,8 @@ var (
 	ErrInvalidSnapshotHeight = errors.New("invalid snapshot block height")
 	ErrNoStableTerm          = errors.New("term is not stable")
 	ErrMineGenesis           = errors.New("can not mine genesis block")
-	ErrNotDeputy             = errors.New("not a deputy address in specific height")
+	ErrNotDeputy             = errors.New("the miner address is not a deputy")
+	ErrInvalidDistance       = errors.New("deputy distance should be greater than 0")
 )
 
 type BlockLoader interface {
@@ -222,7 +223,10 @@ func (m *Manager) IsNodeDeputy(height uint32, nodeID []byte) bool {
 // GetDeputyByDistance find a deputy from parent block miner by miner index distance. The distance should always greater than 0
 func (m *Manager) GetDeputyByDistance(targetHeight uint32, parentBlockMiner common.Address, distance uint32) (*types.DeputyNode, error) {
 	if targetHeight == 0 {
-		return nil, ErrMineGenesis
+		panic(ErrMineGenesis)
+	}
+	if distance < 1 {
+		panic(ErrInvalidDistance)
 	}
 	deputies := m.GetDeputiesByHeight(targetHeight)
 	nodeCount := uint32(len(deputies))
@@ -233,7 +237,8 @@ func (m *Manager) GetDeputyByDistance(targetHeight uint32, parentBlockMiner comm
 	if targetHeight == 1 || IsRewardBlock(targetHeight) {
 		// Genesis block is pre-set, not belong to any deputy node. So only blocks start with height 1 is mined by deputies
 		// The reward block changes deputy nodes, so we need recompute the slot
-		return deputies[distance-1], nil
+		targetIndex := (distance - 1 + nodeCount) % nodeCount
+		return deputies[targetIndex], nil
 	} else {
 		// find parent block miner deputy after the IsRewardBlock logic, to make the distance calculation correct in the scene of crossing terms
 		for index, node := range deputies {
@@ -249,7 +254,7 @@ func (m *Manager) GetDeputyByDistance(targetHeight uint32, parentBlockMiner comm
 // GetMinerDistance get miner index distance. It is always greater than 0 and not greater than deputy count
 func (m *Manager) GetMinerDistance(targetHeight uint32, parentBlockMiner, targetMiner common.Address) (uint32, error) {
 	if targetHeight == 0 {
-		return 0, ErrMineGenesis
+		panic(ErrMineGenesis)
 	}
 	deputies := m.GetDeputiesByHeight(targetHeight)
 	nodeCount := uint32(len(deputies))

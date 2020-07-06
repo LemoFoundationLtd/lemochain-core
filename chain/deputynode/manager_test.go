@@ -1,6 +1,7 @@
 package deputynode
 
 import (
+	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
@@ -314,12 +315,9 @@ func TestManager_GetMyMinerAddress(t *testing.T) {
 	SetSelfNodeKey(private)
 
 	nodes1 := pickNodes(0, 1, 2)
-	myNode := &types.DeputyNode{
-		MinerAddress: crypto.PubkeyToAddress(private.PublicKey),
-		NodeID:       crypto.PrivateKeyToNodeID(private),
-		Rank:         nodes1[2].Rank,
-		Votes:        nodes1[2].Votes,
-	}
+	myNode := nodes1[2].Copy()
+	myNode.MinerAddress = crypto.PubkeyToAddress(private.PublicKey)
+	myNode.NodeID = crypto.PrivateKeyToNodeID(private)
 	nodes1[2] = myNode
 	m.SaveSnapshot(0, nodes1)
 	nodes2 := pickNodes(0, 1, 3)
@@ -342,8 +340,79 @@ func TestManager_GetMyMinerAddress(t *testing.T) {
 	assert.Equal(t, false, success)
 }
 
+func TestManager_GetDeputyByDistance_Error(t *testing.T) {
+	m := NewManager(5, testBlockLoader{})
+
+	nodes := pickNodes(0, 1, 2)
+	m.SaveSnapshot(params.TermDuration, nodes)
+
+	// invalid targetHeight
+	assert.PanicsWithValue(t, ErrMineGenesis, func() {
+		_, _ = m.GetDeputyByDistance(0, testDeputies[0].MinerAddress, 0)
+	})
+
+	// invalid distance
+	assert.PanicsWithValue(t, ErrInvalidDistance, func() {
+		_, _ = m.GetDeputyByDistance(params.TermDuration+params.InterimDuration+1, testDeputies[0].MinerAddress, 0)
+	})
+
+	// future term
+	_, err := m.GetDeputyByDistance(params.TermDuration*2+params.InterimDuration+1, testDeputies[0].MinerAddress, 1)
+	assert.Equal(t, ErrNotDeputy, err)
+
+	// unknown deputy
+	_, err = m.GetDeputyByDistance(params.TermDuration+params.InterimDuration+2, testDeputies[5].MinerAddress, 1)
+	assert.Equal(t, ErrNotDeputy, err)
+}
+
 func TestManager_GetDeputyByDistance(t *testing.T) {
-	// m := NewManager(5, testBlockLoader{})
+	type testInfo struct {
+		targetHeight uint32
+		parentDeputy *types.DeputyNode
+		distance     uint32
+		expectDeputy *types.DeputyNode
+	}
+
+	m := NewManager(5, testBlockLoader{})
+	nodes1 := pickNodes(0, 1, 2)
+	m.SaveSnapshot(0, nodes1)
+	nodes2 := pickNodes(3, 4)
+	m.SaveSnapshot(params.TermDuration, nodes2)
+
+	tests := []testInfo{
+		// parent and target are in different terms
+		{1, nodes1[0], 1, nodes1[0]},
+		{1, nodes1[0], 2, nodes1[1]},
+		{1, nodes1[1], 3, nodes1[2]},
+		{1, nodes1[2], 4, nodes1[0]},
+		{params.TermDuration + params.InterimDuration + 1, nodes2[0], 1, nodes2[0]},
+		{params.TermDuration + params.InterimDuration + 1, nodes2[1], 2, nodes2[1]},
+		{params.TermDuration + params.InterimDuration + 1, nodes2[0], 1, nodes2[0]},
+		{params.TermDuration + params.InterimDuration + 1, nodes2[1], 11, nodes2[0]},
+		// parent and target are in same term
+		{2, nodes1[0], 1, nodes1[1]},
+		{2, nodes1[0], 2, nodes1[2]},
+		{3, nodes1[0], 3, nodes1[0]},
+		{2, nodes1[1], 1, nodes1[2]},
+		{2, nodes1[1], 2, nodes1[0]},
+		{2, nodes1[1], 3, nodes1[1]},
+		{params.TermDuration + params.InterimDuration + 2, nodes2[0], 1, nodes2[1]},
+		{params.TermDuration + params.InterimDuration + 2, nodes2[0], 2, nodes2[0]},
+		{params.TermDuration + params.InterimDuration + 2, nodes2[1], 2, nodes2[1]},
+		{params.TermDuration + params.InterimDuration + 2, nodes2[1], 20, nodes2[1]},
+	}
+
+	for i, test := range tests {
+		caseName := fmt.Sprintf("case %d. height=%d. distance=%d", i, test.targetHeight, test.distance)
+		t.Run(caseName, func(t *testing.T) {
+			test := test // capture range variable
+			t.Parallel()
+
+			node, err := m.GetDeputyByDistance(test.targetHeight, test.parentDeputy.MinerAddress, test.distance)
+			assert.NoError(t, err)
+			assert.Equal(t, test.expectDeputy, node)
+		})
+	}
 }
 
 func Test_findDeputyByAddress(t *testing.T) {
@@ -375,11 +444,12 @@ func TestGetMinerDistance_Error(t *testing.T) {
 	term2RewardHeight := params.TermDuration*2 + params.InterimDuration + 1
 
 	// height is 0
-	_, err := dm.GetMinerDistance(0, common.Address{}, common.Address{})
-	assert.Equal(t, ErrMineGenesis, err)
+	assert.PanicsWithValue(t, ErrMineGenesis, func() {
+		_, _ = dm.GetMinerDistance(0, common.Address{}, common.Address{})
+	})
 
 	// not exist target miner
-	_, err = dm.GetMinerDistance(term0Height, common.Address{}, common.Address{})
+	_, err := dm.GetMinerDistance(term0Height, common.Address{}, common.Address{})
 	assert.Equal(t, ErrNotDeputy, err)
 	_, err = dm.GetMinerDistance(term0Height, common.Address{}, testDeputies[5].MinerAddress)
 	assert.Equal(t, ErrNotDeputy, err)
