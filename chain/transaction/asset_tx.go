@@ -7,7 +7,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
-	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"math/big"
 	"sort"
 )
@@ -124,10 +123,10 @@ func (r *RunAssetEnv) IssueAssetTx(sender, receiver common.Address, txHash commo
 		equity.AssetId = asset.AssetCode // assetId == assetCode
 		// 第一类资产由于assetCode和assetId相等，所以要判断receiver是否已经拥有了此类资产，如果已经拥有了，我们对equity采取增加而不是错误的覆盖
 		oldAssetEquity, err := recAcc.GetEquityState(asset.AssetCode)
-		if err != nil && err != store.ErrNotExist {
+		if err != nil && err != types.ErrEquityNotExist {
 			return err
 		}
-		if err == store.ErrNotExist { // 未拥有过此类资产
+		if err == types.ErrEquityNotExist { // 未拥有过此类资产
 			equity.Equity = issueAsset.Amount
 		} else { // 已经拥有过此资产,资产余额则相加
 			equity.Equity = new(big.Int).Add(issueAsset.Amount, oldAssetEquity.Equity)
@@ -231,10 +230,10 @@ func (r *RunAssetEnv) ReplenishAssetTx(sender, receiver common.Address, data []b
 	// receiver account
 	recAcc := r.am.GetAccount(receiver)
 	equity, err := recAcc.GetEquityState(newAssetId)
-	if err != nil && err != store.ErrNotExist {
+	if err != nil && err != types.ErrEquityNotExist {
 		return err
 	}
-	if err == store.ErrNotExist {
+	if err == types.ErrEquityNotExist {
 		equity = &types.AssetEquity{
 			AssetCode: newAssetCode,
 			AssetId:   newAssetId,

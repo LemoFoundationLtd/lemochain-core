@@ -6,7 +6,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
-	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"math/big"
 	"strconv"
 	"sync/atomic"
@@ -254,7 +253,7 @@ func (evm *EVM) TransferAssetTx(caller ContractRef, addr common.Address, gas uin
 	}
 	if !destroyAsset {
 		toEquity, err := contractAccount.GetEquityState(assetId)
-		if err != nil && err == store.ErrNotExist { // not exist this kind of assetId
+		if err == types.ErrEquityNotExist { // not exist this kind of assetId
 			// 	set new assetEquity for to
 			newToEquity := senderEquity.Clone()
 			newToEquity.Equity = amount
@@ -263,7 +262,7 @@ func (evm *EVM) TransferAssetTx(caller ContractRef, addr common.Address, gas uin
 				evm.am.RevertToSnapshot(snapshot)
 				return nil, gas, err, nil
 			}
-		} else if err != nil && err != store.ErrNotExist { // other err
+		} else if err != nil && err != types.ErrEquityNotExist { // other err
 			evm.am.RevertToSnapshot(snapshot)
 			return nil, gas, err, nil
 		} else { // err == nil

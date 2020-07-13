@@ -270,11 +270,11 @@ func (t *parentLoader) GetParentByHeight(height uint32, sonBlockHash common.Hash
 	return block
 }
 
-func MakeTxFast(fromPrivate *ecdsa.PrivateKey) *types.Transaction {
+func MakeTxFast(fromPrivate *ecdsa.PrivateKey, amount int64) *types.Transaction {
 	from := crypto.PubkeyToAddress(fromPrivate.PublicKey)
 	r := rand.New(rand.NewSource(1234))
 	expiration := uint64(time.Now().Unix() + 100 + r.Int63n(200))
-	tx := types.NewTransaction(from, from, common.Lemo2Mo("100"), 1000000, big.NewInt(100), []byte{}, params.OrdinaryTx, testChainID, expiration, "", string("aaa"))
+	tx := types.NewTransaction(from, from, new(big.Int).Mul(common.OneLEMO, big.NewInt(amount)), 1000000, big.NewInt(100), []byte{}, params.OrdinaryTx, testChainID, expiration, "", string("aaa"))
 	return SignTx(tx, fromPrivate)
 }
 

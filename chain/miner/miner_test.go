@@ -51,7 +51,27 @@ func (tc *testChain) GetBlockByHeight(height uint32) (*types.Block, error) {
 	return nil, store.ErrNotExist
 }
 
-func TestMiner_GetSleepTime(t *testing.T) {
+type testTxpool struct {
+	isEmpty bool
+}
+
+func (p *testTxpool) IsEmpty() bool {
+	return p.isEmpty
+}
+
+func TestMiner_Start_Stop_Close_IsMining(t *testing.T) {
+	// TODO runMineLoop
+}
+
+func TestMiner_GetMinerAddress(t *testing.T) {
+	// TODO
+}
+
+func TestMiner_resetMineTimer(t *testing.T) {
+	// TODO
+}
+
+func TestMiner_getSleepTime(t *testing.T) {
 	deputyCount := 3
 	dm := deputynode.NewManager(deputyCount, &testChain{})
 	dm.SaveSnapshot(0, testDeputies[:deputyCount])
@@ -123,6 +143,14 @@ func TestMiner_GetSleepTime(t *testing.T) {
 	}
 }
 
+func TestMiner_schedule(t *testing.T) {
+	// TODO
+}
+
+func TestMiner_sealBlock(t *testing.T) {
+	// TODO
+}
+
 func TestMiner_waitCanPackageTx(t *testing.T) {
 	var blockInterval int64 = 3000
 	var mineTimeout int64 = 10000
@@ -159,12 +187,4 @@ func TestMiner_waitCanPackageTx(t *testing.T) {
 	miner.waitCanPackageTx(minerTimeoutStamp)
 	// 3000毫秒之后发现交易池中存在可以打包的交易然后就退出
 	assert.Equal(t, int64(3), time.Since(start).Nanoseconds()/1e9)
-}
-
-type testTxpool struct {
-	isEmpty bool
-}
-
-func (p *testTxpool) IsEmpty() bool {
-	return p.isEmpty
 }

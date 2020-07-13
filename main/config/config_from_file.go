@@ -125,6 +125,9 @@ func (c *ConfigFromFile) Check() {
 	if c.InterimDuration > 0 {
 		params.InterimDuration = uint32(c.InterimDuration)
 	}
+	if c.ConnectionLimit == 0 {
+		c.ConnectionLimit = 50
+	}
 	if len(c.AlarmUrl) > 0 { // if configured, then start metrics and alarm system client
 		metrics.AlarmUrl = c.AlarmUrl
 	}

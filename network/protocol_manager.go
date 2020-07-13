@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
+	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/txpool"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
@@ -35,13 +36,6 @@ var (
 	handleDiscoverResMsgMeter            = metrics.NewMeter(metrics.HandleDiscoverResMsg_meterName)            // 统计调用handleDiscoverResMsg的频率
 )
 
-const (
-	ForceSyncInternal = 10 * time.Second
-	DiscoverInternal  = 10 * time.Second
-	DefaultLimit      = 50 // default connection limit
-	MinSafePeersNum   = 5  // start to discover if the number of peers is less than this
-)
-
 // just for test
 const (
 	testBroadcastTxs int = 1 + iota
@@ -68,17 +62,17 @@ type ProtocolManager struct {
 	nodeID      p2p.NodeID
 	nodeVersion uint32
 
-	chain          BlockChain
-	dm             *deputynode.Manager
-	discover       *p2p.DiscoverManager
-	txPool         TxPool
-	txGuard        *txpool.TxGuard
-	limit          int
-	peers          *peerSet      // connected peers
-	confirmsCache  *ConfirmCache // received confirm info before block, cache them
-	blockCache     *BlockCache
-	dataDir        string
-	oldStableBlock atomic.Value
+	chain             BlockChain
+	dm                *deputynode.Manager
+	discover          *p2p.DiscoverManager
+	txPool            TxPool
+	txGuard           *txpool.TxGuard
+	maxDelayNodeCount int           // delay node is what not deputy node. They only receive stable blocks
+	peers             *peerSet      // connected peers
+	confirmsCache     *ConfirmCache // received confirm info before block, cache them
+	blockCache        *BlockCache
+	dataDir           string
+	oldStableBlock    atomic.Value
 
 	addPeerCh    chan p2p.IPeer
 	removePeerCh chan p2p.IPeer
@@ -97,26 +91,23 @@ type ProtocolManager struct {
 	testOutput chan int
 }
 
-func NewProtocolManager(chainID uint16, nodeID p2p.NodeID, chain BlockChain, dm *deputynode.Manager, txPool TxPool, txGuard *txpool.TxGuard, discover *p2p.DiscoverManager, limit int, nodeVersion uint32, dataDir string) *ProtocolManager {
-	if limit == 0 {
-		limit = DefaultLimit
-	}
+func NewProtocolManager(chainID uint16, nodeID p2p.NodeID, chain BlockChain, dm *deputynode.Manager, txPool TxPool, txGuard *txpool.TxGuard, discover *p2p.DiscoverManager, delayNodeLimit int, nodeVersion uint32, dataDir string) *ProtocolManager {
 	pm := &ProtocolManager{
-		chainID:       chainID,
-		nodeID:        nodeID,
-		nodeVersion:   nodeVersion,
-		chain:         chain,
-		dm:            dm,
-		txPool:        txPool,
-		txGuard:       txGuard,
-		discover:      discover,
-		limit:         limit,
-		peers:         NewPeerSet(discover, dm),
-		confirmsCache: NewConfirmCache(),
-		blockCache:    NewBlockCache(),
-		dataDir:       dataDir,
-		addPeerCh:     make(chan p2p.IPeer),
-		removePeerCh:  make(chan p2p.IPeer),
+		chainID:           chainID,
+		nodeID:            nodeID,
+		nodeVersion:       nodeVersion,
+		chain:             chain,
+		dm:                dm,
+		txPool:            txPool,
+		txGuard:           txGuard,
+		discover:          discover,
+		maxDelayNodeCount: delayNodeLimit,
+		peers:             NewPeerSet(discover, dm),
+		confirmsCache:     NewConfirmCache(),
+		blockCache:        NewBlockCache(),
+		dataDir:           dataDir,
+		addPeerCh:         make(chan p2p.IPeer),
+		removePeerCh:      make(chan p2p.IPeer),
 
 		txCh:            make(chan *types.Transaction, 10),
 		newMinedBlockCh: make(chan *types.Block),
@@ -402,8 +393,8 @@ func (pm *ProtocolManager) peerLoop() {
 		log.Debugf("PeerLoop finished")
 	}()
 
-	forceSyncTimer := time.NewTimer(ForceSyncInternal)
-	discoverTimer := time.NewTimer(DiscoverInternal)
+	forceSyncTimer := time.NewTimer(params.ForceSyncInternal)
+	discoverTimer := time.NewTimer(params.DiscoverInternal)
 	for {
 		select {
 		case <-pm.quitCh:
@@ -431,19 +422,19 @@ func (pm *ProtocolManager) peerLoop() {
 			if p != nil {
 				go p.SendReqLatestStatus()
 			}
-			forceSyncTimer.Reset(ForceSyncInternal)
+			forceSyncTimer.Reset(params.ForceSyncInternal)
 			// for test
 			if pm.test {
 				pm.testOutput <- testForceSync
 			}
 		case <-discoverTimer.C: // time to discover
-			if len(pm.peers.peers) < MinSafePeersNum {
+			if len(pm.peers.peers) < params.LeastPeersToDiscover {
 				p := pm.peers.BestToDiscover()
 				if p != nil {
 					go p.SendDiscover()
 				}
 			}
-			discoverTimer.Reset(DiscoverInternal)
+			discoverTimer.Reset(params.DiscoverInternal)
 			// for test
 			if pm.test {
 				pm.testOutput <- testDiscover
@@ -465,7 +456,7 @@ func (pm *ProtocolManager) checkConnectionLimit(p p2p.IPeer) bool {
 	}
 	// limit
 	connected := pm.peers.DelayNodes(height)
-	if len(connected) <= pm.limit {
+	if len(connected) <= pm.maxDelayNodeCount {
 		return true
 	}
 	return false

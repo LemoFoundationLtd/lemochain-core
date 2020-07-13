@@ -257,7 +257,7 @@ func TestAccount_SetStorageState_GetStorageState(t *testing.T) {
 	// invalid root
 	account.SetStorageRoot(h(1))
 	readValue, err = account.GetStorageState(k(6))
-	assert.Equal(t, ErrTrieFail, err)
+	assert.Equal(t, types.ErrTrieFail, err)
 	assert.Empty(t, readValue) // []byte(nil)
 }
 
@@ -408,7 +408,7 @@ func TestAccount_Finalise_Save(t *testing.T) {
 	assert.NoError(t, err)
 	account.data.StorageRoot = defaultAccounts[0].StorageRoot
 	err = account.Save()
-	assert.Equal(t, ErrTrieChanged, err)
+	assert.Equal(t, types.ErrTrieChanged, err)
 
 	// invalid root
 	account.SetStorageRoot(h(1))
@@ -416,7 +416,7 @@ func TestAccount_Finalise_Save(t *testing.T) {
 	err = account.SetStorageState(key, value)
 	assert.NoError(t, err)
 	err = account.Finalise()
-	assert.Equal(t, ErrTrieFail, err)
+	assert.Equal(t, types.ErrTrieFail, err)
 }
 
 func TestAccount_LoadChangeLogs(t *testing.T) {

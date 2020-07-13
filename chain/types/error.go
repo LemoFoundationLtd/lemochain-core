@@ -5,8 +5,13 @@ import (
 )
 
 var (
-	// ErrKnownBlock is returned when a block to import is already known locally.
-	ErrKnownBlock = errors.New("block already known")
+	ErrNegativeBalance = errors.New("balance can't be negative")
+	ErrLoadCodeFail    = errors.New("can't load contract code")
+	ErrAssetNotExist   = errors.New("asset dose not exist")
+	ErrAssetIdNotExist = errors.New("assetId dose not exist")
+	ErrEquityNotExist  = errors.New("equity dose not exist")
+	ErrTrieFail        = errors.New("can't load contract storage trie")
+	ErrTrieChanged     = errors.New("the trie has changed after Finalise")
 
 	// ErrGasLimitReached is returned by the gas pool if the amount of gas required
 	// by a transaction is higher than what's left in the block.

@@ -4,6 +4,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/hexutil"
 	"math/big"
+	"time"
 )
 
 var (
@@ -67,6 +68,12 @@ const (
 	Bn256ScalarMulGas       uint64 = 40000  // Gas needed for an elliptic curve scalar multiplication
 	Bn256PairingBaseGas     uint64 = 100000 // Base price for an elliptic curve pairing check
 	Bn256PairingPerPointGas uint64 = 80000  // Per-point price for an elliptic curve pairing check
+
+	ForceSyncInternal           = 10 * time.Second // time to force sync blocks from other nodes
+	DiscoverInternal            = 10 * time.Second // time to discover new peer node
+	LeastPeersToDiscover        = 5                // start to discover if the number of peers is less than this
+	MaxPackageLength     uint32 = 25 * 1024 * 1024 // 25M
+	MaxTxsForMiner              = 10000            // max number of transactions when mining a block
 )
 
 var (
@@ -79,9 +86,6 @@ var (
 	DepositPoolAddress             = common.HexToAddress("0x1001") // 设置接收注册候选节点押金费用1000LEMO的地址
 	DepositExchangeRate            = common.Lemo2Mo("100")         // 质押金额兑换票数兑换率 100LEMO换1票
 	VoteExchangeRate               = common.Lemo2Mo("200")         // 投票票数兑换率 200LEMO换1票
-
-	MaxPackageLength uint32 = 25 * 1024 * 1024 // 25M
-	MaxTxsForMiner   int    = 10000            // max transactions when mining a block
 
 	TermRewardPoolTotal = common.Lemo2Mo("900000000") // 奖励池总量
 	TermRewardContract  = common.HexToAddress("0x09") // 换届奖励的预编译合约地址

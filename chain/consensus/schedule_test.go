@@ -81,7 +81,7 @@ func TestGetCorrectMiner_Error(t *testing.T) {
 
 	parent = &types.Header{Time: uint32(time.Now().Unix()), Height: 1, MinerAddress: common.HexToAddress("0x123")}
 	_, err = GetCorrectMiner(parent, int64(parent.Time+10)*1000, mineTimeout, dm)
-	assert.Equal(t, ErrNotDeputy, err)
+	assert.Equal(t, deputynode.ErrNotDeputy, err)
 }
 
 func TestGetCorrectMiner(t *testing.T) {

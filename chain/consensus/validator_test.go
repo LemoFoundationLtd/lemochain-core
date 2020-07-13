@@ -32,7 +32,7 @@ func TestNewValidator(t *testing.T) {
 	dm := deputynode.NewManager(5, &testBlockLoader{})
 
 	fm := NewValidator(1000, &testBlockLoader{}, dm, txGuardForValidator{}, testCandidateLoader{})
-	assert.Equal(t, uint64(1000), fm.timeoutTime)
+	assert.Equal(t, uint64(1000), fm.mineTimeout)
 }
 
 func Test_verifyParentHash(t *testing.T) {
@@ -580,4 +580,14 @@ func TestValidator_VerifyConfirmPacket(t *testing.T) {
 	confirms, err = v2.VerifyConfirmPacket(block.Height()+1, block.Hash(), nil)
 	assert.Nil(t, confirms)
 	assert.Equal(t, ErrInvalidSignedConfirmInfo, err)
+}
+
+func TestIsSigExist(t *testing.T) {
+	sig1 := types.SignData{0x12, 0x34}
+	sig2 := types.SignData{0x13, 0x24}
+
+	assert.Equal(t, false, IsSigExist([]types.SignData{}, sig1))
+	assert.Equal(t, true, IsSigExist([]types.SignData{sig1}, sig1))
+	assert.Equal(t, true, IsSigExist([]types.SignData{sig2, {0x12, 0x34}}, sig1))
+	assert.Equal(t, false, IsSigExist([]types.SignData{sig2}, sig1))
 }

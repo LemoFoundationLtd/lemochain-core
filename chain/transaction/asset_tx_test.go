@@ -6,7 +6,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
-	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"github.com/stretchr/testify/assert"
 	"math/big"
 	"testing"
@@ -251,7 +250,7 @@ func TestRunAssetEnv_ReplenishAssetTx(t *testing.T) {
 	// 使用非issuer进行增发资产
 	err = r.ReplenishAssetTx(common.HexToAddress("0x12345"), receiver, newReplenishAssetData(assetCode, assetCode, big.NewInt(10000)))
 	// 返回asset不存在的错误
-	assert.Equal(t, store.ErrNotExist, err)
+	assert.Equal(t, types.ErrAssetNotExist, err)
 
 	// r.am.RevertToSnapshot(snapshot)
 	// 2. 成功执行增发资产交易之后资产总量和交易接收者的资产余额是否增加

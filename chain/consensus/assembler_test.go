@@ -264,7 +264,7 @@ func TestBlockAssembler_Finalize2(t *testing.T) {
 	err = ba.am.Rebuild(params.TermRewardContract, types.ChangeLogSlice{storageRootLog}) // break the storage root
 	assert.NoError(t, err)
 	err = ba.Finalize(1)
-	assert.Equal(t, account.ErrTrieFail, err)
+	assert.Equal(t, types.ErrTrieFail, err)
 }
 
 func TestCheckTermReward(t *testing.T) {
@@ -550,7 +550,7 @@ func TestGetTermRewards(t *testing.T) {
 	err = am.Rebuild(params.TermRewardContract, types.ChangeLogSlice{storageRootLog})
 	assert.NoError(t, err)
 	_, err = getTermRewards(am, 0)
-	assert.Equal(t, account.ErrTrieFail, err)
+	assert.Equal(t, types.ErrTrieFail, err)
 	am.Reset(common.Hash{})
 	rewardAccont = am.GetAccount(params.TermRewardContract)
 

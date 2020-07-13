@@ -2,7 +2,6 @@ package account
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
@@ -13,15 +12,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/store/protocol"
 	"github.com/LemoFoundationLtd/lemochain-core/store/trie"
 	"math/big"
-)
-
-var (
-	ErrNegativeBalance = errors.New("balance can't be negative")
-	ErrLoadCodeFail    = errors.New("can't load contract code")
-	ErrAssetNotExist   = errors.New("asset dose not exist")
-	ErrEquityNotExist  = errors.New("equity dose not exist")
-	ErrTrieFail        = errors.New("can't load contract storage trie")
-	ErrTrieChanged     = errors.New("the trie has changed after Finalise")
 )
 
 type Storage map[common.Hash][]byte
@@ -83,14 +73,14 @@ func (cache *StorageCache) GetTrie(root common.Hash) (*trie.SecureTrie, error) {
 
 func (cache *StorageCache) Save(root common.Hash) error {
 	if len(cache.dirty) > 0 {
-		return ErrTrieChanged
+		return types.ErrTrieChanged
 	}
 
 	if root != (common.Hash{}) {
 		tr, err := cache.GetTrie(root)
 		if err != nil {
 			log.Errorf("load trie by root 0x%x fail: %v", root, err)
-			return ErrTrieFail
+			return types.ErrTrieFail
 		}
 		// update contract storage trie nodes' hash
 		result, err := tr.Commit(nil)
@@ -98,7 +88,7 @@ func (cache *StorageCache) Save(root common.Hash) error {
 			return err
 		}
 		if root != result {
-			return ErrTrieChanged
+			return types.ErrTrieChanged
 		}
 		// save contract storage trie
 		err = cache.trieDb.Commit(result, false)
@@ -119,7 +109,7 @@ func (cache *StorageCache) Update(root common.Hash) (common.Hash, error) {
 	tr, err := cache.GetTrie(root)
 	if err != nil {
 		log.Errorf("load trie by root 0x%x fail: %v", root, err)
-		return common.Hash{}, ErrTrieFail
+		return common.Hash{}, types.ErrTrieFail
 	}
 
 	for key, value := range cache.dirty {
@@ -163,7 +153,7 @@ func (cache *StorageCache) GetState(root common.Hash, key common.Hash) ([]byte, 
 	tr, err := cache.GetTrie(root)
 	if err != nil {
 		log.Errorf("load trie by root 0x%x fail: %v", root, err)
-		return nil, ErrTrieFail
+		return nil, types.ErrTrieFail
 	}
 	value, err = tr.TryGet(key[:])
 	// ignore ErrNotExist, just return empty []byte
@@ -399,7 +389,7 @@ func (a *Account) SetEquityRoot(root common.Hash) {
 func (a *Account) SetBalance(balance *big.Int) {
 	if balance.Sign() < 0 {
 		log.Errorf("can't set negative balance %v to account %s", balance, a.data.Address.String())
-		panic(ErrNegativeBalance)
+		panic(types.ErrNegativeBalance)
 	}
 	a.data.Balance.Set(balance)
 }
@@ -435,7 +425,7 @@ func (a *Account) GetCode() (types.Code, error) {
 		return nil, err
 	} else if code == nil {
 		log.Errorf("can't load code hash %x", a.data.CodeHash)
-		return nil, ErrLoadCodeFail
+		return nil, types.ErrLoadCodeFail
 	} else {
 		a.code = code
 	}
@@ -470,7 +460,7 @@ func (a *Account) GetAssetCode(code common.Hash) (*types.Asset, error) {
 	}
 
 	if val == nil {
-		return nil, ErrAssetNotExist
+		return nil, types.ErrAssetNotExist
 	}
 
 	var asset types.Asset
@@ -502,9 +492,8 @@ func (a *Account) GetAssetCodeTotalSupply(code common.Hash) (*big.Int, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	if asset == nil {
-		return new(big.Int).SetInt64(0), nil
+		return nil, types.ErrAssetNotExist
 	}
 
 	return asset.TotalSupply, nil
@@ -525,6 +514,9 @@ func (a *Account) GetAssetCodeState(code common.Hash, key string) (string, error
 	if err != nil {
 		return "", err
 	}
+	if asset == nil {
+		return "", types.ErrAssetNotExist
+	}
 
 	return asset.Profile[key], nil
 }
@@ -544,9 +536,12 @@ func (a *Account) GetAssetIdState(id common.Hash) (string, error) {
 	val, err := a.assetId.GetState(root, id)
 	if err != nil {
 		return "", err
-	} else {
-		return string(val), nil
 	}
+
+	if val == nil {
+		return "", types.ErrAssetIdNotExist
+	}
+	return string(val), nil
 }
 
 func (a *Account) SetAssetIdState(id common.Hash, data string) error {
@@ -558,9 +553,8 @@ func (a *Account) GetEquityState(id common.Hash) (*types.AssetEquity, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	if val == nil {
-		return nil, ErrEquityNotExist
+		return nil, types.ErrEquityNotExist
 	}
 
 	var equity types.AssetEquity

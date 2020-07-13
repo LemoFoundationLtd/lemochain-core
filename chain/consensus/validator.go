@@ -12,16 +12,16 @@ import (
 
 // Validator verify block
 type Validator struct {
-	timeoutTime uint64
+	mineTimeout uint64
 	blockLoader BlockLoader
 	dm          *deputynode.Manager
 	txGuard     TxGuard
 	canLoader   CandidateLoader
 }
 
-func NewValidator(timeout uint64, blockLoader BlockLoader, dm *deputynode.Manager, txGuard TxGuard, canLoader CandidateLoader) *Validator {
+func NewValidator(mineTimeout uint64, blockLoader BlockLoader, dm *deputynode.Manager, txGuard TxGuard, canLoader CandidateLoader) *Validator {
 	return &Validator{
-		timeoutTime: timeout,
+		mineTimeout: mineTimeout,
 		blockLoader: blockLoader,
 		dm:          dm,
 		txGuard:     txGuard,
@@ -157,8 +157,8 @@ func verifyExtraData(block *types.Block) error {
 }
 
 // verifyMiner verify the miner slot of deputy node
-func verifyMiner(header *types.Header, parent *types.Header, timeoutTime uint64, dm *deputynode.Manager) error {
-	expectedMiner, err := GetCorrectMiner(parent, int64(header.Time)*1000, int64(timeoutTime), dm)
+func verifyMiner(header *types.Header, parent *types.Header, mineTimeout uint64, dm *deputynode.Manager) error {
+	expectedMiner, err := GetCorrectMiner(parent, int64(header.Time)*1000, int64(mineTimeout), dm)
 	if err != nil {
 		log.Error("Consensus verify fail: can't find correct miner", "block.Height", header.Height, "parent.MinerAddress", parent.MinerAddress, "block.MinerAddress", header.MinerAddress, "err", err)
 		return ErrVerifyHeaderFailed
@@ -173,7 +173,7 @@ func verifyMiner(header *types.Header, parent *types.Header, timeoutTime uint64,
 
 // VerifyMiner verify the miner slot of deputy node
 func (v *Validator) VerifyMiner(header *types.Header, parent *types.Header) error {
-	return verifyMiner(header, parent, v.timeoutTime, v.dm)
+	return verifyMiner(header, parent, v.mineTimeout, v.dm)
 }
 
 // VerifyConfirmPacket verify the confirm data in block body, return valid new confirms and last confirm verification error
@@ -197,7 +197,7 @@ func (v *Validator) VerifyNewConfirms(block *types.Block, sigList []types.SignDa
 
 	for _, sig := range sigList {
 		// 判断validConfirms中是否已经存在sig了
-		if IsValidConfirmsExist(validConfirms, sig) {
+		if IsSigExist(validConfirms, sig) {
 			if lastErr == nil {
 				lastErr = ErrExistedConfirm
 			}
@@ -224,12 +224,12 @@ func (v *Validator) VerifyNewConfirms(block *types.Block, sigList []types.SignDa
 	return validConfirms, lastErr
 }
 
-// IsValidConfirmsExist
-func IsValidConfirmsExist(validConfirms []types.SignData, sig types.SignData) bool {
-	if len(validConfirms) == 0 {
+// IsSigExist
+func IsSigExist(sigs []types.SignData, sig types.SignData) bool {
+	if len(sigs) == 0 {
 		return false
 	}
-	for _, oldSig := range validConfirms {
+	for _, oldSig := range sigs {
 		if bytes.Compare(oldSig[:], sig[:]) == 0 {
 			return true
 		}
@@ -263,7 +263,7 @@ func (v *Validator) VerifyBeforeTxProcess(block *types.Block, chainId uint16) er
 	if err := verifyTxs(block, v.txGuard, chainId); err != nil {
 		return err
 	}
-	if err := verifyMiner(block.Header, parent.Header, v.timeoutTime, v.dm); err != nil {
+	if err := verifyMiner(block.Header, parent.Header, v.mineTimeout, v.dm); err != nil {
 		return err
 	}
 	return nil
