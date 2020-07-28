@@ -104,6 +104,7 @@ func (top *VoteTop) Rank(topSize int, candidates []*Candidate) {
 	top.Reset(result)
 }
 
+// ranking sort the candidates from big to small
 func (top *VoteTop) ranking(topSize int, candidates []*Candidate) []*Candidate {
 	length := len(candidates)
 
@@ -116,6 +117,7 @@ func (top *VoteTop) ranking(topSize int, candidates []*Candidate) []*Candidate {
 	} else {
 		minCnt := min(topSize, length)
 		result := make([]*Candidate, minCnt)
+		// Selection sort
 		for i := 0; i < minCnt; i++ {
 			for j := i + 1; j < length; j++ {
 				val := candidates[i].Total.Cmp(candidates[j].Total)

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
+	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"math/big"
 )
 
@@ -76,17 +77,17 @@ func (block *CBlock) filterCandidates(accounts []*types.AccountData) []*Candidat
 	return candidates
 }
 
-func (block *CBlock) data(candidates []*Candidate) ([]*Candidate, []*Candidate) {
+// getInAndOut returns two candidates array. The first one is candidates in block.Top and updated by changedCandidates. The second one is the candidates which never appeared in block.Top, but appeared in changedCandidates
+func (block *CBlock) getInAndOut(changedCandidates []*Candidate) ([]*Candidate, []*Candidate) {
 	in := block.Top.GetTop()
 	out := make([]*Candidate, 0)
 
-	if len(candidates) <= 0 {
+	if len(changedCandidates) <= 0 {
 		return in, out
 	}
 
 	inMap := block.toHashMap(in)
-	for index := 0; index < len(candidates); index++ {
-		candidate := candidates[index]
+	for _, candidate := range changedCandidates {
 		_, ok := inMap[candidate.Address]
 		if ok {
 			inMap[candidate.Address] = candidate
@@ -109,17 +110,15 @@ func (block *CBlock) dye(candidates []*Candidate) {
 	}
 }
 
-func (block *CBlock) lessThan30(in []*Candidate, out []*Candidate) {
-	block.Top.Rank(max_candidate_count, append(in, out...))
+func (block *CBlock) lessThan30(oldCandidates []*Candidate, newCandidates []*Candidate) {
+	block.Top.Rank(max_candidate_count, append(oldCandidates, newCandidates...))
 }
 
-func (block *CBlock) minIsReduce(oldMin *Candidate, newMin *Candidate) bool {
-	if (oldMin != nil) &&
-		(newMin != nil) &&
-		(newMin.Total.Cmp(oldMin.Total) >= 0) {
-		return false
-	} else {
+func (block *CBlock) minIsIncrease(oldMin *Candidate, newMin *Candidate) bool {
+	if (oldMin != nil) && (newMin != nil) && (newMin.Total.Cmp(oldMin.Total) >= 0) {
 		return true
+	} else {
+		return false
 	}
 }
 
@@ -132,20 +131,26 @@ func (block *CBlock) canPick(src *Candidate, dst *Candidate) bool {
 	}
 }
 
-func (block *CBlock) moreThan30(in []*Candidate, out []*Candidate) {
+func (block *CBlock) moreThan30(oldCandidates []*Candidate, newCandidates []*Candidate) {
+	// sort all 'oldCandidates' candidates and save them oldCandidates 'top'
 	top := NewEmptyVoteTop()
-	top.Rank(max_candidate_count, in)
+	top.Rank(max_candidate_count, oldCandidates)
+
 	newMin := top.Min()
 	oldMin := block.Top.Min()
-	if !block.minIsReduce(oldMin, newMin) {
-		for index := 0; index < len(out); index++ {
-			candidate := out[index]
+	if block.minIsIncrease(oldMin, newMin) {
+		// old candidates get richer now. check if there are new candidates which becomes rich too
+		// try to put 'newCandidates' candidates into 'oldCandidates'
+		for index := 0; index < len(newCandidates); index++ {
+			candidate := newCandidates[index]
 			if block.canPick(newMin, candidate) {
-				in = append(in, candidate)
+				oldCandidates = append(oldCandidates, candidate)
 			}
 		}
-		block.Top.Rank(max_candidate_count, in)
+		block.Top.Rank(max_candidate_count, oldCandidates)
 	} else {
+		// old candidates lose their vote. maybe the last candidates will become normal nodes, and some normal nodes will become new candidates
+		// resort all candidates
 		candidates := block.CandidateTrieDB.GetAll()
 		block.Top.Rank(max_candidate_count, candidates)
 	}
@@ -155,21 +160,27 @@ func (block *CBlock) Ranking(voteLogs types.ChangeLogSlice) {
 	if len(voteLogs) <= 0 {
 		return
 	}
-	candidates := make([]*Candidate, 0)
+	// collect changed candidates
+	changedCandidates := make([]*Candidate, 0)
 	for _, changelog := range voteLogs {
-		newVote := changelog.NewVal.(big.Int)
-		candidates = append(candidates, &Candidate{
+		newVote, ok := changelog.NewVal.(big.Int)
+		if !ok {
+			log.Error("vote log is required!", "changLog", changelog.String())
+			continue
+		}
+		changedCandidates = append(changedCandidates, &Candidate{
 			Address: changelog.Address,
 			Total:   new(big.Int).Set(&newVote),
 		})
 	}
-	// update global candidates
-	block.dye(candidates)
+	// update candidates' data in global list
+	block.dye(changedCandidates)
+	// remove unregistered candidates
 	unregisters := block.collectUnregisters()
 	block.Top.Top = filterUnregisters(block.Top.Top, unregisters)
-	candidates = filterUnregisters(candidates, unregisters)
-
-	updated30, changedOut30 := block.data(candidates)
+	changedCandidates = filterUnregisters(changedCandidates, unregisters)
+	// update top 30
+	updated30, changedOut30 := block.getInAndOut(changedCandidates)
 	if block.Top.Count() < max_candidate_count {
 		block.lessThan30(updated30, changedOut30)
 	} else {
