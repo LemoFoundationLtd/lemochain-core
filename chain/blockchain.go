@@ -16,7 +16,9 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/network"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	db "github.com/LemoFoundationLtd/lemochain-core/store/protocol"
+	"math/rand"
 	"sync/atomic"
+	"time"
 )
 
 var ErrNoGenesis = errors.New("can't get genesis block")
@@ -132,6 +134,9 @@ func (bc *BlockChain) runFeedTranspondLoop() {
 	confirmSub := bc.engine.SubscribeConfirm(confirmCh)
 	fetchConfirmCh := make(chan []network.GetConfirmInfo)
 	fetchConfirmSub := bc.engine.SubscribeFetchConfirm(fetchConfirmCh)
+	snapshotStuckCh := make(chan uint32)
+	subscribe.Sub(subscribe.SnapshotNotStable, snapshotStuckCh)
+
 	for {
 		select {
 		case block := <-currentCh:
@@ -142,11 +147,18 @@ func (bc *BlockChain) runFeedTranspondLoop() {
 			go subscribe.Send(subscribe.NewConfirm, confirm)
 		case confirmsInfo := <-fetchConfirmCh:
 			go subscribe.Send(subscribe.FetchConfirms, confirmsInfo)
+		case snapshotHeight := <-snapshotStuckCh:
+			// get a random height between the snapshotHeight and current block. Or the snapshotHeight maybe still not stable if there are two snapshot forks
+			r := rand.New(rand.NewSource(time.Now().UnixNano()))
+			randomSpace := int32(snapshotHeight - bc.CurrentBlock().Height())
+			fetchHeight := snapshotHeight + uint32(r.Int31n(randomSpace))
+			go bc.FetchConfirm(fetchHeight)
 		case <-bc.quitCh:
 			currentSub.Unsubscribe()
 			stableSub.Unsubscribe()
 			confirmSub.Unsubscribe()
 			fetchConfirmSub.Unsubscribe()
+			subscribe.UnSub(subscribe.SnapshotNotStable, snapshotStuckCh)
 			return
 		}
 	}

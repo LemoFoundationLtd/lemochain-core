@@ -7,6 +7,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
+	"github.com/LemoFoundationLtd/lemochain-core/common/subscribe"
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"math"
 	"sync"
@@ -148,6 +149,7 @@ func (m *Manager) GetTermByHeight(height uint32) (*TermRecord, error) {
 		return m.termList[termIndex], nil
 	} else {
 		log.Warn("Term is not stable", "stableTermCount", termCount, "queryTermIndex", termIndex, "queryHeight", height)
+		go subscribe.Send(subscribe.SnapshotNotStable, GetLastSnapshotHeight(height))
 		return nil, ErrNoStableTerm
 	}
 }

@@ -8,15 +8,16 @@ import (
 )
 
 const (
-	AddNewPeer      = "addNewPeer"
-	DeletePeer      = "deletePeer" // protocol_manager delete peer
-	SrvDeletePeer   = "delPeer"    // server delete peer
-	NewMinedBlock   = "newMinedBlock"
-	NewCurrentBlock = "newCurrentBlock"
-	NewStableBlock  = "newStableBlock"
-	NewTx           = "newTx"
-	NewConfirm      = "newConfirm"
-	FetchConfirms   = "fetchConfirm"
+	AddNewPeer        = "addNewPeer"
+	DeletePeer        = "deletePeer" // protocol_manager delete peer
+	SrvDeletePeer     = "delPeer"    // server delete peer
+	NewMinedBlock     = "newMinedBlock"
+	NewCurrentBlock   = "newCurrentBlock"
+	NewStableBlock    = "newStableBlock"
+	NewTx             = "newTx"
+	NewConfirm        = "newConfirm"
+	FetchConfirms     = "fetchConfirm"
+	SnapshotNotStable = "SnapshotNotStable"
 )
 
 var (
