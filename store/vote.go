@@ -82,10 +82,58 @@ func (top *VoteTop) Count() int {
 
 func (top *VoteTop) GetTop() []*Candidate {
 	result := make([]*Candidate, len(top.Top))
-	for index := 0; index < len(top.Top); index++ {
-		result[index] = top.Top[index].Copy()
+	for index, candidate := range top.Top {
+		result[index] = candidate.Copy()
 	}
 	return result
+}
+
+// MergeCandidates merge candidates together
+func (top *VoteTop) MergeCandidates(candidates []*Candidate) {
+	if len(candidates) <= 0 {
+		return
+	}
+
+	// array to map
+	candidateMap := make(map[common.Address]*Candidate, len(top.Top))
+	for _, candidate := range top.Top {
+		candidateMap[candidate.Address] = candidate.Copy()
+	}
+	// update vote
+	for _, candidate := range candidates {
+		candidateMap[candidate.Address] = candidate
+	}
+	// map to array
+	array := make([]*Candidate, 0, len(candidateMap))
+	for _, v := range candidateMap {
+		array = append(array, v.Copy())
+	}
+	// resort
+	top.Rank(max_candidate_count, array)
+}
+
+// MergeCandidates merge candidates together
+func (top *VoteTop) RemoveCandidates(candidates []*Candidate) {
+	if len(candidates) <= 0 {
+		return
+	}
+
+	// array to map
+	candidateMap := make(map[common.Address]*Candidate, len(top.Top))
+	for _, candidate := range top.Top {
+		candidateMap[candidate.Address] = candidate.Copy()
+	}
+	// update vote
+	for _, candidate := range candidates {
+		candidateMap[candidate.Address] = candidate
+	}
+	// map to array
+	array := make([]*Candidate, 0, len(candidateMap))
+	for _, v := range candidateMap {
+		array = append(array, v.Copy())
+	}
+	// resort
+	top.Rank(max_candidate_count, array)
 }
 
 func (top *VoteTop) Reset(candidates []*Candidate) {

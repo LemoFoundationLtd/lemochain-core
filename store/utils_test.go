@@ -22,11 +22,11 @@ func ClearData() {
 	os.RemoveAll(GetStorePath())
 }
 
-func CreateBlock(hash common.Hash, parent common.Hash, height uint32) *types.Block {
-	header := &types.Header{VersionRoot: hash}
+func CreateBlock(versionRoot common.Hash, parent common.Hash, height uint32) *types.Block {
+	header := &types.Header{}
 	header.Height = height
 	header.ParentHash = parent
-	header.VersionRoot = hash
+	header.VersionRoot = versionRoot
 	block := &types.Block{}
 	block.SetHeader(header)
 	return block
@@ -63,26 +63,26 @@ func GetBlock0() *types.Block {
 
 func GetBlock1() *types.Block {
 	parentBlock := GetBlock0()
-	childHash := common.HexToHash("1111111111111111")
-	return CreateBlock(childHash, parentBlock.Hash(), 1)
+	versionRoot := common.HexToHash("1111111111111111")
+	return CreateBlock(versionRoot, parentBlock.Hash(), 1)
 }
 
 func GetBlock2() *types.Block {
 	parentBlock := GetBlock1()
-	childHash := common.HexToHash("2222222222222222")
-	return CreateBlock(childHash, parentBlock.Hash(), 2)
+	versionRoot := common.HexToHash("2222222222222222")
+	return CreateBlock(versionRoot, parentBlock.Hash(), 2)
 }
 
 func GetBlock3() *types.Block {
 	parentBlock := GetBlock2()
-	childHash := common.HexToHash("33333333333333333")
-	return CreateBlock(childHash, parentBlock.Hash(), 3)
+	versionRoot := common.HexToHash("33333333333333333")
+	return CreateBlock(versionRoot, parentBlock.Hash(), 3)
 }
 
 func GetBlock4() *types.Block {
 	parentBlock := GetBlock3()
-	childHash := common.HexToHash("44444444444444444")
-	return CreateBlock(childHash, parentBlock.Hash(), 4)
+	versionRoot := common.HexToHash("44444444444444444")
+	return CreateBlock(versionRoot, parentBlock.Hash(), 4)
 }
 
 func GetAccount(address string, balance int64, version uint32) *types.AccountData {
