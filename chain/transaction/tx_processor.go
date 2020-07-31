@@ -336,6 +336,7 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 	// 执行交易之前的交易校验
 	err := p.VerifyTxBeforeApply(tx)
 	if err != nil {
+		log.Warn("VerifyTxBeforeApply fail", "error", err.Error())
 		return 0, err
 	}
 
@@ -351,6 +352,7 @@ func (p *TxProcessor) applyTx(gp *types.GasPool, header *types.Header, tx *types
 
 	restGas, err = p.buyAndPayIntrinsicGas(gp, tx, restGas)
 	if err != nil {
+		log.Warn("buyAndPayIntrinsicGas fail", "error", err.Error())
 		return 0, err
 	}
 	// 执行交易. 注：如果此交易为箱子交易，则返回的gasUsed为箱子中的子交易消耗gas与箱子交易本身消耗gas之和
