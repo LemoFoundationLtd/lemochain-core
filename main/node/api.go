@@ -36,6 +36,7 @@ var (
 	ErrTxChainID      = errors.New("tx chainID is incorrect")
 	ErrInputParams    = errors.New("input params incorrect")
 	ErrTxTo           = errors.New("transaction to is incorrect")
+	ErrNotMiner       = errors.New("the node is not a miner")
 )
 
 // Private
@@ -387,9 +388,13 @@ func (m *PublicMineAPI) IsMining() bool {
 }
 
 // Miner
-func (m *PublicMineAPI) Miner() string {
-	address := m.miner.GetMinerAddress()
-	return address.String()
+func (m *PublicMineAPI) Miner() (string, error) {
+	address, isMiner := m.miner.GetMinerAddress()
+	if isMiner {
+		return address.String(), nil
+	} else {
+		return "", ErrNotMiner
+	}
 }
 
 // PrivateNetAPI

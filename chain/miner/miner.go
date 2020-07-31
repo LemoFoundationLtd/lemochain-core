@@ -113,10 +113,10 @@ func (m *Miner) IsMining() bool {
 	return atomic.LoadInt32(&m.mining) == 1
 }
 
-func (m *Miner) GetMinerAddress() common.Address {
+func (m *Miner) GetMinerAddress() (common.Address, bool) {
 	// Get self deputy info in the term which next block in
-	minerAddress, _ := m.dm.GetMyMinerAddress(m.chain.CurrentBlock().Height() + 1)
-	return minerAddress
+	minerAddress, isMiner := m.dm.GetMyMinerAddress(m.chain.CurrentBlock().Height() + 1)
+	return minerAddress, isMiner
 }
 
 // isSelfDeputyNode 本节点是否为代理节点
