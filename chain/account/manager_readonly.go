@@ -79,7 +79,7 @@ func (am *ReadOnlyManager) GetAccount(address common.Address) types.AccountAcces
 		data, err = am.acctDb.Get(address)
 	}
 
-	if err != nil && err != store.ErrNotExist {
+	if err != nil && err != store.ErrAccountNotExist {
 		panic(err)
 	}
 	account := NewReadOnlyAccount(am.db, address, data)

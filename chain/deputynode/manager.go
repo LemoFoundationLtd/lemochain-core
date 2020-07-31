@@ -56,7 +56,7 @@ func (m *Manager) init(blockLoader BlockLoader) {
 	for ; ; snapshotHeight += params.TermDuration {
 		block, err := blockLoader.GetBlockByHeight(snapshotHeight)
 		if err != nil {
-			if err == store.ErrNotExist {
+			if err == store.ErrBlockNotExist {
 				break
 			}
 			log.Errorf("Load snapshot block error: %v", err)

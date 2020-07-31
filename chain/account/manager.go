@@ -82,7 +82,7 @@ func (am *Manager) GetAccount(address common.Address) types.AccountAccessor {
 // GetCanonicalAccount loads an readonly account object from confirmed block in db, or creates a new one if it's not exist. The Modification of the account will not be recorded to store.
 func (am *Manager) GetCanonicalAccount(address common.Address) types.AccountAccessor {
 	data, err := am.db.GetAccount(address)
-	if err != nil && err != store.ErrNotExist {
+	if err != nil && err != store.ErrAccountNotExist {
 		panic(err)
 	}
 	return NewAccount(am.db, address, data)

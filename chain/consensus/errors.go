@@ -20,5 +20,6 @@ var (
 	ErrNotDeputy                = errors.New("not a deputy address in specific height")
 	ErrSmallerMineTime          = errors.New("the time of block must not be smaller than parent's")
 	ErrSetStableBlockToDB       = errors.New("set stable block to db error")
+	ErrSaveConfirmToDB          = errors.New("save confirm to db error")
 	ErrNoTermReward             = errors.New("reward value has not been set")
 )

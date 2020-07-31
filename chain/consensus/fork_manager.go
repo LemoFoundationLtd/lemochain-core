@@ -143,5 +143,5 @@ func (fm *ForkManager) isCurrentForkCut() bool {
 
 	// Test if currentBlock is still in unconfirmed blocks. It must has be pruned by stable block updating
 	_, err := fm.blockLoader.GetUnConfirmByHeight(oldHead.Height(), oldHead.Hash())
-	return err == store.ErrNotExist
+	return err == store.ErrBlockNotExist
 }

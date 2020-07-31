@@ -21,7 +21,7 @@ type testBlockLoader map[uint32]*types.Block
 func (loader testBlockLoader) GetBlockByHeight(height uint32) (*types.Block, error) {
 	block, ok := loader[height]
 	if !ok {
-		return nil, store.ErrNotExist
+		return nil, store.ErrBlockNotExist
 	}
 	return block, nil
 }

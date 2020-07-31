@@ -64,7 +64,7 @@ func NewChainDataBase(home string) *ChainDatabase {
 	db.Beansdb.Start()
 
 	stableBlock, err := db.GetStableBlock()
-	if err != nil && err != ErrNotExist {
+	if err != nil && err != ErrStableBlockNotExist {
 		panic("get stable block err: " + err.Error())
 	}
 
@@ -106,12 +106,16 @@ func (database *ChainDatabase) GetStableBlock() (*types.Block, error) {
 	}
 
 	if stableBlockHash == (common.Hash{}) {
-		return nil, ErrNotExist
+		return nil, ErrStableBlockNotExist
 	}
 
 	stableBlock, err := database.GetBlockByHash(stableBlockHash)
 	if err != nil {
-		return nil, err
+		if err == ErrBlockNotExist {
+			return nil, ErrStableBlockNotExist
+		} else {
+			return nil, err
+		}
 	}
 
 	return stableBlock, nil
@@ -132,11 +136,11 @@ func (database *ChainDatabase) commitStableBlock(val []byte) error {
 	}
 
 	stableBlock, err := database.GetStableBlock()
-	if err != nil && err != ErrNotExist {
+	if err != nil && err != ErrStableBlockNotExist {
 		return err
 	}
 
-	if err == ErrNotExist {
+	if err == ErrStableBlockNotExist {
 		if block.Height() != 0 {
 			panic("commit stable block. stable block is nil.and the block is not genesis")
 		} else {
@@ -304,20 +308,20 @@ func (database *ChainDatabase) blockCommit(hash common.Hash) error {
 
 func (database *ChainDatabase) getBlock4Cache(hash common.Hash) (*types.Block, error) {
 	if (hash == common.Hash{}) {
-		return nil, ErrNotExist
+		return nil, ErrBlockNotExist
 	}
 
 	cBlock := database.UnConfirmBlocks[hash]
 	if (cBlock != nil) && (cBlock.Block != nil) {
 		return cBlock.Block, nil
 	} else {
-		return nil, ErrNotExist
+		return nil, ErrBlockNotExist
 	}
 }
 
 func (database *ChainDatabase) getBlock4DB(hash common.Hash) (*types.Block, error) {
 	if (hash == common.Hash{}) {
-		return nil, ErrNotExist
+		return nil, ErrBlockNotExist
 	}
 
 	block, err := UtilsGetBlockByHash(database.Beansdb, hash)
@@ -326,7 +330,7 @@ func (database *ChainDatabase) getBlock4DB(hash common.Hash) (*types.Block, erro
 	}
 
 	if block == nil {
-		return nil, ErrNotExist
+		return nil, ErrBlockNotExist
 	} else {
 		return block, nil
 	}
@@ -348,10 +352,10 @@ func (database *ChainDatabase) setBlock2DB(hash common.Hash, block *types.Block)
 func (database *ChainDatabase) getBlock(hash common.Hash) (*types.Block, error) {
 	block, err := database.getBlock4Cache(hash)
 	if err != nil {
-		if err != ErrNotExist {
-			return nil, err
-		} else {
+		if err == ErrBlockNotExist {
 			return database.getBlock4DB(hash)
+		} else {
+			return nil, err
 		}
 	} else {
 		return block, nil
@@ -377,7 +381,7 @@ func (database *ChainDatabase) GetBlockByHeight(height uint32) (*types.Block, er
 	}
 
 	if block == nil {
-		return nil, ErrNotExist
+		return nil, ErrBlockNotExist
 	}
 
 	return block, nil
@@ -417,7 +421,7 @@ func (database *ChainDatabase) GetUnConfirmByHeight(height uint32, leafBlockHash
 
 	// confirmed block
 	if height <= database.LastConfirm.Block.Height() {
-		return nil, ErrNotExist
+		return nil, ErrBlockNotExist
 	}
 
 	// find the block parent by parent till reach the specific height
@@ -427,7 +431,7 @@ func (database *ChainDatabase) GetUnConfirmByHeight(height uint32, leafBlockHash
 	}
 
 	if leaf == nil {
-		return nil, ErrNotExist
+		return nil, ErrBlockNotExist
 	}
 	return leaf.Block, nil
 }
@@ -565,8 +569,8 @@ func (database *ChainDatabase) GetConfirms(hash common.Hash) ([]types.SignData, 
 }
 
 func (database *ChainDatabase) LoadLatestBlock() (*types.Block, error) {
-	if database.LastConfirm == nil || database.LastConfirm.Block == nil {
-		return nil, ErrNotExist
+	if database.LastConfirm.Block == nil {
+		return nil, ErrBlockNotExist
 	} else {
 		return database.LastConfirm.Block, nil
 	}
@@ -636,11 +640,7 @@ func (database *ChainDatabase) GetAccount(addr common.Address) (*types.AccountDa
 		return nil, err
 	}
 
-	if account == nil {
-		return nil, ErrNotExist
-	} else {
-		return account, nil
-	}
+	return account, nil
 }
 
 func (database *ChainDatabase) GetTrieDatabase() *TrieDatabase {
@@ -655,7 +655,7 @@ func (database *ChainDatabase) GetActDatabase(hash common.Hash) (*AccountTrieDB,
 	item := database.UnConfirmBlocks[hash]
 	if item == nil {
 		_, err := database.getBlock4DB(hash)
-		if err == ErrNotExist {
+		if err == ErrBlockNotExist {
 			panic("the block not exist. check if the block is set.")
 		}
 
@@ -663,11 +663,7 @@ func (database *ChainDatabase) GetActDatabase(hash common.Hash) (*AccountTrieDB,
 			return nil, err
 		}
 
-		if database.LastConfirm == nil {
-			return NewAccountTrieDB(NewEmptyDatabase(), database.Beansdb), nil
-		} else {
-			return database.LastConfirm.AccountTrieDB, nil
-		}
+		return database.LastConfirm.AccountTrieDB, nil
 	} else {
 		return item.AccountTrieDB, nil
 	}
@@ -681,7 +677,7 @@ func (database *ChainDatabase) GetContractCode(hash common.Hash) (types.Code, er
 	}
 
 	if val == nil {
-		return nil, ErrNotExist
+		return nil, ErrContractCodeNotExist
 	} else {
 		var code types.Code = val
 		return code, nil
@@ -787,7 +783,7 @@ func (database *ChainDatabase) SerializeForks(currentHash common.Hash) string {
 	forkStr := SerializeForks(database.UnConfirmBlocks, currentHash)
 	if len(forkStr) == 0 {
 		forkStr = "No fork"
-		if database.LastConfirm != nil && database.LastConfirm.Block != nil {
+		if database.LastConfirm.Block != nil {
 			hash := database.LastConfirm.Block.Hash()
 			forkStr = fmt.Sprintf("%s. Last stable: [%d]%x", forkStr, database.LastConfirm.Block.Height(), hash[:3])
 		}

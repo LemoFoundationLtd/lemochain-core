@@ -145,7 +145,7 @@ var nodeId = common.FromHex("0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9
 func (l *testDeputyBlock) GetBlockByHeight(height uint32) (*types.Block, error) {
 	// 只记录前四期的共识节点
 	if height > params.TermDuration*2 {
-		return nil, store.ErrNotExist
+		return nil, store.ErrBlockNotExist
 	}
 
 	block := &types.Block{

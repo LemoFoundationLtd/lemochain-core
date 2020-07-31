@@ -72,7 +72,7 @@ type snapshotLoader struct {
 
 func (l snapshotLoader) GetBlockByHeight(height uint32) (*types.Block, error) {
 	if height >= params.TermDuration {
-		return nil, store.ErrNotExist
+		return nil, store.ErrBlockNotExist
 	}
 	return &types.Block{
 		DeputyNodes: l.Nodes,

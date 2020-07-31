@@ -110,7 +110,7 @@ func initDb(dataDir string) protocol.ChainDB {
 func getGenesis(db protocol.ChainDB) *types.Block {
 	block, err := db.GetBlockByHeight(0)
 	if err != nil {
-		if err == store.ErrNotExist {
+		if err == store.ErrBlockNotExist {
 			// init genesis block
 			block = chain.SetupGenesisBlock(db, nil)
 		} else {

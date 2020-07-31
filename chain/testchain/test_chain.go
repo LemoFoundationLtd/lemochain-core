@@ -43,7 +43,7 @@ type parentLoader struct {
 
 func (t *parentLoader) GetParentByHeight(height uint32, sonBlockHash common.Hash) *types.Block {
 	block, err := t.Db.GetUnConfirmByHeight(height, sonBlockHash)
-	if err == store.ErrNotExist {
+	if err == store.ErrBlockNotExist {
 		block, err = t.Db.GetBlockByHeight(height)
 	}
 

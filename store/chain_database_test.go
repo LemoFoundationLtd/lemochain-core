@@ -1,6 +1,7 @@
 package store
 
 import (
+	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/types"
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/log"
@@ -27,7 +28,7 @@ func TestCacheChain_SetBlock(t *testing.T) {
 	defer cacheChain.Close()
 
 	result, err := cacheChain.GetBlockByHeight(0)
-	assert.Equal(t, err, ErrNotExist)
+	assert.Equal(t, err, ErrBlockNotExist)
 
 	// set genesis
 	block0 := GetBlock0()
@@ -68,7 +69,7 @@ func TestCacheChain_SetBlock(t *testing.T) {
 	assert.Equal(t, block1.ParentHash(), result.ParentHash())
 
 	result, err = cacheChain.GetBlockByHeight(block1.Height())
-	assert.Equal(t, err, ErrNotExist)
+	assert.Equal(t, err, ErrBlockNotExist)
 
 	block2 := GetBlock2()
 	err = cacheChain.SetBlock(block2.Hash(), block2)
@@ -79,7 +80,7 @@ func TestCacheChain_SetBlock(t *testing.T) {
 	assert.Equal(t, block2.ParentHash(), result.ParentHash())
 
 	result, err = cacheChain.GetBlockByHeight(block2.Height())
-	assert.Equal(t, err, ErrNotExist)
+	assert.Equal(t, err, ErrBlockNotExist)
 
 	block3 := GetBlock3()
 	err = cacheChain.SetBlock(block3.Hash(), block3)
@@ -108,7 +109,7 @@ func TestCacheChain_SetBlock(t *testing.T) {
 	assert.Equal(t, block3.ParentHash(), result.ParentHash())
 
 	result, err = cacheChain.GetBlockByHeight(block3.Height())
-	assert.Equal(t, err, ErrNotExist)
+	assert.Equal(t, err, ErrBlockNotExist)
 
 }
 
@@ -280,7 +281,7 @@ func TestCacheChain_WriteChain(t *testing.T) {
 	assert.Equal(t, result.Hash(), block2.Hash())
 
 	result, err = cacheChain.GetBlockByHeight(3)
-	assert.Equal(t, ErrNotExist, err)
+	assert.Equal(t, ErrBlockNotExist, err)
 	cacheChain.Close()
 
 	log.Errorf("STEP.3")
@@ -296,7 +297,7 @@ func TestCacheChain_WriteChain(t *testing.T) {
 	assert.Equal(t, result.Hash(), block2.Hash())
 
 	result, err = cacheChain.GetBlockByHeight(3)
-	assert.Equal(t, ErrNotExist, err)
+	assert.Equal(t, ErrBlockNotExist, err)
 	cacheChain.Close()
 
 	log.Errorf("STEP.4")
@@ -461,7 +462,7 @@ func TestCacheChain_SetConfirm2(t *testing.T) {
 
 	parentBlock := GetBlock0()
 	_, err = cacheChain.SetConfirms(parentBlock.Hash(), []types.SignData{signs[0]})
-	assert.Equal(t, err, ErrNotExist)
+	assert.Equal(t, err, ErrBlockNotExist)
 
 	err = cacheChain.SetBlock(parentBlock.Hash(), parentBlock)
 	assert.NoError(t, err)
@@ -629,9 +630,9 @@ func TestChainDatabase_CandidatesRanking(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, block1.Hash(), last.Hash())
 
-	account, err := cacheChain.GetAccount(common.HexToAddress(strconv.Itoa(99)))
+	account, err := cacheChain.GetAccount(common.HexToAddress(fmt.Sprintf("%x", 99)))
 	assert.NoError(t, err)
-	assert.Equal(t, account.Address, common.HexToAddress(strconv.Itoa(99)))
+	assert.Equal(t, account.Address, common.HexToAddress(fmt.Sprintf("%x", 99)))
 
 	all, err := cacheChain.Context.GetCandidates()
 	assert.NoError(t, err)

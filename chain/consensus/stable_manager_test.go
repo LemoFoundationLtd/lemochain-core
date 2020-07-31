@@ -19,7 +19,7 @@ type testBlockStore struct {
 
 func (bs *testBlockStore) LoadLatestBlock() (*types.Block, error) {
 	if bs.Stable == nil {
-		return nil, store.ErrNotExist
+		return nil, store.ErrBlockNotExist
 	}
 	return bs.Stable, nil
 }
@@ -58,7 +58,7 @@ func TestStableManager_StableBlock(t *testing.T) {
 
 	// empty
 	sm := NewStableManager(dm, &testBlockStore{})
-	assert.PanicsWithValue(t, store.ErrNotExist, func() {
+	assert.PanicsWithValue(t, store.ErrBlockNotExist, func() {
 		sm.StableBlock()
 	})
 

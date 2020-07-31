@@ -48,7 +48,7 @@ func (tc *testChain) MineBlock(int64) {
 }
 
 func (tc *testChain) GetBlockByHeight(height uint32) (*types.Block, error) {
-	return nil, store.ErrNotExist
+	return nil, store.ErrBlockNotExist
 }
 
 type testTxpool struct {

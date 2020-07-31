@@ -157,8 +157,10 @@ func (cache *StorageCache) GetState(root common.Hash, key common.Hash) ([]byte, 
 	}
 	value, err = tr.TryGet(key[:])
 	// ignore ErrNotExist, just return empty []byte
-	if err != nil && err != store.ErrNotExist {
-		return nil, err
+	if err != nil {
+		if _, ok := err.(*trie.MissingNodeError); !ok {
+			return nil, err
+		}
 	}
 	if len(value) != 0 {
 		cache.cached[key] = value

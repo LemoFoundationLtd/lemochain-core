@@ -7,6 +7,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/store/leveldb"
 )
 
+// 不会返回ErrNotExist
 func UtilsGetBlockByHash(db *BeansDB, hash common.Hash) (*types.Block, error) {
 	val, err := db.Get(leveldb.ItemFlagBlock, hash.Bytes())
 	if err != nil {
@@ -81,7 +82,7 @@ func UtilsGetAccount(db *BeansDB, address common.Address) (*types.AccountData, e
 	}
 
 	if val == nil {
-		return nil, nil
+		return nil, ErrAccountNotExist
 	}
 
 	var account types.AccountData

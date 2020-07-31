@@ -939,14 +939,10 @@ func TestPatriciaTrie_PutBatch(t *testing.T) {
 
 	result := NewAccountDataBatch(10000)
 	for index := 0; index < 10000; index++ {
-		// result[index].Balance, _ = new(big.Int).SetString("3000000000000000000000000", 10)
-		// result[index].Balance, _ = new(big.Int).SetString("3000000000000000000000000", 10)
-		// result[index].Balance, _ = new(big.Int).SetString("3000000000000000000000000", 10)
-		// result[index].Balance, _ = new(big.Int).SetString("3000000000000000000000000", 10)
-		result[index].Balance = new(big.Int).Set(new(big.Int).SetInt64(50000))
-		result[index].Balance = new(big.Int).Set(new(big.Int).SetInt64(50000))
-		result[index].Balance = new(big.Int).Set(new(big.Int).SetInt64(50000))
-		result[index].Balance = new(big.Int).Set(new(big.Int).SetInt64(50000))
+		result[index].Balance = big.NewInt(50000)
+		result[index].Balance = big.NewInt(50000)
+		result[index].Balance = big.NewInt(50000)
+		result[index].Balance = big.NewInt(50000)
 		triedb.Put(result[index], 100)
 		triedb.Get(result[index].Address)
 	}

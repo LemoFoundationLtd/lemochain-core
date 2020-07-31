@@ -189,7 +189,7 @@ func (c *Confirmer) SaveConfirm(block *types.Block, sigList []types.SignData) (*
 	newBlock, err := c.confirmStore.SetConfirms(block.Hash(), sigList)
 	if err != nil {
 		log.Errorf("SetConfirm failed: %v", err)
-		return nil, err
+		return nil, ErrSaveConfirmToDB
 	}
 	log.Debugf("Now block %s contains %d confirms", newBlock.ShortString(), len(newBlock.Confirms))
 	return newBlock, nil

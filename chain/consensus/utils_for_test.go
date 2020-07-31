@@ -86,7 +86,7 @@ func (bl *testBlockLoader) GetUnConfirmByHeight(height uint32, leafBlockHash com
 	if bl.isUnstable(block) {
 		return block, nil
 	} else {
-		return nil, store.ErrNotExist
+		return nil, store.ErrBlockNotExist
 	}
 }
 
@@ -114,7 +114,7 @@ func (bl *testBlockLoader) GetBlockByHash(hash common.Hash) (*types.Block, error
 			return bl.Blocks[i], nil
 		}
 	}
-	return nil, store.ErrNotExist
+	return nil, store.ErrBlockNotExist
 }
 
 func (bl *testBlockLoader) GetBlockByHeight(height uint32) (*types.Block, error) {
@@ -123,7 +123,7 @@ func (bl *testBlockLoader) GetBlockByHeight(height uint32) (*types.Block, error)
 			return bl.Blocks[i], nil
 		}
 	}
-	return nil, store.ErrNotExist
+	return nil, store.ErrBlockNotExist
 }
 
 // AppendBlock create a new test block then append to testBlockLoader
@@ -259,7 +259,7 @@ type parentLoader struct {
 
 func (t *parentLoader) GetParentByHeight(height uint32, sonBlockHash common.Hash) *types.Block {
 	block, err := t.Db.GetUnConfirmByHeight(height, sonBlockHash)
-	if err == store.ErrNotExist {
+	if err == store.ErrBlockNotExist {
 		block, err = t.Db.GetBlockByHeight(height)
 	}
 

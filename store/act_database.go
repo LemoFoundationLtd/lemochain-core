@@ -697,9 +697,6 @@ func (db *AccountTrieDB) Get(address common.Address) (*types.AccountData, error)
 		if err != nil {
 			return nil, err
 		}
-		if account == nil {
-			return nil, nil
-		}
 
 		db.trie.insert(db.trie.root, key, account)
 		return account.Copy(), nil
