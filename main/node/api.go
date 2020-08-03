@@ -112,7 +112,7 @@ func (a *PublicAccountAPI) GetVoteFor(lemoAddress string) (string, error) {
 }
 
 // GetAssetEquity returns asset equity
-func (a *PublicAccountAPI) GetAssetEquityByAssetId(lemoAddress string, assetId common.Hash) (*types.AssetEquity, error) {
+func (a *PublicAccountAPI) GetAssetEquity(lemoAddress string, assetId common.Hash) (*types.AssetEquity, error) {
 	acc, err := a.GetAccount(lemoAddress)
 	if err != nil {
 		return nil, err
@@ -549,11 +549,6 @@ func (t *PublicTxAPI) SendTx(tx *types.Transaction) (common.Hash, error) {
 	return tx.Hash(), nil
 }
 
-// GetPendingTx
-func (t *PublicTxAPI) GetPendingTx(size int) []*types.Transaction {
-	return t.node.txPool.GetTxs(uint32(time.Now().Unix()), size)
-}
-
 // ReadContract read variables in a contract includes the return value of a function.
 func (t *PublicTxAPI) ReadContract(to *common.Address, data hexutil.Bytes) (string, error) {
 	if to == nil {
@@ -580,4 +575,17 @@ func (t *PublicTxAPI) doCallTransaction(to *common.Address, accM *account.ReadOn
 	ret, err := p.ReadContract(accM, currentHeader, *to, data, timeout)
 
 	return ret, err
+}
+
+type PrivateTxAPI struct {
+	node *Node
+}
+
+func NewPrivateTxAPI(node *Node) *PrivateTxAPI {
+	return &PrivateTxAPI{node}
+}
+
+// GetPendingTx
+func (t *PrivateTxAPI) GetPendingTx(size int) []*types.Transaction {
+	return t.node.txPool.GetTxs(uint32(time.Now().Unix()), size)
 }
