@@ -37,9 +37,9 @@ func newDB() protocol.ChainDB {
 
 // newTransferAssetData
 func newTransferAssetData(assetId common.Hash, amount *big.Int) []byte {
-	trad := &types.TradingAsset{
+	trad := &types.TransferAsset{
 		AssetId: assetId,
-		Value:   amount,
+		Amount:  amount,
 		Input:   nil,
 	}
 	data, _ := json.Marshal(trad)

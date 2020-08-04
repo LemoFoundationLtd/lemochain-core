@@ -296,11 +296,11 @@ func (p *TxProcessor) VerifyAssetTx(tx *types.Transaction) error {
 		}
 		assetCode = modifyInfo.AssetCode
 	case params.TransferAssetTx:
-		TradingAssetInfo, err := types.GetTradingAsset(tx.Data())
+		TransferAssetInfo, err := types.GetTransferAsset(tx.Data())
 		if err != nil {
 			return err
 		}
-		assetId := TradingAssetInfo.AssetId
+		assetId := TransferAssetInfo.AssetId
 		// 分发节点中只能从数据库中查询数据，因此如果在一个区块中发行资产后又对资产进行了操作，在分发节点的执行区块过程中会查询失败。简单起见，直接在这里保证资产发行交易必须稳定
 		issueAcc := p.am.GetCanonicalAccount(tx.From())
 		_, err = issueAcc.GetAssetIdState(assetId)

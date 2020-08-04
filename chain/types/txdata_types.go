@@ -67,24 +67,24 @@ func GetModifyAssetInfo(txData []byte) (*ModifyAssetInfo, error) {
 }
 
 // 交易资产
-//go:generate gencodec -type TradingAsset --field-override tradingAssetMarshaling -out gen_tradingAsset_json.go
-type TradingAsset struct {
+//go:generate gencodec -type TransferAsset --field-override transferAssetMarshaling -out gen_transferAsset_json.go
+type TransferAsset struct {
 	AssetId common.Hash `json:"assetId" gencodec:"required"`
-	Value   *big.Int    `json:"transferAmount" gencodec:"required"`
+	Amount  *big.Int    `json:"transferAmount" gencodec:"required"`
 	Input   []byte      `json:"input"`
 }
 
-type tradingAssetMarshaling struct {
-	Value *hexutil.Big10
+type transferAssetMarshaling struct {
+	Amount *hexutil.Big10
 }
 
-// GetTradingAsset
-func GetTradingAsset(txData []byte) (*TradingAsset, error) {
-	tradingAsset := &TradingAsset{}
-	if err := json.Unmarshal(txData, tradingAsset); err != nil {
+// GetTransferAsset
+func GetTransferAsset(txData []byte) (*TransferAsset, error) {
+	transferAsset := &TransferAsset{}
+	if err := json.Unmarshal(txData, transferAsset); err != nil {
 		return nil, err
 	}
-	return tradingAsset, nil
+	return transferAsset, nil
 }
 
 // 箱子交易

@@ -181,14 +181,14 @@ type AssetDb interface {
 
 // TransferAssetTx
 func (evm *EVM) TransferAssetTx(caller ContractRef, addr common.Address, gas uint64, txData []byte, assetDB AssetDb) (ret []byte, leftOverGas uint64, Err, vmErr error) {
-	tradingAsset, err := types.GetTradingAsset(txData)
+	transferAsset, err := types.GetTransferAsset(txData)
 	if err != nil {
 		log.Errorf("Unmarshal transfer asset data err: %s", err)
 		return nil, gas, err, nil
 	}
-	assetId := tradingAsset.AssetId
-	amount := tradingAsset.Value
-	input := tradingAsset.Input
+	assetId := transferAsset.AssetId
+	amount := transferAsset.Amount
+	input := transferAsset.Input
 
 	if evm.vmConfig.NoRecursion && evm.depth > 0 {
 		return nil, gas, nil, nil

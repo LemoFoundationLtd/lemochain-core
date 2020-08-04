@@ -11,41 +11,41 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common/hexutil"
 )
 
-var _ = (*tradingAssetMarshaling)(nil)
+var _ = (*transferAssetMarshaling)(nil)
 
 // MarshalJSON marshals as JSON.
-func (t TradingAsset) MarshalJSON() ([]byte, error) {
-	type TradingAsset struct {
+func (t TransferAsset) MarshalJSON() ([]byte, error) {
+	type TransferAsset struct {
 		AssetId common.Hash    `json:"assetId" gencodec:"required"`
-		Value   *hexutil.Big10 `json:"transferAmount" gencodec:"required"`
+		Amount  *hexutil.Big10 `json:"transferAmount" gencodec:"required"`
 		Input   []byte         `json:"input"`
 	}
-	var enc TradingAsset
+	var enc TransferAsset
 	enc.AssetId = t.AssetId
-	enc.Value = (*hexutil.Big10)(t.Value)
+	enc.Amount = (*hexutil.Big10)(t.Amount)
 	enc.Input = t.Input
 	return json.Marshal(&enc)
 }
 
 // UnmarshalJSON unmarshals from JSON.
-func (t *TradingAsset) UnmarshalJSON(input []byte) error {
-	type TradingAsset struct {
+func (t *TransferAsset) UnmarshalJSON(input []byte) error {
+	type TransferAsset struct {
 		AssetId *common.Hash   `json:"assetId" gencodec:"required"`
-		Value   *hexutil.Big10 `json:"transferAmount" gencodec:"required"`
+		Amount  *hexutil.Big10 `json:"transferAmount" gencodec:"required"`
 		Input   []byte         `json:"input"`
 	}
-	var dec TradingAsset
+	var dec TransferAsset
 	if err := json.Unmarshal(input, &dec); err != nil {
 		return err
 	}
 	if dec.AssetId == nil {
-		return errors.New("missing required field 'assetId' for TradingAsset")
+		return errors.New("missing required field 'assetId' for TransferAsset")
 	}
 	t.AssetId = *dec.AssetId
-	if dec.Value == nil {
-		return errors.New("missing required field 'transferAmount' for TradingAsset")
+	if dec.Amount == nil {
+		return errors.New("missing required field 'transferAmount' for TransferAsset")
 	}
-	t.Value = (*big.Int)(dec.Value)
+	t.Amount = (*big.Int)(dec.Amount)
 	if dec.Input != nil {
 		t.Input = dec.Input
 	}
