@@ -31,9 +31,9 @@ import (
 )
 
 var (
-	BabelPolyfillJS = deps.MustAsset("babel-polyfill.js")
-	LemoCoreSdkJS   = deps.MustAsset("lemo-core-sdk.js")
-	LemoNodeAdminJS = deps.MustAsset("lemo-node-admin.js")
+	BabelPolyfillJS, _ = deps.Asset("babel-polyfill.js")
+	LemoCoreSdkJS, _   = deps.Asset("lemo-core-sdk.js")
+	LemoNodeAdminJS, _ = deps.Asset("lemo-node-admin.js")
 )
 
 /*
