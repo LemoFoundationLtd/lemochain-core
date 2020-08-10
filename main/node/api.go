@@ -403,12 +403,12 @@ func (m *PublicMineAPI) IsMining() bool {
 }
 
 // Miner
-func (m *PublicMineAPI) Miner() (string, error) {
+func (m *PublicMineAPI) Miner() string {
 	address, isMiner := m.miner.GetMinerAddress()
 	if isMiner {
-		return address.String(), nil
+		return address.String()
 	} else {
-		return "", ErrNotMiner
+		return ""
 	}
 }
 
