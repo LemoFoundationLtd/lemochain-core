@@ -2,6 +2,7 @@ package chain
 
 import (
 	"errors"
+	"fmt"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/consensus"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
@@ -265,6 +266,11 @@ func (bc *BlockChain) FetchConfirm(height uint32) error {
 	}
 	go subscribe.Send(subscribe.FetchConfirms, fetchList)
 	return nil
+}
+
+// LogForks print the forks graph
+func (bc *BlockChain) LogForks() {
+	fmt.Println(bc.db.SerializeForks(bc.CurrentBlock().Hash()))
 }
 
 // Stop stop block chain

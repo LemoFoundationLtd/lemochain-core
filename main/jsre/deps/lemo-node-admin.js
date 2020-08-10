@@ -14,3 +14,4 @@ lemo._createAPI('net', 'fetchConfirm', 'net_fetchConfirm');
 lemo._createAPI('tx', 'getPendingTx', 'tx_getPendingTx');
 
 lemo._createAPI('chain', 'getAllRewardValue', 'chain_getAllRewardValue');
+lemo._createAPI('chain', 'logForks', 'chain_logForks');

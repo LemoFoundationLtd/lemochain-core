@@ -203,9 +203,9 @@ type termRewardInfoMarshaling struct {
 }
 
 // GetAllRewardValue get the value for each bonus
-func (a *PublicChainAPI) GetAllRewardValue() (params.RewardsMap, error) {
+func (c *PublicChainAPI) GetAllRewardValue() (params.RewardsMap, error) {
 	address := params.TermRewardContract
-	acc := a.chain.AccountManager().GetCanonicalAccount(address)
+	acc := c.chain.AccountManager().GetCanonicalAccount(address)
 	key := address.Hash()
 	value, err := acc.GetStorageState(key)
 	if err != nil {
@@ -217,9 +217,9 @@ func (a *PublicChainAPI) GetAllRewardValue() (params.RewardsMap, error) {
 }
 
 // GetTermReward get term reward info by height
-func (a *PublicChainAPI) GetTermReward(height uint32) (*TermRewardInfo, error) {
+func (c *PublicChainAPI) GetTermReward(height uint32) (*TermRewardInfo, error) {
 	term := deputynode.GetTermIndexByHeight(height)
-	termValueMaplist, err := a.GetAllRewardValue()
+	termValueMaplist, err := c.GetAllRewardValue()
 	if err != nil {
 		return nil, err
 	}
@@ -338,8 +338,23 @@ func (c *PublicChainAPI) CurrentHeight() uint32 {
 }
 
 // NodeVersion
-func (n *PublicChainAPI) NodeVersion() string {
+func (c *PublicChainAPI) NodeVersion() string {
 	return params.Version
+}
+
+// PrivateChainAPI
+type PrivateChainAPI struct {
+	chain *chain.BlockChain
+}
+
+// NewPrivateMinerAPI
+func NewPrivateChainAPI(chain *chain.BlockChain) *PrivateChainAPI {
+	return &PrivateChainAPI{chain}
+}
+
+// LogForks
+func (c *PrivateChainAPI) LogForks() {
+	c.chain.LogForks()
 }
 
 // PrivateMineAPI

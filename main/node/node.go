@@ -476,6 +476,12 @@ func (n *Node) apis() []rpc.API {
 			Public:    true,
 		},
 		{
+			Namespace: "chain",
+			Version:   "1.0",
+			Service:   NewPrivateChainAPI(n.chain),
+			Public:    false,
+		},
+		{
 			Namespace: "mine",
 			Version:   "1.0",
 			Service:   NewPublicMineAPI(n.miner),
