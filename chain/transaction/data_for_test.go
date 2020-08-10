@@ -2,6 +2,7 @@ package transaction
 
 import (
 	"crypto/ecdsa"
+	"encoding/json"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/account"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/deputynode"
 	"github.com/LemoFoundationLtd/lemochain-core/chain/params"
@@ -59,7 +60,7 @@ func newDB() protocol.ChainDB {
 
 // newDBToBlockHeight 返回存储了指定高度个稳定区块的db和当前状态的account manager
 func newDBToBlockHeight(height uint32) (db protocol.ChainDB, am *account.Manager) {
-	db, _ = newCoverGenesisDB()
+	db, _ = newDBWithGenesis()
 	dm := deputynode.NewManager(5, db)
 	for i := uint32(1); i <= height; i++ {
 		parentBlock, _ := db.GetBlockByHeight(i - 1)
@@ -70,14 +71,32 @@ func newDBToBlockHeight(height uint32) (db protocol.ChainDB, am *account.Manager
 }
 
 // 新建一个初始化了创世块的db
-func newCoverGenesisDB() (db protocol.ChainDB, genesisHash common.Hash) {
+func newDBWithGenesis() (db protocol.ChainDB, genesisHash common.Hash) {
 	db = newDB()
 	am := account.NewManager(common.Hash{}, db)
-	total, _ := new(big.Int).SetString("1600000000000000000000000000", 10) // 1.6 billion
-	am.GetAccount(godAddr).SetBalance(total)
-	genesis := newBlockForTest(0, nil, am, nil, db, true)
-	genesisHash = genesis.Hash()
-	return db, genesisHash
+	am.GetAccount(godAddr).SetBalance(common.Lemo2Mo("1600000000"))
+	err := am.Finalise()
+	if err != nil {
+		panic(err)
+	}
+	logs := am.GetChangeLogs()
+
+	header := &types.Header{
+		ParentHash:   common.Hash{},
+		MinerAddress: godAddr,
+		TxRoot:       (types.Transactions{}).MerkleRootSha(),
+		Height:       0,
+		GasLimit:     params.GenesisGasLimit,
+		Time:         uint32(time.Now().Unix()),
+		VersionRoot:  am.GetVersionRoot(),
+		LogRoot:      logs.MerkleRootSha(),
+	}
+	block := types.NewBlock(header, nil, logs)
+	block.DeputyNodes = generateDeputies(5)
+	root := block.DeputyNodes.MerkleRootSha()
+	block.Header.DeputyRoot = root[:]
+	saveBlock(db, am, block, true)
+	return db, block.Hash()
 }
 
 func createBlock(height uint32, am *account.Manager, db protocol.ChainDB) *types.Block {
@@ -96,6 +115,24 @@ func createBlock(height uint32, am *account.Manager, db protocol.ChainDB) *types
 	return block
 }
 
+func saveBlock(db protocol.ChainDB, am *account.Manager, block *types.Block, setStable bool) {
+	blockHash := block.Hash()
+	err := db.SetBlock(blockHash, block)
+	if err != nil && err != store.ErrExist {
+		panic(err)
+	}
+	err = am.Save(blockHash)
+	if err != nil {
+		panic(err)
+	}
+	if setStable {
+		_, err := db.SetStableBlock(blockHash)
+		if err != nil {
+			panic(err)
+		}
+	}
+}
+
 // newBlockForTest 只能按照高度顺序创建区块
 func newBlockForTest(height uint32, txs types.Transactions, am *account.Manager, dm *deputynode.Manager, db protocol.ChainDB, stable bool) *types.Block {
 	var (
@@ -103,14 +140,9 @@ func newBlockForTest(height uint32, txs types.Transactions, am *account.Manager,
 		gasUsed    uint64
 		selectTxs  types.Transactions
 	)
-	p := NewTxProcessor(config.RewardManager, config.ChainID, newTestChain(db), am, db, dm)
-	// 判断创世块
-	if height == 0 {
-		parentHash = common.Hash{}
-	} else {
-		parent, _ := db.GetBlockByHeight(height - 1)
-		parentHash = parent.Hash()
-	}
+	p := NewTxProcessor(config.RewardManager, config.ChainID, newTestParentLoader(db), am, db, dm)
+	parent, _ := db.GetBlockByHeight(height - 1)
+	parentHash = parent.Hash()
 
 	header := &types.Header{
 		ParentHash:   parentHash,
@@ -124,7 +156,10 @@ func newBlockForTest(height uint32, txs types.Transactions, am *account.Manager,
 		selectTxs, _, gasUsed = p.ApplyTxs(header, txs, 1000)
 	}
 
-	am.Finalise()
+	err := am.Finalise()
+	if err != nil {
+		panic(err)
+	}
 	logs := am.GetChangeLogs()
 	log.Infof("logs: %s", logs)
 	header.GasUsed = gasUsed
@@ -134,40 +169,48 @@ func newBlockForTest(height uint32, txs types.Transactions, am *account.Manager,
 	block := types.NewBlock(header, selectTxs, logs)
 	// 给快照块添加共识节点列表
 	if block.Height()%params.TermDuration == 0 {
-		deputyNodes := make(types.DeputyNodes, 0)
-		for i := 0; i < 5; i++ {
-			node := &types.DeputyNode{
-				MinerAddress: godAddr,
-				NodeID:       common.FromHex("0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0"),
-				Rank:         uint32(i),
-				Votes:        new(big.Int).SetInt64(int64(5 - i)), // 初始的代理节点列表中的votes都为0，因为初始的时候没有一个账户中有lemo.
-			}
-			deputyNodes = append(deputyNodes, node)
-		}
-		block.DeputyNodes = deputyNodes
+		block.DeputyNodes = generateDeputies(5)
+		root := block.DeputyNodes.MerkleRootSha()
+		block.Header.DeputyRoot = root[:]
 	}
-	hash := block.Hash()
-	db.SetBlock(hash, block)
-	am.Save(hash)
-	if stable {
-		db.SetStableBlock(hash)
-	}
+
+	saveBlock(db, am, block, stable)
 
 	return block
 }
 
+// generateDeputies generate random deputy nodes
+func generateDeputies(num int) types.DeputyNodes {
+	result := make(types.DeputyNodes, num)
+	for i := 0; i < num; i++ {
+		private, _ := crypto.GenerateKey()
+		result[i] = &types.DeputyNode{
+			MinerAddress: crypto.PubkeyToAddress(private.PublicKey),
+			NodeID:       crypto.PrivateKeyToNodeID(private),
+			Rank:         uint32(i),
+			Votes:        big.NewInt(int64(10000000000 - i)),
+		}
+	}
+	return result
+}
+
 // 实现BlockLoader接口
-type testChain struct {
+type testParentLoader struct {
 	db protocol.ChainDB
 }
 
-func newTestChain(db protocol.ChainDB) *testChain {
-	return &testChain{db}
+func newTestParentLoader(db protocol.ChainDB) *testParentLoader {
+	return &testParentLoader{db}
 }
 
-func (t *testChain) GetParentByHeight(height uint32, sonBlockHash common.Hash) *types.Block {
-	block, err := t.db.GetBlockByHeight(height)
+func (t *testParentLoader) GetParentByHeight(height uint32, sonBlockHash common.Hash) *types.Block {
+	block, err := t.db.GetUnConfirmByHeight(height, sonBlockHash)
+	if err == store.ErrBlockNotExist {
+		block, err = t.db.GetBlockByHeight(height)
+	}
+
 	if err != nil {
+		log.Error("load block by height fail", "height", height, "err", err)
 		return nil
 	}
 	return block
@@ -179,6 +222,8 @@ func makeTx(fromPrivate *ecdsa.PrivateKey, from, to common.Address, data []byte,
 
 func makeTransaction(fromPrivate *ecdsa.PrivateKey, from, to common.Address, data []byte, txType uint16, amount *big.Int, gasPrice *big.Int, expiration uint64, gasLimit uint64) *types.Transaction {
 	tx := types.NewTransaction(from, to, amount, gasLimit, gasPrice, data, txType, chainID, expiration, "", string("aaa"))
+	gas, _ := IntrinsicGas(tx.Type(), tx.Data(), tx.Message())
+	tx.SetGasUsed(gas)
 	return signTransaction(tx, fromPrivate)
 }
 
@@ -188,4 +233,54 @@ func signTransaction(tx *types.Transaction, private *ecdsa.PrivateKey) *types.Tr
 		panic(err)
 	}
 	return tx
+}
+
+func makeCreateAssetTx(name string) *types.Transaction {
+	profile := make(types.Profile)
+	profile[types.AssetName] = name
+	profile[types.AssetSymbol] = "DT"
+	profile[types.AssetDescription] = "test issue token"
+	profile[types.AssetFreeze] = "false"
+	profile[types.AssetSuggestedGasLimit] = "60000"
+	asset := &types.Asset{
+		Category:        types.TokenAsset,
+		IsDivisible:     true,
+		Decimal:         18,
+		TotalSupply:     big.NewInt(100000),
+		IsReplenishable: true,
+		Profile:         profile,
+	}
+	data, err := json.Marshal(asset)
+	if err != nil {
+		panic(err)
+	}
+	return makeTx(godPrivate, godAddr, common.HexToAddress("0x1"), data, params.CreateAssetTx, big.NewInt(1))
+}
+
+func makeIssueAssetTx(assetCode common.Hash) *types.Transaction {
+	amount, _ := new(big.Int).SetString("1000111000000000000000000", 10)
+	issue := &types.IssueAsset{
+		AssetCode: assetCode,
+		MetaData:  "demo",
+		Amount:    amount,
+	}
+	data, err := json.Marshal(issue)
+	if err != nil {
+		panic(err)
+	}
+	return makeTx(godPrivate, godAddr, godAddr, data, params.IssueAssetTx, big.NewInt(1))
+}
+
+func makeTransferAssetTx(assetId common.Hash) *types.Transaction {
+	amount, _ := new(big.Int).SetString("1000111000000000000000000", 10)
+	transfer := &types.TransferAsset{
+		AssetId: assetId,
+		Amount:  amount,
+		Input:   nil,
+	}
+	data, err := json.Marshal(transfer)
+	if err != nil {
+		panic(err)
+	}
+	return makeTx(godPrivate, godAddr, common.HexToAddress("0x2"), data, params.TransferAssetTx, big.NewInt(1))
 }

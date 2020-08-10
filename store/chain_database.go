@@ -329,11 +329,7 @@ func (database *ChainDatabase) getBlock4DB(hash common.Hash) (*types.Block, erro
 		return nil, err
 	}
 
-	if block == nil {
-		return nil, ErrBlockNotExist
-	} else {
-		return block, nil
-	}
+	return block, nil
 }
 
 func (database *ChainDatabase) setBlock2DB(hash common.Hash, block *types.Block) error {
@@ -380,10 +376,6 @@ func (database *ChainDatabase) GetBlockByHeight(height uint32) (*types.Block, er
 		return nil, err
 	}
 
-	if block == nil {
-		return nil, ErrBlockNotExist
-	}
-
 	return block, nil
 }
 
@@ -404,7 +396,7 @@ func (database *ChainDatabase) isExistByHash(hash common.Hash) (bool, error) {
 		return true, nil
 	}
 
-	return UtilsHashBlock(database.Beansdb, hash)
+	return UtilsHasBlock(database.Beansdb, hash)
 }
 
 func (database *ChainDatabase) IsExistByHash(hash common.Hash) (bool, error) {
@@ -752,21 +744,8 @@ func (database *ChainDatabase) CandidatesRanking(hash common.Hash, voteLogs type
 	cItem.Ranking(voteLogs)
 }
 
-func (database *ChainDatabase) GetAssetCode(code common.Hash) (common.Address, error) {
-	return UtilsGetAssetCode(database.Beansdb, code)
-}
-
-func (database *ChainDatabase) GetAssetID(id common.Hash) (common.Address, error) {
-	code, err := UtilsGetAssetId(database.Beansdb, id)
-	if err != nil {
-		return common.Address{}, err
-	}
-
-	if code == (common.Hash{}) {
-		return common.Address{}, nil
-	} else {
-		return UtilsGetAssetCode(database.Beansdb, code)
-	}
+func (database *ChainDatabase) GetIssurerByAssetCode(code common.Hash) (common.Address, error) {
+	return UtilsGetIssurer(database.Beansdb, code)
 }
 
 func (database *ChainDatabase) IterateUnConfirms(fn func(*types.Block)) {

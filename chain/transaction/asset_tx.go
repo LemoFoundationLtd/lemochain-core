@@ -139,6 +139,7 @@ func (r *RunAssetEnv) IssueAssetTx(sender, receiver common.Address, txHash commo
 		log.Errorf("Assert's Category not exist ,Category = %d ", AssType)
 		return ErrAssetCategory
 	}
+
 	var snapshot = r.am.Snapshot()
 	newAsset := asset.Clone()
 	// add totalSupply
@@ -159,14 +160,17 @@ func (r *RunAssetEnv) IssueAssetTx(sender, receiver common.Address, txHash commo
 		r.am.RevertToSnapshot(snapshot)
 		return err
 	}
+
 	// set new asset equity for receiver
 	err = recAcc.SetEquityState(equity.AssetId, equity)
 	if err != nil {
 		r.am.RevertToSnapshot(snapshot)
 		return err
 	}
+	log.Debug("SetAssetIdState", "AssetId", equity.AssetId)
 	err = recAcc.SetAssetIdState(equity.AssetId, issueAsset.MetaData)
 	if err != nil {
+		log.Debug("SetAssetIdState fail", "err", err.Error())
 		r.am.RevertToSnapshot(snapshot)
 		return err
 	}

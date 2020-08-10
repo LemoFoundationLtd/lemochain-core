@@ -158,9 +158,7 @@ func (cache *StorageCache) GetState(root common.Hash, key common.Hash) ([]byte, 
 	value, err = tr.TryGet(key[:])
 	// ignore ErrNotExist, just return empty []byte
 	if err != nil {
-		if _, ok := err.(*trie.MissingNodeError); !ok {
-			return nil, err
-		}
+		return nil, err
 	}
 	if len(value) != 0 {
 		cache.cached[key] = value
@@ -515,9 +513,6 @@ func (a *Account) GetAssetCodeState(code common.Hash, key string) (string, error
 	asset, err := a.GetAssetCode(code)
 	if err != nil {
 		return "", err
-	}
-	if asset == nil {
-		return "", types.ErrAssetNotExist
 	}
 
 	return asset.Profile[key], nil

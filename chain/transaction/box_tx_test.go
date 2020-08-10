@@ -73,7 +73,7 @@ func TestBoxTxEnv_RunBoxTxs(t *testing.T) {
 	db := newDB()
 	defer db.Close()
 	am := account.NewManager(common.Hash{}, db)
-	bc := newTestChain(db)
+	bc := newTestParentLoader(db)
 	dm := deputynode.NewManager(5, db)
 	p := NewTxProcessor(godAddr, chainID, bc, am, db, dm)
 	b := NewBoxTxEnv(p)

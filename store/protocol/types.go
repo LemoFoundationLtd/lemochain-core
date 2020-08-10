@@ -34,8 +34,7 @@ type ChainDB interface {
 	GetCandidatesTop(hash common.Hash) []*store.Candidate
 	GetAllCandidates() ([]common.Address, error)
 
-	GetAssetID(id common.Hash) (common.Address, error)
-	GetAssetCode(code common.Hash) (common.Address, error)
+	GetIssurerByAssetCode(code common.Hash) (common.Address, error)
 
 	SerializeForks(currentHash common.Hash) string
 

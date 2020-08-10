@@ -50,7 +50,7 @@ type TestDb struct {
 	issuer common.Address
 }
 
-func (t TestDb) GetAssetCode(code common.Hash) (common.Address, error) {
+func (t TestDb) GetIssurerByAssetCode(code common.Hash) (common.Address, error) {
 	return t.issuer, nil
 }
 

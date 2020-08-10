@@ -84,7 +84,7 @@ func (dta deputyTestDatas) FindByMiner(miner common.Address) *deputyTestData {
 	return nil
 }
 
-// GenerateDeputies generate random deputy nodes
+// generateDeputies generate random deputy nodes
 func generateDeputies(num int) deputyTestDatas {
 	var result deputyTestDatas
 	for i := 0; i < num; i++ {

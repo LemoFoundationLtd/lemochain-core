@@ -47,20 +47,11 @@ func (beansdb *BeansDB) After(flg uint32, key []byte, val []byte) error {
 	} else if flg == leveldb.ItemFlagAct {
 		// log.Debugf("after flag: ItemFlagAct")
 		return nil
-	} else if flg == leveldb.ItemFlagTxIndex {
-		// log.Debugf("after flag: ItemFlagTxIndex")
-		return nil
 	} else if flg == leveldb.ItemFlagCode {
 		// log.Debugf("after flag: ItemFlagCode")
 		return nil
-	} else if flg == leveldb.ItemFlagKV {
-		// log.Debugf("after flag: ItemFlagKV")
-		return nil
 	} else if flg == leveldb.ItemFlagAssetCode {
 		// log.Debugf("after flag: ItemFlagAssetCode")
-		return nil
-	} else if flg == leveldb.ItemFlagAssetId {
-		// log.Debugf("after flag: ItemFlagAssetId")
 		return nil
 	} else {
 		panic("after! unknown flag.flag = " + strconv.Itoa(int(flg)))
@@ -85,24 +76,7 @@ func (beansdb *BeansDB) afterBlock(key []byte, val []byte) error {
 		tx := txs[index]
 		from := tx.From()
 		if tx.Type() == params.CreateAssetTx {
-			err := UtilsSetAssetCode(beansdb, tx.Hash(), from)
-			if err != nil {
-				return err
-			} else {
-				continue
-			}
-		} else if tx.Type() == params.IssueAssetTx {
-			extendData := tx.Data()
-			if len(extendData) <= 0 {
-				panic("tx is issue asset. but data is nil.")
-			}
-
-			issueAsset, err := types.GetIssueAsset(extendData)
-			if err != nil {
-				return err
-			}
-
-			err = UtilsSetAssetId(beansdb, tx.Hash(), issueAsset.AssetCode)
+			err := UtilsBindIssurerAndAssetCode(beansdb, tx.Hash(), from)
 			if err != nil {
 				return err
 			} else {

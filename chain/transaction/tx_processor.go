@@ -101,7 +101,7 @@ func (p *TxProcessor) Process(header *types.Header, txs types.Transactions) (uin
 			return gasUsed, ErrInvalidTxInBlock
 		}
 		if tx.GasUsed() != gas {
-			log.Errorf("Transaction gas used not equal.oldGasUsed: %d, newGasUsed: %d", tx.GasUsed(), gas)
+			log.Error("Transaction gas used not equal", "TxGasUsed", tx.GasUsed(), "actual", gas)
 			return gasUsed, ErrTxGasUsedNotEqual
 		}
 		gasUsed = gasUsed + gas

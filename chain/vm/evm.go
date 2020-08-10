@@ -176,7 +176,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 }
 
 type AssetDb interface {
-	GetAssetCode(code common.Hash) (common.Address, error)
+	GetIssurerByAssetCode(code common.Hash) (common.Address, error)
 }
 
 // TransferAssetTx
@@ -208,7 +208,7 @@ func (evm *EVM) TransferAssetTx(caller ContractRef, addr common.Address, gas uin
 		return nil, gas, ErrAssetEquity, nil
 	}
 	// get asset
-	issuer, err := assetDB.GetAssetCode(senderEquity.AssetCode)
+	issuer, err := assetDB.GetIssurerByAssetCode(senderEquity.AssetCode)
 	if err != nil {
 		return nil, gas, err, nil
 	}

@@ -7,7 +7,6 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/store/leveldb"
 )
 
-// 不会返回ErrNotExist
 func UtilsGetBlockByHash(db *BeansDB, hash common.Hash) (*types.Block, error) {
 	val, err := db.Get(leveldb.ItemFlagBlock, hash.Bytes())
 	if err != nil {
@@ -15,7 +14,7 @@ func UtilsGetBlockByHash(db *BeansDB, hash common.Hash) (*types.Block, error) {
 	}
 
 	if val == nil {
-		return nil, nil
+		return nil, ErrBlockNotExist
 	}
 
 	var block types.Block
@@ -34,45 +33,35 @@ func UtilsGetBlockByHeight(db *BeansDB, height uint32) (*types.Block, error) {
 	}
 
 	if val == nil {
-		return nil, nil
+		return nil, ErrBlockNotExist
 	}
 
 	return UtilsGetBlockByHash(db, common.BytesToHash(val))
 }
 
-func UtilsHashBlock(db *BeansDB, hash common.Hash) (bool, error) {
-	block, err := UtilsGetBlockByHash(db, hash)
-	if err != nil {
+func UtilsHasBlock(db *BeansDB, hash common.Hash) (bool, error) {
+	_, err := UtilsGetBlockByHash(db, hash)
+
+	if err == ErrBlockNotExist {
+		return false, nil
+	} else if err != nil {
 		return false, err
 	} else {
-		return block != nil, nil
+		return true, nil
 	}
 }
 
-func UtilsGetAssetCode(db *BeansDB, code common.Hash) (common.Address, error) {
-	val, err := db.Get(leveldb.ItemFlagAssetCode, code.Bytes())
+func UtilsGetIssurer(db *BeansDB, assetCode common.Hash) (common.Address, error) {
+	val, err := db.Get(leveldb.ItemFlagAssetCode, assetCode.Bytes())
 	if err != nil {
 		return common.Address{}, err
 	}
 
 	if len(val) <= 0 {
-		return common.Address{}, nil
+		return common.Address{}, types.ErrAssetNotExist
 	}
 
 	return common.BytesToAddress(val), nil
-}
-
-func UtilsGetAssetId(db *BeansDB, id common.Hash) (common.Hash, error) {
-	val, err := db.Get(leveldb.ItemFlagAssetId, id.Bytes())
-	if err != nil {
-		return common.Hash{}, err
-	}
-
-	if len(val) <= 0 {
-		return common.Hash{}, nil
-	}
-
-	return common.BytesToHash(val), nil
 }
 
 func UtilsGetAccount(db *BeansDB, address common.Address) (*types.AccountData, error) {
@@ -94,10 +83,6 @@ func UtilsGetAccount(db *BeansDB, address common.Address) (*types.AccountData, e
 	}
 }
 
-func UtilsSetAssetCode(db *BeansDB, code common.Hash, address common.Address) error {
+func UtilsBindIssurerAndAssetCode(db *BeansDB, code common.Hash, address common.Address) error {
 	return db.Put(leveldb.ItemFlagAssetCode, code.Bytes(), address.Bytes())
-}
-
-func UtilsSetAssetId(db *BeansDB, id common.Hash, code common.Hash) error {
-	return db.Put(leveldb.ItemFlagAssetId, id.Bytes(), code.Bytes())
 }

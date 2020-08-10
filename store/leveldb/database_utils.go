@@ -26,12 +26,9 @@ var (
 	ItemFlagBlockHeight = uint32(2)
 	ItemFlagTrie        = uint32(3)
 	ItemFlagAct         = uint32(4)
-	ItemFlagTxIndex     = uint32(5)
-	ItemFlagCode        = uint32(6)
-	ItemFlagKV          = uint32(7)
-	ItemFlagAssetCode   = uint32(8)
-	ItemFlagAssetId     = uint32(9)
-	ItemFlagStop        = uint32(10)
+	ItemFlagCode        = uint32(5)
+	ItemFlagAssetCode   = uint32(6)
+	ItemFlagStop        = uint32(7)
 )
 
 var (
@@ -95,16 +92,10 @@ func Key(flag uint32, key []byte) []byte {
 		return append(append(TrieNodePrefix, key...), TrieNodeSuffix...)
 	case ItemFlagAct:
 		return append(append(AccountPrefix, key...), AccountSuffix...)
-	case ItemFlagTxIndex:
-		return append(append(TxPrefix, key...), TxSuffix...)
 	case ItemFlagCode:
 		return append(append(CodePrefix, key...), CodeSuffix...)
-	case ItemFlagKV:
-		return append(append(KVPrefix, key...), KVSuffix...)
 	case ItemFlagAssetCode:
 		return append(append(AssetCodePrefix, key...), AssetCodeSuffix...)
-	case ItemFlagAssetId:
-		return append(append(AssetIdPrefix, key...), AssetIdSuffix...)
 	default:
 		return key
 	}

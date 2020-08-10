@@ -15,6 +15,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/store/protocol"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
+	"math"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -29,7 +30,7 @@ func TestNewTxProcessor(t *testing.T) {
 	db := newDB()
 	defer db.Close()
 	am := account.NewManager(common.Hash{}, db)
-	bc := newTestChain(db)
+	bc := newTestParentLoader(db)
 	dm := deputynode.NewManager(5, db)
 	p := NewTxProcessor(config.RewardManager, config.ChainID, bc, am, db, dm)
 	assert.Equal(t, chainID, p.ChainID)
@@ -37,70 +38,136 @@ func TestNewTxProcessor(t *testing.T) {
 	assert.False(t, p.cfg.Debug)
 }
 
-// TestTxProcessor_Process 测试process异常情况
-func TestTxProcessor_Process(t *testing.T) {
+func TestTxProcessor_Process_Error(t *testing.T) {
 	ClearData()
-	db, genesisHash := newCoverGenesisDB()
+	db, genesisHash := newDBWithGenesis()
 	defer db.Close()
 	am := account.NewManager(genesisHash, db)
 	dm := deputynode.NewManager(5, db)
-	p := NewTxProcessor(config.RewardManager, config.ChainID, newTestChain(db), am, db, dm)
+	p := NewTxProcessor(config.RewardManager, config.ChainID, newTestParentLoader(db), am, db, dm)
 
 	// 测试执行创世块panic的情况
 	genesisBlock, err := db.LoadLatestBlock()
 	assert.NoError(t, err)
 	assert.PanicsWithValue(t, ErrInvalidGenesis, func() {
-		p.Process(genesisBlock.Header, nil)
+		_, _ = p.Process(genesisBlock.Header, nil)
 	})
 
-	// 测试执行错误交易返回错误的情况
-	block01 := newBlockForTest(1, nil, am, nil, db, false)
-	// 创建一个余额不足的交易
+	// 余额不足的交易
 	randPrivate, _ := crypto.GenerateKey()
 	tx := makeTx(randPrivate, crypto.PubkeyToAddress(randPrivate.PublicKey), godAddr, nil, params.OrdinaryTx, big.NewInt(4000000))
-	_, err = p.Process(block01.Header, types.Transactions{tx})
+	block := newBlockForTest(1, nil, am, nil, db, false)
+	_, err = p.Process(block.Header, types.Transactions{tx})
 	assert.Equal(t, ErrInvalidTxInBlock, err)
+
+	// gasUsed不正确的交易
+	tx = makeTx(godPrivate, godAddr, godAddr, nil, params.OrdinaryTx, big.NewInt(4000000))
+	block = newBlockForTest(1, types.Transactions{tx}, am, nil, db, false)
+	tx.SetGasUsed(0)
+	_, err = p.Process(block.Header, types.Transactions{tx})
+	assert.Equal(t, ErrTxGasUsedNotEqual, err)
 }
 
-// TestTxProcessor_Process_applyTxs 测试 process 和 applyTxs结果一致性问题
-func TestTxProcessor_Process_applyTxs(t *testing.T) {
+func TestTxProcessor_ApplyTxs_Error(t *testing.T) {
+	// TODO
+}
+
+// TestTxProcessor_Process_ApplyTxs 测试 Process 和 ApplyTxs结果一致性问题
+func TestTxProcessor_Process_ApplyTxs(t *testing.T) {
 	ClearData()
-	db, genesisHash := newCoverGenesisDB()
+	db, genesisHash := newDBWithGenesis()
 	defer db.Close()
 	am := account.NewManager(genesisHash, db)
 	dm := deputynode.NewManager(5, db)
-	p := NewTxProcessor(config.RewardManager, config.ChainID, newTestChain(db), am, db, dm)
+	p := NewTxProcessor(config.RewardManager, config.ChainID, newTestParentLoader(db), am, db, dm)
 
-	// 创建5笔普通交易交易
+	// 打包5笔交易进区块
 	txs := make(types.Transactions, 0)
 	for i := 0; i < 5; i++ {
 		tx := makeTx(godPrivate, godAddr, common.HexToAddress("0x9910"+strconv.Itoa(i)), nil, params.OrdinaryTx, big.NewInt(50000))
 		txs = append(txs, tx)
 	}
-	// 打包交易进区块
 	block01 := newBlockForTest(1, txs, am, nil, db, false)
-	applyTxsLogs := block01.ChangeLogs
-	gasUsed := block01.GasUsed()
-	applyTxsVersionRoot := block01.VersionRoot()
-	// 执行交易
+
+	// 成功执行
 	newGasUsed, err := p.Process(block01.Header, txs)
 	assert.NoError(t, err)
-	am.Finalise()
-	processLogs := am.GetChangeLogs()
-	assert.Equal(t, applyTxsLogs, processLogs)                // 验证changlogs一致性
-	assert.Equal(t, gasUsed, newGasUsed)                      // 验证消耗的gas一致性
-	assert.Equal(t, applyTxsVersionRoot, am.GetVersionRoot()) // 验证versionRoot一致性
+	err = am.Finalise()
+	assert.NoError(t, err)
+	// Process和ApplyTxs的执行结果一致
+	assert.Equal(t, block01.Txs, txs)
+	assert.Equal(t, block01.ChangeLogs, am.GetChangeLogs())
+	assert.Equal(t, block01.GasUsed(), newGasUsed)
+	assert.Equal(t, block01.VersionRoot(), am.GetVersionRoot())
 
+	// TODO make Special Txs and at Special Height
 }
 
-// Test_ApplyTxs_TimeoutTime 测试执行交易超时情况
-func Test_ApplyTxs_TimeoutTime(t *testing.T) {
+func TestTxProcessor_applyTx_Assets(t *testing.T) {
 	ClearData()
-	db, genesisHash := newCoverGenesisDB()
+	db, genesisHash := newDBWithGenesis()
 	defer db.Close()
 	am := account.NewManager(genesisHash, db)
 	dm := deputynode.NewManager(5, db)
-	p := NewTxProcessor(config.RewardManager, config.ChainID, newTestChain(db), am, db, dm)
+	p := NewTxProcessor(config.RewardManager, config.ChainID, newTestParentLoader(db), am, db, dm)
+
+	createTx := makeCreateAssetTx("token1")
+	assetCode := createTx.Hash()
+	issueTx := makeIssueAssetTx(assetCode)
+	assetId := assetCode
+	transferTx := makeTransferAssetTx(assetId)
+
+	// issue asset tx can't be packaged with create tx in same block
+	header := &types.Header{
+		MinerAddress: common.HexToAddress("0x1100"),
+		GasLimit:     math.MaxInt64,
+	}
+	p.am.Reset(genesisHash)
+	gp := new(types.GasPool).AddGas(header.GasLimit)
+	_, err := p.applyTx(gp, header, createTx, 0, common.Hash{}, math.MaxInt64)
+	assert.NoError(t, err)
+	_, err = p.applyTx(gp, header, issueTx, 0, common.Hash{}, math.MaxInt64)
+	assert.Equal(t, types.ErrAssetNotExist, err)
+
+	// create tx is not stable
+	block1 := newBlockForTest(1, types.Transactions{createTx}, am, dm, db, false)
+	p.am.Reset(block1.Hash())
+	_, err = p.applyTx(gp, header, issueTx, 0, common.Hash{}, math.MaxInt64)
+	assert.Equal(t, types.ErrAssetNotExist, err)
+
+	// create tx is stable
+	_, err = db.SetStableBlock(block1.Hash())
+	assert.NoError(t, err)
+	p.am.Reset(block1.Hash())
+	// TODO need fix
+	time.Sleep(1 * time.Second)
+
+	_, err = db.GetBlockByHeight(1)
+	assert.NoError(t, err)
+	_, err = p.db.GetIssurerByAssetCode(assetCode)
+	assert.NoError(t, err)
+	p.am.Reset(block1.Hash())
+	_, err = p.applyTx(gp, header, issueTx, 0, common.Hash{}, math.MaxInt64)
+	assert.NoError(t, err)
+	// transfer asset tx can't be packaged with issue tx in same block
+	_, err = p.applyTx(gp, header, transferTx, 0, common.Hash{}, math.MaxInt64)
+	assert.Equal(t, types.ErrAssetIdNotExist, err)
+
+	// issue tx is stable
+	block2 := newBlockForTest(2, types.Transactions{issueTx}, am, dm, db, true)
+	p.am.Reset(block2.Hash())
+	_, err = p.applyTx(gp, header, transferTx, 0, common.Hash{}, math.MaxInt64)
+	assert.NoError(t, err)
+}
+
+// Test_ApplyTxs_TimeoutTime 测试执行交易超时情况
+func TestTxProcessor_ApplyTxs_TimeoutTime(t *testing.T) {
+	ClearData()
+	db, genesisHash := newDBWithGenesis()
+	defer db.Close()
+	am := account.NewManager(genesisHash, db)
+	dm := deputynode.NewManager(5, db)
+	p := NewTxProcessor(config.RewardManager, config.ChainID, newTestParentLoader(db), am, db, dm)
 
 	parentBlock, err := db.LoadLatestBlock()
 	assert.NoError(t, err)
@@ -125,8 +192,8 @@ func Test_ApplyTxs_TimeoutTime(t *testing.T) {
 	assert.Equal(t, len(selectedTxs03), txNum)
 }
 
-// Test_CreatRegisterTxData 构造注册候选节点所用交易data
-func Test_CreatRegisterTxData(t *testing.T) {
+// creatRegisterTxData 构造注册候选节点所用交易data
+func creatRegisterTxData(t *testing.T) {
 	pro1 := make(types.Profile)
 	pro1[types.CandidateKeyIsCandidate] = types.IsCandidateNode
 	pro1[types.CandidateKeyPort] = "1111"
@@ -187,11 +254,11 @@ func TestReimbursement_transaction(t *testing.T) {
 		TxV01          = types.NewReimbursementTransaction(senderAddr, amountReceiver, gasPayerAddr, params.MinCandidateDeposit, []byte{}, params.OrdinaryTx, chainID, uint64(time.Now().Unix()+300), "", "")
 	)
 	ClearData()
-	db, genesisHash := newCoverGenesisDB()
+	db, genesisHash := newDBWithGenesis()
 	defer db.Close()
 	am := account.NewManager(genesisHash, db)
 	dm := deputynode.NewManager(5, db)
-	p := NewTxProcessor(config.RewardManager, config.ChainID, newTestChain(db), am, db, dm)
+	p := NewTxProcessor(config.RewardManager, config.ChainID, newTestParentLoader(db), am, db, dm)
 
 	// create a block contains two account which used to make reimbursement transaction
 	_ = newBlockForTest(1, types.Transactions{Tx01, Tx02}, am, nil, db, true)
@@ -318,11 +385,11 @@ func TestMaxAssetProfile(t *testing.T) {
 // Test_setRewardTx 设置矿工奖励交易
 func Test_setRewardTx(t *testing.T) {
 	ClearData()
-	db, genesisHash := newCoverGenesisDB()
+	db, genesisHash := newDBWithGenesis()
 	defer db.Close()
 	am := account.NewManager(genesisHash, db)
 	dm := deputynode.NewManager(5, db)
-	p := NewTxProcessor(config.RewardManager, config.ChainID, newTestChain(db), am, db, dm)
+	p := NewTxProcessor(config.RewardManager, config.ChainID, newTestParentLoader(db), am, db, dm)
 
 	// 设置第0届的矿工奖励
 	data := setRewardTxData(0, new(big.Int).Div(params.TermRewardPoolTotal, common.Big2))
@@ -390,7 +457,7 @@ func Test_createRewardTxData(t *testing.T) {
 
 func Test_rlpBlock(t *testing.T) {
 	ClearData()
-	db, _ := newCoverGenesisDB()
+	db, _ := newDBWithGenesis()
 	defer db.Close()
 	block, _ := db.GetBlockByHeight(0)
 	buf, err := rlp.EncodeToBytes(block)
@@ -423,11 +490,11 @@ func formatArgs(args string) []byte {
 // Test_Contract 合约测试
 func Test_Contract(t *testing.T) {
 	ClearData()
-	db, genesisHash := newCoverGenesisDB()
+	db, genesisHash := newDBWithGenesis()
 	defer db.Close()
 	am := account.NewManager(genesisHash, db)
 	dm := deputynode.NewManager(5, db)
-	p := NewTxProcessor(config.RewardManager, config.ChainID, newTestChain(db), am, db, dm)
+	p := NewTxProcessor(config.RewardManager, config.ChainID, newTestParentLoader(db), am, db, dm)
 
 	// 创建一个发行erc20代币的合约
 	/*
@@ -638,11 +705,11 @@ func readContraction(p *TxProcessor, db protocol.ChainDB, currentHeader *types.H
 // TestTxProcessor_votesChangeByBalanceChangelog
 func TestTxProcessor_votesChangeByBalanceChangelog(t *testing.T) {
 	ClearData()
-	db, genesisHash := newCoverGenesisDB()
+	db, genesisHash := newDBWithGenesis()
 	defer db.Close()
 	am := account.NewManager(genesisHash, db)
 	dm := deputynode.NewManager(5, db)
-	p := NewTxProcessor(config.RewardManager, config.ChainID, newTestChain(db), am, db, dm)
+	p := NewTxProcessor(config.RewardManager, config.ChainID, newTestParentLoader(db), am, db, dm)
 
 	// 1. 为地址初始化balance
 	txs := make(types.Transactions, 0)

@@ -151,11 +151,7 @@ func (db *BizDatabase) AfterCommit(flag uint32, key []byte, val []byte) error {
 		return nil
 	} else if flag == leveldb.ItemFlagAct {
 		return nil
-	} else if flag == leveldb.ItemFlagTxIndex {
-		return nil
 	} else if flag == leveldb.ItemFlagCode {
-		return nil
-	} else if flag == leveldb.ItemFlagKV {
 		return nil
 	} else {
 		panic("unknown flag.flag = " + strconv.Itoa(int(flag)))
