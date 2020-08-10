@@ -138,12 +138,8 @@ func TestTxProcessor_applyTx_Assets(t *testing.T) {
 	// create tx is stable
 	_, err = db.SetStableBlock(block1.Hash())
 	assert.NoError(t, err)
-	p.am.Reset(block1.Hash())
 	// TODO need fix
 	time.Sleep(1 * time.Second)
-
-	_, err = db.GetBlockByHeight(1)
-	assert.NoError(t, err)
 	_, err = p.db.GetIssurerByAssetCode(assetCode)
 	assert.NoError(t, err)
 	p.am.Reset(block1.Hash())
