@@ -214,7 +214,7 @@ func (n *Node) startRPC() error {
 		n.stopInProc()
 		return err
 	}
-	if err := n.startHTTP(n.httpEndpoint, apis, n.config.HTTPCors, n.config.HTTPVirtualHosts); err != nil {
+	if err := n.startHTTP(apis, n.config.HTTPCors, n.config.HTTPVirtualHosts); err != nil {
 		n.stopIPC()
 		n.stopInProc()
 		return err
@@ -302,9 +302,9 @@ func (n *Node) stopIPC() {
 	}
 }
 
-func (n *Node) startHTTP(endpoint string, apis []rpc.API, cors []string, vhosts []string) error {
+func (n *Node) startHTTP(apis []rpc.API, cors []string, vhosts []string) error {
 	// Short circuit if the HTTP endpoint isn't being exposed
-	if endpoint == "" {
+	if n.httpEndpoint == "" {
 		return nil
 	}
 	// Register all the APIs exposed by the services
@@ -322,13 +322,12 @@ func (n *Node) startHTTP(endpoint string, apis []rpc.API, cors []string, vhosts 
 		listener net.Listener
 		err      error
 	)
-	if listener, err = net.Listen("tcp", endpoint); err != nil {
+	if listener, err = net.Listen("tcp", n.httpEndpoint); err != nil {
 		return err
 	}
 	go rpc.NewHTTPServer(cors, vhosts, handler).Serve(listener)
-	log.Info("HTTP endpoint opened", "url", fmt.Sprintf("http://%s", endpoint), "cors", strings.Join(cors, ","), "vhosts", strings.Join(vhosts, ","))
+	log.Info("HTTP endpoint opened", "url", fmt.Sprintf("http://%s", n.httpEndpoint), "cors", strings.Join(cors, ","), "vhosts", strings.Join(vhosts, ","))
 	// All listeners booted successfully
-	n.httpEndpoint = endpoint
 	n.httpListener = listener
 	n.httpHandler = handler
 

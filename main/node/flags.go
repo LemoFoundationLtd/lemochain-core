@@ -51,7 +51,7 @@ var (
 	}
 	RPCListenAddrFlag = cli.StringFlag{
 		Name:  common.RPCListenAddr,
-		Usage: "HTTP-RPC server listening interface",
+		Usage: "HTTP-RPC server listening ip (0.0.0.0 means all accepted)",
 		Value: DefaultHTTPHost,
 	}
 	RPCPortFlag = cli.IntFlag{
