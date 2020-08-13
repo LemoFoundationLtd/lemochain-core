@@ -22,6 +22,7 @@ import (
 	crand "crypto/rand"
 	"encoding/binary"
 	"encoding/hex"
+	"github.com/LemoFoundationLtd/lemochain-core/common/log"
 	"math/big"
 	"math/rand"
 	"reflect"
@@ -132,6 +133,7 @@ METHODS:
 		mtype := method.Type
 		mname := formatName(method.Name)
 		if method.PkgPath != "" { // method must be exported
+			log.Debugf("ignore API method [%s]: method is not exported", mname)
 			continue
 		}
 
@@ -155,6 +157,7 @@ METHODS:
 				if isExportedOrBuiltinType(argType) {
 					h.argTypes[i-firstArg] = argType
 				} else {
+					log.Debugf("ignore subscribe method: params' type is not exported", mname)
 					continue METHODS
 				}
 			}
@@ -169,6 +172,7 @@ METHODS:
 		for i := firstArg; i < numIn; i++ {
 			argType := mtype.In(i)
 			if !isExportedOrBuiltinType(argType) {
+				log.Debugf("ignore API method [%s]: params' type is not exported", mname)
 				continue METHODS
 			}
 			h.argTypes[i-firstArg] = argType
@@ -177,6 +181,7 @@ METHODS:
 		// check that all returned values are exported or builtin types
 		for i := 0; i < mtype.NumOut(); i++ {
 			if !isExportedOrBuiltinType(mtype.Out(i)) {
+				log.Debugf("ignore API method [%s]: returned values' type is not exported", mname)
 				continue METHODS
 			}
 		}
@@ -191,15 +196,20 @@ METHODS:
 		}
 
 		if h.errPos >= 0 && h.errPos != mtype.NumOut()-1 {
+			log.Debugf("ignore API method [%s]: returned error is not at last", mname)
 			continue METHODS
 		}
 
 		switch mtype.NumOut() {
 		case 0, 1, 2:
 			if mtype.NumOut() == 2 && h.errPos == -1 { // method must one return value and 1 error
+				log.Debugf("ignore API method [%s]: returned too many value", mname)
 				continue METHODS
 			}
+			// log.Debugf("register method [%s]", mname)
 			callbacks[mname] = &h
+		default:
+			log.Debugf("ignore API method [%s]: returned too many value", mname)
 		}
 	}
 
