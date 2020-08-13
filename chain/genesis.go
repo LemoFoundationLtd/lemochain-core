@@ -52,56 +52,56 @@ func (info *CandidateInfo) check() error {
 }
 
 var (
-	TotalLEMO              = common.Lemo2Mo("1600000000")                                   // 1.6 billion
-	DefaultFounder         = decodeMinerAddress("Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG") // Initial LEMO holder
+	TotalLEMO              = common.Lemo2Mo("1600000000")                                  // 1.6 billion
+	DefaultFounder         = mustDecodeAddress("Lemo83RJZ3ATGP2CDQYSRN9AWZQZQ8P24694G5Z3") // Initial LEMO holder
 	DefaultDeputyNodesInfo = infos{
 		&CandidateInfo{
-			MinerAddress:  DefaultFounder,
-			IncomeAddress: decodeMinerAddress("Lemo83GN72GYH2NZ8BA729Z9TCT7KQ5FC3CR6DJG"),
-			NodeID:        common.FromHex("0x5e3600755f9b512a65603b38e30885c98cbac70259c3235c9b3f42ee563b480edea351ba0ff5748a638fe0aeff5d845bf37a3b437831871b48fd32f33cd9a3c0"),
-			Host:          "10.0.22.23",
+			MinerAddress:  mustDecodeAddress("Lemo83PT4CRWS4QQ3KQN5HSQ9KY9C2ZAYWGANZY8"),
+			IncomeAddress: mustDecodeAddress("Lemo83R9DWRRD9HDW8HATA9R558ANQ93R4AQBFHQ"),
+			NodeID:        common.FromHex("0xa496266523fbdc3541d238fbc161ac4aad2b9939c01553e5ec6969581dfe33946703c720cf09870b0f90b13894153a363a17634d78303d28639f63d8c0182e92"),
+			Host:          "127.0.0.1",
 			Port:          "7001",
-			Introduction:  "the first node",
+			Introduction:  "LemoChain Node 1",
 		},
 		&CandidateInfo{
-			MinerAddress:  decodeMinerAddress("Lemo83JW7TBPA7P2P6AR9ZC2WCQJYRNHZ4NJD4CY"),
-			IncomeAddress: decodeMinerAddress("Lemo83JW7TBPA7P2P6AR9ZC2WCQJYRNHZ4NJD4CY"),
-			NodeID:        common.FromHex("0xddb5fc36c415799e4c0cf7046ddde04aad6de8395d777db4f46ebdf258e55ee1d698fdd6f81a950f00b78bb0ea562e4f7de38cb0adf475c5026bb885ce74afb0"),
-			Host:          "10.0.22.23",
+			MinerAddress:  mustDecodeAddress("Lemo848R4PKJ8CZ2TBQC58K92Z2S3N23SNSNAQ8K"),
+			IncomeAddress: mustDecodeAddress("Lemo835SBHCBGGTKR6GY67GNZ6KG9BB85QNTZ5CP"),
+			NodeID:        common.FromHex("0xfc5bd09388220b8c9887edb58f30aee2dfc1cbfddb2842e20b3417332518862f03a37e4d93378c2171f263d007038b9c550dbe06f5b5557a47757ee96cc0e7da"),
+			Host:          "127.0.0.1",
 			Port:          "7002",
-			Introduction:  "the second node",
+			Introduction:  "LemoChain Node 2",
 		},
 		&CandidateInfo{
-			MinerAddress:  decodeMinerAddress("Lemo842BJZ4DKCC764C63Y6A943775JH6NQ3Z33Y"),
-			IncomeAddress: decodeMinerAddress("Lemo842BJZ4DKCC764C63Y6A943775JH6NQ3Z33Y"),
-			NodeID:        common.FromHex("0x7739f34055d3c0808683dbd77a937f8e28f707d5b1e873bbe61f6f2d0347692f36ef736f342fb5ce4710f7e337f062cc2110d134b63a9575f78cb167bfae2f43"),
-			Host:          "10.0.22.23",
+			MinerAddress:  mustDecodeAddress("Lemo848RTFC7D55284Z6RYSBRYNQ7968SSZ74269"),
+			IncomeAddress: mustDecodeAddress("Lemo837F67QG2AC472SRW4PD8RWDB5SQ4H6K9HQP"),
+			NodeID:        common.FromHex("0xc2061403840154c5adfa3aba18a51b246964078ff055dc745bdb77f97fa0a97ee453a13e313ca20ec9bec37bde590e96d1fd29dd49b65e159ddcfcc5771d3077"),
+			Host:          "127.0.0.1",
 			Port:          "7003",
-			Introduction:  "the third node",
+			Introduction:  "LemoChain Node 3",
 		},
 		&CandidateInfo{
-			MinerAddress:  decodeMinerAddress("Lemo837QGPS3YNTYNF53CD88WA5DR3ABNA95W2DG"),
-			IncomeAddress: decodeMinerAddress("Lemo837QGPS3YNTYNF53CD88WA5DR3ABNA95W2DG"),
-			NodeID:        common.FromHex("0x34f0df789b46e9bc09f23d5315b951bc77bbfeda653ae6f5aab564c9b4619322fddb3b1f28d1c434250e9d4dd8f51aa8334573d7281e4d63baba913e9fa6908f"),
-			Host:          "10.0.22.23",
+			MinerAddress:  mustDecodeAddress("Lemo832363YDBAAKZKTKKA24HTZ99288487RF3QG"),
+			IncomeAddress: mustDecodeAddress("Lemo83FW5J9DJ9PTNTFGS9F5FW554QKFFBRNP573"),
+			NodeID:        common.FromHex("0xe9e437bd288d0984197cb8b7c9a6a7e28467613d182c5bad734953516c8e8775119a3eb86eb6bc3a25f0c5c93723553cbdd7909de0108952f17e4fe72af7b05b"),
+			Host:          "127.0.0.1",
 			Port:          "7004",
-			Introduction:  "the fourth node",
+			Introduction:  "LemoChain Node 4",
 		},
 		&CandidateInfo{
-			MinerAddress:  decodeMinerAddress("Lemo83HKZK68JQZDRGS5PWT2ZBSKR5CRADCSJB9B"),
-			IncomeAddress: decodeMinerAddress("Lemo83HKZK68JQZDRGS5PWT2ZBSKR5CRADCSJB9B"),
-			NodeID:        common.FromHex("0x5b980ffb1b463fce4773a22ebf376c07c6207023b016b36ccfaba7be1cd1ab4a91737741cd43b7fcb10879e0fcf314d69fa953daec0f02be0f8f9cedb0cb3797"),
-			Host:          "10.0.22.24",
+			MinerAddress:  mustDecodeAddress("Lemo837PN8C5JB9GG4CYZR3KHDPCDWNY2FWT7KKD"),
+			IncomeAddress: mustDecodeAddress("Lemo83QJCRRWR4J75ANNWNSGZFJBS5DW3AGG4NSG"),
+			NodeID:        common.FromHex("0xa974b10a4ca92e50db6ba2578abe3979787315f081ae3e2b4fbbd93cca45efae75b33ad079d4dea20dd4557b3d746a7f04bfcb362f0347ece7c9677d01e220fe"),
+			Host:          "127.0.0.1",
 			Port:          "7005",
-			Introduction:  "the fifth node",
+			Introduction:  "LemoChain Node 5",
 		},
 		&CandidateInfo{
-			MinerAddress:  decodeMinerAddress("Lemo83W3DBN8QASNAR2D5386QSNGC8DAN8TSRK53"),
-			IncomeAddress: decodeMinerAddress("Lemo83W3DBN8QASNAR2D5386QSNGC8DAN8TSRK53"),
-			NodeID:        common.FromHex("0x0e53292ab5a51286d64422344c6b0751dc1429497fe72820a0a273c70e35bbbe8196af0c5526588fee62f1b68558773501d32e5d552fd9863d740f30ed41f4b0"),
-			Host:          "10.0.22.25",
+			MinerAddress:  mustDecodeAddress("Lemo83QP4RJWR7QCTPRAQ824897A8BJ5DJDGZD2T"),
+			IncomeAddress: mustDecodeAddress("Lemo83QQGTDAYN4SW462WTBKTKBHSDKW96D2W848"),
+			NodeID:        common.FromHex("0xeebeeb9528bc8d172dcf47076eae31da5989ec81eb528cafc566fed593d4a09c20198dc51eecc3b2634ba374d98e0e4bf4d9d2b3c11d5e99b6641745e5e23a9a"),
+			Host:          "127.0.0.1",
 			Port:          "7006",
-			Introduction:  "the sixth node",
+			Introduction:  "LemoChain Node 6",
 		},
 	}
 )
@@ -121,7 +121,7 @@ func buildDeputyNodes(DeputyNodesInfo []*CandidateInfo) types.DeputyNodes {
 	return deputyNodes
 }
 
-func decodeMinerAddress(input string) common.Address {
+func mustDecodeAddress(input string) common.Address {
 	if address, err := common.StringToAddress(input); err == nil {
 		return address
 	}
@@ -130,9 +130,9 @@ func decodeMinerAddress(input string) common.Address {
 
 //go:generate gencodec -type Genesis -field-override genesisSpecMarshaling -out gen_genesis_json.go
 type Genesis struct {
-	Time            uint32           `json:"timestamp"     gencodec:"required"`
+	Time            uint32           `json:"timestamp"`
 	ExtraData       []byte           `json:"extraData"`
-	GasLimit        uint64           `json:"gasLimit"      gencodec:"required"`
+	GasLimit        uint64           `json:"gasLimit"`
 	Founder         common.Address   `json:"founder"       gencodec:"required"`
 	DeputyNodesInfo []*CandidateInfo `json:"deputyNodesInfo"   gencodec:"required"`
 }
@@ -157,15 +157,20 @@ func DefaultGenesisConfig() *Genesis {
 }
 
 func (g *Genesis) Verify() error {
-	if len(g.ExtraData) > 256 {
-		return ErrGenesisExtraTooLong
+	defaultGenesis := DefaultGenesisConfig()
+	if g.Time == 0 {
+		g.Time = defaultGenesis.Time
+	}
+	if g.GasLimit == 0 {
+		g.GasLimit = defaultGenesis.GasLimit
 	}
 
-	// check genesis block's time
 	if int64(g.Time) > time.Now().Unix() {
 		return ErrGenesisTimeTooLarge
 	}
-	// check deputy nodes
+	if len(g.ExtraData) > 256 {
+		return ErrGenesisExtraTooLong
+	}
 	if len(g.DeputyNodesInfo) == 0 {
 		return ErrNoDeputyNodes
 	}
