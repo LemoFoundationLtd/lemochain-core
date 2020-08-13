@@ -137,7 +137,7 @@ func NewPublicChainAPI(chain *chain.BlockChain) *PublicChainAPI {
 	return &PublicChainAPI{chain}
 }
 
-//go:generate gencodec -type DeputyNodeInfo --field-override deputyNodeInfoMarshaling -out gen_deputyNode_info_json.go
+//go:generate gencodec -type DeputyNodeInfo --field-override deputyNodeInfoMarshaling -out gen_deputy_node_info_json.go
 type DeputyNodeInfo struct {
 	MinerAddress  common.Address `json:"minerAddress"   gencodec:"required"` // candidate account address
 	IncomeAddress common.Address `json:"incomeAddress" gencodec:"required"`
@@ -190,7 +190,7 @@ func (c *PublicChainAPI) GetDeputyNodeList() []*DeputyNodeInfo {
 	return result
 }
 
-//go:generate gencodec -type TermRewardInfo --field-override termRewardInfoMarshaling -out gen_termReward_info_json.go
+//go:generate gencodec -type TermRewardInfo --field-override termRewardInfoMarshaling -out gen_term_reward_info_json.go
 type TermRewardInfo struct {
 	Term         uint32   `json:"term" gencodec:"required"`
 	Value        *big.Int `json:"value" gencodec:"required"`
@@ -212,6 +212,10 @@ func (c *PublicChainAPI) GetAllRewardValue() (params.RewardsMap, error) {
 		return nil, err
 	}
 	rewardMap := make(params.RewardsMap)
+	// return empty map if the reward not exist
+	if len(value) == 0 {
+		return rewardMap, nil
+	}
 	err = json.Unmarshal(value, &rewardMap)
 	return rewardMap, err
 }
@@ -219,18 +223,22 @@ func (c *PublicChainAPI) GetAllRewardValue() (params.RewardsMap, error) {
 // GetTermReward get term reward info by height
 func (c *PublicChainAPI) GetTermReward(height uint32) (*TermRewardInfo, error) {
 	term := deputynode.GetTermIndexByHeight(height)
-	termValueMaplist, err := c.GetAllRewardValue()
+	termValueMap, err := c.GetAllRewardValue()
 	if err != nil {
 		return nil, err
 	}
-	if reward, ok := termValueMaplist[term]; ok {
+	if reward, ok := termValueMap[term]; ok {
 		return &TermRewardInfo{
 			Term:         reward.Term,
 			Value:        reward.Value,
 			RewardHeight: (term+1)*params.TermDuration + params.InterimDuration + 1,
 		}, nil
 	} else {
-		return nil, nil
+		return &TermRewardInfo{
+			Term:         term,
+			Value:        new(big.Int),
+			RewardHeight: (term+1)*params.TermDuration + params.InterimDuration + 1,
+		}, nil
 	}
 }
 
