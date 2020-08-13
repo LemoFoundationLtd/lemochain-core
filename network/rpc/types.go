@@ -33,35 +33,31 @@ type API struct {
 
 // callback is a method callback which was registered in the server
 type callback struct {
-	rcvr        reflect.Value  // receiver of method
-	method      reflect.Method // callback
-	argTypes    []reflect.Type // input argument types
-	hasCtx      bool           // method's first argument is a context (not included in argTypes)
-	errPos      int            // err return idx, of -1 when method cannot return error
-	isSubscribe bool           // indication if the callback is a subscription
+	rcvr     reflect.Value  // receiver of method
+	method   reflect.Method // callback
+	argTypes []reflect.Type // input argument types
+	hasCtx   bool           // method's first argument is a context (not included in argTypes)
+	errPos   int            // err return idx, of -1 when method cannot return error
 }
 
 // service represents a registered object
 type service struct {
-	name          string        // name for service
-	typ           reflect.Type  // receiver type
-	callbacks     callbacks     // registered handlers
-	subscriptions subscriptions // available subscriptions/notifications
+	name      string       // name for service
+	typ       reflect.Type // receiver type
+	callbacks callbacks    // registered handlers
 }
 
 // serverRequest is an incoming request
 type serverRequest struct {
-	id            uint64
-	svcname       string
-	callb         *callback
-	args          []reflect.Value
-	isUnsubscribe bool
-	err           Error
+	id      uint64
+	svcname string
+	callb   *callback
+	args    []reflect.Value
+	err     Error
 }
 
 type serviceRegistry map[string]*service // collection of services
 type callbacks map[string]*callback      // collection of RPC callbacks
-type subscriptions map[string]*callback  // collection of subscription callbacks
 
 // Server represents a RPC server
 type Server struct {
@@ -74,12 +70,11 @@ type Server struct {
 
 // rpcRequest represents a raw incoming RPC request
 type rpcRequest struct {
-	service  string
-	method   string
-	id       uint64
-	isPubSub bool
-	params   interface{}
-	err      Error // invalid batch element
+	service string
+	method  string
+	id      uint64
+	params  interface{}
+	err     Error // invalid batch element
 }
 
 // Error wraps RPC errors, which contain an error code in addition to the message.

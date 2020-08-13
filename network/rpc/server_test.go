@@ -71,10 +71,6 @@ func (s *Service) InvalidRets3() (string, string, error) {
 	return "", "", nil
 }
 
-func (s *Service) Subscription(ctx context.Context) (*Subscription, error) {
-	return nil, nil
-}
-
 func TestServerRegisterName(t *testing.T) {
 	server := NewServer()
 	service := new(Service)
@@ -94,10 +90,6 @@ func TestServerRegisterName(t *testing.T) {
 
 	if len(svc.callbacks) != 5 {
 		t.Errorf("Expected 5 callbacks for service 'calc', got %d", len(svc.callbacks))
-	}
-
-	if len(svc.subscriptions) != 1 {
-		t.Errorf("Expected 1 subscription for service 'calc', got %d", len(svc.subscriptions))
 	}
 }
 

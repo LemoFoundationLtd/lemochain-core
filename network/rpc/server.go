@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"reflect"
 	"runtime"
-	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -81,27 +80,24 @@ func (s *Server) RegisterName(name string, rcvr interface{}) error {
 		return fmt.Errorf("%s is not exported", reflect.Indirect(rcvrVal).Type().Name())
 	}
 
-	methods, subscriptions := suitableCallbacks(rcvrVal, svc.typ)
+	methods := suitableCallbacks(rcvrVal, svc.typ)
 
 	// already a previous service register under given sname, merge methods/subscriptions
 	if regsvc, present := s.services[name]; present {
-		if len(methods) == 0 && len(subscriptions) == 0 {
-			return fmt.Errorf("Service %T doesn't have any suitable methods/subscriptions to expose", rcvr)
+		if len(methods) == 0 {
+			return fmt.Errorf("Service %T doesn't have any suitable methods to expose", rcvr)
 		}
 		for _, m := range methods {
 			regsvc.callbacks[formatName(m.method.Name)] = m
-		}
-		for _, s := range subscriptions {
-			regsvc.subscriptions[formatName(s.method.Name)] = s
 		}
 		return nil
 	}
 
 	svc.name = name
-	svc.callbacks, svc.subscriptions = methods, subscriptions
+	svc.callbacks = methods
 
-	if len(svc.callbacks) == 0 && len(svc.subscriptions) == 0 {
-		return fmt.Errorf("Service %T doesn't have any suitable methods/subscriptions to expose", rcvr)
+	if len(svc.callbacks) == 0 {
+		return fmt.Errorf("Service %T doesn't have any suitable methods to expose", rcvr)
 	}
 
 	s.services[svc.name] = svc
@@ -133,12 +129,6 @@ func (s *Server) serveRequest(codec ServerCodec, singleShot bool) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// if the codec supports notification include a notifier that callbacks can use
-	// to send notification to clients. It is thight to the codec/connection. If the
-	// connection is closed the notifier will stop and cancels all active subscriptions.
-	if !singleShot {
-		ctx = context.WithValue(ctx, notifierKey{}, newNotifier(codec))
-	}
 	s.codecsMu.Lock()
 	if atomic.LoadInt32(&s.run) != 1 { // server stopped
 		s.codecsMu.Unlock()
@@ -229,20 +219,6 @@ func (s *Server) Stop() {
 	}
 }
 
-// createSubscription will call the subscription callback and returns the subscription id or error.
-func (s *Server) createSubscription(ctx context.Context, c ServerCodec, req *serverRequest) (ID, error) {
-	// subscription have as first argument the context following optional arguments
-	args := []reflect.Value{req.callb.rcvr, reflect.ValueOf(ctx)}
-	args = append(args, req.args...)
-	reply := req.callb.method.Func.Call(args)
-
-	if !reply[1].IsNil() { // subscription creation failed
-		return "", reply[1].Interface().(error)
-	}
-
-	return reply[0].Interface().(*Subscription).ID, nil
-}
-
 // handle executes a request and returns the response from the callback.
 func (s *Server) handle(ctx context.Context, codec ServerCodec, req *serverRequest) (interface{}, func()) {
 	if req.err != nil {
@@ -259,39 +235,7 @@ func (s *Server) handle(ctx context.Context, codec ServerCodec, req *serverReque
 	// 	return fmt.Sprintf("id: %d, args: [%s]", req.id, strings.Join(msg, ", "))
 	// }})
 
-	if req.isUnsubscribe { // cancel subscription, first param must be the subscription id
-		if len(req.args) >= 1 && req.args[0].Kind() == reflect.String {
-			notifier, supported := NotifierFromContext(ctx)
-			if !supported { // interface doesn't support subscriptions (e.g. http)
-				return codec.CreateErrorResponse(req.id, &callbackError{ErrNotificationsUnsupported.Error()}), nil
-			}
-
-			subid := ID(req.args[0].String())
-			if err := notifier.unsubscribe(subid); err != nil {
-				return codec.CreateErrorResponse(req.id, &callbackError{err.Error()}), nil
-			}
-
-			return codec.CreateResponse(req.id, true), nil
-		}
-		return codec.CreateErrorResponse(req.id, &invalidParamsError{"Expected subscription id as first argument"}), nil
-	}
-
-	if req.callb.isSubscribe {
-		subid, err := s.createSubscription(ctx, codec, req)
-		if err != nil {
-			return codec.CreateErrorResponse(req.id, &callbackError{err.Error()}), nil
-		}
-
-		// active the subscription after the sub id was successfully sent to the client
-		activateSub := func() {
-			notifier, _ := NotifierFromContext(ctx)
-			notifier.activate(subid, req.svcname)
-		}
-
-		return codec.CreateResponse(req.id, subid), activateSub
-	}
-
-	// regular RPC call, prepare arguments
+	// prepare arguments
 	if len(req.args) != len(req.callb.argTypes) {
 		rpcErr := &invalidParamsError{fmt.Sprintf("%s%s%s expects %d parameters, got %d",
 			req.svcname, serviceMethodSeparator, req.callb.method.Name,
@@ -394,37 +338,8 @@ func (s *Server) readRequest(codec ServerCodec) ([]*serverRequest, bool, Error) 
 			continue
 		}
 
-		if r.isPubSub && strings.HasSuffix(r.method, unsubscribeMethodSuffix) {
-			requests[i] = &serverRequest{id: r.id, isUnsubscribe: true}
-			argTypes := []reflect.Type{reflect.TypeOf("")} // expect subscription id as first arg
-			if args, err := codec.ParseRequestArguments(argTypes, r.params); err == nil {
-				requests[i].args = args
-			} else {
-				requests[i].err = &invalidParamsError{err.Error()}
-			}
-			continue
-		}
-
 		if svc, ok = s.services[r.service]; !ok { // rpc method isn't available
 			requests[i] = &serverRequest{id: r.id, err: &methodNotFoundError{r.service, r.method}}
-			continue
-		}
-
-		if r.isPubSub { // lemo_subscribe, r.method contains the subscription method name
-			if callb, ok := svc.subscriptions[r.method]; ok {
-				requests[i] = &serverRequest{id: r.id, svcname: svc.name, callb: callb}
-				if r.params != nil && len(callb.argTypes) > 0 {
-					argTypes := []reflect.Type{reflect.TypeOf("")}
-					argTypes = append(argTypes, callb.argTypes...)
-					if args, err := codec.ParseRequestArguments(argTypes, r.params); err == nil {
-						requests[i].args = args[1:] // first one is service.method name which isn't an actual argument
-					} else {
-						requests[i].err = &invalidParamsError{err.Error()}
-					}
-				}
-			} else {
-				requests[i] = &serverRequest{id: r.id, err: &methodNotFoundError{r.service, r.method}}
-			}
 			continue
 		}
 
