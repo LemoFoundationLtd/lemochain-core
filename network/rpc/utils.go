@@ -157,7 +157,7 @@ METHODS:
 				if isExportedOrBuiltinType(argType) {
 					h.argTypes[i-firstArg] = argType
 				} else {
-					log.Debugf("ignore subscribe method: params' type is not exported", mname)
+					log.Debugf("ignore subscribe method [%s]: params' type is not exported", mname)
 					continue METHODS
 				}
 			}

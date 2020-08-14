@@ -206,7 +206,6 @@ func TestNewBlockChain(t *testing.T) {
 	assert.Equal(t, genesisBlock, blockChain.engine.StableBlock())
 	assert.Equal(t, genesisBlock, blockChain.engine.CurrentBlock())
 	assert.Equal(t, genesisBlock.Hash(), blockChain.Genesis().Hash())
-	assert.Equal(t, genesisBlock.MinerAddress(), blockChain.Founder())
 	assert.Equal(t, testChainID, blockChain.ChainID())
 
 	blockChain.Stop()
