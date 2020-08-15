@@ -38,13 +38,13 @@ func TestBlockAssembler_PrepareHeader(t *testing.T) {
 
 	// I'm a miner
 	now := uint32(time.Now().Unix())
-	newHeader, err := ba.PrepareHeader(parentHeader, []byte{12, 34})
+	newHeader, err := ba.PrepareHeader(parentHeader, "abc")
 	assert.NoError(t, err)
 	assert.Equal(t, parentHeader.Hash(), newHeader.ParentHash)
 	assert.Equal(t, testDeputies[0].MinerAddress, newHeader.MinerAddress)
 	assert.Equal(t, parentHeader.Height+1, newHeader.Height)
 	assert.Equal(t, params.GenesisGasLimit, newHeader.GasLimit)
-	assert.Equal(t, []byte{12, 34}, newHeader.Extra)
+	assert.Equal(t, "abc", newHeader.Extra)
 	assert.Equal(t, true, newHeader.Time >= now)
 
 	// I'm not miner
@@ -52,7 +52,7 @@ func TestBlockAssembler_PrepareHeader(t *testing.T) {
 	private, err := crypto.GenerateKey()
 	assert.NoError(t, err)
 	deputynode.SetSelfNodeKey(private)
-	_, err = ba.PrepareHeader(parentHeader, nil)
+	_, err = ba.PrepareHeader(parentHeader, "")
 	assert.Equal(t, ErrNotDeputy, err)
 	deputynode.SetSelfNodeKey(privateBackup)
 }

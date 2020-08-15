@@ -71,7 +71,7 @@ func (ba *BlockAssembler) MineBlock(header *types.Header, txs types.Transactions
 	return newBlock, invalidTxs, nil
 }
 
-func (ba *BlockAssembler) PrepareHeader(parentHeader *types.Header, extra []byte) (*types.Header, error) {
+func (ba *BlockAssembler) PrepareHeader(parentHeader *types.Header, extra string) (*types.Header, error) {
 	minerAddress, ok := ba.dm.GetMyMinerAddress(parentHeader.Height + 1)
 	if !ok {
 		log.Errorf("Not a deputy at height %d. can't mine", parentHeader.Height+1)

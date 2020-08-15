@@ -21,7 +21,7 @@ var (
 		RewardManager: common.HexToAddress("0x123"),
 		ChainID:       testChainID,
 		MineTimeout:   1234,
-		MinerExtra:    []byte{0x12},
+		MinerExtra:    "abc",
 	}
 )
 

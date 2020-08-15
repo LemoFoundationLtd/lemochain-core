@@ -13,7 +13,7 @@ import (
 func getTestGenesis() *Genesis {
 	return &Genesis{
 		Time:      123,
-		ExtraData: []byte("abc"),
+		ExtraData: "abc",
 		GasLimit:  456,
 		Founder:   common.HexToAddress("0x01"),
 		DeputyNodesInfo: infos{
@@ -49,12 +49,12 @@ func TestGenesis_Verify(t *testing.T) {
 	assert.Equal(t, ErrGenesisTimeTooLarge, genesis.Verify())
 
 	genesis = getTestGenesis()
-	genesis.ExtraData = nil
+	genesis.ExtraData = ""
 	assert.NoError(t, genesis.Verify())
 
 	genesis = getTestGenesis()
 	var extra [257]byte
-	genesis.ExtraData = (extra)[:]
+	genesis.ExtraData = string(extra[:])
 	assert.Equal(t, ErrGenesisExtraTooLong, genesis.Verify())
 
 	genesis = getTestGenesis()

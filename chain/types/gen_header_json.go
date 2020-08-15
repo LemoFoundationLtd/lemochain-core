@@ -26,7 +26,7 @@ func (h Header) MarshalJSON() ([]byte, error) {
 		Time         hexutil.Uint32 `json:"timestamp"        gencodec:"required"`
 		SignData     hexutil.Bytes  `json:"signData"         gencodec:"required"`
 		DeputyRoot   hexutil.Bytes  `json:"deputyRoot"`
-		Extra        hexutil.Bytes  `json:"extraData"`
+		Extra        string         `json:"extraData"`
 		Hash         common.Hash    `json:"hash"`
 	}
 	var enc Header
@@ -60,7 +60,7 @@ func (h *Header) UnmarshalJSON(input []byte) error {
 		Time         *hexutil.Uint32 `json:"timestamp"        gencodec:"required"`
 		SignData     *hexutil.Bytes  `json:"signData"         gencodec:"required"`
 		DeputyRoot   *hexutil.Bytes  `json:"deputyRoot"`
-		Extra        *hexutil.Bytes  `json:"extraData"`
+		Extra        *string         `json:"extraData"`
 	}
 	var dec Header
 	if err := json.Unmarshal(input, &dec); err != nil {

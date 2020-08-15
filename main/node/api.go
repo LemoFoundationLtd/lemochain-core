@@ -276,6 +276,7 @@ func (c *PublicChainAPI) GetBlockByHeight(height uint32, withBody bool) *types.B
 		onlyHeaderBlock := &types.Block{
 			Header: block.Header,
 		}
+		log.Debug("111", "extra", onlyHeaderBlock.Header.Extra)
 		return onlyHeaderBlock
 	}
 }

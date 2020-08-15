@@ -32,7 +32,7 @@ type Header struct {
 	Time         uint32         `json:"timestamp"        gencodec:"required"`
 	SignData     []byte         `json:"signData"         gencodec:"required"`
 	DeputyRoot   []byte         `json:"deputyRoot"`
-	Extra        []byte         `json:"extraData"` // max length is 256 bytes
+	Extra        string         `json:"extraData"` // max length is 256 bytes
 	signerNodeID atomic.Value   // it is a cache
 }
 
@@ -43,7 +43,6 @@ type headerMarshaling struct {
 	Time       hexutil.Uint32
 	SignData   hexutil.Bytes
 	DeputyRoot hexutil.Bytes
-	Extra      hexutil.Bytes
 	Hash       common.Hash `json:"hash"`
 }
 
@@ -138,8 +137,7 @@ func (h *Header) Copy() *Header {
 		copy(cpy.DeputyRoot, h.DeputyRoot)
 	}
 	if len(h.Extra) > 0 {
-		cpy.Extra = make([]byte, len(h.Extra))
-		copy(cpy.Extra, h.Extra)
+		cpy.Extra = h.Extra
 	}
 	return &cpy
 }
@@ -169,7 +167,7 @@ func (h *Header) String() string {
 		fmt.Sprintf("DeputyNodes: %s", common.ToHex(h.DeputyRoot)),
 	}
 	if len(h.Extra) > 0 {
-		set = append(set, fmt.Sprintf("Extra: %s", common.ToHex(h.Extra[:])))
+		set = append(set, fmt.Sprintf("Extra: %s", h.Extra))
 	}
 
 	return fmt.Sprintf("{%s}", strings.Join(set, ", "))
@@ -188,7 +186,7 @@ type rlpHeader struct {
 	Time         uint32
 	SignData     []byte
 	DeputyRoot   []byte
-	Extra        []byte
+	Extra        string
 }
 
 // EncodeRLP implements rlp.Encoder.
@@ -257,7 +255,7 @@ func (b *Block) GasLimit() uint64              { return b.Header.GasLimit }
 func (b *Block) GasUsed() uint64               { return b.Header.GasUsed }
 func (b *Block) Time() uint32                  { return b.Header.Time }
 func (b *Block) SignData() []byte              { return b.Header.SignData }
-func (b *Block) Extra() []byte                 { return b.Header.Extra }
+func (b *Block) Extra() string                 { return b.Header.Extra }
 func (b *Block) SignerNodeID() ([]byte, error) { return b.Header.SignerNodeID() }
 
 func (b *Block) SetHeader(header *Header)        { b.Header = header }

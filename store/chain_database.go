@@ -453,12 +453,12 @@ func (database *ChainDatabase) SetBlock(hash common.Hash, block *types.Block) er
 
 	if database.LastConfirm.Block == nil {
 		if (block.Height() != 0) || (block.ParentHash() != common.Hash{}) {
-			log.Errorf("(database.LastConfirm.Block == nil) && (block.Height() != 0) && (block.ParentHash() != common.Hash{})")
+			log.Errorf("no genesis block, but insert a not genesis block")
 			return ErrArgInvalid
 		}
 	} else {
 		if (block.Height() == 0) || (block.ParentHash() == common.Hash{}) {
-			log.Errorf("(block.Height() == 0) || (block.ParentHash() == common.Hash{})")
+			log.Errorf("(block.Height() == 0) || (block.ParentHash() == common.Hash{}). genesis block is existed")
 			return ErrArgInvalid
 		}
 

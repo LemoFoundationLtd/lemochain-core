@@ -13,7 +13,7 @@ type Config struct {
 	RewardManager common.Address
 	ChainID       uint16
 	MineTimeout   uint64
-	MinerExtra    []byte // Extra data in mined block header. It is short than 256bytes
+	MinerExtra    string // Extra data in mined block header. It is shorter than 256bytes
 }
 
 // BlockMaterial is used for mine a new block

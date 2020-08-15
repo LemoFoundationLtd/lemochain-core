@@ -69,7 +69,7 @@ func NewBlockChain(config Config, dm *deputynode.Manager, db db.ChainDB, flags f
 		RewardManager: bc.Founder(),
 		ChainID:       bc.chainID,
 		MineTimeout:   config.MineTimeout,
-		MinerExtra:    nil,
+		MinerExtra:    params.MinerExtra,
 	}
 	txGuard := txpool.NewTxGuard(latestStableBlock.Time())
 	bc.engine = consensus.NewDPoVP(dpovpCfg, bc.db, bc.dm, bc.am, bc, txPool, txGuard)

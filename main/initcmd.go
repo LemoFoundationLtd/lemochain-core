@@ -10,22 +10,23 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/store"
 	"gopkg.in/urfave/cli.v1"
 	"os"
+	"path/filepath"
+)
+
+const (
+	genesisConfigName = "genesis.json"
 )
 
 var (
 	initCommand = cli.Command{
-		Action:    initGenesis,
-		Name:      "init",
-		Usage:     "Bootstrap and initialize a new genesis block",
-		ArgsUsage: "<genesisPath>",
+		Action: initGenesis,
+		Name:   "init",
+		Usage:  "Bootstrap and initialize a new genesis block",
 		Flags: []cli.Flag{
 			node.DataDirFlag,
 		},
-		Category: "BLOCKCHAIN COMMANDS",
-		Description: `
-The init command initializes a new genesis block.
-
-It expects the genesis file as argument.`,
+		Category:    "BLOCKCHAIN COMMANDS",
+		Description: `The init command initializes a new genesis block.`,
 	}
 )
 
@@ -40,28 +41,24 @@ func initGenesis(ctx *cli.Context) error {
 	log.Setup(log.LevelInfo, false, false)
 
 	// open special genesis config file
-	genesisFile := ctx.Args().First()
 	dir := ctx.GlobalString(node.DataDirFlag.Name)
-	if len(genesisFile) == 0 {
-		log.Crit("Must supply genesis json file path")
-	}
 
-	block := setupGenesisBlock(genesisFile, dir)
+	block := setupGenesisBlock(dir)
 	log.Infof("init genesis succeed. hash: %s", block.Hash().Hex())
 	return nil
 }
 
-func setupGenesisBlock(genesisFile, datadir string) *types.Block {
-	genesis, err := loadGenesisFile(genesisFile)
+func setupGenesisBlock(dataDir string) *types.Block {
+	genesis, err := loadGenesisFile(dataDir)
 	if err != nil {
 		panic(err)
 	}
-	return saveBlock(datadir, genesis)
+	return saveBlock(dataDir, genesis)
 }
 
 // saveBlock save block to db
-func saveBlock(datadir string, genesis *chain.Genesis) *types.Block {
-	chaindata := node.GetChainDataPath(datadir)
+func saveBlock(dataDir string, genesis *chain.Genesis) *types.Block {
+	chaindata := node.GetChainDataPath(dataDir)
 	db := store.NewChainDataBase(chaindata)
 	defer func() {
 		if err := db.Close(); err != nil {
@@ -72,7 +69,14 @@ func saveBlock(datadir string, genesis *chain.Genesis) *types.Block {
 }
 
 // loadGenesisFile
-func loadGenesisFile(filePath string) (*chain.Genesis, error) {
+func loadGenesisFile(dataDir string) (*chain.Genesis, error) {
+	filePath := filepath.Join(dataDir, genesisConfigName)
+	log.Infof("Load genesis config file:%s %s", dataDir, filePath)
+	if _, err := os.Stat(filePath); err != nil {
+		// Try to read from relative path
+		filePath = genesisConfigName
+	}
+	log.Infof("Load genesis config file: %s", filePath)
 	file, err := os.Open(filePath)
 	if err != nil {
 		log.Errorf("%v", err)

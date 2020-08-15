@@ -31,7 +31,7 @@ type DPoVP struct {
 	am         *account.Manager
 	txPool     *txpool.TxPool
 	txGuard    *txpool.TxGuard
-	minerExtra []byte // Extra data in mined block header. It is short than 256bytes
+	minerExtra string // Extra data in mined block header. It is shorter than 256bytes
 
 	stableManager *StableManager           // used to process stable logic
 	forkManager   *ForkManager             // forks manager

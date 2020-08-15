@@ -131,7 +131,7 @@ func mustDecodeAddress(input string) common.Address {
 //go:generate gencodec -type Genesis -field-override genesisSpecMarshaling -out gen_genesis_json.go
 type Genesis struct {
 	Time            uint32           `json:"timestamp"`
-	ExtraData       []byte           `json:"extraData"`
+	ExtraData       string           `json:"extraData"`
 	GasLimit        uint64           `json:"gasLimit"`
 	Founder         common.Address   `json:"founder"       gencodec:"required"`
 	DeputyNodesInfo []*CandidateInfo `json:"deputyNodesInfo"   gencodec:"required"`
@@ -139,7 +139,6 @@ type Genesis struct {
 
 type genesisSpecMarshaling struct {
 	Time            hexutil.Uint32
-	ExtraData       hexutil.Bytes
 	GasLimit        hexutil.Uint64
 	DeputyNodesInfo []*CandidateInfo
 }
@@ -149,7 +148,7 @@ func DefaultGenesisConfig() *Genesis {
 	timeSpan, _ := time.ParseInLocation("2006-01-02 15:04:05", "2018-08-30 12:00:00", time.UTC)
 	return &Genesis{
 		Time:            uint32(timeSpan.Unix()),
-		ExtraData:       []byte(""),
+		ExtraData:       "",
 		GasLimit:        params.GenesisGasLimit,
 		Founder:         DefaultFounder,
 		DeputyNodesInfo: DefaultDeputyNodesInfo,

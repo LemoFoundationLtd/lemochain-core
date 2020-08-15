@@ -115,7 +115,7 @@ func newTestBlockChain(attendedDeputyCount int) *BlockChain {
 	// init genesis block
 	genesis := &Genesis{
 		Time:            uint32(time.Now().Unix()),
-		ExtraData:       []byte(""),
+		ExtraData:       "",
 		GasLimit:        params.GenesisGasLimit,
 		Founder:         testDeputies[0].MinerAddress,
 		DeputyNodesInfo: testDeputies.ToDeputyNodesInfo()[:attendedDeputyCount],
@@ -164,7 +164,7 @@ func newTestBlock(bc *BlockChain) *types.Block {
 	processor := transaction.NewTxProcessor(bc.Founder(), testChainID, bc, bc.am, bc.db, bc.dm)
 	assembler := consensus.NewBlockAssembler(bc.am, bc.dm, processor, bc.engine)
 	parent := bc.CurrentBlock()
-	header, err := assembler.PrepareHeader(parent.Header, nil)
+	header, err := assembler.PrepareHeader(parent.Header, "")
 	if err != nil {
 		panic(err)
 	}

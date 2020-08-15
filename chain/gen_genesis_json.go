@@ -16,7 +16,7 @@ var _ = (*genesisSpecMarshaling)(nil)
 func (g Genesis) MarshalJSON() ([]byte, error) {
 	type Genesis struct {
 		Time            hexutil.Uint32   `json:"timestamp"`
-		ExtraData       hexutil.Bytes    `json:"extraData"`
+		ExtraData       string           `json:"extraData"`
 		GasLimit        hexutil.Uint64   `json:"gasLimit"`
 		Founder         common.Address   `json:"founder"       gencodec:"required"`
 		DeputyNodesInfo []*CandidateInfo `json:"deputyNodesInfo"   gencodec:"required"`
@@ -34,7 +34,7 @@ func (g Genesis) MarshalJSON() ([]byte, error) {
 func (g *Genesis) UnmarshalJSON(input []byte) error {
 	type Genesis struct {
 		Time            *hexutil.Uint32  `json:"timestamp"`
-		ExtraData       *hexutil.Bytes   `json:"extraData"`
+		ExtraData       *string          `json:"extraData"`
 		GasLimit        *hexutil.Uint64  `json:"gasLimit"`
 		Founder         *common.Address  `json:"founder"       gencodec:"required"`
 		DeputyNodesInfo []*CandidateInfo `json:"deputyNodesInfo"   gencodec:"required"`

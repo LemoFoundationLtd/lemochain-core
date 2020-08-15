@@ -90,6 +90,8 @@ var (
 	TermRewardPoolTotal = common.Lemo2Mo("900000000") // 奖励池总量
 	TermRewardContract  = common.HexToAddress("0x09") // 换届奖励的预编译合约地址
 	MinRewardPrecision  = common.Lemo2Mo("1")         // 1 LEMO
+
+	MinerExtra = "" // the message in block leaved by miner. this const needs be moved to config file
 )
 
 //go:generate gencodec -type Reward --field-override RewardMarshaling -out gen_Reward_json.go

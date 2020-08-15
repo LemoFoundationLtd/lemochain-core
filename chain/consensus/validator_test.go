@@ -236,7 +236,7 @@ func Test_verifyDeputy(t *testing.T) {
 	assert.Equal(t, ErrVerifyBlockFailed, verifyDeputy(block04, createCandidateLoader(0, 1, 2))) // 链上获取到的deputyNodes为deputies中的一半
 }
 
-func newBlockForVerifyExtraData(extraData []byte) *types.Block {
+func newBlockForVerifyExtraData(extraData string) *types.Block {
 	return &types.Block{
 		Header: &types.Header{
 			Extra: extraData,
@@ -246,16 +246,16 @@ func newBlockForVerifyExtraData(extraData []byte) *types.Block {
 
 func Test_verifyExtraData(t *testing.T) {
 	// 验证block中的额外数据长度
-	block := newBlockForVerifyExtraData(make([]byte, 0))
+	block := newBlockForVerifyExtraData("")
 	assert.NoError(t, verifyExtraData(block))
 
-	block = newBlockForVerifyExtraData(make([]byte, params.MaxExtraDataLen-1))
+	block = newBlockForVerifyExtraData(string(make([]byte, params.MaxExtraDataLen-1)))
 	assert.NoError(t, verifyExtraData(block))
 
-	block = newBlockForVerifyExtraData(make([]byte, params.MaxExtraDataLen))
+	block = newBlockForVerifyExtraData(string(make([]byte, params.MaxExtraDataLen)))
 	assert.NoError(t, verifyExtraData(block))
 
-	block = newBlockForVerifyExtraData(make([]byte, params.MaxExtraDataLen+1))
+	block = newBlockForVerifyExtraData(string(make([]byte, params.MaxExtraDataLen+1)))
 	assert.Equal(t, ErrVerifyHeaderFailed, verifyExtraData(block))
 }
 
@@ -416,7 +416,7 @@ func newBlockForJudgeDeputy(height uint32, private, extra string) *types.Block {
 	block := &types.Block{
 		Header: &types.Header{
 			Height: height,
-			Extra:  []byte(extra),
+			Extra:  extra,
 		},
 	}
 	hash := block.Hash()
