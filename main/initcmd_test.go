@@ -32,7 +32,7 @@ func clearTmpFiles(configFile, datadir string) {
 // test no test_genesis.json file
 func Test_setupGenesisBlock_no_file(t *testing.T) {
 	assert.PanicsWithValue(t, ErrFileReadFailed, func() {
-		setupGenesisBlock("test_genesis_not_exist.json", "lemo_test_genesis_not_exist")
+		setupGenesisBlock("lemo_test_genesis_not_exist")
 	})
 }
 
@@ -92,12 +92,11 @@ func getTestCases() []genesisTestData {
 
 // test valid file content
 func Test_setupGenesisBlock_valid(t *testing.T) {
-	fileName := "test_correct_genesis.json"
 	datadir := "lemo_data_test_correct"
-	writeGenesisToFile(editDefaultTestContent("", ""), fileName)
-	defer clearTmpFiles(fileName, datadir)
+	writeGenesisToFile(editDefaultTestContent("", ""), genesisConfigName)
+	defer clearTmpFiles(genesisConfigName, datadir)
 
-	block := setupGenesisBlock(fileName, datadir)
+	block := setupGenesisBlock(datadir)
 	assert.Equal(t, uint32(0), block.Height())
 	assert.Equal(t, common.HexToHash("0x2d9cd33d77e199c6ae7a657a9758ec58003ee2f82c811155152bf863de870251"), block.Hash())
 }
@@ -109,13 +108,12 @@ func Test_setupGenesisBlock_invalid(t *testing.T) {
 		t.Run(tc.CaseName, func(t *testing.T) {
 			t.Parallel()
 
-			fileName := "test_" + tc.CaseName + "_genesis.json"
 			datadir := "lemo_data_test_" + tc.CaseName
-			writeGenesisToFile(tc.GenesisFileContent, fileName)
-			defer clearTmpFiles(fileName, datadir)
+			writeGenesisToFile(tc.GenesisFileContent, genesisConfigName)
+			defer clearTmpFiles(genesisConfigName, datadir)
 
 			assert.PanicsWithValue(t, tc.Err, func() {
-				setupGenesisBlock(fileName, datadir)
+				setupGenesisBlock(datadir)
 			})
 		})
 	}

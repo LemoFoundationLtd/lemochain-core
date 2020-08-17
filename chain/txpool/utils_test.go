@@ -8,6 +8,7 @@ import (
 	"github.com/LemoFoundationLtd/lemochain-core/common"
 	"github.com/LemoFoundationLtd/lemochain-core/common/crypto"
 	"math/big"
+	"strconv"
 	"time"
 )
 
@@ -86,7 +87,7 @@ func generateBlocks() []*types.Block {
 
 	appendBlock := func(index int, height, time uint32, parentIndex int, txs ...*types.Transaction) {
 		block := makeBlock(height, time, txs...)
-		block.Header.Extra = []byte{byte(index)}
+		block.Header.Extra = strconv.Itoa(index)
 		if parentIndex >= 0 {
 			block.Header.ParentHash = blocks[parentIndex].Hash()
 		}

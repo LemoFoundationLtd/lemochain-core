@@ -206,8 +206,8 @@ type termRewardInfoMarshaling struct {
 func (c *PublicChainAPI) GetAllRewardValue() (params.RewardsMap, error) {
 	address := params.TermRewardContract
 	acc := c.chain.AccountManager().GetCanonicalAccount(address)
-	key := address.Hash()
-	value, err := acc.GetStorageState(key)
+
+	value, err := acc.GetStorageState(address.Hash())
 	if err != nil {
 		return nil, err
 	}
@@ -276,7 +276,6 @@ func (c *PublicChainAPI) GetBlockByHeight(height uint32, withBody bool) *types.B
 		onlyHeaderBlock := &types.Block{
 			Header: block.Header,
 		}
-		log.Debug("111", "extra", onlyHeaderBlock.Header.Extra)
 		return onlyHeaderBlock
 	}
 }

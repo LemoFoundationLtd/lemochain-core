@@ -71,7 +71,6 @@ func saveBlock(dataDir string, genesis *chain.Genesis) *types.Block {
 // loadGenesisFile
 func loadGenesisFile(dataDir string) (*chain.Genesis, error) {
 	filePath := filepath.Join(dataDir, genesisConfigName)
-	log.Infof("Load genesis config file:%s %s", dataDir, filePath)
 	if _, err := os.Stat(filePath); err != nil {
 		// Try to read from relative path
 		filePath = genesisConfigName

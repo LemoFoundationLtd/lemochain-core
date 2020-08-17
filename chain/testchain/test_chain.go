@@ -188,7 +188,7 @@ func InitGenesis(db protocol.ChainDB) *types.Block {
 
 	genesis := &chain.Genesis{
 		Time:            defaultBlockInfos[0].time,
-		ExtraData:       []byte("test chain"),
+		ExtraData:       "test chain",
 		GasLimit:        params.GenesisGasLimit,
 		Founder:         defaultBlockInfos[0].author,
 		DeputyNodesInfo: deputies,
@@ -218,7 +218,7 @@ func makeBlock(db protocol.ChainDB, dm *deputynode.Manager, info blockInfo, pare
 	canLoader := candidateLoader(defaultBlocks[0].DeputyNodes)
 	assembler := consensus.NewBlockAssembler(am, dm, processor, canLoader)
 	// account
-	header, err := assembler.PrepareHeader(parentHeader, nil)
+	header, err := assembler.PrepareHeader(parentHeader, "")
 	if err != nil {
 		panic(err)
 	}
