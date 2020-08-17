@@ -26,19 +26,10 @@ var (
 		Usage: "Data directory for the databases",
 		Value: DefaultDataDir(),
 	}
-	MaxPeersFlag = cli.IntFlag{
-		Name:  common.MaxPeers,
-		Usage: "Maximum number of network peers",
-		Value: DefaultP2pMaxPeerNum,
-	}
 	ListenPortFlag = cli.IntFlag{
 		Name:  common.ListenPort,
 		Usage: "Network listening port",
 		Value: DefaultP2PPort,
-	}
-	ExtraDataFlag = cli.StringFlag{
-		Name:  common.ExtraData,
-		Usage: "Block extra data set by the miner (default = client version)",
 	}
 	AutoMineFlag = cli.BoolFlag{
 		Name:  common.MiningEnabled,
@@ -48,11 +39,6 @@ var (
 	RPCEnabledFlag = cli.BoolFlag{
 		Name:  common.RPCEnabled,
 		Usage: "Enable the HTTP-RPC server",
-	}
-	RPCListenAddrFlag = cli.StringFlag{
-		Name:  common.RPCListenAddr,
-		Usage: "HTTP-RPC server listening ip (0.0.0.0 means all accepted)",
-		Value: DefaultHTTPHost,
 	}
 	RPCPortFlag = cli.IntFlag{
 		Name:  common.RPCPort,
@@ -81,11 +67,6 @@ var (
 		Name:  common.WSEnabled,
 		Usage: "Enable the WS-RPC server",
 	}
-	WSListenAddrFlag = cli.StringFlag{
-		Name:  common.WSListenAddr,
-		Usage: "WS-RPC server listening interface",
-		Value: DefaultWSHost,
-	}
 	WSPortFlag = cli.IntFlag{
 		Name:  common.WSPort,
 		Usage: "WS-RPC server listening port",
@@ -95,53 +76,26 @@ var (
 		Name:  common.WSAllowedOrigins,
 		Usage: "Origins from which to accept websockets request.",
 	}
-	DebugFlag = cli.BoolFlag{
-		Name:  common.Debug,
-		Usage: "Debug for runtime",
-	}
-	JSpathFlag = cli.StringFlag{
-		Name:  common.JSpath,
-		Usage: "JavaScript root path for `loadScript`",
-		Value: ".",
-	}
 	LogLevelFlag = cli.IntFlag{
 		Name:  common.LogLevel,
 		Usage: "Output log level",
 		Value: 4,
 	}
-	MetricsEnabledFlag = cli.BoolFlag{
-		Name:  common.MetricsEnabled,
-		Usage: "start metrics",
-	}
 )
-
-// setListenPort set listen port
-func setListenPort(flags flag.CmdFlags, cfg *p2p.Config) {
-	cfg.Port = flags.Int(ListenPortFlag.Name)
-}
-
-// setMaxPeers set max connection number
-func setMaxPeers(flags flag.CmdFlags, cfg *p2p.Config) {
-	cfg.MaxPeerNum = flags.Int(MaxPeersFlag.Name)
-}
 
 // setP2PConfig set p2p config
 func setP2PConfig(flags flag.CmdFlags, cfg *p2p.Config) {
-	setListenPort(flags, cfg)
-	setMaxPeers(flags, cfg)
+	// set listen port
+	cfg.Port = flags.Int(ListenPortFlag.Name)
 }
 
 // setHttp set http-rpc
 func setHttp(flags flag.CmdFlags, cfg *Config) {
-	if flags.Bool(RPCEnabledFlag.Name) && cfg.HTTPHost == "" {
-		cfg.HTTPHost = "127.0.0.1"
-		if flags.IsSet(RPCListenAddrFlag.Name) {
-			cfg.HTTPHost = flags.String(RPCListenAddrFlag.Name)
-		}
+	if flags.Bool(RPCEnabledFlag.Name) {
+		cfg.HTTPPort = flags.Int(RPCPortFlag.Name)
+		cfg.HTTPCors = splitAndTrim(flags.String(RPCCORSDomainFlag.Name))
+		cfg.HTTPVirtualHosts = splitAndTrim(flags.String(RPCVirtualHostsFlag.Name))
 	}
-	cfg.HTTPPort = flags.Int(RPCPortFlag.Name)
-	cfg.HTTPCors = splitAndTrim(flags.String(RPCCORSDomainFlag.Name))
-	cfg.HTTPVirtualHosts = splitAndTrim(flags.String(RPCVirtualHostsFlag.Name))
 }
 
 func splitAndTrim(input string) []string {
@@ -166,11 +120,7 @@ func setIPC(flags flag.CmdFlags, cfg *Config) {
 
 // setWS set web socket
 func setWS(flags flag.CmdFlags, cfg *Config) {
-	if flags.Bool(WSEnabledFlag.Name) && cfg.WSHost == "" {
-		cfg.WSHost = "127.0.0.1"
-		if flags.IsSet(WSListenAddrFlag.Name) {
-			cfg.WSHost = flags.String(WSListenAddrFlag.Name)
-		}
+	if flags.Bool(WSEnabledFlag.Name) {
 		cfg.WSPort = flags.Int(WSPortFlag.Name)
 		cfg.WSOrigins = splitAndTrim(flags.String(WSAllowedOriginsFlag.Name))
 	}

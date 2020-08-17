@@ -32,7 +32,6 @@ var (
 type Config struct {
 	Name       string            // server's Name
 	PrivateKey *ecdsa.PrivateKey // private key
-	MaxPeerNum int               // max accept connection count
 	Port       int               // listen port
 }
 

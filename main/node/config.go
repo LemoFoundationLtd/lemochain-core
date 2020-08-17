@@ -16,17 +16,13 @@ import (
 )
 
 const (
-	DefaultHTTPHost      = "localhost" // Default host interface for the HTTP RPC server
-	DefaultHTTPPort      = 8001        // Default TCP port for the HTTP RPC server
-	DefaultWSHost        = "localhost" // Default host interface for the websocket RPC server
-	DefaultWSPort        = 8002        // Default TCP port for the websocket RPC server
-	DefaultP2PPort       = 60001
-	DefaultP2pMaxPeerNum = 1000
+	DefaultHTTPPort = 8001 // Default TCP port for the HTTP RPC server
+	DefaultWSPort   = 8002 // Default TCP port for the websocket RPC server
+	DefaultP2PPort  = 60001
 
 	datadirPrivateKey   = "nodekey"
 	datadirStaticNodes  = "static-nodes.json"
 	datadirTrustedNodes = "trusted-nodes.json"
-	datadirNodeDatabase = "nodes"
 )
 
 var DefaultHTTPVirtualHosts = []string{"localhost"}
@@ -35,22 +31,17 @@ type Config struct {
 	Name    string `toml:"-"`
 	Version string `toml:"-"`
 
-	ExtraData []byte `toml:",omitempty"`
-
 	DataDir string
 	P2P     p2p.Config
 	Chain   chain.Config
 	Miner   miner.MineConfig
 
 	IPCPath          string   `toml:",omitempty"`
-	HTTPHost         string   `toml:",omitempty"`
 	HTTPPort         int      `toml:",omitempty"`
 	HTTPCors         []string `toml:",omitempty"`
 	HTTPVirtualHosts []string `toml:",omitempty"`
-	WSHost           string   `toml:",omitempty"`
 	WSPort           int      `toml:",omitempty"`
 	WSOrigins        []string `toml:",omitempty"`
-	WSExposeAll      bool     `toml:",omitempty"`
 }
 
 // IPCEndpoint
@@ -64,17 +55,17 @@ func (c *Config) IPCEndpoint() string {
 }
 
 func (c *Config) HTTPEndpoint() string {
-	if c.HTTPHost == "" {
+	if c.HTTPPort == 0 {
 		return ""
 	}
-	return fmt.Sprintf("%s:%d", c.HTTPHost, c.HTTPPort)
+	return fmt.Sprintf("0.0.0.0:%d", c.HTTPPort)
 }
 
 func (c *Config) WSEndpoint() string {
-	if c.WSHost == "" {
+	if c.WSPort == 0 {
 		return ""
 	}
-	return fmt.Sprintf("%s:%d", c.WSHost, c.WSPort)
+	return fmt.Sprintf("0.0.0.0:%d", c.WSPort)
 }
 
 func (c *Config) NodeName() string {

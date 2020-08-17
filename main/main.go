@@ -24,24 +24,17 @@ var (
 	// flags to configure the node
 	nodeFlags = []cli.Flag{
 		node.DataDirFlag,
-		node.MaxPeersFlag,
 		node.ListenPortFlag,
-		node.ExtraDataFlag,
 		node.AutoMineFlag,
-		node.JSpathFlag,
-		node.DebugFlag,
 		node.LogLevelFlag,
-		node.MetricsEnabledFlag,
 	}
 
 	rpcFlags = []cli.Flag{
 		node.RPCEnabledFlag,
-		node.RPCListenAddrFlag,
 		node.RPCPortFlag,
 		node.RPCCORSDomainFlag,
 		node.RPCVirtualHostsFlag,
 		node.WSEnabledFlag,
-		node.WSListenAddrFlag,
 		node.WSPortFlag,
 		node.WSAllowedOriginsFlag,
 		node.IPCDisabledFlag,
