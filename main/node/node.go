@@ -90,6 +90,8 @@ func initConfig(flags flag.CmdFlags) (*Config, *config.ConfigFromFile) {
 		MineTimeout: configFromFile.Timeout,
 	}
 	// Miner
+	// parentBlock---[sleepTime]---mine window from---[ReservedPropagationTime]---mine window to
+	//      |         just wait           |         mine if tx come        |    broadcast block
 	cfg.Miner = miner.MineConfig{
 		SleepTime:               int64(configFromFile.SleepTime),
 		Timeout:                 int64(configFromFile.Timeout),

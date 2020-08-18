@@ -228,8 +228,8 @@ func (m *Miner) sealBlock(endOfMineWindow int64) {
 	if !m.isSelfDeputyNode() {
 		return
 	}
-	log.Debug("Start seal block")
 	endOfWaitWindow := endOfMineWindow - m.reservedPropagationTime // 允许矿工等待的超时时间
+	log.Debugf("Start seal block, wait tx till: %d", endOfWaitWindow)
 	m.waitCanPackageTx(endOfWaitWindow)
 	// mine asynchronously
 	// The time limit for mining is (m.timeoutTime - m.blockInterval). The rest 1/3 is used to transfer to other nodes
