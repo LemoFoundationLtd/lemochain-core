@@ -160,7 +160,7 @@ func (bc *BlockChain) Genesis() *types.Block {
 
 // Founder is LEMO holder in the genesis block
 func (bc *BlockChain) Founder() common.Address {
-	return bc.Genesis().DeputyNodes[0].MinerAddress
+	return bc.Genesis().MinerAddress()
 }
 
 // ChainID
