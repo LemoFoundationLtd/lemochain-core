@@ -14,7 +14,7 @@ import (
 
 const (
 	JsonFileName   = "config.json"
-	ConfigGuideUrl = "Please visit https://github.com/LemoFoundationLtd/lemochain-core#configuration-file for detail"
+	ConfigGuideUrl = "Please visit https://github.com/LemoFoundationLtd/lemochain-core#configuration-file for more detail"
 )
 
 var (
@@ -28,7 +28,7 @@ var (
 
 type ConfigFromFile struct {
 	ChainID         uint64 `json:"chainID"        gencodec:"required"`
-	DeputyCount     uint64 `json:"deputyCount"    gencodec:"required"`
+	DeputyCount     uint64 `json:"deputyCount"`
 	SleepTime       uint64 `json:"sleepTime"`
 	Timeout         uint64 `json:"timeout"`
 	TermDuration    uint64 `json:"termDuration"`
@@ -98,17 +98,8 @@ func ReadConfigFile(dir string) (*ConfigFromFile, error) {
 }
 
 func (c *ConfigFromFile) Check() {
-	if c.SleepTime >= c.Timeout {
-		panic(ErrSleepTimeInConfig)
-	}
-	if c.Timeout < 3000 {
-		panic(ErrTimeoutInConfig)
-	}
 	if c.ChainID > 65535 || c.ChainID < 1 {
 		panic(ErrChainIDInConfig)
-	}
-	if c.ChainID == 0 {
-		c.ChainID = 1
 	}
 	if c.DeputyCount == 0 {
 		c.DeputyCount = 17
@@ -117,7 +108,13 @@ func (c *ConfigFromFile) Check() {
 		c.SleepTime = 3000
 	}
 	if c.Timeout == 0 {
-		c.Timeout = 10000
+		c.Timeout = 30000
+	}
+	if c.Timeout < 3000 {
+		panic(ErrTimeoutInConfig)
+	}
+	if c.SleepTime >= c.Timeout {
+		panic(ErrSleepTimeInConfig)
 	}
 	if c.TermDuration > 0 {
 		params.TermDuration = uint32(c.TermDuration)

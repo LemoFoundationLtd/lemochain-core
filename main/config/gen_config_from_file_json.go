@@ -15,7 +15,7 @@ var _ = (*ConfigFromFileMarshaling)(nil)
 func (c ConfigFromFile) MarshalJSON() ([]byte, error) {
 	type ConfigFromFile struct {
 		ChainID         hexutil.Uint64 `json:"chainID"        gencodec:"required"`
-		DeputyCount     hexutil.Uint64 `json:"deputyCount"    gencodec:"required"`
+		DeputyCount     hexutil.Uint64 `json:"deputyCount"`
 		SleepTime       hexutil.Uint64 `json:"sleepTime"`
 		Timeout         hexutil.Uint64 `json:"timeout"`
 		TermDuration    hexutil.Uint64 `json:"termDuration"`
@@ -39,7 +39,7 @@ func (c ConfigFromFile) MarshalJSON() ([]byte, error) {
 func (c *ConfigFromFile) UnmarshalJSON(input []byte) error {
 	type ConfigFromFile struct {
 		ChainID         *hexutil.Uint64 `json:"chainID"        gencodec:"required"`
-		DeputyCount     *hexutil.Uint64 `json:"deputyCount"    gencodec:"required"`
+		DeputyCount     *hexutil.Uint64 `json:"deputyCount"`
 		SleepTime       *hexutil.Uint64 `json:"sleepTime"`
 		Timeout         *hexutil.Uint64 `json:"timeout"`
 		TermDuration    *hexutil.Uint64 `json:"termDuration"`
@@ -55,10 +55,9 @@ func (c *ConfigFromFile) UnmarshalJSON(input []byte) error {
 		return errors.New("missing required field 'chainID' for ConfigFromFile")
 	}
 	c.ChainID = uint64(*dec.ChainID)
-	if dec.DeputyCount == nil {
-		return errors.New("missing required field 'deputyCount' for ConfigFromFile")
+	if dec.DeputyCount != nil {
+		c.DeputyCount = uint64(*dec.DeputyCount)
 	}
-	c.DeputyCount = uint64(*dec.DeputyCount)
 	if dec.SleepTime != nil {
 		c.SleepTime = uint64(*dec.SleepTime)
 	}
