@@ -75,7 +75,7 @@ func (c *Confirmer) needConfirm(block *types.Block) bool {
 	lastConfirmHeight := c.lastSig.Height
 	lastConfirmHash := c.lastSig.Hash
 	stable, _ := c.stableLoader.LoadLatestBlock()
-	if lastConfirmHeight < stable.Height() {
+	if lastConfirmHeight <= stable.Height() {
 		lastConfirmHeight = stable.Height()
 		lastConfirmHash = stable.Hash()
 	}
