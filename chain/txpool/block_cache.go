@@ -91,6 +91,7 @@ func (cache BlockCache) IsAppearedOnFork(blockHashes HashSet, startBlockHash com
 	// 3. 在这段区块中检测是否包含了trace中的块
 	for _, hash := range forkSlice {
 		if blockHashes.Has(hash) {
+			log.Warnf("Some txs in block %s appear again", hash.String())
 			return true
 		}
 	}

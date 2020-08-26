@@ -158,7 +158,7 @@ func (dp *DPoVP) InsertBlock(rawBlock *types.Block) (*types.Block, error) {
 
 	dp.chainLock.Lock()
 	defer dp.chainLock.Unlock()
-	log.Debug("🎁 Start insert block to chain", "block", rawBlock.ShortString())
+	log.Debug("🎁 Start insert block to chain", "block", rawBlock.ShortString(), "parent", rawBlock.ParentHash())
 
 	// verify and create a new block witch filled by transaction products
 	block, err := dp.VerifyAndSeal(rawBlock)
