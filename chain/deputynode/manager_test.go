@@ -177,8 +177,15 @@ func TestManager_GetTermByHeight(t *testing.T) {
 	m := NewManager(5, testBlockLoader{})
 
 	// no any terms
-	_, err := m.GetTermByHeight(0)
+	_, err := m.GetTermByHeight(0, true)
 	assert.Equal(t, ErrNoStableTerm, err)
+
+	type testChooseForkData struct {
+		height          uint32
+		onlyBlockSigner bool
+		termIndex       uint32
+		nodes           types.DeputyNodes
+	}
 
 	nodes0 := pickNodes(0, 1)
 	m.SaveSnapshot(0, nodes0)
@@ -187,38 +194,43 @@ func TestManager_GetTermByHeight(t *testing.T) {
 	nodes2 := pickNodes(1, 2, 3, 4, 5, 6)
 	m.SaveSnapshot(params.TermDuration*2, nodes2)
 
-	// genesis term
-	term, err := m.GetTermByHeight(0)
-	assert.NoError(t, err)
-	assert.Equal(t, uint32(0), term.TermIndex)
-	assert.Equal(t, nodes0, term.Nodes)
-	term, err = m.GetTermByHeight(1)
-	assert.NoError(t, err)
-	assert.Equal(t, uint32(0), term.TermIndex)
-	assert.Equal(t, nodes0, term.Nodes)
-	term, err = m.GetTermByHeight(params.TermDuration + params.InterimDuration)
-	assert.NoError(t, err)
-	assert.Equal(t, uint32(0), term.TermIndex)
-	assert.Equal(t, nodes0, term.Nodes)
+	var tests = []testChooseForkData{
+		{0, true, 0, nodes0},
+		{0, false, 0, nodes0},
+		{1, true, 0, nodes0},
+		{1, false, 0, nodes0},
+		{params.TermDuration - 1, true, 0, nodes0},
+		{params.TermDuration - 1, false, 0, nodes0},
+		{params.TermDuration, true, 0, nodes0},
+		{params.TermDuration, false, 1, nodes1},
+		{params.TermDuration + 1, true, 0, nodes0},
+		{params.TermDuration + 1, false, 1, nodes1},
+		{params.TermDuration + params.InterimDuration, true, 0, nodes0},
+		{params.TermDuration + params.InterimDuration, false, 1, nodes1},
+		{params.TermDuration + params.InterimDuration + 1, true, 1, nodes1},
+		{params.TermDuration + params.InterimDuration + 1, false, 1, nodes1},
+		{params.TermDuration * 2, true, 1, nodes1},
+		{params.TermDuration * 2, false, 2, nodes2},
+		{params.TermDuration*2 + params.InterimDuration, true, 1, nodes1},
+		{params.TermDuration*2 + params.InterimDuration, false, 2, nodes2},
+		{params.TermDuration*2 + params.InterimDuration + 1, true, 2, nodes2},
+		{params.TermDuration*2 + params.InterimDuration + 1, false, 2, nodes2},
+	}
 
-	// second term
-	term, err = m.GetTermByHeight(params.TermDuration + params.InterimDuration + 1)
-	assert.NoError(t, err)
-	assert.Equal(t, uint32(1), term.TermIndex)
-	assert.Equal(t, nodes1, term.Nodes)
-	term, err = m.GetTermByHeight(params.TermDuration*2 + params.InterimDuration)
-	assert.NoError(t, err)
-	assert.Equal(t, uint32(1), term.TermIndex)
-	assert.Equal(t, nodes1, term.Nodes)
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("height_%d_signers_%v", test.height, test.onlyBlockSigner), func(t *testing.T) {
+			test := test // capture range variable
+			t.Parallel()
 
-	// third term
-	term, err = m.GetTermByHeight(params.TermDuration*2 + params.InterimDuration + 1)
-	assert.NoError(t, err)
-	assert.Equal(t, uint32(2), term.TermIndex)
-	assert.Equal(t, nodes2, term.Nodes)
+			term, err := m.GetTermByHeight(test.height, test.onlyBlockSigner)
+			assert.NoError(t, err)
+			assert.Equal(t, test.termIndex, term.TermIndex)
+			assert.Equal(t, test.nodes, term.Nodes)
+		})
+	}
 
 	// not exist term
-	term, err = m.GetTermByHeight(1000000000)
+	_, err = m.GetTermByHeight(1000000000, true)
 	assert.Equal(t, ErrNoStableTerm, err)
 }
 
@@ -230,13 +242,15 @@ func TestManager_GetDeputiesByHeight(t *testing.T) {
 	nodes1 := pickNodes(1, 2, 3)
 	m.SaveSnapshot(params.TermDuration, nodes1)
 
-	nodes := m.GetDeputiesByHeight(0)
+	nodes := m.GetDeputiesByHeight(0, true)
 	assert.Equal(t, nodes0, nodes)
-	nodes = m.GetDeputiesByHeight(params.TermDuration + params.InterimDuration)
-	assert.Equal(t, nodes0, nodes)
-	nodes = m.GetDeputiesByHeight(params.TermDuration + params.InterimDuration + 1)
+	nodes = m.GetDeputiesByHeight(params.TermDuration, false)
 	assert.Equal(t, nodes1, nodes)
-	nodes = m.GetDeputiesByHeight(params.TermDuration*2 + params.InterimDuration + 1)
+	nodes = m.GetDeputiesByHeight(params.TermDuration+params.InterimDuration, true)
+	assert.Equal(t, nodes0, nodes)
+	nodes = m.GetDeputiesByHeight(params.TermDuration+params.InterimDuration+1, true)
+	assert.Equal(t, nodes1, nodes)
+	nodes = m.GetDeputiesByHeight(params.TermDuration*2+params.InterimDuration+1, true)
 	assert.Empty(t, nodes)
 }
 

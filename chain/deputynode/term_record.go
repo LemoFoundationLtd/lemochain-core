@@ -95,18 +95,29 @@ func IsRewardBlock(height uint32) bool {
 	}
 }
 
-// GetTermIndexByHeight return the index of the term which in charge of consensus the specific block
+// GetSignerTermIndexByHeight return the index of the term which in charge of sign the specific block
 //
 //   0 term start at height 0
 //   1 term start at 100W+1K+1
 //   2 term start at 200W+1K+1
 //   ...
 //
-func GetTermIndexByHeight(height uint32) uint32 {
+func GetSignerTermIndexByHeight(height uint32) uint32 {
 	if height < params.TermDuration+params.InterimDuration+1 {
 		// in genesis term
 		return 0
 	}
 
 	return (height - params.InterimDuration - 1) / params.TermDuration
+}
+
+// GetDeputyTermIndexByHeight return the index of the term which contains the same deputies with
+//
+//   0 term start at height 0
+//   1 term start at 100W
+//   2 term start at 200W
+//   ...
+//
+func GetDeputyTermIndexByHeight(height uint32) uint32 {
+	return height / params.TermDuration
 }

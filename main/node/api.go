@@ -158,8 +158,8 @@ type deputyNodeInfoMarshaling struct {
 }
 
 // GetDeputyNodeList
-func (c *PublicChainAPI) GetDeputyNodeList() []*DeputyNodeInfo {
-	nodes := c.chain.DeputyManager().GetDeputiesByHeight(c.chain.CurrentBlock().Height())
+func (c *PublicChainAPI) GetDeputyNodeList(onlyBlockSigner bool) []*DeputyNodeInfo {
+	nodes := c.chain.DeputyManager().GetDeputiesByHeight(c.chain.CurrentBlock().Height(), onlyBlockSigner)
 
 	var result []*DeputyNodeInfo
 	for _, n := range nodes {
@@ -222,7 +222,7 @@ func (c *PublicChainAPI) GetAllRewardValue() (params.RewardsMap, error) {
 
 // GetTermReward get term reward info by height
 func (c *PublicChainAPI) GetTermReward(height uint32) (*TermRewardInfo, error) {
-	term := deputynode.GetTermIndexByHeight(height)
+	term := deputynode.GetSignerTermIndexByHeight(height)
 	termValueMap, err := c.GetAllRewardValue()
 	if err != nil {
 		return nil, err

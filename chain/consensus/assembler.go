@@ -154,7 +154,7 @@ func (ba *BlockAssembler) Seal(header *types.Header, txProduct *account.TxsProdu
 func (ba *BlockAssembler) checkTermReward(height uint32) bool {
 	// 在奖励块前第100000个区块进行校验
 	if deputynode.IsRewardBlock(height + params.RewardCheckHeight) {
-		termIndex := deputynode.GetTermIndexByHeight(height)
+		termIndex := deputynode.GetSignerTermIndexByHeight(height)
 		termRewards, err := getTermRewards(ba.am, termIndex)
 		if err == nil && termRewards.Cmp(big.NewInt(0)) == 0 { // 本届还未设置换届奖励，事件推送通知
 			log.Eventf(log.TxEvent, "There was no consensus node award in the [%d] term. The current block height is %d.", termIndex, height)
@@ -191,7 +191,7 @@ func (ba *BlockAssembler) issueTermReward(am *account.Manager, height uint32) er
 	}
 
 	// 奖励块是新一届开始的第一个块，这里应该发放前一届的奖励
-	term, err := ba.dm.GetTermByHeight(height - 1)
+	term, err := ba.dm.GetTermByHeight(height-1, true)
 	if err != nil {
 		log.Warnf("load term information failed: %v", err)
 		return err

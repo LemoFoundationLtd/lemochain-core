@@ -132,8 +132,8 @@ func (m *Manager) SaveSnapshot(snapshotHeight uint32, nodes types.DeputyNodes) {
 	}})
 }
 
-// GetTermByHeight 通过height获取对应的任期信息
-func (m *Manager) GetTermByHeight(height uint32) (*TermRecord, error) {
+// GetTermByHeight 通过height获取对应的任期信息。若onlyBlockSigner为true则获取当前可签名的节点的任期信息，false则获取当前已当选的节点的任期信息
+func (m *Manager) GetTermByHeight(height uint32, onlyBlockSigner bool) (*TermRecord, error) {
 	m.lock.RLock()
 	defer m.lock.RUnlock()
 
@@ -143,7 +143,12 @@ func (m *Manager) GetTermByHeight(height uint32) (*TermRecord, error) {
 		return nil, ErrNoStableTerm
 	}
 
-	termIndex := GetTermIndexByHeight(height)
+	var termIndex uint32
+	if onlyBlockSigner {
+		termIndex = GetSignerTermIndexByHeight(height)
+	} else {
+		termIndex = GetDeputyTermIndexByHeight(height)
+	}
 	if termCount > int(termIndex) {
 		return m.termList[termIndex], nil
 	} else {
@@ -152,9 +157,9 @@ func (m *Manager) GetTermByHeight(height uint32) (*TermRecord, error) {
 	}
 }
 
-// GetDeputiesByHeight 通过height获取对应的节点列表
-func (m *Manager) GetDeputiesByHeight(height uint32) types.DeputyNodes {
-	term, err := m.GetTermByHeight(height)
+// GetDeputiesByHeight 通过height获取对应的节点列表。若onlyBlockSigner为true则获取当前可签名的节点的任期信息，false则获取当前已当选的节点的任期信息
+func (m *Manager) GetDeputiesByHeight(height uint32, onlyBlockSigner bool) types.DeputyNodes {
+	term, err := m.GetTermByHeight(height, onlyBlockSigner)
 	if err != nil {
 		// panic(err)
 		return types.DeputyNodes{}
@@ -164,19 +169,19 @@ func (m *Manager) GetDeputiesByHeight(height uint32) types.DeputyNodes {
 
 // GetDeputiesCount 获取共识节点数量
 func (m *Manager) GetDeputiesCount(height uint32) int {
-	nodes := m.GetDeputiesByHeight(height)
+	nodes := m.GetDeputiesByHeight(height, true)
 	return len(nodes)
 }
 
 // TwoThirdDeputyCount return the deputy nodes count * 2/3
 func (m *Manager) TwoThirdDeputyCount(height uint32) uint32 {
-	nodes := m.GetDeputiesByHeight(height)
+	nodes := m.GetDeputiesByHeight(height, true)
 	return uint32(math.Ceil(float64(len(nodes)) * 2.0 / 3.0))
 }
 
 // GetDeputyByAddress 获取address对应的节点
 func (m *Manager) GetDeputyByAddress(height uint32, addr common.Address) *types.DeputyNode {
-	nodes := m.GetDeputiesByHeight(height)
+	nodes := m.GetDeputiesByHeight(height, true)
 	for _, node := range nodes {
 		if node.MinerAddress == addr {
 			return node
@@ -187,7 +192,7 @@ func (m *Manager) GetDeputyByAddress(height uint32, addr common.Address) *types.
 
 // GetDeputyByNodeID 根据nodeID获取对应的节点
 func (m *Manager) GetDeputyByNodeID(height uint32, nodeID []byte) *types.DeputyNode {
-	nodes := m.GetDeputiesByHeight(height)
+	nodes := m.GetDeputiesByHeight(height, true)
 	for _, node := range nodes {
 		if bytes.Compare(node.NodeID, nodeID) == 0 {
 			return node
@@ -228,7 +233,7 @@ func (m *Manager) GetDeputyByDistance(targetHeight uint32, parentBlockMiner comm
 	if distance < 1 {
 		panic(ErrInvalidDistance)
 	}
-	deputies := m.GetDeputiesByHeight(targetHeight)
+	deputies := m.GetDeputiesByHeight(targetHeight, true)
 	nodeCount := uint32(len(deputies))
 	if nodeCount == 0 {
 		return nil, ErrNotDeputy
@@ -256,7 +261,7 @@ func (m *Manager) GetMinerDistance(targetHeight uint32, parentBlockMiner, target
 	if targetHeight == 0 {
 		panic(ErrMineGenesis)
 	}
-	deputies := m.GetDeputiesByHeight(targetHeight)
+	deputies := m.GetDeputiesByHeight(targetHeight, true)
 	nodeCount := uint32(len(deputies))
 
 	// find target block miner deputy

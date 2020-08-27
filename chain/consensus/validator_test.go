@@ -285,7 +285,7 @@ func Test_VerifyMineSlot(t *testing.T) {
 	timeoutStamp := uint64(timeoutTime * 1000)
 	deputyCount := 17
 	dm := initDeputyManager(deputyCount)
-	firstTerm, err := dm.GetTermByHeight(1)
+	firstTerm, err := dm.GetTermByHeight(1, true)
 	assert.NoError(t, err)
 	getMiner := func(index int) common.Address {
 		return firstTerm.Nodes[index].MinerAddress

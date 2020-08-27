@@ -93,7 +93,7 @@ func verifySigner(block *types.Block, dm *deputynode.Manager) error {
 	// find the deputy node information of the miner
 	deputy := dm.GetDeputyByNodeID(block.Height(), nodeID)
 	if deputy == nil {
-		log.Errorf("Consensus verify fail: can't find deputy node, nodeID: %s, deputy nodes: %s", common.ToHex(nodeID), dm.GetDeputiesByHeight(block.Height()).String())
+		log.Errorf("Consensus verify fail: can't find deputy node, nodeID: %s, deputy nodes: %s", common.ToHex(nodeID), dm.GetDeputiesByHeight(block.Height(), true).String())
 		return ErrVerifyHeaderFailed
 	}
 

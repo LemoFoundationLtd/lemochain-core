@@ -185,12 +185,12 @@ func TestBlockAssembler_Finalize(t *testing.T) {
 		assert.Equal(t, logsCount, len(logs))
 	}
 	checkReward := func(am *account.Manager, dm *deputynode.Manager) {
-		deputy := dm.GetDeputiesByHeight(1)[1]
+		deputy := dm.GetDeputiesByHeight(1, true)[1]
 		deputyAccount := am.GetAccount(deputy.MinerAddress)
 		assert.Equal(t, -1, big.NewInt(0).Cmp(deputyAccount.GetBalance()))
 	}
 	checkRefund := func(am *account.Manager, dm *deputynode.Manager) {
-		deputy := dm.GetDeputiesByHeight(1)[0]
+		deputy := dm.GetDeputiesByHeight(1, true)[0]
 		deputyAccount := am.GetAccount(deputy.MinerAddress)
 		assert.Equal(t, types.NotCandidateNode, deputyAccount.GetCandidateState(types.CandidateKeyIsCandidate))
 		assert.Equal(t, "", deputyAccount.GetCandidateState(types.CandidateKeyDepositAmount))
@@ -305,7 +305,7 @@ func TestIssueTermReward(t *testing.T) {
 	db := store.NewChainDataBase(GetStorePath())
 	defer db.Close()
 	ba := createAssembler(db, false)
-	firstTerm, err := ba.dm.GetTermByHeight(1)
+	firstTerm, err := ba.dm.GetTermByHeight(1, true)
 	assert.NoError(t, err)
 	rewardAmount := common.Lemo2Mo("100")
 	// choose a miner
@@ -346,7 +346,7 @@ func TestRefundCandidateDeposit(t *testing.T) {
 	db := store.NewChainDataBase(GetStorePath())
 	defer db.Close()
 	ba := createAssembler(db, false)
-	firstTerm, err := ba.dm.GetTermByHeight(1)
+	firstTerm, err := ba.dm.GetTermByHeight(1, true)
 	assert.NoError(t, err)
 	depositAmount := common.Lemo2Mo("100")
 	// refund account is set in createAssembler
@@ -594,7 +594,7 @@ func TestBlockAssembler_RunBlock(t *testing.T) {
 	db := store.NewChainDataBase(GetStorePath())
 	defer db.Close()
 	ba := createAssembler(db, false)
-	firstTerm, err := ba.dm.GetTermByHeight(1)
+	firstTerm, err := ba.dm.GetTermByHeight(1, true)
 	assert.NoError(t, err)
 	tx := MakeTx(deputynode.GetSelfNodeKey(), common.HexToAddress("0x88"), common.Lemo2Mo("100"), uint64(time.Now().Unix()+300))
 	tx.SetGasUsed(21204)
@@ -628,7 +628,7 @@ func TestBlockAssembler_MineBlock(t *testing.T) {
 	db := store.NewChainDataBase(GetStorePath())
 	defer db.Close()
 	ba := createAssembler(db, false)
-	firstTerm, err := ba.dm.GetTermByHeight(1)
+	firstTerm, err := ba.dm.GetTermByHeight(1, true)
 	assert.NoError(t, err)
 	genesisBlock := initGenesis(db, ba.am, firstTerm.Nodes)
 

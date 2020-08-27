@@ -112,12 +112,25 @@ func TestIsRewardBlock(t *testing.T) {
 }
 
 func TestGetTermIndexByHeight(t *testing.T) {
-	assert.Equal(t, uint32(0), GetTermIndexByHeight(0))
-	assert.Equal(t, uint32(0), GetTermIndexByHeight(1))
-	assert.Equal(t, uint32(0), GetTermIndexByHeight(params.TermDuration))
-	assert.Equal(t, uint32(0), GetTermIndexByHeight(params.TermDuration+params.InterimDuration))
-	assert.Equal(t, uint32(1), GetTermIndexByHeight(params.TermDuration+params.InterimDuration+1))
-	assert.Equal(t, uint32(2), GetTermIndexByHeight(params.TermDuration*2+params.InterimDuration+1))
-	assert.Equal(t, uint32(2), GetTermIndexByHeight(params.TermDuration*2+params.InterimDuration+2))
-	assert.Equal(t, uint32(3), GetTermIndexByHeight(params.TermDuration*3+params.InterimDuration+1))
+	assert.Equal(t, uint32(0), GetSignerTermIndexByHeight(0))
+	assert.Equal(t, uint32(0), GetSignerTermIndexByHeight(1))
+	assert.Equal(t, uint32(0), GetSignerTermIndexByHeight(params.TermDuration))
+	assert.Equal(t, uint32(0), GetSignerTermIndexByHeight(params.TermDuration+params.InterimDuration))
+	assert.Equal(t, uint32(1), GetSignerTermIndexByHeight(params.TermDuration+params.InterimDuration+1))
+	assert.Equal(t, uint32(2), GetSignerTermIndexByHeight(params.TermDuration*2+params.InterimDuration+1))
+	assert.Equal(t, uint32(2), GetSignerTermIndexByHeight(params.TermDuration*2+params.InterimDuration+2))
+	assert.Equal(t, uint32(3), GetSignerTermIndexByHeight(params.TermDuration*3+params.InterimDuration+1))
+}
+
+func TestGetDeputyTermIndexByHeight(t *testing.T) {
+	assert.Equal(t, uint32(0), GetDeputyTermIndexByHeight(0))
+	assert.Equal(t, uint32(0), GetDeputyTermIndexByHeight(1))
+	assert.Equal(t, uint32(0), GetDeputyTermIndexByHeight(params.TermDuration-1))
+	assert.Equal(t, uint32(1), GetDeputyTermIndexByHeight(params.TermDuration))
+	assert.Equal(t, uint32(1), GetDeputyTermIndexByHeight(params.TermDuration+params.InterimDuration))
+	assert.Equal(t, uint32(1), GetDeputyTermIndexByHeight(params.TermDuration+params.InterimDuration+1))
+	assert.Equal(t, uint32(1), GetDeputyTermIndexByHeight(params.TermDuration*2-1))
+	assert.Equal(t, uint32(2), GetDeputyTermIndexByHeight(params.TermDuration*2))
+	assert.Equal(t, uint32(2), GetDeputyTermIndexByHeight(params.TermDuration*2+1))
+	assert.Equal(t, uint32(3), GetDeputyTermIndexByHeight(params.TermDuration*3))
 }
