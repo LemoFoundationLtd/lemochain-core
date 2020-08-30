@@ -23,6 +23,7 @@ const (
 	StatusManualDisconnect
 	StatusFailedHandshake
 	StatusBadData
+	StatusDifferentGenesis
 )
 
 var (
@@ -361,8 +362,21 @@ func (p *Peer) SetStatus(status int32) {
 
 // NeedReConnect
 func (p *Peer) NeedReConnect() bool {
-	if p.status == StatusHardFork || p.status == StatusManualDisconnect || p.status == StatusFailedHandshake || p.status == StatusBadData {
+	switch p.status {
+	case StatusHardFork:
 		return false
+	case StatusDifferentGenesis:
+		return false
+	case StatusManualDisconnect:
+		return false
+	case StatusFailedHandshake:
+		return false
+	case StatusBadData:
+		return false
+
+	case StatusNormal:
+		return true
+	default:
+		return true
 	}
-	return true
 }

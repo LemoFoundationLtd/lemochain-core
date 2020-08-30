@@ -250,6 +250,12 @@ func (srv *Server) HandleConn(fd net.Conn, nodeID *NodeID) error {
 	}
 	// is black node
 	if srv.discover.IsBlackNode(peer.RNodeID()) {
+		if err = fd.Close(); err != nil {
+			log.Errorf("close connections failed: %s", err)
+		}
+		if err = srv.discover.SetConnectResult(peer.RNodeID(), false); err != nil {
+			log.Errorf("SetConnectResult failed: %v", err)
+		}
 		return ErrBlackListNode
 	}
 	// is itself

@@ -84,6 +84,12 @@ func (p *peer) RcvBadDataClose() {
 	p.conn.SetStatus(p2p.StatusBadData)
 }
 
+// DifferentGenesisClose
+func (p *peer) DifferentGenesisClose() {
+	p.conn.Close()
+	p.conn.SetStatus(p2p.StatusDifferentGenesis)
+}
+
 // HardForkClose
 func (p *peer) HardForkClose() {
 	p.conn.Close()

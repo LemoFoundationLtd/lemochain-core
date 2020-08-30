@@ -235,8 +235,9 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 
 			// peer's latest height
 			pLstHeight := rcvMsg.p.LatestStatus().CurHeight
+			log.Infof("Got %d blocks from peer: %#x", len(rcvMsg.blocks), rcvMsg.p.NodeID()[:4])
 
-			for _, b := range rcvMsg.blocks {
+			for i, b := range rcvMsg.blocks {
 				// 判断收到的区块是否为黑名单区块
 				if bbc.IsBlackBlock(b.Hash(), b.ParentHash()) {
 					log.Warnf("This block is black block. block: %s", b.String())
@@ -260,9 +261,18 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 				// local chain has parent block or parent block will insert chain
 				if pm.chain.HasBlock(b.ParentHash()) {
 					log.Infof("Got a block %s from peer: %#x", b.ShortString(), rcvMsg.p.NodeID()[:4])
-					pm.insertBlock(b)
+					if err := pm.insertBlock(b); err != nil {
+						log.Warnf("block verify failed. ignore the rest %d blocks", len(rcvMsg.blocks)-1-i)
+						break
+					}
+				} else if b.Height() <= 1 && pm.chain.Genesis() != nil {
+					parentHash := b.ParentHash()
+					log.Warnf("Different genesis! Got a block %x(parent:%s) from peer: %#x", parentHash[:8], b.ShortString(), rcvMsg.p.NodeID()[:4])
+					rcvMsg.p.DifferentGenesisClose()
+					pm.peers.UnRegister(rcvMsg.p)
+					break
 				} else {
-					log.Infof("Got a block %s from peer: %#x. cache it", b.ShortString(), rcvMsg.p.NodeID()[:4])
+					log.Infof("Got a block %s from peer: %#x, cache it", b.ShortString(), rcvMsg.p.NodeID()[:4])
 					pm.blockCache.Add(b)
 					if rcvMsg.p != nil {
 						// request parent block
@@ -274,6 +284,7 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 			if pm.test {
 				pm.testOutput <- testRcvBlocks
 			}
+			// time to check cache. request parent block of the first block in cache
 		case <-queueTimer.C:
 			processBlock := func(block *types.Block) bool {
 				// 检查缓存中的黑名单区块
@@ -293,8 +304,8 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 			if cacheSize > 0 {
 				p := pm.peers.BestToSync(pm.blockCache.FirstHeight())
 				if p != nil {
+					log.Debugf("BlockCache's size: %d. request the parent block of %d", cacheSize, pm.blockCache.FirstHeight())
 					go p.RequestBlocks(pm.blockCache.FirstHeight()-1, pm.blockCache.FirstHeight()-1)
-					log.Debugf("BlockCache's size: %d", cacheSize)
 				}
 			}
 			// for test
@@ -308,10 +319,10 @@ func (pm *ProtocolManager) rcvBlockLoop() {
 }
 
 // insertBlock insert block
-func (pm *ProtocolManager) insertBlock(b *types.Block) {
+func (pm *ProtocolManager) insertBlock(b *types.Block) error {
 	// pop the confirms which arrived before block
 	pm.mergeConfirmsFromCache(b)
-	pm.chain.InsertBlock(b)
+	return pm.chain.InsertBlock(b)
 }
 
 // stableBlockLoop block has been stable
@@ -521,6 +532,7 @@ func (pm *ProtocolManager) handlePeer(p *peer) {
 			p.HardForkClose()
 			return
 		}
+		// TODO 一次连上很多节点，就会同时同步区块
 		p.RequestBlocks(from, rStatus.LatestStatus.CurHeight)
 	}
 	// set connect result
@@ -572,11 +584,12 @@ func (pm *ProtocolManager) forceSyncBlock(status *LatestStatus, p *peer) {
 
 	from, err := pm.findSyncFrom(status)
 	if err != nil {
-		log.Warnf("Find sync from error: %v", err)
+		log.Warnf("forceSyncBlock. Find sync from error: %v", err)
 		p.HardForkClose()
 		pm.peers.UnRegister(p)
 		return
 	}
+	// TODO 一次连上很多节点，就会同时同步区块
 	p.RequestBlocks(from, status.CurHeight)
 }
 
