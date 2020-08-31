@@ -12,5 +12,5 @@ var (
 	ErrContractCodeLoadFail     = errors.New("contract code load fail")
 	ErrAssetEquity              = errors.New("asset equity can't be nil or 0")
 	ErrTransferFrozenAsset      = errors.New("cannot trade frozen assets")
-	ErrTermReward               = errors.New("insufficient permission to call this Precompiled contract")
+	ErrTermReward               = errors.New("no permission to call this Precompiled contract")
 )
