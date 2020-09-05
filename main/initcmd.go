@@ -65,6 +65,11 @@ func saveBlock(dataDir string, genesis *chain.Genesis) *types.Block {
 			log.Errorf("close db failed. %v", err)
 		}
 	}()
+	genesisBlock, err := db.GetBlockByHeight(0)
+	if err == nil && genesisBlock != nil {
+		log.Errorf("Genesis block is existed. Please clean the folder \"%s\" first", chaindata)
+		panic(chain.ErrGenesisExist)
+	}
 	return chain.SetupGenesisBlock(db, genesis)
 }
 

@@ -16,6 +16,7 @@ import (
 )
 
 var (
+	ErrGenesisExist        = errors.New("genesis block is existed")
 	ErrBuildGenesisFail    = errors.New("build genesis block failed")
 	ErrSaveGenesisFail     = errors.New("save genesis block failed")
 	ErrGenesisExtraTooLong = errors.New("genesis config's extraData is longer than 256")

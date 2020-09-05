@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -20,13 +21,20 @@ func init() {
 	// log.Setup(log.LevelInfo, false, true)
 }
 
-func writeGenesisToFile(content, file string) {
-	ioutil.WriteFile(file, []byte(content), 777)
+func writeGenesisToFile(dataDir, content string) {
+	configPath := filepath.Join(dataDir, genesisConfigName)
+	err := os.MkdirAll(dataDir, os.ModePerm)
+	if err != nil {
+		panic(err)
+	}
+	err = ioutil.WriteFile(configPath, []byte(content), os.ModePerm)
+	if err != nil {
+		panic(err)
+	}
 }
 
-func clearTmpFiles(configFile, datadir string) {
-	os.Remove(configFile)
-	os.RemoveAll(datadir)
+func clearTmpFiles(dataDir string) {
+	os.RemoveAll(dataDir)
 }
 
 // test no test_genesis.json file
@@ -92,11 +100,11 @@ func getTestCases() []genesisTestData {
 
 // test valid file content
 func Test_setupGenesisBlock_valid(t *testing.T) {
-	datadir := "lemo_data_test_correct"
-	writeGenesisToFile(editDefaultTestContent("", ""), genesisConfigName)
-	defer clearTmpFiles(genesisConfigName, datadir)
+	dataDir := "lemo_data_test_correct"
+	writeGenesisToFile(dataDir, editDefaultTestContent("", ""))
+	defer clearTmpFiles(dataDir)
 
-	block := setupGenesisBlock(datadir)
+	block := setupGenesisBlock(dataDir)
 	assert.Equal(t, uint32(0), block.Height())
 	assert.Equal(t, common.HexToHash("0x2d9cd33d77e199c6ae7a657a9758ec58003ee2f82c811155152bf863de870251"), block.Hash())
 }
@@ -108,12 +116,12 @@ func Test_setupGenesisBlock_invalid(t *testing.T) {
 		t.Run(tc.CaseName, func(t *testing.T) {
 			t.Parallel()
 
-			datadir := "lemo_data_test_" + tc.CaseName
-			writeGenesisToFile(tc.GenesisFileContent, genesisConfigName)
-			defer clearTmpFiles(genesisConfigName, datadir)
+			dataDir := filepath.Join("testdata", "int_cmd_"+tc.CaseName)
+			writeGenesisToFile(dataDir, tc.GenesisFileContent)
+			defer clearTmpFiles(dataDir)
 
 			assert.PanicsWithValue(t, tc.Err, func() {
-				setupGenesisBlock(datadir)
+				setupGenesisBlock(dataDir)
 			})
 		})
 	}
