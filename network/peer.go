@@ -108,6 +108,7 @@ func (p *peer) RequestBlocks(from, to uint32) int {
 		log.Warnf("RequestBlocks: rlp encode failed: %v", err)
 		return -2
 	}
+	log.Info("RequestBlocks", "node", p.NodeID().String()[:16], "fromHeight", from, "toHeight", to)
 	p.conn.SetWriteDeadline(DurShort)
 	if err = p.conn.WriteMsg(p2p.GetBlocksMsg, buf); err != nil {
 		log.Warnf("RequestBlocks: write message failed: %v", err)

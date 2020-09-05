@@ -77,12 +77,14 @@ type ProtocolManager struct {
 	addPeerCh    chan p2p.IPeer
 	removePeerCh chan p2p.IPeer
 
-	txCh            chan *types.Transaction
-	newMinedBlockCh chan *types.Block
-	stableBlockCh   chan *types.Block
-	rcvBlocksCh     chan *rcvBlockObj
-	confirmCh       chan *BlockConfirmData
-	fetchConfirms   chan []GetConfirmInfo
+	txCh             chan *types.Transaction
+	newMinedBlockCh  chan *types.Block
+	stableBlockCh    chan *types.Block
+	rcvBlocksCh      chan *rcvBlockObj
+	confirmCh        chan *BlockConfirmData
+	fetchConfirms    chan []GetConfirmInfo
+	lastSyncTime     int64
+	lastSyncToHeight uint32
 
 	wg     sync.WaitGroup
 	quitCh chan struct{}
@@ -532,8 +534,8 @@ func (pm *ProtocolManager) handlePeer(p *peer) {
 			p.HardForkClose()
 			return
 		}
-		// TODO 一次连上很多节点，就会同时同步区块
-		p.RequestBlocks(from, rStatus.LatestStatus.CurHeight)
+		log.Infof("sync status from the new peer %s", p.NodeID().String()[:16])
+		pm.syncBlocks(p, from, rStatus.LatestStatus.CurHeight)
 	}
 	// set connect result
 	if err = pm.discover.SetConnectResult(p.NodeID(), true); err != nil {
@@ -589,8 +591,8 @@ func (pm *ProtocolManager) forceSyncBlock(status *LatestStatus, p *peer) {
 		pm.peers.UnRegister(p)
 		return
 	}
-	// TODO 一次连上很多节点，就会同时同步区块
-	p.RequestBlocks(from, status.CurHeight)
+	log.Infof("sync status from the best peer %s", p.NodeID().String()[:16])
+	pm.syncBlocks(p, from, status.CurHeight)
 }
 
 // findSyncFrom find height of which sync from
@@ -621,6 +623,30 @@ func (pm *ProtocolManager) findSyncFrom(rStatus *LatestStatus) (uint32, error) {
 		}
 	}
 	return from, nil
+}
+
+// syncBlocks sync blocks with throttle algorithm
+func (pm *ProtocolManager) syncBlocks(p *peer, from, to uint32) bool {
+	// to avoid sync blocks from different peer at same time
+	var timeDelay int64
+	if from != to {
+		// multi blocks sync on be happened once a minute
+		timeDelay = 60
+	} else if to == pm.lastSyncToHeight {
+		// synchronised this block before
+		timeDelay = 10
+	}
+
+	now := time.Now().Unix()
+	if now-pm.lastSyncTime > timeDelay {
+		p.RequestBlocks(from, to)
+		pm.lastSyncTime = now
+		pm.lastSyncToHeight = to
+		return true
+	} else {
+		log.Debug("stop sync blocks cause we just sync a few seconds ago")
+		return false
+	}
 }
 
 // work return handle msg error
@@ -747,7 +773,7 @@ func (pm *ProtocolManager) handleBlockHashMsg(msg *p2p.Msg, p *peer) error {
 
 	// update status
 	p.UpdateStatus(hashMsg.Height, hashMsg.Hash)
-	go p.RequestBlocks(hashMsg.Height, hashMsg.Height)
+	go pm.syncBlocks(p, hashMsg.Height, hashMsg.Height)
 	return nil
 }
 
@@ -813,6 +839,7 @@ func (pm *ProtocolManager) handleGetBlocksMsg(msg *p2p.Msg, p *peer) error {
 
 // respBlocks response blocks to remote peer
 func (pm *ProtocolManager) respBlocks(from, to uint32, p *peer, hasChangeLog bool) {
+	log.Info("response blocks", "peer", p.NodeID().String()[:16], "fromHeight", from, "toHeight", to)
 	if from == to {
 		b := pm.chain.GetBlockByHeight(from)
 		if b == nil {

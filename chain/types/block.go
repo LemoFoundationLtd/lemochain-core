@@ -29,7 +29,7 @@ type Header struct {
 	Height       uint32         `json:"height"           gencodec:"required"`
 	GasLimit     uint64         `json:"gasLimit"         gencodec:"required"`
 	GasUsed      uint64         `json:"gasUsed"          gencodec:"required"`
-	Time         uint32         `json:"timestamp"        gencodec:"required"`
+	Time         uint32         `json:"timestamp"        gencodec:"required"` // seconds
 	SignData     []byte         `json:"signData"         gencodec:"required"`
 	DeputyRoot   []byte         `json:"deputyRoot"`
 	Extra        string         `json:"extraData"` // max length is 256 bytes
