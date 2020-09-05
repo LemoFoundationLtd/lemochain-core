@@ -19,19 +19,13 @@ The lemochain-core project is the Golang implement of this consensus mechanism. 
 ## Installing
 
 ### Setup build tools
-- Install `golang`, ensure the Go version is 1.10(or any later version).
-- Set up the Path environment variable `GOPATH`
-- Install `git`
-- Make source code directory in `GOPATH` and download source code into it
-    ```
-    mkdir src\github.com\LemoFoundationLtd
-    git clone https://github.com/LemoFoundationLtd/lemochain-core src\github.com\LemoFoundationLtd\lemochain-core
-    ```
+- Install `golang`, ensure the Go version is 1.13(or any later version).
+- Download the source of `lemochain-core`
 - Install `GCC`, cause ECDSA is required. Install `mingw` if you use windows, otherwise click [here](https://gcc.gnu.org/install) to read the GCC documentation.
 
 ### Compiling
 ```
-cd src\github.com\LemoFoundationLtd\lemochain-core\main
+cd lemochain-core\main
 go build
 ```
 > NOTE: Target platform should be x64

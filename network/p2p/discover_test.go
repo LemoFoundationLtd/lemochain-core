@@ -415,7 +415,7 @@ func Test_writeFindFile(t *testing.T) {
 
 	list := dis.getAvailableNodes()
 	assert.Len(t, list, 100)
-	removeFile(FindFile)
+	removeFile(FoundFile)
 }
 
 func Test_SetDeputyNodes(t *testing.T) {
@@ -602,7 +602,7 @@ func Test_AddNewList(t *testing.T) {
 	assert.Equal(t, false, dis.foundNodes[table[2].k].IsReconnect)
 	assert.Equal(t, false, dis.foundNodes[table[5].k].IsReconnect)
 
-	removeFile(FindFile)
+	removeFile(FoundFile)
 }
 
 func TestDiscoverManager_PutBlackNode_IsBlackNode(t *testing.T) {
@@ -643,7 +643,7 @@ func Test_Start_err(t *testing.T) {
 func Test_Stop_err(t *testing.T) {
 	dis := newDiscover()
 	assert.Equal(t, ErrNotStart, dis.Stop())
-	removeFile(FindFile)
+	removeFile(FoundFile)
 }
 
 func Test_Start_restart(t *testing.T) {
@@ -652,7 +652,7 @@ func Test_Start_restart(t *testing.T) {
 	assert.NoError(t, dis.Stop())
 	assert.NoError(t, dis.Start())
 
-	removeFile(FindFile)
+	removeFile(FoundFile)
 }
 
 func Test_SetConnectResult(t *testing.T) {

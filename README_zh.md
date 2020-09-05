@@ -19,19 +19,13 @@ lemochain-core项目是这种共识机制的Go语言实现，其控制台命令�
 
 
 ### 配置编译环境
-- 安装`golang`，1.10版及以上
-- 在环境变量中配置工作目录`GOPATH`
-- 安装`git`
-- 在`GOPATH`工作目录下创建源码目录并拉取代码
-    ```
-    mkdir src\github.com\LemoFoundationLtd
-    git clone https://github.com/LemoFoundationLtd/lemochain-core src\github.com\LemoFoundationLtd\lemochain-core
-    ```
+- 安装`golang`，1.13版及以上
+- 下载`lemochain-core`源代码
 - 因为`ECDSA`算法代码是由C语言编写，所以编译时会用到`GCC`，建议`windows`下安装`mingw`，其他系统请点击[GCC文档](https://gcc.gnu.org/install)
 
 ### 编译
 ```
-cd src\github.com\LemoFoundationLtd\lemochain-core\main
+cd lemochain-core\main
 go build
 ```
 > 注意: 编译目标程序需为64位

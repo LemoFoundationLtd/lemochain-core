@@ -22,7 +22,7 @@ const (
 	MaxNodeCount           = 100
 
 	WhiteFile = "nodewhitelist"
-	FindFile  = "findnode"
+	FoundFile = "foundlist"
 	BlackFile = "nodeblacklist"
 )
 
@@ -458,7 +458,7 @@ func (m *DiscoverManager) initWhiteList() {
 
 // initDiscoverList read initial node from file
 func (m *DiscoverManager) initDiscoverList() {
-	path := filepath.Join(m.dataDir, FindFile)
+	path := filepath.Join(m.dataDir, FoundFile)
 	list := readFile(path)
 	m.addDiscoverNodes(list)
 }
@@ -473,7 +473,7 @@ func (m *DiscoverManager) writeFindNodeToFile() {
 	// create list
 	list := m.getAvailableNodes()
 	// write find nodes to "findnode" file
-	m.writeToFile(list, FindFile)
+	m.writeToFile(list, FoundFile)
 }
 
 // writeToFile write node list to file
