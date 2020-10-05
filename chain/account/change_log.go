@@ -582,10 +582,10 @@ func undoAssetCode(c *types.ChangeLog, processor types.ChangeLogProcessor) error
 	return accessor.SetAssetCode(hash, oldVal)
 }
 
-func NewAssetCodeStateLog(address common.Address, processor types.ChangeLogProcessor, id common.Hash, key string, newVal string) (*types.ChangeLog, error) {
+func NewAssetCodeStateLog(address common.Address, processor types.ChangeLogProcessor, code common.Hash, key string, newVal string) (*types.ChangeLog, error) {
 	account := processor.GetAccount(address)
 
-	oldVal, err := account.GetAssetCodeState(id, key)
+	oldVal, err := account.GetAssetCodeState(code, key)
 	if err != nil && err != types.ErrAssetNotExist {
 		return nil, fmt.Errorf("can't create asset code state log: %v", err)
 	}
@@ -597,7 +597,7 @@ func NewAssetCodeStateLog(address common.Address, processor types.ChangeLogProce
 		OldVal:  oldVal,
 		NewVal:  newVal,
 		Extra: &ProfileChangeLogExtra{
-			UUID: id,
+			UUID: code,
 			Key:  key,
 		},
 	}, nil

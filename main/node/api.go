@@ -111,8 +111,8 @@ func (a *PublicAccountAPI) GetVoteFor(lemoAddress string) (string, error) {
 	return forAddress, nil
 }
 
-// GetAssetEquity returns asset equity
-func (a *PublicAccountAPI) GetAssetEquity(lemoAddress string, assetId common.Hash) (*types.AssetEquity, error) {
+// GetEquity returns asset equity
+func (a *PublicAccountAPI) GetEquity(lemoAddress string, assetId common.Hash) (*types.AssetEquity, error) {
 	acc, err := a.GetAccount(lemoAddress)
 	if err != nil {
 		return nil, err
